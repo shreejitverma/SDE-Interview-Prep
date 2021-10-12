@@ -62,5 +62,3 @@ search_element = 5
 
 # Function call
 search(arr, search_element)
-
-# This code is contributed by Dharanendra L V.
