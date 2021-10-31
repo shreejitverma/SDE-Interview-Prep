@@ -1,2 +1,2 @@
-# GeeksforGeeks
-GeeksforGeeks competitive programming
+# Competitive Programming
+Competitive Programming
