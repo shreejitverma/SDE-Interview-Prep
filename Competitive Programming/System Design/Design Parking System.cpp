@@ -1,4 +1,6 @@
-/*1603. Design Parking System
+/*
+https://leetcode.com/problems/design-parking-system/
+1603. Design Parking System
 Easy
 451217Add to ListShare
 Design a parking system for a parking lot. The parking lot has three kinds of parking spaces:
