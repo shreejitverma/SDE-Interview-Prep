@@ -1,5 +1,4 @@
-/*
-https://leetcode.com/problems/design-a-stack-with-increment-operation/
+'''https://leetcode.com/problems/design-a-stack-with-increment-operation/
 1381. Design a Stack With Increment Operation
 Medium
 81862Add to ListShare
@@ -39,43 +38,50 @@ Constraints:
 	• 1 <= x <= 1000
 	• 1 <= k <= 1000
 	• 0 <= val <= 100
-	• At most 1000 calls will be made to each method of increment, push and pop each separately.
-*/
-class CustomStack
-{
-    int maxSize;
-    vector<int> stk;
+	• At most 1000 calls will be made to each method of increment, push and pop each separately.'''
 
-public:
-    CustomStack(int maxSize)
-    {
-        this->maxSize = maxSize;
-    }
+# Time:  cotr:      O(1)
+#        push:      O(1)
+#        pop:       O(1)
+#        increment: O(1)
+# Space: O(n)
 
-    void push(int x)
-    {
-        if (stk.size() < maxSize)
-        {
-            stk.push_back(x);
-        }
-    }
 
-    int pop()
-    {
-        if (stk.size() > 0)
-        {
-            int top = stk[stk.size() - 1];
-            stk.pop_back();
-            return top;
-        }
-        return -1;
-    }
+class CustomStack(object):
 
-    void increment(int k, int val)
-    {
-        for (int i = 0; i < min((int)k, (int)stk.size()); i++)
-        {
-            stk[i] += val;
-        }
-    }
-};
+    def __init__(self, maxSize):
+        """
+        :type maxSize: int
+        """
+        self.__max_size = maxSize
+        self.__stk = []
+
+    def push(self, x):
+        """
+        :type x: int
+        :rtype: None
+        """
+        if len(self.__stk) == self.__max_size:
+            return
+        self.__stk.append([x, 0])
+
+    def pop(self):
+        """
+        :rtype: int
+        """
+        if not self.__stk:
+            return -1
+        x, inc = self.__stk.pop()
+        if self.__stk:
+            self.__stk[-1][1] += inc
+        return x + inc
+
+    def increment(self, k, val):
+        """
+        :type k: int
+        :type val: int
+        :rtype: None
+        """
+        i = min(len(self.__stk), k)-1
+        if i >= 0:
+            self.__stk[i][1] += val
