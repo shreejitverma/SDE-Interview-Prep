@@ -9,6 +9,7 @@
         "string": "cpp",
         "string_view": "cpp",
         "__hash_table": "cpp",
-        "unordered_map": "cpp"
+        "unordered_map": "cpp",
+        "algorithm": "cpp"
     }
 }
