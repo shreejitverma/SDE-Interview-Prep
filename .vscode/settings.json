@@ -12,6 +12,8 @@
         "unordered_map": "cpp",
         "algorithm": "cpp",
         "filesystem": "cpp",
-        "iosfwd": "cpp"
+        "iosfwd": "cpp",
+        "iterator": "cpp",
+        "stack": "cpp"
     }
 }
