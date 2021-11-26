@@ -6,7 +6,7 @@
     "configurations": [
       {
         "name": "clang++ - Build and debug active file",
-        "type": "lldb",
+        "type": "cppdbg",
         "request": "launch",
         "program": "${fileDirname}/${fileBasenameNoExtension}",
         "args": [],
@@ -19,9 +19,12 @@
       },
 
       {
-        "type": "cppbuild",
+        "name": "cpp",
+        "type": "cppdbg",
         "label": "C/C++: g++ build active file",
         "command": "/usr/bin/g++",
+        "request": "launch",
+        "program": "${fileDirname}/${fileBasenameNoExtension}",
         "args": [
           "-fdiagnostics-color=always",
           "-g",
@@ -42,7 +45,7 @@
         "name": "(lldb) Launch",
         "type": "cppdbg",
         "request": "launch",
-        "program": "enter program name, for example ${workspaceFolder}/a.out",
+        "program": "${fileDirname}/${fileBasenameNoExtension}",
         "args": [],
         "stopAtEntry": false,
         "cwd": "${fileDirname}",
