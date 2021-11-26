@@ -6,22 +6,21 @@
 			"label": "clang++ build active file",
 			"command": "/usr/bin/clang++",
 			"args": [
-			  "-std=c++17",
-			  "-stdlib=libc++",
-			  "-g",
-			  "${workspaceFolder}/*.cpp",
-			  "-o",
-			  "${fileDirname}/${fileBasenameNoExtension}"
+				"-std=c++17",
+				"-stdlib=libc++",
+				"-g",
+				"${workspaceFolder}/*.cpp",
+				"-o",
+				"${fileDirname}/${fileBasenameNoExtension}"
 			],
 			"options": {
-			  "cwd": "${workspaceFolder}"
+				"cwd": "${workspaceFolder}"
 			},
-			"problemMatcher": ["$gcc"],
-			"group": {
-			  "kind": "build",
-			  "isDefault": true
-			}
-		  },
+			"problemMatcher": [
+				"$gcc"
+			],
+			"group": "build"
+		},
 		{
 			"type": "cppbuild",
 			"label": "C/C++: clang build active file",
@@ -59,7 +58,10 @@
 			"problemMatcher": [
 				"$gcc"
 			],
-			"group": "build",
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			},
 			"detail": "compiler: /usr/bin/g++"
 		},
 		{
