@@ -36,3 +36,32 @@ Expected Auxiliary Space: O(|S|).
 Constraints:
 1<=|S|<=105
 All characters are lowercase alphabets.'''
+# User function Template for python3
+
+
+class Solution:
+    def removeConsecutiveCharacter(self, S):
+        # code here
+        st = []
+        s1 = ''
+        for i in range(len(S)):
+            if (st and st[-1] != S[i]) or not st:
+                st.append(S[i])
+        while st:
+            s1 += st.pop()
+        return s1[::-1]
+
+# {
+#  Driver Code Starts
+# Initial Template for Python 3
+
+
+if __name__ == '__main__':
+    T = int(input())
+
+    for tcs in range(T):
+        s = input()
+        ob = Solution()
+        print(ob.removeConsecutiveCharacter(s))
+
+# } Driver Code Ends
