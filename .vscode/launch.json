@@ -1,59 +1,21 @@
 {
-    // Use IntelliSense to learn about possible attributes.
-    // Hover to view descriptions of existing attributes.
-    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
-    "version": "0.2.0",
-    "configurations": [
-      {
-        "name": "clang++ - Build and debug active file",
-        "type": "cppdbg",
-        "request": "launch",
-        "program": "${fileDirname}/${fileBasenameNoExtension}",
-        "args": [],
-        "stopAtEntry": true,
-        "cwd": "${workspaceFolder}",
-        "environment": [],
-        "externalConsole": false,
-        "MIMode": "lldb",
-        "preLaunchTask": "clang++ build active file"
-      },
-
-      {
-        "name": "cpp",
-        "type": "cppdbg",
-        "label": "C/C++: g++ build active file",
-        "command": "/usr/bin/g++",
-        "request": "launch",
-        "program": "${fileDirname}/${fileBasenameNoExtension}",
-        "args": [
-          "-fdiagnostics-color=always",
-          "-g",
-          "${file}",
-          "-o",
-          "${fileDirname}/${fileBasenameNoExtension}"
-        ],
-        "options": {
-          "cwd": "${fileDirname}"
-        },
-        "problemMatcher": [
-          "$gcc"
-        ],
-        "group": "build",
-        "detail": "compiler: /usr/bin/g++"
-      },
-      {
-        "name": "(lldb) Launch",
-        "type": "cppdbg",
-        "request": "launch",
-        "program": "${fileDirname}/${fileBasenameNoExtension}",
-        "args": [],
-        "stopAtEntry": false,
-        "cwd": "${fileDirname}",
-        "environment": [],
-        "externalConsole": false,
-        "MIMode": "lldb"
-      }
-      
-      
-    ]
-  }
+  // Use IntelliSense to learn about possible attributes.
+  // Hover to view descriptions of existing attributes.
+  // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "clang++ - Build and debug active file",
+      "type": "lldb",
+      "request": "launch",
+      "program": "${fileDirname}/${fileBasenameNoExtension}",
+      "args": [],
+      "stopAtEntry": true,
+      "cwd": "${workspaceFolder}",
+      "environment": [],
+      "externalConsole": false,
+      "MIMode": "lldb",
+      "preLaunchTask": "clang++ build active file"
+    }
+  ]
+}

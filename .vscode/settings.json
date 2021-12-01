@@ -17,6 +17,13 @@
         "stack": "cpp",
         "functional": "cpp",
         "map": "cpp",
-        "set": "cpp"
+        "set": "cpp",
+        "iostream": "cpp",
+        "type_traits": "cpp",
+        "ostream": "cpp",
+        "__tree": "cpp",
+        "bitset": "cpp",
+        "initializer_list": "cpp",
+        "utility": "cpp"
     }
 }
