@@ -37,26 +37,27 @@ void inorder(Node *root)
 int main()
 {
     /* Construct the following tree
-               1
+               4
              /   \
             /     \
-           2       3
-          /      /   \
-         /      /     \
-        4      5       6
-              / \
-             /   \
-            7     8
+           2       8
+          / \     /  \
+         /   \   /    \
+        1     3 6      9
+               / \
+              /   \
+             5     7
     */
 
-    Node *root = new Node(1);
+    Node *root = new Node(4);
     root->left = new Node(2);
-    root->right = new Node(3);
-    root->left->left = new Node(4);
-    root->right->left = new Node(5);
-    root->right->right = new Node(6);
-    root->right->left->left = new Node(7);
-    root->right->left->right = new Node(8);
+    root->right = new Node(8);
+    root->left->left = new Node(1);
+    root->left->right = new Node(3);
+    root->right->left = new Node(6);
+    root->right->right = new Node(9);
+    root->right->left->left = new Node(5);
+    root->right->left->right = new Node(7);
 
     inorder(root);
 
@@ -115,26 +116,27 @@ void inorderIterative(Node *root)
 int main()
 {
     /* Construct the following tree
-               1
+               4
              /   \
             /     \
-           2       3
-          /      /   \
-         /      /     \
-        4      5       6
-              / \
-             /   \
-            7     8
+           2       8
+          / \     /  \
+         /   \   /    \
+        1     3 6      9
+               / \
+              /   \
+             5     7
     */
 
-    Node *root = new Node(1);
+    Node *root = new Node(4);
     root->left = new Node(2);
-    root->right = new Node(3);
-    root->left->left = new Node(4);
-    root->right->left = new Node(5);
-    root->right->right = new Node(6);
-    root->right->left->left = new Node(7);
-    root->right->left->right = new Node(8);
+    root->right = new Node(8);
+    root->left->left = new Node(1);
+    root->left->right = new Node(3);
+    root->right->left = new Node(6);
+    root->right->right = new Node(9);
+    root->right->left->left = new Node(5);
+    root->right->left->right = new Node(7);
 
     inorderIterative(root);
 
