@@ -1,0 +1,8 @@
+
+;python:S125"Remove this commented out code.(Ù–ˆûıÿÿÿÿ
+gpython:S100"PRename method "updateMatrix" to match the regular expression ^[a-z_][a-z0-9_]*$.(İ­Â
+lpython:S3776"TRefactor this function to reduce its Cognitive Complexity from 24 to the 15 allowed.(İ­Â
+gpython:S100#"PRename method "updateMatrix" to match the regular expression ^[a-z_][a-z0-9_]*$.(İ­Â
+lpython:S3776#"TRefactor this function to reduce its Cognitive Complexity from 30 to the 15 allowed.(İ­Â
+;python:S125>"Remove this commented out code.(Ù–ˆûıÿÿÿÿ
+gpython:S100D"PRename method "updateMatrix" to match the regular expression ^[a-z_][a-z0-9_]*$.(İ­Â
