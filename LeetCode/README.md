@@ -4,8 +4,8 @@
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE.md)&nbsp;
 ![Update](https://img.shields.io/badge/update-weekly-green.svg)&nbsp;
 ![Progress](https://img.shields.io/badge/progress-2065%20%2F%202065-ff69b4.svg)&nbsp;
-[![SayThanks](https://img.shields.io/badge/say-thanks-ff69f4.svg)](https://saythanks.io/to/kamyu104)&nbsp;
-![Visitors](https://visitor-badge.laobi.icu/badge?page_id=kamyu104.leetcode.solutions)
+[![Say Thanks!](https://img.shields.io/badge/Say%20Thanks-!-1EAEDB.svg)](https://saythanks.io/to/shreejitverma)&nbsp;
+![Visitors](https://visitor-badge.laobi.icu/badge?page_id=shreejitverma.Competitive-Programming.LeetCode)&nbsp;
 
 * Hope you enjoy the journey of learning data structures and algorithms.
 * Notes: "🔒" means your subscription of [LeetCode premium membership](https://leetcode.com/subscribe/) is required for reading the question.
