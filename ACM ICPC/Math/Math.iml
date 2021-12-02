@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<module type="JAVA_MODULE" version="4">
+  <component name="NewModuleRootManager" inherit-compiler-output="true">
+    <exclude-output />
+    <content url="file://$MODULE_DIR$">
+      <sourceFolder url="file://$MODULE_DIR$/Fast Exponentiation with Mod" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/Power" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/Power_For_Huge_Num" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/TowerofHanoi" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/gcd" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/miller_rabin_primality_test" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/modular_multiplicative_inverse" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/sieve_of_eratosthenes" isTestSource="false" />
+    </content>
+    <orderEntry type="inheritedJdk" />
+    <orderEntry type="sourceFolder" forTests="false" />
+  </component>
+</module>
