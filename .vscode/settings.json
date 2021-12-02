@@ -24,6 +24,8 @@
         "__tree": "cpp",
         "bitset": "cpp",
         "initializer_list": "cpp",
-        "utility": "cpp"
+        "utility": "cpp",
+        "__locale": "cpp",
+        "__string": "cpp"
     }
 }
