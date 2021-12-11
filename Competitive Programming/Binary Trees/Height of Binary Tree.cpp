@@ -32,7 +32,27 @@ Constraints:
 1 <= Number of nodes <= 105
 1 <= Data of a node <= 105
 */
-
+class Solution
+{
+public:
+    int maxDepth(TreeNode *root)
+    {
+        // Start typing your C/C++ solution below
+        // DO NOT write int main() function
+        if (!root)
+            return 0;
+        int nLeftDeep = 1;
+        int nRightDeep = 1;
+        if (root->left)
+            nLeftDeep = nLeftDeep + maxDepth(root->left);
+        if (root->right)
+            nRightDeep = nRightDeep + maxDepth(root->right);
+        if (nLeftDeep > nRightDeep)
+            return nLeftDeep;
+        else
+            return nRightDeep;
+    }
+};
 #include <iostream>
 #include <bits/stdc++.h>
 using namespace std;
