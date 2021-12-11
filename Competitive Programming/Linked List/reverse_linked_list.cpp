@@ -1,14 +1,33 @@
+// https : // leetcode.com/problems/reverse-linked-list/
+class Solution
+{
+public:
+    ListNode *reverseList(ListNode *head)
+    {
+        ListNode *newHead = NULL;
+        while (head != NULL)
+        {
+            ListNode *next = head->next;
+            head->next = newHead;
+            newHead = head;
+            head = next;
+        }
+        return newHead;
+    }
+};
+
 // { Driver Code Starts
-//Initial Template for C++
+// Initial Template for C++
 
 // C program to find n'th Node in linked list
 #include <stdio.h>
 #include <stdlib.h>
-#include<iostream>
+#include <iostream>
 using namespace std;
 
 /* Link list Node */
-struct Node {
+struct Node
+{
     int data;
     struct Node *next;
     Node(int x)
@@ -18,7 +37,6 @@ struct Node {
     }
 };
 
-
 /* Function to get the middle of the linked list*/
 struct Node *reverseList(struct Node *head);
 
@@ -27,36 +45,36 @@ void printList(struct Node *head)
     struct Node *temp = head;
     while (temp != NULL)
     {
-       printf("%d ", temp->data);
-       temp  = temp->next;
+        printf("%d ", temp->data);
+        temp = temp->next;
     }
 }
 
 /* Driver program to test above function*/
 int main()
 {
-    int T,n,l,firstdata;
-    cin>>T;
+    int T, n, l, firstdata;
+    cin >> T;
 
-    while(T--)
+    while (T--)
     {
-        struct Node *head = NULL,  *tail = NULL;
+        struct Node *head = NULL, *tail = NULL;
 
-        cin>>n;
-        
-        cin>>firstdata;
+        cin >> n;
+
+        cin >> firstdata;
         head = new Node(firstdata);
         tail = head;
-        
-        for (int i=1; i<n; i++)
+
+        for (int i = 1; i < n; i++)
         {
-            cin>>l;
+            cin >> l;
             tail->next = new Node(l);
             tail = tail->next;
         }
-        
+
         head = reverseList(head);
-        
+
         printList(head);
         cout << endl;
     }
@@ -64,7 +82,6 @@ int main()
 }
 
 // } Driver Code Ends
-
 
 /* Linked List Node structure:
 
@@ -77,17 +94,21 @@ struct Node
 */
 
 // Should reverse list and return new head.
-struct Node* reverseList(struct Node *head)
+struct Node *reverseList(struct Node *head)
 {
     // code here
     // return head of reversed list
-    struct Node* temp = head;
-    struct Node* curr = head; 
-    struct Node* prev = head;
-    if(temp->next == NULL){
+    struct Node *temp = head;
+    struct Node *curr = head;
+    struct Node *prev = head;
+    if (temp->next == NULL)
+    {
         return head;
-    }else{
-        while(temp->next){
+    }
+    else
+    {
+        while (temp->next)
+        {
             curr = temp->next;
             temp->next = prev;
             prev = temp;
