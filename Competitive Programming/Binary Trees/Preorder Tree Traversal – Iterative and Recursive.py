@@ -48,7 +48,7 @@ if __name__ == '__main__':
     root.right.left.left = Node(7)
     root.right.left.right = Node(8)
 
-    preorder(root)
+    # preorder(root)
 
     from collections import deque
 
@@ -117,3 +117,5 @@ if __name__ == '__main__':
     root.right.left.right = Node(8)
 
     preorderIterative(root)
+    print('\n')
+    preorder(root)
