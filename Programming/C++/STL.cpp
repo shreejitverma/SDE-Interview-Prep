@@ -1,4 +1,147 @@
+#include <iostream>
+#include <vector>
+using namespace std;
 
+// Question :
+
+//     Given a list of numbers return a largest sub list whose elements follow the below mentioned rule
+
+//         Sum of no two elements is divisible by 3
+
+//     1 2 3 4 5 6 7 ->  [1 3 4 7] ans ->[1 3 4 7]
+
+vector<int> sumOfTwoNotDivByThree(int arr[], int n)
+{
+    vector<int> res;
+    vector<int> rem0;
+    vector<int> rem1;
+    vector<int> rem2;
+    for (int i = 0; i < n; i++)
+    {
+        if (arr[i] % 3 == 0)
+        {
+            rem0.push_back(arr[i]);
+        }
+        if (arr[i] % 3 == 1)
+        {
+            rem1.push_back(arr[i]);
+        }
+        if (arr[i] % 3 == 2)
+        {
+            rem2.push_back(arr[i]);
+        }
+    }
+    if (rem0.size() != 0)
+    {
+        res.push_back(rem0[0]);
+    }
+    if (rem1.size() > rem2.size())
+    {
+        int n = rem1.size();
+        for (int i = 0; i < n; i++)
+        {
+            res.push_back(rem1[i])
+        }
+    }
+    else
+    {
+        int n = rem2.size();
+        for (int i = 0; i < n; i++)
+        {
+            res.push_back(rem2[i])
+        }
+    }
+    return res;
+}
+
+void display(vector<int> &v)
+{
+    for (int i = 0; i < v.size(); i++)
+    {
+        cout << v[i] << " ";
+    }
+    cout << endl;
+    {
+        /* code */
+    }
+}
+int main()
+{
+
+    int arr[6] = {1,
+                  2,
+                  3,
+                  4,
+                  5,
+                  7};
+    int n = sizeof(arr) / sizeof(arr[0]);
+    vector<int> v;
+    v = sumOfTwoNotDivByThree(arr, n);
+}
+
+// #include <iostream>
+
+// int main()
+// {
+//     int a = 5;
+//     int b = 6;
+//     int sum = a + b;
+//     std::cout << "Hello World" << sum << std::endl;
+// }
+#include <iostream>
+#include <stack>
+// C++ program for the above approach
+// #include <bits/stdc++.h>
+using namespace std;
+
+// Function to insert an element
+// at the bottom of a given stack
+void insertToBottom(stack<int> &S, int N)
+{
+
+    if (S.empty())
+        S.push(N);
+    else
+    {
+        /* All items are held in Function Call Stack until we
+           reach end of the stack. When the stack becomes
+           empty, the st.size() becomes 0, the
+           above if part is executed and the item is inserted
+           at the bottom */
+
+        int a = S.top();
+        S.pop();
+        insertToBottom(S, N);
+
+        // push all the items held in Function Call Sack
+        // once the item is inserted at the bottom
+        S.push(a);
+    }
+}
+
+// Driver Code
+int main()
+{
+    // Input
+    stack<int> S;
+    S.push(5);
+    S.push(4);
+    S.push(3);
+    S.push(2);
+    S.push(1);
+
+    int N = 7;
+
+    insertToBottom(S, N);
+    insertToBottom(S, 9);
+    // Print the elements of S
+    while (!S.empty())
+    {
+        cout << S.top() << " ";
+        S.pop();
+    }
+    return 0;
+}
 
 // Arrays :
 #include <iostream>
@@ -98,7 +241,7 @@ int main()
     d.push_back(1);
     d.push_front(2);
 
-    //d.pop_front();
+    // d.pop_front();
     cout << endl;
 
     cout << "Print First INdex Element-> " << d.at(1) << endl;
@@ -207,11 +350,11 @@ int main()
 using namespace std;
 int main()
 {
-    //max heap
+    // max heap
     priority_queue<int> maxi;
 
-    //min - heap
-    priority_queue <int, vector<int>, greater<int> > mini;
+    // min - heap
+    priority_queue<int, vector<int>, greater<int> > mini;
 
     maxi.push(1);
     maxi.push(3);
