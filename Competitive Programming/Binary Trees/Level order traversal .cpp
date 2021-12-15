@@ -1,7 +1,7 @@
 /*
 https://www.geeksforgeeks.org/level-order-tree-traversal/
 https://practice.geeksforgeeks.org/problems/level-order-traversal/1
-Level order traversal 
+Level order traversal
 Easy Accuracy: 49.61% Submissions: 94239 Points: 2
 Given a binary tree, find its level order traversal.
 Level order traversal of a tree is breadth-first traversal for the tree.
@@ -11,7 +11,7 @@ Example 1:
 
 Input:
     1
-  /   \ 
+  /   \
  3     2
 Output:1 3 2
 Example 2:
@@ -48,6 +48,15 @@ struct Node
     struct Node *left, *right;
 };
 
+// Utility function to create a new tree node
+Node *newNode(int data)
+{
+    Node *temp = new Node;
+    temp->data = data;
+    temp->left = temp->right = NULL;
+    return temp;
+}
+
 // Iterative method to find height of Binary Tree
 // Time Complexity: O(n) where n is the number of nodes in the binary tree
 // Space Complexity: O(n) where n is the number of nodes in the binary tree
@@ -80,15 +89,6 @@ void printLevelOrder(Node *root)
     }
 }
 
-// Utility function to create a new tree node
-Node *newNode(int data)
-{
-    Node *temp = new Node;
-    temp->data = data;
-    temp->left = temp->right = NULL;
-    return temp;
-}
-
 // Driver program to test above functions
 int main()
 {
@@ -118,6 +118,18 @@ public:
     int data;
     node *left, *right;
 };
+/* Helper function that allocates
+a new node with the given data and
+NULL left and right pointers. */
+node *newNode(int data)
+{
+    node *Node = new node();
+    Node->data = data;
+    Node->left = NULL;
+    Node->right = NULL;
+
+    return (Node);
+}
 
 /* Function prototypes */
 void printCurrentLevel(node *root, int level);
@@ -153,37 +165,13 @@ void printCurrentLevel(node *root, int level)
     down to the farthest leaf node.*/
 int height(node *node)
 {
+    // base case tree is empty
     if (node == NULL)
         return 0;
-    else
-    {
-        /* compute the height of each subtree */
-        int lheight = height(node->left);
-        int rheight = height(node->right);
 
-        /* use the larger one */
-        if (lheight > rheight)
-        {
-            return (lheight + 1);
-        }
-        else
-        {
-            return (rheight + 1);
-        }
-    }
-}
-
-/* Helper function that allocates
-a new node with the given data and
-NULL left and right pointers. */
-node *newNode(int data)
-{
-    node *Node = new node();
-    Node->data = data;
-    Node->left = NULL;
-    Node->right = NULL;
-
-    return (Node);
+    // If tree is not empty then height = 1 + max of left
+    // height and right heights
+    return 1 + max(height(node->left), height(node->right));
 }
 
 /* Driver code*/

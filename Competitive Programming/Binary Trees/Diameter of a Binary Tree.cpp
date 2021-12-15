@@ -44,6 +44,15 @@ struct node
     int data;
     struct node *left, *right;
 };
+struct node *newNode(int data)
+{
+    struct node *node = (struct node *)malloc(sizeof(struct node));
+    node->data = data;
+    node->left = NULL;
+    node->right = NULL;
+
+    return (node);
+}
 
 // function to create a new node of tree and returns pointer
 struct node *newNode(int data);
@@ -95,15 +104,7 @@ int height(struct node *node)
 
 // Helper function that allocates a new node with the
 // given data and NULL left and right pointers.
-struct node *newNode(int data)
-{
-    struct node *node = (struct node *)malloc(sizeof(struct node));
-    node->data = data;
-    node->left = NULL;
-    node->right = NULL;
 
-    return (node);
-}
 
 // Driver Code
 int main()
