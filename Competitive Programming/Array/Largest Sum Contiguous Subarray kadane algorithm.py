@@ -93,4 +93,4 @@ def maxSubArraySum(a, size):
 
 # Driver program to test maxSubArraySum
 a = [-2, -3, 4, -1, -2, 1, 5, -3]
-maxSubArraySum(a, len(a))
+print(maxSubArraySum(a, len(a)))

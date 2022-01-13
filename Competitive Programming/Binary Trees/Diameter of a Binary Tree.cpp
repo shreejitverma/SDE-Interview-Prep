@@ -1,8 +1,8 @@
 /*https://www.geeksforgeeks.org/diameter-of-a-binary-tree/
 https://practice.geeksforgeeks.org/problems/diameter-of-binary-tree/1
-Diameter of a Binary Tree 
+Diameter of a Binary Tree
 Easy Accuracy: 50.01% Submissions: 100k+ Points: 2
-The diameter of a tree (sometimes called the width) is the number of nodes on the longest path between two end nodes. The diagram below shows two trees each with diameter nine, the leaves that form the ends of the longest path are shaded (note that there is more than one path in each tree of length nine, but no path longer than nine nodes). 
+The diameter of a tree (sometimes called the width) is the number of nodes on the longest path between two end nodes. The diagram below shows two trees each with diameter nine, the leaves that form the ends of the longest path are shaded (note that there is more than one path in each tree of length nine, but no path longer than nine nodes).
 
 
 
@@ -19,7 +19,7 @@ Input:
          10
         /   \
       20    30
-    /   \ 
+    /   \
    40   60
 Output: 4
 Your Task:
@@ -34,7 +34,8 @@ Constraints:
 
 // Recursive optimized C program to find the diameter of a
 // Binary Tree
-#include <bits/stdc++.h>
+// #include <bits/stdc++.h>
+#include <iostream>
 using namespace std;
 
 // A binary tree node has data, pointer to left child
@@ -46,12 +47,12 @@ struct node
 };
 struct node *newNode(int data)
 {
-    struct node *node = (struct node *)malloc(sizeof(struct node));
-    node->data = data;
-    node->left = NULL;
-    node->right = NULL;
+    struct node *Node = (struct node *)malloc(sizeof(struct node));
+    Node->data = data;
+    Node->left = NULL;
+    Node->right = NULL;
 
-    return (node);
+    return (Node);
 }
 
 // function to create a new node of tree and returns pointer
@@ -61,7 +62,7 @@ struct node *newNode(int data);
 int max(int a, int b) { return (a > b) ? a : b; }
 
 // function to Compute height of a tree.
-int height(struct node *node);
+int height(struct node *Node);
 
 // Function to get diameter of a binary tree
 int diameter(struct node *tree)
@@ -91,20 +92,19 @@ int diameter(struct node *tree)
 // The function Compute the "height" of a tree. Height is
 // the number f nodes along the longest path from the root
 // node down to the farthest leaf node.
-int height(struct node *node)
+int height(struct node *Node)
 {
     // base case tree is empty
-    if (node == NULL)
+    if (Node == NULL)
         return 0;
 
     // If tree is not empty then height = 1 + max of left
     // height and right heights
-    return 1 + max(height(node->left), height(node->right));
+    return 1 + max(height(Node->left), height(Node->right));
 }
 
 // Helper function that allocates a new node with the
 // given data and NULL left and right pointers.
-
 
 // Driver Code
 int main()
