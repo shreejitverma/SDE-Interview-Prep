@@ -1,0 +1,71 @@
+{
+   "marks": [
+	
+      {
+        "name": "Shreejit" ,
+        "id":"01",
+         "subject": "Math",
+         "marks": 90
+         
+      },
+	
+      {
+         "name": "Shreejit",
+         "id":"01",
+         "subject": "Phy",
+         "marks": 93
+         
+      },
+      {
+         "name": "Shreejit",
+         "id":"01",
+         "subject": "Chem",
+         "marks": 80
+         
+      },
+      {
+        "name": "Rahul" ,
+        "id":"02",
+         "subject": "Math",
+         "marks": 70
+         
+      },
+	
+      {
+        "name": "Rahul",
+         "id":"02",
+         "subject": "Phy",
+         "marks": 80
+         
+      },
+      {
+          "name": "Rahul",
+         "id":"02",
+         "subject": "Chem",
+         "marks": 95
+         
+      },
+      {
+        "name": "Shashank" ,
+        "id":"03",
+         "subject": "Math",
+         "marks": 90
+         
+      },
+	
+      {
+         "name": "Shashank",
+         "id":"03",
+         "subject": "Phy",
+         "marks": 93
+         
+      },
+      {
+         "name": "Shashank",
+         "id":"03",
+         "subject": "Chem",
+         "marks": 80
+         
+      }
+   ]
+}

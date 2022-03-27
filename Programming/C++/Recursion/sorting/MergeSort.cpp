@@ -2,14 +2,14 @@
 #include <vector>
 #include <string>
 using namespace std;
-vector<int> merge(vector<int> arr, vector<int> first, vector<int> second);
+vector<int> merge(vector<int> first, vector<int> second);
 void mergeSortInPlace(int a[], int s, int e);
 void mergeInPlace(int a[], int s, int e);
 
 vector<int> mergeSort(vector<int> arr, int start, int end)
 {
     int n = arr.size();
-    if (n)
+    if (n == 1)
     {
         return arr;
     }
@@ -24,17 +24,17 @@ vector<int> mergeSort(vector<int> arr, int start, int end)
     }
 
     vector<int> right;
-    vector<int> ansFromright = mergeSort(arr, mid, n);
+    vector<int> ansFromright = mergeSort(arr, mid+1, n);
     int sr = ansFromright.size();
     for (int i = 0; i < sr; ++i)
     {
         right.push_back(ansFromright[i]);
     }
 
-    return merge(arr, left, right);
+    return merge(left, right);
 }
 
-vector<int> merge(vector<int> arr, vector<int> first, vector<int> second)
+vector<int> merge(vector<int> first, vector<int> second)
 {
 
     int i = 0;
@@ -48,12 +48,12 @@ vector<int> merge(vector<int> arr, vector<int> first, vector<int> second)
     {
         if (first[i] < second[j])
         {
-            mix.push_back(arr[i]);
+            mix.push_back(first[i]);
             i++;
         }
         else
         {
-            mix.push_back(arr[j]);
+            mix.push_back(second[j]);
             j++;
         }
     }
@@ -62,13 +62,13 @@ vector<int> merge(vector<int> arr, vector<int> first, vector<int> second)
     // copy the remaining elements
     while (i < f)
     {
-        mix.push_back(arr[i]);
+        mix.push_back(first[i]);
         i++;
     }
 
     while (j < s)
     {
-        mix.push_back(arr[j]);
+        mix.push_back(second[j]);
         j++;
     }
 
@@ -154,12 +154,13 @@ int main()
     vector<int> arr;
     int m = 10;
     for (int i = 0; i < m; i++)
-        arr.push_back(m - i);
+        arr.push_back(i);
+    display(arr);
     vector<int> ans;
     int r = 10;
     int a[10] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
     mergeSortInPlace(a, 0, r);
-    display(a, 10);
-    ans = mergeSort(arr, 0, m - 1);
-    display(arr);
+    // display(a, 10);
+    ans = mergeSort(arr, 0, m);
+    display(ans);
 }
