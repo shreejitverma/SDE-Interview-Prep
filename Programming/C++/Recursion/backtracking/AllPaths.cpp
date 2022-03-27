@@ -18,24 +18,24 @@ void allPath(string p, bool maze[][3], int r, int c)
     // i am considering this block in my path
     maze[r][c] = false;
 
-    if (r < 3 - 1)
+    if (r < maze.size() - 1)
     {
-        allPath(p + to_string('D'), maze, r + 1, c);
+        allPath(p + 'D', maze, r + 1, c);
     }
 
-    if (c < sizeof(maze[0]) - 1)
+    if (c < maze[0].size() - 1)
     {
-        allPath(p + to_string('R'), maze, r, c + 1);
+        allPath(p + 'R', maze, r, c + 1);
     }
 
     if (r > 0)
     {
-        allPath(p + to_string('U'), maze, r - 1, c);
+        allPath(p + 'U', maze, r - 1, c);
     }
 
     if (c > 0)
     {
-        allPath(p + to_string('L'), maze, r, c - 1);
+        allPath(p + 'L', maze, r, c - 1);
     }
 
     // this line is where the function will be over

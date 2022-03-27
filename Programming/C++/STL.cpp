@@ -1,4 +1,3 @@
-#include <iostream>
 #include <stack>
 // C++ program for the above approach
 // #include <bits/stdc++.h>
@@ -214,9 +213,9 @@ int main()
 {
     stack<string> s;
 
-    s.push("love");
-    s.push("babbar");
-    s.push("Kumar");
+    s.push("shreejit");
+    s.push("verma");
+    s.push("rocks");
 
     cout << "Top Element-> " << s.top() << endl;
 
@@ -239,9 +238,9 @@ int main()
 
     queue<string> q;
 
-    q.push("love");
-    q.push("Babbar");
-    q.push("Kumar");
+    q.push("shreejit");
+    q.push("verma");
+    q.push("rocks");
 
     cout << "Size before pop" << q.size() << endl;
 
@@ -293,7 +292,7 @@ int main()
     }
     cout << endl;
 
-    cout << "khaali h kya bhai  ?? -> " << mini.empty() << endl;
+    cout << "is this empty?? -> " << mini.empty() << endl;
 }
 
 // Set :
@@ -354,11 +353,11 @@ int main()
 {
     map<int, string> m;
 
-    m[1] = "babbar";
-    m[13] = "kumar";
-    m[2] = "love";
+    m[1] = "verma";
+    m[13] = "rocks";
+    m[2] = "shreejit";
 
-    m.insert({5, "bheem"});
+    m.insert({5, "jai mata di"});
 
     cout << "before erase" << endl;
     for (auto i : m)

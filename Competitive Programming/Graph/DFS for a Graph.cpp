@@ -28,7 +28,7 @@ Implementation:
 
 // C++ program to print DFS traversal from
 // a given vertex in a  given graph
-#include <bits/stdc++.h>
+#include<bits/stdc++.h>
 using namespace std;
 
 // Graph class represents a directed graph
@@ -87,7 +87,7 @@ int main()
 }
 
 /*
- Handling Disconnected Graph 
+Handling Disconnected Graph 
 
 Solution: This will happen by handling a corner case. 
 The above code traverses only the vertices reachable from a given source vertex. 
