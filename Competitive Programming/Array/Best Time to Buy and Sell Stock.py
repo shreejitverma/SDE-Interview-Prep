@@ -50,6 +50,9 @@ Constraints:
 # Explanation: In this case, no transaction is done, i.e. max profit = 0.
 
 
+from ast import MatchSequence
+
+
 def BruteForce(prices):
     max_reward = 0
     for i in range(len(prices)):
@@ -73,3 +76,61 @@ if __name__ == '__main__':
     inputs = [7, 1, 5, 3, 6, 4]
     print(BruteForce(inputs))
     print(one_pass(inputs))
+Marks={{
+    name: abc
+    student_id: 123
+    subject: phy
+    marks: 90
+}
+,
+{
+    name: abc
+    student_id: 123
+    subject: math
+    marks: 95
+}
+,
+{
+    name: abc
+    student_id: 123
+    subject: chem
+    marks: 90
+}
+}
+Marks = [{}, ..]
+// N == > 3N
+
+-------------------
+# python program to get rank of student based on total marks in json with student name id subject and mark
+foo(n) {
+
+    // return the name and totla marks of the student whose rank is n based on total marks
+    student_dict = json.loads(Marks)
+    rank_dict = {
+        student_id: 
+        totalmarks: 
+    }
+    
+    // with total marks = total marks+student_id = 123 -> subject = Marks
+    struct Node{
+        struct Node* next;
+        int data;
+    
+    }
+
+    vector<int> rankOutput(Node * head, int n){
+        int maxMark=300;
+        Node * curr=head;
+        vector<int> rest;
+while(n){
+
+while(curr!=NULL){
+    rest.push_back(curr->data);
+}
+}
+
+    
+    }
+
+
+}

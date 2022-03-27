@@ -24,11 +24,18 @@ int helper(int n, int digits)
 
 bool palin(int n)
 {
-    return n == rev(n);
+    if (n == rev(n))
+    {
+        cout << "Yes ";
+    }
+    else
+    {
+        cout << "No ";
+    }
 }
 
 int main()
 {
-    cout << palin(1231) << "\n";
-    cout << palin(1234554321) << "\n";
+    cout << palin(1231) << rev(1231) << "\n";
+    cout << palin(1234554321) << rev(1234554321) << "\n";
 }
