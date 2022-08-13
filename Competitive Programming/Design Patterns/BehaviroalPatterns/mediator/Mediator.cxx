@@ -1,7 +1,7 @@
 /*
  * C++ Design Patterns:
- * Author: Junzhuo Du [github.com/Junzhuodu]
- * 2020
+ * Author: Shreejit Verma [github.com/shreejitverma/]
+ * 2022
  *
  */
 
