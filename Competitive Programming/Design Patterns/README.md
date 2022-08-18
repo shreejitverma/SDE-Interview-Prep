@@ -3,7 +3,8 @@
 C++ Implementation for 23 Design Patterns
 
 #### Creational Patterns 
-- [Abstract Factory], families of product objects
+
+- [Competitive Programming/Design Patterns/CreationalPatterns/abstract-factory], families of product objects
 ![image](./images/AbstractFactory.png)
 - [Builder], how a composite object gets created
 ![image](./images/Builder.png)
