@@ -1,0 +1,29 @@
+body {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  min-height: 100vh;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+.container h3 {
+  background: #444;
+  color: cyan;
+  padding: 1rem;
+  border-radius: 10px;
+}
+.container button {
+  padding: 1rem;
+  border: none;
+  background: #444;
+  color: cyan;
+  border-radius: 10px;
+  cursor: pointer;
+}
+.container button:hover {
+  background: rgb(44, 44, 44);
+}
