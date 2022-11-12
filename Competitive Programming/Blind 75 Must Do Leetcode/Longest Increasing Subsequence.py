@@ -204,9 +204,9 @@ class Solution4(object):
         :rtype: int
         """
         dp = []  # dp[i]: the length of LIS ends with nums[i]
-        for i in xrange(len(nums)):
+        for i in range(len(nums)):
             dp.append(1)
-            for j in xrange(i):
+            for j in range(i):
                 if nums[j] < nums[i]:
                     dp[i] = max(dp[i], dp[j] + 1)
         return max(dp) if dp else 0
