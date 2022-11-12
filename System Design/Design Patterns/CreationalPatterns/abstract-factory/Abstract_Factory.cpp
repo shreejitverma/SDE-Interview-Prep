@@ -84,6 +84,7 @@ public:
         }
     }
 };
+
 int main(){
     cout<<"Enter your machine OS version: "<< endl;
     string osType;
