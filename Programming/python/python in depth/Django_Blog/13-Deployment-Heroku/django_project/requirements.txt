@@ -18,5 +18,5 @@ pytz==2018.5
 requests==2.19.1
 s3transfer==0.2.0
 six==1.12.0
-urllib3==1.23
+urllib3==1.26.5
 whitenoise==4.1.2
