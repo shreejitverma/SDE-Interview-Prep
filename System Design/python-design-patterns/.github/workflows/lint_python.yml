@@ -1,0 +1,22 @@
+name: lint_python
+on: [pull_request, push]
+jobs:
+  lint_python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: 3.x
+      - run: pip install --upgrade pip
+      - run: pip install black codespell flake8 isort mypy pytest pyupgrade tox
+      - run: black --check .
+      - run: codespell --quiet-level=2  # --ignore-words-list="" --skip=""
+      - run: flake8 . --count --show-source --statistics
+      - run: isort --profile black .
+      - run: tox
+      - run: pip install -e .
+      - run: mypy --ignore-missing-imports . || true
+      - run: pytest .
+      - run: pytest --doctest-modules . || true
+      - run: shopt -s globstar && pyupgrade --py37-plus **/*.py
