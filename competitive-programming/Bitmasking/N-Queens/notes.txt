@@ -1,0 +1,11 @@
+for above cells in same column, maintain the queens added at the column as index.
+
+For left diagonal, you can see that difference of i,j is  constant so maintain that in array d1.
+
+For N=5, i,j will have max value as +4 and min value as -4, so have an array from -4 to 4 but array cannot have -ve index so have an array of size 2N-1 by shifting right.
+
+Now to store, we need to store : i-j+(n-1)
+d1[i-j+n-1] = true
+
+For right diagonal : maintain array as i+j will be constant for diagonal
+d2[i+j] = true
