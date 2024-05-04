@@ -46,26 +46,44 @@ class Solution2(object):
 
         return result
 
+
 # Time:  O(n)
 # Space: O(n)
 class Solution3(object):
-    # @param A, a list of integers
-    # @return an integer
-    def trap(self, A):
-        result = 0
-        stack = []
-
-        for i in xrange(len(A)):
-            mid_height = 0
-            while stack:
-                [pos, height] = stack.pop()
-                result += (min(height, A[i]) - mid_height) * (i - pos - 1)
-                mid_height = height
-
-                if A[i] < height:
-                    stack.append([pos, height])
-                    break
-            stack.append([i, A[i]])
-
+    def trap(self, height):
+        """
+        :type height: List[int]
+        :rtype: int
+        """
+        right = [0]*len(height)
+        mx = 0
+        for i in reversed(xrange(len(height))):
+            right[i] = mx
+            mx = max(mx, height[i])
+        result = left = 0
+        for i in xrange(len(height)):
+            left = max(left, height[i])
+            result += max(min(left, right[i])-height[i], 0)
         return result
 
+
+# Time:  O(n)
+# Space: O(n)
+class Solution4(object):
+    def trap(self, height):
+        """
+        :type height: List[int]
+        :rtype: int
+        """
+        result = 0
+        stk = []
+        for i in xrange(len(height)):
+            prev = 0
+            while stk and height[stk[-1]] <= height[i]:
+                j = stk.pop()
+                result += (height[j] - prev) * (i - j - 1)
+                prev = height[j]
+            if stk:
+                result += (height[i] - prev) * (i - stk[-1] - 1)
+            stk.append(i)
+        return result
