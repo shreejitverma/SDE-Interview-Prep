@@ -49,3 +49,16 @@ class Solution:
             if (nums[index] != index+1):
                 ans.append(index+1)
         return ans
+
+
+class Solution:
+    def findDisappearedNumbers(self, nums: List[int]) -> List[int]:
+        for num in nums:
+            # Mark the index corresponding to the visited number as negative
+            index = abs(num) - 1
+            nums[index] = -abs(nums[index])
+
+        # Collect the indices of non-negative numbers (missing integers)
+        result = [i + 1 for i, num in enumerate(nums) if num > 0]
+
+        return result

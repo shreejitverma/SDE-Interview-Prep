@@ -41,6 +41,36 @@ Constraints:
 # In how many distinct ways can you climb to the top?
 
 
+class Solution:
+    def climbStairs(self, n: int) -> int:
+        """
+        Find the number of distinct ways to climb to the top of the staircase.
+
+        Args:
+        n: int, the number of steps to reach the top.
+
+        Returns:
+        int, the number of distinct ways to climb to the top.
+        """
+        if n == 1:
+            return 1
+        elif n == 2:
+            return 2
+
+        # Initialize variables to store the number of ways to reach the current and previous steps
+        prev_step = 1
+        curr_step = 2
+
+        # Iterate from step 3 to n, calculating the number of ways to reach each step
+        for _ in range(3, n + 1):
+            # Calculate the number of ways to reach the current step as the sum of ways to reach the previous two steps
+            next_step = prev_step + curr_step
+            # Update the values of prev_step and curr_step for the next iteration
+            prev_step, curr_step = curr_step, next_step
+
+        return curr_step
+
+
 def brute_force(n):
     if n == 1 or n == 2:
         return n

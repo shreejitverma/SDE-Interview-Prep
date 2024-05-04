@@ -1,9 +1,7 @@
 # Time:  O(m * n)
 # Space: O(m + n)
 
-import collections
-
-
+# dfs
 class Solution(object):
     def updateBoard(self, board, click):
         """
@@ -11,43 +9,38 @@ class Solution(object):
         :type click: List[int]
         :rtype: List[List[str]]
         """
-        q = collections.deque([click])
-        while q:
-            row, col = q.popleft()
-            if board[row][col] == 'M':
-                board[row][col] = 'X'
-            else:
-                count = 0
-                for i in xrange(-1, 2):
-                    for j in xrange(-1, 2):
-                        if i == 0 and j == 0:
-                            continue
-                        r, c = row + i, col + j
-                        if not (0 <= r < len(board)) or not (0 <= c < len(board[r])):
-                            continue
-                        if board[r][c] == 'M' or board[r][c] == 'X':
-                            count += 1
-
-                if count:
-                    board[row][col] = chr(count + ord('0'))
-                else:
-                    board[row][col] = 'B'
-                    for i in xrange(-1, 2):
-                        for j in xrange(-1, 2):
-                            if i == 0 and j == 0:
-                                continue
-                            r, c = row + i, col + j
-                            if not (0 <= r < len(board)) or not (0 <= c < len(board[r])):
-                                continue
-                            if board[r][c] == 'E':
-                                q.append((r, c))
-                                board[r][c] = ' '
-
+        if board[click[0]][click[1]] == 'M':
+            board[click[0]][click[1]] = 'X'
+            return board
+        stk = [click]
+        while stk:
+            r, c = stk.pop()
+            cnt = 0
+            adj = []
+            for dr in xrange(-1, 2):
+                for dc in xrange(-1, 2):
+                    if dr == dc == 0:
+                        continue
+                    nr, nc = r+dr, c+dc
+                    if not (0 <= nr < len(board) and 0 <= nc < len(board[r])):
+                        continue
+                    if board[nr][nc] == 'M':
+                        cnt += 1
+                    elif board[nr][nc] == 'E':
+                        adj.append((nr, nc))
+            if cnt:
+                board[r][c] = chr(cnt + ord('0'))
+                continue
+            board[r][c] = 'B'
+            for nr, nc in adj:
+                board[nr][nc] = ' '
+                stk.append((nr, nc))
         return board
 
 
 # Time:  O(m * n)
-# Space: O(m * n)
+# Space: O(m + n)
+# dfs
 class Solution2(object):
     def updateBoard(self, board, click):
         """
@@ -55,34 +48,32 @@ class Solution2(object):
         :type click: List[int]
         :rtype: List[List[str]]
         """
-        row, col = click[0], click[1]
-        if board[row][col] == 'M':
-            board[row][col] = 'X'
-        else:
-            count = 0
-            for i in xrange(-1, 2):
-                for j in xrange(-1, 2):
-                    if i == 0 and j == 0:
-                        continue
-                    r, c = row + i, col + j
-                    if not (0 <= r < len(board)) or not (0 <= c < len(board[r])):
-                        continue
-                    if board[r][c] == 'M' or board[r][c] == 'X':
-                        count += 1
-
-            if count:
-                board[row][col] = chr(count + ord('0'))
-            else:
-                board[row][col] = 'B'
-                for i in xrange(-1, 2):
-                    for j in xrange(-1, 2):
-                        if i == 0 and j == 0:
+        if board[click[0]][click[1]] == 'M':
+            board[click[0]][click[1]] = 'X'
+            return board
+        q = [click]
+        while q:
+            new_q = []
+            for r, c in q:
+                cnt = 0
+                adj = []
+                for dr in xrange(-1, 2):
+                    for dc in xrange(-1, 2):
+                        if dr == dc == 0:
                             continue
-                        r, c = row + i, col + j
-                        if not (0 <= r < len(board)) or not (0 <= c < len(board[r])):
+                        nr, nc = r+dr, c+dc
+                        if not (0 <= nr < len(board) and 0 <= nc < len(board[r])):
                             continue
-                        if board[r][c] == 'E':
-                            self.updateBoard(board, (r, c))
-
+                        if board[nr][nc] == 'M':
+                            cnt += 1
+                        elif board[nr][nc] == 'E':
+                            adj.append((nr, nc))
+                if cnt:
+                    board[r][c] = chr(cnt + ord('0'))
+                    continue
+                board[r][c] = 'B'
+                for nr, nc in adj:
+                    board[nr][nc] = ' '
+                    new_q.append((nr, nc))
+            q = new_q
         return board
-
