@@ -1,28 +1,14 @@
 # Time:  O(n)
-# Space: O(n)
+# Space: O(1)
 
 class Solution(object):
     def reverseString(self, s):
         """
-        :type s: str
-        :rtype: str
+        :type s: List[str]
+        :rtype: None Do not return anything, modify s in-place instead.
         """
-        string = list(s)
-        i, j = 0, len(string) - 1
+        i, j = 0, len(s) - 1
         while i < j:
-            string[i], string[j] = string[j], string[i]
+            s[i], s[j] = s[j], s[i]
             i += 1
             j -= 1
-        return "".join(string)
-
-
-# Time:  O(n)
-# Space: O(n)
-class Solution2(object):
-    def reverseString(self, s):
-        """
-        :type s: str
-        :rtype: str
-        """
-        return s[::-1]
-
