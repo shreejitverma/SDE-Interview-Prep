@@ -1,0 +1,200 @@
+Category,Subcategory,Keyword/Concept,Extensive Explanation,Example/Context
+Core DBMS Concepts,Fundamental Concepts,Database Management System (DBMS),"Software suite managing data definition, storage, querying, and manipulation","MySQL, PostgreSQL, MongoDB - mediates between users and data"
+Core DBMS Concepts,Fundamental Concepts,Database,Organized collection of related data stored persistently,"Collection of tables, documents, or key-value pairs"
+Core DBMS Concepts,Fundamental Concepts,Data Model,Formal representation of data structure and relationships,"Relational (tables), document (JSON), key-value, graph, object-oriented"
+Core DBMS Concepts,Fundamental Concepts,Schema,Blueprint/structure defining database organization and constraints,"Table definitions, column types, relationships, constraints"
+Core DBMS Concepts,Fundamental Concepts,Relation,Two-dimensional table with rows and columns - fundamental relational unit,"Customers table with ID, name, email columns"
+Core DBMS Concepts,Fundamental Concepts,Tuple,Single row in a relational table - instance of data,"One customer record: (1, 'John', 'john@email.com')"
+Core DBMS Concepts,Fundamental Concepts,Attribute,Column in a relation - data property,"Customer name, email, phone are attributes"
+Core DBMS Concepts,Fundamental Concepts,Entity,Thing or concept represented in database,"Customer, Order, Product - main business objects"
+Core DBMS Concepts,Fundamental Concepts,Relationship,Association between entities,"Customer places Order, Order contains Product"
+Core DBMS Concepts,Fundamental Concepts,Primary Key,Unique identifier for each row in table - no duplicates allowed,Customer ID uniquely identifies customer
+Core DBMS Concepts,Fundamental Concepts,Foreign Key,Reference to primary key in another table - enforces referential integrity,Order.CustomerID references Customer.ID
+Core DBMS Concepts,Fundamental Concepts,Index,Data structure speeding up data retrieval - trades space for speed,B-tree index on customer email for fast lookups
+Core DBMS Concepts,Fundamental Concepts,Query,Request for data retrieval or manipulation,SELECT * FROM customers WHERE age > 21
+Core DBMS Concepts,Fundamental Concepts,Transaction,Logical unit of work - all or nothing execution,"Transfer money: debit one account, credit another"
+Core DBMS Concepts,Fundamental Concepts,ACID Properties,"Atomicity, Consistency, Isolation, Durability - transaction guarantees",Ensures reliable database operations
+Core DBMS Concepts,Relational Model Basics,Relational Model,Data organized in tables with rows and columns,Mathematical foundation for relational databases
+Core DBMS Concepts,Relational Model Basics,Normalization,Process of organizing data to minimize redundancy and dependencies,"Normal forms (1NF, 2NF, 3NF, BCNF) eliminate anomalies"
+Core DBMS Concepts,Relational Model Basics,First Normal Form (1NF),Eliminate repeating groups - atomic values in columns,No multi-valued attributes
+Core DBMS Concepts,Relational Model Basics,Second Normal Form (2NF),Remove partial dependencies - non-key attributes depend on whole key,Build from 1NF without redundancy
+Core DBMS Concepts,Relational Model Basics,Third Normal Form (3NF),Remove transitive dependencies - non-key attributes depend only on key,"Most common form, balances redundancy and performance"
+Core DBMS Concepts,Relational Model Basics,Boyce-Codd Normal Form (BCNF),Strictest normal form - every determinant is candidate key,"Rarely necessary, more restrictive than 3NF"
+Core DBMS Concepts,Relational Model Basics,Denormalization,Intentionally adding redundancy to improve query performance,Violates normalization but reduces joins
+Core DBMS Concepts,Relational Model Basics,Cardinality,"Relationship type between entities: one-to-one, one-to-many, many-to-many",Defines connection multiplicity
+Data Management & Queries,SQL Fundamentals,SQL (Structured Query Language),Standard language for querying and manipulating relational databases,"SELECT, INSERT, UPDATE, DELETE, CREATE commands"
+Data Management & Queries,SQL Fundamentals,DDL (Data Definition Language),SQL commands defining database structure,"CREATE TABLE, ALTER TABLE, DROP TABLE"
+Data Management & Queries,SQL Fundamentals,DML (Data Manipulation Language),SQL commands manipulating data in tables,"SELECT, INSERT, UPDATE, DELETE"
+Data Management & Queries,SQL Fundamentals,DCL (Data Control Language),SQL commands controlling access permissions,"GRANT, REVOKE - access control"
+Data Management & Queries,SQL Fundamentals,TCL (Transaction Control Language),SQL commands managing transactions,"COMMIT, ROLLBACK, SAVEPOINT"
+Data Management & Queries,SQL Fundamentals,SELECT Statement,Query retrieving data from database,"SELECT column1, column2 FROM table WHERE condition"
+Data Management & Queries,SQL Fundamentals,JOIN,Combining rows from multiple tables based on condition,"INNER, LEFT, RIGHT, FULL, CROSS joins"
+Data Management & Queries,SQL Fundamentals,INNER JOIN,Returns only matching rows from both tables,Intersection of datasets
+Data Management & Queries,SQL Fundamentals,LEFT JOIN,Returns all rows from left table plus matching from right,Includes non-matching left rows
+Data Management & Queries,SQL Fundamentals,GROUP BY,Aggregating rows into groups for summary calculations,GROUP BY department for per-department totals
+Data Management & Queries,SQL Fundamentals,HAVING,Filtering groups after aggregation,HAVING COUNT(*) > 5 for groups with 5+ items
+Data Management & Queries,SQL Fundamentals,ORDER BY,Sorting query results ascending or descending,ORDER BY salary DESC
+Data Management & Queries,SQL Fundamentals,Subquery,Query nested inside another query,SELECT * FROM emp WHERE dept = (SELECT dept_id FROM depts)
+Data Management & Queries,SQL Fundamentals,Aggregate Functions,"Functions operating on multiple rows: SUM, COUNT, AVG, MIN, MAX",SELECT COUNT(*) FROM orders calculates total orders
+Data Management & Queries,SQL Fundamentals,UNION,Combining results from multiple SELECT statements,"UNION removes duplicates, UNION ALL keeps them"
+Data Management & Queries,Data Modification,INSERT,Adding new rows to table,"INSERT INTO customers VALUES (1, 'John', 'john@email')"
+Data Management & Queries,Data Modification,UPDATE,Modifying existing rows,UPDATE customers SET email = 'newemail@test.com' WHERE id = 1
+Data Management & Queries,Data Modification,DELETE,Removing rows from table,DELETE FROM customers WHERE id = 1
+Data Management & Queries,Data Modification,TRUNCATE,Fast removal of all rows - resets identity,TRUNCATE TABLE logs - faster than DELETE
+Data Management & Queries,Data Modification,Constraint,"Rule enforcing data integrity: PRIMARY KEY, FOREIGN KEY, UNIQUE, CHECK, NOT NULL",Prevents invalid data insertion
+Data Management & Queries,Data Modification,UNIQUE Constraint,Ensures column values are unique across table,Email addresses must be unique
+Data Management & Queries,Data Modification,CHECK Constraint,Validates data meets condition before insertion,CHECK age >= 18
+Data Management & Queries,Data Modification,NOT NULL Constraint,Ensures column always has value,Name column cannot be empty
+Data Management & Queries,Data Modification,DEFAULT,Default value assigned if no value provided on insert,DEFAULT GETDATE() for timestamp
+Database Architecture,Core Components,Query Processor,"Component parsing, validating, optimizing SQL queries",Transforms SQL to efficient execution plan
+Database Architecture,Core Components,Query Optimizer,Determines most efficient way to execute query,Cost-based optimization for fast execution
+Database Architecture,Core Components,Execution Engine,Component executing optimized query plan,Applies operations in optimal order
+Database Architecture,Core Components,Storage Engine,Component managing physical data storage and retrieval,Interface between query processor and disk
+Database Architecture,Core Components,Buffer Manager,Caches frequently accessed data in memory,"Reduces disk I/O, improves performance"
+Database Architecture,Core Components,Transaction Manager,Manages transaction execution and ensures ACID properties,"Coordinates atomicity, isolation, durability"
+Database Architecture,Core Components,Recovery Manager,Restores database to consistent state after failures,Uses logs to replay/undo transactions
+Database Architecture,Core Components,Concurrency Control Manager,Manages concurrent access by multiple users/processes,"Prevents conflicts, maintains consistency"
+Database Architecture,Core Components,Security Manager,Controls user access and permissions,Authentication and authorization enforcement
+Database Architecture,Core Components,Catalog/Data Dictionary,"Metadata about database structure, tables, columns, constraints",Central repository of schema information
+Database Architecture,Storage Structures,File Organization,"How records stored on disk: heap, sorted, hashed",Physical storage layout strategy
+Database Architecture,Storage Structures,Heap File,Unordered collection of records - insertion at end,Simple but requires full scan for queries
+Database Architecture,Storage Structures,Sorted File,Records sorted by key - sequential access efficient,"Binary search possible, insertion expensive"
+Database Architecture,Storage Structures,Hashed File,Records distributed across buckets using hash function,"Fast direct access, poor range queries"
+Database Architecture,Storage Structures,Block,Basic storage unit on disk - typically 4KB or larger,Minimum read/write unit
+Database Architecture,Storage Structures,Record,Logical data unit - combination of fields,Fixed or variable length
+Database Architecture,Storage Structures,Page,In-memory representation of disk block,Buffer manager manages pages in memory
+Database Architecture,Storage Structures,Extent,Contiguous blocks allocated together for table storage,Reduces fragmentation
+Database Architecture,Storage Structures,B-Tree Index,Balanced tree structure for efficient searching,"Self-balancing, supports range queries efficiently"
+Database Architecture,Storage Structures,Hash Index,Hash table structure for point lookups,O(1) average case but no range query support
+Database Architecture,Storage Structures,Bitmap Index,Index using bit patterns for efficient filtering,Excellent for low-cardinality columns
+Transaction Management,ACID Properties,Atomicity,Transaction all-or-nothing property - either fully committed or fully rolled back,Ensures no partial updates despite failures
+Transaction Management,ACID Properties,Consistency,Database moves from one valid state to another - all constraints maintained,Invalid states never persist
+Transaction Management,ACID Properties,Isolation,Concurrent transactions don't interfere - appear to execute sequentially,"Prevents dirty reads, phantom reads, lost updates"
+Transaction Management,ACID Properties,Durability,Committed data survives failures - persists on durable storage,Ensures no data loss after commit
+Transaction Management,ACID Properties,Dirty Read,Reading uncommitted data from another transaction,Violates isolation if transaction rolls back
+Transaction Management,ACID Properties,Non-Repeatable Read,Reading same data twice within transaction yields different results,Another transaction modifies data between reads
+Transaction Management,ACID Properties,Phantom Read,Range query returns different rows on subsequent execution,Another transaction inserts/deletes matching rows
+Transaction Management,ACID Properties,Lost Update,"Two transactions modify same data, one update lost",Concurrent write problem
+Transaction Management,Isolation Levels,Read Uncommitted,Lowest isolation - allows dirty reads,Fast but dangerous - sees uncommitted data
+Transaction Management,Isolation Levels,Read Committed,Standard isolation - no dirty reads but non-repeatable reads possible,"Most common, good balance"
+Transaction Management,Isolation Levels,Repeatable Read,Snapshot consistency - no dirty/non-repeatable reads but phantoms possible,"MySQL default, protects range queries"
+Transaction Management,Isolation Levels,Serializable,Highest isolation - fully sequential execution,"Slowest but safest, prevents all anomalies"
+Transaction Management,Isolation Levels,Snapshot Isolation,Transaction sees consistent snapshot at start time,"MVCC-based isolation, prevents most anomalies"
+Transaction Management,Concurrency Control,Pessimistic Locking,Locks acquired before reading/modifying to prevent conflicts,"Conservative, prevents conflicts proactively"
+Transaction Management,Concurrency Control,Optimistic Locking,"No locks acquired, checks for conflicts at commit time",Rollback if conflicts detected
+Transaction Management,Concurrency Control,Read Lock (Shared Lock),Multiple transactions can read simultaneously,Prevents write while reading
+Transaction Management,Concurrency Control,Write Lock (Exclusive Lock),"Only one transaction can write, blocks all reads/writes",Ensures exclusive modification
+Transaction Management,Concurrency Control,Deadlock,Two transactions waiting for each other's locks circularly,"Prevents progress, requires detection/recovery"
+Transaction Management,Concurrency Control,Lock Timeout,"Transaction waiting for lock exceeds timeout, transaction aborted",Prevents indefinite waits
+Transaction Management,Concurrency Control,Two-Phase Locking (2PL),Growing phase (acquire locks) then shrinking phase (release locks),Ensures serializability
+Transaction Management,Concurrency Control,MVCC (Multi-Version Concurrency Control),Maintains multiple versions of data for concurrent access,"Readers don't block writers, better concurrency"
+Indexing & Performance,Index Types,Primary Index,"Index on primary key - unique, typically clustered",Main lookup path for records
+Indexing & Performance,Index Types,Secondary Index,Index on non-key attribute for alternative access paths,Additional lookup possibilities
+Indexing & Performance,Index Types,Clustered Index,Determines physical order of records on disk,"One per table, defines record storage sequence"
+Indexing & Performance,Index Types,Non-Clustered Index,Separate structure pointing to data records,"Multiple per table, independent of record order"
+Indexing & Performance,Index Types,Composite Index,Index on multiple columns,Efficient for queries using all/prefix of columns
+Indexing & Performance,Index Types,Unique Index,Index ensuring all values are distinct,Enforces uniqueness constraint
+Indexing & Performance,Index Types,Full-Text Index,Index for text searching and pattern matching,MATCH/AGAINST operations
+Indexing & Performance,Index Types,Spatial Index,Index for geometric/geographic data,R-tree structures for location queries
+Indexing & Performance,Index Types,Partial Index,Index on subset of rows meeting condition,Reduced size for frequently queried rows
+Indexing & Performance,Query Optimization,Query Plan,Sequence of operations for executing query,Determined by optimizer
+Indexing & Performance,Query Optimization,Cost Model,Estimates query execution cost,"CPU, I/O, memory consumption"
+Indexing & Performance,Query Optimization,Selectivity,Fraction of rows matching a condition,Lower selectivity = better index benefit
+Indexing & Performance,Query Optimization,Cardinality,Number of unique values in column,Affects index effectiveness
+Indexing & Performance,Query Optimization,Join Order,Sequence of table joining - dramatically affects performance,Smaller result sets first reduces data volume
+Indexing & Performance,Query Optimization,Index Scan,Reading entire index sequentially,Used when few rows match or no index available
+Indexing & Performance,Query Optimization,Index Seek,Directly accessing relevant index entries,More efficient than scan when selective
+Indexing & Performance,Query Optimization,Table Scan,Reading entire table sequentially,Full scan required without applicable indexes
+Indexing & Performance,Query Optimization,EXPLAIN/ANALYZE,Shows query plan and actual execution statistics,Identifies performance bottlenecks
+Indexing & Performance,Query Optimization,Execution Plan Visualization,Graphical representation of query execution,Helps understand join operations and costs
+Database Types,Traditional Databases,Relational Database (RDBMS),Data organized in tables with predefined schema,"MySQL, PostgreSQL, Oracle, SQL Server"
+Database Types,Traditional Databases,SQL Database,Database using SQL for queries,All relational databases are SQL databases
+Database Types,Traditional Databases,OLTP (Online Transaction Processing),Optimized for rapid transactions with many small reads/writes,"E-commerce, banking, real-time operations"
+Database Types,Traditional Databases,OLAP (Online Analytical Processing),Optimized for complex queries on large historical data,"Data warehouse, business intelligence, analytics"
+Database Types,NoSQL Databases,NoSQL Database,"Non-relational database - flexible schema, horizontal scaling","MongoDB, Cassandra, Redis, DynamoDB"
+Database Types,NoSQL Databases,Document Database,Stores documents (JSON/BSON) without predefined schema,"MongoDB, CouchDB - nested, flexible data"
+Database Types,NoSQL Databases,Key-Value Store,Simple map of keys to values - no schema,"Redis, Memcached - fast in-memory stores"
+Database Types,NoSQL Databases,Wide-Column Store,Data organized in families of columns - not tables,"Cassandra, HBase - column-oriented storage"
+Database Types,NoSQL Databases,Graph Database,Stores data as nodes and edges representing relationships,Neo4j - excels at relationship queries
+Database Types,NoSQL Databases,Search Engine,Specialized for full-text search and filtering,"Elasticsearch, Solr - indexing and search"
+Database Types,NoSQL Databases,Time-Series Database,"Optimized for timestamped data points - metrics, logs","InfluxDB, Prometheus - high-volume time data"
+Database Types,Specialized Databases,NewSQL Database,Combines SQL functionality with NoSQL scalability,"CockroachDB, Google Spanner - distributed ACID"
+Database Types,Specialized Databases,Columnar Database,Data stored column-wise instead of row-wise,"Redshift, ClickHouse - analytical queries faster"
+Database Types,Specialized Databases,In-Memory Database,Data stored in RAM instead of disk - ultra-fast,"Redis, Memcached - persistence optional"
+Database Types,Specialized Databases,Distributed Database,Data distributed across multiple machines/locations,"Cassandra, DynamoDB - horizontal scaling"
+Database Types,Specialized Databases,Data Warehouse,Centralized repository for historical data analysis,"Redshift, BigQuery, Snowflake - OLAP focus"
+Database Types,Specialized Databases,Data Lake,Centralized repository storing raw data in native format,"HDFS, S3 - schema-on-read flexibility"
+Data Integrity,Constraints & Validation,Data Integrity,Accuracy and consistency of data in database,Maintained through constraints and validation
+Data Integrity,Constraints & Validation,Entity Integrity,Every entity has unique identifier - no null primary keys,PRIMARY KEY constraint enforcement
+Data Integrity,Constraints & Validation,Referential Integrity,Foreign keys reference valid primary keys - no orphaned records,FOREIGN KEY constraint enforcement
+Data Integrity,Constraints & Validation,Domain Integrity,Attribute values within valid range/type,Data type and CHECK constraints
+Data Integrity,Constraints & Validation,User-Defined Integrity,Custom business rules specific to application,"Triggers, stored procedures for enforcement"
+Data Integrity,Constraints & Validation,Constraint,Rule enforcing valid data - prevents invalid entries,"PRIMARY KEY, FOREIGN KEY, UNIQUE, CHECK, NOT NULL"
+Data Integrity,Constraints & Validation,Trigger,Automated action when specific database event occurs,"Before/after INSERT, UPDATE, DELETE triggers"
+Data Integrity,Constraints & Validation,Stored Procedure,Pre-compiled SQL code executed by database,"Encapsulates business logic, ensures consistency"
+Data Integrity,Data Quality,Data Validation,Checking data meets expected format/rules before insertion,"Range checks, pattern matching, type validation"
+Data Integrity,Data Quality,Data Cleansing,Process of identifying and correcting invalid/inconsistent data,"Removes duplicates, standardizes formats"
+Data Integrity,Data Quality,Master Data Management (MDM),Centralized management of core business data,Single source of truth for critical entities
+Data Integrity,Data Quality,Data Governance,Policies and procedures ensuring data quality and compliance,"Access control, retention, privacy"
+Advanced DBMS Features,Partitioning & Distribution,Partitioning,Dividing table into separate parts for manageability and performance,"Range, hash, list, composite partitioning"
+Advanced DBMS Features,Partitioning & Distribution,Range Partitioning,Partitions based on column value ranges,"2023 data in partition1, 2024 in partition2"
+Advanced DBMS Features,Partitioning & Distribution,Hash Partitioning,Partitions using hash function for even distribution,Distributes load evenly across partitions
+Advanced DBMS Features,Partitioning & Distribution,List Partitioning,Partitions based on predefined value lists,North/South/East/West regions
+Advanced DBMS Features,Partitioning & Distribution,Sharding,Distributing data across multiple database servers,Horizontal scaling by partitioning data
+Advanced DBMS Features,Partitioning & Distribution,Replication,Copying data across multiple servers for redundancy,"Master-slave, multi-master replication"
+Advanced DBMS Features,Partitioning & Distribution,Master-Slave Replication,"Single master accepts writes, slaves replicate","Eventual consistency, read scaling"
+Advanced DBMS Features,Partitioning & Distribution,Multi-Master Replication,"Multiple servers accept writes, replicate changes",Higher availability but conflict resolution needed
+Advanced DBMS Features,Performance Features,Query Caching,Storing query results in memory for reuse,Subsequent same queries return cached results
+Advanced DBMS Features,Performance Features,Connection Pooling,Reusing database connections instead of creating new,Reduces overhead of connection creation
+Advanced DBMS Features,Performance Features,Prepared Statements,Pre-compiled queries with placeholders for parameters,"Faster execution, prevents SQL injection"
+Advanced DBMS Features,Performance Features,Batch Processing,Executing multiple operations together,"Reduces network roundtrips, improves throughput"
+Advanced DBMS Features,Performance Features,Materialized View,Pre-computed query results stored physically,Faster access than computing on demand
+Security & Backup,Access Control,Authentication,Verifying user identity - username/password,Who is accessing the system
+Security & Backup,Access Control,Authorization,Controlling what authenticated user can access,What resources user can access
+Security & Backup,Access Control,Role-Based Access Control (RBAC),Users assigned roles with specific permissions,"DBA, analyst, developer roles"
+Security & Backup,Access Control,User Account,Unique login credential for database access,Associated with privileges and quotas
+Security & Backup,Access Control,Privilege,Permission to perform specific operation,"SELECT, INSERT, UPDATE, DELETE on table"
+Security & Backup,Access Control,Grant,Giving user specific privileges,GRANT SELECT ON table TO user
+Security & Backup,Access Control,Revoke,Removing user privileges,REVOKE INSERT ON table FROM user
+Security & Backup,Data Protection,Encryption,Encoding data to prevent unauthorized access,At-rest and in-transit encryption
+Security & Backup,Data Protection,Encryption At-Rest,Data encoded on storage media,Prevents access if storage compromised
+Security & Backup,Data Protection,Encryption In-Transit,Data encoded during network transmission,Prevents interception over network
+Security & Backup,Data Protection,Hashing,One-way transformation of password/data,SHA-256 for secure password storage
+Security & Backup,Data Protection,Backup,Copy of database for disaster recovery,"Full, incremental, differential backups"
+Security & Backup,Data Protection,Full Backup,Complete copy of entire database,Time-consuming but complete recovery point
+Security & Backup,Data Protection,Incremental Backup,Copy of changes since last backup,Fast but requires all previous backups to restore
+Security & Backup,Data Protection,Differential Backup,Copy of changes since last full backup,"Faster than full, fewer backups needed"
+Security & Backup,Data Protection,Recovery,Restoring database from backup after failure,Point-in-time recovery possible with logs
+Security & Backup,Data Protection,Point-in-Time Recovery,Restoring database to specific moment in past,Using logs to replay transactions
+Administration,Database Administration,Database Administrator (DBA),"Professional managing database systems - backup, security, performance","Ensures availability, security, performance"
+Administration,Database Administration,Monitoring,"Tracking database performance - queries, resources, errors","Identifies bottlenecks, alerts on issues"
+Administration,Database Administration,Tuning,Optimizing database for better performance,"Index optimization, query rewriting, resource allocation"
+Administration,Database Administration,Maintenance,"Regular tasks ensuring database health - backups, updates, cleanup",Scheduled maintenance windows
+Administration,Database Administration,Indexing Strategy,Deciding which columns to index based on query patterns,Balances query performance vs update overhead
+Administration,Database Administration,Table Statistics,Information about data distribution used by optimizer,Kept current for accurate query plans
+Administration,Database Administration,Query Profiling,Analyzing query execution to find bottlenecks,"Slow query logs, profiling tools"
+Administration,Database Administration,Capacity Planning,Estimating storage/compute needs for future,Prevents running out of resources
+Administration,Database Administration,Upgrade Management,Updating database software to new versions,"Testing, migration, downtime planning"
+Administration,Database Maintenance,Vacuum,Cleaning up dead rows and reclaiming space,PostgreSQL VACUUM command
+Administration,Database Maintenance,Analyze,Updating table statistics for query optimizer,PostgreSQL ANALYZE command
+Administration,Database Maintenance,Defragmentation,Reorganizing data to reduce fragmentation,REBUILD/REORGANIZE index
+Administration,Database Maintenance,Consistency Check,Verifying database integrity - no corruption,"DBCC CHECKDB (SQL Server), CHECK TABLE (MySQL)"
+Administration,Database Maintenance,Log Rotation,Archiving transaction logs to free space,Prevents transaction log filling disk
+Advanced Topics,Distributed Systems,Distributed Database,Database spread across multiple locations/computers,"Horizontal scaling, geographic distribution"
+Advanced Topics,Distributed Systems,CAP Theorem,"Trade-off: Consistency, Availability, Partition tolerance - choose 2",Guides distributed database design
+Advanced Topics,Distributed Systems,Consistency Model,Guarantees on data visibility across system,"Strong, eventual, causal consistency"
+Advanced Topics,Distributed Systems,Eventual Consistency,Temporary inconsistency but converges to consistent state,Used in distributed systems for availability
+Advanced Topics,Distributed Systems,Strong Consistency,All nodes see same data immediately,Available in centralized systems
+Advanced Topics,Distributed Systems,Consensus Algorithm,Protocol for distributed nodes to agree on state,"Raft, Paxos for distributed coordination"
+Advanced Topics,Distributed Systems,Quorum,Majority of nodes must agree before operation,Ensures fault tolerance in distributed systems
+Advanced Topics,Query Processing,Query Parser,Validates SQL syntax and structure,First step in query processing
+Advanced Topics,Query Processing,Query Translator,Converts SQL to internal representation,Creates abstract syntax tree
+Advanced Topics,Query Processing,Query Optimizer,Determines most efficient execution plan,Cost-based optimization most common
+Advanced Topics,Query Processing,Query Execution,Actually running the optimized plan,Final stage retrieving results
+Advanced Topics,Query Processing,Explain Plan,Shows how database will execute query,EXPLAIN output reveals optimizer decisions
+Advanced Topics,Query Processing,Execution Statistics,Runtime information about query execution,"Rows examined, I/O operations, time"
+Advanced Topics,Advanced Indexing,Covering Index,Index contains all columns needed for query,Query resolved entirely from index
+Advanced Topics,Advanced Indexing,Index Selectivity,Percentage of rows returned by index condition,Higher selectivity = better index candidate
+Advanced Topics,Advanced Indexing,Index Cardinality,Number of unique values indexed,Affects index efficiency
+Advanced Topics,Advanced Indexing,Redundant Index,Index providing no benefit over other indexes,Should be removed to save space
+Advanced Topics,Advanced Indexing,Index Maintenance,Keeping indexes optimized as data changes,"Rebuild, reorganize, update statistics"
