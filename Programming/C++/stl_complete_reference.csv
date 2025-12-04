@@ -1,0 +1,232 @@
+Category,Subcategory,Function/Class Name,Description,Example
+Containers,Sequence Containers,vector,Dynamic array with random access,vector<int> v; v.push_back(5); cout << v[0];
+Containers,Sequence Containers,deque,Double-ended queue with O(1) access at both ends,deque<int> d; d.push_back(5); d.push_front(3);
+Containers,Sequence Containers,list,Doubly-linked list with O(1) insertion/deletion,list<int> l; l.push_back(5); l.erase(l.begin());
+Containers,Sequence Containers,forward_list,Singly-linked list (C++11),forward_list<int> fl; fl.push_front(5);
+Containers,Sequence Containers,array,Fixed-size array wrapper (C++11),"array<int, 5> arr; arr[0] = 10;"
+Containers,Associative Containers,set,Sorted unique elements,set<int> s; s.insert(5); auto it = s.find(5);
+Containers,Associative Containers,multiset,Sorted elements (duplicates allowed),multiset<int> ms; ms.insert(5); ms.insert(5);
+Containers,Associative Containers,map,Sorted key-value pairs (unique keys),"map<int,string> m; m[1] = ""one""; m.erase(1);"
+Containers,Associative Containers,multimap,Sorted key-value pairs (duplicate keys allowed),"multimap<int,string> mm; mm.insert({1, ""one""});"
+Containers,Unordered Associative Containers,unordered_set,Hash-based unique elements,unordered_set<int> us; us.insert(5);
+Containers,Unordered Associative Containers,unordered_multiset,Hash-based elements (duplicates allowed),unordered_multiset<int> ums; ums.insert(5);
+Containers,Unordered Associative Containers,unordered_map,Hash-based key-value pairs (unique keys),"unordered_map<int,string> um; um[1] = ""one"";"
+Containers,Unordered Associative Containers,unordered_multimap,Hash-based key-value pairs (duplicate keys),"unordered_multimap<int,string> umm; umm.insert({1, ""one""});"
+Containers,Container Adapters,stack,LIFO - Last In First Out,stack<int> st; st.push(5); int x = st.top(); st.pop();
+Containers,Container Adapters,queue,FIFO - First In First Out,queue<int> q; q.push(5); int x = q.front(); q.pop();
+Containers,Container Adapters,priority_queue,Max-heap by default,priority_queue<int> pq; pq.push(5); int x = pq.top(); pq.pop();
+Container Member Functions,Common Functions,begin(),Returns iterator to beginning,auto it = v.begin();
+Container Member Functions,Common Functions,end(),Returns iterator to end (one past last element),auto it = v.end();
+Container Member Functions,Common Functions,rbegin(),Returns reverse iterator to end,auto it = v.rbegin();
+Container Member Functions,Common Functions,rend(),Returns reverse iterator to beginning,auto it = v.rend();
+Container Member Functions,Common Functions,cbegin(),Returns const iterator to beginning (C++11),auto it = v.cbegin();
+Container Member Functions,Common Functions,cend(),Returns const iterator to end (C++11),auto it = v.cend();
+Container Member Functions,Common Functions,size(),Returns number of elements,int sz = v.size();
+Container Member Functions,Common Functions,empty(),Checks if container is empty,if (v.empty()) { }
+Container Member Functions,Common Functions,max_size(),Returns maximum possible size,int max = v.max_size();
+Container Member Functions,Common Functions,capacity(),Returns allocated storage capacity (vectors only),int cap = v.capacity();
+Container Member Functions,Common Functions,reserve(),Reserves storage space (vectors only),v.reserve(100);
+Container Member Functions,Common Functions,shrink_to_fit(),Reduces capacity to match size (C++11),v.shrink_to_fit();
+Container Member Functions,Common Functions,clear(),Removes all elements,v.clear();
+Container Member Functions,Common Functions,insert(),Inserts element(s) at position,"v.insert(v.begin() + 2, 10);"
+Container Member Functions,Common Functions,erase(),Removes element(s),"v.erase(v.begin()); v.erase(v.begin(), v.begin()+2);"
+Container Member Functions,Common Functions,push_back(),Adds element to end,v.push_back(10);
+Container Member Functions,Common Functions,pop_back(),Removes last element,v.pop_back();
+Container Member Functions,Common Functions,push_front(),Adds element to front (list/deque only),l.push_front(10);
+Container Member Functions,Common Functions,pop_front(),Removes first element (list/deque only),l.pop_front();
+Container Member Functions,Common Functions,front(),Returns reference to first element,int x = v.front();
+Container Member Functions,Common Functions,back(),Returns reference to last element,int x = v.back();
+Container Member Functions,Common Functions,at(),Returns element at position with bounds checking,int x = v.at(2);
+Container Member Functions,Common Functions,operator[],Accesses element without bounds checking,int x = v[2];
+Container Member Functions,Common Functions,data(),Returns pointer to underlying array (C++11),int* ptr = v.data();
+Container Member Functions,Common Functions,operator=(),Assigns container content,v1 = v2;
+Container Member Functions,Common Functions,swap(),Swaps contents with another container,v1.swap(v2);
+Container Member Functions,Common Functions,emplace(),Constructs element in place (C++11),"v.emplace(v.begin(), 10);"
+Container Member Functions,Common Functions,emplace_back(),Constructs element at end (C++11),v.emplace_back(10);
+Container Member Functions,Common Functions,emplace_front(),Constructs element at front (C++11),l.emplace_front(10);
+Container Member Functions,Associative Container Functions,count(),Returns number of elements with specific key,int n = m.count(1);
+Container Member Functions,Associative Container Functions,find(),Returns iterator to element with specific key,auto it = m.find(1);
+Container Member Functions,Associative Container Functions,equal_range(),Returns range of elements with specific key,auto range = m.equal_range(1);
+Container Member Functions,Associative Container Functions,lower_bound(),Returns iterator to first element >= key (sorted containers),auto it = m.lower_bound(1);
+Container Member Functions,Associative Container Functions,upper_bound(),Returns iterator to first element > key (sorted containers),auto it = m.upper_bound(1);
+Container Member Functions,Associative Container Functions,key_comp(),Returns key comparison function,auto cmp = m.key_comp();
+Container Member Functions,Associative Container Functions,value_comp(),Returns value comparison function,auto cmp = m.value_comp();
+Container Member Functions,Hash Container Functions,bucket(),Returns bucket index for key,int b = um.bucket(1);
+Container Member Functions,Hash Container Functions,bucket_count(),Returns number of buckets,int cnt = um.bucket_count();
+Container Member Functions,Hash Container Functions,bucket_size(),Returns number of elements in bucket,int sz = um.bucket_size(0);
+Container Member Functions,Hash Container Functions,load_factor(),Returns average elements per bucket,float lf = um.load_factor();
+Container Member Functions,Hash Container Functions,max_load_factor(),Returns/sets maximum load factor,float mlf = um.max_load_factor();
+Container Member Functions,Hash Container Functions,rehash(),Changes number of buckets,um.rehash(50);
+Container Member Functions,Hash Container Functions,reserve(),Reserves space for elements,um.reserve(100);
+Container Member Functions,Hash Container Functions,hash_function(),Returns hash function,auto hash = um.hash_function();
+Container Member Functions,Hash Container Functions,key_eq(),Returns key equality function,auto eq = um.key_eq();
+Container Member Functions,List-specific Functions,splice(),Transfers elements between lists,"l1.splice(l1.begin(), l2);"
+Container Member Functions,List-specific Functions,remove(),Removes elements with specific value,l.remove(5);
+Container Member Functions,List-specific Functions,remove_if(),Removes elements satisfying condition,l.remove_if([](int x){ return x % 2 == 0; });
+Container Member Functions,List-specific Functions,unique(),Removes consecutive duplicates,l.unique();
+Container Member Functions,List-specific Functions,merge(),Merges another sorted list into this one,l1.merge(l2);
+Container Member Functions,List-specific Functions,sort(),Sorts list elements,l.sort();
+Container Member Functions,List-specific Functions,reverse(),Reverses list order,l.reverse();
+Algorithms,Non-Modifying Algorithms,find(),Searches for element and returns iterator,"auto it = find(v.begin(), v.end(), 5);"
+Algorithms,Non-Modifying Algorithms,find_if(),Finds first element satisfying condition,"auto it = find_if(v.begin(), v.end(), [](int x){ return x > 5; });"
+Algorithms,Non-Modifying Algorithms,find_if_not(),Finds first element NOT satisfying condition (C++11),"auto it = find_if_not(v.begin(), v.end(), [](int x){ return x > 5; });"
+Algorithms,Non-Modifying Algorithms,find_first_of(),Finds first occurrence of any element from another range,"auto it = find_first_of(v1.begin(), v1.end(), v2.begin(), v2.end());"
+Algorithms,Non-Modifying Algorithms,adjacent_find(),Finds first pair of adjacent equal elements,"auto it = adjacent_find(v.begin(), v.end());"
+Algorithms,Non-Modifying Algorithms,search(),Searches for subsequence,"auto it = search(v.begin(), v.end(), sub.begin(), sub.end());"
+Algorithms,Non-Modifying Algorithms,search_n(),Searches for n consecutive elements,"auto it = search_n(v.begin(), v.end(), 3, 5);"
+Algorithms,Non-Modifying Algorithms,count(),Counts elements equal to value,"int n = count(v.begin(), v.end(), 5);"
+Algorithms,Non-Modifying Algorithms,count_if(),Counts elements satisfying condition,"int n = count_if(v.begin(), v.end(), [](int x){ return x > 5; });"
+Algorithms,Non-Modifying Algorithms,mismatch(),Finds first position where two ranges differ,"auto p = mismatch(v1.begin(), v1.end(), v2.begin());"
+Algorithms,Non-Modifying Algorithms,equal(),Checks if two ranges are equal,"bool eq = equal(v1.begin(), v1.end(), v2.begin());"
+Algorithms,Non-Modifying Algorithms,is_permutation(),Checks if one range is permutation of another (C++11),"bool perm = is_permutation(v1.begin(), v1.end(), v2.begin());"
+Algorithms,Modifying Algorithms,copy(),Copies elements from source to destination,"copy(v.begin(), v.end(), v2.begin());"
+Algorithms,Modifying Algorithms,copy_if(),Copies elements satisfying condition,"copy_if(v.begin(), v.end(), v2.begin(), [](int x){ return x > 5; });"
+Algorithms,Modifying Algorithms,copy_n(),Copies n elements,"copy_n(v.begin(), 3, v2.begin());"
+Algorithms,Modifying Algorithms,copy_backward(),Copies elements in reverse order,"copy_backward(v.begin(), v.end(), v2.end());"
+Algorithms,Modifying Algorithms,move(),Moves elements from source to destination (C++11),"move(v.begin(), v.end(), v2.begin());"
+Algorithms,Modifying Algorithms,move_backward(),Moves elements in reverse order (C++11),"move_backward(v.begin(), v.end(), v2.end());"
+Algorithms,Modifying Algorithms,swap(),Swaps values of two elements,"swap(v[0], v[1]);"
+Algorithms,Modifying Algorithms,swap_ranges(),Swaps elements between two ranges,"swap_ranges(v1.begin(), v1.end(), v2.begin());"
+Algorithms,Modifying Algorithms,transform(),"Applies function to elements, stores result","transform(v.begin(), v.end(), v2.begin(), [](int x){ return x*2; });"
+Algorithms,Modifying Algorithms,replace(),Replaces all occurrences of value,"replace(v.begin(), v.end(), 5, 10);"
+Algorithms,Modifying Algorithms,replace_if(),Replaces elements satisfying condition,"replace_if(v.begin(), v.end(), [](int x){ return x > 5; }, 10);"
+Algorithms,Modifying Algorithms,replace_copy(),Copies and replaces all occurrences,"replace_copy(v.begin(), v.end(), v2.begin(), 5, 10);"
+Algorithms,Modifying Algorithms,replace_copy_if(),Copies and replaces elements satisfying condition,"replace_copy_if(v.begin(), v.end(), v2.begin(), [](int x){ return x > 5; }, 10);"
+Algorithms,Modifying Algorithms,fill(),Fills range with value,"fill(v.begin(), v.end(), 0);"
+Algorithms,Modifying Algorithms,fill_n(),Fills n elements with value,"fill_n(v.begin(), 3, 0);"
+Algorithms,Modifying Algorithms,generate(),Fills range using function,"generate(v.begin(), v.end(), []{ static int i=0; return i++; });"
+Algorithms,Modifying Algorithms,generate_n(),Fills n elements using function,"generate_n(v.begin(), 3, []{ static int i=0; return i++; });"
+Algorithms,Modifying Algorithms,remove(),Logically removes elements (moves to end),"auto end = remove(v.begin(), v.end(), 5); v.erase(end, v.end());"
+Algorithms,Modifying Algorithms,remove_if(),Logically removes elements satisfying condition,"auto end = remove_if(v.begin(), v.end(), [](int x){ return x > 5; }); v.erase(end, v.end());"
+Algorithms,Modifying Algorithms,remove_copy(),"Copies elements, excluding specific value","remove_copy(v.begin(), v.end(), v2.begin(), 5);"
+Algorithms,Modifying Algorithms,remove_copy_if(),"Copies elements, excluding those satisfying condition","remove_copy_if(v.begin(), v.end(), v2.begin(), [](int x){ return x > 5; });"
+Algorithms,Modifying Algorithms,unique(),Removes consecutive duplicates,"auto end = unique(v.begin(), v.end()); v.erase(end, v.end());"
+Algorithms,Modifying Algorithms,unique_copy(),"Copies elements, removing consecutive duplicates","unique_copy(v.begin(), v.end(), v2.begin());"
+Algorithms,Modifying Algorithms,reverse(),Reverses order of elements,"reverse(v.begin(), v.end());"
+Algorithms,Modifying Algorithms,reverse_copy(),Copies elements in reverse order,"reverse_copy(v.begin(), v.end(), v2.begin());"
+Algorithms,Modifying Algorithms,rotate(),Rotates elements left,"rotate(v.begin(), v.begin()+2, v.end());"
+Algorithms,Modifying Algorithms,rotate_copy(),Copies and rotates elements,"rotate_copy(v.begin(), v.begin()+2, v.end(), v2.begin());"
+Algorithms,Modifying Algorithms,random_shuffle(),"Randomly shuffles elements (deprecated, use shuffle)","random_shuffle(v.begin(), v.end());"
+Algorithms,Modifying Algorithms,shuffle(),Randomly shuffles elements (C++11),"shuffle(v.begin(), v.end(), gen);"
+Algorithms,Sorting Algorithms,sort(),Sorts elements in ascending order,"sort(v.begin(), v.end());"
+Algorithms,Sorting Algorithms,stable_sort(),Sorts elements preserving relative order of equal elements,"stable_sort(v.begin(), v.end());"
+Algorithms,Sorting Algorithms,partial_sort(),Sorts first n elements,"partial_sort(v.begin(), v.begin()+5, v.end());"
+Algorithms,Sorting Algorithms,partial_sort_copy(),Partially sorts and copies,"partial_sort_copy(v.begin(), v.end(), v2.begin(), v2.end());"
+Algorithms,Sorting Algorithms,nth_element(),Partitions so nth element is correct position,"nth_element(v.begin(), v.begin()+5, v.end());"
+Algorithms,Sorting Algorithms,is_sorted(),Checks if range is sorted,"bool sorted = is_sorted(v.begin(), v.end());"
+Algorithms,Sorting Algorithms,is_sorted_until(),Returns iterator to first unsorted element,"auto it = is_sorted_until(v.begin(), v.end());"
+Algorithms,Binary Search Algorithms,binary_search(),Checks if element exists in sorted range,"bool found = binary_search(v.begin(), v.end(), 5);"
+Algorithms,Binary Search Algorithms,lower_bound(),Returns iterator to first element >= value,"auto it = lower_bound(v.begin(), v.end(), 5);"
+Algorithms,Binary Search Algorithms,upper_bound(),Returns iterator to first element > value,"auto it = upper_bound(v.begin(), v.end(), 5);"
+Algorithms,Binary Search Algorithms,equal_range(),Returns range of elements equal to value,"auto range = equal_range(v.begin(), v.end(), 5);"
+Algorithms,Set Operations,includes(),Checks if sorted range contains another,"bool incl = includes(v1.begin(), v1.end(), v2.begin(), v2.end());"
+Algorithms,Set Operations,merge(),Merges two sorted ranges,"merge(v1.begin(), v1.end(), v2.begin(), v2.end(), v3.begin());"
+Algorithms,Set Operations,inplace_merge(),Merges two consecutive sorted ranges in-place,"inplace_merge(v.begin(), v.begin()+5, v.end());"
+Algorithms,Set Operations,set_union(),Computes union of two sorted ranges,"set_union(v1.begin(), v1.end(), v2.begin(), v2.end(), v3.begin());"
+Algorithms,Set Operations,set_intersection(),Computes intersection of two sorted ranges,"set_intersection(v1.begin(), v1.end(), v2.begin(), v2.end(), v3.begin());"
+Algorithms,Set Operations,set_difference(),Computes difference of two sorted ranges,"set_difference(v1.begin(), v1.end(), v2.begin(), v2.end(), v3.begin());"
+Algorithms,Set Operations,set_symmetric_difference(),Computes symmetric difference,"set_symmetric_difference(v1.begin(), v1.end(), v2.begin(), v2.end(), v3.begin());"
+Algorithms,Heap Operations,make_heap(),Constructs a heap,"make_heap(v.begin(), v.end());"
+Algorithms,Heap Operations,push_heap(),Adds element to heap,"v.push_back(5); push_heap(v.begin(), v.end());"
+Algorithms,Heap Operations,pop_heap(),Removes max element from heap,"pop_heap(v.begin(), v.end()); v.pop_back();"
+Algorithms,Heap Operations,sort_heap(),Sorts heap,"sort_heap(v.begin(), v.end());"
+Algorithms,Heap Operations,is_heap(),Checks if range is a heap (C++11),"bool h = is_heap(v.begin(), v.end());"
+Algorithms,Heap Operations,is_heap_until(),Returns iterator to first non-heap element (C++11),"auto it = is_heap_until(v.begin(), v.end());"
+Algorithms,Permutation Algorithms,next_permutation(),Generates next lexicographic permutation,"while (next_permutation(v.begin(), v.end())) { }"
+Algorithms,Permutation Algorithms,prev_permutation(),Generates previous lexicographic permutation,"while (prev_permutation(v.begin(), v.end())) { }"
+Algorithms,Other Algorithms,for_each(),Applies function to each element,"for_each(v.begin(), v.end(), [](int x){ cout << x; });"
+Algorithms,Other Algorithms,all_of(),Checks if all elements satisfy condition (C++11),"bool all = all_of(v.begin(), v.end(), [](int x){ return x > 0; });"
+Algorithms,Other Algorithms,any_of(),Checks if any element satisfies condition (C++11),"bool any = any_of(v.begin(), v.end(), [](int x){ return x > 0; });"
+Algorithms,Other Algorithms,none_of(),Checks if no element satisfies condition (C++11),"bool none = none_of(v.begin(), v.end(), [](int x){ return x > 0; });"
+Algorithms,Other Algorithms,min(),Returns minimum of two values,"int m = min(5, 10);"
+Algorithms,Other Algorithms,max(),Returns maximum of two values,"int m = max(5, 10);"
+Algorithms,Other Algorithms,minmax(),Returns pair with min and max (C++11),"auto p = minmax(5, 10);"
+Algorithms,Other Algorithms,min_element(),Returns iterator to minimum element,"auto it = min_element(v.begin(), v.end());"
+Algorithms,Other Algorithms,max_element(),Returns iterator to maximum element,"auto it = max_element(v.begin(), v.end());"
+Algorithms,Other Algorithms,minmax_element(),Returns pair of iterators to min and max (C++11),"auto p = minmax_element(v.begin(), v.end());"
+Numeric Algorithms,Numeric Operations,accumulate(),Computes sum/accumulation of elements,"int sum = accumulate(v.begin(), v.end(), 0);"
+Numeric Algorithms,Numeric Operations,partial_sum(),Computes partial sums,"partial_sum(v.begin(), v.end(), v2.begin());"
+Numeric Algorithms,Numeric Operations,adjacent_difference(),Computes differences between adjacent elements,"adjacent_difference(v.begin(), v.end(), v2.begin());"
+Numeric Algorithms,Numeric Operations,inner_product(),Computes inner product of two ranges,"int prod = inner_product(v1.begin(), v1.end(), v2.begin(), 0);"
+Numeric Algorithms,Numeric Operations,iota(),Fills range with incrementing values (C++11),"iota(v.begin(), v.end(), 1);"
+Iterators,Iterator Types,Input Iterator,"Single-pass, read-only",for(auto it = v.begin(); it != v.end(); ++it) { int x = *it; }
+Iterators,Iterator Types,Output Iterator,"Single-pass, write-only","copy(v.begin(), v.end(), out_iterator);"
+Iterators,Iterator Types,Forward Iterator,"Multi-pass, read/write",for(auto it = fl.begin(); it != fl.end(); ++it) { *it = 10; }
+Iterators,Iterator Types,Bidirectional Iterator,"Forward/backward, read/write",for(auto it = l.rbegin(); it != l.rend(); ++it) { *it = 10; }
+Iterators,Iterator Types,Random Access Iterator,"Any position, read/write",int x = v[5]; v[3] = 10;
+Iterators,Iterator Functions,advance(),Advances iterator by n positions,"advance(it, 5);"
+Iterators,Iterator Functions,distance(),Returns distance between iterators,"int d = distance(v.begin(), it);"
+Iterators,Iterator Functions,next(),Returns iterator n positions ahead (C++11),"auto it2 = next(it, 5);"
+Iterators,Iterator Functions,prev(),Returns iterator n positions behind (C++11),"auto it2 = prev(it, 5);"
+Iterators,Iterator Functions,begin(),Non-member function returning begin iterator (C++11),auto it = begin(v);
+Iterators,Iterator Functions,end(),Non-member function returning end iterator (C++11),auto it = end(v);
+Iterators,Iterator Functions,rbegin(),Non-member function returning reverse begin (C++11),auto it = rbegin(v);
+Iterators,Iterator Functions,rend(),Non-member function returning reverse end (C++11),auto it = rend(v);
+Iterators,Iterator Functions,cbegin(),Non-member function returning const begin (C++11),auto it = cbegin(v);
+Iterators,Iterator Functions,cend(),Non-member function returning const end (C++11),auto it = cend(v);
+Iterators,Iterator Functions,crbegin(),Non-member function returning const reverse begin (C++11),auto it = crbegin(v);
+Iterators,Iterator Functions,crend(),Non-member function returning const reverse end (C++11),auto it = crend(v);
+Iterators,Iterator Functions,make_move_iterator(),Constructs move iterator (C++11),auto it = make_move_iterator(v.begin());
+Iterators,Iterator Functions,make_reverse_iterator(),Constructs reverse iterator,auto it = make_reverse_iterator(v.end());
+Iterators,Iterator Functions,insert_iterator,Iterator adapter for insertion,"insert_iterator<vector<int>> ii(v, v.begin());"
+Iterators,Iterator Functions,back_inserter(),Creates back insertion iterator,back_inserter(v);
+Iterators,Iterator Functions,front_inserter(),Creates front insertion iterator,front_inserter(l);
+Helper Classes & Functions,Utility Functions,pair,Stores two heterogeneous values,"pair<int, string> p(1, ""one""); cout << p.first << p.second;"
+Helper Classes & Functions,Utility Functions,make_pair(),Creates a pair (C++11 use brace init),"auto p = make_pair(1, ""one"");"
+Helper Classes & Functions,Utility Functions,tuple,Stores multiple heterogeneous values (C++11),"tuple<int, string, double> t(1, ""one"", 3.14);"
+Helper Classes & Functions,Utility Functions,make_tuple(),Creates a tuple (C++11),"auto t = make_tuple(1, ""one"", 3.14);"
+Helper Classes & Functions,Utility Functions,tie(),Creates tuple of references (C++11),"int x; string s; tie(x, s) = p;"
+Helper Classes & Functions,Utility Functions,structured_bindings,Unpacks tuple/pair (C++17),"auto [x, s] = p; auto [a, b, c] = t;"
+Helper Classes & Functions,Utility Functions,swap(),Swaps two values,"swap(a, b);"
+Helper Classes & Functions,Utility Functions,forward(),Perfect forwarding (C++11),template<typename T> void f(T&& x) { g(forward<T>(x)); }
+Helper Classes & Functions,Utility Functions,move(),Converts to rvalue reference (C++11),vector<int> v2 = move(v1);
+Function Objects & Predicates,Comparison Functions,equal_to<T>,Equality comparison,"bool eq = equal_to<int>()(5, 5);"
+Function Objects & Predicates,Comparison Functions,not_equal_to<T>,Inequality comparison,"bool neq = not_equal_to<int>()(5, 3);"
+Function Objects & Predicates,Comparison Functions,less<T>,Less-than comparison,"bool lt = less<int>()(3, 5);"
+Function Objects & Predicates,Comparison Functions,less_equal<T>,Less-than-or-equal comparison,"bool le = less_equal<int>()(5, 5);"
+Function Objects & Predicates,Comparison Functions,greater<T>,Greater-than comparison,"bool gt = greater<int>()(5, 3);"
+Function Objects & Predicates,Comparison Functions,greater_equal<T>,Greater-than-or-equal comparison,"bool ge = greater_equal<int>()(5, 5);"
+Function Objects & Predicates,Arithmetic Functions,plus<T>,Addition operation,"int sum = plus<int>()(3, 5);"
+Function Objects & Predicates,Arithmetic Functions,minus<T>,Subtraction operation,"int diff = minus<int>()(5, 3);"
+Function Objects & Predicates,Arithmetic Functions,multiplies<T>,Multiplication operation,"int prod = multiplies<int>()(3, 5);"
+Function Objects & Predicates,Arithmetic Functions,divides<T>,Division operation,"int quot = divides<int>()(10, 2);"
+Function Objects & Predicates,Arithmetic Functions,modulus<T>,Modulo operation,"int rem = modulus<int>()(10, 3);"
+Function Objects & Predicates,Arithmetic Functions,negate<T>,Negation operation,int neg = negate<int>()(5);
+Function Objects & Predicates,Logical Functions,logical_and<T>,Logical AND,"bool result = logical_and<bool>()(true, true);"
+Function Objects & Predicates,Logical Functions,logical_or<T>,Logical OR,"bool result = logical_or<bool>()(true, false);"
+Function Objects & Predicates,Logical Functions,logical_not<T>,Logical NOT,bool result = logical_not<bool>()(false);
+Function Objects & Predicates,Adaptors,bind(),Binds arguments to function (C++11),"auto f = bind(multiply<int>(), 2, placeholders::_1);"
+Function Objects & Predicates,Adaptors,not1(),Negates unary predicate,"find_if(v.begin(), v.end(), not1(bind2nd(less<int>(), 5)));"
+Function Objects & Predicates,Adaptors,not2(),Negates binary predicate,"find_if(v.begin(), v.end(), not2(greater<int>()) );"
+Function Objects & Predicates,Adaptors,mem_fun(),Adapts member function to function object,"for_each(ptrs.begin(), ptrs.end(), mem_fun(&Class::method));"
+Function Objects & Predicates,Adaptors,mem_fn(),Adapts member function (C++11),"for_each(ptrs.begin(), ptrs.end(), mem_fn(&Class::method));"
+String Functions,String Member Functions,length()/size(),Returns string length,int len = str.length();
+String Functions,String Member Functions,empty(),Checks if string is empty,if (str.empty()) { }
+String Functions,String Member Functions,substr(),Extracts substring,"string sub = str.substr(0, 5);"
+String Functions,String Member Functions,find(),Finds substring position,"size_t pos = str.find(""world"");"
+String Functions,String Member Functions,rfind(),Finds substring from end,"size_t pos = str.rfind(""world"");"
+String Functions,String Member Functions,find_first_of(),Finds first character from set,"size_t pos = str.find_first_of(""aeiou"");"
+String Functions,String Member Functions,find_last_of(),Finds last character from set,"size_t pos = str.find_last_of(""aeiou"");"
+String Functions,String Member Functions,find_first_not_of(),Finds first character NOT in set,"size_t pos = str.find_first_not_of(""aeiou"");"
+String Functions,String Member Functions,find_last_not_of(),Finds last character NOT in set,"size_t pos = str.find_last_not_of(""aeiou"");"
+String Functions,String Member Functions,compare(),Compares with another string,"int cmp = str.compare(""test"");"
+String Functions,String Member Functions,c_str(),Returns C-style string,const char* cstr = str.c_str();
+String Functions,String Member Functions,data(),Returns pointer to data,const char* data = str.data();
+String Functions,String Member Functions,at(),Returns character at position,char c = str.at(5);
+String Functions,String Member Functions,operator[],Accesses character at position,char c = str[5];
+String Functions,String Member Functions,replace(),Replaces substring,"str.replace(0, 5, ""new"");"
+String Functions,String Member Functions,erase(),Erases characters,"str.erase(0, 5);"
+String Functions,String Member Functions,insert(),Inserts string at position,"str.insert(5, ""inserted"");"
+String Functions,String Member Functions,append()/+=,Appends string,"str.append("" world""); str += "" world"";"
+String Functions,String Member Functions,assign(),Assigns new value,"str.assign(""new string"");"
+String Functions,String Member Functions,clear(),Clears string,str.clear();
+String Functions,String Member Functions,swap(),Swaps with another string,str1.swap(str2);
+String Functions,String Member Functions,capacity(),Returns allocated capacity,size_t cap = str.capacity();
+String Functions,String Member Functions,reserve(),Reserves storage,str.reserve(100);
+String Functions,String Member Functions,shrink_to_fit(),Reduces capacity (C++11),str.shrink_to_fit();
+String Functions,String Member Functions,front(),Returns first character,char c = str.front();
+String Functions,String Member Functions,back(),Returns last character,char c = str.back();
+String Functions,String Member Functions,operator+(),Concatenates strings,string s = str1 + str2;
+String Functions,String Member Functions,operator==(),Equality comparison,if (str1 == str2) { }
+String Functions,String Member Functions,operator!=(),Inequality comparison,if (str1 != str2) { }
+String Functions,String Member Functions,operator<(),Less-than comparison,if (str1 < str2) { }
