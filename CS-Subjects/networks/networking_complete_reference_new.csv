@@ -1,0 +1,225 @@
+Category,Subcategory,Keyword,Explanation,Example/Context
+OSI Model Layers,Physical Layer (Layer 1),Bits,Smallest unit of data transmission - 0s and 1s,Transmitted as electrical signals over cables
+OSI Model Layers,Physical Layer (Layer 1),Physical Media,Tangible transmission mediums - cables fiber optics wireless,Ethernet cables fiber optic radio waves
+OSI Model Layers,Physical Layer (Layer 1),Hub,Device that broadcasts data to all connected ports without filtering,Basic network device
+OSI Model Layers,Physical Layer (Layer 1),Repeater,Device that regenerates weak signals to extend transmission distance,Signal amplification over long distances
+OSI Model Layers,Physical Layer (Layer 1),Modem,Modulator/demodulator - converts digital signals to analog and vice versa,Dial-up connections DSL cable internet
+OSI Model Layers,Data Link Layer (Layer 2),MAC Address,Media Access Control address - unique 48-bit identifier for network devices,Example: 00:1A:2B:3C:4D:5E
+OSI Model Layers,Data Link Layer (Layer 2),Switch,Device that forwards data frames based on MAC addresses to specific ports,LAN connectivity and segmentation
+OSI Model Layers,Data Link Layer (Layer 2),Frame,Data unit at Layer 2 containing MAC addresses VLAN info and error checking,Encapsulation of Layer 2 data
+OSI Model Layers,Data Link Layer (Layer 2),Ethernet,Protocol for LAN communication - defines frame format and access methods,Most common LAN technology
+OSI Model Layers,Data Link Layer (Layer 2),PPP,Point-to-Point Protocol - direct communication between two nodes,Serial connections dialup
+OSI Model Layers,Data Link Layer (Layer 2),ARP,Address Resolution Protocol - maps IP addresses to MAC addresses,Resolves IP-to-MAC mappings
+OSI Model Layers,Data Link Layer (Layer 2),VLAN,Virtual Local Area Network - logically segments a physical LAN,Network segmentation without physical separation
+OSI Model Layers,Network Layer (Layer 3),IP Address,Internet Protocol address - unique logical identifier (IPv4 32-bit IPv6 128-bit),Example: 192.168.1.1
+OSI Model Layers,Network Layer (Layer 3),IPv4,Internet Protocol version 4 - 32-bit addressing scheme,Most widely used 4.3 billion addresses
+OSI Model Layers,Network Layer (Layer 3),IPv6,Internet Protocol version 6 - 128-bit addressing scheme,Future protocol 340 undecillion addresses
+OSI Model Layers,Network Layer (Layer 3),Packet,Data unit at Layer 3 containing source/dest IP addresses and routing info,Basic routing unit across networks
+OSI Model Layers,Network Layer (Layer 3),Router,Device that forwards packets between networks based on IP addresses,Inter-network communication
+OSI Model Layers,Network Layer (Layer 3),Routing,Process of determining the best path for packet delivery,Determines data path through networks
+OSI Model Layers,Network Layer (Layer 3),ICMP,Internet Control Message Protocol - diagnostic and error reporting,ping traceroute commands
+OSI Model Layers,Network Layer (Layer 3),Subnet,Logical subdivision of an IP network,Segmentation of network address space
+OSI Model Layers,Network Layer (Layer 3),Subnet Mask,Determines which portion of IP is network vs. host,Example: 255.255.255.0 (/24)
+OSI Model Layers,Network Layer (Layer 3),Default Gateway,Router through which devices send traffic to other networks,Exit point from local network
+OSI Model Layers,Network Layer (Layer 3),NAT,Network Address Translation - maps internal IPs to external IPs,Translates between private and public IPs
+OSI Model Layers,Network Layer (Layer 3),IGMP,Internet Group Management Protocol - manages multicast group membership,Multicast traffic management
+OSI Model Layers,Transport Layer (Layer 4),TCP,Transmission Control Protocol - reliable connection-oriented delivery,Email web FTP - ordered delivery
+OSI Model Layers,Transport Layer (Layer 4),UDP,User Datagram Protocol - unreliable connectionless delivery,VoIP streaming - speed over reliability
+OSI Model Layers,Transport Layer (Layer 4),Port,Virtual endpoint for network communication (0-65535),Identifies specific service/application
+OSI Model Layers,Transport Layer (Layer 4),Socket,Combination of IP address and port number,Endpoint for network communication
+OSI Model Layers,Transport Layer (Layer 4),Segment,Data unit at Layer 4 for TCP,TCP packet with headers and data
+OSI Model Layers,Transport Layer (Layer 4),Datagram,Data unit at Layer 4 for UDP,UDP packet with headers and data
+OSI Model Layers,Transport Layer (Layer 4),Flow Control,Mechanism to prevent receiver from being overwhelmed,TCP window management
+OSI Model Layers,Transport Layer (Layer 4),Error Detection,Checks for transmission errors in data,Checksum calculation and verification
+OSI Model Layers,Transport Layer (Layer 4),Connection Establishment,TCP three-way handshake - SYN SYN-ACK ACK,Initiates reliable connection
+OSI Model Layers,Session Layer (Layer 5),Session,Logical connection between two applications,Maintains communication dialogue
+OSI Model Layers,Session Layer (Layer 5),Authentication,Verification of user identity before communication,User credentials validation
+OSI Model Layers,Session Layer (Layer 5),Authorization,Determines what authenticated user can access,Permission enforcement
+OSI Model Layers,Session Layer (Layer 5),Session Management,Establishment maintenance and termination of sessions,Dialog control
+OSI Model Layers,Presentation Layer (Layer 6),Encryption,Converts plaintext to ciphertext for security,Protects data confidentiality
+OSI Model Layers,Presentation Layer (Layer 6),Compression,Reduces data size for efficient transmission,GZIP ZIP compression
+OSI Model Layers,Presentation Layer (Layer 6),Character Encoding,Represents text in standardized format,ASCII UTF-8 Unicode
+OSI Model Layers,Presentation Layer (Layer 6),SSL/TLS,Secure Sockets Layer/Transport Layer Security - encryption protocol,HTTPS encryption
+OSI Model Layers,Application Layer (Layer 7),HTTP,HyperText Transfer Protocol - web browsing protocol (insecure),Port 80 web pages
+OSI Model Layers,Application Layer (Layer 7),HTTPS,HTTP with encryption,Port 443 secure web pages
+OSI Model Layers,Application Layer (Layer 7),FTP,File Transfer Protocol - file transfer protocol,Port 21 file transfer
+OSI Model Layers,Application Layer (Layer 7),SFTP,SSH File Transfer Protocol - secure file transfer,Port 22 encrypted file transfer
+OSI Model Layers,Application Layer (Layer 7),SSH,Secure Shell - secure remote login,Port 22 encrypted terminal access
+OSI Model Layers,Application Layer (Layer 7),Telnet,Remote login protocol (unencrypted deprecated),Port 23 unencrypted access
+OSI Model Layers,Application Layer (Layer 7),SMTP,Simple Mail Transfer Protocol - email sending,Port 25 outgoing mail
+OSI Model Layers,Application Layer (Layer 7),POP3,Post Office Protocol v3 - email retrieval,Port 110 download mail
+OSI Model Layers,Application Layer (Layer 7),IMAP,Internet Message Access Protocol - email access,Port 143 mail synchronization
+OSI Model Layers,Application Layer (Layer 7),DNS,Domain Name System - hostname to IP translation,Port 53 domain name resolution
+OSI Model Layers,Application Layer (Layer 7),DHCP,Dynamic Host Configuration Protocol - automatic IP assignment,Leases IPs to clients
+OSI Model Layers,Application Layer (Layer 7),SNMP,Simple Network Management Protocol - network device monitoring,Port 161 device alerts
+OSI Model Layers,Application Layer (Layer 7),LDAP,Lightweight Directory Access Protocol - directory services,Port 389 user authentication
+OSI Model Layers,Application Layer (Layer 7),NTP,Network Time Protocol - time synchronization,Port 123 clock synchronization
+OSI Model Layers,Application Layer (Layer 7),RTSP,Real Time Streaming Protocol - media streaming control,Port 554 video/audio streaming
+OSI Model Layers,Application Layer (Layer 7),RTP,Real-time Transport Protocol - real-time data delivery,VoIP video conferencing
+OSI Model Layers,Application Layer (Layer 7),SIP,Session Initiation Protocol - multimedia session setup,VoIP call setup
+Network Types & Architecture,Network Geographic Scope,PAN,Personal Area Network - very small within few meters,Bluetooth USB connections
+Network Types & Architecture,Network Geographic Scope,LAN,Local Area Network - covers single building/campus,Ethernet typical office network
+Network Types & Architecture,Network Geographic Scope,WAN,Wide Area Network - covers large geographical area,Internet branch office connections
+Network Types & Architecture,Network Geographic Scope,MAN,Metropolitan Area Network - city-scale network,Between LANs in same city
+Network Types & Architecture,Network Geographic Scope,CAN,Campus Area Network - multiple buildings in nearby area,University/corporate campus
+Network Types & Architecture,Network Geographic Scope,GAN,Global Area Network - worldwide scale,Global corporate networks
+Network Types & Architecture,Wireless Technologies,WLAN,Wireless Local Area Network - wireless LAN,WiFi networks 802.11 standards
+Network Types & Architecture,Wireless Technologies,WMAN,Wireless Metropolitan Area Network - wireless MAN,WiMAX wireless city networks
+Network Types & Architecture,Wireless Technologies,WPAN,Wireless Personal Area Network - wireless PAN,Bluetooth ZigBee
+Network Types & Architecture,Wireless Technologies,WiFi,Wireless Fidelity - 802.11 standards,Most common wireless LAN
+Network Types & Architecture,Wireless Technologies,802.11a,WiFi standard - 5 GHz 54 Mbps,Legacy limited range
+Network Types & Architecture,Wireless Technologies,802.11b,WiFi standard - 2.4 GHz 11 Mbps,Legacy prone to interference
+Network Types & Architecture,Wireless Technologies,802.11g,WiFi standard - 2.4 GHz 54 Mbps,Better than 802.11b
+Network Types & Architecture,Wireless Technologies,802.11n,WiFi standard - 2.4/5 GHz 600 Mbps,MIMO technology better range
+Network Types & Architecture,Wireless Technologies,802.11ac,WiFi standard - 5 GHz 1.3 Gbps (WiFi 5),Faster 5 GHz speeds
+Network Types & Architecture,Wireless Technologies,802.11ax,WiFi standard - 2.4/5/6 GHz 9.6 Gbps (WiFi 6),Latest standard OFDMA
+Network Types & Architecture,Wireless Technologies,Bluetooth,Short-range wireless - 2.4 GHz 10-100m range,Device pairing file transfer
+Network Types & Architecture,Wireless Technologies,BLE,Bluetooth Low Energy - low power variant,IoT devices wearables
+Network Types & Architecture,Wireless Technologies,LTE,Long-Term Evolution - 4G cellular standard,Mobile broadband
+Network Types & Architecture,Wireless Technologies,5G,Fifth generation cellular - ultra-high speed low latency,Next-gen mobile networks
+Network Types & Architecture,Network Topologies,Bus,All devices connected to single shared medium,Early Ethernet networks
+Network Types & Architecture,Network Topologies,Star,All devices connected to central hub/switch,Most common modern topology
+Network Types & Architecture,Network Topologies,Ring,Devices connected in circular chain,Token ring networks (legacy)
+Network Types & Architecture,Network Topologies,Mesh,Each device connects to multiple others,Redundancy all-to-all paths
+Network Types & Architecture,Network Topologies,Tree,Hierarchical structure with root and branches,Larger hierarchical networks
+Network Types & Architecture,Network Topologies,Hybrid,Combination of multiple topologies,Complex enterprise networks
+Network Protocols,Core Internet Protocols,TCP/IP,Transmission Control Protocol/Internet Protocol - foundation suite,All internet communication
+Network Protocols,Core Internet Protocols,IP,Internet Protocol - routing and addressing,Moves packets between networks
+Network Protocols,Core Internet Protocols,ICMP,Internet Control Message Protocol - diagnostics and errors,ping traceroute utilities
+Network Protocols,Core Internet Protocols,IGMP,Internet Group Management Protocol - multicast management,Group communication
+Network Protocols,Core Internet Protocols,ARP,Address Resolution Protocol - IP to MAC resolution,Local network addressing
+Network Protocols,Routing Protocols,RIP,Routing Information Protocol - distance vector 15-hop limit,Legacy small networks only
+Network Protocols,Routing Protocols,OSPF,Open Shortest Path First - link state hierarchical,Large enterprise networks
+Network Protocols,Routing Protocols,EIGRP,Enhanced Interior Gateway Routing Protocol - hybrid protocol,Cisco networks
+Network Protocols,Routing Protocols,BGP,Border Gateway Protocol - exterior gateway protocol,Internet backbone routing
+Network Protocols,Routing Protocols,IS-IS,Intermediate System-to-Intermediate System - link state,ISP networks
+Network Protocols,Application Layer Protocols,HTTP,HyperText Transfer Protocol - web browsing,Port 80 stateless protocol
+Network Protocols,Application Layer Protocols,HTTPS,HTTP Secure - encrypted HTTP,Port 443 TLS encrypted
+Network Protocols,Application Layer Protocols,FTP,File Transfer Protocol - file transfers,Port 21 data port 20
+Network Protocols,Application Layer Protocols,SFTP,Secure FTP - SSH-based file transfer,Port 22 encrypted
+Network Protocols,Application Layer Protocols,SMTP,Simple Mail Transfer Protocol - sending emails,Port 25 outgoing mail server
+Network Protocols,Application Layer Protocols,POP3,Post Office Protocol - email retrieval,Port 110 download model
+Network Protocols,Application Layer Protocols,IMAP,Internet Message Access Protocol - email access,Port 143 sync model
+Network Protocols,Application Layer Protocols,DNS,Domain Name System - hostname resolution,Port 53 TCP and UDP
+Network Protocols,Application Layer Protocols,DHCP,Dynamic Host Configuration Protocol - IP assignment,Port 67/68 autoconfiguration
+Network Protocols,Application Layer Protocols,SSH,Secure Shell - encrypted remote access,Port 22 secure terminal
+Network Protocols,Application Layer Protocols,Telnet,Remote login protocol (deprecated),Port 23 unencrypted access
+Network Protocols,Application Layer Protocols,SNMP,Simple Network Management Protocol - device monitoring,Port 161 device alerts
+Network Protocols,Application Layer Protocols,LDAP,Lightweight Directory Access Protocol - directory services,Port 389 user authentication
+Network Protocols,Application Layer Protocols,NTP,Network Time Protocol - time synchronization,Port 123 UTC sync
+Network Protocols,Application Layer Protocols,RTSP,Real Time Streaming Protocol - media streaming,Port 554 media control
+Network Protocols,Security Protocols,SSL,Secure Sockets Layer - encryption protocol (deprecated),Replaced by TLS
+Network Protocols,Security Protocols,TLS,Transport Layer Security - modern encryption standard,HTTPS SMTP-TLS POP3-TLS
+Network Protocols,Security Protocols,IPsec,IP Security - network layer encryption protocol,VPN tunnels traffic protection
+Network Protocols,Security Protocols,PPTP,Point-to-Point Tunneling Protocol - VPN protocol (weak),Legacy VPN technology
+Network Protocols,Security Protocols,L2TP,Layer 2 Tunneling Protocol - VPN protocol,Better than PPTP stronger
+Network Protocols,Security Protocols,VPN,Virtual Private Network - encrypted tunnel over public network,Secure remote access
+Network Protocols,Security Protocols,Kerberos,Authentication protocol - ticket-based authentication,Enterprise security
+Network Protocols,Security Protocols,RADIUS,Remote Authentication Dial-In User Service,Central authentication
+Network Protocols,Other Protocols,MQTT,Message Queuing Telemetry Transport - IoT messaging,Lightweight publish-subscribe
+Network Protocols,Other Protocols,CoAP,Constrained Application Protocol - IoT protocol,Low-power devices
+Network Protocols,Other Protocols,AMQP,Advanced Message Queuing Protocol - message broker,Enterprise messaging
+Network Protocols,Other Protocols,WebSocket,Bidirectional communication protocol,Real-time web applications
+Network Protocols,Other Protocols,QUIC,Quick UDP Internet Connections - modern protocol,Lower latency than TCP
+Network Quality & Performance,QoS Metrics,Bandwidth,Maximum data transfer capacity - measured in Mbps/Gbps,Allocated per application/user
+Network Quality & Performance,QoS Metrics,Latency,Time delay for packet to travel from source to destination,Measured in milliseconds (ms)
+Network Quality & Performance,QoS Metrics,Jitter,Variation in packet arrival time - inconsistent delay,Causes audio/video quality issues
+Network Quality & Performance,QoS Metrics,Packet Loss,Percentage of packets lost during transmission,Causes retransmissions slowdown
+Network Quality & Performance,QoS Metrics,Throughput,Actual data transfer rate achieved - actual vs. bandwidth,Real-world performance
+Network Quality & Performance,QoS Metrics,Response Time,Time for system to respond to request,User experience indicator
+Network Quality & Performance,QoS Mechanisms,Traffic Shaping,Smooths out traffic bursts to prevent congestion,Rate limiting and buffering
+Network Quality & Performance,QoS Mechanisms,Traffic Policing,Enforces maximum bandwidth per flow/user,Drops/marks packets exceeding limit
+Network Quality & Performance,QoS Mechanisms,Prioritization,Marks critical traffic for preferential treatment,DiffServ ToS marking
+Network Quality & Performance,QoS Mechanisms,Queuing,Orders packets for transmission - Priority Queue (PQ) WFQ,Manages transmission order
+Network Quality & Performance,QoS Mechanisms,Weighted Fair Queuing,Distributes bandwidth fairly across flows,Dynamic queue management
+Network Quality & Performance,QoS Mechanisms,Congestion Control,Prevents network overload and data loss,TCP congestion window
+Network Quality & Performance,QoS Mechanisms,Congestion Avoidance,Proactive prevention of congestion - RED algorithm,Early detection and rate reduction
+Network Quality & Performance,QoS Mechanisms,Bandwidth Reservation,Pre-allocates bandwidth for critical applications,RSVP protocol
+Network Devices,Core Devices,Hub,Layer 1 - broadcasts all traffic to all ports,Shared medium half-duplex
+Network Devices,Core Devices,Switch,Layer 2 - forwards frames based on MAC addresses,Full-duplex VLAN support
+Network Devices,Core Devices,Router,Layer 3 - forwards packets based on IP addresses,Inter-network connectivity
+Network Devices,Core Devices,Gateway,Layer 3-7 - protocol translation and application access,Network access control
+Network Devices,Core Devices,Firewall,Security device - filters traffic based on rules,Access control threat prevention
+Network Devices,Core Devices,Proxy Server,Intermediary for client requests - caching and security,Application layer filtering
+Network Devices,Core Devices,Load Balancer,Distributes traffic across multiple servers,SSL offloading content switching
+Network Devices,Advanced Devices,Layer 3 Switch,Switch with routing capabilities - combines L2 and L3,High-performance routing
+Network Devices,Advanced Devices,WLAN Controller,Centralized management for wireless networks,Multiple AP management
+Network Devices,Advanced Devices,Access Point,WiFi device for wireless network coverage,WLAN connectivity
+Network Devices,Advanced Devices,Modem,Converts signals between ISP line and network,Cable/DSL/Fiber connection
+Network Devices,Advanced Devices,Bridge,Connects two network segments at Layer 2,MAC address forwarding
+Network Devices,Advanced Devices,Wireless Extender,Extends WiFi coverage area,WiFi range extension
+Network Architecture & Virtualization,Architecture Concepts,SDN,Software-Defined Networking - centralized control plane,Programmable network infrastructure
+Network Architecture & Virtualization,Architecture Concepts,Control Plane,Decision-making for routing and forwarding,Network intelligence
+Network Architecture & Virtualization,Architecture Concepts,Data Plane,Actual forwarding of packets and frames,Network forwarding
+Network Architecture & Virtualization,Architecture Concepts,Management Plane,Configuration and monitoring of network,Device and performance management
+Network Architecture & Virtualization,Architecture Concepts,Network Segmentation,Dividing network into logical segments,Improves security and performance
+Network Architecture & Virtualization,Architecture Concepts,Subnetting,Dividing IP network into smaller subnets,IP address management
+Network Architecture & Virtualization,Virtualization,NFV,Network Functions Virtualization - virtual network functions,Routing firewall as software
+Network Architecture & Virtualization,Virtualization,VNF,Virtual Network Function - software-based network service,Runs on standard servers
+Network Architecture & Virtualization,Virtualization,NFVI,NFV Infrastructure - underlying compute/storage/network,Hardware abstraction
+Network Architecture & Virtualization,Virtualization,MANO,Management and Orchestration - NFV management layer,Automation and lifecycle management
+Network Architecture & Virtualization,Virtualization,Virtual Switch,Software-based switching functionality,vSwitch in hypervisors
+Network Architecture & Virtualization,Virtualization,Network Slicing,Dividing network into isolated virtual networks,Multi-tenant networks
+Network Security,Encryption & Certificates,Public Key Infrastructure,PKI - system for digital certificates,CA certificate validation
+Network Security,Encryption & Certificates,Digital Certificate,Proof of identity with public key,SSL/TLS certificates
+Network Security,Encryption & Certificates,Certificate Authority,CA - issues and validates digital certificates,Trust authority
+Network Security,Encryption & Certificates,RSA,Rivest-Shamir-Adleman - asymmetric encryption algorithm,Public/private key cryptography
+Network Security,Encryption & Certificates,AES,Advanced Encryption Standard - symmetric encryption,256-bit encryption standard
+Network Security,Encryption & Certificates,Cipher Suite,Set of encryption algorithms for SSL/TLS,Key exchange authentication encryption
+Network Security,VPN & Tunneling,VPN,Virtual Private Network - encrypted tunnel,Secure remote access
+Network Security,VPN & Tunneling,IPsec,IP Security - network layer encryption protocol,Site-to-site VPN end-to-end encryption
+Network Security,VPN & Tunneling,SSL VPN,SSL-based remote access - application layer,Clientless or lightweight client
+Network Security,VPN & Tunneling,Tunnel Mode,IPsec mode - encrypts headers and payload,Public network protection
+Network Security,VPN & Tunneling,Transport Mode,IPsec mode - encrypts only payload,Trusted network protection
+Network Security,VPN & Tunneling,Encapsulation,Wrapping one protocol in another,Tunneling protocol technique
+Network Security,Threat Prevention,Firewall,Filter network traffic based on rules,Network security boundary
+Network Security,Threat Prevention,IDS,Intrusion Detection System - monitors for attacks,Alert on suspicious activity
+Network Security,Threat Prevention,IPS,Intrusion Prevention System - blocks detected attacks,Active threat prevention
+Network Security,Threat Prevention,DDoS Protection,Protection against distributed denial of service,Mitigation services
+Network Addressing & Naming,IP Addressing,IPv4 Address,32-bit address - 4 octets decimal notation,192.168.1.1
+Network Addressing & Naming,IP Addressing,IPv6 Address,128-bit address - 8 groups hexadecimal notation,2001:0db8::1
+Network Addressing & Naming,IP Addressing,Public IP,Routable on internet unique globally,ISP-assigned addresses
+Network Addressing & Naming,IP Addressing,Private IP,Non-routable on internet for internal networks,RFC 1918 ranges
+Network Addressing & Naming,IP Addressing,Loopback Address,Special address for testing - 127.0.0.1,Local machine communication
+Network Addressing & Naming,IP Addressing,Broadcast Address,All 1s in host portion - reaches all hosts,Network-wide transmission
+Network Addressing & Naming,IP Addressing,Multicast Address,Reaches group of hosts - 224.0.0.0/4,One-to-many communication
+Network Addressing & Naming,IP Addressing,CIDR Notation,Classless Inter-Domain Routing - /24 suffix,More flexible than classfull
+Network Addressing & Naming,IP Addressing,Subnet Mask,Determines network and host portions of IP,255.255.255.0 or /24
+Network Addressing & Naming,IP Addressing,Default Gateway,Router to send traffic outside local network,Network exit point
+Network Addressing & Naming,IP Addressing,DHCP Lease,Temporary IP address assignment - expiration time,Automatic IP management
+Network Addressing & Naming,Domain Naming,DNS,Domain Name System - hostname to IP translation,Distributed naming system
+Network Addressing & Naming,Domain Naming,FQDN,Fully Qualified Domain Name - complete domain name,www.example.com
+Network Addressing & Naming,Domain Naming,DNS Record,Database entry mapping names to values,A AAAA CNAME MX records
+Network Addressing & Naming,Domain Naming,A Record,Address record - hostname to IPv4 mapping,Domain name resolution
+Network Addressing & Naming,Domain Naming,AAAA Record,Address record - hostname to IPv6 mapping,IPv6 domain resolution
+Network Addressing & Naming,Domain Naming,CNAME Record,Canonical name - hostname alias,Domain aliasing
+Network Addressing & Naming,Domain Naming,MX Record,Mail exchange - email server for domain,Mail routing
+Network Addressing & Naming,Domain Naming,NS Record,Nameserver - authoritative DNS server,DNS delegation
+Advanced Networking Topics,Data Flow & Transmission,Full Duplex,Simultaneous two-way communication,Modern switches most devices
+Advanced Networking Topics,Data Flow & Transmission,Half Duplex,One-way communication at a time,Hubs some wireless
+Advanced Networking Topics,Data Flow & Transmission,Simplex,One-way communication only,Broadcasting sensors
+Advanced Networking Topics,Data Flow & Transmission,Collision Domain,Network segment where collisions occur,Hub-based networks
+Advanced Networking Topics,Data Flow & Transmission,Broadcast Domain,Network segment receiving broadcast frames,All ports in VLAN
+Advanced Networking Topics,Data Flow & Transmission,Flow Control,Mechanism to prevent sender from overwhelming receiver,TCP window management
+Advanced Networking Topics,Data Flow & Transmission,Sliding Window,Flow control mechanism with variable-size window,TCP data rate control
+Advanced Networking Topics,Advanced Concepts,QoS Classification,Categories traffic by type/priority,Traffic identification
+Advanced Networking Topics,Advanced Concepts,DiffServ,Differentiated Services - traffic classes,Layer 3 QoS marking
+Advanced Networking Topics,Advanced Concepts,ToS,Type of Service field - priority marking,IPv4 header field
+Advanced Networking Topics,Advanced Concepts,DSCP,Differentiated Services Code Point - QoS marking,6-bit ToS field encoding
+Advanced Networking Topics,Advanced Concepts,MPLS,Multiprotocol Label Switching - forwarding mechanism,Label-based routing
+Advanced Networking Topics,Advanced Concepts,VRF,Virtual Routing and Forwarding - virtual routing table,Multi-tenant routing
+Advanced Networking Topics,Advanced Concepts,Failover,Automatic switch to backup on primary failure,High availability
+Advanced Networking Topics,Advanced Concepts,Redundancy,Multiple paths/devices for fault tolerance,Network resilience
+Advanced Networking Topics,Advanced Concepts,SLA,Service Level Agreement - performance guarantee,Availability percentage
+Advanced Networking Topics,Advanced Concepts,Throughput Optimization,Maximizing actual data transfer,Performance tuning
+Network Management & Monitoring,Management Protocols,SNMP,Simple Network Management Protocol - device monitoring,Port 161 device status
+Network Management & Monitoring,Management Protocols,SNMP Trap,Unsolicited alert from device,Event notification
+Network Management & Monitoring,Management Protocols,MIB,Management Information Base - SNMP database,Device statistics and info
+Network Management & Monitoring,Management Protocols,Syslog,System logging protocol - centralized logging,Event message forwarding
+Network Management & Monitoring,Management Protocols,NetFlow,Traffic analysis protocol - flow data export,Network traffic monitoring
+Network Management & Monitoring,Management Protocols,IPFIX,IP Flow Information Export - extended NetFlow,Standardized flow reporting
+Network Management & Monitoring,Monitoring & Analysis,Packet Capture,Tcpdump Wireshark - packet analysis,Network traffic inspection
+Network Management & Monitoring,Monitoring & Analysis,Flow Analysis,Analyzing traffic flows and patterns,Bandwidth and usage analysis
+Network Management & Monitoring,Monitoring & Analysis,Link Monitoring,Checking link status and quality,Up/down errors discards
+Network Management & Monitoring,Monitoring & Analysis,Performance Monitoring,Tracking network performance metrics,Latency jitter loss
+Network Management & Monitoring,Monitoring & Analysis,Network Analytics,Analyzing network patterns and trends,Traffic prediction
