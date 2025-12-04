@@ -1,0 +1,193 @@
+Category,Subcategory,Keyword/Concept,Extensive Explanation,Example/Context
+Core OS Concepts,Fundamental Concepts,Operating System,Software that manages hardware resources and provides services to applications,"Windows, Linux, macOS - mediates between hardware and programs"
+Core OS Concepts,Fundamental Concepts,Kernel,"Core of OS - manages CPU, memory, I/O, runs in privileged mode",Executes in kernel mode with full hardware access
+Core OS Concepts,Fundamental Concepts,User Mode,Restricted execution mode for applications - cannot access hardware directly,"Programs run here, limited permissions"
+Core OS Concepts,Fundamental Concepts,Kernel Mode,Privileged execution mode with full hardware access - only kernel runs here,Direct hardware manipulation capability
+Core OS Concepts,Fundamental Concepts,System Call,Interface between user programs and kernel - request OS service,"open(), read(), write(), fork() syscalls"
+Core OS Concepts,Fundamental Concepts,Context Switch,Mechanism to switch between processes - save/restore state,OS scheduler switches running processes
+Core OS Concepts,Fundamental Concepts,Interrupt Handler,Routine that handles hardware/software interrupts,"Handles timer, I/O, exception interrupts"
+Core OS Concepts,Fundamental Concepts,Exception,Unexpected event requiring kernel intervention - error or trap,"Division by zero, page fault, illegal instruction"
+Core OS Concepts,Fundamental Concepts,Trap,Software-triggered exception - system call or intentional trap,Explicit request to enter kernel mode
+Core OS Concepts,Process & Thread Management,Process,"Instance of executing program - isolated address space, resources",Each process has own memory and file descriptors
+Core OS Concepts,Process & Thread Management,Process ID (PID),Unique identifier for each process,Used to manage and control processes
+Core OS Concepts,Process & Thread Management,Thread,Lightweight execution unit - shares process address space,Multiple threads in single process share memory
+Core OS Concepts,Process & Thread Management,Multitasking,OS ability to run multiple processes/threads concurrently,Time-sharing or preemptive execution
+Core OS Concepts,Process & Thread Management,Preemption,OS can interrupt running process to run another,Prevents single process from monopolizing CPU
+Core OS Concepts,Process & Thread Management,Scheduling,"Algorithm to decide which process runs next - fairness, priority","Round-robin, priority queues, real-time scheduling"
+Core OS Concepts,Process & Thread Management,Scheduler,Component that selects next process to run,Runs every time slice (10-100ms typically)
+Core OS Concepts,Process & Thread Management,Ready Queue,Queue of processes ready to run - waiting for CPU,Ordered by scheduling priority
+Core OS Concepts,Process & Thread Management,Run Queue,Processes currently executing on available CPUs,At most N processes for N CPU cores
+Core OS Concepts,Process & Thread Management,Process State,"Current state: New, Ready, Running, Waiting, Terminated",Transitions driven by events and scheduling
+Core OS Concepts,Process & Thread Management,Context,"Process execution state - registers, program counter, memory state",Saved during context switch
+Core OS Concepts,Process & Thread Management,PCB (Process Control Block),Data structure storing process state and management info,"PID, program counter, registers, memory pointers"
+Core OS Concepts,Memory Management,Virtual Memory,Abstraction providing each process own address space,Decouples logical from physical memory
+Core OS Concepts,Memory Management,Address Space,Set of memory addresses accessible by a process,Each process sees 0 to max_address range
+Core OS Concepts,Memory Management,Paging,Divides memory into fixed-size pages - enables virtual memory,Page size typically 4KB
+Core OS Concepts,Memory Management,Page,Fixed-size memory unit (typically 4KB) - page table translation unit,Virtual pages map to physical pages
+Core OS Concepts,Memory Management,Page Table,Data structure mapping virtual to physical addresses,Per-process translation mechanism
+Core OS Concepts,Memory Management,Page Fault,Exception when accessing unmapped page - triggers page replacement,Disk I/O required to bring page into RAM
+Core OS Concepts,Memory Management,Segmentation,"Divide memory into logical segments (code, data, heap, stack)",Segment base + offset addressing
+Core OS Concepts,Memory Management,Paging vs Segmentation,"Paging: fixed-size, automatic; Segmentation: variable-size, flexible",Modern systems use paging primarily
+Core OS Concepts,Memory Management,TLB (Translation Lookaside Buffer),Hardware cache for page table entries - speeds translation,"Typical 64-512 entries, very fast lookup"
+Core OS Concepts,Memory Management,Memory Hierarchy,Registers → Cache → RAM → Disk - speed/capacity tradeoff,"Faster access = smaller, more expensive"
+Core OS Concepts,Memory Management,Cache,Fast memory holding frequently accessed data,"L1, L2, L3 caches on modern CPUs"
+Core OS Concepts,Memory Management,Swap,Disk space used as extension of RAM - page eviction destination,Slower than RAM but provides more virtual memory
+Core OS Concepts,Memory Management,Working Set,Subset of process memory actively used in time period,Pages in working set should stay in memory
+Core OS Concepts,Memory Management,Thrashing,Excessive paging - system spends more time on page swaps than execution,Performance degradation from memory pressure
+Process & Synchronization,Process Control,fork(),System call to create child process - duplicates parent process,"Returns PID in parent, 0 in child"
+Process & Synchronization,Process Control,exec(),System call to replace process image with new program,"Discards current process, loads new executable"
+Process & Synchronization,Process Control,wait(),Parent process waits for child process to terminate,"Blocking call, reaps child resources"
+Process & Synchronization,Process Control,exit(),Process terminates and releases resources,Returns exit code to parent
+Process & Synchronization,Process Control,Process Hierarchy,Parent-child relationships form process tree,Init/systemd is root of tree
+Process & Synchronization,Process Control,Zombie Process,Terminated process waiting for parent to reap it,Takes system resources until reaped
+Process & Synchronization,Process Control,Orphan Process,Process whose parent terminated before it did,Adopted by init/systemd
+Process & Synchronization,Process Control,Signal,"Asynchronous notification to process - SIGTERM, SIGKILL, etc.",Software interrupt mechanism
+Process & Synchronization,Process Control,SIGKILL,Signal to forcefully terminate process - cannot be caught,Ultimate process termination
+Process & Synchronization,Process Control,SIGTERM,Signal requesting graceful process termination,Process can catch and cleanup
+Process & Synchronization,Synchronization,Race Condition,Behavior depends on relative execution timing of threads,Leads to unpredictable results
+Process & Synchronization,Synchronization,Critical Section,Code segment accessing shared resources - needs mutual exclusion,Only one thread can execute at a time
+Process & Synchronization,Synchronization,Mutual Exclusion (Mutex),Lock ensuring only one thread in critical section,Thread 'owns' mutex while in critical section
+Process & Synchronization,Synchronization,Lock,Synchronization primitive - prevents concurrent access,Binary (mutex) or counting (semaphore)
+Process & Synchronization,Synchronization,Semaphore,Synchronization primitive with counter - allows N threads,Binary (0/1) or counting (0 to N)
+Process & Synchronization,Synchronization,Deadlock,Situation where processes cannot proceed - waiting for each other,"All processes blocked, system stalled"
+Process & Synchronization,Synchronization,Livelock,Processes busy but making no progress - actively interfering,Different from deadlock - processes are running
+Process & Synchronization,Synchronization,Monitor,Synchronization construct - lock + condition variables,Automatic mutual exclusion with notifications
+Process & Synchronization,Synchronization,Condition Variable,Allows thread to wait for specific condition to be true,Used with locks for coordinated waits
+Process & Synchronization,Synchronization,Barrier,Synchronization point where threads wait for all to arrive,All threads proceed after all reach barrier
+Process & Synchronization,Synchronization,Atomic Operation,Operation that completes without interruption,Indivisible from other threads' perspective
+Process & Synchronization,Synchronization,Compare-and-Swap (CAS),Atomic operation - compare value and conditionally swap,Foundation of lock-free programming
+Process & Synchronization,Synchronization,Spin Lock,Lock where waiting thread busy-loops instead of blocking,Good for short waits on multi-core
+Process & Synchronization,Synchronization,Reader-Writer Lock,"Multiple readers allowed, exclusive writer access",Optimizes read-heavy workloads
+File Systems & I/O,File System Basics,File System,"Hierarchical storage organization - files, directories, metadata",Manages persistent storage
+File Systems & I/O,File System Basics,Inode,"Data structure storing file metadata - size, owner, timestamps, blocks",Core file system structure
+File Systems & I/O,File System Basics,Directory,Special file containing name-to-inode mappings,Hierarchical file organization
+File Systems & I/O,File System Basics,Path,Sequence of names identifying location in hierarchy,/home/user/file.txt or C:\Users\file.txt
+File Systems & I/O,File System Basics,Root Directory,Top of file system hierarchy,"/ on Unix/Linux, C:\ on Windows"
+File Systems & I/O,File System Basics,Working Directory,Current directory context for relative paths,pwd shows current working directory
+File Systems & I/O,File System Basics,Hard Link,Multiple directory entries pointing to same inode,"Cannot span filesystems, shared inode"
+File Systems & I/O,File System Basics,Symbolic Link (Symlink),Special file containing path to another file,"Can span filesystems, acts as shortcut"
+File Systems & I/O,File System Basics,File Permissions,"Access control - read, write, execute for user/group/other",chmod 755 or rwxr-xr-x
+File Systems & I/O,File System Basics,Ownership,File owner and group - determines permission applicability,chown user:group file
+File Systems & I/O,File System Types,ext4,Fourth extended filesystem - default on many Linux systems,"Journaling, fast, reliable"
+File Systems & I/O,File System Types,NTFS,Windows NT File System - modern Windows standard,"Compression, encryption support"
+File Systems & I/O,File System Types,FAT32,"File Allocation Table - older, simple, widely compatible",4GB file size limit
+File Systems & I/O,File System Types,APFS,Apple File System - macOS/iOS modern filesystem,"Copy-on-write, snapshots"
+File Systems & I/O,File System Types,btrfs,"B-tree filesystem - advanced features, modern Linux","Snapshots, RAID, data deduplication"
+File Systems & I/O,File System Types,XFS,High-performance filesystem - large files and concurrent access,Enterprise Unix systems
+File Systems & I/O,File System Types,ZFS,"Advanced filesystem - checksums, compression, RAID-Z","FreeBSD, Solaris, enterprise storage"
+File Systems & I/O,I/O & Storage,I/O Subsystem,"Component managing input/output operations - disk, network, devices",Bridges CPU/memory gap to external devices
+File Systems & I/O,I/O & Storage,Block Device,"Device accessed in blocks (typically 4KB) - disk, SSD","Random access, persistent storage"
+File Systems & I/O,I/O & Storage,Character Device,"Device accessed sequentially - terminals, printers",Stream-oriented access
+File Systems & I/O,I/O & Storage,Buffer Cache,Memory buffer for frequently accessed disk blocks,Speeds up repeated disk access
+File Systems & I/O,I/O & Storage,Page Cache,Cache combining page table entries and disk blocks,Unifies memory management in Linux
+File Systems & I/O,I/O & Storage,Write-Through Cache,Writes go to both cache and disk immediately,Safer but slower
+File Systems & I/O,I/O & Storage,Write-Back Cache,"Writes go to cache first, disk later periodically",Faster but risk of data loss
+File Systems & I/O,I/O & Storage,Disk Scheduling,Algorithm determining disk I/O request ordering,"FCFS, shortest seek, elevator algorithm"
+File Systems & I/O,I/O & Storage,Seek Time,Time to move disk head to target track,Dominant latency component for rotational disks
+File Systems & I/O,I/O & Storage,Rotational Latency,Time for disk platter to rotate to needed sector,Half rotation time on average
+File Systems & I/O,I/O & Storage,SSD,"Solid State Drive - no moving parts, faster than rotating disk",NAND flash memory based
+File Systems & I/O,I/O & Storage,NVM,Non-Volatile Memory - fast persistent storage replacing traditional disk,"PCIe, NVMe interface"
+Operating System Types,OS Classification by Purpose,Batch Operating System,Processes jobs sequentially without user interaction,"Mainframes, historical systems"
+Operating System Types,OS Classification by Purpose,Time-Sharing OS,"Multiple users share system, rapid context switching","Unix, Linux, Windows server"
+Operating System Types,OS Classification by Purpose,Real-Time OS (RTOS),Guarantees response time within deadline,"Medical devices, automotive, avionics"
+Operating System Types,OS Classification by Purpose,Hard Real-Time,Missing deadline is system failure,"Aircraft control systems, pacemakers"
+Operating System Types,OS Classification by Purpose,Soft Real-Time,Missing deadline degrades quality but system continues,"Multimedia streaming, video games"
+Operating System Types,OS Classification by Purpose,Embedded OS,Specialized OS for embedded devices - resource constrained,"IoT, microcontrollers, system-on-chip"
+Operating System Types,OS Classification by Purpose,Distributed OS,Multiple independent computers appear as single system,"Grid computing, cloud systems"
+Operating System Types,OS Classification by Purpose,Multiprocessing OS,Manages multiple physical processors/cores,Modern multi-core systems
+Operating System Types,OS Classification by Purpose,Multitasking OS,Supports multiple concurrent processes,All modern operating systems
+Operating System Types,Desktop/Server Operating Systems,Windows,Microsoft OS family - consumer and enterprise editions,"Windows 11, Server 2022 - most used desktop OS"
+Operating System Types,Desktop/Server Operating Systems,Windows NT,"Modern Windows kernel architecture - preemptive, protected mode","Foundation of Windows 2000, XP, Vista, 7, 8, 10, 11"
+Operating System Types,Desktop/Server Operating Systems,Linux,"Open-source Unix-like OS - free, portable, flexible","Most popular server OS, used in Android, embedded systems"
+Operating System Types,Desktop/Server Operating Systems,Linux Kernel,"Core of Linux OS - manages hardware, processes, memory",Monolithic kernel with modules
+Operating System Types,Desktop/Server Operating Systems,GNU/Linux,Linux kernel + GNU utilities - complete operating system,"Fedora, Ubuntu, Red Hat, Debian - various distributions"
+Operating System Types,Desktop/Server Operating Systems,Distribution,Packaged Linux kernel + utilities + package manager,"Ubuntu, CentOS, Fedora, Arch, Alpine"
+Operating System Types,Desktop/Server Operating Systems,macOS,Apple's Unix-based OS for Macintosh computers,Darwin kernel + OS X/macOS layer
+Operating System Types,Desktop/Server Operating Systems,iOS,"Apple's OS for iPhone/iPad - restricted, security-focused",Based on Darwin kernel like macOS
+Operating System Types,Desktop/Server Operating Systems,FreeBSD,Free Unix-like OS - emphasis on stability and performance,"Used in servers, embedded systems"
+Operating System Types,Desktop/Server Operating Systems,ChromeOS,Lightweight OS for Chromebooks - browser-centric,"Simplified, secure, auto-updating"
+Operating System Types,Mobile Operating Systems,Android,Open-source OS for mobile devices and tablets,"Linux kernel based, most used mobile OS"
+Operating System Types,Mobile Operating Systems,iOS,Proprietary OS for iPhone/iPad - closed ecosystem,"Darwin/XNU kernel, security-focused"
+Operating System Types,Mobile Operating Systems,iOS Sandbox,Isolation mechanism - each app has restricted filesystem/memory,Security through compartmentalization
+Operating System Types,Specialized Operating Systems,Real-Time Operating System (RTOS),"Deterministic, bounded response time guarantees","FreeRTOS, VxWorks, QNX"
+Operating System Types,Specialized Operating Systems,Microkernel OS,"Minimalist kernel - only essential services, rest are user programs","Mach, QNX - more reliable, slower"
+Operating System Types,Specialized Operating Systems,Monolithic Kernel,Single large kernel - all services in kernel space,"Linux, Windows - faster, larger"
+Operating System Types,Specialized Operating Systems,Exokernel,Minimal kernel - applications allocate resources directly,Research OS - ultimate flexibility
+Core OS Components,Bootloader & Startup,Bootloader,First program executed when computer powers on,BIOS/UEFI loads bootloader from firmware
+Core OS Components,Bootloader & Startup,BIOS,Basic Input/Output System - legacy firmware interface,"Older systems, limited functionality"
+Core OS Components,Bootloader & Startup,UEFI,Unified Extensible Firmware Interface - modern firmware standard,"Supports larger disks, secure boot"
+Core OS Components,Bootloader & Startup,Kernel Loading,Bootloader reads kernel from disk into memory and executes,Kernel takes control of system
+Core OS Components,Bootloader & Startup,Init System,First process started by kernel - starts other system services,"init (SysV), systemd (modern), runit"
+Core OS Components,Bootloader & Startup,systemd,"Modern init system - service management, dependency resolution",Used by most modern Linux distributions
+Core OS Components,Scheduler,CPU Scheduler,Component deciding which process runs next on each CPU,Core OS component for multitasking
+Core OS Components,Scheduler,Scheduling Algorithm,Policy for selecting next process - fairness vs efficiency,"Round-robin, priority, real-time"
+Core OS Components,Scheduler,Round-Robin Scheduling,"Each process gets equal time slice (quantum), rotates in queue",Fair but context switch overhead
+Core OS Components,Scheduler,Priority Scheduling,Higher priority processes run first,Allows important tasks to proceed faster
+Core OS Components,Scheduler,Real-Time Scheduling,Guarantees deadlines - FIFO or rate-monotonic,Used in RTOS systems
+Core OS Components,Scheduler,Multilevel Queue Scheduling,Different queues for different process types with different policies,Combines techniques for different workloads
+Core OS Components,Scheduler,Time Quantum,Maximum time slice each process gets in round-robin,Typically 10-100 milliseconds
+Core OS Components,Scheduler,Load Balancing,Distributing processes across multiple CPUs for even utilization,Improves throughput on multi-core
+Core OS Components,Scheduler,Affinity,Keeping process on same CPU to maintain cache locality,"Improves cache hit rate, reduces context switch cost"
+Core OS Components,Scheduler,Priority Inversion,Low-priority task blocks high-priority task indirectly,"Problem in priority scheduling, solved by priority inheritance"
+Core OS Components,Memory Manager,Memory Manager,Allocates and deallocates memory for processes,Tracks which memory is used/free
+Core OS Components,Memory Manager,Fragmentation,Unused memory scattered as small pieces - external fragmentation,Reduces available contiguous memory
+Core OS Components,Memory Manager,Compaction,Moving processes to eliminate fragmentation,Overhead but improves memory utilization
+Core OS Components,Memory Manager,Garbage Collection,Automatic memory cleanup - reclaims unused objects,"Java, Python, managed languages"
+Core OS Components,Memory Manager,Memory Leak,Program fails to release memory - gradually consumes all RAM,Common in C/C++ without proper cleanup
+Core OS Components,Memory Manager,Heap,"Region for dynamic memory allocation - malloc, new","Grows upward, unstructured access"
+Core OS Components,Memory Manager,Stack,Region for function local variables and return addresses,"Grows downward, LIFO structure"
+Core OS Components,Memory Manager,Heap vs Stack,"Stack: fast, automatic cleanup; Heap: flexible, manual/GC",Stack overflow from too deep recursion
+Core OS Components,File Manager,File Manager,"Manages file creation, deletion, access, protection",Implements file system abstraction
+Core OS Components,File Manager,File Descriptor,Handle to open file - used for reading/writing,Integer index into process file descriptor table
+Core OS Components,File Manager,File Descriptor Table,Per-process table mapping descriptors to open files,"0=stdin, 1=stdout, 2=stderr, 3+ user files"
+Core OS Components,File Manager,Open File Table,System-wide table of open files with reference counts,Shared by all processes
+Core OS Components,File Manager,Mounting,Attaching filesystem at directory - provides transparent access,mount /dev/sda1 /mnt
+Core OS Components,File Manager,Inode Cache,In-memory cache of frequently accessed inodes,Speeds up metadata access
+Core OS Components,Device Driver,Device Driver,Software interface between OS and hardware device,Provides device abstraction to OS
+Core OS Components,Device Driver,Driver Model,Framework for writing drivers - defines interfaces,"Character, block, or network device types"
+Core OS Components,Device Driver,DMA (Direct Memory Access),Device accesses memory without CPU intervention,Faster than CPU-mediated transfer
+Core OS Components,Device Driver,Interrupt-Driven I/O,Device raises interrupt when ready - CPU handles asynchronously,Efficient for slow I/O devices
+Core OS Components,Device Driver,Polling,CPU repeatedly checks device status - less efficient,Used when interrupts unavailable
+Core OS Components,Device Driver,Device Manager,Component managing device registration and communication,"Enumerates devices, loads drivers"
+Protection & Security,Access Control,Privilege Levels,CPU support for different execution privilege levels,User mode vs kernel mode
+Protection & Security,Access Control,Ring Architecture,Multiple privilege levels (Rings 0-3 on x86),"Ring 0=kernel, Ring 3=user applications"
+Protection & Security,Access Control,Capability-Based Security,Access rights tied to process capabilities,Process must have capability to access resource
+Protection & Security,Access Control,Access Control List (ACL),List of permissions for resource - who can access what,Per-file/directory/resource ACLs
+Protection & Security,Access Control,Role-Based Access Control (RBAC),Users assigned roles with associated permissions,More manageable than individual ACLs
+Protection & Security,Access Control,Principle of Least Privilege,User/process gets minimal permissions needed,Security best practice
+Protection & Security,Protection Mechanisms,Memory Protection,Hardware prevents process from accessing another's memory,Page tables + MMU enforce boundaries
+Protection & Security,Protection Mechanisms,Address Space Layout Randomization (ASLR),Randomizes memory addresses of kernel/libraries/stack,Defeats memory-based exploits
+Protection & Security,Protection Mechanisms,Stack Canary,Value placed on stack to detect buffer overflows,Changed value indicates overflow attack
+Protection & Security,Protection Mechanisms,Data Execution Prevention (DEP),Marks memory regions as non-executable,Prevents code execution in data areas
+Protection & Security,Protection Mechanisms,Sandboxing,Isolated environment restricting process capabilities,"Containers, virtual machines, app sandboxes"
+Protection & Security,User & Group Management,User Account,Identity with assigned user ID (UID) for access control,"root (UID 0), normal users, service accounts"
+Protection & Security,User & Group Management,Group,Collection of users for permission management,Users can belong to multiple groups
+Protection & Security,User & Group Management,Root/Administrator,Privileged account with unrestricted access,"root on Unix/Linux, Administrator on Windows"
+Protection & Security,User & Group Management,Sudo,Allows user to execute command as another user (usually root),sudo command - with user's password
+Protection & Security,User & Group Management,Setuid Bit,Binary with setuid bit runs with owner's privileges,chmod u+s - dangerous if binary has vulnerabilities
+Advanced Topics,Virtualization,Virtual Machine (VM),Software emulation of complete computer system,Guest OS runs on hypervisor
+Advanced Topics,Virtualization,Hypervisor,Software layer managing virtual machines,"Type 1: bare-metal, Type 2: hosted"
+Advanced Topics,Virtualization,Type 1 Hypervisor,"Runs directly on hardware - KVM, Xen, vSphere",Enterprise servers
+Advanced Topics,Virtualization,Type 2 Hypervisor,"Runs on host OS - VirtualBox, Parallels, VMware Fusion",Desktop/development
+Advanced Topics,Virtualization,Container,Lightweight virtualization - OS-level isolation,"Docker, LXC - shared kernel, isolated processes"
+Advanced Topics,Virtualization,Docker,"Container platform - packaging, distribution, orchestration",Application container + runtime
+Advanced Topics,Virtualization,Kubernetes,"Container orchestration - managing, scaling, updating containers",Container cluster management
+Advanced Topics,Virtualization,Virtual Memory,OS abstraction providing illusion of unlimited memory,Paging/swapping to disk
+Advanced Topics,Performance Optimization,Caching,Keeping frequently used data in fast memory,Improves performance dramatically
+Advanced Topics,Performance Optimization,Prefetching,Loading data before it's needed - anticipate future accesses,"Reduces cache misses, latency"
+Advanced Topics,Performance Optimization,Locality of Reference,Programs reuse data/code recently accessed - spatial/temporal,Exploitation enables cache effectiveness
+Advanced Topics,Performance Optimization,Thrashing,"Excessive paging - system spends time swapping, not computing",Working set too large for available memory
+Advanced Topics,Performance Optimization,Buffer Bloat,Excessive buffering increases latency unpredictably,"Problem in networks, storage systems"
+Advanced Topics,Performance Optimization,Lock Contention,Multiple threads waiting for same lock - serialization point,Performance bottleneck under high concurrency
+Advanced Topics,Performance Optimization,Hyper-Threading,CPU reports 2 logical cores per physical core,Better utilization of CPU pipeline
+Advanced Topics,Performance Optimization,NUMA (Non-Uniform Memory Access),Multiple processors with local memory - distant access slower,Consider memory locality for performance
+Advanced Topics,Advanced Concepts,Process Address Space,"Virtual address space divided into segments - code, data, heap, stack",Protected from other processes
+Advanced Topics,Advanced Concepts,Inter-Process Communication (IPC),"Mechanisms for processes to communicate - pipes, sockets, shared memory",Message passing or shared memory models
+Advanced Topics,Advanced Concepts,Pipe,Unidirectional communication channel between processes,"FIFO - first-in, first-out"
+Advanced Topics,Advanced Concepts,Socket,Endpoint for network communication or local IPC,"TCP, UDP sockets for network; Unix sockets for local"
+Advanced Topics,Advanced Concepts,Shared Memory,Memory region accessible by multiple processes,Fast communication but requires synchronization
+Advanced Topics,Advanced Concepts,Message Queue,Asynchronous communication via messages,Decouples sender and receiver
+Advanced Topics,Advanced Concepts,Semaphore,Counter-based synchronization primitive,Allows N processes (N>=1) in critical section
+Advanced Topics,Advanced Concepts,Mutex,Mutual exclusion lock - binary semaphore,Only 1 process in critical section
+Advanced Topics,Advanced Concepts,Deadlock Prevention,Design to avoid circular wait conditions,"Resource ordering, timeout, detection/recovery"
+Advanced Topics,Advanced Concepts,Starvation,Process never gets resources despite being ready,Lower priority process blocked by higher priority
