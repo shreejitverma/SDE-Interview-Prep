@@ -8,6 +8,21 @@
 3. [Operators & Control Flow](#operators--control-flow)
 4. [Functions](#functions)
 5. [Arrays & Pointers](#arrays--pointers)
+6. [Pointers & Memory](#advanced-pointers--memory)
+7. [Functions](#advanced-functions)
+8. [Function Pointers & Callbacks](#function-pointers--callbacks)
+9. [Arrays](#advanced-arrays)
+10. [Strings](#advanced-strings)
+11. [Bitwise Operations](#bitwise-operations)
+12. [Preprocessor Directives](#preprocessor-directives)
+13. [Type Casting](#type-casting)
+14. [Control Flow](#advanced-control-flow)
+15. [Enumeration & Unions](#enumeration--unions)
+16. [Const & Volatile](#const--volatile)
+17. [Inline Functions & Macros](#inline-functions--macros)
+18. [Namespaces](#namespaces)
+19. [File I/O Advanced](#file-io-advanced)
+20. [Error Handling & Debugging](#error-handling--debugging)
 
 ### PART 2: OBJECT-ORIENTED PROGRAMMING FUNDAMENTALS
 6. [Classes & Objects](#classes--objects)
@@ -665,6 +680,1281 @@ int main() {
     // Forgetting to delete = memory leak
     int* leaked = new int(100);
     // delete leaked;  // Forgot this!
+    
+    return 0;
+}
+```
+
+# SECTION 1: ADVANCED POINTERS & MEMORY
+
+## 1.1 Pointer to Const vs Const Pointer
+
+```cpp
+#include <iostream>
+using namespace std;
+
+int main() {
+    int x = 5, y = 10;
+    
+    // Pointer to const - can't modify data
+    const int* ptr1 = &x;
+    // *ptr1 = 10;  // ERROR
+    ptr1 = &y;      // OK - can change pointer
+    
+    // Const pointer - can't modify pointer
+    int* const ptr2 = &x;
+    *ptr2 = 10;     // OK - can change data
+    // ptr2 = &y;   // ERROR
+    
+    // Const pointer to const - can't modify either
+    const int* const ptr3 = &x;
+    // *ptr3 = 10;  // ERROR
+    // ptr3 = &y;   // ERROR
+    
+    return 0;
+}
+```
+
+## 1.2 Void Pointers
+
+```cpp
+#include <iostream>
+using namespace std;
+
+int main() {
+    int x = 42;
+    double y = 3.14;
+    
+    // Void pointer can point to any type
+    void* ptr = &x;
+    cout << *(int*)ptr << endl;  // 42
+    
+    ptr = &y;
+    cout << *(double*)ptr << endl;  // 3.14
+    
+    // Generic function using void*
+    void print_value(void* ptr, char type) {
+        if (type == 'i') {
+            cout << *(int*)ptr << endl;
+        } else if (type == 'd') {
+            cout << *(double*)ptr << endl;
+        }
+    }
+    
+    print_value(&x, 'i');  // 42
+    print_value(&y, 'd');  // 3.14
+    
+    return 0;
+}
+```
+
+## 1.3 Null Pointer Safety
+
+```cpp
+#include <iostream>
+using namespace std;
+
+int main() {
+    int* ptr = NULL;  // Set to null
+    
+    // Always check before dereferencing
+    if (ptr != NULL) {
+        cout << *ptr << endl;
+    } else {
+        cout << "Pointer is NULL" << endl;
+    }
+    
+    // Safer approach
+    ptr = new int(42);
+    if (ptr) {
+        cout << *ptr << endl;
+        delete ptr;
+        ptr = NULL;
+    }
+    
+    return 0;
+}
+```
+
+## 1.4 Memory Layout & Alignment
+
+```cpp
+#include <iostream>
+using namespace std;
+
+int main() {
+    struct Data {
+        char a;     // 1 byte
+        int b;      // 4 bytes
+        double c;   // 8 bytes
+    };
+    
+    cout << "Size of Data: " << sizeof(Data) << endl;
+    // Likely 16 or 24 (due to alignment padding)
+    
+    cout << "Size of char: " << sizeof(char) << endl;      // 1
+    cout << "Size of int: " << sizeof(int) << endl;        // 4
+    cout << "Size of double: " << sizeof(double) << endl;  // 8
+    
+    Data data;
+    cout << "Address of a: " << (void*)&data.a << endl;
+    cout << "Address of b: " << (void*)&data.b << endl;
+    cout << "Address of c: " << (void*)&data.c << endl;
+    
+    return 0;
+}
+```
+
+---
+
+# SECTION 2: ADVANCED FUNCTIONS
+
+## 2.1 Variadic Functions
+
+```cpp
+#include <iostream>
+#include <cstdarg>
+using namespace std;
+
+// Function with variable number of arguments
+int sum(int count, ...) {
+    va_list args;
+    va_start(args, count);
+    
+    int total = 0;
+    for (int i = 0; i < count; i++) {
+        total += va_arg(args, int);
+    }
+    
+    va_end(args);
+    return total;
+}
+
+int main() {
+    cout << sum(3, 10, 20, 30) << endl;     // 60
+    cout << sum(5, 1, 2, 3, 4, 5) << endl;  // 15
+    
+    return 0;
+}
+```
+
+## 2.2 Function Recursion
+
+```cpp
+#include <iostream>
+using namespace std;
+
+// Factorial using recursion
+int factorial(int n) {
+    if (n <= 1) {
+        return 1;  // Base case
+    }
+    return n * factorial(n - 1);  // Recursive case
+}
+
+// Fibonacci using recursion (inefficient)
+int fibonacci(int n) {
+    if (n <= 1) return n;
+    return fibonacci(n - 1) + fibonacci(n - 2);
+}
+
+// Fibonacci with memoization (efficient)
+int fib_memo(int n, int memo[]) {
+    if (n <= 1) return n;
+    if (memo[n] != -1) return memo[n];
+    
+    memo[n] = fib_memo(n - 1, memo) + fib_memo(n - 2, memo);
+    return memo[n];
+}
+
+int main() {
+    cout << factorial(5) << endl;  // 120
+    cout << fibonacci(10) << endl; // 55
+    
+    int memo[11];
+    for (int i = 0; i < 11; i++) memo[i] = -1;
+    cout << fib_memo(10, memo) << endl;  // 55
+    
+    return 0;
+}
+```
+
+## 2.3 Inline Functions
+
+```cpp
+#include <iostream>
+using namespace std;
+
+// Inline function - compiler may expand code
+inline int square(int x) {
+    return x * x;
+}
+
+// Inline with condition
+inline double max_value(double a, double b) {
+    return (a > b) ? a : b;
+}
+
+int main() {
+    cout << square(5) << endl;      // 25
+    cout << max_value(3.5, 2.1) << endl;  // 3.5
+    
+    return 0;
+}
+```
+
+## 2.4 Static Functions
+
+```cpp
+#include <iostream>
+using namespace std;
+
+// File scope - only visible in this file
+static void internal_function() {
+    cout << "Internal function" << endl;
+}
+
+// Static with counter
+int get_call_count() {
+    static int count = 0;  // Persists between calls
+    return ++count;
+}
+
+int main() {
+    cout << get_call_count() << endl;  // 1
+    cout << get_call_count() << endl;  // 2
+    cout << get_call_count() << endl;  // 3
+    
+    internal_function();  // OK in same file
+    
+    return 0;
+}
+```
+
+---
+
+# SECTION 3: FUNCTION POINTERS & CALLBACKS
+
+## 3.1 Function Pointers
+
+```cpp
+#include <iostream>
+using namespace std;
+
+// Function pointer declaration: return_type (*name)(parameters)
+int add(int a, int b) {
+    return a + b;
+}
+
+int subtract(int a, int b) {
+    return a - b;
+}
+
+int multiply(int a, int b) {
+    return a * b;
+}
+
+int main() {
+    // Declare function pointer
+    int (*operation)(int, int);
+    
+    // Assign function to pointer
+    operation = add;
+    cout << operation(5, 3) << endl;  // 8
+    
+    operation = subtract;
+    cout << operation(5, 3) << endl;  // 2
+    
+    operation = multiply;
+    cout << operation(5, 3) << endl;  // 15
+    
+    return 0;
+}
+```
+
+## 3.2 Function Pointer Arrays
+
+```cpp
+#include <iostream>
+using namespace std;
+
+int add(int a, int b) { return a + b; }
+int subtract(int a, int b) { return a - b; }
+int multiply(int a, int b) { return a * b; }
+int divide(int a, int b) { return a / b; }
+
+int main() {
+    // Array of function pointers
+    int (*operations[4])(int, int) = {
+        add, subtract, multiply, divide
+    };
+    
+    int a = 20, b = 4;
+    
+    for (int i = 0; i < 4; i++) {
+        cout << "Result: " << operations[i](a, b) << endl;
+    }
+    // Output: 24, 16, 80, 5
+    
+    return 0;
+}
+```
+
+## 3.3 Callbacks
+
+```cpp
+#include <iostream>
+#include <vector>
+using namespace std;
+
+// Callback function type
+typedef void (*Callback)(const string&);
+
+class Button {
+private:
+    Callback on_click;
+    
+public:
+    void set_click_handler(Callback callback) {
+        on_click = callback;
+    }
+    
+    void click() {
+        if (on_click) {
+            on_click("Button clicked!");
+        }
+    }
+};
+
+void handle_click(const string& message) {
+    cout << message << endl;
+}
+
+int main() {
+    Button button;
+    button.set_click_handler(handle_click);
+    button.click();  // Output: Button clicked!
+    
+    return 0;
+}
+```
+
+---
+
+# SECTION 4: ADVANCED ARRAYS
+
+## 4.1 Dynamic Arrays
+
+```cpp
+#include <iostream>
+using namespace std;
+
+int main() {
+    // 1D dynamic array
+    int size = 5;
+    int* arr = new int[size];
+    
+    for (int i = 0; i < size; i++) {
+        arr[i] = i * 10;
+    }
+    
+    for (int i = 0; i < size; i++) {
+        cout << arr[i] << " ";
+    }
+    cout << endl;
+    
+    delete[] arr;
+    arr = NULL;
+    
+    // 2D dynamic array
+    int rows = 3, cols = 4;
+    int** matrix = new int*[rows];
+    for (int i = 0; i < rows; i++) {
+        matrix[i] = new int[cols];
+    }
+    
+    // Fill matrix
+    for (int i = 0; i < rows; i++) {
+        for (int j = 0; j < cols; j++) {
+            matrix[i][j] = i * cols + j;
+        }
+    }
+    
+    // Delete matrix
+    for (int i = 0; i < rows; i++) {
+        delete[] matrix[i];
+    }
+    delete[] matrix;
+    
+    return 0;
+}
+```
+
+## 4.2 Variable Length Arrays (Non-standard)
+
+```cpp
+#include <iostream>
+using namespace std;
+
+int main() {
+    int size;
+    cout << "Enter size: ";
+    cin >> size;
+    
+    // VLA - not standard but supported by many compilers
+    int arr[size];  // GCC extension
+    
+    for (int i = 0; i < size; i++) {
+        arr[i] = i;
+    }
+    
+    for (int i = 0; i < size; i++) {
+        cout << arr[i] << " ";
+    }
+    cout << endl;
+    
+    return 0;
+}
+```
+
+## 4.3 Array Bounds & Safety
+
+```cpp
+#include <iostream>
+using namespace std;
+
+int main() {
+    int arr[5] = {10, 20, 30, 40, 50};
+    
+    // No bounds checking in C++
+    cout << arr[0] << endl;   // 10 (OK)
+    cout << arr[10] << endl;  // Undefined behavior!
+    
+    // Manual bounds checking
+    int index = 5;
+    if (index >= 0 && index < 5) {
+        cout << arr[index] << endl;
+    } else {
+        cout << "Index out of bounds" << endl;
+    }
+    
+    return 0;
+}
+```
+
+---
+
+# SECTION 5: ADVANCED STRINGS
+
+## 5.1 String Manipulation
+
+```cpp
+#include <iostream>
+#include <string>
+#include <cstring>
+using namespace std;
+
+int main() {
+    string s = "Hello World";
+    
+    // Length and capacity
+    cout << "Length: " << s.length() << endl;
+    cout << "Capacity: " << s.capacity() << endl;
+    
+    // Access characters
+    cout << "First char: " << s[0] << endl;
+    cout << "Last char: " << s[s.length() - 1] << endl;
+    
+    // Finding substrings
+    size_t pos = s.find("World");
+    if (pos != string::npos) {
+        cout << "Found at position: " << pos << endl;
+    }
+    
+    // Replace
+    s.replace(6, 5, "C++");
+    cout << s << endl;  // Hello C++
+    
+    // Insert
+    s.insert(5, " there");
+    cout << s << endl;  // Hello there C++
+    
+    // Erase
+    s.erase(5, 6);
+    cout << s << endl;  // Hello C++
+    
+    // Substring
+    cout << s.substr(0, 5) << endl;  // Hello
+    
+    // Reverse
+    reverse(s.begin(), s.end());
+    cout << s << endl;  // ++C olleH
+    
+    return 0;
+}
+```
+
+## 5.2 String Conversion
+
+```cpp
+#include <iostream>
+#include <string>
+#include <sstream>
+#include <cstdlib>
+using namespace std;
+
+int main() {
+    // String to number (C style)
+    string s1 = "42";
+    int num = atoi(s1.c_str());
+    cout << num << endl;
+    
+    string s2 = "3.14";
+    double dbl = atof(s2.c_str());
+    cout << dbl << endl;
+    
+    // Number to string (using stringstream)
+    stringstream ss;
+    ss << 42 << " " << 3.14 << " " << true;
+    string result = ss.str();
+    cout << result << endl;  // 42 3.14 1
+    
+    // Reverse conversion
+    stringstream ss2("100 200 300");
+    int a, b, c;
+    ss2 >> a >> b >> c;
+    cout << a << " " << b << " " << c << endl;  // 100 200 300
+    
+    return 0;
+}
+```
+
+## 5.3 String Tokenization
+
+```cpp
+#include <iostream>
+#include <string>
+#include <cstring>
+using namespace std;
+
+int main() {
+    string line = "apple,banana,orange,grape";
+    
+    // Using stringstream and getline
+    stringstream ss(line);
+    string token;
+    
+    while (getline(ss, token, ',')) {
+        cout << token << endl;
+    }
+    // Output: apple, banana, orange, grape
+    
+    // Using strtok (C style)
+    char str[] = "hello world how are you";
+    char* ptr = strtok(str, " ");
+    
+    while (ptr != NULL) {
+        cout << ptr << endl;
+        ptr = strtok(NULL, " ");
+    }
+    // Output: hello, world, how, are, you
+    
+    return 0;
+}
+```
+
+---
+
+# SECTION 6: BITWISE OPERATIONS
+
+## 6.1 Bitwise Operators
+
+```cpp
+#include <iostream>
+using namespace std;
+
+int main() {
+    unsigned char a = 5;   // 0101
+    unsigned char b = 3;   // 0011
+    
+    // AND
+    cout << (a & b) << endl;  // 0001 = 1
+    
+    // OR
+    cout << (a | b) << endl;  // 0111 = 7
+    
+    // XOR
+    cout << (a ^ b) << endl;  // 0110 = 6
+    
+    // NOT (bitwise complement)
+    cout << (~a) << endl;     // 1010 = 250 (for unsigned char)
+    
+    // Left shift
+    cout << (a << 1) << endl; // 1010 = 10
+    
+    // Right shift
+    cout << (b >> 1) << endl; // 0001 = 1
+    
+    return 0;
+}
+```
+
+## 6.2 Bit Manipulation Techniques
+
+```cpp
+#include <iostream>
+using namespace std;
+
+int main() {
+    unsigned int num = 5;  // 0101
+    
+    // Check if bit is set
+    int bit_pos = 2;
+    bool is_set = (num >> bit_pos) & 1;
+    cout << "Bit " << bit_pos << " is: " << is_set << endl;
+    
+    // Set a bit
+    num |= (1 << 1);  // Set bit 1
+    cout << "After setting bit 1: " << num << endl;  // 7 (0111)
+    
+    // Clear a bit
+    num &= ~(1 << 1);  // Clear bit 1
+    cout << "After clearing bit 1: " << num << endl;  // 5 (0101)
+    
+    // Toggle a bit
+    num ^= (1 << 0);  // Toggle bit 0
+    cout << "After toggling bit 0: " << num << endl;  // 4 (0100)
+    
+    // Count set bits
+    unsigned int count = 0;
+    unsigned int temp = num;
+    while (temp) {
+        count += temp & 1;
+        temp >>= 1;
+    }
+    cout << "Number of set bits: " << count << endl;
+    
+    return 0;
+}
+```
+
+---
+
+# SECTION 7: PREPROCESSOR DIRECTIVES
+
+## 7.1 #define and #include
+
+```cpp
+// Define constants
+#define PI 3.14159
+#define MAX_SIZE 100
+#define SQUARE(x) ((x) * (x))
+
+// Conditional compilation
+#define DEBUG
+
+#ifdef DEBUG
+    #define LOG(msg) cout << msg << endl
+#else
+    #define LOG(msg)  // Do nothing in release
+#endif
+
+#include <iostream>
+using namespace std;
+
+int main() {
+    cout << "PI = " << PI << endl;
+    
+    int arr[MAX_SIZE];
+    cout << "Array size: " << sizeof(arr) << endl;
+    
+    cout << "Square of 5: " << SQUARE(5) << endl;
+    
+    LOG("Debug message");
+    
+    return 0;
+}
+```
+
+## 7.2 Conditional Compilation
+
+```cpp
+#include <iostream>
+using namespace std;
+
+// Platform-specific code
+#ifdef _WIN32
+    #define OS "Windows"
+#elif __APPLE__
+    #define OS "macOS"
+#elif __linux__
+    #define OS "Linux"
+#else
+    #define OS "Unknown"
+#endif
+
+int main() {
+    cout << "Running on: " << OS << endl;
+    
+#if defined(DEBUG)
+    cout << "Debug mode" << endl;
+#else
+    cout << "Release mode" << endl;
+#endif
+    
+    return 0;
+}
+```
+
+## 7.3 Pragma Directives
+
+```cpp
+#include <iostream>
+using namespace std;
+
+// Disable specific warnings
+#pragma warning(disable: 4996)  // MSVC
+
+// Pack structure
+#pragma pack(1)
+struct PackedData {
+    char a;
+    int b;
+    double c;
+};
+#pragma pack()
+
+int main() {
+    cout << "Size of PackedData: " << sizeof(PackedData) << endl;
+    // Without pragma pack: 24 (aligned)
+    // With pragma pack: 13 (packed)
+    
+    return 0;
+}
+```
+
+---
+
+# SECTION 8: TYPE CASTING
+
+## 8.1 C-Style Casting
+
+```cpp
+#include <iostream>
+#include <cmath>
+using namespace std;
+
+int main() {
+    double d = 3.14;
+    
+    // C-style cast (avoid in modern C++)
+    int i = (int)d;  // 3
+    cout << i << endl;
+    
+    int x = 65;
+    char c = (char)x;  // 'A'
+    cout << c << endl;
+    
+    float f = (float)d;
+    cout << f << endl;
+    
+    return 0;
+}
+```
+
+## 8.2 Implicit Conversions
+
+```cpp
+#include <iostream>
+using namespace std;
+
+int main() {
+    // Implicit conversions
+    int x = 5;
+    double d = x;  // int to double (automatic)
+    cout << d << endl;  // 5.0
+    
+    double d2 = 3.9;
+    int y = d2;  // double to int (loses precision)
+    cout << y << endl;  // 3
+    
+    // Char arithmetic
+    char c = 'A';
+    int code = c;  // char to int (gets ASCII)
+    cout << code << endl;  // 65
+    
+    return 0;
+}
+```
+
+---
+
+# SECTION 9: ADVANCED CONTROL FLOW
+
+## 9.1 Ternary Operator
+
+```cpp
+#include <iostream>
+using namespace std;
+
+int main() {
+    int x = 10, y = 5;
+    
+    // condition ? true_value : false_value
+    int max = (x > y) ? x : y;
+    cout << "Max: " << max << endl;  // 10
+    
+    // Nested ternary (use with caution)
+    int age = 20;
+    string status = (age < 18) ? "Minor" : (age < 65) ? "Adult" : "Senior";
+    cout << status << endl;
+    
+    // String ternary
+    cout << (x % 2 == 0 ? "Even" : "Odd") << endl;
+    
+    return 0;
+}
+```
+
+## 9.2 goto Statement (Avoid)
+
+```cpp
+#include <iostream>
+using namespace std;
+
+int main() {
+    // goto is generally discouraged
+    int x = 0;
+    
+loop:
+    cout << x << " ";
+    x++;
+    
+    if (x < 5) {
+        goto loop;
+    }
+    cout << endl;
+    
+    // Better alternative: use loops
+    for (int i = 0; i < 5; i++) {
+        cout << i << " ";
+    }
+    cout << endl;
+    
+    return 0;
+}
+```
+
+## 9.3 Label & Goto for Error Handling
+
+```cpp
+#include <iostream>
+#include <cstdlib>
+using namespace std;
+
+int main() {
+    FILE* file = NULL;
+    char* buffer = NULL;
+    
+    // Using goto for cleanup (rare acceptable use)
+    file = fopen("test.txt", "r");
+    if (!file) {
+        cout << "Failed to open file" << endl;
+        goto cleanup;
+    }
+    
+    buffer = new char[100];
+    if (!buffer) {
+        cout << "Memory allocation failed" << endl;
+        goto cleanup;
+    }
+    
+    // Do work...
+    
+cleanup:
+    if (buffer) delete[] buffer;
+    if (file) fclose(file);
+    
+    return 0;
+}
+```
+
+---
+
+# SECTION 10: ENUMERATION & UNIONS
+
+## 10.1 Enumerations
+
+```cpp
+#include <iostream>
+using namespace std;
+
+// Enum definition
+enum Color { RED, GREEN, BLUE };
+
+enum Direction {
+    NORTH = 0,
+    EAST = 1,
+    SOUTH = 2,
+    WEST = 3
+};
+
+int main() {
+    Color c = RED;
+    cout << c << endl;  // 0
+    
+    Color colors[3] = {RED, GREEN, BLUE};
+    
+    // Switching on enum
+    switch (c) {
+        case RED:
+            cout << "Red" << endl;
+            break;
+        case GREEN:
+            cout << "Green" << endl;
+            break;
+        case BLUE:
+            cout << "Blue" << endl;
+            break;
+    }
+    
+    // Iterate through enum values
+    for (int dir = NORTH; dir <= WEST; dir++) {
+        cout << "Direction: " << dir << endl;
+    }
+    
+    return 0;
+}
+```
+
+## 10.2 Unions
+
+```cpp
+#include <iostream>
+using namespace std;
+
+// Union - all members share same memory
+union Data {
+    int i;
+    float f;
+    char c;
+};
+
+int main() {
+    Data data;
+    
+    cout << "Size of Data: " << sizeof(data) << endl;  // 4 (size of largest member)
+    
+    data.i = 10;
+    cout << "data.i: " << data.i << endl;     // 10
+    cout << "data.f: " << data.f << endl;     // Garbage (overwrites data.i)
+    
+    data.f = 3.14;
+    cout << "data.i: " << data.i << endl;     // Garbage (overwrites by data.f)
+    cout << "data.f: " << data.f << endl;     // 3.14
+    
+    // Union useful for memory-constrained systems
+    union Variant {
+        int int_val;
+        double double_val;
+        char char_val;
+    };
+    
+    cout << "Size of Variant: " << sizeof(Variant) << endl;
+    
+    return 0;
+}
+```
+
+---
+
+# SECTION 11: CONST & VOLATILE
+
+## 11.1 Const Correctness
+
+```cpp
+#include <iostream>
+using namespace std;
+
+int main() {
+    int x = 10;
+    
+    // const variable
+    const int constant = 5;
+    // constant = 10;  // ERROR
+    
+    // pointer to const
+    const int* ptr1 = &x;
+    // *ptr1 = 20;  // ERROR
+    ptr1 = &constant;  // OK
+    
+    // const pointer
+    int* const ptr2 = &x;
+    *ptr2 = 20;  // OK
+    // ptr2 = &constant;  // ERROR
+    
+    // const reference
+    const int& ref = x;
+    // ref = 20;  // ERROR
+    
+    cout << x << endl;
+    cout << *ptr1 << endl;
+    cout << *ptr2 << endl;
+    cout << ref << endl;
+    
+    return 0;
+}
+```
+
+## 11.2 Volatile Keyword
+
+```cpp
+#include <iostream>
+using namespace std;
+
+int main() {
+    // volatile - tells compiler value may change unexpectedly
+    volatile int sensor_reading = 0;  // From hardware
+    
+    // Compiler won't optimize away reads
+    while (sensor_reading < 100) {
+        // Check actual value each time, not cached
+    }
+    
+    // Common use: hardware registers
+    volatile int* hardware_register = (volatile int*)0x1000;
+    
+    // Each access reads from actual location
+    int val1 = *hardware_register;
+    int val2 = *hardware_register;
+    
+    // Without volatile, compiler might optimize one read
+    
+    return 0;
+}
+```
+
+---
+
+# SECTION 12: INLINE FUNCTIONS & MACROS
+
+## 12.1 Macro Functions vs Inline Functions
+
+```cpp
+#include <iostream>
+using namespace std;
+
+// Macro function - preprocessor substitution
+#define ADD_MACRO(a, b) ((a) + (b))
+
+// Inline function - type-safe
+inline int add_inline(int a, int b) {
+    return a + b;
+}
+
+int main() {
+    cout << ADD_MACRO(5, 3) << endl;         // 8
+    cout << add_inline(5, 3) << endl;       // 8
+    
+    // Macro danger: side effects
+    int x = 5, y = 3;
+    cout << ADD_MACRO(x++, y++) << endl;    // Evaluates as: ((x++) + (y++))
+    cout << "x = " << x << ", y = " << y << endl;  // x = 6, y = 4
+    
+    // Inline function is safer
+    x = 5, y = 3;
+    cout << add_inline(x++, y++) << endl;   // 8
+    cout << "x = " << x << ", y = " << y << endl;  // x = 6, y = 4 (correct)
+    
+    return 0;
+}
+```
+
+---
+
+# SECTION 13: NAMESPACES
+
+## 13.1 Namespace Basics
+
+```cpp
+#include <iostream>
+using namespace std;
+
+// Define namespace
+namespace Math {
+    double PI = 3.14159;
+    
+    double circle_area(double radius) {
+        return PI * radius * radius;
+    }
+}
+
+namespace Graphics {
+    double PI = 3.14;  // Different PI
+    
+    void draw_circle(double radius) {
+        cout << "Drawing circle with radius: " << radius << endl;
+    }
+}
+
+int main() {
+    // Access with namespace::name
+    cout << Math::PI << endl;
+    cout << Graphics::PI << endl;
+    
+    cout << Math::circle_area(5) << endl;
+    Graphics::draw_circle(5);
+    
+    return 0;
+}
+```
+
+## 13.2 Namespace Aliases
+
+```cpp
+#include <iostream>
+using namespace std;
+
+namespace Very {
+    namespace Long {
+        namespace Namespace {
+            void function() {
+                cout << "Long namespace function" << endl;
+            }
+        }
+    }
+}
+
+int main() {
+    // Use alias to shorten
+    namespace VLN = Very::Long::Namespace;
+    
+    VLN::function();
+    
+    // or use using
+    using namespace Very::Long::Namespace;
+    function();
+    
+    return 0;
+}
+```
+
+---
+
+# SECTION 14: FILE I/O ADVANCED
+
+## 14.1 Binary File I/O
+
+```cpp
+#include <iostream>
+#include <fstream>
+using namespace std;
+
+int main() {
+    // Write binary data
+    ofstream outfile("data.bin", ios::binary);
+    
+    int numbers[] = {10, 20, 30, 40, 50};
+    outfile.write((char*)numbers, sizeof(numbers));
+    outfile.close();
+    
+    // Read binary data
+    ifstream infile("data.bin", ios::binary);
+    
+    int buffer[5];
+    infile.read((char*)buffer, sizeof(buffer));
+    
+    for (int i = 0; i < 5; i++) {
+        cout << buffer[i] << " ";
+    }
+    cout << endl;
+    
+    infile.close();
+    
+    return 0;
+}
+```
+
+## 14.2 Stream Positioning
+
+```cpp
+#include <iostream>
+#include <fstream>
+using namespace std;
+
+int main() {
+    // Write to file
+    ofstream outfile("test.txt");
+    outfile << "0123456789";
+    outfile.close();
+    
+    // Read with positioning
+    ifstream infile("test.txt");
+    
+    // Tell position
+    cout << "Current position: " << infile.tellg() << endl;
+    
+    // Seek to position
+    infile.seekg(5);
+    char c;
+    infile.get(c);
+    cout << "Character at position 5: " << c << endl;  // '5'
+    
+    // Seek from end
+    infile.seekg(-3, ios::end);
+    infile.get(c);
+    cout << "Third from end: " << c << endl;  // '7'
+    
+    infile.close();
+    
+    return 0;
+}
+```
+
+---
+
+# SECTION 15: ERROR HANDLING & DEBUGGING
+
+## 15.1 Assert Macro
+
+```cpp
+#include <iostream>
+#include <cassert>
+using namespace std;
+
+int divide(int a, int b) {
+    assert(b != 0);  // b must not be zero
+    return a / b;
+}
+
+int main() {
+    cout << divide(10, 2) << endl;  // 5
+    
+    // cout << divide(10, 0) << endl;  // Assertion fails!
+    
+    return 0;
+}
+```
+
+## 15.2 Debug Output
+
+```cpp
+#include <iostream>
+#include <cstdio>
+using namespace std;
+
+#ifdef DEBUG
+    #define DPRINTF(fmt, ...) printf(fmt, __VA_ARGS__)
+#else
+    #define DPRINTF(fmt, ...) (void)0
+#endif
+
+int main() {
+    int x = 42;
+    
+    DPRINTF("Debug: x = %d\n", x);
+    
+    cout << "Regular output" << endl;
     
     return 0;
 }
