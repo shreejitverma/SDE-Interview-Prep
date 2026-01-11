@@ -4206,19 +4206,19 @@ The Standard Template Library (STL) is a collection of template classes and func
 ## STL Components Overview
 
 ```
-┌─────────────────────────────────────────────┐
-│          STL (Standard Template Library)    │
-├─────────────────────────────────────────────┤
-│                                             │
-│  ┌──────────────┐  ┌──────────────┐       │
-│  │ CONTAINERS   │  │  ITERATORS   │       │
-│  ├──────────────┤  ├──────────────┤       │
-│  │ • Sequence   │  │ • Input      │       │
-│  │ • Associative│  │ • Output     │       │
-│  │ • Adapters   │  │ • Forward    │       │
-│  └──────────────┘  │ • Bidirectional
-│                     │ • Random Access│     │
-│  ┌──────────────┐  └──────────────┘       │
+┌───────────────────────────────────────────┐
+│          STL (Standard Template Library)  │
+├───────────────────────────────────────────┤
+│                                           │
+│  ┌──────────────┐  ┌────────────────┐     │
+│  │ CONTAINERS   │  │  ITERATORS     │     │
+│  ├──────────────┤  ├────────────────┤     │
+│  │ • Sequence   │  │ • Input        │     │
+│  │ • Associative│  │ • Output       │     │
+│  │ • Adapters   │  │ • Forward      │     │
+│  └──────────────┘  │ • Bidirectional|     |
+│                    │ • Random Access│     │
+│  ┌──────────────┐  └──────────────--┘     │
 │  │ ALGORITHMS   │  ┌──────────────┐       │
 │  ├──────────────┤  │FUNCTION OBJ. │       │
 │  │ • Searching  │  ├──────────────┤       │
@@ -4226,7 +4226,7 @@ The Standard Template Library (STL) is a collection of template classes and func
 │  │ • Modifying  │  │ • Comparators│       │
 │  │ • Numeric    │  │ • Functors   │       │
 │  └──────────────┘  └──────────────┘       │
-└─────────────────────────────────────────────┘
+└───────────────────────────────────────────┘
 ```
 
 ---
