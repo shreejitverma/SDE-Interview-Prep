@@ -1,10 +1,8 @@
 # LeetCode for Quant Trading & HFT Firms - C++ Complete Masterclass
-## 300+ Problems for Citadel, Jane Street, Hudson River Trading, Two Sigma, Optiver, DRW, IMC
-## ✅ WITH PROBLEM DESCRIPTIONS & LEETCODE LINKS
 
----
+**Objective:** Master C++ coding skills with a focus on quantitative trading and high-frequency trading (HFT) interview problems. This comprehensive guide covers 300+ problems categorized by patterns and difficulty levels, tailored for top quant firms.
 
-## 🎯 TABLE OF CONTENTS & PROGRESS
+### Table of Contents
 
 ### Part 1: Core Patterns (Fundamental)
 - [ ] 1. [Prefix Sum & Array Optimization](#prefix-sum) - 50 problems
