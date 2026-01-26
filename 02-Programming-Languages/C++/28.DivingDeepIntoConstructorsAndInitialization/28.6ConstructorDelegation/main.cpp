@@ -1,0 +1,15 @@
+/*
+ * Author: Shreejit Verma
+ * GitHub: https://github.com/shreejitverma
+ */
+
+#include <iostream>
+#include "square.h"
+
+int main(){
+
+    Square s1(100.0);
+
+
+    return 0;
+}
