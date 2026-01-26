@@ -1,3 +1,8 @@
+/*
+ * Author: Shreejit Verma
+ * GitHub: https://github.com/shreejitverma
+ */
+
 /* This source file must have a .cpp extension so that all C++ compilers
    recognize the extension without flags.  Borland does not know .cxx for
    example.  */
