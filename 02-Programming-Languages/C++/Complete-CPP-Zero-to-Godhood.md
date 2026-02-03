@@ -292,6 +292,7 @@ To ensure clarity, this book follows strict conventions:
 1. [Game Development (ECS Pattern)](#game-development-ecs-pattern)
 2. [Embedded Systems](#embedded-systems)
 3. [High-Frequency Trading (HFT)](#high-frequency-trading-hft)
+4. [Automotive & Aerospace (MISRA C++)](#124-automotive--aerospace-misra-c)
 
 ### PART 13: THE FUTURE - C++26 PREVIEW
 1. [Static Reflection (std::meta)](#static-reflection-stdmeta)
@@ -320,6 +321,7 @@ To ensure clarity, this book follows strict conventions:
 3. [Prefetching](#173-prefetching)
 4. [Micro-Benchmarking](#174-micro-benchmarking-google-benchmark)
 5. [System Warm-up](#175-system-warm-up)
+6. [False Sharing Prevention](#176-false-sharing-prevention)
 
 ### PART 18: WRITING A C++ COMPILER (BASICS)
 1. [Lexical Analysis](#181-lexical-analysis-tokenizer)
@@ -350,6 +352,7 @@ To ensure clarity, this book follows strict conventions:
 2. [Kernel Bypass Networking](#242-kernel-bypass-networking-concept)
 3. [OS Tuning](#243-os-tuning-for-c)
 4. [Zero-Copy Serialization](#244-zero-copy-serialization-capn-proto--flatbuffers)
+5. [LMAX Disruptor Internals](#245-lmax-disruptor-internals)
 
 ### PART 25: INTEROPERABILITY
 1. [Python Bindings (pybind11)](#251-python-bindings-with-pybind11)
@@ -18465,6 +18468,26 @@ public:
 };
 ```
 
+### 12.4 Automotive & Aerospace (MISRA C++)
+Safety-critical systems (ISO 26262) have strict rules.
+
+1.  **No Dynamic Allocation**: `new`/`malloc` are banned to prevent fragmentation.
+2.  **No Exceptions**: Code must have predictable control flow.
+3.  **Static Analysis**: Heavy reliance on tools like Coverity.
+
+```cpp
+// Stack-only pattern
+template <typename T, size_t N>
+class FixedVector {
+    T data[N];
+    size_t count = 0;
+public:
+    void push_back(const T& val) {
+        if (count < N) data[count++] = val;
+    }
+};
+```
+
 ---
 
 ## FINAL COMPREHENSIVE CHECKLIST
@@ -19012,6 +19035,24 @@ The first few thousand iterations of code are slow due to:
 
 **Strategy**: Run a "dummy" loop of your critical path 10,000 times before enabling the network listener or trading signal.
 
+### 17.6 False Sharing Prevention
+When two threads modify variables on the same cache line (64 bytes), they invalidate each other's L1 cache.
+
+```cpp
+#include <new>
+
+struct SharedData {
+    // Bad: a and b likely share a cache line
+    std::atomic<int> a;
+    std::atomic<int> b;
+};
+
+struct PaddedData {
+    alignas(std::hardware_destructive_interference_size) std::atomic<int> a;
+    alignas(std::hardware_destructive_interference_size) std::atomic<int> b;
+};
+```
+
 ---
 
 ## PART 18: WRITING A C++ COMPILER (BASICS)
@@ -19333,6 +19374,17 @@ auto monster = GetMonster(buffer_pointer);
 auto hp = monster->hp(); // Immediate access
 auto pos = monster->pos();
 ```
+
+### 24.5 LMAX Disruptor Internals
+
+The key to Disruptor's speed is the **Sequence Barrier**.
+
+1.  **Cursor**: Monotonically increasing number (atomic).
+2.  **Barrier**: Consumers wait until `cursor >= my_sequence`.
+3.  **Wait Strategy**:
+    *   `BusySpinWaitStrategy`: Loops `while(cursor < seq)`. 100% CPU, 0ns latency.
+    *   `YieldingWaitStrategy`: Loops but calls `std::this_thread::yield()`.
+    *   `BlockingWaitStrategy`: Uses `std::condition_variable` (slowest).
 
 ---
 
