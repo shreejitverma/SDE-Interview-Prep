@@ -180,13 +180,17 @@ To ensure clarity, this book follows strict conventions:
 ### PART 6: C++17 MODERN FEATURES
 1. [C++17 Overview & Significance](#c17-overview--significance)
 2. [Structured Bindings](#structured-bindings)
+    1. [Under the Hood](#12-structured-bindings-under-the-hood)
 3. [Optional & Variants](#optional--variants)
 4. [std::any](#stdany)
 5. [std::string_view](#stdstring_view)
 6. [If constexpr](#if-constexpr)
+    1. [The Death of SFINAE?](#52-the-death-of-sfinae)
 7. [Fold Expressions](#fold-expressions)
+    1. [Advanced Fold Expressions](#62-advanced-fold-expressions)
 8. [Class Template Argument Deduction (CTAD)](#class-template-argument-deduction)
 9. [std::filesystem](#stdfilesystem)
+    1. [Filesystem Deep Dive](#85-filesystem-deep-dive)
 10. [std::invoke](#stdinvoke)
 11. [Parallel Algorithms](#parallel-algorithms)
 12. [Structured Types & More](#structured-types--more)
@@ -11108,6 +11112,26 @@ auto [a, b, c, d] = tuple{1, 2, 3, 4};
 auto [x, y, z] = array{10, 20, 30};
 ```
 
+## 1.2 Structured Bindings Under the Hood
+
+The compiler generates a hidden variable.
+
+**Code:**
+```cpp
+auto [x, y] = my_pair;
+```
+
+**Compiler Logic:**
+```cpp
+auto __hidden = my_pair;
+auto& x = __hidden.first;  // Aliases
+auto& y = __hidden.second;
+```
+
+**Implication**:
+*   `x` and `y` are NOT variables; they are names referring to subobjects of the hidden variable.
+*   If you use `auto& [x, y]`, the hidden variable is a reference.
+
 ---
 
 # SECTION 2: OPTIONAL & VARIANT
@@ -11656,6 +11680,34 @@ void print_info(const T& value) {
 }
 ```
 
+## 5.2 The Death of SFINAE?
+
+`if constexpr` replaces SFINAE for *implementation details*, but not for *overload resolution*.
+
+**SFINAE (Old Way - C++11/14):**
+```cpp
+template <typename T>
+typename std::enable_if<std::is_integral<T>::value, T>::type
+gcd(T a, T b) { return b == 0 ? a : gcd(b, a % b); }
+
+template <typename T>
+typename std::enable_if<!std::is_integral<T>::value, T>::type
+gcd(T a, T b) { static_assert(std::is_integral<T>::value, "GCD not for floats"); }
+```
+
+**if constexpr (New Way - C++17):**
+```cpp
+template <typename T>
+T gcd(T a, T b) {
+    if constexpr (std::is_integral_v<T>) {
+        return b == 0 ? a : gcd(b, a % b);
+    } else {
+        static_assert(always_false<T>, "GCD not for floats");
+    }
+}
+```
+*Result*: Much cleaner, easier to debug errors.
+
 ---
 
 # SECTION 6: FOLD EXPRESSIONS
@@ -11766,6 +11818,27 @@ int maximum(Args... args) {
 }
 
 cout << maximum(3, 1, 4, 1, 5, 9) << "\n";  // 9
+```
+
+## 6.2 Advanced Fold Expressions
+
+The comma operator `,` is the most powerful fold operator. It evaluates LHS, discards it, then RHS.
+
+### Calling Function on Pack
+```cpp
+template<typename... Args>
+void log_all(Args... args) {
+    (..., (cout << "[LOG] " << args << "\n")); 
+}
+```
+
+### Validating All Arguments
+```cpp
+template<typename... Args>
+bool validate_all(Args... args) {
+    // Returns true if ALL args are valid
+    return (... && (args.is_valid()));
+}
 ```
 
 ---
@@ -12018,6 +12091,31 @@ void backup_file(const fs::path& original) {
     fs::copy_file(original, backup, 
                   fs::copy_options::overwrite_existing);
 }
+```
+
+## 8.5 Filesystem Deep Dive
+
+### Exception-Free API
+Most `std::filesystem` functions have an overload taking `std::error_code&` to avoid exceptions.
+
+```cpp
+std::error_code ec;
+if (fs::exists("/tmp/ghost", ec)) {
+    // ...
+}
+if (ec) {
+    std::cerr << "Error: " << ec.message() << "\n";
+}
+```
+
+### Space & Permissions
+```cpp
+auto space = fs::space("/");
+cout << "Free: " << space.free / 1024 / 1024 << " MB\n";
+
+fs::permissions("file.txt", 
+    fs::perms::owner_read | fs::perms::owner_write,
+    fs::perm_options::add);
 ```
 
 ---
