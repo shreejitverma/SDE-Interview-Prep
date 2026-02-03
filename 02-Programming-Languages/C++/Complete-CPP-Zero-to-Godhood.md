@@ -15100,7 +15100,7 @@ opt.transform([](int x) { return x * 2; });
 
 ---
 
-## CHAPTER 14: ADVANCED TOPICS
+## CHAPTER 13: ADVANCED TOPICS
 
 ## TEMPLATE METAPROGRAMMING
 
@@ -16623,7 +16623,7 @@ void add_arrays(float* a, float* b, float* c, int n) {
 
 ---
 
-## CHAPTER 15: PRODUCTION & PROFESSIONAL
+## CHAPTER 14: PRODUCTION & PROFESSIONAL
 
 ## LARGE-SCALE PROJECT ARCHITECTURE
 
@@ -18119,7 +18119,7 @@ Final decision and rationale
 
 ---
 
-## CHAPTER 16: SYSTEM DESIGN CASE STUDIES (C++ EDITION)
+## CHAPTER 15: SYSTEM DESIGN CASE STUDIES (C++ EDITION)
 
 Solving common interview system design problems using C++ primitives.
 
@@ -18213,7 +18213,7 @@ private:
 };
 ```
 
-## CHAPTER 17: CONCURRENCY DESIGN PATTERNS
+## CHAPTER 16: CONCURRENCY DESIGN PATTERNS
 
 ### 10.6.1 Active Object Pattern
 Decouples method execution from invocation. The object owns a thread and a message queue.
@@ -18291,7 +18291,7 @@ private:
 
 ---
 
-## CHAPTER 39: CAPSTONE PROJECT - HIGH-PERFORMANCE ORDER BOOK
+## CHAPTER 17: CAPSTONE PROJECT - HIGH-PERFORMANCE ORDER BOOK
 
 This capstone project integrates C++20/23 features into a realistic high-frequency trading (HFT) component. It demonstrates Modules, Concepts, Ranges, Coroutines, and modern error handling.
 
@@ -18456,7 +18456,7 @@ int main() {
 
 ---
 
-## CHAPTER 37: SPECIALIZED DOMAINS
+## CHAPTER 18: SPECIALIZED DOMAINS
 
 This section explores how C++ is applied in specific high-demand industries.
 
@@ -18763,7 +18763,7 @@ public:
 
 ---
 
-## CHAPTER 13: THE FUTURE - C++26 PREVIEW
+## CHAPTER 19: THE FUTURE - C++26 PREVIEW
 
 As of 2026, the C++26 standard is nearing finalization. Here are the transformative features likely to be included.
 
@@ -18872,7 +18872,7 @@ int main() {
 
 ---
 
-## CHAPTER 24: C++ UNDER THE HOOD
+## CHAPTER 20: C++ UNDER THE HOOD
 
 To truly master C++, you must understand what the compiler generates.
 
@@ -18936,7 +18936,7 @@ BigObject x = create();
 
 ---
 
-## CHAPTER 25: MASTERING THE MEMORY MODEL
+## CHAPTER 21: MASTERING THE MEMORY MODEL
 
 The C++ Memory Model defines how threads interact through memory.
 
@@ -18988,7 +18988,7 @@ void consumer() {
 
 ---
 
-## CHAPTER 29: DISTRIBUTED C++
+## CHAPTER 22: DISTRIBUTED C++
 
 Moving beyond a single process: Networking, RPC, and Consensus.
 
@@ -19065,7 +19065,7 @@ struct Node {
 
 ---
 
-## CHAPTER 19: LOW-LATENCY C++ OPTIMIZATION
+## CHAPTER 23: LOW-LATENCY C++ OPTIMIZATION
 
 For HFT, Game Engines, and Real-Time Systems, every nanosecond counts.
 
@@ -19163,7 +19163,7 @@ struct PaddedData {
 
 ---
 
-## CHAPTER 26: WRITING A C++ COMPILER (BASICS)
+## CHAPTER 24: WRITING A C++ COMPILER (BASICS)
 
 To understand C++, build a toy compiler.
 
@@ -19218,7 +19218,7 @@ Recursively visit the AST.
 
 ---
 
-## CHAPTER 28: THE STANDARD LIBRARY FROM SCRATCH
+## CHAPTER 25: THE STANDARD LIBRARY FROM SCRATCH
 
 Implementing core STL components to understand their cost.
 
@@ -19283,7 +19283,7 @@ public:
 
 ---
 
-## CHAPTER 31: C++ IN THE CLOUD
+## CHAPTER 26: C++ IN THE CLOUD
 
 Modern C++ is a first-class citizen in Cloud Native architectures.
 
@@ -19320,7 +19320,7 @@ int main() {
 
 ---
 
-## CHAPTER 32: CROSS-PLATFORM DEVELOPMENT
+## CHAPTER 27: CROSS-PLATFORM DEVELOPMENT
 
 Write once, run everywhere (Desktop, Web, Mobile).
 
@@ -19356,7 +19356,7 @@ Java_com_example_myapp_MainActivity_stringFromJNI(JNIEnv* env, jobject /* this *
 
 ---
 
-## CHAPTER 33: GUI DEVELOPMENT WITH C++
+## CHAPTER 28: GUI DEVELOPMENT WITH C++
 
 Building desktop applications and tools.
 
@@ -19398,7 +19398,7 @@ void Render() {
 
 ---
 
-## CHAPTER 34: SCIENTIFIC COMPUTING & GPU
+## CHAPTER 29: SCIENTIFIC COMPUTING & GPU
 
 C++ is the language of high-performance math.
 
@@ -19442,7 +19442,7 @@ void launch_kernel(float* d_A, float* d_B, float* d_C, int N) {
 
 ---
 
-## CHAPTER 20: LOW-LATENCY SYSTEM ARCHITECTURE
+## CHAPTER 30: LOW-LATENCY SYSTEM ARCHITECTURE
 
 Designing systems where microseconds matter (Trading, Real-time AdTech).
 
@@ -19514,7 +19514,7 @@ The key to Disruptor's speed is the **Sequence Barrier**.
 
 ---
 
-## CHAPTER 35: INTEROPERABILITY
+## CHAPTER 31: INTEROPERABILITY
 
 C++ rarely lives in isolation. It powers Python, Java, and Browsers.
 
@@ -19552,7 +19552,7 @@ __declspec(dllexport) void DestroyInstance(void* ptr);
 
 ---
 
-## CHAPTER 36: SECURITY ENGINEERING
+## CHAPTER 32: SECURITY ENGINEERING
 
 Writing fast code is easy. Writing fast *and* secure code is Godhood.
 
@@ -19585,7 +19585,7 @@ Compile with: `clang++ -fsanitize=fuzzer fuzz_target.cc`
 
 ---
 
-## CHAPTER 38: THE ULTIMATE ALGORITHM REFERENCE
+## CHAPTER 33: THE ULTIMATE ALGORITHM REFERENCE
 
 Stop writing loops. Use the STL.
 
@@ -19628,7 +19628,7 @@ Stop writing loops. Use the STL.
 
 ---
 
-## CHAPTER 30: NETWORKING FROM SCRATCH
+## CHAPTER 34: NETWORKING FROM SCRATCH
 
 Understanding `asio` requires understanding BSD Sockets.
 
@@ -19694,7 +19694,7 @@ while (true) {
 
 ---
 
-## CHAPTER 27: WRITING A GARBAGE COLLECTOR
+## CHAPTER 35: WRITING A GARBAGE COLLECTOR
 
 C++ has RAII, but implementing a GC teaches you about the stack and object graph.
 
@@ -19740,7 +19740,7 @@ public:
 
 ---
 
-## CHAPTER 18: THE C++ BUILD ECOSYSTEM MASTERY
+## CHAPTER 36: THE C++ BUILD ECOSYSTEM MASTERY
 
 Writing code is half the battle. Building and debugging it is the rest.
 
@@ -19811,7 +19811,7 @@ Detects overflow, null dereference, alignment issues.
 
 ---
 
-## CHAPTER 21: EXTREME LOW LATENCY & HARDWARE MASTERY
+## CHAPTER 37: EXTREME LOW LATENCY & HARDWARE MASTERY
 
 To achieve sub-microsecond latency, you must program the hardware, not just the language.
 
@@ -19896,7 +19896,7 @@ Define Service Level Objectives (SLOs) in percentiles.
 
 ---
 
-## CHAPTER 22: ADVANCED SIMD (AVX2 & AVX-512)
+## CHAPTER 38: ADVANCED SIMD (AVX2 & AVX-512)
 
 Data Parallelism: Processing 8 or 16 numbers in a single CPU cycle.
 
@@ -19935,7 +19935,7 @@ void add_avx2(float* a, float* b, float* c, int N) {
 
 ---
 
-## CHAPTER 23: CUSTOM MEMORY ALLOCATORS
+## CHAPTER 39: CUSTOM MEMORY ALLOCATORS
 
 `malloc` and `new` are general-purpose and slow (locks, fragmentation). Real-time systems use custom allocators.
 
@@ -19988,6 +19988,112 @@ public:
     }
 };
 ```
+
+---
+
+## CHAPTER 40: ABA PROBLEM & MEMORY RECLAMATION
+
+In lock-free programming, memory management is notoriously difficult. The biggest hurdle is the **ABA Problem**.
+
+### 40.1 What is the ABA Problem?
+1.  Thread A reads Head: `A`.
+2.  Thread B pops `A`, pushes `B`, pushes `A`.
+3.  Thread A CAS(`A`, new) succeeds, but the stack is corrupted (A's next pointer changed).
+
+### 40.2 Solutions
+1.  **Tagged Pointers**: Add a version counter. `ptr | (cnt << 48)`.
+2.  **Hazard Pointers**: Thread publishes "I am reading node X". Deleter checks these before freeing.
+3.  **RCU (Read-Copy-Update)**: Wait for a "quiescent state" (all readers finished) before reclaiming memory.
+
+---
+
+## CHAPTER 41: TEMPLATE METAPROGRAMMING PATTERNS
+
+### 41.1 Tag Dispatching
+Select algorithms at compile-time using empty structs.
+
+```cpp
+struct fast_tag {};
+struct safe_tag {};
+
+template<typename T> void impl(T, fast_tag) { /* ... */ }
+template<typename T> void impl(T, safe_tag) { /* ... */ }
+```
+
+### 41.2 Recursive Tuple Implementation
+Building `std::tuple` from scratch.
+
+```cpp
+template<typename... Ts> struct Tuple;
+template<> struct Tuple<> {};
+template<typename Head, typename... Tail>
+struct Tuple<Head, Tail...> : Tuple<Tail...> {
+    Head value;
+};
+```
+
+---
+
+## CHAPTER 42: HIGH-PERFORMANCE DATA STRUCTURES
+
+### 42.1 Bloom Filters
+Probabilistic set. Fast, space-efficient.
+*   False Positive: Possible.
+*   False Negative: Impossible.
+
+### 42.2 Intrusive Containers
+Node stores the "next" pointer. No allocation for nodes. Cache-friendly.
+
+### 42.3 Skip Lists
+Probabilistic balanced tree alternatives. O(log N) average. Friendly for concurrent locking.
+
+---
+
+## CHAPTER 43: REAL-TIME AUDIO & SIGNAL PROCESSING
+
+**The Golden Rule**: In the audio callback, **No Allocations, No Locks, No I/O**.
+
+### 43.1 Lock-Free Ring Buffer (SPSC)
+Communication between UI thread and Audio thread.
+
+```cpp
+// Atomic write index, Atomic read index
+// Pad to 64 bytes to avoid false sharing
+```
+
+---
+
+## CHAPTER 44: ROBOTICS & ROS2 DEVELOPMENT
+
+### 44.1 Zero-Copy IPC
+Passing pointers between processes using shared memory (e.g., Iceoryx). Essential for 4K video streams in autonomous vehicles.
+
+### 44.2 Real-Time Executors
+Deterministic scheduling of callbacks.
+
+---
+
+## CHAPTER 45: MACHINE LEARNING INFRASTRUCTURE
+
+### 45.1 Tensor Implementation
+N-dimensional array with stride manipulation.
+```cpp
+// index = i * stride[0] + j * stride[1] ...
+```
+
+### 45.2 Autodiff
+Forward vs Reverse mode automatic differentiation for gradient descent.
+
+---
+
+## CHAPTER 46: DATABASE INTERNALS (LSM TREES)
+
+### 46.1 Log-Structured Merge-Tree
+Used in LevelDB, RocksDB, BigTable.
+1.  **MemTable**: Sorted in-memory map (Skip List).
+2.  **WAL**: Write-Ahead Log for durability.
+3.  **SSTable**: Immutable sorted file on disk.
+4.  **Compaction**: Merge sort of SSTables.
 
 ---
 
