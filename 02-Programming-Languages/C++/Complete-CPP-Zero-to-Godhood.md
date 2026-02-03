@@ -1797,11 +1797,14 @@ Write a function that takes a `std::string` and prints:
 
 ---
 
+---
 
+# Volume I: Foundations
+
+## CHAPTER 1: ABSOLUTE BASICS (C++98)
+(Content missing, please restore)
 
 ## CHAPTER 2: THE C++ COMPILATION & EXECUTION MODEL
-
-
 To truly understand C++, you must understand how your code transforms from text to a running process. This section demystifies the "black box" of the compiler.
 
 ### 1.5.1 The Build Pipeline: From Source to Binary
@@ -1980,11 +1983,7 @@ int main() {
 
 ---
 
-
-
 ## CHAPTER 3: OBJECT-ORIENTED PROGRAMMING FUNDAMENTALS
-
-
 ## Classes & Objects
 
 ### Basic Class (C++98)
@@ -4357,11 +4356,7 @@ public:
 
 ---
 
-
-
 ## CHAPTER 4: DEEP OBJECT MODEL & VIRTUALIZATION
-
-
 Understanding the "C++ Object Model" distinguishes a user from a master. This section explains what the compiler generates for your classes.
 
 ### 2.5.1 The Cost of Polymorphism (vptr & vtable)
@@ -4429,11 +4424,7 @@ struct Mixed {
 
 ---
 
-
-
 ## CHAPTER 5: C++98/03 STANDARD LIBRARY
-
-
 ## Standard Template Library
 
 ---
@@ -6951,11 +6942,7 @@ int main() {
 
 ---
 
-
-
 ## CHAPTER 6: STL INTERNALS DEEP DIVE
-
-
 To master the STL, you must understand what happens under the hood.
 
 ### 3.5.1 The Truth About std::vector
@@ -7029,11 +7016,9 @@ To master the STL, you must understand what happens under the hood.
 
 ---
 
-
+# Volume II: The Modern Renaissance
 
 ## CHAPTER 7: C++11 REVOLUTION
-
-
 The C++11 standard was a massive upgrade. This is where modern C++ begins!
 
 ---
@@ -9021,11 +9006,7 @@ for (auto& task : tasks) {
 
 ---
 
-
-
 ## CHAPTER 8: ADVANCED MOVE SEMANTICS & VALUE CATEGORIES
-
-
 "Move Semantics" is often misunderstood. It's not magic; it's type casting.
 
 ### 4.5.1 The C++17 Value Category Taxonomy
@@ -9084,11 +9065,7 @@ This is why `T&&` in a template is a **Universal Reference** (Forwarding Referen
 
 ---
 
-
-
 ## CHAPTER 9: C++14 ENHANCEMENTS
-
-
 ## C++14 Overview & Philosophy
 
 C++14 (finalized in 2014) is a **refinement and maintenance release** of C++11.
@@ -10452,12 +10429,7 @@ constexpr bool is_integral_v = is_integral<T>::value;
 
 ---
 
-
-
 ## CHAPTER 10: C++17 MODERN FEATURES
-
-
-
 ## C++17 Overview & Significance
 
 C++17 (finalized in 2017) is a **major language update** rivaling C++11 in scope.
@@ -12108,12 +12080,9 @@ vector v{1, 2, 3};  // Not vector<int>{...}
 
 ---
 
-
+# Volume III: Modern Mastery
 
 ## CHAPTER 11: C++20 REVOLUTIONARY FEATURES
-
-
-
 ## C++20 Overview & Revolutionary Scope
 
 C++20 (finalized in 2020) is a **revolutionary language update** rivaling C++11 in magnitude.
@@ -13635,11 +13604,7 @@ export module app;
 
 ---
 
-
-
 ## CHAPTER 12: C++23 LATEST FEATURES
-
-
 ## C++23 Overview & Direction
 
 C++23 (finalized in 2023) is a **refinement and enhancement** of C++20 with practical improvements.
@@ -14621,11 +14586,7 @@ opt.transform([](int x) { return x * 2; });
 
 ---
 
-
-
 ## CHAPTER 13: THE FUTURE - C++26 PREVIEW
-
-
 As of 2026, the C++26 standard is nearing finalization. Here are the transformative features likely to be included.
 
 ### 13.1 Static Reflection (std::meta)
@@ -14733,11 +14694,9 @@ int main() {
 
 ---
 
-
+# Volume IV: Systems & Architecture
 
 ## CHAPTER 14: ADVANCED TOPICS
-
-
 ## TEMPLATE METAPROGRAMMING
 
 ## 1.1 Compile-Time Computation
@@ -16259,11 +16218,7 @@ void add_arrays(float* a, float* b, float* c, int n) {
 
 ---
 
-
-
 ## CHAPTER 15: PRODUCTION & PROFESSIONAL
-
-
 ## LARGE-SCALE PROJECT ARCHITECTURE
 
 ## 1.1 Layered Architecture
@@ -17758,11 +17713,7 @@ Final decision and rationale
 
 ---
 
-
-
-## CHAPTER 16: SYSTEM DESIGN CASE STUDIES
-
-
+## CHAPTER 16: SYSTEM DESIGN CASE STUDIES (C++ EDITION)
 Solving common interview system design problems using C++ primitives.
 
 ### 10.5.1 LRU Cache
@@ -17855,11 +17806,7 @@ private:
 };
 ```
 
-
-
 ## CHAPTER 17: CONCURRENCY DESIGN PATTERNS
-
-
 ### 10.6.1 Active Object Pattern
 Decouples method execution from invocation. The object owns a thread and a message queue.
 
@@ -17936,11 +17883,7 @@ private:
 
 ---
 
-
-
 ## CHAPTER 18: THE C++ BUILD ECOSYSTEM MASTERY
-
-
 Writing code is half the battle. Building and debugging it is the rest.
 
 ### 30.1 Package Managers Deep Dive
@@ -18010,11 +17953,9 @@ Detects overflow, null dereference, alignment issues.
 
 ---
 
-
+# Volume V: High Performance & Low Latency
 
 ## CHAPTER 19: LOW-LATENCY C++ OPTIMIZATION
-
-
 For HFT, Game Engines, and Real-Time Systems, every nanosecond counts.
 
 ### 17.1 CPU Pipelines & Branch Prediction
@@ -18111,11 +18052,7 @@ struct PaddedData {
 
 ---
 
-
-
 ## CHAPTER 20: LOW-LATENCY SYSTEM ARCHITECTURE
-
-
 Designing systems where microseconds matter (Trading, Real-time AdTech).
 
 ### 24.1 The Disruptor Pattern (C++ Implementation)
@@ -18186,11 +18123,7 @@ The key to Disruptor's speed is the **Sequence Barrier**.
 
 ---
 
-
-
 ## CHAPTER 21: EXTREME LOW LATENCY & HARDWARE MASTERY
-
-
 To achieve sub-microsecond latency, you must program the hardware, not just the language.
 
 ### 31.1 CPU Architecture & Cache Topology
@@ -18274,11 +18207,7 @@ Define Service Level Objectives (SLOs) in percentiles.
 
 ---
 
-
-
-## CHAPTER 22: ADVANCED SIMD
-
-
+## CHAPTER 22: ADVANCED SIMD (AVX2 & AVX-512)
 Data Parallelism: Processing 8 or 16 numbers in a single CPU cycle.
 
 ### 32.1 SIMD Basics & Registers
@@ -18316,11 +18245,7 @@ void add_avx2(float* a, float* b, float* c, int N) {
 
 ---
 
-
-
 ## CHAPTER 23: CUSTOM MEMORY ALLOCATORS
-
-
 `malloc` and `new` are general-purpose and slow (locks, fragmentation). Real-time systems use custom allocators.
 
 ### 33.1 Linear Allocator (Arena)
@@ -18375,11 +18300,9 @@ public:
 
 ---
 
-
+# Volume VI: Deep Internals
 
 ## CHAPTER 24: C++ UNDER THE HOOD
-
-
 To truly master C++, you must understand what the compiler generates.
 
 ### 14.1 Object Layout & ABI (Itanium C++ ABI)
@@ -18442,11 +18365,7 @@ BigObject x = create();
 
 ---
 
-
-
 ## CHAPTER 25: MASTERING THE MEMORY MODEL
-
-
 The C++ Memory Model defines how threads interact through memory.
 
 ### 15.1 Atomicity vs Ordering
@@ -18497,11 +18416,7 @@ void consumer() {
 
 ---
 
-
-
-## CHAPTER 26: WRITING A C++ COMPILER
-
-
+## CHAPTER 26: WRITING A C++ COMPILER (BASICS)
 To understand C++, build a toy compiler.
 
 ### 18.1 Lexical Analysis (Tokenizer)
@@ -18555,11 +18470,7 @@ Recursively visit the AST.
 
 ---
 
-
-
 ## CHAPTER 27: WRITING A GARBAGE COLLECTOR
-
-
 C++ has RAII, but implementing a GC teaches you about the stack and object graph.
 
 ### 29.1 Mark-and-Sweep Basics
@@ -18604,11 +18515,7 @@ public:
 
 ---
 
-
-
 ## CHAPTER 28: THE STANDARD LIBRARY FROM SCRATCH
-
-
 Implementing core STL components to understand their cost.
 
 ### 19.1 Implementing my::vector
@@ -18672,11 +18579,9 @@ public:
 
 ---
 
-
+# Volume VII: Specialized Domains
 
 ## CHAPTER 29: DISTRIBUTED C++
-
-
 Moving beyond a single process: Networking, RPC, and Consensus.
 
 ### 16.1 Serialization (Binary Protocols)
@@ -18752,11 +18657,7 @@ struct Node {
 
 ---
 
-
-
 ## CHAPTER 30: NETWORKING FROM SCRATCH
-
-
 Understanding `asio` requires understanding BSD Sockets.
 
 ### 28.1 Berkeley Sockets API
@@ -18821,11 +18722,7 @@ while (true) {
 
 ---
 
-
-
 ## CHAPTER 31: C++ IN THE CLOUD
-
-
 Modern C++ is a first-class citizen in Cloud Native architectures.
 
 ### 20.1 Microservices with C++
@@ -18861,11 +18758,7 @@ int main() {
 
 ---
 
-
-
 ## CHAPTER 32: CROSS-PLATFORM DEVELOPMENT
-
-
 Write once, run everywhere (Desktop, Web, Mobile).
 
 ### 21.1 WebAssembly (Wasm) with Emscripten
@@ -18900,11 +18793,7 @@ Java_com_example_myapp_MainActivity_stringFromJNI(JNIEnv* env, jobject /* this *
 
 ---
 
-
-
 ## CHAPTER 33: GUI DEVELOPMENT WITH C++
-
-
 Building desktop applications and tools.
 
 ### 22.1 Qt Framework (Retained Mode)
@@ -18945,11 +18834,7 @@ void Render() {
 
 ---
 
-
-
 ## CHAPTER 34: SCIENTIFIC COMPUTING & GPU
-
-
 C++ is the language of high-performance math.
 
 ### 23.1 Eigen (Linear Algebra)
@@ -18992,11 +18877,7 @@ void launch_kernel(float* d_A, float* d_B, float* d_C, int N) {
 
 ---
 
-
-
 ## CHAPTER 35: INTEROPERABILITY
-
-
 C++ rarely lives in isolation. It powers Python, Java, and Browsers.
 
 ### 25.1 Python Bindings with pybind11
@@ -19033,11 +18914,7 @@ __declspec(dllexport) void DestroyInstance(void* ptr);
 
 ---
 
-
-
 ## CHAPTER 36: SECURITY ENGINEERING
-
-
 Writing fast code is easy. Writing fast *and* secure code is Godhood.
 
 ### 26.1 Fuzzing (libFuzzer)
@@ -19069,11 +18946,7 @@ Compile with: `clang++ -fsanitize=fuzzer fuzz_target.cc`
 
 ---
 
-
-
 ## CHAPTER 37: SPECIALIZED DOMAINS
-
-
 This section explores how C++ is applied in specific high-demand industries.
 
 ### 12.1 Game Development (ECS Pattern)
@@ -19379,11 +19252,9 @@ public:
 
 ---
 
-
+# Volume VIII: Expert Mastery
 
 ## CHAPTER 38: ABA PROBLEM & MEMORY RECLAMATION
-
-
 In lock-free programming, memory management is notoriously difficult. The biggest hurdle is the **ABA Problem**.
 
 ### 40.1 What is the ABA Problem?
@@ -19398,11 +19269,7 @@ In lock-free programming, memory management is notoriously difficult. The bigges
 
 ---
 
-
-
 ## CHAPTER 39: TEMPLATE METAPROGRAMMING PATTERNS
-
-
 ### 41.1 Tag Dispatching
 Select algorithms at compile-time using empty structs.
 
@@ -19428,11 +19295,7 @@ struct Tuple<Head, Tail...> : Tuple<Tail...> {
 
 ---
 
-
-
 ## CHAPTER 40: HIGH-PERFORMANCE DATA STRUCTURES
-
-
 ### 42.1 Bloom Filters
 Probabilistic set. Fast, space-efficient.
 *   False Positive: Possible.
@@ -19446,11 +19309,7 @@ Probabilistic balanced tree alternatives. O(log N) average. Friendly for concurr
 
 ---
 
-
-
 ## CHAPTER 41: REAL-TIME AUDIO & SIGNAL PROCESSING
-
-
 **The Golden Rule**: In the audio callback, **No Allocations, No Locks, No I/O**.
 
 ### 43.1 Lock-Free Ring Buffer (SPSC)
@@ -19463,11 +19322,7 @@ Communication between UI thread and Audio thread.
 
 ---
 
-
-
 ## CHAPTER 42: ROBOTICS & ROS2 DEVELOPMENT
-
-
 ### 44.1 Zero-Copy IPC
 Passing pointers between processes using shared memory (e.g., Iceoryx). Essential for 4K video streams in autonomous vehicles.
 
@@ -19476,11 +19331,7 @@ Deterministic scheduling of callbacks.
 
 ---
 
-
-
 ## CHAPTER 43: MACHINE LEARNING INFRASTRUCTURE
-
-
 ### 45.1 Tensor Implementation
 N-dimensional array with stride manipulation.
 ```cpp
@@ -19492,11 +19343,7 @@ Forward vs Reverse mode automatic differentiation for gradient descent.
 
 ---
 
-
-
-## CHAPTER 44: DATABASE INTERNALS
-
-
+## CHAPTER 44: DATABASE INTERNALS (LSM TREES)
 ### 46.1 Log-Structured Merge-Tree
 Used in LevelDB, RocksDB, BigTable.
 1.  **MemTable**: Sorted in-memory map (Skip List).
@@ -19506,11 +19353,9 @@ Used in LevelDB, RocksDB, BigTable.
 
 ---
 
-
+# Volume IX: Final Reference
 
 ## CHAPTER 45: THE ULTIMATE ALGORITHM REFERENCE
-
-
 Stop writing loops. Use the STL.
 
 ### 27.1 Non-Modifying Sequence Operations
@@ -19552,11 +19397,7 @@ Stop writing loops. Use the STL.
 
 ---
 
-
-
-## CHAPTER 46: CAPSTONE PROJECT
-
-
+## CHAPTER 46: CAPSTONE PROJECT - HIGH-PERFORMANCE ORDER BOOK
 This capstone project integrates C++20/23 features into a realistic high-frequency trading (HFT) component. It demonstrates Modules, Concepts, Ranges, Coroutines, and modern error handling.
 
 ### Project Structure
@@ -19719,7 +19560,6 @@ int main() {
 ---
 
 ---
-
 
 
 # APPENDICES
