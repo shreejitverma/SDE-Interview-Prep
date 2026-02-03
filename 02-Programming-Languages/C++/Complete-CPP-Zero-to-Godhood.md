@@ -105,6 +105,7 @@ To ensure clarity, this book follows strict conventions:
    3. [The Rule of Three, Five, and Zero](#24-the-rule-of-three-five-and-zero)
 8. [Inheritance](#inheritance)
 9.  [Virtual Functions & Polymorphism](#virtual-functions--polymorphism)
+    1. [Advanced Polymorphism](#26-advanced-polymorphism)
 
 ### PART 2.5: DEEP OBJECT MODEL & VIRTUALIZATION
 1. [Cost of Polymorphism (vtable)](#251-the-cost-of-polymorphism-vptr--vtable)
@@ -4726,6 +4727,78 @@ int main() {
     
     return 0;
 }
+```
+
+### 2.6 Advanced Polymorphism
+
+#### 1. Virtual Destructors (CRITICAL)
+If you delete a derived object through a base pointer, the base destructor must be virtual. Otherwise, the derived destructor is **never called**, causing memory leaks.
+
+```cpp
+class Base {
+public:
+    // virtual ~Base() {} // Correct
+    ~Base() {} // Dangerous!
+};
+
+class Derived : public Base {
+    int* ptr;
+public:
+    Derived() { ptr = new int[100]; }
+    ~Derived() { delete[] ptr; }
+};
+
+Base* b = new Derived();
+delete b; // If ~Base is not virtual, ~Derived is NOT called! Leak!
+```
+
+#### 2. Covariant Return Types
+An override can return a pointer/reference to a *derived* class, not just the base.
+
+```cpp
+class Shape {
+public:
+    virtual Shape* clone() = 0;
+};
+
+class Circle : public Shape {
+public:
+    // Returns Circle* instead of Shape* - Valid!
+    Circle* clone() override { return new Circle(*this); }
+};
+```
+
+#### 3. RTTI & dynamic_cast
+Run-Time Type Information allows safe downcasting. It uses the `vptr` to check the actual type.
+
+```cpp
+Shape* s = new Circle(5);
+
+// Safe cast: returns nullptr if s is not a Circle
+if (Circle* c = dynamic_cast<Circle*>(s)) {
+    c->special_circle_method();
+} else {
+    std::cout << "Not a circle\n";
+}
+```
+
+#### 4. Static Polymorphism (CRTP)
+Curiously Recurring Template Pattern. Faster than virtual functions (compile-time resolution).
+
+```cpp
+template<typename Derived>
+class Shape {
+public:
+    void draw() {
+        // Compile-time dispatch
+        static_cast<Derived*>(this)->draw_impl();
+    }
+};
+
+class Circle : public Shape<Circle> {
+public:
+    void draw_impl() { cout << "Circle\n"; }
+};
 ```
 
 ---
