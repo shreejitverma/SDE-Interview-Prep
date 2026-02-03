@@ -222,15 +222,18 @@ To ensure clarity, this book follows strict conventions:
 1. [C++23 Overview & Direction](#c23-overview--direction)
 2. [std::print & Formatted Output](#stdprint--formatted-output)
 3. [Deducing This](#deducing-this)
+    1. [Deducing This Deep Dive](#22-deducing-this---beyond-the-basics)
 4. [Range-Based For Loop Enhancements](#range-based-for-loop-enhancements)
 5. [std::expected](#stdexpected)
 6. [std::optional Improvements](#stdoptional-improvements)
 7. [Multidimensional Arrays & Subscript](#multidimensional-arrays--subscript)
+    1. [mdspan Layouts](#63-mdspan-layouts)
 8. [std::stacktrace](#stdstacktrace)
 9. [constexpr Enhancements](#constexpr-enhancements)
 10. [Adaptor Improvements](#adaptor-improvements)
 11. [Library Improvements](#library-improvements)
 12. [Attributes & Deprecations](#attributes--deprecations)
+    1. [Generator Internals](#123-generator-internals)
 13. [C++23 Best Practices](#c23-best-practices)
 
 
@@ -14280,6 +14283,47 @@ if (auto* ptr = opt.get_if_value()) {
 }
 ```
 
+## 2.2 Deducing This - Beyond the Basics
+
+### Recursive Lambdas
+Previously, lambdas couldn't easily call themselves. Now they can via the explicit object parameter.
+
+```cpp
+auto fib = [](this auto&& self, int n) {
+    if (n <= 1) return n;
+    return self(n - 1) + self(n - 2);
+};
+
+cout << fib(10) << "\n"; // 55
+```
+
+### Replacing CRTP
+The Curiously Recurring Template Pattern (CRTP) was used to inject functionality into derived classes. `Deducing this` simplifies it.
+
+**Old CRTP:**
+```cpp
+template <typename Derived>
+struct Addable {
+    Derived& operator+=(const Derived& other) {
+        static_cast<Derived*>(this)->value += other.value;
+        return *static_cast<Derived*>(this);
+    }
+};
+struct Int : Addable<Int> { int value; };
+```
+
+**New C++23 Way:**
+```cpp
+struct Addable {
+    template <typename Self>
+    auto& operator+=(this Self&& self, const Self& other) {
+        self.value += other.value;
+        return self;
+    }
+};
+struct Int : Addable { int value; }; // No template parameter needed!
+```
+
 ---
 
 # SECTION 3: RANGE-BASED FOR LOOP ENHANCEMENTS
@@ -14530,6 +14574,23 @@ int main() {
     
     return 0;
 }
+```
+
+## 6.3 mdspan Layouts
+
+You can control how 2D indices map to the 1D memory.
+
+*   `std::layout_right`: Row-major (default in C++). Index `(i, j)` is `i * N + j`.
+*   `std::layout_left`: Column-major (Fortran/MATLAB). Index `(i, j)` is `j * M + i`.
+
+```cpp
+using RowMajor = std::mdspan<double, std::dextents<size_t, 2>, std::layout_right>;
+using ColMajor = std::mdspan<double, std::dextents<size_t, 2>, std::layout_left>;
+
+// Same data, different interpretation
+std::vector<double> v = {1, 2, 3, 4}; // 2x2 matrix
+RowMajor m_row(v.data(), 2, 2); // [[1, 2], [3, 4]]
+ColMajor m_col(v.data(), 2, 2); // [[1, 3], [2, 4]]
 ```
 
 ---
@@ -14936,6 +14997,24 @@ int main() {
     
     return 0;
 }
+```
+
+### 12.3 Generator Internals
+
+`std::generator` is a coroutine that:
+1.  **Suspends on yield**: `co_yield` suspends execution and returns value to caller.
+2.  **Promise Type**: Handles the `yield_value` call.
+3.  **Recursive**: Can `co_yield` another generator (unlike basic coroutines).
+
+```cpp
+// Pseudocode of how it works
+struct promise_type {
+    int current_value;
+    std::suspend_always yield_value(int value) {
+        current_value = value;
+        return {}; // Suspend
+    }
+};
 ```
 
 ---
