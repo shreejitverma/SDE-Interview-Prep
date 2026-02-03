@@ -116,1851 +116,351 @@ To ensure clarity, this book follows strict conventions:
 
 ## <a name="chapter-1-absolutebasicsc98"></a>CHAPTER 1: ABSOLUTE BASICS (C++98)
 
-## Getting Started
+> "To understand the future of C++, one must first master its past. The foundations laid in 1998 still govern the machine code generated today."
 
-### What is C++?
+## 1.1 Introduction to C++
 
-C++ is a statically-typed, compiled programming language that combines low-level memory manipulation with high-level abstractions. It's the language of choice for performance-critical applications.
+### A Brief History of Power
+C++ was created by Bjarne Stroustrup at Bell Labs in 1979 as "C with Classes". It was designed to add object-oriented features to C without sacrificing performance.
 
-### Your First Program (C++98)
+*   **C++98**: The first ISO standard. Established the core language, OOP, and the STL (Standard Template Library).
+*   **C++03**: A bug-fix release.
+*   **C++11**: "Modern C++". Move semantics, `auto`, lambdas, smart pointers. The biggest shift in the language's history.
+*   **C++14/17**: Refinements. `constexpr`, structured bindings, parallel algorithms.
+*   **C++20**: The "Big Four": Concepts, Ranges, Coroutines, Modules.
+*   **C++23**: `std::print`, `import std`, explicit object parameters ("Deducing this").
+*   **C++26**: (Upcoming) Reflection, Contracts, Senders/Receivers.
+
+### Why C++?
+1.  **Zero-Overhead Abstraction**: You don't pay for what you don't use.
+2.  **Hardware Control**: Direct memory access, pointers, bit manipulation.
+3.  **Performance**: Used in HFT (High-Frequency Trading), Game Engines, Operating Systems.
+
+---
+
+## 1.2 Your First C++ Program
+
+The classic "Hello, World" reveals the compilation structure.
 
 ```cpp
-#include <iostream>
+// hello.cpp
+#include <iostream>  // Preprocessor directive
 
+// Entry point of the program
 int main() {
+    // std::cout: Standard Character Output
+    // <<: Insertion operator
+    // std::endl: Inserts newline and FLUSHES the buffer
     std::cout << "Hello, World!" << std::endl;
-    return 0;
+    
+    return 0; // Return success status to OS
 }
 ```
 
-**Breakdown:**
-- `#include <iostream>` - Include input/output library
-- `std::cout` - Standard output stream (print to console)
-- `std::endl` - End line and flush buffer
-- `main()` - Entry point of program
-- `return 0` - Exit code (0 = success)
+### Deep Dive: `std::endl` vs `\n`
+*   `\n`: Just a newline character. Fast.
+*   `std::endl`: Newline character + `std::flush`. Slower.
+*   **Best Practice**: Prefer `\n` for performance unless you *need* to flush (e.g., logging crash info).
 
-**Compile and run:**
-```bash
-g++ -o hello hello.cpp
-./hello
+---
+
+## 1.3 Fundamental Types & Variables
+
+C++ is a strongly-typed language. Every variable has a type, and that type determines the memory layout.
+
+### Integer Types (Data Model: LP64 on modern Unix)
+| Type | Min Size | Typical Size | Description |
+|------|----------|--------------|-------------|
+| `char` | 1 byte | 1 byte | Character/Byte |
+| `short` | 2 bytes | 2 bytes | Short integer |
+| `int` | 2 bytes | 4 bytes | Standard integer |
+| `long` | 4 bytes | 8 bytes (64-bit OS) | Long integer |
+| `long long` | 8 bytes | 8 bytes | Extended long integer (C++11) |
+
+### Floating Point Types (IEEE 754)
+| Type | Precision | Typical Size |
+|------|-----------|--------------|
+| `float` | ~7 digits | 4 bytes |
+| `double` | ~15 digits | 8 bytes |
+| `long double` | >15 digits | 16 bytes (x86 extended) |
+
+### The `void` Type
+*   **Incomplete type**: Cannot hold a value.
+*   **Uses**: Function return type (returns nothing), `void*` (generic pointer).
+
+### Variable Initialization (The Evolution)
+```cpp
+int a = 5;          // C-style assignment (Copy initialization)
+int b(5);           // Constructor initialization (Direct initialization)
+int c{5};           // Uniform initialization (C++11) - Prevents narrowing!
+int d = {5};        // Copy-list initialization
+```
+
+### Scope & Lifetime
+1.  **Local Scope (Automatic Storage)**: Lives until the block `}` ends. Stored on the **Stack**.
+2.  **Global/Static Scope (Static Storage)**: Lives for the entire program duration. Initialized before `main`. Stored in **Data/BSS**.
+3.  **Dynamic Scope**: Controlled manually (`new`/`delete`). Stored on the **Heap**.
+
+---
+
+## 1.4 Operators & Expressions
+
+### Arithmetic & Compound Assignment
+Standard: `+`, `-`, `*`, `/`, `%`.
+Compound: `+=`, `-=`, `*=`, `/=`, `%=`.
+
+### Comparison & Logical
+*   `==`, `!=`, `<`, `>`, `<=`, `>=`.
+*   `&&` (AND), `||` (OR), `!` (NOT).
+*   **Short-Circuit Evaluation**: In `A && B`, if `A` is false, `B` is never evaluated.
+
+### The Ternary Operator `? :`
+The only ternary operator in C++.
+```cpp
+int max = (a > b) ? a : b;
+```
+*Note*: `? :` yields an lvalue in C++ (you can assign to it!), unlike C.
+```cpp
+(a > b ? a : b) = 10; // Valid C++, sets the larger variable to 10
+```
+
+### Bitwise Operators (The Systems Programmer's Weapon)
+Essential for flags, masks, and optimization.
+
+| Operator | Name | Description | Example (A=5 `0101`, B=3 `0011`) |
+|----------|------|-------------|-----------------------------------|
+| `&` | AND | Both bits must be 1 | `A & B` = 1 (`0001`) |
+| `|` | OR | At least one bit 1 | `A | B` = 7 (`0111`) |
+| `^` | XOR | Different bits = 1 | `A ^ B` = 6 (`0110`) |
+| `~` | NOT | Inverts all bits | `~A` = -6 (Two's comp) |
+| `<<` | Left Shift | Multiply by 2^N | `A << 1` = 10 (`1010`) |
+| `>>` | Right Shift | Divide by 2^N | `A >> 1` = 2 (`0010`) |
+
+**Common Bitwise Tricks:**
+```cpp
+// Check if Odd: (x & 1)
+// Set Nth bit: x |= (1 << N)
+// Clear Nth bit: x &= ~(1 << N)
+// Toggle Nth bit: x ^= (1 << N)
+// Check if Power of 2: (x > 0) && !(x & (x - 1))
 ```
 
 ---
 
-## Basic Types & Variables
+## 1.5 Control Flow
 
-### Fundamental Types (C++98)
-
+### If, Else, Switch
+The standard decision structures.
+**Switch Fallthrough**: C++ switch cases fall through automatically unless `break` is used.
 ```cpp
-#include <iostream>
-#include <limits>
-
-int main() {
-    // Integer types
-    int x = 42;                  // 32-bit integer
-    short y = 10;                // 16-bit integer
-    long z = 1000000;            // 32 or 64-bit integer
-    long long w = 9999999999;    // 64-bit integer
-    
-    // Floating-point types
-    float f = 3.14f;             // 32-bit (4 bytes)
-    double d = 3.14159265;       // 64-bit (8 bytes)
-    long double ld = 3.14159265359L;  // 80+ bits
-    
-    // Character and boolean types
-    char c = 'A';                // Single byte
-    bool b = true;               // true or false
-    
-    // Print sizes
-    std::cout << "int: " << sizeof(int) << " bytes\n";
-    std::cout << "double: " << sizeof(double) << " bytes\n";
-    
-    // Min/max values
-    std::cout << "int max: " << std::numeric_limits<int>::max() << "\n";
-    std::cout << "int min: " << std::numeric_limits<int>::min() << "\n";
-    
-    return 0;
+switch (val) {
+    case 1:
+        doSomething();
+        // FALLTHROUGH (intentional) - often marked with comment or [[fallthrough]] in C++17
+    case 2:
+        doMore();
+        break;
 }
 ```
 
-### Variable Declaration & Initialization
-
+### Loops: While, Do-While, For
 ```cpp
-#include <iostream>
-
-int main() {
-    // C-style initialization
-    int x = 5;
-    float f = 3.14f;
-    
-    // Multiple variables
-    int a, b, c;
-    
-    // Uninitialized (dangerous - contains garbage)
-    int uninitialized;
-    std::cout << uninitialized << "\n";  // Undefined behavior!
-    
-    // Constants
-    const int MAX_SIZE = 100;
-    // MAX_SIZE = 200;  // Error: can't modify const
-    
-    return 0;
+// Canonical For Loop
+for (int i = 0; i < 10; ++i) { // Prefer pre-increment ++i for iterators
+    if (i == 5) continue; // Skip to next iteration
+    if (i == 8) break;    // Exit loop
+    std::cout << i;
 }
 ```
 
-### Scope & Lifetime (C++98)
-
+### The `goto` Statement
+Widely reviled, but useful for:
+1.  Breaking out of nested loops.
+2.  Error cleanup patterns (common in C/Linux Kernel, less common in C++ due to RAII).
 ```cpp
-#include <iostream>
-
-int global = 100;  // Global scope - lives entire program
-
-void function() {
-    int local = 5;      // Local scope - lives only in function
-    {
-        int nested = 10;  // Block scope - lives only in block
-        std::cout << nested << "\n";
-    }
-    // std::cout << nested << "\n";  // Error: nested out of scope
-}
-
-int main() {
-    {
-        int x = 5;
-    }
-    // std::cout << x << "\n";  // Error: x out of scope
-    
-    return 0;
-}
-```
-
-### Deep Dive: The Memory Model of Variables
-
-Understanding *where* your variables live is the first step to Godhood.
-
-1.  **The Stack (Automatic Storage)**:
-    *   **What**: Local variables (`int x`).
-    *   **Speed**: Extremely fast (just moving a pointer).
-    *   **Lifetime**: Scope-based (die at `}`).
-    *   **Limit**: Small (typically 1MB-8MB). Recursion depth is limited by this.
-
-2.  **The Heap (Dynamic Storage)**:
-    *   **What**: `new int`, `malloc`.
-    *   **Speed**: Slower (allocation requires finding free block).
-    *   **Lifetime**: Manual (until `delete` / `free`).
-    *   **Limit**: RAM size (Gigabytes).
-
-3.  **Static/Global (Static Storage)**:
-    *   **What**: Global variables, `static` locals.
-    *   **Speed**: Fast access, but initialization order is tricky.
-    *   **Lifetime**: Program start to program end.
-
-4.  **Registers**:
-    *   **What**: CPU internal storage.
-    *   **Speed**: Instant (0 cycles).
-    *   **Note**: Variables are often optimized into registers, never touching RAM!
-
----
-
-## Operators & Control Flow
-
-### Arithmetic Operators (C++98)
-
-```cpp
-#include <iostream>
-
-int main() {
-    int a = 10, b = 3;
-    
-    std::cout << a + b << "\n";   // 13 (addition)
-    std::cout << a - b << "\n";   // 7 (subtraction)
-    std::cout << a * b << "\n";   // 30 (multiplication)
-    std::cout << a / b << "\n";   // 3 (integer division)
-    std::cout << a % b << "\n";   // 1 (modulo)
-    
-    // Compound assignment
-    int x = 5;
-    x += 3;   // x = 8
-    x -= 2;   // x = 6
-    x *= 2;   // x = 12
-    x /= 3;   // x = 4
-    
-    // Increment/Decrement
-    int y = 5;
-    y++;      // Post-increment: 6
-    ++y;      // Pre-increment: 7
-    y--;      // Post-decrement: 6
-    --y;      // Pre-decrement: 5
-    
-    return 0;
-}
-```
-
-### Deep Dive: Bitwise Mastery (Low-Level Optimization)
-
-Bitwise operators manipulate individual bits. Essential for embedded systems, graphics, and cryptography.
-
-#### The Operators
-*   `&` (AND): Both bits must be 1.
-*   `|` (OR): At least one bit must be 1.
-*   `^` (XOR): Bits must be different.
-*   `~` (NOT): Flip all bits.
-*   `<<` (Left Shift): Multiply by 2^N.
-*   `>>` (Right Shift): Divide by 2^N.
-
-#### God-Tier Tricks
-1.  **Check Odd/Even**: `(x & 1) == 0` (Even). Faster than `% 2`.
-2.  **Multiply by 2**: `x << 1`.
-3.  **Divide by 2**: `x >> 1`.
-4.  **Clear Last Set Bit**: `x & (x - 1)`. Used to count set bits (Kernighan's Algorithm).
-5.  **Check Power of 2**: `(x > 0) && ((x & (x - 1)) == 0)`.
-6.  **Toggle Bit N**: `x ^= (1 << N)`.
-7.  **Set Bit N**: `x |= (1 << N)`.
-8.  **Clear Bit N**: `x &= ~(1 << N)`.
-
-```cpp
-// Fast Power of 2 check
-bool isPowerOf2(int x) {
-    return x && !(x & (x - 1));
-}
-```
-
-### Comparison & Logical Operators (C++98)
-
-```cpp
-#include <iostream>
-
-int main() {
-    int a = 10, b = 5;
-    
-    // Comparison (return true/false)
-    std::cout << (a > b) << "\n";   // 1 (true)
-    std::cout << (a < b) << "\n";   // 0 (false)
-    std::cout << (a == b) << "\n";  // 0 (false)
-    std::cout << (a != b) << "\n";  // 1 (true)
-    std::cout << (a >= b) << "\n";  // 1 (true)
-    std::cout << (a <= b) << "\n";  // 0 (false)
-    
-    // Logical operators
-    bool x = true, y = false;
-    std::cout << (x && y) << "\n";  // 0 (AND)
-    std::cout << (x || y) << "\n";  // 1 (OR)
-    std::cout << (!x) << "\n";      // 0 (NOT)
-    
-    return 0;
-}
-```
-
-### If-Else Statements (C++98)
-
-```cpp
-#include <iostream>
-
-int main() {
-    int score = 85;
-    
-    // Basic if-else
-    if (score >= 90) {
-        std::cout << "Grade: A\n";
-    } else if (score >= 80) {
-        std::cout << "Grade: B\n";
-    } else if (score >= 70) {
-        std::cout << "Grade: C\n";
-    } else {
-        std::cout << "Grade: F\n";
-    }
-    
-    // Ternary operator
-    std::string grade = (score >= 80) ? "Pass" : "Fail";
-    std::cout << grade << "\n";
-    
-    return 0;
-}
-```
-
-### Loops (C++98)
-
-```cpp
-#include <iostream>
-
-int main() {
-    // While loop
-    int i = 0;
-    while (i < 5) {
-        std::cout << i << " ";
-        i++;
-    }
-    std::cout << "\n";
-    
-    // Do-while loop (executes at least once)
-    int j = 0;
-    do {
-        std::cout << j << " ";
-        j++;
-    } while (j < 5);
-    std::cout << "\n";
-    
-    // For loop
-    for (int k = 0; k < 5; k++) {
-        std::cout << k << " ";
-    }
-    std::cout << "\n";
-    
-    // Break and continue
-    for (int m = 0; m < 10; m++) {
-        if (m == 3) continue;  // Skip 3
-        if (m == 7) break;     // Exit at 7
-        std::cout << m << " ";
-    }
-    std::cout << "\n";
-    
-    return 0;
-}
-```
-
-### Switch Statement (C++98)
-
-```cpp
-#include <iostream>
-
-int main() {
-    int day = 3;
-    
-    switch (day) {
-        case 1:
-            std::cout << "Monday\n";
-            break;
-        case 2:
-            std::cout << "Tuesday\n";
-            break;
-        case 3:
-            std::cout << "Wednesday\n";
-            break;
-        default:
-            std::cout << "Unknown day\n";
-    }
-    
-    return 0;
-}
-```
-
----
-
-## Functions
-
-### Function Declaration & Definition (C++98)
-
-```cpp
-#include <iostream>
-
-// Function declaration (prototype)
-int add(int a, int b);
-void print_hello();
-
-// Function definition
-int add(int a, int b) {
-    return a + b;
-}
-
-void print_hello() {
-    std::cout << "Hello!\n";
-}
-
-int main() {
-    print_hello();
-    std::cout << add(5, 3) << "\n";  // 8
-    return 0;
-}
-```
-
-### Parameters & Return Values (C++98)
-
-```cpp
-#include <iostream>
-
-// Pass by value (copy)
-void increment_value(int x) {
-    x++;
-    std::cout << "Inside: " << x << "\n";
-}
-
-// Pass by reference (same variable)
-void increment_ref(int& x) {
-    x++;
-    std::cout << "Inside: " << x << "\n";
-}
-
-// Pass by const reference (can't modify)
-void print_value(const int& x) {
-    std::cout << x << "\n";
-}
-
-// Returning by value
-int get_value() {
-    return 42;
-}
-
-// Returning by reference (dangerous!)
-int& get_global() {
-    static int x = 100;
-    return x;
-}
-
-int main() {
-    int a = 5;
-    
-    increment_value(a);   // Copy passed
-    std::cout << a << "\n";  // Still 5
-    
-    increment_ref(a);      // Reference passed
-    std::cout << a << "\n";  // Now 6
-    
-    print_value(a);        // Can't modify a
-    
-    return 0;
-}
-```
-
-### Default Parameters (C++98)
-
-```cpp
-#include <iostream>
-
-void greet(const std::string& name = "World") {
-    std::cout << "Hello, " << name << "!\n";
-}
-
-int main() {
-    greet();                // Uses default: "World"
-    greet("Alice");         // Uses provided: "Alice"
-    return 0;
-}
-```
-
-### Function Overloading (C++98)
-
-```cpp
-#include <iostream>
-
-// Same function name, different parameters
-int add(int a, int b) {
-    return a + b;
-}
-
-double add(double a, double b) {
-    return a + b;
-}
-
-void print(int x) {
-    std::cout << "Integer: " << x << "\n";
-}
-
-void print(double x) {
-    std::cout << "Double: " << x << "\n";
-}
-
-void print(const std::string& s) {
-    std::cout << "String: " << s << "\n";
-}
-
-int main() {
-    std::cout << add(5, 3) << "\n";      // 8 (int version)
-    std::cout << add(2.5, 3.7) << "\n";  // 6.2 (double version)
-    
-    print(42);           // Integer version
-    print(3.14);         // Double version
-    print("Hello");      // String version
-    
-    return 0;
-}
-```
-
----
-
-## Arrays & Pointers
-
-### Arrays (C++98)
-
-```cpp
-#include <iostream>
-
-int main() {
-    // Array declaration and initialization
-    int arr[5] = {1, 2, 3, 4, 5};
-    
-    // Access elements (0-indexed)
-    std::cout << arr[0] << "\n";  // 1
-    std::cout << arr[4] << "\n";  // 5
-    
-    // Array size (local arrays only)
-    int size = 5;
-    for (int i = 0; i < size; i++) {
-        std::cout << arr[i] << " ";
-    }
-    std::cout << "\n";
-    
-    // 2D array
-    int matrix[3][3] = {
-        {1, 2, 3},
-        {4, 5, 6},
-        {7, 8, 9}
-    };
-    
-    std::cout << matrix[1][2] << "\n";  // 6
-    
-    return 0;
-}
-```
-
-### Pointers (C++98)
-
-```cpp
-#include <iostream>
-
-int main() {
-    int x = 42;
-    
-    // Create a pointer
-    int* ptr = &x;  // & = address-of operator
-    
-    // Dereference pointer
-    std::cout << *ptr << "\n";   // 42 (dereference with *)
-    
-    // Modify through pointer
-    *ptr = 100;
-    std::cout << x << "\n";      // 100
-    
-    // Pointer arithmetic
-    int arr[5] = {10, 20, 30, 40, 50};
-    int* p = arr;           // Array decays to pointer
-    
-    std::cout << p[0] << "\n";     // 10
-    std::cout << *(p+1) << "\n";   // 20
-    std::cout << p[2] << "\n";     // 30
-    
-    // Null pointer
-    int* null_ptr = nullptr;  // or NULL in C++98
-    
-    // Pointer to pointer
-    int** pp = &ptr;
-    std::cout << **pp << "\n";  // 100
-    
-    return 0;
-}
-```
-
-### Dynamic Memory (C++98)
-
-```cpp
-#include <iostream>
-
-int main() {
-    // Allocate single value on heap
-    int* ptr = new int;
-    *ptr = 42;
-    std::cout << *ptr << "\n";
-    delete ptr;          // Must deallocate
-    ptr = nullptr;       // Good practice
-    
-    // Allocate array on heap
-    int* arr = new int[10];
-    for (int i = 0; i < 10; i++) {
-        arr[i] = i * i;
-    }
-    delete[] arr;        // Note the [] for arrays
-    
-    // Forgetting to delete = memory leak
-    int* leaked = new int(100);
-    // delete leaked;  // Forgot this!
-    
-    return 0;
-}
-```
-
-# SECTION 1: ADVANCED POINTERS & MEMORY
-
-## 1.1 Pointer to Const vs Const Pointer
-
-```cpp
-#include <iostream>
-using namespace std;
-
-int main() {
-    int x = 5, y = 10;
-    
-    // Pointer to const - can't modify data
-    const int* ptr1 = &x;
-    // *ptr1 = 10;  // ERROR
-    ptr1 = &y;      // OK - can change pointer
-    
-    // Const pointer - can't modify pointer
-    int* const ptr2 = &x;
-    *ptr2 = 10;     // OK - can change data
-    // ptr2 = &y;   // ERROR
-    
-    // Const pointer to const - can't modify either
-    const int* const ptr3 = &x;
-    // *ptr3 = 10;  // ERROR
-    // ptr3 = &y;   // ERROR
-    
-    return 0;
-}
-```
-
-## 1.2 Void Pointers
-
-```cpp
-#include <iostream>
-using namespace std;
-
-int main() {
-    int x = 42;
-    double y = 3.14;
-    
-    // Void pointer can point to any type
-    void* ptr = &x;
-    cout << *(int*)ptr << endl;  // 42
-    
-    ptr = &y;
-    cout << *(double*)ptr << endl;  // 3.14
-    
-    // Generic function using void*
-    void print_value(void* ptr, char type) {
-        if (type == 'i') {
-            cout << *(int*)ptr << endl;
-        } else if (type == 'd') {
-            cout << *(double*)ptr << endl;
+    for(;;) {
+        for(;;) {
+            if (error) goto cleanup;
         }
     }
-    
-    print_value(&x, 'i');  // 42
-    print_value(&y, 'd');  // 3.14
-    
-    return 0;
-}
-```
-
-## 1.3 Null Pointer Safety
-
-```cpp
-#include <iostream>
-using namespace std;
-
-int main() {
-    int* ptr = NULL;  // Set to null
-    
-    // Always check before dereferencing
-    if (ptr != NULL) {
-        cout << *ptr << endl;
-    } else {
-        cout << "Pointer is NULL" << endl;
-    }
-    
-    // Safer approach
-    ptr = new int(42);
-    if (ptr) {
-        cout << *ptr << endl;
-        delete ptr;
-        ptr = NULL;
-    }
-    
-    return 0;
-}
-```
-
-## 1.4 Memory Layout & Alignment
-
-```cpp
-#include <iostream>
-using namespace std;
-
-int main() {
-    struct Data {
-        char a;     // 1 byte
-        int b;      // 4 bytes
-        double c;   // 8 bytes
-    };
-    
-    cout << "Size of Data: " << sizeof(Data) << endl;
-    // Likely 16 or 24 (due to alignment padding)
-    
-    cout << "Size of char: " << sizeof(char) << endl;      // 1
-    cout << "Size of int: " << sizeof(int) << endl;        // 4
-    cout << "Size of double: " << sizeof(double) << endl;  // 8
-    
-    Data data;
-    cout << "Address of a: " << (void*)&data.a << endl;
-    cout << "Address of b: " << (void*)&data.b << endl;
-    cout << "Address of c: " << (void*)&data.c << endl;
-    
-    return 0;
-}
-```
-
----
-
-# SECTION 2: ADVANCED FUNCTIONS
-
-## 2.1 Variadic Functions
-
-```cpp
-#include <iostream>
-#include <cstdarg>
-using namespace std;
-
-// Function with variable number of arguments
-int sum(int count, ...) {
-    va_list args;
-    va_start(args, count);
-    
-    int total = 0;
-    for (int i = 0; i < count; i++) {
-        total += va_arg(args, int);
-    }
-    
-    va_end(args);
-    return total;
-}
-
-int main() {
-    cout << sum(3, 10, 20, 30) << endl;     // 60
-    cout << sum(5, 1, 2, 3, 4, 5) << endl;  // 15
-    
-    return 0;
-}
-```
-
-## 2.2 Function Recursion
-
-```cpp
-#include <iostream>
-using namespace std;
-
-// Factorial using recursion
-int factorial(int n) {
-    if (n <= 1) {
-        return 1;  // Base case
-    }
-    return n * factorial(n - 1);  // Recursive case
-}
-
-// Fibonacci using recursion (inefficient)
-int fibonacci(int n) {
-    if (n <= 1) return n;
-    return fibonacci(n - 1) + fibonacci(n - 2);
-}
-
-// Fibonacci with memoization (efficient)
-int fib_memo(int n, int memo[]) {
-    if (n <= 1) return n;
-    if (memo[n] != -1) return memo[n];
-    
-    memo[n] = fib_memo(n - 1, memo) + fib_memo(n - 2, memo);
-    return memo[n];
-}
-
-int main() {
-    cout << factorial(5) << endl;  // 120
-    cout << fibonacci(10) << endl; // 55
-    
-    int memo[11];
-    for (int i = 0; i < 11; i++) memo[i] = -1;
-    cout << fib_memo(10, memo) << endl;  // 55
-    
-    return 0;
-}
-```
-
-## 2.3 Inline Functions
-
-```cpp
-#include <iostream>
-using namespace std;
-
-// Inline function - compiler may expand code
-inline int square(int x) {
-    return x * x;
-}
-
-// Inline with condition
-inline double max_value(double a, double b) {
-    return (a > b) ? a : b;
-}
-
-int main() {
-    cout << square(5) << endl;      // 25
-    cout << max_value(3.5, 2.1) << endl;  // 3.5
-    
-    return 0;
-}
-```
-
-## 2.4 Static Functions
-
-```cpp
-#include <iostream>
-using namespace std;
-
-// File scope - only visible in this file
-static void internal_function() {
-    cout << "Internal function" << endl;
-}
-
-// Static with counter
-int get_call_count() {
-    static int count = 0;  // Persists between calls
-    return ++count;
-}
-
-int main() {
-    cout << get_call_count() << endl;  // 1
-    cout << get_call_count() << endl;  // 2
-    cout << get_call_count() << endl;  // 3
-    
-    internal_function();  // OK in same file
-    
-    return 0;
-}
-```
-
----
-
-# SECTION 3: FUNCTION POINTERS & CALLBACKS
-
-## 3.1 Function Pointers
-
-```cpp
-#include <iostream>
-using namespace std;
-
-// Function pointer declaration: return_type (*name)(parameters)
-int add(int a, int b) {
-    return a + b;
-}
-
-int subtract(int a, int b) {
-    return a - b;
-}
-
-int multiply(int a, int b) {
-    return a * b;
-}
-
-int main() {
-    // Declare function pointer
-    int (*operation)(int, int);
-    
-    // Assign function to pointer
-    operation = add;
-    cout << operation(5, 3) << endl;  // 8
-    
-    operation = subtract;
-    cout << operation(5, 3) << endl;  // 2
-    
-    operation = multiply;
-    cout << operation(5, 3) << endl;  // 15
-    
-    return 0;
-}
-```
-
-## 3.2 Function Pointer Arrays
-
-```cpp
-#include <iostream>
-using namespace std;
-
-int add(int a, int b) { return a + b; }
-int subtract(int a, int b) { return a - b; }
-int multiply(int a, int b) { return a * b; }
-int divide(int a, int b) { return a / b; }
-
-int main() {
-    // Array of function pointers
-    int (*operations[4])(int, int) = {
-        add, subtract, multiply, divide
-    };
-    
-    int a = 20, b = 4;
-    
-    for (int i = 0; i < 4; i++) {
-        cout << "Result: " << operations[i](a, b) << endl;
-    }
-    // Output: 24, 16, 80, 5
-    
-    return 0;
-}
-```
-
-## 3.3 Callbacks
-
-```cpp
-#include <iostream>
-#include <vector>
-using namespace std;
-
-// Callback function type
-typedef void (*Callback)(const string&);
-
-class Button {
-private:
-    Callback on_click;
-    
-public:
-    void set_click_handler(Callback callback) {
-        on_click = callback;
-    }
-    
-    void click() {
-        if (on_click) {
-            on_click("Button clicked!");
-        }
-    }
-};
-
-void handle_click(const string& message) {
-    cout << message << endl;
-}
-
-int main() {
-    Button button;
-    button.set_click_handler(handle_click);
-    button.click();  // Output: Button clicked!
-    
-    return 0;
-}
-```
-
----
-
-# SECTION 4: ADVANCED ARRAYS
-
-## 4.1 Dynamic Arrays
-
-```cpp
-#include <iostream>
-using namespace std;
-
-int main() {
-    // 1D dynamic array
-    int size = 5;
-    int* arr = new int[size];
-    
-    for (int i = 0; i < size; i++) {
-        arr[i] = i * 10;
-    }
-    
-    for (int i = 0; i < size; i++) {
-        cout << arr[i] << " ";
-    }
-    cout << endl;
-    
-    delete[] arr;
-    arr = NULL;
-    
-    // 2D dynamic array
-    int rows = 3, cols = 4;
-    int** matrix = new int*[rows];
-    for (int i = 0; i < rows; i++) {
-        matrix[i] = new int[cols];
-    }
-    
-    // Fill matrix
-    for (int i = 0; i < rows; i++) {
-        for (int j = 0; j < cols; j++) {
-            matrix[i][j] = i * cols + j;
-        }
-    }
-    
-    // Delete matrix
-    for (int i = 0; i < rows; i++) {
-        delete[] matrix[i];
-    }
-    delete[] matrix;
-    
-    return 0;
-}
-```
-
-## 4.2 Variable Length Arrays (Non-standard)
-
-```cpp
-#include <iostream>
-using namespace std;
-
-int main() {
-    int size;
-    cout << "Enter size: ";
-    cin >> size;
-    
-    // VLA - not standard but supported by many compilers
-    int arr[size];  // GCC extension
-    
-    for (int i = 0; i < size; i++) {
-        arr[i] = i;
-    }
-    
-    for (int i = 0; i < size; i++) {
-        cout << arr[i] << " ";
-    }
-    cout << endl;
-    
-    return 0;
-}
-```
-
-## 4.3 Array Bounds & Safety
-
-```cpp
-#include <iostream>
-using namespace std;
-
-int main() {
-    int arr[5] = {10, 20, 30, 40, 50};
-    
-    // No bounds checking in C++
-    cout << arr[0] << endl;   // 10 (OK)
-    cout << arr[10] << endl;  // Undefined behavior!
-    
-    // Manual bounds checking
-    int index = 5;
-    if (index >= 0 && index < 5) {
-        cout << arr[index] << endl;
-    } else {
-        cout << "Index out of bounds" << endl;
-    }
-    
-    return 0;
-}
-```
-
----
-
-# SECTION 5: ADVANCED STRINGS
-
-## 5.1 String Manipulation
-
-```cpp
-#include <iostream>
-#include <string>
-#include <cstring>
-using namespace std;
-
-int main() {
-    string s = "Hello World";
-    
-    // Length and capacity
-    cout << "Length: " << s.length() << endl;
-    cout << "Capacity: " << s.capacity() << endl;
-    
-    // Access characters
-    cout << "First char: " << s[0] << endl;
-    cout << "Last char: " << s[s.length() - 1] << endl;
-    
-    // Finding substrings
-    size_t pos = s.find("World");
-    if (pos != string::npos) {
-        cout << "Found at position: " << pos << endl;
-    }
-    
-    // Replace
-    s.replace(6, 5, "C++");
-    cout << s << endl;  // Hello C++
-    
-    // Insert
-    s.insert(5, " there");
-    cout << s << endl;  // Hello there C++
-    
-    // Erase
-    s.erase(5, 6);
-    cout << s << endl;  // Hello C++
-    
-    // Substring
-    cout << s.substr(0, 5) << endl;  // Hello
-    
-    // Reverse
-    reverse(s.begin(), s.end());
-    cout << s << endl;  // ++C olleH
-    
-    return 0;
-}
-```
-
-## 5.2 String Conversion
-
-```cpp
-#include <iostream>
-#include <string>
-#include <sstream>
-#include <cstdlib>
-using namespace std;
-
-int main() {
-    // String to number (C style)
-    string s1 = "42";
-    int num = atoi(s1.c_str());
-    cout << num << endl;
-    
-    string s2 = "3.14";
-    double dbl = atof(s2.c_str());
-    cout << dbl << endl;
-    
-    // Number to string (using stringstream)
-    stringstream ss;
-    ss << 42 << " " << 3.14 << " " << true;
-    string result = ss.str();
-    cout << result << endl;  // 42 3.14 1
-    
-    // Reverse conversion
-    stringstream ss2("100 200 300");
-    int a, b, c;
-    ss2 >> a >> b >> c;
-    cout << a << " " << b << " " << c << endl;  // 100 200 300
-    
-    return 0;
-}
-```
-
-## 5.3 String Tokenization
-
-```cpp
-#include <iostream>
-#include <string>
-#include <cstring>
-using namespace std;
-
-int main() {
-    string line = "apple,banana,orange,grape";
-    
-    // Using stringstream and getline
-    stringstream ss(line);
-    string token;
-    
-    while (getline(ss, token, ',')) {
-        cout << token << endl;
-    }
-    // Output: apple, banana, orange, grape
-    
-    // Using strtok (C style)
-    char str[] = "hello world how are you";
-    char* ptr = strtok(str, " ");
-    
-    while (ptr != NULL) {
-        cout << ptr << endl;
-        ptr = strtok(NULL, " ");
-    }
-    // Output: hello, world, how, are, you
-    
-    return 0;
-}
-```
-
----
-
-# SECTION 6: BITWISE OPERATIONS
-
-## 6.1 Bitwise Operators
-
-```cpp
-#include <iostream>
-using namespace std;
-
-int main() {
-    unsigned char a = 5;   // 0101
-    unsigned char b = 3;   // 0011
-    
-    // AND
-    cout << (a & b) << endl;  // 0001 = 1
-    
-    // OR
-    cout << (a | b) << endl;  // 0111 = 7
-    
-    // XOR
-    cout << (a ^ b) << endl;  // 0110 = 6
-    
-    // NOT (bitwise complement)
-    cout << (~a) << endl;     // 1010 = 250 (for unsigned char)
-    
-    // Left shift
-    cout << (a << 1) << endl; // 1010 = 10
-    
-    // Right shift
-    cout << (b >> 1) << endl; // 0001 = 1
-    
-    return 0;
-}
-```
-
-## 6.2 Bit Manipulation Techniques
-
-```cpp
-#include <iostream>
-using namespace std;
-
-int main() {
-    unsigned int num = 5;  // 0101
-    
-    // Check if bit is set
-    int bit_pos = 2;
-    bool is_set = (num >> bit_pos) & 1;
-    cout << "Bit " << bit_pos << " is: " << is_set << endl;
-    
-    // Set a bit
-    num |= (1 << 1);  // Set bit 1
-    cout << "After setting bit 1: " << num << endl;  // 7 (0111)
-    
-    // Clear a bit
-    num &= ~(1 << 1);  // Clear bit 1
-    cout << "After clearing bit 1: " << num << endl;  // 5 (0101)
-    
-    // Toggle a bit
-    num ^= (1 << 0);  // Toggle bit 0
-    cout << "After toggling bit 0: " << num << endl;  // 4 (0100)
-    
-    // Count set bits
-    unsigned int count = 0;
-    unsigned int temp = num;
-    while (temp) {
-        count += temp & 1;
-        temp >>= 1;
-    }
-    cout << "Number of set bits: " << count << endl;
-    
-    return 0;
-}
-```
-
----
-
-# SECTION 7: PREPROCESSOR DIRECTIVES
-
-## 7.1 #define and #include
-
-```cpp
-// Define constants
-#define PI 3.14159
-#define MAX_SIZE 100
-#define SQUARE(x) ((x) * (x))
-
-// Conditional compilation
-#define DEBUG
-
-#ifdef DEBUG
-    #define LOG(msg) cout << msg << endl
-#else
-    #define LOG(msg)  // Do nothing in release
-#endif
-
-#include <iostream>
-using namespace std;
-
-int main() {
-    cout << "PI = " << PI << endl;
-    
-    int arr[MAX_SIZE];
-    cout << "Array size: " << sizeof(arr) << endl;
-    
-    cout << "Square of 5: " << SQUARE(5) << endl;
-    
-    LOG("Debug message");
-    
-    return 0;
-}
-```
-
-## 7.2 Conditional Compilation
-
-```cpp
-#include <iostream>
-using namespace std;
-
-// Platform-specific code
-#ifdef _WIN32
-    #define OS "Windows"
-#elif __APPLE__
-    #define OS "macOS"
-#elif __linux__
-    #define OS "Linux"
-#else
-    #define OS "Unknown"
-#endif
-
-int main() {
-    cout << "Running on: " << OS << endl;
-    
-#if defined(DEBUG)
-    cout << "Debug mode" << endl;
-#else
-    cout << "Release mode" << endl;
-#endif
-    
-    return 0;
-}
-```
-
-## 7.3 Pragma Directives
-
-```cpp
-#include <iostream>
-using namespace std;
-
-// Disable specific warnings
-#pragma warning(disable: 4996)  // MSVC
-
-// Pack structure
-#pragma pack(1)
-struct PackedData {
-    char a;
-    int b;
-    double c;
-};
-#pragma pack()
-
-int main() {
-    cout << "Size of PackedData: " << sizeof(PackedData) << endl;
-    // Without pragma pack: 24 (aligned)
-    // With pragma pack: 13 (packed)
-    
-    return 0;
-}
-```
-
----
-
-# SECTION 8: TYPE CASTING
-
-## 8.1 C-Style Casting
-
-```cpp
-#include <iostream>
-#include <cmath>
-using namespace std;
-
-int main() {
-    double d = 3.14;
-    
-    // C-style cast (avoid in modern C++)
-    int i = (int)d;  // 3
-    cout << i << endl;
-    
-    int x = 65;
-    char c = (char)x;  // 'A'
-    cout << c << endl;
-    
-    float f = (float)d;
-    cout << f << endl;
-    
-    return 0;
-}
-```
-
-## 8.2 Implicit Conversions
-
-```cpp
-#include <iostream>
-using namespace std;
-
-int main() {
-    // Implicit conversions
-    int x = 5;
-    double d = x;  // int to double (automatic)
-    cout << d << endl;  // 5.0
-    
-    double d2 = 3.9;
-    int y = d2;  // double to int (loses precision)
-    cout << y << endl;  // 3
-    
-    // Char arithmetic
-    char c = 'A';
-    int code = c;  // char to int (gets ASCII)
-    cout << code << endl;  // 65
-    
-    return 0;
-}
-```
-
----
-
-# SECTION 9: ADVANCED CONTROL FLOW
-
-## 9.1 Ternary Operator
-
-```cpp
-#include <iostream>
-using namespace std;
-
-int main() {
-    int x = 10, y = 5;
-    
-    // condition ? true_value : false_value
-    int max = (x > y) ? x : y;
-    cout << "Max: " << max << endl;  // 10
-    
-    // Nested ternary (use with caution)
-    int age = 20;
-    string status = (age < 18) ? "Minor" : (age < 65) ? "Adult" : "Senior";
-    cout << status << endl;
-    
-    // String ternary
-    cout << (x % 2 == 0 ? "Even" : "Odd") << endl;
-    
-    return 0;
-}
-```
-
-## 9.2 goto Statement (Avoid)
-
-```cpp
-#include <iostream>
-using namespace std;
-
-int main() {
-    // goto is generally discouraged
-    int x = 0;
-    
-loop:
-    cout << x << " ";
-    x++;
-    
-    if (x < 5) {
-        goto loop;
-    }
-    cout << endl;
-    
-    // Better alternative: use loops
-    for (int i = 0; i < 5; i++) {
-        cout << i << " ";
-    }
-    cout << endl;
-    
-    return 0;
-}
-```
-
-## 9.3 Label & Goto for Error Handling
-
-```cpp
-#include <iostream>
-#include <cstdlib>
-using namespace std;
-
-int main() {
-    FILE* file = NULL;
-    char* buffer = NULL;
-    
-    // Using goto for cleanup (rare acceptable use)
-    file = fopen("test.txt", "r");
-    if (!file) {
-        cout << "Failed to open file" << endl;
-        goto cleanup;
-    }
-    
-    buffer = new char[100];
-    if (!buffer) {
-        cout << "Memory allocation failed" << endl;
-        goto cleanup;
-    }
-    
-    // Do work...
-    
 cleanup:
-    if (buffer) delete[] buffer;
-    if (file) fclose(file);
-    
-    return 0;
+    release_resources();
+```
+
+---
+
+## 1.6 Functions
+
+### Declaration vs Definition
+*   **Declaration (Prototype)**: Tells compiler function exists (`int add(int, int);`).
+*   **Definition**: The actual code.
+
+### Calling Conventions
+1.  **Pass by Value**: Copy is made. Expensive for large objects. `void f(int x);`
+2.  **Pass by Pointer**: Address is passed. Efficient. `void f(int* x);`
+3.  **Pass by Reference**: Alias to original. Efficient + Cleaner syntax. `void f(int& x);`
+4.  **Pass by Const Reference**: Efficient read-only access. `void f(const string& s);`
+
+### Default Arguments
+Can act as simple overloading.
+```cpp
+void log(const char* msg, int level = 1); // level defaults to 1
+```
+
+### Function Overloading
+Same name, different parameter signature.
+```cpp
+int add(int a, int b);
+double add(double a, double b);
+```
+*Note*: Return type is NOT part of the signature. You cannot overload based only on return type.
+
+### Inline Functions
+`inline` hint suggests the compiler replace the call with the function body to save overhead.
+```cpp
+inline int square(int x) { return x * x; }
+```
+*Modern Reality*: Compilers ignore this keyword for optimization (they decide freely), but `inline` is crucial for **ODR (One Definition Rule)** to allow function definitions in header files.
+
+### Recursion
+A function calling itself. Must have a base case to avoid **Stack Overflow**.
+```cpp
+int factorial(int n) {
+    return (n <= 1) ? 1 : n * factorial(n - 1);
 }
 ```
 
 ---
 
-# SECTION 10: ENUMERATION & UNIONS
+## 1.7 Pointers & References
 
-## 10.1 Enumerations
+### Pointers: The Sword of C++
+A pointer stores a memory address.
 
 ```cpp
-#include <iostream>
-using namespace std;
-
-// Enum definition
-enum Color { RED, GREEN, BLUE };
-
-enum Direction {
-    NORTH = 0,
-    EAST = 1,
-    SOUTH = 2,
-    WEST = 3
-};
-
-int main() {
-    Color c = RED;
-    cout << c << endl;  // 0
-    
-    Color colors[3] = {RED, GREEN, BLUE};
-    
-    // Switching on enum
-    switch (c) {
-        case RED:
-            cout << "Red" << endl;
-            break;
-        case GREEN:
-            cout << "Green" << endl;
-            break;
-        case BLUE:
-            cout << "Blue" << endl;
-            break;
-    }
-    
-    // Iterate through enum values
-    for (int dir = NORTH; dir <= WEST; dir++) {
-        cout << "Direction: " << dir << endl;
-    }
-    
-    return 0;
-}
+int x = 10;
+int* p = &x;     // & = Address-of operator
+int val = *p;    // * = Dereference operator (get value at address)
 ```
 
-## 10.2 Unions
+**Pointer Arithmetic**:
+`p + 1` increases the address by `sizeof(T)`.
+*   If `p` is `int*` (4 bytes) at `0x1000`, `p+1` is `0x1004`.
 
+**Generic Pointer (`void*`)**:
+Can hold any address, but cannot be dereferenced directly. Must cast first.
+
+**Null Pointers**:
+*   C++98: `NULL` (usually defined as `0`).
+*   C++11: `nullptr` (type-safe). **Always use `nullptr` in modern code.**
+
+### Pointers to Pointers
 ```cpp
-#include <iostream>
-using namespace std;
+int** pp = &p; // Stores address of a pointer
+```
 
-// Union - all members share same memory
+### References: The Shield
+A reference is an **alias** for an existing variable.
+```cpp
+int& ref = x; // ref IS x. 
+```
+*   Must be initialized upon declaration.
+*   Cannot be null.
+*   Cannot be reseated (changed to refer to another variable).
+*   Syntactic sugar for a const pointer (usually implemented that way).
+
+---
+
+## 1.8 Arrays
+
+### Static Arrays (Stack)
+Fixed size, determined at compile time.
+```cpp
+int arr[5] = {1, 2, 3}; // Remaining elements 0-initialized
+```
+**Array Decay**: An array name decays into a pointer to its first element when passed to a function. `void f(int arr[])` is exactly `void f(int* arr)`.
+
+### Multidimensional Arrays
+```cpp
+int matrix[3][3]; // Row-major order (contiguous in memory)
+```
+
+### Dynamic Arrays (Heap)
+Allocated at runtime.
+```cpp
+int size = 10;
+int* heapArr = new int[size];
+// ... use ...
+delete[] heapArr; // MUST use delete[], not delete!
+```
+
+---
+
+## 1.9 User-Defined Types
+
+### Structures (`struct`)
+Groups variables under one name. In C++, `struct` and `class` are identical except default access (struct=public, class=private).
+```cpp
+struct Point {
+    int x;
+    int y;
+};
+```
+
+### Enumerations (`enum`)
+Defines a set of named integer constants.
+```cpp
+enum Color { RED, GREEN, BLUE }; // RED=0, GREEN=1...
+Color c = RED;
+```
+
+### Unions (`union`)
+All members share the **same memory location**. Size is the size of the largest member.
+```cpp
 union Data {
     int i;
     float f;
     char c;
-};
-
-int main() {
-    Data data;
-    
-    cout << "Size of Data: " << sizeof(data) << endl;  // 4 (size of largest member)
-    
-    data.i = 10;
-    cout << "data.i: " << data.i << endl;     // 10
-    cout << "data.f: " << data.f << endl;     // Garbage (overwrites data.i)
-    
-    data.f = 3.14;
-    cout << "data.i: " << data.i << endl;     // Garbage (overwrites by data.f)
-    cout << "data.f: " << data.f << endl;     // 3.14
-    
-    // Union useful for memory-constrained systems
-    union Variant {
-        int int_val;
-        double double_val;
-        char char_val;
-    };
-    
-    cout << "Size of Variant: " << sizeof(Variant) << endl;
-    
-    return 0;
-}
+}; // Useful for low-level memory reinterpretation
 ```
 
 ---
 
-# SECTION 11: CONST & VOLATILE
+## 1.10 The Preprocessor
 
-## 11.1 Const Correctness
+Runs before the compiler. Handles text manipulation.
 
-```cpp
-#include <iostream>
-using namespace std;
-
-int main() {
-    int x = 10;
-    
-    // const variable
-    const int constant = 5;
-    // constant = 10;  // ERROR
-    
-    // pointer to const
-    const int* ptr1 = &x;
-    // *ptr1 = 20;  // ERROR
-    ptr1 = &constant;  // OK
-    
-    // const pointer
-    int* const ptr2 = &x;
-    *ptr2 = 20;  // OK
-    // ptr2 = &constant;  // ERROR
-    
-    // const reference
-    const int& ref = x;
-    // ref = 20;  // ERROR
-    
-    cout << x << endl;
-    cout << *ptr1 << endl;
-    cout << *ptr2 << endl;
-    cout << ref << endl;
-    
-    return 0;
-}
-```
-
-## 11.2 Volatile Keyword
-
-```cpp
-#include <iostream>
-using namespace std;
-
-int main() {
-    // volatile - tells compiler value may change unexpectedly
-    volatile int sensor_reading = 0;  // From hardware
-    
-    // Compiler won't optimize away reads
-    while (sensor_reading < 100) {
-        // Check actual value each time, not cached
-    }
-    
-    // Common use: hardware registers
-    volatile int* hardware_register = (volatile int*)0x1000;
-    
-    // Each access reads from actual location
-    int val1 = *hardware_register;
-    int val2 = *hardware_register;
-    
-    // Without volatile, compiler might optimize one read
-    
-    return 0;
-}
-```
+1.  **#include**: Pastes file content.
+2.  **#define**: Text replacement macros.
+    ```cpp
+    #define MAX(a,b) ((a) > (b) ? (a) : (b))
+    ```
+    *Danger*: Macros have no scope or type safety.
+3.  **Conditional Compilation**:
+    ```cpp
+    #ifdef DEBUG
+        log("Debug mode");
+    #endif
+    ```
+4.  **#pragma**: Compiler-specific directives (e.g., `#pragma once`).
 
 ---
 
-# SECTION 12: INLINE FUNCTIONS & MACROS
+## 1.11 C-Style Casting
 
-## 12.1 Macro Functions vs Inline Functions
-
+Before `static_cast`, `reinterpret_cast`, etc., there was only the C-cast.
 ```cpp
-#include <iostream>
-using namespace std;
-
-// Macro function - preprocessor substitution
-#define ADD_MACRO(a, b) ((a) + (b))
-
-// Inline function - type-safe
-inline int add_inline(int a, int b) {
-    return a + b;
-}
-
-int main() {
-    cout << ADD_MACRO(5, 3) << endl;         // 8
-    cout << add_inline(5, 3) << endl;       // 8
-    
-    // Macro danger: side effects
-    int x = 5, y = 3;
-    cout << ADD_MACRO(x++, y++) << endl;    // Evaluates as: ((x++) + (y++))
-    cout << "x = " << x << ", y = " << y << endl;  // x = 6, y = 4
-    
-    // Inline function is safer
-    x = 5, y = 3;
-    cout << add_inline(x++, y++) << endl;   // 8
-    cout << "x = " << x << ", y = " << y << endl;  // x = 6, y = 4 (correct)
-    
-    return 0;
-}
+double d = 3.14;
+int i = (int)d; // Truncates
 ```
+It is powerful but dangerous. It tries every possible conversion (const_cast, static_cast, reinterpret_cast) until one works.
 
 ---
-
-# SECTION 13: NAMESPACES
-
-## 13.1 Namespace Basics
-
-```cpp
-#include <iostream>
-using namespace std;
-
-// Define namespace
-namespace Math {
-    double PI = 3.14159;
-    
-    double circle_area(double radius) {
-        return PI * radius * radius;
-    }
-}
-
-namespace Graphics {
-    double PI = 3.14;  // Different PI
-    
-    void draw_circle(double radius) {
-        cout << "Drawing circle with radius: " << radius << endl;
-    }
-}
-
-int main() {
-    // Access with namespace::name
-    cout << Math::PI << endl;
-    cout << Graphics::PI << endl;
-    
-    cout << Math::circle_area(5) << endl;
-    Graphics::draw_circle(5);
-    
-    return 0;
-}
-```
-
-## 13.2 Namespace Aliases
-
-```cpp
-#include <iostream>
-using namespace std;
-
-namespace Very {
-    namespace Long {
-        namespace Namespace {
-            void function() {
-                cout << "Long namespace function" << endl;
-            }
-        }
-    }
-}
-
-int main() {
-    // Use alias to shorten
-    namespace VLN = Very::Long::Namespace;
-    
-    VLN::function();
-    
-    // or use using
-    using namespace Very::Long::Namespace;
-    function();
-    
-    return 0;
-}
-```
-
----
-
-# SECTION 14: FILE I/O ADVANCED
-
-## 14.1 Binary File I/O
-
-```cpp
-#include <iostream>
-#include <fstream>
-using namespace std;
-
-int main() {
-    // Write binary data
-    ofstream outfile("data.bin", ios::binary);
-    
-    int numbers[] = {10, 20, 30, 40, 50};
-    outfile.write((char*)numbers, sizeof(numbers));
-    outfile.close();
-    
-    // Read binary data
-    ifstream infile("data.bin", ios::binary);
-    
-    int buffer[5];
-    infile.read((char*)buffer, sizeof(buffer));
-    
-    for (int i = 0; i < 5; i++) {
-        cout << buffer[i] << " ";
-    }
-    cout << endl;
-    
-    infile.close();
-    
-    return 0;
-}
-```
-
-## 14.2 Stream Positioning
-
-```cpp
-#include <iostream>
-#include <fstream>
-using namespace std;
-
-int main() {
-    // Write to file
-    ofstream outfile("test.txt");
-    outfile << "0123456789";
-    outfile.close();
-    
-    // Read with positioning
-    ifstream infile("test.txt");
-    
-    // Tell position
-    cout << "Current position: " << infile.tellg() << endl;
-    
-    // Seek to position
-    infile.seekg(5);
-    char c;
-    infile.get(c);
-    cout << "Character at position 5: " << c << endl;  // '5'
-    
-    // Seek from end
-    infile.seekg(-3, ios::end);
-    infile.get(c);
-    cout << "Third from end: " << c << endl;  // '7'
-    
-    infile.close();
-    
-    return 0;
-}
-```
-
----
-
-# SECTION 15: ERROR HANDLING & DEBUGGING
-
-## 15.1 Assert Macro
-
-```cpp
-#include <iostream>
-#include <cassert>
-using namespace std;
-
-int divide(int a, int b) {
-    assert(b != 0);  // b must not be zero
-    return a / b;
-}
-
-int main() {
-    cout << divide(10, 2) << endl;  // 5
-    
-    // cout << divide(10, 0) << endl;  // Assertion fails!
-    
-    return 0;
-}
-```
-
-## 15.2 Debug Output
-
-```cpp
-#include <iostream>
-#include <cstdio>
-using namespace std;
-
-#ifdef DEBUG
-    #define DPRINTF(fmt, ...) printf(fmt, __VA_ARGS__)
-#else
-    #define DPRINTF(fmt, ...) (void)0
-#endif
-
-int main() {
-    int x = 42;
-    
-    DPRINTF("Debug: x = %d\n", x);
-    
-    cout << "Regular output" << endl;
-    
-    
-    return 0;
-}
-```
-
----
-
 ## <a name="chapter-2-theccompilationexecutionmodel"></a>CHAPTER 2: THE C++ COMPILATION & EXECUTION MODEL
 
-To truly understand C++, you must understand how your code transforms from text to a running process. This section demystifies the "black box" of the compiler.
+To truly understand C++, you must understand how your code transforms from text to a running process. This section demystifies the "black box" of the compiler and the runtime environment.
 
-### 1.5.1 The Build Pipeline: From Source to Binary
+### 2.1 The Build Pipeline: From Source to Binary
 
 The "compilation" process actually consists of four distinct stages:
 
@@ -1969,27 +469,31 @@ The "compilation" process actually consists of four distinct stages:
     *   Expands macros (`#define`).
     *   Includes headers (`#include`) recursively.
     *   Handles conditionals (`#ifdef`).
+    *   *Tool*: `cpp` or `g++ -E`.
     *   *Output*: A single "Translation Unit" (pure C++ source code).
 
 2.  **Compilation**: Syntax to Assembly.
     *   **Lexical Analysis**: Tokenizes source (e.g., `int`, `main`, `{`).
     *   **Parsing**: Builds Abstract Syntax Tree (AST).
-    *   **Semantic Analysis**: Type checking, overload resolution.
+    *   **Semantic Analysis**: Type checking, overload resolution, template instantiation.
     *   **Optimization**: Dead code elimination, loop unrolling, inlining (O1, O2, O3).
     *   **Code Generation**: Generates assembly code for the target architecture (x86_64, ARM64).
+    *   *Tool*: `cc1plus` or `g++ -S`.
     *   *Output*: Assembly file (`.s` or `.asm`).
 
 3.  **Assembly**: Assembly to Machine Code.
     *   Translates mnemonics (`MOV`, `ADD`) to opcodes (`0x89`, `0x01`).
+    *   *Tool*: `as`.
     *   *Output*: Object file (`.o` or `.obj`). Contains machine code but with *unresolved symbols*.
 
 4.  **Linking**: Combining Object Files.
     *   Combines multiple `.o` files and static libraries (`.a`/`.lib`).
     *   Resolves symbols: Matches function calls in one TU to definitions in another.
     *   Relocates addresses: Adjusts internal pointers.
+    *   *Tool*: `ld`.
     *   *Output*: Executable (`.exe` or ELF/Mach-O) or Shared Library (`.so`/`.dll`).
 
-### 1.5.2 Translation Units (TU) & Linkage
+### 2.2 Translation Units (TU) & Linkage
 
 A **Translation Unit** is the input to the compiler after preprocessing. It is the fundamental unit of compilation.
 
@@ -2021,7 +525,7 @@ extern int global_var;        // Declares existence of external symbol
 // extern int internal_var;   // ERROR: Linker error (symbol not found)
 ```
 
-### 1.5.3 The One Definition Rule (ODR)
+### 2.3 The One Definition Rule (ODR)
 
 The ODR is the most important rule in C++ linking.
 
@@ -2045,7 +549,21 @@ int x = 10; // DEFINITION (allocates memory)
 // Fix (C++17): Use 'inline int x = 10;'
 ```
 
-### 1.5.4 Process Memory Layout
+### 2.4 Name Mangling & ABI
+
+#### Name Mangling
+In C, function names are used directly (`_add`). In C++, functions can be overloaded, so the compiler must generate unique names including parameter types.
+*   `void foo(int)` -> `_Z3fooi` (Itanium ABI example)
+*   `void foo(double)` -> `_Z3food`
+
+**Implication**: You cannot link C code against C++ code directly without `extern "C"`, which disables mangling.
+
+#### Application Binary Interface (ABI)
+Defines how binary code interacts (calling convention, class layout, vtable layout).
+*   **Stability**: C++ does NOT guarantee a stable ABI between compiler versions (e.g., MSVC 2017 vs 2019 might differ, though they try to be compatible).
+*   **Standard Layout**: `extern "C"` functions use the C ABI, which is stable.
+
+### 2.5 Process Memory Layout
 
 When your C++ program runs, the OS allocates virtual memory segments:
 
@@ -2074,7 +592,7 @@ When your C++ program runs, the OS allocates virtual memory segments:
     *   LIFO (Last-In, First-Out).
     *   *Stack Overflow*: Exceeding stack size (e.g., deep recursion).
 
-### 1.5.5 Program Startup: Before main()
+### 2.6 Program Startup: Before main()
 
 `main()` is NOT the first thing to run.
 
@@ -2088,7 +606,7 @@ When your C++ program runs, the OS allocates virtual memory segments:
     *   Destructors of global/static objects run **after** `main` returns.
     *   `atexit` handlers run.
 
-### 1.5.6 Deep Dive into Data Representation
+### 2.7 Deep Dive into Data Representation
 
 To understand bugs like integer overflow and floating-point inaccuracy, you must know how data is stored bits-by-bits.
 
@@ -2118,5051 +636,491 @@ Most modern systems use **Two's Complement** for signed integers.
 #include <cmath>
 #include <limits>
 
-int main() {
-    float a = 0.1f;
-    float b = 0.2f;
-    if (a + b == 0.3f) {
-        std::cout << "Math works!\n";
-    } else {
-        std::cout << "Math is broken: " << (a+b) << "\n"; // Prints 0.30000001
-    }
-    
-    // Correct comparison
-    if (std::abs((a + b) - 0.3f) < 1e-5) {
-        std::cout << "Close enough!\n";
-    }
-}
-```
-
----
-
 ## <a name="chapter-3-objectorientedprogrammingfundamentals"></a>CHAPTER 3: OBJECT-ORIENTED PROGRAMMING FUNDAMENTALS
 
-## Classes & Objects
+Object-Oriented Programming (OOP) in C++ is not just about syntax; it's about modeling complex systems through **abstraction**, **encapsulation**, **inheritance**, and **polymorphism**.
 
-### Basic Class (C++98)
+### 3.1 Classes & Objects
 
-```cpp
-#include <iostream>
-#include <string>
-
-class Person {
-public:      // Publicly accessible
-    std::string name;
-    int age;
-    
-    void introduce() {
-        std::cout << "I am " << name << ", age " << age << "\n";
-    }
-    
-private:     // Private to class
-    std::string secret;
-    
-    void hidden_method() {
-        // Can't be called from outside
-    }
-    
-protected:   // Protected (for inheritance)
-    std::string protected_data;
-};
-
-int main() {
-    Person p;
-    p.name = "Alice";
-    p.age = 30;
-    p.introduce();
-    
-    // p.secret = "xyz";  // Error: private
-    // p.hidden_method();  // Error: private
-    
-    return 0;
-}
-```
-
-### Class Member Variables & Methods (C++98)
+A **Class** is a blueprint defining data (attributes) and behavior (methods). An **Object** is an instance of a class.
 
 ```cpp
-#include <iostream>
-
-class BankAccount {
-private:
-    double balance;
-    std::string owner;
-public:
-    // Constructor
-    BankAccount(const std::string& name, double initial) 
-        : owner(name), balance(initial) {}
-    
-    // Methods
-    void deposit(double amount) {
-        if (amount > 0) {
-            balance += amount;
-        }
-    }
-    
-    void withdraw(double amount) {
-        if (amount > 0 && amount <= balance) {
-            balance -= amount;
-        }
-    }
-    
-    double get_balance() const {  // const = doesn't modify
-        return balance;
-    }
-    
-    std::string get_owner() const {
-        return owner;
-    }
-};
-
-int main() {
-    BankAccount account("Alice", 1000);
-    account.deposit(500);
-    account.withdraw(200);
-    
-    std::cout << account.get_owner() << ": $" 
-              << account.get_balance() << "\n";
-    
-    return 0;
-}
-```
-## Classes & Objects - Complete Mastery
-
-### What is a Class?
-
-A **class** is a blueprint for creating objects. It defines:
-- **Attributes** (member variables) - what the object has
-- **Methods** (member functions) - what the object does
-
-### What is an Object?
-
-An **object** is an instance of a class - a concrete entity with specific values.
-
-## The Four Pillars of OOP
-
-Object-Oriented Programming is built on four fundamental concepts that distinguish it from procedural programming:
-
-### 1. **Encapsulation** - Data Hiding
-### 2. **Inheritance** - Code Reuse
-### 3. **Polymorphism** - Flexible Behavior
-### 4. **Abstraction** - Simplified Interface
-
-```cpp
-#include <iostream>
-#include <string>
-using namespace std;
-
-// Class definition
 class Car {
-public:  // Public members accessible from outside
-    // Member variables
-    string brand;
-    string color;
-    int year;
-    int speed;
-    
-    // Member functions
+    // By default, members are private in class (public in struct)
+    int speed; 
+
+public:
+    // Member function
     void accelerate() {
-        speed += 10;
-        cout << brand << " accelerates to " << speed << " mph\n";
-    }
-    
-    void brake() {
-        if (speed >= 10) {
-            speed -= 10;
-        } else {
-            speed = 0;
-        }
-        cout << brand << " brakes to " << speed << " mph\n";
-    }
-    
-    void displayInfo() {
-        cout << year << " " << color << " " << brand 
-             << " at " << speed << " mph\n";
+        this->speed += 10; // 'this' is a pointer to the current object
     }
 };
-
-int main() {
-    // Creating objects (instances)
-    Car car1;
-    car1.brand = "Toyota";
-    car1.color = "Red";
-    car1.year = 2020;
-    car1.speed = 0;
-    
-    Car car2;
-    car2.brand = "BMW";
-    car2.color = "Blue";
-    car2.year = 2022;
-    car2.speed = 0;
-    
-    // Using objects
-    car1.displayInfo();
-    car1.accelerate();
-    car1.accelerate();
-    car1.brake();
-    
-    car2.displayInfo();
-    car2.accelerate();
-    car2.accelerate();
-    car2.accelerate();
-    
-    return 0;
-}
 ```
 
-**Output:**
-```
-2020 Red Toyota at 0 mph
-Toyota accelerates to 10 mph
-Toyota accelerates to 20 mph
-Toyota brakes to 10 mph
-2022 Blue BMW at 0 mph
-BMW accelerates to 10 mph
-BMW accelerates to 20 mph
-BMW accelerates to 30 mph
-```
+#### The `this` Pointer
+*   `this` is a hidden pointer passed to all non-static member functions.
+*   Type: `Car* const` (pointer to mutable Car) or `const Car* const` (in const methods).
 
----
+### 3.2 Encapsulation & Access Control
 
-## Encapsulation
+Control who sees your data. This is the first line of defense against bugs.
 
-**Encapsulation** is hiding internal details and exposing only what's necessary.
+1.  **public**: Accessible by everyone.
+2.  **private**: Accessible only by the class itself (and friends).
+3.  **protected**: Accessible by the class and derived classes.
 
-### Access Levels (Access Modifiers)
-
+#### Friend Declarations
+A mechanism to bypass encapsulation. Use sparingly!
 ```cpp
-#include <iostream>
-#include <string>
-using namespace std;
-
-class BankAccount {
-private:  // Only accessible within this class
-    double balance;
-    string accountNumber;
-    
-    // Private helper function
-    bool validateAmount(double amount) {
-        return amount > 0;
-    }
-    
-public:  // Accessible from anywhere
-    // Constructor
-    BankAccount(string accNum, double initialBalance)
-        : accountNumber(accNum), balance(initialBalance) {
-        cout << "Account created: " << accountNumber << "\n";
-    }
-    
-    // Public methods to access private data
-    void deposit(double amount) {
-        if (validateAmount(amount)) {
-            balance += amount;
-            cout << "Deposited: $" << amount 
-                 << ". New balance: $" << balance << "\n";
-        } else {
-            cout << "Invalid deposit amount\n";
-        }
-    }
-    
-    void withdraw(double amount) {
-        if (validateAmount(amount) && amount <= balance) {
-            balance -= amount;
-            cout << "Withdrew: $" << amount 
-                 << ". New balance: $" << balance << "\n";
-        } else {
-            cout << "Cannot withdraw that amount\n";
-        }
-    }
-    
-    double getBalance() const {  // const = doesn't modify
-        return balance;
-    }
-    
-    string getAccountNumber() const {
-        return accountNumber;
-    }
-
-protected:  // Accessible in this class and derived classes
-    void logTransaction(string type) {
-        cout << "Transaction (" << type << ") logged\n";
-    }
-};
-
-int main() {
-    BankAccount account("ACC123456", 1000);
-    
-    account.deposit(500);
-    account.withdraw(200);
-    account.withdraw(2000);  // Won't work - insufficient funds
-    
-    cout << "Final balance: $" << account.getBalance() << "\n";
-    
-    // These would cause compile errors:
-    // account.balance = 10000;        // Error: private
-    // account.validateAmount(100);    // Error: private
-    // account.accountNumber = "123";  // Error: private
-    
-    return 0;
-}
-```
-
-**Output:**
-```
-Account created: ACC123456
-Deposited: $500. New balance: $1500
-Withdrew: $200. New balance: $1300
-Cannot withdraw that amount
-Final balance: $1300
-```
-
-**Why Encapsulation?**
-- **Data Protection**: Prevents invalid states
-- **Control**: You control how data is modified
-- **Flexibility**: Can change internal implementation without affecting users
-- **Security**: Sensitive data is hidden
-- **Maintainability**: Easy to modify implementation later
-
----
-
-## Constructors & Destructors - Complete Guide
-
-### Types of Constructors
-
-```cpp
-#include <iostream>
-#include <string>
-using namespace std;
-
-class Student {
-private:
-    string name;
-    int rollNumber;
-    double gpa;
-    
-public:
-    // 1. Default Constructor (no parameters)
-    Student() : name("Unknown"), rollNumber(0), gpa(0.0) {
-        cout << "Default constructor called\n";
-    }
-    
-    // 2. Parameterized Constructor
-    Student(string n, int roll, double g) 
-        : name(n), rollNumber(roll), gpa(g) {
-        cout << "Parameterized constructor called\n";
-    }
-    
-    // 3. Copy Constructor (copies another object)
-    Student(const Student& other) 
-        : name(other.name), rollNumber(other.rollNumber), gpa(other.gpa) {
-        cout << "Copy constructor called\n";
-    }
-    
-    // 4. Move Constructor (C++11) - transfers ownership
-    Student(Student&& other) noexcept
-        : name(move(other.name)), rollNumber(other.rollNumber), gpa(other.gpa) {
-        other.rollNumber = 0;
-        other.gpa = 0.0;
-        cout << "Move constructor called\n";
-    }
-    
-    // Destructor - called when object is destroyed
-    ~Student() {
-        cout << "Destructor called for " << name << "\n";
-    }
-    
-    // Getter methods
-    void display() const {
-        cout << "Name: " << name << ", Roll: " << rollNumber 
-             << ", GPA: " << gpa << "\n";
-    }
-};
-
-int main() {
-    cout << "--- Creating objects ---\n";
-    
-    // Default constructor
-    Student s1;
-    s1.display();
-    cout << "\n";
-    
-    // Parameterized constructor
-    Student s2("Alice", 101, 3.8);
-    s2.display();
-    cout << "\n";
-    
-    // Copy constructor (explicit)
-    Student s3 = s2;  // Calls copy constructor
-    s3.display();
-    cout << "\n";
-    
-    // Move constructor
-    Student s4 = move(s2);  // Calls move constructor
-    s4.display();
-    cout << "\n";
-    
-    cout << "--- Objects going out of scope ---\n";
-    
-    return 0;  // Destructors called here for all objects
-}
-```
-
-**Output:**
-```
---- Creating objects ---
-Default constructor called
-Name: Unknown, Roll: 0, GPA: 0
-
-Parameterized constructor called
-Name: Alice, Roll: 101, GPA: 3.8
-
-Copy constructor called
-Name: Alice, Roll: 101, GPA: 3.8
-
-Move constructor called
-Name: Alice, Roll: 101, GPA: 3.8
-
---- Objects going out of scope ---
-Destructor called for Alice
-Destructor called for Alice
-Destructor called for Unknown
-Destructor called for Unknown
-```
-
-### Initialization Lists (Member Initializer List)
-
-```cpp
-#include <iostream>
-using namespace std;
-
-class Rectangle {
-private:
+class Box {
     int width;
-    int height;
-
 public:
-    // Using initialization list
-    // This is ALWAYS better than assignment in constructor body
-    Rectangle(int w, int h) : width(w), height(h) {
-        cout << "Rectangle created\n";
-    }
-    
-    // Alternative (NOT recommended) - less efficient
-    // Rectangle(int w, int h) {
-    //     width = w;    // Assignment, not initialization
-    //     height = h;
-    // }
-    
-    int getArea() const {
-        return width * height;
-    }
+    friend void printWidth(Box box); // Friend function
+    friend class BoxFactory;         // Friend class
 };
-
-int main() {
-    Rectangle rect(5, 10);
-    cout << "Area: " << rect.getArea() << "\n";
-    
-    return 0;
-}
 ```
 
-**Why initialization lists?**
-- **Efficiency**: Initializes variables once (not create then assign)
-- **Const members**: Can only be initialized with initializer list
-- **Reference members**: Must use initializer list
-- **Base class initialization**: Only way to initialize base class
+### 3.3 The Object Lifecycle
 
----
+#### Constructors
+1.  **Default Constructor**: `ClassName()`. Generated if no other constructor is defined.
+2.  **Parameterized Constructor**: `ClassName(int x)`.
+3.  **Copy Constructor**: `ClassName(const ClassName& other)`. Creates a new object from an existing one.
+4.  **Move Constructor** (C++11): `ClassName(ClassName&& other)`. Transfers resources.
 
-## Inheritance - All Types
+#### Member Initializer Lists
+**ALWAYS** use them.
+```cpp
+// GOOD
+Car(int s) : speed(s) {} 
 
-**Inheritance** allows a class to inherit properties and methods from another class.
+// BAD (Double initialization: default construct + assign)
+Car(int s) { speed = s; } 
+```
 
-### Single Inheritance
+#### Destructors
+Cleans up resources.
+*   Name: `~ClassName()`.
+*   **Virtual Destructors**: Essential if you delete derived objects via base pointers.
+
+#### Advanced Constructors (C++11)
+*   **Delegating Constructors**: One constructor calls another.
+    ```cpp
+    Point() : Point(0, 0) {} // Calls Point(int, int)
+    ```
+*   **Inheriting Constructors**: `using Base::Base;`.
+
+### 3.4 The Rule of Three, Five, and Zero
+
+The golden rules of C++ resource management.
+
+1.  **Rule of Three (C++98)**: If you implement a Destructor, Copy Constructor, or Copy Assignment Operator, you likely need all three.
+    *   *Why?* You are probably managing a raw pointer/handle.
+
+2.  **Rule of Five (C++11)**: Add Move Constructor and Move Assignment Operator to the Rule of Three.
+    *   *Why?* To support efficient transfers of ownership.
+
+3.  **Rule of Zero (Modern Best Practice)**: Do **NOT** declare any of these 5 functions manually.
+    *   *How?* Use resource handles like `std::string`, `std::vector`, `std::unique_ptr` that handle their own memory.
 
 ```cpp
-#include <iostream>
-#include <string>
-using namespace std;
-
-// Base class (Parent class)
-class Animal {
-protected:  // Accessible in derived classes
-    string name;
-    int age;
+// Rule of Five Example
+class Buffer {
+    int* data;
+    size_t size;
 
 public:
-    Animal(string n, int a) : name(n), age(a) {
-        cout << "Animal constructor called\n";
+    // 1. Destructor
+    ~Buffer() { delete[] data; }
+
+    // 2. Copy Constructor (Deep Copy)
+    Buffer(const Buffer& other) : size(other.size), data(new int[other.size]) {
+        std::copy(other.data, other.data + size, data);
     }
-    
-    virtual void eat() {
-        cout << name << " is eating\n";
-    }
-    
-    virtual void sleep() {
-        cout << name << " is sleeping\n";
-    }
-    
-    virtual void makeSound() {
-        cout << name << " makes a sound\n";
-    }
-    
-    virtual ~Animal() {
-        cout << "Animal destructor called\n";
-    }
-};
 
-// Derived class (Child class)
-class Dog : public Animal {
-private:
-    string breed;
-
-public:
-    Dog(string n, int a, string b) 
-        : Animal(n, a), breed(b) {
-        cout << "Dog constructor called\n";
-    }
-    
-    // Override methods from base class
-    void makeSound() override {
-        cout << name << " barks: Woof! Woof!\n";
-    }
-    
-    void fetch() {
-        cout << name << " is fetching the ball\n";
-    }
-    
-    ~Dog() {
-        cout << "Dog destructor called\n";
-    }
-};
-
-class Cat : public Animal {
-private:
-    bool isIndoor;
-
-public:
-    Cat(string n, int a, bool indoor) 
-        : Animal(n, a), isIndoor(indoor) {
-        cout << "Cat constructor called\n";
-    }
-    
-    void makeSound() override {
-        cout << name << " meows: Meow! Meow!\n";
-    }
-    
-    void scratch() {
-        cout << name << " is scratching the furniture\n";
-    }
-    
-    ~Cat() {
-        cout << "Cat destructor called\n";
-    }
-};
-
-int main() {
-    cout << "=== Creating Dog ===\n";
-    Dog dog("Rex", 3, "Golden Retriever");
-    dog.eat();
-    dog.sleep();
-    dog.makeSound();
-    dog.fetch();
-    
-    cout << "\n=== Creating Cat ===\n";
-    Cat cat("Whiskers", 2, true);
-    cat.eat();
-    cat.makeSound();
-    cat.scratch();
-    
-    cout << "\n=== Using Polymorphism ===\n";
-    Animal* animals[2] = {&dog, &cat};
-    for (int i = 0; i < 2; i++) {
-        animals[i]->makeSound();
-    }
-    
-    cout << "\n=== Destructors ===\n";
-    return 0;
-}
-```
-
-**Output:**
-```
-=== Creating Dog ===
-Animal constructor called
-Dog constructor called
-Rex is eating
-Rex is sleeping
-Rex barks: Woof! Woof!
-Rex is fetching the ball
-
-=== Creating Cat ===
-Animal constructor called
-Cat constructor called
-Whiskers is eating
-Whiskers meows: Meow! Meow!
-Whiskers is scratching the furniture
-
-=== Using Polymorphism ===
-Rex barks: Woof! Woof!
-Whiskers meows: Meow! Meow!
-
-=== Destructors ===
-Cat destructor called
-Animal destructor called
-Dog destructor called
-Animal destructor called
-```
-
-### Multiple Inheritance
-
-```cpp
-#include <iostream>
-#include <string>
-using namespace std;
-
-class Flyer {
-public:
-    virtual void fly() {
-        cout << "Flying...\n";
-    }
-    virtual ~Flyer() {}
-};
-
-class Swimmer {
-public:
-    virtual void swim() {
-        cout << "Swimming...\n";
-    }
-    virtual ~Swimmer() {}
-};
-
-// Duck inherits from both Flyer and Swimmer
-class Duck : public Flyer, public Swimmer {
-private:
-    string name;
-
-public:
-    Duck(string n) : name(n) {}
-    
-    void fly() override {
-        cout << name << " is flying\n";
-    }
-    
-    void swim() override {
-        cout << name << " is swimming\n";
-    }
-    
-    void quack() {
-        cout << name << " quacks: Quack! Quack!\n";
-    }
-};
-
-int main() {
-    Duck duck("Donald");
-    duck.fly();
-    duck.swim();
-    duck.quack();
-    
-    return 0;
-}
-```
-
-### Multilevel Inheritance
-
-```cpp
-#include <iostream>
-#include <string>
-using namespace std;
-
-// Level 1: Base class
-class Vehicle {
-protected:
-    string brand;
-    
-public:
-    Vehicle(string b) : brand(b) {}
-    virtual void start() {
-        cout << brand << " is starting\n";
-    }
-    virtual ~Vehicle() {}
-};
-
-// Level 2: Derived from Vehicle
-class Car : public Vehicle {
-protected:
-    int numDoors;
-    
-public:
-    Car(string b, int doors) : Vehicle(b), numDoors(doors) {}
-    void start() override {
-        cout << brand << " car with " << numDoors 
-             << " doors is starting\n";
-    }
-    virtual ~Car() {}
-};
-
-// Level 3: Derived from Car
-class ElectricCar : public Car {
-private:
-    int batteryPercentage;
-    
-public:
-    ElectricCar(string b, int doors, int battery)
-        : Car(b, doors), batteryPercentage(battery) {}
-    
-    void start() override {
-        cout << "Electric " << brand << " (Battery: " 
-             << batteryPercentage << "%) starting\n";
-    }
-};
-
-int main() {
-    ElectricCar tesla("Tesla", 4, 95);
-    tesla.start();
-    
-    return 0;
-}
-```
-
-### Hierarchical Inheritance
-
-```cpp
-#include <iostream>
-#include <string>
-using namespace std;
-
-class Employee {
-protected:
-    string name;
-    double salary;
-    
-public:
-    Employee(string n, double s) : name(n), salary(s) {}
-    virtual void work() = 0;
-    virtual ~Employee() {}
-};
-
-class Manager : public Employee {
-public:
-    Manager(string n, double s) : Employee(n, s) {}
-    void work() override {
-        cout << name << " is managing the team\n";
-    }
-};
-
-class Developer : public Employee {
-private:
-    string language;
-    
-public:
-    Developer(string n, double s, string lang)
-        : Employee(n, s), language(lang) {}
-    void work() override {
-        cout << name << " is coding in " << language << "\n";
-    }
-};
-
-class Designer : public Employee {
-public:
-    Designer(string n, double s) : Employee(n, s) {}
-    void work() override {
-        cout << name << " is designing UI/UX\n";
-    }
-};
-
-int main() {
-    Manager manager("Alice", 80000);
-    Developer dev("Bob", 70000, "C++");
-    Designer designer("Carol", 65000);
-    
-    manager.work();
-    dev.work();
-    designer.work();
-    
-    return 0;
-}
-```
-
----
-
-## Polymorphism
-
-**Polymorphism** means "many forms" - the ability of objects to take multiple forms.
-
-### Compile-Time Polymorphism (Static Polymorphism)
-
-#### 1. Function Overloading
-
-```cpp
-#include <iostream>
-#include <string>
-using namespace std;
-
-class Calculator {
-public:
-    // Overload for integers
-    int add(int a, int b) {
-        cout << "Adding integers\n";
-        return a + b;
-    }
-    
-    // Overload for doubles
-    double add(double a, double b) {
-        cout << "Adding doubles\n";
-        return a + b;
-    }
-    
-    // Overload for strings (concatenation)
-    string add(string a, string b) {
-        cout << "Concatenating strings\n";
-        return a + b;
-    }
-    
-    // Overload with different number of parameters
-    int add(int a, int b, int c) {
-        cout << "Adding three integers\n";
-        return a + b + c;
-    }
-};
-
-int main() {
-    Calculator calc;
-    
-    cout << "Result: " << calc.add(5, 3) << "\n";
-    cout << "Result: " << calc.add(2.5, 3.7) << "\n";
-    cout << "Result: " << calc.add("Hello", " World") << "\n";
-    cout << "Result: " << calc.add(5, 3, 2) << "\n";
-    
-    return 0;
-}
-```
-
-#### 2. Operator Overloading
-
-```cpp
-#include <iostream>
-using namespace std;
-
-class Complex {
-private:
-    double real, imag;
-    
-public:
-    Complex(double r = 0, double i = 0) : real(r), imag(i) {}
-    
-    // Overload + operator
-    Complex operator+(const Complex& other) const {
-        return Complex(real + other.real, imag + other.imag);
-    }
-    
-    // Overload - operator
-    Complex operator-(const Complex& other) const {
-        return Complex(real - other.real, imag - other.imag);
-    }
-    
-    // Overload * operator
-    Complex operator*(const Complex& other) const {
-        double r = real * other.real - imag * other.imag;
-        double i = real * other.imag + imag * other.real;
-        return Complex(r, i);
-    }
-    
-    // Overload == operator
-    bool operator==(const Complex& other) const {
-        return real == other.real && imag == other.imag;
-    }
-    
-    // Overload << operator for output
-    friend ostream& operator<<(ostream& os, const Complex& c) {
-        os << c.real << " + " << c.imag << "i";
-        return os;
-    }
-    
-    // Overload = operator (assignment)
-    Complex& operator=(const Complex& other) {
-        if (this != &other) {
-            real = other.real;
-            imag = other.imag;
-        }
+    // 3. Copy Assignment (Copy-and-Swap Idiom)
+    Buffer& operator=(Buffer other) {
+        swap(*this, other);
         return *this;
     }
-};
 
-int main() {
-    Complex c1(3, 4);
-    Complex c2(2, 5);
-    
-    Complex c3 = c1 + c2;
-    cout << c1 << " + " << c2 << " = " << c3 << "\n";
-    
-    Complex c4 = c1 * c2;
-    cout << c1 << " * " << c2 << " = " << c4 << "\n";
-    
-    if (c1 == c2) {
-        cout << "Complex numbers are equal\n";
-    } else {
-        cout << "Complex numbers are not equal\n";
+    // 4. Move Constructor (Transfer ownership)
+    Buffer(Buffer&& other) noexcept : data(nullptr), size(0) {
+        swap(*this, other);
     }
+
+    // 5. Move Assignment (Handled by Copy Assignment via by-value param, or explicit)
+    //    Here, operator=(Buffer other) handles both if defined correctly!
     
-    return 0;
-}
+    friend void swap(Buffer& a, Buffer& b) noexcept {
+        std::swap(a.data, b.data);
+        std::swap(a.size, b.size);
+    }
+};
 ```
 
-#### 3. Template Specialization
+### 3.5 Inheritance
 
-```cpp
-#include <iostream>
-#include <string>
-using namespace std;
+#### Types of Inheritance
+1.  **Single**: `class Dog : public Animal`
+2.  **Multiple**: `class Duck : public Bird, public Fish` (Careful!)
+3.  **Multilevel**: `class A -> class B -> class C`
+4.  **Hierarchical**: `class Shape -> (Circle, Square)`
 
-// Generic template
-template <typename T>
-class Printer {
-public:
-    void print(T value) {
-        cout << "Generic: " << value << "\n";
+#### The Diamond Problem (Virtual Inheritance)
+If `B` and `C` inherit from `A`, and `D` inherits from `B` and `C`, `D` has two copies of `A`.
+*   **Fix**: `class B : virtual public A`.
+
+### 3.6 Polymorphism
+
+#### Static Polymorphism (Compile-Time)
+*   **Function Overloading**: Same name, different args.
+*   **Templates**: `template <typename T>`.
+*   **CRTP (Curiously Recurring Template Pattern)**: High-performance static polymorphism.
+
+#### Dynamic Polymorphism (Run-Time)
+*   **Virtual Functions**: Functions resolved at runtime via **vtable**.
+*   **Override**: `void foo() override;` (C++11) - Ensures you are actually overriding.
+*   **Final**: `void foo() final;` (C++11) - Prevents further overriding.
+*   **Pure Virtual Function**: `virtual void foo() = 0;`. Makes the class **Abstract** (Interface).
+
+#### How Virtual Functions Work (Under the Hood)
+1.  Compiler adds a hidden pointer (`vptr`) to the class.
+2.  `vptr` points to a static table (`vtable`) of function pointers for that class.
+3.  Calling `obj->method()` becomes `obj->vptr[index]()`.
+4.  **Cost**: One pointer overhead per object + one indirect lookup per call + instruction cache miss potential.
+
+### 3.7 Casting & RTTI
+
+Run-Time Type Information (RTTI) allows checking types at runtime.
+
+1.  **dynamic_cast<T*>**: Safely converts pointers down the hierarchy. Returns `nullptr` on failure. Requires polymorphic class (at least one virtual function).
+    ```cpp
+    Base* b = new Derived();
+    if (Derived* d = dynamic_cast<Derived*>(b)) {
+        // Success
     }
-};
+    ```
+2.  **typeid**: Returns `std::type_info`.
+    ```cpp
+    if (typeid(*b) == typeid(Derived)) { ... }
+    ```
 
-// Template specialization for bool
-template <>
-class Printer<bool> {
-public:
-    void print(bool value) {
-        cout << "Boolean: " << (value ? "true" : "false") << "\n";
-    }
-};
+### 3.8 SOLID Principles in C++
 
-// Template specialization for string
-template <>
-class Printer<string> {
-public:
-    void print(string value) {
-        cout << "String: \"" << value << "\"\n";
-    }
-};
-
-int main() {
-    Printer<int> intPrinter;
-    intPrinter.print(42);
-    
-    Printer<double> doublePrinter;
-    doublePrinter.print(3.14);
-    
-    Printer<bool> boolPrinter;
-    boolPrinter.print(true);
-    
-    Printer<string> stringPrinter;
-    stringPrinter.print("Hello, World!");
-    
-    return 0;
-}
-```
-
-### Run-Time Polymorphism (Dynamic Polymorphism)
-
-#### Virtual Functions & Override
-
-```cpp
-#include <iostream>
-#include <memory>
-#include <vector>
-using namespace std;
-
-class Shape {
-public:
-    virtual void draw() = 0;           // Pure virtual
-    virtual double area() = 0;
-    virtual string getName() = 0;
-    virtual ~Shape() {}                // Virtual destructor (important!)
-};
-
-class Circle : public Shape {
-private:
-    double radius;
-    
-public:
-    Circle(double r) : radius(r) {}
-    
-    void draw() override {
-        cout << "Drawing Circle\n";
-    }
-    
-    double area() override {
-        return 3.14159 * radius * radius;
-    }
-    
-    string getName() override {
-        return "Circle";
-    }
-};
-
-class Rectangle : public Shape {
-private:
-    double width, height;
-    
-public:
-    Rectangle(double w, double h) : width(w), height(h) {}
-    
-    void draw() override {
-        cout << "Drawing Rectangle\n";
-    }
-    
-    double area() override {
-        return width * height;
-    }
-    
-    string getName() override {
-        return "Rectangle";
-    }
-};
-
-class Triangle : public Shape {
-private:
-    double base, height;
-    
-public:
-    Triangle(double b, double h) : base(b), height(h) {}
-    
-    void draw() override {
-        cout << "Drawing Triangle\n";
-    }
-    
-    double area() override {
-        return 0.5 * base * height;
-    }
-    
-    string getName() override {
-        return "Triangle";
-    }
-};
-
-int main() {
-    // Using smart pointers (C++11)
-    vector<unique_ptr<Shape>> shapes;
-    shapes.push_back(make_unique<Circle>(5));
-    shapes.push_back(make_unique<Rectangle>(4, 6));
-    shapes.push_back(make_unique<Triangle>(3, 4));
-    
-    cout << "=== Drawing all shapes ===\n";
-    for (auto& shape : shapes) {
-        shape->draw();
-        cout << "Area of " << shape->getName() << ": " 
-             << shape->area() << "\n\n";
-    }
-    
-    return 0;  // Smart pointers automatically deleted
-}
-```
-
-**Output:**
-```
-=== Drawing all shapes ===
-Drawing Circle
-Area of Circle: 78.5385
-
-Drawing Rectangle
-Area of Rectangle: 24
-
-Drawing Triangle
-Area of Triangle: 6
-```
-
-#### Abstract Classes & Interfaces
-
-```cpp
-#include <iostream>
-#include <string>
-using namespace std;
-
-// Abstract class (interface-like)
-class DatabaseConnection {
-public:
-    virtual void connect() = 0;
-    virtual void disconnect() = 0;
-    virtual bool isConnected() = 0;
-    virtual ~DatabaseConnection() {}
-};
-
-class MySQLConnection : public DatabaseConnection {
-private:
-    bool connected;
-    
-public:
-    MySQLConnection() : connected(false) {}
-    
-    void connect() override {
-        cout << "Connecting to MySQL...\n";
-        connected = true;
-        cout << "Connected to MySQL\n";
-    }
-    
-    void disconnect() override {
-        cout << "Disconnecting from MySQL...\n";
-        connected = false;
-    }
-    
-    bool isConnected() override {
-        return connected;
-    }
-};
-
-class PostgreSQLConnection : public DatabaseConnection {
-private:
-    bool connected;
-    
-public:
-    PostgreSQLConnection() : connected(false) {}
-    
-    void connect() override {
-        cout << "Connecting to PostgreSQL...\n";
-        connected = true;
-        cout << "Connected to PostgreSQL\n";
-    }
-    
-    void disconnect() override {
-        cout << "Disconnecting from PostgreSQL...\n";
-        connected = false;
-    }
-    
-    bool isConnected() override {
-        return connected;
-    }
-};
-
-int main() {
-    // Cannot create DatabaseConnection directly
-    // DatabaseConnection db;  // Error: abstract class
-    
-    // Create through derived classes
-    MySQLConnection mysql;
-    PostgreSQLConnection postgres;
-    
-    // Use polymorphically
-    DatabaseConnection* db1 = &mysql;
-    DatabaseConnection* db2 = &postgres;
-    
-    db1->connect();
-    cout << "MySQL connected: " << (db1->isConnected() ? "Yes" : "No") << "\n\n";
-    
-    db2->connect();
-    cout << "PostgreSQL connected: " << (db2->isConnected() ? "Yes" : "No") << "\n\n";
-    
-    db1->disconnect();
-    db2->disconnect();
-    
-    return 0;
-}
-```
+1.  **Single Responsibility**: A class should have one reason to change.
+2.  **Open/Closed**: Open for extension (inheritance), closed for modification.
+3.  **Liskov Substitution**: Derived classes must be substitutable for base classes without breaking behavior.
+4.  **Interface Segregation**: Many specific interfaces are better than one general-purpose interface.
+5.  **Dependency Inversion**: Depend on abstractions (Abstract Classes), not concretions.
 
 ---
-
-## Abstraction
-
-**Abstraction** is showing only essential features and hiding unnecessary details.
-
-```cpp
-#include <iostream>
-#include <string>
-#include <cmath>
-using namespace std;
-
-// Abstract class - hides implementation details
-class Shape {
-public:
-    virtual void draw() = 0;
-    virtual double area() = 0;
-    virtual double perimeter() = 0;
-    virtual ~Shape() {}
-};
-
-// Concrete implementation
-class Circle : public Shape {
-private:
-    double radius;
-    const double PI = 3.14159;
-    
-public:
-    Circle(double r) : radius(r) {}
-    
-    void draw() override {
-        cout << "Displaying Circle\n";
-    }
-    
-    double area() override {
-        return PI * radius * radius;
-    }
-    
-    double perimeter() override {
-        return 2 * PI * radius;
-    }
-};
-
-class Rectangle : public Shape {
-private:
-    double width, height;
-    
-public:
-    Rectangle(double w, double h) : width(w), height(h) {}
-    
-    void draw() override {
-        cout << "Displaying Rectangle\n";
-    }
-    
-    double area() override {
-        return width * height;
-    }
-    
-    double perimeter() override {
-        return 2 * (width + height);
-    }
-};
-
-// Client code doesn't know HOW things are calculated
-void printShapeInfo(Shape* shape) {
-    shape->draw();
-    cout << "Area: " << shape->area() << "\n";
-    cout << "Perimeter: " << shape->perimeter() << "\n";
-}
-
-int main() {
-    Circle circle(5);
-    Rectangle rectangle(4, 6);
-    
-    cout << "=== Circle ===\n";
-    printShapeInfo(&circle);
-    
-    cout << "\n=== Rectangle ===\n";
-    printShapeInfo(&rectangle);
-    
-    return 0;
-}
-```
-
----
-
-## Advanced Class Features
-
-### Nested Classes
-
-```cpp
-#include <iostream>
-#include <string>
-using namespace std;
-
-class Car {
-public:
-    // Nested class
-    class Engine {
-    private:
-        double horsepower;
-        
-    public:
-        Engine(double hp) : horsepower(hp) {}
-        
-        void startEngine() {
-            cout << "Engine with " << horsepower 
-                 << " HP is starting\n";
-        }
-    };
-    
-private:
-    string brand;
-    Engine engine;
-    
-public:
-    Car(string b, double hp) : brand(b), engine(hp) {}
-    
-    void display() {
-        cout << brand << " car\n";
-        engine.startEngine();
-    }
-};
-
-int main() {
-    Car car("Ferrari", 800);
-    car.display();
-    
-    // Can also create nested class independently
-    Car::Engine standaloneEngine(500);
-    standaloneEngine.startEngine();
-    
-    return 0;
-}
-```
-
-### Inner Classes with Access Control
-
-```cpp
-#include <iostream>
-using namespace std;
-
-class Outer {
-private:
-    int outerPrivate = 10;
-    
-public:
-    class Inner {
-    public:
-        void accessOuterPrivate(Outer& outer) {
-            // Inner class can access Outer's private members
-            cout << "Accessing outer private: " 
-                 << outer.outerPrivate << "\n";
-        }
-    };
-    
-    Inner createInner() {
-        return Inner();
-    }
-};
-
-int main() {
-    Outer outer;
-    Outer::Inner inner = outer.createInner();
-    inner.accessOuterPrivate(outer);
-    
-    return 0;
-}
-```
-
----
-
-## Access Modifiers & Friend Classes
-
-### Public, Private, Protected
-
-```cpp
-#include <iostream>
-using namespace std;
-
-class Base {
-public:
-    int publicData = 1;
-    void publicMethod() {
-        cout << "Public method\n";
-    }
-    
-protected:
-    int protectedData = 2;
-    void protectedMethod() {
-        cout << "Protected method\n";
-    }
-    
-private:
-    int privateData = 3;
-    void privateMethod() {
-        cout << "Private method\n";
-    }
-};
-
-class Derived : public Base {
-public:
-    void testAccess() {
-        cout << "Public data: " << publicData << "\n";
-        cout << "Protected data: " << protectedData << "\n";
-        // cout << "Private data: " << privateData << "\n";  // Error!
-    }
-};
-
-int main() {
-    Base b;
-    cout << "Public: " << b.publicData << "\n";
-    // cout << "Protected: " << b.protectedData << "\n";  // Error!
-    // cout << "Private: " << b.privateData << "\n";      // Error!
-    
-    Derived d;
-    d.testAccess();
-    
-    return 0;
-}
-```
-
-### Friend Functions and Classes
-
-```cpp
-#include <iostream>
-using namespace std;
-
-class MyClass {
-private:
-    int secretValue;
-    
-public:
-    MyClass(int value) : secretValue(value) {}
-    
-    // Friend function - can access private members
-    friend void revealSecret(MyClass& obj);
-    
-    // Friend class - can access private members
-    friend class FriendClass;
-};
-
-// Friend function
-void revealSecret(MyClass& obj) {
-    cout << "Secret value: " << obj.secretValue << "\n";
-}
-
-// Friend class
-class FriendClass {
-public:
-    void accessPrivate(MyClass& obj) {
-        cout << "Friend class accessing: " << obj.secretValue << "\n";
-    }
-};
-
-int main() {
-    MyClass obj(42);
-    revealSecret(obj);
-    
-    FriendClass friend;
-    friend.accessPrivate(obj);
-    
-    return 0;
-}
-```
-
----
-
-## Static Members
-
-### Static Variables & Methods
-
-```cpp
-#include <iostream>
-#include <string>
-using namespace std;
-
-class Employee {
-private:
-    string name;
-    int id;
-    static int nextId;      // Shared by all instances
-    static int totalCount;  // Count of employees
-    
-public:
-    Employee(string n) : name(n), id(nextId++) {
-        totalCount++;
-    }
-    
-    ~Employee() {
-        totalCount--;
-    }
-    
-    // Static method - can only access static members
-    static void displayStats() {
-        cout << "Total employees: " << totalCount << "\n";
-        cout << "Next ID will be: " << nextId << "\n";
-    }
-    
-    void display() {
-        cout << "ID: " << id << ", Name: " << name << "\n";
-    }
-};
-
-// Initialize static members
-int Employee::nextId = 1;
-int Employee::totalCount = 0;
-
-int main() {
-    cout << "Creating employees...\n";
-    Employee emp1("Alice");
-    emp1.display();
-    
-    Employee emp2("Bob");
-    emp2.display();
-    
-    Employee emp3("Carol");
-    emp3.display();
-    
-    // Call static method
-    Employee::displayStats();
-    
-    {
-        Employee emp4("David");
-        emp4.display();
-        Employee::displayStats();
-    }
-    
-    cout << "\nAfter scope ends:\n";
-    Employee::displayStats();
-    
-    return 0;
-}
-```
-
-**Output:**
-```
-Creating employees...
-ID: 1, Name: Alice
-ID: 2, Name: Bob
-ID: 3, Name: Carol
-Total employees: 3
-Next ID will be: 4
-ID: 4, Name: David
-Total employees: 4
-Next ID will be: 5
-
-After scope ends:
-Total employees: 3
-Next ID will be: 5
-```
-
----
-
-## Const Correctness in OOP
-
-```cpp
-#include <iostream>
-#include <string>
-using namespace std;
-
-class Person {
-private:
-    mutable int accessCount;  // Can be modified even in const functions
-    string name;
-    int age;
-    
-public:
-    Person(string n, int a) : name(n), age(a), accessCount(0) {}
-    
-    // Const method - cannot modify member variables
-    string getName() const {
-        accessCount++;  // OK because accessCount is mutable
-        return name;
-    }
-    
-    // Const method returning const reference
-    const string& getNameRef() const {
-        accessCount++;
-        return name;
-    }
-    
-    // Non-const method - can modify members
-    void setAge(int newAge) {
-        age = newAge;  // OK in non-const method
-    }
-    
-    // Const method
-    int getAge() const {
-        return age;
-    }
-    
-    int getAccessCount() const {
-        return accessCount;
-    }
-    
-    void display() const {
-        cout << "Name: " << name << ", Age: " << age << "\n";
-    }
-};
-
-int main() {
-    Person p("Alice", 30);
-    
-    // Can call both const and non-const methods
-    cout << p.getName() << "\n";
-    cout << p.getAge() << "\n";
-    p.setAge(31);
-    
-    // Const object
-    const Person cp("Bob", 25);
-    
-    // Can only call const methods
-    cout << cp.getName() << "\n";
-    cout << cp.getAge() << "\n";
-    // cp.setAge(26);  // Error: cannot call non-const method on const object
-    
-    cp.display();
-    cout << "Access count: " << cp.getAccessCount() << "\n";
-    
-    return 0;
-}
-```
-
----
-
-## Operator Overloading
-
-### Overloadable Operators
-
-```cpp
-#include <iostream>
-using namespace std;
-
-class Vector {
-private:
-    int x, y;
-    
-public:
-    Vector(int x = 0, int y = 0) : x(x), y(y) {}
-    
-    // Arithmetic operators
-    Vector operator+(const Vector& v) const {
-        return Vector(x + v.x, y + v.y);
-    }
-    
-    Vector operator-(const Vector& v) const {
-        return Vector(x - v.x, y - v.y);
-    }
-    
-    Vector operator*(int scalar) const {
-        return Vector(x * scalar, y * scalar);
-    }
-    
-    // Comparison operators
-    bool operator==(const Vector& v) const {
-        return x == v.x && y == v.y;
-    }
-    
-    bool operator!=(const Vector& v) const {
-        return !(*this == v);
-    }
-    
-    // Assignment operator
-    Vector& operator=(const Vector& v) {
-        if (this != &v) {
-            x = v.x;
-            y = v.y;
-        }
-        return *this;
-    }
-    
-    // Unary operators
-    Vector operator-() const {
-        return Vector(-x, -y);
-    }
-    
-    // Increment/Decrement
-    Vector& operator++() {  // Pre-increment
-        x++; y++;
-        return *this;
-    }
-    
-    Vector operator++(int) {  // Post-increment
-        Vector temp = *this;
-        x++; y++;
-        return temp;
-    }
-    
-    // Subscript operator
-    int operator[](int index) const {
-        if (index == 0) return x;
-        if (index == 1) return y;
-        throw out_of_range("Invalid index");
-    }
-    
-    // Stream operators (must be friend or free functions)
-    friend ostream& operator<<(ostream& os, const Vector& v) {
-        os << "(" << v.x << ", " << v.y << ")";
-        return os;
-    }
-    
-    friend istream& operator>>(istream& is, Vector& v) {
-        is >> v.x >> v.y;
-        return is;
-    }
-};
-
-int main() {
-    Vector v1(3, 4);
-    Vector v2(1, 2);
-    
-    cout << "v1 = " << v1 << "\n";
-    cout << "v2 = " << v2 << "\n";
-    
-    Vector v3 = v1 + v2;
-    cout << "v1 + v2 = " << v3 << "\n";
-    
-    Vector v4 = v1 - v2;
-    cout << "v1 - v2 = " << v4 << "\n";
-    
-    Vector v5 = v1 * 2;
-    cout << "v1 * 2 = " << v5 << "\n";
-    
-    cout << "v1 == v2: " << (v1 == v2 ? "true" : "false") << "\n";
-    
-    cout << "-v1 = " << (-v1) << "\n";
-    
-    cout << "v1[0] = " << v1[0] << ", v1[1] = " << v1[1] << "\n";
-    
-    Vector v6 = v1;
-    cout << "After v6 = v1: v6 = " << v6 << "\n";
-    
-    return 0;
-}
-```
-
----
-
-## SOLID Principles
-
-### S - Single Responsibility Principle
-
-```cpp
-#include <iostream>
-#include <string>
-#include <fstream>
-using namespace std;
-
-// BAD: Class doing multiple things
-// class User {
-//     void save() { }      // Saving logic
-//     void sendEmail() { } // Sending email
-//     void validate() { }  // Validation
-// };
-
-// GOOD: Each class has one responsibility
-class User {
-private:
-    string name, email;
-    
-public:
-    User(string n, string e) : name(n), email(e) {}
-    string getName() { return name; }
-    string getEmail() { return email; }
-};
-
-class UserValidator {
-public:
-    bool isValid(const User& user) {
-        return !user.getName().empty() && 
-               !user.getEmail().empty();
-    }
-};
-
-class UserRepository {
-public:
-    void save(const User& user) {
-        // Save to database or file
-        cout << "Saving user: " << user.getName() << "\n";
-    }
-};
-
-class EmailService {
-public:
-    void sendWelcomeEmail(const User& user) {
-        cout << "Sending welcome email to: " << user.getEmail() << "\n";
-    }
-};
-
-int main() {
-    User user("Alice", "alice@example.com");
-    UserValidator validator;
-    UserRepository repo;
-    EmailService emailService;
-    
-    if (validator.isValid(user)) {
-        repo.save(user);
-        emailService.sendWelcomeEmail(user);
-    }
-    
-    return 0;
-}
-```
-
-### O - Open/Closed Principle
-
-```cpp
-#include <iostream>
-#include <vector>
-using namespace std;
-
-// GOOD: Open for extension, closed for modification
-class Shape {
-public:
-    virtual double area() = 0;
-    virtual ~Shape() {}
-};
-
-class Circle : public Shape {
-private:
-    double radius;
-public:
-    Circle(double r) : radius(r) {}
-    double area() override {
-        return 3.14 * radius * radius;
-    }
-};
-
-class Rectangle : public Shape {
-private:
-    double width, height;
-public:
-    Rectangle(double w, double h) : width(w), height(h) {}
-    double area() override {
-        return width * height;
-    }
-};
-
-// New shape can be added without modifying existing code
-class Triangle : public Shape {
-private:
-    double base, height;
-public:
-    Triangle(double b, double h) : base(b), height(h) {}
-    double area() override {
-        return 0.5 * base * height;
-    }
-};
-
-class AreaCalculator {
-public:
-    double totalArea(vector<Shape*> shapes) {
-        double total = 0;
-        for (Shape* shape : shapes) {
-            total += shape->area();
-        }
-        return total;
-    }
-};
-
-int main() {
-    Circle c(5);
-    Rectangle r(4, 6);
-    Triangle t(3, 4);
-    
-    vector<Shape*> shapes = {&c, &r, &t};
-    AreaCalculator calc;
-    
-    cout << "Total area: " << calc.totalArea(shapes) << "\n";
-    
-    return 0;
-}
-```
-
-### L - Liskov Substitution Principle
-
-```cpp
-#include <iostream>
-using namespace std;
-
-class Bird {
-public:
-    virtual void fly() = 0;
-    virtual ~Bird() {}
-};
-
-// GOOD: Penguin shouldn't be Bird if it can't fly
-// Instead, create separate hierarchy
-class FlyingBird : public Bird {
-public:
-    void fly() override {
-        cout << "Flying...\n";
-    }
-};
-
-class Sparrow : public FlyingBird {
-public:
-    void fly() override {
-        cout << "Sparrow flying\n";
-    }
-};
-
-// Penguin is a Bird, but not a FlyingBird
-class NonFlyingBird {
-public:
-    virtual void move() = 0;
-    virtual ~NonFlyingBird() {}
-};
-
-class Penguin : public NonFlyingBird {
-public:
-    void move() override {
-        cout << "Penguin swimming/waddling\n";
-    }
-};
-
-int main() {
-    Sparrow sparrow;
-    sparrow.fly();
-    
-    Penguin penguin;
-    penguin.move();
-    
-    return 0;
-}
-```
-
-### I - Interface Segregation Principle
-
-```cpp
-#include <iostream>
-using namespace std;
-
-// BAD: Worker interface too bloated
-// class Worker {
-//     virtual void work() = 0;
-//     virtual void eat() = 0;
-//     virtual void sleep() = 0;
-// };
-
-// GOOD: Segregated interfaces
-class Workable {
-public:
-    virtual void work() = 0;
-    virtual ~Workable() {}
-};
-
-class Eatable {
-public:
-    virtual void eat() = 0;
-    virtual ~Eatable() {}
-};
-
-class Sleepable {
-public:
-    virtual void sleep() = 0;
-    virtual ~Sleepable() {}
-};
-
-class Human : public Workable, public Eatable, public Sleepable {
-public:
-    void work() override {
-        cout << "Human working\n";
-    }
-    void eat() override {
-        cout << "Human eating\n";
-    }
-    void sleep() override {
-        cout << "Human sleeping\n";
-    }
-};
-
-class Robot : public Workable {
-public:
-    void work() override {
-        cout << "Robot working\n";
-    }
-};
-
-int main() {
-    Human human;
-    human.work();
-    human.eat();
-    human.sleep();
-    
-    Robot robot;
-    robot.work();
-    // robot.eat();  // Robot doesn't have eat, which is correct!
-    
-    return 0;
-}
-```
-
-### D - Dependency Inversion Principle
-
-```cpp
-#include <iostream>
-#include <memory>
-using namespace std;
-
-// Abstraction
-class DataStore {
-public:
-    virtual void save(const string& data) = 0;
-    virtual ~DataStore() {}
-};
-
-// Concrete implementations
-class DatabaseStore : public DataStore {
-public:
-    void save(const string& data) override {
-        cout << "Saving to database: " << data << "\n";
-    }
-};
-
-class FileStore : public DataStore {
-public:
-    void save(const string& data) override {
-        cout << "Saving to file: " << data << "\n";
-    }
-};
-
-// High-level module depends on abstraction, not concrete class
-class UserService {
-private:
-    shared_ptr<DataStore> dataStore;
-    
-public:
-    UserService(shared_ptr<DataStore> store) : dataStore(store) {}
-    
-    void registerUser(const string& username) {
-        cout << "Registering user: " << username << "\n";
-        dataStore->save(username);
-    }
-};
-
-int main() {
-    // Can easily switch implementations
-    auto dbStore = make_shared<DatabaseStore>();
-    UserService service1(dbStore);
-    service1.registerUser("Alice");
-    
-    cout << "\n";
-    
-    auto fileStore = make_shared<FileStore>();
-    UserService service2(fileStore);
-    service2.registerUser("Bob");
-    
-    return 0;
-}
-```
----
-
-## Constructors & Destructors
-
-### Constructors (C++98)
-
-```cpp
-#include <iostream>
-#include <string>
-
-class Car {
-private:
-    std::string brand;
-    int year;
-public:
-    // Default constructor (no parameters)
-    Car() : brand("Unknown"), year(2000) {
-        std::cout << "Default constructor called\n";
-    }
-    
-    // Parameterized constructor
-    Car(const std::string& b, int y) : brand(b), year(y) {
-        std::cout << "Constructor called\n";
-    }
-    
-    // Copy constructor
-    Car(const Car& other) : brand(other.brand), year(other.year) {
-        std::cout << "Copy constructor called\n";
-    }
-    
-    void show() const {
-        std::cout << brand << " (" << year << ")\n";
-    }
-};
-
-int main() {
-    Car c1;                        // Calls default
-    Car c2("Toyota", 2020);        // Calls parameterized
-    Car c3 = c2;                   // Calls copy
-    
-    c1.show();
-    c2.show();
-    c3.show();
-    
-    return 0;
-}
-```
-
-### Destructors (C++98)
-
-```cpp
-#include <iostream>
-#include <fstream>
-
-class File {
-private:
-    std::ofstream file;
-public:
-    File(const std::string& filename) {
-        file.open(filename);
-        if (file) {
-            std::cout << "File opened\n";
-        }
-    }
-    
-    // Destructor (called when object destroyed)
-    ~File() {
-        if (file.is_open()) {
-            file.close();
-            std::cout << "File closed\n";
-        }
-    }
-    
-    void write(const std::string& data) {
-        file << data << "\n";
-    }
-};
-
-int main() {
-    {
-        File f("output.txt");
-        f.write("Hello, World!");
-    }  // Destructor called here, file closed
-    
-    return 0;
-}
-```
-
-### 2.2 Advanced Constructor Features (C++11)
-
-#### Delegating Constructors
-One constructor can call another constructor of the same class to reduce code duplication.
-
-```cpp
-class Data {
-    int x, y;
-    std::string s;
-public:
-    // Target constructor
-    Data(int x, int y, std::string s) : x(x), y(y), s(s) {}
-    
-    // Delegating constructor
-    Data() : Data(0, 0, "default") {} 
-    
-    // Another delegating constructor
-    Data(int x) : Data(x, 0, "default") {}
-};
-```
-
-#### Inheriting Constructors
-Using `using` to expose base class constructors.
-
-```cpp
-class Base {
-public:
-    Base(int x) { std::cout << "Base(int)\n"; }
-};
-
-class Derived : public Base {
-public:
-    using Base::Base; // Inherits Base(int)
-    // Implicitly generates Derived(int x) : Base(x) {}
-};
-```
-
-### 2.3 Construction & Destruction Order
-The order is strict and deterministic (Stack logic: LIFO).
-
-**Construction Order:**
-1.  Base Classes (in order of inheritance)
-2.  Member Objects (in order of declaration in class)
-3.  Constructor Body
-
-**Destruction Order:**
-1.  Destructor Body
-2.  Member Objects (reverse order of declaration)
-3.  Base Classes (reverse order of inheritance)
-
-```cpp
-class Base { public: Base() { cout << "Base "; } ~Base() { cout << "~Base "; } };
-class Member { public: Member() { cout << "Member "; } ~Member() { cout << "~Member "; } };
-
-class Derived : public Base {
-    Member m;
-public:
-    Derived() { cout << "Derived "; }
-    ~Derived() { cout << "~Derived "; }
-};
-
-int main() {
-    Derived d; // Output: Base Member Derived
-    // End of scope: ~Derived ~Member ~Base
-}
-```
-
-### 2.4 The Rule of Three, Five, and Zero
-
-This is the cornerstone of resource management.
-
-1.  **Rule of Three (C++98)**: If you implement one of: Destructor, Copy Constructor, Copy Assignment Operator; you likely need to implement all three.
-2.  **Rule of Five (C++11)**: For Move semantics, add Move Constructor and Move Assignment Operator.
-3.  **Rule of Zero**: If your class uses RAII types (`std::string`, `std::vector`, `std::unique_ptr`), do **NOT** declare any of the special member functions. Let the compiler generate them.
-
-```cpp
-// Rule of Zero Example (Best Practice)
-class User {
-    std::string name; // Manages its own memory
-    std::vector<int> scores; // Manages its own memory
-    // No destructor needed!
-};
-```
-
----
-
-## Inheritance
-
-### Basic Inheritance (C++98)
-
-```cpp
-#include <iostream>
-#include <string>
-
-// Base class
-class Animal {
-protected:
-    std::string name;
-public:
-    Animal(const std::string& n) : name(n) {}
-    
-    virtual void speak() {  // virtual allows override
-        std::cout << name << " makes a sound\n";
-    }
-    
-    virtual ~Animal() {}
-};
-
-// Derived class
-class Dog : public Animal {
-public:
-    Dog(const std::string& n) : Animal(n) {}
-    
-    void speak() override {  // override keyword (C++11)
-        std::cout << name << " barks\n";
-    }
-};
-
-class Cat : public Animal {
-public:
-    Cat(const std::string& n) : Animal(n) {}
-    
-    void speak() override {
-        std::cout << name << " meows\n";
-    }
-};
-
-int main() {
-    Dog dog("Rex");
-    Cat cat("Whiskers");
-    
-    dog.speak();
-    cat.speak();
-    
-    // Polymorphism
-    Animal* animals[2] = {&dog, &cat};
-    for (int i = 0; i < 2; i++) {
-        animals[i]->speak();
-    }
-    
-    return 0;
-}
-```
-
-### Multiple Inheritance (C++98)
-
-```cpp
-#include <iostream>
-
-class A {
-public:
-    void func_a() { std::cout << "A::func\n"; }
-};
-
-class B {
-public:
-    void func_b() { std::cout << "B::func\n"; }
-};
-
-class C : public A, public B {
-public:
-    void func_c() { std::cout << "C::func\n"; }
-};
-
-int main() {
-    C c;
-    c.func_a();
-    c.func_b();
-    c.func_c();
-    
-    return 0;
-}
-```
-
----
-
-## Virtual Functions & Polymorphism
-
-### Virtual Functions (C++98)
-
-```cpp
-#include <iostream>
-#include <vector>
-#include <memory>
-
-class Shape {
-public:
-    virtual void draw() = 0;  // Pure virtual (abstract)
-    virtual double area() = 0;
-    virtual ~Shape() {}
-};
-
-class Circle : public Shape {
-private:
-    double radius;
-public:
-    Circle(double r) : radius(r) {}
-    
-    void draw() override {
-        std::cout << "Drawing circle\n";
-    }
-    
-    double area() override {
-        return 3.14159 * radius * radius;
-    }
-};
-
-class Rectangle : public Shape {
-private:
-    double width, height;
-public:
-    Rectangle(double w, double h) : width(w), height(h) {}
-    
-    void draw() override {
-        std::cout << "Drawing rectangle\n";
-    }
-    
-    double area() override {
-        return width * height;
-    }
-};
-
-int main() {
-    std::vector<Shape*> shapes;
-    shapes.push_back(new Circle(5));
-    shapes.push_back(new Rectangle(4, 6));
-    
-    for (Shape* s : shapes) {
-        s->draw();
-        std::cout << "Area: " << s->area() << "\n";
-    }
-    
-    // Cleanup
-    for (Shape* s : shapes) {
-        delete s;
-    }
-    
-    return 0;
-}
-```
-
-### 2.6 Advanced Polymorphism
-
-#### 1. Virtual Destructors (CRITICAL)
-If you delete a derived object through a base pointer, the base destructor must be virtual. Otherwise, the derived destructor is **never called**, causing memory leaks.
-
-```cpp
-class Base {
-public:
-    // virtual ~Base() {} // Correct
-    ~Base() {} // Dangerous!
-};
-
-class Derived : public Base {
-    int* ptr;
-public:
-    Derived() { ptr = new int[100]; }
-    ~Derived() { delete[] ptr; }
-};
-
-Base* b = new Derived();
-delete b; // If ~Base is not virtual, ~Derived is NOT called! Leak!
-```
-
-#### 2. Covariant Return Types
-An override can return a pointer/reference to a *derived* class, not just the base.
-
-```cpp
-class Shape {
-public:
-    virtual Shape* clone() = 0;
-};
-
-class Circle : public Shape {
-public:
-    // Returns Circle* instead of Shape* - Valid!
-    Circle* clone() override { return new Circle(*this); }
-};
-```
-
-#### 3. RTTI & dynamic_cast
-Run-Time Type Information allows safe downcasting. It uses the `vptr` to check the actual type.
-
-```cpp
-Shape* s = new Circle(5);
-
-// Safe cast: returns nullptr if s is not a Circle
-if (Circle* c = dynamic_cast<Circle*>(s)) {
-    c->special_circle_method();
-} else {
-    std::cout << "Not a circle\n";
-}
-```
-
-#### 4. Static Polymorphism (CRTP)
-Curiously Recurring Template Pattern. Faster than virtual functions (compile-time resolution).
-
-```cpp
-template<typename Derived>
-class Shape {
-public:
-    void draw() {
-        // Compile-time dispatch
-        static_cast<Derived*>(this)->draw_impl();
-    }
-};
-
-class Circle : public Shape<Circle> {
-public:
-    void draw_impl() { cout << "Circle\n"; }
-};
-```
-
----
-
 ## <a name="chapter-4-deepobjectmodelvirtualization"></a>CHAPTER 4: DEEP OBJECT MODEL & VIRTUALIZATION
 
-Understanding the "C++ Object Model" distinguishes a user from a master. This section explains what the compiler generates for your classes.
+Understanding the "C++ Object Model" distinguishes a user from a master. This section explains what the compiler generates for your classes, how memory is laid out, and the hidden costs of abstractions.
 
-### 2.5.1 The Cost of Polymorphism (vptr & vtable)
+### 4.1 Memory Layout, Alignment & Padding
 
-Every class with *at least one* virtual function has a hidden overhead.
+In C++, objects are just blocks of memory. The compiler arranges members to satisfy **alignment requirements**.
 
-1.  **vptr (Virtual Pointer)**: A hidden member added to the *layout* of the object.
-2.  **vtable (Virtual Table)**: A static table of function pointers for that class.
+#### Alignment Rules
+*   Every type has an alignment requirement (usually equal to its size, up to the processor's word size).
+*   `char`: 1 byte.
+*   `int`: 4 bytes.
+*   `double`: 8 bytes.
+*   A member must start at an address divisible by its alignment.
 
-```cpp
-class Base {
-    int data;
-    virtual void func() {}
-};
-// sizeof(Base) = sizeof(int) + sizeof(void*) + padding
-// On 64-bit: 4 bytes (int) + 4 bytes (padding) + 8 bytes (ptr) = 16 bytes
-```
-
-### 2.5.2 Multiple Inheritance & Thunks
-
-When inheriting from multiple classes, pointer arithmetic gets tricky.
+#### Padding
+The compiler inserts "padding bytes" to ensure alignment.
 
 ```cpp
-class A { int a; virtual void f() {} };
-class B { int b; virtual void g() {} };
-class C : public A, public B { int c; };
-
-C obj;
-A* pa = &obj; // Points to start of obj
-B* pb = &obj; // Points to obj + sizeof(A) !!
-```
-
-*   **Thunk**: A small piece of assembly code generated by the compiler to adjust the `this` pointer when calling a virtual function from a base class pointer that isn't at offset 0.
-
-### 2.5.3 Virtual Inheritance (The Diamond Problem)
-
-```cpp
-class Top { int t; };
-class Left : virtual public Top { int l; };
-class Right : virtual public Top { int r; };
-class Bottom : public Left, public Right { int b; };
-```
-
-To solve the Diamond Problem (Top appearing twice), `virtual` inheritance ensures `Top` is shared.
-*   **Cost**: `Left` and `Right` now contain a **vbptr** (Virtual Base Pointer) pointing to the shared `Top` instance. Accessing members of `Top` becomes slower (indirection).
-
-### 2.5.4 Alignment & Padding Rules
-
-CPU reads are efficient at specific addresses (multiples of 4 or 8). Compilers insert "padding bytes".
-
-**Rule**: A member of size $N$ must sit at an offset divisible by $N$.
-
-```cpp
-struct Mixed {
+struct PoorlyOrdered {
     char a;     // 1 byte
-                // 3 bytes PADDING
+                // 3 bytes PADDING (to align 'b' to 4)
     int b;      // 4 bytes
-    short c;    // 2 bytes
-                // 6 bytes PADDING (to align structure size to 8)
+    char c;     // 1 byte
+                // 3 bytes PADDING (to align structure size to 4)
 };
-// sizeof(Mixed) = 16 (on 64-bit)
-```
-
-**Optimization**: Sort members by size (Largest to Smallest) to minimize padding.
-
----
-
-## <a name="chapter-5-c9803standardlibrary"></a>CHAPTER 5: C++98/03 STANDARD LIBRARY
-
-## Standard Template Library
-
----
-
-## Introduction to STL
-
-The Standard Template Library (STL) is a collection of template classes and functions that provide:
-- **Containers** - Data structures to hold objects
-- **Iterators** - Objects to traverse containers
-- **Algorithms** - Functions to manipulate data
-- **Function Objects** - Objects that act like functions
-
-### Key Advantages
-- Generic programming (templates)
-- High performance (optimized)
-- Code reuse
-- Type-safe
-- Well-tested and standardized
-
----
-
-## STL Components Overview
-
-```
-┌───────────────────────────────────────────┐
-│          STL (Standard Template Library)  │
-├───────────────────────────────────────────┤
-│                                           │
-│  ┌──────────────┐  ┌────────────────┐     │
-│  │ CONTAINERS   │  │  ITERATORS     │     │
-│  ├──────────────┤  ├────────────────┤     │
-│  │ • Sequence   │  │ • Input        │     │
-│  │ • Associative│  │ • Output       │     │
-│  │ • Adapters   │  │ • Forward      │     │
-│  └──────────────┘  │ • Bidirectional|     |
-│                    │ • Random Access│     │
-│  ┌──────────────┐  └──────────────--┘     │
-│  │ ALGORITHMS   │  ┌──────────────┐       │
-│  ├──────────────┤  │FUNCTION OBJ. │       │
-│  │ • Searching  │  ├──────────────┤       │
-│  │ • Sorting    │  │ • Predicates │       │
-│  │ • Modifying  │  │ • Comparators│       │
-│  │ • Numeric    │  │ • Functors   │       │
-│  └──────────────┘  └──────────────┘       │
-└───────────────────────────────────────────┘
-```
-
----
-
-# SECTION 1: CONTAINERS - COMPLETE REFERENCE
-
-## Container Characteristics
-
-| Container | Type | Insert | Delete | Search | Random Access | Memory |
-|-----------|------|--------|--------|--------|---------------|--------|
-| vector | Sequence | O(n) | O(n) | O(n) | O(1) | Contiguous |
-| list | Sequence | O(1) | O(1) | O(n) | O(n) | Scattered |
-| deque | Sequence | O(n) | O(n) | O(n) | O(1) | Blocks |
-| map | Associative | O(log n) | O(log n) | O(log n) | - | Tree |
-| set | Associative | O(log n) | O(log n) | O(log n) | - | Tree |
-| multimap | Associative | O(log n) | O(log n) | O(log n) | - | Tree |
-| multiset | Associative | O(log n) | O(log n) | O(log n) | - | Tree |
-| unordered_map | Hash | O(1) avg | O(1) avg | O(1) avg | - | Hash |
-| unordered_set | Hash | O(1) avg | O(1) avg | O(1) avg | - | Hash |
-| priority_queue | Adapter | O(log n) | O(log n) | O(n) | - | Heap |
-| queue | Adapter | O(1) | O(1) | O(n) | - | - |
-| stack | Adapter | O(1) | O(1) | O(n) | - | - |
-
----
-
-## 1.1 VECTOR - Dynamic Array
-
-### What is Vector?
-A dynamic array that grows automatically. Use this most of the time.
-
-### Declaration & Initialization
-
-```cpp
-#include <vector>
-using namespace std;
-
-// Empty vector
-vector<int> v1;
-
-// Vector with initial size
-vector<int> v2(10);           // 10 elements, initialized to 0
-
-// Vector with initial values
-vector<int> v3(5, 10);        // 5 elements, all set to 10
-
-// Copy constructor
-vector<int> v4(v3);           // Copy of v3
-
-// From array (C++11)
-int arr[] = {1, 2, 3, 4, 5};
-vector<int> v5(arr, arr + 5); // From array
-
-// Initializer list (C++11)
-vector<int> v6 = {1, 2, 3, 4, 5};
-
-// Deduction (C++17)
-vector v7 = {1, 2, 3};        // Type deduced as vector<int>
-```
-
-### Accessing Elements
-
-```cpp
-vector<int> v = {10, 20, 30, 40, 50};
-
-// 1. Using operator[]
-cout << v[0] << "\n";         // 10 - No bounds checking
-
-// 2. Using at()
-cout << v.at(0) << "\n";      // 10 - With bounds checking, throws exception
-
-// 3. Front and back
-cout << v.front() << "\n";    // 10 (first element)
-cout << v.back() << "\n";     // 50 (last element)
-
-// 4. Direct pointer access (C++11)
-int* ptr = v.data();          // Pointer to underlying array
-cout << ptr[0] << "\n";       // 10
-```
-
-### Modifying Elements
-
-```cpp
-vector<int> v = {10, 20, 30};
-
-// Assignment
-v[0] = 100;
-v.at(1) = 200;
-
-// Adding elements
-v.push_back(40);              // Add to end: {10, 200, 30, 40}
-v.insert(v.begin() + 1, 15);  // Insert 15 at index 1: {10, 15, 200, 30, 40}
-
-// Removing elements
-v.pop_back();                 // Remove last: {10, 15, 200, 30}
-v.erase(v.begin() + 1);       // Remove at index 1: {10, 200, 30}
-v.erase(v.begin(), v.begin() + 2);  // Remove first 2: {30}
-
-// Clear all
-v.clear();                    // Empty vector
-```
-
-### Size & Capacity
-
-```cpp
-vector<int> v = {1, 2, 3};
-
-cout << v.size() << "\n";      // 3 - Number of elements
-cout << v.capacity() << "\n";  // 3+ - Allocated space
-cout << v.empty() << "\n";     // false
-
-// Reserve space (optimization)
-v.reserve(100);                // Allocate for 100 elements
-cout << v.capacity() << "\n";  // 100
-
-// Resize
-v.resize(5, 0);                // Resize to 5, new elements = 0
-v.resize(2);                   // Shrink to 2 elements
-
-// Shrink to fit (C++11)
-v.shrink_to_fit();             // Release unused capacity
-```
-
-### Iterating Through Vector
-
-```cpp
-vector<int> v = {10, 20, 30, 40, 50};
-
-// 1. Traditional for loop
-for (int i = 0; i < v.size(); i++) {
-    cout << v[i] << " ";
-}
-
-// 2. Iterator loop
-for (vector<int>::iterator it = v.begin(); it != v.end(); ++it) {
-    cout << *it << " ";
-}
-
-// 3. Auto with iterator (C++11)
-for (auto it = v.begin(); it != v.end(); ++it) {
-    cout << *it << " ";
-}
-
-// 4. Range-based for (C++11)
-for (int val : v) {
-    cout << val << " ";
-}
-
-// 5. Reverse iteration
-for (auto it = v.rbegin(); it != v.rend(); ++it) {
-    cout << *it << " ";
-}
-```
-
-### Comparison & Assignment
-
-```cpp
-vector<int> v1 = {1, 2, 3};
-vector<int> v2 = {1, 2, 3};
-vector<int> v3 = {1, 2, 4};
-
-cout << (v1 == v2) << "\n";    // 1 (true)
-cout << (v1 != v3) << "\n";    // 1 (true)
-cout << (v1 < v3) << "\n";     // 1 (true) - lexicographic
-
-// Assignment
-v1 = v3;                       // Copy v3 to v1
-v1.swap(v2);                   // Swap v1 and v2
-
-// Swap single elements
-swap(v1[0], v1[1]);
-```
-
-### Complete Vector Example
-
-```cpp
-#include <iostream>
-#include <vector>
-using namespace std;
-
-int main() {
-    vector<int> nums;
-    
-    // Adding elements
-    for (int i = 1; i <= 5; i++) {
-        nums.push_back(i * 10);
-    }
-    
-    // Display
-    cout << "Vector contents: ";
-    for (int num : nums) {
-        cout << num << " ";
-    }
-    cout << "\n";
-    
-    // Modify
-    nums[2] = 999;
-    
-    // Insert
-    nums.insert(nums.begin() + 2, 777);
-    
-    // Remove
-    nums.erase(nums.begin() + 1);
-    
-    // Display after modifications
-    cout << "After modifications: ";
-    for (int num : nums) {
-        cout << num << " ";
-    }
-    cout << "\nSize: " << nums.size() << "\n";
-    
-    return 0;
-}
-```
-
----
-
-## 1.2 DEQUE - Double Ended Queue
-
-### What is Deque?
-Fast insertion/deletion at both ends. Like vector but with efficient operations on both sides.
-
-```cpp
-#include <deque>
-using namespace std;
-
-// Declaration
-deque<int> dq;
-
-// Adding elements
-dq.push_back(10);          // Add to end
-dq.push_front(5);          // Add to front: {5, 10}
-
-// Removing elements
-dq.pop_back();             // Remove from end: {5}
-dq.pop_front();            // Remove from front: {}
-
-// Accessing
-dq.push_back(20);
-dq.push_back(30);
-cout << dq.front() << "\n"; // 20
-cout << dq.back() << "\n";  // 30
-cout << dq[0] << "\n";      // 20 - supports random access
-
-// Iteration
-for (int val : dq) {
-    cout << val << " ";
-}
-
-// Size operations
-cout << dq.size() << "\n";
-cout << dq.empty() << "\n";
-
-// Clearing
-dq.clear();
-```
-
-### Deque vs Vector
-- **Deque**: Better for push_front/pop_front operations
-- **Vector**: Better for push_back/pop_back and random access
-
----
-
-## 1.3 LIST - Doubly Linked List
-
-### What is List?
-Efficient insertion/deletion anywhere. No random access.
-
-```cpp
-#include <list>
-using namespace std;
-
-// Declaration
-list<int> lst;
-
-// Adding elements
-lst.push_back(10);         // Add to end
-lst.push_front(5);         // Add to front: {5, 10}
-
-// Insert at position
-auto it = lst.begin();
-++it;
-lst.insert(it, 7);         // Insert 7 at position 1: {5, 7, 10}
-
-// Removing elements
-lst.pop_back();            // Remove from end
-lst.pop_front();           // Remove from front
-lst.erase(it);             // Remove at iterator
-lst.remove(5);             // Remove all elements with value 5
-lst.clear();               // Clear all
-
-// Accessing
-cout << lst.front() << "\n"; // First element
-cout << lst.back() << "\n";  // Last element
-// NO random access: lst[0] - NOT AVAILABLE
-
-// Iteration
-for (int val : lst) {
-    cout << val << " ";
-}
-
-// Reverse iteration
-for (auto it = lst.rbegin(); it != lst.rend(); ++it) {
-    cout << *it << " ";
-}
-
-// Size
-cout << lst.size() << "\n";
-
-// Useful operations
-lst.reverse();             // Reverse the list
-lst.sort();                // Sort the list
-lst.unique();              // Remove consecutive duplicates
-lst.sort(greater<int>()); // Sort in descending order
-```
-
-### List-Specific Operations
-
-```cpp
-list<int> lst1 = {1, 2, 3};
-list<int> lst2 = {4, 5, 6};
-
-// Splice - move elements from one list to another
-lst1.splice(lst1.end(), lst2);  // Append lst2 to lst1
-// lst1: {1, 2, 3, 4, 5, 6}
-// lst2: {} (empty)
-
-// Merge - combine two sorted lists
-list<int> a = {1, 3, 5};
-list<int> b = {2, 4, 6};
-a.merge(b);                      // a: {1, 2, 3, 4, 5, 6}, b: {}
-
-// Remove if
-list<int> nums = {1, 2, 3, 4, 5};
-nums.remove_if([](int x) { return x % 2 == 0; }); // Remove even numbers
-// nums: {1, 3, 5}
-```
-
----
-
-## 1.4 MAP - Sorted Key-Value Pairs
-
-### What is Map?
-Stores key-value pairs, sorted by key. Logarithmic operations.
-
-```cpp
-#include <map>
-using namespace std;
-
-// Declaration
-map<string, int> ages;
-
-// Insertion
-ages["Alice"] = 30;
-ages["Bob"] = 25;
-ages["Carol"] = 28;
-ages.insert({{"David", 32}});
-ages.insert({"Eve", 27});
-
-// Accessing
-cout << ages["Alice"] << "\n";  // 30
-cout << ages.at("Bob") << "\n"; // 25 - with bounds checking
-
-// Check existence
-if (ages.find("Alice") != ages.end()) {
-    cout << "Alice found\n";
-}
-
-// Safe access with count
-if (ages.count("Bob")) {
-    cout << "Bob exists\n";
-}
-
-// Size
-cout << ages.size() << "\n";
-
-// Iteration
-for (auto& pair : ages) {
-    cout << pair.first << ": " << pair.second << "\n";
-}
-
-// With auto (C++11)
-for (const auto& [name, age] : ages) {  // Structured binding (C++17)
-    cout << name << ": " << age << "\n";
-}
-
-// Reverse iteration
-for (auto it = ages.rbegin(); it != ages.rend(); ++it) {
-    cout << it->first << ": " << it->second << "\n";
-}
-```
-
-### Map Operations
-
-```cpp
-map<int, string> dict;
-
-// Insert
-dict[1] = "one";
-dict[2] = "two";
-dict[3] = "three";
-
-// Erase
-dict.erase(2);                 // Erase by key
-dict.erase(dict.begin());      // Erase by iterator
-
-// Find
-auto it = dict.find(1);
-if (it != dict.end()) {
-    cout << it->second << "\n";
-}
-
-// Lower and upper bound
-map<int, string> scores = {{1, "A"}, {2, "B"}, {3, "C"}};
-
-// find first >= key
-auto it1 = scores.lower_bound(2);  // Points to {2, "B"}
-
-// Find first > key
-auto it2 = scores.upper_bound(2);  // Points to {3, "C"}
-
-// Range [lower_bound, upper_bound)
-auto range = scores.equal_range(2);  // Pair of iterators
-for (auto it = range.first; it != range.second; ++it) {
-    cout << it->second << "\n";
-}
-
-// Clear
-dict.clear();
-```
-
-### Map with Custom Comparator
-
-```cpp
-// Descending order
-map<int, string, greater<int>> descending;
-descending[3] = "three";
-descending[1] = "one";
-descending[2] = "two";
-// Iteration order: 3, 2, 1
-
-// Custom comparator
-struct Compare {
-    bool operator()(const string& a, const string& b) const {
-        return a.length() < b.length();  // Sort by string length
-    }
+// sizeof = 1 + 3 + 4 + 1 + 3 = 12 bytes
+
+struct WellOrdered {
+    int b;      // 4 bytes
+    char a;     // 1 byte
+    char c;     // 1 byte
+                // 2 bytes PADDING (to align structure size to 4)
 };
-
-map<string, int, Compare> byLength;
-byLength["a"] = 1;
-byLength["abc"] = 3;
-byLength["ab"] = 2;
+// sizeof = 4 + 1 + 1 + 2 = 8 bytes
 ```
 
----
+**God-Tier Tip**: Sort members from Largest to Smallest to minimize padding and cache wastage.
 
-## 1.5 SET - Sorted Unique Elements
+### 4.2 The Cost of Polymorphism (vptr & vtable)
 
-### What is Set?
-Stores unique, sorted elements. Like map but key only (no value).
+When you use `virtual` functions, the compiler implements a dynamic dispatch mechanism.
 
+#### 1. vptr (Virtual Pointer)
+*   A hidden pointer added to the *layout* of every object instance of a polymorphic class.
+*   Usually sits at the very beginning (offset 0) of the object.
+*   Size: 8 bytes (on 64-bit systems).
+
+#### 2. vtable (Virtual Table)
+*   A **static** array of function pointers created *per class* (not per object).
+*   Stores the address of the most-derived function for each virtual method.
+
+#### How a Virtual Call Works
+`obj->draw()` translates roughly to:
 ```cpp
-#include <set>
-using namespace std;
+// 1. Get the vptr (at start of object)
+void** vptr = *(void***)obj; 
 
-// Declaration
-set<int> nums;
+// 2. Look up the function address in the vtable (index known at compile time)
+void (*func)() = (void (*)(void))vptr[0];
 
-// Insertion
-nums.insert(30);
-nums.insert(10);
-nums.insert(20);
-nums.insert(10);  // Duplicate - ignored
-// {10, 20, 30}
-
-// Accessing
-auto it = nums.find(20);
-if (it != nums.end()) {
-    cout << "Found: " << *it << "\n";
-}
-
-// Count
-cout << nums.count(20) << "\n";  // 1 or 0
-
-// Iteration
-for (int val : nums) {
-    cout << val << " ";
-}
-
-// Erase
-nums.erase(20);                // Erase by value
-nums.erase(nums.begin());      // Erase by iterator
-nums.erase(nums.lower_bound(15), nums.upper_bound(25));  // Range erase
-
-// Size and empty
-cout << nums.size() << "\n";
-cout << nums.empty() << "\n";
-
-// Clear
-nums.clear();
+// 3. Call the function
+func();
 ```
 
-### Set with Strings
+**Performance Implications**:
+*   **Space**: Extra pointer per object + one table per class.
+*   **Time**: One extra memory load (dereference) + Indirect branch (can cause pipeline stall/misprediction).
+*   **Inlining**: Virtual functions generally *cannot* be inlined (unless the compiler can prove the type at compile time).
+## <a name="chapter-5-c9803standardlibrary"></a>CHAPTER 5: STANDARD LIBRARY (STL) MASTERY
 
-```cpp
-set<string> words;
+The Standard Template Library (STL) is the heart of modern C++. It provides reusable, high-performance components. Mastery of the STL is non-negotiable.
 
-words.insert("zebra");
-words.insert("apple");
-words.insert("mango");
-words.insert("apple");  // Duplicate ignored
-
-// Prints in alphabetical order
-for (const string& word : words) {
-    cout << word << "\n";
-}
-// Output: apple, mango, zebra
-```
-
-### Multiset - Allows Duplicates
-
-```cpp
-#include <set>
-
-multiset<int> nums;
-
-nums.insert(10);
-nums.insert(20);
-nums.insert(10);
-nums.insert(20);
-// {10, 10, 20, 20}
-
-cout << nums.count(10) << "\n";  // 2
-
-// All operations similar to set
-for (int val : nums) {
-    cout << val << " ";
-}
-```
+### 5.1 The STL Architecture
+The STL separates data (Containers) from operations (Algorithms) via an interface (Iterators).
+*   **Containers**: Manage memory and hold objects.
+*   **Algorithms**: Process elements.
+*   **Iterators**: Glue that binds them.
 
 ---
 
-## 1.6 MULTIMAP - Key-Value Pairs with Duplicate Keys
+### 5.2 Sequence Containers
 
-```cpp
-#include <map>
+Ordered collections where position depends on insertion time.
 
-multimap<string, int> students;
+#### 1. `std::vector` (Dynamic Array)
+The default container. **Always use vector unless you have a specific reason not to.**
+*   **Layout**: Contiguous memory.
+*   **Access**: O(1).
+*   **Insert/Delete (Back)**: O(1) amortized.
+*   **Insert/Delete (Middle/Front)**: O(N) - shifts elements.
 
-// Multiple values for same key
-students.insert({"Math", 95});
-students.insert({"Math", 87});
-students.insert({"English", 92});
-students.insert({"English", 88});
+**God-Tier Knowledge: Capacity vs. Size**
+*   `size()`: Number of elements.
+*   `capacity()`: Allocated memory.
+*   `reserve(n)`: Pre-allocates memory to avoid reallocations. **Critical for performance.**
+*   **Growth Factor**: Usually 2x or 1.5x.
 
-// Find all with key "Math"
-auto range = students.equal_range("Math");
-for (auto it = range.first; it != range.second; ++it) {
-    cout << it->first << ": " << it->second << "\n";
-}
-// Output: Math: 95, Math: 87
+**Iterator Invalidation**:
+*   Reallocation (growing beyond capacity) invalidates **ALL** iterators/pointers.
+*   Insertion/Erasure invalidates iterators **after** the point of modification.
 
-// Count how many with key "Math"
-cout << students.count("Math") << "\n";  // 2
+#### 2. `std::deque` (Double-Ended Queue)
+*   **Layout**: A sequence of fixed-size memory blocks (chunked array).
+*   **Access**: O(1) (pointer indirection overhead).
+*   **Insert/Delete (Front/Back)**: O(1).
+*   **Use Case**: When you need to push/pop from both ends.
 
-// Iterate all
-for (const auto& [subject, score] : students) {
-    cout << subject << ": " << score << "\n";
-}
-```
+**Iterator Invalidation**:
+*   Insertion at ends: Invalidates iterators, but **NOT** references/pointers.
+*   Insertion in middle: Invalidates everything.
 
----
-
-## 1.7 UNORDERED_MAP - Hash-Based Key-Value Pairs
-
-### What is Unordered Map?
-Like map but no sorting, O(1) average operations.
-
-```cpp
-#include <unordered_map>
-
-// Declaration
-unordered_map<string, int> ages;
-
-// Insertion - same as map
-ages["Alice"] = 30;
-ages["Bob"] = 25;
-
-// Accessing - same as map
-cout << ages["Alice"] << "\n";
-
-// Find
-if (ages.find("Bob") != ages.end()) {
-    cout << "Found Bob\n";
-}
-
-// Erase
-ages.erase("Alice");
-
-// Iteration - ORDER IS ARBITRARY
-for (const auto& [name, age] : ages) {
-    cout << name << ": " << age << "\n";
-}
-
-// Size
-cout << ages.size() << "\n";
-
-// Bucket information
-cout << ages.bucket_count() << "\n";      // Number of buckets
-cout << ages.load_factor() << "\n";       // Load factor
-cout << ages.max_load_factor() << "\n";   // Max load factor
-
-// Rehash
-ages.rehash(100);                         // Rehash with hint 100
-ages.reserve(50);                         // Reserve space for 50 elements
-
-// Clear
-ages.clear();
-```
-
-### Unordered Set
-
-```cpp
-#include <unordered_set>
-
-unordered_set<int> nums = {30, 10, 20};
-
-// Similar to set but unordered
-if (nums.count(10)) {
-    cout << "Found 10\n";
-}
-
-for (int val : nums) {
-    cout << val << " ";  // Order is arbitrary
-}
-```
+#### 3. `std::list` (Doubly Linked List)
+*   **Layout**: Nodes scattered in memory.
+*   **Access**: O(N).
+*   **Insert/Delete**: O(1) anywhere (if you have the iterator).
+*   **Use Case**: Frequent splicing/sorting in place. **Cache unfriendly**. Avoid unless necessary.
 
 ---
 
-## 1.8 QUEUE - FIFO (First In, First Out)
+### 5.3 Associative Containers
 
-### What is Queue?
-Adapter container. Elements added at back, removed from front.
+Sorted collections based on keys. Implemented as **Red-Black Trees** (Self-balancing BST).
+*   **Search/Insert/Delete**: O(log N).
+*   **Ordering**: Keys are always sorted.
 
-```cpp
-#include <queue>
+#### 1. `std::set` / `std::multiset`
+*   Set of unique keys (multiset allows duplicates).
+*   Keys are `const` (cannot modify key in-place, must erase and re-insert).
 
-queue<int> q;
+#### 2. `std::map` / `std::multimap`
+*   Key-Value pairs (`std::pair<const Key, Value>`).
+*   `operator[]`: inserts default value if key not found! Use `find()` for checking existence.
 
-// Adding (enqueue)
-q.push(10);
-q.push(20);
-q.push(30);
-
-// Size and check empty
-cout << q.size() << "\n";
-cout << q.empty() << "\n";
-
-// Access front and back
-cout << q.front() << "\n";  // 10 (first element)
-cout << q.back() << "\n";   // 30 (last element)
-
-// Removing (dequeue)
-q.pop();  // Removes 10
-
-// Typical queue pattern
-while (!q.empty()) {
-    cout << q.front() << " ";
-    q.pop();
-}
-```
-
-### Queue Example - Task Processing
-
-```cpp
-queue<string> taskQueue;
-
-taskQueue.push("Task 1");
-taskQueue.push("Task 2");
-taskQueue.push("Task 3");
-
-while (!taskQueue.empty()) {
-    cout << "Processing: " << taskQueue.front() << "\n";
-    taskQueue.pop();
-}
-// Output: Task 1, Task 2, Task 3
-```
+**Iterator Invalidation**:
+*   Insertion/Deletion ONLY invalidates iterators to the affected element. All others remain valid. (Tree structure stability).
 
 ---
 
-## 1.9 STACK - LIFO (Last In, First Out)
+### 5.4 Container Adapters
+Wrappers that restrict interfaces.
 
-### What is Stack?
-Adapter container. Elements added and removed from top.
-
-```cpp
-#include <stack>
-
-stack<int> st;
-
-// Adding (push)
-st.push(10);
-st.push(20);
-st.push(30);
-
-// Size and check empty
-cout << st.size() << "\n";
-cout << st.empty() << "\n";
-
-// Access top
-cout << st.top() << "\n";  // 30 (last added)
-
-// Removing (pop)
-st.pop();  // Removes 30
-
-// Typical stack pattern
-while (!st.empty()) {
-    cout << st.top() << " ";
-    st.pop();
-}
-// Output: 20 10
-```
-
-### Stack Example - Balanced Parentheses
-
-```cpp
-#include <stack>
-#include <string>
-
-bool isBalanced(string expr) {
-    stack<char> st;
-    
-    for (char c : expr) {
-        if (c == '(' || c == '[' || c == '{') {
-            st.push(c);
-        } else if (c == ')' || c == ']' || c == '}') {
-            if (st.empty()) return false;
-            
-            char top = st.top();
-            if ((c == ')' && top == '(') ||
-                (c == ']' && top == '[') ||
-                (c == '}' && top == '{')) {
-                st.pop();
-            } else {
-                return false;
-            }
-        }
-    }
-    
-    return st.empty();
-}
-```
+1.  **`std::stack`**: LIFO (Last-In, First-Out). Adapts vector/deque/list.
+2.  **`std::queue`**: FIFO (First-In, First-Out). Adapts deque/list.
+3.  **`std::priority_queue`**: Heap data structure. O(log N) push/pop. O(1) top. Max-heap by default.
 
 ---
 
-## 1.10 PRIORITY_QUEUE - Heap-Based Container
-
-### What is Priority Queue?
-Elements removed in order of priority (max/min).
-
-```cpp
-#include <queue>
-
-// Max heap (largest element has highest priority)
-priority_queue<int> pq;
-
-pq.push(10);
-pq.push(30);
-pq.push(20);
-
-while (!pq.empty()) {
-    cout << pq.top() << " ";  // Largest first
-    pq.pop();
-}
-// Output: 30 20 10
-
-// Min heap (smallest element has highest priority)
-priority_queue<int, vector<int>, greater<int>> minPQ;
-
-minPQ.push(10);
-minPQ.push(30);
-minPQ.push(20);
-
-while (!minPQ.empty()) {
-    cout << minPQ.top() << " ";  // Smallest first
-    minPQ.pop();
-}
-// Output: 10 20 30
-```
-
-### Priority Queue with Custom Comparator
-
-```cpp
-struct Task {
-    string name;
-    int priority;
-    
-    // For priority_queue to work
-    bool operator<(const Task& other) const {
-        return priority < other.priority;  // Max heap on priority
-    }
-};
-
-priority_queue<Task> tasks;
-
-tasks.push({"Task A", 5});
-tasks.push({"Task B", 10});
-tasks.push({"Task C", 3});
-
-while (!tasks.empty()) {
-    cout << tasks.top().name << " (P: " << tasks.top().priority << ")\n";
-    tasks.pop();
-}
-// Output: Task B (P: 10), Task A (P: 5), Task C (P: 3)
-```
+### 5.5 Unordered Containers (C++11)
+Hash Tables.
+*   `unordered_set`, `unordered_map`, etc.
+*   **Performance**: O(1) average, O(N) worst case (collisions).
+*   **Requirement**: Key must be hashable.
 
 ---
 
-# SECTION 2: ITERATORS - DEEP DIVE
+### 5.6 Iterators
 
-## Iterator Categories
+Iterators are pointer-like objects.
 
-```
-                    ┌─────────────────────┐
-                    │  Iterator           │
-                    ├─────────────────────┤
-                    │ • Single pass       │
-                    │ • Basic operations  │
-                    └──────────┬──────────┘
-                               │
-        ┌──────────────────────┼──────────────────────┐
-        │                      │                      │
-    ┌───▼────┐          ┌─────▼──────┐        ┌──────▼───┐
-    │ Input  │          │   Output   │        │ Forward  │
-    ├────────┤          ├────────────┤        ├──────────┤
-    │ Read   │          │ Write      │        │ Read+Write
-    │ ++, *  │          │ ++, =      │        │ All ops  │
-    └────────┘          └────────────┘        └──────┬───┘
-                                                     │
-                        ┌────────────────────────────┘
-                        │
-                    ┌───▼─────────────┐
-                    │  Bidirectional  │
-                    ├─────────────────┤
-                    │ ++, --, *, =    │
-                    └────────┬────────┘
-                             │
-                    ┌────────▼────────┐
-                    │ Random Access   │
-                    ├─────────────────┤
-                    │ All ops + []    │
-                    └─────────────────┘
-```
+#### Hierarchy (Capabilities)
+1.  **Input Iterator**: Read-only, single pass (e.g., `istream_iterator`).
+2.  **Output Iterator**: Write-only, single pass (e.g., `ostream_iterator`).
+3.  **Forward Iterator**: Read/Write, multi-pass (e.g., `forward_list`).
+4.  **Bidirectional Iterator**: Can move back `--it` (e.g., `list`, `map`, `set`).
+5.  **Random Access Iterator**: Jump `it + n`, compare `<` (e.g., `vector`, `deque`, `array`, raw pointers).
 
-### Iterator Types
-
-```cpp
-#include <vector>
-#include <list>
-#include <map>
-
-vector<int> vec;         // Random access
-list<int> lst;           // Bidirectional
-map<int, int> mp;        // Bidirectional
-deque<int> dq;           // Random access
-set<int> st;             // Bidirectional
-
-// Declaring iterators
-vector<int>::iterator it1;                 // Random access
-list<int>::iterator it2;                   // Bidirectional
-map<int, int>::iterator it3;               // Bidirectional
-const vector<int>::iterator it4;           // Const iterator
-
-// Auto (C++11)
-auto it = vec.begin();                     // Type deduced
-```
-
-### Iterator Operations
-
-```cpp
-vector<int> v = {10, 20, 30, 40, 50};
-
-auto it = v.begin();
-
-// Navigation
-++it;                    // Move forward
---it;                    // Move backward (if bidirectional)
-it++;                    // Post-increment
-it--;                    // Post-decrement
-
-// Dereference
-cout << *it << "\n";     // Get value
-
-// Arithmetic (random access only)
-it = it + 3;             // Move 3 positions forward
-it = it - 2;             // Move 2 positions backward
-it += 5;
-it -= 3;
-
-// Comparison
-if (it == v.end()) {}    // Check equality
-if (it != v.end()) {}    // Check inequality
-if (it < v.end()) {}     // Less than (random access)
-
-// Distance
-int dist = distance(v.begin(), it);
-
-// Advance
-advance(it, 5);          // Move 5 positions forward
-```
-
-### Reverse Iterators
-
-```cpp
-vector<int> v = {10, 20, 30, 40, 50};
-
-// Reverse iteration
-for (auto it = v.rbegin(); it != v.rend(); ++it) {
-    cout << *it << " ";  // 50 40 30 20 10
-}
-
-// Reverse iteration with auto
-for (auto val : v) {
-    cout << val << " ";  // 10 20 30 40 50
-}
-
-// Reverse iteration (explicit)
-for (int i = v.size() - 1; i >= 0; --i) {
-    cout << v[i] << " ";  // 50 40 30 20 10
-}
-```
-
-### Const Iterators
-
-```cpp
-const vector<int> v = {10, 20, 30};
-
-// Const iterator
-auto it = v.begin();     // const_iterator
-cout << *it << "\n";     // OK - read
-// *it = 100;            // Error - can't modify
-
-// Explicit const iterator
-const_iterator cit = v.cbegin();
-
-// Reverse const iterator
-auto rit = v.crbegin();
-
-// Using const_iterator with non-const vector
-vector<int> v2 = {1, 2, 3};
-const_iterator it2 = v2.cbegin();
-```
-
-const_iterator it2 = v2.cbegin();
-```
-
-### Advanced Iterator Concepts
-
-#### 1. Iterator Traits (std::iterator_traits)
-Algorithms use `iterator_traits` to know what an iterator can do.
-
-```cpp
-#include <iterator>
-
-template<typename Iter>
-void my_advance(Iter& it, int n) {
-    using category = typename std::iterator_traits<Iter>::iterator_category;
-    
-    if constexpr (std::is_base_of_v<std::random_access_iterator_tag, category>) {
-        it += n; // O(1)
-    } else {
-        while (n--) ++it; // O(N)
-    }
-}
-```
-
-#### 2. Writing a Custom Iterator
-To make a class compatible with STL algorithms (like `std::find`), you need a conformant iterator.
-
-```cpp
-class Integers {
-    struct Iterator {
-        using iterator_category = std::forward_iterator_tag;
-        using difference_type   = std::ptrdiff_t;
-        using value_type        = int;
-        using pointer           = int*;
-        using reference         = int&;
-
-        int value;
-        Iterator(int v) : value(v) {}
-
-        reference operator*() { return value; }
-        pointer operator->() { return &value; }
-        
-        Iterator& operator++() { value++; return *this; }
-        Iterator operator++(int) { Iterator tmp = *this; ++(*this); return tmp; }
-        
-        friend bool operator== (const Iterator& a, const Iterator& b) { return a.value == b.value; };
-        friend bool operator!= (const Iterator& a, const Iterator& b) { return a.value != b.value; };
-    };
-
-public:
-    Iterator begin() { return Iterator(0); }
-    Iterator end()   { return Iterator(10); } // Range [0, 10)
-};
-```
-
-#### 3. Stream Iterators
-Treat IO streams as containers.
-
-```cpp
-#include <iterator>
-#include <algorithm>
-
-// Read ints from cin until EOF or invalid input
-std::istream_iterator<int> input_it(std::cin);
-std::istream_iterator<int> eos;
-
-// Write ints to cout with ", " delimiter
-std::ostream_iterator<int> output_it(std::cout, ", ");
-
-std::copy(input_it, eos, output_it);
-```
-
-#### 4. Insert Iterators
-Special output iterators that grow the container.
-
-*   `std::back_inserter(c)`: Calls `c.push_back(val)`. (Vector, List, Deque)
-*   `std::front_inserter(c)`: Calls `c.push_front(val)`. (List, Deque)
-*   `std::inserter(c, it)`: Calls `c.insert(it, val)`. (Map, Set, List, Vector)
-
-```cpp
-std::vector<int> v;
-std::fill_n(std::back_inserter(v), 5, 42); // v becomes {42, 42, 42, 42, 42}
-```
+#### Operations
+*   `*it`: Dereference.
+*   `++it`: Next element.
+*   `it->member`: Member access.
 
 ---
 
-# SECTION 3: ALGORITHMS - COMPLETE REFERENCE
-# C++ STL Advanced - Extended Reference & Algorithms Library
+### 5.7 Algorithms
 
-## COMPREHENSIVE STL ALGORITHMS REFERENCE
+Defined in `<algorithm>`. They operate on ranges `[begin, end)`.
 
-### All Algorithms by Category (60+ Algorithms)
+#### Non-Modifying
+*   `find(begin, end, val)`: O(N).
+*   `count(begin, end, val)`: O(N).
+*   `binary_search(begin, end, val)`: O(log N). **Requires sorted range.**
 
----
+#### Modifying
+*   `copy(src_begin, src_end, dest)`: Copies range.
+*   `transform(begin, end, out, func)`: Applies function to elements.
+*   `remove_if(begin, end, pred)`: **Erase-Remove Idiom**.
+    ```cpp
+    // Removes elements but doesn't resize container!
+    auto it = std::remove(v.begin(), v.end(), 99);
+    // Must call erase to actually shrink
+    v.erase(it, v.end());
+    ```
 
-## NON-MODIFYING SEQUENCE ALGORITHMS
-
-### 1. find Family
-```cpp
-#include <algorithm>
-
-auto it = find(first, last, value);              // Find element
-auto it = find_if(first, last, predicate);       // Find matching condition
-auto it = find_if_not(first, last, predicate);   // Find non-matching (C++11)
-```
-
-### 2. count Family
-```cpp
-int n = count(first, last, value);               // Count occurrences
-int n = count_if(first, last, predicate);        // Count matching
-```
-
-### 3. mismatch
-```cpp
-auto [it1, it2] = mismatch(first1, last1, first2);  // Find first difference
-auto [it1, it2] = mismatch(first1, last1, first2, comp); // With comparator
-```
-
-### 4. equal
-```cpp
-bool eq = equal(first1, last1, first2);          // Compare ranges
-bool eq = equal(first1, last1, first2, comp);    // With comparator
-```
-
-### 5. search & adjacent_find
-```cpp
-auto it = search(first, last, s_first, s_last);  // Find subsequence
-auto it = search_n(first, last, count, value);   // Find N equal elements
-auto it = adjacent_find(first, last);            // Find adjacent equal elements
-auto it = adjacent_find(first, last, comp);      // With comparator
-```
-
-### 6. Logical Operations
-```cpp
-bool b = all_of(first, last, predicate);         // All match
-bool b = any_of(first, last, predicate);         // Any matches
-bool b = none_of(first, last, predicate);        // None match
-```
-
-### 7. Min/Max
-```cpp
-auto it = min_element(first, last);              // Find minimum
-auto it = max_element(first, last);              // Find maximum
-auto [minIt, maxIt] = minmax_element(first, last);  // Both (C++11)
-
-auto it = min_element(first, last, comp);        // With comparator
-auto it = max_element(first, last, comp);
-auto [minIt, maxIt] = minmax_element(first, last, comp);
-```
+#### Sorting
+*   `sort(begin, end)`: O(N log N). Uses Introsort (QuickSort + HeapSort).
+*   `stable_sort(begin, end)`: Preserves order of equal elements.
 
 ---
 
-## MODIFYING SEQUENCE ALGORITHMS
+### 5.8 Strings (`std::string`)
 
-### 1. copy Family
-```cpp
-copy(first, last, d_first);                      // Copy range
-copy_n(first, count, d_first);                   // Copy N elements
-copy_if(first, last, d_first, predicate);        // Conditional copy
-copy_backward(first, last, d_last);              // Copy backwards
-```
+A specialization of `basic_string<char>`. Effectively a `vector<char>` optimized for text.
 
-### 2. move (C++11)
-```cpp
-move(first, last, d_first);                      // Move range
-move_backward(first, last, d_last);              // Move backwards
-```
-
-### 3. transform
-```cpp
-transform(first, last, d_first, op);             // Apply function
-transform(first1, last1, first2, d_first, op);   // Apply to two ranges
-```
-
-### 4. fill & generate
-```cpp
-fill(first, last, value);                        // Fill with value
-fill_n(first, count, value);                     // Fill N elements
-generate(first, last, gen);                      // Generate values
-generate_n(first, count, gen);                   // Generate N values
-```
-
-### 5. replace
-```cpp
-replace(first, last, old_value, new_value);      // Replace values
-replace_if(first, last, predicate, new_value);   // Conditional replace
-replace_copy(first, last, d_first, old, new);    // Copy with replace
-replace_copy_if(first, last, d_first, pred, new);// Conditional copy-replace
-```
-
-### 6. swap & reverse
-```cpp
-swap(a, b);                                       // Swap two values
-iter_swap(it1, it2);                             // Swap via iterators
-reverse(first, last);                            // Reverse range
-reverse_copy(first, last, d_first);              // Copy reversed
-```
-
-### 7. rotate
-```cpp
-rotate(first, middle, last);                     // Rotate range
-rotate_copy(first, middle, last, d_first);       // Copy rotated
-```
-
-### 8. unique
-```cpp
-auto it = unique(first, last);                   // Remove consecutive duplicates
-auto it = unique(first, last, comp);             // With comparator
-auto it = unique_copy(first, last, d_first);     // Copy unique
-auto it = unique_copy(first, last, d_first, comp);
-```
-
-### 9. shuffle & random
-```cpp
-shuffle(first, last, rng);                       // Random shuffle
-random_shuffle(first, last);                     // Legacy shuffle
-random_shuffle(first, last, randFunc);           // With random function
-```
-
-### 10. remove
-```cpp
-auto it = remove(first, last, value);            // Remove all matching
-auto it = remove_if(first, last, predicate);     // Conditional remove
-auto it = remove_copy(first, last, d_first, val);// Copy without matching
-auto it = remove_copy_if(first, last, d_first, pred);
-```
+*   **SSO (Small String Optimization)**: Short strings (e.g., < 15/23 chars) are stored directly in the object, avoiding heap allocation.
+*   **c_str()**: Returns null-terminated C-string `const char*`.
+*   **string_view** (C++17): Lightweight, non-owning reference to a string. **Prefer this for function parameters.**
 
 ---
 
-## SORTING & PARTITIONING ALGORITHMS
+### 5.9 I/O Streams
 
-### Sorting
-```cpp
-sort(first, last);                               // Sort (introsort)
-sort(first, last, comp);                         // With comparator
-stable_sort(first, last);                        // Stable sort
-stable_sort(first, last, comp);
-
-partial_sort(first, middle, last);               // Sort first part
-partial_sort(first, middle, last, comp);
-partial_sort_copy(first, last, d_first, d_last);// Copy partially sorted
-
-nth_element(first, nth, last);                   // Sort around nth
-nth_element(first, nth, last, comp);
-```
-
-### Partitioning
-```cpp
-auto it = partition(first, last, predicate);     // Partition
-auto it = stable_partition(first, last, pred);   // Stable partition
-auto it = partition_copy(first, last, d_true, d_false, pred);  // Copy partitions
-
-bool b = is_partitioned(first, last, predicate); // Check if partitioned
-auto it = partition_point(first, last, predicate); // Find partition point
-```
-
-### Binary Search (requires sorted range)
-```cpp
-auto it = lower_bound(first, last, value);       // First >= value
-auto it = upper_bound(first, last, value);       // First > value
-auto [lo, hi] = equal_range(first, last, value);  // Range of value
-bool b = binary_search(first, last, value);      // Check existence
-
-auto it = lower_bound(first, last, value, comp);
-auto it = upper_bound(first, last, value, comp);
-auto [lo, hi] = equal_range(first, last, value, comp);
-bool b = binary_search(first, last, value, comp);
-```
-
----
-
-## NUMERIC ALGORITHMS
+*   `cin`, `cout`, `cerr` (unbuffered error), `clog` (buffered error).
+*   `stringstream`: In-memory formatting.
+*   `fstream`: File I/O.
+    *   RAII: Files close automatically in destructor.
 
 ```cpp
-#include <numeric>
-
-// Accumulation
-int sum = accumulate(first, last, init);          // Sum
-auto prod = accumulate(first, last, init, op);    // Custom operation
-
-// Inner product (dot product)
-int dot = inner_product(first1, last1, first2, init);
-auto result = inner_product(first1, last1, first2, init, op1, op2);
-
-// Partial sums
-partial_sum(first, last, d_first);                // Cumulative sum
-partial_sum(first, last, d_first, op);            // Custom operation
-
-// Adjacent differences
-adjacent_difference(first, last, d_first);        // Differences
-adjacent_difference(first, last, d_first, op);    // Custom operation
-```
-
----
-
-## SET OPERATIONS (require sorted ranges)
-
-```cpp
-// Union - all unique elements
-auto it = set_union(first1, last1, first2, last2, d_first);
-auto it = set_union(first1, last1, first2, last2, d_first, comp);
-
-// Intersection - common elements
-auto it = set_intersection(first1, last1, first2, last2, d_first);
-auto it = set_intersection(first1, last1, first2, last2, d_first, comp);
-
-// Difference - in first but not in second
-auto it = set_difference(first1, last1, first2, last2, d_first);
-auto it = set_difference(first1, last1, first2, last2, d_first, comp);
-
-// Symmetric difference - in one but not both
-auto it = set_symmetric_difference(first1, last1, first2, last2, d_first);
-auto it = set_symmetric_difference(first1, last1, first2, last2, d_first, comp);
-
-// Check relationship
-bool b = includes(first1, last1, first2, last2);   // first1 includes first2
-bool b = includes(first1, last1, first2, last2, comp);
-```
-
----
-
-## HEAP OPERATIONS
-
-```cpp
-#include <algorithm>
-
-make_heap(first, last);                          // Create heap
-make_heap(first, last, comp);                    // With comparator
-
-push_heap(first, last);                          // Add element to heap
-pop_heap(first, last);                           // Extract max from heap
-sort_heap(first, last);                          // Sort heap
-
-bool b = is_heap(first, last);                   // Check if valid heap
-bool b = is_heap(first, last, comp);
-auto it = is_heap_until(first, last);            // Find where heap property breaks
-```
-
----
-
-## PERMUTATION ALGORITHMS
-
-```cpp
-bool b = next_permutation(first, last);          // Next lexicographic permutation
-bool b = next_permutation(first, last, comp);
-bool b = prev_permutation(first, last);          // Previous permutation
-bool b = prev_permutation(first, last, comp);
-
-bool b = is_permutation(first1, last1, first2);  // Check if permutation
-bool b = is_permutation(first1, last1, first2, comp);
-```
-
----
-
-## COMPLETE STL ALGORITHMS QUICK REFERENCE
-
-| Algorithm | Purpose | Returns |
-|-----------|---------|---------|
-| find | Find element | Iterator |
-| find_if | Find matching | Iterator |
-| count | Count occurrences | Count |
-| equal | Compare ranges | Bool |
-| search | Find subsequence | Iterator |
-| sort | Sort range | Void |
-| binary_search | Check existence (sorted) | Bool |
-| lower_bound | First >= value (sorted) | Iterator |
-| partition | Divide by condition | Iterator |
-| copy | Copy range | Iterator |
-| transform | Apply function | Iterator |
-| remove | Remove matching | Iterator |
-| unique | Remove duplicates | Iterator |
-| reverse | Reverse range | Void |
-| rotate | Rotate range | Void |
-| min_element | Find minimum | Iterator |
-| max_element | Find maximum | Iterator |
-| accumulate | Sum/aggregate | Value |
-| inner_product | Dot product | Value |
-| set_union | Union of sets | Iterator |
-| set_intersection | Intersection | Iterator |
-
----
-
-## CONTAINERS DETAILED OPERATIONS
-
-### Vector Operations
-```cpp
-v.push_back(val);               // Add to end
-v.pop_back();                   // Remove from end
-v.insert(pos, val);             // Insert at position
-v.erase(pos);                   // Erase at position
-v.clear();                      // Remove all
-v.resize(n);                    // Change size
-v.reserve(n);                   // Pre-allocate
-v.shrink_to_fit();              // Release excess memory
-v.swap(other);                  // Swap two vectors
-
-// Access
-v[i];                           // O(1) random access
-v.at(i);                        // O(1) with bounds check
-v.front();                      // First element
-v.back();                       // Last element
-v.data();                       // Raw pointer (C++11)
-
-// Iteration
-begin(v), end(v);               // Iterators
-rbegin(v), rend(v);             // Reverse iterators
-cbegin(v), cend(v);             // Const iterators (C++11)
-
-// Properties
-v.size();                       // Number of elements
-v.capacity();                   // Allocated space
-v.empty();                      // Check if empty
-v.max_size();                   // Maximum possible size
-```
-
-### Map Operations
-```cpp
-m[key] = value;                 // Insert/update
-m.insert({key, value});         // Insert
-m.erase(key);                   // Erase by key
-m.clear();                      // Remove all
-m.swap(other);                  // Swap two maps
-
-// Access
-m[key];                         // Access (creates if missing)
-m.at(key);                      // Access (throws if missing)
-m.find(key);                    // Find key
-m.count(key);                   // Check existence
-
-// Range operations
-m.lower_bound(key);             // First >= key
-m.upper_bound(key);             // First > key
-m.equal_range(key);             // All equal keys
-
-// Iteration
-m.begin(), m.end();             // Forward
-m.rbegin(), m.rend();           // Reverse
-
-// Properties
-m.size();                       // Number of elements
-m.empty();                      // Check if empty
-```
-
-### Set Operations
-```cpp
-s.insert(val);                  // Insert element
-s.erase(val);                   // Erase by value
-s.clear();                      // Remove all
-s.swap(other);                  // Swap
-
-// Access
-s.find(val);                    // Find element
-s.count(val);                   // Check existence (1 or 0)
-s.lower_bound(val);             // First >= value
-s.upper_bound(val);             // First > value
-s.equal_range(val);             // All equal values
-
-// Iteration
-s.begin(), s.end();             // Forward
-s.rbegin(), s.rend();           // Reverse
-
-// Properties
-s.size();
-s.empty();
-```
-
----
-
-## ALGORITHM COMPLEXITY CHEAT SHEET
-
-```
-find, find_if, find_if_not:        O(n)
-count, count_if:                   O(n)
-search, search_n:                  O(n*m)
-all_of, any_of, none_of:           O(n)
-
-sort:                              O(n log n) avg
-stable_sort:                       O(n log n)
-partial_sort:                      O(n log k) k=distance(first,last)
-nth_element:                       O(n) avg
-make_heap:                         O(n)
-push_heap:                         O(log n)
-pop_heap:                          O(log n)
-
-copy:                              O(n)
-transform:                         O(n)
-fill:                              O(n)
-reverse:                           O(n)
-rotate:                            O(n)
-unique:                            O(n)
-remove:                            O(n)
-partition:                         O(n)
-binary_search:                     O(log n)
-lower_bound:                       O(log n)
-upper_bound:                       O(log n)
-
-accumulate:                        O(n)
-inner_product:                     O(n)
-partial_sum:                       O(n)
-
-set_union:                         O(n+m)
-set_intersection:                  O(n+m)
-set_difference:                    O(n+m)
-```
-
----
-
-## CONTAINER COMPLEXITY COMPARISON
-
-```
-                  Insert  Delete  Search  Random Access  Memory
-vector            O(n)    O(n)    O(n)    O(1)           Contiguous
-deque             O(n)    O(n)    O(n)    O(1)           Chunks
-list              O(1)    O(1)    O(n)    O(n)           Scattered
-map               O(log n) O(log n) O(log n) -           Tree
-set               O(log n) O(log n) O(log n) -           Tree
-multimap          O(log n) O(log n) O(log n) -           Tree
-multiset          O(log n) O(log n) O(log n) -           Tree
-unordered_map     O(1)    O(1)    O(1)    -              Hash
-unordered_set     O(1)    O(1)    O(1)    -              Hash
-queue             O(1)    O(1)    O(n)    -              - (adapter)
-stack             O(1)    O(1)    O(n)    -              - (adapter)
-priority_queue    O(log n) O(log n) O(n)    -              Heap
-```
-
----
-
-## ITERATOR COMPARISON TABLE
-
-```
-Container        Iterator Type          Bidirectional  Random Access
-vector           random access           Yes            Yes
-deque            random access           Yes            Yes
-list             bidirectional           Yes            No
-map              bidirectional           Yes            No
-set              bidirectional           Yes            No
-multimap         bidirectional           Yes            No
-multiset         bidirectional           Yes            No
-unordered_map    forward                 No             No
-unordered_set    forward                 No             No
-```
-
----
-
-## PRACTICAL STL PATTERNS
-
-### Pattern 1: Find & Remove
-```cpp
-vector<int> v = {1, 2, 3, 2, 4, 2};
-auto it = find(v.begin(), v.end(), 2);
-if (it != v.end()) {
-    v.erase(it);  // Remove first occurrence
-}
-// v: {1, 3, 2, 4, 2}
-
-// Remove all
-v.erase(remove(v.begin(), v.end(), 2), v.end());
-// v: {1, 3, 4}
-```
-
-### Pattern 2: Filter & Copy
-```cpp
-vector<int> v = {1, 2, 3, 4, 5};
-vector<int> even;
-
-copy_if(v.begin(), v.end(), back_inserter(even),
-    [](int x) { return x % 2 == 0; });
-// even: {2, 4}
-```
-
-### Pattern 3: Transform & Collect
-```cpp
-vector<int> v = {1, 2, 3};
-vector<int> squared;
-
-transform(v.begin(), v.end(), back_inserter(squared),
-    [](int x) { return x * x; });
-// squared: {1, 4, 9}
-```
-
-### Pattern 4: Partition & Process
-```cpp
-vector<int> v = {1, 2, 3, 4, 5, 6};
-
-auto it = partition(v.begin(), v.end(),
-    [](int x) { return x % 2 == 0; });
-
-// Process even numbers
-for (auto i = v.begin(); i != it; ++i) {
-    cout << *i << " ";  // 2 4 6
-}
-```
-
-### Pattern 5: Sort & Deduplicate
-```cpp
-vector<int> v = {3, 1, 4, 1, 5, 9, 2, 6};
-
-sort(v.begin(), v.end());
-auto it = unique(v.begin(), v.end());
-v.erase(it, v.end());
-// v: {1, 2, 3, 4, 5, 6, 9}
-```
-
-### Pattern 6: Group & Count
-```cpp
-map<string, int> frequency;
-
-vector<string> words = {"apple", "banana", "apple", "cherry", "banana"};
-for (const string& word : words) {
-    frequency[word]++;
-}
-
-for (const auto& [word, count] : frequency) {
-    cout << word << ": " << count << "\n";
-}
-// Output: apple: 2, banana: 2, cherry: 1
-```
-
-### Pattern 7: Custom Sorting
-```cpp
-struct Person {
-    string name;
-    int age;
-};
-
-vector<Person> people = {
-    {"Alice", 30}, {"Bob", 25}, {"Carol", 30}
-};
-
-// Sort by age, then by name
-sort(people.begin(), people.end(),
-    [](const Person& a, const Person& b) {
-        if (a.age != b.age) return a.age < b.age;
-        return a.name < b.name;
-    });
-```
-
-### Pattern 8: Merge Ranges
-```cpp
-vector<int> v1 = {1, 3, 5};
-vector<int> v2 = {2, 4, 6};
-vector<int> merged;
-
-merge(v1.begin(), v1.end(), v2.begin(), v2.end(),
-    back_inserter(merged));
-// merged: {1, 2, 3, 4, 5, 6}
-```
-
----
-
-## STL WITH LAMBDAS (C++11 and later)
-
-```cpp
-#include <algorithm>
-#include <vector>
-
-vector<int> v = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
-
-// Simple lambda
-auto isEven = [](int x) { return x % 2 == 0; };
-
-// With capture by value
-int threshold = 5;
-auto gt = [threshold](int x) { return x > threshold; };
-
-// With capture by reference
-int sum = 0;
-for_each(v.begin(), v.end(),
-    [&sum](int x) { sum += x; });
-
-// Mutable lambda
-auto counter = [count = 0]() mutable { return ++count; };
-
-// Generic lambda (C++14)
-auto print = [](auto x) { cout << x << " "; };
-for_each(v.begin(), v.end(), print);
-
-// Find even numbers
-auto it = find_if(v.begin(), v.end(),
-    [](int x) { return x % 2 == 0; });
-
-// Count odd numbers
-int oddCount = count_if(v.begin(), v.end(),
-    [](int x) { return x % 2 != 0; });
-
-// Transform to squares
-vector<int> squared;
-transform(v.begin(), v.end(), back_inserter(squared),
-    [](int x) { return x * x; });
-
-// Filter and collect
-vector<int> filtered;
-copy_if(v.begin(), v.end(), back_inserter(filtered),
-    [](int x) { return x % 2 == 0; });
-```
-
----
-
-# SECTION 4: STRINGS - MASTER GUIDE
-
-## 4.1 String Basics
-
-```cpp
-#include <string>
-using namespace std;
-
-// Declaration
-string s1;                     // Empty string
-string s2 = "Hello";           // Initialize with C-string
-string s3("World");            // Constructor
-string s4(5, 'a');             // 5 'a' characters: "aaaaa"
-string s5 = s2;                // Copy
-string s6(s2, 1, 3);           // Substring of s2 from pos 1, length 3: "ell"
-string s7(s2.begin(), s2.end()); // From iterators
-
-// C-string
-const char* cstr = s2.c_str(); // Convert to C-string
-const char* data = s2.data();  // Get data pointer
-```
-
-### Size and Capacity
-
-```cpp
-string s = "Hello";
-
-cout << s.length() << "\n";   // 5
-cout << s.size() << "\n";     // 5 (same as length)
-cout << s.capacity() << "\n"; // >= 5
-
-cout << s.empty() << "\n";    // 0 (false)
-cout << s.max_size() << "\n"; // Maximum possible size
-
-// Resize
-s.resize(10, '*');            // Resize to 10, fill with '*'
-// s: "Hello*****"
-
-// Reserve
-s.reserve(100);               // Reserve space for 100 characters
-
-// Clear
-s.clear();                    // Empty the string
-```
-
----
-
-## 4.2 Accessing Characters
-
-```cpp
-string s = "Hello";
-
-// Using operator[]
-cout << s[0] << "\n";        // 'H' - No bounds checking
-cout << s.at(0) << "\n";     // 'H' - With bounds checking
-
-// Front and back
-cout << s.front() << "\n";   // 'H'
-cout << s.back() << "\n";    // 'o'
-
-// Modifying characters
-s[0] = 'J';                  // "Jello"
-s.at(1) = 'A';               // "JAllo"
-s.front() = 'B';             // "BAllo"
-s.back() = 'z';              // "BAllz"
-```
-
----
-
-## 4.3 String Concatenation
-
-```cpp
-string s1 = "Hello";
-string s2 = "World";
-
-// Using + operator
-string s3 = s1 + " " + s2;   // "Hello World"
-
-// Using += operator
-s1 += " ";
-s1 += s2;                    // s1: "Hello World"
-
-// Using append()
-s1.append(" C++");           // "Hello World C++"
-s1.append(3, '!');           // "Hello World C+++!!"
-
-// Using push_back()
-s1.push_back('*');           // "Hello World C+++!!*"
-
-// Using insert()
-s1.insert(5, "_");           // Insert "_" at position 5
-// s1: "Hello_ World C+++!!*"
-```
-
----
-
-## 4.4 String Searching
-
-```cpp
-string s = "Hello World Hello";
-
-// find() - find substring
-size_t pos = s.find("World");
-if (pos != string::npos) {
-    cout << "Found at position: " << pos << "\n";  // 6
-}
-
-// find() with starting position
-pos = s.find("Hello", 2);    // Find "Hello" starting from position 2
-// Returns 12 (second "Hello")
-
-// rfind() - find from right
-pos = s.rfind("Hello");      // Position of last "Hello"
-// Returns 12
-
-// find_first_of() - find first occurrence of any character in string
-pos = s.find_first_of("aeiou");
-// Returns position of first vowel: 1 ('e')
-
-// find_last_of() - find last occurrence of any character
-pos = s.find_last_of("aeiou");
-// Returns position of last vowel: 14 ('o')
-
-// find_first_not_of() - find first character NOT in string
-pos = s.find_first_not_of("He");
-// Returns 2 ('l')
-
-// find_last_not_of() - find last character NOT in string
-pos = s.find_last_not_of("o");
-// Returns 15
-
-// Check if string starts with (C++20)
-// bool starts = s.starts_with("Hello");
-// bool ends = s.ends_with("ello");
-```
-
----
-
-## 4.5 String Manipulation
-
-```cpp
-string s = "Hello World";
-
-// Substring
-string sub = s.substr(0, 5);  // "Hello"
-string sub2 = s.substr(6);    // "World"
-
-// Replace
-s.replace(0, 5, "Hi");        // Replace first 5 chars with "Hi"
-// s: "Hi World"
-
-// Erase
-s.erase(2, 1);                // Erase 1 char starting at position 2
-// s: "HiWorld"
-
-// remove() + erase() idiom (for removing specific characters)
-string s2 = "H-e-l-l-o";
-s2.erase(remove(s2.begin(), s2.end(), '-'), s2.end());
-// s2: "Hello"
-
-// Compare
-string a = "apple";
-string b = "apple";
-cout << (a == b) << "\n";     // 1 (true)
-cout << a.compare(b) << "\n"; // 0 (equal)
-
-// Case conversion (manual)
-for (char& c : s) {
-    c = toupper(c);  // Convert to uppercase
-}
-// s: "HI WORLD"
-
-// Transform with algorithm
-transform(s.begin(), s.end(), s.begin(), ::toupper);
-```
-
----
-
-## 4.6 String Iteration
-
-```cpp
-string s = "Hello";
-
-// Iterator
-for (auto it = s.begin(); it != s.end(); ++it) {
-    cout << *it << " ";
-}
-
-// Range-based for (C++11)
-for (char c : s) {
-    cout << c << " ";
-}
-
-// Index-based
-for (int i = 0; i < s.length(); i++) {
-    cout << s[i] << " ";
-}
-
-// Reverse iteration
-for (auto it = s.rbegin(); it != s.rend(); ++it) {
-    cout << *it << " ";
-}
-```
-
----
-
-## 4.7 String Conversion
-
-```cpp
-#include <string>
-
-// String to numbers
-string num = "123";
-int intVal = stoi(num);           // 123
-long longVal = stol(num);         // 123L
-float floatVal = stof("3.14");    // 3.14
-double doubleVal = stod("3.14159"); // 3.14159
-
-// Number to string
-int x = 42;
-string s1 = to_string(x);         // "42"
-string s2 = to_string(3.14);      // "3.140000"
-string s3 = to_string(true);      // "1"
-
-// With radix (base)
-string hex = to_string(255);      // "255" (decimal)
-// For hex, use stringstream or manual conversion
-```
-
----
-
-## 4.8 String Comparison
-
-```cpp
-string s1 = "apple";
-string s2 = "apple";
-string s3 = "banana";
-
-// Equality
-cout << (s1 == s2) << "\n";      // 1 (true)
-cout << (s1 != s3) << "\n";      // 1 (true)
-
-// Ordering (lexicographic)
-cout << (s1 < s3) << "\n";       // 1 (true) - "apple" < "banana"
-cout << (s1 > s3) << "\n";       // 0 (false)
-
-// compare() method
-cout << s1.compare(s2) << "\n";  // 0 (equal)
-cout << s1.compare(s3) << "\n";  // -1 (s1 < s3)
-cout << s3.compare(s1) << "\n";  // 1 (s3 > s1)
-
-// Compare substring
-cout << s1.compare(0, 3, "app") << "\n";  // 0 (equal)
-
-// Case-insensitive comparison (manual)
-bool caseInsensitive = true;
-for (int i = 0; i < s1.length() && i < s3.length(); i++) {
-    if (tolower(s1[i]) != tolower(s3[i])) {
-        caseInsensitive = false;
-        break;
+std::ifstream file("data.txt");
+if (file) {
+    std::string line;
+    while (std::getline(file, line)) {
+        process(line);
     }
 }
 ```
 
 ---
-
-## 4.9 String from Stringstream
-
-```cpp
-#include <sstream>
-
-// Building string
-ostringstream oss;
-oss << "Value: " << 42 << ", Name: " << "Alice";
-string result = oss.str();  // "Value: 42, Name: Alice"
-
-// Parsing string
-istringstream iss("10 20 30");
-int a, b, c;
-iss >> a >> b >> c;  // a=10, b=20, c=30
-
-// Convert various types
-int num = 42;
-double pi = 3.14159;
-string name = "Alice";
-
-ostringstream convert;
-convert << num << " " << pi << " " << name;
-string combined = convert.str();
-
-// Parse line with specific delimiter
-istringstream lineStream("apple,banana,mango");
-string fruit;
-while (getline(lineStream, fruit, ',')) {
-    cout << fruit << "\n";
-}
-```
-
----
-
-# SECTION 5: FILE I/O - COMPLETE COVERAGE
-
-## 5.1 File I/O Basics
-
-```cpp
-#include <fstream>
-#include <iostream>
-using namespace std;
-
-// Output file stream (write)
-ofstream outFile;
-outFile.open("output.txt");
-
-if (outFile.is_open()) {
-    outFile << "Hello, File!\n";
-    outFile << "This is a test.\n";
-    outFile.close();
-} else {
-    cout << "Error opening file\n";
-}
-
-// Input file stream (read)
-ifstream inFile;
-inFile.open("output.txt");
-
-if (inFile.is_open()) {
-    string line;
-    while (getline(inFile, line)) {
-        cout << line << "\n";
-    }
-    inFile.close();
-} else {
-    cout << "Error opening file\n";
-}
-```
-
-## 5.2 File Operations
-
-### Open Modes
-
-```cpp
-#include <fstream>
-
-// Write (truncate if exists)
-ofstream file1("data.txt");  // Default
-ofstream file2("data.txt", ios::out);  // Explicit
-
-// Append
-ofstream file3("data.txt", ios::app);
-
-// Read
-ifstream file4("data.txt");
-ifstream file5("data.txt", ios::in);
-
-// Read and Write
-fstream file6("data.txt", ios::in | ios::out);
-
-// Binary mode
-ofstream binFile("data.bin", ios::binary);
-ifstream binRead("data.bin", ios::binary);
-
-// Truncate (discards existing content)
-ofstream file7("data.txt", ios::trunc);
-
-// Seek position
-fstream file8("data.txt", ios::in | ios::out);
-file8.seekg(10);  // Seek to position 10 for reading
-file8.seekp(10);  // Seek to position 10 for writing
-```
-
----
-
-## 5.3 Writing to Files
-
-```cpp
-ofstream outFile("output.txt");
-
-if (outFile) {
-    // Write strings
-    outFile << "Hello, World!\n";
-    outFile << "Line 2\n";
-    
-    // Write numbers
-    outFile << 42 << " " << 3.14 << "\n";
-    
-    // Write characters
-    outFile << 'A' << 'B' << 'C' << "\n";
-    
-    // Write using put() for single character
-    outFile.put('X');
-    
-    // Write raw data
-    string data = "Raw data";
-    outFile.write(data.c_str(), data.length());
-    
-    outFile.close();
-}
-```
-
----
-
-## 5.4 Reading from Files
-
-### Line by Line
-
-```cpp
-#include <fstream>
-#include <string>
-
-ifstream inFile("input.txt");
-
-if (inFile) {
-    string line;
-    while (getline(inFile, line)) {
-        cout << line << "\n";
-    }
-    inFile.close();
-}
-```
-
-### Word by Word
-
-```cpp
-ifstream inFile("input.txt");
-
-if (inFile) {
-    string word;
-    while (inFile >> word) {
-        cout << word << "\n";
-    }
-    inFile.close();
-}
-```
-
-### Character by Character
-
-```cpp
-ifstream inFile("input.txt");
-
-if (inFile) {
-    char ch;
-    while (inFile.get(ch)) {
-        cout << ch;
-    }
-    inFile.close();
-}
-```
-
-### Specific Format
-
-```cpp
-ifstream inFile("data.txt");
-
-if (inFile) {
-    int id;
-    string name;
-    double salary;
-    
-    while (inFile >> id >> name >> salary) {
-        cout << "ID: " << id << ", Name: " << name 
-             << ", Salary: " << salary << "\n";
-    }
-    inFile.close();
-}
-```
-
----
-
-## 5.5 Binary File I/O
-
-```cpp
-#include <fstream>
-
-// Writing binary
-struct Person {
-    int age;
-    double height;
-    char initial;
-};
-
-ofstream binOut("people.bin", ios::binary);
-Person p = {30, 5.9, 'A'};
-binOut.write(reinterpret_cast<char*>(&p), sizeof(Person));
-binOut.close();
-
-// Reading binary
-ifstream binIn("people.bin", ios::binary);
-Person p2;
-binIn.read(reinterpret_cast<char*>(&p2), sizeof(Person));
-cout << "Age: " << p2.age << ", Height: " << p2.height << "\n";
-binIn.close();
-
-// Reading multiple binary objects
-vector<Person> people;
-Person p3;
-while (binIn.read(reinterpret_cast<char*>(&p3), sizeof(Person))) {
-    people.push_back(p3);
-}
-```
-
----
-
-## 5.6 File Position
-
-```cpp
-fstream file("data.txt", ios::in | ios::out);
-
-// Get position
-streampos pos = file.tellg();  // Get read position
-pos = file.tellp();            // Get write position
-
-// Set position
-file.seekg(0, ios::beg);       // Seek to beginning
-file.seekg(0, ios::end);       // Seek to end
-file.seekg(-10, ios::end);     // Seek 10 bytes from end
-file.seekp(5);                 // Seek write position to 5
-
-// File size
-file.seekg(0, ios::end);
-int fileSize = file.tellg();
-cout << "File size: " << fileSize << " bytes\n";
-
-file.close();
-```
-
----
-
-## 5.7 Error Handling
-
-```cpp
-ifstream file("input.txt");
-
-// Check if file opened
-if (!file) {
-    cout << "Failed to open file\n";
-    return;
-}
-
-// Check read state
-if (file.fail()) {
-    cout << "Read operation failed\n";
-}
-
-if (file.bad()) {
-    cout << "Severe error\n";
-}
-
-if (file.eof()) {
-    cout << "End of file reached\n";
-}
-
-// Clear error flags
-file.clear();
-
-// Check if good
-if (file.good()) {
-    cout << "File is in good state\n";
-}
-
-file.close();
-```
-
----
-
-## 5.8 Complete File I/O Example
-
-```cpp
-#include <fstream>
-#include <sstream>
-#include <vector>
-using namespace std;
-
-struct Student {
-    int id;
-    string name;
-    double gpa;
-};
-
-// Write students to file
-void writeStudents(const string& filename, const vector<Student>& students) {
-    ofstream file(filename);
-    
-    for (const auto& student : students) {
-        file << student.id << " " << student.name << " " << student.gpa << "\n";
-    }
-    
-    file.close();
-}
-
-// Read students from file
-vector<Student> readStudents(const string& filename) {
-    vector<Student> students;
-    ifstream file(filename);
-    
-    int id;
-    string name;
-    double gpa;
-    
-    while (file >> id >> name >> gpa) {
-        students.push_back({id, name, gpa});
-    }
-    
-    file.close();
-    return students;
-}
-
-// Main
-int main() {
-    vector<Student> students = {
-        {101, "Alice", 3.8},
-        {102, "Bob", 3.5},
-        {103, "Carol", 3.9}
-    };
-    
-    // Write
-    writeStudents("students.txt", students);
-    
-    // Read
-    auto readData = readStudents("students.txt");
-    
-    for (const auto& s : readData) {
-        cout << s.id << " " << s.name << " " << s.gpa << "\n";
-    }
-    
-    return 0;
-}
-```
-
----
-
-# SECTION 6: FUNCTION OBJECTS & COMPARATORS
-
-## 6.1 Function Objects (Functors)
-
-```cpp
-// Function object for greater than comparison
-struct GreaterThan {
-    int value;
-    
-    GreaterThan(int v) : value(v) {}
-    
-    bool operator()(int x) const {
-        return x > value;
-    }
-};
-
-vector<int> v = {10, 20, 30, 40, 50};
-
-// Use with algorithm
-auto it = find_if(v.begin(), v.end(), GreaterThan(25));
-if (it != v.end()) {
-    cout << "Found: " << *it << "\n";  // 30
-}
-
-// Count elements greater than 25
-int count = count_if(v.begin(), v.end(), GreaterThan(25));
-cout << "Count: " << count << "\n";  // 3
-```
-
-## 6.2 Standard Comparators
-
-```cpp
-#include <functional>
-
-// less - ascending order
-sort(v.begin(), v.end(), less<int>());
-
-// greater - descending order
-sort(v.begin(), v.end(), greater<int>());
-
-// equal_to, not_equal_to
-count_if(v.begin(), v.end(), bind(equal_to<int>(), placeholders::_1, 20));
-
-// Map with custom comparator
-map<string, int, less<string>> ascending;      // A-Z
-map<string, int, greater<string>> descending;  // Z-A
-```
-
----
-
-# SECTION 7: STL BEST PRACTICES
-
-## 7.1 Container Selection
-
-```
-Use VECTOR when:
-  - Need random access
-  - Need cache locality
-  - Mostly append operations
-
-Use LIST when:
-  - Need frequent insertion/deletion in middle
-  - Don't need random access
-
-Use DEQUE when:
-  - Need efficient push_front/pop_front
-  - Need random access
-
-Use MAP/SET when:
-  - Need sorted, unique elements
-  - Need O(log n) lookup
-
-Use UNORDERED_MAP/SET when:
-  - Need O(1) average lookup
-  - Don't care about order
-
-Use QUEUE when:
-  - Need FIFO behavior
-
-Use STACK when:
-  - Need LIFO behavior
-
-Use PRIORITY_QUEUE when:
-  - Need elements processed by priority
-```
-
-## 7.2 Algorithm Selection
-
-```cpp
-// For small data: simple loop
-for (int i = 0; i < v.size(); i++) {
-    // Process v[i]
-}
-
-// For searching: find_if
-auto it = find_if(v.begin(), v.end(), predicate);
-
-// For filtering: copy_if
-copy_if(v.begin(), v.end(), back_inserter(result), predicate);
-
-// For transforming: transform
-transform(v.begin(), v.end(), result.begin(), function);
-
-// For aggregating: accumulate
-int sum = accumulate(v.begin(), v.end(), 0);
-
-// For sorting: sort
-sort(v.begin(), v.end());
-```
-
-## 7.3 Memory Management
-
-```cpp
-// Reserve space when size is known
-vector<int> v;
-v.reserve(1000);  // Avoid reallocations
-
-// Clear and shrink
-v.clear();
-v.shrink_to_fit();  // Release memory
-
-// Use move semantics
-vector<int> getVector() {
-    vector<int> v;
-    // ... fill v
-    return v;  // Move, not copy (C++11)
-}
-```
-
-## 7.4 Performance Tips
-
-```cpp
-// Prefer iterators over indices in generic code
-for (auto it = v.begin(); it != v.end(); ++it) {
-    // Optimized for all container types
-}
-
-// Use const references to avoid copying
-void process(const vector<int>& v);
-
-// Pre-allocate space
-map<string, int> m;
-m.reserve(1000);
-
-// Use stable algorithms when order matters
-stable_sort(v.begin(), v.end());
-
-// Avoid repeated function calls in loops
-int size = v.size();
-for (int i = 0; i < size; i++) {
-    // Use cached size
-}
-```
-
----
-
-### Containers Intro (C++98)
-
-```cpp
-#include <iostream>
-#include <vector>
-#include <list>
-#include <map>
-#include <set>
-
-int main() {
-    // Vector (dynamic array)
-    std::vector<int> v;
-    v.push_back(1);
-    v.push_back(2);
-    v.push_back(3);
-    
-    for (int i = 0; i < v.size(); i++) {
-        std::cout << v[i] << " ";
-    }
-    std::cout << "\n";
-    
-    // List (linked list)
-    std::list<int> l;
-    l.push_back(10);
-    l.push_front(5);
-    
-    for (std::list<int>::iterator it = l.begin(); it != l.end(); ++it) {
-        std::cout << *it << " ";
-    }
-    std::cout << "\n";
-    
-    return 0;
-}
-```
-
----
-
 ## <a name="chapter-6-stlinternalsdeepdive"></a>CHAPTER 6: STL INTERNALS DEEP DIVE
 
-To master the STL, you must understand what happens under the hood.
+To master the STL, you must understand what happens under the hood. This chapter explores the memory layout, complexity guarantees, and hidden mechanisms of the standard library.
 
-### 3.5.1 The Truth About std::vector
-`std::vector` is a dynamic array. It guarantees contiguous memory.
+### 6.1 The Truth About std::vector
+`std::vector` is a dynamic array. It guarantees contiguous memory compatible with C arrays.
 
-*   **Layout**: Three pointers: `start`, `finish`, `end_of_storage`.
+*   **Layout**: Three pointers (usually):
     *   `start`: Points to first element.
     *   `finish`: Points to one-past-the-last active element (size).
     *   `end_of_storage`: Points to end of allocated buffer (capacity).
+    *   *Size*: `finish - start`. *Capacity*: `end_of_storage - start`.
 
 *   **Growth Strategy**: Geometric growth.
-    *   When `size() == capacity()`, a new buffer is allocated (usually 2x or 1.5x larger).
-    *   **Elements are MOVED** (or copied) to the new buffer.
-    *   Old buffer is deleted.
-    *   *Cost*: Amortized O(1) push_back, but worst-case O(N).
+    *   When `size() == capacity()`, a new buffer is allocated (usually **2x** or **1.5x** larger).
+    *   **Elements are MOVED** (if `noexcept` move constructor exists) or copied to the new buffer.
+    *   Old buffer is destroyed.
+    *   *Cost*: Amortized O(1) push_back, but worst-case O(N) during reallocation.
 
-*   **Iterator Invalidation**:
-    *   **Reallocation**: Invalidates ALL iterators, pointers, and references.
-    *   **Insertion/Erasure**: Invalidates iterators at and after the point of operation.
+### 6.2 The std::deque Implementation
+`std::deque` (Double-Ended Queue) is **NOT** a contiguous array.
 
-### 3.5.2 The std::deque Implementation
-`std::deque` (Double-Ended Queue) is NOT a contiguous array.
-
-*   **Layout**: A "Map" (dynamic array) of pointers to fixed-size "Chunks" (blocks).
-    *   Iterators are smart pointers that know how to jump between chunks.
+*   **Layout**: A "Map" (dynamic array) of pointers to fixed-size "Chunks" (memory blocks).
+    *   Iterators are complex smart pointers that track {current_chunk, current_index}.
 *   **Performance**:
-    *   O(1) random access (double dereference).
-    *   O(1) push/pop at BOTH ends (no full reallocation needed, just add a new chunk).
+    *   O(1) random access (requires double dereference: Map -> Chunk -> Element).
+    *   O(1) push/pop at BOTH ends (no full reallocation needed, just allocate a new chunk).
 *   **Cache Locality**: Worse than vector, better than list.
 
-### 3.5.3 Why std::list is (Almost) Always Wrong
+### 6.3 Why std::list is (Almost) Always Wrong
 `std::list` is a Doubly Linked List.
 
 *   **Layout**: Nodes allocated individually on the heap.
     *   `struct Node { T val; Node* prev; Node* next; }`
-*   **The Cache Problem**: Nodes are scattered in memory. Traversing a list causes constant **Cache Misses**.
-*   **Benchmark**: Iterating a `vector` is orders of magnitude faster than a `list`, even for large types, due to prefetching.
-*   **Use Case**: Only when you need **Reference Stability** (insertions never invalidate references to other elements).
+*   **The Cache Problem**: Nodes are scattered in memory (heap fragmentation). Traversing a list causes constant **Cache Misses**.
+*   **Benchmark**: Iterating a `vector` is orders of magnitude faster than a `list`, even for large types, due to CPU prefetching.
+*   **Use Case**: Only when you need **Reference Stability** (insertions never invalidate pointers/references to other elements) or frequent slicing/merging.
 
-### 3.5.4 Associative Containers (Map/Set)
+### 6.4 Associative Containers (Map/Set)
 `std::map`, `std::set`, `std::multimap`, `std::multiset`.
 
 *   **Implementation**: Balanced Binary Search Tree (usually **Red-Black Tree**).
 *   **Node Layout**: `struct Node { T val; Node* left; Node* right; Node* parent; Color color; }`
 *   **Complexity**: O(log N) for insert, lookup, delete.
-*   **Overhead**: 3 pointers + enum per element (heavy memory overhead).
+*   **Overhead**: 3 pointers + 1 enum per element (significant memory overhead per node).
 
-### 3.5.5 Unordered Containers (Hash Maps)
+### 6.5 Unordered Containers (Hash Maps)
 `std::unordered_map`, `std::unordered_set`.
 
-*   **Implementation**: Array of "Buckets" (Linked Lists).
-    *   Hash function maps Key -> Bucket Index.
-    *   Collisions handled by Chaining (linked list in bucket).
-*   **Complexity**:
-    *   Average: O(1).
-    *   Worst Case: O(N) (if all keys hash to same bucket).
-*   **Rehashing**: When `load_factor > max_load_factor`, bucket array grows, all elements rehashed.
+*   **Implementation**: Array of "Buckets" (usually Linked Lists).
+    *   Hash function maps `Key` -> `Bucket Index`.
+    *   Collisions handled by **Chaining** (linked list in bucket).
+*   **Rehashing**: When `load_factor() > max_load_factor()`, the bucket array grows, and **ALL** elements are rehashed and moved.
+*   **Cache**: Poor (linked list traversal in buckets).
 
-### 3.5.6 Iterator Invalidation Cheat Sheet
+### 6.6 Allocators
+Every STL container takes an optional template parameter: `Allocator`.
+`template <class T, class Allocator = std::allocator<T>> class vector;`
+
+*   **Role**: Abstraction of memory allocation/deallocation.
+*   **std::allocator**: Uses `new` and `delete`.
+*   **Custom Allocators**: Used for:
+    *   Shared memory (inter-process communication).
+    *   Memory pools (fast allocation for node-based containers).
+    *   Debugging/Tracking memory usage.
+
+### 6.7 Exception Safety Guarantees
+STL operations provide specific guarantees if an exception is thrown (e.g., during copying T).
+
+1.  **Basic Guarantee**: Invariants are preserved, and no resources leak. The container might be empty or in a valid but unspecified state.
+2.  **Strong Guarantee**: Transactional semantics. If an operation fails, the container remains **unchanged**. (e.g., `vector::push_back`).
+3.  **Nothrow Guarantee**: The operation will never throw (e.g., `swap`, `move` constructors).
+
+### 6.8 Iterator Invalidation Cheat Sheet
 
 | Container | Operation | Invalidates |
 | :--- | :--- | :--- |
-| **Vector** | Capacity Change | **ALL** |
+| **Vector** | Capacity Change | **ALL** (Iterators, Pointers, References) |
 | **Vector** | Insert/Erase | Current & After |
 | **Deque** | Insert/Erase (ends) | Iterators only (Refs valid!) |
 | **Deque** | Insert/Erase (middle) | **ALL** |
@@ -7172,9 +1130,6 @@ To master the STL, you must understand what happens under the hood.
 | **Unordered** | Insert (no rehash) | None |
 
 ---
-
-# Volume II: The Modern Renaissance
-
 ## <a name="chapter-7-c11revolution"></a>CHAPTER 7: C++11 REVOLUTION
 
 The C++11 standard was a massive upgrade. This is where modern C++ begins!
