@@ -41,6 +41,13 @@ Welcome to the definitive guide on C++. This "Zero to Godhood" manuscript is des
 19. [File I/O Advanced](#file-io-advanced)
 20. [Error Handling & Debugging](#error-handling--debugging)
 
+### PART 1.5: THE C++ COMPILATION & EXECUTION MODEL
+1. [The Build Pipeline](#151-the-build-pipeline-from-source-to-binary)
+2. [Translation Units & Linkage](#152-translation-units-tu--linkage)
+3. [The One Definition Rule (ODR)](#153-the-one-definition-rule-odr)
+4. [Process Memory Layout](#154-process-memory-layout)
+5. [Program Startup](#155-program-startup-before-main)
+
 ### PART 2: OBJECT-ORIENTED PROGRAMMING FUNDAMENTALS
 6. [Classes & Objects](#classes--objects)
    1. [The Four Pillars of OOP](#the-four-pillars-of-oop)
@@ -59,6 +66,12 @@ Welcome to the definitive guide on C++. This "Zero to Godhood" manuscript is des
 8. [Inheritance](#inheritance)
 9.  [Virtual Functions & Polymorphism](#virtual-functions--polymorphism)
 
+### PART 2.5: DEEP OBJECT MODEL & VIRTUALIZATION
+1. [Cost of Polymorphism (vtable)](#251-the-cost-of-polymorphism-vptr--vtable)
+2. [Multiple Inheritance & Thunks](#252-multiple-inheritance--thunks)
+3. [Virtual Inheritance (Diamond Problem)](#253-virtual-inheritance-the-diamond-problem)
+4. [Alignment & Padding](#254-alignment--padding-rules)
+
 ### PART 3: C++98/03 STANDARD LIBRARY
 10. [Standard Template Library (STL)](#standard-template-library)
     1. [Introduction to STL](#introduction-to-stl)
@@ -75,6 +88,14 @@ Welcome to the definitive guide on C++. This "Zero to Godhood" manuscript is des
 12. [Algorithms](#algorithms)
 13. [Strings](#strings)
 14. [File I/O](#file-io)
+
+### PART 3.5: STL INTERNALS DEEP DIVE
+1. [Vector Internals](#351-the-truth-about-stdvector)
+2. [Deque Implementation](#352-the-stddeque-implementation)
+3. [List Cache Misses](#353-why-stdlist-is-almost-always-wrong)
+4. [Associative Containers (RB-Tree)](#354-associative-containers-mapset)
+5. [Unordered Containers (Hash)](#355-unordered-containers-hash-maps)
+6. [Iterator Invalidation Cheat Sheet](#356-iterator-invalidation-cheat-sheet)
 
 ### PART 4: C++11 REVOLUTION
 1. [C++11 Overview & History](#c11-overview--history)
@@ -193,6 +214,10 @@ Welcome to the definitive guide on C++. This "Zero to Godhood" manuscript is des
 14. [Legacy Code Modernization](#legacy-code-modernization)
 15. [Leadership & Team Management](#leadership--team-management)
 
+### PART 10.5: SYSTEM DESIGN CASE STUDIES
+1. [LRU Cache](#1051-lru-cache)
+2. [Token Bucket Rate Limiter](#1052-token-bucket-rate-limiter)
+
 ### PART 11: CAPSTONE PROJECT
 1. [High-Performance Order Book](#capstone-project---high-performance-order-book)
 
@@ -221,6 +246,78 @@ Welcome to the definitive guide on C++. This "Zero to Godhood" manuscript is des
 1. [Serialization](#161-serialization-binary-protocols)
 2. [RPC Concept](#162-rpc-remote-procedure-call-concept)
 3. [Consensus (Raft Basics)](#163-consensus-raft-basics)
+
+### PART 17: LOW-LATENCY C++ OPTIMIZATION
+1. [CPU Pipelines & Branch Prediction](#171-cpu-pipelines--branch-prediction)
+2. [Data-Oriented Design (DoD)](#172-data-oriented-design-dod)
+3. [Prefetching](#173-prefetching)
+4. [Micro-Benchmarking](#174-micro-benchmarking-google-benchmark)
+5. [System Warm-up](#175-system-warm-up)
+
+### PART 18: WRITING A C++ COMPILER (BASICS)
+1. [Lexical Analysis](#181-lexical-analysis-tokenizer)
+2. [Parsing](#182-parsing-recursive-descent)
+
+### PART 19: THE STANDARD LIBRARY FROM SCRATCH
+1. [Implementing my::vector](#191-implementing-myvector)
+2. [Implementing my::shared_ptr](#192-implementing-myshared_ptr)
+
+### PART 20: C++ IN THE CLOUD
+1. [Microservices](#201-microservices-with-c)
+2. [Serverless C++ (AWS Lambda)](#202-serverless-c-aws-lambda)
+
+### PART 21: CROSS-PLATFORM DEVELOPMENT
+1. [WebAssembly (Emscripten)](#211-webassembly-wasm-with-emscripten)
+2. [Mobile C++ (Android NDK)](#212-mobile-c-android-ndk--jni)
+
+### PART 22: GUI DEVELOPMENT
+1. [Qt Framework](#221-qt-framework-retained-mode)
+2. [Dear ImGui](#222-dear-imgui-immediate-mode)
+
+### PART 23: SCIENTIFIC COMPUTING & GPU
+1. [Eigen (Linear Algebra)](#231-eigen-linear-algebra)
+2. [CUDA (GPU Programming)](#232-cuda-gpu-programming)
+
+### PART 24: LOW-LATENCY SYSTEM ARCHITECTURE
+1. [Disruptor Pattern](#241-the-disruptor-pattern-c-implementation)
+2. [Kernel Bypass Networking](#242-kernel-bypass-networking-concept)
+3. [OS Tuning](#243-os-tuning-for-c)
+4. [Zero-Copy Serialization](#244-zero-copy-serialization-capn-proto--flatbuffers)
+
+### PART 25: INTEROPERABILITY
+1. [Python Bindings (pybind11)](#251-python-bindings-with-pybind11)
+2. [Stable C ABI](#252-stable-c-abi-for-dlls)
+
+### PART 26: SECURITY ENGINEERING
+1. [Fuzzing (libFuzzer)](#261-fuzzing-libfuzzer)
+2. [Secure Coding Practices](#262-secure-coding-practices-sei-cert-c)
+3. [Exploit Mitigation](#263-exploit-mitigation)
+
+### PART 27: THE ULTIMATE ALGORITHM REFERENCE
+1. [Non-Modifying Operations](#271-non-modifying-sequence-operations)
+2. [Modifying Operations](#272-modifying-sequence-operations)
+3. [Partitioning](#273-partitioning)
+4. [Sorting](#274-sorting)
+5. [Binary Search](#275-binary-search-on-sorted-ranges)
+6. [Numeric Operations](#276-numeric-operations-numeric)
+
+### PART 28: NETWORKING FROM SCRATCH
+1. [Berkeley Sockets API](#281-berkeley-sockets-api)
+2. [Non-Blocking I/O & Epoll](#282-non-blocking-io--epoll-linux)
+
+### PART 29: WRITING A GARBAGE COLLECTOR
+1. [Mark-and-Sweep Basics](#291-mark-and-sweep-basics)
+
+### PART 30: THE C++ BUILD ECOSYSTEM MASTERY
+1. [Package Managers (vcpkg vs Conan)](#301-package-managers-deep-dive)
+2. [Sanitizers (ASan, TSan, UBSan)](#302-sanitizers-the-developers-best-friend)
+3. [Profiling Tools](#303-profiling-tools)
+
+### PART 31: EXTREME LOW LATENCY & HARDWARE MASTERY
+1. [CPU Cache & NUMA](#311-cpu-architecture--cache-topology)
+2. [Compiler Optimizations (PGO, LTO)](#313-compiler-optimizations-the-free-lunch)
+3. [Lock-Free Stack Implementation](#314-lock-free-stack-implementation-wait-free-push)
+4. [Performance Targets (p99)](#315-measurable-performance-targets)
 
 ### APPENDICES
 A. [Keywords & Operators](#appendix-a-c-keywords--operators-reference)
@@ -2012,7 +2109,188 @@ int main() {
     
     cout << "Regular output" << endl;
     
+    
     return 0;
+}
+```
+
+---
+
+## PART 1.5: THE C++ COMPILATION & EXECUTION MODEL
+
+To truly understand C++, you must understand how your code transforms from text to a running process. This section demystifies the "black box" of the compiler.
+
+### 1.5.1 The Build Pipeline: From Source to Binary
+
+The "compilation" process actually consists of four distinct stages:
+
+1.  **Preprocessing**: Text substitution.
+    *   Removes comments.
+    *   Expands macros (`#define`).
+    *   Includes headers (`#include`) recursively.
+    *   Handles conditionals (`#ifdef`).
+    *   *Output*: A single "Translation Unit" (pure C++ source code).
+
+2.  **Compilation**: Syntax to Assembly.
+    *   **Lexical Analysis**: Tokenizes source (e.g., `int`, `main`, `{`).
+    *   **Parsing**: Builds Abstract Syntax Tree (AST).
+    *   **Semantic Analysis**: Type checking, overload resolution.
+    *   **Optimization**: Dead code elimination, loop unrolling, inlining (O1, O2, O3).
+    *   **Code Generation**: Generates assembly code for the target architecture (x86_64, ARM64).
+    *   *Output*: Assembly file (`.s` or `.asm`).
+
+3.  **Assembly**: Assembly to Machine Code.
+    *   Translates mnemonics (`MOV`, `ADD`) to opcodes (`0x89`, `0x01`).
+    *   *Output*: Object file (`.o` or `.obj`). Contains machine code but with *unresolved symbols*.
+
+4.  **Linking**: Combining Object Files.
+    *   Combines multiple `.o` files and static libraries (`.a`/`.lib`).
+    *   Resolves symbols: Matches function calls in one TU to definitions in another.
+    *   Relocates addresses: Adjusts internal pointers.
+    *   *Output*: Executable (`.exe` or ELF/Mach-O) or Shared Library (`.so`/`.dll`).
+
+### 1.5.2 Translation Units (TU) & Linkage
+
+A **Translation Unit** is the input to the compiler after preprocessing. It is the fundamental unit of compilation.
+
+#### Linkage Types
+Linkage determines if a name (variable/function) is visible to other TUs.
+
+1.  **No Linkage**:
+    *   Visible only within the current scope (block).
+    *   Example: Local variables.
+
+2.  **Internal Linkage**:
+    *   Visible only within the current Translation Unit.
+    *   Hidden from the linker.
+    *   Examples: `static` global variables, `static` free functions, `const` globals (by default).
+    *   *Use Case*: Private helper functions.
+
+3.  **External Linkage**:
+    *   Visible to the linker and other TUs.
+    *   Examples: Global variables, non-static functions, `extern` variables.
+    *   *Danger*: Requires strict ODR compliance.
+
+```cpp
+// TU1.cpp
+static int internal_var = 10; // Internal Linkage
+int global_var = 20;          // External Linkage
+
+// TU2.cpp
+extern int global_var;        // Declares existence of external symbol
+// extern int internal_var;   // ERROR: Linker error (symbol not found)
+```
+
+### 1.5.3 The One Definition Rule (ODR)
+
+The ODR is the most important rule in C++ linking.
+
+1.  **ODR for Translation Units**: A function/variable can have only **one definition** in a single TU. (Declarations can be repeated).
+2.  **ODR for Programs**: A non-inline function/variable can have only **one definition** in the entire program.
+3.  **ODR for Classes/Templates**: Can be defined in multiple TUs (via headers), but definitions must be **token-for-token identical**.
+
+**Violation Example:**
+```cpp
+// header.h
+int x = 10; // DEFINITION (allocates memory)
+
+// a.cpp
+#include "header.h"
+
+// b.cpp
+#include "header.h"
+
+// Linker Error: multiple definition of `x`
+// Fix: Use 'extern int x;' in header, definition in one .cpp
+// Fix (C++17): Use 'inline int x = 10;'
+```
+
+### 1.5.4 Process Memory Layout
+
+When your C++ program runs, the OS allocates virtual memory segments:
+
+1.  **Text Segment (.text)**:
+    *   Contains executable machine instructions.
+    *   Read-Only (prevents self-modifying code exploits).
+    *   Shared between multiple instances of the app.
+
+2.  **Data Segment (.data)**:
+    *   Initialized global and static variables.
+    *   `int g = 10;` lives here.
+
+3.  **BSS Segment (.bss)**:
+    *   Uninitialized global/static variables.
+    *   `int g;` lives here.
+    *   Automatically zero-initialized by OS before `main()`.
+
+4.  **Heap**:
+    *   Dynamic memory (`new`, `malloc`).
+    *   Grows upwards (typically).
+    *   Managed manually or by smart pointers.
+
+5.  **Stack**:
+    *   Local variables, function parameters, return addresses.
+    *   Grows downwards (typically).
+    *   LIFO (Last-In, First-Out).
+    *   *Stack Overflow*: Exceeding stack size (e.g., deep recursion).
+
+### 1.5.5 Program Startup: Before main()
+
+`main()` is NOT the first thing to run.
+
+1.  **OS Loader**: Loads EXE into memory.
+2.  **Entry Point (`_start`)**: Defined by C Runtime (CRT).
+3.  **Global Initialization**:
+    *   Constructors of global/static objects run **before** `main`.
+    *   *Static Initialization Order Fiasco*: Order between TUs is undefined.
+4.  **`main()`**: Your code runs.
+5.  **Global Destruction**:
+    *   Destructors of global/static objects run **after** `main` returns.
+    *   `atexit` handlers run.
+
+### 1.5.6 Deep Dive into Data Representation
+
+To understand bugs like integer overflow and floating-point inaccuracy, you must know how data is stored bits-by-bits.
+
+#### Integer Representation (Two's Complement)
+Most modern systems use **Two's Complement** for signed integers.
+*   **Positive Numbers**: Standard binary. `0000 0101` (5).
+*   **Negative Numbers**: Invert all bits and add 1.
+    *   `5` = `0000 0101`
+    *   Invert: `1111 1010`
+    *   Add 1: `1111 1011` (-5)
+*   **Advantage**: Addition/Subtraction works identically for signed/unsigned.
+*   **Range**: `-2^(N-1)` to `2^(N-1) - 1`. (One extra negative number).
+
+#### Floating Point (IEEE 754)
+`float` (32-bit) and `double` (64-bit) follow IEEE 754.
+*   **Components**:
+    1.  **Sign Bit**: 0 (+) or 1 (-).
+    2.  **Exponent**: Biased integer (allows very large/small numbers).
+    3.  **Mantissa (Significand)**: The precision bits (normalized to 1.xxxxx).
+*   **Implication**:
+    *   `0.1 + 0.2 != 0.3` because 0.1 cannot be represented exactly in binary (infinite repeating fraction).
+    *   **NaN (Not a Number)**: Result of 0/0 or sqrt(-1). `NaN != NaN` is always true.
+    *   **Infinity**: Result of 1.0/0.0.
+
+```cpp
+#include <iostream>
+#include <cmath>
+#include <limits>
+
+int main() {
+    float a = 0.1f;
+    float b = 0.2f;
+    if (a + b == 0.3f) {
+        std::cout << "Math works!\n";
+    } else {
+        std::cout << "Math is broken: " << (a+b) << "\n"; // Prints 0.30000001
+    }
+    
+    // Correct comparison
+    if (std::abs((a + b) - 0.3f) < 1e-5) {
+        std::cout << "Close enough!\n";
+    }
 }
 ```
 
@@ -4233,6 +4511,75 @@ int main() {
     return 0;
 }
 ```
+
+---
+
+## PART 2.5: DEEP OBJECT MODEL & VIRTUALIZATION
+
+Understanding the "C++ Object Model" distinguishes a user from a master. This section explains what the compiler generates for your classes.
+
+### 2.5.1 The Cost of Polymorphism (vptr & vtable)
+
+Every class with *at least one* virtual function has a hidden overhead.
+
+1.  **vptr (Virtual Pointer)**: A hidden member added to the *layout* of the object.
+2.  **vtable (Virtual Table)**: A static table of function pointers for that class.
+
+```cpp
+class Base {
+    int data;
+    virtual void func() {}
+};
+// sizeof(Base) = sizeof(int) + sizeof(void*) + padding
+// On 64-bit: 4 bytes (int) + 4 bytes (padding) + 8 bytes (ptr) = 16 bytes
+```
+
+### 2.5.2 Multiple Inheritance & Thunks
+
+When inheriting from multiple classes, pointer arithmetic gets tricky.
+
+```cpp
+class A { int a; virtual void f() {} };
+class B { int b; virtual void g() {} };
+class C : public A, public B { int c; };
+
+C obj;
+A* pa = &obj; // Points to start of obj
+B* pb = &obj; // Points to obj + sizeof(A) !!
+```
+
+*   **Thunk**: A small piece of assembly code generated by the compiler to adjust the `this` pointer when calling a virtual function from a base class pointer that isn't at offset 0.
+
+### 2.5.3 Virtual Inheritance (The Diamond Problem)
+
+```cpp
+class Top { int t; };
+class Left : virtual public Top { int l; };
+class Right : virtual public Top { int r; };
+class Bottom : public Left, public Right { int b; };
+```
+
+To solve the Diamond Problem (Top appearing twice), `virtual` inheritance ensures `Top` is shared.
+*   **Cost**: `Left` and `Right` now contain a **vbptr** (Virtual Base Pointer) pointing to the shared `Top` instance. Accessing members of `Top` becomes slower (indirection).
+
+### 2.5.4 Alignment & Padding Rules
+
+CPU reads are efficient at specific addresses (multiples of 4 or 8). Compilers insert "padding bytes".
+
+**Rule**: A member of size $N$ must sit at an offset divisible by $N$.
+
+```cpp
+struct Mixed {
+    char a;     // 1 byte
+                // 3 bytes PADDING
+    int b;      // 4 bytes
+    short c;    // 2 bytes
+                // 6 bytes PADDING (to align structure size to 8)
+};
+// sizeof(Mixed) = 16 (on 64-bit)
+```
+
+**Optimization**: Sort members by size (Largest to Smallest) to minimize padding.
 
 ---
 
@@ -6700,6 +7047,81 @@ int main() {
 
 ---
 
+## PART 3.5: STL INTERNALS DEEP DIVE
+
+To master the STL, you must understand what happens under the hood.
+
+### 3.5.1 The Truth About std::vector
+`std::vector` is a dynamic array. It guarantees contiguous memory.
+
+*   **Layout**: Three pointers: `start`, `finish`, `end_of_storage`.
+    *   `start`: Points to first element.
+    *   `finish`: Points to one-past-the-last active element (size).
+    *   `end_of_storage`: Points to end of allocated buffer (capacity).
+
+*   **Growth Strategy**: Geometric growth.
+    *   When `size() == capacity()`, a new buffer is allocated (usually 2x or 1.5x larger).
+    *   **Elements are MOVED** (or copied) to the new buffer.
+    *   Old buffer is deleted.
+    *   *Cost*: Amortized O(1) push_back, but worst-case O(N).
+
+*   **Iterator Invalidation**:
+    *   **Reallocation**: Invalidates ALL iterators, pointers, and references.
+    *   **Insertion/Erasure**: Invalidates iterators at and after the point of operation.
+
+### 3.5.2 The std::deque Implementation
+`std::deque` (Double-Ended Queue) is NOT a contiguous array.
+
+*   **Layout**: A "Map" (dynamic array) of pointers to fixed-size "Chunks" (blocks).
+    *   Iterators are smart pointers that know how to jump between chunks.
+*   **Performance**:
+    *   O(1) random access (double dereference).
+    *   O(1) push/pop at BOTH ends (no full reallocation needed, just add a new chunk).
+*   **Cache Locality**: Worse than vector, better than list.
+
+### 3.5.3 Why std::list is (Almost) Always Wrong
+`std::list` is a Doubly Linked List.
+
+*   **Layout**: Nodes allocated individually on the heap.
+    *   `struct Node { T val; Node* prev; Node* next; }`
+*   **The Cache Problem**: Nodes are scattered in memory. Traversing a list causes constant **Cache Misses**.
+*   **Benchmark**: Iterating a `vector` is orders of magnitude faster than a `list`, even for large types, due to prefetching.
+*   **Use Case**: Only when you need **Reference Stability** (insertions never invalidate references to other elements).
+
+### 3.5.4 Associative Containers (Map/Set)
+`std::map`, `std::set`, `std::multimap`, `std::multiset`.
+
+*   **Implementation**: Balanced Binary Search Tree (usually **Red-Black Tree**).
+*   **Node Layout**: `struct Node { T val; Node* left; Node* right; Node* parent; Color color; }`
+*   **Complexity**: O(log N) for insert, lookup, delete.
+*   **Overhead**: 3 pointers + enum per element (heavy memory overhead).
+
+### 3.5.5 Unordered Containers (Hash Maps)
+`std::unordered_map`, `std::unordered_set`.
+
+*   **Implementation**: Array of "Buckets" (Linked Lists).
+    *   Hash function maps Key -> Bucket Index.
+    *   Collisions handled by Chaining (linked list in bucket).
+*   **Complexity**:
+    *   Average: O(1).
+    *   Worst Case: O(N) (if all keys hash to same bucket).
+*   **Rehashing**: When `load_factor > max_load_factor`, bucket array grows, all elements rehashed.
+
+### 3.5.6 Iterator Invalidation Cheat Sheet
+
+| Container | Operation | Invalidates |
+| :--- | :--- | :--- |
+| **Vector** | Capacity Change | **ALL** |
+| **Vector** | Insert/Erase | Current & After |
+| **Deque** | Insert/Erase (ends) | Iterators only (Refs valid!) |
+| **Deque** | Insert/Erase (middle) | **ALL** |
+| **List** | Insert/Erase | Only deleted element |
+| **Map/Set** | Insert/Erase | Only deleted element |
+| **Unordered** | Rehash | **ALL** |
+| **Unordered** | Insert (no rehash) | None |
+
+---
+
 ## PART 4: C++11 REVOLUTION
 
 The C++11 standard was a massive upgrade. This is where modern C++ begins!
@@ -8645,6 +9067,66 @@ for (auto& task : tasks) {
     task();
 }
 ```
+
+---
+
+## PART 4.5: ADVANCED MOVE SEMANTICS & VALUE CATEGORIES
+
+"Move Semantics" is often misunderstood. It's not magic; it's type casting.
+
+### 4.5.1 The C++17 Value Category Taxonomy
+Everything in C++ is an Expression, and every expression has a **Type** and a **Value Category**.
+
+```text
+        Expression
+       /          \
+   glvalue      rvalue
+   /    \      /     \
+lvalue   xvalue   prvalue
+```
+
+1.  **lvalue (Identity + Movable? No)**: Has a name, persists beyond expression.
+    *   `int x; x` is an lvalue.
+    *   `std::string s; s` is an lvalue.
+2.  **prvalue (Pure Rvalue)**: No name, temporary, initializes an object.
+    *   `10`, `true`, `nullptr`.
+    *   `std::string("hello")` (constructor call).
+3.  **xvalue (eXpiring Value)**: Has identity, but can be moved from.
+    *   Result of `std::move(x)`.
+    *   Rvalue reference cast `static_cast<T&&>(x)`.
+
+**glvalue** = lvalue + xvalue (Has Identity)
+**rvalue** = prvalue + xvalue (Can be moved from)
+
+### 4.5.2 std::move and std::forward Internals
+
+**`std::move`**: Does NOT move. It unconditionally casts to rvalue reference.
+```cpp
+template<typename T>
+typename remove_reference<T>::type&& move(T&& t) noexcept {
+    return static_cast<typename remove_reference<T>::type&&>(t);
+}
+```
+
+**`std::forward`**: Conditionally casts to rvalue reference *only if* the argument was initialized with an rvalue.
+Used for **Perfect Forwarding**.
+
+```cpp
+template<typename T>
+T&& forward(typename remove_reference<T>::type& t) noexcept {
+    return static_cast<T&&>(t);
+}
+```
+
+### 4.5.3 Reference Collapsing Rules
+When templates meet references, types collapse:
+
+*   `T& &`   -> `T&`
+*   `T& &&`  -> `T&`
+*   `T&& &`  -> `T&`
+*   `T&& &&` -> `T&&` (The only way to get an rvalue reference)
+
+This is why `T&&` in a template is a **Universal Reference** (Forwarding Reference). It can become `T&` (lvalue) or `T&&` (rvalue).
 
 ---
 
@@ -16699,6 +17181,108 @@ Final decision and rationale
 
 ---
 
+Final decision and rationale
+
+```
+
+---
+
+## PART 10.5: SYSTEM DESIGN CASE STUDIES (C++ EDITION)
+
+Solving common interview system design problems using C++ primitives.
+
+### 10.5.1 LRU Cache
+**Problem**: Design a Least Recently Used cache with O(1) get and put.
+**Solution**: Combine `std::list` (ordering) and `std::unordered_map` (lookup).
+
+```cpp
+#include <list>
+#include <unordered_map>
+#include <iostream>
+
+template<typename Key, typename Value>
+class LRUCache {
+    size_t capacity;
+    std::list<std::pair<Key, Value>> items;
+    std::unordered_map<Key, typename std::list<std::pair<Key, Value>>::iterator> lookup;
+
+public:
+    LRUCache(size_t cap) : capacity(cap) {}
+
+    void put(Key key, Value val) {
+        if (lookup.find(key) != lookup.end()) {
+            // Update: Move to front, update value
+            items.splice(items.begin(), items, lookup[key]);
+            lookup[key]->second = val;
+            return;
+        }
+
+        if (items.size() == capacity) {
+            // Evict: Remove back
+            lookup.erase(items.back().first);
+            items.pop_back();
+        }
+
+        // Insert: Push front
+        items.emplace_front(key, val);
+        lookup[key] = items.begin();
+    }
+
+    std::optional<Value> get(Key key) {
+        if (lookup.find(key) == lookup.end()) return std::nullopt;
+        // Access: Move to front
+        items.splice(items.begin(), items, lookup[key]);
+        return lookup[key]->second;
+    }
+};
+```
+
+### 10.5.2 Token Bucket Rate Limiter
+**Problem**: Limit requests to N per second.
+**Solution**: Refill tokens based on time elapsed.
+
+```cpp
+#include <chrono>
+#include <mutex>
+
+class TokenBucket {
+    const long long capacity;
+    const long long rate_per_sec;
+    
+    double tokens;
+    std::chrono::steady_clock::time_point last_refill;
+    std::mutex mtx;
+
+public:
+    TokenBucket(long long cap, long long rate) 
+        : capacity(cap), rate_per_sec(rate), tokens(cap), 
+          last_refill(std::chrono::steady_clock::now()) {}
+
+    bool allow_request(int cost = 1) {
+        std::lock_guard<std::mutex> lock(mtx);
+        refill();
+        
+        if (tokens >= cost) {
+            tokens -= cost;
+            return true;
+        }
+        return false;
+    }
+
+private:
+    void refill() {
+        auto now = std::chrono::steady_clock::now();
+        auto duration = std::chrono::duration_cast<std::chrono::microseconds>(now - last_refill).count();
+        
+        double new_tokens = (duration * rate_per_sec) / 1000000.0;
+        tokens = std::min((double)capacity, tokens + new_tokens);
+        last_refill = now;
+    }
+};
+```
+
+---
+
 ## PART 11: CAPSTONE PROJECT - HIGH-PERFORMANCE ORDER BOOK
 
 This capstone project integrates C++20/23 features into a realistic high-frequency trading (HFT) component. It demonstrates Modules, Concepts, Ranges, Coroutines, and modern error handling.
@@ -17450,6 +18034,790 @@ struct Node {
     }
 };
 ```
+
+---
+
+## PART 17: LOW-LATENCY C++ OPTIMIZATION
+
+For HFT, Game Engines, and Real-Time Systems, every nanosecond counts.
+
+### 17.1 CPU Pipelines & Branch Prediction
+Modern CPUs are pipelined. A branch misprediction flushes the pipeline, costing 10-20 cycles.
+
+**Optimization: Branchless Programming**
+```cpp
+// Branchy (Slow if unpredictable)
+if (val > 100) val = 100;
+
+// Branchless (Fast)
+// Compiler might generate 'cmov' (Conditional Move) instruction
+val = (val > 100) ? 100 : val;
+```
+
+**Benchmark: Sorted vs Unsorted Array Processing**
+Processing a sorted array is faster due to successful branch prediction.
+
+### 17.2 Data-Oriented Design (DoD)
+Stop thinking in "Objects". Think in "Data Transforms".
+
+**OOP (Array of Structures - AoS):**
+```cpp
+struct Entity {
+    float x, y, z;
+    int hp;
+    // ...
+};
+vector<Entity> entities; 
+// Updating 'x' loads 'hp' into cache (waste)
+```
+
+**DoD (Structure of Arrays - SoA):**
+```cpp
+struct Entities {
+    vector<float> x, y, z;
+    vector<int> hp;
+};
+// Updating 'x' loads only 'x' data (SIMD friendly, cache friendly)
+```
+
+### 17.3 Prefetching
+Use `__builtin_prefetch` (GCC/Clang) or `_mm_prefetch` (Intel) to load data into L1 cache before it's needed.
+
+```cpp
+for (int i = 0; i < N; ++i) {
+    __builtin_prefetch(&data[i + 16]); // Lookahead
+    process(data[i]);
+}
+```
+
+### 17.4 Micro-Benchmarking (Google Benchmark)
+Don't guess; measure. `std::chrono` is often too noisy for nanosecond-scale operations.
+
+```cpp
+#include <benchmark/benchmark.h>
+
+static void BM_StringCopy(benchmark::State& state) {
+    std::string x = "hello";
+    for (auto _ : state) {
+        std::string copy = x;
+        benchmark::DoNotOptimize(copy); // Prevent optimizing away
+    }
+}
+BENCHMARK(BM_StringCopy);
+```
+
+### 17.5 System Warm-up
+The first few thousand iterations of code are slow due to:
+1.  **Instruction Cache Misses**: Code not yet in CPU cache.
+2.  **Data Cache Misses**: Data not yet in L1/L2.
+3.  **Branch Predictor**: Hasn't learned the patterns yet.
+4.  **OS Page Faults**: Memory pages not yet committed.
+
+**Strategy**: Run a "dummy" loop of your critical path 10,000 times before enabling the network listener or trading signal.
+
+---
+
+## PART 18: WRITING A C++ COMPILER (BASICS)
+
+To understand C++, build a toy compiler.
+
+### 18.1 Lexical Analysis (Tokenizer)
+Converting source code into tokens.
+
+```cpp
+enum class TokenType { Int, Identifier, Plus, Minus, End };
+
+struct Token {
+    TokenType type;
+    std::string text;
+};
+
+std::vector<Token> tokenize(std::string_view source) {
+    std::vector<Token> tokens;
+    // ... implementation ...
+    return tokens;
+}
+```
+
+### 18.2 Parsing (Recursive Descent)
+Building an Abstract Syntax Tree (AST).
+
+```cpp
+struct ASTNode { virtual ~ASTNode() = default; };
+struct BinaryExpr : ASTNode {
+    std::unique_ptr<ASTNode> left, right;
+    char op;
+};
+
+// parseExpression() calls parseTerm(), etc.
+```
+
+---
+
+## PART 19: THE STANDARD LIBRARY FROM SCRATCH
+
+Implementing core STL components to understand their cost.
+
+### 19.1 Implementing my::vector
+Managing raw memory, growth, and construction.
+
+```cpp
+template<typename T>
+class Vector {
+    T* data = nullptr;
+    size_t sz = 0;
+    size_t cap = 0;
+    
+public:
+    void push_back(const T& val) {
+        if (sz == cap) {
+            reallocate(cap == 0 ? 1 : cap * 2);
+        }
+        new (data + sz) T(val); // Placement new
+        sz++;
+    }
+    
+private:
+    void reallocate(size_t new_cap) {
+        T* new_data = static_cast<T*>(::operator new(new_cap * sizeof(T)));
+        // Move old elements...
+        // Delete old memory...
+        data = new_data;
+        cap = new_cap;
+    }
+};
+```
+
+### 19.2 Implementing my::shared_ptr
+Understanding the Control Block.
+
+```cpp
+template<typename T>
+class SharedPtr {
+    T* ptr;
+    struct ControlBlock {
+        std::atomic<int> ref_count{1};
+    } *cb;
+    
+public:
+    SharedPtr(T* p) : ptr(p), cb(new ControlBlock()) {}
+    
+    SharedPtr(const SharedPtr& other) {
+        ptr = other.ptr;
+        cb = other.cb;
+        if (cb) cb->ref_count++;
+    }
+    
+    ~SharedPtr() {
+        if (cb && --cb->ref_count == 0) {
+            delete ptr;
+            delete cb;
+        }
+    }
+};
+```
+
+---
+
+## PART 20: C++ IN THE CLOUD
+
+Modern C++ is a first-class citizen in Cloud Native architectures.
+
+### 20.1 Microservices with C++
+Using frameworks like **Drogon** or **Userver** (Yandex) for high-throughput services.
+
+**Example: Simple HTTP Endpoint (Drogon style)**
+```cpp
+// Controller
+void Handler::get(const HttpRequestPtr& req, std::function<void (const HttpResponsePtr &)> &&callback) {
+    auto resp = HttpResponse::newHttpResponse();
+    resp->setBody("Hello from High-Performance Microservice!");
+    callback(resp);
+}
+```
+
+### 20.2 Serverless C++ (AWS Lambda)
+Using the AWS Lambda C++ Runtime to run native binaries.
+*   **Cold Start**: < 5ms (vs 100ms+ for Java/Node).
+*   **Cost**: Lower duration due to speed.
+
+```cpp
+#include <aws/lambda-runtime/runtime.h>
+
+aws::lambda_runtime::invocation_response handler(aws::lambda_runtime::invocation_request const& req) {
+    return aws::lambda_runtime::invocation_response::success("Processed!", "application/json");
+}
+
+int main() {
+    aws::lambda_runtime::run_handler(handler);
+    return 0;
+}
+```
+
+---
+
+## PART 21: CROSS-PLATFORM DEVELOPMENT
+
+Write once, run everywhere (Desktop, Web, Mobile).
+
+### 21.1 WebAssembly (Wasm) with Emscripten
+Compiling C++ to run in the browser.
+
+```bash
+emcc main.cpp -o index.html -s WASM=1
+```
+
+```cpp
+#include <emscripten/emscripten.h>
+
+extern "C" {
+    EMSCRIPTEN_KEEPALIVE
+    int add(int a, int b) {
+        return a + b; // callable from JavaScript
+    }
+}
+```
+
+### 21.2 Mobile C++ (Android NDK & JNI)
+Integrating C++ with Java/Kotlin.
+
+```cpp
+#include <jni.h>
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_example_myapp_MainActivity_stringFromJNI(JNIEnv* env, jobject /* this */) {
+    return env->NewStringUTF("Hello from C++");
+}
+```
+
+---
+
+## PART 22: GUI DEVELOPMENT WITH C++
+
+Building desktop applications and tools.
+
+### 22.1 Qt Framework (Retained Mode)
+Qt uses a unique Signal/Slot mechanism (via MOC - Meta-Object Compiler).
+
+```cpp
+// MainWindow.h
+class MainWindow : public QMainWindow {
+    Q_OBJECT // Macro for MOC
+public:
+    MainWindow(QWidget *parent = nullptr);
+public slots:
+    void handleButton(); // Slot
+};
+
+// MainWindow.cpp
+MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
+    QPushButton *button = new QPushButton("Click me", this);
+    connect(button, &QPushButton::clicked, this, &MainWindow::handleButton);
+}
+```
+
+### 22.2 Dear ImGui (Immediate Mode)
+Ideal for game engines and internal tools. Re-renders UI every frame.
+
+```cpp
+// Main Loop
+void Render() {
+    ImGui::Begin("Debug Tools");
+    static float col[3] = { 0.0f, 0.0f, 0.0f };
+    ImGui::ColorEdit3("Background Color", col);
+    if (ImGui::Button("Reset")) {
+        col[0] = col[1] = col[2] = 0.0f;
+    }
+    ImGui::End();
+}
+```
+
+---
+
+## PART 23: SCIENTIFIC COMPUTING & GPU
+
+C++ is the language of high-performance math.
+
+### 23.1 Eigen (Linear Algebra)
+Template-heavy library that avoids temporaries using Expression Templates.
+
+```cpp
+#include <Eigen/Dense>
+using Eigen::MatrixXd;
+
+void solve_system() {
+    MatrixXd A(3, 3);
+    A << 1, 2, 3,
+         4, 5, 6,
+         7, 8, 10;
+    
+    Eigen::VectorXd b(3);
+    b << 3, 3, 4;
+    
+    Eigen::VectorXd x = A.colPivHouseholderQr().solve(b);
+}
+```
+
+### 23.2 CUDA (GPU Programming)
+Running C++ directly on NVIDIA GPUs.
+
+```cpp
+// Kernel (runs on GPU)
+__global__ void vectorAdd(float* A, float* B, float* C, int N) {
+    int i = blockDim.x * blockIdx.x + threadIdx.x;
+    if (i < N) C[i] = A[i] + B[i];
+}
+
+// Host (runs on CPU)
+void launch_kernel(float* d_A, float* d_B, float* d_C, int N) {
+    int threadsPerBlock = 256;
+    int blocksPerGrid = (N + threadsPerBlock - 1) / threadsPerBlock;
+    vectorAdd<<<blocksPerGrid, threadsPerBlock>>>(d_A, d_B, d_C, N);
+}
+```
+
+---
+
+## PART 24: LOW-LATENCY SYSTEM ARCHITECTURE
+
+Designing systems where microseconds matter (Trading, Real-time AdTech).
+
+### 24.1 The Disruptor Pattern (C++ Implementation)
+A high-performance inter-thread messaging library. Key concept: **Single-Writer Ring Buffer** with no locks.
+
+```cpp
+template<typename T, size_t Size>
+class Disruptor {
+    std::array<T, Size> ring_buffer;
+    alignas(64) std::atomic<int64_t> cursor{-1}; // Cache line padded
+    
+public:
+    template<typename F>
+    void publish(F&& factory) {
+        int64_t current = cursor.load(std::memory_order_relaxed);
+        int64_t next = current + 1;
+        
+        // Write data (no contention for single writer)
+        factory(ring_buffer[next & (Size - 1)]);
+        
+        // Commit
+        cursor.store(next, std::memory_order_release);
+    }
+    
+    // Consumer tracks its own sequence...
+};
+```
+
+### 24.2 Kernel Bypass Networking (Concept)
+Standard OS networking (interrupts, context switches) adds 10-50us latency.
+**Solution**: Map the NIC (Network Interface Card) directly to user-space memory (DPDK, Solarflare OpenOnload).
+
+*   **Zero Copy**: Packet data goes from NIC -> CPU L3 Cache -> User Buffer.
+*   **Polling**: Instead of interrupts, one CPU core spins (`while(true)`) checking the NIC ring.
+
+### 24.3 OS Tuning for C++
+Your code is only as fast as the OS allows.
+
+1.  **CPU Isolation (`isolcpus`)**: Isolate cores from the OS scheduler so your thread never gets preempted.
+2.  **Huge Pages**: Use 2MB or 1GB pages to reduce TLB (Translation Lookaside Buffer) misses.
+    ```cpp
+    void* ptr = mmap(NULL, size, PROT_READ|PROT_WRITE, 
+                     MAP_PRIVATE|MAP_ANONYMOUS|MAP_HUGETLB, -1, 0);
+    ```
+3.  **Disable C-States**: Prevent CPU from going to sleep (power save) which causes wake-up latency.
+
+### 24.4 Zero-Copy Serialization (Cap'n Proto / FlatBuffers)
+Avoid parsing JSON/XML. Access data directly from the binary buffer.
+
+```cpp
+// FlatBuffers schema compiled to C++ header
+// No parsing step! Pointers just point to the right offsets.
+auto monster = GetMonster(buffer_pointer);
+auto hp = monster->hp(); // Immediate access
+auto pos = monster->pos();
+```
+
+---
+
+## PART 25: INTEROPERABILITY
+
+C++ rarely lives in isolation. It powers Python, Java, and Browsers.
+
+### 25.1 Python Bindings with pybind11
+Expose C++ performance to Python scripts.
+
+```cpp
+#include <pybind11/pybind11.h>
+
+int add(int i, int j) { return i + j; }
+
+PYBIND11_MODULE(example, m) {
+    m.doc() = "pybind11 example plugin";
+    m.def("add", &add, "A function which adds two numbers");
+}
+// In Python: import example; example.add(1, 2)
+```
+
+### 25.2 Stable C ABI for DLLs
+To share code between compilers (MSVC/GCC) or languages (C#, Rust), use `extern "C"`.
+
+```cpp
+// header.h
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+__declspec(dllexport) void* CreateInstance();
+__declspec(dllexport) void DestroyInstance(void* ptr);
+
+#ifdef __cplusplus
+}
+#endif
+```
+
+---
+
+## PART 26: SECURITY ENGINEERING
+
+Writing fast code is easy. Writing fast *and* secure code is Godhood.
+
+### 26.1 Fuzzing (libFuzzer)
+Fuzzing involves feeding random, invalid inputs to your program to find crashes.
+
+```cpp
+// fuzz_target.cc
+#include <cstdint>
+#include <cstddef>
+
+extern "C" int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size) {
+    // Call your function here
+    // parse_packet(Data, Size);
+    return 0; // Non-zero return values are reserved for future use.
+}
+```
+Compile with: `clang++ -fsanitize=fuzzer fuzz_target.cc`
+
+### 26.2 Secure Coding Practices (SEI CERT C++)
+1.  **Do not use `strcpy`, `sprintf`**: Use `std::string` or `snprintf` with bounds.
+2.  **Avoid Raw Pointers**: Use `std::unique_ptr` to prevent Use-After-Free (UAF).
+3.  **Validate External Input**: Never trust network packets or file headers.
+4.  **Integer Overflow**: Use `std::checked_*` (if available) or manual checks for arithmetic on untrusted data.
+
+### 26.3 Exploit Mitigation
+*   **ASLR**: Address Space Layout Randomization.
+*   **DEP**: Data Execution Prevention (NX bit).
+*   **Stack Canaries**: Compiler inserts a sentinel value on stack to detect overflow.
+
+---
+
+## PART 27: THE ULTIMATE ALGORITHM REFERENCE
+
+Stop writing loops. Use the STL.
+
+### 27.1 Non-Modifying Sequence Operations
+*   `std::all_of(begin, end, pred)`: True if all match.
+*   `std::any_of(begin, end, pred)`: True if any match.
+*   `std::none_of(begin, end, pred)`: True if none match.
+*   `std::for_each(begin, end, func)`: Apply function to all.
+*   `std::count(begin, end, val)`: Count occurrences.
+*   `std::mismatch(b1, e1, b2)`: Find first difference.
+*   `std::find(begin, end, val)`: Linear search.
+
+### 27.2 Modifying Sequence Operations
+*   `std::copy(b, e, out)`: Copy range.
+*   `std::transform(b, e, out, op)`: Map function over range.
+*   `std::generate(b, e, gen)`: Fill with generator.
+*   `std::remove_if(b, e, pred)`: **Erase-Remove Idiom** step 1. Move valid elements to front.
+*   `std::replace(b, e, old, new)`: Replace values.
+*   `std::unique(b, e)`: Remove consecutive duplicates.
+
+### 27.3 Partitioning
+*   `std::partition(b, e, pred)`: Reorder so true predicates come first. O(N).
+*   `std::stable_partition`: Preserves relative order.
+
+### 27.4 Sorting
+*   `std::sort(b, e)`: IntroSort (Quick + Heap + Insertion). O(N log N).
+*   `std::partial_sort(b, mid, e)`: Top K elements sorted.
+*   `std::nth_element(b, nth, e)`: Element at `nth` is what it would be if sorted. O(N).
+
+### 27.5 Binary Search (On Sorted Ranges)
+*   `std::lower_bound(b, e, val)`: First element `>=` val.
+*   `std::upper_bound(b, e, val)`: First element `>` val.
+*   `std::binary_search(b, e, val)`: True/False existence.
+
+### 27.6 Numeric Operations (<numeric>)
+*   `std::iota(b, e, start)`: Fill with 0, 1, 2...
+*   `std::accumulate(b, e, init)`: Sum (fold left).
+*   `std::reduce(b, e)`: Parallelizable sum (C++17).
+*   `std::inner_product`: Dot product.
+
+---
+
+## PART 28: NETWORKING FROM SCRATCH
+
+Understanding `asio` requires understanding BSD Sockets.
+
+### 28.1 Berkeley Sockets API
+The foundation of the Internet.
+
+```cpp
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <unistd.h>
+
+int main() {
+    int server_fd = socket(AF_INET, SOCK_STREAM, 0);
+    
+    sockaddr_in address;
+    address.sin_family = AF_INET;
+    address.sin_addr.s_addr = INADDR_ANY;
+    address.sin_port = htons(8080);
+    
+    bind(server_fd, (struct sockaddr*)&address, sizeof(address));
+    listen(server_fd, 3);
+    
+    int new_socket = accept(server_fd, nullptr, nullptr);
+    char buffer[1024] = {0};
+    read(new_socket, buffer, 1024);
+    
+    // Send HTTP response
+    const char* hello = "HTTP/1.1 200 OK\nContent-Type: text/plain\n\nHello!";
+    write(new_socket, hello, strlen(hello));
+    
+    close(new_socket);
+    close(server_fd);
+    return 0;
+}
+```
+
+### 28.2 Non-Blocking I/O & Epoll (Linux)
+How Nginx/Node.js handle 10k connections.
+
+```cpp
+// 1. Create epoll instance
+int epoll_fd = epoll_create1(0);
+
+// 2. Add server socket
+epoll_event event;
+event.events = EPOLLIN; // Read available
+event.data.fd = server_fd;
+epoll_ctl(epoll_fd, EPOLL_CTL_ADD, server_fd, &event);
+
+// 3. Event Loop
+while (true) {
+    epoll_event events[10];
+    int event_count = epoll_wait(epoll_fd, events, 10, -1);
+    for (int i = 0; i < event_count; i++) {
+        if (events[i].data.fd == server_fd) {
+            // Accept new connection...
+        } else {
+            // Read data...
+        }
+    }
+}
+```
+
+---
+
+## PART 29: WRITING A GARBAGE COLLECTOR
+
+C++ has RAII, but implementing a GC teaches you about the stack and object graph.
+
+### 29.1 Mark-and-Sweep Basics
+1.  **Roots**: Pointers on the stack/globals.
+2.  **Mark**: Traverse object graph from roots, marking reachable objects.
+3.  **Sweep**: Iterate heap, free unmarked objects.
+
+```cpp
+struct GCObject {
+    bool marked = false;
+    virtual ~GCObject() = default;
+};
+
+class VM {
+    std::vector<GCObject*> heap;
+    std::vector<GCObject*> roots; // Pointers currently on stack
+    
+public:
+    void mark() {
+        for (auto* obj : roots) mark_object(obj);
+    }
+    
+    void mark_object(GCObject* obj) {
+        if (!obj || obj->marked) return;
+        obj->marked = true;
+        // ... traverse children ...
+    }
+    
+    void sweep() {
+        auto it = std::remove_if(heap.begin(), heap.end(), [](GCObject* obj) {
+            if (!obj->marked) {
+                delete obj;
+                return true;
+            }
+            obj->marked = false; // Reset for next cycle
+            return false;
+        });
+        heap.erase(it, heap.end());
+    }
+};
+```
+
+---
+
+## PART 30: THE C++ BUILD ECOSYSTEM MASTERY
+
+Writing code is half the battle. Building and debugging it is the rest.
+
+### 30.1 Package Managers Deep Dive
+
+#### vcpkg (Manifest Mode)
+Create `vcpkg.json` in your root:
+```json
+{
+  "name": "my-app",
+  "version": "1.0.0",
+  "dependencies": [
+    "fmt",
+    "nlohmann-json"
+  ]
+}
+```
+CMake integration:
+```bash
+cmake -B build -DCMAKE_TOOLCHAIN_FILE=.../vcpkg.cmake
+```
+
+#### Conan (conanfile.txt)
+```ini
+[requires]
+fmt/9.1.0
+nlohmann_json/3.11.2
+
+[generators]
+CMakeDeps
+CMakeToolchain
+```
+
+### 30.2 Sanitizers: The Developer's Best Friend
+
+#### AddressSanitizer (ASan)
+Detects out-of-bounds, use-after-free.
+`clang++ -fsanitize=address -g main.cpp`
+
+**Example: Use-After-Free**
+```cpp
+int* p = new int(5);
+delete p;
+*p = 10; // ASan catches this instantly!
+```
+
+#### ThreadSanitizer (TSan)
+Detects data races.
+`clang++ -fsanitize=thread -g main.cpp`
+
+**Example: Data Race**
+```cpp
+int counter = 0;
+std::thread t1([&]{ counter++; });
+std::thread t2([&]{ counter++; }); // TSan catches this race
+t1.join(); t2.join();
+```
+
+#### UndefinedBehaviorSanitizer (UBSan)
+Detects overflow, null dereference, alignment issues.
+`clang++ -fsanitize=undefined -g main.cpp`
+
+### 30.3 Profiling Tools
+
+*   **perf (Linux)**: `perf record -g ./app` -> `perf report`.
+*   **Valgrind (Massif)**: Heap profiler. `valgrind --tool=massif ./app`.
+*   **Hotspot**: UI for perf.
+
+---
+
+## PART 31: EXTREME LOW LATENCY & HARDWARE MASTERY
+
+To achieve sub-microsecond latency, you must program the hardware, not just the language.
+
+### 31.1 CPU Architecture & Cache Topology
+*   **L1 Cache**: ~32KB, 3-4 cycles. Per core.
+*   **L2 Cache**: ~256KB-1MB, 10-12 cycles. Per core.
+*   **L3 Cache**: ~10MB+, 40-70 cycles. Shared across cores.
+*   **RAM**: 100+ cycles.
+
+**Optimization Goal**: Stay in L1/L2.
+**Technique**: Minimize object size, use contiguous memory (arrays), align data to cache lines (64 bytes).
+
+### 31.2 NUMA (Non-Uniform Memory Access)
+On multi-socket servers, accessing RAM attached to another CPU socket is slow.
+*   **Solution**: Pin threads to cores. Allocate memory on the local node.
+*   **Tool**: `numactl --cpunodebind=0 --membind=0 ./app`
+
+### 31.3 Compiler Optimizations (The "Free Lunch")
+*   `-O3`: Aggressive optimization.
+*   `-march=native`: Use instructions available on the build machine (AVX2, AVX-512).
+*   `-flto` (Link Time Optimization): Optimize across translation units (inlining across .cpp files).
+*   **PGO (Profile Guided Optimization)**:
+    1.  Compile with `-fprofile-generate`.
+    2.  Run the app (training run).
+    3.  Recompile with `-fprofile-use`.
+
+### 31.4 Lock-Free Stack Implementation (Wait-Free Push)
+A classic interview and system component.
+
+```cpp
+template<typename T>
+struct Node {
+    T data;
+    Node* next;
+    Node(const T& d) : data(d), next(nullptr) {}
+};
+
+template<typename T>
+class LockFreeStack {
+    std::atomic<Node<T>*> head{nullptr};
+
+public:
+    void push(const T& data) {
+        Node<T>* new_node = new Node<T>(data);
+        new_node->next = head.load(std::memory_order_relaxed);
+        
+        // CAS Loop
+        while (!head.compare_exchange_weak(
+            new_node->next, 
+            new_node,
+            std::memory_order_release, 
+            std::memory_order_relaxed));
+    }
+
+    bool pop(T& result) {
+        Node<T>* old_head = head.load(std::memory_order_acquire);
+        
+        while (old_head && !head.compare_exchange_weak(
+            old_head,
+            old_head->next,
+            std::memory_order_acquire,
+            std::memory_order_relaxed));
+            
+        if (!old_head) return false;
+        
+        result = old_head->data;
+        // Note: Deletion in lock-free requires Hazard Pointers or RCU!
+        // Leaking here for simplicity of example.
+        return true;
+    }
+};
+```
+
+### 31.5 Measurable Performance Targets
+Define Service Level Objectives (SLOs) in percentiles.
+*   **p50 (Median)**: Typical case.
+*   **p99**: The "slow" case (1 in 100).
+*   **p99.9**: The tail latency (1 in 1000). Crucial for HFT.
+
+**Example Target**:
+"Order processing must have p99 latency < 5 microseconds."
 
 ---
 
