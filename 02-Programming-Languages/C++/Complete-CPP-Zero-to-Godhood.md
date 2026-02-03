@@ -57,7 +57,9 @@ To ensure clarity, this book follows strict conventions:
 ### PART 1: ABSOLUTE BASICS (C++98)
 1. [Getting Started](#getting-started)
 2. [Basic Types & Variables](#basic-types--variables)
+   * [Deep Dive: Memory Model](#deep-dive-the-memory-model-of-variables)
 3. [Operators & Control Flow](#operators--control-flow)
+   * [Deep Dive: Bitwise Mastery](#deep-dive-bitwise-mastery-low-level-optimization)
 4. [Functions](#functions)
 5. [Arrays & Pointers](#arrays--pointers)
 6. [Pointers & Memory](#advanced-pointers--memory)
@@ -98,6 +100,9 @@ To ensure clarity, this book follows strict conventions:
    11. [Operator Overloading](#operator-overloading)
    12. [SOLID Principles](#solid-principles)
 7. [Constructors & Destructors](#constructors--destructors)
+   1. [Advanced Constructor Features](#22-advanced-constructor-features-c11)
+   2. [Construction & Destruction Order](#23-construction--destruction-order)
+   3. [The Rule of Three, Five, and Zero](#24-the-rule-of-three-five-and-zero)
 8. [Inheritance](#inheritance)
 9.  [Virtual Functions & Polymorphism](#virtual-functions--polymorphism)
 
@@ -131,6 +136,7 @@ To ensure clarity, this book follows strict conventions:
 4. [Associative Containers (RB-Tree)](#354-associative-containers-mapset)
 5. [Unordered Containers (Hash)](#355-unordered-containers-hash-maps)
 6. [Iterator Invalidation Cheat Sheet](#356-iterator-invalidation-cheat-sheet)
+7. [Advanced Iterator Concepts](#advanced-iterator-concepts)
 
 ### PART 4: C++11 REVOLUTION
 1. [C++11 Overview & History](#c11-overview--history)
@@ -493,6 +499,32 @@ int main() {
 }
 ```
 
+### Deep Dive: The Memory Model of Variables
+
+Understanding *where* your variables live is the first step to Godhood.
+
+1.  **The Stack (Automatic Storage)**:
+    *   **What**: Local variables (`int x`).
+    *   **Speed**: Extremely fast (just moving a pointer).
+    *   **Lifetime**: Scope-based (die at `}`).
+    *   **Limit**: Small (typically 1MB-8MB). Recursion depth is limited by this.
+
+2.  **The Heap (Dynamic Storage)**:
+    *   **What**: `new int`, `malloc`.
+    *   **Speed**: Slower (allocation requires finding free block).
+    *   **Lifetime**: Manual (until `delete` / `free`).
+    *   **Limit**: RAM size (Gigabytes).
+
+3.  **Static/Global (Static Storage)**:
+    *   **What**: Global variables, `static` locals.
+    *   **Speed**: Fast access, but initialization order is tricky.
+    *   **Lifetime**: Program start to program end.
+
+4.  **Registers**:
+    *   **What**: CPU internal storage.
+    *   **Speed**: Instant (0 cycles).
+    *   **Note**: Variables are often optimized into registers, never touching RAM!
+
 ---
 
 ## Operators & Control Flow
@@ -526,6 +558,35 @@ int main() {
     --y;      // Pre-decrement: 5
     
     return 0;
+}
+```
+
+### Deep Dive: Bitwise Mastery (Low-Level Optimization)
+
+Bitwise operators manipulate individual bits. Essential for embedded systems, graphics, and cryptography.
+
+#### The Operators
+*   `&` (AND): Both bits must be 1.
+*   `|` (OR): At least one bit must be 1.
+*   `^` (XOR): Bits must be different.
+*   `~` (NOT): Flip all bits.
+*   `<<` (Left Shift): Multiply by 2^N.
+*   `>>` (Right Shift): Divide by 2^N.
+
+#### God-Tier Tricks
+1.  **Check Odd/Even**: `(x & 1) == 0` (Even). Faster than `% 2`.
+2.  **Multiply by 2**: `x << 1`.
+3.  **Divide by 2**: `x >> 1`.
+4.  **Clear Last Set Bit**: `x & (x - 1)`. Used to count set bits (Kernighan's Algorithm).
+5.  **Check Power of 2**: `(x > 0) && ((x & (x - 1)) == 0)`.
+6.  **Toggle Bit N**: `x ^= (1 << N)`.
+7.  **Set Bit N**: `x |= (1 << N)`.
+8.  **Clear Bit N**: `x &= ~(1 << N)`.
+
+```cpp
+// Fast Power of 2 check
+bool isPowerOf2(int x) {
+    return x && !(x & (x - 1));
 }
 ```
 
@@ -4426,6 +4487,90 @@ int main() {
 }
 ```
 
+### 2.2 Advanced Constructor Features (C++11)
+
+#### Delegating Constructors
+One constructor can call another constructor of the same class to reduce code duplication.
+
+```cpp
+class Data {
+    int x, y;
+    std::string s;
+public:
+    // Target constructor
+    Data(int x, int y, std::string s) : x(x), y(y), s(s) {}
+    
+    // Delegating constructor
+    Data() : Data(0, 0, "default") {} 
+    
+    // Another delegating constructor
+    Data(int x) : Data(x, 0, "default") {}
+};
+```
+
+#### Inheriting Constructors
+Using `using` to expose base class constructors.
+
+```cpp
+class Base {
+public:
+    Base(int x) { std::cout << "Base(int)\n"; }
+};
+
+class Derived : public Base {
+public:
+    using Base::Base; // Inherits Base(int)
+    // Implicitly generates Derived(int x) : Base(x) {}
+};
+```
+
+### 2.3 Construction & Destruction Order
+The order is strict and deterministic (Stack logic: LIFO).
+
+**Construction Order:**
+1.  Base Classes (in order of inheritance)
+2.  Member Objects (in order of declaration in class)
+3.  Constructor Body
+
+**Destruction Order:**
+1.  Destructor Body
+2.  Member Objects (reverse order of declaration)
+3.  Base Classes (reverse order of inheritance)
+
+```cpp
+class Base { public: Base() { cout << "Base "; } ~Base() { cout << "~Base "; } };
+class Member { public: Member() { cout << "Member "; } ~Member() { cout << "~Member "; } };
+
+class Derived : public Base {
+    Member m;
+public:
+    Derived() { cout << "Derived "; }
+    ~Derived() { cout << "~Derived "; }
+};
+
+int main() {
+    Derived d; // Output: Base Member Derived
+    // End of scope: ~Derived ~Member ~Base
+}
+```
+
+### 2.4 The Rule of Three, Five, and Zero
+
+This is the cornerstone of resource management.
+
+1.  **Rule of Three (C++98)**: If you implement one of: Destructor, Copy Constructor, Copy Assignment Operator; you likely need to implement all three.
+2.  **Rule of Five (C++11)**: For Move semantics, add Move Constructor and Move Assignment Operator.
+3.  **Rule of Zero**: If your class uses RAII types (`std::string`, `std::vector`, `std::unique_ptr`), do **NOT** declare any of the special member functions. Let the compiler generate them.
+
+```cpp
+// Rule of Zero Example (Best Practice)
+class User {
+    std::string name; // Manages its own memory
+    std::vector<int> scores; // Manages its own memory
+    // No destructor needed!
+};
+```
+
 ---
 
 ## Inheritance
@@ -5653,32 +5798,87 @@ vector<int> v2 = {1, 2, 3};
 const_iterator it2 = v2.cbegin();
 ```
 
-### Iterator Adapters
+const_iterator it2 = v2.cbegin();
+```
+
+### Advanced Iterator Concepts
+
+#### 1. Iterator Traits (std::iterator_traits)
+Algorithms use `iterator_traits` to know what an iterator can do.
 
 ```cpp
 #include <iterator>
 
-vector<int> v = {1, 2, 3};
+template<typename Iter>
+void my_advance(Iter& it, int n) {
+    using category = typename std::iterator_traits<Iter>::iterator_category;
+    
+    if constexpr (std::is_base_of_v<std::random_access_iterator_tag, category>) {
+        it += n; // O(1)
+    } else {
+        while (n--) ++it; // O(N)
+    }
+}
+```
 
-// Output iterator
-copy(v.begin(), v.end(), ostream_iterator<int>(cout, " "));
-// Output: 1 2 3
+#### 2. Writing a Custom Iterator
+To make a class compatible with STL algorithms (like `std::find`), you need a conformant iterator.
 
-// Insert iterator
-vector<int> v1 = {1, 2, 3};
-vector<int> v2 = {4, 5};
+```cpp
+class Integers {
+    struct Iterator {
+        using iterator_category = std::forward_iterator_tag;
+        using difference_type   = std::ptrdiff_t;
+        using value_type        = int;
+        using pointer           = int*;
+        using reference         = int&;
 
-copy(v1.begin(), v1.end(), back_inserter(v2));
-// v2: {4, 5, 1, 2, 3}
+        int value;
+        Iterator(int v) : value(v) {}
 
-// Front insert
-list<int> lst;
-copy(v1.begin(), v1.end(), front_inserter(lst));
-// lst: {3, 2, 1}
+        reference operator*() { return value; }
+        pointer operator->() { return &value; }
+        
+        Iterator& operator++() { value++; return *this; }
+        Iterator operator++(int) { Iterator tmp = *this; ++(*this); return tmp; }
+        
+        friend bool operator== (const Iterator& a, const Iterator& b) { return a.value == b.value; };
+        friend bool operator!= (const Iterator& a, const Iterator& b) { return a.value != b.value; };
+    };
 
-// Insert
-vector<int> result;
-copy(v1.begin(), v1.end(), inserter(result, result.end()));
+public:
+    Iterator begin() { return Iterator(0); }
+    Iterator end()   { return Iterator(10); } // Range [0, 10)
+};
+```
+
+#### 3. Stream Iterators
+Treat IO streams as containers.
+
+```cpp
+#include <iterator>
+#include <algorithm>
+
+// Read ints from cin until EOF or invalid input
+std::istream_iterator<int> input_it(std::cin);
+std::istream_iterator<int> eos;
+
+// Write ints to cout with ", " delimiter
+std::ostream_iterator<int> output_it(std::cout, ", ");
+
+std::copy(input_it, eos, output_it);
+```
+
+#### 4. Insert Iterators
+Special output iterators that grow the container.
+
+*   `std::back_inserter(c)`: Calls `c.push_back(val)`. (Vector, List, Deque)
+*   `std::front_inserter(c)`: Calls `c.push_front(val)`. (List, Deque)
+*   `std::inserter(c, it)`: Calls `c.insert(it, val)`. (Map, Set, List, Vector)
+
+```cpp
+std::vector<int> v;
+std::fill_n(std::back_inserter(v), 5, 42); // v becomes {42, 42, 42, 42, 42}
 ```
 
 ---
