@@ -155,6 +155,11 @@ To ensure clarity, this book follows strict conventions:
 13. [Regular Expressions](#regular-expressions)
 14. [New Library Features](#new-library-features)
 
+### PART 4.5: ADVANCED MOVE SEMANTICS
+1. [Value Categories (glvalue, prvalue, xvalue)](#451-the-c17-value-category-taxonomy)
+2. [std::move Internals](#452-stdmove-and-stdforward-internals)
+3. [Reference Collapsing](#453-reference-collapsing-rules)
+
 ### PART 5: C++14 ENHANCEMENTS
 1. [C++14 Overview & Philosophy](#c14-overview--philosophy)
 2. [Generic Lambdas](#generic-lambdas)
@@ -168,6 +173,7 @@ To ensure clarity, this book follows strict conventions:
 10. [Member Function ref/const-ref Qualifiers](#member-function-refconst-ref-qualifiers)
 11. [std::integer_sequence](#stdinteger_sequence)
 12. [Deprecated Features](#deprecated-features)
+    1. [Shared Locks (Reader-Writer)](#125-shared-locks-reader-writer-mutex)
 13. [Library Improvements](#library-improvements)
 14. [C++14 Best Practices](#c14-best-practices)
 
@@ -8594,6 +8600,47 @@ cout << mutable_lambda() << "\n";  // 1
 cout << mutable_lambda() << "\n";  // 2 (x persists)
 ```
 
+## 4.4 Lambda Under the Hood
+
+When you write a lambda, the compiler generates a class (functor) for you.
+
+**Source Code:**
+```cpp
+int factor = 10;
+auto lambda = [factor](int x) { return x * factor; };
+```
+
+**Compiler Generated Code (Approximate):**
+```cpp
+class __Lambda_1 {
+private:
+    int m_factor; // Captured variable
+public:
+    __Lambda_1(int factor) : m_factor(factor) {}
+    
+    // operator() is const by default!
+    int operator()(int x) const {
+        return x * m_factor;
+    }
+};
+
+// Usage
+__Lambda_1 lambda(factor);
+```
+
+**Mutable Lambda:**
+If you use `mutable`, the `operator()` is NOT `const`, allowing modification of `m_factor`.
+
+**Capture by Reference:**
+```cpp
+class __Lambda_Ref {
+    int& m_ref; // Pointer under the hood
+public:
+    __Lambda_Ref(int& ref) : m_ref(ref) {}
+    int operator()(int x) const { return x * m_ref; }
+};
+```
+
 ---
 
 # SECTION 5: VARIADIC TEMPLATES
@@ -10764,6 +10811,37 @@ auto plus = [](int a, int b) { return a + b; };  // Modern
 // auto partial = bind1st(plus(), 5);  // Deprecated
 
 auto partial = [](int x) { return 5 + x; };  // Modern
+```
+
+### 12.5 Shared Locks (Reader-Writer Mutex)
+
+C++14 introduces `shared_timed_mutex` allowing multiple readers but exclusive writers.
+
+```cpp
+#include <shared_mutex>
+#include <mutex>
+#include <map>
+
+class ThreadSafeCache {
+    std::map<int, int> data;
+    mutable std::shared_timed_mutex mtx; // C++14 (use shared_mutex in C++17)
+
+public:
+    // Reader: Multiple threads can hold shared_lock
+    int get(int key) const {
+        std::shared_lock<std::shared_timed_mutex> lock(mtx);
+        if (data.find(key) != data.end()) {
+            return data.at(key);
+        }
+        return -1;
+    }
+
+    // Writer: Only one thread can hold unique_lock
+    void put(int key, int value) {
+        std::unique_lock<std::shared_timed_mutex> lock(mtx);
+        data[key] = value;
+    }
+};
 ```
 
 ---
