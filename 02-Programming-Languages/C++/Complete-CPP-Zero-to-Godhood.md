@@ -264,8 +264,10 @@ To ensure clarity, this book follows strict conventions:
 ### PART 10: PRODUCTION & PROFESSIONAL
 1. [Large-Scale Project Architecture](#large-scale-project-architecture)
 2. [Code Organization & Project Structure](#code-organization--project-structure)
+    1. [Modern CMake with Modules (C++20)](#23-modern-cmake-with-modules-c20)
 3. [Build Systems & Compilation](#build-systems--compilation)
 4. [Testing Strategies](#testing-strategies)
+    1. [Advanced Mocking with GMock](#44-advanced-mocking-with-google-mock-gmock)
 5. [Debugging & Profiling](#debugging--profiling)
 6. [Version Control & Collaboration](#version-control--collaboration)
 7. [Documentation & Knowledge Transfer](#documentation--knowledge-transfer)
@@ -273,6 +275,7 @@ To ensure clarity, this book follows strict conventions:
 9. [Performance Engineering](#performance-engineering)
 10. [Error Handling & Recovery](#error-handling--recovery)
 11. [Deployment & DevOps](#deployment--devops)
+    1. [CI/CD Pipeline (GitHub Actions)](#113-cicd-pipeline-github-actions)
 12. [Code Review & Quality](#code-review--quality)
 13. [Technical Debt Management](#technical-debt-management)
 14. [Legacy Code Modernization](#legacy-code-modernization)
@@ -17068,6 +17071,36 @@ TEST_CASE_METHOD(UserServiceTest, "Multiple users") {
 }
 ```
 
+## 4.4 Advanced Mocking with Google Mock (GMock)
+
+For complex interactions, use GMock.
+
+```cpp
+#include <gmock/gmock.h>
+
+class MockDB : public Database {
+public:
+    MOCK_METHOD(bool, connect, (string), (override));
+    MOCK_METHOD(void, query, (string), (override));
+};
+
+TEST(DBTest, LoginSequence) {
+    MockDB db;
+    
+    // Expect connect called once with "admin"
+    EXPECT_CALL(db, connect("admin"))
+        .Times(1)
+        .WillOnce(testing::Return(true));
+        
+    // Expect query called any number of times
+    EXPECT_CALL(db, query(testing::_))
+        .Times(testing::AtLeast(0));
+        
+    UserManager mgr(&db);
+    mgr.login("admin");
+}
+```
+
 ---
 
 # SECTION 5: DEBUGGING & PROFILING
@@ -17727,6 +17760,35 @@ spec:
             port: 8080
           initialDelaySeconds: 5
           periodSeconds: 5
+```
+
+## 11.3 CI/CD Pipeline (GitHub Actions)
+
+Automate building and testing.
+
+```yaml
+name: C++ CI
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Install Dependencies
+      run: sudo apt-get install -y libboost-dev cmake
+      
+    - name: Configure CMake
+      run: cmake -B build -DCMAKE_BUILD_TYPE=Release
+      
+    - name: Build
+      run: cmake --build build
+      
+    - name: Test
+      run: cd build && ctest --output-on-failure
 ```
 
 ---
