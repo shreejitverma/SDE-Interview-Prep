@@ -54,50 +54,80 @@ To ensure clarity, this book follows strict conventions:
 
 ## Table of Contents
 
-### PART 1: ABSOLUTE BASICS (C++98)
-1. [Getting Started](#getting-started)
-2. [Basic Types & Variables](#basic-types--variables)
-   * [Deep Dive: Memory Model](#deep-dive-the-memory-model-of-variables)
-3. [Operators & Control Flow](#operators--control-flow)
-   * [Deep Dive: Bitwise Mastery](#deep-dive-bitwise-mastery-low-level-optimization)
-4. [Functions](#functions)
-5. [Arrays & Pointers](#arrays--pointers)
-6. [Pointers & Memory](#advanced-pointers--memory)
-7. [Functions](#advanced-functions)
-8. [Function Pointers & Callbacks](#function-pointers--callbacks)
-9. [Arrays](#advanced-arrays)
-10. [Strings](#advanced-strings)
-11. [Bitwise Operations](#bitwise-operations)
-12. [Preprocessor Directives](#preprocessor-directives)
-13. [Type Casting](#type-casting)
-14. [Control Flow](#advanced-control-flow)
-15. [Enumeration & Unions](#enumeration--unions)
-16. [Const & Volatile](#const--volatile)
-17. [Inline Functions & Macros](#inline-functions--macros)
-18. [Namespaces](#namespaces)
-19. [File I/O Advanced](#file-io-advanced)
-20. [Error Handling & Debugging](#error-handling--debugging)
+## Table of Contents
 
-### PART 1.5: THE C++ COMPILATION & EXECUTION MODEL
-1. [The Build Pipeline](#151-the-build-pipeline-from-source-to-binary)
-2. [Translation Units & Linkage](#152-translation-units-tu--linkage)
-3. [The One Definition Rule (ODR)](#153-the-one-definition-rule-odr)
-4. [Process Memory Layout](#154-process-memory-layout)
-5. [Program Startup](#155-program-startup-before-main)
+### Volume I: Foundations
+*   Chapter 1: [Absolute Basics (C++98)](#chapter-1-absolute-basics-c98)
+*   Chapter 2: [The C++ Compilation & Execution Model](#chapter-2-the-c-compilation-execution-model)
+*   Chapter 3: [Object-Oriented Programming Fundamentals](#chapter-3-object-oriented-programming-fundamentals)
+*   Chapter 4: [Deep Object Model & Virtualization](#chapter-4-deep-object-model-virtualization)
+*   Chapter 5: [C++98/03 Standard Library](#chapter-5-c9803-standard-library)
+*   Chapter 6: [STL Internals Deep Dive](#chapter-6-stl-internals-deep-dive)
 
-### PART 2: OBJECT-ORIENTED PROGRAMMING FUNDAMENTALS
-6. [Classes & Objects](#classes--objects)
-   1. [The Four Pillars of OOP](#the-four-pillars-of-oop)
-   2. [Classes & Objects - Complete Mastery](#classes--objects---complete-mastery)
-   3. [Encapsulation](#encapsulation)
-   4. [Inheritance - All Types](#inheritance---all-types)
-   5. [Polymorphism](#polymorphism)
-   6. [Abstraction](#abstraction)
-   7. [Advanced Class Features](#advanced-class-features)
-   8. [Access Modifiers & Friend Classes](#access-modifiers--friend-classes)
-   9. [Static Members](#static-members)
-   10. [Const Correctness in OOP](#const-correctness-in-oop)
-   11. [Operator Overloading](#operator-overloading)
+### Volume II: The Modern Renaissance
+*   Chapter 7: [C++11 Revolution](#chapter-7-c11-revolution)
+*   Chapter 8: [Advanced Move Semantics & Value Categories](#chapter-8-advanced-move-semantics-value-categories)
+*   Chapter 9: [C++14 Enhancements](#chapter-9-c14-enhancements)
+*   Chapter 10: [C++17 Modern Features](#chapter-10-c17-modern-features)
+
+### Volume III: Modern Mastery
+*   Chapter 11: [C++20 Revolutionary Features](#chapter-11-c20-revolutionary-features)
+*   Chapter 12: [C++23 Latest Features](#chapter-12-c23-latest-features)
+*   Chapter 13: [The Future - C++26 Preview](#chapter-13-the-future---c26-preview)
+
+### Volume IV: Systems & Architecture
+*   Chapter 14: [Advanced Topics & Metaprogramming](#chapter-14-advanced-topics)
+*   Chapter 15: [Production & Professional Engineering](#chapter-15-production-professional)
+*   Chapter 16: [System Design Case Studies](#chapter-16-system-design-case-studies-c-edition)
+*   Chapter 17: [Concurrency Design Patterns](#chapter-17-concurrency-design-patterns)
+*   Chapter 18: [The C++ Build Ecosystem Mastery](#chapter-18-the-c-build-ecosystem-mastery)
+
+### Volume V: High Performance & Low Latency
+*   Chapter 19: [Low-Latency C++ Optimization](#chapter-19-low-latency-c-optimization)
+*   Chapter 20: [Low-Latency System Architecture](#chapter-20-low-latency-system-architecture)
+*   Chapter 21: [Extreme Low Latency & Hardware Mastery](#chapter-21-extreme-low-latency-hardware-mastery)
+*   Chapter 22: [Advanced SIMD (AVX2 & AVX-512)](#chapter-22-advanced-simd-avx2-avx-512)
+*   Chapter 23: [Custom Memory Allocators](#chapter-23-custom-memory-allocators)
+
+### Volume VI: Deep Internals
+*   Chapter 24: [C++ Under the Hood (ABI & Object Layout)](#chapter-24-c-under-the-hood)
+*   Chapter 25: [Mastering the Memory Model](#chapter-25-mastering-the-memory-model)
+*   Chapter 26: [Writing a C++ Compiler (Lexer/Parser)](#chapter-26-writing-a-c-compiler-basics)
+*   Chapter 27: [Writing a Garbage Collector](#chapter-27-writing-a-garbage-collector)
+*   Chapter 28: [The Standard Library from Scratch](#chapter-28-the-standard-library-from-scratch)
+
+### Volume VII: Specialized Domains
+*   Chapter 29: [Distributed C++ & Consensus (Raft)](#chapter-29-distributed-c)
+*   Chapter 30: [Networking from Scratch (Sockets & Epoll)](#chapter-30-networking-from-scratch)
+*   Chapter 31: [C++ in the Cloud (Serverless & Microservices)](#chapter-31-c-in-the-cloud)
+*   Chapter 32: [Cross-Platform Development (Mobile & Wasm)](#chapter-32-cross-platform-development)
+*   Chapter 33: [GUI Development (Qt & ImGui)](#chapter-33-gui-development-with-c)
+*   Chapter 34: [Scientific Computing & GPU (Eigen & CUDA)](#chapter-34-scientific-computing-gpu)
+*   Chapter 35: [Interoperability (Python/C ABI)](#chapter-35-interoperability)
+*   Chapter 36: [Security Engineering](#chapter-36-security-engineering)
+*   Chapter 37: [Industry Specifics (Game/Embedded/HFT/Auto)](#chapter-37-industry-specifics-gameembeddedhftauto)
+
+### Volume VIII: Expert Mastery
+*   Chapter 38: [ABA Problem & Memory Reclamation](#chapter-38-aba-problem-memory-reclamation)
+*   Chapter 39: [Template Metaprogramming Patterns](#chapter-39-template-metaprogramming-patterns)
+*   Chapter 40: [High-Performance Data Structures](#chapter-40-high-performance-data-structures)
+*   Chapter 41: [Real-Time Audio & Signal Processing](#chapter-41-real-time-audio-signal-processing)
+*   Chapter 42: [Robotics & ROS2 Development](#chapter-42-robotics-ros2-development)
+*   Chapter 43: [Machine Learning Infrastructure](#chapter-43-machine-learning-infrastructure)
+*   Chapter 44: [Database Internals (LSM Trees)](#chapter-44-database-internals-lsm-trees)
+
+### Volume IX: Final Reference
+*   Chapter 45: [The Ultimate Algorithm Reference](#chapter-45-the-ultimate-algorithm-reference)
+*   Chapter 46: [Capstone Project - High-Performance Order Book](#chapter-46-capstone-project-high-performance-order-book)
+
+### APPENDICES
+A. [Keywords & Operators](#appendix-a-c-keywords-operators-reference)
+B. [Common Acronyms](#appendix-b-common-acronyms)
+C. [Recommended Tooling](#appendix-c-recommended-tooling)
+D. [Common Traps & Pitfalls](#appendix-d-common-c-traps-pitfalls)
+E. [Interview Cheat Sheet](#appendix-e-c-interview-cheat-sheet)
+F. [Standard Evolution Matrix](#appendix-f-the-c-standard-evolution-matrix)
+G. [Standard Library Headers](#appendix-g-c-standard-library-headers-reference)
    12. [SOLID Principles](#solid-principles)
 7. [Constructors & Destructors](#constructors--destructors)
    1. [Advanced Constructor Features](#22-advanced-constructor-features-c11)
@@ -409,7 +439,7 @@ G. [Standard Library Headers](#appendix-g-c-standard-library-headers-reference)
 
 ---
 
-## PART 1: ABSOLUTE BASICS (C++98)
+## CHAPTER 1: ABSOLUTE BASICS (C++98)
 
 ## Getting Started
 
@@ -2279,7 +2309,7 @@ Write a function that takes a `std::string` and prints:
 
 ---
 
-## PART 1.5: THE C++ COMPILATION & EXECUTION MODEL
+## CHAPTER 2: THE C++ COMPILATION & EXECUTION MODEL
 
 To truly understand C++, you must understand how your code transforms from text to a running process. This section demystifies the "black box" of the compiler.
 
@@ -2459,7 +2489,7 @@ int main() {
 
 ---
 
-## PART 2: OBJECT-ORIENTED PROGRAMMING FUNDAMENTALS
+## CHAPTER 3: OBJECT-ORIENTED PROGRAMMING FUNDAMENTALS
 
 ## Classes & Objects
 
@@ -4833,7 +4863,7 @@ public:
 
 ---
 
-## PART 2.5: DEEP OBJECT MODEL & VIRTUALIZATION
+## CHAPTER 4: DEEP OBJECT MODEL & VIRTUALIZATION
 
 Understanding the "C++ Object Model" distinguishes a user from a master. This section explains what the compiler generates for your classes.
 
@@ -4902,7 +4932,7 @@ struct Mixed {
 
 ---
 
-## PART 3: C++98/03 STANDARD LIBRARY
+## CHAPTER 5: C++98/03 STANDARD LIBRARY
 
 ## Standard Template Library
 
@@ -7421,7 +7451,7 @@ int main() {
 
 ---
 
-## PART 3.5: STL INTERNALS DEEP DIVE
+## CHAPTER 6: STL INTERNALS DEEP DIVE
 
 To master the STL, you must understand what happens under the hood.
 
@@ -7496,7 +7526,7 @@ To master the STL, you must understand what happens under the hood.
 
 ---
 
-## PART 4: C++11 REVOLUTION
+## CHAPTER 7: C++11 REVOLUTION
 
 The C++11 standard was a massive upgrade. This is where modern C++ begins!
 
@@ -9485,7 +9515,7 @@ for (auto& task : tasks) {
 
 ---
 
-## PART 4.5: ADVANCED MOVE SEMANTICS & VALUE CATEGORIES
+## CHAPTER 8: ADVANCED MOVE SEMANTICS & VALUE CATEGORIES
 
 "Move Semantics" is often misunderstood. It's not magic; it's type casting.
 
@@ -9545,7 +9575,7 @@ This is why `T&&` in a template is a **Universal Reference** (Forwarding Referen
 
 ---
 
-## PART 5: C++14 ENHANCEMENTS
+## CHAPTER 9: C++14 ENHANCEMENTS
 
 ## C++14 Overview & Philosophy
 
@@ -10910,7 +10940,7 @@ constexpr bool is_integral_v = is_integral<T>::value;
 
 ---
 
-## PART 6: C++17 MODERN FEATURES
+## CHAPTER 10: C++17 MODERN FEATURES
 
 
 ## C++17 Overview & Significance
@@ -12563,7 +12593,7 @@ vector v{1, 2, 3};  // Not vector<int>{...}
 
 ---
 
-## PART 7: C++20 REVOLUTIONARY FEATURES
+## CHAPTER 11: C++20 REVOLUTIONARY FEATURES
 
 
 ## C++20 Overview & Revolutionary Scope
@@ -14087,7 +14117,7 @@ export module app;
 
 ---
 
-## PART 8: C++23 LATEST FEATURES
+## CHAPTER 12: C++23 LATEST FEATURES
 
 ## C++23 Overview & Direction
 
@@ -15070,7 +15100,7 @@ opt.transform([](int x) { return x * 2; });
 
 ---
 
-## PART 9: ADVANCED TOPICS
+## CHAPTER 14: ADVANCED TOPICS
 
 ## TEMPLATE METAPROGRAMMING
 
@@ -16593,7 +16623,7 @@ void add_arrays(float* a, float* b, float* c, int n) {
 
 ---
 
-## PART 10: PRODUCTION & PROFESSIONAL
+## CHAPTER 15: PRODUCTION & PROFESSIONAL
 
 ## LARGE-SCALE PROJECT ARCHITECTURE
 
@@ -18089,7 +18119,7 @@ Final decision and rationale
 
 ---
 
-## PART 10.5: SYSTEM DESIGN CASE STUDIES (C++ EDITION)
+## CHAPTER 16: SYSTEM DESIGN CASE STUDIES (C++ EDITION)
 
 Solving common interview system design problems using C++ primitives.
 
@@ -18183,7 +18213,7 @@ private:
 };
 ```
 
-## PART 10.6: CONCURRENCY DESIGN PATTERNS
+## CHAPTER 17: CONCURRENCY DESIGN PATTERNS
 
 ### 10.6.1 Active Object Pattern
 Decouples method execution from invocation. The object owns a thread and a message queue.
@@ -18261,7 +18291,7 @@ private:
 
 ---
 
-## PART 11: CAPSTONE PROJECT - HIGH-PERFORMANCE ORDER BOOK
+## CHAPTER 39: CAPSTONE PROJECT - HIGH-PERFORMANCE ORDER BOOK
 
 This capstone project integrates C++20/23 features into a realistic high-frequency trading (HFT) component. It demonstrates Modules, Concepts, Ranges, Coroutines, and modern error handling.
 
@@ -18426,7 +18456,7 @@ int main() {
 
 ---
 
-## PART 12: SPECIALIZED DOMAINS
+## CHAPTER 37: SPECIALIZED DOMAINS
 
 This section explores how C++ is applied in specific high-demand industries.
 
@@ -18733,7 +18763,7 @@ public:
 
 ---
 
-## PART 13: THE FUTURE - C++26 PREVIEW
+## CHAPTER 13: THE FUTURE - C++26 PREVIEW
 
 As of 2026, the C++26 standard is nearing finalization. Here are the transformative features likely to be included.
 
@@ -18842,7 +18872,7 @@ int main() {
 
 ---
 
-## PART 14: C++ UNDER THE HOOD
+## CHAPTER 24: C++ UNDER THE HOOD
 
 To truly master C++, you must understand what the compiler generates.
 
@@ -18906,7 +18936,7 @@ BigObject x = create();
 
 ---
 
-## PART 15: MASTERING THE MEMORY MODEL
+## CHAPTER 25: MASTERING THE MEMORY MODEL
 
 The C++ Memory Model defines how threads interact through memory.
 
@@ -18958,7 +18988,7 @@ void consumer() {
 
 ---
 
-## PART 16: DISTRIBUTED C++
+## CHAPTER 29: DISTRIBUTED C++
 
 Moving beyond a single process: Networking, RPC, and Consensus.
 
@@ -19035,7 +19065,7 @@ struct Node {
 
 ---
 
-## PART 17: LOW-LATENCY C++ OPTIMIZATION
+## CHAPTER 19: LOW-LATENCY C++ OPTIMIZATION
 
 For HFT, Game Engines, and Real-Time Systems, every nanosecond counts.
 
@@ -19133,7 +19163,7 @@ struct PaddedData {
 
 ---
 
-## PART 18: WRITING A C++ COMPILER (BASICS)
+## CHAPTER 26: WRITING A C++ COMPILER (BASICS)
 
 To understand C++, build a toy compiler.
 
@@ -19188,7 +19218,7 @@ Recursively visit the AST.
 
 ---
 
-## PART 19: THE STANDARD LIBRARY FROM SCRATCH
+## CHAPTER 28: THE STANDARD LIBRARY FROM SCRATCH
 
 Implementing core STL components to understand their cost.
 
@@ -19253,7 +19283,7 @@ public:
 
 ---
 
-## PART 20: C++ IN THE CLOUD
+## CHAPTER 31: C++ IN THE CLOUD
 
 Modern C++ is a first-class citizen in Cloud Native architectures.
 
@@ -19290,7 +19320,7 @@ int main() {
 
 ---
 
-## PART 21: CROSS-PLATFORM DEVELOPMENT
+## CHAPTER 32: CROSS-PLATFORM DEVELOPMENT
 
 Write once, run everywhere (Desktop, Web, Mobile).
 
@@ -19326,7 +19356,7 @@ Java_com_example_myapp_MainActivity_stringFromJNI(JNIEnv* env, jobject /* this *
 
 ---
 
-## PART 22: GUI DEVELOPMENT WITH C++
+## CHAPTER 33: GUI DEVELOPMENT WITH C++
 
 Building desktop applications and tools.
 
@@ -19368,7 +19398,7 @@ void Render() {
 
 ---
 
-## PART 23: SCIENTIFIC COMPUTING & GPU
+## CHAPTER 34: SCIENTIFIC COMPUTING & GPU
 
 C++ is the language of high-performance math.
 
@@ -19412,7 +19442,7 @@ void launch_kernel(float* d_A, float* d_B, float* d_C, int N) {
 
 ---
 
-## PART 24: LOW-LATENCY SYSTEM ARCHITECTURE
+## CHAPTER 20: LOW-LATENCY SYSTEM ARCHITECTURE
 
 Designing systems where microseconds matter (Trading, Real-time AdTech).
 
@@ -19484,7 +19514,7 @@ The key to Disruptor's speed is the **Sequence Barrier**.
 
 ---
 
-## PART 25: INTEROPERABILITY
+## CHAPTER 35: INTEROPERABILITY
 
 C++ rarely lives in isolation. It powers Python, Java, and Browsers.
 
@@ -19522,7 +19552,7 @@ __declspec(dllexport) void DestroyInstance(void* ptr);
 
 ---
 
-## PART 26: SECURITY ENGINEERING
+## CHAPTER 36: SECURITY ENGINEERING
 
 Writing fast code is easy. Writing fast *and* secure code is Godhood.
 
@@ -19555,7 +19585,7 @@ Compile with: `clang++ -fsanitize=fuzzer fuzz_target.cc`
 
 ---
 
-## PART 27: THE ULTIMATE ALGORITHM REFERENCE
+## CHAPTER 38: THE ULTIMATE ALGORITHM REFERENCE
 
 Stop writing loops. Use the STL.
 
@@ -19598,7 +19628,7 @@ Stop writing loops. Use the STL.
 
 ---
 
-## PART 28: NETWORKING FROM SCRATCH
+## CHAPTER 30: NETWORKING FROM SCRATCH
 
 Understanding `asio` requires understanding BSD Sockets.
 
@@ -19664,7 +19694,7 @@ while (true) {
 
 ---
 
-## PART 29: WRITING A GARBAGE COLLECTOR
+## CHAPTER 27: WRITING A GARBAGE COLLECTOR
 
 C++ has RAII, but implementing a GC teaches you about the stack and object graph.
 
@@ -19710,7 +19740,7 @@ public:
 
 ---
 
-## PART 30: THE C++ BUILD ECOSYSTEM MASTERY
+## CHAPTER 18: THE C++ BUILD ECOSYSTEM MASTERY
 
 Writing code is half the battle. Building and debugging it is the rest.
 
@@ -19781,7 +19811,7 @@ Detects overflow, null dereference, alignment issues.
 
 ---
 
-## PART 31: EXTREME LOW LATENCY & HARDWARE MASTERY
+## CHAPTER 21: EXTREME LOW LATENCY & HARDWARE MASTERY
 
 To achieve sub-microsecond latency, you must program the hardware, not just the language.
 
@@ -19866,7 +19896,7 @@ Define Service Level Objectives (SLOs) in percentiles.
 
 ---
 
-## PART 32: ADVANCED SIMD (AVX2 & AVX-512)
+## CHAPTER 22: ADVANCED SIMD (AVX2 & AVX-512)
 
 Data Parallelism: Processing 8 or 16 numbers in a single CPU cycle.
 
@@ -19905,7 +19935,7 @@ void add_avx2(float* a, float* b, float* c, int N) {
 
 ---
 
-## PART 33: CUSTOM MEMORY ALLOCATORS
+## CHAPTER 23: CUSTOM MEMORY ALLOCATORS
 
 `malloc` and `new` are general-purpose and slow (locks, fragmentation). Real-time systems use custom allocators.
 
