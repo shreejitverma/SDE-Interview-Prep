@@ -326,6 +326,7 @@ To ensure clarity, this book follows strict conventions:
 ### PART 18: WRITING A C++ COMPILER (BASICS)
 1. [Lexical Analysis](#181-lexical-analysis-tokenizer)
 2. [Parsing](#182-parsing-recursive-descent)
+3. [Semantic Analysis](#183-semantic-analysis-types--scopes)
 
 ### PART 19: THE STANDARD LIBRARY FROM SCRATCH
 1. [Implementing my::vector](#191-implementing-myvector)
@@ -404,6 +405,7 @@ C. [Recommended Tooling](#appendix-c-recommended-tooling)
 D. [Common Traps & Pitfalls](#appendix-d-common-c-traps--pitfalls)
 E. [Interview Cheat Sheet](#appendix-e-c-interview-cheat-sheet)
 F. [Standard Evolution Matrix](#appendix-f-the-c-standard-evolution-matrix)
+G. [Standard Library Headers](#appendix-g-c-standard-library-headers-reference)
 
 ---
 
@@ -18181,6 +18183,82 @@ private:
 };
 ```
 
+## PART 10.6: CONCURRENCY DESIGN PATTERNS
+
+### 10.6.1 Active Object Pattern
+Decouples method execution from invocation. The object owns a thread and a message queue.
+
+```cpp
+#include <queue>
+#include <functional>
+#include <thread>
+#include <mutex>
+#include <condition_variable>
+
+class ActiveObject {
+    std::queue<std::function<void()>> tasks;
+    std::mutex mtx;
+    std::condition_variable cv;
+    std::thread worker;
+    bool done = false;
+
+public:
+    ActiveObject() {
+        worker = std::thread([this] { run(); });
+    }
+
+    ~ActiveObject() {
+        { std::lock_guard lock(mtx); done = true; }
+        cv.notify_one();
+        worker.join();
+    }
+
+    void invoke(std::function<void()> task) {
+        std::lock_guard lock(mtx);
+        tasks.push(std::move(task));
+        cv.notify_one();
+    }
+
+private:
+    void run() {
+        while (true) {
+            std::unique_lock lock(mtx);
+            cv.wait(lock, [this] { return !tasks.empty() || done; });
+            
+            if (done && tasks.empty()) return;
+            
+            auto task = std::move(tasks.front());
+            tasks.pop();
+            lock.unlock();
+            
+            task(); // Execute
+        }
+    }
+};
+```
+
+### 10.6.2 Monitor Object (Thread-Safe Interface)
+Ensure thread safety by locking in public methods and calling private implementation methods.
+
+```cpp
+class Monitor {
+    mutable std::mutex mtx;
+    int state = 0;
+
+public:
+    void update(int val) {
+        std::lock_guard lock(mtx); // Lock here
+        update_impl(val);
+    }
+
+private:
+    // Expects lock to be held
+    void update_impl(int val) {
+        state = val;
+    }
+};
+```
+
 ---
 
 ## PART 11: CAPSTONE PROJECT - HIGH-PERFORMANCE ORDER BOOK
@@ -19089,6 +19167,24 @@ struct BinaryExpr : ASTNode {
 
 // parseExpression() calls parseTerm(), etc.
 ```
+
+### 18.3 Semantic Analysis (Types & Scopes)
+Before generating code, we must validate it.
+
+**Symbol Table:**
+```cpp
+struct Symbol { string type; };
+using Scope = map<string, Symbol>;
+vector<Scope> scopes; // Stack of scopes
+
+void enter_scope() { scopes.push_back({}); }
+void exit_scope() { scopes.pop_back(); }
+```
+
+**Type Checking:**
+Recursively visit the AST.
+*   `BinaryExpr`: Check left.type == right.type.
+*   `Variable`: Check if exists in symbol table.
 
 ---
 
@@ -20084,6 +20180,66 @@ Manual `new`/`delete` usage often leads to leaks.
 | **C++20** | 2020-12 | C++2a | `-std=c++20` |
 | **C++23** | 2023-10 | C++2b | `-std=c++23` |
 | **C++26** | *Expected 2026* | C++2c | `-std=c++26` / `-std=c++2c` |
+
+---
+
+## Appendix G: C++ Standard Library Headers Reference
+
+### Concepts & Utilities
+*   `<concepts>` (C++20): Fundamental concepts library.
+*   `<coroutine>` (C++20): Coroutine support library.
+*   `<functional>`: Function objects, binder, and reference wrappers.
+*   `<memory>`: Smart pointers and allocators.
+*   `<tuple>`: Tuple library.
+*   `<type_traits>`: Compile-time type information.
+*   `<utility>`: Utility components (`std::pair`, `std::move`).
+
+### Containers
+*   `<array>` (C++11): Fixed-size array class.
+*   `<deque>`: Double-ended queue.
+*   `<list>`: Doubly-linked list.
+*   `<map>`: Associative containers (Red-Black Tree).
+*   `<queue>`: Queue adapter.
+*   `<set>`: Associative containers (Red-Black Tree).
+*   `<stack>`: Stack adapter.
+*   `<unordered_map>` (C++11): Hash map.
+*   `<vector>`: Dynamic array.
+*   `<span >` (C++20): Non-owning view of contiguous memory.
+
+### Algorithms & Iterators
+*   `<algorithm>`: Algorithms that operate on ranges.
+*   `<execution>` (C++17): Parallel algorithms.
+*   `<iterator>`: Iterator primitives.
+*   `<numeric>`: Numeric operations (`accumulate`, `reduce`).
+*   `<ranges>` (C++20): Range primitives and views.
+
+### Concurrency
+*   `<atomic>` (C++11): Atomic operations.
+*   `<barrier>` (C++20): Barriers.
+*   `<condition_variable>` (C++11): Condition variables.
+*   `<future>` (C++11): Futures and promises.
+*   `<latch>` (C++20): Latches.
+*   `<mutex>` (C++11): Mutual exclusion primitives.
+*   `<semaphore>` (C++20): Semaphores.
+*   `<shared_mutex>` (C++14): Shared mutexes.
+*   `<thread>` (C++11): Thread class.
+
+### Input/Output
+*   `<filesystem>` (C++17): File system operations.
+*   `<format>` (C++20): Formatting library.
+*   `<fstream>`: File stream classes.
+*   `<iostream>`: Standard I/O stream objects.
+*   `<print>` (C++23): Print functions.
+*   `<sstream>`: String stream classes.
+
+### Numerics & Math
+*   `<bit>` (C++20): Bit manipulation.
+*   `<complex>`: Complex number arithmetic.
+*   `<random>` (C++11): Random number generation.
+*   `<ratio>` (C++11): Compile-time rational arithmetic.
+*   `<valarray>`: Class for representing and manipulating arrays of values.
+*   `<numbers>` (C++20): Mathematical constants.
+
 
 
 
