@@ -239,16 +239,21 @@ To ensure clarity, this book follows strict conventions:
 
 ### PART 9: ADVANCED TOPICS
 1. [Template Metaprogramming](#template-metaprogramming)
+    1. [Advanced Metaprogramming Patterns (Typelists)](#13-advanced-metaprogramming-patterns)
 2. [SFINAE & Type Traits](#sfinae--type-traits)
 3. [Expression Templates](#expression-templates)
+    1. [Triggering Computation](#32-triggering-computation-assignment)
 4. [Policy-Based Design](#policy-based-design)
+    1. [Policy-Based Smart Pointer](#42-policy-based-smart-pointer-advanced-example)
 5. [Memory Management & Optimization](#memory-management--optimization)
 6. [Concurrency & Parallelism](#concurrency--parallelism)
 7. [Type Erasure Patterns](#type-erasure-patterns)
+    1. [Concept-Based Type Erasure](#73-concept-based-type-erasure-c20)
 8. [CRTP (Curiously Recurring Template Pattern)](#crtp-curiously-recurring-template-pattern)
 9. [Perfect Forwarding & Move Semantics](#perfect-forwarding--move-semantics)
 10. [Compile-Time Programming](#compile-time-programming)
 11. [Meta-Object Protocol](#meta-object-protocol)
+    1. [Magic Enum](#112-magic-enum-reflection-hack)
 12. [Advanced Container Techniques](#advanced-container-techniques)
 13. [ABI & Binary Compatibility](#abi--binary-compatibility)
 14. [Performance Profiling & Optimization](#performance-profiling--optimization)
@@ -15421,6 +15426,27 @@ int main() {
 }
 ```
 
+## 3.2 Triggering Computation (Assignment)
+
+To make `v3 = v1 + v2` work efficiently, we add an assignment operator to `Vector` that takes any `VectorExpr`.
+
+```cpp
+// Inside class Vector
+template <typename Expr>
+Vector& operator=(const VectorExpr<Expr>& expr) {
+    if (size() != expr.size()) {
+        // resize...
+    }
+    for (int i = 0; i < size(); ++i) {
+        data[i] = expr[i]; // Evaluates tree at index i
+    }
+    return *this;
+}
+```
+**Why is this fast?**
+It expands to: `v3[i] = v1[i] + v2[i]`.
+There are **zero temporary vectors** created. No allocations. Just one loop.
+
 ---
 
 # SECTION 4: POLICY-BASED DESIGN
@@ -15499,6 +15525,31 @@ private:
     std::vector<T> data;
 };
 ```
+
+## 4.2 Policy-Based Smart Pointer (Advanced Example)
+
+A smart pointer is defined by:
+1.  **Storage**: How it stores the pointer (raw vs compressed).
+2.  **Ownership**: Ref-counted vs Unique vs Linked.
+3.  **Checking**: Assert on access vs No check.
+
+```cpp
+template <
+    class T,
+    template <class> class CheckingPolicy,
+    template <class> class ThreadingPolicy
+>
+class SmartPtr : public CheckingPolicy<T>, public ThreadingPolicy<T> {
+    T* ptr;
+public:
+    T* operator->() {
+        CheckingPolicy<T>::check(ptr);
+        ThreadingPolicy<T>::lock(); // Fake lock example
+        return ptr;
+    }
+};
+```
+This approach allows generating thousands of smart pointer variants with zero runtime overhead (all resolved at compile-time).
 
 ---
 
@@ -15789,6 +15840,44 @@ public:
     }
     
     Function(const Function& other) : impl(other.impl->clone()) {}
+};
+```
+
+## 7.3 Concept-Based Type Erasure (C++20)
+
+Instead of inheritance, we can erase types that satisfy a concept.
+
+```cpp
+#include <concepts>
+#include <memory>
+
+template<typename T>
+concept Drawable = requires(T x) { x.draw(); };
+
+class AnyDrawable {
+    struct Concept {
+        virtual ~Concept() = default;
+        virtual void draw() = 0;
+        virtual std::unique_ptr<Concept> clone() = 0;
+    };
+
+    template<Drawable T>
+    struct Model : Concept {
+        T data;
+        Model(T x) : data(std::move(x)) {}
+        void draw() override { data.draw(); }
+        std::unique_ptr<Concept> clone() override { return std::make_unique<Model>(data); }
+    };
+
+    std::unique_ptr<Concept> pimpl;
+
+public:
+    template<Drawable T>
+    AnyDrawable(T x) : pimpl(std::make_unique<Model<T>>(std::move(x))) {}
+    
+    AnyDrawable(const AnyDrawable& other) : pimpl(other.pimpl->clone()) {}
+    
+    void draw() { pimpl->draw(); }
 };
 ```
 
@@ -16085,6 +16174,32 @@ string serialize(const T& obj) {
     return result;
 }
 ```
+
+## 11.2 Magic Enum (Reflection Hack)
+
+Before C++26 Reflection, we use compiler intrinsics to get enum names.
+
+```cpp
+template <auto V>
+constexpr std::string_view get_enum_name() {
+    // Compiler-specific macros
+    #ifdef __clang__
+        return __PRETTY_FUNCTION__;
+    #elif defined(__GNUC__)
+        return __PRETTY_FUNCTION__;
+    #elif defined(_MSC_VER)
+        return __FUNCSIG__;
+    #endif
+}
+
+enum class Color { Red, Green, Blue };
+
+int main() {
+    // Output contains "Color::Red" buried in the string
+    std::cout << get_enum_name<Color::Red>() << "\n";
+}
+```
+*Note: Libraries like `magic_enum` automate parsing this string.*
 
 ---
 
