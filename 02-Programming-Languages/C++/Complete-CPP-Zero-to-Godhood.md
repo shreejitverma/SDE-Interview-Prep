@@ -200,10 +200,14 @@ To ensure clarity, this book follows strict conventions:
 ### PART 7: C++20 REVOLUTIONARY FEATURES
 1. [C++20 Overview & Revolutionary Scope](#c20-overview--revolutionary-scope)
 2. [Concepts & Constraints](#concepts--constraints)
+    1. [Concepts & Overload Resolution](#13-concepts--overload-resolution)
 3. [Ranges Library](#ranges-library)
+    1. [Ranges Deep Dive](#22-ranges-deep-dive)
 4. [Coroutines](#coroutines)
+    1. [Coroutines Deep Dive](#32-coroutines-deep-dive)
 5. [Spaceship Operator (Three-Way Comparison)](#spaceship-operator)
 6. [Modules](#modules)
+    1. [Modules Deep Dive](#52-modules-deep-dive)
 7. [Designated Initializers](#designated-initializers)
 8. [Calendar & Time Zones](#calendar--time-zones)
 9. [std::format](#stdformat)
@@ -12806,6 +12810,31 @@ concept SentinelFor = requires(Iter it, Sentinel s) {
 };
 ```
 
+## 1.3 Concepts & Overload Resolution
+
+Concepts participate in overload resolution. The compiler selects the **most constrained** template.
+
+```cpp
+template<typename T>
+void process(T x) {
+    cout << "Generic\n";
+}
+
+template<typename T> requires std::integral<T>
+void process(T x) {
+    cout << "Integral\n";
+}
+
+template<typename T> requires (std::integral<T> && sizeof(T) >= 4)
+void process(T x) {
+    cout << "Large Integral\n";
+}
+
+process(3.14);      // "Generic"
+process((short)10); // "Integral"
+process(100);       // "Large Integral" (int is >= 4 bytes)
+```
+
 ---
 
 # SECTION 2: RANGES LIBRARY
@@ -12932,6 +12961,33 @@ for (int x : result) {
 
 // All operations are lazy - no temporary vectors created
 // Composition is clear and readable
+```
+
+## 2.2 Ranges Deep Dive
+
+### Projections
+Most range algorithms accept a "projection" argument to transform data *before* comparison.
+
+```cpp
+struct User { int id; string name; };
+vector<User> users = {{2, "Bob"}, {1, "Alice"}};
+
+// Sort by ID
+ranges::sort(users, {}, &User::id);
+
+// Sort by Name (descending)
+ranges::sort(users, ranges::greater{}, &User::name);
+```
+
+### Dangling Iterators
+Algorithms return `std::ranges::dangling` if the range is an rvalue (temporary) to prevent use-after-free.
+
+```cpp
+auto get_vector() { return vector{1, 2, 3}; }
+
+auto it = ranges::find(get_vector(), 2); 
+// Compile Error! 'it' would be dangling.
+// The vector is destroyed at the end of the statement.
 ```
 
 ---
@@ -13108,6 +13164,39 @@ int main() {
         cout << i << " ";  // 0 1 1 2 3 5 8 13 21 34 55 89
     }
     return 0;
+}
+```
+
+## 3.2 Coroutines Deep Dive
+
+A coroutine is a function that can suspend and resume.
+
+### The Awaitable Interface
+To `co_await x`, `x` must be an Awaitable.
+
+```cpp
+struct Awaiter {
+    bool await_ready() { return false; } // Always suspend?
+    
+    void await_suspend(std::coroutine_handle<> h) {
+        // Schedule resumption (e.g., on a thread pool)
+        // h.resume(); 
+    }
+    
+    int await_resume() { return 42; } // Result of co_await
+};
+
+Task coroutine() {
+    int result = co_await Awaiter{}; // result = 42
+}
+```
+
+### Symmetric Transfer
+Returning a `coroutine_handle` from `await_suspend` performs a "tail-call" to resume another coroutine without consuming stack space.
+
+```cpp
+std::coroutine_handle<> await_suspend(std::coroutine_handle<> h) {
+    return other_handle; // Switch to other coroutine immediately
 }
 ```
 
@@ -13320,6 +13409,38 @@ export struct Complex {
 // - No macro pollution
 // - No circular dependency issues
 // - Clean interface definition
+```
+
+## 5.2 Modules Deep Dive
+
+### Global Module Fragment
+For legacy headers that must be included before the module declaration.
+
+```cpp
+module; // Start fragment
+#include <vector>
+#include <string>
+
+export module my_app; // End fragment, start module
+
+export void process(std::vector<int>& v);
+```
+
+### Private Module Partition
+Hiding implementation details within the same file.
+
+```cpp
+export module calculator;
+
+export int add(int a, int b);
+
+module :private; // Start private implementation
+
+int helper(int x) { return x + 1; }
+
+int add(int a, int b) {
+    return helper(a) + helper(b) - 2;
+}
 ```
 
 ---
