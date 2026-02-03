@@ -319,6 +319,14 @@ Welcome to the definitive guide on C++. This "Zero to Godhood" manuscript is des
 3. [Lock-Free Stack Implementation](#314-lock-free-stack-implementation-wait-free-push)
 4. [Performance Targets (p99)](#315-measurable-performance-targets)
 
+### PART 32: ADVANCED SIMD
+1. [AVX2 Intrinsics](#322-intrinsics-example-vector-addition)
+2. [Measurable Outcomes](#323-measurable-outcome)
+
+### PART 33: CUSTOM MEMORY ALLOCATORS
+1. [Linear Allocator (Arena)](#331-linear-allocator-arena)
+2. [Pool Allocator](#332-pool-allocator)
+
 ### APPENDICES
 A. [Keywords & Operators](#appendix-a-c-keywords--operators-reference)
 B. [Common Acronyms](#appendix-b-common-acronyms)
@@ -18818,6 +18826,101 @@ Define Service Level Objectives (SLOs) in percentiles.
 
 **Example Target**:
 "Order processing must have p99 latency < 5 microseconds."
+
+---
+
+## PART 32: ADVANCED SIMD (AVX2 & AVX-512)
+
+Data Parallelism: Processing 8 or 16 numbers in a single CPU cycle.
+
+### 32.1 SIMD Basics & Registers
+*   **SSE**: 128-bit (4 floats). XMM registers.
+*   **AVX2**: 256-bit (8 floats). YMM registers.
+*   **AVX-512**: 512-bit (16 floats). ZMM registers.
+
+### 32.2 Intrinsics Example (Vector Addition)
+Using `<immintrin.h>`.
+
+```cpp
+#include <immintrin.h>
+
+void add_avx2(float* a, float* b, float* c, int N) {
+    // Process 8 floats at a time
+    for (int i = 0; i < N; i += 8) {
+        // Load
+        __m256 va = _mm256_loadu_ps(&a[i]);
+        __m256 vb = _mm256_loadu_ps(&b[i]);
+        
+        // Operation
+        __m256 vc = _mm256_add_ps(va, vb);
+        
+        // Store
+        _mm256_storeu_ps(&c[i], vc);
+    }
+}
+```
+*   `_mm256_loadu_ps`: Load Unaligned Packed Single-precision.
+*   `_mm256_add_ps`: Add packed singles.
+
+### 32.3 Measurable Outcome
+*   **Objective**: Convert a scalar loop to AVX2.
+*   **Success Metric**: 4x-8x speedup on large arrays (memory bandwidth permitting).
+
+---
+
+## PART 33: CUSTOM MEMORY ALLOCATORS
+
+`malloc` and `new` are general-purpose and slow (locks, fragmentation). Real-time systems use custom allocators.
+
+### 33.1 Linear Allocator (Arena)
+The absolute fastest allocator. O(1). Zero overhead.
+
+```cpp
+class LinearAllocator {
+    char* start;
+    char* current;
+    size_t size;
+public:
+    LinearAllocator(size_t s) : size(s) {
+        start = new char[s];
+        current = start;
+    }
+    
+    void* allocate(size_t n) {
+        if (current + n > start + size) return nullptr;
+        void* ptr = current;
+        current += n;
+        return ptr;
+    }
+    
+    void reset() { current = start; } // Free ALL at once
+};
+```
+*   **Use Case**: Per-frame game memory, Request-scoped web server memory.
+
+### 33.2 Pool Allocator
+Fixed-size blocks. No external fragmentation. O(1) malloc/free.
+
+```cpp
+struct Chunk { Chunk* next; };
+
+class PoolAllocator {
+    Chunk* head = nullptr;
+public:
+    void* allocate() {
+        if (!head) return ::operator new(sizeof(Chunk)); // Or expand pool
+        Chunk* ptr = head;
+        head = head->next;
+        return ptr;
+    }
+    
+    void deallocate(void* ptr) {
+        Chunk* chunk = static_cast<Chunk*>(ptr);
+        chunk->next = head;
+        head = chunk;
+    }
+};
+```
 
 ---
 
