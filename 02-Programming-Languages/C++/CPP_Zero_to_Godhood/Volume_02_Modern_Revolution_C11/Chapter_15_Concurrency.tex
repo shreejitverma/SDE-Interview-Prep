@@ -1,0 +1,97 @@
+\hypertarget{concurrency-multithreading}{%
+\chapter{CONCURRENCY \&
+MULTITHREADING}\label{concurrency-multithreading}}
+
+C++11 brought a standard threading model.
+
+\hypertarget{threads-stdthread}{%
+\section{\texorpdfstring{1. Threads
+(\texttt{std::thread})}{1. Threads (std::thread)}}\label{threads-stdthread}}
+
+\begin{lstlisting}[language={C++}]
+#include <thread>
+
+void task() { /*...*/ }
+
+int main() {
+    std::thread t(task);
+    t.join(); // Wait for finish
+    // t.detach(); // Or let it run freely
+}
+\end{lstlisting}
+
+\hypertarget{mutexes-locking}{%
+\section{2. Mutexes \& Locking}\label{mutexes-locking}}
+
+Avoid data races.
+
+\begin{itemize}
+\tightlist
+\item
+  \passthrough{\lstinline!std::mutex!}: Basic lock.
+\item
+  \passthrough{\lstinline!std::lock\_guard!}: RAII wrapper (locks on
+  construction, unlocks on destruction).
+\item
+  \passthrough{\lstinline!std::unique\_lock!}: Flexible RAII wrapper
+  (can unlock manually).
+\end{itemize}
+
+\begin{lstlisting}[language={C++}]
+std::mutex mtx;
+void safe() {
+    std::lock_guard<std::mutex> lock(mtx);
+    // critical section
+}
+\end{lstlisting}
+
+\hypertarget{condition-variables}{%
+\section{3. Condition Variables}\label{condition-variables}}
+
+Wait for a condition to be true.
+
+\begin{lstlisting}[language={C++}]
+std::condition_variable cv;
+std::mutex mtx;
+bool ready = false;
+
+// Waiter
+std::unique_lock<std::mutex> lk(mtx);
+cv.wait(lk, []{ return ready; });
+
+// Notifier
+{
+    std::lock_guard<std::mutex> lk(mtx);
+    ready = true;
+}
+cv.notify_one();
+\end{lstlisting}
+
+\hypertarget{futures-promises}{%
+\section{4. Futures \& Promises}\label{futures-promises}}
+
+Asynchronous result retrieval.
+
+\begin{itemize}
+\tightlist
+\item
+  \passthrough{\lstinline!std::async!}: Runs a function asynchronously.
+\item
+  \passthrough{\lstinline!std::future!}: Holds the result.
+\end{itemize}
+
+\begin{lstlisting}[language={C++}]
+auto f = std::async(std::launch::async, []{ return 42; });
+int result = f.get(); // Blocks until ready
+\end{lstlisting}
+
+\hypertarget{atomics-stdatomic}{%
+\section{\texorpdfstring{5. Atomics
+(\texttt{std::atomic})}{5. Atomics (std::atomic)}}\label{atomics-stdatomic}}
+
+Lock-free operations for basic types.
+
+\begin{lstlisting}[language={C++}]
+std::atomic<int> counter(0);
+counter++; // Thread-safe increment
+\end{lstlisting}

@@ -1,0 +1,178 @@
+\hypertarget{c17-core-language-upgrades}{%
+\chapter{C++17 CORE LANGUAGE
+UPGRADES}\label{c17-core-language-upgrades}}
+
+\hypertarget{structured-bindings}{%
+\section{1. Structured Bindings}\label{structured-bindings}}
+
+Unpack tuples, pairs, structs, and arrays directly into named variables.
+
+\hypertarget{unpacking-tuples-and-pairs}{%
+\subsection{1.1 Unpacking Tuples and
+Pairs}\label{unpacking-tuples-and-pairs}}
+
+\begin{lstlisting}[language={C++}]
+#include <tuple>
+#include <iostream>
+
+std::tuple<int, double, std::string> get_data() {
+    return {1, 3.14, "hello"};
+}
+
+int main() {
+    // Old way (C++11/14)
+    // int i; double d; std::string s;
+    // std::tie(i, d, s) = get_data();
+
+    // C++17 Structured Binding
+    auto [id, val, name] = get_data();
+    
+    std::cout << id << ", " << val << ", " << name << "\n";
+}
+\end{lstlisting}
+
+\hypertarget{unpacking-structs}{%
+\subsection{1.2 Unpacking Structs}\label{unpacking-structs}}
+
+\begin{lstlisting}[language={C++}]
+struct Point {
+    int x, y;
+};
+
+Point p = {10, 20};
+auto [px, py] = p; // px = 10, py = 20
+\end{lstlisting}
+
+\hypertarget{modifiers-const}{%
+\subsection{\texorpdfstring{1.3 Modifiers (\texttt{const},
+\texttt{\&})}{1.3 Modifiers (const, \&)}}\label{modifiers-const}}
+
+\begin{lstlisting}[language={C++}]
+std::pair<int, int> p = {1, 2};
+
+auto& [refX, refY] = p; // References to p.first, p.second
+refX = 10; // Modifies p
+
+const auto& [cRefX, cRefY] = p; // Const references
+\end{lstlisting}
+
+\hypertarget{if-constexpr}{%
+\section{\texorpdfstring{2.
+\texttt{if\ constexpr}}{2. if constexpr}}\label{if-constexpr}}
+
+Compile-time branching. Discards the non-taken branch at compile time,
+allowing instantiation of templates that would otherwise fail.
+
+\begin{lstlisting}[language={C++}]
+#include <type_traits>
+
+template<typename T>
+auto get_value(T t) {
+    if constexpr (std::is_pointer_v<T>) {
+        return *t; // Only compiled if T is a pointer
+    } else {
+        return t;  // Only compiled if T is NOT a pointer
+    }
+}
+
+int main() {
+    int x = 5;
+    int* ptr = &x;
+    
+    get_value(x);   // Returns int
+    get_value(ptr); // Returns int (dereferenced)
+}
+\end{lstlisting}
+
+\hypertarget{init-statements-for-if-and-switch}{%
+\section{\texorpdfstring{3. Init-Statements for \texttt{if} and
+\texttt{switch}}{3. Init-Statements for if and switch}}\label{init-statements-for-if-and-switch}}
+
+Limit the scope of variables to the \passthrough{\lstinline!if!} or
+\passthrough{\lstinline!switch!} block.
+
+\begin{lstlisting}[language={C++}]
+// Old way
+{
+    auto it = map.find(key);
+    if (it != map.end()) {
+        // use it
+    }
+} // it leaks scope or requires extra braces
+
+// C++17 way
+if (auto it = map.find(key); it != map.end()) {
+    // use it
+    std::cout << it->second;
+} // it destroyed here
+
+// Switch example
+switch (auto status = get_status(); status) {
+    case OK: break;
+    case ERROR: break;
+}
+\end{lstlisting}
+
+\hypertarget{inline-variables}{%
+\section{4. Inline Variables}\label{inline-variables}}
+
+Allows defining variables in headers without ``multiple definition''
+errors. Replaces the \passthrough{\lstinline!static!} member workaround.
+
+\begin{lstlisting}[language={C++}]
+#pragma once
+
+// C++14: Linker error if included in multiple .cpp files
+// int global_config = 5; 
+
+// C++17: Safe! The linker merges all definitions.
+inline int global_config = 5; 
+
+struct MyClass {
+    // Static member initialization in-class!
+    static inline double tolerance = 0.001;
+};
+\end{lstlisting}
+
+\hypertarget{nested-namespaces}{%
+\section{5. Nested Namespaces}\label{nested-namespaces}}
+
+Simplified syntax for deep namespace nesting.
+
+\begin{lstlisting}[language={C++}]
+// Old
+namespace A {
+    namespace B {
+        namespace C {
+            // ...
+        }
+    }
+}
+
+// C++17
+namespace A::B::C {
+    // ...
+}
+\end{lstlisting}
+
+\hypertarget{attributes}{%
+\section{6. Attributes}\label{attributes}}
+
+Standardized attributes to hint compiler behavior.
+
+\begin{itemize}
+\tightlist
+\item
+  \passthrough{\lstinline![[nodiscard]]!}: Warn if return value is
+  ignored.
+  \passthrough{\lstinline!cpp     [[nodiscard]] int calculate\_important\_value();!}
+\item
+  \passthrough{\lstinline![[maybe\_unused]]!}: Suppress ``unused
+  variable'' warnings.
+  \passthrough{\lstinline!cpp     [[maybe\_unused]] int x = 5;!}
+\item
+  \passthrough{\lstinline![[fallthrough]]!}: Suppress ``implicit
+  fallthrough'' warnings in switch cases.
+\end{itemize}
+
+```

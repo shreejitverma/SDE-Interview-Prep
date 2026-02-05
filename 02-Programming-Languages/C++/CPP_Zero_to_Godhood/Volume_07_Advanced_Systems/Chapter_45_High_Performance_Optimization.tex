@@ -1,0 +1,77 @@
+\hypertarget{high-performance-optimization}{%
+\chapter{HIGH-PERFORMANCE
+OPTIMIZATION}\label{high-performance-optimization}}
+
+\hypertarget{cpu-caching}{%
+\section{1. CPU Caching}\label{cpu-caching}}
+
+Memory is slow. CPU registers are fast. Caches (L1, L2, L3) bridge the
+gap.
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Cache Miss:} CPU waits hundreds of cycles for RAM.
+\item
+  \textbf{Data-Oriented Design:} Structure of Arrays (SoA) vs Array of
+  Structures (AoS). SoA is often friendlier to cache and SIMD.
+\end{itemize}
+
+\hypertarget{branch-prediction}{%
+\section{2. Branch Prediction}\label{branch-prediction}}
+
+CPUs guess which way an \passthrough{\lstinline!if!} will go. If they
+guess wrong, pipeline flush (expensive).
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Sorted Data:} Branch prediction loves patterns (TTTTFFFF).
+\item
+  \textbf{Branchless Programming:} Using bitwise ops to avoid branches.
+  \passthrough{\lstinline!cpp     // Branchy     if (x > 0) y = 1; else y = 0;     // Branchless     y = (x > 0);!}
+\item
+  \passthrough{\lstinline![[likely]]!} /
+  \passthrough{\lstinline![[unlikely]]!} (C++20).
+\end{itemize}
+
+\hypertarget{simd-single-instruction-multiple-data}{%
+\section{3. SIMD (Single Instruction, Multiple
+Data)}\label{simd-single-instruction-multiple-data}}
+
+Doing math on 4, 8, or 16 numbers at once.
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Intrinsics:} \passthrough{\lstinline!\_mm256\_add\_ps!} (AVX).
+  Hard to read.
+\item
+  \textbf{Auto-vectorization:} Compiler does it if code is simple
+  enough.
+\item
+  \textbf{Libraries:} \passthrough{\lstinline!std::experimental::simd!}
+  (C++26?), Highway, Vc.
+\end{itemize}
+
+\hypertarget{link-time-optimization-lto}{%
+\section{4. Link Time Optimization
+(LTO)}\label{link-time-optimization-lto}}
+
+Allows the compiler to inline functions across translation units (object
+files).
+
+\hypertarget{profile-guided-optimization-pgo}{%
+\section{5. Profile-Guided Optimization
+(PGO)}\label{profile-guided-optimization-pgo}}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  Compile with instrumentation.
+\item
+  Run the program on representative data.
+\item
+  Recompile using the profile data. Optimizes hot paths heavily.
+\end{enumerate}

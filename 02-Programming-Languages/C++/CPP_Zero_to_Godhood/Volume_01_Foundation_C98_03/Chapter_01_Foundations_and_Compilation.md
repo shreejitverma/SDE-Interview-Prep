@@ -1,9 +1,5 @@
 # FOUNDATIONS & COMPILATION MODEL
 
-
-
-<!-- Merged content from Chapter_1_ABSOLUTE_BASICS_C98.md -->
-
 # ABSOLUTE BASICS (C++98)
 
 

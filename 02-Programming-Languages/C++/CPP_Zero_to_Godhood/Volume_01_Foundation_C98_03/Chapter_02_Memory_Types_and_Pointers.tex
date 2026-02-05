@@ -1,11 +1,14 @@
-# MEMORY, TYPES, AND POINTERS
+\hypertarget{memory-types-and-pointers}{%
+\chapter{MEMORY, TYPES, AND POINTERS}\label{memory-types-and-pointers}}
 
-# ADVANCED POINTERS & MEMORY
+\hypertarget{advanced-pointers-memory}{%
+\chapter{ADVANCED POINTERS \& MEMORY}\label{advanced-pointers-memory}}
 
+\hypertarget{pointer-to-const-vs-const-pointer}{%
+\section{1.1 Pointer to Const vs Const
+Pointer}\label{pointer-to-const-vs-const-pointer}}
 
-## 1.1 Pointer to Const vs Const Pointer
-
-```cpp
+\begin{lstlisting}[language={C++}]
 #include <iostream>
 using namespace std;
 
@@ -29,11 +32,12 @@ int main() {
     
     return 0;
 }
-```
+\end{lstlisting}
 
-## 1.2 Void Pointers
+\hypertarget{void-pointers}{%
+\section{1.2 Void Pointers}\label{void-pointers}}
 
-```cpp
+\begin{lstlisting}[language={C++}]
 #include <iostream>
 using namespace std;
 
@@ -62,11 +66,12 @@ int main() {
     
     return 0;
 }
-```
+\end{lstlisting}
 
-## 1.3 Null Pointer Safety
+\hypertarget{null-pointer-safety}{%
+\section{1.3 Null Pointer Safety}\label{null-pointer-safety}}
 
-```cpp
+\begin{lstlisting}[language={C++}]
 #include <iostream>
 using namespace std;
 
@@ -90,11 +95,12 @@ int main() {
     
     return 0;
 }
-```
+\end{lstlisting}
 
-## 1.4 Memory Layout & Alignment
+\hypertarget{memory-layout-alignment}{%
+\section{1.4 Memory Layout \& Alignment}\label{memory-layout-alignment}}
 
-```cpp
+\begin{lstlisting}[language={C++}]
 #include <iostream>
 using namespace std;
 
@@ -119,16 +125,17 @@ int main() {
     
     return 0;
 }
-```
+\end{lstlisting}
 
----
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
 
-# ADVANCED ARRAYS
+\hypertarget{advanced-arrays}{%
+\chapter{ADVANCED ARRAYS}\label{advanced-arrays}}
 
+\hypertarget{dynamic-arrays}{%
+\section{4.1 Dynamic Arrays}\label{dynamic-arrays}}
 
-## 4.1 Dynamic Arrays
-
-```cpp
+\begin{lstlisting}[language={C++}]
 #include <iostream>
 using namespace std;
 
@@ -171,11 +178,13 @@ int main() {
     
     return 0;
 }
-```
+\end{lstlisting}
 
-## 4.2 Variable Length Arrays (Non-standard)
+\hypertarget{variable-length-arrays-non-standard}{%
+\section{4.2 Variable Length Arrays
+(Non-standard)}\label{variable-length-arrays-non-standard}}
 
-```cpp
+\begin{lstlisting}[language={C++}]
 #include <iostream>
 using namespace std;
 
@@ -198,11 +207,12 @@ int main() {
     
     return 0;
 }
-```
+\end{lstlisting}
 
-## 4.3 Array Bounds & Safety
+\hypertarget{array-bounds-safety}{%
+\section{4.3 Array Bounds \& Safety}\label{array-bounds-safety}}
 
-```cpp
+\begin{lstlisting}[language={C++}]
 #include <iostream>
 using namespace std;
 
@@ -223,19 +233,17 @@ int main() {
     
     return 0;
 }
-```
+\end{lstlisting}
 
----
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
 
+\hypertarget{const-volatile}{%
+\chapter{CONST \& VOLATILE}\label{const-volatile}}
 
-<!-- Merged content from Chapter_12_CONST__VOLATILE.md -->
+\hypertarget{const-correctness}{%
+\section{11.1 Const Correctness}\label{const-correctness}}
 
-# CONST & VOLATILE
-
-
-## 11.1 Const Correctness
-
-```cpp
+\begin{lstlisting}[language={C++}]
 #include <iostream>
 using namespace std;
 
@@ -267,11 +275,12 @@ int main() {
     
     return 0;
 }
-```
+\end{lstlisting}
 
-## 11.2 Volatile Keyword
+\hypertarget{volatile-keyword}{%
+\section{11.2 Volatile Keyword}\label{volatile-keyword}}
 
-```cpp
+\begin{lstlisting}[language={C++}]
 #include <iostream>
 using namespace std;
 
@@ -295,19 +304,17 @@ int main() {
     
     return 0;
 }
-```
+\end{lstlisting}
 
----
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
 
+\hypertarget{type-casting}{%
+\chapter{TYPE CASTING}\label{type-casting}}
 
-<!-- Merged content from Chapter_9_TYPE_CASTING.md -->
+\hypertarget{c-style-casting}{%
+\section{8.1 C-Style Casting}\label{c-style-casting}}
 
-# TYPE CASTING
-
-
-## 8.1 C-Style Casting
-
-```cpp
+\begin{lstlisting}[language={C++}]
 #include <iostream>
 #include <cmath>
 using namespace std;
@@ -328,11 +335,12 @@ int main() {
     
     return 0;
 }
-```
+\end{lstlisting}
 
-## 8.2 Implicit Conversions
+\hypertarget{implicit-conversions}{%
+\section{8.2 Implicit Conversions}\label{implicit-conversions}}
 
-```cpp
+\begin{lstlisting}[language={C++}]
 #include <iostream>
 using namespace std;
 
@@ -353,19 +361,17 @@ int main() {
     
     return 0;
 }
-```
+\end{lstlisting}
 
----
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
 
+\hypertarget{enumeration-unions}{%
+\chapter{ENUMERATION \& UNIONS}\label{enumeration-unions}}
 
-<!-- Merged content from Chapter_11_ENUMERATION__UNIONS.md -->
+\hypertarget{enumerations}{%
+\section{10.1 Enumerations}\label{enumerations}}
 
-# ENUMERATION & UNIONS
-
-
-## 10.1 Enumerations
-
-```cpp
+\begin{lstlisting}[language={C++}]
 #include <iostream>
 using namespace std;
 
@@ -405,11 +411,12 @@ int main() {
     
     return 0;
 }
-```
+\end{lstlisting}
 
-## 10.2 Unions
+\hypertarget{unions}{%
+\section{10.2 Unions}\label{unions}}
 
-```cpp
+\begin{lstlisting}[language={C++}]
 #include <iostream>
 using namespace std;
 
@@ -444,19 +451,17 @@ int main() {
     
     return 0;
 }
-```
+\end{lstlisting}
 
----
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
 
+\hypertarget{bitwise-operations}{%
+\chapter{BITWISE OPERATIONS}\label{bitwise-operations}}
 
-<!-- Merged content from Chapter_7_BITWISE_OPERATIONS.md -->
+\hypertarget{bitwise-operators}{%
+\section{6.1 Bitwise Operators}\label{bitwise-operators}}
 
-# BITWISE OPERATIONS
-
-
-## 6.1 Bitwise Operators
-
-```cpp
+\begin{lstlisting}[language={C++}]
 #include <iostream>
 using namespace std;
 
@@ -484,11 +489,13 @@ int main() {
     
     return 0;
 }
-```
+\end{lstlisting}
 
-## 6.2 Bit Manipulation Techniques
+\hypertarget{bit-manipulation-techniques}{%
+\section{6.2 Bit Manipulation
+Techniques}\label{bit-manipulation-techniques}}
 
-```cpp
+\begin{lstlisting}[language={C++}]
 #include <iostream>
 using namespace std;
 
@@ -523,6 +530,6 @@ int main() {
     
     return 0;
 }
-```
+\end{lstlisting}
 
----
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}

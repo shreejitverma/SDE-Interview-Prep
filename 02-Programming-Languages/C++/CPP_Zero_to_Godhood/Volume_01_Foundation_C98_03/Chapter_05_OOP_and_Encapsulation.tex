@@ -1,14 +1,20 @@
-# OBJECT-ORIENTED PROGRAMMING: ENCAPSULATION & DESIGN
+\hypertarget{object-oriented-programming-encapsulation-design}{%
+\chapter{OBJECT-ORIENTED PROGRAMMING: ENCAPSULATION \&
+DESIGN}\label{object-oriented-programming-encapsulation-design}}
 
-# OBJECT-ORIENTED PROGRAMMING FUNDAMENTALS (C++98)
+\hypertarget{object-oriented-programming-fundamentals-c98}{%
+\chapter{OBJECT-ORIENTED PROGRAMMING FUNDAMENTALS
+(C++98)}\label{object-oriented-programming-fundamentals-c98}}
 
-## CLASSES & OBJECTS
+\hypertarget{classes-objects}{%
+\section{CLASSES \& OBJECTS}\label{classes-objects}}
 
-### 1.1 Basic Class Structure
+\hypertarget{basic-class-structure}{%
+\subsection{1.1 Basic Class Structure}\label{basic-class-structure}}
 
 A class is a blueprint for objects. It encapsulates data and behavior.
 
-```cpp
+\begin{lstlisting}[language={C++}]
 #include <iostream>
 #include <string>
 
@@ -30,17 +36,27 @@ int main() {
     p.introduce();
     return 0;
 }
-```
+\end{lstlisting}
 
-### 1.2 Access Modifiers & Encapsulation
+\hypertarget{access-modifiers-encapsulation}{%
+\subsection{1.2 Access Modifiers \&
+Encapsulation}\label{access-modifiers-encapsulation}}
 
 Encapsulation hides internal state to prevent invalid access.
 
-*   `public`: Accessible from anywhere.
-*   `private`: Accessible only from within the class.
-*   `protected`: Accessible from the class and its derived classes.
+\begin{itemize}
+\tightlist
+\item
+  \passthrough{\lstinline!public!}: Accessible from anywhere.
+\item
+  \passthrough{\lstinline!private!}: Accessible only from within the
+  class.
+\item
+  \passthrough{\lstinline!protected!}: Accessible from the class and its
+  derived classes.
+\end{itemize}
 
-```cpp
+\begin{lstlisting}[language={C++}]
 class BankAccount {
 private:
     double balance; // Hidden data
@@ -54,13 +70,15 @@ public:
         return balance;
     }
 };
-```
+\end{lstlisting}
 
-### 1.3 Constructors & Destructors
+\hypertarget{constructors-destructors}{%
+\subsection{1.3 Constructors \&
+Destructors}\label{constructors-destructors}}
 
 Constructors initialize objects. Destructors clean up resources.
 
-```cpp
+\begin{lstlisting}[language={C++}]
 class Car {
     std::string brand;
     int* buffer;
@@ -89,16 +107,18 @@ public:
         std::cout << "Destructor\n";
     }
 };
-```
+\end{lstlisting}
 
-### 1.4 The Rule of Three (C++98)
+\hypertarget{the-rule-of-three-c98}{%
+\subsection{1.4 The Rule of Three (C++98)}\label{the-rule-of-three-c98}}
 
-If you explicitly define one of the following, you likely need all three to manage resources correctly:
-1.  **Destructor**: To free resources (e.g., `delete` memory).
-2.  **Copy Constructor**: To perform deep copies.
-3.  **Copy Assignment Operator**: To handle assignment (`a = b`).
+If you explicitly define one of the following, you likely need all three
+to manage resources correctly: 1. \textbf{Destructor}: To free resources
+(e.g., \passthrough{\lstinline!delete!} memory). 2. \textbf{Copy
+Constructor}: To perform deep copies. 3. \textbf{Copy Assignment
+Operator}: To handle assignment (\passthrough{\lstinline!a = b!}).
 
-```cpp
+\begin{lstlisting}[language={C++}]
 class Buffer {
     int* ptr;
 public:
@@ -121,17 +141,19 @@ public:
         return *this;
     }
 };
-```
+\end{lstlisting}
 
----
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
 
-## INHERITANCE & POLYMORPHISM
+\hypertarget{inheritance-polymorphism}{%
+\section{INHERITANCE \& POLYMORPHISM}\label{inheritance-polymorphism}}
 
-### 2.1 Inheritance Basics
+\hypertarget{inheritance-basics}{%
+\subsection{2.1 Inheritance Basics}\label{inheritance-basics}}
 
 Inheritance allows a class to derive features from another.
 
-```cpp
+\begin{lstlisting}[language={C++}]
 class Animal {
 public:
     void eat() { std::cout << "Eating...\n"; }
@@ -141,13 +163,16 @@ class Dog : public Animal { // Dog inherits from Animal
 public:
     void bark() { std::cout << "Woof!\n"; }
 };
-```
+\end{lstlisting}
 
-### 2.2 Virtual Functions (Polymorphism)
+\hypertarget{virtual-functions-polymorphism}{%
+\subsection{2.2 Virtual Functions
+(Polymorphism)}\label{virtual-functions-polymorphism}}
 
-Polymorphism allows objects to be treated as instances of their base class, but behave like their actual derived class.
+Polymorphism allows objects to be treated as instances of their base
+class, but behave like their actual derived class.
 
-```cpp
+\begin{lstlisting}[language={C++}]
 class Shape {
 public:
     // Virtual function: Can be overridden
@@ -168,13 +193,16 @@ int main() {
     delete s;  // Properly calls ~Circle then ~Shape
     return 0;
 }
-```
+\end{lstlisting}
 
-### 2.3 Pure Virtual Functions (Abstract Classes)
+\hypertarget{pure-virtual-functions-abstract-classes}{%
+\subsection{2.3 Pure Virtual Functions (Abstract
+Classes)}\label{pure-virtual-functions-abstract-classes}}
 
-A pure virtual function (`= 0`) makes a class **Abstract**. It cannot be instantiated and must be subclassed.
+A pure virtual function (\passthrough{\lstinline!= 0!}) makes a class
+\textbf{Abstract}. It cannot be instantiated and must be subclassed.
 
-```cpp
+\begin{lstlisting}[language={C++}]
 class Interface {
 public:
     virtual void execute() = 0; // Pure virtual
@@ -185,17 +213,19 @@ class Concrete : public Interface {
 public:
     void execute() { std::cout << "Executed.\n"; }
 };
-```
+\end{lstlisting}
 
----
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
 
-## ADVANCED CLASS FEATURES
+\hypertarget{advanced-class-features}{%
+\section{ADVANCED CLASS FEATURES}\label{advanced-class-features}}
 
-### 3.1 Static Members
+\hypertarget{static-members}{%
+\subsection{3.1 Static Members}\label{static-members}}
 
 Shared by all instances of the class.
 
-```cpp
+\begin{lstlisting}[language={C++}]
 class User {
 public:
     static int userCount; // Declaration
@@ -204,13 +234,15 @@ public:
 
 // Definition (Must be outside class)
 int User::userCount = 0;
-```
+\end{lstlisting}
 
-### 3.2 Friend Classes/Functions
+\hypertarget{friend-classesfunctions}{%
+\subsection{3.2 Friend
+Classes/Functions}\label{friend-classesfunctions}}
 
 Friends can access private members.
 
-```cpp
+\begin{lstlisting}[language={C++}]
 class Box {
     int width;
 public:
@@ -222,19 +254,24 @@ void printWidth(Box& b) {
     // Can access private 'width'
     std::cout << b.width << "\n";
 }
-```
+\end{lstlisting}
 
----
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
 
-## PART 2: GENERIC PROGRAMMING (TEMPLATES)
+\hypertarget{part-2-generic-programming-templates}{%
+\section{PART 2: GENERIC PROGRAMMING
+(TEMPLATES)}\label{part-2-generic-programming-templates}}
 
-Templates are the foundation of Generic Programming in C++. They allow writing code that works with any data type. This is how the STL is implemented.
+Templates are the foundation of Generic Programming in C++. They allow
+writing code that works with any data type. This is how the STL is
+implemented.
 
-### 4.1 Function Templates
+\hypertarget{function-templates}{%
+\subsection{4.1 Function Templates}\label{function-templates}}
 
 A function template defines a family of functions.
 
-```cpp
+\begin{lstlisting}[language={C++}]
 // Template declaration
 template <typename T>
 T myMax(T a, T b) {
@@ -247,13 +284,14 @@ int main() {
     // std::cout << myMax(10, 3.14) << "\n";  // Error: Mismatched types
     return 0;
 }
-```
+\end{lstlisting}
 
-### 4.2 Class Templates
+\hypertarget{class-templates}{%
+\subsection{4.2 Class Templates}\label{class-templates}}
 
 Classes can also be templated to hold data of any type.
 
-```cpp
+\begin{lstlisting}[language={C++}]
 template <typename T>
 class Box {
 private:
@@ -272,13 +310,15 @@ int main() {
     std::cout << intBox.getContent() << "\n";
     return 0;
 }
-```
+\end{lstlisting}
 
-### 4.3 Multiple Template Parameters
+\hypertarget{multiple-template-parameters}{%
+\subsection{4.3 Multiple Template
+Parameters}\label{multiple-template-parameters}}
 
 Templates can accept multiple types.
 
-```cpp
+\begin{lstlisting}[language={C++}]
 template <typename T1, typename T2>
 struct Pair {
     T1 first;
@@ -291,13 +331,16 @@ int main() {
     Pair<std::string, int> p("Alice", 30);
     return 0;
 }
-```
+\end{lstlisting}
 
-### 4.4 Non-Type Template Parameters
+\hypertarget{non-type-template-parameters}{%
+\subsection{4.4 Non-Type Template
+Parameters}\label{non-type-template-parameters}}
 
-Templates can take values (integers, pointers) as parameters, not just types.
+Templates can take values (integers, pointers) as parameters, not just
+types.
 
-```cpp
+\begin{lstlisting}[language={C++}]
 // N is a compile-time constant
 template <typename T, int N>
 class Array {
@@ -311,15 +354,17 @@ int main() {
     // Array<int, 10> arr2 = arr; // Error: Different types
     return 0;
 }
-```
+\end{lstlisting}
 
-### 4.5 Template Specialization
+\hypertarget{template-specialization}{%
+\subsection{4.5 Template Specialization}\label{template-specialization}}
 
 You can define specific implementations for specific types.
 
-#### Full Specialization
+\hypertarget{full-specialization}{%
+\subsubsection{Full Specialization}\label{full-specialization}}
 
-```cpp
+\begin{lstlisting}[language={C++}]
 template <typename T>
 class Formatter {
 public:
@@ -334,44 +379,49 @@ public:
         std::cout << "Boolean: " << (val ? "true" : "false") << "\n"; 
     } 
 };
-```
+\end{lstlisting}
 
-#### Partial Specialization (Class Templates Only)
+\hypertarget{partial-specialization-class-templates-only}{%
+\subsubsection{Partial Specialization (Class Templates
+Only)}\label{partial-specialization-class-templates-only}}
 
-```cpp
+\begin{lstlisting}[language={C++}]
 template <typename T1, typename T2>
 class MyMap { /* ... */ };
 
 // Partial specialization for when both types are the same
 template <typename T>
 class MyMap<T, T> { /* Optimized implementation */ };
-```
+\end{lstlisting}
 
-### 4.6 The `typename` Keyword
+\hypertarget{the-typename-keyword}{%
+\subsection{\texorpdfstring{4.6 The \texttt{typename}
+Keyword}{4.6 The typename Keyword}}\label{the-typename-keyword}}
 
-When a type depends on a template parameter (dependent type), you must use `typename`.
+When a type depends on a template parameter (dependent type), you must
+use \passthrough{\lstinline!typename!}.
 
-```cpp
+\begin{lstlisting}[language={C++}]
 template <typename T>
 void func() {
     // T::iterator *iter; // Ambiguous: Is iterator a type or a static member?
     
     typename T::iterator *iter; // Correct: Tells compiler iterator is a type
 }
-```
+\end{lstlisting}
 
-### 4.7 Templates vs Macros
+\hypertarget{templates-vs-macros}{%
+\subsection{4.7 Templates vs Macros}\label{templates-vs-macros}}
 
-Templates are type-safe and processed by the compiler. Macros are text substitution processed by the preprocessor. Always prefer templates.
+Templates are type-safe and processed by the compiler. Macros are text
+substitution processed by the preprocessor. Always prefer templates.
 
-**Summary:**
-- **Templates** allow code reuse for different types.
-- **Function Templates** deduce types automatically.
-- **Class Templates** require explicit type arguments.
-- **Specialization** allows handling specific types differently.
+\textbf{Summary:} - \textbf{Templates} allow code reuse for different
+types. - \textbf{Function Templates} deduce types automatically. -
+\textbf{Class Templates} require explicit type arguments. -
+\textbf{Specialization} allows handling specific types differently.
 
-```
-
+\begin{lstlisting}
 <!-- Merged content from Chapter_14_NAMESPACES.md -->
 
 # NAMESPACES
@@ -410,11 +460,12 @@ int main() {
     
     return 0;
 }
-```
+\end{lstlisting}
 
-## 13.2 Namespace Aliases
+\hypertarget{namespace-aliases}{%
+\section{13.2 Namespace Aliases}\label{namespace-aliases}}
 
-```cpp
+\begin{lstlisting}[language={C++}]
 #include <iostream>
 using namespace std;
 
@@ -440,6 +491,6 @@ int main() {
     
     return 0;
 }
-```
+\end{lstlisting}
 
----
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}

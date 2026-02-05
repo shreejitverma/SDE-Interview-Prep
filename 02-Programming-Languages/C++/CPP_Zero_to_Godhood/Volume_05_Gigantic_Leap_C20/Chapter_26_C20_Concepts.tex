@@ -1,0 +1,125 @@
+\hypertarget{c20-concepts}{%
+\chapter{C++20 CONCEPTS}\label{c20-concepts}}
+
+\hypertarget{the-problem-with-templates}{%
+\section{1. The Problem with
+Templates}\label{the-problem-with-templates}}
+
+Before C++20, template errors were notoriously verbose and hard to
+decipher (``template error explosion''). If you passed a type that
+didn't support a required operation (like \passthrough{\lstinline!+!} or
+\passthrough{\lstinline!.begin()!}), the error would occur deep inside
+the template implementation, often screens away from the actual call
+site.
+
+\hypertarget{what-are-concepts}{%
+\section{2. What are Concepts?}\label{what-are-concepts}}
+
+Concepts are named sets of requirements for template arguments. They act
+as predicates that are evaluated at compile time.
+
+\hypertarget{defining-a-concept}{%
+\subsection{2.1 Defining a Concept}\label{defining-a-concept}}
+
+\begin{lstlisting}[language={C++}]
+#include <concepts>
+
+// A concept that checks if T is integral
+template<typename T>
+concept Integral = std::is_integral_v<T>;
+
+// A concept that checks if T is addable
+template<typename T>
+concept Addable = requires(T a, T b) {
+    { a + b } -> std::convertible_to<T>;
+};
+\end{lstlisting}
+
+\hypertarget{using-concepts-requires-clause}{%
+\subsection{\texorpdfstring{2.2 Using Concepts (\texttt{requires}
+clause)}{2.2 Using Concepts (requires clause)}}\label{using-concepts-requires-clause}}
+
+\begin{lstlisting}[language={C++}]
+template<typename T>
+requires Integral<T>
+T add(T a, T b) {
+    return a + b;
+}
+
+// Shorthand syntax
+template<Integral T>
+T subtract(T a, T b) {
+    return a - b;
+}
+
+// Terse syntax (C++20 style)
+auto multiply(Integral auto a, Integral auto b) {
+    return a * b;
+}
+\end{lstlisting}
+
+\hypertarget{the-requires-expression}{%
+\section{\texorpdfstring{3. The \texttt{requires}
+Expression}{3. The requires Expression}}\label{the-requires-expression}}
+
+The core mechanism for defining ad-hoc constraints.
+
+\begin{lstlisting}[language={C++}]
+template<typename T>
+concept Printable = requires(T x) {
+    std::cout << x; // Expression must be valid
+};
+
+template<typename T>
+concept Container = requires(T c) {
+    typename T::value_type;
+    { c.size() } -> std::same_as<size_t>;
+    { c.begin() }; 
+    { c.end() };
+};
+\end{lstlisting}
+
+\hypertarget{standard-concepts-concepts}{%
+\section{\texorpdfstring{4. Standard Concepts
+(\texttt{\textless{}concepts\textgreater{}})}{4. Standard Concepts (\textless concepts\textgreater)}}\label{standard-concepts-concepts}}
+
+C++20 provides a rich library of predefined concepts.
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Core:} \passthrough{\lstinline!std::same\_as!},
+  \passthrough{\lstinline!std::derived\_from!},
+  \passthrough{\lstinline!std::convertible\_to!}
+\item
+  \textbf{Arithmetic:} \passthrough{\lstinline!std::integral!},
+  \passthrough{\lstinline!std::floating\_point!},
+  \passthrough{\lstinline!std::signed\_integral!}
+\item
+  \textbf{Object:} \passthrough{\lstinline!std::movable!},
+  \passthrough{\lstinline!std::copyable!},
+  \passthrough{\lstinline!std::regular!}
+\item
+  \textbf{Callable:} \passthrough{\lstinline!std::invocable!},
+  \passthrough{\lstinline!std::predicate!}
+\end{itemize}
+
+\hypertarget{constraint-based-overloading}{%
+\section{5. Constraint Based
+Overloading}\label{constraint-based-overloading}}
+
+Concepts allow overloading function templates based on properties of
+types (replacing SFINAE/\passthrough{\lstinline!enable\_if!}).
+
+\begin{lstlisting}[language={C++}]
+void print(std::integral auto x) {
+    std::cout << "Integer: " << x << "\n";
+}
+
+void print(std::floating_point auto x) {
+    std::cout << "Float: " << x << "\n";
+}
+
+print(5);   // Calls integral version
+print(3.14); // Calls floating_point version
+\end{lstlisting}

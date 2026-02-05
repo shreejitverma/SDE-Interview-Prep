@@ -1,0 +1,189 @@
+\hypertarget{move-semantics-smart-pointers}{%
+\chapter{MOVE SEMANTICS \& SMART
+POINTERS}\label{move-semantics-smart-pointers}}
+
+\hypertarget{rvalue-references-move-semantics}{%
+\section{1. Rvalue References \& Move
+Semantics}\label{rvalue-references-move-semantics}}
+
+C++11 solves the problem of unnecessary copying with \textbf{Move
+Semantics}.
+
+\hypertarget{lvalues-vs-rvalues}{%
+\subsection{1.1 Lvalues vs Rvalues}\label{lvalues-vs-rvalues}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Lvalue (Left Value):} Has a name, has an address (identity).
+  Persists beyond the expression.
+\item
+  \textbf{Rvalue (Right Value):} Temporary, no name (or about to die).
+  Cannot take address.
+\end{itemize}
+
+\begin{lstlisting}[language={C++}]
+int x = 10; // x is lvalue, 10 is rvalue
+int y = x;  // y is lvalue
+int z = x + y; // (x+y) is rvalue
+\end{lstlisting}
+
+\hypertarget{rvalue-references-t}{%
+\subsection{\texorpdfstring{1.2 Rvalue References
+(\texttt{T\&\&})}{1.2 Rvalue References (T\&\&)}}\label{rvalue-references-t}}
+
+A reference that binds \emph{only} to rvalues. Represents an object we
+can ``steal'' from.
+
+\begin{lstlisting}[language={C++}]
+void f(int& x)  { cout << "Lvalue ref"; }
+void f(int&& x) { cout << "Rvalue ref"; }
+
+int a = 5;
+f(a); // Lvalue ref
+f(5); // Rvalue ref
+\end{lstlisting}
+
+\hypertarget{move-constructor-move-assignment}{%
+\subsection{1.3 Move Constructor \& Move
+Assignment}\label{move-constructor-move-assignment}}
+
+Instead of copying data (slow), we steal pointers (fast).
+
+\begin{lstlisting}[language={C++}]
+class Buffer {
+    int* data;
+    size_t size;
+public:
+    // Move Constructor
+    Buffer(Buffer&& other) noexcept : data(other.data), size(other.size) {
+        other.data = nullptr; // Nullify source to prevent double free
+        other.size = 0;
+    }
+
+    // Move Assignment
+    Buffer& operator=(Buffer&& other) noexcept {
+        if (this != &other) {
+            delete[] data;       // Free own resources
+            data = other.data;   // Steal resources
+            size = other.size;
+            other.data = nullptr;// Nullify source
+            other.size = 0;
+        }
+        return *this;
+    }
+};
+\end{lstlisting}
+
+\hypertarget{stdmove}{%
+\subsection{\texorpdfstring{1.4
+\texttt{std::move}}{1.4 std::move}}\label{stdmove}}
+
+Casts an lvalue to an rvalue, enabling move semantics.
+
+\begin{lstlisting}[language={C++}]
+Buffer b1;
+Buffer b2 = std::move(b1); // Calls Move Constructor
+// b1 is now in valid but unspecified state (empty)
+\end{lstlisting}
+
+\textbf{Warning:} Do not use \passthrough{\lstinline!b1!} after moving
+from it.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{smart-pointers-raii}{%
+\section{2. Smart Pointers (RAII)}\label{smart-pointers-raii}}
+
+Manual \passthrough{\lstinline!new!}/\passthrough{\lstinline!delete!} is
+prone to leaks. C++11 introduces strict ownership models.
+
+\hypertarget{stdunique_ptr}{%
+\subsection{\texorpdfstring{2.1
+\texttt{std::unique\_ptr}}{2.1 std::unique\_ptr}}\label{stdunique_ptr}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Ownership:} Exclusive. Only one pointer owns the object.
+\item
+  \textbf{Copying:} Disabled (\passthrough{\lstinline!delete!}).
+\item
+  \textbf{Moving:} Allowed.
+\item
+  \textbf{Overhead:} Zero (same as raw pointer).
+\end{itemize}
+
+\begin{lstlisting}[language={C++}]
+#include <memory>
+
+std::unique_ptr<int> p1(new int(5));
+// std::unique_ptr<int> p2 = p1; // ERROR: Cannot copy
+std::unique_ptr<int> p3 = std::move(p1); // OK: Ownership transferred
+\end{lstlisting}
+
+\hypertarget{stdshared_ptr}{%
+\subsection{\texorpdfstring{2.2
+\texttt{std::shared\_ptr}}{2.2 std::shared\_ptr}}\label{stdshared_ptr}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Ownership:} Shared (Reference Counted).
+\item
+  \textbf{Destruction:} Object deleted when last
+  \passthrough{\lstinline!shared\_ptr!} dies.
+\item
+  \textbf{Overhead:} Control block on heap (ref counts).
+\end{itemize}
+
+\begin{lstlisting}[language={C++}]
+auto sp1 = std::make_shared<int>(10); // Efficient allocation
+auto sp2 = sp1; // Ref count = 2
+\end{lstlisting}
+
+\hypertarget{stdweak_ptr}{%
+\subsection{\texorpdfstring{2.3
+\texttt{std::weak\_ptr}}{2.3 std::weak\_ptr}}\label{stdweak_ptr}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Ownership:} Non-owning observer of
+  \passthrough{\lstinline!shared\_ptr!}.
+\item
+  \textbf{Use Case:} Break cyclic references (A-\textgreater B,
+  B-\textgreater A).
+\end{itemize}
+
+\begin{lstlisting}[language={C++}]
+std::shared_ptr<int> sp = std::make_shared<int>(42);
+std::weak_ptr<int> wp = sp;
+
+if (auto locked = wp.lock()) { // Check if object exists
+    std::cout << *locked;
+}
+\end{lstlisting}
+
+\hypertarget{stdmake_shared-vs-new}{%
+\subsection{\texorpdfstring{2.4 \texttt{std::make\_shared} vs
+\texttt{new}}{2.4 std::make\_shared vs new}}\label{stdmake_shared-vs-new}}
+
+Always use \passthrough{\lstinline!std::make\_shared!}. It allocates the
+object and control block in a single heap allocation (cache efficient).
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{perfect-forwarding}{%
+\section{3. Perfect Forwarding}\label{perfect-forwarding}}
+
+Used in templates to preserve value category (lvalue vs rvalue).
+
+\begin{lstlisting}[language={C++}]
+template<typename T>
+void wrapper(T&& arg) {
+    // std::forward passes arg as lvalue if given lvalue,
+    // rvalue if given rvalue.
+    func(std::forward<T>(arg)); 
+}
+\end{lstlisting}

@@ -1,0 +1,97 @@
+\hypertarget{functional-programming-in-c11}{%
+\chapter{FUNCTIONAL PROGRAMMING IN
+C++11}\label{functional-programming-in-c11}}
+
+\hypertarget{lambda-expressions}{%
+\section{1. Lambda Expressions}\label{lambda-expressions}}
+
+Anonymous functions defined inline.
+
+\hypertarget{basic-syntax}{%
+\subsection{1.1 Basic Syntax}\label{basic-syntax}}
+
+\passthrough{\lstinline![captures](params) -> return\_type \{ body \}!}
+
+\begin{lstlisting}[language={C++}]
+auto add = [](int a, int b) { return a + b; };
+int result = add(2, 3);
+\end{lstlisting}
+
+\hypertarget{capture-lists}{%
+\subsection{1.2 Capture Lists}\label{capture-lists}}
+
+Controls access to outer scope variables.
+
+\begin{itemize}
+\tightlist
+\item
+  \passthrough{\lstinline![]!}: No capture.
+\item
+  \passthrough{\lstinline![x]!}: Capture \passthrough{\lstinline!x!} by
+  value (copy).
+\item
+  \passthrough{\lstinline![\&x]!}: Capture \passthrough{\lstinline!x!}
+  by reference.
+\item
+  \passthrough{\lstinline![=]!}: Capture all by value.
+\item
+  \passthrough{\lstinline![\&]!}: Capture all by reference.
+\item
+  \passthrough{\lstinline![this]!}: Capture class members.
+\end{itemize}
+
+\begin{lstlisting}[language={C++}]
+int x = 10;
+auto addX = [x](int y) { return x + y; }; // x is read-only inside
+\end{lstlisting}
+
+\hypertarget{mutable-lambdas}{%
+\subsection{1.3 Mutable Lambdas}\label{mutable-lambdas}}
+
+By default, value captures are \passthrough{\lstinline!const!}.
+\passthrough{\lstinline!mutable!} allows modification.
+
+\begin{lstlisting}[language={C++}]
+int x = 0;
+auto increment = [x]() mutable { return ++x; }; // Modifies local copy
+\end{lstlisting}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{stdfunction}{%
+\section{\texorpdfstring{2.
+\texttt{std::function}}{2. std::function}}\label{stdfunction}}
+
+A polymorphic wrapper for any callable (function pointer, lambda,
+functor).
+
+\begin{lstlisting}[language={C++}]
+#include <functional>
+
+void freeFunc(int) {}
+
+std::function<void(int)> f;
+f = freeFunc;
+f = [](int x) {}; 
+\end{lstlisting}
+
+\textbf{Cost:} Can incur heap allocation and virtual call overhead.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{stdbind}{%
+\section{\texorpdfstring{3.
+\texttt{std::bind}}{3. std::bind}}\label{stdbind}}
+
+Binds arguments to function parameters (Partial Application).
+
+\begin{lstlisting}[language={C++}]
+int add(int a, int b) { return a + b; }
+
+// Creates a function taking 1 argument (placeholder _1)
+auto add5 = std::bind(add, 5, std::placeholders::_1); 
+// add5(10) calls add(5, 10)
+\end{lstlisting}
+
+\emph{Note: Lambdas largely replace \passthrough{\lstinline!std::bind!}
+in modern C++ due to readability and optimization.}

@@ -1,0 +1,948 @@
+\hypertarget{the-standard-template-library-stl-core}{%
+\chapter{THE STANDARD TEMPLATE LIBRARY (STL)
+CORE}\label{the-standard-template-library-stl-core}}
+
+\hypertarget{c9803-standard-library}{%
+\chapter{C++98/03 STANDARD LIBRARY}\label{c9803-standard-library}}
+
+\hypertarget{standard-template-library-stl}{%
+\section{Standard Template Library
+(STL)}\label{standard-template-library-stl}}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{introduction-to-stl}{%
+\section{Introduction to STL}\label{introduction-to-stl}}
+
+The Standard Template Library (STL) is a collection of template classes
+and functions that provide: - \textbf{Containers} - Data structures to
+hold objects (e.g., vectors, lists, maps). - \textbf{Iterators} -
+Objects to traverse containers (generalization of pointers). -
+\textbf{Algorithms} - Functions to manipulate data (e.g., sorting,
+searching). - \textbf{Function Objects (Functors)} - Objects that act
+like functions.
+
+\hypertarget{key-advantages}{%
+\subsection{Key Advantages}\label{key-advantages}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Generic Programming}: Write code that works with any data
+  type.
+\item
+  \textbf{Performance}: Heavily optimized implementations.
+\item
+  \textbf{Reusability}: Standardized components prevent reinventing the
+  wheel.
+\item
+  \textbf{Type Safety}: Templates ensure type correctness at compile
+  time.
+\end{itemize}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{stl-components-overview}{%
+\section{STL Components Overview}\label{stl-components-overview}}
+
+\begin{lstlisting}
+          STL (Standard Template Library)  
+                       |
+   -----------------------------------------
+   |              |            |           |
+CONTAINERS     ITERATORS    ALGORITHMS   FUNCTORS
+   |              |            |           |
+Sequence       Input        Searching    Predicates
+Associative    Output       Sorting      Comparators
+Adapters       Forward      Modifying      
+               Bidir        Numeric      
+               Random       
+\end{lstlisting}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{containers---complete-reference}{%
+\section{CONTAINERS - COMPLETE
+REFERENCE}\label{containers---complete-reference}}
+
+\hypertarget{container-characteristics-c98}{%
+\subsection{Container Characteristics
+(C++98)}\label{container-characteristics-c98}}
+
+\begin{longtable}[]{@{}lllllll@{}}
+\toprule
+Container & Type & Insert & Delete & Search & Random Access & Memory \\
+\midrule
+\endhead
+\passthrough{\lstinline!vector!} & Sequence & O(n) & O(n) & O(n) & O(1)
+& Contiguous \\
+\passthrough{\lstinline!list!} & Sequence & O(1) & O(1) & O(n) & - &
+Scattered \\
+\passthrough{\lstinline!deque!} & Sequence & O(n) & O(n) & O(n) & O(1) &
+Chunks \\
+\passthrough{\lstinline!map!} & Associative & O(log n) & O(log n) &
+O(log n) & - & Tree \\
+\passthrough{\lstinline!set!} & Associative & O(log n) & O(log n) &
+O(log n) & - & Tree \\
+\passthrough{\lstinline!multimap!} & Associative & O(log n) & O(log n) &
+O(log n) & - & Tree \\
+\passthrough{\lstinline!multiset!} & Associative & O(log n) & O(log n) &
+O(log n) & - & Tree \\
+\passthrough{\lstinline!priority\_queue!} & Adapter & O(log n) & O(log
+n) & - & - & Heap \\
+\passthrough{\lstinline!queue!} & Adapter & O(1) & O(1) & - & - & - \\
+\passthrough{\lstinline!stack!} & Adapter & O(1) & O(1) & - & - & - \\
+\bottomrule
+\end{longtable}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{vector---dynamic-array}{%
+\section{1.1 VECTOR - Dynamic Array}\label{vector---dynamic-array}}
+
+\hypertarget{what-is-vector}{%
+\subsection{What is Vector?}\label{what-is-vector}}
+
+A dynamic array that grows automatically. Use this as your default
+container.
+
+\hypertarget{declaration-initialization}{%
+\subsection{Declaration \&
+Initialization}\label{declaration-initialization}}
+
+\begin{lstlisting}[language={C++}]
+#include <vector>
+using namespace std;
+
+// Empty vector
+vector<int> v1;
+
+// Vector with initial size (10 elements initialized to 0)
+vector<int> v2(10);
+
+// Vector with initial size and value (5 elements, all 10)
+vector<int> v3(5, 10);
+
+// Copy constructor
+vector<int> v4(v3);
+
+// From array (using pointers)
+int arr[] = {1, 2, 3, 4, 5};
+vector<int> v5(arr, arr + 5); 
+\end{lstlisting}
+
+\hypertarget{accessing-elements}{%
+\subsection{Accessing Elements}\label{accessing-elements}}
+
+\begin{lstlisting}[language={C++}]
+vector<int> v;
+v.push_back(10);
+v.push_back(20);
+
+// 1. Using operator[] (No bounds check)
+cout << v[0] << "\n";  // 10
+
+// 2. Using at() (With bounds check, throws std::out_of_range)
+cout << v.at(1) << "\n"; // 20
+
+// 3. Front and back
+cout << v.front() << "\n"; // 10
+cout << v.back() << "\n";  // 20
+\end{lstlisting}
+
+\hypertarget{modifying-elements}{%
+\subsection{Modifying Elements}\label{modifying-elements}}
+
+\begin{lstlisting}[language={C++}]
+vector<int> v;
+
+// Adding elements
+v.push_back(10);
+v.push_back(20);
+v.push_back(30); // {10, 20, 30}
+
+// Inserting elements (Iterators required)
+v.insert(v.begin() + 1, 15); // {10, 15, 20, 30}
+
+// Removing elements
+v.pop_back();           // Removes 30
+v.erase(v.begin() + 1); // Removes 15
+
+// Clearing
+v.clear();              // Empty
+\end{lstlisting}
+
+\hypertarget{size-capacity}{%
+\subsection{Size \& Capacity}\label{size-capacity}}
+
+\begin{lstlisting}[language={C++}]
+vector<int> v(10);
+
+cout << v.size() << "\n";      // 10
+cout << v.capacity() << "\n";  // >= 10
+cout << v.empty() << "\n";     // 0 (false)
+
+// Reserve space (Optimization to avoid reallocations)
+v.reserve(100); 
+
+// Resize (Changes size, fills new elements with default or value)
+v.resize(20);    // Size becomes 20
+v.resize(5);     // Size becomes 5, extra elements destroyed
+\end{lstlisting}
+
+\hypertarget{iterating-through-vector}{%
+\subsection{Iterating Through Vector}\label{iterating-through-vector}}
+
+\begin{lstlisting}[language={C++}]
+vector<int> v;
+v.push_back(10); v.push_back(20); v.push_back(30);
+
+// 1. Index loop
+for (size_t i = 0; i < v.size(); ++i) {
+    cout << v[i] << " ";
+}
+
+// 2. Iterator loop (Recommended)
+for (vector<int>::iterator it = v.begin(); it != v.end(); ++it) {
+    cout << *it << " ";
+}
+
+// 3. Reverse Iterator
+for (vector<int>::reverse_iterator rit = v.rbegin(); rit != v.rend(); ++rit) {
+    cout << *rit << " ";
+}
+\end{lstlisting}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{deque---double-ended-queue}{%
+\section{1.2 DEQUE - Double Ended
+Queue}\label{deque---double-ended-queue}}
+
+\hypertarget{what-is-deque}{%
+\subsection{What is Deque?}\label{what-is-deque}}
+
+Fast insertion/deletion at both ends. Unlike vector, storage is not
+guaranteed to be contiguous.
+
+\begin{lstlisting}[language={C++}]
+#include <deque>
+using namespace std;
+
+deque<int> dq;
+
+dq.push_back(10);
+dq.push_front(5);  // {5, 10}
+
+dq.pop_back();     // {5}
+dq.pop_front();    // {}
+
+// Supports random access
+dq.push_back(100);
+cout << dq[0] << "\n";
+\end{lstlisting}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{list---doubly-linked-list}{%
+\section{1.3 LIST - Doubly Linked
+List}\label{list---doubly-linked-list}}
+
+\hypertarget{what-is-list}{%
+\subsection{What is List?}\label{what-is-list}}
+
+Efficient insertion/deletion anywhere (O(1) if iterator is known). No
+random access.
+
+\begin{lstlisting}[language={C++}]
+#include <list>
+using namespace std;
+
+list<int> lst;
+lst.push_back(10);
+lst.push_front(5);
+
+// Insert at position
+list<int>::iterator it = lst.begin();
+++it; // Move to second position
+lst.insert(it, 7); // {5, 7, 10}
+
+// Remove
+lst.remove(7); // Remove all elements with value 7
+
+// Unique (Removes consecutive duplicates)
+lst.push_back(10);
+lst.unique(); // {5, 10} (second 10 removed)
+
+// Sort
+lst.sort(); // Internal sort (std::sort doesn't work on lists)
+\end{lstlisting}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{map---sorted-key-value-pairs}{%
+\section{1.4 MAP - Sorted Key-Value
+Pairs}\label{map---sorted-key-value-pairs}}
+
+\hypertarget{what-is-map}{%
+\subsection{What is Map?}\label{what-is-map}}
+
+Associative container storing key-value pairs sorted by key. Implemented
+as a Balanced BST (usually Red-Black Tree).
+
+\begin{lstlisting}[language={C++}]
+#include <map>
+#include <string>
+using namespace std;
+
+map<string, int> ages;
+
+// Insertion
+ages["Alice"] = 30;
+ages["Bob"] = 25;
+ages.insert(make_pair("Charlie", 28));
+
+// Access / Search
+cout << ages["Alice"] << "\n"; // 30
+
+map<string, int>::iterator it = ages.find("Bob");
+if (it != ages.end()) {
+    cout << "Bob is " << it->second << " years old.\n";
+}
+
+// Iteration (Sorted by key)
+for (it = ages.begin(); it != ages.end(); ++it) {
+    cout << it->first << ": " << it->second << "\n";
+}
+\end{lstlisting}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{set---sorted-unique-keys}{%
+\section{1.5 SET - Sorted Unique Keys}\label{set---sorted-unique-keys}}
+
+\hypertarget{what-is-set}{%
+\subsection{What is Set?}\label{what-is-set}}
+
+Stores unique elements sorted by value.
+
+\begin{lstlisting}[language={C++}]
+#include <set>
+using namespace std;
+
+set<int> s;
+s.insert(10);
+s.insert(5);
+s.insert(10); // Duplicate ignored
+
+// {5, 10}
+
+if (s.find(5) != s.end()) {
+    cout << "5 is present.\n";
+}
+
+// Range erase
+s.erase(s.begin()); // Removes 5
+\end{lstlisting}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{multimap-multiset}{%
+\section{1.6 MULTIMAP \& MULTISET}\label{multimap-multiset}}
+
+Allow duplicate keys (multimap) or duplicate values (multiset).
+
+\begin{lstlisting}[language={C++}]
+#include <map>
+using namespace std;
+
+multimap<string, int> scores;
+scores.insert(make_pair("Alice", 90));
+scores.insert(make_pair("Alice", 85)); // Allowed
+
+// Finding all values for a key
+pair<multimap<string, int>::iterator, multimap<string, int>::iterator> range;
+range = scores.equal_range("Alice");
+
+for (multimap<string, int>::iterator it = range.first; it != range.second; ++it) {
+    cout << it->second << " ";
+}
+// Output: 90 85
+\end{lstlisting}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{stack-adapter}{%
+\section{1.7 STACK (Adapter)}\label{stack-adapter}}
+
+LIFO (Last In, First Out). Wraps \passthrough{\lstinline!deque!}
+(default), \passthrough{\lstinline!vector!}, or
+\passthrough{\lstinline!list!}.
+
+\begin{lstlisting}[language={C++}]
+#include <stack>
+using namespace std;
+
+stack<int> st;
+st.push(10);
+st.push(20);
+
+cout << st.top() << "\n"; // 20
+st.pop();                 // Removes 20
+\end{lstlisting}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{queue-adapter}{%
+\section{1.8 QUEUE (Adapter)}\label{queue-adapter}}
+
+FIFO (First In, First Out). Wraps \passthrough{\lstinline!deque!}
+(default) or \passthrough{\lstinline!list!}.
+
+\begin{lstlisting}[language={C++}]
+#include <queue>
+using namespace std;
+
+queue<int> q;
+q.push(10);
+q.push(20);
+
+cout << q.front() << "\n"; // 10
+q.pop();                   // Removes 10
+\end{lstlisting}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{priority_queue-adapter}{%
+\section{1.9 PRIORITY\_QUEUE (Adapter)}\label{priority_queue-adapter}}
+
+Sorted queue (Heap). Max element is always at
+\passthrough{\lstinline!top()!}.
+
+\begin{lstlisting}[language={C++}]
+#include <queue>
+#include <vector>
+#include <functional> // for greater<int>
+using namespace std;
+
+// Max Heap (Default)
+priority_queue<int> pq;
+pq.push(10);
+pq.push(30);
+pq.push(20);
+
+cout << pq.top() << "\n"; // 30
+
+// Min Heap
+priority_queue<int, vector<int>, greater<int> > min_pq;
+min_pq.push(10);
+min_pq.push(30);
+
+cout << min_pq.top() << "\n"; // 10
+\end{lstlisting}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{iterators}{%
+\section{ITERATORS}\label{iterators}}
+
+Iterators are the glue between Containers and Algorithms.
+
+\hypertarget{categories}{%
+\subsection{Categories}\label{categories}}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  \textbf{Input}: Read-only, single pass (e.g.,
+  \passthrough{\lstinline!istream\_iterator!}).
+\item
+  \textbf{Output}: Write-only, single pass (e.g.,
+  \passthrough{\lstinline!ostream\_iterator!}).
+\item
+  \textbf{Forward}: Read/Write, multi-pass (e.g.,
+  \passthrough{\lstinline!slist!} - non-std).
+\item
+  \textbf{Bidirectional}: Forward + Backward (e.g.,
+  \passthrough{\lstinline!list!}, \passthrough{\lstinline!map!},
+  \passthrough{\lstinline!set!}).
+\item
+  \textbf{Random Access}: O(1) jump (e.g.,
+  \passthrough{\lstinline!vector!}, \passthrough{\lstinline!deque!},
+  arrays).
+\end{enumerate}
+
+\hypertarget{operations}{%
+\subsection{Operations}\label{operations}}
+
+\begin{itemize}
+\tightlist
+\item
+  \passthrough{\lstinline!*it!}: Dereference.
+\item
+  \passthrough{\lstinline!++it!}: Advance.
+\item
+  \passthrough{\lstinline!--it!}: Retreat (Bidirectional+).
+\item
+  \passthrough{\lstinline!it + n!}: Jump (Random Access only).
+\item
+  \passthrough{\lstinline!it1 - it2!}: Distance (Random Access only).
+\end{itemize}
+
+\begin{lstlisting}[language={C++}]
+vector<int> v(5, 1); 
+vector<int>::iterator it = v.begin();
+advance(it, 2); // Move 2 steps
+cout << distance(v.begin(), it); // 2
+\end{lstlisting}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{algorithms}{%
+\section{ALGORITHMS}\label{algorithms}}
+
+Found in \passthrough{\lstinline!<algorithm>!} and
+\passthrough{\lstinline!<numeric>!}. They work on iterator ranges
+\passthrough{\lstinline![first, last)!}.
+
+\hypertarget{non-modifying}{%
+\subsection{1. Non-Modifying}\label{non-modifying}}
+
+\begin{itemize}
+\tightlist
+\item
+  \passthrough{\lstinline!find(begin, end, val)!}
+\item
+  \passthrough{\lstinline!count(begin, end, val)!}
+\item
+  \passthrough{\lstinline!equal(b1, e1, b2)!}
+\item
+  \passthrough{\lstinline!search(b1, e1, b2, e2)!}
+\end{itemize}
+
+\hypertarget{modifying}{%
+\subsection{2. Modifying}\label{modifying}}
+
+\begin{itemize}
+\tightlist
+\item
+  \passthrough{\lstinline!copy(b1, e1, b2)!}
+\item
+  \passthrough{\lstinline!transform(b1, e1, out, op)!}
+\item
+  \passthrough{\lstinline!replace(b1, e1, old, new)!}
+\item
+  \passthrough{\lstinline!fill(b, e, val)!}
+\item
+  \passthrough{\lstinline!swap(a, b)!}
+\item
+  \passthrough{\lstinline!reverse(b, e)!}
+\item
+  \passthrough{\lstinline!rotate(b, mid, e)!}
+\item
+  \passthrough{\lstinline!random\_shuffle(b, e)!}
+\end{itemize}
+
+\hypertarget{sorting}{%
+\subsection{3. Sorting}\label{sorting}}
+
+\begin{itemize}
+\tightlist
+\item
+  \passthrough{\lstinline!sort(b, e)!}: O(N log N).
+\item
+  \passthrough{\lstinline!stable\_sort(b, e)!}: Preserves order of equal
+  elements.
+\item
+  \passthrough{\lstinline!partial\_sort(b, mid, e)!}: Top K elements.
+\end{itemize}
+
+\hypertarget{binary-search-on-sorted-ranges}{%
+\subsection{4. Binary Search (On Sorted
+Ranges)}\label{binary-search-on-sorted-ranges}}
+
+\begin{itemize}
+\tightlist
+\item
+  \passthrough{\lstinline!binary\_search(b, e, val)!}: Returns bool.
+\item
+  \passthrough{\lstinline!lower\_bound(b, e, val)!}: First element
+  \textgreater= val.
+\item
+  \passthrough{\lstinline!upper\_bound(b, e, val)!}: First element
+  \textgreater{} val.
+\end{itemize}
+
+\hypertarget{set-operations-on-sorted-ranges}{%
+\subsection{5. Set Operations (On Sorted
+Ranges)}\label{set-operations-on-sorted-ranges}}
+
+\begin{itemize}
+\tightlist
+\item
+  \passthrough{\lstinline!set\_union!},
+  \passthrough{\lstinline!set\_intersection!},
+  \passthrough{\lstinline!set\_difference!}.
+\end{itemize}
+
+\hypertarget{numeric}{%
+\subsection{6. Numeric ()}\label{numeric}}
+
+\begin{itemize}
+\tightlist
+\item
+  \passthrough{\lstinline!accumulate(b, e, init)!}: Sum.
+\item
+  \passthrough{\lstinline!inner\_product!}: Dot product.
+\item
+  \passthrough{\lstinline!adjacent\_difference!}.
+\end{itemize}
+
+\hypertarget{example-sort-and-find}{%
+\subsection{Example: Sort and Find}\label{example-sort-and-find}}
+
+\begin{lstlisting}[language={C++}]
+#include <algorithm>
+#include <vector>
+#include <iostream>
+using namespace std;
+
+bool descending(int a, int b) {
+    return a > b;
+}
+
+int main() {
+    int arr[] = {5, 2, 9, 1, 5, 6};
+    vector<int> v(arr, arr + 6);
+
+    // Sort ascending
+    sort(v.begin(), v.end());
+
+    // Binary Search
+    if (binary_search(v.begin(), v.end(), 9)) {
+        cout << "Found 9\n";
+    }
+
+    // Sort descending with predicate
+    sort(v.begin(), v.end(), descending);
+
+    return 0;
+}
+\end{lstlisting}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{strings-stdstring}{%
+\section{STRINGS (std::string)}\label{strings-stdstring}}
+
+A specialization of \passthrough{\lstinline!basic\_string<char>!}.
+Replaces C-style \passthrough{\lstinline!char*!} strings.
+
+\begin{lstlisting}[language={C++}]
+#include <string>
+#include <iostream>
+using namespace std;
+
+string s = "Hello";
+s += " World"; // Concatenation
+
+// Substring
+string sub = s.substr(0, 5); // "Hello"
+
+// Find
+size_t pos = s.find("World");
+if (pos != string::npos) {
+    cout << "Found at " << pos << "\n";
+}
+
+// C-string compatibility
+const char* cstr = s.c_str();
+\end{lstlisting}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{streams-iostream}{%
+\section{STREAMS (IOSTREAM)}\label{streams-iostream}}
+
+\hypertarget{file-io}{%
+\subsection{File I/O ()}\label{file-io}}
+
+\begin{lstlisting}[language={C++}]
+#include <fstream>
+#include <iostream>
+using namespace std;
+
+int main() {
+    // Write
+    ofstream out("test.txt");
+    if (out) {
+        out << "Line 1" << endl;
+        out << 123 << endl;
+    }
+    out.close();
+
+    // Read
+    ifstream in("test.txt");
+    string line;
+    int num;
+    
+    if (in >> line >> num) { // Reads "Line" then fails on "1" vs int? No. 
+                             // "Line" goes to line. "1" goes to num? 
+                             // Need careful parsing.
+    }
+    // Better: getline
+    getline(in, line);
+    
+    return 0;
+}
+\end{lstlisting}
+
+\hypertarget{string-streams}{%
+\subsection{String Streams ()}\label{string-streams}}
+
+Useful for parsing strings or formatting.
+
+\begin{lstlisting}[language={C++}]
+#include <sstream>
+using namespace std;
+
+// Int to String
+int x = 42;
+stringstream ss;
+ss << x;
+string s = ss.str();
+
+// String to Int
+string s2 = "100";
+stringstream ss2(s2);
+int y;
+ss2 >> y;
+\end{lstlisting}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{functors-function-objects}{%
+\section{FUNCTORS (Function Objects)}\label{functors-function-objects}}
+
+Classes that overload \passthrough{\lstinline!operator()!}. Used by
+algorithms.
+
+\begin{lstlisting}[language={C++}]
+struct AddX {
+    int x;
+    AddX(int val) : x(val) {}
+    
+    int operator()(int y) const {
+        return x + y;
+    }
+};
+
+// Usage with transform
+vector<int> v(5, 1); // {1, 1, 1, 1, 1}
+transform(v.begin(), v.end(), v.begin(), AddX(10));
+// v is now {11, 11, 11, 11, 11}
+\end{lstlisting}
+
+This covers the foundational C++98 Standard Library components necessary
+for mastery.
+
+\hypertarget{advanced-strings}{%
+\chapter{ADVANCED STRINGS}\label{advanced-strings}}
+
+\hypertarget{string-manipulation}{%
+\section{5.1 String Manipulation}\label{string-manipulation}}
+
+\begin{lstlisting}[language={C++}]
+#include <iostream>
+#include <string>
+#include <cstring>
+using namespace std;
+
+int main() {
+    string s = "Hello World";
+    
+    // Length and capacity
+    cout << "Length: " << s.length() << endl;
+    cout << "Capacity: " << s.capacity() << endl;
+    
+    // Access characters
+    cout << "First char: " << s[0] << endl;
+    cout << "Last char: " << s[s.length() - 1] << endl;
+    
+    // Finding substrings
+    size_t pos = s.find("World");
+    if (pos != string::npos) {
+        cout << "Found at position: " << pos << endl;
+    }
+    
+    // Replace
+    s.replace(6, 5, "C++");
+    cout << s << endl;  // Hello C++
+    
+    // Insert
+    s.insert(5, " there");
+    cout << s << endl;  // Hello there C++
+    
+    // Erase
+    s.erase(5, 6);
+    cout << s << endl;  // Hello C++
+    
+    // Substring
+    cout << s.substr(0, 5) << endl;  // Hello
+    
+    // Reverse
+    reverse(s.begin(), s.end());
+    cout << s << endl;  // ++C olleH
+    
+    return 0;
+}
+\end{lstlisting}
+
+\hypertarget{string-conversion}{%
+\section{5.2 String Conversion}\label{string-conversion}}
+
+\begin{lstlisting}[language={C++}]
+#include <iostream>
+#include <string>
+#include <sstream>
+#include <cstdlib>
+using namespace std;
+
+int main() {
+    // String to number (C style)
+    string s1 = "42";
+    int num = atoi(s1.c_str());
+    cout << num << endl;
+    
+    string s2 = "3.14";
+    double dbl = atof(s2.c_str());
+    cout << dbl << endl;
+    
+    // Number to string (using stringstream)
+    stringstream ss;
+    ss << 42 << " " << 3.14 << " " << true;
+    string result = ss.str();
+    cout << result << endl;  // 42 3.14 1
+    
+    // Reverse conversion
+    stringstream ss2("100 200 300");
+    int a, b, c;
+    ss2 >> a >> b >> c;
+    cout << a << " " << b << " " << c << endl;  // 100 200 300
+    
+    return 0;
+}
+\end{lstlisting}
+
+\hypertarget{string-tokenization}{%
+\section{5.3 String Tokenization}\label{string-tokenization}}
+
+\begin{lstlisting}[language={C++}]
+#include <iostream>
+#include <string>
+#include <cstring>
+using namespace std;
+
+int main() {
+    string line = "apple,banana,orange,grape";
+    
+    // Using stringstream and getline
+    stringstream ss(line);
+    string token;
+    
+    while (getline(ss, token, ',')) {
+        cout << token << endl;
+    }
+    // Output: apple, banana, orange, grape
+    
+    // Using strtok (C style)
+    char str[] = "hello world how are you";
+    char* ptr = strtok(str, " ");
+    
+    while (ptr != NULL) {
+        cout << ptr << endl;
+        ptr = strtok(NULL, " ");
+    }
+    // Output: hello, world, how, are, you
+    
+    return 0;
+}
+\end{lstlisting}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{file-io-advanced}{%
+\chapter{FILE I/O ADVANCED}\label{file-io-advanced}}
+
+\hypertarget{binary-file-io}{%
+\section{14.1 Binary File I/O}\label{binary-file-io}}
+
+\begin{lstlisting}[language={C++}]
+#include <iostream>
+#include <fstream>
+using namespace std;
+
+int main() {
+    // Write binary data
+    ofstream outfile("data.bin", ios::binary);
+    
+    int numbers[] = {10, 20, 30, 40, 50};
+    outfile.write((char*)numbers, sizeof(numbers));
+    outfile.close();
+    
+    // Read binary data
+    ifstream infile("data.bin", ios::binary);
+    
+    int buffer[5];
+    infile.read((char*)buffer, sizeof(buffer));
+    
+    for (int i = 0; i < 5; i++) {
+        cout << buffer[i] << " ";
+    }
+    cout << endl;
+    
+    infile.close();
+    
+    return 0;
+}
+\end{lstlisting}
+
+\hypertarget{stream-positioning}{%
+\section{14.2 Stream Positioning}\label{stream-positioning}}
+
+\begin{lstlisting}[language={C++}]
+#include <iostream>
+#include <fstream>
+using namespace std;
+
+int main() {
+    // Write to file
+    ofstream outfile("test.txt");
+    outfile << "0123456789";
+    outfile.close();
+    
+    // Read with positioning
+    ifstream infile("test.txt");
+    
+    // Tell position
+    cout << "Current position: " << infile.tellg() << endl;
+    
+    // Seek to position
+    infile.seekg(5);
+    char c;
+    infile.get(c);
+    cout << "Character at position 5: " << c << endl;  // '5'
+    
+    // Seek from end
+    infile.seekg(-3, ios::end);
+    infile.get(c);
+    cout << "Third from end: " << c << endl;  // '7'
+    
+    infile.close();
+    
+    return 0;
+}
+\end{lstlisting}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}

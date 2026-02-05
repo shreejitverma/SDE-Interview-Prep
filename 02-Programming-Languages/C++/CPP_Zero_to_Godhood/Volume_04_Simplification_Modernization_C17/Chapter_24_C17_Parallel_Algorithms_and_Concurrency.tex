@@ -1,0 +1,68 @@
+\hypertarget{c17-parallel-algorithms-concurrency}{%
+\chapter{C++17 PARALLEL ALGORITHMS \&
+CONCURRENCY}\label{c17-parallel-algorithms-concurrency}}
+
+\hypertarget{parallel-algorithms-stdexecution}{%
+\section{\texorpdfstring{1. Parallel Algorithms
+(\texttt{std::execution})}{1. Parallel Algorithms (std::execution)}}\label{parallel-algorithms-stdexecution}}
+
+Standard algorithms (\passthrough{\lstinline!sort!},
+\passthrough{\lstinline!transform!},
+\passthrough{\lstinline!for\_each!}) now accept an execution policy.
+
+\begin{lstlisting}[language={C++}]
+#include <algorithm>
+#include <execution>
+#include <vector>
+
+std::vector<int> v(1'000'000);
+
+// Sequential (default)
+std::sort(std::execution::seq, v.begin(), v.end());
+
+// Parallel (multi-threaded)
+std::sort(std::execution::par, v.begin(), v.end());
+
+// Parallel + Vectorized (SIMD allowed)
+std::sort(std::execution::par_unseq, v.begin(), v.end());
+\end{lstlisting}
+
+\textbf{Note:} \passthrough{\lstinline!par\_unseq!} allows interleaving
+of instructions, so user code must be vector-safe (no mutexes, no
+allocations).
+
+\hypertarget{stdscoped_lock}{%
+\section{\texorpdfstring{2.
+\texttt{std::scoped\_lock}}{2. std::scoped\_lock}}\label{stdscoped_lock}}
+
+Multi-lock RAII wrapper. Prevents deadlocks by locking multiple mutexes
+safely (using a deadlock-avoidance algorithm).
+
+\begin{lstlisting}[language={C++}]
+std::mutex m1, m2;
+
+void swap_data() {
+    // Locks both m1 and m2 atomically
+    std::scoped_lock lock(m1, m2); 
+    // ...
+}
+\end{lstlisting}
+
+\hypertarget{stdshared_mutex}{%
+\section{\texorpdfstring{3.
+\texttt{std::shared\_mutex}}{3. std::shared\_mutex}}\label{stdshared_mutex}}
+
+Standard reader-writer lock (was
+\passthrough{\lstinline!shared\_timed\_mutex!} in C++14).
+
+\begin{lstlisting}[language={C++}]
+#include <shared_mutex>
+
+std::shared_mutex smtx;
+
+// Writer
+std::unique_lock lock(smtx);
+
+// Reader
+std::shared_lock lock(smtx);
+\end{lstlisting}

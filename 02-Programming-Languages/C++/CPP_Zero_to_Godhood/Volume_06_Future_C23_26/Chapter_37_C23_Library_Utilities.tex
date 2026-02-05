@@ -1,0 +1,70 @@
+\hypertarget{c23-library-utilities}{%
+\chapter{C++23 LIBRARY UTILITIES}\label{c23-library-utilities}}
+
+\hypertarget{stdunreachable}{%
+\section{\texorpdfstring{1.
+\texttt{std::unreachable}}{1. std::unreachable}}\label{stdunreachable}}
+
+Marks code as unreachable. If executed, Undefined Behavior (allows
+optimization).
+
+\begin{lstlisting}[language={C++}]
+#include <utility>
+
+enum Color { Red, Green };
+
+int get_value(Color c) {
+    switch (c) {
+        case Red: return 1;
+        case Green: return 2;
+    }
+    std::unreachable();
+}
+\end{lstlisting}
+
+\hypertarget{stdto_underlying}{%
+\section{\texorpdfstring{2.
+\texttt{std::to\_underlying}}{2. std::to\_underlying}}\label{stdto_underlying}}
+
+Safely cast an \passthrough{\lstinline!enum class!} to its underlying
+integer type.
+
+\begin{lstlisting}[language={C++}]
+enum class Flags : unsigned char { A = 1 };
+auto val = std::to_underlying(Flags::A); // unsigned char
+\end{lstlisting}
+
+\hypertarget{stdbyteswap}{%
+\section{\texorpdfstring{3.
+\texttt{std::byteswap}}{3. std::byteswap}}\label{stdbyteswap}}
+
+Endianness reversal.
+
+\begin{lstlisting}[language={C++}]
+#include <bit>
+uint32_t x = 0x12345678;
+uint32_t y = std::byteswap(x); // 0x78563412
+\end{lstlisting}
+
+\hypertarget{stdstdatomic.h}{%
+\section{\texorpdfstring{4.
+\texttt{std::stdatomic.h}}{4. std::stdatomic.h}}\label{stdstdatomic.h}}
+
+C compatibility header for atomics.
+
+\hypertarget{stdmove_only_function}{%
+\section{\texorpdfstring{5.
+\texttt{std::move\_only\_function}}{5. std::move\_only\_function}}\label{stdmove_only_function}}
+
+A replacement for \passthrough{\lstinline!std::function!} that works
+with move-only callables (like lambdas capturing
+\passthrough{\lstinline!unique\_ptr!}).
+
+\begin{lstlisting}[language={C++}]
+#include <functional>
+
+std::move_only_function<void()> f;
+auto ptr = std::make_unique<int>(42);
+
+f = [p = std::move(ptr)]() { /*...*/ }; // OK (std::function would fail)
+\end{lstlisting}
