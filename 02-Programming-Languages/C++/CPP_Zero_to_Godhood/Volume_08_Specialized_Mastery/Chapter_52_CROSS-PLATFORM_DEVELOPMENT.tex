@@ -1,0 +1,42 @@
+\hypertarget{cross-platform-development}{%
+\chapter{CROSS-PLATFORM DEVELOPMENT}\label{cross-platform-development}}
+
+Write once, run everywhere (Desktop, Web, Mobile).
+
+\hypertarget{webassembly-wasm-with-emscripten}{%
+\subsection{21.1 WebAssembly (Wasm) with
+Emscripten}\label{webassembly-wasm-with-emscripten}}
+
+Compiling C++ to run in the browser.
+
+\begin{lstlisting}[language=bash]
+emcc main.cpp -o index.html -s WASM=1
+\end{lstlisting}
+
+\begin{lstlisting}[language={C++}]
+#include <emscripten/emscripten.h>
+
+extern "C" {
+    EMSCRIPTEN_KEEPALIVE
+    int add(int a, int b) {
+        return a + b; // callable from JavaScript
+    }
+}
+\end{lstlisting}
+
+\hypertarget{mobile-c-android-ndk-jni}{%
+\subsection{21.2 Mobile C++ (Android NDK \&
+JNI)}\label{mobile-c-android-ndk-jni}}
+
+Integrating C++ with Java/Kotlin.
+
+\begin{lstlisting}[language={C++}]
+#include <jni.h>
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_example_myapp_MainActivity_stringFromJNI(JNIEnv* env, jobject /* this */) {
+    return env->NewStringUTF("Hello from C++");
+}
+\end{lstlisting}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}

@@ -253,38 +253,38 @@ def create_master_tex(chapters):
                 master_content += r"\part{Volume I: C++98/03 - The Foundation}" + "\n"
                 current_volume = 1
             
-            # Volume II: C++11 (Chapters 22-23)
+            # Volume II: C++11 (Chapters 22-28)
             elif chap_num == 22 and current_volume < 2:
                 master_content += r"\part{Volume II: C++11 - The Modern Revolution}" + "\n"
                 current_volume = 2
                 
-            # Volume III: C++14 (Chapter 24)
-            elif chap_num == 24 and current_volume < 3:
+            # Volume III: C++14 (Chapter 29)
+            elif chap_num == 29 and current_volume < 3:
                 master_content += r"\part{Volume III: C++14 - Refinement \& Generics}" + "\n"
                 current_volume = 3
                 
-            # Volume IV: C++17 (Chapter 25)
-            elif chap_num == 25 and current_volume < 4:
+            # Volume IV: C++17 (Chapter 30)
+            elif chap_num == 30 and current_volume < 4:
                 master_content += r"\part{Volume IV: C++17 - Simplification \& Modernization}" + "\n"
                 current_volume = 4
                 
-            # Volume V: C++20 (Chapter 26)
-            elif chap_num == 26 and current_volume < 5:
+            # Volume V: C++20 (Chapter 31)
+            elif chap_num == 31 and current_volume < 5:
                 master_content += r"\part{Volume V: C++20 - The Gigantic Leap}" + "\n"
                 current_volume = 5
                 
-            # Volume VI: C++23/26 (Chapters 27-28)
-            elif chap_num == 27 and current_volume < 6:
+            # Volume VI: C++23/26 (Chapters 32-33)
+            elif chap_num == 32 and current_volume < 6:
                 master_content += r"\part{Volume VI: C++23/26 - The Future}" + "\n"
                 current_volume = 6
                 
-            # Volume VII: Advanced Systems (Chapters 29-43)
-            elif chap_num == 29 and current_volume < 7:
+            # Volume VII: Advanced Systems (Chapters 34-48)
+            elif chap_num == 34 and current_volume < 7:
                 master_content += r"\part{Volume VII: Advanced Topics \& Systems Architecture}" + "\n"
                 current_volume = 7
                 
-            # Volume VIII: Specialized Domains (Chapters 44+)
-            elif chap_num == 44 and current_volume < 8:
+            # Volume VIII: Specialized Domains (Chapters 49+)
+            elif chap_num == 49 and current_volume < 8:
                 master_content += r"\part{Volume VIII: Specialized Domains \& Expert Mastery}" + "\n"
                 current_volume = 8
 

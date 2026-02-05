@@ -1,0 +1,114 @@
+\hypertarget{appendix-e-c-interview-cheat-sheet}{%
+\chapter{Appendix E: C++ Interview Cheat
+Sheet}\label{appendix-e-c-interview-cheat-sheet}}
+
+\hypertarget{core-concepts}{%
+\subsection{Core Concepts}\label{core-concepts}}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  \textbf{Virtual Functions}: Enable runtime polymorphism via
+  vtable/vptr. Destructors must be virtual in base classes.
+\item
+  \textbf{Smart Pointers}:
+
+  \begin{itemize}
+  \tightlist
+  \item
+    \passthrough{\lstinline!unique\_ptr!}: Exclusive ownership, no
+    overhead.
+  \item
+    \passthrough{\lstinline!shared\_ptr!}: Shared ownership, ref-counted
+    (atomic), control block overhead.
+  \item
+    \passthrough{\lstinline!weak\_ptr!}: Non-owning reference to
+    \passthrough{\lstinline!shared\_ptr!} (breaks cycles).
+  \end{itemize}
+\item
+  \textbf{Move Semantics}: Transfers resources (pointers) instead of
+  deep copying. Enabled by rvalue references
+  (\passthrough{\lstinline!\&\&!}) and
+  \passthrough{\lstinline!std::move!}.
+\item
+  \textbf{RAII}: Resource Acquisition Is Initialization. Constructor
+  acquires, destructor releases. Core to C++ safety.
+\item
+  \textbf{Cast Types}:
+
+  \begin{itemize}
+  \tightlist
+  \item
+    \passthrough{\lstinline!static\_cast!}: Compile-time safe
+    conversions.
+  \item
+    \passthrough{\lstinline!dynamic\_cast!}: Runtime checked downcasting
+    (requires RTTI).
+  \item
+    \passthrough{\lstinline!reinterpret\_cast!}: Bitwise
+    reinterpretation (unsafe).
+  \item
+    \passthrough{\lstinline!const\_cast!}: Remove/add constness.
+  \end{itemize}
+\end{enumerate}
+
+\hypertarget{modern-c-c11141720}{%
+\subsection{Modern C++ (C++11/14/17/20)}\label{modern-c-c11141720}}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  \textbf{Lambdas}: Anonymous function objects. Capture
+  \passthrough{\lstinline![=]!}, \passthrough{\lstinline![\&]!}, or
+  move-only \passthrough{\lstinline![x = std::move(y)]!}.
+\item
+  \textbf{Auto}: Type deduction. Always initialize.
+\item
+  \textbf{Structured Bindings (C++17)}:
+  \passthrough{\lstinline!auto [x, y] = pair;!}
+\item
+  \textbf{Concepts (C++20)}: Constrain templates for better
+  errors/readability.
+\item
+  \textbf{Coroutines (C++20)}: Functions that can suspend/resume.
+\end{enumerate}
+
+\hypertarget{system-design-questions}{%
+\subsection{System Design Questions}\label{system-design-questions}}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  \textbf{Vector vs List}: Vector (contiguous, cache-friendly) is almost
+  always better than List (node-based, cache misses) unless aggressive
+  splicing is needed.
+\item
+  \textbf{Map vs Unordered Map}: Map (BST, O(log n), sorted) vs
+  Unordered Map (Hash Table, O(1) avg, unsorted).
+\item
+  \textbf{Handling 1M connections}: Use non-blocking I/O (epoll/kqueue)
+  or \passthrough{\lstinline!io\_uring!}, not one thread per connection.
+\item
+  \textbf{Memory Layout}: Stack (local vars) vs Heap (dynamic) vs Data
+  (globals) vs Text (code).
+\end{enumerate}
+
+\hypertarget{quick-coding}{%
+\subsection{Quick Coding}\label{quick-coding}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Implement Singleton}: Use static local variable (Thread-safe
+  in C++11+).
+\item
+  \textbf{Implement String Class}: Handle deep copy, move semantics, and
+  destructor.
+\item
+  \textbf{Reverse Linked List}: Classic pointer manipulation.
+\end{itemize}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
