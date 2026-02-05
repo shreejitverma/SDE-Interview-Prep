@@ -1,0 +1,172 @@
+\documentclass[11pt, a4paper, openany]{book}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{hyperref}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{graphicx}
+\usepackage{geometry}
+\usepackage{longtable}
+\usepackage{booktabs}
+\usepackage{amssymb}
+\usepackage{fancyhdr}
+
+% Page Layout
+\geometry{margin=1in}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[LE,RO]{\thepage}
+\fancyhead[RE]{\leftmark}
+\fancyhead[LO]{\rightmark}
+
+% Colors for code
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.96,0.96,0.96}
+\definecolor{techblue}{rgb}{0.0, 0.2, 0.6}
+
+% Hyperlink styling
+\hypersetup{
+    colorlinks=true,
+    linkcolor=techblue,
+    filecolor=magenta,      
+    urlcolor=cyan,
+    pdftitle={C++ Zero to Godhood},
+    pdfauthor={Community Guide},
+}
+
+% Code Listing Style
+\lstdefinestyle{mystyle}{
+    backgroundcolor=\color{backcolour},   
+    commentstyle=\color{codegreen},
+    keywordstyle=\color{magenta},
+    numberstyle=\tiny\color{codegray},
+    stringstyle=\color{codepurple},
+    basicstyle=\ttfamily\footnotesize,
+    breakatwhitespace=false,         
+    breaklines=true,                 
+    captionpos=b,                    
+    keepspaces=true,                 
+    numbers=left,                    
+    numbersep=5pt,                  
+    showspaces=false,                
+    showstringspaces=false,
+    showtabs=false,                  
+    tabsize=2,
+    frame=single,
+    rulecolor=\color{codegray},
+    literate={│}{|}1 {─}{-}1 {┌}{+}1 {┐}{+}1 {└}{+}1 {┘}{+}1 {├}{+}1 {┤}{+}1 {┬}{+}1 {┴}{+}1 {┼}{+}1
+}
+\lstset{style=mystyle}
+
+% Fix for longtable width
+\setlength{\LTleft}{0pt}
+\setlength{\LTright}{0pt}
+
+\title{
+    \vspace*{2cm}
+    \Huge \textbf{C++ Zero to Godhood} \\
+    \vspace{0.5cm}
+    \LARGE The Definitive Guide from C++98 to C++26 \\
+    \vspace{2cm}
+    \textbf{\Large Master the Beast.}
+}
+\author{\Large Community Edition}
+\date{\today}
+
+\begin{document}
+
+\frontmatter
+\maketitle
+\tableofcontents
+
+\mainmatter
+\input{00_Preface.tex}
+\part{Volume I: C++98/03 - The Foundation}
+\input{Chapter_1_ABSOLUTE_BASICS_C98.tex}
+\input{Chapter_2_ADVANCED_POINTERS__MEMORY.tex}
+\input{Chapter_3_ADVANCED_FUNCTIONS.tex}
+\input{Chapter_4_FUNCTION_POINTERS__CALLBACKS.tex}
+\input{Chapter_5_ADVANCED_ARRAYS.tex}
+\input{Chapter_6_ADVANCED_STRINGS.tex}
+\input{Chapter_7_BITWISE_OPERATIONS.tex}
+\input{Chapter_8_PREPROCESSOR_DIRECTIVES.tex}
+\input{Chapter_9_TYPE_CASTING.tex}
+\input{Chapter_10_ADVANCED_CONTROL_FLOW.tex}
+\input{Chapter_11_ENUMERATION__UNIONS.tex}
+\input{Chapter_12_CONST__VOLATILE.tex}
+\input{Chapter_13_INLINE_FUNCTIONS__MACROS.tex}
+\input{Chapter_14_NAMESPACES.tex}
+\input{Chapter_15_FILE_IO_ADVANCED.tex}
+\input{Chapter_16_ERROR_HANDLING__DEBUGGING.tex}
+\input{Chapter_17_THE_C_COMPILATION__EXECUTION_MODEL.tex}
+\input{Chapter_18_OBJECT-ORIENTED_PROGRAMMING_FUNDAMENTALS.tex}
+\input{Chapter_19_DEEP_OBJECT_MODEL__VIRTUALIZATION.tex}
+\input{Chapter_20_C9803_STANDARD_LIBRARY.tex}
+\input{Chapter_21_STL_INTERNALS_DEEP_DIVE.tex}
+\part{Volume II: C++11 - The Modern Revolution}
+\input{Chapter_22_C11_REVOLUTION.tex}
+\input{Chapter_23_ADVANCED_MOVE_SEMANTICS__VALUE_CATEGORIES.tex}
+\part{Volume III: C++14 - Refinement \& Generics}
+\input{Chapter_24_C14_ENHANCEMENTS.tex}
+\part{Volume IV: C++17 - Simplification \& Modernization}
+\input{Chapter_25_C17_MODERN_FEATURES.tex}
+\part{Volume V: C++20 - The Gigantic Leap}
+\input{Chapter_26_C20_REVOLUTIONARY_FEATURES.tex}
+\part{Volume VI: C++23/26 - The Future}
+\input{Chapter_27_C23_LATEST_FEATURES.tex}
+\input{Chapter_28_THE_FUTURE_-_C26_PREVIEW.tex}
+\part{Volume VII: Advanced Topics \& Systems Architecture}
+\input{Chapter_29_ADVANCED_TOPICS.tex}
+\input{Chapter_30_PRODUCTION__PROFESSIONAL.tex}
+\input{Chapter_31_SYSTEM_DESIGN_CASE_STUDIES_C_EDITION.tex}
+\input{Chapter_32_CONCURRENCY_DESIGN_PATTERNS.tex}
+\input{Chapter_33_THE_C_BUILD_ECOSYSTEM_MASTERY.tex}
+\input{Chapter_34_LOW-LATENCY_C_OPTIMIZATION.tex}
+\input{Chapter_35_LOW-LATENCY_SYSTEM_ARCHITECTURE.tex}
+\input{Chapter_36_EXTREME_LOW_LATENCY__HARDWARE_MASTERY.tex}
+\input{Chapter_37_ADVANCED_SIMD_AVX2__AVX-512.tex}
+\input{Chapter_38_CUSTOM_MEMORY_ALLOCATORS.tex}
+\input{Appendix_A_Appendix_A_C_Keywords__Operators_Reference.tex}
+\input{Appendix_B_Appendix_B_Common_Acronyms.tex}
+\input{Appendix_C_Appendix_C_Recommended_Tooling.tex}
+\input{Appendix_D_Appendix_D_Common_C_Traps__Pitfalls.tex}
+\input{Appendix_H_Appendix_H_Professional_C_Idioms.tex}
+\input{Appendix_E_Appendix_E_C_Interview_Cheat_Sheet.tex}
+\input{Appendix_F_Appendix_F_The_C_Standard_Evolution_Matrix.tex}
+\input{Appendix_G_Appendix_G_C_Standard_Library_Headers_Reference.tex}
+\input{Chapter_39_C_UNDER_THE_HOOD.tex}
+\input{Chapter_40_MASTERING_THE_MEMORY_MODEL.tex}
+\input{Chapter_41_WRITING_A_C_COMPILER_BASICS.tex}
+\input{Chapter_42_WRITING_A_GARBAGE_COLLECTOR.tex}
+\input{Chapter_43_THE_STANDARD_LIBRARY_FROM_SCRATCH.tex}
+\part{Volume VIII: Specialized Domains \& Expert Mastery}
+\input{Chapter_44_DISTRIBUTED_C.tex}
+\input{Chapter_45_NETWORKING_FROM_SCRATCH.tex}
+\input{Chapter_46_C_IN_THE_CLOUD.tex}
+\input{Chapter_47_CROSS-PLATFORM_DEVELOPMENT.tex}
+\input{Chapter_48_GUI_DEVELOPMENT_WITH_C.tex}
+\input{Chapter_49_SCIENTIFIC_COMPUTING__GPU.tex}
+\input{Chapter_50_INTEROPERABILITY.tex}
+\input{Chapter_51_SECURITY_ENGINEERING.tex}
+\input{Chapter_52_SPECIALIZED_DOMAINS.tex}
+\input{Chapter_53_ABA_PROBLEM__MEMORY_RECLAMATION.tex}
+\input{Chapter_54_TEMPLATE_METAPROGRAMMING_PATTERNS.tex}
+\input{Chapter_55_HIGH-PERFORMANCE_DATA_STRUCTURES.tex}
+\input{Chapter_56_REAL-TIME_AUDIO__SIGNAL_PROCESSING.tex}
+\input{Chapter_57_ROBOTICS__ROS2_DEVELOPMENT.tex}
+\input{Chapter_58_MACHINE_LEARNING_INFRASTRUCTURE.tex}
+\input{Chapter_59_DATABASE_INTERNALS_LSM_TREES.tex}
+\input{Chapter_60_THE_ULTIMATE_ALGORITHM_REFERENCE.tex}
+\input{Chapter_61_CAPSTONE_PROJECT_-_HIGH-PERFORMANCE_ORDER_BOOK.tex}
+\input{Appendix_A_Appendix_A_C_Keywords__Operators_Reference.tex}
+\input{Appendix_B_Appendix_B_Common_Acronyms.tex}
+\input{Appendix_C_Appendix_C_Recommended_Tooling.tex}
+\input{Appendix_D_Appendix_D_Common_C_Traps__Pitfalls.tex}
+\input{Appendix_H_Appendix_H_Professional_C_Idioms.tex}
+\input{Appendix_E_Appendix_E_C_Interview_Cheat_Sheet.tex}
+\input{Appendix_F_Appendix_F_The_C_Standard_Evolution_Matrix.tex}
+\input{Appendix_G_Appendix_G_C_Standard_Library_Headers_Reference.tex}
+\end{document}

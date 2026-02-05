@@ -1,0 +1,75 @@
+# BITWISE OPERATIONS
+
+
+## 6.1 Bitwise Operators
+
+```cpp
+#include <iostream>
+using namespace std;
+
+int main() {
+    unsigned char a = 5;   // 0101
+    unsigned char b = 3;   // 0011
+    
+    // AND
+    cout << (a & b) << endl;  // 0001 = 1
+    
+    // OR
+    cout << (a | b) << endl;  // 0111 = 7
+    
+    // XOR
+    cout << (a ^ b) << endl;  // 0110 = 6
+    
+    // NOT (bitwise complement)
+    cout << (~a) << endl;     // 1010 = 250 (for unsigned char)
+    
+    // Left shift
+    cout << (a << 1) << endl; // 1010 = 10
+    
+    // Right shift
+    cout << (b >> 1) << endl; // 0001 = 1
+    
+    return 0;
+}
+```
+
+## 6.2 Bit Manipulation Techniques
+
+```cpp
+#include <iostream>
+using namespace std;
+
+int main() {
+    unsigned int num = 5;  // 0101
+    
+    // Check if bit is set
+    int bit_pos = 2;
+    bool is_set = (num >> bit_pos) & 1;
+    cout << "Bit " << bit_pos << " is: " << is_set << endl;
+    
+    // Set a bit
+    num |= (1 << 1);  // Set bit 1
+    cout << "After setting bit 1: " << num << endl;  // 7 (0111)
+    
+    // Clear a bit
+    num &= ~(1 << 1);  // Clear bit 1
+    cout << "After clearing bit 1: " << num << endl;  // 5 (0101)
+    
+    // Toggle a bit
+    num ^= (1 << 0);  // Toggle bit 0
+    cout << "After toggling bit 0: " << num << endl;  // 4 (0100)
+    
+    // Count set bits
+    unsigned int count = 0;
+    unsigned int temp = num;
+    while (temp) {
+        count += temp & 1;
+        temp >>= 1;
+    }
+    cout << "Number of set bits: " << count << endl;
+    
+    return 0;
+}
+```
+
+---
