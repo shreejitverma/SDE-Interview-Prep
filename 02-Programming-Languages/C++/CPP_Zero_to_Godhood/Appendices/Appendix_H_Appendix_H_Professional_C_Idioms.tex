@@ -1,0 +1,116 @@
+\hypertarget{appendix-h-professional-c-idioms}{%
+\chapter{Appendix H: Professional C++
+Idioms}\label{appendix-h-professional-c-idioms}}
+
+\hypertarget{raii-resource-acquisition-is-initialization}{%
+\subsection{1. RAII (Resource Acquisition Is
+Initialization)}\label{raii-resource-acquisition-is-initialization}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Concept}: Bind resource lifecycle to object lifecycle.
+  Constructor acquires, destructor releases.
+\item
+  \textbf{Use Case}: Memory, file handles, mutex locks, sockets.
+\item
+  \textbf{Example}: \passthrough{\lstinline!std::lock\_guard!},
+  \passthrough{\lstinline!std::unique\_ptr!}.
+\end{itemize}
+
+\hypertarget{pimpl-pointer-to-implementation}{%
+\subsection{2. Pimpl (Pointer to
+Implementation)}\label{pimpl-pointer-to-implementation}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Concept}: Hide private members in a separate class/struct,
+  accessed via a pointer.
+\item
+  \textbf{Benefit}: ABI stability, reduced compilation times (header
+  dependency changes don't trigger rebuilds of clients).
+\item
+  \textbf{Pattern}:
+  \passthrough{\lstinline!cpp     class Widget \{         struct Impl;         std::unique\_ptr<Impl> pImpl;     public:         Widget();         \~Widget(); // Defined in .cpp where Impl is visible     \};!}
+\end{itemize}
+
+\hypertarget{copy-and-swap}{%
+\subsection{3. Copy-and-Swap}\label{copy-and-swap}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Concept}: Implement assignment operator in terms of copy
+  constructor and swap.
+\item
+  \textbf{Benefit}: Strong Exception Safety guarantee; removes code
+  duplication.
+\item
+  \textbf{Pattern}:
+  \passthrough{\lstinline!cpp     T\& operator=(T other) \{ // Pass by value (copy)         swap(*this, other);         return *this;     \}!}
+\end{itemize}
+
+\hypertarget{nvi-non-virtual-interface}{%
+\subsection{4. NVI (Non-Virtual
+Interface)}\label{nvi-non-virtual-interface}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Concept}: Public interface is non-virtual; virtual functions
+  are private/protected.
+\item
+  \textbf{Benefit}: Separation of interface (pre/post-conditions) from
+  implementation.
+\item
+  \textbf{Pattern}:
+  \passthrough{\lstinline!cpp     class Base \{     public:         void doWork() \{             // Pre-condition logic             doWorkImpl();             // Post-condition logic         \}     private:         virtual void doWorkImpl() = 0;     \};!}
+\end{itemize}
+
+\hypertarget{erase-remove-idiom}{%
+\subsection{5. Erase-Remove Idiom}\label{erase-remove-idiom}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Concept}: Standard way to remove elements from a
+  \passthrough{\lstinline!std::vector!} (before C++20
+  \passthrough{\lstinline!std::erase!}).
+\item
+  \textbf{Pattern}:
+  \passthrough{\lstinline!v.erase(std::remove(v.begin(), v.end(), value), v.end());!}
+\end{itemize}
+
+\hypertarget{sfinae-substitution-failure-is-not-an-error}{%
+\subsection{6. SFINAE (Substitution Failure Is Not An
+Error)}\label{sfinae-substitution-failure-is-not-an-error}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Concept}: Remove functions from overload resolution set if
+  types don't match constraints.
+\item
+  \textbf{Modern Replacement}: C++20 Concepts
+  (\passthrough{\lstinline!requires!}).
+\end{itemize}
+
+\hypertarget{crtp-curiously-recurring-template-pattern}{%
+\subsection{7. CRTP (Curiously Recurring Template
+Pattern)}\label{crtp-curiously-recurring-template-pattern}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Concept}: Class \passthrough{\lstinline!Derived!} inherits
+  from \passthrough{\lstinline!Base<Derived>!}.
+\item
+  \textbf{Use Case}: Static polymorphism (compile-time), adding
+  functionality (mixins) without vtable overhead.
+\item
+  \textbf{Example}:
+  \passthrough{\lstinline!std::enable\_shared\_from\_this!}.
+\end{itemize}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
