@@ -1,0 +1,40 @@
+\hypertarget{real-time-audio-signal-processing}{%
+\chapter{REAL-TIME AUDIO \& SIGNAL
+PROCESSING}\label{real-time-audio-signal-processing}}
+
+\textbf{The Golden Rule:} In the audio callback, thou shalt not: 1.
+\textbf{Block} (No Mutexes). 2. \textbf{Allocate} (No
+\passthrough{\lstinline!malloc!}/\passthrough{\lstinline!new!}). 3.
+\textbf{Perform I/O} (No file reads, no
+\passthrough{\lstinline!printf!}).
+
+\hypertarget{lock-free-ipc-spsc-queue}{%
+\subsection{1. Lock-Free IPC (SPSC
+Queue)}\label{lock-free-ipc-spsc-queue}}
+
+Communication between the UI Thread (writes parameters) and Audio Thread
+(reads parameters) must be wait-free. * \textbf{Structure:}
+Single-Producer Single-Consumer Circular Buffer. * \textbf{Atomic
+Indices:} \passthrough{\lstinline!head!} (write) and
+\passthrough{\lstinline!tail!} (read) are
+\passthrough{\lstinline!std::atomic<size\_t>!}.
+
+\hypertarget{simd-for-dsp}{%
+\subsection{2. SIMD for DSP}\label{simd-for-dsp}}
+
+Digital Signal Processing (Filters, FFT) is purely math-bound. *
+\textbf{Auto-vectorization:} Help the compiler (restrict pointers, fixed
+loop bounds). * \textbf{Intrinsics:} Manually using
+\passthrough{\lstinline!<immintrin.h>!} for AVX-512 processing of 16
+samples per cycle. * \textbf{Biquad Filter:} The workhorse of EQ.
+\passthrough{\lstinline!cpp     // Processing 4 stereo channels (8 floats) at once with AVX     \_\_m256 samples = \_mm256\_load\_ps(input\_ptr);     \_\_m256 result = \_mm256\_add\_ps(\_mm256\_mul\_ps(samples, b0), ...);!}
+
+\hypertarget{double-buffering}{%
+\subsection{3. Double Buffering}\label{double-buffering}}
+
+For spectral analysis (FFT) which requires blocks (e.g., 1024 samples),
+while audio comes in small chunks (e.g., 64 samples). *
+\textbf{Technique:} Fill Buffer A. When full, signal worker thread to
+process A, swap to filling Buffer B.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}

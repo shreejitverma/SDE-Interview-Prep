@@ -1,0 +1,103 @@
+# ADVANCED ARRAYS
+
+
+## 4.1 Dynamic Arrays
+
+```cpp
+#include <iostream>
+using namespace std;
+
+int main() {
+    // 1D dynamic array
+    int size = 5;
+    int* arr = new int[size];
+    
+    for (int i = 0; i < size; i++) {
+        arr[i] = i * 10;
+    }
+    
+    for (int i = 0; i < size; i++) {
+        cout << arr[i] << " ";
+    }
+    cout << endl;
+    
+    delete[] arr;
+    arr = NULL;
+    
+    // 2D dynamic array
+    int rows = 3, cols = 4;
+    int** matrix = new int*[rows];
+    for (int i = 0; i < rows; i++) {
+        matrix[i] = new int[cols];
+    }
+    
+    // Fill matrix
+    for (int i = 0; i < rows; i++) {
+        for (int j = 0; j < cols; j++) {
+            matrix[i][j] = i * cols + j;
+        }
+    }
+    
+    // Delete matrix
+    for (int i = 0; i < rows; i++) {
+        delete[] matrix[i];
+    }
+    delete[] matrix;
+    
+    return 0;
+}
+```
+
+## 4.2 Variable Length Arrays (Non-standard)
+
+```cpp
+#include <iostream>
+using namespace std;
+
+int main() {
+    int size;
+    cout << "Enter size: ";
+    cin >> size;
+    
+    // VLA - not standard but supported by many compilers
+    int arr[size];  // GCC extension
+    
+    for (int i = 0; i < size; i++) {
+        arr[i] = i;
+    }
+    
+    for (int i = 0; i < size; i++) {
+        cout << arr[i] << " ";
+    }
+    cout << endl;
+    
+    return 0;
+}
+```
+
+## 4.3 Array Bounds & Safety
+
+```cpp
+#include <iostream>
+using namespace std;
+
+int main() {
+    int arr[5] = {10, 20, 30, 40, 50};
+    
+    // No bounds checking in C++
+    cout << arr[0] << endl;   // 10 (OK)
+    cout << arr[10] << endl;  // Undefined behavior!
+    
+    // Manual bounds checking
+    int index = 5;
+    if (index >= 0 && index < 5) {
+        cout << arr[index] << endl;
+    } else {
+        cout << "Index out of bounds" << endl;
+    }
+    
+    return 0;
+}
+```
+
+---

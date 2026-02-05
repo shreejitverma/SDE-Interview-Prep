@@ -1,0 +1,128 @@
+\hypertarget{extreme-low-latency-hardware-mastery}{%
+\chapter{EXTREME LOW LATENCY \& HARDWARE
+MASTERY}\label{extreme-low-latency-hardware-mastery}}
+
+To achieve sub-microsecond latency, you must program the hardware, not
+just the language.
+
+\hypertarget{cpu-architecture-cache-topology}{%
+\subsection{31.1 CPU Architecture \& Cache
+Topology}\label{cpu-architecture-cache-topology}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{L1 Cache}: \textasciitilde32KB, 3-4 cycles. Per core.
+\item
+  \textbf{L2 Cache}: \textasciitilde256KB-1MB, 10-12 cycles. Per core.
+\item
+  \textbf{L3 Cache}: \textasciitilde10MB+, 40-70 cycles. Shared across
+  cores.
+\item
+  \textbf{RAM}: 100+ cycles.
+\end{itemize}
+
+\textbf{Optimization Goal}: Stay in L1/L2. \textbf{Technique}: Minimize
+object size, use contiguous memory (arrays), align data to cache lines
+(64 bytes).
+
+\hypertarget{numa-non-uniform-memory-access}{%
+\subsection{31.2 NUMA (Non-Uniform Memory
+Access)}\label{numa-non-uniform-memory-access}}
+
+On multi-socket servers, accessing RAM attached to another CPU socket is
+slow. * \textbf{Solution}: Pin threads to cores. Allocate memory on the
+local node. * \textbf{Tool}:
+\passthrough{\lstinline!numactl --cpunodebind=0 --membind=0 ./app!}
+
+\hypertarget{compiler-optimizations-the-free-lunch}{%
+\subsection{31.3 Compiler Optimizations (The ``Free
+Lunch'')}\label{compiler-optimizations-the-free-lunch}}
+
+\begin{itemize}
+\tightlist
+\item
+  \passthrough{\lstinline!-O3!}: Aggressive optimization.
+\item
+  \passthrough{\lstinline!-march=native!}: Use instructions available on
+  the build machine (AVX2, AVX-512).
+\item
+  \passthrough{\lstinline!-flto!} (Link Time Optimization): Optimize
+  across translation units (inlining across .cpp files).
+\item
+  \textbf{PGO (Profile Guided Optimization)}:
+
+  \begin{enumerate}
+  \def\labelenumi{\arabic{enumi}.}
+  \tightlist
+  \item
+    Compile with \passthrough{\lstinline!-fprofile-generate!}.
+  \item
+    Run the app (training run).
+  \item
+    Recompile with \passthrough{\lstinline!-fprofile-use!}.
+  \end{enumerate}
+\end{itemize}
+
+\hypertarget{lock-free-stack-implementation-wait-free-push}{%
+\subsection{31.4 Lock-Free Stack Implementation (Wait-Free
+Push)}\label{lock-free-stack-implementation-wait-free-push}}
+
+A classic interview and system component.
+
+\begin{lstlisting}[language={C++}]
+template<typename T>
+struct Node {
+    T data;
+    Node* next;
+    Node(const T& d) : data(d), next(nullptr) {}
+};
+
+template<typename T>
+class LockFreeStack {
+    std::atomic<Node<T>*> head{nullptr};
+
+public:
+    void push(const T& data) {
+        Node<T>* new_node = new Node<T>(data);
+        new_node->next = head.load(std::memory_order_relaxed);
+        
+        // CAS Loop
+        while (!head.compare_exchange_weak(
+            new_node->next, 
+            new_node,
+            std::memory_order_release, 
+            std::memory_order_relaxed));
+    }
+
+    bool pop(T& result) {
+        Node<T>* old_head = head.load(std::memory_order_acquire);
+        
+        while (old_head && !head.compare_exchange_weak(
+            old_head,
+            old_head->next,
+            std::memory_order_acquire,
+            std::memory_order_relaxed));
+            
+        if (!old_head) return false;
+        
+        result = old_head->data;
+        // Note: Deletion in lock-free requires Hazard Pointers or RCU!
+        // Leaking here for simplicity of example.
+        return true;
+    }
+};
+\end{lstlisting}
+
+\hypertarget{measurable-performance-targets}{%
+\subsection{31.5 Measurable Performance
+Targets}\label{measurable-performance-targets}}
+
+Define Service Level Objectives (SLOs) in percentiles. * \textbf{p50
+(Median)}: Typical case. * \textbf{p99}: The ``slow'' case (1 in 100). *
+\textbf{p99.9}: The tail latency (1 in 1000). Crucial for HFT.
+
+\textbf{Example Target}: ``Order processing must have p99 latency
+\textless{} 5 microseconds.''
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
