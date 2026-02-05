@@ -1,0 +1,101 @@
+\hypertarget{mastering-the-memory-model}{%
+\chapter{MASTERING THE MEMORY MODEL}\label{mastering-the-memory-model}}
+
+The C++ Memory Model defines how threads interact through memory.
+
+\hypertarget{atomicity-vs-ordering}{%
+\subsection{15.1 Atomicity vs Ordering}\label{atomicity-vs-ordering}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Atomicity}: An operation is indivisible (all or nothing).
+\item
+  \textbf{Ordering}: The order in which operations are observed by other
+  threads.
+\end{itemize}
+
+\passthrough{\lstinline!std::atomic<int>!} guarantees atomicity, but
+\passthrough{\lstinline!memory\_order!} controls ordering.
+
+\hypertarget{memory-orders-deep-dive}{%
+\subsection{15.2 Memory Orders Deep
+Dive}\label{memory-orders-deep-dive}}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  \textbf{\passthrough{\lstinline!memory\_order\_relaxed!}}: No ordering
+  constraints. Only atomicity.
+
+  \begin{itemize}
+  \tightlist
+  \item
+    Use for: Incrementing stats counters.
+  \end{itemize}
+
+\begin{lstlisting}[language={C++}]
+cnt.fetch_add(1, std::memory_order_relaxed);
+\end{lstlisting}
+\item
+  \textbf{\passthrough{\lstinline!memory\_order\_acquire!}}: Read
+  operation.
+
+  \begin{itemize}
+  \tightlist
+  \item
+    Guarantee: No reads/writes in the current thread can be reordered
+    \emph{before} this load.
+  \item
+    Use with: Release.
+  \end{itemize}
+\item
+  \textbf{\passthrough{\lstinline!memory\_order\_release!}}: Write
+  operation.
+
+  \begin{itemize}
+  \tightlist
+  \item
+    Guarantee: No reads/writes in the current thread can be reordered
+    \emph{after} this store.
+  \item
+    Use for: Publishing data.
+  \end{itemize}
+\item
+  \textbf{\passthrough{\lstinline!memory\_order\_seq\_cst!}} (Default):
+  Sequentially Consistent.
+
+  \begin{itemize}
+  \tightlist
+  \item
+    Guarantee: A total global ordering exists. Expensive.
+  \end{itemize}
+\end{enumerate}
+
+\hypertarget{the-happens-before-relationship}{%
+\subsection{15.3 The Happens-Before
+Relationship}\label{the-happens-before-relationship}}
+
+If Operation A \emph{happens-before} Operation B: 1. A is sequenced
+before B (same thread). 2. A \emph{synchronizes-with} B (inter-thread,
+e.g., A releases, B acquires).
+
+\textbf{Example: Lock-Free Flag}
+
+\begin{lstlisting}[language={C++}]
+std::atomic<int> data = 0;
+std::atomic<bool> ready = false;
+
+void producer() {
+    data.store(42, std::memory_order_relaxed);
+    ready.store(true, std::memory_order_release); // "Publish"
+}
+
+void consumer() {
+    while (!ready.load(std::memory_order_acquire)); // "Acquire"
+    assert(data.load(std::memory_order_relaxed) == 42); // Guaranteed 42
+}
+\end{lstlisting}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}

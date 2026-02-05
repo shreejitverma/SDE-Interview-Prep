@@ -1,0 +1,86 @@
+\hypertarget{c-under-the-hood}{%
+\chapter{C++ UNDER THE HOOD}\label{c-under-the-hood}}
+
+To truly master C++, you must understand what the compiler generates.
+
+\hypertarget{object-layout-abi-itanium-c-abi}{%
+\subsection{14.1 Object Layout \& ABI (Itanium C++
+ABI)}\label{object-layout-abi-itanium-c-abi}}
+
+How does \passthrough{\lstinline!virtual!} work?
+
+\begin{lstlisting}[language={C++}]
+class Base {
+    int64_t id;
+public:
+    virtual void func() {}
+};
+
+class Derived : public Base {
+    int64_t data;
+public:
+    void func() override {}
+};
+\end{lstlisting}
+
+\textbf{Memory Layout (64-bit system):}
+
+\begin{lstlisting}
+[ vptr (8 bytes) ] -> [ vtable for Base ]
+[ id   (8 bytes) ]
+\end{lstlisting}
+
+For \passthrough{\lstinline!Derived!}:
+
+\begin{lstlisting}
+[ vptr (8 bytes) ] -> [ vtable for Derived ]
+[ id   (8 bytes) ]
+[ data (8 bytes) ]
+\end{lstlisting}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{vptr}: Hidden pointer added to classes with virtual functions.
+\item
+  \textbf{vtable}: Static table of function pointers.
+\item
+  \textbf{Alignment}: Data is padded to align with word boundaries.
+\end{itemize}
+
+\hypertarget{small-string-optimization-sso}{%
+\subsection{14.2 Small String Optimization
+(SSO)}\label{small-string-optimization-sso}}
+
+\passthrough{\lstinline!std::string!} doesn't always allocate heap
+memory.
+
+\begin{lstlisting}[language={C++}]
+std::string s = "Hello"; // 5 chars
+// Layout typically (24-32 bytes):
+// [ size (8) ] [ capacity (8) ] [ pointer (8) ]  <-- Normal mode
+// [ size (1) ] [ ... chars 22 bytes ...     ]  <-- SSO mode (Union)
+\end{lstlisting}
+
+Strings shorter than 15-22 chars (depending on libc++) live entirely on
+the stack.
+
+\hypertarget{return-value-optimization-rvo}{%
+\subsection{14.3 Return Value Optimization
+(RVO)}\label{return-value-optimization-rvo}}
+
+Copy elision is mandatory in C++17.
+
+\begin{lstlisting}[language={C++}]
+struct BigObject { int data[1000]; };
+
+BigObject create() {
+    BigObject obj;
+    // ... fill obj ...
+    return obj; // No copy, no move. Constructed directly in caller's stack frame.
+}
+
+BigObject x = create();
+\end{lstlisting}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}

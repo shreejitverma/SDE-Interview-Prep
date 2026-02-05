@@ -1,0 +1,118 @@
+\hypertarget{advanced-move-semantics-value-categories}{%
+\chapter{ADVANCED MOVE SEMANTICS \& VALUE
+CATEGORIES}\label{advanced-move-semantics-value-categories}}
+
+``Move Semantics'' is often misunderstood. It's not magic; it's type
+casting.
+
+\hypertarget{the-c17-value-category-taxonomy}{%
+\subsection{4.5.1 The C++17 Value Category
+Taxonomy}\label{the-c17-value-category-taxonomy}}
+
+Everything in C++ is an Expression, and every expression has a
+\textbf{Type} and a \textbf{Value Category}.
+
+\begin{lstlisting}
+        Expression
+       /          \
+   glvalue      rvalue
+   /    \      /     \
+lvalue   xvalue   prvalue
+\end{lstlisting}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  \textbf{lvalue (Identity + Movable? No)}: Has a name, persists beyond
+  expression.
+
+  \begin{itemize}
+  \tightlist
+  \item
+    \passthrough{\lstinline!int x; x!} is an lvalue.
+  \item
+    \passthrough{\lstinline!std::string s; s!} is an lvalue.
+  \end{itemize}
+\item
+  \textbf{prvalue (Pure Rvalue)}: No name, temporary, initializes an
+  object.
+
+  \begin{itemize}
+  \tightlist
+  \item
+    \passthrough{\lstinline!10!}, \passthrough{\lstinline!true!},
+    \passthrough{\lstinline!nullptr!}.
+  \item
+    \passthrough{\lstinline!std::string("hello")!} (constructor call).
+  \end{itemize}
+\item
+  \textbf{xvalue (eXpiring Value)}: Has identity, but can be moved from.
+
+  \begin{itemize}
+  \tightlist
+  \item
+    Result of \passthrough{\lstinline!std::move(x)!}.
+  \item
+    Rvalue reference cast
+    \passthrough{\lstinline!static\_cast<T\&\&>(x)!}.
+  \end{itemize}
+\end{enumerate}
+
+\textbf{glvalue} = lvalue + xvalue (Has Identity) \textbf{rvalue} =
+prvalue + xvalue (Can be moved from)
+
+\hypertarget{stdmove-and-stdforward-internals}{%
+\subsection{4.5.2 std::move and std::forward
+Internals}\label{stdmove-and-stdforward-internals}}
+
+\textbf{\passthrough{\lstinline!std::move!}}: Does NOT move. It
+unconditionally casts to rvalue reference.
+
+\begin{lstlisting}[language={C++}]
+template<typename T>
+typename remove_reference<T>::type&& move(T&& t) noexcept {
+    return static_cast<typename remove_reference<T>::type&&>(t);
+}
+\end{lstlisting}
+
+\textbf{\passthrough{\lstinline!std::forward!}}: Conditionally casts to
+rvalue reference \emph{only if} the argument was initialized with an
+rvalue. Used for \textbf{Perfect Forwarding}.
+
+\begin{lstlisting}[language={C++}]
+template<typename T>
+T&& forward(typename remove_reference<T>::type& t) noexcept {
+    return static_cast<T&&>(t);
+}
+\end{lstlisting}
+
+\hypertarget{reference-collapsing-rules}{%
+\subsection{4.5.3 Reference Collapsing
+Rules}\label{reference-collapsing-rules}}
+
+When templates meet references, types collapse:
+
+\begin{itemize}
+\tightlist
+\item
+  \passthrough{\lstinline!T\& \&!} -\textgreater{}
+  \passthrough{\lstinline!T\&!}
+\item
+  \passthrough{\lstinline!T\& \&\&!} -\textgreater{}
+  \passthrough{\lstinline!T\&!}
+\item
+  \passthrough{\lstinline!T\&\& \&!} -\textgreater{}
+  \passthrough{\lstinline!T\&!}
+\item
+  \passthrough{\lstinline!T\&\& \&\&!} -\textgreater{}
+  \passthrough{\lstinline!T\&\&!} (The only way to get an rvalue
+  reference)
+\end{itemize}
+
+This is why \passthrough{\lstinline!T\&\&!} in a template is a
+\textbf{Universal Reference} (Forwarding Reference). It can become
+\passthrough{\lstinline!T\&!} (lvalue) or
+\passthrough{\lstinline!T\&\&!} (rvalue).
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
