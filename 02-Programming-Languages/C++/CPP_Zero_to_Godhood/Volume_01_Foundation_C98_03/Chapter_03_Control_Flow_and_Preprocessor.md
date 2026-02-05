@@ -1,0 +1,237 @@
+# CONTROL FLOW & PREPROCESSOR
+
+
+
+<!-- Merged content from Chapter_10_ADVANCED_CONTROL_FLOW.md -->
+
+# ADVANCED CONTROL FLOW
+
+
+## 9.1 Ternary Operator
+
+```cpp
+#include <iostream>
+using namespace std;
+
+int main() {
+    int x = 10, y = 5;
+    
+    // condition ? true_value : false_value
+    int max = (x > y) ? x : y;
+    cout << "Max: " << max << endl;  // 10
+    
+    // Nested ternary (use with caution)
+    int age = 20;
+    string status = (age < 18) ? "Minor" : (age < 65) ? "Adult" : "Senior";
+    cout << status << endl;
+    
+    // String ternary
+    cout << (x % 2 == 0 ? "Even" : "Odd") << endl;
+    
+    return 0;
+}
+```
+
+## 9.2 goto Statement (Avoid)
+
+```cpp
+#include <iostream>
+using namespace std;
+
+int main() {
+    // goto is generally discouraged
+    int x = 0;
+    
+loop:
+    cout << x << " ";
+    x++;
+    
+    if (x < 5) {
+        goto loop;
+    }
+    cout << endl;
+    
+    // Better alternative: use loops
+    for (int i = 0; i < 5; i++) {
+        cout << i << " ";
+    }
+    cout << endl;
+    
+    return 0;
+}
+```
+
+## 9.3 Label & Goto for Error Handling
+
+```cpp
+#include <iostream>
+#include <cstdlib>
+using namespace std;
+
+int main() {
+    FILE* file = NULL;
+    char* buffer = NULL;
+    
+    // Using goto for cleanup (rare acceptable use)
+    file = fopen("test.txt", "r");
+    if (!file) {
+        cout << "Failed to open file" << endl;
+        goto cleanup;
+    }
+    
+    buffer = new char[100];
+    if (!buffer) {
+        cout << "Memory allocation failed" << endl;
+        goto cleanup;
+    }
+    
+    // Do work...
+    
+cleanup:
+    if (buffer) delete[] buffer;
+    if (file) fclose(file);
+    
+    return 0;
+}
+```
+
+---
+
+
+<!-- Merged content from Chapter_8_PREPROCESSOR_DIRECTIVES.md -->
+
+# PREPROCESSOR DIRECTIVES
+
+
+## 7.1 #define and #include
+
+```cpp
+// Define constants
+#define PI 3.14159
+#define MAX_SIZE 100
+#define SQUARE(x) ((x) * (x))
+
+// Conditional compilation
+#define DEBUG
+
+#ifdef DEBUG
+    #define LOG(msg) cout << msg << endl
+#else
+    #define LOG(msg)  // Do nothing in release
+#endif
+
+#include <iostream>
+using namespace std;
+
+int main() {
+    cout << "PI = " << PI << endl;
+    
+    int arr[MAX_SIZE];
+    cout << "Array size: " << sizeof(arr) << endl;
+    
+    cout << "Square of 5: " << SQUARE(5) << endl;
+    
+    LOG("Debug message");
+    
+    return 0;
+}
+```
+
+## 7.2 Conditional Compilation
+
+```cpp
+#include <iostream>
+using namespace std;
+
+// Platform-specific code
+#ifdef _WIN32
+    #define OS "Windows"
+#elif __APPLE__
+    #define OS "macOS"
+#elif __linux__
+    #define OS "Linux"
+#else
+    #define OS "Unknown"
+#endif
+
+int main() {
+    cout << "Running on: " << OS << endl;
+    
+#if defined(DEBUG)
+    cout << "Debug mode" << endl;
+#else
+    cout << "Release mode" << endl;
+#endif
+    
+    return 0;
+}
+```
+
+## 7.3 Pragma Directives
+
+```cpp
+#include <iostream>
+using namespace std;
+
+// Disable specific warnings
+#pragma warning(disable: 4996)  // MSVC
+
+// Pack structure
+#pragma pack(1)
+struct PackedData {
+    char a;
+    int b;
+    double c;
+};
+#pragma pack()
+
+int main() {
+    cout << "Size of PackedData: " << sizeof(PackedData) << endl;
+    // Without pragma pack: 24 (aligned)
+    // With pragma pack: 13 (packed)
+    
+    return 0;
+}
+```
+
+---
+
+
+<!-- Merged content from Chapter_13_INLINE_FUNCTIONS__MACROS.md -->
+
+# INLINE FUNCTIONS & MACROS
+
+
+## 12.1 Macro Functions vs Inline Functions
+
+```cpp
+#include <iostream>
+using namespace std;
+
+// Macro function - preprocessor substitution
+#define ADD_MACRO(a, b) ((a) + (b))
+
+// Inline function - type-safe
+inline int add_inline(int a, int b) {
+    return a + b;
+}
+
+int main() {
+    cout << ADD_MACRO(5, 3) << endl;         // 8
+    cout << add_inline(5, 3) << endl;       // 8
+    
+    // Macro danger: side effects
+    int x = 5, y = 3;
+    cout << ADD_MACRO(x++, y++) << endl;    // Evaluates as: ((x++) + (y++))
+    cout << "x = " << x << ", y = " << y << endl;  // x = 6, y = 4
+    
+    // Inline function is safer
+    x = 5, y = 3;
+    cout << add_inline(x++, y++) << endl;   // 8
+    cout << "x = " << x << ", y = " << y << endl;  // x = 6, y = 4 (correct)
+    
+    return 0;
+}
+```
+
+---

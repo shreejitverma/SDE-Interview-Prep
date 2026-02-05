@@ -1,0 +1,122 @@
+\hypertarget{c11-concurrency}{%
+\chapter{C++11 CONCURRENCY}\label{c11-concurrency}}
+
+Before C++11, multithreading was platform-specific (pthreads, Windows
+threads). C++11 added a standard memory model and threading library.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{threads}{%
+\section{1. THREADS}\label{threads}}
+
+\passthrough{\lstinline!std::thread!} represents a single thread of
+execution.
+
+\begin{lstlisting}[language={C++}]
+#include <thread>
+#include <iostream>
+
+void task(int id) {
+    std::cout << "Thread " << id << " running\n";
+}
+
+int main() {
+    std::thread t1(task, 1);
+    std::thread t2(task, 2);
+
+    // Must join or detach before destructor
+    t1.join(); // Wait for finish
+    t2.join();
+    return 0;
+}
+\end{lstlisting}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{mutex-and-locks}{%
+\section{2. MUTEX AND LOCKS}\label{mutex-and-locks}}
+
+Protect shared data with \passthrough{\lstinline!std::mutex!}.
+
+\begin{lstlisting}[language={C++}]
+#include <mutex>
+
+std::mutex mtx;
+int count = 0;
+
+void safe_increment() {
+    // RAII Lock: locks on construction, unlocks on destruction
+    std::lock_guard<std::mutex> lock(mtx);
+    count++;
+}
+\end{lstlisting}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{atomics}{%
+\section{3. ATOMICS}\label{atomics}}
+
+\passthrough{\lstinline!std::atomic<T>!} provides lock-free thread
+safety for simple types.
+
+\begin{lstlisting}[language={C++}]
+#include <atomic>
+
+std::atomic<int> counter(0);
+
+void fast_increment() {
+    counter++; // Atomic increment (hardware supported)
+}
+\end{lstlisting}
+
+This avoids the overhead of mutexes for simple counters and flags.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{async-and-future}{%
+\section{4. ASYNC AND FUTURE}\label{async-and-future}}
+
+\passthrough{\lstinline!std::async!} runs a function asynchronously and
+returns a \passthrough{\lstinline!std::future!} that holds the result.
+
+\begin{lstlisting}[language={C++}]
+#include <future>
+
+int calculate() { return 42; }
+
+int main() {
+    // Launch async task
+    std::future<int> result = std::async(std::launch::async, calculate);
+    
+    // Do other work...    
+    // Get result (blocks if not ready)
+    std::cout << result.get(); 
+}
+\end{lstlisting}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{condition-variables}{%
+\section{5. CONDITION VARIABLES}\label{condition-variables}}
+
+Used for thread synchronization (waiting for an event).
+
+\begin{lstlisting}[language={C++}]
+std::condition_variable cv;
+std::mutex cv_m;
+bool ready = false;
+
+void worker() {
+    std::unique_lock<std::mutex> lk(cv_m);
+    cv.wait(lk, []{ return ready; }); // Wait until ready is true
+    // process...
+}
+
+void signal() {
+    {
+        std::lock_guard<std::mutex> lk(cv_m);
+        ready = true;
+    }
+    cv.notify_one();
+}
+\end{lstlisting}

@@ -1,0 +1,44 @@
+\hypertarget{c-in-the-cloud}{%
+\chapter{C++ IN THE CLOUD}\label{c-in-the-cloud}}
+
+Modern C++ is a first-class citizen in Cloud Native architectures.
+
+\hypertarget{microservices-with-c}{%
+\subsection{20.1 Microservices with C++}\label{microservices-with-c}}
+
+Using frameworks like \textbf{Drogon} or \textbf{Userver} (Yandex) for
+high-throughput services.
+
+\textbf{Example: Simple HTTP Endpoint (Drogon style)}
+
+\begin{lstlisting}[language={C++}]
+// Controller
+void Handler::get(const HttpRequestPtr& req, std::function<void (const HttpResponsePtr &)> &&callback) {
+    auto resp = HttpResponse::newHttpResponse();
+    resp->setBody("Hello from High-Performance Microservice!");
+    callback(resp);
+}
+\end{lstlisting}
+
+\hypertarget{serverless-c-aws-lambda}{%
+\subsection{20.2 Serverless C++ (AWS
+Lambda)}\label{serverless-c-aws-lambda}}
+
+Using the AWS Lambda C++ Runtime to run native binaries. * \textbf{Cold
+Start}: \textless{} 5ms (vs 100ms+ for Java/Node). * \textbf{Cost}:
+Lower duration due to speed.
+
+\begin{lstlisting}[language={C++}]
+#include <aws/lambda-runtime/runtime.h>
+
+aws::lambda_runtime::invocation_response handler(aws::lambda_runtime::invocation_request const& req) {
+    return aws::lambda_runtime::invocation_response::success("Processed!", "application/json");
+}
+
+int main() {
+    aws::lambda_runtime::run_handler(handler);
+    return 0;
+}
+\end{lstlisting}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}

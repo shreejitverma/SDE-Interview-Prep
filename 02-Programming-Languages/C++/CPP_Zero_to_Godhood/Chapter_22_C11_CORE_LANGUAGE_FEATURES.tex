@@ -1,0 +1,234 @@
+\hypertarget{c11-core-language-features}{%
+\chapter{C++11 CORE LANGUAGE
+FEATURES}\label{c11-core-language-features}}
+
+The C++11 standard (originally known as C++0x) was a revolutionary
+update that transformed C++ into a modern language. It addressed
+verbosity, safety, and performance.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{auto-type-deduction}{%
+\section{1. AUTO \& TYPE DEDUCTION}\label{auto-type-deduction}}
+
+\hypertarget{the-auto-keyword}{%
+\subsection{\texorpdfstring{1.1 The \texttt{auto}
+Keyword}{1.1 The auto Keyword}}\label{the-auto-keyword}}
+
+In C++98, you had to explicitly declare types, which could be verbose,
+especially with iterators. C++11 introduced
+\passthrough{\lstinline!auto!} to ask the compiler to deduce the type
+from the initializer.
+
+\begin{lstlisting}[language={C++}]
+// C++98
+int x = 5;
+std::vector<int> v;
+std::vector<int>::iterator it = v.begin();
+
+// C++11
+auto x = 5;       // deduced as int
+auto it = v.begin(); // deduced as std::vector<int>::iterator
+\end{lstlisting}
+
+\textbf{Key Rules:} 1. \textbf{Must be initialized}:
+\passthrough{\lstinline!auto x;!} is invalid. 2. \textbf{References}:
+\passthrough{\lstinline!auto!} strips references. Use
+\passthrough{\lstinline!auto\&!} to keep them. 3. \textbf{Const}:
+\passthrough{\lstinline!auto!} strips top-level const. Use
+\passthrough{\lstinline!const auto!} or
+\passthrough{\lstinline!const auto\&!}.
+
+\begin{lstlisting}[language={C++}]
+int a = 10;
+int& ref = a;
+
+auto x = ref;  // x is int (copy), not int&
+auto& y = ref; // y is int& (reference)
+\end{lstlisting}
+
+\hypertarget{decltype}{%
+\subsection{\texorpdfstring{1.2
+\texttt{decltype}}{1.2 decltype}}\label{decltype}}
+
+\passthrough{\lstinline!decltype!} inspects the declared type of an
+entity or expression. Unlike \passthrough{\lstinline!auto!}, it does not
+strip references or const.
+
+\begin{lstlisting}[language={C++}]
+int x = 5;
+decltype(x) y = 10; // y is int
+
+const int& z = x;
+decltype(z) w = x; // w is const int&
+\end{lstlisting}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{range-based-for-loops}{%
+\section{2. RANGE-BASED FOR LOOPS}\label{range-based-for-loops}}
+
+C++11 introduced a syntactic sugar for iterating over containers,
+arrays, and initializer lists.
+
+\begin{lstlisting}[language={C++}]
+std::vector<int> vec = {1, 2, 3, 4, 5};
+
+// C++98
+for (std::vector<int>::iterator it = vec.begin(); it != vec.end(); ++it) {
+    std::cout << *it << " ";
+}
+
+// C++11 Range-based for
+for (int i : vec) {
+    std::cout << i << " ";
+}
+
+// With auto (Common pattern)
+for (auto i : vec) {
+    std::cout << i << " ";
+}
+
+// By Reference (to modify elements)
+for (auto& i : vec) {
+    i *= 2;
+}
+
+// By Const Reference (read-only, avoids copy)
+for (const auto& i : vec) {
+    std::cout << i << " ";
+}
+\end{lstlisting}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{uniform-initialization}{%
+\section{3. UNIFORM INITIALIZATION}\label{uniform-initialization}}
+
+C++11 introduced a consistent syntax for initializing everything using
+curly braces \passthrough{\lstinline!\{\}!}.
+
+\hypertarget{brace-initialization}{%
+\subsection{3.1 Brace Initialization}\label{brace-initialization}}
+
+\begin{lstlisting}[language={C++}]
+// C++98 inconsistency
+int a = 5;
+int arr[] = {1, 2};
+std::vector<int> v; v.push_back(1); // Tedious
+
+// C++11 Uniformity
+int a{5};
+int arr[]{1, 2};
+std::vector<int> v{1, 2, 3}; // Initializer list!
+std::string s{"Hello"};
+\end{lstlisting}
+
+\hypertarget{preventing-narrowing}{%
+\subsection{3.2 Preventing Narrowing}\label{preventing-narrowing}}
+
+Brace initialization forbids ``narrowing conversions'' where data loss
+might occur.
+
+\begin{lstlisting}[language={C++}]
+int x = 3.14;  // C++98: Compiles (x becomes 3), implicit cast
+// int y{3.14}; // C++11: Error! Narrowing conversion
+\end{lstlisting}
+
+\hypertarget{stdinitializer_list}{%
+\subsection{\texorpdfstring{3.3
+\texttt{std::initializer\_list}}{3.3 std::initializer\_list}}\label{stdinitializer_list}}
+
+Classes can now take a list of elements in their constructor.
+
+\begin{lstlisting}[language={C++}]
+#include <initializer_list>
+
+class MyClass {
+public:
+    MyClass(std::initializer_list<int> list) {
+        for (auto elem : list) {
+            // process elem
+        }
+    }
+};
+
+MyClass obj = {1, 2, 3, 4, 5};
+\end{lstlisting}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{nullptr}{%
+\section{4. NULLPTR}\label{nullptr}}
+
+C++98 used \passthrough{\lstinline!0!} or \passthrough{\lstinline!NULL!}
+(macro for 0) for null pointers. This caused ambiguity with function
+overloading.
+
+\begin{lstlisting}[language={C++}]
+void func(int x) { std::cout << "Integer"; }
+void func(char* p) { std::cout << "Pointer"; }
+
+// C++98
+func(NULL); // Calls func(int)! Because NULL is 0.
+
+// C++11
+func(nullptr); // Calls func(char*).
+\end{lstlisting}
+
+\passthrough{\lstinline!nullptr!} is a keyword of type
+\passthrough{\lstinline!std::nullptr\_t!}. It implicitly converts to any
+pointer type but \emph{not} to integers (except bool
+\passthrough{\lstinline!false!}).
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{strongly-typed-enums}{%
+\section{5. STRONGLY TYPED ENUMS}\label{strongly-typed-enums}}
+
+C++98 enums leaked their names into the surrounding scope and implicitly
+converted to integers. C++11 \passthrough{\lstinline!enum class!} fixes
+this.
+
+\begin{lstlisting}[language={C++}]
+// C++98
+enum Color { RED, GREEN, BLUE };
+int r = RED; // Implicit conversion allowed
+
+// C++11
+enum class TrafficLight { RED, YELLOW, GREEN };
+
+// TrafficLight t = RED; // Error: RED not in scope
+TrafficLight t = TrafficLight::RED;
+// int x = TrafficLight::RED; // Error: No implicit conversion
+
+// Explicit underlying type
+enum class Byte : unsigned char { A, B, C };
+\end{lstlisting}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{other-core-features}{%
+\section{6. OTHER CORE FEATURES}\label{other-core-features}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{\passthrough{\lstinline!constexpr!}}: Allows functions and
+  variables to be evaluated at compile-time (limited in C++11, expanded
+  later).
+\item
+  \textbf{\passthrough{\lstinline!static\_assert!}}: Compile-time
+  assertion checking.
+  \passthrough{\lstinline!cpp     static\_assert(sizeof(int) == 4, "Int must be 4 bytes");!}
+\item
+  \textbf{Delegating Constructors}: One constructor can call another.
+\item
+  \textbf{\passthrough{\lstinline!default!} and
+  \passthrough{\lstinline!delete!} functions}:
+  \passthrough{\lstinline!cpp     class NonCopyable \{         NonCopyable(const NonCopyable\&) = delete; // Ban copying         NonCopyable() = default; // Explicitly request default ctor     \};!}
+\item
+  \textbf{\passthrough{\lstinline!override!} and
+  \passthrough{\lstinline!final!}}: Virtual function controls (See
+  Chapter 19).
+\end{itemize}

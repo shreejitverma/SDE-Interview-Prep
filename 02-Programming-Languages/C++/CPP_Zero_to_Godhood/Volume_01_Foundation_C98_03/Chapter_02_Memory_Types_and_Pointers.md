@@ -1,0 +1,535 @@
+# MEMORY, TYPES, AND POINTERS
+
+
+
+<!-- Merged content from Chapter_2_ADVANCED_POINTERS__MEMORY.md -->
+
+# ADVANCED POINTERS & MEMORY
+
+
+## 1.1 Pointer to Const vs Const Pointer
+
+```cpp
+#include <iostream>
+using namespace std;
+
+int main() {
+    int x = 5, y = 10;
+    
+    // Pointer to const - can't modify data
+    const int* ptr1 = &x;
+    // *ptr1 = 10;  // ERROR
+    ptr1 = &y;      // OK - can change pointer
+    
+    // Const pointer - can't modify pointer
+    int* const ptr2 = &x;
+    *ptr2 = 10;     // OK - can change data
+    // ptr2 = &y;   // ERROR
+    
+    // Const pointer to const - can't modify either
+    const int* const ptr3 = &x;
+    // *ptr3 = 10;  // ERROR
+    // ptr3 = &y;   // ERROR
+    
+    return 0;
+}
+```
+
+## 1.2 Void Pointers
+
+```cpp
+#include <iostream>
+using namespace std;
+
+int main() {
+    int x = 42;
+    double y = 3.14;
+    
+    // Void pointer can point to any type
+    void* ptr = &x;
+    cout << *(int*)ptr << endl;  // 42
+    
+    ptr = &y;
+    cout << *(double*)ptr << endl;  // 3.14
+    
+    // Generic function using void*
+    void print_value(void* ptr, char type) {
+        if (type == 'i') {
+            cout << *(int*)ptr << endl;
+        } else if (type == 'd') {
+            cout << *(double*)ptr << endl;
+        }
+    }
+    
+    print_value(&x, 'i');  // 42
+    print_value(&y, 'd');  // 3.14
+    
+    return 0;
+}
+```
+
+## 1.3 Null Pointer Safety
+
+```cpp
+#include <iostream>
+using namespace std;
+
+int main() {
+    int* ptr = NULL;  // Set to null
+    
+    // Always check before dereferencing
+    if (ptr != NULL) {
+        cout << *ptr << endl;
+    } else {
+        cout << "Pointer is NULL" << endl;
+    }
+    
+    // Safer approach
+    ptr = new int(42);
+    if (ptr) {
+        cout << *ptr << endl;
+        delete ptr;
+        ptr = NULL;
+    }
+    
+    return 0;
+}
+```
+
+## 1.4 Memory Layout & Alignment
+
+```cpp
+#include <iostream>
+using namespace std;
+
+int main() {
+    struct Data {
+        char a;     // 1 byte
+        int b;      // 4 bytes
+        double c;   // 8 bytes
+    };
+    
+    cout << "Size of Data: " << sizeof(Data) << endl;
+    // Likely 16 or 24 (due to alignment padding)
+    
+    cout << "Size of char: " << sizeof(char) << endl;      // 1
+    cout << "Size of int: " << sizeof(int) << endl;        // 4
+    cout << "Size of double: " << sizeof(double) << endl;  // 8
+    
+    Data data;
+    cout << "Address of a: " << (void*)&data.a << endl;
+    cout << "Address of b: " << (void*)&data.b << endl;
+    cout << "Address of c: " << (void*)&data.c << endl;
+    
+    return 0;
+}
+```
+
+---
+
+
+<!-- Merged content from Chapter_5_ADVANCED_ARRAYS.md -->
+
+# ADVANCED ARRAYS
+
+
+## 4.1 Dynamic Arrays
+
+```cpp
+#include <iostream>
+using namespace std;
+
+int main() {
+    // 1D dynamic array
+    int size = 5;
+    int* arr = new int[size];
+    
+    for (int i = 0; i < size; i++) {
+        arr[i] = i * 10;
+    }
+    
+    for (int i = 0; i < size; i++) {
+        cout << arr[i] << " ";
+    }
+    cout << endl;
+    
+    delete[] arr;
+    arr = NULL;
+    
+    // 2D dynamic array
+    int rows = 3, cols = 4;
+    int** matrix = new int*[rows];
+    for (int i = 0; i < rows; i++) {
+        matrix[i] = new int[cols];
+    }
+    
+    // Fill matrix
+    for (int i = 0; i < rows; i++) {
+        for (int j = 0; j < cols; j++) {
+            matrix[i][j] = i * cols + j;
+        }
+    }
+    
+    // Delete matrix
+    for (int i = 0; i < rows; i++) {
+        delete[] matrix[i];
+    }
+    delete[] matrix;
+    
+    return 0;
+}
+```
+
+## 4.2 Variable Length Arrays (Non-standard)
+
+```cpp
+#include <iostream>
+using namespace std;
+
+int main() {
+    int size;
+    cout << "Enter size: ";
+    cin >> size;
+    
+    // VLA - not standard but supported by many compilers
+    int arr[size];  // GCC extension
+    
+    for (int i = 0; i < size; i++) {
+        arr[i] = i;
+    }
+    
+    for (int i = 0; i < size; i++) {
+        cout << arr[i] << " ";
+    }
+    cout << endl;
+    
+    return 0;
+}
+```
+
+## 4.3 Array Bounds & Safety
+
+```cpp
+#include <iostream>
+using namespace std;
+
+int main() {
+    int arr[5] = {10, 20, 30, 40, 50};
+    
+    // No bounds checking in C++
+    cout << arr[0] << endl;   // 10 (OK)
+    cout << arr[10] << endl;  // Undefined behavior!
+    
+    // Manual bounds checking
+    int index = 5;
+    if (index >= 0 && index < 5) {
+        cout << arr[index] << endl;
+    } else {
+        cout << "Index out of bounds" << endl;
+    }
+    
+    return 0;
+}
+```
+
+---
+
+
+<!-- Merged content from Chapter_12_CONST__VOLATILE.md -->
+
+# CONST & VOLATILE
+
+
+## 11.1 Const Correctness
+
+```cpp
+#include <iostream>
+using namespace std;
+
+int main() {
+    int x = 10;
+    
+    // const variable
+    const int constant = 5;
+    // constant = 10;  // ERROR
+    
+    // pointer to const
+    const int* ptr1 = &x;
+    // *ptr1 = 20;  // ERROR
+    ptr1 = &constant;  // OK
+    
+    // const pointer
+    int* const ptr2 = &x;
+    *ptr2 = 20;  // OK
+    // ptr2 = &constant;  // ERROR
+    
+    // const reference
+    const int& ref = x;
+    // ref = 20;  // ERROR
+    
+    cout << x << endl;
+    cout << *ptr1 << endl;
+    cout << *ptr2 << endl;
+    cout << ref << endl;
+    
+    return 0;
+}
+```
+
+## 11.2 Volatile Keyword
+
+```cpp
+#include <iostream>
+using namespace std;
+
+int main() {
+    // volatile - tells compiler value may change unexpectedly
+    volatile int sensor_reading = 0;  // From hardware
+    
+    // Compiler won't optimize away reads
+    while (sensor_reading < 100) {
+        // Check actual value each time, not cached
+    }
+    
+    // Common use: hardware registers
+    volatile int* hardware_register = (volatile int*)0x1000;
+    
+    // Each access reads from actual location
+    int val1 = *hardware_register;
+    int val2 = *hardware_register;
+    
+    // Without volatile, compiler might optimize one read
+    
+    return 0;
+}
+```
+
+---
+
+
+<!-- Merged content from Chapter_9_TYPE_CASTING.md -->
+
+# TYPE CASTING
+
+
+## 8.1 C-Style Casting
+
+```cpp
+#include <iostream>
+#include <cmath>
+using namespace std;
+
+int main() {
+    double d = 3.14;
+    
+    // C-style cast (avoid in modern C++)
+    int i = (int)d;  // 3
+    cout << i << endl;
+    
+    int x = 65;
+    char c = (char)x;  // 'A'
+    cout << c << endl;
+    
+    float f = (float)d;
+    cout << f << endl;
+    
+    return 0;
+}
+```
+
+## 8.2 Implicit Conversions
+
+```cpp
+#include <iostream>
+using namespace std;
+
+int main() {
+    // Implicit conversions
+    int x = 5;
+    double d = x;  // int to double (automatic)
+    cout << d << endl;  // 5.0
+    
+    double d2 = 3.9;
+    int y = d2;  // double to int (loses precision)
+    cout << y << endl;  // 3
+    
+    // Char arithmetic
+    char c = 'A';
+    int code = c;  // char to int (gets ASCII)
+    cout << code << endl;  // 65
+    
+    return 0;
+}
+```
+
+---
+
+
+<!-- Merged content from Chapter_11_ENUMERATION__UNIONS.md -->
+
+# ENUMERATION & UNIONS
+
+
+## 10.1 Enumerations
+
+```cpp
+#include <iostream>
+using namespace std;
+
+// Enum definition
+enum Color { RED, GREEN, BLUE };
+
+enum Direction {
+    NORTH = 0,
+    EAST = 1,
+    SOUTH = 2,
+    WEST = 3
+};
+
+int main() {
+    Color c = RED;
+    cout << c << endl;  // 0
+    
+    Color colors[3] = {RED, GREEN, BLUE};
+    
+    // Switching on enum
+    switch (c) {
+        case RED:
+            cout << "Red" << endl;
+            break;
+        case GREEN:
+            cout << "Green" << endl;
+            break;
+        case BLUE:
+            cout << "Blue" << endl;
+            break;
+    }
+    
+    // Iterate through enum values
+    for (int dir = NORTH; dir <= WEST; dir++) {
+        cout << "Direction: " << dir << endl;
+    }
+    
+    return 0;
+}
+```
+
+## 10.2 Unions
+
+```cpp
+#include <iostream>
+using namespace std;
+
+// Union - all members share same memory
+union Data {
+    int i;
+    float f;
+    char c;
+};
+
+int main() {
+    Data data;
+    
+    cout << "Size of Data: " << sizeof(data) << endl;  // 4 (size of largest member)
+    
+    data.i = 10;
+    cout << "data.i: " << data.i << endl;     // 10
+    cout << "data.f: " << data.f << endl;     // Garbage (overwrites data.i)
+    
+    data.f = 3.14;
+    cout << "data.i: " << data.i << endl;     // Garbage (overwrites by data.f)
+    cout << "data.f: " << data.f << endl;     // 3.14
+    
+    // Union useful for memory-constrained systems
+    union Variant {
+        int int_val;
+        double double_val;
+        char char_val;
+    };
+    
+    cout << "Size of Variant: " << sizeof(Variant) << endl;
+    
+    return 0;
+}
+```
+
+---
+
+
+<!-- Merged content from Chapter_7_BITWISE_OPERATIONS.md -->
+
+# BITWISE OPERATIONS
+
+
+## 6.1 Bitwise Operators
+
+```cpp
+#include <iostream>
+using namespace std;
+
+int main() {
+    unsigned char a = 5;   // 0101
+    unsigned char b = 3;   // 0011
+    
+    // AND
+    cout << (a & b) << endl;  // 0001 = 1
+    
+    // OR
+    cout << (a | b) << endl;  // 0111 = 7
+    
+    // XOR
+    cout << (a ^ b) << endl;  // 0110 = 6
+    
+    // NOT (bitwise complement)
+    cout << (~a) << endl;     // 1010 = 250 (for unsigned char)
+    
+    // Left shift
+    cout << (a << 1) << endl; // 1010 = 10
+    
+    // Right shift
+    cout << (b >> 1) << endl; // 0001 = 1
+    
+    return 0;
+}
+```
+
+## 6.2 Bit Manipulation Techniques
+
+```cpp
+#include <iostream>
+using namespace std;
+
+int main() {
+    unsigned int num = 5;  // 0101
+    
+    // Check if bit is set
+    int bit_pos = 2;
+    bool is_set = (num >> bit_pos) & 1;
+    cout << "Bit " << bit_pos << " is: " << is_set << endl;
+    
+    // Set a bit
+    num |= (1 << 1);  // Set bit 1
+    cout << "After setting bit 1: " << num << endl;  // 7 (0111)
+    
+    // Clear a bit
+    num &= ~(1 << 1);  // Clear bit 1
+    cout << "After clearing bit 1: " << num << endl;  // 5 (0101)
+    
+    // Toggle a bit
+    num ^= (1 << 0);  // Toggle bit 0
+    cout << "After toggling bit 0: " << num << endl;  // 4 (0100)
+    
+    // Count set bits
+    unsigned int count = 0;
+    unsigned int temp = num;
+    while (temp) {
+        count += temp & 1;
+        temp >>= 1;
+    }
+    cout << "Number of set bits: " << count << endl;
+    
+    return 0;
+}
+```
+
+---
