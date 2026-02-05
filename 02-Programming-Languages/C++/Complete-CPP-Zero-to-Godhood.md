@@ -19468,204 +19468,100 @@ void launch_kernel(float* d_A, float* d_B, float* d_C, int N) {
 
 ## <a name="chapter-35-interoperability"></a>CHAPTER 35: INTEROPERABILITY
 
-C++ rarely lives in isolation. It powers Python, Java, and Browsers.
+C++ is the dark matter of the software universe: it binds everything together.
 
-### 25.1 Python Bindings with pybind11
-Expose C++ performance to Python scripts.
+### 35.1 Python Bindings (pybind11)
+Bridging the gap between Python's ease of use and C++'s raw power.
+*   **The Problem:** Python objects are ref-counted (`PyObject*`). C++ has RAII. Who owns the pointer?
+*   **Return Value Policies:**
+    *   `py::return_value_policy::copy`: Python gets a copy (Safe).
+    *   `py::return_value_policy::reference`: Python references C++ memory (Dangous if C++ deletes it).
+    *   `py::return_value_policy::take_ownership`: Python takes over `delete`.
 
 ```cpp
 #include <pybind11/pybind11.h>
+namespace py = pybind11;
 
-int add(int i, int j) { return i + j; }
+struct Pet {
+    std::string name;
+    Pet(const std::string &name) : name(name) { }
+};
 
 PYBIND11_MODULE(example, m) {
-    m.doc() = "pybind11 example plugin";
-    m.def("add", &add, "A function which adds two numbers");
+    py::class_<Pet>(m, "Pet")
+        .def(py::init<const std::string &>())
+        .def_readwrite("name", &Pet::name);
 }
-// In Python: import example; example.add(1, 2)
 ```
 
-### 25.2 Stable C ABI for DLLs
-To share code between compilers (MSVC/GCC) or languages (C#, Rust), use `extern "C"`.
+### 35.2 Java Native Interface (JNI)
+The bridge to the Enterprise (and Android).
+*   **Cost:** Crossing the JVM boundary is expensive (pointer chasing, pinning objects).
+*   **Pitfall:** `JNIEnv*` is thread-local. Do not share it between threads.
+*   **Local References:** JNI creates local refs for every object returned. If you don't `DeleteLocalRef` in a loop, the JVM OOMs.
 
 ```cpp
-// header.h
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-__declspec(dllexport) void* CreateInstance();
-__declspec(dllexport) void DestroyInstance(void* ptr);
-
-#ifdef __cplusplus
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_example_MyClass_nativeMethod(JNIEnv *env, jobject thiz) {
+    return env->NewStringUTF("Hello from C++");
 }
-#endif
 ```
+
+### 35.3 Stable C ABI
+To speak to Rust, C#, or Go, use the lingua franca: C.
+*   **`extern "C"`**: Disables C++ name mangling (e.g., `_Z3foov` becomes `foo`).
+*   **Struct Layout:** Use `StandardLayoutType` structs (no virtuals, all public).
 
 ---
 
 ## <a name="chapter-36-securityengineering"></a>CHAPTER 36: SECURITY ENGINEERING
 
-Writing fast code is easy. Writing fast *and* secure code is Godhood.
+### 36.1 Fuzzing (libFuzzer / AFL++)
+Unit tests test what you *know*. Fuzzing tests what you *don't*.
+*   **Coverage-Guided:** The fuzzer instruments binaries to see which inputs explore new code paths.
+*   **Sanitizers:** Always fuzz with AddressSanitizer (ASan) and UndefinedBehaviorSanitizer (UBSan) enabled.
 
-### 26.1 Fuzzing (libFuzzer)
-Fuzzing involves feeding random, invalid inputs to your program to find crashes.
+### 36.2 Cryptography & Timing Attacks
+NEVER write your own crypto. Use `libsodium` or `BoringSSL`.
+*   **The Trap:** `memcmp(hash1, hash2, 32)` exits early if the first byte differs.
+*   **The Attack:** Attacker measures time. If it takes longer, they guessed the first byte right.
+*   **The Fix:** Constant-time comparison.
+    ```cpp
+    // libsodium's constant time check
+    if (crypto_verify_32(hash1, hash2) != 0) { /* Error */ }
+    ```
 
-```cpp
-// fuzz_target.cc
-#include <cstdint>
-#include <cstddef>
-
-extern "C" int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size) {
-    // Call your function here
-    // parse_packet(Data, Size);
-    return 0; // Non-zero return values are reserved for future use.
-}
-```
-Compile with: `clang++ -fsanitize=fuzzer fuzz_target.cc`
-
-### 26.2 Secure Coding Practices (SEI CERT C++)
-1.  **Do not use `strcpy`, `sprintf`**: Use `std::string` or `snprintf` with bounds.
-2.  **Avoid Raw Pointers**: Use `std::unique_ptr` to prevent Use-After-Free (UAF).
-3.  **Validate External Input**: Never trust network packets or file headers.
-4.  **Integer Overflow**: Use `std::checked_*` (if available) or manual checks for arithmetic on untrusted data.
-
-### 26.3 Exploit Mitigation
-*   **ASLR**: Address Space Layout Randomization.
-*   **DEP**: Data Execution Prevention (NX bit).
-*   **Stack Canaries**: Compiler inserts a sentinel value on stack to detect overflow.
+### 36.3 Side-Channel Mitigations (Spectre)
+Modern CPUs execute instructions speculatively.
+*   **Scenario:** `if (x < array_len) { val = array[x]; }`
+*   **Attack:** CPU predicts `true`, loads `array[x]` (where `x` is out of bounds secret). Even if checks fail, `array[x]` is now in L1 cache.
+*   **Mitigation:** `LFENCE` (Load Fence) or `std::clamp` indices to 0 on failure (masking).
 
 ---
 
 ## <a name="chapter-37-specializeddomains"></a>CHAPTER 37: SPECIALIZED DOMAINS
 
-This section explores how C++ is applied in specific high-demand industries.
+### 37.1 Game Development (Data-Oriented Design)
+OOP is cache-poison. Games use **Entity-Component-Systems (ECS)**.
+*   **AoS (Array of Structs):** `[Pos, Vel], [Pos, Vel]` -> Bad stride.
+*   **SoA (Structure of Arrays):** `[Pos, Pos], [Vel, Vel]` -> SIMD friendly.
 
-### 12.1 Game Development (ECS Pattern)
-In game development, the **Entity-Component-System (ECS)** pattern is preferred over inheritance for cache locality and composition.
+### 37.2 Embedded Systems
+*   **Memory-Mapped I/O:** Casting integer addresses to pointers.
+*   **`volatile`**: Tells compiler "Hardware changes this value, do not optimize reads".
+*   **Freestanding Implementation:** No OS, no heap (`malloc` is a myth).
 
-```cpp
-#include <vector>
-#include <optional>
-#include <iostream>
+### 37.3 High-Frequency Trading (HFT)
+*   **Kernel Bypass:** `Solarflare OpenOnload` maps NIC ring buffers directly to userspace, skipping the Linux Kernel (save ~2-3 microseconds).
+*   **Warm-up:** Pinging order gateways to ensure the TCP congestion window is open and CPU is in C0 state (max turbo).
 
-// Component: Pure Data
-struct Position { float x, y; };
-struct Velocity { float dx, dy; };
-
-// System: Logic
-class PhysicsSystem {
-public:
-    void update(std::vector<Position>& pos, const std::vector<Velocity>& vel, float dt) {
-        for (size_t i = 0; i < pos.size(); ++i) {
-            pos[i].x += vel[i].dx * dt;
-            pos[i].y += vel[i].dy * dt;
-        }
-    }
-};
-
-// Entity is just an ID (index)
-int main() {
-    // Structure of Arrays (SoA) for cache efficiency
-    std::vector<Position> positions(1000);
-    std::vector<Velocity> velocities(1000);
-    
-    PhysicsSystem physics;
-    
-    // Game Loop
-    for (int frame = 0; frame < 60; ++frame) {
-        physics.update(positions, velocities, 0.016f);
-    }
-    
-    return 0;
-}
-```
-
-### 12.2 Embedded Systems
-Embedded C++ often disables exceptions and RTTI, relying on `constexpr` and templates.
+### 37.4 Automotive (MISRA C++ / AUTOSAR)
+*   **No Dynamic Memory:** All containers have fixed capacity (`etl::vector` or `boost::static_vector`).
+*   **No Exceptions:** `try-catch` adds binary size and non-deterministic unwind paths. Use `std::expected` or error codes.
+*   **Static Analysis:** Code must pass MISRA-2008 rules (e.g., "Rule 5-0-15: Array indexing shall be checked").
 
 ```cpp
-#include <cstdint>
-
-// Memory-Mapped I/O helper
-template<uintptr_t Address, typename T = volatile uint32_t>
-struct Reg {
-    static void write(T value) {
-        *reinterpret_cast<T*>(Address) = value;
-    }
-    
-    static T read() {
-        return *reinterpret_cast<T*>(Address);
-    }
-};
-
-// Hardware Abstraction Layer
-struct LED {
-    static constexpr uintptr_t GPIO_BASE = 0x40020000;
-    static constexpr uintptr_t ODR_OFFSET = 0x14;
-    
-    static void on() {
-        Reg<GPIO_BASE + ODR_OFFSET>::write(1 << 5);
-    }
-    
-    static void off() {
-        Reg<GPIO_BASE + ODR_OFFSET>::write(0);
-    }
-};
-
-// Compile-time configuration check
-static_assert(sizeof(uint32_t) == 4, "Must be 32-bit system");
-```
-
-### 12.3 High-Frequency Trading (HFT)
-HFT focuses on **low latency** (nanoseconds matter).
-
-**Key Techniques:**
-1.  **Kernel Bypass**: Use DPDK or Solarflare OpenOnload to skip OS networking stack.
-2.  **Lock-Free Structures**: Single-Producer Single-Consumer (SPSC) ring buffers.
-3.  **Warm-up**: Pre-run code to ensure CPU cache is hot and branch predictors are trained.
-4.  **No Dynamic Allocation**: `std::vector` is forbidden in the hot path. Use `std::array` or pre-allocated pools.
-
-```cpp
-// SPSC Ring Buffer Concept (Simplified)
-template<typename T, size_t Size>
-class RingBuffer {
-    std::array<T, Size> buffer;
-    alignas(64) std::atomic<size_t> head{0}; // Cache-line padding
-    alignas(64) std::atomic<size_t> tail{0};
-    
-public:
-    bool push(const T& val) {
-        size_t current_tail = tail.load(std::memory_order_relaxed);
-        size_t next_tail = (current_tail + 1) % Size;
-        
-        if (next_tail == head.load(std::memory_order_acquire)) return false; // Full
-        
-        buffer[current_tail] = val;
-        tail.store(next_tail, std::memory_order_release);
-        return true;
-    }
-    
-    bool pop(T& val) {
-        size_t current_head = head.load(std::memory_order_relaxed);
-        if (current_head == tail.load(std::memory_order_acquire)) return false; // Empty
-        
-        val = buffer[current_head];
-        head.store((current_head + 1) % Size, std::memory_order_release);
-        return true;
-    }
-};
-```
-
-### 12.4 Automotive & Aerospace (MISRA C++)
-Safety-critical systems (ISO 26262) have strict rules.
-
-1.  **No Dynamic Allocation**: `new`/`malloc` are banned to prevent fragmentation.
-2.  **No Exceptions**: Code must have predictable control flow.
-3.  **Static Analysis**: Heavy reliance on tools like Coverity.
-
-```cpp
-// Stack-only pattern
+// Stack-only pattern (Automotive safe)
 template <typename T, size_t N>
 class FixedVector {
     T data[N];
@@ -19848,31 +19744,257 @@ public:
 
 ## <a name="chapter-38-abaproblemmemoryreclamation"></a>CHAPTER 38: ABA PROBLEM & MEMORY RECLAMATION
 
-In the realm of lock-free programming, the **ABA Problem** is a silent killer. Hazard pointers and Epoch-Based Reclamation are the standard solutions.
+In the rarefied air of lock-free programming, the **ABA Problem** is the dragon that guards the gate. Conquering it requires understanding the very fabric of memory lifecycles.
+
+### 1. The ABA Problem Explained
+The Compare-And-Swap (CAS) primitive (`std::atomic::compare_exchange_weak`) checks if a value is *equal* to an expected value. It does **not** check if it is the *same* object.
+
+**The Scenario:**
+1.  Thread 1 reads pointer `A` from a lock-free stack top.
+2.  Thread 1 is preempted.
+3.  Thread 2 pops `A`, frees it, then pushes `B`, then pushes a *new* object allocated at address `A` (recycled memory).
+4.  Thread 1 wakes up, performs CAS. The address is still `A`. CAS succeeds.
+5.  **Catastrophe:** Thread 1 has popped the *new* `A`, but its local logic assumes it's the *old* `A` (e.g., pointing to `B` as the next node). The stack is now corrupted.
+
+### 2. Solution I: Tagged Pointers (Version Counters)
+Pack a version counter into the unused bits of a pointer (usually top 16 bits on 64-bit systems).
+*   **Mechanism:** Every modification increments the counter. `Ptr(A, v1)` != `Ptr(A, v2)`.
+*   **Limitation:** Reduces addressable memory space; requires platform-specific bit manipulation.
+
+```cpp
+// Example of a 64-bit tagged pointer
+struct TaggedPtr {
+    uint64_t data; // 48 bits pointer, 16 bits tag
+
+    TaggedPtr(void* ptr, uint16_t tag) {
+        data = (reinterpret_cast<uint64_t>(ptr) & 0x0000FFFFFFFFFFFF) | (static_cast<uint64_t>(tag) << 48);
+    }
+    
+    void* get_ptr() const { return reinterpret_cast<void*>(data & 0x0000FFFFFFFFFFFF); }
+    uint16_t get_tag() const { return static_cast<uint16_t>(data >> 48); }
+};
+```
+
+### 3. Solution II: Hazard Pointers (The Gold Standard)
+A **Hazard Pointer (HP)** is a thread-local signal saying "I am reading this object, do not delete it."
+
+**The Protocol:**
+1.  **Reader:** publish the pointer `P` to a thread-local HP slot.
+2.  **Reader:** Verify `P` is still in the data structure. If not, retry.
+3.  **Writer (Deleter):** Unlink `P` from the structure.
+4.  **Writer:** Check all other threads' HPs.
+    *   If `P` is found in any HP, add `P` to a "Retire List" (do not `delete` yet).
+    *   If `P` is not found, `delete` immediately.
+5.  **Cleanup:** Periodically scan the Retire List and free objects no longer protected by HPs.
+
+*   **Pros:** Wait-free readers, deterministic memory bound.
+*   **Cons:** Heavy memory barrier usage (Store-Load fence needed after publishing HP).
+
+### 4. Solution III: Epoch-Based Reclamation (EBR)
+Used by `malloc` implementations and databases (like Silo).
+*   **Concept:** A Global Epoch counter (E) and per-thread Local Epochs (e_t).
+*   **Operation:**
+    1.  Global Epoch `E` increments periodically.
+    2.  Threads update `e_t = E` when entering a critical section.
+    3.  Objects retired in Epoch `E` can be safely deleted when all threads have reached Epoch `E+1` or higher.
+*   **Pros:** Extremely fast (just checking integers).
+*   **Cons:** One stalled thread prevents *all* memory reclamation (OOM risk).
+
+---
 
 ## <a name="chapter-39-templatemetaprogrammingpatterns"></a>CHAPTER 39: TEMPLATE METAPROGRAMMING PATTERNS
 
-Template Metaprogramming (TMP) is about moving computation from runtime to compile-time. We cover Expression Templates and the void_t pattern.
+Moving computation from runtime to compile-time saves cycles and enables zero-cost abstractions.
+
+### 1. Expression Templates (Lazy Evaluation)
+Avoid temporary objects in math operations.
+**Naive:** `Vector sum = A + B + C;` creates `tmp = A+B`, then `sum = tmp+C`. Allocations!
+**Expression Template:** `A + B` returns a lightweight `Sum<Vec, Vec>` object.
+```cpp
+template <typename L, typename R>
+struct Sum {
+    const L& l; const R& r;
+    auto operator[](size_t i) const { return l[i] + r[i]; }
+};
+
+template <typename L, typename R>
+auto operator+(const L& l, const R& r) {
+    return Sum<L, R>{l, r};
+}
+
+// Usage
+// Vector result = A + B + C; 
+// Becomes: result[i] = A[i] + B[i] + C[i] in a single loop!
+```
+
+### 2. Type Erasure (The `std::any` Pattern)
+Polymorphism without inheritance.
+*   **Technique:** Hold a `void*` or a `unique_ptr<Base>`, where `Base` is an abstract class inside a templated wrapper.
+*   **Example:** `std::function`, `std::any`.
+
+### 3. The Detection Idiom (void_t)
+Check if a type has a member function or typedef at compile time.
+```cpp
+template <typename, typename = std::void_t<>>
+struct has_serialize : std::false_type {};
+
+template <typename T>
+struct has_serialize<T, std::void_t<decltype(std::declval<T>().serialize())>> : std::true_type {};
+
+static_assert(has_serialize<MyClass>::value, "MyClass must implement serialize()");
+```
+*Note: In C++20, simply use Concepts.*
+
+### 4. Policy-Based Design
+Compose behavior via template arguments.
+```cpp
+template <typename T, typename CheckingPolicy, typename ThreadingPolicy>
+class SmartPtr : public CheckingPolicy, public ThreadingPolicy {
+    T* ptr;
+    // ...
+};
+// User chooses: SmartPtr<int, NoCheck, MultiThreaded>
+```
+
+---
 
 ## <a name="chapter-40-highperformancedatastructures"></a>CHAPTER 40: HIGH-PERFORMANCE DATA STRUCTURES
 
-High-performance data structures focus on cache locality and lock-free concurrency. Key topics: Disruptor Pattern and Treiber Stack.
+When `std::unordered_map` is too slow, we descend into the hardware.
+
+### 1. The Disruptor (Ring Buffer on Steroids)
+A lock-free ring buffer designed for high-throughput messaging (LMAX Trading).
+*   **Key Concept:** Pre-allocated memory, sequence numbers, and "barriers".
+*   **False Sharing Prevention:** Padding sequence counters to 64 bytes (cache line).
+*   **Batching:** Consumers process up to the known "published" sequence.
+
+### 2. Swiss Table (Open Addressing + Metadata)
+Used in `absl::flat_hash_map`.
+*   **Structure:** Arrays of control bytes (metadata) and data slots.
+*   **Control Byte:** 7 bits of hash + 1 bit for empty/deleted.
+*   **SIMD Probing:** Load 16 control bytes into a vector register (SSE/AVX). Compare all 16 tags in parallel to find the slot.
+*   **Result:** Drastically fewer cache misses than chaining.
+
+### 3. Burst Tries / Judy Arrays
+Cache-efficient digital trees (tries) for integer keys.
+*   **Idea:** Nodes dynamically change type based on population (Linear list -> Bitmap -> Sub-trie).
+
+### 4. Slot Map
+O(1) insertion, deletion, and access with stable "handles" (indices) instead of pointers.
+*   **Generational Indices:** Handle = `[Index | Generation]`. Prevents "Dangling Reference" equivalent (accessing a slot that was re-used for a new object).
+
+---
 
 ## <a name="chapter-41-realtimeaudiosignalprocessing"></a>CHAPTER 41: REAL-TIME AUDIO & SIGNAL PROCESSING
 
-Real-time audio demands deterministic latency. The "Audio Callback" is a strictly no-block zone. We cover SIMD in DSP.
+**The Golden Rule:** In the audio callback, thou shalt not:
+1.  **Block** (No Mutexes).
+2.  **Allocate** (No `malloc`/`new`).
+3.  **Perform I/O** (No file reads, no `printf`).
+
+### 1. Lock-Free IPC (SPSC Queue)
+Communication between the UI Thread (writes parameters) and Audio Thread (reads parameters) must be wait-free.
+*   **Structure:** Single-Producer Single-Consumer Circular Buffer.
+*   **Atomic Indices:** `head` (write) and `tail` (read) are `std::atomic<size_t>`.
+
+### 2. SIMD for DSP
+Digital Signal Processing (Filters, FFT) is purely math-bound.
+*   **Auto-vectorization:** Help the compiler (restrict pointers, fixed loop bounds).
+*   **Intrinsics:** Manually using `<immintrin.h>` for AVX-512 processing of 16 samples per cycle.
+*   **Biquad Filter:** The workhorse of EQ.
+    ```cpp
+    // Processing 4 stereo channels (8 floats) at once with AVX
+    __m256 samples = _mm256_load_ps(input_ptr);
+    __m256 result = _mm256_add_ps(_mm256_mul_ps(samples, b0), ...);
+    ```
+
+### 3. Double Buffering
+For spectral analysis (FFT) which requires blocks (e.g., 1024 samples), while audio comes in small chunks (e.g., 64 samples).
+*   **Technique:** Fill Buffer A. When full, signal worker thread to process A, swap to filling Buffer B.
+
+---
 
 ## <a name="chapter-42-roboticsros2development"></a>CHAPTER 42: ROBOTICS & ROS2 DEVELOPMENT
 
-Robotics combines high-level logic with hard real-time constraints. We explore ROS2, C++20, and Zero-Copy IPC with Iceoryx.
+Robotics is where Soft Real-Time (Navigation) meets Hard Real-Time (Motor Control).
+
+### 1. ROS2 Architecture & DDS
+Robot Operating System 2 (ROS2) runs on top of DDS (Data Distribution Service).
+*   **Nodes:** Independent processes.
+*   **Topics:** Pub/Sub channels.
+*   **Services:** RPC-style calls.
+
+### 2. Zero-Copy Transport (Iceoryx)
+Standard ROS2 serialization is slow for large data (LiDAR point clouds, 4K video).
+*   **Solution:** Shared Memory.
+*   **Mechanism:**
+    1.  Publisher requests a memory chunk from shared segment.
+    2.  Publisher writes data directly.
+    3.  Publisher sends the *offset* (pointer) to Subscriber.
+    4.  Subscriber reads directly. **Zero copies.**
+
+### 3. Real-Time Executors
+Standard ROS2 executors can suffer from priority inversion.
+*   **Callback-group-level Executor:** Prioritize "Safety Stop" topic callbacks over "Camera Logging" callbacks.
+
+### 4. Custom Allocators (`std::pmr`)
+In the real-time control loop (1kHz+), heap fragmentation is fatal.
+*   **Pattern:** Use `std::pmr::monotonic_buffer_resource` on the stack for message generation.
+
+---
 
 ## <a name="chapter-43-machinelearninginfrastructure"></a>CHAPTER 43: MACHINE LEARNING INFRASTRUCTURE
 
-Machine Learning in C++ is about efficiency. We cover Tensor memory layout, strides, and interfacing with BLAS/MKL libraries.
+Deep Learning frameworks (PyTorch, TensorFlow) are C++ engines wrapped in Python.
+
+### 1. Tensor Memory Layout
+A Tensor is a block of memory + a "View".
+*   **Strides:** The number of elements to skip to reach the next index in a dimension.
+    *   `Element(i, j) = data[i * stride_i + j * stride_j]`
+*   **Contiguity:** Transposing a tensor (`A.T`) usually just modifies strides, touching **zero** data.
+
+### 2. Broadcasting Implementation
+How to add `[32, 1]` vector to `[32, 100]` matrix?
+*   **Virtual Expansion:** Set stride for the dimension of size `1` to `0`. Accessing that dimension repeatedly reads the same value.
+
+### 3. Automatic Differentiation (Autograd)
+*   **Computational Graph:** Directed Acyclic Graph (DAG) of operations.
+*   **Reverse Mode (Backprop):**
+    1.  Forward pass: Compute `y = f(x)`, store intermediate values (tape).
+    2.  Backward pass: Compute `dL/dx` using stored values and chain rule.
+*   **Implementation:** `Node` class with `virtual Tensor backward(Tensor grad)`.
+
+### 4. Operator Fusion
+Optimizing `ReLU(Add(MatMul(A, B), C))` into a single kernel launch to minimize VRAM bandwidth.
+
+---
 
 ## <a name="chapter-44-databaseinternalslsmtrees"></a>CHAPTER 44: DATABASE INTERNALS (LSM TREES)
 
-Database Internals focus on LSM Trees, MemTables, WAL, and SSTables. We explain how RocksDB-style engines achieve extreme write throughput.
+How RocksDB and LevelDB achieve millions of writes per second.
+
+### 1. The Write Problem
+Random writes to disk (B-Tree update) are slow (IOPS bottleneck). Sequential writes are fast.
+
+### 2. LSM Tree (Log-Structured Merge Tree)
+*   **MemTable:** In-memory sorted structure (SkipList or Red-Black Tree).
+    *   Writes go here first (fast RAM access).
+    *   WAL (Write Ahead Log) on disk for durability.
+*   **Immutable MemTable:** When MemTable is full, it becomes immutable and is flushed to disk.
+*   **SSTable (Sorted String Table):** The flushed file on disk. Key-Value pairs sorted by Key.
+*   **Compaction:** Background process merges multiple SSTables, discarding overwritten/deleted keys (Leveled Compaction).
+
+### 3. Bloom Filters
+To read a key, we might have to check *all* SSTables. Slow!
+*   **Optimization:** Each SSTable has a Bloom Filter.
+*   **Check:** If Bloom says "No", key is definitely not in this file. Skip it.
+
+### 4. Memory Mapped I/O (`mmap`)
+Mapping the SSTable file directly into virtual address space. The OS manages paging.
+*   **Benefits:** Zero-copy from disk cache to user space.
+*   **Risks:** `SIGBUS` if file is truncated; lack of control over eviction.
+
+---
 
 # Volume IX: Final Reference
 
