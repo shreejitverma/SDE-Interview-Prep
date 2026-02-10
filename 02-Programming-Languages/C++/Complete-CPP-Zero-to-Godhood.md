@@ -12102,6 +12102,1160 @@ end-generator-iterators.
 
 
 ---
+### Professional Notes: Maps, Sets & Algorithms
+
+#### Chapter 50: std::map
+
+To use any of std::map or std::multimap the header ﬁle <map> should be included.
+std::map and std::multimap both keep their elements sorted according to the ascending order of keys. In
+case of std::multimap, no sorting occurs for the values of the same key.
+The basic diﬀerence between std::map and std::multimap is that the std::map one does not allow duplicate
+values for the same key where std::multimap does.
+Maps are implemented as binary search trees. So search(), insert(), erase() takes Θ(log n) time in
+average. For constant time operation use std::unordered_map.
+size() and empty() functions have Θ(1) time complexity, number of nodes is cached to avoid walking
+through tree each time these functions are called.
+Section 50.1: Accessing elements
+An std::map takes (key, value) pairs as input.
+Consider the following example of std::map initialization:
+std::map < std::string, int > ranking { std::make_pair("stackoverflow", 2),
+                                        std::make_pair("docs-beta", 1) };
+In an std::map , elements can be inserted as follows:
+ranking["stackoverflow"]=2;
+ranking["docs-beta"]=1;
+In the above example, if the key stackoverflow is already present, its value will be updated to 2. If it isn't already
+present, a new entry will be created.
+In an std::map, elements can be accessed directly by giving the key as an index:
+std::cout << ranking[ "stackoverflow" ] << std::endl;
+Note that using the operator[] on the map will actually insert a new value with the queried key into the map. This
+means that you cannot use it on a const std::map, even if the key is already stored in the map. To prevent this
+insertion, check if the element exists (for example by using find()) or use at() as described below.
+Version ≥ C++11
+Elements of a std::map can be accessed with at():
+std::cout << ranking.at("stackoverflow") << std::endl;
+Note that at() will throw an std::out_of_range exception if the container does not contain the requested
+element.
+In both containers std::map and std::multimap, elements can be accessed using iterators:
+Version ≥ C++11
+// Example using begin()
+std::multimap < int, std::string > mmp { std::make_pair(2, "stackoverflow"),
+                                         std::make_pair(1, "docs-beta"),
+                                         std::make_pair(2, "stackexchange")  };
+auto it = mmp.begin();
+std::cout << it->first << " : " << it->second << std::endl; // Output: "1 : docs-beta"
+it++;
+std::cout << it->first << " : " << it->second << std::endl; // Output: "2 : stackoverflow"
+it++;
+std::cout << it->first << " : " << it->second << std::endl; // Output: "2 : stackexchange"
+// Example using rbegin()
+std::map < int, std::string > mp {  std::make_pair(2, "stackoverflow"),
+                                    std::make_pair(1, "docs-beta"),
+                                    std::make_pair(2, "stackexchange")  };
+auto it2 = mp.rbegin();
+std::cout << it2->first << " : " << it2->second << std::endl; // Output: "2 : stackoverflow"
+it2++;
+std::cout << it2->first << " : " << it2->second << std::endl; // Output: "1 : docs-beta"
+Section 50.2: Inserting elements
+An element can be inserted into a std::map only if its key is not already present in the map. Given for example:
+std::map< std::string, size_t > fruits_count;
+A key-value pair is inserted into a std::map through the insert() member function. It requires a pair as an
+argument:
+fruits_count.insert({"grapes", 20});
+fruits_count.insert(make_pair("orange", 30));
+fruits_count.insert(pair<std::string, size_t>("banana", 40));
+fruits_count.insert(map<std::string, size_t>::value_type("cherry", 50));
+The insert() function returns a pair consisting of an iterator and a bool value:
+If the insertion was successful, the iterator points to the newly inserted element, and the bool value is
+true.
+If there was already an element with the same key, the insertion fails. When that happens, the iterator
+points to the element causing the conﬂict, and the bool is value is false.
+The following method can be used to combine insertion and searching operation:
+auto success = fruits_count.insert({"grapes", 20});
+if (!success.second) {           // we already have 'grapes' in the map
+    success.first->second += 20; // access the iterator to update the value
+}
+For convenience, the std::map container provides the subscript operator to access elements in the map and
+to insert new ones if they don't exist:
+fruits_count["apple"] = 10;
+While simpler, it prevents the user from checking if the element already exists. If an element is missing,
+std::map::operator[] implicitly creates it, initializing it with the default constructor before overwriting it
+with the supplied value.
+insert() can be used to add several elements at once using a braced list of pairs. This version of insert()
+returns void:
+fruits_count.insert({{"apricot", 1}, {"jackfruit", 1}, {"lime", 1}, {"mango", 7}});
+insert() can also be used to add elements by using iterators denoting the begin and end of value_type
+values:
+std::map< std::string, size_t > fruit_list{ {"lemon", 0}, {"olive", 0}, {"plum", 0}};
+fruits_count.insert(fruit_list.begin(), fruit_list.end());
+Example:
+std::map<std::string, size_t> fruits_count;
+std::string fruit;
+while(std::cin >> fruit){
+    // insert an element with 'fruit' as key and '1' as value
+    // (if the key is already stored in fruits_count, insert does nothing)
+    auto ret = fruits_count.insert({fruit, 1});
+    if(!ret.second){            // 'fruit' is already in the map
+        ++ret.first->second;    // increment the counter
+    }
+}
+Time complexity for an insertion operation is O(log n) because std::map are implemented as trees.
+Version ≥ C++11
+A pair can be constructed explicitly using make_pair() and emplace():
+std::map< std::string , int > runs;
+runs.emplace("Babe Ruth", 714);
+runs.insert(make_pair("Barry Bonds", 762));
+If we know where the new element will be inserted, then we can use emplace_hint() to specify an iterator hint. If
+the new element can be inserted just before hint, then the insertion can be done in constant time. Otherwise it
+behaves in the same way as emplace():
+std::map< std::string , int > runs;
+auto it = runs.emplace("Barry Bonds", 762); // get iterator to the inserted element
+// the next element will be before "Barry Bonds", so it is inserted before 'it'
+runs.emplace_hint(it, "Babe Ruth", 714);
+Section 50.3: Searching in std::map or in std::multimap
+There are several ways to search a key in std::map or in std::multimap.
+To get the iterator of the ﬁrst occurrence of a key, the find() function can be used. It returns end() if the key
+does not exist.
+  std::multimap< int , int > mmp{ {1, 2}, {3, 4}, {6, 5}, {8, 9}, {3, 4}, {6, 7} };
+  auto it = mmp.find(6);
+  if(it!=mmp.end())
+      std::cout << it->first << ", " << it->second << std::endl; //prints: 6, 5
+  else
+      std::cout << "Value does not exist!" << std::endl;
+  it = mmp.find(66);
+  if(it!=mmp.end())
+      std::cout << it->first << ", " << it->second << std::endl;
+  else
+      std::cout << "Value does not exist!" << std::endl; // This line would be executed.
+Another way to ﬁnd whether an entry exists in std::map or in std::multimap is using the count() function,
+which counts how many values are associated with a given key. Since std::map associates only one value
+with each key, its count() function can only return 0 (if the key is not present) or 1 (if it is). For
+std::multimap, count() can return values greater than 1 since there can be several values associated with
+the same key.
+ std::map< int , int > mp{ {1, 2}, {3, 4}, {6, 5}, {8, 9}, {3, 4}, {6, 7} };
+ if(mp.count(3) > 0) // 3 exists as a key in map
+     std::cout << "The key exists!" << std::endl; // This line would be executed.
+ else
+     std::cout << "The key does not exist!" << std::endl;
+If you only care whether some element exists, find is strictly better: it documents your intent and, for
+multimaps, it can stop once the ﬁrst matching element has been found.
+In the case of std::multimap, there could be several elements having the same key. To get this range, the
+equal_range() function is used which returns std::pair having iterator lower bound (inclusive) and upper
+bound (exclusive) respectively. If the key does not exist, both iterators would point to end().
+  auto eqr = mmp.equal_range(6);
+  auto st = eqr.first, en = eqr.second;
+  for(auto it = st; it != en; ++it){
+      std::cout << it->first << ", " << it->second << std::endl;
+  }
+      // prints: 6, 5
+      //         6, 7
+Section 50.4: Initializing a std::map or std::multimap
+std::map and std::multimap both can be initialized by providing key-value pairs separated by comma. Key-value
+pairs could be provided by either {key, value} or can be explicitly created by std::make_pair(key, value). As
+std::map does not allow duplicate keys and comma operator performs right to left, the pair on right would be
+overwritten with the pair with same key on the left.
+std::multimap < int, std::string > mmp { std::make_pair(2, "stackoverflow"),
+                                     std::make_pair(1, "docs-beta"),
+                                     std::make_pair(2, "stackexchange")  };
+// 1 docs-beta
+// 2 stackoverflow
+// 2 stackexchange
+std::map < int, std::string > mp {  std::make_pair(2, "stackoverflow"),
+                                std::make_pair(1, "docs-beta"),
+                                std::make_pair(2, "stackexchange")  };
+// 1 docs-beta
+// 2 stackoverflow
+Both could be initialized with iterator.
+// From std::map or std::multimap iterator
+std::multimap< int , int > mmp{ {1, 2}, {3, 4}, {6, 5}, {8, 9}, {6, 8}, {3, 4},
+                               {6, 7} };
+                       // {1, 2}, {3, 4}, {3, 4}, {6, 5}, {6, 8}, {6, 7}, {8, 9}
+auto it = mmp.begin();
+std::advance(it,3); //moved cursor on first {6, 5}
+std::map< int, int > mp(it, mmp.end()); // {6, 5}, {8, 9}
+//From std::pair array
+std::pair< int, int > arr[10];
+arr[0] = {1, 3};
+arr[1] = {1, 5};
+arr[2] = {2, 5};
+arr[3] = {0, 1};
+std::map< int, int > mp(arr,arr+4); //{0 , 1}, {1, 3}, {2, 5}
+//From std::vector of std::pair
+std::vector< std::pair<int, int> > v{ {1, 5}, {5, 1}, {3, 6}, {3, 2} };
+std::multimap< int, int > mp(v.begin(), v.end());
+                        // {1, 5}, {3, 6}, {3, 2}, {5, 1}
+Section 50.5: Checking number of elements
+The container std::map has a member function empty(), which returns true or false, depending on whether the
+map is empty or not. The member function size() returns the number of element stored in a std::map container:
+std::map<std::string , int> rank {{"facebook.com", 1} ,{"google.com", 2}, {"youtube.com", 3}};
+if(!rank.empty()){
+    std::cout << "Number of elements in the rank map: " << rank.size() << std::endl;
+}
+else{
+    std::cout << "The rank map is empty" << std::endl;
+}
+Section 50.6: Types of Maps
+Regular Map
+A map is an associative container, containing key-value pairs.
+#include <string>
+#include <map>
+std::map<std::string, size_t> fruits_count;
+In the above example, std::string is the key type, and size_t is a value.
+The key acts as an index in the map. Each key must be unique, and must be ordered.
+If you need mutliple elements with the same key, consider using multimap (explained below)
+If your value type does not specify any ordering, or you want to override the default ordering, you may
+provide one:
+#include <string>
+#include <map>
+#include <cstring>
+struct StrLess {
+    bool operator()(const std::string& a, const std::string& b) {
+        return strncmp(a.c_str(), b.c_str(), 8)<0;
+               //compare only up to 8 first characters
+    }
+}
+std::map<std::string, size_t, StrLess> fruits_count2;
+If StrLess comparator returns false for two keys, they are considered the same even if their actual contents
+diﬀer.
+Multi-Map
+Multimap allows multiple key-value pairs with the same key to be stored in the map. Otherwise, its interface and
+creation is very similar to the regular map.
+ #include <string>
+ #include <map>
+ std::multimap<std::string, size_t> fruits_count;
+ std::multimap<std::string, size_t, StrLess> fruits_count2;
+Hash-Map (Unordered Map)
+A hash map stores key-value pairs similar to a regular map. It does not order the elements with respect to the key
+though. Instead, a hash value for the key is used to quickly access the needed key-value pairs.
+#include <string>
+#include <unordered_map>
+std::unordered_map<std::string, size_t> fruits_count;
+Unordered maps are usually faster, but the elements are not stored in any predictable order. For example, iterating
+over all elements in an unordered_map gives the elements in a seemingly random order.
+Section 50.7: Deleting elements
+Removing all elements:
+std::multimap< int , int > mmp{ {1, 2}, {3, 4}, {6, 5}, {8, 9}, {3, 4}, {6, 7} };
+mmp.clear(); //empty multimap
+Removing element from somewhere with the help of iterator:
+std::multimap< int , int > mmp{ {1, 2}, {3, 4}, {6, 5}, {8, 9}, {3, 4}, {6, 7} };
+                            // {1, 2}, {3, 4}, {3, 4}, {6, 5}, {6, 7}, {8, 9}
+auto it = mmp.begin();
+std::advance(it,3); // moved cursor on first {6, 5}
+mmp.erase(it); // {1, 2}, {3, 4}, {3, 4}, {6, 7}, {8, 9}
+Removing all elements in a range:
+std::multimap< int , int > mmp{ {1, 2}, {3, 4}, {6, 5}, {8, 9}, {3, 4}, {6, 7} };
+                            // {1, 2}, {3, 4}, {3, 4}, {6, 5}, {6, 7}, {8, 9}
+auto it = mmp.begin();
+auto it2 = it;
+it++; //moved first cursor on first {3, 4}
+std::advance(it2,3);  //moved second cursor on first {6, 5}
+mmp.erase(it,it2); // {1, 2}, {6, 5}, {6, 7}, {8, 9}
+Removing all elements having a provided value as key:
+std::multimap< int , int > mmp{ {1, 2}, {3, 4}, {6, 5}, {8, 9}, {3, 4}, {6, 7} };
+                            // {1, 2}, {3, 4}, {3, 4}, {6, 5}, {6, 7}, {8, 9}
+mmp.erase(6); // {1, 2}, {3, 4}, {3, 4}, {8, 9}
+Removing elements that satisfy a predicate pred:
+std::map<int,int> m;
+auto it = m.begin();
+while (it != m.end())
+{
+   if (pred(*it))
+       it = m.erase(it);
+   else
+       ++it;
+}
+Section 50.8: Iterating over std::map or std::multimap
+std::map or std::multimap could be traversed by the following ways:
+std::multimap< int , int > mmp{ {1, 2}, {3, 4}, {6, 5}, {8, 9}, {3, 4}, {6, 7} };
+//Range based loop - since C++11
+for(const auto &x: mmp)
+    std::cout<< x.first <<":"<< x.second << std::endl;
+//Forward iterator for loop: it would loop through first element to last element
+//it will be a std::map< int, int >::iterator
+for (auto it = mmp.begin(); it != mmp.end(); ++it)
+std::cout<< it->first <<":"<< it->second << std::endl; //Do something with iterator
+//Backward iterator for loop: it would loop through last element to first element
+//it will be a std::map< int, int >::reverse_iterator
+for (auto it = mmp.rbegin(); it != mmp.rend(); ++it)
+std::cout<< it->first <<" "<< it->second << std::endl; //Do something with iterator
+While iterating over a std::map or a std::multimap, the use of auto is preferred to avoid useless implicit
+conversions (see this SO answer for more details).
+Section 50.9: Creating std::map with user-deﬁned types as
+key
+In order to be able to use a class as the key in a map, all that is required of the key is that it be copiable and
+assignable. The ordering within the map is deﬁned by the third argument to the template (and the argument to
+the constructor, if used). This defaults to std::less<KeyType>, which defaults to the < operator, but there's no
+requirement to use the defaults. Just write a comparison operator (preferably as a functional object):
+struct CmpMyType
+{
+    bool operator()( MyType const& lhs, MyType const& rhs ) const
+    {
+        //  ...
+    }
+};
+In C++, the "compare" predicate must be a strict weak ordering. In particular, compare(X,X) must return false for
+any X. i.e. if CmpMyType()(a, b) returns true, then CmpMyType()(b, a) must return false, and if both return false,
+the elements are considered equal (members of the same equivalence class).
+Strict Weak Ordering
+This is a mathematical term to deﬁne a relationship between two objects.
+Its deﬁnition is:
+Two objects x and y are equivalent if both f(x, y) and f(y, x) are false. Note that an object is always (by the
+irreﬂexivity invariant) equivalent to itself.
+In terms of C++ this means if you have two objects of a given type, you should return the following values when
+compared with the operator <.
+X    a;
+X    b;
+Condition:                  Test:     Result
+a is equivalent to b:       a < b     false
+a is equivalent to b        b < a     false
+a is less than b            a < b     true
+a is less than b            b < a     false
+b is less than a            a < b     false
+b is less than a            b < a     true
+How you deﬁne equivalent/less is totally dependent on the type of your object.
+
+#### Chapter 59: std::set and std::multiset
+
+set is a type of container whose elements are sorted and unique.  multiset is similar, but, in the case of multiset,
+multiple elements can have the same value.
+Section 59.1: Changing the default sort of a set
+set and multiset have default compare methods, but in some cases you may need to overload them.
+Let's imagine we are storing string values in a set, but we know those strings contain only numeric values. By
+default the sort will be a lexicographical string comparison, so the order won't match the numerical sort. If you
+want to apply a sort equivalent to what you would have with int values, you need a functor to overload the
+compare method:
+#include <iostream>
+#include <set>
+#include <stdlib.h>
+struct custom_compare final
+{
+    bool operator() (const std::string& left, const std::string& right) const
+    {
+        int nLeft = atoi(left.c_str());
+        int nRight = atoi(right.c_str());
+        return nLeft < nRight;
+    }
+};
+int main ()
+{
+    std::set<std::string> sut({"1", "2", "5", "23", "6", "290"});
+    std::cout << "### Default sort on std::set<std::string> :" << std::endl;
+    for (auto &&data: sut)
+        std::cout << data << std::endl;
+    std::set<std::string, custom_compare> sut_custom({"1", "2", "5", "23", "6", "290"},
+                                                     custom_compare{}); //< Compare object optional
+as its default constructible.
+    std::cout << std::endl << "### Custom sort on set :" << std::endl;
+    for (auto &&data : sut_custom)
+        std::cout << data << std::endl;
+    auto compare_via_lambda = [](auto &&lhs, auto &&rhs){ return lhs > rhs; };
+    using set_via_lambda = std::set<std::string, decltype(compare_via_lambda)>;
+    set_via_lambda sut_reverse_via_lambda({"1", "2", "5", "23", "6", "290"},
+                                          compare_via_lambda);
+    std::cout << std::endl << "### Lambda sort on set :" << std::endl;
+    for (auto &&data : sut_reverse_via_lambda)
+        std::cout << data << std::endl;
+    return 0;
+}
+Output will be:
+### Default sort on std::set<std::string> :
+### Custom sort on set :
+### Lambda sort on set :
+In the example above, one can ﬁnd 3 diﬀerent ways of adding compare operations to the std::set, each of them is
+useful in its own context.
+Default sort
+This will use the compare operator of the key (ﬁrst template argument). Often, the key will already provide a good
+default for the std::less<T> function. Unless this function is specialized, it uses the operator< of the object. This is
+especially useful when other code also tries to use some ordering, as this allows consistency over the whole code
+base.
+Writing the code this way, will reduce the eﬀort to update your code when the key changes is API, like: a class
+containing 2 members which changes to a class containing 3 members. By updating the operator< in the class, all
+occurrences will get updated.
+As you might expect, using the default sort is a reasonable default.
+Custom sort
+Adding a custom sort via an object with a compare operator is often used when the default comparison doesn't
+comply. In the example above this is because the strings are referring to integers. In other cases, it's often used
+when you want to compare (smart) pointers based upon the object they refer to or because you need diﬀerent
+constraints for comparing (example: comparing std::pair by the value of first).
+When creating a compare operator, this should be a stable sorting. If the result of the compare operator changes
+after insert, you will have undeﬁned behavior. As a good practice, your compare operator should only use the
+constant data (const members, const functions ...).
+As in the example above, you will often encounter classes without members as compare operators. This results in
+default constructors and copy constructors. The default constructor allows you to omit the instance at construction
+time and the copy constructor is required as the set takes a copy of the compare operator.
+Lambda sort
+Lambdas are a shorter way to write function objects. This allows writing the compare operator on less lines, making
+the overall code more readable.
+The disadvantage of the use of lambdas is that each lambda gets a speciﬁc type at compile time, so
+decltype(lambda) will be diﬀerent for each compilation of the same compilation unit (cpp ﬁle) as over multiple
+compilation units (when included via header ﬁle). For this reason, its recommended to use function objects as
+compare operator when used within header ﬁles.
+This construction is often encountered when a std::set is used within the local scope of a function instead, while
+the function object is preferred when used as function arguments or class members.
+Other sort options
+As the compare operator of std::set is a template argument, all callable objects can be used as compare operator
+and the examples above are only speciﬁc cases. The only restrictions these callable objects have are:
+They must be copy constructable
+They must be callable with 2 arguments of the type of the key. (implicit conversions are allowed, though not
+recommended as it can hurt performance)
+Section 59.2: Deleting values from a set
+The most obvious method, if you just want to reset your set/multiset to an empty one, is to use clear:
+  std::set<int> sut;
+  sut.insert(10);
+  sut.insert(15);
+  sut.insert(22);
+  sut.insert(3);
+  sut.clear(); //size of sut is 0
+Then the erase method can be used.  It oﬀers some possibilities looking somewhat equivalent to the insertion:
+std::set<int> sut;
+std::set<int>::iterator it;
+sut.insert(10);
+sut.insert(15);
+sut.insert(22);
+sut.insert(3);
+sut.insert(30);
+sut.insert(33);
+sut.insert(45);
+// Basic deletion
+sut.erase(3);
+// Using iterator
+it = sut.find(22);
+sut.erase(it);
+// Deleting a range of values
+it = sut.find(33);
+sut.erase(it, sut.end());
+std::cout << std::endl << "Set under test contains:" << std::endl;
+for (it = sut.begin(); it != sut.end(); ++it)
+{
+  std::cout << *it << std::endl;
+}
+Output will be:
+Set under test contains:                                                                          
+All those methods also apply to multiset. Please note that if you ask to delete an element from a multiset, and it
+is present multiple times, all the equivalent values will be deleted.
+Section 59.3: Inserting values in a set
+Three diﬀerent methods of insertion can used with sets.
+First, a simple insert of the value. This method returns a pair allowing the caller to check whether the insert
+really occurred.
+Second, an insert by giving a hint of where the value will be inserted. The objective is to optimize the
+insertion time in such a case, but knowing where a value should be inserted is not the common case. Be
+careful in that case; the way to give a hint diﬀers with compiler versions.
+Finally you can insert a range of values by giving a starting and an ending pointer. The starting one will be
+included in the insertion, the ending one is excluded.
+#include <iostream>
+#include <set>
+int main ()
+{
+  std::set<int> sut;
+  std::set<int>::iterator it;
+  std::pair<std::set<int>::iterator,bool> ret;
+  // Basic insert
+  sut.insert(7);
+  sut.insert(5);
+  sut.insert(12);
+  ret = sut.insert(23);
+  if (ret.second==true)
+    std::cout << "# 23 has been inserted!" << std::endl;
+  ret = sut.insert(23); // since it's a set and 23 is already present in it, this insert should
+fail
+  if (ret.second==false)
+    std::cout << "# 23 already present in set!" << std::endl;
+  // Insert with hint for optimization
+  it = sut.end();
+  // This case is optimized for C++11 and above
+  // For earlier version, point to the element preceding your insertion
+  sut.insert(it, 30);
+  // inserting a range of values
+  std::set<int> sut2;
+  sut2.insert(20);
+  sut2.insert(30);
+  sut2.insert(45);
+  std::set<int>::iterator itStart = sut2.begin();
+  std::set<int>::iterator itEnd = sut2.end();
+  sut.insert (itStart, itEnd); // second iterator is excluded from insertion
+  std::cout << std::endl << "Set under test contains:" << std::endl;
+  for (it = sut.begin(); it != sut.end(); ++it)
+  {
+    std::cout << *it << std::endl;
+  }
+  return 0;
+}
+Output will be:
+# 23 has been inserted!                                                                            
+# 23 already present in set!                                                                      
+Set under test contains:                                                                          
+Section 59.4: Inserting values in a multiset
+All the insertion methods from sets also apply to multisets. Nevertheless, another possibility exists, which is
+providing an initializer_list:
+auto il = { 7, 5, 12 };
+std::multiset<int> msut;
+msut.insert(il);
+Section 59.5: Searching values in set and multiset
+There are several ways to search a given value in std::set or in std::multiset:
+To get the iterator of the ﬁrst occurrence of a key, the find() function can be used. It returns end() if the key does
+not exist.
+  std::set<int> sut;
+  sut.insert(10);
+  sut.insert(15);
+  sut.insert(22);
+  sut.insert(3); // contains 3, 10, 15, 22    
+  auto itS = sut.find(10); // the value is found, so *itS == 10
+  itS = sut.find(555); // the value is not found, so itS == sut.end()  
+  std::multiset<int> msut;
+  sut.insert(10);
+  sut.insert(15);
+  sut.insert(22);
+  sut.insert(15);
+  sut.insert(3); // contains 3, 10, 15, 15, 22  
+  auto itMS = msut.find(10);
+Another way is using the count() function, which counts how many corresponding values have been found in the
+set/multiset (in case of a set, the return value can be only 0 or 1). Using the same values as above, we will have:
+int result = sut.count(10); // result == 1
+result = sut.count(555); // result == 0
+result = msut.count(10); // result == 1
+result = msut.count(15); // result == 2
+In the case of std::multiset, there could be several elements having the same value. To get this range, the
+equal_range() function can be used. It returns std::pair having iterator lower bound (inclusive) and upper bound
+(exclusive) respectively. If the key does not exist, both iterators would point to the nearest superior value (based on
+compare method used to sort the given multiset).
+auto eqr = msut.equal_range(15);
+auto st = eqr.first; // point to first element '15'
+auto en = eqr.second; // point to element '22'
+eqr = msut.equal_range(9); // both eqr.first and eqr.second point to element '10'
+
+#### Chapter 62: Standard Library Algorithms
+
+Section 62.1: std::next_permutation
+template< class Iterator >
+bool next_permutation( Iterator first, Iterator last );
+template< class Iterator, class Compare >
+bool next_permutation( Iterator first, Iterator last, Compare cmpFun );
+Eﬀects:
+Sift the data sequence of the range [ﬁrst, last) into the next lexicographically higher permutation. If cmpFun is
+provided, the permutation rule is customized.
+Parameters:
+first- the beginning of the range to be permutated, inclusive
+last - the end of the range to be permutated, exclusive
+Return Value:
+Returns true if such permutation exists.
+Otherwise the range is swaped to the lexicographically smallest permutation and return false.
+Complexity:
+O(n), n is the distance from first to last.
+Example:
+std::vector< int > v { 1, 2, 3 };
+do
+{
+   for( int i = 0; i < v.size(); i += 1 )
+   {
+       std::cout << v[i];
+   }
+   std::cout << std::endl;
+}while( std::next_permutation( v.begin(), v.end() ) );
+print all the permutation cases of 1,2,3 in lexicographically-increasing order.
+output:
+Section 62.2: std::for_each
+template<class InputIterator, class Function>
+    Function for_each(InputIterator first, InputIterator last, Function f);
+Eﬀects:
+Applies f to the result of dereferencing every iterator in the range [first, last) starting from first and
+proceeding to last - 1.
+Parameters:
+first, last - the range to apply f to.
+f - callable object which is applied to the result of dereferencing every iterator in the range [first, last).
+Return value:
+f (until C++11) and std::move(f) (since C++11).
+Complexity:
+Applies f exactly last - first times.
+Example:
+Version ≥ c++11
+std::vector<int> v { 1, 2, 4, 8, 16 };
+std::for_each(v.begin(), v.end(), [](int elem) { std::cout << elem << " "; });
+Applies the given function for every element of the vector v printing this element to stdout.
+Section 62.3: std::accumulate
+Deﬁned in header <numeric>
+template<class InputIterator, class T>
+T accumulate(InputIterator first, InputIterator last, T init); // (1)
+template<class InputIterator, class T, class BinaryOperation>
+T accumulate(InputIterator first, InputIterator last, T init, BinaryOperation f); // (2)
+Eﬀects:
+std::accumulate performs fold operation using f function on range [first, last) starting with init as
+accumulator value.
+Eﬀectively it's equivalent of:
+T acc = init;
+for (auto it = first; first != last; ++it)
+    acc = f(acc, *it);
+return acc;
+In version (1) operator+ is used in place of f, so accumulate over container is equivalent of sum of container
+elements.
+Parameters:
+first, last - the range to apply f to.
+init - initial value of accumulator.
+f - binary folding function.
+Return value:
+Accumulated value of f applications.
+Complexity:
+O(n×k), where n is the distance from first to last, O(k) is complexity of f function.
+Example:
+Simple sum example:
+std::vector<int> v { 2, 3, 4 };
+auto sum = std::accumulate(v.begin(), v.end(), 1);
+std::cout << sum << std::endl;
+Output:
+Convert digits to number:
+Version < c++11
+class Converter {
+public:
+    int operator()(int a, int d) const { return a * 10 + d; }
+};
+and later
+const int ds[3] = {1, 2, 3};
+int n = std::accumulate(ds, ds + 3, 0, Converter());
+std::cout << n << std::endl;
+Version ≥ c++11
+const std::vector<int> ds = {1, 2, 3};
+int n = std::accumulate(ds.begin(), ds.end(),
+                        0,
+                        [](int a, int d) { return a * 10 + d; });
+std::cout << n << std::endl;
+Output:
+Section 62.4: std::ﬁnd
+template <class InputIterator, class T>
+InputIterator find (InputIterator first, InputIterator last, const T& val);
+Eﬀects
+Finds the ﬁrst occurrence of val within the range [ﬁrst, last)
+Parameters
+first => iterator pointing to the beginning of the range last => iterator pointing to the end of the range val => The
+value to ﬁnd within the range
+Return
+An iterator that points to the ﬁrst element within the range that is equal(==) to val, the iterator points to last if val is
+not found.
+Example
+#include <vector>
+#include <algorithm>
+#include <iostream>
+using namespace std;
+int main(int argc, const char * argv[]) {
+  //create a vector
+  vector<int> intVec {4, 6, 8, 9, 10, 30, 55,100, 45, 2, 4, 7, 9, 43, 48};
+  //define iterators
+  vector<int>::iterator  itr_9;
+  vector<int>::iterator  itr_43;
+  vector<int>::iterator  itr_50;
+  //calling find
+  itr_9 = find(intVec.begin(), intVec.end(), 9); //occurs twice
+  itr_43 = find(intVec.begin(), intVec.end(), 43); //occurs once
+  //a value not in the vector
+  itr_50 = find(intVec.begin(), intVec.end(), 50); //does not occur
+  cout << "first occurrence of: " << *itr_9 << endl;
+  cout << "only occurrence of: " << *itr_43 << Lendl;
+  /*
+    let's prove that itr_9 is pointing to the first occurrence
+    of 9 by looking at the element after 9, which should be 10
+    not 43
+  */
+  cout << "element after first 9: " << *(itr_9 + 1) << ends;
+  /*
+    to avoid dereferencing intVec.end(), lets look at the
+    element right before the end
+  */
+  cout << "last element: " << *(itr_50 - 1) << endl;
+  return 0;
+}
+Output
+first occurrence of: 9
+only occurrence of: 43
+element after first 9: 10
+last element: 48
+Section 62.5: std::min_element
+template <class ForwardIterator>
+ForwardIterator min_element (ForwardIterator first, ForwardIterator last);
+template <class ForwardIterator, class Compare>
+ForwardIterator min_element (ForwardIterator first, ForwardIterator last,Compare comp);
+Eﬀects
+Finds the minimum element in a range
+Parameters
+first - iterator pointing to the beginning of the range
+last - iterator pointing to the end of the range comp - a function pointer or function object that takes two
+arguments and returns true or false indicating whether argument is less than argument 2. This function should not
+modify inputs
+Return
+Iterator to the minimum element in the range
+Complexity
+Linear in one less than the number of elements compared.
+Example
+#include <iostream>
+#include <algorithm>
+#include <vector>
+#include <utility>  //to use make_pair
+using namespace std;
+//function compare two pairs
+bool pairLessThanFunction(const pair<string, int> &p1, const pair<string, int> &p2)
+{
+  return p1.second < p2.second;
+}
+int main(int argc, const char * argv[]) {
+  vector<int> intVec {30,200,167,56,75,94,10,73,52,6,39,43};
+  vector<pair<string, int>> pairVector = {make_pair("y", 25), make_pair("b", 2), make_pair("z",
+26), make_pair("e", 5) };
+  // default using < operator
+  auto minInt = min_element(intVec.begin(), intVec.end());
+  //Using pairLessThanFunction
+  auto minPairFunction = min_element(pairVector.begin(), pairVector.end(), pairLessThanFunction);
+  //print minimum of intVector
+  cout << "min int from default: " << *minInt << endl;
+  //print minimum of pairVector
+  cout << "min pair from PairLessThanFunction: " << (*minPairFunction).second << endl;
+  return 0;
+}
+Output
+min int from default: 6
+min pair from PairLessThanFunction: 2
+Section 62.6: std::ﬁnd_if
+template <class InputIterator, class UnaryPredicate>
+InputIterator find_if (InputIterator first, InputIterator last, UnaryPredicate pred);
+Eﬀects
+Finds the ﬁrst element in a range for which the predicate function pred returns true.
+Parameters
+first => iterator pointing to the beginning of the range last => iterator pointing to the end of the range pred =>
+predicate function(returns true or false)
+Return
+An iterator that points to the ﬁrst element within the range the predicate function pred returns true for. The
+iterator points to last if val is not found
+Example
+#include <iostream>
+#include <vector>
+#include <algorithm>
+using namespace std;
+/*
+    define some functions to use as predicates
+*/
+//Returns true if x is multiple of 10
+bool multOf10(int x) {
+  return x % 10 == 0;
+}
+//returns true if item greater than passed in parameter
+class Greater {
+  int _than;
+public:
+  Greater(int th):_than(th){
+  }
+  bool operator()(int data) const
+  {
+    return data > _than;
+  }
+};
+int main()
+{
+  vector<int> myvec {2, 5, 6, 10, 56, 7, 48, 89, 850, 7, 456};
+  //with a lambda function
+  vector<int>::iterator gt10 = find_if(myvec.begin(), myvec.end(), [](int x){return x>10;}); // >=
+C++11
+  //with a function pointer
+  vector<int>::iterator pow10 = find_if(myvec.begin(), myvec.end(), multOf10);
+  //with functor
+  vector<int>::iterator gt5 = find_if(myvec.begin(), myvec.end(), Greater(5));
+  //not Found
+  vector<int>::iterator nf = find_if(myvec.begin(), myvec.end(), Greater(1000)); // nf points to
+myvec.end()
+  //check if pointer points to myvec.end()
+  if(nf != myvec.end()) {
+    cout << "nf points to: " << *nf << endl;
+  }
+  else {
+    cout << "item not found" << endl;
+  }
+  cout << "First item >   10: " << *gt10  << endl;
+  cout << "First Item n * 10: " << *pow10 << endl;
+  cout << "First Item >    5: " << *gt5   << endl;
+  return 0;
+}
+Output
+item not found
+First item >   10: 56
+First Item n * 10: 10
+First Item >    5: 6
+Section 62.7: Using std::nth_element To Find The Median (Or
+Other Quantiles)
+The std::nth_element algorithm takes three iterators: an iterator to the beginning, nth position, and end. Once the
+function returns, the nth element (by order) will be the nth smallest element. (The function has more elaborate
+overloads, e.g., some taking comparison functors; see the above link for all the variations.)
+Note This function is very eﬃcient - it has linear complexity.
+For the sake of this example, let's deﬁne the median of a sequence of length n as the element that would be in
+position ⌈n / 2⌉. For example, the median of a sequence of length 5 is the 3rd smallest element, and so is the
+median of a sequence of length 6.
+To use this function to ﬁnd the median, we can use the following. Say we start with
+std::vector<int> v{5, 1, 2, 3, 4};    
+std::vector<int>::iterator b = v.begin();
+std::vector<int>::iterator e = v.end();
+std::vector<int>::iterator med = b;
+std::advance(med, v.size() / 2);
+// This makes the 2nd position hold the median.
+std::nth_element(b, med, e);    
+// The median is now at v[2].
+To ﬁnd the pth quantile, we would change some of the lines above:
+const std::size_t pos = p * std::distance(b, e);
+std::advance(nth, pos);
+and look for the quantile at position pos.
+Section 62.8: std::count
+template <class InputIterator, class T>
+typename iterator_traits<InputIterator>::difference_type
+count (InputIterator first, InputIterator last, const T& val);
+Eﬀects
+Counts the number of elements that are equal to val
+Parameters
+first => iterator pointing to the beginning of the range
+last => iterator pointing to the end of the range
+val => The occurrence of this value in the range will be counted
+Return
+The number of elements in the range that are equal(==) to val.
+Example
+#include <vector>
+#include <algorithm>
+#include <iostream>
+using namespace std;
+int main(int argc, const char * argv[]) {
+  //create vector
+  vector<int> intVec{4,6,8,9,10,30,55,100,45,2,4,7,9,43,48};
+  //count occurrences of 9, 55, and 101
+  size_t count_9 = count(intVec.begin(), intVec.end(), 9); //occurs twice
+  size_t count_55 = count(intVec.begin(), intVec.end(), 55); //occurs once
+  size_t count_101 = count(intVec.begin(), intVec.end(), 101); //occurs once
+  //print result
+  cout << "There are " << count_9  << " 9s"<< endl;
+  cout << "There is " << count_55  << " 55"<< endl;
+  cout << "There is " << count_101  << " 101"<< ends;
+  //find the first element == 4 in the vector
+  vector<int>::iterator itr_4 = find(intVec.begin(), intVec.end(), 4);
+  //count its occurrences in the vector starting from the first one
+  size_t count_4 = count(itr_4, intVec.end(), *itr_4); // should be 2
+  cout << "There are " << count_4  << " " << *itr_4 << endl;
+  return 0;
+}
+Output
+There are 2 9s
+There is 1 55
+There is 0 101
+There are 2 4
+Section 62.9: std::count_if
+template <class InputIterator, class UnaryPredicate>
+typename iterator_traits<InputIterator>::difference_type
+count_if (InputIterator first, InputIterator last, UnaryPredicate red);
+Eﬀects
+Counts the number of elements in a range for which a speciﬁed predicate function is true
+Parameters
+first => iterator pointing to the beginning of the range last => iterator pointing to the end of the range red =>
+predicate function(returns true or false)
+Return
+The number of elements within the speciﬁed range for which the predicate function returned true.
+Example
+#include <iostream>
+#include <vector>
+#include <algorithm>
+using namespace std;
+/*
+    Define a few functions to use as predicates
+*/
+//return true if number is odd
+bool isOdd(int i){
+  return i%2 == 1;
+}
+//functor that returns true if number is greater than the value of the constructor parameter
+provided
+class Greater {
+  int _than;
+public:
+  Greater(int th): _than(th){}
+  bool operator()(int i){
+    return i > _than;
+  }
+};
+int main(int argc, const char * argv[]) {
+  //create a vector
+  vector<int> myvec = {1,5,8,0,7,6,4,5,2,1,5,0,6,9,7};
+  //using a lambda function to count even numbers
+  size_t evenCount = count_if(myvec.begin(), myvec.end(), [](int i){return i % 2 == 0;}); // >=
+C++11
+  //using function pointer to count odd number in the first half of the vector
+  size_t oddCount = count_if(myvec.begin(), myvec.end()- myvec.size()/2, isOdd);
+  //using a functor to count numbers greater than 5
+  size_t greaterCount = count_if(myvec.begin(), myvec.end(), Greater(5));
+  cout << "vector size: " << myvec.size() << endl;
+  cout << "even numbers: " << evenCount << " found" << endl;
+  cout << "odd numbers: " << oddCount << " found" << endl;
+  cout << "numbers > 5: " << greaterCount << " found"<< endl;
+  return 0;
+}
+Output
+vector size: 15
+even numbers: 7 found
+odd numbers: 4 found
+numbers > 5: 6 found
+
+#### Chapter 67: Sorting
+
+Section 67.1: Sorting and sequence containers
+std::sort, found in the standard library header algorithm, is a standard library algorithm for sorting a range of
+values, deﬁned by a pair of iterators. std::sort takes as the last parameter a functor used to compare two values;
+this is how it determines the order. Note that std::sort is not stable.
+The comparison function must impose a Strict, Weak Ordering on the elements. A simple less-than (or greater-than)
+comparison will suﬃce.
+A container with random-access iterators can be sorted using the std::sort algorithm:
+Version ≥ C++11
+#include <vector>
+#include <algorithm>
+std::vector<int> MyVector = {3, 1, 2}
+//Default comparison of <
+std::sort(MyVector.begin(), MyVector.end());
+std::sort requires that its iterators are random access iterators. The sequence containers std::list and
+std::forward_list (requiring C++11) do not provide random access iterators, so they cannot be used with
+std::sort. However, they do have sort member functions which implement a sorting algorithm that works with
+their own iterator types.
+Version ≥ C++11
+#include <list>
+#include <algorithm>
+std::list<int> MyList = {3, 1, 2}
+//Default comparison of <
+//Whole list only.
+MyList.sort();
+Their member sort functions always sort the entire list, so they cannot sort a sub-range of elements. However,
+since list and forward_list have fast splicing operations, you could extract the elements to be sorted from the
+list, sort them, then stuﬀ them back where they were quite eﬃciently like this:
+void sort_sublist(std::list<int>& mylist, std::list<int>::const_iterator start,
+std::list<int>::const_iterator end) {
+    //extract and sort half-open sub range denoted by start and end iterator
+    std::list<int> tmp;
+    tmp.splice(tmp.begin(), list, start, end);
+    tmp.sort();
+    //re-insert range at the point we extracted it from
+    list.splice(end, tmp);
+}
+Section 67.2: sorting with std::map (ascending and
+descending)
+This example sorts elements in ascending order of a key using a map. You can use any type, including class,
+instead of std::string, in the example below.
+#include <iostream>
+#include <utility>
+#include <map>
+int main()
+{
+    std::map<double, std::string> sorted_map;
+    // Sort the names of the planets according to their size
+    sorted_map.insert(std::make_pair(0.3829, "Mercury"));
+    sorted_map.insert(std::make_pair(0.9499, "Venus"));
+    sorted_map.insert(std::make_pair(1,      "Earth"));
+    sorted_map.insert(std::make_pair(0.532,  "Mars"));
+    sorted_map.insert(std::make_pair(10.97,  "Jupiter"));
+    sorted_map.insert(std::make_pair(9.14,   "Saturn"));
+    sorted_map.insert(std::make_pair(3.981,  "Uranus"));
+    sorted_map.insert(std::make_pair(3.865,  "Neptune"));
+    for (auto const& entry: sorted_map)
+    {
+        std::cout << entry.second << " (" << entry.first << " of Earth's radius)" << '\n';
+    }
+}
+Output:
+Mercury (0.3829 of Earth's radius)
+Mars (0.532 of Earth's radius)
+Venus (0.9499 of Earth's radius)
+Earth (1 of Earth's radius)
+Neptune (3.865 of Earth's radius)
+Uranus (3.981 of Earth's radius)
+Saturn (9.14 of Earth's radius)
+Jupiter (10.97 of Earth's radius)
+If entries with equal keys are possible, use multimap instead of map (like in the following example).
+To sort elements in descending manner, declare the map with a proper comparison functor (std::greater<>):
+#include <iostream>
+#include <utility>
+#include <map>
+int main()
+{
+    std::multimap<int, std::string, std::greater<int>> sorted_map;
+    // Sort the names of animals in descending order of the number of legs
+    sorted_map.insert(std::make_pair(6,   "bug"));
+    sorted_map.insert(std::make_pair(4,   "cat"));
+    sorted_map.insert(std::make_pair(100, "centipede"));
+    sorted_map.insert(std::make_pair(2,   "chicken"));
+    sorted_map.insert(std::make_pair(0,   "fish"));
+    sorted_map.insert(std::make_pair(4,   "horse"));
+    sorted_map.insert(std::make_pair(8,   "spider"));
+    for (auto const& entry: sorted_map)
+    {
+        std::cout << entry.second << " (has " << entry.first << " legs)" << '\n';
+    }
+}
+Output
+centipede (has 100 legs)
+spider (has 8 legs)
+bug (has 6 legs)
+cat (has 4 legs)
+horse (has 4 legs)
+chicken (has 2 legs)
+fish (has 0 legs)
+Section 67.3: Sorting sequence containers by overloaded less
+operator
+If no ordering function is passed, std::sort will order the elements by calling operator< on pairs of elements,
+which must return a type contextually convertible to bool (or just bool). Basic types (integers, ﬂoats, pointers etc)
+have already build in comparison operators.
+We can overload this operator to make the default sort call work on user-deﬁned types.
+// Include sequence containers
+#include <vector>
+#include <deque>
+#include <list>
+// Insert sorting algorithm
+#include <algorithm>    
+class Base {
+ public:
+    // Constructor that set variable to the value of v
+    Base(int v): variable(v) {
+    }
+    // Use variable to provide total order operator less
+    //`this` always represents the left-hand side of the compare.
+    bool operator<(const Base &b) const {
+        return this->variable < b.variable;
+    }
+    int variable;
+};
+int main() {
+    std::vector <Base> vector;
+    std::deque <Base> deque;
+    std::list <Base> list;
+    // Create 2 elements to sort
+    Base a(10);
+    Base b(5);
+    // Insert them into backs of containers
+    vector.push_back(a);
+    vector.push_back(b);
+    deque.push_back(a);
+    deque.push_back(b);
+    list.push_back(a);
+    list.push_back(b);
+    // Now sort data using operator<(const Base &b) function
+    std::sort(vector.begin(), vector.end());
+    std::sort(deque.begin(), deque.end());
+    // List must be sorted differently due to its design
+    list.sort();
+    return 0;
+}
+Section 67.4: Sorting sequence containers using compare
+function
+// Include sequence containers
+#include <vector>
+#include <deque>
+#include <list>
+// Insert sorting algorithm
+#include <algorithm>
+class Base {
+ public:
+    // Constructor that set variable to the value of v
+    Base(int v): variable(v) {
+    }
+    int variable;
+};
+bool compare(const Base &a, const Base &b) {
+    return a.variable < b.variable;
+}
+int main() {
+    std::vector <Base> vector;
+    std::deque <Base> deque;
+    std::list <Base> list;
+    // Create 2 elements to sort
+    Base a(10);
+    Base b(5);
+    // Insert them into backs of containers
+    vector.push_back(a);
+    vector.push_back(b);
+    deque.push_back(a);
+    deque.push_back(b);
+    list.push_back(a);
+    list.push_back(b);
+    // Now sort data using comparing function
+    std::sort(vector.begin(), vector.end(), compare);
+    std::sort(deque.begin(), deque.end(), compare);
+    list.sort(compare);
+    return 0;
+}
+Section 67.5: Sorting sequence containers using lambda
+expressions (C++11)
+Version ≥ C++11
+// Include sequence containers
+#include <vector>
+#include <deque>
+#include <list>
+#include <array>
+#include <forward_list>
+// Include sorting algorithm
+#include <algorithm>
+class Base {
+ public:
+    // Constructor that set variable to the value of v
+    Base(int v): variable(v) {
+    }
+    int variable;
+};
+int main() {
+    // Create 2 elements to sort
+    Base a(10);
+    Base b(5);
+    // We're using C++11, so let's use initializer lists to insert items.
+    std::vector <Base> vector = {a, b};
+    std::deque <Base> deque = {a, b};
+    std::list <Base> list = {a, b};
+    std::array <Base, 2> array = {a, b};
+    std::forward_list<Base> flist = {a, b};
+    // We can sort data using an inline lambda expression
+    std::sort(std::begin(vector), std::end(vector),
+      [](const Base &a, const Base &b) { return a.variable < b.variable;});
+    // We can also pass a lambda object as the comparator
+    // and reuse the lambda multiple times
+    auto compare = [](const Base &a, const Base &b) {
+                     return a.variable < b.variable;};
+    std::sort(std::begin(deque), std::end(deque), compare);
+    std::sort(std::begin(array), std::end(array), compare);
+    list.sort(compare);
+    flist.sort(compare);
+    return 0;
+}
+Section 67.6: Sorting built-in arrays
+The sort algorithm sorts a sequence deﬁned by two iterators. This is enough to sort a built-in (also known as c-
+style) array.
+Version ≥ C++11
+int arr1[] = {36, 24, 42, 60, 59};
+// sort numbers in ascending order
+sort(std::begin(arr1), std::end(arr1));
+// sort numbers in descending order
+sort(std::begin(arr1), std::end(arr1), std::greater<int>());
+Prior to C++11, end of array had to be "calculated" using the size of the array:
+Version < C++11
+// Use a hard-coded number for array size
+sort(arr1, arr1 + 5);
+// Alternatively, use an expression
+const size_t arr1_size = sizeof(arr1) / sizeof(*arr1);
+sort(arr1, arr1 + arr1_size);
+Section 67.7: Sorting sequence containers with specifed
+ordering
+If the values in a container have certain operators already overloaded, std::sort can be used with specialized
+functors to sort in either ascending or descending order:
+Version ≥ C++11
+#include <vector>
+#include <algorithm>
+#include <functional>
+std::vector<int> v = {5,1,2,4,3};
+//sort in ascending order (1,2,3,4,5)
+std::sort(v.begin(), v.end(), std::less<int>());
+// Or just:
+std::sort(v.begin(), v.end());
+//sort in descending order (5,4,3,2,1)
+std::sort(v.begin(), v.end(), std::greater<int>());
+//Or just:
+std::sort(v.rbegin(), v.rend());
+Version ≥ C++14
+In C++14, we don't need to provide the template argument for the comparison function objects and instead let the
+object deduce based on what it gets passed in:
+std::sort(v.begin(), v.end(), std::less<>());     // ascending order
+std::sort(v.begin(), v.end(), std::greater<>());  // descending order
+
+
+
+---
 ### Professional Notes: String & Vector Deep Dive
 
 #### Chapter 47: std::string
@@ -14305,6 +15459,347 @@ This enables `emplace_back` to work efficiently.
 
 ## <a name="chapter-10-c11"></a>CHAPTER 10: C++11 FUNCTIONAL PROGRAMMING
 
+
+---
+### Professional Notes: Functional Programming Deep Dive
+
+#### Chapter 52: std::function: To wrap any
+
+element that is callable
+Section 52.1: Simple usage
+#include <iostream>
+#include <functional>
+std::function<void(int , const std::string&)> myFuncObj;
+void theFunc(int i, const std::string& s)
+{
+    std::cout << s << ": " << i << std::endl;
+}
+int main(int argc, char *argv[])
+{
+    myFuncObj = theFunc;
+    myFuncObj(10, "hello world");
+}
+Section 52.2: std::function used with std::bind
+Think about a situation where we need to callback a function with arguments. std::function used with std::bind
+gives a very powerful design construct as shown below.
+class A
+{
+public:
+    std::function<void(int, const std::string&)> m_CbFunc = nullptr;
+    void foo()
+    {
+        if (m_CbFunc)
+        {
+            m_CbFunc(100, "event fired");
+        }
+    }
+};
+class B
+{
+public:
+    B()
+    {
+        auto aFunc = std::bind(&B::eventHandler, this, std::placeholders::_1,
+std::placeholders::_2);
+        anObjA.m_CbFunc = aFunc;
+    }
+    void eventHandler(int i, const std::string& s)
+    {
+        std::cout << s << ": " << i << std::endl;
+    }
+    void DoSomethingOnA()
+    {
+        anObjA.foo();
+    }
+    A anObjA;
+};
+int main(int argc, char *argv[])
+{
+     B anObjB;
+     anObjB.DoSomethingOnA();
+}
+Section 52.3: Binding std::function to a dierent callable
+types
+/*
+ * This example show some ways of using std::function to call
+ *  a) C-like function
+ *  b) class-member function
+ *  c) operator()
+ *  d) lambda function
+ *
+ * Function call can be made:
+ *  a) with right arguments
+ *  b) argumens with different order, types and count
+ */
+#include <iostream>
+#include <functional>
+#include <iostream>
+#include <vector>
+using std::cout;
+using std::endl;
+using namespace std::placeholders;
+// simple function to be called
+double foo_fn(int x, float y, double z)
+{
+  double res = x + y + z;
+  std::cout << "foo_fn called with arguments: "
+            << x << ", " << y << ", " << z
+            << " result is : " << res
+            << std::endl;
+  return res;
+}
+// structure with member function to call
+struct foo_struct
+{
+    // member function to call
+    double foo_fn(int x, float y, double z)
+    {
+        double res = x + y + z;
+        std::cout << "foo_struct::foo_fn called with arguments: "
+                << x << ", " << y << ", " << z
+                << " result is : " << res
+                << std::endl;
+        return res;
+    }
+    // this member function has different signature - but it can be used too
+    // please not that argument order is changed too
+    double foo_fn_4(int x, double z, float y, long xx)
+    {
+        double res = x + y + z + xx;
+        std::cout << "foo_struct::foo_fn_4 called with arguments: "
+                << x << ", " << z << ", " << y << ", " << xx
+                << " result is : " << res
+                << std::endl;
+        return res;
+    }
+    // overloaded operator() makes whole object to be callable
+    double operator()(int x, float y, double z)
+    {
+        double res = x + y + z;
+        std::cout << "foo_struct::operator() called with arguments: "
+                << x << ", " << y << ", " << z
+                << " result is : " << res
+                << std::endl;
+        return res;
+    }
+};
+int main(void)
+{
+  // typedefs
+  using function_type = std::function<double(int, float, double)>;
+  // foo_struct instance
+  foo_struct fs;
+  // here we will store all binded functions
+  std::vector<function_type> bindings;
+  // var #1 - you can use simple function
+  function_type var1 = foo_fn;
+  bindings.push_back(var1);
+  // var #2 - you can use member function
+  function_type var2 = std::bind(&foo_struct::foo_fn, fs, _1, _2, _3);
+  bindings.push_back(var2);
+  // var #3 - you can use member function with different signature
+  // foo_fn_4 has different count of arguments and types
+  function_type var3 = std::bind(&foo_struct::foo_fn_4, fs, _1, _3, _2, 0l);
+  bindings.push_back(var3);
+  // var #4 - you can use object with overloaded operator()
+  function_type var4 = fs;
+  bindings.push_back(var4);
+  // var #5 - you can use lambda function
+  function_type var5 = [](int x, float y, double z)
+    {
+        double res = x + y + z;
+        std::cout << "lambda  called with arguments: "
+                << x << ", " << y << ", " << z
+                << " result is : " << res
+                << std::endl;
+        return res;
+    };
+  bindings.push_back(var5);
+  std::cout << "Test stored functions with arguments: x = 1, y = 2, z = 3"
+            << std::endl;
+  for (auto f : bindings)
+      f(1, 2, 3);
+}
+Live
+Output:
+Test stored functions with arguments: x = 1, y = 2, z = 3
+foo_fn called with arguments: 1, 2, 3 result is : 6
+foo_struct::foo_fn called with arguments: 1, 2, 3 result is : 6
+foo_struct::foo_fn_4 called with arguments: 1, 3, 2, 0 result is : 6
+foo_struct::operator() called with arguments: 1, 2, 3 result is : 6
+lambda  called with arguments: 1, 2, 3 result is : 6
+Section 52.4: Storing function arguments in std::tuple
+Some programs need so store arguments for future calling of some function.
+This example shows how to call any function with arguments stored in std::tuple
+#include <iostream>
+#include <functional>
+#include <tuple>
+#include <iostream>
+// simple function to be called
+double foo_fn(int x, float y, double z)
+{
+   double res =  x + y + z;
+   std::cout << "foo_fn called. x = " << x << " y = " << y << " z = " << z
+             << " res=" << res;
+   return res;
+}
+// helpers for tuple unrolling
+template<int ...> struct seq {};
+template<int N, int ...S> struct gens : gens<N-1, N-1, S...> {};
+template<int ...S> struct gens<0, S...>{ typedef seq<S...> type; };
+// invocation helper
+template<typename FN, typename P, int ...S>
+double call_fn_internal(const FN& fn, const P& params, const seq<S...>)
+{
+   return fn(std::get<S>(params) ...);
+}
+// call function with arguments stored in std::tuple
+template<typename Ret, typename ...Args>
+Ret call_fn(const std::function<Ret(Args...)>& fn,
+            const std::tuple<Args...>& params)
+{
+    return call_fn_internal(fn, params, typename gens<sizeof...(Args)>::type());
+}
+int main(void)
+{
+  // arguments
+  std::tuple<int, float, double> t = std::make_tuple(1, 5, 10);
+  // function to call
+  std::function<double(int, float, double)> fn = foo_fn;
+  // invoke a function with stored arguments
+  call_fn(fn, t);
+}
+Live
+Output:
+foo_fn called. x = 1 y = 5 z = 10 res=16
+Section 52.5: std::function with lambda and std::bind
+#include <iostream>
+#include <functional>
+using std::placeholders::_1; // to be used in std::bind example
+int stdf_foobar (int x, std::function<int(int)> moo)
+{
+    return x + moo(x); // std::function moo called
+}
+int foo (int x) { return 2+x; }
+int foo_2 (int x, int y) { return 9*x + y; }
+int main()
+{
+    int a = 2;
+    /* Function pointers */
+    std::cout << stdf_foobar(a, &foo) << std::endl; // 6 ( 2 + (2+2) )
+    // can also be: stdf_foobar(2, foo)
+    /* Lambda expressions */
+    /* An unnamed closure from a lambda expression can be
+     * stored in a std::function object:
+     */
+    int capture_value = 3;
+    std::cout << stdf_foobar(a,
+                             [capture_value](int param) -> int { return 7 + capture_value * param;
+})
+              << std::endl;
+    // result: 15 ==  value + (7 * capture_value * value) == 2 + (7 + 3 * 2)
+    /* std::bind expressions */
+    /* The result of a std::bind expression can be passed.
+     * For example by binding parameters to a function pointer call:
+     */    
+    int b = stdf_foobar(a, std::bind(foo_2, _1, 3));
+    std::cout << b << std::endl;
+    // b == 23 == 2 + ( 9*2 + 3 )
+    int c = stdf_foobar(a, std::bind(foo_2, 5, _1));
+    std::cout << c << std::endl;
+    // c == 49 == 2 + ( 9*5 + 2 )
+    return 0;
+}
+Section 52.6: `function` overhead
+std::function can cause signiﬁcant overhead. Because std::function has [value semantics][1], it must copy or
+move the given callable into itself. But since it can take callables of an arbitrary type, it will frequently have to
+allocate memory dynamically to do this.
+Some function implementations have so-called "small object optimization", where small types (like function
+pointers, member pointers, or functors with very little state) will be stored directly in the function object. But even
+this only works if the type is noexcept move constructible. Furthermore, the C++ standard does not require that all
+implementations provide one.
+Consider the following:
+//Header file
+using MyPredicate = std::function<bool(const MyValue &, const MyValue &)>;
+void SortMyContainer(MyContainer &C, const MyPredicate &pred);
+//Source file
+void SortMyContainer(MyContainer &C, const MyPredicate &pred)
+{
+    std::sort(C.begin(), C.end(), pred);
+}
+A template parameter would be the preferred solution for SortMyContainer, but let us assume that this is not
+possible or desirable for whatever reason. SortMyContainer does not need to store pred beyond its own call. And
+yet, pred may well allocate memory if the functor given to it is of some non-trivial size.
+function allocates memory because it needs something to copy/move into; function takes ownership of the
+callable it is given. But SortMyContainer does not need to own the callable; it's just referencing it. So using function
+here is overkill; it may be eﬃcient, but it may not.
+There is no standard library function type that merely references a callable. So an alternate solution will have to be
+found, or you can choose to live with the overhead.
+Also, function has no eﬀective means to control where the memory allocations for the object come from. Yes, it
+has constructors that take an allocator, but [many implementations do not implement them correctly... or even at
+all][2].
+Version ≥ C++17
+The function constructors that take an allocator no longer are part of the type. Therefore, there is no way to
+manage the allocation.
+Calling a function is also slower than calling the contents directly. Since any function instance could hold any
+callable, the call through a function must be indirect. The overhead of calling function is on the order of a virtual
+function call.
+
+#### Chapter 73: Lambdas
+
+Parameter
+default-capture
+Details
+Speciﬁes how all non-listed variables are captured. Can be = (capture by value) or & (capture by
+reference). If omitted, non-listed variables are inaccessible within the lambda-body. The default-
+capture must precede the capture-list.
+capture-list
+Speciﬁes how local variables are made accessible within the lambda-body. Variables without
+preﬁx are captured by value. Variables preﬁxed with & are captured by reference. Within a class
+method, this can be used to make all its members accessible by reference. Non-listed variables
+are inaccessible, unless the list is preceded by a default-capture.
+argument-list
+Speciﬁes the arguments of the lambda function.
+mutable
+(optional) Normally variables captured by value are const. Specifying mutable makes them non-
+const. Changes to those variables are retained between calls.
+throw-speciﬁcation
+(optional) Speciﬁes the exception throwing behavior of the lambda function. For example:
+noexcept or throw(std::exception).
+attributes
+(optional) Any attributes for the lambda function. For example, if the lambda-body always throws
+an exception then [[noreturn]] can be used.
+-> return-type
+(optional) Speciﬁes the return type of the lambda function. Required when the return type
+cannot be determined by the compiler.
+lambda-body
+A code block containing the implementation of the lambda function.
+Section 73.1: What is a lambda expression?
+A lambda expression provides a concise way to create simple function objects. A lambda expression is a prvalue
+whose result object is called closure object, which behaves like a function object.
+The name 'lambda expression' originates from lambda calculus, which is a mathematical formalism invented in the
+1930s by Alonzo Church to investigate questions about logic and computability. Lambda calculus formed the basis
+of LISP, a functional programming language. Compared to lambda calculus and LISP, C++ lambda expressions share
+the properties of being unnamed, and to capture variables from the surrounding context, but they lack the ability to
+operate on and return functions.
+A lambda expression is often used as an argument to functions that take a callable object. That can be simpler than
+creating a named function, which would be only used when passed as the argument. In such cases, lambda
+expressions are generally preferred because they allow deﬁning the function objects inline.
+A lambda consists typically of three parts: a capture list [], an optional parameter list () and a body {}, all of which
+can be empty:
+[](){}                // An empty lambda, which does and returns nothing
+Capture list
+[] is the capture list. By default, variables of the enclosing scope cannot be accessed by a lambda. Capturing a
+variable makes it accessible inside the lambda, either as a copy or as a reference. Captured variables become a part
+of the lambda; in contrast to function arguments, they do not have to be passed when calling the lambda.
+int a = 0;                       // Define an integer variable
+auto f = []()   { return a*9; }; // Error: 'a' cannot be accessed
+auto f = [a]()  { return a*9; }; // OK, 'a' is "captured" by value
+auto f = [&a]() { return a++; }; // OK, 'a' is "captured" by reference
+                                 //      Note: It is the responsibility of the programmer
+                                 //      to ensure that a is not destroyed before the
+
+
 C++11 brought functional programming paradigms to the language, centered around Lambdas.
 
 ---
@@ -14381,6 +15876,137 @@ auto sub5 = std::bind(sub, _1, 5);
 
 **Note:** Lambdas mostly replaced `std::bind` in modern C++ because they are clearer and faster (compiler optimization).
 ## <a name="chapter-11-c11"></a>CHAPTER 11: C++11 CONCURRENCY
+
+
+---
+### Professional Notes: Atomics & Memory Model
+
+#### Chapter 55: std::atomics
+
+Section 55.1: atomic types
+Each instantiation and full specialization of the std::atomic template deﬁnes an atomic type. If one thread writes
+to an atomic object while another thread reads from it, the behavior is well-deﬁned (see memory model for details
+on data races)
+In addition, accesses to atomic objects may establish inter-thread synchronization and order non-atomic memory
+accesses as speciﬁed by std::memory_order.
+std::atomic may be instantiated with any TriviallyCopyable type T. std::atomic is neither copyable nor
+movable.
+The standard library provides specializations of the std::atomic template for the following types:
+1.
+One full specialization for the type bool and its typedef name is deﬁned that is treated as a non-specialized
+std::atomic<T> except that it has standard layout, trivial default constructor, trivial destructors, and
+supports aggregate initialization syntax:
+Typedef name
+Full specialization
+std::atomic_bool std::atomic<bool>
+2)Full specializations and typedefs for integral types, as follows:
+Typedef name
+Full specialization
+std::atomic_char
+std::atomic<char>
+std::atomic_char
+std::atomic<char>
+std::atomic_schar
+std::atomic<signed char>
+std::atomic_uchar
+std::atomic<unsigned char>
+std::atomic_short
+std::atomic<short>
+std::atomic_ushort
+std::atomic<unsigned short>
+std::atomic_int
+std::atomic<int>
+std::atomic_uint
+std::atomic<unsigned int>
+std::atomic_long
+std::atomic<long>
+std::atomic_ulong
+std::atomic<unsigned long>
+std::atomic_llong
+std::atomic<long long>
+std::atomic_ullong
+std::atomic<unsigned long long>
+std::atomic_char16_t
+std::atomic<char16_t>
+std::atomic_char32_t
+std::atomic<char32_t>
+std::atomic_wchar_t
+std::atomic<wchar_t>
+std::atomic_int8_t
+std::atomic<std::int8_t>
+std::atomic_uint8_t
+std::atomic<std::uint8_t>
+std::atomic_int16_t
+std::atomic<std::int16_t>
+std::atomic_uint16_t
+std::atomic<std::uint16_t>
+std::atomic_int32_t
+std::atomic<std::int32_t>
+std::atomic_uint32_t
+std::atomic<std::uint32_t>
+std::atomic_int64_t
+std::atomic<std::int64_t>
+std::atomic_uint64_t
+std::atomic<std::uint64_t>
+std::atomic_int_least8_t
+std::atomic<std::int_least8_t>
+std::atomic_uint_least8_t std::atomic<std::uint_least8_t>
+std::atomic_int_least16_t std::atomic<std::int_least16_t>
+std::atomic_uint_least16_t std::atomic<std::uint_least16_t>
+std::atomic_int_least32_t std::atomic<std::int_least32_t>
+std::atomic_uint_least32_t std::atomic<std::uint_least32_t>
+std::atomic_int_least64_t std::atomic<std::int_least64_t>
+std::atomic_uint_least64_t std::atomic<std::uint_least64_t>
+std::atomic_int_fast8_t
+std::atomic<std::int_fast8_t>
+std::atomic_uint_fast8_t
+std::atomic<std::uint_fast8_t>
+std::atomic_int_fast16_t
+std::atomic<std::int_fast16_t>
+std::atomic_uint_fast16_t std::atomic<std::uint_fast16_t>
+std::atomic_int_fast32_t
+std::atomic<std::int_fast32_t>
+std::atomic_uint_fast32_t std::atomic<std::uint_fast32_t>
+std::atomic_int_fast64_t
+std::atomic<std::int_fast64_t>
+std::atomic_uint_fast64_t std::atomic<std::uint_fast64_t>
+std::atomic_intptr_t
+std::atomic<std::intptr_t>
+std::atomic_uintptr_t
+std::atomic<std::uintptr_t>
+std::atomic_size_t
+std::atomic<std::size_t>
+std::atomic_ptrdiff_t
+std::atomic<std::ptrdiff_t>
+std::atomic_intmax_t
+std::atomic<std::intmax_t>
+std::atomic_uintmax_t
+std::atomic<std::uintmax_t>
+Simple example of using std::atomic_int
+#include <iostream>       // std::cout
+#include <atomic>         // std::atomic, std::memory_order_relaxed
+#include <thread>         // std::thread
+std::atomic_int foo (0);
+void set_foo(int x) {
+  foo.store(x,std::memory_order_relaxed);     // set value atomically
+}
+void print_foo() {
+  int x;
+  do {
+    x = foo.load(std::memory_order_relaxed);  // get value atomically
+  } while (x==0);
+  std::cout << "foo: " << x << '\n';
+}
+int main ()
+{
+  std::thread first (print_foo);
+  std::thread second (set_foo,10);
+  first.join();
+  //second.join();
+  return 0;
+}
+//output: foo: 10
+
 
 Before C++11, multithreading was platform-specific (pthreads, Windows threads). C++11 added a standard memory model and threading library.
 
@@ -16368,6 +17994,256 @@ constexpr bool is_integral_v = is_integral<T>::value;
 ---
 
 ## <a name="chapter-10-c17modernfeatures"></a>CHAPTER 10: C++17 MODERN FEATURES
+
+
+---
+### Professional Notes: Modern Types (Optional/Variant)
+
+#### Chapter 51: std::optional
+
+Section 51.1: Using optionals to represent the absence of a
+value
+Before C++17, having pointers with a value of nullptr commonly represented the absence of a value. This is a good
+solution for large objects that have been dynamically allocated and are already managed by pointers. However, this
+solution does not work well for small or primitive types such as int, which are rarely ever dynamically allocated or
+managed by pointers. std::optional provides a viable solution to this common problem.
+In this example, struct Person is deﬁned. It is possible for a person to have a pet, but not necessary. Therefore,
+the pet member of Person is declared with an std::optional wrapper.
+#include <iostream>
+#include <optional>
+#include <string>
+struct Animal {
+    std::string name;
+};
+struct Person {
+    std::string name;
+    std::optional<Animal> pet;
+};
+int main() {
+    Person person;
+    person.name = "John";
+    if (person.pet) {
+        std::cout << person.name << "'s pet's name is " <<
+            person.pet->name << std::endl;
+    }
+    else {
+        std::cout << person.name << " is alone." << std::endl;
+    }
+}
+Section 51.2: optional as return value
+std::optional<float> divide(float a, float b) {
+  if (b!=0.f) return a/b;
+  return {};
+}
+Here we return either the fraction a/b, but if it is not deﬁned (would be inﬁnity) we instead return the empty
+optional.
+A more complex case:
+template<class Range, class Pred>
+auto find_if( Range&& r, Pred&& p ) {
+  using std::begin; using std::end;
+  auto b = begin(r), e = end(r);
+  auto r = std::find_if(b, e , p );
+  using iterator = decltype(r);
+  if (r==e)
+    return std::optional<iterator>();
+  return std::optional<iterator>(r);
+}
+template<class Range, class T>
+auto find( Range&& r, T const& t ) {
+  return find_if( std::forward<Range>(r), [&t](auto&& x){return x==t;} );
+}
+find( some_range, 7 ) searches the container or range some_range for something equal to the number 7.
+find_if does it with a predicate.
+It returns either an empty optional if it was not found, or an optional containing an iterator tothe element if it was.
+This allows you to do:
+if (find( vec, 7 )) {
+  // code
+}
+or even
+if (auto oit = find( vec, 7 )) {
+  vec.erase(*oit);
+}
+without having to mess around with begin/end iterators and tests.
+Section 51.3: value_or
+void print_name( std::ostream& os, std::optional<std::string> const& name ) {
+  std::cout "Name is: " << name.value_or("<name missing>") << '\n';
+}
+value_or either returns the value stored in the optional, or the argument if there is nothing store there.
+This lets you take the maybe-null optional and give a default behavior when you actually need a value. By doing it
+this way, the "default behavior" decision can be pushed back to the point where it is best made and immediately
+needed, instead of generating some default value deep in the guts of some engine.
+Section 51.4: Introduction
+Optionals (also known as Maybe types) are used to represent a type whose contents may or may not be present.
+They are implemented in C++17 as the std::optional class. For example, an object of type std::optional<int>
+may contain some value of type int, or it may contain no value.
+Optionals are commonly used either to represent a value that may not exist or as a return type from a function that
+can fail to return a meaningful result.
+Other approaches to optional
+There are many other approach to solving the problem that std::optional solves, but none of them are quite
+complete: using a pointer, using a sentinel, or using a pair<bool, T>.
+Optional vs Pointer
+In some cases, we can provide a pointer to an existing object or nullptr to indicate failure. But this is limited to
+those cases where objects already exist - optional, as a value type, can also be used to return new objects without
+resorting to memory allocation.
+Optional vs Sentinel
+A common idiom is to use a special value to indicate that the value is meaningless. This may be 0 or -1 for integral
+types, or nullptr for pointers. However, this reduces the space of valid values (you cannot diﬀerentiate between a
+valid 0 and a meaningless 0) and many types do not have a natural choice for the sentinel value.
+Optional vs std::pair<bool, T>
+Another common idiom is to provide a pair, where one of the elements is a bool indicating whether or not the
+value is meaningful.
+This relies upon the value type being default-constructible in the case of error, which is not possible for some types
+and possible but undesirable for others. An optional<T>, in the case of error, does not need to construct anything.
+Section 51.5: Using optionals to represent the failure of a
+function
+Before C++17, a function typically represented failure in one of several ways:
+A null pointer was returned.
+e.g. Calling a function Delegate *App::get_delegate() on an App instance that did not have a
+delegate would return nullptr.
+This is a good solution for objects that have been dynamically allocated or are large and managed by
+pointers, but isn't a good solution for small objects that are typically stack-allocated and passed by
+copying.
+A speciﬁc value of the return type was reserved to indicate failure.
+e.g. Calling a function unsigned shortest_path_distance(Vertex a, Vertex b) on two vertices that
+are not connected may return zero to indicate this fact.
+The value was paired together with a bool to indicate is the returned value was meaningful.
+e.g. Calling a function std::pair<int, bool> parse(const std::string &str) with a string
+argument that is not an integer would return a pair with an undeﬁned int and a bool set to false.
+In this example, John is given two pets, Fluﬀy and Furball. The function Person::pet_with_name() is then called to
+retrieve John's pet Whiskers. Since John does not have a pet named Whiskers, the function fails and std::nullopt is
+returned instead.
+#include <iostream>
+#include <optional>
+#include <string>
+#include <vector>
+struct Animal {
+    std::string name;
+};
+struct Person {
+    std::string name;
+    std::vector<Animal> pets;
+    std::optional<Animal> pet_with_name(const std::string &name) {
+        for (const Animal &pet : pets) {
+            if (pet.name == name) {
+                return pet;
+            }
+        }
+        return std::nullopt;
+    }
+};
+int main() {
+    Person john;
+    john.name = "John";
+    Animal fluffy;
+    fluffy.name = "Fluffy";
+    john.pets.push_back(fluffy);
+    Animal furball;
+    furball.name = "Furball";
+    john.pets.push_back(furball);
+    std::optional<Animal> whiskers = john.pet_with_name("Whiskers");
+    if (whiskers) {
+        std::cout << "John has a pet named Whiskers." << std::endl;
+    }
+    else {
+        std::cout << "Whiskers must not belong to John." << std::endl;
+    }
+}
+
+#### Chapter 56: std::variant
+
+Section 56.1: Create pseudo-method pointers
+This is an advanced example.
+You can use variant for light weight type erasure.
+template<class F>
+struct pseudo_method {
+  F f;
+  // enable C++17 class type deduction:
+  pseudo_method( F&& fin ):f(std::move(fin)) {}
+  // Koenig lookup operator->*, as this is a pseudo-method it is appropriate:
+  template<class Variant> // maybe add SFINAE test that LHS is actually a variant.
+  friend decltype(auto) operator->*( Variant&& var, pseudo_method const& method ) {
+    // var->*method returns a lambda that perfect forwards a function call,
+    // behaving like a method pointer basically:
+    return [&](auto&&...args)->decltype(auto) {
+      // use visit to get the type of the variant:
+      return std::visit(
+        [&](auto&& self)->decltype(auto) {
+          // decltype(x)(x) is perfect forwarding in a lambda:
+          return method.f( decltype(self)(self), decltype(args)(args)... );
+        },
+        std::forward<Var>(var)
+      );
+    };
+  }
+};
+this creates a type that overloads operator->* with a Variant on the left hand side.
+// C++17 class type deduction to find template argument of `print` here.
+// a pseudo-method lambda should take `self` as its first argument, then
+// the rest of the arguments afterwards, and invoke the action:
+pseudo_method print = [](auto&& self, auto&&...args)->decltype(auto) {
+  return decltype(self)(self).print( decltype(args)(args)... );
+};
+Now if we have 2 types each with a print method:
+struct A {
+  void print( std::ostream& os ) const {
+    os << "A";
+  }
+};
+struct B {
+  void print( std::ostream& os ) const {
+    os << "B";
+  }
+};
+note that they are unrelated types. We can:
+std::variant<A,B> var = A{};
+(var->*print)(std::cout);
+and it will dispatch the call directly to A::print(std::cout) for us. If we instead initialized the var with B{}, it would
+dispatch to B::print(std::cout).
+If we created a new type C:
+struct C {};
+then:
+std::variant<A,B,C> var = A{};
+(var->*print)(std::cout);
+will fail to compile, because there is no C.print(std::cout) method.
+Extending the above would permit free function prints to be detected and used, possibly with use of if constexpr
+within the print pseudo-method.
+live example currently using boost::variant in place of std::variant.
+Section 56.2: Basic std::variant use
+This creates a variant (a tagged union) that can store either an int or a string.
+std::variant< int, std::string > var;
+We can store one of either type in it:
+var = "hello"s;
+And we can access the contents via std::visit:
+// Prints "hello\n":
+visit( [](auto&& e) {
+  std::cout << e << '\n';
+}, var );
+by passing in a polymorphic lambda or similar function object.
+If we are certain we know what type it is, we can get it:
+auto str = std::get<std::string>(var);
+but this will throw if we get it wrong. get_if:
+auto* str  = std::get_if<std::string>(&var);
+returns nullptr if you guess wrong.
+Variants guarantee no dynamic memory allocation (other than which is allocated by their contained types). Only
+one of the types in a variant is stored there, and in rare cases (involving exceptions while assigning and no safe way
+to back out) the variant can become empty.
+Variants let you store multiple value types in one variable safely and eﬃciently. They are basically smart, type-safe
+unions.
+Section 56.3: Constructing a `std::variant`
+This does not cover allocators.
+struct A {};
+struct B { B()=default; B(B const&)=default; B(int){}; };
+struct C { C()=delete; C(int) {}; C(C const&)=default; };
+struct D { D( std::initializer_list<int> ) {}; D(D const&)=default; D()=default; };
+std::variant<A,B> var_ab0; // contains a A()
+std::variant<A,B> var_ab1 = 7; // contains a B(7)
+std::variant<A,B> var_ab2 = var_ab1; // contains a B(7)
+std::variant<A,B,C> var_abc0{ std::in_place_type<C>, 7 }; // contains a C(7)
+std::variant<C> var_c0; // illegal, no default ctor for C
+std::variant<A,D> var_ad0( std::in_place_type<D>, {1,3,3,4} ); // contains D{1,3,3,4}
+std::variant<A,D> var_ad1( std::in_place_index<0> ); // contains A{}
+std::variant<A,D> var_ad2( std::in_place_index<1>, {1,3,3,4} ); // contains D{1,3,3,4}
+
 
 ## C++17 Overview & Significance
 
@@ -20968,6 +22844,456 @@ Section 104.25: Calling (Pure) Virtual Members From Constructor Or Destructor
 Section 104.26: Function call through mismatched function pointer type 
 
 ## <a name="chapter-14-advancedtopics"></a>CHAPTER 14: ADVANCED TOPICS
+
+
+---
+### Professional Notes: Exception Handling Mastery
+
+#### Chapter 72: Exceptions
+
+Section 72.1: Catching exceptions
+A try/catch block is used to catch exceptions. The code in the try section is the code that may throw an exception,
+and the code in the catch clause(s) handles the exception.
+#include <iostream>
+#include <string>
+#include <stdexcept>
+int main() {
+  std::string str("foo");
+  try {
+      str.at(10); // access element, may throw std::out_of_range
+  } catch (const std::out_of_range& e) {
+      // what() is inherited from std::exception and contains an explanatory message
+      std::cout << e.what();
+  }
+}
+Multiple catch clauses may be used to handle multiple exception types. If multiple catch clauses are present, the
+exception handling mechanism tries to match them in order of their appearance in the code:
+std::string str("foo");
+try {
+    str.reserve(2); // reserve extra capacity, may throw std::length_error
+    str.at(10); // access element, may throw std::out_of_range
+} catch (const std::length_error& e) {
+    std::cout << e.what();
+} catch (const std::out_of_range& e) {
+    std::cout << e.what();
+}
+Exception classes which are derived from a common base class can be caught with a single catch clause for the
+common base class. The above example can replace the two catch clauses for std::length_error and
+std::out_of_range with a single clause for std:exception:
+std::string str("foo");
+try {
+    str.reserve(2); // reserve extra capacity, may throw std::length_error
+    str.at(10); // access element, may throw std::out_of_range
+} catch (const std::exception& e) {
+    std::cout << e.what();
+}
+Because the catch clauses are tried in order, be sure to write more speciﬁc catch clauses ﬁrst, otherwise your
+exception handling code might never get called:
+try {
+    /* Code throwing exceptions omitted. */
+} catch (const std::exception& e) {
+    /* Handle all exceptions of type std::exception. */
+} catch (const std::runtime_error& e) {
+    /* This block of code will never execute, because std::runtime_error inherits
+       from std::exception, and all exceptions of type std::exception were already
+       caught by the previous catch clause. */
+}
+Another possibility is the catch-all handler, which will catch any thrown object:
+try {
+    throw 10;
+} catch (...) {
+    std::cout << "caught an exception";
+}
+Section 72.2: Rethrow (propagate) exception
+Sometimes you want to do something with the exception you catch (like write to log or print a warning) and let it
+bubble up to the upper scope to be handled. To do so, you can rethrow any exception you catch:
+try {
+    ... // some code here
+} catch (const SomeException& e) {
+    std::cout << "caught an exception";
+    throw;
+}
+Using throw; without arguments will re-throw the currently caught exception.
+Version ≥ C++11
+To rethrow a managed std::exception_ptr, the C++ Standard Library has the rethrow_exception function that
+can be used by including the <exception> header in your program.
+#include <iostream>
+#include <string>
+#include <exception>
+#include <stdexcept>
+void handle_eptr(std::exception_ptr eptr) // passing by value is ok
+{
+    try {
+        if (eptr) {
+            std::rethrow_exception(eptr);
+        }
+    } catch(const std::exception& e) {
+        std::cout << "Caught exception \"" << e.what() << "\"\n";
+    }
+}
+int main()
+{
+    std::exception_ptr eptr;
+    try {
+        std::string().at(1); // this generates an std::out_of_range
+    } catch(...) {
+        eptr = std::current_exception(); // capture
+    }
+    handle_eptr(eptr);
+} // destructor for std::out_of_range called here, when the eptr is destructed
+Section 72.3: Best practice: throw by value, catch by const
+reference
+In general, it is considered good practice to throw by value (rather than by pointer), but catch by (const) reference.
+try {
+    // throw new std::runtime_error("Error!");   // Don't do this!
+    // This creates an exception object
+    // on the heap and would require you to catch the
+    // pointer and manage the memory yourself. This can
+    // cause memory leaks!
+    throw std::runtime_error("Error!");
+} catch (const std::runtime_error& e) {
+    std::cout << e.what() << std::endl;
+}
+One reason why catching by reference is a good practice is that it eliminates the need to reconstruct the object
+when being passed to the catch block (or when propagating through to other catch blocks). Catching by reference
+also allows the exceptions to be handled polymorphically and avoids object slicing. However, if you are rethrowing
+an exception (like throw e;, see example below), you can still get object slicing because the throw e; statement
+makes a copy of the exception as whatever type is declared:
+#include <iostream>
+struct BaseException {
+    virtual const char* what() const { return "BaseException"; }
+};
+struct DerivedException : BaseException {
+    // "virtual" keyword is optional here
+    virtual const char* what() const { return "DerivedException"; }
+};
+int main(int argc, char** argv) {
+    try {
+        try {
+            throw DerivedException();
+        } catch (const BaseException& e) {
+            std::cout << "First catch block: " << e.what() << std::endl;
+            // Output ==> First catch block: DerivedException
+            throw e; // This changes the exception to BaseException
+                     // instead of the original DerivedException!
+        }
+    } catch (const BaseException& e) {
+        std::cout << "Second catch block: " << e.what() << std::endl;
+        // Output ==> Second catch block: BaseException
+    }
+    return 0;
+}
+If you are sure that you are not going to do anything to change the exception (like add information or modify the
+message), catching by const reference allows the compiler to make optimizations and can improve performance.
+But this can still cause object splicing (as seen in the example above).
+Warning: Beware of throwing unintended exceptions in catch blocks, especially related to allocating extra memory
+or resources. For example, constructing logic_error, runtime_error or their subclasses might throw bad_alloc
+due to memory running out when copying the exception string, I/O streams might throw during logging with
+respective exception masks set, etc.
+Section 72.4: Custom exception
+You shouldn't throw raw values as exceptions, instead use one of the standard exception classes or make your
+own.
+Having your own exception class inherited from std::exception is a good way to go about it. Here's a custom
+exception class which directly inherits from std::exception:
+#include <exception>
+class Except: virtual public std::exception {
+protected:
+    int error_number;               ///< Error number
+    int error_offset;               ///< Error offset
+    std::string error_message;      ///< Error message
+public:
+    /** Constructor (C++ STL string, int, int).
+     *  @param msg The error message
+     *  @param err_num Error number
+     *  @param err_off Error offset
+     */
+    explicit
+    Except(const std::string& msg, int err_num, int err_off):
+        error_number(err_num),
+        error_offset(err_off),
+        error_message(msg)
+        {}
+    /** Destructor.
+     *  Virtual to allow for subclassing.
+     */
+    virtual ~Except() throw () {}
+    /** Returns a pointer to the (constant) error description.
+     *  @return A pointer to a const char*. The underlying memory
+     *  is in possession of the Except object. Callers must
+     *  not attempt to free the memory.
+     */
+    virtual const char* what() const throw () {
+       return error_message.c_str();
+    }
+    /** Returns error number.
+     *  @return #error_number
+     */
+    virtual int getErrorNumber() const throw() {
+        return error_number;
+    }
+    /**Returns error offset.
+     * @return #error_offset
+     */
+    virtual int getErrorOffset() const throw() {
+        return error_offset;
+    }
+};
+An example throw catch:
+try {
+    throw(Except("Couldn't do what you were expecting", -12, -34));
+} catch (const Except& e) {
+    std::cout<<e.what()
+             <<"\nError number: "<<e.getErrorNumber()
+             <<"\nError offset: "<<e.getErrorOffset();
+}
+As you are not only just throwing a dumb error message, also some other values representing what the error
+exactly was, your error handling becomes much more eﬃcient and meaningful.
+There's an exception class that let's you handle error messages nicely :std::runtime_error
+You can inherit from this class too:
+#include <stdexcept>
+class Except: virtual public std::runtime_error {
+protected:
+    int error_number;               ///< Error number
+    int error_offset;               ///< Error offset
+public:
+    /** Constructor (C++ STL string, int, int).
+     *  @param msg The error message
+     *  @param err_num Error number
+     *  @param err_off Error offset
+     */
+    explicit
+    Except(const std::string& msg, int err_num, int err_off):
+        std::runtime_error(msg)
+        {
+            error_number = err_num;
+            error_offset = err_off;
+        }
+    /** Destructor.
+     *  Virtual to allow for subclassing.
+     */
+    virtual ~Except() throw () {}
+    /** Returns error number.
+     *  @return #error_number
+     */
+    virtual int getErrorNumber() const throw() {
+        return error_number;
+    }
+    /**Returns error offset.
+     * @return #error_offset
+     */
+    virtual int getErrorOffset() const throw() {
+        return error_offset;
+    }
+};
+Note that I haven't overridden the what() function from the base class (std::runtime_error) i.e we will be using
+the base class's version of what(). You can override it if you have further agenda.
+Section 72.5: std::uncaught_exceptions
+Version ≥ c++17
+C++17 introduces int std::uncaught_exceptions() (to replace the limited bool std::uncaught_exception()) to
+know how many exceptions are currently uncaught. That allows for a class to determine if it is destroyed during a
+stack unwinding or not.
+#include <exception>
+#include <string>
+#include <iostream>
+// Apply change on destruction:
+// Rollback in case of exception (failure)
+// Else Commit (success)
+class Transaction
+{
+public:
+    Transaction(const std::string& s) : message(s) {}
+    Transaction(const Transaction&) = delete;
+    Transaction& operator =(const Transaction&) = delete;
+    void Commit() { std::cout << message << ": Commit\n"; }
+    void RollBack() noexcept(true) { std::cout << message << ": Rollback\n"; }
+    // ...
+    ~Transaction() {
+        if (uncaughtExceptionCount == std::uncaught_exceptions()) {
+            Commit(); // May throw.
+        } else { // current stack unwinding
+            RollBack();
+        }
+    }
+private:
+    std::string message;
+    int uncaughtExceptionCount = std::uncaught_exceptions();
+};
+class Foo
+{
+public:
+    ~Foo() {
+        try {
+            Transaction transaction("In ~Foo"); // Commit,
+                                            // even if there is an uncaught exception
+            //...
+        } catch (const std::exception& e) {
+            std::cerr << "exception/~Foo:" << e.what() << std::endl;
+        }
+    }
+};
+int main()
+{
+    try {
+        Transaction transaction("In main"); // RollBack
+        Foo foo; // ~Foo commit its transaction.
+        //...
+        throw std::runtime_error("Error");
+    } catch (const std::exception& e) {
+        std::cerr << "exception/main:" << e.what() << std::endl;
+    }
+}
+Output:
+In ~Foo: Commit
+In main: Rollback
+exception/main:Error
+Section 72.6: Function Try Block for regular function
+void function_with_try_block()
+try
+{
+    // try block body
+}
+catch (...)
+{
+    // catch block body
+}
+Which is equivalent to
+void function_with_try_block()
+{
+    try
+    {
+        // try block body
+    }
+    catch (...)
+    {
+        // catch block body
+    }
+}
+Note that for constructors and destructors, the behavior is diﬀerent as the catch block re-throws an exception
+anyway (the caught one if there is no other throw in the catch block body).
+The function main is allowed to have a function try block like any other function, but main's function try block will
+not catch exceptions that occur during the construction of a non-local static variable or the destruction of any static
+variable. Instead, std::terminate is called.
+Section 72.7: Nested exception
+Version ≥ C++11
+During exception handling there is a common use case when you catch a generic exception from a low-level
+function (such as a ﬁlesystem error or data transfer error) and throw a more speciﬁc high-level exception which
+indicates that some high-level operation could not be performed (such as being unable to publish a photo on Web).
+This allows exception handling to react to speciﬁc problems with high level operations and also allows, having only
+error an message, the programmer to ﬁnd a place in the application where an exception occurred. Downside of this
+solution is that exception callstack is truncated and original exception is lost. This forces developers to manually
+include text of original exception into a newly created one.
+Nested exceptions aim to solve the problem by attaching low-level exception, which describes the cause, to a high
+level exception, which describes what it means in this particular case.
+std::nested_exception allows to nest exceptions thanks to std::throw_with_nested:
+#include <stdexcept>
+#include <exception>
+#include <string>
+#include <fstream>
+#include <iostream>
+struct MyException
+{
+    MyException(const std::string& message) : message(message) {}
+    std::string message;
+};
+void print_current_exception(int level)
+{
+    try {
+        throw;
+    } catch (const std::exception& e) {
+        std::cerr << std::string(level, ' ') << "exception: " << e.what() << '\n';
+    } catch (const MyException& e) {
+        std::cerr << std::string(level, ' ') << "MyException: " << e.message << '\n';
+    } catch (...) {
+        std::cerr << "Unkown exception\n";
+    }
+}
+void print_current_exception_with_nested(int level =  0)
+{
+    try {
+        throw;
+    } catch (...) {
+        print_current_exception(level);
+    }    
+    try {
+        throw;
+    } catch (const std::nested_exception& nested) {
+        try {
+            nested.rethrow_nested();
+        } catch (...) {
+            print_current_exception_with_nested(level + 1); // recursion
+        }
+    } catch (...) {
+        //Empty // End recursion
+    }
+}
+// sample function that catches an exception and wraps it in a nested exception
+void open_file(const std::string& s)
+{
+    try {
+        std::ifstream file(s);
+        file.exceptions(std::ios_base::failbit);
+    } catch(...) {
+        std::throw_with_nested(MyException{"Couldn't open " + s});
+    }
+}
+// sample function that catches an exception and wraps it in a nested exception
+void run()
+{
+    try {
+        open_file("nonexistent.file");
+    } catch(...) {
+        std::throw_with_nested( std::runtime_error("run() failed") );
+    }
+}
+// runs the sample function above and prints the caught exception
+int main()
+{
+    try {
+        run();
+    } catch(...) {
+        print_current_exception_with_nested();
+    }
+}
+Possible output:
+exception: run() failed
+ MyException: Couldn't open nonexistent.file
+  exception: basic_ios::clear
+If you work only with exceptions inherited from std::exception, code can even be simpliﬁed.
+Section 72.8: Function Try Blocks In constructor
+The only way to catch exception in initializer list:
+struct A : public B
+{
+    A() try : B(), foo(1), bar(2)
+    {
+        // constructor body
+    }
+    catch (...)
+    {
+        // exceptions from the initializer list and constructor are caught here
+        // if no exception is thrown here
+        // then the caught exception is re-thrown.
+    }
+private:
+    Foo foo;
+    Bar bar;
+};
+Section 72.9: Function Try Blocks In destructor
+struct A
+{
+    ~A() noexcept(false) try
+    {
+        // destructor body
+    }
+    catch (...)
+    {
+        // exceptions of destructor body are caught here
+        // if no exception is thrown here
+        // then the caught exception is re-thrown.
+    }
+};
+Note that, although this is possible, one needs to be very careful with throwing from destructor, as if a destructor
+called during stack unwinding throws an exception, std::terminate is called.
+
 
 
 ---
