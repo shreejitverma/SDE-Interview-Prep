@@ -5650,6 +5650,333 @@ struct Mixed {
 **Optimization**: Sort members by size (Largest to Smallest) to minimize padding.
 
 ---
+
+
+---
+### Professional Notes: I/O Mastery
+
+#### Chapter 14: Stream manipulators
+
+Manipulators are special helper functions that help controlling input and output streams using operator >> or
+operator <<.
+They all can be included by #include <iomanip>.
+Section 14.1: Stream manipulators
+std::boolalpha and std::noboolalpha - switch between textual and numeric representation of booleans.
+std::cout << std::boolalpha << 1;
+// Output: true
+std::cout << std::noboolalpha << false;
+// Output: 0
+bool boolValue;
+std::cin >> std::boolalpha >> boolValue;
+std::cout << "Value \"" << std::boolalpha << boolValue
+          << "\" was parsed as " << std::noboolalpha << boolValue;
+// Input: true
+// Output: Value "true" was parsed as 0
+std::showbase and std::noshowbase - control whether preﬁx indicating numeric base is used.
+std::dec (decimal), std::hex (hexadecimal) and std::oct (octal) - are used for changing base for integers.
+#include <sstream>
+std::cout << std::dec << 29 << ' - '
+          << std::hex << 29 << ' - '
+          << std::showbase << std::oct << 29 << ' - '
+          << std::noshowbase << 29  '\n';
+int number;
+std::istringstream("3B") >> std::hex >> number;
+std::cout << std::dec << 10;
+// Output: 22 - 1D - 35 - 035
+// 59
+Default values are std::ios_base::noshowbase and std::ios_base::dec.
+If you want to see more about std::istringstream check out the <sstream> header.
+std::uppercase and std::nouppercase - control whether uppercase characters are used in ﬂoating-point and
+hexadecimal integer output. Have no eﬀect on input streams.
+std::cout << std::hex << std::showbase
+              << "0x2a with nouppercase: " << std::nouppercase << 0x2a << '\n'
+              << "1e-10 with uppercase: " << std::uppercase << 1e-10 << '\n'
+}
+// Output: 0x2a with nouppercase: 0x2a
+// 1e-10 with uppercase: 1E-10
+Default is std::nouppercase.
+std::setw(n) - changes the width of the next input/output ﬁeld to exactly n.
+The width property n is resetting to 0 when some functions are called (full list is here).
+std::cout << "no setw:" << 51 << '\n'
+          << "setw(7): " << std::setw(7) << 51 << '\n'
+          << "setw(7), more output: " << 13
+          << std::setw(7) << std::setfill('*') << 67 << ' ' << 94 << '\n';
+char* input = "Hello, world!";
+char arr[10];
+std::cin >> std::setw(6) >> arr;
+std::cout << "Input from \"Hello, world!\" with setw(6) gave \"" << arr << "\"\n";
+// Output: 51
+// setw(7):      51
+// setw(7), more output: 13*****67 94
+// Input: Hello, world!
+// Output: Input from "Hello, world!" with setw(6) gave "Hello"
+Default is std::setw(0).
+std::left, std::right and std::internal - modify the default position of the ﬁll characters by setting
+std::ios_base::adjustfield to std::ios_base::left, std::ios_base::right and std::ios_base::internal
+correspondingly. std::left and std::right apply to any output, std::internal - for integer, ﬂoating-point and
+monetary output. Have no eﬀect on input streams.
+#include <locale>
+std::cout.imbue(std::locale("en_US.utf8"));
+std::cout << std::left << std::showbase << std::setfill('*')
+          << "flt: " << std::setw(15) << -9.87  << '\n'
+          << "hex: " << std::setw(15) << 41 << '\n'
+          << "  $: " << std::setw(15) << std::put_money(367, false) << '\n'
+          << "usd: " << std::setw(15) << std::put_money(367, true) << '\n'
+          << "usd: " << std::setw(15)
+          << std::setfill(' ') << std::put_money(367, false) << '\n';
+// Output:
+// flt: -9.87**********
+// hex: 41*************
+//   $: $3.67**********
+// usd: USD *3.67******
+// usd: $3.67          
+std::cout << std::internal << std::showbase << std::setfill('*')
+          << "flt: " << std::setw(15) << -9.87  << '\n'
+          << "hex: " << std::setw(15) << 41 << '\n'
+          << "  $: " << std::setw(15) << std::put_money(367, false) << '\n'
+          << "usd: " << std::setw(15) << std::put_money(367, true) << '\n'
+          << "usd: " << std::setw(15)
+          << std::setfill(' ') << std::put_money(367, true) << '\n';
+// Output:
+// flt: -**********9.87
+// hex: *************41
+//   $: $3.67**********
+// usd: USD *******3.67
+// usd: USD        3.67
+std::cout << std::right << std::showbase << std::setfill('*')
+          << "flt: " << std::setw(15) << -9.87  << '\n'
+          << "hex: " << std::setw(15) << 41 << '\n'
+          << "  $: " << std::setw(15) << std::put_money(367, false) << '\n'
+          << "usd: " << std::setw(15) << std::put_money(367, true) << '\n'
+          << "usd: " << std::setw(15)
+          << std::setfill(' ') << std::put_money(367, true) << '\n';
+// Output:
+// flt: **********-9.87
+// hex: *************41
+//   $: **********$3.67
+// usd: ******USD *3.67
+// usd:       USD  3.67
+Default is std::left.
+std::fixed, std::scientific, std::hexfloat [C++11] and std::defaultfloat [C++11] - change formatting for
+ﬂoating-point input/output.
+std::fixed sets the std::ios_base::floatfield to std::ios_base::fixed,
+std::scientific - to std::ios_base::scientific,
+std::hexfloat - to std::ios_base::fixed | std::ios_base::scientific and
+std::defaultfloat - to std::ios_base::fmtflags(0).
+fmtflags
+#include <sstream>
+std::cout << '\n'
+          << "The number 0.07 in fixed:      " << std::fixed << 0.01 << '\n'
+          << "The number 0.07 in scientific: " << std::scientific << 0.01 << '\n'
+          << "The number 0.07 in hexfloat:   " << std::hexfloat << 0.01 << '\n'
+          << "The number 0.07 in default:    " << std::defaultfloat << 0.01 << '\n';
+double f;
+std::istringstream is("0x1P-1022");
+double f = std::strtod(is.str().c_str(), NULL);
+std::cout << "Parsing 0x1P-1022 as hex gives " << f << '\n';
+// Output:
+// The number 0.01 in fixed:      0.070000
+// The number 0.01 in scientific: 7.000000e-02
+// The number 0.01 in hexfloat:   0x1.1eb851eb851ecp-4
+// The number 0.01 in default:    0.07
+// Parsing 0x1P-1022 as hex gives 2.22507e-308
+Default is std::ios_base::fmtflags(0).
+There is a bug on some compilers which causes
+double f;
+std::istringstream("0x1P-1022") >> std::hexfloat >> f;
+std::cout << "Parsing 0x1P-1022 as hex gives " << f << '\n';
+// Output: Parsing 0x1P-1022 as hex gives 0
+std::showpoint and std::noshowpoint - control whether decimal point is always included in ﬂoating-point
+representation. Have no eﬀect on input streams.
+std::cout << "7.0 with showpoint: " << std::showpoint << 7.0 << '\n'
+          << "7.0 with noshowpoint: " << std::noshowpoint << 7.0 << '\n';
+// Output: 1.0 with showpoint: 7.00000
+// 1.0 with noshowpoint: 7
+Default is std::showpoint.
+std::showpos and std::noshowpos - control displaying of the + sign in non-negative output. Have no eﬀect on input
+streams.
+std::cout << "With showpos: " << std::showpos
+          << 0 << ' ' << -2.718 << ' ' << 17 << '\n'
+          << "Without showpos: " << std::noshowpos
+          << 0 << ' ' << -2.718 << ' ' << 17 << '\n';
+// Output: With showpos: +0 -2.718 +17
+// Without showpos: 0 -2.718 17
+Default if std::noshowpos.
+std::unitbuf, std::nounitbuf - control ﬂushing output stream after every operation. Have no eﬀect on input
+stream. std::unitbuf causes ﬂushing.
+std::setbase(base) - sets the numeric base of the stream.
+std::setbase(8) equals to setting std::ios_base::basefield to std::ios_base::oct,
+std::setbase(16) - to std::ios_base::hex,
+std::setbase(10) - to std::ios_base::dec.
+If base is other then 8, 10 or 16 then std::ios_base::basefield is setting to std::ios_base::fmtflags(0). It
+means decimal output and preﬁx-dependent input.
+As default std::ios_base::basefield is std::ios_base::dec then by default std::setbase(10).
+std::setprecision(n) - changes ﬂoating-point precision.
+#include <cmath>
+#include <limits>
+typedef std::numeric_limits<long double> ld;
+const long double pi = std::acos(-1.L);
+std::cout << '\n'
+          << "default precision (6):   pi: " << pi << '\n'
+          << "                       10pi: " << 10 * pi << '\n'
+          << "std::setprecision(4):  10pi: " << std::setprecision(4) << 10 * pi << '\n'
+          << "                    10000pi: " << 10000 * pi << '\n'
+          << "std::fixed:         10000pi: " << std::fixed << 10000 * pi << std::defaultfloat <<
+'\n'
+          << "std::setprecision(10):   pi: " << std::setprecision(10) << pi << '\n'
+          << "max-1 radix precicion:   pi: " << std::setprecision(ld::digits - 1) << pi << '\n'
+          << "max+1 radix precision:   pi: " << std::setprecision(ld::digits + 1) << pi << '\n'
+          << "significant digits prec: pi: " << std::setprecision(ld::digits10) << pi << '\n';
+// Output:
+// default precision (6):   pi: 3.14159
+//                        10pi: 31.4159
+// std::setprecision(4):  10pi: 31.42
+//                     10000pi: 3.142e+04
+// std::fixed:         10000pi: 31415.9265
+// std::setprecision(10):   pi: 3.141592654
+// max-1 radix precicion:   pi: 3.14159265358979323851280895940618620443274267017841339111328125
+// max+1 radix precision:   pi: 3.14159265358979323851280895940618620443274267017841339111328125
+// significant digits prec: pi: 3.14159265358979324
+Default is std::setprecision(6).
+std::setiosflags(mask) and std::resetiosflags(mask) - set and clear ﬂags speciﬁed in mask of
+std::ios_base::fmtflags type.
+#include <sstream>
+std::istringstream in("10 010 10 010 10 010");
+int num1, num2;
+in >> std::oct >> num1 >> num2;
+std::cout << "Parsing \"10 010\" with std::oct gives:   " << num1 << ' ' << num2 << '\n';
+// Output: Parsing "10 010" with std::oct gives:   8 8
+in >> std::dec >> num1 >> num2;
+std::cout << "Parsing \"10 010\" with std::dec gives:   " << num1 << ' ' << num2 << '\n';
+// Output: Parsing "10 010" with std::oct gives:   10 10
+in >> std::resetiosflags(std::ios_base::basefield) >> num1 >> num2;
+std::cout << "Parsing \"10 010\" with autodetect gives: " << num1 << ' ' << num2 << '\n';
+// Parsing "10 010" with autodetect gives: 10 8
+std::cout << std::setiosflags(std::ios_base::hex |
+                              std::ios_base::uppercase |
+                              std::ios_base::showbase) << 42 << '\n';
+// Output: OX2A
+std::skipws and std::noskipws - control skipping of leading whitespace by the formatted input functions. Have no
+eﬀect on output streams.
+#include <sstream>
+char c1, c2, c3;
+std::istringstream("a b c") >> c1 >> c2 >> c3;
+std::cout << "Default  behavior:  c1 = " << c1 << "  c2 = " << c2 << "  c3 = " << c3 << '\n';
+std::istringstream("a b c") >> std::noskipws >> c1 >> c2 >> c3;
+std::cout << "noskipws behavior:  c1 = " << c1 << "  c2 = " << c2 << "  c3 = " << c3 << '\n';
+// Output: Default  behavior:  c1 = a  c2 = b  c3 = c
+// noskipws behavior:  c1 = a  c2 =    c3 = b
+Default is std::ios_base::skipws.
+std::quoted(s[, delim[, escape]]) [C++14] - inserts or extracts quoted strings with embedded spaces.
+s - the string to insert or extract.
+delim - the character to use as the delimiter, " by default.
+escape - the character to use as the escape character, \ by default.
+#include <sstream>
+std::stringstream ss;
+std::string in = "String with spaces, and embedded \"quotes\" too";
+std::string out;
+ss << std::quoted(in);
+std::cout << "read in     [" << in << "]\n"
+          << "stored as   [" << ss.str() << "]\n";
+ss >> std::quoted(out);
+std::cout << "written out [" << out << "]\n";
+// Output:
+// read in     [String with spaces, and embedded "quotes" too]
+// stored as   ["String with spaces, and embedded \"quotes\" too"]
+// written out [String with spaces, and embedded "quotes" too]
+For more information see the link above.
+Section 14.2: Output stream manipulators
+std::ends - inserts a null character '\0' to output stream. More formally this manipulator's declaration looks like
+template <class charT, class traits>
+std::basic_ostream<charT, traits>& ends(std::basic_ostream<charT, traits>& os);
+and this manipulator places character by calling os.put(charT()) when used in an expression
+os << std::ends;
+std::endl and std::flush both ﬂush output stream out by calling out.flush(). It causes immediately producing
+output. But std::endl inserts end of line '\n' symbol before ﬂushing.
+std::cout << "First line." << std::endl << "Second line. " << std::flush
+          << "Still second line.";
+// Output: First line.
+// Second line. Still second line.
+std::setfill(c) - changes the ﬁll character to c. Often used with std::setw.
+std::cout << "\nDefault fill: " << std::setw(10) << 79 << '\n'
+          << "setfill('#'): " << std::setfill('#')
+          << std::setw(10) << 42 << '\n';
+// Output:
+// Default fill:         79
+// setfill('#'): ########79
+std::put_money(mon[, intl]) [C++11]. In an expression out << std::put_money(mon, intl), converts the
+monetary value mon (of long double or std::basic_string type) to its character representation as speciﬁed by the
+std::money_put facet of the locale currently imbued in out. Use international currency strings if intl is true, use
+currency symbols otherwise.
+long double money = 123.45;
+// or std::string money = "123.45";
+std::cout.imbue(std::locale("en_US.utf8"));
+std::cout << std::showbase << "en_US: " << std::put_money(money)
+          << " or " << std::put_money(money, true) << '\n';
+// Output: en_US: $1.23 or USD  1.23
+std::cout.imbue(std::locale("ru_RU.utf8"));
+std::cout << "ru_RU: " << std::put_money(money)
+          << " or " << std::put_money(money, true) << '\n';
+// Output: ru_RU: 1.23 руб or 1.23 RUB
+std::cout.imbue(std::locale("ja_JP.utf8"));
+std::cout << "ja_JP: " << std::put_money(money)
+          << " or " << std::put_money(money, true) << '\n';
+// Output: ja_JP: ￥123 or JPY  123
+std::put_time(tmb, fmt) [C++11] - formats and outputs a date/time value to std::tm according to the speciﬁed
+format fmt.
+tmb - pointer to the calendar time structure const std::tm* as obtained from localtime() or gmtime().
+fmt - pointer to a null-terminated string const CharT* specifying the format of conversion.
+#include <ctime>
+std::time_t t = std::time(nullptr);
+std::tm tm = *std::localtime(&t);
+std::cout.imbue(std::locale("ru_RU.utf8"));
+std::cout << "\nru_RU: " << std::put_time(&tm, "%c %Z") << '\n';
+// Possible output:
+// ru_RU: Вт 04 июл 2017 15:08:35 UTC
+For more information see the link above.
+Section 14.3: Input stream manipulators
+std::ws - consumes leading whitespaces in input stream. It diﬀerent from std::skipws.
+#include <sstream>
+std::string str;
+std::istringstream("  \v\n\r\t    Wow!There   is no whitespaces!") >> std::ws >> str;
+std::cout << str;
+// Output: Wow!There   is no whitespaces!
+std::get_money(mon[, intl]) [C++11]. In an expression in >> std::get_money(mon, intl) parses the character
+input as a monetary value, as speciﬁed by the std::money_get facet of the locale currently imbued in in, and stores
+the value in mon (of long double or std::basic_string type). Manipulator expects required international currency
+strings if intl is true, expects optional currency symbols otherwise.
+#include <sstream>
+#include <locale>
+std::istringstream in("$1,234.56 2.22 USD  3.33");
+long double v1, v2;
+std::string v3;
+in.imbue(std::locale("en_US.UTF-8"));
+in >> std::get_money(v1) >> std::get_money(v2) >> std::get_money(v3, true);
+if (in) {
+    std::cout << std::quoted(in.str()) << " parsed as: "
+              << v1 << ", " << v2 << ", " << v3 << '\n';
+}
+// Output:
+// "$1,234.56 2.22 USD  3.33" parsed as: 123456, 222, 333
+std::get_time(tmb, fmt) [C++11] - parses a date/time value stored in tmb of speciﬁed format fmt.
+tmb - valid pointer to the const std::tm* object where the result will be stored.
+fmt - pointer to a null-terminated string const CharT* specifying the conversion format.
+#include <sstream>
+#include <locale>
+std::tm t = {};
+std::istringstream ss("2011-Februar-18 23:12:34");
+ss.imbue(std::locale("de_DE.utf-8"));
+ss >> std::get_time(&t, "%Y-%b-%d %H:%M:%S");
+if (ss.fail()) {
+    std::cout << "Parse failed\n";
+}
+else {
+    std::cout << std::put_time(&t, "%c") << '\n';
+}
+// Possible output:
+// Sun Feb 18 23:12:34 2011
+For more information see the link above.
+
 ## <a name="chapter-5-c9803standardlibrary"></a>CHAPTER 5: C++98/03 STANDARD LIBRARY
 
 ## Standard Template Library
@@ -9261,6 +9588,324 @@ std::transform(v, std::end(v), std::ostream_iterator<int>(std::cout, " "),
 [](int val) {
     return val * val;
 });
+
+
+---
+### Professional Notes: Iterators Deep Dive
+
+#### Chapter 9: Iterators
+
+Section 9.1: Overview
+Iterators are Positions
+Iterators are a means of navigating and operating on a sequence of elements and are a generalized extension of
+pointers. Conceptually it is important to remember that iterators are positions, not elements. For example, take the
+following sequence:
+A B C
+The sequence contains three elements and four positions
++---+---+---+---+
+| A | B | C |   |
++---+---+---+---+
+Elements are things within a sequence. Positions are places where meaningful operations can happen to the
+sequence. For example, one inserts into a position, before or after element A, not into an element. Even deletion of
+an element (erase(A)) is done by ﬁrst ﬁnding its position, then deleting it.
+From Iterators to Values
+To convert from a position to a value, an iterator is dereferenced:
+auto my_iterator = my_vector.begin(); // position
+auto my_value = *my_iterator; // value
+One can think of an iterator as dereferencing to the value it refers to in the sequence. This is especially useful in
+understanding why you should never dereference the end() iterator in a sequence:
++---+---+---+---+
+| A | B | C |   |
++---+---+---+---+
+↑           ↑
+|           +-- An iterator here has no value. Do not dereference it!
++-------------- An iterator here dereferences to the value A.
+In all the sequences and containers found in the C++ standard library, begin() will return an iterator to the ﬁrst
+position, and end() will return an iterator to one past the last position (not the last position!). Consequently, the
+names of these iterators in algorithms are oftentimes labelled first and last:
++---+---+---+---+
+| A | B | C |   |
++---+---+---+---+
+↑           ↑
+|           |
++- first    +- last
+It is also possible to obtain an iterator to any sequence, because even an empty sequence contains at least one
+position:
++---+
+|   |
++---+
+In an empty sequence, begin() and end() will be the same position, and neither can be dereferenced:
++---+
+|   |
++---+
+  ↑
+  |
+  +- empty_sequence.begin()
+  |
+  +- empty_sequence.end()
+The alternative visualization of iterators is that they mark the positions between elements:
++---+---+---+
+| A | B | C |
++---+---+---+
+↑   ^   ^   ↑
+|           |
++- first    +- last
+and dereferencing an iterator returns a reference to the element coming after the iterator. Some situations where
+this view is particularly useful are:
+insert operations will insert elements into the position indicated by the iterator,
+erase operations will return an iterator corresponding to the same position as the one passed in,
+an iterator and its corresponding reverse iterator are located in the same .position between elements
+Invalid Iterators
+An iterator becomes invalidated if (say, in the course of an operation) its position is no longer a part of a sequence.
+An invalidated iterator cannot be dereferenced until it has been reassigned to a valid position. For example:
+std::vector<int>::iterator first;
+{
+    std::vector<int> foo;
+    first = foo.begin(); // first is now valid
+} // foo falls out of scope and is destroyed
+// At this point first is now invalid
+The many algorithms and sequence member functions in the C++ standard library have rules governing when
+iterators are invalidated. Each algorithm is diﬀerent in the way they treat (and invalidate) iterators.
+Navigating with Iterators
+As we know, iterators are for navigating sequences. In order to do that an iterator must migrate its position
+throughout the sequence. Iterators can advance forward in the sequence and some can advance backwards:
+auto first = my_vector.begin();
+++first;                                             // advance the iterator 1 position
+std::advance(first, 1);                              // advance the iterator 1 position
+first = std::next(first);                            // returns iterator to the next element
+std::advance(first, -1);                             // advance the iterator 1 position backwards
+first = std::next(first, 20);                        // returns iterator to the element 20 position
+forward
+first = std::prev(first, 5);                         // returns iterator to the element 5 position
+backward
+auto dist = std::distance(my_vector.begin(), first); // returns distance between two iterators.
+Note, second argument of std::distance should be reachable from the ﬁrst one(or, in other words first should be
+less or equal than second).
+Even though you can perform arithmetic operators with iterators, not all operations are deﬁned for all types of
+iterators. a = b + 3; would work for Random Access Iterators, but wouldn't work for Forward or Bidirectional
+Iterators, which still can be advanced by 3 position with something like b = a; ++b; ++b; ++b;. So it is
+recommended to use special functions in case you are not sure what is iterator type (for example, in a template
+function accepting iterator).
+Iterator Concepts
+The C++ standard describes several diﬀerent iterator concepts. These are grouped according to how they behave in
+the sequences they refer to. If you know the concept an iterator models (behaves like), you can be assured of the
+behavior of that iterator regardless of the sequence to which it belongs. They are often described in order from the
+most to least restrictive (because the next iterator concept is a step better than its predecessor):
+Input Iterators : Can be dereferenced only once per position. Can only advance, and only one position at a
+time.
+Forward Iterators : An input iterator that can be dereferenced any number of times.
+Bidirectional Iterators : A forward iterator that can also advance backwards one position at a time.
+Random Access Iterators : A bidirectional iterator that can advance forwards or backwards any number of
+positions at a time.
+Contiguous Iterators (since C++17) : A random access iterator that guaranties that underlying data is
+contiguous in memory.
+Algorithms can vary depending on the concept modeled by the iterators they are given. For example, although
+random_shuffle can be implemented for forward iterators, a more eﬃcient variant that requires random access
+iterators could be provided.
+Iterator traits
+Iterator traits provide uniform interface to the properties of iterators. They allow you to retrieve value, diﬀerence,
+pointer, reference types and also category of iterator:
+template<class Iter>
+Iter find(Iter first, Iter last, typename std::iterator_traits<Iter>::value_type val)  {
+    while (first != last) {
+        if (*first == val)
+            return first;
+        ++first;
+    }
+    return last;
+}
+Category of iterator can be used to specialize algorithms:
+template<class BidirIt>
+void test(BidirIt a, std::bidirectional_iterator_tag)  {
+    std::cout << "Bidirectional iterator is used" << std::endl;
+}
+template<class ForwIt>
+void test(ForwIt a, std::forward_iterator_tag)  {
+    std::cout << "Forward iterator is used" << std::endl;
+}
+template<class Iter>
+void test(Iter a)  {
+    test(a, typename std::iterator_traits<Iter>::iterator_category());
+}
+Categories of iterators are basically iterators concepts, except Contiguous Iterators don't have their own tag, since it
+was found to break code.
+Section 9.2: Vector Iterator
+begin returns an iterator to the ﬁrst element in the sequence container.
+end returns an iterator to the ﬁrst element past the end.
+If the vector object is const, both begin and end return a const_iterator. If you want a const_iterator to be
+returned even if your vector is not const, you can use cbegin and cend.
+Example:
+#include <vector>
+#include <iostream>
+int main() {
+    std::vector<int> v = { 1, 2, 3, 4, 5 };  //intialize vector using an initializer_list
+    for (std::vector<int>::iterator it = v.begin(); it != v.end(); ++it) {
+        std::cout << *it << " ";
+    }
+    return 0;
+}
+Output:
+1 2 3 4 5
+Section 9.3: Map Iterator
+An iterator to the ﬁrst element in the container.
+If a map object is const-qualiﬁed, the function returns a const_iterator. Otherwise, it returns an iterator.
+// Create a map and insert some values
+std::map<char,int> mymap;
+mymap['b'] = 100;
+mymap['a'] = 200;
+mymap['c'] = 300;
+// Iterate over all tuples
+for (std::map<char,int>::iterator it = mymap.begin(); it != mymap.end(); ++it)
+    std::cout << it->first << " => " << it->second << '\n';
+Output:
+a => 200
+b => 100
+c => 300
+Section 9.4: Reverse Iterators
+If we want to iterate backwards through a list or vector we can use a reverse_iterator. A reverse iterator is made
+from a bidirectional, or random access iterator which it keeps as a member which can be accessed through base().
+To iterate backwards use rbegin() and rend() as the iterators for the end of the collection, and the start of the
+collection respectively.
+For instance, to iterate backwards use:
+std::vector<int> v{1, 2, 3, 4, 5};
+for (std::vector<int>::reverse_iterator it = v.rbegin(); it != v.rend(); ++it)
+{
+    cout << *it;
+} // prints 54321
+A reverse iterator can be converted to a forward iterator via the base() member function. The relationship is that
+the reverse iterator references one element past the base() iterator:
+std::vector<int>::reverse_iterator r = v.rbegin();
+std::vector<int>::iterator i = r.base();
+assert(&*r == &*(i-1)); // always true if r, (i-1) are dereferenceable
+                        // and are not proxy iterators
+ +---+---+---+---+---+---+---+
+ |   | 1 | 2 | 3 | 4 | 5 |   |
+ +---+---+---+---+---+---+---+
+   ↑   ↑               ↑   ↑
+   |   |               |   |
+rend() |         rbegin()  end()
+       |                   rbegin().base()
+     begin()
+     rend().base()
+In the visualization where iterators mark positions between elements, the relationship is simpler:
+  +---+---+---+---+---+
+| 1 | 2 | 3 | 4 | 5 |
++---+---+---+---+---+
+↑                   ↑
+|                   |
+|                 end()
+|                 rbegin()
+begin()             rbegin().base()
+rend()
+rend().base()
+Section 9.5: Stream Iterators
+Stream iterators are useful when we need to read a sequence or print formatted data from a container:
+// Data stream. Any number of various whitespace characters will be OK.
+std::istringstream istr("1\t 2     3 4");
+std::vector<int> v;
+// Constructing stream iterators and copying data from stream into vector.
+std::copy(
+    // Iterator which will read stream data as integers.
+    std::istream_iterator<int>(istr),
+    // Default constructor produces end-of-stream iterator.
+    std::istream_iterator<int>(),
+    std::back_inserter(v));
+// Print vector contents.
+std::copy(v.begin(), v.end(),
+    //Will print values to standard output as integers delimeted by " -- ".
+    std::ostream_iterator<int>(std::cout, " -- "));
+The example program will print 1 -- 2 -- 3 -- 4 -- to standard output.
+Section 9.6: C Iterators (Pointers)
+// This creates an array with 5 values.
+const int array[] = { 1, 2, 3, 4, 5 };
+#ifdef BEFORE_CPP11
+// You can use `sizeof` to determine how many elements are in an array.
+const int* first = array;
+const int* afterLast = first + sizeof(array) / sizeof(array[0]);
+// Then you can iterate over the array by incrementing a pointer until
+// it reaches past the end of our array.
+for (const int* i = first; i < afterLast; ++i) {
+    std::cout << *i << std::endl;
+}
+#else
+// With C++11, you can let the STL compute the start and end iterators:
+for (auto i = std::begin(array); i != std::end(array); ++i) {
+    std::cout << *i << std::endl;
+}
+#endif
+This code would output the numbers 1 through 5, one on each line like this:
+Breaking It Down
+const int array[] = { 1, 2, 3, 4, 5 };
+This line creates a new integer array with 5 values. C arrays are just pointers to memory where each value is stored
+together in a contiguous block.
+const int* first = array;
+const int* afterLast = first + sizeof(array) / sizeof(array[0]);
+These lines create two pointers. The ﬁrst pointer is given the value of the array pointer, which is the address of the
+ﬁrst element in the array. The sizeof operator when used on a C array returns the size of the array in bytes.
+Divided by the size of an element this gives the number of elements in the array. We can use this to ﬁnd the
+address of the block after the array.
+for (const int* i = first; i < afterLast; ++i) {
+Here we create a pointer which we will use as an iterator. It is initialized with the address of the ﬁrst element we
+want to iterate over, and we'll continue to iterate as long as i is less than afterLast, which means as long as i is
+pointing to an address within array.
+    std::cout << *i << std::endl;
+Finally, within the loop we can access the value our iterator i is pointing to by dereferencing it. Here the
+dereference operator * returns the value at the address in i.
+Section 9.7: Write your own generator-backed iterator
+A common pattern in other languages is having a function that produces a "stream" of objects, and being able to
+use loop-code to loop over it.
+We can model this in C++ as
+template<class T>
+struct generator_iterator {
+  using difference_type=std::ptrdiff_t;
+  using value_type=T;
+  using pointer=T*;
+  using reference=T;
+  using iterator_category=std::input_iterator_tag;
+  std::optional<T> state;
+  std::function< std::optional<T>() > operation;
+  // we store the current element in "state" if we have one:
+  T operator*() const {
+    return *state;
+  }
+  // to advance, we invoke our operation.  If it returns a nullopt
+  // we have reached the end:
+  generator_iterator& operator++() {
+    state = operation();
+    return *this;        
+  }
+  generator_iterator operator++(int) {
+    auto r = *this;
+    ++(*this);
+    return r;
+  }
+  // generator iterators are only equal if they are both in the "end" state:
+  friend bool operator==( generator_iterator const& lhs, generator_iterator const& rhs ) {
+    if (!lhs.state && !rhs.state) return true;
+    return false;
+  }
+  friend bool operator!=( generator_iterator const& lhs, generator_iterator const& rhs ) {
+    return !(lhs==rhs);
+  }
+  // We implicitly construct from a std::function with the right signature:
+  generator_iterator( std::function< std::optional<T>() > f ):operation(std::move(f))
+  {
+    if (operation)
+      state = operation();
+  }
+  // default all special member functions:
+  generator_iterator( generator_iterator && ) =default;
+  generator_iterator( generator_iterator const& ) =default;
+  generator_iterator& operator=( generator_iterator && ) =default;
+  generator_iterator& operator=( generator_iterator const& ) =default;
+  generator_iterator() =default;
+};
+live example.
+We store the generated element early so we can more easily detect if we are already at the end.
+As the function of an end generator iterator is never used, we can create a range of generator iterators by only
+copying the std::function once. A default constructed generator iterator compares equal to itself, and to all other
+end-generator-iterators.
+
 ## <a name="chapter-6-stlinternalsdeepdive"></a>CHAPTER 6: STL INTERNALS DEEP DIVE
 
 To master the STL, you must understand what happens under the hood.
@@ -15715,6 +16360,336 @@ int main() {
 ---
 
 # Volume IV: Systems & Architecture
+
+
+---
+### Professional Notes: Low Level & Safety
+
+#### Chapter 5: Bit Operators
+
+Section 5.1: | - bitwise OR
+int a = 5;     // 0101b  (0x05)
+int b = 12;    // 1100b  (0x0C)
+int c = a | b; // 1101b  (0x0D)
+std::cout << "a = " << a << ", b = " << b << ", c = " << c << std::endl;
+Output
+a = 5, b = 12, c = 13
+Why
+A bit wise OR operates on the bit level and uses the following Boolean truth table:
+true OR true = true
+true OR false = true
+false OR false = false
+When the binary value for a (0101) and the binary value for b (1100) are OR'ed together we get the binary value of
+1101:
+int a = 0 1 0 1
+int b = 1 1 0 0 |
+        ---------
+int c = 1 1 0 1
+The bit wise OR does not change the value of the original values unless speciﬁcally assigned to using the bit wise
+assignment compound operator |=:
+int a = 5;  // 0101b  (0x05)
+a |= 12;    // a = 0101b | 1101b
+Section 5.2: ^ - bitwise XOR (exclusive OR)
+int a = 5;     // 0101b  (0x05)
+int b = 9;     // 1001b  (0x09)
+int c = a ^ b; // 1100b  (0x0C)
+std::cout << "a = " << a << ", b = " << b << ", c = " << c << std::endl;
+Output
+a = 5, b = 9, c = 12
+Why
+A bit wise XOR (exclusive or) operates on the bit level and uses the following Boolean truth table:
+true OR true = false
+true OR false = true
+false OR false = false
+Notice that with an XOR operation true OR true = false where as with operations true AND/OR true = true,
+hence the exclusive nature of the XOR operation.
+Using this, when the binary value for a (0101) and the binary value for b (1001) are XOR'ed together we get the binary
+value of 1100:
+int a = 0 1 0 1
+int b = 1 0 0 1 ^
+        ---------
+int c = 1 1 0 0
+The bit wise XOR does not change the value of the original values unless speciﬁcally assigned to using the bit wise
+assignment compound operator ^=:
+int a = 5;  // 0101b  (0x05)
+a ^= 9;    // a = 0101b ^ 1001b
+The bit wise XOR can be utilized in many ways and is often utilized in bit mask operations for encryption and
+compression.
+Note: The following example is often shown as an example of a nice trick. But should not be used in production
+code (there are better ways std::swap() to achieve the same result).
+You can also utilize an XOR operation to swap two variables without a temporary:
+int a = 42;
+int b = 64;
+// XOR swap
+a ^= b;
+b ^= a;
+a ^= b;
+std::cout << "a = " << a << ", b = " << b << "\n";
+To productionalize this you need to add a check to make sure it can be used.
+void doXORSwap(int& a, int& b)
+{
+    // Need to add a check to make sure you are not swapping the same
+    // variable with itself. Otherwise it will zero the value.
+    if (&a != &b)
+    {
+        // XOR swap
+        a ^= b;
+        b ^= a;
+        a ^= b;
+    }
+}
+So though it looks like a nice trick in isolation it is not useful in real code. xor is not a base logical operation,but a
+combination of others: a^c=~(a&c)&(a|c)
+also in 2015+ compilers variables may be assigned as binary:
+int cn=0b0111;
+Section 5.3: & - bitwise AND
+int a = 6;     // 0110b  (0x06)
+int b = 10;    // 1010b  (0x0A)
+int c = a & b; // 0010b  (0x02)
+std::cout << "a = " << a << ", b = " << b << ", c = " << c << std::endl;
+Output
+a = 6, b = 10, c = 2
+Why
+A bit wise AND operates on the bit level and uses the following Boolean truth table:
+TRUE  AND TRUE  = TRUE
+TRUE  AND FALSE = FALSE
+FALSE AND FALSE = FALSE
+When the binary value for a (0110) and the binary value for b (1010) are AND'ed together we get the binary value of
+0010:
+int a = 0 1 1 0
+int b = 1 0 1 0 &
+        ---------
+int c = 0 0 1 0
+The bit wise AND does not change the value of the original values unless speciﬁcally assigned to using the bit wise
+assignment compound operator &=:
+int a = 5;  // 0101b  (0x05)
+a &= 10;    // a = 0101b & 1010b
+Section 5.4: << - left shift
+int a = 1;      // 0001b
+int b = a << 1; // 0010b
+std::cout << "a = " << a << ", b = " << b << std::endl;
+Output
+a = 1, b = 2
+Why
+The left bit wise shift will shift the bits of the left hand value (a) the number speciﬁed on the right (1), essentially
+padding the least signiﬁcant bits with 0's, so shifting the value of 5 (binary 0000 0101) to the left 4 times (e.g. 5 <<
+4) will yield the value of 80 (binary 0101 0000). You might note that shifting a value to the left 1 time is also the same
+as multiplying the value by 2, example:
+int a = 7;
+while (a < 200) {
+    std::cout << "a = " << a << std::endl;
+    a <<= 1;
+}
+a = 7;
+while (a < 200) {
+    std::cout << "a = " << a << std::endl;
+    a *= 2;
+}
+But it should be noted that the left shift operation will shift all bits to the left, including the sign bit, example:
+int a = 2147483647; // 0111 1111 1111 1111 1111 1111 1111 1111
+int b = a << 1;     // 1111 1111 1111 1111 1111 1111 1111 1110
+std::cout << "a = " << a << ", b = " << b << std::endl;
+Possible output: a = 2147483647, b = -2
+While some compilers will yield results that seem expected, it should be noted that if you left shift a signed number
+so that the sign bit is aﬀected, the result is undeﬁned. It is also undeﬁned if the number of bits you wish to shift by
+is a negative number or is larger than the number of bits the type on the left can hold, example:
+int a = 1;
+int b = a << -1;  // undefined behavior
+char c = a << 20; // undefined behavior
+The bit wise left shift does not change the value of the original values unless speciﬁcally assigned to using the bit
+wise assignment compound operator <<=:
+int a = 5;  // 0101b
+a <<= 1;    // a = a << 1;
+Section 5.5: >> - right shift
+int a = 2;      // 0010b
+int b = a >> 1; // 0001b
+std::cout << "a = " << a << ", b = " << b << std::endl;
+Output
+a = 2, b = 1
+Why
+The right bit wise shift will shift the bits of the left hand value (a) the number speciﬁed on the right (1); it should be
+noted that while the operation of a right shift is standard, what happens to the bits of a right shift on a signed
+negative number is implementation deﬁned and thus cannot be guaranteed to be portable, example:
+int a = -2;    
+int b = a >> 1; // the value of b will be depend on the compiler
+It is also undeﬁned if the number of bits you wish to shift by is a negative number, example:
+int a = 1;
+int b = a >> -1;  // undefined behavior
+The bit wise right shift does not change the value of the original values unless speciﬁcally assigned to using the bit
+wise assignment compound operator >>=:
+int a = 2;  // 0010b
+a >>= 1;    // a = a >> 1;
+
+#### Chapter 6: Bit Manipulation
+
+Section 6.1: Remove rightmost set bit
+C-style bit-manipulation
+template <typename T>
+T rightmostSetBitRemoved(T n)
+{
+    // static_assert(std::is_integral<T>::value && !std::is_signed<T>::value, "type should be
+unsigned"); // For c++11 and later
+    return n & (n - 1);
+}
+Explanation
+if n is zero, we have 0 & 0xFF..FF which is zero
+else n can be written 0bxxxxxx10..00 and n - 1 is 0bxxxxxx011..11, so n & (n - 1) is 0bxxxxxx000..00.
+Section 6.2: Set all bits
+C-style bit-manipulation
+x = -1; // -1 == 1111 1111 ... 1111b
+(See here for an explanation of why this works and is actually the best approach.)
+Using std::bitset
+std::bitset<10> x;
+x.set(); // Sets all bits to '1'
+Section 6.3: Toggling a bit
+C-style bit-manipulation
+A bit can be toggled using the XOR operator (^).
+// Bit x will be the opposite value of what it is currently
+number ^= 1LL << x;
+Using std::bitset
+std::bitset<4> num(std::string("0100"));
+num.flip(2); // num is now 0000
+num.flip(0); // num is now 0001
+num.flip();  // num is now 1110 (flips all bits)
+Section 6.4: Checking a bit
+C-style bit-manipulation
+The value of the bit can be obtained by shifting the number to the right x times and then performing bitwise AND
+(&) on it:
+(number >> x) & 1LL;  // 1 if the 'x'th bit of 'number' is set, 0 otherwise
+The right-shift operation may be implemented as either an arithmetic (signed) shift or a logical (unsigned) shift. If
+number in the expression number >> x has a signed type and a negative value, the resulting value is
+implementation-deﬁned.
+If we need the value of that bit directly in-place, we could instead left shift the mask:
+(number & (1LL << x));  // (1 << x) if the 'x'th bit of 'number' is set, 0 otherwise
+Either can be used as a conditional, since all non-zero values are considered true.
+Using std::bitset
+std::bitset<4> num(std::string("0010"));
+bool bit_val = num.test(1);  // bit_val value is set to true;
+Section 6.5: Counting bits set
+The population count of a bitstring is often needed in cryptography and other applications and the problem has
+been widely studied.
+The naive way requires one iteration per bit:
+unsigned value = 1234;
+unsigned bits = 0;  // accumulates the total number of bits set in `n`
+for (bits = 0; value; value >>= 1)
+  bits += value & 1;
+A nice trick (based on Remove rightmost set bit ) is:
+unsigned bits = 0;  // accumulates the total number of bits set in `n`
+for (; value; ++bits)
+  value &= value - 1;
+It goes through as many iterations as there are set bits, so it's good when value is expected to have few nonzero
+bits.
+The method was ﬁrst proposed by Peter Wegner (in CACM 3 / 322 - 1960) and it's well known since it appears in C
+Programming Language by Brian W. Kernighan and Dennis M. Ritchie.
+This requires 12 arithmetic operations, one of which is a multication:
+unsigned popcount(std::uint64_t x)
+{
+  const std::uint64_t m1  = 0x5555555555555555;  // binary: 0101...
+  const std::uint64_t m2  = 0x3333333333333333;  // binary: 00110011..
+  const std::uint64_t m4  = 0x0f0f0f0f0f0f0f0f;  // binary: 0000111100001111
+  x -= (x >> 1) & m1;             // put count of each 2 bits into those 2 bits
+  x = (x & m2) + ((x >> 2) & m2); // put count of each 4 bits into those 4 bits
+  x = (x + (x >> 4)) & m4;        // put count of each 8 bits into those 8 bits
+  return (x * h01) >> 56;  // left 8 bits of x + (x<<8) + (x<<16) + (x<<24) + ...
+}
+This kind of implementation has the best worst-case behavior (see Hamming weight for further details).
+Many CPUs have a speciﬁc instruction (like x86's popcnt) and the compiler could oﬀer a speciﬁc (non standard)
+built in function. E.g. with g++ there is:
+int __builtin_popcount (unsigned x);
+Section 6.6: Check if an integer is a power of 2
+The n & (n - 1) trick (see Remove rightmost set bit) is also useful to determine if an integer is a power of 2:
+bool power_of_2 = n && !(n & (n - 1));
+Note that without the ﬁrst part of the check (n &&), 0 is incorrectly considered a power of 2.
+Section 6.7: Setting a bit
+C-style bit manipulation
+A bit can be set using the bitwise OR operator (|).
+// Bit x will be set
+number |= 1LL << x;
+Using std::bitset
+set(x) or set(x,true) - sets bit at position x to 1.
+std::bitset<5> num(std::string("01100"));
+num.set(0);      // num is now 01101
+num.set(2);      // num is still 01101
+num.set(4,true); // num is now 11110
+Section 6.8: Clearing a bit
+C-style bit-manipulation
+A bit can be cleared using the bitwise AND operator (&).
+// Bit x will be cleared
+number &= ~(1LL << x);
+Using std::bitset
+reset(x) or set(x,false) - clears the bit at position x.
+std::bitset<5> num(std::string("01100"));
+num.reset(2);     // num is now 01000
+num.reset(0);     // num is still 01000
+num.set(3,false); // num is now 00000
+Section 6.9: Changing the nth bit to x
+C-style bit-manipulation
+// Bit n will be set if x is 1 and cleared if x is 0.
+number ^= (-x ^ number) & (1LL << n);
+Using std::bitset
+set(n,val) - sets bit n to the value val.
+std::bitset<5> num(std::string("00100"));
+num.set(0,true);  // num is now 00101
+num.set(2,false); // num is now 00001
+Section 6.10: Bit Manipulation Application: Small to Capital
+Letter
+One of several applications of bit manipulation is converting a letter from small to capital or vice versa by choosing
+a mask and a proper bit operation. For example, the a letter has this binary representation 01(1)00001 while its
+capital counterpart has 01(0)00001. They diﬀer solely in the bit in parenthesis. In this case, converting the a letter
+from small to capital is basically setting the bit in parenthesis to one. To do so, we do the following:
+/****************************************
+convert small letter to captial letter.
+========================================
+     a: 01100001
+  mask: 11011111  <-- (0xDF)  11(0)11111
+      :---------
+a&mask: 01000001  <-- A letter
+*****************************************/
+The code for converting a letter to A letter is
+#include <cstdio>
+int main()
+{
+    char op1 = 'a';  // "a" letter (i.e. small case)
+    int mask = 0xDF; // choosing a proper mask
+    printf("a (AND) mask = A\n");
+    printf("%c   &   0xDF = %c\n", op1, op1 & mask);
+    return 0;
+}
+The result is
+$ g++ main.cpp -o test1
+$ ./test1
+a (AND) mask = A
+a   &   0xDF = A
+
+#### Chapter 104: Undeﬁned Behavior
+
+Section 104.1: Reading or writing through a null pointer 
+Section 104.2: Using an uninitialized local variable 
+Section 104.3: Accessing an out-of-bounds index 
+Section 104.4: Deleting a derived object via a pointer to a base class that doesn't have a virtual destructor
+Section 104.5: Extending the `std` or `posix` Namespace 
+Section 104.6: Invalid pointer arithmetic 
+Section 104.7: No return statement for a function with a non-void return type 
+Section 104.8: Accessing a dangling reference 
+Section 104.9: Integer division by zero 
+Section 104.10: Shifting by an invalid number of positions 
+Section 104.11: Incorrect pairing of memory allocation and deallocation 
+Section 104.12: Signed Integer Overﬂow 
+Section 104.13: Multiple non-identical deﬁnitions (the One Deﬁnition Rule) 
+Section 104.14: Modifying a const object 
+Section 104.15: Returning from a [[noreturn]] function 
+Section 104.16: Inﬁnite template recursion 
+Section 104.17: Overﬂow during conversion to or from ﬂoating point type 
+Section 104.18: Modifying a string literal 
+Section 104.19: Accessing an object as the wrong type 
+Section 104.20: Invalid derived-to-base conversion for pointers to members 
+Section 104.21: Destroying an object that has already been destroyed 
+Section 104.22: Access to nonexistent member through pointer to member 
+Section 104.23: Invalid base-to-derived static cast 
+Section 104.24: Floating point overﬂow 
+Section 104.25: Calling (Pure) Virtual Members From Constructor Or Destructor 
+Section 104.26: Function call through mismatched function pointer type 
+
 ## <a name="chapter-14-advancedtopics"></a>CHAPTER 14: ADVANCED TOPICS
 
 ## TEMPLATE METAPROGRAMMING
