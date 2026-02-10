@@ -3257,6 +3257,926 @@ int main() {
 
 ## <a name="chapter-3-objectorientedprogrammingfundamentals"></a>CHAPTER 3: OBJECT-ORIENTED PROGRAMMING FUNDAMENTALS
 
+
+---
+### Professional Notes: OOP Mechanics
+
+#### Chapter 34: Classes/Structures
+
+Section 34.1: Class basics
+A class is a user-deﬁned type. A class is introduced with the class, struct or union keyword. In colloquial usage, the
+term "class" usually refers only to non-union classes.
+A class is a collection of class members, which can be:
+member variables (also called "ﬁelds"),
+member functions (also called "methods"),
+member types or typedefs (e.g. "nested classes"),
+member templates (of any kind: variable, function, class or alias template)
+The class and struct keywords, called class keys, are largely interchangeable, except that the default access
+speciﬁer for members and bases is "private" for a class declared with the class key and "public" for a class declared
+with the struct or union key (cf. Access modiﬁers).
+For example, the following code snippets are identical:
+struct Vector
+{
+    int x;
+    int y;
+    int z;
+};
+// are equivalent to
+class Vector
+{
+public:
+    int x;
+    int y;
+    int z;
+};
+By declaring a class` a new type is added to your program, and it is possible to instantiate objects of that class by
+Vector my_vector;
+Members of a class are accessed using dot-syntax.
+my_vector.x = 10;
+my_vector.y = my_vector.x + 1; // my_vector.y = 11;
+my_vector.z = my_vector.y - 4; // my:vector.z = 7;
+Section 34.2: Final classes and structs
+Version ≥ C++11
+Deriving a class may be forbidden with final speciﬁer. Let's declare a ﬁnal class:
+class A final {
+};
+Now any attempt to subclass it will cause a compilation error:
+// Compilation error: cannot derive from final class:
+class B : public A {
+};
+Final class may appear anywhere in class hierarchy:
+class A {
+};
+// OK.
+class B final : public A {
+};
+// Compilation error: cannot derive from final class B.
+class C : public B {
+};
+Section 34.3: Access speciﬁers
+There are three keywords that act as access speciﬁers. These limit the access to class members following the
+speciﬁer, until another speciﬁer changes the access level again:
+Keyword
+public
+Everyone has access
+Description
+protected Only the class itself, derived classes and friends have access
+private Only the class itself and friends have access
+When the type is deﬁned using the class keyword, the default access speciﬁer is private, but if the type is deﬁned
+using the struct keyword, the default access speciﬁer is public:
+struct MyStruct { int x; };
+class MyClass { int x; };
+MyStruct s;
+s.x = 9; // well formed, because x is public
+MyClass c;
+c.x = 9; // ill-formed, because x is private
+Access speciﬁers are mostly used to limit access to internal ﬁelds and methods, and force the programmer to use a
+speciﬁc interface, for example to force use of getters and setters instead of referencing a variable directly:
+class MyClass {
+public: /* Methods: */
+    int x() const noexcept { return m_x; }
+    void setX(int const x) noexcept { m_x = x; }
+private: /* Fields: */
+    int m_x;
+};
+Using protected is useful for allowing certain functionality of the type to be only accessible to the derived classes,
+for example, in the following code, the method calculateValue() is only accessible to classes deriving from the
+base class Plus2Base, such as FortyTwo:
+struct Plus2Base {
+    int value() noexcept { return calculateValue() + 2; }
+protected: /* Methods: */
+    virtual int calculateValue() noexcept = 0;
+};
+struct FortyTwo: Plus2Base {
+protected: /* Methods: */
+    int calculateValue() noexcept final override { return 40; }
+};
+Note that the friend keyword can be used to add access exceptions to functions or types for accessing protected
+and private members.
+The public, protected, and private keywords can also be used to grant or limit access to base class subobjects.
+See the Inheritance example.
+Section 34.4: Inheritance
+Classes/structs can have inheritance relations.
+If a class/struct B inherits from a class/struct A, this means that B has as a parent A. We say that B is a derived
+class/struct from A, and A is the base class/struct.
+struct A
+{
+public:
+    int p1;
+protected:
+    int p2;
+private:
+    int p3;
+};
+//Make B inherit publicly (default) from A
+struct B : A
+{
+};
+There are 3 forms of inheritance for a class/struct:
+public
+private
+protected
+Note that the default inheritance is the same as the default visibility of members: public if you use the struct
+keyword, and private for the class keyword.
+It's even possible to have a class derive from a struct (or vice versa). In this case, the default inheritance is
+controlled by the child, so a struct that derives from a class will default to public inheritance, and a class that
+derives from a struct will have private inheritance by default.
+public inheritance:
+struct B : public A // or just `struct B : A`
+{
+    void foo()
+    {
+        p1 = 0; //well formed, p1 is public in B
+        p2 = 0; //well formed, p2 is protected in B
+        p3 = 0; //ill formed, p3 is private in A
+    }
+};
+B b;
+b.p1 = 1; //well formed, p1 is public
+b.p2 = 1; //ill formed, p2 is protected
+b.p3 = 1; //ill formed, p3 is inaccessible
+private inheritance:
+struct B : private A
+{
+    void foo()
+    {
+        p1 = 0; //well formed, p1 is private in B
+        p2 = 0; //well formed, p2 is private in B
+        p3 = 0; //ill formed, p3 is private in A
+    }
+};
+B b;
+b.p1 = 1; //ill formed, p1 is private
+b.p2 = 1; //ill formed, p2 is private
+b.p3 = 1; //ill formed, p3 is inaccessible
+protected inheritance:
+struct B : protected A
+{
+    void foo()
+    {
+        p1 = 0; //well formed, p1 is protected in B
+        p2 = 0; //well formed, p2 is protected in B
+        p3 = 0; //ill formed, p3 is private in A
+    }
+};
+B b;
+b.p1 = 1; //ill formed, p1 is protected
+b.p2 = 1; //ill formed, p2 is protected
+b.p3 = 1; //ill formed, p3 is inaccessible
+Note that although protected inheritance is allowed, the actual use of it is rare. One instance of how protected
+inheritance is used in application is in partial base class specialization (usually referred to as "controlled
+polymorphism").
+When OOP was relatively new, (public) inheritance was frequently said to model an "IS-A" relationship. That is,
+public inheritance is correct only if an instance of the derived class is also an instance of the base class.
+This was later reﬁned into the Liskov Substitution Principle: public inheritance should only be used when/if an
+instance of the derived class can be substituted for an instance of the base class under any possible circumstance
+(and still make sense).
+Private inheritance is typically said to embody a completely diﬀerent relationship: "is implemented in terms of"
+(sometimes called a "HAS-A" relationship). For example, a Stack class could inherit privately from a Vector class.
+Private inheritance bears a much greater similarity to aggregation than to public inheritance.
+Protected inheritance is almost never used, and there's no general agreement on what sort of relationship it
+embodies.
+Section 34.5: Friendship
+The friend keyword is used to give other classes and functions access to private and protected members of the
+class, even through they are deﬁned outside the class`s scope.
+class Animal{
+private:
+    double weight;
+    double height;
+public:
+    friend void printWeight(Animal animal);
+    friend class AnimalPrinter;
+    // A common use for a friend function is to overload the operator<< for streaming.
+    friend std::ostream& operator<<(std::ostream& os, Animal animal);
+};
+void printWeight(Animal animal)
+{
+    std::cout << animal.weight << "\n";
+}
+class AnimalPrinter
+{
+public:
+    void print(const Animal& animal)
+    {
+        // Because of the `friend class AnimalPrinter;" declaration, we are
+        // allowed to access private members here.
+        std::cout << animal.weight << ", " << animal.height << std::endl;
+    }
+}
+std::ostream& operator<<(std::ostream& os, Animal animal)
+{
+    os << "Animal height: " << animal.height << "\n";
+    return os;
+}
+int main() {
+    Animal animal = {10, 5};
+    printWeight(animal);
+    AnimalPrinter aPrinter;
+    aPrinter.print(animal);
+    std::cout << animal;
+}
+10, 5
+Animal height: 5
+Section 34.6: Virtual Inheritance
+When using inheritance, you can specify the virtual keyword:
+struct A{};
+struct B: public virtual A{};
+When class B has virtual base A it means that A will reside in most derived class of inheritance tree, and thus that
+most derived class is also responsible for initializing that virtual base:
+struct A
+{
+    int member;
+    A(int param)
+    {
+        member = param;
+    }
+};
+struct B: virtual A
+{
+    B(): A(5){}
+};
+struct C: B
+{
+    C(): /*A(88)*/ {}
+};
+void f()
+{
+    C object; //error since C is not initializing it's indirect virtual base `A`
+}
+If we un-comment /*A(88)*/ we won't get any error since C is now initializing it's indirect virtual base A.
+Also note that when we're creating variable object, most derived class is C, so C is responsible for creating(calling
+constructor of) A and thus value of A::member is 88, not 5 (as it would be if we were creating object of type B).
+It is useful when solving the diamond problem.:
+  A                                        A   A
+ / \                                       |   |
+B   C                                      B   C
+ \ /                                        \ /
+  D                                          D
+virtual inheritance                   normal inheritance
+B and C both inherit from A, and D inherits from B and C, so there are 2 instances of A in D! This results in ambiguity
+when you're accessing member of A through D, as the compiler has no way of knowing from which class do you
+want to access that member (the one which B inherits, or the one that is inherited byC?).
+Virtual inheritance solves this problem: Since virtual base resides only in most derived object, there will be only one
+instance of A in D.
+struct A
+{
+    void foo() {}
+};
+struct B : public /*virtual*/ A {};
+struct C : public /*virtual*/ A {};
+struct D : public B, public C
+{
+    void bar()
+    {
+        foo(); //Error, which foo? B::foo() or C::foo()? - Ambiguous
+    }
+};
+Removing the comments resolves the ambiguity.
+Section 34.7: Private inheritance: restricting base class
+interface
+Private inheritance is useful when it is required to restrict the public interface of the class:
+class A {
+public:
+    int move();
+    int turn();
+};
+class B : private A {
+public:
+    using A::turn;
+};
+B b;
+b.move();  // compile error
+b.turn();  // OK
+This approach eﬃciently prevents an access to the A public methods by casting to the A pointer or reference:
+B b;
+A& a = static_cast<A&>(b); // compile error
+In the case of public inheritance such casting will provide access to all the A public methods despite on alternative
+ways to prevent this in derived B, like hiding:
+class B : public A {
+private:
+    int move();  
+};
+or private using:
+class B : public A {
+private:
+    using A::move;  
+};
+then for both cases it is possible:
+B b;
+A& a = static_cast<A&>(b); // OK for public inheritance
+a.move(); // OK
+Section 34.8: Accessing class members
+To access member variables and member functions of an object of a class, the . operator is used:
+struct SomeStruct {
+  int a;
+  int b;
+  void foo() {}
+};
+SomeStruct var;
+// Accessing member variable a in var.
+std::cout << var.a << std::endl;
+// Assigning member variable b in var.
+var.b = 1;
+// Calling a member function.
+var.foo();
+When accessing the members of a class via a pointer, the -> operator is commonly used. Alternatively, the instance
+can be dereferenced and the . operator used, although this is less common:
+struct SomeStruct {
+  int a;
+  int b;
+  void foo() {}
+};
+SomeStruct var;
+SomeStruct *p = &var;
+// Accessing member variable a in var via pointer.
+std::cout << p->a << std::endl;
+std::cout << (*p).a << std::endl;
+// Assigning member variable b in var via pointer.
+p->b = 1;
+(*p).b = 1;
+// Calling a member function via a pointer.
+p->foo();
+(*p).foo();
+When accessing static class members, the :: operator is used, but on the name of the class instead of an instance
+of it. Alternatively, the static member can be accessed from an instance or a pointer to an instance using the . or ->
+operator, respectively, with the same syntax as accessing non-static members.
+struct SomeStruct {
+  int a;
+  int b;
+  void foo() {}
+  static int c;
+  static void bar() {}
+};
+int SomeStruct::c;
+SomeStruct var;
+SomeStruct* p = &var;
+// Assigning static member variable c in struct SomeStruct.
+SomeStruct::c = 5;
+// Accessing static member variable c in struct SomeStruct, through var and p.
+var.a = var.c;
+var.b = p->c;
+// Calling a static member function.
+SomeStruct::bar();
+var.bar();
+p->bar();
+Background
+The -> operator is needed because the member access operator . has precedence over the dereferencing operator
+*.
+One would expect that *p.a would dereference p (resulting in a reference to the object p is pointing to) and then
+accessing its member a. But in fact, it tries to access the member a of p and then dereference it. I.e. *p.a is
+equivalent to *(p.a). In the example above, this would result in a compiler error because of two facts: First, p is a
+pointer and does not have a member a. Second, a is an integer and, thus, can't be dereferenced.
+The uncommonly used solution to this problem would be to explicitly control the precedence: (*p).a
+Instead, the -> operator is almost always used. It is a short-hand for ﬁrst dereferencing the pointer and then
+accessing it. I.e. (*p).a is exactly the same as p->a.
+The :: operator is the scope operator, used in the same manner as accessing a member of a namespace. This is
+because a static class member is considered to be in that class' scope, but isn't considered a member of instances
+of that class. The use of normal . and -> is also allowed for static members, despite them not being instance
+members, for historical reasons; this is of use for writing generic code in templates, as the caller doesn't need to be
+concerned with whether a given member function is static or non-static.
+Section 34.9: Member Types and Aliases
+A class or struct can also deﬁne member type aliases, which are type aliases contained within, and treated as
+members of, the class itself.
+struct IHaveATypedef {
+    typedef int MyTypedef;
+};
+struct IHaveATemplateTypedef {
+    template<typename T>
+    using MyTemplateTypedef = std::vector<T>;
+};
+Like static members, these typedefs are accessed using the scope operator, ::.
+IHaveATypedef::MyTypedef i = 5; // i is an int.
+IHaveATemplateTypedef::MyTemplateTypedef<int> v; // v is a std::vector<int>.
+As with normal type aliases, each member type alias is allowed to refer to any type deﬁned or aliased before, but
+not after, its deﬁnition. Likewise, a typedef outside the class deﬁnition can refer to any accessible typedefs within
+the class deﬁnition, provided it comes after the class deﬁnition.
+template<typename T>
+struct Helper {
+    T get() const { return static_cast<T>(42); }
+};
+struct IHaveTypedefs {
+//    typedef MyTypedef NonLinearTypedef; // Error if uncommented.
+    typedef int MyTypedef;
+    typedef Helper<MyTypedef> MyTypedefHelper;
+};
+IHaveTypedefs::MyTypedef        i; // x_i is an int.
+IHaveTypedefs::MyTypedefHelper hi; // x_hi is a Helper<int>.
+typedef IHaveTypedefs::MyTypedef TypedefBeFree;
+TypedefBeFree ii;                  // ii is an int.
+Member type aliases can be declared with any access level, and will respect the appropriate access modiﬁer.
+class TypedefAccessLevels {
+    typedef int PrvInt;
+  protected:
+    typedef int ProInt;
+  public:
+    typedef int PubInt;
+};
+TypedefAccessLevels::PrvInt prv_i; // Error: TypedefAccessLevels::PrvInt is private.
+TypedefAccessLevels::ProInt pro_i; // Error: TypedefAccessLevels::ProInt is protected.
+TypedefAccessLevels::PubInt pub_i; // Good.
+class Derived : public TypedefAccessLevels {
+    PrvInt prv_i; // Error: TypedefAccessLevels::PrvInt is private.
+    ProInt pro_i; // Good.
+    PubInt pub_i; // Good.
+};
+This can be used to provide a level of abstraction, allowing a class' designer to change its internal workings without
+breaking code that relies on it.
+class Something {
+    friend class SomeComplexType;
+    short s;
+    // ...
+  public:
+    typedef SomeComplexType MyHelper;
+    MyHelper get_helper() const { return MyHelper(8, s, 19.5, "shoe", false); }
+    // ...
+};
+// ...
+Something s;
+Something::MyHelper hlp = s.get_helper();
+In this situation, if the helper class is changed from SomeComplexType to some other type, only the typedef and the
+friend declaration would need to be modiﬁed; as long as the helper class provides the same functionality, any code
+that uses it as Something::MyHelper instead of specifying it by name will usually still work without any
+modiﬁcations. In this manner, we minimise the amount of code that needs to be modiﬁed when the underlying
+implementation is changed, such that the type name only needs to be changed in one location.
+This can also be combined with decltype, if one so desires.
+class SomethingElse {
+    AnotherComplexType<bool, int, SomeThirdClass> helper;
+  public:
+    typedef decltype(helper) MyHelper;
+  private:
+    InternalVariable<MyHelper> ivh;
+    // ...
+  public:
+    MyHelper& get_helper() const { return helper; }
+    // ...
+};
+In this situation, changing the implementation of SomethingElse::helper will automatically change the typedef for
+us, due to decltype. This minimises the number of modiﬁcations necessary when we want to change helper, which
+minimises the risk of human error.
+As with everything, however, this can be taken too far. If the typename is only used once or twice internally and
+zero times externally, for example, there's no need to provide an alias for it. If it's used hundreds or thousands of
+times throughout a project, or if it has a long enough name, then it can be useful to provide it as a typedef instead
+of always using it in absolute terms. One must balance forwards compatibility and convenience with the amount of
+unnecessary noise created.
+This can also be used with template classes, to provide access to the template parameters from outside the class.
+template<typename T>
+class SomeClass {
+    // ...
+  public:
+    typedef T MyParam;
+    MyParam getParam() { return static_cast<T>(42); }
+};
+template<typename T>
+typename T::MyParam some_func(T& t) {
+    return t.getParam();
+}
+SomeClass<int> si;
+int i = some_func(si);
+This is commonly used with containers, which will usually provide their element type, and other helper types, as
+member type aliases. Most of the containers in the C++ standard library, for example, provide the following 12
+helper types, along with any other special types they might need.
+template<typename T>
+class SomeContainer {
+    // ...
+  public:
+    // Let's provide the same helper types as most standard containers.
+    typedef T                                     value_type;
+    typedef std::allocator<value_type>            allocator_type;
+    typedef value_type&                           reference;
+    typedef const value_type&                     const_reference;
+    typedef value_type*                           pointer;
+    typedef const value_type*                     const_pointer;
+    typedef MyIterator<value_type>                iterator;
+    typedef MyConstIterator<value_type>           const_iterator;
+    typedef std::reverse_iterator<iterator>       reverse_iterator;
+    typedef std::reverse_iterator<const_iterator> const_reverse_iterator;
+    typedef size_t                                size_type;
+    typedef ptrdiff_t                             difference_type;
+};
+Prior to C++11, it was also commonly used to provide a "template typedef" of sorts, as the feature wasn't yet
+available; these have become a bit less common with the introduction of alias templates, but are still useful in some
+situations (and are combined with alias templates in other situations, which can be very useful for obtaining
+individual components of a complex type such as a function pointer). They commonly use the name type for their
+type alias.
+template<typename T>
+struct TemplateTypedef {
+    typedef T type;
+}
+TemplateTypedef<int>::type i; // i is an int.
+This was often used with types with multiple template parameters, to provide an alias that deﬁnes one or more of
+the parameters.
+template<typename T, size_t SZ, size_t D>
+class Array { /* ... */ };
+template<typename T, size_t SZ>
+struct OneDArray {
+    typedef Array<T, SZ, 1> type;
+};
+template<typename T, size_t SZ>
+struct TwoDArray {
+    typedef Array<T, SZ, 2> type;
+};
+template<typename T>
+struct MonoDisplayLine {
+    typedef Array<T, 80, 1> type;
+};
+OneDArray<int, 3>::type     arr1i; // arr1i is an Array<int, 3, 1>.
+TwoDArray<short, 5>::type   arr2s; // arr2s is an Array<short, 5, 2>.
+MonoDisplayLine<char>::type arr3c; // arr3c is an Array<char, 80, 1>.
+Section 34.10: Nested Classes/Structures
+A class or struct can also contain another class/struct deﬁnition inside itself, which is called a "nested class"; in
+this situation, the containing class is referred to as the "enclosing class". The nested class deﬁnition is considered to
+be a member of the enclosing class, but is otherwise separate.
+struct Outer {
+    struct Inner { };
+};
+From outside of the enclosing class, nested classes are accessed using the scope operator. From inside the
+enclosing class, however, nested classes can be used without qualiﬁers:
+struct Outer {
+    struct Inner { };
+    Inner in;
+};
+// ...
+Outer o;
+Outer::Inner i = o.in;
+As with a non-nested class/struct, member functions and static variables can be deﬁned either within a nested
+class, or in the enclosing namespace. However, they cannot be deﬁned within the enclosing class, due to it being
+considered to be a diﬀerent class than the nested class.
+// Bad.
+struct Outer {
+    struct Inner {
+        void do_something();
+    };
+    void Inner::do_something() {}
+};
+// Good.
+struct Outer {
+    struct Inner {
+        void do_something();
+    };
+};
+void Outer::Inner::do_something() {}
+As with non-nested classes, nested classes can be forward declared and deﬁned later, provided they are deﬁned
+before being used directly.
+class Outer {
+    class Inner1;
+    class Inner2;
+    class Inner1 {};
+    Inner1 in1;
+
+#### Chapter 19: Friend keyword
+
+Well-designed classes encapsulate their functionality, hiding their implementation while providing a clean,
+documented interface. This allows redesign or change so long as the interface is unchanged.
+In a more complex scenario, multiple classes that rely on each others' implementation details may be required.
+Friend classes and functions allow these peers access to each others' details, without compromising the
+encapsulation and information hiding of the documented interface.
+Section 19.1: Friend function
+A class or a structure may declare any function it's friend. If a function is a friend of a class, it may access all it's
+protected and private members:
+// Forward declaration of functions.
+void friend_function();
+void non_friend_function();
+class PrivateHolder {
+public:
+    PrivateHolder(int val) : private_value(val) {}
+private:
+    int private_value;
+    // Declare one of the function as a friend.
+    friend void friend_function();
+};
+void non_friend_function() {
+    PrivateHolder ph(10);
+    // Compilation error: private_value is private.
+    std::cout << ph.private_value << std::endl;
+}
+void friend_function() {
+    // OK: friends may access private values.
+    PrivateHolder ph(10);
+    std::cout << ph.private_value << std::endl;
+}
+Access modiﬁers do not alter friend semantics. Public, protected and private declarations of a friend are equivalent.
+Friend declarations are not inherited. For example, if we subclass PrivateHolder:
+class PrivateHolderDerived : public PrivateHolder {
+public:
+    PrivateHolderDerived(int val) : PrivateHolder(val) {}
+private:
+    int derived_private_value = 0;
+};
+and try to access it's members, we'll get the following:
+void friend_function() {
+    PrivateHolderDerived pd(20);
+    // OK.
+    std::cout << pd.private_value << std::endl;
+    // Compilation error: derived_private_value is private.
+    std::cout << pd.derived_private_value << std::endl;
+}
+Note that PrivateHolderDerived member function cannot access PrivateHolder::private_value, while friend
+function can do it.
+Section 19.2: Friend method
+Methods may declared as friends as well as functions:
+class Accesser {
+public:
+    void private_accesser();
+};
+class PrivateHolder {
+public:
+    PrivateHolder(int val) : private_value(val) {}
+    friend void Accesser::private_accesser();
+private:
+    int private_value;
+};
+void Accesser::private_accesser() {
+    PrivateHolder ph(10);
+    // OK: this method is declares as friend.
+    std::cout << ph.private_value << std::endl;
+}
+Section 19.3: Friend class
+A whole class may be declared as friend. Friend class declaration means that any member of the friend may access
+private and protected members of the declaring class:
+class Accesser {
+public:
+    void private_accesser1();
+    void private_accesser2();
+};
+class PrivateHolder {
+public:
+    PrivateHolder(int val) : private_value(val) {}
+    friend class Accesser;
+private:
+    int private_value;
+};
+void Accesser::private_accesser1() {
+    PrivateHolder ph(10);
+    // OK.
+    std::cout << ph.private_value << std::endl;
+}
+void Accesser::private_accesser2() {
+    PrivateHolder ph(10);
+    // OK.
+    std::cout << ph.private_value + 1 << std::endl;
+}
+Friend class declaration is not reﬂexive. If classes need private access in both directions, both of them need friend
+declarations.
+class Accesser {
+public:
+    void private_accesser1();
+    void private_accesser2();
+private:
+    int private_value = 0;
+};
+class PrivateHolder {
+public:
+    PrivateHolder(int val) : private_value(val) {}
+    // Accesser is a friend of PrivateHolder
+    friend class Accesser;
+    void reverse_accesse() {
+        // but PrivateHolder cannot access Accesser's members.
+        Accesser a;
+        std::cout << a.private_value;
+    }
+private:
+    int private_value;
+};
+
+#### Chapter 31: Pointers to members
+
+Section 31.1: Pointers to static member functions
+A static member function is just like an ordinary C/C++ function, except with scope:
+It is inside a class, so it needs its name decorated with the class name;
+It has accessibility, with public, protected or private.
+So, if you have access to the static member function and decorate it correctly, then you can point to the function
+like any normal function outside a class:
+typedef int Fn(int); // Fn is a type-of function that accepts an int and returns an int
+// Note that MyFn() is of type 'Fn'
+int MyFn(int i) { return 2*i; }
+class Class {
+public:
+    // Note that Static() is of type 'Fn'
+    static int Static(int i) { return 3*i; }
+}; // Class
+int main() {
+    Fn *fn;    // fn is a pointer to a type-of Fn
+    fn = &MyFn;          // Point to one function
+    fn(3);               // Call it
+    fn = &Class::Static; // Point to the other function
+    fn(4);               // Call it
+ } // main()
+Section 31.2: Pointers to member functions
+To access a member function of a class, you need to have a "handle" to the particular instance, as either the
+instance itself, or a pointer or reference to it. Given a class instance, you can point to various of its members with a
+pointer-to-member, IF you get the syntax correct! Of course, the pointer has to be declared to be of the same type
+as what you are pointing to...
+typedef int Fn(int); // Fn is a type-of function that accepts an int and returns an int
+class Class {
+public:
+    // Note that A() is of type 'Fn'
+    int A(int a) { return 2*a; }
+    // Note that B() is of type 'Fn'
+    int B(int b) { return 3*b; }
+}; // Class
+int main() {
+    Class c;          // Need a Class instance to play with
+    Class *p = &c;    // Need a Class pointer to play with
+    Fn Class::*fn;    // fn is a pointer to a type-of Fn within Class
+    fn = &Class::A;   // fn now points to A within any Class
+    (c.*fn)(5);       // Pass 5 to c's function A (via fn)
+    fn = &Class::B;   // fn now points to B within any Class
+    (p->*fn)(6);      // Pass 6 to c's (via p) function B (via fn)
+} // main()
+Unlike pointers to member variables (in the previous example), the association between the class instance and the
+member pointer need to be bound tightly together with parentheses, which looks a little strange (as though the .*
+and ->* aren't strange enough!)
+Section 31.3: Pointers to member variables
+To access a member of a class, you need to have a "handle" to the particular instance, as either the instance itself,
+or a pointer or reference to it. Given a class instance, you can point to various of its members with a pointer-to-
+member, IF you get the syntax correct! Of course, the pointer has to be declared to be of the same type as what you
+are pointing to...
+class Class {
+public:
+    int x, y, z;
+    char m, n, o;
+}; // Class
+int x;  // Global variable
+int main() {
+    Class c;        // Need a Class instance to play with
+    Class *p = &c;  // Need a Class pointer to play with
+    int *p_i;       // Pointer to an int
+    p_i = &x;       // Now pointing to x
+    p_i = &c.x;     // Now pointing to c's x
+    int Class::*p_C_i; // Pointer to an int within Class
+    p_C_i = &Class::x; // Point to x within any Class
+    int i = c.*p_C_i;  // Use p_c_i to fetch x from c's instance
+    p_C_i = &Class::y; // Point to y within any Class
+    i = c.*p_C_i;      // Use p_c_i to fetch y from c's instance
+    p_C_i = &Class::m; // ERROR! m is a char, not an int!
+    char Class::*p_C_c = &Class::m; // That's better...
+} // main()
+The syntax of pointer-to-member requires some extra syntactic elements:
+To deﬁne the type of the pointer, you need to mention the base type, as well as the fact that it is inside a
+class: int Class::*ptr;.
+If you have a class or reference and want to use it with a pointer-to-member, you need to use the .* operator
+(akin to the . operator).
+If you have a pointer to a class and want to use it with a pointer-to-member, you need to use the ->*
+operator (akin to the -> operator).
+Section 31.4: Pointers to static member variables
+A static member variable is just like an ordinary C/C++ variable, except with scope:
+It is inside a class, so it needs its name decorated with the class name;
+It has accessibility, with public, protected or private.
+So, if you have access to the static member variable and decorate it correctly, then you can point to the variable
+like any normal variable outside a class:
+class Class {
+public:
+    static int i;
+}; // Class
+int Class::i = 1; // Define the value of i (and where it's stored!)
+int j = 2;   // Just another global variable
+int main() {
+    int k = 3; // Local variable
+    int *p;
+    p = &k;   // Point to k
+    *p = 2;   // Modify it
+    p = &j;   // Point to j
+    *p = 3;   // Modify it
+    p = &Class::i; // Point to Class::i
+    *p = 4;   // Modify it
+} // main()
+
+#### Chapter 17: const keyword
+
+Section 17.1: Avoiding duplication of code in const and non-
+const getter methods
+In C++ methods that diﬀers only by const qualiﬁer can be overloaded. Sometimes there may be a need of two
+versions of getter that return a reference to some member.
+Let Foo be a class, that has two methods that perform identical operations and returns a reference to an object of
+type Bar:
+class Foo
+{
+public:
+    Bar& GetBar(/* some arguments */)
+    {
+        /* some calculations */
+        return bar;
+    }
+    const Bar& GetBar(/* some arguments */) const
+    {
+        /* some calculations */
+        return bar;
+    }
+    // ...
+};
+The only diﬀerence between them is that one method is non-const and return a non-const reference (that can be
+use to modify object) and the second is const and returns const reference.
+To avoid the code duplication, there is a temptation to call one method from another. However, we can not call
+non-const method from the const one. But we can call const method from non-const one. That will require as to
+use 'const_cast' to remove the const qualiﬁer.
+The solution is:
+struct Foo
+{
+    Bar& GetBar(/*arguments*/)
+    {
+        return const_cast<Bar&>(const_cast<const Foo*>(this)->GetBar(/*arguments*/));
+    }
+    const Bar& GetBar(/*arguments*/) const
+    {
+        /* some calculations */
+        return foo;
+    }
+};
+In code above, we call const version of GetBar from the non-const GetBar by casting this to const type:
+const_cast<const Foo*>(this). Since we call const method from non-const, the object itself is non-const, and
+casting away the const is allowed.
+Examine the following more complete example:
+#include <iostream>
+class Student
+{
+public:
+    char& GetScore(bool midterm)
+    {
+        return const_cast<char&>(const_cast<const Student*>(this)->GetScore(midterm));
+    }
+    const char& GetScore(bool midterm) const
+    {
+        if (midterm)
+        {
+            return midtermScore;
+        }
+        else
+        {
+            return finalScore;
+        }
+    }
+private:
+    char midtermScore;
+    char finalScore;
+};
+int main()
+{
+    // non-const object
+    Student a;
+    // We can assign to the reference. Non-const version of GetScore is called
+    a.GetScore(true) = 'B';
+    a.GetScore(false) = 'A';
+    // const object
+    const Student b(a);
+    // We still can call GetScore method of const object,
+    // because we have overloaded const version of GetScore
+    std::cout << b.GetScore(true) << b.GetScore(false) << '\n';
+}
+Section 17.2: Const member functions
+Member functions of a class can be declared const, which tells the compiler and future readers that this function
+will not modify the object:
+class MyClass
+{
+private:
+    int myInt_;
+public:
+    int myInt() const { return myInt_; }
+    void setMyInt(int myInt) { myInt_ = myInt; }
+};
+In a const member function, the this pointer is eﬀectively a const MyClass * instead of a MyClass *. This means
+that you cannot change any member variables within the function; the compiler will emit a warning. So setMyInt
+could not be declared const.
+You should almost always mark member functions as const when possible. Only const member functions can be
+called on a const MyClass.
+static methods cannot be declared as const. This is because a static method belongs to a class and is not called
+on object; therefore it can never modify object's internal variables. So declaring static methods as const would be
+redundant.
+Section 17.3: Const local variables
+Declaration and usage.
+// a is const int, so it can't be changed
+const int a = 15;  
+a = 12;           // Error: can't assign new value to const variable
+a += 1;           // Error: can't assign new value to const variable
+Binding of references and pointers
+int &b = a;       // Error: can't bind non-const reference to const variable
+const int &c = a; // OK; c is a const reference
+int *d = &a;      // Error: can't bind pointer-to-non-const to const variable
+const int *e = &a // OK; e is a pointer-to-const
+int f = 0;
+e = &f;           // OK; e is a non-const pointer-to-const,
+                  // which means that it can be rebound to new int* or const int*
+*e = 1            // Error: e is a pointer-to-const which means that
+                  // the value it points to can't be changed through dereferencing e
+int *g = &f;
+*g = 1;           // OK; this value still can be changed through dereferencing
+                  // a pointer-not-to-const
+Section 17.4: Const pointers
+int a = 0, b = 2;
+const int* pA = &a; // pointer-to-const. `a` can't be changed through this
+int* const pB = &a; // const pointer. `a` can be changed, but this pointer can't.
+const int* const pC = &a; // const pointer-to-const.
+//Error: Cannot assign to a const reference
+*pA = b;
+pA = &b;
+*pB = b;
+//Error: Cannot assign to const pointer
+pB = &b;
+//Error: Cannot assign to a const reference
+*pC = b;
+//Error: Cannot assign to const pointer
+pC = &b;
+
+
 ## Classes & Objects
 
 ### Basic Class (C++98)
@@ -5629,6 +6549,147 @@ public:
 
 ---
 ## <a name="chapter-4-deepobjectmodelvirtualization"></a>CHAPTER 4: DEEP OBJECT MODEL & VIRTUALIZATION
+
+
+---
+### Professional Notes: Polymorphism Deep Dive
+
+#### Chapter 25: Polymorphism
+
+Section 25.1: Deﬁne polymorphic classes
+The typical example is an abstract shape class, that can then be derived into squares, circles, and other concrete
+shapes.
+The parent class:
+Let's start with the polymorphic class:
+class Shape {
+public:
+    virtual ~Shape() = default;
+    virtual double get_surface() const = 0;
+    virtual void describe_object() const { std::cout << "this is a shape" << std::endl; }  
+    double get_doubled_surface() const { return 2 * get_surface(); }
+};
+How to read this deﬁnition ?
+You can deﬁne polymorphic behavior by introduced member functions with the keyword virtual. Here
+get_surface() and describe_object() will obviously be implemented diﬀerently for a square than for a
+circle. When the function is invoked on an object, function corresponding to the real class of the object will be
+determined at runtime.
+It makes no sense to deﬁne get_surface() for an abstract shape. This is why the function is followed by = 0.
+This means that the function is pure virtual function.
+A polymorphic class should always deﬁne a virtual destructor.
+You may deﬁne non virtual member functions. When these function will be invoked for an object, the
+function will be chosen depending on the class used at compile-time. Here get_double_surface() is deﬁned
+in this way.
+A class that contains at least one pure virtual function is an abstract class. Abstract classes cannot be
+instantiated. You may only have pointers or references of an abstract class type.
+Derived classes
+Once a polymorphic base class is deﬁned you can derive it. For example:
+class Square : public Shape {
+    Point top_left;
+    double side_length;
+public:
+    Square (const Point& top_left, double side)
+       : top_left(top_left), side_length(side_length) {}
+    double get_surface() override { return side_length * side_length; }  
+    void describe_object() override {
+        std::cout << "this is a square starting at " << top_left.x << ", " << top_left.y
+                  << " with a length of " << side_length << std::endl;
+    }  
+};
+Some explanations:
+You can deﬁne or override any of the virtual functions of the parent class. The fact that a function was virtual
+in the parent class makes it virtual in the derived class. No need to tell the compiler the keyword virtual
+again. But it's recommended to add the keyword override at the end of the function declaration, in order to
+prevent subtle bugs caused by unnoticed variations in the function signature.
+If all the pure virtual functions of the parent class are deﬁned you can instantiate objects for this class, else it
+will also become an abstract class.
+You are not obliged to override all the virtual functions. You can keep the version of the parent if it suits your
+need.
+Example of instantiation
+int main() {
+    Square square(Point(10.0, 0.0), 6); // we know it's a square, the compiler also
+    square.describe_object();
+    std::cout << "Surface: " << square.get_surface() << std::endl;
+    Circle circle(Point(0.0, 0.0), 5);
+    Shape *ps = nullptr;  // we don't know yet the real type of the object
+    ps = &circle;         // it's a circle, but it could as well be a square
+    ps->describe_object();
+    std::cout << "Surface: " << ps->get_surface() << std::endl;
+}
+Section 25.2: Safe downcasting
+Suppose that you have a pointer to an object of a polymorphic class:
+Shape *ps;                       // see example on defining a polymorphic class
+ps =  get_a_new_random_shape();  // if you don't have such a function yet, you
+                                 // could just write ps = new Square(0.0,0.0, 5);
+a downcast would be to cast from a general polymorphic Shape down to one of its derived and more speciﬁc shape
+like Square or Circle.
+Why to downcast ?
+Most of the time, you would not need to know which is the real type of the object, as the virtual functions allow you
+to manipulate your object independently of its type:
+std::cout << "Surface: " << ps->get_surface() << std::endl;
+If you don't need any downcast, your design would be perfect.
+However, you may need sometimes to downcast. A typical example is when you want to invoke a non virtual
+function that exist only for the child class.
+Consider for example circles. Only circles have a diameter. So the class would be deﬁned as :
+class Circle: public Shape { // for Shape, see example on defining a polymorphic class
+    Point center;
+    double radius;
+public:
+    Circle (const Point& center, double radius)
+       : center(center), radius(radius) {}
+    double get_surface() const override { return r * r * M_PI; }  
+    // this is only for circles. Makes no sense for other shapes
+    double get_diameter() const { return 2 * r; }
+};
+The get_diameter() member function only exist for circles. It was not deﬁned for a Shape object:
+Shape* ps = get_any_shape();
+ps->get_diameter(); // OUCH !!! Compilation error
+How to downcast ?
+If you'd know for sure that ps points to a circle you could opt for a static_cast:
+std::cout << "Diameter: " << static_cast<Circle*>(ps)->get_diameter() << std::endl;
+This will do the trick. But it's very risky: if ps appears to by anything else than a Circle the behavior of your code
+will be undeﬁned.
+So rather than playing Russian roulette, you should safely use a dynamic_cast. This is speciﬁcally for polymorphic
+classes :
+int main() {
+    Circle circle(Point(0.0, 0.0), 10);
+    Shape &shape = circle;
+    std::cout << "The shape has a surface of " << shape.get_surface() << std::endl;
+    //shape.get_diameter();   // OUCH !!! Compilation error
+    Circle *pc = dynamic_cast<Circle*>(&shape); // will be nullptr if ps wasn't a circle
+    if (pc)
+        std::cout << "The shape is a circle of diameter " << pc->get_diameter() << std::endl;
+    else
+        std::cout << "The shape isn't a circle !" << std::endl;
+}        
+Note that dynamic_cast is not possible on a class that is not polymorphic. You'd need at least one virtual function in
+the class or its parents to be able to use it.
+Section 25.3: Polymorphism & Destructors
+If a class is intended to be used polymorphically, with derived instances being stored as base pointers/references,
+its base class' destructor should be either virtual or protected. In the former case, this will cause object
+destruction to check the vtable, automatically calling the correct destructor based on the dynamic type. In the
+latter case, destroying the object through a base class pointer/reference is disabled, and the object can only be
+deleted when explicitly treated as its actual type.
+struct VirtualDestructor {
+    virtual ~VirtualDestructor() = default;
+};
+struct VirtualDerived : VirtualDestructor {};
+struct ProtectedDestructor {
+  protected:
+    ~ProtectedDestructor() = default;
+};
+struct ProtectedDerived : ProtectedDestructor {
+    ~ProtectedDerived() = default;
+};
+// ...
+VirtualDestructor* vd = new VirtualDerived;
+delete vd; // Looks up VirtualDestructor::~VirtualDestructor() in vtable, sees it's
+           // VirtualDerived::~VirtualDerived(), calls that.
+ProtectedDestructor* pd = new ProtectedDerived;
+delete pd; // Error: ProtectedDestructor::~ProtectedDestructor() is protected.
+delete static_cast<ProtectedDerived*>(pd); // Good.
+Both of these practices guarantee that the derived class' destructor will always be called on derived class instances,
+preventing memory leaks.
+
 
 Understanding the "C++ Object Model" distinguishes a user from a master. This section explains what the compiler generates for your classes.
 
@@ -10248,6 +11309,513 @@ enum class Byte : unsigned char { A, B, C };
 -   **`override` and `final`**: Virtual function controls (See Chapter 19).
 ## <a name="chapter-8-c11"></a>CHAPTER 8: C++11 SMART POINTERS & MEMORY MANAGEMENT
 
+
+---
+### Professional Notes: Smart Pointers Mastery
+
+#### Chapter 33: Smart Pointers
+
+Section 33.1: Unique ownership (std::unique_ptr)
+Version ≥ C++11
+A std::unique_ptr is a class template that manages the lifetime of a dynamically stored object. Unlike for
+std::shared_ptr, the dynamic object is owned by only one instance of a std::unique_ptr at any time,
+// Creates a dynamic int with value of 20 owned by a unique pointer
+std::unique_ptr<int> ptr = std::make_unique<int>(20);
+(Note: std::unique_ptr is available since C++11 and std::make_unique since C++14.)
+Only the variable ptr holds a pointer to a dynamically allocated int. When a unique pointer that owns an object
+goes out of scope, the owned object is deleted, i.e. its destructor is called if the object is of class type, and the
+memory for that object is released.
+To use std::unique_ptr and std::make_unique with array-types, use their array specializations:
+// Creates a unique_ptr to an int with value 59
+std::unique_ptr<int> ptr = std::make_unique<int>(59);
+// Creates a unique_ptr to an array of 15 ints
+std::unique_ptr<int[]> ptr = std::make_unique<int[]>(15);
+You can access the std::unique_ptr just like a raw pointer, because it overloads those operators.
+You can transfer ownership of the contents of a smart pointer to another pointer by using std::move, which will
+cause the original smart pointer to point to nullptr.
+// 1. std::unique_ptr
+std::unique_ptr<int> ptr = std::make_unique<int>();
+// Change value to 1
+*ptr = 1;
+// 2. std::unique_ptr (by moving 'ptr' to 'ptr2', 'ptr' doesn't own the object anymore)
+std::unique_ptr<int> ptr2 = std::move(ptr);
+int a = *ptr2; // 'a' is 1
+int b = *ptr;  // undefined behavior! 'ptr' is 'nullptr'
+               // (because of the move command above)
+Passing unique_ptr to functions as parameter:
+void foo(std::unique_ptr<int> ptr)
+{
+    // Your code goes here
+}
+std::unique_ptr<int> ptr = std::make_unique<int>(59);
+foo(std::move(ptr))
+Returning unique_ptr from functions. This is the preferred C++11 way of writing factory functions, as it clearly
+conveys the ownership semantics of the return: the caller owns the resulting unique_ptr and is responsible for it.
+std::unique_ptr<int> foo()
+{
+    std::unique_ptr<int> ptr = std::make_unique<int>(59);
+    return ptr;
+}
+std::unique_ptr<int> ptr = foo();
+Compare this to:
+int* foo_cpp03();
+int* p = foo_cpp03(); // do I own p? do I have to delete it at some point?
+                      // it's not readily apparent what the answer is.
+Version < C++14
+The class template make_unique is provided since C++14. It's easy to add it manually to C++11 code:
+template<typename T, typename... Args>
+typename std::enable_if<!std::is_array<T>::value, std::unique_ptr<T>>::type
+make_unique(Args&&... args)
+{ return std::unique_ptr<T>(new T(std::forward<Args>(args)...)); }
+// Use make_unique for arrays
+template<typename T>
+typename std::enable_if<std::is_array<T>::value, std::unique_ptr<T>>::type
+make_unique(size_t n)
+{ return std::unique_ptr<T>(new typename std::remove_extent<T>::type[n]()); }
+Version ≥ C++11
+Unlike the dumb smart pointer (std::auto_ptr), unique_ptr can also be instantiated with vector allocation (not
+std::vector). Earlier examples were for scalar allocations. For example to have a dynamically allocated integer
+array for 10 elements, you would specify int[] as the template type (and not just int):
+std::unique_ptr<int[]> arr_ptr = std::make_unique<int[]>(10);
+Which can be simpliﬁed with:
+auto arr_ptr = std::make_unique<int[]>(10);
+Now, you use arr_ptr as if it is an array:
+arr_ptr[2] =  10; // Modify third element
+You need not to worry about de-allocation. This template specialized version calls constructors and destructors
+appropriately. Using vectored version of unique_ptr or a vector itself - is a personal choice.
+In versions prior to C++11, std::auto_ptr was available. Unlike unique_ptr it is allowed to copy auto_ptrs, upon
+which the source ptr will lose the ownership of the contained pointer and the target receives it.
+Section 33.2: Sharing ownership (std::shared_ptr)
+The class template std::shared_ptr deﬁnes a shared pointer that is able to share ownership of an object with
+other shared pointers. This contrasts to std::unique_ptr which represents exclusive ownership.
+The sharing behavior is implemented through a technique known as reference counting, where the number of
+shared pointers that point to the object is stored alongside it. When this count reaches zero, either through the
+destruction or reassignment of the last std::shared_ptr instance, the object is automatically destroyed.
+// Creation: 'firstShared' is a shared pointer for a new instance of 'Foo'
+std::shared_ptr<Foo> firstShared = std::make_shared<Foo>(/*args*/);
+To create multiple smart pointers that share the same object, we need to create another shared_ptr that aliases
+the ﬁrst shared pointer. Here are 2 ways of doing it:
+std::shared_ptr<Foo> secondShared(firstShared);  // 1st way: Copy constructing
+std::shared_ptr<Foo> secondShared;
+secondShared = firstShared;                      // 2nd way: Assigning
+Either of the above ways makes secondShared a shared pointer that shares ownership of our instance of Foo with
+firstShared.
+The smart pointer works just like a raw pointer. This means, you can use * to dereference them. The regular ->
+operator works as well:
+secondShared->test(); // Calls Foo::test()
+Finally, when the last aliased shared_ptr goes out of scope, the destructor of our Foo instance is called.
+Warning: Constructing a shared_ptr might throw a bad_alloc exception when extra data for shared ownership
+semantics needs to be allocated. If the constructor is passed a regular pointer it assumes to own the object pointed
+to and calls the deleter if an exception is thrown. This means shared_ptr<T>(new T(args)) will not leak a T object if
+allocation of shared_ptr<T> fails. However, it is advisable to use make_shared<T>(args) or
+allocate_shared<T>(alloc, args), which enable the implementation to optimize the memory allocation.
+Allocating Arrays([]) using shared_ptr
+Version ≥ C++11 Version < C++17
+Unfortunately, there is no direct way to allocate Arrays using make_shared<>.
+It is possible to create arrays for shared_ptr<> using new and std::default_delete.
+For example, to allocate an array of 10 integers, we can write the code as
+shared_ptr<int> sh(new int[10], std::default_delete<int[]>());
+Specifying std::default_delete is mandatory here to make sure that the allocated memory is correctly cleaned up
+using delete[].
+If we know the size at compile time, we can do it this way:
+template<class Arr>
+struct shared_array_maker {};
+template<class T, std::size_t N>
+struct shared_array_maker<T[N]> {
+  std::shared_ptr<T> operator()const{
+    auto r = std::make_shared<std::array<T,N>>();
+    if (!r) return {};
+    return {r.data(), r};
+  }
+};
+template<class Arr>
+auto make_shared_array()
+-> decltype( shared_array_maker<Arr>{}() )
+{ return shared_array_maker<Arr>{}(); }
+then make_shared_array<int[10]> returns a shared_ptr<int> pointing to 10 ints all default constructed.
+Version ≥ C++17
+With C++17, shared_ptr gained special support for array types. It is no longer necessary to specify the array-deleter
+explicitly, and the shared pointer can be dereferenced using the [] array index operator:
+std::shared_ptr<int[]> sh(new int[10]);
+sh[0] = 42;
+Shared pointers can point to a sub-object of the object it owns:
+struct Foo { int x; };
+std::shared_ptr<Foo> p1 = std::make_shared<Foo>();
+std::shared_ptr<int> p2(p1, &p1->x);
+Both p2 and p1 own the object of type Foo, but p2 points to its int member x. This means that if p1 goes out of
+scope or is reassigned, the underlying Foo object will still be alive, ensuring that p2 does not dangle.
+Important: A shared_ptr only knows about itself and all other shared_ptr that were created with the alias
+constructor. It does not know about any other pointers, including all other shared_ptrs created with a reference to
+the same Foo instance:
+Foo *foo = new Foo;
+std::shared_ptr<Foo> shared1(foo);
+std::shared_ptr<Foo> shared2(foo); // don't do this
+shared1.reset(); // this will delete foo, since shared1
+                 // was the only shared_ptr that owned it
+shared2->test(); // UNDEFINED BEHAVIOR: shared2's foo has been
+                 // deleted already!!
+Ownership Transfer of shared_ptr
+By default, shared_ptr increments the reference count and doesn't transfer the ownership. However, it can be
+made to transfer the ownership using std::move:
+shared_ptr<int> up = make_shared<int>();
+// Transferring the ownership
+shared_ptr<int> up2 = move(up);
+// At this point, the reference count of up = 0 and the
+// ownership of the pointer is solely with up2 with reference count = 1
+Section 33.3: Sharing with temporary ownership
+(std::weak_ptr)
+Instances of std::weak_ptr can point to objects owned by instances of std::shared_ptr while only becoming
+temporary owners themselves. This means that weak pointers do not alter the object's reference count and
+therefore do not prevent an object's deletion if all of the object's shared pointers are reassigned or destroyed.
+In the following example instances of std::weak_ptr are used so that the destruction of a tree object is not
+inhibited:
+#include <memory>
+#include <vector>
+struct TreeNode {
+    std::weak_ptr<TreeNode> parent;
+    std::vector< std::shared_ptr<TreeNode> > children;
+};
+int main() {
+    // Create a TreeNode to serve as the root/parent.
+    std::shared_ptr<TreeNode> root(new TreeNode);
+    // Give the parent 100 child nodes.
+    for (size_t i = 0; i < 100; ++i) {
+        std::shared_ptr<TreeNode> child(new TreeNode);
+        root->children.push_back(child);
+        child->parent = root;
+    }
+    // Reset the root shared pointer, destroying the root object, and
+    // subsequently its child nodes.
+    root.reset();
+}
+As child nodes are added to the root node's children, their std::weak_ptr member parent is set to the root node.
+The member parent is declared as a weak pointer as opposed to a shared pointer such that the root node's
+reference count is not incremented. When the root node is reset at the end of main(), the root is destroyed. Since
+the only remaining std::shared_ptr references to the child nodes were contained in the root's collection children,
+all child nodes are subsequently destroyed as well.
+Due to control block implementation details, shared_ptr allocated memory may not be released until shared_ptr
+reference counter and weak_ptr reference counter both reach zero.
+#include <memory>
+int main()
+{
+    {
+         std::weak_ptr<int> wk;
+         {
+             // std::make_shared is optimized by allocating only once
+             // while std::shared_ptr<int>(new int(42)) allocates twice.
+             // Drawback of std::make_shared is that control block is tied to our integer
+             std::shared_ptr<int> sh = std::make_shared<int>(42);
+             wk = sh;
+             // sh memory should be released at this point...
+         }
+         // ... but wk is still alive and needs access to control block
+     }
+     // now memory is released (sh and wk)
+}
+Since std::weak_ptr does not keep its referenced object alive, direct data access through a std::weak_ptr is not
+possible. Instead it provides a lock() member function that attempts to retrieve a std::shared_ptr to the
+referenced object:
+#include <cassert>
+#include <memory>
+int main()
+{
+    {
+         std::weak_ptr<int> wk;
+         std::shared_ptr<int> sp;
+         {
+             std::shared_ptr<int> sh = std::make_shared<int>(42);
+             wk = sh;
+             // calling lock will create a shared_ptr to the object referenced by wk
+             sp = wk.lock();
+             // sh will be destroyed after this point, but sp is still alive
+         }
+         // sp still keeps the data alive.
+         // At this point we could even call lock() again
+         // to retrieve another shared_ptr to the same data from wk
+         assert(*sp == 42);
+         assert(!wk.expired());
+         // resetting sp will delete the data,
+         // as it is currently the last shared_ptr with ownership
+         sp.reset();
+         // attempting to lock wk now will return an empty shared_ptr,
+         // as the data has already been deleted
+         sp = wk.lock();
+         assert(!sp);
+         assert(wk.expired());
+     }
+}
+Section 33.4: Using custom deleters to create a wrapper to a
+C interface
+Many C interfaces such as SDL2 have their own deletion functions. This means that you cannot use smart pointers
+directly:
+std::unique_ptr<SDL_Surface> a; // won't work, UNSAFE!
+Instead, you need to deﬁne your own deleter. The examples here use the SDL_Surface structure which should be
+freed using the SDL_FreeSurface() function, but they should be adaptable to many other C interfaces.
+The deleter must be callable with a pointer argument, and therefore can be e.g. a simple function pointer:
+std::unique_ptr<SDL_Surface, void(*)(SDL_Surface*)> a(pointer, SDL_FreeSurface);
+Any other callable object will work, too, for example a class with an operator():
+struct SurfaceDeleter {
+    void operator()(SDL_Surface* surf) {
+        SDL_FreeSurface(surf);
+    }
+};
+std::unique_ptr<SDL_Surface, SurfaceDeleter> a(pointer, SurfaceDeleter{}); // safe
+std::unique_ptr<SDL_Surface, SurfaceDeleter> b(pointer); // equivalent to the above
+                                                         // as the deleter is value-initialized
+This not only provides you with safe, zero overhead (if you use unique_ptr) automatic memory management, you
+also get exception safety.
+Note that the deleter is part of the type for unique_ptr, and the implementation can use the empty base
+optimization to avoid any change in size for empty custom deleters. So while std::unique_ptr<SDL_Surface,
+SurfaceDeleter> and std::unique_ptr<SDL_Surface, void(*)(SDL_Surface*)> solve the same problem in a
+similar way, the former type is still only the size of a pointer while the latter type has to hold two pointers: both the
+SDL_Surface* and the function pointer! When having free function custom deleters, it is preferable to wrap the
+function in an empty type.
+In cases where reference counting is important, one could use a shared_ptr instead of an unique_ptr. The
+shared_ptr always stores a deleter, this erases the type of the deleter, which might be useful in APIs. The
+disadvantages of using shared_ptr over unique_ptr include a higher memory cost for storing the deleter and a
+performance cost for maintaining the reference count.
+// deleter required at construction time and is part of the type
+std::unique_ptr<SDL_Surface, void(*)(SDL_Surface*)> a(pointer, SDL_FreeSurface);
+// deleter is only required at construction time, not part of the type
+std::shared_ptr<SDL_Surface> b(pointer, SDL_FreeSurface);
+Version ≥ C++17
+With template auto, we can make it even easier to wrap our custom deleters:
+template <auto DeleteFn>
+struct FunctionDeleter {
+    template <class T>
+    void operator()(T* ptr) {
+        DeleteFn(ptr);
+    }
+};
+template <class T, auto DeleteFn>
+using unique_ptr_deleter = std::unique_ptr<T, FunctionDeleter<DeleteFn>>;
+With which the above example is simply:
+unique_ptr_deleter<SDL_Surface, SDL_FreeSurface> c(pointer);
+Here, the purpose of auto is to handle all free functions, whether they return void (e.g. SDL_FreeSurface) or not
+(e.g. fclose).
+Section 33.5: Unique ownership without move semantics
+(auto_ptr)
+Version < C++11
+NOTE: std::auto_ptr has been deprecated in C++11 and will be removed in C++17. You should only use this if you
+are forced to use C++03 or earlier and are willing to be careful. It is recommended to move to unique_ptr in
+combination with std::move to replace std::auto_ptr behavior.
+Before we had std::unique_ptr, before we had move semantics, we had std::auto_ptr. std::auto_ptr provides
+unique ownership but transfers ownership upon copy.
+As with all smart pointers, std::auto_ptr automatically cleans up resources (see RAII):
+{
+    std::auto_ptr<int> p(new int(42));
+    std::cout << *p;
+} // p is deleted here, no memory leaked
+but allows only one owner:
+std::auto_ptr<X> px = ...;
+std::auto_ptr<X> py = px;
+  // px is now empty
+This allows to use std::auto_ptr to keep ownership explicit and unique at the danger of losing ownership
+unintended:
+void f(std::auto_ptr<X> ) {
+    // assumes ownership of X
+    // deletes it at end of scope
+};
+std::auto_ptr<X> px = ...;
+f(px); // f acquires ownership of underlying X
+       // px is now empty
+px->foo(); // NPE!
+// px.~auto_ptr() does NOT delete
+The transfer of ownership happened in the "copy" constructor. auto_ptr's copy constructor and copy assignment
+operator take their operands by non-const reference so that they could be modiﬁed. An example implementation
+might be:
+template <typename T>
+class auto_ptr {
+    T* ptr;
+public:
+    auto_ptr(auto_ptr& rhs)
+    : ptr(rhs.release())
+    { }
+    auto_ptr& operator=(auto_ptr& rhs) {
+        reset(rhs.release());
+        return *this;
+    }
+    T* release() {
+        T* tmp = ptr;
+        ptr = nullptr;
+        return tmp;
+    }
+    void reset(T* tmp = nullptr) {
+        if (ptr != tmp) {
+            delete ptr;
+            ptr = tmp;
+        }
+    }
+    /* other functions ... */
+};
+This breaks copy semantics, which require that copying an object leaves you with two equivalent versions of it. For
+any copyable type, T, I should be able to write:
+T a = ...;
+T b(a);
+assert(b == a);
+But for auto_ptr, this is not the case. As a result, it is not safe to put auto_ptrs in containers.
+Section 33.6: Casting std::shared_ptr pointers
+It is not possible to directly use static_cast, const_cast, dynamic_cast and reinterpret_cast on
+std::shared_ptr to retrieve a pointer sharing ownership with the pointer being passed as argument. Instead, the
+functions std::static_pointer_cast, std::const_pointer_cast, std::dynamic_pointer_cast and
+std::reinterpret_pointer_cast should be used:
+struct Base { virtual ~Base() noexcept {}; };
+struct Derived: Base {};
+auto derivedPtr(std::make_shared<Derived>());
+auto basePtr(std::static_pointer_cast<Base>(derivedPtr));
+auto constBasePtr(std::const_pointer_cast<Base const>(basePtr));
+auto constDerivedPtr(std::dynamic_pointer_cast<Derived const>(constBasePtr));
+Note that std::reinterpret_pointer_cast is not available in C++11 and C++14, as it was only proposed by N3920
+and adopted into Library Fundamentals TS in February 2014. However, it can be implemented as follows:
+template <typename To, typename From>
+inline std::shared_ptr<To> reinterpret_pointer_cast(
+    std::shared_ptr<From> const & ptr) noexcept
+{ return std::shared_ptr<To>(ptr, reinterpret_cast<To *>(ptr.get())); }
+Section 33.7: Writing a smart pointer: value_ptr
+A value_ptr is a smart pointer that behaves like a value. When copied, it copies its contents. When created, it
+creates its contents.
+// Like std::default_delete:
+template<class T>
+struct default_copier {
+  // a copier must handle a null T const* in and return null:
+  T* operator()(T const* tin)const {
+    if (!tin) return nullptr;
+    return new T(*tin);
+  }
+  void operator()(void* dest, T const* tin)const {
+    if (!tin) return;
+    return new(dest) T(*tin);
+  }
+};
+// tag class to handle empty case:
+struct empty_ptr_t {};
+constexpr empty_ptr_t empty_ptr{};
+// the value pointer type itself:
+template<class T, class Copier=default_copier<T>, class Deleter=std::default_delete<T>,
+  class Base=std::unique_ptr<T, Deleter>
+>
+struct value_ptr:Base, private Copier {
+  using copier_type=Copier;
+  // also typedefs from unique_ptr
+  using Base::Base;
+  value_ptr( T const& t ):
+    Base( std::make_unique<T>(t) ),
+    Copier()
+  {}
+  value_ptr( T && t ):
+    Base( std::make_unique<T>(std::move(t)) ),
+    Copier()
+  {}
+  // almost-never-empty:
+      value_ptr():
+    Base( std::make_unique<T>() ),
+    Copier()
+  {}
+  value_ptr( empty_ptr_t ) {}
+  value_ptr( Base b, Copier c={} ):
+    Base(std::move(b)),
+    Copier(std::move(c))
+  {}
+  Copier const& get_copier() const {
+    return *this;
+  }
+  value_ptr clone() const {
+    return {
+      Base(
+        get_copier()(this->get()),
+        this->get_deleter()
+      ),
+      get_copier()
+    };
+  }
+  value_ptr(value_ptr&&)=default;
+  value_ptr& operator=(value_ptr&&)=default;
+  value_ptr(value_ptr const& o):value_ptr(o.clone()) {}
+  value_ptr& operator=(value_ptr const&o) {
+    if (o && *this) {
+      // if we are both non-null, assign contents:
+      **this = *o;
+    } else {
+      // otherwise, assign a clone (which could itself be null):
+      *this = o.clone();
+    }
+    return *this;
+  }
+  value_ptr& operator=( T const& t ) {
+    if (*this) {
+      **this = t;
+    } else {
+      *this = value_ptr(t);
+    }
+    return *this;
+  }
+  value_ptr& operator=( T && t ) {
+    if (*this) {
+      **this = std::move(t);
+    } else {
+      *this = value_ptr(std::move(t));
+    }
+    return *this;
+  }
+  T& get() { return **this; }
+  T const& get() const { return **this; }
+  T* get_pointer() {
+    if (!*this) return nullptr;
+    return std::addressof(get());
+  }
+  T const* get_pointer() const {
+    if (!*this) return nullptr;
+    return std::addressof(get());
+  }
+  // operator-> from unique_ptr
+};
+template<class T, class...Args>
+value_ptr<T> make_value_ptr( Args&&... args ) {
+  return {std::make_unique<T>(std::forward<Args>(args)...)};
+}
+This particular value_ptr is only empty if you construct it with empty_ptr_t or if you move from it. It exposes the fact
+it is a unique_ptr, so explicit operator bool() const works on it. .get() has been changed to return a
+reference (as it is almost never empty), and .get_pointer() returns a pointer instead.
+This smart pointer can be useful for pImpl cases, where we want value-semantics but we also don't want to expose
+the contents of the pImpl outside of the implementation ﬁle.
+With a non-default Copier, it can even handle virtual base classes that know how to produce instances of their
+derived and turn them into value-types.
+Section 33.8: Getting a shared_ptr referring to this
+enable_shared_from_this enables you to get a valid shared_ptr instance to this.
+By deriving your class from the class template enable_shared_from_this, you inherit a method shared_from_this
+that returns a shared_ptr instance to this.
+Note that the object must be created as a shared_ptr in ﬁrst place:
+#include <memory>
+class A: public enable_shared_from_this<A> {
+};
+A* ap1 =new A();
+shared_ptr<A> ap2(ap1); // First prepare a shared pointer to the object and hold it!
+// Then get a shared pointer to the object from the object itself
+shared_ptr<A> ap3 = ap1->shared_from_this();
+int c3 =ap3.use_count(); // =2: pointing to the same object
+Note(2) you cannot call enable_shared_from_this inside the constructor.
+#include <memory> // enable_shared_from_this
+class Widget : public std::enable_shared_from_this< Widget >
+{
+public:
+    void DoSomething()
+    {
+        std::shared_ptr< Widget > self = shared_from_this();
+        someEvent -> Register( self );
+    }
+private:
+};
+int main()
+{
+    auto w = std::make_shared< Widget >();
+    w -> DoSomething();
+}
+If you use shared_from_this() on an object not owned by a shared_ptr, such as a local automatic object or a
+global object, then the behavior is undeﬁned. Since C++17 it throws std::bad_alloc instead.
+Using shared_from_this() from a constructor is equivalent to using it on an object not owned by a shared_ptr,
+because the objects is possessed by the shared_ptr after the constructor returns.
+
+
 C++11 revolutionized memory management by introducing smart pointers, which strictly define ownership semantics and automate memory reclamation, effectively making `new` and `delete` unnecessary in user code.
 
 ---
@@ -10747,6 +12315,374 @@ int roll = dis(gen);
 
 
 ## <a name="chapter-13-c11"></a>CHAPTER 13: C++11 METAPROGRAMMING
+
+
+---
+### Professional Notes: Metaprogramming Techniques
+
+#### Chapter 16: Metaprogramming
+
+In C++ Metaprogramming refers to the use of macros or templates to generate code at compile-time.
+In general, macros are frowned upon in this role and templates are preferred, although they are not as generic.
+Template metaprogramming often makes use of compile-time computations, whether via templates or constexpr
+functions, to achieve its goals of generating code, however compile-time computations are not metaprogramming
+per se.
+Section 16.1: Calculating Factorials
+Factorials can be computed at compile-time using template metaprogramming techniques.
+#include <iostream>
+template<unsigned int n>
+struct factorial
+{
+    enum
+    {
+        value = n * factorial<n - 1>::value
+    };
+};
+template<>
+struct factorial<0>
+{
+    enum { value = 1 };
+};
+int main()
+{
+    std::cout << factorial<7>::value << std::endl;    // prints "5040"
+}
+factorial is a struct, but in template metaprogramming it is treated as a template metafunction. By convention,
+template metafunctions are evaluated by checking a particular member, either ::type for metafunctions that result
+in types, or ::value for metafunctions that generate values.
+In the above code, we evaluate the factorial metafunction by instantiating the template with the parameters we
+want to pass, and using ::value to get the result of the evaluation.
+The metafunction itself relies on recursively instantiating the same metafunction with smaller values. The
+factorial<0> specialization represents the terminating condition. Template metaprogramming has most of the
+restrictions of a functional programming language, so recursion is the primary "looping" construct.
+Since template metafunctions execute at compile time, their results can be used in contexts that require compile-
+time values. For example:
+int my_array[factorial<5>::value];
+Automatic arrays must have a compile-time deﬁned size. And the result of a metafunction is a compile-time
+constant, so it can be used here.
+Limitation: Most of the compilers won't allow recursion depth beyond a limit. For example, g++ compiler by default
+limits recursion depeth to 256 levels. In case of g++, programmer can set recursion depth using -ftemplate-depth-
+X option.
+Version ≥ C++11
+Since C++11, the std::integral_constant template can be used for this kind of template computation:
+#include <iostream>
+#include <type_traits>
+template<long long n>
+struct factorial :
+  std::integral_constant<long long, n * factorial<n - 1>::value> {};
+template<>
+struct factorial<0> :
+  std::integral_constant<long long, 1> {};
+int main()
+{
+    std::cout << factorial<7>::value << std::endl;    // prints "5040"
+}
+Additionally, constexpr functions become a cleaner alternative.
+#include <iostream>
+constexpr long long factorial(long long n)
+{
+  return (n == 0) ? 1 : n * factorial(n - 1);
+}
+int main()
+{
+  char test[factorial(3)];
+  std::cout << factorial(7) << '\n';
+}
+The body of factorial() is written as a single statement because in C++11 constexpr functions can only use a
+quite limited subset of the language.
+Version ≥ C++14
+Since C++14, many restrictions for constexpr functions have been dropped and they can now be written much
+more conveniently:
+constexpr long long factorial(long long n)
+{
+  if (n == 0)
+    return 1;
+  else
+    return n * factorial(n - 1);
+}
+Or even:
+constexpr long long factorial(int n)
+{
+  long long result = 1;
+  for (int i = 1; i <= n; ++i) {
+    result *= i;
+  }
+  return result;
+}
+Version ≥ C++17
+Since c++17 one can use fold expression to calculate factorial:
+#include <iostream>
+#include <utility>
+template <class T, T N, class I = std::make_integer_sequence<T, N>>
+struct factorial;
+template <class T, T N, T... Is>
+struct factorial<T,N,std::index_sequence<T, Is...>> {
+   static constexpr T value = (static_cast<T>(1) * ... * (Is + 1));
+};
+int main() {
+   std::cout << factorial<int, 5>::value << std::endl;
+}
+Section 16.2: Iterating over a parameter pack
+Often, we need to perform an operation over every element in a variadic template parameter pack. There are many
+ways to do this, and the solutions get easier to read and write with C++17. Suppose we simply want to print every
+element in a pack. The simplest solution is to recurse:
+Version ≥ C++11
+void print_all(std::ostream& os) {
+    // base case
+}
+template <class T, class... Ts>
+void print_all(std::ostream& os, T const& first, Ts const&... rest) {
+    os << first;
+    print_all(os, rest...);
+}
+We could instead use the expander trick, to perform all the streaming in a single function. This has the advantage of
+not needing a second overload, but has the disadvantage of less than stellar readability:
+Version ≥ C++11
+template <class... Ts>
+void print_all(std::ostream& os, Ts const&... args) {
+    using expander = int[];
+    (void)expander{0,
+        (void(os << args), 0)...
+    };
+}
+For an explanation of how this works, see T.C's excellent answer.
+Version ≥ C++17
+With C++17, we get two powerful new tools in our arsenal for solving this problem. The ﬁrst is a fold-expression:
+template <class... Ts>
+void print_all(std::ostream& os, Ts const&... args) {
+    ((os << args), ...);
+}
+And the second is if constexpr, which allows us to write our original recursive solution in a single function:
+template <class T, class... Ts>
+void print_all(std::ostream& os, T const& first, Ts const&... rest) {
+    os << first;
+    if constexpr (sizeof...(rest) > 0) {        
+        // this line will only be instantiated if there are further
+        // arguments. if rest... is empty, there will be no call to
+        // print_all(os).
+        print_all(os, rest...);
+    }
+}
+Section 16.3: Iterating with std::integer_sequence
+Since C++14, the standard provides the class template
+template <class T, T... Ints>
+class integer_sequence;
+template <std::size_t... Ints>
+using index_sequence = std::integer_sequence<std::size_t, Ints...>;
+and a generating metafunction for it:
+template <class T, T N>
+using make_integer_sequence = std::integer_sequence<T, /* a sequence 0, 1, 2, ..., N-1 */ >;
+template<std::size_t N>
+using make_index_sequence = make_integer_sequence<std::size_t, N>;
+While this comes standard in C++14, this can be implemented using C++11 tools.
+We can use this tool to call a function with a std::tuple of arguments (standardized in C++17 as std::apply):
+namespace detail {
+    template <class F, class Tuple, std::size_t... Is>
+    decltype(auto) apply_impl(F&& f, Tuple&& tpl, std::index_sequence<Is...> ) {
+        return std::forward<F>(f)(std::get<Is>(std::forward<Tuple>(tpl))...);
+    }
+}
+template <class F, class Tuple>
+decltype(auto) apply(F&& f, Tuple&& tpl) {
+    return detail::apply_impl(std::forward<F>(f),
+        std::forward<Tuple>(tpl),
+        std::make_index_sequence<std::tuple_size<std::decay_t<Tuple>>::value>{});
+}
+// this will print 3
+int f(int, char, double);
+auto some_args = std::make_tuple(42, 'x', 3.14);
+int r = apply(f, some_args); // calls f(42, 'x', 3.14)
+Section 16.4: Tag Dispatching
+A simple way of selecting between functions at compile time is to dispatch a function to an overloaded pair of
+functions that take a tag as one (usually the last) argument. For example, to implement std::advance(), we can
+dispatch on the iterator category:
+namespace details {
+    template <class RAIter, class Distance>
+    void advance(RAIter& it, Distance n, std::random_access_iterator_tag) {
+        it += n;
+    }
+    template <class BidirIter, class Distance>
+    void advance(BidirIter& it, Distance n, std::bidirectional_iterator_tag) {
+        if (n > 0) {
+            while (n--) ++it;
+        }
+        else {
+            while (n++) --it;
+        }
+    }
+    template <class InputIter, class Distance>
+    void advance(InputIter& it, Distance n, std::input_iterator_tag) {
+        while (n--) {
+            ++it;
+        }
+    }    
+}
+template <class Iter, class Distance>
+void advance(Iter& it, Distance n) {
+    details::advance(it, n,
+            typename std::iterator_traits<Iter>::iterator_category{} );
+}
+The std::XY_iterator_tag arguments of the overloaded details::advance functions are unused function
+parameters. The actual implementation does not matter (actually it is completely empty). Their only purpose is to
+allow the compiler to select an overload based on which tag class details::advance is called with.
+In this example, advance uses the iterator_traits<T>::iterator_category metafunction which returns one of
+the iterator_tag classes, depending on the actual type of Iter. A default-constructed object of the
+iterator_category<Iter>::type then lets the compiler select one of the diﬀerent overloads of details::advance.
+(This function parameter is likely to be completely optimized away, as it is a default-constructed object of an empty
+struct and never used.)
+Tag dispatching can give you code that's much easier to read than the equivalents using SFINAE and enable_if.
+Note: while C++17's if constexpr may simplify the implementation of advance in particular, it is not suitable for open
+implementations unlike tag dispatching.
+Section 16.5: Detect Whether Expression is Valid
+It is possible to detect whether an operator or function can be called on a type. To test if a class has an overload of
+std::hash, one can do this:
+#include <functional> // for std::hash
+#include <type_traits> // for std::false_type and std::true_type
+#include <utility> // for std::declval
+template<class, class = void>
+struct has_hash
+    : std::false_type
+{};
+template<class T>
+struct has_hash<T, decltype(std::hash<T>()(std::declval<T>()), void())>
+    : std::true_type
+{};
+Version ≥ C++17
+Since C++17, std::void_t can be used to simplify this type of construct
+#include <functional> // for std::hash
+#include <type_traits> // for std::false_type, std::true_type, std::void_t
+#include <utility> // for std::declval
+template<class, class = std::void_t<> >
+struct has_hash
+    : std::false_type
+{};
+template<class T>
+struct has_hash<T, std::void_t< decltype(std::hash<T>()(std::declval<T>())) > >
+    : std::true_type
+{};
+where std::void_t is deﬁned as:
+template< class... > using void_t = void;
+For detecting if an operator, such as operator< is deﬁned, the syntax is almost the same:
+template<class, class = void>
+struct has_less_than
+    : std::false_type
+{};
+template<class T>
+struct has_less_than<T, decltype(std::declval<T>() < std::declval<T>(), void())>
+    : std::true_type
+{};
+These can be used to use a std::unordered_map<T> if T has an overload for std::hash, but otherwise attempt to
+use a std::map<T>:
+template <class K, class V>
+using hash_invariant_map = std::conditional_t<
+    has_hash<K>::value,
+    std::unordered_map<K, V>,
+    std::map<K,V>>;    
+Section 16.6: If-then-else
+Version ≥ C++11
+The type std::conditional in the standard library header <type_traits> can select one type or the other, based
+on a compile-time boolean value:
+template<typename T>
+struct ValueOrPointer
+{
+    typename std::conditional<(sizeof(T) > sizeof(void*)), T*, T>::type vop;
+};
+This struct contains a pointer to T if T is larger than the size of a pointer, or T itself if it is smaller or equal to a
+pointer's size. Therefore sizeof(ValueOrPointer) will always be <= sizeof(void*).
+Section 16.7: Manual distinction of types when given any type
+T
+When implementing SFINAE using std::enable_if, it is often useful to have access to helper templates that
+determines if a given type T matches a set of criteria.
+To help us with that, the standard already provides two types analog to true and false which are std::true_type
+and std::false_type.
+The following example show how to detect if a type T is a pointer or not, the is_pointer template mimic the
+behavior of the standard std::is_pointer helper:
+template <typename T>
+struct is_pointer_: std::false_type {};
+template <typename T>
+struct is_pointer_<T*>: std::true_type {};
+template <typename T>
+struct is_pointer: is_pointer_<typename std::remove_cv<T>::type> { }
+There are three steps in the above code (sometimes you only need two):
+1.
+The ﬁrst declaration of is_pointer_ is the default case, and inherits from std::false_type. The default case
+should always inherit from std::false_type since it is analogous to a "false condition".
+2.
+The second declaration specialize the is_pointer_ template for pointer T* without caring about what T is
+really. This version inherits from std::true_type.
+3.
+The third declaration (the real one) simply remove any unnecessary information from T (in this case we
+remove const and volatile qualiﬁers) and then fall backs to one of the two previous declarations.
+Since is_pointer<T> is a class, to access its value you need to either:
+Use ::value, e.g. is_pointer<int>::value – value is a static class member of type bool inherited from
+std::true_type or std::false_type;
+Construct an object of this type, e.g. is_pointer<int>{} – This works because std::is_pointer inherits its
+default constructor from std::true_type or std::false_type (which have constexpr constructors) and both
+std::true_type and std::false_type have constexpr conversion operators to bool.
+It is a good habit to provides "helper helper templates" that let you directly access the value:
+template <typename T>
+constexpr bool is_pointer_v = is_pointer<T>::value;
+Version ≥ C++17
+In C++17 and above, most helper templates already provide a _v version, e.g.:
+template< class T > constexpr bool is_pointer_v = is_pointer<T>::value;
+template< class T > constexpr bool is_reference_v = is_reference<T>::value;
+Section 16.8: Calculating power with C++11 (and higher)
+With C++11 and higher calculations at compile time can be much easier. For example calculating the power of a
+given number at compile time will be following:
+template <typename T>
+constexpr T calculatePower(T value, unsigned power) {
+    return power == 0 ? 1 : value * calculatePower(value, power-1);
+}
+Keyword constexpr is responsible for calculating function in compilation time, then and only then, when all the
+requirements for this will be met (see more at constexpr keyword reference) for example all the arguments must
+be known at compile time.
+Note: In C++11 constexpr function must compose only from one return statement.
+Advantages: Comparing this to the standard way of compile time calculation, this method is also useful for runtime
+calculations. It means, that if the arguments of the function are not known at the compilation time (e.g. value and
+power are given as input via user), then function is run in a compilation time, so there's no need to duplicate a code
+(as we would be forced in older standards of C++).
+E.g.
+void useExample() {
+    constexpr int compileTimeCalculated = calculatePower(3, 3); // computes at compile time,
+                               // as both arguments are known at compilation time
+                               // and used for a constant expression.
+    int value;
+    std::cin >> value;
+    int runtimeCalculated = calculatePower(value, 3);  // runtime calculated,
+                                    // because value is known only at runtime.
+}
+Version ≥ C++17
+Another way to calculate power at compile time can make use of fold expression as follows:
+#include <iostream>
+#include <utility>
+template <class T, T V, T N, class I = std::make_integer_sequence<T, N>>
+struct power;
+template <class T, T V, T N, T... Is>
+struct power<T, V, N, std::integer_sequence<T, Is...>> {
+   static constexpr T value = (static_cast<T>(1) * ... * (V * static_cast<bool>(Is + 1)));
+};
+int main() {
+   std::cout << power<int, 4, 2>::value << std::endl;
+}
+Section 16.9: Generic Min/Max with variable argument count
+Version > C++11
+It's possible to write a generic function (for example min) which accepts various numerical types and arbitrary
+argument count by template meta-programming. This function declares a min for two arguments and recursively
+for more.
+template <typename T1, typename T2>
+auto min(const T1 &a, const T2 &b)
+-> typename std::common_type<const T1&, const T2&>::type
+{
+    return a < b ? a : b;
+}
+template <typename T1, typename T2, typename ... Args>
+auto min(const T1 &a, const T2 &b, const Args& ... args)
+-> typename std::common_type<const T1&, const T2&, const Args& ...>::type
+{
+    return min(min(a, b), args...);
+}
+auto minimum = min(4, 5.8f, 3, 1.8, 3, 1.1, 9);
+
 
 C++11 made Template Metaprogramming (TMP) usable by mere mortals.
 
