@@ -49,6 +49,7 @@ To ensure clarity, this book follows strict conventions:
     *   **Ill-formed**: The code will not compile.
     *   **ODR**: One Definition Rule.
 *   **Measurable Outcomes**: Each major section concludes with a "Skill Check" or "Implementation Task" to verify mastery.
+*   **Professional Notes**: Selected chapters include a "Professional Notes & Tricks" section extracted from expert references, providing practical tips, edge cases, and industry-standard patterns.
 
 ---
 
@@ -1955,6 +1956,1811 @@ int main() {
 ```
 
 ---
+
+
+
+---
+### Professional Notes: Foundation & Basics
+
+#### 1: Getting started with C: 
+
+Chapter 1: Getting started with C++
+
+
+Version
+C++98 ISO/IEC 14882:1998 1998-09-01
+
+Standard
+
+Release Date
+
+C++03 ISO/IEC 14882:2003 2003-10-16
+
+C++11 ISO/IEC 14882:2011 2011-09-01
+
+C++14 ISO/IEC 14882:2014 2014-12-15
+
+C++17 TBD
+
+C++20 TBD
+
+2017-01-01
+
+2020-01-01
+
+Section 1.1: Hello World
+
+This program prints Hello World! to the standard output stream:
+
+#include <iostream>
+
+int main()
+{
+    std::cout << "Hello World!" << std::endl;
+}
+
+See it live on Coliru.
+
+Analysis
+
+Let's examine each part of this code in detail:
+
+#include <iostream> is a preprocessor directive that includes the content of the standard C++ header ﬁle
+iostream.
+
+iostream is a standard library header ﬁle that contains deﬁnitions of the standard input and output
+streams. These deﬁnitions are included in the std namespace, explained below.
+
+The standard input/output (I/O) streams provide ways for programs to get input from and output to an
+external system -- usually the terminal.
+
+int main() { ... } deﬁnes a new function named main. By convention, the main function is called upon
+
+execution of the program. There must be only one main function in a C++ program, and it must always return
+
+a number of the int type.
+
+Here, the int is what is called the function's return type. The value returned by the main function is an exit
+
+code.
+
+By convention, a program exit code of 0 or EXIT_SUCCESS is interpreted as success by a system that executes
+the program. Any other return code is associated with an error.
+
+If no return statement is present, the main function (and thus, the program itself) returns 0 by default. In this
+example, we don't need to explicitly write return 0;.
+
+All other functions, except those that return the void type, must explicitly return a value according to their
+
+return type, or else must not return at all.
+
+GoalKicker.com – C++ Notes for Professionals
+
+2
+
+std::cout << "Hello World!" << std::endl; prints "Hello World!" to the standard output stream:
+
+std is a namespace, and :: is the scope resolution operator that allows look-ups for objects by name
+within a namespace.
+
+There are many namespaces. Here, we use :: to show we want to use cout from the std namespace.
+
+For more information refer to Scope Resolution Operator - Microsoft Documentation.
+
+std::cout is the standard output stream object, deﬁned in iostream, and it prints to the standard
+output (stdout).
+
+<< is, in this context, the stream insertion operator, so called because it inserts an object into the
+stream object.
+
+The standard library deﬁnes the << operator to perform data insertion for certain data types into
+
+output streams. stream << content inserts content into the stream and returns the same, but
+
+updated stream. This allows stream insertions to be chained: std::cout << "Foo" << " Bar"; prints
+
+"FooBar" to the console.
+
+"Hello World!" is a character string literal, or a "text literal." The stream insertion operator for
+character string literals is deﬁned in ﬁle iostream.
+
+std::endl is a special I/O stream manipulator object, also deﬁned in ﬁle iostream. Inserting a
+manipulator into a stream changes the state of the stream.
+
+The stream manipulator std::endl does two things: ﬁrst it inserts the end-of-line character and then it
+
+ﬂushes the stream buﬀer to force the text to show up on the console. This ensures that the data
+
+inserted into the stream actually appear on your console. (Stream data is usually stored in a buﬀer and
+
+then "ﬂushed" in batches unless you force a ﬂush immediately.)
+
+An alternate method that avoids the ﬂush is:
+
+std::cout << "Hello World!\n";
+
+where \n is the character escape sequence for the newline character.
+
+The semicolon (;) notiﬁes the compiler that a statement has ended. All C++ statements and class
+
+deﬁnitions require an ending/terminating semicolon.
+
+Section 1.2: Comments
+
+A comment is a way to put arbitrary text inside source code without having the C++ compiler interpret it with any
+functional meaning. Comments are used to give insight into the design or method of a program.
+
+There are two types of comments in C++:
+
+Single-Line Comments
+
+The double forward-slash sequence // will mark all text until a newline as a comment:
+
+int main()
+{
+
+GoalKicker.com – C++ Notes for Professionals
+
+3
+
+   // This is a single-line comment.
+   int a;  // this also is a single-line comment
+   int i;  // this is another single-line comment
+}
+
+C-Style/Block Comments
+
+The sequence /* is used to declare the start of the comment block and the sequence */ is used to declare the end
+
+of comment. All text between the start and end sequences is interpreted as a comment, even if the text is
+
+otherwise valid C++ syntax. These are sometimes called "C-style" comments, as this comment syntax is inherited
+
+from C++'s predecessor language, C:
+
+int main()
+{
+   /*
+    *  This is a block comment.
+    */
+   int a;
+}
+
+In any block comment, you can write anything you want. When the compiler encounters the symbol */, it
+
+terminates the block comment:
+
+int main()
+{
+   /* A block comment with the symbol /*
+      Note that the compiler is not affected by the second /*
+      however, once the end-block-comment symbol is reached,
+      the comment ends.
+   */
+   int a;
+}
+
+The above example is valid C++ (and C) code. However, having additional /* inside a block comment might result in
+
+a warning on some compilers.
+
+Block comments can also start and end within a single line. For example:
+
+void SomeFunction(/* argument 1 */ int a, /* argument 2 */ int b);
+
+Importance of Comments
+
+As with all programming languages, comments provide several beneﬁts:
+
+Explicit documentation of code to make it easier to read/maintain
+
+Explanation of the purpose and functionality of code
+
+Details on the history or reasoning behind the code
+
+Placement of copyright/licenses, project notes, special thanks, contributor credits, etc. directly in the source
+
+code.
+
+However, comments also have their downsides:
+
+They must be maintained to reﬂect any changes in the code
+Excessive comments tend to make the code less readable
+
+The need for comments can be reduced by writing clear, self-documenting code. A simple example is the use of
+
+explanatory names for variables, functions, and types. Factoring out logically related tasks into discrete functions
+
+goes hand-in-hand with this.
+
+GoalKicker.com – C++ Notes for Professionals
+
+4
+
+Comment markers used to disable code
+
+During development, comments can also be used to quickly disable portions of code without deleting it. This is
+
+often useful for testing or debugging purposes, but is not good style for anything other than temporary edits. This
+
+is often referred to as “commenting out”.
+
+Similarly, keeping old versions of a piece of code in a comment for reference purposes is frowned upon, as it
+
+clutters ﬁles while oﬀering little value compared to exploring the code's history via a versioning system.
+
+Section 1.3: The standard C++ compilation process
+
+Executable C++ program code is usually produced by a compiler.
+
+A compiler is a program that translates code from a programming language into another form which is (more)
+
+directly executable for a computer. Using a compiler to translate code is called compilation.
+
+C++ inherits the form of its compilation process from its "parent" language, C. Below is a list showing the four major
+
+steps of compilation in C++:
+
+1.
+
+The C++ preprocessor copies the contents of any included header ﬁles into the source code ﬁle, generates
+
+macro code, and replaces symbolic constants deﬁned using #deﬁne with their values.
+
+2.
+
+The expanded source code ﬁle produced by the C++ preprocessor is compiled into assembly language
+
+appropriate for the platform.
+
+3.
+
+4.
+
+The assembler code generated by the compiler is assembled into appropriate object code for the platform.
+
+The object code ﬁle generated by the assembler is linked together with the object code ﬁles for any library
+
+functions used to produce an executable ﬁle.
+
+Note: some compiled code is linked together, but not to create a ﬁnal program. Usually, this "linked" code
+
+can also be packaged into a format that can be used by other programs. This "bundle of packaged, usable
+
+code" is what C++ programmers refer to as a library.
+
+Many C++ compilers may also merge or un-merge certain parts of the compilation process for ease or for additional
+
+analysis. Many C++ programmers will use diﬀerent tools, but all of the tools will generally follow this generalized
+
+process when they are involved in the production of a program.
+
+The link below extends this discussion and provides a nice graphic to help. [1]:
+
+http://faculty.cs.niu.edu/~mcmahon/CS241/Notes/compile.html
+
+Section 1.4: Function
+
+A function is a unit of code that represents a sequence of statements.
+
+Functions can accept arguments or values and return a single value (or not). To use a function, a function call is
+used on argument values and the use of the function call itself is replaced with its return value.
+
+Every function has a type signature -- the types of its arguments and the type of its return type.
+
+Functions are inspired by the concepts of the procedure and the mathematical function.
+
+Note: C++ functions are essentially procedures and do not follow the exact deﬁnition or rules of
+
+mathematical functions.
+
+Functions are often meant to perform a speciﬁc task. and can be called from other parts of a program. A function
+
+must be declared and deﬁned before it is called elsewhere in a program.
+
+GoalKicker.com – C++ Notes for Professionals
+
+5
+
+Note: popular function deﬁnitions may be hidden in other included ﬁles (often for convenience and reuse
+
+across many ﬁles). This is a common use of header ﬁles.
+
+Function Declaration
+
+A function declaration is declares the existence of a function with its name and type signature to the compiler.
+The syntax is as the following:
+
+int add2(int i); // The function is of the type (int) -> (int)
+
+In the example above, the int add2(int i) function declares the following to the compiler:
+
+The return type is int.
+
+The name of the function is add2.
+
+The number of arguments to the function is 1:
+The ﬁrst argument is of the type int.
+
+The ﬁrst argument will be referred to in the function's contents by the name i.
+
+The argument name is optional; the declaration for the function could also be the following:
+
+int add2(int); // Omitting the function arguments' name is also permitted.
+
+Per the one-deﬁnition rule, a function with a certain type signature can only be declared or deﬁned once in an
+entire C++ code base visible to the C++ compiler. In other words, functions with a speciﬁc type signature cannot be
+
+re-deﬁned -- they must only be deﬁned once. Thus, the following is not valid C++:
+
+int add2(int i);  // The compiler will note that add2 is a function (int) -> int
+int add2(int j);  // As add2 already has a definition of (int) -> int, the compiler
+                  // will regard this as an error.
+
+If a function returns nothing, its return type is written as void. If it takes no parameters, the parameter list should
+
+be empty.
+
+void do_something(); // The function takes no parameters, and does not return anything.
+                     // Note that it can still affect variables it has access to.
+
+Function Call
+
+A function can be called after it has been declared. For example, the following program calls add2 with the value of
+
+2 within the function of main:
+
+#include <iostream>
+
+int add2(int i);    // Declaration of add2
+
+// Note: add2 is still missing a DEFINITION.
+// Even though it doesn't appear directly in code,
+// add2's definition may be LINKED in from another object file.
+
+int main()
+{
+    std::cout << add2(2) << "\n";  // add2(2) will be evaluated at this point,
+                                   // and the result is printed.
+    return 0;  
+}
+
+Here, add2(2) is the syntax for a function call.
+
+GoalKicker.com – C++ Notes for Professionals
+
+6
+
+Function Deﬁnition
+
+A function deﬁnition* is similar to a declaration, except it also contains the code that is executed when the function
+
+is called within its body.
+
+An example of a function deﬁnition for add2 might be:
+
+int add2(int i)       // Data that is passed into (int i) will be referred to by the name i
+{                     // while in the function's curly brackets or "scope."
+
+    int j = i + 2;    // Definition of a variable j as the value of i+2.
+    return j;         // Returning or, in essence, substitution of j for a function call to
+                      // add2.
+}
+
+Function Overloading
+
+You can create multiple functions with the same name but diﬀerent parameters.
+
+int add2(int i)           // Code contained in this definition will be evaluated
+{                         // when add2() is called with one parameter.
+    int j = i + 2;
+    return j;
+}
+
+int add2(int i, int j)    // However, when add2() is called with two parameters, the
+{                         // code from the initial declaration will be overloaded,
+    int k = i + j + 2 ;   // and the code in this declaration will be evaluated
+    return k;             // instead.
+}
+
+Both functions are called by the same name add2, but the actual function that is called depends directly on the
+
+amount and type of the parameters in the call. In most cases, the C++ compiler can compute which function to call.
+
+In some cases, the type must be explicitly stated.
+
+Default Parameters
+
+Default values for function parameters can only be speciﬁed in function declarations.
+
+int multiply(int a, int b = 7); // b has default value of 7.
+int multiply(int a, int b)
+{
+    return a * b;               // If multiply() is called with one parameter, the
+}                               // value will be multiplied by the default, 7.
+
+In this example, multiply() can be called with one or two parameters. If only one parameter is given, b will have
+
+default value of 7. Default arguments must be placed in the latter arguments of the function. For example:
+
+int multiply(int a = 10, int b = 20); // This is legal
+int multiply(int a = 10, int b);      // This is illegal since int a is in the former
+
+Special Function Calls - Operators
+
+There exist special function calls in C++ which have diﬀerent syntax than name_of_function(value1, value2,
+
+value3). The most common example is that of operators.
+
+Certain special character sequences that will be reduced to function calls by the compiler, such as !, +, -, *, %, and
+
+<< and many more. These special characters are normally associated with non-programming usage or are used for
+
+GoalKicker.com – C++ Notes for Professionals
+
+7
+
+                   
+aesthetics (e.g. the + character is commonly recognized as the addition symbol both within C++ programming as
+
+well as in elementary math).
+
+C++ handles these character sequences with a special syntax; but, in essence, each occurrence of an operator is
+
+reduced to a function call. For example, the following C++ expression:
+
+3+3
+
+is equivalent to the following function call:
+
+operator+(3, 3)
+
+All operator function names start with operator.
+
+While in C++'s immediate predecessor, C, operator function names cannot be assigned diﬀerent meanings by
+
+providing additional deﬁnitions with diﬀerent type signatures, in C++, this is valid. "Hiding" additional function
+
+deﬁnitions under one unique function name is referred to as operator overloading in C++, and is a relatively
+common, but not universal, convention in C++.
+
+Section 1.5: Visibility of function prototypes and declarations
+
+In C++, code must be declared or deﬁned before usage. For example, the following produces a compile time error:
+
+int main()
+{
+  foo(2); // error: foo is called, but has not yet been declared
+}
+
+void foo(int x) // this later definition is not known in main
+{
+}
+
+There are two ways to resolve this: putting either the deﬁnition or declaration of foo() before its usage in main().
+
+Here is one example:
+
+void foo(int x) {}  //Declare the foo function and body first
+
+int main()
+{
+  foo(2); // OK: foo is completely defined beforehand, so it can be called here.
+}
+
+However it is also possible to "forward-declare" the function by putting only a "prototype" declaration before its
+
+usage and then deﬁning the function body later:
+
+void foo(int);  // Prototype declaration of foo, seen by main
+                // Must specify return type, name, and argument list types
+int main()
+{
+  foo(2); // OK: foo is known, called even though its body is not yet defined
+}
+
+void foo(int x) //Must match the prototype
+{
+    // Define body of foo here
+}
+
+GoalKicker.com – C++ Notes for Professionals
+
+8
+
+The prototype must specify the return type (void), the name of the function (foo), and the argument list variable
+
+types (int), but the names of the arguments are NOT required.
+
+One common way to integrate this into the organization of source ﬁles is to make a header ﬁle containing all of the
+
+prototype declarations:
+
+// foo.h
+void foo(int); // prototype declaration
+
+and then provide the full deﬁnition elsewhere:
+
+// foo.cpp --> foo.o
+#include "foo.h" // foo's prototype declaration is "hidden" in here
+void foo(int x) { } // foo's body definition
+
+and then, once compiled, link the corresponding object ﬁle foo.o into the compiled object ﬁle where it is used in
+
+the linking phase, main.o:
+
+// main.cpp --> main.o
+#include "foo.h" // foo's prototype declaration is "hidden" in here
+int main() { foo(2); } // foo is valid to call because its prototype declaration was beforehand.
+// the prototype and body definitions of foo are linked through the object files
+
+An “unresolved external symbol” error occurs when the function prototype and call exist, but the function body is
+
+not deﬁned. These can be trickier to resolve as the compiler won't report the error until the ﬁnal linking stage, and
+
+it doesn't know which line to jump to in the code to show the error.
+
+Section 1.6: Preprocessor
+
+The preprocessor is an important part of the compiler.
+
+It edits the source code, cutting some bits out, changing others, and adding other things.
+
+In source ﬁles, we can include preprocessor directives. These directives tells the preprocessor to perform speciﬁc
+
+actions. A directive starts with a # on a new line. Example:
+
+#define ZERO 0
+
+The ﬁrst preprocessor directive you will meet is probably the
+
+#include <something>
+
+directive. What it does is takes all of something and inserts it in your ﬁle where the directive was. The hello world
+
+program starts with the line
+
+#include <iostream>
+
+This line adds the functions and objects that let you use the standard input and output.
+
+The C language, which also uses the preprocessor, does not have as many header ﬁles as the C++ language, but in
+
+C++ you can use all the C header ﬁles.
+
+The next important directive is probably the
+
+GoalKicker.com – C++ Notes for Professionals
+
+9
+
+#define something something_else
+
+directive. This tells the preprocessor that as it goes along the ﬁle, it should replace every occurrence of something
+
+with something_else. It can also make things similar to functions, but that probably counts as advanced C++.
+
+The something_else is not needed, but if you deﬁne something as nothing, then outside preprocessor directives, all
+
+occurrences of something will vanish.
+
+This actually is useful, because of the #if,#else and #ifdef directives. The format for these would be the following:
+
+#if something==true
+//code
+#else
+//more code
+#endif
+
+#ifdef thing_that_you_want_to_know_if_is_defined
+//code
+#endif
+
+These directives insert the code that is in the true bit, and deletes the false bits. this can be used to have bits of
+
+code that are only included on certain operating systems, without having to rewrite the whole code.
+
+GoalKicker.com – C++ Notes for Professionals
+
+10
+
+#### 2: Literals
+
+Chapter 2: Literals
+
+
+Traditionally, a literal is an expression denoting a constant whose type and value are evident from its spelling. For
+
+example, 42 is a literal, while x is not since one must see its declaration to know its type and read previous lines of
+
+code to know its value.
+
+However, C++11 also added user-deﬁned literals, which are not literals in the traditional sense but can be used as a
+
+shorthand for function calls.
+
+Section 2.1: this
+
+Within a member function of a class, the keyword this is a pointer to the instance of the class on which the
+
+function was called. this cannot be used in a static member function.
+
+struct S {
+    int x;
+    S& operator=(const S& other) {
+        x = other.x;
+        // return a reference to the object being assigned to
+        return *this;
+    }
+};
+
+The type of this depends on the cv-qualiﬁcation of the member function: if X::f is const, then the type of this
+
+within f is const X*, so this cannot be used to modify non-static data members from within a const member
+
+function. Likewise, this inherits volatile qualiﬁcation from the function it appears in.
+
+Version ≥ C++11
+
+this can also be used in a brace-or-equal-initializer for a non-static data member.
+
+struct S;
+struct T {
+    T(const S* s);
+    // ...
+};
+struct S {
+    // ...
+    T t{this};
+};
+
+this is an rvalue, so it cannot be assigned to.
+
+Section 2.2: Integer literal
+
+An integer literal is a primary expression of the form
+
+decimal-literal
+
+It is a non-zero decimal digit (1, 2, 3, 4, 5, 6, 7, 8, 9), followed by zero or more decimal digits (0, 1, 2, 3, 4, 5, 6, 7, 8, 9)
+
+int d = 42;
+
+octal-literal
+
+It is the digit zero (0) followed by zero or more octal digits (0, 1, 2, 3, 4, 5, 6, 7)
+
+GoalKicker.com – C++ Notes for Professionals
+
+11
+
+int o = 052
+
+hex-literal
+
+It is the character sequence 0x or the character sequence 0X followed by one or more hexadecimal digits (0, 1, 2, 3,
+
+4, 5, 6, 7, 8, 9, a, A, b, B, c, C, d, D, e, E, f, F)
+
+int x = 0x2a; int X = 0X2A;
+
+binary-literal (since C++14)
+
+It is the character sequence 0b or the character sequence 0B followed by one or more binary digits (0, 1)
+
+int b = 0b101010; // C++14
+
+Integer-suﬃx, if provided, may contain one or both of the following (if both are provided, they may appear in any
+
+order:
+
+unsigned-suﬃx (the character u or the character U)
+
+unsigned int u_1 = 42u;
+
+long-suﬃx (the character l or the character L) or the long-long-suﬃx (the character sequence ll or the
+
+character sequence LL) (since C++11)
+
+The following variables are also initialized to the same value:
+
+unsigned long long l1 = 18446744073709550592ull; // C++11
+unsigned long long l2 = 18'446'744'073'709'550'592llu; // C++14
+unsigned long long l3 = 1844'6744'0737'0955'0592uLL; // C++14
+unsigned long long l4 = 184467'440737'0'95505'92LLU; // C++14
+
+Notes
+
+Letters in the integer literals are case-insensitive: 0xDeAdBaBeU and 0XdeadBABEu represent the same number
+
+(one exception is the long-long-suﬃx, which is either ll or LL, never lL or Ll)
+
+There are no negative integer literals. Expressions such as -1 apply the unary minus operator to the value
+
+represented by the literal, which may involve implicit type conversions.
+
+In C prior to C99 (but not in C++), unsuﬃxed decimal values that do not ﬁt in long int are allowed to have the type
+
+unsigned long int.
+
+When used in a controlling expression of #if or #elif, all signed integer constants act as if they have type
+
+std::intmax_t and all unsigned integer constants act as if they have type std::uintmax_t.
+
+Section 2.3: true
+
+A keyword denoting one of the two possible values of type bool.
+
+bool ok = true;
+if (!f()) {
+    ok = false;
+    goto end;
+}
+
+GoalKicker.com – C++ Notes for Professionals
+
+12
+
+Section 2.4: false
+
+A keyword denoting one of the two possible values of type bool.
+
+bool ok = true;
+if (!f()) {
+    ok = false;
+    goto end;
+}
+
+Section 2.5: nullptr
+
+Version ≥ C++11
+
+A keyword denoting a null pointer constant. It can be converted to any pointer or pointer-to-member type, yielding
+
+a null pointer of the resulting type.
+
+Widget* p = new Widget();
+delete p;
+p = nullptr; // set the pointer to null after deletion
+
+Note that nullptr is not itself a pointer. The type of nullptr is a fundamental type known as std::nullptr_t.
+
+void f(int* p);
+
+template <class T>
+void g(T* p);
+
+void h(std::nullptr_t p);
+
+int main() {
+    f(nullptr); // ok
+    g(nullptr); // error
+    h(nullptr); // ok
+}
+
+GoalKicker.com – C++ Notes for Professionals
+
+13
+
+#### 11: Loops
+
+Chapter 11: Loops
+
+
+A loop statement executes a group of statements repeatedly until a condition is met. There are 3 types of primitive
+
+loops in C++: for, while, and do...while.
+
+Section 11.1: Range-Based For
+
+Version ≥ C++11
+
+for loops can be used to iterate over the elements of a iterator-based range, without using a numeric index or
+
+directly accessing the iterators:
+
+vector<float> v = {0.4f, 12.5f, 16.234f};
+
+for(auto val: v)
+{
+    std::cout << val << " ";
+}
+
+std::cout << std::endl;
+
+This will iterate over every element in v, with val getting the value of the current element. The following statement:
+
+for (for-range-declaration : for-range-initializer ) statement
+
+is equivalent to:
+
+{
+    auto&& __range = for-range-initializer;
+    auto __begin = begin-expr, __end = end-expr;
+    for (; __begin != __end; ++__begin) {
+        for-range-declaration = *__begin;
+        statement
+    }
+}
+
+Version ≥ C++17
+
+{
+    auto&& __range = for-range-initializer;
+    auto __begin = begin-expr;
+    auto __end = end-expr; // end is allowed to be a different type than begin in C++17
+    for (; __begin != __end; ++__begin) {
+        for-range-declaration = *__begin;
+        statement
+    }
+}
+
+This change was introduced for the planned support of Ranges TS in C++20.
+
+In this case, our loop is equivalent to:
+
+{
+    auto&& __range = v;
+    auto __begin = v.begin(), __end = v.end();
+    for (; __begin != __end; ++__begin) {
+        auto val = *__begin;
+        std::cout << val << " ";
+
+GoalKicker.com – C++ Notes for Professionals
+
+44
+
+    }
+}
+
+Note that auto val declares a value type, which will be a copy of a value stored in the range (we are copy-initializing
+
+it from the iterator as we go). If the values stored in the range are expensive to copy, you may want to use const
+
+auto &val. You are also not required to use auto; you can use an appropriate typename, so long as it is implicitly
+
+convertible from the range's value type.
+
+If you need access to the iterator, range-based for cannot help you (not without some eﬀort, at least).
+
+If you wish to reference it, you may do so:
+
+vector<float> v = {0.4f, 12.5f, 16.234f};
+
+for(float &val: v)
+{
+    std::cout << val << " ";
+}
+
+You could iterate on const reference if you have const container:
+
+const vector<float> v = {0.4f, 12.5f, 16.234f};
+
+for(const float &val: v)
+{
+    std::cout << val << " ";
+}
+
+One would use forwarding references when the sequence iterator returns a proxy object and you need to operate
+
+on that object in a non-const way. Note: it will most likely confuse readers of your code.
+
+vector<bool> v(10);
+
+for(auto&& val: v)
+{
+    val = true;
+}
+
+The "range" type provided to range-based for can be one of the following:
+
+Language arrays:
+
+float arr[] = {0.4f, 12.5f, 16.234f};
+
+for(auto val: arr)
+{
+    std::cout << val << " ";
+}
+
+Note that allocating a dynamic array does not count:
+
+float *arr = new float[3]{0.4f, 12.5f, 16.234f};
+
+for(auto val: arr) //Compile error.
+{
+    std::cout << val << " ";
+}
+
+GoalKicker.com – C++ Notes for Professionals
+
+45
+
+Any type which has member functions begin() and end(), which return iterators to the elements of the type.
+
+The standard library containers qualify, but user-deﬁned types can be used as well:
+
+struct Rng
+{
+    float arr[3];
+
+    // pointers are iterators
+    const float* begin() const {return &arr[0];}
+    const float* end() const   {return &arr[3];}
+    float* begin() {return &arr[0];}
+    float* end()   {return &arr[3];}
+};
+
+int main()
+{
+    Rng rng = {{0.4f, 12.5f, 16.234f}};
+
+    for(auto val: rng)
+    {
+        std::cout << val << " ";
+    }
+}
+
+Any type which has non-member begin(type) and end(type) functions which can found via argument
+
+dependent lookup, based on type. This is useful for creating a range type without having to modify class type
+
+itself:
+
+namespace Mine
+{
+    struct Rng {float arr[3];};
+
+    // pointers are iterators
+    const float* begin(const Rng &rng) {return &rng.arr[0];}
+    const float* end(const Rng &rng) {return &rng.arr[3];}
+    float* begin(Rng &rng) {return &rng.arr[0];}
+    float* end(Rng &rng) {return &rng.arr[3];}
+}
+
+int main()
+{
+    Mine::Rng rng = {{0.4f, 12.5f, 16.234f}};
+
+    for(auto val: rng)
+    {
+        std::cout << val << " ";
+    }
+}
+
+Section 11.2: For loop
+
+A for loop executes statements in the loop body, while the loop condition is true. Before the loop initialization
+
+statement is executed exactly once. After each cycle, the iteration execution part is executed.
+
+A for loop is deﬁned as follows:
+
+for (/*initialization statement*/; /*condition*/; /*iteration execution*/)
+
+GoalKicker.com – C++ Notes for Professionals
+
+46
+
+{
+    // body of the loop
+}
+
+Explanation of the placeholder statements:
+
+initialization statement: This statement gets executed only once, at the beginning of the for loop. You
+can enter a declaration of multiple variables of one type, such as int i = 0, a = 2, b = 3. These variables
+are only valid in the scope of the loop. Variables deﬁned before the loop with the same name are hidden
+
+during execution of the loop.
+condition: This statement gets evaluated ahead of each loop body execution, and aborts the loop if it
+
+evaluates to false.
+iteration execution: This statement gets executed after the loop body, ahead of the next condition
+evaluation, unless the for loop is aborted in the body (by break, goto, return or an exception being thrown).
+
+You can enter multiple statements in the iteration execution part, such as a++, b+=10, c=b+a.
+
+The rough equivalent of a for loop, rewritten as a while loop is:
+
+/*initialization*/
+while (/*condition*/)
+{
+    // body of the loop; using 'continue' will skip to increment part below
+    /*iteration execution*/
+}
+
+The most common case for using a for loop is to execute statements a speciﬁc number of times. For example,
+
+consider the following:
+
+for(int i = 0; i < 10; i++) {
+    std::cout << i << std::endl;
+}
+
+A valid loop is also:
+
+for(int a = 0, b = 10, c = 20; (a+b+c < 100); c--, b++, a+=c) {
+    std::cout << a << " " << b << " " << c << std::endl;
+}
+
+An example of hiding declared variables before a loop is:
+
+int i = 99; //i = 99
+for(int i = 0; i < 10; i++) { //we declare a new variable i
+    //some operations, the value of i ranges from 0 to 9 during loop execution
+}
+//after the loop is executed, we can access i with value of 99
+
+But if you want to use the already declared variable and not hide it, then omit the declaration part:
+
+int i = 99; //i = 99
+for(i = 0; i < 10; i++) { //we are using already declared variable i
+    //some operations, the value of i ranges from 0 to 9 during loop execution
+}
+//after the loop is executed, we can access i with value of 10
+
+Notes:
+
+GoalKicker.com – C++ Notes for Professionals
+
+47
+
+The initialization and increment statements can perform operations unrelated to the condition statement, or
+
+nothing at all - if you wish to do so. But for readability reasons, it is best practice to only perform operations
+
+directly relevant to the loop.
+
+A variable declared in the initialization statement is visible only inside the scope of the for loop and is
+
+released upon termination of the loop.
+
+Don't forget that the variable which was declared in the initialization statement can be modiﬁed during
+
+the loop, as well as the variable checked in the condition.
+
+Example of a loop which counts from 0 to 10:
+
+for (int counter = 0; counter <= 10; ++counter)
+{
+    std::cout << counter << '\n';
+}
+// counter is not accessible here (had value 11 at the end)
+
+Explanation of the code fragments:
+
+int counter = 0 initializes the variable counter to 0. (This variable can only be used inside of the for loop.)
+counter <= 10 is a Boolean condition that checks whether counter is less than or equal to 10. If it is true,
+
+the loop executes. If it is false, the loop ends.
+
+++counter is an increment operation that increments the value of counter by 1 ahead of the next condition
+
+check.
+
+By leaving all statements empty, you can create an inﬁnite loop:
+
+// infinite loop
+for (;;)
+    std::cout << "Never ending!\n";
+
+The while loop equivalent of the above is:
+
+// infinite loop
+while (true)
+    std::cout << "Never ending!\n";
+
+However, an inﬁnite loop can still be left by using the statements break, goto, or return or by throwing an
+
+exception.
+
+The next common example of iterating over all elements from an STL collection (e.g., a vector) without using the
+
+<algorithm> header is:
+
+std::vector<std::string> names = {"Albert Einstein", "Stephen Hawking", "Michael Ellis"};
+for(std::vector<std::string>::iterator it = names.begin(); it != names.end(); ++it) {
+    std::cout << *it << std::endl;
+}
+
+Section 11.3: While loop
+
+A while loop executes statements repeatedly until the given condition evaluates to false. This control statement is
+
+used when it is not known, in advance, how many times a block of code is to be executed.
+
+For example, to print all the numbers from 0 up to 9, the following code can be used:
+
+int i = 0;
+
+GoalKicker.com – C++ Notes for Professionals
+
+48
+
+while (i < 10)
+{
+    std::cout << i << " ";
+    ++i; // Increment counter
+}
+std::cout << std::endl; // End of line; "0 1 2 3 4 5 6 7 8 9" is printed to the console
+
+Version ≥ C++17
+
+Note that since C++17, the ﬁrst 2 statements can be combined
+
+while (int i = 0; i < 10)
+//... The rest is the same
+
+To create an inﬁnite loop, the following construct can be used:
+
+while (true)
+{
+    // Do something forever (however, you can exit the loop by calling 'break'
+}
+
+There is another variant of while loops, namely the do...while construct. See the do-while loop example for more
+
+information.
+
+Section 11.4: Do-while loop
+
+A do-while loop is very similar to a while loop, except that the condition is checked at the end of each cycle, not at
+
+the start. The loop is therefore guaranteed to execute at least once.
+
+The following code will print 0, as the condition will evaluate to false at the end of the ﬁrst iteration:
+
+int i =0;
+do
+{
+    std::cout << i;
+    ++i; // Increment counter
+}
+while (i < 0);
+std::cout << std::endl; // End of line; 0 is printed to the console
+
+Note: Do not forget the semicolon at the end of while(condition);, which is needed in the do-while construct.
+
+In contrast to the do-while loop, the following will not print anything, because the condition evaluates to false at
+
+the beginning of the ﬁrst iteration:
+
+int i =0;
+while (i < 0)
+{
+    std::cout << i;
+    ++i; // Increment counter
+}    
+std::cout << std::endl; // End of line; nothing is printed to the console
+
+Note: A while loop can be exited without the condition becoming false by using a break, goto, or return statement.
+
+int i = 0;
+do
+{
+
+GoalKicker.com – C++ Notes for Professionals
+
+49
+
+    std::cout << i;
+    ++i; // Increment counter
+    if (i > 5)
+    {
+        break;
+    }
+}
+while (true);
+std::cout << std::endl; // End of line; 0 1 2 3 4 5 is printed to the console
+
+A trivial do-while loop is also occasionally used to write macros that require their own scope (in which case the
+
+trailing semicolon is omitted from the macro deﬁnition and required to be provided by the user):
+
+#define BAD_MACRO(x) f1(x); f2(x); f3(x);
+
+// Only the call to f1 is protected by the condition here
+if (cond) BAD_MACRO(var);
+
+#define GOOD_MACRO(x) do { f1(x); f2(x); f3(x); } while(0)
+
+// All calls are protected here
+if (cond) GOOD_MACRO(var);
+
+Section 11.5: Loop Control statements : Break and Continue
+
+Loop control statements are used to change the ﬂow of execution from its normal sequence. When execution
+
+leaves a scope, all automatic objects that were created in that scope are destroyed. The break and continue are
+
+loop control statements.
+
+The break statement terminates a loop without any further consideration.
+
+for (int i = 0; i < 10; i++)
+{
+    if (i == 4)
+        break; // this will immediately exit our loop
+    std::cout << i << '\n';
+}
+
+The above code will print out:
+
+1
+2
+3
+
+The continue statement does not immediately exit the loop, but rather skips the rest of the loop body and goes to
+
+the top of the loop (including checking the condition).
+
+for (int i = 0; i < 6; i++)
+{
+    if (i % 2 == 0) // evaluates to true if i is even
+        continue; // this will immediately go back to the start of the loop
+    /* the next line will only be reached if the above "continue" statement
+       does not execute  */
+    std::cout << i << " is an odd number\n";
+}
+
+The above code will print out:
+
+GoalKicker.com – C++ Notes for Professionals
+
+50
+
+1 is an odd number
+3 is an odd number
+5 is an odd number
+
+Because such control ﬂow changes are sometimes diﬃcult for humans to easily understand, break and continue
+
+are used sparingly. More straightforward implementation are usually easier to read and understand. For example,
+
+the ﬁrst for loop with the break above might be rewritten as:
+
+for (int i = 0; i < 4; i++)
+{
+    std::cout << i << '\n';
+}
+
+The second example with continue might be rewritten as:
+
+for (int i = 0; i < 6; i++)
+{
+    if (i % 2 != 0) {
+        std::cout << i << " is an odd number\n";
+    }
+}
+
+Section 11.6: Declaration of variables in conditions
+
+In the condition of the for and while loops, it's also permitted to declare an object. This object will be considered to
+
+be in scope until the end of the loop, and will persist through each iteration of the loop:
+
+for (int i = 0; i < 5; ++i) {
+    do_something(i);
+}
+// i is no longer in scope.
+
+for (auto& a : some_container) {
+    a.do_something();
+}
+// a is no longer in scope.
+
+while(std::shared_ptr<Object> p = get_object()) {
+   p->do_something();
+}
+// p is no longer in scope.
+
+However, it is not permitted to do the same with a do...while loop; instead, declare the variable before the loop,
+
+and (optionally) enclose both the variable and the loop within a local scope if you want the variable to go out of
+
+scope after the loop ends:
+
+//This doesn't compile
+do {
+    s = do_something();
+} while (short s > 0);
+
+// Good
+short s;
+do {
+    s = do_something();
+} while (s > 0);
+
+GoalKicker.com – C++ Notes for Professionals
+
+51
+
+This is because the statement portion of a do...while loop (the loop's body) is evaluated before the expression
+portion (the while) is reached, and thus, any declaration in the expression will not be visible during the ﬁrst iteration
+
+of the loop.
+
+Section 11.7: Range-for over a sub-range
+
+Using range-base loops, you can loop over a sub-part of a given container or other range by generating a proxy
+
+object that qualiﬁes for range-based for loops.
+
+template<class Iterator, class Sentinel=Iterator>
+struct range_t {
+  Iterator b;
+  Sentinel e;
+  Iterator begin() const { return b; }
+  Sentinel end() const { return e; }
+  bool empty() const { return begin()==end(); }
+  range_t without_front( std::size_t count=1 ) const {
+    if (std::is_same< std::random_access_iterator_tag, typename
+std::iterator_traits<Iterator>::iterator_category >{} ) {
+      count = (std::min)(std::size_t(std::distance(b,e)), count);
+    }
+    return {std::next(b, count), e};
+  }
+  range_t without_back( std::size_t count=1 ) const {
+    if (std::is_same< std::random_access_iterator_tag, typename
+std::iterator_traits<Iterator>::iterator_category >{} ) {
+      count = (std::min)(std::size_t(std::distance(b,e)), count);
+    }
+    return {b, std::prev(e, count)};
+  }
+};
+
+template<class Iterator, class Sentinel>
+range_t<Iterator, Sentinel> range( Iterator b, Sentinal e ) {
+  return {b,e};
+}
+template<class Iterable>
+auto range( Iterable& r ) {
+  using std::begin; using std::end;
+  return range(begin(r),end(r));
+}
+
+template<class C>
+auto except_first( C& c ) {
+  auto r = range(c);
+  if (r.empty()) return r;
+  return r.without_front();
+}
+
+now we can do:
+
+std::vector<int> v = {1,2,3,4};
+
+for (auto i : except_first(v))
+  std::cout << i << '\n';
+
+and print out
+
+2
+
+GoalKicker.com – C++ Notes for Professionals
+
+52
+
+3
+4
+
+Be aware that intermediate objects generated in the for(:range_expression) part of the for loop will have
+
+expired by the time the for loop starts.
+
+GoalKicker.com – C++ Notes for Professionals
+
+53
+
+#### 15: Flow Control
+
+Chapter 15: Flow Control
+
+
+Section 15.1: case
+
+Introduces a case label of a switch statement. The operand must be a constant expression and match the switch
+
+condition in type. When the switch statement is executed, it will jump to the case label with operand equal to the
+
+condition, if any.
+
+char c = getchar();
+bool confirmed;
+switch (c) {
+  case 'y':
+    confirmed = true;
+    break;
+  case 'n':
+    confirmed = false;
+    break;
+  default:
+    std::cout << "invalid response!\n";
+    abort();
+}
+
+Section 15.2: switch
+
+According to the C++ standard,
+
+The switch statement causes control to be transferred to one of several statements depending on the
+
+value of a condition.
+
+The keyword switch is followed by a parenthesized condition and a block, which may contain case labels and an
+
+optional default label. When the switch statement is executed, control will be transferred either to a case label
+
+with a value matching that of the condition, if any, or to the default label, if any.
+
+The condition must be an expression or a declaration, which has either integer or enumeration type, or a class type
+
+with a conversion function to integer or enumeration type.
+
+char c = getchar();
+bool confirmed;
+switch (c) {
+  case 'y':
+    confirmed = true;
+    break;
+  case 'n':
+    confirmed = false;
+    break;
+  default:
+    std::cout << "invalid response!\n";
+    abort();
+}
+
+Section 15.3: catch
+
+The catch keyword introduces an exception handler, that is, a block into which control will be transferred when an
+exception of compatible type is thrown. The catch keyword is followed by a parenthesized exception declaration,
+
+GoalKicker.com – C++ Notes for Professionals
+
+77
+
+which is similar in form to a function parameter declaration: the parameter name may be omitted, and the ellipsis
+
+... is allowed, which matches any type. The exception handler will only handle the exception if its declaration is
+
+compatible with the type of the exception. For more details, see catching exceptions.
+
+try {
+    std::vector<int> v(N);
+    // do something
+} catch (const std::bad_alloc&) {
+    std::cout << "failed to allocate memory for vector!" << std::endl;
+} catch (const std::runtime_error& e) {
+    std::cout << "runtime error: " << e.what() << std::endl;
+} catch (...) {
+    std::cout << "unexpected exception!" << std::endl;
+    throw;
+}
+
+Section 15.4: throw
+
+1.
+
+When throw occurs in an expression with an operand, its eﬀect is to throw an exception, which is a copy of
+
+the operand.
+
+void print_asterisks(int count) {
+    if (count < 0) {
+        throw std::invalid_argument("count cannot be negative!");
+    }
+    while (count--) { putchar('*'); }
+}
+
+2.
+
+When throw occurs in an expression without an operand, its eﬀect is to rethrow the current exception. If
+
+there is no current exception, std::terminate is called.
+
+try {
+    // something risky
+} catch (const std::bad_alloc&) {
+    std::cerr << "out of memory" << std::endl;
+} catch (...) {
+    std::cerr << "unexpected exception" << std::endl;
+    // hope the caller knows how to handle this exception
+    throw;
+}
+
+3.
+
+When throw occurs in a function declarator, it introduces a dynamic exception speciﬁcation, which lists the
+
+types of exceptions that the function is allowed to propagate.
+
+// this function might propagate a std::runtime_error,
+// but not, say, a std::logic_error
+void risky() throw(std::runtime_error);
+// this function can't propagate any exceptions
+void safe() throw();
+
+Dynamic exception speciﬁcations are deprecated as of C++11.
+
+Note that the ﬁrst two uses of throw listed above constitute expressions rather than statements. (The type of a
+
+throw expression is void.) This makes it possible to nest them within expressions, like so:
+
+GoalKicker.com – C++ Notes for Professionals
+
+78
+
+unsigned int predecessor(unsigned int x) {
+    return (x > 0) ? (x - 1) : (throw std::invalid_argument("0 has no predecessor"));
+}
+
+Section 15.5: default
+
+In a switch statement, introduces a label that will be jumped to if the condition's value is not equal to any of the
+
+case labels' values.
+
+char c = getchar();
+bool confirmed;
+switch (c) {
+  case 'y':
+    confirmed = true;
+    break;
+  case 'n':
+    confirmed = false;
+    break;
+  default:
+    std::cout << "invalid response!\n";
+    abort();
+}
+
+Version ≥ C++11
+
+Deﬁnes a default constructor, copy constructor, move constructor, destructor, copy assignment operator, or move
+
+assignment operator to have its default behaviour.
+
+class Base {
+    // ...
+    // we want to be able to delete derived classes through Base*,
+    // but have the usual behaviour for Base's destructor.
+    virtual ~Base() = default;
+};
+
+Section 15.6: try
+
+The keyword try is followed by a block, or by a constructor initializer list and then a block (see here). The try block is
+
+followed by one or more catch blocks. If an exception propagates out of the try block, each of the corresponding
+
+catch blocks after the try block has the opportunity to handle the exception, if the types match.
+
+std::vector<int> v(N);     // if an exception is thrown here,
+                           // it will not be caught by the following catch block
+try {
+    std::vector<int> v(N); // if an exception is thrown here,
+                           // it will be caught by the following catch block
+    // do something with v
+} catch (const std::bad_alloc&) {
+    // handle bad_alloc exceptions from the try block
+}    
+
+Section 15.7: if
+
+Introduces an if statement. The keyword if must be followed by a parenthesized condition, which can be either an
+
+expression or a declaration. If the condition is truthy, the substatement after the condition will be executed.
+
+int x;
+
+GoalKicker.com – C++ Notes for Professionals
+
+79
+
+std::cout << "Please enter a positive number." << std::endl;
+std::cin >> x;
+if (x <= 0) {
+    std::cout << "You didn't enter a positive number!" << std::endl;
+    abort();
+}
+
+Section 15.8: else
+
+The ﬁrst substatement of an if statement may be followed by the keyword else. The substatement after the else
+
+keyword will be executed when the condition is falsey (that is, when the ﬁrst substatement is not executed).
+
+int x;
+std::cin >> x;
+if (x%2 == 0) {
+    std::cout << "The number is even\n";
+} else {
+    std::cout << "The number is odd\n";
+}
+
+Section 15.9: Conditional Structures: if, if..else
+
+if and else:
+
+it used to check whether the given expression returns true or false and acts as such:
+
+if (condition) statement
+
+the condition can be any valid C++ expression that returns something that be checked against truth/falsehood for
+
+example:
+
+if (true) { /* code here */ }  // evaluate that true is true and execute the code in the brackets
+if (false) { /* code here */ } // always skip the code since false is always false
+
+the condition can be anything, a function, a variable, or a comparison for example
+
+if(istrue()) { } // evaluate the function, if it returns true, the if will execute the code
+if(isTrue(var)) { } //evaluate the return of the function after passing the argument var
+if(a == b) { } // this will evaluate the return of the experssion (a==b) which will be true if
+equal and false if unequal
+if(a) { } //if a is a boolean type, it will evaluate for its value, if it's an integer, any non
+zero value will be true,
+
+if we want to check for a multiple expressions we can do it in two ways :
+
+using binary operators :
+
+if (a && b) { } // will be true only if both a and b are true (binary operators are outside the
+scope here
+if (a || b ) { } //true if a or b is true
+
+using if/ifelse/else:
+
+for a simple switch either if or else
+
+if (a== "test") {
+
+GoalKicker.com – C++ Notes for Professionals
+
+80
+
+    //will execute if a is a string "test"
+} else {
+    // only if the first failed, will execute
+}
+
+for multiple choices :
+
+if (a=='a') {
+// if a is a char valued 'a'  
+} else if (a=='b') {
+// if a is a char valued 'b'
+} else if (a=='c') {
+// if a is a char valued 'c'
+} else {
+//if a is none of the above
+}
+
+however it must be noted that you should use 'switch' instead if your code checks for the same variable's value
+
+Section 15.10: goto
+
+Jumps to a labelled statement, which must be located in the current function.
+
+bool f(int arg) {
+    bool result = false;
+    hWidget widget = get_widget(arg);
+    if (!g()) {
+        // we can't continue, but must do cleanup still
+        goto end;
+    }
+    // ...
+    result = true;
+  end:
+    release_widget(widget);
+    return result;
+}
+
+Section 15.11: Jump statements : break, continue, goto, exit
+
+The break instruction:
+
+Using break we can leave a loop even if the condition for its end is not fulﬁlled. It can be used to end an inﬁnite
+
+loop, or to force it to end before its natural end
+
+The syntax is
+
+break;
+
+Example: we often use break in switch cases,ie once a case i switch is satisﬁed then the code block of that
+condition is executed .
+
+switch(conditon){
+case 1: block1;
+case 2: block2;
+case 3: block3;
+default: blockdefault;
+}
+
+GoalKicker.com – C++ Notes for Professionals
+
+81
+
+in this case if case 1 is satisﬁed then block 1 is executed , what we really want is only the block1 to be processed but
+
+instead once the block1 is processed remaining blocks,block2,block3 and blockdefault are also processed even
+
+though only case 1 was satiﬁed.To avoid this we use break at the end of each block like :
+
+switch(condition){
+case 1: block1;
+        break;
+case 2: block2;
+        break;
+case 3: block3;
+        break;
+default: blockdefault;
+        break;
+}
+
+so only one block is processed and the control moves out of the switch loop.
+
+break can also be used in other conditional and non conditional loops like if,while,for etc;
+
+example:
+
+if(condition1){
+   ....
+   if(condition2){
+    .......
+    break;
+    }
+ ...
+}
+
+The continue instruction:
+
+The continue instruction causes the program to skip the rest of the loop in the present iteration as if the end of the
+
+statement block would have been reached, causing it to jump to the following iteration.
+
+The syntax is
+
+continue;
+
+Example consider the following :
+
+for(int i=0;i<10;i++){
+if(i%2==0)
+continue;
+cout<<"\n @"<<i;
+}
+
+which produces the output:
+
+ @1
+ @3
+ @5
+ @7
+ @9
+
+i this code whenever the condition i%2==0 is satisﬁed continue is processed,this causes the compiler to skip all the
+remaining code( printing @ and i) and increment/decrement statement of the loop gets executed.
+
+GoalKicker.com – C++ Notes for Professionals
+
+82
+
+#### 117: Scopes
+
+Chapter 117: Scopes
+
+
+ ................................................................................................................................................. 
+
+585
+
+Section 117.1: Global variables 
+Section 117.2: Simple block scope
 
 ## <a name="chapter-2-theccompilationexecutionmodel"></a>CHAPTER 2: THE C++ COMPILATION & EXECUTION MODEL
 
@@ -7097,6 +8903,1829 @@ int main() {
 ```
 
 ---
+
+
+
+---
+### Professional Notes: Standard Library & I/O
+
+#### 8: Arrays
+
+Chapter 8: Arrays
+
+
+Arrays are elements of the same type placed in adjoining memory locations. The elements can be individually
+
+referenced by a unique identiﬁer with an added index.
+
+This allows you to declare multiple variable values of a speciﬁc type and access them individually without needing
+
+to declare a variable for each value.
+
+Section 8.1: Array initialization
+
+An array is just a block of sequential memory locations for a speciﬁc type of variable. Arrays are allocated the same
+
+way as normal variables, but with square brackets appended to its name [] that contain the number of elements
+
+that ﬁt into the array memory.
+
+The following example of an array uses the typ int, the variable name arrayOfInts, and the number of elements
+
+[5] that the array has space for:
+
+int arrayOfInts[5];
+
+An array can be declared and initialized at the same time like this
+
+int arrayOfInts[5] = {10, 20, 30, 40, 50};
+
+When initializing an array by listing all of its members, it is not necessary to include the number of elements inside
+
+the square brackets. It will be automatically calculated by the compiler. In the following example, it's 5:
+
+int arrayOfInts[] = {10, 20, 30, 40, 50};
+
+It is also possible to initialize only the ﬁrst elements while allocating more space. In this case, deﬁning the length in
+
+brackets is mandatory. The following will allocate an array of length 5 with partial initialization, the compiler
+
+initializes all remaining elements with the standard value of the element type, in this case zero.
+
+int arrayOfInts[5] = {10,20}; // means 10, 20, 0, 0, 0
+
+Arrays of other basic data types may be initialized in the same way.
+
+char arrayOfChars[5]; // declare the array and allocate the memory, don't initialize
+
+char arrayOfChars[5] = { 'a', 'b', 'c', 'd', 'e' } ; //declare and initialize
+
+double arrayOfDoubles[5] = {1.14159, 2.14159, 3.14159, 4.14159, 5.14159};
+
+string arrayOfStrings[5] = { "C++", "is", "super", "duper", "great!"};
+
+It is also important to take note that when accessing array elements, the array's element index(or position) starts
+
+from 0.
+
+int array[5] = { 10/*Element no.0*/, 20/*Element no.1*/, 30, 40, 50/*Element no.4*/};
+std::cout << array[4]; //outputs 50
+std::cout << array[0]; //outputs 10
+
+GoalKicker.com – C++ Notes for Professionals
+
+28
+
+Section 8.2: A ﬁxed size raw array matrix (that is, a 2D raw
+array)
+
+// A fixed size raw array matrix (that is, a 2D raw array).
+#include <iostream>
+#include <iomanip>
+using namespace std;
+
+auto main() -> int
+{
+    int const   n_rows  = 3;
+    int const   n_cols  = 7;
+    int const   m[n_rows][n_cols] =             // A raw array matrix.
+    {
+        {  1,  2,  3,  4,  5,  6,  7 },
+        {  8,  9, 10, 11, 12, 13, 14 },
+        { 15, 16, 17, 18, 19, 20, 21 }
+    };
+
+    for( int y = 0; y < n_rows; ++y )
+    {
+        for( int x = 0; x < n_cols; ++x )
+        {
+            cout << setw( 4 ) << m[y][x];       // Note: do NOT use m[y,x]!
+        }
+        cout << '\n';
+    }
+}
+
+Output:
+
+1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21
+
+C++ doesn't support special syntax for indexing a multi-dimensional array. Instead such an array is viewed as an
+
+array of arrays (possibly of arrays, and so on), and the ordinary single index notation [i] is used for each level. In
+
+the example above m[y] refers to row y of m, where y is a zero-based index. Then this row can be indexed in turn,
+
+e.g. m[y][x], which refers to the xth item – or column – of row y.
+
+I.e. the last index varies fastest, and in the declaration the range of this index, which here is the number of columns
+
+per row, is the last and “innermost” size speciﬁed.
+
+Since C++ doesn't provide built-in support for dynamic size arrays, other than dynamic allocation, a dynamic size
+
+matrix is often implemented as a class. Then the raw array matrix indexing notation m[y][x] has some cost, either
+
+by exposing the implementation (so that e.g. a view of a transposed matrix becomes practically impossible) or by
+
+adding some overhead and slight inconvenience when it's done by returning a proxy object from operator[]. And
+
+so the indexing notation for such an abstraction can and will usually be diﬀerent, both in look-and-feel and in the
+
+order of indices, e.g. m(x,y) or m.at(x,y) or m.item(x,y).
+
+Section 8.3: Dynamically sized raw array
+
+// Example of raw dynamic size array. It's generally better to use std::vector.
+#include <algorithm>            // std::sort
+#include <iostream>
+using namespace std;
+
+auto int_from( istream& in ) -> int { int x; in >> x; return x; }
+
+GoalKicker.com – C++ Notes for Professionals
+
+29
+
+   
+auto main()
+    -> int
+{
+    cout << "Sorting n integers provided by you.\\n";
+    cout << "n? ";
+    int const   n   = int_from( cin );
+    int*        a   = new int[n];       // ← Allocation of array of n items.
+
+    for( int i = 1; i <= n; ++i )
+    {
+        cout << "The #" << i << " number, please: ";
+        a[i-1] = int_from( cin );
+    }
+
+    sort( a, a + n );
+    for( int i = 0; i < n; ++i ) { cout << a[i] << ' '; }
+    cout << '\\n';
+
+    delete[] a;
+}
+
+A program that declares an array T a[n]; where n is determined a run-time, can compile with certain compilers
+that support C99 variadic length arrays (VLAs) as a language extension. But VLAs are not supported by standard C++.
+
+This example shows how to manually allocate a dynamic size array via a new[]-expression,
+
+int*        a   = new int[n];       // ← Allocation of array of n items.
+
+… then use it, and ﬁnally deallocate it via a delete[]-expression:
+
+delete[] a;
+
+The array allocated here has indeterminate values, but it can be zero-initialized by just adding an empty
+parenthesis (), like this: new int[n](). More generally, for arbitrary item type, this performs a value-initialization.
+
+As part of a function down in a call hierarchy this code would not be exception safe, since an exception before the
+
+delete[] expression (and after the new[]) would cause a memory leak. One way to address that issue is to
+
+automate the cleanup via e.g. a std::unique_ptr smart pointer. But a generally better way to address it is to just
+
+use a std::vector: that's what std::vector is there for.
+
+Section 8.4: Array size: type safe at compile time
+
+#include      // size_t, ptrdiff_t
+
+//----------------------------------- Machinery:
+
+using Size = ptrdiff_t;
+
+template< class Item, size_t n >
+constexpr auto n_items( Item (&)[n] ) noexcept
+-> Size
+{ return n; }
+
+//----------------------------------- Usage:
+
+#include
+using namespace std;
+auto main()
+
+GoalKicker.com – C++ Notes for Professionals
+
+30
+
+   
+   
+-> int
+{
+int const   a[]     = {3, 1, 4, 1, 5, 9, 2, 6, 5, 4};
+Size const  n       = n_items( a );
+int         b[n]    = {};       // An array of the same size as a.
+
+(void) b;
+cout <}
+
+The C idiom for array size, sizeof(a)/sizeof(a[0]), will accept a pointer as argument and will then generally yield
+an incorrect result.
+
+For C++11
+
+using C++11 you can do:
+
+std::extent<decltype(MyArray)>::value;
+
+Example:
+
+char MyArray[] = { 'X','o','c','e' };
+const auto n = std::extent<decltype(MyArray)>::value;
+std::cout << n << "\n"; // Prints 4
+
+Up till C++17 (forthcoming as of this writing) C++ had no built-in core language or standard library utility to obtain
+the size of an array, but this can be implemented by passing the array by reference to a function template, as shown
+
+above. Fine but important point: the template size parameter is a size_t, somewhat inconsistent with the signed
+
+Size function result type, in order to accommodate the g++ compiler which sometimes insists on size_t for
+
+template matching.
+
+With C++17 and later one may instead use std::size, which is specialized for arrays.
+
+Section 8.5: Expanding dynamic size array by using
+std::vector
+
+// Example of std::vector as an expanding dynamic size array.
+#include <algorithm>            // std::sort
+#include <iostream>
+#include <vector>               // std::vector
+using namespace std;
+
+int int_from( std::istream& in ) { int x = 0; in >> x; return x; }
+
+int main()
+{
+    cout << "Sorting integers provided by you.\n";
+    cout << "You can indicate EOF via F6 in Windows or Ctrl+D in Unix-land.\n";
+    vector<int> a;      // ← Zero size by default.
+
+    while( cin )
+    {
+        cout << "One number, please, or indicate EOF: ";
+        int const x = int_from( cin );
+        if( !cin.fail() ) { a.push_back( x ); }  // Expands as necessary.
+    }
+
+    sort( a.begin(), a.end() );
+
+GoalKicker.com – C++ Notes for Professionals
+
+31
+
+    int const n = a.size();
+    for( int i = 0; i < n; ++i ) { cout << a[i] << ' '; }
+    cout << '\n';
+}
+
+std::vector is a standard library class template that provides the notion of a variable size array. It takes care of all
+the memory management, and the buﬀer is contiguous so a pointer to the buﬀer (e.g. &v[0] or v.data()) can be
+passed to API functions requiring a raw array. A vector can even be expanded at run time, via e.g. the push_back
+
+member function that appends an item.
+
+The complexity of the sequence of n push_back operations, including the copying or moving involved in the vector
+
+expansions, is amortized O(n). “Amortized”: on average.
+
+Internally this is usually achieved by the vector doubling its buﬀer size, its capacity, when a larger buﬀer is needed.
+E.g. for a buﬀer starting out as size 1, and being repeatedly doubled as needed for n=17 push_back calls, this
+
+involves 1 + 2 + 4 + 8 + 16 = 31 copy operations, which is less than 2×n = 34. And more generally the sum of this
+
+sequence can't exceed 2×n.
+
+Compared to the dynamic size raw array example, this vector-based code does not require the user to supply (and
+
+know) the number of items up front. Instead the vector is just expanded as necessary, for each new item value
+
+speciﬁed by the user.
+
+Section 8.6: A dynamic size matrix using std::vector for
+storage
+
+Unfortunately as of C++14 there's no dynamic size matrix class in the C++ standard library. Matrix classes that
+
+support dynamic size are however available from a number of 3rd party libraries, including the Boost Matrix library
+
+(a sub-library within the Boost library).
+
+If you don't want a dependency on Boost or some other library, then one poor man's dynamic size matrix in C++ is
+
+just like
+
+vector<vector<int>> m( 3, vector<int>( 7 ) );
+
+… where vector is std::vector. The matrix is here created by copying a row vector n times where n is the number
+
+of rows, here 3. It has the advantage of providing the same m[y][x] indexing notation as for a ﬁxed size raw array
+
+matrix, but it's a bit ineﬃcient because it involves a dynamic allocation for each row, and it's a bit unsafe because
+
+it's possible to inadvertently resize a row.
+
+A more safe and eﬃcient approach is to use a single vector as storage for the matrix, and map the client code's (x, y)
+
+to a corresponding index in that vector:
+
+// A dynamic size matrix using std::vector for storage.
+
+//--------------------------------------------- Machinery:
+#include         // std::copy
+#include          // assert
+#include  // std::initializer_list
+#include            // std::vector
+#include          // ptrdiff_t
+
+namespace my {
+using Size = ptrdiff_t;
+using std::initializer_list;
+using std::vector;
+
+GoalKicker.com – C++ Notes for Professionals
+
+32
+
+template< class Item >
+class Matrix
+{
+private:
+vector    items_;
+Size            n_cols_;
+
+auto index_for( Size const x, Size const y ) const
+-> Size
+{ return y*n_cols_ + x; }
+
+public:
+auto n_rows() const -> Size { return items_.size()/n_cols_; }
+auto n_cols() const -> Size { return n_cols_; }
+
+auto item( Size const x, Size const y )
+-> Item&
+{ return items_[index_for(x, y)]; }
+
+auto item( Size const x, Size const y ) const
+-> Item const&
+{ return items_[index_for(x, y)]; }
+
+Matrix(): n_cols_( 0 ) {}
+
+Matrix( Size const n_cols, Size const n_rows )
+: items_( n_cols*n_rows )
+, n_cols_( n_cols )
+{}
+
+Matrix( initializer_list< initializer_list > const& values )
+: items_()
+, n_cols_( values.size() == 0? 0 : values.begin()->size() )
+{
+for( auto const& row : values )
+{
+assert( Size( row.size() ) == n_cols_ );
+items_.insert( items_.end(), row.begin(), row.end() );
+}
+}
+};
+}  // namespace my
+
+//--------------------------------------------- Usage:
+using my::Matrix;
+
+auto some_matrix()
+-> Matrix
+{
+return
+{
+{  1,  2,  3,  4,  5,  6,  7 },
+{  8,  9, 10, 11, 12, 13, 14 },
+{ 15, 16, 17, 18, 19, 20, 21 }
+};
+}
+
+#include
+#include
+using namespace std;
+auto main() -> int
+{
+Matrix const m = some_matrix();
+assert( m.n_cols() == 7 );
+
+GoalKicker.com – C++ Notes for Professionals
+
+33
+
+assert( m.n_rows() == 3 );
+for( int y = 0, y_end = m.n_rows(); y < y_end; ++y )
+{
+for( int x = 0, x_end = m.n_cols(); x < x_end; ++x )
+{
+cout <← Note: not `m[y][x]`!
+}
+cout <}
+}
+
+Output:
+
+1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21
+
+The above code is not industrial grade: it's designed to show the basic principles, and serve the needs of students
+
+learning C++.
+
+For example, one may deﬁne operator() overloads to simplify the indexing notation.
+
+GoalKicker.com – C++ Notes for Professionals
+
+34
+
+#### 9: Iterators
+
+Chapter 9: Iterators
+
+
+Section 9.1: Overview
+
+Iterators are Positions
+
+Iterators are a means of navigating and operating on a sequence of elements and are a generalized extension of
+
+pointers. Conceptually it is important to remember that iterators are positions, not elements. For example, take the
+
+following sequence:
+
+A B C
+
+The sequence contains three elements and four positions
+
++---+---+---+---+
+| A | B | C |   |
++---+---+---+---+
+
+Elements are things within a sequence. Positions are places where meaningful operations can happen to the
+sequence. For example, one inserts into a position, before or after element A, not into an element. Even deletion of
+
+an element (erase(A)) is done by ﬁrst ﬁnding its position, then deleting it.
+
+From Iterators to Values
+
+To convert from a position to a value, an iterator is dereferenced:
+
+auto my_iterator = my_vector.begin(); // position
+auto my_value = *my_iterator; // value
+
+One can think of an iterator as dereferencing to the value it refers to in the sequence. This is especially useful in
+
+understanding why you should never dereference the end() iterator in a sequence:
+
++---+---+---+---+
+| A | B | C |   |
++---+---+---+---+
+↑           ↑
+|           +-- An iterator here has no value. Do not dereference it!
++-------------- An iterator here dereferences to the value A.
+
+In all the sequences and containers found in the C++ standard library, begin() will return an iterator to the ﬁrst
+position, and end() will return an iterator to one past the last position (not the last position!). Consequently, the
+
+names of these iterators in algorithms are oftentimes labelled first and last:
+
++---+---+---+---+
+| A | B | C |   |
++---+---+---+---+
+↑           ↑
+|           |
++- first    +- last
+
+It is also possible to obtain an iterator to any sequence, because even an empty sequence contains at least one
+
+GoalKicker.com – C++ Notes for Professionals
+
+35
+
+position:
+
++---+
+|   |
++---+
+
+In an empty sequence, begin() and end() will be the same position, and neither can be dereferenced:
+
++---+
+|   |
++---+
+  ↑
+  |
+  +- empty_sequence.begin()
+  |
+  +- empty_sequence.end()
+
+The alternative visualization of iterators is that they mark the positions between elements:
+
++---+---+---+
+| A | B | C |
++---+---+---+
+↑   ^   ^   ↑
+|           |
++- first    +- last
+
+and dereferencing an iterator returns a reference to the element coming after the iterator. Some situations where
+
+this view is particularly useful are:
+
+insert operations will insert elements into the position indicated by the iterator,
+
+erase operations will return an iterator corresponding to the same position as the one passed in,
+
+an iterator and its corresponding reverse iterator are located in the same .position between elements
+
+Invalid Iterators
+
+An iterator becomes invalidated if (say, in the course of an operation) its position is no longer a part of a sequence.
+
+An invalidated iterator cannot be dereferenced until it has been reassigned to a valid position. For example:
+
+std::vector<int>::iterator first;
+{
+    std::vector<int> foo;
+    first = foo.begin(); // first is now valid
+} // foo falls out of scope and is destroyed
+// At this point first is now invalid
+
+The many algorithms and sequence member functions in the C++ standard library have rules governing when
+
+iterators are invalidated. Each algorithm is diﬀerent in the way they treat (and invalidate) iterators.
+
+Navigating with Iterators
+
+As we know, iterators are for navigating sequences. In order to do that an iterator must migrate its position
+
+throughout the sequence. Iterators can advance forward in the sequence and some can advance backwards:
+
+auto first = my_vector.begin();
+++first;                                             // advance the iterator 1 position
+
+GoalKicker.com – C++ Notes for Professionals
+
+36
+
+std::advance(first, 1);                              // advance the iterator 1 position
+first = std::next(first);                            // returns iterator to the next element
+std::advance(first, -1);                             // advance the iterator 1 position backwards
+first = std::next(first, 20);                        // returns iterator to the element 20 position
+forward
+first = std::prev(first, 5);                         // returns iterator to the element 5 position
+backward
+auto dist = std::distance(my_vector.begin(), first); // returns distance between two iterators.
+
+Note, second argument of std::distance should be reachable from the ﬁrst one(or, in other words first should be
+
+less or equal than second).
+
+Even though you can perform arithmetic operators with iterators, not all operations are deﬁned for all types of
+
+iterators. a = b + 3; would work for Random Access Iterators, but wouldn't work for Forward or Bidirectional
+
+Iterators, which still can be advanced by 3 position with something like b = a; ++b; ++b; ++b;. So it is
+
+recommended to use special functions in case you are not sure what is iterator type (for example, in a template
+
+function accepting iterator).
+
+Iterator Concepts
+
+The C++ standard describes several diﬀerent iterator concepts. These are grouped according to how they behave in
+the sequences they refer to. If you know the concept an iterator models (behaves like), you can be assured of the
+behavior of that iterator regardless of the sequence to which it belongs. They are often described in order from the
+
+most to least restrictive (because the next iterator concept is a step better than its predecessor):
+
+Input Iterators : Can be dereferenced only once per position. Can only advance, and only one position at a
+
+time.
+
+Forward Iterators : An input iterator that can be dereferenced any number of times.
+Bidirectional Iterators : A forward iterator that can also advance backwards one position at a time.
+
+Random Access Iterators : A bidirectional iterator that can advance forwards or backwards any number of
+
+positions at a time.
+
+Contiguous Iterators (since C++17) : A random access iterator that guaranties that underlying data is
+
+contiguous in memory.
+
+Algorithms can vary depending on the concept modeled by the iterators they are given. For example, although
+
+random_shuffle can be implemented for forward iterators, a more eﬃcient variant that requires random access
+
+iterators could be provided.
+
+Iterator traits
+
+Iterator traits provide uniform interface to the properties of iterators. They allow you to retrieve value, diﬀerence,
+
+pointer, reference types and also category of iterator:
+
+template<class Iter>
+Iter find(Iter first, Iter last, typename std::iterator_traits<Iter>::value_type val)  {
+    while (first != last) {
+        if (*first == val)
+            return first;
+        ++first;
+    }
+    return last;
+}
+
+Category of iterator can be used to specialize algorithms:
+
+template<class BidirIt>
+
+GoalKicker.com – C++ Notes for Professionals
+
+37
+
+void test(BidirIt a, std::bidirectional_iterator_tag)  {
+    std::cout << "Bidirectional iterator is used" << std::endl;
+}
+
+template<class ForwIt>
+void test(ForwIt a, std::forward_iterator_tag)  {
+    std::cout << "Forward iterator is used" << std::endl;
+}
+
+template<class Iter>
+void test(Iter a)  {
+    test(a, typename std::iterator_traits<Iter>::iterator_category());
+}
+
+Categories of iterators are basically iterators concepts, except Contiguous Iterators don't have their own tag, since it
+
+was found to break code.
+
+Section 9.2: Vector Iterator
+
+begin returns an iterator to the ﬁrst element in the sequence container.
+
+end returns an iterator to the ﬁrst element past the end.
+
+If the vector object is const, both begin and end return a const_iterator. If you want a const_iterator to be
+
+returned even if your vector is not const, you can use cbegin and cend.
+
+Example:
+
+#include <vector>
+#include <iostream>
+
+int main() {
+    std::vector<int> v = { 1, 2, 3, 4, 5 };  //intialize vector using an initializer_list
+
+    for (std::vector<int>::iterator it = v.begin(); it != v.end(); ++it) {
+        std::cout << *it << " ";
+    }
+
+    return 0;
+}
+
+Output:
+
+1 2 3 4 5
+
+Section 9.3: Map Iterator
+
+An iterator to the ﬁrst element in the container.
+
+If a map object is const-qualiﬁed, the function returns a const_iterator. Otherwise, it returns an iterator.
+
+// Create a map and insert some values
+std::map<char,int> mymap;
+mymap['b'] = 100;
+mymap['a'] = 200;
+mymap['c'] = 300;
+
+GoalKicker.com – C++ Notes for Professionals
+
+38
+
+ 
+ 
+// Iterate over all tuples
+for (std::map<char,int>::iterator it = mymap.begin(); it != mymap.end(); ++it)
+    std::cout << it->first << " => " << it->second << '\n';
+
+Output:
+
+a => 200
+
+b => 100
+
+c => 300
+
+Section 9.4: Reverse Iterators
+
+If we want to iterate backwards through a list or vector we can use a reverse_iterator. A reverse iterator is made
+
+from a bidirectional, or random access iterator which it keeps as a member which can be accessed through base().
+
+To iterate backwards use rbegin() and rend() as the iterators for the end of the collection, and the start of the
+
+collection respectively.
+
+For instance, to iterate backwards use:
+
+std::vector<int> v{1, 2, 3, 4, 5};
+for (std::vector<int>::reverse_iterator it = v.rbegin(); it != v.rend(); ++it)
+{
+    cout << *it;
+} // prints 54321
+
+A reverse iterator can be converted to a forward iterator via the base() member function. The relationship is that
+
+the reverse iterator references one element past the base() iterator:
+
+std::vector<int>::reverse_iterator r = v.rbegin();
+std::vector<int>::iterator i = r.base();
+assert(&*r == &*(i-1)); // always true if r, (i-1) are dereferenceable
+                        // and are not proxy iterators
+
+ +---+---+---+---+---+---+---+
+ |   | 1 | 2 | 3 | 4 | 5 |   |
+ +---+---+---+---+---+---+---+
+   ↑   ↑               ↑   ↑
+   |   |               |   |
+rend() |         rbegin()  end()
+       |                   rbegin().base()
+     begin()
+     rend().base()
+
+In the visualization where iterators mark positions between elements, the relationship is simpler:
+
+  +---+---+---+---+---+
+| 1 | 2 | 3 | 4 | 5 |
++---+---+---+---+---+
+↑                   ↑
+|                   |
+|                 end()
+|                 rbegin()
+begin()             rbegin().base()
+rend()
+rend().base()
+
+GoalKicker.com – C++ Notes for Professionals
+
+39
+
+Section 9.5: Stream Iterators
+
+Stream iterators are useful when we need to read a sequence or print formatted data from a container:
+
+// Data stream. Any number of various whitespace characters will be OK.
+std::istringstream istr("1\t 2     3 4");
+std::vector<int> v;
+
+// Constructing stream iterators and copying data from stream into vector.
+std::copy(
+    // Iterator which will read stream data as integers.
+    std::istream_iterator<int>(istr),
+    // Default constructor produces end-of-stream iterator.
+    std::istream_iterator<int>(),
+    std::back_inserter(v));
+
+// Print vector contents.
+std::copy(v.begin(), v.end(),
+    //Will print values to standard output as integers delimeted by " -- ".
+    std::ostream_iterator<int>(std::cout, " -- "));
+
+The example program will print 1 -- 2 -- 3 -- 4 -- to standard output.
+
+Section 9.6: C Iterators (Pointers)
+
+// This creates an array with 5 values.
+const int array[] = { 1, 2, 3, 4, 5 };
+
+#ifdef BEFORE_CPP11
+
+// You can use `sizeof` to determine how many elements are in an array.
+const int* first = array;
+const int* afterLast = first + sizeof(array) / sizeof(array[0]);
+
+// Then you can iterate over the array by incrementing a pointer until
+// it reaches past the end of our array.
+for (const int* i = first; i < afterLast; ++i) {
+    std::cout << *i << std::endl;
+}
+
+#else
+
+// With C++11, you can let the STL compute the start and end iterators:
+for (auto i = std::begin(array); i != std::end(array); ++i) {
+    std::cout << *i << std::endl;
+}
+
+#endif
+
+This code would output the numbers 1 through 5, one on each line like this:
+
+1
+
+2
+
+3
+
+4
+
+GoalKicker.com – C++ Notes for Professionals
+
+40
+
+5
+
+Breaking It Down
+
+const int array[] = { 1, 2, 3, 4, 5 };
+
+This line creates a new integer array with 5 values. C arrays are just pointers to memory where each value is stored
+
+together in a contiguous block.
+
+const int* first = array;
+const int* afterLast = first + sizeof(array) / sizeof(array[0]);
+
+These lines create two pointers. The ﬁrst pointer is given the value of the array pointer, which is the address of the
+
+ﬁrst element in the array. The sizeof operator when used on a C array returns the size of the array in bytes.
+
+Divided by the size of an element this gives the number of elements in the array. We can use this to ﬁnd the
+address of the block after the array.
+
+for (const int* i = first; i < afterLast; ++i) {
+
+Here we create a pointer which we will use as an iterator. It is initialized with the address of the ﬁrst element we
+
+want to iterate over, and we'll continue to iterate as long as i is less than afterLast, which means as long as i is
+
+pointing to an address within array.
+
+    std::cout << *i << std::endl;
+
+Finally, within the loop we can access the value our iterator i is pointing to by dereferencing it. Here the
+
+dereference operator * returns the value at the address in i.
+
+Section 9.7: Write your own generator-backed iterator
+
+A common pattern in other languages is having a function that produces a "stream" of objects, and being able to
+
+use loop-code to loop over it.
+
+We can model this in C++ as
+
+template<class T>
+struct generator_iterator {
+  using difference_type=std::ptrdiff_t;
+  using value_type=T;
+  using pointer=T*;
+  using reference=T;
+  using iterator_category=std::input_iterator_tag;
+  std::optional<T> state;
+  std::function< std::optional<T>() > operation;
+  // we store the current element in "state" if we have one:
+  T operator*() const {
+    return *state;
+  }
+  // to advance, we invoke our operation.  If it returns a nullopt
+  // we have reached the end:
+  generator_iterator& operator++() {
+    state = operation();
+    return *this;        
+  }
+  generator_iterator operator++(int) {
+    auto r = *this;
+
+GoalKicker.com – C++ Notes for Professionals
+
+41
+
+    ++(*this);
+    return r;
+  }
+  // generator iterators are only equal if they are both in the "end" state:
+  friend bool operator==( generator_iterator const& lhs, generator_iterator const& rhs ) {
+    if (!lhs.state && !rhs.state) return true;
+    return false;
+  }
+  friend bool operator!=( generator_iterator const& lhs, generator_iterator const& rhs ) {
+    return !(lhs==rhs);
+  }
+  // We implicitly construct from a std::function with the right signature:
+  generator_iterator( std::function< std::optional<T>() > f ):operation(std::move(f))
+  {
+    if (operation)
+      state = operation();
+  }
+  // default all special member functions:
+  generator_iterator( generator_iterator && ) =default;
+  generator_iterator( generator_iterator const& ) =default;
+  generator_iterator& operator=( generator_iterator && ) =default;
+  generator_iterator& operator=( generator_iterator const& ) =default;
+  generator_iterator() =default;
+};
+
+live example.
+
+We store the generated element early so we can more easily detect if we are already at the end.
+
+As the function of an end generator iterator is never used, we can create a range of generator iterators by only
+
+copying the std::function once. A default constructed generator iterator compares equal to itself, and to all other
+
+end-generator-iterators.
+
+GoalKicker.com – C++ Notes for Professionals
+
+42
+
+#### 12: File I O
+
+Chapter 12: File I/O
+
+
+C++ ﬁle I/O is done via streams. The key abstractions are:
+
+std::istream for reading text.
+
+std::ostream for writing text.
+
+std::streambuf for reading or writing characters.
+
+Formatted input uses operator>>.
+
+Formatted output uses operator<<.
+
+Streams use std::locale, e.g., for details of the formatting and for translation between external encodings and the
+
+internal encoding.
+
+More on streams: <iostream> Library
+
+Section 12.1: Writing to a ﬁle
+
+There are several ways to write to a ﬁle. The easiest way is to use an output ﬁle stream (ofstream) together with the
+
+stream insertion operator (<<):
+
+std::ofstream os("foo.txt");
+if(os.is_open()){
+    os << "Hello World!";
+}
+
+Instead of <<, you can also use the output ﬁle stream's member function write():
+
+std::ofstream os("foo.txt");
+if(os.is_open()){
+    char data[] = "Foo";
+
+    // Writes 3 characters from data -> "Foo".
+    os.write(data, 3);
+}
+
+After writing to a stream, you should always check if error state ﬂag badbit has been set, as it indicates whether the
+
+operation failed or not. This can be done by calling the output ﬁle stream's member function bad():
+
+os << "Hello Badbit!"; // This operation might fail for any reason.
+if (os.bad())
+    // Failed to write!
+
+Section 12.2: Opening a ﬁle
+
+Opening a ﬁle is done in the same way for all 3 ﬁle streams (ifstream, ofstream, and fstream).
+
+You can open the ﬁle directly in the constructor:
+
+std::ifstream ifs("foo.txt");  // ifstream: Opens file "foo.txt" for reading only.
+
+std::ofstream ofs("foo.txt");  // ofstream: Opens file "foo.txt" for writing only.
+
+GoalKicker.com – C++ Notes for Professionals
+
+54
+
+std::fstream iofs("foo.txt");  // fstream:  Opens file "foo.txt" for reading and writing.
+
+Alternatively, you can use the ﬁle stream's member function open():
+
+std::ifstream ifs;
+ifs.open("bar.txt");           // ifstream: Opens file "bar.txt" for reading only.
+
+std::ofstream ofs;
+ofs.open("bar.txt");           // ofstream: Opens file "bar.txt" for writing only.
+
+std::fstream iofs;
+iofs.open("bar.txt");          // fstream:  Opens file "bar.txt" for reading and writing.
+
+You should always check if a ﬁle has been opened successfully (even when writing). Failures can include: the ﬁle
+doesn't exist, ﬁle hasn't the right access rights, ﬁle is already in use, disk errors occurred, drive disconnected ...
+
+Checking can be done as follows:
+
+// Try to read the file 'foo.txt'.
+std::ifstream ifs("fooo.txt");  // Note the typo; the file can't be opened.
+
+// Check if the file has been opened successfully.
+if (!ifs.is_open()) {
+    // The file hasn't been opened; take appropriate actions here.
+    throw CustomException(ifs, "File could not be opened");
+}
+
+When ﬁle path contains backslashes (for example, on Windows system) you should properly escape them:
+
+// Open the file 'c:\\folder\\foo.txt' on Windows.
+std::ifstream ifs("c:\\\\folder\\\\foo.txt"); // using escaped backslashes
+
+Version ≥ C++11
+
+or use raw literal:
+
+// Open the file 'c:\\folder\\foo.txt' on Windows.
+std::ifstream ifs(R"(c:\\folder\\foo.txt)"); // using raw literal
+
+or use forward slashes instead:
+
+// Open the file 'c:\\folder\\foo.txt' on Windows.
+std::ifstream ifs("c:/folder/foo.txt");
+
+Version ≥ C++11
+
+If you want to open ﬁle with non-ASCII characters in path on Windows currently you can use non-standard wide
+character path argument:
+
+// Open the file 'пример\\foo.txt' on Windows.
+std::ifstream ifs(LR"(пример\\foo.txt)"); // using wide characters with raw literal
+
+Section 12.3: Reading from a ﬁle
+
+There are several ways to read data from a ﬁle.
+
+If you know how the data is formatted, you can use the stream extraction operator (>>). Let's assume you have a ﬁle
+named foo.txt which contains the following data:
+
+GoalKicker.com – C++ Notes for Professionals
+
+55
+
+John Doe 25 4 6 1987
+Jane Doe 15 5 24 1976
+
+Then you can use the following code to read that data from the ﬁle:
+
+// Define variables.
+std::ifstream is("foo.txt");
+std::string firstname, lastname;
+int age, bmonth, bday, byear;
+
+// Extract firstname, lastname, age, bday month, bday day, and bday year in that order.
+// Note: '>>' returns false if it reached EOF (end of file) or if the input data doesn't
+// correspond to the type of the input variable (for example, the string "foo" can't be
+// extracted into an 'int' variable).
+while (is >> firstname >> lastname >> age >> bmonth >> bday >> byear)
+    // Process the data that has been read.
+
+The stream extraction operator >> extracts every character and stops if it ﬁnds a character that can't be stored or if
+
+it is a special character:
+
+For string types, the operator stops at a whitespace () or at a newline (\n).
+
+For numbers, the operator stops at a non-number character.
+
+This means that the following version of the ﬁle foo.txt will also be successfully read by the previous code:
+
+John
+Doe 25
+4 6 1987
+
+Jane
+Doe
+15 5
+24
+1976
+
+The stream extraction operator >> always returns the stream given to it. Therefore, multiple operators can be
+
+chained together in order to read data consecutively. However, a stream can also be used as a Boolean expression
+
+(as shown in the while loop in the previous code). This is because the stream classes have a conversion operator
+
+for the type bool. This bool() operator will return true as long as the stream has no errors. If a stream goes into an
+
+error state (for example, because no more data can be extracted), then the bool() operator will return false.
+
+Therefore, the while loop in the previous code will be exited after the input ﬁle has been read to its end.
+
+If you wish to read an entire ﬁle as a string, you may use the following code:
+
+// Opens 'foo.txt'.
+std::ifstream is("foo.txt");
+std::string whole_file;
+
+// Sets position to the end of the file.
+is.seekg(0, std::ios::end);
+
+// Reserves memory for the file.
+whole_file.reserve(is.tellg());
+
+// Sets position to the start of the file.
+is.seekg(0, std::ios::beg);
+
+GoalKicker.com – C++ Notes for Professionals
+
+56
+
+// Sets contents of 'whole_file' to all characters in the file.
+whole_file.assign(std::istreambuf_iterator<char>(is),
+  std::istreambuf_iterator<char>());
+
+This code reserves space for the string in order to cut down on unneeded memory allocations.
+
+If you want to read a ﬁle line by line, you can use the function getline():
+
+std::ifstream is("foo.txt");  
+
+// The function getline returns false if there are no more lines.
+for (std::string str; std::getline(is, str);) {
+    // Process the line that has been read.
+}
+
+If you want to read a ﬁxed number of characters, you can use the stream's member function read():
+
+std::ifstream is("foo.txt");
+char str[4];
+
+// Read 4 characters from the file.
+is.read(str, 4);
+
+After executing a read command, you should always check if the error state ﬂag failbit has been set, as it
+
+indicates whether the operation failed or not. This can be done by calling the ﬁle stream's member function fail():
+
+is.read(str, 4); // This operation might fail for any reason.
+
+if (is.fail())
+    // Failed to read!
+
+Section 12.4: Opening modes
+
+When creating a ﬁle stream, you can specify an opening mode. An opening mode is basically a setting to control
+
+how the stream opens the ﬁle.
+
+(All modes can be found in the std::ios namespace.)
+
+An opening mode can be provided as second parameter to the constructor of a ﬁle stream or to its open() member
+
+function:
+
+std::ofstream os("foo.txt", std::ios::out | std::ios::trunc);
+
+std::ifstream is;
+is.open("foo.txt", std::ios::in | std::ios::binary);
+
+It is to be noted that you have to set ios::in or ios::out if you want to set other ﬂags as they are not implicitly set
+
+by the iostream members although they have a correct default value.
+
+If you don't specify an opening mode, then the following default modes are used:
+
+ifstream - in
+
+ofstream - out
+
+fstream - in and out
+
+The ﬁle opening modes that you may specify by design are:
+
+GoalKicker.com – C++ Notes for Professionals
+
+57
+
+Mode Meaning
+app
+
+append Output
+
+For
+
+Description
+
+Appends data at the end of the ﬁle.
+
+binary binary
+
+Input/Output Input and output is done in binary.
+
+in
+
+out
+
+input
+
+Input
+
+Opens the ﬁle for reading.
+
+output Output
+
+Opens the ﬁle for writing.
+
+trunc truncate Input/Output Removes contents of the ﬁle when opening.
+
+ate
+
+at end
+
+Input
+
+Goes to the end of the ﬁle when opening.
+
+Note: Setting the binary mode lets the data be read/written exactly as-is; not setting it enables the translation of
+the newline '\n' character to/from a platform speciﬁc end of line sequence.
+
+For example on Windows the end of line sequence is CRLF ("\r\n").
+
+Write: "\n" => "\r\n"
+
+Read: "\r\n" => "\n"
+
+Section 12.5: Reading an ASCII ﬁle into a std::string
+
+std::ifstream f("file.txt");
+
+if (f)
+{
+  std::stringstream buffer;
+  buffer << f.rdbuf();
+  f.close();
+
+  // The content of "file.txt" is available in the string `buffer.str()`
+}
+
+The rdbuf() method returns a pointer to a streambuf that can be pushed into buffer via the
+
+stringstream::operator<< member function.
+
+Another possibility (popularized in Eﬀective STL by Scott Meyers) is:
+
+std::ifstream f("file.txt");
+
+if (f)
+{
+  std::string str((std::istreambuf_iterator<char>(f)),
+                  std::istreambuf_iterator<char>());
+
+  // Operations on `str`...
+}
+
+This is nice because requires little code (and allows reading a ﬁle directly into any STL container, not only strings)
+
+but can be slow for big ﬁles.
+
+NOTE: the extra parentheses around the ﬁrst argument to the string constructor are essential to prevent the most
+vexing parse problem.
+
+Last but not least:
+
+std::ifstream f("file.txt");
+
+if (f)
+{
+  f.seekg(0, std::ios::end);
+
+GoalKicker.com – C++ Notes for Professionals
+
+58
+
+  const auto size = f.tellg();
+
+  std::string str(size, ' ');
+  f.seekg(0);
+  f.read(&str[0], size);
+  f.close();
+
+  // Operations on `str`...
+}
+
+which is probably the fastest option (among the three proposed).
+
+Section 12.6: Writing ﬁles with non-standard locale settings
+
+If you need to write a ﬁle using diﬀerent locale settings to the default, you can use std::locale and
+
+std::basic_ios::imbue() to do that for a speciﬁc ﬁle stream:
+
+Guidance for use:
+
+You should always apply a local to a stream before opening the ﬁle.
+
+Once the stream has been imbued you should not change the locale.
+
+Reasons for Restrictions: Imbuing a ﬁle stream with a locale has undeﬁned behavior if the current locale is not
+state independent or not pointing at the beginning of the ﬁle.
+
+UTF-8 streams (and others) are not state independent. Also a ﬁle stream with a UTF-8 locale may try and read the
+
+BOM marker from the ﬁle when it is opened; so just opening the ﬁle may read characters from the ﬁle and it will
+
+not be at the beginning.
+
+#include <iostream>
+#include <fstream>
+#include <locale>
+
+int main()
+{
+  std::cout << "User-preferred locale setting is "
+            << std::locale("").name().c_str() << std::endl;
+
+  // Write a floating-point value using the user's preferred locale.
+  std::ofstream ofs1;
+  ofs1.imbue(std::locale(""));
+  ofs1.open("file1.txt");
+  ofs1 << 78123.456 << std::endl;
+
+  // Use a specific locale (names are system-dependent)
+  std::ofstream ofs2;
+  ofs2.imbue(std::locale("en_US.UTF-8"));
+  ofs2.open("file2.txt");
+  ofs2 << 78123.456 << std::endl;
+
+  // Switch to the classic "C" locale
+  std::ofstream ofs3;
+  ofs3.imbue(std::locale::classic());
+  ofs3.open("file3.txt");
+  ofs3 << 78123.456 << std::endl;
+}
+
+Explicitly switching to the classic "C" locale is useful if your program uses a diﬀerent default locale and you want to
+
+GoalKicker.com – C++ Notes for Professionals
+
+59
+
+ensure a ﬁxed standard for reading and writing ﬁles. With a "C" preferred locale, the example writes
+
+78,123.456
+78,123.456
+78123.456
+
+If, for example, the preferred locale is German and hence uses a diﬀerent number format, the example writes
+
+78 123,456
+78,123.456
+78123.456
+
+(note the decimal comma in the ﬁrst line).
+
+Section 12.7: Checking end of ﬁle inside a loop condition, bad
+practice?
+
+eof returns true only after reading the end of ﬁle. It does NOT indicate that the next read will be the end of
+stream.
+
+while (!f.eof())
+{
+  // Everything is OK
+
+  f >> buffer;
+
+  // What if *only* now the eof / fail bit is set?
+
+  /* Use `buffer` */
+}
+
+You could correctly write:
+
+while (!f.eof())
+{  
+  f >> buffer >> std::ws;
+
+  if (f.fail())
+    break;
+
+  /* Use `buffer` */
+}
+
+but
+
+while (f >> buffer)
+{
+  /* Use `buffer` */
+}
+
+is simpler and less error prone.
+
+Further references:
+
+std::ws: discards leading whitespace from an input stream
+
+std::basic_ios::fail: returns true if an error has occurred on the associated stream
+
+GoalKicker.com – C++ Notes for Professionals
+
+60
+
+Section 12.8: Flushing a stream
+
+File streams are buﬀered by default, as are many other types of streams. This means that writes to the stream may
+
+not cause the underlying ﬁle to change immediately. In oder to force all buﬀered writes to take place immediately,
+you can ﬂush the stream. You can do this either directly by invoking the flush() method or through the std::flush
+
+stream manipulator:
+
+std::ofstream os("foo.txt");
+os << "Hello World!" << std::flush;
+
+char data[3] = "Foo";
+os.write(data, 3);
+os.flush();
+
+There is a stream manipulator std::endl that combines writing a newline with ﬂushing the stream:
+
+// Both following lines do the same thing
+os << "Hello World!\n" << std::flush;
+os << "Hello world!" << std::endl;
+
+Buﬀering can improve the performance of writing to a stream. Therefore, applications that do a lot of writing
+
+should avoid ﬂushing unnecessarily. Contrary, if I/O is done infrequently, applications should consider ﬂushing
+
+frequently in order to avoid data getting stuck in the stream object.
+
+Section 12.9: Reading a ﬁle into a container
+
+In the example below we use std::string and operator>> to read items from the ﬁle.
+
+    std::ifstream file("file3.txt");
+
+    std::vector<std::string>  v;
+
+    std::string s;
+    while(file >> s) // keep reading until we run out
+    {
+        v.push_back(s);
+    }
+
+In the above example we are simply iterating through the ﬁle reading one "item" at a time using operator>>. This
+
+same aﬀect can be achieved using the std::istream_iterator which is an input iterator that reads one "item" at a
+
+time from the stream. Also most containers can be constructed using two iterators so we can simplify the above
+
+code to:
+
+    std::ifstream file("file3.txt");
+
+    std::vector<std::string>  v(std::istream_iterator<std::string>{file},
+                                std::istream_iterator<std::string>{});
+
+We can extend this to read any object types we like by simply specifying the object we want to read as the template
+
+parameter to the std::istream_iterator. Thus we can simply extend the above to read lines (rather than words)
+
+like this:
+
+// Unfortunately there is  no built in type that reads line using >>
+// So here we build a simple helper class to do it. That will convert
+// back to a string when used in string context.
+struct Line
+
+GoalKicker.com – C++ Notes for Professionals
+
+61
+
+{
+    // Store data here
+    std::string data;
+    // Convert object to string
+    operator std::string const&() const {return data;}
+    // Read a line from a stream.
+    friend std::istream& operator>>(std::istream& stream, Line& line)
+    {
+        return std::getline(stream, line.data);
+    }
+};
+
+    std::ifstream file("file3.txt");
+
+    // Read the lines of a file into a container.
+    std::vector<std::string>  v(std::istream_iterator<Line>{file},
+                                std::istream_iterator<Line>{});
+
+Section 12.10: Copying a ﬁle
+
+std::ifstream  src("source_filename", std::ios::binary);
+std::ofstream  dst("dest_filename",   std::ios::binary);
+dst << src.rdbuf();
+
+Version ≥ C++17
+
+With C++17 the standard way to copy a ﬁle is including the <filesystem> header and using copy_file:
+
+std::fileystem::copy_file("source_filename", "dest_filename");
+
+The ﬁlesystem library was originally developed as boost.filesystem and ﬁnally merged to ISO C++ as of C++17.
+
+Section 12.11: Closing a ﬁle
+
+Explicitly closing a ﬁle is rarely necessary in C++, as a ﬁle stream will automatically close its associated ﬁle in its
+
+destructor. However, you should try to limit the lifetime of a ﬁle stream object, so that it does not keep the ﬁle
+
+handle open longer than necessary. For example, this can be done by putting all ﬁle operations into an own scope
+
+({}):
+
+std::string const prepared_data = prepare_data();
+{
+    // Open a file for writing.
+    std::ofstream output("foo.txt");
+
+    // Write data.
+    output << prepared_data;
+}  // The ofstream will go out of scope here.
+   // Its destructor will take care of closing the file properly.
+
+Calling close() explicitly is only necessary if you want to reuse the same fstream object later, but don't want to
+
+keep the ﬁle open in between:
+
+// Open the file "foo.txt" for the first time.
+std::ofstream output("foo.txt");
+
+// Get some data to write from somewhere.
+std::string const prepared_data = prepare_data();
+
+GoalKicker.com – C++ Notes for Professionals
+
+62
+
+// Write data to the file "foo.txt".
+output << prepared_data;
+
+// Close the file "foo.txt".
+output.close();
+
+// Preparing data might take a long time. Therefore, we don't open the output file stream
+// before we actually can write some data to it.
+std::string const more_prepared_data = prepare_complex_data();
+
+// Open the file "foo.txt" for the second time once we are ready for writing.
+output.open("foo.txt");
+
+// Write the data to the file "foo.txt".
+output << more_prepared_data;
+
+// Close the file "foo.txt" once again.
+output.close();
+
+Section 12.12: Reading a `struct` from a formatted text ﬁle
+
+Version ≥ C++11
+
+struct info_type
+{
+    std::string name;
+    int age;
+    float height;
+
+    // we define an overload of operator>> as a friend function which
+    // gives in privileged access to private data members
+    friend std::istream& operator>>(std::istream& is, info_type& info)
+    {
+        // skip whitespace
+        is >> std::ws;
+        std::getline(is, info.name);
+        is >> info.age;
+        is >> info.height;
+        return is;
+    }
+};
+
+void func4()
+{
+    auto file = std::ifstream("file4.txt");
+
+    std::vector<info_type> v;
+
+    for(info_type info; file >> info;) // keep reading until we run out
+    {
+        // we only get here if the read succeeded
+        v.push_back(info);
+    }
+
+    for(auto const& info: v)
+    {
+        std::cout << "  name: " << info.name << '\n';
+        std::cout << "   age: " << info.age << " years" << '\n';
+        std::cout << "height: " << info.height << "lbs" << '\n';
+        std::cout << '\n';
+    }
+}
+
+GoalKicker.com – C++ Notes for Professionals
+
+63
+
+   
+ﬁle4.txt
+
+Wogger Wabbit
+2
+6.2
+Bilbo Baggins
+111
+81.3
+Mary Poppins
+29
+154.8
+
+Output:
+
+name: Wogger Wabbit
+ age: 2 years
+height: 6.2lbs
+
+name: Bilbo Baggins
+ age: 111 years
+height: 81.3lbs
+
+name: Mary Poppins
+ age: 29 years
+height: 154.8lbs
+
+GoalKicker.com – C++ Notes for Professionals
+
+64
+
+#### 13: C:  Streams
+
+Chapter 13: C++ Streams
+
+
+Section 13.1: String streams
+
+std::ostringstream is a class whose objects look like an output stream (that is, you can write to them via
+
+operator<<), but actually store the writing results, and provide them in the form of a stream.
+
+Consider the following short code:
+
+#include <sstream>
+#include <string>                                                                                  
+
+using namespace std;
+
+int main()
+{
+    ostringstream ss;
+    ss << "the answer to everything is " << 42;
+    const string result = ss.str();
+}  
+
+The line
+
+ostringstream ss;
+
+creates such an object. This object is ﬁrst manipulated like a regular stream:
+
+ss << "the answer to everything is " << 42;
+
+Following that, though, the resulting stream can be obtained like this:
+
+const string result = ss.str();
+
+(the string result will be equal to "the answer to everything is 42").
+
+This is mainly useful when we have a class for which stream serialization has been deﬁned, and for which we want a
+
+string form. For example, suppose we have some class
+
+class foo
+{  
+    // All sort of stuff here.
+};  
+
+ostream &operator<<(ostream &os, const foo &f);
+
+To get the string representation of a foo object,
+
+foo f;
+
+we could use
+
+ostringstream ss;
+ss << f;
+const string result = ss.str();        
+
+GoalKicker.com – C++ Notes for Professionals
+
+65
+
+                                       
+Then result contains the string representation of the foo object.
+
+Section 13.2: Printing collections with iostream
+
+Basic printing
+
+std::ostream_iterator allows to print contents of an STL container to any output stream without explicit loops.
+
+The second argument of std::ostream_iterator constructor sets the delimiter. For example, the following code:
+
+std::vector<int> v = {1,2,3,4};
+std::copy(v.begin(), v.end(), std::ostream_iterator<int>(std::cout, " ! "));
+
+will print
+
+1 ! 2 ! 3 ! 4 !
+
+Implicit type cast
+
+std::ostream_iterator allows to cast container's content type implicitly. For example, let's tune std::cout to print
+
+ﬂoating-point values with 3 digits after decimal point:
+
+std::cout << std::setprecision(3);
+std::fixed(std::cout);
+
+and instantiate std::ostream_iterator with float, while the contained values remain int:
+
+std::vector<int> v = {1,2,3,4};
+std::copy(v.begin(), v.end(), std::ostream_iterator<float>(std::cout, " ! "));
+
+so the code above yields
+
+1.000 ! 2.000 ! 3.000 ! 4.000 !
+
+despite std::vector holds ints.
+
+Generation and transformation
+
+std::generate, std::generate_n and std::transform functions provide a very powerful tool for on-the-ﬂy data
+
+manipulation. For example, having a vector:
+
+std::vector<int> v = {1,2,3,4,8,16};
+
+we can easily print boolean value of "x is even" statement for each element:
+
+std::boolalpha(std::cout); // print booleans alphabetically
+std::transform(v.begin(), v.end(), std::ostream_iterator<bool>(std::cout, " "),
+[](int val) {
+    return (val % 2) == 0;
+});
+
+or print the squared element:
+
+std::transform(v.begin(), v.end(), std::ostream_iterator<int>(std::cout, " "),
+[](int val) {
+    return val * val;
+
+GoalKicker.com – C++ Notes for Professionals
+
+66
+
+});
+
+Printing N space-delimited random numbers:
+
+const int N = 10;
+std::generate_n(std::ostream_iterator<int>(std::cout, " "), N, std::rand);
+
+Arrays
+
+As in the section about reading text ﬁles, almost all these considerations may be applied to native arrays. For
+
+example, let's print squared values from a native array:
+
+int v[] = {1,2,3,4,8,16};
+std::transform(v, std::end(v), std::ostream_iterator<int>(std::cout, " "),
+[](int val) {
+    return val * val;
+});
+
+GoalKicker.com – C++ Notes for Professionals
+
+67
 
 ## <a name="chapter-6-stlinternalsdeepdive"></a>CHAPTER 6: STL INTERNALS DEEP DIVE
 
