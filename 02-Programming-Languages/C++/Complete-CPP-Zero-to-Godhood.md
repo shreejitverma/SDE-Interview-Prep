@@ -117,6 +117,52 @@ To ensure clarity, this book follows strict conventions:
 
 ## <a name="chapter-1-absolutebasicsc98"></a>CHAPTER 1: ABSOLUTE BASICS (C++98)
 
+
+---
+### Professional Notes: Floating Point
+
+#### Chapter 4: Floating Point Arithmetic
+
+Section 4.1: Floating Point Numbers are Weird
+The ﬁrst mistake that nearly every single programmer makes is presuming that this code will work as intended:
+float total = 0;
+for(float a = 0; a != 2; a += 0.01f) {
+    total += a;
+}
+The novice programmer assumes that this will sum up every single number in the range 0, 0.01, 0.02, 0.03,
+..., 1.97, 1.98, 1.99, to yield the result 199—the mathematically correct answer.
+Two things happen that make this untrue:
+1.
+2.
+The program as written never concludes. a never becomes equal to 2, and the loop never terminates.
+If we rewrite the loop logic to check a < 2 instead, the loop terminates, but the total ends up being
+something diﬀerent from 199. On IEEE754-compliant machines, it will often sum up to about 201 instead.
+The reason that this happens is that Floating Point Numbers represent Approximations of their assigned
+values.
+The classical example is the following computation:
+double a = 0.1;
+double b = 0.2;
+double c = 0.3;
+if(a + b == c)
+    //This never prints on IEEE754-compliant machines
+    std::cout << "This Computer is Magic!" << std::endl;
+else
+    std::cout << "This Computer is pretty normal, all things considered." << std::endl;
+Though what we the programmer see is three numbers written in base10, what the compiler (and the underlying
+hardware) see are binary numbers. Because 0.1, 0.2, and 0.3 require perfect division by 10—which is quite easy in
+a base-10 system, but impossible in a base-2 system—these numbers have to be stored in imprecise formats,
+similar to how the number 1/3 has to be stored in the imprecise form 0.333333333333333... in base-10.
+//64-bit floats have 53 digits of precision, including the whole-number-part.
+double a =     0011111110111001100110011001100110011001100110011001100110011010; //imperfect
+representation of 0.1
+double b =     0011111111001001100110011001100110011001100110011001100110011010; //imperfect
+representation of 0.2
+double c =     0011111111010011001100110011001100110011001100110011001100110011; //imperfect
+representation of 0.3
+double a + b = 0011111111010011001100110011001100110011001100110011001100110100; //Note that this
+is not quite equal to the "canonical" 0.3!
+
+
 ## Getting Started
 
 ### What is C++?
@@ -9908,6 +9954,33 @@ end-generator-iterators.
 
 ## <a name="chapter-6-stlinternalsdeepdive"></a>CHAPTER 6: STL INTERNALS DEEP DIVE
 
+
+---
+### Professional Notes: Algorithms & Sorting
+
+#### Chapter 62: Standard Library Algorithms
+
+Section 62.1: std::next_permutation 
+Section 62.2: std::for_each 
+Section 62.3: std::accumulate 
+Section 62.4: std::ﬁnd 
+Section 62.5: std::min_element 
+Section 62.6: std::ﬁnd_if 
+Section 62.7: Using std::nth_element To Find The Median (Or Other Quantiles) 
+Section 62.8: std::count 
+Section 62.9: std::count_if 
+
+#### Chapter 67: Sorting
+
+Section 67.1: Sorting and sequence containers 
+Section 67.2: sorting with std::map (ascending and descending) 
+Section 67.3: Sorting sequence containers by overloaded less operator 
+Section 67.4: Sorting sequence containers using compare function 
+Section 67.5: Sorting sequence containers using lambda expressions (C++11) 
+Section 67.6: Sorting built-in arrays 
+Section 67.7: Sorting sequence containers with specifed ordering 
+
+
 To master the STL, you must understand what happens under the hood.
 
 ### 3.5.1 The Truth About std::vector
@@ -16692,6 +16765,23 @@ Section 104.26: Function call through mismatched function pointer type
 
 ## <a name="chapter-14-advancedtopics"></a>CHAPTER 14: ADVANCED TOPICS
 
+
+---
+### Professional Notes: Exception Handling
+
+#### Chapter 72: Exceptions
+
+Section 72.1: Catching exceptions 
+Section 72.2: Rethrow (propagate) exception 
+Section 72.3: Best practice: throw by value, catch by const reference 
+Section 72.4: Custom exception 
+Section 72.5: std::uncaught_exceptions 
+Section 72.6: Function Try Block for regular function 
+Section 72.7: Nested exception 
+Section 72.8: Function Try Blocks In constructor 
+Section 72.9: Function Try Blocks In destructor 
+
+
 ## TEMPLATE METAPROGRAMMING
 
 ## 1.1 Compile-Time Computation
@@ -20712,6 +20802,24 @@ public:
 
 ## <a name="chapter-24-cunderthehood"></a>CHAPTER 24: C++ UNDER THE HOOD
 
+
+---
+### Professional Notes: Compiler Magic (ADL & Elision)
+
+#### Chapter 122: Argument Dependent Name Lookup
+
+Section 122.1: What functions are found 
+
+#### Chapter 109: Copy Elision
+
+Section 109.1: Purpose of copy elision 
+Section 109.2: Guaranteed copy elision 
+Section 109.3: Parameter elision 
+Section 109.4: Return value elision 
+Section 109.5: Named return value elision 
+Section 109.6: Copy initialization elision 
+
+
 To truly master C++, you must understand what the compiler generates.
 
 ### 14.1 Object Layout & ABI (Itanium C++ ABI)
@@ -21633,6 +21741,19 @@ Used by `malloc` implementations and databases (like Silo).
 ---
 
 ## <a name="chapter-39-templatemetaprogrammingpatterns"></a>CHAPTER 39: TEMPLATE METAPROGRAMMING PATTERNS
+
+
+---
+### Professional Notes: Type Erasure
+
+#### Chapter 90: Type Erasure
+
+Section 90.1: A move-only `std::function` 
+Section 90.2: Erasing down to a Regular type with manual vtable 
+Section 90.3: Basic mechanism 
+Section 90.4: Erasing down to a contiguous buer of T 
+Section 90.5: Type erasing type erasure with std::any 
+
 
 Moving computation from runtime to compile-time saves cycles and enables zero-cost abstractions.
 
