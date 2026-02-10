@@ -3259,6 +3259,622 @@ int main() {
 
 
 ---
+### Professional Notes: Operator Overloading
+
+#### Chapter 36: Operator Overloading
+
+In C++, it is possible to deﬁne operators such as + and -> for user-deﬁned types. For example, the <string> header
+deﬁnes a + operator to concatenate strings. This is done by deﬁning an operator function using the operator
+keyword.
+Section 36.1: Arithmetic operators
+You can overload all basic arithmetic operators:
++ and +=
+- and -=
+* and *=
+/ and /=
+& and &=
+| and |=
+^ and ^=
+>> and >>=
+<< and <<=
+Overloading for all operators is the same. Scroll down for explanation
+Overloading outside of class/struct:
+//operator+ should be implemented in terms of operator+=
+T operator+(T lhs, const T& rhs)
+{
+    lhs += rhs;
+    return lhs;
+}
+T& operator+=(T& lhs, const T& rhs)
+{
+    //Perform addition
+    return lhs;
+}
+Overloading inside of class/struct:
+//operator+ should be implemented in terms of operator+=
+T operator+(const T& rhs)
+{
+    *this += rhs;
+    return *this;
+}
+T& operator+=(const T& rhs)
+{
+    //Perform addition
+    return *this;
+}
+Note: operator+ should return by non-const value, as returning a reference wouldn't make sense (it returns a new
+object) nor would returning a const value (you should generally not return by const). The ﬁrst argument is passed
+by value, why? Because
+1.
+You can't modify the original object (Object foobar = foo + bar; shouldn't modify foo after all, it wouldn't
+make sense)
+2.
+You can't make it const, because you will have to be able to modify the object (because operator+ is
+implemented in terms of operator+=, which modiﬁes the object)
+Passing by const& would be an option, but then you will have to make a temporary copy of the passed object. By
+passing by value, the compiler does it for you.
+operator+= returns a reference to the itself, because it is then possible to chain them (don't use the same variable
+though, that would be undeﬁned behavior due to sequence points).
+The ﬁrst argument is a reference (we want to modify it), but not const, because then you wouldn't be able to
+modify it. The second argument should not be modiﬁed, and so for performance reason is passed by const&
+(passing by const reference is faster than by value).
+Section 36.2: Array subscript operator
+You can even overload the array subscript operator [].
+You should always (99.98% of the time) implement 2 versions, a const and a not-const version, because if the
+object is const, it should not be able to modify the object returned by [].
+The arguments are passed by const& instead of by value because passing by reference is faster than by value, and
+const so that the operator doesn't change the index accidentally.
+The operators return by reference, because by design you can modify the object [] return, i.e:
+std::vector<int> v{ 1 };
+v[0] = 2; //Changes value of 1 to 2
+          //wouldn't be possible if not returned by reference
+You can only overload inside a class/struct:
+//I is the index type, normally an int
+T& operator[](const I& index)
+{
+    //Do something
+    //return something
+}
+//I is the index type, normally an int
+const T& operator[](const I& index) const
+{
+    //Do something
+    //return something
+}
+Multiple subscript operators, [][]..., can be achieved via proxy objects. The following example of a simple row-
+major matrix class demonstrates this:
+template<class T>
+class matrix {
+    // class enabling [][] overload to access matrix elements
+    template <class C>
+    class proxy_row_vector {
+        using reference = decltype(std::declval<C>()[0]);
+        using const_reference = decltype(std::declval<C const>()[0]);
+    public:
+        proxy_row_vector(C& _vec, std::size_t _r_ind, std::size_t _cols)
+            : vec(_vec), row_index(_r_ind), cols(_cols) {}
+        const_reference operator[](std::size_t _col_index) const {
+            return vec[row_index*cols + _col_index];
+        }
+        reference operator[](std::size_t _col_index) {
+            return vec[row_index*cols + _col_index];
+        }
+    private:
+        C& vec;
+        std::size_t row_index; // row index to access
+        std::size_t cols; // number of columns in matrix
+    };
+    using const_proxy = proxy_row_vector<const std::vector<T>>;
+    using proxy = proxy_row_vector<std::vector<T>>;
+public:
+    matrix() : mtx(), rows(0), cols(0) {}
+    matrix(std::size_t _rows, std::size_t _cols)
+        : mtx(_rows*_cols), rows(_rows), cols(_cols) {}
+    // call operator[] followed by another [] call to access matrix elements
+    const_proxy operator[](std::size_t _row_index) const {
+        return const_proxy(mtx, _row_index, cols);
+    }
+    proxy operator[](std::size_t _row_index) {
+        return proxy(mtx, _row_index, cols);
+    }
+private:
+    std::vector<T> mtx;
+    std::size_t rows;
+    std::size_t cols;
+};
+Section 36.3: Conversion operators
+You can overload type operators, so that your type can be implicitly converted into the speciﬁed type.
+The conversion operator must be deﬁned in a class/struct:
+operator T() const { /* return something */ }
+Note: the operator is const to allow const objects to be converted.
+Example:
+struct Text
+{
+    std::string text;
+    // Now Text can be implicitly converted into a const char*
+    /*explicit*/ operator const char*() const { return text.data(); }
+    // ^^^^^^^
+    // to disable implicit conversion
+};
+Text t;
+t.text = "Hello world!";
+//Ok
+const char* copyoftext = t;
+Section 36.4: Complex Numbers Revisited
+The code below implements a very simple complex number type for which the underlying ﬁeld is automatically
+promoted, following the language's type promotion rules, under application of the four basic operators (+, -, *, and
+/) with a member of a diﬀerent ﬁeld (be it another complex<T> or some scalar type).
+This is intended to be a holistic example covering operator overloading alongside basic use of templates.
+#include <type_traits>
+namespace not_std{
+using std::decay_t;
+//----------------------------------------------------------------
+// complex< value_t >
+//----------------------------------------------------------------
+template<typename value_t>
+struct complex
+{
+    value_t x;
+    value_t y;
+    complex &operator += (const value_t &x)
+    {
+        this->x += x;
+        return *this;
+    }
+    complex &operator += (const complex &other)
+    {
+        this->x += other.x;
+        this->y += other.y;
+        return *this;
+    }
+    complex &operator -= (const value_t &x)
+    {
+        this->x -= x;
+        return *this;
+    }
+    complex &operator -= (const complex &other)
+    {
+        this->x -= other.x;
+        this->y -= other.y;
+        return *this;
+    }
+    complex &operator *= (const value_t &s)
+    {
+        this->x *= s;
+        this->y *= s;
+        return *this;
+    }
+    complex &operator *= (const complex &other)
+    {
+        (*this) = (*this) * other;
+        return *this;
+    }
+    complex &operator /= (const value_t &s)
+    {
+        this->x /= s;
+        this->y /= s;
+        return *this;
+    }
+    complex &operator /= (const complex &other)
+    {
+        (*this) = (*this) / other;
+        return *this;
+    }
+    complex(const value_t &x, const value_t &y)
+    : x{x}
+    , y{y}
+    {}
+    template<typename other_value_t>
+    explicit complex(const complex<other_value_t> &other)
+    : x{static_cast<const value_t &>(other.x)}
+    , y{static_cast<const value_t &>(other.y)}
+    {}
+    complex &operator = (const complex &) = default;
+    complex &operator = (complex &&) = default;
+    complex(const complex &) = default;
+    complex(complex &&) = default;
+    complex() = default;
+};
+// Absolute value squared
+template<typename value_t>
+value_t absqr(const complex<value_t> &z)
+{ return z.x*z.x + z.y*z.y; }
+//----------------------------------------------------------------
+// operator - (negation)
+//----------------------------------------------------------------
+template<typename value_t>
+complex<value_t> operator - (const complex<value_t> &z)
+{ return {-z.x, -z.y}; }
+//----------------------------------------------------------------
+// operator +
+//----------------------------------------------------------------
+template<typename left_t,typename right_t>
+auto operator + (const complex<left_t> &a, const complex<right_t> &b)
+-> complex<decay_t<decltype(a.x + b.x)>>
+{ return{a.x + b.x, a.y + b.y}; }
+template<typename left_t,typename right_t>
+auto operator + (const left_t &a, const complex<right_t> &b)
+-> complex<decay_t<decltype(a + b.x)>>
+{ return{a + b.x, b.y}; }
+template<typename left_t,typename right_t>
+auto operator + (const complex<left_t> &a, const right_t &b)
+-> complex<decay_t<decltype(a.x + b)>>
+{ return{a.x + b, a.y}; }
+//----------------------------------------------------------------
+// operator -
+//----------------------------------------------------------------
+template<typename left_t,typename right_t>
+auto operator - (const complex<left_t> &a, const complex<right_t> &b)
+-> complex<decay_t<decltype(a.x - b.x)>>
+{ return{a.x - b.x, a.y - b.y}; }
+template<typename left_t,typename right_t>
+auto operator - (const left_t &a, const complex<right_t> &b)
+-> complex<decay_t<decltype(a - b.x)>>
+{ return{a - b.x, - b.y}; }
+template<typename left_t,typename right_t>
+auto operator - (const complex<left_t> &a, const right_t &b)
+-> complex<decay_t<decltype(a.x - b)>>
+{ return{a.x - b, a.y}; }
+//----------------------------------------------------------------
+// operator *
+//----------------------------------------------------------------
+template<typename left_t, typename right_t>
+auto operator * (const complex<left_t> &a, const complex<right_t> &b)
+-> complex<decay_t<decltype(a.x * b.x)>>
+{
+    return {
+        a.x*b.x - a.y*b.y,
+        a.x*b.y + a.y*b.x
+        };
+}
+template<typename left_t, typename right_t>
+auto operator * (const left_t &a, const complex<right_t> &b)
+-> complex<decay_t<decltype(a * b.x)>>
+{ return {a * b.x, a * b.y}; }
+template<typename left_t, typename right_t>
+auto operator * (const complex<left_t> &a, const right_t &b)
+-> complex<decay_t<decltype(a.x * b)>>
+{ return {a.x * b, a.y * b}; }
+//----------------------------------------------------------------
+// operator /
+//----------------------------------------------------------------
+template<typename left_t, typename right_t>
+auto operator / (const complex<left_t> &a, const complex<right_t> &b)
+-> complex<decay_t<decltype(a.x / b.x)>>
+{
+    const auto r = absqr(b);
+    return {
+        ( a.x*b.x + a.y*b.y) / r,
+        (-a.x*b.y + a.y*b.x) / r
+        };
+}
+template<typename left_t, typename right_t>
+auto operator / (const left_t &a, const complex<right_t> &b)
+-> complex<decay_t<decltype(a / b.x)>>
+{
+    const auto s = a/absqr(b);
+    return {
+         b.x * s,
+        -b.y * s
+        };
+}
+template<typename left_t, typename right_t>
+auto operator / (const complex<left_t> &a, const right_t &b)
+-> complex<decay_t<decltype(a.x / b)>>
+{ return {a.x / b, a.y / b}; }
+}// namespace not_std
+int main(int argc, char **argv)
+{
+    using namespace not_std;
+    complex<float> fz{4.0f, 1.0f};
+    // makes a complex<double>
+    auto dz = fz * 1.0;
+    // still a complex<double>
+    auto idz = 1.0f/dz;
+    // also a complex<double>
+    auto one = dz * idz;
+    // a complex<double> again
+    auto one_again = fz * idz;
+    // Operator tests, just to make sure everything compiles.
+    complex<float> a{1.0f, -2.0f};
+    complex<double> b{3.0, -4.0};
+    // All of these are complex<double>
+    auto c0 = a + b;
+    auto c1 = a - b;
+    auto c2 = a * b;
+    auto c3 = a / b;
+    // All of these are complex<float>
+    auto d0 = a + 1;
+    auto d1 = 1 + a;
+    auto d2 = a - 1;
+    auto d3 = 1 - a;
+    auto d4 = a * 1;
+    auto d5 = 1 * a;
+    auto d6 = a / 1;
+    auto d7 = 1 / a;
+    // All of these are complex<double>
+    auto e0 = b + 1;
+    auto e1 = 1 + b;
+    auto e2 = b - 1;
+    auto e3 = 1 - b;
+    auto e4 = b * 1;
+    auto e5 = 1 * b;
+    auto e6 = b / 1;
+    auto e7 = 1 / b;
+    return 0;
+}
+Section 36.5: Named operators
+You can extend C++ with named operators that are "quoted" by standard C++ operators.
+First we start with a dozen-line library:
+namespace named_operator {
+  template<class D>struct make_operator{constexpr make_operator(){}};
+  template<class T, char, class O> struct half_apply { T&& lhs; };
+  template<class Lhs, class Op>
+  half_apply<Lhs, '*', Op> operator*( Lhs&& lhs, make_operator<Op> ) {
+    return {std::forward<Lhs>(lhs)};
+  }
+  template<class Lhs, class Op, class Rhs>
+  auto operator*( half_apply<Lhs, '*', Op>&& lhs, Rhs&& rhs )
+  -> decltype( named_invoke( std::forward<Lhs>(lhs.lhs), Op{}, std::forward<Rhs>(rhs) ) )
+  {
+    return named_invoke( std::forward<Lhs>(lhs.lhs), Op{}, std::forward<Rhs>(rhs) );
+  }
+}
+this doesn't do anything yet.
+First, appending vectors
+namespace my_ns {
+  struct append_t : named_operator::make_operator<append_t> {};
+  constexpr append_t append{};
+  template<class T, class A0, class A1>
+  std::vector<T, A0> named_invoke( std::vector<T, A0> lhs, append_t, std::vector<T, A1> const& rhs
+) {
+      lhs.insert( lhs.end(), rhs.begin(), rhs.end() );
+      return std::move(lhs);
+  }
+}
+using my_ns::append;
+std::vector<int> a {1,2,3};
+std::vector<int> b {4,5,6};
+auto c = a *append* b;
+The core here is that we deﬁne an append object of type append_t:named_operator::make_operator<append_t>.
+We then overload named_invoke( lhs, append_t, rhs ) for the types we want on the right and left.
+The library overloads lhs*append_t, returning a temporary half_apply object. It also overloads half_apply*rhs to
+call named_invoke( lhs, append_t, rhs ).
+We simply have to create the proper append_t token and do an ADL-friendly named_invoke of the proper signature,
+and everything hooks up and works.
+For a more complex example, suppose you want to have element-wise multiplication of elements of a std::array:
+template<class=void, std::size_t...Is>
+auto indexer( std::index_sequence<Is...> ) {
+  return [](auto&& f) {
+    return f( std::integral_constant<std::size_t, Is>{}... );
+  };
+}
+template<std::size_t N>
+auto indexer() { return indexer( std::make_index_sequence<N>{} ); }
+namespace my_ns {
+  struct e_times_t : named_operator::make_operator<e_times_t> {};
+  constexpr e_times_t e_times{};
+  template<class L, class R, std::size_t N,
+    class Out=std::decay_t<decltype( std::declval<L const&>()*std::declval<R const&>() )>
+  >
+  std::array<Out, N> named_invoke( std::array<L, N> const& lhs, e_times_t, std::array<R, N> const&
+rhs ) {
+    using result_type = std::array<Out, N>;
+    auto index_over_N = indexer<N>();
+    return index_over_N([&](auto...is)->result_type {
+      return {{
+        (lhs[is] * rhs[is])...
+      }};
+    });
+  }
+}
+live example.
+This element-wise array code can be extended to work on tuples or pairs or C-style arrays, or even variable length
+containers if you decide what to do if the lengths don't match.
+You could also an element-wise operator type and get lhs *element_wise<'+'>* rhs.
+Writing a *dot* and *cross* product operators are also obvious uses.
+The use of * can be extended to support other delimiters, like +. The delimeter precidence determines the
+precidence of the named operator, which may be important when translating physics equations over to C++ with
+minimal use of extra ()s.
+With a slight change in the library above, we can support ->*then* operators and extend std::function prior to
+the standard being updated, or write monadic ->*bind*. It could also have a stateful named operator, where we
+carefully pass the Op down to the ﬁnal invoke function, permitting:
+named_operator<'*'> append = [](auto lhs, auto&& rhs) {
+  using std::begin; using std::end;
+  lhs.insert( end(lhs), begin(rhs), end(rhs) );
+  return std::move(lhs);
+};
+generating a named container-appending operator in C++17.
+Section 36.6: Unary operators
+You can overload the 2 unary operators:
+++foo and foo++
+--foo and foo--
+Overloading is the same for both types (++ and --). Scroll down for explanation
+Overloading outside of class/struct:
+//Prefix operator ++foo
+T& operator++(T& lhs)
+{
+    //Perform addition
+    return lhs;
+}
+//Postfix operator foo++ (int argument is used to separate pre- and postfix)
+//Should be implemented in terms of ++foo (prefix operator)
+T operator++(T& lhs, int)
+{
+    T t(lhs);
+    ++lhs;
+    return t;
+}
+Overloading inside of class/struct:
+//Prefix operator ++foo
+T& operator++()
+{
+    //Perform addition
+    return *this;
+}
+//Postfix operator foo++ (int argument is used to separate pre- and postfix)
+//Should be implemented in terms of ++foo (prefix operator)
+T operator++(int)
+{
+    T t(*this);
+    ++(*this);
+    return t;
+}
+Note: The preﬁx operator returns a reference to itself, so that you can continue operations on it. The ﬁrst argument
+is a reference, as the preﬁx operator changes the object, that's also the reason why it isn't const (you wouldn't be
+able to modify it otherwise).
+The postﬁx operator returns by value a temporary (the previous value), and so it cannot be a reference, as it would
+be a reference to a temporary, which would be garbage value at the end of the function, because the temporary
+variable goes out of scope). It also cannot be const, because you should be able to modify it directly.
+The ﬁrst argument is a non-const reference to the "calling" object, because if it were const, you wouldn't be able to
+modify it, and if it weren't a reference, you wouldn't change the original value.
+It is because of the copying needed in postﬁx operator overloads that it's better to make it a habit to use preﬁx ++
+instead of postﬁx ++ in for loops. From the for loop perspective, they're usually functionally equivalent, but there
+might be a slight performance advantage to using preﬁx ++, especially with "fat" classes with a lot of members to
+copy. Example of using preﬁx ++ in a for loop:
+for (list<string>::const_iterator it = tokens.begin();
+     it != tokens.end();
+     ++it) { // Don't use it++
+}
+Section 36.7: Comparison operators
+You can overload all comparison operators:
+== and !=
+> and <
+>= and <=
+The recommended way to overload all those operators is by implementing only 2 operators (== and <) and then
+using those to deﬁne the rest. Scroll down for explanation
+Overloading outside of class/struct:
+//Only implement those 2
+bool operator==(const T& lhs, const T& rhs) { /* Compare */ }
+bool operator<(const T& lhs, const T& rhs) { /* Compare */ }
+//Now you can define the rest
+bool operator!=(const T& lhs, const T& rhs) { return !(lhs == rhs); }
+bool operator>(const T& lhs, const T& rhs) { return rhs < lhs; }
+bool operator<=(const T& lhs, const T& rhs) { return !(lhs > rhs); }
+bool operator>=(const T& lhs, const T& rhs) { return !(lhs < rhs); }
+Overloading inside of class/struct:
+//Note that the functions are const, because if they are not const, you wouldn't be able
+//to call them if the object is const
+//Only implement those 2
+bool operator==(const T& rhs) const { /* Compare */ }
+bool operator<(const T& rhs) const { /* Compare */ }
+//Now you can define the rest
+bool operator!=(const T& rhs) const { return !(*this == rhs); }
+bool operator>(const T& rhs) const { return rhs < *this; }
+bool operator<=(const T& rhs) const { return !(*this > rhs); }
+bool operator>=(const T& rhs) const { return !(*this < rhs); }
+The operators obviously return a bool, indicating true or false for the corresponding operation.
+All of the operators take their arguments by const&, because the only thing that does operators do is compare, so
+they shouldn't modify the objects. Passing by & (reference) is faster than by value, and to make sure that the
+operators don't modify it, it is a const-reference.
+Note that the operators inside the class/struct are deﬁned as const, the reason for this is that without the
+functions being const, comparing const objects would not be possible, as the compiler doesn't know that the
+operators don't modify anything.
+Section 36.8: Assignment operator
+The assignment operator is one of the most important operators because it allows you to change the status of a
+variable.
+If you do not overload the assignment operator for your class/struct, it is automatically generated by the
+compiler: the automatically-generated assignment operator performs a "memberwise assignment", ie by invoking
+assignment operators on all members, so that one object is copied to the other, a member at time. The assignment
+operator should be overloaded when the simple memberwise assignment is not suitable for your class/struct, for
+example if you need to perform a deep copy of an object.
+Overloading the assignment operator = is easy, but you should follow some simple steps.
+1.
+Test for self-assignment. This check is important for two reasons:
+a self-assignment is a needless copy, so it does not make sense to perform it;
+the next step will not work in the case of a self-assignment.
+2.
+Clean the old data. The old data must be replaced with new ones. Now, you can understand the second
+reason of the previous step: if the content of the object was destroyed, a self-assignment will fail to perform
+the copy.
+3.
+Copy all members. If you overload the assignment operator for your class or your struct, it is not
+automatically generated by the compiler, so you will need to take charge of copying all members from the
+other object.
+4.
+Return *this. The operator returns by itself by reference, because it allows chaining (i.e. int b = (a = 6) +
+4; //b == 10).
+//T is some type
+T& operator=(const T& other)
+{
+    //Do something (like copying values)
+    return *this;
+}
+Note: other is passed by const&, because the object being assigned should not be changed, and passing by
+reference is faster than by value, and to make sure than operator= doesn't modify it accidentally, it is const.
+The assignment operator can only to be overloaded in the class/struct, because the left value of = is always the
+class/struct itself. Deﬁning it as a free function doesn't have this guarantee, and is disallowed because of that.
+When you declare it in the class/struct, the left value is implicitly the class/struct itself, so there is no problem
+with that.
+Section 36.9: Function call operator
+You can overload the function call operator ():
+Overloading must be done inside of a class/struct:
+//R -> Return type
+//Types -> any different type
+R operator()(Type name, Type2 name2, ...)
+{
+    //Do something
+    //return something
+}
+//Use it like this (R is return type, a and b are variables)
+R foo = object(a, b, ...);
+For example:
+struct Sum
+{
+    int operator()(int a, int b)
+    {
+        return a + b;
+    }
+};
+//Create instance of struct
+Sum sum;
+int result = sum(1, 1); //result == 2
+Section 36.10: Bitwise NOT operator
+Overloading the bitwise NOT (~) is fairly simple. Scroll down for explanation
+Overloading outside of class/struct:
+T operator~(T lhs)
+{
+    //Do operation
+    return lhs;
+}
+Overloading inside of class/struct:
+T operator~()
+{
+    T t(*this);
+    //Do operation
+    return t;
+}
+Note: operator~ returns by value, because it has to return a new value (the modiﬁed value), and not a reference to
+the value (it would be a reference to the temporary object, which would have garbage value in it as soon as the
+operator is done). Not const either because the calling code should be able to modify it afterwards (i.e. int a = ~a
++ 1; should be possible).
+Inside the class/struct you have to make a temporary object, because you can't modify this, as it would modify
+the original object, which shouldn't be the case.
+Section 36.11: Bit shift operators for I/O
+The operators << and >> are commonly used as "write" and "read" operators:
+std::ostream overloads << to write variables to the underlying stream (example: std::cout)
+std::istream overloads >> to read from the underlying stream to a variable (example: std::cin)
+The way they do this is similar if you wanted to overload them "normally" outside of the class/struct, except that
+specifying the arguments are not of the same type:
+Return type is the stream you want to overload from (for example, std::ostream) passed by reference, to
+allow chaining (Chaining: std::cout << a << b;). Example: std::ostream&
+lhs would be the same as the return type
+rhs is the type you want to allow overloading from (i.e. T), passed by const& instead of value for performance
+reason (rhs shouldn't be changed anyway). Example: const Vector&.
+Example:
+//Overload std::ostream operator<< to allow output from Vector's
+std::ostream& operator<<(std::ostream& lhs, const Vector& rhs)
+{
+    lhs << "x: " << rhs.x << " y: " << rhs.y << " z: " << rhs.z << '\n';
+    return lhs;
+}
+Vector v = { 1, 2, 3};
+//Now you can do
+std::cout << v;
+
+
+
+---
 ### Professional Notes: OOP Mechanics
 
 #### Chapter 34: Classes/Structures
@@ -6549,6 +7165,475 @@ public:
 
 ---
 ## <a name="chapter-4-deepobjectmodelvirtualization"></a>CHAPTER 4: DEEP OBJECT MODEL & VIRTUALIZATION
+
+
+---
+### Professional Notes: Object Lifecycle & Virtuals
+
+#### Chapter 38: Virtual Member Functions
+
+Section 38.1: Final virtual functions
+C++11 introduced final speciﬁer which forbids method overriding if appeared in method signature:
+class Base {
+public:
+    virtual void foo() {
+        std::cout << "Base::Foo\n";
+    }
+};
+class Derived1 : public Base {
+public:
+    // Overriding Base::foo
+    void foo() final {
+        std::cout << "Derived1::Foo\n";
+    }
+};
+class Derived2 : public Derived1 {
+public:
+    // Compilation error: cannot override final method
+    virtual void foo() {
+        std::cout << "Derived2::Foo\n";
+    }
+};
+The speciﬁer final can only be used with `virtual' member function and can't be applied to non-virtual member
+functions
+Like final, there is also an speciﬁer caller 'override' which prevent overriding of virtual functions in the derived
+class.
+The speciﬁers override and final may be combined together to have desired eﬀect:
+class Derived1 : public Base {
+public:
+    void foo() final override {
+        std::cout << "Derived1::Foo\n";
+    }
+};
+Section 38.2: Using override with virtual in C++11 and later
+The speciﬁer override has a special meaning in C++11 onwards, if appended at the end of function signature. This
+signiﬁes that a function is
+Overriding the function present in base class &
+The Base class function is virtual
+There is no run time signiﬁcance of this speciﬁer as is mainly meant as an indication for compilers
+The example below will demonstrate the change in behaviour with our without using override.
+Without override:
+#include <iostream>
+struct X {
+    virtual void f() { std::cout << "X::f()\n"; }
+};
+struct Y : X {
+    // Y::f() will not override X::f() because it has a different signature,
+    // but the compiler will accept the code (and silently ignore Y::f()).
+    virtual void f(int a) { std::cout << a << "\n"; }
+};
+With override:
+#include <iostream>
+struct X {
+    virtual void f() { std::cout << "X::f()\n"; }
+};
+struct Y : X {
+    // The compiler will alert you to the fact that Y::f() does not
+    // actually override anything.
+    virtual void f(int a) override { std::cout << a << "\n"; }
+};
+Note that override is not a keyword, but a special identiﬁer which only may appear in function signatures. In all
+other contexts override still may be used as an identiﬁer:
+void foo() {
+    int override = 1; // OK.
+    int virtual = 2;  // Compilation error: keywords can't be used as identifiers.
+}
+Section 38.3: Virtual vs non-virtual member functions
+With virtual member functions:
+#include <iostream>
+struct X {
+    virtual void f() { std::cout << "X::f()\n"; }
+};
+struct Y : X {
+    // Specifying virtual again here is optional
+    // because it can be inferred from X::f().
+    virtual void f() { std::cout << "Y::f()\n"; }
+};
+void call(X& a) {
+    a.f();
+}
+int main() {
+    X x;
+    Y y;
+    call(x); // outputs "X::f()"
+    call(y); // outputs "Y::f()"
+}
+Without virtual member functions:
+#include <iostream>
+struct X {
+   void f() { std::cout << "X::f()\n"; }
+};
+struct Y : X {
+   void f() { std::cout << "Y::f()\n"; }
+};
+void call(X& a) {
+    a.f();
+}
+int main() {
+    X x;
+    Y y;
+    call(x); // outputs "X::f()"
+    call(y); // outputs "X::f()"
+}
+Section 38.4: Behaviour of virtual functions in constructors
+and destructors
+The behaviour of virtual functions in constructors and destructors is often confusing when ﬁrst encountered.
+#include <iostream>
+using namespace std;
+class base {
+public:
+    base() { f("base constructor"); }
+    ~base() { f("base destructor"); }
+    virtual const char* v() { return "base::v()"; }
+    void f(const char* caller) {
+        cout << "When called from " << caller << ", "  << v() << " gets called.\n";
+    }        
+};
+class derived : public base {
+public:
+    derived() { f("derived constructor"); }
+    ~derived() { f("derived destructor"); }
+    const char* v() override { return "derived::v()"; }
+};
+int main() {
+     derived d;
+}
+Output:
+When called from base constructor, base::v() gets called.
+When called from derived constructor, derived::v() gets called.
+When called from derived destructor, derived::v() gets called.
+When called from base destructor, base::v() gets called.
+The reasoning behind this is that the derived class may deﬁne additional members which are not yet initialized (in
+the constructor case) or already destroyed (in the destructor case), and calling its member functions would be
+unsafe. Therefore during construction and destruction of C++ objects, the dynamic type of *this is considered to be
+the constructor's or destructor's class and not a more-derived class.
+Example:
+#include <iostream>
+#include <memory>
+using namespace std;
+class base {
+public:
+    base()
+    {
+        std::cout << "foo is " << foo() << std::endl;
+    }
+    virtual int foo() { return 42; }
+};
+class derived : public base {
+    unique_ptr<int> ptr_;
+public:
+    derived(int i) : ptr_(new int(i*i)) { }
+    // The following cannot be called before derived::derived due to how C++ behaves,
+    // if it was possible... Kaboom!
+    int foo() override   { return *ptr_; }
+};
+int main() {
+    derived d(4);
+}
+Section 38.5: Pure virtual functions
+We can also specify that a virtual function is pure virtual (abstract), by appending = 0 to the declaration. Classes
+with one or more pure virtual functions are considered to be abstract, and cannot be instantiated; only derived
+classes which deﬁne, or inherit deﬁnitions for, all pure virtual functions can be instantiated.
+struct Abstract {
+    virtual void f() = 0;
+};
+struct Concrete {
+    void f() override {}
+};
+Abstract a; // Error.
+Concrete c; // Good.
+Even if a function is speciﬁed as pure virtual, it can be given a default implementation. Despite this, the function will
+still be considered abstract, and derived classes will have to deﬁne it before they can be instantiated. In this case,
+the derived class' version of the function is even allowed to call the base class' version.
+struct DefaultAbstract {
+    virtual void f() = 0;
+};
+void DefaultAbstract::f() {}
+struct WhyWouldWeDoThis : DefaultAbstract {
+    void f() override { DefaultAbstract::f(); }
+};
+There are a couple of reasons why we might want to do this:
+If we want to create a class that can't itself be instantiated, but doesn't prevent its derived classes from being
+instantiated, we can declare the destructor as pure virtual. Being the destructor, it must be deﬁned anyways,
+if we want to be able to deallocate the instance. And as the destructor is most likely already virtual to prevent
+memory leaks during polymorphic use, we won't incur an unnecessary performance hit from declaring
+another function virtual. This can be useful when making interfaces.
+  struct Interface {
+      virtual ~Interface() = 0;
+  };
+  Interface::~Interface() = default;
+  struct Implementation : Interface {};
+  // ~Implementation() is automatically defined by the compiler if not explicitly
+  //  specified, meeting the "must be defined before instantiation" requirement.
+If most or all implementations of the pure virtual function will contain duplicate code, that code can instead
+be moved to the base class version, making the code easier to maintain.
+  class SharedBase {
+      State my_state;
+      std::unique_ptr<Helper> my_helper;
+      // ...
+    public:
+      virtual void config(const Context& cont) = 0;
+      // ...
+  };
+  /* virtual */ void SharedBase::config(const Context& cont) {
+      my_helper = new Helper(my_state, cont.relevant_field);
+      do_this();
+      and_that();
+  }
+  class OneImplementation : public SharedBase {
+      int i;
+      // ...
+    public:
+      void config(const Context& cont) override;
+      // ...
+  };
+  void OneImplementation::config(const Context& cont) /* override */ {
+      my_state = { cont.some_field, cont.another_field, i };
+      SharedBase::config(cont);
+      my_unique_setup();
+  };
+  // And so on, for other classes derived from SharedBase.
+
+#### Chapter 40: Special Member Functions
+
+Section 40.1: Default Constructor
+A default constructor is a type of constructor that requires no parameters when called. It is named after the type it
+constructs and is a member function of it (as all constructors are).
+class C{
+    int i;
+public:
+    // the default constructor definition
+    C()
+    : i(0){ // member initializer list -- initialize i to 0
+        // constructor function body -- can do more complex things here
+    }
+};
+C c1; // calls default constructor of C to create object c1
+C c2 = C(); // calls default constructor explicitly
+C c3(); // ERROR: this intuitive version is not possible due to "most vexing parse"
+C c4{}; // but in C++11 {} CAN be used in a similar way
+C c5[2]; // calls default constructor for both array elements
+C* c6 = new C[2]; // calls default constructor for both array elements
+Another way to satisfy the "no parameters" requirement is for the developer to provide default values for all
+parameters:
+class D{
+    int i;
+    int j;
+public:
+    // also a default constructor (can be called with no parameters)
+    D( int i = 0, int j = 42 )
+    : i(i), j(j){
+    }
+};
+D d; // calls constructor of D with the provided default values for the parameters
+Under some circumstances (i.e., the developer provides no constructors and there are no other disqualifying
+conditions), the compiler implicitly provides an empty default constructor:
+class C{
+    std::string s; // note: members need to be default constructible themselves
+};
+C c1; // will succeed -- C has an implicitly defined default constructor
+Having some other type of constructor is one of the disqualifying conditions mentioned earlier:
+class C{
+    int i;
+public:
+    C( int i ) : i(i){}
+};
+C c1; // Compile ERROR: C has no (implicitly defined) default constructor
+Version < c++11
+To prevent implicit default constructor creation, a common technique is to declare it as private (with no deﬁnition).
+The intention is to cause a compile error when someone tries to use the constructor (this either results in an Access
+to private error or a linker error, depending on the compiler).
+To be sure a default constructor (functionally similar to the implicit one) is deﬁned, a developer could write an
+empty one explicitly.
+Version ≥ c++11
+In C++11, a developer can also use the delete keyword to prevent the compiler from providing a default
+constructor.
+class C{
+    int i;
+public:
+    // default constructor is explicitly deleted
+    C() = delete;
+};
+C c1; // Compile ERROR: C has its default constructor deleted
+Furthermore, a developer may also be explicit about wanting the compiler to provide a default constructor.
+class C{
+    int i;
+public:
+    // does have automatically generated default constructor (same as implicit one)
+    C() = default;
+    C( int i ) : i(i){}
+};
+C c1; // default constructed
+C c2( 1 ); // constructed with the int taking constructor
+Version ≥ c++14
+You can determine whether a type has a default constructor (or is a primitive type) using
+std::is_default_constructible from <type_traits>:
+class C1{ };
+class C2{ public: C2(){} };
+class C3{ public: C3(int){} };
+using std::cout; using std::boolalpha; using std::endl;
+using std::is_default_constructible;
+cout << boolalpha << is_default_constructible<int>() << endl; // prints true
+cout << boolalpha << is_default_constructible<C1>() << endl; // prints true
+cout << boolalpha << is_default_constructible<C2>() << endl; // prints true
+cout << boolalpha << is_default_constructible<C3>() << endl; // prints false
+Version = c++11
+In C++11, it is still possible to use the non-functor version of std::is_default_constructible:
+cout << boolalpha << is_default_constructible<C1>::value << endl; // prints true
+Section 40.2: Destructor
+A destructor is a function without arguments that is called when a user-deﬁned object is about to be destroyed. It is
+named after the type it destructs with a ~ preﬁx.
+class C{
+    int* is;
+    string s;
+public:
+    C()
+    : is( new int[10] ){
+    }
+    ~C(){  // destructor definition
+        delete[] is;
+    }
+};
+class C_child : public C{
+    string s_ch;
+public:
+    C_child(){}
+    ~C_child(){} // child destructor
+};
+void f(){
+    C c1; // calls default constructor
+    C c2[2]; // calls default constructor for both elements
+    C* c3 = new C[2]; // calls default constructor for both array elements
+    C_child c_ch;  // when destructed calls destructor of s_ch and of C base (and in turn s)
+    delete[] c3; // calls destructors on c3[0] and c3[1]
+} // automatic variables are destroyed here -- i.e. c1, c2 and c_ch
+Under most circumstances (i.e., a user provides no destructor, and there are no other disqualifying conditions), the
+compiler provides a default destructor implicitly:
+class C{
+    int i;
+    string s;
+};
+void f(){
+    C* c1 = new C;
+    delete c1; // C has a destructor
+}
+class C{
+    int m;
+private:
+    ~C(){} // not public destructor!
+};
+class C_container{
+    C c;
+};
+void f(){
+    C_container* c_cont = new C_container;
+    delete c_cont; // Compile ERROR: C has no accessible destructor
+}
+Version > c++11
+In C++11, a developer can override this behavior by preventing the compiler from providing a default destructor.
+class C{
+    int m;
+public:
+    ~C() = delete; // does NOT have implicit destructor
+};
+void f{
+    C c1;
+} // Compile ERROR: C has no destructor
+Furthermore, a developer may also be explicit about wanting the compiler to provide a default destructor.
+class C{
+    int m;
+public:
+    ~C() = default; // saying explicitly it does have implicit/empty destructor
+};
+void f(){
+    C c1;
+} // C has a destructor -- c1 properly destroyed
+Version > c++11
+You can determine whether a type has a destructor (or is a primitive type) using std::is_destructible from
+<type_traits>:
+class C1{ };
+class C2{ public: ~C2() = delete };
+class C3 : public C2{ };
+using std::cout; using std::boolalpha; using std::endl;
+using std::is_destructible;
+cout << boolalpha << is_destructible<int>() << endl; // prints true
+cout << boolalpha << is_destructible<C1>() << endl; // prints true
+cout << boolalpha << is_destructible<C2>() << endl; // prints false
+cout << boolalpha << is_destructible<C3>() << endl; // prints false
+Section 40.3: Copy and swap
+If you're writing a class that manages resources, you need to implement all the special member functions (see Rule
+of Three/Five/Zero). The most direct approach to writing the copy constructor and assignment operator would be:
+person(const person &other)
+    : name(new char[std::strlen(other.name) + 1])
+    , age(other.age)
+{
+    std::strcpy(name, other.name);
+}
+person& operator=(person const& rhs) {
+    if (this != &other) {
+        delete [] name;
+        name = new char[std::strlen(other.name) + 1];
+        std::strcpy(name, other.name);
+        age = other.age;
+    }
+    return *this;
+}
+But this approach has some problems. It fails the strong exception guarantee - if new[] throws, we've already
+cleared the resources owned by this and cannot recover. We're duplicating a lot of the logic of copy construction in
+copy assignment. And we have to remember the self-assignment check, which usually just adds overhead to the
+copy operation, but is still critical.
+To satisfy the strong exception guarantee and avoid code duplication (double so with the subsequent move
+assignment operator), we can use the copy-and-swap idiom:
+class person {
+    char* name;
+    int age;
+public:
+    /* all the other functions ... */
+    friend void swap(person& lhs, person& rhs) {
+        using std::swap; // enable ADL
+        swap(lhs.name, rhs.name);
+        swap(lhs.age, rhs.age);
+    }
+    person& operator=(person rhs) {
+        swap(*this, rhs);
+        return *this;
+    }
+};
+Why does this work? Consider what happens when we have
+person p1 = ...;
+person p2 = ...;
+p1 = p2;
+First, we copy-construct rhs from p2 (which we didn't have to duplicate here). If that operation throws, we don't do
+anything in operator= and p1 remains untouched. Next, we swap the members between *this and rhs, and then
+rhs goes out of scope. When operator=, that implicitly cleans the original resources of this (via the destructor,
+which we didn't have to duplicate). Self-assignment works too - it's less eﬃcient with copy-and-swap (involves an
+extra allocation and deallocation), but if that's the unlikely scenario, we don't slow down the typical use case to
+account for it.
+Version ≥ C++11
+The above formulation works as-is already for move assignment.
+p1 = std::move(p2);
+Here, we move-construct rhs from p2, and all the rest is just as valid. If a class is movable but not copyable, there is
+no need to delete the copy-assignment, since this assignment operator will simply be ill-formed due to the deleted
+copy constructor.
+Section 40.4: Implicit Move and Copy
+Bear in mind that declaring a destructor inhibits the compiler from generating implicit move constructors and move
+assignment operators. If you declare a destructor, remember to also add appropriate deﬁnitions for the move
+operations.
+Furthermore, declaring move operations will suppress the generation of copy operations, so these should also be
+added (if the objects of this class are required to have copy semantics).
+class Movable {
+public:
+    virtual ~Movable() noexcept = default;
+    //    compiler won't generate these unless we tell it to
+    //    because we declared a destructor
+    Movable(Movable&&) noexcept = default;
+    Movable& operator=(Movable&&) noexcept = default;
+    //    declaring move operations will suppress generation
+    //    of copy operations unless we explicitly re-enable them
+    Movable(const Movable&) = default;
+    Movable& operator=(const Movable&) = default;
+};
+
 
 
 ---
@@ -11014,6 +12099,1189 @@ copying the std::function once. A default constructed generator iterator compare
 end-generator-iterators.
 
 ## <a name="chapter-6-stlinternalsdeepdive"></a>CHAPTER 6: STL INTERNALS DEEP DIVE
+
+
+---
+### Professional Notes: String & Vector Deep Dive
+
+#### Chapter 47: std::string
+
+Strings are objects that represent sequences of characters. The standard string class provides a simple, safe and
+versatile alternative to using explicit arrays of chars when dealing with text and other sequences of characters. The
+C++ string class is part of the std namespace and was standardized in 1998.
+Section 47.1: Tokenize
+Listed from least expensive to most expensive at run-time:
+1.
+std::strtok is the cheapest standard provided tokenization method, it also allows the delimiter to be
+modiﬁed between tokens, but it incurs 3 diﬃculties with modern C++:
+std::strtok cannot be used on multiple strings at the same time (though some implementations do
+extend to support this, such as: strtok_s)
+For the same reason std::strtok cannot be used on multiple threads simultaneously (this may
+however be implementation deﬁned, for example: Visual Studio's implementation is thread safe)
+Calling std::strtok modiﬁes the std::string it is operating on, so it cannot be used on const
+strings, const char*s, or literal strings, to tokenize any of these with std::strtok or to operate on a
+std::string who's contents need to be preserved, the input would have to be copied, then the copy
+could be operated on
+Generally any of these options cost will be hidden in the allocation cost of the tokens, but if the cheapest
+algorithm is required and std::strtok's diﬃculties are not overcomable consider a hand-spun solution.
+// String to tokenize
+std::string str{ "The quick brown fox" };
+// Vector to store tokens
+vector<std::string> tokens;
+for (auto i = strtok(&str[0], " "); i != NULL; i = strtok(NULL, " "))
+    tokens.push_back(i);
+Live Example
+2.
+The std::istream_iterator uses the stream's extraction operator iteratively. If the input std::string is
+white-space delimited this is able to expand on the std::strtok option by eliminating its diﬃculties, allowing
+inline tokenization thereby supporting the generation of a const vector<string>, and by adding support for
+multiple delimiting white-space character:
+// String to tokenize
+const std::string str("The  quick \tbrown \nfox");
+std::istringstream is(str);
+// Vector to store tokens
+const std::vector<std::string> tokens = std::vector<std::string>(
+                                        std::istream_iterator<std::string>(is),
+                                        std::istream_iterator<std::string>());
+Live Example
+3.
+The std::regex_token_iterator uses a std::regex to iteratively tokenize. It provides for a more ﬂexible
+delimiter deﬁnition. For example, non-delimited commas and white-space:
+Version ≥ C++11
+// String to tokenize
+const std::string str{ "The ,qu\\,ick ,\tbrown, fox" };
+const std::regex re{ "\\s*((?:[^\\\\,]|\\\\.)*?)\\s*(?:,|$)" };
+// Vector to store tokens
+const std::vector<std::string> tokens{
+    std::sregex_token_iterator(str.begin(), str.end(), re, 1),
+    std::sregex_token_iterator()
+};
+Live Example
+See the regex_token_iterator Example for more details.
+Section 47.2: Conversion to (const) char*
+In order to get const char* access to the data of a std::string you can use the string's c_str() member function.
+Keep in mind that the pointer is only valid as long as the std::string object is within scope and remains
+unchanged, that means that only const methods may be called on the object.
+Version ≥ C++17
+The data() member function can be used to obtain a modiﬁable char*, which can be used to manipulate the
+std::string object's data.
+Version ≥ C++11
+A modiﬁable char* can also be obtained by taking the address of the ﬁrst character: &s[0]. Within C++11, this is
+guaranteed to yield a well-formed, null-terminated string. Note that &s[0] is well-formed even if s is empty,
+whereas &s.front() is undeﬁned if s is empty.
+Version ≥ C++11
+std::string str("This is a string.");
+const char* cstr = str.c_str(); // cstr points to: "This is a string.\0"
+const char* data = str.data();  // data points to: "This is a string.\0"
+std::string str("This is a string.");
+// Copy the contents of str to untie lifetime from the std::string object
+std::unique_ptr<char []> cstr = std::make_unique<char[]>(str.size() + 1);
+// Alternative to the line above (no exception safety):
+// char* cstr_unsafe = new char[str.size() + 1];
+std::copy(str.data(), str.data() + str.size(), cstr);
+cstr[str.size()] = '\0'; // A null-terminator needs to be added
+// delete[] cstr_unsafe;
+std::cout << cstr.get();
+Section 47.3: Using the std::string_view class
+Version ≥ C++17
+C++17 introduces std::string_view, which is simply a non-owning range of const chars, implementable as either
+a pair of pointers or a pointer and a length. It is a superior parameter type for functions that requires non-
+modiﬁable string data. Before C++17, there were three options for this:
+void foo(std::string const& s);      // pre-C++17, single argument, could incur
+                                     // allocation if caller's data was not in a string
+                                     // (e.g. string literal or vector<char> )
+void foo(const char* s, size_t len); // pre-C++17, two arguments, have to pass them
+                                     // both everywhere
+void foo(const char* s);             // pre-C++17, single argument, but need to call
+                                     // strlen()
+template <class StringT>
+void foo(StringT const& s);          // pre-C++17, caller can pass arbitrary char data
+                                     // provider, but now foo() has to live in a header
+All of these can be replaced with:
+void foo(std::string_view s);        // post-C++17, single argument, tighter coupling
+                                     // zero copies regardless of how caller is storing
+                                     // the data
+Note that std::string_view cannot modify its underlying data.
+string_view is useful when you want to avoid unnecessary copies.
+It oﬀers a useful subset of the functionality that std::string does, although some of the functions behave
+diﬀerently:
+std::string str = "lllloooonnnngggg sssstttrrriiinnnggg"; //A really long string
+//Bad way - 'string::substr' returns a new string (expensive if the string is long)
+std::cout << str.substr(15, 10) << '\n';
+//Good way - No copies are created!
+std::string_view view = str;
+// string_view::substr returns a new string_view
+std::cout << view.substr(15, 10) << '\n';
+Section 47.4: Conversion to std::wstring
+In C++, sequences of characters are represented by specializing the std::basic_string class with a native
+character type. The two major collections deﬁned by the standard library are std::string and std::wstring:
+std::string is built with elements of type char
+std::wstring is built with elements of type wchar_t
+To convert between the two types, use wstring_convert:
+#include <string>
+#include <codecvt>
+#include <locale>
+std::string input_str = "this is a -string-, which is a sequence based on the -char- type.";
+std::wstring input_wstr = L"this is a -wide- string, which is based on the -wchar_t- type.";
+// conversion
+std::wstring str_turned_to_wstr =
+std::wstring_convert<std::codecvt_utf8<wchar_t>>().from_bytes(input_str);
+std::string wstr_turned_to_str =
+std::wstring_convert<std::codecvt_utf8<wchar_t>>().to_bytes(input_wstr);
+In order to improve usability and/or readability, you can deﬁne functions to perform the conversion:
+#include <string>
+#include <codecvt>
+#include <locale>
+using convert_t = std::codecvt_utf8<wchar_t>;
+std::wstring_convert<convert_t, wchar_t> strconverter;
+std::string to_string(std::wstring wstr)
+{
+    return strconverter.to_bytes(wstr);
+}
+std::wstring to_wstring(std::string str)
+{
+    return strconverter.from_bytes(str);
+}
+Sample usage:
+std::wstring a_wide_string = to_wstring("Hello World!");
+That's certainly more readable than std::wstring_convert<std::codecvt_utf8<wchar_t>>().from_bytes("Hello
+World!").
+Please note that char and wchar_t do not imply encoding, and gives no indication of size in bytes. For instance,
+wchar_t is commonly implemented as a 2-bytes data type and typically contains UTF-16 encoded data under
+Windows (or UCS-2 in versions prior to Windows 2000) and as a 4-bytes data type encoded using UTF-32 under
+Linux. This is in contrast with the newer types char16_t and char32_t, which were introduced in C++11 and are
+guaranteed to be large enough to hold any UTF16 or UTF32 "character" (or more precisely, code point) respectively.
+Section 47.5: Lexicographical comparison
+Two std::strings can be compared lexicographically using the operators ==, !=, <, <=, >, and >=:
+std::string str1 = "Foo";
+std::string str2 = "Bar";
+assert(!(str1 < str2));
+assert(str > str2);
+assert(!(str1 <= str2));
+assert(str1 >= str2);
+assert(!(str1 == str2));
+assert(str1 != str2);
+All these functions use the underlying std::string::compare() method to perform the comparison, and return for
+convenience boolean values. The operation of these functions may be interpreted as follows, regardless of the
+actual implementation:
+operator==:
+If str1.length() == str2.length() and each character pair matches, then returns true, otherwise returns
+false.
+operator!=:
+If str1.length() != str2.length() or one character pair doesn't match, returns true, otherwise it returns
+false.
+operator< or operator>:
+Finds the ﬁrst diﬀerent character pair, compares them then returns the boolean result.
+operator<= or operator>=:
+Finds the ﬁrst diﬀerent character pair, compares them then returns the boolean result.
+Note: The term character pair means the corresponding characters in both strings of the same positions. For
+better understanding, if two example strings are str1 and str2, and their lengths are n and m respectively, then
+character pairs of both strings means each str1[i] and str2[i] pairs where i = 0, 1, 2, ..., max(n,m). If for any i
+where the corresponding character does not exist, that is, when i is greater than or equal to n or m, it would be
+considered as the lowest value.
+Here is an example of using <:
+std::string str1 = "Barr";
+std::string str2 = "Bar";
+assert(str2 < str1);
+The steps are as follows:
+1.
+2.
+3.
+4.
+Compare the ﬁrst characters, 'B' == 'B' - move on.
+Compare the second characters, 'a' == 'a' - move on.
+Compare the third characters, 'r' == 'r' - move on.
+The str2 range is now exhausted, while the str1 range still has characters. Thus, str2 < str1.
+Section 47.6: Trimming characters at start/end
+This example requires the headers <algorithm>, <locale>, and <utility>.
+Version ≥ C++11
+To trim a sequence or string means to remove all leading and trailing elements (or characters) matching a certain
+predicate. We ﬁrst trim the trailing elements, because it doesn't involve moving any elements, and then trim the
+leading elements. Note that the generalizations below work for all types of std::basic_string (e.g. std::string
+and std::wstring), and accidentally also for sequence containers (e.g. std::vector and std::list).
+template <typename Sequence, // any basic_string, vector, list etc.
+          typename Pred>     // a predicate on the element (character) type
+Sequence& trim(Sequence& seq, Pred pred) {
+    return trim_start(trim_end(seq, pred), pred);
+}
+Trimming the trailing elements involves ﬁnding the last element not matching the predicate, and erasing from there
+on:
+template <typename Sequence, typename Pred>
+Sequence& trim_end(Sequence& seq, Pred pred) {
+    auto last = std::find_if_not(seq.rbegin(),
+                                 seq.rend(),
+                                 pred);
+    seq.erase(last.base(), seq.end());
+    return seq;
+}
+Trimming the leading elements involves ﬁnding the ﬁrst element not matching the predicate and erasing up to
+there:
+template <typename Sequence, typename Pred>
+Sequence& trim_start(Sequence& seq, Pred pred) {
+    auto first = std::find_if_not(seq.begin(),
+                                  seq.end(),
+                                  pred);
+    seq.erase(seq.begin(), first);
+    return seq;
+}
+To specialize the above for trimming whitespace in a std::string we can use the std::isspace() function as a
+predicate:
+std::string& trim(std::string& str, const std::locale& loc = std::locale()) {
+    return trim(str, [&loc](const char c){ return std::isspace(c, loc); });
+}
+std::string& trim_start(std::string& str, const std::locale& loc = std::locale()) {
+    return trim_start(str, [&loc](const char c){ return std::isspace(c, loc); });
+}
+std::string& trim_end(std::string& str, const std::locale& loc = std::locale()) {
+    return trim_end(str, [&loc](const char c){ return std::isspace(c, loc); });
+}
+Similarly, we can use the std::iswspace() function for std::wstring etc.
+If you wish to create a new sequence that is a trimmed copy, then you can use a separate function:
+template <typename Sequence, typename Pred>
+Sequence trim_copy(Sequence seq, Pred pred) { // NOTE: passing seq by value
+    trim(seq, pred);
+    return seq;
+}
+Section 47.7: String replacement
+Replace by position
+To replace a portion of a std::string you can use the method replace from std::string.
+replace has a lot of useful overloads:
+//Define string
+std::string str = "Hello foo, bar and world!";
+std::string alternate = "Hello foobar";
+//1)
+str.replace(6, 3, "bar"); //"Hello bar, bar and world!"
+//2)
+str.replace(str.begin() + 6, str.end(), "nobody!"); //"Hello nobody!"
+//3)
+str.replace(19, 5, alternate, 6, 6); //"Hello foo, bar and foobar!"
+Version ≥ C++14
+//4)
+str.replace(19, 5, alternate, 6); //"Hello foo, bar and foobar!"
+//5)
+str.replace(str.begin(), str.begin() + 5, str.begin() + 6, str.begin() + 9);
+//"foo foo, bar and world!"
+//6)
+str.replace(0, 5, 3, 'z'); //"zzz foo, bar and world!"
+//7)
+str.replace(str.begin() + 6, str.begin() + 9, 3, 'x'); //"Hello xxx, bar and world!"
+Version ≥ C++11
+//8)
+str.replace(str.begin(), str.begin() + 5, { 'x', 'y', 'z' }); //"xyz foo, bar and world!"
+Replace occurrences of a string with another string
+Replace only the ﬁrst occurrence of replace with with in str:
+std::string replaceString(std::string str,
+                          const std::string& replace,
+                          const std::string& with){
+    std::size_t pos = str.find(replace);
+    if (pos != std::string::npos)
+        str.replace(pos, replace.length(), with);
+    return str;
+}
+Replace all occurrence of replace with with in str:
+std::string replaceStringAll(std::string str,
+                             const std::string& replace,
+                             const std::string& with) {
+    if(!replace.empty()) {
+        std::size_t pos = 0;
+        while ((pos = str.find(replace, pos)) != std::string::npos) {
+            str.replace(pos, replace.length(), with);
+            pos += with.length();
+        }
+    }
+    return str;
+}
+Section 47.8: Converting to std::string
+std::ostringstream can be used to convert any streamable type to a string representation, by inserting the object
+into a std::ostringstream object (with the stream insertion operator <<) and then converting the whole
+std::ostringstream to a std::string.
+For int for instance:
+#include <sstream>
+int main()
+{
+    int val = 4;
+    std::ostringstream str;
+    str << val;
+    std::string converted = str.str();
+    return 0;
+}
+Writing your own conversion function, the simple:
+template<class T>
+std::string toString(const T& x)
+{
+  std::ostringstream ss;
+  ss << x;
+  return ss.str();
+}
+works but isn't suitable for performance critical code.
+User-deﬁned classes may implement the stream insertion operator if desired:
+std::ostream operator<<( std::ostream& out, const A& a )
+{
+    // write a string representation of a to out
+    return out;
+}
+Version ≥ C++11
+Aside from streams, since C++11 you can also use the std::to_string (and std::to_wstring) function which is
+overloaded for all fundamental types and returns the string representation of its parameter.
+std::string s = to_string(0x12f3);  // after this the string s contains "4851"
+Section 47.9: Splitting
+Use std::string::substr to split a string. There are two variants of this member function.
+The ﬁrst takes a starting position from which the returned substring should begin. The starting position must be
+valid in the range (0, str.length()]:
+std::string str = "Hello foo, bar and world!";
+std::string newstr = str.substr(11); // "bar and world!"
+The second takes a starting position and a total length of the new substring. Regardless of the length, the substring
+will never go past the end of the source string:
+std::string str = "Hello foo, bar and world!";
+std::string newstr = str.substr(15, 3); // "and"
+Note that you can also call substr with no arguments, in this case an exact copy of the string is returned
+std::string str = "Hello foo, bar and world!";
+std::string newstr = str.substr(); // "Hello foo, bar and world!"
+Section 47.10: Accessing a character
+There are several ways to extract characters from a std::string and each is subtly diﬀerent.
+std::string str("Hello world!");
+operator[](n)
+Returns a reference to the character at index n.
+std::string::operator[] is not bounds-checked and does not throw an exception. The caller is responsible for
+asserting that the index is within the range of the string:
+char c = str[6]; // 'w'
+at(n)
+Returns a reference to the character at index n.
+std::string::at is bounds checked, and will throw std::out_of_range if the index is not within the range of the
+string:
+char c = str.at(7); // 'o'
+Version ≥ C++11
+Note: Both of these examples will result in undeﬁned behavior if the string is empty.
+front()
+Returns a reference to the ﬁrst character:
+char c = str.front(); // 'H'
+back()
+Returns a reference to the last character:
+char c = str.back(); // '!'
+Section 47.11: Checking if a string is a preﬁx of another
+Version ≥ C++14
+In C++14, this is easily done by std::mismatch which returns the ﬁrst mismatching pair from two ranges:
+std::string prefix = "foo";
+std::string string = "foobar";
+bool isPrefix = std::mismatch(prefix.begin(), prefix.end(),
+    string.begin(), string.end()).first == prefix.end();
+Note that a range-and-a-half version of mismatch() existed prior to C++14, but this is unsafe in the case that the
+second string is the shorter of the two.
+Version < C++14
+We can still use the range-and-a-half version of std::mismatch(), but we need to ﬁrst check that the ﬁrst string is at
+most as big as the second:
+bool isPrefix = prefix.size() <= string.size() &&
+    std::mismatch(prefix.begin(), prefix.end(),
+        string.begin(), string.end()).first == prefix.end();
+Version ≥ C++17
+With std::string_view, we can write the direct comparison we want without having to worry about allocation
+overhead or making copies:
+bool isPrefix(std::string_view prefix, std::string_view full)
+{
+    return prefix == full.substr(0, prefix.size());
+}
+Section 47.12: Looping through each character
+Version ≥ C++11
+std::string supports iterators, and so you can use a ranged based loop to iterate through each character:
+std::string str = "Hello World!";
+for (auto c : str)
+    std::cout << c;
+You can use a "traditional" for loop to loop through every character:
+std::string str = "Hello World!";
+for (std::size_t i = 0; i < str.length(); ++i)
+    std::cout << str[i];
+Section 47.13: Conversion to integers/ﬂoating point types
+A std::string containing a number can be converted into an integer type, or a ﬂoating point type, using
+conversion functions.
+Note that all of these functions stop parsing the input string as soon as they encounter a non-numeric character, so
+"123abc" will be converted into 123.
+The std::ato* family of functions converts C-style strings (character arrays) to integer or ﬂoating-point types:
+std::string ten = "10";
+double num1 = std::atof(ten.c_str());
+int num2 = std::atoi(ten.c_str());
+long num3 = std::atol(ten.c_str());
+Version ≥ C++11
+long long num4 = std::atoll(ten.c_str());
+However, use of these functions is discouraged because they return 0 if they fail to parse the string. This is bad
+because 0 could also be a valid result, if for example the input string was "0", so it is impossible to determine if the
+conversion actually failed.
+The newer std::sto* family of functions convert std::strings to integer or ﬂoating-point types, and throw
+exceptions if they could not parse their input. You should use these functions if possible:
+Version ≥ C++11
+std::string ten = "10";
+int num1 = std::stoi(ten);
+long num2 = std::stol(ten);
+long long num3 = std::stoll(ten);
+float num4 = std::stof(ten);
+double num5 = std::stod(ten);
+long double num6 = std::stold(ten);
+Furthermore, these functions also handle octal and hex strings unlike the std::ato* family. The second parameter
+is a pointer to the ﬁrst unconverted character in the input string (not illustrated here), and the third parameter is
+the base to use. 0 is automatic detection of octal (starting with 0) and hex (starting with 0x or 0X), and any other
+value is the base to use
+std::string ten = "10";
+std::string ten_octal = "12";
+std::string ten_hex = "0xA";
+int num1 = std::stoi(ten, 0, 2); // Returns 2
+int num2 = std::stoi(ten_octal, 0, 8); // Returns 10
+long num3 = std::stol(ten_hex, 0, 16);  // Returns 10
+long num4 = std::stol(ten_hex);  // Returns 0
+long num5 = std::stol(ten_hex, 0, 0); // Returns 10 as it detects the leading 0x
+Section 47.14: Concatenation
+You can concatenate std::strings using the overloaded + and += operators. Using the + operator:
+std::string hello = "Hello";
+std::string world = "world";
+std::string helloworld = hello + world; // "Helloworld"
+Using the += operator:
+std::string hello = "Hello";
+std::string world = "world";
+hello += world; // "Helloworld"
+You can also append C strings, including string literals:
+std::string hello = "Hello";
+std::string world = "world";
+const char *comma = ", ";
+std::string newhelloworld = hello + comma + world + "!"; // "Hello, world!"
+You can also use push_back() to push back individual chars:
+std::string s = "a, b, ";
+s.push_back('c'); // "a, b, c"
+There is also append(), which is pretty much like +=:
+std::string app = "test and ";
+app.append("test"); // "test and test"
+Section 47.15: Converting between character encodings
+Converting between encodings is easy with C++11 and most compilers are able to deal with it in a cross-platform
+manner through <codecvt> and <locale> headers.
+#include <iostream>
+#include <codecvt>
+#include <locale>
+#include <string>
+using namespace std;
+int main() {
+    // converts between wstring and utf8 string
+    wstring_convert<codecvt_utf8_utf16<wchar_t>> wchar_to_utf8;
+    // converts between u16string and utf8 string
+    wstring_convert<codecvt_utf8_utf16<char16_t>, char16_t> utf16_to_utf8;
+    wstring wstr = L"foobar";
+    string utf8str = wchar_to_utf8.to_bytes(wstr);
+    wstring wstr2 = wchar_to_utf8.from_bytes(utf8str);
+    wcout << wstr << endl;
+    cout << utf8str << endl;
+    wcout << wstr2 << endl;
+    u16string u16str = u"foobar";
+    string utf8str2 = utf16_to_utf8.to_bytes(u16str);
+    u16string u16str2 = utf16_to_utf8.from_bytes(utf8str2);
+    return 0;
+}
+Mind that Visual Studio 2015 provides supports for these conversion but a bug in their library implementation
+requires to use a diﬀerent template for wstring_convert when dealing with char16_t:
+using utf16_char = unsigned short;
+wstring_convert<codecvt_utf8_utf16<utf16_char>, utf16_char> conv_utf8_utf16;
+void strings::utf16_to_utf8(const std::u16string& utf16, std::string& utf8)
+{
+  std::basic_string<utf16_char> tmp;
+  tmp.resize(utf16.length());
+  std::copy(utf16.begin(), utf16.end(), tmp.begin());
+  utf8 = conv_utf8_utf16.to_bytes(tmp);
+}
+void strings::utf8_to_utf16(const std::string& utf8, std::u16string& utf16)
+{
+  std::basic_string<utf16_char> tmp = conv_utf8_utf16.from_bytes(utf8);
+  utf16.clear();
+  utf16.resize(tmp.length());
+  std::copy(tmp.begin(), tmp.end(), utf16.begin());
+}
+Section 47.16: Finding character(s) in a string
+To ﬁnd a character or another string, you can use std::string::find. It returns the position of the ﬁrst character
+of the ﬁrst match. If no matches were found, the function returns std::string::npos
+std::string str = "Curiosity killed the cat";
+auto it = str.find("cat");
+if (it != std::string::npos)
+    std::cout << "Found at position: " << it << '\n';
+else
+    std::cout << "Not found!\n";
+Found at position: 21
+The search opportunities are further expanded by the following functions:
+find_first_of     // Find first occurrence of characters
+find_first_not_of // Find first absence of characters
+find_last_of      // Find last occurrence of characters
+find_last_not_of  // Find last absence of characters
+These functions can allow you to search for characters from the end of the string, as well as ﬁnd the negative case
+(ie. characters that are not in the string). Here is an example:
+std::string str = "dog dog cat cat";
+std::cout << "Found at position: " << str.find_last_of("gzx") << '\n';
+Found at position: 6
+Note: Be aware that the above functions do not search for substrings, but rather for characters contained in the
+search string. In this case, the last occurrence of 'g' was found at position 6 (the other characters weren't found).
+
+#### Chapter 49: std::vector
+
+A vector is a dynamic array with automatically handled storage. The elements in a vector can be accessed just as
+eﬃciently as those in an array with the advantage being that vectors can dynamically change in size.
+In terms of storage the vector data is (usually) placed in dynamically allocated memory thus requiring some minor
+overhead; conversely C-arrays and std::array use automatic storage relative to the declared location and thus do
+not have any overhead.
+Section 49.1: Accessing Elements
+There are two primary ways of accessing elements in a std::vector
+index-based access
+iterators
+Index-based access:
+This can be done either with the subscript operator [], or the member function at().
+Both return a reference to the element at the respective position in the std::vector (unless it's a vector<bool>), so
+that it can be read as well as modiﬁed (if the vector is not const).
+[] and at() diﬀer in that [] is not guaranteed to perform any bounds checking, while at() does. Accessing
+elements where index < 0 or index >= size is undeﬁned behavior for [], while at() throws a std::out_of_range
+exception.
+Note: The examples below use C++11-style initialization for clarity, but the operators can be used with all versions
+(unless marked C++11).
+Version ≥ C++11
+std::vector<int> v{ 1, 2, 3 };
+// using []
+int a = v[1];    // a is 2
+v[1] = 4;        // v now contains { 1, 4, 3 }
+// using at()
+int b = v.at(2); // b is 3
+v.at(2) = 5;     // v now contains { 1, 4, 5 }
+int c = v.at(3); // throws std::out_of_range exception
+Because the at() method performs bounds checking and can throw exceptions, it is slower than []. This makes []
+preferred code where the semantics of the operation guarantee that the index is in bounds. In any case, accesses
+to elements of vectors are done in constant time. That means accessing to the ﬁrst element of the vector has the
+same cost (in time) of accessing the second element, the third element and so on.
+For example, consider this loop
+for (std::size_t i = 0; i < v.size(); ++i) {
+    v[i] = 1;
+}
+Here we know that the index variable i is always in bounds, so it would be a waste of CPU cycles to check that i is
+in bounds for every call to operator[].
+The front() and back() member functions allow easy reference access to the ﬁrst and last element of the vector,
+respectively. These positions are frequently used, and the special accessors can be more readable than their
+alternatives using []:
+std::vector<int> v{ 4, 5, 6 }; // In pre-C++11 this is more verbose
+int a = v.front();   // a is 4, v.front() is equivalent to v[0]
+v.front() = 3;       // v now contains {3, 5, 6}
+int b = v.back();    // b is 6, v.back() is equivalent to v[v.size() - 1]
+v.back() = 7;        // v now contains {3, 5, 7}
+Note: It is undeﬁned behavior to invoke front() or back() on an empty vector. You need to check that the
+container is not empty using the empty() member function (which checks if the container is empty) before calling
+front() or back(). A simple example of the use of 'empty()' to test for an empty vector follows:
+int main ()
+{
+  std::vector<int> v;
+  int sum (0);
+  for (int i=1;i<=10;i++) v.push_back(i);//create and initialize the vector
+  while (!v.empty())//loop through until the vector tests to be empty
+  {
+     sum += v.back();//keep a running total
+     v.pop_back();//pop out the element which removes it from the vector
+  }
+  std::cout << "total: " << sum << '\n';//output the total to the user
+  return 0;
+}
+The example above creates a vector with a sequence of numbers from 1 to 10. Then it pops the elements of the
+vector out until the vector is empty (using 'empty()') to prevent undeﬁned behavior. Then the sum of the numbers
+in the vector is calculated and displayed to the user.
+Version ≥ C++11
+The data() method returns a pointer to the raw memory used by the std::vector to internally store its elements.
+This is most often used when passing the vector data to legacy code that expects a C-style array.
+std::vector<int> v{ 1, 2, 3, 4 }; // v contains {1, 2, 3, 4}
+int* p = v.data(); // p points to 1
+*p = 4;            // v now contains {4, 2, 3, 4}
+++p;               // p points to 2
+*p = 3;            // v now contains {4, 3, 3, 4}
+p[1] = 2;          // v now contains {4, 3, 2, 4}
+*(p + 2) = 1;      // v now contains {4, 3, 2, 1}
+Version < C++11
+Before C++11, the data() method can be simulated by calling front() and taking the address of the returned
+value:
+std::vector<int> v(4);
+int* ptr = &(v.front()); // or &v[0]
+This works because vectors are always guaranteed to store their elements in contiguous memory locations,
+assuming the contents of the vector doesn't override unary operator&. If it does, you'll have to re-implement
+std::addressof in pre-C++11. It also assumes that the vector isn't empty.
+Iterators:
+Iterators are explained in more detail in the example "Iterating over std::vector" and the article Iterators. In short,
+they act similarly to pointers to the elements of the vector:
+Version ≥ C++11
+std::vector<int> v{ 4, 5, 6 };
+auto it = v.begin();
+int i = *it;        // i is 4
+++it;
+i = *it;            // i is 5
+*it = 6;            // v contains { 4, 6, 6 }
+auto e = v.end();   // e points to the element after the end of v. It can be
+                    // used to check whether an iterator reached the end of the vector:
+++it;
+it == v.end();      // false, it points to the element at position 2 (with value 6)
+++it;
+it == v.end();      // true
+It is consistent with the standard that a std::vector<T>'s iterators actually be T*s, but most standard libraries do
+not do this. Not doing this both improves error messages, catches non-portable code, and can be used to
+instrument the iterators with debugging checks in non-release builds. Then, in release builds, the class wrapping
+around the underlying pointer is optimized away.
+You can persist a reference or a pointer to an element of a vector for indirect access. These references or pointers
+to elements in the vector remain stable and access remains deﬁned unless you add/remove elements at or before
+the element in the vector, or you cause the vector capacity to change. This is the same as the rule for invalidating
+iterators.
+Version ≥ C++11
+std::vector<int> v{ 1, 2, 3 };
+int* p = v.data() + 1;     // p points to 2
+v.insert(v.begin(), 0);    // p is now invalid, accessing *p is a undefined behavior.
+p = v.data() + 1;          // p points to 1
+v.reserve(10);             // p is now invalid, accessing *p is a undefined behavior.
+p = v.data() + 1;          // p points to 1
+v.erase(v.begin());        // p is now invalid, accessing *p is a undefined behavior.
+Section 49.2: Initializing a std::vector
+A std::vector can be initialized in several ways while declaring it:
+Version ≥ C++11
+std::vector<int> v{ 1, 2, 3 };  // v becomes {1, 2, 3}
+// Different from std::vector<int> v(3, 6)
+std::vector<int> v{ 3, 6 };     // v becomes {3, 6}
+// Different from std::vector<int> v{3, 6} in C++11
+std::vector<int> v(3, 6);  // v becomes {6, 6, 6}
+std::vector<int> v(4);     // v becomes {0, 0, 0, 0}
+A vector can be initialized from another container in several ways:
+Copy construction (from another vector only), which copies data from v2:
+std::vector<int> v(v2);
+std::vector<int> v = v2;
+Version ≥ C++11
+Move construction (from another vector only), which moves data from v2:
+std::vector<int> v(std::move(v2));
+std::vector<int> v = std::move(v2);
+Iterator (range) copy-construction, which copies elements into v:
+// from another vector
+std::vector<int> v(v2.begin(), v2.begin() + 3); // v becomes {v2[0], v2[1], v2[2]}
+// from an array
+int z[] = { 1, 2, 3, 4 };
+std::vector<int> v(z, z + 3);                   // v becomes {1, 2, 3}
+// from a list
+std::list<int> list1{ 1, 2, 3 };
+std::vector<int> v(list1.begin(), list1.end()); // v becomes {1, 2, 3}
+Version ≥ C++11
+Iterator move-construction, using std::make_move_iterator, which moves elements into v:
+// from another vector
+std::vector<int> v(std::make_move_iterator(v2.begin()),
+                   std::make_move_iterator(v2.end());
+// from a list
+std::list<int> list1{ 1, 2, 3 };
+std::vector<int> v(std::make_move_iterator(list1.begin()),
+                   std::make_move_iterator(list1.end()));
+With the help of the assign() member function, a std::vector can be reinitialized after its construction:
+v.assign(4, 100);                      // v becomes {100, 100, 100, 100}
+v.assign(v2.begin(), v2.begin() + 3);  // v becomes {v2[0], v2[1], v2[2]}
+int z[] = { 1, 2, 3, 4 };
+v.assign(z + 1, z + 4);                // v becomes {2, 3, 4}
+Section 49.3: Deleting Elements
+Deleting the last element:
+std::vector<int> v{ 1, 2, 3 };
+v.pop_back();                           // v becomes {1, 2}
+Deleting all elements:
+std::vector<int> v{ 1, 2, 3 };
+v.clear();                              // v becomes an empty vector
+Deleting element by index:
+std::vector<int> v{ 1, 2, 3, 4, 5, 6 };
+v.erase(v.begin() + 3);                 // v becomes {1, 2, 3, 5, 6}
+Note: For a vector deleting an element which is not the last element, all elements beyond the deleted element have
+to be copied or moved to ﬁll the gap, see the note below and std::list.
+Deleting all elements in a range:
+std::vector<int> v{ 1, 2, 3, 4, 5, 6 };
+v.erase(v.begin() + 1, v.begin() + 5);  // v becomes {1, 6}
+Note: The above methods do not change the capacity of the vector, only the size. See Vector Size and Capacity.
+The erase method, which removes a range of elements, is often used as a part of the erase-remove idiom. That is,
+ﬁrst std::remove moves some elements to the end of the vector, and then erase chops them oﬀ. This is a relatively
+ineﬃcient operation for any indices less than the last index of the vector because all elements after the erased
+segments must be relocated to new positions. For speed critical applications that require eﬃcient removal of
+arbitrary elements in a container, see std::list.
+Deleting elements by value:
+std::vector<int> v{ 1, 1, 2, 2, 3, 3 };
+int value_to_remove = 2;
+v.erase(std::remove(v.begin(), v.end(), value_to_remove), v.end()); // v becomes {1, 1, 3, 3}
+Deleting elements by condition:
+// std::remove_if needs a function, that takes a vector element as argument and returns true,
+// if the element shall be removed
+bool _predicate(const int& element) {
+    return (element > 3); // This will cause all elements to be deleted that are larger than 3
+}
+std::vector<int> v{ 1, 2, 3, 4, 5, 6 };
+v.erase(std::remove_if(v.begin(), v.end(), _predicate), v.end()); // v becomes {1, 2, 3}
+Deleting elements by lambda, without creating additional predicate function
+Version ≥ C++11
+std::vector<int> v{ 1, 2, 3, 4, 5, 6 };
+v.erase(std::remove_if(v.begin(), v.end(),
+     [](auto& element){return element > 3;} ), v.end()
+);
+Deleting elements by condition from a loop:
+std::vector<int> v{ 1, 2, 3, 4, 5, 6 };
+std::vector<int>::iterator it = v.begin();
+while (it != v.end()) {
+    if (condition)
+        it = v.erase(it); // after erasing, 'it' will be set to the next element in v
+    else
+        ++it;             // manually set 'it' to the next element in v
+}
+While it is important not to increment it in case of a deletion, you should consider using a diﬀerent method when
+then erasing repeatedly in a loop. Consider remove_if for a more eﬃcient way.
+Deleting elements by condition from a reverse loop:
+std::vector<int> v{ -1, 0, 1, 2, 3, 4, 5, 6 };
+typedef std::vector<int>::reverse_iterator rev_itr;
+rev_itr it = v.rbegin();
+while (it != v.rend()) { // after the loop only '0' will be in v
+    int value = *it;
+    if (value) {
+        ++it;
+        // See explanation below for the following line.
+        it = rev_itr(v.erase(it.base()));
+    } else
+        ++it;
+}
+Note some points for the preceding loop:
+Given a reverse iterator it pointing to some element, the method base gives the regular (non-reverse)
+iterator pointing to the same element.
+vector::erase(iterator) erases the element pointed to by an iterator, and returns an iterator to the
+element that followed the given element.
+reverse_iterator::reverse_iterator(iterator) constructs a reverse iterator from an iterator.
+Put altogether, the line it = rev_itr(v.erase(it.base())) says: take the reverse iterator it, have v erase the
+element pointed by its regular iterator; take the resulting iterator, construct a reverse iterator from it, and assign it
+to the reverse iterator it.
+Deleting all elements using v.clear() does not free up memory (capacity() of the vector remains unchanged). To
+reclaim space, use:
+std::vector<int>().swap(v);
+Version ≥ C++11
+shrink_to_fit() frees up unused vector capacity:
+v.shrink_to_fit();
+The shrink_to_fit does not guarantee to really reclaim space, but most current implementations do.
+Section 49.4: Iterating Over std::vector
+You can iterate over a std::vector in several ways. For each of the following sections, v is deﬁned as follows:
+std::vector<int> v;
+Iterating in the Forward Direction
+Version ≥ C++11
+// Range based for
+for(const auto& value: v) {
+    std::cout << value << "\n";
+}
+// Using a for loop with iterator
+for(auto it = std::begin(v); it != std::end(v); ++it) {
+    std::cout << *it << "\n";
+}
+// Using for_each algorithm, using a function or functor:
+void fun(int const& value) {
+    std::cout << value << "\n";
+}
+std::for_each(std::begin(v), std::end(v), fun);
+// Using for_each algorithm. Using a lambda:
+std::for_each(std::begin(v), std::end(v), [](int const& value) {
+    std::cout << value << "\n";
+});
+Version < C++11
+// Using a for loop with iterator
+for(std::vector<int>::iterator it = std::begin(v); it != std::end(v); ++it) {
+    std::cout << *it << "\n";
+}
+// Using a for loop with index
+for(std::size_t i = 0; i < v.size(); ++i) {
+    std::cout << v[i] << "\n";
+}
+Iterating in the Reverse Direction
+Version ≥ C++14
+// There is no standard way to use range based for for this.
+// See below for alternatives.
+// Using for_each algorithm
+// Note: Using a lambda for clarity. But a function or functor will work
+std::for_each(std::rbegin(v), std::rend(v), [](auto const& value) {
+    std::cout << value << "\n";
+});
+// Using a for loop with iterator
+for(auto rit = std::rbegin(v); rit != std::rend(v); ++rit) {
+    std::cout << *rit << "\n";
+}
+// Using a for loop with index
+for(std::size_t i = 0; i < v.size(); ++i) {
+    std::cout << v[v.size() - 1 - i] << "\n";
+}
+Though there is no built-in way to use the range based for to reverse iterate; it is relatively simple to ﬁx this. The
+range based for uses begin() and end() to get iterators and thus simulating this with a wrapper object can achieve
+the results we require.
+Version ≥ C++14
+template<class C>
+struct ReverseRange {
+  C c; // could be a reference or a copy, if the original was a temporary
+  ReverseRange(C&& cin): c(std::forward<C>(cin)) {}
+  ReverseRange(ReverseRange&&)=default;
+  ReverseRange& operator=(ReverseRange&&)=delete;
+  auto begin() const {return std::rbegin(c);}
+  auto end()   const {return std::rend(c);}
+};
+// C is meant to be deduced, and perfect forwarded into
+template<class C>
+ReverseRange<C> make_ReverseRange(C&& c) {return {std::forward<C>(c)};}
+int main() {
+    std::vector<int> v { 1,2,3,4};
+    for(auto const& value: make_ReverseRange(v)) {
+        std::cout << value << "\n";
+    }
+}
+Enforcing const elements
+Since C++11 the cbegin() and cend() methods allow you to obtain a constant iterator for a vector, even if the vector
+is non-const. A constant iterator allows you to read but not modify the contents of the vector which is useful to
+enforce const correctness:
+Version ≥ C++11
+// forward iteration
+for (auto pos = v.cbegin(); pos != v.cend(); ++pos) {
+   // type of pos is vector<T>::const_iterator
+   // *pos = 5; // Compile error - can't write via const iterator
+}
+// reverse iteration
+for (auto pos = v.crbegin(); pos != v.crend(); ++pos) {
+   // type of pos is vector<T>::const_iterator
+   // *pos = 5; // Compile error - can't write via const iterator
+}
+// expects Functor::operand()(T&)
+for_each(v.begin(), v.end(), Functor());
+// expects Functor::operand()(const T&)
+for_each(v.cbegin(), v.cend(), Functor())
+Version ≥ C++17
+as_const extends this to range iteration:
+for (auto const& e : std::as_const(v)) {
+  std::cout << e << '\n';
+}
+This is easy to implement in earlier versions of C++:
+Version ≥ C++14
+template <class T>
+constexpr std::add_const_t<T>& as_const(T& t) noexcept {
+  return t;
+}
+A Note on Eﬃciency
+Since the class std::vector is basically a class that manages a dynamically allocated contiguous array, the same
+principle explained here applies to C++ vectors. Accessing the vector's content by index is much more eﬃcient
+when following the row-major order principle. Of course, each access to the vector also puts its management
+content into the cache as well, but as has been debated many times (notably here and here), the diﬀerence in
+performance for iterating over a std::vector compared to a raw array is negligible. So the same principle of
+eﬃciency for raw arrays in C also applies for C++'s std::vector.
+Section 49.5: vector<bool>: The Exception To So Many, So
+Many Rules
+The standard (section 23.3.7) speciﬁes that a specialization of vector<bool> is provided, which optimizes space by
+packing the bool values, so that each takes up only one bit. Since bits aren't addressable in C++, this means that
+several requirements on vector are not placed on vector<bool>:
+The data stored is not required to be contiguous, so a vector<bool> can't be passed to a C API which expects
+a bool array.
+at(), operator [], and dereferencing of iterators do not return a reference to bool. Rather they return a
+proxy object that (imperfectly) simulates a reference to a bool by overloading its assignment operators. As an
+example, the following code may not be valid for std::vector<bool>, because dereferencing an iterator
+does not return a reference:
+Version ≥ C++11
+std::vector<bool> v = {true, false};
+for (auto &b: v) { } // error
+Similarly, functions expecting a bool& argument cannot be used with the result of operator [] or at() applied to
+vector<bool>, or with the result of dereferencing its iterator:
+  void f(bool& b);
+  f(v[0]);             // error
+  f(*v.begin());       // error
+The implementation of std::vector<bool> is dependent on both the compiler and architecture. The specialisation
+is implemented by packing n Booleans into the lowest addressable section of memory. Here, n is the size in bits of
+the lowest addressable memory. In most modern systems this is 1 byte or 8 bits. This means that one byte can
+store 8 Boolean values. This is an improvement over the traditional implementation where 1 Boolean value is
+stored in 1 byte of memory.
+Note: The below example shows possible bitwise values of individual bytes in a traditional vs. optimized
+vector<bool>. This will not always hold true in all architectures. It is, however, a good way of visualising the
+optimization. In the below examples a byte is represented as [x, x, x, x, x, x, x, x].
+Traditional std::vector<char> storing 8 Boolean values:
+Version ≥ C++11
+std::vector<char> trad_vect = {true, false, false, false, true, false, true, true};
+Bitwise representation:
+[0,0,0,0,0,0,0,1], [0,0,0,0,0,0,0,0], [0,0,0,0,0,0,0,0], [0,0,0,0,0,0,0,0],
+[0,0,0,0,0,0,0,1], [0,0,0,0,0,0,0,0], [0,0,0,0,0,0,0,1], [0,0,0,0,0,0,0,1]
+Specialized std::vector<bool> storing 8 Boolean values:
+Version ≥ C++11
+std::vector<bool> optimized_vect = {true, false, false, false, true, false, true, true};
+Bitwise representation:
+[1,0,0,0,1,0,1,1]
+Notice in the above example, that in the traditional version of std::vector<bool>, 8 Boolean values take up 8 bytes
+of memory, whereas in the optimized version of std::vector<bool>, they only use 1 byte of memory. This is a
+signiﬁcant improvement on memory usage. If you need to pass a vector<bool> to an C-style API, you may need to
+copy the values to an array, or ﬁnd a better way to use the API, if memory and performance are at risk.
+Section 49.6: Inserting Elements
+Appending an element at the end of a vector (by copying/moving):
+struct Point {
+  double x, y;
+  Point(double x, double y) : x(x), y(y) {}
+};
+std::vector<Point> v;
+Point p(10.0, 2.0);
+v.push_back(p);  // p is copied into the vector.
+Version ≥ C++11
+Appending an element at the end of a vector by constructing the element in place:
+std::vector<Point> v;
+v.emplace_back(10.0, 2.0); // The arguments are passed to the constructor of the
+                           // given type (here Point). The object is constructed
+                           // in the vector, avoiding a copy.
+Note that std::vector does not have a push_front() member function due to performance reasons. Adding an
+element at the beginning causes all existing elements in the vector to be moved. If you want to frequently insert
+elements at the beginning of your container, then you might want to use std::list or std::deque instead.
+Inserting an element at any position of a vector:
+std::vector<int> v{ 1, 2, 3 };
+v.insert(v.begin(), 9);          // v now contains {9, 1, 2, 3}
+Version ≥ C++11
+Inserting an element at any position of a vector by constructing the element in place:
+std::vector<int> v{ 1, 2, 3 };
+v.emplace(v.begin()+1, 9);     // v now contains {1, 9, 2, 3}
+Inserting another vector at any position of the vector:
+std::vector<int> v(4);      // contains: 0, 0, 0, 0
+std::vector<int> v2(2, 10); // contains: 10, 10
+v.insert(v.begin()+2, v2.begin(), v2.end()); // contains: 0, 0, 10, 10, 0, 0
+Inserting an array at any position of a vector:
+std::vector<int> v(4); // contains: 0, 0, 0, 0
+int a [] = {1, 2, 3}; // contains: 1, 2, 3
+v.insert(v.begin()+1, a, a+sizeof(a)/sizeof(a[0])); // contains: 0, 1, 2, 3, 0, 0, 0
+Use reserve() before inserting multiple elements if resulting vector size is known beforehand to avoid multiple
+reallocations (see vector size and capacity):
+std::vector<int> v;
+v.reserve(100);
+for(int i = 0; i < 100; ++i)
+    v.emplace_back(i);
+Be sure to not make the mistake of calling resize() in this case, or you will inadvertently create a vector with 200
+elements where only the latter one hundred will have the value you intended.
+Section 49.7: Using std::vector as a C array
+There are several ways to use a std::vector as a C array (for example, for compatibility with C libraries). This is
+possible because the elements in a vector are stored contiguously.
+Version ≥ C++11
+std::vector<int> v{ 1, 2, 3 };
+int* p = v.data();
+In contrast to solutions based on previous C++ standards (see below), the member function .data() may also be
+applied to empty vectors, because it doesn't cause undeﬁned behavior in this case.
+Before C++11, you would take the address of the vector's ﬁrst element to get an equivalent pointer, if the vector
+isn't empty, these both methods are interchangeable:
+int* p = &v[0];      // combine subscript operator and 0 literal
+int* p = &v.front(); // explicitly reference the first element
+Note: If the vector is empty, v[0] and v.front() are undeﬁned and cannot be used.
+When storing the base address of the vector's data, note that many operations (such as push_back, resize, etc.) can
+change the data memory location of the vector, thus invalidating previous data pointers. For example:
+std::vector<int> v;
+int* p = v.data();
+v.resize(42);      // internal memory location changed; value of p is now invalid
+Section 49.8: Finding an Element in std::vector
+The function std::find, deﬁned in the <algorithm> header, can be used to ﬁnd an element in a std::vector.
+std::find uses the operator== to compare elements for equality. It returns an iterator to the ﬁrst element in the
+range that compares equal to the value.
+If the element in question is not found, std::find returns std::vector::end (or std::vector::cend if the vector is
+const).
+Version < C++11
+static const int arr[] = {5, 4, 3, 2, 1};
+std::vector<int> v (arr, arr + sizeof(arr) / sizeof(arr[0]) );
+std::vector<int>::iterator it = std::find(v.begin(), v.end(), 4);
+std::vector<int>::difference_type index = std::distance(v.begin(), it);
+// `it` points to the second element of the vector, `index` is 1
+std::vector<int>::iterator missing = std::find(v.begin(), v.end(), 10);
+std::vector<int>::difference_type index_missing = std::distance(v.begin(), missing);
+// `missing` is v.end(), `index_missing` is 5 (ie. size of the vector)
+Version ≥ C++11
+std::vector<int> v { 5, 4, 3, 2, 1 };
+auto it = std::find(v.begin(), v.end(), 4);
+auto index = std::distance(v.begin(), it);
+// `it` points to the second element of the vector, `index` is 1
+auto missing = std::find(v.begin(), v.end(), 10);
+auto index_missing = std::distance(v.begin(), missing);
+// `missing` is v.end(), `index_missing` is 5 (ie. size of the vector)
+If you need to perform many searches in a large vector, then you may want to consider sorting the vector ﬁrst,
+before using the binary_search algorithm.
+To ﬁnd the ﬁrst element in a vector that satisﬁes a condition, std::find_if can be used. In addition to the two
+parameters given to std::find, std::find_if accepts a third argument which is a function object or function
+pointer to a predicate function. The predicate should accept an element from the container as an argument and
+return a value convertible to bool, without modifying the container:
+Version < C++11
+bool isEven(int val) {
+    return (val % 2 == 0);
+}
+struct moreThan {
+    moreThan(int limit) : _limit(limit) {}
+    bool operator()(int val) {
+        return val > _limit;
+    }
+    int _limit;
+};
+static const int arr[] = {1, 3, 7, 8};
+std::vector<int> v (arr, arr + sizeof(arr) / sizeof(arr[0]) );
+std::vector<int>::iterator it = std::find_if(v.begin(), v.end(), isEven);
+// `it` points to 8, the first even element
+std::vector<int>::iterator missing = std::find_if(v.begin(), v.end(), moreThan(10));
+// `missing` is v.end(), as no element is greater than 10
+Version ≥ C++11
+// find the first value that is even
+std::vector<int> v = {1, 3, 7, 8};
+auto it = std::find_if(v.begin(), v.end(), [](int val){return val % 2 == 0;});
+// `it` points to 8, the first even element
+auto missing = std::find_if(v.begin(), v.end(), [](int val){return val > 10;});
+// `missing` is v.end(), as no element is greater than 10
+Section 49.9: Concatenating Vectors
+One std::vector can be append to another by using the member function insert():
+std::vector<int> a = {0, 1, 2, 3, 4};
+std::vector<int> b = {5, 6, 7, 8, 9};
+a.insert(a.end(), b.begin(), b.end());
+However, this solution fails if you try to append a vector to itself, because the standard speciﬁes that iterators given
+to insert() must not be from the same range as the receiver object's elements.
+Version ≥ c++11
+Instead of using the vector's member functions, the functions std::begin() and std::end() can be used:
+a.insert(std::end(a), std::begin(b), std::end(b));
+This is a more general solution, for example, because b can also be an array. However, also this solution doesn't
+allow you to append a vector to itself.
+If the order of the elements in the receiving vector doesn't matter, considering the number of elements in each
+vector can avoid unnecessary copy operations:
+if (b.size() < a.size())
+  a.insert(a.end(), b.begin(), b.end());
+else
+  b.insert(b.end(), a.begin(), a.end());
+Section 49.10: Matrices Using Vectors
+Vectors can be used as a 2D matrix by deﬁning them as a vector of vectors.
+A matrix with 3 rows and 4 columns with each cell initialised as 0 can be deﬁned as:
+std::vector<std::vector<int> > matrix(3, std::vector<int>(4));
+Version ≥ C++11
+The syntax for initializing them using initialiser lists or otherwise are similar to that of a normal vector.
+  std::vector<std::vector<int>> matrix = { {0,1,2,3},
+                                           {4,5,6,7},
+                                           {8,9,10,11}
+                                         };
+Values in such a vector can be accessed similar to a 2D array
+int var = matrix[0][2];
+Iterating over the entire matrix is similar to that of a normal vector but with an extra dimension.
+for(int i = 0; i < 3; ++i)
+{
+    for(int j = 0; j < 4; ++j)
+    {
+        std::cout << matrix[i][j] << std::endl;
+    }
+}
+Version ≥ C++11
+for(auto& row: matrix)
+{
+    for(auto& col : row)
+    {
+        std::cout << col << std::endl;
+    }
+}
+A vector of vectors is a convenient way to represent a matrix but it's not the most eﬃcient: individual vectors are
+scattered around memory and the data structure isn't cache friendly.
+Also, in a proper matrix, the length of every row must be the same (this isn't the case for a vector of vectors). The
+additional ﬂexibility can be a source of errors.
+Section 49.11: Using a Sorted Vector for Fast Element Lookup
+The <algorithm> header provides a number of useful functions for working with sorted vectors.
+An important prerequisite for working with sorted vectors is that the stored values are comparable with <.
+An unsorted vector can be sorted by using the function std::sort():
+std::vector<int> v;
+// add some code here to fill v with some elements
+std::sort(v.begin(), v.end());
+Sorted vectors allow eﬃcient element lookup using the function std::lower_bound(). Unlike std::find(), this
+performs an eﬃcient binary search on the vector. The downside is that it only gives valid results for sorted input
+ranges:
+// search the vector for the first element with value 42
+std::vector<int>::iterator it = std::lower_bound(v.begin(), v.end(), 42);
+if (it != v.end() && *it == 42) {
+    // we found the element!
+}
+Note: If the requested value is not part of the vector, std::lower_bound() will return an iterator to the ﬁrst element
+that is greater than the requested value. This behavior allows us to insert a new element at its right place in an
+already sorted vector:
+int const new_element = 33;
+v.insert(std::lower_bound(v.begin(), v.end(), new_element), new_element);
+If you need to insert a lot of elements at once, it might be more eﬃcient to call push_back() for all them ﬁrst and
+then call std::sort() once all elements have been inserted. In this case, the increased cost of the sorting can pay
+oﬀ against the reduced cost of inserting new elements at the end of the vector and not in the middle.
+If your vector contains multiple elements of the same value, std::lower_bound() will try to return an iterator to the
+ﬁrst element of the searched value. However, if you need to insert a new element after the last element of the
+searched value, you should use the function std::upper_bound() as this will cause less shifting around of
+elements:
+v.insert(std::upper_bound(v.begin(), v.end(), new_element), new_element);
+If you need both the upper bound and the lower bound iterators, you can use the function std::equal_range() to
+retrieve both of them eﬃciently with one call:
+std::pair<std::vector<int>::iterator,
+          std::vector<int>::iterator> rg = std::equal_range(v.begin(), v.end(), 42);
+std::vector<int>::iterator lower_bound = rg.first;
+std::vector<int>::iterator upper_bound = rg.second;
+In order to test whether an element exists in a sorted vector (although not speciﬁc to vectors), you can use the
+function std::binary_search():
+bool exists = std::binary_search(v.begin(), v.end(), value_to_find);
+Section 49.12: Reducing the Capacity of a Vector
+A std::vector automatically increases its capacity upon insertion as needed, but it never reduces its capacity after
+element removal.
+// Initialize a vector with 100 elements
+std::vector<int> v(100);
+// The vector's capacity is always at least as large as its size
+auto const old_capacity = v.capacity();
+// old_capacity >= 100
+// Remove half of the elements
+v.erase(v.begin() + 50, v.end());  // Reduces the size from 100 to 50 (v.size() == 50),
+                                   // but not the capacity (v.capacity() == old_capacity)
+To reduce its capacity, we can copy the contents of a vector to a new temporary vector. The new vector will have the
+minimum capacity that is needed to store all elements of the original vector. If the size reduction of the original
+vector was signiﬁcant, then the capacity reduction for the new vector is likely to be signiﬁcant. We can then swap
+the original vector with the temporary one to retain its minimized capacity:
+std::vector<int>(v).swap(v);
+Version ≥ C++11
+In C++11 we can use the shrink_to_fit() member function for a similar eﬀect:
+v.shrink_to_fit();
+Note: The shrink_to_fit() member function is a request and doesn't guarantee to reduce capacity.
+Section 49.13: Vector size and capacity
+Vector size is simply the number of elements in the vector:
+1.
+Current vector size is queried by size() member function. Convenience empty() function returns true if size
+is 0:
+vector<int> v = { 1, 2, 3 }; // size is 3
+const vector<int>::size_type size = v.size();
+cout << size << endl; // prints 3
+cout << boolalpha << v.empty() << endl; // prints false
+2.
+Default constructed vector starts with a size of 0:
+vector<int> v; // size is 0
+cout << v.size() << endl; // prints 0
+3.
+Adding N elements to vector increases size by N (e.g. by push_back(), insert() or resize() functions).
+4.
+Removing N elements from vector decreases size by N (e.g. by pop_back(), erase() or clear() functions).
+5.
+Vector has an implementation-speciﬁc upper limit on its size, but you are likely to run out of RAM before
+reaching it:
+vector<int> v;
+const vector<int>::size_type max_size = v.max_size();
+cout << max_size << endl; // prints some large number
+v.resize( max_size ); // probably won't work
+v.push_back( 1 ); // definitely won't work
+Common mistake: size is not necessarily (or even usually) int:
+// !!!bad!!!evil!!!
+vector<int> v_bad( N, 1 ); // constructs large N size vector
+for( int i = 0; i < v_bad.size(); ++i ) { // size is not supposed to be int!
+    do_something( v_bad[i] );
+}
+Vector capacity diﬀers from size. While size is simply how many elements the vector currently has, capacity is for
+how many elements it allocated/reserved memory for. That is useful, because too frequent (re)allocations of too
+large sizes can be expensive.
+1.
+Current vector capacity is queried by capacity() member function. Capacity is always greater or equal to
+size:
+vector<int> v = { 1, 2, 3 }; // size is 3, capacity is >= 3
+const vector<int>::size_type capacity = v.capacity();
+cout << capacity << endl; // prints number >= 3
+2.
+You can manually reserve capacity by reserve( N ) function (it changes vector capacity to N):
+// !!!bad!!!evil!!!
+vector<int> v_bad;
+for( int i = 0; i < 10000; ++i ) {
+    v_bad.push_back( i ); // possibly lot of reallocations
+}
+// good
+vector<int> v_good;
+v_good.reserve( 10000 ); // good! only one allocation
+for( int i = 0; i < 10000; ++i ) {
+    v_good.push_back( i ); // no allocations needed anymore
+}
+3.
+You can request for the excess capacity to be released by shrink_to_fit() (but the implementation doesn't
+have to obey you). This is useful to conserve used memory:
+vector<int> v = { 1, 2, 3, 4, 5 }; // size is 5, assume capacity is 6
+v.shrink_to_fit(); // capacity is 5 (or possibly still 6)
+cout << boolalpha << v.capacity() == v.size() << endl; // prints likely true (but possibly
+false)
+Vector partly manages capacity automatically, when you add elements it may decide to grow. Implementers like to
+use 2 or 1.5 for the grow factor (golden ratio would be the ideal value - but is impractical due to being rational
+number). On the other hand vector usually do not automatically shrink. For example:
+vector<int> v; // capacity is possibly (but not guaranteed) to be 0
+v.push_back( 1 ); // capacity is some starter value, likely 1
+v.clear(); // size is 0 but capacity is still same as before!
+
 
 
 ---
@@ -20240,6 +22508,367 @@ void add_arrays(float* a, float* b, float* c, int n) {
 ---
 
 ## <a name="chapter-15-productionprofessional"></a>CHAPTER 15: PRODUCTION & PROFESSIONAL
+
+
+---
+### Professional Notes: Namespaces & Organization
+
+#### Chapter 44: Namespaces
+
+Used to prevent name collisions when using multiple libraries, a namespace is a declarative preﬁx for functions,
+classes, types, etc.
+Section 44.1: What are namespaces?
+A C++ namespace is a collection of C++ entities (functions, classes, variables), whose names are preﬁxed by the
+name of the namespace. When writing code within a namespace, named entities belonging to that namespace
+need not be preﬁxed with the namespace name, but entities outside of it must use the fully qualiﬁed name. The
+fully qualiﬁed name has the format <namespace>::<entity>. Example:
+namespace Example
+{
+  const int test = 5;
+  const int test2 = test + 12; //Works within `Example` namespace
+}
+const int test3 = test + 3; //Fails; `test` not found outside of namespace.
+const int test3 = Example::test + 3; //Works; fully qualified name used.
+Namespaces are useful for grouping related deﬁnitions together. Take the analogy of a shopping mall. Generally a
+shopping mall is split up into several stores, each store selling items from a speciﬁc category. One store might sell
+electronics, while another store might sell shoes. These logical separations in store types help the shoppers ﬁnd the
+items they're looking for. Namespaces help c++ programmers, like shoppers, ﬁnd the functions, classes, and
+variables they're looking for by organizing them in a logical manner. Example:
+namespace Electronics
+{
+    int TotalStock;
+    class Headphones
+    {
+        // Description of a Headphone (color, brand, model number, etc.)
+    };
+    class Television
+    {
+        // Description of a Television (color, brand, model number, etc.)
+    };
+}
+namespace Shoes
+{
+    int TotalStock;
+    class Sandal
+    {
+        // Description of a Sandal (color, brand, model number, etc.)
+    };
+    class Slipper
+    {
+        // Description of a Slipper (color, brand, model number, etc.)
+    };
+}
+There is a single namespace predeﬁned, which is the global namespace that has no name, but can be denoted by
+::. Example:
+void bar() {
+    // defined in global namespace
+}
+namespace foo {
+    void bar() {
+        // defined in namespace foo
+    }
+    void barbar() {
+        bar();   // calls foo::bar()
+        ::bar(); // calls bar() defined in global namespace
+    }
+}
+Section 44.2: Argument Dependent Lookup
+When calling a function without an explicit namespace qualiﬁer, the compiler can choose to call a function within a
+namespace if one of the parameter types to that function is also in that namespace. This is called "Argument
+Dependent Lookup", or ADL:
+namespace Test
+{
+  int call(int i);
+  class SomeClass {...};
+  int call_too(const SomeClass &data);
+}
+call(5); //Fails. Not a qualified function name.
+Test::SomeClass data;
+call_too(data); //Succeeds
+call fails because none of its parameter types come from the Test namespace. call_too works because
+SomeClass is a member of Test and therefore it qualiﬁes for ADL rules.
+When does ADL not occur
+ADL does not occur if normal unqualiﬁed lookup ﬁnds a class member, a function that has been declared at block
+scope, or something that is not of function type. For example:
+void foo();
+namespace N {
+    struct X {};
+    void foo(X ) { std::cout << '1'; }
+    void qux(X ) { std::cout << '2'; }
+}
+struct C {
+    void foo() {}
+    void bar() {
+        foo(N::X{}); // error: ADL is disabled and C::foo() takes no arguments
+    }
+};
+void bar() {
+    extern void foo(); // redeclares ::foo
+    foo(N::X{});       // error: ADL is disabled and ::foo() doesn't take any arguments
+}
+int qux;
+void baz() {
+    qux(N::X{}); // error: variable declaration disables ADL for "qux"
+}
+Section 44.3: Extending namespaces
+A useful feature of namespaces is that you can expand them (add members to it).
+namespace Foo
+{
+    void bar() {}
+}
+//some other stuff
+namespace Foo
+{
+    void bar2() {}
+}
+Section 44.4: Using directive
+The keyword 'using' has three ﬂavors. Combined with keyword 'namespace' you write a 'using directive':
+If you don't want to write Foo:: in front of every stuﬀ in the namespace Foo, you can use using namespace Foo; to
+import every single thing out of Foo.
+namespace Foo
+{
+    void bar() {}
+    void baz() {}
+}
+//Have to use Foo::bar()
+Foo::bar();
+//Import Foo
+using namespace Foo;
+bar(); //OK
+baz(); //OK
+It is also possible to import selected entities in a namespace rather than the whole namespace:
+using Foo::bar;
+bar(); //OK, was specifically imported
+baz(); // Not OK, was not imported
+A word of caution: using namespaces in header ﬁles is seen as bad style in most cases. If this is done, the
+namespace is imported in every ﬁle that includes the header. Since there is no way of "un-using" a namespace, this
+can lead to namespace pollution (more or unexpected symbols in the global namespace) or, worse, conﬂicts. See
+this example for an illustration of the problem:
+/***** foo.h *****/
+namespace Foo
+{
+    class C;
+}
+/***** bar.h *****/
+namespace Bar
+{
+    class C;
+}
+/***** baz.h *****/
+#include "foo.h"
+using namespace Foo;
+/***** main.cpp *****/
+#include "bar.h"
+#include "baz.h"
+using namespace Bar;
+C c; // error: Ambiguity between Bar::C and Foo::C
+A using-directive cannot occur at class scope.
+Section 44.5: Making namespaces
+Creating a namespace is really easy:
+//Creates namespace foo
+namespace Foo
+{
+    //Declares function bar in namespace foo
+    void bar() {}
+}
+To call bar, you have to specify the namespace ﬁrst, followed by the scope resolution operator :::
+Foo::bar();
+It is allowed to create one namespace in another, for example:
+namespace A
+{
+    namespace B
+    {
+        namespace C
+        {
+            void bar() {}
+        }
+    }
+}
+Version ≥ C++17
+The above code could be simpliﬁed to the following:
+namespace A::B::C
+{
+    void bar() {}
+}
+Section 44.6: Unnamed/anonymous namespaces
+An unnamed namespace can be used to ensure names have internal linkage (can only be referred to by the current
+translation unit). Such a namespace is deﬁned in the same way as any other namespace, but without the name:
+namespace {
+    int foo = 42;
+}
+foo is only visible in the translation unit in which it appears.
+It is recommended to never use unnamed namespaces in header ﬁles as this gives a version of the content for
+every translation unit it is included in. This is especially important if you deﬁne non-const globals.
+// foo.h
+namespace {
+    std::string globalString;
+}
+// 1.cpp
+#include "foo.h" //< Generates unnamed_namespace{1.cpp}::globalString ...
+globalString = "Initialize";
+// 2.cpp
+#include "foo.h" //< Generates unnamed_namespace{2.cpp}::globalString ...
+std::cout << globalString; //< Will always print the empty string
+Section 44.7: Compact nested namespaces
+Version ≥ C++17
+namespace a {
+  namespace b {
+    template<class T>
+    struct qualifies : std::false_type {};
+  }
+}
+namespace other {
+  struct bob {};
+}
+namespace a::b {
+  template<>
+  struct qualifies<::other::bob> : std::true_type {};
+}
+You can enter both the a and b namespaces in one step with namespace a::b starting in C++17.
+Section 44.8: Namespace alias
+A namespace can be given an alias (i.e., another name for the same namespace) using the namespace identiﬁer =
+syntax. Members of the aliased namespace can be accessed by qualifying them with the name of the alias. In the
+following example, the nested namespace AReallyLongName::AnotherReallyLongName is inconvenient to type, so
+the function qux locally declares an alias N. Members of that namespace can then be accessed simply using N::.
+namespace AReallyLongName {
+    namespace AnotherReallyLongName {
+        int foo();
+        int bar();
+        void baz(int x, int y);
+    }
+}
+void qux() {
+    namespace N = AReallyLongName::AnotherReallyLongName;
+    N::baz(N::foo(), N::bar());
+}
+Section 44.9: Inline namespace
+Version ≥ C++11
+inline namespace includes the content of the inlined namespace in the enclosing namespace, so
+namespace Outer
+{
+    inline namespace Inner
+    {
+        void foo();
+    }
+}
+is mostly equivalent to
+namespace Outer
+{
+    namespace Inner
+    {
+        void foo();
+    }
+    using Inner::foo;
+}
+but element from Outer::Inner:: and those associated into Outer:: are identical.
+So following is equivalent
+Outer::foo();
+Outer::Inner::foo();
+The alternative using namespace Inner; would not be equivalent for some tricky parts as template specialization:
+For
+#include <outer.h> // See below
+class MyCustomType;
+namespace Outer
+{
+    template <>
+    void foo<MyCustomType>() { std::cout << "Specialization"; }
+}
+The inline namespace allows the specialization of Outer::foo
+// outer.h
+// include guard omitted for simplification
+namespace Outer
+{
+    inline namespace Inner
+    {
+        template <typename T>
+        void foo() { std::cout << "Generic"; }
+    }
+}
+Whereas the using namespace doesn't allow the specialization of Outer::foo
+// outer.h
+// include guard omitted for simplification
+namespace Outer
+{
+    namespace Inner
+    {
+        template <typename T>
+        void foo() { std::cout << "Generic"; }
+    }
+    using namespace Inner;
+    // Specialization of `Outer::foo` is not possible
+    // it should be `Outer::Inner::foo`.
+}
+Inline namespace is a way to allow several version to cohabit and defaulting to the inline one
+namespace MyNamespace
+{
+    // Inline the last version
+    inline namespace Version2
+    {
+        void foo(); // New version
+        void bar();
+    }
+    namespace Version1 // The old one
+    {
+        void foo();
+    }
+}
+And with usage
+MyNamespace::Version1::foo(); // old version
+MyNamespace::Version2::foo(); // new version
+MyNamespace::foo();           // default version : MyNamespace::Version1::foo();
+Section 44.10: Aliasing a long namespace
+This is usually used for renaming or shortening long namespace references such referring to components of a
+library.
+namespace boost
+{
+    namespace multiprecision
+    {
+        class Number ...
+    }
+}
+namespace Name1 = boost::multiprecision;
+//    Both Type declarations are equivalent
+boost::multiprecision::Number X   //    Writing the full namespace path, longer
+Name1::Number Y                   //    using the name alias, shorter
+Section 44.11: Alias Declaration scope
+Alias Declaration are aﬀected by preceding using statements
+namespace boost
+{
+    namespace multiprecision
+    {
+        class Number ...
+    }
+}
+using namespace boost;
+//   Both Namespace are equivalent
+namespace Name1 = boost::multiprecision;
+namespace Name2 = multiprecision;
+However, it is easier to get confused over which namespace you are aliasing when you have something like this:
+namespace boost
+{
+    namespace multiprecision
+    {
+        class Number ...
+    }
+}
+namespace numeric
+{
+    namespace multiprecision
+    {
+        class Number ...
+    }
+}
+using namespace numeric;
+using namespace boost;
+//    Not recommended as
+//    its not explicitly clear whether Name1 refers to
+//    numeric::multiprecision or boost::multiprecision
+namespace Name1 = multiprecision;
+//    For clarity, its recommended to use absolute paths
+//    instead
+namespace Name2 = numeric::multiprecision;
+namespace Name3 = boost::multiprecision;
+
 
 ## LARGE-SCALE PROJECT ARCHITECTURE
 
