@@ -15356,6 +15356,435 @@ if (auto shared = weak.lock()) {
 3.  **Avoid `new` and `delete`**.
 ## <a name="chapter-9-c11"></a>CHAPTER 9: C++11 MOVE SEMANTICS
 
+
+---
+### Professional Notes: Move Semantics & Value Categories
+
+#### Chapter 74: Value Categories
+
+Section 74.1: Value Category Meanings
+Expressions in C++ are assigned a particular value category, based on the result of those expressions. Value
+categories for expressions can aﬀect C++ function overload resolution.
+Value categories determines two important-but-separate properties about an expression. One property is whether
+the expression has identity. An expression has identity if it refers to an object that has a variable name. The variable
+name may not be involved in the expression, but the object can still have one.
+The other property is whether it is legal to implicitly move from the expression's value. Or more speciﬁcally,
+whether the expression, when used as a function parameter, will bind to r-value parameter types or not.
+C++ deﬁnes 3 value categories which represent the useful combination of these properties: lvalue (expressions with
+identity but not movable from), xvalue (expressions with identity that are moveable from), and prvalue (expressions
+without identity that are moveable from). C++ does not have expressions which have no identity and cannot be
+moved from.
+C++ deﬁnes two other value categories, each based solely on one of these properties: glvalue (expressions with
+identity) and rvalue (expressions that can be moved from). These act as useful groupings of the prior categories.
+This graph serves as an illustration:
+Section 74.2: rvalue
+An rvalue expression is any expression which can be implicitly moved from, regardless of whether it has identity.
+More precisely, rvalue expressions may be used as the argument to a function that takes a parameter of type T &&
+(where T is the type of expr). Only rvalue expressions may be given as arguments to such function parameters; if a
+non-rvalue expression is used, then overload resolution will pick any function that does not use an rvalue reference
+parameter. And if none exist, then you get an error.
+The category of rvalue expressions includes all xvalue and prvalue expressions, and only those expressions.
+The standard library function std::move exists to explicitly transform a non-rvalue expression into an rvalue. More
+speciﬁcally, it turns the expression into an xvalue, since even if it was an identity-less prvalue expression before, by
+passing it as a parameter to std::move, it gains identity (the function's parameter name) and becomes an xvalue.
+Consider the following:
+std::string str("init");                       //1
+std::string test1(str);                        //2
+std::string test2(std::move(str));             //3
+str = std::string("new value");                //4
+std::string &&str_ref = std::move(str);        //5
+std::string test3(str_ref);                    //6
+std::string has a constructor which takes a single parameter of type std::string&&, commonly called a "move
+constructor". However, the value category of the expression str is not an rvalue (speciﬁcally it is an lvalue), so it
+cannot call that constructor overload. Instead, it calls the const std::string& overload, the copy constructor.
+Line 3 changes things. The return value of std::move is a T&&, where T is the base type of the parameter passed in.
+So std::move(str) returns std::string&&. A function call who's return value is an rvalue reference is an rvalue
+expression (speciﬁcally an xvalue), so it may call the move constructor of std::string. After line 3, str has been
+moved from (who's contents are now undeﬁned).
+Line 4 passes a temporary to the assignment operator of std::string. This has an overload which takes a
+std::string&&. The expression std::string("new value") is an rvalue expression (speciﬁcally a prvalue), so it
+may call that overload. Thus, the temporary is moved into str, replacing the undeﬁned contents with speciﬁc
+contents.
+Line 5 creates a named rvalue reference called str_ref that refers to str. This is where value categories get
+confusing.
+See, while str_ref is an rvalue reference to std::string, the value category of the expression str_ref is not an
+rvalue. It is an lvalue expression. Yes, really. Because of this, one cannot call the move constructor of std::string
+with the expression str_ref. Line 6 therefore copies the value of str into test3.
+To move it, we would have to employ std::move again.
+Section 74.3: xvalue
+An xvalue (eXpiring value) expression is an expression which has identity and represents an object which can be
+implicitly moved from. The general idea with xvalue expressions is that the object they represent is going to be
+destroyed soon (hence the "eXpiring" part), and therefore implicitly moving from them is ﬁne.
+Given:
+struct X { int n; };
+extern X x;
+4;                   // prvalue: does not have an identity
+x;                   // lvalue
+x.n;                 // lvalue
+std::move(x);        // xvalue
+std::forward<X&>(x); // lvalue
+X{4};                // prvalue: does not have an identity
+X{4}.n;              // xvalue: does have an identity and denotes resources
+                     // that can be reused
+Section 74.4: prvalue
+A prvalue (pure-rvalue) expression is an expression which lacks identity, whose evaluation is typically used to
+initialize an object, and which can be implicitly moved from. These include, but are not limited to:
+Expressions that represent temporary objects, such as std::string("123").
+A function call expression that does not return a reference
+A literal (except a string literal - those are lvalues), such has 1, true, 0.5f, or 'a'
+A lambda expression
+The built-in addressof operator (&) cannot be applied on these expressions.
+Section 74.5: lvalue
+An lvalue expression is an expression which has identity, but cannot be implicitly moved from. Among these are
+expressions that consist of a variable name, function name, expressions that are built-in dereference operator uses
+and expressions that refer to lvalue references.
+The typical lvalue is simply a name, but lvalues can come in other ﬂavors as well:
+struct X { ... };
+X x;         // x is an lvalue
+X* px = &x;  // px is an lvalue
+*px = X{};   // *px is also an lvalue, X{} is a prvalue
+X* foo_ptr();  // foo_ptr() is a prvalue
+X& foo_ref();  // foo_ref() is an lvalue
+Additionally, while most literals (e.g. 4, 'x', etc.) are prvalues, string literals are lvalues.
+Section 74.6: glvalue
+A glvalue (a "generalized lvalue") expression is any expression which has identity, regardless of whether it can be
+moved from or not. This category includes lvalues (expressions that have identity but can't be moved from) and
+xvalues (expressions that have identity, and can be moved from), but excludes prvalues (expressions without
+identity).
+If an expression has a name, it's a glvalue:
+struct X { int n; };
+X foo();
+X x;
+x; // has a name, so it's a glvalue
+std::move(x); // has a name (we're moving from "x"), so it's a glvalue
+              // can be moved from, so it's an xvalue not an lvalue
+foo(); // has no name, so is a prvalue, not a glvalue
+X{};   // temporary has no name, so is a prvalue, not a glvalue
+X{}.n; // HAS a name, so is a glvalue. can be moved from, so it's an xvalue
+
+#### Chapter 106: Move Semantics
+
+Section 106.1: Move semantics
+Move semantics are a way of moving one object to another in C++. For this, we empty the old object and place
+everything it had in the new object.
+For this, we must understand what an rvalue reference is. An rvalue reference (T&& where T is the object type) is not
+much diﬀerent than a normal reference (T&, now called lvalue references). But they act as 2 diﬀerent types, and so,
+we can make constructors or functions that take one type or the other, which will be necessary when dealing with
+move semantics.
+The reason why we need two diﬀerent types is to specify two diﬀerent behaviors. Lvalue reference constructors are
+related to copying, while rvalue reference constructors are related to moving.
+To move an object, we will use std::move(obj). This function returns an rvalue reference to the object, so that we
+can steal the data from that object into a new one. There are several ways of doing this which are discussed below.
+Important to note is that the use of std::move creates just an rvalue reference. In other words the statement
+std::move(obj) does not change the content of obj, while auto obj2 = std::move(obj) (possibly) does.
+Section 106.2: Using std::move to reduce complexity from
+O(n²) to O(n)
+C++11 introduced core language and standard library support for moving an object. The idea is that when an
+object o is a temporary and one wants a logical copy, then its safe to just pilfer o's resources, such as a dynamically
+allocated buﬀer, leaving o logically empty but still destructible and copyable.
+The core language support is mainly
+the rvalue reference type builder &&, e.g., std::string&& is an rvalue reference to a std::string, indicating
+that that referred to object is a temporary whose resources can just be pilfered (i.e. moved)
+special support for a move constructor T( T&& ), which is supposed to eﬃciently move resources from the
+speciﬁed other object, instead of actually copying those resources, and
+special support for a move assignment operator auto operator=(T&&) -> T&, which also is supposed to
+move from the source.
+The standard library support is mainly the std::move function template from the <utility> header. This function
+produces an rvalue reference to the speciﬁed object, indicating that it can be moved from, just as if it were a
+temporary.
+For a container actual copying is typically of O(n) complexity, where n is the number of items in the container, while
+moving is O(1), constant time. And for an algorithm that logically copies that container n times, this can reduce the
+complexity from the usually impractical O(n²) to just linear O(n).
+In his article “Containers That Never Change” in Dr. Dobbs Journal in September 19 2013, Andrew Koenig presented
+an interesting example of algorithmic ineﬃciency when using a style of programming where variables are
+immutable after initialization. With this style loops are generally expressed using recursion. And for some
+algorithms such as generating a Collatz sequence, the recursion requires logically copying a container:
+// Based on an example by Andrew Koenig in his Dr. Dobbs Journal article
+// “Containers That Never Change” September 19, 2013, available at
+// <url: http://www.drdobbs.com/cpp/containters-that-never-change/240161543>
+// Includes here, e.g. <vector>
+namespace my {
+    template< class Item >
+    using Vector_ = /* E.g. std::vector<Item> */;
+    auto concat( Vector_<int> const& v, int const x )
+        -> Vector_<int>
+    {
+        auto result{ v };
+        result.push_back( x );
+        return result;
+    }
+    auto collatz_aux( int const n, Vector_<int> const& result )
+        -> Vector_<int>
+    {
+        if( n == 1 )
+        {
+            return result;
+        }
+        auto const new_result = concat( result, n );
+        if( n % 2 == 0 )
+        {
+            return collatz_aux( n/2, new_result );
+        }
+        else
+        {
+            return collatz_aux( 3*n + 1, new_result );
+        }
+    }
+    auto collatz( int const n )
+        -> Vector_<int>
+    {
+        assert( n != 0 );
+        return collatz_aux( n, Vector_<int>() );
+    }
+}  // namespace my
+#include <iostream>
+using namespace std;
+auto main() -> int
+{
+    for( int const x : my::collatz( 42 ) )
+    {
+        cout << x << ' ';
+    }
+    cout << '\n';
+}
+Output:
+42 21 64 32 16 8 4 2
+The number of item copy operations due to copying of the vectors is here roughly O(n²), since it's the sum 1 + 2 + 3
++ ... n.
+In concrete numbers, with g++ and Visual C++ compilers the above invocation of collatz(42) resulted in a Collatz
+sequence of 8 items and 36 item copy operations (8*7/2 = 28, plus some) in vector copy constructor calls.
+All of these item copy operations can be removed by simply moving vectors whose values are not needed anymore.
+To do this it's necessary to remove const and reference for the vector type arguments, passing the vectors by value.
+The function returns are already automatically optimized. For the calls where vectors are passed, and not used
+again further on in the function, just apply std::move to move those buﬀers rather than actually copying them:
+using std::move;
+auto concat( Vector_<int> v, int const x )
+    -> Vector_<int>
+{
+    v.push_back( x );
+    // warning: moving a local object in a return statement prevents copy elision [-Wpessimizing-
+move]
+    // See https://stackoverflow.com/documentation/c%2b%2b/2489/copy-elision
+    // return move( v );
+    return v;
+}
+auto collatz_aux( int const n, Vector_<int> result )
+    -> Vector_<int>
+{
+    if( n == 1 )
+    {
+        return result;
+    }
+    auto new_result = concat( move( result ), n );
+    struct result;      // Make absolutely sure no use of `result` after this.
+    if( n % 2 == 0 )
+    {
+        return collatz_aux( n/2, move( new_result ) );
+    }
+    else
+    {
+        return collatz_aux( 3*n + 1, move( new_result ) );
+    }
+}
+auto collatz( int const n )
+    -> Vector_<int>
+{
+    assert( n != 0 );
+    return collatz_aux( n, Vector_<int>() );
+}
+Here, with g++ and Visual C++ compilers, the number of item copy operations due to vector copy constructor
+invocations, was exactly 0.
+The algorithm is necessarily still O(n) in the length of the Collatz sequence produced, but this is a quite dramatic
+improvement: O(n²) → O(n).
+With some language support one could perhaps use moving and still express and enforce the immutability of a
+variable between its initialization and ﬁnal move, after which any use of that variable should be an error. Alas, as of
+C++14 C++ does not support that. For loop-free code the no use after move can be enforced via a re-declaration of
+the relevant name as an incomplete struct, as with struct result; above, but this is ugly and not likely to be
+understood by other programmers; also the diagnostics can be quite misleading.
+Summing up, the C++ language and library support for moving allows drastic improvements in algorithm
+complexity, but due the support's incompleteness, at the cost of forsaking the code correctness guarantees and
+code clarity that const can provide.
+For completeness, the instrumented vector class used to measure the number of item copy operations due to copy
+constructor invocations:
+template< class Item >
+class Copy_tracking_vector
+{
+private:
+    static auto n_copy_ops()
+        -> int&
+    {
+        static int value;
+        return value;
+    }
+    vector<Item>    items_;
+public:
+    static auto n() -> int { return n_copy_ops(); }
+    void push_back( Item const& o ) { items_.push_back( o ); }
+    auto begin() const { return items_.begin(); }
+    auto end() const { return items_.end(); }
+    Copy_tracking_vector(){}
+    Copy_tracking_vector( Copy_tracking_vector const& other )
+        : items_( other.items_ )
+    { n_copy_ops() += items_.size(); }
+    Copy_tracking_vector( Copy_tracking_vector&& other )
+        : items_( move( other.items_ ) )
+    {}
+};
+Section 106.3: Move constructor
+Say we have this code snippet.
+class A {
+public:
+    int a;
+    int b;
+    A(const A &other) {
+        this->a = other.a;
+        this->b = other.b;
+    }
+};
+To create a copy constructor, that is, to make a function that copies an object and creates a new one, we normally
+would choose the syntax shown above, we would have a constructor for A that takes an reference to another object
+of type A, and we would copy the object manually inside the method.
+Alternatively, we could have written A(const A &) = default; which automatically copies over all members,
+making use of its copy constructor.
+To create a move constructor, however, we will be taking an rvalue reference instead of an lvalue reference, like
+here.
+class Wallet {
+public:
+    int nrOfDollars;
+    Wallet() = default; //default ctor
+    Wallet(Wallet &&other) {
+        this->nrOfDollars = other.nrOfDollars;
+        other.nrOfDollars = 0;
+    }
+};
+Please notice that we set the old values to zero. The default move constructor (Wallet(Wallet&&) = default;)
+copies the value of nrOfDollars, as it is a POD.
+As move semantics are designed to allow 'stealing' state from the original instance, it is important to consider how
+the original instance should look like after this stealing. In this case, if we would not change the value to zero we
+would have doubled the amount of dollars into play.
+Wallet a;
+a.nrOfDollars = 1;
+Wallet b (std::move(a)); //calling B(B&& other);
+std::cout << a.nrOfDollars << std::endl; //0
+std::cout << b.nrOfDollars << std::endl; //1
+Thus we have move constructed an object from an old one.
+While the above is a simple example, it shows what the move constructor is intended to do. It becomes more useful
+in more complex cases, such as when resource management is involved.
+    // Manages operations involving a specified type.
+    // Owns a helper on the heap, and one in its memory (presumably on the stack).
+    // Both helpers are DefaultConstructible, CopyConstructible, and MoveConstructible.
+    template<typename T,
+             template<typename> typename HeapHelper,
+             template<typename> typename StackHelper>
+    class OperationsManager {
+        using MyType = OperationsManager<T, HeapHelper, StackHelper>;
+        HeapHelper<T>* h_helper;
+        StackHelper<T> s_helper;
+        // ...
+      public:
+        // Default constructor & Rule of Five.
+        OperationsManager() : h_helper(new HeapHelper<T>) {}
+        OperationsManager(const MyType& other)
+          : h_helper(new HeapHelper<T>(*other.h_helper)), s_helper(other.s_helper) {}
+        MyType& operator=(MyType copy) {
+            swap(*this, copy);
+            return *this;
+        }
+        ~OperationsManager() {
+            if (h_helper) { delete h_helper; }
+        }
+        // Move constructor (without swap()).
+        // Takes other's HeapHelper<T>*.
+        // Takes other's StackHelper<T>, by forcing the use of StackHelper<T>'s move constructor.
+        // Replaces other's HeapHelper<T>* with nullptr, to keep other from deleting our shiny
+        //  new helper when it's destroyed.
+        OperationsManager(MyType&& other) noexcept
+          : h_helper(other.h_helper),
+            s_helper(std::move(other.s_helper)) {
+            other.h_helper = nullptr;
+        }
+        // Move constructor (with swap()).
+        // Places our members in the condition we want other's to be in, then switches members
+        //  with other.
+        // OperationsManager(MyType&& other) noexcept : h_helper(nullptr) {
+        //     swap(*this, other);
+        // }
+        // Copy/move helper.
+        friend void swap(MyType& left, MyType& right) noexcept {
+            std::swap(left.h_helper, right.h_helper);
+            std::swap(left.s_helper, right.s_helper);
+        }
+    };
+Section 106.4: Re-use a moved object
+You can re-use a moved object:
+void consumingFunction(std::vector<int> vec) {
+    // Some operations
+}
+int main() {
+    // initialize vec with 1, 2, 3, 4
+    std::vector<int> vec{1, 2, 3, 4};
+    // Send the vector by move
+    consumingFunction(std::move(vec));
+    // Here the vec object is in an indeterminate state.
+    // Since the object is not destroyed, we can assign it a new content.
+    // We will, in this case, assign an empty value to the vector,
+    // making it effectively empty
+    vec = {};
+    // Since the vector as gained a determinate value, we can use it normally.
+    vec.push_back(42);
+    // Send the vector by move again.
+    consumingFunction(std::move(vec));
+}
+Section 106.5: Move assignment
+Similarly to how we can assign a value to an object with an lvalue reference, copying it, we can also move the values
+from an object to another without constructing a new one. We call this move assignment. We move the values from
+one object to another existing object.
+For this, we will have to overload operator =, not so that it takes an lvalue reference, like in copy assignment, but
+so that it takes an rvalue reference.
+class A {
+    int a;
+    A& operator= (A&& other) {
+        this->a = other.a;
+        other.a = 0;
+        return *this;
+    }
+};
+This is the typical syntax to deﬁne move assignment. We overload operator = so that we can feed it an rvalue
+reference and it can assign it to another object.
+A a;
+a.a = 1;
+A b;
+b = std::move(a); //calling A& operator= (A&& other)
+std::cout << a.a << std::endl; //0
+std::cout << b.a << std::endl; //1
+Thus, we can move assign an object to another one.
+Section 106.6: Using move semantics on containers
+You can move a container instead of copying it:
+void print(const std::vector<int>& vec) {
+    for (auto&& val : vec) {
+        std::cout << val << ", ";
+    }
+    std::cout << std::endl;
+}
+int main() {
+    // initialize vec1 with 1, 2, 3, 4 and vec2 as an empty vector
+    std::vector<int> vec1{1, 2, 3, 4};
+    std::vector<int> vec2;
+    // The following line will print 1, 2, 3, 4
+    print(vec1);
+    // The following line will print a new line
+    print(vec2);
+    // The vector vec2 is assigned with move assingment.
+    // This will "steal" the value of vec1 without copying it.
+    vec2 = std::move(vec1);
+    // Here the vec1 object is in an indeterminate state, but still valid.
+    // The object vec1 is not destroyed,
+    // but there's is no guarantees about what it contains.
+    // The following line will print 1, 2, 3, 4
+    print(vec2);
+}
+
+
 Move semantics is arguably the most significant performance feature in C++11. It allows resources to be "transferred" (moved) from temporary objects rather than copied.
 
 ---
@@ -15879,6 +16308,916 @@ auto sub5 = std::bind(sub, _1, 5);
 
 
 ---
+### Professional Notes: Concurrency Deep Dive
+
+#### Chapter 80: Threading
+
+Parameter
+other
+Details
+Takes ownership of other, other doesn't own the thread anymore
+func
+args
+Function to call in a separate thread
+Arguments for func
+Section 80.1: Creating a std::thread
+In C++, threads are created using the std::thread class. A thread is a separate ﬂow of execution; it is analogous to
+having a helper perform one task while you simultaneously perform another. When all the code in the thread is
+executed, it terminates. When creating a thread, you need to pass something to be executed on it. A few things that
+you can pass to a thread:
+Free functions
+Member functions
+Functor objects
+Lambda expressions
+Free function example - executes a function on a separate thread (Live Example):
+#include <iostream>
+#include <thread>
+void foo(int a)
+{
+    std::cout << a << '\n';
+}
+int main()
+{
+    // Create and execute the thread
+    std::thread thread(foo, 10); // foo is the function to execute, 10 is the
+                                 // argument to pass to it
+    // Keep going; the thread is executed separately
+    // Wait for the thread to finish; we stay here until it is done
+    thread.join();
+    return 0;
+}
+Member function example - executes a member function on a separate thread (Live Example):
+#include <iostream>
+#include <thread>
+class Bar
+{
+public:
+    void foo(int a)
+    {
+        std::cout << a << '\n';
+    }
+};
+int main()
+{
+    Bar bar;
+    // Create and execute the thread
+    std::thread thread(&Bar::foo, &bar, 10); // Pass 10 to member function
+    // The member function will be executed in a separate thread
+    // Wait for the thread to finish, this is a blocking operation
+    thread.join();
+    return 0;
+}
+Functor object example (Live Example):
+#include <iostream>
+#include <thread>
+class Bar
+{
+public:
+    void operator()(int a)
+    {
+        std::cout << a << '\n';
+    }
+};
+int main()
+{
+    Bar bar;
+    // Create and execute the thread
+    std::thread thread(bar, 10); // Pass 10 to functor object
+    // The functor object will be executed in a separate thread
+    // Wait for the thread to finish, this is a blocking operation
+    thread.join();
+    return 0;
+}
+Lambda expression example (Live Example):
+#include <iostream>
+#include <thread>
+int main()
+{
+    auto lambda = [](int a) { std::cout << a << '\n'; };
+    // Create and execute the thread
+    std::thread thread(lambda, 10); // Pass 10 to the lambda expression
+    // The lambda expression will be executed in a separate thread
+    // Wait for the thread to finish, this is a blocking operation
+    thread.join();
+    return 0;
+}
+Section 80.2: Passing a reference to a thread
+You cannot pass a reference (or const reference) directly to a thread because std::thread will copy/move them.
+Instead, use std::reference_wrapper:
+void foo(int& b)
+{
+    b = 10;
+}
+int a = 1;
+std::thread thread{ foo, std::ref(a) }; //'a' is now really passed as reference
+thread.join();
+std::cout << a << '\n'; //Outputs 10
+void bar(const ComplexObject& co)
+{
+    co.doCalculations();
+}
+ComplexObject object;
+std::thread thread{ bar, std::cref(object) }; //'object' is passed as const&
+thread.join();
+std::cout << object.getResult() << '\n'; //Outputs the result
+Section 80.3: Using std::async instead of std::thread
+std::async is also able to make threads. Compared to std::thread it is considered less powerful but easier to use
+when you just want to run a function asynchronously.
+Asynchronously calling a function
+#include <future>
+#include <iostream>
+unsigned int square(unsigned int i){
+    return i*i;
+}
+int main() {
+    auto f = std::async(std::launch::async, square, 8);
+    std::cout << "square currently running\n"; //do something while square is running
+    std::cout << "result is " << f.get() << '\n'; //getting the result from square
+}
+Common Pitfalls
+std::async returns a std::future that holds the return value that will be calculated by the function. When
+that future gets destroyed it waits until the thread completes, making your code eﬀectively single threaded.
+This is easily overlooked when you don't need the return value:
+std::async(std::launch::async, square, 5);
+//thread already completed at this point, because the returning future got destroyed
+std::async works without a launch policy, so std::async(square, 5); compiles. When you do that the
+system gets to decide if it wants to create a thread or not. The idea was that the system chooses to make a
+thread unless it is already running more threads than it can run eﬃciently. Unfortunately implementations
+commonly just choose not to create a thread in that situation, ever, so you need to override that behavior
+with std::launch::async which forces the system to create a thread.
+Beware of race conditions.
+More on async on Futures and Promises
+Section 80.4: Basic Synchronization
+Thread synchronization can be accomplished using mutexes, among other synchronization primitives. There are
+several mutex types provided by the standard library, but the simplest is std::mutex. To lock a mutex, you
+construct a lock on it. The simplest lock type is std::lock_guard:
+std::mutex m;
+void worker() {
+    std::lock_guard<std::mutex> guard(m); // Acquires a lock on the mutex
+    // Synchronized code here
+} // the mutex is automatically released when guard goes out of scope
+With std::lock_guard the mutex is locked for the whole lifetime of the lock object. In cases where you need to
+manually control the regions for locking, use std::unique_lock instead:
+std::mutex m;
+void worker() {
+    // by default, constructing a unique_lock from a mutex will lock the mutex
+    // by passing the std::defer_lock as a second argument, we
+    // can construct the guard in an unlocked state instead and
+    // manually lock later.
+    std::unique_lock<std::mutex> guard(m, std::defer_lock);
+    // the mutex is not locked yet!
+    guard.lock();
+    // critical section
+    guard.unlock();
+    // mutex is again released
+}
+More Thread synchronization structures
+Section 80.5: Create a simple thread pool
+C++11 threading primitives are still relatively low level. They can be used to write a higher level construct, like a
+thread pool:
+Version ≥ C++14
+struct tasks {
+  // the mutex, condition variable and deque form a single
+  // thread-safe triggered queue of tasks:
+  std::mutex m;
+  std::condition_variable v;
+  // note that a packaged_task<void> can store a packaged_task<R>:
+  std::deque<std::packaged_task<void()>> work;
+  // this holds futures representing the worker threads being done:
+  std::vector<std::future<void>> finished;
+  // queue( lambda ) will enqueue the lambda into the tasks for the threads
+  // to use.  A future of the type the lambda returns is given to let you get
+  // the result out.
+  template<class F, class R=std::result_of_t<F&()>>
+  std::future<R> queue(F&& f) {
+    // wrap the function object into a packaged task, splitting
+    // execution from the return value:
+    std::packaged_task<R()> p(std::forward<F>(f));
+    auto r=p.get_future(); // get the return value before we hand off the task
+    {
+      std::unique_lock<std::mutex> l(m);
+      work.emplace_back(std::move(p)); // store the task<R()> as a task<void()>
+    }
+    v.notify_one(); // wake a thread to work on the task
+    return r; // return the future result of the task
+  }
+  // start N threads in the thread pool.
+  void start(std::size_t N=1){
+    for (std::size_t i = 0; i < N; ++i)
+    {
+      // each thread is a std::async running this->thread_task():
+      finished.push_back(
+        std::async(
+          std::launch::async,
+          [this]{ thread_task(); }
+        )
+      );
+    }
+  }
+  // abort() cancels all non-started tasks, and tells every working thread
+  // stop running, and waits for them to finish up.
+  void abort() {
+    cancel_pending();
+    finish();
+  }
+  // cancel_pending() merely cancels all non-started tasks:
+  void cancel_pending() {
+    std::unique_lock<std::mutex> l(m);
+    work.clear();
+  }
+  // finish enques a "stop the thread" message for every thread, then waits for them:
+  void finish() {
+    {
+      std::unique_lock<std::mutex> l(m);
+      for(auto&&unused:finished){
+        work.push_back({});
+      }
+    }
+    v.notify_all();
+    finished.clear();
+  }
+  ~tasks() {
+    finish();
+  }
+private:
+  // the work that a worker thread does:
+  void thread_task() {
+    while(true){
+      // pop a task off the queue:
+      std::packaged_task<void()> f;
+      {
+        // usual thread-safe queue code:
+        std::unique_lock<std::mutex> l(m);
+        if (work.empty()){
+          v.wait(l,[&]{return !work.empty();});
+        }
+        f = std::move(work.front());
+        work.pop_front();
+      }
+      // if the task is invalid, it means we are asked to abort:
+      if (!f.valid()) return;
+      // otherwise, run the task:
+      f();
+    }
+  }
+};
+tasks.queue( []{ return "hello world"s; } ) returns a std::future<std::string>, which when the tasks
+object gets around to running it is populated with hello world.
+You create threads by running tasks.start(10) (which starts 10 threads).
+The use of packaged_task<void()> is merely because there is no type-erased std::function equivalent that stores
+move-only types. Writing a custom one of those would probably be faster than using packaged_task<void()>.
+Live example.
+Version = C++11
+In C++11, replace result_of_t<blah> with typename result_of<blah>::type.
+More on Mutexes.
+Section 80.6: Ensuring a thread is always joined
+When the destructor for std::thread is invoked, a call to either join() or detach() must have been made. If a
+thread has not been joined or detached, then by default std::terminate will be called. Using RAII, this is generally
+simple enough to accomplish:
+class thread_joiner
+{
+public:
+    thread_joiner(std::thread t)
+        : t_(std::move(t))
+    { }
+    ~thread_joiner()
+    {
+        if(t_.joinable()) {
+            t_.join();
+        }
+    }
+private:
+    std::thread t_;
+}
+This is then used like so:
+ void perform_work()
+ {
+     // Perform some work
+ }
+ void t()
+ {
+     thread_joiner j{std::thread(perform_work)};
+     // Do some other calculations while thread is running
+ } // Thread is automatically joined here
+This also provides exception safety; if we had created our thread normally and the work done in t() performing
+other calculations had thrown an exception, join() would never have been called on our thread and our process
+would have been terminated.
+Section 80.7: Operations on the current thread
+std::this_thread is a namespace which has functions to do interesting things on the current thread from function
+it is called from.
+Function
+Description
+get_id
+Returns the id of the thread
+sleep_for
+Sleeps for a speciﬁed amount of time
+sleep_until Sleeps until a speciﬁc time
+yield
+Reschedule running threads, giving other threads priority
+Getting the current threads id using std::this_thread::get_id:
+void foo()
+{
+    //Print this threads id
+    std::cout << std::this_thread::get_id() << '\n';
+}
+std::thread thread{ foo };
+thread.join(); //'threads' id has now been printed, should be something like 12556
+foo(); //The id of the main thread is printed, should be something like 2420
+Sleeping for 3 seconds using std::this_thread::sleep_for:
+void foo()
+{
+    std::this_thread::sleep_for(std::chrono::seconds(3));
+}
+std::thread thread{ foo };
+foo.join();
+std::cout << "Waited for 3 seconds!\n";
+Sleeping until 3 hours in the future using std::this_thread::sleep_until:
+void foo()
+{
+    std::this_thread::sleep_until(std::chrono::system_clock::now() + std::chrono::hours(3));
+}
+std::thread thread{ foo };
+thread.join();
+std::cout << "We are now located 3 hours after the thread has been called\n";
+Letting other threads take priority using std::this_thread::yield:
+void foo(int a)
+{
+    for (int i = 0; i < al ++i)
+        std::this_thread::yield(); //Now other threads take priority, because this thread
+                                   //isn't doing anything important
+    std::cout << "Hello World!\n";
+}
+std::thread thread{ foo, 10 };
+thread.join();
+Section 80.8: Using Condition Variables
+A condition variable is a primitive used in conjunction with a mutex to orchestrate communication between
+threads. While it is neither the exclusive or most eﬃcient way to accomplish this, it can be among the simplest to
+those familiar with the pattern.
+One waits on a std::condition_variable with a std::unique_lock<std::mutex>. This allows the code to safely
+examine shared state before deciding whether or not to proceed with acquisition.
+Below is a producer-consumer sketch that uses std::thread, std::condition_variable, std::mutex, and a few
+others to make things interesting.
+#include <condition_variable>
+#include <cstddef>
+#include <iostream>
+#include <mutex>
+#include <queue>
+#include <random>
+#include <thread>
+int main()
+{
+    std::condition_variable cond;
+    std::mutex mtx;
+    std::queue<int> intq;
+    bool stopped = false;
+    std::thread producer{[&]()
+    {
+        // Prepare a random number generator.
+        // Our producer will simply push random numbers to intq.
+        //
+        std::default_random_engine gen{};
+        std::uniform_int_distribution<int> dist{};
+        std::size_t count = 4006;    
+        while(count--)
+        {    
+            // Always lock before changing
+            // state guarded by a mutex and
+            // condition_variable (a.k.a. "condvar").
+            std::lock_guard<std::mutex> L{mtx};
+            // Push a random int into the queue
+            intq.push(dist(gen));
+            // Tell the consumer it has an int
+            cond.notify_one();
+        }
+        // All done.
+        // Acquire the lock, set the stopped flag,
+        // then inform the consumer.
+        std::lock_guard<std::mutex> L{mtx};
+        std::cout << "Producer is done!" << std::endl;
+        stopped = true;
+        cond.notify_one();
+    }};
+    std::thread consumer{[&]()
+    {
+        do{
+            std::unique_lock<std::mutex> L{mtx};
+            cond.wait(L,[&]()
+            {
+                // Acquire the lock only if
+                // we've stopped or the queue
+                // isn't empty
+                return stopped || ! intq.empty();
+            });
+            // We own the mutex here; pop the queue
+            // until it empties out.
+            while( ! intq.empty())
+            {
+                const auto val = intq.front();
+                intq.pop();
+                std::cout << "Consumer popped: " << val << std::endl;
+            }
+            if(stopped){
+                // producer has signaled a stop
+                std::cout << "Consumer is done!" << std::endl;
+                break;
+            }
+        }while(true);
+    }};
+    consumer.join();
+    producer.join();
+    std::cout << "Example Completed!" << std::endl;
+    return 0;
+}
+Section 80.9: Thread operations
+When you start a thread, it will execute until it is ﬁnished.
+Often, at some point, you need to (possibly - the thread may already be done) wait for the thread to ﬁnish, because
+you want to use the result for example.
+int n;
+std::thread thread{ calculateSomething, std::ref(n) };
+//Doing some other stuff
+//We need 'n' now!
+//Wait for the thread to finish - if it is not already done
+thread.join();
+//Now 'n' has the result of the calculation done in the separate thread
+std::cout << n << '\n';
+You can also detach the thread, letting it execute freely:
+std::thread thread{ doSomething };
+//Detaching the thread, we don't need it anymore (for whatever reason)
+thread.detach();
+//The thread will terminate when it is done, or when the main thread returns
+Section 80.10: Thread-local storage
+Thread-local storage can be created using the thread_local keyword. A variable declared with the thread_local
+speciﬁer is said to have thread storage duration.
+Each thread in a program has its own copy of each thread-local variable.
+A thread-local variable with function (local) scope will be initialized the ﬁrst time control passes through its
+deﬁnition. Such a variable is implicitly static, unless declared extern.
+A thread-local variable with namespace or class (non-local) scope will be initialized as part of thread startup.
+Thread-local variables are destroyed upon thread termination.
+A member of a class can only be thread-local if it is static. There will therefore be one copy of that variable
+per thread, rather than one copy per (thread, instance) pair.
+Example:
+void debug_counter() {
+    thread_local int count = 0;
+    Logger::log("This function has been called %d times by this thread", ++count);
+}
+Section 80.11: Reassigning thread objects
+We can create empty thread objects and assign work to them later.
+If we assign a thread object to another active, joinable thread, std::terminate will automatically be called before
+the thread is replaced.
+#include <thread>
+void foo()
+{
+    std::this_thread::sleep_for(std::chrono::seconds(3));
+}
+//create 100 thread objects that do nothing
+std::thread executors[100];
+// Some code
+// I want to create some threads now
+for (int i = 0;i < 100;i++)
+{
+    // If this object doesn't have a thread assigned
+    if (!executors[i].joinable())
+         executors[i] = std::thread(foo);
+}
+
+#### Chapter 81: Thread synchronization
+
+structures
+Working with threads might need some synchronization techniques if the threads interact. In this topic, you can
+ﬁnd the diﬀerent structures which are provided by the standard library to solve these issues.
+Section 81.1: std::condition_variable_any, std::cv_status
+A generalization of std::condition_variable, std::condition_variable_any works with any type of
+BasicLockable structure.
+std::cv_status as a return status for a condition variable has two possible return codes:
+std::cv_status::no_timeout: There was no timeout, condition variable was notiﬁed
+std::cv_status::no_timeout: Condition variable timed out
+Section 81.2: std::shared_lock
+A shared_lock can be used in conjunction with a unique lock to allow multiple readers and exclusive writers.
+#include <unordered_map>
+#include <mutex>
+#include <shared_mutex>
+#include <thread>
+#include <string>
+#include <iostream>
+class PhoneBook {
+    public:
+        string getPhoneNo( const std::string & name )
+        {
+            shared_lock<shared_timed_mutex> r(_protect);
+            auto it =  _phonebook.find( name );
+            if ( it == _phonebook.end() )
+                return (*it).second;
+            return "";
+        }
+        void addPhoneNo ( const std::string & name, const std::string & phone )
+        {
+            unique_lock<shared_timed_mutex> w(_protect);
+            _phonebook[name] = phone;
+        }
+        shared_timed_mutex _protect;
+        unordered_map<string,string>  _phonebook;
+    };
+Section 81.3: std::call_once, std::once_ﬂag
+std::call_once ensures execution of a function exactly once by competing threads. It throws std::system_error
+in case it cannot complete its task.
+Used in conjunction with std::once_flag.
+#include <mutex>
+#include <iostream>
+std::once_flag flag;
+void do_something(){
+      std::call_once(flag, [](){std::cout << "Happens once" << std::endl;});
+      std::cout << "Happens every time" << std::endl;
+}
+Section 81.4: Object locking for ecient access
+Often you want to lock the entire object while you perform multiple operations on it. For example, if you need to
+examine or modify the object using iterators. Whenever you need to call multiple member functions it is generally
+more eﬃcient to lock the whole object rather than individual member functions.
+For example:
+class text_buffer
+{
+    // for readability/maintainability
+    using mutex_type = std::shared_timed_mutex;
+    using reading_lock = std::shared_lock<mutex_type>;
+    using updates_lock = std::unique_lock<mutex_type>;
+public:
+    // This returns a scoped lock that can be shared by multiple
+    // readers at the same time while excluding any writers
+    [[nodiscard]]
+    reading_lock lock_for_reading() const { return reading_lock(mtx); }
+    // This returns a scoped lock that is exclusing to one
+    // writer preventing any readers
+    [[nodiscard]]
+    updates_lock lock_for_updates() { return updates_lock(mtx); }
+    char* data() { return buf; }
+    char const* data() const { return buf; }
+    char* begin() { return buf; }
+    char const* begin() const { return buf; }
+    char* end() { return buf + sizeof(buf); }
+    char const* end() const { return buf + sizeof(buf); }
+    std::size_t size() const { return sizeof(buf); }
+private:
+    char buf[1024];
+    mutable mutex_type mtx; // mutable allows const objects to be locked
+};
+When calculating a checksum the object is locked for reading, allowing other threads that want to read from the
+object at the same time to do so.
+std::size_t checksum(text_buffer const& buf)
+{
+    std::size_t sum = 0xA44944A4;
+    // lock the object for reading
+    auto lock = buf.lock_for_reading();
+    for(auto c: buf)
+        sum = (sum << 8) | (((unsigned char) ((sum & 0xFF000000) >> 24)) ^ c);
+    return sum;
+}
+Clearing the object updates its internal data so it must be done using an exclusing lock.
+void clear(text_buffer& buf)
+{
+    auto lock = buf.lock_for_updates(); // exclusive lock
+    std::fill(std::begin(buf), std::end(buf), '\0');
+}
+When obtaining more than one lock care should be taken to always acquire the locks in the same order for all
+threads.
+void transfer(text_buffer const& input, text_buffer& output)
+{
+    auto lock1 = input.lock_for_reading();
+    auto lock2 = output.lock_for_updates();
+    std::copy(std::begin(input), std::end(input), std::begin(output));
+}
+note: This is best done using std::deferred::lock and calling std::lock
+
+#### Chapter 85: Mutexes
+
+Section 85.1: Mutex Types
+C++1x oﬀers a selection of mutex classes:
+std::mutex - oﬀers simple locking functionality.
+std::timed_mutex - oﬀers try_to_lock functionality
+std::recursive_mutex - allows recursive locking by the same thread.
+std::shared_mutex, std::shared_timed_mutex - oﬀers shared and unique lock functionality.
+Section 85.2: std::lock
+std::lock uses deadlock avoidance algorithms to lock one or more mutexes. If an exception is thrown during a call
+to lock multiple objects, std::lock unlocks the successfully locked objects before re-throwing the exception.
+std::lock(_mutex1, _mutex2);
+Section 85.3: std::unique_lock, std::shared_lock,
+std::lock_guard
+Used for the RAII style acquiring of try locks, timed try locks and recursive locks.
+std::unique_lock allows for exclusive ownership of mutexes.
+std::shared_lock allows for shared ownership of mutexes. Several threads can hold std::shared_locks on a
+std::shared_mutex. Available from C++ 14.
+std::lock_guard is a lightweight alternative to std::unique_lock and std::shared_lock.
+#include <unordered_map>
+#include <mutex>
+#include <shared_mutex>
+#include <thread>
+#include <string>
+#include <iostream>
+class PhoneBook {
+public:
+    std::string getPhoneNo( const std::string & name )
+    {
+        std::shared_lock<std::shared_timed_mutex> l(_protect);
+        auto it =  _phonebook.find( name );
+        if ( it != _phonebook.end() )
+            return (*it).second;
+        return "";
+    }
+    void addPhoneNo ( const std::string & name, const std::string & phone )
+    {
+        std::unique_lock<std::shared_timed_mutex> l(_protect);
+        _phonebook[name] = phone;
+    }
+    std::shared_timed_mutex _protect;
+    std::unordered_map<std::string,std::string>  _phonebook;
+};
+Section 85.4: Strategies for lock classes: std::try_to_lock,
+std::adopt_lock, std::defer_lock
+When creating a std::unique_lock, there are three diﬀerent locking strategies to choose from: std::try_to_lock,
+std::defer_lock and std::adopt_lock
+1.
+std::try_to_lock allows for trying a lock without blocking:
+{
+    std::atomic_int temp {0};
+    std::mutex _mutex;
+    std::thread t( [&](){
+        while( temp!= -1){
+            std::this_thread::sleep_for(std::chrono::seconds(5));
+            std::unique_lock<std::mutex> lock( _mutex, std::try_to_lock);
+            if(lock.owns_lock()){
+                //do something
+                temp=0;
+            }
+        }
+    });
+    while ( true )
+    {
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+        std::unique_lock<std::mutex> lock( _mutex, std::try_to_lock);
+        if(lock.owns_lock()){
+            if (temp < INT_MAX){
+                ++temp;
+            }
+            std::cout << temp << std::endl;
+        }
+    }
+}
+2.
+std::defer_lock allows for creating a lock structure without acquiring the lock. When locking more than one
+mutex, there is a window of opportunity for a deadlock if two function callers try to acquire the locks at the
+same time:
+{
+    std::unique_lock<std::mutex> lock1(_mutex1, std::defer_lock);
+    std::unique_lock<std::mutex> lock2(_mutex2, std::defer_lock);
+    lock1.lock()
+    lock2.lock(); // deadlock here
+    std::cout << "Locked! << std::endl;
+    //...
+}
+With the following code, whatever happens in the function, the locks are acquired and released in appropriate
+order:
+   {
+       std::unique_lock<std::mutex> lock1(_mutex1, std::defer_lock);
+       std::unique_lock<std::mutex> lock2(_mutex2, std::defer_lock);
+       std::lock(lock1,lock2); // no deadlock possible
+       std::cout << "Locked! << std::endl;
+       //...
+   }
+3.
+std::adopt_lock does not attempt to lock a second time if the calling thread currently owns the lock.
+{
+    std::unique_lock<std::mutex> lock1(_mutex1, std::adopt_lock);
+    std::unique_lock<std::mutex> lock2(_mutex2, std::adopt_lock);
+    std::cout << "Locked! << std::endl;
+    //...
+}
+Something to keep in mind is that std::adopt_lock is not a substitute for recursive mutex usage. When the lock goes
+out of scope the mutex is released.
+Section 85.5: std::mutex
+std::mutex is a simple, non-recursive synchronization structure that is used to protect data which is accessed by
+multiple threads.
+    std::atomic_int temp{0};
+    std::mutex _mutex;
+    std::thread t( [&](){
+                      while( temp!= -1){
+                          std::this_thread::sleep_for(std::chrono::seconds(5));
+                          std::unique_lock<std::mutex> lock( _mutex);
+                              temp=0;
+                      }
+                  });
+    while ( true )
+    {
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        std::unique_lock<std::mutex> lock( _mutex, std::try_to_lock);
+        if ( temp < INT_MAX )
+            temp++;
+        cout << temp << endl;
+    }
+Section 85.6: std::scoped_lock (C++ 17)
+std::scoped_lock provides RAII style semantics for owning one more mutexes, combined with the lock avoidance
+algorithms used by std::lock. When std::scoped_lock is destroyed, mutexes are released in the reverse order
+from which they where acquired.
+{
+    std::scoped_lock lock{_mutex1,_mutex2};
+    //do something
+}
+
+#### Chapter 88: Futures and Promises
+
+Promises and Futures are used to ferry a single object from one thread to another.
+A std::promise object is set by the thread which generates the result.
+A std::future object can be used to retrieve a value, to test to see if a value is available, or to halt execution until
+the value is available.
+Section 88.1: Async operation classes
+std::async: performs an asynchronous operation.
+std::future: provides access to the result of an asynchronous operation.
+std::promise: packages the result of an asynchronous operation.
+std::packaged_task: bundles a function and the associated promise for its return type.
+Section 88.2: std::future and std::promise
+The following example sets a promise to be consumed by another thread:
+    {
+        auto promise = std::promise<std::string>();
+        auto producer = std::thread([&]
+        {
+            promise.set_value("Hello World");
+        });
+        auto future = promise.get_future();
+        auto consumer = std::thread([&]
+        {
+            std::cout << future.get();
+        });
+        producer.join();
+        consumer.join();
+}
+Section 88.3: Deferred async example
+This code implements a version of std::async, but it behaves as if async were always called with the deferred
+launch policy. This function also does not have async's special future behavior; the returned future can be
+destroyed without ever acquiring its value.
+template<typename F>
+auto async_deferred(F&& func) -> std::future<decltype(func())>
+{
+    using result_type = decltype(func());
+    auto promise = std::promise<result_type>();
+    auto future  = promise.get_future();
+    std::thread(std::bind([=](std::promise<result_type>& promise)
+    {
+        try
+        {
+            promise.set_value(func());
+            // Note: Will not work with std::promise<void>. Needs some meta-template programming
+which is out of scope for this example.
+        }
+        catch(...)
+        {
+            promise.set_exception(std::current_exception());
+        }
+    }, std::move(promise))).detach();
+    return future;
+}
+Section 88.4: std::packaged_task and std::future
+std::packaged_task bundles a function and the associated promise for its return type:
+template<typename F>
+auto async_deferred(F&& func) -> std::future<decltype(func())>
+{
+    auto task   = std::packaged_task<decltype(func())()>(std::forward<F>(func));
+    auto future = task.get_future();
+    std::thread(std::move(task)).detach();
+    return std::move(future);
+}
+The thread starts running immediately. We can either detach it, or have join it at the end of the scope. When the
+function call to std::thread ﬁnishes, the result is ready.
+Note that this is slightly diﬀerent from std::async where the returned std::future when destructed will actually
+block until the thread is ﬁnished.
+Section 88.5: std::future_error and std::future_errc
+If constraints for std::promise and std::future are not met an exception of type std::future_error is thrown.
+The error code member in the exception is of type std::future_errc and values are as below, along with some test
+cases:
+enum class future_errc {
+    broken_promise             = /* the task is no longer shared */,
+    future_already_retrieved   = /* the answer was already retrieved */,
+    promise_already_satisfied  = /* the answer was stored already */,
+    no_state                   = /* access to a promise in non-shared state */
+};
+Inactive promise:
+int test()
+{
+    std::promise<int> pr;
+    return 0; // returns ok
+}
+Active promise, unused:
+  int test()
+    {
+        std::promise<int> pr;
+        auto fut = pr.get_future(); //blocks indefinitely!
+        return 0;
+    }
+Double retrieval:
+int test()
+{
+    std::promise<int> pr;
+    auto fut1 = pr.get_future();
+    try{
+        auto fut2 = pr.get_future();    //   second attempt to get future
+        return 0;
+    }
+    catch(const std::future_error& e)
+    {
+        cout << e.what() << endl;       //   Error: "The future has already been retrieved from the
+promise or packaged_task."
+        return -1;
+    }
+    return fut2.get();
+}
+Setting std::promise value twice:
+int test()
+{
+    std::promise<int> pr;
+    auto fut = pr.get_future();
+    try{
+        std::promise<int> pr2(std::move(pr));
+        pr2.set_value(10);
+        pr2.set_value(10);  // second attempt to set promise throws exception
+    }
+    catch(const std::future_error& e)
+    {
+        cout << e.what() << endl;       //   Error: "The state of the promise has already been
+set."
+        return -1;
+    }
+    return fut.get();
+}
+Section 88.6: std::future and std::async
+In the following naive parallel merge sort example, std::async is used to launch multiple parallel merge_sort tasks.
+std::future is used to wait for the results and synchronize them:
+#include <iostream>
+using namespace std;
+void merge(int low,int mid,int high, vector<int>&num)
+{
+    vector<int> copy(num.size());
+    int h,i,j,k;
+    h=low;
+    i=low;
+    j=mid+1;
+    while((h<=mid)&&(j<=high))
+    {
+        if(num[h]<=num[j])
+        {
+            copy[i]=num[h];
+            h++;
+        }
+        else
+        {
+            copy[i]=num[j];
+            j++;
+        }
+        i++;
+    }
+    if(h>mid)
+    {
+        for(k=j;k<=high;k++)
+        {
+            copy[i]=num[k];
+            i++;
+        }
+    }
+    else
+    {
+        for(k=h;k<=mid;k++)
+        {
+            copy[i]=num[k];
+            i++;
+        }
+    }
+    for(k=low;k<=high;k++)
+        swap(num[k],copy[k]);
+}
+void merge_sort(int low,int high,vector<int>& num)
+{
+    int mid;
+    if(low<high)
+    {
+        mid = low + (high-low)/2;
+        auto future1    =  std::async(std::launch::deferred,[&]()
+                                      {
+                                        merge_sort(low,mid,num);
+                                      });
+        auto future2    =  std::async(std::launch::deferred, [&]()
+                                       {
+                                          merge_sort(mid+1,high,num) ;
+                                       });
+        future1.get();
+        future2.get();
+        merge(low,mid,high,num);
+    }
+}
+Note: In the example std::async is launched with policy std::launch_deferred. This is to avoid a new thread
+being created in every call. In the case of our example, the calls to std::async are made out of order, the they
+synchronize at the calls for std::future::get().
+std::launch_async forces a new thread to be created in every call.
+The default policy is std::launch::deferred| std::launch::async, meaning the implementation determines the
+policy for creating new threads.
+
+
+
+---
 ### Professional Notes: Atomics & Memory Model
 
 #### Chapter 55: std::atomics
@@ -16209,6 +17548,987 @@ int roll = dis(gen);
 
 
 ## <a name="chapter-13-c11"></a>CHAPTER 13: C++11 METAPROGRAMMING
+
+
+---
+### Professional Notes: Advanced Templates
+
+#### Chapter 90: Type Erasure
+
+Type erasure is a set of techniques for creating a type that can provide a uniform interface to various underlying
+types, while hiding the underlying type information from the client. std::function<R(A...)>, which has the ability
+to hold callable objects of various types, is perhaps the best known example of type erasure in C++.
+Section 90.1: A move-only `std::function`
+std::function type erases down to a few operations. One of the things it requires is that the stored value be
+copyable.
+This causes problems in a few contexts, like lambdas storing unique ptrs. If you are using the std::function in a
+context where copying doesn't matter, like a thread pool where you dispatch tasks to threads, this requirement can
+add overhead.
+In particular, std::packaged_task<Sig> is a callable object that is move-only. You can store a
+std::packaged_task<R(Args...)> in a std::packaged_task<void(Args...)>, but that is a pretty heavy-weight and
+obscure way to create a move-only callable type-erasure class.
+Thus the task. This demonstrates how you could write a simple std::function type. I omitted the copy constructor
+(which would involve adding a clone method to details::task_pimpl<...> as well).
+template<class Sig>
+struct task;
+// putting it in a namespace allows us to specialize it nicely for void return value:
+namespace details {
+  template<class R, class...Args>
+  struct task_pimpl {
+    virtual R invoke(Args&&...args) const = 0;
+    virtual ~task_pimpl() {};
+    virtual const std::type_info& target_type() const = 0;
+  };
+  // store an F.  invoke(Args&&...) calls the f
+  template<class F, class R, class...Args>
+  struct task_pimpl_impl:task_pimpl<R,Args...> {
+    F f;
+    template<class Fin>
+    task_pimpl_impl( Fin&& fin ):f(std::forward<Fin>(fin)) {}
+    virtual R invoke(Args&&...args) const final override {
+      return f(std::forward<Args>(args)...);
+    }
+    virtual const std::type_info& target_type() const final override {
+      return typeid(F);
+    }
+  };
+  // the void version discards the return value of f:
+  template<class F, class...Args>
+  struct task_pimpl_impl<F,void,Args...>:task_pimpl<void,Args...> {
+    F f;
+    template<class Fin>
+    task_pimpl_impl( Fin&& fin ):f(std::forward<Fin>(fin)) {}
+    virtual void invoke(Args&&...args) const final override {
+      f(std::forward<Args>(args)...);
+    }
+    virtual const std::type_info& target_type() const final override {
+      return typeid(F);
+    }
+  };
+};
+template<class R, class...Args>
+struct task<R(Args...)> {
+  // semi-regular:
+  task()=default;
+  task(task&&)=default;
+  // no copy
+private:
+  // aliases to make some SFINAE code below less ugly:
+  template<class F>
+  using call_r = std::result_of_t<F const&(Args...)>;
+  template<class F>
+  using is_task = std::is_same<std::decay_t<F>, task>;
+public:
+  // can be constructed from a callable F
+  template<class F,
+    // that can be invoked with Args... and converted-to-R:
+    class= decltype( (R)(std::declval<call_r<F>>()) ),
+    // and is not this same type:
+    std::enable_if_t<!is_task<F>{}, int>* = nullptr
+  >
+  task(F&& f):
+    m_pImpl( make_pimpl(std::forward<F>(f)) )
+  {}
+  // the meat: the call operator        
+  R operator()(Args... args)const {
+        return m_pImpl->invoke( std::forward<Args>(args)... );
+  }
+  explicit operator bool() const {
+    return (bool)m_pImpl;
+  }
+  void swap( task& o ) {
+    std::swap( m_pImpl, o.m_pImpl );
+  }
+  template<class F>
+  void assign( F&& f ) {
+    m_pImpl = make_pimpl(std::forward<F>(f));    
+  }
+  // Part of the std::function interface:
+  const std::type_info& target_type() const {
+    if (!*this) return typeid(void);
+    return m_pImpl->target_type();
+  }
+  template< class T >
+  T* target() {
+    return target_impl<T>();
+  }
+  template< class T >
+  const T* target() const {
+    return target_impl<T>();
+  }
+  // compare with nullptr    :    
+  friend bool operator==( std::nullptr_t, task const& self ) { return !self; }
+  friend bool operator==( task const& self, std::nullptr_t ) { return !self; }
+  friend bool operator!=( std::nullptr_t, task const& self ) { return !!self; }
+  friend bool operator!=( task const& self, std::nullptr_t ) { return !!self; }
+private:
+  template<class T>
+  using pimpl_t = details::task_pimpl_impl<T, R, Args...>;
+  template<class F>
+  static auto make_pimpl( F&& f ) {
+    using dF=std::decay_t<F>;
+    using pImpl_t = pimpl_t<dF>;
+    return std::make_unique<pImpl_t>(std::forward<F>(f));
+  }
+  std::unique_ptr<details::task_pimpl<R,Args...>> m_pImpl;
+  template< class T >
+  T* target_impl() const {
+    return dynamic_cast<pimpl_t<T>*>(m_pImpl.get());
+  }
+};
+To make this library-worthy, you'd want to add in a small buﬀer optimization, so it does not store every callable on
+the heap.
+Adding SBO would require a non-default task(task&&), some std::aligned_storage_t within the class, a m_pImpl
+unique_ptr with a deleter that can be set to destroy-only (and not return the memory to the heap), and a
+emplace_move_to( void* ) = 0 in the task_pimpl.
+live example of the above code (with no SBO).
+Section 90.2: Erasing down to a Regular type with manual
+vtable
+C++ thrives on what is known as a Regular type (or at least Pseudo-Regular).
+A Regular type is a type that can be constructed and assigned-to and assigned-from via copy or move, can be
+destroyed, and can be compared equal-to. It can also be constructed from no arguments. Finally, it also has
+support for a few other operations that are highly useful in various std algorithms and containers.
+This is the root paper, but in C++11 would want to add std::hash support.
+I will use the manual vtable approach to type erasure here.
+using dtor_unique_ptr = std::unique_ptr<void, void(*)(void*)>;
+template<class T, class...Args>
+dtor_unique_ptr make_dtor_unique_ptr( Args&&... args ) {
+  return {new T(std::forward<Args>(args)...), [](void* self){ delete static_cast<T*>(self); }};
+}
+struct regular_vtable {
+  void(*copy_assign)(void* dest, void const* src); // T&=(T const&)
+  void(*move_assign)(void* dest, void* src); // T&=(T&&)
+  bool(*equals)(void const* lhs, void const* rhs); // T const&==T const&
+  bool(*order)(void const* lhs, void const* rhs); // std::less<T>{}(T const&, T const&)
+  std::size_t(*hash)(void const* self); // std::hash<T>{}(T const&)
+  std::type_info const&(*type)(); // typeid(T)
+  dtor_unique_ptr(*clone)(void const* self); // T(T const&)
+};
+template<class T>
+regular_vtable make_regular_vtable() noexcept {
+  return {
+    [](void* dest, void const* src){ *static_cast<T*>(dest) = *static_cast<T const*>(src); },
+    [](void* dest, void* src){ *static_cast<T*>(dest) = std::move(*static_cast<T*>(src)); },
+    [](void const* lhs, void const* rhs){ return *static_cast<T const*>(lhs) == *static_cast<T
+const*>(rhs); },
+    [](void const* lhs, void const* rhs) { return std::less<T>{}(*static_cast<T
+const*>(lhs),*static_cast<T const*>(rhs)); },
+    [](void const* self){ return std::hash<T>{}(*static_cast<T const*>(self)); },
+    []()->decltype(auto){ return typeid(T); },
+    [](void const* self){ return make_dtor_unique_ptr<T>(*static_cast<T const*>(self)); }
+  };
+}
+template<class T>
+regular_vtable const* get_regular_vtable() noexcept {
+  static const regular_vtable vtable=make_regular_vtable<T>();
+  return &vtable;
+}
+struct regular_type {
+  using self=regular_type;
+  regular_vtable const* vtable = 0;
+  dtor_unique_ptr ptr{nullptr, [](void*){}};
+  bool empty() const { return !vtable; }
+  template<class T, class...Args>
+  void emplace( Args&&... args ) {
+    ptr = make_dtor_unique_ptr<T>(std::forward<Args>(args)...);
+    if (ptr)
+      vtable = get_regular_vtable<T>();
+    else
+      vtable = nullptr;
+  }
+  friend bool operator==(regular_type const& lhs, regular_type const& rhs) {
+    if (lhs.vtable != rhs.vtable) return false;
+    return lhs.vtable->equals( lhs.ptr.get(), rhs.ptr.get() );
+  }
+  bool before(regular_type const& rhs) const {
+    auto const& lhs = *this;
+    if (!lhs.vtable || !rhs.vtable)
+      return std::less<regular_vtable const*>{}(lhs.vtable,rhs.vtable);
+    if (lhs.vtable != rhs.vtable)
+      return lhs.vtable->type().before(rhs.vtable->type());
+    return lhs.vtable->order( lhs.ptr.get(), rhs.ptr.get() );
+  }
+  // technically friend bool operator< that calls before is also required
+  std::type_info const* type() const {
+    if (!vtable) return nullptr;
+    return &vtable->type();
+  }
+  regular_type(regular_type&& o):
+    vtable(o.vtable),
+    ptr(std::move(o.ptr))
+  {
+    o.vtable = nullptr;
+  }
+  friend void swap(regular_type& lhs, regular_type& rhs){
+    std::swap(lhs.ptr, rhs.ptr);
+    std::swap(lhs.vtable, rhs.vtable);
+  }
+  regular_type& operator=(regular_type&& o) {
+    if (o.vtable == vtable) {
+      vtable->move_assign(ptr.get(), o.ptr.get());
+      return *this;
+    }
+    auto tmp = std::move(o);
+    swap(*this, tmp);
+    return *this;
+  }
+  regular_type(regular_type const& o):
+    vtable(o.vtable),
+    ptr(o.vtable?o.vtable->clone(o.ptr.get()):dtor_unique_ptr{nullptr, [](void*){}})
+  {
+    if (!ptr && vtable) vtable = nullptr;
+  }
+  regular_type& operator=(regular_type const& o) {
+    if (o.vtable == vtable) {
+      vtable->copy_assign(ptr.get(), o.ptr.get());
+      return *this;
+    }
+    auto tmp = o;
+    swap(*this, tmp);
+    return *this;
+  }
+  std::size_t hash() const {
+    if (!vtable) return 0;
+    return vtable->hash(ptr.get());
+  }
+  template<class T,
+    std::enable_if_t< !std::is_same<std::decay_t<T>, regular_type>{}, int>* =nullptr
+  >
+  regular_type(T&& t) {
+    emplace<std::decay_t<T>>(std::forward<T>(t));
+  }
+};
+namespace std {
+  template<>
+  struct hash<regular_type> {
+    std::size_t operator()( regular_type const& r )const {
+      return r.hash();
+    }
+  };
+  template<>
+  struct less<regular_type> {
+    bool operator()( regular_type const& lhs, regular_type const& rhs ) const {
+      return lhs.before(rhs);
+    }
+  };
+}    
+live example.
+Such a regular type can be used as a key for a std::map or a std::unordered_map that accepts anything regular for a
+key, like:
+std::map<regular_type, std::any>
+would be basically a map from anothing regular, to anything copyable.
+Unlike any, my regular_type does no small object optimization nor does it support getting the original data back.
+Getting the original type back isn't hard.
+Small object optimization requires that we store an aligned storage buﬀer within the regular_type, and carefully
+tweak the deleter of the ptr to only destroy the object and not delete it.
+I would start at make_dtor_unique_ptr and teach it how to sometimes store the data in a buﬀer, and then in the
+heap if no room in the buﬀer. That may be suﬃcient.
+Section 90.3: Basic mechanism
+Type erasure is a way to hide the type of an object from code using it, even though it is not derived from a common
+base class. In doing so, it provides a bridge between the worlds of static polymorphism (templates; at the place of
+use, the exact type must be known at compile time, but it need not be declared to conform to an interface at
+deﬁnition) and dynamic polymorphism (inheritance and virtual functions; at the place of use, the exact type need
+not be known at compile time, but must be declared to conform to an interface at deﬁnition).
+The following code shows the basic mechanism of type erasure.
+#include <ostream>
+class Printable
+{
+public:
+  template <typename T>
+  Printable(T value) : pValue(new Value<T>(value)) {}
+  ~Printable() { delete pValue; }
+  void print(std::ostream &os) const { pValue->print(os); }
+private:
+  Printable(Printable const &)        /* in C++1x: =delete */; // not implemented
+  void operator = (Printable const &) /* in C++1x: =delete */; // not implemented
+  struct ValueBase
+  {
+      virtual ~ValueBase() = default;
+      virtual void print(std::ostream &) const = 0;
+  };
+  template <typename T>
+  struct Value : ValueBase
+  {
+      Value(T const &t) : v(t) {}
+      virtual void print(std::ostream &os) const { os << v; }
+      T v;
+  };
+  ValueBase *pValue;
+};
+At the use site, only the above deﬁnition need to be visible, just as with base classes with virtual functions. For
+example:
+#include <iostream>
+void print_value(Printable const &p)
+{
+    p.print(std::cout);
+}
+Note that this is not a template, but a normal function that only needs to be declared in a header ﬁle, and can be
+deﬁned in an implementation ﬁle (unlike templates, whose deﬁnition must be visible at the place of use).
+At the deﬁnition of the concrete type, nothing needs to be known about Printable, it just needs to conform to an
+interface, as with templates:
+struct MyType { int i; };
+ostream& operator << (ostream &os, MyType const &mc)
+{
+  return os << "MyType {" << mc.i << "}";
+}
+We can now pass an object of this class to the function deﬁned above:
+MyType foo = { 42 };
+print_value(foo);
+Section 90.4: Erasing down to a contiguous buer of T
+Not all type erasure involves virtual inheritance, allocations, placement new, or even function pointers.
+What makes type erasure type erasure is that it describes a (set of) behavior(s), and takes any type that supports
+that behavior and wraps it up. All information that isn't in that set of behaviors is "forgotten" or "erased".
+An array_view takes its incoming range or container type and erases everything except the fact it is a contiguous
+buﬀer of T.
+// helper traits for SFINAE:
+template<class T>
+using data_t = decltype( std::declval<T>().data() );
+template<class Src, class T>
+using compatible_data = std::integral_constant<bool, std::is_same< data_t<Src>, T* >{} ||
+std::is_same< data_t<Src>, std::remove_const_t<T>* >{}>;
+template<class T>
+struct array_view {
+  // the core of the class:
+  T* b=nullptr;
+  T* e=nullptr;
+  T* begin() const { return b; }
+  T* end() const { return e; }
+  // provide the expected methods of a good contiguous range:
+  T* data() const { return begin(); }
+  bool empty() const { return begin()==end(); }
+  std::size_t size() const { return end()-begin(); }
+  T& operator[](std::size_t i)const{ return begin()[i]; }
+  T& front()const{ return *begin(); }
+  T& back()const{ return *(end()-1); }
+  // useful helpers that let you generate other ranges from this one
+  // quickly and safely:
+  array_view without_front( std::size_t i=1 ) const {
+    i = (std::min)(i, size());
+    return {begin()+i, end()};
+  }
+  array_view without_back( std::size_t i=1 ) const {
+    i = (std::min)(i, size());
+    return {begin(), end()-i};
+  }
+  // array_view is plain old data, so default copy:
+  array_view(array_view const&)=default;
+  // generates a null, empty range:
+  array_view()=default;
+  // final constructor:
+  array_view(T* s, T* f):b(s),e(f) {}
+  // start and length is useful in my experience:
+  array_view(T* s, std::size_t length):array_view(s, s+length) {}
+  // SFINAE constructor that takes any .data() supporting container
+  // or other range in one fell swoop:
+  template<class Src,
+    std::enable_if_t< compatible_data<std::remove_reference_t<Src>&, T >{}, int>* =nullptr,
+    std::enable_if_t< !std::is_same<std::decay_t<Src>, array_view >{}, int>* =nullptr
+  >
+  array_view( Src&& src ):
+    array_view( src.data(), src.size() )
+  {}
+  // array constructor:
+  template<std::size_t N>
+  array_view( T(&arr)[N] ):array_view(arr, N) {}
+  // initializer list, allowing {} based:
+  template<class U,
+    std::enable_if_t< std::is_same<const U, T>{}, int>* =nullptr
+  >
+  array_view( std::initializer_list<U> il ):array_view(il.begin(), il.end()) {}
+};
+an array_view takes any container that supports .data() returning a pointer to T and a .size() method, or an
+array, and erases it down to being a random-access range over contiguous Ts.
+It can take a std::vector<T>, a std::string<T> a std::array<T, N> a T[37], an initializer list (including {} based
+ones), or something else you make up that supports it (via T* x.data() and size_t x.size()).
+In this case, the data we can extract from the thing we are erasing, together with our "view" non-owning state,
+means we don't have to allocate memory or write custom type-dependent functions.
+Live example.
+An improvement would be to use a non-member data and a non-member size in an ADL-enabled context.
+Section 90.5: Type erasing type erasure with std::any
+This example uses C++14 and boost::any. In C++17 you can swap in std::any instead.
+The syntax we end up with is:
+const auto print =
+  make_any_method<void(std::ostream&)>([](auto&& p, std::ostream& t){ t << p << "\n"; });
+super_any<decltype(print)> a = 7;
+(a->*print)(std::cout);
+which is almost optimal.
+This example is based oﬀ of work by @dyp and @cpplearner as well as my own.
+First we use a tag to pass around types:
+template<class T>struct tag_t{constexpr tag_t(){};};
+template<class T>constexpr tag_t<T> tag{};
+This trait class gets the signature stored with an any_method:
+This creates a function pointer type, and a factory for said function pointers, given an any_method:
+template<class any_method>
+using any_sig_from_method = typename any_method::signature;
+template<class any_method, class Sig=any_sig_from_method<any_method>>
+struct any_method_function;
+template<class any_method, class R, class...Args>
+struct any_method_function<any_method, R(Args...)>
+{
+  template<class T>
+  using decorate = std::conditional_t< any_method::is_const, T const, T >;
+  using any = decorate<boost::any>;
+  using type = R(*)(any&, any_method const*, Args&&...);
+  template<class T>
+  type operator()( tag_t<T> )const{
+    return +[](any& self, any_method const* method, Args&&...args) {
+      return (*method)( boost::any_cast<decorate<T>&>(self), decltype(args)(args)... );
+    };
+  }
+};
+any_method_function::type is the type of a function pointer we will store alongside the instance.
+any_method_function::operator() takes a tag_t<T> and writes a custom instance of the
+any_method_function::type that assumes the any& is going to be a T.
+We want to be able to type-erase more than one method at a time. So we bundle them up in a tuple, and write a
+helper wrapper to stick the tuple into static storage on a per-type basis and maintain a pointer to them.
+template<class...any_methods>
+using any_method_tuple = std::tuple< typename any_method_function<any_methods>::type... >;
+template<class...any_methods, class T>
+any_method_tuple<any_methods...> make_vtable( tag_t<T> ) {
+  return std::make_tuple(
+    any_method_function<any_methods>{}(tag<T>)...
+  );
+}
+template<class...methods>
+struct any_methods {
+private:
+  any_method_tuple<methods...> const* vtable = 0;
+  template<class T>
+  static any_method_tuple<methods...> const* get_vtable( tag_t<T> ) {
+    static const auto table = make_vtable<methods...>(tag<T>);
+    return &table;
+  }
+public:
+  any_methods() = default;
+  template<class T>
+  any_methods( tag_t<T> ): vtable(get_vtable(tag<T>)) {}
+  any_methods& operator=(any_methods const&)=default;
+  template<class T>
+  void change_type( tag_t<T> ={} ) { vtable = get_vtable(tag<T>); }
+  template<class any_method>
+  auto get_invoker( tag_t<any_method> ={} ) const {
+    return std::get<typename any_method_function<any_method>::type>( *vtable );
+  }
+};
+We could specialize this for a cases where the vtable is small (for example, 1 item), and use direct pointers stored
+in-class in those cases for eﬃciency.
+Now we start the super_any. I use super_any_t to make the declaration of super_any a bit easier.
+template<class...methods>
+struct super_any_t;
+This searches the methods that the super any supports for SFINAE and better error messages:
+template<class super_any, class method>
+struct super_method_applies_helper : std::false_type {};
+template<class M0, class...Methods, class method>
+struct super_method_applies_helper<super_any_t<M0, Methods...>, method> :
+    std::integral_constant<bool, std::is_same<M0, method>{}  ||
+super_method_applies_helper<super_any_t<Methods...>, method>{}>
+{};
+template<class...methods, class method>
+auto super_method_test( super_any_t<methods...> const&, tag_t<method> )
+{
+  return std::integral_constant<bool, super_method_applies_helper< super_any_t<methods...>, method
+>{} && method::is_const >{};
+}
+template<class...methods, class method>
+auto super_method_test( super_any_t<methods...>&, tag_t<method> )
+{
+  return std::integral_constant<bool, super_method_applies_helper< super_any_t<methods...>, method
+>{} >{};
+}
+template<class super_any, class method>
+struct super_method_applies:
+    decltype( super_method_test( std::declval<super_any>(), tag<method> ) )
+{};
+Next we create the any_method type. An any_method is a pseudo-method-pointer. We create it globally and constly
+using syntax like:
+const auto print=make_any_method( [](auto&&self, auto&&os){ os << self; } );
+or in C++17:
+const any_method print=[](auto&&self, auto&&os){ os << self; };
+Note that using a non-lambda can make things hairy, as we use the type for a lookup step. This can be ﬁxed, but
+would make this example longer than it already is. So always initialize an any method from a lambda, or from a
+type parametarized on a lambda.
+template<class Sig, bool const_method, class F>
+struct any_method {
+  using signature=Sig;
+  enum{is_const=const_method};
+private:
+  F f;
+public:
+  template<class Any,
+    // SFINAE testing that one of the Anys's matches this type:
+    std::enable_if_t< super_method_applies< Any&&, any_method >{}, int>* =nullptr
+  >
+  friend auto operator->*( Any&& self, any_method const& m ) {
+    // we don't use the value of the any_method, because each any_method has
+    // a unique type (!) and we check that one of the auto*'s in the super_any
+    // already has a pointer to us.  We then dispatch to the corresponding
+    // any_method_data...
+    return [&self, invoke = self.get_invoker(tag<any_method>), m](auto&&...args)->decltype(auto)
+    {
+      return invoke( decltype(self)(self), &m, decltype(args)(args)... );
+    };
+  }
+  any_method( F fin ):f(std::move(fin)) {}
+  template<class...Args>
+  decltype(auto) operator()(Args&&...args)const {
+    return f(std::forward<Args>(args)...);
+  }
+};
+A factory method, not needed in C++17 I believe:
+template<class Sig, bool is_const=false, class F>
+any_method<Sig, is_const, std::decay_t<F>>
+make_any_method( F&& f ) {
+  return {std::forward<F>(f)};
+}
+This is the augmented any. It is both an any, and it carries around a bundle of type-erasure function pointers that
+change whenever the contained any does:
+template<class... methods>
+struct super_any_t:boost::any, any_methods<methods...> {
+  using vtable=any_methods<methods...>;
+public:
+  template<class T,
+    std::enable_if_t< !std::is_base_of<super_any_t, std::decay_t<T>>{}, int> =0
+  >
+  super_any_t( T&& t ):
+    boost::any( std::forward<T>(t) )
+  {
+    using dT=std::decay_t<T>;
+    this->change_type( tag<dT> );
+  }
+  boost::any& as_any()&{return *this;}
+  boost::any&& as_any()&&{return std::move(*this);}
+  boost::any const& as_any()const&{return *this;}
+  super_any_t()=default;
+  super_any_t(super_any_t&& o):
+    boost::any( std::move( o.as_any() ) ),
+    vtable(o)
+  {}
+  super_any_t(super_any_t const& o):
+    boost::any( o.as_any() ),
+    vtable(o)
+  {}
+  template<class S,
+    std::enable_if_t< std::is_same<std::decay_t<S>, super_any_t>{}, int> =0
+  >
+  super_any_t( S&& o ):
+    boost::any( std::forward<S>(o).as_any() ),
+    vtable(o)
+  {}
+  super_any_t& operator=(super_any_t&&)=default;
+  super_any_t& operator=(super_any_t const&)=default;
+  template<class T,
+    std::enable_if_t< !std::is_same<std::decay_t<T>, super_any_t>{}, int>* =nullptr
+  >
+  super_any_t& operator=( T&& t ) {
+    ((boost::any&)*this) = std::forward<T>(t);
+    using dT=std::decay_t<T>;
+    this->change_type( tag<dT> );
+    return *this;
+  }  
+};
+Because we store the any_methods as const objects, this makes making a super_any a bit easier:
+template<class...Ts>
+using super_any = super_any_t< std::remove_cv_t<Ts>... >;
+Test code:
+const auto print = make_any_method<void(std::ostream&)>([](auto&& p, std::ostream& t){ t << p <<
+"\n"; });
+const auto wprint = make_any_method<void(std::wostream&)>([](auto&& p, std::wostream& os ){ os << p
+<< L"\n"; });
+int main()
+{
+  super_any<decltype(print), decltype(wprint)> a = 7;
+  super_any<decltype(print), decltype(wprint)> a2 = 7;
+  (a->*print)(std::cout);
+  (a->*wprint)(std::wcout);
+}
+live example.
+Originally posted here in a SO self question & answer (and people noted above helped with the implementation).
+
+#### Chapter 101: Perfect Forwarding
+
+Section 101.1: Factory functions
+Suppose we want to write a factory function that accepts an arbitrary list of arguments and passes those
+arguments unmodiﬁed to another function. An example of such a function is make_unique, which is used to safely
+construct a new instance of T and return a unique_ptr<T> that owns the instance.
+The language rules regarding variadic templates and rvalue references allows us to write such a function.
+template<class T, class... A>
+unique_ptr<T> make_unique(A&&... args)
+{
+    return unique_ptr<T>(new T(std::forward<A>(args)...));
+}
+The use of ellipses ... indicate a parameter pack, which represents an arbitrary number of types. The compiler will
+expand this parameter pack to the correct number of arguments at the call site. These arguments are then passed
+to T's constructor using std::forward. This function is required to preserve the ref-qualiﬁers of the arguments.
+struct foo
+{
+    foo() {}
+    foo(const foo&) {}                    // copy constructor
+    foo(foo&&) {}                         // copy constructor
+    foo(int, int, int) {}
+};
+foo f;
+auto p1 = make_unique<foo>(f);            // calls foo::foo(const foo&)
+auto p2 = make_unique<foo>(std::move(f)); // calls foo::foo(foo&&)
+auto p3 = make_unique<foo>(1, 2, 3);
+
+#### Chapter 103: SFINAE (Substitution Failure Is
+
+Not An Error)
+Section 103.1: What is SFINAE
+SFINAE stands for Substitution Failure Is Not An Error. Ill-formed code that results from substituting types (or
+values) to instantiate a function template or a class template is not a hard compile error, it is only treated as a
+deduction failure.
+Deduction failures on instantiating function templates or class template specializations remove that candidate from
+the set of consideration - as if that failed candidate did not exist to begin with.
+template <class T>
+auto begin(T& c) -> decltype(c.begin()) { return c.begin(); }
+template <class T, size_t N>
+T* begin(T (&arr)[N]) { return arr; }
+int vals[10];
+begin(vals); // OK. The first function template substitution fails because
+             // vals.begin() is ill-formed. This is not an error! That function
+             // is just removed from consideration as a viable overload candidate,
+             // leaving us with the array overload.
+Only substitution failures in the immediate context are considered deduction failures, all others are considered
+hard errors.
+template <class T>
+void add_one(T& val) { val += 1; }
+int i = 4;
+add_one(i); // ok
+std::string msg = "Hello";
+add_one(msg); // error. msg += 1 is ill-formed for std::string, but this
+              // failure is NOT in the immediate context of substituting T
+Section 103.2: void_t
+Version ≥ C++11
+void_t is a meta-function that maps any (number of) types to type void. The primary purpose of void_t is to
+facilitate writing of type traits.
+std::void_t will be part of C++17, but until then, it is extremely straightforward to implement:
+template <class...> using void_t = void;
+Some compilers require a slightly diﬀerent implementation:
+template <class...>
+struct make_void { using type = void; };
+template <typename... T>
+using void_t = typename make_void<T...>::type;
+The primary application of void_t is writing type traits that check validity of a statement. For example, let's check if
+a type has a member function foo() that takes no arguments:
+template <class T, class=void>
+struct has_foo : std::false_type {};
+template <class T>
+struct has_foo<T, void_t<decltype(std::declval<T&>().foo())>> : std::true_type {};
+How does this work? When I try to instantiate has_foo<T>::value, that will cause the compiler to try to look for the
+best specialization for has_foo<T, void>. We have two options: the primary, and this secondary one which involves
+having to instantiate that underlying expression:
+If T does have a member function foo(), then whatever type that returns gets converted to void, and the
+specialization is preferred to the primary based on the template partial ordering rules. So
+has_foo<T>::value will be true
+If T doesn't have such a member function (or it requires more than one argument), then substitution fails for
+the specialization and we only have the primary template to fallback on. Hence, has_foo<T>::value is false.
+A simpler case:
+template<class T, class=void>
+struct can_reference : std::false_type {};
+template<class T>
+struct can_reference<T, std::void_t<T&>> : std::true_type {};
+this doesn't use std::declval or decltype.
+You may notice a common pattern of a void argument. We can factor this out:
+struct details {
+  template<template<class...>class Z, class=void, class...Ts>
+  struct can_apply:
+    std::false_type
+  {};
+  template<template<class...>class Z, class...Ts>
+  struct can_apply<Z, std::void_t<Z<Ts...>>, Ts...>:
+    std::true_type
+  {};
+};
+template<template<class...>class Z, class...Ts>
+using can_apply = details::can_apply<Z, void, Ts...>;
+which hides the use of std::void_t and makes can_apply act like an indicator whether the type supplied as the
+ﬁrst template argument is well-formed after substituting the other types into it. The previous examples may now be
+rewritten using can_apply as:
+template<class T>
+using ref_t = T&;
+template<class T>
+using can_reference = can_apply<ref_t, T>;    // Is T& well formed for T?
+and:
+template<class T>
+using dot_foo_r = decltype(std::declval<T&>().foo());
+template<class T>
+using can_dot_foo = can_apply< dot_foo_r, T >;    // Is T.foo() well formed for T?
+which seems simpler than the original versions.
+There are post-C++17 proposals for std traits similar to can_apply.
+The utility of void_t was discovered by Walter Brown. He gave a wonderful presentation on it at CppCon 2016.
+Section 103.3: enable_if
+std::enable_if is a convenient utility to use boolean conditions to trigger SFINAE. It is deﬁned as:
+template <bool Cond, typename Result=void>
+struct enable_if { };
+template <typename Result>
+struct enable_if<true, Result> {
+    using type = Result;
+};
+That is, enable_if<true, R>::type is an alias for R, whereas enable_if<false, T>::type is ill-formed as that
+specialization of enable_if does not have a type member type.
+std::enable_if can be used to constrain templates:
+int negate(int i) { return -i; }
+template <class F>
+auto negate(F f) { return -f(); }
+Here, a call to negate(1) would fail due to ambiguity. But the second overload is not intended to be used for
+integral types, so we can add:
+int negate(int i) { return -i; }
+template <class F, class = typename std::enable_if<!std::is_arithmetic<F>::value>::type>
+auto negate(F f) { return -f(); }
+Now, instantiating negate<int> would result in a substitution failure since !std::is_arithmetic<int>::value is
+false. Due to SFINAE, this is not a hard error, this candidate is simply removed from the overload set. As a result,
+negate(1) only has one single viable candidate - which is then called.
+When to use it
+It's worth keeping in mind that std::enable_if is a helper on top of SFINAE, but it's not what makes SFINAE work in
+the ﬁrst place. Let's consider these two alternatives for implementing functionality similar to std::size, i.e. an
+overload set size(arg) that produces the size of a container or array:
+// for containers
+template<typename Cont>
+auto size1(Cont const& cont) -> decltype( cont.size() );
+// for arrays
+template<typename Elt, std::size_t Size>
+std::size_t size1(Elt const(&arr)[Size]);
+// implementation omitted
+template<typename Cont>
+struct is_sizeable;
+// for containers
+template<typename Cont, std::enable_if_t<std::is_sizeable<Cont>::value, int> = 0>
+auto size2(Cont const& cont);
+// for arrays
+template<typename Elt, std::size_t Size>
+std::size_t size2(Elt const(&arr)[Size]);
+Assuming that is_sizeable is written appropriately, these two declarations should be exactly equivalent with
+respect to SFINAE. Which is the easiest to write, and which is the easiest to review and understand at a glance?
+Now let's consider how we might want to implement arithmetic helpers that avoid signed integer overﬂow in favour
+of wrap around or modular behaviour. Which is to say that e.g. incr(i, 3) would be the same as i += 3 save for
+the fact that the result would always be deﬁned even if i is an int with value INT_MAX. These are two possible
+alternatives:
+// handle signed types
+template<typename Int>
+auto incr1(Int& target, Int amount)
+-> std::void_t<int[static_cast<Int>(-1) < static_cast<Int>(0)]>;
+// handle unsigned types by just doing target += amount
+// since unsigned arithmetic already behaves as intended
+template<typename Int>
+auto incr1(Int& target, Int amount)
+-> std::void_t<int[static_cast<Int>(0) < static_cast<Int>(-1)]>;
+template<typename Int, std::enable_if_t<std::is_signed<Int>::value, int> = 0>
+void incr2(Int& target, Int amount);
+template<typename Int, std::enable_if_t<std::is_unsigned<Int>::value, int> = 0>
+void incr2(Int& target, Int amount);
+Once again which is the easiest to write, and which is the easiest to review and understand at a glance?
+A strength of std::enable_if is how it plays with refactoring and API design. If is_sizeable<Cont>::value is
+meant to reﬂect whether cont.size() is valid then just using the expression as it appears for size1 can be more
+concise, although that could depend on whether is_sizeable would be used in several places or not. Contrast that
+with std::is_signed which reﬂects its intention much more clearly than when its implementation leaks into the
+declaration of incr1.
+Section 103.4: is_detected
+To generalize type_trait creation:based on SFINAE there are experimental traits detected_or, detected_t,
+is_detected.
+With template parameters typename Default, template <typename...> Op and typename ... Args:
+is_detected: alias of std::true_type or std::false_type depending of the validity of Op<Args...>
+detected_t: alias of Op<Args...> or nonesuch depending of validity of Op<Args...>.
+detected_or: alias of a struct with value_t which is is_detected, and type which is Op<Args...> or Default
+depending of validity of Op<Args...>
+which can be implemented using std::void_t for SFINAE as following:
+Version ≥ C++17
+namespace detail {
+    template <class Default, class AlwaysVoid,
+              template<class...> class Op, class... Args>
+    struct detector
+    {
+        using value_t = std::false_type;
+        using type = Default;
+    };
+    template <class Default, template<class...> class Op, class... Args>
+    struct detector<Default, std::void_t<Op<Args...>>, Op, Args...>
+    {
+        using value_t = std::true_type;
+        using type = Op<Args...>;
+    };
+} // namespace detail
+// special type to indicate detection failure
+struct nonesuch {
+    nonesuch() = delete;
+    ~nonesuch() = delete;
+    nonesuch(nonesuch const&) = delete;
+    void operator=(nonesuch const&) = delete;
+};
+template <template<class...> class Op, class... Args>
+using is_detected =
+    typename detail::detector<nonesuch, void, Op, Args...>::value_t;
+template <template<class...> class Op, class... Args>
+using detected_t = typename detail::detector<nonesuch, void, Op, Args...>::type;
+template <class Default, template<class...> class Op, class... Args>
+using detected_or = detail::detector<Default, void, Op, Args...>;
+Traits to detect presence of method can then be simply implemented:
+typename <typename T, typename ...Ts>
+using foo_type = decltype(std::declval<T>().foo(std::declval<Ts>()...));
+struct C1 {};
+struct C2 {
+    int foo(char) const;
+};
+template <typename T>
+using has_foo_char = is_detected<foo_type, T, char>;
+static_assert(!has_foo_char<C1>::value, "Unexpected");
+static_assert(has_foo_char<C2>::value, "Unexpected");
+static_assert(std::is_same<int, detected_t<foo_type, C2, char>>::value,
+              "Unexpected");
+static_assert(std::is_same<void, // Default
+                           detected_or<void, foo_type, C1, char>>::value,
+              "Unexpected");
+static_assert(std::is_same<int, detected_or<void, foo_type, C2, char>>::value,
+              "Unexpected");
+Section 103.5: Overload resolution with a large number of
+options
+If you need to select between several options, enabling just one via enable_if<> can be quite cumbersome, since
+several conditions needs to be negated too.
+The ordering between overloads can instead be selected using inheritance, i.e. tag dispatch.
+Instead of testing for the thing that needs to be well-formed, and also testing the negation of all the other versions
+conditions, we instead test just for what we need, preferably in a decltype in a trailing return.
+This might leave several option well formed, we diﬀerentiate between those using 'tags', similar to iterator-trait tags
+(random_access_tag et al). This works because a direct match is better that a base class, which is better that a base
+class of a base class, etc.
+#include <algorithm>
+#include <iterator>
+namespace detail
+{
+    // this gives us infinite types, that inherit from each other
+    template<std::size_t N>
+    struct pick : pick<N-1> {};
+    template<>
+    struct pick<0> {};
+    // the overload we want to be preferred have a higher N in pick<N>
+    // this is the first helper template function
+    template<typename T>
+    auto stable_sort(T& t, pick<2>)
+        -> decltype( t.stable_sort(), void() )
+    {
+        // if the container have a member stable_sort, use that
+        t.stable_sort();
+    }
+    // this helper will be second best match
+    template<typename T>
+    auto stable_sort(T& t, pick<1>)
+        -> decltype( t.sort(), void() )
+    {
+        // if the container have a member sort, but no member stable_sort
+        // it's customary that the sort member is stable
+        t.sort();
+    }
+    // this helper will be picked last
+    template<typename T>
+    auto stable_sort(T& t, pick<0>)
+        -> decltype( std::stable_sort(std::begin(t), std::end(t)), void() )
+    {
+        // the container have neither a member sort, nor member stable_sort
+        std::stable_sort(std::begin(t), std::end(t));
+    }
+}
+// this is the function the user calls. it will dispatch the call
+// to the correct implementation with the help of 'tags'.
+template<typename T>
+void stable_sort(T& t)
+{
+    // use an N that is higher that any used above.
+    // this will pick the highest overload that is well formed.
+    detail::stable_sort(t, detail::pick<10>{});
+}
+There are other methods commonly used to diﬀerentiate between overloads, such as exact match being better
+than conversion, being better than ellipsis.
+However, tag-dispatch can extend to any number of choices, and is a bit more clear in intent.
+Section 103.6: trailing decltype in function templates
+Version ≥ C++11
+One of constraining function is to use trailing decltype to specify the return type:
+namespace details {
+   using std::to_string;
+   // this one is constrained on being able to call to_string(T)
+   template <class T>
+   auto convert_to_string(T const& val, int )
+       -> decltype(to_string(val))
+   {
+       return to_string(val);
+   }
+   // this one is unconstrained, but less preferred due to the ellipsis argument
+   template <class T>
+   std::string convert_to_string(T const& val, ... )
+   {
+       std::ostringstream oss;
+       oss << val;
+       return oss.str();
+   }
+}
+template <class T>
+std::string convert_to_string(T const& val)
+{
+    return details::convert_to_string(val, 0);
+}
+If I call convert_to_string() with an argument with which I can invoke to_string(), then I have two viable
+functions for details::convert_to_string(). The ﬁrst is preferred since the conversion from 0 to int is a better
+implicit conversion sequence than the conversion from 0 to ...
+If I call convert_to_string() with an argument from which I cannot invoke to_string(), then the ﬁrst function
+template instantiation leads to substitution failure (there is no decltype(to_string(val))). As a result, that
+candidate is removed from the overload set. The second function template is unconstrained, so it is selected and
+we instead go through operator<<(std::ostream&, T). If that one is undeﬁned, then we have a hard compile error
+with a template stack on the line oss << val.
+Section 103.7: enable_if_all / enable_if_any
+Version ≥ C++11
+Motivational example
+When you have a variadic template pack in the template parameters list, like in the following code snippet:
+template<typename ...Args> void func(Args &&...args) { //... };
+The standard library (prior to C++17) oﬀers no direct way to write enable_if to impose SFINAE constraints on all of
+the parameters in Args or any of the parameters in Args. C++17 oﬀers std::conjunction and std::disjunction
+which solve this problem. For example:
+/// C++17: SFINAE constraints on all of the parameters in Args.
+template<typename ...Args,
+         std::enable_if_t<std::conjunction_v<custom_conditions_v<Args>...>>* = nullptr>
+void func(Args &&...args) { //... };
+/// C++17: SFINAE constraints on any of the parameters in Args.
+template<typename ...Args,
+         std::enable_if_t<std::disjunction_v<custom_conditions_v<Args>...>>* = nullptr>
+void func(Args &&...args) { //... };
+If you do not have C++17 available, there are several solutions to achieve these. One of them is to use a base-case
+class and partial specializations, as demonstrated in answers of this question.
+Alternatively, one may also implement by hand the behavior of std::conjunction and std::disjunction in a
+rather straight-forward way. In the following example I'll demonstrate the implementations and combine them with
+std::enable_if to produce two alias: enable_if_all and enable_if_any, which do exactly what they are supposed
+to semantically. This may provide a more scalable solution.
+Implementation of enable_if_all and enable_if_any
+First let's emulate std::conjunction and std::disjunction using customized seq_and and seq_or respectively:
+/// Helper for prior to C++14.
+template<bool B, class T, class F >
+using conditional_t = typename std::conditional<B,T,F>::type;
+/// Emulate C++17 std::conjunction.
+template<bool...> struct seq_or: std::false_type {};
+template<bool...> struct seq_and: std::true_type {};
+template<bool B1, bool... Bs>
+struct seq_or<B1,Bs...>:
+  conditional_t<B1,std::true_type,seq_or<Bs...>> {};
+template<bool B1, bool... Bs>
+struct seq_and<B1,Bs...>:
+  conditional_t<B1,seq_and<Bs...>,std::false_type> {};  
+Then the implementation is quite straight-forward:
+template<bool... Bs>
+using enable_if_any = std::enable_if<seq_or<Bs...>::value>;
+template<bool... Bs>
+using enable_if_all = std::enable_if<seq_and<Bs...>::value>;
+Eventually some helpers:
+template<bool... Bs>
+using enable_if_any_t = typename enable_if_any<Bs...>::type;
+template<bool... Bs>
+using enable_if_all_t = typename enable_if_all<Bs...>::type;
+Usage
+The usage is also straight-forward:
+    /// SFINAE constraints on all of the parameters in Args.
+    template<typename ...Args,
+             enable_if_all_t<custom_conditions_v<Args>...>* = nullptr>
+    void func(Args &&...args) { //... };
+    /// SFINAE constraints on any of the parameters in Args.
+    template<typename ...Args,
+             enable_if_any_t<custom_conditions_v<Args>...>* = nullptr>
+    void func(Args &&...args) { //... };
+
 
 
 ---
@@ -26864,6 +29184,574 @@ private:
 
 ## <a name="chapter-18-thecbuildecosystemmastery"></a>CHAPTER 18: THE C++ BUILD ECOSYSTEM MASTERY
 
+
+---
+### Professional Notes: Build Systems
+
+#### Chapter 130: Build Systems
+
+C++, like C, has a long and varied history regarding compilation workﬂows and build processes. Today, C++ has
+various popular build systems that are used to compile programs, sometimes for multiple platforms within one
+build system. Here, a few build systems will be reviewed and analyzed.
+Section 130.1: Generating Build Environment with CMake
+CMake generates build environments for nearly any compiler or IDE from a single project deﬁnition. The following
+examples will demonstrate how to add a CMake ﬁle to the cross-platform "Hello World" C++ code.
+CMake ﬁles are always named "CMakeLists.txt" and should already exist in every project's root directory (and
+possibly in sub-directories too.) A basic CMakeLists.txt ﬁle looks like:
+cmake_minimum_required(VERSION 2.4)
+project(HelloWorld)
+add_executable(HelloWorld main.cpp)
+See it live on Coliru.
+This ﬁle tells CMake the project name, what ﬁle version to expect, and instructions to generate an executable called
+"HelloWorld" that requires main.cpp.
+Generate a build environment for your installed compiler/IDE from the command line:
+> cmake .
+Build the application with:
+> cmake --build .
+This generates the default build environment for the system, depending on the OS and installed tools. Keep source
+code clean from any build artifacts with use of "out-of-source" builds:
+> mkdir build
+> cd build
+> cmake ..
+> cmake --build .
+CMake can also abstract the platform shell's basic commands from the previous example:
+> cmake -E make_directory build
+> cmake -E chdir build cmake ..
+> cmake --build build
+CMake includes generators for a number of common build tools and IDEs. To generate makeﬁles for Visual Studio's
+nmake:
+> cmake -G "NMake Makefiles" ..
+> nmake
+Section 130.2: Compiling with GNU make
+Introduction
+The GNU Make (styled make) is a program dedicated to the automation of executing shell commands. GNU Make is
+one speciﬁc program that falls under the Make family. Make remains popular among Unix-like and POSIX-like
+operating systems, including those derived from the Linux kernel, Mac OS X, and BSD.
+GNU Make is especially notable for being attached to the GNU Project, which is attached to the popular GNU/Linux
+operating system. GNU Make also has compatible versions running on various ﬂavors of Windows and Mac OS X. It
+is also a very stable version with historical signiﬁcance that remains popular. It is for these reasons that GNU Make
+is often taught alongside C and C++.
+Basic rules
+To compile with make, create a Makeﬁle in your project directory. Your Makeﬁle could be as simple as:
+Makeﬁle
+# Set some variables to use in our command
+# First, we set the compiler to be g++
+CXX=g++
+# Then, we say that we want to compile with g++'s recommended warnings and some extra ones.
+CXXFLAGS=-Wall -Wextra -pedantic
+# This will be the output file
+EXE=app
+SRCS=main.cpp
+# When you call `make` at the command line, this "target" is called.
+# The $(EXE) at the right says that the `all` target depends on the `$(EXE)` target.
+# $(EXE) expands to be the content of the EXE variable
+# Note: Because this is the first target, it becomes the default target if `make` is called without
+target
+all: $(EXE)
+# This is equivalent to saying
+# app: $(SRCS)
+# $(SRCS) can be separated, which means that this target would depend on each file.
+# Note that this target has a "method body": the part indented by a tab (not four spaces).
+# When we build this target, make will execute the command, which is:
+# g++ -Wall -Wextra -pedantic -o app main.cpp
+# I.E. Compile main.cpp with warnings, and output to the file ./app
+$(EXE): $(SRCS)
+    @$(CXX) $(CXXFLAGS) -o $@ $(SRCS)
+# This target should reverse the `all` target. If you call
+# make with an argument, like `make clean`, the corresponding target
+# gets called.
+clean:
+    @rm -f $(EXE)
+NOTE: Make absolutely sure that the indentations are with a tab, not with four spaces. Otherwise,
+you'll get an error of Makefile:10: *** missing separator. Stop.
+To run this from the command-line, do the following:
+$ cd ~/Path/to/project
+$ make
+$ ls
+app  main.cpp  Makefile
+$ ./app
+Hello World!
+$ make clean
+$ ls
+main.cpp  Makefile
+Incremental builds
+When you start having more ﬁles, make becomes more useful. What if you edited a.cpp but not b.cpp? Recompiling
+b.cpp would take more time.
+With the following directory structure:
++-- src
+|   +-- a.cpp
+|   +-- a.hpp
+|   +-- b.cpp
+|   +-- b.hpp
++-- Makefile
+This would be a good Makeﬁle:
+Makeﬁle
+CXX=g++
+CXXFLAGS=-Wall -Wextra -pedantic
+EXE=app
+SRCS_GLOB=src/*.cpp
+SRCS=$(wildcard $(SRCS_GLOB))
+OBJS=$(SRCS:.cpp=.o)
+all: $(EXE)
+$(EXE): $(OBJS)
+    @$(CXX) -o $@ $(OBJS)
+depend: .depend
+.depend: $(SRCS)
+    @-rm -f ./.depend
+    @$(CXX) $(CXXFLAGS) -MM $^>>./.depend
+clean:
+    -rm -f $(EXE)
+    -rm $(OBJS)
+    -rm *~
+    -rm .depend
+include .depend
+Again watch the tabs. This new Makeﬁle ensures that you only recompile changed ﬁles, minimizing compile time.
+Documentation
+For more on make, see the oﬃcial documentation by the Free Software Foundation, the stackoverﬂow
+documentation and dmckee's elaborate answer on stackoverﬂow.
+Section 130.3: Building with SCons
+You can build the cross-platform "Hello World" C++ code, using Scons - A Python-language software construction
+tool.
+First, create a ﬁle called SConstruct (note that SCons will look for a ﬁle with this exact name by default). For now,
+the ﬁle should be in a directory right along your hello.cpp. Write in the new ﬁle the line
+ Program('hello.cpp')
+Now, from the terminal, run scons. You should see something like
+$ scons
+scons: Reading SConscript files ...
+scons: done reading SConscript files.
+scons: Building targets ...
+g++ -o hello.o -c hello.cpp
+g++ -o hello hello.o
+scons: done building targets.
+(although the details will vary depending on your operating system and installed compiler).
+The Environment and Glob classes will help you further conﬁgure what to build. E.g., the SConstruct ﬁle
+env=Environment(CPPPATH='/usr/include/boost/',
+    CPPDEFINES=[],
+    LIBS=[],
+    SCONS_CXX_STANDARD="c++11"
+    )
+env.Program('hello', Glob('src/*.cpp'))    
+builds the executable hello, using all cpp ﬁles in src. Its CPPPATH is /usr/include/boost and it speciﬁes the C++11
+standard.
+Section 130.4: Autotools (GNU)
+Introduction
+The Autotools are a group of programs that create a GNU Build System for a given software package. It is a suite of
+tools that work together to produce various build resources, such as a Makeﬁle (to be used with GNU Make). Thus,
+Autotools can be considered a de facto build system generator.
+Some notable Autotools programs include:
+Autoconf
+Automake (not to be confused with make)
+In general, Autotools is meant to generate the Unix-compatible script and Makeﬁle to allow the following command
+to build (as well as install) most packages (in the simple case):
+./configure && make && make install
+As such, Autotools also has a relationship with certain package managers, especially those that are attached to
+operating systems that conform to the POSIX Standard(s).
+Section 130.5: Ninja
+Introduction
+The Ninja build system is described by its project website as "a small build system with a focus on speed." Ninja is
+designed to have its ﬁles generated by build system ﬁle generators, and takes a low-level approach to build
+systems, in contrast to higher-level build system managers like CMake or Meson.
+Ninja is primarily written in C++ and Python, and was created as an alternative to the SCons build system for the
+Chromium project.
+Section 130.6: NMAKE (Microsoft Program Maintenance Utility)
+Introduction
+NMAKE is a command-line utility developed by Microsoft to be used primarily in conjunction with Microsoft Visual
+Studio and/or the Visual C++ command line tools.
+NMAKE is build system that falls under the Make family of build systems, but has certain distinct features that
+diverge from Unix-like Make programs, such as supporting Windows-speciﬁc ﬁle path syntax (which itself diﬀers
+from Unix-style ﬁle paths).
+
+#### Chapter 138: Compiling and Building
+
+Programs written in C++ need to be compiled before they can be run. There is a large variety of compilers available
+depending on your operating system.
+Section 138.1: Compiling with GCC
+Assuming a single source ﬁle named main.cpp, the command to compile and link an non-optimized executable is as
+follows (Compiling without optimization is useful for initial development and debugging, although -Og is oﬃcially
+recommended for newer GCC versions).
+g++ -o app -Wall main.cpp -O0
+To produce an optimized executable for use in production, use one of the -O options (see: -O1, -O2, -O3, -Os, -
+Ofast):
+g++ -o app -Wall -O2 main.cpp
+If the -O option is omitted, -O0, which means no optimizations, is used as default (specifying -O without a number
+resolves to -O1).
+Alternatively, use optimization ﬂags from the O groups (or more experimental optimizations) directly. The following
+example builds with -O2 optimization, plus one ﬂag from the -O3 optimization level:
+g++ -o app -Wall -O2 -ftree-partial-pre main.cpp
+To produce a platform-speciﬁc optimized executable (for use in production on the machine with the same
+architecture), use:
+g++ -o app -Wall -O2 -march=native main.cpp
+Either of the above will produce a binary ﬁle that can be run with .\app.exe on Windows and ./app on Linux, Mac
+OS, etc.
+The -o ﬂag can also be skipped. In this case, GCC will create default output executable a.exe on Windows and
+a.out on Unix-like systems. To compile a ﬁle without linking it, use the -c option:
+g++ -o file.o -Wall -c file.cpp
+This produces an object ﬁle named file.o which can later be linked with other ﬁles to produce a binary:
+g++ -o app file.o otherfile.o
+More about optimization options can be found at gcc.gnu.org. Of particular note are -Og (optimization with an
+emphasis on debugging experience -- recommended for the standard edit-compile-debug cycle) and -Ofast (all
+optimizations, including ones disregarding strict standards compliance).
+The -Wall ﬂag enables warnings for many common errors and should always be used. To improve code quality it is
+often encouraged also to use -Wextra and other warning ﬂags which are not automatically enabled by -Wall and -
+Wextra.
+If the code expects a speciﬁc C++ standard, specify which standard to use by including the -std= ﬂag. Supported
+values correspond to the year of ﬁnalization for each version of the ISO C++ standard. As of GCC 6.1.0, valid values
+for the std= ﬂag are c++98/c++03, c++11, c++14, and c++17/c++1z. Values separated by a forward slash are
+equivalent.
+g++ -std=c++11 <file>
+GCC includes some compiler-speciﬁc extensions that are disabled when they conﬂict with a standard speciﬁed by
+the -std= ﬂag. To compile with all extensions enabled, the value gnu++XX may be used, where XX is any of the years
+used by the c++ values listed above.
+The default standard will be used if none is speciﬁed. For versions of GCC prior to 6.1.0, the default is -
+std=gnu++03; in GCC 6.1.0 and greater, the default is -std=gnu++14.
+Note that due to bugs in GCC, the -pthread ﬂag must be present at compilation and linking for GCC to support the
+C++ standard threading functionality introduced with C++11, such as std::thread and std::wait_for. Omitting it
+when using threading functions may result in no warnings but invalid results on some platforms.
+Linking with libraries:
+Use the -l option to pass the library name:
+g++ main.cpp -lpcre2-8
+#pcre2-8 is the PCRE2 library for 8bit code units (UTF-8)
+If the library is not in the standard library path, add the path with -L option:
+g++ main.cpp -L/my/custom/path/ -lmylib
+Multiple libraries can be linked together:
+g++ main.cpp -lmylib1 -lmylib2 -lmylib3
+If one library depends on another, put the dependent library before the independent library:
+g++ main.cpp -lchild-lib -lbase-lib
+Or let the linker determine the ordering itself via --start-group and --end-group (note: this has signiﬁcant
+performance cost):
+g++ main.cpp -Wl,--start-group -lbase-lib -lchild-lib -Wl,--end-group
+Section 138.2: Compiling with Visual Studio (Graphical
+Interface) - Hello World
+1.
+2.
+3.
+Download and install Visual Studio Community 2015
+Open Visual Studio Community
+Click File -> New -> Project
+4.
+Click Templates -> Visual C++ -> Win32 Console Application and then name the project MyFirstProgram.
+5.
+6.
+Click Ok
+Click Next in the following window.
+7.
+Check the Empty project box and then click Finish:
+8.
+Right click on folder Source File then -> Add --> New Item :
+9.
+Select C++ File and name the ﬁle main.cpp, then click Add:
+10: Copy and paste the following code in the new ﬁle main.cpp:
+#include <iostream>
+int main()
+{
+    std::cout << "Hello World!\n";
+    return 0;
+}
+You environment should look like:
+11.
+Click Debug -> Start Without Debugging (or press ctrl + F5) :
+12.
+Done. You should get the following console output :
+Section 138.3: Online Compilers
+Various websites provide online access to C++ compilers. Online compiler's feature set vary signiﬁcantly from site to
+site, but usually they allow to do the following:
+Paste your code into a web form in the browser.
+Select some compiler options and compile the code.
+Collect compiler and/or program output.
+Online compiler website behavior is usually quite restrictive as they allow anyone to run compilers and execute
+arbitrary code on their server side, whereas ordinarily remote arbitrary code execution is considered as
+vulnerability.
+Online compilers may be useful for the following purposes:
+Run a small code snippet from a machine which lacks C++ compiler (smartphones, tablets, etc.).
+Ensure that code compiles successfully with diﬀerent compilers and runs the same way regardless the
+compiler it was compiled with.
+Learn or teach basics of C++.
+Learn modern C++ features (C++14 and C++17 in near future) when up-to-date C++ compiler is not available
+on local machine.
+Spot a bug in your compiler by comparison with a large set of other compilers. Check if a compiler bug was
+ﬁxed in future versions, which are unavailable on your machine.
+Solve online judge problems.
+What online compilers should not be used for:
+Develop full-featured (even small) applications using C++. Usually online compilers do not allow to link with
+third-party libraries or download build artifacts.
+Perform intensive computations. Sever-side computing resources are limited, so any user-provided program
+will be killed after a few seconds of execution. The permitted execution time is usually enough for testing and
+learning.
+Attack compiler server itself or any third-party hosts on the net.
+Examples:
+Disclaimer: documentation author(s) are not aﬃliated with any resources listed below. Websites are listed
+alphabetically.
+http://codepad.org/ Online compiler with code sharing. Editing code after compiling with a source code
+warning or error does not work so well.
+http://coliru.stacked-crooked.com/ Online compiler for which you specify the command line. Provides both
+GCC and Clang compilers for use.
+http://cpp.sh/ - Online compiler with C++14 support. Does not allow you to edit compiler command line, but
+some options are available via GUI controls.
+https://gcc.godbolt.org/ - Provides a wide list of compiler versions, architectures, and disassembly output.
+Very useful when you need to inspect what your code compiles into by diﬀerent compilers. GCC, Clang, MSVC
+(CL), Intel compiler (icc), ELLCC, and Zapcc are present, with one or more of these compilers available for the
+ARM, ARMv8 (as ARM64), Atmel AVR, MIPS, MIPS64, MSP430, PowerPC, x86, and x64 architecutres. Compiler
+command line arguments may be edited.
+https://ideone.com/ - Widely used on the Net to illustrate code snippet behavior. Provides both GCC and
+Clang for use, but doesn't allow you to edit the compiler command line.
+http://melpon.org/wandbox - Supports numerous Clang and GNU/GCC compiler versions.
+http://onlinegdb.com/ - An extremely minimalistic IDE that includes an editor, a compiler (gcc), and a
+debugger (gdb).
+http://rextester.com/ - Provides Clang, GCC, and Visual Studio compilers for both C and C++ (along with
+compilers for other languages), with the Boost library available for use.
+http://tutorialspoint.com/compile_cpp11_online.php - Full-featured UNIX shell with GCC, and a user-friendly
+project explorer.
+http://webcompiler.cloudapp.net/ - Online Visual Studio 2015 compiler, provided by Microsoft as part of
+RiSE4fun.
+Section 138.4: Compiling with Visual C++ (Command Line)
+For programmers coming from GCC or Clang to Visual Studio, or programmers more comfortable with the
+command line in general, you can use the Visual C++ compiler from the command line as well as the IDE.
+If you desire to compile your code from the command line in Visual Studio, you ﬁrst need to set up the command
+line environment. This can be done either by opening the Visual Studio Command Prompt/Developer Command
+Prompt/x86 Native Tools Command Prompt/x64 Native Tools Command Prompt or similar (as provided by your
+version of Visual Studio), or at the command prompt, by navigating to the VC subdirectory of the compiler's install
+directory (typically \Program Files (x86)\Microsoft Visual Studio x\VC, where x is the version number (such
+as 10.0 for 2010, or 14.0 for 2015) and running the VCVARSALL batch ﬁle with a command-line parameter speciﬁed
+here.
+Note that unlike GCC, Visual Studio doesn't provide a front-end for the linker (link.exe) via the compiler (cl.exe),
+but instead provides the linker as a separate program, which the compiler calls as it exits. cl.exe and link.exe can
+be used separately with diﬀerent ﬁles and options, or cl can be told to pass ﬁles and options to link if both tasks
+are done together. Any linking options speciﬁed to cl will be translated into options for link, and any ﬁles not
+processed by cl will be passed directly to link. As this is mainly a simple guide to compiling with the Visual Studio
+command line, arguments for link will not be described at this time; if you need a list, see here.
+Note that arguments to cl are case-sensitive, while arguments to link are not.
+[Be advised that some of the following examples use the Windows shell "current directory" variable, %cd%, when
+specifying absolute path names. For anyone unfamiliar with this variable, it expands to the current working
+directory. From the command line, it will be the directory you were in when you ran cl, and is speciﬁed in the
+command prompt by default (if your command prompt is C:\src>, for example, then %cd% is C:\src\).]
+Assuming a single source ﬁle named main.cpp in the current folder, the command to compile and link an
+unoptimised executable (useful for initial development and debugging) is (use either of the following):
+cl main.cpp
+// Generates object file "main.obj".
+// Performs linking with "main.obj".
+// Generates executable "main.exe".
+cl /Od main.cpp
+// Same as above.
+// "/Od" is the "Optimisation: disabled" option, and is the default when no /O is specified.
+Assuming an additional source ﬁle "niam.cpp" in the same directory, use the following:
+cl main.cpp niam.cpp
+// Generates object files "main.obj" and "niam.obj".
+// Performs linking with "main.obj" and "niam.obj".
+// Generates executable "main.exe".
+You can also use wildcards, as one would expect:
+cl main.cpp src\*.cpp
+// Generates object file "main.obj", plus one object file for each ".cpp" file in folder
+//  "%cd%\src".
+// Performs linking with "main.obj", and every additional object file generated.
+// All object files will be in the current folder.
+// Generates executable "main.exe".
+To rename or relocate the executable, use one of the following:
+cl /o name main.cpp
+// Generates executable named "name.exe".
+cl /o folder\ main.cpp
+// Generates executable named "main.exe", in folder "%cd%\folder".
+cl /o folder\name main.cpp
+// Generates executable named "name.exe", in folder "%cd%\folder".
+cl /Fename main.cpp
+// Same as "/o name".
+cl /Fefolder\ main.cpp
+// Same as "/o folder\".
+cl /Fefolder\name main.cpp
+// Same as "/o folder\name".
+Both /o and /Fe pass their parameter (let's call it o-param) to link as /OUT:o-param, appending the appropriate
+extension (generally .exe or .dll) to "name" o-params as necessary. While both /o and /Fe are to my knowledge
+identical in functionality, the latter is preferred for Visual Studio. /o is marked as deprecated, and appears to mainly
+be provided for programmers more familiar with GCC or Clang.
+Note that while the space between /o and the speciﬁed folder and/or name is optional, there cannot be a space
+between /Fe and the speciﬁed folder and/or name.
+Similarly, to produce an optimised executable (for use in production), use:
+cl /O1 main.cpp
+// Optimise for executable size.  Produces small programs, at the possible expense of slower
+//  execution.
+cl /O2 main.cpp
+// Optimise for execution speed.  Produces fast programs, at the possible expense of larger
+//  file size.
+cl /GL main.cpp other.cpp
+// Generates special object files used for whole-program optimisation, which allows CL to
+//  take every module (translation unit) into consideration during optimisation.
+// Passes the option "/LTCG" (Link-Time Code Generation) to LINK, telling it to call CL during
+//  the linking phase to perform additional optimisations.  If linking is not performed at this
+//  time, the generated object files should be linked with "/LTCG".
+// Can be used with other CL optimisation options.
+Finally, to produce a platform-speciﬁc optimized executable (for use in production on the machine with the
+speciﬁed architecture), choose the appropriate command prompt or VCVARSALL parameter for the target platform.
+link should detect the desired platform from the object ﬁles; if not, use the /MACHINE option to explicitly specify the
+target platform.
+// If compiling for x64, and LINK doesn't automatically detect target platform:
+cl main.cpp /link /machine:X64
+Any of the above will produce an executable with the name speciﬁed by /o or /Fe, or if neither is provided, with a
+name identical to the ﬁrst source or object ﬁle speciﬁed to the compiler.
+cl a.cpp b.cpp c.cpp
+// Generates "a.exe".
+cl d.obj a.cpp q.cpp
+// Generates "d.exe".
+cl y.lib n.cpp o.obj
+// Generates "n.exe".
+cl /o yo zp.obj pz.cpp
+// Generates "yo.exe".
+To compile a ﬁle(s) without linking, use:
+cl /c main.cpp
+// Generates object file "main.obj".
+This tells cl to exit without calling link, and produces an object ﬁle, which can later be linked with other ﬁles to
+produce a binary.
+cl main.obj niam.cpp
+// Generates object file "niam.obj".
+// Performs linking with "main.obj" and "niam.obj".
+// Generates executable "main.exe".
+link main.obj niam.obj
+// Performs linking with "main.obj" and "niam.obj".
+// Generates executable "main.exe".
+There are other valuable command line parameters as well, which it would be very useful for users to know:
+cl /EHsc main.cpp
+// "/EHsc" specifies that only standard C++ ("synchronous") exceptions will be caught,
+//  and `extern "C"` functions will not throw exceptions.
+// This is recommended when writing portable, platform-independent code.
+cl /clr main.cpp
+// "/clr" specifies that the code should be compiled to use the common language runtime,
+//  the .NET Framework's virtual machine.
+// Enables the use of Microsoft's C++/CLI language in addition to standard ("native") C++,
+//  and creates an executable that requires .NET to run.
+cl /Za main.cpp
+// "/Za" specifies that Microsoft extensions should be disabled, and code should be
+//  compiled strictly according to ISO C++ specifications.
+// This is recommended for guaranteeing portability.
+cl /Zi main.cpp
+// "/Zi" generates a program database (PDB) file for use when debugging a program, without
+//  affecting optimisation specifications, and passes the option "/DEBUG" to LINK.
+cl /LD dll.cpp
+// "/LD" tells CL to configure LINK to generate a DLL instead of an executable.
+// LINK will output a DLL, in addition to an LIB and EXP file for use when linking.
+// To use the DLL in other programs, pass its associated LIB to CL or LINK when compiling those
+//  programs.
+cl main.cpp /link /LINKER_OPTION
+// "/link" passes everything following it directly to LINK, without parsing it in any way.
+// Replace "/LINKER_OPTION" with any desired LINK option(s).
+For anyone more familiar with *nix systems and/or GCC/Clang, cl, link, and other Visual Studio command line
+tools can accept parameters speciﬁed with a hyphen (such as -c) instead of a slash (such as /c). Additionally,
+Windows recognises either a slash or a backslash as a valid path separator, so *nix-style paths can be used as well.
+This makes it easy to convert simple compiler command lines from g++ or clang++ to cl, or vice versa, with minimal
+changes.
+g++ -o app src/main.cpp
+cl  -o app src/main.cpp
+Of course, when porting command lines that use more complex g++ or clang++ options, you need to look up
+equivalent commands in the applicable compiler documentations and/or on resource sites, but this makes it easier
+to get things started with minimal time spent learning about new compilers.
+In case you need speciﬁc language features for your code, a speciﬁc release of MSVC was required. From Visual C++
+2015 Update 3 on it is possible to choose the version of the standard to compile with via the /std ﬂag. Possible
+values are /std:c++14 and /std:c++latest (/std:c++17 will follow soon).
+Note: In older versions of this compiler, speciﬁc feature ﬂags were available however this was mostly used for
+previews of new features.
+Section 138.5: Compiling with Clang
+As the Clang front-end is designed for being compatible with GCC, most programs that can be compiled via GCC will
+compile when you swap g++ by clang++ in the build scripts. If no -std=version is given, gnu11 will be used.
+Windows users who are used to MSVC can swap cl.exe with clang-cl.exe. By default, clang tries to be compatible
+with the highest version of MSVC that has been installed.
+In the case of compiling with visual studio, clang-cl can be used by changing the Platform toolset in the project
+properties.
+In both cases, clang is only compatible via its front-end, though it also tries to generate binary compatible object
+ﬁles. Users of clang-cl should note that the compatibility with MSVC is not complete yet.
+To use clang or clang-cl, one could use the default installation on certain Linux distributions or those bundled with
+IDEs (like XCode on Mac). For other versions of this compiler or on platforms which don't have this installed, this
+can be download from the oﬃcial download page.
+If you're using CMake to build your code you can usually switch the compiler by setting the CC and CXX environment
+variables like this:
+mkdir build
+cd build
+CC=clang CXX=clang++ cmake ..
+cmake --build .
+See also introduction to Cmake.
+Section 138.6: The C++ compilation process
+When you develop a C++ program, the next step is to compile the program before running it. The compilation is the
+process which converts the program written in human readable language like C, C++ etc into a machine code,
+directly understood by the Central Processing Unit. For example, if you have a C++ source code ﬁle named prog.cpp
+and you execute the compile command,
+   g++ -Wall -ansi -o prog prog.cpp
+There are 4 main stages involved in creating an executable ﬁle from the source ﬁle.
+1.
+The C++ the preprocessor takes a C++ source code ﬁle and deals with the headers(#include), macros(#deﬁne)
+and other preprocessor directives.
+2.
+The expanded C++ source code ﬁle produced by the C++ preprocessor is compiled into the assembly
+language for the platform.
+3.
+The assembler code generated by the compiler is assembled into the object code for the platform.
+4.
+The object code ﬁle produced by the assembler is linked together
+with the object code ﬁles for any library functions used to produce either a library or an executable ﬁle.
+Preprocessing
+The preprocessor handles the preprocessor directives, like #include and #deﬁne. It is agnostic of the syntax of C++,
+which is why it must be used with care.
+It works on one C++ source ﬁle at a time by replacing #include directives with the content of the respective ﬁles
+(which is usually just declarations), doing replacement of macros (#deﬁne), and selecting diﬀerent portions of text
+depending of #if, #ifdef and #ifndef directives.
+The preprocessor works on a stream of preprocessing tokens. Macro substitution is deﬁned as replacing tokens
+with other tokens (the operator ## enables merging two tokens when it make sense).
+After all this, the preprocessor produces a single output that is a stream of tokens resulting from the
+transformations described above. It also adds some special markers that tell the compiler where each line came
+from so that it can use those to produce sensible error messages.
+Some errors can be produced at this stage with clever use of the #if and #error directives.
+By using below compiler ﬂag, we can stop the process at preprocessing stage.
+g++ -E prog.cpp
+Compilation
+The compilation step is performed on each output of the preprocessor. The compiler parses the pure C++ source
+code (now without any preprocessor directives) and converts it into assembly code. Then invokes underlying back-
+end(assembler in toolchain) that assembles that code into machine code producing actual binary ﬁle in some
+format(ELF, COFF, a.out, ...). This object ﬁle contains the compiled code (in binary form) of the symbols deﬁned in
+the input. Symbols in object ﬁles are referred to by name.
+Object ﬁles can refer to symbols that are not deﬁned. This is the case when you use a declaration, and don't
+provide a deﬁnition for it. The compiler doesn't mind this, and will happily produce the object ﬁle as long as the
+source code is well-formed.
+Compilers usually let you stop compilation at this point. This is very useful because with it you can compile each
+source code ﬁle separately. The advantage this provides is that you don't need to recompile everything if you only
+change a single ﬁle.
+The produced object ﬁles can be put in special archives called static libraries, for easier reusing later on.
+It's at this stage that "regular" compiler errors, like syntax errors or failed overload resolution errors, are reported.
+In order to stop the process after the compile step, we can use the -S option:
+g++ -Wall -ansi -S prog.cpp
+Assembling
+The assembler creates object code. On a UNIX system you may see ﬁles with a .o suﬃx (.OBJ on MSDOS) to indicate
+object code ﬁles. In this phase the assembler converts those object ﬁles from assembly code into machine level
+instructions and the ﬁle created is a relocatable object code. Hence, the compilation phase generates the
+relocatable object program and this program can be used in diﬀerent places without having to compile again.
+To stop the process after the assembly step, you can use the -c option:
+g++ -Wall -ansi -c prog.cpp
+Linking
+The linker is what produces the ﬁnal compilation output from the object ﬁles the assembler produced. This output
+can be either a shared (or dynamic) library (and while the name is similar, they don't have much in common with
+static libraries mentioned earlier) or an executable.
+It links all the object ﬁles by replacing the references to undeﬁned symbols with the correct addresses. Each of
+these symbols can be deﬁned in other object ﬁles or in libraries. If they are deﬁned in libraries other than the
+standard library, you need to tell the linker about them.
+At this stage the most common errors are missing deﬁnitions or duplicate deﬁnitions. The former means that either
+the deﬁnitions don't exist (i.e. they are not written), or that the object ﬁles or libraries where they reside were not
+given to the linker. The latter is obvious: the same symbol was deﬁned in two diﬀerent object ﬁles or libraries.
+Section 138.7: Compiling with Code::Blocks (Graphical
+interface)
+1.
+Download and install Code::Blocks here. If you're on Windows, be careful to select a ﬁle for which the name
+contains mingw, the other ﬁles don't install any compiler.
+2.
+Open Code::Blocks and click on "Create a new project":
+3.
+Select "Console application" and click "Go":
+4.
+Click "Next", select "C++", click "Next", select a name for your project and choose a folder to save it in, click
+"Next" and then click "Finish".
+5.
+Now you can edit and compile your code. A default code that prints "Hello world!" in the console is already
+there. To compile and/or run your program, press one of the three compile/run buttons in the toolbar:
+To compile without running, press 
+, to run without compiling again, press 
+ and to compile and then
+run, press 
+Compiling and running the default "Hello world!" code gives the following result:
+
+
 Writing code is half the battle. Building and debugging it is the rest.
 
 ### 30.1 Package Managers Deep Dive
@@ -26936,6 +29824,360 @@ Detects overflow, null dereference, alignment issues.
 # Volume V: High Performance & Low Latency
 
 ## <a name="chapter-19-lowlatencycoptimization"></a>CHAPTER 19: LOW-LATENCY C++ OPTIMIZATION
+
+
+---
+### Professional Notes: Optimization Techniques
+
+#### Chapter 143: Optimization in C++
+
+Section 143.1: Introduction to performance
+C and C++ are well known as high-performance languages - largely due to the heavy amount of code customization,
+allowing a user to specify performance by choice of structure.
+When optimizing it is important to benchmark relevant code and completely understand how the code will be used.
+Common optimization mistakes include:
+Premature optimization: Complex code may perform worse after optimization, wasting time and eﬀort.
+First priority should be to write correct and maintainable code, rather than optimized code.
+Optimization for the wrong use case: Adding overhead for the 1% might not be worth the slowdown for
+the other 99%
+Micro-optimization: Compilers do this very eﬃciently and micro-optimization can even hurt the compilers
+ability to further optimize the code
+Typical optimization goals are:
+To do less work
+To use more eﬃcient algorithms/structures
+To make better use of hardware
+Optimized code can have negative side eﬀects, including:
+Higher memory usage
+Complex code -being diﬃcult to read or maintain
+Compromised API and code design
+Section 143.2: Empty Base Class Optimization
+An object cannot occupy less than 1 byte, as then the members of an array of this type would have the same
+address. Thus sizeof(T)>=1 always holds. It's also true that a derived class cannot be smaller than any of its base
+classes. However, when the base class is empty, its size is not necessarily added to the derived class:
+class Base {};
+class Derived : public Base
+{
+public:
+    int i;
+};
+In this case, it's not required to allocate a byte for Base within Derived to have a distinct address per type per
+object. If empty base class optimization is performed (and no padding is required), then sizeof(Derived) ==
+sizeof(int), that is, no additional allocation is done for the empty base. This is possible with multiple base classes
+as well (in C++, multiple bases cannot have the same type, so no issues arise from that).
+Note that this can only be performed if the ﬁrst member of Derived diﬀers in type from any of the base classes.
+This includes any direct or indirect common bases. If it's the same type as one of the bases (or there's a common
+base), at least allocating a single byte is required to ensure that no two distinct objects of the same type have the
+same address.
+Section 143.3: Optimizing by executing less code
+The most straightforward approach to optimizing is by executing less code. This approach usually gives a ﬁxed
+speed-up without changing the time complexity of the code.
+Even though this approach gives you a clear speedup, this will only give noticable improvements when the code is
+called a lot.
+Removing useless code
+void func(const A *a); // Some random function
+// useless memory allocation + deallocation for the instance
+auto a1 = std::make_unique<A>();
+func(a1.get());
+// making use of a stack object prevents
+auto a2 = A{};
+func(&a2);
+Version ≥ C++14
+From C++14, compilers are allowed to optimize this code to remove the allocation and matching deallocation.
+Doing code only once
+std::map<std::string, std::unique_ptr<A>> lookup;
+// Slow insertion/lookup
+// Within this function, we will traverse twice through the map lookup an element
+// and even a thirth time when it wasn't in
+const A *lazyLookupSlow(const std::string &key) {
+    if (lookup.find(key) != lookup.cend())
+        lookup.emplace_back(key, std::make_unique<A>());
+    return lookup[key].get();
+}
+// Within this function, we will have the same noticeable effect as the slow variant while going at
+double speed as we only traverse once through the code
+const A *lazyLookupSlow(const std::string &key) {
+    auto &value = lookup[key];
+    if (!value)
+        value = std::make_unique<A>();
+    return value.get();
+}
+A similar approach to this optimization can be used to implement a stable version of unique
+std::vector<std::string> stableUnique(const std::vector<std::string> &v) {
+    std::vector<std::string> result;
+    std::set<std::string> checkUnique;
+    for (const auto &s : v) {
+        // As insert returns if the insertion was successful, we can deduce if the element was
+already in or not
+        // This prevents an insertion, which will traverse through the map for every unique element
+        // As a result we can almost gain 50% if v would not contain any duplicates
+        if (checkUnique.insert(s).second)
+            result.push_back(s);
+    }
+    return result;
+}
+Preventing useless reallocating and copying/moving
+In the previous example, we already prevented lookups in the std::set, however the std::vector still contains a
+growing algorithm, in which it will have to realloc its storage. This can be prevented by ﬁrst reserving for the right
+size.
+std::vector<std::string> stableUnique(const std::vector<std::string> &v) {
+    std::vector<std::string> result;
+    // By reserving 'result', we can ensure that no copying or moving will be done in the vector
+    // as it will have capacity for the maximum number of elements we will be inserting
+    // If we make the assumption that no allocation occurs for size zero
+    // and allocating a large block of memory takes the same time as a small block of memory
+    // this will never slow down the program
+    // Side note: Compilers can even predict this and remove the checks the growing from the
+generated code
+    result.reserve(v.size());
+    std::set<std::string> checkUnique;
+    for (const auto &s : v) {
+        // See example above
+        if (checkUnique.insert(s).second)
+            result.push_back(s);
+    }
+    return result;
+}
+Section 143.4: Using ecient containers
+Optimizing by using the right data structures at the right time can change the time-complexity of the code.
+// This variant of stableUnique contains a complexity of N log(N)
+// N > number of elements in v
+// log(N) > insert complexity of std::set
+std::vector<std::string> stableUnique(const std::vector<std::string> &v) {
+    std::vector<std::string> result;
+    std::set<std::string> checkUnique;
+    for (const auto &s : v) {
+        // See Optimizing by executing less code
+        if (checkUnique.insert(s).second)
+            result.push_back(s);
+    }
+    return result;
+}
+By using a container which uses a diﬀerent implementation for storing its elements (hash container instead of tree),
+we can transform our implementation to complexity N. As a side eﬀect, we will call the comparison operator for
+std::string less, as it only has to be called when the inserted string should end up in the same bucket.
+// This variant of stableUnique contains a complexity of N
+// N > number of elements in v
+// 1 > insert complexity of std::unordered_set
+std::vector<std::string> stableUnique(const std::vector<std::string> &v) {
+    std::vector<std::string> result;
+    std::unordered_set<std::string> checkUnique;
+    for (const auto &s : v) {
+        // See Optimizing by executing less code
+        if (checkUnique.insert(s).second)
+            result.push_back(s);
+    }
+    return result;
+}
+Section 143.5: Small Object Optimization
+Small object optimization is a technique which is used within low level data structures, for instance the std::string
+(Sometimes referred to as Short/Small String Optimization). It's meant to use stack space as a buﬀer instead of
+some allocated memory in case the content is small enough to ﬁt within the reserved space.
+By adding extra memory overhead and extra calculations, it tries to prevent an expensive heap allocation. The
+beneﬁts of this technique are dependent on the usage and can even hurt performance if incorrectly used.
+Example
+A very naive way of implementing a string with this optimization would the following:
+#include <cstring>
+class string final
+{
+    constexpr static auto SMALL_BUFFER_SIZE = 16;
+    bool _isAllocated{false};                       ///< Remember if we allocated memory
+    char *_buffer{nullptr};                         ///< Pointer to the buffer we are using
+    char _smallBuffer[SMALL_BUFFER_SIZE]= {'\0'};   ///< Stack space used for SMALL OBJECT
+OPTIMIZATION
+public:
+    ~string()
+    {
+        if (_isAllocated)
+            delete [] _buffer;
+    }        
+    explicit string(const char *cStyleString)
+    {
+        auto stringSize = std::strlen(cStyleString);
+        _isAllocated = (stringSize > SMALL_BUFFER_SIZE);
+        if (_isAllocated)
+            _buffer = new char[stringSize];
+        else
+            _buffer = &_smallBuffer[0];
+        std::strcpy(_buffer, &cStyleString[0]);
+    }
+    string(string &&rhs)
+       : _isAllocated(rhs._isAllocated)
+       , _buffer(rhs._buffer)
+       , _smallBuffer(rhs._smallBuffer) //< Not needed if allocated
+    {
+        if (_isAllocated)
+        {
+           // Prevent double deletion of the memory
+           rhs._buffer = nullptr;
+        }
+        else
+        {
+            // Copy over data
+            std::strcpy(_smallBuffer, rhs._smallBuffer);
+            _buffer = &_smallBuffer[0];
+        }
+    }
+    // Other methods, including other constructors, copy constructor,
+    // assignment operators have been omitted for readability
+};
+As you can see in the code above, some extra complexity has been added in order to prevent some new and delete
+operations. On top of this, the class has a larger memory footprint which might not be used except in a couple of
+cases.
+Often it is tried to encode the bool value _isAllocated, within the pointer _buffer with bit manipulation to reduce
+the size of a single instance (intel 64 bit: Could reduce size by 8 byte). An optimization which is only possible when
+its known what the alignment rules of the platform is.
+When to use?
+As this optimization adds a lot of complexity, it is not recommended to use this optimization on every single class. It
+will often be encountered in commonly used, low-level data structures. In common C++11 standard library
+implementations one can ﬁnd usages in std::basic_string<> and std::function<>.
+As this optimization only prevents memory allocations when the stored data is smaller than the buﬀer, it will only
+give beneﬁts if the class is often used with small data.
+A ﬁnal drawback of this optimization is that extra eﬀort is required when moving the buﬀer, making the move-
+operation more expensive than when the buﬀer would not be used. This is especially true when the buﬀer contains
+a non-POD type.
+
+#### Chapter 144: Optimization
+
+When compiling, the compiler will often modify the program to increase performance. This is permitted by the as-if
+rule, which allows any and all transformations that do not change observable behavior.
+Section 144.1: Inline Expansion/Inlining
+Inline expansion (also known as inlining) is compiler optimisation that replaces a call to a function with the body of
+that function. This saves the function call overhead, but at the cost of space, since the function may be duplicated
+several times.
+// source:
+int process(int value)
+{
+    return 2 * value;
+}
+int foo(int a)
+{
+    return process(a);
+}
+// program, after inlining:
+int foo(int a)
+{
+    return 2 * a; // the body of process() is copied into foo()
+}
+Inlining is most commonly done for small functions, where the function call overhead is signiﬁcant compared to the
+size of the function body.
+Section 144.2: Empty base optimization
+The size of any object or member subobject is required to be at least 1 even if the type is an empty class type (that
+is, a class or struct that has no non-static data members), in order to be able to guarantee that the addresses of
+distinct objects of the same type are always distinct.
+However, base class subobjects are not so constrained, and can be completely optimized out from the object
+layout:
+#include <cassert>
+struct Base {}; // empty class
+struct Derived1 : Base {
+    int i;
+};
+int main() {
+    // the size of any object of empty class type is at least 1
+    assert(sizeof(Base) == 1);
+    // empty base optimization applies
+    assert(sizeof(Derived1) == sizeof(int));
+}
+Empty base optimization is commonly used by allocator-aware standard library classes (std::vector,
+std::function, std::shared_ptr, etc) to avoid occupying any additional storage for its allocator member if the
+allocator is stateless. This is achieved by storing one of the required data members (e.g., begin, end, or capacity
+pointer for the vector).
+Reference: cppreference
+
+#### Chapter 145: Proﬁling
+
+Section 145.1: Proﬁling with gcc and gprof
+The GNU gprof proﬁler, gprof, allows you to proﬁle your code. To use it, you need to perform the following steps:
+1.
+Build the application with settings for generating proﬁling information
+2.
+Generate proﬁling information by running the built application
+3.
+View the generated proﬁling information with gprof
+In order to build the application with settings for generating proﬁling information, we add the -pg ﬂag. So, for
+example, we could use
+$ gcc -pg *.cpp -o app
+or
+$ gcc -O2 -pg *.cpp -o app
+and so forth.
+Once the application, say app, is built, execute it as usual:
+$ ./app
+This should produce a ﬁle called gmon.out.
+To see the proﬁling results, now run
+$ gprof app gmon.out
+(note that we provide both the application as well as the generated output).
+Of course, you can also pipe or redirect:
+$ gprof app gmon.out | less
+and so forth.
+The result of the last command should be a table, whose rows are the functions, and whose columns indicate the
+number of calls, total time spent, self time spent (that is, time spent in the function excluding calls to children).
+Section 145.2: Generating callgraph diagrams with gperf2dot
+For more complex applications, ﬂat execution proﬁles may be diﬃcult to follow. This is why many proﬁling tools
+also generate some form of annotated callgraph information.
+gperf2dot converts text output from many proﬁlers (Linux perf, callgrind, oproﬁle etc.) into a callgraph diagram.
+You can use it by running your proﬁler (example for gprof):
+# compile with profiling flags  
+g++ *.cpp -pg
+# run to generate profiling data                                            
+./main
+# translate profiling data to text, create image    
+gprof ./main | gprof2dot -s | dot -Tpng -o output.png
+Section 145.3: Proﬁling CPU Usage with gcc and Google Perf
+Tools
+Google Perf Tools also provides a CPU proﬁler, with a slightly friendlier interface. To use it:
+1.
+2.
+3.
+4.
+Install Google Perf Tools
+Compile your code as usual
+Add the libprofiler proﬁler library to your library load path at runtime
+Use pprof to generate a ﬂat execution proﬁle, or a callgraph diagram
+For example:
+# compile code
+g++ -O3 -std=c++11 main.cpp -o main
+# run with profiler
+LD_PRELOAD=/usr/local/lib/libprofiler.so CPUPROFILE=main.prof CPUPROFILE_FREQUENCY=100000 ./main
+where:
+CPUPROFILE indicates the output ﬁle for proﬁling data
+CPUPROFILE_FREQUENCY indicates the proﬁler sampling frequency;
+Use pprof to post-process the proﬁling data.
+You can generate a ﬂat call proﬁle as text:
+$ pprof --text ./main main.prof
+PROFILE: interrupts/evictions/bytes = 67/15/2016
+pprof --text --lines ./main main.prof
+Using local file ./main.
+Using local file main.prof.
+Total: 67 samples
+22  32.8%  32.8%       67 100.0% longRunningFoo ??:0
+20  29.9%  62.7%       20  29.9% __memmove_ssse3_back
+/build/eglibc-3GlaMS/eglibc-2.19/string/../sysdeps/x86_64/multiarch/memcpy-ssse3-back.S:1627
+4   6.0%  68.7%        4   6.0% __memmove_ssse3_back
+/build/eglibc-3GlaMS/eglibc-2.19/string/../sysdeps/x86_64/multiarch/memcpy-ssse3-back.S:1619
+3   4.5%  73.1%        3   4.5% __random_r /build/eglibc-3GlaMS/eglibc-2.19/stdlib/random_r.c:388
+3   4.5%  77.6%        3   4.5% __random_r /build/eglibc-3GlaMS/eglibc-2.19/stdlib/random_r.c:401
+2   3.0%  80.6%        2   3.0% __munmap
+/build/eglibc-3GlaMS/eglibc-2.19/misc/../sysdeps/unix/syscall-template.S:81
+2   3.0%  83.6%       12  17.9% __random /build/eglibc-3GlaMS/eglibc-2.19/stdlib/random.c:298
+2   3.0%  86.6%        2   3.0% __random_r /build/eglibc-3GlaMS/eglibc-2.19/stdlib/random_r.c:385
+2   3.0%  89.6%        2   3.0% rand /build/eglibc-3GlaMS/eglibc-2.19/stdlib/rand.c:26
+1   1.5%  91.0%        1   1.5% __memmove_ssse3_back
+/build/eglibc-3GlaMS/eglibc-2.19/string/../sysdeps/x86_64/multiarch/memcpy-ssse3-back.S:1617
+1   1.5%  92.5%        1   1.5% __memmove_ssse3_back
+/build/eglibc-3GlaMS/eglibc-2.19/string/../sysdeps/x86_64/multiarch/memcpy-ssse3-back.S:1623
+1   1.5%  94.0%        1   1.5% __random /build/eglibc-3GlaMS/eglibc-2.19/stdlib/random.c:293
+1   1.5%  95.5%        1   1.5% __random /build/eglibc-3GlaMS/eglibc-2.19/stdlib/random.c:296
+1   1.5%  97.0%        1   1.5% __random_r /build/eglibc-3GlaMS/eglibc-2.19/stdlib/random_r.c:371
+1   1.5%  98.5%        1   1.5% __random_r /build/eglibc-3GlaMS/eglibc-2.19/stdlib/random_r.c:381
+1   1.5% 100.0%        1   1.5% rand /build/eglibc-3GlaMS/eglibc-2.19/stdlib/rand.c:28
+0   0.0% 100.0%       67 100.0% __libc_start_main /build/eglibc-3GlaMS/eglibc-2.19/csu/libc-
+start.c:287
+0   0.0% 100.0%       67 100.0% _start ??:0
+0   0.0% 100.0%       67 100.0% main ??:0
+0   0.0% 100.0%       14  20.9% rand /build/eglibc-3GlaMS/eglibc-2.19/stdlib/rand.c:27
+0   0.0% 100.0%       27  40.3% std::vector::_M_emplace_back_aux ??:0
+... or you can generate an annotated callgraph in a pdf with:
+pprof --pdf ./main main.prof > out.pdf
+
 
 For HFT, Game Engines, and Real-Time Systems, every nanosecond counts.
 
