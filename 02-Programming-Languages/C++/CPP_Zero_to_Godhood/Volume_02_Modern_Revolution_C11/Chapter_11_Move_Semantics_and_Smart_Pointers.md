@@ -95,6 +95,28 @@ auto sp1 = std::make_shared<int>(10); // Efficient allocation
 auto sp2 = sp1; // Ref count = 2
 ```
 
+---
+### Professional Notes: Memory & Resource Management
+
+#### 1. RAII: Resource Acquisition Is Initialization
+RAII is the core of modern C++ resource management. It ensures that resources (memory, file handles, sockets) are tied to object lifetime.
+*   **Acquisition**: In the constructor.
+*   **Release**: In the destructor.
+*   **Benefit**: Exception safety. If an exception occurs, stack unwinding automatically calls destructors, preventing leaks.
+
+#### 2. The C++11 Memory Model and Atomics
+Before C++11, the language had no formal definition of threads or shared memory.
+*   **The Problem**: Compilers and CPUs often reorder instructions for performance, which can break multi-threaded logic.
+*   **The Solution**: `std::atomic<T>` and memory barriers. They ensure that operations are visible across threads in a predictable order (`std::memory_order`).
+*   **Data Races**: Accessing the same memory location from multiple threads where at least one is a write is **Undefined Behavior** unless synchronized.
+
+#### 3. Smart Pointer Gotchas
+*   **`std::make_shared` vs. `new`**: `make_shared` is faster and more exception-safe because it performs a single allocation for both the object and the control block.
+*   **Circular References**: If two `shared_ptr` objects point to each other, they will never be deleted. Use `std::weak_ptr` for one of the links to break the cycle.
+*   **`this` as shared**: Use `std::enable_shared_from_this<T>` if you need to pass a `shared_ptr` to the current object from inside a member function.
+
+---
+
 ### 2.3 `std::weak_ptr`
 *   **Ownership:** Non-owning observer of `shared_ptr`.
 *   **Use Case:** Break cyclic references (A->B, B->A).

@@ -1,0 +1,92 @@
+\hypertarget{distributed-c}{%
+\chapter{DISTRIBUTED C}\label{distributed-c}}
+
+\hypertarget{distributed-c-1}{%
+\chapter{DISTRIBUTED C++}\label{distributed-c-1}}
+
+Moving beyond a single process: Networking, RPC, and Consensus.
+
+\hypertarget{serialization-binary-protocols}{%
+\subsection{16.1 Serialization (Binary
+Protocols)}\label{serialization-binary-protocols}}
+
+Efficiently packing data for network transmission.
+
+\begin{lstlisting}[language={C++}]
+#include <vector>
+#include <cstring>
+#include <string>
+
+// Simple Binary Serializer
+class Buffer {
+    std::vector<uint8_t> data;
+public:
+    template<typename T>
+    void write(const T& val) {
+        static_assert(std::is_trivially_copyable_v<T>);
+        const uint8_t* ptr = reinterpret_cast<const uint8_t*>(&val);
+        data.insert(data.end(), ptr, ptr + sizeof(T));
+    }
+
+    void write_string(const std::string& s) {
+        write<uint32_t>(s.size());
+        const uint8_t* ptr = reinterpret_cast<const uint8_t*>(s.data());
+        data.insert(data.end(), ptr, ptr + s.size());
+    }
+    
+    const uint8_t* begin() const { return data.data(); }
+    size_t size() const { return data.size(); }
+};
+\end{lstlisting}
+
+\hypertarget{rpc-remote-procedure-call-concept}{%
+\subsection{16.2 RPC (Remote Procedure Call)
+Concept}\label{rpc-remote-procedure-call-concept}}
+
+Calling a function on another machine.
+
+\textbf{Stub Interface:}
+
+\begin{lstlisting}[language={C++}]
+// User Code
+// auto result = service.Add(5, 3);
+
+// Generated Stub
+int Add(int a, int b) {
+    Buffer buf;
+    buf.write(101); // Function ID for 'Add'
+    buf.write(a);
+    buf.write(b);
+    return network.send_and_wait(buf); // Blocks
+}
+\end{lstlisting}
+
+\hypertarget{consensus-raft-basics}{%
+\subsection{16.3 Consensus (Raft Basics)}\label{consensus-raft-basics}}
+
+Distributed systems need to agree on state.
+
+\textbf{Raft State Machine:}
+
+\begin{lstlisting}[language={C++}]
+enum class State { Follower, Candidate, Leader };
+
+struct Node {
+    State state = State::Follower;
+    int current_term = 0;
+    int voted_for = -1;
+    
+    void on_timeout() {
+        if (state == State::Follower) {
+            state = State::Candidate;
+            current_term++;
+            voted_for = my_id;
+            request_votes();
+        }
+    }
+};
+\end{lstlisting}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}

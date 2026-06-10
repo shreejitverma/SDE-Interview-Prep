@@ -20,6 +20,39 @@ int main() {
 }
 ```
 
+---
+### Professional Notes: Basics & I/O
+
+#### 1. The Compilation Pipeline (Deep Dive)
+Compilation in C++ is a multi-stage process that transforms human-readable source code into machine-executable binaries.
+1.  **Preprocessing**: The preprocessor (`cpp`) handles directives starting with `#`. It includes headers (`#include`) and expands macros (`#define`).
+2.  **Compilation**: The compiler (`g++`, `clang++`) translates the preprocessed source into assembly code.
+3.  **Assembly**: The assembler (`as`) converts assembly into machine-readable object files (`.o` or `.obj`).
+4.  **Linking**: The linker (`ld`) combines multiple object files and libraries into a single executable, resolving symbols and addresses.
+
+#### 2. Standard Streams and Buffered I/O
+C++ provides a robust I/O system based on streams.
+*   **`std::cout`**: Buffered output stream (standard output).
+*   **`std::cin`**: Buffered input stream (standard input).
+*   **`std::cerr`**: Unbuffered output stream (standard error).
+*   **`std::clog`**: Buffered output stream (logging standard error).
+
+**Godhood Tip**: Use `std::endl` only when you need to flush the buffer (e.g., in real-time logging). For performance, use `'\n'` to avoid unnecessary flushes.
+
+#### 3. Stream State and Error Handling
+Always check the state of a stream after an operation:
+```cpp
+int x;
+if (!(std::cin >> x)) {
+    std::cin.clear(); // Clear the error flags
+    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n'); // Discard bad input
+    std::cerr << "Invalid input received!" << std::endl;
+}
+```
+Stream states include `good()`, `bad()`, `fail()`, and `eof()`.
+
+---
+
 **Breakdown:**
 - `#include <iostream>` - Include input/output library
 - `std::cout` - Standard output stream (print to console)
@@ -70,6 +103,30 @@ int main() {
     return 0;
 }
 ```
+
+---
+### Professional Notes: Literals & Keywords
+
+#### 1. Integer and Floating Point Literals
+*   **Decimal**: `42`
+*   **Octal**: `052` (Starts with 0)
+*   **Hexadecimal**: `0x2A`
+*   **Binary (C++14)**: `0b101010`
+*   **Suffixes**: `u` (unsigned), `l` (long), `ll` (long long), `f` (float).
+*   **Digit Separators (C++14)**: Use single quotes to improve readability: `1'000'000` or `0b1111'0000`.
+
+#### 2. String Literals and Encodings
+*   **Raw Strings (C++11)**: `R"(string with \ and " without escaping)"`
+*   **Encodings**: `u8""` (UTF-8), `u""` (char16_t), `U""` (char32_t), `L""` (wchar_t).
+
+#### 3. Core Keywords and Type Qualifiers
+*   **`const`**: Declares a variable as read-only.
+*   **`volatile`**: Tells the compiler that the value can change outside the program's control (e.g., hardware registers). Prevents aggressive optimization.
+*   **`mutable`**: Allows a member of a `const` object to be modified (Chapter 5).
+*   **`explicit`**: Prevents the compiler from using a constructor for implicit conversions.
+*   **`inline`**: Suggests to the compiler to replace function calls with the actual code to save overhead.
+
+---
 
 ### Variable Declaration & Initialization
 
@@ -181,35 +238,6 @@ int main() {
     --y;      // Pre-decrement: 5
     
     return 0;
-}
-```
-
-### Deep Dive: Bitwise Mastery (Low-Level Optimization)
-
-Bitwise operators manipulate individual bits. Essential for embedded systems, graphics, and cryptography.
-
-#### The Operators
-*   `&` (AND): Both bits must be 1.
-*   `|` (OR): At least one bit must be 1.
-*   `^` (XOR): Bits must be different.
-*   `~` (NOT): Flip all bits.
-*   `<<` (Left Shift): Multiply by 2^N.
-*   `>>` (Right Shift): Divide by 2^N.
-
-#### God-Tier Tricks
-1.  **Check Odd/Even**: `(x & 1) == 0` (Even). Faster than `% 2`.
-2.  **Multiply by 2**: `x << 1`.
-3.  **Divide by 2**: `x >> 1`.
-4.  **Clear Last Set Bit**: `x & (x - 1)`. Used to count set bits (Kernighan's Algorithm).
-5.  **Check Power of 2**: `(x > 0) && ((x & (x - 1)) == 0)`.
-6.  **Toggle Bit N**: `x ^= (1 << N)`.
-7.  **Set Bit N**: `x |= (1 << N)`.
-8.  **Clear Bit N**: `x &= ~(1 << N)`.
-
-```cpp
-// Fast Power of 2 check
-bool isPowerOf2(int x) {
-    return x && !(x & (x - 1));
 }
 ```
 
@@ -331,6 +359,29 @@ int main() {
     return 0;
 }
 ```
+
+---
+### Professional Notes: Operators & Control Flow
+
+#### 1. Operator Precedence and Associativity
+C++ has a strict hierarchy for operator evaluation. When multiple operators appear in an expression, precedence determines the grouping.
+*   **High Precedence**: `()`, `[]`, `->`, `::`, `++` (postfix).
+*   **Medium Precedence**: `*`, `/`, `%` followed by `+`, `-`.
+*   **Low Precedence**: Bitwise shifts `<<`, `>>`, then comparisons `<`, `>`, then logical `&&`, `||`, and finally assignment `=`.
+
+**Godhood Warning**: Never write ambiguous code like `a = b++ + ++b;`. This is **Undefined Behavior (UB)** because it attempts to modify `b` twice between sequence points.
+
+#### 2. Advanced Loop Patterns
+*   **Range-based for (C++11)**: Iterate directly over containers: `for (const auto& x : vec)`.
+*   **Empty Loop Body**: A semicolon or empty braces can be used for loops that perform all work in the header: `while (*dest++ = *src++);`.
+*   **The `for` Loop as a `while` Loop**: `for (; condition ;) {}` is identical to `while (condition) {}`.
+
+#### 3. Flow Control Quirks
+*   **`switch` Fallthrough**: Without a `break`, execution continues to the next case. In C++17, use `[[fallthrough]];` to signal intent and silence warnings.
+*   **`goto` Statement**: While generally discouraged, `goto` is acceptable for breaking out of deeply nested loops or for error-cleanup blocks in low-level code.
+*   **The Comma Operator**: `a, b` evaluates `a`, discards the result, then returns `b`. Useful in for-loop headers: `for (int i=0, j=10; i<j; ++i, --j)`.
+
+---
 
 ---
 
@@ -1220,3 +1271,15 @@ double c =     0011111111010011001100110011001100110011001100110011001100110011;
 representation of 0.3
 double a + b = 0011111111010011001100110011001100110011001100110011001100110100; //Note that this
 is not quite equal to the "canonical" 0.3!
+---
+### Professional Notes: Build Systems & Automation
+
+#### 1. The Build Process (Architectural View)
+A build system automates the invocation of the compiler, assembler, and linker.
+*   **Makefile**: Uses a dependency graph to determine which files need recompilation. Only rebuilds changed files.
+*   **CMake**: A meta-build system that generates native build files (Makefiles, Ninja, VS Solutions).
+
+#### 2. Linker Symbols and Name Mangling
+Use tools like `nm` or `objdump` to inspect object files. Demangle names with `c++filt`.
+
+---

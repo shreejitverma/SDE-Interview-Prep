@@ -43,6 +43,55 @@ Adapters       Forward      Modifying
 ```
 
 ---
+### Professional Notes: STL Core Depth
+
+#### 1. Iterators: The Bridge between Algorithms and Containers
+Iterators provide a uniform interface for traversing data.
+*   **Input/Output**: Single pass, read or write once.
+*   **Forward**: Multiple passes, read/write, move forward only (e.g., `std::forward_list`).
+*   **Bidirectional**: Move forward and backward (e.g., `std::list`, `std::map`).
+*   **Random Access**: Jump to any element in constant time (e.g., `std::vector`, `std::deque`).
+
+**Godhood Tip**: Prefer prefix increment (`++it`) over postfix increment (`it++`) for iterators. Postfix creates a temporary copy of the iterator, which can be costly for complex types.
+
+#### 2. Container Choice and Memory Layout
+*   **`std::vector`**: The gold standard. Contiguous memory ensures high **Cache Locality**. Always `reserve()` if you know the final size to avoid reallocations.
+*   **`std::deque`**: A "Double-Ended Queue." Implemented as a sequence of fixed-size memory blocks. Offers $O(1)$ at both ends but is slower for random access than vector.
+*   **`std::list`**: Doubly linked list. $O(1)$ insertions anywhere if you have the iterator, but terrible cache locality and high memory overhead per element (2 pointers).
+
+#### 3. Associative Containers and Custom Comparators
+`std::map` and `std::set` are typically implemented as **Red-Black Trees**.
+*   **Complexity**: $O(\log N)$ for all major operations.
+*   **Comparators**: You can provide a custom function or functor to define the ordering.
+```cpp
+struct CaseInsensitiveCompare {
+    bool operator()(const std::string& a, const std::string& b) const {
+        return strcasecmp(a.c_str(), b.c_str()) < 0;
+    }
+};
+std::set<std::string, CaseInsensitiveCompare> my_set;
+```
+
+---
+### Professional Notes: Data Structures Internals
+
+#### 1. Binary Search Trees (std::map, std::set)
+Typically implemented as **Red-Black Trees**.
+*   **Self-Balancing**: Ensures $O(\log N)$ height.
+*   **Node Overhead**: Each element is stored in a separate node with pointers to parent and children, plus a color bit.
+
+#### 2. Hash Tables (std::unordered_map)
+Typically implemented as an array of buckets (linked lists).
+*   **Load Factor**: When the number of elements exceeds `bucket_count * max_load_factor`, the table is rehashed (size doubled).
+*   **Hash Collisions**: Handled via chaining (linked lists) or open addressing.
+
+#### 3. Heap (std::priority_queue)
+Implemented using `std::make_heap`, `std::push_heap`, and `std::pop_heap` on an underlying `std::vector`.
+*   **Invariant**: The parent is always greater than (or equal to) its children.
+
+---
+
+---
 
 ## CONTAINERS - COMPLETE REFERENCE
 
@@ -409,6 +458,31 @@ Found in `<algorithm>` and `<numeric>`. They work on iterator ranges `[first, la
 - `count(begin, end, val)`
 - `equal(b1, e1, b2)`
 - `search(b1, e1, b2, e2)`
+
+---
+### Professional Notes: Algorithm Mastery
+
+#### 1. Range Integrity and End Iterators
+All STL algorithms operate on half-open ranges `[first, last)`.
+*   **The "Last" Iterator**: Points *beyond* the last element. Dereferencing it is **Undefined Behavior**.
+*   **Empty Range**: If `first == last`, the range is empty. Algorithms correctly handle this (e.g., `find` returns `last`).
+
+#### 2. Sorting and Stability
+*   **`std::sort`**: Usually implemented as **Introsort** (Hybrid of Quicksort, Heapsort, and Insertion Sort). Average complexity $O(N \log N)$.
+*   **`std::stable_sort`**: Maintains the relative order of equal elements. Requires extra memory for its work buffer.
+*   **`std::partial_sort`**: Find the top $K$ elements without sorting the whole range.
+
+#### 3. The Lambda Evolution (C++11)
+Algorithms are most powerful when combined with lambdas:
+```cpp
+// Find first even number
+auto it = std::find_if(vec.begin(), vec.end(), [](int x){ return x % 2 == 0; });
+```
+
+#### 4. Binary Search and Sorted Ranges
+Functions like `binary_search`, `lower_bound`, and `upper_bound` require the range to be **sorted** or at least partitioned by the search value. Using them on unsorted ranges is UB.
+
+---
 
 ### 2. Modifying
 - `copy(b1, e1, b2)`

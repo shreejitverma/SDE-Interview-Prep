@@ -74,6 +74,36 @@ std::atomic<int> counter(0);
 counter++; // Thread-safe increment
 ```
 
+---
+### Professional Notes: Concurrency Depth
+
+#### 1. Thread Lifecycle and Exceptions
+If a `std::thread` object is destroyed while it is still "joinable" (not joined or detached), `std::terminate()` is called.
+*   **Safety**: Always use a wrapper or ensure `join()`/`detach()` is called in all exit paths, including exception handlers.
+*   **`std::jthread` (C++20)**: Automatically joins on destruction, solving this problem.
+
+#### 2. Advanced Locking Strategies
+*   **`std::scoped_lock` (C++17)**: Locks multiple mutexes simultaneously using a deadlock-avoidance algorithm (replaces `std::lock`).
+*   **`std::shared_mutex` (C++17)**: Allows multiple readers or one writer (Reader-Writer Lock).
+*   **Lock Strategies**:
+    *   `std::adopt_lock`: Assume the calling thread already owns the mutex.
+    *   `std::defer_lock`: Do not lock the mutex on construction.
+    *   `std::try_to_lock`: Attempt to lock without blocking.
+
+#### 3. Semaphores (C++20)
+A semaphore is a synchronization primitive that maintains a counter.
+*   **`std::counting_semaphore<N>`**: Allows up to $N$ concurrent accesses.
+*   **`std::binary_semaphore`**: Alias for `counting_semaphore<1>`.
+*   **Usage**: Useful for limiting access to a pool of resources (e.g., database connections).
+
+#### 4. Thread Local Storage (TLS)
+The `thread_local` keyword ensures that each thread has its own unique instance of a variable.
+```cpp
+thread_local int thread_id = 0; // Each thread gets its own copy
+```
+
+---
+
 
 # Professional Notes: Chapter 80: Threading
 

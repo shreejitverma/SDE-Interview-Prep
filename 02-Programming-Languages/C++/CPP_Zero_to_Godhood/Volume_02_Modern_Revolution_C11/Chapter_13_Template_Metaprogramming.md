@@ -20,6 +20,41 @@ int main() {
 }
 ```
 
+---
+### Professional Notes: Metaprogramming Depth
+
+#### 1. Recursive Template Evaluation
+Templates are effectively a functional language evaluated at compile time.
+*   **Base Case**: Essential to stop the infinite recursion (as seen in `print()`).
+*   **Arithmetic Metaprogramming**: Computing values at compile time using constant expressions and template specialization.
+```cpp
+template<int N>
+struct Factorial {
+    static const int value = N * Factorial<N - 1>::value;
+};
+template<>
+struct Factorial<0> {
+    static const int value = 1;
+};
+// Factorial<5>::value is computed as 120 by the compiler.
+```
+
+#### 2. Advanced Parameter Packs
+*   **Fold Expressions (C++17)**: Binary operators can be applied to all elements of a pack without manual recursion:
+```cpp
+template<typename... Args>
+auto sum(Args... args) {
+    return (... + args); // Unary left fold
+}
+```
+*   **Perfect Forwarding**: Use `std::forward<Args>(args)...` when passing packs to another function to preserve lvalue/rvalue properties.
+
+#### 3. SFINAE (Substitution Failure Is Not An Error)
+A core principle of C++ templates. If a template argument substitution results in an invalid type or expression, the compiler doesn't throw an error—it simply discards that overload.
+*   **`std::void_t` (C++17)**: A powerful helper for creating traits that check for the existence of members or types within a class.
+
+---
+
 ### 1.1 Parameter Packing (`...`)
 *   `typename... Args`: Template parameter pack.
 *   `Args... args`: Function parameter pack.

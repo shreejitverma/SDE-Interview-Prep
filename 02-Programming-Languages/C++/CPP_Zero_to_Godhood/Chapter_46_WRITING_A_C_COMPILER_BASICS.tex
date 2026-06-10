@@ -1,0 +1,71 @@
+\hypertarget{writing-a-c-compiler-basics}{%
+\chapter{WRITING A C COMPILER
+BASICS}\label{writing-a-c-compiler-basics}}
+
+\hypertarget{writing-a-c-compiler-basics-1}{%
+\chapter{WRITING A C++ COMPILER
+(BASICS)}\label{writing-a-c-compiler-basics-1}}
+
+To understand C++, build a toy compiler.
+
+\hypertarget{lexical-analysis-tokenizer}{%
+\subsection{18.1 Lexical Analysis
+(Tokenizer)}\label{lexical-analysis-tokenizer}}
+
+Converting source code into tokens.
+
+\begin{lstlisting}[language={C++}]
+enum class TokenType { Int, Identifier, Plus, Minus, End };
+
+struct Token {
+    TokenType type;
+    std::string text;
+};
+
+std::vector<Token> tokenize(std::string_view source) {
+    std::vector<Token> tokens;
+    // ... implementation ...
+    return tokens;
+}
+\end{lstlisting}
+
+\hypertarget{parsing-recursive-descent}{%
+\subsection{18.2 Parsing (Recursive
+Descent)}\label{parsing-recursive-descent}}
+
+Building an Abstract Syntax Tree (AST).
+
+\begin{lstlisting}[language={C++}]
+struct ASTNode { virtual ~ASTNode() = default; };
+struct BinaryExpr : ASTNode {
+    std::unique_ptr<ASTNode> left, right;
+    char op;
+};
+
+// parseExpression() calls parseTerm(), etc.
+\end{lstlisting}
+
+\hypertarget{semantic-analysis-types-scopes}{%
+\subsection{18.3 Semantic Analysis (Types \&
+Scopes)}\label{semantic-analysis-types-scopes}}
+
+Before generating code, we must validate it.
+
+\textbf{Symbol Table:}
+
+\begin{lstlisting}[language={C++}]
+struct Symbol { string type; };
+using Scope = map<string, Symbol>;
+vector<Scope> scopes; // Stack of scopes
+
+void enter_scope() { scopes.push_back({}); }
+void exit_scope() { scopes.pop_back(); }
+\end{lstlisting}
+
+\textbf{Type Checking:} Recursively visit the AST. *
+\passthrough{\lstinline!BinaryExpr!}: Check left.type == right.type. *
+\passthrough{\lstinline!Variable!}: Check if exists in symbol table.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}

@@ -25,6 +25,34 @@ class Base {
 // On 64-bit: 4 bytes (int) + 4 bytes (padding) + 8 bytes (ptr) = 16 bytes
 ```
 
+---
+### Professional Notes: Polymorphism & Virtual Mechanics
+
+#### 1. Polymorphism and Virtual Destructors
+Always declare the destructor as `virtual` in a polymorphic base class.
+*   **The Danger**: If you delete a derived object via a base class pointer without a virtual destructor, only the base part is destroyed, leading to **Memory Leaks**.
+```cpp
+class Base {
+public:
+    virtual ~Base() {} // Essential!
+};
+```
+
+#### 2. Pure Virtual Functions and Abstract Classes
+A function with `= 0` is pure virtual. It forces derived classes to provide an implementation.
+*   **Abstract Class**: A class with at least one pure virtual function cannot be instantiated.
+*   **Interface**: In C++, interfaces are typically classes with only public pure virtual functions and a virtual destructor.
+
+#### 3. Virtual Functions in Constructors/Destructors
+**Godhood Warning**: Never call virtual functions in constructors or destructors.
+*   **Reason**: During the base class constructor, the derived class members haven't been initialized yet. The vtable still points to the base class implementation. This is a common source of bugs.
+
+#### 4. The `override` and `final` Keywords (C++11)
+*   **`override`**: Ensures the function actually overrides a base class virtual function. Catches signature mismatches at compile time.
+*   **`final`**: Prevents further overriding or inheritance.
+
+---
+
 ### 2.5.2 Multiple Inheritance & Thunks
 
 When inheriting from multiple classes, pointer arithmetic gets tricky.

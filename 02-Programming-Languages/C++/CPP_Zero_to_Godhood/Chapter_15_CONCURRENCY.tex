@@ -1,0 +1,685 @@
+\hypertarget{concurrency}{%
+\chapter{CONCURRENCY}\label{concurrency}}
+
+\hypertarget{concurrency-multithreading}{%
+\chapter{CONCURRENCY \&
+MULTITHREADING}\label{concurrency-multithreading}}
+
+C++11 brought a standard threading model.
+
+\hypertarget{threads-stdthread}{%
+\section{\texorpdfstring{1. Threads
+(\texttt{std::thread})}{1. Threads (std::thread)}}\label{threads-stdthread}}
+
+\begin{lstlisting}[language={C++}]
+#include <thread>
+
+void task() { /*...*/ }
+
+int main() {
+    std::thread t(task);
+    t.join(); // Wait for finish
+    // t.detach(); // Or let it run freely
+}
+\end{lstlisting}
+
+\hypertarget{mutexes-locking}{%
+\section{2. Mutexes \& Locking}\label{mutexes-locking}}
+
+Avoid data races.
+
+\begin{itemize}
+\tightlist
+\item
+  \passthrough{\lstinline!std::mutex!}: Basic lock.
+\item
+  \passthrough{\lstinline!std::lock\_guard!}: RAII wrapper (locks on
+  construction, unlocks on destruction).
+\item
+  \passthrough{\lstinline!std::unique\_lock!}: Flexible RAII wrapper
+  (can unlock manually).
+\end{itemize}
+
+\begin{lstlisting}[language={C++}]
+std::mutex mtx;
+void safe() {
+    std::lock_guard<std::mutex> lock(mtx);
+    // critical section
+}
+\end{lstlisting}
+
+\hypertarget{condition-variables}{%
+\section{3. Condition Variables}\label{condition-variables}}
+
+Wait for a condition to be true.
+
+\begin{lstlisting}[language={C++}]
+std::condition_variable cv;
+std::mutex mtx;
+bool ready = false;
+
+// Waiter
+std::unique_lock<std::mutex> lk(mtx);
+cv.wait(lk, []{ return ready; });
+
+// Notifier
+{
+    std::lock_guard<std::mutex> lk(mtx);
+    ready = true;
+}
+cv.notify_one();
+\end{lstlisting}
+
+\hypertarget{futures-promises}{%
+\section{4. Futures \& Promises}\label{futures-promises}}
+
+Asynchronous result retrieval.
+
+\begin{itemize}
+\tightlist
+\item
+  \passthrough{\lstinline!std::async!}: Runs a function asynchronously.
+\item
+  \passthrough{\lstinline!std::future!}: Holds the result.
+\end{itemize}
+
+\begin{lstlisting}[language={C++}]
+auto f = std::async(std::launch::async, []{ return 42; });
+int result = f.get(); // Blocks until ready
+\end{lstlisting}
+
+\hypertarget{atomics-stdatomic}{%
+\section{\texorpdfstring{5. Atomics
+(\texttt{std::atomic})}{5. Atomics (std::atomic)}}\label{atomics-stdatomic}}
+
+Lock-free operations for basic types.
+
+\begin{lstlisting}[language={C++}]
+std::atomic<int> counter(0);
+counter++; // Thread-safe increment
+\end{lstlisting}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{professional-notes-concurrency-depth}{%
+\subsection{Professional Notes: Concurrency
+Depth}\label{professional-notes-concurrency-depth}}
+
+\hypertarget{thread-lifecycle-and-exceptions}{%
+\subsubsection{1. Thread Lifecycle and
+Exceptions}\label{thread-lifecycle-and-exceptions}}
+
+If a \passthrough{\lstinline!std::thread!} object is destroyed while it
+is still ``joinable'' (not joined or detached),
+\passthrough{\lstinline!std::terminate()!} is called. * \textbf{Safety}:
+Always use a wrapper or ensure
+\passthrough{\lstinline!join()!}/\passthrough{\lstinline!detach()!} is
+called in all exit paths, including exception handlers. *
+\textbf{\passthrough{\lstinline!std::jthread!} (C++20)}: Automatically
+joins on destruction, solving this problem.
+
+\hypertarget{advanced-locking-strategies}{%
+\subsubsection{2. Advanced Locking
+Strategies}\label{advanced-locking-strategies}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{\passthrough{\lstinline!std::scoped\_lock!} (C++17)}: Locks
+  multiple mutexes simultaneously using a deadlock-avoidance algorithm
+  (replaces \passthrough{\lstinline!std::lock!}).
+\item
+  \textbf{\passthrough{\lstinline!std::shared\_mutex!} (C++17)}: Allows
+  multiple readers or one writer (Reader-Writer Lock).
+\item
+  \textbf{Lock Strategies}:
+
+  \begin{itemize}
+  \tightlist
+  \item
+    \passthrough{\lstinline!std::adopt\_lock!}: Assume the calling
+    thread already owns the mutex.
+  \item
+    \passthrough{\lstinline!std::defer\_lock!}: Do not lock the mutex on
+    construction.
+  \item
+    \passthrough{\lstinline!std::try\_to\_lock!}: Attempt to lock
+    without blocking.
+  \end{itemize}
+\end{itemize}
+
+\hypertarget{semaphores-c20}{%
+\subsubsection{3. Semaphores (C++20)}\label{semaphores-c20}}
+
+A semaphore is a synchronization primitive that maintains a counter. *
+\textbf{\passthrough{\lstinline!std::counting\_semaphore<N>!}}: Allows
+up to \(N\) concurrent accesses. *
+\textbf{\passthrough{\lstinline!std::binary\_semaphore!}}: Alias for
+\passthrough{\lstinline!counting\_semaphore<1>!}. * \textbf{Usage}:
+Useful for limiting access to a pool of resources (e.g., database
+connections).
+
+\hypertarget{thread-local-storage-tls}{%
+\subsubsection{4. Thread Local Storage
+(TLS)}\label{thread-local-storage-tls}}
+
+The \passthrough{\lstinline!thread\_local!} keyword ensures that each
+thread has its own unique instance of a variable.
+
+\begin{lstlisting}[language={C++}]
+thread_local int thread_id = 0; // Each thread gets its own copy
+\end{lstlisting}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{professional-notes-chapter-80-threading}{%
+\chapter{Professional Notes: Chapter 80:
+Threading}\label{professional-notes-chapter-80-threading}}
+
+Section 80.1: Creating a std::thread Section 80.2: Passing a reference
+to a thread Section 80.3: Using std::async instead of std::thread
+Section 80.4: Basic Synchronization Section 80.5: Create a simple thread
+pool Section 80.6: Ensuring a thread is always joined Section 80.7:
+Operations on the current thread Section 80.8: Using Condition Variables
+Section 80.9: Thread operations Section 80.10: Thread-local storage
+Section 80.11: Reassigning thread objects
+
+\hypertarget{professional-notes-chapter-85-mutexes}{%
+\chapter{Professional Notes: Chapter 85:
+Mutexes}\label{professional-notes-chapter-85-mutexes}}
+
+Section 85.1: Mutex Types Section 85.2: std::lock Section 85.3:
+std::unique\_lock, std::shared\_lock, std::lock\_guard Section 85.4:
+Strategies for lock classes: std::try\_to\_lock, std::adopt\_lock,
+std::defer\_lock Section 85.5: std::mutex Section 85.6:
+std::scoped\_lock (C++ 17)
+
+\hypertarget{professional-notes-chapter-55-stdatomics}{%
+\chapter{Professional Notes: Chapter 55:
+std::atomics}\label{professional-notes-chapter-55-stdatomics}}
+
+Section 55.1: atomic types Each instantiation and full specialization of
+the std::atomic template denes an atomic type. If one thread writes to
+an atomic object while another thread reads from it, the behavior is
+well-dened (see memory model for details on data races) In addition,
+accesses to atomic objects may establish inter-thread synchronization
+and order non-atomic memory accesses as specied by std::memory\_order.
+std::atomic may be instantiated with any TriviallyCopyable type T.
+std::atomic is neither copyable nor movable. The standard library
+provides specializations of the std::atomic template for the following
+types: 1. One full specialization for the type bool and its typedef name
+is dened that is treated as a non-specialized std::atomic except that it
+has standard layout, trivial default constructor, trivial destructors,
+and supports aggregate initialization syntax: Typedef name Full
+specialization std::atomic\_bool std::atomic 2)Full specializations and
+typedefs for integral types, as follows: Typedef name Full
+specialization std::atomic\_char std::atomic std::atomic\_char
+std::atomic std::atomic\_schar std::atomic std::atomic\_uchar
+std::atomic std::atomic\_short std::atomic std::atomic\_ushort
+std::atomic std::atomic\_int std::atomic std::atomic\_uint std::atomic
+std::atomic\_long std::atomic std::atomic\_ulong std::atomic
+std::atomic\_llong std::atomic std::atomic\_ullong std::atomic
+std::atomic\_char16\_t std::atomic std::atomic\_char32\_t std::atomic
+std::atomic\_wchar\_t std::atomic std::atomic\_int8\_t std::atomic
+std::atomic\_uint8\_t std::atomic std::atomic\_int16\_t std::atomic
+std::atomic\_uint16\_t std::atomic std::atomic\_int32\_t std::atomic
+std::atomic\_uint32\_t std::atomic std::atomic\_int64\_t std::atomic
+std::atomic\_uint64\_t std::atomic std::atomic\_int\_least8\_t
+std::atomic std::atomic\_uint\_least8\_t std::atomic
+std::atomic\_int\_least16\_t std::atomic std::atomic\_uint\_least16\_t
+std::atomic std::atomic\_int\_least32\_t std::atomic
+std::atomic\_uint\_least32\_t std::atomic std::atomic\_int\_least64\_t
+std::atomic std::atomic\_uint\_least64\_t std::atomic
+std::atomic\_int\_fast8\_t std::atomic std::atomic\_uint\_fast8\_t
+std::atomic std::atomic\_int\_fast16\_t std::atomic
+std::atomic\_uint\_fast16\_t std::atomic std::atomic\_int\_fast32\_t
+std::atomic std::atomic\_uint\_fast32\_t std::atomic
+std::atomic\_int\_fast64\_t std::atomic std::atomic\_uint\_fast64\_t
+std::atomic std::atomic\_intptr\_t std::atomic std::atomic\_uintptr\_t
+std::atomic std::atomic\_size\_t std::atomic std::atomic\_ptrdiff\_t
+std::atomic std::atomic\_intmax\_t std::atomic std::atomic\_uintmax\_t
+std::atomic Simple example of using std::atomic\_int \#include //
+std::cout \#include // std::atomic, std::memory\_order\_relaxed
+\#include // std::thread std::atomic\_int foo (0); void set\_foo(int x)
+\{ foo.store(x,std::memory\_order\_relaxed); // set value atomically \}
+void print\_foo() \{ int x; do \{ x =
+foo.load(std::memory\_order\_relaxed); // get value atomically \} while
+(x==0); std::cout \textless\textless{} ``foo:'' \textless\textless{} x
+\textless\textless{} `\n'; \} int main () \{ std::thread first
+(print\_foo); std::thread second (set\_foo,10); first.join();
+//second.join(); return 0; \} //output: foo: 10
+
+\hypertarget{professional-notes-chapter-80-threading-1}{%
+\chapter{Professional Notes: Chapter 80:
+Threading}\label{professional-notes-chapter-80-threading-1}}
+
+Parameter other Details Takes ownership of other, other doesn't own the
+thread anymore func args Function to call in a separate thread Arguments
+for func Section 80.1: Creating a std::thread In C++, threads are
+created using the std::thread class. A thread is a separate ow of
+execution; it is analogous to having a helper perform one task while you
+simultaneously perform another. When all the code in the thread is
+executed, it terminates. When creating a thread, you need to pass
+something to be executed on it. A few things that you can pass to a
+thread: Free functions Member functions Functor objects Lambda
+expressions Free function example - executes a function on a separate
+thread (Live Example): \#include \#include void foo(int a) \{ std::cout
+\textless\textless{} a \textless\textless{} `\n'; \} int main() \{ //
+Create and execute the thread std::thread thread(foo, 10); // foo is the
+function to execute, 10 is the // argument to pass to it // Keep going;
+the thread is executed separately // Wait for the thread to finish; we
+stay here until it is done thread.join(); return 0; \} Member function
+example - executes a member function on a separate thread (Live
+Example): \#include \#include class Bar \{ public: void foo(int a) \{
+std::cout \textless\textless{} a \textless\textless{} `\n'; \} \}; int
+main() \{ Bar bar; // Create and execute the thread std::thread
+thread(\&Bar::foo, \&bar, 10); // Pass 10 to member function // The
+member function will be executed in a separate thread // Wait for the
+thread to finish, this is a blocking operation thread.join(); return 0;
+\} Functor object example (Live Example): \#include \#include class Bar
+\{ public: void operator()(int a) \{ std::cout \textless\textless{} a
+\textless\textless{} `\n'; \} \}; int main() \{ Bar bar; // Create and
+execute the thread std::thread thread(bar, 10); // Pass 10 to functor
+object // The functor object will be executed in a separate thread //
+Wait for the thread to finish, this is a blocking operation
+thread.join(); return 0; \} Lambda expression example (Live Example):
+\#include \#include int main() \{ auto lambda = \href{int\%20a}{} \{
+std::cout \textless\textless{} a \textless\textless{} `\n'; \}; //
+Create and execute the thread std::thread thread(lambda, 10); // Pass 10
+to the lambda expression // The lambda expression will be executed in a
+separate thread // Wait for the thread to finish, this is a blocking
+operation thread.join();  return 0; \} Section 80.2: Passing a
+reference to a thread You cannot pass a reference (or const reference)
+directly to a thread because std::thread will copy/move them. Instead,
+use std::reference\_wrapper: void foo(int\& b) \{ b = 10; \} int a = 1;
+std::thread thread\{ foo, std::ref(a) \}; //`a' is now really passed as
+reference thread.join(); std::cout \textless\textless{} a
+\textless\textless{} `\n'; //Outputs 10 void bar(const ComplexObject\&
+co) \{ co.doCalculations(); \} ComplexObject object; std::thread
+thread\{ bar, std::cref(object) \}; //`object' is passed as const\&
+thread.join(); std::cout \textless\textless{} object.getResult()
+\textless\textless{} `\n'; //Outputs the result Section 80.3: Using
+std::async instead of std::thread std::async is also able to make
+threads. Compared to std::thread it is considered less powerful but
+easier to use when you just want to run a function asynchronously.
+Asynchronously calling a function \#include \#include unsigned int
+square(unsigned int i)\{ return i*i; \} int main() \{ auto f =
+std::async(std::launch::async, square, 8); std::cout
+\textless\textless{} ``square currently running\n''; //do something
+while square is running std::cout \textless\textless{} ``result is''
+\textless\textless{} f.get() \textless\textless{} `\n'; //getting the
+result from square \} Common Pitfalls std::async returns a std::future
+that holds the return value that will be calculated by the function.
+When that future gets destroyed it waits until the thread completes,
+making your code eectively single threaded. This is easily overlooked
+when you don't need the return value: std::async(std::launch::async,
+square, 5); //thread already completed at this point, because the
+returning future got destroyed std::async works without a launch policy,
+so std::async(square, 5); compiles. When you do that the system gets to
+decide if it wants to create a thread or not. The idea was that the
+system chooses to make a thread unless it is already running more
+threads than it can run eciently. Unfortunately implementations commonly
+just choose not to create a thread in that situation, ever, so you need
+to override that behavior with std::launch::async which forces the
+system to create a thread. Beware of race conditions. More on async on
+Futures and Promises Section 80.4: Basic Synchronization Thread
+synchronization can be accomplished using mutexes, among other
+synchronization primitives. There are several mutex types provided by
+the standard library, but the simplest is std::mutex. To lock a mutex,
+you construct a lock on it. The simplest lock type is std::lock\_guard:
+std::mutex m; void worker() \{ std::lock\_guard guard(m); // Acquires a
+lock on the mutex // Synchronized code here \} // the mutex is
+automatically released when guard goes out of scope With
+std::lock\_guard the mutex is locked for the whole lifetime of the lock
+object. In cases where you need to manually control the regions for
+locking, use std::unique\_lock instead: std::mutex m; void worker() \{
+// by default, constructing a unique\_lock from a mutex will lock the
+mutex // by passing the std::defer\_lock as a second argument, we // can
+construct the guard in an unlocked state instead and // manually lock
+later. std::unique\_lock guard(m, std::defer\_lock); // the mutex is not
+locked yet! guard.lock(); // critical section guard.unlock(); // mutex
+is again released \} More Thread synchronization structures Section
+80.5: Create a simple thread pool C++11 threading primitives are still
+relatively low level. They can be used to write a higher level
+construct, like a thread pool: Version C++14 struct tasks \{ // the
+mutex, condition variable and deque form a single // thread-safe
+triggered queue of tasks: std::mutex m; std::condition\_variable v; //
+note that a packaged\_task can store a packaged\_task: 
+std::deque\textless std::packaged\_task\textless void()\textgreater\textgreater{}
+work; // this holds futures representing the worker threads being done:
+std::vector\textless std::future\textgreater{} finished; // queue(
+lambda ) will enqueue the lambda into the tasks for the threads // to
+use. A future of the type the lambda returns is given to let you get //
+the result out. template\textless class F, class
+R=std::result\_of\_t\textless F\&()\textgreater\textgreater{}
+std::future queue(F\&\& f) \{ // wrap the function object into a
+packaged task, splitting // execution from the return value:
+std::packaged\_task\textless R()\textgreater{} p(std::forward(f)); auto
+r=p.get\_future(); // get the return value before we hand off the task
+\{ std::unique\_lock l(m); work.emplace\_back(std::move(p)); // store
+the task\textless R()\textgreater{} as a
+task\textless void()\textgreater{} \} v.notify\_one(); // wake a thread
+to work on the task return r; // return the future result of the task \}
+// start N threads in the thread pool. void start(std::size\_t N=1)\{
+for (std::size\_t i = 0; i \textless{} N; ++i) \{ // each thread is a
+std::async running this-\textgreater thread\_task():
+finished.push\_back( std::async( std::launch::async, {[}this{]}\{
+thread\_task(); \} ) ); \} \} // abort() cancels all non-started tasks,
+and tells every working thread // stop running, and waits for them to
+finish up. void abort() \{ cancel\_pending(); finish(); \} //
+cancel\_pending() merely cancels all non-started tasks: void
+cancel\_pending() \{ std::unique\_lock l(m); work.clear(); \} // finish
+enques a ``stop the thread'' message for every thread, then waits for
+them: void finish() \{ \{ std::unique\_lock l(m);
+for(auto\&\&unused:finished)\{ work.push\_back(\{\}); \} \}
+v.notify\_all(); finished.clear(); \} \textasciitilde tasks() \{
+finish(); \} private: // the work that a worker thread does: void
+thread\_task() \{ while(true)\{ // pop a task off the queue:
+std::packaged\_task\textless void()\textgreater{} f; \{ // usual
+thread-safe queue code: std::unique\_lock l(m); if (work.empty())\{
+v.wait(l,{[}\&{]}\{return !work.empty();\}); \} f =
+std::move(work.front()); work.pop\_front(); \} // if the task is
+invalid, it means we are asked to abort: if (!f.valid()) return; //
+otherwise, run the task: f(); \} \} \}; tasks.queue( {[}{]}\{ return
+``hello world''s; \} ) returns a std::future, which when the tasks
+object gets around to running it is populated with hello world. You
+create threads by running tasks.start(10) (which starts 10 threads). The
+use of packaged\_task\textless void()\textgreater{} is merely because
+there is no type-erased std::function equivalent that stores move-only
+types. Writing a custom one of those would probably be faster than using
+packaged\_task\textless void()\textgreater. Live example. Version =
+C++11 In C++11, replace result\_of\_t with typename result\_of::type.
+More on Mutexes. Section 80.6: Ensuring a thread is always joined When
+the destructor for std::thread is invoked, a call to either join() or
+detach() must have been made. If a thread has not been joined or
+detached, then by default std::terminate will be called. Using RAII,
+this is generally simple enough to accomplish: class thread\_joiner \{
+public: thread\_joiner(std::thread t) : t\_(std::move(t)) \{ \}
+\textasciitilde thread\_joiner() \{ if(t\_.joinable()) \{ t\_.join(); \}
+ \} private: std::thread t\_; \} This is then used like so: void
+perform\_work() \{ // Perform some work \} void t() \{ thread\_joiner
+j\{std::thread(perform\_work)\}; // Do some other calculations while
+thread is running \} // Thread is automatically joined here This also
+provides exception safety; if we had created our thread normally and the
+work done in t() performing other calculations had thrown an exception,
+join() would never have been called on our thread and our process would
+have been terminated. Section 80.7: Operations on the current thread
+std::this\_thread is a namespace which has functions to do interesting
+things on the current thread from function it is called from. Function
+Description get\_id Returns the id of the thread sleep\_for Sleeps for a
+specied amount of time sleep\_until Sleeps until a specic time yield
+Reschedule running threads, giving other threads priority Getting the
+current threads id using std::this\_thread::get\_id: void foo() \{
+//Print this threads id std::cout \textless\textless{}
+std::this\_thread::get\_id() \textless\textless{} `\n'; \} std::thread
+thread\{ foo \}; thread.join(); //`threads' id has now been printed,
+should be something like 12556 foo(); //The id of the main thread is
+printed, should be something like 2420 Sleeping for 3 seconds using
+std::this\_thread::sleep\_for: void foo() \{
+std::this\_thread::sleep\_for(std::chrono::seconds(3)); \} std::thread
+thread\{ foo \}; foo.join(); std::cout \textless\textless{} ``Waited for
+3 seconds!\n''; Sleeping until 3 hours in the future using
+std::this\_thread::sleep\_until: void foo() \{
+std::this\_thread::sleep\_until(std::chrono::system\_clock::now() +
+std::chrono::hours(3)); \} std::thread thread\{ foo \}; thread.join();
+std::cout \textless\textless{} ``We are now located 3 hours after the
+thread has been called\n''; Letting other threads take priority using
+std::this\_thread::yield: void foo(int a) \{ for (int i = 0; i
+\textless{} al ++i) std::this\_thread::yield(); //Now other threads take
+priority, because this thread //isn't doing anything important std::cout
+\textless\textless{} ``Hello World!\n''; \} std::thread thread\{ foo, 10
+\}; thread.join(); Section 80.8: Using Condition Variables A condition
+variable is a primitive used in conjunction with a mutex to orchestrate
+communication between threads. While it is neither the exclusive or most
+ecient way to accomplish this, it can be among the simplest to those
+familiar with the pattern. One waits on a std::condition\_variable with
+a std::unique\_lock. This allows the code to safely examine shared state
+before deciding whether or not to proceed with acquisition. Below is a
+producer-consumer sketch that uses std::thread,
+std::condition\_variable, std::mutex, and a few others to make things
+interesting. \#include \#include \#include \#include \#include \#include
+\#include int main() \{ std::condition\_variable cond; std::mutex mtx; 
+std::queue intq; bool stopped = false; std::thread producer\{\href{}{\&}
+\{ // Prepare a random number generator. // Our producer will simply
+push random numbers to intq. // std::default\_random\_engine gen\{\};
+std::uniform\_int\_distribution dist\{\}; std::size\_t count = 4006;\\
+while(count--) \{\\
+// Always lock before changing // state guarded by a mutex and //
+condition\_variable (a.k.a. ``condvar''). std::lock\_guard L\{mtx\}; //
+Push a random int into the queue intq.push(dist(gen)); // Tell the
+consumer it has an int cond.notify\_one(); \} // All done. // Acquire
+the lock, set the stopped flag, // then inform the consumer.
+std::lock\_guard L\{mtx\}; std::cout \textless\textless{} ``Producer is
+done!'' \textless\textless{} std::endl; stopped = true;
+cond.notify\_one(); \}\}; std::thread consumer\{\href{}{\&} \{ do\{
+std::unique\_lock L\{mtx\}; cond.wait(L,\href{}{\&} \{ // Acquire the
+lock only if // we've stopped or the queue // isn't empty return stopped
+\textbar\textbar{} ! intq.empty(); \}); // We own the mutex here; pop
+the queue // until it empties out. while( ! intq.empty()) \{ const auto
+val = intq.front(); intq.pop(); std::cout \textless\textless{}
+``Consumer popped:'' \textless\textless{} val \textless\textless{}
+std::endl; \} if(stopped)\{ // producer has signaled a stop  std::cout
+\textless\textless{} ``Consumer is done!'' \textless\textless{}
+std::endl; break; \} \}while(true); \}\}; consumer.join();
+producer.join(); std::cout \textless\textless{} ``Example Completed!''
+\textless\textless{} std::endl; return 0; \} Section 80.9: Thread
+operations When you start a thread, it will execute until it is nished.
+Often, at some point, you need to (possibly - the thread may already be
+done) wait for the thread to nish, because you want to use the result
+for example. int n; std::thread thread\{ calculateSomething, std::ref(n)
+\}; //Doing some other stuff //We need `n' now! //Wait for the thread to
+finish - if it is not already done thread.join(); //Now `n' has the
+result of the calculation done in the separate thread std::cout
+\textless\textless{} n \textless\textless{} `\n'; You can also detach
+the thread, letting it execute freely: std::thread thread\{ doSomething
+\}; //Detaching the thread, we don't need it anymore (for whatever
+reason) thread.detach(); //The thread will terminate when it is done, or
+when the main thread returns Section 80.10: Thread-local storage
+Thread-local storage can be created using the thread\_local keyword. A
+variable declared with the thread\_local specier is said to have thread
+storage duration. Each thread in a program has its own copy of each
+thread-local variable. A thread-local variable with function (local)
+scope will be initialized the rst time control passes through its
+denition. Such a variable is implicitly static, unless declared extern.
+A thread-local variable with namespace or class (non-local) scope will
+be initialized as part of thread startup. Thread-local variables are
+destroyed upon thread termination. A member of a class can only be
+thread-local if it is static. There will therefore be one copy of that
+variable per thread, rather than one copy per (thread, instance) pair.
+Example: void debug\_counter() \{ thread\_local int count = 0;
+Logger::log(``This function has been called \%d times by this thread'',
+++count); \} Section 80.11: Reassigning thread objects We can create
+empty thread objects and assign work to them later. If we assign a
+thread object to another active, joinable thread, std::terminate will
+automatically be called before the thread is replaced. \#include void
+foo() \{ std::this\_thread::sleep\_for(std::chrono::seconds(3)); \}
+//create 100 thread objects that do nothing std::thread
+executors{[}100{]}; // Some code // I want to create some threads now
+for (int i = 0;i \textless{} 100;i++) \{ // If this object doesn't have
+a thread assigned if (!executors{[}i{]}.joinable()) executors{[}i{]} =
+std::thread(foo); \}
+
+\hypertarget{professional-notes-chapter-85-mutexes-1}{%
+\chapter{Professional Notes: Chapter 85:
+Mutexes}\label{professional-notes-chapter-85-mutexes-1}}
+
+Section 85.1: Mutex Types C++1x oers a selection of mutex classes:
+std::mutex - oers simple locking functionality. std::timed\_mutex - oers
+try\_to\_lock functionality std::recursive\_mutex - allows recursive
+locking by the same thread. std::shared\_mutex,
+std::shared\_timed\_mutex - oers shared and unique lock functionality.
+Section 85.2: std::lock std::lock uses deadlock avoidance algorithms to
+lock one or more mutexes. If an exception is thrown during a call to
+lock multiple objects, std::lock unlocks the successfully locked objects
+before re-throwing the exception. std::lock(\_mutex1, \_mutex2); Section
+85.3: std::unique\_lock, std::shared\_lock, std::lock\_guard Used for
+the RAII style acquiring of try locks, timed try locks and recursive
+locks. std::unique\_lock allows for exclusive ownership of mutexes.
+std::shared\_lock allows for shared ownership of mutexes. Several
+threads can hold std::shared\_locks on a std::shared\_mutex. Available
+from C++ 14. std::lock\_guard is a lightweight alternative to
+std::unique\_lock and std::shared\_lock. \#include \#include \#include
+\#include \#include \#include class PhoneBook \{ public: std::string
+getPhoneNo( const std::string \& name ) \{ std::shared\_lock
+l(\_protect); auto it = \_phonebook.find( name ); if ( it !=
+\_phonebook.end() ) return (*it).second; return ""; \} void addPhoneNo (
+const std::string \& name, const std::string \& phone ) \{
+std::unique\_lock l(\_protect); \_phonebook{[}name{]} = phone; \}
+std::shared\_timed\_mutex \_protect;
+std::unordered\_map\textless std::string,std::string\textgreater{}
+\_phonebook; \}; Section 85.4: Strategies for lock classes:
+std::try\_to\_lock, std::adopt\_lock, std::defer\_lock When creating a
+std::unique\_lock, there are three dierent locking strategies to choose
+from: std::try\_to\_lock, std::defer\_lock and std::adopt\_lock 1.
+std::try\_to\_lock allows for trying a lock without blocking: \{
+std::atomic\_int temp \{0\}; std::mutex \_mutex; std::thread t(
+\href{}{\&}\{ while( temp!= -1)\{
+std::this\_thread::sleep\_for(std::chrono::seconds(5));
+std::unique\_lock lock( \_mutex, std::try\_to\_lock);
+if(lock.owns\_lock())\{ //do something temp=0; \} \} \}); while ( true )
+\{ std::this\_thread::sleep\_for(std::chrono::seconds(1));
+std::unique\_lock lock( \_mutex, std::try\_to\_lock);
+if(lock.owns\_lock())\{ if (temp \textless{} INT\_MAX)\{ ++temp; \}
+std::cout \textless\textless{} temp \textless\textless{} std::endl; \}
+\} \} 2. std::defer\_lock allows for creating a lock structure without
+acquiring the lock. When locking more than one mutex, there is a window
+of opportunity for a deadlock if two function callers try to acquire the
+locks at the same time: \{ std::unique\_lock lock1(\_mutex1,
+std::defer\_lock); std::unique\_lock lock2(\_mutex2, std::defer\_lock);
+lock1.lock() lock2.lock(); // deadlock here std::cout
+\textless\textless{} "Locked! \textless\textless{} std::endl; //\ldots{}
+\} With the following code, whatever happens in the function, the locks
+are acquired and released in appropriate order: \{ std::unique\_lock
+lock1(\_mutex1, std::defer\_lock); std::unique\_lock lock2(\_mutex2,
+std::defer\_lock);  std::lock(lock1,lock2); // no deadlock possible
+std::cout \textless\textless{} "Locked! \textless\textless{} std::endl;
+//\ldots{} \} 3. std::adopt\_lock does not attempt to lock a second time
+if the calling thread currently owns the lock. \{ std::unique\_lock
+lock1(\_mutex1, std::adopt\_lock); std::unique\_lock lock2(\_mutex2,
+std::adopt\_lock); std::cout \textless\textless{} "Locked!
+\textless\textless{} std::endl; //\ldots{} \} Something to keep in mind
+is that std::adopt\_lock is not a substitute for recursive mutex usage.
+When the lock goes out of scope the mutex is released. Section 85.5:
+std::mutex std::mutex is a simple, non-recursive synchronization
+structure that is used to protect data which is accessed by multiple
+threads. std::atomic\_int temp\{0\}; std::mutex \_mutex; std::thread t(
+\href{}{\&}\{ while( temp!= -1)\{
+std::this\_thread::sleep\_for(std::chrono::seconds(5));
+std::unique\_lock lock( \_mutex); temp=0; \} \}); while ( true ) \{
+std::this\_thread::sleep\_for(std::chrono::milliseconds(1));
+std::unique\_lock lock( \_mutex, std::try\_to\_lock); if ( temp
+\textless{} INT\_MAX ) temp++; cout \textless\textless{} temp
+\textless\textless{} endl; \} Section 85.6: std::scoped\_lock (C++ 17)
+std::scoped\_lock provides RAII style semantics for owning one more
+mutexes, combined with the lock avoidance algorithms used by std::lock.
+When std::scoped\_lock is destroyed, mutexes are released in the reverse
+order from which they where acquired. \{ std::scoped\_lock
+lock\{\_mutex1,\_mutex2\}; //do something \}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{chapter-16-concurrency-with-openmp}{%
+\chapter{Chapter 16: Concurrency with
+OpenMP}\label{chapter-16-concurrency-with-openmp}}
+
+OpenMP (Open Multi-Processing) is an API that supports multi-platform
+shared-memory multiprocessing programming in C, C++, and Fortran. It is
+widely used in high-performance computing (HPC) for parallelizing loops
+and sections of code with simple directives.
+
+\hypertarget{getting-started-with-openmp}{%
+\section{16.1 Getting Started with
+OpenMP}\label{getting-started-with-openmp}}
+
+OpenMP uses compiler directives (\passthrough{\lstinline!\#pragma omp!})
+to parallelize code.
+
+\hypertarget{parallel-regions}{%
+\subsection{1. Parallel Regions}\label{parallel-regions}}
+
+The most basic directive is
+\passthrough{\lstinline!\#pragma omp parallel!}. It creates a team of
+threads to execute the following block.
+
+\begin{lstlisting}[language={C++}]
+#include <iostream>
+#include <omp.h>
+
+int main() {
+    #pragma omp parallel
+    {
+        int id = omp_get_thread_num();
+        std::cout << "Hello from thread " << id << std::endl;
+    }
+    return 0;
+}
+\end{lstlisting}
+
+\hypertarget{parallelizing-loops}{%
+\subsection{2. Parallelizing Loops}\label{parallelizing-loops}}
+
+OpenMP excels at parallelizing independent iterations of a loop.
+
+\begin{lstlisting}[language={C++}]
+#pragma omp parallel for
+for (int i = 0; i < 1000; i++) {
+    results[i] = compute(i);
+}
+\end{lstlisting}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{data-sharing-attributes}{%
+\section{16.2 Data Sharing Attributes}\label{data-sharing-attributes}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{\passthrough{\lstinline!shared!}}: Variables are accessible by
+  all threads.
+\item
+  \textbf{\passthrough{\lstinline!private!}}: Each thread has its own
+  local copy of the variable.
+\item
+  \textbf{\passthrough{\lstinline!reduction!}}: Combines private copies
+  into a single shared variable (e.g., sum, product).
+\end{itemize}
+
+\begin{lstlisting}[language={C++}]
+double total = 0;
+#pragma omp parallel for reduction(+:total)
+for (int i = 0; i < 100; i++) {
+    total += data[i];
+}
+\end{lstlisting}
+
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 0\tabcolsep) * \real{0.06}}@{}}
+\toprule
+\endhead
+\#\#\# Professional Notes: OpenMP Performance \\
+\#\#\#\# 1. Scheduling Strategies OpenMP provides different ways to
+distribute loop iterations: * \passthrough{\lstinline!static!}:
+Fixed-size chunks assigned at compile time (Low overhead). *
+\passthrough{\lstinline!dynamic!}: Chunks assigned at runtime as threads
+become free (Better for unbalanced workloads). *
+\passthrough{\lstinline!guided!}: Chunks start large and shrink over
+time to reduce tail-latency. \\
+\#\#\#\# 2. False Sharing and Padding \textbf{Godhood Warning}: Avoid
+``False Sharing,'' where multiple threads write to different variables
+that happen to be on the same CPU cache line. This causes the cache line
+to be repeatedly invalidated across cores, drastically reducing
+performance. * \textbf{Fix}: Pad your data structures or ensure threads
+work on data that is spaced apart in memory. \\
+\#\#\#\# 3. Thread Affinity Use environment variables like
+\passthrough{\lstinline!OMP\_PROC\_BIND=true!} to bind threads to
+specific physical CPU cores, improving cache hits by preventing threads
+from migrating between cores. \\
+\bottomrule
+\end{longtable}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{volume-03-refinement-generics-c14}{%
+\chapter{VOLUME 03 REFINEMENT GENERICS
+C14}\label{volume-03-refinement-generics-c14}}
