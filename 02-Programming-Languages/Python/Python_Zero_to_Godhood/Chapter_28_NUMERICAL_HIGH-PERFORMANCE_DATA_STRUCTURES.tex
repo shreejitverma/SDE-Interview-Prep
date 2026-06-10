@@ -1,0 +1,168 @@
+\hypertarget{numerical-high-performance-data-structures}{%
+\chapter{NUMERICAL HIGH-PERFORMANCE DATA
+STRUCTURES}\label{numerical-high-performance-data-structures}}
+
+\hypertarget{numpy-contiguous-layouts-and-strides}{%
+\subsection{28.1 NumPy Contiguous Layouts and
+Strides}\label{numpy-contiguous-layouts-and-strides}}
+
+NumPy arrays are designed to speed up mathematical operations on
+homogeneous datasets by utilizing contiguous blocks of memory. Unlike
+standard Python lists, which contain pointers to scattered object
+instances, a NumPy array stores the raw values directly in a single,
+contiguous array block, which maximizes cache hit rates.
+
+\hypertarget{c-contiguous-vs.-fortran-contiguous-layouts}{%
+\subsubsection{1. C-Contiguous vs.~Fortran-Contiguous
+Layouts}\label{c-contiguous-vs.-fortran-contiguous-layouts}}
+
+The mapping of multi-dimensional arrays to linear virtual memory is
+defined by the array's layout: * \textbf{C-Contiguous (Row-Major)}:
+Elements along rows are stored adjacent to each other in memory. The
+last index changes fastest when traversing the memory sequentially. This
+is the default layout in NumPy. * \textbf{Fortran-Contiguous
+(Column-Major)}: Elements along columns are stored adjacent to each
+other in memory. The first index changes fastest when traversing memory
+sequentially.
+
+\begin{lstlisting}
+2D Array Layout (3x3):
+  [[1, 2, 3],
+   [4, 5, 6],
+   [7, 8, 9]]
+
+C-Contiguous (Row-Major):
+  [ 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 ]
+
+Fortran-Contiguous (Column-Major):
+  [ 1 | 4 | 7 | 2 | 5 | 8 | 3 | 6 | 9 ]
+\end{lstlisting}
+
+\hypertarget{stride-calculations}{%
+\subsubsection{2. Stride Calculations}\label{stride-calculations}}
+
+NumPy locates any element in an N-dimensional array using its
+\textbf{strides} vector. A stride defines the number of bytes that must
+be skipped in memory to move to the next index in a given dimension.
+
+For a 2D array of shape \((R, C)\) and data type size \(D\) (in bytes),
+the stride vectors are:
+
+\[\text{Strides}_C = (C \times D, D) \quad (\text{Row-Major / C-Contiguous})\]
+
+\[\text{Strides}_F = (D, R \times D) \quad (\text{Column-Major / Fortran-Contiguous})\]
+
+\[\text{Memory Address} = \text{Base Address} + \sum_{i=0}^{N-1} (\text{Index}_i \times \text{Stride}_i)\]
+
+For example, given a 3x3 array of 64-bit floats (\(D = 8\) bytes) in
+C-contiguous layout: * \passthrough{\lstinline!strides!} =
+\passthrough{\lstinline!(24, 8)!}. To move to the next row, jump 24
+bytes (3 elements). To move to the next column, jump 8 bytes (1
+element).
+
+Accessing elements along strides that do not match the contiguous memory
+direction (e.g.~slicing rows from a column-major array) breaks CPU cache
+locality, as the processor must retrieve values from scattered memory
+addresses (cache misses).
+
+\hypertarget{vectorization-and-simd-pipelines}{%
+\subsubsection{3. Vectorization and SIMD
+Pipelines}\label{vectorization-and-simd-pipelines}}
+
+Contiguous arrays enable compiler vectorization. Instead of executing
+operations on individual elements sequentially (Scalar execution),
+modern CPU architectures support \textbf{Single Instruction, Multiple
+Data (SIMD)} instructions (e.g.~AVX-512, ARM NEON).
+
+\begin{lstlisting}
+Scalar Addition (Iterative loops):
+  Step 1: A[0] + B[0] -> C[0]
+  Step 2: A[1] + B[1] -> C[1]
+  ...
+
+SIMD Vector Addition (Single clock cycle):
+  Vector Register A: [ A[0] | A[1] | A[2] | A[3] ]
+                               +
+  Vector Register B: [ B[0] | B[1] | B[2] | B[3] ]
+                               =
+  Vector Register C: [ C[0] | C[1] | C[2] | C[3] ]
+\end{lstlisting}
+
+By storing numbers contiguously, CPython's underlying math libraries
+(like BLAS or LAPACK) load entire memory blocks into hardware vector
+registers, computing operations across multiple elements in a single CPU
+clock cycle.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{pyarrow-columnar-format-and-zero-copy-sharing}{%
+\subsection{28.2 PyArrow Columnar Format and Zero-Copy
+Sharing}\label{pyarrow-columnar-format-and-zero-copy-sharing}}
+
+For large-scale data analysis or microservice architectures, exchanging
+dataframes between distinct processes (like C++ loaders, Python
+analytics scripts, and JVM processing nodes) introduces performance
+bottlenecks.
+
+\hypertarget{apache-arrow-columnar-format}{%
+\subsubsection{1. Apache Arrow Columnar
+Format}\label{apache-arrow-columnar-format}}
+
+\textbf{PyArrow} implements the Apache Arrow format, which defines a
+standardized, language-independent \textbf{columnar memory layout}.
+
+\begin{lstlisting}
+Record-Oriented Layout (Standard CSV / Database):
+[Row 0: ID, Name, Salary] | [Row 1: ID, Name, Salary] | ...
+
+Columnar-Oriented Layout (Apache Arrow):
+[All IDs (contiguous)] | [All Names (contiguous)] | [All Salaries (contiguous)]
+\end{lstlisting}
+
+Columnar storage optimizes performance in three ways: *
+\textbf{Vectorized Scan Operations}: The CPU can scan a single attribute
+column (e.g.~calculating average salary) without loading unrelated
+columns (like Name or ID) into cache memory. * \textbf{Contiguity}:
+Column values are stored contiguously, allowing direct SIMD instruction
+execution. * \textbf{Null Bitmaps}: Null values are tracked in a
+separate bit mask, avoiding sentinel values inside the data array.
+
+\hypertarget{zero-copy-sharing-protocols}{%
+\subsubsection{2. Zero-Copy Sharing
+Protocols}\label{zero-copy-sharing-protocols}}
+
+Because Arrow memory layouts are identical across languages, PyArrow can
+map memory buffers across process boundaries using shared memory or
+plasma stores without performing copying or serialization.
+
+Below is an example mapping data between PyArrow tables and Python
+memory layouts with zero-copy overhead:
+
+\begin{lstlisting}[language=Python]
+import pyarrow as pa
+import numpy as np
+
+# Create a contiguous NumPy array
+np_data = np.arange(1_000_000, dtype=np.int64)
+
+# Wrap the NumPy array directly in a PyArrow Buffer
+# PyArrow shares the memory address pointer of the NumPy array (zero-copy)
+arrow_array = pa.Array.from_numpy_to_arrow(np_data)
+
+# Create an Arrow Table
+table = pa.Table.from_arrays([arrow_array], names=['metrics'])
+
+# Verify that the underlying memory address remains identical
+np_address = np_data.__array_interface__['data'][0]
+arrow_address = table.column(0).chunks[0].buffers()[1].address
+
+print(f"NumPy Memory Address: {hex(np_address)}")
+print(f"Arrow Memory Address: {hex(arrow_address)}")
+print(f"Are addresses identical (Zero-Copy)? {np_address == arrow_address}")
+\end{lstlisting}
+
+--- Papermill, pandas, and machine-learning frameworks (like PyTorch or
+TensorFlow) utilize PyArrow columns as direct input sources, bypassing
+serialization bottlenecks and memory duplication.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}

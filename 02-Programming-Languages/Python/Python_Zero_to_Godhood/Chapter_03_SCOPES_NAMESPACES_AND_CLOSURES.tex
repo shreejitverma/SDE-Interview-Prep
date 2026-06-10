@@ -1,0 +1,133 @@
+\hypertarget{scopes-namespaces-and-closures}{%
+\chapter{SCOPES, NAMESPACES, AND
+CLOSURES}\label{scopes-namespaces-and-closures}}
+
+\hypertarget{the-legb-name-resolution-engine}{%
+\subsection{3.1 The LEGB Name Resolution
+Engine}\label{the-legb-name-resolution-engine}}
+
+When CPython decodes variables at runtime, it evaluates namespaces
+sequentially: 1. \textbf{L (Local)}: Fast array lookup inside the active
+\passthrough{\lstinline!PyFrameObject!} (for variables defined inside
+the current function frame). 2. \textbf{E (Enclosing)}: Looks up
+variables in active parent frames (closures). 3. \textbf{G (Global)}:
+Lookup inside the module's dictionary
+\passthrough{\lstinline!\_\_dict\_\_!}. 4. \textbf{B (Built-in)}: Lookup
+inside the standard built-in namespace module dictionary
+\passthrough{\lstinline!\_\_builtins\_\_!}.
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Bytecode Indicators}: The compiler dictates lookup speeds:
+
+  \begin{itemize}
+  \tightlist
+  \item
+    \passthrough{\lstinline!LOAD\_FAST!}: Direct index read from the
+    local frame variables array. Extremely fast.
+  \item
+    \passthrough{\lstinline!LOAD\_DEREF!}: Loads a variable enclosed in
+    a cell (closure).
+  \item
+    \passthrough{\lstinline!LOAD\_GLOBAL!}: Searches module global dict,
+    followed by built-in dict.
+  \item
+    \passthrough{\lstinline!LOAD\_NAME!}: Fallback lookup used at the
+    module top level.
+  \end{itemize}
+\end{itemize}
+
+\begin{lstlisting}[language=Python]
+import dis
+
+def fast_local_demo(x):
+    y = x + 1
+    return y
+
+print("Bytecode optimizing local lookups:")
+dis.dis(fast_local_demo)
+\end{lstlisting}
+
+\begin{lstlisting}
+  2           0 LOAD_FAST                0 (x)
+              2 LOAD_CONST                1 (1)
+              4 BINARY_ADD
+              6 STORE_FAST               1 (y)
+
+  3           8 LOAD_FAST                1 (y)
+             10 RETURN_VALUE
+\end{lstlisting}
+
+Notice the compiler emits \passthrough{\lstinline!LOAD\_FAST!} and
+\passthrough{\lstinline!STORE\_FAST!} for local scopes rather than
+dictionary calls.
+
+\hypertarget{closure-mechanics-pycellobject-and-free-variables}{%
+\subsection{3.2 Closure Mechanics: PyCellObject and Free
+Variables}\label{closure-mechanics-pycellobject-and-free-variables}}
+
+When a function executes, its frame object is popped off the stack, and
+local variables are reclaimed. However, closures require variables from
+enclosing scopes to remain alive. * \textbf{The Cell Structure}: Python
+solves this using \passthrough{\lstinline!PyCellObject!} structs. - If a
+variable is enclosed by an inner function, the compiler marks it as a
+``cell variable''. - Instead of placing the raw value on the local frame
+stack, CPython wraps it inside a \passthrough{\lstinline!PyCellObject!}
+(which lives on the heap). - Both outer and inner functions store
+pointers to this shared cell, keeping the variable alive even after the
+outer function terminates.
+
+\begin{lstlisting}
+Closure Cell Layout:
+[Outer Frame] ---> [Cell: PyCellObject] <--- [Inner Frame]
+                         |
+                         v
+                  [Value: PyObject]
+\end{lstlisting}
+
+Let's trace cell internals using the \passthrough{\lstinline!inspect!}
+module:
+
+\begin{lstlisting}[language=Python]
+import inspect
+
+def outer_scope(multiplier):
+    secret_value = 100
+    def inner_scope(val):
+        # 'secret_value' and 'multiplier' are free variables
+        return val * multiplier + secret_value
+    return inner_scope
+
+closure_fn = outer_scope(5)
+
+# Inspect closure cells
+for i, cell in enumerate(closure_fn.__closure__):
+    print(f"Cell {i} contents:", cell.cell_contents)
+
+print("Free variables list (co_freevars):", closure_fn.__code__.co_freevars)
+\end{lstlisting}
+
+\hypertarget{scope-execution-properties}{%
+\subsection{3.3 Scope Execution
+Properties}\label{scope-execution-properties}}
+
+We can verify which variables are mapped to cells versus free variables
+by checking the compiled code object lists: *
+\passthrough{\lstinline!co\_cellvars!}: Tuple containing names of local
+variables referenced by nested functions. *
+\passthrough{\lstinline!co\_freevars!}: Tuple containing names of
+variables referenced from enclosing scopes.
+
+\begin{lstlisting}[language=Python]
+def parent():
+    cell_var = "shared"
+    def child():
+        print(cell_var) # free variable
+    return child
+
+print("Parent cell vars:", parent.__code__.co_cellvars)
+print("Child free vars:", parent().__code__.co_freevars)
+\end{lstlisting}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}

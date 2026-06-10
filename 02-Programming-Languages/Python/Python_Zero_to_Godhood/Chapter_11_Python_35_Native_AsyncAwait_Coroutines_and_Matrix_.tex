@@ -1,0 +1,477 @@
+\hypertarget{python-3.5-native-asyncawait-coroutines-and-matrix-operations}{%
+\chapter{Python 3.5: Native Async/Await Coroutines and Matrix
+Operations}\label{python-3.5-native-asyncawait-coroutines-and-matrix-operations}}
+
+\hypertarget{pep-492-native-coroutines-asyncawait-internals}{%
+\subsection{\texorpdfstring{11.1 PEP 492: Native Coroutines
+(\texttt{async/await}
+Internals)}{11.1 PEP 492: Native Coroutines (async/await Internals)}}\label{pep-492-native-coroutines-asyncawait-internals}}
+
+Python 3.5 introduced native coroutines via PEP 492, establishing a
+clear separation between standard generators and asynchronous tasks to
+prevent logical developer errors.
+
+\hypertarget{the-generator-coroutine-limitation}{%
+\subsubsection{1. The Generator-Coroutine
+Limitation}\label{the-generator-coroutine-limitation}}
+
+In Python 3.4, coroutines were decorated generators
+(\passthrough{\lstinline!@asyncio.coroutine!}). Under the hood, these
+coroutines were instances of \passthrough{\lstinline!PyGenObject!}.
+Because they shared the same C type as standard generators, they exposed
+the standard iterator protocol. Developers could mistakenly iterate over
+a coroutine using a \passthrough{\lstinline!for!} loop or call
+\passthrough{\lstinline!next()!} on it directly, causing unexpected
+runtime behavior. Additionally, this lack of syntactic separation meant
+that: * The interpreter could not perform static analysis to detect
+missing
+\passthrough{\lstinline!await!}/\passthrough{\lstinline!yield from!}
+calls on coroutine objects. * It was possible to call
+\passthrough{\lstinline!next(coro())!} directly, stepping the generator
+and bypassing the event loop's state machine. * The
+\passthrough{\lstinline!yield from!} syntax was overloaded, being used
+for both yielding from standard generators and awaiting asynchronous
+tasks, creating a high degree of cognitive load and making code
+refactoring prone to errors.
+
+\hypertarget{cpython-representation-pycoroobject}{%
+\subsubsection{\texorpdfstring{2. CPython Representation:
+\texttt{PyCoroObject}}{2. CPython Representation: PyCoroObject}}\label{cpython-representation-pycoroobject}}
+
+Native coroutines declared using \passthrough{\lstinline!async def!}
+compile directly to a specialized C structure,
+\passthrough{\lstinline!PyCoroObject!}
+(\passthrough{\lstinline!Include/genobject.h!}):
+
+\begin{lstlisting}[language=C]
+typedef struct {
+    PyObject_HEAD
+    struct _frame *cr_frame;     /* Frame object executing coroutine code */
+    PyObject *cr_code;          /* Code object compiled from async def */
+    PyObject *cr_name;          /* Coroutine name */
+    PyObject *cr_qualname;      /* Qualified name */
+    PyObject *cr_origin;        /* Awaited task or future origin trace */
+    PyObject *cr_weakreflist;   /* Weak reference list pointer */
+    char cr_running;            /* Flag indicating if coroutine is active */
+} PyCoroObject;
+\end{lstlisting}
+
+Let's break down the role of each field in the CPython runtime: *
+\textbf{\passthrough{\lstinline!PyObject\_HEAD!}}: The standard object
+header containing the reference counter
+(\passthrough{\lstinline!ob\_refcnt!}) and the pointer to the type
+object (\passthrough{\lstinline!ob\_type!}). In this case,
+\passthrough{\lstinline!ob\_type!} points to the
+\passthrough{\lstinline!PyCoro\_Type!} struct. *
+\textbf{\passthrough{\lstinline!cr\_frame!}}: A pointer to the execution
+frame (\passthrough{\lstinline!PyFrameObject!}). It holds the local
+execution state, the bytecode pointer, the local evaluation stack, and
+local variable cells. * \textbf{\passthrough{\lstinline!cr\_code!}}:
+Points to the \passthrough{\lstinline!PyCodeObject!} representing the
+compiled bytecode. * \textbf{\passthrough{\lstinline!cr\_name!}}: The
+coroutine's name (represented by a
+\passthrough{\lstinline!PyUnicodeObject!}). *
+\textbf{\passthrough{\lstinline!cr\_qualname!}}: The qualified name
+(e.g.~\passthrough{\lstinline!ClassName.method\_name!}). *
+\textbf{\passthrough{\lstinline!cr\_origin!}}: If debugging is enabled
+via
+\passthrough{\lstinline!sys.set\_coroutine\_origin\_tracking\_depth()!},
+this pointer stores a traceback tuple showing where the coroutine was
+instantiated, enabling deep debugging of orphaned or un-awaited
+coroutines. * \textbf{\passthrough{\lstinline!cr\_weakreflist!}}: Head
+of a doubly-linked list of weak reference objects pointing to this
+coroutine. * \textbf{\passthrough{\lstinline!cr\_running!}}: A
+single-byte boolean flag. If \passthrough{\lstinline!cr\_running!} is
+true, it indicates the coroutine frame is currently executing. Any
+attempt to resume the coroutine from another context will raise a
+\passthrough{\lstinline!RuntimeError: coroutine already running!},
+protecting the runtime from re-entrant frame execution.
+
+Because \passthrough{\lstinline!PyCoroObject!} is a distinct C type, it
+does not implement sequence or iterator slots
+(\passthrough{\lstinline!tp\_iter!} is NULL), preventing standard
+iteration errors.
+
+\hypertarget{the-am_await-slot-protocol}{%
+\subsubsection{\texorpdfstring{3. The \texttt{am\_await} Slot
+Protocol}{3. The am\_await Slot Protocol}}\label{the-am_await-slot-protocol}}
+
+Instead of iteration slots, \passthrough{\lstinline!PyCoroObject!}
+implements the \passthrough{\lstinline!tp\_as\_async!} protocol table,
+specifically the \passthrough{\lstinline!am\_await!} slot:
+
+\begin{lstlisting}[language=C]
+typedef struct {
+    unaryfunc am_await;         /* __await__ implementation pointer */
+    unaryfunc am_aiter;         /* __aiter__ implementation pointer */
+    unaryfunc am_anext;         /* __anext__ implementation pointer */
+} PyAsyncMethods;
+\end{lstlisting}
+
+When an object is awaited via \passthrough{\lstinline!await expr!}, the
+CPython interpreter executes the following internal evaluation loop
+logic: 1. It checks if the object's type has
+\passthrough{\lstinline!tp\_as\_async!} populated and if
+\passthrough{\lstinline!tp\_as\_async->am\_await!} is non-NULL. 2. If
+yes, it calls \passthrough{\lstinline!am\_await(expr)!}. This slot
+function MUST return an iterator (an object that implements
+\passthrough{\lstinline!tp\_iternext!}). 3. For native coroutines
+(\passthrough{\lstinline!PyCoroObject!}), their type has a custom
+\passthrough{\lstinline!am\_await!} slot that wraps the coroutine in a
+\passthrough{\lstinline!PyCoroWrapper!} (or returns a wrapper that
+exposes standard iterator operations for the event loop to drive). 4.
+For user-defined classes, a custom
+\passthrough{\lstinline!\_\_await\_\_!} method is defined. At the C
+level, this maps to \passthrough{\lstinline!am\_await!} resolving the
+python-level \passthrough{\lstinline!\_\_await\_\_!} method. It must
+return an iterator.
+
+\begin{lstlisting}[language=Python]
+# User-level custom awaitable implementation
+class DatabaseConnection:
+    def __await__(self):
+        # We yield control back to the event loop if the socket is not ready
+        while not self.is_connected():
+            yield None
+        return self._connection
+\end{lstlisting}
+
+\hypertarget{bytecode-compilation-and-tracing-get_awaitable}{%
+\subsubsection{\texorpdfstring{4. Bytecode Compilation and Tracing:
+\texttt{GET\_AWAITABLE}}{4. Bytecode Compilation and Tracing: GET\_AWAITABLE}}\label{bytecode-compilation-and-tracing-get_awaitable}}
+
+When the compiler parses an \passthrough{\lstinline!await expression!}
+statement, it emits a specialized
+\textbf{\passthrough{\lstinline!GET\_AWAITABLE!}} bytecode instruction:
+1. \passthrough{\lstinline!GET\_AWAITABLE!} pops the expression result
+off the evaluation stack. 2. The VM checks if the object implements the
+\passthrough{\lstinline!am\_await!} slot (either natively or via class
+overrides). 3. If valid, the VM calls the slot to retrieve the awaitable
+iterator and pushes it onto the stack. If not valid, it raises a
+\passthrough{\lstinline!TypeError!}. 4. This is followed by a delegation
+loop (similar to \passthrough{\lstinline!yield from!}) that yields
+control back to the event loop if the awaitable is pending.
+
+Let's trace the compiled bytecodes of an asynchronous execution path.
+Consider the following code:
+
+\begin{lstlisting}[language=Python]
+async def get_val():
+    return 42
+
+async def main():
+    val = await get_val()
+\end{lstlisting}
+
+The CPython 3.5 compiler generates the following disassemblies:
+
+\hypertarget{disassembly-of-get_val}{%
+\paragraph{\texorpdfstring{Disassembly of
+\texttt{get\_val}:}{Disassembly of get\_val:}}\label{disassembly-of-get_val}}
+
+\begin{lstlisting}
+  2           0 LOAD_CONST               1 (42)
+              3 RETURN_VALUE
+\end{lstlisting}
+
+\hypertarget{disassembly-of-main}{%
+\paragraph{\texorpdfstring{Disassembly of
+\texttt{main}:}{Disassembly of main:}}\label{disassembly-of-main}}
+
+\begin{lstlisting}
+  5           0 LOAD_GLOBAL              0 (get_val)
+              3 CALL_FUNCTION            0
+              6 GET_AWAITABLE            0
+              9 LOAD_CONST               0 (None)
+             12 YIELD_FROM               0
+             15 STORE_FAST               0 (val)
+             18 LOAD_CONST               0 (None)
+             21 RETURN_VALUE
+\end{lstlisting}
+
+\hypertarget{step-by-step-vm-execution-trace-of-main}{%
+\paragraph{\texorpdfstring{Step-by-Step VM Execution Trace of
+\texttt{main()}:}{Step-by-Step VM Execution Trace of main():}}\label{step-by-step-vm-execution-trace-of-main}}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  \textbf{\passthrough{\lstinline!LOAD\_GLOBAL 0!}}: Resolves the
+  identifier \passthrough{\lstinline!get\_val!} from the global
+  namespace dictionary and pushes the function object onto the
+  evaluation stack.
+\item
+  \textbf{\passthrough{\lstinline!CALL\_FUNCTION 0!}}: Invokes
+  \passthrough{\lstinline!get\_val()!}. Since it was defined with
+  \passthrough{\lstinline!async def!}, the VM immediately creates a new
+  \passthrough{\lstinline!PyCoroObject!} and pushes it onto the
+  evaluation stack. Note that the body of
+  \passthrough{\lstinline!get\_val!} does not execute yet.
+\item
+  \textbf{\passthrough{\lstinline!GET\_AWAITABLE!}}:
+
+  \begin{itemize}
+  \tightlist
+  \item
+    Pops the \passthrough{\lstinline!PyCoroObject!} off the stack.
+  \item
+    Accesses
+    \passthrough{\lstinline!ob\_type->tp\_as\_async->am\_await!}.
+  \item
+    Executes the slot, which wraps the native coroutine or verifies it
+    is ready to be driven.
+  \item
+    Pushes the resulting awaitable iterator back onto the stack.
+  \end{itemize}
+\item
+  \textbf{\passthrough{\lstinline!LOAD\_CONST 0!}}: Pushes
+  \passthrough{\lstinline!None!} onto the stack as the priming value.
+\item
+  \textbf{\passthrough{\lstinline!YIELD\_FROM!}}:
+
+  \begin{itemize}
+  \tightlist
+  \item
+    Performs a loop that mimics \passthrough{\lstinline!yield from!}
+    behavior.
+  \item
+    It pops the value (\passthrough{\lstinline!None!}) and sends it to
+    the awaitable iterator by invoking its
+    \passthrough{\lstinline!tp\_iternext!} (or equivalent
+    \passthrough{\lstinline!send!} slot).
+  \item
+    The sub-frame \passthrough{\lstinline!get\_val!} runs and reaches
+    \passthrough{\lstinline!RETURN\_VALUE!}. The runtime raises a
+    \passthrough{\lstinline!StopIteration!} containing the return value
+    \passthrough{\lstinline!42!}.
+  \item
+    \passthrough{\lstinline!YIELD\_FROM!} catches
+    \passthrough{\lstinline!StopIteration!}, extracts
+    \passthrough{\lstinline!42!} from the exception's
+    \passthrough{\lstinline!value!} attribute, and pushes it onto the
+    evaluation stack.
+  \end{itemize}
+\item
+  \textbf{\passthrough{\lstinline!STORE\_FAST 0!}}: Pops the value
+  \passthrough{\lstinline!42!} off the stack and stores it in local
+  variable \passthrough{\lstinline!val!}.
+\end{enumerate}
+
+\begin{lstlisting}
+Evaluation Stack Transitions during `await`:
+
+Step 1: [ get_val (fn) ]  <-- LOAD_GLOBAL
+Step 2: [ PyCoroObject ]  <-- CALL_FUNCTION
+Step 3: [ CoroWrapper ]   <-- GET_AWAITABLE
+Step 4: [ CoroWrapper ]   <-- LOAD_CONST (None)
+        [    None     ]
+Step 5: [     42      ]   <-- YIELD_FROM (catches StopIteration(42))
+Step 6: [             ]   <-- STORE_FAST (val = 42)
+\end{lstlisting}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{matrix-multiplication-operator-pep-465}{%
+\subsection{\texorpdfstring{11.2 Matrix Multiplication Operator
+(\texttt{@} / PEP
+465)}{11.2 Matrix Multiplication Operator (@ / PEP 465)}}\label{matrix-multiplication-operator-pep-465}}
+
+Python 3.5 introduced the binary operator \passthrough{\lstinline!@!}
+(and its in-place version \passthrough{\lstinline!@=!}) to support clean
+mathematical syntax for matrix multiplication.
+
+\hypertarget{low-level-c-slots-mapping}{%
+\subsubsection{1. Low-Level C Slots
+Mapping}\label{low-level-c-slots-mapping}}
+
+CPython maps the matrix multiplication operator to two new function
+pointer slots inside the \passthrough{\lstinline!PyNumberMethods!}
+struct (\passthrough{\lstinline!Include/object.h!}):
+
+\begin{lstlisting}[language=C]
+typedef struct {
+    /* ... */
+    binaryfunc nb_matrix_multiply;          /* Corresponds to __matmul__ */
+    binaryfunc nb_inplace_matrix_multiply;  /* Corresponds to __imatmul__ */
+} PyNumberMethods;
+\end{lstlisting}
+
+When evaluating \passthrough{\lstinline!A @ B!}, CPython's binary
+operation dispatch system invokes
+\passthrough{\lstinline!PyNumber\_MatrixMultiply(A, B)!}: 1.
+\textbf{Left-to-Right Dispatch}: If the type of
+\passthrough{\lstinline!A!} defines
+\passthrough{\lstinline!tp\_as\_number->nb\_matrix\_multiply!}, it
+executes the slot function. 2. \textbf{Right-to-Left Fallback}: If
+\passthrough{\lstinline!A!}'s slot is NULL, or it returns
+\passthrough{\lstinline!Py\_NotImplemented!}, CPython checks if the type
+of \passthrough{\lstinline!B!} defines
+\passthrough{\lstinline!nb\_matrix\_multiply!}. 3. \textbf{Subclass
+Precedence}: If \passthrough{\lstinline!B!} is a subclass of
+\passthrough{\lstinline!A!} and overrides
+\passthrough{\lstinline!nb\_matrix\_multiply!},
+\passthrough{\lstinline!B!}'s slot is checked and called \emph{before}
+\passthrough{\lstinline!A!}'s slot, allowing specialized subclass
+multiplication overrides. 4. \textbf{TypeError}: If neither slot returns
+a valid object (or both return
+\passthrough{\lstinline!Py\_NotImplemented!}), the VM raises a
+\passthrough{\lstinline!TypeError: unsupported operand type(s) for @!}.
+
+\hypertarget{python-level-interface-and-numeric-implementations}{%
+\subsubsection{2. Python-Level Interface and Numeric
+Implementations}\label{python-level-interface-and-numeric-implementations}}
+
+Developers can customize this operator behavior by implementing the
+Python magic methods \passthrough{\lstinline!\_\_matmul\_\_!},
+\passthrough{\lstinline!\_\_rmatmul\_\_!}, and
+\passthrough{\lstinline!\_\_imatmul\_\_!}:
+
+\begin{lstlisting}[language=Python]
+class CustomMatrix:
+    def __init__(self, grid):
+        self.grid = grid
+
+    def __matmul__(self, other):
+        if not isinstance(other, CustomMatrix):
+            return NotImplemented
+        # Compute the dot product matrix
+        rows_A, cols_A = len(self.grid), len(self.grid[0])
+        rows_B, cols_B = len(other.grid), len(other.grid[0])
+        assert cols_A == rows_B, "Dimension mismatch!"
+        
+        result = [[0] * cols_B for _ in range(rows_A)]
+        for i in range(rows_A):
+            for j in range(cols_B):
+                result[i][j] = sum(self.grid[i][k] * other.grid[k][j] for k in range(cols_A))
+        return CustomMatrix(result)
+\end{lstlisting}
+
+\hypertarget{high-performance-implementations}{%
+\subsubsection{3. High-Performance
+Implementations}\label{high-performance-implementations}}
+
+This dedicated operator allowed numerical libraries (like NumPy) to
+bypass verbose nested function call chains. Consider this linear algebra
+comparison:
+
+\begin{lstlisting}[language=Python]
+# Pre-Python 3.5 (Verbose and nesting-heavy)
+result = A.dot(B).dot(C) + D.dot(E)
+
+# Python 3.5+ (Clean, mathematical representation)
+result = (A @ B @ C) + (D @ E)
+\end{lstlisting}
+
+NumPy defines C-level slots mapping for
+\passthrough{\lstinline!nb\_matrix\_multiply!} on its
+\passthrough{\lstinline!ndarray!} types, executing optimized BLAS or
+LAPACK matrix routines underneath. By pushing the matrix multiplication
+to these compiled C/Fortran libraries, they release the Global
+Interpreter Lock (GIL) during compilation of large arrays, permitting
+true multi-threaded parallel computation across CPU cores.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{extended-unpacking-generalizations-pep-448}{%
+\subsection{11.3 Extended Unpacking Generalizations (PEP
+448)}\label{extended-unpacking-generalizations-pep-448}}
+
+PEP 448 expanded the capabilities of the unpacking operators
+\passthrough{\lstinline!*!} (iterable unpacking) and
+\passthrough{\lstinline!**!} (dictionary unpacking), allowing multiple
+unpacks inside collection literals and function calls.
+
+\hypertarget{bytecode-compilation-and-unpacking-instructions}{%
+\subsubsection{1. Bytecode Compilation and Unpacking
+Instructions}\label{bytecode-compilation-and-unpacking-instructions}}
+
+Prior to Python 3.5, unpacking was limited to a single occurrence. To
+support multiple unpacking operations, the CPython compiler was updated
+to emit specialized group unpacking bytecodes: *
+\textbf{\passthrough{\lstinline!BUILD\_LIST\_UNPACK!}}: Pops multiple
+sequences off the stack, converts them to tuples/lists, and concatenates
+them into a single list. *
+\textbf{\passthrough{\lstinline!BUILD\_TUPLE\_UNPACK!}}: Merges multiple
+popped sequences into a tuple. *
+\textbf{\passthrough{\lstinline!BUILD\_SET\_UNPACK!}}: Merges sequences
+into a set, deduplicating elements. *
+\textbf{\passthrough{\lstinline!BUILD\_MAP\_UNPACK!}}: Pops multiple
+dictionaries/mappings from the stack and merges them into a single
+dictionary.
+
+\emph{Note on Compilation Evolution}: In later versions of CPython
+(e.g., Python 3.9+), these unpacking instructions were replaced by
+highly specialized, lower-overhead instructions such as
+\passthrough{\lstinline!LIST\_EXTEND!},
+\passthrough{\lstinline!DICT\_MERGE!}, and
+\passthrough{\lstinline!DICT\_UPDATE!} to avoid the temporary list
+creation overhead for every unpacked component.
+
+\hypertarget{detailed-bytecode-traces}{%
+\subsubsection{2. Detailed Bytecode
+Traces}\label{detailed-bytecode-traces}}
+
+\hypertarget{case-a-list-unpacking-with-multiple-iterables}{%
+\paragraph{Case A: List Unpacking with Multiple
+Iterables}\label{case-a-list-unpacking-with-multiple-iterables}}
+
+Consider compiling this list literal containing mixed values and
+unpacking:
+
+\begin{lstlisting}[language=Python]
+[1, *[2, 3], 4]
+\end{lstlisting}
+
+The Python 3.5 compiler generates the following bytecode:
+
+\begin{lstlisting}
+  1           0 LOAD_CONST               0 (1)
+              3 BUILD_LIST               1              /* Push list [1] onto stack */
+              6 LOAD_CONST               1 (2)
+              9 LOAD_CONST               2 (3)
+             12 BUILD_LIST               2              /* Push list [2, 3] onto stack */
+             15 LOAD_CONST               3 (4)
+             18 BUILD_LIST               1              /* Push list [4] onto stack */
+             21 BUILD_LIST_UNPACK        3              /* Merge the 3 list elements on the stack */
+\end{lstlisting}
+
+\passthrough{\lstinline!BUILD\_LIST\_UNPACK 3!} pops the three
+constructed list elements off the stack, performs dynamic sequence
+iteration to concatenate their values, and pushes the final unified list
+\passthrough{\lstinline![1, 2, 3, 4]!} back onto the evaluation stack.
+
+\hypertarget{case-b-dictionary-unpacking-with-multiple-mappings}{%
+\paragraph{Case B: Dictionary Unpacking with Multiple
+Mappings}\label{case-b-dictionary-unpacking-with-multiple-mappings}}
+
+Consider this dictionary literal merging two mappings:
+
+\begin{lstlisting}[language=Python]
+y = {**d1, **d2, 'key': 42}
+\end{lstlisting}
+
+The Python 3.5 compiler generates the following bytecode:
+
+\begin{lstlisting}
+  1           0 LOAD_FAST                0 (d1)         /* Push dictionary d1 */
+              3 LOAD_FAST                1 (d2)         /* Push dictionary d2 */
+              6 LOAD_CONST               2 ('key')
+              9 LOAD_CONST               3 (42)
+             12 BUILD_MAP                1              /* Push dictionary {'key': 42} */
+             15 BUILD_MAP_UNPACK         3              /* Merge the 3 dict elements on the stack */
+             18 STORE_FAST               2 (y)
+\end{lstlisting}
+
+During execution: * \passthrough{\lstinline!BUILD\_MAP\_UNPACK 3!}
+evaluates the three mappings popped from the stack. * It iterates
+through their keys, updating the target dictionary. * In Python 3.5, key
+collisions do not raise an error for dictionary literals; rather, keys
+to the right overwrite keys to the left (e.g.,
+\passthrough{\lstinline!d2!} overrides \passthrough{\lstinline!d1!}, and
+\passthrough{\lstinline!'key'!} overrides any prior matching key). * In
+contrast, if multiple unpacking overlaps occur during keyword argument
+calls (e.g.~\passthrough{\lstinline!func(**d1, **d2)!}), duplicate keys
+trigger a runtime \passthrough{\lstinline!TypeError!} exception.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}

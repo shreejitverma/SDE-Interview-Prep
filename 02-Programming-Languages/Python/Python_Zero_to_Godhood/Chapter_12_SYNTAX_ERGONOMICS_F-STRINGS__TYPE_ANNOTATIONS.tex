@@ -1,0 +1,72 @@
+\hypertarget{syntax-ergonomics-f-strings-type-annotations}{%
+\chapter{SYNTAX ERGONOMICS: F-STRINGS \& TYPE
+ANNOTATIONS}\label{syntax-ergonomics-f-strings-type-annotations}}
+
+\hypertarget{pep-498-formatted-string-literals-f-strings}{%
+\subsection{12.1 PEP 498: Formatted String Literals
+(f-strings)}\label{pep-498-formatted-string-literals-f-strings}}
+
+Introduced in Python 3.6, \textbf{PEP 498} added formatted string
+literals (f-strings). These are significantly faster than legacy
+formatting methods like \passthrough{\lstinline!\%!} or
+\passthrough{\lstinline!.format()!}: * \textbf{Legacy Overheads}:
+\passthrough{\lstinline!.format()!} requires a lookup attribute call
+(\passthrough{\lstinline!\_\_getattribute\_\_!}) and executes a full
+function call frame. * \textbf{f-string Compilation}: The compiler
+evaluates f-string expressions at compile time and emits optimized
+bytecodes: - \passthrough{\lstinline!FORMAT\_VALUE!}: Formats a single
+value on the stack. - \passthrough{\lstinline!BUILD\_STRING!}:
+Concatenates values directly in C, bypassing function call overhead.
+
+\begin{lstlisting}[language=Python]
+import dis
+
+def legacy_format(name, age):
+    return "Name: {}, Age: {}".format(name, age)
+
+def fstring_format(name, age):
+    return f"Name: {name}, Age: {age}"
+
+print("Bytecode for f-string:")
+dis.dis(fstring_format)
+\end{lstlisting}
+
+\begin{lstlisting}
+  2           0 LOAD_CONST                1 ('Name: ')
+              2 LOAD_FAST                0 (name)
+              4 FORMAT_VALUE             0
+              6 LOAD_CONST                2 (', Age: ')
+              8 LOAD_FAST                1 (age)
+             10 FORMAT_VALUE             0
+             12 BUILD_STRING             4
+             14 RETURN_VALUE
+\end{lstlisting}
+
+The f-string compiles to a flat sequence of
+\passthrough{\lstinline!FORMAT\_VALUE!} and
+\passthrough{\lstinline!BUILD\_STRING!} instructions, achieving
+performance comparable to manual string concatenation.
+
+\hypertarget{pep-526-variable-function-type-annotations}{%
+\subsection{12.2 PEP 526: Variable \& Function Type
+Annotations}\label{pep-526-variable-function-type-annotations}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{The Static Boundary}: Annotations (introduced for functions in
+  PEP 3107 and variables in PEP 526) are static metadata. They are not
+  checked at runtime and do not impact execution speed.
+\item
+  \textbf{The Annotation Store}: When a module is loaded, CPython
+  compiles annotations and stores them in the class or module namespace
+  under the \passthrough{\lstinline!\_\_annotations\_\_!} dictionary.
+\item
+  \textbf{Inspection}: Type checkers (like Mypy) read this metadata
+  statically, while runtime libraries (like Pydantic) use the
+  \passthrough{\lstinline!\_\_annotations\_\_!} dictionary or
+  \passthrough{\lstinline!inspect.get\_type\_hints()!} to enforce types
+  dynamically.
+\end{itemize}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}

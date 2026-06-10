@@ -1,0 +1,389 @@
+\hypertarget{python-3.0-the-unicode-paradigm-shift-and-text-vs.-bytes-separation}{%
+\chapter{Python 3.0: The Unicode Paradigm Shift and Text vs.~Bytes
+Separation}\label{python-3.0-the-unicode-paradigm-shift-and-text-vs.-bytes-separation}}
+
+\hypertarget{the-unicode-paradigm-shift-and-text-vs.-bytes-separation-pep-358-pep-3112}{%
+\subsection{7.1 The Unicode Paradigm Shift and Text vs.~Bytes Separation
+(PEP 358 \& PEP
+3112)}\label{the-unicode-paradigm-shift-and-text-vs.-bytes-separation-pep-358-pep-3112}}
+
+Python 3.0 introduced a structural boundary between textual characters
+and binary data. In Python 2.x, \passthrough{\lstinline!str!} served
+double-duty as both raw bytes and text, causing silent,
+non-deterministic bugs when ASCII decoding failed implicitly during
+concatenation. Python 3.0 solved this by establishing a strict boundary
+between \passthrough{\lstinline!str!} (text) and
+\passthrough{\lstinline!bytes!}/\passthrough{\lstinline!bytearray!}
+(binary).
+
+\hypertarget{the-python-2.x-concatenation-trap-and-coercion-ban}{%
+\subsubsection{1. The Python 2.x Concatenation Trap and Coercion
+Ban}\label{the-python-2.x-concatenation-trap-and-coercion-ban}}
+
+In Python 2.x, mixed operations between \passthrough{\lstinline!str!}
+(raw 8-bit characters) and \passthrough{\lstinline!unicode!} (arbitrary
+code points) were implicitly resolved. When executing
+\passthrough{\lstinline!"rsum" + u" (French)"!}, CPython attempted to
+promote the \passthrough{\lstinline!str!} by decoding it via the default
+codec (usually ASCII):
+
+\begin{lstlisting}[language=C]
+coerced = PyUnicode_FromEncodedObject(str_obj, "ascii", "strict");
+\end{lstlisting}
+
+If the raw string contained non-ASCII bytes (e.g.,
+\passthrough{\lstinline!\\xe9!} for Latin-1, or
+\passthrough{\lstinline!\\xc3\\xa9!} for UTF-8), this implicit decoding
+step raised a \passthrough{\lstinline!UnicodeDecodeError!} at runtime.
+Python 3.0 eliminated this by raising an unconditional
+\passthrough{\lstinline!TypeError!} on any implicit mixed-type
+operation:
+
+\begin{lstlisting}[language=Python]
+# Python 3.0 runtime coercion ban
+>>> b"data" + "string"
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+TypeError: can't concat bytes to str
+\end{lstlisting}
+
+At the C-API level, binary and text domains are kept completely
+disjoint. \passthrough{\lstinline!PyUnicode\_Compare!} returns a failure
+state if one operand is a bytes object, and
+\passthrough{\lstinline!PyBytes\_Concat!} does not accept unicode
+inputs.
+
+\hypertarget{c-level-representations-of-binary-objects-pybytesobject-pybytearrayobject}{%
+\subsubsection{\texorpdfstring{2. C-Level Representations of Binary
+Objects: \texttt{PyBytesObject} \&
+\texttt{PyByteArrayObject}}{2. C-Level Representations of Binary Objects: PyBytesObject \& PyByteArrayObject}}\label{c-level-representations-of-binary-objects-pybytesobject-pybytearrayobject}}
+
+CPython represents the immutable \passthrough{\lstinline!bytes!} type at
+the C-level as \passthrough{\lstinline!PyBytesObject!}, defined in
+\passthrough{\lstinline!Include/bytesobject.h!}:
+
+\begin{lstlisting}[language=C]
+typedef struct {
+    PyObject_VAR_HEAD
+    Py_hash_t ob_shash;         /* Cached hash value of bytes; -1 if uncomputed */
+    char ob_sval[1];            /* Contiguous byte vector; dynamically sized to [ob_size + 1] */
+} PyBytesObject;
+\end{lstlisting}
+
+Here, \passthrough{\lstinline!ob\_sval!} is a character array that is
+allocated inline with the rest of the object structure, terminating with
+a trailing \passthrough{\lstinline!\\0!} to remain compatible with
+standard C library functions (e.g., \passthrough{\lstinline!strlen!} and
+\passthrough{\lstinline!strcpy!}).
+
+The mutable sibling, \passthrough{\lstinline!bytearray!}, is represented
+by \passthrough{\lstinline!PyByteArrayObject!} defined in
+\passthrough{\lstinline!Include/bytearrayobject.h!}:
+
+\begin{lstlisting}[language=C]
+typedef struct {
+    PyObject_VAR_HEAD
+    Py_ssize_t ob_alloc;        /* Number of bytes allocated in the buffer */
+    char *ob_bytes;             /* Pointer to the start of the allocated memory block */
+    char *ob_start;             /* Pointer to the start of the logical byte sequence */
+    Py_ssize_t ob_exports;      /* Reference count of active buffer exports (locking) */
+} PyByteArrayObject;
+\end{lstlisting}
+
+\passthrough{\lstinline!ob\_bytes!} and
+\passthrough{\lstinline!ob\_start!} are split to allow efficient
+head-deletion/prepends. When a user calls
+\passthrough{\lstinline!del array[0]!},
+\passthrough{\lstinline!ob\_start!} is simply incremented and
+\passthrough{\lstinline!ob\_size!} decremented, avoiding an \(O(n)\)
+memory shift. Memory buffer growth is managed via an overallocation
+growth factor:
+\[\text{ob\_alloc} = \text{new\_size} + (\text{new\_size} \gg 3) + (\text{new\_size} < 9 \,?\, 3 : 6)\]
+This guarantees that append operations have an amortized \(O(1)\) time
+complexity. \passthrough{\lstinline!ob\_exports!} tracks references from
+active \passthrough{\lstinline!memoryview!} objects; if
+\passthrough{\lstinline!ob\_exports > 0!}, any operation that attempts
+to resize or reallocate the underlying
+\passthrough{\lstinline!ob\_bytes!} buffer will raise a
+\passthrough{\lstinline!BufferError!}.
+
+\hypertarget{low-level-c-representation-pre-pep-393-pyunicodeobject}{%
+\subsubsection{\texorpdfstring{3. Low-Level C Representation: Pre-PEP
+393
+\texttt{PyUnicodeObject}}{3. Low-Level C Representation: Pre-PEP 393 PyUnicodeObject}}\label{low-level-c-representation-pre-pep-393-pyunicodeobject}}
+
+Prior to the string optimization introduced in Python 3.3 (PEP 393),
+CPython represented Unicode strings using a uniform array of
+\passthrough{\lstinline!Py\_UNICODE!} units.
+\passthrough{\lstinline!PyUnicodeObject!} was defined in
+\passthrough{\lstinline!Include/unicodeobject.h!} as:
+
+\begin{lstlisting}[language=C]
+typedef struct {
+    PyObject_HEAD
+    Py_ssize_t length;          /* Number of code points */
+    Py_UNICODE *str;            /* Pointer to the character array */
+    Py_hash_t hash;             /* Cached hash value; -1 if uncomputed */
+    PyObject *defenc;           /* Cached UTF-8 encoded bytes representation */
+} PyUnicodeObject;
+\end{lstlisting}
+
+The representation type \passthrough{\lstinline!Py\_UNICODE!} was
+defined at compile-time as: * \textbf{UCS-2 (Narrow Build)}: Compiled
+with \passthrough{\lstinline!wchar\_t!} as a 16-bit type (size 2 bytes).
+Characters beyond \passthrough{\lstinline!U+FFFF!} (e.g., emojis) had to
+be represented as surrogate pairs, causing index and len calculations to
+mismatch. * \textbf{UCS-4 (Wide Build)}: Compiled with
+\passthrough{\lstinline!wchar\_t!} as a 32-bit type (size 4 bytes).
+Every Unicode code point mapped to exactly one array index, but
+ASCII-only strings consumed 4 times the memory they required.
+
+\hypertarget{pep-383-the-surrogateescape-error-handler-mechanics}{%
+\subsubsection{\texorpdfstring{4. PEP 383: The \texttt{surrogateescape}
+Error Handler
+Mechanics}{4. PEP 383: The surrogateescape Error Handler Mechanics}}\label{pep-383-the-surrogateescape-error-handler-mechanics}}
+
+To allow POSIX filesystems (which use arbitrary null-terminated byte
+sequences for paths) to round-trip pathnames containing invalid UTF-8
+bytes without throwing exceptions, PEP 383 introduced the
+\passthrough{\lstinline!surrogateescape!} error handler. During
+decoding, any invalid byte (which does not form a valid UTF-8 sequence)
+is mapped to a high-surrogate code point in the range
+\passthrough{\lstinline!U+DC80!} to \passthrough{\lstinline!U+DCFF!}
+via: \[\text{code\_point} = 0\text{xDC00} + \text{byte\_value}\] During
+encoding, these specific surrogate code points are mapped back to their
+original raw bytes:
+\[\text{byte\_value} = \text{code\_point} - 0\text{xDC00}\] This allows
+arbitrary binary data to be round-tripped through Unicode
+\passthrough{\lstinline!str!} representations:
+
+\begin{lstlisting}[language=Python]
+# Raw undecodable path round-trip simulation
+raw_bytes = b"bad_\xff_path.txt"
+decoded_str = raw_bytes.decode("utf-8", "surrogateescape")
+# decoded_str contains code point U+DCFF where \xff was.
+reencoded_bytes = decoded_str.encode("utf-8", "surrogateescape")
+assert reencoded_bytes == raw_bytes
+\end{lstlisting}
+
+The CPython implementation in
+\passthrough{\lstinline!Objects/unicodeobject.c!} handles this matching
+logic:
+
+\begin{lstlisting}[language=C]
+/* Pseudocode of surrogateescape decoding branch */
+if (status == INVALID_BYTE) {
+    *unicode_ptr++ = 0xDC00 + (unsigned char)input_byte;
+}
+\end{lstlisting}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{the-print-function-redesign}{%
+\subsection{\texorpdfstring{7.2 The \texttt{print()} Function
+Redesign}{7.2 The print() Function Redesign}}\label{the-print-function-redesign}}
+
+\hypertarget{bytecode-comparison}{%
+\subsubsection{1. Bytecode Comparison}\label{bytecode-comparison}}
+
+In Python 2.x, \passthrough{\lstinline!print!} was a core language
+statement with specialized bytecodes. In Python 3.0, it was unified into
+a standard built-in function.
+
+\hypertarget{python-2.7-compiler-translation-for-print-hello}{%
+\paragraph{\texorpdfstring{Python 2.7 compiler translation for
+\texttt{print\ "hello"}:}{Python 2.7 compiler translation for print "hello":}}\label{python-2.7-compiler-translation-for-print-hello}}
+
+\begin{lstlisting}
+1           0 LOAD_CONST               0 ('hello')
+            3 PRINT_ITEM
+            4 PRINT_NEWLINE
+\end{lstlisting}
+
+The VM execution loop (\passthrough{\lstinline!ceval.c!}) maps
+\passthrough{\lstinline!PRINT\_ITEM!} directly to standard output stream
+writing operations, meaning the behavior was fixed at compilation.
+
+\hypertarget{python-3.0-compiler-translation-for-printhello}{%
+\paragraph{\texorpdfstring{Python 3.0 compiler translation for
+\texttt{print("hello")}:}{Python 3.0 compiler translation for print("hello"):}}\label{python-3.0-compiler-translation-for-printhello}}
+
+\begin{lstlisting}
+1           0 LOAD_GLOBAL              0 (print)
+            3 LOAD_CONST               1 ('hello')
+            6 CALL_FUNCTION            1
+\end{lstlisting}
+
+The interpreter dynamically resolves \passthrough{\lstinline!print!} at
+runtime via standard namespace lookups. This enables runtime overriding:
+
+\begin{lstlisting}[language=Python]
+import builtins
+def custom_print(*args, **kwargs):
+    builtins.print("[LOG]", *args, **kwargs)
+builtins.print = custom_print
+\end{lstlisting}
+
+\hypertarget{c-level-stream-writing-textiowrapper}{%
+\subsubsection{2. C-Level stream writing \&
+TextIOWrapper}\label{c-level-stream-writing-textiowrapper}}
+
+The C-level entrypoint for the \passthrough{\lstinline!print()!}
+function is \passthrough{\lstinline!builtin\_print!} inside
+\passthrough{\lstinline!Python/bltinmodule.c!}:
+
+\begin{lstlisting}[language=C]
+static PyObject *
+builtin_print(PyObject *self, PyObject *args, PyObject *kwds)
+{
+    static char *kwlist[] = {"sep", "end", "file", "flush", 0};
+    PyObject *sep = Py_None, *end = Py_None, *file = Py_None;
+    int flush = 0;
+    // Parsing keywords using PyArg_ParseTupleAndKeywords...
+    ...
+}
+\end{lstlisting}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Stream Resolution}: If \passthrough{\lstinline!file!} is
+  \passthrough{\lstinline!Py\_None!} or omitted, the function queries
+  \passthrough{\lstinline!sys.stdout!} via
+  \passthrough{\lstinline!PySys\_GetObject("stdout")!}.
+\item
+  \textbf{String Conversions}: For each positional argument,
+  \passthrough{\lstinline!builtin\_print!} calls
+  \passthrough{\lstinline!PyObject\_Str(arg)!} to compute its string
+  representation.
+\item
+  \textbf{Buffer Flushing}: After calling
+  \passthrough{\lstinline!file.write()!}, if
+  \passthrough{\lstinline!flush=True!} is set, CPython attempts to
+  invoke the \passthrough{\lstinline!flush()!} method of the
+  \passthrough{\lstinline!file!} object. If
+  \passthrough{\lstinline!sys.stdout!} wraps a standard output
+  descriptor (stdout), this triggers
+  \passthrough{\lstinline!fflush(stdout)!} in the underlying C library,
+  executing a synchronous write syscall.
+\end{itemize}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{division-unification-pep-238}{%
+\subsection{7.3 Division Unification (PEP
+238)}\label{division-unification-pep-238}}
+
+\hypertarget{the-division-operators-and-bytecodes}{%
+\subsubsection{1. The Division Operators and
+Bytecodes}\label{the-division-operators-and-bytecodes}}
+
+Python 2.x's division operator \passthrough{\lstinline!/!} mapped to the
+\passthrough{\lstinline!BINARY\_DIVIDE!} bytecode, which executed floor
+division if both operands were integers, and true division if either was
+a float. This led to silent precision loss bugs. Python 3.0 unified this
+by assigning \passthrough{\lstinline!/!} to true division and
+introducing \passthrough{\lstinline!//!} for floor division: *
+\textbf{True Division (\passthrough{\lstinline!/!})} maps to the
+\passthrough{\lstinline!BINARY\_TRUE\_DIVIDE!} bytecode, which always
+delegates to the \passthrough{\lstinline!nb\_true\_divide!} slot. *
+\textbf{Floor Division (\passthrough{\lstinline!//!})} maps to the
+\passthrough{\lstinline!BINARY\_FLOOR\_DIVIDE!} bytecode, delegating to
+the \passthrough{\lstinline!nb\_floor\_divide!} slot.
+
+\hypertarget{c-level-integer-division-mechanics}{%
+\subsubsection{2. C-Level Integer Division
+Mechanics}\label{c-level-integer-division-mechanics}}
+
+CPython defines number methods in the
+\passthrough{\lstinline!PyNumberMethods!} struct inside
+\passthrough{\lstinline!Include/object.h!}:
+
+\begin{lstlisting}[language=C]
+typedef struct {
+    binaryfunc nb_add;
+    binaryfunc nb_subtract;
+    ...
+    binaryfunc nb_floor_divide;
+    binaryfunc nb_true_divide;
+} PyNumberMethods;
+\end{lstlisting}
+
+For integer types, these slots point to C functions in
+\passthrough{\lstinline!Objects/longobject.c!}: *
+\passthrough{\lstinline!nb\_floor\_divide!} points to
+\passthrough{\lstinline!long\_div!}. It computes the integer quotient
+and rounds towards negative infinity. *
+\passthrough{\lstinline!nb\_true\_divide!} points to
+\passthrough{\lstinline!long\_true\_divide!}.
+
+The execution path of
+\passthrough{\lstinline!long\_true\_divide(x, y)!}: 1. It extracts the
+size of integers \(x\) and \(y\). If they fit within C double precision
+(53 bits of mantissa), it converts them to double:
+\[x_{\text{double}} = (\text{double})x; \quad y_{\text{double}} = (\text{double})y;\]
+2. If the integer values exceed double limits, CPython runs an
+arbitrary-precision float conversion algorithm
+(\passthrough{\lstinline!\_PyLong\_Format!} or manual bit shift scaling)
+to extract the most significant 53 bits. 3. It performs the float
+division and instantiates a new \passthrough{\lstinline!PyFloatObject!}
+to hold the output:
+\[\text{result} = x_{\text{double}} / y_{\text{double}}\] 4. If
+\(y = 0\), it raises a \passthrough{\lstinline!ZeroDivisionError!} via
+\passthrough{\lstinline!PyErr\_SetString!}.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{lazy-iterators-dictionary-view-objects}{%
+\subsection{7.4 Lazy Iterators \& Dictionary View
+Objects}\label{lazy-iterators-dictionary-view-objects}}
+
+\hypertarget{lazy-conversions-rangeobject-memory-layout}{%
+\subsubsection{\texorpdfstring{1. Lazy Conversions \&
+\texttt{rangeobject} Memory
+Layout}{1. Lazy Conversions \& rangeobject Memory Layout}}\label{lazy-conversions-rangeobject-memory-layout}}
+
+Python 3.0 replaced list-producing functions with lazy iterators. The
+\passthrough{\lstinline!range()!} built-in returns a
+\passthrough{\lstinline!rangeobject!} defined in
+\passthrough{\lstinline!Objects/rangeobject.c!}:
+
+\begin{lstlisting}[language=C]
+typedef struct {
+    PyObject_HEAD
+    PyObject *start;
+    PyObject *stop;
+    PyObject *step;
+    PyObject *length;
+} rangeobject;
+\end{lstlisting}
+
+Because the sequence elements are not pre-allocated, a
+\passthrough{\lstinline!rangeobject!} consumes \(O(1)\) memory. To
+compute the value at a specific index \(i\), the type's sequence method
+(\passthrough{\lstinline!range\_item!}) performs a direct arithmetic
+step calculation: \[\text{value} = \text{start} + i \times \text{step}\]
+This math enables \(O(1)\) index access and \(O(1)\) containment checks
+for numeric targets:
+\[\text{remainder} = (\text{target} - \text{start}) \pmod{\text{step}}\]
+If \(\text{remainder} == 0\) and
+\(\text{start} \le \text{target} < \text{stop}\) (or reverse for
+negative steps), the value is in the range.
+
+\hypertarget{dictionary-view-objects}{%
+\subsubsection{2. Dictionary View
+Objects}\label{dictionary-view-objects}}
+
+Methods like \passthrough{\lstinline!keys()!},
+\passthrough{\lstinline!values()!}, and
+\passthrough{\lstinline!items()!} return dynamic views containing a
+direct reference back to the parent dictionary, instead of copying
+elements into a new list. The underlying struct is
+\passthrough{\lstinline!PyDictViewObject!}:
+
+\begin{lstlisting}[language=C]
+typedef struct {
+    PyObject_HEAD
+    PyDictObject *dv_dict;      /* Pointer to parent dictionary struct */
+} PyDictViewObject;
+\end{lstlisting}

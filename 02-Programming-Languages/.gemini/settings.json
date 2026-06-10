@@ -1,0 +1,10 @@
+{
+  "tools": {
+    "truncateToolOutputLines": 400000
+  },
+  "security": {
+    "folderTrust": {
+      "enabled": true
+    }
+  }
+}

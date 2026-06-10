@@ -1,0 +1,112 @@
+\hypertarget{dataclasses-and-declarative-patterns}{%
+\chapter{DATACLASSES AND DECLARATIVE
+PATTERNS}\label{dataclasses-and-declarative-patterns}}
+
+\hypertarget{pep-557-dataclasses-under-the-hood}{%
+\subsection{13.1 PEP 557: Dataclasses under the
+hood}\label{pep-557-dataclasses-under-the-hood}}
+
+Introduced in Python 3.7, the \passthrough{\lstinline!@dataclass!}
+decorator automates boilerplate method generation. * \textbf{Code
+Generation}: Rather than using dynamic wrappers at runtime,
+\passthrough{\lstinline!@dataclass!} is a class decorator that runs at
+import time. It reads the class's
+\passthrough{\lstinline!\_\_annotations\_\_!} dictionary and dynamically
+generates the source code for methods like
+\passthrough{\lstinline!\_\_init\_\_!},
+\passthrough{\lstinline!\_\_repr\_\_!}, and
+\passthrough{\lstinline!\_\_eq\_\_!}. It then compiles and attaches
+these methods to the class dict, ensuring runtime performance is
+identical to manually written methods.
+
+\hypertarget{properties-cached-properties}{%
+\subsection{13.2 Properties \& Cached
+Properties}\label{properties-cached-properties}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{The Property Descriptor}: The built-in
+  \passthrough{\lstinline!@property!} decorator is a data descriptor. It
+  intercepts access to attributes and runs custom getter, setter, and
+  deleter methods:
+\end{itemize}
+
+\begin{lstlisting}[language=Python]
+class Circle:
+    def __init__(self, radius):
+        self._radius = radius
+
+    @property
+    def radius(self):
+        return self._radius
+
+    @radius.setter
+    def radius(self, value):
+        if value < 0:
+            raise ValueError("Radius cannot be negative")
+        self._radius = value
+\end{lstlisting}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Cached Properties}: For expensive computations,
+  \passthrough{\lstinline!functools.cached\_property!} caches results.
+  It operates as a non-data descriptor:
+
+  \begin{enumerate}
+  \def\labelenumi{\arabic{enumi}.}
+  \tightlist
+  \item
+    The first access computes the value and writes it directly to the
+    instance's dictionary \passthrough{\lstinline!\_\_dict\_\_!}.
+  \item
+    Subsequent lookups find the value in
+    \passthrough{\lstinline!\_\_dict\_\_!} directly, bypassing the
+    descriptor's getter logic.
+  \end{enumerate}
+\end{itemize}
+
+\hypertarget{instance-slots-optimization}{%
+\subsection{13.3 Instance Slots
+Optimization}\label{instance-slots-optimization}}
+
+By default, every instance allocates a dictionary
+\passthrough{\lstinline!\_\_dict\_\_!} to store attributes. This allows
+dynamic attribute addition but consumes significant memory. *
+\textbf{Slots (\passthrough{\lstinline!\_\_slots\_\_!})}: Defining
+\passthrough{\lstinline!\_\_slots\_\_!} inside a class tells CPython to
+use a fixed-size array instead of a dictionary to store attributes. *
+\textbf{CPython Layout}: The class MRO creates descriptor references
+mapping each slot to a static array offset in C. This: 1. Eliminates the
+memory overhead of the instance dictionary
+\passthrough{\lstinline!\_\_dict\_\_!} and
+\passthrough{\lstinline!\_\_weakref\_\_!}. 2. Speeds up attribute access
+by replacing dictionary key lookups with fast array indexing. 3.
+Prevents users from dynamically adding arbitrary new attributes to the
+instance.
+
+\begin{lstlisting}[language=Python]
+import sys
+
+class DictClass:
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
+
+class SlotsClass:
+    __slots__ = ('x', 'y')
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
+
+d = DictClass(1, 2)
+s = SlotsClass(1, 2)
+
+print("DictClass size:", sys.getsizeof(d) + sys.getsizeof(d.__dict__))
+# SlotsClass has no __dict__, consuming significantly less memory
+print("SlotsClass size:", sys.getsizeof(s))
+\end{lstlisting}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}

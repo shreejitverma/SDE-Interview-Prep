@@ -1,0 +1,121 @@
+\hypertarget{static-typing-advanced-metaprogramming-with-protocols}{%
+\chapter{STATIC TYPING \& ADVANCED METAPROGRAMMING WITH
+PROTOCOLS}\label{static-typing-advanced-metaprogramming-with-protocols}}
+
+\hypertarget{nominal-vs.-structural-subtyping}{%
+\subsection{16.1 Nominal vs.~Structural
+Subtyping}\label{nominal-vs.-structural-subtyping}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Nominal Subtyping}: Standard object-oriented inheritance. An
+  class \passthrough{\lstinline!A!} is a subclass of
+  \passthrough{\lstinline!B!} only if \passthrough{\lstinline!A!}
+  explicitly inherits from \passthrough{\lstinline!B!}
+  (\passthrough{\lstinline!class A(B):!}).
+\item
+  \textbf{Structural Subtyping (Protocols / PEP 544)}: Also known as
+  static duck typing. A class \passthrough{\lstinline!A!} is compatible
+  with a Protocol \passthrough{\lstinline!P!} if
+  \passthrough{\lstinline!A!} implements all methods and variables
+  defined in \passthrough{\lstinline!P!} with matching signatures,
+  regardless of explicit inheritance declarations.
+\end{itemize}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{runtime-protocols-runtime_checkable}{%
+\subsection{\texorpdfstring{16.2 Runtime Protocols \&
+\texttt{@runtime\_checkable}}{16.2 Runtime Protocols \& @runtime\_checkable}}\label{runtime-protocols-runtime_checkable}}
+
+By default, PEP 544 protocols are strictly compile-time constructs
+erased during execution. However, annotating a protocol with the
+\passthrough{\lstinline!@runtime\_checkable!} decorator permits the use
+of \passthrough{\lstinline!isinstance()!} and
+\passthrough{\lstinline!issubclass()!} checks at runtime.
+
+\hypertarget{internal-hook-overrides}{%
+\subsubsection{1. Internal Hook
+Overrides}\label{internal-hook-overrides}}
+
+The \passthrough{\lstinline!@runtime\_checkable!} decorator replaces the
+standard class methods for instance validation. It overrides the
+metaclass dunder methods: *
+\passthrough{\lstinline!\_\_instancecheck\_\_!}: Called when performing
+\passthrough{\lstinline!isinstance(obj, ProtocolClass)!}. *
+\passthrough{\lstinline!\_\_subclasscheck\_\_!}: Called when performing
+\passthrough{\lstinline!issubclass(SubClass, ProtocolClass)!}.
+
+\hypertarget{runtime-evaluation-loop}{%
+\subsubsection{2. Runtime Evaluation
+Loop}\label{runtime-evaluation-loop}}
+
+The CPython implementation of
+\passthrough{\lstinline!\_\_subclasscheck\_\_!} on a runtime checkable
+protocol executes the following logic:
+
+\begin{lstlisting}[language=Python]
+# Conceptual runtime protocol verification
+def __subclasscheck__(cls, subclass):
+    if not isinstance(subclass, type):
+        raise TypeError("issubclass() arg 1 must be a class")
+    
+    # Iterate over all defined attributes in the protocol
+    for attr in cls._protocol_attrs:
+        # Check if the subclass or its MRO implements the attribute
+        if not any(attr in s.__dict__ for s in subclass.__mro__):
+            return False
+    return True
+\end{lstlisting}
+
+\begin{quote}
+{[}!WARNING{]} Runtime protocol checks only verify the
+\textbf{existence} of attributes, not their method signatures, types, or
+parameters. Furthermore, traversing the entire MRO of a subclass for
+every attribute check incurs significant runtime overhead compared to
+simple nominal class validations.
+\end{quote}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{static-type-checking-and-variance}{%
+\subsection{16.3 Static Type Checking and
+Variance}\label{static-type-checking-and-variance}}
+
+Static type checkers (such as Mypy or Pyright) compile type annotations
+into a directed graph of type variables and interfaces.
+
+\hypertarget{mathematical-definitions-of-variance}{%
+\subsubsection{1. Mathematical Definitions of
+Variance}\label{mathematical-definitions-of-variance}}
+
+Let \(A\) and \(B\) be types where \(A\) is a subtype of \(B\)
+(\(A \subseteq B\)). Let \(F\) be a generic container type constructor
+(e.g., \passthrough{\lstinline!List[T]!},
+\passthrough{\lstinline!Iterable[T]!}, or
+\passthrough{\lstinline!Callable[[T], R]!}).
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Covariance}: The container subtype relationship preserves the
+  parameter type relationship: \[F(A) \subseteq F(B)\] \emph{Example}:
+  \passthrough{\lstinline!Iterable[T]!} is covariant. A list of dogs can
+  be safely read as a list of animals.
+\item
+  \textbf{Contravariance}: The container subtype relationship reverses
+  the parameter type relationship: \[F(B) \subseteq F(A)\]
+  \emph{Example}: \passthrough{\lstinline!Callable[[T], None]!} is
+  contravariant. A function that accepts any animal can safely be used
+  where a function accepting a dog is expected.
+\item
+  \textbf{Invariance}: There is no relationship between container types:
+  \[F(A) \not\subseteq F(B) \quad \text{and} \quad F(B) \not\subseteq F(A)\]
+  \emph{Example}: \passthrough{\lstinline!List[T]!} is invariant because
+  it allows both read (covariant) and write (contravariant) operations.
+  Allowing a list of dogs to be treated as a list of animals could let
+  someone insert a cat into the list, violating type safety.
+\end{itemize}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}

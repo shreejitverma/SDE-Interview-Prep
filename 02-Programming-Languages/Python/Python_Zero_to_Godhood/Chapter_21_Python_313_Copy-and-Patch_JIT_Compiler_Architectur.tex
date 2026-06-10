@@ -1,0 +1,242 @@
+\hypertarget{python-3.13-copy-and-patch-jit-compiler-architecture}{%
+\chapter{Python 3.13: Copy-and-Patch JIT Compiler
+Architecture}\label{python-3.13-copy-and-patch-jit-compiler-architecture}}
+
+\hypertarget{the-copy-and-patch-jit-paradigm-pep-744}{%
+\subsection{21.1 The Copy-and-Patch JIT Paradigm (PEP
+744)}\label{the-copy-and-patch-jit-paradigm-pep-744}}
+
+Python 3.13 introduces an experimental \textbf{Copy-and-Patch
+Just-In-Time (JIT) compiler} (PEP 744). Unlike classic template JITs
+(which compile bytecode to slow sequences of function calls) or heavy
+optimizing tracing/method JITs like PyPy or V8 (which compile code via
+complex graph building and register allocation at runtime), CPython's
+copy-and-patch JIT achieves fast compilation times with near-zero
+runtime compilation overhead.
+
+\hypertarget{optimization-and-compilation-tradeoffs}{%
+\subsubsection{1. Optimization and Compilation
+Tradeoffs}\label{optimization-and-compilation-tradeoffs}}
+
+Traditional JIT compilers (e.g., LLVM-based JITs) generate highly
+optimized assembly code at runtime, but the compilation process itself
+requires substantial CPU cycles and memory. This makes them unsuitable
+for interactive runtimes or workloads with short execution times, where
+the compilation cost outweighs the speedup.
+
+Copy-and-patch JIT solves this by splitting the compilation workload: *
+\textbf{Compile-Time (Static Build Phase)}: High-performance compilers
+(Clang/LLVM) compile small C functions (micro-operations) into native
+object files (ELF, Mach-O, or COFF). These object files are parsed to
+extract the raw machine code bytes (stencils) and metadata describing
+the location of symbols and offsets (holes). * \textbf{Runtime (JIT
+Compilation Phase)}: The runtime JIT engine traverses a hot execution
+trace, copies the stencils into a memory buffer using simple memory
+copies (\passthrough{\lstinline!memcpy!}), and fills the holes (patches
+the relocations) with runtime values like frame offsets, constants, or
+jump destinations.
+
+This architecture delivers machine-native code execution speeds with a
+compiler that executes in microseconds.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{stencil-relocation-and-c-level-internals}{%
+\subsection{21.2 Stencil Relocation and C-Level
+Internals}\label{stencil-relocation-and-c-level-internals}}
+
+\hypertarget{machine-code-stencils-and-relocations}{%
+\subsubsection{1. Machine Code Stencils and
+Relocations}\label{machine-code-stencils-and-relocations}}
+
+At the C level, the JIT engine represents bytecode instructions as
+stencils. A stencil is a sequence of native instructions containing
+placeholders (holes) that must be resolved with runtime context:
+
+\begin{lstlisting}[language=C]
+/* Python/jit.c (conceptual layout) */
+typedef struct {
+    uint32_t offset;         /* Offset in bytes from start of stencil where hole begins */
+    uint8_t type;            /* Relocation type (e.g., absolute 64-bit, PC-relative 32-bit) */
+    uintptr_t value;         /* Raw value or identifier of symbol to patch into hole */
+} JITRelocation;
+
+typedef struct {
+    const unsigned char *code;     /* Array of raw machine code bytes */
+    size_t code_size;              /* Size of machine code array */
+    const JITRelocation *relocs;   /* Pointer to array of relocation entries */
+    size_t reloc_count;            /* Count of relocations for this stencil */
+} JITStencil;
+\end{lstlisting}
+
+\hypertarget{visual-representation-of-copy-and-patch-stitching}{%
+\subsubsection{2. Visual Representation of Copy-and-Patch
+Stitching}\label{visual-representation-of-copy-and-patch-stitching}}
+
+\begin{lstlisting}
+    Stencil 1: LOAD_FAST                    Stencil 2: LOAD_CONST
++--------------------------------+      +--------------------------------+
+| mov rax, [r14 + [   HOLE 1  ]] |      | mov rbx, [rip + [   HOLE 2  ]] |
++--------------------------------+      +--------------------------------+
+                  |                                      |
+                  | Copy stencils to RX memory           |
+                  v                                      v
++------------------------------------------------------------------------+
+| mov rax, [r14 + 0x18]                 | mov rbx, 0x103fc9208           |
++------------------------------------------------------------------------+
+                  ^                                      ^
+                  | Patch with local offset 0x18         | Patch with constant address
+\end{lstlisting}
+
+During the build phase, CPython uses Clang to compile each bytecode
+case. A Python script
+(\passthrough{\lstinline!Tools/cases\_generator/jit.py!}) parses the
+resulting object files, extracts the machine code, and outputs a C
+header file (\passthrough{\lstinline!jit\_cases.c.h!}) containing arrays
+of static stencils.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{tier-2-micro-ops-uops-and-the-optimization-pipeline}{%
+\subsection{21.3 Tier 2 Micro-Ops (uops) and the Optimization
+Pipeline}\label{tier-2-micro-ops-uops-and-the-optimization-pipeline}}
+
+CPython 3.13 splits execution into a multi-tiered pipeline: 1.
+\textbf{Tier 1 (Specializing Interpreter)}: The standard interpreter
+loop (from Chapter 17) executes bytecode. If a block of bytecode is
+executed frequently, it triggers dynamic tracing. 2. \textbf{Tier 2
+(Tracer / Optimizer)}: A tracing engine compiles the bytecode block into
+a flat linear sequence of simplified instructions called
+\textbf{Micro-Ops (uops)}. 3. \textbf{Tier 2 Optimization}: The uop
+trace undergoes basic optimizations: * \textbf{Dead Code Elimination}:
+Removing operations whose outputs are unused. * \textbf{Type
+Propagation}: Propagating specialized types through the trace to
+eliminate redundant type-checks. * \textbf{Abstract Evaluation}:
+Simulating stack heights to eliminate redundant push and pop operations.
+4. \textbf{Tier 2 JIT Execution}: The optimized uop trace is compiled by
+the Copy-and-Patch JIT engine, producing native machine code.
+
+\hypertarget{bytecode-to-native-compilation-flow}{%
+\subsubsection{1. Bytecode to Native Compilation
+Flow}\label{bytecode-to-native-compilation-flow}}
+
+\begin{lstlisting}
++---------------+      +----------------------+      +-----------------------+
+|  Python Code  | ---> |  AST / Tier 1 Byte  | ---> | Specializing ceval.c  |
++---------------+      +----------------------+      +-----------------------+
+                                                                 | (Hot block)
+                                                                 v
++---------------+      +----------------------+      +-----------------------+
+|  JIT Native  | <--- |  Copy & Patch Engine | <--- |  Tier 2 Micro-Ops     |
+|  Machine Code |      |  (Stencils + Holes)  |      |  (uop linear trace)   |
++---------------+      +----------------------+      +-----------------------+
+\end{lstlisting}
+
+\hypertarget{tier-2-uop-compilation-loop}{%
+\subsubsection{2. Tier 2 uop Compilation
+Loop}\label{tier-2-uop-compilation-loop}}
+
+The JIT compiler processes optimized uops using a loop that matches uop
+IDs to static stencils:
+
+\begin{lstlisting}[language=C]
+/* Python/jit.c */
+void* _PyJIT_CompileTrace(PyExecutorObject *executor, _PyUOpInstruction *trace, size_t trace_len) {
+    // 1. Allocate writable memory page
+    unsigned char *code_buffer = allocate_jit_memory();
+    unsigned char *cursor = code_buffer;
+    
+    for (size_t i = 0; i < trace_len; i++) {
+        _PyUOpInstruction uop = trace[i];
+        // Retrieve static stencil generated at build time
+        JITStencil stencil = get_stencil_for_uop(uop.opcode);
+        
+        // Copy machine code template
+        memcpy(cursor, stencil.code, stencil.code_size);
+        
+        // Patch relocations inside the copied code
+        for (size_t j = 0; j < stencil.reloc_count; j++) {
+            JITRelocation reloc = stencil.relocs[j];
+            uintptr_t patch_value = resolve_uop_symbol(uop, reloc.value);
+            patch_hole(cursor + reloc.offset, reloc.type, patch_value);
+        }
+        
+        cursor += stencil.code_size;
+    }
+    
+    // 2. Transition memory permissions to Read/Execute (RX)
+    make_jit_memory_executable(code_buffer, cursor - code_buffer);
+    return code_buffer;
+}
+\end{lstlisting}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{relocation-hole-patching-and-memory-security}{%
+\subsection{21.4 Relocation Hole Patching and Memory
+Security}\label{relocation-hole-patching-and-memory-security}}
+
+Patching relocation holes requires writing machine-specific offsets
+directly into the copied stencils. The JIT engine implements several
+relocation type handlers matching the host architecture:
+
+\hypertarget{relocation-implementations}{%
+\subsubsection{1. Relocation
+Implementations}\label{relocation-implementations}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{x86\_64 Relocations}:
+
+  \begin{itemize}
+  \tightlist
+  \item
+    \passthrough{\lstinline!R\_X86\_64\_64!}: Direct absolute 64-bit
+    address patch.
+  \item
+    \passthrough{\lstinline!R\_X86\_64\_PC32!}: 32-bit PC-relative
+    address patch (used for relative jumps between stencils).
+  \end{itemize}
+\item
+  \textbf{AArch64 (ARM64) Relocations}:
+
+  \begin{itemize}
+  \tightlist
+  \item
+    \passthrough{\lstinline!R\_AARCH64\_MOVW\_UABS\_G0!} \&
+    \passthrough{\lstinline!R\_AARCH64\_MOVW\_UABS\_G1!}: Patches
+    lower/upper bits of immediate load operations
+    (\passthrough{\lstinline!movz!}/\passthrough{\lstinline!movk!}).
+  \item
+    \passthrough{\lstinline!R\_AARCH64\_CONDBR19!}: Patches conditional
+    branch instruction target offsets.
+  \end{itemize}
+\end{itemize}
+
+\hypertarget{memory-security-wx-enforcement}{%
+\subsubsection{2. Memory Security: W\^{}X
+Enforcement}\label{memory-security-wx-enforcement}}
+
+Modern operating systems enforce \textbf{Write-Once-Read-Execute
+(W\^{}X)} permissions to prevent security vulnerabilities. A memory page
+cannot be simultaneously writable and executable.
+
+To adhere to this, CPython manages execution memory in two steps: 1.
+\textbf{Allocation Phase}: The JIT allocator requests pages from the OS
+with Read-Write (RW) permissions (using \passthrough{\lstinline!mmap!}
+with \passthrough{\lstinline!PROT\_READ | PROT\_WRITE!} on POSIX, or
+\passthrough{\lstinline!VirtualAlloc!} with
+\passthrough{\lstinline!PAGE\_READWRITE!} on Windows). 2.
+\textbf{Compilation \& Patching}: The compiler copies stencils and
+writes relocation values into the RW pages. 3. \textbf{Permissions
+Transition}: Once patching is complete, the JIT locks down the memory,
+requesting the OS to transition permissions to Read-Execute (RX) (using
+\passthrough{\lstinline!mprotect!} with
+\passthrough{\lstinline!PROT\_READ | PROT\_EXEC!}, or
+\passthrough{\lstinline!VirtualProtect!} with
+\passthrough{\lstinline!PAGE\_EXECUTE\_READ!}). 4. \textbf{Execution}:
+The executor executes the native machine code block by calling it via a
+C function pointer.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}

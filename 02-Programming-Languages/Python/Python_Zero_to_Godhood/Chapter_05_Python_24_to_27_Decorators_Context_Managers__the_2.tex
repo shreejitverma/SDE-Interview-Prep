@@ -1,0 +1,399 @@
+\hypertarget{python-2.4-to-2.7-decorators-context-managers-the-2.x-twilight}{%
+\chapter{Python 2.4 to 2.7: Decorators, Context Managers, \& the 2.x
+Twilight}\label{python-2.4-to-2.7-decorators-context-managers-the-2.x-twilight}}
+
+\hypertarget{decorators-syntactic-sugar-and-compiler-mechanics-pep-318-pep-3129}{%
+\subsection{5.1 Decorators: Syntactic Sugar and Compiler Mechanics (PEP
+318 \& PEP
+3129)}\label{decorators-syntactic-sugar-and-compiler-mechanics-pep-318-pep-3129}}
+
+Prior to Python 2.4, wrapping a function with utility behavior required
+declaring the function first, then immediately reassigning it in the
+host namespace:
+
+\begin{lstlisting}[language=Python]
+def query():
+    pass
+query = transaction(log(query))
+\end{lstlisting}
+
+This approach separated the metadata from the function declaration. PEP
+318 introduced the \passthrough{\lstinline!@decorator!} syntax to
+resolve this.
+
+\hypertarget{compiler-translation-bytecode-analysis}{%
+\subsubsection{1. Compiler Translation \& Bytecode
+Analysis}\label{compiler-translation-bytecode-analysis}}
+
+The \passthrough{\lstinline!@!} symbol is syntactic sugar resolved at
+compile-time. When the compiler encounters decorators, it loads the
+decorators onto the evaluation stack \emph{before} compiling the target
+function, then applies them in bottom-up (reverse-textual) order.
+
+Consider this nested decorator structure:
+
+\begin{lstlisting}[language=Python]
+@dec1
+@dec2
+def target():
+    pass
+\end{lstlisting}
+
+The compiler translates this structure into the following bytecode
+operations:
+
+\begin{lstlisting}
+  1           0 LOAD_NAME                0 (dec1)       /* Push dec1 onto stack */
+              3 LOAD_NAME                1 (dec2)       /* Push dec2 onto stack */
+              6 LOAD_CONST               0 (<code object target>)
+              9 LOAD_CONST               1 ('target')
+             12 MAKE_FUNCTION            0              /* Create function object target */
+             15 CALL_FUNCTION            1              /* Call dec2(target) */
+             18 CALL_FUNCTION            1              /* Call dec1(dec2(target)) */
+             21 STORE_NAME               2 (target)     /* Bind result to name target */
+\end{lstlisting}
+
+\hypertarget{decorator-execution-flow}{%
+\subsubsection{2. Decorator Execution
+Flow}\label{decorator-execution-flow}}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  The compiler pushes the decorator references
+  \passthrough{\lstinline!dec1!} and \passthrough{\lstinline!dec2!} onto
+  the evaluation stack.
+\item
+  \passthrough{\lstinline!MAKE\_FUNCTION!} instantiates a
+  \passthrough{\lstinline!PyFunctionObject!} from the compiled
+  \passthrough{\lstinline!<code object target>!} and pushes it onto the
+  stack.
+\item
+  The VM executes \passthrough{\lstinline!CALL\_FUNCTION 1!}, popping
+  \passthrough{\lstinline!target!} as the argument and
+  \passthrough{\lstinline!dec2!} as the callable, pushing the returned
+  wrapped function onto the stack.
+\item
+  The VM executes the second \passthrough{\lstinline!CALL\_FUNCTION 1!},
+  popping the wrapped function and \passthrough{\lstinline!dec1!} as the
+  callable, pushing the final wrapped function onto the stack.
+\item
+  \passthrough{\lstinline!STORE\_NAME!} binds the resulting callable to
+  the name \passthrough{\lstinline!target!} in the local namespace.
+\end{enumerate}
+
+This bottom-up composition is mathematically equivalent to:
+\[\text{target} = \text{dec1}\left(\text{dec2}\left(\text{target}\right)\right)\]
+
+\hypertarget{class-decorators-pep-3129}{%
+\subsubsection{3. Class Decorators (PEP
+3129)}\label{class-decorators-pep-3129}}
+
+Introduced in Python 2.6, class decorators apply the same syntactic
+translation to class creation. After the class body is evaluated and the
+class type object is constructed, the compiler passes the type object to
+the decorator:
+
+\begin{lstlisting}[language=Python]
+@class_decorator
+class Model(object):
+    pass
+\end{lstlisting}
+
+This translates directly to:
+\[\text{Model} = \text{class\_decorator}\left(\text{Model}\right)\]
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{context-managers-and-the-with-statement-pep-343}{%
+\subsection{\texorpdfstring{5.2 Context Managers and the \texttt{with}
+Statement (PEP
+343)}{5.2 Context Managers and the with Statement (PEP 343)}}\label{context-managers-and-the-with-statement-pep-343}}
+
+Introduced in Python 2.5, the \passthrough{\lstinline!with!} statement
+encapsulates clean acquisition and release patterns for resources.
+
+\hypertarget{the-context-manager-protocol}{%
+\subsubsection{1. The Context Manager
+Protocol}\label{the-context-manager-protocol}}
+
+An object is a context manager if it implements: *
+\passthrough{\lstinline!\_\_enter\_\_(self)!}: Acquires the resource and
+returns the object to be bound to the \passthrough{\lstinline!as!}
+target (if present). *
+\passthrough{\lstinline!\_\_exit\_\_(self, exc\_type, exc\_val, exc\_tb)!}:
+Invoked when leaving the block. * If an exception was raised,
+\passthrough{\lstinline!exc\_type!}, \passthrough{\lstinline!exc\_val!},
+and \passthrough{\lstinline!exc\_tb!} contain the exception details. If
+\passthrough{\lstinline!\_\_exit\_\_!} returns a truthy value, the
+exception is silenced. * If no exception occurred, all three arguments
+are passed as \passthrough{\lstinline!None!}.
+
+\hypertarget{compiler-translation-to-try-finally}{%
+\subsubsection{2. Compiler Translation to
+Try-Finally}\label{compiler-translation-to-try-finally}}
+
+The compiler translates a \passthrough{\lstinline!with!} statement
+block:
+
+\begin{lstlisting}[language=Python]
+with expression as target:
+    suite
+\end{lstlisting}
+
+Into a low-level equivalent logic block:
+
+\begin{lstlisting}[language=Python]
+mgr = expression
+exit_method = type(mgr).__exit__
+value = type(mgr).__enter__(mgr)
+exc = True
+try:
+    try:
+        target = value  # Bind target if "as" clause exists
+        suite
+    except:
+        exc = False
+        if not exit_method(mgr, *sys.exc_info()):
+            raise
+finally:
+    if exc:
+        exit_method(mgr, None, None, None)
+\end{lstlisting}
+
+\hypertarget{bytecode-implementation-and-the-block-stack}{%
+\subsubsection{3. Bytecode Implementation and the Block
+Stack}\label{bytecode-implementation-and-the-block-stack}}
+
+To guarantee that \passthrough{\lstinline!\_\_exit\_\_!} is called even
+when exceptions propagate, the VM uses its internal \textbf{block stack}
+inside the execution frame.
+
+When the VM executes a \passthrough{\lstinline!with!} block: 1.
+\textbf{\passthrough{\lstinline!SETUP\_WITH!}}: Evaluates the context
+manager expression, calls \passthrough{\lstinline!\_\_enter\_\_!},
+pushes the \passthrough{\lstinline!\_\_exit\_\_!} method onto the
+evaluation stack, pushes a \passthrough{\lstinline!finally!} block onto
+the frame's block stack, and pushes the
+\passthrough{\lstinline!\_\_enter\_\_!} return value onto the evaluation
+stack. 2. \textbf{\passthrough{\lstinline!WITH\_CLEANUP!}} (or modern
+equivalent block unwinding): When leaving the
+\passthrough{\lstinline!with!} block (normally or via an exception), the
+VM pops the block off the block stack. * If an exception propagates, the
+VM leaves the exception (\passthrough{\lstinline!type!},
+\passthrough{\lstinline!value!}, \passthrough{\lstinline!traceback!}) on
+the evaluation stack and calls
+\passthrough{\lstinline!\_\_exit\_\_(type, value, traceback)!}. * If
+\passthrough{\lstinline!\_\_exit\_\_!} returns
+\passthrough{\lstinline!True!}, the VM clears the exception state,
+preventing propagation. If \passthrough{\lstinline!False!}, the VM
+re-throws the exception.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{generator-enhancements-coroutines-and-frame-suspension-pep-342}{%
+\subsection{5.3 Generator Enhancements: Coroutines and Frame Suspension
+(PEP
+342)}\label{generator-enhancements-coroutines-and-frame-suspension-pep-342}}
+
+Introduced in Python 2.5, PEP 342 expanded generators from simple,
+passive data producers into active coroutines by allowing bidirectional
+communication.
+
+\hypertarget{bidirectional-methods}{%
+\subsubsection{1. Bidirectional Methods}\label{bidirectional-methods}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{\passthrough{\lstinline!.send(value)!}}: Resumes the generator
+  and passes \passthrough{\lstinline!value!} back. Inside the generator,
+  the active \passthrough{\lstinline!yield!} expression evaluates to
+  this \passthrough{\lstinline!value!}. Calling
+  \passthrough{\lstinline!.send(None)!} is equivalent to
+  \passthrough{\lstinline!next()!}.
+\item
+  \textbf{\passthrough{\lstinline!.throw(type, value=None, traceback=None)!}}:
+  Raises the specified exception inside the generator frame at the
+  suspended \passthrough{\lstinline!yield!} point.
+\item
+  \textbf{\passthrough{\lstinline!.close()!}}: Raises a
+  \passthrough{\lstinline!GeneratorExit!} exception at the suspended
+  \passthrough{\lstinline!yield!} point. The generator must clean up
+  resources and exit. If it yields another value instead of returning or
+  exiting, the VM raises a \passthrough{\lstinline!RuntimeError!}.
+\end{itemize}
+
+\hypertarget{frame-suspension-mechanics-pyframeobject}{%
+\subsubsection{\texorpdfstring{2. Frame Suspension Mechanics
+(\texttt{PyFrameObject})}{2. Frame Suspension Mechanics (PyFrameObject)}}\label{frame-suspension-mechanics-pyframeobject}}
+
+When a generator encounters a \passthrough{\lstinline!yield!} statement,
+the execution loop in
+\passthrough{\lstinline!\_PyEval\_EvalFrameDefault()!} suspends
+execution:
+
+\begin{lstlisting}
+[Active Thread State] -> [Running Generator Frame] -> Yield Encountered
+                                                            |
+                                                            v
+1. Save instruction pointer: frame->f_lasti = active_instruction_offset
+2. Save evaluation stack pointer depth: frame->f_stackdepth = current_depth
+3. Set generator state: generator->gi_state = GEN_SUSPENDED
+4. Detach frame: thread_state->frame = frame->f_back
+                                                            |
+                                                            v
+                                            [Return Control to Caller]
+\end{lstlisting}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  \textbf{\passthrough{\lstinline!f\_lasti!} Preservation}: The VM saves
+  the offset of the next instruction in
+  \passthrough{\lstinline!frame->f\_lasti!}.
+\item
+  \textbf{Stack Conservation}: The evaluation stack pointer is frozen at
+  its current depth.
+\item
+  \textbf{State Transition}: The generator's state is set to
+  \passthrough{\lstinline!GEN\_SUSPENDED!}.
+\item
+  \textbf{Frame Detachment}: The frame is unlinked from the active
+  thread state execution chain, returning control back to the caller
+  while keeping the frame alive on the heap.
+\end{enumerate}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{under-the-hood-cpython-data-structure-layouts}{%
+\subsection{5.4 Under-the-Hood CPython Data Structure
+Layouts}\label{under-the-hood-cpython-data-structure-layouts}}
+
+\hypertarget{python-list-layout-pylistobject}{%
+\subsubsection{\texorpdfstring{1. Python List Layout
+(\texttt{PyListObject})}{1. Python List Layout (PyListObject)}}\label{python-list-layout-pylistobject}}
+
+A Python list is a contiguous dynamic array of
+\passthrough{\lstinline!PyObject*!} pointers. Because list sizes change
+dynamically, CPython overallocates memory blocks to achieve \(O(1)\)
+amortized append performance.
+
+Let's inspect the \passthrough{\lstinline!PyListObject!} struct defined
+in \passthrough{\lstinline!Include/listobject.h!}:
+
+\begin{lstlisting}[language=C]
+typedef struct {
+    PyObject_VAR_HEAD
+    PyObject **ob_item;      /* Vector of pointers to list items */
+    Py_ssize_t allocated;    /* Number of slots allocated in ob_item memory */
+} PyListObject;
+\end{lstlisting}
+
+When a list grows beyond its current capacity, CPython resizes the
+underlying array using the formula:
+\[\text{allocated} = \text{newsize} + (\text{newsize} \gg 3) + (\text{newsize} < 9 \,?\, 3 : 6)\]
+
+This formula balances memory overhead and reallocation speed. By adding
+\(\approx 12.5\%\) extra slots as the list grows, it minimizes heap
+reallocations and memory copying costs.
+
+Here is the resulting capacity growth trace: \textbar{} Item Count
+(\passthrough{\lstinline!newsize!}) \textbar{} Allocated Capacity
+\textbar{} Overallocation Factor \textbar{}
+\textbar---\textbar---\textbar---\textbar{} \textbar{} 0 \textbar{} 0
+\textbar{} - \textbar{} \textbar{} 1 \textbar{} 4 \textbar{} \(400\%\)
+\textbar{} \textbar{} 5 \textbar{} 8 \textbar{} \(160\%\) \textbar{}
+\textbar{} 9 \textbar{} 16 \textbar{} \(177\%\) \textbar{} \textbar{} 17
+\textbar{} 25 \textbar{} \(147\%\) \textbar{} \textbar{} 1000 \textbar{}
+1129 \textbar{} \(112.9\%\) \textbar{}
+
+\hypertarget{classic-sparse-dictionary-layout-pre-python-3.6}{%
+\subsubsection{2. Classic Sparse Dictionary Layout (Pre-Python
+3.6)}\label{classic-sparse-dictionary-layout-pre-python-3.6}}
+
+Before Python 3.6 (PEP 468), dictionaries were sparse hash tables
+consisting of an array of \passthrough{\lstinline!PyDictEntry!} structs.
+
+The entry struct \passthrough{\lstinline!PyDictEntry!} was defined in
+\passthrough{\lstinline!Include/dictobject.h!} as:
+
+\begin{lstlisting}[language=C]
+typedef struct {
+    Py_ssize_t me_hash;      /* Cached hash value of me_key */
+    PyObject *me_key;        /* Pointer to the key PyObject */
+    PyObject *me_value;      /* Pointer to the value PyObject */
+} PyDictEntry;
+\end{lstlisting}
+
+The dictionary header \passthrough{\lstinline!PyDictObject!} was defined
+as:
+
+\begin{lstlisting}[language=C]
+struct _dictobject {
+    PyObject_HEAD
+    Py_ssize_t ma_fill;      /* Active entries + dummy entries */
+    Py_ssize_t ma_used;      /* Active entries only */
+    Py_ssize_t ma_mask;      /* size of table - 1 */
+    PyDictEntry *ma_table;   /* Pointer to the sparse entry table array */
+};
+\end{lstlisting}
+
+This layout was memory-inefficient: * Every slot in the table array
+consumed 24 bytes (on 64-bit systems), regardless of whether it
+contained an entry or was empty/deleted (dummy). * To keep search
+collisions low, the table size was always a power of 2 and kept at least
+1/3 empty. * Memory was highly sparse, leading to poor cache locality.
+
+\begin{lstlisting}
+Classic Sparse Dictionary Memory Layout:
+[ Index 0: <me_hash, key_ptr, value_ptr> (24 bytes) ]
+[ Index 1: <0, NULL, NULL>               (24 bytes - null padding) ]
+[ Index 2: <me_hash, key_ptr, value_ptr> (24 bytes) ]
+[ Index 3: <0, NULL, NULL>               (24 bytes - null padding) ]
+\end{lstlisting}
+
+\hypertarget{sets-optimization-pysetobject}{%
+\subsubsection{\texorpdfstring{3. Sets Optimization
+(\texttt{PySetObject})}{3. Sets Optimization (PySetObject)}}\label{sets-optimization-pysetobject}}
+
+Python sets are implemented as open-addressed hash tables similar to
+dictionaries, but without values. Lookups skip value retrieval entirely,
+evaluating only keys and hashes in tight C loops. A set's entries are
+instances of \passthrough{\lstinline!PySetEntry!}:
+
+\begin{lstlisting}[language=C]
+typedef struct {
+    PyObject *key;
+    long hash;               /* Cached hash value of key */
+} PySetEntry;
+\end{lstlisting}
+
+\hypertarget{tuples-optimization-pytupleobject}{%
+\subsubsection{\texorpdfstring{4. Tuples Optimization
+(\texttt{PyTupleObject})}{4. Tuples Optimization (PyTupleObject)}}\label{tuples-optimization-pytupleobject}}
+
+Tuples are immutable sequences stored as a single contiguous memory
+block containing the type header, the item count, and an array of
+\passthrough{\lstinline!PyObject*!} pointers:
+
+\begin{lstlisting}[language=C]
+typedef struct {
+    PyObject_VAR_HEAD
+    PyObject *ob_item[1];    /* Inline array of pointers (allocated dynamically) */
+} PyTupleObject;
+\end{lstlisting}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Tuple Free Lists}: To avoid the overhead of the system
+  allocator, CPython maintains an array of free lists for small tuples
+  up to size 20. When a tuple under size 20 is deallocated, its memory
+  block is cached in the corresponding size slot of the free list for
+  immediate reuse during subsequent tuple allocations.
+\end{itemize}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}

@@ -1,0 +1,67 @@
+\hypertarget{python-3.12-native-generics-pep-695-type-statement-and-subinterpreters}{%
+\chapter{Python 3.12: Native Generics (PEP 695), Type statement, and
+Subinterpreters}\label{python-3.12-native-generics-pep-695-type-statement-and-subinterpreters}}
+
+\hypertarget{pep-695-type-parameter-syntax}{%
+\subsection{18.1 PEP 695 Type Parameter
+Syntax}\label{pep-695-type-parameter-syntax}}
+
+Python 3.12 introduced a clean, native syntax for generic classes,
+generic functions, and type aliases using type parameters enclosed in
+square brackets.
+
+\begin{lstlisting}[language=Python]
+# Generic Function
+def reverse[T](items: list[T]) -> list[T]:
+    return items[::-1]
+
+# Generic Class
+class Stack[T]:
+    def __init__(self) -> None:
+        self._data: list[T] = []
+
+# Modern Type Alias
+type Vector3D[T] = tuple[T, T, T]
+\end{lstlisting}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{hidden-scopes-and-lazy-evaluation}{%
+\subsection{18.2 Hidden Scopes and Lazy
+Evaluation}\label{hidden-scopes-and-lazy-evaluation}}
+
+Historically, generic class constraints (e.g.,
+\passthrough{\lstinline!T = TypeVar('T', bound=int)!}) were evaluated
+eagerly at module import time, which often led to circular import issues
+and name resolution errors. Under PEP 695, CPython resolves this by
+evaluating type parameter bounds and type aliases using \textbf{hidden
+compiler-generated scopes}.
+
+\hypertarget{scope-encapsulation}{%
+\subsubsection{1. Scope Encapsulation}\label{scope-encapsulation}}
+
+When the compiler encounters type parameters or the
+\passthrough{\lstinline!type!} statement, it wraps the evaluation code
+inside a nested lexical scope (similar to a hidden function block).
+
+\begin{lstlisting}[language=Python]
+# Conceptual translation of type alias Vector3D[T]
+class Vector3D:
+    # Under the hood, T is evaluated lazily inside a nested compiler scope
+    def __lazy_type_eval__(T):
+        return tuple[T, T, T]
+\end{lstlisting}
+
+\hypertarget{typealiastype-struct-representation}{%
+\subsubsection{\texorpdfstring{2. \texttt{TypeAliasType} Struct
+representation}{2. TypeAliasType Struct representation}}\label{typealiastype-struct-representation}}
+
+At runtime, the \passthrough{\lstinline!type!} statement creates an
+instance of \passthrough{\lstinline!typing.TypeAliasType!}. The CPython
+class definition wraps: * \passthrough{\lstinline!\_\_name\_\_!}: Name
+of the alias. * \passthrough{\lstinline!\_\_value\_\_!}: The aliased
+type (evaluated lazily upon first access via its descriptor getter). *
+\passthrough{\lstinline!\_\_type\_params\_\_!}: Tuple of type
+parameters.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}

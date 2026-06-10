@@ -1,0 +1,267 @@
+\hypertarget{cpython-memory-allocator-pymalloc-generational-garbage-collection}{%
+\chapter{CPython Memory Allocator (PyMalloc) \& Generational Garbage
+Collection}\label{cpython-memory-allocator-pymalloc-generational-garbage-collection}}
+
+\hypertarget{cpythons-memory-allocation-engine-pymalloc}{%
+\subsection{23.1 CPython's Memory Allocation Engine
+(PyMalloc)}\label{cpythons-memory-allocation-engine-pymalloc}}
+
+For large allocations (greater than 512 bytes), CPython forwards the
+request directly to the system's standard C library allocator
+(\passthrough{\lstinline!malloc()!}). However, for small objects
+(\(\le 512\) bytes)which represent the vast majority of Python
+allocationsstandard operating system allocators introduce high
+fragmentation and locking overhead. To resolve this, CPython implements
+a custom small-object allocator called \textbf{PyMalloc}.
+
+\hypertarget{pymalloc-memory-hierarchy}{%
+\subsubsection{1. PyMalloc Memory
+Hierarchy}\label{pymalloc-memory-hierarchy}}
+
+PyMalloc structures memory into three distinct layers to minimize
+operating system allocation calls: * \textbf{Arenas (256 KB)}:
+Contiguous memory blocks allocated from the operating system, aligned to
+256 KB boundaries. Arenas manage memory at the virtual memory level and
+contain exactly 64 pools. * \textbf{Pools (4 KB)}: Subdivisions of
+arenas that match the operating system's virtual page size. Each pool is
+dedicated to a single \textbf{size class} (e.g., all blocks in a pool
+are 32 bytes, or all are 64 bytes). * \textbf{Blocks}: The actual chunks
+of memory returned to the interpreter. Blocks range from 8 bytes to 512
+bytes, aligned to 8-byte steps (giving 64 distinct size classes).
+
+\hypertarget{c-level-struct-definitions-in-obmalloc.c}{%
+\subsubsection{2. C-level Struct Definitions in
+obmalloc.c}\label{c-level-struct-definitions-in-obmalloc.c}}
+
+The structures for pools and arenas are defined in CPython's memory
+management source file (\passthrough{\lstinline!Objects/obmalloc.c!}).
+
+\hypertarget{pool-header-struct}{%
+\paragraph{Pool Header Struct}\label{pool-header-struct}}
+
+Every 4 KB pool begins with a header that tracks block allocations and
+linked lists of free pools:
+
+\begin{lstlisting}[language=C]
+/* Objects/obmalloc.c */
+typedef uint8_t block;
+
+struct pool_header {
+    union { 
+        block *as_block; 
+        uint32_t as_uint; 
+    } nextfree;             /* Pointer to the next available free block in the pool */
+    union { 
+        block *as_block; 
+        uint32_t as_uint; 
+    } firstfree;            /* Pointer to the first free block in the pool */
+    struct pool_header *nextpool; /* Link to the next pool in the active list */
+    struct pool_header *prevpool; /* Link to the previous pool in the active list */
+    uint32_t refcount;      /* Number of allocated blocks currently in use */
+    uint32_t szidx;         /* Size class index of this pool */
+    uint32_t freeblocks;    /* Number of free blocks remaining in the pool */
+};
+typedef struct pool_header *poolp;
+\end{lstlisting}
+
+\begin{itemize}
+\tightlist
+\item
+  \passthrough{\lstinline!nextfree!}: Points to the next block in a
+  singly linked list of free blocks inside the pool. PyMalloc uses
+  \textbf{in-place pointers} inside the free blocks themselves to
+  implement this list without consuming extra memory.
+\item
+  \passthrough{\lstinline!firstfree!}: Tracks the boundary of allocated
+  blocks versus unallocated space in the pool.
+\item
+  \passthrough{\lstinline!szidx!}: Specifies which size class this pool
+  belongs to.
+\end{itemize}
+
+\hypertarget{arena-object-struct}{%
+\paragraph{Arena Object Struct}\label{arena-object-struct}}
+
+CPython tracks arenas using an array of
+\passthrough{\lstinline!arena\_object!} descriptors:
+
+\begin{lstlisting}[language=C]
+/* Objects/obmalloc.c */
+struct arena_object {
+    uintptr_t address;          /* Base virtual memory address of the 256 KB block */
+    block* pool_address;        /* Pointer to the first pool inside this arena */
+    uint32_t nfreepools;        /* Number of pools currently free in this arena */
+    uint32_t ntotalpools;       /* Total number of pools inside this arena (usually 64) */
+    struct arena_object* nextarena; /* Link to the next arena */
+    struct arena_object* prevarena; /* Link to the previous arena */
+};
+\end{lstlisting}
+
+\hypertarget{size-class-formula}{%
+\subsubsection{3. Size Class Formula}\label{size-class-formula}}
+
+The size class for an allocation request of size \(S\) is calculated by:
+
+\[\text{Class Index} = \left\lceil \frac{S}{8} \right\rceil - 1\]
+
+This mapped alignment restricts memory fragmentation, ensuring that
+small object requests are answered in \(\mathcal{O}(1)\) time by
+locating the active pool array matching the calculated class index.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{generational-garbage-collection-and-cycle-detection}{%
+\subsection{23.2 Generational Garbage Collection and Cycle
+Detection}\label{generational-garbage-collection-and-cycle-detection}}
+
+While reference counting manages the vast majority of object lifecycles,
+it cannot identify self-referencing cyclic loops (e.g.,
+\passthrough{\lstinline!x = []; x.append(x)!}). To reclaim cyclic memory
+leaks, CPython runs a cyclic Garbage Collector (GC) as a background
+system.
+
+\hypertarget{gc-memory-prefix-and-header-layout}{%
+\subsubsection{1. GC Memory Prefix and Header
+Layout}\label{gc-memory-prefix-and-header-layout}}
+
+Every object tracked by the GC has an extra header prefix in memory
+before its normal \passthrough{\lstinline!PyObject!} structure. When
+\passthrough{\lstinline!PyObject\_GC\_New()!} is called, it allocates
+memory block of size:
+
+\[\text{Allocation Size} = \text{sizeof(PyGC\_Head)} + \text{sizeof(PyObject)}\]
+
+\begin{lstlisting}
++--------------------------------------------------------+
+|                      PyGC_Head                         |
+|  - gc_next: Linkage to other GC tracked objects        |
+|  - gc_prev: Linkage to other GC tracked objects        |
+|  - gc_refs: Temporary reference state                  |
++--------------------------------------------------------+
+|                      PyObject                          | <--- Object Pointer Returned to User
+|  - ob_refcnt: Standard reference counter               |
+|  - ob_type: Type pointer                               |
++--------------------------------------------------------+
+\end{lstlisting}
+
+The pointer returned to the user points directly to the
+\passthrough{\lstinline!PyObject!} start. The VM accesses the GC header
+by subtracting the header size:
+
+\[\text{PyGC\_Head Pointer} = (\text{PyGC\_Head*})\text{op} - 1\]
+
+The C-level layout of \passthrough{\lstinline!PyGC\_Head!} is defined in
+\passthrough{\lstinline!Include/internal/pycore\_gc.h!}:
+
+\begin{lstlisting}[language=C]
+typedef union _gc_head {
+    struct {
+        uintptr_t gc_next;   /* Pointer to next object in generation list */
+        uintptr_t gc_prev;   /* Pointer to previous object in generation list */
+        Py_ssize_t gc_refs;  /* Reference count copy used during cycle checks */
+    } gc;
+    double dummy;            /* Forces double-word alignment adjustments */
+} PyGC_Head;
+\end{lstlisting}
+
+\hypertarget{the-three-generations}{%
+\subsubsection{2. The Three Generations}\label{the-three-generations}}
+
+The GC divides tracked objects into three generations based on survival
+age: * \textbf{Generation 0 (Gen 0)}: Where new objects are registered.
+Collected frequently. * \textbf{Generation 1 (Gen 1)}: Objects that
+survived a Gen 0 collection pass. * \textbf{Generation 2 (Gen 2)}:
+Long-lived objects. Collected least frequently.
+
+Collection is triggered when the number of allocations minus
+deallocations in a generation exceeds a configured threshold:
+
+\[\text{Allocations} - \text{Deallocations} > \text{Threshold}\]
+
+Default thresholds are \passthrough{\lstinline!(700, 10, 10)!}. You can
+view or change them via \passthrough{\lstinline!gc.get\_threshold()!}
+and \passthrough{\lstinline!gc.set\_threshold()!}.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{the-cycle-detection-algorithm}{%
+\subsection{23.3 The Cycle Detection
+Algorithm}\label{the-cycle-detection-algorithm}}
+
+To find and break reference cycles, the GC executes the following steps
+during a collection pass:
+
+\hypertarget{initializing-gc_refs}{%
+\subsubsection{1. Initializing gc\_refs}\label{initializing-gc_refs}}
+
+The GC copy-assigns the reference count of every object in the
+collection generation to its \passthrough{\lstinline!gc\_refs!} field:
+
+\[\text{gc\_refs} = \text{ob\_refcnt}\]
+
+\hypertarget{traversing-internal-references}{%
+\subsubsection{2. Traversing Internal
+References}\label{traversing-internal-references}}
+
+For each object in the generation list, the GC calls its
+\passthrough{\lstinline!tp\_traverse!} slot (a C function that lists all
+objects referenced by the object). If a referenced object is also in the
+collection generation, the GC decrements that object's
+\passthrough{\lstinline!gc\_refs!}:
+
+\[\text{gc\_refs} = \text{gc\_refs} - 1\]
+
+After traversing all objects, any object that still has
+\passthrough{\lstinline!gc\_refs > 0!} must be reachable from outside
+the generation list (e.g., from local variables, global parameters, or a
+higher generation).
+
+\hypertarget{resolving-and-splitting-collections}{%
+\subsubsection{3. Resolving and Splitting
+Collections}\label{resolving-and-splitting-collections}}
+
+The GC splits the candidate list into two sets:
+\passthrough{\lstinline!reachable!} and
+\passthrough{\lstinline!unreachable!}.
+
+\begin{lstlisting}
+                  [GC Collection Candidates]
+                              |
+              Does object have gc_refs > 0?
+                           /     \
+                         Yes      No
+                         /         \
+            [Reachable Set]       [Unreachable Set]
+\end{lstlisting}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  If an object has \passthrough{\lstinline!gc\_refs > 0!}, it is moved
+  back to the \passthrough{\lstinline!reachable!} list.
+\item
+  All objects reachable \emph{from} that object (transitively traversed
+  via \passthrough{\lstinline!tp\_traverse!}) are also marked as
+  \passthrough{\lstinline!reachable!} and moved out of the
+  \passthrough{\lstinline!unreachable!} list, even if their
+  \passthrough{\lstinline!gc\_refs!} was zero.
+\item
+  Any remaining objects in the \passthrough{\lstinline!unreachable!} set
+  are confirmed to be part of a cyclic garbage loop and are marked for
+  deallocation.
+\end{enumerate}
+
+\hypertarget{clearing-cycles-and-deallocation}{%
+\subsubsection{4. Clearing Cycles and
+Deallocation}\label{clearing-cycles-and-deallocation}}
+
+The GC breaks the reference cycle by calling the
+\passthrough{\lstinline!tp\_clear!} slot on each object in the
+\passthrough{\lstinline!unreachable!} set. This sets internal pointers
+(like dictionary entries or list items) to
+\passthrough{\lstinline!None!} or clears them, which decrements the
+reference counts of the target objects and allows the standard reference
+counter to deallocate the memory.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}

@@ -1,0 +1,71 @@
+\hypertarget{the-python-3.0-paradigm-shift}{%
+\chapter{THE PYTHON 3.0 PARADIGM
+SHIFT}\label{the-python-3.0-paradigm-shift}}
+
+\hypertarget{the-print-statement-redesign}{%
+\subsection{7.1 The Print Statement
+Redesign}\label{the-print-statement-redesign}}
+
+In Python 2, \passthrough{\lstinline!print!} was a keyword statement.
+This limited extensibility because it could not be passed as a callback
+or configured dynamically. * \textbf{Legacy Bytecode}: The Python 2
+compiler generated specialized bytecodes
+\passthrough{\lstinline!PRINT\_ITEM!} and
+\passthrough{\lstinline!PRINT\_NEWLINE!} to write directly to standard
+output. * \textbf{The Modern print() Function}: In Python 3,
+\passthrough{\lstinline!print()!} is a built-in function loaded via
+standard lookup processes. The call signature accepts keyword
+configurations:
+\passthrough{\lstinline!print(*objects, sep=' ', end='\\n', file=None, flush=False)!}
+Under the hood, \passthrough{\lstinline!file!} defaults to standard
+sys.stdout wrapper, and \passthrough{\lstinline!flush=True!} immediately
+flushes the underlying buffer, invoking the stream's write routine.
+
+\hypertarget{division-unification}{%
+\subsection{7.2 Division Unification}\label{division-unification}}
+
+Python 2 used C-style integer division for the
+\passthrough{\lstinline!/!} operator (i.e.~\(5 / 2 = 2\)), which led to
+silent bugs. * \textbf{CPython Numeric Slots}: Python 3 mapped
+operations to distinct type object slots: - True Division
+(\passthrough{\lstinline!/!}): Routes to the slot
+\passthrough{\lstinline!nb\_true\_divide!}, which converts inputs to
+floats and returns the exact decimal division (\(5 / 2 = 2.5\)). - Floor
+Division (\passthrough{\lstinline!//!}): Routes to the slot
+\passthrough{\lstinline!nb\_floor\_divide!}, executing division and
+applying floor rounding (\(5 // 2 = 2\)).
+
+\hypertarget{lazy-iterators-resource-conservation}{%
+\subsection{7.3 Lazy Iterators \& Resource
+Conservation}\label{lazy-iterators-resource-conservation}}
+
+To prevent allocating large lists in memory, Python 3 converted core
+built-ins to return dynamic iterators: * \textbf{Built-in Conversions}:
+\passthrough{\lstinline!map!}, \passthrough{\lstinline!filter!}, and
+\passthrough{\lstinline!zip!} return custom lazy iterator types
+(\passthrough{\lstinline!map!}, \passthrough{\lstinline!filter!},
+\passthrough{\lstinline!zip!} objects) that yield items on demand. *
+\textbf{The range() Overhaul}: In Python 2,
+\passthrough{\lstinline!range()!} returned a fully allocated list, while
+\passthrough{\lstinline!xrange()!} was a custom sequence wrapper. Python
+3 merged these: \passthrough{\lstinline!range()!} behaves like
+\passthrough{\lstinline!xrange()!}, representing an immutable sequence
+of numbers that computes values lazily, requiring only \(O(1)\) memory.
+
+\hypertarget{dictionary-view-objects}{%
+\subsection{7.4 Dictionary View Objects}\label{dictionary-view-objects}}
+
+Python 2's dictionary inspection methods
+(\passthrough{\lstinline!dict.keys()!},
+\passthrough{\lstinline!dict.values()!},
+\passthrough{\lstinline!dict.items()!}) returned copies of the
+keys/values as separate list objects. In large applications, this caused
+high allocation overhead. * \textbf{Dictionary Views}: Python 3 replaced
+these with \textbf{view objects} (\passthrough{\lstinline!dict\_keys!},
+\passthrough{\lstinline!dict\_values!},
+\passthrough{\lstinline!dict\_items!}). View objects do not copy
+dictionary items; instead, they maintain a direct pointer to the
+dictionary's internal entries table. Any modifications to the dictionary
+are immediately reflected in the view, keeping memory usage at \(O(1)\).
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}

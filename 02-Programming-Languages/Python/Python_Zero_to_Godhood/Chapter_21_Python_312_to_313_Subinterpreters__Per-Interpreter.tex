@@ -1,0 +1,87 @@
+\hypertarget{python-3.12-to-3.13-subinterpreters-per-interpreter-gil-parallelism}{%
+\chapter{Python 3.12 to 3.13: Subinterpreters \& Per-Interpreter GIL
+Parallelism}\label{python-3.12-to-3.13-subinterpreters-per-interpreter-gil-parallelism}}
+
+\hypertarget{isolation-of-interpreter-state-pep-684}{%
+\subsection{22.1 Isolation of Interpreter State (PEP
+684)}\label{isolation-of-interpreter-state-pep-684}}
+
+Before Python 3.12, multi-threaded concurrency was bottlenecked by the
+Global Interpreter Lock (GIL) because all threads shared a single global
+interpreter state. PEP 684 introduced support for \textbf{isolated
+subinterpreters}, each running with its own per-interpreter GIL. This
+configuration allows a single OS process to run multiple Python
+interpreters concurrently, achieving true multi-core parallel execution.
+
+\hypertarget{process-memory-layout-shared-vs.-isolated-states}{%
+\subsubsection{1. Process Memory Layout: Shared vs.~Isolated
+States}\label{process-memory-layout-shared-vs.-isolated-states}}
+
+\begin{lstlisting}
+================================ OS PROCESS MEMORY ================================
+|                                                                                 |
+|  [Global Process State] (Loaded DLLs, static allocation, file descriptors)     |
+|                                                                                 |
+|  [Subinterpreter 0] (Own GIL)     [Subinterpreter 1] (Own GIL)                 |
+|   - Heap: Private Objects          - Heap: Private Objects                     |
+|   - Modules: Isolated Dict         - Modules: Isolated Dict                    |
+|   - Garbage Collector States       - Garbage Collector States                  |
+|   - PyInterpreterState Struct      - PyInterpreterState Struct                 |
+|                                                                                 |
+===================================================================================
+\end{lstlisting}
+
+\hypertarget{the-pyinterpreterstate-structure}{%
+\subsubsection{\texorpdfstring{2. The \texttt{PyInterpreterState}
+Structure}{2. The PyInterpreterState Structure}}\label{the-pyinterpreterstate-structure}}
+
+To achieve isolation, all mutable structures have been shifted from
+global scopes into per-interpreter state wrappers defined in
+\passthrough{\lstinline!pycore\_interp.h!}:
+
+\begin{lstlisting}[language=C]
+struct _is {
+    struct _is *next;                 /* Pointer to next subinterpreter in process */
+    struct _ceval_state ceval;        /* Per-interpreter evaluation loop configuration and GIL */
+    struct _gc_state gc;              /* Per-interpreter garbage collector generations */
+    PyObject *modules;                /* Isolated dictionary containing loaded modules */
+    PyObject *sysdict;                /* Isolated sys module context variables */
+    /* ... additional fields ... */
+};
+typedef struct _is PyInterpreterState;
+\end{lstlisting}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{inter-interpreter-communication-channels}{%
+\subsection{22.2 Inter-Interpreter Communication
+Channels}\label{inter-interpreter-communication-channels}}
+
+Because subinterpreters share no Python objects directly (to avoid
+reference count race conditions across distinct heaps), they cannot
+share pointers. Data must be passed between subinterpreters using the
+C-level serialization protocols of the
+\passthrough{\lstinline!\_xxsubinterpreters!} module.
+
+\hypertarget{channel-mechanics}{%
+\subsubsection{1. Channel Mechanics}\label{channel-mechanics}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Sender}: Serializes/marshals the Python object data into an
+  isolated C buffer.
+\item
+  \textbf{Queue}: Pushes the serialized buffer onto an OS-level
+  thread-safe memory queue.
+\item
+  \textbf{Receiver}: Pops the buffer from the queue, deserializes the
+  bytes, and reconstructs a new \passthrough{\lstinline!PyObject!}
+  structure on its private heap.
+\end{itemize}
+
+This shared-nothing execution model ensures that concurrency remains
+lock-free, avoiding heap synchronization bottlenecks across
+subinterpreters.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}

@@ -1,0 +1,268 @@
+\hypertarget{python-3.9-to-3.10-peg-parser-dict-merge-and-pattern-matching}{%
+\chapter{Python 3.9 to 3.10: PEG Parser, Dict Merge (\textbar), and
+Pattern
+Matching}\label{python-3.9-to-3.10-peg-parser-dict-merge-and-pattern-matching}}
+
+\hypertarget{cpython-parser-evolution-ll1-to-peg-pep-617}{%
+\subsection{15.1 CPython Parser Evolution: LL(1) to PEG (PEP
+617)}\label{cpython-parser-evolution-ll1-to-peg-pep-617}}
+
+In Python 3.9, CPython replaced its concrete parser generator
+(\passthrough{\lstinline!pgen!}), which had been used since Python 1.0,
+with a modern \textbf{PEG (Parsing Expression Grammar)} parser.
+
+\hypertarget{limitations-of-the-classic-ll1-parser}{%
+\subsubsection{1. Limitations of the Classic LL(1)
+Parser}\label{limitations-of-the-classic-ll1-parser}}
+
+The legacy compiler utilized an LL(1) (Left-to-right, Leftmost
+derivation with 1-token lookahead) parsing grammar: * \textbf{Lookahead
+Constraints}: With only one token of lookahead, the parser could not
+resolve ambiguities between grammar rules that looked similar initially.
+* \textbf{Left-Recursion Prohibitions}: LL(1) cannot parse
+left-recursive rules (e.g., \(A \to A \alpha\)), requiring complex
+grammar rewrites that made grammar maintenance difficult. *
+\textbf{Grammar Hacks}: To support complex syntax, developers had to
+implement custom AST-level hacks and validation passes after parsing,
+which bloated parser code.
+
+\hypertarget{the-peg-parser-architecture}{%
+\subsubsection{2. The PEG Parser
+Architecture}\label{the-peg-parser-architecture}}
+
+PEG parsers resolve these limitations through two core features: *
+\textbf{Ordered Choice (\passthrough{\lstinline!e1 / e2!})}: Unlike CFGs
+(Context-Free Grammars) where choice is ambiguous, a PEG ordered choice
+evaluates \passthrough{\lstinline!e1!} first. If
+\passthrough{\lstinline!e1!} matches, the parser commits to it and
+completely ignores \passthrough{\lstinline!e2!}, resolving parsing
+ambiguities deterministically. * \textbf{Infinite Lookahead via Packrat
+Parsing}: PEG can look ahead arbitrarily far. To maintain linear time
+complexity \(O(N)\) (where \(N\) is input length), the parser utilizes
+\textbf{Packrat Parsing} (memoization). It caches parser rules
+evaluation results at every character index offset in a memoization
+table (\passthrough{\lstinline!ParserState!} in
+\passthrough{\lstinline!Parser/pegen.c!}).
+
+\hypertarget{enabling-syntax-improvements}{%
+\subsubsection{3. Enabling Syntax
+Improvements}\label{enabling-syntax-improvements}}
+
+The infinite lookahead and recursive capabilities of PEG enabled new
+syntax structures in Python 3.10, such as \textbf{parenthesized context
+managers}:
+
+\begin{lstlisting}[language=Python]
+with (
+    CtxManager1() as ctx1,
+    CtxManager2() as ctx2,
+):
+    pass
+\end{lstlisting}
+
+Under the old LL(1) parser, parsing this construct was impossible
+because it could not distinguish between a parenthesized tuple and a
+grouped context manager block without infinite lookahead.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{pep-584-dictionary-union-operators-and}{%
+\subsection{\texorpdfstring{15.2 PEP 584: Dictionary Union Operators
+(\texttt{\textbar{}} and
+\texttt{\textbar{}=})}{15.2 PEP 584: Dictionary Union Operators (\textbar{} and \textbar=)}}\label{pep-584-dictionary-union-operators-and}}
+
+Python 3.9 introduced the binary operators \passthrough{\lstinline!|!}
+(merge) and \passthrough{\lstinline!|=!} (update) directly on the
+\passthrough{\lstinline!dict!} class.
+
+\hypertarget{legacy-workarounds}{%
+\subsubsection{1. Legacy Workarounds}\label{legacy-workarounds}}
+
+Prior to Python 3.9, merging dictionaries required verbose and slow
+operations: * \passthrough{\lstinline!merged = \{**d1, **d2\}!}: Highly
+performant but syntactically verbose and unreadable for larger
+expressions. *
+\passthrough{\lstinline!merged = d1.copy(); merged.update(d2)!}:
+Required multiple lines of statements, making it impossible to merge
+inline inside list comprehensions or lambda bodies.
+
+\hypertarget{low-level-c-level-slot-mappings}{%
+\subsubsection{2. Low-Level C-Level Slot
+Mappings}\label{low-level-c-level-slot-mappings}}
+
+CPython implements \passthrough{\lstinline!|!} and
+\passthrough{\lstinline!|=!} by overloading the numeric bitwise OR slots
+inside \passthrough{\lstinline!PyDict\_Type!}
+(\passthrough{\lstinline!Objects/dictobject.c!}):
+
+\begin{lstlisting}[language=C]
+/* Dict Type definition slot mappings */
+PyTypeObject PyDict_Type = {
+    /* ... */
+    &dict_as_number,            /* tp_as_number */
+    /* ... */
+};
+
+static PyNumberMethods dict_as_number = {
+    .nb_or = (binaryfunc)dict_or,
+    .nb_inplace_or = (binaryfunc)dict_inplace_or,
+};
+\end{lstlisting}
+
+When evaluating \passthrough{\lstinline!A | B!}: 1. CPython calls
+\passthrough{\lstinline!dict\_or(A, B)!}. 2. The C function allocates a
+new dictionary object:
+\passthrough{\lstinline!PyObject *new\_dict = PyDict\_Copy(A);!}. 3. It
+then calls the dictionary update routine
+\passthrough{\lstinline!PyDict\_Update(new\_dict, B);!} to merge the
+elements from the second mapping. 4. It returns the new dictionary.
+Right-hand elements overwrite duplicate keys present in the left-hand
+dictionary.
+
+\hypertarget{type-constraints-and-subclassing}{%
+\subsubsection{3. Type Constraints and
+Subclassing}\label{type-constraints-and-subclassing}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Return Type}: \passthrough{\lstinline!dict\_or!} always
+  returns a standard \passthrough{\lstinline!dict!} instance, even if
+  \passthrough{\lstinline!A!} or \passthrough{\lstinline!B!} is a
+  subclass of \passthrough{\lstinline!dict!}, preserving typing
+  boundaries.
+\item
+  \textbf{Operand Support}: The left-hand operand
+  \passthrough{\lstinline!A!} must be a \passthrough{\lstinline!dict!}
+  (or subclass). The right-hand operand \passthrough{\lstinline!B!} can
+  be any object that implements the mapping protocol (exposes a
+  \passthrough{\lstinline!.keys()!} and key retrieval interface). If
+  \passthrough{\lstinline!B!} is not a mapping, the C-level function
+  returns \passthrough{\lstinline!Py\_NotImplemented!}, triggering a
+  runtime \passthrough{\lstinline!TypeError!}.
+\end{itemize}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{pep-634-structural-pattern-matching-decision-trees}{%
+\subsection{15.3 PEP 634: Structural Pattern Matching (Decision
+Trees)}\label{pep-634-structural-pattern-matching-decision-trees}}
+
+Python 3.10 introduced Structural Pattern Matching
+(\passthrough{\lstinline!match!}/\passthrough{\lstinline!case!}).
+
+\hypertarget{decision-dags-vs.-sequential-linear-scans}{%
+\subsubsection{1. Decision DAGs vs.~Sequential Linear
+Scans}\label{decision-dags-vs.-sequential-linear-scans}}
+
+Unlike chains of \passthrough{\lstinline!if/elif/else!} statements,
+which execute linearly (\(\mathcal{O}(N)\) lookup time), the CPython
+compiler compiles a \passthrough{\lstinline!match!} statement into a
+\textbf{Directed Acyclic Graph (DAG) decision tree}. The compiler groups
+cases matching the same pattern categories, checking target type
+boundaries and structural lengths once rather than executing redundant
+checks.
+
+\hypertarget{cpython-pattern-matching-bytecodes}{%
+\subsubsection{2. CPython Pattern Matching
+Bytecodes}\label{cpython-pattern-matching-bytecodes}}
+
+CPython implements pattern matching using specialized stack-manipulation
+bytecodes: * \textbf{\passthrough{\lstinline!MATCH\_SEQUENCE!}}: Checks
+if the object on the stack is a sequence (excluding
+\passthrough{\lstinline!str!}, \passthrough{\lstinline!bytes!}, and
+\passthrough{\lstinline!bytearray!}). *
+\textbf{\passthrough{\lstinline!MATCH\_MAPPING!}}: Checks if the object
+is an instance of \passthrough{\lstinline!collections.abc.Mapping!}. *
+\textbf{\passthrough{\lstinline!MATCH\_KEYS!}}: Pops a tuple of keys and
+a subject mapping. If all keys exist in the mapping, it pushes a tuple
+containing their values; otherwise, it pushes
+\passthrough{\lstinline!None!}. *
+\textbf{\passthrough{\lstinline!MATCH\_CLASS!}}: Evaluates class-level
+matches.
+
+\hypertarget{class-patterns-and-match_class-disassembly-trace}{%
+\subsubsection{\texorpdfstring{3. Class Patterns and
+\texttt{MATCH\_CLASS} Disassembly
+Trace}{3. Class Patterns and MATCH\_CLASS Disassembly Trace}}\label{class-patterns-and-match_class-disassembly-trace}}
+
+To match a class pattern:
+
+\begin{lstlisting}[language=Python]
+class Point:
+    __match_args__ = ('x', 'y')
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
+
+def check_point(pt):
+    match pt:
+        case Point(1, y):
+            return y
+\end{lstlisting}
+
+During execution, \passthrough{\lstinline!case Point(1, y)!} requires
+verifying that \passthrough{\lstinline!pt!} is an instance of
+\passthrough{\lstinline!Point!}, matching the first positional argument
+\passthrough{\lstinline!x!} to \passthrough{\lstinline!1!}, and binding
+the second argument \passthrough{\lstinline!y!} to local scope.
+
+\hypertarget{disassembly-of-check_point}{%
+\paragraph{\texorpdfstring{Disassembly of
+\texttt{check\_point}:}{Disassembly of check\_point:}}\label{disassembly-of-check_point}}
+
+\begin{lstlisting}
+  8           0 LOAD_FAST                0 (pt)
+              2 LOAD_GLOBAL              0 (Point)
+              4 MATCH_CLASS              1              /* Match Point class with 1 positional arg */
+              6 DUP_TOP
+              8 LOAD_CONST               0 (None)
+             10 COMPARE_OP               9 (is not)
+             12 POP_JUMP_IF_FALSE       32 (to case mismatch)
+             14 UNPACK_SEQUENCE          2              /* Unpack matched x and y values */
+             16 LOAD_CONST               1 (1)
+             18 COMPARE_OP               2 (==)         /* Check if x == 1 */
+             20 POP_JUMP_IF_FALSE       28 (to case clean stack)
+             22 STORE_FAST               1 (y)          /* Bind y to local scope */
+             24 LOAD_FAST                1 (y)
+             26 RETURN_VALUE
+
+        >>   28 POP_TOP                                 /* Clean remaining unpacked values */
+        >>   30 POP_TOP
+        >>   32 POP_TOP                                 /* Fallback case mismatch target */
+             34 LOAD_CONST               0 (None)
+             36 RETURN_VALUE
+\end{lstlisting}
+
+\hypertarget{c-level-execution-of-match_class}{%
+\paragraph{\texorpdfstring{C-Level Execution of
+\texttt{MATCH\_CLASS}:}{C-Level Execution of MATCH\_CLASS:}}\label{c-level-execution-of-match_class}}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  \textbf{Type Validation}: Checks
+  \passthrough{\lstinline!isinstance(pt, Point)!}. If false, pushes
+  \passthrough{\lstinline!None!} and exits.
+\item
+  \textbf{Positional Resolution}: Reads the class's
+  \passthrough{\lstinline!\_\_match\_args\_\_!} tuple
+  (\passthrough{\lstinline!('x', 'y')!}). The compiler indicated
+  \passthrough{\lstinline!1!} positional argument, mapping the first
+  argument to attribute \passthrough{\lstinline!x!}.
+\item
+  \textbf{Keyword/Positional Extraction}: Extracts
+  \passthrough{\lstinline!pt.x!} and \passthrough{\lstinline!pt.y!} via
+  C-level attribute lookups.
+\item
+  \textbf{Stack Result}: Pushes a tuple
+  \passthrough{\lstinline!(pt.x, pt.y)!} onto the stack. If any
+  attribute extraction fails, it pushes \passthrough{\lstinline!None!}.
+\item
+  \textbf{Fail-Fast Stack Cleanup}: If \passthrough{\lstinline!None!} is
+  pushed, \passthrough{\lstinline!COMPARE\_OP!} determines a mismatch,
+  jumps to the fallback, and pops the stack, leaving no bindings.
+\end{enumerate}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
