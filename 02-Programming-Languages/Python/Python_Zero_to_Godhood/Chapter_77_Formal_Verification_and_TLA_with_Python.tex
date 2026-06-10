@@ -1,0 +1,26 @@
+\hypertarget{formal-verification-and-tla-with-python}{%
+\chapter{Formal Verification and TLA+ with
+Python}\label{formal-verification-and-tla-with-python}}
+
+For systems where failure is not an option (e.g., flight control,
+financial settlement), standard testing is insufficient. Senior
+engineers use formal methods to prove correctness.
+
+\hypertarget{what-is-tla}{%
+\subsection{104.1 What is TLA+?}\label{what-is-tla}}
+
+TLA+ (Temporal Logic of Actions) is a language for modeling concurrent
+and distributed systems. * \textbf{Safety and Liveness}: Proving that
+``bad things never happen'' and ``good things eventually happen.''
+
+\hypertarget{python-integration-modeling-with-pla}{%
+\subsection{\texorpdfstring{104.2 Python Integration: Modeling with
+\texttt{PLA}}{104.2 Python Integration: Modeling with PLA}}\label{python-integration-modeling-with-pla}}
+
+While TLA+ is a separate language, Python is often used to generate TLA+
+models or to perform \textbf{Model-Based Testing} using tools like
+\passthrough{\lstinline!Hypothesis!}. * \textbf{State Space
+Exploration}: Using Python to explore the combinatorial explosion of
+possible execution paths in a distributed algorithm.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}

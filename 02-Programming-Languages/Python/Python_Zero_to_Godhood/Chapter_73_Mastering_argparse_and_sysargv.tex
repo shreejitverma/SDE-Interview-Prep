@@ -1,0 +1,75 @@
+\hypertarget{mastering-argparse-and-sys.argv}{%
+\chapter{\texorpdfstring{Mastering \texttt{argparse} and
+\texttt{sys.argv}}{Mastering argparse and sys.argv}}\label{mastering-argparse-and-sys.argv}}
+
+\hypertarget{low-level-argument-handling}{%
+\subsection{98.1 Low-Level Argument
+Handling}\label{low-level-argument-handling}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{\passthrough{\lstinline!sys.argv!}}: A raw list of strings. It
+  requires manual parsing and error checking.
+\item
+  \textbf{Positional vs.~Optional}: Managing the index shifts in
+  \passthrough{\lstinline!argv!}.
+\end{itemize}
+
+\hypertarget{advanced-argparse-features}{%
+\subsection{\texorpdfstring{98.2 Advanced \texttt{argparse}
+Features}{98.2 Advanced argparse Features}}\label{advanced-argparse-features}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Exclusive Groups}: Ensure that only one of a set of arguments
+  is provided.
+\item
+  \textbf{Argument Defaults}: Defining intelligent fallbacks for missing
+  inputs.
+\end{itemize}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{phase-xxiv-cloud-native-and-distributed-architectures}{%
+\section{Phase XXIV: Cloud Native and Distributed
+Architectures}\label{phase-xxiv-cloud-native-and-distributed-architectures}}
+
+\hypertarget{chapter-99-cloud-native-python-serverless-and-containers}{%
+\chapter{Chapter 99: Cloud Native Python: Serverless and
+Containers}\label{chapter-99-cloud-native-python-serverless-and-containers}}
+
+The modern senior engineer must know how Python scales in the cloud.
+
+\hypertarget{python-in-aws-lambda-and-cloud-functions}{%
+\subsection{99.1 Python in AWS Lambda and Cloud
+Functions}\label{python-in-aws-lambda-and-cloud-functions}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{The Execution Environment}: Lambda uses a frozen Python
+  runtime. The main constraint is the ``Cold Start'' time, which can be
+  mitigated by minimizing imports and using layers.
+\item
+  \textbf{Event Driven}: Connecting Python to SQS, S3, and DynamoDB
+  triggers.
+\end{itemize}
+
+\hypertarget{containerization-and-orchestration}{%
+\subsection{99.2 Containerization and
+Orchestration}\label{containerization-and-orchestration}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Distroless Images}: Using Google's distroless images to reduce
+  the attack surface and size of Python containers.
+\item
+  \textbf{Kubernetes Operators}: Writing custom Kubernetes controllers
+  in Python using the \passthrough{\lstinline!kopf!} or
+  \passthrough{\lstinline!python-kubernetes!} client.
+\end{itemize}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}

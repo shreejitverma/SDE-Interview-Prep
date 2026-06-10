@@ -1,0 +1,71 @@
+\hypertarget{python-anti-patterns-and-common-pitfalls}{%
+\chapter{Python Anti-Patterns and Common
+Pitfalls}\label{python-anti-patterns-and-common-pitfalls}}
+
+A ``Godhood'' level engineer is defined by the bugs they \emph{don't}
+write. This chapter deconstructs the most common mistakes in the Python
+ecosystem.
+
+\hypertarget{mutable-default-arguments}{%
+\subsection{93.1 Mutable Default
+Arguments}\label{mutable-default-arguments}}
+
+\begin{lstlisting}[language=Python]
+def append_to(element, to=[]): # DANGER!
+    to.append(element)
+    return to
+\end{lstlisting}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{The Trap}: The default list \passthrough{\lstinline![]!} is
+  created once at \textbf{definition time}, not call time. Every call
+  shares the same list.
+\item
+  \textbf{The Fix}: Use \passthrough{\lstinline!to=None!} and initialize
+  inside the function.
+\end{itemize}
+
+\hypertarget{late-binding-in-closures}{%
+\subsection{93.2 Late Binding in
+Closures}\label{late-binding-in-closures}}
+
+\begin{lstlisting}[language=Python]
+def create_multipliers():
+    return [lambda x: i * x for i in range(5)] # DANGER!
+\end{lstlisting}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{The Trap}: The lambda captures the variable
+  \passthrough{\lstinline!i!}, not its value. When the lambdas are
+  called, they all see the final value of \passthrough{\lstinline!i!}
+  (4).
+\item
+  \textbf{The Fix}: Use default arguments to capture the value:
+  \passthrough{\lstinline!lambda x, i=i: i * x!}.
+\end{itemize}
+
+\hypertarget{the-is-vs.-confusion}{%
+\subsection{\texorpdfstring{93.3 The \texttt{is} vs.~\texttt{==}
+Confusion}{93.3 The is vs.~== Confusion}}\label{the-is-vs.-confusion}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{\passthrough{\lstinline!==!} (Equality)}: Calls
+  \passthrough{\lstinline!\_\_eq\_\_!}, checks if values are the same.
+\item
+  \textbf{\passthrough{\lstinline!is!} (Identity)}: Checks if the memory
+  addresses (\passthrough{\lstinline!id()!}) are the same.
+\item
+  \textbf{Interning Pitfall}: Python interns small integers (-5 to 256)
+  and short strings. \passthrough{\lstinline!x = 10; y = 10; x is y!}
+  might be True, but
+  \passthrough{\lstinline!x = 1000; y = 1000; x is y!} is usually False.
+  \textbf{Never use \passthrough{\lstinline!is!} for value comparison.}
+\end{itemize}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}

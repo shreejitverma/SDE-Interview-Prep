@@ -1,0 +1,48 @@
+\hypertarget{command-line-interfaces-argparse-cmd-shlex}{%
+\chapter{\texorpdfstring{Command Line Interfaces (\texttt{argparse},
+\texttt{cmd},
+\texttt{shlex})}{Command Line Interfaces (argparse, cmd, shlex)}}\label{command-line-interfaces-argparse-cmd-shlex}}
+
+Building robust CLI tools requires sophisticated argument parsing and
+command-loop management.
+
+\hypertarget{argparse-the-declarative-cli-engine}{%
+\subsection{\texorpdfstring{58.1 \texttt{argparse}: The Declarative CLI
+Engine}{58.1 argparse: The Declarative CLI Engine}}\label{argparse-the-declarative-cli-engine}}
+
+\passthrough{\lstinline!argparse!} replaced the older
+\passthrough{\lstinline!optparse!} and \passthrough{\lstinline!getopt!}
+modules. * \textbf{Argument Actions}: \passthrough{\lstinline!store!},
+\passthrough{\lstinline!store\_true!}, \passthrough{\lstinline!append!}.
+* \textbf{Type Conversion}: It can automatically convert inputs to
+\passthrough{\lstinline!int!}, \passthrough{\lstinline!Path!}, or even
+open files directly using the \passthrough{\lstinline!FileType!}
+factory. * \textbf{Subcommands}: Supports Git-style subcommands (e.g.,
+\passthrough{\lstinline!git push!}, \passthrough{\lstinline!git pull!})
+by creating a separate parser for each subcommand and nesting them.
+
+\hypertarget{cmd-the-interactive-shell-framework}{%
+\subsection{\texorpdfstring{58.2 \texttt{cmd}: The Interactive Shell
+Framework}{58.2 cmd: The Interactive Shell Framework}}\label{cmd-the-interactive-shell-framework}}
+
+The \passthrough{\lstinline!cmd!} module provides a framework for
+building interactive line-oriented command interpreters (REPLs). *
+\textbf{The Event Loop}: \passthrough{\lstinline!Cmd.cmdloop()!} manages
+the reading of input and dispatching to methods named
+\passthrough{\lstinline!do\_X!}. * \textbf{Tab Completion}: Integrates
+with the \passthrough{\lstinline!readline!} module (on Unix) to provide
+command and argument completion.
+
+\hypertarget{shlex-shell-lexical-analysis}{%
+\subsection{\texorpdfstring{58.3 \texttt{shlex}: Shell Lexical
+Analysis}{58.3 shlex: Shell Lexical Analysis}}\label{shlex-shell-lexical-analysis}}
+
+\passthrough{\lstinline!shlex!} splits strings following the rules of
+the POSIX shell. * \textbf{\passthrough{\lstinline!quote()!}}: Use this
+when building commands to be executed by a shell to prevent injection. *
+\textbf{Parsing}: It is a state-based lexical analyzer. It handles
+quotes, escapes, and comments identically to how
+\passthrough{\lstinline!/bin/sh!} would, making it essential for process
+orchestration.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}

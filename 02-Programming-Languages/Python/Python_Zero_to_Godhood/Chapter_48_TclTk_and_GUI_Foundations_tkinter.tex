@@ -1,0 +1,33 @@
+\hypertarget{tcltk-and-gui-foundations-tkinter}{%
+\chapter{\texorpdfstring{Tcl/Tk and GUI Foundations
+(\texttt{tkinter})}{Tcl/Tk and GUI Foundations (tkinter)}}\label{tcltk-and-gui-foundations-tkinter}}
+
+\passthrough{\lstinline!tkinter!} is the standard Python interface to
+the Tk GUI toolkit.
+
+\hypertarget{the-c-bridge-_tkinter}{%
+\subsection{\texorpdfstring{59.1 The C-Bridge:
+\texttt{\_tkinter}}{59.1 The C-Bridge: \_tkinter}}\label{the-c-bridge-_tkinter}}
+
+\passthrough{\lstinline!tkinter!} is not written in Python. It is a
+wrapper around the \textbf{Tcl/Tk} C library. * \textbf{The Tcl
+Interpreter}: When you instantiate \passthrough{\lstinline!Tk()!}, a
+full Tcl interpreter is created inside your Python process. *
+\textbf{Command Marshalling}: When you call
+\passthrough{\lstinline!button.configure(text="Click")!}, Python
+marshals the arguments into Tcl strings and executes them in the Tcl VM.
+
+\hypertarget{the-main-loop-and-event-concurrency}{%
+\subsection{59.2 The Main Loop and Event
+Concurrency}\label{the-main-loop-and-event-concurrency}}
+
+GUIs are event-driven. \passthrough{\lstinline!root.mainloop()!} enters
+a blocking loop that waits for OS events (mouse clicks, key presses). *
+\textbf{Thread Safety}: Tk is not thread-safe. All GUI updates must
+happen on the main thread. * \textbf{\passthrough{\lstinline!after()!}}:
+Use \passthrough{\lstinline!root.after(ms, callback)!} to schedule
+Python functions without blocking the GUI event loop. This is
+effectively a simple cooperative multitasking scheduler built on top of
+the Tk event queue.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}

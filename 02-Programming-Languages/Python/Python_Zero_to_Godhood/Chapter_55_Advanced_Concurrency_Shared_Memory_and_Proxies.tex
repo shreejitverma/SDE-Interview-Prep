@@ -1,0 +1,77 @@
+\hypertarget{advanced-concurrency-shared-memory-and-proxies}{%
+\chapter{Advanced Concurrency: Shared Memory and
+Proxies}\label{advanced-concurrency-shared-memory-and-proxies}}
+
+Building on Chapter 27, this chapter explores the high-performance
+communication mechanisms required for massive scale data processing in
+Python.
+
+\hypertarget{multiprocessing.shared_memory-zero-copy-communication}{%
+\subsection{\texorpdfstring{66.1
+\texttt{multiprocessing.shared\_memory}: Zero-Copy
+Communication}{66.1 multiprocessing.shared\_memory: Zero-Copy Communication}}\label{multiprocessing.shared_memory-zero-copy-communication}}
+
+Prior to Python 3.8, \passthrough{\lstinline!multiprocessing!} relied on
+pickling objects and sending them via pipes/sockets, which was slow for
+large arrays. \passthrough{\lstinline!shared\_memory!} provides a way to
+allocate raw memory that can be accessed by multiple processes without
+copying.
+
+\hypertarget{the-sharedmemory-object}{%
+\subsubsection{\texorpdfstring{1. The \texttt{SharedMemory}
+Object}{1. The SharedMemory Object}}\label{the-sharedmemory-object}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Creation}: One process creates the memory block with a unique
+  name.
+\item
+  \textbf{Attachment}: Other processes ``attach'' to the memory using
+  the name.
+\item
+  \textbf{Internals}: On POSIX, this uses
+  \passthrough{\lstinline!shm\_open()!} and
+  \passthrough{\lstinline!mmap()!}. On Windows, it uses
+  \passthrough{\lstinline!CreateFileMapping()!}.
+\end{itemize}
+
+\hypertarget{shareablelist-and-ndarray-integration}{%
+\subsubsection{\texorpdfstring{2. \texttt{ShareableList} and
+\texttt{ndarray}
+Integration}{2. ShareableList and ndarray Integration}}\label{shareablelist-and-ndarray-integration}}
+
+You can wrap a \passthrough{\lstinline!SharedMemory!} block in a
+\passthrough{\lstinline!ShareableList!} (for basic types) or use it as
+the buffer for a NumPy array:
+
+\begin{lstlisting}[language=Python]
+from multiprocessing import shared_memory
+import numpy as np
+
+# Creator
+shm = shared_memory.SharedMemory(create=True, size=1024)
+arr = np.ndarray((128,), dtype=np.int64, buffer=shm.buf)
+arr[:] = np.arange(128)
+
+# Consumer (in another process)
+existing_shm = shared_memory.SharedMemory(name=shm.name)
+arr_copy = np.ndarray((128,), dtype=np.int64, buffer=existing_shm.buf)
+print(arr_copy[10]) # Output: 10
+\end{lstlisting}
+
+\hypertarget{managers-and-proxies-distributed-objects}{%
+\subsection{66.2 Managers and Proxies: Distributed
+Objects}\label{managers-and-proxies-distributed-objects}}
+
+The \passthrough{\lstinline!multiprocessing.Manager!} allows you to
+share complex Python objects (like dicts or custom classes) across
+processes using a server-client architecture. * \textbf{The Server
+Process}: A hidden process manages the ``real'' objects. *
+\textbf{Proxies}: Worker processes receive ``Proxy'' objects that look
+like the real thing but send every method call over a socket to the
+server process. * \textbf{Performance Note}: While flexible, proxies are
+much slower than shared memory because every access involves a
+network/IPC round-trip and synchronization.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}

@@ -1,0 +1,48 @@
+\hypertarget{xml-processing-and-expat-xml.etree-xml.sax}{%
+\chapter{\texorpdfstring{XML Processing and Expat (\texttt{xml.etree},
+\texttt{xml.sax})}{XML Processing and Expat (xml.etree, xml.sax)}}\label{xml-processing-and-expat-xml.etree-xml.sax}}
+
+XML is a verbose but highly structured format. Python provides several
+ways to process it, balancing ease of use with memory efficiency.
+
+\hypertarget{xml.etree.elementtree-the-high-level-engine}{%
+\subsection{\texorpdfstring{52.1 \texttt{xml.etree.ElementTree}: The
+High-Level
+Engine}{52.1 xml.etree.ElementTree: The High-Level Engine}}\label{xml.etree.elementtree-the-high-level-engine}}
+
+\passthrough{\lstinline!ElementTree!} is the recommended way to handle
+XML in Python.
+
+\hypertarget{the-c-accelerator-_elementtree}{%
+\subsubsection{\texorpdfstring{1. The C-Accelerator:
+\texttt{\_elementtree}}{1. The C-Accelerator: \_elementtree}}\label{the-c-accelerator-_elementtree}}
+
+Since Python 3.3, \passthrough{\lstinline!ElementTree!} is automatically
+backed by a C implementation
+(\passthrough{\lstinline!\_elementtree.c!}). * \textbf{Memory
+Efficiency}: It uses a compact C representation for the element tree,
+significantly reducing memory usage compared to pure Python DOM
+implementations. * \textbf{XPath Support}: Provides a subset of XPath
+for searching elements.
+
+\hypertarget{the-expat-parser}{%
+\subsubsection{2. The Expat Parser}\label{the-expat-parser}}
+
+Under the hood, Python uses the \textbf{Expat} library (an
+stream-oriented XML parser written in C). * \textbf{Streaming}: Expat
+does not build a tree in memory; it calls callbacks as it encounters
+tags. \passthrough{\lstinline!ElementTree!} uses these callbacks to
+build its internal tree structure efficiently.
+
+\hypertarget{xml.sax-event-driven-parsing}{%
+\subsection{\texorpdfstring{52.2 \texttt{xml.sax}: Event-Driven
+Parsing}{52.2 xml.sax: Event-Driven Parsing}}\label{xml.sax-event-driven-parsing}}
+
+SAX (Simple API for XML) is an event-driven alternative to the
+tree-based \passthrough{\lstinline!ElementTree!}. * \textbf{When to
+use?}: When you need to parse a multi-gigabyte XML file that won't fit
+in RAM. * \textbf{Internals}: It wraps the Expat parser directly,
+allowing you to define a \passthrough{\lstinline!ContentHandler!} that
+processes tags as they appear in the stream.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}

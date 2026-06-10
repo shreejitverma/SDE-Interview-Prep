@@ -1,0 +1,102 @@
+\hypertarget{appendix-c-the-pep-hall-of-fame}{%
+\chapter{Appendix C: The PEP Hall of
+Fame}\label{appendix-c-the-pep-hall-of-fame}}
+
+The history of Python is the history of its \textbf{Python Enhancement
+Proposals (PEPs)}.
+
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.33}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.33}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.33}}@{}}
+\toprule
+PEP \# & Title & Impact \\
+\midrule
+\endhead
+\textbf{PEP 8} & Style Guide for Python Code & The standard for
+readable, idiomatic Python. \\
+\textbf{PEP 20} & The Zen of Python & The guiding philosophy of the
+language. \\
+\textbf{PEP 257} & Docstring Conventions & Formalized internal
+documentation. \\
+\textbf{PEP 343} & The ``with'' Statement & Introduced context managers
+and resource safety. \\
+\textbf{PEP 380} & Syntax for Delegating to a Subgenerator & Introduced
+\passthrough{\lstinline!yield from!}. \\
+\textbf{PEP 443} & Single-dispatch generic functions & Functional-style
+polymorphism. \\
+\textbf{PEP 484} & Type Hints & The foundation of modern Python static
+typing. \\
+\textbf{PEP 498} & Literal String Interpolation & Introduced
+F-Strings. \\
+\textbf{PEP 525} & Asynchronous Generators & Bridged the gap between
+\passthrough{\lstinline!asyncio!} and
+\passthrough{\lstinline!yield!}. \\
+\textbf{PEP 572} & Assignment Expressions & The Walrus Operator
+(\passthrough{\lstinline!:=!}). \\
+\textbf{PEP 594} & Removing dead batteries & Cleaned up the Standard
+Library for Python 3.13. \\
+\textbf{PEP 634} & Structural Pattern Matching & Introduced
+\passthrough{\lstinline!match!} and \passthrough{\lstinline!case!}. \\
+\textbf{PEP 703} & Making the GIL Optional & The roadmap for
+Free-Threaded Python. \\
+\bottomrule
+\end{longtable}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\textbf{END OF APPENDICES}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+To achieve the ultimate level of ``Godhood,'' one must look beyond the
+virtual machine and understand how Python interacts with physical
+hardware.
+
+\hypertarget{chapter-70-cpu-cache-locality-and-data-alignment}{%
+\chapter{Chapter 70: CPU Cache Locality and Data
+Alignment}\label{chapter-70-cpu-cache-locality-and-data-alignment}}
+
+Modern CPUs are significantly faster than system memory. Performance is
+often bottlenecked by the ``Memory Wall.''
+
+\hypertarget{the-cache-hierarchy-l1-l2-l3}{%
+\subsection{70.1 The Cache Hierarchy (L1, L2,
+L3)}\label{the-cache-hierarchy-l1-l2-l3}}
+
+When the CPU needs data, it checks the caches first. A cache hit takes
+\textasciitilde1-10 cycles, while a main memory access (cache miss)
+takes \textasciitilde200-300 cycles.
+
+\hypertarget{why-python-is-cache-unfriendly}{%
+\subsubsection{1. Why Python is
+Cache-Unfriendly}\label{why-python-is-cache-unfriendly}}
+
+Standard Python objects are scattered across the heap. A
+\passthrough{\lstinline!list!} of \passthrough{\lstinline!float!}
+objects is actually an array of pointers to
+\passthrough{\lstinline!PyObject!} structs. * \textbf{Pointer Chasing}:
+To read the value of \passthrough{\lstinline!mylist[0]!}, the CPU must
+load the pointer, then jump to another memory location to load the
+actual float value. This jump often causes a cache miss.
+
+\hypertarget{the-solution-array.array-and-numpy}{%
+\subsubsection{\texorpdfstring{2. The Solution: \texttt{array.array} and
+NumPy}{2. The Solution: array.array and NumPy}}\label{the-solution-array.array-and-numpy}}
+
+As seen in Chapter 28, contiguous memory is the secret. By storing raw
+C-types in a block, the CPU can pre-fetch the next values into the
+cache, leading to 10x-100x speedups for numerical processing.
+
+\hypertarget{memory-alignment-and-padding}{%
+\subsection{70.2 Memory Alignment and
+Padding}\label{memory-alignment-and-padding}}
+
+C-structs (like those in Chapter 24) are padded by the compiler to
+ensure that fields start at memory addresses divisible by their size
+(e.g., an 8-byte double should start at an 8-byte boundary). *
+\textbf{Performance}: Misaligned access can require two memory fetches
+instead of one, or even trigger hardware exceptions on some
+architectures.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}

@@ -1,0 +1,35 @@
+\hypertarget{python-execution-archives-zipapp}{%
+\chapter{\texorpdfstring{Python Execution Archives
+(\texttt{zipapp})}{Python Execution Archives (zipapp)}}\label{python-execution-archives-zipapp}}
+
+Python has the unique ability to execute a zip file containing code as
+if it were a single script. This is formalized in PEP 441 and the
+\passthrough{\lstinline!zipapp!} module.
+
+\hypertarget{the-shebang-trick}{%
+\subsection{61.1 The Shebang Trick}\label{the-shebang-trick}}
+
+A \passthrough{\lstinline!zipapp!} is a zip archive with a ``shebang''
+line (e.g., \passthrough{\lstinline"\#!/usr/bin/env python3"}) prepended
+to the binary data. * \textbf{The ZIP Parser}: The ZIP file format (as
+seen in Chapter 50) looks for its directory at the \emph{end} of the
+file. This means the ZIP parser doesn't care if there is extra data
+(like a shebang) at the \emph{start} of the file. * \textbf{The OS}: The
+OS sees the shebang and executes the file using the Python interpreter.
+* \textbf{The Interpreter}: Python recognizes it's a zip file, mounts
+it, and executes the \passthrough{\lstinline!\_\_main\_\_.py!} file
+inside.
+
+\hypertarget{creating-a-zipapp}{%
+\subsection{\texorpdfstring{61.2 Creating a
+\texttt{zipapp}}{61.2 Creating a zipapp}}\label{creating-a-zipapp}}
+
+\begin{lstlisting}[language=Python]
+import zipapp
+zipapp.create_archive('myapp_dir', 'myapp.pyz', interpreter='/usr/bin/python3', main='myapp:main')
+\end{lstlisting}
+
+This produces a single, portable executable file that contains all your
+code and non-binary dependencies.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}

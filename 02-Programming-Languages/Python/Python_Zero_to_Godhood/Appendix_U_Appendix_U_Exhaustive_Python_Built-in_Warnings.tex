@@ -1,0 +1,62 @@
+\hypertarget{appendix-u-exhaustive-python-built-in-warnings}{%
+\chapter{Appendix U: Exhaustive Python Built-in
+Warnings}\label{appendix-u-exhaustive-python-built-in-warnings}}
+
+Warnings are usually emitted in situations where it is useful to alert
+the user of some condition in a program, but the condition doesn't
+warrant raising an exception and terminating the program.
+
+\hypertarget{u.1-warning-hierarchy}{%
+\subsection{U.1 Warning Hierarchy}\label{u.1-warning-hierarchy}}
+
+\begin{lstlisting}
+Warning
+ +-- UserWarning
+ +-- DeprecationWarning
+ +-- PendingDeprecationWarning
+ +-- SyntaxWarning
+ +-- RuntimeWarning
+ +-- FutureWarning
+ +-- ImportWarning
+ +-- UnicodeWarning
+ +-- BytesWarning
+ +-- EncodingWarning
+ +-- ResourceWarning
+\end{lstlisting}
+
+\hypertarget{u.2-technical-descriptions}{%
+\subsection{U.2 Technical
+Descriptions}\label{u.2-technical-descriptions}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{\passthrough{\lstinline!DeprecationWarning!}}: Base class for
+  warnings about deprecated features when those warnings are intended
+  for other Python developers.
+\item
+  \textbf{\passthrough{\lstinline!FutureWarning!}}: Base class for
+  warnings about deprecated features when those warnings are intended
+  for end users of applications that are written in Python.
+\item
+  \textbf{\passthrough{\lstinline!RuntimeWarning!}}: Base class for
+  warnings about dubious runtime behavior.
+\item
+  \textbf{\passthrough{\lstinline!SyntaxWarning!}}: Base class for
+  warnings about dubious syntax.
+\item
+  \textbf{\passthrough{\lstinline!ImportWarning!}}: Base class for
+  warnings about probable mistakes in module imports.
+\item
+  \textbf{\passthrough{\lstinline!UnicodeWarning!}}: Base class for
+  warnings related to Unicode.
+\item
+  \textbf{\passthrough{\lstinline!BytesWarning!}}: Base class for
+  warnings related to \passthrough{\lstinline!bytes!} and
+  \passthrough{\lstinline!bytearray!}.
+\item
+  \textbf{\passthrough{\lstinline!ResourceWarning!}}: Base class for
+  warnings related to resource usage (e.g., unclosed files).
+\end{itemize}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}

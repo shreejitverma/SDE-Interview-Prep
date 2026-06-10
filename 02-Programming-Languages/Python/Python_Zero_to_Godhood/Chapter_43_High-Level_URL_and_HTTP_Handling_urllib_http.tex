@@ -1,0 +1,53 @@
+\hypertarget{high-level-url-and-http-handling-urllib-http}{%
+\chapter{\texorpdfstring{High-Level URL and HTTP Handling
+(\texttt{urllib},
+\texttt{http})}{High-Level URL and HTTP Handling (urllib, http)}}\label{high-level-url-and-http-handling-urllib-http}}
+
+While low-level sockets (Chapter 38) are for systems plumbing, most
+application-level networking uses HTTP. Python provides a layered suite
+of modules to handle URLs and the HTTP protocol state machine.
+
+\hypertarget{urllib.parse-the-url-state-machine}{%
+\subsection{\texorpdfstring{54.1 \texttt{urllib.parse}: The URL State
+Machine}{54.1 urllib.parse: The URL State Machine}}\label{urllib.parse-the-url-state-machine}}
+
+A URL is not just a string; it is a complex address with hierarchy and
+parameters (RFC 3986). * \textbf{\passthrough{\lstinline!urlparse()!}}:
+Breaks a string into a 6-item named tuple
+(\passthrough{\lstinline!scheme!}, \passthrough{\lstinline!netloc!},
+\passthrough{\lstinline!path!}, \passthrough{\lstinline!params!},
+\passthrough{\lstinline!query!}, \passthrough{\lstinline!fragment!}). *
+\textbf{Safety}: Modern CPython has hardened
+\passthrough{\lstinline!urllib.parse!} to prevent ``domain name
+splitting'' attacks where special Unicode characters (like
+\passthrough{\lstinline!\\uff01!}) are used to trick servers into
+misrouting requests.
+
+\hypertarget{http.client-the-protocol-engine}{%
+\subsection{\texorpdfstring{54.2 \texttt{http.client}: The Protocol
+Engine}{54.2 http.client: The Protocol Engine}}\label{http.client-the-protocol-engine}}
+
+\passthrough{\lstinline!http.client!} is the lowest level of HTTP
+handling before raw sockets. * \textbf{Persistence}: It supports
+HTTP/1.1 persistent connections
+(\passthrough{\lstinline!Connection: keep-alive!}). *
+\textbf{Streaming}: You can send and receive request bodies in chunks
+using the \passthrough{\lstinline!chunked!} transfer encoding, which is
+essential for uploading large files without consuming all system memory.
+
+\hypertarget{urllib.request-the-opener-pipeline}{%
+\subsection{\texorpdfstring{54.3 \texttt{urllib.request}: The Opener
+Pipeline}{54.3 urllib.request: The Opener Pipeline}}\label{urllib.request-the-opener-pipeline}}
+
+\passthrough{\lstinline!urllib.request!} provides a high-level API built
+on an extensible ``Handler'' architecture. 1. \textbf{Handlers}: Objects
+that handle specific schemes (\passthrough{\lstinline!HTTPHandler!},
+\passthrough{\lstinline!FTPHandler!},
+\passthrough{\lstinline!FileHandler!}). 2. \textbf{Opener}: The
+\passthrough{\lstinline!OpenerDirector!} manages a list of handlers.
+When you call \passthrough{\lstinline!urlopen()!}, it iterates through
+handlers until one accepts the request. 3. \textbf{Hooks}: You can write
+custom handlers to implement caching, authentication, or automatic retry
+logic.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}

@@ -1,0 +1,182 @@
+\hypertarget{appendix-k-the-complete-python-standard-library-reference-table}{%
+\chapter{Appendix K: The Complete Python Standard Library Reference
+Table}\label{appendix-k-the-complete-python-standard-library-reference-table}}
+
+This appendix provides a definitive reference for the entire Python 3.13
+Standard Library. For each module, we list its primary purpose, its
+underlying implementation (C vs.~Python), and its thread-safety
+characteristics.
+
+\hypertarget{k.1-core-runtime-and-text-processing}{%
+\subsection{K.1 Core Runtime and Text
+Processing}\label{k.1-core-runtime-and-text-processing}}
+
+\begin{longtable}[]{@{}llll@{}}
+\toprule
+Module & Implementation & Purpose & Thread Safe? \\
+\midrule
+\endhead
+\passthrough{\lstinline!builtins!} & C & Core language objects and
+functions. & Yes \\
+\passthrough{\lstinline!sys!} & C & Interpreter configuration and hooks.
+& Yes \\
+\passthrough{\lstinline!re!} & C (SRE) & Regular expression engine. &
+Yes \\
+\passthrough{\lstinline!string!} & Python/C & String formatting and
+constants. & Yes \\
+\passthrough{\lstinline!textwrap!} & Python & Word wrapping and filling.
+& Yes \\
+\passthrough{\lstinline!unicodedata!} & C & Unicode character database.
+& Yes \\
+\passthrough{\lstinline!stringprep!} & Python & Internet string
+preparation. & Yes \\
+\bottomrule
+\end{longtable}
+
+\hypertarget{k.2-data-types-and-collections}{%
+\subsection{K.2 Data Types and
+Collections}\label{k.2-data-types-and-collections}}
+
+\begin{longtable}[]{@{}llll@{}}
+\toprule
+Module & Implementation & Purpose & Thread Safe? \\
+\midrule
+\endhead
+\passthrough{\lstinline!collections!} & C/Python & High-performance
+containers. & Partial \\
+\passthrough{\lstinline!heapq!} & C & Min-priority queue. & No (Sync
+required) \\
+\passthrough{\lstinline!bisect!} & C & Binary search on sorted lists. &
+No (Sync required) \\
+\passthrough{\lstinline!array!} & C & Efficient arrays of numeric
+values. & No \\
+\passthrough{\lstinline!weakref!} & C & Weak references and proxies. &
+Yes \\
+\passthrough{\lstinline!types!} & Python & Dynamic type creation
+helpers. & Yes \\
+\passthrough{\lstinline!copy!} & Python & Shallow and deep copy
+operations. & No \\
+\passthrough{\lstinline!enum!} & Python & Support for enumerations. &
+Yes \\
+\bottomrule
+\end{longtable}
+
+\hypertarget{k.3-numeric-and-mathematical}{%
+\subsection{K.3 Numeric and
+Mathematical}\label{k.3-numeric-and-mathematical}}
+
+\begin{longtable}[]{@{}llll@{}}
+\toprule
+Module & Implementation & Purpose & Thread Safe? \\
+\midrule
+\endhead
+\passthrough{\lstinline!math!} & C & C-standard math functions. & Yes \\
+\passthrough{\lstinline!cmath!} & C & Complex number math. & Yes \\
+\passthrough{\lstinline!decimal!} & C (decNumber) & Correctly-rounded
+decimal math. & Yes (Context local) \\
+\passthrough{\lstinline!fractions!} & Python & Rational number
+arithmetic. & Yes \\
+\passthrough{\lstinline!random!} & Python/C & PRNG (Mersenne
+Twister/PCG64). & No \\
+\passthrough{\lstinline!statistics!} & Python & Mathematical statistics
+functions. & Yes \\
+\bottomrule
+\end{longtable}
+
+\hypertarget{k.4-file-and-directory-handling}{%
+\subsection{K.4 File and Directory
+Handling}\label{k.4-file-and-directory-handling}}
+
+\begin{longtable}[]{@{}llll@{}}
+\toprule
+Module & Implementation & Purpose & Thread Safe? \\
+\midrule
+\endhead
+\passthrough{\lstinline!os.path!} & Python & Platform-independent path
+manipulation. & Yes \\
+\passthrough{\lstinline!pathlib!} & Python & Object-oriented filesystem
+paths. & Yes \\
+\passthrough{\lstinline!tempfile!} & Python & Generate temporary files
+and dirs. & Yes \\
+\passthrough{\lstinline!shutil!} & Python & High-level file operations
+(copy/move). & No \\
+\passthrough{\lstinline!stat!} & Python & Interpret
+\passthrough{\lstinline!os.stat()!} results. & Yes \\
+\bottomrule
+\end{longtable}
+
+\hypertarget{k.5-data-persistence-and-compression}{%
+\subsection{K.5 Data Persistence and
+Compression}\label{k.5-data-persistence-and-compression}}
+
+\begin{longtable}[]{@{}llll@{}}
+\toprule
+Module & Implementation & Purpose & Thread Safe? \\
+\midrule
+\endhead
+\passthrough{\lstinline!pickle!} & C & Object serialization. & No \\
+\passthrough{\lstinline!copyreg!} & Python & Registry for
+\passthrough{\lstinline!pickle!}. & Yes \\
+\passthrough{\lstinline!sqlite3!} & C & SQLite database engine. &
+Partial (Shared) \\
+\passthrough{\lstinline!zlib!} & C & Deflate compression. & Yes
+(Releases GIL) \\
+\passthrough{\lstinline!gzip!} & Python/C & Gzip file support. & Yes \\
+\passthrough{\lstinline!bz2!} & C & Bzip2 compression. & Yes \\
+\passthrough{\lstinline!lzma!} & C & LZMA/XZ compression. & Yes \\
+\passthrough{\lstinline!zipfile!} & Python & ZIP archive handling. &
+No \\
+\passthrough{\lstinline!tarfile!} & Python & TAR archive handling. &
+No \\
+\bottomrule
+\end{longtable}
+
+\hypertarget{k.6-networking-and-ipc}{%
+\subsection{K.6 Networking and IPC}\label{k.6-networking-and-ipc}}
+
+\begin{longtable}[]{@{}llll@{}}
+\toprule
+Module & Implementation & Purpose & Thread Safe? \\
+\midrule
+\endhead
+\passthrough{\lstinline!socket!} & C & Low-level networking. & Yes \\
+\passthrough{\lstinline!ssl!} & C & TLS/SSL encryption. & Yes \\
+\passthrough{\lstinline!select!} & C & Wait for I/O completion. & Yes \\
+\passthrough{\lstinline!selectors!} & Python & High-level I/O
+multiplexing. & Yes \\
+\passthrough{\lstinline!asyncio!} & Python/C & Asynchronous I/O
+framework. & Single-thread only \\
+\passthrough{\lstinline!mmap!} & C & Memory-mapped file support. &
+Partial \\
+\bottomrule
+\end{longtable}
+
+\hypertarget{k.7-internet-protocols}{%
+\subsection{K.7 Internet Protocols}\label{k.7-internet-protocols}}
+
+\begin{longtable}[]{@{}llll@{}}
+\toprule
+Module & Implementation & Purpose & Thread Safe? \\
+\midrule
+\endhead
+\passthrough{\lstinline!email!} & Python & Email and MIME handling. &
+No \\
+\passthrough{\lstinline!json!} & C/Python & JSON encoding and decoding.
+& Yes \\
+\passthrough{\lstinline!urllib!} & Python & URL handling and requesting.
+& Yes \\
+\passthrough{\lstinline!http!} & Python & HTTP server/client protocols.
+& No \\
+\passthrough{\lstinline!ftplib!} & Python & FTP client. & No \\
+\passthrough{\lstinline!smtplib!} & Python & SMTP client. & No \\
+\passthrough{\lstinline!xmlrpc!} & Python & XML-RPC client and server. &
+No \\
+\bottomrule
+\end{longtable}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\textbf{This table provides the essential ``Sovereign Map'' for any
+architect navigating the Python Standard Library.}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}

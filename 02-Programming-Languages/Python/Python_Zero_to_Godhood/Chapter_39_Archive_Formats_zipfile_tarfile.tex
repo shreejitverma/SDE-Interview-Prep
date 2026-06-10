@@ -1,0 +1,39 @@
+\hypertarget{archive-formats-zipfile-tarfile}{%
+\chapter{\texorpdfstring{Archive Formats (\texttt{zipfile},
+\texttt{tarfile})}{Archive Formats (zipfile, tarfile)}}\label{archive-formats-zipfile-tarfile}}
+
+Archives group multiple files into a single container, often with
+compression.
+
+\hypertarget{zipfile-the-directory-at-the-end-architecture}{%
+\subsection{\texorpdfstring{50.1 \texttt{zipfile}: The
+Directory-at-the-End
+Architecture}{50.1 zipfile: The Directory-at-the-End Architecture}}\label{zipfile-the-directory-at-the-end-architecture}}
+
+The ZIP format stores its \textbf{Central Directory} at the \emph{end}
+of the file. * \textbf{Random Access}: This design allows a program to
+read the directory once and then jump (seek) to any file within the
+archive without reading the whole file. * \textbf{Encryption}:
+\passthrough{\lstinline!zipfile!} supports password-protected archives
+(Legacy ZIP encryption), but it is computationally weak. For modern
+security, use an external library like
+\passthrough{\lstinline!pycryptodome!} for AES-256.
+
+\hypertarget{tarfile-the-tape-archive-heritage}{%
+\subsection{\texorpdfstring{50.2 \texttt{tarfile}: The Tape Archive
+Heritage}{50.2 tarfile: The Tape Archive Heritage}}\label{tarfile-the-tape-archive-heritage}}
+
+Originally designed for magnetic tapes, the TAR format is a simple
+concatenation of files with a 512-byte header for each. * \textbf{No
+Central Directory}: To find a file at the end of a
+\passthrough{\lstinline!.tar!} archive, you must read all previous
+headers. * \textbf{Compression}: \passthrough{\lstinline!.tar.gz!} or
+\passthrough{\lstinline!.tar.xz!} are created by piping the output of
+the TAR stream into a compressor. \passthrough{\lstinline!tarfile!}
+handles this transparently via its \passthrough{\lstinline!mode!}
+argument (e.g., \passthrough{\lstinline!'w:gz'!}). * \textbf{Sparse
+Files}: \passthrough{\lstinline!tarfile!} can handle ``sparse files''
+(files with large holes of zeros) efficiently, preserving their
+structure on disk without allocating physical space for the zeros.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}

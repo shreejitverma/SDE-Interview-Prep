@@ -1,0 +1,44 @@
+\hypertarget{advanced-text-processing-string-textwrap}{%
+\chapter{\texorpdfstring{Advanced Text Processing (\texttt{string},
+\texttt{textwrap})}{Advanced Text Processing (string, textwrap)}}\label{advanced-text-processing-string-textwrap}}
+
+While \passthrough{\lstinline!str!} methods cover basic needs, the
+\passthrough{\lstinline!string!} and \passthrough{\lstinline!textwrap!}
+modules handle complex formatting and layout logic, often interacting
+with terminal dimensions and internationalization.
+
+\hypertarget{string.formatter-the-engine-of-.format}{%
+\subsection{\texorpdfstring{43.1 \texttt{string.Formatter}: The Engine
+of
+\texttt{.format()}}{43.1 string.Formatter: The Engine of .format()}}\label{string.formatter-the-engine-of-.format}}
+
+The \passthrough{\lstinline!f-string!} (Chapter 12) is the fastest, but
+\passthrough{\lstinline!string.Formatter!} is the most extensible. *
+\textbf{\passthrough{\lstinline!parse(format\_string)!}}: This method
+returns an iterator of
+\passthrough{\lstinline!(literal\_text, field\_name, format\_spec, conversion)!}.
+* \textbf{\passthrough{\lstinline!get\_value(key, args, kwargs)!}}: This
+is the hook for custom lookup logic. * \textbf{Internals}: F-strings are
+compiled to specialized bytecode
+(\passthrough{\lstinline!FORMAT\_VALUE!}), whereas
+\passthrough{\lstinline!.format()!} calls into the
+\passthrough{\lstinline!string!} module's C-accelerated formatting
+logic.
+
+\hypertarget{textwrap-dynamic-layout-management}{%
+\subsection{\texorpdfstring{43.2 \texttt{textwrap}: Dynamic Layout
+Management}{43.2 textwrap: Dynamic Layout Management}}\label{textwrap-dynamic-layout-management}}
+
+\passthrough{\lstinline!textwrap!} is essential for CLI tools that must
+adapt to varying terminal widths. *
+\textbf{\passthrough{\lstinline!TextWrapper!} Object}: Maintains state
+for \passthrough{\lstinline!width!}, \passthrough{\lstinline!indent!},
+and \passthrough{\lstinline!break\_long\_words!}. *
+\textbf{\passthrough{\lstinline!wrap()!}
+vs.~\passthrough{\lstinline!fill()!}}: \passthrough{\lstinline!wrap!}
+returns a list of strings; \passthrough{\lstinline!fill!} returns a
+single newline-joined string. * \textbf{Algorithms}: It uses a greedy
+algorithm to fit words into the specified width, handling edge cases
+like hyphenated words and double-width Unicode characters correctly.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}

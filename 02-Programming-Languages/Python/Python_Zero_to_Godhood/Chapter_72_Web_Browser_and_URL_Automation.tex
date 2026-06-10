@@ -1,0 +1,56 @@
+\hypertarget{web-browser-and-url-automation}{%
+\chapter{Web Browser and URL
+Automation}\label{web-browser-and-url-automation}}
+
+Python can control the user's web browser for simple automation tasks.
+
+\hypertarget{the-webbrowser-module}{%
+\subsection{\texorpdfstring{96.1 The \texttt{webbrowser}
+Module}{96.1 The webbrowser Module}}\label{the-webbrowser-module}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{\passthrough{\lstinline!open(url)!}}: Opens the URL in the
+  system's default browser.
+\item
+  \textbf{\passthrough{\lstinline!open\_new\_tab(url)!}}: Specifically
+  requests a new tab.
+\end{itemize}
+
+\hypertarget{url-parsing-and-query-strings}{%
+\subsection{96.2 URL Parsing and Query
+Strings}\label{url-parsing-and-query-strings}}
+
+Integrating with \passthrough{\lstinline!urllib.parse!} (Chapter 54) to
+dynamically construct URLs with complex query parameters.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{phase-xxiii-development-tooling-and-maintenance}{%
+\section{Phase XXIII: Development Tooling and
+Maintenance}\label{phase-xxiii-development-tooling-and-maintenance}}
+
+\hypertarget{chapter-97-comprehensive-logging-architectures}{%
+\chapter{Chapter 97: Comprehensive Logging
+Architectures}\label{chapter-97-comprehensive-logging-architectures}}
+
+\hypertarget{the-hierarchy-of-loggers}{%
+\subsection{97.1 The Hierarchy of
+Loggers}\label{the-hierarchy-of-loggers}}
+
+Logging in Python uses a tree-based hierarchy. * \textbf{Propagation}:
+Child loggers pass messages up to their parents unless
+\passthrough{\lstinline!propagate!} is False. * \textbf{Handlers}:
+Direct the log messages to different destinations (Console, File,
+Network, Email).
+
+\hypertarget{the-logging.config-dictionary}{%
+\subsection{\texorpdfstring{97.2 The \texttt{logging.config}
+Dictionary}{97.2 The logging.config Dictionary}}\label{the-logging.config-dictionary}}
+
+The most robust way to configure logging is via a dictionary (often
+loaded from JSON or YAML), allowing for a clean separation between code
+and configuration.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}

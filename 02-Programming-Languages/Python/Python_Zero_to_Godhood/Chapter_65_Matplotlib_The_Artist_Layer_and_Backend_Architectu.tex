@@ -1,0 +1,36 @@
+\hypertarget{matplotlib-the-artist-layer-and-backend-architecture}{%
+\chapter{Matplotlib: The Artist Layer and Backend
+Architecture}\label{matplotlib-the-artist-layer-and-backend-architecture}}
+
+Matplotlib uses a three-layer architecture: 1. \textbf{Backend Layer}:
+Handles the actual rendering to a file (PNG, PDF) or screen (Qt, Tk). 2.
+\textbf{Artist Layer}: Manages the hierarchy of objects (Figures, Axes,
+Lines). 3. \textbf{Scripting Layer (\passthrough{\lstinline!pyplot!})}:
+Provides the familiar state-machine interface.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{phase-xx-web-framework-architectures}{%
+\section{Phase XX: Web Framework
+Architectures}\label{phase-xx-web-framework-architectures}}
+
+\hypertarget{chapter-89-wsgi-vs.-asgi-the-evolution-of-web-interfaces}{%
+\chapter{Chapter 89: WSGI vs.~ASGI: The Evolution of Web
+Interfaces}\label{chapter-89-wsgi-vs.-asgi-the-evolution-of-web-interfaces}}
+
+\hypertarget{wsgi-web-server-gateway-interface}{%
+\subsection{89.1 WSGI (Web Server Gateway
+Interface)}\label{wsgi-web-server-gateway-interface}}
+
+Defined in PEP 3333, WSGI is synchronous. The server calls a function
+for every request and waits for the response. * \textbf{Servers}:
+Gunicorn, uWSGI.
+
+\hypertarget{asgi-asynchronous-server-gateway-interface}{%
+\subsection{89.2 ASGI (Asynchronous Server Gateway
+Interface)}\label{asgi-asynchronous-server-gateway-interface}}
+
+ASGI (PEP 3112) is the asynchronous successor, supporting WebSockets and
+long-lived connections. * \textbf{Servers}: Uvicorn, Daphne.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}

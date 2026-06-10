@@ -1,0 +1,47 @@
+\hypertarget{ip-address-manipulation-and-rpc-ipaddress-xmlrpc}{%
+\chapter{\texorpdfstring{IP Address Manipulation and RPC
+(\texttt{ipaddress},
+\texttt{xmlrpc})}{IP Address Manipulation and RPC (ipaddress, xmlrpc)}}\label{ip-address-manipulation-and-rpc-ipaddress-xmlrpc}}
+
+\hypertarget{ipaddress-vectorized-network-math}{%
+\subsection{\texorpdfstring{56.1 \texttt{ipaddress}: Vectorized Network
+Math}{56.1 ipaddress: Vectorized Network Math}}\label{ipaddress-vectorized-network-math}}
+
+Manipulating IP ranges with regex is a recipe for security
+vulnerabilities. \passthrough{\lstinline!ipaddress!} provides objects
+for IPv4 and IPv6 addresses and networks.
+
+\hypertarget{internal-representations}{%
+\subsubsection{1. Internal
+Representations}\label{internal-representations}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{IPv4}: Stored as a 32-bit Python
+  \passthrough{\lstinline!int!}.
+\item
+  \textbf{IPv6}: Stored as a 128-bit Python
+  \passthrough{\lstinline!int!}.
+\item
+  \textbf{Performance}: Operations like
+  \passthrough{\lstinline!addr in network!} are implemented using fast
+  bitwise mask operations
+  (\passthrough{\lstinline!(addr\_int \& mask) == network\_int!}),
+  making them extremely efficient for high-speed firewall log analysis.
+\end{itemize}
+
+\hypertarget{xmlrpc-simple-remote-procedure-calls}{%
+\subsection{\texorpdfstring{56.2 \texttt{xmlrpc}: Simple Remote
+Procedure
+Calls}{56.2 xmlrpc: Simple Remote Procedure Calls}}\label{xmlrpc-simple-remote-procedure-calls}}
+
+XML-RPC is a legacy but still widely used protocol for calling functions
+across the network. * \textbf{\passthrough{\lstinline!ServerProxy!}}:
+Uses Python's \passthrough{\lstinline!\_\_getattr\_\_!} dunder method to
+dynamically map local method calls to remote network requests. *
+\textbf{Serialization}: It uses the \passthrough{\lstinline!xml.etree!}
+module to convert Python types (ints, dicts, lists) into the XML format
+required by the protocol.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}

@@ -1,0 +1,167 @@
+\hypertarget{appendix-l-exhaustive-python-built-in-functions-reference}{%
+\chapter{Appendix L: Exhaustive Python Built-in Functions
+Reference}\label{appendix-l-exhaustive-python-built-in-functions-reference}}
+
+This appendix provides a complete list of Python 3.13 built-in
+functions, categorized by their primary use case.
+
+\hypertarget{l.1-object-creation-and-conversion}{%
+\subsection{L.1 Object Creation and
+Conversion}\label{l.1-object-creation-and-conversion}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{\passthrough{\lstinline!bool(x)!}}: Convert to boolean using
+  truth testing.
+\item
+  \textbf{\passthrough{\lstinline!bytearray([source[, encoding[, errors]]])!}}:
+  Return a mutable byte array.
+\item
+  \textbf{\passthrough{\lstinline!bytes([source[, encoding[, errors]]])!}}:
+  Return an immutable bytes object.
+\item
+  \textbf{\passthrough{\lstinline!complex([real[, imag]])!}}: Create a
+  complex number.
+\item
+  \textbf{\passthrough{\lstinline!dict(**kwargs)!}}: Create a new
+  dictionary.
+\item
+  \textbf{\passthrough{\lstinline!float(x)!}}: Convert to
+  floating-point.
+\item
+  \textbf{\passthrough{\lstinline!frozenset([iterable])!}}: Create an
+  immutable set.
+\item
+  \textbf{\passthrough{\lstinline!int(x[, base])!}}: Convert to integer.
+\item
+  \textbf{\passthrough{\lstinline!list([iterable])!}}: Create a list.
+\item
+  \textbf{\passthrough{\lstinline!set([iterable])!}}: Create a set.
+\item
+  \textbf{\passthrough{\lstinline!str(object='')!}}: Convert to string.
+\item
+  \textbf{\passthrough{\lstinline!tuple([iterable])!}}: Create a tuple.
+\end{itemize}
+
+\hypertarget{l.2-mathematical-operations}{%
+\subsection{L.2 Mathematical
+Operations}\label{l.2-mathematical-operations}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{\passthrough{\lstinline!abs(x)!}}: Absolute value.
+\item
+  \textbf{\passthrough{\lstinline!divmod(a, b)!}}: Return
+  \passthrough{\lstinline!(a // b, a \% b)!}.
+\item
+  \textbf{\passthrough{\lstinline!max(iterable[, key])!}}: Return the
+  largest item.
+\item
+  \textbf{\passthrough{\lstinline!min(iterable[, key])!}}: Return the
+  smallest item.
+\item
+  \textbf{\passthrough{\lstinline!pow(base, exp[, mod])!}}: Return
+  \passthrough{\lstinline!base**exp \% mod!}.
+\item
+  \textbf{\passthrough{\lstinline!round(number[, ndigits])!}}: Round to
+  nearest integer or precision.
+\item
+  \textbf{\passthrough{\lstinline!sum(iterable[, start])!}}: Sum of all
+  items.
+\end{itemize}
+
+\hypertarget{l.3-sequence-and-iteration}{%
+\subsection{L.3 Sequence and
+Iteration}\label{l.3-sequence-and-iteration}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{\passthrough{\lstinline!all(iterable)!}}: True if all elements
+  are true.
+\item
+  \textbf{\passthrough{\lstinline!any(iterable)!}}: True if any element
+  is true.
+\item
+  \textbf{\passthrough{\lstinline!enumerate(iterable, start=0)!}}:
+  Return an enumerate object (index, value).
+\item
+  \textbf{\passthrough{\lstinline!filter(function, iterable)!}}:
+  Construct an iterator from elements where function is true.
+\item
+  \textbf{\passthrough{\lstinline!iter(object[, sentinel])!}}: Return an
+  iterator object.
+\item
+  \textbf{\passthrough{\lstinline!len(s)!}}: Length of an object.
+\item
+  \textbf{\passthrough{\lstinline!map(function, iterable, ...)!}}: Apply
+  function to every item of iterable.
+\item
+  \textbf{\passthrough{\lstinline!next(iterator[, default])!}}: Retrieve
+  the next item from an iterator.
+\item
+  \textbf{\passthrough{\lstinline!range(stop)!}}: Create an arithmetic
+  progression.
+\item
+  \textbf{\passthrough{\lstinline!reversed(seq)!}}: Return a reverse
+  iterator.
+\item
+  \textbf{\passthrough{\lstinline!slice(stop)!}}: Create a slice object.
+\item
+  \textbf{\passthrough{\lstinline!sorted(iterable[, key][, reverse])!}}:
+  Return a new sorted list.
+\item
+  \textbf{\passthrough{\lstinline!zip(*iterables)!}}: Aggregate elements
+  from each of the iterables.
+\end{itemize}
+
+\hypertarget{l.4-reflection-and-introspection}{%
+\subsection{L.4 Reflection and
+Introspection}\label{l.4-reflection-and-introspection}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{\passthrough{\lstinline!callable(object)!}}: True if object
+  appears callable.
+\item
+  \textbf{\passthrough{\lstinline!dir([object])!}}: List of valid
+  attributes for the object.
+\item
+  \textbf{\passthrough{\lstinline!getattr(object, name[, default])!}}:
+  Get a named attribute.
+\item
+  \textbf{\passthrough{\lstinline!hasattr(object, name)!}}: True if
+  object has the named attribute.
+\item
+  \textbf{\passthrough{\lstinline!id(object)!}}: Unique identity of an
+  object (memory address in CPython).
+\item
+  \textbf{\passthrough{\lstinline!isinstance(object, classinfo)!}}:
+  Check if object is an instance of a class.
+\item
+  \textbf{\passthrough{\lstinline!issubclass(class, classinfo)!}}: Check
+  if a class is a subclass of another.
+\item
+  \textbf{\passthrough{\lstinline!locals()!}}: Update and return a
+  dictionary representing the current local symbol table.
+\item
+  \textbf{\passthrough{\lstinline!globals()!}}: Return the dictionary
+  representing the current global symbol table.
+\item
+  \textbf{\passthrough{\lstinline!repr(object)!}}: Return a string
+  containing a printable representation of an object.
+\item
+  \textbf{\passthrough{\lstinline!setattr(object, name, value)!}}: Set a
+  named attribute.
+\item
+  \textbf{\passthrough{\lstinline!type(object)!}}: Return the type of an
+  object.
+\item
+  \textbf{\passthrough{\lstinline!vars([object])!}}: Return the
+  \passthrough{\lstinline!\_\_dict\_\_!} attribute of an object.
+\end{itemize}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}

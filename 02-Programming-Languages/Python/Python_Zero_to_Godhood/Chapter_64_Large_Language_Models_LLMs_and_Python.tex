@@ -1,0 +1,25 @@
+\hypertarget{large-language-models-llms-and-python}{%
+\chapter{Large Language Models (LLMs) and
+Python}\label{large-language-models-llms-and-python}}
+
+Python is the primary language for training and deploying LLMs.
+
+\hypertarget{pytorch-architecture}{%
+\subsection{81.1 PyTorch Architecture}\label{pytorch-architecture}}
+
+PyTorch is a tensor library with a focus on deep learning. *
+\textbf{Dynamic Computation Graph}: The graph is built on-the-fly during
+the forward pass. * \textbf{The ATen Library}: The C++ backend that
+handles tensor operations and autograd.
+
+\hypertarget{hugging-face-transformers}{%
+\subsection{81.2 Hugging Face
+Transformers}\label{hugging-face-transformers}}
+
+The \passthrough{\lstinline!transformers!} library provides a
+standardized API for LLMs. * \textbf{Tokenization}: High-performance
+tokenizers implemented in Rust/C++. * \textbf{Model Sharding}:
+Techniques like DeepSpeed or FSDP (Fully Sharded Data Parallel) allow
+for training models that are too large to fit in a single GPU's memory.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}

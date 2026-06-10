@@ -1,0 +1,113 @@
+\hypertarget{appendix-t-exhaustive-python-built-in-exceptions}{%
+\chapter{Appendix T: Exhaustive Python Built-in
+Exceptions}\label{appendix-t-exhaustive-python-built-in-exceptions}}
+
+This appendix provides a complete hierarchy and description of all
+built-in exceptions in Python 3.13.
+
+\hypertarget{t.1-exception-hierarchy}{%
+\subsection{T.1 Exception Hierarchy}\label{t.1-exception-hierarchy}}
+
+\begin{lstlisting}
+BaseException
+ +-- SystemExit
+ +-- KeyboardInterrupt
+ +-- GeneratorExit
+ +-- Exception
+      +-- StopIteration
+      +-- StopAsyncIteration
+      +-- ArithmeticError
+      |    +-- FloatingPointError
+      |    +-- OverflowError
+      |    +-- ZeroDivisionError
+      +-- AssertionError
+      +-- AttributeError
+      +-- BufferError
+      +-- EOFError
+      +-- ImportError
+      |    +-- ModuleNotFoundError
+      +-- LookupError
+      |    +-- IndexError
+      |    +-- KeyError
+      +-- MemoryError
+      +-- NameError
+      |    +-- UnboundLocalError
+      +-- OSError
+      |    +-- BlockingIOError
+      |    +-- ChildProcessError
+      |    +-- ConnectionError
+      |    |    +-- BrokenPipeError
+      |    |    +-- ConnectionAbortedError
+      |    |    +-- ConnectionRefusedError
+      |    |    +-- ConnectionResetError
+      |    +-- FileExistsError
+      |    +-- FileNotFoundError
+      |    +-- InterruptedError
+      |    +-- IsADirectoryError
+      |    +-- NotADirectoryError
+      |    +-- PermissionError
+      |    +-- ProcessLookupError
+      |    +-- TimeoutError
+      +-- ReferenceError
+      +-- RuntimeError
+      |    +-- NotImplementedError
+      |    +-- RecursionError
+      +-- SyntaxError
+      |    +-- IndentationError
+      |         +-- TabError
+      +-- SystemError
+      +-- TypeError
+      +-- ValueError
+      |    +-- UnicodeError
+      |         +-- UnicodeDecodeError
+      |         +-- UnicodeEncodeError
+      |         +-- UnicodeTranslateError
+      +-- Warning (See Appendix U)
+\end{lstlisting}
+
+\hypertarget{t.2-technical-descriptions}{%
+\subsection{T.2 Technical
+Descriptions}\label{t.2-technical-descriptions}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{\passthrough{\lstinline!ArithmeticError!}}: Base class for all
+  errors that occur for numeric calculations.
+\item
+  \textbf{\passthrough{\lstinline!AssertionError!}}: Raised when an
+  \passthrough{\lstinline!assert!} statement fails.
+\item
+  \textbf{\passthrough{\lstinline!AttributeError!}}: Raised when an
+  attribute reference or assignment fails.
+\item
+  \textbf{\passthrough{\lstinline!ImportError!}}: Raised when the
+  \passthrough{\lstinline!import!} statement has troubles loading a
+  module.
+\item
+  \textbf{\passthrough{\lstinline!LookupError!}}: Base class for the
+  errors that occur when a key or index used on a mapping or sequence is
+  invalid.
+\item
+  \textbf{\passthrough{\lstinline!MemoryError!}}: Raised when an
+  operation runs out of memory but the condition may still be rescued
+  (e.g., by deleting some objects).
+\item
+  \textbf{\passthrough{\lstinline!NameError!}}: Raised when a local or
+  global name is not found.
+\item
+  \textbf{\passthrough{\lstinline!OSError!}}: Raised when a system
+  function returns a system-related error.
+\item
+  \textbf{\passthrough{\lstinline!RuntimeError!}}: Raised when an error
+  is detected that doesn't fall in any of the other categories.
+\item
+  \textbf{\passthrough{\lstinline!TypeError!}}: Raised when an operation
+  or function is applied to an object of inappropriate type.
+\item
+  \textbf{\passthrough{\lstinline!ValueError!}}: Raised when a built-in
+  operation or function receives an argument that has the right type but
+  an inappropriate value.
+\end{itemize}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}

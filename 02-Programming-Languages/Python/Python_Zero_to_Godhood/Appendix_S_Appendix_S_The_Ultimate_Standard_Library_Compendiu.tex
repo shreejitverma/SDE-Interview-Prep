@@ -1,0 +1,642 @@
+\hypertarget{appendix-s-the-ultimate-standard-library-compendium-a-z}{%
+\chapter{Appendix S: The Ultimate Standard Library Compendium
+(A-Z)}\label{appendix-s-the-ultimate-standard-library-compendium-a-z}}
+
+This appendix provides a comprehensive technical overview of every
+module in the Python 3.13 Standard Library, serving as the final
+``Sovereign Reference'' for the language.
+
+\hypertarget{s.1-a-b}{%
+\subsection{S.1 {[}A-B{]}}\label{s.1-a-b}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{\passthrough{\lstinline!abc!}}: Abstract Base Classes. Used to
+  define interfaces and perform virtual subclassing (Chapter 64).
+\item
+  \textbf{\passthrough{\lstinline!aifc!}}: (Removed in 3.13)
+  Historically used for AIFF audio files.
+\item
+  \textbf{\passthrough{\lstinline!argparse!}}: Declarative command-line
+  argument parsing with support for subcommands and type conversion
+  (Chapter 58).
+\item
+  \textbf{\passthrough{\lstinline!array!}}: Space-efficient storage of
+  basic C-style data types (integers, floats) in a contiguous memory
+  block.
+\item
+  \textbf{\passthrough{\lstinline!ast!}}: Tools to parse and manipulate
+  the Abstract Syntax Tree of Python source code (Chapter 31).
+\item
+  \textbf{\passthrough{\lstinline!asyncio!}}: The foundational framework
+  for concurrent, non-blocking I/O using the event loop and coroutines
+  (Chapter 27).
+\item
+  \textbf{\passthrough{\lstinline!atexit!}}: Registry for functions to
+  be called upon normal interpreter termination.
+\item
+  \textbf{\passthrough{\lstinline!audioop!}}: (Removed in 3.13)
+  Low-level manipulation of raw audio data.
+\item
+  \textbf{\passthrough{\lstinline!base64!}}: RFC 4648 encoding/decoding,
+  often SIMD-accelerated in the C backend (Chapter 44).
+\item
+  \textbf{\passthrough{\lstinline!bdb!}}: Debugger framework providing
+  the foundation for \passthrough{\lstinline!pdb!}.
+\item
+  \textbf{\passthrough{\lstinline!binascii!}}: Low-level conversions
+  between binary and various ASCII-encoded binary representations.
+\item
+  \textbf{\passthrough{\lstinline!bisect!}}: Optimized binary search
+  algorithms for sorted lists (Chapter 33).
+\item
+  \textbf{\passthrough{\lstinline!builtins!}}: The core namespace
+  containing all ``default'' Python functions and types (Appendix L).
+\item
+  \textbf{\passthrough{\lstinline!bz2!}}: Interface for the bzip2
+  compression library using the Burrows-Wheeler algorithm (Chapter 49).
+\end{itemize}
+
+\hypertarget{s.2-c-d}{%
+\subsection{S.2 {[}C-D{]}}\label{s.2-c-d}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{\passthrough{\lstinline!calendar!}}: Functions for date
+  calculations based on the Proleptic Gregorian Calendar.
+\item
+  \textbf{\passthrough{\lstinline!cgi!}}: (Removed in 3.13) Common
+  Gateway Interface support for web servers.
+\item
+  \textbf{\passthrough{\lstinline!cgitb!}}: (Removed in 3.13) Traceback
+  manager for CGI scripts.
+\item
+  \textbf{\passthrough{\lstinline!chunk!}}: (Removed in 3.13) Read IFF
+  chunked data.
+\item
+  \textbf{\passthrough{\lstinline!cmath!}}: Mathematical functions for
+  complex numbers (Appendix A).
+\item
+  \textbf{\passthrough{\lstinline!cmd!}}: Framework for building
+  interactive line-oriented command interpreters (Chapter 58).
+\item
+  \textbf{\passthrough{\lstinline!code!}}: Facilities to implement
+  custom Python REPLs.
+\item
+  \textbf{\passthrough{\lstinline!codecs!}}: Registry and base classes
+  for character encodings and stream transformations.
+\item
+  \textbf{\passthrough{\lstinline!codeop!}}: Internal helper for
+  compiling partially-complete Python code (used in REPLs).
+\item
+  \textbf{\passthrough{\lstinline!collections!}}: High-performance
+  container alternatives to \passthrough{\lstinline!list!} and
+  \passthrough{\lstinline!dict!} (Chapter 33).
+\item
+  \textbf{\passthrough{\lstinline!colorsys!}}: Conversions between RGB
+  and other color systems (YIQ, HLS, HSV).
+\item
+  \textbf{\passthrough{\lstinline!compileall!}}: Byte-compiles all
+  Python source files in a directory tree.
+\item
+  \textbf{\passthrough{\lstinline!configparser!}}: Configuration file
+  parser for INI-style files (Chapter 51).
+\item
+  \textbf{\passthrough{\lstinline!contextlib!}}: Utilities for
+  \passthrough{\lstinline!with!}-statement context managers (Chapter
+  65).
+\item
+  \textbf{\passthrough{\lstinline!contextvars!}}: Support for
+  context-local variables, critical for
+  \passthrough{\lstinline!asyncio!} state management.
+\item
+  \textbf{\passthrough{\lstinline!copy!}}: Shallow and deep copy
+  operations for arbitrary Python objects.
+\item
+  \textbf{\passthrough{\lstinline!copyreg!}}: Registration for custom
+  \passthrough{\lstinline!pickle!} functions.
+\item
+  \textbf{\passthrough{\lstinline!crypt!}}: (Removed in 3.13) Interface
+  to the POSIX \passthrough{\lstinline!crypt()!} function.
+\item
+  \textbf{\passthrough{\lstinline!csv!}}: C-accelerated parser for
+  comma-separated value files with dialect support (Chapter 51).
+\item
+  \textbf{\passthrough{\lstinline!ctypes!}}: Foreign Function Interface
+  (FFI) for calling functions in shared C libraries (Chapter 24).
+\item
+  \textbf{\passthrough{\lstinline!curses!}}: Terminal handling for
+  character-cell displays (Unix only).
+\item
+  \textbf{\passthrough{\lstinline!dataclasses!}}: Boilerplate-reduction
+  for classes primarily used to store data (Chapter 13).
+\item
+  \textbf{\passthrough{\lstinline!datetime!}}: Packed binary
+  representation of dates and times with DST support (Chapter 46).
+\item
+  \textbf{\passthrough{\lstinline!dbm!}}: Generic interface to variants
+  of the DBM database (ndbm, gdbm, bdb).
+\item
+  \textbf{\passthrough{\lstinline!decimal!}}: Arbitrary-precision
+  decimal arithmetic based on the decNumber library (Chapter 35).
+\item
+  \textbf{\passthrough{\lstinline!difflib!}}: Helpers for computing and
+  visualizing differences between sequences.
+\item
+  \textbf{\passthrough{\lstinline!dis!}}: The disassembler for Python
+  bytecode (Chapter 62).
+\item
+  \textbf{\passthrough{\lstinline!doctest!}}: Tool for verifying code
+  examples embedded in docstrings (Chapter 41).
+\end{itemize}
+
+\hypertarget{s.3-e-h}{%
+\subsection{S.3 {[}E-H{]}}\label{s.3-e-h}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{\passthrough{\lstinline!email!}}: Comprehensive package for
+  parsing, manipulating, and generating email messages (Chapter 53).
+\item
+  \textbf{\passthrough{\lstinline!enum!}}: Support for type-safe,
+  name-value constant mappings (Chapter 10).
+\item
+  \textbf{\passthrough{\lstinline!errno!}}: Standard POSIX system error
+  symbols.
+\item
+  \textbf{\passthrough{\lstinline!faulthandler!}}: Dumps Python
+  tracebacks on hardware crashes (SIGSEGV, etc.).
+\item
+  \textbf{\passthrough{\lstinline!fcntl!}}: Interface to the
+  \passthrough{\lstinline!fcntl!} and \passthrough{\lstinline!ioctl!}
+  system calls (Unix only).
+\item
+  \textbf{\passthrough{\lstinline!filecmp!}}: High-level file and
+  directory comparison.
+\item
+  \textbf{\passthrough{\lstinline!fileinput!}}: Iterates over lines from
+  multiple input streams (files or stdin).
+\item
+  \textbf{\passthrough{\lstinline!fnmatch!}}: Unix shell-style filename
+  pattern matching.
+\item
+  \textbf{\passthrough{\lstinline!fractions!}}: Support for rational
+  number arithmetic (Chapter 35).
+\item
+  \textbf{\passthrough{\lstinline!ftplib!}}: Client for the File
+  Transfer Protocol (Chapter 55).
+\item
+  \textbf{\passthrough{\lstinline!functools!}}: Higher-order functions
+  and operations on callable objects (Chapter 34).
+\item
+  \textbf{\passthrough{\lstinline!gc!}}: Interface to the
+  cycle-detecting garbage collector (Chapter 23).
+\item
+  \textbf{\passthrough{\lstinline!getopt!}}: C-style command line option
+  parser (legacy).
+\item
+  \textbf{\passthrough{\lstinline!getpass!}}: Portable way to prompt for
+  passwords without echoing input.
+\item
+  \textbf{\passthrough{\lstinline!gettext!}}: Internationalization and
+  localization services based on GNU gettext (Chapter 57).
+\item
+  \textbf{\passthrough{\lstinline!glob!}}: Unix shell-style pathname
+  pattern expansion.
+\item
+  \textbf{\passthrough{\lstinline!graphlib!}}: Support for topological
+  sorting of graphs (Chapter 47).
+\item
+  \textbf{\passthrough{\lstinline!grp!}}: The Unix group database (Unix
+  only).
+\item
+  \textbf{\passthrough{\lstinline!gzip!}}: Interface for files
+  compressed with the Gzip format (Chapter 48).
+\item
+  \textbf{\passthrough{\lstinline!hashlib!}}: Secure hash and message
+  digest algorithms backed by OpenSSL (Chapter 45).
+\item
+  \textbf{\passthrough{\lstinline!heapq!}}: Min-priority queue
+  implementation using a standard list (Chapter 33).
+\item
+  \textbf{\passthrough{\lstinline!hmac!}}: Keyed-Hashing for Message
+  Authentication (Chapter 45).
+\item
+  \textbf{\passthrough{\lstinline!html!}}: Support for manipulating
+  HTML, including escaping and parsing (Chapter 53).
+\item
+  \textbf{\passthrough{\lstinline!http!}}: Constants and state machines
+  for the HyperText Transfer Protocol (Chapter 54).
+\end{itemize}
+
+\hypertarget{s.4-i-l}{%
+\subsection{S.4 {[}I-L{]}}\label{s.4-i-l}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{\passthrough{\lstinline!imaplib!}}: Client for the IMAP4
+  protocol (Chapter 55).
+\item
+  \textbf{\passthrough{\lstinline!imghdr!}}: (Removed in 3.13) Determine
+  the type of an image.
+\item
+  \textbf{\passthrough{\lstinline!importlib!}}: The implementation of
+  the \passthrough{\lstinline!import!} statement and dynamic loading
+  (Chapter 39).
+\item
+  \textbf{\passthrough{\lstinline!inspect!}}: Runtime introspection of
+  live objects and stack frames (Chapter 40).
+\item
+  \textbf{\passthrough{\lstinline!io!}}: The core framework for
+  stream-based I/O (Chapter 37).
+\item
+  \textbf{\passthrough{\lstinline!ipaddress!}}: IPv4 and IPv6 address
+  manipulation and CIDR math (Chapter 56).
+\item
+  \textbf{\passthrough{\lstinline!itertools!}}: Efficient, C-implemented
+  looping and combinatoric primitives (Chapter 34).
+\item
+  \textbf{\passthrough{\lstinline!json!}}: Universal data exchange
+  format backed by a C-extension (Chapter 36).
+\item
+  \textbf{\passthrough{\lstinline!keyword!}}: List of Python language
+  keywords.
+\item
+  \textbf{\passthrough{\lstinline!lib2to3!}}: (Removed in 3.13)
+  Automated Python 2 to 3 code translation.
+\item
+  \textbf{\passthrough{\lstinline!linecache!}}: Random access to text
+  lines from source files (used by tracebacks).
+\item
+  \textbf{\passthrough{\lstinline!locale!}}: Interface to the OS
+  cultural and language contexts (Chapter 57).
+\item
+  \textbf{\passthrough{\lstinline!logging!}}: Hierarchical event logging
+  system for applications (Chapter 97).
+\item
+  \textbf{\passthrough{\lstinline!lzma!}}: High-ratio compression using
+  the LZMA algorithm (Chapter 49).
+\end{itemize}
+
+\hypertarget{s.5-m-o}{%
+\subsection{S.5 {[}M-O{]}}\label{s.5-m-o}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{\passthrough{\lstinline!mailbox!}}: Manipulate mailboxes in
+  various formats (mbox, Maildir).
+\item
+  \textbf{\passthrough{\lstinline!mailcap!}}: (Removed in 3.13) Mailcap
+  file handling.
+\item
+  \textbf{\passthrough{\lstinline!marshal!}}: Internal Python object
+  serialization (insecure).
+\item
+  \textbf{\passthrough{\lstinline!math!}}: C-standard mathematical
+  functions for real numbers (Chapter 35).
+\item
+  \textbf{\passthrough{\lstinline!mimetypes!}}: Mapping from filenames
+  to MIME types.
+\item
+  \textbf{\passthrough{\lstinline!mmap!}}: Memory-mapped file support
+  for zero-copy I/O (Chapter 38).
+\item
+  \textbf{\passthrough{\lstinline!modulefinder!}}: Find modules used by
+  a script by analyzing the AST.
+\item
+  \textbf{\passthrough{\lstinline!msilib!}}: (Removed in 3.13)
+  Read/write Windows Installer files.
+\item
+  \textbf{\passthrough{\lstinline!multiprocessing!}}: Process-based
+  parallelism that bypasses the GIL (Chapter 27).
+\item
+  \textbf{\passthrough{\lstinline!netrc!}}: netrc file processing.
+\item
+  \textbf{\passthrough{\lstinline!nis!}}: (Removed in 3.13) Interface to
+  Sun's NIS (Yellow Pages).
+\item
+  \textbf{\passthrough{\lstinline!nntplib!}}: (Removed in 3.13) Client
+  for the NNTP protocol (News).
+\item
+  \textbf{\passthrough{\lstinline!numbers!}}: Numeric abstract base
+  classes.
+\item
+  \textbf{\passthrough{\lstinline!operator!}}: C-level implementations
+  of Python's intrinsic operators (Chapter 34).
+\item
+  \textbf{\passthrough{\lstinline!os!}}: Portable interface to operating
+  system primitives and system calls (Chapter 37).
+\end{itemize}
+
+\hypertarget{s.6-p-r}{%
+\subsection{S.6 {[}P-R{]}}\label{s.6-p-r}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{\passthrough{\lstinline!pathlib!}}: Object-oriented filesystem
+  paths with platform-specific subclasses (Chapter 10).
+\item
+  \textbf{\passthrough{\lstinline!pdb!}}: The interactive Python source
+  code debugger (Chapter 41).
+\item
+  \textbf{\passthrough{\lstinline!pickle!}}: Native Python object
+  serialization using a stack machine (Chapter 36).
+\item
+  \textbf{\passthrough{\lstinline!pipes!}}: (Removed in 3.13) Interface
+  to shell pipelines.
+\item
+  \textbf{\passthrough{\lstinline!pkgutil!}}: Utilities for the package
+  system and resource loading.
+\item
+  \textbf{\passthrough{\lstinline!platform!}}: Retrieve underlying
+  platform identifying data.
+\item
+  \textbf{\passthrough{\lstinline!plistlib!}}: Read/write Apple
+  \passthrough{\lstinline!.plist!} files.
+\item
+  \textbf{\passthrough{\lstinline!poplib!}}: (Removed in 3.13) Client
+  for the POP3 protocol.
+\item
+  \textbf{\passthrough{\lstinline!posix!}}: Low-level POSIX system calls
+  (internal to \passthrough{\lstinline!os!}).
+\item
+  \textbf{\passthrough{\lstinline!pprint!}}: Data ``pretty printer'' for
+  complex Python objects.
+\item
+  \textbf{\passthrough{\lstinline!profile!}}: Performance profiling for
+  Python applications (Chapter 29).
+\item
+  \textbf{\passthrough{\lstinline!pstats!}}: Statistics object for
+  sorting and analyzing profile results.
+\item
+  \textbf{\passthrough{\lstinline!pty!}}: Pseudo-terminal utilities
+  (Unix only).
+\item
+  \textbf{\passthrough{\lstinline!pwd!}}: The Unix password database
+  (Unix only).
+\item
+  \textbf{\passthrough{\lstinline!py\_compile!}}: Compiles a single
+  Python source file to bytecode.
+\item
+  \textbf{\passthrough{\lstinline!pyclbr!}}: Python class browser
+  support (parses source without executing).
+\item
+  \textbf{\passthrough{\lstinline!pydoc!}}: Documentation generator and
+  online help system.
+\item
+  \textbf{\passthrough{\lstinline!queue!}}: Synchronized queues for
+  multi-threaded programming (Chapter 33).
+\item
+  \textbf{\passthrough{\lstinline!quopri!}}: Quoted-printable MIME data
+  encoding.
+\item
+  \textbf{\passthrough{\lstinline!random!}}: PRNGs for various
+  distributions (Chapter 35).
+\item
+  \textbf{\passthrough{\lstinline!re!}}: Regular expression operations
+  using the SRE engine (Chapter 42).
+\item
+  \textbf{\passthrough{\lstinline!readline!}}: Interface to the GNU
+  readline library for CLI enhancements (Unix).
+\item
+  \textbf{\passthrough{\lstinline!reprlib!}}: Alternate
+  \passthrough{\lstinline!repr()!} implementation with size limits for
+  deep structures.
+\item
+  \textbf{\passthrough{\lstinline!resource!}}: Interface for measuring
+  and limiting system resources (Unix only).
+\item
+  \textbf{\passthrough{\lstinline!rlcompleter!}}: Completion function
+  for GNU readline.
+\end{itemize}
+
+\hypertarget{s.7-s-t}{%
+\subsection{S.7 {[}S-T{]}}\label{s.7-s-t}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{\passthrough{\lstinline!sched!}}: General-purpose event
+  scheduler.
+\item
+  \textbf{\passthrough{\lstinline!secrets!}}: Cryptographically secure
+  random numbers for secrets (Chapter 35).
+\item
+  \textbf{\passthrough{\lstinline!select!}}: Wait for I/O completion on
+  sockets and pipes (Chapter 38).
+\item
+  \textbf{\passthrough{\lstinline!selectors!}}: High-level I/O
+  multiplexing built on \passthrough{\lstinline!select!}.
+\item
+  \textbf{\passthrough{\lstinline!shelve!}}: Persistent dictionary-like
+  storage using \passthrough{\lstinline!pickle!} and
+  \passthrough{\lstinline!dbm!} (Chapter 36).
+\item
+  \textbf{\passthrough{\lstinline!shlex!}}: Simple lexical analysis for
+  shell-like languages (Chapter 58).
+\item
+  \textbf{\passthrough{\lstinline!shutil!}}: High-level file operations
+  (copy, move, archive).
+\item
+  \textbf{\passthrough{\lstinline!signal!}}: Set handlers for
+  asynchronous OS events/signals (Chapter 37).
+\item
+  \textbf{\passthrough{\lstinline!site!}}: Module that handles
+  site-specific configuration and \passthrough{\lstinline!sys.path!}
+  (Chapter 60).
+\item
+  \textbf{\passthrough{\lstinline!smtpd!}}: (Removed in 3.13) SMTP
+  server implementation.
+\item
+  \textbf{\passthrough{\lstinline!smtplib!}}: Client for the SMTP
+  protocol (Chapter 55).
+\item
+  \textbf{\passthrough{\lstinline!sndhdr!}}: (Removed in 3.13) Determine
+  the type of sound file.
+\item
+  \textbf{\passthrough{\lstinline!socket!}}: Low-level network interface
+  (Berkeley sockets) (Chapter 38).
+\item
+  \textbf{\passthrough{\lstinline!socketserver!}}: Framework for
+  building network servers.
+\item
+  \textbf{\passthrough{\lstinline!spwd!}}: The Unix shadow password
+  database (Unix only).
+\item
+  \textbf{\passthrough{\lstinline!sqlite3!}}: A DB-API 2.0
+  implementation for the SQLite database engine (Chapter 36).
+\item
+  \textbf{\passthrough{\lstinline!ssl!}}: TLS/SSL wrapper for socket
+  objects using OpenSSL (Chapter 38).
+\item
+  \textbf{\passthrough{\lstinline!stat!}}: Utilities for interpreting
+  the results of \passthrough{\lstinline!os.stat()!}.
+\item
+  \textbf{\passthrough{\lstinline!statistics!}}: Mathematical statistics
+  functions for numeric data.
+\item
+  \textbf{\passthrough{\lstinline!string!}}: Common string operations
+  and formatting (Chapter 92).
+\item
+  \textbf{\passthrough{\lstinline!stringprep!}}: RFC 3454 internet
+  string preparation.
+\item
+  \textbf{\passthrough{\lstinline!struct!}}: Interpret bytes as packed
+  binary C data (Chapter 44).
+\item
+  \textbf{\passthrough{\lstinline!subprocess!}}: Subprocess management
+  with support for pipes and signals (Chapter 37).
+\item
+  \textbf{\passthrough{\lstinline!sunau!}}: (Removed in 3.13) Read/write
+  Sun AU files.
+\item
+  \textbf{\passthrough{\lstinline!symtable!}}: Interface to the
+  compiler's internal symbol tables.
+\item
+  \textbf{\passthrough{\lstinline!sys!}}: System-specific parameters and
+  functions (Chapter 40).
+\item
+  \textbf{\passthrough{\lstinline!sysconfig!}}: Access to Python's
+  configuration information.
+\item
+  \textbf{\passthrough{\lstinline!syslog!}}: Interface to the Unix
+  syslog library (Unix only).
+\item
+  \textbf{\passthrough{\lstinline!tabnanny!}}: (Removed in 3.13) Detect
+  ambiguous indentation.
+\item
+  \textbf{\passthrough{\lstinline!tarfile!}}: Read/write TAR archives
+  with compression support (Chapter 50).
+\item
+  \textbf{\passthrough{\lstinline!telnetlib!}}: (Removed in 3.13) Telnet
+  client.
+\item
+  \textbf{\passthrough{\lstinline!tempfile!}}: Generate temporary files
+  and directories securely.
+\item
+  \textbf{\passthrough{\lstinline!termios!}}: POSIX style tty control
+  (Unix only).
+\item
+  \textbf{\passthrough{\lstinline!textwrap!}}: Text wrapping and filling
+  (Chapter 92).
+\item
+  \textbf{\passthrough{\lstinline!threading!}}: Thread-based parallelism
+  (Chapter 27).
+\item
+  \textbf{\passthrough{\lstinline!time!}}: Time access and conversions
+  (C standard library).
+\item
+  \textbf{\passthrough{\lstinline!timeit!}}: Measure execution time of
+  small code snippets (Chapter 29).
+\item
+  \textbf{\passthrough{\lstinline!tkinter!}}: Python interface to Tcl/Tk
+  for building GUIs (Chapter 59).
+\item
+  \textbf{\passthrough{\lstinline!token!}}: Constants representing
+  numeric values of tokens.
+\item
+  \textbf{\passthrough{\lstinline!tokenize!}}: Tokenizer for Python
+  source code (Chapter 31).
+\item
+  \textbf{\passthrough{\lstinline!trace!}}: Trace or track Python
+  statement execution.
+\item
+  \textbf{\passthrough{\lstinline!traceback!}}: Print or retrieve stack
+  tracebacks.
+\item
+  \textbf{\passthrough{\lstinline!tracemalloc!}}: Trace memory
+  allocations for debugging leaks (Chapter 41).
+\item
+  \textbf{\passthrough{\lstinline!tty!}}: Terminal control functions
+  (Unix only).
+\item
+  \textbf{\passthrough{\lstinline!turtle!}}: Educational graphics
+  toolkit using a stateful cursor (Chapter 95).
+\item
+  \textbf{\passthrough{\lstinline!types!}}: Helpers for dynamic type
+  creation and inspection.
+\item
+  \textbf{\passthrough{\lstinline!typing!}}: Support for type hints and
+  static analysis (Chapter 67).
+\end{itemize}
+
+\hypertarget{s.8-u-z}{%
+\subsection{S.8 {[}U-Z{]}}\label{s.8-u-z}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{\passthrough{\lstinline!unicodedata!}}: Access to the Unicode
+  Character Database.
+\item
+  \textbf{\passthrough{\lstinline!unittest!}}: Unit testing framework
+  (xUnit architecture) (Chapter 41).
+\item
+  \textbf{\passthrough{\lstinline!urllib!}}: URL handling modules
+  (Chapter 54).
+\item
+  \textbf{\passthrough{\lstinline!uu!}}: (Removed in 3.13) Encode/decode
+  uuencode files.
+\item
+  \textbf{\passthrough{\lstinline!uuid!}}: UUID objects (RFC 4122).
+\item
+  \textbf{\passthrough{\lstinline!venv!}}: Creation of virtual
+  environments (Chapter 60).
+\item
+  \textbf{\passthrough{\lstinline!warnings!}}: Issue warning messages
+  and control their suppression (Chapter 40).
+\item
+  \textbf{\passthrough{\lstinline!wave!}}: Read/write WAV files.
+\item
+  \textbf{\passthrough{\lstinline!weakref!}}: Support for weak
+  references to objects (Chapter 33).
+\item
+  \textbf{\passthrough{\lstinline!webbrowser!}}: High-level interface to
+  display web-based documents (Chapter 96).
+\item
+  \textbf{\passthrough{\lstinline!winreg!}}: Access to the Windows
+  registry (Windows only).
+\item
+  \textbf{\passthrough{\lstinline!winsound!}}: Interface to the Windows
+  sound-playing machinery (Windows only).
+\item
+  \textbf{\passthrough{\lstinline!wsgiref!}}: WSGI utilities and
+  reference server (Chapter 89).
+\item
+  \textbf{\passthrough{\lstinline!xdrlib!}}: (Removed in 3.13) Encoders
+  for External Data Representation.
+\item
+  \textbf{\passthrough{\lstinline!xml!}}: Support for XML parsing and
+  manipulation (Chapter 52).
+\item
+  \textbf{\passthrough{\lstinline!xmlrpc!}}: XML-RPC client and server
+  support (Chapter 56).
+\item
+  \textbf{\passthrough{\lstinline!zipapp!}}: Manage executable Python
+  zip archives (Chapter 61).
+\item
+  \textbf{\passthrough{\lstinline!zipfile!}}: Read/write ZIP archives
+  (Chapter 50).
+\item
+  \textbf{\passthrough{\lstinline!zipimport!}}: Import modules from Zip
+  archives.
+\item
+  \textbf{\passthrough{\lstinline!zlib!}}: Direct interface to the zlib
+  compression library (Chapter 48).
+\item
+  \textbf{\passthrough{\lstinline!zoneinfo!}}: IANA time zone support
+  (Chapter 46).
+\end{itemize}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\textbf{This concludes the exhaustive Standard Library inventory. You
+have now traversed the entire documented territory of Python 3.13.}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}

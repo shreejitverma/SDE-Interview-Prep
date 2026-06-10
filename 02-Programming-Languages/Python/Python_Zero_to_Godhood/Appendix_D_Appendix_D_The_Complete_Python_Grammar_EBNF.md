@@ -1,0 +1,180 @@
+# Appendix D: The Complete Python Grammar (EBNF)
+
+
+This appendix provides the formal EBNF (Extended Backus-Naur Form) grammar for Python 3.13. Understanding this grammar is the final step in "Godhood," as it allows you to predict how any sequence of tokens will be parsed by the PEG engine.
+
+### D.1 Notation
+*   `?` : Optional
+*   `*` : 0 or more
+*   `+` : 1 or more
+*   `|` : Choice
+*   `()` : Grouping
+
+### D.2 The Core Grammar (Abridged)
+
+```ebnf
+file: [statements] ENDMARKER
+interactive: statement_newline
+
+statements: statement+
+statement: compound_stmt | simple_stmts
+
+simple_stmts:
+    | simple_stmt ';' [simple_stmts] NEWLINE
+    | simple_stmt NEWLINE
+
+simple_stmt:
+    | assignment
+    | type_alias
+    | star_expressions
+    | return_stmt
+    | import_stmt
+    | raise_stmt
+    | 'pass'
+    | del_stmt
+    | yield_stmt
+    | assert_stmt
+    | 'break'
+    | 'continue'
+    | global_stmt
+    | nonlocal_stmt
+
+compound_stmt:
+    | function_def
+    | if_stmt
+    | class_def
+    | with_stmt
+    | for_stmt
+    | try_stmt
+    | while_stmt
+    | match_stmt
+
+assignment:
+    | NAME ':' expression ['=' annotated_rhs]
+    | ('(' single_target ')' | single_subscript_attribute_target) ':' expression ['=' annotated_rhs]
+    | (star_targets '=' )+ (yield_expr | star_expressions) [TYPE_COMMENT]
+    | target _augassign_op (yield_expr | star_expressions)
+
+if_stmt:
+    | 'if' named_expression ':' block elif_stmt
+    | 'if' named_expression ':' block [else_block]
+
+elif_stmt:
+    | 'elif' named_expression ':' block elif_stmt
+    | 'elif' named_expression ':' block [else_block]
+
+for_stmt:
+    | [ASYNC] 'for' star_targets 'in' star_expressions ':' [TYPE_COMMENT] block [else_block]
+
+while_stmt:
+    | 'while' named_expression ':' block [else_block]
+
+try_stmt:
+    | 'try' ':' block finally_block
+    | 'try' ':' block except_block+ [else_block] [finally_block]
+    | 'try' ':' block except_star_block+ [else_block] [finally_block]
+
+match_stmt:
+    | "match" subject_expr ':' NEWLINE INDENT case_block+ DEDENT
+
+case_block:
+    | "case" patterns [guard] ':' block
+
+# ... [Many pages of expressions, atoms, and literals] ...
+
+expressions:
+    | expression (',' expression )* [',']
+
+expression:
+    | conditional_expression
+    | lambdef
+
+conditional_expression:
+    | disjunction 'if' disjunction 'else' expression
+    | disjunction
+
+disjunction:
+    | conjunction ( 'or' conjunction )+
+    | conjunction
+
+conjunction:
+    | inversion ( 'and' inversion )+
+    | inversion
+
+inversion:
+    | 'not' inversion
+    | comparison
+
+comparison:
+    | bitwise_or ( compare_op_bitwise_or_pair )+
+    | bitwise_or
+
+bitwise_or:
+    | bitwise_or '|' bitwise_xor
+    | bitwise_xor
+
+bitwise_xor:
+    | bitwise_xor '^' bitwise_and
+    | bitwise_and
+
+bitwise_and:
+    | bitwise_and '&' shift_expr
+    | shift_expr
+
+shift_expr:
+    | shift_expr '<<' sum
+    | shift_expr '>>' sum
+    | sum
+
+sum:
+    | sum '+' term
+    | sum '-' term
+    | term
+
+term:
+    | term '*' factor
+    | term '/' factor
+    | term '//' factor
+    | term '%' factor
+    | term '@' factor
+    | factor
+
+factor:
+    | '+' factor
+    | '-' factor
+    | '~' factor
+    | power
+
+power:
+    | await_primary '**' factor
+    | await_primary
+
+await_primary:
+    | AWAIT primary
+    | primary
+
+primary:
+    | primary '.' NAME
+    | primary '(' [arguments] ')'
+    | primary '[' slices ']'
+    | atom
+
+atom:
+    | NAME
+    | 'True'
+    | 'False'
+    | 'None'
+    | strings
+    | NUMBER
+    | (tuple | list | dict | set)
+    | '...'
+```
+
+### D.3 Implications of PEG
+Because Python uses a PEG (Parsing Expression Grammar) parser, the order of rules in a choice (`|`) matters. The parser tries the first option, and if it succeeds, it never looks at the others. This eliminates ambiguity but requires careful ordering (e.g., matching longer keywords before shorter ones).
+
+---
+
+**THE END.**
+
+---
