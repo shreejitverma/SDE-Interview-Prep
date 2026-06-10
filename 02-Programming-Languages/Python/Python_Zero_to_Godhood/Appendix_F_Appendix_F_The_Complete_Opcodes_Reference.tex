@@ -1,0 +1,52 @@
+\hypertarget{appendix-f-the-complete-opcodes-reference}{%
+\chapter{Appendix F: The Complete Opcodes
+Reference}\label{appendix-f-the-complete-opcodes-reference}}
+
+This table provides a reference for the most common opcodes in the
+CPython 3.13 Virtual Machine.
+
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.33}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.33}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.33}}@{}}
+\toprule
+Opcode & Args & Description \\
+\midrule
+\endhead
+\passthrough{\lstinline!CACHE!} & 0 & Specialized inline cache entry
+(skipped by interpreter). \\
+\passthrough{\lstinline!RESUME!} & 0 & Internal entry point for
+functions/generators. \\
+\passthrough{\lstinline!LOAD\_CONST!} & const\_idx & Pushes
+\passthrough{\lstinline!co\_consts[const\_idx]!} onto the stack. \\
+\passthrough{\lstinline!LOAD\_FAST!} & var\_num & Pushes local variable
+\passthrough{\lstinline!var\_num!} onto the stack. \\
+\passthrough{\lstinline!STORE\_FAST!} & var\_num & Pops TOS and stores
+it in local variable \passthrough{\lstinline!var\_num!}. \\
+\passthrough{\lstinline!LOAD\_GLOBAL!} & name\_idx & Pushes
+\passthrough{\lstinline!co\_names[name\_idx]!} from global/builtin
+namespace. \\
+\passthrough{\lstinline!BINARY\_OP!} & op\_id & Pops two items, performs
+operation \passthrough{\lstinline!op\_id!} (e.g., ADD, SUB). \\
+\passthrough{\lstinline!BUILD\_LIST!} & count & Pops
+\passthrough{\lstinline!count!} items and pushes a new list. \\
+\passthrough{\lstinline!CALL!} & argc & Calls a function with
+\passthrough{\lstinline!argc!} arguments. \\
+\passthrough{\lstinline!COMPARE\_OP!} & op\_id & Performs comparison
+(e.g., \passthrough{\lstinline!==!}, \passthrough{\lstinline!<!}). \\
+\passthrough{\lstinline!JUMP\_FORWARD!} & delta & Increments instruction
+pointer by \passthrough{\lstinline!delta!}. \\
+\passthrough{\lstinline!POP\_JUMP\_IF\_FALSE!} & target & Pops TOS; if
+false, jumps to \passthrough{\lstinline!target!}. \\
+\passthrough{\lstinline!RETURN\_VALUE!} & 0 & Returns TOS to the
+caller. \\
+\passthrough{\lstinline!YIELD\_VALUE!} & 0 & Yields TOS from a
+generator. \\
+\bottomrule
+\end{longtable}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\textbf{This concludes the technical reference.}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}

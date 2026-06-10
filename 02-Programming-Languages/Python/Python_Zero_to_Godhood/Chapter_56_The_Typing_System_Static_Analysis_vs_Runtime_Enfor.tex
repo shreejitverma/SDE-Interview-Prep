@@ -1,0 +1,55 @@
+\hypertarget{the-typing-system-static-analysis-vs.-runtime-enforcement}{%
+\chapter{The Typing System: Static Analysis vs.~Runtime
+Enforcement}\label{the-typing-system-static-analysis-vs.-runtime-enforcement}}
+
+Python's type system has evolved from simple comments to a sophisticated
+language-level feature. This chapter deconstructs how types exist in the
+runtime.
+
+\hypertarget{typing-internals-the-genericalias-and-specialform}{%
+\subsection{\texorpdfstring{67.1 \texttt{typing} Internals: The
+\texttt{GenericAlias} and
+\texttt{SpecialForm}}{67.1 typing Internals: The GenericAlias and SpecialForm}}\label{typing-internals-the-genericalias-and-specialform}}
+
+When you write \passthrough{\lstinline!list[int]!}, you are creating a
+\passthrough{\lstinline!types.GenericAlias!} object. * \textbf{The
+\passthrough{\lstinline!\_\_getitem\_\_!} Hook}: Classes like
+\passthrough{\lstinline!list!} or \passthrough{\lstinline!dict!}
+implement \passthrough{\lstinline!\_\_class\_getitem\_\_!} to support
+the bracket syntax. * \textbf{Runtime Overhead}: Type hints are
+evaluated at import time. Large-scale use of complex nested types can
+noticeably slow down the startup of a Python application.
+
+\hypertarget{static-vs.-runtime-verification}{%
+\subsection{67.2 Static vs.~Runtime
+Verification}\label{static-vs.-runtime-verification}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Static Analysis}: Tools like \passthrough{\lstinline!mypy!} or
+  \passthrough{\lstinline!pyright!} scan the AST (Chapter 31) and verify
+  types without running the code.
+\item
+  \textbf{Runtime Enforcement}: Libraries like
+  \passthrough{\lstinline!pydantic!} or
+  \passthrough{\lstinline!beartype!} intercept function calls or class
+  instantiation to verify types at execution time.
+\item
+  \textbf{\passthrough{\lstinline!inspect.get\_type\_hints()!}}: This
+  function is the ``Godhood'' way to retrieve types at runtime, handling
+  forward references (strings like \passthrough{\lstinline!"MyClass"!})
+  by evaluating them in the correct namespace.
+\end{itemize}
+
+\hypertarget{protocols-and-structural-subtyping-pep-544}{%
+\subsection{67.3 Protocols and Structural Subtyping (PEP
+544)}\label{protocols-and-structural-subtyping-pep-544}}
+
+Protocols allow for ``static duck typing.'' * \textbf{Internals}: A
+\passthrough{\lstinline!Protocol!} class uses a specialized metaclass
+that identifies which methods define the interface. Unlike
+\passthrough{\lstinline!abc.ABC!}, you don't need to inherit from the
+Protocol; you just need to implement the methods.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}

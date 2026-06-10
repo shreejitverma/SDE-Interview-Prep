@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.28 (TeX Live 2025) (preloaded format=pdflatex 2025.12.5)  10 JUN 2026 16:47
+This is pdfTeX, Version 3.141592653-2.6-1.40.28 (TeX Live 2025) (preloaded format=pdflatex 2025.12.5)  10 JUN 2026 17:30
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -548,11 +548,7 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 
 [6]
 LaTeX Font Info:    Font shape `T1/lmtt/bx/n' in size <10.95> not available
-(Font)              Font shape `T1/lmtt/b/n' tried instead on input line 520.
-)
-\tf@toc=\write4
-\openout4 = `Python_Zero_to_Godhood.toc'.
-
+(Font)              Font shape `T1/lmtt/b/n' tried instead on input line 511.
 
 
 Package fancyhdr Warning: \headheight is too small (12.0pt): 
@@ -569,7 +565,75 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                You might also make \topmargin smaller:
 (fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
 
-[8
+[8]
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 13.59999pt, for example:
+(fancyhdr)                \setlength{\headheight}{13.59999pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
+
+[9]
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 13.59999pt, for example:
+(fancyhdr)                \setlength{\headheight}{13.59999pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
+
+[10]
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 13.59999pt, for example:
+(fancyhdr)                \setlength{\headheight}{13.59999pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
+
+[11]
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 13.59999pt, for example:
+(fancyhdr)                \setlength{\headheight}{13.59999pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
+
+[12]
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 13.59999pt, for example:
+(fancyhdr)                \setlength{\headheight}{13.59999pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
+
+[13]
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 13.59999pt, for example:
+(fancyhdr)                \setlength{\headheight}{13.59999pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
+
+[14])
+\tf@toc=\write4
+\openout4 = `Python_Zero_to_Godhood.toc'.
+
+
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 13.59999pt, for example:
+(fancyhdr)                \setlength{\headheight}{13.59999pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
+
+[15]
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 13.59999pt, for example:
+(fancyhdr)                \setlength{\headheight}{13.59999pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
+
+[16
 
 ] (./00_Preface.tex
 Chapter 1.
@@ -1875,9 +1939,6 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
 
 [141]
-Underfull \vbox (badness 4096) has occurred while \output is active []
-
-
 
 Package fancyhdr Warning: \headheight is too small (12.0pt): 
 (fancyhdr)                Make it at least 25.2232pt, for example:
@@ -1886,14 +1947,24 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                \addtolength{\topmargin}{-13.2232pt}.
 
 [142]
+Chapter 33.
 
-Package fancyhdr Warning: \headheight is too small (12.0pt): 
-(fancyhdr)                Make it at least 13.59999pt, for example:
-(fancyhdr)                \setlength{\headheight}{13.59999pt}.
-(fancyhdr)                You might also make \topmargin smaller:
-(fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
+Package hyperref Warning: Difference (2) between bookmark levels is greater 
+(hyperref)                than one, level fixed on input line 183.
 
-[143])
+
+Underfull \hbox (badness 10000) in alignment at lines 235--239
+[] [] []
+ []
+
+
+Underfull \hbox (badness 10000) in alignment at lines 239--255
+[] [] []
+ []
+
+[143
+
+]
 
 Package fancyhdr Warning: \headheight is too small (12.0pt): 
 (fancyhdr)                Make it at least 25.2232pt, for example:
@@ -1901,43 +1972,15 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                You might also make \topmargin smaller:
 (fancyhdr)                \addtolength{\topmargin}{-13.2232pt}.
 
-[144] [145
-
-] (./Chapter_31_Lexical_Analysis_and_the_Execution_Model.tex
-Chapter 33.
-
-Package hyperref Warning: Difference (2) between bookmark levels is greater 
-(hyperref)                than one, level fixed on input line 16.
-
-[146
-
-]) (./Chapter_32_The_Python_Data_Model__Comprehensive_Dunder_Method.tex
-
-Package fancyhdr Warning: \headheight is too small (12.0pt): 
-(fancyhdr)                Make it at least 13.59999pt, for example:
-(fancyhdr)                \setlength{\headheight}{13.59999pt}.
-(fancyhdr)                You might also make \topmargin smaller:
-(fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
-
-[147]
+[144]
 Chapter 34.
 
 Package hyperref Warning: Difference (2) between bookmark levels is greater 
-(hyperref)                than one, level fixed on input line 13.
+(hyperref)                than one, level fixed on input line 342.
 
+[145
 
-Underfull \hbox (badness 10000) in alignment at lines 65--69
-[] [] []
- []
-
-
-Underfull \hbox (badness 10000) in alignment at lines 69--85
-[] [] []
- []
-
-[148
-
-])
+]
 
 Package fancyhdr Warning: \headheight is too small (12.0pt): 
 (fancyhdr)                Make it at least 13.59999pt, for example:
@@ -1945,17 +1988,47 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                You might also make \topmargin smaller:
 (fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
 
-[149] [150
-
-] (./Chapter_33_Advanced_Data_Structures_Internals.tex
+[146]
 Chapter 35.
 
 Package hyperref Warning: Difference (2) between bookmark levels is greater 
-(hyperref)                than one, level fixed on input line 15.
+(hyperref)                than one, level fixed on input line 468.
+
+[147
+
+]
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 13.59999pt, for example:
+(fancyhdr)                \setlength{\headheight}{13.59999pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
+
+[148]
+Chapter 36.
+
+Package hyperref Warning: Difference (2) between bookmark levels is greater 
+(hyperref)                than one, level fixed on input line 583.
+
+[149
+
+]
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 13.59999pt, for example:
+(fancyhdr)                \setlength{\headheight}{13.59999pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
+
+[150]
+Chapter 37.
+
+Package hyperref Warning: Difference (2) between bookmark levels is greater 
+(hyperref)                than one, level fixed on input line 706.
 
 [151
 
-]) (./Chapter_34_Functional_Programming_Modules.tex
+]
 
 Package fancyhdr Warning: \headheight is too small (12.0pt): 
 (fancyhdr)                Make it at least 13.59999pt, for example:
@@ -1964,14 +2037,14 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
 
 [152]
-Chapter 36.
+Chapter 38.
 
 Package hyperref Warning: Difference (2) between bookmark levels is greater 
-(hyperref)                than one, level fixed on input line 13.
+(hyperref)                than one, level fixed on input line 819.
 
 [153
 
-]) (./Chapter_35_Numeric_Mathematical_and_Cryptographic_Randomness.tex
+]
 
 Package fancyhdr Warning: \headheight is too small (12.0pt): 
 (fancyhdr)                Make it at least 13.59999pt, for example:
@@ -1980,12 +2053,62 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
 
 [154]
-Chapter 37.
+Chapter 39.
 
 Package hyperref Warning: Difference (2) between bookmark levels is greater 
-(hyperref)                than one, level fixed on input line 11.
+(hyperref)                than one, level fixed on input line 938.
 
 [155
+
+]
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 13.59999pt, for example:
+(fancyhdr)                \setlength{\headheight}{13.59999pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
+
+[156]
+Chapter 40.
+LaTeX Font Info:    Font shape `T1/lmtt/bx/n' in size <24.88> not available
+(Font)              Font shape `T1/lmtt/b/n' tried instead on input line 1070.
+
+Package hyperref Warning: Difference (2) between bookmark levels is greater 
+(hyperref)                than one, level fixed on input line 1078.
+
+[157
+
+]
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 13.59999pt, for example:
+(fancyhdr)                \setlength{\headheight}{13.59999pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
+
+[158]
+Chapter 41.
+
+Package hyperref Warning: Difference (2) between bookmark levels is greater 
+(hyperref)                than one, level fixed on input line 1202.
+
+[159
+
+]
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 13.59999pt, for example:
+(fancyhdr)                \setlength{\headheight}{13.59999pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
+
+[160]
+Chapter 42.
+
+Package hyperref Warning: Difference (2) between bookmark levels is greater 
+(hyperref)                than one, level fixed on input line 1338.
+
+[161
 
 ])
 
@@ -1995,17 +2118,17 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                You might also make \topmargin smaller:
 (fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
 
-[156] [157
+[162] [163
 
-] (./Chapter_36_Data_Persistence__Object_Serialization.tex
-Chapter 38.
+] (./Chapter_31_Regular_Expressions_Engine_Internals_re_sre_compil.tex
+Chapter 43.
 
 Package hyperref Warning: Difference (2) between bookmark levels is greater 
-(hyperref)                than one, level fixed on input line 11.
+(hyperref)                than one, level fixed on input line 14.
 
-[158
+[164
 
-]) (./Chapter_37_OS_Services_Signal_Handling_and_Subprocesses.tex
+]) (./Chapter_32_Advanced_Text_Processing_string_textwrap.tex
 
 Package fancyhdr Warning: \headheight is too small (12.0pt): 
 (fancyhdr)                Make it at least 13.59999pt, for example:
@@ -2013,29 +2136,39 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                You might also make \topmargin smaller:
 (fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
 
-[159]
-Chapter 39.
-
-Package hyperref Warning: Difference (2) between bookmark levels is greater 
-(hyperref)                than one, level fixed on input line 12.
-
-[160
-
-]) (./Chapter_38_Low-Level_Networking_and_Sockets.tex
-
-Package fancyhdr Warning: \headheight is too small (12.0pt): 
-(fancyhdr)                Make it at least 13.59999pt, for example:
-(fancyhdr)                \setlength{\headheight}{13.59999pt}.
-(fancyhdr)                You might also make \topmargin smaller:
-(fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
-
-[161]
-Chapter 40.
+[165]
+Chapter 44.
 
 Package hyperref Warning: Difference (2) between bookmark levels is greater 
 (hyperref)                than one, level fixed on input line 13.
 
-[162
+) [166
+
+] [167
+
+] (./Chapter_33_Binary_Data_Packing_struct_binascii.tex
+Chapter 45.
+
+Package hyperref Warning: Difference (2) between bookmark levels is greater 
+(hyperref)                than one, level fixed on input line 10.
+
+) (./Chapter_34_Cryptography_and_Hashing_hashlib_hmac.tex [168
+
+]
+Chapter 46.
+
+Package hyperref Warning: Difference (2) between bookmark levels is greater 
+(hyperref)                than one, level fixed on input line 12.
+
+) (./Chapter_35_The_Anatomy_of_Time_datetime_zoneinfo.tex [169
+
+]
+Chapter 47.
+
+Package hyperref Warning: Difference (2) between bookmark levels is greater 
+(hyperref)                than one, level fixed on input line 15.
+
+[170
 
 ])
 
@@ -2045,35 +2178,17 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                You might also make \topmargin smaller:
 (fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
 
-[163] [164
+[171] [172
 
-] (./Chapter_39_The_Import_Machinery_and_importlib.tex
-Chapter 41.
-LaTeX Font Info:    Font shape `T1/lmtt/bx/n' in size <24.88> not available
-(Font)              Font shape `T1/lmtt/b/n' tried instead on input line 3.
+] (./Chapter_36_Enums_and_Topological_Sorts_enum_graphlib.tex
+Chapter 48.
 
 Package hyperref Warning: Difference (2) between bookmark levels is greater 
 (hyperref)                than one, level fixed on input line 11.
 
-[165
+[173
 
-]) (./Chapter_40_Runtime_Services_and_Introspection.tex
-
-Package fancyhdr Warning: \headheight is too small (12.0pt): 
-(fancyhdr)                Make it at least 13.59999pt, for example:
-(fancyhdr)                \setlength{\headheight}{13.59999pt}.
-(fancyhdr)                You might also make \topmargin smaller:
-(fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
-
-[166]
-Chapter 42.
-
-Package hyperref Warning: Difference (2) between bookmark levels is greater 
-(hyperref)                than one, level fixed on input line 12.
-
-[167
-
-]) (./Chapter_41_Testing_Debugging_and_Quality_Assurance.tex
+]) (./Chapter_37_The_DEFLATE_Algorithm_and_Zlib_zlib_gzip.tex
 
 Package fancyhdr Warning: \headheight is too small (12.0pt): 
 (fancyhdr)                Make it at least 13.59999pt, for example:
@@ -2081,35 +2196,940 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                You might also make \topmargin smaller:
 (fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
 
-[168]
-Chapter 43.
+[174]
+Chapter 49.
 
 Package hyperref Warning: Difference (2) between bookmark levels is greater 
 (hyperref)                than one, level fixed on input line 12.
 
-[169
+) (./Chapter_38_Advanced_Compression_bz2_lzma.tex [175
+
+]
+Chapter 50.
+
+Package hyperref Warning: Difference (2) between bookmark levels is greater 
+(hyperref)                than one, level fixed on input line 10.
+
+) [176
+
+] [177
+
+] (./Chapter_39_Archive_Formats_zipfile_tarfile.tex
+Chapter 51.
+
+Package hyperref Warning: Difference (2) between bookmark levels is greater 
+(hyperref)                than one, level fixed on input line 11.
+
+) (./Chapter_40_Delimited_and_Configuration_Files_csv_configparser.tex [178
+
+]
+Chapter 52.
+
+Package hyperref Warning: Difference (2) between bookmark levels is greater 
+(hyperref)                than one, level fixed on input line 14.
+
+) (./Chapter_41_XML_Processing_and_Expat_xmletree_xmlsax.tex [179
+
+]
+Chapter 53.
+
+Package hyperref Warning: Difference (2) between bookmark levels is greater 
+(hyperref)                than one, level fixed on input line 11.
+
+) [180
+
+] [181
+
+] (./Chapter_42_HTML_Parsing_and_Internet_Data_html_email.tex
+Chapter 54.
+
+Package hyperref Warning: Difference (2) between bookmark levels is greater 
+(hyperref)                than one, level fixed on input line 10.
+
+) (./Chapter_43_High-Level_URL_and_HTTP_Handling_urllib_http.tex [182
+
+]
+Chapter 55.
+
+Package hyperref Warning: Difference (2) between bookmark levels is greater 
+(hyperref)                than one, level fixed on input line 12.
+
+) (./Chapter_44_Legacy_and_Specialized_Protocols_ftplib_smtplib_im.tex [183
+
+]
+Chapter 56.
+
+Package hyperref Warning: Difference (2) between bookmark levels is greater 
+(hyperref)                than one, level fixed on input line 11.
+
+) (./Chapter_45_IP_Address_Manipulation_and_RPC_ipaddress_xmlrpc.tex [184
+
+]
+Chapter 57.
+
+Package hyperref Warning: Difference (2) between bookmark levels is greater 
+(hyperref)                than one, level fixed on input line 8.
+
+) [185
+
+] [186
+
+] (./Chapter_46_Internationalization_gettext_locale.tex
+Chapter 58.
+
+Package hyperref Warning: Difference (2) between bookmark levels is greater 
+(hyperref)                than one, level fixed on input line 13.
+
+) (./Chapter_47_Command_Line_Interfaces_argparse_cmd_shlex.tex [187
+
+]
+Chapter 59.
+
+Package hyperref Warning: Difference (2) between bookmark levels is greater 
+(hyperref)                than one, level fixed on input line 11.
+
+
+Overfull \hbox (2.81967pt too wide) in paragraph at lines 13--23
+[][][][] \T1/lmr/m/n/10.95 re-placed the older [][][][] and [][][][] mod-ules. * \T1/lmr/bx/n/10.95 Ar-gu-ment Ac-tions\T1/lmr/m/n/10.95 : [][][][], []
+ []
+
+) [188
+
+] [189
+
+] (./Chapter_48_TclTk_and_GUI_Foundations_tkinter.tex
+Chapter 60.
+
+Package hyperref Warning: Difference (2) between bookmark levels is greater 
+(hyperref)                than one, level fixed on input line 10.
+
+) (./Chapter_49_Virtual_Environments_venv.tex [190
+
+]
+Chapter 61.
+
+Package hyperref Warning: Difference (2) between bookmark levels is greater 
+(hyperref)                than one, level fixed on input line 13.
+
+) (./Chapter_50_Python_Execution_Archives_zipapp.tex [191
+
+]
+Chapter 62.
+
+Package hyperref Warning: Difference (2) between bookmark levels is greater 
+(hyperref)                than one, level fixed on input line 10.
+
+) [192
+
+] [193
+
+] (./Chapter_51_The_Disassembler_dis.tex
+Chapter 63.
+
+Package hyperref Warning: Difference (2) between bookmark levels is greater 
+(hyperref)                than one, level fixed on input line 10.
+
+) (./Chapter_52_Writing_a_C_Extension_from_Scratch.tex [194
+
+]
+Chapter 64.
+
+Package hyperref Warning: Difference (2) between bookmark levels is greater 
+(hyperref)                than one, level fixed on input line 11.
+
+[195
+
+]) (./Chapter_53_Abstract_Base_Classes_abc.tex
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 13.59999pt, for example:
+(fancyhdr)                \setlength{\headheight}{13.59999pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
+
+[196]
+Chapter 65.
+
+Package hyperref Warning: Difference (2) between bookmark levels is greater 
+(hyperref)                than one, level fixed on input line 10.
+
+
+Overfull \hbox (3.48865pt too wide) in paragraph at lines 25--32
+\T1/lmr/m/n/10.95 This dec-o-ra-tor marks a method as ab-stract. * \T1/lmr/bx/n/10.95 In-ter-nals\T1/lmr/m/n/10.95 : It sets an at-tribute []
+ []
+
+) [197
+
+] [198
+
+] (./Chapter_54_Context_Managers_contextlib.tex
+Chapter 66.
+
+Package hyperref Warning: Difference (2) between bookmark levels is greater 
+(hyperref)                than one, level fixed on input line 11.
+
+) (./Chapter_55_Advanced_Concurrency_Shared_Memory_and_Proxies.tex [199
+
+]
+Chapter 67.
+
+Package hyperref Warning: Difference (2) between bookmark levels is greater 
+(hyperref)                than one, level fixed on input line 12.
+
+
+Overfull \hbox (3.62083pt too wide) in paragraph at lines 14--19
+\T1/lmr/m/n/10.95 Prior to Python 3.8, [][][][] re-lied on pick-ling ob-jects and send-ing them via pipes/sockets,
+ []
+
+
+Overfull \hbox (13.75288pt too wide) in paragraph at lines 33--37
+[]\T1/lmr/bx/n/10.95 Internals\T1/lmr/m/n/10.95 : On POSIX, this uses [][][][][][] and [][][][][][]. On Win-dows, it uses []
+ []
+
+[200
+
+]) (./Chapter_56_The_Typing_System_Static_Analysis_vs_Runtime_Enfor.tex
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 13.59999pt, for example:
+(fancyhdr)                \setlength{\headheight}{13.59999pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
+
+[201]
+Chapter 68.
+
+Package hyperref Warning: Difference (2) between bookmark levels is greater 
+(hyperref)                than one, level fixed on input line 12.
+
+) [202
+
+] [203
+
+] (./Chapter_57_The_Python_Packaging_Ecosystem_PEP_517_to_Wheels.tex
+Chapter 69.
+
+Package hyperref Warning: Difference (2) between bookmark levels is greater 
+(hyperref)                than one, level fixed on input line 10.
+
+) (./Chapter_58_The_Heart_of_the_Machine_cevalc_and_the_Interprete.tex [204
+
+]
+Chapter 70.
+
+Package hyperref Warning: Difference (2) between bookmark levels is greater 
+(hyperref)                than one, level fixed on input line 13.
+
+[205
 
 ])
 
 Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 25.2232pt, for example:
+(fancyhdr)                \setlength{\headheight}{25.2232pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-13.2232pt}.
+
+[206] (./Appendix_B_Appendix_B_Glossary_of_CPython_Internals.tex) (./Appendix_C_Appendix_C_The_PEP_Hall_of_Fame.tex [207
+
+
+]
+Underfull \hbox (badness 10000) in alignment at lines 11--15
+[] [] []
+ []
+
+
+Underfull \hbox (badness 10000) in alignment at lines 15--44
+[] [] []
+ []
+
+[208
+
+]
+
+Package hyperref Warning: Difference (2) between bookmark levels is greater 
+(hyperref)                than one, level fixed on input line 65.
+
+) (./Chapter_59_SIMD_Vectorization_with_Python.tex [209
+
+]
+
+Package hyperref Warning: Difference (2) between bookmark levels is greater 
+(hyperref)                than one, level fixed on input line 11.
+
+) [210
+
+] [211
+
+] (./Chapter_60_GPU_Acceleration_with_CUDA_and_Python.tex
+
+Package hyperref Warning: Difference (2) between bookmark levels is greater 
+(hyperref)                than one, level fixed on input line 9.
+
+[212
+
+]
+
+Package hyperref Warning: Difference (2) between bookmark levels is greater 
+(hyperref)                than one, level fixed on input line 43.
+
+
+Overfull \hbox (13.58823pt too wide) in alignment at lines 45--49
+[] [] [] []
+ []
+
+
+Overfull \hbox (13.58823pt too wide) in alignment at lines 49--58
+[] [] [] []
+ []
+
+) (./Chapter_61_The_Future_of_Python_314_and_Beyond.tex [213
+
+]
+
+Package hyperref Warning: Difference (2) between bookmark levels is greater 
+(hyperref)                than one, level fixed on input line 10.
+
+) (./Appendix_G_Appendix_G_The_Godhood_Reading_List.tex [214
+
+] [215
+
+]
+
+Package hyperref Warning: Difference (2) between bookmark levels is greater 
+(hyperref)                than one, level fixed on input line 29.
+
+) (./Chapter_62_Cluster_Computing_with_PySpark_and_Dask.tex [216
+
+]
+
+Package hyperref Warning: Difference (2) between bookmark levels is greater 
+(hyperref)                than one, level fixed on input line 6.
+
+) [217
+
+] [218
+
+] (./Chapter_63_Microservices_and_gRPC_in_Python.tex
+
+Package hyperref Warning: Difference (2) between bookmark levels is greater 
+(hyperref)                than one, level fixed on input line 6.
+
+[219
+
+]
+
+Package hyperref Warning: Difference (2) between bookmark levels is greater 
+(hyperref)                than one, level fixed on input line 38.
+
+) (./Chapter_64_SciPy_Optimization_and_Linear_Algebra_Backends.tex [220
+
+]) (./Chapter_65_Matplotlib_The_Artist_Layer_and_Backend_Architectu.tex [221
+
+] [222
+
+]
+
+Package hyperref Warning: Difference (2) between bookmark levels is greater 
+(hyperref)                than one, level fixed on input line 23.
+
+) (./Chapter_66_Django_Internals_The_ORM_and_Migration_Engine.tex [223
+
+]) (./Chapter_67_FastAPI_and_Pydantic_Type-Safe_Web_Development.tex [224
+
+] [225
+
+]
+
+Package hyperref Warning: Difference (2) between bookmark levels is greater 
+(hyperref)                than one, level fixed on input line 26.
+
+) (./Chapter_68_Derivatives_Pricing_Monte_Carlo_and_Finite_Differe.tex [226
+
+]
+
+Package hyperref Warning: Difference (2) between bookmark levels is greater 
+(hyperref)                than one, level fixed on input line 6.
+
+) (./Chapter_69_Risk_Management_VaR_and_Expected_Shortfall.tex [227
+
+]
+
+Package hyperref Warning: Difference (2) between bookmark levels is greater 
+(hyperref)                than one, level fixed on input line 6.
+
+[228
+
+]
+
+Package hyperref Warning: Difference (2) between bookmark levels is greater 
+(hyperref)                than one, level fixed on input line 43.
+
+) [229
+
+] [230
+
+] (./Chapter_70_Python_Anti-Patterns_and_Common_Pitfalls.tex
+
+Package hyperref Warning: Difference (2) between bookmark levels is greater 
+(hyperref)                than one, level fixed on input line 11.
+
+) (./Chapter_71_Functional_Breadth_map_filter_and_reduce.tex [231
+
+]
+
+Package hyperref Warning: Difference (2) between bookmark levels is greater 
+(hyperref)                than one, level fixed on input line 8.
+
+[232
+
+]
+
+Package hyperref Warning: Difference (2) between bookmark levels is greater 
+(hyperref)                than one, level fixed on input line 48.
+
+) (./Chapter_72_Web_Browser_and_URL_Automation.tex [233
+
+]
+
+Package hyperref Warning: Difference (2) between bookmark levels is greater 
+(hyperref)                than one, level fixed on input line 9.
+
+[234
+
+]
+
+Package hyperref Warning: Difference (2) between bookmark levels is greater 
+(hyperref)                than one, level fixed on input line 40.
+
+) [235
+
+] [236
+
+] (./Chapter_73_Mastering_argparse_and_sysargv.tex
+
+Package hyperref Warning: Difference (2) between bookmark levels is greater 
+(hyperref)                than one, level fixed on input line 7.
+
+[237
+
+]
+
+Package hyperref Warning: Difference (2) between bookmark levels is greater 
+(hyperref)                than one, level fixed on input line 47.
+
+) (./Chapter_74_Distributed_Databases_Python_and_the_CAP_Theorem.tex [238
+
+]
+
+Package hyperref Warning: Difference (2) between bookmark levels is greater 
+(hyperref)                than one, level fixed on input line 10.
+
+) [239
+
+] [240
+
+] (./Chapter_75_Search_and_Information_Retrieval_Elasticsearch.tex
+
+Package hyperref Warning: Difference (2) between bookmark levels is greater 
+(hyperref)                than one, level fixed on input line 6.
+
+) (./Chapter_76_Message_Brokers_Kafka_and_RabbitMQ.tex [241
+
+]
+
+Package hyperref Warning: Difference (2) between bookmark levels is greater 
+(hyperref)                than one, level fixed on input line 7.
+
+[242
+
+]) [243
+
+] [244
+
+] (./Chapter_77_Formal_Verification_and_TLA_with_Python.tex
+
+Package hyperref Warning: Difference (2) between bookmark levels is greater 
+(hyperref)                than one, level fixed on input line 10.
+
+) (./Chapter_78_Quantum_Computing_Internals_with_Python.tex [245
+
+]
+
+Package hyperref Warning: Difference (2) between bookmark levels is greater 
+(hyperref)                than one, level fixed on input line 10.
+
+) (./Chapter_79_Python_at_the_Frontier_Space_Exploration_and_NASA.tex [246
+
+]
+
+Package hyperref Warning: Difference (2) between bookmark levels is greater 
+(hyperref)                than one, level fixed on input line 10.
+
+) [247
+
+] [248
+
+] (./Chapter_80_Python_in_Quantum_Biology_and_Genetics.tex
+
+Package hyperref Warning: Difference (2) between bookmark levels is greater 
+(hyperref)                than one, level fixed on input line 10.
+
+[249
+
+]) (./Appendix_A_Appendix_A_The_Comprehensive_Standard_Library_Inde.tex [250
+
+]
+
+Package hyperref Warning: Difference (2) between bookmark levels is greater 
+(hyperref)                than one, level fixed on input line 11.
+
+[251
+
+]
+Underfull \hbox (badness 10000) in alignment at lines 173--177
+[] [] []
+ []
+
+
+Underfull \hbox (badness 10000) in alignment at lines 177--231
+[] [] []
+ []
+
+ignored error: Infinite glue shrinkage found in box being split
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
 (fancyhdr)                Make it at least 13.59999pt, for example:
 (fancyhdr)                \setlength{\headheight}{13.59999pt}.
 (fancyhdr)                You might also make \topmargin smaller:
 (fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
 
-[170] (./Python_Zero_to_Godhood.aux)
+[252]) (./Appendix_D_Appendix_D_The_Complete_Python_Grammar_EBNF.tex
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 13.59999pt, for example:
+(fancyhdr)                \setlength{\headheight}{13.59999pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
+
+[253]
+
+Package hyperref Warning: Difference (2) between bookmark levels is greater 
+(hyperref)                than one, level fixed on input line 11.
+
+[254
+
+]
+Underfull \vbox (badness 10000) has occurred while \output is active []
+
+
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 13.59999pt, for example:
+(fancyhdr)                \setlength{\headheight}{13.59999pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
+
+[255]
+Underfull \vbox (badness 10000) has occurred while \output is active []
+
+
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 13.59999pt, for example:
+(fancyhdr)                \setlength{\headheight}{13.59999pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
+
+[256]) (./Appendix_E_Appendix_E_Design_Patterns_in_Python.tex
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 13.59999pt, for example:
+(fancyhdr)                \setlength{\headheight}{13.59999pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
+
+[257]
+
+Package hyperref Warning: Difference (2) between bookmark levels is greater 
+(hyperref)                than one, level fixed on input line 10.
+
+) (./Appendix_F_Appendix_F_The_Complete_Opcodes_Reference.tex [258
+
+]
+Underfull \hbox (badness 10000) in alignment at lines 11--15
+[] [] []
+ []
+
+
+Underfull \hbox (badness 10000) in alignment at lines 15--46
+[] [] []
+ []
+
+) (./Appendix_H_Appendix_H_CPython_Source_Code_Walkthrough_Core_Ob.tex [259
+
+]
+
+Package hyperref Warning: Difference (2) between bookmark levels is greater 
+(hyperref)                than one, level fixed on input line 11.
+
+
+Underfull \vbox (badness 1735) has occurred while \output is active []
+
+ [260
+
+]) (./Appendix_J_Appendix_J_Standard_Library_Source_Code_Map.tex
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 13.59999pt, for example:
+(fancyhdr)                \setlength{\headheight}{13.59999pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
+
+[261]
+
+Package hyperref Warning: Difference (2) between bookmark levels is greater 
+(hyperref)                than one, level fixed on input line 11.
+
+
+Underfull \hbox (badness 10000) in alignment at lines 13--17
+[] [] []
+ []
+
+
+Underfull \hbox (badness 10000) in alignment at lines 17--39
+[] [] []
+ []
+
+
+Underfull \hbox (badness 10000) in alignment at lines 45--49
+[] [] []
+ []
+
+
+Underfull \hbox (badness 10000) in alignment at lines 49--100
+[] [] []
+ []
+
+ignored error: Infinite glue shrinkage found in box being split [262
+
+]
+Underfull \hbox (badness 10000) in alignment at lines 106--110
+[] [] []
+ []
+
+
+Underfull \hbox (badness 10000) in alignment at lines 110--143
+[] [] []
+ []
+
+) (./Appendix_N_Appendix_N_The_Python_Bytecode_Encyclopedia.tex
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 13.59999pt, for example:
+(fancyhdr)                \setlength{\headheight}{13.59999pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
+
+[263]
+
+Package hyperref Warning: Difference (2) between bookmark levels is greater 
+(hyperref)                than one, level fixed on input line 11.
+
+
+Underfull \hbox (badness 10000) in alignment at lines 31--35
+[] [] []
+ []
+
+
+Underfull \hbox (badness 10000) in alignment at lines 35--56
+[] [] []
+ []
+
+
+Underfull \hbox (badness 10000) in alignment at lines 65--69
+[] [] []
+ []
+
+
+Underfull \hbox (badness 10000) in alignment at lines 69--83
+[] [] []
+ []
+
+[264
+
+]
+Underfull \hbox (badness 10000) in alignment at lines 91--95
+[] [] []
+ []
+
+
+Underfull \hbox (badness 10000) in alignment at lines 95--113
+[] [] []
+ []
+
+
+Underfull \hbox (badness 10000) in alignment at lines 122--126
+[] [] []
+ []
+
+
+Underfull \hbox (badness 10000) in alignment at lines 126--143
+[] [] []
+ []
+
+
+Underfull \hbox (badness 10000) in alignment at lines 152--156
+[] [] []
+ []
+
+
+Underfull \hbox (badness 10000) in alignment at lines 156--167
+[] [] []
+ []
+
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 13.59999pt, for example:
+(fancyhdr)                \setlength{\headheight}{13.59999pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
+
+[265]) (./Appendix_K_Appendix_K_The_Complete_Python_Standard_Library_Re.tex
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 13.59999pt, for example:
+(fancyhdr)                \setlength{\headheight}{13.59999pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
+
+[266]
+
+Package hyperref Warning: Difference (2) between bookmark levels is greater 
+(hyperref)                than one, level fixed on input line 12.
+
+
+Underfull \hbox (badness 10000) in alignment at lines 14--18
+[] [] [] []
+ []
+
+
+Underfull \hbox (badness 10000) in alignment at lines 18--34
+[] [] [] []
+ []
+
+
+Underfull \hbox (badness 10000) in alignment at lines 40--44
+[] [] [] []
+ []
+
+
+Underfull \hbox (badness 10000) in alignment at lines 44--62
+[] [] [] []
+ []
+
+
+Underfull \hbox (badness 10000) in alignment at lines 68--72
+[] [] [] []
+ []
+
+
+Underfull \hbox (badness 10000) in alignment at lines 72--84
+[] [] [] []
+ []
+
+ignored error: Infinite glue shrinkage found in box being split [267
+
+]
+Underfull \hbox (badness 10000) in alignment at lines 90--94
+[] [] [] []
+ []
+
+
+Underfull \hbox (badness 10000) in alignment at lines 94--106
+[] [] [] []
+ []
+
+
+Underfull \hbox (badness 10000) in alignment at lines 112--116
+[] [] [] []
+ []
+
+
+Underfull \hbox (badness 10000) in alignment at lines 116--132
+[] [] [] []
+ []
+
+
+Underfull \hbox (badness 10000) in alignment at lines 137--141
+[] [] [] []
+ []
+
+
+Underfull \hbox (badness 10000) in alignment at lines 141--152
+[] [] [] []
+ []
+
+
+Underfull \hbox (badness 10000) in alignment at lines 157--161
+[] [] [] []
+ []
+
+
+Underfull \hbox (badness 10000) in alignment at lines 161--175
+[] [] [] []
+ []
+
+ignored error: Infinite glue shrinkage found in box being split
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 25.2232pt, for example:
+(fancyhdr)                \setlength{\headheight}{25.2232pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-13.2232pt}.
+
+[268]) (./Appendix_L_Appendix_L_Exhaustive_Python_Built-in_Functions_Re.tex
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 13.59999pt, for example:
+(fancyhdr)                \setlength{\headheight}{13.59999pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
+
+[269]
+
+Package hyperref Warning: Difference (2) between bookmark levels is greater 
+(hyperref)                than one, level fixed on input line 10.
+
+[270
+
+]) (./Appendix_M_Appendix_M_The_Godhood_Senior_Python_Glossary.tex
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 13.59999pt, for example:
+(fancyhdr)                \setlength{\headheight}{13.59999pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
+
+[271]) (./Appendix_O_Appendix_O_The_Evolutionary_Roadmap_PEPs_1_to_750.tex [272
+
+]
+Underfull \hbox (badness 10000) in alignment at lines 8--12
+[] [] []
+ []
+
+
+Underfull \hbox (badness 10000) in alignment at lines 12--26
+[] [] []
+ []
+
+) (./Appendix_P_Appendix_P_CPython_Memory_Allocator_Diagrams.tex [273
+
+]
+
+Package hyperref Warning: Difference (2) between bookmark levels is greater 
+(hyperref)                than one, level fixed on input line 9.
+
+) (./Appendix_Q_Appendix_Q_Master_Index_of_All_Code_Snippets.tex [274
+
+]) (./Appendix_S_Appendix_S_The_Ultimate_Standard_Library_Compendiu.tex [275
+
+]
+
+Package hyperref Warning: Difference (2) between bookmark levels is greater 
+(hyperref)                than one, level fixed on input line 10.
+
+[276
+
+]
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 13.59999pt, for example:
+(fancyhdr)                \setlength{\headheight}{13.59999pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
+
+[277]
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 25.2232pt, for example:
+(fancyhdr)                \setlength{\headheight}{25.2232pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-13.2232pt}.
+
+[278]
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 13.59999pt, for example:
+(fancyhdr)                \setlength{\headheight}{13.59999pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
+
+[279]) (./Appendix_T_Appendix_T_Exhaustive_Python_Built-in_Exceptions.tex
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 25.2232pt, for example:
+(fancyhdr)                \setlength{\headheight}{25.2232pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-13.2232pt}.
+
+[280]
+
+Package hyperref Warning: Difference (2) between bookmark levels is greater 
+(hyperref)                than one, level fixed on input line 9.
+
+[281
+
+]) (./Appendix_U_Appendix_U_Exhaustive_Python_Built-in_Warnings.tex
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 13.59999pt, for example:
+(fancyhdr)                \setlength{\headheight}{13.59999pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
+
+[282]
+
+Package hyperref Warning: Difference (2) between bookmark levels is greater 
+(hyperref)                than one, level fixed on input line 10.
+
+) (./Appendix_V_Appendix_V_The_Python_History_and_PEP_Timeline_198.tex [283
+
+]
+
+Package hyperref Warning: Difference (2) between bookmark levels is greater 
+(hyperref)                than one, level fixed on input line 10.
+
+[284
+
+]) (./Appendix_W_Appendix_W_Python_in_Mobile_and_Embedded_Systems.tex
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 13.59999pt, for example:
+(fancyhdr)                \setlength{\headheight}{13.59999pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
+
+[285]
+
+Package hyperref Warning: Difference (2) between bookmark levels is greater 
+(hyperref)                than one, level fixed on input line 10.
+
+) [286
+
+] (./Python_Zero_to_Godhood.aux)
  ***********
 LaTeX2e <2025-11-01>
 L3 programming layer <2025-11-14>
  ***********
 Package rerunfilecheck Info: File `Python_Zero_to_Godhood.out' has not changed.
-(rerunfilecheck)             Checksum: 9229100C1DEACFA587E3A80828DA2709;72441.
+(rerunfilecheck)             Checksum: 6B75490B64DC445CE99B42B343E0A7C6;147141.
  ) 
 Here is how much of TeX's memory you used:
- 22549 strings out of 469519
- 370038 string characters out of 5469079
- 1691527 words of memory out of 5000000
- 46977 multiletter control sequences out of 15000+600000
+ 25649 strings out of 469519
+ 441773 string characters out of 5469079
+ 1719482 words of memory out of 5000000
+ 48920 multiletter control sequences out of 15000+600000
  696596 words of font info for 86 fonts, out of 8000000 for 9000
  14 hyphenation exceptions out of 8191
  75i,12n,83p,811b,2130s stack positions out of 10000i,1000n,20000p,200000b,200000s
@@ -2237,10 +3257,10 @@ pdfTeX warning (dest): name{chapter-2-python-1x-the-pyobject-model--reference-co
 pdfTeX warning (dest): name{chapter-1-python-10-to-16-inception--the-ll1-executable-pipeline} has been referenced but does not exist, replaced by a fixed one
 
 </Users/shreejitverma/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmbx10.pfb></Users/shreejitverma/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmbx12.pfb></Users/shreejitverma/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmex10.pfb></Users/shreejitverma/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmmi10.pfb></Users/shreejitverma/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmmi8.pfb></Users/shreejitverma/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmr10.pfb></Users/shreejitverma/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmr12.pfb></Users/shreejitverma/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmr17.pfb></Users/shreejitverma/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmr6.pfb></Users/shreejitverma/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmr8.pfb></Users/shreejitverma/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmri10.pfb></Users/shreejitverma/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmsy10.pfb></Users/shreejitverma/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmsy8.pfb></Users/shreejitverma/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmtk10.pfb></Users/shreejitverma/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmtt10.pfb></Users/shreejitverma/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmtt9.pfb>
-Output written on Python_Zero_to_Godhood.pdf (178 pages, 1050461 bytes).
+Output written on Python_Zero_to_Godhood.pdf (302 pages, 1287144 bytes).
 PDF statistics:
- 6358 PDF objects out of 7423 (max. 8388607)
- 6082 compressed objects within 61 object streams
- 3894 named destinations out of 4296 (max. 500000)
- 1793 words of extra memory for PDF output out of 10000 (max. 10000000)
+ 9062 PDF objects out of 10688 (max. 8388607)
+ 8636 compressed objects within 87 object streams
+ 4871 named destinations out of 5155 (max. 500000)
+ 4009 words of extra memory for PDF output out of 10000 (max. 10000000)
 

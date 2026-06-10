@@ -1,0 +1,63 @@
+\hypertarget{the-heart-of-the-machine-ceval.c-and-the-interpreter-loop}{%
+\chapter{\texorpdfstring{The Heart of the Machine: \texttt{ceval.c} and
+the Interpreter
+Loop}{The Heart of the Machine: ceval.c and the Interpreter Loop}}\label{the-heart-of-the-machine-ceval.c-and-the-interpreter-loop}}
+
+To understand Python execution is to understand the main evaluation
+loop. In CPython, this resides in
+\passthrough{\lstinline!Python/ceval.c!}, specifically in the function
+\passthrough{\lstinline!\_PyEval\_EvalFrameDefault!}.
+
+\hypertarget{the-mega-switch-statement}{%
+\subsection{69.1 The Mega-Switch
+Statement}\label{the-mega-switch-statement}}
+
+Historically, the Python interpreter loop was a giant C
+\passthrough{\lstinline!switch!} statement inside a
+\passthrough{\lstinline!while!} loop.
+
+\begin{lstlisting}[language=C]
+for (;;) {
+    opcode = NEXTOPARG();
+    switch (opcode) {
+        case TARGET(LOAD_FAST):
+            // ... load local variable ...
+            FAST_DISPATCH();
+        case TARGET(BINARY_ADD):
+            // ... add two objects ...
+            FAST_DISPATCH();
+    }
+}
+\end{lstlisting}
+
+\hypertarget{computed-gotos}{%
+\subsubsection{1. Computed Gotos}\label{computed-gotos}}
+
+On compilers that support it (like GCC and Clang), CPython uses
+``Computed Gotos.'' Instead of a switch statement (which requires a jump
+table lookup and a bounds check for every instruction), it uses a table
+of memory addresses. At the end of each opcode's C code, it jumps
+directly to the address of the next opcode. This reduces CPU branch
+mispredictions and significantly improves performance.
+
+\hypertarget{the-evaluation-stack}{%
+\subsection{69.2 The Evaluation Stack}\label{the-evaluation-stack}}
+
+Python is a stack-based VM. * \textbf{The Stack Pointer}:
+\passthrough{\lstinline!stack\_pointer!} in C. * \textbf{PUSH/POP}:
+These are simple pointer increments/decrements in C. * \textbf{Value
+Stack}: An array of \passthrough{\lstinline!PyObject *!}. When you add
+two numbers, the pointers to the numbers are popped, the addition is
+performed, and the pointer to the new result object is pushed.
+
+\hypertarget{handling-interrupts-and-the-gil}{%
+\subsection{69.3 Handling Interrupts and the
+GIL}\label{handling-interrupts-and-the-gil}}
+
+The interpreter loop is not just for math; it is the system's heartbeat.
+* \textbf{Signal Checking}: Every \(N\) instructions (the ``check
+interval''), the loop checks if a signal has arrived from the OS. *
+\textbf{Thread Switching}: This is also where the GIL is released and
+re-acquired, allowing other threads to take their turn in the VM.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}

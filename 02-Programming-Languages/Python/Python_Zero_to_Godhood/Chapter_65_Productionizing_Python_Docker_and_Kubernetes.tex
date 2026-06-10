@@ -1,0 +1,63 @@
+\hypertarget{productionizing-python-docker-and-kubernetes}{%
+\chapter{Productionizing Python: Docker and
+Kubernetes}\label{productionizing-python-docker-and-kubernetes}}
+
+\hypertarget{dockerizing-python}{%
+\subsection{82.1 Dockerizing Python}\label{dockerizing-python}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Base Images}: Always use
+  \passthrough{\lstinline!python:3.x-slim!} or
+  \passthrough{\lstinline!python:3.x-alpine!} to minimize the image
+  size.
+\item
+  \textbf{Multi-stage Builds}: Compile C-extensions in a build stage and
+  copy the binaries to the final runtime stage to keep the production
+  image clean.
+\end{itemize}
+
+\hypertarget{observability-and-monitoring}{%
+\subsection{82.2 Observability and
+Monitoring}\label{observability-and-monitoring}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Prometheus}: Exporting metrics from Python applications.
+\item
+  \textbf{OpenTelemetry}: Standardized tracing and logging across
+  microservices.
+\end{itemize}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+Senior Python engineers often find themselves in roles requiring
+security auditing or exploit development. Python's flexibility makes it
+the premier language for security research.
+
+\hypertarget{chapter-83-binary-analysis-with-python}{%
+\chapter{Chapter 83: Binary Analysis with
+Python}\label{chapter-83-binary-analysis-with-python}}
+
+\hypertarget{interfacing-with-disassemblers}{%
+\subsection{83.1 Interfacing with
+Disassemblers}\label{interfacing-with-disassemblers}}
+
+Python is the scripting language for industry-standard binary analysis
+tools like \textbf{IDA Pro} and \textbf{Ghidra}. * \textbf{IDA Python}:
+Allows you to programmatically traverse function calls, identify
+cross-references, and rename obscure variables in a compiled binary.
+
+\hypertarget{the-pwntools-library}{%
+\subsection{\texorpdfstring{83.2 The \texttt{pwntools}
+Library}{83.2 The pwntools Library}}\label{the-pwntools-library}}
+
+\passthrough{\lstinline!pwntools!} is a CTF (Capture The Flag) framework
+used for rapid exploit development. * \textbf{Assembly/Disassembly}:
+On-the-fly conversion between machine code and assembly. * \textbf{ROP
+(Return-Oriented Programming)}: Programmatic generation of ROP chains to
+bypass NX/DEP protections.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}

@@ -1,0 +1,26 @@
+\hypertarget{cluster-computing-with-pyspark-and-dask}{%
+\chapter{Cluster Computing with PySpark and
+Dask}\label{cluster-computing-with-pyspark-and-dask}}
+
+\hypertarget{pyspark-the-jvm-bridge}{%
+\subsection{78.1 PySpark: The JVM Bridge}\label{pyspark-the-jvm-bridge}}
+
+PySpark is a Python wrapper for Apache Spark (written in Scala/JVM). *
+\textbf{The Architecture}: Python code uses the \textbf{Py4J} bridge to
+communicate with the Spark JVM. * \textbf{RDDs and DataFrames}: These
+are distributed data structures that partitioned across the cluster. *
+\textbf{Godhood Tip}: Avoid UDFs (User Defined Functions) in PySpark if
+possible, as they require moving data between the JVM and Python
+process, which is a massive performance bottleneck. Use Spark SQL
+expressions instead.
+
+\hypertarget{dask-native-python-parallelism}{%
+\subsection{78.2 Dask: Native Python
+Parallelism}\label{dask-native-python-parallelism}}
+
+Unlike Spark, Dask is written entirely in Python. * \textbf{Task
+Graphs}: Dask creates a DAG (Directed Acyclic Graph) of operations. *
+\textbf{Schedulers}: Dask can run on a single machine (using
+threads/processes) or on a distributed cluster of thousands of nodes.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}

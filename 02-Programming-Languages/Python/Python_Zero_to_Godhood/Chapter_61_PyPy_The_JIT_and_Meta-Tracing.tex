@@ -1,0 +1,30 @@
+\hypertarget{pypy-the-jit-and-meta-tracing}{%
+\chapter{PyPy: The JIT and
+Meta-Tracing}\label{pypy-the-jit-and-meta-tracing}}
+
+PyPy is an alternative implementation of Python written in
+\textbf{RPython} (a restricted subset of Python).
+
+\hypertarget{the-meta-tracing-jit}{%
+\subsection{74.1 The Meta-Tracing JIT}\label{the-meta-tracing-jit}}
+
+Unlike the CPython JIT (Chapter 21), which compiles bytecode to machine
+code, PyPy's JIT ``traces'' the execution of the interpreter itself. *
+\textbf{Warming Up}: The first time a loop runs, it is interpreted. *
+\textbf{Recording}: If the loop is ``hot,'' the JIT records every
+instruction. * \textbf{Optimizing}: It removes redundant operations
+(like repeated type checks for the same object) and generates highly
+optimized machine code.
+
+\hypertarget{memory-management-the-incrgc}{%
+\subsection{74.2 Memory Management: The
+IncrGC}\label{memory-management-the-incrgc}}
+
+PyPy uses a moving, generational garbage collector. This is more
+efficient than reference counting for long-running processes but can
+lead to higher ``pause times'' during major collections.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{appendices}{%
+\chapter{Appendices}\label{appendices}}

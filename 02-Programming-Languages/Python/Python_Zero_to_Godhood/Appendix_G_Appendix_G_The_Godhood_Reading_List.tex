@@ -1,0 +1,51 @@
+\hypertarget{appendix-g-the-godhood-reading-list}{%
+\chapter{Appendix G: The ``Godhood'' Reading
+List}\label{appendix-g-the-godhood-reading-list}}
+
+Recommended resources for further deep-dives into systems engineering.
+1. \emph{Expert C Programming} by Peter van der Linden. 2. \emph{CPython
+Internals} by Anthony Shaw. 3. \emph{Advanced Programming in the UNIX
+Environment} by W. Richard Stevens.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\textbf{THE JOURNEY CONTINUES.}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{phase-xvi-distributed-systems-and-large-scale-python}{%
+\section{Phase XVI: Distributed Systems and Large-Scale
+Python}\label{phase-xvi-distributed-systems-and-large-scale-python}}
+
+High-performance Python isn't just about local execution; it's about
+orchestrating thousands of nodes in a distributed system.
+
+\hypertarget{chapter-77-distributed-task-queues-celery-and-redis-internals}{%
+\chapter{Chapter 77: Distributed Task Queues: Celery and Redis
+Internals}\label{chapter-77-distributed-task-queues-celery-and-redis-internals}}
+
+\hypertarget{the-architecture-of-a-task-queue}{%
+\subsection{77.1 The Architecture of a Task
+Queue}\label{the-architecture-of-a-task-queue}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Producer}: The Python application that creates a task.
+\item
+  \textbf{Broker}: The storage layer (usually Redis or RabbitMQ).
+\item
+  \textbf{Worker}: The consumer that executes the task in a separate
+  process/node.
+\end{itemize}
+
+\hypertarget{redis-as-a-broker}{%
+\subsection{77.2 Redis as a Broker}\label{redis-as-a-broker}}
+
+Redis is ideal for task queues because of its \textbf{LPUSH/BRPOP}
+operations. * \textbf{Atomicity}: These operations are atomic, ensuring
+that a task is only consumed by exactly one worker. *
+\textbf{Persistence}: Tasks can be persisted to disk (RDB/AOF), ensuring
+system reliability in case of crashes.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}

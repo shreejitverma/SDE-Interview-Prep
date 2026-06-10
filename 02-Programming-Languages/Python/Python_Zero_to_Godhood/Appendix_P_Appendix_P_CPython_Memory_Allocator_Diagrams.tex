@@ -1,0 +1,44 @@
+\hypertarget{appendix-p-cpython-memory-allocator-diagrams}{%
+\chapter{Appendix P: CPython Memory Allocator
+Diagrams}\label{appendix-p-cpython-memory-allocator-diagrams}}
+
+This appendix provides visual descriptions (ASCII-art) of the memory
+pools and blocks used by \passthrough{\lstinline!PyMalloc!}.
+
+\hypertarget{p.1-the-arena-structure}{%
+\subsection{P.1 The Arena Structure}\label{p.1-the-arena-structure}}
+
+\begin{lstlisting}
++-----------------------------------------------------------+
+|                          ARENA (256 KB)                   |
++-----------+-----------+-----------+-----------+-----------+
+| POOL (4KB)| POOL (4KB)| POOL (4KB)| POOL (4KB)| POOL (4KB)|
++-----------+-----------+-----------+-----------+-----------+
+| BLOCK(8B) | BLOCK(8B) | ...       | BLOCK(8B) | BLOCK(8B) |
++-----------+-----------+-----------+-----------+-----------+
+\end{lstlisting}
+
+\hypertarget{p.2-the-small-object-allocator-workflow}{%
+\subsection{P.2 The Small Object Allocator
+Workflow}\label{p.2-the-small-object-allocator-workflow}}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  \textbf{Request}: Python requests 32 bytes for a small string.
+\item
+  \textbf{Size Class}: \passthrough{\lstinline!PyMalloc!} identifies
+  this as Size Class 3.
+\item
+  \textbf{Pool Check}: It checks the \passthrough{\lstinline!usedpools!}
+  array for Size Class 3.
+\item
+  \textbf{Block Return}: It returns a pointer to the next free block in
+  the pool.
+\item
+  \textbf{Alignment}: Blocks are always 8-byte aligned to ensure
+  hardware efficiency (Chapter 70).
+\end{enumerate}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}

@@ -1,0 +1,29 @@
+\hypertarget{simd-vectorization-with-python}{%
+\chapter{SIMD Vectorization with
+Python}\label{simd-vectorization-with-python}}
+
+SIMD (Single Instruction, Multiple Data) allows a single CPU instruction
+to perform the same operation on multiple values simultaneously (e.g.,
+adding 4 floats in one cycle).
+
+\hypertarget{avx-and-sse-in-the-standard-library}{%
+\subsection{71.1 AVX and SSE in the Standard
+Library}\label{avx-and-sse-in-the-standard-library}}
+
+While the CPython interpreter loop doesn't use SIMD, many of its
+underlying C-extensions do. * \textbf{\passthrough{\lstinline!base64!}}:
+Uses SIMD to accelerate bit-shifting operations. *
+\textbf{\passthrough{\lstinline!hashlib!}}: Modern SHA implementations
+use hardware-accelerated instructions available on Intel (SHA-NI) and
+ARM (NEON).
+
+\hypertarget{vectorizing-with-numpy}{%
+\subsection{71.2 Vectorizing with NumPy}\label{vectorizing-with-numpy}}
+
+NumPy's universal functions (\passthrough{\lstinline!ufuncs!}) are
+compiled with SIMD support. When you run
+\passthrough{\lstinline!arr1 + arr2!}, the underlying C code uses vector
+registers to process chunks of the arrays at once, achieving throughput
+that pure Python loops can never match.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}

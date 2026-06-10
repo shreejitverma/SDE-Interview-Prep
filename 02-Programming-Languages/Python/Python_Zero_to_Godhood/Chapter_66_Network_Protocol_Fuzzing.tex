@@ -1,0 +1,19 @@
+\hypertarget{network-protocol-fuzzing}{%
+\chapter{Network Protocol Fuzzing}\label{network-protocol-fuzzing}}
+
+\hypertarget{what-is-fuzzing}{%
+\subsection{84.1 What is Fuzzing?}\label{what-is-fuzzing}}
+
+Fuzzing is the process of sending malformed or semi-structured data to a
+network service to identify crashes and security vulnerabilities.
+
+\hypertarget{scapy-packet-manipulation}{%
+\subsection{84.2 Scapy: Packet
+Manipulation}\label{scapy-packet-manipulation}}
+
+Scapy allows you to craft packets for almost any protocol (Ethernet, IP,
+TCP, UDP, DNS, etc.). * \textbf{Internals}: It uses raw sockets (Chapter
+38) to bypass the OS networking stack, allowing for the creation of
+packets with invalid checksums or out-of-order sequences.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}

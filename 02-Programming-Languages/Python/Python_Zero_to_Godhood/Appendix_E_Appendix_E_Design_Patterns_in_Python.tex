@@ -1,0 +1,58 @@
+\hypertarget{appendix-e-design-patterns-in-python}{%
+\chapter{Appendix E: Design Patterns in
+Python}\label{appendix-e-design-patterns-in-python}}
+
+While Python's dynamic nature makes some classic ``Gang of Four''
+patterns redundant, others are transformed into elegant, language-native
+idioms.
+
+\hypertarget{e.1-the-singleton-pattern}{%
+\subsection{E.1 The Singleton Pattern}\label{e.1-the-singleton-pattern}}
+
+In Python, the most ``Godhood'' way to implement a singleton is at the
+\textbf{Module Level}. Since modules are cached in
+\passthrough{\lstinline!sys.modules!}, any state defined at the top
+level is shared across the entire process. * \textbf{Alternative}: Using
+\passthrough{\lstinline!\_\_new\_\_!} to control instantiation.
+
+\begin{lstlisting}[language=Python]
+class Singleton:
+    _instance = None
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+        return cls._instance
+\end{lstlisting}
+
+\hypertarget{e.2-the-factory-pattern}{%
+\subsection{E.2 The Factory Pattern}\label{e.2-the-factory-pattern}}
+
+Python's ``Everything is an Object'' philosophy means classes and
+functions are first-class citizens. A factory can simply be a dictionary
+mapping keys to classes.
+
+\begin{lstlisting}[language=Python]
+factories = {
+    'fast': FastVector,
+    'slow': SlowVector
+}
+obj = factories['fast'](x=10, y=20)
+\end{lstlisting}
+
+\hypertarget{e.3-the-strategy-pattern}{%
+\subsection{E.3 The Strategy Pattern}\label{e.3-the-strategy-pattern}}
+
+Instead of complex inheritance hierarchies, use \textbf{Higher-Order
+Functions} (Chapter 34). Pass the algorithm as a function/lambda to the
+consumer.
+
+\hypertarget{e.4-the-observer-pattern}{%
+\subsection{E.4 The Observer Pattern}\label{e.4-the-observer-pattern}}
+
+Implemented using the \passthrough{\lstinline!signals!} or
+\passthrough{\lstinline!events!} pattern. The
+\passthrough{\lstinline!weakref!} module (Chapter 33) is essential here
+to prevent the observer registry from keeping objects alive and causing
+memory leaks.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}

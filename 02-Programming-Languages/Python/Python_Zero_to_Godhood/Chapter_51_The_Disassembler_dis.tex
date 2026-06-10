@@ -1,0 +1,64 @@
+\hypertarget{the-disassembler-dis}{%
+\chapter{\texorpdfstring{The Disassembler
+(\texttt{dis})}{The Disassembler (dis)}}\label{the-disassembler-dis}}
+
+To reach ``Godhood,'' you must be able to read the machine code of the
+Python Virtual Machine: \textbf{Bytecode}.
+
+\hypertarget{the-python-vm-a-stack-machine}{%
+\subsection{62.1 The Python VM: A Stack
+Machine}\label{the-python-vm-a-stack-machine}}
+
+The CPython VM is a \textbf{Stack Machine}. Operations push values onto
+a stack and pop them to perform calculations.
+
+\hypertarget{dissecting-an-operation}{%
+\subsubsection{1. Dissecting an
+Operation}\label{dissecting-an-operation}}
+
+\begin{lstlisting}[language=Python]
+def add(a, b):
+    return a + b
+
+import dis
+dis.dis(add)
+\end{lstlisting}
+
+\emph{Output:}
+
+\begin{lstlisting}
+  2           0 LOAD_FAST                0 (a)
+              2 LOAD_FAST                1 (b)
+              4 BINARY_ADD
+              6 RETURN_VALUE
+\end{lstlisting}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{\passthrough{\lstinline!LOAD\_FAST!}}: Pushes the value of a
+  local variable onto the stack.
+\item
+  \textbf{\passthrough{\lstinline!BINARY\_ADD!}}: Pops the top two
+  values, adds them (using the
+  \passthrough{\lstinline!tp\_as\_number->nb\_add!} C slot), and pushes
+  the result back.
+\item
+  \textbf{\passthrough{\lstinline!RETURN\_VALUE!}}: Pops the top value
+  and returns it to the caller.
+\end{itemize}
+
+\hypertarget{bytecode-specialization-python-3.11}{%
+\subsection{62.2 Bytecode Specialization (Python
+3.11+)}\label{bytecode-specialization-python-3.11}}
+
+In modern Python, you may see \passthrough{\lstinline!RESUME!} or
+``Specialized'' opcodes like
+\passthrough{\lstinline!BINARY\_OP\_ADD\_INT!}. * \textbf{Inline
+Caching}: If the VM sees that a specific
+\passthrough{\lstinline!BINARY\_ADD!} is always adding two integers, it
+replaces the generic opcode with a specialized version that skips the
+type-checking overhead, resulting in significant speedups (as discussed
+in Chapter 17).
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}

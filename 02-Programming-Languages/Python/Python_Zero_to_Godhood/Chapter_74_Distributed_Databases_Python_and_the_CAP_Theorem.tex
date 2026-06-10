@@ -1,0 +1,30 @@
+\hypertarget{distributed-databases-python-and-the-cap-theorem}{%
+\chapter{Distributed Databases: Python and the CAP
+Theorem}\label{distributed-databases-python-and-the-cap-theorem}}
+
+Python often acts as the glue for massive distributed data stores.
+
+\hypertarget{understanding-cap-consistency-availability-partition-tolerance}{%
+\subsection{100.1 Understanding CAP (Consistency, Availability,
+Partition
+Tolerance)}\label{understanding-cap-consistency-availability-partition-tolerance}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Relational (ACID)}: PostgreSQL and MySQL internals with
+  \passthrough{\lstinline!psycopg2!} and
+  \passthrough{\lstinline!mysql-connector!}.
+\item
+  \textbf{NoSQL (BASE)}: MongoDB and Cassandra. How Python's drivers
+  handle connection pooling and cluster discovery.
+\end{itemize}
+
+\hypertarget{distributed-locking-redis-redlock}{%
+\subsection{100.2 Distributed Locking: Redis
+Redlock}\label{distributed-locking-redis-redlock}}
+
+Implementing distributed locks in Python to prevent race conditions
+across multiple nodes in a cluster.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}

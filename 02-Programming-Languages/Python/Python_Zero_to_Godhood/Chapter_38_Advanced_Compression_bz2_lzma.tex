@@ -1,0 +1,36 @@
+\hypertarget{advanced-compression-bz2-lzma}{%
+\chapter{\texorpdfstring{Advanced Compression (\texttt{bz2},
+\texttt{lzma})}{Advanced Compression (bz2, lzma)}}\label{advanced-compression-bz2-lzma}}
+
+For higher compression ratios at the cost of CPU time and memory, Python
+provides modules for Bzip2 and LZMA.
+
+\hypertarget{bz2-burrows-wheeler-transform}{%
+\subsection{\texorpdfstring{49.1 \texttt{bz2}: Burrows-Wheeler
+Transform}{49.1 bz2: Burrows-Wheeler Transform}}\label{bz2-burrows-wheeler-transform}}
+
+The \passthrough{\lstinline!bz2!} module implements the Bzip2 algorithm.
+1. \textbf{Run-Length Encoding (RLE)}: Collapses repeated characters. 2.
+\textbf{Burrows-Wheeler Transform (BWT)}: A block-sorting algorithm that
+groups similar characters together, making them easier to compress with
+move-to-front and Huffman coding. 3. \textbf{Memory Usage}: Unlike
+\passthrough{\lstinline!zlib!}, \passthrough{\lstinline!bz2!} requires
+significant memory (up to 7.5 MB for the 900k block size) during
+compression.
+
+\hypertarget{lzma-high-ratio-compression-7-zip}{%
+\subsection{\texorpdfstring{49.2 \texttt{lzma}: High-Ratio Compression
+(7-Zip)}{49.2 lzma: High-Ratio Compression (7-Zip)}}\label{lzma-high-ratio-compression-7-zip}}
+
+The \passthrough{\lstinline!lzma!} module (added in Python 3.3) provides
+support for the LZMA (Lempel-Ziv-Markov chain algorithm) and XZ formats.
+* \textbf{Compression Ratio}: LZMA typically achieves much better
+compression than Gzip or Bzip2. * \textbf{Complexity}: The algorithm is
+extremely CPU-intensive and requires significant memory for its
+``dictionaries'' (often hundreds of megabytes). * \textbf{Godhood
+Detail}: Use \passthrough{\lstinline!lzma.PRESET\_EXTREME!} only if you
+have plenty of RAM and time. For most high-performance systems, the
+default preset or \passthrough{\lstinline!zlib!} is a better trade-off
+between speed and size.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}

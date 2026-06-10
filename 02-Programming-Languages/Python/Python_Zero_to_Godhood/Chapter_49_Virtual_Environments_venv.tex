@@ -1,0 +1,61 @@
+\hypertarget{virtual-environments-venv}{%
+\chapter{\texorpdfstring{Virtual Environments
+(\texttt{venv})}{Virtual Environments (venv)}}\label{virtual-environments-venv}}
+
+Dependency isolation is the bedrock of reproducible software
+engineering. Python's \passthrough{\lstinline!venv!} module provides the
+standard way to create isolated environments, leveraging the
+interpreter's flexible search path machinery.
+
+\hypertarget{how-venv-works-the-pyvenv.cfg-secret}{%
+\subsection{\texorpdfstring{60.1 How \texttt{venv} Works: The
+\texttt{pyvenv.cfg}
+Secret}{60.1 How venv Works: The pyvenv.cfg Secret}}\label{how-venv-works-the-pyvenv.cfg-secret}}
+
+A virtual environment is not a full copy of the Python interpreter. It
+is a lightweight directory structure that ``tricks'' the Python binary
+into looking for libraries in a specific location.
+
+\hypertarget{the-pyvenv.cfg-file}{%
+\subsubsection{\texorpdfstring{1. The \texttt{pyvenv.cfg}
+File}{1. The pyvenv.cfg File}}\label{the-pyvenv.cfg-file}}
+
+Every venv contains a \passthrough{\lstinline!pyvenv.cfg!} file. When
+the Python binary starts, it looks for this file in its parent
+directory. * \textbf{\passthrough{\lstinline!home!}}: Points to the
+original Python binary that created the venv. *
+\textbf{\passthrough{\lstinline!include-system-site-packages!}}: A
+boolean flag. * \textbf{\passthrough{\lstinline!version!}}: The Python
+version.
+
+\hypertarget{sys.prefix-and-sys.base_prefix}{%
+\subsubsection{\texorpdfstring{2. \texttt{sys.prefix} and
+\texttt{sys.base\_prefix}}{2. sys.prefix and sys.base\_prefix}}\label{sys.prefix-and-sys.base_prefix}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{\passthrough{\lstinline!sys.base\_prefix!}}: Points to the
+  original global Python installation.
+\item
+  \textbf{\passthrough{\lstinline!sys.prefix!}}: In a venv, this is
+  updated to point to the venv directory.
+\item
+  \textbf{Internals}: The \passthrough{\lstinline!site.py!} module (run
+  automatically during startup) reads
+  \passthrough{\lstinline!pyvenv.cfg!} and updates
+  \passthrough{\lstinline!sys.path!} to include the venv's
+  \passthrough{\lstinline!site-packages!} directory before the global
+  ones.
+\end{itemize}
+
+\hypertarget{ensurepip-bootstraping-the-ecosystem}{%
+\subsection{\texorpdfstring{60.2 \texttt{ensurepip}: Bootstraping the
+Ecosystem}{60.2 ensurepip: Bootstraping the Ecosystem}}\label{ensurepip-bootstraping-the-ecosystem}}
+
+The \passthrough{\lstinline!ensurepip!} module provides a way to install
+\passthrough{\lstinline!pip!} into an environment without needing an
+internet connection. It contains bundled ``wheel'' files of
+\passthrough{\lstinline!pip!} and \passthrough{\lstinline!setuptools!}.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}

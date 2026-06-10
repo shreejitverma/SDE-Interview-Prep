@@ -1,0 +1,66 @@
+\hypertarget{functional-breadth-map-filter-and-reduce}{%
+\chapter{\texorpdfstring{Functional Breadth: \texttt{map},
+\texttt{filter}, and
+\texttt{reduce}}{Functional Breadth: map, filter, and reduce}}\label{functional-breadth-map-filter-and-reduce}}
+
+\hypertarget{the-operator-module-integration}{%
+\subsection{\texorpdfstring{94.1 The \texttt{operator} Module
+(Integration)}{94.1 The operator Module (Integration)}}\label{the-operator-module-integration}}
+
+As seen in Chapter 34, combining \passthrough{\lstinline!map!} with the
+\passthrough{\lstinline!operator!} module is often faster than lambdas.
+
+\begin{lstlisting}[language=Python]
+from operator import add
+result = list(map(add, [1, 2, 3], [4, 5, 6])) # [5, 7, 9]
+\end{lstlisting}
+
+\hypertarget{reduce-and-accumulate}{%
+\subsection{\texorpdfstring{94.2 \texttt{reduce} and
+\texttt{accumulate}}{94.2 reduce and accumulate}}\label{reduce-and-accumulate}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{\passthrough{\lstinline!functools.reduce!}}: Collapses a
+  sequence to a single value by applying a binary function cumulatively.
+\item
+  \textbf{\passthrough{\lstinline!itertools.accumulate!}}: Similar to
+  reduce, but yields every intermediate result.
+\end{itemize}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{phase-xxii-visualization-and-interface-engineering}{%
+\section{Phase XXII: Visualization and Interface
+Engineering}\label{phase-xxii-visualization-and-interface-engineering}}
+
+\hypertarget{chapter-95-turtle-graphics-the-educational-engine}{%
+\chapter{Chapter 95: Turtle Graphics: The Educational
+Engine}\label{chapter-95-turtle-graphics-the-educational-engine}}
+
+The \passthrough{\lstinline!turtle!} module is a built-in toolkit for
+turtle graphics, providing an excellent way to visualize algorithms and
+teach geometry.
+
+\hypertarget{the-virtual-screen-and-the-turtle}{%
+\subsection{95.1 The Virtual Screen and the
+Turtle}\label{the-virtual-screen-and-the-turtle}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{The Turtle}: A stateful cursor that maintains a position, a
+  heading, and a ``pen'' (up or down).
+\item
+  \textbf{The Screen}: A window where the turtle draws.
+\end{itemize}
+
+\hypertarget{recursive-fractals-with-turtle}{%
+\subsection{95.2 Recursive Fractals with
+Turtle}\label{recursive-fractals-with-turtle}}
+
+Because the turtle's state is easily managed, it is perfect for drawing
+recursive structures like the Koch Snowflake or the Sierpinski Triangle.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}

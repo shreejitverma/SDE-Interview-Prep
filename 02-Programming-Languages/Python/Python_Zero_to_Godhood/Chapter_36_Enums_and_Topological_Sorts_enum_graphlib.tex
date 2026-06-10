@@ -1,0 +1,84 @@
+\hypertarget{enums-and-topological-sorts-enum-graphlib}{%
+\chapter{\texorpdfstring{Enums and Topological Sorts (\texttt{enum},
+\texttt{graphlib})}{Enums and Topological Sorts (enum, graphlib)}}\label{enums-and-topological-sorts-enum-graphlib}}
+
+This chapter explores advanced data categorization and dependency
+resolution modules that leverage Python's metaclassing and algorithmic
+strengths.
+
+\hypertarget{enum-metaprogramming-constant-mappings}{%
+\subsection{\texorpdfstring{47.1 \texttt{enum}: Metaprogramming Constant
+Mappings}{47.1 enum: Metaprogramming Constant Mappings}}\label{enum-metaprogramming-constant-mappings}}
+
+As introduced in Chapter 10, \passthrough{\lstinline!enum!} is more than
+a simple constant list.
+
+\hypertarget{intenum-and-intflag}{%
+\subsubsection{\texorpdfstring{1. \texttt{IntEnum} and
+\texttt{IntFlag}}{1. IntEnum and IntFlag}}\label{intenum-and-intflag}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{\passthrough{\lstinline!IntEnum!}}: Subclasses both
+  \passthrough{\lstinline!int!} and \passthrough{\lstinline!Enum!}. It
+  allows comparisons with raw integers
+  (\passthrough{\lstinline!Color.RED == 1!}).
+\item
+  \textbf{\passthrough{\lstinline!IntFlag!}}: Supports bitwise
+  operations (\passthrough{\lstinline!|!}, \passthrough{\lstinline!\&!},
+  \passthrough{\lstinline!\^!}, \passthrough{\lstinline!\~!}). It is
+  useful for representing hardware registers or permission bitmasks.
+\item
+  \textbf{Internals}: \passthrough{\lstinline!IntFlag!} members are
+  combined using a specialized version of the
+  \passthrough{\lstinline!EnumMeta!} metaclass that ensures bitwise
+  results are still valid members of the Flag class.
+\end{itemize}
+
+\hypertarget{the-auto-helper}{%
+\subsubsection{\texorpdfstring{2. The \texttt{auto()}
+Helper}{2. The auto() Helper}}\label{the-auto-helper}}
+
+\passthrough{\lstinline!auto()!} is a sentinel object. During class
+construction, the metaclass detects \passthrough{\lstinline!auto()!} and
+assigns an appropriate value (usually an incrementing integer).
+
+\hypertarget{graphlib-dependency-resolution}{%
+\subsection{\texorpdfstring{47.2 \texttt{graphlib}: Dependency
+Resolution}{47.2 graphlib: Dependency Resolution}}\label{graphlib-dependency-resolution}}
+
+Python 3.9 introduced \passthrough{\lstinline!graphlib!} to provide a
+standard way to perform topological sorting of graphs.
+
+\hypertarget{topological-sorting}{%
+\subsubsection{1. Topological Sorting}\label{topological-sorting}}
+
+A topological sort is a linear ordering of vertices such that for every
+directed edge \((u, v)\), \(u\) comes before \(v\). This is the
+foundation of build systems (e.g., \passthrough{\lstinline!make!},
+\passthrough{\lstinline!ninja!}) and task schedulers.
+
+\hypertarget{topologicalsorter-internals}{%
+\subsubsection{\texorpdfstring{2. \texttt{TopologicalSorter}
+Internals}{2. TopologicalSorter Internals}}\label{topologicalsorter-internals}}
+
+The \passthrough{\lstinline!TopologicalSorter!} class implements a
+\textbf{Kahn's Algorithm} variant. 1. It calculates the ``in-degree''
+(number of incoming edges) for every node. 2. It maintains a queue of
+nodes with in-degree 0 (those with no dependencies). 3. As nodes are
+``prepared'' and ``done'', it decrements the in-degree of their
+neighbors, adding new 0-degree nodes to the queue. 4. \textbf{Cycle
+Detection}: If the graph is exhausted but nodes remain with in-degree
+\textgreater{} 0, it raises a \passthrough{\lstinline!CycleError!}.
+
+\hypertarget{parallel-execution}{%
+\subsubsection{3. Parallel Execution}\label{parallel-execution}}
+
+\passthrough{\lstinline!graphlib!} is designed for parallel runners. You
+can call \passthrough{\lstinline!get\_ready()!} to get all nodes that
+can be executed immediately, work on them in separate threads/processes,
+and call \passthrough{\lstinline!done()!} as they finish to unlock the
+next tier of dependencies.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
