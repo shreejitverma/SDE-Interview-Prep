@@ -1,0 +1,47 @@
+\hypertarget{internationalization-gettext-locale}{%
+\chapter{\texorpdfstring{Internationalization (\texttt{gettext},
+\texttt{locale})}{Internationalization (gettext, locale)}}\label{internationalization-gettext-locale}}
+
+Software that reaches the world must be adaptable to local languages,
+customs, and cultural conventions. Python's
+\passthrough{\lstinline!gettext!} and \passthrough{\lstinline!locale!}
+modules provide the infrastructure for I18N (Internationalization) and
+L10N (Localization).
+
+\hypertarget{gettext-the-gnu-translation-standard}{%
+\subsection{\texorpdfstring{57.1 \texttt{gettext}: The GNU Translation
+Standard}{57.1 gettext: The GNU Translation Standard}}\label{gettext-the-gnu-translation-standard}}
+
+\passthrough{\lstinline!gettext!} is the industry standard for message
+translation. * \textbf{The \passthrough{\lstinline!.mo!} Compiled
+Format}: Python's \passthrough{\lstinline!gettext!} module reads
+compiled message catalogs (\passthrough{\lstinline!.mo!} files). These
+are binary hash tables designed for near \(O(1)\) message lookup,
+ensuring that translating a string like
+\passthrough{\lstinline!\_("Hello")!} doesn't slow down the UI. *
+\textbf{The Underscore \passthrough{\lstinline!\_()!} Alias}: By
+convention, the translation function is aliased to
+\passthrough{\lstinline!\_!}. The \passthrough{\lstinline!gettext!}
+module can install this globally in the
+\passthrough{\lstinline!builtins!} namespace, allowing every module in
+the application to use it without explicit imports.
+
+\hypertarget{locale-interfacing-with-os-cultural-context}{%
+\subsection{\texorpdfstring{57.2 \texttt{locale}: Interfacing with OS
+Cultural
+Context}{57.2 locale: Interfacing with OS Cultural Context}}\label{locale-interfacing-with-os-cultural-context}}
+
+The \passthrough{\lstinline!locale!} module is a thin wrapper around the
+C library \passthrough{\lstinline!setlocale()!} and associated
+functions. * \textbf{Categories}: \passthrough{\lstinline!LC\_TIME!}
+(Date formatting), \passthrough{\lstinline!LC\_MONETARY!} (Currency),
+\passthrough{\lstinline!LC\_NUMERIC!} (Decimal separators),
+\passthrough{\lstinline!LC\_COLLATE!} (Sorting order). * \textbf{The
+Global State Problem}: Locales are process-global in C. Changing the
+locale in one thread affects the entire process. \textbf{Godhood
+Warning}: Be extremely careful when using
+\passthrough{\lstinline!locale!} in multi-threaded web servers. Modern
+Python (3.7+) has introduced better ways to handle thread-local context,
+but the underlying C locale remains global.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}

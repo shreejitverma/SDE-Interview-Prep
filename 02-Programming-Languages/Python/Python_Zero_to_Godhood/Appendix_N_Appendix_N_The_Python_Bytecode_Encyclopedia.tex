@@ -1,0 +1,174 @@
+\hypertarget{appendix-n-the-python-bytecode-encyclopedia}{%
+\chapter{Appendix N: The Python Bytecode
+Encyclopedia}\label{appendix-n-the-python-bytecode-encyclopedia}}
+
+This appendix provides an exhaustive reference for the CPython 3.13
+instruction set. For each opcode, we provide its numerical value, its
+stack transition, and a technical description of its C-level
+implementation.
+
+\hypertarget{n.1-stack-notation}{%
+\subsection{N.1 Stack Notation}\label{n.1-stack-notation}}
+
+\begin{itemize}
+\tightlist
+\item
+  \passthrough{\lstinline!TOS!}: Top of Stack.
+\item
+  \passthrough{\lstinline!TOS1!}: Second item on stack.
+\item
+  \passthrough{\lstinline!TOS2!}: Third item on stack.
+\item
+  \passthrough{\lstinline!NULL!}: A sentinel value.
+\end{itemize}
+
+\hypertarget{n.2-data-movement-opcodes}{%
+\subsection{N.2 Data Movement Opcodes}\label{n.2-data-movement-opcodes}}
+
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.33}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.33}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.33}}@{}}
+\toprule
+Opcode & Transition & Description \\
+\midrule
+\endhead
+\passthrough{\lstinline!LOAD\_CONST!} &
+\passthrough{\lstinline!( -> const)!} & Pushes a constant from the code
+object's \passthrough{\lstinline!co\_consts!} tuple onto the stack. \\
+\passthrough{\lstinline!LOAD\_FAST!} &
+\passthrough{\lstinline!( -> val)!} & Pushes a local variable onto the
+stack. Extremely fast as it uses a simple array index in the frame
+object. \\
+\passthrough{\lstinline!STORE\_FAST!} &
+\passthrough{\lstinline!(val -> )!} & Pops the top of the stack and
+stores it in a local variable. \\
+\passthrough{\lstinline!LOAD\_GLOBAL!} &
+\passthrough{\lstinline!( -> val)!} & Pushes a global or builtin name
+onto the stack. Uses the \passthrough{\lstinline!co\_names!} tuple and
+performs a hash table lookup. \\
+\passthrough{\lstinline!STORE\_GLOBAL!} &
+\passthrough{\lstinline!(val -> )!} & Stores the top of the stack in the
+global namespace. \\
+\passthrough{\lstinline!DELETE\_GLOBAL!} &
+\passthrough{\lstinline!( -> )!} & Deletes a global name. \\
+\bottomrule
+\end{longtable}
+
+\hypertarget{n.3-arithmetic-and-bitwise-opcodes}{%
+\subsection{N.3 Arithmetic and Bitwise
+Opcodes}\label{n.3-arithmetic-and-bitwise-opcodes}}
+
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.33}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.33}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.33}}@{}}
+\toprule
+Opcode & Transition & Description \\
+\midrule
+\endhead
+\passthrough{\lstinline!BINARY\_OP!} &
+\passthrough{\lstinline!(TOS1, TOS -> result)!} & General opcode for
+binary operations (ADD, SUB, MUL, etc.). In 3.11+, this is specialized
+for types (e.g., \passthrough{\lstinline!BINARY\_OP\_ADD\_INT!}). \\
+\passthrough{\lstinline!UNARY\_NEGATIVE!} &
+\passthrough{\lstinline!(TOS -> -TOS)!} & Negates the top of the
+stack. \\
+\passthrough{\lstinline!UNARY\_NOT!} &
+\passthrough{\lstinline!(TOS -> not TOS)!} & Performs logical NOT. \\
+\passthrough{\lstinline!UNARY\_INVERT!} &
+\passthrough{\lstinline!(TOS -> \~TOS)!} & Performs bitwise
+inversion. \\
+\bottomrule
+\end{longtable}
+
+\hypertarget{n.4-collection-opcodes}{%
+\subsection{N.4 Collection Opcodes}\label{n.4-collection-opcodes}}
+
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.33}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.33}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.33}}@{}}
+\toprule
+Opcode & Transition & Description \\
+\midrule
+\endhead
+\passthrough{\lstinline!BUILD\_LIST!} &
+\passthrough{\lstinline!(TOSn, ... -> list)!} & Creates a new list from
+the top \(n\) items on the stack. \\
+\passthrough{\lstinline!BUILD\_TUPLE!} &
+\passthrough{\lstinline!(TOSn, ... -> tuple)!} & Creates a new tuple. \\
+\passthrough{\lstinline!BUILD\_SET!} &
+\passthrough{\lstinline!(TOSn, ... -> set)!} & Creates a new set. \\
+\passthrough{\lstinline!BUILD\_MAP!} &
+\passthrough{\lstinline!(TOS2n, ... -> dict)!} & Creates a new
+dictionary from \(n\) key-value pairs. \\
+\passthrough{\lstinline!LIST\_APPEND!} &
+\passthrough{\lstinline!(list, val -> list)!} & Appends a value to a
+list (used in comprehensions). \\
+\passthrough{\lstinline!MAP\_ADD!} &
+\passthrough{\lstinline!(dict, key, val -> dict)!} & Adds a key-value
+pair to a dict. \\
+\bottomrule
+\end{longtable}
+
+\hypertarget{n.5-control-flow-and-function-calls}{%
+\subsection{N.5 Control Flow and Function
+Calls}\label{n.5-control-flow-and-function-calls}}
+
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.33}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.33}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.33}}@{}}
+\toprule
+Opcode & Transition & Description \\
+\midrule
+\endhead
+\passthrough{\lstinline!JUMP\_FORWARD!} &
+\passthrough{\lstinline!( -> )!} & Increments the instruction
+pointer. \\
+\passthrough{\lstinline!POP\_JUMP\_IF\_FALSE!} &
+\passthrough{\lstinline!(bool -> )!} & Jumps if the top of the stack is
+false. \\
+\passthrough{\lstinline!CALL!} &
+\passthrough{\lstinline!(func, args -> result)!} & Calls a function. In
+3.11+, this is the ``mega-opcode'' that handles all function calls,
+including those with keyword arguments. \\
+\passthrough{\lstinline!RETURN\_VALUE!} &
+\passthrough{\lstinline!(val -> )!} & Returns the top of the stack to
+the caller's frame. \\
+\passthrough{\lstinline!RAISE\_VARARGS!} &
+\passthrough{\lstinline!(val -> )!} & Raises an exception. \\
+\bottomrule
+\end{longtable}
+
+\hypertarget{n.6-specialized-and-modern-opcodes}{%
+\subsection{N.6 Specialized and Modern
+Opcodes}\label{n.6-specialized-and-modern-opcodes}}
+
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.33}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.33}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.33}}@{}}
+\toprule
+Opcode & Transition & Description \\
+\midrule
+\endhead
+\passthrough{\lstinline!RESUME!} & \passthrough{\lstinline!( -> )!} & A
+no-op at runtime, but serves as an entry point for tracing and generator
+resumption. \\
+\passthrough{\lstinline!SEND!} &
+\passthrough{\lstinline!(gen, val -> res)!} & Sends a value into a
+generator or coroutine. \\
+\passthrough{\lstinline!COPY\_FREE\_VARS!} &
+\passthrough{\lstinline!( -> )!} & Copies free variables from the
+closure into the new frame (used in nested functions). \\
+\bottomrule
+\end{longtable}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\textbf{This encyclopedia serves as the definitive reference for the
+Python Virtual Machine's internal language.}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}

@@ -1,0 +1,50 @@
+\hypertarget{legacy-and-specialized-protocols-ftplib-smtplib-imaplib}{%
+\chapter{\texorpdfstring{Legacy and Specialized Protocols
+(\texttt{ftplib}, \texttt{smtplib},
+\texttt{imaplib})}{Legacy and Specialized Protocols (ftplib, smtplib, imaplib)}}\label{legacy-and-specialized-protocols-ftplib-smtplib-imaplib}}
+
+Python's strength is its ``batteries included'' philosophy, providing
+clients for nearly every major internet protocol.
+
+\hypertarget{smtplib-the-smtp-state-machine}{%
+\subsection{\texorpdfstring{55.1 \texttt{smtplib}: The SMTP State
+Machine}{55.1 smtplib: The SMTP State Machine}}\label{smtplib-the-smtp-state-machine}}
+
+SMTP (Simple Mail Transfer Protocol) is a conversational protocol. *
+\textbf{The Conversation}: \passthrough{\lstinline!EHLO!}
+\(\rightarrow\) \passthrough{\lstinline!STARTTLS!} \(\rightarrow\)
+\passthrough{\lstinline!AUTH!} \(\rightarrow\)
+\passthrough{\lstinline!MAIL FROM!} \(\rightarrow\)
+\passthrough{\lstinline!RCPT TO!} \(\rightarrow\)
+\passthrough{\lstinline!DATA!} \(\rightarrow\)
+\passthrough{\lstinline!QUIT!}. * \textbf{Internals}:
+\passthrough{\lstinline!smtplib!} manages the socket and parses the
+numeric status codes (e.g., 250 OK, 550 Failure) returned by the server.
+It handles the transition from a plaintext connection to a secure TLS
+connection via the \passthrough{\lstinline!ssl!} module.
+
+\hypertarget{ftplib-active-vs.-passive-mode}{%
+\subsection{\texorpdfstring{55.2 \texttt{ftplib}: Active vs.~Passive
+Mode}{55.2 ftplib: Active vs.~Passive Mode}}\label{ftplib-active-vs.-passive-mode}}
+
+FTP is unique because it uses two separate socket connections: one for
+commands (Control) and one for data. * \textbf{Passive Mode
+(Recommended)}: The client initiates the data connection to the server.
+* \textbf{Active Mode}: The server attempts to connect back to the
+client (often blocked by modern firewalls/NAT). * \textbf{Internals}:
+\passthrough{\lstinline!ftplib!} handles the complex choreography of
+listening on a temporary port and coordinating with the control socket
+to transfer file data.
+
+\hypertarget{imaplib-mailbox-synchronization}{%
+\subsection{\texorpdfstring{55.3 \texttt{imaplib}: Mailbox
+Synchronization}{55.3 imaplib: Mailbox Synchronization}}\label{imaplib-mailbox-synchronization}}
+
+IMAP (Internet Message Access Protocol) is much more complex than SMTP
+or POP3 because it is stateful and supports partial downloads. *
+\textbf{Literal Handling}: \passthrough{\lstinline!imaplib!} implements
+the ``IMAP Literal'' protocol, allowing for the transfer of large binary
+message parts without crashing the interpreter's string allocation
+system.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}

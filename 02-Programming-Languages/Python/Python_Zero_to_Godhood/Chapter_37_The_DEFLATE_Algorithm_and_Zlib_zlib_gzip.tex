@@ -1,0 +1,52 @@
+\hypertarget{the-deflate-algorithm-and-zlib-zlib-gzip}{%
+\chapter{\texorpdfstring{The DEFLATE Algorithm and Zlib (\texttt{zlib},
+\texttt{gzip})}{The DEFLATE Algorithm and Zlib (zlib, gzip)}}\label{the-deflate-algorithm-and-zlib-zlib-gzip}}
+
+Data compression is a cornerstone of modern systems engineering,
+reducing storage costs and network latency. Python's
+\passthrough{\lstinline!zlib!} and \passthrough{\lstinline!gzip!}
+modules provide the foundational tools for the DEFLATE algorithm.
+
+\hypertarget{zlib-the-c-level-compression-engine}{%
+\subsection{\texorpdfstring{48.1 \texttt{zlib}: The C-Level Compression
+Engine}{48.1 zlib: The C-Level Compression Engine}}\label{zlib-the-c-level-compression-engine}}
+
+The \passthrough{\lstinline!zlib!} module is a direct wrapper around the
+widely-used zlib C library. It implements the \textbf{DEFLATE}
+algorithm, which combines Huffman coding with LZ77 compression.
+
+\hypertarget{compression-objects-and-flushing}{%
+\subsubsection{1. Compression Objects and
+Flushing}\label{compression-objects-and-flushing}}
+
+For streaming data, you use \passthrough{\lstinline!compressobj()!} and
+\passthrough{\lstinline!decompressobj()!}. *
+\textbf{\passthrough{\lstinline!flush()!}}: This is critical for network
+protocols. It forces the compressor to output all pending data,
+potentially starting a new Huffman block. * \textbf{GIL Management}: The
+\passthrough{\lstinline!zlib!} module \textbf{releases the GIL} during
+compression and decompression. This allows multiple threads to compress
+separate data streams in parallel, making it highly effective for
+multi-core web servers.
+
+\hypertarget{adler-32-vs.-crc32}{%
+\subsubsection{2. Adler-32 vs.~CRC32}\label{adler-32-vs.-crc32}}
+
+\passthrough{\lstinline!zlib!} uses Adler-32 checksums for integrity
+checks, which are faster to calculate than CRC32 but slightly less
+robust.
+
+\hypertarget{gzip-the-file-format-wrapper}{%
+\subsection{\texorpdfstring{48.2 \texttt{gzip}: The File Format
+Wrapper}{48.2 gzip: The File Format Wrapper}}\label{gzip-the-file-format-wrapper}}
+
+\passthrough{\lstinline!gzip!} provides a file-like interface for
+reading and writing \passthrough{\lstinline!.gz!} files. *
+\textbf{Internals}: It adds a 10-byte header (including timestamp and OS
+metadata) and an 8-byte trailer (CRC32 and original size) around a raw
+\passthrough{\lstinline!zlib!} DEFLATE stream. * \textbf{Random Access}:
+Standard \passthrough{\lstinline!gzip!} files do not support efficient
+random access (seeking). To seek to the end, the entire file must be
+decompressed.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}

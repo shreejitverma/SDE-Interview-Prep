@@ -1,0 +1,50 @@
+\hypertarget{html-parsing-and-internet-data-html-email}{%
+\chapter{\texorpdfstring{HTML Parsing and Internet Data (\texttt{html},
+\texttt{email})}{HTML Parsing and Internet Data (html, email)}}\label{html-parsing-and-internet-data-html-email}}
+
+Interacting with web and mail systems requires robust handling of
+semi-structured and often non-compliant data.
+
+\hypertarget{html.parser-the-sgml-style-parser}{%
+\subsection{\texorpdfstring{53.1 \texttt{html.parser}: The SGML-Style
+Parser}{53.1 html.parser: The SGML-Style Parser}}\label{html.parser-the-sgml-style-parser}}
+
+The \passthrough{\lstinline!html.parser!} module is a structured markup
+parser that is more forgiving than XML parsers. * \textbf{Internals}: It
+uses a state-driven approach to identify tags and entities. It can
+handle ``broken'' HTML (e.g., missing closing tags) by following
+standardized tag-balancing rules. * \textbf{Security}: Always use
+\passthrough{\lstinline!html.escape()!} when outputting user data to
+prevent Cross-Site Scripting (XSS) vulnerabilities.
+
+\hypertarget{email-the-recursive-object-tree}{%
+\subsection{\texorpdfstring{53.2 \texttt{email}: The Recursive Object
+Tree}{53.2 email: The Recursive Object Tree}}\label{email-the-recursive-object-tree}}
+
+The \passthrough{\lstinline!email!} package is a massive framework for
+managing email messages, which are fundamentally recursive structures (a
+message can contain a multipart message, which contains an attachment,
+etc.).
+
+\hypertarget{the-message-object}{%
+\subsubsection{\texorpdfstring{1. The \texttt{Message}
+Object}{1. The Message Object}}\label{the-message-object}}
+
+An \passthrough{\lstinline!email.message.EmailMessage!} object consists
+of: * \textbf{Headers}: A dictionary-like mapping of field names to
+values. * \textbf{Payload}: Either a string (for simple text) or a list
+of \passthrough{\lstinline!Message!} objects (for multipart).
+
+\hypertarget{policy-and-content-management}{%
+\subsubsection{2. Policy and Content
+Management}\label{policy-and-content-management}}
+
+Modern Python (3.6+) introduced the \textbf{Policy} system. *
+\textbf{\passthrough{\lstinline!policy.default!}}: Uses the modern
+``Godhood'' approachhandling Unicode, binary attachments, and folded
+headers automatically according to the latest RFCs (5322, 6532). *
+\textbf{Lazy Loading}: The \passthrough{\lstinline!BytesParser!} can
+lazily parse attachments, only reading them from the disk when the
+content is actually requested.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}

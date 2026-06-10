@@ -1,0 +1,77 @@
+\hypertarget{appendix-b-glossary-of-cpython-internals}{%
+\chapter{Appendix B: Glossary of CPython
+Internals}\label{appendix-b-glossary-of-cpython-internals}}
+
+This glossary provides precise definitions for the terms used by core
+developers and ``Godhood'' level practitioners.
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Arena}: A large block of memory (typically 256KB) allocated
+  from the OS by \passthrough{\lstinline!PyMalloc!}. Arenas are divided
+  into \textbf{Pools}.
+\item
+  \textbf{BATS (Basic Abstract Type System)}: The internal
+  categorization of types in the C-API.
+\item
+  \textbf{Borrowed Reference}: A pointer to a
+  \passthrough{\lstinline!PyObject!} where the caller does not own the
+  reference. You must not call \passthrough{\lstinline!Py\_DECREF!} on
+  it unless you first call \passthrough{\lstinline!Py\_INCREF!}.
+\item
+  \textbf{Check Interval}: The frequency at which the interpreter checks
+  for signals and thread switches.
+\item
+  \textbf{Compact Dictionary}: A memory-optimized dict implementation
+  (introduced in Python 3.6) that uses a dense array for values and a
+  sparse index for keys.
+\item
+  \textbf{Descriptor}: Any object that defines
+  \passthrough{\lstinline!\_\_get\_\_!},
+  \passthrough{\lstinline!\_\_set\_\_!}, or
+  \passthrough{\lstinline!\_\_delete\_\_!}. These power properties,
+  class methods, and the entire \passthrough{\lstinline!bound method!}
+  system.
+\item
+  \textbf{Free-Threaded}: A build of Python (3.13+) where the Global
+  Interpreter Lock has been removed, replaced by fine-grained locking
+  and biased reference counting.
+\item
+  \textbf{Interning}: The process of storing only one copy of an
+  immutable object (like short strings or small integers) in a global
+  pool to save memory and allow identity comparison
+  (\passthrough{\lstinline!is!}) instead of equality
+  (\passthrough{\lstinline!==!}).
+\item
+  \textbf{MRO (Method Resolution Order)}: The linearized order in which
+  Python searches for attributes in a class hierarchy, calculated using
+  the C3 linearization algorithm.
+\item
+  \textbf{Obmalloc}: The CPython custom memory allocator specialized for
+  small objects (less than 512 bytes).
+\item
+  \textbf{Opcodes}: The numerical identifiers for virtual machine
+  instructions (e.g., \passthrough{\lstinline!LOAD\_CONST!},
+  \passthrough{\lstinline!CALL\_FUNCTION!}).
+\item
+  \textbf{Peephole Optimizer}: A compiler stage that looks at small
+  sequences of bytecode and replaces them with more efficient versions
+  (e.g., \passthrough{\lstinline!1 + 2!} \(\rightarrow\)
+  \passthrough{\lstinline!3!}).
+\item
+  \textbf{PyObject}: The base C-struct for all Python objects. It
+  contains the reference count (\passthrough{\lstinline!ob\_refcnt!})
+  and a pointer to the type object (\passthrough{\lstinline!ob\_type!}).
+\item
+  \textbf{Slot}: A function pointer field in the
+  \passthrough{\lstinline!PyTypeObject!} struct that corresponds to a
+  dunder method (e.g., \passthrough{\lstinline!tp\_call!} for
+  \passthrough{\lstinline!\_\_call\_\_!}).
+\item
+  \textbf{Tiers of Execution}: In Python 3.13+, the VM moves from Tier 1
+  (standard bytecode) to Tier 2 (specialized/optimized micro-ops) based
+  on execution frequency.
+\end{itemize}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}

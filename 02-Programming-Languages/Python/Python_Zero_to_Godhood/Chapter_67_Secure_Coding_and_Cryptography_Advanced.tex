@@ -1,0 +1,38 @@
+\hypertarget{secure-coding-and-cryptography-advanced}{%
+\chapter{Secure Coding and Cryptography
+(Advanced)}\label{secure-coding-and-cryptography-advanced}}
+
+\hypertarget{hardening-python-applications}{%
+\subsection{85.1 Hardening Python
+Applications}\label{hardening-python-applications}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{\passthrough{\lstinline!bandit!}}: A tool that scans the AST
+  for common security issues (e.g., using
+  \passthrough{\lstinline!eval()!}, hardcoded passwords).
+\item
+  \textbf{Constant-Time Comparisons}: Using
+  \passthrough{\lstinline!hmac.compare\_digest!} to prevent timing
+  attacks (Chapter 45).
+\end{itemize}
+
+\hypertarget{cryptographic-misuse}{%
+\subsection{85.2 Cryptographic Misuse}\label{cryptographic-misuse}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Nonce Reuse}: The dangers of using the same initialization
+  vector twice in AES-GCM.
+\item
+  \textbf{Insecure Randomness}: Why you must never use the
+  \passthrough{\lstinline!random!} module for key generation (Chapter
+  35).
+\end{itemize}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{appendices}{%
+\chapter{Appendices}\label{appendices}}

@@ -1,0 +1,86 @@
+\hypertarget{the-anatomy-of-time-datetime-zoneinfo}{%
+\chapter{\texorpdfstring{The Anatomy of Time (\texttt{datetime},
+\texttt{zoneinfo})}{The Anatomy of Time (datetime, zoneinfo)}}\label{the-anatomy-of-time-datetime-zoneinfo}}
+
+Managing time in software is deceptively complex due to leap years, leap
+seconds, and the ever-shifting landscape of political timezones.
+Python's \passthrough{\lstinline!datetime!} and
+\passthrough{\lstinline!zoneinfo!} modules provide a robust framework
+for handling these complexities, backed by highly optimized C
+implementations.
+
+\hypertarget{datetime-the-c-accelerated-temporal-engine}{%
+\subsection{\texorpdfstring{46.1 \texttt{datetime}: The C-Accelerated
+Temporal
+Engine}{46.1 datetime: The C-Accelerated Temporal Engine}}\label{datetime-the-c-accelerated-temporal-engine}}
+
+In CPython, the \passthrough{\lstinline!datetime!} module is implemented
+in \passthrough{\lstinline!Modules/\_datetimemodule.c!}. This ensures
+that common operations like delta calculations and comparisons are
+extremely fast.
+
+\hypertarget{internal-memory-representation}{%
+\subsubsection{1. Internal Memory
+Representation}\label{internal-memory-representation}}
+
+A \passthrough{\lstinline!datetime!} object stores its components in a
+packed binary format. * \textbf{Date}: 4 bytes (year: 2, month: 1, day:
+1). * \textbf{Time}: 6-7 bytes (hour: 1, minute: 1, second: 1,
+microsecond: 3, and an optional 1-byte fold). * \textbf{Packed Format}:
+Unlike a Python integer, these are fixed-width fields in the
+\passthrough{\lstinline!PyDateTime\_DateTime!} C struct. This compact
+representation minimizes memory overhead for large time-series datasets.
+
+\hypertarget{the-fold-attribute-pep-495}{%
+\subsubsection{\texorpdfstring{2. The \texttt{fold} Attribute (PEP
+495)}{2. The fold Attribute (PEP 495)}}\label{the-fold-attribute-pep-495}}
+
+The \passthrough{\lstinline!fold!} attribute (0 or 1) was added to
+disambiguate the ``lost'' or ``repeated'' hour during Daylight Saving
+Time (DST) transitions. * \textbf{0}: The first occurrence of the wall
+clock time. * \textbf{1}: The second occurrence (after the clock
+``folds'' back).
+
+\hypertarget{zoneinfo-native-iana-timezone-support-pep-615}{%
+\subsection{\texorpdfstring{46.2 \texttt{zoneinfo}: Native IANA Timezone
+Support (PEP
+615)}{46.2 zoneinfo: Native IANA Timezone Support (PEP 615)}}\label{zoneinfo-native-iana-timezone-support-pep-615}}
+
+Prior to Python 3.9, developers relied on third-party libraries like
+\passthrough{\lstinline!pytz!}. \passthrough{\lstinline!zoneinfo!}
+integrated the IANA (Internet Assigned Numbers Authority) time zone
+database directly into the standard library.
+
+\hypertarget{the-search-path}{%
+\subsubsection{1. The Search Path}\label{the-search-path}}
+
+\passthrough{\lstinline!zoneinfo!} searches the system's timezone
+database (usually \passthrough{\lstinline!/usr/share/zoneinfo!} on
+Linux/macOS). If not found, it can use the
+\passthrough{\lstinline!tzdata!} package from PyPI.
+
+\hypertarget{thread-safe-caching}{%
+\subsubsection{2. Thread-Safe Caching}\label{thread-safe-caching}}
+
+\passthrough{\lstinline!ZoneInfo!} objects are cached by name. The
+implementation uses a thread-safe global cache to ensure that multiple
+calls to \passthrough{\lstinline!ZoneInfo("America/New\_York")!} return
+the same singleton-like object, reducing memory pressure and filesystem
+I/O.
+
+\hypertarget{calendar-algorithmic-date-logic}{%
+\subsection{\texorpdfstring{46.3 \texttt{calendar}: Algorithmic Date
+Logic}{46.3 calendar: Algorithmic Date Logic}}\label{calendar-algorithmic-date-logic}}
+
+The \passthrough{\lstinline!calendar!} module provides higher-level
+functions for monthly and yearly calculations. * \textbf{Optimization}:
+It uses the Proleptic Gregorian Calendar. * \textbf{Godhood Tip}: For
+heavy-duty date math (e.g., ``Find the 3rd Tuesday of every month for
+the next 10 years''), combine
+\passthrough{\lstinline!calendar.monthcalendar()!} with the
+\passthrough{\lstinline!relativedelta!} logic from the
+\passthrough{\lstinline!dateutil!} package (though
+\passthrough{\lstinline!dateutil!} is external, its logic is often
+implemented natively in performance-critical C++ or Rust backends).
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}

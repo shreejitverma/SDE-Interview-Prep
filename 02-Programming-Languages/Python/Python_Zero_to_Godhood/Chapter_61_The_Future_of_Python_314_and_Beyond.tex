@@ -1,0 +1,25 @@
+\hypertarget{the-future-of-python-3.14-and-beyond}{%
+\chapter{The Future of Python: 3.14 and
+Beyond}\label{the-future-of-python-3.14-and-beyond}}
+
+Python is currently undergoing its most significant transformation since
+the 2.x to 3.x transition.
+
+\hypertarget{the-tiered-interpreter-pep-659}{%
+\subsection{76.1 The Tiered Interpreter (PEP
+659)}\label{the-tiered-interpreter-pep-659}}
+
+As discussed in Chapter 17, Python is moving towards a multi-tier
+execution model. * \textbf{Tier 1}: Adaptive Bytecode. * \textbf{Tier
+2}: Micro-ops and JIT compilation. * \textbf{Tier 3}: Full machine code
+optimization.
+
+\hypertarget{the-gil-less-ecosystem}{%
+\subsection{76.2 The GIL-less Ecosystem}\label{the-gil-less-ecosystem}}
+
+With the GIL removal (Chapter 20), the entire Python ecosystem (NumPy,
+SciPy, PyTorch) must be updated to handle fine-grained locking. This
+will unlock true multi-core utilization for Python developers without
+the overhead of \passthrough{\lstinline!multiprocessing!}.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}

@@ -1,0 +1,77 @@
+\hypertarget{gpu-acceleration-with-cuda-and-python}{%
+\chapter{GPU Acceleration with CUDA and
+Python}\label{gpu-acceleration-with-cuda-and-python}}
+
+When the CPU's 8-16 cores aren't enough, we turn to the GPU, which can
+have thousands of cores.
+
+\hypertarget{the-cuda-architecture}{%
+\subsection{72.1 The CUDA Architecture}\label{the-cuda-architecture}}
+
+CUDA (Compute Unified Device Architecture) is NVIDIA's platform for
+parallel computing. * \textbf{Kernels}: Small functions that run on the
+GPU. * \textbf{Memory Transfer}: Data must be moved from Host (CPU RAM)
+to Device (GPU RAM) before processing.
+
+\hypertarget{interfacing-with-python-cupy-and-numba}{%
+\subsection{72.2 Interfacing with Python: CuPy and
+Numba}\label{interfacing-with-python-cupy-and-numba}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{CuPy}: A NumPy-compatible library that runs on the GPU.
+\item
+  \textbf{Numba \passthrough{\lstinline!@cuda.jit!}}: A JIT compiler
+  that translates Python functions directly into PTX (GPU machine code).
+\end{itemize}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+To truly master Python, one must understand how it compares to its peers
+and where it is headed in the next decade.
+
+\hypertarget{chapter-75-comparative-analysis-python-vs.-c-vs.-rust}{%
+\chapter{Chapter 75: Comparative Analysis: Python vs.~C++
+vs.~Rust}\label{chapter-75-comparative-analysis-python-vs.-c-vs.-rust}}
+
+Choosing the right tool for the job requires an objective look at the
+trade-offs between these three dominant languages.
+
+\hypertarget{performance-vs.-productivity}{%
+\subsection{75.1 Performance
+vs.~Productivity}\label{performance-vs.-productivity}}
+
+\begin{longtable}[]{@{}llll@{}}
+\toprule
+Feature & Python & C++ & Rust \\
+\midrule
+\endhead
+\textbf{Execution Speed} & Moderate (Interpreter) & Extreme (AOT) &
+Extreme (AOT) \\
+\textbf{Development Speed} & High & Low & Moderate \\
+\textbf{Memory Safety} & Managed (GC) & Manual (Unsafe) & Managed
+(Borrow Check) \\
+\textbf{Concurrency} & Cooperative/Preemptive & Preemptive &
+Preemptive \\
+\bottomrule
+\end{longtable}
+
+\hypertarget{the-godhood-perspective}{%
+\subsection{75.2 The ``Godhood''
+Perspective}\label{the-godhood-perspective}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Python}: Best for high-level orchestration, rapid prototyping,
+  and data science where developer time is more expensive than CPU time.
+\item
+  \textbf{C++}: Best for legacy systems, game engines, and scenarios
+  requiring absolute control over hardware.
+\item
+  \textbf{Rust}: The modern choice for systems programming, providing
+  C++ performance with guaranteed memory safety.
+\end{itemize}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}

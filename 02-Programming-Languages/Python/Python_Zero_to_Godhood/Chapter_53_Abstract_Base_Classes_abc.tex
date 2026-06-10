@@ -1,0 +1,33 @@
+\hypertarget{abstract-base-classes-abc}{%
+\chapter{\texorpdfstring{Abstract Base Classes
+(\texttt{abc})}{Abstract Base Classes (abc)}}\label{abstract-base-classes-abc}}
+
+Abstract Base Classes provide a way to define interfaces and enforce
+that subclasses implement specific methods.
+
+\hypertarget{the-virtual-subclassing-mechanism}{%
+\subsection{64.1 The Virtual Subclassing
+Mechanism}\label{the-virtual-subclassing-mechanism}}
+
+Normally, \passthrough{\lstinline!isinstance(obj, Class)!} checks the
+MRO. \passthrough{\lstinline!abc!} allows for ``virtual'' subclassing
+using \passthrough{\lstinline!register()!}. *
+\textbf{\passthrough{\lstinline!ABCMeta.\_\_subclasscheck\_\_!}}: This
+dunder method is overridden by the \passthrough{\lstinline!ABC!}
+metaclass. It allows an object to be considered an instance of an ABC
+even if it doesn't inherit from it, provided it implements the required
+protocol.
+
+\hypertarget{abstractmethod}{%
+\subsection{\texorpdfstring{64.2
+\texttt{@abstractmethod}}{64.2 @abstractmethod}}\label{abstractmethod}}
+
+This decorator marks a method as abstract. * \textbf{Internals}: It sets
+an attribute \passthrough{\lstinline!\_\_isabstractmethod\_\_ = True!}
+on the function. * \textbf{Enforcement}: During class instantiation, the
+C-level \passthrough{\lstinline!tp\_new!} check scans the class's
+dictionary for any attributes with this flag. If found, it raises a
+\passthrough{\lstinline!TypeError!} preventing instantiation of the
+abstract class.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}

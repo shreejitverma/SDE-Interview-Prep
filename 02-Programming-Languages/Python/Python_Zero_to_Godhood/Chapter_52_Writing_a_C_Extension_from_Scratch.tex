@@ -1,0 +1,102 @@
+\hypertarget{writing-a-c-extension-from-scratch}{%
+\chapter{Writing a C Extension from
+Scratch}\label{writing-a-c-extension-from-scratch}}
+
+True ``Godhood'' involves the ability to extend the Python interpreter
+with performance-critical code written in C. This chapter provides a
+complete walk-through of creating a high-performance math extension.
+
+\hypertarget{the-anatomy-of-a-c-extension}{%
+\subsection{63.1 The Anatomy of a C
+Extension}\label{the-anatomy-of-a-c-extension}}
+
+A C extension is a shared library (\passthrough{\lstinline!.so!} or
+\passthrough{\lstinline!.pyd!}) that exports an initialization function.
+
+\hypertarget{header-and-types}{%
+\subsubsection{1. Header and Types}\label{header-and-types}}
+
+Every extension must include \passthrough{\lstinline!Python.h!}. This
+header defines all the \passthrough{\lstinline!PyObject!} structures and
+C-API functions.
+
+\begin{lstlisting}[language=C]
+#include <Python.h>
+
+// A simple C function to add two numbers
+static PyObject* godhood_add(PyObject* self, PyObject* args) {
+    long a, b;
+    // Parse positional arguments from Python to C types
+    if (!PyArg_ParseTuple(args, "ll", &a, &b)) {
+        return NULL; // Returns TypeError if parsing fails
+    }
+    return PyLong_FromLong(a + b); // Convert C long back to Python PyObject
+}
+\end{lstlisting}
+
+\hypertarget{method-table-and-module-definition}{%
+\subsubsection{2. Method Table and Module
+Definition}\label{method-table-and-module-definition}}
+
+You must tell Python which functions are exported.
+
+\begin{lstlisting}[language=C]
+static PyMethodDef GodhoodMethods[] = {
+    {"add",  godhood_add, METH_VARARGS, "Add two numbers in C."},
+    {NULL, NULL, 0, NULL}        /* Sentinel */
+};
+
+static struct PyModuleDef godhoodmodule = {
+    PyModuleDef_HEAD_INIT,
+    "godhood",   /* name of module */
+    NULL,       /* module documentation */
+    -1,         /* size of per-interpreter state of the module, or -1 if the module keeps state in global variables. */
+    GodhoodMethods
+};
+\end{lstlisting}
+
+\hypertarget{initialization-function}{%
+\subsubsection{3. Initialization
+Function}\label{initialization-function}}
+
+The function name must be
+\passthrough{\lstinline!PyInit\_<modulename>!}.
+
+\begin{lstlisting}[language=C]
+PyMODINIT_FUNC PyInit_godhood(void) {
+    return PyModule_Create(&godhoodmodule);
+}
+\end{lstlisting}
+
+\hypertarget{compiling-with-setuptools}{%
+\subsection{\texorpdfstring{63.2 Compiling with
+\texttt{setuptools}}{63.2 Compiling with setuptools}}\label{compiling-with-setuptools}}
+
+You use a \passthrough{\lstinline!setup.py!} file to handle the
+platform-specific compilation details.
+
+\begin{lstlisting}[language=Python]
+from setuptools import setup, Extension
+
+module = Extension('godhood', sources=['godhood.c'])
+
+setup(name='GodhoodExtension',
+      version='1.0',
+      description='C extension for high-performance math',
+      ext_modules=[module])
+\end{lstlisting}
+
+\hypertarget{reference-counting-and-memory-safety}{%
+\subsection{63.3 Reference Counting and Memory
+Safety}\label{reference-counting-and-memory-safety}}
+
+\textbf{Godhood Warning}: In C, you are responsible for reference
+counts. * \textbf{\passthrough{\lstinline!Py\_INCREF(obj)!}}: Increment
+count (you are keeping a reference). *
+\textbf{\passthrough{\lstinline!Py\_DECREF(obj)!}}: Decrement count (you
+are finished with it). * \textbf{Leakage}: Failure to
+\passthrough{\lstinline!DECREF!} leads to permanent memory leaks. *
+\textbf{Segfaults}: \passthrough{\lstinline!DECREF!}ing an object you
+don't own leads to use-after-free crashes.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}

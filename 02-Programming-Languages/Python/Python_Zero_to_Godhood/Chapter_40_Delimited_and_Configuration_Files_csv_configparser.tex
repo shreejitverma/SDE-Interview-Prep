@@ -1,0 +1,62 @@
+\hypertarget{delimited-and-configuration-files-csv-configparser}{%
+\chapter{\texorpdfstring{Delimited and Configuration Files
+(\texttt{csv},
+\texttt{configparser})}{Delimited and Configuration Files (csv, configparser)}}\label{delimited-and-configuration-files-csv-configparser}}
+
+Handling structured data from diverse sources is a primary use case for
+Python. The \passthrough{\lstinline!csv!} and
+\passthrough{\lstinline!configparser!} modules offer standardized ways
+to interact with these common formats, with the former being highly
+optimized for performance.
+
+\hypertarget{csv-the-c-level-dialect-engine}{%
+\subsection{\texorpdfstring{51.1 \texttt{csv}: The C-Level Dialect
+Engine}{51.1 csv: The C-Level Dialect Engine}}\label{csv-the-c-level-dialect-engine}}
+
+The \passthrough{\lstinline!csv!} module is not a simple
+string-splitter. It uses a sophisticated \textbf{Dialect} system to
+handle the myriad ways CSV files are quoted, escaped, and delimited.
+
+\hypertarget{the-_csv-c-extension}{%
+\subsubsection{\texorpdfstring{1. The \texttt{\_csv} C
+Extension}{1. The \_csv C Extension}}\label{the-_csv-c-extension}}
+
+In CPython, the heavy lifting is done in
+\passthrough{\lstinline!Modules/\_csv.c!}. * \textbf{Speed}: By
+performing the parsing in C, it avoids the overhead of creating millions
+of Python string objects for every field until they are actually needed.
+* \textbf{State Machine}: The C parser is a state machine that tracks
+whether it is currently inside a quoted field, whether the next
+character is an escape character, etc.
+
+\hypertarget{dialects-and-sniffer}{%
+\subsubsection{\texorpdfstring{2. Dialects and
+\texttt{Sniffer}}{2. Dialects and Sniffer}}\label{dialects-and-sniffer}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{\passthrough{\lstinline!register\_dialect()!}}: Allows you to
+  define custom formatting (e.g., pipe-delimited, tab-delimited with
+  backslash escapes).
+\item
+  \textbf{\passthrough{\lstinline!csv.Sniffer!}}: Analyzes a sample of
+  the text to guess the delimiter and quoting rules automatically.
+\end{itemize}
+
+\hypertarget{configparser-ini-file-mechanics}{%
+\subsection{\texorpdfstring{51.2 \texttt{configparser}: INI File
+Mechanics}{51.2 configparser: INI File Mechanics}}\label{configparser-ini-file-mechanics}}
+
+\passthrough{\lstinline!configparser!} handles configuration files in
+the Windows INI format. * \textbf{Mapping Interface}:
+\passthrough{\lstinline!ConfigParser!} objects behave like a dictionary
+of dictionaries. * \textbf{Interpolation}: Supports dynamic value
+substitution (e.g.,
+\passthrough{\lstinline!path = \%(base\_dir)s/logs!}). *
+\textbf{Internals}: It uses regular expressions to parse sections and
+keys. While slower than the \passthrough{\lstinline!csv!} module's C
+parser, it offers much more flexibility for human-readable
+configuration.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}

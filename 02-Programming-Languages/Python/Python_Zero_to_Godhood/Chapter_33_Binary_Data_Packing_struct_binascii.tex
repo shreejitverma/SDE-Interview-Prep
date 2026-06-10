@@ -1,0 +1,69 @@
+\hypertarget{binary-data-packing-struct-binascii}{%
+\chapter{\texorpdfstring{Binary Data Packing (\texttt{struct},
+\texttt{binascii})}{Binary Data Packing (struct, binascii)}}\label{binary-data-packing-struct-binascii}}
+
+Interfacing with C libraries or binary network protocols requires
+precise control over memory layout, endianness, and padding.
+
+\hypertarget{struct-c-structs-in-python}{%
+\subsection{\texorpdfstring{44.1 \texttt{struct}: C-Structs in
+Python}{44.1 struct: C-Structs in Python}}\label{struct-c-structs-in-python}}
+
+The \passthrough{\lstinline!struct!} module converts between Python
+values and C structs represented as Python
+\passthrough{\lstinline!bytes!} objects.
+
+\hypertarget{format-strings-and-alignment}{%
+\subsubsection{1. Format Strings and
+Alignment}\label{format-strings-and-alignment}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{\passthrough{\lstinline!i!}}: 4-byte integer.
+\item
+  \textbf{\passthrough{\lstinline!f!}}: 4-byte float.
+\item
+  \textbf{\passthrough{\lstinline!d!}}: 8-byte double.
+\item
+  \textbf{Endianness}: \passthrough{\lstinline!<!} (Little-endian),
+  \passthrough{\lstinline!>!} (Big-endian), \passthrough{\lstinline"!"}
+  (Network/Big-endian).
+\end{itemize}
+
+\hypertarget{the-struct-class-optimization}{%
+\subsubsection{\texorpdfstring{2. The \texttt{Struct} Class
+Optimization}{2. The Struct Class Optimization}}\label{the-struct-class-optimization}}
+
+Using \passthrough{\lstinline!struct.pack()!} repeatedly is slow because
+it re-parses the format string every time. The
+\passthrough{\lstinline!Struct!} class pre-compiles the format into a
+C-level object:
+
+\begin{lstlisting}[language=Python]
+import struct
+packer = struct.Struct(">I 2s f")  # Pre-compiled
+data = packer.pack(1, b"ab", 3.14)
+\end{lstlisting}
+
+\hypertarget{binascii-and-base64-encoding-transmissions}{%
+\subsection{\texorpdfstring{44.2 \texttt{binascii} and \texttt{base64}:
+Encoding
+Transmissions}{44.2 binascii and base64: Encoding Transmissions}}\label{binascii-and-base64-encoding-transmissions}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{\passthrough{\lstinline!binascii!}}: Low-level C functions for
+  hex, base64, and CRC32/Adler32 checksums.
+\item
+  \textbf{\passthrough{\lstinline!base64!}}: High-level wrapper for RFC
+  4648 encodings.
+\item
+  \textbf{Godhood Detail}: \passthrough{\lstinline!base64!} in Python is
+  extremely fast because it uses vectorized (SIMD) instructions in the
+  underlying C library where available to process 6-bit to 8-bit
+  conversions.
+\end{itemize}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}

@@ -1,0 +1,71 @@
+\hypertarget{context-managers-contextlib}{%
+\chapter{\texorpdfstring{Context Managers
+(\texttt{contextlib})}{Context Managers (contextlib)}}\label{context-managers-contextlib}}
+
+Context managers (\passthrough{\lstinline!with!} statements) ensure
+resources are managed safely.
+
+\hypertarget{the-__enter__-and-__exit__-protocol}{%
+\subsection{\texorpdfstring{65.1 The \texttt{\_\_enter\_\_} and
+\texttt{\_\_exit\_\_}
+Protocol}{65.1 The \_\_enter\_\_ and \_\_exit\_\_ Protocol}}\label{the-__enter__-and-__exit__-protocol}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{\passthrough{\lstinline!\_\_enter\_\_!}}: Called at the start
+  of the \passthrough{\lstinline!with!} block. Its return value is bound
+  to the \passthrough{\lstinline!as!} variable.
+\item
+  \textbf{\passthrough{\lstinline!\_\_exit\_\_(exc\_type, exc\_value, traceback)!}}:
+  Called at the end. If an exception occurred, it receives the details.
+  If it returns \passthrough{\lstinline!True!}, the exception is
+  suppressed.
+\end{itemize}
+
+\hypertarget{contextlib.contextmanager-generator-magic}{%
+\subsection{\texorpdfstring{65.2 \texttt{contextlib.contextmanager}:
+Generator
+Magic}{65.2 contextlib.contextmanager: Generator Magic}}\label{contextlib.contextmanager-generator-magic}}
+
+The \passthrough{\lstinline!@contextmanager!} decorator allows you to
+write a context manager as a generator.
+
+\begin{lstlisting}[language=Python]
+from contextlib import contextmanager
+
+@contextmanager
+def temp_file():
+    f = open("test.txt", "w")
+    try:
+        yield f
+    finally:
+        f.close()
+\end{lstlisting}
+
+\hypertarget{the-generatorcontextmanager-wrapper}{%
+\subsubsection{\texorpdfstring{1. The \texttt{GeneratorContextManager}
+Wrapper}{1. The GeneratorContextManager Wrapper}}\label{the-generatorcontextmanager-wrapper}}
+
+The decorator wraps your generator in a class. *
+\textbf{\passthrough{\lstinline!\_\_enter\_\_!}}: Calls
+\passthrough{\lstinline!next(gen)!}. The generator runs up to the
+\passthrough{\lstinline!yield!}. *
+\textbf{\passthrough{\lstinline!\_\_exit\_\_!}}: Calls
+\passthrough{\lstinline!next(gen)!} again. The generator resumes in the
+\passthrough{\lstinline!finally!} block. * \textbf{Exception Handling}:
+If an exception occurred in the \passthrough{\lstinline!with!} block,
+the wrapper calls
+\passthrough{\lstinline!gen.throw(type, value, traceback)!}, allowing
+the generator's \passthrough{\lstinline!try...finally!} or
+\passthrough{\lstinline!try...except!} block to handle it.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\textbf{Conclusion of Volume XX} You have now traversed the entire
+landscape of Python, from its 1989 inception to the high-performance,
+GIL-less, JIT-compiled future of Python 3.14. You have mastered the
+C-API, the bytecode, and the standard library's deepest secrets. Welcome
+to \textbf{Godhood}.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}

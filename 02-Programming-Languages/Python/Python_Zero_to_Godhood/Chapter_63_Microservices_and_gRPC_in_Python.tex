@@ -1,0 +1,54 @@
+\hypertarget{microservices-and-grpc-in-python}{%
+\chapter{Microservices and gRPC in
+Python}\label{microservices-and-grpc-in-python}}
+
+\hypertarget{why-grpc}{%
+\subsection{79.1 Why gRPC?}\label{why-grpc}}
+
+gRPC is a high-performance RPC framework developed by Google. *
+\textbf{Protocol Buffers}: A binary serialization format that is much
+faster than JSON. * \textbf{HTTP/2}: Supports multiplexing and
+server-side streaming.
+
+\hypertarget{implementing-grpc-in-python}{%
+\subsection{79.2 Implementing gRPC in
+Python}\label{implementing-grpc-in-python}}
+
+We use the \passthrough{\lstinline!grpcio!} and
+\passthrough{\lstinline!protobuf!} libraries to generate C++ accelerated
+Python code from \passthrough{\lstinline!.proto!} definitions. This
+allows for near-zero-copy communication between microservices written in
+different languages.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{phase-xix-scientific-computing-internals}{%
+\section{Phase XIX: Scientific Computing
+Internals}\label{phase-xix-scientific-computing-internals}}
+
+Python's dominance in science is due to its ability to wrap
+high-performance Fortran and C libraries.
+
+\hypertarget{chapter-86-numpy-internals-memory-strides-and-ufuncs}{%
+\chapter{Chapter 86: NumPy Internals: Memory Strides and
+UFuncs}\label{chapter-86-numpy-internals-memory-strides-and-ufuncs}}
+
+\hypertarget{the-ndarray-c-struct}{%
+\subsection{\texorpdfstring{86.1 The \texttt{ndarray}
+C-Struct}{86.1 The ndarray C-Struct}}\label{the-ndarray-c-struct}}
+
+A NumPy array is a C-struct that points to a block of data. *
+\textbf{Data}: Pointer to the raw memory. * \textbf{Dimensions}: Shape
+of the array. * \textbf{Strides}: The number of bytes to skip in memory
+to reach the next element in a dimension. This allows for \(O(1)\)
+reshaping and slicing without copying data.
+
+\hypertarget{universal-functions-ufuncs}{%
+\subsection{86.2 Universal Functions
+(UFuncs)}\label{universal-functions-ufuncs}}
+
+UFuncs are C-loops that operate on \passthrough{\lstinline!ndarray!}
+data. They handle type dispatching and SIMD acceleration (Chapter 71)
+automatically.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}

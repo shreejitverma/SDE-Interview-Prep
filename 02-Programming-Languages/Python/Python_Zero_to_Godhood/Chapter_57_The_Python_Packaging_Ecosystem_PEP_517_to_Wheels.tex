@@ -1,0 +1,50 @@
+\hypertarget{the-python-packaging-ecosystem-pep-517-to-wheels}{%
+\chapter{The Python Packaging Ecosystem: PEP 517 to
+Wheels}\label{the-python-packaging-ecosystem-pep-517-to-wheels}}
+
+Understanding how Python code is distributed is essential for senior
+engineering.
+
+\hypertarget{the-evolution-of-installation}{%
+\subsection{68.1 The Evolution of
+Installation}\label{the-evolution-of-installation}}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  \textbf{Legacy (\passthrough{\lstinline!setup.py install!})}: Executed
+  a script that performed arbitrary actions. This was insecure and
+  non-reproducible.
+\item
+  \textbf{Modern (PEP 517/518)}: Decouples the build backend (e.g.,
+  \passthrough{\lstinline!setuptools!}, \passthrough{\lstinline!flit!},
+  \passthrough{\lstinline!poetry!}) from the frontend
+  (\passthrough{\lstinline!pip!}).
+\end{enumerate}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{\passthrough{\lstinline!pyproject.toml!}}: The source of truth
+  for build requirements.
+\item
+  \textbf{Build Isolation}: \passthrough{\lstinline!pip!} creates a
+  temporary virtual environment to build your package, ensuring that
+  build dependencies don't pollute your system.
+\end{itemize}
+
+\hypertarget{the-wheel-format-pep-427}{%
+\subsection{68.2 The Wheel Format (PEP
+427)}\label{the-wheel-format-pep-427}}
+
+A ``Wheel'' (\passthrough{\lstinline!.whl!}) is a built distribution
+format. * \textbf{Internals}: It is a ZIP file (Chapter 50) containing
+the code and a \passthrough{\lstinline!.dist-info!} directory with
+metadata (dependencies, entry points). * \textbf{Platform Tags}: Wheels
+for C extensions include tags like
+\passthrough{\lstinline!manylinux2014\_x86\_64!} to specify exactly
+which OS and architecture they are compatible with, avoiding the need
+for the end-user to have a C compiler installed.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}

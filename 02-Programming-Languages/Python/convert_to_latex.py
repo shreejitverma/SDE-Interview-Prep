@@ -259,8 +259,98 @@ def create_master_tex(chapters):
                 master_content += r"\part{Volume XIII: The Standard Library III - Runtime, Import, \& Tooling}" + "\n"
                 current_volume = 13
 
-        # Handle preface
+            # Volume XIV: Text, Binary, and Cryptographic Services (Chapters 42-45)
+            elif chap_num == 42 and current_volume < 14:
+                master_content += r"\part{Volume XIV: Text, Binary, and Cryptographic Services}" + "\n"
+                current_volume = 14
+
+            # Volume XIII Expansion: Time and Advanced Data Types (Chapters 46-47)
+            elif chap_num == 46 and current_volume < 15:
+                master_content += r"\part{Volume XIII (Expansion): Time and Advanced Data Types}" + "\n"
+                current_volume = 15
+
+            # Volume XV: Data Compression and Archiving (Chapters 48-50)
+            elif chap_num == 48 and current_volume < 16:
+                master_content += r"\part{Volume XV: Data Compression and Archiving}" + "\n"
+                current_volume = 16
+
+            # Volume XVI: File Formats and Structured Markup (Chapters 51-53)
+            elif chap_num == 51 and current_volume < 17:
+                master_content += r"\part{Volume XVI: File Formats and Structured Markup}" + "\n"
+                current_volume = 17
+
+            # Volume XVII: Internet Protocols and Web Standards (Chapters 54-56)
+            elif chap_num == 54 and current_volume < 18:
+                master_content += r"\part{Volume XVII: Internet Protocols and Web Standards}" + "\n"
+                current_volume = 18
+
+            # Volume XVIII: Program Frameworks and Internationalization (Chapters 57-59)
+            elif chap_num == 57 and current_volume < 19:
+                master_content += r"\part{Volume XVIII: Program Frameworks and Internationalization}" + "\n"
+                current_volume = 19
+
+            # Volume XIX: Tooling, Packaging, and Virtualization (Chapters 60-62)
+            elif chap_num == 60 and current_volume < 20:
+                master_content += r"\part{Volume XIX: Tooling, Packaging, and Virtualization}" + "\n"
+                current_volume = 20
+
+            # Volume XX: Ultimate Extensibility & Embedding (Chapters 63-69)
+            elif chap_num == 63 and current_volume < 21:
+                master_content += r"\part{Volume XX: Ultimate Extensibility \& Embedding}" + "\n"
+                current_volume = 21
+
+            # Volume XXI: Hardware-Sympathetic Python (Chapters 70-72)
+            elif chap_num == 70 and current_volume < 22:
+                master_content += r"\part{Volume XXI: Hardware-Sympathetic Python}" + "\n"
+                current_volume = 22
+
+            # Volume XXII: Alternative Interpreters & Performance (Chapters 73-74)
+            elif chap_num == 73 and current_volume < 23:
+                master_content += r"\part{Volume XXII: Alternative Interpreters \& Performance}" + "\n"
+                current_volume = 23
+
+            # Volume XXIII: Comparative Systems and the Future (Chapters 75-76)
+            elif chap_num == 75 and current_volume < 24:
+                master_content += r"\part{Volume XXIII: Comparative Systems and the Future}" + "\n"
+                current_volume = 24
+
+            # Volume XXIV: Distributed Systems and Large-Scale Python (Chapters 77-79)
+            elif chap_num == 77 and current_volume < 25:
+                master_content += r"\part{Volume XXIV: Distributed Systems and Large-Scale Python}" + "\n"
+                current_volume = 25
+
+            # Volume XXV: Data Engineering and ML Production (Chapters 80-82)
+            elif chap_num == 80 and current_volume < 26:
+                master_content += r"\part{Volume XXV: Data Engineering \& ML Production}" + "\n"
+                current_volume = 26
+
+            # Volume XXVI: Python for CyberSecurity (Chapters 83-85)
+            elif chap_num == 83 and current_volume < 27:
+                master_content += r"\part{Volume XXVI: Python for CyberSecurity}" + "\n"
+                current_volume = 27
+
+            # Volume XXIX: Quantitative Finance with Python (Chapters 92-94)
+            elif chap_num == 92 and current_volume < 30:
+                master_content += r"\part{Volume XXIX: Quantitative Finance with Python}" + "\n"
+                current_volume = 30
+
+            # Volume XXX: Senior Engineering & Visualization (Chapters 92-98)
+            elif chap_num == 92 and current_volume < 31:
+                master_content += r"\part{Volume XXX: Senior Engineering \& Visualization}" + "\n"
+                current_volume = 31
+
+            # Volume XXXI: Cloud Native and Distributed Architectures (Chapters 99-103)
+            elif chap_num == 99 and current_volume < 32:
+                master_content += r"\part{Volume XXXI: Cloud Native and Distributed Architectures}" + "\n"
+                current_volume = 32
+
+
+        # Handle preface and appendix
         if filename.startswith("00_"):
+            master_content += f"\\input{{{filename}.tex}}\n"
+        elif filename.startswith("Appendix_"):
+            if r"\backmatter" not in master_content:
+                master_content += r"\backmatter" + "\n"
             master_content += f"\\input{{{filename}.tex}}\n"
         else:
             master_content += f"\\input{{{filename}.tex}}\n"

@@ -1,0 +1,150 @@
+\hypertarget{appendix-j-standard-library-source-code-map}{%
+\chapter{Appendix J: Standard Library Source Code
+Map}\label{appendix-j-standard-library-source-code-map}}
+
+This appendix provides a comprehensive mapping of the Python 3.13
+standard library modules to their respective source files in the CPython
+repository. Use this as a guide for your own source-code explorations.
+
+\hypertarget{j.1-core-builtins-and-objects}{%
+\subsection{J.1 Core Builtins and
+Objects}\label{j.1-core-builtins-and-objects}}
+
+\begin{longtable}[]{@{}lll@{}}
+\toprule
+Module/Type & C Source File & Purpose \\
+\midrule
+\endhead
+\passthrough{\lstinline!None!}, \passthrough{\lstinline!True!},
+\passthrough{\lstinline!False!} &
+\passthrough{\lstinline!Objects/boolobject.c!} & Core constants. \\
+\passthrough{\lstinline!int!} &
+\passthrough{\lstinline!Objects/longobject.c!} & Arbitrary-precision
+integers. \\
+\passthrough{\lstinline!float!} &
+\passthrough{\lstinline!Objects/floatobject.c!} & IEEE 754 doubles. \\
+\passthrough{\lstinline!list!} &
+\passthrough{\lstinline!Objects/listobject.c!} & Dynamic arrays. \\
+\passthrough{\lstinline!dict!} &
+\passthrough{\lstinline!Objects/dictobject.c!} & Hash tables. \\
+\passthrough{\lstinline!str!} &
+\passthrough{\lstinline!Objects/unicodeobject.c!} & PEP 393 compact
+strings. \\
+\passthrough{\lstinline!tuple!} &
+\passthrough{\lstinline!Objects/tupleobject.c!} & Immutable
+sequences. \\
+\passthrough{\lstinline!set!}, \passthrough{\lstinline!frozenset!} &
+\passthrough{\lstinline!Objects/setobject.c!} & Hash-based sets. \\
+\bottomrule
+\end{longtable}
+
+\hypertarget{j.2-python-modules-c-extensions}{%
+\subsection{J.2 Python Modules (C
+Extensions)}\label{j.2-python-modules-c-extensions}}
+
+\begin{longtable}[]{@{}lll@{}}
+\toprule
+Module & C Source File & Location in Repo \\
+\midrule
+\endhead
+\passthrough{\lstinline!array!} &
+\passthrough{\lstinline!arraymodule.c!} &
+\passthrough{\lstinline!Modules/!} \\
+\passthrough{\lstinline!binascii!} &
+\passthrough{\lstinline!binascii.c!} &
+\passthrough{\lstinline!Modules/!} \\
+\passthrough{\lstinline!cmath!} &
+\passthrough{\lstinline!cmathmodule.c!} &
+\passthrough{\lstinline!Modules/!} \\
+\passthrough{\lstinline!datetime!} &
+\passthrough{\lstinline!\_datetimemodule.c!} &
+\passthrough{\lstinline!Modules/!} \\
+\passthrough{\lstinline!errno!} &
+\passthrough{\lstinline!errnomodule.c!} &
+\passthrough{\lstinline!Modules/!} \\
+\passthrough{\lstinline!gc!} & \passthrough{\lstinline!gcmodule.c!} &
+\passthrough{\lstinline!Modules/!} \\
+\passthrough{\lstinline!hashlib!} &
+\passthrough{\lstinline!\_hashopenssl.c!} &
+\passthrough{\lstinline!Modules/!} \\
+\passthrough{\lstinline!itertools!} &
+\passthrough{\lstinline!itertoolsmodule.c!} &
+\passthrough{\lstinline!Modules/!} \\
+\passthrough{\lstinline!json!} & \passthrough{\lstinline!\_json.c!} &
+\passthrough{\lstinline!Modules/!} \\
+\passthrough{\lstinline!math!} & \passthrough{\lstinline!mathmodule.c!}
+& \passthrough{\lstinline!Modules/!} \\
+\passthrough{\lstinline!mmap!} & \passthrough{\lstinline!mmapmodule.c!}
+& \passthrough{\lstinline!Modules/!} \\
+\passthrough{\lstinline!os!} & \passthrough{\lstinline!posixmodule.c!} &
+\passthrough{\lstinline!Modules/!} \\
+\passthrough{\lstinline!pickle!} & \passthrough{\lstinline!\_pickle.c!}
+& \passthrough{\lstinline!Modules/!} \\
+\passthrough{\lstinline!re!} & \passthrough{\lstinline!\_sre.c!} &
+\passthrough{\lstinline!Modules/!} \\
+\passthrough{\lstinline!select!} &
+\passthrough{\lstinline!selectmodule.c!} &
+\passthrough{\lstinline!Modules/!} \\
+\passthrough{\lstinline!socket!} &
+\passthrough{\lstinline!socketmodule.c!} &
+\passthrough{\lstinline!Modules/!} \\
+\passthrough{\lstinline!ssl!} & \passthrough{\lstinline!\_ssl.c!} &
+\passthrough{\lstinline!Modules/!} \\
+\passthrough{\lstinline!sys!} & \passthrough{\lstinline!sysmodule.c!} &
+\passthrough{\lstinline!Python/!} \\
+\passthrough{\lstinline!time!} & \passthrough{\lstinline!timemodule.c!}
+& \passthrough{\lstinline!Modules/!} \\
+\passthrough{\lstinline!zlib!} & \passthrough{\lstinline!zlibmodule.c!}
+& \passthrough{\lstinline!Modules/!} \\
+\bottomrule
+\end{longtable}
+
+\hypertarget{j.3-high-level-python-modules-lib}{%
+\subsection{\texorpdfstring{J.3 High-Level Python Modules
+(\texttt{Lib/})}{J.3 High-Level Python Modules (Lib/)}}\label{j.3-high-level-python-modules-lib}}
+
+\begin{longtable}[]{@{}lll@{}}
+\toprule
+Module & Python File & Purpose \\
+\midrule
+\endhead
+\passthrough{\lstinline!abc!} & \passthrough{\lstinline!Lib/abc.py!} &
+Abstract Base Classes. \\
+\passthrough{\lstinline!argparse!} &
+\passthrough{\lstinline!Lib/argparse.py!} & CLI parsing. \\
+\passthrough{\lstinline!asyncio!} &
+\passthrough{\lstinline!Lib/asyncio/!} & Asynchronous I/O. \\
+\passthrough{\lstinline!collections!} &
+\passthrough{\lstinline!Lib/collections/!} & Container datatypes. \\
+\passthrough{\lstinline!email!} & \passthrough{\lstinline!Lib/email/!} &
+Email/MIME handling. \\
+\passthrough{\lstinline!http!} & \passthrough{\lstinline!Lib/http/!} &
+HTTP server/client logic. \\
+\passthrough{\lstinline!importlib!} &
+\passthrough{\lstinline!Lib/importlib/!} & The import machinery. \\
+\passthrough{\lstinline!inspect!} &
+\passthrough{\lstinline!Lib/inspect.py!} & Runtime introspection. \\
+\passthrough{\lstinline!logging!} &
+\passthrough{\lstinline!Lib/logging/!} & Event logging. \\
+\passthrough{\lstinline!multiprocessing!} &
+\passthrough{\lstinline!Lib/multiprocessing/!} & Process-based
+parallelism. \\
+\passthrough{\lstinline!pathlib!} &
+\passthrough{\lstinline!Lib/pathlib.py!} & OO filesystem paths. \\
+\passthrough{\lstinline!sqlite3!} &
+\passthrough{\lstinline!Lib/sqlite3/!} & SQLite database wrapper. \\
+\passthrough{\lstinline!unittest!} &
+\passthrough{\lstinline!Lib/unittest/!} & Testing framework. \\
+\passthrough{\lstinline!urllib!} & \passthrough{\lstinline!Lib/urllib/!}
+& URL processing. \\
+\passthrough{\lstinline!venv!} & \passthrough{\lstinline!Lib/venv/!} &
+Virtual environments. \\
+\bottomrule
+\end{longtable}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\textbf{This map covers 95\% of the logic you will interact with in a
+production Python system.}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
