@@ -1,0 +1,135 @@
+\hypertarget{cpython-memory-allocator-pymalloc-generational-garbage-collection}{%
+\chapter{CPython Memory Allocator (PyMalloc) \& Generational Garbage
+Collection}\label{cpython-memory-allocator-pymalloc-generational-garbage-collection}}
+
+\hypertarget{cpythons-memory-allocation-engine-pymalloc}{%
+\subsection{23.1 CPython's Memory Allocation Engine
+(PyMalloc)}\label{cpythons-memory-allocation-engine-pymalloc}}
+
+For large allocations (greater than 512 bytes), CPython forwards the
+request directly to the system's standard C library
+\passthrough{\lstinline!malloc()!}. However, for small objects
+(\(\le 512\) bytes)which represent the vast majority of Python
+allocationsstandard operating system allocators introduce high
+fragmentation and locking overhead. To resolve this, CPython implements
+a custom small-object allocator called \textbf{PyMalloc}.
+
+\hypertarget{pymalloc-memory-hierarchy}{%
+\subsubsection{1. PyMalloc Memory
+Hierarchy}\label{pymalloc-memory-hierarchy}}
+
+PyMalloc structures memory into three layers:
+
+\begin{lstlisting}
++-------------------------------------------------------------+
+|                     ARENA (256 KB)                          |
+|  Aligned to 256 KB boundaries in virtual memory.            |
+|  Contains exactly 64 Pools.                                 |
+|                                                             |
+|   +-------------------+ +-------------------+               |
+|   |    POOL (4 KB)    | |    POOL (4 KB)    |  ...          |
+|   |  Allocates one    | |  Allocates one    |               |
+|   |  size-class only. | |  size-class only. |               |
+|   |  +--------------+ | |  +--------------+ |               |
+|   |  | BLOCK (8B-512B)| |  | BLOCK (8B-512B)| |               |
+|   |  +--------------+ | |  +--------------+ |               |
+|   +-------------------+ +-------------------+               |
++-------------------------------------------------------------+
+\end{lstlisting}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  \textbf{Arenas}: Contiguous virtual memory blocks of 256 KB, aligned
+  to 256 KB boundaries. Arenas manage virtual memory allocations from
+  the OS and contain exactly 64 pools.
+\item
+  \textbf{Pools}: Blocks of 4 KB (matching the OS virtual page size). A
+  pool is dedicated to a single \textbf{size class} (e.g., all blocks in
+  a pool are 32 bytes, or all are 64 bytes).
+\item
+  \textbf{Blocks}: The actual chunks of memory returned to the
+  interpreter. Blocks range from 8 bytes to 512 bytes, aligned to 8-byte
+  steps (giving 64 distinct size classes).
+\end{enumerate}
+
+\hypertarget{size-class-formula}{%
+\subsubsection{2. Size Class Formula}\label{size-class-formula}}
+
+The size class for an allocation request of size \(S\) is calculated by:
+\[\text{Class Index} = \left\lceil \frac{S}{8} \right\rceil - 1\] This
+structured layout allows PyMalloc to bypass the general-purpose
+allocator heap search and perform near-instantaneous \(\mathcal{O}(1)\)
+allocation and free operations using thread-local lookups.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{generational-garbage-collection-cycle-detection}{%
+\subsection{23.2 Generational Garbage Collection Cycle
+Detection}\label{generational-garbage-collection-cycle-detection}}
+
+While reference counting manages the vast majority of object lifecycles,
+it cannot identify self-referencing cyclic loops (e.g.,
+\passthrough{\lstinline!x = []; x.append(x)!}). To reclaim cyclic memory
+leaks, CPython runs a cyclic Garbage Collector (GC) as a background
+system.
+
+\hypertarget{c-level-gc-header-layout}{%
+\subsubsection{1. C-level GC Header
+Layout}\label{c-level-gc-header-layout}}
+
+Every object tracked by the GC has an extra header prefix in memory
+before its normal \passthrough{\lstinline!PyObject!} structure. The GC
+cast looks up objects using the \passthrough{\lstinline!PyGC\_Head!}
+struct:
+
+\begin{lstlisting}[language=C]
+typedef union _gc_head {
+    struct {
+        union _gc_head *gc_next;    /* Pointer to next object in the generation list */
+        union _gc_head *gc_prev;    /* Pointer to previous object in the generation list */
+        Py_ssize_t gc_refs;         /* GC reference count copy used during cycle checks */
+    } gc;
+    double dummy;                   /* Forces alignment boundary adjustments */
+} PyGC_Head;
+\end{lstlisting}
+
+\hypertarget{the-three-generations}{%
+\subsubsection{2. The Three Generations}\label{the-three-generations}}
+
+The GC divides tracked objects into three generations based on survival
+age: * \textbf{Generation 0 (Gen 0)}: Where new objects are registered.
+Collected frequently. * \textbf{Generation 1 (Gen 1)}: Objects that
+survived a Gen 0 collection pass. * \textbf{Generation 2 (Gen 2)}:
+Long-lived objects. Collected least frequently.
+
+Collection is triggered when the number of allocations minus
+deallocations in a generation exceeds a configured threshold:
+\[\text{Allocations} - \text{Deallocations} > \text{Threshold}\]
+
+\hypertarget{the-cycle-detection-algorithm}{%
+\subsubsection{3. The Cycle Detection
+Algorithm}\label{the-cycle-detection-algorithm}}
+
+To find and break reference cycles without locking the entire runtime
+heap, CPython executes the following steps: 1. \textbf{Copy Reference
+Counts}: The GC copy-assigns the reference count of every object in the
+collection generation to its \passthrough{\lstinline!gc\_refs!} field in
+the \passthrough{\lstinline!PyGC\_Head!} struct. 2. \textbf{Subtract
+Internal References}: For each object, the GC traverses its linked
+references (via \passthrough{\lstinline!tp\_traverse!} slots). If a
+target object is also in the collection generation, the GC decrements
+the target's \passthrough{\lstinline!gc\_refs!} count. 3.
+\textbf{Isolate Garbage}: * If an object's
+\passthrough{\lstinline!gc\_refs!} drops to 0, it means the object is
+only reachable via references \emph{within} the generation cycle
+(candidates for garbage). * If \passthrough{\lstinline!gc\_refs > 0!},
+the object is reachable from outside the generation. The object and all
+objects it references are marked as reachable and moved back to the main
+list. 4. \textbf{Deallocate Cycles}: Any remaining objects with
+\passthrough{\lstinline!gc\_refs == 0!} are confirmed unreachable. The
+GC breaks the reference cycle by clearing references and deallocating
+the memory.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}

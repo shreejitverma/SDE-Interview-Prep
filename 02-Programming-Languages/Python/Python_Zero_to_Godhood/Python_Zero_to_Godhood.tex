@@ -1,0 +1,134 @@
+\documentclass[11pt, a4paper, openany]{book}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{hyperref}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{graphicx}
+\usepackage{geometry}
+\usepackage{longtable}
+\usepackage{booktabs}
+\usepackage{amssymb}
+\usepackage{amsmath}
+\usepackage{fancyhdr}
+\usepackage{calc}
+\usepackage{array}
+
+% Page Layout
+\geometry{margin=1in}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[LE,RO]{\thepage}
+\fancyhead[RE]{\leftmark}
+\fancyhead[LO]{\rightmark}
+
+% Colors for code
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.96,0.96,0.96}
+\definecolor{techblue}{rgb}{0.0, 0.2, 0.6}
+
+% Hyperlink styling
+\hypersetup{
+    colorlinks=true,
+    linkcolor=techblue,
+    filecolor=magenta,      
+    urlcolor=cyan,
+    pdftitle={Python Zero to Godhood},
+    pdfauthor={Shreejit Verma},
+}
+
+% Code Listing Style
+\lstdefinestyle{mystyle}{
+    backgroundcolor=\color{backcolour},   
+    commentstyle=\color{codegreen},
+    keywordstyle=\color{magenta},
+    numberstyle=\tiny\color{codegray},
+    stringstyle=\color{codepurple},
+    basicstyle=\ttfamily\footnotesize,
+    breakatwhitespace=false,         
+    breaklines=true,                 
+    captionpos=b,                    
+    keepspaces=true,                 
+    numbers=left,                    
+    numbersep=5pt,                  
+    showspaces=false,                
+    showstringspaces=false,
+    showtabs=false,                  
+    tabsize=2,
+    frame=single,
+    rulecolor=\color{codegray},
+    literate={│}{|}1 {─}{-}1 {┌}{+}1 {┐}{+}1 {└}{+}1 {┘}{+}1 {├}{+}1 {┤}{+}1 {┬}{+}1 {┴}{+}1 {┼}{+}1
+}
+\lstset{style=mystyle}
+
+% Fix for longtable width
+\setlength{\LTleft}{0pt}
+\setlength{\LTright}{0pt}
+
+% Pandoc compatibility commands
+\newcommand{\passthrough}[1]{#1}
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+
+\title{
+    \vspace*{2cm}
+    \Huge \textbf{Python Zero to Godhood} \\
+    \vspace{0.5cm}
+    \LARGE The Definitive Guide from Python 1.0 to Python 3.14 \\
+    \vspace{2cm}
+    \textbf{\Large Master the Runtime.}
+}
+\author{\Large Shreejit Verma}
+\date{\today}
+
+\begin{document}
+
+\frontmatter
+\maketitle
+\tableofcontents
+
+\mainmatter
+\input{00_Preface.tex}
+\part{Volume I: Classic Python \& Core Engine}
+\input{Chapter_01_Python_10_to_16_Inception__the_LL1_Executable_Pipe.tex}
+\input{Chapter_02_Python_1x_The_PyObject_Model__Reference_Counting_C.tex}
+\input{Chapter_03_Python_20_to_21_Comprehensions_Nested_Scopes__Cycl.tex}
+\input{Chapter_04_Python_22_to_23_Type-Class_Unification_Descriptors.tex}
+\input{Chapter_05_Python_24_to_27_Decorators_Context_Managers__the_2.tex}
+\input{Chapter_06_Python_2x_Low-Level_File_IO__Exceptions_Unwinding_.tex}
+\part{Volume II: The Python 3 Schism \& Core Enhancements}
+\input{Chapter_07_Python_30_The_Unicode_Paradigm_Shift_and_Text_vs_B.tex}
+\input{Chapter_08_Python_31_to_32_Standard_Library_Consolidation_and.tex}
+\part{Volume III: Generators, Iterators, and Async Inception}
+\input{Chapter_09_Python_33_Yield_From_Generators_and_Implicit_Names.tex}
+\input{Chapter_10_Python_34_Asyncio_Inception_Pathlib_and_Enum_Archi.tex}
+\input{Chapter_11_Python_35_Native_AsyncAwait_Coroutines_and_Matrix_.tex}
+\part{Volume IV: Expressiveness \& Developer Ergonomics}
+\input{Chapter_12_Python_36_F-Strings_Formatting_Variable_Annotation.tex}
+\input{Chapter_13_Python_37_Dataclasses_Context_Variables_and_Dict_O.tex}
+\part{Volume V: Structural Shifts \& Pattern Matching}
+\input{Chapter_14_Python_38_Walrus_Operator__and_Positional-Only_Par.tex}
+\input{Chapter_15_Python_39_to_310_PEG_Parser_Dict_Merge__and_Patter.tex}
+\input{Chapter_16_Python_38_to_310_Type_Hinting_Protocols_and_Struct.tex}
+\part{Volume VI: Performance Leap \& Runtime Mechanics}
+\input{Chapter_17_Python_311_Faster_CPython_Specializing_Interpreter.tex}
+\input{Chapter_18_Python_312_Native_Generics_PEP_695_Type_statement_.tex}
+\input{Chapter_19_Python_311_to_312_Exception_Groups_except_and_Trac.tex}
+\part{Volume VII: The GIL-less Future \& JIT Compilers}
+\input{Chapter_20_Python_313_Free-Threaded_Build__GIL_Removal_Intern.tex}
+\input{Chapter_21_Python_313_Copy-and-Patch_JIT_Compiler_Architectur.tex}
+\input{Chapter_22_Python_312_to_313_Subinterpreters__Per-Interpreter.tex}
+\part{Volume VIII: Runtime Internals \& C Extensions}
+\input{Chapter_23_CPython_Memory_Allocator_PyMalloc__Generational_Ga.tex}
+\input{Chapter_24_C_Extensions__Python_C-API_Interoperability.tex}
+\input{Chapter_25_Metaclasses_Descriptor_Protocol_and_type_Slots.tex}
+\part{Volume IX: High Performance \& Low Latency Concurrency}
+\input{Chapter_26_LOW-LEVEL_MEMORY_OPTIMIZATION_TECHNIQUES.tex}
+\input{Chapter_27_CPU__IO_BOUND_SYSTEM_CONCURRENCY.tex}
+\input{Chapter_28_NUMERICAL_HIGH-PERFORMANCE_DATA_STRUCTURES.tex}
+\input{Chapter_29_PROFILING_BENCHMARKING_AND_DIAGNOSTICS.tex}
+\input{Chapter_30_CAPSTONE_PROJECT_HIGH-FREQUENCY_ORDER_BOOK__TRADIN.tex}
+\end{document}

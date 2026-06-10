@@ -1,0 +1,78 @@
+\hypertarget{native-asyncawait-runtime-engine}{%
+\chapter{NATIVE ASYNC/AWAIT RUNTIME
+ENGINE}\label{native-asyncawait-runtime-engine}}
+
+\hypertarget{pep-492-native-coroutines}{%
+\subsection{11.1 PEP 492: Native
+Coroutines}\label{pep-492-native-coroutines}}
+
+Introduced in Python 3.5, \textbf{PEP 492} separated coroutines from
+generators by introducing the \passthrough{\lstinline!async def!} and
+\passthrough{\lstinline!await!} syntax. * \textbf{Native Coroutines
+(\passthrough{\lstinline!PyCoroObject!})}: Functions declared with
+\passthrough{\lstinline!async def!} return a native coroutine object
+instead of a generator. Coroutines do not support standard iterator
+methods (\passthrough{\lstinline!\_\_next\_\_!}); instead, they
+implement the \passthrough{\lstinline!\_\_await\_\_!} method, which
+returns an iterator used by the event loop to drive execution.
+
+\hypertarget{the-event-loop-and-os-selectors}{%
+\subsection{11.2 The Event Loop and OS
+Selectors}\label{the-event-loop-and-os-selectors}}
+
+The event loop is a single-threaded runtime manager that schedules and
+executes concurrent operations. * \textbf{I/O Multiplexing}: The loop
+utilizes the standard library \passthrough{\lstinline!selectors!} module
+to monitor I/O sockets. This wraps high-performance OS-specific polling
+mechanisms: - \passthrough{\lstinline!epoll!} (Linux) -
+\passthrough{\lstinline!kqueue!} (macOS / BSD) -
+\passthrough{\lstinline!select!} (Fallback platform wrapper) *
+\textbf{Non-Blocking Scheduling}: When a task awaits an I/O operation
+(like reading from a socket), the event loop registers the socket's file
+descriptor with the OS selector and suspends the task. While the socket
+is waiting, the loop executes other tasks. Once the selector signals
+that the socket is ready, the event loop resumes the suspended task.
+
+\hypertarget{task-and-future-state-machines}{%
+\subsection{11.3 Task and Future State
+Machines}\label{task-and-future-state-machines}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Future}: Represents the eventual result of an asynchronous
+  operation. It tracks state: \passthrough{\lstinline!PENDING!},
+  \passthrough{\lstinline!CANCELLED!}, or
+  \passthrough{\lstinline!FINISHED!}.
+\item
+  \textbf{Task}: A subclass of \passthrough{\lstinline!Future!} that
+  wraps a coroutine object. The event loop drives the task by calling
+  its \passthrough{\lstinline!step()!} method:
+
+  \begin{enumerate}
+  \def\labelenumi{\arabic{enumi}.}
+  \tightlist
+  \item
+    \passthrough{\lstinline!step()!} invokes the coroutine's
+    \passthrough{\lstinline!send(None)!} to run it.
+  \item
+    The coroutine executes until it awaits another future, which raises
+    a \passthrough{\lstinline!YieldPoint!} and returns control to the
+    loop.
+  \item
+    Once the awaited future completes, the loop calls
+    \passthrough{\lstinline!step()!} again, passing the result back into
+    the coroutine via \passthrough{\lstinline!send(result)!}.
+  \end{enumerate}
+\end{itemize}
+
+\begin{lstlisting}
+Task Lifecycle State Machine:
+  [ PENDING ] ---> ( Scheduled on Loop ) ---> [ RUNNING (step called) ]
+       |                                             |
+       | <----( Yields on await / Pending Future )---+
+       |
+       +-------> ( Finished / Exception ) ------> [ FINISHED ]
+\end{lstlisting}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}

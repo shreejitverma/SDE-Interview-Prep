@@ -1,0 +1,236 @@
+\hypertarget{python-2.x-low-level-file-io-exceptions-unwinding-blocks}{%
+\chapter{Python 2.x: Low-Level File I/O \& Exceptions Unwinding
+Blocks}\label{python-2.x-low-level-file-io-exceptions-unwinding-blocks}}
+
+\hypertarget{low-level-file-management-and-standard-streams-wrapping}{%
+\subsection{6.1 Low-Level File Management and Standard Streams
+wrapping}\label{low-level-file-management-and-standard-streams-wrapping}}
+
+Under Python 2.x, the built-in \passthrough{\lstinline!file!} type and
+\passthrough{\lstinline!open()!} function were thin wrappers around
+standard C stdio library streams (\passthrough{\lstinline!FILE *!}).
+
+\hypertarget{the-cpython-2.x-pyfileobject-layout}{%
+\subsubsection{\texorpdfstring{1. The CPython 2.x \texttt{PyFileObject}
+Layout}{1. The CPython 2.x PyFileObject Layout}}\label{the-cpython-2.x-pyfileobject-layout}}
+
+Let's inspect the \passthrough{\lstinline!PyFileObject!} C structure
+defined in CPython 2.x's \passthrough{\lstinline!Include/fileobject.h!}:
+
+\begin{lstlisting}[language=C]
+typedef struct {
+    PyObject_HEAD
+    FILE *f_fp;                 /* Pointer to standard C stdio stream */
+    PyObject *f_name;           /* File name string object */
+    PyObject *f_mode;           /* File mode string object */
+    int (*f_close)(FILE *);     /* Close wrapper function */
+    int f_softspace;            /* Print statement space tracking state */
+    int f_binary;               /* Binary mode flag indicator */
+    PyObject *f_encoding;       /* File encoding string */
+    PyObject *f_errors;         /* Error handling mode */
+    PyObject *f_newlines;       /* Decoded newlines object */
+} PyFileObject;
+\end{lstlisting}
+
+\hypertarget{the-f_softspace-printing-flag}{%
+\subsubsection{\texorpdfstring{2. The \texttt{f\_softspace} Printing
+Flag}{2. The f\_softspace Printing Flag}}\label{the-f_softspace-printing-flag}}
+
+In Python 2.x, the print statement was keyword-based rather than a
+function. The runtime tracked layout separation using the
+\passthrough{\lstinline!f\_softspace!} slot inside the standard output
+stream: * When a print statement completed printing an item, it
+evaluated the next token. If a trailing comma was present (e.g.,
+\passthrough{\lstinline!print x,!}), the VM set
+\passthrough{\lstinline!f\_softspace = 1!} and omitted the newline
+character. * During the subsequent print operation, CPython checked
+\passthrough{\lstinline!f\_softspace!}. If it was
+\passthrough{\lstinline!1!}, it wrote a space to the file stream before
+printing the next element and reset
+\passthrough{\lstinline!f\_softspace = 0!}.
+
+\hypertarget{redundant-locking-bottlenecks-under-the-gil}{%
+\subsubsection{3. Redundant Locking Bottlenecks under the
+GIL}\label{redundant-locking-bottlenecks-under-the-gil}}
+
+Because Python 2.x wrapped standard C \passthrough{\lstinline!FILE *!}
+streams, I/O operations were subject to the underlying C library's
+internal buffering and synchronization locking. * Standard C libraries
+acquire internal mutex locks per read/write call to ensure
+multi-threaded safety. * In CPython, since the Global Interpreter Lock
+(GIL) already guarantees single-threaded interpreter execution, these
+nested C stdio locks were redundant, introducing unnecessary CPU
+context-switching overhead and locking bottlenecks during high-frequency
+concurrent file operations.
+
+\hypertarget{the-layered-io-system-pep-3116}{%
+\subsubsection{4. The Layered I/O System (PEP
+3116)}\label{the-layered-io-system-pep-3116}}
+
+To eliminate stdio bottlenecks, Python 3.0 replaced the old stream-based
+system with a layered I/O architecture backported to Python 2.6+. This
+system interacts directly with OS file descriptors via system calls
+(e.g., \passthrough{\lstinline!read(2)!},
+\passthrough{\lstinline!write(2)!}), bypassing C's stdio library: 1.
+\textbf{Raw Layer (\passthrough{\lstinline!RawIOBase!} /
+\passthrough{\lstinline!FileIO!})}: A thin wrapper over the POSIX OS
+file descriptor, executing raw system-level reads and writes. 2.
+\textbf{Buffered Layer (\passthrough{\lstinline!BufferedIOBase!} /
+\passthrough{\lstinline!BufferedReader!} /
+\passthrough{\lstinline!BufferedWriter!})}: Maintains an internal memory
+block (typically 8KB) to minimize context switches between user space
+and kernel space. 3. \textbf{Text Layer
+(\passthrough{\lstinline!TextIOBase!} /
+\passthrough{\lstinline!TextIOWrapper!})}: Handles encoding/decoding and
+system-specific universal newline translations.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{exception-mechanics-and-the-thread-state-slots}{%
+\subsection{6.2 Exception Mechanics and the Thread State
+slots}\label{exception-mechanics-and-the-thread-state-slots}}
+
+CPython manages exceptions at the thread level, storing active and
+caught exception states inside the execution thread's state structure.
+
+\hypertarget{exception-slots-in-pythreadstate}{%
+\subsubsection{\texorpdfstring{1. Exception Slots in
+\texttt{PyThreadState}}{1. Exception Slots in PyThreadState}}\label{exception-slots-in-pythreadstate}}
+
+CPython maintains exception metadata on a per-thread basis within the
+\passthrough{\lstinline!PyThreadState!} struct
+(\passthrough{\lstinline!Include/pystate.h!}):
+
+\begin{lstlisting}[language=C]
+typedef struct _ts {
+    struct _ts *next;
+    PyInterpreterState *interp;
+    struct _frame *frame;       /* Active execution frame */
+    
+    /* Exception currently propagating */
+    PyObject *curexc_type;
+    PyObject *curexc_value;
+    PyObject *curexc_traceback;
+
+    /* Exception currently caught and handled */
+    PyObject *exc_type;
+    PyObject *exc_value;
+    PyObject *exc_traceback;
+} PyThreadState;
+\end{lstlisting}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{\passthrough{\lstinline!curexc\_*!} (Current Exception)}: The
+  active exception currently propagating. When an instruction fails
+  (e.g., division by zero), CPython sets these pointers and returns
+  \passthrough{\lstinline!NULL!} up the C execution chain.
+\item
+  \textbf{\passthrough{\lstinline!exc\_*!} (Caught Exception)}: The
+  exception currently being handled inside an active
+  \passthrough{\lstinline!except!} block. This keeps the exception
+  accessible via \passthrough{\lstinline!sys.exc\_info()!} during
+  nesting, while preventing active propagation from overwriting the
+  caught state.
+\end{itemize}
+
+\hypertarget{the-string-exception-era}{%
+\subsubsection{2. The String Exception
+Era}\label{the-string-exception-era}}
+
+In early Python versions (pre-2.6), exceptions were not required to be
+class instances; you could raise plain string literals:
+
+\begin{lstlisting}[language=Python]
+# Pre-Python 2.6 Behavior
+raise "DatabaseConnectionFailed"
+\end{lstlisting}
+
+During lookup, the VM evaluated string exceptions by identity
+(\passthrough{\lstinline!is!} check) rather than class inheritance. This
+made hierarchy categorization and error composition difficult. Python
+2.6 deprecated and removed string exceptions, requiring all exceptions
+to inherit from the built-in base type
+\passthrough{\lstinline!BaseException!}.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{the-try-except-finally-block-stack-and-stack-restoration}{%
+\subsection{6.3 The Try-Except-Finally Block Stack and Stack
+Restoration}\label{the-try-except-finally-block-stack-and-stack-restoration}}
+
+CPython handles structured control flow (loops, exception blocks) using
+a static \textbf{block stack} located inside each execution frame
+(\passthrough{\lstinline!PyFrameObject!}).
+
+\hypertarget{the-pytryblock-structure}{%
+\subsubsection{\texorpdfstring{1. The \texttt{PyTryBlock}
+Structure}{1. The PyTryBlock Structure}}\label{the-pytryblock-structure}}
+
+The block stack consists of up to 20
+(\passthrough{\lstinline!CO\_MAXBLOCKS!})
+\passthrough{\lstinline!PyTryBlock!} structs:
+
+\begin{lstlisting}[language=C]
+typedef struct {
+    int b_type;                 /* Block type: SETUP_LOOP, SETUP_EXCEPT, SETUP_FINALLY */
+    int b_handler;              /* Target instruction offset of the handler */
+    int b_level;                /* Stack pointer depth at block entry */
+} PyTryBlock;
+\end{lstlisting}
+
+\hypertarget{vm-exception-unwinding-flow}{%
+\subsubsection{2. VM Exception Unwinding
+Flow}\label{vm-exception-unwinding-flow}}
+
+When an instruction returns \passthrough{\lstinline!NULL!}, the VM loop
+(\passthrough{\lstinline!\_PyEval\_EvalFrameDefault!}) enters unwinding
+mode:
+
+\begin{lstlisting}
+[Exception Raised: C API returns NULL]
+                  |
+                  v
+[Is frame->f_blockstack empty?]
+        |             |
+       Yes            No
+        |             |
+        v             v
+[Pop Frame]     [Pop Try Block]
+[Traceback]           |
+        |       [Is block SETUP_EXCEPT or SETUP_FINALLY?]
+        v             |                  |
+[Repeat in            No                Yes
+ caller]              |                  |
+                      v                  v
+                [Continue loop]   1. Restore stack pointer: stack_pointer = frame->b_level
+                                  2. Push traceback, value, type onto stack
+                                  3. Set PC: frame->f_lasti = block->b_handler
+                                  4. Resume bytecode execution in handler
+\end{lstlisting}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  \textbf{Stack Cleanup via \passthrough{\lstinline!b\_level!}}: The VM
+  pops the current try block. It immediately restores the frame's
+  evaluation stack pointer back to the offset saved in
+  \passthrough{\lstinline!b\_level!}. This discards any unused variables
+  or intermediate states created inside the
+  \passthrough{\lstinline!try!} block, preventing memory leaks.
+\item
+  \textbf{Context Setup}: The VM pushes the exception's
+  \passthrough{\lstinline!traceback!}, \passthrough{\lstinline!value!},
+  and \passthrough{\lstinline!type!} (in Python 2.x) onto the evaluation
+  stack.
+\item
+  \textbf{Frame Traversal fallback}: If the frame's block stack is
+  exhausted without finding a handler, CPython pops the frame,
+  instantiates a \passthrough{\lstinline!PyTracebackObject!} mapping the
+  exception to the current line number, and continues unwinding in the
+  caller's frame (\passthrough{\lstinline!frame->f\_back!}).
+\end{enumerate}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}

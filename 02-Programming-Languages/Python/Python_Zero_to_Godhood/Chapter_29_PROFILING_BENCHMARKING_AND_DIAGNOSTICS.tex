@@ -1,0 +1,247 @@
+\hypertarget{profiling-benchmarking-and-diagnostics}{%
+\chapter{PROFILING, BENCHMARKING, AND
+DIAGNOSTICS}\label{profiling-benchmarking-and-diagnostics}}
+
+\hypertarget{deterministic-profiling-cprofile-vs.-sampling-profiling-py-spy}{%
+\subsection{\texorpdfstring{29.1 Deterministic Profiling
+(\texttt{cProfile}) vs.~Sampling Profiling
+(\texttt{py-spy})}{29.1 Deterministic Profiling (cProfile) vs.~Sampling Profiling (py-spy)}}\label{deterministic-profiling-cprofile-vs.-sampling-profiling-py-spy}}
+
+Identifying execution bottlenecks is the first step toward optimization.
+Python developers must choose between two primary profiling
+methodologies depending on the target environment.
+
+\hypertarget{deterministic-profiling-via-cprofile}{%
+\subsubsection{\texorpdfstring{1. Deterministic Profiling via
+\texttt{cProfile}}{1. Deterministic Profiling via cProfile}}\label{deterministic-profiling-via-cprofile}}
+
+\passthrough{\lstinline!cProfile!} is a built-in module that provides
+\textbf{deterministic profiling}. It monitors every function call,
+function return, and exception raise event in the program.
+
+Under the hood, \passthrough{\lstinline!cProfile!} registers a profile
+hook at the C level using CPython's execution frame hooks (similar to
+\passthrough{\lstinline!sys.setprofile!}):
+
+\begin{lstlisting}
+[CPython VM Evaluator]
+          |
+          +---> Triggers Hook ---> [cProfile Event handler] (Logs timestamp)
+          |
+   [Execute Bytecode]
+          |
+          +---> Triggers Hook ---> [cProfile Event handler] (Calculates duration)
+\end{lstlisting}
+
+\hypertarget{advantages}{%
+\paragraph{Advantages}\label{advantages}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Exact Counts}: Provides exact call counts for every function
+  in the execution tree.
+\item
+  \textbf{Granular Statistics}: Tracks exact cumulative time spent
+  inside a function vs.~time spent in its child calls.
+\end{itemize}
+
+\hypertarget{disadvantages}{%
+\paragraph{Disadvantages}\label{disadvantages}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{High Overhead}: Hooking into every call/return introduces
+  significant execution overhead (typically slowing programs down by 2x
+  to 10x).
+\item
+  \textbf{Measurement Distortion}: For fast helper functions or
+  recursion loops, the execution cost of the profiler hook itself can be
+  larger than the function being profiled, distorting the final
+  statistics.
+\end{itemize}
+
+\hypertarget{sampling-profiling-via-py-spy}{%
+\subsubsection{\texorpdfstring{2. Sampling Profiling via
+\texttt{py-spy}}{2. Sampling Profiling via py-spy}}\label{sampling-profiling-via-py-spy}}
+
+\passthrough{\lstinline!py-spy!} is an out-of-process sampling profiler
+written in Rust. Instead of intercepting the executing bytecode, it
+queries the operating system to read the virtual memory pages of the
+target Python process directly (using syscalls like
+\passthrough{\lstinline!process\_vm\_readv!} on Linux,
+\passthrough{\lstinline!vm\_read!} on macOS, or
+\passthrough{\lstinline!ReadProcessMemory!} on Windows).
+
+\begin{lstlisting}
++------------------------------------+      +------------------------------------+
+|          Python Process            |      |          py-spy Process            |
+|  [_PyRuntime / PyThreadState]      | <=== |  process_vm_readv()                |
+|  - Active Frame stack pointers     |      |  - Resolves C pointers             |
+|  - Executing bytecode indices      |      |  - Renders flamegraph in real time |
++------------------------------------+      +------------------------------------+
+\end{lstlisting}
+
+At regular intervals (e.g.~100 times per second),
+\passthrough{\lstinline!py-spy!} performs the following steps: 1.
+Locates CPython's global runtime structure
+(\passthrough{\lstinline!\_PyRuntime!} or the active
+\passthrough{\lstinline!PyThreadState!}). 2. Reads the thread's call
+stack, traversing the linked list of interpreter frames
+(\passthrough{\lstinline!PyFrameObject!}). 3. Resolves the code objects
+and file names associated with the frames to reconstruct the
+Python-level stack trace.
+
+\hypertarget{advantages-1}{%
+\paragraph{Advantages}\label{advantages-1}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Near-Zero Overhead}: Does not modify bytecode execution or
+  trigger frame hooks, resulting in less than 1\% CPU overhead.
+\item
+  \textbf{Production Safe}: Can be attached to running, high-traffic
+  production web servers or daemons without slowing them down.
+\end{itemize}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{memory-leak-diagnostics-via-tracemalloc}{%
+\subsection{\texorpdfstring{29.2 Memory Leak Diagnostics via
+\texttt{tracemalloc}}{29.2 Memory Leak Diagnostics via tracemalloc}}\label{memory-leak-diagnostics-via-tracemalloc}}
+
+Memory leaks in Python usually occur when objects remain referenced
+inside global structures, module namespaces, or circular caches,
+preventing reference counting and GC from reclaiming them.
+
+\hypertarget{tracemalloc-architecture}{%
+\subsubsection{1. tracemalloc
+Architecture}\label{tracemalloc-architecture}}
+
+The \passthrough{\lstinline!tracemalloc!} module tracks allocations at
+the allocator level. When enabled, it hooks into CPython's internal
+\passthrough{\lstinline!PyObject\_Malloc!} and memory deallocation
+routines.
+
+For every block of memory allocated,
+\passthrough{\lstinline!tracemalloc!} stores: * The virtual memory
+address and allocation size in bytes. * The C-level call stack. * The
+Python-level stack trace (up to a configurable number of frames).
+
+\hypertarget{memory-leak-snapshot-script}{%
+\subsubsection{2. Memory Leak Snapshot
+Script}\label{memory-leak-snapshot-script}}
+
+Below is a complete script demonstrating how to capture and compare
+memory snapshots to isolate leaks:
+
+\begin{lstlisting}[language=Python]
+import tracemalloc
+import time
+
+# Start tracing memory allocations, storing up to 10 frames of stack trace
+tracemalloc.start(10)
+
+def simulate_memory_leak():
+    # Helper list that holds references, preventing deallocation
+    global leak_accumulator
+    if 'leak_accumulator' not in globals():
+        leak_accumulator = []
+        
+    # Allocate a large list of string objects
+    leaked_data = [f"Leaked String Index {i}" for i in range(10_000)]
+    leak_accumulator.append(leaked_data)
+
+def main():
+    # 1. Take initial baseline snapshot
+    print("Capturing baseline memory snapshot...")
+    snapshot_baseline = tracemalloc.take_snapshot()
+    
+    # Run operations that allocate memory and leak it
+    print("Running leaky operations...")
+    for _ in range(5):
+        simulate_memory_leak()
+        time.sleep(0.1)
+        
+    # 2. Take secondary snapshot after operations
+    print("Capturing comparison snapshot...")
+    snapshot_current = tracemalloc.take_snapshot()
+    
+    # 3. Compare snapshots, grouping allocations by file line number
+    stats = snapshot_current.compare_to(snapshot_baseline, 'lineno')
+    
+    print("\n=== TOP MEMORY ALLOCATION DIFFERENCES ===")
+    for stat in stats[:3]:
+        print(stat)
+        # Print the exact traceback line that allocated the leaked memory
+        print("Traceback:")
+        for frame in stat.traceback:
+            print(f"  File {frame.filename}, line {frame.lineno}: {frame.line}")
+        print("-" * 50)
+
+if __name__ == '__main__':
+    main()
+\end{lstlisting}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{crash-debugging-via-faulthandler}{%
+\subsection{\texorpdfstring{29.3 Crash Debugging via
+\texttt{faulthandler}}{29.3 Crash Debugging via faulthandler}}\label{crash-debugging-via-faulthandler}}
+
+When a Python program crashes due to a low-level C error (such as a
+segmentation fault in a C extension, stack overflow, or memory
+corruption), the OS immediately terminates the process with a core dump.
+Standard Python try-except blocks cannot catch these crashes, and Python
+stack traces are lost, leaving developers with only a generic
+\passthrough{\lstinline!Segmentation Fault!} message.
+
+The \passthrough{\lstinline!faulthandler!} module registers signal
+handlers at the operating system level for critical signals:
+
+\begin{longtable}[]{@{}lll@{}}
+\toprule
+Signal & Description & Trigger Example \\
+\midrule
+\endhead
+\textbf{\passthrough{\lstinline!SIGSEGV!}} & Segmentation fault. &
+Dereferencing a invalid or \passthrough{\lstinline!NULL!} pointer in
+C. \\
+\textbf{\passthrough{\lstinline!SIGFPE!}} & Floating-point exception. &
+Division by zero or overflow at C level. \\
+\textbf{\passthrough{\lstinline!SIGBUS!}} & Bus error. & Unaligned
+memory access or hardware fault. \\
+\textbf{\passthrough{\lstinline!SIGILL!}} & Illegal instruction. &
+Execution of corrupted machine code stencils. \\
+\bottomrule
+\end{longtable}
+
+When one of these signals is caught: 1. The OS suspends normal process
+execution and invokes the handler registered by
+\passthrough{\lstinline!faulthandler!}. 2.
+\passthrough{\lstinline!faulthandler!} safely queries CPython's current
+thread state (\passthrough{\lstinline!PyThreadState\_Get()!}). 3. It
+prints the Python call stack of all running threads directly to the
+standard error output (\passthrough{\lstinline!sys.stderr!}), using only
+async-signal-safe system calls. 4. The process then terminates as usual.
+
+To enable crash traceback logging at the start of your application:
+
+\begin{lstlisting}[language=Python]
+import faulthandler
+import sys
+
+# Enable crash reporting, directing output to stderr
+faulthandler.enable(file=sys.stderr, all_threads=True)
+\end{lstlisting}
+
+Alternatively, you can enable it from the terminal without modifying
+code by setting the environment variable:
+
+\begin{lstlisting}[language=bash]
+export PYTHONFAULTHANDLER=1
+\end{lstlisting}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}

@@ -1,0 +1,280 @@
+\hypertarget{python-1.x-the-pyobject-model-reference-counting-core}{%
+\chapter{Python 1.x: The PyObject Model \& Reference Counting
+Core}\label{python-1.x-the-pyobject-model-reference-counting-core}}
+
+\hypertarget{the-unified-pyobject-pyvarobject-structs}{%
+\subsection{\texorpdfstring{2.1 The Unified \texttt{PyObject} \&
+\texttt{PyVarObject}
+Structs}{2.1 The Unified PyObject \& PyVarObject Structs}}\label{the-unified-pyobject-pyvarobject-structs}}
+
+In CPython, \textbf{every python value is a heap-allocated C struct}.
+There are no primitive variables on the stack. The fundamental base
+structure is defined in \passthrough{\lstinline!Include/object.h!}:
+
+\begin{lstlisting}[language=C]
+/* CPython source definition from Include/object.h */
+#ifdef Py_TRACE_REFS
+/* Doubly-linked list pointers for active heap tracing in debug builds */
+#define _PyObject_HEAD_EXTRA            \
+    struct _object *_ob_next;           \
+    struct _object *_ob_prev;
+#else
+#define _PyObject_HEAD_EXTRA
+#endif
+
+typedef struct _object {
+    _PyObject_HEAD_EXTRA                /* Doubly-linked list pointers */
+    Py_ssize_t ob_refcnt;               /* Reference count counter */
+    struct _typeobject *ob_type;        /* Pointer to the type definition object */
+} PyObject;
+
+typedef struct {
+    PyObject ob_base;                   /* Base type fields */
+    Py_ssize_t ob_size;                 /* Size of the variable portion (e.g. sequence length) */
+} PyVarObject;
+\end{lstlisting}
+
+\hypertarget{comparison-to-c-memory-layout}{%
+\subsubsection{1. Comparison to C++ Memory
+Layout}\label{comparison-to-c-memory-layout}}
+
+Unlike C++, where objects are laid out contiguously on the stack or heap
+based on their static type declarations and resolved via virtual
+function tables (\passthrough{\lstinline!vtable!}), CPython objects are
+entirely dynamic: 1. \textbf{Uniform Pointer Width}: Every variable in
+Python is a pointer (\passthrough{\lstinline!PyObject*!}), consuming
+exactly 8 bytes (on 64-bit platforms). 2. \textbf{No VTable
+Indirection}: Polymorphism is resolved dynamically by dereferencing the
+type pointer \passthrough{\lstinline!ob\_type!} at runtime to lookup
+operations.
+
+\begin{lstlisting}
+Python Reference Pointer:
+[Name: x] ---> [ Heap Allocation: PyObject ]
+               +--------------------------------------+
+               | _PyObject_HEAD_EXTRA (Tracking)      |
+               | ob_refcnt: 1                         |
+               | ob_type: ----> [ PyTypeObject (int)] |
+               | Integer Data Value Payload           |
+               +--------------------------------------+
+\end{lstlisting}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{the-type-object-slot-system}{%
+\subsection{2.2 The Type-Object Slot
+System}\label{the-type-object-slot-system}}
+
+The type of an object is defined by the
+\passthrough{\lstinline!PyTypeObject!} struct (which is itself a
+subclass of \passthrough{\lstinline!PyObject!}).
+
+\hypertarget{type-struct-slots-layout}{%
+\subsubsection{1. Type Struct Slots
+layout}\label{type-struct-slots-layout}}
+
+The type struct defines a series of ``slots'' (pointers to C functions)
+that determine how the object behaves when subjected to operators.
+
+\begin{lstlisting}[language=C]
+/* Conceptual CPython definition from Include/cpython/object.h */
+struct _typeobject {
+    PyObject_VAR_HEAD
+    const char *tp_name;                 /* For printing, in format <module>.<name> */
+    Py_ssize_t tp_basicsize, tp_itemsize; /* For allocation */
+    
+    /* Type Slots (Static Function Pointers) */
+    destructor tp_dealloc;               /* Deallocation handler */
+    reprfunc tp_repr;                    /* Representation builder */
+    getattrfunc tp_getattr;              /* Attribute lookup hook */
+    setattrfunc tp_setattr;              /* Attribute assignment hook */
+    hashfunc tp_hash;                    /* Hashing calculation function pointer */
+    
+    /* Protocol Table Slots */
+    PyNumberMethods *tp_as_number;       /* Math function pointers (e.g. nb_add) */
+    PySequenceMethods *tp_as_sequence;   /* Indexing function pointers (e.g. sq_item) */
+    PyMappingMethods *tp_as_mapping;     /* Map lookup function pointers (e.g. mp_subscript) */
+};
+typedef struct _typeobject PyTypeObject;
+\end{lstlisting}
+
+\hypertarget{dunder-methods-to-slot-mapping}{%
+\subsubsection{2. Dunder Methods to Slot
+Mapping}\label{dunder-methods-to-slot-mapping}}
+
+When defining a class in Python, the interpreter automatically maps
+custom dunder methods to these internal C slots: *
+\passthrough{\lstinline!\_\_init\_\_!} maps to
+\passthrough{\lstinline!tp\_init!}. *
+\passthrough{\lstinline!\_\_new\_\_!} maps to
+\passthrough{\lstinline!tp\_new!}. *
+\passthrough{\lstinline!\_\_hash\_\_!} maps to
+\passthrough{\lstinline!tp\_hash!}. *
+\passthrough{\lstinline!\_\_add\_\_!} maps to
+\passthrough{\lstinline!tp\_as\_number->nb\_add!}. *
+\passthrough{\lstinline!\_\_getitem\_\_!} maps to
+\passthrough{\lstinline!tp\_as\_mapping->mp\_subscript!} or
+\passthrough{\lstinline!tp\_as\_sequence->sq\_item!}.
+
+\begin{lstlisting}[language=Python]
+# Customizing slots via class definitions
+class CustomObject:
+    def __init__(self, val):
+        self.val = val
+
+    def __hash__(self):
+        # Maps to the tp_hash C slot
+        return hash(self.val)
+
+obj = CustomObject("test")
+print("Hash via type slot:", hash(obj))
+\end{lstlisting}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{reference-counting-lifecycle}{%
+\subsection{2.3 Reference Counting
+Lifecycle}\label{reference-counting-lifecycle}}
+
+CPython manages memory directly via reference counting. Reference counts
+are modified using C macros.
+
+\hypertarget{c-level-reference-modification-macros}{%
+\subsubsection{1. C-Level Reference Modification
+Macros}\label{c-level-reference-modification-macros}}
+
+Defined in \passthrough{\lstinline!object.h!}, the macros expand as:
+
+\begin{lstlisting}[language=C]
+#define Py_INCREF(op) (                         \
+    _Py_INC_REFTOTAL  _Py_REF_DEBUG_EXTRA      \
+    (op)->ob_refcnt++)
+
+#define Py_DECREF(op) do {                      \
+    if (_Py_DEC_REFTOTAL  _Py_REF_DEBUG_EXTRA   \
+        --(op)->ob_refcnt == 0)                 \
+        _Py_Dealloc((PyObject *)(op));          \
+} while (0)
+\end{lstlisting}
+
+To prevent segmentation faults when referencing a null pointer, CPython
+provides the NULL-safe macros \passthrough{\lstinline!Py\_XINCREF(op)!}
+and \passthrough{\lstinline!Py\_XDECREF(op)!}, which check
+\passthrough{\lstinline"if (op != NULL)"} before modifying the counts.
+
+\hypertarget{the-deallocation-pipeline}{%
+\subsubsection{2. The Deallocation
+Pipeline}\label{the-deallocation-pipeline}}
+
+When \passthrough{\lstinline!Py\_DECREF(obj)!} drops the reference count
+to zero: 1. \textbf{Invoke Deallocator}: The VM invokes
+\passthrough{\lstinline!obj->ob\_type->tp\_dealloc(obj)!}. 2.
+\textbf{Recursive Decrements}: The deallocator function decrements
+references of any nested objects inside this object. For example, if a
+list is deallocated, it decrements the reference counts of all items it
+contains. 3. \textbf{Release Memory}: The deallocator releases the raw
+memory back to PyMalloc or the system allocator.
+
+\hypertarget{leak-tracking-in-c-extensions}{%
+\subsubsection{3. Leak Tracking in C
+Extensions}\label{leak-tracking-in-c-extensions}}
+
+In custom C extensions, failing to decrement references leads to memory
+leaks. In debug builds, compiling CPython with
+\passthrough{\lstinline!Py\_TRACE\_REFS!} tracks all active references
+in a global doubly-linked list. We can trace reference counts using the
+\passthrough{\lstinline!sys!} module:
+
+\begin{lstlisting}[language=Python]
+import sys
+
+# Reference counts tracking
+my_list = [100, 200]
+print("Starting references count:", sys.getrefcount(my_list) - 1)
+
+ref_a = my_list
+ref_b = my_list
+print("References after bindings:", sys.getrefcount(my_list) - 1)
+
+del ref_a
+print("References after deleting one binding:", sys.getrefcount(my_list) - 1)
+\end{lstlisting}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{built-in-caching-and-interning-optimizations}{%
+\subsection{2.4 Built-in Caching and Interning
+Optimizations}\label{built-in-caching-and-interning-optimizations}}
+
+To avoid allocating memory for common objects, CPython uses global
+caches:
+
+\hypertarget{small-integer-cache}{%
+\subsubsection{1. Small Integer Cache}\label{small-integer-cache}}
+
+CPython pre-allocates an array of integer objects from
+\passthrough{\lstinline!-5!} to \passthrough{\lstinline!256!}
+(\passthrough{\lstinline!NSMALLNEGINTS!} and
+\passthrough{\lstinline!NSMALLPOSINTS!}). * \textbf{Mechanism}: Any
+assignment in this range returns a pointer to the pre-existing static
+object, bypassing heap allocations. * \textbf{C-level array}: Inside
+\passthrough{\lstinline!objects/longobject.c!}, this is defined as:
+
+\begin{lstlisting}[language=C]
+static PyLongObject small_ints[NSMALLNEGINTS + NSMALLPOSINTS];
+\end{lstlisting}
+
+\hypertarget{string-interning}{%
+\subsubsection{2. String Interning}\label{string-interning}}
+
+String literals resembling identifiers are automatically
+\textbf{interned}. * \textbf{Mechanism}: Interned strings are stored in
+a global dictionary inside \passthrough{\lstinline!unicodeobject.c!}. If
+a string is already interned, any new instantiation returns the existing
+string pointer. * \textbf{Performance}: This allows matching strings via
+fast pointer comparison (\(O(1)\) address checks) instead of
+byte-by-byte comparison (\(O(N)\) string scans).
+
+\begin{lstlisting}[language=C]
+/* Under the hood string comparison */
+if (str1 == str2) {
+    return 1; /* Match! (O(1) address check) */
+}
+\end{lstlisting}
+
+\hypertarget{empty-collections-and-singletons}{%
+\subsubsection{3. Empty Collections and
+Singletons}\label{empty-collections-and-singletons}}
+
+To save memory: * \textbf{Empty Tuple Cache}: CPython allocates exactly
+one global empty tuple object
+(\passthrough{\lstinline!\&\_Py\_EmptyTuple!}). Every call to
+\passthrough{\lstinline!tuple()!} returns a pointer to this singleton. *
+\textbf{Built-in Singletons}: \passthrough{\lstinline!None!},
+\passthrough{\lstinline!True!}, \passthrough{\lstinline!False!},
+\passthrough{\lstinline!Ellipsis!}, and
+\passthrough{\lstinline!NotImplemented!} are statically allocated global
+structures.
+
+\begin{lstlisting}[language=Python]
+# Small Integer Caching Check
+int_a = 256
+int_b = 256
+print("Are 256 pointers identical?", int_a is int_b) # True (cached)
+
+int_c = 257
+int_d = 257
+print("Are 257 pointers identical?", int_c is int_d) # False (dynamically allocated)
+
+# String Interning Check
+str_a = "godhood_string"
+str_b = "godhood_string"
+print("Are literal strings interned?", str_a is str_b) # True
+
+# Empty tuple check
+tup_a = ()
+tup_b = tuple()
+print("Are empty tuples cached singletons?", tup_a is tup_b) # True
+\end{lstlisting}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}

@@ -1,0 +1,384 @@
+\hypertarget{python-3.11-to-3.12-exception-groups-except-and-traceback-trees}{%
+\chapter{Python 3.11 to 3.12: Exception Groups (except*) and Traceback
+trees}\label{python-3.11-to-3.12-exception-groups-except-and-traceback-trees}}
+
+\hypertarget{exception-groups-exceptiongroup-baseexceptiongroup-pep-654}{%
+\subsection{\texorpdfstring{19.1 Exception Groups
+(\texttt{ExceptionGroup} \& \texttt{BaseExceptionGroup} / PEP
+654)}{19.1 Exception Groups (ExceptionGroup \& BaseExceptionGroup / PEP 654)}}\label{exception-groups-exceptiongroup-baseexceptiongroup-pep-654}}
+
+Introduced in Python 3.11, \passthrough{\lstinline!ExceptionGroup!} and
+\passthrough{\lstinline!BaseExceptionGroup!} allow raising and handling
+multiple unrelated exceptions simultaneously. This is critical for
+concurrent frameworks (such as \passthrough{\lstinline!asyncio!}
+TaskGroups or Trio) where multiple background operations can crash
+concurrently.
+
+\hypertarget{exception-group-class-layout-and-hierarchy}{%
+\subsubsection{1. Exception Group Class Layout and
+Hierarchy}\label{exception-group-class-layout-and-hierarchy}}
+
+The class hierarchy separates groups of standard exceptions from groups
+containing system-level exceptions:
+
+\begin{lstlisting}[language=Python]
+class BaseExceptionGroup(BaseException):
+    def __init__(self, message: str, exceptions: Sequence[BaseException]) -> None:
+        self.message = message
+        self.exceptions = list(exceptions)
+
+class ExceptionGroup(BaseExceptionGroup, Exception):
+    pass
+\end{lstlisting}
+
+\begin{itemize}
+\tightlist
+\item
+  \passthrough{\lstinline!BaseExceptionGroup!} inherits directly from
+  \passthrough{\lstinline!BaseException!}. It can wrap any exception
+  instance, including system-terminating errors like
+  \passthrough{\lstinline!KeyboardInterrupt!},
+  \passthrough{\lstinline!SystemExit!}, or
+  \passthrough{\lstinline!GeneratorExit!}.
+\item
+  \passthrough{\lstinline!ExceptionGroup!} inherits from both
+  \passthrough{\lstinline!BaseExceptionGroup!} and
+  \passthrough{\lstinline!Exception!}. It can only wrap exceptions that
+  inherit from \passthrough{\lstinline!Exception!}. If a program
+  attempts to instantiate an \passthrough{\lstinline!ExceptionGroup!}
+  containing a \passthrough{\lstinline!BaseException!} that is not an
+  \passthrough{\lstinline!Exception!} subclass, CPython raises a
+  \passthrough{\lstinline!TypeError!} at runtime.
+\end{itemize}
+
+\hypertarget{cpython-c-struct-representation}{%
+\subsubsection{2. CPython C-Struct
+Representation}\label{cpython-c-struct-representation}}
+
+At the C level, exception groups are managed by the
+\passthrough{\lstinline!PyExceptionGroupObject!} structure, which
+extends the standard exception header to support the nested tree
+structure:
+
+\begin{lstlisting}[language=C]
+/* Include/cpython/exceptions.h */
+typedef struct {
+    PyBaseExceptionObject base; /* Base exception header containing dict, traceback, context */
+    PyObject *msg;              /* Message describing the group (PyUnicodeObject) */
+    PyObject *excs;             /* Tuple containing the child exception objects (PyTupleObject) */
+} PyExceptionGroupObject;
+\end{lstlisting}
+
+When an exception group is instantiated: 1.
+\passthrough{\lstinline!base.args!} is populated with a tuple containing
+the \passthrough{\lstinline!message!} and
+\passthrough{\lstinline!exceptions!} sequence. 2.
+\passthrough{\lstinline!msg!} holds the string identifier directly for
+fast attribute lookup. 3. \passthrough{\lstinline!excs!} holds the
+underlying exceptions wrapped inside a flat, immutable tuple.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{the-except-clause-and-exception-tree-filtering}{%
+\subsection{\texorpdfstring{19.2 The \texttt{except*} Clause and
+Exception Tree
+Filtering}{19.2 The except* Clause and Exception Tree Filtering}}\label{the-except-clause-and-exception-tree-filtering}}
+
+To handle individual branches of an exception group, Python 3.11
+introduced the \passthrough{\lstinline!except*!} statement. Unlike a
+traditional \passthrough{\lstinline!except!} statement, which catches a
+single exception instance, \passthrough{\lstinline!except*!} extracts a
+matching subset from the Exception Group hierarchy, letting unmatched
+exceptions propagate.
+
+\hypertarget{compilation-and-bytecode-mechanics}{%
+\subsubsection{1. Compilation and Bytecode
+Mechanics}\label{compilation-and-bytecode-mechanics}}
+
+The compiler generates a specialized sequence of bytecodes for
+\passthrough{\lstinline!except*!} blocks to split the exception tree
+dynamically at runtime.
+
+Consider the two patterns below:
+
+\begin{lstlisting}[language=Python]
+# Standard try/except
+try:
+    raise ValueError("Error")
+except ValueError as e:
+    pass
+\end{lstlisting}
+
+Disassembly of standard \passthrough{\lstinline!except!}:
+
+\begin{lstlisting}
+  1           0 NOP
+              2 SETUP_FINALLY           8 (to 12)
+
+  2           4 LOAD_GLOBAL              1 (ValueError)
+              6 LOAD_CONST               1 ('Error')
+              8 CALL                     1
+             10 RAISE_VARARGS            1
+
+  3     >>   12 PUSH_EXC_INFO
+             14 CHECK_EXCEPT             1 (ValueError)
+             16 POP_JUMP_IF_FALSE       14 (to 46)
+             18 STORE_FAST               0 (e)
+             ...
+\end{lstlisting}
+
+Now, consider the \passthrough{\lstinline!except*!} variant:
+
+\begin{lstlisting}[language=Python]
+# Modern try/except*
+try:
+    raise ExceptionGroup("Main Group", [ValueError("Error A"), TypeError("Error B")])
+except* ValueError as eg:
+    print("Caught Val:", eg.exceptions)
+\end{lstlisting}
+
+Disassembly of \passthrough{\lstinline!except*!}:
+
+\begin{lstlisting}
+  1           0 NOP
+              2 SETUP_FINALLY          12 (to 16)
+
+  2           4 LOAD_GLOBAL              1 (ExceptionGroup)
+              6 LOAD_CONST               1 ('Main Group')
+              8 ... (building ValueError and TypeError objects)
+             10 BUILD_LIST               2
+             12 CALL                     2
+             14 RAISE_VARARGS            1
+
+  3     >>   16 PUSH_EXC_INFO
+             18 CHECK_EXCEPT_STAR        1 (ValueError)
+             20 POP_JUMP_IF_FALSE       16 (to 52)
+             22 STORE_FAST               0 (eg)
+             ...
+\end{lstlisting}
+
+\hypertarget{bytecode-analysis-and-vm-stack-transitions}{%
+\subsubsection{2. Bytecode Analysis and VM Stack
+Transitions}\label{bytecode-analysis-and-vm-stack-transitions}}
+
+The crucial bytecode introduced for PEP 654 is
+\passthrough{\lstinline!CHECK\_EXCEPT\_STAR!}. Its execution flow
+proceeds as follows:
+
+\begin{lstlisting}
+Stack State Before CHECK_EXCEPT_STAR:
++------------------------+
+|  ValueError (type tag)  | <-- TOP OF STACK (TOS)
++------------------------+
+|  ExceptionGroup Object  | <-- TOS1
++------------------------+
+
+Execution details of CHECK_EXCEPT_STAR:
+1. Pops the target exception type (TOS: ValueError).
+2. Inspects the active ExceptionGroup (TOS1).
+3. Executes a C-level filtering function:
+   - Splits the ExceptionGroup into a matched group containing all ValuerError instances.
+   - Pushes the matched group.
+   - Pushes the remaining unmatched exception group (containing TypeError).
+   
+Stack State After CHECK_EXCEPT_STAR (on match):
++------------------------+
+| Matched ExceptionGroup | <-- TOS (Bound to 'eg' local variable)
++------------------------+
+| Unmatched ExceptionGrp | <-- TOS1 (Propagated or checked by next handler)
++------------------------+
+\end{lstlisting}
+
+If the match group is empty (no \passthrough{\lstinline!ValueError!}
+instances were found), \passthrough{\lstinline!CHECK\_EXCEPT\_STAR!}
+pushes \passthrough{\lstinline!None!} to TOS, and
+\passthrough{\lstinline!POP\_JUMP\_IF\_FALSE!} jumps directly to the
+next handler block.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{exception-tree-filtering-algorithm}{%
+\subsection{19.3 Exception Tree Filtering
+Algorithm}\label{exception-tree-filtering-algorithm}}
+
+The core mechanics of splitting exception groups are defined in
+CPython's exception runtime library. The algorithm must recursively
+inspect the tree of exceptions and cleanly separate them.
+
+\begin{lstlisting}
+                  ExceptionGroup ("Main")
+                  /                     \
+          TypeError("B")            ExceptionGroup ("Sub")
+                                    /                     \
+                             ValueError("A")       KeyError("C")
+\end{lstlisting}
+
+If we execute \passthrough{\lstinline!except* ValueError!}: 1. The
+runtime calls the internal C function
+\passthrough{\lstinline!exception\_group\_filter(eg, match\_value\_error\_func)!}.
+2. It traverses the children of the group: *
+\passthrough{\lstinline!TypeError("B")!}: Does not match. Added to the
+\passthrough{\lstinline!unmatched!} collection. *
+\passthrough{\lstinline!ExceptionGroup("Sub")!}: Recursively calls
+\passthrough{\lstinline!exception\_group\_filter!}. * Inside
+\passthrough{\lstinline!ExceptionGroup("Sub")!}: *
+\passthrough{\lstinline!ValueError("A")!}: Matches! Added to the
+sub-matched collection. * \passthrough{\lstinline!KeyError("C")!}: Does
+not match. Added to the sub-unmatched collection. * Since there were
+matches inside \passthrough{\lstinline!Sub!}, a new
+\passthrough{\lstinline!ExceptionGroup("Sub")!} is instantiated,
+containing only \passthrough{\lstinline!ValueError("A")!}. This is
+returned as the sub-matched tree. * A new
+\passthrough{\lstinline!ExceptionGroup("Sub")!} is instantiated
+containing only \passthrough{\lstinline!KeyError("C")!} and returned as
+the sub-unmatched tree. 3. The top-level execution collects the returned
+structures: * \passthrough{\lstinline!matched!} tree:
+\passthrough{\lstinline!ExceptionGroup("Main", [ExceptionGroup("Sub", [ValueError("A")])])!}
+* \passthrough{\lstinline!unmatched!} tree:
+\passthrough{\lstinline!ExceptionGroup("Main", [TypeError("B"), ExceptionGroup("Sub", [KeyError("C")])])!}
+
+Here is the equivalent C-like pseudocode of the recursive filtering
+function:
+
+\begin{lstlisting}[language=C]
+PyObject* exception_group_filter(PyObject *eg, PyObject *match_type) {
+    PyObject *matched_list = PyList_New(0);
+    PyObject *unmatched_list = PyList_New(0);
+    
+    PyObject *excs = ((PyExceptionGroupObject*)eg)->excs;
+    Py_ssize_t size = PyTuple_GET_SIZE(excs);
+    
+    for (Py_ssize_t i = 0; i < size; i++) {
+        PyObject *exc = PyTuple_GET_ITEM(excs, i);
+        if (PyExceptionGroup_Check(exc)) {
+            // Recursive split
+            PyObject *sub_match = NULL, *sub_unmatch = NULL;
+            split_exception_group(exc, match_type, &sub_match, &sub_unmatch);
+            if (sub_match != NULL) {
+                PyList_Append(matched_list, sub_match);
+            }
+            if (sub_unmatch != NULL) {
+                PyList_Append(unmatched_list, sub_unmatch);
+            }
+        } else {
+            // Leaf node matching
+            if (PyErr_GivenExceptionMatches(exc, match_type)) {
+                PyList_Append(matched_list, exc);
+            } else {
+                PyList_Append(unmatched_list, exc);
+            }
+        }
+    }
+    
+    PyObject *matched_group = NULL;
+    if (PyList_Size(matched_list) > 0) {
+        matched_group = create_exception_group_from_list(eg, matched_list);
+    }
+    PyObject *unmatched_group = NULL;
+    if (PyList_Size(unmatched_list) > 0) {
+        unmatched_group = create_exception_group_from_list(eg, unmatched_list);
+    }
+    
+    return PyTuple_Pack(2, matched_group, unmatched_group);
+}
+\end{lstlisting}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{traceback-representation-and-add_note-internals}{%
+\subsection{\texorpdfstring{19.4 Traceback Representation and
+\texttt{add\_note()}
+Internals}{19.4 Traceback Representation and add\_note() Internals}}\label{traceback-representation-and-add_note-internals}}
+
+\hypertarget{traceback-trees}{%
+\subsubsection{1. Traceback Trees}\label{traceback-trees}}
+
+Because exception groups represent hierarchical trees of errors,
+CPython's traceback generator is modified to format tracebacks
+recursively as tree diagrams.
+
+When printed, the output represents the nesting level using visual
+indicators:
+
+\begin{lstlisting}
+  + Exception Group Traceback (most recent call last):
+  |   File "example.py", line 4, in <module>
+  |     raise ExceptionGroup("Main Group", [ValueError("Error A"), TypeError("Error B")])
+  | ExceptionGroup: Main Group (2 sub-exceptions)
+  +-+---------------- 1 ----------------
+    | ValueError: Error A
+    +---------------- 2 ----------------
+    | TypeError: Error B
+    +-----------------------------------
+\end{lstlisting}
+
+If there are nested exception groups, the branch indicators prefix the
+output recursively (e.g.,
+\passthrough{\lstinline!+-+---------------- 1.1 ----------------!}).
+
+\hypertarget{pep-678-exception-notes-and-c-level-internals}{%
+\subsubsection{2. PEP 678 Exception Notes and C-Level
+Internals}\label{pep-678-exception-notes-and-c-level-internals}}
+
+PEP 678 introduces
+\passthrough{\lstinline!BaseException.add\_note(note)!}, enabling users
+to attach custom text to exceptions without modifying their
+instantiation arguments. This is highly valuable for diagnostic tools,
+test frameworks (like pytest), and tracing asynchronous executions.
+
+When called, \passthrough{\lstinline!add\_note()!} stores the string
+inside a \passthrough{\lstinline!\_\_notes\_\_!} list attribute on the
+exception object. The C-level implementation handles memory allocations
+and type checks directly:
+
+\begin{lstlisting}[language=C]
+/* Objects/exceptions.c */
+static PyObject *
+BaseException_add_note(PyBaseExceptionObject *self, PyObject *note)
+{
+    if (!PyUnicode_Check(note)) {
+        PyErr_SetString(PyExc_TypeError, "note must be a string");
+        return NULL;
+    }
+
+    PyObject *dict = self->dict;
+    if (dict == NULL) {
+        dict = PyDict_New();
+        if (dict == NULL) {
+            return NULL;
+        }
+        self->dict = dict;
+    }
+
+    PyObject *notes = PyDict_GetItemWithError(dict, &_Py_ID(__notes__));
+    if (notes == NULL) {
+        if (PyErr_Occurred()) {
+            return NULL;
+        }
+        notes = PyList_New(0);
+        if (notes == NULL) {
+            return NULL;
+        }
+        if (PyDict_SetItem(dict, &_Py_ID(__notes__), notes) < 0) {
+            Py_DECREF(notes);
+            return NULL;
+        }
+        Py_DECREF(notes);
+    }
+
+    if (PyList_Append(notes, note) < 0) {
+        return NULL;
+    }
+
+    Py_RETURN_NONE;
+}
+\end{lstlisting}
+
+At runtime, the traceback printing logic calls
+\passthrough{\lstinline!PyObject\_GetAttr(exc, \&\_Py\_ID(\_\_notes\_\_))!}.
+If the list is found, it iterates over each note string and prints it
+directly after the exception traceback and type representation.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}

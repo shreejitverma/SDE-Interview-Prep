@@ -1,0 +1,539 @@
+\hypertarget{python-2.2-to-2.3-type-class-unification-descriptors-c3-mro}{%
+\chapter{Python 2.2 to 2.3: Type-Class Unification, Descriptors, \& C3
+MRO}\label{python-2.2-to-2.3-type-class-unification-descriptors-c3-mro}}
+
+\hypertarget{type-class-unification-the-inception-of-new-style-classes-pep-252-pep-253}{%
+\subsection{4.1 Type-Class Unification: The Inception of New-Style
+Classes (PEP 252 \& PEP
+253)}\label{type-class-unification-the-inception-of-new-style-classes-pep-252-pep-253}}
+
+Before Python 2.2, user-defined classes and built-in types existed as
+entirely separate entities under the hood. This architectural separation
+introduced severe language inconsistencies.
+
+\hypertarget{the-classic-class-inconsistency}{%
+\subsubsection{1. The Classic Class
+Inconsistency}\label{the-classic-class-inconsistency}}
+
+In the classic class model (pre-Python 2.2): * \textbf{Classic Classes}:
+Created using the \passthrough{\lstinline!class MyClass:!} syntax
+without inheriting from any class. All user-defined classes were
+represented by a single C type, \passthrough{\lstinline!PyClass\_Type!},
+defined by the \passthrough{\lstinline!PyClassObject!} struct. *
+\textbf{Classic Instances}: Every instance of any user-defined class was
+represented by a single C type,
+\passthrough{\lstinline!PyInstance\_Type!}, mapped to a
+\passthrough{\lstinline!PyInstanceObject!} struct. * \textbf{The
+Dichotomy}: The \passthrough{\lstinline!type()!} of any classic class
+instance always returned \passthrough{\lstinline!<type 'instance'>!},
+rather than the class itself. The actual class of the instance was
+accessible only via the \passthrough{\lstinline!\_\_class\_\_!}
+attribute: ```python \# Python 1.5 - 2.1 Classic Class Behavior class
+Classic: pass
+
+c = Classic() print(type(c)) \# \textless type `instance'\textgreater{}
+print(c.\_\_class\_\_) \# \textless class
+`\textbf{main}.Classic'\textgreater{}
+``\passthrough{\lstinline!* **Built-in Types**: In contrast, built-in types (e.g.,!}int\passthrough{\lstinline!,!}list\passthrough{\lstinline!,!}dict\passthrough{\lstinline!,!}str\passthrough{\lstinline!) were instances of!}PyType\_Type\passthrough{\lstinline!, represented in C by a static!}PyTypeObject\passthrough{\lstinline!struct. * **The Subclassing Barrier**: Because of this dichotomy, user-defined classes could not inherit from built-in types. Subclassing!}list\passthrough{\lstinline!or!}dict`
+to extend their behavior was impossible, because the classic class
+object engine could not parse or manage the memory layouts of built-in C
+types.
+
+\hypertarget{the-solution-new-style-classes-and-object}{%
+\subsubsection{\texorpdfstring{2. The Solution: New-Style Classes and
+\texttt{object}}{2. The Solution: New-Style Classes and object}}\label{the-solution-new-style-classes-and-object}}
+
+Introduced in Python 2.2 by PEP 252 and PEP 253, \textbf{new-style
+classes} unified types and classes. * \textbf{The Unified Base}: A
+new-style class is defined by inheriting (directly or indirectly) from
+the built-in \passthrough{\lstinline!object!} type (the root of the
+unified type tree). * \textbf{Type Unification}: Under the unified
+model, user-defined classes are themselves type objects (instances of
+\passthrough{\lstinline!type!}), just like built-in types. Checking
+\passthrough{\lstinline!type(c)!} now returns the class itself.
+```python \# Python 2.2+ New-Style Class Behavior class
+NewStyle(object): pass
+
+n = NewStyle() print(type(n)) \# \textless class
+`\textbf{main}.NewStyle'\textgreater{} ```
+
+\hypertarget{low-level-c-representation-pytypeobject}{%
+\subsubsection{\texorpdfstring{3. Low-Level C Representation:
+\texttt{PyTypeObject}}{3. Low-Level C Representation: PyTypeObject}}\label{low-level-c-representation-pytypeobject}}
+
+Every class (built-in or new-style user-defined) is represented at the
+C-level as an instance of \passthrough{\lstinline!PyTypeObject!}. Let's
+inspect the core fields in CPython's
+\passthrough{\lstinline!Include/object.h!}:
+
+\begin{lstlisting}[language=C]
+typedef struct _typeobject {
+    PyObject_VAR_HEAD
+    const char *tp_name;                 /* For printing, in format "<module>.<name>" */
+    Py_ssize_t tp_basicsize, tp_itemsize; /* For allocation sizes */
+
+    /* Methods to implement standard operations */
+    destructor tp_dealloc;
+    printfunc tp_print;
+    getattrfunc tp_getattr;
+    setattrfunc tp_setattr;
+    
+    /* Attribute lookup slot */
+    getattrofunc tp_getattro;            /* Pointing to PyObject_GenericGetAttr */
+    setattrofunc tp_setattro;            /* Pointing to PyObject_GenericSetAttr */
+
+    /* Protocol slot mappings */
+    PyNumberMethods *tp_as_number;
+    PySequenceMethods *tp_as_sequence;
+    PyMappingMethods *tp_as_mapping;
+
+    /* Inheritance and lookup structures */
+    PyObject *tp_dict;                  /* Namespace dictionary */
+    PyObject *tp_bases;                 /* Tuple of base classes */
+    PyObject *tp_mro;                   /* Method Resolution Order tuple */
+    
+    /* Allocation / Initialization slots */
+    newfunc tp_new;                     /* __new__ allocation entry */
+    initproc tp_init;                   /* __init__ initialization entry */
+    allocfunc tp_alloc;                 /* Low-level memory allocator */
+    
+    /* Flags and inheritance info */
+    unsigned long tp_flags;
+    struct _typeobject *tp_base;        /* Direct base pointer */
+} PyTypeObject;
+\end{lstlisting}
+
+\hypertarget{slot-wrapper-descriptors}{%
+\subsubsection{4. Slot Wrapper
+Descriptors}\label{slot-wrapper-descriptors}}
+
+Because C slots (like \passthrough{\lstinline!tp\_init!}) expect
+standard C function signatures (e.g.,
+\passthrough{\lstinline!int (*tp\_init)(PyObject *, PyObject *, PyObject *)!}),
+but user-defined classes write Python methods
+(\passthrough{\lstinline!def \_\_init\_\_(self, ...)!}), CPython
+utilizes \textbf{slot wrappers} to bridge the boundary: * \textbf{Python
+to C (Slot Fillers)}: When a new-style class defines a Python method
+like \passthrough{\lstinline!\_\_init\_\_!}, the type compiler
+dynamically wraps this method in a C function (such as
+\passthrough{\lstinline!slot\_tp\_init!}) and assigns it to the type
+object's \passthrough{\lstinline!tp\_init!} slot. When
+\passthrough{\lstinline!tp\_init!} is called,
+\passthrough{\lstinline!slot\_tp\_init!} executes the Python function. *
+\textbf{C to Python (Wrapper Descriptors)}: To expose built-in C slots
+(like \passthrough{\lstinline!object!}'s default initialization code) to
+Python, CPython wraps them in descriptor objects
+(e.g.~\passthrough{\lstinline!\_\_init\_\_!} is exposed as
+\passthrough{\lstinline!<slot wrapper '\_\_init\_\_' of 'object' objects>!}).
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{the-descriptor-protocol-attribute-lookup-chain}{%
+\subsection{4.2 The Descriptor Protocol \& Attribute Lookup
+Chain}\label{the-descriptor-protocol-attribute-lookup-chain}}
+
+The descriptor protocol is the underlying mechanism that enables
+properties, methods, classmethods, and staticmethods in Python.
+
+\hypertarget{the-descriptor-protocol-definition}{%
+\subsubsection{1. The Descriptor Protocol
+Definition}\label{the-descriptor-protocol-definition}}
+
+A descriptor is an object that implements at least one of the three
+descriptor protocol methods:
+
+\begin{lstlisting}[language=Python]
+def __get__(self, instance, owner=None):
+    """Invoked when getting the attribute."""
+    pass
+
+def __set__(self, instance, value):
+    """Invoked when setting the attribute."""
+    pass
+
+def __delete__(self, instance):
+    """Invoked when deleting the attribute."""
+    pass
+\end{lstlisting}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Data Descriptor}: Implements both
+  \passthrough{\lstinline!\_\_get\_\_!} AND
+  \passthrough{\lstinline!\_\_set\_\_!} (and/or
+  \passthrough{\lstinline!\_\_delete\_\_!}).
+\item
+  \textbf{Non-Data Descriptor}: Implements only
+  \passthrough{\lstinline!\_\_get\_\_!} (e.g.~functions, classmethods,
+  staticmethods).
+\end{itemize}
+
+\hypertarget{the-attribute-lookup-algorithm-pyobject_genericgetattr}{%
+\subsubsection{\texorpdfstring{2. The Attribute Lookup Algorithm
+(\texttt{PyObject\_GenericGetAttr})}{2. The Attribute Lookup Algorithm (PyObject\_GenericGetAttr)}}\label{the-attribute-lookup-algorithm-pyobject_genericgetattr}}
+
+When an attribute is accessed (\passthrough{\lstinline!obj.name!}) on a
+new-style instance \passthrough{\lstinline!obj!} of class
+\passthrough{\lstinline!Class!}, CPython invokes the
+\passthrough{\lstinline!tp\_getattro!} slot of the type object. By
+default, this points to
+\passthrough{\lstinline!PyObject\_GenericGetAttr!} in
+\passthrough{\lstinline!Objects/object.c!}.
+
+The lookup follows this strict resolution flow: 1. \textbf{MRO Search}:
+CPython calls \passthrough{\lstinline!\_PyType\_Lookup(Class, name)!}.
+This searches the class's namespace dictionary
+\passthrough{\lstinline!tp\_dict!} and the namespace dictionaries of all
+parent classes in the Method Resolution Order
+(\passthrough{\lstinline!tp\_mro!}). Let the resolved object be
+\passthrough{\lstinline!descr!}. 2. \textbf{Data Descriptor Check}: If
+\passthrough{\lstinline!descr!} is found, and its type implements the
+\passthrough{\lstinline!\_\_set\_\_!} (or
+\passthrough{\lstinline!\_\_delete\_\_!}) slot
+(\passthrough{\lstinline!descr->ob\_type->tp\_descr\_set!} is not NULL):
+* Call
+\passthrough{\lstinline!descr->ob\_type->tp\_descr\_get(descr, obj, Class)!}
+and return the result immediately. 3. \textbf{Instance Dict Lookup}:
+Check the instance dictionary of \passthrough{\lstinline!obj!} (the
+\passthrough{\lstinline!\_\_dict\_\_!} table at
+\passthrough{\lstinline!obj->ob\_dict!}). If
+\passthrough{\lstinline!name!} exists in the instance dictionary, return
+its associated value. 4. \textbf{Non-Data Descriptor Check}: If
+\passthrough{\lstinline!descr!} is found: * If
+\passthrough{\lstinline!descr!} has a
+\passthrough{\lstinline!\_\_get\_\_!} slot
+(\passthrough{\lstinline!descr->ob\_type->tp\_descr\_get!} is not NULL):
+* Call
+\passthrough{\lstinline!descr->ob\_type->tp\_descr\_get(descr, obj, Class)!}
+and return the result. * If \passthrough{\lstinline!descr!} does not
+have a \passthrough{\lstinline!\_\_get\_\_!} slot (e.g.~a plain class
+attribute like a string or int): * Return
+\passthrough{\lstinline!descr!} directly. 5. \textbf{Fallback to
+\passthrough{\lstinline!\_\_getattr\_\_!}}: If the attribute is still
+not resolved, CPython raises an
+\passthrough{\lstinline!AttributeError!}, which triggers the invocation
+of the fallback \passthrough{\lstinline!\_\_getattr\_\_(self, name)!}
+method if defined on the class.
+
+\begin{lstlisting}
+       [Start Lookup: obj.name]
+                  |
+                  v
+       [Search MRO for "name"]
+                  |
+       +----------+----------+
+       |                     |
+   (Not Found)            (Found)
+       |                     |
+       |                     v
+       |          [Is it a Data Descriptor?]
+       |          (has __get__ and __set__)
+       |                     |
+       |             +-------+-------+
+       |             | Yes           | No
+       |             v               |
+       |       [Call __get__]        |
+       |       [Return result]       |
+       |                             v
+       +--------------------> [Check obj.__dict__]
+                                     |
+                             +-------+-------+
+                             | Found         | Not Found
+                             v               |
+                       [Return dict val]     v
+                                  [Is it a Non-Data Descriptor?]
+                                  (has __get__ but no __set__)
+                                             |
+                                     +-------+-------+
+                                     | Yes           | No
+                                     v               v
+                               [Call __get__]   [Is it class attribute?]
+                               [Return result]       |
+                                             +-------+-------+
+                                             | Yes           | No
+                                             v               v
+                                       [Return value]   [Raise AttributeError]
+                                                             |
+                                                        [Call __getattr__]
+\end{lstlisting}
+
+\hypertarget{c-level-descriptor-specifications-pygetsetdef}{%
+\subsubsection{\texorpdfstring{3. C-Level descriptor specifications:
+\texttt{PyGetSetDef}}{3. C-Level descriptor specifications: PyGetSetDef}}\label{c-level-descriptor-specifications-pygetsetdef}}
+
+In C extensions, properties are frequently defined using the
+\passthrough{\lstinline!PyGetSetDef!} struct in the class's
+\passthrough{\lstinline!tp\_getset!} slot:
+
+\begin{lstlisting}[language=C]
+typedef struct PyGetSetDef {
+    const char *name;
+    getter get;             /* C function: PyObject *(*getter)(PyObject *, void *) */
+    setter set;             /* C function: int (*setter)(PyObject *, PyObject *, void *) */
+    const char *doc;
+    void *closure;          /* Context pointer passed to getter/setter */
+} PyGetSetDef;
+\end{lstlisting}
+
+\hypertarget{practical-implementation-of-core-decorators}{%
+\subsubsection{4. Practical Implementation of Core
+Decorators}\label{practical-implementation-of-core-decorators}}
+
+Here is how decorators leverage descriptors to modify binding behavior:
+* \textbf{Bound Methods}: Python functions are non-data descriptors.
+When accessed via \passthrough{\lstinline!obj.method!},
+\passthrough{\lstinline!FunctionType.\_\_get\_\_(func, obj, Class)!} is
+called. It returns a \passthrough{\lstinline!PyMethod!} object wrapping
+the function and the instance:
+\[\text{obj.method} \equiv \text{Class.method.\_\_get\_\_}(obj, \text{Class})\]
+* \textbf{\passthrough{\lstinline!@classmethod!}}: Implements
+\passthrough{\lstinline!\_\_get\_\_(self, instance, owner)!}. When
+accessed, it ignores the \passthrough{\lstinline!instance!} argument and
+returns a bound method wrapping the function and the
+\passthrough{\lstinline!owner!} (the class object itself). *
+\textbf{\passthrough{\lstinline!@staticmethod!}}: Implements
+\passthrough{\lstinline!\_\_get\_\_(self, instance, owner)!}. It returns
+the underlying raw function object directly, bypassing any method
+binding. * \textbf{\passthrough{\lstinline!@property!}}: A data
+descriptor that wraps getter, setter, and deleter functions: ```python
+class CustomProperty(object): def \textbf{init}(self, fget, fset=None):
+self.fget = fget self.fset = fset
+
+\begin{lstlisting}
+  def __get__(self, instance, owner):
+      if instance is None:
+          return self
+      return self.fget(instance)
+
+  def __set__(self, instance, value):
+      if self.fset is None:
+          raise AttributeError("can't set attribute")
+      self.fset(instance, value)
+\end{lstlisting}
+
+\begin{lstlisting}
+---
+
+### 4.3 Method Resolution Order (MRO) & C3 Linearization
+
+Method Resolution Order determines how Python traverses the inheritance tree during attribute search.
+
+#### 1. The Classic DFLR Algorithm & The Diamond Problem
+Classic classes (pre-Python 2.2) resolved attributes using a **Depth-First, Left-to-Right (DFLR)** tree traversal.
+In a diamond inheritance hierarchy:
+\end{lstlisting}
+
+\begin{lstlisting}
+ A
+/ \
+\end{lstlisting}
+
+B C ~/ D
+
+\begin{lstlisting}
+The declaration `class D(B, C)` inherits from `B` and `C`, both of which inherit from `A`. 
+* DFLR path: `[D, B, A, object, C, A, object]`.
+* Removing duplicates keeping only the **first** occurrence gives: `[D, B, A, object, C]`.
+* **The Failure**: If `A` defines a method `method()` and `C` overrides it, calling `D().method()` resolves to `A.method()` rather than `C.method()`. This violates the principle that specialized subclasses (`C`) should override generic ancestors (`A`).
+
+#### 2. Python 2.2 MRO: The Last Occurrence Rule & Monotonicity Failure
+To fix this, Python 2.2 introduced a new-style MRO calculation:
+1. Perform DFLR traversal of the class and all its ancestors.
+2. Remove all duplicates except the **last** occurrence.
+
+For the diamond hierarchy `D(B, C)`:
+* Traversal: `[D, B, A, object, C, A, object]`.
+* Keeping only the **last** occurrence: `[D, B, C, A, object]`.
+While this solved the diamond problem, the algorithm was **non-monotonic**.
+* **Monotonicity**: If class $X$ precedes $Y$ in the MRO of class $P$, then $X$ must precede $Y$ in the MRO of any subclass $S$ derived from $P$.
+
+##### Samuele Pedroni's Monotonicity Violation Example:
+Consider this class configuration in Python 2.2:
+```python
+class A(object): pass
+class B(object): pass
+class C(object): pass
+class D(object): pass
+class E(object): pass
+
+class K1(A, B, C): pass
+class K2(D, B, E): pass
+class K3(D, A): pass
+
+class Z(K1, K2, K3): pass
+\end{lstlisting}
+
+Let's calculate the Python 2.2 MRO for \passthrough{\lstinline!K1!} and
+\passthrough{\lstinline!K2!}: * \passthrough{\lstinline!K1!} raw:
+\passthrough{\lstinline![K1, A, object, B, object, C, object]!}. Keeping
+last: \passthrough{\lstinline![K1, A, B, C, object]!}. (Here, \(A\)
+precedes \(B\)). * \passthrough{\lstinline!K2!} raw:
+\passthrough{\lstinline![K2, D, object, B, object, E, object]!}. Keeping
+last: \passthrough{\lstinline![K2, D, B, E, object]!}. (Here, \(B\)
+precedes \(E\)). * \passthrough{\lstinline!K3!} raw:
+\passthrough{\lstinline![K3, D, object, A, object]!}. Keeping last:
+\passthrough{\lstinline![K3, D, A, object]!}.
+
+Now let's resolve \passthrough{\lstinline!Z(K1, K2, K3)!} under Python
+2.2: * Raw DFLR list:
+\passthrough{\lstinline![Z, K1, A, object, B, object, C, object, K2, D, object, B, object, E, object, K3, D, object, A, object]!}.
+* Keeping only the last occurrence:
+\passthrough{\lstinline![Z, K1, C, K2, K3, D, B, E, A, object]!}. *
+\textbf{The Monotonicity Failure}: * In the parent class
+\passthrough{\lstinline!K1!}'s MRO, \(A\) preceded \(B\). * In the child
+class \passthrough{\lstinline!Z!}'s MRO, \(B\) precedes \(A\)
+(\passthrough{\lstinline!... D, B, E, A ...!}). * The child class has
+reversed the relative order of \(A\) and \(B\) established in the
+parent, violating monotonicity.
+
+\hypertarget{python-2.3-mro-the-c3-linearization-algorithm}{%
+\subsubsection{3. Python 2.3+ MRO: The C3 Linearization
+Algorithm}\label{python-2.3-mro-the-c3-linearization-algorithm}}
+
+To guarantee monotonicity and local precedence ordering, Python 2.3
+adopted \textbf{C3 Linearization}.
+
+\hypertarget{mathematical-formulation}{%
+\paragraph{Mathematical Formulation:}\label{mathematical-formulation}}
+
+Let \(L(C)\) be the linearization (MRO) of class \(C\). For a class
+\(C\) inheriting from direct parents \(B_1, B_2, \dots, B_N\):
+\[L(C) = [C] + \text{merge}\left(L(B_1), L(B_2), \dots, L(B_N), [B_1, B_2, \dots, B_N]\right)\]
+
+Where \(L(\text{object}) = [\text{object}]\).
+
+\hypertarget{the-merge-operation}{%
+\paragraph{The Merge Operation:}\label{the-merge-operation}}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  Examine the head (index 0) of the first list inside the merge block:
+  \(H = L(B_1)[0]\).
+\item
+  If \(H\) does not appear in the \textbf{tail} (index 1 to the end) of
+  any other list in the merge block, it is a \textbf{good head}.
+
+  \begin{itemize}
+  \tightlist
+  \item
+    Append \(H\) to the linearization of \(C\).
+  \item
+    Remove \(H\) from all lists in the merge block.
+  \item
+    Repeat the merge step.
+  \end{itemize}
+\item
+  If \(H\) appears in the tail of any other list, it is not a good head.
+  Move to the next list in the merge block and check its head.
+\item
+  If no candidate head can be selected across all lists, the merge is
+  impossible. Python raises a \passthrough{\lstinline!TypeError!}.
+\end{enumerate}
+
+\hypertarget{step-by-step-mathematical-calculation-of-zk1-k2-k3}{%
+\paragraph{\texorpdfstring{Step-by-Step Mathematical Calculation of
+\texttt{Z(K1,\ K2,\ K3)}:}{Step-by-Step Mathematical Calculation of Z(K1, K2, K3):}}\label{step-by-step-mathematical-calculation-of-zk1-k2-k3}}
+
+Let's resolve the MRO of class \passthrough{\lstinline!Z!} from the
+Pedroni example using C3 Linearization.
+
+We have the parent linearizations:
+\[L(K1) = [K1, A, B, C, \text{object}]\]
+\[L(K2) = [K2, D, B, E, \text{object}]\]
+\[L(K3) = [K3, D, A, \text{object}]\]
+
+Now calculate \(L(Z)\):
+\[L(Z) = [Z] + \text{merge}\left(L(K1), L(K2), L(K3), [K1, K2, K3]\right)\]
+\[L(Z) = [Z] + \text{merge}\left([K1, A, B, C, \text{obj}], [K2, D, B, E, \text{obj}], [K3, D, A, \text{obj}], [K1, K2, K3]\right)\]
+
+\textbf{Step 1}: Check head of first list: \passthrough{\lstinline!K1!}.
+* Does \passthrough{\lstinline!K1!} appear in the tail of
+\([K2, D, B, E, \text{obj}]\), \([K3, D, A, \text{obj}]\), or
+\([K1, K2, K3]\)? No. * Extract \passthrough{\lstinline!K1!}:
+\[L(Z) = [Z, K1] + \text{merge}\left([A, B, C, \text{obj}], [K2, D, B, E, \text{obj}], [K3, D, A, \text{obj}], [K2, K3]\right)\]
+
+\textbf{Step 2}: Check head of first list: \passthrough{\lstinline!A!}.
+* Does \passthrough{\lstinline!A!} appear in the tail of other lists?
+Yes, it appears in the tail of \([K3, D, A, \text{obj}]\). Skip
+\passthrough{\lstinline!A!}. * Move to the next list head:
+\passthrough{\lstinline!K2!}. * Does \passthrough{\lstinline!K2!} appear
+in the tail of other lists? No (it only appears at the head of the last
+list \([K2, K3]\)). * Extract \passthrough{\lstinline!K2!}:
+\[L(Z) = [Z, K1, K2] + \text{merge}\left([A, B, C, \text{obj}], [D, B, E, \text{obj}], [K3, D, A, \text{obj}], [K3]\right)\]
+
+\textbf{Step 3}: Check head of first list: \passthrough{\lstinline!A!}.
+* Does \passthrough{\lstinline!A!} appear in the tail of other lists?
+Yes, in the tail of \([K3, D, A, \text{obj}]\). Skip. * Check head of
+second list: \passthrough{\lstinline!D!}. * Does
+\passthrough{\lstinline!D!} appear in the tail of other lists? Yes, in
+the tail of \([K3, D, A, \text{obj}]\). Skip. * Check head of third
+list: \passthrough{\lstinline!K3!}. * Does \passthrough{\lstinline!K3!}
+appear in the tail of other lists? No. * Extract
+\passthrough{\lstinline!K3!}:
+\[L(Z) = [Z, K1, K2, K3] + \text{merge}\left([A, B, C, \text{obj}], [D, B, E, \text{obj}], [D, A, \text{obj}]\right)\]
+
+\textbf{Step 4}: Check head of first list: \passthrough{\lstinline!A!}.
+* Does \passthrough{\lstinline!A!} appear in the tail of other lists?
+Yes, in the tail of \([D, A, \text{obj}]\). Skip. * Check head of second
+list: \passthrough{\lstinline!D!}. * Does \passthrough{\lstinline!D!}
+appear in the tail of other lists? No (it is at the head of
+\([D, A, \text{obj}]\)). * Extract \passthrough{\lstinline!D!}:
+\[L(Z) = [Z, K1, K2, K3, D] + \text{merge}\left([A, B, C, \text{obj}], [B, E, \text{obj}], [A, \text{obj}]\right)\]
+
+\textbf{Step 5}: Check head of first list: \passthrough{\lstinline!A!}.
+* Does \passthrough{\lstinline!A!} appear in the tail of other lists? No
+(it is at the head of \([A, \text{obj}]\)). * Extract
+\passthrough{\lstinline!A!}:
+\[L(Z) = [Z, K1, K2, K3, D, A] + \text{merge}\left([B, C, \text{obj}], [B, E, \text{obj}], [\text{obj}]\right)\]
+
+\textbf{Step 6}: Check head of first list: \passthrough{\lstinline!B!}.
+* Does \passthrough{\lstinline!B!} appear in the tail of other lists?
+No. * Extract \passthrough{\lstinline!B!}:
+\[L(Z) = [Z, K1, K2, K3, D, A, B] + \text{merge}\left([C, \text{obj}], [E, \text{obj}], [\text{obj}]\right)\]
+
+\textbf{Step 7}: Check head of first list: \passthrough{\lstinline!C!}.
+* Does \passthrough{\lstinline!C!} appear in the tail of other lists?
+No. * Extract \passthrough{\lstinline!C!}:
+\[L(Z) = [Z, K1, K2, K3, D, A, B, C] + \text{merge}\left([\text{obj}], [E, \text{obj}], [\text{obj}]\right)\]
+
+\textbf{Step 8}: Check head of first list:
+\passthrough{\lstinline!obj!}. * Does \passthrough{\lstinline!obj!}
+appear in the tail of other lists? Yes, in the tail of
+\([E, \text{obj}]\). Skip. * Check head of second list:
+\passthrough{\lstinline!E!}. * Does \passthrough{\lstinline!E!} appear
+in the tail of other lists? No. * Extract \passthrough{\lstinline!E!}:
+\[L(Z) = [Z, K1, K2, K3, D, A, B, C, E] + \text{merge}\left([\text{obj}], [\text{obj}], [\text{obj}]\right)\]
+
+\textbf{Step 9}: Extract \passthrough{\lstinline!obj!}:
+\[L(Z) = [Z, K1, K2, K3, D, A, B, C, E, \text{object}]\]
+
+This calculation resolves the Method Resolution Order cleanly,
+preserving both local precedence and global monotonicity across all
+classes.
+
+\hypertarget{instance-lifecycle-allocation-vs.-initialization}{%
+\subsection{4.4 Instance Lifecycle: Allocation
+vs.~Initialization}\label{instance-lifecycle-allocation-vs.-initialization}}
+
+CPython splits object creation into two phases, controlled by different
+type slots: 1. \textbf{Allocation
+(\passthrough{\lstinline!\_\_new\_\_!})}: * Maps to the
+\passthrough{\lstinline!tp\_new!} slot in
+\passthrough{\lstinline!PyTypeObject!}. * This is a static method
+responsible for allocating memory on the heap (using
+\passthrough{\lstinline!PyType\_GenericNew()!}) and initializing the
+object's \passthrough{\lstinline!PyObject!} headers
+(\passthrough{\lstinline!ob\_refcnt!} and
+\passthrough{\lstinline!ob\_type!}). * It must return a new instance of
+the class (or subclass). 2. \textbf{Initialization
+(\passthrough{\lstinline!\_\_init\_\_!})}: * Maps to the
+\passthrough{\lstinline!tp\_init!} slot in
+\passthrough{\lstinline!PyTypeObject!}. * This is an instance method
+called immediately after \passthrough{\lstinline!\_\_new\_\_!} returns a
+valid instance. It populates the instance dictionary
+\passthrough{\lstinline!\_\_dict\_\_!} with fields.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}

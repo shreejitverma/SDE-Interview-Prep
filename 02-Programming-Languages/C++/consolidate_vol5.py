@@ -1,61 +1,52 @@
-import os
+# Using the Google Gen AI SDK
+from google import genai
 
-base_dir = "C++/CPP_Zero_to_Godhood/Volume_05_Gigantic_Leap_C20"
-tex_file = "C++/CPP_Zero_to_Godhood/CPP_Zero_to_Godhood.tex"
+client = genai.Client(api_key="AIzaSyBHN13Wc8EQOFZBiGxW_DRLebNDSnNLW9Y")
 
-# List of old files to remove
-old_files = [
-    "Chapter_31_C20_REVOLUTIONARY_FEATURES"
-]
+# 1. Create a cache for the PDF (TTL defaults to 1 hour)
+path_to_pdf = "/Users/shreejitverma/Documents/GitHub/SDE-Interview-Prep/02-Programming-Languages/C++/CPlusPlusNotesForProfessionals.pdf"
+cache = client.caches.create(
+    model='gemini-3-pro', # Or gemini-3-ultra-preview
+    config={'ttl': '3600s'},
+    files=[path_to_pdf]
+)
 
-# Clean up old files
-for f in old_files:
-    md_path = os.path.join(base_dir, f + ".md")
-    tex_path = os.path.join(base_dir, f + ".tex")
-    if os.path.exists(md_path):
-        os.remove(md_path)
-    if os.path.exists(tex_path):
-        os.remove(tex_path)
+# 2. Run your request using the cached content
+response = client.models.generate_content(
+    model='gemini-3-pro',
+    prompt='''Read the first 100 pages of the pdf at '/Users/shreejitverma/Downloads/c-plus-plus-notes-for-professionals/c-plus-plus-notes-for-professionals_part1.pdf' and appropriately place
+  the contents into the respective chapters in the **CPP_Zero_to_Godhood book, accordingly modify the chapter structure
+  and content guidelines.** Implement content extraction, chapter mapping, strucpip install -U google-genaitural revision, and guideline updates.
 
-# Update LaTeX file
-new_chapters = [
-    "Chapter_26_C20_Concepts",
-    "Chapter_27_C20_Modules",
-    "Chapter_28_C20_Coroutines",
-    "Chapter_29_C20_Ranges",
-    "Chapter_30_C20_Core_Language_Features",
-    "Chapter_31_C20_Standard_Library_Additions"
-]
+  **Extraction:**
+  - PDF text extraction.
+  - Content segmentation.
 
-if os.path.exists(tex_file):
-    with open(tex_file, 'r') as f:
-        lines = f.readlines()
-    
-    new_lines = []
-    in_vol_5 = False
-    vol_5_inserted = False
-    
-    for line in lines:
-        if "\part{Volume V" in line:
-            in_vol_5 = True
-            new_lines.append(line)
-            continue
-            
-        if "\part{Volume VI" in line:
-            in_vol_5 = False
-            if not vol_5_inserted:
-                for ch in new_chapters:
-                    new_lines.append(f"\input{{Volume_05_Gigantic_Leap_C20/{ch}}}\n")
-                vol_5_inserted = True
-            new_lines.append(line)
-            continue
-            
-        if in_vol_5 and "\input{Volume_05_Gigantic_Leap_C20/" in line:
-            continue # Skip old inputs
-            
-        new_lines.append(line)
-        
-    with open(tex_file, 'w') as f:
-        f.writelines(new_lines)
+  **Mapping:**
+  - Topic identification.
+  - Chapter assignment.
 
-print("Volume 5 consolidation complete.")
+  **Revision:**
+  - Chapter restructuring.
+  - Content integration.
+  - Guideline refinement.
+
+  **Verification:**
+  - Content accuracy check.
+  - Structural integrity validation.
+  **Implementation:**
+  - Tool selection: PDF parsing library (e.g., PyMuPDF, pdfminer.six).
+  - Extraction scope: First 100 pages, text only.
+  - Segmentation strategy: Paragraph, section, or keyword-based.
+  - Topic modeling: NLP techniques for theme detection.
+  - Chapter mapping logic: Keyword matching, semantic similarity.
+  - Structural changes: Add/merge/split chapters.
+  - Content integration: Append, rephrase, or summarize.
+  - Guideline updates: Update chapter scope, detail level.
+  - Accuracy validation: Manual review, cross-referencing.
+  - Integrity check: TOC consistency, flow.
+  - Output format: Markdown.
+  - Error handling: Unparseable pages, mapping conflicts.
+  - Version control: Git commit for changes''',
+    config={'cached_content': cache.name}
+)

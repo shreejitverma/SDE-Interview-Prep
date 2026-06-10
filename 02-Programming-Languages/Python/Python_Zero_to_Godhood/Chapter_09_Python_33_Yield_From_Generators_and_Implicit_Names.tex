@@ -1,0 +1,314 @@
+\hypertarget{python-3.3-yield-from-generators-and-implicit-namespace-packages}{%
+\chapter{Python 3.3: Yield From Generators and Implicit Namespace
+Packages}\label{python-3.3-yield-from-generators-and-implicit-namespace-packages}}
+
+\hypertarget{pep-380-generator-delegation-via-yield-from}{%
+\subsection{\texorpdfstring{9.1 PEP 380: Generator Delegation via
+\texttt{yield\ from}}{9.1 PEP 380: Generator Delegation via yield from}}\label{pep-380-generator-delegation-via-yield-from}}
+
+\passthrough{\lstinline!yield from <iterable>!} delegates generator
+operations directly to a sub-generator or iterable, acting as a
+transparent channel between the caller and the active sub-generator.
+
+\hypertarget{bytecode-compilation-and-stack-transitions}{%
+\subsubsection{1. Bytecode Compilation and Stack
+Transitions}\label{bytecode-compilation-and-stack-transitions}}
+
+When the compiler encounters \passthrough{\lstinline!yield from!}, it
+emits two specialized bytecodes: *
+\textbf{\passthrough{\lstinline!GET\_YIELD\_FROM\_ITER!}}: Pops the
+target iterable from the evaluation stack, checks if it is a generator
+or iterator, and prepares it for delegation. If it is a generator, it is
+pushed back directly; otherwise, CPython calls
+\passthrough{\lstinline!PyObject\_GetIter!} to obtain an iterator. *
+\textbf{\passthrough{\lstinline!YIELD\_FROM!}}: Establishes the active
+delegation channel in the main loop. The VM pops the sub-generator,
+pulls its yielded value, and pushes it back as the output of the active
+generator, suspending the frame.
+
+The stack transitions during delegation:
+
+\begin{lstlisting}
+Active Frame Stack (During yield from)
++------------------------+
+|      Return Value      | <-- (After StopIteration catches)
++------------------------+
+|   Sub-generator Ref    | <-- Managed dynamically by YIELD_FROM
++------------------------+
+|     Receiver Value     | <-- Received from caller's send()
++------------------------+
+\end{lstlisting}
+
+\hypertarget{c-level-generator-mechanics-pygenobject}{%
+\subsubsection{\texorpdfstring{2. C-Level Generator Mechanics:
+\texttt{PyGenObject}}{2. C-Level Generator Mechanics: PyGenObject}}\label{c-level-generator-mechanics-pygenobject}}
+
+CPython represents generators at the C-level as
+\passthrough{\lstinline!PyGenObject!}
+(\passthrough{\lstinline!Include/genobject.h!}):
+
+\begin{lstlisting}[language=C]
+typedef struct {
+    PyObject_HEAD
+    struct _frame *gi_frame;        /* Execution frame holding variables and instruction pointer */
+    char gi_running;                /* Active execution flag (1 if running, 0 if suspended) */
+    PyObject *gi_code;              /* Code object associated with the generator */
+    PyObject *gi_weakreflist;       /* List of weak references */
+    PyObject *gi_name;              /* Generator name string */
+    PyObject *gi_qualname;          /* Qualified name string */
+    _PyErr_StackItem gi_exc_state;   /* Exception state saved across suspensions */
+} PyGenObject;
+\end{lstlisting}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Suspension Phase}: When a generator yields, the VM sets
+  \passthrough{\lstinline!gi\_running = 0!}, saves the current
+  instruction pointer (\passthrough{\lstinline!f\_lasti!}) and stack
+  depth within \passthrough{\lstinline!gi\_frame!}, and returns control
+  to the caller.
+\item
+  \textbf{Resuming Phase}: When \passthrough{\lstinline!send()!} or
+  \passthrough{\lstinline!next()!} is invoked, CPython sets
+  \passthrough{\lstinline!gi\_running = 1!}, restores the thread state's
+  active frame to \passthrough{\lstinline!gi\_frame!}, and resumes
+  execution at the saved instruction pointer.
+\end{itemize}
+
+\hypertarget{exception-value-routing-protocol}{%
+\subsubsection{3. Exception \& Value Routing
+Protocol}\label{exception-value-routing-protocol}}
+
+The CPython implementation inside
+\passthrough{\lstinline!Python/ceval.c!} maps
+\passthrough{\lstinline!yield from!} delegation rules: *
+\textbf{\passthrough{\lstinline!send()!} Routing}: When the caller sends
+a value via \passthrough{\lstinline!generator.send(val)!}, the
+\passthrough{\lstinline!YIELD\_FROM!} instruction catches the value,
+bypasses the delegator's frame, and passes it directly to the
+sub-generator:
+\passthrough{\lstinline!c   retval = \_PyGen\_Send(sub\_gen, sent\_val, \&val);!}
+* \textbf{\passthrough{\lstinline!throw()!} Propagation}: If the caller
+raises an exception using
+\passthrough{\lstinline!generator.throw(type, val, tb)!}, the VM passes
+the exception to the sub-generator's \passthrough{\lstinline!throw()!}
+method. If the sub-generator catches the exception and yields a new
+value, execution continues. If the sub-generator raises
+\passthrough{\lstinline!StopIteration!} or propagates a different
+exception, the delegating generator is resumed or unwound. *
+\textbf{\passthrough{\lstinline!close()!} Cleanup}: When
+\passthrough{\lstinline!close()!} is called on the delegating generator,
+the VM invokes the \passthrough{\lstinline!close()!} method of the
+sub-generator. If the sub-generator does not terminate, it raises a
+\passthrough{\lstinline!RuntimeError!}. * \textbf{Return Value
+Unpacking}: When the sub-generator completes by raising
+\passthrough{\lstinline!StopIteration!}, CPython extracts the
+\passthrough{\lstinline!value!} attribute from the exception object:
+\passthrough{\lstinline!python   \# CPython StopIteration Unpacking Logic   except StopIteration as e:       result = e.value \# Maps to return value of sub-generator!}
+The value is pushed onto the stack, replacing the sub-generator
+reference, and execution of the delegating generator resumes.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{pep-420-implicit-namespace-packages}{%
+\subsection{9.2 PEP 420: Implicit Namespace
+Packages}\label{pep-420-implicit-namespace-packages}}
+
+PEP 420 introduced implicit namespace packages, allowing packages to
+span multiple directories on disk without an
+\passthrough{\lstinline!\_\_init\_\_.py!} file.
+
+\hypertarget{import-search-algorithm-in-importlib}{%
+\subsubsection{\texorpdfstring{1. Import Search Algorithm in
+\texttt{importlib}}{1. Import Search Algorithm in importlib}}\label{import-search-algorithm-in-importlib}}
+
+During \passthrough{\lstinline!import foo!}, the CPython import engine
+(\passthrough{\lstinline!sys.meta\_path!} hooks) searches directory
+paths: 1. \textbf{Finders Traversal}: The import engine iterates over
+finders registered in \passthrough{\lstinline!sys.meta\_path!}
+(primarily \passthrough{\lstinline!PathFinder!} which uses paths from
+\passthrough{\lstinline!sys.path!}). 2. \textbf{Standard Package Check}:
+For each search path in \passthrough{\lstinline!sys.path!},
+\passthrough{\lstinline!PathFinder!} checks for a subdirectory
+\passthrough{\lstinline!foo!} containing
+\passthrough{\lstinline!\_\_init\_\_.py!}. If found, it returns a
+standard module spec. 3. \textbf{Namespace Path Accumulation}: If no
+standard package is found, but one or more subdirectories named
+\passthrough{\lstinline!foo!} exist across
+\passthrough{\lstinline!sys.path!}, \passthrough{\lstinline!PathFinder!}
+does not terminate with an error. Instead, it scans all search paths and
+accumulates all matching directory paths into a list. 4. \textbf{Spec
+Initialization}: It returns a \passthrough{\lstinline!ModuleSpec!} with:
+* \passthrough{\lstinline!loader!} set to
+\passthrough{\lstinline!\_NamespaceLoader!}. *
+\passthrough{\lstinline!submodule\_search\_locations!} containing the
+accumulated directory list. 5. \textbf{Caching}: It registers the paths
+in \passthrough{\lstinline!sys.path\_importer\_cache!} to speed up
+subsequent submodule lookups.
+
+\hypertarget{namespace-modules}{%
+\subsubsection{2. Namespace Modules}\label{namespace-modules}}
+
+The loader \passthrough{\lstinline!\_NamespaceLoader!} instantiates a
+module whose \passthrough{\lstinline!\_\_file\_\_!} attribute is
+\passthrough{\lstinline!None!}, and whose
+\passthrough{\lstinline!\_\_path\_\_!} contains the list of accumulated
+directories:
+
+\begin{lstlisting}[language=Python]
+# Namespace module path list
+import company.core
+print(company.core.__path__)
+# Output: _NamespacePath(['/path1/company/core', '/path2/company/core'])
+\end{lstlisting}
+
+This allows separate wheels or libraries to distribute modules into the
+same namespace package dynamically.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{pep-393-flexible-string-representation}{%
+\subsection{9.3 PEP 393: Flexible String
+Representation}\label{pep-393-flexible-string-representation}}
+
+PEP 393 redesigned the internal representation of Unicode strings
+(\passthrough{\lstinline!str!}) to reduce memory usage. CPython now
+dynamically selects the narrowest character array encoding based on the
+maximum code point in the string.
+
+\hypertarget{c-level-layout-headers}{%
+\subsubsection{1. C-Level Layout Headers}\label{c-level-layout-headers}}
+
+CPython defines three structs in
+\passthrough{\lstinline!Include/unicodeobject.h!} to represent strings:
+* \textbf{\passthrough{\lstinline!PyASCIIObject!}} (ASCII only,
+characters \(\le 127\)):
+\passthrough{\lstinline!c   typedef struct \{       PyObject\_HEAD       Py\_ssize\_t length;          /* Number of code points */       Py\_hash\_t hash;             /* Cached hash value; -1 if uncomputed */       struct \{           unsigned int interned:2; /* Interned state (e.g. SGI\_INTERNED) */           unsigned int kind:3;    /* character size kind (1, 2, or 4 bytes) */           unsigned int compact:1; /* compact layout flag */           unsigned int ascii:1;   /* ASCII flag (1 if ASCII only) */           unsigned int ready:1;   /* Ready state */       \} state;       wchar\_t *wstr;              /* Legacy wchar\_t representation cache */   \} PyASCIIObject;!}
+The raw characters are stored in memory immediately following this
+header. * \textbf{\passthrough{\lstinline!PyCompactUnicodeObject!}}
+(Non-ASCII compact strings, characters \(\le 65535\)):
+\passthrough{\lstinline!c   typedef struct \{       PyASCIIObject \_base;       Py\_ssize\_t utf8\_length;     /* Length of UTF-8 representation */       char *utf8;                 /* Pointer to UTF-8 representation cache */       Py\_ssize\_t wstr\_length;     /* Length of wchar\_t representation */   \} PyCompactUnicodeObject;!}
+* \textbf{\passthrough{\lstinline!PyUnicodeObject!}} (Non-compact legacy
+strings): Used primarily for backward compatibility with the C-API. It
+adds a pointer to the character data memory address
+(\passthrough{\lstinline!data.any!}).
+
+\hypertarget{string-kind-allocation-and-promotion-rules}{%
+\subsubsection{2. String Kind Allocation and Promotion
+Rules}\label{string-kind-allocation-and-promotion-rules}}
+
+The character array representation is determined by the
+\passthrough{\lstinline!kind!} field: *
+\passthrough{\lstinline!PyUnicode\_1BYTE\_KIND!} (Latin-1, characters
+\(\le 255\)): 1 byte per character. *
+\passthrough{\lstinline!PyUnicode\_2BYTE\_KIND!} (UCS-2, characters
+\(\le 65535\)): 2 bytes per character. *
+\passthrough{\lstinline!PyUnicode\_4BYTE\_KIND!} (UCS-4, characters
+\(> 65535\)): 4 bytes per character.
+
+If a string operation (e.g., concatenation or substitution) appends a
+character that exceeds the current string's maximum code point, CPython
+allocates a new string with the promoted \passthrough{\lstinline!kind!}
+and converts the existing characters:
+
+\begin{lstlisting}[language=Python]
+# String Promotion Simulation
+s = "abc"      # Kind: 1-byte (ASCII)
+s += ""       # Promoted to Kind: 1-byte (Latin-1)
+s += ""       # Promoted to Kind: 2-byte (UCS-2)
+s += ""      # Promoted to Kind: 4-byte (UCS-4)
+\end{lstlisting}
+
+During promotion from 1-byte to 2-byte, CPython executes a C conversion
+loop:
+
+\begin{lstlisting}[language=C]
+/* C-level character expansion loop */
+for (Py_ssize_t i = 0; i < length; i++) {
+    dest_2byte[i] = (Py_UCS2)source_1byte[i];
+}
+\end{lstlisting}
+
+This design maintains \(O(1)\) indexing for all strings while optimizing
+memory usage for ASCII and Latin-1 strings.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{memoryview-and-the-buffer-protocol-py_buffer}{%
+\subsection{\texorpdfstring{9.4 \texttt{memoryview} and the Buffer
+Protocol
+(\texttt{Py\_buffer})}{9.4 memoryview and the Buffer Protocol (Py\_buffer)}}\label{memoryview-and-the-buffer-protocol-py_buffer}}
+
+The buffer protocol allows Python objects (e.g.,
+\passthrough{\lstinline!bytes!}, \passthrough{\lstinline!bytearray!},
+\passthrough{\lstinline!array.array!}) to expose their raw memory buffer
+directly to other objects without copying data.
+
+\hypertarget{the-py_buffer-struct}{%
+\subsubsection{\texorpdfstring{1. The \texttt{Py\_buffer}
+Struct}{1. The Py\_buffer Struct}}\label{the-py_buffer-struct}}
+
+The interface is defined by the \passthrough{\lstinline!Py\_buffer!}
+struct in \passthrough{\lstinline!Include/object.h!}:
+
+\begin{lstlisting}[language=C]
+typedef struct {
+    void *buf;                  /* Pointer to the start of the memory block */
+    PyObject *obj;              /* Reference to the parent object providing the buffer */
+    Py_ssize_t len;             /* Total length of the buffer in bytes */
+    Py_ssize_t itemsize;        /* Size of a single element in bytes */
+    int readonly;               /* Read-only flag (1 if read-only, 0 if writable) */
+    const char *format;         /* Format string describing element type (struct syntax) */
+    int ndim;                   /* Number of dimensions */
+    Py_ssize_t *shape;          /* Array of sizes for each dimension */
+    Py_ssize_t *strides;        /* Array of step strides in bytes for each dimension */
+    Py_ssize_t *suboffsets;     /* Suboffsets for nested arrays */
+    void *internal;             /* Private storage for the buffer provider */
+} Py_buffer;
+\end{lstlisting}
+
+\hypertarget{multidimensional-strides-mathematics}{%
+\subsubsection{2. Multidimensional Strides
+Mathematics}\label{multidimensional-strides-mathematics}}
+
+The offset in bytes of an element in a multi-dimensional buffer is
+computed using strides:
+\[\text{Offset} = \text{start\_offset} + \sum_{i=0}^{n-1} \text{index}_i \times \text{strides}_i\]
+For a 2D matrix of shape \passthrough{\lstinline![2, 3]!} containing
+32-bit C-integers (\passthrough{\lstinline!itemsize = 4!}) stored in
+row-major order: * Shape array: \passthrough{\lstinline![2, 3]!} *
+Strides array: \passthrough{\lstinline![12, 4]!} (since each row is
+\(3 \times 4 = 12\) bytes, and each column is 4 bytes). To access index
+\passthrough{\lstinline![1, 2]!}:
+\[\text{Offset} = (1 \times 12) + (2 \times 4) = 12 + 8 = 20 \text{ bytes}\]
+
+CPython can transpose or slice buffers in \(O(1)\) time by altering the
+\passthrough{\lstinline!shape!} and \passthrough{\lstinline!strides!}
+arrays without moving or copying the underlying data in memory.
+
+\hypertarget{buffer-locking-safety}{%
+\subsubsection{3. Buffer Locking \&
+Safety}\label{buffer-locking-safety}}
+
+To prevent memory corruption, objects must coordinate resizing with
+active buffers: 1. \textbf{Buffer Export}: When
+\passthrough{\lstinline!memoryview!} is created on a
+\passthrough{\lstinline!bytearray!}, it invokes the provider's
+\passthrough{\lstinline!bf\_getbuffer!} slot, which populates the
+\passthrough{\lstinline!Py\_buffer!} struct and increments the
+provider's export counter (\passthrough{\lstinline!ob\_exports++!}). 2.
+\textbf{Resizing Ban}: While \passthrough{\lstinline!ob\_exports > 0!},
+any operation that attempts to resize or reallocate the memory buffer
+(e.g., \passthrough{\lstinline!bytearray.append()!} or
+\passthrough{\lstinline!bytearray.extend()!}) is blocked and raises a
+\passthrough{\lstinline!BufferError!}:
+\passthrough{\lstinline!python    \# Buffer protection verification    data = bytearray(b"raw\_bytes")    view = memoryview(data)    data.extend(b"\_new")  \# Raises BufferError: Existing exports prevent resizing!}
+3. \textbf{Buffer Release}: When the
+\passthrough{\lstinline!memoryview!} is garbage collected or explicitly
+closed, it calls \passthrough{\lstinline!PyBuffer\_Release()!}, which
+invokes the provider's \passthrough{\lstinline!bf\_releasebuffer!} slot
+to decrement the export counter
+(\passthrough{\lstinline!ob\_exports--!}). Once
+\passthrough{\lstinline!ob\_exports!} reaches 0, the buffer can be
+resized or freed.

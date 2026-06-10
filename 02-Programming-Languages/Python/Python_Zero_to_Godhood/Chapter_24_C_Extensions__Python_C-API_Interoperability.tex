@@ -1,0 +1,272 @@
+\hypertarget{c-extensions-python-c-api-interoperability}{%
+\chapter{C Extensions \& Python C-API
+Interoperability}\label{c-extensions-python-c-api-interoperability}}
+
+\hypertarget{writing-a-pure-c-extension-module}{%
+\subsection{24.1 Writing a Pure C Extension
+Module}\label{writing-a-pure-c-extension-module}}
+
+Python allows writing modules directly in C or C++ to access low-level
+OS APIs, optimize performance-critical paths, or link with native
+libraries. A C extension is compiled into a shared library (a
+\passthrough{\lstinline!.so!} file on Unix, or a
+\passthrough{\lstinline!.pyd!} file on Windows) that Python can load
+dynamically at runtime using \passthrough{\lstinline!import!}.
+
+\hypertarget{detailed-c-extension-with-error-handling-and-keywords}{%
+\subsubsection{1. Detailed C-Extension with Error Handling and
+Keywords}\label{detailed-c-extension-with-error-handling-and-keywords}}
+
+A robust C extension must handle keyword arguments, perform error
+checks, raise Python exceptions on failure, and manage resources.
+
+Below is an implementation of a custom C module exposing a safe division
+function:
+
+\begin{lstlisting}[language=C]
+#define PY_SSIZE_T_CLEAN
+#include <Python.h>
+
+/* 1. Core C Function Implementation with Keywords & Exception Handling */
+static PyObject* 
+custom_safe_divide(PyObject* self, PyObject* args, PyObject* keywds) {
+    double numerator;
+    double denominator;
+    
+    /* Argument keyword names array */
+    static char *kwlist[] = {"numerator", "denominator", NULL};
+    
+    /* Parse Python argument tuple & dict into native double values */
+    if (!PyArg_ParseTupleAndKeywords(args, keywds, "dd", kwlist, &numerator, &denominator)) {
+        return NULL; /* Returns NULL to signal an exception occurred during parsing */
+    }
+    
+    /* Check for division by zero and raise a Python ZeroDivisionError */
+    if (denominator == 0.0) {
+        PyErr_SetString(PyExc_ZeroDivisionError, "Denominator cannot be zero.");
+        return NULL; /* Return NULL to propagate the raised exception */
+    }
+    
+    double result = numerator / denominator;
+    
+    /* Convert native C double back to a Python PyFloatObject */
+    return PyFloat_FromDouble(result);
+}
+
+/* 2. Methods Table Registration */
+static PyMethodDef CustomMethods[] = {
+    {
+        "safe_divide", 
+        (PyCFunction)(void(*)(void))custom_safe_divide, 
+        METH_VARARGS | METH_KEYWORDS, 
+        "Divides numerator by denominator, returning float safely."
+    },
+    {NULL, NULL, 0, NULL} /* Sentinel marker to end array */
+};
+
+/* 3. Module Definition Structure */
+static struct PyModuleDef custommodule = {
+    PyModuleDef_HEAD_INIT,
+    "custom_c_math",            /* Module Name */
+    "A custom high-performance C extension module.", /* Docstring */
+    -1,                         /* Module state size (-1 = global state) */
+    CustomMethods
+};
+
+/* 4. Initialization Hook called upon 'import custom_c_math' */
+PyMODINIT_FUNC 
+PyInit_custom_c_math(void) {
+    return PyModule_Create(&custommodule);
+}
+\end{lstlisting}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{\passthrough{\lstinline!METH\_VARARGS | METH\_KEYWORDS!}}:
+  Tells the interpreter that this function accepts both positional
+  arguments (parsed into \passthrough{\lstinline!args!} as a tuple) and
+  keyword arguments (parsed into \passthrough{\lstinline!keywds!} as a
+  dictionary).
+\item
+  \textbf{\passthrough{\lstinline!PyArg\_ParseTupleAndKeywords!}}:
+  Resolves both types of inputs, mapping them into the C double
+  variables based on the format string \passthrough{\lstinline!"dd"!}
+  (double, double) and the keyword list
+  \passthrough{\lstinline!kwlist!}.
+\item
+  \textbf{Exception Signaling}: Returning a
+  \passthrough{\lstinline!NULL!} pointer tells CPython's execution frame
+  that an exception has been set inside the thread state. The
+  interpreter pauses bytecode execution and executes its exception
+  handler path.
+\end{itemize}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{reference-counting-and-ownership-rules-in-c-api}{%
+\subsection{24.2 Reference Counting and Ownership Rules in
+C-API}\label{reference-counting-and-ownership-rules-in-c-api}}
+
+When interacting with the Python C-API, developers must manually manage
+reference counting. Standard Python code delegates reference updates to
+the compiler/interpreter, but in C, a single missing decref causes a
+memory leak, and an extra decref causes a crash (segmentation fault).
+
+\hypertarget{reference-ownership-categories}{%
+\subsubsection{1. Reference Ownership
+Categories}\label{reference-ownership-categories}}
+
+Every pointer returning from a C-API function belongs to one of three
+reference categories:
+
+\hypertarget{new-references}{%
+\paragraph{New References}\label{new-references}}
+
+The C function receives absolute ownership of the reference. It must
+decrement the reference count when finished, or pass ownership back to
+CPython (e.g., by returning the object from the function).
+
+\begin{itemize}
+\tightlist
+\item
+  \emph{Examples}: \passthrough{\lstinline!PyLong\_FromLong()!},
+  \passthrough{\lstinline!PyList\_New()!},
+  \passthrough{\lstinline!PyObject\_Call()!}.
+\end{itemize}
+
+\hypertarget{borrowed-references}{%
+\paragraph{Borrowed References}\label{borrowed-references}}
+
+The C function receives a pointer without ownership. It does not own the
+reference and must not decrement it unless it explicitly calls
+\passthrough{\lstinline!Py\_INCREF()!} to claim ownership. If the owner
+of the object frees it, a borrowed pointer becomes dangling.
+
+\begin{itemize}
+\tightlist
+\item
+  \emph{Examples}: \passthrough{\lstinline!PyTuple\_GetItem()!},
+  \passthrough{\lstinline!PyList\_GetItem()!}.
+\end{itemize}
+
+\hypertarget{stolen-references}{%
+\paragraph{Stolen References}\label{stolen-references}}
+
+Some C-API functions take ownership of references passed to them. The
+caller no longer owns the reference and must not decrement it, as the
+receiver will decrement it during its own deallocation pass.
+
+\begin{itemize}
+\tightlist
+\item
+  \emph{Examples}: \passthrough{\lstinline!PyTuple\_SetItem()!},
+  \passthrough{\lstinline!PyList\_SetItem()!}.
+\end{itemize}
+
+\begin{lstlisting}[language=C]
+void add_item_to_tuple_example(void) {
+    PyObject* my_tuple = PyTuple_New(1);              /* Returns New Reference */
+    PyObject* my_val = PyLong_FromLong(42);           /* Returns New Reference */
+    
+    /* PyTuple_SetItem steals the reference to 'my_val' */
+    PyTuple_SetItem(my_tuple, 0, my_val);
+    
+    /* 
+       Do NOT call Py_DECREF(my_val). 'my_tuple' now owns it.
+       If we decref'd my_val, freeing my_tuple would trigger a double-free crash.
+    */
+    
+    Py_DECREF(my_tuple); /* Safely deallocates tuple and my_val */
+}
+\end{lstlisting}
+
+\hypertarget{safe-reference-macros}{%
+\subsubsection{2. Safe Reference Macros}\label{safe-reference-macros}}
+
+CPython provides macros to handle reference updates safely: *
+\passthrough{\lstinline!Py\_INCREF(op)!} /
+\passthrough{\lstinline!Py\_DECREF(op)!}: Non-null safe updates. Passing
+a \passthrough{\lstinline!NULL!} pointer triggers a crash. *
+\passthrough{\lstinline!Py\_XINCREF(op)!} /
+\passthrough{\lstinline!Py\_XDECREF(op)!}: Null-safe updates. They check
+if \passthrough{\lstinline!op!} is \passthrough{\lstinline!NULL!} and do
+nothing if it is, protecting code in error-handling block cleanups:
+
+\begin{lstlisting}[language=C]
+void error_handling_cleanup_example(PyObject *a, PyObject *b) {
+    // If a or b failed allocation and were set to NULL, XDECREF handles it safely
+    Py_XDECREF(a);
+    Py_XDECREF(b);
+}
+\end{lstlisting}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{c-api-stable-abi-pep-384}{%
+\subsection{24.3 C-API Stable ABI (PEP
+384)}\label{c-api-stable-abi-pep-384}}
+
+Standard C extensions are compiled against a specific Python version's
+headers (e.g., Python 3.10). They depend on concrete structure offsets
+(such as \passthrough{\lstinline!sizeof(PyObject)!} or offsets of
+\passthrough{\lstinline!ob\_type!}). When Python updates its internal
+layouts (e.g., changing the type struct in 3.11), these compiled
+binaries break, requiring recompilation for the new Python version.
+
+To resolve this compilation dependency, PEP 384 introduced the
+\textbf{Stable ABI} (Application Binary Interface) / Limited API.
+
+\begin{lstlisting}
++---------------------------------------+
+|        Standard C Extension           |
+|  Directly accesses structures (e.g.   | ---> Fast, but must compile
+|  op->ob_refcnt, op->ob_type)          |      for every Python version.
++---------------------------------------+
+
++---------------------------------------+
+|          Stable ABI Extension         |
+|  Uses opaque pointers and accessors   | ---> Compile once. Runs on
+|  (e.g., Py_REFCNT(op), PyType_GetSlot) |      Python 3.5, 3.6, ... 3.13+
++---------------------------------------+
+\end{lstlisting}
+
+\hypertarget{opaque-pointers-and-opaque-structures}{%
+\subsubsection{1. Opaque Pointers and Opaque
+Structures}\label{opaque-pointers-and-opaque-structures}}
+
+When compiling under the Stable ABI, structure definitions (like
+\passthrough{\lstinline!PyObject!} or
+\passthrough{\lstinline!PyTypeObject!}) are treated as \textbf{opaque
+structures}. You cannot compile code that accesses their internal fields
+directly:
+
+\begin{lstlisting}[language=C]
+/* Standard API (will not compile under Py_LIMITED_API) */
+PyTypeObject* type = op->ob_type;
+
+/* Stable ABI equivalent */
+PyTypeObject* type = Py_TYPE(op);
+\end{lstlisting}
+
+\hypertarget{defining-the-limited-api}{%
+\subsubsection{2. Defining the Limited
+API}\label{defining-the-limited-api}}
+
+To restrict compilation to the Stable ABI, define
+\passthrough{\lstinline!Py\_LIMITED\_API!} before importing
+\passthrough{\lstinline!<Python.h>!} or set it as a compiler flag:
+
+\begin{lstlisting}[language=C]
+#define Py_LIMITED_API 0x030A0000  /* Targets Python 3.10 and later */
+#define PY_SSIZE_T_CLEAN
+#include <Python.h>
+\end{lstlisting}
+
+This guarantees that the resulting compiled binary links only with
+stable symbols exported by the dynamic library
+(\passthrough{\lstinline!libpython3.so!} or
+\passthrough{\lstinline!python3.dll!}), allowing the extension to load
+and run on any subsequent Python version without recompilation.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}

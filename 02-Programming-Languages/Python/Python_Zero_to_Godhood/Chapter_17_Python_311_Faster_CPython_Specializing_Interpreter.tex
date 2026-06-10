@@ -1,0 +1,216 @@
+\hypertarget{python-3.11-faster-cpython-specializing-interpreter-and-adaptive-bytecode}{%
+\chapter{Python 3.11: Faster CPython Specializing Interpreter and
+Adaptive
+Bytecode}\label{python-3.11-faster-cpython-specializing-interpreter-and-adaptive-bytecode}}
+
+\hypertarget{pep-659-specialized-adaptive-interpreter-architecture}{%
+\subsection{17.1 PEP 659 Specialized Adaptive Interpreter
+Architecture}\label{pep-659-specialized-adaptive-interpreter-architecture}}
+
+Prior to Python 3.11, the bytecode interpreter loop executed
+instructions generically. For instance, a
+\passthrough{\lstinline!LOAD\_ATTR!} instruction looked up attributes
+using hash table lookups every time. PEP 659 introduced a
+\textbf{specializing adaptive interpreter} to dramatically reduce lookup
+overhead.
+
+\hypertarget{monomorphism-vs.-polymorphism-in-dynamic-execution}{%
+\subsubsection{1. Monomorphism vs.~Polymorphism in Dynamic
+Execution}\label{monomorphism-vs.-polymorphism-in-dynamic-execution}}
+
+While Python is a dynamic language, execution paths in real-world
+application code are highly \textbf{monomorphic} (a specific call site
+or attribute access typically processes objects of the exact same type
+repeatedly). Generic bytecode instructions (like
+\passthrough{\lstinline!LOAD\_ATTR!}) are designed to handle any type of
+object, performing expensive CPython namespace dictionary lookups and
+method searches on every execution.
+
+\hypertarget{dynamic-instruction-patching}{%
+\subsubsection{2. Dynamic Instruction
+Patching}\label{dynamic-instruction-patching}}
+
+PEP 659 optimizes hot, monomorphic paths by dynamically modifying the
+instruction stream in memory at runtime: 1. \textbf{Generic State}: The
+compiler generates generic opcodes
+(e.g.~\passthrough{\lstinline!LOAD\_ATTR!}). 2. \textbf{Warm-up \&
+Monitoring}: When executed, the generic opcode transitions into an
+\textbf{adaptive state} (e.g.,
+\passthrough{\lstinline!LOAD\_ATTR\_ADAPTIVE!}). The adaptive
+instruction maintains an execution counter initialized to
+\passthrough{\lstinline!8!}. 3. \textbf{Specialization}: On every
+execution, the interpreter monitors the operand types and decrements the
+counter. If the type is consistent when the counter reaches
+\passthrough{\lstinline!0!}, the interpreter patches the bytecode in
+memory, replacing the adaptive opcode with a \textbf{specialized opcode}
+(e.g., \passthrough{\lstinline!LOAD\_ATTR\_INSTANCE\_VALUE!}). 4.
+\textbf{Deoptimization}: If the operand type changes at a specialized
+call site, the opcode execution fails its fast path validation check. It
+branches to a deoptimization routine, restores the generic or adaptive
+state, and executes the slow lookup.
+
+\begin{lstlisting}
+CPython 3.11 Instruction Specialization Lifecycle:
+
+  [ Generic Opcode ] (LOAD_ATTR)
+         |
+         | (Executed first time)
+         v
+  [ Adaptive Opcode ] (LOAD_ATTR_ADAPTIVE, Counter = 8)
+         |
+         | (Consistent types, Counter reaches 0)
+         v
+  [ Specialized Opcode ] (LOAD_ATTR_INSTANCE_VALUE)
+    /                 \
+   / (Type Match)      \ (Type Mismatch)
+  v                     v
+[ Fast Direct Offset ] [ Deoptimize to Generic / Slow Lookup ]
+\end{lstlisting}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{specialized-bytecode-opcodes-and-inline-cache-memory-layout}{%
+\subsection{17.2 Specialized Bytecode Opcodes and Inline Cache Memory
+Layout}\label{specialized-bytecode-opcodes-and-inline-cache-memory-layout}}
+
+CPython reserves extra memory slots directly adjacent to the instruction
+bytes inside the code object's instruction array. This contiguous memory
+block is called the \textbf{Inline Cache}.
+
+\hypertarget{inline-cache-memory-alignment}{%
+\subsubsection{1. Inline Cache Memory
+Alignment}\label{inline-cache-memory-alignment}}
+
+Instructions are represented by \passthrough{\lstinline!\_Py\_CODEUNIT!}
+elements (16-bit blocks: 8-bit opcode and 8-bit argument). When a
+cacheable instruction is compiled, the compiler allocates empty
+\passthrough{\lstinline!\_Py\_CODEUNIT!} entries directly following the
+instruction to serve as the cache.
+
+\hypertarget{cpython-bytecode-stream-cache-layout}{%
+\paragraph{CPython Bytecode Stream Cache
+Layout:}\label{cpython-bytecode-stream-cache-layout}}
+
+\begin{lstlisting}
+Memory Address:  |  n  |  n+1  |  n+2  |  n+3  |  n+4  |  n+5  |  n+6  |
+Bytecode:        [ LOAD_ATTR ] [ Cache Slot 0 ] [ Cache Slot 1 ] [ Cache Slot 2 ]
+\end{lstlisting}
+
+When executing \passthrough{\lstinline!LOAD\_ATTR!} at address
+\passthrough{\lstinline!n!}, the VM knows that the next 3 code units are
+reserved for the inline cache and skips them to decode the next
+instruction at address \passthrough{\lstinline!n+4!}.
+
+\hypertarget{c-level-cache-structures-inside-pycore_code.h}{%
+\subsubsection{\texorpdfstring{2. C-level Cache Structures inside
+\texttt{pycore\_code.h}}{2. C-level Cache Structures inside pycore\_code.h}}\label{c-level-cache-structures-inside-pycore_code.h}}
+
+For attribute lookups (\passthrough{\lstinline!LOAD\_ATTR!}), CPython
+maps the inline cache slots to the
+\passthrough{\lstinline!\_PyAttrCache!} struct:
+
+\begin{lstlisting}[language=C]
+typedef struct {
+    uint16_t counter;           /* Adaptive execution counter */
+    uint32_t type_version;      /* Object type version pointer (tp_version_tag) */
+    uint16_t index;             /* Attribute array offset */
+} _PyAttrCache;
+\end{lstlisting}
+
+For global variable lookups (\passthrough{\lstinline!LOAD\_GLOBAL!}),
+the VM allocates the \passthrough{\lstinline!\_PyLoadGlobalCache!}
+struct:
+
+\begin{lstlisting}[language=C]
+typedef struct {
+    uint16_t counter;           /* Adaptive counter */
+    uint32_t module_keys_version; /* Dictionary keys version of module globals */
+    uint32_t builtin_keys_version; /* Dictionary keys version of builtins dict */
+} _PyLoadGlobalCache;
+\end{lstlisting}
+
+\hypertarget{cpython-type-versioning-tp_version_tag}{%
+\subsubsection{\texorpdfstring{3. CPython Type Versioning
+(\texttt{tp\_version\_tag})}{3. CPython Type Versioning (tp\_version\_tag)}}\label{cpython-type-versioning-tp_version_tag}}
+
+To ensure cache validity: * Every class
+(\passthrough{\lstinline!PyTypeObject!}) in CPython has an internal
+\passthrough{\lstinline!tp\_version\_tag!} field (a 32-bit unsigned
+integer). * If a class is modified at runtime (e.g.~adding a method or
+setting a class variable), CPython increments a global type version
+counter and assigns it to the class's
+\passthrough{\lstinline!tp\_version\_tag!}, immediately invalidating all
+inline caches containing the old version tag.
+
+\hypertarget{execution-flow-of-specialized-instructions}{%
+\subsubsection{4. Execution Flow of Specialized
+Instructions}\label{execution-flow-of-specialized-instructions}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{\passthrough{\lstinline!LOAD\_ATTR\_INSTANCE\_VALUE!}}:
+
+  \begin{enumerate}
+  \def\labelenumi{\arabic{enumi}.}
+  \tightlist
+  \item
+    Pops the target object off the stack.
+  \item
+    Compares the object's class
+    \passthrough{\lstinline!tp\_version\_tag!} against the cached
+    \passthrough{\lstinline!type\_version!}.
+  \item
+    If they match, it skips dict lookups and reads the attribute
+    directly from the object's instance values array
+    (\passthrough{\lstinline!obj->obj\_values[index]!}), pushing it onto
+    the stack.
+  \end{enumerate}
+\item
+  \textbf{\passthrough{\lstinline!LOAD\_GLOBAL\_MODULE!}}:
+
+  \begin{enumerate}
+  \def\labelenumi{\arabic{enumi}.}
+  \tightlist
+  \item
+    Compares the module dictionary's keys version against
+    \passthrough{\lstinline!module\_keys\_version!}.
+  \item
+    If they match, it reads the value directly from the dictionary value
+    array, completely bypassing hash collisions and key comparisons.
+  \end{enumerate}
+\end{itemize}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{polymorphic-deoptimization-costs}{%
+\subsection{17.3 Polymorphic Deoptimization
+Costs}\label{polymorphic-deoptimization-costs}}
+
+While specialization yields massive performance improvements, it is
+sensitive to code polymorphism: * \textbf{Deoptimization Paths}: If a
+call site receives objects of varying classes (e.g.~calling a function
+with both \passthrough{\lstinline!Dog!} and
+\passthrough{\lstinline!Cat!} classes where both define
+\passthrough{\lstinline!.x!} but at different offsets), the instruction
+will constantly deoptimize. * \textbf{Thrashing}: The VM will oscillate
+between deoptimizing, executing slow-path lookups, warming up the
+adaptive counter, and specializing again (thrashing). This destroys
+performance because the interpreter incurs the combined costs of: 1.
+Cache tag validation mismatch checks. 2. Generic name dictionary hash
+lookups. 3. Adaptive state tracking and bytecode memory rewriting
+overhead.
+
+\hypertarget{coding-guidelines-for-pep-659-optimization}{%
+\subsubsection{Coding Guidelines for PEP 659
+Optimization:}\label{coding-guidelines-for-pep-659-optimization}}
+
+To maximize CPython 3.11+ execution speed, developers should design code
+to be \textbf{monomorphic}: 1. \textbf{Keep Types Consistent}: Avoid
+passing objects of different types to the same hot functions or
+attribute access sites. 2. \textbf{Favor Class Structure Consistency}:
+Avoid dynamically modifying instance attributes or class namespaces at
+runtime, as this increments \passthrough{\lstinline!tp\_version\_tag!}
+and invalidates caches globally.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}

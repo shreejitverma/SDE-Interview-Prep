@@ -1,0 +1,118 @@
+\hypertarget{under-the-hood-built-in-data-structures}{%
+\chapter{UNDER THE HOOD: BUILT-IN DATA
+STRUCTURES}\label{under-the-hood-built-in-data-structures}}
+
+\hypertarget{python-list-memory-management}{%
+\subsection{5.1 Python List Memory
+Management}\label{python-list-memory-management}}
+
+A Python list is a contiguous dynamic array of
+\passthrough{\lstinline!PyObject*!} pointers. Because list sizes change
+dynamically, CPython overallocates memory blocks to achieve \(O(1)\)
+amortized append performance.
+
+\hypertarget{the-list-growth-formula}{%
+\subsubsection{The List Growth Formula:}\label{the-list-growth-formula}}
+
+When a list exceeds its current capacity during an
+\passthrough{\lstinline!append!} or \passthrough{\lstinline!insert!}
+call, CPython recalculates its allocation size in
+\passthrough{\lstinline!Objects/listobject.c!} using the formula:
+\[\text{new\_allocated} = \text{newsize} + (\text{newsize} \gg 3) + (\text{newsize} < 9 \,?\, 3 : 6)\]
+
+Here is the resulting capacity growth trace: \textbar{} Item Count
+(\passthrough{\lstinline!newsize!}) \textbar{} Allocated Capacity
+\textbar{} Overallocation Factor \textbar{}
+\textbar---\textbar---\textbar---\textbar{} \textbar{} 0 \textbar{} 0
+\textbar{} - \textbar{} \textbar{} 1 \textbar{} 4 \textbar{} \(400\%\)
+\textbar{} \textbar{} 5 \textbar{} 8 \textbar{} \(160\%\) \textbar{}
+\textbar{} 9 \textbar{} 16 \textbar{} \(177\%\) \textbar{} \textbar{} 17
+\textbar{} 25 \textbar{} \(147\%\) \textbar{} \textbar{} 1000 \textbar{}
+1129 \textbar{} \(112.9\%\) \textbar{}
+
+This formula balances memory overhead and reallocation speed. By adding
+\(\approx 12.5\%\) extra slots as the list grows, it minimizes heap
+reallocations and memory copying costs.
+
+\hypertarget{python-dict-hashing-and-collision-pertubation}{%
+\subsection{5.2 Python Dict: Hashing and Collision
+pertubation}\label{python-dict-hashing-and-collision-pertubation}}
+
+A Python dictionary is a sparse hash table. CPython uses open addressing
+(probing) to resolve collisions.
+
+\hypertarget{collision-perturbation-formula}{%
+\subsubsection{Collision Perturbation
+Formula:}\label{collision-perturbation-formula}}
+
+When a hash collision occurs, CPython searches for the next index using
+a pseudo-random probing formula. Rather than a simple linear probe
+(which causes clustering), it shifts the upper bits of the hash code
+down to contribute to the index calculation:
+\[i = (5 \times i + 1 + \text{perturb}) \pmod{\text{size}}\]
+
+In each probe step: \[\text{perturb} \gg= 5\] As \(\text{perturb}\)
+drops to zero, the formula collapses to:
+\[i = (5 \times i + 1) \pmod{\text{size}}\] This ensures every slot in
+the table is eventually checked.
+
+\hypertarget{the-compact-dict-layout-pep-468-python-3.6}{%
+\subsubsection{The Compact Dict Layout (PEP 468 / Python
+3.6+):}\label{the-compact-dict-layout-pep-468-python-3.6}}
+
+Previously, dictionary tables were stored as sparse arrays of
+\passthrough{\lstinline!PyDictEntry!} structs (24 bytes per bucket):
+
+\begin{lstlisting}
+Pre-3.6 Sparse Dictionary Layout (Huge footprint, unpreserved order):
+[ Index 0: <hash, key_ptr, value_ptr> (24 bytes) ]
+[ Index 1: <Empty / 24 bytes null padding>       ]
+[ Index 2: <hash, key_ptr, value_ptr> (24 bytes) ]
+\end{lstlisting}
+
+The modern compact dict layout splits this into two arrays: 1.
+\textbf{Indices Array}: A sparse array of small integers (typically 1
+byte each) mapping hash codes to positions in the entries array. 2.
+\textbf{Entries Array}: A dense, contiguous array of
+\passthrough{\lstinline!PyDictKeyEntry!} structs (containing
+\passthrough{\lstinline!hash!}, \passthrough{\lstinline!key\_ptr!}, and
+\passthrough{\lstinline!value\_ptr!}) stored in insertion order.
+
+\begin{lstlisting}
+Modern Compact Dictionary Layout (PEP 468):
+Indices Array: [ 0, -1, 1 ]  (Fast index references)
+Entries Array (Dense, ordered):
+[ Slot 0: <hash1, key1, val1> ]
+[ Slot 1: <hash2, key2, val2> ]
+\end{lstlisting}
+
+This saves up to 40\% memory and preserves insertion order by default.
+
+\hypertarget{sets-and-tuples-optimizations}{%
+\subsection{5.3 Sets and Tuples
+Optimizations}\label{sets-and-tuples-optimizations}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Sets (\passthrough{\lstinline!PySetObject!})}: Implemented
+  similarly to compact dicts, but contain only keys. Set lookups bypass
+  value lookups entirely, using specialized open-addressing C loops.
+\item
+  \textbf{Tuples (\passthrough{\lstinline!PyTupleObject!})}: Tuples are
+  immutable, so they are allocated as a single contiguous block of
+  memory containing both the \passthrough{\lstinline!PyVarObject!}
+  header and the array of \passthrough{\lstinline!PyObject*!} pointers.
+
+  \begin{itemize}
+  \tightlist
+  \item
+    \emph{Allocation Cache}: CPython avoids calling the system memory
+    allocator when creating short tuples. It maintains a \textbf{free
+    list} of recycled tuple objects for sizes up to 20. When a tuple is
+    garbage-collected, its memory is not released to the OS; instead, it
+    is placed in the free list for quick reuse.
+  \end{itemize}
+\end{itemize}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}

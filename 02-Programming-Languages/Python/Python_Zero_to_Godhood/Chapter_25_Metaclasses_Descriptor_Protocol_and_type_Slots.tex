@@ -1,0 +1,273 @@
+\hypertarget{metaclasses-descriptor-protocol-and-type-slots}{%
+\chapter{Metaclasses, Descriptor Protocol, and type
+Slots}\label{metaclasses-descriptor-protocol-and-type-slots}}
+
+\hypertarget{the-metaclass-class-creation-pipeline}{%
+\subsection{25.1 The Metaclass Class Creation
+Pipeline}\label{the-metaclass-class-creation-pipeline}}
+
+In Python, classes are objects themselves. A \textbf{metaclass} is the
+class of a class; it defines how classes are constructed. The default
+metaclass for all objects is \passthrough{\lstinline!type!}.
+
+When CPython executes a class definition block:
+
+\begin{lstlisting}[language=Python]
+class MyClass(BaseClass, metaclass=MyMeta):
+    x = 1
+\end{lstlisting}
+
+The VM resolves class creation by running these sequential steps:
+
+\hypertarget{namespace-preparation-__prepare__}{%
+\subsubsection{\texorpdfstring{1. Namespace Preparation
+(\texttt{\_\_prepare\_\_})}{1. Namespace Preparation (\_\_prepare\_\_)}}\label{namespace-preparation-__prepare__}}
+
+Before executing the class body code, CPython checks if the metaclass
+has a \passthrough{\lstinline!\_\_prepare\_\_!} method. If present, it
+calls:
+
+\begin{lstlisting}[language=Python]
+namespace = MyMeta.__prepare__('MyClass', (BaseClass,))
+\end{lstlisting}
+
+This returns a mapping object (usually a standard empty dictionary, but
+it can be a custom namespace like a
+\passthrough{\lstinline!collections.OrderedDict!} or a custom dictionary
+subclass). The interpreter then executes the class body code within this
+namespace object, populating it with attributes (methods, class
+variables, annotations).
+
+\hypertarget{class-object-allocation-__new__}{%
+\subsubsection{\texorpdfstring{2. Class Object Allocation
+(\texttt{\_\_new\_\_})}{2. Class Object Allocation (\_\_new\_\_)}}\label{class-object-allocation-__new__}}
+
+After executing the class body, CPython invokes the metaclass
+\passthrough{\lstinline!\_\_new\_\_!} method to allocate the class
+object:
+
+\begin{lstlisting}[language=Python]
+cls = MyMeta.__new__(MyMeta, 'MyClass', (BaseClass,), namespace)
+\end{lstlisting}
+
+At the C level, this redirects to the type object's allocation slot
+\passthrough{\lstinline!PyType\_Type.tp\_new!} (implemented in
+\passthrough{\lstinline!Objects/typeobject.c!} as
+\passthrough{\lstinline!type\_new!}). This allocates a new
+\passthrough{\lstinline!PyTypeObject!} struct on the heap, setting up
+its class fields, base classes, and MRO (Method Resolution Order).
+
+\hypertarget{class-initialization-__init__}{%
+\subsubsection{\texorpdfstring{3. Class Initialization
+(\texttt{\_\_init\_\_})}{3. Class Initialization (\_\_init\_\_)}}\label{class-initialization-__init__}}
+
+Once the class object is allocated, CPython initializes it by calling:
+
+\begin{lstlisting}[language=Python]
+MyMeta.__init__(cls, 'MyClass', (BaseClass,), namespace)
+\end{lstlisting}
+
+This allows the metaclass to inspect or modify the newly created class
+object before returning it.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{the-descriptor-protocol-and-attribute-lookup-precedence}{%
+\subsection{25.2 The Descriptor Protocol and Attribute Lookup
+Precedence}\label{the-descriptor-protocol-and-attribute-lookup-precedence}}
+
+A descriptor is an object that customizes attribute access behavior by
+implementing methods in the descriptor protocol: *
+\passthrough{\lstinline!\_\_get\_\_(self, instance, owner)!}: Customizes
+attribute reads. *
+\passthrough{\lstinline!\_\_set\_\_(self, instance, value)!}: Customizes
+attribute writes. *
+\passthrough{\lstinline!\_\_delete\_\_(self, instance)!}: Customizes
+attribute deletions.
+
+\hypertarget{data-descriptors-vs.-non-data-descriptors}{%
+\subsubsection{1. Data Descriptors vs.~Non-Data
+Descriptors}\label{data-descriptors-vs.-non-data-descriptors}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Data Descriptor}: Implements both
+  \passthrough{\lstinline!\_\_get\_\_!} and
+  \passthrough{\lstinline!\_\_set\_\_!} (or
+  \passthrough{\lstinline!\_\_delete\_\_!}).
+\item
+  \textbf{Non-Data Descriptor}: Only implements
+  \passthrough{\lstinline!\_\_get\_\_!} (typically used for methods).
+\end{itemize}
+
+This separation is critical because it dictates how the attribute lookup
+algorithm prioritizes the descriptor over instance dictionaries.
+
+\hypertarget{attribute-lookup-precedence-hierarchy}{%
+\subsubsection{2. Attribute Lookup Precedence
+Hierarchy}\label{attribute-lookup-precedence-hierarchy}}
+
+When retrieving an attribute \passthrough{\lstinline!obj.name!} (where
+\passthrough{\lstinline!obj!} is an instance of class
+\passthrough{\lstinline!C!}), CPython resolves the lookup path in this
+strict order:
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\item
+  \textbf{Class MRO Search for Data Descriptor}: Search the Method
+  Resolution Order (MRO) of class \passthrough{\lstinline!C!} for an
+  attribute named \passthrough{\lstinline!name!}. If found, and it is a
+  \textbf{Data Descriptor}, call its
+  \passthrough{\lstinline!\_\_get\_\_!} method and return the result:
+
+  \[\text{result} = \text{DataDescriptor}.\_\_get\_\_(\text{desc}, \text{obj}, \text{C})\]
+\item
+  \textbf{Instance Dictionary Search}: Search the instance dictionary
+  (\passthrough{\lstinline!obj.\_\_dict\_\_!}). If
+  \passthrough{\lstinline!name!} is present, return the value directly,
+  bypassing non-data descriptors:
+
+  \[\text{result} = \text{obj}.\_\_dict\_\_[\text{'name'}]\]
+\item
+  \textbf{Class MRO Search for Non-Data Descriptor}: Search the MRO of
+  class \passthrough{\lstinline!C!} for an attribute named
+  \passthrough{\lstinline!name!}. If found, and it is a \textbf{Non-Data
+  Descriptor}, call its \passthrough{\lstinline!\_\_get\_\_!} method:
+
+  \[\text{result} = \text{NonDataDescriptor}.\_\_get\_\_(\text{desc}, \text{obj}, \text{C})\]
+\item
+  \textbf{Class Attributes}: Search the MRO of class
+  \passthrough{\lstinline!C!} for a standard class attribute. If found,
+  return the value directly.
+\item
+  \textbf{Fallback to \passthrough{\lstinline!\_\_getattr\_\_!}}: If the
+  attribute is not found, and the class defines
+  \passthrough{\lstinline!\_\_getattr\_\_!}, call it:
+
+  \[\text{result} = \text{obj}.\_\_getattr\_\_(\text{'name'})\]
+\item
+  \textbf{Raise AttributeError}: If all steps fail, raise
+  \passthrough{\lstinline!AttributeError!}.
+\end{enumerate}
+
+\begin{lstlisting}
+                          [Lookup obj.name]
+                                 |
+            Does "name" exist in class MRO as a Data Descriptor?
+                                /   \
+                              Yes    No
+                              /       \
+          [Call descriptor __get__]  Does "name" exist in instance __dict__?
+                                        /   \
+                                      Yes    No
+                                      /       \
+                        [Return from __dict__]  Does "name" exist in class MRO
+                                                as a Non-Data Descriptor?
+                                                  /   \
+                                                Yes    No
+                                                /       \
+                                    [Call descriptor]  Is there a class attribute?
+                                                         /   \
+                                                       Yes    No
+                                                       /       \
+                                          [Return value]   Raise AttributeError
+\end{lstlisting}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{cpython-type-slots}{%
+\subsection{25.3 CPython Type Slots}\label{cpython-type-slots}}
+
+To optimize attribute access and function calls at the C level, CPython
+uses \textbf{Type Slots}. Instead of looking up methods like
+\passthrough{\lstinline!\_\_repr\_\_!} or
+\passthrough{\lstinline!\_\_add\_\_!} in the class dictionary at
+runtime, CPython populates static C function pointers directly inside
+the \passthrough{\lstinline!PyTypeObject!} struct definition:
+
+\begin{lstlisting}[language=C]
+typedef struct _typeobject {
+    PyObject_VAR_HEAD
+    const char *tp_name;                 /* For printing, in format <module>.<name> */
+    Py_ssize_t tp_basicsize, tp_itemsize; /* For allocation */
+    
+    /* Type Slots (Static Function Pointers) */
+    destructor tp_dealloc;               /* Deallocation handler */
+    reprfunc tp_repr;                    /* Representation builder */
+    getattrfunc tp_getattr;              /* Attribute lookup hook */
+    setattrfunc tp_setattr;              /* Attribute assignment hook */
+    
+    /* Protocol Table Slots */
+    PyNumberMethods *tp_as_number;       /* Math function pointers (e.g. nb_add) */
+    PySequenceMethods *tp_as_sequence;   /* Indexing function pointers (e.g. sq_item) */
+    PyMappingMethods *tp_as_mapping;     /* Map lookup function pointers (e.g. mp_subscript) */
+} PyTypeObject;
+\end{lstlisting}
+
+\hypertarget{protocol-sub-tables}{%
+\subsubsection{1. Protocol Sub-Tables}\label{protocol-sub-tables}}
+
+CPython groups protocol-specific slots into secondary struct tables
+pointed to by fields inside \passthrough{\lstinline!PyTypeObject!}:
+
+\begin{itemize}
+\item
+  \textbf{\passthrough{\lstinline!PyNumberMethods!}}: Contains pointers
+  for numeric operators (e.g., \passthrough{\lstinline!nb\_add!} for
+  \passthrough{\lstinline!+!}, \passthrough{\lstinline!nb\_multiply!}
+  for \passthrough{\lstinline!*!}):
+
+\begin{lstlisting}[language=C]
+typedef struct {
+    binaryfunc nb_add;
+    binaryfunc nb_subtract;
+    binaryfunc nb_multiply;
+    /* ... */
+} PyNumberMethods;
+\end{lstlisting}
+\item
+  \textbf{\passthrough{\lstinline!PySequenceMethods!}}: Contains
+  pointers for sequence operations (e.g.,
+  \passthrough{\lstinline!sq\_item!} for indexing,
+  \passthrough{\lstinline!sq\_length!} for length):
+
+\begin{lstlisting}[language=C]
+typedef struct {
+    lenfunc sq_length;
+    binaryfunc sq_concat;
+    ssizeargfunc sq_item;
+    /* ... */
+} PySequenceMethods;
+\end{lstlisting}
+\item
+  \textbf{\passthrough{\lstinline!PyMappingMethods!}}: Contains pointers
+  for mapping lookups (e.g., \passthrough{\lstinline!mp\_subscript!} for
+  key lookups, \passthrough{\lstinline!mp\_ass\_subscript!} for key
+  updates):
+
+\begin{lstlisting}[language=C]
+typedef struct {
+    lenfunc mp_length;
+    binaryfunc mp_subscript;
+    objobjargproc mp_ass_subscript;
+} PyMappingMethods;
+\end{lstlisting}
+\end{itemize}
+
+\hypertarget{slot-inheritance}{%
+\subsubsection{2. Slot Inheritance}\label{slot-inheritance}}
+
+When a class is created: 1. CPython copy-inherits these function pointer
+slots from the base classes defined in MRO. 2. If the subclass overrides
+a method (e.g., defines
+\passthrough{\lstinline!def \_\_repr\_\_(self):!}), CPython replaces the
+slot pointer (\passthrough{\lstinline!tp\_repr!}) with a wrapper
+function (\passthrough{\lstinline!slot\_tp\_repr!}) that calls the
+Python method. 3. This inheritance ensures that C-level calls (like
+\passthrough{\lstinline!a + b!} executing
+\passthrough{\lstinline!tp\_as\_number->nb\_add(a, b)!}) execute without
+dictionary searches, optimizing runtime speed.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
