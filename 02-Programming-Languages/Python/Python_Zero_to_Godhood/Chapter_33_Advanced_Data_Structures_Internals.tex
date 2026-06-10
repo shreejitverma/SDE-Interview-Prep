@@ -1,0 +1,129 @@
+\hypertarget{advanced-data-structures-internals}{%
+\chapter{Advanced Data Structures
+Internals}\label{advanced-data-structures-internals}}
+
+While Python's \passthrough{\lstinline!list!} and
+\passthrough{\lstinline!dict!} are versatile (covered in Chapter 2 and
+5), the \passthrough{\lstinline!collections!} and related modules
+provide specialized structures optimized for specific algorithmic
+complexities. Understanding their C implementations is key to writing
+high-performance code.
+
+\hypertarget{collections.deque-the-doubly-linked-block-architecture}{%
+\subsection{\texorpdfstring{33.1 \texttt{collections.deque}: The
+Doubly-Linked Block
+Architecture}{33.1 collections.deque: The Doubly-Linked Block Architecture}}\label{collections.deque-the-doubly-linked-block-architecture}}
+
+A \passthrough{\lstinline!list!} is an array-based structure, making
+insertions/deletions at the start \(O(N)\). A
+\passthrough{\lstinline!deque!} (Double-Ended Queue) is designed for
+\(O(1)\) appends and pops from both ends.
+
+\hypertarget{the-block-structure}{%
+\subsubsection{1. The Block Structure}\label{the-block-structure}}
+
+Unlike a standard doubly-linked list where each node holds one element
+(high memory overhead), CPython's \passthrough{\lstinline!deque!} uses a
+\textbf{doubly-linked list of blocks}. * Each block is a fixed-size
+array (typically 64 elements). * The \passthrough{\lstinline!deque!}
+object tracks the \passthrough{\lstinline!leftblock!},
+\passthrough{\lstinline!rightblock!}, and indices for the start and end.
+
+\hypertarget{performance-implications}{%
+\subsubsection{2. Performance
+Implications}\label{performance-implications}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Memory Efficiency}: By grouping elements into blocks, it
+  minimizes the number of \passthrough{\lstinline!malloc!} calls and
+  improves cache locality compared to a simple linked list.
+\item
+  \textbf{No Reallocations}: Unlike \passthrough{\lstinline!list!},
+  which may need to \passthrough{\lstinline!realloc!} and copy the
+  entire array, a \passthrough{\lstinline!deque!} simply allocates a new
+  block when the current one is full, making its performance extremely
+  predictable for streaming data.
+\end{itemize}
+
+\hypertarget{heapq-binary-heaps-on-arrays}{%
+\subsection{\texorpdfstring{33.2 \texttt{heapq}: Binary Heaps on
+Arrays}{33.2 heapq: Binary Heaps on Arrays}}\label{heapq-binary-heaps-on-arrays}}
+
+The \passthrough{\lstinline!heapq!} module provides a min-heap
+implementation using a standard Python \passthrough{\lstinline!list!}.
+
+\hypertarget{min-heap-invariant}{%
+\subsubsection{1. Min-Heap Invariant}\label{min-heap-invariant}}
+
+For every node at index \passthrough{\lstinline!i!}, its children are at
+\passthrough{\lstinline!2*i + 1!} and \passthrough{\lstinline!2*i + 2!}.
+The value at \passthrough{\lstinline!i!} is always less than or equal to
+its children.
+
+\hypertarget{the-_siftdown-and-_siftup-mechanics}{%
+\subsubsection{\texorpdfstring{2. The \texttt{\_siftdown} and
+\texttt{\_siftup}
+Mechanics}{2. The \_siftdown and \_siftup Mechanics}}\label{the-_siftdown-and-_siftup-mechanics}}
+
+When you \passthrough{\lstinline!heappush!}, the element is appended to
+the list and then ``sifted up'' (swapped with parents) until the
+invariant is restored. \passthrough{\lstinline!heappop!} replaces the
+root with the last element and ``sifts down.'' Both operations are
+\(O(\log N)\).
+
+\hypertarget{bisect-binary-search-optimization}{%
+\subsection{\texorpdfstring{33.3 \texttt{bisect}: Binary Search
+Optimization}{33.3 bisect: Binary Search Optimization}}\label{bisect-binary-search-optimization}}
+
+The \passthrough{\lstinline!bisect!} module implements binary search on
+sorted sequences. * \textbf{\passthrough{\lstinline!bisect\_left!} /
+\passthrough{\lstinline!bisect\_right!}}: Find the insertion point for
+an element to maintain order. * \textbf{Internals}: These are
+implemented in C for speed. They perform a simple \(O(\log N)\)
+bisection, assuming the underlying sequence supports random access
+(\(O(1)\) indexing).
+
+\hypertarget{collections.counter-and-defaultdict}{%
+\subsection{\texorpdfstring{33.4 \texttt{collections.Counter} and
+\texttt{defaultdict}}{33.4 collections.Counter and defaultdict}}\label{collections.counter-and-defaultdict}}
+
+These are thin wrappers around the standard
+\passthrough{\lstinline!dict!}. *
+\textbf{\passthrough{\lstinline!defaultdict!}}: Overrides
+\passthrough{\lstinline!\_\_missing\_\_!} (a dunder method called by
+\passthrough{\lstinline!dict.\_\_getitem\_\_!} when a key isn't found).
+It calls the \passthrough{\lstinline!default\_factory!} and inserts the
+result. * \textbf{\passthrough{\lstinline!Counter!}}: Primarily adds the
+\passthrough{\lstinline!most\_common()!} method (which uses a
+\passthrough{\lstinline!heapq!} for large \(K\) or sorting for small
+\(K\)) and operator overloading for set-like addition/subtraction.
+
+\hypertarget{weakref-memory-management-proxies}{%
+\subsection{\texorpdfstring{33.5 \texttt{weakref}: Memory Management
+Proxies}{33.5 weakref: Memory Management Proxies}}\label{weakref-memory-management-proxies}}
+
+Normally, assigning an object to a variable increases its reference
+count. A \passthrough{\lstinline!weakref!} allows you to reference an
+object \textbf{without} increasing its reference count.
+
+\hypertarget{the-weakref.ref-object}{%
+\subsubsection{\texorpdfstring{1. The \texttt{weakref.ref}
+Object}{1. The weakref.ref Object}}\label{the-weakref.ref-object}}
+
+A weak reference is a small proxy object. When the referent's reference
+count drops to zero, the referent is garbage collected, and the weakref
+is automatically set to \passthrough{\lstinline!None!}.
+
+\hypertarget{internal-callbacks}{%
+\subsubsection{2. Internal Callbacks}\label{internal-callbacks}}
+
+You can register a callback that executes immediately when the referent
+is about to be destroyed. This is used extensively in internal caches
+(like \passthrough{\lstinline!functools.lru\_cache!} for objects) to
+prevent memory leaks in long-running processes.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}

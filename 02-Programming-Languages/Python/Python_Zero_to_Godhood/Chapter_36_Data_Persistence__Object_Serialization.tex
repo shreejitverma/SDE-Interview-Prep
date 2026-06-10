@@ -1,0 +1,113 @@
+\hypertarget{data-persistence-object-serialization}{%
+\chapter{Data Persistence \& Object
+Serialization}\label{data-persistence-object-serialization}}
+
+Data persistence allows Python objects to survive the termination of the
+process. This involves serialization (converting an object to a byte
+stream) and storage.
+
+\hypertarget{pickle-the-virtual-stack-machine}{%
+\subsection{\texorpdfstring{36.1 \texttt{pickle}: The Virtual Stack
+Machine}{36.1 pickle: The Virtual Stack Machine}}\label{pickle-the-virtual-stack-machine}}
+
+The \passthrough{\lstinline!pickle!} module is Python's native
+serialization format. Unlike JSON, it can serialize almost any Python
+object (including classes, functions, and complex circular references).
+
+\hypertarget{the-pickle-protocol}{%
+\subsubsection{1. The Pickle Protocol}\label{the-pickle-protocol}}
+
+\passthrough{\lstinline!pickle!} doesn't just store data; it stores a
+\textbf{program} that, when executed by the pickle virtual machine,
+reconstructs the object. * \textbf{Opcodes}: A pickle stream consists of
+a series of opcodes (e.g., \passthrough{\lstinline!PROTO!},
+\passthrough{\lstinline!EMPTY\_DICT!},
+\passthrough{\lstinline!SETITEM!}, \passthrough{\lstinline!STOP!}). *
+\textbf{The Stack}: The pickle VM uses a stack to build objects. For
+example, to create a list, it might push several items and then call an
+opcode that pops them into a new list object.
+
+\hypertarget{security-warning-__reduce__}{%
+\subsubsection{\texorpdfstring{2. Security Warning:
+\texttt{\_\_reduce\_\_}}{2. Security Warning: \_\_reduce\_\_}}\label{security-warning-__reduce__}}
+
+When an object is unpickled, the VM may execute arbitrary code. The
+\passthrough{\lstinline!\_\_reduce\_\_!} method allows an object to
+define exactly how it should be reconstructed, which can be exploited to
+execute shell commands. \textbf{Never unpickle data from an untrusted
+source.}
+
+\hypertarget{json-the-universal-exchange-format}{%
+\subsection{\texorpdfstring{36.2 \texttt{json}: The Universal Exchange
+Format}{36.2 json: The Universal Exchange Format}}\label{json-the-universal-exchange-format}}
+
+The \passthrough{\lstinline!json!} module provides a standard way to
+serialize basic Python types (dicts, lists, strings, numbers) into a
+format readable by almost any language.
+
+\hypertarget{c-optimization-_json}{%
+\subsubsection{\texorpdfstring{1. C Optimization:
+\texttt{\_json}}{1. C Optimization: \_json}}\label{c-optimization-_json}}
+
+In CPython, the \passthrough{\lstinline!json!} module is backed by a C
+extension (\passthrough{\lstinline!\_json.c!}). * \textbf{Encoding}:
+Iterates through Python objects and builds a C string buffer. *
+\textbf{Decoding}: Uses a fast scan-based parser to identify JSON tokens
+and convert them to Python objects.
+
+\hypertarget{limitations}{%
+\subsubsection{2. Limitations}\label{limitations}}
+
+\passthrough{\lstinline!json!} cannot handle complex Python objects,
+circular references, or non-string keys in dictionaries. For these,
+custom \passthrough{\lstinline!JSONEncoder!} and
+\passthrough{\lstinline!JSONDecoder!} subclasses are required.
+
+\hypertarget{sqlite3-the-embedded-database}{%
+\subsection{\texorpdfstring{36.3 \texttt{sqlite3}: The Embedded
+Database}{36.3 sqlite3: The Embedded Database}}\label{sqlite3-the-embedded-database}}
+
+Python comes with a complete SQL database engine: SQLite.
+
+\hypertarget{the-c-extension-architecture}{%
+\subsubsection{1. The C Extension
+Architecture}\label{the-c-extension-architecture}}
+
+The \passthrough{\lstinline!sqlite3!} module is a wrapper around the
+SQLite C library. * \textbf{Connection and Cursor}: These are C-level
+objects that manage the database file and the result set pointers. *
+\textbf{GIL Management}: The \passthrough{\lstinline!sqlite3!} module
+releases the GIL during long-running SQL queries, allowing other Python
+threads to run while the database is processing I/O or complex joins.
+
+\hypertarget{type-mapping}{%
+\subsubsection{2. Type Mapping}\label{type-mapping}}
+
+The module automatically maps Python types to SQL types (e.g.,
+\passthrough{\lstinline!int!} to \passthrough{\lstinline!INTEGER!},
+\passthrough{\lstinline!str!} to \passthrough{\lstinline!TEXT!}). You
+can register custom adapters and converters to handle complex types like
+\passthrough{\lstinline!datetime!} or even
+\passthrough{\lstinline!pickle!} objects.
+
+\hypertarget{dbm-and-shelve-simple-key-value-stores}{%
+\subsection{\texorpdfstring{36.4 \texttt{dbm} and \texttt{shelve}:
+Simple Key-Value
+Stores}{36.4 dbm and shelve: Simple Key-Value Stores}}\label{dbm-and-shelve-simple-key-value-stores}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{\passthrough{\lstinline!dbm!}}: Provides an interface to Unix
+  ``database manager'' libraries (like GDBM or Berkeley DB). It stores
+  string keys and values in a disk-based hash table.
+\item
+  \textbf{\passthrough{\lstinline!shelve!}}: A wrapper around
+  \passthrough{\lstinline!dbm!} that uses
+  \passthrough{\lstinline!pickle!} to serialize the values. This allows
+  you to treat a disk file as a persistent Python dictionary.
+\end{itemize}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}

@@ -234,10 +234,30 @@ def create_master_tex(chapters):
                 master_content += r"\part{Volume VIII: Runtime Internals \& C Extensions}" + "\n"
                 current_volume = 8
 
-            # Volume IX: High Performance & Low Latency Concurrency (Chapters 26+)
+            # Volume IX: High Performance & Low Latency Concurrency (Chapters 26-30)
             elif chap_num == 26 and current_volume < 9:
                 master_content += r"\part{Volume IX: High Performance \& Low Latency Concurrency}" + "\n"
                 current_volume = 9
+
+            # Volume X: The Language Reference Formalisms (Chapters 31-32)
+            elif chap_num == 31 and current_volume < 10:
+                master_content += r"\part{Volume X: The Language Reference Formalisms}" + "\n"
+                current_volume = 10
+
+            # Volume XI: The Standard Library I - Core Data & Functional Mechanics (Chapters 33-35)
+            elif chap_num == 33 and current_volume < 11:
+                master_content += r"\part{Volume XI: The Standard Library I - Core Data \& Functional Mechanics}" + "\n"
+                current_volume = 11
+
+            # Volume XII: The Standard Library II - Persistence, OS, & IPC (Chapters 36-38)
+            elif chap_num == 36 and current_volume < 12:
+                master_content += r"\part{Volume XII: The Standard Library II - Persistence, OS, \& IPC}" + "\n"
+                current_volume = 12
+
+            # Volume XIII: The Standard Library III - Runtime, Import, & Tooling (Chapters 39-41)
+            elif chap_num == 39 and current_volume < 13:
+                master_content += r"\part{Volume XIII: The Standard Library III - Runtime, Import, \& Tooling}" + "\n"
+                current_volume = 13
 
         # Handle preface
         if filename.startswith("00_"):

@@ -1,0 +1,137 @@
+\hypertarget{runtime-services-and-introspection}{%
+\chapter{Runtime Services and
+Introspection}\label{runtime-services-and-introspection}}
+
+Introspection is the ability of a program to examine its own state and
+structure at runtime. Python's dynamic nature makes it one of the most
+introspective languages, providing deep access to its own interpreter
+state and the structure of its code.
+
+\hypertarget{sys-the-interpreter-interface}{%
+\subsection{\texorpdfstring{40.1 \texttt{sys}: The Interpreter
+Interface}{40.1 sys: The Interpreter Interface}}\label{sys-the-interpreter-interface}}
+
+The \passthrough{\lstinline!sys!} module provides variables and
+functions that interact strongly with the interpreter.
+
+\hypertarget{runtime-environment}{%
+\subsubsection{1. Runtime Environment}\label{runtime-environment}}
+
+\begin{itemize}
+\tightlist
+\item
+  \passthrough{\lstinline!sys.argv!}: The command-line arguments passed
+  to the script.
+\item
+  \passthrough{\lstinline!sys.path!}: The list of strings that specifies
+  the search path for modules.
+\item
+  \passthrough{\lstinline!sys.modules!}: The dictionary that maps module
+  names to modules which have already been loaded.
+\end{itemize}
+
+\hypertarget{resource-management}{%
+\subsubsection{2. Resource Management}\label{resource-management}}
+
+\begin{itemize}
+\tightlist
+\item
+  \passthrough{\lstinline!sys.getrefcount(obj)!}: Returns the reference
+  count of the object (always one higher than expected because of the
+  argument to \passthrough{\lstinline!getrefcount!}).
+\item
+  \passthrough{\lstinline!sys.getsizeof(obj)!}: Returns the size of an
+  object in bytes (calls the \passthrough{\lstinline!tp\_basicsize!} and
+  \passthrough{\lstinline!tp\_itemsize!} C slots).
+\end{itemize}
+
+\hypertarget{low-level-hooks}{%
+\subsubsection{3. Low-Level Hooks}\label{low-level-hooks}}
+
+\begin{itemize}
+\tightlist
+\item
+  \passthrough{\lstinline!sys.settrace(func)!}: Sets the system's trace
+  function, allowing you to implement debuggers and code coverage tools.
+\item
+  \passthrough{\lstinline!sys.setprofile(func)!}: Sets the system's
+  profile function for performance analysis.
+\end{itemize}
+
+\hypertarget{inspect-deep-object-analysis}{%
+\subsection{\texorpdfstring{40.2 \texttt{inspect}: Deep Object
+Analysis}{40.2 inspect: Deep Object Analysis}}\label{inspect-deep-object-analysis}}
+
+The \passthrough{\lstinline!inspect!} module provides functions for
+learning about live objects.
+
+\hypertarget{type-checking-and-members}{%
+\subsubsection{1. Type Checking and
+Members}\label{type-checking-and-members}}
+
+\begin{itemize}
+\tightlist
+\item
+  \passthrough{\lstinline!inspect.getmembers(obj)!}: Returns all members
+  of an object in a list of \passthrough{\lstinline!(name, value)!}
+  pairs.
+\item
+  \passthrough{\lstinline!inspect.isfunction()!},
+  \passthrough{\lstinline!inspect.isclass()!}: Reliable ways to check
+  object types.
+\end{itemize}
+
+\hypertarget{retrieving-source-code}{%
+\subsubsection{2. Retrieving Source Code}\label{retrieving-source-code}}
+
+\passthrough{\lstinline!inspect.getsource(obj)!} retrieves the source
+code of a function or class by looking up the filename in the object's
+code object and reading from the disk.
+
+\hypertarget{signatures-and-parameters}{%
+\subsubsection{3. Signatures and
+Parameters}\label{signatures-and-parameters}}
+
+\passthrough{\lstinline!inspect.signature(func)!} returns a
+\passthrough{\lstinline!Signature!} object. This is more than just a
+list of names; it includes default values, type hints, and the ``kind''
+of parameter (positional-only, keyword-only, etc.).
+
+\hypertarget{the-stack-frame}{%
+\subsubsection{4. The Stack Frame}\label{the-stack-frame}}
+
+\passthrough{\lstinline!inspect.currentframe()!} and
+\passthrough{\lstinline!inspect.stack()!} allow you to walk the
+execution stack. You can see which function called the current one,
+access its local variables, and even modify them (though this is
+extremely dangerous and rarely recommended).
+
+\hypertarget{warnings-managing-runtime-diagnostics}{%
+\subsection{\texorpdfstring{40.3 \texttt{warnings}: Managing Runtime
+Diagnostics}{40.3 warnings: Managing Runtime Diagnostics}}\label{warnings-managing-runtime-diagnostics}}
+
+The \passthrough{\lstinline!warnings!} module is used to issue alerts
+about non-fatal issues (e.g., deprecated features). * \textbf{Filters}:
+You can control whether warnings are ignored, printed, or turned into
+exceptions using \passthrough{\lstinline!warnings.filterwarnings()!} or
+the \passthrough{\lstinline!-W!} command-line switch. *
+\textbf{Context}: Warnings include the line of code that triggered them,
+making them more useful than simple \passthrough{\lstinline!print()!}
+statements for developers.
+
+\hypertarget{ast-programmatic-source-analysis}{%
+\subsection{\texorpdfstring{40.4 \texttt{ast}: Programmatic Source
+Analysis}{40.4 ast: Programmatic Source Analysis}}\label{ast-programmatic-source-analysis}}
+
+The \passthrough{\lstinline!ast!} module (briefly touched upon in
+Chapter 31) allows you to manipulate Python code as a tree structure. *
+\textbf{\passthrough{\lstinline!ast.NodeVisitor!}}: A class that you
+subclass to traverse the tree and perform actions at specific nodes
+(e.g., finding all function calls). *
+\textbf{\passthrough{\lstinline!ast.NodeTransformer!}}: A subclass that
+allows you to modify the tree, effectively performing
+``source-to-source'' compilation or code instrumentation.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
