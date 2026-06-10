@@ -1,1 +1,21 @@
 .DS_Store
+node_modules/
+build/
+.cmake/
+CMakeFiles/
+venv/
+*.pyc
+__pycache__/
+# LaTeX
+*.aux
+*.log
+*.toc
+*.out
+*.fdb_latexmk
+*.fls
+*.synctex.gz
+# IDEs
+.idea/
+.vscode/
+cmake-build-debug/
+cmake-build-release/
