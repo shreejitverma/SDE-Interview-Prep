@@ -2,8 +2,8 @@ import os
 import re
 import subprocess
 
-SOURCE_FILE = "C++/Complete-CPP-Zero-to-Godhood.md"
-OUTPUT_DIR = "C++/CPP_Zero_to_Godhood"
+SOURCE_FILE = "Complete-CPP-Zero-to-Godhood.md"
+OUTPUT_DIR = "CPP_Zero_to_Godhood"
 
 # Map of old "Section" titles to promote to Chapters (appearing between Ch1 and Ch2)
 PROMOTED_SECTIONS = [

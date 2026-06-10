@@ -1,0 +1,61 @@
+\hypertarget{c14-functions-and-lambdas}{%
+\chapter{C14 FUNCTIONS AND LAMBDAS}\label{c14-functions-and-lambdas}}
+
+\hypertarget{c14-functions-lambdas}{%
+\chapter{C++14 FUNCTIONS \& LAMBDAS}\label{c14-functions-lambdas}}
+
+\hypertarget{generic-lambdas}{%
+\section{1. Generic Lambdas}\label{generic-lambdas}}
+
+C++14 allows \passthrough{\lstinline!auto!} in lambda parameters,
+effectively making them templates.
+
+\begin{lstlisting}[language={C++}]
+auto print = [](auto x) {
+    std::cout << x << "\n";
+};
+
+print(10);      // int
+print("hello"); // const char*
+\end{lstlisting}
+
+This is shorthand for a struct with a templated
+\passthrough{\lstinline!operator()!}.
+
+\hypertarget{generalized-lambda-captures-init-capture}{%
+\section{2. Generalized Lambda Captures
+(Init-Capture)}\label{generalized-lambda-captures-init-capture}}
+
+C++14 allows initializing variables inside the lambda capture clause.
+This is crucial for \textbf{move-only types}.
+
+\begin{lstlisting}[language={C++}]
+auto ptr = std::make_unique<int>(10);
+
+// Move ptr into lambda
+auto lambda = [p = std::move(ptr)]() {
+    std::cout << *p << "\n";
+};
+// ptr is now nullptr
+\end{lstlisting}
+
+\hypertarget{automatic-return-type-deduction}{%
+\section{3. Automatic Return Type
+Deduction}\label{automatic-return-type-deduction}}
+
+Functions can deduce their return type from the return statement.
+
+\begin{lstlisting}[language={C++}]
+auto add(int a, int b) {
+    return a + b; // Deduced as int
+}
+
+// decltype(auto) preserves references
+int& getRef(int& x) { return x; }
+
+decltype(auto) forwardRef(int& x) {
+    return getRef(x); // Returns int& (auto would return int)
+}
+\end{lstlisting}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}

@@ -1,0 +1,626 @@
+\hypertarget{error-handling-and-robustness}{%
+\chapter{ERROR HANDLING AND
+ROBUSTNESS}\label{error-handling-and-robustness}}
+
+\hypertarget{error-handling-robustness}{%
+\chapter{ERROR HANDLING \& ROBUSTNESS}\label{error-handling-robustness}}
+
+\hypertarget{error-handling-debugging-c98}{%
+\chapter{ERROR HANDLING \& DEBUGGING
+(C++98)}\label{error-handling-debugging-c98}}
+
+\hypertarget{assertions}{%
+\section{1. ASSERTIONS}\label{assertions}}
+
+Use \passthrough{\lstinline!assert!} to catch programming logic errors
+during development.
+
+\begin{lstlisting}[language={C++}]
+#include <iostream>
+#include <cassert>
+
+int divide(int a, int b) {
+    assert(b != 0);  // Terminates program if b is 0
+    return a / b;
+}
+
+int main() {
+    std::cout << divide(10, 2) << "\n";
+    return 0;
+}
+\end{lstlisting}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{exceptions}{%
+\section{2. EXCEPTIONS}\label{exceptions}}
+
+C++ uses exceptions to handle runtime errors gracefully.
+
+\hypertarget{basic-try-catch}{%
+\subsection{2.1 Basic Try-Catch}\label{basic-try-catch}}
+
+\begin{lstlisting}[language={C++}]
+#include <iostream>
+
+int safe_divide(int a, int b) {
+    if (b == 0) {
+        throw "Division by zero condition!";
+    }
+    return a / b;
+}
+
+int main() {
+    try {
+        int result = safe_divide(10, 0);
+        std::cout << result << "\n";
+    } catch (const char* msg) {
+        std::cerr << "Error: " << msg << "\n";
+    }
+    return 0;
+}
+\end{lstlisting}
+
+\hypertarget{catching-multiple-types}{%
+\subsection{2.2 Catching Multiple Types}\label{catching-multiple-types}}
+
+\begin{lstlisting}[language={C++}]
+try {
+    // code...
+} catch (int e) {
+    std::cerr << "Integer exception: " << e << "\n";
+} catch (const char* e) {
+    std::cerr << "String exception: " << e << "\n";
+} catch (...) {
+    std::cerr << "Unknown exception caught!\n";
+}
+\end{lstlisting}
+
+\hypertarget{standard-exceptions}{%
+\subsection{2.3 Standard Exceptions}\label{standard-exceptions}}
+
+Inherit from \passthrough{\lstinline!std::exception!} for custom
+exceptions.
+
+\begin{lstlisting}[language={C++}]
+#include <iostream>
+#include <exception>
+#include <stdexcept> // runtime_error, logic_error
+
+class MyError : public std::exception {
+public:
+    virtual const char* what() const throw() {
+        return "My Custom Error";
+    }
+};
+
+void test() {
+    throw std::runtime_error("Standard Runtime Error");
+}
+
+int main() {
+    try {
+        test();
+    } catch (const std::exception& e) {
+        std::cerr << "Caught: " << e.what() << "\n";
+    }
+    return 0;
+}
+\end{lstlisting}
+
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 0\tabcolsep) * \real{0.06}}@{}}
+\toprule
+\endhead
+\#\#\# Professional Notes: Debugging \& Quality Assurance \\
+\#\#\#\# 1. Unit Testing in C++ Testing is essential for maintaining
+large codebases. Modern C++ typically uses third-party frameworks: *
+\textbf{Google Test (GTest)}: The industry standard. Uses macros like
+\passthrough{\lstinline!EXPECT\_EQ!},
+\passthrough{\lstinline!ASSERT\_TRUE!}. * \textbf{Catch2}: Header-only,
+very easy to integrate. Uses natural BDD style:
+\passthrough{\lstinline!REQUIRE(x == 42)!}. \\
+\#\#\#\# 2. Debugging with GDB and LLDB Command-line debuggers allow you
+to inspect the program state at runtime. *
+\textbf{\passthrough{\lstinline!break [file]:[line]!}}: Set a
+breakpoint. * \textbf{\passthrough{\lstinline!print [var]!}}: Inspect
+variable value. * \textbf{\passthrough{\lstinline!backtrace!} (bt)}:
+Show the current call stack. *
+\textbf{\passthrough{\lstinline!watch [var]!}}: Pause whenever a
+variable's value changes. \\
+\#\#\#\# 3. Defensive Programming Techniques * \textbf{Static Assertions
+(C++11)}:
+\passthrough{\lstinline!static\_assert(sizeof(int) == 4, "32-bit int required");!}.
+Checks conditions at compile time. *
+\textbf{\passthrough{\lstinline!noexcept!}}: Mark functions that are
+guaranteed not to throw. Allows the compiler to generate more optimized
+code and skip stack unwinding logic. * \textbf{Core Dumps}: On Linux,
+enable core dumps (\passthrough{\lstinline!ulimit -c unlimited!}) to
+capture the memory state of a crashed program for post-mortem
+analysis. \\
+\bottomrule
+\end{longtable}
+
+\hypertarget{exception-specifications-c98}{%
+\subsection{2.4 Exception Specifications
+(C++98)}\label{exception-specifications-c98}}
+
+In C++98, you can specify what a function might throw. (Note: Deprecated
+in C++11, but valid here).
+
+\begin{lstlisting}[language={C++}]
+// Can throw only int
+void func() throw(int) {
+    throw 42;
+}
+
+// Cannot throw anything
+void no_throw() throw() {
+    // logic...
+}
+\end{lstlisting}
+
+\hypertarget{stack-unwinding-raii}{%
+\subsection{2.5 Stack Unwinding \& RAII}\label{stack-unwinding-raii}}
+
+When an exception is thrown, the stack is unwound, identifying
+destructors for all local objects.
+
+\begin{lstlisting}[language={C++}]
+class Resource {
+public:
+    Resource() { std::cout << "Acquired\n"; }
+    ~Resource() { std::cout << "Released\n"; }
+};
+
+void risky() {
+    Resource r; // Destructor guaranteed to run
+    throw 1;
+}
+
+int main() {
+    try {
+        risky();
+    } catch (...) {
+        std::cout << "Caught\n";
+    }
+    return 0;
+}
+// Output: Acquired -> Released -> Caught
+\end{lstlisting}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{debugging-strategies}{%
+\section{3. DEBUGGING STRATEGIES}\label{debugging-strategies}}
+
+\hypertarget{debug-macros-c98-style}{%
+\subsection{3.1 Debug Macros (C++98
+Style)}\label{debug-macros-c98-style}}
+
+\begin{lstlisting}[language={C++}]
+#include <iostream>
+
+#ifdef DEBUG
+    #define LOG(x) std::cout << "DEBUG: " << x << "\n"
+#else
+    #define LOG(x) 
+#endif
+
+int main() {
+    int x = 10;
+    LOG("x is " << x);
+    return 0;
+}
+\end{lstlisting}
+
+\hypertarget{professional-notes-chapter-72-exceptions}{%
+\chapter{Professional Notes: Chapter 72:
+Exceptions}\label{professional-notes-chapter-72-exceptions}}
+
+Section 72.1: Catching exceptions Section 72.2: Rethrow (propagate)
+exception Section 72.3: Best practice: throw by value, catch by const
+reference Section 72.4: Custom exception Section 72.5:
+std::uncaught\_exceptions Section 72.6: Function Try Block for regular
+function Section 72.7: Nested exception Section 72.8: Function Try
+Blocks In constructor Section 72.9: Function Try Blocks In destructor
+
+\hypertarget{professional-notes-chapter-72-exceptions-1}{%
+\chapter{Professional Notes: Chapter 72:
+Exceptions}\label{professional-notes-chapter-72-exceptions-1}}
+
+Section 72.1: Catching exceptions A try/catch block is used to catch
+exceptions. The code in the try section is the code that may throw an
+exception, and the code in the catch clause(s) handles the exception.
+\#include \#include \#include int main() \{ std::string str(``foo'');
+try \{ str.at(10); // access element, may throw std::out\_of\_range \}
+catch (const std::out\_of\_range\& e) \{ // what() is inherited from
+std::exception and contains an explanatory message std::cout
+\textless\textless{} e.what(); \} \} Multiple catch clauses may be used
+to handle multiple exception types. If multiple catch clauses are
+present, the exception handling mechanism tries to match them in order
+of their appearance in the code: std::string str(``foo''); try \{
+str.reserve(2); // reserve extra capacity, may throw std::length\_error
+str.at(10); // access element, may throw std::out\_of\_range \} catch
+(const std::length\_error\& e) \{ std::cout \textless\textless{}
+e.what(); \} catch (const std::out\_of\_range\& e) \{ std::cout
+\textless\textless{} e.what(); \} Exception classes which are derived
+from a common base class can be caught with a single catch clause for
+the common base class. The above example can replace the two catch
+clauses for std::length\_error and std::out\_of\_range with a single
+clause for std:exception: std::string str(``foo''); try \{
+str.reserve(2); // reserve extra capacity, may throw std::length\_error
+str.at(10); // access element, may throw std::out\_of\_range \} catch
+(const std::exception\& e) \{ std::cout \textless\textless{} e.what();
+\} Because the catch clauses are tried in order, be sure to write more
+specic catch clauses rst, otherwise your exception handling code might
+never get called: try \{ /* Code throwing exceptions omitted. \emph{/ \}
+catch (const std::exception\& e) \{ /} Handle all exceptions of type
+std::exception. \emph{/ \} catch (const std::runtime\_error\& e) \{  /}
+This block of code will never execute, because std::runtime\_error
+inherits from std::exception, and all exceptions of type std::exception
+were already caught by the previous catch clause. \emph{/ \} Another
+possibility is the catch-all handler, which will catch any thrown
+object: try \{ throw 10; \} catch (\ldots) \{ std::cout
+\textless\textless{} ``caught an exception''; \} Section 72.2: Rethrow
+(propagate) exception Sometimes you want to do something with the
+exception you catch (like write to log or print a warning) and let it
+bubble up to the upper scope to be handled. To do so, you can rethrow
+any exception you catch: try \{ \ldots{} // some code here \} catch
+(const SomeException\& e) \{ std::cout \textless\textless{} ``caught an
+exception''; throw; \} Using throw; without arguments will re-throw the
+currently caught exception. Version C++11 To rethrow a managed
+std::exception\_ptr, the C++ Standard Library has the rethrow\_exception
+function that can be used by including the header in your program.
+\#include \#include \#include \#include void
+handle\_eptr(std::exception\_ptr eptr) // passing by value is ok \{ try
+\{ if (eptr) \{ std::rethrow\_exception(eptr); \} \} catch(const
+std::exception\& e) \{ std::cout \textless\textless{} ``Caught exception
+"'' \textless\textless{} e.what() \textless\textless{} ``"\n''; \} \}
+int main() \{ std::exception\_ptr eptr; try \{ std::string().at(1); //
+this generates an std::out\_of\_range \} catch(\ldots) \{ eptr =
+std::current\_exception(); // capture \} handle\_eptr(eptr); \} //
+destructor for std::out\_of\_range called here, when the eptr is
+destructed Section 72.3: Best practice: throw by value, catch by const
+reference In general, it is considered good practice to throw by value
+(rather than by pointer), but catch by (const) reference. try \{ //
+throw new std::runtime\_error(``Error!''); // Don't do this! // This
+creates an exception object // on the heap and would require you to
+catch the // pointer and manage the memory yourself. This can // cause
+memory leaks! throw std::runtime\_error(``Error!''); \} catch (const
+std::runtime\_error\& e) \{ std::cout \textless\textless{} e.what()
+\textless\textless{} std::endl; \} One reason why catching by reference
+is a good practice is that it eliminates the need to reconstruct the
+object when being passed to the catch block (or when propagating through
+to other catch blocks). Catching by reference also allows the exceptions
+to be handled polymorphically and avoids object slicing. However, if you
+are rethrowing an exception (like throw e;, see example below), you can
+still get object slicing because the throw e; statement makes a copy of
+the exception as whatever type is declared: \#include struct
+BaseException \{ virtual const char} what() const \{ return
+``BaseException''; \} \}; struct DerivedException : BaseException \{ //
+``virtual'' keyword is optional here virtual const char* what() const \{
+return ``DerivedException''; \} \}; int main(int argc, char** argv) \{
+try \{ try \{ throw DerivedException(); \} catch (const BaseException\&
+e) \{ std::cout \textless\textless{} ``First catch block:''
+\textless\textless{} e.what() \textless\textless{} std::endl; // Output
+==\textgreater{} First catch block: DerivedException throw e; // This
+changes the exception to BaseException // instead of the original
+DerivedException! \} \} catch (const BaseException\& e) \{ std::cout
+\textless\textless{} ``Second catch block:'' \textless\textless{}
+e.what() \textless\textless{} std::endl; // Output ==\textgreater{}
+Second catch block: BaseException \} return 0; \} If you are sure that
+you are not going to do anything to change the exception (like add
+information or modify the message), catching by const reference allows
+the compiler to make optimizations and can improve performance. But this
+can still cause object splicing (as seen in the example above). Warning:
+Beware of throwing unintended exceptions in catch blocks, especially
+related to allocating extra memory or resources. For example,
+constructing logic\_error, runtime\_error or their subclasses might
+throw bad\_alloc due to memory running out when copying the exception
+string, I/O streams might throw during logging with respective exception
+masks set, etc. Section 72.4: Custom exception You shouldn't throw raw
+values as exceptions, instead use one of the standard exception classes
+or make your own. Having your own exception class inherited from
+std::exception is a good way to go about it. Here's a custom exception
+class which directly inherits from std::exception: \#include class
+Except: virtual public std::exception \{ protected: int error\_number;
+///\textless{} Error number int error\_offset; ///\textless{} Error
+offset std::string error\_message; ///\textless{} Error message public:
+/** Constructor (C++ STL string, int, int). * @param msg The error
+message * @param err\_num Error number * @param err\_off Error offset */
+explicit Except(const std::string\& msg, int err\_num, int err\_off):
+error\_number(err\_num), error\_offset(err\_off), error\_message(msg)
+\{\} /** Destructor. * Virtual to allow for subclassing. \emph{/ virtual
+\textasciitilde Except() throw () \{\} /\textbf{ Returns a pointer to
+the (constant) error description. * @return A pointer to a const
+char\emph{. The underlying memory } is in possession of the Except
+object. Callers must * not attempt to free the memory. \emph{/ virtual
+const char} what() const throw () \{ return error\_message.c\_str(); \}
+/} Returns error number. } @return \#error\_number */ virtual int
+getErrorNumber() const throw() \{ return error\_number; \} /**Returns
+error offset. * @return \#error\_offset */ virtual int getErrorOffset()
+const throw() \{  return error\_offset; \} \}; An example throw catch:
+try \{ throw(Except(``Couldn't do what you were expecting'', -12, -34));
+\} catch (const Except\& e) \{ std::cout\textless\textless e.what()
+\textless\textless{}``\nError number:''\textless\textless e.getErrorNumber()
+\textless\textless{}``\nError offset:''\textless\textless e.getErrorOffset();
+\} As you are not only just throwing a dumb error message, also some
+other values representing what the error exactly was, your error
+handling becomes much more ecient and meaningful. There's an exception
+class that let's you handle error messages nicely :std::runtime\_error
+You can inherit from this class too: \#include class Except: virtual
+public std::runtime\_error \{ protected: int error\_number;
+///\textless{} Error number int error\_offset; ///\textless{} Error
+offset public: /** Constructor (C++ STL string, int, int). * @param msg
+The error message * @param err\_num Error number * @param err\_off Error
+offset */ explicit Except(const std::string\& msg, int err\_num, int
+err\_off): std::runtime\_error(msg) \{ error\_number = err\_num;
+error\_offset = err\_off; \} /** Destructor. * Virtual to allow for
+subclassing. */ virtual \textasciitilde Except() throw () \{\} /**
+Returns error number. * @return \#error\_number */ virtual int
+getErrorNumber() const throw() \{ return error\_number; \} /**Returns
+error offset.  * @return \#error\_offset */ virtual int
+getErrorOffset() const throw() \{ return error\_offset; \} \}; Note that
+I haven't overridden the what() function from the base class
+(std::runtime\_error) i.e we will be using the base class's version of
+what(). You can override it if you have further agenda. Section 72.5:
+std::uncaught\_exceptions Version c++17 C++17 introduces int
+std::uncaught\_exceptions() (to replace the limited bool
+std::uncaught\_exception()) to know how many exceptions are currently
+uncaught. That allows for a class to determine if it is destroyed during
+a stack unwinding or not. \#include \#include \#include // Apply change
+on destruction: // Rollback in case of exception (failure) // Else
+Commit (success) class Transaction \{ public: Transaction(const
+std::string\& s) : message(s) \{\} Transaction(const Transaction\&) =
+delete; Transaction\& operator =(const Transaction\&) = delete; void
+Commit() \{ std::cout \textless\textless{} message \textless\textless{}
+``: Commit\n''; \} void RollBack() noexcept(true) \{ std::cout
+\textless\textless{} message \textless\textless{} ``: Rollback\n''; \}
+// \ldots{} \textasciitilde Transaction() \{ if (uncaughtExceptionCount
+== std::uncaught\_exceptions()) \{ Commit(); // May throw. \} else \{ //
+current stack unwinding RollBack(); \} \} private: std::string message;
+int uncaughtExceptionCount = std::uncaught\_exceptions(); \}; class Foo
+\{ public: \textasciitilde Foo() \{ try \{ Transaction transaction(``In
+\textasciitilde Foo''); // Commit, // even if there is an uncaught
+exception //\ldots{} \} catch (const std::exception\& e) \{ std::cerr
+\textless\textless{} ``exception/\textasciitilde Foo:''
+\textless\textless{} e.what() \textless\textless{} std::endl;  \} \}
+\}; int main() \{ try \{ Transaction transaction(``In main''); //
+RollBack Foo foo; // \textasciitilde Foo commit its transaction.
+//\ldots{} throw std::runtime\_error(``Error''); \} catch (const
+std::exception\& e) \{ std::cerr \textless\textless{}
+``exception/main:'' \textless\textless{} e.what() \textless\textless{}
+std::endl; \} \} Output: In \textasciitilde Foo: Commit In main:
+Rollback exception/main:Error Section 72.6: Function Try Block for
+regular function void function\_with\_try\_block() try \{ // try block
+body \} catch (\ldots) \{ // catch block body \} Which is equivalent to
+void function\_with\_try\_block() \{ try \{ // try block body \} catch
+(\ldots) \{ // catch block body \} \} Note that for constructors and
+destructors, the behavior is dierent as the catch block re-throws an
+exception anyway (the caught one if there is no other throw in the catch
+block body). The function main is allowed to have a function try block
+like any other function, but main's function try block will not catch
+exceptions that occur during the construction of a non-local static
+variable or the destruction of any static variable. Instead,
+std::terminate is called. Section 72.7: Nested exception Version C++11
+During exception handling there is a common use case when you catch a
+generic exception from a low-level function (such as a lesystem error or
+data transfer error) and throw a more specic high-level exception which
+indicates that some high-level operation could not be performed (such as
+being unable to publish a photo on Web). This allows exception handling
+to react to specic problems with high level operations and also allows,
+having only error an message, the programmer to nd a place in the
+application where an exception occurred. Downside of this solution is
+that exception callstack is truncated and original exception is lost.
+This forces developers to manually include text of original exception
+into a newly created one. Nested exceptions aim to solve the problem by
+attaching low-level exception, which describes the cause, to a high
+level exception, which describes what it means in this particular case.
+std::nested\_exception allows to nest exceptions thanks to
+std::throw\_with\_nested: \#include \#include \#include \#include
+\#include struct MyException \{ MyException(const std::string\& message)
+: message(message) \{\} std::string message; \}; void
+print\_current\_exception(int level) \{ try \{ throw; \} catch (const
+std::exception\& e) \{ std::cerr \textless\textless{} std::string(level,
+' `) \textless\textless{} ``exception:'' \textless\textless{} e.what()
+\textless\textless{}'\n`; \} catch (const MyException\& e) \{ std::cerr
+\textless\textless{} std::string(level,' `) \textless\textless{}
+``MyException:'' \textless\textless{} e.message
+\textless\textless{}'\n'; \} catch (\ldots) \{ std::cerr
+\textless\textless{} ``Unkown exception\n''; \} \} void
+print\_current\_exception\_with\_nested(int level = 0) \{ try \{ throw;
+\} catch (\ldots) \{ print\_current\_exception(level); \}\\
+try \{ throw; \} catch (const std::nested\_exception\& nested) \{ try \{
+nested.rethrow\_nested(); \} catch (\ldots) \{
+print\_current\_exception\_with\_nested(level + 1); // recursion \} \}
+catch (\ldots) \{ //Empty // End recursion \} \} // sample function that
+catches an exception and wraps it in a nested exception void
+open\_file(const std::string\& s) \{ try \{ std::ifstream file(s);
+file.exceptions(std::ios\_base::failbit); \} catch(\ldots) \{
+std::throw\_with\_nested(MyException\{``Couldn't open'' + s\}); \} \} //
+sample function that catches an exception and wraps it in a nested
+exception void run() \{ try \{ open\_file(``nonexistent.file''); \}
+catch(\ldots) \{ std::throw\_with\_nested( std::runtime\_error(``run()
+failed'') ); \} \} // runs the sample function above and prints the
+caught exception int main() \{ try \{ run(); \} catch(\ldots) \{
+print\_current\_exception\_with\_nested(); \} \} Possible output:
+exception: run() failed MyException: Couldn't open nonexistent.file
+exception: basic\_ios::clear If you work only with exceptions inherited
+from std::exception, code can even be simplied. Section 72.8: Function
+Try Blocks In constructor The only way to catch exception in initializer
+list: struct A : public B \{ A() try : B(), foo(1), bar(2) \{ //
+constructor body \} catch (\ldots) \{ // exceptions from the initializer
+list and constructor are caught here // if no exception is thrown here
+// then the caught exception is re-thrown. \} private: Foo foo; Bar bar;
+\}; Section 72.9: Function Try Blocks In destructor struct A \{
+\textasciitilde A() noexcept(false) try \{ // destructor body \} catch
+(\ldots) \{ // exceptions of destructor body are caught here // if no
+exception is thrown here // then the caught exception is re-thrown. \}
+\}; Note that, although this is possible, one needs to be very careful
+with throwing from destructor, as if a destructor called during stack
+unwinding throws an exception, std::terminate is called.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{chapter-10-advanced-streams-file-io}{%
+\chapter{Chapter 10: Advanced Streams \& File
+I/O}\label{chapter-10-advanced-streams-file-io}}
+
+This chapter explores the full power of the C++
+\passthrough{\lstinline!<iostream>!},
+\passthrough{\lstinline!<fstream>!}, and
+\passthrough{\lstinline!<sstream>!} libraries, deconstructing how they
+interact with the filesystem and formatted data.
+
+\hypertarget{file-io-foundations}{%
+\section{10.1 File I/O Foundations}\label{file-io-foundations}}
+
+Working with files involves the \passthrough{\lstinline!std::fstream!},
+\passthrough{\lstinline!std::ifstream!}, and
+\passthrough{\lstinline!std::ofstream!} classes.
+
+\hypertarget{opening-modes}{%
+\subsection{1. Opening Modes}\label{opening-modes}}
+
+\begin{itemize}
+\tightlist
+\item
+  \passthrough{\lstinline!std::ios::in!}: Open for reading.
+\item
+  \passthrough{\lstinline!std::ios::out!}: Open for writing (overwrites
+  existing).
+\item
+  \passthrough{\lstinline!std::ios::app!}: Append to end of file.
+\item
+  \passthrough{\lstinline!std::ios::ate!}: Open and seek to end.
+\item
+  \passthrough{\lstinline!std::ios::binary!}: Binary mode (no CRLF
+  translation).
+\end{itemize}
+
+\hypertarget{binary-vs-text-mode}{%
+\subsection{2. Binary vs Text Mode}\label{binary-vs-text-mode}}
+
+In text mode, special characters like \passthrough{\lstinline!\\n!}
+might be translated (e.g., to \passthrough{\lstinline!\\r\\n!} on
+Windows). Binary mode ensures that exactly what you write is what
+appears on disk.
+
+\begin{lstlisting}[language={C++}]
+std::ofstream file("data.bin", std::ios::binary);
+double d = 3.14;
+file.write(reinterpret_cast<const char*>(&d), sizeof(d));
+\end{lstlisting}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{stream-manipulators}{%
+\section{10.2 Stream Manipulators}\label{stream-manipulators}}
+
+Manipulators allow you to change how data is formatted on the fly.
+
+\hypertarget{numeric-formatting}{%
+\subsection{1. Numeric Formatting}\label{numeric-formatting}}
+
+\begin{itemize}
+\tightlist
+\item
+  \passthrough{\lstinline!std::hex!},
+  \passthrough{\lstinline!std::oct!},
+  \passthrough{\lstinline!std::dec!}: Change base.
+\item
+  \passthrough{\lstinline!std::setprecision(n)!}: Set floating point
+  precision (requires \passthrough{\lstinline!<iomanip>!}).
+\item
+  \passthrough{\lstinline!std::fixed!},
+  \passthrough{\lstinline!std::scientific!}: Change notation.
+\end{itemize}
+
+\hypertarget{padding-and-alignment}{%
+\subsection{2. Padding and Alignment}\label{padding-and-alignment}}
+
+\begin{itemize}
+\tightlist
+\item
+  \passthrough{\lstinline!std::setw(n)!}: Set width of next field.
+\item
+  \passthrough{\lstinline!std::setfill(c)!}: Set fill character.
+\item
+  \passthrough{\lstinline!std::left!},
+  \passthrough{\lstinline!std::right!},
+  \passthrough{\lstinline!std::internal!}: Change alignment.
+\end{itemize}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{string-streams-sstream}{%
+\section{\texorpdfstring{10.3 String Streams
+(\texttt{sstream})}{10.3 String Streams (sstream)}}\label{string-streams-sstream}}
+
+\passthrough{\lstinline!std::stringstream!} allows you to treat a string
+like a stream, enabling easy conversion between types and strings.
+
+\begin{lstlisting}[language={C++}]
+#include <sstream>
+std::stringstream ss;
+ss << "The answer is " << 42;
+std::string s = ss.str();
+\end{lstlisting}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{professional-notes-stream-architecture}{%
+\subsection{Professional Notes: Stream
+Architecture}\label{professional-notes-stream-architecture}}
+
+\hypertarget{the-ios_base-state-machine}{%
+\subsubsection{\texorpdfstring{1. The \texttt{ios\_base} State
+Machine}{1. The ios\_base State Machine}}\label{the-ios_base-state-machine}}
+
+Every stream inherits from \passthrough{\lstinline!ios\_base!}, which
+maintains internal flags for formatting and errors. *
+\textbf{Performance Trap}: Streams are significantly slower than C's
+\passthrough{\lstinline!printf!}/\passthrough{\lstinline!scanf!} due to
+the overhead of object construction and virtual function calls. *
+\textbf{Optimization}:
+\passthrough{\lstinline!std::ios::sync\_with\_stdio(false);!} disables
+the synchronization between C++ and C streams, making
+\passthrough{\lstinline!std::cin!} as fast as
+\passthrough{\lstinline!scanf!}.
+
+\hypertarget{stream-buffering-streambuf}{%
+\subsubsection{\texorpdfstring{2. Stream Buffering
+(\texttt{streambuf})}{2. Stream Buffering (streambuf)}}\label{stream-buffering-streambuf}}
+
+The actual data transfer is handled by a buffer object
+(\passthrough{\lstinline!rdbuf!}). * \textbf{Redirection}: You can
+redirect \passthrough{\lstinline!cout!} to a file by swapping its
+buffer:
+
+\begin{lstlisting}[language={C++}]
+std::ofstream out("log.txt");
+std::streambuf *coutbuf = std::cout.rdbuf(); 
+std::cout.rdbuf(out.rdbuf()); // cout now writes to log.txt
+\end{lstlisting}
+
+\hypertarget{custom-manipulators}{%
+\subsubsection{3. Custom Manipulators}\label{custom-manipulators}}
+
+You can create your own manipulators by defining functions that take and
+return a reference to a stream:
+
+\begin{lstlisting}[language={C++}]
+std::ostream& tab(std::ostream& os) {
+    return os << "\t";
+}
+std::cout << "Data1" << tab << "Data2" << std::endl;
+\end{lstlisting}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{volume-02-modern-revolution-c11}{%
+\chapter{VOLUME 02 MODERN REVOLUTION
+C11}\label{volume-02-modern-revolution-c11}}

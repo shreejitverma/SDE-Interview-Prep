@@ -1,0 +1,817 @@
+\hypertarget{move-semantics-and-smart-pointers}{%
+\chapter{MOVE SEMANTICS AND SMART
+POINTERS}\label{move-semantics-and-smart-pointers}}
+
+\hypertarget{move-semantics-smart-pointers}{%
+\chapter{MOVE SEMANTICS \& SMART
+POINTERS}\label{move-semantics-smart-pointers}}
+
+\hypertarget{rvalue-references-move-semantics}{%
+\section{1. Rvalue References \& Move
+Semantics}\label{rvalue-references-move-semantics}}
+
+C++11 solves the problem of unnecessary copying with \textbf{Move
+Semantics}.
+
+\hypertarget{lvalues-vs-rvalues}{%
+\subsection{1.1 Lvalues vs Rvalues}\label{lvalues-vs-rvalues}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Lvalue (Left Value):} Has a name, has an address (identity).
+  Persists beyond the expression.
+\item
+  \textbf{Rvalue (Right Value):} Temporary, no name (or about to die).
+  Cannot take address.
+\end{itemize}
+
+\begin{lstlisting}[language={C++}]
+int x = 10; // x is lvalue, 10 is rvalue
+int y = x;  // y is lvalue
+int z = x + y; // (x+y) is rvalue
+\end{lstlisting}
+
+\hypertarget{rvalue-references-t}{%
+\subsection{\texorpdfstring{1.2 Rvalue References
+(\texttt{T\&\&})}{1.2 Rvalue References (T\&\&)}}\label{rvalue-references-t}}
+
+A reference that binds \emph{only} to rvalues. Represents an object we
+can ``steal'' from.
+
+\begin{lstlisting}[language={C++}]
+void f(int& x)  { cout << "Lvalue ref"; }
+void f(int&& x) { cout << "Rvalue ref"; }
+
+int a = 5;
+f(a); // Lvalue ref
+f(5); // Rvalue ref
+\end{lstlisting}
+
+\hypertarget{move-constructor-move-assignment}{%
+\subsection{1.3 Move Constructor \& Move
+Assignment}\label{move-constructor-move-assignment}}
+
+Instead of copying data (slow), we steal pointers (fast).
+
+\begin{lstlisting}[language={C++}]
+class Buffer {
+    int* data;
+    size_t size;
+public:
+    // Move Constructor
+    Buffer(Buffer&& other) noexcept : data(other.data), size(other.size) {
+        other.data = nullptr; // Nullify source to prevent double free
+        other.size = 0;
+    }
+
+    // Move Assignment
+    Buffer& operator=(Buffer&& other) noexcept {
+        if (this != &other) {
+            delete[] data;       // Free own resources
+            data = other.data;   // Steal resources
+            size = other.size;
+            other.data = nullptr;// Nullify source
+            other.size = 0;
+        }
+        return *this;
+    }
+};
+\end{lstlisting}
+
+\hypertarget{stdmove}{%
+\subsection{\texorpdfstring{1.4
+\texttt{std::move}}{1.4 std::move}}\label{stdmove}}
+
+Casts an lvalue to an rvalue, enabling move semantics.
+
+\begin{lstlisting}[language={C++}]
+Buffer b1;
+Buffer b2 = std::move(b1); // Calls Move Constructor
+// b1 is now in valid but unspecified state (empty)
+\end{lstlisting}
+
+\textbf{Warning:} Do not use \passthrough{\lstinline!b1!} after moving
+from it.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{smart-pointers-raii}{%
+\section{2. Smart Pointers (RAII)}\label{smart-pointers-raii}}
+
+Manual \passthrough{\lstinline!new!}/\passthrough{\lstinline!delete!} is
+prone to leaks. C++11 introduces strict ownership models.
+
+\hypertarget{stdunique_ptr}{%
+\subsection{\texorpdfstring{2.1
+\texttt{std::unique\_ptr}}{2.1 std::unique\_ptr}}\label{stdunique_ptr}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Ownership:} Exclusive. Only one pointer owns the object.
+\item
+  \textbf{Copying:} Disabled (\passthrough{\lstinline!delete!}).
+\item
+  \textbf{Moving:} Allowed.
+\item
+  \textbf{Overhead:} Zero (same as raw pointer).
+\end{itemize}
+
+\begin{lstlisting}[language={C++}]
+#include <memory>
+
+std::unique_ptr<int> p1(new int(5));
+// std::unique_ptr<int> p2 = p1; // ERROR: Cannot copy
+std::unique_ptr<int> p3 = std::move(p1); // OK: Ownership transferred
+\end{lstlisting}
+
+\hypertarget{stdshared_ptr}{%
+\subsection{\texorpdfstring{2.2
+\texttt{std::shared\_ptr}}{2.2 std::shared\_ptr}}\label{stdshared_ptr}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Ownership:} Shared (Reference Counted).
+\item
+  \textbf{Destruction:} Object deleted when last
+  \passthrough{\lstinline!shared\_ptr!} dies.
+\item
+  \textbf{Overhead:} Control block on heap (ref counts).
+\end{itemize}
+
+\begin{lstlisting}[language={C++}]
+auto sp1 = std::make_shared<int>(10); // Efficient allocation
+auto sp2 = sp1; // Ref count = 2
+\end{lstlisting}
+
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 0\tabcolsep) * \real{0.06}}@{}}
+\toprule
+\endhead
+\#\#\# Professional Notes: Memory \& Resource Management \\
+\#\#\#\# 1. RAII: Resource Acquisition Is Initialization RAII is the
+core of modern C++ resource management. It ensures that resources
+(memory, file handles, sockets) are tied to object lifetime. *
+\textbf{Acquisition}: In the constructor. * \textbf{Release}: In the
+destructor. * \textbf{Benefit}: Exception safety. If an exception
+occurs, stack unwinding automatically calls destructors, preventing
+leaks. \\
+\#\#\#\# 2. The C++11 Memory Model and Atomics Before C++11, the
+language had no formal definition of threads or shared memory. *
+\textbf{The Problem}: Compilers and CPUs often reorder instructions for
+performance, which can break multi-threaded logic. * \textbf{The
+Solution}: \passthrough{\lstinline!std::atomic<T>!} and memory barriers.
+They ensure that operations are visible across threads in a predictable
+order (\passthrough{\lstinline!std::memory\_order!}). * \textbf{Data
+Races}: Accessing the same memory location from multiple threads where
+at least one is a write is \textbf{Undefined Behavior} unless
+synchronized. \\
+\#\#\#\# 3. Smart Pointer Gotchas *
+\textbf{\passthrough{\lstinline!std::make\_shared!}
+vs.~\passthrough{\lstinline!new!}}:
+\passthrough{\lstinline!make\_shared!} is faster and more exception-safe
+because it performs a single allocation for both the object and the
+control block. * \textbf{Circular References}: If two
+\passthrough{\lstinline!shared\_ptr!} objects point to each other, they
+will never be deleted. Use \passthrough{\lstinline!std::weak\_ptr!} for
+one of the links to break the cycle. *
+\textbf{\passthrough{\lstinline!this!} as shared}: Use
+\passthrough{\lstinline!std::enable\_shared\_from\_this<T>!} if you need
+to pass a \passthrough{\lstinline!shared\_ptr!} to the current object
+from inside a member function. \\
+\bottomrule
+\end{longtable}
+
+\hypertarget{stdweak_ptr}{%
+\subsection{\texorpdfstring{2.3
+\texttt{std::weak\_ptr}}{2.3 std::weak\_ptr}}\label{stdweak_ptr}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Ownership:} Non-owning observer of
+  \passthrough{\lstinline!shared\_ptr!}.
+\item
+  \textbf{Use Case:} Break cyclic references (A-\textgreater B,
+  B-\textgreater A).
+\end{itemize}
+
+\begin{lstlisting}[language={C++}]
+std::shared_ptr<int> sp = std::make_shared<int>(42);
+std::weak_ptr<int> wp = sp;
+
+if (auto locked = wp.lock()) { // Check if object exists
+    std::cout << *locked;
+}
+\end{lstlisting}
+
+\hypertarget{stdmake_shared-vs-new}{%
+\subsection{\texorpdfstring{2.4 \texttt{std::make\_shared} vs
+\texttt{new}}{2.4 std::make\_shared vs new}}\label{stdmake_shared-vs-new}}
+
+Always use \passthrough{\lstinline!std::make\_shared!}. It allocates the
+object and control block in a single heap allocation (cache efficient).
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{perfect-forwarding}{%
+\section{3. Perfect Forwarding}\label{perfect-forwarding}}
+
+Used in templates to preserve value category (lvalue vs rvalue).
+
+\begin{lstlisting}[language={C++}]
+template<typename T>
+void wrapper(T&& arg) {
+    // std::forward passes arg as lvalue if given lvalue,
+    // rvalue if given rvalue.
+    func(std::forward<T>(arg)); 
+}
+\end{lstlisting}
+
+\hypertarget{professional-notes-chapter-33-smart-pointers}{%
+\chapter{Professional Notes: Chapter 33: Smart
+Pointers}\label{professional-notes-chapter-33-smart-pointers}}
+
+Section 33.1: Unique ownership (std::unique\_ptr) Section 33.2: Sharing
+ownership (std::shared\_ptr) Section 33.3: Sharing with temporary
+ownership (std::weak\_ptr) Section 33.4: Using custom deleters to create
+a wrapper to a C interface Section 33.5: Unique ownership without move
+semantics (auto\_ptr) Section 33.6: Casting std::shared\_ptr pointers
+Section 33.7: Writing a smart pointer: value\_ptr Section 33.8: Getting
+a shared\_ptr referring to this
+
+\hypertarget{professional-notes-chapter-106-move-semantics}{%
+\chapter{Professional Notes: Chapter 106: Move
+Semantics}\label{professional-notes-chapter-106-move-semantics}}
+
+Section 106.1: Move semantics Section 106.2: Using std::move to reduce
+complexity from O(n) to O(n) Section 106.3: Move constructor Section
+106.4: Re-use a moved object Section 106.5: Move assignment Section
+106.6: Using move semantics on containers
+
+\hypertarget{professional-notes-chapter-33-smart-pointers-1}{%
+\chapter{Professional Notes: Chapter 33: Smart
+Pointers}\label{professional-notes-chapter-33-smart-pointers-1}}
+
+Section 33.1: Unique ownership (std::unique\_ptr) Version C++11 A
+std::unique\_ptr is a class template that manages the lifetime of a
+dynamically stored object. Unlike for std::shared\_ptr, the dynamic
+object is owned by only one instance of a std::unique\_ptr at any time,
+// Creates a dynamic int with value of 20 owned by a unique pointer
+std::unique\_ptr ptr = std::make\_unique(20); (Note: std::unique\_ptr is
+available since C++11 and std::make\_unique since C++14.) Only the
+variable ptr holds a pointer to a dynamically allocated int. When a
+unique pointer that owns an object goes out of scope, the owned object
+is deleted, i.e.~its destructor is called if the object is of class
+type, and the memory for that object is released. To use
+std::unique\_ptr and std::make\_unique with array-types, use their array
+specializations: // Creates a unique\_ptr to an int with value 59
+std::unique\_ptr ptr = std::make\_unique(59); // Creates a unique\_ptr
+to an array of 15 ints std::unique\_ptr\textless int{[}{]}\textgreater{}
+ptr = std::make\_unique\textless int{[}{]}\textgreater(15); You can
+access the std::unique\_ptr just like a raw pointer, because it
+overloads those operators. You can transfer ownership of the contents of
+a smart pointer to another pointer by using std::move, which will cause
+the original smart pointer to point to nullptr. // 1. std::unique\_ptr
+std::unique\_ptr ptr = std::make\_unique(); // Change value to 1
+\emph{ptr = 1; // 2. std::unique\_ptr (by moving `ptr' to `ptr2', `ptr'
+doesn't own the object anymore) std::unique\_ptr ptr2 = std::move(ptr);
+int a = }ptr2; // `a' is 1 int b = \emph{ptr; // undefined behavior!
+`ptr' is `nullptr' // (because of the move command above) Passing
+unique\_ptr to functions as parameter: void foo(std::unique\_ptr ptr) \{
+// Your code goes here \} std::unique\_ptr ptr = std::make\_unique(59);
+foo(std::move(ptr)) Returning unique\_ptr from functions. This is the
+preferred C++11 way of writing factory functions, as it clearly conveys
+the ownership semantics of the return: the caller owns the resulting
+unique\_ptr and is responsible for it. std::unique\_ptr foo() \{
+std::unique\_ptr ptr = std::make\_unique(59); return ptr; \}
+std::unique\_ptr ptr = foo(); Compare this to: int} foo\_cpp03(); int* p
+= foo\_cpp03(); // do I own p? do I have to delete it at some point? //
+it's not readily apparent what the answer is. Version \textless{} C++14
+The class template make\_unique is provided since C++14. It's easy to
+add it manually to C++11 code: template\textless typename T,
+typename\ldots{} Args\textgreater{} typename
+std::enable\_if\textless!std::is\_array::value,
+std::unique\_ptr\textgreater::type make\_unique(Args\&\&\ldots{} args)
+\{ return std::unique\_ptr(new T(std::forward(args)\ldots)); \} // Use
+make\_unique for arrays template typename
+std::enable\_if\textless std::is\_array::value,
+std::unique\_ptr\textgreater::type make\_unique(size\_t n) \{ return
+std::unique\_ptr(new typename std::remove\_extent::type\href{}{n}); \}
+Version C++11 Unlike the dumb smart pointer (std::auto\_ptr),
+unique\_ptr can also be instantiated with vector allocation (not
+std::vector). Earlier examples were for scalar allocations. For example
+to have a dynamically allocated integer array for 10 elements, you would
+specify int{[}{]} as the template type (and not just int):
+std::unique\_ptr\textless int{[}{]}\textgreater{} arr\_ptr =
+std::make\_unique\textless int{[}{]}\textgreater(10); Which can be
+simplied with: auto arr\_ptr =
+std::make\_unique\textless int{[}{]}\textgreater(10); Now, you use
+arr\_ptr as if it is an array: arr\_ptr{[}2{]} = 10; // Modify third
+element You need not to worry about de-allocation. This template
+specialized version calls constructors and destructors appropriately.
+Using vectored version of unique\_ptr or a vector itself - is a personal
+choice. In versions prior to C++11, std::auto\_ptr was available. Unlike
+unique\_ptr it is allowed to copy auto\_ptrs, upon which the source ptr
+will lose the ownership of the contained pointer and the target receives
+it. Section 33.2: Sharing ownership (std::shared\_ptr) The class
+template std::shared\_ptr denes a shared pointer that is able to share
+ownership of an object with other shared pointers. This contrasts to
+std::unique\_ptr which represents exclusive ownership. The sharing
+behavior is implemented through a technique known as reference counting,
+where the number of shared pointers that point to the object is stored
+alongside it. When this count reaches zero, either through the
+destruction or reassignment of the last std::shared\_ptr instance, the
+object is automatically destroyed. // Creation: `firstShared' is a
+shared pointer for a new instance of `Foo' std::shared\_ptr firstShared
+= std::make\_shared(/\emph{args}/); To create multiple smart pointers
+that share the same object, we need to create another shared\_ptr that
+aliases the rst shared pointer. Here are 2 ways of doing it:
+std::shared\_ptr secondShared(firstShared); // 1st way: Copy
+constructing std::shared\_ptr secondShared; secondShared = firstShared;
+// 2nd way: Assigning Either of the above ways makes secondShared a
+shared pointer that shares ownership of our instance of Foo with
+firstShared. The smart pointer works just like a raw pointer. This
+means, you can use * to dereference them. The regular -\textgreater{}
+operator works as well: secondShared-\textgreater test(); // Calls
+Foo::test() Finally, when the last aliased shared\_ptr goes out of
+scope, the destructor of our Foo instance is called. Warning:
+Constructing a shared\_ptr might throw a bad\_alloc exception when extra
+data for shared ownership semantics needs to be allocated. If the
+constructor is passed a regular pointer it assumes to own the object
+pointed to and calls the deleter if an exception is thrown. This means
+shared\_ptr(new T(args)) will not leak a T object if allocation of
+shared\_ptr fails. However, it is advisable to use make\_shared(args) or
+allocate\_shared(alloc, args), which enable the implementation to
+optimize the memory allocation. Allocating Arrays({[}{]}) using
+shared\_ptr Version C++11 Version \textless{} C++17 Unfortunately, there
+is no direct way to allocate Arrays using
+make\_shared\textless\textgreater. It is possible to create arrays for
+shared\_ptr\textless\textgreater{} using new and std::default\_delete.
+For example, to allocate an array of 10 integers, we can write the code
+as shared\_ptr sh(new int{[}10{]},
+std::default\_delete\textless int{[}{]}\textgreater()); Specifying
+std::default\_delete is mandatory here to make sure that the allocated
+memory is correctly cleaned up using delete{[}{]}. If we know the size
+at compile time, we can do it this way: template struct
+shared\_array\_maker \{\}; template\textless class T, std::size\_t
+N\textgreater{} struct
+shared\_array\_maker\textless T{[}N{]}\textgreater{} \{ std::shared\_ptr
+operator()const\{  auto r =
+std::make\_shared\textless std::array\textless T,N\textgreater\textgreater();
+if (!r) return \{\}; return \{r.data(), r\}; \} \}; template auto
+make\_shared\_array() -\textgreater{} decltype(
+shared\_array\_maker\{\}() ) \{ return shared\_array\_maker\{\}(); \}
+then make\_shared\_array\textless int{[}10{]}\textgreater{} returns a
+shared\_ptr pointing to 10 ints all default constructed. Version C++17
+With C++17, shared\_ptr gained special support for array types. It is no
+longer necessary to specify the array-deleter explicitly, and the shared
+pointer can be dereferenced using the {[}{]} array index operator:
+std::shared\_ptr\textless int{[}{]}\textgreater{} sh(new int{[}10{]});
+sh{[}0{]} = 42; Shared pointers can point to a sub-object of the object
+it owns: struct Foo \{ int x; \}; std::shared\_ptr p1 =
+std::make\_shared(); std::shared\_ptr p2(p1, \&p1-\textgreater x); Both
+p2 and p1 own the object of type Foo, but p2 points to its int member x.
+This means that if p1 goes out of scope or is reassigned, the underlying
+Foo object will still be alive, ensuring that p2 does not dangle.
+Important: A shared\_ptr only knows about itself and all other
+shared\_ptr that were created with the alias constructor. It does not
+know about any other pointers, including all other shared\_ptrs created
+with a reference to the same Foo instance: Foo \emph{foo = new Foo;
+std::shared\_ptr shared1(foo); std::shared\_ptr shared2(foo); // don't
+do this shared1.reset(); // this will delete foo, since shared1 // was
+the only shared\_ptr that owned it shared2-\textgreater test(); //
+UNDEFINED BEHAVIOR: shared2's foo has been // deleted already!!
+Ownership Transfer of shared\_ptr By default, shared\_ptr increments the
+reference count and doesn't transfer the ownership. However, it can be
+made to transfer the ownership using std::move: shared\_ptr up =
+make\_shared(); // Transferring the ownership shared\_ptr up2 =
+move(up); // At this point, the reference count of up = 0 and the //
+ownership of the pointer is solely with up2 with reference count = 1
+Section 33.3: Sharing with temporary ownership (std::weak\_ptr)
+Instances of std::weak\_ptr can point to objects owned by instances of
+std::shared\_ptr while only becoming temporary owners themselves. This
+means that weak pointers do not alter the object's reference count and
+therefore do not prevent an object's deletion if all of the object's
+shared pointers are reassigned or destroyed. In the following example
+instances of std::weak\_ptr are used so that the destruction of a tree
+object is not inhibited: \#include \#include struct TreeNode \{
+std::weak\_ptr parent; std::vector\textless{} std::shared\_ptr
+\textgreater{} children; \}; int main() \{ // Create a TreeNode to serve
+as the root/parent. std::shared\_ptr root(new TreeNode); // Give the
+parent 100 child nodes. for (size\_t i = 0; i \textless{} 100; ++i) \{
+std::shared\_ptr child(new TreeNode);
+root-\textgreater children.push\_back(child); child-\textgreater parent
+= root; \} // Reset the root shared pointer, destroying the root object,
+and // subsequently its child nodes. root.reset(); \} As child nodes are
+added to the root node's children, their std::weak\_ptr member parent is
+set to the root node. The member parent is declared as a weak pointer as
+opposed to a shared pointer such that the root node's reference count is
+not incremented. When the root node is reset at the end of main(), the
+root is destroyed. Since the only remaining std::shared\_ptr references
+to the child nodes were contained in the root's collection children, all
+child nodes are subsequently destroyed as well. Due to control block
+implementation details, shared\_ptr allocated memory may not be released
+until shared\_ptr reference counter and weak\_ptr reference counter both
+reach zero. \#include int main() \{ \{ std::weak\_ptr wk; \{ //
+std::make\_shared is optimized by allocating only once // while
+std::shared\_ptr(new int(42)) allocates twice. // Drawback of
+std::make\_shared is that control block is tied to our integer
+std::shared\_ptr sh = std::make\_shared(42); wk = sh; // sh memory
+should be released at this point\ldots{} \} // \ldots{} but wk is still
+alive and needs access to control block \} // now memory is released (sh
+and wk) \} Since std::weak\_ptr does not keep its referenced object
+alive, direct data access through a std::weak\_ptr is not possible.
+Instead it provides a lock() member function that attempts to retrieve a
+std::shared\_ptr to the referenced object: \#include \#include int
+main() \{ \{ std::weak\_ptr wk; std::shared\_ptr sp; \{ std::shared\_ptr
+sh = std::make\_shared(42); wk = sh; // calling lock will create a
+shared\_ptr to the object referenced by wk sp = wk.lock(); // sh will be
+destroyed after this point, but sp is still alive \} // sp still keeps
+the data alive. // At this point we could even call lock() again // to
+retrieve another shared\_ptr to the same data from wk assert(}sp == 42);
+assert(!wk.expired()); // resetting sp will delete the data, // as it is
+currently the last shared\_ptr with ownership sp.reset(); // attempting
+to lock wk now will return an empty shared\_ptr, // as the data has
+already been deleted sp = wk.lock(); assert(!sp); assert(wk.expired());
+\} \} Section 33.4: Using custom deleters to create a wrapper to a C
+interface Many C interfaces such as SDL2 have their own deletion
+functions. This means that you cannot use smart pointers directly:
+std::unique\_ptr a; // won't work, UNSAFE! Instead, you need to dene
+your own deleter. The examples here use the SDL\_Surface structure which
+should be freed using the SDL\_FreeSurface() function, but they should
+be adaptable to many other C interfaces. The deleter must be callable
+with a pointer argument, and therefore can be e.g.~a simple function
+pointer: std::unique\_ptr\textless SDL\_Surface,
+void(\emph{)(SDL\_Surface})\textgreater{} a(pointer, SDL\_FreeSurface);
+Any other callable object will work, too, for example a class with an
+operator(): struct SurfaceDeleter \{ void operator()(SDL\_Surface* surf)
+\{ SDL\_FreeSurface(surf); \} \};
+std::unique\_ptr\textless SDL\_Surface, SurfaceDeleter\textgreater{}
+a(pointer, SurfaceDeleter\{\}); // safe
+std::unique\_ptr\textless SDL\_Surface, SurfaceDeleter\textgreater{}
+b(pointer); // equivalent to the above // as the deleter is
+value-initialized This not only provides you with safe, zero overhead
+(if you use unique\_ptr) automatic memory management, you also get
+exception safety. Note that the deleter is part of the type for
+unique\_ptr, and the implementation can use the empty base optimization
+to avoid any change in size for empty custom deleters. So while
+std::unique\_ptr\textless SDL\_Surface, SurfaceDeleter\textgreater{} and
+std::unique\_ptr\textless SDL\_Surface,
+void(\emph{)(SDL\_Surface})\textgreater{} solve the same problem in a
+similar way, the former type is still only the size of a pointer while
+the latter type has to hold two pointers: both the SDL\_Surface* and the
+function pointer! When having free function custom deleters, it is
+preferable to wrap the function in an empty type. In cases where
+reference counting is important, one could use a shared\_ptr instead of
+an unique\_ptr. The shared\_ptr always stores a deleter, this erases the
+type of the deleter, which might be useful in APIs. The disadvantages of
+using shared\_ptr over unique\_ptr include a higher memory cost for
+storing the deleter and a performance cost for maintaining the reference
+count. // deleter required at construction time and is part of the type
+std::unique\_ptr\textless SDL\_Surface,
+void(\emph{)(SDL\_Surface})\textgreater{} a(pointer, SDL\_FreeSurface);
+// deleter is only required at construction time, not part of the type
+std::shared\_ptr b(pointer, SDL\_FreeSurface); Version C++17 With
+template auto, we can make it even easier to wrap our custom deleters:
+template struct FunctionDeleter \{ template void operator()(T* ptr) \{
+DeleteFn(ptr); \} \}; template \textless class T, auto
+DeleteFn\textgreater{} using unique\_ptr\_deleter =
+std::unique\_ptr\textless T, FunctionDeleter\textgreater; With which the
+above example is simply: unique\_ptr\_deleter\textless SDL\_Surface,
+SDL\_FreeSurface\textgreater{} c(pointer); Here, the purpose of auto is
+to handle all free functions, whether they return void
+(e.g.~SDL\_FreeSurface) or not (e.g.~fclose). Section 33.5: Unique
+ownership without move semantics (auto\_ptr) Version \textless{} C++11
+NOTE: std::auto\_ptr has been deprecated in C++11 and will be removed in
+C++17. You should only use this if you are forced to use C++03 or
+earlier and are willing to be careful. It is recommended to move to
+unique\_ptr in combination with std::move to replace std::auto\_ptr
+behavior. Before we had std::unique\_ptr, before we had move semantics,
+we had std::auto\_ptr. std::auto\_ptr provides unique ownership but
+transfers ownership upon copy. As with all smart pointers,
+std::auto\_ptr automatically cleans up resources (see RAII): \{
+std::auto\_ptr p(new int(42)); std::cout \textless\textless{} \emph{p;
+\} // p is deleted here, no memory leaked but allows only one owner:
+std::auto\_ptr px = \ldots; std::auto\_ptr py = px; // px is now empty
+This allows to use std::auto\_ptr to keep ownership explicit and unique
+at the danger of losing ownership unintended: void f(std::auto\_ptr ) \{
+// assumes ownership of X // deletes it at end of scope \};
+std::auto\_ptr px = \ldots; f(px); // f acquires ownership of underlying
+X // px is now empty px-\textgreater foo(); // NPE! //
+px.\textasciitilde auto\_ptr() does NOT delete The transfer of ownership
+happened in the ``copy'' constructor. auto\_ptr's copy constructor and
+copy assignment operator take their operands by non-const reference so
+that they could be modied. An example implementation might be: template
+class auto\_ptr \{ T} ptr; public: auto\_ptr(auto\_ptr\& rhs) :
+ptr(rhs.release()) \{ \} auto\_ptr\& operator=(auto\_ptr\& rhs) \{
+reset(rhs.release()); return \emph{this; \} T} release() \{ T* tmp =
+ptr; ptr = nullptr; return tmp; \} void reset(T* tmp = nullptr) \{ if
+(ptr != tmp) \{ delete ptr; ptr = tmp; \} \}  /* other functions
+\ldots{} \emph{/ \}; This breaks copy semantics, which require that
+copying an object leaves you with two equivalent versions of it. For any
+copyable type, T, I should be able to write: T a = \ldots; T b(a);
+assert(b == a); But for auto\_ptr, this is not the case. As a result, it
+is not safe to put auto\_ptrs in containers. Section 33.6: Casting
+std::shared\_ptr pointers It is not possible to directly use
+static\_cast, const\_cast, dynamic\_cast and reinterpret\_cast on
+std::shared\_ptr to retrieve a pointer sharing ownership with the
+pointer being passed as argument. Instead, the functions
+std::static\_pointer\_cast, std::const\_pointer\_cast,
+std::dynamic\_pointer\_cast and std::reinterpret\_pointer\_cast should
+be used: struct Base \{ virtual \textasciitilde Base() noexcept \{\};
+\}; struct Derived: Base \{\}; auto derivedPtr(std::make\_shared());
+auto basePtr(std::static\_pointer\_cast(derivedPtr)); auto
+constBasePtr(std::const\_pointer\_cast(basePtr)); auto
+constDerivedPtr(std::dynamic\_pointer\_cast(constBasePtr)); Note that
+std::reinterpret\_pointer\_cast is not available in C++11 and C++14, as
+it was only proposed by N3920 and adopted into Library Fundamentals TS
+in February 2014. However, it can be implemented as follows: template
+\textless typename To, typename From\textgreater{} inline
+std::shared\_ptr reinterpret\_pointer\_cast( std::shared\_ptr const \&
+ptr) noexcept \{ return std::shared\_ptr(ptr,
+reinterpret\_cast\textless To }\textgreater(ptr.get())); \} Section
+33.7: Writing a smart pointer: value\_ptr A value\_ptr is a smart
+pointer that behaves like a value. When copied, it copies its contents.
+When created, it creates its contents. // Like std::default\_delete:
+template struct default\_copier \{ // a copier must handle a null T
+const* in and return null: T* operator()(T const* tin)const \{ if (!tin)
+return nullptr; return new T(\emph{tin); \} void operator()(void} dest,
+T const* tin)const \{ if (!tin) return; return new(dest) T(\emph{tin);
+\} \}; // tag class to handle empty case: struct empty\_ptr\_t \{\};
+constexpr empty\_ptr\_t empty\_ptr\{\}; // the value pointer type
+itself: template\textless class T, class Copier=default\_copier, class
+Deleter=std::default\_delete, class Base=std::unique\_ptr\textless T,
+Deleter\textgreater{} \textgreater{} struct value\_ptr:Base, private
+Copier \{ using copier\_type=Copier; // also typedefs from unique\_ptr
+using Base::Base; value\_ptr( T const\& t ): Base( std::make\_unique(t)
+), Copier() \{\} value\_ptr( T \&\& t ): Base(
+std::make\_unique(std::move(t)) ), Copier() \{\} // almost-never-empty:
+value\_ptr(): Base( std::make\_unique() ), Copier() \{\} value\_ptr(
+empty\_ptr\_t ) \{\} value\_ptr( Base b, Copier c=\{\} ):
+Base(std::move(b)), Copier(std::move(c)) \{\} Copier const\&
+get\_copier() const \{ return }this; \} value\_ptr clone() const \{
+return \{ Base( get\_copier()(this-\textgreater get()),
+this-\textgreater get\_deleter() ), get\_copier() \}; \}
+value\_ptr(value\_ptr\&\&)=default; value\_ptr\&
+operator=(value\_ptr\&\&)=default; value\_ptr(value\_ptr const\&
+o):value\_ptr(o.clone()) \{\} value\_ptr\& operator=(value\_ptr
+const\&o) \{ if (o \&\& \emph{this) \{ // if we are both non-null,
+assign contents: \textbf{this = \emph{o; \} else \{ // otherwise, assign
+a clone (which could itself be null): }this = o.clone(); \} return
+\emph{this; \} value\_ptr\& operator=( T const\& t ) \{ if (}this) \{
+}this = t; \} else \{ }this = value\_ptr(t); \}  return \emph{this; \}
+value\_ptr\& operator=( T \&\& t ) \{ if (}this) \{ \textbf{this =
+std::move(t); \} else \{ \emph{this = value\_ptr(std::move(t)); \}
+return }this; \} T\& get() \{ return }this; \} T const\& get() const \{
+return **this; \} T* get\_pointer() \{ if (!\emph{this) return nullptr;
+return std::addressof(get()); \} T const} get\_pointer() const \{ if
+(!\emph{this) return nullptr; return std::addressof(get()); \} //
+operator-\textgreater{} from unique\_ptr \}; template\textless class T,
+class\ldots Args\textgreater{} value\_ptr make\_value\_ptr(
+Args\&\&\ldots{} args ) \{ return
+\{std::make\_unique(std::forward(args)\ldots)\}; \} This particular
+value\_ptr is only empty if you construct it with empty\_ptr\_t or if
+you move from it. It exposes the fact it is a unique\_ptr, so explicit
+operator bool() const works on it. .get() has been changed to return a
+reference (as it is almost never empty), and .get\_pointer() returns a
+pointer instead. This smart pointer can be useful for pImpl cases, where
+we want value-semantics but we also don't want to expose the contents of
+the pImpl outside of the implementation le. With a non-default Copier,
+it can even handle virtual base classes that know how to produce
+instances of their derived and turn them into value-types. Section 33.8:
+Getting a shared\_ptr referring to this enable\_shared\_from\_this
+enables you to get a valid shared\_ptr instance to this. By deriving
+your class from the class template enable\_shared\_from\_this, you
+inherit a method shared\_from\_this that returns a shared\_ptr instance
+to this. Note that the object must be created as a shared\_ptr in rst
+place: \#include class A: public enable\_shared\_from\_this \{ \}; A}
+ap1 =new A(); shared\_ptr ap2(ap1); // First prepare a shared pointer to
+the object and hold it! // Then get a shared pointer to the object from
+the object itself shared\_ptr ap3 =
+ap1-\textgreater shared\_from\_this(); int c3 =ap3.use\_count(); // =2:
+pointing to the same object Note(2) you cannot call
+enable\_shared\_from\_this inside the constructor. \#include //
+enable\_shared\_from\_this class Widget : public
+std::enable\_shared\_from\_this\textless{} Widget \textgreater{} \{
+public: void DoSomething() \{ std::shared\_ptr\textless{} Widget
+\textgreater{} self = shared\_from\_this(); someEvent -\textgreater{}
+Register( self ); \} private: \}; int main() \{ auto w =
+std::make\_shared\textless{} Widget \textgreater(); w -\textgreater{}
+DoSomething(); \} If you use shared\_from\_this() on an object not owned
+by a shared\_ptr, such as a local automatic object or a global object,
+then the behavior is undened. Since C++17 it throws std::bad\_alloc
+instead. Using shared\_from\_this() from a constructor is equivalent to
+using it on an object not owned by a shared\_ptr, because the objects is
+possessed by the shared\_ptr after the constructor returns.
+
+\hypertarget{professional-notes-chapter-106-move-semantics-1}{%
+\chapter{Professional Notes: Chapter 106: Move
+Semantics}\label{professional-notes-chapter-106-move-semantics-1}}
+
+Section 106.1: Move semantics Move semantics are a way of moving one
+object to another in C++. For this, we empty the old object and place
+everything it had in the new object. For this, we must understand what
+an rvalue reference is. An rvalue reference (T\&\& where T is the object
+type) is not much dierent than a normal reference (T\&, now called
+lvalue references). But they act as 2 dierent types, and so, we can make
+constructors or functions that take one type or the other, which will be
+necessary when dealing with move semantics. The reason why we need two
+dierent types is to specify two dierent behaviors. Lvalue reference
+constructors are related to copying, while rvalue reference constructors
+are related to moving. To move an object, we will use std::move(obj).
+This function returns an rvalue reference to the object, so that we can
+steal the data from that object into a new one. There are several ways
+of doing this which are discussed below. Important to note is that the
+use of std::move creates just an rvalue reference. In other words the
+statement std::move(obj) does not change the content of obj, while auto
+obj2 = std::move(obj) (possibly) does. Section 106.2: Using std::move to
+reduce complexity from O(n) to O(n) C++11 introduced core language and
+standard library support for moving an object. The idea is that when an
+object o is a temporary and one wants a logical copy, then its safe to
+just pilfer o's resources, such as a dynamically allocated buer, leaving
+o logically empty but still destructible and copyable. The core language
+support is mainly the rvalue reference type builder \&\&, e.g.,
+std::string\&\& is an rvalue reference to a std::string, indicating that
+that referred to object is a temporary whose resources can just be
+pilfered (i.e.~moved) special support for a move constructor T( T\&\& ),
+which is supposed to eciently move resources from the specied other
+object, instead of actually copying those resources, and special support
+for a move assignment operator auto operator=(T\&\&) -\textgreater{}
+T\&, which also is supposed to move from the source. The standard
+library support is mainly the std::move function template from the
+header. This function produces an rvalue reference to the specied
+object, indicating that it can be moved from, just as if it were a
+temporary. For a container actual copying is typically of O(n)
+complexity, where n is the number of items in the container, while
+moving is O(1), constant time. And for an algorithm that logically
+copies that container n times, this can reduce the complexity from the
+usually impractical O(n) to just linear O(n). In his article Containers
+That Never Change in Dr.~Dobbs Journal in September 19 2013, Andrew
+Koenig presented an interesting example of algorithmic ineciency when
+using a style of programming where variables are immutable after
+initialization. With this style loops are generally expressed using
+recursion. And for some algorithms such as generating a Collatz
+sequence, the recursion requires logically copying a container: // Based
+on an example by Andrew Koenig in his Dr.~Dobbs Journal article //
+Containers That Never Change September 19, 2013, available at //
+\textless url:
+http://www.drdobbs.com/cpp/containters-that-never-change/240161543\textgreater{}
+// Includes here, e.g.~ namespace my \{ template\textless{} class Item
+\textgreater{} using Vector\_ = /* E.g. std::vector \emph{/; auto
+concat( Vector\_ const\& v, int const x ) -\textgreater{} Vector\_ \{
+auto result\{ v \}; result.push\_back( x ); return result; \} auto
+collatz\_aux( int const n, Vector\_ const\& result ) -\textgreater{}
+Vector\_ \{ if( n == 1 ) \{ return result; \} auto const new\_result =
+concat( result, n ); if( n \% 2 == 0 ) \{ return collatz\_aux( n/2,
+new\_result ); \} else \{ return collatz\_aux( 3}n + 1, new\_result );
+\} \} auto collatz( int const n ) -\textgreater{} Vector\_ \{ assert( n
+!= 0 ); return collatz\_aux( n, Vector\_() ); \} \} // namespace my
+\#include using namespace std; auto main() -\textgreater{} int \{ for(
+int const x : my::collatz( 42 ) ) \{ cout \textless\textless{} x
+\textless\textless{} ' `; \} cout \textless\textless{}'\n`; \} Output:
+42 21 64 32 16 8 4 2 The number of item copy operations due to copying
+of the vectors is here roughly O(n), since it's the sum 1 + 2 + 3 +
+\ldots{} n. In concrete numbers, with g++ and Visual C++ compilers the
+above invocation of collatz(42) resulted in a Collatz sequence of 8
+items and 36 item copy operations (8\emph{7/2 = 28, plus some) in vector
+copy constructor calls. All of these item copy operations can be removed
+by simply moving vectors whose values are not needed anymore. To do this
+it's necessary to remove const and reference for the vector type
+arguments, passing the vectors by value. The function returns are
+already automatically optimized. For the calls where vectors are passed,
+and not used again further on in the function, just apply std::move to
+move those buers rather than actually copying them: using std::move;
+auto concat( Vector\_ v, int const x ) -\textgreater{} Vector\_ \{
+v.push\_back( x ); // warning: moving a local object in a return
+statement prevents copy elision {[}-Wpessimizing- move{]} // See
+https://stackoverflow.com/documentation/c\%2b\%2b/2489/copy-elision //
+return move( v ); return v; \} auto collatz\_aux( int const n, Vector\_
+result ) -\textgreater{} Vector\_ \{ if( n == 1 ) \{ return result; \}
+auto new\_result = concat( move( result ), n ); struct result; // Make
+absolutely sure no use of \passthrough{\lstinline!result!} after this.
+if( n \% 2 == 0 ) \{ return collatz\_aux( n/2, move( new\_result ) ); \}
+else \{ return collatz\_aux( 3}n + 1, move( new\_result ) ); \} \} auto
+collatz( int const n ) -\textgreater{} Vector\_ \{ assert( n != 0 );
+return collatz\_aux( n, Vector\_() ); \} Here, with g++ and Visual C++
+compilers, the number of item copy operations due to vector copy
+constructor invocations, was exactly 0. The algorithm is necessarily
+still O(n) in the length of the Collatz sequence produced, but this is a
+quite dramatic improvement: O(n) O(n). With some language support one
+could perhaps use moving and still express and enforce the immutability
+of a variable between its initialization and nal move, after which any
+use of that variable should be an error. Alas, as of C++14 C++ does not
+support that. For loop-free code the no use after move can be enforced
+via a re-declaration of the relevant name as an incomplete struct, as
+with struct result; above, but this is ugly and not likely to be
+understood by other programmers; also the diagnostics can be quite
+misleading. Summing up, the C++ language and library support for moving
+allows drastic improvements in algorithm complexity, but due the
+support's incompleteness, at the cost of forsaking the code correctness
+guarantees and code clarity that const can provide. For completeness,
+the instrumented vector class used to measure the number of item copy
+operations due to copy constructor invocations: template\textless{}
+class Item \textgreater{} class Copy\_tracking\_vector \{ private:
+static auto n\_copy\_ops() -\textgreater{} int\& \{ static int value;
+return value; \} vector items\_; public: static auto n() -\textgreater{}
+int \{ return n\_copy\_ops(); \} void push\_back( Item const\& o ) \{
+items\_.push\_back( o ); \} auto begin() const \{ return
+items\_.begin(); \} auto end() const \{ return items\_.end(); \}
+Copy\_tracking\_vector()\{\} Copy\_tracking\_vector(
+Copy\_tracking\_vector const\& other ) : items\_( other.items\_ ) \{
+n\_copy\_ops() += items\_.size(); \} Copy\_tracking\_vector(
+Copy\_tracking\_vector\&\& other ) : items\_( move( other.items\_ ) )
+\{\} \}; Section 106.3: Move constructor Say we have this code snippet.
+class A \{ public: int a; int b; A(const A \&other) \{
+this-\textgreater a = other.a; this-\textgreater b = other.b; \} \}; To
+create a copy constructor, that is, to make a function that copies an
+object and creates a new one, we normally would choose the syntax shown
+above, we would have a constructor for A that takes an reference to
+another object of type A, and we would copy the object manually inside
+the method. Alternatively, we could have written A(const A \&) =
+default; which automatically copies over all members, making use of its
+copy constructor. To create a move constructor, however, we will be
+taking an rvalue reference instead of an lvalue reference, like here.
+class Wallet \{ public: int nrOfDollars; Wallet() = default; //default
+ctor Wallet(Wallet \&\&other) \{ this-\textgreater nrOfDollars =
+other.nrOfDollars; other.nrOfDollars = 0; \} \}; Please notice that we
+set the old values to zero. The default move constructor
+(Wallet(Wallet\&\&) = default;) copies the value of nrOfDollars, as it
+is a POD. As move semantics are designed to allow 'stealing' state from
+the original instance, it is important to consider how the original
+instance should look like after this stealing. In this case, if we would
+not change the value to zero we would have doubled the amount of dollars
+into play. Wallet a; a.nrOfDollars = 1; Wallet b (std::move(a));
+//calling B(B\&\& other); std::cout \textless\textless{} a.nrOfDollars
+\textless\textless{} std::endl; //0 std::cout \textless\textless{}
+b.nrOfDollars \textless\textless{} std::endl; //1 Thus we have move
+constructed an object from an old one. While the above is a simple
+example, it shows what the move constructor is intended to do. It
+becomes more useful in more complex cases, such as when resource
+management is involved. // Manages operations involving a specified
+type. // Owns a helper on the heap, and one in its memory (presumably on
+the stack). // Both helpers are DefaultConstructible, CopyConstructible,
+and MoveConstructible. template\textless typename T, template typename
+HeapHelper, template typename StackHelper\textgreater{} class
+OperationsManager \{ using MyType = OperationsManager\textless T,
+HeapHelper, StackHelper\textgreater; HeapHelper* h\_helper; StackHelper
+s\_helper; // \ldots{} public: // Default constructor \& Rule of Five.
+OperationsManager() : h\_helper(new HeapHelper) \{\}
+OperationsManager(const MyType\& other) : h\_helper(new
+HeapHelper(\emph{other.h\_helper)), s\_helper(other.s\_helper) \{\}
+MyType\& operator=(MyType copy) \{ swap(}this, copy); return \emph{this;
+\} \textasciitilde OperationsManager() \{ if (h\_helper) \{ delete
+h\_helper; \}  \} // Move constructor (without swap()). // Takes
+other's HeapHelper}. // Takes other's StackHelper, by forcing the use of
+StackHelper's move constructor. // Replaces other's HeapHelper* with
+nullptr, to keep other from deleting our shiny // new helper when it's
+destroyed. OperationsManager(MyType\&\& other) noexcept :
+h\_helper(other.h\_helper), s\_helper(std::move(other.s\_helper)) \{
+other.h\_helper = nullptr; \} // Move constructor (with swap()). //
+Places our members in the condition we want other's to be in, then
+switches members // with other. // OperationsManager(MyType\&\& other)
+noexcept : h\_helper(nullptr) \{ // swap(\emph{this, other); // \} //
+Copy/move helper. friend void swap(MyType\& left, MyType\& right)
+noexcept \{ std::swap(left.h\_helper, right.h\_helper);
+std::swap(left.s\_helper, right.s\_helper); \} \}; Section 106.4: Re-use
+a moved object You can re-use a moved object: void
+consumingFunction(std::vector vec) \{ // Some operations \} int main()
+\{ // initialize vec with 1, 2, 3, 4 std::vector vec\{1, 2, 3, 4\}; //
+Send the vector by move consumingFunction(std::move(vec)); // Here the
+vec object is in an indeterminate state. // Since the object is not
+destroyed, we can assign it a new content. // We will, in this case,
+assign an empty value to the vector, // making it effectively empty vec
+= \{\}; // Since the vector as gained a determinate value, we can use it
+normally. vec.push\_back(42); // Send the vector by move again.
+consumingFunction(std::move(vec)); \} Section 106.5: Move assignment
+Similarly to how we can assign a value to an object with an lvalue
+reference, copying it, we can also move the values from an object to
+another without constructing a new one. We call this move assignment. We
+move the values from one object to another existing object. For this,
+we will have to overload operator =, not so that it takes an lvalue
+reference, like in copy assignment, but so that it takes an rvalue
+reference. class A \{ int a; A\& operator= (A\&\& other) \{
+this-\textgreater a = other.a; other.a = 0; return }this; \} \}; This is
+the typical syntax to dene move assignment. We overload operator = so
+that we can feed it an rvalue reference and it can assign it to another
+object. A a; a.a = 1; A b; b = std::move(a); //calling A\& operator=
+(A\&\& other) std::cout \textless\textless{} a.a \textless\textless{}
+std::endl; //0 std::cout \textless\textless{} b.a \textless\textless{}
+std::endl; //1 Thus, we can move assign an object to another one.
+Section 106.6: Using move semantics on containers You can move a
+container instead of copying it: void print(const std::vector\& vec) \{
+for (auto\&\& val : vec) \{ std::cout \textless\textless{} val
+\textless\textless{} ``,''; \} std::cout \textless\textless{} std::endl;
+\} int main() \{ // initialize vec1 with 1, 2, 3, 4 and vec2 as an empty
+vector std::vector vec1\{1, 2, 3, 4\}; std::vector vec2; // The
+following line will print 1, 2, 3, 4 print(vec1); // The following line
+will print a new line print(vec2); // The vector vec2 is assigned with
+move assingment. // This will ``steal'' the value of vec1 without
+copying it. vec2 = std::move(vec1); // Here the vec1 object is in an
+indeterminate state, but still valid. // The object vec1 is not
+destroyed, // but there's is no guarantees about what it contains. //
+The following line will print 1, 2, 3, 4 print(vec2); \}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}

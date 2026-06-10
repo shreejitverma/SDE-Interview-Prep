@@ -1,0 +1,115 @@
+\hypertarget{c20-standard-library-additions}{%
+\chapter{C20 STANDARD LIBRARY
+ADDITIONS}\label{c20-standard-library-additions}}
+
+\hypertarget{c20-standard-library-additions-1}{%
+\chapter{C++20 STANDARD LIBRARY
+ADDITIONS}\label{c20-standard-library-additions-1}}
+
+\hypertarget{stdformat-python-style-formatting}{%
+\section{\texorpdfstring{1. \texttt{std::format} (Python-style
+Formatting)}{1. std::format (Python-style Formatting)}}\label{stdformat-python-style-formatting}}
+
+Type-safe, fast, and readable string formatting. Replaces
+\passthrough{\lstinline!printf!} and \passthrough{\lstinline!iostream!}.
+
+\begin{lstlisting}[language={C++}]
+#include <format>
+#include <iostream>
+
+std::string s = std::format("Hello, {}! The answer is {}.", "World", 42);
+// "Hello, World! The answer is 42."
+
+// Positional arguments
+std::string s2 = std::format("{1} {0}", "World", "Hello"); 
+\end{lstlisting}
+
+\hypertarget{stdspan}{%
+\section{\texorpdfstring{2.
+\texttt{std::span}}{2. std::span}}\label{stdspan}}
+
+A non-owning view of a contiguous sequence (array, vector). Replaces
+\passthrough{\lstinline!pointer + size!}.
+
+\begin{lstlisting}[language={C++}]
+#include <span>
+
+void process(std::span<int> data) {
+    for (int& x : data) x *= 2;
+}
+
+int arr[] = {1, 2, 3};
+std::vector<int> vec = {4, 5, 6};
+
+process(arr); // Works
+process(vec); // Works
+\end{lstlisting}
+
+\hypertarget{stdjthread-joinable-thread}{%
+\section{\texorpdfstring{3. \texttt{std::jthread} (Joinable
+Thread)}{3. std::jthread (Joinable Thread)}}\label{stdjthread-joinable-thread}}
+
+Automatically joins on destruction. Supports cooperative interruption
+(\passthrough{\lstinline!stop\_token!}).
+
+\begin{lstlisting}[language={C++}]
+#include <thread>
+
+void worker(std::stop_token st) {
+    while (!st.stop_requested()) {
+        // work...
+    }
+}
+
+{
+    std::jthread t(worker);
+} // t requests stop and joins automatically here
+\end{lstlisting}
+
+\hypertarget{concurrency-primitives-semaphore-barrier-latch}{%
+\section{\texorpdfstring{4. Concurrency Primitives
+(\texttt{\textless{}semaphore\textgreater{}},
+\texttt{\textless{}barrier\textgreater{}},
+\texttt{\textless{}latch\textgreater{}})}{4. Concurrency Primitives (\textless semaphore\textgreater, \textless barrier\textgreater, \textless latch\textgreater)}}\label{concurrency-primitives-semaphore-barrier-latch}}
+
+\begin{itemize}
+\tightlist
+\item
+  \passthrough{\lstinline!std::binary\_semaphore!},
+  \passthrough{\lstinline!std::counting\_semaphore!}: Lightweight
+  signaling.
+\item
+  \passthrough{\lstinline!std::latch!}: Single-use countdown barrier.
+\item
+  \passthrough{\lstinline!std::barrier!}: Reusable barrier for phases of
+  work.
+\end{itemize}
+
+\hypertarget{mathematical-constants-numbers}{%
+\section{\texorpdfstring{5. Mathematical Constants
+(\texttt{\textless{}numbers\textgreater{}})}{5. Mathematical Constants (\textless numbers\textgreater)}}\label{mathematical-constants-numbers}}
+
+\begin{lstlisting}[language={C++}]
+#include <numbers>
+double pi = std::numbers::pi;
+double e = std::numbers::e;
+\end{lstlisting}
+
+\hypertarget{bit-manipulation-bit}{%
+\section{\texorpdfstring{6. Bit Manipulation
+(\texttt{\textless{}bit\textgreater{}})}{6. Bit Manipulation (\textless bit\textgreater)}}\label{bit-manipulation-bit}}
+
+\begin{itemize}
+\tightlist
+\item
+  \passthrough{\lstinline!std::popcount!}: Count set bits.
+\item
+  \passthrough{\lstinline!std::bit\_ceil!}: Next power of 2.
+\item
+  \passthrough{\lstinline!std::endian!}: Check system endianness.
+\end{itemize}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{volume-06-future-c23-26}{%
+\chapter{VOLUME 06 FUTURE C23 26}\label{volume-06-future-c23-26}}
