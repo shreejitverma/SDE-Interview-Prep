@@ -1,0 +1,279 @@
+\hypertarget{python-3.8-walrus-operator-and-positional-only-parameters}{%
+\chapter{Python 3.8: Walrus Operator (:=) and Positional-Only Parameters
+(/)}\label{python-3.8-walrus-operator-and-positional-only-parameters}}
+
+\hypertarget{the-assignment-expression-pep-572}{%
+\subsection{\texorpdfstring{14.1 The Assignment Expression (\texttt{:=}
+/ PEP
+572)}{14.1 The Assignment Expression (:= / PEP 572)}}\label{the-assignment-expression-pep-572}}
+
+Introduced in Python 3.8, the assignment expression operator
+(colloquially called the \textbf{walrus operator}) allows assigning
+values to variables inside expressions. This departs from Python's
+historical strict division between statements and expressions.
+
+\hypertarget{ast-representation}{%
+\subsubsection{1. AST Representation}\label{ast-representation}}
+
+A standard assignment is a statement represented by the
+\passthrough{\lstinline!Assign!} node in the Abstract Syntax Tree (AST),
+which does not return a value. The walrus operator compiles to a
+\passthrough{\lstinline!NamedExpr!} node, which is an expression node
+returning the bound value.
+
+\begin{lstlisting}
+      [Assign Statement]                  [NamedExpr Expression]
+         /         \                            /         \
+   Name(x)      Constant(1)               Name(x)      Constant(1)
+   (Returns void/no value)              (Returns 1 to parent context)
+\end{lstlisting}
+
+\hypertarget{bytecode-stack-operations}{%
+\subsubsection{2. Bytecode \& Stack
+Operations}\label{bytecode-stack-operations}}
+
+Let's examine how CPython processes a normal assignment vs.~an
+assignment expression. Consider the following source codes and their
+corresponding bytecodes:
+
+\begin{lstlisting}[language=Python]
+# Standard Assignment
+x = 1
+\end{lstlisting}
+
+\begin{lstlisting}
+2 LOAD_CONST               0 (1)
+4 STORE_FAST               0 (x)
+\end{lstlisting}
+
+\begin{lstlisting}[language=Python]
+# Assignment Expression
+(x := 1)
+\end{lstlisting}
+
+\hypertarget{cpython-3.8-bytecode}{%
+\paragraph{CPython 3.8 Bytecode:}\label{cpython-3.8-bytecode}}
+
+\begin{lstlisting}
+2 LOAD_CONST               0 (1)
+4 DUP_TOP
+6 STORE_FAST               0 (x)
+\end{lstlisting}
+
+\hypertarget{cpython-3.11-optimized-bytecode}{%
+\paragraph{CPython 3.11+ Optimized
+Bytecode:}\label{cpython-3.11-optimized-bytecode}}
+
+\begin{lstlisting}
+2 LOAD_CONST               0 (1)
+4 COPY                     1
+6 STORE_FAST               0 (x)
+\end{lstlisting}
+
+The execution steps for the walrus operator stack operation are: 1.
+\textbf{\passthrough{\lstinline!LOAD\_CONST!}}: Pushes the reference to
+the constant integer \passthrough{\lstinline!1!} onto the value stack.
+2. \textbf{\passthrough{\lstinline!DUP\_TOP!} /
+\passthrough{\lstinline!COPY 1!}}: Replicates the top element of the
+stack, resulting in two references to \passthrough{\lstinline!1!} on the
+stack. 3. \textbf{\passthrough{\lstinline!STORE\_FAST!}}: Pops one of
+the references and binds it to the local variable name
+\passthrough{\lstinline!x!}. 4. \textbf{Stack Residual}: The remaining
+reference to \passthrough{\lstinline!1!} remains on the top of the
+stack, allowing parent expressions (such as \passthrough{\lstinline!if!}
+conditionals or loops) to consume it.
+
+\hypertarget{scoping-rules-and-symbol-table-traversal}{%
+\subsubsection{3. Scoping Rules and Symbol Table
+Traversal}\label{scoping-rules-and-symbol-table-traversal}}
+
+To prevent variable leakage and namespace pollution, PEP 572 specifies
+complex scoping rules, especially within comprehensions: *
+\textbf{Comprehensions}: Python list, set, and dict comprehensions, as
+well as generator expressions, are executed in a nested function scope.
+* \textbf{Variable Binding (Hoisting)}: An assignment expression
+\passthrough{\lstinline!x := ...!} inside a comprehension binds the
+variable \passthrough{\lstinline!x!} in the \emph{surrounding} (parent)
+scope, not the local comprehension scope. * \textbf{Symbol Table
+Resolution}: During compilation, the symbol table builder
+(\passthrough{\lstinline!symtable.c!}) traverses variables inside
+comprehensions. When it encounters a
+\passthrough{\lstinline!NamedExpr!}, it marks the target variable as a
+\textbf{free variable} in the comprehension scope and a \textbf{cell
+variable} in the parent scope. This hoists the reference out of the
+comprehension's inner namespace.
+
+Let's examine this hoisting in action. Consider the following code:
+
+\begin{lstlisting}[language=Python]
+def parent_func(data):
+    result = [y for x in data if (y := x * 2) > 2]
+    return result, y
+\end{lstlisting}
+
+\hypertarget{disassembly-of-parent_func}{%
+\paragraph{\texorpdfstring{Disassembly of
+\texttt{parent\_func}:}{Disassembly of parent\_func:}}\label{disassembly-of-parent_func}}
+
+\begin{lstlisting}
+  2           0 LOAD_CLOSURE             0 (y)          /* Load the cell reference for y */
+              2 BUILD_TUPLE              1
+              4 LOAD_CONST               1 (<code object <listcomp>...>)
+              6 LOAD_CONST               2 ('parent_func.<locals>.<listcomp>')
+              8 MAKE_FUNCTION            8 (closure)    /* Bind cell to function closure */
+             10 LOAD_FAST                0 (data)
+             12 GET_ITER
+             14 CALL_FUNCTION            1
+             16 STORE_FAST               1 (result)
+
+  3          18 LOAD_FAST                1 (result)
+             20 LOAD_DEREF               0 (y)          /* Load y from closure cell */
+             22 BUILD_TUPLE              2
+             24 RETURN_VALUE
+\end{lstlisting}
+
+\hypertarget{disassembly-of-the-nested-listcomp-code-object}{%
+\paragraph{\texorpdfstring{Disassembly of the nested
+\texttt{\textless{}listcomp\textgreater{}} code
+object:}{Disassembly of the nested \textless listcomp\textgreater{} code object:}}\label{disassembly-of-the-nested-listcomp-code-object}}
+
+\begin{lstlisting}
+  2           0 BUILD_LIST               0
+              2 LOAD_FAST                0 (.0)         /* Load incoming iterator */
+        >>    4 FOR_ITER                26 (to 32)
+              6 STORE_FAST               1 (x)
+              8 LOAD_FAST                1 (x)
+             10 LOAD_CONST               1 (2)
+             12 BINARY_MULTIPLY
+             14 DUP_TOP
+             16 STORE_DEREF              0 (y)          /* Store into outer scope cell */
+             18 LOAD_CONST               2 (2)
+             20 COMPARE_OP               4 (>)
+             22 POP_JUMP_IF_FALSE        4
+             24 LOAD_DEREF               0 (y)          /* Load y from outer cell */
+             26 LIST_APPEND              2
+             28 JUMP_ABSOLUTE            4
+        >>   32 RETURN_VALUE
+\end{lstlisting}
+
+By using \passthrough{\lstinline!STORE\_DEREF!} and
+\passthrough{\lstinline!LOAD\_DEREF!}, the nested list comprehension
+writes directly to the parent scope cell, allowing
+\passthrough{\lstinline!y!} to survive after the list comprehension has
+finished executing.
+
+\hypertarget{compiler-restrictions}{%
+\subsubsection{4. Compiler Restrictions}\label{compiler-restrictions}}
+
+To prevent syntactically ambiguous or unstable code, the compiler
+enforces strict boundaries: * \textbf{Iteration Variable Conflicts}: A
+target variable cannot share a name with a comprehension iteration
+variable. E.g.
+\passthrough{\lstinline![i for i in range(10) if (i := 2)]!} raises
+\passthrough{\lstinline!SyntaxError: assignment expression cannot rebind comprehension iteration variable!}.
+* \textbf{Class Scope Prohibitions}: The walrus operator is explicitly
+blocked inside comprehensions in class bodies:
+\passthrough{\lstinline!python     class MyClass:         data = [1, 2, 3]         result = [y for x in data if (y := x * 2) > 2]!}
+This raises
+\passthrough{\lstinline!SyntaxError: assignment expression within a comprehension cannot be used in a class body!}.
+\emph{Why?} Class namespaces are evaluated as temporary dict namespaces,
+not standard function frames. They do not support closure cells
+(\passthrough{\lstinline!PyCellObject!}). Since the comprehension runs
+as a separate nested helper function, it cannot bind closures to class
+body locals, creating a scoping mismatch.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{positional-only-parameters-pep-570}{%
+\subsection{\texorpdfstring{14.2 Positional-Only Parameters (\texttt{/}
+/ PEP
+570)}{14.2 Positional-Only Parameters (/ / PEP 570)}}\label{positional-only-parameters-pep-570}}
+
+Python 3.8 introduced the \passthrough{\lstinline!/!} marker to define
+positional-only parameters. Any parameters declared before the
+\passthrough{\lstinline!/!} marker cannot be passed as keyword
+arguments.
+
+\hypertarget{c-level-representation-in-pycodeobject}{%
+\subsubsection{\texorpdfstring{1. C-level Representation in
+\texttt{PyCodeObject}}{1. C-level Representation in PyCodeObject}}\label{c-level-representation-in-pycodeobject}}
+
+The compiler encodes parameter boundaries directly into the function's
+bytecode descriptor struct. In \passthrough{\lstinline!code.h!}, the
+\passthrough{\lstinline!PyCodeObject!} structure contains specific
+integer fields to track positional boundaries:
+
+\begin{lstlisting}[language=C]
+typedef struct {
+    PyObject_HEAD
+    int co_argcount;            /* Number of positional and positional-only arguments */
+    int co_posonlyargcount;     /* Number of positional-only arguments */
+    int co_kwonlyargcount;      /* Number of keyword-only arguments */
+    /* ... additional fields ... */
+} PyCodeObject;
+\end{lstlisting}
+
+For a function definition:
+
+\begin{lstlisting}[language=Python]
+def func(a, b, /, c, d, *, e, f):
+    pass
+\end{lstlisting}
+
+The compiler maps the arguments as follows: *
+\passthrough{\lstinline!a, b!}: Positional-only.
+(\passthrough{\lstinline!co\_posonlyargcount = 2!}) *
+\passthrough{\lstinline!c, d!}: Positional-or-keyword. (Total positional
+\passthrough{\lstinline!co\_argcount = 4!}, representing positional-only
++ positional-or-keyword) * \passthrough{\lstinline!e, f!}: Keyword-only.
+(\passthrough{\lstinline!co\_kwonlyargcount = 2!})
+
+\hypertarget{argument-parsing-and-vectorcall-optimization-pep-590}{%
+\subsubsection{2. Argument Parsing and Vectorcall Optimization (PEP
+590)}\label{argument-parsing-and-vectorcall-optimization-pep-590}}
+
+When a function is called, CPython passes arguments using the
+\textbf{Vectorcall} calling protocol introduced in Python 3.8:
+
+\begin{lstlisting}[language=C]
+PyObject *vectorcall(PyObject *callable, PyObject *const *args, size_t nargsf, PyObject *kwnames);
+\end{lstlisting}
+
+Where: * \passthrough{\lstinline!args!} is a pointer to a contiguous
+array containing all passed argument values. *
+\passthrough{\lstinline!nargsf!} specifies the number of positional
+arguments. * \passthrough{\lstinline!kwnames!} is a tuple of strings
+containing the keyword argument names. The keyword values are stored in
+the \passthrough{\lstinline!args!} array starting at index
+\passthrough{\lstinline!nargsf!}.
+
+\hypertarget{the-vectorcall-matching-algorithm}{%
+\paragraph{The Vectorcall Matching
+Algorithm:}\label{the-vectorcall-matching-algorithm}}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  \textbf{Keyword Verification}: CPython parses the keyword strings in
+  \passthrough{\lstinline!kwnames!}. If any string matches a parameter
+  name located before index
+  \passthrough{\lstinline!co\_posonlyargcount!} (e.g.~trying to pass
+  \passthrough{\lstinline!a=1!}), the interpreter raises a
+  \passthrough{\lstinline!TypeError!}.
+\item
+  \textbf{Bypassing Dictionary Checks}: Because positional-only
+  parameters are guaranteed to be passed positionally, CPython
+  completely bypasses string-matching hash loops for the first
+  \passthrough{\lstinline!co\_posonlyargcount!} arguments.
+\item
+  \textbf{Direct Array Offset Writing}: The VM copies references
+  directly from the \passthrough{\lstinline!args!} array into the local
+  frame variable cells by array index offset:
+  \[\text{LocalFrameOffset}[i] = args[i] \quad \text{for } 0 \le i < co\_posonlyargcount\]
+  This direct offset copy cuts down calling overhead by \textbf{10\% to
+  15\%}, which is highly beneficial for builtins and low-level utility
+  functions that are called repeatedly.
+\end{enumerate}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}

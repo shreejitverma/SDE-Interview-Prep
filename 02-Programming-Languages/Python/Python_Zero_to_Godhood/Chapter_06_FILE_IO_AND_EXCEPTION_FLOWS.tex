@@ -1,0 +1,71 @@
+\hypertarget{file-io-and-exception-flows}{%
+\chapter{FILE I/O AND EXCEPTION
+FLOWS}\label{file-io-and-exception-flows}}
+
+\hypertarget{low-level-file-management}{%
+\subsection{6.1 Low-Level File
+Management}\label{low-level-file-management}}
+
+Python's file interfaces wrap standard POSIX OS calls
+(\passthrough{\lstinline!open!}, \passthrough{\lstinline!read!},
+\passthrough{\lstinline!write!}, \passthrough{\lstinline!close!}). *
+\textbf{The Layered I/O System}: The built-in
+\passthrough{\lstinline!open()!} function constructs a stack of I/O
+objects: 1. \passthrough{\lstinline!RawIOBase!}
+(\passthrough{\lstinline!FileIO!}): A thin C wrapper around the POSIX OS
+file descriptor. 2. \passthrough{\lstinline!BufferedIOBase!}
+(\passthrough{\lstinline!BufferedReader!}/\passthrough{\lstinline!BufferedWriter!}):
+Buffers data blocks in memory (typically in 8KB chunks) to minimize
+expensive system call context switches. 3.
+\passthrough{\lstinline!TextIOBase!}
+(\passthrough{\lstinline!TextIOWrapper!}): Encodes and decodes raw bytes
+to Unicode strings.
+
+\begin{lstlisting}
+Text Layer:     [ TextIOWrapper (Handles Unicode encodings) ]
+                      |
+Buffered Layer: [ BufferedReader / BufferedWriter (8KB Memory Buffer) ]
+                      |
+Raw OS Layer:   [ FileIO (Wraps raw POSIX OS File Descriptor) ]
+\end{lstlisting}
+
+\hypertarget{exception-mechanics-runtime-unwinding}{%
+\subsection{6.2 Exception Mechanics \& Runtime
+Unwinding}\label{exception-mechanics-runtime-unwinding}}
+
+When an exception occurs, CPython halts normal execution flow and
+unwinds the call stack: 1. \textbf{Exception Allocation}: CPython
+allocates an exception instance (subclass of
+\passthrough{\lstinline!BaseException!}) and sets active thread state
+variables (\passthrough{\lstinline!\_PyErr\_StackItem!}). 2. \textbf{The
+Block Stack}: Each execution frame maintains a block stack. Bytecodes
+like \passthrough{\lstinline!try!} compile to a
+\passthrough{\lstinline!SETUP\_FINALLY!} instruction, which pushes the
+handler's bytecode address onto the frame's block stack. 3.
+\textbf{Unwinding the Stack}: - When an error is raised, CPython pops
+blocks off the current frame's block stack. - If it finds a
+\passthrough{\lstinline!handler!} address, the VM jumps to that address
+to run the exception handling bytecode. - If the current frame's block
+stack is exhausted, CPython unwinds the stack: it pops the current frame
+off the call stack, creates a traceback object
+(\passthrough{\lstinline!PyTracebackObject!}), and raises the exception
+in the caller's frame. - This continues until a handler catches the
+exception, or the program exits with an unhandled traceback.
+
+\begin{lstlisting}
+Exception Unwinding Path:
+[ Exception Raised ]
+       |
+       v
+[ Frame Block Stack has handler? ]
+       |--Yes--> [ Pop block, Jump to handler address ]
+       | No
+       v
+[ Frame Call Stack empty? ]
+       |--Yes--> [ Print traceback to stderr, Terminate program ]
+       | No
+       v
+[ Pop frame, Allocate PyTracebackObject, Repeat in caller frame ]
+\end{lstlisting}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}

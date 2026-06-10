@@ -1,0 +1,147 @@
+\hypertarget{python-3.11-faster-cpython-specializing-interpreter-and-adaptive-bytecode}{%
+\chapter{Python 3.11: Faster CPython Specializing Interpreter and
+Adaptive
+Bytecode}\label{python-3.11-faster-cpython-specializing-interpreter-and-adaptive-bytecode}}
+
+\hypertarget{pep-659-specialized-adaptive-interpreter-architecture}{%
+\subsection{17.1 PEP 659 Specialized Adaptive Interpreter
+Architecture}\label{pep-659-specialized-adaptive-interpreter-architecture}}
+
+Before Python 3.11, the bytecode interpreter loop executed instructions
+generically. For instance, a \passthrough{\lstinline!LOAD\_ATTR!}
+instruction looked up attributes using hash table lookups every time.
+PEP 659 introduced a \textbf{specializing adaptive interpreter}. Rather
+than incurring the cost of compiling bytecode to native machine code
+(JIT), the interpreter dynamically replaces general opcodes with
+optimized, specialized opcodes at runtime based on the actual type of
+objects processed.
+
+\hypertarget{instruction-lifecycle-state-machine}{%
+\subsubsection{1. Instruction Lifecycle State
+Machine}\label{instruction-lifecycle-state-machine}}
+
+Each instruction transitions through a state machine:
+
+\begin{lstlisting}
+               [Generic Opcode] (e.g., LOAD_ATTR)
+                      |
+                      | (First execution)
+                      v
+               [Adaptive Opcode] (e.g., LOAD_ATTR_ADAPTIVE)
+                      |
+                      | (Executes N times with same type)
+                      v
+             [Specialized Opcode] (e.g., LOAD_ATTR_INSTANCE_VALUE)
+             /                   \
+            / (Type mismatch)     \ (Attribute modification)
+           v                       v
+     [Deoptimize] ---------> [Generic Opcode]
+\end{lstlisting}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  \textbf{Generic}: Standard instruction compiled from AST.
+\item
+  \textbf{Adaptive}: When executed, it monitors the types of objects on
+  the stack. An internal counter is decremented.
+\item
+  \textbf{Specialized}: If the counter reaches zero and the operand
+  types have been consistent, the opcode is hot-swapped in memory with a
+  specialized instruction.
+\item
+  \textbf{Deoptimized}: If the operand types change (cache miss), the
+  opcode executes its slow-path fallback and can revert to the generic
+  state.
+\end{enumerate}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{specialized-bytecode-opcodes-and-inline-cache-memory-layout}{%
+\subsection{17.2 Specialized Bytecode Opcodes and Inline Cache Memory
+Layout}\label{specialized-bytecode-opcodes-and-inline-cache-memory-layout}}
+
+CPython allocates extra space directly adjacent to the instruction
+stream to serve as an \textbf{inline cache}.
+
+\hypertarget{cache-struct-layout-in-c}{%
+\subsubsection{1. Cache Struct Layout in
+C}\label{cache-struct-layout-in-c}}
+
+In CPython's internal interpreter definitions
+(\passthrough{\lstinline!pycore\_code.h!}), the cache entries for
+specialized attributes are defined as arrays of structs:
+
+\begin{lstlisting}[language=C]
+typedef struct {
+    uint16_t counter;           /* Adaptive counter to trigger specialization */
+    uint32_t type_version;      /* Version ID of the target object's PyTypeObject */
+    uint16_t index;             /* Index of attribute inside object's storage array */
+} _PyAttrCache;
+\end{lstlisting}
+
+\hypertarget{key-specialized-instructions}{%
+\subsubsection{2. Key Specialized
+Instructions}\label{key-specialized-instructions}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{\passthrough{\lstinline!LOAD\_ATTR!} -\textgreater{}
+  \passthrough{\lstinline!LOAD\_ATTR\_INSTANCE\_VALUE!}}:
+
+  \begin{itemize}
+  \tightlist
+  \item
+    Used when attributes are stored in an instance's values array (split
+    dictionary layout).
+  \item
+    Bypasses dictionary key lookup. It compares the target object's type
+    version directly against the cache. If they match, it loads the
+    value directly from the cached offset
+    \passthrough{\lstinline!index!}.
+  \end{itemize}
+\item
+  \textbf{\passthrough{\lstinline!LOAD\_ATTR!} -\textgreater{}
+  \passthrough{\lstinline!LOAD\_ATTR\_SLOT!}}:
+
+  \begin{itemize}
+  \tightlist
+  \item
+    Used when the class defines \passthrough{\lstinline!\_\_slots\_\_!}.
+  \item
+    Directly retrieves the value from the static struct offset of the
+    instance slot, bypassing dictionary lookup entirely.
+  \end{itemize}
+\item
+  \textbf{\passthrough{\lstinline!LOAD\_GLOBAL!} -\textgreater{}
+  \passthrough{\lstinline!LOAD\_GLOBAL\_MODULE!} /
+  \passthrough{\lstinline!LOAD\_GLOBAL\_BUILTIN!}}:
+
+  \begin{itemize}
+  \tightlist
+  \item
+    Caches the keys version of the module globals dictionary and the
+    builtins dictionary.
+  \item
+    Loads values directly from the stored dict value arrays, avoiding
+    dictionary key hashing checks.
+  \end{itemize}
+\end{itemize}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{micro-benchmarking-and-deoptimization-performance-cost}{%
+\subsection{17.3 Micro-benchmarking and Deoptimization Performance
+Cost}\label{micro-benchmarking-and-deoptimization-performance-cost}}
+
+If code is polymorphic (objects of different classes with varying
+attribute offsets flow through the same bytecode instruction), the
+specialized instruction will continuously fail validation, triggering a
+fallback to the slow-path generic execution. This process is called
+\textbf{deoptimization}. Frequent deoptimization ruins performance
+because the VM incurs the combined overhead of cache miss checking,
+slow-path lookup, and state-machine transitions.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}

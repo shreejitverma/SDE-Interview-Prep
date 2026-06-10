@@ -1,0 +1,82 @@
+\hypertarget{python-3.13-copy-and-patch-jit-compiler-architecture}{%
+\chapter{Python 3.13: Copy-and-Patch JIT Compiler
+Architecture}\label{python-3.13-copy-and-patch-jit-compiler-architecture}}
+
+\hypertarget{copy-and-patch-jit-compiler-pipeline}{%
+\subsection{21.1 Copy-and-Patch JIT Compiler
+Pipeline}\label{copy-and-patch-jit-compiler-pipeline}}
+
+Python 3.13 introduces an experimental \textbf{Copy-and-Patch
+Just-In-Time (JIT) compiler} (PEP 744). Unlike classic template JITs or
+heavy tracing compilers (like PyPy or V8), a copy-and-patch JIT achieves
+fast compilation times with very low runtime memory overhead.
+
+\hypertarget{compile-time-vs.-runtime-pipeline}{%
+\subsubsection{1. Compile-Time vs.~Runtime
+Pipeline}\label{compile-time-vs.-runtime-pipeline}}
+
+\begin{lstlisting}
+BUILD TIME (Clang/LLVM):
+[CPython C Code] -> [LLVM Clang] -> [Machine Code Stencils (ELF)] -> [Stencil Assembly Extractor] -> [Stitcher Headers]
+
+RUNTIME EXECUTION:
+[Bytecode Instructions] -> [JIT Engine] -> [Copy Stencils to Memory] -> [Patch Relocations/Variables] -> [Execute Native Code]
+\end{lstlisting}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  \textbf{Build Time}: The CPython build system uses LLVM/Clang to
+  compile individual bytecode execution paths (helpers in
+  \passthrough{\lstinline!ceval.c!}) into object file templates
+  (stencils). A python script parses these ELF files and extracts the
+  raw machine instructions, noting the offsets of ``holes''
+  (relocations) representing variables, stack offsets, or jump
+  addresses.
+\item
+  \textbf{Runtime}: When a bytecode sequence becomes ``hot,'' the JIT
+  engine copies the pre-compiled stencils into an executable memory page
+  and patches the holes with runtime addresses (e.g., target object
+  references or jump offsets).
+\end{enumerate}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{stencil-relocation-and-hole-patching}{%
+\subsection{21.2 Stencil Relocation and Hole
+Patching}\label{stencil-relocation-and-hole-patching}}
+
+Consider a bytecode operation like \passthrough{\lstinline!LOAD\_FAST!}
+inside a stencil template:
+
+\begin{lstlisting}
+mov rax, [r14 + HOLE_OFFSET_LOCAL_VAR]  ; Load local variable offset
+\end{lstlisting}
+
+During the patching phase, the JIT engine replaces the placeholder
+\passthrough{\lstinline!HOLE\_OFFSET\_LOCAL\_VAR!} with the actual frame
+offset:
+\[\text{Relocation Address} = \text{Frame Base} + (\text{Var Index} \times 8)\]
+The engine then calls \passthrough{\lstinline!mprotect()!} to set the
+memory page's permissions to Read/Execute (RX), enabling direct
+hardware-native execution of the compiled sequence.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{jit-performance-memory-footprint-bounds}{%
+\subsection{21.3 JIT Performance \& Memory Footprint
+Bounds}\label{jit-performance-memory-footprint-bounds}}
+
+Because the JIT engine only performs simple memory copying
+(\passthrough{\lstinline!memcpy!}) and value patching, it avoids the
+heavy parsing, graph building, register allocation, and optimization
+passes associated with traditional JIT compilers. * \textbf{Compilation
+Cost}: Compiling code is extremely fast, requiring only microseconds. *
+\textbf{Memory Footprint}: Minimal overhead, as the template stencils
+are compiled during CPython's build time and stored in the static binary
+data section. * \textbf{Instruction Cache Friendly}: Generated machine
+code templates match the specialized adaptive bytecodes from Chapter 17,
+ensuring high hardware pipeline utilization.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}

@@ -1,0 +1,218 @@
+\hypertarget{python-3.4-asyncio-inception-pathlib-and-enum-architectures}{%
+\chapter{Python 3.4: Asyncio Inception, Pathlib, and Enum
+Architectures}\label{python-3.4-asyncio-inception-pathlib-and-enum-architectures}}
+
+\hypertarget{asyncio-inception-generators-and-event-loops-pep-3156}{%
+\subsection{10.1 Asyncio Inception: Generators and Event Loops (PEP
+3156)}\label{asyncio-inception-generators-and-event-loops-pep-3156}}
+
+\hypertarget{generator-based-coroutine-syntax}{%
+\subsubsection{1. Generator-Based Coroutine
+Syntax}\label{generator-based-coroutine-syntax}}
+
+Prior to Python 3.5's native \passthrough{\lstinline!async/await!}
+syntax, asyncio coroutines were defined using generators decorated with
+\passthrough{\lstinline!@asyncio.coroutine!} and delegated execution
+using \passthrough{\lstinline!yield from!}:
+
+\begin{lstlisting}[language=Python]
+import asyncio
+
+@asyncio.coroutine
+def fetch_data():
+    yield from asyncio.sleep(1)  /* Delegate to asyncio.sleep generator */
+    return "payload_data"
+\end{lstlisting}
+
+\hypertarget{the-event-loop-and-selector-multiplexing}{%
+\subsubsection{2. The Event Loop and Selector
+Multiplexing}\label{the-event-loop-and-selector-multiplexing}}
+
+Under the hood, \passthrough{\lstinline!asyncio!} does not use
+multi-threading to achieve concurrency. Instead, it runs an
+\textbf{Event Loop} on a single thread. The event loop manages a
+collection of tasks and schedules them using operating system-level I/O
+multiplexing. * \textbf{OS-Level Selector}: The event loop wraps
+Python's built-in \passthrough{\lstinline!selectors!} module, which maps
+to POSIX system calls: \passthrough{\lstinline!select()!},
+\passthrough{\lstinline!poll()!}, Linux
+\passthrough{\lstinline!epoll()!}, or macOS
+\passthrough{\lstinline!kqueue()!}. * \textbf{Multiplexing Cycle}: 1.
+The event loop registers sockets or file descriptors with the OS
+selector, specifying the events to monitor (e.g., readability or
+writability) and registering associated callbacks. 2. The loop enters a
+blocking poll state, calling
+\passthrough{\lstinline!selector.select()!}. The OS blocks the thread
+until one or more registered file descriptors become ready. 3. When an
+event triggers, the OS returns the list of ready descriptors. The event
+loop iterates over this list and schedules the registered callbacks for
+immediate execution.
+
+\hypertarget{future-and-task-execution-cycle}{%
+\subsubsection{3. Future and Task Execution
+Cycle}\label{future-and-task-execution-cycle}}
+
+The event loop schedules and executes coroutines using two core
+structures: * \textbf{\passthrough{\lstinline!Future!}}: Represents the
+eventual result of an asynchronous operation. It maintains an internal
+state (PENDING, FINISHED, CANCELLED) and stores a list of callbacks to
+invoke upon completion. * \textbf{\passthrough{\lstinline!Task!}}: A
+subclass of \passthrough{\lstinline!Future!} that wraps a coroutine. It
+acts as the bridge between the event loop and the coroutine's execution.
+
+\hypertarget{the-step-by-step-task-loop}{%
+\paragraph{The Step-by-Step Task
+Loop:}\label{the-step-by-step-task-loop}}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  \textbf{Task Initialization}: The event loop schedules the
+  \passthrough{\lstinline!Task!}. It invokes the task's
+  \passthrough{\lstinline!\_step!} method, which calls
+  \passthrough{\lstinline!coroutine.send(None)!} to start the coroutine.
+\item
+  \textbf{Suspension}: The coroutine runs until it encounters a blocking
+  operation: \passthrough{\lstinline!yield from future!}. It yields
+  control back to the task, returning the pending
+  \passthrough{\lstinline!Future!} object.
+\item
+  \textbf{Callback Registration}: The \passthrough{\lstinline!Task!}
+  receives this pending future. It calls
+  \passthrough{\lstinline!future.add\_done\_callback(task.\_step)!} to
+  register its own step method as a callback on the future, then yields
+  control back to the event loop.
+\item
+  \textbf{Polling}: The event loop performs other work.
+\item
+  \textbf{Resuming}: When the I/O event completes, the selector changes
+  the future's state to FINISHED. The future pops and schedules all
+  registered callbacks. The task's \passthrough{\lstinline!\_step!}
+  method executes, calling
+  \passthrough{\lstinline!coroutine.send(result)!} to resume execution
+  inside the coroutine.
+\end{enumerate}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{pathlib-object-oriented-filesystem-paths-pep-428}{%
+\subsection{\texorpdfstring{10.2 \texttt{pathlib}: Object-Oriented
+Filesystem Paths (PEP
+428)}{10.2 pathlib: Object-Oriented Filesystem Paths (PEP 428)}}\label{pathlib-object-oriented-filesystem-paths-pep-428}}
+
+Before Python 3.4, filesystem paths were treated as raw strings,
+requiring developers to write platform-specific path manipulation code
+using the \passthrough{\lstinline!os.path!} module (e.g.,
+\passthrough{\lstinline!os.path.join()!},
+\passthrough{\lstinline!os.path.split()!}). PEP 428 introduced
+\passthrough{\lstinline!pathlib!} to represent paths as structured
+objects.
+
+\hypertarget{class-hierarchy}{%
+\subsubsection{1. Class Hierarchy}\label{class-hierarchy}}
+
+\passthrough{\lstinline!pathlib!} splits path representations into a
+clear class hierarchy:
+
+\begin{lstlisting}
+                        [ PurePath ] (Abstract Base / Path Math Only)
+                       /            \
+           [ PurePosixPath ]    [ PureWindowsPath ]
+                  |                      |
+             [ PosixPath ]       [ WindowsPath ]
+                       \            /
+                        \-[ Path ]-/ (Instantiates PosixPath or WindowsPath dynamically)
+\end{lstlisting}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{\passthrough{\lstinline!PurePath!}}: Provides pure path
+  manipulations (string parsing, joining, metadata extraction) without
+  executing OS-level system calls. It can be instantiated on any system
+  (e.g., you can parse Windows paths on a Linux host using
+  \passthrough{\lstinline!PureWindowsPath!}).
+\item
+  \textbf{\passthrough{\lstinline!Path!}}: Inherits from
+  \passthrough{\lstinline!PurePath!} and adds OS-level filesystem
+  queries (like \passthrough{\lstinline!.exists()!},
+  \passthrough{\lstinline!.glob()!}, \passthrough{\lstinline!.mkdir()!},
+  and \passthrough{\lstinline!.read\_text()!}).
+\item
+  \textbf{Dynamic Instantiation}: When \passthrough{\lstinline!Path()!}
+  is instantiated at runtime, CPython detects the host operating system
+  and dynamically returns an instance of either
+  \passthrough{\lstinline!PosixPath!} or
+  \passthrough{\lstinline!WindowsPath!}.
+\end{itemize}
+
+\hypertarget{path-concatenation-operator-overloading}{%
+\subsubsection{2. Path Concatenation Operator
+Overloading}\label{path-concatenation-operator-overloading}}
+
+\passthrough{\lstinline!pathlib!} overloads the division operator
+(\passthrough{\lstinline!/!}) using the special method
+\passthrough{\lstinline!\_\_truediv\_\_!} to implement intuitive path
+joining:
+
+\begin{lstlisting}[language=Python]
+from pathlib import Path
+base_path = Path("/var")
+log_path = base_path / "log" / "nginx.log"
+\end{lstlisting}
+
+Under the hood: 1. When \passthrough{\lstinline!base\_path / "log"!} is
+evaluated, CPython calls
+\passthrough{\lstinline!base\_path.\_\_truediv\_\_("log")!}. 2. The
+\passthrough{\lstinline!\_\_truediv\_\_!} method parses the argument,
+checks compatibility, joins the string segments using the host operating
+system's path separator (\passthrough{\lstinline!/!} or
+\passthrough{\lstinline!\\!}), and returns a new
+\passthrough{\lstinline!Path!} object containing the joined path string,
+avoiding redundant string allocations.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{enum-metaclass-and-singletons-pep-435}{%
+\subsection{\texorpdfstring{10.3 \texttt{Enum}: Metaclass and Singletons
+(PEP
+435)}{10.3 Enum: Metaclass and Singletons (PEP 435)}}\label{enum-metaclass-and-singletons-pep-435}}
+
+PEP 435 introduced \passthrough{\lstinline!Enum!} to the standard
+library to support structured enumerations.
+
+\hypertarget{metaclass-construction-enummeta}{%
+\subsubsection{\texorpdfstring{1. Metaclass Construction:
+\texttt{EnumMeta}}{1. Metaclass Construction: EnumMeta}}\label{metaclass-construction-enummeta}}
+
+Enums are created using the custom metaclass
+\passthrough{\lstinline!EnumMeta!}. When the compiler processes an
+\passthrough{\lstinline!Enum!} class definition: 1.
+\passthrough{\lstinline!EnumMeta.\_\_prepare\_\_()!} returns a custom
+dictionary structure (\passthrough{\lstinline!\_EnumDict!}) that tracks
+insertion order and raises errors if a duplicate member name is defined.
+2. \passthrough{\lstinline!EnumMeta.\_\_new\_\_()!} parses the class
+namespace, separating attributes into Enum members and standard methods.
+3. For each Enum member (e.g., \passthrough{\lstinline!RED = 1!}),
+\passthrough{\lstinline!EnumMeta!} instantiates a singleton instance of
+the Enum class, assigning the name (\passthrough{\lstinline!RED!}) and
+value (\passthrough{\lstinline!1!}) to the instance. 4. The metaclass
+updates the class dictionary, replacing the raw integer literals with
+the instantiated singleton object references.
+
+\hypertarget{immuntability-and-protections}{%
+\subsubsection{2. Immuntability and
+Protections}\label{immuntability-and-protections}}
+
+To ensure Enums act as stable constant mappings: * \textbf{Member
+Immutability}: \passthrough{\lstinline!Enum!} overrides
+\passthrough{\lstinline!\_\_setattr\_\_!} and
+\passthrough{\lstinline!\_\_delattr\_\_!} to block any attempt to modify
+or delete a member's value at runtime: ```python class Color(Enum): RED
+= 1
+
+\# This raises an AttributeError Color.RED.value = 2
+``\passthrough{\lstinline!* **Iterability**:!}EnumMeta\passthrough{\lstinline!implements!}\textbf{iter}\passthrough{\lstinline!, allowing developers to iterate over enum members in declaration order. * **Lookup**: It implements!}\textbf{getitem}\passthrough{\lstinline!(lookup by name, e.g.,!}Color{[}`RED'{]}\passthrough{\lstinline!) and!}\textbf{call}\passthrough{\lstinline!(lookup by value, e.g.,!}Color(1)`).
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}

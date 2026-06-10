@@ -1,0 +1,91 @@
+\hypertarget{python-3.11-to-3.12-exception-groups-except-and-traceback-trees}{%
+\chapter{Python 3.11 to 3.12: Exception Groups (except*) and Traceback
+trees}\label{python-3.11-to-3.12-exception-groups-except-and-traceback-trees}}
+
+\hypertarget{exception-groups-exceptiongroup-baseexceptiongroup-pep-654}{%
+\subsection{\texorpdfstring{19.1 Exception Groups
+(\texttt{ExceptionGroup} \& \texttt{BaseExceptionGroup} / PEP
+654)}{19.1 Exception Groups (ExceptionGroup \& BaseExceptionGroup / PEP 654)}}\label{exception-groups-exceptiongroup-baseexceptiongroup-pep-654}}
+
+Introduced in Python 3.11, \passthrough{\lstinline!ExceptionGroup!} and
+\passthrough{\lstinline!BaseExceptionGroup!} enable raising and handling
+multiple unrelated exceptions simultaneously. This is critical for
+concurrent frameworks (such as \passthrough{\lstinline!asyncio!}
+TaskGroups) where multiple background operations can crash concurrently.
+
+\hypertarget{exception-group-class-layout}{%
+\subsubsection{1. Exception Group Class
+Layout}\label{exception-group-class-layout}}
+
+An \passthrough{\lstinline!ExceptionGroup!} wraps a descriptive string
+and a list of sub-exceptions:
+
+\begin{lstlisting}[language=Python]
+class ExceptionGroup(BaseException):
+    def __init__(self, message: str, exceptions: Sequence[BaseException]) -> None:
+        self.message = message
+        self.exceptions = list(exceptions)
+\end{lstlisting}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{the-except-clause-and-exception-tree-filtering}{%
+\subsection{\texorpdfstring{19.2 The \texttt{except*} Clause and
+Exception Tree
+Filtering}{19.2 The except* Clause and Exception Tree Filtering}}\label{the-except-clause-and-exception-tree-filtering}}
+
+To handle individual branches of an exception group, Python 3.11
+introduced the \passthrough{\lstinline!except*!} statement. Unlike a
+traditional \passthrough{\lstinline!except!} statement, which catches a
+single exception instance, \passthrough{\lstinline!except*!} extracts a
+matching subset from the Exception Group hierarchy, letting unmatched
+exceptions propagate.
+
+\hypertarget{execution-trace-of-exception-splitting}{%
+\subsubsection{1. Execution Trace of Exception
+Splitting}\label{execution-trace-of-exception-splitting}}
+
+Consider the following exception structure and matching logic:
+
+\begin{lstlisting}
+            ExceptionGroup("Main Group")
+            /                        \
+    ValueError("Error A")       TypeError("Error B")
+\end{lstlisting}
+
+\begin{lstlisting}[language=Python]
+try:
+    raise ExceptionGroup("Main Group", [ValueError("Error A"), TypeError("Error B")])
+except* ValueError as eg:
+    print("Caught Val:", eg.exceptions)
+\end{lstlisting}
+
+During execution, the runtime: 1. Catches the
+\passthrough{\lstinline!ExceptionGroup!}. 2. Filters out the
+\passthrough{\lstinline!ValueError("Error A")!} exception and wraps it
+in a new sub-ExceptionGroup. 3. Binds this sub-ExceptionGroup to the
+local variable \passthrough{\lstinline!eg!}. 4. Leaves the
+\passthrough{\lstinline!TypeError("Error B")!} exception in the original
+group, which continues propagating up the exception handler chain.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{traceback-representation-and-add_note}{%
+\subsection{\texorpdfstring{19.3 Traceback Representation and
+\texttt{add\_note()}}{19.3 Traceback Representation and add\_note()}}\label{traceback-representation-and-add_note}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Traceback Trees}: Because exception groups represent
+  hierarchical trees of errors, CPython's traceback generator is
+  modified to format tracebacks as tree diagrams.
+\item
+  \textbf{PEP 678 Exception Notes}: The
+  \passthrough{\lstinline!add\_note(note)!} method allows adding custom
+  text strings directly to exceptions. These notes are appended to the
+  exception's traceback output when printed, aiding debugging without
+  modifying the exception's arguments.
+\end{itemize}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}

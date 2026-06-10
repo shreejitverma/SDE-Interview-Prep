@@ -1,0 +1,294 @@
+\hypertarget{python-2.0-to-2.1-comprehensions-nested-scopes-cycle-detecting-gc}{%
+\chapter{Python 2.0 to 2.1: Comprehensions, Nested Scopes, \&
+Cycle-Detecting
+GC}\label{python-2.0-to-2.1-comprehensions-nested-scopes-cycle-detecting-gc}}
+
+\hypertarget{python-2.0-list-comprehensions-scope-leakage}{%
+\subsection{3.1 Python 2.0 List Comprehensions \& Scope
+Leakage}\label{python-2.0-list-comprehensions-scope-leakage}}
+
+Introduced in Python 2.0, list comprehensions provided a concise syntax
+to create lists from sequences. However, their early implementation in
+the compiler had a major design flaw: they leaked loop variables into
+the surrounding scope.
+
+\hypertarget{inline-loop-compilation}{%
+\subsubsection{1. Inline Loop
+Compilation}\label{inline-loop-compilation}}
+
+In Python 2.x, a list comprehension did not create a new stack frame or
+lexical scope. Instead, it was compiled as an inline loop inside the
+host function. Consider the following Python 2.x list comprehension:
+
+\begin{lstlisting}[language=Python]
+# Python 2.x Behavior
+x = 999
+data = [x for x in range(5)]
+print(x)  # Outputs 4! The variable x was overwritten.
+\end{lstlisting}
+
+\hypertarget{bytecode-analysis}{%
+\subsubsection{2. Bytecode Analysis}\label{bytecode-analysis}}
+
+If we trace the bytecode of this list comprehension under Python 2.x, we
+see the compiler emits direct modifications to the local frame variables
+array:
+
+\begin{lstlisting}
+  2           0 BUILD_LIST               0
+              3 LOAD_GLOBAL              0 (range)
+              6 LOAD_CONST               1 (5)
+              9 CALL_FUNCTION            1
+             12 GET_ITER
+        >>   13 FOR_ITER                12 (to 28)
+             16 STORE_FAST               0 (x)       # Direct write to host local variable x!
+             19 LOAD_FAST                0 (x)
+             22 LIST_APPEND              2
+             25 JUMP_ABSOLUTE           13
+        >>   28 STORE_FAST               1 (data)
+\end{lstlisting}
+
+Because it uses \passthrough{\lstinline!STORE\_FAST 0 (x)!}, the loop
+index directly overwrites the host function's local variable
+\passthrough{\lstinline!x!}.
+
+\hypertarget{modern-python-3-isolation}{%
+\subsubsection{3. Modern Python 3
+Isolation}\label{modern-python-3-isolation}}
+
+To resolve this leakage, Python 3.0 redefined list, set, and dictionary
+comprehensions to execute inside a compiler-generated nested function
+scope. This creates a separate \passthrough{\lstinline!PyFrameObject!}
+during evaluation, protecting the host function's namespace from
+leakage.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{pep-227-nested-scopes-and-legb-name-resolution}{%
+\subsection{3.2 PEP 227 Nested Scopes and LEGB Name
+Resolution}\label{pep-227-nested-scopes-and-legb-name-resolution}}
+
+Before Python 2.1, CPython used a simple three-tier lookup model:
+\textbf{LGB (Local, Global, Built-in)}. * \textbf{The Limitation}: If a
+function was nested inside another function, the inner function could
+not access local variables defined in the outer function.
+
+\begin{lstlisting}[language=Python]
+# Pre-Python 2.1 Behavior
+def outer():
+    x = 10
+    def inner():
+        return x  # Raised NameError! x was not in local, global, or builtins.
+\end{lstlisting}
+
+To access outer variables, developers had to pass them explicitly as
+default arguments (e.g., \passthrough{\lstinline!def inner(x=x):!}).
+
+\hypertarget{the-legb-resolution-engine-pep-227}{%
+\subsubsection{1. The LEGB Resolution Engine (PEP
+227)}\label{the-legb-resolution-engine-pep-227}}
+
+Introduced as an optional feature in Python 2.1 (enabled via
+\passthrough{\lstinline!from \_\_future\_\_ import nested\_scopes!}) and
+made standard in Python 2.2, PEP 227 added the \textbf{Enclosing} scope
+to name resolution, establishing the modern \textbf{LEGB} lookup
+hierarchy:
+
+\begin{lstlisting}
+                  [Name Resolution Lookup Path]
+                                |
+             1. Local Scope (Array offset / LOAD_FAST)
+                                |
+             2. Enclosing Scopes (Cell reference / LOAD_DEREF)
+                                |
+             3. Global Scope (Module dict / LOAD_GLOBAL)
+                                |
+             4. Built-in Scope (Builtins dict / LOAD_GLOBAL)
+\end{lstlisting}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  \textbf{Local (L)}: Fast array offset reads inside the active
+  \passthrough{\lstinline!PyFrameObject!}.
+\item
+  \textbf{Enclosing (E)}: Searches cells
+  (\passthrough{\lstinline!PyCellObject!}) containing enclosed variable
+  pointers.
+\item
+  \textbf{Global (G)}: Searches the module globals dictionary
+  (\passthrough{\lstinline!\_\_dict\_\_!}).
+\item
+  \textbf{Built-in (B)}: Searches the standard built-in namespace
+  dictionary (\passthrough{\lstinline!\_\_builtins\_\_!}).
+\end{enumerate}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{closure-mechanics-and-bytecode-compilation}{%
+\subsection{3.3 Closure Mechanics and Bytecode
+Compilation}\label{closure-mechanics-and-bytecode-compilation}}
+
+When a function accesses variables from an enclosing scope, CPython
+compiles the enclosing variables as \textbf{free variables} and stores
+them on the heap inside \passthrough{\lstinline!PyCellObject!} structs.
+
+\hypertarget{bytecode-compilation-trace}{%
+\subsubsection{1. Bytecode Compilation
+Trace}\label{bytecode-compilation-trace}}
+
+Consider the following nested scope implementation:
+
+\begin{lstlisting}[language=Python]
+def parent(x):
+    def child():
+        return x
+    return child
+\end{lstlisting}
+
+The CPython compiler processes this nested structure using three
+specialized bytecode instructions:
+\passthrough{\lstinline!LOAD\_CLOSURE!},
+\passthrough{\lstinline!MAKE\_FUNCTION!} (with flags), and
+\passthrough{\lstinline!LOAD\_DEREF!}.
+
+Let's trace the bytecode for both the \passthrough{\lstinline!parent!}
+and \passthrough{\lstinline!child!} functions:
+
+\textbf{Bytecode for \passthrough{\lstinline!parent!}:}
+
+\begin{lstlisting}
+  2           0 LOAD_CLOSURE             0 (x)       /* Load cell reference for cell variable x */
+              2 BUILD_TUPLE              1           /* Package cell reference inside a tuple */
+              4 LOAD_CONST               1 (<code object child>)
+              6 LOAD_CONST               2 ('parent.<locals>.child')
+              8 MAKE_FUNCTION            8           /* Flag 8 tells the VM to bind closure cells tuple */
+             10 STORE_FAST               1 (child)
+
+  4          12 LOAD_FAST                1 (child)
+             14 RETURN_VALUE
+\end{lstlisting}
+
+\textbf{Bytecode for \passthrough{\lstinline!child!}:}
+
+\begin{lstlisting}
+  3           0 LOAD_DEREF               0 (x)       /* Dereference closure cell and load value */
+              2 RETURN_VALUE
+\end{lstlisting}
+
+\hypertarget{instruction-walkthrough}{%
+\subsubsection{2. Instruction
+Walkthrough}\label{instruction-walkthrough}}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  \textbf{\passthrough{\lstinline!LOAD\_CLOSURE!}}: Pushes the cell
+  reference representing the cell variable \passthrough{\lstinline!x!}
+  onto the stack.
+\item
+  \textbf{\passthrough{\lstinline!MAKE\_FUNCTION 8!}}: Creates a new
+  function object (\passthrough{\lstinline!PyFunctionObject!}). The flag
+  \passthrough{\lstinline!8!} (in modern CPython, this uses
+  \passthrough{\lstinline!MAKE\_FUNCTION!} with cell tuples on the
+  stack) instructs the VM to pop the cells tuple and assign it to the
+  function's \passthrough{\lstinline!\_\_closure\_\_!} attribute.
+\item
+  \textbf{\passthrough{\lstinline!LOAD\_DEREF!}}: Executed inside
+  \passthrough{\lstinline!child!}. The VM bypasses local dictionary or
+  local array lookups. It accesses the closure tuple at index 0,
+  dereferences the \passthrough{\lstinline!PyCellObject!}, and pushes
+  its \passthrough{\lstinline!ob\_ref!} payload onto the evaluation
+  stack.
+\end{enumerate}
+
+\begin{lstlisting}[language=Python]
+import inspect
+
+closure_fn = parent(42)
+# Inspect closure cells at runtime
+print("Closure cells:", closure_fn.__closure__)
+print("Cell value:", closure_fn.__closure__[0].cell_contents)
+print("Parent cell vars:", parent.__code__.co_cellvars)
+print("Child free vars:", closure_fn.__code__.co_freevars)
+\end{lstlisting}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{python-2.0-cycle-detecting-generational-garbage-collector}{%
+\subsection{3.4 Python 2.0 Cycle-Detecting Generational Garbage
+Collector}\label{python-2.0-cycle-detecting-generational-garbage-collector}}
+
+Reference counting is deterministic and fast, but it cannot reclaim
+self-referencing cycles:
+
+\begin{lstlisting}[language=Python]
+# Reference Cycle Example
+a = []
+b = []
+a.append(b)
+b.append(a)
+del a, b  # reference counts of both objects remain 1, leaking memory!
+\end{lstlisting}
+
+To solve this, Python 2.0 introduced a generational cycle-detecting
+Garbage Collector (GC) to periodically identify and sweep cycles.
+
+\hypertarget{tracked-objects-and-gc-headers}{%
+\subsubsection{1. Tracked Objects and GC
+Headers}\label{tracked-objects-and-gc-headers}}
+
+Only container objects (lists, dictionaries, tuples, custom classes) can
+participate in reference cycles. Simple types like integers or strings
+cannot. CPython prefixes all tracked container allocations with a
+\passthrough{\lstinline!PyGC\_Head!} header, linking them into a
+doubly-linked list.
+
+\hypertarget{generational-strategy}{%
+\subsubsection{2. Generational Strategy}\label{generational-strategy}}
+
+The GC groups objects into three generations (Gen 0, Gen 1, Gen 2).
+Newly allocated objects enter Gen 0. If they survive a garbage
+collection pass, they are promoted to Gen 1, and eventually to Gen 2.
+This strategy is based on the \textbf{weak generational hypothesis}:
+most objects die young.
+
+\hypertarget{cycle-isolation-algorithm}{%
+\subsubsection{3. Cycle Isolation
+Algorithm}\label{cycle-isolation-algorithm}}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  \textbf{Copy Reference Counts}: The GC copy-assigns the reference
+  count of every object in the collection generation to its
+  \passthrough{\lstinline!gc\_refs!} field in the
+  \passthrough{\lstinline!PyGC\_Head!} header.
+\item
+  \textbf{Trace and Subtract}: The GC traverses the reference pointers
+  of every object in the list. If a target object is also in the list,
+  the GC decrements the target's \passthrough{\lstinline!gc\_refs!}
+  value.
+\item
+  \textbf{Analyze Remainders}:
+
+  \begin{itemize}
+  \tightlist
+  \item
+    If an object's \passthrough{\lstinline!gc\_refs!} drops to zero, it
+    is unreachable from outside the generation list (candidate for
+    garbage).
+  \item
+    If \passthrough{\lstinline!gc\_refs > 0!}, the object is reachable
+    from outside. The object and all objects it references are marked as
+    reachable and promoted.
+  \end{itemize}
+\item
+  \textbf{Deallocate}: The GC breaks cycles for remaining unreachable
+  objects and frees their memory.
+\end{enumerate}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}

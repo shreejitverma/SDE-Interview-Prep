@@ -1,0 +1,161 @@
+\hypertarget{walrus-operator-parameter-binding}{%
+\chapter{WALRUS OPERATOR \& PARAMETER
+BINDING}\label{walrus-operator-parameter-binding}}
+
+\hypertarget{the-assignment-expression-pep-572}{%
+\subsection{\texorpdfstring{14.1 The Assignment Expression (\texttt{:=}
+/ PEP
+572)}{14.1 The Assignment Expression (:= / PEP 572)}}\label{the-assignment-expression-pep-572}}
+
+Introduced in Python 3.8, the assignment expression operator
+(colloquially called the \textbf{walrus operator}) allows assigning
+values to variables inside expressions. This departs from Python's
+historical strict division between statements and expressions.
+
+\hypertarget{ast-representation}{%
+\subsubsection{1. AST Representation}\label{ast-representation}}
+
+A standard assignment is a statement represented by the
+\passthrough{\lstinline!Assign!} node in the Abstract Syntax Tree (AST),
+which does not return a value. The walrus operator compiles to a
+\passthrough{\lstinline!NamedExpr!} node, which is an expression node
+returning the bound value.
+
+\begin{lstlisting}
+      [Assign Statement]                  [NamedExpr Expression]
+         /         \                            /         \
+   Name(x)      Constant(1)               Name(x)      Constant(1)
+   (Returns void/no value)              (Returns 1 to parent context)
+\end{lstlisting}
+
+\hypertarget{bytecode-stack-operations}{%
+\subsubsection{2. Bytecode \& Stack
+Operations}\label{bytecode-stack-operations}}
+
+Let's examine how CPython processes a normal assignment vs.~an
+assignment expression. Consider the following source codes and their
+corresponding bytecodes:
+
+\begin{lstlisting}[language=Python]
+# Standard Assignment
+x = 1
+\end{lstlisting}
+
+\begin{lstlisting}
+2 LOAD_CONST               0 (1)
+4 STORE_FAST               0 (x)
+\end{lstlisting}
+
+\begin{lstlisting}[language=Python]
+# Assignment Expression
+(x := 1)
+\end{lstlisting}
+
+\begin{lstlisting}
+2 LOAD_CONST               0 (1)
+4 DUP_TOP
+6 STORE_FAST               0 (x)
+\end{lstlisting}
+
+\emph{Note: In Python 3.11+, the compiler utilizes specialized stack
+manipulation instructions (like \passthrough{\lstinline!COPY 1!})
+instead of \passthrough{\lstinline!DUP\_TOP!}, but the mechanism remains
+identical.}
+
+The execution steps for the walrus operator stack operation are: 1.
+\passthrough{\lstinline!LOAD\_CONST!} pushes the reference to the
+constant integer \passthrough{\lstinline!1!} onto the value stack. 2.
+\passthrough{\lstinline!DUP\_TOP!} replicates the top element of the
+stack, resulting in two references to \passthrough{\lstinline!1!} on the
+stack. 3. \passthrough{\lstinline!STORE\_FAST!} pops one of the
+references and binds it to the local variable name
+\passthrough{\lstinline!x!}. 4. The remaining reference to
+\passthrough{\lstinline!1!} remains on the top of the stack, allowing
+parent expressions (such as \passthrough{\lstinline!if!} conditionals or
+loops) to consume it.
+
+\hypertarget{scoping-rules-and-symbol-table-traversal}{%
+\subsubsection{3. Scoping Rules and Symbol Table
+Traversal}\label{scoping-rules-and-symbol-table-traversal}}
+
+To prevent variable leakage and namespace pollution, PEP 572 specifies
+complex scoping rules, especially within comprehensions: *
+\textbf{Comprehensions}: Python list, set, and dict comprehensions, as
+well as generator expressions, are executed in a nested function scope.
+* \textbf{Variable Binding}: An assignment expression
+\passthrough{\lstinline!x := ...!} inside a comprehension binds the
+variable \passthrough{\lstinline!x!} in the \emph{surrounding} (parent)
+scope, not the local comprehension scope. * \textbf{Symbol Table
+Resolution}: During compilation, the symbol table builder
+(\passthrough{\lstinline!symtable.c!}) traverses variables inside
+comprehensions. When it encounters a
+\passthrough{\lstinline!NamedExpr!}, it marks the target variable as
+free/cell or nonlocal/global depending on the parent scope, hoisting the
+reference out of the comprehension's inner namespace. *
+\textbf{Restrictions}: A target variable cannot share a name with a
+\passthrough{\lstinline!.0!} parameter (the iterator variable) or an
+explicit comprehension loop target (e.g.,
+\passthrough{\lstinline![i for i in range(10) if (i := 2)]!} is a syntax
+error).
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{positional-only-parameters-pep-570}{%
+\subsection{\texorpdfstring{14.2 Positional-Only Parameters (\texttt{/}
+/ PEP
+570)}{14.2 Positional-Only Parameters (/ / PEP 570)}}\label{positional-only-parameters-pep-570}}
+
+Python 3.8 introduced the \passthrough{\lstinline!/!} marker to define
+positional-only parameters. Any parameters declared before the
+\passthrough{\lstinline!/!} marker cannot be passed as keyword
+arguments.
+
+\hypertarget{c-level-representation-in-pycodeobject}{%
+\subsubsection{\texorpdfstring{1. C-level Representation in
+\texttt{PyCodeObject}}{1. C-level Representation in PyCodeObject}}\label{c-level-representation-in-pycodeobject}}
+
+The compiler encodes parameter boundaries directly into the function's
+bytecode descriptor struct. In \passthrough{\lstinline!code.h!}, the
+\passthrough{\lstinline!PyCodeObject!} structure contains specific
+integer fields:
+
+\begin{lstlisting}[language=C]
+typedef struct {
+    PyObject_HEAD
+    int co_argcount;            /* Number of positional arguments */
+    int co_posonlyargcount;     /* Number of positional-only arguments */
+    int co_kwonlyargcount;      /* Number of keyword-only arguments */
+    /* ... additional fields ... */
+} PyCodeObject;
+\end{lstlisting}
+
+\hypertarget{argument-parsing-calling-execution-path}{%
+\subsubsection{2. Argument Parsing \& Calling Execution
+Path}\label{argument-parsing-calling-execution-path}}
+
+When a function is called, CPython passes arguments through the internal
+calling mechanism (\passthrough{\lstinline!\_PyEval\_EvalCodeWithName!}
+or \passthrough{\lstinline!\_PyFunction\_Vectorcall!}). 1. If the caller
+provides arguments via keyword dict mappings, the interpreter extracts
+the argument name and performs lookup check. 2. The interpreter compares
+the number of passed positional arguments against
+\passthrough{\lstinline!co\_posonlyargcount!}. 3. If keyword arguments
+matching a parameter name before
+\passthrough{\lstinline!co\_posonlyargcount!} are detected, the
+interpreter raises a runtime \passthrough{\lstinline!TypeError!}:
+\passthrough{\lstinline!TypeError: f() got some positional-only arguments passed as keyword arguments!}.
+
+\hypertarget{micro-performance-optimization}{%
+\subsubsection{3. Micro-Performance
+Optimization}\label{micro-performance-optimization}}
+
+Using positional-only parameters offers clear performance gains: 1.
+\textbf{Bypassing Hash Lookups}: When keyword arguments are eliminated,
+the interpreter bypasses dictionary keys extraction and hash checks for
+the positional-only segment of the arguments tuple. 2. \textbf{Direct
+Array Writes}: The VM copies references directly from the incoming
+contiguous array of positional arguments (vectorcall array) straight
+into the local frame variable storage.
+\[\text{Offset Index} = \text{Passed Index}\]
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}

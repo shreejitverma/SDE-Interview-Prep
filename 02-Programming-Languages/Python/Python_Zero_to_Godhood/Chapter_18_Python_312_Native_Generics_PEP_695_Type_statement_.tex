@@ -1,0 +1,241 @@
+\hypertarget{python-3.12-native-generics-pep-695-type-statement-and-subinterpreters}{%
+\chapter{Python 3.12: Native Generics (PEP 695), Type statement, and
+Subinterpreters}\label{python-3.12-native-generics-pep-695-type-statement-and-subinterpreters}}
+
+\hypertarget{pep-695-type-parameter-syntax}{%
+\subsection{18.1 PEP 695 Type Parameter
+Syntax}\label{pep-695-type-parameter-syntax}}
+
+Python 3.12 introduced a clean, native syntax for generic classes,
+generic functions, and type aliases using type parameters enclosed in
+square brackets.
+
+\hypertarget{transition-from-legacy-declarations}{%
+\subsubsection{1. Transition from Legacy
+Declarations}\label{transition-from-legacy-declarations}}
+
+Prior to Python 3.12, defining generic types required importing and
+manually instantiating \passthrough{\lstinline!TypeVar!} variables,
+along with explicitly defining variance constraints (covariant,
+contravariant, or invariant):
+
+\begin{lstlisting}[language=Python]
+# Legacy Python 3.11-
+from typing import TypeVar, Generic
+
+T = TypeVar('T', covariant=True)  # Manual variance specification
+
+class Stack(Generic[T]):
+    pass
+\end{lstlisting}
+
+PEP 695 replaces this boiler-plate with a cleaner syntax:
+
+\begin{lstlisting}[language=Python]
+# Modern Python 3.12+
+class Stack[T]:
+    pass
+\end{lstlisting}
+
+Under this syntax: * CPython automatically creates the type variable
+\passthrough{\lstinline!T!} (instance of
+\passthrough{\lstinline!typing.TypeVar!}) and binds it to the class
+scope. * \textbf{Static Auto-Variance}: Static type checkers (like
+Mypy/Pyright) automatically infer the variance of
+\passthrough{\lstinline!T!} by analyzing how the variable is used inside
+the class definition, completely eliminating the need for manual
+\passthrough{\lstinline!covariant=True!} or
+\passthrough{\lstinline!contravariant=True!} flags.
+
+\hypertarget{bound-and-constraint-specifications}{%
+\subsubsection{2. Bound and Constraint
+Specifications}\label{bound-and-constraint-specifications}}
+
+Type parameter bounds and constraints are defined directly inside the
+square brackets: * \textbf{Bound Syntax
+(\passthrough{\lstinline!T: bound\_type!})}: Restricts the type variable
+to a specific subclass or type.
+\passthrough{\lstinline!python     def process[T: int](val: T) -> T:         return val!}
+* \textbf{Constraint Syntax
+(\passthrough{\lstinline!T: (type1, type2, ...)!})}: Restricts the type
+variable to one of a set of explicit types.
+\passthrough{\lstinline!python     def parse[T: (str, bytes)](data: T) -> T:         return data!}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{annotation-scopes-and-lazy-evaluation}{%
+\subsection{18.2 Annotation Scopes and Lazy
+Evaluation}\label{annotation-scopes-and-lazy-evaluation}}
+
+In Python 3.11 and below, type parameter bounds and type aliases were
+evaluated eagerly at module import time. This caused circular import
+errors (if a type variable referenced a class defined later in another
+module) and increased startup memory footprints. PEP 695 resolves this
+by introducing \textbf{Annotation Scopes} and lazy evaluation.
+
+\hypertarget{annotation-scopes}{%
+\subsubsection{1. Annotation Scopes}\label{annotation-scopes}}
+
+When the compiler encounters type parameters or the
+\passthrough{\lstinline!type!} statement, it wraps their evaluation code
+inside a new lexical scope called an \textbf{Annotation Scope}: * An
+annotation scope is a nested compiler-generated scope (similar to a
+hidden function block). * Variables and bounds defined inside this scope
+are evaluated \textbf{lazily}only when they are explicitly queried at
+runtime.
+
+\hypertarget{bytecode-disassembly-of-the-type-statement}{%
+\subsubsection{\texorpdfstring{2. Bytecode Disassembly of the
+\texttt{type}
+Statement}{2. Bytecode Disassembly of the type Statement}}\label{bytecode-disassembly-of-the-type-statement}}
+
+Let's analyze how CPython compiles a modern type alias:
+
+\begin{lstlisting}[language=Python]
+type Vector3D[T] = tuple[T, T, T]
+\end{lstlisting}
+
+\hypertarget{compiled-bytecode}{%
+\paragraph{Compiled Bytecode:}\label{compiled-bytecode}}
+
+\begin{lstlisting}
+  1           0 LOAD_CONST               0 ('Vector3D')
+              2 LOAD_CONST               1 ('T')
+              4 LOAD_CONST               2 (<code object Vector3D at 0x...>)
+              6 MAKE_FUNCTION            0
+              8 SET_FUNCTION_ATTRIBUTE   8 (closure/annotations helper)
+             10 CALL_FUNCTION            0
+             12 BUILD_TYPEALIAS
+             14 STORE_NAME               0 (Vector3D)
+\end{lstlisting}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{\passthrough{\lstinline!MAKE\_FUNCTION!}}: Creates a lazy
+  evaluation function from the nested code object representing the alias
+  value \passthrough{\lstinline!tuple[T, T, T]!}.
+\item
+  \textbf{\passthrough{\lstinline!BUILD\_TYPEALIAS!}}: Pops the
+  evaluation function, type parameters, and name, then constructs an
+  instance of \passthrough{\lstinline!typing.TypeAliasType!}.
+\item
+  \textbf{\passthrough{\lstinline!STORE\_NAME!}}: Binds the type alias
+  object to \passthrough{\lstinline!Vector3D!}.
+\end{itemize}
+
+\hypertarget{c-level-representation-of-typealiastype}{%
+\subsubsection{\texorpdfstring{3. C-Level Representation of
+\texttt{TypeAliasType}}{3. C-Level Representation of TypeAliasType}}\label{c-level-representation-of-typealiastype}}
+
+At the C level, \passthrough{\lstinline!TypeAliasType!} is represented
+by a dedicated struct wrapping the properties of the type alias: *
+\passthrough{\lstinline!\_\_name\_\_!}: Name of the alias. *
+\passthrough{\lstinline!\_\_type\_params\_\_!}: A tuple of type
+parameters. * \passthrough{\lstinline!\_\_value\_\_!}: The aliased type.
+It uses a C descriptor getter that evaluates the lazy function code
+object on the first access, caching the result to avoid redundant
+evaluations.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{pep-684-per-interpreter-gil-and-subinterpreters}{%
+\subsection{18.3 PEP 684: Per-Interpreter GIL and
+Subinterpreters}\label{pep-684-per-interpreter-gil-and-subinterpreters}}
+
+CPython has supported subinterpreters via its C-API since Python 1.5.
+However, because they all shared a single Global Interpreter Lock (GIL),
+only one interpreter could execute bytecode at a time, preventing true
+multi-core parallel execution. Python 3.12 introduced \textbf{PEP 684},
+providing a dedicated, isolated GIL for each subinterpreter.
+
+\hypertarget{c-level-structural-separation}{%
+\subsubsection{1. C-Level Structural
+Separation}\label{c-level-structural-separation}}
+
+CPython separates runtime state into two major structures: *
+\textbf{\passthrough{\lstinline!PyRuntimeState!}}
+(\passthrough{\lstinline!pycore\_runtime.h!}): Process-wide, shared
+global resources, including system memory allocators, signal handlers,
+and GC arena lists. *
+\textbf{\passthrough{\lstinline!PyInterpreterState!}}
+(\passthrough{\lstinline!pycore\_pystate.h!}): Interpreter-specific
+resources.
+
+Under PEP 684, each \passthrough{\lstinline!PyInterpreterState!} is
+allocated its own dedicated GIL struct
+(\passthrough{\lstinline!struct \_gil\_runtime\_state!}). This allows
+multiple interpreter instances to execute bytecode in parallel on
+separate threads, leveraging separate CPU cores.
+
+\begin{lstlisting}
+CPython Process Layout with Per-Interpreter GIL:
+
+======================= [ PyRuntimeState ] =======================
+  /                                                             \
+ [ PyInterpreterState A ]              [ PyInterpreterState B ]
+    - sys.modules                         - sys.modules
+    - Private Object Heap                 - Private Object Heap
+    - Dedicated GIL A                     - Dedicated GIL B
+        |                                     |
+        v                                     v
+   ( OS Thread 1 )                       ( OS Thread 2 )
+==================================================================
+\end{lstlisting}
+
+\hypertarget{isolation-boundaries}{%
+\subsubsection{2. Isolation Boundaries}\label{isolation-boundaries}}
+
+To prevent concurrency race conditions, interpreters maintain strict
+boundaries: * \textbf{Private Module Cache}: Each subinterpreter has its
+own \passthrough{\lstinline!sys.modules!} dictionary. * \textbf{Heap
+Isolation}: Python heap objects (\passthrough{\lstinline!PyObject!}
+references) cannot be shared directly between interpreters. If
+interpreter A attempts to read or write a
+\passthrough{\lstinline!PyObject!} allocated in interpreter B: 1.
+Reference counting checks
+(\passthrough{\lstinline!Py\_INCREF!}/\passthrough{\lstinline!Py\_DECREF!})
+will trigger race conditions. 2. Garbage collection passes running in
+interpreter A will attempt to collect memory belonging to interpreter B,
+causing memory corruption. * \textbf{Communication Channel}:
+Subinterpreters communicate exclusively through serialized message
+channels (such as \passthrough{\lstinline!\_xxsubinterpreters!}). Data
+is serialized (e.g.~converted to raw bytes or using shared memory
+structures via the C buffer protocol) and then re-materialized as fresh
+objects in the target interpreter's private heap.
+
+\hypertarget{parallel-execution-code-example}{%
+\subsubsection{3. Parallel Execution Code
+Example}\label{parallel-execution-code-example}}
+
+We can spawn subinterpreters and execute code concurrently using the
+\passthrough{\lstinline!\_xxsubinterpreters!} module:
+
+\begin{lstlisting}[language=Python]
+import _xxsubinterpreters as interpreters
+import threading
+
+def run_in_subinterpreter(interp_id, script):
+    # Run script inside the isolated interpreter context
+    interpreters.run_string(interp_id, script)
+
+# Create a new subinterpreter with an isolated GIL
+interp_id = interpreters.create()
+
+script = """
+import time
+# Executes concurrently on a separate CPU core
+result = sum(i * i for i in range(10_000_000))
+print("Subinterpreter result calculation complete:", result)
+"""
+
+# Spawn a separate OS thread to run the subinterpreter in parallel
+thread = threading.Thread(target=run_in_subinterpreter, args=(interp_id, script))
+thread.start()
+thread.join()
+
+# Destroy the subinterpreter and release resources
+interpreters.destroy(interp_id)
+\end{lstlisting}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}

@@ -1,0 +1,272 @@
+\hypertarget{python-3.1-to-3.2-standard-library-consolidation-and-threading-pools}{%
+\chapter{Python 3.1 to 3.2: Standard Library Consolidation and Threading
+Pools}\label{python-3.1-to-3.2-standard-library-consolidation-and-threading-pools}}
+
+\hypertarget{antoine-pitrous-new-gil-python-3.2}{%
+\subsection{8.1 Antoine Pitrou's New GIL (Python
+3.2)}\label{antoine-pitrous-new-gil-python-3.2}}
+
+To resolve multi-core performance bottlenecks, Python 3.2 replaced the
+legacy ticker-based GIL with an interval-based GIL designed by Antoine
+Pitrou.
+
+\hypertarget{the-convoy-effect-gil-battle-under-the-ticker-based-gil}{%
+\subsubsection{1. The Convoy Effect \& GIL Battle under the Ticker-Based
+GIL}\label{the-convoy-effect-gil-battle-under-the-ticker-based-gil}}
+
+In Python 2.x and pre-3.2, thread switching was based on a bytecode
+execution ticker (\passthrough{\lstinline!sys.checkinterval!}, default
+100 instructions). Once a thread \(T_1\) executed 100 bytecodes, it
+released the GIL, signaled waiting threads, and immediately re-attempted
+to acquire it: 1. \(T_1\) releases GIL \(\rightarrow\) \(T_1\)
+immediately calls \passthrough{\lstinline!acquire!} again. 2. Because
+\(T_1\) is already running on a CPU core with warm caches, it is highly
+likely to re-acquire the GIL before a sleeping thread \(T_2\) on another
+core can wake up. 3. This resulted in the \textbf{convoy effect} (or GIL
+battle), causing thread starvation and wasting CPU cycles on rapid,
+unsuccessful mutex context-switching.
+
+\hypertarget{the-interval-based-gil-architecture}{%
+\subsubsection{2. The Interval-Based GIL
+Architecture}\label{the-interval-based-gil-architecture}}
+
+The new GIL manages thread switching using a time interval (default 5000
+microseconds / 5ms). The state of the GIL is maintained in a global
+runtime structure (\passthrough{\lstinline!ceval\_gil.h!}):
+
+\begin{lstlisting}[language=C]
+typedef struct {
+    Py_MUTEX_T mutex;              /* Mutex guarding the GIL status fields */
+    Py_COND_T cond;                /* Condition variable for waiting threads */
+    int locked;                    /* Flag indicating if the GIL is locked (1 or 0) */
+    unsigned long switch_interval; /* Maximum thread execution duration before switch (in microseconds) */
+    
+    PyThreadState* volatile tstate; /* Pointer to the thread state currently holding the GIL */
+    int volatile gil_drop_request;  /* Shared atomic flag indicating a thread must drop the GIL */
+} _gil_runtime_state;
+\end{lstlisting}
+
+\hypertarget{step-by-step-thread-state-transitions-mutex-flow}{%
+\subsubsection{3. Step-by-Step Thread State Transitions \& Mutex
+Flow}\label{step-by-step-thread-state-transitions-mutex-flow}}
+
+When thread \(T_1\) holds the GIL and thread \(T_2\) requests execution:
+
+\begin{lstlisting}
+Thread 1 (Active)                               Thread 2 (Waiting)
+-----------------                               ------------------
+Holds GIL (locked=1)
+Executes bytecodes...                           Requests GIL via take_gil()
+                                                Acquires mutex, waits on cond with 5ms timeout
+                                                Timeout expires! (T1 hasn't released GIL)
+                                                Sets gil_drop_request = 1
+Checks gil_drop_request in eval loop
+Detects flag set to 1
+Releases GIL via drop_gil()
+Resets locked=0, tstate=NULL
+Signals cond, releases mutex
+                                                Wakes up from cond, acquires mutex
+                                                Sets locked=1, tstate=T2
+                                                Resets gil_drop_request=0
+                                                Starts executing bytecodes...
+\end{lstlisting}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\item
+  \textbf{Requesting the GIL}: Thread \(T_2\) enters
+  \passthrough{\lstinline!take\_gil()!}, acquires the
+  \passthrough{\lstinline!mutex!}, and waits on the condition variable
+  \passthrough{\lstinline!cond!} with a timeout of
+  \passthrough{\lstinline!switch\_interval!} (5ms).
+\item
+  \textbf{Timeout \& Requesting Release}: If the timeout expires and
+  \(T_1\) has not released the GIL (e.g., due to executing an I/O
+  operation or blocking system call), \(T_2\) sets the global atomic
+  flag \passthrough{\lstinline!gil\_drop\_request = 1!}.
+\item
+  \textbf{Interpreter Eval Loop Check}: In CPython's evaluation loop
+  (\passthrough{\lstinline!\_PyEval\_EvalFrameDefault!} in
+  \passthrough{\lstinline!Python/ceval.c!}), the interpreter checks
+  \passthrough{\lstinline!gil\_drop\_request!} between bytecode
+  execution steps:
+
+\begin{lstlisting}[language=C]
+/* Check GIL drop request flag */
+if (_Py_atomic_load_relaxed(&gil_runtime_state.gil_drop_request)) {
+    /* Give up the GIL and wait for reschedule */
+    PyThreadState *tstate = _PyThreadState_GET();
+    PyEval_SaveThread();     /* Drops GIL, signals cond */
+    PyEval_RestoreThread();  /* Re-acquires GIL, blocks if held */
+}
+\end{lstlisting}
+\item
+  \textbf{Acquiring the GIL}: Once \(T_1\) calls
+  \passthrough{\lstinline!PyEval\_SaveThread()!}, it sets
+  \passthrough{\lstinline!locked = 0!}, signals
+  \passthrough{\lstinline!cond!} to wake up \(T_2\), and releases the
+  \passthrough{\lstinline!mutex!}. \(T_2\) wakes up, sets
+  \passthrough{\lstinline!locked = 1!}, clears
+  \passthrough{\lstinline!gil\_drop\_request = 0!}, and starts its
+  execution phase.
+\end{enumerate}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{thread-pools-and-process-pools-concurrent.futures-pep-3148}{%
+\subsection{\texorpdfstring{8.2 Thread Pools and Process Pools
+(\texttt{concurrent.futures} / PEP
+3148)}{8.2 Thread Pools and Process Pools (concurrent.futures / PEP 3148)}}\label{thread-pools-and-process-pools-concurrent.futures-pep-3148}}
+
+PEP 3148 unified concurrent task execution under a shared API using
+\passthrough{\lstinline!ThreadPoolExecutor!} and
+\passthrough{\lstinline!ProcessPoolExecutor!}.
+
+\hypertarget{threadpoolexecutor-mechanics}{%
+\subsubsection{\texorpdfstring{1. \texttt{ThreadPoolExecutor}
+Mechanics}{1. ThreadPoolExecutor Mechanics}}\label{threadpoolexecutor-mechanics}}
+
+\passthrough{\lstinline!ThreadPoolExecutor!} manages a pool of worker
+threads using a task queue
+(\passthrough{\lstinline!queue.SimpleQueue!}): * \textbf{Task
+Submission}: When \passthrough{\lstinline!submit(fn, *args)!} is called,
+CPython wraps the callable in a \passthrough{\lstinline!Future!} object
+and a \passthrough{\lstinline!\_WorkItem!} struct, pushing it to the
+executor's task queue. * \textbf{Worker Execution}: Worker threads
+execute a loop inside \passthrough{\lstinline!\_worker()!}:
+\passthrough{\lstinline!python   def \_worker(executor\_reference, work\_queue):       while True:           work\_item = work\_queue.get(block=True)           if work\_item is not None:               work\_item.run()!}
+* \textbf{GIL Constraints}: Because all worker threads reside in the
+same memory space, they share the GIL. They can execute I/O-bound
+operations (e.g., waiting on socket descriptors or file operations)
+concurrently by releasing the GIL at the C-API level during blocking
+calls, but cannot execute CPU-bound tasks in parallel.
+
+\hypertarget{processpoolexecutor-ipc-serialization-bottlenecks}{%
+\subsubsection{\texorpdfstring{2. \texttt{ProcessPoolExecutor} \& IPC
+Serialization
+Bottlenecks}{2. ProcessPoolExecutor \& IPC Serialization Bottlenecks}}\label{processpoolexecutor-ipc-serialization-bottlenecks}}
+
+To bypass the GIL for CPU-bound operations,
+\passthrough{\lstinline!ProcessPoolExecutor!} spawns independent worker
+processes. Because processes do not share memory, CPython must serialize
+task arguments and deserialize results using the
+\passthrough{\lstinline!pickle!} protocol.
+
+The math of Process Pool Execution Overhead:
+\[\text{Total Execution Time} = t_{\text{serialization}} + t_{\text{IPC transfer}} + t_{\text{computation}} + t_{\text{IPC return}} + t_{\text{deserialization}}\]
+\[\text{IPC Overhead} \propto \text{size of arguments} + \text{size of results}\]
+1. \textbf{Serialization}: The parent process pickles the function and
+arguments into a byte stream. 2. \textbf{IPC Transfer}: The byte stream
+is written to an OS pipe or socket descriptor, crossing the user-kernel
+space boundary twice:
+\[\text{Parent User Space} \xrightarrow{\text{write()}} \text{Kernel Buffer} \xrightarrow{\text{read()}} \text{Child User Space}\]
+3. \textbf{Computation}: The child process runs the task within its own
+interpreter instance and GIL. 4. \textbf{Return}: The child pickles and
+writes the result back through a return pipe. For small, fast
+computations, the serialization and pipe I/O overhead can exceed the
+execution time of the computation itself.
+
+\hypertarget{future-state-tracking}{%
+\subsubsection{3. Future State Tracking}\label{future-state-tracking}}
+
+A \passthrough{\lstinline!Future!} object tracks task completion state.
+The state transitions are guarded by a thread-local reentrant lock
+(\passthrough{\lstinline!threading.RLock!}):
+
+\begin{lstlisting}[language=Python]
+# Future state definitions inside concurrent.futures.futures
+PENDING = 'PENDING'
+RUNNING = 'RUNNING'
+CANCELLED = 'CANCELLED'
+FINISHED = 'FINISHED'
+\end{lstlisting}
+
+\begin{itemize}
+\tightlist
+\item
+  Calling \passthrough{\lstinline!cancel()!} transitions the state from
+  \passthrough{\lstinline!PENDING!} to
+  \passthrough{\lstinline!CANCELLED!}, waking up any threads waiting on
+  \passthrough{\lstinline!result()!} via a condition variable.
+\item
+  When the task completes, \passthrough{\lstinline!set\_result(val)!}
+  transitions the state to \passthrough{\lstinline!FINISHED!}, stores
+  the return value in \passthrough{\lstinline!self.\_result!}, and
+  invokes all callback functions registered via
+  \passthrough{\lstinline!add\_done\_callback(fn)!}.
+\end{itemize}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{standard-library-consolidation}{%
+\subsection{8.3 Standard Library
+Consolidation}\label{standard-library-consolidation}}
+
+\hypertarget{ordereddict-pep-372}{%
+\subsubsection{\texorpdfstring{1. \texttt{OrderedDict} (PEP
+372)}{1. OrderedDict (PEP 372)}}\label{ordereddict-pep-372}}
+
+Introduced in Python 3.1, \passthrough{\lstinline!OrderedDict!}
+preserves key insertion order. Since standard dictionaries were
+unordered at this time, \passthrough{\lstinline!OrderedDict!} maintained
+order by wrapping a standard dictionary with a private doubly-linked
+list. The keys are stored as nodes in the linked list:
+
+\begin{lstlisting}[language=Python]
+# Doubly-linked list node format: [PREV, NEXT, KEY]
+root = []
+root[:] = [root, root, None] # Pointer loop representing empty list
+\end{lstlisting}
+
+\begin{itemize}
+\item
+  \textbf{Insertion}: When a new key is added,
+  \passthrough{\lstinline!OrderedDict!} appends it to the end of the
+  doubly-linked list by adjusting pointers:
+
+\begin{lstlisting}[language=Python]
+last = root[0]
+last[1] = root[0] = [last, root, key]
+self.__map[key] = root[0]
+\end{lstlisting}
+\item
+  \textbf{Deletion}: Deleting a key updates the pointers of the
+  neighboring nodes in \(O(1)\) time:
+
+\begin{lstlisting}[language=Python]
+link_prev, link_next, key = self.__map.pop(key)
+link_prev[1] = link_next
+link_next[0] = link_prev
+\end{lstlisting}
+\end{itemize}
+
+\hypertarget{counter}{%
+\subsubsection{\texorpdfstring{2.
+\texttt{Counter}}{2. Counter}}\label{counter}}
+
+A dictionary subclass designed for tallying hashable elements. It
+optimizes standard dictionary lookups by wrapping loops in C:
+
+\begin{lstlisting}[language=Python]
+# Counter update logic
+for elem in iterable:
+    self[elem] = self.get(elem, 0) + 1
+\end{lstlisting}
+
+At the C level, it accesses dictionary lookups via
+\passthrough{\lstinline!PyDict\_GetItemWithError!} to bypass
+Python-level attribute lookup overhead, speeding up frequency counting.
+\#\#\#\# 3. \passthrough{\lstinline!argparse!} Introduced in Python 3.2
+to replace \passthrough{\lstinline!optparse!},
+\passthrough{\lstinline!argparse!} uses a parser state machine to
+process command-line arguments. It builds a hierarchical action registry
+(\passthrough{\lstinline!\_actions!} list) containing
+\passthrough{\lstinline!Action!} objects (e.g.,
+\passthrough{\lstinline!\_StoreAction!},
+\passthrough{\lstinline!\_StoreConstAction!}). During
+\passthrough{\lstinline!parse\_args()!}, it iterates over argument
+strings, matches positional arguments and optional flags (using a
+regular expression mapping state machine), and applies type coercion
+hooks (e.g., \passthrough{\lstinline!int!},
+\passthrough{\lstinline!float!}) before writing variables to a
+\passthrough{\lstinline!Namespace!} object.

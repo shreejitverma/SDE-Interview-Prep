@@ -1,0 +1,109 @@
+\hypertarget{iterators-generators-and-co-routines}{%
+\chapter{ITERATORS, GENERATORS, AND
+CO-ROUTINES}\label{iterators-generators-and-co-routines}}
+
+\hypertarget{the-iterator-protocol-at-the-bytecode-level}{%
+\subsection{9.1 The Iterator Protocol at the Bytecode
+Level}\label{the-iterator-protocol-at-the-bytecode-level}}
+
+An iterator is defined by implementing
+\passthrough{\lstinline!\_\_iter\_\_()!} (which returns the iterator
+object itself) and \passthrough{\lstinline!\_\_next\_\_()!} (which
+returns the next value or raises
+\passthrough{\lstinline!StopIteration!}). * \textbf{Bytecode
+Compilation}: The compiler optimizes loops targeting iterators by
+emitting specialized bytecodes: - \passthrough{\lstinline!GET\_ITER!}:
+Pops the iterable from the stack, calls its
+\passthrough{\lstinline!\_\_iter\_\_()!}, and pushes the resulting
+iterator back onto the stack. - \passthrough{\lstinline!FOR\_ITER!}:
+Calls \passthrough{\lstinline!\_\_next\_\_()!} on the iterator. If a
+value is returned, it is pushed onto the stack and execution jumps to
+the loop body. If \passthrough{\lstinline!StopIteration!} is caught, the
+exception is cleared, and the instruction pointer jumps past the loop.
+
+\hypertarget{generator-execution-frame-suspension}{%
+\subsection{9.2 Generator Execution Frame
+Suspension}\label{generator-execution-frame-suspension}}
+
+Standard function calls allocate a stack frame, execute, and release the
+frame. Generator functions behave differently: * \textbf{Heap
+Preservation}: When a function containing the
+\passthrough{\lstinline!yield!} keyword is called, it returns a
+generator object wrapping a \passthrough{\lstinline!PyFrameObject!}. *
+\textbf{Yield Mechanism}: When \passthrough{\lstinline!yield!} is
+evaluated, the interpreter saves the current state (evaluation stack
+values and the next instruction pointer
+\passthrough{\lstinline!f\_lasti!} in the frame) and returns the yielded
+value. The frame is \textbf{not} popped from the call stack; it remains
+allocated on the heap. * \textbf{Next Mechanism}: When
+\passthrough{\lstinline!next()!} is called again on the generator, the
+CPython evaluation loop loads the suspended frame, restores its
+registers and evaluation stack, and continues execution from the saved
+\passthrough{\lstinline!f\_lasti!}.
+
+\begin{lstlisting}
+Generator Frame Suspension Flow:
+[Call generator] -> [Allocates PyFrameObject on Heap]
+                           |
+                           v
+[Run bytecode] ------> [Hits YIELD]
+   ^                       |
+   |                       v
+   |                  [Save frame state (f_lasti)] -> [Return value to caller]
+   |                       |
+   +---[Call next()]-------+
+\end{lstlisting}
+
+\hypertarget{generator-communication-protocol}{%
+\subsection{9.3 Generator Communication
+Protocol}\label{generator-communication-protocol}}
+
+Generators support bidirectional data exchange via the methods: *
+\passthrough{\lstinline!send(value)!}: Resumes execution and passes
+\passthrough{\lstinline!value!} back into the generator as the result of
+the \passthrough{\lstinline!yield!} expression. *
+\passthrough{\lstinline!throw(type, value)!}: Raises an exception at the
+generator's current execution point. The generator can catch this
+exception or propagate it. * \passthrough{\lstinline!close()!}: Raises a
+\passthrough{\lstinline!GeneratorExit!} exception in the generator to
+run cleanup blocks (e.g.~\passthrough{\lstinline!try/finally!} resource
+releases) and terminates the generator.
+
+\begin{lstlisting}[language=Python]
+# Bidirectional Communication Trace
+def bidirectional_generator():
+    try:
+        val = yield "Ready"
+        print("Received value inside generator:", val)
+        yield f"Echo: {val}"
+    except ValueError:
+        print("Caught ValueError in generator")
+        yield "Recovered"
+
+gen = bidirectional_generator()
+print(next(gen)) # Start generator (yields "Ready")
+print(gen.send("Hello World")) # Sends "Hello World", yields "Echo: Hello World"
+
+gen_err = bidirectional_generator()
+next(gen_err)
+print(gen_err.throw(ValueError)) # Raises error inside generator, yields "Recovered"
+\end{lstlisting}
+
+\hypertarget{pep-380-generator-delegation-via-yield-from}{%
+\subsection{9.4 PEP 380: Generator Delegation via yield
+from}\label{pep-380-generator-delegation-via-yield-from}}
+
+Introduced in Python 3.3,
+\passthrough{\lstinline!yield from <iterable>!} delegates operations to
+another generator (the sub-generator): * \textbf{Transparent Channel}:
+It establishes a direct, bidirectional channel between the outer caller
+and the sub-generator. * \textbf{Automated Propagation}: - Values sent
+via \passthrough{\lstinline!send()!} are routed directly to the
+sub-generator. - Exceptions thrown via \passthrough{\lstinline!throw()!}
+are raised inside the sub-generator. -
+\passthrough{\lstinline!StopIteration!} raised by the sub-generator is
+caught automatically, and its \passthrough{\lstinline!value!} attribute
+becomes the result of the \passthrough{\lstinline!yield from!}
+expression.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}

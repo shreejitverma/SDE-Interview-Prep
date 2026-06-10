@@ -1,0 +1,425 @@
+\contentsline {chapter}{\numberline {1}Preface}{1}{chapter.1}%
+\contentsline {chapter}{\numberline {2}Python Zero to Godhood: Complete Evolution and Comprehensive Feature Guide}{2}{chapter.2}%
+\contentsline {section}{\numberline {2.1}Preface}{2}{section.2.1}%
+\contentsline {subsection}{\numberline {2.1.1}About the Author}{2}{subsection.2.1.1}%
+\contentsline {subsection}{\numberline {2.1.2}Book Purpose \& Scope}{2}{subsection.2.1.2}%
+\contentsline {section}{\numberline {2.2}Table of Contents}{2}{section.2.2}%
+\contentsline {subsection}{\numberline {2.2.1}Volume I: Classic Python \& Core Engine (Python 1.0 to 2.7)}{2}{subsection.2.2.1}%
+\contentsline {subsection}{\numberline {2.2.2}Volume II: The Python 3 Schism \& Core Enhancements (Python 3.0 to 3.2)}{2}{subsection.2.2.2}%
+\contentsline {subsection}{\numberline {2.2.3}Volume III: Generators, Iterators, and Async Inception (Python 3.3 to 3.5)}{3}{subsection.2.2.3}%
+\contentsline {subsection}{\numberline {2.2.4}Volume IV: Expressiveness \& Developer Ergonomics (Python 3.6 to 3.7)}{3}{subsection.2.2.4}%
+\contentsline {subsection}{\numberline {2.2.5}Volume V: Structural Shifts \& Pattern Matching (Python 3.8 to 3.10)}{3}{subsection.2.2.5}%
+\contentsline {subsection}{\numberline {2.2.6}Volume VI: Performance Leap \& Runtime Mechanics (Python 3.11 to 3.12)}{3}{subsection.2.2.6}%
+\contentsline {subsection}{\numberline {2.2.7}Volume VII: The GIL-less Future \& JIT Compilers (Python 3.13 to 3.14+)}{3}{subsection.2.2.7}%
+\contentsline {subsection}{\numberline {2.2.8}Volume VIII: Runtime Internals \& C Extensions}{3}{subsection.2.2.8}%
+\contentsline {subsection}{\numberline {2.2.9}Volume IX: High Performance \& Low Latency Concurrency}{3}{subsection.2.2.9}%
+\contentsline {part}{I\hspace {1em}Volume I: Classic Python \& Core Engine}{4}{part.1}%
+\contentsline {chapter}{\numberline {3}Python 1.0 to 1.6: Inception \& the LL(1) Executable Pipeline}{5}{chapter.3}%
+\contentsline {subsection}{\numberline {3.0.1}1.1 Chronological Inception \& Core Design Philosophies}{5}{subsection.3.0.1}%
+\contentsline {subsection}{\numberline {3.0.2}1.2 CPython Parser Evolution: LL(1) Left-Recursion Math vs.~PEG}{5}{subsection.3.0.2}%
+\contentsline {subsubsection}{1. Left-Recursion in LL(1)}{5}{section*.2}%
+\contentsline {subsubsection}{2. Grammar Rewriting Workarounds}{6}{section*.3}%
+\contentsline {subsubsection}{3. Parsing Expression Grammar (PEG) Parser (PEP 617)}{6}{section*.4}%
+\contentsline {subsection}{\numberline {3.0.3}1.3 Compilation, AST, and the Symbol Table Pass}{6}{subsection.3.0.3}%
+\contentsline {subsubsection}{1. Variable Scope Classification}{6}{section*.5}%
+\contentsline {subsubsection}{2. Closure Cells (\texttt {PyCellObject})}{6}{section*.6}%
+\contentsline {subsubsection}{3. The Dynamic Namespace Trap}{7}{section*.7}%
+\contentsline {subsubsection}{4. Symbol Table Inspection}{7}{section*.8}%
+\contentsline {subsection}{\numberline {3.0.4}1.4 PyCodeObject \& Bytecode Anatomy}{7}{subsection.3.0.4}%
+\contentsline {subsubsection}{1. C-Level Structure of \texttt {PyCodeObject}}{7}{section*.9}%
+\contentsline {subsubsection}{2. Instruction Decoding and \texttt {EXTENDED\_ARG}}{8}{section*.10}%
+\contentsline {subsection}{\numberline {3.0.5}1.5 The Virtual Machine Execution Loop \& Frame Objects}{8}{subsection.3.0.5}%
+\contentsline {subsubsection}{1. C-Level Structure of \texttt {PyFrameObject}}{8}{section*.11}%
+\contentsline {subsubsection}{2. CPython VM Evaluation Loop (\texttt {\_PyEval\_EvalFrameDefault})}{9}{section*.12}%
+\contentsline {subsubsection}{3. Value Stack Execution Walkthrough}{9}{section*.13}%
+\contentsline {chapter}{\numberline {4}Python 1.x: The PyObject Model \& Reference Counting Core}{11}{chapter.4}%
+\contentsline {subsection}{\numberline {4.0.1}2.1 The Unified \texttt {PyObject} \& \texttt {PyVarObject} Structs}{11}{subsection.4.0.1}%
+\contentsline {subsubsection}{1. Comparison to C++ Memory Layout}{11}{section*.14}%
+\contentsline {subsection}{\numberline {4.0.2}2.2 The Type-Object Slot System}{12}{subsection.4.0.2}%
+\contentsline {subsubsection}{1. Type Struct Slots layout}{12}{section*.15}%
+\contentsline {subsubsection}{2. Dunder Methods to Slot Mapping}{12}{section*.16}%
+\contentsline {subsection}{\numberline {4.0.3}2.3 Reference Counting Lifecycle}{13}{subsection.4.0.3}%
+\contentsline {subsubsection}{1. C-Level Reference Modification Macros}{13}{section*.17}%
+\contentsline {subsubsection}{2. The Deallocation Pipeline}{13}{section*.18}%
+\contentsline {subsubsection}{3. Leak Tracking in C Extensions}{13}{section*.19}%
+\contentsline {subsection}{\numberline {4.0.4}2.4 Built-in Caching and Interning Optimizations}{13}{subsection.4.0.4}%
+\contentsline {subsubsection}{1. Small Integer Cache}{14}{section*.20}%
+\contentsline {subsubsection}{2. String Interning}{14}{section*.21}%
+\contentsline {subsubsection}{3. Empty Collections and Singletons}{14}{section*.22}%
+\contentsline {chapter}{\numberline {5}Python 2.0 to 2.1: Comprehensions, Nested Scopes, \& Cycle-Detecting GC}{15}{chapter.5}%
+\contentsline {subsection}{\numberline {5.0.1}3.1 Python 2.0 List Comprehensions \& Scope Leakage}{15}{subsection.5.0.1}%
+\contentsline {subsubsection}{1. Inline Loop Compilation}{15}{section*.23}%
+\contentsline {subsubsection}{2. Bytecode Analysis}{15}{section*.24}%
+\contentsline {subsubsection}{3. Modern Python 3 Isolation}{16}{section*.25}%
+\contentsline {subsection}{\numberline {5.0.2}3.2 PEP 227 Nested Scopes and LEGB Name Resolution}{16}{subsection.5.0.2}%
+\contentsline {subsubsection}{1. The LEGB Resolution Engine (PEP 227)}{16}{section*.26}%
+\contentsline {subsection}{\numberline {5.0.3}3.3 Closure Mechanics and Bytecode Compilation}{16}{subsection.5.0.3}%
+\contentsline {subsubsection}{1. Bytecode Compilation Trace}{16}{section*.27}%
+\contentsline {subsubsection}{2. Instruction Walkthrough}{17}{section*.28}%
+\contentsline {subsection}{\numberline {5.0.4}3.4 Python 2.0 Cycle-Detecting Generational Garbage Collector}{17}{subsection.5.0.4}%
+\contentsline {subsubsection}{1. Tracked Objects and GC Headers}{18}{section*.29}%
+\contentsline {subsubsection}{2. Generational Strategy}{18}{section*.30}%
+\contentsline {subsubsection}{3. Cycle Isolation Algorithm}{18}{section*.31}%
+\contentsline {chapter}{\numberline {6}Python 2.2 to 2.3: Type-Class Unification, Descriptors, \& C3 MRO}{19}{chapter.6}%
+\contentsline {subsection}{\numberline {6.0.1}4.1 Type-Class Unification: The Inception of New-Style Classes (PEP 252 \& PEP 253)}{19}{subsection.6.0.1}%
+\contentsline {subsubsection}{1. The Classic Class Inconsistency}{19}{section*.32}%
+\contentsline {subsubsection}{2. The Solution: New-Style Classes and \texttt {object}}{19}{section*.33}%
+\contentsline {subsubsection}{3. Low-Level C Representation: \texttt {PyTypeObject}}{19}{section*.34}%
+\contentsline {subsubsection}{4. Slot Wrapper Descriptors}{20}{section*.35}%
+\contentsline {subsection}{\numberline {6.0.2}4.2 The Descriptor Protocol \& Attribute Lookup Chain}{20}{subsection.6.0.2}%
+\contentsline {subsubsection}{1. The Descriptor Protocol Definition}{21}{section*.36}%
+\contentsline {subsubsection}{2. The Attribute Lookup Algorithm (\texttt {PyObject\_GenericGetAttr})}{21}{section*.37}%
+\contentsline {subsubsection}{3. C-Level descriptor specifications: \texttt {PyGetSetDef}}{22}{section*.38}%
+\contentsline {subsubsection}{4. Practical Implementation of Core Decorators}{22}{section*.39}%
+\contentsline {subsubsection}{3. Python 2.3+ MRO: The C3 Linearization Algorithm}{24}{section*.40}%
+\contentsline {paragraph}{Mathematical Formulation:}{24}{section*.41}%
+\contentsline {paragraph}{The Merge Operation:}{24}{section*.42}%
+\contentsline {paragraph}{Step-by-Step Mathematical Calculation of \texttt {Z(K1,\ K2,\ K3)}:}{24}{section*.43}%
+\contentsline {subsection}{\numberline {6.0.3}4.4 Instance Lifecycle: Allocation vs.~Initialization}{25}{subsection.6.0.3}%
+\contentsline {chapter}{\numberline {7}Python 2.4 to 2.7: Decorators, Context Managers, \& the 2.x Twilight}{26}{chapter.7}%
+\contentsline {subsection}{\numberline {7.0.1}5.1 Decorators: Syntactic Sugar and Compiler Mechanics (PEP 318 \& PEP 3129)}{26}{subsection.7.0.1}%
+\contentsline {subsubsection}{1. Compiler Translation \& Bytecode Analysis}{26}{section*.44}%
+\contentsline {subsubsection}{2. Decorator Execution Flow}{27}{section*.45}%
+\contentsline {subsubsection}{3. Class Decorators (PEP 3129)}{27}{section*.46}%
+\contentsline {subsection}{\numberline {7.0.2}5.2 Context Managers and the \texttt {with} Statement (PEP 343)}{27}{subsection.7.0.2}%
+\contentsline {subsubsection}{1. The Context Manager Protocol}{27}{section*.47}%
+\contentsline {subsubsection}{2. Compiler Translation to Try-Finally}{27}{section*.48}%
+\contentsline {subsubsection}{3. Bytecode Implementation and the Block Stack}{28}{section*.49}%
+\contentsline {subsection}{\numberline {7.0.3}5.3 Generator Enhancements: Coroutines and Frame Suspension (PEP 342)}{28}{subsection.7.0.3}%
+\contentsline {subsubsection}{1. Bidirectional Methods}{28}{section*.50}%
+\contentsline {subsubsection}{2. Frame Suspension Mechanics (\texttt {PyFrameObject})}{28}{section*.51}%
+\contentsline {subsection}{\numberline {7.0.4}5.4 Under-the-Hood CPython Data Structure Layouts}{29}{subsection.7.0.4}%
+\contentsline {subsubsection}{1. Python List Layout (\texttt {PyListObject})}{29}{section*.52}%
+\contentsline {subsubsection}{2. Classic Sparse Dictionary Layout (Pre-Python 3.6)}{29}{section*.53}%
+\contentsline {subsubsection}{3. Sets Optimization (\texttt {PySetObject})}{30}{section*.54}%
+\contentsline {subsubsection}{4. Tuples Optimization (\texttt {PyTupleObject})}{30}{section*.55}%
+\contentsline {chapter}{\numberline {8}Python 2.x: Low-Level File I/O \& Exceptions Unwinding Blocks}{31}{chapter.8}%
+\contentsline {subsection}{\numberline {8.0.1}6.1 Low-Level File Management and Standard Streams wrapping}{31}{subsection.8.0.1}%
+\contentsline {subsubsection}{1. The CPython 2.x \texttt {PyFileObject} Layout}{31}{section*.56}%
+\contentsline {subsubsection}{2. The \texttt {f\_softspace} Printing Flag}{31}{section*.57}%
+\contentsline {subsubsection}{3. Redundant Locking Bottlenecks under the GIL}{31}{section*.58}%
+\contentsline {subsubsection}{4. The Layered I/O System (PEP 3116)}{32}{section*.59}%
+\contentsline {subsection}{\numberline {8.0.2}6.2 Exception Mechanics and the Thread State slots}{32}{subsection.8.0.2}%
+\contentsline {subsubsection}{1. Exception Slots in \texttt {PyThreadState}}{32}{section*.60}%
+\contentsline {subsubsection}{2. The String Exception Era}{32}{section*.61}%
+\contentsline {subsection}{\numberline {8.0.3}6.3 The Try-Except-Finally Block Stack and Stack Restoration}{33}{subsection.8.0.3}%
+\contentsline {subsubsection}{1. The \texttt {PyTryBlock} Structure}{33}{section*.62}%
+\contentsline {subsubsection}{2. VM Exception Unwinding Flow}{33}{section*.63}%
+\contentsline {part}{II\hspace {1em}Volume II: The Python 3 Schism \& Core Enhancements}{34}{part.2}%
+\contentsline {chapter}{\numberline {9}Python 3.0: The Unicode Paradigm Shift and Text vs.~Bytes Separation}{35}{chapter.9}%
+\contentsline {subsection}{\numberline {9.0.1}7.1 The Unicode Paradigm Shift and Text vs.~Bytes Separation (PEP 358 \& PEP 3112)}{35}{subsection.9.0.1}%
+\contentsline {subsubsection}{1. The Python 2.x Concatenation Trap and Coercion Ban}{35}{section*.64}%
+\contentsline {subsubsection}{2. C-Level Representations of Binary Objects: \texttt {PyBytesObject} \& \texttt {PyByteArrayObject}}{35}{section*.65}%
+\contentsline {subsubsection}{3. Low-Level C Representation: Pre-PEP 393 \texttt {PyUnicodeObject}}{36}{section*.66}%
+\contentsline {subsubsection}{4. PEP 383: The \texttt {surrogateescape} Error Handler Mechanics}{36}{section*.67}%
+\contentsline {subsection}{\numberline {9.0.2}7.2 The \texttt {print()} Function Redesign}{37}{subsection.9.0.2}%
+\contentsline {subsubsection}{1. Bytecode Comparison}{37}{section*.68}%
+\contentsline {paragraph}{Python 2.7 compiler translation for \texttt {print\ "hello"}:}{37}{lstlisting.9.-60}%
+\contentsline {paragraph}{Python 3.0 compiler translation for \texttt {print("hello")}:}{37}{lstlisting.9.-61}%
+\contentsline {subsubsection}{2. C-Level stream writing \& TextIOWrapper}{37}{section*.71}%
+\contentsline {subsection}{\numberline {9.0.3}7.3 Division Unification (PEP 238)}{38}{subsection.9.0.3}%
+\contentsline {subsubsection}{1. The Division Operators and Bytecodes}{38}{section*.72}%
+\contentsline {subsubsection}{2. C-Level Integer Division Mechanics}{38}{section*.73}%
+\contentsline {subsection}{\numberline {9.0.4}7.4 Lazy Iterators \& Dictionary View Objects}{39}{subsection.9.0.4}%
+\contentsline {subsubsection}{1. Lazy Conversions \& \texttt {rangeobject} Memory Layout}{39}{section*.74}%
+\contentsline {subsubsection}{2. Dictionary View Objects}{39}{section*.75}%
+\contentsline {chapter}{\numberline {10}Python 3.1 to 3.2: Standard Library Consolidation and Threading Pools}{40}{chapter.10}%
+\contentsline {subsection}{\numberline {10.0.1}8.1 Antoine Pitrou's New GIL (Python 3.2)}{40}{subsection.10.0.1}%
+\contentsline {subsubsection}{1. The Convoy Effect \& GIL Battle under the Ticker-Based GIL}{40}{section*.76}%
+\contentsline {subsubsection}{2. The Interval-Based GIL Architecture}{40}{section*.77}%
+\contentsline {subsubsection}{3. Step-by-Step Thread State Transitions \& Mutex Flow}{40}{section*.78}%
+\contentsline {subsection}{\numberline {10.0.2}8.2 Thread Pools and Process Pools (\texttt {concurrent.futures} / PEP 3148)}{41}{subsection.10.0.2}%
+\contentsline {subsubsection}{1. \texttt {ThreadPoolExecutor} Mechanics}{41}{section*.79}%
+\contentsline {subsubsection}{2. \texttt {ProcessPoolExecutor} \& IPC Serialization Bottlenecks}{42}{section*.80}%
+\contentsline {subsubsection}{3. Future State Tracking}{42}{section*.81}%
+\contentsline {subsection}{\numberline {10.0.3}8.3 Standard Library Consolidation}{42}{subsection.10.0.3}%
+\contentsline {subsubsection}{1. \texttt {OrderedDict} (PEP 372)}{42}{section*.82}%
+\contentsline {subsubsection}{2. \texttt {Counter}}{43}{section*.83}%
+\contentsline {part}{III\hspace {1em}Volume III: Generators, Iterators, and Async Inception}{44}{part.3}%
+\contentsline {chapter}{\numberline {11}Python 3.3: Yield From Generators and Implicit Namespace Packages}{45}{chapter.11}%
+\contentsline {subsection}{\numberline {11.0.1}9.1 PEP 380: Generator Delegation via \texttt {yield\ from}}{45}{subsection.11.0.1}%
+\contentsline {subsubsection}{1. Bytecode Compilation and Stack Transitions}{45}{section*.84}%
+\contentsline {subsubsection}{2. C-Level Generator Mechanics: \texttt {PyGenObject}}{45}{section*.85}%
+\contentsline {subsubsection}{3. Exception \& Value Routing Protocol}{46}{section*.86}%
+\contentsline {subsection}{\numberline {11.0.2}9.2 PEP 420: Implicit Namespace Packages}{46}{subsection.11.0.2}%
+\contentsline {subsubsection}{1. Import Search Algorithm in \texttt {importlib}}{46}{section*.87}%
+\contentsline {subsubsection}{2. Namespace Modules}{46}{section*.88}%
+\contentsline {subsection}{\numberline {11.0.3}9.3 PEP 393: Flexible String Representation}{47}{subsection.11.0.3}%
+\contentsline {subsubsection}{1. C-Level Layout Headers}{47}{section*.89}%
+\contentsline {subsubsection}{2. String Kind Allocation and Promotion Rules}{47}{section*.90}%
+\contentsline {subsection}{\numberline {11.0.4}9.4 \texttt {memoryview} and the Buffer Protocol (\texttt {Py\_buffer})}{48}{subsection.11.0.4}%
+\contentsline {subsubsection}{1. The \texttt {Py\_buffer} Struct}{48}{section*.91}%
+\contentsline {subsubsection}{2. Multidimensional Strides Mathematics}{48}{section*.92}%
+\contentsline {subsubsection}{3. Buffer Locking \& Safety}{48}{section*.93}%
+\contentsline {chapter}{\numberline {12}Python 3.4: Asyncio Inception, Pathlib, and Enum Architectures}{49}{chapter.12}%
+\contentsline {subsection}{\numberline {12.0.1}10.1 Asyncio Inception: Generators and Event Loops (PEP 3156)}{49}{subsection.12.0.1}%
+\contentsline {subsubsection}{1. Generator-Based Coroutine Syntax}{49}{section*.94}%
+\contentsline {subsubsection}{2. The Event Loop and Selector Multiplexing}{49}{section*.95}%
+\contentsline {subsubsection}{3. Future and Task Execution Cycle}{49}{section*.96}%
+\contentsline {paragraph}{The Step-by-Step Task Loop:}{49}{section*.97}%
+\contentsline {subsection}{\numberline {12.0.2}10.2 \texttt {pathlib}: Object-Oriented Filesystem Paths (PEP 428)}{50}{subsection.12.0.2}%
+\contentsline {subsubsection}{1. Class Hierarchy}{50}{section*.98}%
+\contentsline {subsubsection}{2. Path Concatenation Operator Overloading}{50}{section*.99}%
+\contentsline {subsection}{\numberline {12.0.3}10.3 \texttt {Enum}: Metaclass and Singletons (PEP 435)}{51}{subsection.12.0.3}%
+\contentsline {subsubsection}{1. Metaclass Construction: \texttt {EnumMeta}}{51}{section*.100}%
+\contentsline {subsubsection}{2. Immuntability and Protections}{51}{section*.101}%
+\contentsline {chapter}{\numberline {13}Python 3.5: Native Async/Await Coroutines and Matrix Operations}{52}{chapter.13}%
+\contentsline {subsection}{\numberline {13.0.1}11.1 PEP 492: Native Coroutines (\texttt {async/await} Internals)}{52}{subsection.13.0.1}%
+\contentsline {subsubsection}{1. The Generator-Coroutine Limitation}{52}{section*.102}%
+\contentsline {subsubsection}{2. CPython Representation: \texttt {PyCoroObject}}{52}{section*.103}%
+\contentsline {subsubsection}{3. The \texttt {am\_await} Slot Protocol}{53}{section*.104}%
+\contentsline {subsubsection}{4. Bytecode Compilation and Tracing: \texttt {GET\_AWAITABLE}}{53}{section*.105}%
+\contentsline {paragraph}{Disassembly of \texttt {get\_val}:}{54}{lstlisting.13.-88}%
+\contentsline {paragraph}{Disassembly of \texttt {main}:}{54}{lstlisting.13.-89}%
+\contentsline {paragraph}{Step-by-Step VM Execution Trace of \texttt {main()}:}{54}{section*.108}%
+\contentsline {subsection}{\numberline {13.0.2}11.2 Matrix Multiplication Operator (\texttt {@} / PEP 465)}{54}{subsection.13.0.2}%
+\contentsline {subsubsection}{1. Low-Level C Slots Mapping}{55}{section*.109}%
+\contentsline {subsubsection}{2. Python-Level Interface and Numeric Implementations}{55}{section*.110}%
+\contentsline {subsubsection}{3. High-Performance Implementations}{55}{section*.111}%
+\contentsline {subsection}{\numberline {13.0.3}11.3 Extended Unpacking Generalizations (PEP 448)}{56}{subsection.13.0.3}%
+\contentsline {subsubsection}{1. Bytecode Compilation and Unpacking Instructions}{56}{section*.112}%
+\contentsline {subsubsection}{2. Detailed Bytecode Traces}{56}{section*.113}%
+\contentsline {paragraph}{Case A: List Unpacking with Multiple Iterables}{56}{section*.114}%
+\contentsline {paragraph}{Case B: Dictionary Unpacking with Multiple Mappings}{56}{section*.115}%
+\contentsline {part}{IV\hspace {1em}Volume IV: Expressiveness \& Developer Ergonomics}{58}{part.4}%
+\contentsline {chapter}{\numberline {14}Python 3.6: F-Strings Formatting, Variable Annotations, and Compact Dicts}{59}{chapter.14}%
+\contentsline {subsection}{\numberline {14.0.1}12.1 PEP 498: Formatted String Literals (f-strings)}{59}{subsection.14.0.1}%
+\contentsline {subsubsection}{1. Legacy Formatting Overheads}{59}{section*.116}%
+\contentsline {subsubsection}{2. f-String Compilation Mechanics}{59}{section*.117}%
+\contentsline {paragraph}{CPython \texttt {FORMAT\_VALUE} Flag Specification:}{59}{section*.118}%
+\contentsline {subsubsection}{3. Bytecode Disassembly Analysis}{60}{section*.119}%
+\contentsline {paragraph}{Disassembly of \texttt {legacy\_format}:}{60}{lstlisting.14.-99}%
+\contentsline {paragraph}{Disassembly of \texttt {fstring\_format}:}{60}{lstlisting.14.-100}%
+\contentsline {subsection}{\numberline {14.0.2}12.2 PEP 526: Syntax for Variable Annotations}{60}{subsection.14.0.2}%
+\contentsline {subsubsection}{1. Class and Module Level Annotations}{61}{section*.122}%
+\contentsline {paragraph}{Compiled Bytecode for \texttt {Profile} class namespace creation:}{61}{lstlisting.14.-102}%
+\contentsline {subsubsection}{2. Function-Level Variable Annotations}{61}{section*.124}%
+\contentsline {paragraph}{Disassembly of \texttt {process}:}{61}{lstlisting.14.-104}%
+\contentsline {subsubsection}{3. Forward References and Runtime Inspection}{62}{section*.126}%
+\contentsline {subsection}{\numberline {14.0.3}12.3 CPython Compact Dictionary Design}{62}{subsection.14.0.3}%
+\contentsline {subsubsection}{1. Legacy Dictionary Layout (Pre-3.6)}{62}{section*.127}%
+\contentsline {paragraph}{Legacy Sparse Array Layout:}{62}{lstlisting.14.-108}%
+\contentsline {subsubsection}{2. The Compact Dictionary Layout}{62}{section*.129}%
+\contentsline {paragraph}{Compact Array Layout (CPython 3.6+):}{63}{lstlisting.14.-109}%
+\contentsline {paragraph}{Dynamic Lookup Walkthrough:}{63}{section*.131}%
+\contentsline {subsubsection}{3. Core Structural Implications}{63}{section*.132}%
+\contentsline {chapter}{\numberline {15}Python 3.7: Dataclasses, Context Variables, and Dict Ordering Guarantees}{64}{chapter.15}%
+\contentsline {subsection}{\numberline {15.0.1}13.1 PEP 557: Dataclasses under the hood}{64}{subsection.15.0.1}%
+\contentsline {subsubsection}{1. Import-Time Code Generation Mechanics}{64}{section*.133}%
+\contentsline {subsubsection}{2. Specialized Flags and post-init Hooks}{64}{section*.134}%
+\contentsline {subsection}{\numberline {15.0.2}13.2 PEP 567: Context Variables (\texttt {contextvars})}{65}{subsection.15.0.2}%
+\contentsline {subsubsection}{1. The Thread-Local Storage Flaw in Async Code}{65}{section*.135}%
+\contentsline {subsubsection}{2. Hash Array Mapped Trie (HAMT) Internals}{65}{section*.136}%
+\contentsline {subsubsection}{3. Task Context Switching}{65}{section*.137}%
+\contentsline {subsection}{\numberline {15.0.3}13.3 Dictionary Insertion-Order Guarantee}{65}{subsection.15.0.3}%
+\contentsline {subsubsection}{1. Scope of the Guarantee}{65}{section*.138}%
+\contentsline {subsubsection}{2. Impact on the Ecosystem}{66}{section*.139}%
+\contentsline {subsection}{\numberline {15.0.4}13.4 Properties \& Cached Properties (Descriptor Protocol)}{66}{subsection.15.0.4}%
+\contentsline {subsubsection}{1. Data vs.~Non-Data Descriptors}{66}{section*.140}%
+\contentsline {subsubsection}{2. CPython Attribute Resolution Precedence}{66}{section*.141}%
+\contentsline {subsubsection}{3. How \texttt {functools.cached\_property} Exploits Precedence}{66}{section*.142}%
+\contentsline {paragraph}{Conceptual Implementation of \texttt {cached\_property}:}{66}{lstlisting.15.-111}%
+\contentsline {paragraph}{Lookup Flow:}{67}{section*.144}%
+\contentsline {subsection}{\numberline {15.0.5}13.5 Instance Slots Optimization (\texttt {\_\_slots\_\_})}{67}{subsection.15.0.5}%
+\contentsline {subsubsection}{1. Struct Layout Changes}{67}{section*.145}%
+\contentsline {subsubsection}{2. Member Descriptors}{67}{section*.146}%
+\contentsline {subsubsection}{3. Trade-offs and Limitations}{67}{section*.147}%
+\contentsline {part}{V\hspace {1em}Volume V: Structural Shifts \& Pattern Matching}{69}{part.5}%
+\contentsline {chapter}{\numberline {16}Python 3.8: Walrus Operator (:=) and Positional-Only Parameters (/)}{70}{chapter.16}%
+\contentsline {subsection}{\numberline {16.0.1}14.1 The Assignment Expression (\texttt {:=} / PEP 572)}{70}{subsection.16.0.1}%
+\contentsline {subsubsection}{1. AST Representation}{70}{section*.148}%
+\contentsline {subsubsection}{2. Bytecode \& Stack Operations}{70}{section*.149}%
+\contentsline {paragraph}{CPython 3.8 Bytecode:}{70}{lstlisting.16.-117}%
+\contentsline {paragraph}{CPython 3.11+ Optimized Bytecode:}{71}{lstlisting.16.-118}%
+\contentsline {subsubsection}{3. Scoping Rules and Symbol Table Traversal}{71}{section*.152}%
+\contentsline {paragraph}{Disassembly of \texttt {parent\_func}:}{71}{lstlisting.16.-120}%
+\contentsline {paragraph}{Disassembly of the nested \texttt {\textless {}listcomp\textgreater {}} code object:}{71}{lstlisting.16.-121}%
+\contentsline {subsubsection}{4. Compiler Restrictions}{72}{section*.155}%
+\contentsline {subsection}{\numberline {16.0.2}14.2 Positional-Only Parameters (\texttt {/} / PEP 570)}{72}{subsection.16.0.2}%
+\contentsline {subsubsection}{1. C-level Representation in \texttt {PyCodeObject}}{72}{section*.156}%
+\contentsline {subsubsection}{2. Argument Parsing and Vectorcall Optimization (PEP 590)}{73}{section*.157}%
+\contentsline {paragraph}{The Vectorcall Matching Algorithm:}{73}{section*.158}%
+\contentsline {chapter}{\numberline {17}Python 3.9 to 3.10: PEG Parser, Dict Merge (\textbar ), and Pattern Matching}{74}{chapter.17}%
+\contentsline {subsection}{\numberline {17.0.1}15.1 CPython Parser Evolution: LL(1) to PEG (PEP 617)}{74}{subsection.17.0.1}%
+\contentsline {subsubsection}{1. Limitations of the Classic LL(1) Parser}{74}{section*.159}%
+\contentsline {subsubsection}{2. The PEG Parser Architecture}{74}{section*.160}%
+\contentsline {subsubsection}{3. Enabling Syntax Improvements}{74}{section*.161}%
+\contentsline {subsection}{\numberline {17.0.2}15.2 PEP 584: Dictionary Union Operators (\texttt {\textbar {}} and \texttt {\textbar {}=})}{75}{subsection.17.0.2}%
+\contentsline {subsubsection}{1. Legacy Workarounds}{75}{section*.162}%
+\contentsline {subsubsection}{2. Low-Level C-Level Slot Mappings}{75}{section*.163}%
+\contentsline {subsubsection}{3. Type Constraints and Subclassing}{75}{section*.164}%
+\contentsline {subsection}{\numberline {17.0.3}15.3 PEP 634: Structural Pattern Matching (Decision Trees)}{75}{subsection.17.0.3}%
+\contentsline {subsubsection}{1. Decision DAGs vs.~Sequential Linear Scans}{76}{section*.165}%
+\contentsline {subsubsection}{2. CPython Pattern Matching Bytecodes}{76}{section*.166}%
+\contentsline {subsubsection}{3. Class Patterns and \texttt {MATCH\_CLASS} Disassembly Trace}{76}{section*.167}%
+\contentsline {paragraph}{Disassembly of \texttt {check\_point}:}{76}{lstlisting.17.-128}%
+\contentsline {paragraph}{C-Level Execution of \texttt {MATCH\_CLASS}:}{77}{section*.169}%
+\contentsline {chapter}{\numberline {18}Python 3.8 to 3.10: Type Hinting Protocols and Structural Subtyping}{78}{chapter.18}%
+\contentsline {subsection}{\numberline {18.0.1}16.1 Nominal vs.~Structural Subtyping}{78}{subsection.18.0.1}%
+\contentsline {subsubsection}{1. Nominal Subtyping}{78}{section*.170}%
+\contentsline {subsubsection}{2. Structural Subtyping (Static Duck Typing)}{78}{section*.171}%
+\contentsline {subsection}{\numberline {18.0.2}16.2 Runtime Protocols \& \texttt {@runtime\_checkable}}{79}{subsection.18.0.2}%
+\contentsline {subsubsection}{1. The \texttt {\_ProtocolMeta} Metaclass Internals}{79}{section*.172}%
+\contentsline {subsubsection}{2. Metaclass Dunder Overrides}{79}{section*.173}%
+\contentsline {paragraph}{CPython \texttt {\_\_subclasscheck\_\_} Protocol Logic:}{79}{lstlisting.18.-131}%
+\contentsline {paragraph}{Critical Runtime Considerations:}{79}{section*.175}%
+\contentsline {subsection}{\numberline {18.0.3}16.3 Static Type Checking and Variance}{80}{subsection.18.0.3}%
+\contentsline {subsubsection}{1. Mathematical Definition of Variance}{80}{section*.176}%
+\contentsline {subsubsection}{2. Liskov Substitution Principle (LSP)}{80}{section*.177}%
+\contentsline {subsubsection}{3. Compile-Time Type Erasure}{81}{section*.178}%
+\contentsline {part}{VI\hspace {1em}Volume VI: Performance Leap \& Runtime Mechanics}{82}{part.6}%
+\contentsline {chapter}{\numberline {19}Python 3.11: Faster CPython Specializing Interpreter and Adaptive Bytecode}{83}{chapter.19}%
+\contentsline {subsection}{\numberline {19.0.1}17.1 PEP 659 Specialized Adaptive Interpreter Architecture}{83}{subsection.19.0.1}%
+\contentsline {subsubsection}{1. Monomorphism vs.~Polymorphism in Dynamic Execution}{83}{section*.179}%
+\contentsline {subsubsection}{2. Dynamic Instruction Patching}{83}{section*.180}%
+\contentsline {subsection}{\numberline {19.0.2}17.2 Specialized Bytecode Opcodes and Inline Cache Memory Layout}{84}{subsection.19.0.2}%
+\contentsline {subsubsection}{1. Inline Cache Memory Alignment}{84}{section*.181}%
+\contentsline {paragraph}{CPython Bytecode Stream Cache Layout:}{84}{lstlisting.19.-134}%
+\contentsline {subsubsection}{2. C-level Cache Structures inside \texttt {pycore\_code.h}}{84}{section*.183}%
+\contentsline {subsubsection}{3. CPython Type Versioning (\texttt {tp\_version\_tag})}{84}{section*.184}%
+\contentsline {subsubsection}{4. Execution Flow of Specialized Instructions}{85}{section*.185}%
+\contentsline {subsection}{\numberline {19.0.3}17.3 Polymorphic Deoptimization Costs}{85}{subsection.19.0.3}%
+\contentsline {subsubsection}{Coding Guidelines for PEP 659 Optimization:}{85}{section*.186}%
+\contentsline {chapter}{\numberline {20}Python 3.12: Native Generics (PEP 695), Type statement, and Subinterpreters}{86}{chapter.20}%
+\contentsline {subsection}{\numberline {20.0.1}18.1 PEP 695 Type Parameter Syntax}{86}{subsection.20.0.1}%
+\contentsline {subsubsection}{1. Transition from Legacy Declarations}{86}{section*.187}%
+\contentsline {subsubsection}{2. Bound and Constraint Specifications}{86}{section*.188}%
+\contentsline {subsection}{\numberline {20.0.2}18.2 Annotation Scopes and Lazy Evaluation}{87}{subsection.20.0.2}%
+\contentsline {subsubsection}{1. Annotation Scopes}{87}{section*.189}%
+\contentsline {subsubsection}{2. Bytecode Disassembly of the \texttt {type} Statement}{87}{section*.190}%
+\contentsline {paragraph}{Compiled Bytecode:}{87}{lstlisting.20.-140}%
+\contentsline {subsubsection}{3. C-Level Representation of \texttt {TypeAliasType}}{87}{section*.192}%
+\contentsline {subsection}{\numberline {20.0.3}18.3 PEP 684: Per-Interpreter GIL and Subinterpreters}{87}{subsection.20.0.3}%
+\contentsline {subsubsection}{1. C-Level Structural Separation}{88}{section*.193}%
+\contentsline {subsubsection}{2. Isolation Boundaries}{88}{section*.194}%
+\contentsline {subsubsection}{3. Parallel Execution Code Example}{88}{section*.195}%
+\contentsline {chapter}{\numberline {21}Python 3.11 to 3.12: Exception Groups (except*) and Traceback trees}{90}{chapter.21}%
+\contentsline {subsection}{\numberline {21.0.1}19.1 Exception Groups (\texttt {ExceptionGroup} \& \texttt {BaseExceptionGroup} / PEP 654)}{90}{subsection.21.0.1}%
+\contentsline {subsubsection}{1. Exception Group Class Layout and Hierarchy}{90}{section*.196}%
+\contentsline {subsubsection}{2. CPython C-Struct Representation}{90}{section*.197}%
+\contentsline {subsection}{\numberline {21.0.2}19.2 The \texttt {except*} Clause and Exception Tree Filtering}{91}{subsection.21.0.2}%
+\contentsline {subsubsection}{1. Compilation and Bytecode Mechanics}{91}{section*.198}%
+\contentsline {subsubsection}{2. Bytecode Analysis and VM Stack Transitions}{92}{section*.199}%
+\contentsline {subsection}{\numberline {21.0.3}19.3 Exception Tree Filtering Algorithm}{92}{subsection.21.0.3}%
+\contentsline {subsection}{\numberline {21.0.4}19.4 Traceback Representation and \texttt {add\_note()} Internals}{93}{subsection.21.0.4}%
+\contentsline {subsubsection}{1. Traceback Trees}{93}{section*.200}%
+\contentsline {subsubsection}{2. PEP 678 Exception Notes and C-Level Internals}{94}{section*.201}%
+\contentsline {part}{VII\hspace {1em}Volume VII: The GIL-less Future \& JIT Compilers}{96}{part.7}%
+\contentsline {chapter}{\numberline {22}Python 3.13: Free-Threaded Build \& GIL Removal Internals}{97}{chapter.22}%
+\contentsline {subsection}{\numberline {22.0.1}20.1 The Free-Threaded CPython Paradigm Shift}{97}{subsection.22.0.1}%
+\contentsline {subsection}{\numberline {22.0.2}20.2 Biased Reference Counting (BRC) and Object Headers}{97}{subsection.22.0.2}%
+\contentsline {subsubsection}{1. Biased Object Headers}{97}{section*.202}%
+\contentsline {subsubsection}{2. Bit Layout and Fields representation}{98}{section*.203}%
+\contentsline {subsubsection}{3. BRC Reference Counting Algorithm}{98}{section*.204}%
+\contentsline {paragraph}{Increment Code Walkthrough}{98}{lstlisting.22.-156}%
+\contentsline {paragraph}{Decrement and Deallocation Walkthrough}{99}{section*.206}%
+\contentsline {subsection}{\numberline {22.0.3}20.3 Thread-Safe Allocation via mimalloc}{99}{subsection.22.0.3}%
+\contentsline {subsubsection}{1. Mimalloc Structural Hierarchy}{99}{section*.207}%
+\contentsline {subsubsection}{2. Thread-Local Allocations}{100}{section*.208}%
+\contentsline {subsubsection}{3. Cross-Thread Deallocations and Thread-Safe Free Lists}{100}{section*.209}%
+\contentsline {subsection}{\numberline {22.0.4}20.4 Lock-free Collections \& Thread Safety}{100}{subsection.22.0.4}%
+\contentsline {subsubsection}{1. Dictionary Locking System}{100}{section*.210}%
+\contentsline {subsubsection}{2. Lock Arrays and PyMutex}{101}{section*.211}%
+\contentsline {subsection}{\numberline {22.0.5}20.5 Generational Garbage Collection (GC) in a GIL-less World}{101}{subsection.22.0.5}%
+\contentsline {subsubsection}{1. Stop-the-World (STW) Synchronization}{101}{section*.212}%
+\contentsline {subsubsection}{2. Deferred Reference Counting (DRC)}{102}{section*.213}%
+\contentsline {chapter}{\numberline {23}Python 3.13: Copy-and-Patch JIT Compiler Architecture}{103}{chapter.23}%
+\contentsline {subsection}{\numberline {23.0.1}21.1 The Copy-and-Patch JIT Paradigm (PEP 744)}{103}{subsection.23.0.1}%
+\contentsline {subsubsection}{1. Optimization and Compilation Tradeoffs}{103}{section*.214}%
+\contentsline {subsection}{\numberline {23.0.2}21.2 Stencil Relocation and C-Level Internals}{103}{subsection.23.0.2}%
+\contentsline {subsubsection}{1. Machine Code Stencils and Relocations}{103}{section*.215}%
+\contentsline {subsubsection}{2. Visual Representation of Copy-and-Patch Stitching}{104}{section*.216}%
+\contentsline {subsection}{\numberline {23.0.3}21.3 Tier 2 Micro-Ops (uops) and the Optimization Pipeline}{104}{subsection.23.0.3}%
+\contentsline {subsubsection}{1. Bytecode to Native Compilation Flow}{104}{section*.217}%
+\contentsline {subsubsection}{2. Tier 2 uop Compilation Loop}{105}{section*.218}%
+\contentsline {subsection}{\numberline {23.0.4}21.4 Relocation Hole Patching and Memory Security}{105}{subsection.23.0.4}%
+\contentsline {subsubsection}{1. Relocation Implementations}{105}{section*.219}%
+\contentsline {subsubsection}{2. Memory Security: W\^{}X Enforcement}{106}{section*.220}%
+\contentsline {chapter}{\numberline {24}Python 3.12 to 3.13: Subinterpreters \& Per-Interpreter GIL Parallelism}{107}{chapter.24}%
+\contentsline {subsection}{\numberline {24.0.1}22.1 Isolation of Interpreter State (PEP 684)}{107}{subsection.24.0.1}%
+\contentsline {subsubsection}{1. Process Memory Layout: Shared vs.~Isolated States}{107}{section*.221}%
+\contentsline {subsubsection}{2. The \texttt {PyInterpreterState} Structure and Refactoring}{107}{section*.222}%
+\contentsline {subsection}{\numberline {24.0.2}22.2 The C-API Subinterpreter Initialization Configuration}{108}{subsection.24.0.2}%
+\contentsline {subsection}{\numberline {24.0.3}22.3 Cross-Interpreter Communication Channels}{109}{subsection.24.0.3}%
+\contentsline {subsubsection}{Parallel Computation Code Example}{110}{section*.223}%
+\contentsline {part}{VIII\hspace {1em}Volume VIII: Runtime Internals \& C Extensions}{112}{part.8}%
+\contentsline {chapter}{\numberline {25}CPython Memory Allocator (PyMalloc) \& Generational Garbage Collection}{113}{chapter.25}%
+\contentsline {subsection}{\numberline {25.0.1}23.1 CPython's Memory Allocation Engine (PyMalloc)}{113}{subsection.25.0.1}%
+\contentsline {subsubsection}{1. PyMalloc Memory Hierarchy}{113}{section*.224}%
+\contentsline {subsubsection}{2. C-level Struct Definitions in obmalloc.c}{113}{section*.225}%
+\contentsline {paragraph}{Pool Header Struct}{113}{section*.226}%
+\contentsline {paragraph}{Arena Object Struct}{114}{section*.227}%
+\contentsline {subsubsection}{3. Size Class Formula}{114}{section*.228}%
+\contentsline {subsection}{\numberline {25.0.2}23.2 Generational Garbage Collection and Cycle Detection}{114}{subsection.25.0.2}%
+\contentsline {subsubsection}{1. GC Memory Prefix and Header Layout}{114}{section*.229}%
+\contentsline {subsubsection}{2. The Three Generations}{115}{section*.230}%
+\contentsline {subsection}{\numberline {25.0.3}23.3 The Cycle Detection Algorithm}{115}{subsection.25.0.3}%
+\contentsline {subsubsection}{1. Initializing gc\_refs}{115}{section*.231}%
+\contentsline {subsubsection}{2. Traversing Internal References}{116}{section*.232}%
+\contentsline {subsubsection}{3. Resolving and Splitting Collections}{116}{section*.233}%
+\contentsline {subsubsection}{4. Clearing Cycles and Deallocation}{116}{section*.234}%
+\contentsline {chapter}{\numberline {26}C Extensions \& Python C-API Interoperability}{117}{chapter.26}%
+\contentsline {subsection}{\numberline {26.0.1}24.1 Writing a Pure C Extension Module}{117}{subsection.26.0.1}%
+\contentsline {subsubsection}{1. Detailed C-Extension with Error Handling and Keywords}{117}{section*.235}%
+\contentsline {subsection}{\numberline {26.0.2}24.2 Reference Counting and Ownership Rules in C-API}{118}{subsection.26.0.2}%
+\contentsline {subsubsection}{1. Reference Ownership Categories}{118}{section*.236}%
+\contentsline {paragraph}{New References}{118}{section*.237}%
+\contentsline {paragraph}{Borrowed References}{119}{section*.238}%
+\contentsline {paragraph}{Stolen References}{119}{section*.239}%
+\contentsline {subsubsection}{2. Safe Reference Macros}{119}{section*.240}%
+\contentsline {subsection}{\numberline {26.0.3}24.3 C-API Stable ABI (PEP 384)}{119}{subsection.26.0.3}%
+\contentsline {subsubsection}{1. Opaque Pointers and Opaque Structures}{120}{section*.241}%
+\contentsline {subsubsection}{2. Defining the Limited API}{120}{section*.242}%
+\contentsline {chapter}{\numberline {27}Metaclasses, Descriptor Protocol, and type Slots}{121}{chapter.27}%
+\contentsline {subsection}{\numberline {27.0.1}25.1 The Metaclass Class Creation Pipeline}{121}{subsection.27.0.1}%
+\contentsline {subsubsection}{1. Namespace Preparation (\texttt {\_\_prepare\_\_})}{121}{section*.243}%
+\contentsline {subsubsection}{2. Class Object Allocation (\texttt {\_\_new\_\_})}{121}{section*.244}%
+\contentsline {subsubsection}{3. Class Initialization (\texttt {\_\_init\_\_})}{121}{section*.245}%
+\contentsline {subsection}{\numberline {27.0.2}25.2 The Descriptor Protocol and Attribute Lookup Precedence}{122}{subsection.27.0.2}%
+\contentsline {subsubsection}{1. Data Descriptors vs.~Non-Data Descriptors}{122}{section*.246}%
+\contentsline {subsubsection}{2. Attribute Lookup Precedence Hierarchy}{122}{section*.247}%
+\contentsline {subsection}{\numberline {27.0.3}25.3 CPython Type Slots}{123}{subsection.27.0.3}%
+\contentsline {subsubsection}{1. Protocol Sub-Tables}{123}{section*.248}%
+\contentsline {subsubsection}{2. Slot Inheritance}{124}{section*.249}%
+\contentsline {part}{IX\hspace {1em}Volume IX: High Performance \& Low Latency Concurrency}{125}{part.9}%
+\contentsline {chapter}{\numberline {28}LOW-LEVEL MEMORY OPTIMIZATION TECHNIQUES}{126}{chapter.28}%
+\contentsline {subsection}{\numberline {28.0.1}26.1 \texttt {\_\_slots\_\_} Internals and Memory Mapping}{126}{subsection.28.0.1}%
+\contentsline {subsubsection}{1. Compilation and Memory Layout Comparison}{126}{section*.250}%
+\contentsline {subsubsection}{2. Bytecode Impact of slots}{127}{section*.251}%
+\contentsline {subsection}{\numberline {28.0.2}26.2 Buffer Protocol and \texttt {memoryview} Zero-Copy Slicing}{127}{subsection.28.0.2}%
+\contentsline {subsubsection}{1. C-level \texttt {Py\_buffer} Struct Definition}{127}{section*.252}%
+\contentsline {subsubsection}{2. memoryview Wrapper and Zero-Copy Slicing}{128}{section*.253}%
+\contentsline {subsection}{\numberline {28.0.3}26.3 Compact Serialization: array vs.~struct}{128}{subsection.28.0.3}%
+\contentsline {subsubsection}{1. array.array}{128}{section*.254}%
+\contentsline {subsubsection}{2. Struct Packing}{128}{section*.255}%
+\contentsline {chapter}{\numberline {29}CPU \& I/O BOUND SYSTEM CONCURRENCY}{129}{chapter.29}%
+\contentsline {subsection}{\numberline {29.0.1}27.1 Concurrency Paradigms: Threads vs.~Processes vs.~Coroutines (Asyncio)}{129}{subsection.29.0.1}%
+\contentsline {subsection}{\numberline {29.0.2}27.2 Asyncio Event Loops and \texttt {uvloop} Internals}{129}{subsection.29.0.2}%
+\contentsline {subsubsection}{1. uvloop Optimization}{129}{section*.256}%
+\contentsline {subsubsection}{2. Configuring uvloop in Python}{130}{section*.257}%
+\contentsline {subsection}{\numberline {29.0.3}27.3 Multiprocessing Shared Memory IPC}{130}{subsection.29.0.3}%
+\contentsline {subsubsection}{1. Shared Memory Architecture}{130}{section*.258}%
+\contentsline {subsubsection}{2. Robust Shared Memory Code Example}{131}{section*.259}%
+\contentsline {chapter}{\numberline {30}NUMERICAL HIGH-PERFORMANCE DATA STRUCTURES}{132}{chapter.30}%
+\contentsline {subsection}{\numberline {30.0.1}28.1 NumPy Contiguous Layouts and Strides}{132}{subsection.30.0.1}%
+\contentsline {subsubsection}{1. C-Contiguous vs.~Fortran-Contiguous Layouts}{132}{section*.260}%
+\contentsline {subsubsection}{2. Stride Calculations}{132}{section*.261}%
+\contentsline {subsubsection}{3. Vectorization and SIMD Pipelines}{133}{section*.262}%
+\contentsline {subsection}{\numberline {30.0.2}28.2 PyArrow Columnar Format and Zero-Copy Sharing}{133}{subsection.30.0.2}%
+\contentsline {subsubsection}{1. Apache Arrow Columnar Format}{133}{section*.263}%
+\contentsline {subsubsection}{2. Zero-Copy Sharing Protocols}{134}{section*.264}%
+\contentsline {chapter}{\numberline {31}PROFILING, BENCHMARKING, AND DIAGNOSTICS}{135}{chapter.31}%
+\contentsline {subsection}{\numberline {31.0.1}29.1 Deterministic Profiling (\texttt {cProfile}) vs.~Sampling Profiling (\texttt {py-spy})}{135}{subsection.31.0.1}%
+\contentsline {subsubsection}{1. Deterministic Profiling via \texttt {cProfile}}{135}{section*.265}%
+\contentsline {paragraph}{Advantages}{135}{section*.266}%
+\contentsline {paragraph}{Disadvantages}{135}{section*.267}%
+\contentsline {subsubsection}{2. Sampling Profiling via \texttt {py-spy}}{135}{section*.268}%
+\contentsline {paragraph}{Advantages}{136}{section*.269}%
+\contentsline {subsection}{\numberline {31.0.2}29.2 Memory Leak Diagnostics via \texttt {tracemalloc}}{136}{subsection.31.0.2}%
+\contentsline {subsubsection}{1. tracemalloc Architecture}{136}{section*.270}%
+\contentsline {subsubsection}{2. Memory Leak Snapshot Script}{136}{section*.271}%
+\contentsline {subsection}{\numberline {31.0.3}29.3 Crash Debugging via \texttt {faulthandler}}{137}{subsection.31.0.3}%
+\contentsline {chapter}{\numberline {32}CAPSTONE PROJECT: HIGH-FREQUENCY ORDER BOOK \& TRADING ENGINE}{139}{chapter.32}%
+\contentsline {subsection}{\numberline {32.0.1}30.1 High-Frequency Trading Engine Architecture}{139}{subsection.32.0.1}%
+\contentsline {subsection}{\numberline {32.0.2}30.2 Optimized Order Book Implementation}{139}{subsection.32.0.2}%
+\contentsline {subsection}{\numberline {32.0.3}30.3 High-Throughput Asyncio Server}{142}{subsection.32.0.3}%

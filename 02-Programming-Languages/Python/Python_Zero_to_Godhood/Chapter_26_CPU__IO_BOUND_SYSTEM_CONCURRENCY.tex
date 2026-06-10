@@ -1,0 +1,14 @@
+\hypertarget{cpu-io-bound-system-concurrency}{%
+\chapter{CPU \& I/O BOUND SYSTEM
+CONCURRENCY}\label{cpu-io-bound-system-concurrency}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Process Pools}: Using
+  \passthrough{\lstinline!concurrent.futures.ProcessPoolExecutor!} to
+  distribute computations across multiple cores.
+\item
+  \textbf{uvloop}: Dropping in Libuv event loops to speed up asyncio
+  execution.
+\end{itemize}

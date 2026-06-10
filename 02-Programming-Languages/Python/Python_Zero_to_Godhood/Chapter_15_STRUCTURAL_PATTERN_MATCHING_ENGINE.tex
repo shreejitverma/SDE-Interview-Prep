@@ -1,0 +1,109 @@
+\hypertarget{structural-pattern-matching-engine}{%
+\chapter{STRUCTURAL PATTERN MATCHING
+ENGINE}\label{structural-pattern-matching-engine}}
+
+\hypertarget{pep-634-decision-trees-vs.-linear-scans}{%
+\subsection{15.1 PEP 634 Decision Trees vs.~Linear
+Scans}\label{pep-634-decision-trees-vs.-linear-scans}}
+
+Introduced in Python 3.10, Structural Pattern Matching
+(\passthrough{\lstinline!match!}/\passthrough{\lstinline!case!})
+provides a powerful declarative pattern engine. Unlike a chain of
+\passthrough{\lstinline!if/elif/else!} statements, which executes
+sequentially (\(\mathcal{O}(N)\) lookup runtime complexity), the CPython
+compiler translates a \passthrough{\lstinline!match!} statement into a
+directed decision tree (DAG). The compiler groups checks by target type
+and attributes to avoid redundant attribute extraction and evaluation.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{pattern-matching-bytecodes-in-cpython}{%
+\subsection{15.2 Pattern Matching Bytecodes in
+CPython}\label{pattern-matching-bytecodes-in-cpython}}
+
+CPython implements pattern matching using a suite of dedicated bytecode
+instructions that interact with the value stack.
+
+\hypertarget{match_sequence}{%
+\subsubsection{\texorpdfstring{1.
+\texttt{MATCH\_SEQUENCE}}{1. MATCH\_SEQUENCE}}\label{match_sequence}}
+
+This instruction checks whether the object on the top of the stack is a
+sequence. * \textbf{Implementation}: It checks if the object is an
+instance of \passthrough{\lstinline!collections.abc.Sequence!}. It
+explicitly excludes \passthrough{\lstinline!str!},
+\passthrough{\lstinline!bytes!}, and \passthrough{\lstinline!bytearray!}
+to prevent unexpected character matching behavior. * \textbf{Execution}:
+* Input: \passthrough{\lstinline!subject!} on stack. * Output:
+\passthrough{\lstinline!subject!} and a boolean
+\passthrough{\lstinline!(True/False)!} indicating whether it is a
+sequence.
+
+\hypertarget{match_mapping}{%
+\subsubsection{\texorpdfstring{2.
+\texttt{MATCH\_MAPPING}}{2. MATCH\_MAPPING}}\label{match_mapping}}
+
+Similar to \passthrough{\lstinline!MATCH\_SEQUENCE!}, this instruction
+checks whether the object on the top of the stack is an instance of
+\passthrough{\lstinline!collections.abc.Mapping!}.
+
+\hypertarget{match_keys}{%
+\subsubsection{\texorpdfstring{3.
+\texttt{MATCH\_KEYS}}{3. MATCH\_KEYS}}\label{match_keys}}
+
+Used in mapping patterns to match key-value pairs. * \textbf{Execution}:
+* Input: \passthrough{\lstinline!subject!} and a tuple of expected
+\passthrough{\lstinline!keys!} on stack. * Operation: Resolves whether
+all keys exist in the mapping. * Output: If keys exist, it pushes a
+tuple of corresponding values; otherwise, it pushes
+\passthrough{\lstinline!None!}.
+
+\hypertarget{match_class}{%
+\subsubsection{\texorpdfstring{4.
+\texttt{MATCH\_CLASS}}{4. MATCH\_CLASS}}\label{match_class}}
+
+Validates class types and positional/keyword attribute mappings. *
+\textbf{Execution}: * Input: \passthrough{\lstinline!subject!},
+\passthrough{\lstinline!class\_object!}, a tuple of attribute names, and
+a count of positional attributes. * Operation: The runtime checks
+\passthrough{\lstinline!isinstance(subject, class\_object)!}. If true,
+it extracts attributes based on positional mappings defined by the
+class's \passthrough{\lstinline!\_\_match\_args\_\_!} attribute,
+followed by named keyword lookups. * Output: A tuple of extracted
+attribute values if the match succeeds, or
+\passthrough{\lstinline!None!} on failure.
+
+\hypertarget{astbytecode-translation-trace}{%
+\subsubsection{5. AST/Bytecode Translation
+Trace}\label{astbytecode-translation-trace}}
+
+Consider a pattern match on a list:
+
+\begin{lstlisting}[language=Python]
+match data:
+    case [1, y]:
+        pass
+\end{lstlisting}
+
+The compiled bytecode sequence matches the pattern via:
+
+\begin{lstlisting}
+  2 LOAD_FAST                0 (data)
+  4 MATCH_SEQUENCE
+  6 POP_JUMP_IF_FALSE       32 (to case mismatch fallback)
+  8 GET_LEN
+ 10 LOAD_CONST               0 (2)
+ 12 COMPARE_OP               2 (==)
+ 14 POP_JUMP_IF_FALSE       32 (to case mismatch fallback)
+ 16 UNPACK_SEQUENCE          2
+ 18 LOAD_CONST               1 (1)
+ 20 COMPARE_OP               2 (==)
+ 22 POP_JUMP_IF_FALSE       32 (to next case or fallback)
+ 24 STORE_FAST               1 (y)
+\end{lstlisting}
+
+This stack-level execution ensures that subpatterns (like length check
+and index-0 constant equality) fail fast, avoiding binding variables
+unless the matching tree path succeeds.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}

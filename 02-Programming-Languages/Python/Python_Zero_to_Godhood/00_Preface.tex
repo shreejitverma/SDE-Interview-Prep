@@ -1,0 +1,234 @@
+\hypertarget{preface}{%
+\chapter{Preface}\label{preface}}
+
+\hypertarget{python-zero-to-godhood-complete-evolution-and-comprehensive-feature-guide}{%
+\chapter{Python Zero to Godhood: Complete Evolution and Comprehensive
+Feature
+Guide}\label{python-zero-to-godhood-complete-evolution-and-comprehensive-feature-guide}}
+
+\textbf{Author:} Shreejit Verma
+
+\hypertarget{preface-1}{%
+\section{Preface}\label{preface-1}}
+
+\hypertarget{about-the-author}{%
+\subsection{About the Author}\label{about-the-author}}
+
+Shreejit Verma is a systems architect, quantitative software engineer,
+and high-performance computing practitioner. This guide represents a
+masterclass in CPython internals, language syntax evolution, runtime
+mechanics, and hardware-sympathetic programming.
+
+\hypertarget{book-purpose-scope}{%
+\subsection{Book Purpose \& Scope}\label{book-purpose-scope}}
+
+This book provides a transition pathway from standard Python development
+to \textbf{low-level CPython mastery and high-performance computing}. It
+spans the entire chronological architecture of the languagefrom Python
+1.0 to Python 3.14revealing how bytecode interpreters, memory systems,
+GIL execution models, and compiler optimizations interact.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{table-of-contents}{%
+\section{Table of Contents}\label{table-of-contents}}
+
+\hypertarget{volume-i-classic-python-core-engine-python-1.0-to-2.7}{%
+\subsection{Volume I: Classic Python \& Core Engine (Python 1.0 to
+2.7)}\label{volume-i-classic-python-core-engine-python-1.0-to-2.7}}
+
+\begin{itemize}
+\tightlist
+\item
+  Chapter 1:
+  \protect\hyperlink{chapter-1-python-10-to-16-inception--the-ll1-executable-pipeline}{Python
+  1.0 to 1.6: Inception \& the LL(1) Executable Pipeline}
+\item
+  Chapter 2:
+  \protect\hyperlink{chapter-2-python-1x-the-pyobject-model--reference-counting-core}{Python
+  1.x: The PyObject Model \& Reference Counting Core}
+\item
+  Chapter 3:
+  \protect\hyperlink{chapter-3-python-20-to-21-comprehensions-nested-scopes--cycle-detecting-gc}{Python
+  2.0 to 2.1: Comprehensions, Nested Scopes, \& Cycle-Detecting GC}
+\item
+  Chapter 4:
+  \protect\hyperlink{chapter-4-python-22-to-23-type-class-unification-descriptors--c3-mro}{Python
+  2.2 to 2.3: Type-Class Unification, Descriptors, \& C3 MRO}
+\item
+  Chapter 5:
+  \protect\hyperlink{chapter-5-python-24-to-27-decorators-context-managers--the-2x-twilight}{Python
+  2.4 to 2.7: Decorators, Context Managers, \& the 2.x Twilight}
+\item
+  Chapter 6:
+  \protect\hyperlink{chapter-6-python-2x-low-level-file-io--exceptions-unwinding-blocks}{Python
+  2.x: Low-Level File I/O \& Exceptions Unwinding Blocks}
+\end{itemize}
+
+\hypertarget{volume-ii-the-python-3-schism-core-enhancements-python-3.0-to-3.2}{%
+\subsection{Volume II: The Python 3 Schism \& Core Enhancements (Python
+3.0 to
+3.2)}\label{volume-ii-the-python-3-schism-core-enhancements-python-3.0-to-3.2}}
+
+\begin{itemize}
+\tightlist
+\item
+  Chapter 7:
+  \protect\hyperlink{chapter-7-python-30-the-unicode-paradigm-shift-and-text-vs-bytes-separation}{Python
+  3.0: The Unicode Paradigm Shift and Text vs.~Bytes Separation}
+\item
+  Chapter 8:
+  \protect\hyperlink{chapter-8-python-31-to-32-standard-library-consolidation-and-threading-pools}{Python
+  3.1 to 3.2: Standard Library Consolidation and Threading Pools}
+\end{itemize}
+
+\hypertarget{volume-iii-generators-iterators-and-async-inception-python-3.3-to-3.5}{%
+\subsection{Volume III: Generators, Iterators, and Async Inception
+(Python 3.3 to
+3.5)}\label{volume-iii-generators-iterators-and-async-inception-python-3.3-to-3.5}}
+
+\begin{itemize}
+\tightlist
+\item
+  Chapter 9:
+  \protect\hyperlink{chapter-9-python-33-yield-from-generators-and-implicit-namespace-packages}{Python
+  3.3: Yield From Generators and Implicit Namespace Packages}
+\item
+  Chapter 10:
+  \protect\hyperlink{chapter-10-python-34-asyncio-inception-pathlib-and-enum-architectures}{Python
+  3.4: Asyncio Inception, Pathlib, and Enum Architectures}
+\item
+  Chapter 11:
+  \protect\hyperlink{chapter-11-python-35-native-asyncawait-coroutines-and-matrix-operations}{Python
+  3.5: Native Async/Await Coroutines and Matrix Operations}
+\end{itemize}
+
+\hypertarget{volume-iv-expressiveness-developer-ergonomics-python-3.6-to-3.7}{%
+\subsection{Volume IV: Expressiveness \& Developer Ergonomics (Python
+3.6 to
+3.7)}\label{volume-iv-expressiveness-developer-ergonomics-python-3.6-to-3.7}}
+
+\begin{itemize}
+\tightlist
+\item
+  Chapter 12:
+  \protect\hyperlink{chapter-12-python-36-f-strings-formatting-variable-annotations-and-compact-dicts}{Python
+  3.6: F-Strings Formatting, Variable Annotations, and Compact Dicts}
+\item
+  Chapter 13:
+  \protect\hyperlink{chapter-13-python-37-dataclasses-context-variables-and-dict-ordering-guarantees}{Python
+  3.7: Dataclasses, Context Variables, and Dict Ordering Guarantees}
+\end{itemize}
+
+\hypertarget{volume-v-structural-shifts-pattern-matching-python-3.8-to-3.10}{%
+\subsection{Volume V: Structural Shifts \& Pattern Matching (Python 3.8
+to
+3.10)}\label{volume-v-structural-shifts-pattern-matching-python-3.8-to-3.10}}
+
+\begin{itemize}
+\tightlist
+\item
+  Chapter 14:
+  \protect\hyperlink{chapter-14-python-38-walrus-operator-and-positional-only-parameters}{Python
+  3.8: Walrus Operator (:=) and Positional-Only Parameters (/)}
+\item
+  Chapter 15:
+  \protect\hyperlink{chapter-15-python-39-to-310-peg-parser-dict-merge-and-pattern-matching}{Python
+  3.9 to 3.10: PEG Parser, Dict Merge (\textbar), and Pattern Matching}
+\item
+  Chapter 16:
+  \protect\hyperlink{chapter-16-python-38-to-310-type-hinting-protocols-and-structural-subtyping}{Python
+  3.8 to 3.10: Type Hinting Protocols and Structural Subtyping}
+\end{itemize}
+
+\hypertarget{volume-vi-performance-leap-runtime-mechanics-python-3.11-to-3.12}{%
+\subsection{Volume VI: Performance Leap \& Runtime Mechanics (Python
+3.11 to
+3.12)}\label{volume-vi-performance-leap-runtime-mechanics-python-3.11-to-3.12}}
+
+\begin{itemize}
+\tightlist
+\item
+  Chapter 17:
+  \protect\hyperlink{chapter-17-python-311-faster-cpython-specializing-interpreter-and-adaptive-bytecode}{Python
+  3.11: Faster CPython Specializing Interpreter and Adaptive Bytecode}
+\item
+  Chapter 18:
+  \protect\hyperlink{chapter-18-python-312-native-generics-pep-695-type-statement-and-subinterpreters}{Python
+  3.12: Native Generics (PEP 695), Type statement, and Subinterpreters}
+\item
+  Chapter 19:
+  \protect\hyperlink{chapter-19-python-311-to-312-exception-groups-and-traceback-trees}{Python
+  3.11 to 3.12: Exception Groups (except*) and Traceback trees}
+\end{itemize}
+
+\hypertarget{volume-vii-the-gil-less-future-jit-compilers-python-3.13-to-3.14}{%
+\subsection{Volume VII: The GIL-less Future \& JIT Compilers (Python
+3.13 to
+3.14+)}\label{volume-vii-the-gil-less-future-jit-compilers-python-3.13-to-3.14}}
+
+\begin{itemize}
+\tightlist
+\item
+  Chapter 20:
+  \protect\hyperlink{chapter-20-python-313-free-threaded-build--gil-removal-internals}{Python
+  3.13: Free-Threaded Build \& GIL Removal Internals}
+\item
+  Chapter 21:
+  \protect\hyperlink{chapter-21-python-313-copy-and-patch-jit-compiler-architecture}{Python
+  3.13: Copy-and-Patch JIT Compiler Architecture}
+\item
+  Chapter 22:
+  \protect\hyperlink{chapter-22-python-312-to-313-subinterpreters--per-interpreter-gil-parallelism}{Python
+  3.12 to 3.13: Subinterpreters \& Per-Interpreter GIL Parallelism}
+\end{itemize}
+
+\hypertarget{volume-viii-runtime-internals-c-extensions}{%
+\subsection{Volume VIII: Runtime Internals \& C
+Extensions}\label{volume-viii-runtime-internals-c-extensions}}
+
+\begin{itemize}
+\tightlist
+\item
+  Chapter 23:
+  \protect\hyperlink{chapter-23-cpython-memory-allocator-pymalloc--generational-garbage-collection}{CPython
+  Memory Allocator (PyMalloc) \& Generational Garbage Collection}
+\item
+  Chapter 24:
+  \protect\hyperlink{chapter-24-c-extensions-and-interoperability-layers}{C
+  Extensions \& Python C-API Interoperability}
+\item
+  Chapter 25:
+  \protect\hyperlink{chapter-25-metaclasses-descriptor-protocol-and-type-slots}{Metaclasses,
+  Descriptor Protocol, and type Slots}
+\end{itemize}
+
+\hypertarget{volume-ix-high-performance-low-latency-concurrency}{%
+\subsection{Volume IX: High Performance \& Low Latency
+Concurrency}\label{volume-ix-high-performance-low-latency-concurrency}}
+
+\begin{itemize}
+\tightlist
+\item
+  Chapter 26:
+  \protect\hyperlink{chapter-26-low-level-memory-optimization-slots-memoryviews-and-weak-references}{Low-Level
+  Memory Optimization (Slots, memoryviews, and Weak References)}
+\item
+  Chapter 27:
+  \protect\hyperlink{chapter-27-concurrency-architectures-threading-vs-multiprocessing-vs-asyncio}{Concurrency
+  Architectures: Threading vs.~Multiprocessing vs.~Asyncio}
+\item
+  Chapter 28:
+  \protect\hyperlink{chapter-28-numerical-and-scientific-data-numpy-simd-pyarrow-zero-copy}{Numerical
+  and Scientific Data (NumPy SIMD, PyArrow Zero-Copy)}
+\item
+  Chapter 29:
+  \protect\hyperlink{chapter-29-profiling-benchmarking-and-system-diagnostics}{Profiling,
+  Benchmarking, and System Diagnostics}
+\item
+  Chapter 30:
+  \protect\hyperlink{chapter-30-capstone-project-high-frequency-order-book-and-trading-engine}{Capstone
+  Project: High-Frequency Order Book and Trading Engine}
+\end{itemize}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}

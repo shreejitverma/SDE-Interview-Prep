@@ -1,0 +1,219 @@
+\hypertarget{object-oriented-programming-mechanics-mro}{%
+\chapter{OBJECT-ORIENTED PROGRAMMING MECHANICS \&
+MRO}\label{object-oriented-programming-mechanics-mro}}
+
+\hypertarget{method-resolution-order-mro-c3-linearization}{%
+\subsection{4.1 Method Resolution Order (MRO) \& C3
+Linearization}\label{method-resolution-order-mro-c3-linearization}}
+
+In pre-2.2 versions of Python, classes were defined as ``classic
+classes.'' * \textbf{Classic Classes MRO (DFLR)}: Classic class methods
+were resolved using \textbf{Depth-First, Left-to-Right (DFLR)} lookup.
+In a diamond inheritance hierarchy where classes share a common
+ancestor, DFLR searches all the way up to the ancestor via the first
+parent class, before evaluating sibling classes. This resulted in the
+ancestor overriding custom methods written in sibling classes. *
+\textbf{New-Style Classes MRO (C3 Linearization)}: Python 2.2 introduced
+new-style classes (inheriting from \passthrough{\lstinline!object!}),
+which calculate their lookup order using \textbf{C3 Linearization}. This
+guarantees: 1. \textbf{Local Precedence}: Parent classes are searched in
+the order declared in the class definition. 2. \textbf{Monotonicity}: A
+class's MRO respects the relative ordering defined in all its parent
+classes' MROs.
+
+\hypertarget{the-c3-algorithm}{%
+\subsubsection{The C3 Algorithm:}\label{the-c3-algorithm}}
+
+Let \(L(C)\) be the MRO list of class \(C\). For a class \(C\)
+inheriting from parents \(B_1, B_2, \dots, B_N\):
+\[L(C) = [C] + \text{merge}(L(B_1), L(B_2), \dots, L(B_N), [B_1, B_2, \dots, B_N])\]
+
+The \textbf{merge} operation selects a candidate head from the lists: 1.
+Look at the head (first element) of the first list being merged. 2. If
+this head does not appear in the tail (from index 1 to the end) of any
+of the other lists being merged, it is a valid candidate. 3. Add the
+candidate to \(L(C)\), remove it from all merging lists, and repeat the
+merge step. 4. If the candidate head is in the tail of any other list,
+skip it and check the head of the next list in the merge block. 5. If
+all lists are empty, the merge completes successfully. If no candidate
+head can be selected, the hierarchy is invalid (raises a
+\passthrough{\lstinline!TypeError: Cannot create a consistent method resolution order!}).
+
+\hypertarget{mathematical-step-by-step-calculation}{%
+\subsubsection{Mathematical Step-by-Step
+Calculation:}\label{mathematical-step-by-step-calculation}}
+
+Let's compute the MRO for the following class definitions:
+
+\begin{lstlisting}[language=Python]
+class O(object): pass
+class X(O): pass
+class Y(O): pass
+class A(X, Y): pass
+\end{lstlisting}
+
+We know: \[L(O) = [O, \text{object}]\]
+\[L(X) = [X] + \text{merge}(L(O), [O]) = [X] + \text{merge}([O, \text{object}], [O]) = [X, O, \text{object}]\]
+\[L(Y) = [Y] + \text{merge}(L(O), [O]) = [Y, O, \text{object}]\]
+
+Now we compute \(L(A)\):
+\[L(A) = [A] + \text{merge}(L(X), L(Y), [X, Y])\]
+\[L(A) = [A] + \text{merge}([X, O, \text{object}], [Y, O, \text{object}], [X, Y])\]
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  Evaluate head of first list: \passthrough{\lstinline!X!}. Is
+  \passthrough{\lstinline!X!} in the tail of \([Y, O, \text{object}]\)
+  or \([X, Y]\)? No (it is only at the head of \([X, Y]\)). We extract
+  \passthrough{\lstinline!X!}:
+  \[L(A) = [A, X] + \text{merge}([O, \text{object}], [Y, O, \text{object}], [Y])\]
+\item
+  Evaluate head of first list: \passthrough{\lstinline!O!}. Is
+  \passthrough{\lstinline!O!} in the tail of \([Y, O, \text{object}]\)
+  or \([Y]\)? Yes, \passthrough{\lstinline!O!} is in the tail of
+  \([Y, O, \text{object}]\) (index 1). We cannot extract it.
+\item
+  Move to the next list \([Y, O, \text{object}]\). Evaluate head:
+  \passthrough{\lstinline!Y!}. Is \passthrough{\lstinline!Y!} in the
+  tail of \([O, \text{object}]\) or \([Y]\)? No.~We extract
+  \passthrough{\lstinline!Y!}:
+  \[L(A) = [A, X, Y] + \text{merge}([O, \text{object}], [O, \text{object}])\]
+\item
+  Evaluate head: \passthrough{\lstinline!O!}. Is
+  \passthrough{\lstinline!O!} in the tail of any remaining list?
+  No.~Extract \passthrough{\lstinline!O!}:
+  \[L(A) = [A, X, Y, O] + \text{merge}([\text{object}], [\text{object}])\]
+\item
+  Extract \passthrough{\lstinline!object!}:
+  \[L(A) = [A, X, Y, O, \text{object}]\]
+\end{enumerate}
+
+\hypertarget{the-descriptor-protocol-attribute-lookup-chain}{%
+\subsection{4.2 The Descriptor Protocol \& Attribute Lookup
+Chain}\label{the-descriptor-protocol-attribute-lookup-chain}}
+
+CPython routes all attribute lookups
+(\passthrough{\lstinline!obj.name!}) through the default C function
+\passthrough{\lstinline!object\_\_\_getattribute\_\_()!} (which
+corresponds to \passthrough{\lstinline!object.\_\_getattribute\_\_!}).
+
+\hypertarget{data-vs.-non-data-descriptors}{%
+\subsubsection{Data vs.~Non-Data
+Descriptors:}\label{data-vs.-non-data-descriptors}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Data Descriptor}: Implements both
+  \passthrough{\lstinline!\_\_get\_\_!} AND
+  \passthrough{\lstinline!\_\_set\_\_!} (or
+  \passthrough{\lstinline!\_\_delete\_\_!}).
+\item
+  \textbf{Non-Data Descriptor}: Implements only
+  \passthrough{\lstinline!\_\_get\_\_!} (e.g., standard methods and
+  functions).
+\end{itemize}
+
+\hypertarget{the-complete-attribute-lookup-resolution-chain}{%
+\subsubsection{The Complete Attribute Lookup Resolution
+Chain:}\label{the-complete-attribute-lookup-resolution-chain}}
+
+When evaluating \passthrough{\lstinline!obj.name!}, CPython follows this
+strict precedence order: 1. \textbf{Data Descriptor}: Checks the class
+MRO for a matching data descriptor. If found, returns
+\passthrough{\lstinline!Descriptor.\_\_get\_\_(descriptor, obj, Class)!}.
+2. \textbf{Instance Dict}: Checks the instance's dictionary
+\passthrough{\lstinline!obj.\_\_dict\_\_!} directly. If the key exists,
+returns it. 3. \textbf{Non-Data Descriptor / Class Variable}: Checks the
+class MRO for a matching non-data descriptor or standard class variable.
+If a non-data descriptor is found, returns
+\passthrough{\lstinline!Descriptor.\_\_get\_\_(descriptor, obj, Class)!}.
+If a class variable is found, returns its raw value. 4. \textbf{Fallback
+(Class Dict)}: If still unresolved, checks the class namespace
+dictionary for a plain value. 5. \textbf{Fallback Method
+(\passthrough{\lstinline!\_\_getattr\_\_!})}: If no attribute is found,
+throws \passthrough{\lstinline!AttributeError!} unless the class
+implements \passthrough{\lstinline!\_\_getattr\_\_!}, which is then
+invoked as a fallback.
+
+\begin{lstlisting}
+Attribute Lookup Flowchart:
+[Lookup obj.name]
+       |
+       v
+[Class MRO has Data Descriptor?] --Yes--> [Call Descriptor.__get__]
+       | No
+       v
+[Instance dict obj.__dict__ has key?] --Yes--> [Return value from dict]
+       | No
+       v
+[Class MRO has Non-Data Descriptor?] --Yes--> [Call Descriptor.__get__]
+       | No
+       v
+[Class MRO has plain class variable?] --Yes--> [Return class variable]
+       | No
+       v
+[Class defines __getattr__?] --Yes--> [Call __getattr__]
+       | No
+       +-----------------------------> [Raise AttributeError]
+\end{lstlisting}
+
+\hypertarget{method-binding-mechanics}{%
+\subsubsection{Method Binding
+Mechanics:}\label{method-binding-mechanics}}
+
+Python methods are plain functions attached to a class dictionary.
+Because functions implement only \passthrough{\lstinline!\_\_get\_\_!},
+they are \textbf{non-data descriptors}. * \textbf{Bound Methods}: When
+we call \passthrough{\lstinline!obj.method()!},
+\passthrough{\lstinline!method!} is loaded via
+\passthrough{\lstinline!\_\_get\_\_!}. The function's
+\passthrough{\lstinline!\_\_get\_\_!} method wraps the function and the
+instance together, returning a temporary
+\passthrough{\lstinline!PyMethod!} object where
+\passthrough{\lstinline!self!} is bound to the first argument:
+\passthrough{\lstinline!obj.method!} is equivalent to
+\passthrough{\lstinline!Class.method.\_\_get\_\_(obj, Class)!}. *
+\textbf{Unbound Functions}: If called directly on the class
+(\passthrough{\lstinline!Class.method!}),
+\passthrough{\lstinline!\_\_get\_\_!} is invoked with
+\passthrough{\lstinline!None!} as the instance, returning the raw
+function object itself.
+
+\begin{lstlisting}[language=Python]
+class Demo:
+    def method(self):
+        pass
+
+d = Demo()
+# Bound method check
+print("Bound Method:", d.method)
+print("Is bound method object?", type(d.method).__name__)
+
+# Verification of descriptors conversion
+bound_manually = Demo.method.__get__(d, Demo)
+print("Bound manually matches?", bound_manually == d.method) # True
+\end{lstlisting}
+
+\hypertarget{instance-lifecycle-allocation-vs.-initialization}{%
+\subsection{4.3 Instance Lifecycle: Allocation
+vs.~Initialization}\label{instance-lifecycle-allocation-vs.-initialization}}
+
+CPython splits object creation into two phases, controlled by different
+slots: 1. \textbf{Allocation (\passthrough{\lstinline!\_\_new\_\_!})}: *
+Maps to the \passthrough{\lstinline!tp\_new!} C slot. * This is a static
+method responsible for allocating memory on the heap (using
+\passthrough{\lstinline!PyType\_GenericNew()!}) and initializing the
+object's \passthrough{\lstinline!PyObject!} headers
+(\passthrough{\lstinline!ob\_refcnt!} and
+\passthrough{\lstinline!ob\_type!}). * Must return a new instance of the
+class (or subclass). 2. \textbf{Initialization
+(\passthrough{\lstinline!\_\_init\_\_!})}: * Maps to the
+\passthrough{\lstinline!tp\_init!} C slot. * This is an instance method
+called immediately after \passthrough{\lstinline!\_\_new\_\_!} returns a
+valid instance. It populates the instance dictionary
+\passthrough{\lstinline!\_\_dict\_\_!} with variables.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}

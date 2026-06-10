@@ -1,0 +1,366 @@
+\hypertarget{python-3.7-dataclasses-context-variables-and-dict-ordering-guarantees}{%
+\chapter{Python 3.7: Dataclasses, Context Variables, and Dict Ordering
+Guarantees}\label{python-3.7-dataclasses-context-variables-and-dict-ordering-guarantees}}
+
+\hypertarget{pep-557-dataclasses-under-the-hood}{%
+\subsection{13.1 PEP 557: Dataclasses under the
+hood}\label{pep-557-dataclasses-under-the-hood}}
+
+Introduced in Python 3.7, the \passthrough{\lstinline!@dataclass!}
+decorator automates the generation of boilerplate methods (such as
+\passthrough{\lstinline!\_\_init\_\_!},
+\passthrough{\lstinline!\_\_repr\_\_!}, and
+\passthrough{\lstinline!\_\_eq\_\_!}) by inspecting class type
+annotations.
+
+\hypertarget{import-time-code-generation-mechanics}{%
+\subsubsection{1. Import-Time Code Generation
+Mechanics}\label{import-time-code-generation-mechanics}}
+
+Rather than intercepting attribute access or performing dynamic lookups
+at runtime, \passthrough{\lstinline!@dataclass!} is an import-time code
+generator: 1. \textbf{Annotation Reading}: When the class is imported,
+the decorator scans the class's
+\passthrough{\lstinline!\_\_annotations\_\_!} dictionary to identify the
+fields and their annotated types. 2. \textbf{String Code Assembly}: The
+decorator constructs a string representation of the Python source code
+for the requested magic methods. For example:
+\passthrough{\lstinline!python     def \_\_init\_\_(self, name: str, age: int):         self.name = name         self.age = age!}
+3. \textbf{Compilation and Execution}: It compiles this source string
+using the built-in
+\passthrough{\lstinline!compile(source, "<string>", "exec")!} function.
+It then executes the compiled code block via
+\passthrough{\lstinline!exec()!} within the class's namespace context to
+instantiate real function objects. 4. \textbf{Attachment}: The compiled
+function objects are attached directly to the class's dictionary
+(\passthrough{\lstinline!\_\_dict\_\_!}).
+
+Because these methods are compiled into native CPython bytecode at
+import time, calling them at runtime incurs zero wrapper or interception
+overhead, executing at the exact same speed as manually written
+boilerplate methods.
+
+\hypertarget{specialized-flags-and-post-init-hooks}{%
+\subsubsection{2. Specialized Flags and post-init
+Hooks}\label{specialized-flags-and-post-init-hooks}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Immutability (\passthrough{\lstinline!frozen=True!})}: If a
+  class is declared with
+  \passthrough{\lstinline!@dataclass(frozen=True)!}, the decorator
+  dynamically generates custom \passthrough{\lstinline!\_\_setattr\_\_!}
+  and \passthrough{\lstinline!\_\_delattr\_\_!} methods:
+  \passthrough{\lstinline'python     def \_\_setattr\_\_(self, name, value):         if type(self) is cls:             raise FrozenInstanceError(f"cannot assign to field \{name!r\}")         super().\_\_setattr\_\_(name, value)'}
+  This prevents direct attribute mutation. \emph{Note}: Developers can
+  bypass this protection by modifying attributes via
+  \passthrough{\lstinline!object.\_\_setattr\_\_(self, name, value)!}.
+\item
+  \textbf{The \passthrough{\lstinline!\_\_post\_init\_\_!} Hook}: If the
+  class defines a \passthrough{\lstinline!\_\_post\_init\_\_!} method,
+  the generated \passthrough{\lstinline!\_\_init\_\_!} function
+  automatically appends a call to
+  \passthrough{\lstinline!self.\_\_post\_init\_\_()!} as its final
+  instruction. This is useful for validating fields or computing
+  dependent properties after initialization.
+\end{itemize}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{pep-567-context-variables-contextvars}{%
+\subsection{\texorpdfstring{13.2 PEP 567: Context Variables
+(\texttt{contextvars})}{13.2 PEP 567: Context Variables (contextvars)}}\label{pep-567-context-variables-contextvars}}
+
+PEP 567 introduced context variables to provide a safe, high-performance
+mechanism for managing task-local state in asynchronous runtimes.
+
+\hypertarget{the-thread-local-storage-flaw-in-async-code}{%
+\subsubsection{1. The Thread-Local Storage Flaw in Async
+Code}\label{the-thread-local-storage-flaw-in-async-code}}
+
+Historically, multi-threaded programs isolated state using thread-local
+storage (\passthrough{\lstinline!threading.local!}). However, this model
+breaks down in asynchronous runtimes (like
+\passthrough{\lstinline!asyncio!}): * In
+\passthrough{\lstinline!asyncio!}, many independent tasks run
+concurrently on a \textbf{single OS thread}, yielding control back and
+forth. * If task A sets a value in thread-local storage and awaits an
+I/O operation, control yields to task B on the same thread. Task B can
+read or overwrite task A's thread-local value, causing severe state
+leakage and race conditions.
+
+\hypertarget{hash-array-mapped-trie-hamt-internals}{%
+\subsubsection{2. Hash Array Mapped Trie (HAMT)
+Internals}\label{hash-array-mapped-trie-hamt-internals}}
+
+Context Variables (\passthrough{\lstinline!contextvars!}) solve this by
+isolating state per-task using a C-level \textbf{Hash Array Mapped Trie
+(HAMT)} data structure: * \textbf{Immutability}: A HAMT is an immutable,
+persistent key-value mapping structure. * \textbf{Structural Sharing}:
+When a task modifies a context variable
+(\passthrough{\lstinline!var.set(val)!}), CPython does not modify the
+mapping in-place. Instead, it creates a new trie node representing the
+updated state. Unchanged branches are shared with the previous trie
+structure (structural sharing), minimizing memory allocation. *
+\textbf{Performance}: Due to its shallow 32-way branching factor, HAMT
+guarantees \(O(\log_{32} N) \approx O(1)\) lookup, insertion, and
+deletion speeds. * \textbf{\(O(1)\) Context Switching}: Because the
+context state is represented by an immutable HAMT node, saving or
+restoring a task's context during an \passthrough{\lstinline!await!}
+suspension is as simple as copying a pointer to the root trie node.
+
+\begin{lstlisting}
+HAMT Structural Sharing on Update:
+     [ Root A ]                     [ Root B ] (New Context)
+      /      \                       /      \
+  [ Node1 ] [ Node2 ]            [ Node1 ] [ Node3 ] (New/Updated Entry)
+             (Shared Branch)
+\end{lstlisting}
+
+\hypertarget{task-context-switching}{%
+\subsubsection{3. Task Context Switching}\label{task-context-switching}}
+
+In \passthrough{\lstinline!asyncio!}, each
+\passthrough{\lstinline!Task!} holds a reference to its own
+\passthrough{\lstinline!contextvars.Context!} object containing the HAMT
+structure. 1. When suspending at an \passthrough{\lstinline!await!}
+point, the task yields. 2. Before resuming a different task, the event
+loop calls \passthrough{\lstinline!PyContext\_Enter(new\_context)!} at
+the C level. 3. This restores the exact task-local state variables for
+the active task in \(O(1)\) time, completely isolating concurrent
+execution paths.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{dictionary-insertion-order-guarantee}{%
+\subsection{13.3 Dictionary Insertion-Order
+Guarantee}\label{dictionary-insertion-order-guarantee}}
+
+In Python 3.6, compact dictionaries preserved insertion order as an
+implementation side-effect. In Python 3.7, this behavior was officially
+codified as a language specification guarantee.
+
+\hypertarget{scope-of-the-guarantee}{%
+\subsubsection{1. Scope of the Guarantee}\label{scope-of-the-guarantee}}
+
+The order preservation applies to: * Dictionary iteration
+(e.g.~\passthrough{\lstinline!for key in my\_dict!}). * Views returned
+by \passthrough{\lstinline!.keys()!},
+\passthrough{\lstinline!.values()!}, and
+\passthrough{\lstinline!.items()!}. * Keyword arguments passing
+(\passthrough{\lstinline!**kwargs!} preserves call-site order). * Class
+namespaces (attributes declared inside class definitions preserve their
+order inside \passthrough{\lstinline!\_\_dict\_\_!} and
+\passthrough{\lstinline!\_\_annotations\_\_!}).
+
+\hypertarget{impact-on-the-ecosystem}{%
+\subsubsection{2. Impact on the
+Ecosystem}\label{impact-on-the-ecosystem}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{JSON Serialization}: Serialization
+  (\passthrough{\lstinline!json.dumps!}) becomes deterministic by
+  default.
+\item
+  \textbf{Deprecation of
+  \passthrough{\lstinline!collections.OrderedDict!}}: While
+  \passthrough{\lstinline!OrderedDict!} remains in the standard library
+  (offering specialized operations like
+  \passthrough{\lstinline!.move\_to\_end()!}), standard dictionaries are
+  now preferred for general ordered mapping operations.
+\end{itemize}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{properties-cached-properties-descriptor-protocol}{%
+\subsection{13.4 Properties \& Cached Properties (Descriptor
+Protocol)}\label{properties-cached-properties-descriptor-protocol}}
+
+The descriptor protocol defines how Python handles attribute lookup on
+objects. Properties and cached properties leverage this protocol to
+customize attribute access.
+
+\hypertarget{data-vs.-non-data-descriptors}{%
+\subsubsection{1. Data vs.~Non-Data
+Descriptors}\label{data-vs.-non-data-descriptors}}
+
+A descriptor is an object that implements one or more of the methods:
+\passthrough{\lstinline!\_\_get\_\_!},
+\passthrough{\lstinline!\_\_set\_\_!}, or
+\passthrough{\lstinline!\_\_delete\_\_!}. * \textbf{Data Descriptor}:
+Implements \passthrough{\lstinline!\_\_set\_\_!} or
+\passthrough{\lstinline!\_\_delete\_\_!}. * \textbf{Non-Data
+Descriptor}: Only implements \passthrough{\lstinline!\_\_get\_\_!}.
+
+\hypertarget{cpython-attribute-resolution-precedence}{%
+\subsubsection{2. CPython Attribute Resolution
+Precedence}\label{cpython-attribute-resolution-precedence}}
+
+When resolving \passthrough{\lstinline!instance.attribute!}, the C-level
+function \passthrough{\lstinline!PyObject\_GenericGetAttr!} searches
+namespaces in a strict order of precedence: 1. \textbf{Class Search}:
+Search the class MRO for a descriptor. If a descriptor is found and it
+is a \textbf{data descriptor}, call its
+\passthrough{\lstinline!\_\_get\_\_!} slot and return the result. 2.
+\textbf{Instance Dictionary}: If no data descriptor is found, check the
+instance's dictionary (\passthrough{\lstinline!instance.\_\_dict\_\_!}).
+If the attribute exists, return the value. 3. \textbf{Non-Data
+Descriptor}: If the attribute is not in
+\passthrough{\lstinline!instance.\_\_dict\_\_!} but a \textbf{non-data
+descriptor} was found on the class, call its
+\passthrough{\lstinline!\_\_get\_\_!} slot and return the result. 4.
+\textbf{Class Attribute}: Check if the attribute exists as a standard
+class attribute. 5. \textbf{AttributeError}: Raise
+\passthrough{\lstinline!AttributeError!}.
+
+\hypertarget{how-functools.cached_property-exploits-precedence}{%
+\subsubsection{\texorpdfstring{3. How
+\texttt{functools.cached\_property} Exploits
+Precedence}{3. How functools.cached\_property Exploits Precedence}}\label{how-functools.cached_property-exploits-precedence}}
+
+The built-in \passthrough{\lstinline!@property!} is a \textbf{data
+descriptor} (it defines \passthrough{\lstinline!\_\_get\_\_!} and a
+default \passthrough{\lstinline!\_\_set\_\_!} that raises an error).
+Thus, it always overrides instance dictionary lookups.
+
+In contrast, \passthrough{\lstinline!functools.cached\_property!} is
+implemented as a \textbf{non-data descriptor} (it only implements
+\passthrough{\lstinline!\_\_get\_\_!}).
+
+\hypertarget{conceptual-implementation-of-cached_property}{%
+\paragraph{\texorpdfstring{Conceptual Implementation of
+\texttt{cached\_property}:}{Conceptual Implementation of cached\_property:}}\label{conceptual-implementation-of-cached_property}}
+
+\begin{lstlisting}[language=Python]
+class cached_property:
+    def __init__(self, func):
+        self.func = func
+        self.__doc__ = func.__doc__
+
+    def __get__(self, instance, owner):
+        if instance is None:
+            return self
+        # Compute the value
+        value = self.func(instance)
+        # Write directly to the instance dict
+        instance.__dict__[self.func.__name__] = value
+        return value
+\end{lstlisting}
+
+\hypertarget{lookup-flow}{%
+\paragraph{Lookup Flow:}\label{lookup-flow}}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  \textbf{First Lookup}: \passthrough{\lstinline!instance.attribute!} is
+  queried. CPython MRO search finds
+  \passthrough{\lstinline!cached\_property!} (non-data descriptor).
+  Since it is not in the instance
+  \passthrough{\lstinline!\_\_dict\_\_!}, CPython executes
+  \passthrough{\lstinline!\_\_get\_\_!}. The method computes the value,
+  writes it into \passthrough{\lstinline!instance.\_\_dict\_\_!}, and
+  returns it.
+\item
+  \textbf{Subsequent Lookups}: CPython MRO search finds
+  \passthrough{\lstinline!cached\_property!} (non-data descriptor).
+  CPython then checks the instance
+  \passthrough{\lstinline!\_\_dict\_\_!} and finds the cached value.
+  Because instance dictionary lookups take precedence over non-data
+  descriptors, the value is returned directly from
+  \passthrough{\lstinline!\_\_dict\_\_!}, bypassing
+  \passthrough{\lstinline!\_\_get\_\_!} completely.
+\end{enumerate}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{instance-slots-optimization-__slots__}{%
+\subsection{\texorpdfstring{13.5 Instance Slots Optimization
+(\texttt{\_\_slots\_\_})}{13.5 Instance Slots Optimization (\_\_slots\_\_)}}\label{instance-slots-optimization-__slots__}}
+
+By default, every object instance allocates a dictionary
+(\passthrough{\lstinline!\_\_dict\_\_!}) to store attributes
+dynamically. This consumes significant memory.
+
+\hypertarget{struct-layout-changes}{%
+\subsubsection{1. Struct Layout Changes}\label{struct-layout-changes}}
+
+Defining \passthrough{\lstinline!\_\_slots\_\_ = ('x', 'y')!} inside a
+class alters CPython's object layout: * The type constructor
+(\passthrough{\lstinline!PyType\_Ready!}) suppresses the allocation of
+\passthrough{\lstinline!\_\_dict\_\_!} and
+\passthrough{\lstinline!\_\_weakref\_\_!} pointers in the instance's
+structure. * Instead, CPython reserves raw
+\passthrough{\lstinline!PyObject*!} pointer array slots directly inside
+the object's struct layout (immediately following
+\passthrough{\lstinline!PyObject\_HEAD!}) for
+\passthrough{\lstinline!x!} and \passthrough{\lstinline!y!}.
+
+\hypertarget{member-descriptors}{%
+\subsubsection{2. Member Descriptors}\label{member-descriptors}}
+
+For each slot defined in \passthrough{\lstinline!\_\_slots\_\_!},
+CPython creates a \passthrough{\lstinline!member\_descriptor!} object on
+the class: * The descriptor stores a hardcoded byte offset indicating
+where the variable's pointer resides relative to the head of the object
+structure in C memory. * When executing \passthrough{\lstinline!obj.x!},
+the member descriptor accesses the pointer at
+\passthrough{\lstinline!(char*)obj + offset!} directly, replacing slow
+string hashing and dictionary lookups with fast C-level array indexing.
+
+\hypertarget{trade-offs-and-limitations}{%
+\subsubsection{3. Trade-offs and
+Limitations}\label{trade-offs-and-limitations}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Memory Savings}: Eliminates the 100-150 byte overhead of the
+  instance \passthrough{\lstinline!\_\_dict\_\_!} hash table, allowing
+  developers to scale to millions of lightweight objects.
+\item
+  \textbf{Attribute Blocking}: Prevents developers from dynamically
+  adding arbitrary new attributes at runtime (raises
+  \passthrough{\lstinline!AttributeError!}).
+\item
+  \textbf{Weak References}: Since
+  \passthrough{\lstinline!\_\_weakref\_\_!} is omitted, objects cannot
+  be targets of weak references unless
+  \passthrough{\lstinline!'\_\_weakref\_\_'!} is explicitly included in
+  the \passthrough{\lstinline!\_\_slots\_\_!} tuple.
+\item
+  \textbf{Subclassing Rules}: Subclasses do not inherit
+  \passthrough{\lstinline!\_\_slots\_\_!}. If a subclass does not
+  declare \passthrough{\lstinline!\_\_slots\_\_!}, it will allocate a
+  standard \passthrough{\lstinline!\_\_dict\_\_!} and
+  \passthrough{\lstinline!\_\_weakref\_\_!}, rendering the parent's
+  memory savings moot for subclass instances.
+\end{itemize}
+
+\begin{lstlisting}[language=Python]
+import sys
+
+class DictClass:
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
+
+class SlotsClass:
+    __slots__ = ('x', 'y')
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
+
+d = DictClass(1, 2)
+s = SlotsClass(1, 2)
+
+print("DictClass size:", sys.getsizeof(d) + sys.getsizeof(d.__dict__))
+# SlotsClass has no __dict__, consuming significantly less memory
+print("SlotsClass size:", sys.getsizeof(s))
+\end{lstlisting}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}

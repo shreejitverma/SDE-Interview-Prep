@@ -42,551 +42,605 @@
 \contentsline {subsection}{\numberline {3.0.6}1.5.6 Deep Dive into Data Representation}{15}{subsection.3.0.6}%
 \contentsline {subsubsection}{Integer Representation (Two's Complement)}{16}{section*.6}%
 \contentsline {subsubsection}{Floating Point (IEEE 754)}{16}{section*.7}%
-\contentsline {chapter}{\numberline {4}MEMORY, TYPES, AND POINTERS}{17}{chapter.4}%
-\contentsline {chapter}{\numberline {5}ADVANCED POINTERS \& MEMORY}{18}{chapter.5}%
-\contentsline {section}{\numberline {5.1}1.1 Pointer to Const vs Const Pointer}{18}{section.5.1}%
-\contentsline {section}{\numberline {5.2}1.2 Void Pointers}{18}{section.5.2}%
-\contentsline {section}{\numberline {5.3}1.3 Null Pointer Safety}{19}{section.5.3}%
-\contentsline {section}{\numberline {5.4}1.4 Memory Layout \& Alignment}{19}{section.5.4}%
-\contentsline {chapter}{\numberline {6}ADVANCED ARRAYS}{21}{chapter.6}%
-\contentsline {section}{\numberline {6.1}4.1 Dynamic Arrays}{21}{section.6.1}%
-\contentsline {section}{\numberline {6.2}4.2 Variable Length Arrays (Non-standard)}{22}{section.6.2}%
-\contentsline {section}{\numberline {6.3}4.3 Array Bounds \& Safety}{22}{section.6.3}%
-\contentsline {chapter}{\numberline {7}CONST \& VOLATILE}{23}{chapter.7}%
-\contentsline {section}{\numberline {7.1}11.1 Const Correctness}{23}{section.7.1}%
-\contentsline {section}{\numberline {7.2}11.2 Volatile Keyword}{23}{section.7.2}%
-\contentsline {chapter}{\numberline {8}TYPE CASTING}{25}{chapter.8}%
-\contentsline {section}{\numberline {8.1}8.1 C-Style Casting}{25}{section.8.1}%
-\contentsline {section}{\numberline {8.2}8.2 Implicit Conversions}{25}{section.8.2}%
-\contentsline {chapter}{\numberline {9}ENUMERATION \& UNIONS}{27}{chapter.9}%
-\contentsline {section}{\numberline {9.1}10.1 Enumerations}{27}{section.9.1}%
-\contentsline {section}{\numberline {9.2}10.2 Unions}{27}{section.9.2}%
-\contentsline {chapter}{\numberline {10}BITWISE OPERATIONS}{29}{chapter.10}%
-\contentsline {section}{\numberline {10.1}6.1 Bitwise Operators}{29}{section.10.1}%
-\contentsline {section}{\numberline {10.2}6.2 Bit Manipulation Techniques}{29}{section.10.2}%
-\contentsline {chapter}{\numberline {11}CONTROL FLOW \& PREPROCESSOR}{31}{chapter.11}%
-\contentsline {chapter}{\numberline {12}ADVANCED CONTROL FLOW}{32}{chapter.12}%
-\contentsline {section}{\numberline {12.1}9.1 Ternary Operator}{32}{section.12.1}%
-\contentsline {section}{\numberline {12.2}9.2 goto Statement (Avoid)}{32}{section.12.2}%
-\contentsline {section}{\numberline {12.3}9.3 Label \& Goto for Error Handling}{33}{section.12.3}%
-\contentsline {chapter}{\numberline {13}PREPROCESSOR DIRECTIVES}{34}{chapter.13}%
-\contentsline {section}{\numberline {13.1}7.1 \#define and \#include}{34}{section.13.1}%
-\contentsline {section}{\numberline {13.2}7.2 Conditional Compilation}{34}{section.13.2}%
-\contentsline {section}{\numberline {13.3}7.3 Pragma Directives}{35}{section.13.3}%
-\contentsline {chapter}{\numberline {14}INLINE FUNCTIONS \& MACROS}{36}{chapter.14}%
-\contentsline {section}{\numberline {14.1}12.1 Macro Functions vs Inline Functions}{36}{section.14.1}%
-\contentsline {chapter}{\numberline {15}ADVANCED FUNCTIONS \& CALLBACKS}{37}{chapter.15}%
-\contentsline {chapter}{\numberline {16}ADVANCED FUNCTIONS}{38}{chapter.16}%
-\contentsline {section}{\numberline {16.1}2.1 Variadic Functions}{38}{section.16.1}%
-\contentsline {section}{\numberline {16.2}2.2 Function Recursion}{38}{section.16.2}%
-\contentsline {section}{\numberline {16.3}2.3 Inline Functions}{39}{section.16.3}%
-\contentsline {section}{\numberline {16.4}2.4 Static Functions}{39}{section.16.4}%
-\contentsline {chapter}{\numberline {17}FUNCTION POINTERS \& CALLBACKS}{41}{chapter.17}%
-\contentsline {section}{\numberline {17.1}3.1 Function Pointers}{41}{section.17.1}%
-\contentsline {section}{\numberline {17.2}3.2 Function Pointer Arrays}{41}{section.17.2}%
-\contentsline {section}{\numberline {17.3}3.3 Callbacks}{42}{section.17.3}%
-\contentsline {chapter}{\numberline {18}OBJECT-ORIENTED PROGRAMMING: ENCAPSULATION \& DESIGN}{43}{chapter.18}%
-\contentsline {chapter}{\numberline {19}OBJECT-ORIENTED PROGRAMMING FUNDAMENTALS (C++98)}{44}{chapter.19}%
-\contentsline {section}{\numberline {19.1}CLASSES \& OBJECTS}{44}{section.19.1}%
-\contentsline {subsection}{\numberline {19.1.1}1.1 Basic Class Structure}{44}{subsection.19.1.1}%
-\contentsline {subsection}{\numberline {19.1.2}1.2 Access Modifiers \& Encapsulation}{44}{subsection.19.1.2}%
-\contentsline {subsection}{\numberline {19.1.3}1.3 Constructors \& Destructors}{45}{subsection.19.1.3}%
-\contentsline {subsection}{\numberline {19.1.4}1.4 The Rule of Three (C++98)}{45}{subsection.19.1.4}%
-\contentsline {section}{\numberline {19.2}INHERITANCE \& POLYMORPHISM}{46}{section.19.2}%
-\contentsline {subsection}{\numberline {19.2.1}2.1 Inheritance Basics}{46}{subsection.19.2.1}%
-\contentsline {subsection}{\numberline {19.2.2}2.2 Virtual Functions (Polymorphism)}{46}{subsection.19.2.2}%
-\contentsline {subsection}{\numberline {19.2.3}2.3 Pure Virtual Functions (Abstract Classes)}{47}{subsection.19.2.3}%
-\contentsline {section}{\numberline {19.3}ADVANCED CLASS FEATURES}{47}{section.19.3}%
-\contentsline {subsection}{\numberline {19.3.1}3.1 Static Members}{47}{subsection.19.3.1}%
-\contentsline {subsection}{\numberline {19.3.2}3.2 Friend Classes/Functions}{47}{subsection.19.3.2}%
-\contentsline {section}{\numberline {19.4}PART 2: GENERIC PROGRAMMING (TEMPLATES)}{47}{section.19.4}%
-\contentsline {subsection}{\numberline {19.4.1}4.1 Function Templates}{48}{subsection.19.4.1}%
-\contentsline {subsection}{\numberline {19.4.2}4.2 Class Templates}{48}{subsection.19.4.2}%
-\contentsline {subsection}{\numberline {19.4.3}4.3 Multiple Template Parameters}{48}{subsection.19.4.3}%
-\contentsline {subsection}{\numberline {19.4.4}4.4 Non-Type Template Parameters}{48}{subsection.19.4.4}%
-\contentsline {subsection}{\numberline {19.4.5}4.5 Template Specialization}{49}{subsection.19.4.5}%
-\contentsline {subsubsection}{Full Specialization}{49}{section*.8}%
-\contentsline {subsubsection}{Partial Specialization (Class Templates Only)}{49}{section*.9}%
-\contentsline {subsection}{\numberline {19.4.6}4.6 The \texttt {typename} Keyword}{49}{subsection.19.4.6}%
-\contentsline {subsection}{\numberline {19.4.7}4.7 Templates vs Macros}{50}{subsection.19.4.7}%
-\contentsline {section}{\numberline {19.5}13.2 Namespace Aliases}{50}{section.19.5}%
-\contentsline {chapter}{\numberline {20}POLYMORPHISM \& VIRTUALIZATION}{52}{chapter.20}%
-\contentsline {chapter}{\numberline {21}DEEP OBJECT MODEL \& VIRTUALIZATION}{53}{chapter.21}%
-\contentsline {subsection}{\numberline {21.0.1}2.5.1 The Cost of Polymorphism (vptr \& vtable)}{53}{subsection.21.0.1}%
-\contentsline {subsection}{\numberline {21.0.2}2.5.2 Multiple Inheritance \& Thunks}{53}{subsection.21.0.2}%
-\contentsline {subsection}{\numberline {21.0.3}2.5.3 Virtual Inheritance (The Diamond Problem)}{53}{subsection.21.0.3}%
-\contentsline {subsection}{\numberline {21.0.4}2.5.4 Alignment \& Padding Rules}{54}{subsection.21.0.4}%
-\contentsline {chapter}{\numberline {22}THE STANDARD TEMPLATE LIBRARY (STL) CORE}{55}{chapter.22}%
-\contentsline {chapter}{\numberline {23}C++98/03 STANDARD LIBRARY}{56}{chapter.23}%
-\contentsline {section}{\numberline {23.1}Standard Template Library (STL)}{56}{section.23.1}%
-\contentsline {section}{\numberline {23.2}Introduction to STL}{56}{section.23.2}%
-\contentsline {subsection}{\numberline {23.2.1}Key Advantages}{56}{subsection.23.2.1}%
-\contentsline {section}{\numberline {23.3}STL Components Overview}{56}{section.23.3}%
-\contentsline {section}{\numberline {23.4}CONTAINERS - COMPLETE REFERENCE}{57}{section.23.4}%
-\contentsline {subsection}{\numberline {23.4.1}Container Characteristics (C++98)}{57}{subsection.23.4.1}%
-\contentsline {section}{\numberline {23.5}1.1 VECTOR - Dynamic Array}{57}{section.23.5}%
-\contentsline {subsection}{\numberline {23.5.1}What is Vector?}{57}{subsection.23.5.1}%
-\contentsline {subsection}{\numberline {23.5.2}Declaration \& Initialization}{57}{subsection.23.5.2}%
-\contentsline {subsection}{\numberline {23.5.3}Accessing Elements}{57}{subsection.23.5.3}%
-\contentsline {subsection}{\numberline {23.5.4}Modifying Elements}{58}{subsection.23.5.4}%
-\contentsline {subsection}{\numberline {23.5.5}Size \& Capacity}{58}{subsection.23.5.5}%
-\contentsline {subsection}{\numberline {23.5.6}Iterating Through Vector}{58}{subsection.23.5.6}%
-\contentsline {section}{\numberline {23.6}1.2 DEQUE - Double Ended Queue}{59}{section.23.6}%
-\contentsline {subsection}{\numberline {23.6.1}What is Deque?}{59}{subsection.23.6.1}%
-\contentsline {section}{\numberline {23.7}1.3 LIST - Doubly Linked List}{59}{section.23.7}%
-\contentsline {subsection}{\numberline {23.7.1}What is List?}{59}{subsection.23.7.1}%
-\contentsline {section}{\numberline {23.8}1.4 MAP - Sorted Key-Value Pairs}{60}{section.23.8}%
-\contentsline {subsection}{\numberline {23.8.1}What is Map?}{60}{subsection.23.8.1}%
-\contentsline {section}{\numberline {23.9}1.5 SET - Sorted Unique Keys}{60}{section.23.9}%
-\contentsline {subsection}{\numberline {23.9.1}What is Set?}{60}{subsection.23.9.1}%
-\contentsline {section}{\numberline {23.10}1.6 MULTIMAP \& MULTISET}{61}{section.23.10}%
-\contentsline {section}{\numberline {23.11}1.7 STACK (Adapter)}{61}{section.23.11}%
-\contentsline {section}{\numberline {23.12}1.8 QUEUE (Adapter)}{61}{section.23.12}%
-\contentsline {section}{\numberline {23.13}1.9 PRIORITY\_QUEUE (Adapter)}{62}{section.23.13}%
-\contentsline {section}{\numberline {23.14}ITERATORS}{62}{section.23.14}%
-\contentsline {subsection}{\numberline {23.14.1}Categories}{62}{subsection.23.14.1}%
-\contentsline {subsection}{\numberline {23.14.2}Operations}{62}{subsection.23.14.2}%
-\contentsline {section}{\numberline {23.15}ALGORITHMS}{62}{section.23.15}%
-\contentsline {subsection}{\numberline {23.15.1}1. Non-Modifying}{63}{subsection.23.15.1}%
-\contentsline {subsection}{\numberline {23.15.2}2. Modifying}{63}{subsection.23.15.2}%
-\contentsline {subsection}{\numberline {23.15.3}3. Sorting}{63}{subsection.23.15.3}%
-\contentsline {subsection}{\numberline {23.15.4}4. Binary Search (On Sorted Ranges)}{63}{subsection.23.15.4}%
-\contentsline {subsection}{\numberline {23.15.5}5. Set Operations (On Sorted Ranges)}{63}{subsection.23.15.5}%
-\contentsline {subsection}{\numberline {23.15.6}6. Numeric ()}{63}{subsection.23.15.6}%
-\contentsline {subsection}{\numberline {23.15.7}Example: Sort and Find}{63}{subsection.23.15.7}%
-\contentsline {section}{\numberline {23.16}STRINGS (std::string)}{64}{section.23.16}%
-\contentsline {section}{\numberline {23.17}STREAMS (IOSTREAM)}{64}{section.23.17}%
-\contentsline {subsection}{\numberline {23.17.1}File I/O ()}{64}{subsection.23.17.1}%
-\contentsline {subsection}{\numberline {23.17.2}String Streams ()}{65}{subsection.23.17.2}%
-\contentsline {section}{\numberline {23.18}FUNCTORS (Function Objects)}{65}{section.23.18}%
-\contentsline {chapter}{\numberline {24}ADVANCED STRINGS}{66}{chapter.24}%
-\contentsline {section}{\numberline {24.1}5.1 String Manipulation}{66}{section.24.1}%
-\contentsline {section}{\numberline {24.2}5.2 String Conversion}{67}{section.24.2}%
-\contentsline {section}{\numberline {24.3}5.3 String Tokenization}{67}{section.24.3}%
-\contentsline {chapter}{\numberline {25}FILE I/O ADVANCED}{69}{chapter.25}%
-\contentsline {section}{\numberline {25.1}14.1 Binary File I/O}{69}{section.25.1}%
-\contentsline {section}{\numberline {25.2}14.2 Stream Positioning}{69}{section.25.2}%
-\contentsline {chapter}{\numberline {26}STL INTERNALS DEEP DIVE}{71}{chapter.26}%
-\contentsline {chapter}{\numberline {27}STL INTERNALS DEEP DIVE (C++98)}{72}{chapter.27}%
-\contentsline {subsection}{\numberline {27.0.1}1. The Truth About std::vector}{72}{subsection.27.0.1}%
-\contentsline {subsection}{\numberline {27.0.2}2. The std::deque Implementation}{72}{subsection.27.0.2}%
-\contentsline {subsection}{\numberline {27.0.3}3. Why std::list is (Almost) Always Wrong}{73}{subsection.27.0.3}%
-\contentsline {subsection}{\numberline {27.0.4}4. Associative Containers (Map/Set)}{73}{subsection.27.0.4}%
-\contentsline {subsection}{\numberline {27.0.5}5. Iterator Invalidation Cheat Sheet}{73}{subsection.27.0.5}%
-\contentsline {chapter}{\numberline {28}ERROR HANDLING \& ROBUSTNESS}{74}{chapter.28}%
-\contentsline {chapter}{\numberline {29}ERROR HANDLING \& DEBUGGING (C++98)}{75}{chapter.29}%
-\contentsline {section}{\numberline {29.1}1. ASSERTIONS}{75}{section.29.1}%
-\contentsline {section}{\numberline {29.2}2. EXCEPTIONS}{75}{section.29.2}%
-\contentsline {subsection}{\numberline {29.2.1}2.1 Basic Try-Catch}{75}{subsection.29.2.1}%
-\contentsline {subsection}{\numberline {29.2.2}2.2 Catching Multiple Types}{76}{subsection.29.2.2}%
-\contentsline {subsection}{\numberline {29.2.3}2.3 Standard Exceptions}{76}{subsection.29.2.3}%
-\contentsline {subsection}{\numberline {29.2.4}2.4 Exception Specifications (C++98)}{76}{subsection.29.2.4}%
-\contentsline {subsection}{\numberline {29.2.5}2.5 Stack Unwinding \& RAII}{77}{subsection.29.2.5}%
-\contentsline {section}{\numberline {29.3}3. DEBUGGING STRATEGIES}{77}{section.29.3}%
-\contentsline {subsection}{\numberline {29.3.1}3.1 Debug Macros (C++98 Style)}{77}{subsection.29.3.1}%
-\contentsline {part}{II\hspace {1em}Volume II: C++11 - The Modern Revolution}{78}{part.2}%
-\contentsline {chapter}{\numberline {30}THE MODERN C++11 CORE: SYNTAX \& TYPE SYSTEM}{79}{chapter.30}%
-\contentsline {section}{\numberline {30.1}1. Type Inference \& Safety}{79}{section.30.1}%
-\contentsline {subsection}{\numberline {30.1.1}1.1 \texttt {auto}: Automatic Type Deduction}{79}{subsection.30.1.1}%
-\contentsline {subsection}{\numberline {30.1.2}1.2 \texttt {decltype}: Inspecting Types}{79}{subsection.30.1.2}%
-\contentsline {subsection}{\numberline {30.1.3}1.3 \texttt {nullptr}: The Null Pointer Literal}{79}{subsection.30.1.3}%
-\contentsline {section}{\numberline {30.2}2. Initialization Uniformity}{80}{section.30.2}%
-\contentsline {subsection}{\numberline {30.2.1}2.1 Uniform Initialization (Brace Initialization)}{80}{subsection.30.2.1}%
-\contentsline {subsection}{\numberline {30.2.2}2.2 \texttt {std::initializer\_list}}{80}{subsection.30.2.2}%
-\contentsline {section}{\numberline {30.3}3. Control Flow \& Iteration}{80}{section.30.3}%
-\contentsline {subsection}{\numberline {30.3.1}3.1 Range-Based For Loops}{80}{subsection.30.3.1}%
-\contentsline {section}{\numberline {30.4}4. Class Features}{81}{section.30.4}%
-\contentsline {subsection}{\numberline {30.4.1}4.1 Explicit Overrides (\texttt {override}, \texttt {final})}{81}{subsection.30.4.1}%
-\contentsline {subsection}{\numberline {30.4.2}4.2 Defaulted and Deleted Functions}{81}{subsection.30.4.2}%
-\contentsline {subsection}{\numberline {30.4.3}4.3 Strongly Typed Enums (\texttt {enum\ class})}{81}{subsection.30.4.3}%
-\contentsline {subsection}{\numberline {30.4.4}4.4 Delegating Constructors}{81}{subsection.30.4.4}%
-\contentsline {section}{\numberline {30.5}5. \texttt {constexpr} (C++11 Version)}{82}{section.30.5}%
-\contentsline {section}{\numberline {30.6}6. Static Assert}{82}{section.30.6}%
-\contentsline {chapter}{\numberline {31}MOVE SEMANTICS \& SMART POINTERS}{83}{chapter.31}%
-\contentsline {section}{\numberline {31.1}1. Rvalue References \& Move Semantics}{83}{section.31.1}%
-\contentsline {subsection}{\numberline {31.1.1}1.1 Lvalues vs Rvalues}{83}{subsection.31.1.1}%
-\contentsline {subsection}{\numberline {31.1.2}1.2 Rvalue References (\texttt {T\&\&})}{83}{subsection.31.1.2}%
-\contentsline {subsection}{\numberline {31.1.3}1.3 Move Constructor \& Move Assignment}{83}{subsection.31.1.3}%
-\contentsline {subsection}{\numberline {31.1.4}1.4 \texttt {std::move}}{84}{subsection.31.1.4}%
-\contentsline {section}{\numberline {31.2}2. Smart Pointers (RAII)}{84}{section.31.2}%
-\contentsline {subsection}{\numberline {31.2.1}2.1 \texttt {std::unique\_ptr}}{84}{subsection.31.2.1}%
-\contentsline {subsection}{\numberline {31.2.2}2.2 \texttt {std::shared\_ptr}}{84}{subsection.31.2.2}%
-\contentsline {subsection}{\numberline {31.2.3}2.3 \texttt {std::weak\_ptr}}{85}{subsection.31.2.3}%
-\contentsline {subsection}{\numberline {31.2.4}2.4 \texttt {std::make\_shared} vs \texttt {new}}{85}{subsection.31.2.4}%
-\contentsline {section}{\numberline {31.3}3. Perfect Forwarding}{85}{section.31.3}%
-\contentsline {chapter}{\numberline {32}FUNCTIONAL PROGRAMMING IN C++11}{86}{chapter.32}%
-\contentsline {section}{\numberline {32.1}1. Lambda Expressions}{86}{section.32.1}%
-\contentsline {subsection}{\numberline {32.1.1}1.1 Basic Syntax}{86}{subsection.32.1.1}%
-\contentsline {subsection}{\numberline {32.1.2}1.2 Capture Lists}{86}{subsection.32.1.2}%
-\contentsline {subsection}{\numberline {32.1.3}1.3 Mutable Lambdas}{86}{subsection.32.1.3}%
-\contentsline {section}{\numberline {32.2}2. \texttt {std::function}}{87}{section.32.2}%
-\contentsline {section}{\numberline {32.3}3. \texttt {std::bind}}{87}{section.32.3}%
-\contentsline {chapter}{\numberline {33}TEMPLATE METAPROGRAMMING \& POWER FEATURES}{88}{chapter.33}%
-\contentsline {section}{\numberline {33.1}1. Variadic Templates}{88}{section.33.1}%
-\contentsline {subsection}{\numberline {33.1.1}1.1 Parameter Packing (\texttt {...})}{88}{subsection.33.1.1}%
-\contentsline {section}{\numberline {33.2}2. Type Traits}{88}{section.33.2}%
-\contentsline {section}{\numberline {33.3}3. \texttt {using} Aliases}{89}{section.33.3}%
-\contentsline {section}{\numberline {33.4}4. \texttt {std::tuple}}{89}{section.33.4}%
-\contentsline {chapter}{\numberline {34}THE C++11 STANDARD LIBRARY EXPANSION}{90}{chapter.34}%
-\contentsline {section}{\numberline {34.1}1. Unordered Containers}{90}{section.34.1}%
-\contentsline {section}{\numberline {34.2}2. \texttt {std::array}}{90}{section.34.2}%
-\contentsline {section}{\numberline {34.3}3. \texttt {std::regex}}{90}{section.34.3}%
-\contentsline {section}{\numberline {34.4}4. \texttt {std::chrono}}{90}{section.34.4}%
-\contentsline {section}{\numberline {34.5}5. \texttt {std::random}}{91}{section.34.5}%
-\contentsline {chapter}{\numberline {35}CONCURRENCY \& MULTITHREADING}{92}{chapter.35}%
-\contentsline {section}{\numberline {35.1}1. Threads (\texttt {std::thread})}{92}{section.35.1}%
-\contentsline {section}{\numberline {35.2}2. Mutexes \& Locking}{92}{section.35.2}%
-\contentsline {section}{\numberline {35.3}3. Condition Variables}{92}{section.35.3}%
-\contentsline {section}{\numberline {35.4}4. Futures \& Promises}{93}{section.35.4}%
-\contentsline {section}{\numberline {35.5}5. Atomics (\texttt {std::atomic})}{93}{section.35.5}%
-\contentsline {part}{III\hspace {1em}Volume III: C++14 - Refinement & Generics}{94}{part.3}%
-\contentsline {chapter}{\numberline {36}C++14 CORE LANGUAGE UPGRADES}{95}{chapter.36}%
-\contentsline {section}{\numberline {36.1}1. Relaxed constexpr}{95}{section.36.1}%
-\contentsline {subsection}{\numberline {36.1.1}1.1 What is Allowed?}{95}{subsection.36.1.1}%
-\contentsline {section}{\numberline {36.2}2. Binary Literals}{95}{section.36.2}%
-\contentsline {section}{\numberline {36.3}3. Digit Separators}{95}{section.36.3}%
-\contentsline {section}{\numberline {36.4}4. \texttt {{[}{[}deprecated{]}{]}} Attribute}{96}{section.36.4}%
-\contentsline {chapter}{\numberline {37}C++14 FUNCTIONS \& LAMBDAS}{97}{chapter.37}%
-\contentsline {section}{\numberline {37.1}1. Generic Lambdas}{97}{section.37.1}%
-\contentsline {section}{\numberline {37.2}2. Generalized Lambda Captures (Init-Capture)}{97}{section.37.2}%
-\contentsline {section}{\numberline {37.3}3. Automatic Return Type Deduction}{97}{section.37.3}%
-\contentsline {chapter}{\numberline {38}C++14 TEMPLATES \& METAPROGRAMMING}{98}{chapter.38}%
-\contentsline {section}{\numberline {38.1}1. Variable Templates}{98}{section.38.1}%
-\contentsline {section}{\numberline {38.2}2. \texttt {decltype(auto)}}{98}{section.38.2}%
-\contentsline {section}{\numberline {38.3}3. Standard Library Metafunctions}{98}{section.38.3}%
-\contentsline {chapter}{\numberline {39}C++14 STANDARD LIBRARY ENHANCEMENTS}{99}{chapter.39}%
-\contentsline {section}{\numberline {39.1}1. \texttt {std::make\_unique}}{99}{section.39.1}%
-\contentsline {section}{\numberline {39.2}2. Shared Locks (\texttt {std::shared\_timed\_mutex})}{99}{section.39.2}%
-\contentsline {section}{\numberline {39.3}3. \texttt {std::exchange}}{99}{section.39.3}%
-\contentsline {section}{\numberline {39.4}4. \texttt {std::quoted}}{99}{section.39.4}%
-\contentsline {section}{\numberline {39.5}5. Tuple Addressing by Type}{100}{section.39.5}%
-\contentsline {part}{IV\hspace {1em}Volume IV: C++17 - Simplification & Modernization}{101}{part.4}%
-\contentsline {chapter}{\numberline {40}C++17 CORE LANGUAGE UPGRADES}{102}{chapter.40}%
-\contentsline {section}{\numberline {40.1}1. Structured Bindings}{102}{section.40.1}%
-\contentsline {subsection}{\numberline {40.1.1}1.1 Unpacking Tuples and Pairs}{102}{subsection.40.1.1}%
-\contentsline {subsection}{\numberline {40.1.2}1.2 Unpacking Structs}{102}{subsection.40.1.2}%
-\contentsline {subsection}{\numberline {40.1.3}1.3 Modifiers (\texttt {const}, \texttt {\&})}{102}{subsection.40.1.3}%
-\contentsline {section}{\numberline {40.2}2. \texttt {if\ constexpr}}{103}{section.40.2}%
-\contentsline {section}{\numberline {40.3}3. Init-Statements for \texttt {if} and \texttt {switch}}{103}{section.40.3}%
-\contentsline {section}{\numberline {40.4}4. Inline Variables}{103}{section.40.4}%
-\contentsline {section}{\numberline {40.5}5. Nested Namespaces}{104}{section.40.5}%
-\contentsline {section}{\numberline {40.6}6. Attributes}{104}{section.40.6}%
-\contentsline {chapter}{\numberline {41}C++17 TEMPLATE METAPROGRAMMING ENHANCEMENTS}{105}{chapter.41}%
-\contentsline {section}{\numberline {41.1}1. Fold Expressions}{105}{section.41.1}%
-\contentsline {subsection}{\numberline {41.1.1}1.1 Unary Folds}{105}{subsection.41.1.1}%
-\contentsline {subsection}{\numberline {41.1.2}1.2 Binary Folds}{105}{subsection.41.1.2}%
-\contentsline {subsection}{\numberline {41.1.3}1.3 Operators}{105}{subsection.41.1.3}%
-\contentsline {section}{\numberline {41.2}2. Class Template Argument Deduction (CTAD)}{105}{section.41.2}%
-\contentsline {subsection}{\numberline {41.2.1}2.1 User-Defined Deduction Guides}{106}{subsection.41.2.1}%
-\contentsline {section}{\numberline {41.3}3. \texttt {auto} Non-Type Template Parameters}{106}{section.41.3}%
-\contentsline {section}{\numberline {41.4}4. \texttt {std::invoke}}{106}{section.41.4}%
-\contentsline {chapter}{\numberline {42}C++17 VOCABULARY TYPES}{108}{chapter.42}%
-\contentsline {section}{\numberline {42.1}1. \texttt {std::string\_view}}{108}{section.42.1}%
-\contentsline {subsection}{\numberline {42.1.1}1.1 Efficiency}{108}{subsection.42.1.1}%
-\contentsline {subsection}{\numberline {42.1.2}1.2 Caveats}{108}{subsection.42.1.2}%
-\contentsline {section}{\numberline {42.2}2. \texttt {std::optional}}{108}{section.42.2}%
-\contentsline {section}{\numberline {42.3}3. \texttt {std::variant}}{109}{section.42.3}%
-\contentsline {section}{\numberline {42.4}4. \texttt {std::any}}{109}{section.42.4}%
-\contentsline {chapter}{\numberline {43}C++17 FILESYSTEM AND IO}{110}{chapter.43}%
-\contentsline {section}{\numberline {43.1}1. \texttt {std::filesystem}}{110}{section.43.1}%
-\contentsline {subsection}{\numberline {43.1.1}1.1 Paths}{110}{subsection.43.1.1}%
-\contentsline {subsection}{\numberline {43.1.2}1.2 Iterating Directories}{110}{subsection.43.1.2}%
-\contentsline {subsection}{\numberline {43.1.3}1.3 Operations}{110}{subsection.43.1.3}%
-\contentsline {section}{\numberline {43.2}2. Polymorphic Allocators (\texttt {std::pmr})}{110}{section.43.2}%
-\contentsline {chapter}{\numberline {44}C++17 PARALLEL ALGORITHMS \& CONCURRENCY}{112}{chapter.44}%
-\contentsline {section}{\numberline {44.1}1. Parallel Algorithms (\texttt {std::execution})}{112}{section.44.1}%
-\contentsline {section}{\numberline {44.2}2. \texttt {std::scoped\_lock}}{112}{section.44.2}%
-\contentsline {section}{\numberline {44.3}3. \texttt {std::shared\_mutex}}{112}{section.44.3}%
-\contentsline {chapter}{\numberline {45}C++17 STANDARD LIBRARY ADDITIONS}{114}{chapter.45}%
-\contentsline {section}{\numberline {45.1}1. \texttt {std::byte}}{114}{section.45.1}%
-\contentsline {section}{\numberline {45.2}2. Algorithms}{114}{section.45.2}%
-\contentsline {section}{\numberline {45.3}3. Mathematical Special Functions}{114}{section.45.3}%
-\contentsline {section}{\numberline {45.4}4. Elementary String Conversions (\texttt {\textless {}charconv\textgreater {}})}{114}{section.45.4}%
-\contentsline {part}{V\hspace {1em}Volume V: C++20 - The Gigantic Leap}{115}{part.5}%
-\contentsline {chapter}{\numberline {46}C++20 CONCEPTS}{116}{chapter.46}%
-\contentsline {section}{\numberline {46.1}1. The Problem with Templates}{116}{section.46.1}%
-\contentsline {section}{\numberline {46.2}2. What are Concepts?}{116}{section.46.2}%
-\contentsline {subsection}{\numberline {46.2.1}2.1 Defining a Concept}{116}{subsection.46.2.1}%
-\contentsline {subsection}{\numberline {46.2.2}2.2 Using Concepts (\texttt {requires} clause)}{116}{subsection.46.2.2}%
-\contentsline {section}{\numberline {46.3}3. The \texttt {requires} Expression}{117}{section.46.3}%
-\contentsline {section}{\numberline {46.4}4. Standard Concepts (\texttt {\textless {}concepts\textgreater {}})}{117}{section.46.4}%
-\contentsline {section}{\numberline {46.5}5. Constraint Based Overloading}{117}{section.46.5}%
-\contentsline {chapter}{\numberline {47}C++20 MODULES}{118}{chapter.47}%
-\contentsline {section}{\numberline {47.1}1. The Death of Headers}{118}{section.47.1}%
-\contentsline {subsection}{\numberline {47.1.1}1.1 Problems with Headers}{118}{subsection.47.1.1}%
-\contentsline {section}{\numberline {47.2}2. Basic Module Syntax}{118}{section.47.2}%
-\contentsline {subsection}{\numberline {47.2.1}2.1 Interface Unit (\texttt {.cppm} or \texttt {.ixx})}{118}{subsection.47.2.1}%
-\contentsline {subsection}{\numberline {47.2.2}2.2 Importing a Module}{118}{subsection.47.2.2}%
-\contentsline {section}{\numberline {47.3}3. Module Partitions}{118}{section.47.3}%
-\contentsline {section}{\numberline {47.4}4. The Global Module Fragment}{119}{section.47.4}%
-\contentsline {section}{\numberline {47.5}5. Build System Implications}{119}{section.47.5}%
-\contentsline {chapter}{\numberline {48}C++20 COROUTINES}{120}{chapter.48}%
-\contentsline {section}{\numberline {48.1}1. Asynchronous Programming}{120}{section.48.1}%
-\contentsline {subsection}{\numberline {48.1.1}1.1 Keywords}{120}{subsection.48.1.1}%
-\contentsline {section}{\numberline {48.2}2. Generators (The Python Style)}{120}{section.48.2}%
-\contentsline {section}{\numberline {48.3}3. Tasks (\texttt {co\_await})}{121}{section.48.3}%
-\contentsline {section}{\numberline {48.4}4. Under the Hood}{121}{section.48.4}%
-\contentsline {chapter}{\numberline {49}C++20 RANGES}{122}{chapter.49}%
-\contentsline {section}{\numberline {49.1}1. The End of Iterator pairs}{122}{section.49.1}%
-\contentsline {section}{\numberline {49.2}2. Views vs Actions}{122}{section.49.2}%
-\contentsline {section}{\numberline {49.3}3. Projections}{122}{section.49.3}%
-\contentsline {section}{\numberline {49.4}4. Dangling Iterators Protection}{123}{section.49.4}%
-\contentsline {chapter}{\numberline {50}C++20 CORE LANGUAGE FEATURES}{124}{chapter.50}%
-\contentsline {section}{\numberline {50.1}1. Three-Way Comparison (\texttt {\textless {}=\textgreater {}})}{124}{section.50.1}%
-\contentsline {section}{\numberline {50.2}2. Designated Initializers}{124}{section.50.2}%
-\contentsline {section}{\numberline {50.3}3. \texttt {consteval} (Immediate Functions)}{124}{section.50.3}%
-\contentsline {section}{\numberline {50.4}4. \texttt {constinit}}{125}{section.50.4}%
-\contentsline {section}{\numberline {50.5}5. Non-Type Template Parameters (NTTP) Enhancements}{125}{section.50.5}%
-\contentsline {chapter}{\numberline {51}C++20 STANDARD LIBRARY ADDITIONS}{126}{chapter.51}%
-\contentsline {section}{\numberline {51.1}1. \texttt {std::format} (Python-style Formatting)}{126}{section.51.1}%
-\contentsline {section}{\numberline {51.2}2. \texttt {std::span}}{126}{section.51.2}%
-\contentsline {section}{\numberline {51.3}3. \texttt {std::jthread} (Joinable Thread)}{126}{section.51.3}%
-\contentsline {section}{\numberline {51.4}4. Concurrency Primitives (\texttt {\textless {}semaphore\textgreater {}}, \texttt {\textless {}barrier\textgreater {}}, \texttt {\textless {}latch\textgreater {}})}{127}{section.51.4}%
-\contentsline {section}{\numberline {51.5}5. Mathematical Constants (\texttt {\textless {}numbers\textgreater {}})}{127}{section.51.5}%
-\contentsline {section}{\numberline {51.6}6. Bit Manipulation (\texttt {\textless {}bit\textgreater {}})}{127}{section.51.6}%
-\contentsline {part}{VI\hspace {1em}Volume VI: C++23/26 - The Future}{128}{part.6}%
-\contentsline {chapter}{\numberline {52}C++23 CORE LANGUAGE UPGRADES}{129}{chapter.52}%
-\contentsline {section}{\numberline {52.1}1. Deducing \texttt {this} (Explicit Object Parameter)}{129}{section.52.1}%
-\contentsline {subsection}{\numberline {52.1.1}1.1 The Problem (C++20 and older)}{129}{subsection.52.1.1}%
-\contentsline {subsection}{\numberline {52.1.2}1.2 The Solution}{129}{subsection.52.1.2}%
-\contentsline {subsection}{\numberline {52.1.3}1.3 Recursive Lambdas}{129}{subsection.52.1.3}%
-\contentsline {section}{\numberline {52.2}2. \texttt {if\ consteval}}{130}{section.52.2}%
-\contentsline {section}{\numberline {52.3}3. Multidimensional Subscript Operator (\texttt {operator{[}{]}})}{130}{section.52.3}%
-\contentsline {section}{\numberline {52.4}4. \texttt {auto(x)}: Decay Copy}{130}{section.52.4}%
-\contentsline {section}{\numberline {52.5}5. Literal Suffixes for \texttt {size\_t}}{130}{section.52.5}%
-\contentsline {section}{\numberline {52.6}6. \texttt {\#warning}}{130}{section.52.6}%
-\contentsline {chapter}{\numberline {53}C++23 STD::PRINT \& I/O}{131}{chapter.53}%
-\contentsline {section}{\numberline {53.1}1. \texttt {std::print} and \texttt {std::println}}{131}{section.53.1}%
-\contentsline {subsection}{\numberline {53.1.1}1.1 Basic Usage}{131}{subsection.53.1.1}%
-\contentsline {subsection}{\numberline {53.1.2}1.2 Performance}{131}{subsection.53.1.2}%
-\contentsline {subsection}{\numberline {53.1.3}1.3 Formatting}{131}{subsection.53.1.3}%
-\contentsline {subsection}{\numberline {53.1.4}1.4 Output to Streams}{131}{subsection.53.1.4}%
-\contentsline {section}{\numberline {53.2}2. \texttt {std::spanstream}}{131}{section.53.2}%
-\contentsline {chapter}{\numberline {54}C++23 MONADIC OPERATIONS \& EXPECTED}{133}{chapter.54}%
-\contentsline {section}{\numberline {54.1}1. \texttt {std::expected}}{133}{section.54.1}%
-\contentsline {subsection}{\numberline {54.1.1}1.1 Basics}{133}{subsection.54.1.1}%
-\contentsline {subsection}{\numberline {54.1.2}1.2 Monadic Chain}{133}{subsection.54.1.2}%
-\contentsline {section}{\numberline {54.2}2. Monadic Operations for \texttt {std::optional}}{134}{section.54.2}%
-\contentsline {chapter}{\numberline {55}C++23 CONTAINERS \& VIEWS}{135}{chapter.55}%
-\contentsline {section}{\numberline {55.1}1. \texttt {std::mdspan}}{135}{section.55.1}%
-\contentsline {subsection}{\numberline {55.1.1}1.1 Basics}{135}{subsection.55.1.1}%
-\contentsline {subsection}{\numberline {55.1.2}1.2 Layouts}{135}{subsection.55.1.2}%
-\contentsline {section}{\numberline {55.2}2. \texttt {std::flat\_map} and \texttt {std::flat\_set}}{135}{section.55.2}%
-\contentsline {section}{\numberline {55.3}3. Ranges Enhancements}{136}{section.55.3}%
-\contentsline {chapter}{\numberline {56}C++23 COROUTINES \& STACKTRACE}{137}{chapter.56}%
-\contentsline {section}{\numberline {56.1}1. \texttt {std::generator}}{137}{section.56.1}%
-\contentsline {subsection}{\numberline {56.1.1}1.1 Basic Generator}{137}{subsection.56.1.1}%
-\contentsline {subsection}{\numberline {56.1.2}1.2 Recursive Generator}{137}{subsection.56.1.2}%
-\contentsline {section}{\numberline {56.2}2. \texttt {std::stacktrace}}{137}{section.56.2}%
-\contentsline {chapter}{\numberline {57}C++23 LIBRARY UTILITIES}{138}{chapter.57}%
-\contentsline {section}{\numberline {57.1}1. \texttt {std::unreachable}}{138}{section.57.1}%
-\contentsline {section}{\numberline {57.2}2. \texttt {std::to\_underlying}}{138}{section.57.2}%
-\contentsline {section}{\numberline {57.3}3. \texttt {std::byteswap}}{138}{section.57.3}%
-\contentsline {section}{\numberline {57.4}4. \texttt {std::stdatomic.h}}{138}{section.57.4}%
-\contentsline {section}{\numberline {57.5}5. \texttt {std::move\_only\_function}}{138}{section.57.5}%
-\contentsline {chapter}{\numberline {58}THE FUTURE - C++26 PREVIEW}{140}{chapter.58}%
-\contentsline {subsection}{\numberline {58.0.1}13.1 Static Reflection (std::meta)}{140}{subsection.58.0.1}%
-\contentsline {subsection}{\numberline {58.0.2}13.2 Contracts}{140}{subsection.58.0.2}%
-\contentsline {subsection}{\numberline {58.0.3}13.3 Senders \& Receivers (std::execution)}{141}{subsection.58.0.3}%
-\contentsline {subsection}{\numberline {58.0.4}13.4 Linear Algebra (std::linalg)}{141}{subsection.58.0.4}%
-\contentsline {part}{VII\hspace {1em}Volume VII: Advanced Topics & Systems Architecture}{143}{part.7}%
-\contentsline {chapter}{\numberline {59}ADVANCED TEMPLATE METAPROGRAMMING}{144}{chapter.59}%
-\contentsline {section}{\numberline {59.1}1. The Evolution of TMP}{144}{section.59.1}%
-\contentsline {section}{\numberline {59.2}2. SFINAE (Substitution Failure Is Not An Error)}{144}{section.59.2}%
-\contentsline {subsection}{\numberline {59.2.1}2.1 \texttt {std::enable\_if}}{144}{subsection.59.2.1}%
-\contentsline {subsection}{\numberline {59.2.2}2.2 The \texttt {void\_t} Trick (C++17)}{144}{subsection.59.2.2}%
-\contentsline {section}{\numberline {59.3}3. Curiously Recurring Template Pattern (CRTP)}{145}{section.59.3}%
-\contentsline {section}{\numberline {59.4}4. Policy-Based Design}{145}{section.59.4}%
-\contentsline {section}{\numberline {59.5}5. Modern TMP with Concepts (C++20)}{145}{section.59.5}%
-\contentsline {chapter}{\numberline {60}COMPILE-TIME PROGRAMMING}{146}{chapter.60}%
-\contentsline {section}{\numberline {60.1}1. \texttt {constexpr} Evolution}{146}{section.60.1}%
-\contentsline {section}{\numberline {60.2}2. \texttt {consteval} (C++20)}{146}{section.60.2}%
-\contentsline {section}{\numberline {60.3}3. Type Traits (\texttt {\textless {}type\_traits\textgreater {}})}{146}{section.60.3}%
-\contentsline {subsection}{\numberline {60.3.1}3.1 Queries}{146}{subsection.60.3.1}%
-\contentsline {subsection}{\numberline {60.3.2}3.2 Transformations}{146}{subsection.60.3.2}%
-\contentsline {section}{\numberline {60.4}4. \texttt {std::integral\_constant}}{147}{section.60.4}%
-\contentsline {section}{\numberline {60.5}5. Reflection (C++26 Preview)}{147}{section.60.5}%
-\contentsline {chapter}{\numberline {61}THE MEMORY MODEL \& ATOMICS}{148}{chapter.61}%
-\contentsline {section}{\numberline {61.1}1. The C++ Memory Model}{148}{section.61.1}%
-\contentsline {section}{\numberline {61.2}2. Atomic Operations}{148}{section.61.2}%
-\contentsline {section}{\numberline {61.3}3. Memory Orderings}{148}{section.61.3}%
-\contentsline {subsection}{\numberline {61.3.1}3.1 Synchronizes-With}{148}{subsection.61.3.1}%
-\contentsline {section}{\numberline {61.4}4. Fences}{149}{section.61.4}%
-\contentsline {chapter}{\numberline {62}LOCK-FREE PROGRAMMING}{150}{chapter.62}%
-\contentsline {section}{\numberline {62.1}1. The Concept}{150}{section.62.1}%
-\contentsline {section}{\numberline {62.2}2. Compare-And-Swap (CAS)}{150}{section.62.2}%
-\contentsline {section}{\numberline {62.3}3. The ABA Problem}{150}{section.62.3}%
-\contentsline {section}{\numberline {62.4}4. Lock-Free Data Structures}{150}{section.62.4}%
-\contentsline {chapter}{\numberline {63}ADVANCED CONCURRENCY PATTERNS}{151}{chapter.63}%
-\contentsline {section}{\numberline {63.1}1. Thread Pools}{151}{section.63.1}%
-\contentsline {section}{\numberline {63.2}2. The Actor Model}{151}{section.63.2}%
-\contentsline {section}{\numberline {63.3}3. Disruptor Pattern}{151}{section.63.3}%
-\contentsline {section}{\numberline {63.4}4. Coroutines for Concurrency}{151}{section.63.4}%
-\contentsline {section}{\numberline {63.5}5. False Sharing}{152}{section.63.5}%
-\contentsline {chapter}{\numberline {64}CUSTOM MEMORY ALLOCATORS}{153}{chapter.64}%
-\contentsline {section}{\numberline {64.1}1. Why Custom Allocators?}{153}{section.64.1}%
-\contentsline {section}{\numberline {64.2}2. Linear / Stack Allocator}{153}{section.64.2}%
-\contentsline {section}{\numberline {64.3}3. Pool Allocator}{153}{section.64.3}%
-\contentsline {section}{\numberline {64.4}4. \texttt {std::pmr} (Polymorphic Memory Resources)}{153}{section.64.4}%
-\contentsline {section}{\numberline {64.5}5. Alignment}{154}{section.64.5}%
-\contentsline {chapter}{\numberline {65}HIGH-PERFORMANCE OPTIMIZATION}{155}{chapter.65}%
-\contentsline {section}{\numberline {65.1}1. CPU Caching}{155}{section.65.1}%
-\contentsline {section}{\numberline {65.2}2. Branch Prediction}{155}{section.65.2}%
-\contentsline {section}{\numberline {65.3}3. SIMD (Single Instruction, Multiple Data)}{155}{section.65.3}%
-\contentsline {section}{\numberline {65.4}4. Link Time Optimization (LTO)}{155}{section.65.4}%
-\contentsline {section}{\numberline {65.5}5. Profile-Guided Optimization (PGO)}{155}{section.65.5}%
-\contentsline {chapter}{\numberline {66}WRITING A C++ COMPILER (BASICS)}{156}{chapter.66}%
-\contentsline {subsection}{\numberline {66.0.1}18.1 Lexical Analysis (Tokenizer)}{156}{subsection.66.0.1}%
-\contentsline {subsection}{\numberline {66.0.2}18.2 Parsing (Recursive Descent)}{156}{subsection.66.0.2}%
-\contentsline {subsection}{\numberline {66.0.3}18.3 Semantic Analysis (Types \& Scopes)}{156}{subsection.66.0.3}%
-\contentsline {chapter}{\numberline {67}WRITING A GARBAGE COLLECTOR}{158}{chapter.67}%
-\contentsline {subsection}{\numberline {67.0.1}29.1 Mark-and-Sweep Basics}{158}{subsection.67.0.1}%
-\contentsline {chapter}{\numberline {68}THE STANDARD LIBRARY FROM SCRATCH}{159}{chapter.68}%
-\contentsline {subsection}{\numberline {68.0.1}19.1 Implementing my::vector}{159}{subsection.68.0.1}%
-\contentsline {subsection}{\numberline {68.0.2}19.2 Implementing my::shared\_ptr}{159}{subsection.68.0.2}%
-\contentsline {part}{VIII\hspace {1em}Volume VIII: Specialized Domains & Expert Mastery}{161}{part.8}%
-\contentsline {chapter}{\numberline {69}DISTRIBUTED C++}{162}{chapter.69}%
-\contentsline {subsection}{\numberline {69.0.1}16.1 Serialization (Binary Protocols)}{162}{subsection.69.0.1}%
-\contentsline {subsection}{\numberline {69.0.2}16.2 RPC (Remote Procedure Call) Concept}{162}{subsection.69.0.2}%
-\contentsline {subsection}{\numberline {69.0.3}16.3 Consensus (Raft Basics)}{163}{subsection.69.0.3}%
-\contentsline {chapter}{\numberline {70}NETWORKING FROM SCRATCH}{164}{chapter.70}%
-\contentsline {subsection}{\numberline {70.0.1}28.1 Berkeley Sockets API}{164}{subsection.70.0.1}%
-\contentsline {subsection}{\numberline {70.0.2}28.2 Non-Blocking I/O \& Epoll (Linux)}{164}{subsection.70.0.2}%
-\contentsline {chapter}{\numberline {71}C++ IN THE CLOUD}{166}{chapter.71}%
-\contentsline {subsection}{\numberline {71.0.1}20.1 Microservices with C++}{166}{subsection.71.0.1}%
-\contentsline {subsection}{\numberline {71.0.2}20.2 Serverless C++ (AWS Lambda)}{166}{subsection.71.0.2}%
-\contentsline {chapter}{\numberline {72}CROSS-PLATFORM DEVELOPMENT}{167}{chapter.72}%
-\contentsline {subsection}{\numberline {72.0.1}21.1 WebAssembly (Wasm) with Emscripten}{167}{subsection.72.0.1}%
-\contentsline {subsection}{\numberline {72.0.2}21.2 Mobile C++ (Android NDK \& JNI)}{167}{subsection.72.0.2}%
-\contentsline {chapter}{\numberline {73}GUI DEVELOPMENT WITH C++}{168}{chapter.73}%
-\contentsline {subsection}{\numberline {73.0.1}22.1 Qt Framework (Retained Mode)}{168}{subsection.73.0.1}%
-\contentsline {subsection}{\numberline {73.0.2}22.2 Dear ImGui (Immediate Mode)}{168}{subsection.73.0.2}%
-\contentsline {chapter}{\numberline {74}SCIENTIFIC COMPUTING \& GPU}{169}{chapter.74}%
-\contentsline {subsection}{\numberline {74.0.1}23.1 Eigen (Linear Algebra)}{169}{subsection.74.0.1}%
-\contentsline {subsection}{\numberline {74.0.2}23.2 CUDA (GPU Programming)}{169}{subsection.74.0.2}%
-\contentsline {chapter}{\numberline {75}INTEROPERABILITY}{170}{chapter.75}%
-\contentsline {subsection}{\numberline {75.0.1}35.1 Python Bindings (pybind11)}{170}{subsection.75.0.1}%
-\contentsline {subsection}{\numberline {75.0.2}35.2 Java Native Interface (JNI)}{170}{subsection.75.0.2}%
-\contentsline {subsection}{\numberline {75.0.3}35.3 Stable C ABI}{170}{subsection.75.0.3}%
-\contentsline {chapter}{\numberline {76}SECURITY ENGINEERING}{171}{chapter.76}%
-\contentsline {subsection}{\numberline {76.0.1}36.1 Fuzzing (libFuzzer / AFL++)}{171}{subsection.76.0.1}%
-\contentsline {subsection}{\numberline {76.0.2}36.2 Cryptography \& Timing Attacks}{171}{subsection.76.0.2}%
-\contentsline {subsection}{\numberline {76.0.3}36.3 Side-Channel Mitigations (Spectre)}{171}{subsection.76.0.3}%
-\contentsline {chapter}{\numberline {77}SPECIALIZED DOMAINS}{172}{chapter.77}%
-\contentsline {subsection}{\numberline {77.0.1}37.1 Game Development (Data-Oriented Design)}{172}{subsection.77.0.1}%
-\contentsline {subsection}{\numberline {77.0.2}37.2 Embedded Systems}{172}{subsection.77.0.2}%
-\contentsline {subsection}{\numberline {77.0.3}37.3 High-Frequency Trading (HFT)}{172}{subsection.77.0.3}%
-\contentsline {subsection}{\numberline {77.0.4}37.4 Automotive (MISRA C++ / AUTOSAR)}{172}{subsection.77.0.4}%
-\contentsline {section}{\numberline {77.1}FINAL COMPREHENSIVE CHECKLIST}{173}{section.77.1}%
-\contentsline {subsection}{\numberline {77.1.1}C++98/03 Foundation}{173}{subsection.77.1.1}%
-\contentsline {subsection}{\numberline {77.1.2}C++11 Major Features}{173}{subsection.77.1.2}%
-\contentsline {subsection}{\numberline {77.1.3}C++14 Improvements}{173}{subsection.77.1.3}%
-\contentsline {subsection}{\numberline {77.1.4}C++17 Modern Features}{173}{subsection.77.1.4}%
-\contentsline {subsection}{\numberline {77.1.5}C++20 Revolutionary}{173}{subsection.77.1.5}%
-\contentsline {subsection}{\numberline {77.1.6}C++23 Latest}{174}{subsection.77.1.6}%
-\contentsline {subsection}{\numberline {77.1.7}Advanced Concepts}{174}{subsection.77.1.7}%
-\contentsline {subsection}{\numberline {77.1.8}Concurrency}{174}{subsection.77.1.8}%
-\contentsline {subsection}{\numberline {77.1.9}Performance \& Optimization}{174}{subsection.77.1.9}%
-\contentsline {subsection}{\numberline {77.1.10}STL Mastery}{174}{subsection.77.1.10}%
-\contentsline {subsection}{\numberline {77.1.11}Design Patterns}{174}{subsection.77.1.11}%
-\contentsline {subsection}{\numberline {77.1.12}Professional Development}{175}{subsection.77.1.12}%
-\contentsline {section}{\numberline {77.2}Key Insights for C++ Mastery}{175}{section.77.2}%
-\contentsline {section}{\numberline {77.3}Learning Path}{175}{section.77.3}%
-\contentsline {section}{\numberline {77.4}Resources}{175}{section.77.4}%
-\contentsline {subsection}{\numberline {77.4.1}Official Documentation}{175}{subsection.77.4.1}%
-\contentsline {subsection}{\numberline {77.4.2}Books}{176}{subsection.77.4.2}%
-\contentsline {subsection}{\numberline {77.4.3}Practice}{176}{subsection.77.4.3}%
-\contentsline {chapter}{\numberline {78}ABA PROBLEM \& MEMORY RECLAMATION}{177}{chapter.78}%
-\contentsline {subsection}{\numberline {78.0.1}1. The ABA Problem Explained}{177}{subsection.78.0.1}%
-\contentsline {subsection}{\numberline {78.0.2}2. Solution I: Tagged Pointers (Version Counters)}{177}{subsection.78.0.2}%
-\contentsline {subsection}{\numberline {78.0.3}3. Solution II: Hazard Pointers (The Gold Standard)}{177}{subsection.78.0.3}%
-\contentsline {subsection}{\numberline {78.0.4}4. Solution III: Epoch-Based Reclamation (EBR)}{178}{subsection.78.0.4}%
-\contentsline {chapter}{\numberline {79}TEMPLATE METAPROGRAMMING PATTERNS}{179}{chapter.79}%
-\contentsline {subsection}{\numberline {79.0.1}1. Expression Templates (Lazy Evaluation)}{179}{subsection.79.0.1}%
-\contentsline {subsection}{\numberline {79.0.2}2. Type Erasure (The \texttt {std::any} Pattern)}{179}{subsection.79.0.2}%
-\contentsline {subsection}{\numberline {79.0.3}3. The Detection Idiom (void\_t)}{179}{subsection.79.0.3}%
-\contentsline {subsection}{\numberline {79.0.4}4. Policy-Based Design}{180}{subsection.79.0.4}%
-\contentsline {chapter}{\numberline {80}HIGH-PERFORMANCE DATA STRUCTURES}{181}{chapter.80}%
-\contentsline {subsection}{\numberline {80.0.1}1. The Disruptor (Ring Buffer on Steroids)}{181}{subsection.80.0.1}%
-\contentsline {subsection}{\numberline {80.0.2}2. Swiss Table (Open Addressing + Metadata)}{181}{subsection.80.0.2}%
-\contentsline {subsection}{\numberline {80.0.3}3. Burst Tries / Judy Arrays}{181}{subsection.80.0.3}%
-\contentsline {subsection}{\numberline {80.0.4}4. Slot Map}{181}{subsection.80.0.4}%
-\contentsline {chapter}{\numberline {81}REAL-TIME AUDIO \& SIGNAL PROCESSING}{182}{chapter.81}%
-\contentsline {subsection}{\numberline {81.0.1}1. Lock-Free IPC (SPSC Queue)}{182}{subsection.81.0.1}%
-\contentsline {subsection}{\numberline {81.0.2}2. SIMD for DSP}{182}{subsection.81.0.2}%
-\contentsline {subsection}{\numberline {81.0.3}3. Double Buffering}{182}{subsection.81.0.3}%
-\contentsline {chapter}{\numberline {82}ROBOTICS \& ROS2 DEVELOPMENT}{183}{chapter.82}%
-\contentsline {subsection}{\numberline {82.0.1}1. ROS2 Architecture \& DDS}{183}{subsection.82.0.1}%
-\contentsline {subsection}{\numberline {82.0.2}2. Zero-Copy Transport (Iceoryx)}{183}{subsection.82.0.2}%
-\contentsline {subsection}{\numberline {82.0.3}3. Real-Time Executors}{183}{subsection.82.0.3}%
-\contentsline {subsection}{\numberline {82.0.4}4. Custom Allocators (\texttt {std::pmr})}{183}{subsection.82.0.4}%
-\contentsline {chapter}{\numberline {83}MACHINE LEARNING INFRASTRUCTURE}{184}{chapter.83}%
-\contentsline {subsection}{\numberline {83.0.1}1. Tensor Memory Layout}{184}{subsection.83.0.1}%
-\contentsline {subsection}{\numberline {83.0.2}2. Broadcasting Implementation}{184}{subsection.83.0.2}%
-\contentsline {subsection}{\numberline {83.0.3}3. Automatic Differentiation (Autograd)}{184}{subsection.83.0.3}%
-\contentsline {subsection}{\numberline {83.0.4}4. Operator Fusion}{184}{subsection.83.0.4}%
-\contentsline {chapter}{\numberline {84}DATABASE INTERNALS (LSM TREES)}{185}{chapter.84}%
-\contentsline {subsection}{\numberline {84.0.1}1. The Write Problem}{185}{subsection.84.0.1}%
-\contentsline {subsection}{\numberline {84.0.2}2. LSM Tree (Log-Structured Merge Tree)}{185}{subsection.84.0.2}%
-\contentsline {subsection}{\numberline {84.0.3}3. Bloom Filters}{185}{subsection.84.0.3}%
-\contentsline {subsection}{\numberline {84.0.4}4. Memory Mapped I/O (\texttt {mmap})}{185}{subsection.84.0.4}%
-\contentsline {chapter}{\numberline {85}THE ULTIMATE ALGORITHM REFERENCE}{186}{chapter.85}%
-\contentsline {subsection}{\numberline {85.0.1}27.1 Non-Modifying Sequence Operations}{186}{subsection.85.0.1}%
-\contentsline {subsection}{\numberline {85.0.2}27.2 Modifying Sequence Operations}{186}{subsection.85.0.2}%
-\contentsline {subsection}{\numberline {85.0.3}27.3 Partitioning}{186}{subsection.85.0.3}%
-\contentsline {subsection}{\numberline {85.0.4}27.4 Sorting}{186}{subsection.85.0.4}%
-\contentsline {subsection}{\numberline {85.0.5}27.5 Binary Search (On Sorted Ranges)}{186}{subsection.85.0.5}%
-\contentsline {subsection}{\numberline {85.0.6}27.6 Numeric Operations ()}{187}{subsection.85.0.6}%
-\contentsline {chapter}{\numberline {86}CAPSTONE PROJECT - HIGH-PERFORMANCE ORDER BOOK}{188}{chapter.86}%
-\contentsline {subsection}{\numberline {86.0.1}Project Structure}{188}{subsection.86.0.1}%
-\contentsline {subsection}{\numberline {86.0.2}1. Types Module (types.cppm)}{188}{subsection.86.0.2}%
-\contentsline {subsection}{\numberline {86.0.3}2. Order Module (order.cppm)}{188}{subsection.86.0.3}%
-\contentsline {subsection}{\numberline {86.0.4}3. Order Book Module (book.cppm)}{189}{subsection.86.0.4}%
-\contentsline {subsection}{\numberline {86.0.5}4. Main Application (main.cpp)}{190}{subsection.86.0.5}%
-\contentsline {chapter}{\numberline {87}APPENDICES}{191}{chapter.87}%
-\contentsline {chapter}{\numberline {A}Appendix A: C++ Keywords \& Operators Reference}{192}{appendix.A}%
-\contentsline {subsection}{\numberline {A.0.1}Essential Keywords (Non-Exhaustive)}{192}{subsection.A.0.1}%
-\contentsline {subsection}{\numberline {A.0.2}Special Operators}{192}{subsection.A.0.2}%
-\contentsline {chapter}{\numberline {B}Appendix B: Common Acronyms}{193}{appendix.B}%
-\contentsline {chapter}{\numberline {C}Appendix C: Recommended Tooling}{194}{appendix.C}%
-\contentsline {subsection}{\numberline {C.0.1}Compilers}{194}{subsection.C.0.1}%
-\contentsline {subsection}{\numberline {C.0.2}Build Systems}{194}{subsection.C.0.2}%
-\contentsline {subsection}{\numberline {C.0.3}Package Managers}{194}{subsection.C.0.3}%
-\contentsline {subsection}{\numberline {C.0.4}Static Analysis \& Sanitizers}{194}{subsection.C.0.4}%
-\contentsline {chapter}{\numberline {D}Appendix D: Common C++ Traps \& Pitfalls}{195}{appendix.D}%
-\contentsline {subsection}{\numberline {D.0.1}I. General \& Syntax Traps}{195}{subsection.D.0.1}%
-\contentsline {subsection}{\numberline {D.0.2}II. Pointers, References \& Memory}{195}{subsection.D.0.2}%
-\contentsline {subsection}{\numberline {D.0.3}III. Classes \& OOP}{196}{subsection.D.0.3}%
-\contentsline {subsection}{\numberline {D.0.4}IV. Concurrency}{196}{subsection.D.0.4}%
-\contentsline {subsection}{\numberline {D.0.5}V. Modern C++ \& Macros}{197}{subsection.D.0.5}%
-\contentsline {chapter}{\numberline {E}Appendix E: C++ Interview Cheat Sheet}{198}{appendix.E}%
-\contentsline {subsection}{\numberline {E.0.1}Core Concepts}{198}{subsection.E.0.1}%
-\contentsline {subsection}{\numberline {E.0.2}Modern C++ (C++11/14/17/20)}{198}{subsection.E.0.2}%
-\contentsline {subsection}{\numberline {E.0.3}System Design Questions}{198}{subsection.E.0.3}%
-\contentsline {subsection}{\numberline {E.0.4}Quick Coding}{199}{subsection.E.0.4}%
-\contentsline {chapter}{\numberline {F}Appendix F: The C++ Standard Evolution Matrix}{200}{appendix.F}%
-\contentsline {subsection}{\numberline {F.0.1}1. Versioned Changelog}{200}{subsection.F.0.1}%
-\contentsline {subsubsection}{\textbf {C++98 (ISO/IEC 14882:1998)} - \emph {The Foundation}}{200}{section*.10}%
-\contentsline {subsubsection}{\textbf {C++03 (ISO/IEC 14882:2003)} - \emph {The Bug Fix}}{200}{section*.11}%
-\contentsline {subsubsection}{\textbf {C++11 (ISO/IEC 14882:2011)} - \emph {The Modern Revolution}}{200}{section*.12}%
-\contentsline {subsubsection}{\textbf {C++14 (ISO/IEC 14882:2014)} - \emph {The Refinement}}{200}{section*.13}%
-\contentsline {subsubsection}{\textbf {C++17 (ISO/IEC 14882:2017)} - \emph {The Major Update}}{200}{section*.14}%
-\contentsline {subsubsection}{\textbf {C++20 (ISO/IEC 14882:2020)} - \emph {The Gigantic Leap}}{201}{section*.15}%
-\contentsline {subsubsection}{\textbf {C++23 (ISO/IEC 14882:2023)} - \emph {The Completion}}{201}{section*.16}%
-\contentsline {subsection}{\numberline {F.0.2}2. Feature Matrix}{201}{subsection.F.0.2}%
-\contentsline {subsection}{\numberline {F.0.3}3. Timeline \& Release Accuracy}{201}{subsection.F.0.3}%
-\contentsline {chapter}{\numberline {G}Appendix G: C++ Standard Library Headers Reference}{202}{appendix.G}%
-\contentsline {subsection}{\numberline {G.0.1}Concepts \& Utilities}{202}{subsection.G.0.1}%
-\contentsline {subsection}{\numberline {G.0.2}Containers}{202}{subsection.G.0.2}%
-\contentsline {subsection}{\numberline {G.0.3}Algorithms \& Iterators}{202}{subsection.G.0.3}%
-\contentsline {subsection}{\numberline {G.0.4}Concurrency}{202}{subsection.G.0.4}%
-\contentsline {subsection}{\numberline {G.0.5}Input/Output}{203}{subsection.G.0.5}%
-\contentsline {subsection}{\numberline {G.0.6}Numerics \& Math}{203}{subsection.G.0.6}%
-\contentsline {chapter}{\numberline {H}Appendix H: Professional C++ Idioms}{204}{appendix.H}%
-\contentsline {subsection}{\numberline {H.0.1}1. RAII (Resource Acquisition Is Initialization)}{204}{subsection.H.0.1}%
-\contentsline {subsection}{\numberline {H.0.2}2. Pimpl (Pointer to Implementation)}{204}{subsection.H.0.2}%
-\contentsline {subsection}{\numberline {H.0.3}3. Copy-and-Swap}{204}{subsection.H.0.3}%
-\contentsline {subsection}{\numberline {H.0.4}4. NVI (Non-Virtual Interface)}{204}{subsection.H.0.4}%
-\contentsline {subsection}{\numberline {H.0.5}5. Erase-Remove Idiom}{204}{subsection.H.0.5}%
-\contentsline {subsection}{\numberline {H.0.6}6. SFINAE (Substitution Failure Is Not An Error)}{204}{subsection.H.0.6}%
-\contentsline {subsection}{\numberline {H.0.7}7. CRTP (Curiously Recurring Template Pattern)}{205}{subsection.H.0.7}%
+\contentsline {chapter}{\numberline {4}Professional Notes: Chapter 1: Getting started with C++}{17}{chapter.4}%
+\contentsline {chapter}{\numberline {5}Professional Notes: Chapter 2: Literals}{22}{chapter.5}%
+\contentsline {chapter}{\numberline {6}Professional Notes: Chapter 4: Floating Point Arithmetic}{24}{chapter.6}%
+\contentsline {chapter}{\numberline {7}MEMORY, TYPES, AND POINTERS}{25}{chapter.7}%
+\contentsline {chapter}{\numberline {8}ADVANCED POINTERS \& MEMORY}{26}{chapter.8}%
+\contentsline {section}{\numberline {8.1}1.1 Pointer to Const vs Const Pointer}{26}{section.8.1}%
+\contentsline {section}{\numberline {8.2}1.2 Void Pointers}{26}{section.8.2}%
+\contentsline {section}{\numberline {8.3}1.3 Null Pointer Safety}{27}{section.8.3}%
+\contentsline {section}{\numberline {8.4}1.4 Memory Layout \& Alignment}{27}{section.8.4}%
+\contentsline {chapter}{\numberline {9}ADVANCED ARRAYS}{29}{chapter.9}%
+\contentsline {section}{\numberline {9.1}4.1 Dynamic Arrays}{29}{section.9.1}%
+\contentsline {section}{\numberline {9.2}4.2 Variable Length Arrays (Non-standard)}{30}{section.9.2}%
+\contentsline {section}{\numberline {9.3}4.3 Array Bounds \& Safety}{30}{section.9.3}%
+\contentsline {chapter}{\numberline {10}CONST \& VOLATILE}{31}{chapter.10}%
+\contentsline {section}{\numberline {10.1}11.1 Const Correctness}{31}{section.10.1}%
+\contentsline {section}{\numberline {10.2}11.2 Volatile Keyword}{31}{section.10.2}%
+\contentsline {chapter}{\numberline {11}TYPE CASTING}{33}{chapter.11}%
+\contentsline {section}{\numberline {11.1}8.1 C-Style Casting}{33}{section.11.1}%
+\contentsline {section}{\numberline {11.2}8.2 Implicit Conversions}{33}{section.11.2}%
+\contentsline {chapter}{\numberline {12}ENUMERATION \& UNIONS}{35}{chapter.12}%
+\contentsline {section}{\numberline {12.1}10.1 Enumerations}{35}{section.12.1}%
+\contentsline {section}{\numberline {12.2}10.2 Unions}{35}{section.12.2}%
+\contentsline {chapter}{\numberline {13}BITWISE OPERATIONS}{37}{chapter.13}%
+\contentsline {section}{\numberline {13.1}6.1 Bitwise Operators}{37}{section.13.1}%
+\contentsline {section}{\numberline {13.2}6.2 Bit Manipulation Techniques}{37}{section.13.2}%
+\contentsline {chapter}{\numberline {14}Professional Notes: Chapter 8: Arrays}{39}{chapter.14}%
+\contentsline {chapter}{\numberline {15}CONTROL FLOW \& PREPROCESSOR}{42}{chapter.15}%
+\contentsline {chapter}{\numberline {16}ADVANCED CONTROL FLOW}{43}{chapter.16}%
+\contentsline {section}{\numberline {16.1}9.1 Ternary Operator}{43}{section.16.1}%
+\contentsline {section}{\numberline {16.2}9.2 goto Statement (Avoid)}{43}{section.16.2}%
+\contentsline {section}{\numberline {16.3}9.3 Label \& Goto for Error Handling}{44}{section.16.3}%
+\contentsline {chapter}{\numberline {17}PREPROCESSOR DIRECTIVES}{45}{chapter.17}%
+\contentsline {section}{\numberline {17.1}7.1 \#define and \#include}{45}{section.17.1}%
+\contentsline {section}{\numberline {17.2}7.2 Conditional Compilation}{45}{section.17.2}%
+\contentsline {section}{\numberline {17.3}7.3 Pragma Directives}{46}{section.17.3}%
+\contentsline {chapter}{\numberline {18}INLINE FUNCTIONS \& MACROS}{47}{chapter.18}%
+\contentsline {section}{\numberline {18.1}12.1 Macro Functions vs Inline Functions}{47}{section.18.1}%
+\contentsline {chapter}{\numberline {19}Professional Notes: Chapter 3: operator precedence}{48}{chapter.19}%
+\contentsline {chapter}{\numberline {20}Professional Notes: Chapter 5: Bit Operators}{50}{chapter.20}%
+\contentsline {chapter}{\numberline {21}Professional Notes: Chapter 11: Loops}{52}{chapter.21}%
+\contentsline {chapter}{\numberline {22}Professional Notes: Chapter 15: Flow Control}{56}{chapter.22}%
+\contentsline {chapter}{\numberline {23}ADVANCED FUNCTIONS \& CALLBACKS}{59}{chapter.23}%
+\contentsline {chapter}{\numberline {24}ADVANCED FUNCTIONS}{60}{chapter.24}%
+\contentsline {section}{\numberline {24.1}2.1 Variadic Functions}{60}{section.24.1}%
+\contentsline {section}{\numberline {24.2}2.2 Function Recursion}{60}{section.24.2}%
+\contentsline {section}{\numberline {24.3}2.3 Inline Functions}{61}{section.24.3}%
+\contentsline {section}{\numberline {24.4}2.4 Static Functions}{61}{section.24.4}%
+\contentsline {chapter}{\numberline {25}FUNCTION POINTERS \& CALLBACKS}{63}{chapter.25}%
+\contentsline {section}{\numberline {25.1}3.1 Function Pointers}{63}{section.25.1}%
+\contentsline {section}{\numberline {25.2}3.2 Function Pointer Arrays}{63}{section.25.2}%
+\contentsline {section}{\numberline {25.3}3.3 Callbacks}{64}{section.25.3}%
+\contentsline {chapter}{\numberline {26}OBJECT-ORIENTED PROGRAMMING: ENCAPSULATION \& DESIGN}{65}{chapter.26}%
+\contentsline {chapter}{\numberline {27}OBJECT-ORIENTED PROGRAMMING FUNDAMENTALS (C++98)}{66}{chapter.27}%
+\contentsline {section}{\numberline {27.1}CLASSES \& OBJECTS}{66}{section.27.1}%
+\contentsline {subsection}{\numberline {27.1.1}1.1 Basic Class Structure}{66}{subsection.27.1.1}%
+\contentsline {subsection}{\numberline {27.1.2}1.2 Access Modifiers \& Encapsulation}{66}{subsection.27.1.2}%
+\contentsline {subsection}{\numberline {27.1.3}1.3 Constructors \& Destructors}{67}{subsection.27.1.3}%
+\contentsline {subsection}{\numberline {27.1.4}1.4 The Rule of Three (C++98)}{67}{subsection.27.1.4}%
+\contentsline {section}{\numberline {27.2}INHERITANCE \& POLYMORPHISM}{68}{section.27.2}%
+\contentsline {subsection}{\numberline {27.2.1}2.1 Inheritance Basics}{68}{subsection.27.2.1}%
+\contentsline {subsection}{\numberline {27.2.2}2.2 Virtual Functions (Polymorphism)}{68}{subsection.27.2.2}%
+\contentsline {subsection}{\numberline {27.2.3}2.3 Pure Virtual Functions (Abstract Classes)}{69}{subsection.27.2.3}%
+\contentsline {section}{\numberline {27.3}ADVANCED CLASS FEATURES}{69}{section.27.3}%
+\contentsline {subsection}{\numberline {27.3.1}3.1 Static Members}{69}{subsection.27.3.1}%
+\contentsline {subsection}{\numberline {27.3.2}3.2 Friend Classes/Functions}{69}{subsection.27.3.2}%
+\contentsline {section}{\numberline {27.4}PART 2: GENERIC PROGRAMMING (TEMPLATES)}{69}{section.27.4}%
+\contentsline {subsection}{\numberline {27.4.1}4.1 Function Templates}{70}{subsection.27.4.1}%
+\contentsline {subsection}{\numberline {27.4.2}4.2 Class Templates}{70}{subsection.27.4.2}%
+\contentsline {subsection}{\numberline {27.4.3}4.3 Multiple Template Parameters}{70}{subsection.27.4.3}%
+\contentsline {subsection}{\numberline {27.4.4}4.4 Non-Type Template Parameters}{70}{subsection.27.4.4}%
+\contentsline {subsection}{\numberline {27.4.5}4.5 Template Specialization}{71}{subsection.27.4.5}%
+\contentsline {subsubsection}{Full Specialization}{71}{section*.8}%
+\contentsline {subsubsection}{Partial Specialization (Class Templates Only)}{71}{section*.9}%
+\contentsline {subsection}{\numberline {27.4.6}4.6 The \texttt {typename} Keyword}{71}{subsection.27.4.6}%
+\contentsline {subsection}{\numberline {27.4.7}4.7 Templates vs Macros}{72}{subsection.27.4.7}%
+\contentsline {section}{\numberline {27.5}13.2 Namespace Aliases}{72}{section.27.5}%
+\contentsline {chapter}{\numberline {28}Professional Notes: Chapter 31: Pointers to members}{74}{chapter.28}%
+\contentsline {chapter}{\numberline {29}Professional Notes: Chapter 34: Classes/Structures}{75}{chapter.29}%
+\contentsline {chapter}{\numberline {30}Professional Notes: Chapter 19: Friend keyword}{76}{chapter.30}%
+\contentsline {chapter}{\numberline {31}Professional Notes: Chapter 31: Pointers to members}{78}{chapter.31}%
+\contentsline {chapter}{\numberline {32}Professional Notes: Chapter 34: Classes/Structures}{80}{chapter.32}%
+\contentsline {chapter}{\numberline {33}POLYMORPHISM \& VIRTUALIZATION}{85}{chapter.33}%
+\contentsline {chapter}{\numberline {34}DEEP OBJECT MODEL \& VIRTUALIZATION}{86}{chapter.34}%
+\contentsline {subsection}{\numberline {34.0.1}2.5.1 The Cost of Polymorphism (vptr \& vtable)}{86}{subsection.34.0.1}%
+\contentsline {subsection}{\numberline {34.0.2}2.5.2 Multiple Inheritance \& Thunks}{86}{subsection.34.0.2}%
+\contentsline {subsection}{\numberline {34.0.3}2.5.3 Virtual Inheritance (The Diamond Problem)}{86}{subsection.34.0.3}%
+\contentsline {subsection}{\numberline {34.0.4}2.5.4 Alignment \& Padding Rules}{87}{subsection.34.0.4}%
+\contentsline {chapter}{\numberline {35}Professional Notes: Chapter 25: Polymorphism}{88}{chapter.35}%
+\contentsline {chapter}{\numberline {36}Professional Notes: Chapter 38: Virtual Member Functions}{89}{chapter.36}%
+\contentsline {chapter}{\numberline {37}Professional Notes: Chapter 40: Special Member Functions}{90}{chapter.37}%
+\contentsline {chapter}{\numberline {38}Professional Notes: Chapter 25: Polymorphism}{91}{chapter.38}%
+\contentsline {chapter}{\numberline {39}Professional Notes: Chapter 38: Virtual Member Functions}{93}{chapter.39}%
+\contentsline {chapter}{\numberline {40}Professional Notes: Chapter 40: Special Member Functions}{95}{chapter.40}%
+\contentsline {chapter}{\numberline {41}THE STANDARD TEMPLATE LIBRARY (STL) CORE}{98}{chapter.41}%
+\contentsline {chapter}{\numberline {42}C++98/03 STANDARD LIBRARY}{99}{chapter.42}%
+\contentsline {section}{\numberline {42.1}Standard Template Library (STL)}{99}{section.42.1}%
+\contentsline {section}{\numberline {42.2}Introduction to STL}{99}{section.42.2}%
+\contentsline {subsection}{\numberline {42.2.1}Key Advantages}{99}{subsection.42.2.1}%
+\contentsline {section}{\numberline {42.3}STL Components Overview}{99}{section.42.3}%
+\contentsline {section}{\numberline {42.4}CONTAINERS - COMPLETE REFERENCE}{100}{section.42.4}%
+\contentsline {subsection}{\numberline {42.4.1}Container Characteristics (C++98)}{100}{subsection.42.4.1}%
+\contentsline {section}{\numberline {42.5}1.1 VECTOR - Dynamic Array}{100}{section.42.5}%
+\contentsline {subsection}{\numberline {42.5.1}What is Vector?}{100}{subsection.42.5.1}%
+\contentsline {subsection}{\numberline {42.5.2}Declaration \& Initialization}{100}{subsection.42.5.2}%
+\contentsline {subsection}{\numberline {42.5.3}Accessing Elements}{100}{subsection.42.5.3}%
+\contentsline {subsection}{\numberline {42.5.4}Modifying Elements}{101}{subsection.42.5.4}%
+\contentsline {subsection}{\numberline {42.5.5}Size \& Capacity}{101}{subsection.42.5.5}%
+\contentsline {subsection}{\numberline {42.5.6}Iterating Through Vector}{101}{subsection.42.5.6}%
+\contentsline {section}{\numberline {42.6}1.2 DEQUE - Double Ended Queue}{102}{section.42.6}%
+\contentsline {subsection}{\numberline {42.6.1}What is Deque?}{102}{subsection.42.6.1}%
+\contentsline {section}{\numberline {42.7}1.3 LIST - Doubly Linked List}{102}{section.42.7}%
+\contentsline {subsection}{\numberline {42.7.1}What is List?}{102}{subsection.42.7.1}%
+\contentsline {section}{\numberline {42.8}1.4 MAP - Sorted Key-Value Pairs}{103}{section.42.8}%
+\contentsline {subsection}{\numberline {42.8.1}What is Map?}{103}{subsection.42.8.1}%
+\contentsline {section}{\numberline {42.9}1.5 SET - Sorted Unique Keys}{103}{section.42.9}%
+\contentsline {subsection}{\numberline {42.9.1}What is Set?}{103}{subsection.42.9.1}%
+\contentsline {section}{\numberline {42.10}1.6 MULTIMAP \& MULTISET}{104}{section.42.10}%
+\contentsline {section}{\numberline {42.11}1.7 STACK (Adapter)}{104}{section.42.11}%
+\contentsline {section}{\numberline {42.12}1.8 QUEUE (Adapter)}{104}{section.42.12}%
+\contentsline {section}{\numberline {42.13}1.9 PRIORITY\_QUEUE (Adapter)}{105}{section.42.13}%
+\contentsline {section}{\numberline {42.14}ITERATORS}{105}{section.42.14}%
+\contentsline {subsection}{\numberline {42.14.1}Categories}{105}{subsection.42.14.1}%
+\contentsline {subsection}{\numberline {42.14.2}Operations}{105}{subsection.42.14.2}%
+\contentsline {section}{\numberline {42.15}ALGORITHMS}{105}{section.42.15}%
+\contentsline {subsection}{\numberline {42.15.1}1. Non-Modifying}{106}{subsection.42.15.1}%
+\contentsline {subsection}{\numberline {42.15.2}2. Modifying}{106}{subsection.42.15.2}%
+\contentsline {subsection}{\numberline {42.15.3}3. Sorting}{106}{subsection.42.15.3}%
+\contentsline {subsection}{\numberline {42.15.4}4. Binary Search (On Sorted Ranges)}{106}{subsection.42.15.4}%
+\contentsline {subsection}{\numberline {42.15.5}5. Set Operations (On Sorted Ranges)}{106}{subsection.42.15.5}%
+\contentsline {subsection}{\numberline {42.15.6}6. Numeric ()}{106}{subsection.42.15.6}%
+\contentsline {subsection}{\numberline {42.15.7}Example: Sort and Find}{106}{subsection.42.15.7}%
+\contentsline {section}{\numberline {42.16}STRINGS (std::string)}{107}{section.42.16}%
+\contentsline {section}{\numberline {42.17}STREAMS (IOSTREAM)}{107}{section.42.17}%
+\contentsline {subsection}{\numberline {42.17.1}File I/O ()}{107}{subsection.42.17.1}%
+\contentsline {subsection}{\numberline {42.17.2}String Streams ()}{108}{subsection.42.17.2}%
+\contentsline {section}{\numberline {42.18}FUNCTORS (Function Objects)}{108}{section.42.18}%
+\contentsline {chapter}{\numberline {43}ADVANCED STRINGS}{109}{chapter.43}%
+\contentsline {section}{\numberline {43.1}5.1 String Manipulation}{109}{section.43.1}%
+\contentsline {section}{\numberline {43.2}5.2 String Conversion}{110}{section.43.2}%
+\contentsline {section}{\numberline {43.3}5.3 String Tokenization}{110}{section.43.3}%
+\contentsline {chapter}{\numberline {44}FILE I/O ADVANCED}{112}{chapter.44}%
+\contentsline {section}{\numberline {44.1}14.1 Binary File I/O}{112}{section.44.1}%
+\contentsline {section}{\numberline {44.2}14.2 Stream Positioning}{112}{section.44.2}%
+\contentsline {chapter}{\numberline {45}Professional Notes: Chapter 47: std::string}{114}{chapter.45}%
+\contentsline {chapter}{\numberline {46}Professional Notes: Chapter 49: std::vector}{115}{chapter.46}%
+\contentsline {chapter}{\numberline {47}Professional Notes: Chapter 50: std::map}{116}{chapter.47}%
+\contentsline {chapter}{\numberline {48}Professional Notes: Chapter 62: Standard Library Algorithms}{117}{chapter.48}%
+\contentsline {chapter}{\numberline {49}Professional Notes: Chapter 67: Sorting}{118}{chapter.49}%
+\contentsline {chapter}{\numberline {50}Professional Notes: Chapter 43: C++ Containers}{119}{chapter.50}%
+\contentsline {chapter}{\numberline {51}Professional Notes: Chapter 47: std::string}{120}{chapter.51}%
+\contentsline {chapter}{\numberline {52}Professional Notes: Chapter 49: std::vector}{126}{chapter.52}%
+\contentsline {chapter}{\numberline {53}Professional Notes: Chapter 50: std::map}{134}{chapter.53}%
+\contentsline {chapter}{\numberline {54}Professional Notes: Chapter 62: Standard Library Algorithms}{138}{chapter.54}%
+\contentsline {chapter}{\numberline {55}Professional Notes: Chapter 67: Sorting}{142}{chapter.55}%
+\contentsline {chapter}{\numberline {56}STL INTERNALS DEEP DIVE}{145}{chapter.56}%
+\contentsline {chapter}{\numberline {57}STL INTERNALS DEEP DIVE (C++98)}{146}{chapter.57}%
+\contentsline {subsection}{\numberline {57.0.1}1. The Truth About std::vector}{146}{subsection.57.0.1}%
+\contentsline {subsection}{\numberline {57.0.2}2. The std::deque Implementation}{146}{subsection.57.0.2}%
+\contentsline {subsection}{\numberline {57.0.3}3. Why std::list is (Almost) Always Wrong}{147}{subsection.57.0.3}%
+\contentsline {subsection}{\numberline {57.0.4}4. Associative Containers (Map/Set)}{147}{subsection.57.0.4}%
+\contentsline {subsection}{\numberline {57.0.5}5. Iterator Invalidation Cheat Sheet}{147}{subsection.57.0.5}%
+\contentsline {chapter}{\numberline {58}ERROR HANDLING \& ROBUSTNESS}{148}{chapter.58}%
+\contentsline {chapter}{\numberline {59}ERROR HANDLING \& DEBUGGING (C++98)}{149}{chapter.59}%
+\contentsline {section}{\numberline {59.1}1. ASSERTIONS}{149}{section.59.1}%
+\contentsline {section}{\numberline {59.2}2. EXCEPTIONS}{149}{section.59.2}%
+\contentsline {subsection}{\numberline {59.2.1}2.1 Basic Try-Catch}{149}{subsection.59.2.1}%
+\contentsline {subsection}{\numberline {59.2.2}2.2 Catching Multiple Types}{150}{subsection.59.2.2}%
+\contentsline {subsection}{\numberline {59.2.3}2.3 Standard Exceptions}{150}{subsection.59.2.3}%
+\contentsline {subsection}{\numberline {59.2.4}2.4 Exception Specifications (C++98)}{150}{subsection.59.2.4}%
+\contentsline {subsection}{\numberline {59.2.5}2.5 Stack Unwinding \& RAII}{151}{subsection.59.2.5}%
+\contentsline {section}{\numberline {59.3}3. DEBUGGING STRATEGIES}{151}{section.59.3}%
+\contentsline {subsection}{\numberline {59.3.1}3.1 Debug Macros (C++98 Style)}{151}{subsection.59.3.1}%
+\contentsline {chapter}{\numberline {60}Professional Notes: Chapter 72: Exceptions}{152}{chapter.60}%
+\contentsline {chapter}{\numberline {61}Professional Notes: Chapter 72: Exceptions}{153}{chapter.61}%
+\contentsline {part}{II\hspace {1em}Volume II: C++11 - The Modern Revolution}{157}{part.2}%
+\contentsline {chapter}{\numberline {62}THE MODERN C++11 CORE: SYNTAX \& TYPE SYSTEM}{158}{chapter.62}%
+\contentsline {section}{\numberline {62.1}1. Type Inference \& Safety}{158}{section.62.1}%
+\contentsline {subsection}{\numberline {62.1.1}1.1 \texttt {auto}: Automatic Type Deduction}{158}{subsection.62.1.1}%
+\contentsline {subsection}{\numberline {62.1.2}1.2 \texttt {decltype}: Inspecting Types}{158}{subsection.62.1.2}%
+\contentsline {subsection}{\numberline {62.1.3}1.3 \texttt {nullptr}: The Null Pointer Literal}{158}{subsection.62.1.3}%
+\contentsline {section}{\numberline {62.2}2. Initialization Uniformity}{159}{section.62.2}%
+\contentsline {subsection}{\numberline {62.2.1}2.1 Uniform Initialization (Brace Initialization)}{159}{subsection.62.2.1}%
+\contentsline {subsection}{\numberline {62.2.2}2.2 \texttt {std::initializer\_list}}{159}{subsection.62.2.2}%
+\contentsline {section}{\numberline {62.3}3. Control Flow \& Iteration}{159}{section.62.3}%
+\contentsline {subsection}{\numberline {62.3.1}3.1 Range-Based For Loops}{159}{subsection.62.3.1}%
+\contentsline {section}{\numberline {62.4}4. Class Features}{160}{section.62.4}%
+\contentsline {subsection}{\numberline {62.4.1}4.1 Explicit Overrides (\texttt {override}, \texttt {final})}{160}{subsection.62.4.1}%
+\contentsline {subsection}{\numberline {62.4.2}4.2 Defaulted and Deleted Functions}{160}{subsection.62.4.2}%
+\contentsline {subsection}{\numberline {62.4.3}4.3 Strongly Typed Enums (\texttt {enum\ class})}{160}{subsection.62.4.3}%
+\contentsline {subsection}{\numberline {62.4.4}4.4 Delegating Constructors}{160}{subsection.62.4.4}%
+\contentsline {section}{\numberline {62.5}5. \texttt {constexpr} (C++11 Version)}{161}{section.62.5}%
+\contentsline {section}{\numberline {62.6}6. Static Assert}{161}{section.62.6}%
+\contentsline {chapter}{\numberline {63}MOVE SEMANTICS \& SMART POINTERS}{162}{chapter.63}%
+\contentsline {section}{\numberline {63.1}1. Rvalue References \& Move Semantics}{162}{section.63.1}%
+\contentsline {subsection}{\numberline {63.1.1}1.1 Lvalues vs Rvalues}{162}{subsection.63.1.1}%
+\contentsline {subsection}{\numberline {63.1.2}1.2 Rvalue References (\texttt {T\&\&})}{162}{subsection.63.1.2}%
+\contentsline {subsection}{\numberline {63.1.3}1.3 Move Constructor \& Move Assignment}{162}{subsection.63.1.3}%
+\contentsline {subsection}{\numberline {63.1.4}1.4 \texttt {std::move}}{163}{subsection.63.1.4}%
+\contentsline {section}{\numberline {63.2}2. Smart Pointers (RAII)}{163}{section.63.2}%
+\contentsline {subsection}{\numberline {63.2.1}2.1 \texttt {std::unique\_ptr}}{163}{subsection.63.2.1}%
+\contentsline {subsection}{\numberline {63.2.2}2.2 \texttt {std::shared\_ptr}}{163}{subsection.63.2.2}%
+\contentsline {subsection}{\numberline {63.2.3}2.3 \texttt {std::weak\_ptr}}{164}{subsection.63.2.3}%
+\contentsline {subsection}{\numberline {63.2.4}2.4 \texttt {std::make\_shared} vs \texttt {new}}{164}{subsection.63.2.4}%
+\contentsline {section}{\numberline {63.3}3. Perfect Forwarding}{164}{section.63.3}%
+\contentsline {chapter}{\numberline {64}Professional Notes: Chapter 33: Smart Pointers}{165}{chapter.64}%
+\contentsline {chapter}{\numberline {65}Professional Notes: Chapter 106: Move Semantics}{166}{chapter.65}%
+\contentsline {chapter}{\numberline {66}Professional Notes: Chapter 33: Smart Pointers}{167}{chapter.66}%
+\contentsline {chapter}{\numberline {67}Professional Notes: Chapter 106: Move Semantics}{172}{chapter.67}%
+\contentsline {chapter}{\numberline {68}FUNCTIONAL PROGRAMMING IN C++11}{176}{chapter.68}%
+\contentsline {section}{\numberline {68.1}1. Lambda Expressions}{176}{section.68.1}%
+\contentsline {subsection}{\numberline {68.1.1}1.1 Basic Syntax}{176}{subsection.68.1.1}%
+\contentsline {subsection}{\numberline {68.1.2}1.2 Capture Lists}{176}{subsection.68.1.2}%
+\contentsline {subsection}{\numberline {68.1.3}1.3 Mutable Lambdas}{176}{subsection.68.1.3}%
+\contentsline {section}{\numberline {68.2}2. \texttt {std::function}}{177}{section.68.2}%
+\contentsline {section}{\numberline {68.3}3. \texttt {std::bind}}{177}{section.68.3}%
+\contentsline {chapter}{\numberline {69}Professional Notes: Chapter 52: std::function: To wrap any element that is callable}{178}{chapter.69}%
+\contentsline {chapter}{\numberline {70}Professional Notes: Chapter 73: Lambdas}{179}{chapter.70}%
+\contentsline {chapter}{\numberline {71}Professional Notes: Chapter 52: std::function: To wrap any}{180}{chapter.71}%
+\contentsline {chapter}{\numberline {72}Professional Notes: Chapter 73: Lambdas}{183}{chapter.72}%
+\contentsline {chapter}{\numberline {73}TEMPLATE METAPROGRAMMING \& POWER FEATURES}{184}{chapter.73}%
+\contentsline {section}{\numberline {73.1}1. Variadic Templates}{184}{section.73.1}%
+\contentsline {subsection}{\numberline {73.1.1}1.1 Parameter Packing (\texttt {...})}{184}{subsection.73.1.1}%
+\contentsline {section}{\numberline {73.2}2. Type Traits}{184}{section.73.2}%
+\contentsline {section}{\numberline {73.3}3. \texttt {using} Aliases}{185}{section.73.3}%
+\contentsline {section}{\numberline {73.4}4. \texttt {std::tuple}}{185}{section.73.4}%
+\contentsline {chapter}{\numberline {74}Professional Notes: Chapter 13: C++ Streams}{186}{chapter.74}%
+\contentsline {chapter}{\numberline {75}Professional Notes: Chapter 16: Metaprogramming}{188}{chapter.75}%
+\contentsline {chapter}{\numberline {76}Professional Notes: Chapter 16: Metaprogramming}{189}{chapter.76}%
+\contentsline {chapter}{\numberline {77}THE C++11 STANDARD LIBRARY EXPANSION}{193}{chapter.77}%
+\contentsline {section}{\numberline {77.1}1. Unordered Containers}{193}{section.77.1}%
+\contentsline {section}{\numberline {77.2}2. \texttt {std::array}}{193}{section.77.2}%
+\contentsline {section}{\numberline {77.3}3. \texttt {std::regex}}{193}{section.77.3}%
+\contentsline {section}{\numberline {77.4}4. \texttt {std::chrono}}{193}{section.77.4}%
+\contentsline {section}{\numberline {77.5}5. \texttt {std::random}}{194}{section.77.5}%
+\contentsline {chapter}{\numberline {78}CONCURRENCY \& MULTITHREADING}{195}{chapter.78}%
+\contentsline {section}{\numberline {78.1}1. Threads (\texttt {std::thread})}{195}{section.78.1}%
+\contentsline {section}{\numberline {78.2}2. Mutexes \& Locking}{195}{section.78.2}%
+\contentsline {section}{\numberline {78.3}3. Condition Variables}{195}{section.78.3}%
+\contentsline {section}{\numberline {78.4}4. Futures \& Promises}{196}{section.78.4}%
+\contentsline {section}{\numberline {78.5}5. Atomics (\texttt {std::atomic})}{196}{section.78.5}%
+\contentsline {chapter}{\numberline {79}Professional Notes: Chapter 80: Threading}{197}{chapter.79}%
+\contentsline {chapter}{\numberline {80}Professional Notes: Chapter 85: Mutexes}{198}{chapter.80}%
+\contentsline {chapter}{\numberline {81}Professional Notes: Chapter 55: std::atomics}{199}{chapter.81}%
+\contentsline {chapter}{\numberline {82}Professional Notes: Chapter 80: Threading}{200}{chapter.82}%
+\contentsline {chapter}{\numberline {83}Professional Notes: Chapter 85: Mutexes}{204}{chapter.83}%
+\contentsline {part}{III\hspace {1em}Volume III: C++14 - Refinement & Generics}{206}{part.3}%
+\contentsline {chapter}{\numberline {84}C++14 CORE LANGUAGE UPGRADES}{207}{chapter.84}%
+\contentsline {section}{\numberline {84.1}1. Relaxed constexpr}{207}{section.84.1}%
+\contentsline {subsection}{\numberline {84.1.1}1.1 What is Allowed?}{207}{subsection.84.1.1}%
+\contentsline {section}{\numberline {84.2}2. Binary Literals}{207}{section.84.2}%
+\contentsline {section}{\numberline {84.3}3. Digit Separators}{207}{section.84.3}%
+\contentsline {section}{\numberline {84.4}4. \texttt {{[}{[}deprecated{]}{]}} Attribute}{208}{section.84.4}%
+\contentsline {chapter}{\numberline {85}C++14 FUNCTIONS \& LAMBDAS}{209}{chapter.85}%
+\contentsline {section}{\numberline {85.1}1. Generic Lambdas}{209}{section.85.1}%
+\contentsline {section}{\numberline {85.2}2. Generalized Lambda Captures (Init-Capture)}{209}{section.85.2}%
+\contentsline {section}{\numberline {85.3}3. Automatic Return Type Deduction}{209}{section.85.3}%
+\contentsline {chapter}{\numberline {86}C++14 TEMPLATES \& METAPROGRAMMING}{210}{chapter.86}%
+\contentsline {section}{\numberline {86.1}1. Variable Templates}{210}{section.86.1}%
+\contentsline {section}{\numberline {86.2}2. \texttt {decltype(auto)}}{210}{section.86.2}%
+\contentsline {section}{\numberline {86.3}3. Standard Library Metafunctions}{210}{section.86.3}%
+\contentsline {chapter}{\numberline {87}C++14 STANDARD LIBRARY ENHANCEMENTS}{211}{chapter.87}%
+\contentsline {section}{\numberline {87.1}1. \texttt {std::make\_unique}}{211}{section.87.1}%
+\contentsline {section}{\numberline {87.2}2. Shared Locks (\texttt {std::shared\_timed\_mutex})}{211}{section.87.2}%
+\contentsline {section}{\numberline {87.3}3. \texttt {std::exchange}}{211}{section.87.3}%
+\contentsline {section}{\numberline {87.4}4. \texttt {std::quoted}}{211}{section.87.4}%
+\contentsline {section}{\numberline {87.5}5. Tuple Addressing by Type}{212}{section.87.5}%
+\contentsline {part}{IV\hspace {1em}Volume IV: C++17 - Simplification & Modernization}{213}{part.4}%
+\contentsline {chapter}{\numberline {88}C++17 CORE LANGUAGE UPGRADES}{214}{chapter.88}%
+\contentsline {section}{\numberline {88.1}1. Structured Bindings}{214}{section.88.1}%
+\contentsline {subsection}{\numberline {88.1.1}1.1 Unpacking Tuples and Pairs}{214}{subsection.88.1.1}%
+\contentsline {subsection}{\numberline {88.1.2}1.2 Unpacking Structs}{214}{subsection.88.1.2}%
+\contentsline {subsection}{\numberline {88.1.3}1.3 Modifiers (\texttt {const}, \texttt {\&})}{214}{subsection.88.1.3}%
+\contentsline {section}{\numberline {88.2}2. \texttt {if\ constexpr}}{215}{section.88.2}%
+\contentsline {section}{\numberline {88.3}3. Init-Statements for \texttt {if} and \texttt {switch}}{215}{section.88.3}%
+\contentsline {section}{\numberline {88.4}4. Inline Variables}{215}{section.88.4}%
+\contentsline {section}{\numberline {88.5}5. Nested Namespaces}{216}{section.88.5}%
+\contentsline {section}{\numberline {88.6}6. Attributes}{216}{section.88.6}%
+\contentsline {chapter}{\numberline {89}C++17 TEMPLATE METAPROGRAMMING ENHANCEMENTS}{217}{chapter.89}%
+\contentsline {section}{\numberline {89.1}1. Fold Expressions}{217}{section.89.1}%
+\contentsline {subsection}{\numberline {89.1.1}1.1 Unary Folds}{217}{subsection.89.1.1}%
+\contentsline {subsection}{\numberline {89.1.2}1.2 Binary Folds}{217}{subsection.89.1.2}%
+\contentsline {subsection}{\numberline {89.1.3}1.3 Operators}{217}{subsection.89.1.3}%
+\contentsline {section}{\numberline {89.2}2. Class Template Argument Deduction (CTAD)}{217}{section.89.2}%
+\contentsline {subsection}{\numberline {89.2.1}2.1 User-Defined Deduction Guides}{218}{subsection.89.2.1}%
+\contentsline {section}{\numberline {89.3}3. \texttt {auto} Non-Type Template Parameters}{218}{section.89.3}%
+\contentsline {section}{\numberline {89.4}4. \texttt {std::invoke}}{218}{section.89.4}%
+\contentsline {chapter}{\numberline {90}C++17 VOCABULARY TYPES}{220}{chapter.90}%
+\contentsline {section}{\numberline {90.1}1. \texttt {std::string\_view}}{220}{section.90.1}%
+\contentsline {subsection}{\numberline {90.1.1}1.1 Efficiency}{220}{subsection.90.1.1}%
+\contentsline {subsection}{\numberline {90.1.2}1.2 Caveats}{220}{subsection.90.1.2}%
+\contentsline {section}{\numberline {90.2}2. \texttt {std::optional}}{220}{section.90.2}%
+\contentsline {section}{\numberline {90.3}3. \texttt {std::variant}}{221}{section.90.3}%
+\contentsline {section}{\numberline {90.4}4. \texttt {std::any}}{221}{section.90.4}%
+\contentsline {chapter}{\numberline {91}Professional Notes: Chapter 51: std::optional}{222}{chapter.91}%
+\contentsline {chapter}{\numberline {92}Professional Notes: Chapter 56: std::variant}{223}{chapter.92}%
+\contentsline {chapter}{\numberline {93}Professional Notes: Chapter 51: std::optional}{224}{chapter.93}%
+\contentsline {chapter}{\numberline {94}Professional Notes: Chapter 56: std::variant}{226}{chapter.94}%
+\contentsline {chapter}{\numberline {95}C++17 FILESYSTEM AND IO}{228}{chapter.95}%
+\contentsline {section}{\numberline {95.1}1. \texttt {std::filesystem}}{228}{section.95.1}%
+\contentsline {subsection}{\numberline {95.1.1}1.1 Paths}{228}{subsection.95.1.1}%
+\contentsline {subsection}{\numberline {95.1.2}1.2 Iterating Directories}{228}{subsection.95.1.2}%
+\contentsline {subsection}{\numberline {95.1.3}1.3 Operations}{228}{subsection.95.1.3}%
+\contentsline {section}{\numberline {95.2}2. Polymorphic Allocators (\texttt {std::pmr})}{228}{section.95.2}%
+\contentsline {chapter}{\numberline {96}C++17 PARALLEL ALGORITHMS \& CONCURRENCY}{230}{chapter.96}%
+\contentsline {section}{\numberline {96.1}1. Parallel Algorithms (\texttt {std::execution})}{230}{section.96.1}%
+\contentsline {section}{\numberline {96.2}2. \texttt {std::scoped\_lock}}{230}{section.96.2}%
+\contentsline {section}{\numberline {96.3}3. \texttt {std::shared\_mutex}}{230}{section.96.3}%
+\contentsline {chapter}{\numberline {97}C++17 STANDARD LIBRARY ADDITIONS}{232}{chapter.97}%
+\contentsline {section}{\numberline {97.1}1. \texttt {std::byte}}{232}{section.97.1}%
+\contentsline {section}{\numberline {97.2}2. Algorithms}{232}{section.97.2}%
+\contentsline {section}{\numberline {97.3}3. Mathematical Special Functions}{232}{section.97.3}%
+\contentsline {section}{\numberline {97.4}4. Elementary String Conversions (\texttt {\textless {}charconv\textgreater {}})}{232}{section.97.4}%
+\contentsline {part}{V\hspace {1em}Volume V: C++20 - The Gigantic Leap}{233}{part.5}%
+\contentsline {chapter}{\numberline {98}C++20 CONCEPTS}{234}{chapter.98}%
+\contentsline {section}{\numberline {98.1}1. The Problem with Templates}{234}{section.98.1}%
+\contentsline {section}{\numberline {98.2}2. What are Concepts?}{234}{section.98.2}%
+\contentsline {subsection}{\numberline {98.2.1}2.1 Defining a Concept}{234}{subsection.98.2.1}%
+\contentsline {subsection}{\numberline {98.2.2}2.2 Using Concepts (\texttt {requires} clause)}{234}{subsection.98.2.2}%
+\contentsline {section}{\numberline {98.3}3. The \texttt {requires} Expression}{235}{section.98.3}%
+\contentsline {section}{\numberline {98.4}4. Standard Concepts (\texttt {\textless {}concepts\textgreater {}})}{235}{section.98.4}%
+\contentsline {section}{\numberline {98.5}5. Constraint Based Overloading}{235}{section.98.5}%
+\contentsline {chapter}{\numberline {99}C++20 MODULES}{236}{chapter.99}%
+\contentsline {section}{\numberline {99.1}1. The Death of Headers}{236}{section.99.1}%
+\contentsline {subsection}{\numberline {99.1.1}1.1 Problems with Headers}{236}{subsection.99.1.1}%
+\contentsline {section}{\numberline {99.2}2. Basic Module Syntax}{236}{section.99.2}%
+\contentsline {subsection}{\numberline {99.2.1}2.1 Interface Unit (\texttt {.cppm} or \texttt {.ixx})}{236}{subsection.99.2.1}%
+\contentsline {subsection}{\numberline {99.2.2}2.2 Importing a Module}{236}{subsection.99.2.2}%
+\contentsline {section}{\numberline {99.3}3. Module Partitions}{236}{section.99.3}%
+\contentsline {section}{\numberline {99.4}4. The Global Module Fragment}{237}{section.99.4}%
+\contentsline {section}{\numberline {99.5}5. Build System Implications}{237}{section.99.5}%
+\contentsline {chapter}{\numberline {100}C++20 COROUTINES}{238}{chapter.100}%
+\contentsline {section}{\numberline {100.1}1. Asynchronous Programming}{238}{section.100.1}%
+\contentsline {subsection}{\numberline {100.1.1}1.1 Keywords}{238}{subsection.100.1.1}%
+\contentsline {section}{\numberline {100.2}2. Generators (The Python Style)}{238}{section.100.2}%
+\contentsline {section}{\numberline {100.3}3. Tasks (\texttt {co\_await})}{239}{section.100.3}%
+\contentsline {section}{\numberline {100.4}4. Under the Hood}{239}{section.100.4}%
+\contentsline {chapter}{\numberline {101}C++20 RANGES}{240}{chapter.101}%
+\contentsline {section}{\numberline {101.1}1. The End of Iterator pairs}{240}{section.101.1}%
+\contentsline {section}{\numberline {101.2}2. Views vs Actions}{240}{section.101.2}%
+\contentsline {section}{\numberline {101.3}3. Projections}{240}{section.101.3}%
+\contentsline {section}{\numberline {101.4}4. Dangling Iterators Protection}{241}{section.101.4}%
+\contentsline {chapter}{\numberline {102}C++20 CORE LANGUAGE FEATURES}{242}{chapter.102}%
+\contentsline {section}{\numberline {102.1}1. Three-Way Comparison (\texttt {\textless {}=\textgreater {}})}{242}{section.102.1}%
+\contentsline {section}{\numberline {102.2}2. Designated Initializers}{242}{section.102.2}%
+\contentsline {section}{\numberline {102.3}3. \texttt {consteval} (Immediate Functions)}{242}{section.102.3}%
+\contentsline {section}{\numberline {102.4}4. \texttt {constinit}}{243}{section.102.4}%
+\contentsline {section}{\numberline {102.5}5. Non-Type Template Parameters (NTTP) Enhancements}{243}{section.102.5}%
+\contentsline {chapter}{\numberline {103}C++20 STANDARD LIBRARY ADDITIONS}{244}{chapter.103}%
+\contentsline {section}{\numberline {103.1}1. \texttt {std::format} (Python-style Formatting)}{244}{section.103.1}%
+\contentsline {section}{\numberline {103.2}2. \texttt {std::span}}{244}{section.103.2}%
+\contentsline {section}{\numberline {103.3}3. \texttt {std::jthread} (Joinable Thread)}{244}{section.103.3}%
+\contentsline {section}{\numberline {103.4}4. Concurrency Primitives (\texttt {\textless {}semaphore\textgreater {}}, \texttt {\textless {}barrier\textgreater {}}, \texttt {\textless {}latch\textgreater {}})}{245}{section.103.4}%
+\contentsline {section}{\numberline {103.5}5. Mathematical Constants (\texttt {\textless {}numbers\textgreater {}})}{245}{section.103.5}%
+\contentsline {section}{\numberline {103.6}6. Bit Manipulation (\texttt {\textless {}bit\textgreater {}})}{245}{section.103.6}%
+\contentsline {part}{VI\hspace {1em}Volume VI: C++23/26 - The Future}{246}{part.6}%
+\contentsline {chapter}{\numberline {104}C++23 CORE LANGUAGE UPGRADES}{247}{chapter.104}%
+\contentsline {section}{\numberline {104.1}1. Deducing \texttt {this} (Explicit Object Parameter)}{247}{section.104.1}%
+\contentsline {subsection}{\numberline {104.1.1}1.1 The Problem (C++20 and older)}{247}{subsection.104.1.1}%
+\contentsline {subsection}{\numberline {104.1.2}1.2 The Solution}{247}{subsection.104.1.2}%
+\contentsline {subsection}{\numberline {104.1.3}1.3 Recursive Lambdas}{247}{subsection.104.1.3}%
+\contentsline {section}{\numberline {104.2}2. \texttt {if\ consteval}}{248}{section.104.2}%
+\contentsline {section}{\numberline {104.3}3. Multidimensional Subscript Operator (\texttt {operator{[}{]}})}{248}{section.104.3}%
+\contentsline {section}{\numberline {104.4}4. \texttt {auto(x)}: Decay Copy}{248}{section.104.4}%
+\contentsline {section}{\numberline {104.5}5. Literal Suffixes for \texttt {size\_t}}{248}{section.104.5}%
+\contentsline {section}{\numberline {104.6}6. \texttt {\#warning}}{248}{section.104.6}%
+\contentsline {chapter}{\numberline {105}C++23 STD::PRINT \& I/O}{249}{chapter.105}%
+\contentsline {section}{\numberline {105.1}1. \texttt {std::print} and \texttt {std::println}}{249}{section.105.1}%
+\contentsline {subsection}{\numberline {105.1.1}1.1 Basic Usage}{249}{subsection.105.1.1}%
+\contentsline {subsection}{\numberline {105.1.2}1.2 Performance}{249}{subsection.105.1.2}%
+\contentsline {subsection}{\numberline {105.1.3}1.3 Formatting}{249}{subsection.105.1.3}%
+\contentsline {subsection}{\numberline {105.1.4}1.4 Output to Streams}{249}{subsection.105.1.4}%
+\contentsline {section}{\numberline {105.2}2. \texttt {std::spanstream}}{249}{section.105.2}%
+\contentsline {chapter}{\numberline {106}C++23 MONADIC OPERATIONS \& EXPECTED}{251}{chapter.106}%
+\contentsline {section}{\numberline {106.1}1. \texttt {std::expected}}{251}{section.106.1}%
+\contentsline {subsection}{\numberline {106.1.1}1.1 Basics}{251}{subsection.106.1.1}%
+\contentsline {subsection}{\numberline {106.1.2}1.2 Monadic Chain}{251}{subsection.106.1.2}%
+\contentsline {section}{\numberline {106.2}2. Monadic Operations for \texttt {std::optional}}{252}{section.106.2}%
+\contentsline {chapter}{\numberline {107}C++23 CONTAINERS \& VIEWS}{253}{chapter.107}%
+\contentsline {section}{\numberline {107.1}1. \texttt {std::mdspan}}{253}{section.107.1}%
+\contentsline {subsection}{\numberline {107.1.1}1.1 Basics}{253}{subsection.107.1.1}%
+\contentsline {subsection}{\numberline {107.1.2}1.2 Layouts}{253}{subsection.107.1.2}%
+\contentsline {section}{\numberline {107.2}2. \texttt {std::flat\_map} and \texttt {std::flat\_set}}{253}{section.107.2}%
+\contentsline {section}{\numberline {107.3}3. Ranges Enhancements}{254}{section.107.3}%
+\contentsline {chapter}{\numberline {108}C++23 COROUTINES \& STACKTRACE}{255}{chapter.108}%
+\contentsline {section}{\numberline {108.1}1. \texttt {std::generator}}{255}{section.108.1}%
+\contentsline {subsection}{\numberline {108.1.1}1.1 Basic Generator}{255}{subsection.108.1.1}%
+\contentsline {subsection}{\numberline {108.1.2}1.2 Recursive Generator}{255}{subsection.108.1.2}%
+\contentsline {section}{\numberline {108.2}2. \texttt {std::stacktrace}}{255}{section.108.2}%
+\contentsline {chapter}{\numberline {109}C++23 LIBRARY UTILITIES}{256}{chapter.109}%
+\contentsline {section}{\numberline {109.1}1. \texttt {std::unreachable}}{256}{section.109.1}%
+\contentsline {section}{\numberline {109.2}2. \texttt {std::to\_underlying}}{256}{section.109.2}%
+\contentsline {section}{\numberline {109.3}3. \texttt {std::byteswap}}{256}{section.109.3}%
+\contentsline {section}{\numberline {109.4}4. \texttt {std::stdatomic.h}}{256}{section.109.4}%
+\contentsline {section}{\numberline {109.5}5. \texttt {std::move\_only\_function}}{256}{section.109.5}%
+\contentsline {chapter}{\numberline {110}THE FUTURE - C++26 PREVIEW}{258}{chapter.110}%
+\contentsline {subsection}{\numberline {110.0.1}13.1 Static Reflection (std::meta)}{258}{subsection.110.0.1}%
+\contentsline {subsection}{\numberline {110.0.2}13.2 Contracts}{258}{subsection.110.0.2}%
+\contentsline {subsection}{\numberline {110.0.3}13.3 Senders \& Receivers (std::execution)}{259}{subsection.110.0.3}%
+\contentsline {subsection}{\numberline {110.0.4}13.4 Linear Algebra (std::linalg)}{259}{subsection.110.0.4}%
+\contentsline {part}{VII\hspace {1em}Volume VII: Advanced Topics & Systems Architecture}{261}{part.7}%
+\contentsline {chapter}{\numberline {111}ADVANCED TEMPLATE METAPROGRAMMING}{262}{chapter.111}%
+\contentsline {section}{\numberline {111.1}1. The Evolution of TMP}{262}{section.111.1}%
+\contentsline {section}{\numberline {111.2}2. SFINAE (Substitution Failure Is Not An Error)}{262}{section.111.2}%
+\contentsline {subsection}{\numberline {111.2.1}2.1 \texttt {std::enable\_if}}{262}{subsection.111.2.1}%
+\contentsline {subsection}{\numberline {111.2.2}2.2 The \texttt {void\_t} Trick (C++17)}{262}{subsection.111.2.2}%
+\contentsline {section}{\numberline {111.3}3. Curiously Recurring Template Pattern (CRTP)}{263}{section.111.3}%
+\contentsline {section}{\numberline {111.4}4. Policy-Based Design}{263}{section.111.4}%
+\contentsline {section}{\numberline {111.5}5. Modern TMP with Concepts (C++20)}{263}{section.111.5}%
+\contentsline {chapter}{\numberline {112}COMPILE-TIME PROGRAMMING}{264}{chapter.112}%
+\contentsline {section}{\numberline {112.1}1. \texttt {constexpr} Evolution}{264}{section.112.1}%
+\contentsline {section}{\numberline {112.2}2. \texttt {consteval} (C++20)}{264}{section.112.2}%
+\contentsline {section}{\numberline {112.3}3. Type Traits (\texttt {\textless {}type\_traits\textgreater {}})}{264}{section.112.3}%
+\contentsline {subsection}{\numberline {112.3.1}3.1 Queries}{264}{subsection.112.3.1}%
+\contentsline {subsection}{\numberline {112.3.2}3.2 Transformations}{264}{subsection.112.3.2}%
+\contentsline {section}{\numberline {112.4}4. \texttt {std::integral\_constant}}{265}{section.112.4}%
+\contentsline {section}{\numberline {112.5}5. Reflection (C++26 Preview)}{265}{section.112.5}%
+\contentsline {chapter}{\numberline {113}THE MEMORY MODEL \& ATOMICS}{266}{chapter.113}%
+\contentsline {section}{\numberline {113.1}1. The C++ Memory Model}{266}{section.113.1}%
+\contentsline {section}{\numberline {113.2}2. Atomic Operations}{266}{section.113.2}%
+\contentsline {section}{\numberline {113.3}3. Memory Orderings}{266}{section.113.3}%
+\contentsline {subsection}{\numberline {113.3.1}3.1 Synchronizes-With}{266}{subsection.113.3.1}%
+\contentsline {section}{\numberline {113.4}4. Fences}{267}{section.113.4}%
+\contentsline {chapter}{\numberline {114}LOCK-FREE PROGRAMMING}{268}{chapter.114}%
+\contentsline {section}{\numberline {114.1}1. The Concept}{268}{section.114.1}%
+\contentsline {section}{\numberline {114.2}2. Compare-And-Swap (CAS)}{268}{section.114.2}%
+\contentsline {section}{\numberline {114.3}3. The ABA Problem}{268}{section.114.3}%
+\contentsline {section}{\numberline {114.4}4. Lock-Free Data Structures}{268}{section.114.4}%
+\contentsline {chapter}{\numberline {115}ADVANCED CONCURRENCY PATTERNS}{269}{chapter.115}%
+\contentsline {section}{\numberline {115.1}1. Thread Pools}{269}{section.115.1}%
+\contentsline {section}{\numberline {115.2}2. The Actor Model}{269}{section.115.2}%
+\contentsline {section}{\numberline {115.3}3. Disruptor Pattern}{269}{section.115.3}%
+\contentsline {section}{\numberline {115.4}4. Coroutines for Concurrency}{269}{section.115.4}%
+\contentsline {section}{\numberline {115.5}5. False Sharing}{270}{section.115.5}%
+\contentsline {chapter}{\numberline {116}CUSTOM MEMORY ALLOCATORS}{271}{chapter.116}%
+\contentsline {section}{\numberline {116.1}1. Why Custom Allocators?}{271}{section.116.1}%
+\contentsline {section}{\numberline {116.2}2. Linear / Stack Allocator}{271}{section.116.2}%
+\contentsline {section}{\numberline {116.3}3. Pool Allocator}{271}{section.116.3}%
+\contentsline {section}{\numberline {116.4}4. \texttt {std::pmr} (Polymorphic Memory Resources)}{271}{section.116.4}%
+\contentsline {section}{\numberline {116.5}5. Alignment}{272}{section.116.5}%
+\contentsline {chapter}{\numberline {117}HIGH-PERFORMANCE OPTIMIZATION}{273}{chapter.117}%
+\contentsline {section}{\numberline {117.1}1. CPU Caching}{273}{section.117.1}%
+\contentsline {section}{\numberline {117.2}2. Branch Prediction}{273}{section.117.2}%
+\contentsline {section}{\numberline {117.3}3. SIMD (Single Instruction, Multiple Data)}{273}{section.117.3}%
+\contentsline {section}{\numberline {117.4}4. Link Time Optimization (LTO)}{273}{section.117.4}%
+\contentsline {section}{\numberline {117.5}5. Profile-Guided Optimization (PGO)}{273}{section.117.5}%
+\contentsline {chapter}{\numberline {118}Professional Notes: Chapter 143: Optimization in C++}{274}{chapter.118}%
+\contentsline {chapter}{\numberline {119}Professional Notes: Chapter 143: Optimization in C++}{275}{chapter.119}%
+\contentsline {chapter}{\numberline {120}WRITING A C++ COMPILER (BASICS)}{278}{chapter.120}%
+\contentsline {subsection}{\numberline {120.0.1}18.1 Lexical Analysis (Tokenizer)}{278}{subsection.120.0.1}%
+\contentsline {subsection}{\numberline {120.0.2}18.2 Parsing (Recursive Descent)}{278}{subsection.120.0.2}%
+\contentsline {subsection}{\numberline {120.0.3}18.3 Semantic Analysis (Types \& Scopes)}{278}{subsection.120.0.3}%
+\contentsline {chapter}{\numberline {121}WRITING A GARBAGE COLLECTOR}{280}{chapter.121}%
+\contentsline {subsection}{\numberline {121.0.1}29.1 Mark-and-Sweep Basics}{280}{subsection.121.0.1}%
+\contentsline {chapter}{\numberline {122}THE STANDARD LIBRARY FROM SCRATCH}{281}{chapter.122}%
+\contentsline {subsection}{\numberline {122.0.1}19.1 Implementing my::vector}{281}{subsection.122.0.1}%
+\contentsline {subsection}{\numberline {122.0.2}19.2 Implementing my::shared\_ptr}{281}{subsection.122.0.2}%
+\contentsline {part}{VIII\hspace {1em}Volume VIII: Specialized Domains & Expert Mastery}{283}{part.8}%
+\contentsline {chapter}{\numberline {123}DISTRIBUTED C++}{284}{chapter.123}%
+\contentsline {subsection}{\numberline {123.0.1}16.1 Serialization (Binary Protocols)}{284}{subsection.123.0.1}%
+\contentsline {subsection}{\numberline {123.0.2}16.2 RPC (Remote Procedure Call) Concept}{284}{subsection.123.0.2}%
+\contentsline {subsection}{\numberline {123.0.3}16.3 Consensus (Raft Basics)}{285}{subsection.123.0.3}%
+\contentsline {chapter}{\numberline {124}NETWORKING FROM SCRATCH}{286}{chapter.124}%
+\contentsline {subsection}{\numberline {124.0.1}28.1 Berkeley Sockets API}{286}{subsection.124.0.1}%
+\contentsline {subsection}{\numberline {124.0.2}28.2 Non-Blocking I/O \& Epoll (Linux)}{286}{subsection.124.0.2}%
+\contentsline {chapter}{\numberline {125}C++ IN THE CLOUD}{288}{chapter.125}%
+\contentsline {subsection}{\numberline {125.0.1}20.1 Microservices with C++}{288}{subsection.125.0.1}%
+\contentsline {subsection}{\numberline {125.0.2}20.2 Serverless C++ (AWS Lambda)}{288}{subsection.125.0.2}%
+\contentsline {chapter}{\numberline {126}CROSS-PLATFORM DEVELOPMENT}{289}{chapter.126}%
+\contentsline {subsection}{\numberline {126.0.1}21.1 WebAssembly (Wasm) with Emscripten}{289}{subsection.126.0.1}%
+\contentsline {subsection}{\numberline {126.0.2}21.2 Mobile C++ (Android NDK \& JNI)}{289}{subsection.126.0.2}%
+\contentsline {chapter}{\numberline {127}GUI DEVELOPMENT WITH C++}{290}{chapter.127}%
+\contentsline {subsection}{\numberline {127.0.1}22.1 Qt Framework (Retained Mode)}{290}{subsection.127.0.1}%
+\contentsline {subsection}{\numberline {127.0.2}22.2 Dear ImGui (Immediate Mode)}{290}{subsection.127.0.2}%
+\contentsline {chapter}{\numberline {128}SCIENTIFIC COMPUTING \& GPU}{291}{chapter.128}%
+\contentsline {subsection}{\numberline {128.0.1}23.1 Eigen (Linear Algebra)}{291}{subsection.128.0.1}%
+\contentsline {subsection}{\numberline {128.0.2}23.2 CUDA (GPU Programming)}{291}{subsection.128.0.2}%
+\contentsline {chapter}{\numberline {129}INTEROPERABILITY}{292}{chapter.129}%
+\contentsline {subsection}{\numberline {129.0.1}35.1 Python Bindings (pybind11)}{292}{subsection.129.0.1}%
+\contentsline {subsection}{\numberline {129.0.2}35.2 Java Native Interface (JNI)}{292}{subsection.129.0.2}%
+\contentsline {subsection}{\numberline {129.0.3}35.3 Stable C ABI}{292}{subsection.129.0.3}%
+\contentsline {chapter}{\numberline {130}SECURITY ENGINEERING}{293}{chapter.130}%
+\contentsline {subsection}{\numberline {130.0.1}36.1 Fuzzing (libFuzzer / AFL++)}{293}{subsection.130.0.1}%
+\contentsline {subsection}{\numberline {130.0.2}36.2 Cryptography \& Timing Attacks}{293}{subsection.130.0.2}%
+\contentsline {subsection}{\numberline {130.0.3}36.3 Side-Channel Mitigations (Spectre)}{293}{subsection.130.0.3}%
+\contentsline {chapter}{\numberline {131}SPECIALIZED DOMAINS}{294}{chapter.131}%
+\contentsline {subsection}{\numberline {131.0.1}37.1 Game Development (Data-Oriented Design)}{294}{subsection.131.0.1}%
+\contentsline {subsection}{\numberline {131.0.2}37.2 Embedded Systems}{294}{subsection.131.0.2}%
+\contentsline {subsection}{\numberline {131.0.3}37.3 High-Frequency Trading (HFT)}{294}{subsection.131.0.3}%
+\contentsline {subsection}{\numberline {131.0.4}37.4 Automotive (MISRA C++ / AUTOSAR)}{294}{subsection.131.0.4}%
+\contentsline {section}{\numberline {131.1}FINAL COMPREHENSIVE CHECKLIST}{295}{section.131.1}%
+\contentsline {subsection}{\numberline {131.1.1}C++98/03 Foundation}{295}{subsection.131.1.1}%
+\contentsline {subsection}{\numberline {131.1.2}C++11 Major Features}{295}{subsection.131.1.2}%
+\contentsline {subsection}{\numberline {131.1.3}C++14 Improvements}{295}{subsection.131.1.3}%
+\contentsline {subsection}{\numberline {131.1.4}C++17 Modern Features}{295}{subsection.131.1.4}%
+\contentsline {subsection}{\numberline {131.1.5}C++20 Revolutionary}{295}{subsection.131.1.5}%
+\contentsline {subsection}{\numberline {131.1.6}C++23 Latest}{296}{subsection.131.1.6}%
+\contentsline {subsection}{\numberline {131.1.7}Advanced Concepts}{296}{subsection.131.1.7}%
+\contentsline {subsection}{\numberline {131.1.8}Concurrency}{296}{subsection.131.1.8}%
+\contentsline {subsection}{\numberline {131.1.9}Performance \& Optimization}{296}{subsection.131.1.9}%
+\contentsline {subsection}{\numberline {131.1.10}STL Mastery}{296}{subsection.131.1.10}%
+\contentsline {subsection}{\numberline {131.1.11}Design Patterns}{296}{subsection.131.1.11}%
+\contentsline {subsection}{\numberline {131.1.12}Professional Development}{297}{subsection.131.1.12}%
+\contentsline {section}{\numberline {131.2}Key Insights for C++ Mastery}{297}{section.131.2}%
+\contentsline {section}{\numberline {131.3}Learning Path}{297}{section.131.3}%
+\contentsline {section}{\numberline {131.4}Resources}{297}{section.131.4}%
+\contentsline {subsection}{\numberline {131.4.1}Official Documentation}{297}{subsection.131.4.1}%
+\contentsline {subsection}{\numberline {131.4.2}Books}{298}{subsection.131.4.2}%
+\contentsline {subsection}{\numberline {131.4.3}Practice}{298}{subsection.131.4.3}%
+\contentsline {chapter}{\numberline {132}ABA PROBLEM \& MEMORY RECLAMATION}{299}{chapter.132}%
+\contentsline {subsection}{\numberline {132.0.1}1. The ABA Problem Explained}{299}{subsection.132.0.1}%
+\contentsline {subsection}{\numberline {132.0.2}2. Solution I: Tagged Pointers (Version Counters)}{299}{subsection.132.0.2}%
+\contentsline {subsection}{\numberline {132.0.3}3. Solution II: Hazard Pointers (The Gold Standard)}{299}{subsection.132.0.3}%
+\contentsline {subsection}{\numberline {132.0.4}4. Solution III: Epoch-Based Reclamation (EBR)}{300}{subsection.132.0.4}%
+\contentsline {chapter}{\numberline {133}TEMPLATE METAPROGRAMMING PATTERNS}{301}{chapter.133}%
+\contentsline {subsection}{\numberline {133.0.1}1. Expression Templates (Lazy Evaluation)}{301}{subsection.133.0.1}%
+\contentsline {subsection}{\numberline {133.0.2}2. Type Erasure (The \texttt {std::any} Pattern)}{301}{subsection.133.0.2}%
+\contentsline {subsection}{\numberline {133.0.3}3. The Detection Idiom (void\_t)}{301}{subsection.133.0.3}%
+\contentsline {subsection}{\numberline {133.0.4}4. Policy-Based Design}{302}{subsection.133.0.4}%
+\contentsline {chapter}{\numberline {134}HIGH-PERFORMANCE DATA STRUCTURES}{303}{chapter.134}%
+\contentsline {subsection}{\numberline {134.0.1}1. The Disruptor (Ring Buffer on Steroids)}{303}{subsection.134.0.1}%
+\contentsline {subsection}{\numberline {134.0.2}2. Swiss Table (Open Addressing + Metadata)}{303}{subsection.134.0.2}%
+\contentsline {subsection}{\numberline {134.0.3}3. Burst Tries / Judy Arrays}{303}{subsection.134.0.3}%
+\contentsline {subsection}{\numberline {134.0.4}4. Slot Map}{303}{subsection.134.0.4}%
+\contentsline {chapter}{\numberline {135}REAL-TIME AUDIO \& SIGNAL PROCESSING}{304}{chapter.135}%
+\contentsline {subsection}{\numberline {135.0.1}1. Lock-Free IPC (SPSC Queue)}{304}{subsection.135.0.1}%
+\contentsline {subsection}{\numberline {135.0.2}2. SIMD for DSP}{304}{subsection.135.0.2}%
+\contentsline {subsection}{\numberline {135.0.3}3. Double Buffering}{304}{subsection.135.0.3}%
+\contentsline {chapter}{\numberline {136}ROBOTICS \& ROS2 DEVELOPMENT}{305}{chapter.136}%
+\contentsline {subsection}{\numberline {136.0.1}1. ROS2 Architecture \& DDS}{305}{subsection.136.0.1}%
+\contentsline {subsection}{\numberline {136.0.2}2. Zero-Copy Transport (Iceoryx)}{305}{subsection.136.0.2}%
+\contentsline {subsection}{\numberline {136.0.3}3. Real-Time Executors}{305}{subsection.136.0.3}%
+\contentsline {subsection}{\numberline {136.0.4}4. Custom Allocators (\texttt {std::pmr})}{305}{subsection.136.0.4}%
+\contentsline {chapter}{\numberline {137}MACHINE LEARNING INFRASTRUCTURE}{306}{chapter.137}%
+\contentsline {subsection}{\numberline {137.0.1}1. Tensor Memory Layout}{306}{subsection.137.0.1}%
+\contentsline {subsection}{\numberline {137.0.2}2. Broadcasting Implementation}{306}{subsection.137.0.2}%
+\contentsline {subsection}{\numberline {137.0.3}3. Automatic Differentiation (Autograd)}{306}{subsection.137.0.3}%
+\contentsline {subsection}{\numberline {137.0.4}4. Operator Fusion}{306}{subsection.137.0.4}%
+\contentsline {chapter}{\numberline {138}DATABASE INTERNALS (LSM TREES)}{307}{chapter.138}%
+\contentsline {subsection}{\numberline {138.0.1}1. The Write Problem}{307}{subsection.138.0.1}%
+\contentsline {subsection}{\numberline {138.0.2}2. LSM Tree (Log-Structured Merge Tree)}{307}{subsection.138.0.2}%
+\contentsline {subsection}{\numberline {138.0.3}3. Bloom Filters}{307}{subsection.138.0.3}%
+\contentsline {subsection}{\numberline {138.0.4}4. Memory Mapped I/O (\texttt {mmap})}{307}{subsection.138.0.4}%
+\contentsline {chapter}{\numberline {139}THE ULTIMATE ALGORITHM REFERENCE}{308}{chapter.139}%
+\contentsline {subsection}{\numberline {139.0.1}27.1 Non-Modifying Sequence Operations}{308}{subsection.139.0.1}%
+\contentsline {subsection}{\numberline {139.0.2}27.2 Modifying Sequence Operations}{308}{subsection.139.0.2}%
+\contentsline {subsection}{\numberline {139.0.3}27.3 Partitioning}{308}{subsection.139.0.3}%
+\contentsline {subsection}{\numberline {139.0.4}27.4 Sorting}{308}{subsection.139.0.4}%
+\contentsline {subsection}{\numberline {139.0.5}27.5 Binary Search (On Sorted Ranges)}{308}{subsection.139.0.5}%
+\contentsline {subsection}{\numberline {139.0.6}27.6 Numeric Operations ()}{309}{subsection.139.0.6}%
+\contentsline {chapter}{\numberline {140}CAPSTONE PROJECT - HIGH-PERFORMANCE ORDER BOOK}{310}{chapter.140}%
+\contentsline {subsection}{\numberline {140.0.1}Project Structure}{310}{subsection.140.0.1}%
+\contentsline {subsection}{\numberline {140.0.2}1. Types Module (types.cppm)}{310}{subsection.140.0.2}%
+\contentsline {subsection}{\numberline {140.0.3}2. Order Module (order.cppm)}{310}{subsection.140.0.3}%
+\contentsline {subsection}{\numberline {140.0.4}3. Order Book Module (book.cppm)}{311}{subsection.140.0.4}%
+\contentsline {subsection}{\numberline {140.0.5}4. Main Application (main.cpp)}{312}{subsection.140.0.5}%
+\contentsline {chapter}{\numberline {141}APPENDICES}{313}{chapter.141}%
+\contentsline {chapter}{\numberline {A}Appendix A: C++ Keywords \& Operators Reference}{314}{appendix.A}%
+\contentsline {subsection}{\numberline {A.0.1}Essential Keywords (Non-Exhaustive)}{314}{subsection.A.0.1}%
+\contentsline {subsection}{\numberline {A.0.2}Special Operators}{314}{subsection.A.0.2}%
+\contentsline {chapter}{\numberline {B}Appendix B: Common Acronyms}{315}{appendix.B}%
+\contentsline {chapter}{\numberline {C}Appendix C: Recommended Tooling}{316}{appendix.C}%
+\contentsline {subsection}{\numberline {C.0.1}Compilers}{316}{subsection.C.0.1}%
+\contentsline {subsection}{\numberline {C.0.2}Build Systems}{316}{subsection.C.0.2}%
+\contentsline {subsection}{\numberline {C.0.3}Package Managers}{316}{subsection.C.0.3}%
+\contentsline {subsection}{\numberline {C.0.4}Static Analysis \& Sanitizers}{316}{subsection.C.0.4}%
+\contentsline {chapter}{\numberline {D}Appendix D: Common C++ Traps \& Pitfalls}{317}{appendix.D}%
+\contentsline {subsection}{\numberline {D.0.1}I. General \& Syntax Traps}{317}{subsection.D.0.1}%
+\contentsline {subsection}{\numberline {D.0.2}II. Pointers, References \& Memory}{317}{subsection.D.0.2}%
+\contentsline {subsection}{\numberline {D.0.3}III. Classes \& OOP}{318}{subsection.D.0.3}%
+\contentsline {subsection}{\numberline {D.0.4}IV. Concurrency}{318}{subsection.D.0.4}%
+\contentsline {subsection}{\numberline {D.0.5}V. Modern C++ \& Macros}{319}{subsection.D.0.5}%
+\contentsline {chapter}{\numberline {E}Appendix E: C++ Interview Cheat Sheet}{320}{appendix.E}%
+\contentsline {subsection}{\numberline {E.0.1}Core Concepts}{320}{subsection.E.0.1}%
+\contentsline {subsection}{\numberline {E.0.2}Modern C++ (C++11/14/17/20)}{320}{subsection.E.0.2}%
+\contentsline {subsection}{\numberline {E.0.3}System Design Questions}{320}{subsection.E.0.3}%
+\contentsline {subsection}{\numberline {E.0.4}Quick Coding}{321}{subsection.E.0.4}%
+\contentsline {chapter}{\numberline {F}Appendix F: The C++ Standard Evolution Matrix}{322}{appendix.F}%
+\contentsline {subsection}{\numberline {F.0.1}1. Versioned Changelog}{322}{subsection.F.0.1}%
+\contentsline {subsubsection}{\textbf {C++98 (ISO/IEC 14882:1998)} - \emph {The Foundation}}{322}{section*.10}%
+\contentsline {subsubsection}{\textbf {C++03 (ISO/IEC 14882:2003)} - \emph {The Bug Fix}}{322}{section*.11}%
+\contentsline {subsubsection}{\textbf {C++11 (ISO/IEC 14882:2011)} - \emph {The Modern Revolution}}{322}{section*.12}%
+\contentsline {subsubsection}{\textbf {C++14 (ISO/IEC 14882:2014)} - \emph {The Refinement}}{322}{section*.13}%
+\contentsline {subsubsection}{\textbf {C++17 (ISO/IEC 14882:2017)} - \emph {The Major Update}}{322}{section*.14}%
+\contentsline {subsubsection}{\textbf {C++20 (ISO/IEC 14882:2020)} - \emph {The Gigantic Leap}}{323}{section*.15}%
+\contentsline {subsubsection}{\textbf {C++23 (ISO/IEC 14882:2023)} - \emph {The Completion}}{323}{section*.16}%
+\contentsline {subsection}{\numberline {F.0.2}2. Feature Matrix}{323}{subsection.F.0.2}%
+\contentsline {subsection}{\numberline {F.0.3}3. Timeline \& Release Accuracy}{323}{subsection.F.0.3}%
+\contentsline {chapter}{\numberline {G}Appendix G: C++ Standard Library Headers Reference}{324}{appendix.G}%
+\contentsline {subsection}{\numberline {G.0.1}Concepts \& Utilities}{324}{subsection.G.0.1}%
+\contentsline {subsection}{\numberline {G.0.2}Containers}{324}{subsection.G.0.2}%
+\contentsline {subsection}{\numberline {G.0.3}Algorithms \& Iterators}{324}{subsection.G.0.3}%
+\contentsline {subsection}{\numberline {G.0.4}Concurrency}{324}{subsection.G.0.4}%
+\contentsline {subsection}{\numberline {G.0.5}Input/Output}{325}{subsection.G.0.5}%
+\contentsline {subsection}{\numberline {G.0.6}Numerics \& Math}{325}{subsection.G.0.6}%
+\contentsline {chapter}{\numberline {H}Appendix H: Professional C++ Idioms}{326}{appendix.H}%
+\contentsline {subsection}{\numberline {H.0.1}1. RAII (Resource Acquisition Is Initialization)}{326}{subsection.H.0.1}%
+\contentsline {subsection}{\numberline {H.0.2}2. Pimpl (Pointer to Implementation)}{326}{subsection.H.0.2}%
+\contentsline {subsection}{\numberline {H.0.3}3. Copy-and-Swap}{326}{subsection.H.0.3}%
+\contentsline {subsection}{\numberline {H.0.4}4. NVI (Non-Virtual Interface)}{326}{subsection.H.0.4}%
+\contentsline {subsection}{\numberline {H.0.5}5. Erase-Remove Idiom}{326}{subsection.H.0.5}%
+\contentsline {subsection}{\numberline {H.0.6}6. SFINAE (Substitution Failure Is Not An Error)}{326}{subsection.H.0.6}%
+\contentsline {subsection}{\numberline {H.0.7}7. CRTP (Curiously Recurring Template Pattern)}{327}{subsection.H.0.7}%
