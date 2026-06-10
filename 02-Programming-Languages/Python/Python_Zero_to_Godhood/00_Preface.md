@@ -64,5 +64,24 @@ This book provides a transition pathway from standard Python development to **lo
 *   Chapter 29: [Profiling, Benchmarking, and System Diagnostics](#chapter-29-profiling-benchmarking-and-system-diagnostics)
 *   Chapter 30: [Capstone Project: High-Frequency Order Book and Trading Engine](#chapter-30-capstone-project-high-frequency-order-book-and-trading-engine)
 
+### Volume X: The Language Reference Formalisms
+*   Chapter 31: [Lexical Analysis and the Execution Model](#chapter-31-lexical-analysis-and-the-execution-model)
+*   Chapter 32: [The Python Data Model & Comprehensive Dunder Methods](#chapter-32-the-python-data-model--comprehensive-dunder-methods)
+
+### Volume XI: The Standard Library I - Core Data & Functional Mechanics
+*   Chapter 33: [Advanced Data Structures Internals](#chapter-33-advanced-data-structures-internals)
+*   Chapter 34: [Functional Programming Modules](#chapter-34-functional-programming-modules)
+*   Chapter 35: [Numeric, Mathematical, and Cryptographic Randomness](#chapter-35-numeric-mathematical-and-cryptographic-randomness)
+
+### Volume XII: The Standard Library II - Persistence, OS, & IPC
+*   Chapter 36: [Data Persistence & Object Serialization](#chapter-36-data-persistence--object-serialization)
+*   Chapter 37: [OS Services, Signal Handling, and Subprocesses](#chapter-37-os-services-signal-handling-and-subprocesses)
+*   Chapter 38: [Low-Level Networking and Sockets](#chapter-38-low-level-networking-and-sockets)
+
+### Volume XIII: The Standard Library III - Runtime, Import, & Tooling
+*   Chapter 39: [The Import Machinery and `importlib`](#chapter-39-the-import-machinery-and-importlib)
+*   Chapter 40: [Runtime Services and Introspection](#chapter-40-runtime-services-and-introspection)
+*   Chapter 41: [Testing, Debugging, and Quality Assurance](#chapter-41-testing-debugging-and-quality-assurance)
+
 ---
 

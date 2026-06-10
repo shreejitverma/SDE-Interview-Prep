@@ -1,0 +1,143 @@
+\hypertarget{low-level-networking-and-sockets}{%
+\chapter{Low-Level Networking and
+Sockets}\label{low-level-networking-and-sockets}}
+
+Networking in Python is built upon the foundational Berkeley Sockets
+API. While high-level libraries like \passthrough{\lstinline!requests!}
+or \passthrough{\lstinline!httpx!} are common, systems engineering
+requires mastery of the low-level \passthrough{\lstinline!socket!} and
+\passthrough{\lstinline!ssl!} modules.
+
+\hypertarget{socket-the-berkeley-interface}{%
+\subsection{\texorpdfstring{38.1 \texttt{socket}: The Berkeley
+Interface}{38.1 socket: The Berkeley Interface}}\label{socket-the-berkeley-interface}}
+
+A socket is an endpoint for communication. The
+\passthrough{\lstinline!socket!} module provides a C-like interface to
+the operating system's networking stack.
+
+\hypertarget{address-families-and-socket-types}{%
+\subsubsection{1. Address Families and Socket
+Types}\label{address-families-and-socket-types}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{AF\_INET / AF\_INET6}: IPv4 and IPv6 networking.
+\item
+  \textbf{AF\_UNIX}: Unix Domain Sockets (local IPC, faster than network
+  sockets as they skip the TCP/IP stack).
+\item
+  \textbf{SOCK\_STREAM}: TCP (reliable, connection-oriented).
+\item
+  \textbf{SOCK\_DGRAM}: UDP (unreliable, connectionless).
+\end{itemize}
+
+\hypertarget{the-lifecycle-of-a-server-socket}{%
+\subsubsection{2. The Lifecycle of a Server
+Socket}\label{the-lifecycle-of-a-server-socket}}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  \textbf{\passthrough{\lstinline!socket()!}}: Create the socket
+  descriptor.
+\item
+  \textbf{\passthrough{\lstinline!bind()!}}: Associate the socket with
+  an address and port.
+\item
+  \textbf{\passthrough{\lstinline!listen()!}}: Enable the socket to
+  accept connections (sets the backlog size).
+\item
+  \textbf{\passthrough{\lstinline!accept()!}}: Block until a client
+  connects. Returns a \textbf{new} socket object specifically for that
+  connection.
+\end{enumerate}
+
+\hypertarget{blocking-vs.-non-blocking}{%
+\subsubsection{3. Blocking
+vs.~Non-blocking}\label{blocking-vs.-non-blocking}}
+
+By default, sockets are blocking. Setting
+\passthrough{\lstinline!sock.setblocking(False)!} makes
+\passthrough{\lstinline!send!} and \passthrough{\lstinline!recv!} return
+immediately, raising \passthrough{\lstinline!BlockingIOError!} if no
+data is available. This is the foundation for multiplexing (as seen in
+Chapter 10).
+
+\hypertarget{ssl-secure-communication}{%
+\subsection{\texorpdfstring{38.2 \texttt{ssl}: Secure
+Communication}{38.2 ssl: Secure Communication}}\label{ssl-secure-communication}}
+
+The \passthrough{\lstinline!ssl!} module wraps OpenSSL to provide
+TLS/SSL encryption.
+
+\hypertarget{sslcontext}{%
+\subsubsection{\texorpdfstring{1.
+\texttt{SSLContext}}{1. SSLContext}}\label{sslcontext}}
+
+This object stores configuration (certificates, cipher suites, protocol
+versions). * \textbf{Certificate Verification}:
+\passthrough{\lstinline!context.verify\_mode!} ensures the server's
+identity is valid against a CA bundle. * \textbf{ALPN/SNI}: Support for
+modern TLS features like Application-Layer Protocol Negotiation (used
+for HTTP/2) and Server Name Indication.
+
+\hypertarget{wrapping-sockets}{%
+\subsubsection{2. Wrapping Sockets}\label{wrapping-sockets}}
+
+You don't create an SSL socket directly; you ``wrap'' an existing TCP
+socket:
+
+\begin{lstlisting}[language=Python]
+conn = context.wrap_socket(raw_sock, server_hostname="example.com")
+\end{lstlisting}
+
+This triggers the TLS handshake process.
+
+\hypertarget{mmap-memory-mapped-files}{%
+\subsection{\texorpdfstring{38.3 \texttt{mmap}: Memory-Mapped
+Files}{38.3 mmap: Memory-Mapped Files}}\label{mmap-memory-mapped-files}}
+
+\passthrough{\lstinline!mmap!} allows you to map a file directly into
+the process's virtual memory space.
+
+\hypertarget{why-use-mmap}{%
+\subsubsection{\texorpdfstring{1. Why use
+\texttt{mmap}?}{1. Why use mmap?}}\label{why-use-mmap}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Performance}: Reading from an \passthrough{\lstinline!mmap!}
+  object is often faster than standard \passthrough{\lstinline!read()!}
+  calls because it avoids copying data from kernel space to user space
+  (Zero-copy).
+\item
+  \textbf{IPC}: Multiple processes can map the same file. Changes made
+  by one process are immediately visible to others, providing a
+  high-speed shared memory mechanism.
+\end{itemize}
+
+\hypertarget{interface}{%
+\subsubsection{2. Interface}\label{interface}}
+
+\passthrough{\lstinline!mmap!} objects behave like both a bytearray and
+a file. They support slicing, regex searching, and standard
+\passthrough{\lstinline!read!}/\passthrough{\lstinline!write!} methods.
+
+\hypertarget{performance-optimizations-sendfile}{%
+\subsection{\texorpdfstring{38.4 Performance Optimizations:
+\texttt{sendfile}}{38.4 Performance Optimizations: sendfile}}\label{performance-optimizations-sendfile}}
+
+For high-performance file serving, Python provides
+\passthrough{\lstinline!os.sendfile!}. * \textbf{Zero-Copy}: It
+instructs the kernel to copy data directly from a file descriptor (disk)
+to a socket descriptor (network) without the data ever entering the
+Python interpreter's memory. This drastically reduces CPU usage and
+memory bandwidth for static file delivery.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}

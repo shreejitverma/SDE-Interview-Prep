@@ -1,0 +1,118 @@
+\hypertarget{functional-programming-modules}{%
+\chapter{Functional Programming
+Modules}\label{functional-programming-modules}}
+
+Python is not a purely functional language, but it provides powerful
+tools for functional programming patterns. These modules are almost
+entirely implemented in C, offering near-native performance for
+higher-order operations.
+
+\hypertarget{itertools-infinite-and-combinatoric-iterators}{%
+\subsection{\texorpdfstring{34.1 \texttt{itertools}: Infinite and
+Combinatoric
+Iterators}{34.1 itertools: Infinite and Combinatoric Iterators}}\label{itertools-infinite-and-combinatoric-iterators}}
+
+The \passthrough{\lstinline!itertools!} module provides functions that
+create iterators for efficient looping. They are ``lazy''they produce
+values only when requested, consuming minimal memory.
+
+\hypertarget{infinite-iterators}{%
+\subsubsection{1. Infinite Iterators}\label{infinite-iterators}}
+
+\begin{itemize}
+\tightlist
+\item
+  \passthrough{\lstinline!count(start, step)!}: An infinite sequence of
+  numbers.
+\item
+  \passthrough{\lstinline!cycle(iterable)!}: Saves a copy of the
+  iterable and repeats it indefinitely.
+\item
+  \passthrough{\lstinline!repeat(object, times)!}: Returns the same
+  object over and over.
+\end{itemize}
+
+\hypertarget{combinatoric-iterators}{%
+\subsubsection{2. Combinatoric Iterators}\label{combinatoric-iterators}}
+
+\begin{itemize}
+\tightlist
+\item
+  \passthrough{\lstinline!product()!}: Cartesian product (nested
+  for-loops).
+\item
+  \passthrough{\lstinline!permutations()!} /
+  \passthrough{\lstinline!combinations()!}: High-performance
+  combinatorial generation.
+\item
+  \textbf{Internals}: These are implemented as C-level classes that
+  maintain the current state of the iteration in their internal structs,
+  avoiding the overhead of Python-level generators.
+\end{itemize}
+
+\hypertarget{functools-higher-order-functions}{%
+\subsection{\texorpdfstring{34.2 \texttt{functools}: Higher-Order
+Functions}{34.2 functools: Higher-Order Functions}}\label{functools-higher-order-functions}}
+
+The \passthrough{\lstinline!functools!} module is for functions that act
+on or return other functions.
+
+\hypertarget{partialfunc-args-keywords}{%
+\subsubsection{\texorpdfstring{1.
+\texttt{partial(func,\ *args,\ **keywords)}}{1. partial(func, *args, **keywords)}}\label{partialfunc-args-keywords}}
+
+\passthrough{\lstinline!partial!} returns a new
+\passthrough{\lstinline!partial!} object (a C struct). *
+\textbf{Internals}: It stores the function, the positional arguments,
+and the keyword arguments. When called, it merges the stored arguments
+with the new ones and calls the original function. This is significantly
+faster than using a lambda for the same purpose because it avoids
+creating a new Python function object and closure.
+
+\hypertarget{lru_cachemaxsize128-typedfalse}{%
+\subsubsection{\texorpdfstring{2.
+\texttt{lru\_cache(maxsize=128,\ typed=False)}}{2. lru\_cache(maxsize=128, typed=False)}}\label{lru_cachemaxsize128-typedfalse}}
+
+The Least Recently Used (LRU) cache is implemented using a
+\textbf{Dictionary} and a \textbf{Doubly Linked List}. *
+\textbf{Dictionary}: Maps the function arguments (hashable) to the
+result. * \textbf{Linked List}: Tracks the order of access. When a hit
+occurs, the item is moved to the front. If the cache is full, the item
+at the tail is evicted. * \textbf{Thread Safety}: It uses a reentrant
+lock to ensure that the internal linked list remains consistent across
+multiple threads.
+
+\hypertarget{operator-exposing-c-level-opcodes}{%
+\subsection{\texorpdfstring{34.3 \texttt{operator}: Exposing C-Level
+Opcodes}{34.3 operator: Exposing C-Level Opcodes}}\label{operator-exposing-c-level-opcodes}}
+
+The \passthrough{\lstinline!operator!} module exports a set of efficient
+functions corresponding to Python's intrinsic operators. *
+\passthrough{\lstinline!operator.add(x, y)!} is equivalent to
+\passthrough{\lstinline!x + y!}. *
+\passthrough{\lstinline!operator.itemgetter(index)!} is equivalent to
+\passthrough{\lstinline!lambda obj: obj[index]!}. *
+\passthrough{\lstinline!operator.attrgetter(attr)!} is equivalent to
+\passthrough{\lstinline!lambda obj: getattr(obj, attr)!}.
+
+\textbf{Godhood Tip}: Always use
+\passthrough{\lstinline!operator.itemgetter!} or
+\passthrough{\lstinline!attrgetter!} for sorting or mapping instead of
+lambdas. They are implemented in C and avoid the overhead of a Python
+function call for every element in the collection.
+
+\hypertarget{singledispatch-generic-functions}{%
+\subsection{\texorpdfstring{34.4 \texttt{singledispatch}: Generic
+Functions}{34.4 singledispatch: Generic Functions}}\label{singledispatch-generic-functions}}
+
+\passthrough{\lstinline!functools.singledispatch!} allows for function
+overloading based on the type of the first argument. *
+\textbf{Internals}: It maintains a registry (a dictionary) mapping types
+to implementation functions. When the generic function is called, it
+performs a lookup in the registry. It also handles inheritance by
+traversing the MRO of the input type to find the closest registered
+handler.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}

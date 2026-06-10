@@ -1,0 +1,124 @@
+\hypertarget{the-import-machinery-and-importlib}{%
+\chapter{\texorpdfstring{The Import Machinery and
+\texttt{importlib}}{The Import Machinery and importlib}}\label{the-import-machinery-and-importlib}}
+
+The Python import system is one of the most flexible and complex
+components of the language. It is not a simple file-loader; it is a
+multi-stage, customizable pipeline that can load code from local files,
+zip archives, or even remote URLs.
+
+\hypertarget{the-import-algorithm}{%
+\subsection{39.1 The Import Algorithm}\label{the-import-algorithm}}
+
+When you run \passthrough{\lstinline!import foo!}, CPython performs the
+following steps:
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  \textbf{Cache Check}: It checks \passthrough{\lstinline!sys.modules!}
+  to see if \passthrough{\lstinline!foo!} is already loaded. If it is,
+  the cached module object is returned immediately.
+\item
+  \textbf{Finder Phase}: If not cached, it iterates through
+  \passthrough{\lstinline!sys.meta\_path!} (a list of \textbf{Meta-Path
+  Finders}).
+\item
+  \textbf{Loader Phase}: The finder returns a \textbf{Module Spec}
+  (\passthrough{\lstinline!ModuleSpec!}). This spec contains a
+  \textbf{Loader} responsible for actually creating the module object
+  and executing its code.
+\item
+  \textbf{Registration}: Once loaded, the module is added to
+  \passthrough{\lstinline!sys.modules!} and then assigned to the local
+  namespace.
+\end{enumerate}
+
+\hypertarget{finders-and-loaders-the-protocol}{%
+\subsection{39.2 Finders and Loaders: The
+Protocol}\label{finders-and-loaders-the-protocol}}
+
+The import machinery is defined by two primary protocols (defined in
+\passthrough{\lstinline!importlib.abc!}):
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{\passthrough{\lstinline!MetaPathFinder!}}: Its
+  \passthrough{\lstinline!find\_spec()!} method is called by the VM. It
+  determines if it can handle the module and returns a spec.
+\item
+  \textbf{\passthrough{\lstinline!Loader!}}: Its
+  \passthrough{\lstinline!create\_module()!} and
+  \passthrough{\lstinline!exec\_module()!} methods are called.
+  \passthrough{\lstinline!create\_module!} usually returns
+  \passthrough{\lstinline!None!} (letting the VM create a standard
+  module object), while \passthrough{\lstinline!exec\_module!} populates
+  the module's dictionary by running the source code.
+\end{itemize}
+
+\hypertarget{sys.meta_path-hooking-into-the-system}{%
+\subsection{\texorpdfstring{39.3 \texttt{sys.meta\_path}: Hooking into
+the
+System}{39.3 sys.meta\_path: Hooking into the System}}\label{sys.meta_path-hooking-into-the-system}}
+
+By appending an object to \passthrough{\lstinline!sys.meta\_path!}, you
+can intercept every import in the system. * \textbf{Built-in Finder}:
+Loads modules built into the CPython binary. * \textbf{Frozen Finder}:
+Loads modules ``frozen'' into the executable (like
+\passthrough{\lstinline!\_bootstrap!}). * \textbf{Path Finder}: The most
+common finder; it searches \passthrough{\lstinline!sys.path!} for
+\passthrough{\lstinline!.py!}, \passthrough{\lstinline!.pyc!}, and
+\passthrough{\lstinline!.so!} files.
+
+\hypertarget{importlib-programmatic-control}{%
+\subsection{\texorpdfstring{39.4 \texttt{importlib}: Programmatic
+Control}{39.4 importlib: Programmatic Control}}\label{importlib-programmatic-control}}
+
+The \passthrough{\lstinline!importlib!} module provides a high-level API
+for interacting with the import system.
+
+\hypertarget{dynamic-imports}{%
+\subsubsection{1. Dynamic Imports}\label{dynamic-imports}}
+
+\begin{lstlisting}[language=Python]
+import importlib
+module = importlib.import_module("os.path")
+\end{lstlisting}
+
+This is the equivalent of the \passthrough{\lstinline!\_\_import\_\_!}
+built-in but with a cleaner, more robust interface.
+
+\hypertarget{module-reloading}{%
+\subsubsection{2. Module Reloading}\label{module-reloading}}
+
+\passthrough{\lstinline!importlib.reload(module)!} re-executes the
+module's code in its existing dictionary. This is useful for development
+but dangerous for modules that maintain complex state or perform
+one-time registrations (like logging or database connections).
+
+\hypertarget{resource-loading}{%
+\subsubsection{3. Resource Loading}\label{resource-loading}}
+
+Modern Python uses \passthrough{\lstinline!importlib.resources!} instead
+of \passthrough{\lstinline!\_\_file\_\_!} to access data files within a
+package. This ensures compatibility with zip-imported packages where the
+``file'' doesn't actually exist on the disk as a standalone entity.
+
+\hypertarget{namespace-packages-pep-420}{%
+\subsection{39.5 Namespace Packages (PEP
+420)}\label{namespace-packages-pep-420}}
+
+Namespace packages allow you to split a single package across multiple
+directories on \passthrough{\lstinline!sys.path!}. * \textbf{Implicit
+Namespaces}: If a directory contains no
+\passthrough{\lstinline!\_\_init\_\_.py!} but has sub-packages or
+modules, Python 3 treats it as a namespace package. *
+\textbf{Internals}: The \passthrough{\lstinline!PathFinder!} handles
+this by aggregating all directories matching the name into a single
+module object's \passthrough{\lstinline!\_\_path\_\_!}.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}

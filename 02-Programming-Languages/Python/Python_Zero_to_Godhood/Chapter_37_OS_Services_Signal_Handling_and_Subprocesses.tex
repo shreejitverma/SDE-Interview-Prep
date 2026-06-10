@@ -1,0 +1,119 @@
+\hypertarget{os-services-signal-handling-and-subprocesses}{%
+\chapter{OS Services, Signal Handling, and
+Subprocesses}\label{os-services-signal-handling-and-subprocesses}}
+
+Python is widely used for system administration and process
+orchestration because it provides a near-one-to-one mapping to operating
+system primitives while managing the complexity of cross-platform
+differences.
+
+\hypertarget{os-the-system-call-bridge}{%
+\subsection{\texorpdfstring{37.1 \texttt{os}: The System Call
+Bridge}{37.1 os: The System Call Bridge}}\label{os-the-system-call-bridge}}
+
+The \passthrough{\lstinline!os!} module is the primary interface to the
+OS. * \textbf{System Calls}: Most functions in
+\passthrough{\lstinline!os!} are thin wrappers around C standard library
+calls (\passthrough{\lstinline!open!}, \passthrough{\lstinline!read!},
+\passthrough{\lstinline!write!}, \passthrough{\lstinline!fork!},
+\passthrough{\lstinline!exec!}). * \textbf{Environment}:
+\passthrough{\lstinline!os.environ!} is a mapping object that syncs with
+the process's environment block. * \textbf{Filesystem}: Provides
+low-level manipulation of file descriptors
+(\passthrough{\lstinline!os.dup!}, \passthrough{\lstinline!os.pipe!})
+and path metadata (\passthrough{\lstinline!os.stat!}).
+
+\hypertarget{io-the-stream-hierarchy}{%
+\subsection{\texorpdfstring{37.2 \texttt{io}: The Stream
+Hierarchy}{37.2 io: The Stream Hierarchy}}\label{io-the-stream-hierarchy}}
+
+The \passthrough{\lstinline!io!} module provides the foundations for
+Python's file handling. It uses a tiered architecture: 1. \textbf{Raw
+I/O}: \passthrough{\lstinline!FileIO!} objects represent raw OS file
+descriptors. They perform unbuffered system calls. 2. \textbf{Buffered
+I/O}: \passthrough{\lstinline!BufferedReader!},
+\passthrough{\lstinline!BufferedWriter!}, and
+\passthrough{\lstinline!BufferedRandom!}. These maintain internal
+C-level buffers to minimize the number of expensive system calls. 3.
+\textbf{Text I/O}: \passthrough{\lstinline!TextIOWrapper!} handles
+encoding and decoding (e.g., UTF-8 to Unicode) on top of a buffered
+binary stream.
+
+\hypertarget{signal-asynchronous-event-handling}{%
+\subsection{\texorpdfstring{37.3 \texttt{signal}: Asynchronous Event
+Handling}{37.3 signal: Asynchronous Event Handling}}\label{signal-asynchronous-event-handling}}
+
+Signals are software interrupts sent to a process. Handling them in a
+virtual machine like CPython is complex.
+
+\hypertarget{the-main-thread-restriction}{%
+\subsubsection{1. The Main Thread
+Restriction}\label{the-main-thread-restriction}}
+
+In Python, signals are always received by the main thread, regardless of
+which thread was executing when the signal arrived. *
+\textbf{Internals}: When a signal arrives, the OS interrupts the
+process. The C-level signal handler in CPython sets a flag. *
+\textbf{The Check}: The evaluation loop
+(\passthrough{\lstinline!ceval.c!}) periodically checks this flag. If
+set, it invokes the Python-level signal handler. This ensures that
+Python code only runs at ``safe'' points where the VM state is
+consistent.
+
+\hypertarget{signal.set_wakeup_fd}{%
+\subsubsection{\texorpdfstring{2.
+\texttt{signal.set\_wakeup\_fd}}{2. signal.set\_wakeup\_fd}}\label{signal.set_wakeup_fd}}
+
+For integration with event loops (like
+\passthrough{\lstinline!asyncio!}),
+\passthrough{\lstinline!set\_wakeup\_fd!} writes a byte to a file
+descriptor whenever a signal is received, allowing a
+\passthrough{\lstinline!select()!} or \passthrough{\lstinline!poll()!}
+call to wake up and handle the signal.
+
+\hypertarget{subprocess-orchestrating-external-processes}{%
+\subsection{\texorpdfstring{37.4 \texttt{subprocess}: Orchestrating
+External
+Processes}{37.4 subprocess: Orchestrating External Processes}}\label{subprocess-orchestrating-external-processes}}
+
+The \passthrough{\lstinline!subprocess!} module is the modern
+replacement for \passthrough{\lstinline!os.system!} and
+\passthrough{\lstinline!os.spawn!}.
+
+\hypertarget{process-creation}{%
+\subsubsection{1. Process Creation}\label{process-creation}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{POSIX}: Uses \passthrough{\lstinline!fork()!} and
+  \passthrough{\lstinline!exec()!}. Between the fork and exec, it
+  handles closing file descriptors and setting up pipes.
+\item
+  \textbf{Windows}: Uses the \passthrough{\lstinline!CreateProcess()!}
+  API.
+\end{itemize}
+
+\hypertarget{pipe-multiplexing}{%
+\subsubsection{2. Pipe Multiplexing}\label{pipe-multiplexing}}
+
+\passthrough{\lstinline!subprocess.communicate()!} reads data from
+\passthrough{\lstinline!stdout!} and \passthrough{\lstinline!stderr!}
+while writing to \passthrough{\lstinline!stdin!}. * \textbf{Deadlock
+Prevention}: It uses \passthrough{\lstinline!selectors!} (or threads on
+Windows) to read from multiple pipes simultaneously. This prevents the
+``buffer full'' deadlock that occurs if you try to read from one pipe
+while the process is blocked trying to write to another.
+
+\hypertarget{shlex-safe-command-parsing}{%
+\subsubsection{\texorpdfstring{3. \texttt{shlex}: Safe Command
+Parsing}{3. shlex: Safe Command Parsing}}\label{shlex-safe-command-parsing}}
+
+When building command strings, always use
+\passthrough{\lstinline!shlex.split()!} to ensure that arguments with
+spaces or special characters are handled correctly, preventing shell
+injection vulnerabilities.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
