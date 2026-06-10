@@ -1,0 +1,166 @@
+\hypertarget{lexical-analysis-and-the-execution-model}{%
+\chapter{Lexical Analysis and the Execution
+Model}\label{lexical-analysis-and-the-execution-model}}
+
+Python is often described as an interpreted language, but this is a
+high-level abstraction. Under the hood, CPython follows a classic
+compiler-interpreter pipeline: Lexical Analysis \(\rightarrow\) Parsing
+\(\rightarrow\) Abstract Syntax Tree (AST) \(\rightarrow\) Bytecode
+Generation \(\rightarrow\) Virtual Machine Execution. While Chapter 1
+introduced the LL(1) pipeline and Chapter 15 the PEG transition, this
+chapter formalizes the execution model and the mechanics of dynamic
+evaluation.
+
+\hypertarget{lexical-analysis-from-raw-bytes-to-tokens}{%
+\subsection{31.1 Lexical Analysis: From Raw Bytes to
+Tokens}\label{lexical-analysis-from-raw-bytes-to-tokens}}
+
+The first stage of execution is the \textbf{Tokenizer}. In CPython, the
+tokenizer is implemented in C
+(\passthrough{\lstinline!Parser/tokenizer.c!}). Its job is to break the
+stream of source code (or bytes) into a stream of logical units called
+\textbf{Tokens}.
+
+\hypertarget{token-types-and-the-tokenize-module}{%
+\subsubsection{\texorpdfstring{1. Token Types and the \texttt{tokenize}
+Module}{1. Token Types and the tokenize Module}}\label{token-types-and-the-tokenize-module}}
+
+Python exposes its internal tokenizer via the
+\passthrough{\lstinline!tokenize!} standard library module.
+
+\begin{lstlisting}[language=Python]
+import tokenize
+from io import BytesIO
+
+code = "x = 5 + 10"
+tokens = tokenize.tokenize(BytesIO(code.encode('utf-8')).readline)
+for token in tokens:
+    print(token)
+\end{lstlisting}
+
+Each token contains: * \textbf{Type}: \passthrough{\lstinline!NAME!},
+\passthrough{\lstinline!NUMBER!}, \passthrough{\lstinline!OP!},
+\passthrough{\lstinline!NEWLINE!}, \passthrough{\lstinline!INDENT!},
+\passthrough{\lstinline!DEDENT!}. * \textbf{String}: The actual text
+(e.g., ``x'', ``5''). * \textbf{Start/End Pos}: Line and column numbers
+for error reporting.
+
+\hypertarget{the-indentation-stack}{%
+\subsubsection{2. The Indentation Stack}\label{the-indentation-stack}}
+
+Unlike most languages, Python's tokenizer is stateful regarding
+whitespace. It maintains an \textbf{Indentation Stack}. * When a line
+has more leading whitespace than the top of the stack, it emits an
+\passthrough{\lstinline!INDENT!} token and pushes the new level onto the
+stack. * When it has less, it pops from the stack and emits one or more
+\passthrough{\lstinline!DEDENT!} tokens until the levels match.
+
+\hypertarget{the-ast-and-the-compilation-pipeline}{%
+\subsection{31.2 The AST and the Compilation
+Pipeline}\label{the-ast-and-the-compilation-pipeline}}
+
+Once tokens are parsed into a tree structure (PEG parser), CPython
+transforms the Concrete Syntax Tree (CST) into an \textbf{Abstract
+Syntax Tree (AST)}.
+
+\hypertarget{the-ast-module}{%
+\subsubsection{\texorpdfstring{1. The \texttt{ast}
+Module}{1. The ast Module}}\label{the-ast-module}}
+
+The AST is the representation that Python's optimizer and code generator
+actually use. You can inspect it using the \passthrough{\lstinline!ast!}
+module:
+
+\begin{lstlisting}[language=Python]
+import ast
+tree = ast.parse("x = 5 + 10")
+print(ast.dump(tree, indent=4))
+\end{lstlisting}
+
+The output shows a \passthrough{\lstinline!Module!} containing an
+\passthrough{\lstinline!Assign!} node, with a
+\passthrough{\lstinline!Name!} target and a
+\passthrough{\lstinline!BinOp!} (Add) value.
+
+\hypertarget{constant-folding-and-peephole-optimization}{%
+\subsubsection{2. Constant Folding and Peephole
+Optimization}\label{constant-folding-and-peephole-optimization}}
+
+During the transition from AST to bytecode, CPython performs simple
+optimizations: * \textbf{Constant Folding}: Expressions like
+\passthrough{\lstinline!1 + 2!} are evaluated at compile-time and
+replaced with \passthrough{\lstinline!3!}. * \textbf{Dead Code
+Elimination}: Code following a \passthrough{\lstinline!return!} or
+\passthrough{\lstinline!raise!} that is unreachable is stripped.
+
+\hypertarget{dynamic-execution-eval-vs.-exec}{%
+\subsection{\texorpdfstring{31.3 Dynamic Execution: \texttt{eval()}
+vs.~\texttt{exec()}}{31.3 Dynamic Execution: eval() vs.~exec()}}\label{dynamic-execution-eval-vs.-exec}}
+
+Python provides two primary built-ins for dynamic code execution. Their
+difference lies in what they accept and what they return.
+
+\hypertarget{evalexpression-globalsnone-localsnone}{%
+\subsubsection{\texorpdfstring{1.
+\texttt{eval(expression,\ globals=None,\ locals=None)}}{1. eval(expression, globals=None, locals=None)}}\label{evalexpression-globalsnone-localsnone}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Input}: A single Python expression (something that can be on
+  the right side of an assignment).
+\item
+  \textbf{Output}: The value of the expression.
+\item
+  \textbf{Internals}: Compiles the string to a code object with the
+  \passthrough{\lstinline!eval!} mode, then executes it in the provided
+  namespaces.
+\end{itemize}
+
+\hypertarget{execobject-globalsnone-localsnone}{%
+\subsubsection{\texorpdfstring{2.
+\texttt{exec(object,\ globals=None,\ locals=None)}}{2. exec(object, globals=None, locals=None)}}\label{execobject-globalsnone-localsnone}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Input}: A block of Python code (statements, class/function
+  definitions).
+\item
+  \textbf{Output}: Always \passthrough{\lstinline!None!}.
+\item
+  \textbf{Internals}: Compiles the code in
+  \passthrough{\lstinline!exec!} mode. It modifies the
+  \passthrough{\lstinline!locals!} dictionary (if provided) to include
+  newly defined variables.
+\end{itemize}
+
+\hypertarget{the-compile-function-and-code-objects}{%
+\subsection{\texorpdfstring{31.4 The \texttt{compile()} Function and
+Code
+Objects}{31.4 The compile() Function and Code Objects}}\label{the-compile-function-and-code-objects}}
+
+Both \passthrough{\lstinline!eval!} and \passthrough{\lstinline!exec!}
+use \passthrough{\lstinline!compile()!} under the hood. For performance,
+you should pre-compile code if you intend to run it multiple times.
+
+\begin{lstlisting}[language=Python]
+code_str = "print('Hello, Godhood')"
+# Modes: 'exec' for blocks, 'eval' for expressions, 'single' for REPL-style
+code_obj = compile(code_str, filename="<string>", mode="exec")
+
+# Inspection
+print(code_obj.co_code)      # Raw bytecode
+print(code_obj.co_consts)    # Constants used in the code
+print(code_obj.co_names)     # Global/Builtin names used
+\end{lstlisting}
+
+\passthrough{\lstinline!PyCodeObject!} is the C struct that holds this
+data. When \passthrough{\lstinline!exec(code\_obj)!} is called, the
+CPython VM pushes a new \passthrough{\lstinline!PyFrameObject!} onto the
+evaluation stack and hands the code object to the interpreter loop
+(\passthrough{\lstinline!\_PyEval\_EvalFrameDefault!}).
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}

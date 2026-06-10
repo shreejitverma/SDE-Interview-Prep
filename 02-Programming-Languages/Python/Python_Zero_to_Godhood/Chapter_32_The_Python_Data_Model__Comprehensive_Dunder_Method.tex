@@ -1,0 +1,158 @@
+\hypertarget{the-python-data-model-comprehensive-dunder-methods}{%
+\chapter{The Python Data Model \& Comprehensive Dunder
+Methods}\label{the-python-data-model-comprehensive-dunder-methods}}
+
+The ``Data Model'' is the formal description of Python's objects and
+their interactions. While most developers know
+\passthrough{\lstinline!\_\_init\_\_!}, the ``Godhood'' level of
+understanding requires knowing how these high-level methods map directly
+to functional pointers in the CPython C source code.
+
+\hypertarget{the-philosophy-protocols-over-types}{%
+\subsection{32.1 The Philosophy: Protocols over
+Types}\label{the-philosophy-protocols-over-types}}
+
+Python uses ``duck typing,'' but it is more accurately described as a
+\textbf{Protocol-based language}. If an object implements the methods
+required by a protocol, it \emph{is} that thing. These protocols are
+implemented using \textbf{Special Methods} (Dunder methods).
+
+\hypertarget{object-lifecycle-and-representation}{%
+\subsection{32.2 Object Lifecycle and
+Representation}\label{object-lifecycle-and-representation}}
+
+\hypertarget{creation-and-initialization}{%
+\subsubsection{1. Creation and
+Initialization}\label{creation-and-initialization}}
+
+\begin{itemize}
+\tightlist
+\item
+  \passthrough{\lstinline!\_\_new\_\_(cls, ...)!}: The actual
+  constructor. It returns a new instance of
+  \passthrough{\lstinline!cls!}. It maps to the
+  \passthrough{\lstinline!tp\_new!} slot in C.
+\item
+  \passthrough{\lstinline!\_\_init\_\_(self, ...)!}: The initializer. It
+  configures the instance created by
+  \passthrough{\lstinline!\_\_new\_\_!}. It maps to
+  \passthrough{\lstinline!tp\_init!}.
+\end{itemize}
+
+\hypertarget{string-representations}{%
+\subsubsection{2. String Representations}\label{string-representations}}
+
+\begin{itemize}
+\tightlist
+\item
+  \passthrough{\lstinline!\_\_repr\_\_(self)!}: The ``official'' string
+  representation, ideally usable to recreate the object. Used by the
+  debugger and REPL. Maps to \passthrough{\lstinline!tp\_repr!}.
+\item
+  \passthrough{\lstinline!\_\_str\_\_(self)!}: The ``informal'' or
+  user-friendly string representation. Maps to
+  \passthrough{\lstinline!tp\_str!}.
+\end{itemize}
+
+\hypertarget{the-mapping-to-c-slots}{%
+\subsection{32.3 The Mapping to C Slots}\label{the-mapping-to-c-slots}}
+
+Every Python class is an instance of
+\passthrough{\lstinline!PyTypeObject!}. This C struct contains a vast
+array of ``slots''function pointers that the VM calls when executing
+operations.
+
+\begin{longtable}[]{@{}lll@{}}
+\toprule
+Python Method & C Slot & Description \\
+\midrule
+\endhead
+\passthrough{\lstinline!\_\_call\_\_!} &
+\passthrough{\lstinline!tp\_call!} & Called when object is invoked like
+a function. \\
+\passthrough{\lstinline!\_\_iter\_\_!} &
+\passthrough{\lstinline!tp\_iter!} & Returns an iterator object. \\
+\passthrough{\lstinline!\_\_next\_\_!} &
+\passthrough{\lstinline!tp\_iternext!} & Returns the next item from an
+iterator. \\
+\passthrough{\lstinline!\_\_getattr\_\_!} &
+\passthrough{\lstinline!(dynamic)!} & Called if attribute lookup
+fails. \\
+\passthrough{\lstinline!\_\_getattribute\_\_!} &
+\passthrough{\lstinline!tp\_getattro!} & Called for EVERY attribute
+lookup. \\
+\bottomrule
+\end{longtable}
+
+\hypertarget{numeric-and-container-protocols}{%
+\subsection{32.4 Numeric and Container
+Protocols}\label{numeric-and-container-protocols}}
+
+To save space and optimize lookup, CPython groups related methods into
+sub-structs:
+
+\hypertarget{tp_as_number}{%
+\subsubsection{\texorpdfstring{1.
+\texttt{tp\_as\_number}}{1. tp\_as\_number}}\label{tp_as_number}}
+
+Methods like \passthrough{\lstinline!\_\_add\_\_!},
+\passthrough{\lstinline!\_\_sub\_\_!}, and
+\passthrough{\lstinline!\_\_mul\_\_!} are stored here. When you write
+\passthrough{\lstinline!a + b!}, the VM looks at
+\passthrough{\lstinline!a->ob\_type->tp\_as\_number->nb\_add!}.
+
+\hypertarget{tp_as_sequence-and-tp_as_mapping}{%
+\subsubsection{\texorpdfstring{2. \texttt{tp\_as\_sequence} and
+\texttt{tp\_as\_mapping}}{2. tp\_as\_sequence and tp\_as\_mapping}}\label{tp_as_sequence-and-tp_as_mapping}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Sequence}: \passthrough{\lstinline!\_\_len\_\_!}
+  (\passthrough{\lstinline!sq\_length!}),
+  \passthrough{\lstinline!\_\_getitem\_\_!}
+  (\passthrough{\lstinline!sq\_item!}).
+\item
+  \textbf{Mapping}: \passthrough{\lstinline!\_\_getitem\_\_!}
+  (\passthrough{\lstinline!mp\_subscript!}),
+  \passthrough{\lstinline!\_\_setitem\_\_!}
+  (\passthrough{\lstinline!mp\_ass\_subscript!}).
+\end{itemize}
+
+Note that \passthrough{\lstinline!\_\_getitem\_\_!} is overloaded; if
+the object is a sequence, it expects an integer; if it's a mapping, it
+expects a hashable key.
+
+\hypertarget{comprehensive-comparison-rich-comparisons}{%
+\subsection{32.5 Comprehensive Comparison: Rich
+Comparisons}\label{comprehensive-comparison-rich-comparisons}}
+
+Python 3 unified comparisons into \textbf{Rich Comparisons}
+(\passthrough{\lstinline!tp\_richcompare!}). *
+\passthrough{\lstinline!\_\_lt\_\_!},
+\passthrough{\lstinline!\_\_le\_\_!},
+\passthrough{\lstinline!\_\_eq\_\_!},
+\passthrough{\lstinline!\_\_ne\_\_!},
+\passthrough{\lstinline!\_\_gt\_\_!},
+\passthrough{\lstinline!\_\_ge\_\_!}.
+
+These all map to a single C function that receives an
+\passthrough{\lstinline!op!} argument (e.g.,
+\passthrough{\lstinline!Py\_EQ!}, \passthrough{\lstinline!Py\_LT!}). If
+you implement only \passthrough{\lstinline!\_\_eq\_\_!}, Python does not
+automatically derive \passthrough{\lstinline!\_\_ne\_\_!} or others,
+unlike some older versions.
+
+\hypertarget{the-__slots__-optimization-recap}{%
+\subsection{\texorpdfstring{32.6 The \texttt{\_\_slots\_\_} Optimization
+(Recap)}{32.6 The \_\_slots\_\_ Optimization (Recap)}}\label{the-__slots__-optimization-recap}}
+
+As covered in Chapter 26, \passthrough{\lstinline!\_\_slots\_\_!}
+prevents the creation of \passthrough{\lstinline!\_\_dict\_\_!}.
+Internally, this changes the \passthrough{\lstinline!PyTypeObject!}
+flags and allocates space for the attributes directly in the object
+struct, mapping them via \textbf{Member Descriptors}.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}

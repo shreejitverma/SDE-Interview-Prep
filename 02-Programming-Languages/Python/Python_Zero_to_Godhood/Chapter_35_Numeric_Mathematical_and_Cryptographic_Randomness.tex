@@ -1,0 +1,124 @@
+\hypertarget{numeric-mathematical-and-cryptographic-randomness}{%
+\chapter{Numeric, Mathematical, and Cryptographic
+Randomness}\label{numeric-mathematical-and-cryptographic-randomness}}
+
+Python provides a robust suite of modules for numerical computing,
+ranging from standard floating-point math to arbitrary-precision
+decimals and cryptographically secure random number generation.
+
+\hypertarget{decimal-control-over-precision}{%
+\subsection{\texorpdfstring{35.1 \texttt{decimal}: Control over
+Precision}{35.1 decimal: Control over Precision}}\label{decimal-control-over-precision}}
+
+The standard \passthrough{\lstinline!float!} in Python is a 64-bit IEEE
+754 double, which suffers from precision issues (e.g.,
+\passthrough{\lstinline"0.1 + 0.2 != 0.3"}). The
+\passthrough{\lstinline!decimal!} module provides a
+\passthrough{\lstinline!Decimal!} type for correctly-rounded decimal
+floating-point arithmetic.
+
+\hypertarget{the-decnumber-c-library}{%
+\subsubsection{\texorpdfstring{1. The \texttt{decNumber} C
+Library}{1. The decNumber C Library}}\label{the-decnumber-c-library}}
+
+In CPython, the \passthrough{\lstinline!decimal!} module is implemented
+as \passthrough{\lstinline!\_decimal!}, which is a wrapper around the
+\textbf{decNumber} library. This allows for extremely fast decimal
+arithmetic that follows the General Decimal Arithmetic Specification.
+
+\hypertarget{contexts-and-precision}{%
+\subsubsection{2. Contexts and Precision}\label{contexts-and-precision}}
+
+You can control the global or local precision using
+\passthrough{\lstinline!getcontext()!}:
+
+\begin{lstlisting}[language=Python]
+from decimal import Decimal, getcontext
+getcontext().prec = 50  # 50 digits of precision
+print(Decimal(1) / Decimal(7))
+\end{lstlisting}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Performance Note}: While \passthrough{\lstinline!\_decimal!}
+  is fast, it is still significantly slower than hardware-native
+  \passthrough{\lstinline!float!}. Use it for financial applications or
+  cases where exact decimal representation is mandatory.
+\end{itemize}
+
+\hypertarget{fractions-exact-rational-numbers}{%
+\subsection{\texorpdfstring{35.2 \texttt{fractions}: Exact Rational
+Numbers}{35.2 fractions: Exact Rational Numbers}}\label{fractions-exact-rational-numbers}}
+
+The \passthrough{\lstinline!fractions!} module provides support for
+rational number arithmetic. * \textbf{Internals}: A
+\passthrough{\lstinline!Fraction!} object stores two integers: a
+numerator and a denominator. It automatically reduces the fraction to
+its lowest terms using the Greatest Common Divisor (GCD). *
+\textbf{Exactness}: Unlike \passthrough{\lstinline!float!} or
+\passthrough{\lstinline!decimal!}, \passthrough{\lstinline!Fraction!}
+can represent \passthrough{\lstinline!1/3!} exactly without any rounding
+error.
+
+\hypertarget{math-and-cmath-the-c-standard-library-wrappers}{%
+\subsection{\texorpdfstring{35.3 \texttt{math} and \texttt{cmath}: The C
+Standard Library
+Wrappers}{35.3 math and cmath: The C Standard Library Wrappers}}\label{math-and-cmath-the-c-standard-library-wrappers}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{\passthrough{\lstinline!math!}}: Provides access to the
+  mathematical functions defined by the C standard for real numbers
+  (\passthrough{\lstinline!sin!}, \passthrough{\lstinline!cos!},
+  \passthrough{\lstinline!log!}, \passthrough{\lstinline!sqrt!}).
+\item
+  \textbf{\passthrough{\lstinline!cmath!}}: Provides the same functions
+  for complex numbers.
+\item
+  \textbf{Optimization}: These functions are thin wrappers around the
+  host C library. They are highly optimized and release the GIL for
+  heavy calculations (though most are too fast for the release overhead
+  to be worth it).
+\end{itemize}
+
+\hypertarget{random-pseudorandom-number-generation}{%
+\subsection{\texorpdfstring{35.4 \texttt{random}: Pseudorandom Number
+Generation}{35.4 random: Pseudorandom Number Generation}}\label{random-pseudorandom-number-generation}}
+
+The \passthrough{\lstinline!random!} module is a \textbf{Pseudorandom
+Number Generator (PRNG)}. It is deterministic if you know the seed.
+
+\hypertarget{the-mersenne-twister-mt19937}{%
+\subsubsection{1. The Mersenne Twister
+(MT19937)}\label{the-mersenne-twister-mt19937}}
+
+Historically, Python used the Mersenne Twister as its primary PRNG. *
+\textbf{Period}: \(2^{19937} - 1\). * \textbf{State}: It maintains a
+large state (624 integers). * \textbf{Weakness}: It is not
+cryptographically secure; observing a sufficient number of outputs
+allows an attacker to predict future values.
+
+\hypertarget{pcg64-python-3.13}{%
+\subsubsection{2. PCG64 (Python 3.13+)}\label{pcg64-python-3.13}}
+
+Modern Python versions have introduced more modern PRNGs like PCG64,
+which offer better statistical properties and smaller state.
+
+\hypertarget{secrets-cryptographic-security}{%
+\subsection{\texorpdfstring{35.5 \texttt{secrets}: Cryptographic
+Security}{35.5 secrets: Cryptographic Security}}\label{secrets-cryptographic-security}}
+
+For security-sensitive applications (passwords, tokens), you must use
+the \passthrough{\lstinline!secrets!} module. * \textbf{Internals}:
+\passthrough{\lstinline!secrets!} uses the OS's cryptographically secure
+source of randomness (\passthrough{\lstinline!/dev/urandom!} on Unix,
+\passthrough{\lstinline!CryptGenRandom!} on Windows). * \textbf{Why?}:
+Unlike \passthrough{\lstinline!random!}, the output of
+\passthrough{\lstinline!secrets!} is not predictable even if an attacker
+sees millions of previous values.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}

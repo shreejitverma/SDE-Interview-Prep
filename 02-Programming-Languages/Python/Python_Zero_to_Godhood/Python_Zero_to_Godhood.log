@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.28 (TeX Live 2025) (preloaded format=pdflatex 2025.12.5)  10 JUN 2026 16:34
+This is pdfTeX, Version 3.141592653-2.6-1.40.28 (TeX Live 2025) (preloaded format=pdflatex 2025.12.5)  10 JUN 2026 16:47
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -505,7 +505,7 @@ File: umsb.fd 2013/01/14 v3.01 AMS symbols B
 {/Users/shreejitverma/Library/TinyTeX/texmf-var/fonts/map/pdftex/updmap/pdftex.map}{/Users/shreejitverma/Library/TinyTeX/texmf-dist/fonts/enc/dvips/lm/lm-ec.enc}] (./Python_Zero_to_Godhood.toc
 LaTeX Font Info:    External font `lmex10' loaded for size
 (Font)              <10.95> on input line 3.
-LaTeX Font Info:    Trying to load font information for T1+lmtt on input line 36.
+LaTeX Font Info:    Trying to load font information for T1+lmtt on input line 40.
  (/Users/shreejitverma/Library/TinyTeX/texmf-dist/tex/latex/lm/t1lmtt.fd
 File: t1lmtt.fd 2015/05/01 v1.6.1 Font defs for Latin Modern
 ) [2
@@ -527,7 +527,15 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
 
 [4]
-Overfull \hbox (0.90936pt too wide) in paragraph at lines 396--396
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 13.59999pt, for example:
+(fancyhdr)                \setlength{\headheight}{13.59999pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
+
+[5]
+Overfull \hbox (0.90936pt too wide) in paragraph at lines 400--400
  [][] [][][]\T1/lmr/m/n/10.95 27.1 Con-cur-rency Paradigms: Threads vs. Pro-cesses vs. Corou-tines (Asyn- 
  []
 
@@ -538,7 +546,10 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                You might also make \topmargin smaller:
 (fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
 
-[5])
+[6]
+LaTeX Font Info:    Font shape `T1/lmtt/bx/n' in size <10.95> not available
+(Font)              Font shape `T1/lmtt/b/n' tried instead on input line 520.
+)
 \tf@toc=\write4
 \openout4 = `Python_Zero_to_Godhood.toc'.
 
@@ -550,10 +561,19 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                You might also make \topmargin smaller:
 (fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
 
-[6] (./00_Preface.tex
+[7]
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 13.59999pt, for example:
+(fancyhdr)                \setlength{\headheight}{13.59999pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
+
+[8
+
+] (./00_Preface.tex
 Chapter 1.
 [1
-
 
 ]
 Chapter 2.
@@ -562,7 +582,7 @@ LaTeX Font Info:    Trying to load font information for TS1+lmr on input line 43
 File: ts1lmr.fd 2015/05/01 v1.6.1 Font defs for Latin Modern
 ) [2
 
-{/Users/shreejitverma/Library/TinyTeX/texmf-dist/fonts/enc/dvips/lm/lm-ts1.enc}])
+{/Users/shreejitverma/Library/TinyTeX/texmf-dist/fonts/enc/dvips/lm/lm-ts1.enc}]
 
 Package fancyhdr Warning: \headheight is too small (12.0pt): 
 (fancyhdr)                Make it at least 13.59999pt, for example:
@@ -570,7 +590,15 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                You might also make \topmargin smaller:
 (fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
 
-[3] [4
+[3])
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 25.2232pt, for example:
+(fancyhdr)                \setlength{\headheight}{25.2232pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-13.2232pt}.
+
+[4] [5
 
 ] (./Chapter_01_Python_10_to_16_Inception__the_LL1_Executable_Pipe.tex
 Chapter 3.
@@ -578,11 +606,9 @@ Chapter 3.
 Package hyperref Warning: Difference (2) between bookmark levels is greater 
 (hyperref)                than one, level fixed on input line 7.
 
-[5
+[6
 
 {/Users/shreejitverma/Library/TinyTeX/texmf-dist/fonts/enc/dvips/lm/lm-mathit.enc}{/Users/shreejitverma/Library/TinyTeX/texmf-dist/fonts/enc/dvips/lm/lm-mathsy.enc}]
-LaTeX Font Info:    Font shape `T1/lmtt/bx/n' in size <10.95> not available
-(Font)              Font shape `T1/lmtt/b/n' tried instead on input line 118.
 LaTeX Font Info:    Font shape `T1/lmtt/bx/n' in size <9> not available
 (Font)              Font shape `T1/lmtt/b/n' tried instead on input line 124.
  (/Users/shreejitverma/Library/TinyTeX/texmf-dist/tex/latex/listings/lstlang1.sty
@@ -592,30 +618,22 @@ File: lstmisc.sty 2025/11/14 1.11b (Carsten Heinz)
 )
 
 Package fancyhdr Warning: \headheight is too small (12.0pt): 
-(fancyhdr)                Make it at least 25.89253pt, for example:
-(fancyhdr)                \setlength{\headheight}{25.89253pt}.
+(fancyhdr)                Make it at least 13.59999pt, for example:
+(fancyhdr)                \setlength{\headheight}{13.59999pt}.
 (fancyhdr)                You might also make \topmargin smaller:
-(fancyhdr)                \addtolength{\topmargin}{-13.89253pt}.
+(fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
 
-[6] (/Users/shreejitverma/Library/TinyTeX/texmf-dist/tex/latex/listings/lstlang1.sty
+[7] (/Users/shreejitverma/Library/TinyTeX/texmf-dist/tex/latex/listings/lstlang1.sty
 File: lstlang1.sty 2025/11/14 1.11b listings language file
 )
 
 Package fancyhdr Warning: \headheight is too small (12.0pt): 
-(fancyhdr)                Make it at least 13.59999pt, for example:
-(fancyhdr)                \setlength{\headheight}{13.59999pt}.
-(fancyhdr)                You might also make \topmargin smaller:
-(fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
-
-[7{/Users/shreejitverma/Library/TinyTeX/texmf-dist/fonts/enc/dvips/lm/lm-rm.enc}]
-
-Package fancyhdr Warning: \headheight is too small (12.0pt): 
 (fancyhdr)                Make it at least 25.89253pt, for example:
 (fancyhdr)                \setlength{\headheight}{25.89253pt}.
 (fancyhdr)                You might also make \topmargin smaller:
 (fancyhdr)                \addtolength{\topmargin}{-13.89253pt}.
 
-[8]
+[8{/Users/shreejitverma/Library/TinyTeX/texmf-dist/fonts/enc/dvips/lm/lm-rm.enc}]
 
 Package fancyhdr Warning: \headheight is too small (12.0pt): 
 (fancyhdr)                Make it at least 13.59999pt, for example:
@@ -623,7 +641,7 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                You might also make \topmargin smaller:
 (fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
 
-[9]) (./Chapter_02_Python_1x_The_PyObject_Model__Reference_Counting_C.tex
+[9]
 
 Package fancyhdr Warning: \headheight is too small (12.0pt): 
 (fancyhdr)                Make it at least 25.89253pt, for example:
@@ -631,7 +649,15 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                You might also make \topmargin smaller:
 (fancyhdr)                \addtolength{\topmargin}{-13.89253pt}.
 
-[10]
+[10]) (./Chapter_02_Python_1x_The_PyObject_Model__Reference_Counting_C.tex
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 13.59999pt, for example:
+(fancyhdr)                \setlength{\headheight}{13.59999pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
+
+[11]
 Chapter 4.
 LaTeX Font Info:    Font shape `T1/lmtt/bx/n' in size <12> not available
 (Font)              Font shape `T1/lmtt/b/n' tried instead on input line 8.
@@ -639,17 +665,9 @@ LaTeX Font Info:    Font shape `T1/lmtt/bx/n' in size <12> not available
 Package hyperref Warning: Difference (2) between bookmark levels is greater 
 (hyperref)                than one, level fixed on input line 8.
 
-[11
+[12
 
 ]
-
-Package fancyhdr Warning: \headheight is too small (12.0pt): 
-(fancyhdr)                Make it at least 25.2232pt, for example:
-(fancyhdr)                \setlength{\headheight}{25.2232pt}.
-(fancyhdr)                You might also make \topmargin smaller:
-(fancyhdr)                \addtolength{\topmargin}{-13.2232pt}.
-
-[12]
 
 Package fancyhdr Warning: \headheight is too small (12.0pt): 
 (fancyhdr)                Make it at least 13.59999pt, for example:
@@ -657,7 +675,7 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                You might also make \topmargin smaller:
 (fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
 
-[13]) (./Chapter_03_Python_20_to_21_Comprehensions_Nested_Scopes__Cycl.tex
+[13]
 
 Package fancyhdr Warning: \headheight is too small (12.0pt): 
 (fancyhdr)                Make it at least 25.2232pt, for example:
@@ -665,13 +683,21 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                You might also make \topmargin smaller:
 (fancyhdr)                \addtolength{\topmargin}{-13.2232pt}.
 
-[14]
+[14]) (./Chapter_03_Python_20_to_21_Comprehensions_Nested_Scopes__Cycl.tex
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 13.59999pt, for example:
+(fancyhdr)                \setlength{\headheight}{13.59999pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
+
+[15]
 Chapter 5.
 
 Package hyperref Warning: Difference (2) between bookmark levels is greater 
 (hyperref)                than one, level fixed on input line 8.
 
-[15
+[16
 
 ]
 Overfull \hbox (0.28032pt too wide) in paragraph at lines 91--96
@@ -680,12 +706,20 @@ Overfull \hbox (0.28032pt too wide) in paragraph at lines 91--96
 
 
 Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 13.59999pt, for example:
+(fancyhdr)                \setlength{\headheight}{13.59999pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
+
+[17]
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
 (fancyhdr)                Make it at least 25.2232pt, for example:
 (fancyhdr)                \setlength{\headheight}{25.2232pt}.
 (fancyhdr)                You might also make \topmargin smaller:
 (fancyhdr)                \addtolength{\topmargin}{-13.2232pt}.
 
-[16]
+[18]) (./Chapter_04_Python_22_to_23_Type-Class_Unification_Descriptors.tex
 
 Package fancyhdr Warning: \headheight is too small (12.0pt): 
 (fancyhdr)                Make it at least 13.59999pt, for example:
@@ -693,15 +727,7 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                You might also make \topmargin smaller:
 (fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
 
-[17]) (./Chapter_04_Python_22_to_23_Type-Class_Unification_Descriptors.tex
-
-Package fancyhdr Warning: \headheight is too small (12.0pt): 
-(fancyhdr)                Make it at least 25.2232pt, for example:
-(fancyhdr)                \setlength{\headheight}{25.2232pt}.
-(fancyhdr)                You might also make \topmargin smaller:
-(fancyhdr)                \addtolength{\topmargin}{-13.2232pt}.
-
-[18]
+[19]
 Chapter 6.
 
 Package hyperref Warning: Difference (2) between bookmark levels is greater 
@@ -722,23 +748,11 @@ Overfull \hbox (9.3172pt too wide) in paragraph at lines 34--41
 [][][][][][][][][][][][][][][][][][][][][][][][][][][]\T1/lmr/m/n/10.95 PyTypeObject[][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][]
  []
 
-[19
+[20
 
 ]
 Overfull \hbox (2.85867pt too wide) in paragraph at lines 110--128
 [][][][][][][][][][][][][][][][][][][][][][][][][]\T1/lmr/m/n/10.95 ), but user-defined classes write Python meth-ods ([][][][][]
- []
-
-
-Package fancyhdr Warning: \headheight is too small (12.0pt): 
-(fancyhdr)                Make it at least 25.2232pt, for example:
-(fancyhdr)                \setlength{\headheight}{25.2232pt}.
-(fancyhdr)                You might also make \topmargin smaller:
-(fancyhdr)                \addtolength{\topmargin}{-13.2232pt}.
-
-[20]
-Overfull \hbox (2.90797pt too wide) in paragraph at lines 184--218
-[]\T1/lmr/m/n/10.95 The lookup fol-lows this strict res-o-lu-tion flow: 1. \T1/lmr/bx/n/10.95 MRO Search\T1/lmr/m/n/10.95 : CPython calls []
  []
 
 
@@ -749,8 +763,8 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
 
 [21]
-Overfull \hbox (3.30533pt too wide) in paragraph at lines 289--302
-\T1/lmr/m/n/10.95 * [][][][]: Im-ple-ments [][][][][][][][][][][][][][][][][][][][][][]. When ac-cessed, it ig-nores the []
+Overfull \hbox (2.90797pt too wide) in paragraph at lines 184--218
+[]\T1/lmr/m/n/10.95 The lookup fol-lows this strict res-o-lu-tion flow: 1. \T1/lmr/bx/n/10.95 MRO Search\T1/lmr/m/n/10.95 : CPython calls []
  []
 
 
@@ -761,6 +775,10 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                \addtolength{\topmargin}{-13.2232pt}.
 
 [22]
+Overfull \hbox (3.30533pt too wide) in paragraph at lines 289--302
+\T1/lmr/m/n/10.95 * [][][][]: Im-ple-ments [][][][][][][][][][][][][][][][][][][][][][]. When ac-cessed, it ig-nores the []
+ []
+
 
 Package fancyhdr Warning: \headheight is too small (12.0pt): 
 (fancyhdr)                Make it at least 13.59999pt, for example:
@@ -776,7 +794,7 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                You might also make \topmargin smaller:
 (fancyhdr)                \addtolength{\topmargin}{-13.2232pt}.
 
-[24]) (./Chapter_05_Python_24_to_27_Decorators_Context_Managers__the_2.tex
+[24]
 
 Package fancyhdr Warning: \headheight is too small (12.0pt): 
 (fancyhdr)                Make it at least 13.59999pt, for example:
@@ -784,23 +802,23 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                You might also make \topmargin smaller:
 (fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
 
-[25]
+[25]) (./Chapter_05_Python_24_to_27_Decorators_Context_Managers__the_2.tex
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 25.2232pt, for example:
+(fancyhdr)                \setlength{\headheight}{25.2232pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-13.2232pt}.
+
+[26]
 Chapter 7.
 
 Package hyperref Warning: Difference (2) between bookmark levels is greater 
 (hyperref)                than one, level fixed on input line 8.
 
-[26
+[27
 
 ]
-
-Package fancyhdr Warning: \headheight is too small (12.0pt): 
-(fancyhdr)                Make it at least 13.59999pt, for example:
-(fancyhdr)                \setlength{\headheight}{13.59999pt}.
-(fancyhdr)                You might also make \topmargin smaller:
-(fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
-
-[27]
 
 Package fancyhdr Warning: \headheight is too small (12.0pt): 
 (fancyhdr)                Make it at least 25.2232pt, for example:
@@ -816,7 +834,7 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                You might also make \topmargin smaller:
 (fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
 
-[29]) (./Chapter_06_Python_2x_Low-Level_File_IO__Exceptions_Unwinding_.tex
+[29]
 
 Package fancyhdr Warning: \headheight is too small (12.0pt): 
 (fancyhdr)                Make it at least 25.2232pt, for example:
@@ -824,23 +842,7 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                You might also make \topmargin smaller:
 (fancyhdr)                \addtolength{\topmargin}{-13.2232pt}.
 
-[30]
-Chapter 8.
-
-Package hyperref Warning: Difference (2) between bookmark levels is greater 
-(hyperref)                than one, level fixed on input line 7.
-
-[31
-
-]
-
-Package fancyhdr Warning: \headheight is too small (12.0pt): 
-(fancyhdr)                Make it at least 25.89253pt, for example:
-(fancyhdr)                \setlength{\headheight}{25.89253pt}.
-(fancyhdr)                You might also make \topmargin smaller:
-(fancyhdr)                \addtolength{\topmargin}{-13.89253pt}.
-
-[32])
+[30]) (./Chapter_06_Python_2x_Low-Level_File_IO__Exceptions_Unwinding_.tex
 
 Package fancyhdr Warning: \headheight is too small (12.0pt): 
 (fancyhdr)                Make it at least 13.59999pt, for example:
@@ -848,7 +850,31 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                You might also make \topmargin smaller:
 (fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
 
-[33] [34
+[31]
+Chapter 8.
+
+Package hyperref Warning: Difference (2) between bookmark levels is greater 
+(hyperref)                than one, level fixed on input line 7.
+
+[32
+
+]
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 13.59999pt, for example:
+(fancyhdr)                \setlength{\headheight}{13.59999pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
+
+[33])
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 25.89253pt, for example:
+(fancyhdr)                \setlength{\headheight}{25.89253pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-13.89253pt}.
+
+[34] [35
 
 ] (./Chapter_07_Python_30_The_Unicode_Paradigm_Shift_and_Text_vs_B.tex
 Chapter 9.
@@ -856,21 +882,13 @@ Chapter 9.
 Package hyperref Warning: Difference (2) between bookmark levels is greater 
 (hyperref)                than one, level fixed on input line 8.
 
-[35
+[36
 
 ]
 Overfull \hbox (31.71072pt too wide) in paragraph at lines 79--82
 []\T1/lmr/m/n/10.95 The mu-ta-ble sib-ling, [][][][], is rep-re-sented by [][][][] de-fined in [][][][][]
  []
 
-
-Package fancyhdr Warning: \headheight is too small (12.0pt): 
-(fancyhdr)                Make it at least 25.2232pt, for example:
-(fancyhdr)                \setlength{\headheight}{25.2232pt}.
-(fancyhdr)                You might also make \topmargin smaller:
-(fancyhdr)                \addtolength{\topmargin}{-13.2232pt}.
-
-[36]
 
 Package fancyhdr Warning: \headheight is too small (12.0pt): 
 (fancyhdr)                Make it at least 13.59999pt, for example:
@@ -886,7 +904,7 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                You might also make \topmargin smaller:
 (fancyhdr)                \addtolength{\topmargin}{-13.2232pt}.
 
-[38]) (./Chapter_08_Python_31_to_32_Standard_Library_Consolidation_and.tex
+[38]
 
 Package fancyhdr Warning: \headheight is too small (12.0pt): 
 (fancyhdr)                Make it at least 13.59999pt, for example:
@@ -894,29 +912,25 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                You might also make \topmargin smaller:
 (fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
 
-[39]
+[39]) (./Chapter_08_Python_31_to_32_Standard_Library_Consolidation_and.tex
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 25.2232pt, for example:
+(fancyhdr)                \setlength{\headheight}{25.2232pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-13.2232pt}.
+
+[40]
 Chapter 10.
 
 Package hyperref Warning: Difference (2) between bookmark levels is greater 
 (hyperref)                than one, level fixed on input line 7.
 
-[40
+[41
 
 ]
 Overfull \hbox (14.8062pt too wide) in paragraph at lines 129--143
 [][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][]
- []
-
-
-Package fancyhdr Warning: \headheight is too small (12.0pt): 
-(fancyhdr)                Make it at least 13.59999pt, for example:
-(fancyhdr)                \setlength{\headheight}{13.59999pt}.
-(fancyhdr)                You might also make \topmargin smaller:
-(fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
-
-[41]
-Overfull \hbox (2.12468pt too wide) in paragraph at lines 192--197
-\T1/lmr/m/n/10.95 turn value in [][][][][][][][], and in-vokes all call-back func-tions reg-is-tered via []
  []
 
 
@@ -926,7 +940,11 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                You might also make \topmargin smaller:
 (fancyhdr)                \addtolength{\topmargin}{-13.2232pt}.
 
-[42])
+[42]
+Overfull \hbox (2.12468pt too wide) in paragraph at lines 192--197
+\T1/lmr/m/n/10.95 turn value in [][][][][][][][], and in-vokes all call-back func-tions reg-is-tered via []
+ []
+
 
 Package fancyhdr Warning: \headheight is too small (12.0pt): 
 (fancyhdr)                Make it at least 13.59999pt, for example:
@@ -934,7 +952,15 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                You might also make \topmargin smaller:
 (fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
 
-[43] [44
+[43])
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 25.2232pt, for example:
+(fancyhdr)                \setlength{\headheight}{25.2232pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-13.2232pt}.
+
+[44] [45
 
 ] (./Chapter_09_Python_33_Yield_From_Generators_and_Implicit_Names.tex
 Chapter 11.
@@ -947,17 +973,17 @@ Overfull \hbox (7.02106pt too wide) in paragraph at lines 17--28
 \T1/lmr/m/n/10.95 When the com-piler en-coun-ters [][][][][][][][], it emits two spe-cial-ized byte-codes: * []
  []
 
-[45
+[46
 
 ]
 
 Package fancyhdr Warning: \headheight is too small (12.0pt): 
-(fancyhdr)                Make it at least 25.2232pt, for example:
-(fancyhdr)                \setlength{\headheight}{25.2232pt}.
+(fancyhdr)                Make it at least 13.59999pt, for example:
+(fancyhdr)                \setlength{\headheight}{13.59999pt}.
 (fancyhdr)                You might also make \topmargin smaller:
-(fancyhdr)                \addtolength{\topmargin}{-13.2232pt}.
+(fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
 
-[46]
+[47]
 Overfull \hbox (5.35622pt too wide) in paragraph at lines 183--196
 [][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][]
  []
@@ -994,30 +1020,30 @@ Overfull \hbox (10.3603pt too wide) in paragraph at lines 183--196
 
 
 Package fancyhdr Warning: \headheight is too small (12.0pt): 
-(fancyhdr)                Make it at least 13.59999pt, for example:
-(fancyhdr)                \setlength{\headheight}{13.59999pt}.
+(fancyhdr)                Make it at least 25.2232pt, for example:
+(fancyhdr)                \setlength{\headheight}{25.2232pt}.
 (fancyhdr)                You might also make \topmargin smaller:
-(fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
+(fancyhdr)                \addtolength{\topmargin}{-13.2232pt}.
 
-[47]) (./Chapter_10_Python_34_Asyncio_Inception_Pathlib_and_Enum_Archi.tex
+[48]) (./Chapter_10_Python_34_Asyncio_Inception_Pathlib_and_Enum_Archi.tex
 Overfull \hbox (7.70938pt too wide) in paragraph at lines 294--3
 [][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][] \T1/lmr/m/n/10.95 3. \T1/lmr/bx/n/10.95 Buffer Re-lease\T1/lmr/m/n/10.95 :
  []
 
 
 Package fancyhdr Warning: \headheight is too small (12.0pt): 
-(fancyhdr)                Make it at least 25.2232pt, for example:
-(fancyhdr)                \setlength{\headheight}{25.2232pt}.
+(fancyhdr)                Make it at least 13.59999pt, for example:
+(fancyhdr)                \setlength{\headheight}{13.59999pt}.
 (fancyhdr)                You might also make \topmargin smaller:
-(fancyhdr)                \addtolength{\topmargin}{-13.2232pt}.
+(fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
 
-[48{/Users/shreejitverma/Library/TinyTeX/texmf-dist/fonts/enc/dvips/lm/lm-mathex.enc}]
+[49{/Users/shreejitverma/Library/TinyTeX/texmf-dist/fonts/enc/dvips/lm/lm-mathex.enc}]
 Chapter 12.
 
 Package hyperref Warning: Difference (2) between bookmark levels is greater 
 (hyperref)                than one, level fixed on input line 7.
 
-[49
+[50
 
 ]
 Overfull \hbox (25.52954pt too wide) in paragraph at lines 81--87
@@ -1026,12 +1052,12 @@ Overfull \hbox (25.52954pt too wide) in paragraph at lines 81--87
 
 
 Package fancyhdr Warning: \headheight is too small (12.0pt): 
-(fancyhdr)                Make it at least 25.2232pt, for example:
-(fancyhdr)                \setlength{\headheight}{25.2232pt}.
+(fancyhdr)                Make it at least 13.59999pt, for example:
+(fancyhdr)                \setlength{\headheight}{13.59999pt}.
 (fancyhdr)                You might also make \topmargin smaller:
-(fancyhdr)                \addtolength{\topmargin}{-13.2232pt}.
+(fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
 
-[50]
+[51]
 Overfull \hbox (8.00827pt too wide) in paragraph at lines 215--217
 []\T1/lmr/m/n/10.95 # This raises an At-tribu-teEr-ror Color.RED.value = 2 ``[][][][][][][][][][][][]EnumMeta[]
  []
@@ -1044,12 +1070,12 @@ Overfull \hbox (38.88362pt too wide) in paragraph at lines 215--217
 ) (./Chapter_11_Python_35_Native_AsyncAwait_Coroutines_and_Matrix_.tex
 
 Package fancyhdr Warning: \headheight is too small (12.0pt): 
-(fancyhdr)                Make it at least 13.59999pt, for example:
-(fancyhdr)                \setlength{\headheight}{13.59999pt}.
+(fancyhdr)                Make it at least 25.2232pt, for example:
+(fancyhdr)                \setlength{\headheight}{25.2232pt}.
 (fancyhdr)                You might also make \topmargin smaller:
-(fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
+(fancyhdr)                \addtolength{\topmargin}{-13.2232pt}.
 
-[51]
+[52]
 Chapter 13.
 
 Package hyperref Warning: Difference (2) between bookmark levels is greater 
@@ -1060,17 +1086,17 @@ Overfull \hbox (13.41563pt too wide) in paragraph at lines 41--45
 \T1/lmr/m/n/10.95 Native corou-tines de-clared us-ing [][][][][][][][] com-pile di-rectly to a spe-cial-ized C struc-ture, []
  []
 
-[52
+[53
 
 ]
 
 Package fancyhdr Warning: \headheight is too small (12.0pt): 
-(fancyhdr)                Make it at least 13.59999pt, for example:
-(fancyhdr)                \setlength{\headheight}{13.59999pt}.
+(fancyhdr)                Make it at least 25.89253pt, for example:
+(fancyhdr)                \setlength{\headheight}{25.89253pt}.
 (fancyhdr)                You might also make \topmargin smaller:
-(fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
+(fancyhdr)                \addtolength{\topmargin}{-13.89253pt}.
 
-[53]
+[54]
 Overfull \hbox (4.56471pt too wide) in paragraph at lines 239--244
 []\T1/lmr/m/n/10.95 It pops the value ([][][][]) and sends it to the await-able it-er-a-tor by in-vok-ing its []
  []
@@ -1082,24 +1108,16 @@ Overfull \hbox (8.59186pt too wide) in paragraph at lines 244--249
 
 
 Package fancyhdr Warning: \headheight is too small (12.0pt): 
-(fancyhdr)                Make it at least 25.89253pt, for example:
-(fancyhdr)                \setlength{\headheight}{25.89253pt}.
-(fancyhdr)                You might also make \topmargin smaller:
-(fancyhdr)                \addtolength{\topmargin}{-13.89253pt}.
-
-[54]
-Overfull \hbox (32.28458pt too wide) in paragraph at lines 300--320
-[]\T1/lmr/m/n/10.95 When eval-u-at-ing [][][][][][][][][][][][], CPython's bi-nary op-er-a-tion dis-patch sys-tem in-vokes []
- []
-
-
-Package fancyhdr Warning: \headheight is too small (12.0pt): 
 (fancyhdr)                Make it at least 13.59999pt, for example:
 (fancyhdr)                \setlength{\headheight}{13.59999pt}.
 (fancyhdr)                You might also make \topmargin smaller:
 (fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
 
 [55]
+Overfull \hbox (32.28458pt too wide) in paragraph at lines 300--320
+[]\T1/lmr/m/n/10.95 When eval-u-at-ing [][][][][][][][][][][][], CPython's bi-nary op-er-a-tion dis-patch sys-tem in-vokes []
+ []
+
 
 Package fancyhdr Warning: \headheight is too small (12.0pt): 
 (fancyhdr)                Make it at least 25.89253pt, for example:
@@ -1107,7 +1125,7 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                You might also make \topmargin smaller:
 (fancyhdr)                \addtolength{\topmargin}{-13.89253pt}.
 
-[56])
+[56]
 
 Package fancyhdr Warning: \headheight is too small (12.0pt): 
 (fancyhdr)                Make it at least 13.59999pt, for example:
@@ -1115,7 +1133,15 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                You might also make \topmargin smaller:
 (fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
 
-[57] [58
+[57])
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 25.89253pt, for example:
+(fancyhdr)                \setlength{\headheight}{25.89253pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-13.89253pt}.
+
+[58] [59
 
 ] (./Chapter_12_Python_36_F-Strings_Formatting_Variable_Annotation.tex
 Chapter 14.
@@ -1123,17 +1149,9 @@ Chapter 14.
 Package hyperref Warning: Difference (2) between bookmark levels is greater 
 (hyperref)                than one, level fixed on input line 8.
 
-[59
+[60
 
 ]
-
-Package fancyhdr Warning: \headheight is too small (12.0pt): 
-(fancyhdr)                Make it at least 25.2232pt, for example:
-(fancyhdr)                \setlength{\headheight}{25.2232pt}.
-(fancyhdr)                You might also make \topmargin smaller:
-(fancyhdr)                \addtolength{\topmargin}{-13.2232pt}.
-
-[60]
 
 Package fancyhdr Warning: \headheight is too small (12.0pt): 
 (fancyhdr)                Make it at least 13.59999pt, for example:
@@ -1149,7 +1167,7 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                You might also make \topmargin smaller:
 (fancyhdr)                \addtolength{\topmargin}{-13.2232pt}.
 
-[62]) (./Chapter_13_Python_37_Dataclasses_Context_Variables_and_Dict_O.tex
+[62]
 
 Package fancyhdr Warning: \headheight is too small (12.0pt): 
 (fancyhdr)                Make it at least 13.59999pt, for example:
@@ -1157,7 +1175,15 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                You might also make \topmargin smaller:
 (fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
 
-[63]
+[63]) (./Chapter_13_Python_37_Dataclasses_Context_Variables_and_Dict_O.tex
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 25.2232pt, for example:
+(fancyhdr)                \setlength{\headheight}{25.2232pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-13.2232pt}.
+
+[64]
 Chapter 15.
 
 Package hyperref Warning: Difference (2) between bookmark levels is greater 
@@ -1168,17 +1194,9 @@ Overfull \hbox (23.2813pt too wide) in paragraph at lines 50--60
 [][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][]
  []
 
-[64
+[65
 
 ]
-
-Package fancyhdr Warning: \headheight is too small (12.0pt): 
-(fancyhdr)                Make it at least 13.59999pt, for example:
-(fancyhdr)                \setlength{\headheight}{13.59999pt}.
-(fancyhdr)                You might also make \topmargin smaller:
-(fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
-
-[65]
 
 Package fancyhdr Warning: \headheight is too small (12.0pt): 
 (fancyhdr)                Make it at least 25.2232pt, for example:
@@ -1194,7 +1212,7 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                You might also make \topmargin smaller:
 (fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
 
-[67])
+[67]
 
 Package fancyhdr Warning: \headheight is too small (12.0pt): 
 (fancyhdr)                Make it at least 25.2232pt, for example:
@@ -1202,7 +1220,15 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                You might also make \topmargin smaller:
 (fancyhdr)                \addtolength{\topmargin}{-13.2232pt}.
 
-[68] [69
+[68])
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 13.59999pt, for example:
+(fancyhdr)                \setlength{\headheight}{13.59999pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
+
+[69] [70
 
 ] (./Chapter_14_Python_38_Walrus_Operator__and_Positional-Only_Par.tex
 Chapter 16.
@@ -1210,79 +1236,79 @@ Chapter 16.
 Package hyperref Warning: Difference (2) between bookmark levels is greater 
 (hyperref)                than one, level fixed on input line 8.
 
-[70
+[71
 
 ]
 
 Package fancyhdr Warning: \headheight is too small (12.0pt): 
-(fancyhdr)                Make it at least 13.59999pt, for example:
-(fancyhdr)                \setlength{\headheight}{13.59999pt}.
+(fancyhdr)                Make it at least 25.89253pt, for example:
+(fancyhdr)                \setlength{\headheight}{25.89253pt}.
 (fancyhdr)                You might also make \topmargin smaller:
-(fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
+(fancyhdr)                \addtolength{\topmargin}{-13.89253pt}.
 
-[71]
+[72]
 Overfull \hbox (13.06903pt too wide) in paragraph at lines 168--184
 [][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][] \T1/lmr/m/n/10.95 This raises [][][][][][][]
  []
 
 
 Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 13.59999pt, for example:
+(fancyhdr)                \setlength{\headheight}{13.59999pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
+
+[73]) (./Chapter_15_Python_39_to_310_PEG_Parser_Dict_Merge__and_Patter.tex
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
 (fancyhdr)                Make it at least 25.89253pt, for example:
 (fancyhdr)                \setlength{\headheight}{25.89253pt}.
 (fancyhdr)                You might also make \topmargin smaller:
 (fancyhdr)                \addtolength{\topmargin}{-13.89253pt}.
 
-[72]) (./Chapter_15_Python_39_to_310_PEG_Parser_Dict_Merge__and_Patter.tex
-
-Package fancyhdr Warning: \headheight is too small (12.0pt): 
-(fancyhdr)                Make it at least 13.59999pt, for example:
-(fancyhdr)                \setlength{\headheight}{13.59999pt}.
-(fancyhdr)                You might also make \topmargin smaller:
-(fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
-
-[73]
+[74]
 Chapter 17.
 
 Package hyperref Warning: Difference (2) between bookmark levels is greater 
 (hyperref)                than one, level fixed on input line 8.
 
-[74
+[75
 
 ]
 
 Package fancyhdr Warning: \headheight is too small (12.0pt): 
-(fancyhdr)                Make it at least 13.59999pt, for example:
-(fancyhdr)                \setlength{\headheight}{13.59999pt}.
+(fancyhdr)                Make it at least 25.89253pt, for example:
+(fancyhdr)                \setlength{\headheight}{25.89253pt}.
 (fancyhdr)                You might also make \topmargin smaller:
-(fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
+(fancyhdr)                \addtolength{\topmargin}{-13.89253pt}.
 
-[75]
+[76]
 Overfull \hbox (36.15503pt too wide) in paragraph at lines 170--183
 \T1/lmr/m/n/10.95 CPython im-ple-ments pat-tern match-ing us-ing spe-cial-ized stack-manipulation byte-codes: * []
  []
 
 
 Package fancyhdr Warning: \headheight is too small (12.0pt): 
-(fancyhdr)                Make it at least 25.89253pt, for example:
-(fancyhdr)                \setlength{\headheight}{25.89253pt}.
-(fancyhdr)                You might also make \topmargin smaller:
-(fancyhdr)                \addtolength{\topmargin}{-13.89253pt}.
-
-[76]) (./Chapter_16_Python_38_to_310_Type_Hinting_Protocols_and_Struct.tex
-
-Package fancyhdr Warning: \headheight is too small (12.0pt): 
 (fancyhdr)                Make it at least 13.59999pt, for example:
 (fancyhdr)                \setlength{\headheight}{13.59999pt}.
 (fancyhdr)                You might also make \topmargin smaller:
 (fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
 
-[77]
+[77]) (./Chapter_16_Python_38_to_310_Type_Hinting_Protocols_and_Struct.tex
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 25.89253pt, for example:
+(fancyhdr)                \setlength{\headheight}{25.89253pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-13.89253pt}.
+
+[78]
 Chapter 18.
 
 Package hyperref Warning: Difference (2) between bookmark levels is greater 
 (hyperref)                than one, level fixed on input line 7.
 
-[78
+[79
 
 ]
 Overfull \hbox (14.17001pt too wide) in paragraph at lines 82--92
@@ -1291,12 +1317,20 @@ Overfull \hbox (14.17001pt too wide) in paragraph at lines 82--92
 
 
 Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 25.2232pt, for example:
+(fancyhdr)                \setlength{\headheight}{25.2232pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-13.2232pt}.
+
+[80]
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
 (fancyhdr)                Make it at least 13.59999pt, for example:
 (fancyhdr)                \setlength{\headheight}{13.59999pt}.
 (fancyhdr)                You might also make \topmargin smaller:
 (fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
 
-[79]
+[81])
 
 Package fancyhdr Warning: \headheight is too small (12.0pt): 
 (fancyhdr)                Make it at least 25.2232pt, for example:
@@ -1304,15 +1338,7 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                You might also make \topmargin smaller:
 (fancyhdr)                \addtolength{\topmargin}{-13.2232pt}.
 
-[80])
-
-Package fancyhdr Warning: \headheight is too small (12.0pt): 
-(fancyhdr)                Make it at least 13.59999pt, for example:
-(fancyhdr)                \setlength{\headheight}{13.59999pt}.
-(fancyhdr)                You might also make \topmargin smaller:
-(fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
-
-[81] [82
+[82] [83
 
 ] (./Chapter_17_Python_311_Faster_CPython_Specializing_Interpreter.tex
 Chapter 19.
@@ -1320,9 +1346,17 @@ Chapter 19.
 Package hyperref Warning: Difference (2) between bookmark levels is greater 
 (hyperref)                than one, level fixed on input line 8.
 
-[83
+[84
 
 ]
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 13.59999pt, for example:
+(fancyhdr)                \setlength{\headheight}{13.59999pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
+
+[85]) (./Chapter_18_Python_312_Native_Generics_PEP_695_Type_statement_.tex
 
 Package fancyhdr Warning: \headheight is too small (12.0pt): 
 (fancyhdr)                Make it at least 25.2232pt, for example:
@@ -1330,31 +1364,15 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                You might also make \topmargin smaller:
 (fancyhdr)                \addtolength{\topmargin}{-13.2232pt}.
 
-[84]) (./Chapter_18_Python_312_Native_Generics_PEP_695_Type_statement_.tex
-
-Package fancyhdr Warning: \headheight is too small (12.0pt): 
-(fancyhdr)                Make it at least 13.59999pt, for example:
-(fancyhdr)                \setlength{\headheight}{13.59999pt}.
-(fancyhdr)                You might also make \topmargin smaller:
-(fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
-
-[85]
+[86]
 Chapter 20.
 
 Package hyperref Warning: Difference (2) between bookmark levels is greater 
 (hyperref)                than one, level fixed on input line 7.
 
-[86
+[87
 
 ]
-
-Package fancyhdr Warning: \headheight is too small (12.0pt): 
-(fancyhdr)                Make it at least 13.59999pt, for example:
-(fancyhdr)                \setlength{\headheight}{13.59999pt}.
-(fancyhdr)                You might also make \topmargin smaller:
-(fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
-
-[87]
 
 Package fancyhdr Warning: \headheight is too small (12.0pt): 
 (fancyhdr)                Make it at least 25.89253pt, for example:
@@ -1362,7 +1380,7 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                You might also make \topmargin smaller:
 (fancyhdr)                \addtolength{\topmargin}{-13.89253pt}.
 
-[88]) (./Chapter_19_Python_311_to_312_Exception_Groups_except_and_Trac.tex
+[88]
 
 Package fancyhdr Warning: \headheight is too small (12.0pt): 
 (fancyhdr)                Make it at least 13.59999pt, for example:
@@ -1370,23 +1388,31 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                You might also make \topmargin smaller:
 (fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
 
-[89]
+[89]) (./Chapter_19_Python_311_to_312_Exception_Groups_except_and_Trac.tex
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 25.89253pt, for example:
+(fancyhdr)                \setlength{\headheight}{25.89253pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-13.89253pt}.
+
+[90]
 Chapter 21.
 
 Package hyperref Warning: Difference (2) between bookmark levels is greater 
 (hyperref)                than one, level fixed on input line 8.
 
-[90
+[91
 
 ]
 
 Package fancyhdr Warning: \headheight is too small (12.0pt): 
-(fancyhdr)                Make it at least 13.59999pt, for example:
-(fancyhdr)                \setlength{\headheight}{13.59999pt}.
+(fancyhdr)                Make it at least 25.89253pt, for example:
+(fancyhdr)                \setlength{\headheight}{25.89253pt}.
 (fancyhdr)                You might also make \topmargin smaller:
-(fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
+(fancyhdr)                \addtolength{\topmargin}{-13.89253pt}.
 
-[91]
+[92]
 Overfull \hbox (29.23318pt too wide) in paragraph at lines 216--239
 []\T1/lmr/m/n/10.95 If we ex-e-cute [][][][][][][][][][]: 1. The run-time calls the in-ter-nal C func-tion []
  []
@@ -1396,14 +1422,6 @@ Overfull \hbox (43.46655pt too wide) in paragraph at lines 216--239
 \T1/lmr/m/n/10.95 match. Added to the [][][][] col-lec-tion. * [][][][][][][][][][]: Re-cur-sively calls []
  []
 
-
-Package fancyhdr Warning: \headheight is too small (12.0pt): 
-(fancyhdr)                Make it at least 25.89253pt, for example:
-(fancyhdr)                \setlength{\headheight}{25.89253pt}.
-(fancyhdr)                You might also make \topmargin smaller:
-(fancyhdr)                \addtolength{\topmargin}{-13.89253pt}.
-
-[92]
 
 Package fancyhdr Warning: \headheight is too small (12.0pt): 
 (fancyhdr)                Make it at least 13.59999pt, for example:
@@ -1419,7 +1437,7 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                You might also make \topmargin smaller:
 (fancyhdr)                \addtolength{\topmargin}{-13.89253pt}.
 
-[94])
+[94]
 
 Package fancyhdr Warning: \headheight is too small (12.0pt): 
 (fancyhdr)                Make it at least 13.59999pt, for example:
@@ -1427,7 +1445,15 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                You might also make \topmargin smaller:
 (fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
 
-[95] [96
+[95])
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 25.89253pt, for example:
+(fancyhdr)                \setlength{\headheight}{25.89253pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-13.89253pt}.
+
+[96] [97
 
 ] (./Chapter_20_Python_313_Free-Threaded_Build__GIL_Removal_Intern.tex
 Chapter 22.
@@ -1435,21 +1461,13 @@ Chapter 22.
 Package hyperref Warning: Difference (2) between bookmark levels is greater 
 (hyperref)                than one, level fixed on input line 7.
 
-[97
+[98
 
 ]
 Overfull \hbox (43.91118pt too wide) in paragraph at lines 99--102
 []\T1/lmr/bx/n/10.95 Shared Re-f-count (Up-per Bits)\T1/lmr/m/n/10.95 : A signed counter track-ing ref-er-ence ad-di-tions/subtractions
  []
 
-
-Package fancyhdr Warning: \headheight is too small (12.0pt): 
-(fancyhdr)                Make it at least 25.2232pt, for example:
-(fancyhdr)                \setlength{\headheight}{25.2232pt}.
-(fancyhdr)                You might also make \topmargin smaller:
-(fancyhdr)                \addtolength{\topmargin}{-13.2232pt}.
-
-[98]
 
 Package fancyhdr Warning: \headheight is too small (12.0pt): 
 (fancyhdr)                Make it at least 13.59999pt, for example:
@@ -1473,7 +1491,7 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                You might also make \topmargin smaller:
 (fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
 
-[101]) (./Chapter_21_Python_313_Copy-and-Patch_JIT_Compiler_Architectur.tex
+[101]
 
 Package fancyhdr Warning: \headheight is too small (12.0pt): 
 (fancyhdr)                Make it at least 25.2232pt, for example:
@@ -1481,13 +1499,21 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                You might also make \topmargin smaller:
 (fancyhdr)                \addtolength{\topmargin}{-13.2232pt}.
 
-[102]
+[102]) (./Chapter_21_Python_313_Copy-and-Patch_JIT_Compiler_Architectur.tex
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 13.59999pt, for example:
+(fancyhdr)                \setlength{\headheight}{13.59999pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
+
+[103]
 Chapter 23.
 
 Package hyperref Warning: Difference (2) between bookmark levels is greater 
 (hyperref)                than one, level fixed on input line 7.
 
-[103
+[104
 
 ]
 
@@ -1497,7 +1523,7 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                You might also make \topmargin smaller:
 (fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
 
-[104]
+[105]
 
 Package fancyhdr Warning: \headheight is too small (12.0pt): 
 (fancyhdr)                Make it at least 13.59999pt, for example:
@@ -1505,7 +1531,7 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                You might also make \topmargin smaller:
 (fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
 
-[105]) (./Chapter_22_Python_312_to_313_Subinterpreters__Per-Interpreter.tex
+[106]) (./Chapter_22_Python_312_to_313_Subinterpreters__Per-Interpreter.tex
 
 Package fancyhdr Warning: \headheight is too small (12.0pt): 
 (fancyhdr)                Make it at least 13.59999pt, for example:
@@ -1513,7 +1539,7 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                You might also make \topmargin smaller:
 (fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
 
-[106]
+[107]
 Chapter 24.
 
 Package hyperref Warning: Difference (2) between bookmark levels is greater 
@@ -1524,23 +1550,11 @@ Overfull \hbox (17.64575pt too wide) in paragraph at lines 35--36
 [][][][][][] 
  []
 
-[107
+[108
 
 ]
 Overfull \hbox (0.1058pt too wide) in paragraph at lines 73--78
 [][][][][][][][][][][][][]\T1/lmr/m/n/10.95 : Wraps the eval-u-a-tion loop struc-tures, in-clud-ing the in-ter-preter's
- []
-
-
-Package fancyhdr Warning: \headheight is too small (12.0pt): 
-(fancyhdr)                Make it at least 25.2232pt, for example:
-(fancyhdr)                \setlength{\headheight}{25.2232pt}.
-(fancyhdr)                You might also make \topmargin smaller:
-(fancyhdr)                \addtolength{\topmargin}{-13.2232pt}.
-
-[108]
-Overfull \hbox (0.54958pt too wide) in paragraph at lines 190--194
-\T1/lmr/m/n/10.95 In Python 3.12+, you can in-ter-act with subin-ter-preters us-ing the ex-per-i-men-tal []
  []
 
 
@@ -1551,6 +1565,10 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
 
 [109]
+Overfull \hbox (0.54958pt too wide) in paragraph at lines 190--194
+\T1/lmr/m/n/10.95 In Python 3.12+, you can in-ter-act with subin-ter-preters us-ing the ex-per-i-men-tal []
+ []
+
 
 Package fancyhdr Warning: \headheight is too small (12.0pt): 
 (fancyhdr)                Make it at least 25.2232pt, for example:
@@ -1558,7 +1576,7 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                You might also make \topmargin smaller:
 (fancyhdr)                \addtolength{\topmargin}{-13.2232pt}.
 
-[110])
+[110]
 
 Package fancyhdr Warning: \headheight is too small (12.0pt): 
 (fancyhdr)                Make it at least 13.59999pt, for example:
@@ -1566,7 +1584,15 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                You might also make \topmargin smaller:
 (fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
 
-[111] [112
+[111])
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 25.2232pt, for example:
+(fancyhdr)                \setlength{\headheight}{25.2232pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-13.2232pt}.
+
+[112] [113
 
 ] (./Chapter_23_CPython_Memory_Allocator_PyMalloc__Generational_Ga.tex
 Chapter 25.
@@ -1574,17 +1600,9 @@ Chapter 25.
 Package hyperref Warning: Difference (2) between bookmark levels is greater 
 (hyperref)                than one, level fixed on input line 7.
 
-[113
+[114
 
 ]
-
-Package fancyhdr Warning: \headheight is too small (12.0pt): 
-(fancyhdr)                Make it at least 25.89253pt, for example:
-(fancyhdr)                \setlength{\headheight}{25.89253pt}.
-(fancyhdr)                You might also make \topmargin smaller:
-(fancyhdr)                \addtolength{\topmargin}{-13.89253pt}.
-
-[114]
 
 Package fancyhdr Warning: \headheight is too small (12.0pt): 
 (fancyhdr)                Make it at least 13.59999pt, for example:
@@ -1592,7 +1610,7 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                You might also make \topmargin smaller:
 (fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
 
-[115]) (./Chapter_24_C_Extensions__Python_C-API_Interoperability.tex
+[115]
 
 Package fancyhdr Warning: \headheight is too small (12.0pt): 
 (fancyhdr)                Make it at least 25.89253pt, for example:
@@ -1600,13 +1618,21 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                You might also make \topmargin smaller:
 (fancyhdr)                \addtolength{\topmargin}{-13.89253pt}.
 
-[116]
+[116]) (./Chapter_24_C_Extensions__Python_C-API_Interoperability.tex
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 13.59999pt, for example:
+(fancyhdr)                \setlength{\headheight}{13.59999pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
+
+[117]
 Chapter 26.
 
 Package hyperref Warning: Difference (2) between bookmark levels is greater 
 (hyperref)                than one, level fixed on input line 7.
 
-[117
+[118
 
 ]
 
@@ -1616,7 +1642,7 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                You might also make \topmargin smaller:
 (fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
 
-[118]
+[119]
 
 Package fancyhdr Warning: \headheight is too small (12.0pt): 
 (fancyhdr)                Make it at least 13.59999pt, for example:
@@ -1624,7 +1650,7 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                You might also make \topmargin smaller:
 (fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
 
-[119]) (./Chapter_25_Metaclasses_Descriptor_Protocol_and_type_Slots.tex
+[120]) (./Chapter_25_Metaclasses_Descriptor_Protocol_and_type_Slots.tex
 
 Package fancyhdr Warning: \headheight is too small (12.0pt): 
 (fancyhdr)                Make it at least 13.59999pt, for example:
@@ -1632,23 +1658,15 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                You might also make \topmargin smaller:
 (fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
 
-[120]
+[121]
 Chapter 27.
 
 Package hyperref Warning: Difference (2) between bookmark levels is greater 
 (hyperref)                than one, level fixed on input line 7.
 
-[121
+[122
 
 ]
-
-Package fancyhdr Warning: \headheight is too small (12.0pt): 
-(fancyhdr)                Make it at least 13.59999pt, for example:
-(fancyhdr)                \setlength{\headheight}{13.59999pt}.
-(fancyhdr)                You might also make \topmargin smaller:
-(fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
-
-[122]
 
 Package fancyhdr Warning: \headheight is too small (12.0pt): 
 (fancyhdr)                Make it at least 13.59999pt, for example:
@@ -1657,6 +1675,14 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
 
 [123]
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 13.59999pt, for example:
+(fancyhdr)                \setlength{\headheight}{13.59999pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
+
+[124]
 Overfull \hbox (0.50108pt too wide) in paragraph at lines 245--249
 [][][][][]\T1/lmr/m/n/10.95 : Con-tains point-ers for map-ping lookups (e.g., [][][][] for key lookups,
  []
@@ -1669,7 +1695,7 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                You might also make \topmargin smaller:
 (fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
 
-[124] [125
+[125] [126
 
 ] (./Chapter_26_LOW-LEVEL_MEMORY_OPTIMIZATION_TECHNIQUES.tex
 Chapter 28.
@@ -1677,7 +1703,7 @@ Chapter 28.
 Package hyperref Warning: Difference (2) between bookmark levels is greater 
 (hyperref)                than one, level fixed on input line 8.
 
-[126
+[127
 
 ]
 
@@ -1687,7 +1713,7 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                You might also make \topmargin smaller:
 (fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
 
-[127]) (./Chapter_27_CPU__IO_BOUND_SYSTEM_CONCURRENCY.tex
+[128]) (./Chapter_27_CPU__IO_BOUND_SYSTEM_CONCURRENCY.tex
 
 Package fancyhdr Warning: \headheight is too small (12.0pt): 
 (fancyhdr)                Make it at least 13.59999pt, for example:
@@ -1695,7 +1721,7 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                You might also make \topmargin smaller:
 (fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
 
-[128]
+[129]
 Chapter 29.
 
 Package hyperref Warning: Difference (2) between bookmark levels is greater 
@@ -1736,7 +1762,7 @@ Overfull \hbox (7.85501pt too wide) in alignment at lines 25--42
 [] [] [] [] [] []
  []
 
-[129
+[130
 
 ]
 
@@ -1746,7 +1772,7 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                You might also make \topmargin smaller:
 (fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
 
-[130]) (./Chapter_28_NUMERICAL_HIGH-PERFORMANCE_DATA_STRUCTURES.tex
+[131]) (./Chapter_28_NUMERICAL_HIGH-PERFORMANCE_DATA_STRUCTURES.tex
 
 Package fancyhdr Warning: \headheight is too small (12.0pt): 
 (fancyhdr)                Make it at least 13.59999pt, for example:
@@ -1754,13 +1780,13 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                You might also make \topmargin smaller:
 (fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
 
-[131]
+[132]
 Chapter 30.
 
 Package hyperref Warning: Difference (2) between bookmark levels is greater 
 (hyperref)                than one, level fixed on input line 7.
 
-[132
+[133
 
 ]
 Overfull \hbox (2.54874pt too wide) in paragraph at lines 63--67
@@ -1774,7 +1800,7 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                You might also make \topmargin smaller:
 (fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
 
-[133]) (./Chapter_29_PROFILING_BENCHMARKING_AND_DIAGNOSTICS.tex
+[134]) (./Chapter_29_PROFILING_BENCHMARKING_AND_DIAGNOSTICS.tex
 
 Package fancyhdr Warning: \headheight is too small (12.0pt): 
 (fancyhdr)                Make it at least 13.59999pt, for example:
@@ -1782,7 +1808,7 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                You might also make \topmargin smaller:
 (fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
 
-[134]
+[135]
 Chapter 31.
 
 Overfull \hbox (1.47235pt too wide) in paragraph at lines 8--8
@@ -1793,7 +1819,7 @@ Overfull \hbox (1.47235pt too wide) in paragraph at lines 8--8
 Package hyperref Warning: Difference (2) between bookmark levels is greater 
 (hyperref)                than one, level fixed on input line 8.
 
-[135
+[136
 
 ]
 
@@ -1803,7 +1829,7 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                You might also make \topmargin smaller:
 (fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
 
-[136]
+[137]
 Underfull \hbox (badness 10000) in alignment at lines 204--208
 [] [] []
  []
@@ -1820,7 +1846,7 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                You might also make \topmargin smaller:
 (fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
 
-[137] (/Users/shreejitverma/Library/TinyTeX/texmf-dist/tex/latex/listings/lstlang1.sty
+[138] (/Users/shreejitverma/Library/TinyTeX/texmf-dist/tex/latex/listings/lstlang1.sty
 File: lstlang1.sty 2025/11/14 1.11b listings language file
 ) (/Users/shreejitverma/Library/TinyTeX/texmf-dist/tex/latex/listings/lstlang1.sty
 File: lstlang1.sty 2025/11/14 1.11b listings language file
@@ -1832,26 +1858,15 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                You might also make \topmargin smaller:
 (fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
 
-[138]
+[139]
 Chapter 32.
 
 Package hyperref Warning: Difference (2) between bookmark levels is greater 
 (hyperref)                than one, level fixed on input line 7.
 
-[139
+[140
 
 ]
-
-Package fancyhdr Warning: \headheight is too small (12.0pt): 
-(fancyhdr)                Make it at least 25.2232pt, for example:
-(fancyhdr)                \setlength{\headheight}{25.2232pt}.
-(fancyhdr)                You might also make \topmargin smaller:
-(fancyhdr)                \addtolength{\topmargin}{-13.2232pt}.
-
-[140]
-Underfull \vbox (badness 4096) has occurred while \output is active []
-
-
 
 Package fancyhdr Warning: \headheight is too small (12.0pt): 
 (fancyhdr)                Make it at least 13.59999pt, for example:
@@ -1860,6 +1875,9 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
 
 [141]
+Underfull \vbox (badness 4096) has occurred while \output is active []
+
+
 
 Package fancyhdr Warning: \headheight is too small (12.0pt): 
 (fancyhdr)                Make it at least 25.2232pt, for example:
@@ -1867,7 +1885,7 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                You might also make \topmargin smaller:
 (fancyhdr)                \addtolength{\topmargin}{-13.2232pt}.
 
-[142])
+[142]
 
 Package fancyhdr Warning: \headheight is too small (12.0pt): 
 (fancyhdr)                Make it at least 13.59999pt, for example:
@@ -1875,22 +1893,259 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                You might also make \topmargin smaller:
 (fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
 
-[143] (./Python_Zero_to_Godhood.aux)
+[143])
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 25.2232pt, for example:
+(fancyhdr)                \setlength{\headheight}{25.2232pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-13.2232pt}.
+
+[144] [145
+
+] (./Chapter_31_Lexical_Analysis_and_the_Execution_Model.tex
+Chapter 33.
+
+Package hyperref Warning: Difference (2) between bookmark levels is greater 
+(hyperref)                than one, level fixed on input line 16.
+
+[146
+
+]) (./Chapter_32_The_Python_Data_Model__Comprehensive_Dunder_Method.tex
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 13.59999pt, for example:
+(fancyhdr)                \setlength{\headheight}{13.59999pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
+
+[147]
+Chapter 34.
+
+Package hyperref Warning: Difference (2) between bookmark levels is greater 
+(hyperref)                than one, level fixed on input line 13.
+
+
+Underfull \hbox (badness 10000) in alignment at lines 65--69
+[] [] []
+ []
+
+
+Underfull \hbox (badness 10000) in alignment at lines 69--85
+[] [] []
+ []
+
+[148
+
+])
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 13.59999pt, for example:
+(fancyhdr)                \setlength{\headheight}{13.59999pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
+
+[149] [150
+
+] (./Chapter_33_Advanced_Data_Structures_Internals.tex
+Chapter 35.
+
+Package hyperref Warning: Difference (2) between bookmark levels is greater 
+(hyperref)                than one, level fixed on input line 15.
+
+[151
+
+]) (./Chapter_34_Functional_Programming_Modules.tex
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 13.59999pt, for example:
+(fancyhdr)                \setlength{\headheight}{13.59999pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
+
+[152]
+Chapter 36.
+
+Package hyperref Warning: Difference (2) between bookmark levels is greater 
+(hyperref)                than one, level fixed on input line 13.
+
+[153
+
+]) (./Chapter_35_Numeric_Mathematical_and_Cryptographic_Randomness.tex
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 13.59999pt, for example:
+(fancyhdr)                \setlength{\headheight}{13.59999pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
+
+[154]
+Chapter 37.
+
+Package hyperref Warning: Difference (2) between bookmark levels is greater 
+(hyperref)                than one, level fixed on input line 11.
+
+[155
+
+])
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 13.59999pt, for example:
+(fancyhdr)                \setlength{\headheight}{13.59999pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
+
+[156] [157
+
+] (./Chapter_36_Data_Persistence__Object_Serialization.tex
+Chapter 38.
+
+Package hyperref Warning: Difference (2) between bookmark levels is greater 
+(hyperref)                than one, level fixed on input line 11.
+
+[158
+
+]) (./Chapter_37_OS_Services_Signal_Handling_and_Subprocesses.tex
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 13.59999pt, for example:
+(fancyhdr)                \setlength{\headheight}{13.59999pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
+
+[159]
+Chapter 39.
+
+Package hyperref Warning: Difference (2) between bookmark levels is greater 
+(hyperref)                than one, level fixed on input line 12.
+
+[160
+
+]) (./Chapter_38_Low-Level_Networking_and_Sockets.tex
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 13.59999pt, for example:
+(fancyhdr)                \setlength{\headheight}{13.59999pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
+
+[161]
+Chapter 40.
+
+Package hyperref Warning: Difference (2) between bookmark levels is greater 
+(hyperref)                than one, level fixed on input line 13.
+
+[162
+
+])
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 13.59999pt, for example:
+(fancyhdr)                \setlength{\headheight}{13.59999pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
+
+[163] [164
+
+] (./Chapter_39_The_Import_Machinery_and_importlib.tex
+Chapter 41.
+LaTeX Font Info:    Font shape `T1/lmtt/bx/n' in size <24.88> not available
+(Font)              Font shape `T1/lmtt/b/n' tried instead on input line 3.
+
+Package hyperref Warning: Difference (2) between bookmark levels is greater 
+(hyperref)                than one, level fixed on input line 11.
+
+[165
+
+]) (./Chapter_40_Runtime_Services_and_Introspection.tex
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 13.59999pt, for example:
+(fancyhdr)                \setlength{\headheight}{13.59999pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
+
+[166]
+Chapter 42.
+
+Package hyperref Warning: Difference (2) between bookmark levels is greater 
+(hyperref)                than one, level fixed on input line 12.
+
+[167
+
+]) (./Chapter_41_Testing_Debugging_and_Quality_Assurance.tex
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 13.59999pt, for example:
+(fancyhdr)                \setlength{\headheight}{13.59999pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
+
+[168]
+Chapter 43.
+
+Package hyperref Warning: Difference (2) between bookmark levels is greater 
+(hyperref)                than one, level fixed on input line 12.
+
+[169
+
+])
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 13.59999pt, for example:
+(fancyhdr)                \setlength{\headheight}{13.59999pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
+
+[170] (./Python_Zero_to_Godhood.aux)
  ***********
 LaTeX2e <2025-11-01>
 L3 programming layer <2025-11-14>
  ***********
 Package rerunfilecheck Info: File `Python_Zero_to_Godhood.out' has not changed.
-(rerunfilecheck)             Checksum: 78E2EF2981C02E42425BACC2EFA03CAA;52530.
+(rerunfilecheck)             Checksum: 9229100C1DEACFA587E3A80828DA2709;72441.
  ) 
 Here is how much of TeX's memory you used:
- 21643 strings out of 469519
- 350612 string characters out of 5469079
- 1680238 words of memory out of 5000000
- 46431 multiletter control sequences out of 15000+600000
- 696278 words of font info for 85 fonts, out of 8000000 for 9000
+ 22549 strings out of 469519
+ 370038 string characters out of 5469079
+ 1691527 words of memory out of 5000000
+ 46977 multiletter control sequences out of 15000+600000
+ 696596 words of font info for 86 fonts, out of 8000000 for 9000
  14 hyphenation exceptions out of 8191
- 75i,12n,79p,811b,2130s stack positions out of 10000i,1000n,20000p,200000b,200000s
+ 75i,12n,83p,811b,2130s stack positions out of 10000i,1000n,20000p,200000b,200000s
+
+pdfTeX warning (dest): name{chapter-41-testing-debugging-and-quality-assurance} has been referenced but does not exist, replaced by a fixed one
+
+
+pdfTeX warning (dest): name{chapter-40-runtime-services-and-introspection} has been referenced but does not exist, replaced by a fixed one
+
+
+pdfTeX warning (dest): name{chapter-39-the-import-machinery-and-importlib} has been referenced but does not exist, replaced by a fixed one
+
+
+pdfTeX warning (dest): name{chapter-38-low-level-networking-and-sockets} has been referenced but does not exist, replaced by a fixed one
+
+
+pdfTeX warning (dest): name{chapter-37-os-services-signal-handling-and-subprocesses} has been referenced but does not exist, replaced by a fixed one
+
+
+pdfTeX warning (dest): name{chapter-36-data-persistence--object-serialization} has been referenced but does not exist, replaced by a fixed one
+
+
+pdfTeX warning (dest): name{chapter-35-numeric-mathematical-and-cryptographic-randomness} has been referenced but does not exist, replaced by a fixed one
+
+
+pdfTeX warning (dest): name{chapter-34-functional-programming-modules} has been referenced but does not exist, replaced by a fixed one
+
+
+pdfTeX warning (dest): name{chapter-33-advanced-data-structures-internals} has been referenced but does not exist, replaced by a fixed one
+
+
+pdfTeX warning (dest): name{chapter-32-the-python-data-model--comprehensive-dunder-methods} has been referenced but does not exist, replaced by a fixed one
+
+
+pdfTeX warning (dest): name{chapter-31-lexical-analysis-and-the-execution-model} has been referenced but does not exist, replaced by a fixed one
+
 
 pdfTeX warning (dest): name{chapter-30-capstone-project-high-frequency-order-book-and-trading-engine} has been referenced but does not exist, replaced by a fixed one
 
@@ -1982,10 +2237,10 @@ pdfTeX warning (dest): name{chapter-2-python-1x-the-pyobject-model--reference-co
 pdfTeX warning (dest): name{chapter-1-python-10-to-16-inception--the-ll1-executable-pipeline} has been referenced but does not exist, replaced by a fixed one
 
 </Users/shreejitverma/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmbx10.pfb></Users/shreejitverma/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmbx12.pfb></Users/shreejitverma/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmex10.pfb></Users/shreejitverma/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmmi10.pfb></Users/shreejitverma/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmmi8.pfb></Users/shreejitverma/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmr10.pfb></Users/shreejitverma/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmr12.pfb></Users/shreejitverma/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmr17.pfb></Users/shreejitverma/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmr6.pfb></Users/shreejitverma/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmr8.pfb></Users/shreejitverma/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmri10.pfb></Users/shreejitverma/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmsy10.pfb></Users/shreejitverma/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmsy8.pfb></Users/shreejitverma/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmtk10.pfb></Users/shreejitverma/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmtt10.pfb></Users/shreejitverma/Library/TinyTeX/texmf-dist/fonts/type1/public/lm/lmtt9.pfb>
-Output written on Python_Zero_to_Godhood.pdf (149 pages, 978084 bytes).
+Output written on Python_Zero_to_Godhood.pdf (178 pages, 1050461 bytes).
 PDF statistics:
- 5577 PDF objects out of 6186 (max. 8388607)
- 5337 compressed objects within 54 object streams
- 3567 named destinations out of 3580 (max. 500000)
- 1241 words of extra memory for PDF output out of 10000 (max. 10000000)
+ 6358 PDF objects out of 7423 (max. 8388607)
+ 6082 compressed objects within 61 object streams
+ 3894 named destinations out of 4296 (max. 500000)
+ 1793 words of extra memory for PDF output out of 10000 (max. 10000000)
 
