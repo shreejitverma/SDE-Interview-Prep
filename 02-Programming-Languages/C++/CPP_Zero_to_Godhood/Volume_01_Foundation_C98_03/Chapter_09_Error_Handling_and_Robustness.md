@@ -98,6 +98,28 @@ int main() {
 }
 ```
 
+---
+### Professional Notes: Debugging & Quality Assurance
+
+#### 1. Unit Testing in C++
+Testing is essential for maintaining large codebases. Modern C++ typically uses third-party frameworks:
+*   **Google Test (GTest)**: The industry standard. Uses macros like `EXPECT_EQ`, `ASSERT_TRUE`.
+*   **Catch2**: Header-only, very easy to integrate. Uses natural BDD style: `REQUIRE(x == 42)`.
+
+#### 2. Debugging with GDB and LLDB
+Command-line debuggers allow you to inspect the program state at runtime.
+*   **`break [file]:[line]`**: Set a breakpoint.
+*   **`print [var]`**: Inspect variable value.
+*   **`backtrace` (bt)**: Show the current call stack.
+*   **`watch [var]`**: Pause whenever a variable's value changes.
+
+#### 3. Defensive Programming Techniques
+*   **Static Assertions (C++11)**: `static_assert(sizeof(int) == 4, "32-bit int required");`. Checks conditions at compile time.
+*   **`noexcept`**: Mark functions that are guaranteed not to throw. Allows the compiler to generate more optimized code and skip stack unwinding logic.
+*   **Core Dumps**: On Linux, enable core dumps (`ulimit -c unlimited`) to capture the memory state of a crashed program for post-mortem analysis.
+
+---
+
 ### 2.4 Exception Specifications (C++98)
 
 In C++98, you can specify what a function might throw. (Note: Deprecated in C++11, but valid here).

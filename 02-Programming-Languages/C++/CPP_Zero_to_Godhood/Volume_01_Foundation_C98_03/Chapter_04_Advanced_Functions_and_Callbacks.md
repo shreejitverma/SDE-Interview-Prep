@@ -101,6 +101,34 @@ int main() {
 }
 ```
 
+---
+### Professional Notes: Functional Depth
+
+#### 1. Recursion and Tail-Call Optimization (TCO)
+Recursion is a technique where a function calls itself.
+*   **Base Case**: The condition where recursion stops.
+*   **Stack Overflow**: Deep recursion can exhaust the stack.
+*   **Tail-Call Optimization**: If the recursive call is the *last* action in the function, some compilers can transform it into a loop, saving stack space.
+```cpp
+// Tail-recursive factorial
+int factorial_tail(int n, int acc = 1) {
+    if (n <= 1) return acc;
+    return factorial_tail(n - 1, n * acc);
+}
+```
+
+#### 2. Callable Objects (Functors)
+In C++, anything that can be invoked with `()` is a callable.
+*   **Function Pointers**: `void (*ptr)(int)`.
+*   **Functors**: Classes that overload `operator()`.
+*   **Lambdas (C++11)**: Anonymous functions.
+*   **`std::function` (C++11)**: A polymorphic wrapper for any callable.
+
+#### 3. Argument Dependent Lookup (ADL) - Recap
+Functions are found in the namespaces of their arguments. This is why you can call `std::cout << obj` without qualifying the operator if it's defined in the same namespace as `obj`.
+
+---
+
 ## 2.4 Static Functions
 
 ```cpp

@@ -32,6 +32,44 @@ int main() {
 }
 ```
 
+---
+### Professional Notes: Overloading Mastery
+
+#### 1. Function Overloading and Name Mangling
+Function overloading allows multiple functions with the same name but different parameter lists.
+*   **Resolution**: The compiler chooses the best match based on argument types.
+*   **Name Mangling**: C++ compilers encode parameter types into the function's name in the object file (e.g., `void func(int)` might become `_Z4funci`). This allows the linker to distinguish between overloads.
+*   **`extern "C"`**: Disables name mangling for a function, allowing it to be called from C code.
+
+#### 2. Operator Overloading: Giving Syntax to Objects
+Operator overloading allows custom types to behave like built-in types.
+*   **Member vs. Non-member**: Overload operators like `+`, `-` as non-member friend functions to allow symmetric conversions (e.g., `complex + 1.0` and `1.0 + complex`).
+*   **Rules**: You cannot create new operators, change precedence, or overload operators for built-in types only.
+
+```cpp
+class Complex {
+    double r, i;
+public:
+    Complex(double r, double i) : r(r), i(i) {}
+    // Overloading + as member
+    Complex operator+(const Complex& other) const {
+        return Complex(r + other.r, i + other.i);
+    }
+    // Overloading << for output
+    friend std::ostream& operator<<(std::ostream& os, const Complex& c) {
+        os << "(" << c.r << ", " << c.i << "i)";
+        return os;
+    }
+};
+```
+
+#### 3. Copying vs. Assignment
+*   **Copy Constructor**: Initializes a *new* object from an existing one (`T a = b;`).
+*   **Assignment Operator**: Modifies an *existing* object from another existing one (`a = b;`).
+*   **Self-Assignment**: Always check for `if (this == &other)` in `operator=` to prevent deleting your own data before copying.
+
+---
+
 ### 1.2 Access Modifiers & Encapsulation
 
 Encapsulation hides internal state to prevent invalid access.
