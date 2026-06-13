@@ -248,45 +248,50 @@ def create_master_tex(chapters):
         if match:
             chap_num = int(match.group(1))
             
-            # Volume I: C++98/03 (Chapters 1-21)
+            # Volume I: C++98/03 (Chapters 1-9)
             if chap_num == 1 and current_volume < 1:
-                master_content += r"\part{Volume I: C++98/03 - The Foundation}" + "\n"
+                master_content += r"\part{Volume 01: FOUNDATION (C++98/03)}" + "\n"
                 current_volume = 1
             
-            # Volume II: C++11 (Chapters 22-28)
-            elif chap_num == 22 and current_volume < 2:
-                master_content += r"\part{Volume II: C++11 - The Modern Revolution}" + "\n"
+            # Volume II: C++11 (Chapters 10-15)
+            elif chap_num == 10 and current_volume < 2:
+                master_content += r"\part{Volume 02: MODERN REVOLUTION (C++11)}" + "\n"
                 current_volume = 2
                 
-            # Volume III: C++14 (Chapter 29)
-            elif chap_num == 29 and current_volume < 3:
-                master_content += r"\part{Volume III: C++14 - Refinement \& Generics}" + "\n"
+            # Volume III: C++14 (Chapters 16-19)
+            elif chap_num == 16 and current_volume < 3:
+                master_content += r"\part{Volume 03: REFINEMENT (C++14)}" + "\n"
                 current_volume = 3
                 
-            # Volume IV: C++17 (Chapter 30)
-            elif chap_num == 30 and current_volume < 4:
-                master_content += r"\part{Volume IV: C++17 - Simplification \& Modernization}" + "\n"
+            # Volume IV: C++17 (Chapters 20-25)
+            elif chap_num == 20 and current_volume < 4:
+                master_content += r"\part{Volume 04: MODERNIZATION (C++17)}" + "\n"
                 current_volume = 4
                 
-            # Volume V: C++20 (Chapter 31)
-            elif chap_num == 31 and current_volume < 5:
-                master_content += r"\part{Volume V: C++20 - The Gigantic Leap}" + "\n"
+            # Volume V: C++20 (Chapters 26-31)
+            elif chap_num == 26 and current_volume < 5:
+                master_content += r"\part{Volume 05: GIGANTIC LEAP (C++20)}" + "\n"
                 current_volume = 5
                 
-            # Volume VI: C++23/26 (Chapters 32-33)
+            # Volume VI: C++23 (Chapters 32-37)
             elif chap_num == 32 and current_volume < 6:
-                master_content += r"\part{Volume VI: C++23/26 - The Future}" + "\n"
+                master_content += r"\part{Volume 06: LATEST EVOLUTION (C++23)}" + "\n"
                 current_volume = 6
                 
-            # Volume VII: Advanced Systems (Chapters 34-48)
-            elif chap_num == 34 and current_volume < 7:
-                master_content += r"\part{Volume VII: Advanced Topics \& Systems Architecture}" + "\n"
+            # Volume VII: C++26 (Chapter 38)
+            elif chap_num == 38 and current_volume < 7:
+                master_content += r"\part{Volume 07: THE NEXT FRONTIER (C++26)}" + "\n"
                 current_volume = 7
                 
-            # Volume VIII: Specialized Domains (Chapters 49+)
-            elif chap_num == 49 and current_volume < 8:
-                master_content += r"\part{Volume VIII: Specialized Domains \& Expert Mastery}" + "\n"
+            # Volume VIII: Advanced Systems (Chapters 39-48)
+            elif chap_num == 39 and current_volume < 8:
+                master_content += r"\part{Volume 08: ADVANCED SYSTEMS}" + "\n"
                 current_volume = 8
+
+            # Volume IX: Specialized Domains (Chapters 49+)
+            elif chap_num == 49 and current_volume < 9:
+                master_content += r"\part{Volume 09: SPECIALIZED MASTERY}" + "\n"
+                current_volume = 9
 
         master_content += f"\\input{{{filename}.tex}}\n"
 
