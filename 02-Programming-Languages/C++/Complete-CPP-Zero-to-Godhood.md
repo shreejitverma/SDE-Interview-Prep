@@ -124,12 +124,6 @@ Shreejit has mentored hundreds of engineers, helping them transition from junior
 
 Prepare yourself. We are about to master the beast.
 
----
-
-
----
-
-
 # VOLUME 01 FOUNDATION C98 03
 
 ## CHAPTER 1: FOUNDATIONS AND COMPILATION
@@ -137,7 +131,6 @@ Prepare yourself. We are about to master the beast.
 # FOUNDATIONS & COMPILATION MODEL
 
 # ABSOLUTE BASICS (C++98)
-
 
 ## Getting Started
 
@@ -218,24 +211,24 @@ int main() {
     short y = 10;                // 16-bit integer
     long z = 1000000;            // 32 or 64-bit integer
     long long w = 9999999999;    // 64-bit integer
-    
+
     // Floating-point types
     float f = 3.14f;             // 32-bit (4 bytes)
     double d = 3.14159265;       // 64-bit (8 bytes)
     long double ld = 3.14159265359L;  // 80+ bits
-    
+
     // Character and boolean types
     char c = 'A';                // Single byte
     bool b = true;               // true or false
-    
+
     // Print sizes
     std::cout << "int: " << sizeof(int) << " bytes\n";
     std::cout << "double: " << sizeof(double) << " bytes\n";
-    
+
     // Min/max values
     std::cout << "int max: " << std::numeric_limits<int>::max() << "\n";
     std::cout << "int min: " << std::numeric_limits<int>::min() << "\n";
-    
+
     return 0;
 }
 ```
@@ -273,18 +266,18 @@ int main() {
     // C-style initialization
     int x = 5;
     float f = 3.14f;
-    
+
     // Multiple variables
     int a, b, c;
-    
+
     // Uninitialized (dangerous - contains garbage)
     int uninitialized;
     std::cout << uninitialized << "\n";  // Undefined behavior!
-    
+
     // Constants
     const int MAX_SIZE = 100;
     // MAX_SIZE = 200;  // Error: can't modify const
-    
+
     return 0;
 }
 ```
@@ -310,7 +303,7 @@ int main() {
         int x = 5;
     }
     // std::cout << x << "\n";  // Error: x out of scope
-    
+
     return 0;
 }
 ```
@@ -352,27 +345,27 @@ Understanding *where* your variables live is the first step to Godhood.
 
 int main() {
     int a = 10, b = 3;
-    
+
     std::cout << a + b << "\n";   // 13 (addition)
     std::cout << a - b << "\n";   // 7 (subtraction)
     std::cout << a * b << "\n";   // 30 (multiplication)
     std::cout << a / b << "\n";   // 3 (integer division)
     std::cout << a % b << "\n";   // 1 (modulo)
-    
+
     // Compound assignment
     int x = 5;
     x += 3;   // x = 8
     x -= 2;   // x = 6
     x *= 2;   // x = 12
     x /= 3;   // x = 4
-    
+
     // Increment/Decrement
     int y = 5;
     y++;      // Post-increment: 6
     ++y;      // Pre-increment: 7
     y--;      // Post-decrement: 6
     --y;      // Pre-decrement: 5
-    
+
     return 0;
 }
 ```
@@ -384,7 +377,7 @@ int main() {
 
 int main() {
     int a = 10, b = 5;
-    
+
     // Comparison (return true/false)
     std::cout << (a > b) << "\n";   // 1 (true)
     std::cout << (a < b) << "\n";   // 0 (false)
@@ -392,13 +385,13 @@ int main() {
     std::cout << (a != b) << "\n";  // 1 (true)
     std::cout << (a >= b) << "\n";  // 1 (true)
     std::cout << (a <= b) << "\n";  // 0 (false)
-    
+
     // Logical operators
     bool x = true, y = false;
     std::cout << (x && y) << "\n";  // 0 (AND)
     std::cout << (x || y) << "\n";  // 1 (OR)
     std::cout << (!x) << "\n";      // 0 (NOT)
-    
+
     return 0;
 }
 ```
@@ -410,7 +403,7 @@ int main() {
 
 int main() {
     int score = 85;
-    
+
     // Basic if-else
     if (score >= 90) {
         std::cout << "Grade: A\n";
@@ -421,11 +414,11 @@ int main() {
     } else {
         std::cout << "Grade: F\n";
     }
-    
+
     // Ternary operator
     std::string grade = (score >= 80) ? "Pass" : "Fail";
     std::cout << grade << "\n";
-    
+
     return 0;
 }
 ```
@@ -443,7 +436,7 @@ int main() {
         i++;
     }
     std::cout << "\n";
-    
+
     // Do-while loop (executes at least once)
     int j = 0;
     do {
@@ -451,13 +444,13 @@ int main() {
         j++;
     } while (j < 5);
     std::cout << "\n";
-    
+
     // For loop
     for (int k = 0; k < 5; k++) {
         std::cout << k << " ";
     }
     std::cout << "\n";
-    
+
     // Break and continue
     for (int m = 0; m < 10; m++) {
         if (m == 3) continue;  // Skip 3
@@ -465,7 +458,7 @@ int main() {
         std::cout << m << " ";
     }
     std::cout << "\n";
-    
+
     return 0;
 }
 ```
@@ -477,7 +470,7 @@ int main() {
 
 int main() {
     int day = 3;
-    
+
     switch (day) {
         case 1:
             std::cout << "Monday\n";
@@ -491,7 +484,7 @@ int main() {
         default:
             std::cout << "Unknown day\n";
     }
-    
+
     return 0;
 }
 ```
@@ -516,8 +509,6 @@ C++ has a strict hierarchy for operator evaluation. When multiple operators appe
 *   **`switch` Fallthrough**: Without a `break`, execution continues to the next case. In C++17, use `[[fallthrough]];` to signal intent and silence warnings.
 *   **`goto` Statement**: While generally discouraged, `goto` is acceptable for breaking out of deeply nested loops or for error-cleanup blocks in low-level code.
 *   **The Comma Operator**: `a, b` evaluates `a`, discards the result, then returns `b`. Useful in for-loop headers: `for (int i=0, j=10; i<j; ++i, --j)`.
-
----
 
 ---
 
@@ -583,15 +574,15 @@ int& get_global() {
 
 int main() {
     int a = 5;
-    
+
     increment_value(a);   // Copy passed
     std::cout << a << "\n";  // Still 5
-    
+
     increment_ref(a);      // Reference passed
     std::cout << a << "\n";  // Now 6
-    
+
     print_value(a);        // Can't modify a
-    
+
     return 0;
 }
 ```
@@ -641,11 +632,11 @@ void print(const std::string& s) {
 int main() {
     std::cout << add(5, 3) << "\n";      // 8 (int version)
     std::cout << add(2.5, 3.7) << "\n";  // 6.2 (double version)
-    
+
     print(42);           // Integer version
     print(3.14);         // Double version
     print("Hello");      // String version
-    
+
     return 0;
 }
 ```
@@ -662,27 +653,27 @@ int main() {
 int main() {
     // Array declaration and initialization
     int arr[5] = {1, 2, 3, 4, 5};
-    
+
     // Access elements (0-indexed)
     std::cout << arr[0] << "\n";  // 1
     std::cout << arr[4] << "\n";  // 5
-    
+
     // Array size (local arrays only)
     int size = 5;
     for (int i = 0; i < size; i++) {
         std::cout << arr[i] << " ";
     }
     std::cout << "\n";
-    
+
     // 2D array
     int matrix[3][3] = {
         {1, 2, 3},
         {4, 5, 6},
         {7, 8, 9}
     };
-    
+
     std::cout << matrix[1][2] << "\n";  // 6
-    
+
     return 0;
 }
 ```
@@ -694,32 +685,32 @@ int main() {
 
 int main() {
     int x = 42;
-    
+
     // Create a pointer
     int* ptr = &x;  // & = address-of operator
-    
+
     // Dereference pointer
     std::cout << *ptr << "\n";   // 42 (dereference with *)
-    
+
     // Modify through pointer
     *ptr = 100;
     std::cout << x << "\n";      // 100
-    
+
     // Pointer arithmetic
     int arr[5] = {10, 20, 30, 40, 50};
     int* p = arr;           // Array decays to pointer
-    
+
     std::cout << p[0] << "\n";     // 10
     std::cout << *(p+1) << "\n";   // 20
     std::cout << p[2] << "\n";     // 30
-    
+
     // Null pointer
     int* null_ptr = nullptr;  // or NULL in C++98
-    
+
     // Pointer to pointer
     int** pp = &ptr;
     std::cout << **pp << "\n";  // 100
-    
+
     return 0;
 }
 ```
@@ -736,27 +727,25 @@ int main() {
     std::cout << *ptr << "\n";
     delete ptr;          // Must deallocate
     ptr = nullptr;       // Good practice
-    
+
     // Allocate array on heap
     int* arr = new int[10];
     for (int i = 0; i < 10; i++) {
         arr[i] = i * i;
     }
     delete[] arr;        // Note the [] for arrays
-    
+
     // Forgetting to delete = memory leak
     int* leaked = new int(100);
     // delete leaked;  // Forgot this!
-    
+
     return 0;
 }
 ```
 
-
 <!-- Merged content from Chapter_17_THE_C_COMPILATION__EXECUTION_MODEL.md -->
 
 # THE C++ COMPILATION & EXECUTION MODEL
-
 
 To truly understand C++, you must understand how your code transforms from text to a running process. This section demystifies the "black box" of the compiler.
 
@@ -926,7 +915,7 @@ int main() {
     } else {
         std::cout << "Math is broken: " << (a+b) << "\n"; // Prints 0.30000001
     }
-    
+
     // Correct comparison
     if (std::abs((a + b) - 0.3f) < 1e-5) {
         std::cout << "Close enough!\n";
@@ -935,7 +924,6 @@ int main() {
 ```
 
 ---
-
 
 # Professional Notes: Chapter 1: Getting started with C++
 
@@ -1132,7 +1120,7 @@ int main()
 {
     std::cout << add2(2) << "\n";  // add2(2) will be evaluated at this point,
                                    // and the result is printed.
-    return 0;  
+    return 0;
 }
 Here, add2(2) is the syntax for a function call.
 Function Deﬁnition
@@ -1418,17 +1406,11 @@ A build system automates the invocation of the compiler, assembler, and linker.
 #### 2. Linker Symbols and Name Mangling
 Use tools like `nm` or `objdump` to inspect object files. Demangle names with `c++filt`.
 
----
-
-
----
-
 ## CHAPTER 2: MEMORY TYPES AND POINTERS
 
 # MEMORY, TYPES, AND POINTERS
 
 # ADVANCED POINTERS & MEMORY
-
 
 ## 1.1 Pointer to Const vs Const Pointer
 
@@ -1438,22 +1420,22 @@ using namespace std;
 
 int main() {
     int x = 5, y = 10;
-    
+
     // Pointer to const - can't modify data
     const int* ptr1 = &x;
     // *ptr1 = 10;  // ERROR
     ptr1 = &y;      // OK - can change pointer
-    
+
     // Const pointer - can't modify pointer
     int* const ptr2 = &x;
     *ptr2 = 10;     // OK - can change data
     // ptr2 = &y;   // ERROR
-    
+
     // Const pointer to const - can't modify either
     const int* const ptr3 = &x;
     // *ptr3 = 10;  // ERROR
     // ptr3 = &y;   // ERROR
-    
+
     return 0;
 }
 ```
@@ -1467,14 +1449,14 @@ using namespace std;
 int main() {
     int x = 42;
     double y = 3.14;
-    
+
     // Void pointer can point to any type
     void* ptr = &x;
     cout << *(int*)ptr << endl;  // 42
-    
+
     ptr = &y;
     cout << *(double*)ptr << endl;  // 3.14
-    
+
     // Generic function using void*
     void print_value(void* ptr, char type) {
         if (type == 'i') {
@@ -1483,10 +1465,10 @@ int main() {
             cout << *(double*)ptr << endl;
         }
     }
-    
+
     print_value(&x, 'i');  // 42
     print_value(&y, 'd');  // 3.14
-    
+
     return 0;
 }
 ```
@@ -1549,14 +1531,14 @@ using namespace std;
 
 int main() {
     int* ptr = NULL;  // Set to null
-    
+
     // Always check before dereferencing
     if (ptr != NULL) {
         cout << *ptr << endl;
     } else {
         cout << "Pointer is NULL" << endl;
     }
-    
+
     // Safer approach
     ptr = new int(42);
     if (ptr) {
@@ -1564,7 +1546,7 @@ int main() {
         delete ptr;
         ptr = NULL;
     }
-    
+
     return 0;
 }
 ```
@@ -1581,19 +1563,19 @@ int main() {
         int b;      // 4 bytes
         double c;   // 8 bytes
     };
-    
+
     cout << "Size of Data: " << sizeof(Data) << endl;
     // Likely 16 or 24 (due to alignment padding)
-    
+
     cout << "Size of char: " << sizeof(char) << endl;      // 1
     cout << "Size of int: " << sizeof(int) << endl;        // 4
     cout << "Size of double: " << sizeof(double) << endl;  // 8
-    
+
     Data data;
     cout << "Address of a: " << (void*)&data.a << endl;
     cout << "Address of b: " << (void*)&data.b << endl;
     cout << "Address of c: " << (void*)&data.c << endl;
-    
+
     return 0;
 }
 ```
@@ -1601,7 +1583,6 @@ int main() {
 ---
 
 # ADVANCED ARRAYS
-
 
 ## 4.1 Dynamic Arrays
 
@@ -1613,39 +1594,39 @@ int main() {
     // 1D dynamic array
     int size = 5;
     int* arr = new int[size];
-    
+
     for (int i = 0; i < size; i++) {
         arr[i] = i * 10;
     }
-    
+
     for (int i = 0; i < size; i++) {
         cout << arr[i] << " ";
     }
     cout << endl;
-    
+
     delete[] arr;
     arr = NULL;
-    
+
     // 2D dynamic array
     int rows = 3, cols = 4;
     int** matrix = new int*[rows];
     for (int i = 0; i < rows; i++) {
         matrix[i] = new int[cols];
     }
-    
+
     // Fill matrix
     for (int i = 0; i < rows; i++) {
         for (int j = 0; j < cols; j++) {
             matrix[i][j] = i * cols + j;
         }
     }
-    
+
     // Delete matrix
     for (int i = 0; i < rows; i++) {
         delete[] matrix[i];
     }
     delete[] matrix;
-    
+
     return 0;
 }
 ```
@@ -1660,19 +1641,19 @@ int main() {
     int size;
     cout << "Enter size: ";
     cin >> size;
-    
+
     // VLA - not standard but supported by many compilers
     int arr[size];  // GCC extension
-    
+
     for (int i = 0; i < size; i++) {
         arr[i] = i;
     }
-    
+
     for (int i = 0; i < size; i++) {
         cout << arr[i] << " ";
     }
     cout << endl;
-    
+
     return 0;
 }
 ```
@@ -1685,11 +1666,11 @@ using namespace std;
 
 int main() {
     int arr[5] = {10, 20, 30, 40, 50};
-    
+
     // No bounds checking in C++
     cout << arr[0] << endl;   // 10 (OK)
     cout << arr[10] << endl;  // Undefined behavior!
-    
+
     // Manual bounds checking
     int index = 5;
     if (index >= 0 && index < 5) {
@@ -1697,18 +1678,16 @@ int main() {
     } else {
         cout << "Index out of bounds" << endl;
     }
-    
+
     return 0;
 }
 ```
 
 ---
 
-
 <!-- Merged content from Chapter_12_CONST__VOLATILE.md -->
 
 # CONST & VOLATILE
-
 
 ## 11.1 Const Correctness
 
@@ -1718,30 +1697,30 @@ using namespace std;
 
 int main() {
     int x = 10;
-    
+
     // const variable
     const int constant = 5;
     // constant = 10;  // ERROR
-    
+
     // pointer to const
     const int* ptr1 = &x;
     // *ptr1 = 20;  // ERROR
     ptr1 = &constant;  // OK
-    
+
     // const pointer
     int* const ptr2 = &x;
     *ptr2 = 20;  // OK
     // ptr2 = &constant;  // ERROR
-    
+
     // const reference
     const int& ref = x;
     // ref = 20;  // ERROR
-    
+
     cout << x << endl;
     cout << *ptr1 << endl;
     cout << *ptr2 << endl;
     cout << ref << endl;
-    
+
     return 0;
 }
 ```
@@ -1755,32 +1734,30 @@ using namespace std;
 int main() {
     // volatile - tells compiler value may change unexpectedly
     volatile int sensor_reading = 0;  // From hardware
-    
+
     // Compiler won't optimize away reads
     while (sensor_reading < 100) {
         // Check actual value each time, not cached
     }
-    
+
     // Common use: hardware registers
     volatile int* hardware_register = (volatile int*)0x1000;
-    
+
     // Each access reads from actual location
     int val1 = *hardware_register;
     int val2 = *hardware_register;
-    
+
     // Without volatile, compiler might optimize one read
-    
+
     return 0;
 }
 ```
 
 ---
 
-
 <!-- Merged content from Chapter_9_TYPE_CASTING.md -->
 
 # TYPE CASTING
-
 
 ## 8.1 C-Style Casting
 
@@ -1791,18 +1768,18 @@ using namespace std;
 
 int main() {
     double d = 3.14;
-    
+
     // C-style cast (avoid in modern C++)
     int i = (int)d;  // 3
     cout << i << endl;
-    
+
     int x = 65;
     char c = (char)x;  // 'A'
     cout << c << endl;
-    
+
     float f = (float)d;
     cout << f << endl;
-    
+
     return 0;
 }
 ```
@@ -1818,27 +1795,25 @@ int main() {
     int x = 5;
     double d = x;  // int to double (automatic)
     cout << d << endl;  // 5.0
-    
+
     double d2 = 3.9;
     int y = d2;  // double to int (loses precision)
     cout << y << endl;  // 3
-    
+
     // Char arithmetic
     char c = 'A';
     int code = c;  // char to int (gets ASCII)
     cout << code << endl;  // 65
-    
+
     return 0;
 }
 ```
 
 ---
 
-
 <!-- Merged content from Chapter_11_ENUMERATION__UNIONS.md -->
 
 # ENUMERATION & UNIONS
-
 
 ## 10.1 Enumerations
 
@@ -1859,9 +1834,9 @@ enum Direction {
 int main() {
     Color c = RED;
     cout << c << endl;  // 0
-    
+
     Color colors[3] = {RED, GREEN, BLUE};
-    
+
     // Switching on enum
     switch (c) {
         case RED:
@@ -1874,12 +1849,12 @@ int main() {
             cout << "Blue" << endl;
             break;
     }
-    
+
     // Iterate through enum values
     for (int dir = NORTH; dir <= WEST; dir++) {
         cout << "Direction: " << dir << endl;
     }
-    
+
     return 0;
 }
 ```
@@ -1899,37 +1874,35 @@ union Data {
 
 int main() {
     Data data;
-    
+
     cout << "Size of Data: " << sizeof(data) << endl;  // 4 (size of largest member)
-    
+
     data.i = 10;
     cout << "data.i: " << data.i << endl;     // 10
     cout << "data.f: " << data.f << endl;     // Garbage (overwrites data.i)
-    
+
     data.f = 3.14;
     cout << "data.i: " << data.i << endl;     // Garbage (overwrites by data.f)
     cout << "data.f: " << data.f << endl;     // 3.14
-    
+
     // Union useful for memory-constrained systems
     union Variant {
         int int_val;
         double double_val;
         char char_val;
     };
-    
+
     cout << "Size of Variant: " << sizeof(Variant) << endl;
-    
+
     return 0;
 }
 ```
 
 ---
 
-
 <!-- Merged content from Chapter_7_BITWISE_OPERATIONS.md -->
 
 # BITWISE OPERATIONS
-
 
 ## 6.1 Bitwise Operators
 
@@ -1940,25 +1913,25 @@ using namespace std;
 int main() {
     unsigned char a = 5;   // 0101
     unsigned char b = 3;   // 0011
-    
+
     // AND
     cout << (a & b) << endl;  // 0001 = 1
-    
+
     // OR
     cout << (a | b) << endl;  // 0111 = 7
-    
+
     // XOR
     cout << (a ^ b) << endl;  // 0110 = 6
-    
+
     // NOT (bitwise complement)
     cout << (~a) << endl;     // 1010 = 250 (for unsigned char)
-    
+
     // Left shift
     cout << (a << 1) << endl; // 1010 = 10
-    
+
     // Right shift
     cout << (b >> 1) << endl; // 0001 = 1
-    
+
     return 0;
 }
 ```
@@ -1971,24 +1944,24 @@ using namespace std;
 
 int main() {
     unsigned int num = 5;  // 0101
-    
+
     // Check if bit is set
     int bit_pos = 2;
     bool is_set = (num >> bit_pos) & 1;
     cout << "Bit " << bit_pos << " is: " << is_set << endl;
-    
+
     // Set a bit
     num |= (1 << 1);  // Set bit 1
     cout << "After setting bit 1: " << num << endl;  // 7 (0111)
-    
+
     // Clear a bit
     num &= ~(1 << 1);  // Clear bit 1
     cout << "After clearing bit 1: " << num << endl;  // 5 (0101)
-    
+
     // Toggle a bit
     num ^= (1 << 0);  // Toggle bit 0
     cout << "After toggling bit 0: " << num << endl;  // 4 (0100)
-    
+
     // Count set bits
     unsigned int count = 0;
     unsigned int temp = num;
@@ -1997,13 +1970,12 @@ int main() {
         temp >>= 1;
     }
     cout << "Number of set bits: " << count << endl;
-    
+
     return 0;
 }
 ```
 
 ---
-
 
 # Professional Notes: Chapter 8: Arrays
 
@@ -2276,18 +2248,13 @@ The above code is not industrial grade: it's designed to show the basic principl
 learning C++.
 For example, one may deﬁne operator() overloads to simplify the indexing notation.
 
----
-
 ## CHAPTER 3: CONTROL FLOW AND PREPROCESSOR
 
 # CONTROL FLOW & PREPROCESSOR
 
-
-
 <!-- Merged content from Chapter_10_ADVANCED_CONTROL_FLOW.md -->
 
 # ADVANCED CONTROL FLOW
-
 
 ## 9.1 Ternary Operator
 
@@ -2297,19 +2264,19 @@ using namespace std;
 
 int main() {
     int x = 10, y = 5;
-    
+
     // condition ? true_value : false_value
     int max = (x > y) ? x : y;
     cout << "Max: " << max << endl;  // 10
-    
+
     // Nested ternary (use with caution)
     int age = 20;
     string status = (age < 18) ? "Minor" : (age < 65) ? "Adult" : "Senior";
     cout << status << endl;
-    
+
     // String ternary
     cout << (x % 2 == 0 ? "Even" : "Odd") << endl;
-    
+
     return 0;
 }
 ```
@@ -2323,22 +2290,22 @@ using namespace std;
 int main() {
     // goto is generally discouraged
     int x = 0;
-    
+
 loop:
     cout << x << " ";
     x++;
-    
+
     if (x < 5) {
         goto loop;
     }
     cout << endl;
-    
+
     // Better alternative: use loops
     for (int i = 0; i < 5; i++) {
         cout << i << " ";
     }
     cout << endl;
-    
+
     return 0;
 }
 ```
@@ -2353,37 +2320,35 @@ using namespace std;
 int main() {
     FILE* file = NULL;
     char* buffer = NULL;
-    
+
     // Using goto for cleanup (rare acceptable use)
     file = fopen("test.txt", "r");
     if (!file) {
         cout << "Failed to open file" << endl;
         goto cleanup;
     }
-    
+
     buffer = new char[100];
     if (!buffer) {
         cout << "Memory allocation failed" << endl;
         goto cleanup;
     }
-    
+
     // Do work...
-    
+
 cleanup:
     if (buffer) delete[] buffer;
     if (file) fclose(file);
-    
+
     return 0;
 }
 ```
 
 ---
 
-
 <!-- Merged content from Chapter_8_PREPROCESSOR_DIRECTIVES.md -->
 
 # PREPROCESSOR DIRECTIVES
-
 
 ## 7.1 #define and #include
 
@@ -2407,14 +2372,14 @@ using namespace std;
 
 int main() {
     cout << "PI = " << PI << endl;
-    
+
     int arr[MAX_SIZE];
     cout << "Array size: " << sizeof(arr) << endl;
-    
+
     cout << "Square of 5: " << SQUARE(5) << endl;
-    
+
     LOG("Debug message");
-    
+
     return 0;
 }
 ```
@@ -2438,13 +2403,13 @@ using namespace std;
 
 int main() {
     cout << "Running on: " << OS << endl;
-    
+
 #if defined(DEBUG)
     cout << "Debug mode" << endl;
 #else
     cout << "Release mode" << endl;
 #endif
-    
+
     return 0;
 }
 ```
@@ -2471,18 +2436,16 @@ int main() {
     cout << "Size of PackedData: " << sizeof(PackedData) << endl;
     // Without pragma pack: 24 (aligned)
     // With pragma pack: 13 (packed)
-    
+
     return 0;
 }
 ```
 
 ---
 
-
 <!-- Merged content from Chapter_13_INLINE_FUNCTIONS__MACROS.md -->
 
 # INLINE FUNCTIONS & MACROS
-
 
 ## 12.1 Macro Functions vs Inline Functions
 
@@ -2501,23 +2464,22 @@ inline int add_inline(int a, int b) {
 int main() {
     cout << ADD_MACRO(5, 3) << endl;         // 8
     cout << add_inline(5, 3) << endl;       // 8
-    
+
     // Macro danger: side effects
     int x = 5, y = 3;
     cout << ADD_MACRO(x++, y++) << endl;    // Evaluates as: ((x++) + (y++))
     cout << "x = " << x << ", y = " << y << endl;  // x = 6, y = 4
-    
+
     // Inline function is safer
     x = 5, y = 3;
     cout << add_inline(x++, y++) << endl;   // 8
     cout << "x = " << x << ", y = " << y << endl;  // x = 6, y = 4 (correct)
-    
+
     return 0;
 }
 ```
 
 ---
-
 
 # Professional Notes: Chapter 3: operator precedence
 
@@ -2539,7 +2501,7 @@ bool False(string id){
 int main(){
     bool result;
     //let's evaluate 3 booleans with || and && to illustrate operator precedence
-    //precedence does not mean that && will be evaluated first but rather where    
+    //precedence does not mean that && will be evaluated first but rather where
     //parentheses would be added
     //example 1
     result =
@@ -2765,7 +2727,7 @@ Why
 The right bit wise shift will shift the bits of the left hand value (a) the number speciﬁed on the right (1); it should be
 noted that while the operation of a right shift is standard, what happens to the bits of a right shift on a signed
 negative number is implementation deﬁned and thus cannot be guaranteed to be portable, example:
-int a = -2;    
+int a = -2;
 int b = a >> 1; // the value of b will be depend on the compiler
 It is also undeﬁned if the number of bits you wish to shift by is a negative number, example:
 int a = 1;
@@ -3020,7 +2982,7 @@ while (i < 0)
 {
     std::cout << i;
     ++i; // Increment counter
-}    
+}
 std::cout << std::endl; // End of line; nothing is printed to the console
 Note: A while loop can be exited without the condition becoming false by using a break, goto, or return statement.
 int i = 0;
@@ -3292,7 +3254,7 @@ try {
     // do something with v
 } catch (const std::bad_alloc&) {
     // handle bad_alloc exceptions from the try block
-}    
+}
 Section 15.7: if
 Introduces an if statement. The keyword if must be followed by a parenthesized condition, which can be either an
 expression or a declaration. If the condition is truthy, the substatement after the condition will be executed.
@@ -3342,7 +3304,7 @@ if (a== "test") {
 }
 for multiple choices :
 if (a=='a') {
-// if a is a char valued 'a'  
+// if a is a char valued 'a'
 } else if (a=='b') {
 // if a is a char valued 'b'
 } else if (a=='c') {
@@ -3421,18 +3383,13 @@ which produces the output:
 i this code whenever the condition i%2==0 is satisﬁed continue is processed,this causes the compiler to skip all the
 remaining code( printing @ and i) and increment/decrement statement of the loop gets executed.
 
----
-
 ## CHAPTER 4: ADVANCED FUNCTIONS AND CALLBACKS
 
 # ADVANCED FUNCTIONS & CALLBACKS
 
-
-
 <!-- Merged content from Chapter_3_ADVANCED_FUNCTIONS.md -->
 
 # ADVANCED FUNCTIONS
-
 
 ## 2.1 Variadic Functions
 
@@ -3445,12 +3402,12 @@ using namespace std;
 int sum(int count, ...) {
     va_list args;
     va_start(args, count);
-    
+
     int total = 0;
     for (int i = 0; i < count; i++) {
         total += va_arg(args, int);
     }
-    
+
     va_end(args);
     return total;
 }
@@ -3458,7 +3415,7 @@ int sum(int count, ...) {
 int main() {
     cout << sum(3, 10, 20, 30) << endl;     // 60
     cout << sum(5, 1, 2, 3, 4, 5) << endl;  // 15
-    
+
     return 0;
 }
 ```
@@ -3487,7 +3444,7 @@ int fibonacci(int n) {
 int fib_memo(int n, int memo[]) {
     if (n <= 1) return n;
     if (memo[n] != -1) return memo[n];
-    
+
     memo[n] = fib_memo(n - 1, memo) + fib_memo(n - 2, memo);
     return memo[n];
 }
@@ -3495,11 +3452,11 @@ int fib_memo(int n, int memo[]) {
 int main() {
     cout << factorial(5) << endl;  // 120
     cout << fibonacci(10) << endl; // 55
-    
+
     int memo[11];
     for (int i = 0; i < 11; i++) memo[i] = -1;
     cout << fib_memo(10, memo) << endl;  // 55
-    
+
     return 0;
 }
 ```
@@ -3523,7 +3480,7 @@ inline double max_value(double a, double b) {
 int main() {
     cout << square(5) << endl;      // 25
     cout << max_value(3.5, 2.1) << endl;  // 3.5
-    
+
     return 0;
 }
 ```
@@ -3577,20 +3534,18 @@ int main() {
     cout << get_call_count() << endl;  // 1
     cout << get_call_count() << endl;  // 2
     cout << get_call_count() << endl;  // 3
-    
+
     internal_function();  // OK in same file
-    
+
     return 0;
 }
 ```
 
 ---
 
-
 <!-- Merged content from Chapter_4_FUNCTION_POINTERS__CALLBACKS.md -->
 
 # FUNCTION POINTERS & CALLBACKS
-
 
 ## 3.1 Function Pointers
 
@@ -3614,17 +3569,17 @@ int multiply(int a, int b) {
 int main() {
     // Declare function pointer
     int (*operation)(int, int);
-    
+
     // Assign function to pointer
     operation = add;
     cout << operation(5, 3) << endl;  // 8
-    
+
     operation = subtract;
     cout << operation(5, 3) << endl;  // 2
-    
+
     operation = multiply;
     cout << operation(5, 3) << endl;  // 15
-    
+
     return 0;
 }
 ```
@@ -3645,14 +3600,14 @@ int main() {
     int (*operations[4])(int, int) = {
         add, subtract, multiply, divide
     };
-    
+
     int a = 20, b = 4;
-    
+
     for (int i = 0; i < 4; i++) {
         cout << "Result: " << operations[i](a, b) << endl;
     }
     // Output: 24, 16, 80, 5
-    
+
     return 0;
 }
 ```
@@ -3670,12 +3625,12 @@ typedef void (*Callback)(const string&);
 class Button {
 private:
     Callback on_click;
-    
+
 public:
     void set_click_handler(Callback callback) {
         on_click = callback;
     }
-    
+
     void click() {
         if (on_click) {
             on_click("Button clicked!");
@@ -3691,13 +3646,10 @@ int main() {
     Button button;
     button.set_click_handler(handle_click);
     button.click();  // Output: Button clicked!
-    
+
     return 0;
 }
 ```
-
----
-
 
 ---
 
@@ -3795,11 +3747,6 @@ struct HardwareRegister {
 *   **`fast-math`**: A compiler flag (e.g., `-ffast-math` in GCC) that allows the compiler to ignore some IEEE 754 rules for speed, potentially breaking precision.
 *   **`long double`**: On many systems, this provides 80-bit or 128-bit precision for high-precision scientific calculations.
 
----
-
-
----
-
 ## CHAPTER 5: OOP AND ENCAPSULATION
 
 # OBJECT-ORIENTED PROGRAMMING: ENCAPSULATION & DESIGN
@@ -3820,7 +3767,7 @@ class Person {
 public:      // Access modifier: Public
     std::string name;
     int age;
-    
+
     // Member function (Method)
     void introduce() {
         std::cout << "I am " << name << ", age " << age << "\n";
@@ -3891,7 +3838,7 @@ public:
     void deposit(double amount) {
         if (amount > 0) balance += amount;
     }
-    
+
     double get_balance() const { // Read-only access
         return balance;
     }
@@ -3994,9 +3941,9 @@ class Shape {
 public:
     // Virtual function: Can be overridden
     virtual void draw() { std::cout << "Drawing Shape\n"; }
-    
+
     // Virtual Destructor (Crucial for inheritance)
-    virtual ~Shape() {} 
+    virtual ~Shape() {}
 };
 
 class Circle : public Shape {
@@ -4102,7 +4049,7 @@ private:
     T content;
 public:
     Box(T val) : content(val) {}
-    
+
     T getContent() const { return content; }
     void setContent(T val) { content = val; }
 };
@@ -4110,7 +4057,7 @@ public:
 int main() {
     Box<int> intBox(123);
     Box<std::string> strBox("Hello");
-    
+
     std::cout << intBox.getContent() << "\n";
     return 0;
 }
@@ -4125,7 +4072,7 @@ template <typename T1, typename T2>
 struct Pair {
     T1 first;
     T2 second;
-    
+
     Pair(T1 a, T2 b) : first(a), second(b) {}
 };
 
@@ -4169,12 +4116,12 @@ public:
 };
 
 // Specialized for bool
-template <> 
+template <>
 class Formatter<bool> {
 public:
-    void format(bool val) { 
-        std::cout << "Boolean: " << (val ? "true" : "false") << "\n"; 
-    } 
+    void format(bool val) {
+        std::cout << "Boolean: " << (val ? "true" : "false") << "\n";
+    }
 };
 ```
 
@@ -4197,7 +4144,7 @@ When a type depends on a template parameter (dependent type), you must use `type
 template <typename T>
 void func() {
     // T::iterator *iter; // Ambiguous: Is iterator a type or a static member?
-    
+
     typename T::iterator *iter; // Correct: Tells compiler iterator is a type
 }
 ```
@@ -4218,7 +4165,6 @@ Templates are type-safe and processed by the compiler. Macros are text substitut
 
 # NAMESPACES
 
-
 ## 13.1 Namespace Basics
 
 ```cpp
@@ -4228,7 +4174,7 @@ using namespace std;
 // Define namespace
 namespace Math {
     double PI = 3.14159;
-    
+
     double circle_area(double radius) {
         return PI * radius * radius;
     }
@@ -4236,7 +4182,7 @@ namespace Math {
 
 namespace Graphics {
     double PI = 3.14;  // Different PI
-    
+
     void draw_circle(double radius) {
         cout << "Drawing circle with radius: " << radius << endl;
     }
@@ -4246,10 +4192,10 @@ int main() {
     // Access with namespace::name
     cout << Math::PI << endl;
     cout << Graphics::PI << endl;
-    
+
     cout << Math::circle_area(5) << endl;
     Graphics::draw_circle(5);
-    
+
     return 0;
 }
 ```
@@ -4273,43 +4219,42 @@ namespace Very {
 int main() {
     // Use alias to shorten
     namespace VLN = Very::Long::Namespace;
-    
+
     VLN::function();
-    
+
     // or use using
     using namespace Very::Long::Namespace;
     function();
-    
+
     return 0;
 }
 ```
 
 ---
 
-
 # Professional Notes: Chapter 31: Pointers to members
 
-Section 31.1: Pointers to static member functions 
-Section 31.2: Pointers to member functions 
-Section 31.3: Pointers to member variables 
-Section 31.4: Pointers to static member variables 
+Section 31.1: Pointers to static member functions
+Section 31.2: Pointers to member functions
+Section 31.3: Pointers to member variables
+Section 31.4: Pointers to static member variables
 
 # Professional Notes: Chapter 34: Classes/Structures
 
-Section 34.1: Class basics 
-Section 34.2: Final classes and structs 
-Section 34.3: Access speciﬁers 
-Section 34.4: Inheritance 
-Section 34.5: Friendship 
-Section 34.6: Virtual Inheritance 
-Section 34.7: Private inheritance: restricting base class interface 
-Section 34.8: Accessing class members 
-Section 34.9: Member Types and Aliases 
-Section 34.10: Nested Classes/Structures 
-Section 34.11: Unnamed struct/class 
-Section 34.12: Static class members 
-Section 34.13: Multiple Inheritance 
-Section 34.14: Non-static member functions 
+Section 34.1: Class basics
+Section 34.2: Final classes and structs
+Section 34.3: Access speciﬁers
+Section 34.4: Inheritance
+Section 34.5: Friendship
+Section 34.6: Virtual Inheritance
+Section 34.7: Private inheritance: restricting base class interface
+Section 34.8: Accessing class members
+Section 34.9: Member Types and Aliases
+Section 34.10: Nested Classes/Structures
+Section 34.11: Unnamed struct/class
+Section 34.12: Static class members
+Section 34.13: Multiple Inheritance
+Section 34.14: Non-static member functions
 
 # Professional Notes: Chapter 19: Friend keyword
 
@@ -4822,12 +4767,12 @@ In the case of public inheritance such casting will provide access to all the A 
 ways to prevent this in derived B, like hiding:
 class B : public A {
 private:
-    int move();  
+    int move();
 };
 or private using:
 class B : public A {
 private:
-    using A::move;  
+    using A::move;
 };
 then for both cases it is possible:
 B b;
@@ -5091,18 +5036,13 @@ class Outer {
     class Inner1 {};
     Inner1 in1;
 
----
-
 ## CHAPTER 6: POLYMORPHISM AND VIRTUALIZATION
 
 # POLYMORPHISM & VIRTUALIZATION
 
-
-
 <!-- Merged content from Chapter_19_DEEP_OBJECT_MODEL__VIRTUALIZATION.md -->
 
 # DEEP OBJECT MODEL & VIRTUALIZATION
-
 
 Understanding the "C++ Object Model" distinguishes a user from a master. This section explains what the compiler generates for your classes.
 
@@ -5199,27 +5139,26 @@ struct Mixed {
 
 ---
 
-
 # Professional Notes: Chapter 25: Polymorphism
 
-Section 25.1: Deﬁne polymorphic classes 
-Section 25.2: Safe downcasting 
-Section 25.3: Polymorphism & Destructors 
+Section 25.1: Deﬁne polymorphic classes
+Section 25.2: Safe downcasting
+Section 25.3: Polymorphism & Destructors
 
 # Professional Notes: Chapter 38: Virtual Member Functions
 
-Section 38.1: Final virtual functions 
-Section 38.2: Using override with virtual in C++11 and later 
-Section 38.3: Virtual vs non-virtual member functions 
-Section 38.4: Behaviour of virtual functions in constructors and destructors 
-Section 38.5: Pure virtual functions 
+Section 38.1: Final virtual functions
+Section 38.2: Using override with virtual in C++11 and later
+Section 38.3: Virtual vs non-virtual member functions
+Section 38.4: Behaviour of virtual functions in constructors and destructors
+Section 38.5: Pure virtual functions
 
 # Professional Notes: Chapter 40: Special Member Functions
 
-Section 40.1: Default Constructor 
-Section 40.2: Destructor 
-Section 40.3: Copy and swap 
-Section 40.4: Implicit Move and Copy 
+Section 40.1: Default Constructor
+Section 40.2: Destructor
+Section 40.3: Copy and swap
+Section 40.4: Implicit Move and Copy
 
 # Professional Notes: Chapter 25: Polymorphism
 
@@ -5232,7 +5171,7 @@ class Shape {
 public:
     virtual ~Shape() = default;
     virtual double get_surface() const = 0;
-    virtual void describe_object() const { std::cout << "this is a shape" << std::endl; }  
+    virtual void describe_object() const { std::cout << "this is a shape" << std::endl; }
     double get_doubled_surface() const { return 2 * get_surface(); }
 };
 How to read this deﬁnition ?
@@ -5256,11 +5195,11 @@ class Square : public Shape {
 public:
     Square (const Point& top_left, double side)
        : top_left(top_left), side_length(side_length) {}
-    double get_surface() override { return side_length * side_length; }  
+    double get_surface() override { return side_length * side_length; }
     void describe_object() override {
         std::cout << "this is a square starting at " << top_left.x << ", " << top_left.y
                   << " with a length of " << side_length << std::endl;
-    }  
+    }
 };
 Some explanations:
 You can deﬁne or override any of the virtual functions of the parent class. The fact that a function was virtual
@@ -5303,7 +5242,7 @@ class Circle: public Shape { // for Shape, see example on defining a polymorphic
 public:
     Circle (const Point& center, double radius)
        : center(center), radius(radius) {}
-    double get_surface() const override { return r * r * M_PI; }  
+    double get_surface() const override { return r * r * M_PI; }
     // this is only for circles. Makes no sense for other shapes
     double get_diameter() const { return 2 * r; }
 };
@@ -5327,7 +5266,7 @@ int main() {
         std::cout << "The shape is a circle of diameter " << pc->get_diameter() << std::endl;
     else
         std::cout << "The shape isn't a circle !" << std::endl;
-}        
+}
 Note that dynamic_cast is not possible on a class that is not polymorphic. You'd need at least one virtual function in
 the class or its parents to be able to use it.
 Section 25.3: Polymorphism & Destructors
@@ -5474,7 +5413,7 @@ public:
     virtual const char* v() { return "base::v()"; }
     void f(const char* caller) {
         cout << "When called from " << caller << ", "  << v() << " gets called.\n";
-    }        
+    }
 };
 class derived : public base {
 public:
@@ -5821,13 +5760,9 @@ public:
     Movable& operator=(const Movable&) = default;
 };
 
----
-
 ## CHAPTER 7: STANDARD TEMPLATE LIBRARY CORE
 
 # THE STANDARD TEMPLATE LIBRARY (STL) CORE
-
-
 
 <!-- Merged content from Chapter_20_C9803_STANDARD_LIBRARY.md -->
 
@@ -5856,7 +5791,7 @@ The Standard Template Library (STL) is a collection of template classes and func
 ## STL Components Overview
 
 ```
-          STL (Standard Template Library)  
+          STL (Standard Template Library)
                        |
    -----------------------------------------
    |              |            |           |
@@ -5864,9 +5799,9 @@ CONTAINERS     ITERATORS    ALGORITHMS   FUNCTORS
    |              |            |           |
 Sequence       Input        Searching    Predicates
 Associative    Output       Sorting      Comparators
-Adapters       Forward      Modifying      
-               Bidir        Numeric      
-               Random       
+Adapters       Forward      Modifying
+               Bidir        Numeric
+               Random
 ```
 
 ---
@@ -5918,8 +5853,6 @@ Implemented using `std::make_heap`, `std::push_heap`, and `std::pop_heap` on an 
 
 ---
 
----
-
 ## CONTAINERS - COMPLETE REFERENCE
 
 ### Container Characteristics (C++98)
@@ -5964,7 +5897,7 @@ vector<int> v4(v3);
 
 // From array (using pointers)
 int arr[] = {1, 2, 3, 4, 5};
-vector<int> v5(arr, arr + 5); 
+vector<int> v5(arr, arr + 5);
 ```
 
 ### Accessing Elements
@@ -6016,7 +5949,7 @@ cout << v.capacity() << "\n";  // >= 10
 cout << v.empty() << "\n";     // 0 (false)
 
 // Reserve space (Optimization to avoid reallocations)
-v.reserve(100); 
+v.reserve(100);
 
 // Resize (Changes size, fills new elements with default or value)
 v.resize(20);    // Size becomes 20
@@ -6268,7 +6201,7 @@ Iterators are the glue between Containers and Algorithms.
 - `it1 - it2`: Distance (Random Access only).
 
 ```cpp
-vector<int> v(5, 1); 
+vector<int> v(5, 1);
 vector<int>::iterator it = v.begin();
 advance(it, 2); // Move 2 steps
 cout << distance(v.begin(), it); // 2
@@ -6421,14 +6354,14 @@ int main() {
     ifstream in("test.txt");
     string line;
     int num;
-    
-    if (in >> line >> num) { // Reads "Line" then fails on "1" vs int? No. 
-                             // "Line" goes to line. "1" goes to num? 
+
+    if (in >> line >> num) { // Reads "Line" then fails on "1" vs int? No.
+                             // "Line" goes to line. "1" goes to num?
                              // Need careful parsing.
     }
     // Better: getline
     getline(in, line);
-    
+
     return 0;
 }
 ```
@@ -6464,7 +6397,7 @@ Classes that overload `operator()`. Used by algorithms.
 struct AddX {
     int x;
     AddX(int val) : x(val) {}
-    
+
     int operator()(int y) const {
         return x + y;
     }
@@ -6482,7 +6415,6 @@ This covers the foundational C++98 Standard Library components necessary for mas
 
 # ADVANCED STRINGS
 
-
 ## 5.1 String Manipulation
 
 ```cpp
@@ -6493,40 +6425,40 @@ using namespace std;
 
 int main() {
     string s = "Hello World";
-    
+
     // Length and capacity
     cout << "Length: " << s.length() << endl;
     cout << "Capacity: " << s.capacity() << endl;
-    
+
     // Access characters
     cout << "First char: " << s[0] << endl;
     cout << "Last char: " << s[s.length() - 1] << endl;
-    
+
     // Finding substrings
     size_t pos = s.find("World");
     if (pos != string::npos) {
         cout << "Found at position: " << pos << endl;
     }
-    
+
     // Replace
     s.replace(6, 5, "C++");
     cout << s << endl;  // Hello C++
-    
+
     // Insert
     s.insert(5, " there");
     cout << s << endl;  // Hello there C++
-    
+
     // Erase
     s.erase(5, 6);
     cout << s << endl;  // Hello C++
-    
+
     // Substring
     cout << s.substr(0, 5) << endl;  // Hello
-    
+
     // Reverse
     reverse(s.begin(), s.end());
     cout << s << endl;  // ++C olleH
-    
+
     return 0;
 }
 ```
@@ -6545,23 +6477,23 @@ int main() {
     string s1 = "42";
     int num = atoi(s1.c_str());
     cout << num << endl;
-    
+
     string s2 = "3.14";
     double dbl = atof(s2.c_str());
     cout << dbl << endl;
-    
+
     // Number to string (using stringstream)
     stringstream ss;
     ss << 42 << " " << 3.14 << " " << true;
     string result = ss.str();
     cout << result << endl;  // 42 3.14 1
-    
+
     // Reverse conversion
     stringstream ss2("100 200 300");
     int a, b, c;
     ss2 >> a >> b >> c;
     cout << a << " " << b << " " << c << endl;  // 100 200 300
-    
+
     return 0;
 }
 ```
@@ -6576,37 +6508,35 @@ using namespace std;
 
 int main() {
     string line = "apple,banana,orange,grape";
-    
+
     // Using stringstream and getline
     stringstream ss(line);
     string token;
-    
+
     while (getline(ss, token, ',')) {
         cout << token << endl;
     }
     // Output: apple, banana, orange, grape
-    
+
     // Using strtok (C style)
     char str[] = "hello world how are you";
     char* ptr = strtok(str, " ");
-    
+
     while (ptr != NULL) {
         cout << ptr << endl;
         ptr = strtok(NULL, " ");
     }
     // Output: hello, world, how, are, you
-    
+
     return 0;
 }
 ```
 
 ---
 
-
 <!-- Merged content from Chapter_15_FILE_IO_ADVANCED.md -->
 
 # FILE I/O ADVANCED
-
 
 ## 14.1 Binary File I/O
 
@@ -6618,24 +6548,24 @@ using namespace std;
 int main() {
     // Write binary data
     ofstream outfile("data.bin", ios::binary);
-    
+
     int numbers[] = {10, 20, 30, 40, 50};
     outfile.write((char*)numbers, sizeof(numbers));
     outfile.close();
-    
+
     // Read binary data
     ifstream infile("data.bin", ios::binary);
-    
+
     int buffer[5];
     infile.read((char*)buffer, sizeof(buffer));
-    
+
     for (int i = 0; i < 5; i++) {
         cout << buffer[i] << " ";
     }
     cout << endl;
-    
+
     infile.close();
-    
+
     return 0;
 }
 ```
@@ -6652,105 +6582,104 @@ int main() {
     ofstream outfile("test.txt");
     outfile << "0123456789";
     outfile.close();
-    
+
     // Read with positioning
     ifstream infile("test.txt");
-    
+
     // Tell position
     cout << "Current position: " << infile.tellg() << endl;
-    
+
     // Seek to position
     infile.seekg(5);
     char c;
     infile.get(c);
     cout << "Character at position 5: " << c << endl;  // '5'
-    
+
     // Seek from end
     infile.seekg(-3, ios::end);
     infile.get(c);
     cout << "Third from end: " << c << endl;  // '7'
-    
+
     infile.close();
-    
+
     return 0;
 }
 ```
 
 ---
 
-
 # Professional Notes: Chapter 47: std::string
 
-Section 47.1: Tokenize 
-Section 47.2: Conversion to (const) char* 
-Section 47.3: Using the std::string_view class 
-Section 47.4: Conversion to std::wstring 
-Section 47.5: Lexicographical comparison 
-Section 47.6: Trimming characters at start/end 
-Section 47.7: String replacement 
-Section 47.8: Converting to std::string 
-Section 47.9: Splitting 
-Section 47.10: Accessing a character 
-Section 47.11: Checking if a string is a preﬁx of another 
-Section 47.12: Looping through each character 
-Section 47.13: Conversion to integers/ﬂoating point types 
-Section 47.14: Concatenation 
-Section 47.15: Converting between character encodings 
-Section 47.16: Finding character(s) in a string 
+Section 47.1: Tokenize
+Section 47.2: Conversion to (const) char*
+Section 47.3: Using the std::string_view class
+Section 47.4: Conversion to std::wstring
+Section 47.5: Lexicographical comparison
+Section 47.6: Trimming characters at start/end
+Section 47.7: String replacement
+Section 47.8: Converting to std::string
+Section 47.9: Splitting
+Section 47.10: Accessing a character
+Section 47.11: Checking if a string is a preﬁx of another
+Section 47.12: Looping through each character
+Section 47.13: Conversion to integers/ﬂoating point types
+Section 47.14: Concatenation
+Section 47.15: Converting between character encodings
+Section 47.16: Finding character(s) in a string
 
 # Professional Notes: Chapter 49: std::vector
 
-Section 49.1: Accessing Elements 
-Section 49.2: Initializing a std::vector 
-Section 49.3: Deleting Elements 
-Section 49.4: Iterating Over std::vector 
-Section 49.5: vector<bool>: The Exception To So Many, So Many Rules 
-Section 49.6: Inserting Elements 
-Section 49.7: Using std::vector as a C array 
-Section 49.8: Finding an Element in std::vector 
-Section 49.9: Concatenating Vectors 
-Section 49.10: Matrices Using Vectors 
-Section 49.11: Using a Sorted Vector for Fast Element Lookup 
-Section 49.12: Reducing the Capacity of a Vector 
-Section 49.13: Vector size and capacity 
-Section 49.14: Iterator/Pointer Invalidation 
-Section 49.15: Find max and min Element and Respective Index in a Vector 
-Section 49.16: Converting an array to std::vector 
-Section 49.17: Functions Returning Large Vectors 
+Section 49.1: Accessing Elements
+Section 49.2: Initializing a std::vector
+Section 49.3: Deleting Elements
+Section 49.4: Iterating Over std::vector
+Section 49.5: vector<bool>: The Exception To So Many, So Many Rules
+Section 49.6: Inserting Elements
+Section 49.7: Using std::vector as a C array
+Section 49.8: Finding an Element in std::vector
+Section 49.9: Concatenating Vectors
+Section 49.10: Matrices Using Vectors
+Section 49.11: Using a Sorted Vector for Fast Element Lookup
+Section 49.12: Reducing the Capacity of a Vector
+Section 49.13: Vector size and capacity
+Section 49.14: Iterator/Pointer Invalidation
+Section 49.15: Find max and min Element and Respective Index in a Vector
+Section 49.16: Converting an array to std::vector
+Section 49.17: Functions Returning Large Vectors
 
 # Professional Notes: Chapter 50: std::map
 
-Section 50.1: Accessing elements 
-Section 50.2: Inserting elements 
-Section 50.3: Searching in std::map or in std::multimap 
-Section 50.4: Initializing a std::map or std::multimap 
-Section 50.5: Checking number of elements 
-Section 50.6: Types of Maps 
-Section 50.7: Deleting elements 
-Section 50.8: Iterating over std::map or std::multimap 
-Section 50.9: Creating std::map with user-deﬁned types as key 
+Section 50.1: Accessing elements
+Section 50.2: Inserting elements
+Section 50.3: Searching in std::map or in std::multimap
+Section 50.4: Initializing a std::map or std::multimap
+Section 50.5: Checking number of elements
+Section 50.6: Types of Maps
+Section 50.7: Deleting elements
+Section 50.8: Iterating over std::map or std::multimap
+Section 50.9: Creating std::map with user-deﬁned types as key
 
 # Professional Notes: Chapter 62: Standard Library Algorithms
 
-Section 62.1: std::next_permutation 
-Section 62.2: std::for_each 
-Section 62.3: std::accumulate 
-Section 62.4: std::ﬁnd 
-Section 62.5: std::min_element 
-Section 62.6: std::ﬁnd_if 
-Section 62.7: Using std::nth_element To Find The Median (Or Other Quantiles) 
-Section 62.8: std::count 
-Section 62.9: std::count_if 
+Section 62.1: std::next_permutation
+Section 62.2: std::for_each
+Section 62.3: std::accumulate
+Section 62.4: std::ﬁnd
+Section 62.5: std::min_element
+Section 62.6: std::ﬁnd_if
+Section 62.7: Using std::nth_element To Find The Median (Or Other Quantiles)
+Section 62.8: std::count
+Section 62.9: std::count_if
 
 # Professional Notes: Chapter 67: Sorting
 
-Section 67.1: Sorting and sequence containers 
-Section 67.2: sorting with std::map (ascending and descending) 
-Section 67.3: Sorting sequence containers by overloaded less operator 
-Section 67.4: Sorting sequence containers using compare function 
-Section 67.5: Sorting sequence containers using lambda expressions (C++11) 
-Section 67.6: Sorting built-in arrays 
-Section 67.7: Sorting sequence containers with specifed ordering 
+Section 67.1: Sorting and sequence containers
+Section 67.2: sorting with std::map (ascending and descending)
+Section 67.3: Sorting sequence containers by overloaded less operator
+Section 67.4: Sorting sequence containers using compare function
+Section 67.5: Sorting sequence containers using lambda expressions (C++11)
+Section 67.6: Sorting built-in arrays
+Section 67.7: Sorting sequence containers with specifed ordering
 
 # Professional Notes: Chapter 43: C++ Containers
 
@@ -8509,13 +8438,13 @@ Note This function is very eﬃcient - it has linear complexity.
 position ⌈n / 2⌉. For example, the median of a sequence of length 5 is the 3rd smallest element, and so is the
 median of a sequence of length 6.
 To use this function to ﬁnd the median, we can use the following. Say we start with
-std::vector<int> v{5, 1, 2, 3, 4};    
+std::vector<int> v{5, 1, 2, 3, 4};
 std::vector<int>::iterator b = v.begin();
 std::vector<int>::iterator e = v.end();
 std::vector<int>::iterator med = b;
 std::advance(med, v.size() / 2);
 // This makes the 2nd position hold the median.
-std::nth_element(b, med, e);    
+std::nth_element(b, med, e);
 // The median is now at v[2].
 To ﬁnd the pth quantile, we would change some of the lines above:
 const std::size_t pos = p * std::distance(b, e);
@@ -8727,7 +8656,7 @@ We can overload this operator to make the default sort call work on user-deﬁne
 #include <deque>
 #include <list>
 // Insert sorting algorithm
-#include <algorithm>    
+#include <algorithm>
 class Base {
  public:
     // Constructor that set variable to the value of v
@@ -8879,13 +8808,9 @@ object deduce based on what it gets passed in:
 std::sort(v.begin(), v.end(), std::less<>());     // ascending order
 std::sort(v.begin(), v.end(), std::greater<>());  // descending order
 
----
-
 ## CHAPTER 8: STL UNDER THE HOOD
 
 # STL INTERNALS DEEP DIVE
-
-
 
 <!-- Merged content from Chapter_21_STL_INTERNALS_DEEP_DIVE.md -->
 
@@ -8949,15 +8874,9 @@ To master the STL, you must understand what happens under the hood.
 | **List** | Insert/Erase | Only deleted element |
 | **Map/Set** | Insert/Erase | Only deleted element |
 
----
-
----
-
 ## CHAPTER 9: ERROR HANDLING AND ROBUSTNESS
 
 # ERROR HANDLING & ROBUSTNESS
-
-
 
 <!-- Merged content from Chapter_16_ERROR_HANDLING__DEBUGGING.md -->
 
@@ -9132,7 +9051,7 @@ int main() {
 #ifdef DEBUG
     #define LOG(x) std::cout << "DEBUG: " << x << "\n"
 #else
-    #define LOG(x) 
+    #define LOG(x)
 #endif
 
 int main() {
@@ -9144,15 +9063,15 @@ int main() {
 
 # Professional Notes: Chapter 72: Exceptions
 
-Section 72.1: Catching exceptions 
-Section 72.2: Rethrow (propagate) exception 
-Section 72.3: Best practice: throw by value, catch by const reference 
-Section 72.4: Custom exception 
-Section 72.5: std::uncaught_exceptions 
-Section 72.6: Function Try Block for regular function 
-Section 72.7: Nested exception 
-Section 72.8: Function Try Blocks In constructor 
-Section 72.9: Function Try Blocks In destructor 
+Section 72.1: Catching exceptions
+Section 72.2: Rethrow (propagate) exception
+Section 72.3: Best practice: throw by value, catch by const reference
+Section 72.4: Custom exception
+Section 72.5: std::uncaught_exceptions
+Section 72.6: Function Try Block for regular function
+Section 72.7: Nested exception
+Section 72.8: Function Try Blocks In constructor
+Section 72.9: Function Try Blocks In destructor
 
 # Professional Notes: Chapter 72: Exceptions
 
@@ -9518,7 +9437,7 @@ void print_current_exception_with_nested(int level =  0)
         throw;
     } catch (...) {
         print_current_exception(level);
-    }    
+    }
     try {
         throw;
     } catch (const std::nested_exception& nested) {
@@ -9665,7 +9584,7 @@ The actual data transfer is handled by a buffer object (`rdbuf`).
 *   **Redirection**: You can redirect `cout` to a file by swapping its buffer:
 ```cpp
 std::ofstream out("log.txt");
-std::streambuf *coutbuf = std::cout.rdbuf(); 
+std::streambuf *coutbuf = std::cout.rdbuf();
 std::cout.rdbuf(out.rdbuf()); // cout now writes to log.txt
 ```
 
@@ -9678,8 +9597,6 @@ std::ostream& tab(std::ostream& os) {
 std::cout << "Data1" << tab << "Data2" << std::endl;
 ```
 
----
-
 # VOLUME 01: GODHOOD SUMMARY
 
 Volume 01 established the "Archaic" foundations of C++. By mastering C++98/03, you have learned the manual labor of the language:
@@ -9688,12 +9605,6 @@ Volume 01 established the "Archaic" foundations of C++. By mastering C++98/03, y
 3. **The Classic STL**: The original containers and algorithms that still form the backbone of modern systems.
 
 **The Golden Rule of C++98**: Everything is explicit. There are no shortcuts. To achieve Godhood, you must respect these roots while preparing to transcend them with the features of the Modern Revolution.
-
----
-
-
----
-
 
 # VOLUME 02 MODERN REVOLUTION C11
 
@@ -9849,7 +9760,7 @@ Control compiler-generated functions.
 class Widget {
 public:
     Widget() = default; // Force generation of default constructor
-    
+
     // Disable copying
     Widget(const Widget&) = delete;
     Widget& operator=(const Widget&) = delete;
@@ -9899,9 +9810,6 @@ Compile-time assertions.
 ```cpp
 static_assert(sizeof(void*) == 8, "64-bit system required");
 ```
-
-
----
 
 ## CHAPTER 11: MOVE SEMANTICS AND SMART POINTERS
 
@@ -10051,30 +9959,29 @@ template<typename T>
 void wrapper(T&& arg) {
     // std::forward passes arg as lvalue if given lvalue,
     // rvalue if given rvalue.
-    func(std::forward<T>(arg)); 
+    func(std::forward<T>(arg));
 }
 ```
 
-
 # Professional Notes: Chapter 33: Smart Pointers
 
-Section 33.1: Unique ownership (std::unique_ptr) 
-Section 33.2: Sharing ownership (std::shared_ptr) 
-Section 33.3: Sharing with temporary ownership (std::weak_ptr) 
-Section 33.4: Using custom deleters to create a wrapper to a C interface 
-Section 33.5: Unique ownership without move semantics (auto_ptr) 
-Section 33.6: Casting std::shared_ptr pointers 
-Section 33.7: Writing a smart pointer: value_ptr 
-Section 33.8: Getting a shared_ptr referring to this 
+Section 33.1: Unique ownership (std::unique_ptr)
+Section 33.2: Sharing ownership (std::shared_ptr)
+Section 33.3: Sharing with temporary ownership (std::weak_ptr)
+Section 33.4: Using custom deleters to create a wrapper to a C interface
+Section 33.5: Unique ownership without move semantics (auto_ptr)
+Section 33.6: Casting std::shared_ptr pointers
+Section 33.7: Writing a smart pointer: value_ptr
+Section 33.8: Getting a shared_ptr referring to this
 
 # Professional Notes: Chapter 106: Move Semantics
 
-Section 106.1: Move semantics 
-Section 106.2: Using std::move to reduce complexity from O(n²) to O(n) 
-Section 106.3: Move constructor 
-Section 106.4: Re-use a moved object 
-Section 106.5: Move assignment 
-Section 106.6: Using move semantics on containers 
+Section 106.1: Move semantics
+Section 106.2: Using std::move to reduce complexity from O(n²) to O(n)
+Section 106.3: Move constructor
+Section 106.4: Re-use a moved object
+Section 106.5: Move assignment
+Section 106.6: Using move semantics on containers
 
 # Professional Notes: Chapter 33: Smart Pointers
 
@@ -10900,8 +10807,6 @@ int main() {
     print(vec2);
 }
 
----
-
 ## CHAPTER 12: FUNCTIONAL PROGRAMMING
 
 # FUNCTIONAL PROGRAMMING IN C++11
@@ -10954,7 +10859,7 @@ void freeFunc(int) {}
 
 std::function<void(int)> f;
 f = freeFunc;
-f = [](int x) {}; 
+f = [](int x) {};
 ```
 
 **Cost:** Can incur heap allocation and virtual call overhead.
@@ -10969,36 +10874,35 @@ Binds arguments to function parameters (Partial Application).
 int add(int a, int b) { return a + b; }
 
 // Creates a function taking 1 argument (placeholder _1)
-auto add5 = std::bind(add, 5, std::placeholders::_1); 
+auto add5 = std::bind(add, 5, std::placeholders::_1);
 // add5(10) calls add(5, 10)
 ```
 
 *Note: Lambdas largely replace `std::bind` in modern C++ due to readability and optimization.*
 
-
 # Professional Notes: Chapter 52: std::function: To wrap any element that is callable
 
-Section 52.1: Simple usage 
-Section 52.2: std::function used with std::bind 
-Section 52.3: Binding std::function to a dierent callable types 
-Section 52.4: Storing function arguments in std::tuple 
-Section 52.5: std::function with lambda and std::bind 
-Section 52.6: `function` overhead 
+Section 52.1: Simple usage
+Section 52.2: std::function used with std::bind
+Section 52.3: Binding std::function to a dierent callable types
+Section 52.4: Storing function arguments in std::tuple
+Section 52.5: std::function with lambda and std::bind
+Section 52.6: `function` overhead
 
 # Professional Notes: Chapter 73: Lambdas
 
-Section 73.1: What is a lambda expression? 
-Section 73.2: Specifying the return type 
-Section 73.3: Capture by value 
-Section 73.4: Recursive lambdas 
-Section 73.5: Default capture 
-Section 73.6: Class lambdas and capture of this 
-Section 73.7: Capture by reference 
-Section 73.8: Generic lambdas 
-Section 73.9: Using lambdas for inline parameter pack unpacking 
-Section 73.10: Generalized capture 
-Section 73.11: Conversion to function pointer 
-Section 73.12: Porting lambda functions to C++03 using functors 
+Section 73.1: What is a lambda expression?
+Section 73.2: Specifying the return type
+Section 73.3: Capture by value
+Section 73.4: Recursive lambdas
+Section 73.5: Default capture
+Section 73.6: Class lambdas and capture of this
+Section 73.7: Capture by reference
+Section 73.8: Generic lambdas
+Section 73.9: Using lambdas for inline parameter pack unpacking
+Section 73.10: Generalized capture
+Section 73.11: Conversion to function pointer
+Section 73.12: Porting lambda functions to C++03 using functors
 
 # Professional Notes: Chapter 52: std::function: To wrap any
 
@@ -11238,7 +11142,7 @@ int main()
     /* std::bind expressions */
     /* The result of a std::bind expression can be passed.
      * For example by binding parameters to a function pointer call:
-     */    
+     */
     int b = stdf_foobar(a, std::bind(foo_2, _1, 3));
     std::cout << b << std::endl;
     // b == 23 == 2 + ( 9*2 + 3 )
@@ -11335,8 +11239,6 @@ auto f = [a]()  { return a*9; }; // OK, 'a' is "captured" by value
 auto f = [&a]() { return a++; }; // OK, 'a' is "captured" by reference
                                  //      Note: It is the responsibility of the programmer
                                  //      to ensure that a is not destroyed before the
-
----
 
 ## CHAPTER 13: TEMPLATE METAPROGRAMMING
 
@@ -11448,7 +11350,6 @@ std::tuple<int, double, std::string> t(1, 3.14, "hi");
 int i = std::get<0>(t);
 ```
 
-
 # Professional Notes: Chapter 13: C++ Streams
 
 Section 13.1: String streams
@@ -11456,14 +11357,14 @@ std::ostringstream is a class whose objects look like an output stream (that is,
 operator<<), but actually store the writing results, and provide them in the form of a stream.
 Consider the following short code:
 #include <sstream>
-#include <string>                                                                                  
+#include <string>
 using namespace std;
 int main()
 {
     ostringstream ss;
     ss << "the answer to everything is " << 42;
     const string result = ss.str();
-}  
+}
 The line
 ostringstream ss;
 creates such an object. This object is ﬁrst manipulated like a regular stream:
@@ -11474,16 +11375,16 @@ const string result = ss.str();
 This is mainly useful when we have a class for which stream serialization has been deﬁned, and for which we want a
 string form. For example, suppose we have some class
 class foo
-{  
+{
     // All sort of stuff here.
-};  
+};
 ostream &operator<<(ostream &os, const foo &f);
 To get the string representation of a foo object,
 foo f;
 we could use
 ostringstream ss;
 ss << f;
-const string result = ss.str();        
+const string result = ss.str();
 Then result contains the string representation of the foo object.
 Section 13.2: Printing collections with iostream
 Basic printing
@@ -11533,15 +11434,15 @@ std::transform(v, std::end(v), std::ostream_iterator<int>(std::cout, " "),
 
 # Professional Notes: Chapter 16: Metaprogramming
 
-Section 16.1: Calculating Factorials 
-Section 16.2: Iterating over a parameter pack 
-Section 16.3: Iterating with std::integer_sequence 
-Section 16.4: Tag Dispatching 
-Section 16.5: Detect Whether Expression is Valid 
-Section 16.6: If-then-else 
-Section 16.7: Manual distinction of types when given any type T 
-Section 16.8: Calculating power with C++11 (and higher) 
-Section 16.9: Generic Min/Max with variable argument count 
+Section 16.1: Calculating Factorials
+Section 16.2: Iterating over a parameter pack
+Section 16.3: Iterating with std::integer_sequence
+Section 16.4: Tag Dispatching
+Section 16.5: Detect Whether Expression is Valid
+Section 16.6: If-then-else
+Section 16.7: Manual distinction of types when given any type T
+Section 16.8: Calculating power with C++11 (and higher)
+Section 16.9: Generic Min/Max with variable argument count
 
 # Professional Notes: Chapter 16: Metaprogramming
 
@@ -11679,7 +11580,7 @@ And the second is if constexpr, which allows us to write our original recursive 
 template <class T, class... Ts>
 void print_all(std::ostream& os, T const& first, Ts const&... rest) {
     os << first;
-    if constexpr (sizeof...(rest) > 0) {        
+    if constexpr (sizeof...(rest) > 0) {
         // this line will only be instantiated if there are further
         // arguments. if rest... is empty, there will be no call to
         // print_all(os).
@@ -11738,7 +11639,7 @@ namespace details {
         while (n--) {
             ++it;
         }
-    }    
+    }
 }
 template <class Iter, class Distance>
 void advance(Iter& it, Distance n) {
@@ -11800,7 +11701,7 @@ template <class K, class V>
 using hash_invariant_map = std::conditional_t<
     has_hash<K>::value,
     std::unordered_map<K, V>,
-    std::map<K,V>>;    
+    std::map<K,V>>;
 Section 16.6: If-then-else
 Version ≥ C++11
 The type std::conditional in the standard library header <type_traits> can select one type or the other, based
@@ -11906,8 +11807,6 @@ auto min(const T1 &a, const T2 &b, const Args& ... args)
 }
 auto minimum = min(4, 5.8f, 3, 1.8, 3, 1.1, 9);
 
----
-
 ## CHAPTER 14: STANDARD LIBRARY EXPANSION
 
 # THE C++11 STANDARD LIBRARY EXPANSION
@@ -11946,20 +11845,20 @@ Regular expression support for pattern matching and text manipulation.
 int main() {
     std::string text = "Contact: user@example.com";
     std::regex email_regex("(\\w+)@(\\w+)\\.com");
-    
+
     // 1. Search: Find first occurrence
     std::smatch matches;
     if (std::regex_search(text, matches, email_regex)) {
         std::cout << "Found: " << matches[0] << std::endl;
         std::cout << "User: " << matches[1] << std::endl;
     }
-    
+
     // 2. Match: Must match entire string
     bool is_full_match = std::regex_match(text, email_regex); // false
-    
+
     // 3. Replace:
     std::string new_text = std::regex_replace(text, email_regex, "REDACTED");
-    
+
     return 0;
 }
 ```
@@ -12014,10 +11913,6 @@ std::uniform_int_distribution<> dis(1, 6);
 
 int roll = dis(gen);
 ```
-
-
-
----
 
 ## CHAPTER 15: CONCURRENCY
 
@@ -12127,29 +12022,28 @@ thread_local int thread_id = 0; // Each thread gets its own copy
 
 ---
 
-
 # Professional Notes: Chapter 80: Threading
 
-Section 80.1: Creating a std::thread 
-Section 80.2: Passing a reference to a thread 
-Section 80.3: Using std::async instead of std::thread 
-Section 80.4: Basic Synchronization 
-Section 80.5: Create a simple thread pool 
-Section 80.6: Ensuring a thread is always joined 
-Section 80.7: Operations on the current thread 
-Section 80.8: Using Condition Variables 
-Section 80.9: Thread operations 
-Section 80.10: Thread-local storage 
-Section 80.11: Reassigning thread objects 
+Section 80.1: Creating a std::thread
+Section 80.2: Passing a reference to a thread
+Section 80.3: Using std::async instead of std::thread
+Section 80.4: Basic Synchronization
+Section 80.5: Create a simple thread pool
+Section 80.6: Ensuring a thread is always joined
+Section 80.7: Operations on the current thread
+Section 80.8: Using Condition Variables
+Section 80.9: Thread operations
+Section 80.10: Thread-local storage
+Section 80.11: Reassigning thread objects
 
 # Professional Notes: Chapter 85: Mutexes
 
-Section 85.1: Mutex Types 
-Section 85.2: std::lock 
-Section 85.3: std::unique_lock, std::shared_lock, std::lock_guard 
-Section 85.4: Strategies for lock classes: std::try_to_lock, std::adopt_lock, std::defer_lock 
-Section 85.5: std::mutex 
-Section 85.6: std::scoped_lock (C++ 17) 
+Section 85.1: Mutex Types
+Section 85.2: std::lock
+Section 85.3: std::unique_lock, std::shared_lock, std::lock_guard
+Section 85.4: Strategies for lock classes: std::try_to_lock, std::adopt_lock, std::defer_lock
+Section 85.5: std::mutex
+Section 85.6: std::scoped_lock (C++ 17)
 
 # Professional Notes: Chapter 55: std::atomics
 
@@ -12644,9 +12538,9 @@ int main()
         //
         std::default_random_engine gen{};
         std::uniform_int_distribution<int> dist{};
-        std::size_t count = 4006;    
+        std::size_t count = 4006;
         while(count--)
-        {    
+        {
             // Always lock before changing
             // state guarded by a mutex and
             // condition_variable (a.k.a. "condvar").
@@ -12958,12 +12852,6 @@ C++11 was the **Modern Revolution**. It transformed C++ from a "Better C" into a
 
 **The Golden Rule of C++11**: Prefer `std::unique_ptr` over raw pointers, and use `std::move` to transfer ownership. You have transcended the manual memory management of the past.
 
----
-
-
----
-
-
 # VOLUME 03 REFINEMENT GENERICS C14
 
 ## CHAPTER 16: C14 CORE LANGUAGE UPGRADES
@@ -13023,10 +12911,10 @@ For systems engineers and embedded developers, binary literals are a godsend for
 
 ```cpp
 // Without Binary Literals (Hex/Octal required mental mapping)
-uint8_t mask_old = 0x2A; 
+uint8_t mask_old = 0x2A;
 
 // With C++14 Binary Literals (Directly maps to hardware registers)
-uint8_t mask_new = 0b0010'1010; 
+uint8_t mask_new = 0b0010'1010;
 
 // Digit Separators (The single quote ')
 // Can be placed anywhere to improve legibility
@@ -13056,8 +12944,6 @@ public:
 ```
 
 **Deep Dive:** Unlike `#pragma message`, `[[deprecated]]` is part of the language standard. Compilers will emit a warning during the semantic analysis phase, ensuring that the message is seen exactly when the deprecated entity is utilized.
-
----
 
 ## CHAPTER 17: C14 FUNCTIONS AND LAMBDAS
 
@@ -13117,7 +13003,7 @@ auto data = std::make_unique<LargeBuffer>();
 // Capture by move: 'p' is initialized by moving 'data'
 auto task = [p = std::move(data)]() {
     p->process();
-}; 
+};
 
 // 'data' is now null; 'p' lives inside the lambda object
 ```
@@ -13156,7 +13042,7 @@ int global_val = 100;
 int& get_ref() { return global_val; }
 
 // Returns by value (int)
-auto proxy1() { return get_ref(); } 
+auto proxy1() { return get_ref(); }
 
 // Returns by reference (int&) - Perfect Forwarding of Return Type
 decltype(auto) proxy2() { return get_ref(); }
@@ -13168,8 +13054,6 @@ void test() {
 ```
 
 **Deep Dive:** Use `decltype(auto)` primarily in wrapper functions or generic code where you want to pass through the return type of another function exactly as it is, without knowing whether it returns by value or reference.
-
----
 
 ## CHAPTER 18: C14 TEMPLATES AND METAPROGRAMMING
 
@@ -13233,7 +13117,7 @@ In C++11, using a trait that returns a type required the `typename` keyword and 
 
 ```cpp
 // C++11 (Verbosely painful)
-typename std::enable_if<Condition, T>::type 
+typename std::enable_if<Condition, T>::type
 
 // C++14 (Clean and readable)
 std::enable_if_t<Condition, T>
@@ -13244,8 +13128,6 @@ void only_integers(T val) { /* ... */ }
 ```
 
 **Professional Note:** Always prefer the `_t` and `_v` versions in modern C++. They are not just shorter; they are conceptually cleaner because they treat the trait as a function that returns a type/value directly.
-
----
 
 ## CHAPTER 19: C14 STANDARD LIBRARY ENHANCEMENTS
 
@@ -13277,9 +13159,9 @@ process(std::make_unique<T>(), foo());
 ```cpp
 struct Node {
     int* data;
-    Node(Node&& other) noexcept 
+    Node(Node&& other) noexcept
         : data(std::exchange(other.data, nullptr)) {}
-    
+
     Node& operator=(Node&& other) noexcept {
         if (this != &other) {
             delete data;
@@ -13331,8 +13213,8 @@ Parsing CSVs or logs with quoted strings used to be a nightmare of manual charac
 void test_quoted() {
     std::stringstream ss;
     std::string s = "Hello \"C++14\" World";
-    
-    ss << std::quoted(s); 
+
+    ss << std::quoted(s);
     // ss now contains: "Hello \"C++14\" World" (with quotes and escaping)
 
     std::string output;
@@ -13341,20 +13223,15 @@ void test_quoted() {
 }
 ```
 
----
-
 # VOLUME 03: GODHOOD SUMMARY
 
-C++14 was the release where **Modern C++ became "Fluid."** 
+C++14 was the release where **Modern C++ became "Fluid."**
 
 1.  **Constexpr is King:** Logic migrated from runtime to compile-time. If it doesn't involve I/O or dynamic allocation, it should probably be `constexpr`.
 2.  **Lambdas are Complete:** With Generic Lambdas and Init-Capture, lambdas are now the preferred tool for almost all local logic, closures, and callback patterns.
 3.  **Standard Consistency:** `std::make_unique` and `_t/_v` aliases removed the "boilerplate friction" that made C++11 feel verbose.
 
 **The Golden Rule of C++14:** If you find yourself writing a manual loop in a template or a manual move in a constructor, check if a C++14 utility (`integer_sequence`, `std::exchange`) can do it for you in one line.
-
----
-
 
 # VOLUME 04 SIMPLIFICATION MODERNIZATION C17
 
@@ -13383,7 +13260,7 @@ int main() {
 
     // C++17 Structured Binding
     auto [id, val, name] = get_data();
-    
+
     std::cout << id << ", " << val << ", " << name << "\n";
 }
 ```
@@ -13429,7 +13306,7 @@ auto get_value(T t) {
 int main() {
     int x = 5;
     int* ptr = &x;
-    
+
     get_value(x);   // Returns int
     get_value(ptr); // Returns int (dereferenced)
 }
@@ -13469,10 +13346,10 @@ Allows defining variables in headers without "multiple definition" errors. Repla
 #pragma once
 
 // C++14: Linker error if included in multiple .cpp files
-// int global_config = 5; 
+// int global_config = 5;
 
 // C++17: Safe! The linker merges all definitions.
-inline int global_config = 5; 
+inline int global_config = 5;
 
 struct MyClass {
     // Static member initialization in-class!
@@ -13515,8 +13392,6 @@ Standardized attributes to hint compiler behavior.
 *   `[[fallthrough]]`: Suppress "implicit fallthrough" warnings in switch cases.
 
 ```
-
----
 
 ## CHAPTER 21: C17 TEMPLATE METAPROGRAMMING
 
@@ -13618,20 +13493,17 @@ void free_func(int i) { std::cout << "free_func " << i << "\n"; }
 
 int main() {
     Foo f;
-    
+
     // Call member function
-    std::invoke(&Foo::bar, f, 1); 
-    
+    std::invoke(&Foo::bar, f, 1);
+
     // Access member data
     std::cout << std::invoke(&Foo::data, f) << "\n";
-    
+
     // Call free function
     std::invoke(free_func, 2);
 }
 ```
-
-
----
 
 ## CHAPTER 22: C17 VOCABULARY TYPES
 
@@ -13660,12 +13532,12 @@ int main() {
     const char* cstr = "Hello World";
     // print_str(cstr); // Creates std::string (allocates!)
     print_view(cstr);   // No allocation
-    
+
     std::string s = "Hello World";
     print_view(s);      // Works with std::string too
-    
+
     // Substrings are cheap!
-    std::string_view sub = std::string_view(cstr).substr(0, 5); 
+    std::string_view sub = std::string_view(cstr).substr(0, 5);
     print_view(sub);
 }
 ```
@@ -13695,9 +13567,9 @@ int main() {
     } else {
         std::cout << "Not found";
     }
-    
+
     // Value or default
-    std::cout << res.value_or(0); 
+    std::cout << res.value_or(0);
 }
 ```
 
@@ -13743,20 +13615,19 @@ try {
 }
 ```
 
-
 # Professional Notes: Chapter 51: std::optional
 
-Section 51.1: Using optionals to represent the absence of a value 
-Section 51.2: optional as return value 
-Section 51.3: value_or 
-Section 51.4: Introduction 
-Section 51.5: Using optionals to represent the failure of a function 
+Section 51.1: Using optionals to represent the absence of a value
+Section 51.2: optional as return value
+Section 51.3: value_or
+Section 51.4: Introduction
+Section 51.5: Using optionals to represent the failure of a function
 
 # Professional Notes: Chapter 56: std::variant
 
-Section 56.1: Create pseudo-method pointers 
-Section 56.2: Basic std::variant use 
-Section 56.3: Constructing a `std::variant` 
+Section 56.1: Create pseudo-method pointers
+Section 56.2: Basic std::variant use
+Section 56.3: Constructing a `std::variant`
 
 # Professional Notes: Chapter 51: std::optional
 
@@ -14003,8 +13874,6 @@ std::variant<A,D> var_ad0( std::in_place_type<D>, {1,3,3,4} ); // contains D{1,3
 std::variant<A,D> var_ad1( std::in_place_index<0> ); // contains A{}
 std::variant<A,D> var_ad2( std::in_place_index<1>, {1,3,3,4} ); // contains D{1,3,3,4}
 
----
-
 ## CHAPTER 23: C17 FILESYSTEM AND IO
 
 # C++17 FILESYSTEM AND IO
@@ -14062,12 +13931,9 @@ char buffer[1024];
 std::pmr::monotonic_buffer_resource pool(buffer, 1024);
 std::pmr::vector<int> v(&pool); // Uses stack buffer!
 
-v.push_back(1); 
+v.push_back(1);
 // No heap allocation happens until buffer is exhausted.
 ```
-
-
----
 
 ## CHAPTER 24: C17 PARALLEL ALGORITHMS AND CONCURRENCY
 
@@ -14105,7 +13971,7 @@ std::mutex m1, m2;
 
 void swap_data() {
     // Locks both m1 and m2 atomically
-    std::scoped_lock lock(m1, m2); 
+    std::scoped_lock lock(m1, m2);
     // ...
 }
 ```
@@ -14125,9 +13991,6 @@ std::unique_lock lock(smtx);
 // Reader
 std::shared_lock lock(smtx);
 ```
-
-
----
 
 ## CHAPTER 25: C17 STANDARD LIBRARY ADDITIONS
 
@@ -14184,12 +14047,6 @@ C++17 was the release of **Simplification and Vocabulary**. It focused on making
 4. **Filesystem**: Finally, a standard way to talk to the OS about files.
 
 **The Golden Rule of C++17**: Use `std::optional` instead of null pointers, and `string_view` for efficient string passing. You have simplified the vocabulary of your code.
-
----
-
-
----
-
 
 # VOLUME 05 GIGANTIC LEAP C20
 
@@ -14256,7 +14113,7 @@ template<typename T>
 concept Container = requires(T c) {
     typename T::value_type;
     { c.size() } -> std::same_as<size_t>;
-    { c.begin() }; 
+    { c.begin() };
     { c.end() };
 };
 ```
@@ -14286,10 +14143,6 @@ void print(std::floating_point auto x) {
 print(5);   // Calls integral version
 print(3.14); // Calls floating_point version
 ```
-
-
-
----
 
 ## CHAPTER 27: C20 MODULES
 
@@ -14359,7 +14212,7 @@ Used to include legacy headers within a module.
 
 ```cpp
 module;
-#include <vector> 
+#include <vector>
 #include <cmath>
 
 export module geometry;
@@ -14374,9 +14227,6 @@ export double distance(double x, double y) {
 Modules require a dependency graph to be built *before* compilation (unlike headers). Modern build systems (CMake 3.26+, Build2, XMake) support this.
 
 ```
-
-
----
 
 ## CHAPTER 28: C20 COROUTINES
 
@@ -14408,19 +14258,19 @@ struct Generator {
 
     Generator(handle_type h) : h(h) {}
     ~Generator() { if (h) h.destroy(); }
-    
+
     struct promise_type {
         int current_value;
         Generator get_return_object() { return Generator{handle_type::from_promise(*this)}; }
         std::suspend_always initial_suspend() { return {}; }
         std::suspend_always final_suspend() noexcept { return {}; }
-        std::suspend_always yield_value(int value) { 
-            current_value = value; return {}; 
+        std::suspend_always yield_value(int value) {
+            current_value = value; return {};
         }
         void return_void() {}
         void unhandled_exception() { std::terminate(); }
     };
-    
+
     bool next() { h.resume(); return !h.done(); }
     int value() const { return h.promise().current_value; }
 };
@@ -14455,9 +14305,6 @@ Task<int> fetch_data() {
 
 The compiler generates a state machine for the coroutine, allocating the "coroutine frame" (local variables, promise object, instruction pointer) on the heap (usually).
 
-
----
-
 ## CHAPTER 29: C20 RANGES
 
 # C++20 RANGES
@@ -14484,10 +14331,10 @@ int main() {
     // for(auto& x : temp) x *= x;
 
     // C++20 Ranges
-    auto result = nums 
+    auto result = nums
         | views::filter([](int i){ return i % 2 == 0; }) // Keep evens
         | views::transform([](int i){ return i * i; });  // Square them
-        
+
     for (int i : result) {
         std::cout << i << " "; // 4 16 36
     }
@@ -14521,12 +14368,9 @@ Ranges algorithms prevent returning iterators to temporary objects that would di
 ```cpp
 auto get_vec() { return std::vector{1, 2, 3}; }
 
-auto it = ranges::max_element(get_vec()); // Error! 
+auto it = ranges::max_element(get_vec()); // Error!
 // Returns std::ranges::dangling instead of an invalid iterator.
 ```
-
-
----
 
 ## CHAPTER 30: C20 CORE LANGUAGE FEATURES
 
@@ -14604,9 +14448,6 @@ template<FixedString S>
 void print() { std::cout << S.buf; }
 ```
 
-
----
-
 ## CHAPTER 31: C20 STANDARD LIBRARY ADDITIONS
 
 # C++20 STANDARD LIBRARY ADDITIONS
@@ -14623,7 +14464,7 @@ std::string s = std::format("Hello, {}! The answer is {}.", "World", 42);
 // "Hello, World! The answer is 42."
 
 // Positional arguments
-std::string s2 = std::format("{1} {0}", "World", "Hello"); 
+std::string s2 = std::format("{1} {0}", "World", "Hello");
 ```
 
 ## 2. `std::span`
@@ -14707,7 +14548,7 @@ graph TD
 ### 7.2 Coroutines: Stackless State Machines
 C++ coroutines are stackless, meaning they don't have a private call stack. Their state is stored in a heap-allocated **Coroutine Frame**.
 
-*   **Lifecycle of `promise_type`**: 
+*   **Lifecycle of `promise_type`**:
     1.  **Allocation**: Frame is allocated on the heap.
     2.  **Initial Suspend**: `co_await promise.initial_suspend()` determines if the coroutine starts immediately or waits.
     3.  **Body**: Executes until a suspension point.
@@ -14734,10 +14575,8 @@ stateDiagram-v2
 ```
 
 ### 7.3 Ranges & Views: Lazy Composition
-*   **Range vs. View**: A Range owns or provides access to data; a **View** is a lightweight, lazy range that doesn't own data. 
+*   **Range vs. View**: A Range owns or provides access to data; a **View** is a lightweight, lazy range that doesn't own data.
 *   **Performance**: Views use expression templates to collapse multiple operations (filter, transform) into a single loop. This avoids intermediate allocations but can lead to "Template Bloat" and increased compile times in extremely deep pipe chains.
-
----
 
 # VOLUME 05: GODHOOD SUMMARY
 
@@ -14748,12 +14587,6 @@ C++20 was the **Gigantic Leap**. It is as significant as C++11 was a decade prio
 4. **Ranges**: Composable, functional-style container operations.
 
 **The Golden Rule of C++20**: Constraints over SFINAE, Modules over Headers, and Ranges over Iterators. You have leaped into a new era of C++ architecture.
-
----
-
-
----
-
 
 # VOLUME 06 LATEST EVOLUTION C23
 ## CHAPTER 32: C23 CORE LANGUAGE
@@ -14787,7 +14620,7 @@ struct Widget {
     template <typename Self>
     void process(this Self&& self) {
         // Forward self to another function
-        handle(std::forward<Self>(self)); 
+        handle(std::forward<Self>(self));
     }
 };
 ```
@@ -14869,9 +14702,6 @@ Standardized preprocessor warning.
 #warning "This feature is experimental"
 ```
 
-
----
-
 ## CHAPTER 33: C23 STD PRINT
 
 # C++23 STD::PRINT & I/O
@@ -14888,7 +14718,7 @@ C++ finally gets high-performance, type-safe, and readable console output, repla
 int main() {
     int id = 42;
     std::string name = "Alice";
-    
+
     std::println("User {} has ID {}", name, id);
     // Output: User Alice has ID 42
 }
@@ -14931,9 +14761,6 @@ ss << "Hello " << 123;
 std::string_view result = ss.span(); // "Hello 123"
 ```
 
-
----
-
 ## CHAPTER 34: C23 MONADIC OPERATIONS AND EXPECTED
 
 # C++23 MONADIC OPERATIONS & EXPECTED
@@ -14957,7 +14784,7 @@ std::expected<int, Error> parse_int(std::string_view input) {
 
 int main() {
     auto result = parse_int("42");
-    
+
     if (result) {
         std::cout << "Value: " << *result;
     } else {
@@ -14990,9 +14817,6 @@ auto name = get_id()
     .value_or("Unknown");
 ```
 
-
----
-
 ## CHAPTER 35: C23 CONTAINERS AND VIEWS
 
 # C++23 CONTAINERS & VIEWS
@@ -15010,7 +14834,7 @@ A non-owning, multidimensional view of a contiguous memory block. Crucial for sc
 int main() {
     std::vector<int> data(12); // 3x4 matrix
     std::mdspan m(data.data(), 3, 4);
-    
+
     m[1, 2] = 42; // Set row 1, col 2
 }
 ```
@@ -15053,9 +14877,6 @@ m[1] = "One"; // Insert
         // ...
     }
     ```
-
-
----
 
 ## CHAPTER 36: C23 COROUTINES AND STACKTRACE
 
@@ -15103,9 +14924,6 @@ void boom() {
 ```
 
 **Note:** Requires compiler/linker flags (e.g., `-lstdc++_libbacktrace` on GCC).
-
-
----
 
 ## CHAPTER 37: C23 LIBRARY UTILITIES
 
@@ -15201,8 +15019,6 @@ While `std::format` returns a `std::string` (potentially allocating), `std::prin
 
 *   **Internal Mechanics**: It uses the same formatting engine as `format` but bypasses the string creation step, making it as fast as `printf` but with the type-safety and Unicode support of modern C++.
 
----
-
 # VOLUME 06: GODHOOD SUMMARY
 
 C++23 is the **Latest Evolution**, providing the "missing pieces" of C++20 and making the language even more ergonomic.
@@ -15212,12 +15028,6 @@ C++23 is the **Latest Evolution**, providing the "missing pieces" of C++20 and m
 4. **Multidimensional operator[]**: Paving the way for high-performance linear algebra.
 
 **The Golden Rule of C++23**: Use `std::print` for I/O and `std::expected` for error-prone logic. You are now at the cutting edge of production C++.
-
----
-
-
----
-
 
 # VOLUME 07 THE NEXT FRONTIER C26
 
@@ -15253,7 +15063,7 @@ C++26 introduces `template for` to iterate over reflections at compile time, and
 template<typename T>
 void print_members(const T& obj) {
     constexpr auto members = std::meta::members_of(^T);
-    
+
     template for (constexpr auto m : members) {
         if constexpr (std::meta::is_data_member(m)) {
             std::cout << std::meta::name_of(m) << ": " << obj.[:m:] << "\n";
@@ -15340,13 +15150,6 @@ auto result = std::linalg::dot_product(v1, v2);
 
 ## 8. Godhood Summary: Why C++26 Matters
 C++26 closes the "Safety" and "Reflection" gaps that have plagued the language. With **Contracts**, **Erroneous Behavior**, and **Reflection**, C++ remains the fastest language while becoming significantly safer and more expressive than its predecessors.
-
----
-
-
-
----
-
 
 # VOLUME 08 ADVANCED SYSTEMS
 
@@ -15456,10 +15259,6 @@ void process(Printable auto& obj) {
 }
 ```
 
-
-
----
-
 ## CHAPTER 40: COMPILE TIME PROGRAMMING
 
 # COMPILE-TIME PROGRAMMING
@@ -15518,9 +15317,6 @@ Currently, we use libraries like `magic_enum` or macro hacks. C++26 brings stati
 // for (auto member : info.data_members()) ...
 ```
 
-
----
-
 ## CHAPTER 41: THE CPP MEMORY MODEL
 
 # THE MEMORY MODEL & ATOMICS
@@ -15573,9 +15369,6 @@ void consumer() {
 
 `std::atomic_thread_fence`. Used to enforce ordering without an atomic operation, or to combine with `relaxed` operations.
 
-
----
-
 ## CHAPTER 42: LOCK FREE PROGRAMMING
 
 # LOCK-FREE PROGRAMMING
@@ -15619,9 +15412,6 @@ void push(int new_val) {
 *   **Lock-Free Stack:** Easy (CAS on head).
 *   **Lock-Free Queue:** Harder (Head and Tail). Use Michael-Scott Queue algorithm.
 *   **Lock-Free Hash Map:** Very hard (Split-Ordered Lists).
-
-
----
 
 ## CHAPTER 43: ADVANCED CONCURRENCY PATTERNS
 
@@ -15682,9 +15472,6 @@ struct alignas(64) PaddedCounter {
 };
 ```
 
-
----
-
 ## CHAPTER 44: CUSTOM MEMORY ALLOCATORS
 
 # CUSTOM MEMORY ALLOCATORS
@@ -15737,9 +15524,6 @@ Understanding `alignof`, `alignas`, and `std::max_align_t`.
 
 *   Unaligned access can be slow or cause crashes (SIGBUS on ARM).
 *   SIMD often requires 16, 32, or 64-byte alignment.
-
-
----
 
 ## CHAPTER 45: HIGH PERFORMANCE OPTIMIZATION
 
@@ -15809,14 +15593,13 @@ On modern CPUs, a cache miss is the single most expensive operation.
 
 ---
 
-
 # Professional Notes: Chapter 143: Optimization in C++
 
-Section 143.1: Introduction to performance 
-Section 143.2: Empty Base Class Optimization 
-Section 143.3: Optimizing by executing less code 
-Section 143.4: Using ecient containers 
-Section 143.5: Small Object Optimization 
+Section 143.1: Introduction to performance
+Section 143.2: Empty Base Class Optimization
+Section 143.3: Optimizing by executing less code
+Section 143.4: Using ecient containers
+Section 143.5: Small Object Optimization
 
 # Professional Notes: Chapter 143: Optimization in C++
 
@@ -15978,7 +15761,7 @@ public:
     {
         if (_isAllocated)
             delete [] _buffer;
-    }        
+    }
     explicit string(const char *cStyleString)
     {
         auto stringSize = std::strlen(cStyleString);
@@ -16025,12 +15808,9 @@ A ﬁnal drawback of this optimization is that extra eﬀort is required when mo
 operation more expensive than when the buﬀer would not be used. This is especially true when the buﬀer contains
 a non-POD type.
 
----
-
 ## CHAPTER 46: WRITING A C COMPILER BASICS
 
 # WRITING A C++ COMPILER (BASICS)
-
 
 To understand C++, build a toy compiler.
 
@@ -16083,15 +15863,9 @@ Recursively visit the AST.
 *   `BinaryExpr`: Check left.type == right.type.
 *   `Variable`: Check if exists in symbol table.
 
----
-
-
----
-
 ## CHAPTER 47: WRITING A GARBAGE COLLECTOR
 
 # WRITING A GARBAGE COLLECTOR
-
 
 C++ has RAII, but implementing a GC teaches you about the stack and object graph.
 
@@ -16109,18 +15883,18 @@ struct GCObject {
 class VM {
     std::vector<GCObject*> heap;
     std::vector<GCObject*> roots; // Pointers currently on stack
-    
+
 public:
     void mark() {
         for (auto* obj : roots) mark_object(obj);
     }
-    
+
     void mark_object(GCObject* obj) {
         if (!obj || obj->marked) return;
         obj->marked = true;
         // ... traverse children ...
     }
-    
+
     void sweep() {
         auto it = std::remove_if(heap.begin(), heap.end(), [](GCObject* obj) {
             if (!obj->marked) {
@@ -16135,15 +15909,9 @@ public:
 };
 ```
 
----
-
-
----
-
 ## CHAPTER 48: THE STANDARD LIBRARY FROM SCRATCH
 
 # THE STANDARD LIBRARY FROM SCRATCH
-
 
 Implementing core STL components to understand their cost.
 
@@ -16156,7 +15924,7 @@ class Vector {
     T* data = nullptr;
     size_t sz = 0;
     size_t cap = 0;
-    
+
 public:
     void push_back(const T& val) {
         if (sz == cap) {
@@ -16165,7 +15933,7 @@ public:
         new (data + sz) T(val); // Placement new
         sz++;
     }
-    
+
 private:
     void reallocate(size_t new_cap) {
         T* new_data = static_cast<T*>(::operator new(new_cap * sizeof(T)));
@@ -16187,16 +15955,16 @@ class SharedPtr {
     struct ControlBlock {
         std::atomic<int> ref_count{1};
     } *cb;
-    
+
 public:
     SharedPtr(T* p) : ptr(p), cb(new ControlBlock()) {}
-    
+
     SharedPtr(const SharedPtr& other) {
         ptr = other.ptr;
         cb = other.cb;
         if (cb) cb->ref_count++;
     }
-    
+
     ~SharedPtr() {
         if (cb && --cb->ref_count == 0) {
             delete ptr;
@@ -16205,10 +15973,6 @@ public:
     }
 };
 ```
-
----
-
-
 
 ---
 
@@ -16295,9 +16059,6 @@ public:
 
 ---
 
-
----
-
 # Chapter 50: ODR, ADL, and Undefined Behavior
 
 This chapter deconstructs the most subtle and dangerous aspects of the C++ language specification. Understanding these rules is what separates a senior engineer from a novice.
@@ -16377,9 +16138,6 @@ Every recursive call pushes a new frame onto the stack.
 
 ---
 
-
----
-
 # Chapter 51: Linkage, Attributes, and C Incompatibilities
 
 This chapter covers the rules for how identifiers are shared across files, how to give hints to the compiler, and the subtle ways C++ differs from its parent language, C.
@@ -16436,9 +16194,6 @@ While C++ is mostly a superset of C, there are several "breaking" differences.
 
 #### 2. Linker Symbols and Mangling
 Use tools like `nm` or `objdump` on Linux, or `dumpbin` on Windows, to inspect the symbols in your object files. Use `c++filt` to demangle names.
-
----
-
 
 ---
 
@@ -16502,18 +16257,11 @@ Compilation can be sped up significantly by pre-compiling stable headers (like `
 #### 3. Compilation Databases
 The `compile_commands.json` file is a standard way for build systems to tell IDEs (like VS Code or CLion) exactly how each file was compiled, enabling perfect IntelliSense and refactoring.
 
----
-
-
----
-
-
 # VOLUME 09 SPECIALIZED MASTERY
 
 ## CHAPTER 49: DISTRIBUTED C
 
 # DISTRIBUTED C++
-
 
 Moving beyond a single process: Networking, RPC, and Consensus.
 
@@ -16541,7 +16289,7 @@ public:
         const uint8_t* ptr = reinterpret_cast<const uint8_t*>(s.data());
         data.insert(data.end(), ptr, ptr + s.size());
     }
-    
+
     const uint8_t* begin() const { return data.data(); }
     size_t size() const { return data.size(); }
 };
@@ -16576,7 +16324,7 @@ struct Node {
     State state = State::Follower;
     int current_term = 0;
     int voted_for = -1;
-    
+
     void on_timeout() {
         if (state == State::Follower) {
             state = State::Candidate;
@@ -16588,15 +16336,9 @@ struct Node {
 };
 ```
 
----
-
-
----
-
 ## CHAPTER 50: NETWORKING FROM SCRATCH
 
 # NETWORKING FROM SCRATCH
-
 
 Understanding `asio` requires understanding BSD Sockets.
 
@@ -16610,23 +16352,23 @@ The foundation of the Internet.
 
 int main() {
     int server_fd = socket(AF_INET, SOCK_STREAM, 0);
-    
+
     sockaddr_in address;
     address.sin_family = AF_INET;
     address.sin_addr.s_addr = INADDR_ANY;
     address.sin_port = htons(8080);
-    
+
     bind(server_fd, (struct sockaddr*)&address, sizeof(address));
     listen(server_fd, 3);
-    
+
     int new_socket = accept(server_fd, nullptr, nullptr);
     char buffer[1024] = {0};
     read(new_socket, buffer, 1024);
-    
+
     // Send HTTP response
     const char* hello = "HTTP/1.1 200 OK\nContent-Type: text/plain\n\nHello!";
     write(new_socket, hello, strlen(hello));
-    
+
     close(new_socket);
     close(server_fd);
     return 0;
@@ -16660,15 +16402,9 @@ while (true) {
 }
 ```
 
----
-
-
----
-
 ## CHAPTER 51: C IN THE CLOUD
 
 # C++ IN THE CLOUD
-
 
 Modern C++ is a first-class citizen in Cloud Native architectures.
 
@@ -16703,15 +16439,9 @@ int main() {
 }
 ```
 
----
-
-
----
-
 ## CHAPTER 52: CROSS-PLATFORM DEVELOPMENT
 
 # CROSS-PLATFORM DEVELOPMENT
-
 
 Write once, run everywhere (Desktop, Web, Mobile).
 
@@ -16745,15 +16475,9 @@ Java_com_example_myapp_MainActivity_stringFromJNI(JNIEnv* env, jobject /* this *
 }
 ```
 
----
-
-
----
-
 ## CHAPTER 53: GUI DEVELOPMENT WITH C
 
 # GUI DEVELOPMENT WITH C++
-
 
 Building desktop applications and tools.
 
@@ -16793,15 +16517,9 @@ void Render() {
 }
 ```
 
----
-
-
----
-
 ## CHAPTER 54: SCIENTIFIC COMPUTING  GPU
 
 # SCIENTIFIC COMPUTING & GPU
-
 
 C++ is the language of high-performance math.
 
@@ -16817,10 +16535,10 @@ void solve_system() {
     A << 1, 2, 3,
          4, 5, 6,
          7, 8, 10;
-    
+
     Eigen::VectorXd b(3);
     b << 3, 3, 4;
-    
+
     Eigen::VectorXd x = A.colPivHouseholderQr().solve(b);
 }
 ```
@@ -16843,15 +16561,9 @@ void launch_kernel(float* d_A, float* d_B, float* d_C, int N) {
 }
 ```
 
----
-
-
----
-
 ## CHAPTER 55: INTEROPERABILITY
 
 # INTEROPERABILITY
-
 
 C++ is the dark matter of the software universe: it binds everything together.
 
@@ -16897,15 +16609,9 @@ To speak to Rust, C#, or Go, use the lingua franca: C.
 *   **`extern "C"`**: Disables C++ name mangling (e.g., `_Z3foov` becomes `foo`).
 *   **Struct Layout:** Use `StandardLayoutType` structs (no virtuals, all public).
 
----
-
-
----
-
 ## CHAPTER 56: SECURITY ENGINEERING
 
 # SECURITY ENGINEERING
-
 
 ### 36.1 Fuzzing (libFuzzer / AFL++)
 Unit tests test what you *know*. Fuzzing tests what you *don't*.
@@ -16928,15 +16634,9 @@ Modern CPUs execute instructions speculatively.
 *   **Attack:** CPU predicts `true`, loads `array[x]` (where `x` is out of bounds secret). Even if checks fail, `array[x]` is now in L1 cache.
 *   **Mitigation:** `LFENCE` (Load Fence) or `std::clamp` indices to 0 on failure (masking).
 
----
-
-
----
-
 ## CHAPTER 57: SPECIALIZED DOMAINS
 
 # SPECIALIZED DOMAINS
-
 
 ### 37.1 Game Development (Data-Oriented Design)
 OOP is cache-poison. Games use **Entity-Component-Systems (ECS)**.
@@ -17130,21 +16830,14 @@ public:
 
 ---
 
-**You are now equipped to master C++ from absolute zero to expert level!** 
+**You are now equipped to master C++ from absolute zero to expert level!**
 
 *Last Updated: December 2025*
 *C++ Versions Covered: C++98 through C++23*
 
----
-
-
-
----
-
 ## CHAPTER 58: ABA PROBLEM  MEMORY RECLAMATION
 
 # ABA PROBLEM & MEMORY RECLAMATION
-
 
 In the rarefied air of lock-free programming, the **ABA Problem** is the dragon that guards the gate. Conquering it requires understanding the very fabric of memory lifecycles.
 
@@ -17171,7 +16864,7 @@ struct TaggedPtr {
     TaggedPtr(void* ptr, uint16_t tag) {
         data = (reinterpret_cast<uint64_t>(ptr) & 0x0000FFFFFFFFFFFF) | (static_cast<uint64_t>(tag) << 48);
     }
-    
+
     void* get_ptr() const { return reinterpret_cast<void*>(data & 0x0000FFFFFFFFFFFF); }
     uint16_t get_tag() const { return static_cast<uint16_t>(data >> 48); }
 };
@@ -17202,15 +16895,9 @@ Used by `malloc` implementations and databases (like Silo).
 *   **Pros:** Extremely fast (just checking integers).
 *   **Cons:** One stalled thread prevents *all* memory reclamation (OOM risk).
 
----
-
-
----
-
 ## CHAPTER 59: TEMPLATE METAPROGRAMMING PATTERNS
 
 # TEMPLATE METAPROGRAMMING PATTERNS
-
 
 Moving computation from runtime to compile-time saves cycles and enables zero-cost abstractions.
 
@@ -17231,7 +16918,7 @@ auto operator+(const L& l, const R& r) {
 }
 
 // Usage
-// Vector result = A + B + C; 
+// Vector result = A + B + C;
 // Becomes: result[i] = A[i] + B[i] + C[i] in a single loop!
 ```
 
@@ -17264,15 +16951,9 @@ class SmartPtr : public CheckingPolicy, public ThreadingPolicy {
 // User chooses: SmartPtr<int, NoCheck, MultiThreaded>
 ```
 
----
-
-
----
-
 ## CHAPTER 60: HIGH-PERFORMANCE DATA STRUCTURES
 
 # HIGH-PERFORMANCE DATA STRUCTURES
-
 
 When `std::unordered_map` is too slow, we descend into the hardware.
 
@@ -17297,15 +16978,9 @@ Cache-efficient digital trees (tries) for integer keys.
 O(1) insertion, deletion, and access with stable "handles" (indices) instead of pointers.
 *   **Generational Indices:** Handle = `[Index | Generation]`. Prevents "Dangling Reference" equivalent (accessing a slot that was re-used for a new object).
 
----
-
-
----
-
 ## CHAPTER 61: REAL-TIME AUDIO  SIGNAL PROCESSING
 
 # REAL-TIME AUDIO & SIGNAL PROCESSING
-
 
 **The Golden Rule:** In the audio callback, thou shalt not:
 1.  **Block** (No Mutexes).
@@ -17332,15 +17007,9 @@ Digital Signal Processing (Filters, FFT) is purely math-bound.
 For spectral analysis (FFT) which requires blocks (e.g., 1024 samples), while audio comes in small chunks (e.g., 64 samples).
 *   **Technique:** Fill Buffer A. When full, signal worker thread to process A, swap to filling Buffer B.
 
----
-
-
----
-
 ## CHAPTER 62: ROBOTICS  ROS2 DEVELOPMENT
 
 # ROBOTICS & ROS2 DEVELOPMENT
-
 
 Robotics is where Soft Real-Time (Navigation) meets Hard Real-Time (Motor Control).
 
@@ -17367,15 +17036,9 @@ Standard ROS2 executors can suffer from priority inversion.
 In the real-time control loop (1kHz+), heap fragmentation is fatal.
 *   **Pattern:** Use `std::pmr::monotonic_buffer_resource` on the stack for message generation.
 
----
-
-
----
-
 ## CHAPTER 63: MACHINE LEARNING INFRASTRUCTURE
 
 # MACHINE LEARNING INFRASTRUCTURE
-
 
 Deep Learning frameworks (PyTorch, TensorFlow) are C++ engines wrapped in Python.
 
@@ -17399,15 +17062,9 @@ How to add `[32, 1]` vector to `[32, 100]` matrix?
 ### 4. Operator Fusion
 Optimizing `ReLU(Add(MatMul(A, B), C))` into a single kernel launch to minimize VRAM bandwidth.
 
----
-
-
----
-
 ## CHAPTER 64: DATABASE INTERNALS LSM TREES
 
 # DATABASE INTERNALS (LSM TREES)
-
 
 How RocksDB and LevelDB achieve millions of writes per second.
 
@@ -17432,16 +17089,9 @@ Mapping the SSTable file directly into virtual address space. The OS manages pag
 *   **Benefits:** Zero-copy from disk cache to user space.
 *   **Risks:** `SIGBUS` if file is truncated; lack of control over eviction.
 
----
-
-
-
----
-
 ## CHAPTER 65: THE ULTIMATE ALGORITHM REFERENCE
 
 # THE ULTIMATE ALGORITHM REFERENCE
-
 
 Stop writing loops. Use the STL.
 
@@ -17482,15 +17132,9 @@ Stop writing loops. Use the STL.
 *   `std::reduce(b, e)`: Parallelizable sum (C++17).
 *   `std::inner_product`: Dot product.
 
----
-
-
----
-
 ## CHAPTER 66: CAPSTONE PROJECT - HIGH-PERFORMANCE ORDER BOOK
 
 # CAPSTONE PROJECT - HIGH-PERFORMANCE ORDER BOOK
-
 
 This capstone project integrates C++20/23 features into a realistic high-frequency trading (HFT) component. It demonstrates Modules, Concepts, Ranges, Coroutines, and modern error handling.
 
@@ -17539,7 +17183,7 @@ export namespace hft {
 
         // C++20 Spaceship for easy comparison
         auto operator<=>(const Order&) const = default;
-        
+
         // C++23 Deducing This for generic accessors (example)
         template<typename Self>
         auto&& get_price(this Self&& self) {
@@ -17554,7 +17198,7 @@ struct std::formatter<hft::Order> {
     constexpr auto parse(format_parse_context& ctx) { return ctx.begin(); }
 
     auto format(const hft::Order& o, format_context& ctx) const {
-        return std::format_to(ctx.out(), "[ID:{}] {} @ {}", 
+        return std::format_to(ctx.out(), "[ID:{}] {} @ {}",
             o.id, (o.side == hft::Side::Buy ? "BUY" : "SELL"), o.price);
     }
 };
@@ -17585,7 +17229,7 @@ export namespace hft {
 
     class OrderBook {
     private:
-        // Use std::flat_map (C++23) for cache locality if available, 
+        // Use std::flat_map (C++23) for cache locality if available,
         // else std::map. Simulated here as vector for simplicity + ranges
         std::vector<Order> bids;
         std::vector<Order> asks;
@@ -17594,14 +17238,14 @@ export namespace hft {
         // C++23 std::expected for error handling
         std::expected<void, std::string> add_order(Order o) {
             if (o.quantity == 0) return std::unexpected("Invalid quantity");
-            
+
             auto& side_vec = (o.side == Side::Buy) ? bids : asks;
             side_vec.push_back(o);
-            
+
             // Keep sorted (simplified)
             std::ranges::sort(side_vec, {}, &Order::price);
             if (o.side == Side::Buy) std::ranges::reverse(side_vec);
-            
+
             return {};
         }
 
@@ -17641,7 +17285,7 @@ int main() {
     book.add_order({4, hft::Side::Sell, 102, 15});
 
     book.print_book();
-    
+
     // Demonstrate Error Handling
     if (auto res = book.add_order({5, hft::Side::Buy, 100, 0}); !res) {
         std::println(stderr, "Error adding order: {}", res.error());
@@ -17653,19 +17297,13 @@ int main() {
 
 ---
 
----
-
-
 # APPENDICES
 
-
 ---
-
 
 # APPENDICES
 
 # Appendix A: C++ Keywords & Operators Reference
-
 
 ### Essential Keywords (Non-Exhaustive)
 *   **alignas / alignof**: Memory alignment queries and specifications.
@@ -17698,11 +17336,7 @@ int main() {
 
 ---
 
-
----
-
 # Appendix B: Common Acronyms
-
 
 *   **ABI**: Application Binary Interface.
 *   **API**: Application Programming Interface.
@@ -17725,11 +17359,7 @@ int main() {
 
 ---
 
-
----
-
 # Appendix C: Recommended Tooling
-
 
 ### Compilers
 *   **GCC (GNU Compiler Collection)**: Standard on Linux.
@@ -17754,11 +17384,7 @@ int main() {
 
 ---
 
-
----
-
 # Appendix D: Common C++ Traps & Pitfalls
-
 
 ### I. General & Syntax Traps
 1.  **Most Vexing Parse**
@@ -17851,11 +17477,7 @@ int main() {
 
 ---
 
-
----
-
 # Appendix E: C++ Interview Cheat Sheet
-
 
 ### Core Concepts
 1.  **Virtual Functions**: Enable runtime polymorphism via vtable/vptr. Destructors must be virtual in base classes.
@@ -17891,11 +17513,7 @@ int main() {
 
 ---
 
-
----
-
 # Appendix F: The C++ Standard Evolution Matrix
-
 
 ### 1. Versioned Changelog
 
@@ -17966,11 +17584,7 @@ int main() {
 
 ---
 
-
----
-
 # Appendix G: C++ Standard Library Headers Reference
-
 
 ### Concepts & Utilities
 *   `<concepts>` (C++20): Fundamental concepts library.
@@ -18027,16 +17641,9 @@ int main() {
 *   `<valarray>`: Class for representing and manipulating arrays of values.
 *   `<numbers>` (C++20): Mathematical constants.
 
-
-
-
-
-
-
 ---
 
 # Appendix H: Professional C++ Idioms
-
 
 ### 1. RAII (Resource Acquisition Is Initialization)
 *   **Concept**: Bind resource lifecycle to object lifecycle. Constructor acquires, destructor releases.
@@ -18099,7 +17706,3 @@ int main() {
 *   **Example**: `std::enable_shared_from_this`.
 
 ---
-
-
----
-
