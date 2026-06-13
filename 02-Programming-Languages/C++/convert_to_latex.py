@@ -113,13 +113,31 @@ def create_master_tex(chapters):
   \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
 
 % Page Layout
-\geometry{margin=1in}
+\geometry{margin=0.7in}
 \setlength{\headheight}{15pt}
 \pagestyle{fancy}
 \fancyhf{}
 \fancyhead[LE,RO]{\thepage}
 \fancyhead[RE]{\leftmark}
 \fancyhead[LO]{\rightmark}
+\raggedbottom
+
+% Re-define chapter for compactness
+\makeatletter
+\def\@makechapterhead#1{%
+  {\parindent \z@ \raggedright \normalfont
+    \ifnum \c@secnumdepth >\m@ne
+      \if@mainmatter
+        \large\bfseries \@chapapp\space \thechapter
+        \par\nobreak
+        \vskip 5\p@
+      \fi
+    \fi
+    \interlinepenalty\@M
+    \Huge \bfseries #1\par\nobreak
+    \vskip 20\p@
+  }}
+\makeatother
 
 % Colors for code
 \definecolor{codegreen}{rgb}{0,0.6,0}
