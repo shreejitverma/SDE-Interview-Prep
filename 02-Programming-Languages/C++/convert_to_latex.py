@@ -5,25 +5,6 @@ import subprocess
 SOURCE_FILE = "Complete-CPP-Zero-to-Godhood.md"
 OUTPUT_DIR = "CPP_Zero_to_Godhood"
 
-# Map of old "Section" titles to promote to Chapters (appearing between Ch1 and Ch2)
-PROMOTED_SECTIONS = [
-    "ADVANCED POINTERS & MEMORY",
-    "ADVANCED FUNCTIONS",
-    "FUNCTION POINTERS & CALLBACKS",
-    "ADVANCED ARRAYS",
-    "ADVANCED STRINGS",
-    "BITWISE OPERATIONS",
-    "PREPROCESSOR DIRECTIVES",
-    "TYPE CASTING",
-    "ADVANCED CONTROL FLOW",
-    "ENUMERATION & UNIONS",
-    "CONST & VOLATILE",
-    "INLINE FUNCTIONS & MACROS",
-    "NAMESPACES",
-    "FILE I/O ADVANCED",
-    "ERROR HANDLING & DEBUGGING"
-]
-
 def sanitize_content(content):
     # Remove emojis and non-ASCII chars
     content = re.sub(r'[^\x00-\x7F]+', '', content)
@@ -35,36 +16,34 @@ def extract_chapters(file_path):
     with open(file_path, 'r', encoding='utf-8') as f:
         content = f.read()
 
-    # Regex for standard chapters: ## <a...>CHAPTER X: TITLE or ## CHAPTER X: TITLE
-    # Regex for sections: # SECTION X: TITLE
-    # Regex for Appendix: ## Appendix X: TITLE
-    
-    # We will iterate through the file line by line to maintain state
     lines = content.split('\n')
     
     chapters = []
     current_title = "Preface"
     current_content = []
     
-    # State tracking
     chapter_count = 0
-    in_preface = True
     
-    # Helper to flush current chapter
     def flush_chapter():
         nonlocal current_content, chapter_count
         if current_content:
             text = '\n'.join(current_content)
-            # Determine numbering
+            # Determine prefix
             if current_title.startswith("Preface"):
                 prefix = "00"
             elif current_title.startswith("Appendix"):
-                # Extract letter
                 match = re.search(r'Appendix\s+([A-Z])', current_title)
                 prefix = f"Appendix_{match.group(1)}" if match else "Appendix_X"
             else:
-                chapter_count += 1
-                prefix = f"Chapter_{chapter_count}"
+                # This is a main chapter found by ## CHAPTER X
+                # We use the X from CHAPTER X to be safe and consistent with index
+                match = re.search(r'CHAPTER\s+(\d+)', current_title)
+                if match:
+                    prefix = f"Chapter_{match.group(1)}"
+                else:
+                    # Fallback for re-organized chapters if numbering is missing
+                    chapter_count += 1
+                    prefix = f"Chapter_{chapter_count}"
             
             clean_title = re.sub(r'[^\w\s-]', '', current_title).strip().replace(' ', '_')[:50]
             filename = f"{prefix}_{clean_title}"
@@ -72,81 +51,39 @@ def extract_chapters(file_path):
             current_content = []
 
     for line in lines:
-        # Check for Chapter Header
-        # Match: ## <a name="..."></a>CHAPTER 1: TITLE or ## CHAPTER 1: TITLE
-        # Note: The file has mixed ## and # for these.
-        
-        # 1. Standard Chapter
-        chap_match = re.match(r'^##?\s+(?:<a name="[^"]+"></a>)?CHAPTER\s+\d+:\s*(.*)', line)
+        # STRICT MATCH for main chapters to avoid sub-headers being treated as chapters
+        # Match: ## CHAPTER 1: TITLE or ## CHAPTER 1: TITLE (with anchor)
+        chap_match = re.match(r'^##\s+(?:<a name="[^"]+"></a>)?CHAPTER\s+(\d+):\s*(.*)', line)
         if chap_match:
             flush_chapter()
-            current_title = chap_match.group(1).strip()
-            in_preface = False
+            current_title = f"CHAPTER {chap_match.group(1)}: {chap_match.group(2).strip()}"
             continue
 
-        # 2. Promoted Section (Only if it's one of the specific legacy sections)
-        sec_match = re.match(r'^#\s+SECTION\s+\d+:\s*(.*)', line)
-        if sec_match:
-            title = sec_match.group(1).strip()
-            # Check if this is one of the "Lost Chapters" to be promoted
-            is_promoted = False
-            for p_title in PROMOTED_SECTIONS:
-                if p_title in title:
-                    is_promoted = True
-                    break
-            
-            if is_promoted:
-                flush_chapter()
-                current_title = title
-                in_preface = False
-                continue
-            else:
-                # It's an internal section (e.g. in C++11 chapter). Convert to LaTeX section.
-                line = f"## {title}" # Demote to subsection level in markdown (will become \section in latex)
-
-        # 3. Appendix
-        app_match = re.match(r'^##?\s+Appendix\s+([A-Z]):\s*(.*)', line)
+        # Match Appendix: # Appendix A: TITLE
+        app_match = re.match(r'^#\s+Appendix\s+([A-Z]):\s*(.*)', line)
         if app_match:
             flush_chapter()
             current_title = f"Appendix {app_match.group(1)}: {app_match.group(2).strip()}"
-            in_preface = False
             continue
 
-        # 4. Volume Headers (Ignore or keep as text?)
-        # We'll ignore them to flatten the book, or maybe just add them as text.
-        # User wants "No sections", implying flat structure.
-        if line.startswith("# Volume"):
-            continue 
-
-        # Add line to current content
         current_content.append(line)
 
-    # Flush last chapter
     flush_chapter()
-    
     return chapters
 
-def convert_chapter(filename, title, content):
-    md_filename = os.path.join(OUTPUT_DIR, f"{filename}.md")
-    tex_filename = os.path.join(OUTPUT_DIR, f"{filename}.tex")
-
-    # Sanitize
+def convert_to_tex(filename, title, content):
     content = sanitize_content(content)
+    md_path = os.path.join(OUTPUT_DIR, f"{filename}.md")
+    with open(md_path, 'w', encoding='utf-8') as f:
+        f.write(f"# {title}\n\n{content}")
     
-    # Ensure title is at the top if not present (Pandoc --top-level-division=chapter handles the file, but we need the heading text)
-    # Actually, putting "# Title" at top of MD becomes \chapter{Title}
-    final_content = f"# {title}\n\n{content}"
-
-    with open(md_filename, 'w', encoding='utf-8') as f:
-        f.write(final_content)
-
+    tex_path = os.path.join(OUTPUT_DIR, f"{filename}.tex")
     cmd = [
         "pandoc",
-        md_filename,
-        "-o", tex_filename,
-        "--from=markdown",
-        "--to=latex",
-        "--top-level-division=chapter",
+        md_path,
+        "-f", "markdown",
+        "-t", "latex",
+        "-o", tex_path,
         "--listings"
     ]
     subprocess.run(cmd, check=True)
@@ -166,9 +103,18 @@ def create_master_tex(chapters):
 \usepackage{booktabs}
 \usepackage{amssymb}
 \usepackage{fancyhdr}
+\usepackage{amsmath}
+\usepackage{array}
+\usepackage{calc}
+
+% Pandoc compatibility
+\newcommand{\passthrough}[1]{#1}
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
 
 % Page Layout
 \geometry{margin=1in}
+\setlength{\headheight}{15pt}
 \pagestyle{fancy}
 \fancyhf{}
 \fancyhead[LE,RO]{\thepage}
@@ -189,7 +135,7 @@ def create_master_tex(chapters):
     filecolor=magenta,      
     urlcolor=cyan,
     pdftitle={C++ Zero to Godhood},
-    pdfauthor={Community Guide},
+    pdfauthor={Shreejit Verma},
 }
 
 % Code Listing Style
@@ -228,7 +174,7 @@ def create_master_tex(chapters):
     \vspace{2cm}
     \textbf{\Large Master the Beast.}
 }
-\author{\Large Community Edition}
+\author{\Large Shreejit Verma}
 \date{\today}
 
 \begin{document}
@@ -239,59 +185,62 @@ def create_master_tex(chapters):
 
 \mainmatter
 """
-    # Logic to insert Volumes (Parts)
     current_volume = 0
     
-    for filename, _, _ in chapters:
-        # Extract chapter number
-        match = re.search(r'Chapter_(\d+)_', filename)
+    for filename, title, _ in chapters:
+        # Extract chapter number for volume insertion
+        match = re.search(r'Chapter_(\d+)', filename)
         if match:
             chap_num = int(match.group(1))
             
-            # Volume I: C++98/03 (Chapters 1-9)
+            # Volume 01: C++98/03 (Chapters 1-9)
             if chap_num == 1 and current_volume < 1:
                 master_content += r"\part{Volume 01: FOUNDATION (C++98/03)}" + "\n"
                 current_volume = 1
             
-            # Volume II: C++11 (Chapters 10-15)
+            # Volume 02: C++11 (Chapters 10-15)
             elif chap_num == 10 and current_volume < 2:
                 master_content += r"\part{Volume 02: MODERN REVOLUTION (C++11)}" + "\n"
                 current_volume = 2
                 
-            # Volume III: C++14 (Chapters 16-19)
+            # Volume 03: C++14 (Chapters 16-19)
             elif chap_num == 16 and current_volume < 3:
                 master_content += r"\part{Volume 03: REFINEMENT (C++14)}" + "\n"
                 current_volume = 3
                 
-            # Volume IV: C++17 (Chapters 20-25)
+            # Volume 04: C++17 (Chapters 20-25)
             elif chap_num == 20 and current_volume < 4:
                 master_content += r"\part{Volume 04: MODERNIZATION (C++17)}" + "\n"
                 current_volume = 4
                 
-            # Volume V: C++20 (Chapters 26-31)
+            # Volume 05: C++20 (Chapters 26-31)
             elif chap_num == 26 and current_volume < 5:
                 master_content += r"\part{Volume 05: GIGANTIC LEAP (C++20)}" + "\n"
                 current_volume = 5
                 
-            # Volume VI: C++23 (Chapters 32-37)
+            # Volume 06: C++23 (Chapters 32-37)
             elif chap_num == 32 and current_volume < 6:
                 master_content += r"\part{Volume 06: LATEST EVOLUTION (C++23)}" + "\n"
                 current_volume = 6
                 
-            # Volume VII: C++26 (Chapter 38)
+            # Volume 07: C++26 (Chapter 38)
             elif chap_num == 38 and current_volume < 7:
                 master_content += r"\part{Volume 07: THE NEXT FRONTIER (C++26)}" + "\n"
                 current_volume = 7
                 
-            # Volume VIII: Advanced Systems (Chapters 39-48)
+            # Volume 08: Advanced Systems (Chapters 39-48)
             elif chap_num == 39 and current_volume < 8:
                 master_content += r"\part{Volume 08: ADVANCED SYSTEMS}" + "\n"
                 current_volume = 8
 
-            # Volume IX: Specialized Domains (Chapters 49+)
+            # Volume 09: Specialized Domains (Chapters 49+)
             elif chap_num == 49 and current_volume < 9:
                 master_content += r"\part{Volume 09: SPECIALIZED MASTERY}" + "\n"
                 current_volume = 9
+
+        if filename.startswith("Appendix") and current_volume < 10:
+            master_content += r"\appendix" + "\n"
+            current_volume = 10
 
         master_content += f"\\input{{{filename}.tex}}\n"
 
@@ -303,24 +252,17 @@ def create_master_tex(chapters):
 def main():
     if not os.path.exists(OUTPUT_DIR):
         os.makedirs(OUTPUT_DIR)
-
+    
     print("Extracting chapters...")
     chapters = extract_chapters(SOURCE_FILE)
-    
     print(f"Found {len(chapters)} chapters/sections.")
     
-    processed_files = []
-    for filename, title, content in chapters:
+    for filename, title, text in chapters:
         print(f"Converting {filename}...")
-        try:
-            convert_chapter(filename, title, content)
-            processed_files.append((filename, title, content))
-        except Exception as e:
-            print(f"Error converting {filename}: {e}")
-
+        convert_to_tex(filename, title, text)
+        
     print("Creating master LaTeX file...")
-    create_master_tex(processed_files)
-    
+    create_master_tex(chapters)
     print(f"Done. To compile: cd {OUTPUT_DIR} && pdflatex CPP_Zero_to_Godhood.tex")
 
 if __name__ == "__main__":
