@@ -1,7 +1,6 @@
 # Appendix F: The C++ Standard Evolution Matrix
 
 
-
 ### 1. Versioned Changelog
 
 #### **C++98 (ISO/IEC 14882:1998)** - *The Foundation*
@@ -68,8 +67,5 @@
 | **C++20** | 2020-12 | C++2a | `-std=c++20` |
 | **C++23** | 2023-10 | C++2b | `-std=c++23` |
 | **C++26** | *Expected 2026* | C++2c | `-std=c++26` / `-std=c++2c` |
-
----
-
 
 ---

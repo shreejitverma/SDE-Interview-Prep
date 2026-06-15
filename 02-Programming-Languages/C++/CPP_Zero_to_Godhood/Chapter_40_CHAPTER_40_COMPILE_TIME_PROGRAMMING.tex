@@ -1,0 +1,101 @@
+\hypertarget{chapter-40-compile-time-programming}{%
+\section{CHAPTER 40: COMPILE TIME
+PROGRAMMING}\label{chapter-40-compile-time-programming}}
+
+\hypertarget{compile-time-programming}{%
+\section{COMPILE-TIME PROGRAMMING}\label{compile-time-programming}}
+
+\hypertarget{constexpr-evolution}{%
+\subsection{\texorpdfstring{1. \texttt{constexpr}
+Evolution}{1. constexpr Evolution}}\label{constexpr-evolution}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{C++11:} Single return statement. Very restricted.
+\item
+  \textbf{C++14:} Loops, local variables, multiple returns allowed.
+\item
+  \textbf{C++17:} \passthrough{\lstinline!if constexpr!}, lambdas can be
+  constexpr.
+\item
+  \textbf{C++20:} Virtual functions,
+  \passthrough{\lstinline!try-catch!}, dynamic allocation
+  (\passthrough{\lstinline!std::vector!},
+  \passthrough{\lstinline!std::string!}) allowed in constexpr context
+  (transient allocation).
+\end{itemize}
+
+\hypertarget{consteval-c20}{%
+\subsection{\texorpdfstring{2. \texttt{consteval}
+(C++20)}{2. consteval (C++20)}}\label{consteval-c20}}
+
+Forces immediate execution. If it can't run at compile time, it's an
+error.
+
+\begin{lstlisting}[language={C++}]
+consteval int square(int n) { return n * n; }
+
+int x = square(5); // OK
+int y = 10;
+// int z = square(y); // Error: y is not a constant expression
+\end{lstlisting}
+
+\hypertarget{type-traits-type_traits}{%
+\subsection{\texorpdfstring{3. Type Traits
+(\texttt{\textless{}type\_traits\textgreater{}})}{3. Type Traits (\textless type\_traits\textgreater)}}\label{type-traits-type_traits}}
+
+The building blocks of metaprogramming.
+
+\hypertarget{queries}{%
+\subsubsection{3.1 Queries}\label{queries}}
+
+\begin{itemize}
+\tightlist
+\item
+  \passthrough{\lstinline!is\_integral\_v<T>!}
+\item
+  \passthrough{\lstinline!is\_same\_v<T, U>!}
+\item
+  \passthrough{\lstinline!is\_base\_of\_v<Base, Derived>!}
+\end{itemize}
+
+\hypertarget{transformations}{%
+\subsubsection{3.2 Transformations}\label{transformations}}
+
+\begin{itemize}
+\tightlist
+\item
+  \passthrough{\lstinline!remove\_const\_t<T>!}
+\item
+  \passthrough{\lstinline!decay\_t<T>!} (Arrays -\textgreater{}
+  pointers, functions -\textgreater{} pointers, remove cv-ref)
+\item
+  \passthrough{\lstinline!conditional\_t<Bool, T, F>!} (Compile time IF)
+\end{itemize}
+
+\hypertarget{stdintegral_constant}{%
+\subsection{\texorpdfstring{4.
+\texttt{std::integral\_constant}}{4. std::integral\_constant}}\label{stdintegral_constant}}
+
+Wraps a compile-time value as a type.
+
+\begin{lstlisting}[language={C++}]
+using Two = std::integral_constant<int, 2>;
+using Four = std::integral_constant<int, 4>;
+
+static_assert(Two::value + Two::value == Four::value);
+\end{lstlisting}
+
+\hypertarget{reflection-c26-preview}{%
+\subsection{5. Reflection (C++26
+Preview)}\label{reflection-c26-preview}}
+
+Currently, we use libraries like \passthrough{\lstinline!magic\_enum!}
+or macro hacks. C++26 brings static reflection.
+
+\begin{lstlisting}[language={C++}]
+// C++26 Syntax (Proposed)
+// constexpr auto info = ^MyClass;
+// for (auto member : info.data_members()) ...
+\end{lstlisting}

@@ -1,7 +1,6 @@
 # Appendix C: Recommended Tooling
 
 
-
 ### Compilers
 *   **GCC (GNU Compiler Collection)**: Standard on Linux.
 *   **Clang/LLVM**: Excellent error messages, widely used on macOS/Linux.
@@ -22,8 +21,5 @@
 *   **ThreadSanitizer (TSan)**: Detects data races.
 *   **Clang-Tidy**: Linter and static analysis tool.
 *   **Cppcheck**: Static analysis tool.
-
----
-
 
 ---

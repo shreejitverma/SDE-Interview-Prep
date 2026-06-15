@@ -1,0 +1,74 @@
+\hypertarget{chapter-42-lock-free-programming}{%
+\section{CHAPTER 42: LOCK FREE
+PROGRAMMING}\label{chapter-42-lock-free-programming}}
+
+\hypertarget{lock-free-programming}{%
+\section{LOCK-FREE PROGRAMMING}\label{lock-free-programming}}
+
+\hypertarget{the-concept}{%
+\subsection{1. The Concept}\label{the-concept}}
+
+Programming without Mutexes. Guarantees system-wide progress.
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Lock-Free:} At least one thread always makes progress.
+\item
+  \textbf{Wait-Free:} Every thread makes progress in finite steps.
+\end{itemize}
+
+\hypertarget{compare-and-swap-cas}{%
+\subsection{2. Compare-And-Swap (CAS)}\label{compare-and-swap-cas}}
+
+The primitive of lock-free.
+\passthrough{\lstinline!compare\_exchange\_weak!} vs
+\passthrough{\lstinline!compare\_exchange\_strong!}.
+
+\begin{lstlisting}[language={C++}]
+std::atomic<int> head;
+
+void push(int new_val) {
+    int old_head = head.load();
+    // Loop until we successfully swap head with new_val
+    while (!head.compare_exchange_weak(old_head, new_val)) {
+        // old_head is updated to current head value automatically
+    }
+}
+\end{lstlisting}
+
+\hypertarget{the-aba-problem}{%
+\subsection{3. The ABA Problem}\label{the-aba-problem}}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  Thread 1 reads A.
+\item
+  Thread 2 changes A to B, then back to A.
+\item
+  Thread 1 CAS(A, new) succeeds, thinking nothing changed.
+\end{enumerate}
+
+\textbf{Solutions:} * \textbf{Versioned Pointers:} Store
+\passthrough{\lstinline!\{ptr, count\}!}.
+\passthrough{\lstinline!std::atomic<uint128\_t>!} (if supported). *
+\textbf{Hazard Pointers:} Protect pointers currently being read. *
+\textbf{RCU (Read-Copy-Update):} Wait for all readers to finish before
+reclaiming memory.
+
+\hypertarget{lock-free-data-structures}{%
+\subsection{4. Lock-Free Data
+Structures}\label{lock-free-data-structures}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Lock-Free Stack:} Easy (CAS on head).
+\item
+  \textbf{Lock-Free Queue:} Harder (Head and Tail). Use Michael-Scott
+  Queue algorithm.
+\item
+  \textbf{Lock-Free Hash Map:} Very hard (Split-Ordered Lists).
+\end{itemize}

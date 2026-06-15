@@ -1,7 +1,6 @@
 # Appendix A: C++ Keywords & Operators Reference
 
 
-
 ### Essential Keywords (Non-Exhaustive)
 *   **alignas / alignof**: Memory alignment queries and specifications.
 *   **asm**: Inline assembly block.
@@ -30,8 +29,5 @@
 *   `->*` Pointer to member selection
 *   `<=>` Three-way comparison (Spaceship) (C++20)
 *   `co_await`, `co_yield`, `co_return` Coroutine operators (C++20)
-
----
-
 
 ---

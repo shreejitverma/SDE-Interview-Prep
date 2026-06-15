@@ -1,0 +1,203 @@
+\hypertarget{chapter-37-c23-library-utilities}{%
+\section{CHAPTER 37: C23 LIBRARY
+UTILITIES}\label{chapter-37-c23-library-utilities}}
+
+\hypertarget{c23-library-utilities}{%
+\section{C++23 LIBRARY UTILITIES}\label{c23-library-utilities}}
+
+\hypertarget{stdunreachable}{%
+\subsection{\texorpdfstring{1.
+\texttt{std::unreachable}}{1. std::unreachable}}\label{stdunreachable}}
+
+Marks code as unreachable. If executed, Undefined Behavior (allows
+optimization).
+
+\begin{lstlisting}[language={C++}]
+#include <utility>
+
+enum Color { Red, Green };
+
+int get_value(Color c) {
+    switch (c) {
+        case Red: return 1;
+        case Green: return 2;
+    }
+    std::unreachable();
+}
+\end{lstlisting}
+
+\hypertarget{stdto_underlying}{%
+\subsection{\texorpdfstring{2.
+\texttt{std::to\_underlying}}{2. std::to\_underlying}}\label{stdto_underlying}}
+
+Safely cast an \passthrough{\lstinline!enum class!} to its underlying
+integer type.
+
+\begin{lstlisting}[language={C++}]
+enum class Flags : unsigned char { A = 1 };
+auto val = std::to_underlying(Flags::A); // unsigned char
+\end{lstlisting}
+
+\hypertarget{stdbyteswap}{%
+\subsection{\texorpdfstring{3.
+\texttt{std::byteswap}}{3. std::byteswap}}\label{stdbyteswap}}
+
+Endianness reversal.
+
+\begin{lstlisting}[language={C++}]
+#include <bit>
+uint32_t x = 0x12345678;
+uint32_t y = std::byteswap(x); // 0x78563412
+\end{lstlisting}
+
+\hypertarget{stdstdatomic.h}{%
+\subsection{\texorpdfstring{4.
+\texttt{std::stdatomic.h}}{4. std::stdatomic.h}}\label{stdstdatomic.h}}
+
+C compatibility header for atomics.
+
+\hypertarget{stdmove_only_function}{%
+\subsection{\texorpdfstring{5.
+\texttt{std::move\_only\_function}}{5. std::move\_only\_function}}\label{stdmove_only_function}}
+
+A replacement for \passthrough{\lstinline!std::function!} that works
+with move-only callables (like lambdas capturing
+\passthrough{\lstinline!unique\_ptr!}).
+
+```cpp \#include
+
+std::move\_only\_function\textless void()\textgreater{} f; auto ptr =
+std::make\_unique(42);
+
+\hypertarget{f-p-stdmoveptr-ok-stdfunction-would-fail}{%
+\subsection{\texorpdfstring{f = \href{}{p = std::move(ptr)} \{
+/\emph{\ldots{}}/ \}; // OK (std::function would
+fail)}{f = p = std::move(ptr) \{ /\ldots/ \}; // OK (std::function would fail)}}\label{f-p-stdmoveptr-ok-stdfunction-would-fail}}
+
+\hypertarget{professional-notes-c23-deep-dives}{%
+\subsection{6. Professional Notes: C++23 Deep
+Dives}\label{professional-notes-c23-deep-dives}}
+
+\hypertarget{deducing-this-the-end-of-crtp}{%
+\subsubsection{\texorpdfstring{6.1 Deducing \texttt{this}: The End of
+CRTP?}{6.1 Deducing this: The End of CRTP?}}\label{deducing-this-the-end-of-crtp}}
+
+Explicit object parameters (deducing \passthrough{\lstinline!this!})
+allow member functions to be written as templates, where the first
+parameter is the object instance itself.
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Recursive Lambdas}: Previously, a lambda couldn't easily call
+  itself without \passthrough{\lstinline!std::function!} or a helper.
+  Now:
+  \passthrough{\lstinline!cpp     auto fib = [](this auto self, int n) -> int \{         return n <= 1 ? n : self(n - 1) + self(n - 2);     \};!}
+\item
+  \textbf{Forwarding Overloads}: Instead of writing
+  \passthrough{\lstinline!const\&!} and \passthrough{\lstinline!\&\&!}
+  overloads for a getter, you can write one:
+  \passthrough{\lstinline!cpp     template<typename Self>     auto\&\& get\_data(this Self\&\& self) \{         return std::forward<Self>(self).data;     \}!}
+\end{itemize}
+
+\hypertarget{stdexpected-functional-error-handling}{%
+\subsubsection{\texorpdfstring{6.2 \texttt{std::expected}: Functional
+Error
+Handling}{6.2 std::expected: Functional Error Handling}}\label{stdexpected-functional-error-handling}}
+
+\passthrough{\lstinline!std::expected<T, E>!} is the definitive
+replacement for \passthrough{\lstinline!std::optional!} in cases where
+the \emph{reason} for failure matters.
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Monadic Chaining}: C++23 adds
+  \passthrough{\lstinline!and\_then!},
+  \passthrough{\lstinline!or\_else!}, and
+  \passthrough{\lstinline!transform!} to both
+  \passthrough{\lstinline!expected!} and
+  \passthrough{\lstinline!optional!}.
+  \passthrough{\lstinline!cpp     auto result = fetch\_user(id)         .and\_then(get\_permissions)         .and\_then(validate\_access)         .or\_else(handle\_error);!}
+  This eliminates the ``Pyramid of Doom'' (nested
+  \passthrough{\lstinline!if!} checks).
+\end{itemize}
+
+\hypertarget{stdprint-zero-allocation-io}{%
+\subsubsection{\texorpdfstring{6.3 \texttt{std::print}: Zero-Allocation
+I/O}{6.3 std::print: Zero-Allocation I/O}}\label{stdprint-zero-allocation-io}}
+
+While \passthrough{\lstinline!std::format!} returns a
+\passthrough{\lstinline!std::string!} (potentially allocating),
+\passthrough{\lstinline!std::print!} writes directly to the underlying
+file pointer (e.g., \passthrough{\lstinline!stdout!}).
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Internal Mechanics}: It uses the same formatting engine as
+  \passthrough{\lstinline!format!} but bypasses the string creation
+  step, making it as fast as \passthrough{\lstinline!printf!} but with
+  the type-safety and Unicode support of modern C++.
+\end{itemize}
+
+\hypertarget{volume-06-godhood-summary}{%
+\section{VOLUME 06: GODHOOD SUMMARY}\label{volume-06-godhood-summary}}
+
+\hypertarget{c23-landmark-features-reference}{%
+\subsubsection{C++23 LANDMARK FEATURES
+REFERENCE}\label{c23-landmark-features-reference}}
+
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.25}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.25}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.25}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.25}}@{}}
+\toprule
+\# & Feature & Explanation & Code Example \\
+\midrule
+\endhead
+1 & \textbf{Deducing this} & Explicit object parameters for simpler CRTP
+and recursive lambdas &
+\passthrough{\lstinline!void f(this auto\&\& self);!} \\
+2 & \textbf{std::expected} & Functional error handling representing
+value or error &
+\passthrough{\lstinline!std::expected<int, Error> parse();!} \\
+3 & \textbf{std::print / println} & Native type-safe replacement for
+\passthrough{\lstinline!printf!} &
+\passthrough{\lstinline!std::println("Value: \{\}", x);!} \\
+4 & \textbf{std::mdspan} & Multidimensional non-owning view (Matrices) &
+\passthrough{\lstinline!std::mdspan m(data.data(), 3, 3);!} \\
+5 & \textbf{std::flat\_map} & Cache-friendly, vector-backed associative
+container & \passthrough{\lstinline!std::flat\_map<int, string> m;!} \\
+6 & \textbf{if consteval} & Cleaner branch for compile-time vs run-time
+paths &
+\passthrough{\lstinline!if consteval \{ /* compile-time */ \}!} \\
+7 & \textbf{std::generator} & Coroutine-based generator for
+Range-compatible sequences &
+\passthrough{\lstinline!std::generator<int> fib();!} \\
+8 & \textbf{std::stacktrace} & Native support for capturing and printing
+call stacks & \passthrough{\lstinline!std::stacktrace::current();!} \\
+9 & \textbf{std::unreachable} & Hint for optimizer that a branch is
+impossible &
+\passthrough{\lstinline!if (cond) \{ ... \} else \{ std::unreachable(); \}!} \\
+\bottomrule
+\end{longtable}
+
+C++23 is the \textbf{Latest Evolution}, providing the ``missing pieces''
+of C++20 and making the language even more ergonomic. 1.
+\textbf{Deducing \passthrough{\lstinline!this!}}: Simplified CRTP and
+reduced member function bloat. 2. \textbf{expected}: A standard way to
+handle errors with values. 3. \textbf{print/println}: Finally, a modern,
+type-safe replacement for \passthrough{\lstinline!printf!}. 4.
+\textbf{Multidimensional operator{[}{]}}: Paving the way for
+high-performance linear algebra.
+
+\textbf{The Golden Rule of C++23}: Use
+\passthrough{\lstinline!std::print!} for I/O and
+\passthrough{\lstinline!std::expected!} for error-prone logic. You are
+now at the cutting edge of production C++.
+
+\hypertarget{volume-07-the-next-frontier-c26}{%
+\section{VOLUME 07 THE NEXT FRONTIER
+C26}\label{volume-07-the-next-frontier-c26}}

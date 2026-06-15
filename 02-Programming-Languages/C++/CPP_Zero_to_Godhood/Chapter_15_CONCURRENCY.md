@@ -928,6 +928,16 @@ OpenMP provides different ways to distribute loop iterations:
 #### 3. Thread Affinity
 Use environment variables like `OMP_PROC_BIND=true` to bind threads to specific physical CPU cores, improving cache hits by preventing threads from migrating between cores.
 
+# VOLUME 02: GODHOOD SUMMARY
+
+C++11 was the **Modern Revolution**. It transformed C++ from a "Better C" into a high-level, expressive language without sacrificing a single byte of performance.
+1. **Move Semantics**: The end of unnecessary copies.
+2. **Smart Pointers**: The end of the "Memory Leak Era."
+3. **The Threading Model**: Standardized concurrency for a multi-core world.
+4. **Auto & Lambdas**: Syntactic sugar that allowed for more functional and readable code.
+
+**The Golden Rule of C++11**: Prefer `std::unique_ptr` over raw pointers, and use `std::move` to transfer ownership. You have transcended the manual memory management of the past.
+
 ---
 
 

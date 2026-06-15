@@ -1,0 +1,79 @@
+\hypertarget{chapter-44-custom-memory-allocators}{%
+\section{CHAPTER 44: CUSTOM MEMORY
+ALLOCATORS}\label{chapter-44-custom-memory-allocators}}
+
+\hypertarget{custom-memory-allocators}{%
+\section{CUSTOM MEMORY ALLOCATORS}\label{custom-memory-allocators}}
+
+\hypertarget{why-custom-allocators}{%
+\subsection{1. Why Custom Allocators?}\label{why-custom-allocators}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Performance:} \passthrough{\lstinline!malloc!} is general
+  purpose. Specialized allocators are faster.
+\item
+  \textbf{Locality:} Keep related objects close in memory (cache
+  friendly).
+\item
+  \textbf{Fragmentation:} Reduce memory fragmentation.
+\end{itemize}
+
+\hypertarget{linear-stack-allocator}{%
+\subsection{2. Linear / Stack Allocator}\label{linear-stack-allocator}}
+
+Moves a pointer forward. O(1) allocation. Deallocation only possible by
+resetting the whole buffer (LIFO).
+
+\begin{lstlisting}[language={C++}]
+class StackAllocator {
+    char* start;
+    char* current;
+    size_t size;
+public:
+    void* allocate(size_t n) {
+        if (current + n > start + size) return nullptr;
+        void* ptr = current;
+        current += n;
+        return ptr;
+    }
+    void reset() { current = start; }
+};
+\end{lstlisting}
+
+\hypertarget{pool-allocator}{%
+\subsection{3. Pool Allocator}\label{pool-allocator}}
+
+Allocates chunks of fixed size. No fragmentation. O(1) alloc/dealloc
+(using a free list).
+
+\hypertarget{stdpmr-polymorphic-memory-resources}{%
+\subsection{\texorpdfstring{4. \texttt{std::pmr} (Polymorphic Memory
+Resources)}{4. std::pmr (Polymorphic Memory Resources)}}\label{stdpmr-polymorphic-memory-resources}}
+
+C++17 feature. Allows changing allocators at runtime without changing
+the type (e.g., \passthrough{\lstinline!std::pmr::vector!}).
+
+\begin{lstlisting}[language={C++}]
+#include <memory_resource>
+
+char buffer[1024];
+std::pmr::monotonic_buffer_resource pool(buffer, 1024);
+std::pmr::vector<int> v(&pool); // Uses stack buffer
+\end{lstlisting}
+
+\hypertarget{alignment}{%
+\subsection{5. Alignment}\label{alignment}}
+
+Understanding \passthrough{\lstinline!alignof!},
+\passthrough{\lstinline!alignas!}, and
+\passthrough{\lstinline!std::max\_align\_t!}.
+
+\begin{itemize}
+\tightlist
+\item
+  Unaligned access can be slow or cause crashes (SIGBUS on ARM).
+\item
+  SIMD often requires 16, 32, or 64-byte alignment.
+\end{itemize}
