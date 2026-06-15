@@ -1,47 +1,35 @@
 # CHAPTER 36: C23 COROUTINES AND STACKTRACE
 
 
-# C++23 COROUTINES & STACKTRACE
+# C++23 COROUTINES & DIAGNOSTICS
 
-## 1. `std::generator`
-
-Standardized generator coroutine. Supports `co_yield` and recursive usage.
-
-### 1.1 Basic Generator
-
+### 1. `std::generator`
+C++20 provided the core language support for coroutines, but no standard library types. C++23 introduces `std::generator`, a ready-to-use return type for synchronous coroutine generators that works seamlessly with Ranges.
 ```cpp
 #include <generator>
-#include <ranges>
 
-std::generator<int> seq(int start) {
+std::generator<int> fibonacci() {
+    int a = 0, b = 1;
     while (true) {
-        co_yield start++;
+        co_yield a;
+        auto next = a + b;
+        a = b;
+        b = next;
     }
 }
 
-int main() {
-    for (int i : seq(0) | std::views::take(5)) {
-        std::println("{}", i);
-    }
-}
+// Seamless integration with views
+auto first_10 = fibonacci() | std::views::take(10);
 ```
 
-### 1.2 Recursive Generator
-
-`std::generator` supports `co_yield ranges::elements_of(...)` to yield values from a sub-generator or range efficiently.
-
-## 2. `std::stacktrace`
-
-Obtain the call stack at runtime. Useful for logging and debugging.
-
+### 2. `std::stacktrace`
+Native support for capturing and printing call stacks, revolutionizing C++ debugging and error logging.
 ```cpp
 #include <stacktrace>
 #include <print>
 
-void boom() {
-    auto trace = std::stacktrace::current();
-    std::println("{}", std::to_string(trace));
+void crash_handler() {
+    std::println("Crash! Stacktrace:
+{}", std::stacktrace::current());
 }
 ```
-
-**Note:** Requires compiler/linker flags (e.g., `-lstdc++_libbacktrace` on GCC).

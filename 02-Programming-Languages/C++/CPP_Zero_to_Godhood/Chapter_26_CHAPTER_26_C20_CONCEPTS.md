@@ -1,94 +1,44 @@
 # CHAPTER 26: C20 CONCEPTS
 
 
-# C++20 CONCEPTS
+# C++20 CONCEPTS & CONSTRAINTS
 
-## 1. The Problem with Templates
+Concepts are the first of the "Four Great Pillars" of C++20. They revolutionize template programming by providing a formal way to specify requirements on template arguments.
 
-Before C++20, template errors were notoriously verbose and hard to decipher ("template error explosion"). If you passed a type that didn't support a required operation (like `+` or `.begin()`), the error would occur deep inside the template implementation, often screens away from the actual call site.
+### 1. The Core Mechanics
+*   **Concepts**: Compile-time constraints on template parameters, replacing cryptic SFINAE errors with clear diagnostics.
+    ```cpp
+    template<typename T>
+    concept Addable = requires(T a, T b) { a + b; };
+    ```
+*   **Requires expressions**: Inline constraint blocks that test the validity of expressions, types, or compound requirements.
+    ```cpp
+    template<typename T>
+    concept Advanced = requires(T x) {
+        x++;                        // Simple requirement
+        typename T::value_type;      // Type requirement
+        {*x} -> std::same_as<int>;   // Compound requirement
+    };
+    ```
+*   **Requires clauses**: Attaches a constraint to a template or function declaration using the `requires` keyword.
+    ```cpp
+    template<typename T>
+    requires Addable<T>
+    void f(T a) { /* ... */ }
+    ```
+*   **Constrained auto**: `auto` parameters in functions and variables can be constrained with a concept.
+    ```cpp
+    void f(std::integral auto x) { /* x must be an integer type */ }
+    ```
+*   **Partial ordering by constraints**: Among multiple viable overloads, the most-constrained one is selected automatically.
+    ```cpp
+    void f(std::integral auto); 
+    void f(std::signed_integral auto); 
+    f(1); // picks signed_integral (more specific)
+    ```
 
-## 2. What are Concepts?
-
-Concepts are named sets of requirements for template arguments. They act as predicates that are evaluated at compile time.
-
-### 2.1 Defining a Concept
-
-```cpp
-#include <concepts>
-
-// A concept that checks if T is integral
-template<typename T>
-concept Integral = std::is_integral_v<T>;
-
-// A concept that checks if T is addable
-template<typename T>
-concept Addable = requires(T a, T b) {
-    { a + b } -> std::convertible_to<T>;
-};
-```
-
-### 2.2 Using Concepts (`requires` clause)
-
-```cpp
-template<typename T>
-requires Integral<T>
-T add(T a, T b) {
-    return a + b;
-}
-
-// Shorthand syntax
-template<Integral T>
-T subtract(T a, T b) {
-    return a - b;
-}
-
-// Terse syntax (C++20 style)
-auto multiply(Integral auto a, Integral auto b) {
-    return a * b;
-}
-```
-
-## 3. The `requires` Expression
-
-The core mechanism for defining ad-hoc constraints.
-
-```cpp
-template<typename T>
-concept Printable = requires(T x) {
-    std::cout << x; // Expression must be valid
-};
-
-template<typename T>
-concept Container = requires(T c) {
-    typename T::value_type;
-    { c.size() } -> std::same_as<size_t>;
-    { c.begin() };
-    { c.end() };
-};
-```
-
-## 4. Standard Concepts (`<concepts>`)
-
-C++20 provides a rich library of predefined concepts.
-
-*   **Core:** `std::same_as`, `std::derived_from`, `std::convertible_to`
-*   **Arithmetic:** `std::integral`, `std::floating_point`, `std::signed_integral`
-*   **Object:** `std::movable`, `std::copyable`, `std::regular`
-*   **Callable:** `std::invocable`, `std::predicate`
-
-## 5. Constraint Based Overloading
-
-Concepts allow overloading function templates based on properties of types (replacing SFINAE/`enable_if`).
-
-```cpp
-void print(std::integral auto x) {
-    std::cout << "Integer: " << x << "\n";
-}
-
-void print(std::floating_point auto x) {
-    std::cout << "Float: " << x << "\n";
-}
-
-print(5);   // Calls integral version
-print(3.14); // Calls floating_point version
-```
+### 2. Standard Concepts
+The `<concepts>` header provides a massive library of pre-defined constraints:
+*   **Core**: `std::derived_from`, `std::convertible_to`, `std::same_as`, `std::integral`, `std::floating_point`.
+*   **Object**: `std::movable`, `std::copyable`, `std::semiregular`, `std::regular`.
+*   **Callable**: `std::invocable`, `std::predicate`.

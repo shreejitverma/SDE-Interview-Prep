@@ -1,56 +1,35 @@
 # CHAPTER 34: C23 MONADIC OPERATIONS AND EXPECTED
 
 
-# C++23 MONADIC OPERATIONS & EXPECTED
+# C++23 FUNCTIONAL ERROR HANDLING
 
-## 1. `std::expected`
-
-The standard way to return values or errors, replacing integer error codes and exceptions in high-performance paths.
-
-### 1.1 Basics
+### 1. `std::expected`
+`std::expected<T, E>` is the modern way to return either a valid result (`T`) or an error (`E`). It is vastly superior to `std::optional` (which hides the error reason) and exceptions (which have unpredictable control flow overhead).
 
 ```cpp
 #include <expected>
-#include <string>
 
-enum class Error { InvalidInput, ConnectionFailed };
+enum class Error { NotFound, PermissionDenied };
 
-std::expected<int, Error> parse_int(std::string_view input) {
-    if (input.empty()) return std::unexpected(Error::InvalidInput);
-    return std::stoi(std::string(input));
-}
-
-int main() {
-    auto result = parse_int("42");
-
-    if (result) {
-        std::cout << "Value: " << *result;
-    } else {
-        std::cout << "Error: " << (int)result.error();
-    }
+std::expected<std::string, Error> read_file(int id) {
+    if (id < 0) return std::unexpected(Error::NotFound);
+    return "File Content";
 }
 ```
 
-### 1.2 Monadic Chain
+### 2. Monadic Operations
+C++23 introduces functional monadic chaining for both `std::optional` and `std::expected`, eliminating the "Pyramid of Doom" (nested `if` checks).
 
-`and_then`, `transform`, `or_else`.
-
-```cpp
-auto process = parse_int("42")
-    .and_then([](int i) { return parse_int("10"); }) // Chain potentially failing op
-    .transform([](int i) { return i * 2; })          // Transform value on success
-    .or_else([](Error e) { return std::expected<int, Error>(0); }); // Handle error
-```
-
-## 2. Monadic Operations for `std::optional`
-
-C++23 adds monadic methods to `std::optional` (C++17).
+*   **`and_then`**: Called if the object contains a value. Must return another optional/expected.
+*   **`transform`**: Called if the object contains a value. Can return a raw value (auto-wrapped).
+*   **`or_else`**: Called if the object contains an error/is empty.
 
 ```cpp
-std::optional<int> get_id();
-std::optional<std::string> get_name(int id);
+std::optional<User> get_user();
+std::optional<std::string> get_email(const User&);
 
-auto name = get_id()
-    .and_then(get_name)
-    .value_or("Unknown");
+auto email = get_user()
+    .and_then(get_email)
+    .transform([](auto e){ return e + " verified"; })
+    .or_else([]{ return std::optional{"Unknown"}; });
 ```

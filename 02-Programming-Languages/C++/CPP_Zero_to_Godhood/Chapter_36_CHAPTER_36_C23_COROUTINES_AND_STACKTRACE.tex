@@ -2,59 +2,49 @@
 \section{CHAPTER 36: C23 COROUTINES AND
 STACKTRACE}\label{chapter-36-c23-coroutines-and-stacktrace}}
 
-\hypertarget{c23-coroutines-stacktrace}{%
+\hypertarget{c23-coroutines-diagnostics}{%
 \section{C++23 COROUTINES \&
-STACKTRACE}\label{c23-coroutines-stacktrace}}
+DIAGNOSTICS}\label{c23-coroutines-diagnostics}}
 
 \hypertarget{stdgenerator}{%
-\subsection{\texorpdfstring{1.
+\subsubsection{\texorpdfstring{1.
 \texttt{std::generator}}{1. std::generator}}\label{stdgenerator}}
 
-Standardized generator coroutine. Supports
-\passthrough{\lstinline!co\_yield!} and recursive usage.
-
-\hypertarget{basic-generator}{%
-\subsubsection{1.1 Basic Generator}\label{basic-generator}}
+C++20 provided the core language support for coroutines, but no standard
+library types. C++23 introduces
+\passthrough{\lstinline!std::generator!}, a ready-to-use return type for
+synchronous coroutine generators that works seamlessly with Ranges.
 
 \begin{lstlisting}[language={C++}]
 #include <generator>
-#include <ranges>
 
-std::generator<int> seq(int start) {
+std::generator<int> fibonacci() {
+    int a = 0, b = 1;
     while (true) {
-        co_yield start++;
+        co_yield a;
+        auto next = a + b;
+        a = b;
+        b = next;
     }
 }
 
-int main() {
-    for (int i : seq(0) | std::views::take(5)) {
-        std::println("{}", i);
-    }
-}
+// Seamless integration with views
+auto first_10 = fibonacci() | std::views::take(10);
 \end{lstlisting}
 
-\hypertarget{recursive-generator}{%
-\subsubsection{1.2 Recursive Generator}\label{recursive-generator}}
-
-\passthrough{\lstinline!std::generator!} supports
-\passthrough{\lstinline!co\_yield ranges::elements\_of(...)!} to yield
-values from a sub-generator or range efficiently.
-
 \hypertarget{stdstacktrace}{%
-\subsection{\texorpdfstring{2.
+\subsubsection{\texorpdfstring{2.
 \texttt{std::stacktrace}}{2. std::stacktrace}}\label{stdstacktrace}}
 
-Obtain the call stack at runtime. Useful for logging and debugging.
+Native support for capturing and printing call stacks, revolutionizing
+C++ debugging and error logging.
 
 \begin{lstlisting}[language={C++}]
 #include <stacktrace>
 #include <print>
 
-void boom() {
-    auto trace = std::stacktrace::current();
-    std::println("{}", std::to_string(trace));
+void crash_handler() {
+    std::println("Crash! Stacktrace:
+{}", std::stacktrace::current());
 }
 \end{lstlisting}
-
-\textbf{Note:} Requires compiler/linker flags (e.g.,
-\passthrough{\lstinline!-lstdc++\_libbacktrace!} on GCC).

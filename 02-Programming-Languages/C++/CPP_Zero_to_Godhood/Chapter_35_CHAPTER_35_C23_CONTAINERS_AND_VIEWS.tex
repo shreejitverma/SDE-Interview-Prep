@@ -2,82 +2,54 @@
 \section{CHAPTER 35: C23 CONTAINERS AND
 VIEWS}\label{chapter-35-c23-containers-and-views}}
 
-\hypertarget{c23-containers-views}{%
-\section{C++23 CONTAINERS \& VIEWS}\label{c23-containers-views}}
+\hypertarget{c23-data-structures}{%
+\section{C++23 DATA STRUCTURES}\label{c23-data-structures}}
 
 \hypertarget{stdmdspan}{%
-\subsection{\texorpdfstring{1.
+\subsubsection{\texorpdfstring{1.
 \texttt{std::mdspan}}{1. std::mdspan}}\label{stdmdspan}}
 
-A non-owning, multidimensional view of a contiguous memory block.
-Crucial for scientific computing, linear algebra, and image processing.
-
-\hypertarget{basics}{%
-\subsubsection{1.1 Basics}\label{basics}}
+A non-owning multidimensional view over contiguous memory. It is the
+cornerstone for modern C++ linear algebra and scientific computing,
+allowing you to treat a flat \passthrough{\lstinline!std::vector!} as a
+2D, 3D, or ND matrix.
 
 \begin{lstlisting}[language={C++}]
 #include <mdspan>
 #include <vector>
 
-int main() {
-    std::vector<int> data(12); // 3x4 matrix
-    std::mdspan m(data.data(), 3, 4);
+std::vector<int> data = {1,2,3,4,5,6};
+// View data as a 2x3 matrix
+std::mdspan matrix(data.data(), 2, 3);
 
-    m[1, 2] = 42; // Set row 1, col 2
-}
+matrix[1, 2] = 42; // Uses C++23 multidimensional subscript
 \end{lstlisting}
 
-\hypertarget{layouts}{%
-\subsubsection{1.2 Layouts}\label{layouts}}
-
-\begin{itemize}
-\tightlist
-\item
-  \passthrough{\lstinline!std::layout\_right!} (Row-Major): C/C++
-  default. Last index varies fastest.
-\item
-  \passthrough{\lstinline!std::layout\_left!} (Column-Major):
-  Fortran/BLAS compatible. First index varies fastest.
-\end{itemize}
-
 \hypertarget{stdflat_map-and-stdflat_set}{%
-\subsection{\texorpdfstring{2. \texttt{std::flat\_map} and
+\subsubsection{\texorpdfstring{2. \texttt{std::flat\_map} and
 \texttt{std::flat\_set}}{2. std::flat\_map and std::flat\_set}}\label{stdflat_map-and-stdflat_set}}
 
-Associative containers implemented as sorted vectors.
-
-\begin{itemize}
-\tightlist
-\item
-  \textbf{Pros:} contiguous memory, cache-friendly, faster
-  iteration/lookup for small-to-medium datasets.
-\item
-  \textbf{Cons:} O(N) insertion/deletion (vs O(log N) for
-  \passthrough{\lstinline!std::map!}). Iterators invalidated on
-  insertion.
-\end{itemize}
+Node-based containers (\passthrough{\lstinline!std::map!},
+\passthrough{\lstinline!std::set!}) have terrible cache locality. Flat
+containers provide the same API but are backed by contiguous
+\passthrough{\lstinline!std::vector!}s, meaning binary search lookup is
+highly optimized for the CPU cache.
 
 \begin{lstlisting}[language={C++}]
 #include <flat_map>
 
-std::flat_map<int, std::string> m;
-m[1] = "One"; // Insert
+std::flat_map<int, std::string> cache_friendly_map;
+cache_friendly_map[1] = "A"; // O(N) insert, but O(log N) cache-friendly lookup
 \end{lstlisting}
 
-\hypertarget{ranges-enhancements}{%
-\subsection{3. Ranges Enhancements}\label{ranges-enhancements}}
+\hypertarget{new-range-adaptors}{%
+\subsubsection{3. New Range Adaptors}\label{new-range-adaptors}}
 
-\begin{itemize}
-\tightlist
-\item
-  \passthrough{\lstinline!std::ranges::to!}: Convert a range to a
-  container.
-  \passthrough{\lstinline!cpp     auto v = some\_view | std::ranges::to<std::vector>();!}
-\item
-  \passthrough{\lstinline!views::zip!}: Iterate multiple ranges in
-  lockstep.
-  \passthrough{\lstinline!cpp     std::vector<int> a = \{1, 2\}, b = \{3, 4\};     for (auto [x, y] : std::views::zip(a, b)) \{         // x=1, y=3 ...     \}!}
-\item
-  \passthrough{\lstinline!views::enumerate!}: Index + Value.
-  \passthrough{\lstinline!cpp     for (auto [idx, val] : std::views::enumerate(data)) \{         // ...     \}!}
-\end{itemize}
+C++23 dramatically expands the \passthrough{\lstinline!<ranges>!}
+library. * \textbf{\passthrough{\lstinline!views::enumerate!}}:
+Python-like index + value iteration.
+\passthrough{\lstinline!cpp     for (auto [index, value] : std::views::enumerate(vec)) \{ ... \}!}
+* \textbf{\passthrough{\lstinline!views::zip!}}: Iterate over multiple
+ranges simultaneously. * \textbf{\passthrough{\lstinline!views::chunk!}
+/ \passthrough{\lstinline!views::slide!}}: Process ranges in blocks or
+sliding windows.
