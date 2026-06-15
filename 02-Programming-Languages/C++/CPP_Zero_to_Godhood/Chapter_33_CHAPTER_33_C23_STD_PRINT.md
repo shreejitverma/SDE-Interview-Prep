@@ -1,59 +1,22 @@
 # CHAPTER 33: C23 STD PRINT
 
 
-# C++23 STD::PRINT & I/O
+# C++23: THE END OF IOSTREAM AND PRINTF
 
-## 1. `std::print` and `std::println`
+### 1. `std::print` and `std::println`
+C++23 finally fixes standard output. `std::cout` is slow and verbose, while `printf` is not type-safe. `std::print` bridges the gap using the C++20 `std::format` engine.
 
-C++ finally gets high-performance, type-safe, and readable console output, replacing `printf` and `iostream`.
+*   **Type-safe and Fast**: It writes directly to the underlying OS file descriptor without creating an intermediate `std::string` allocation.
+    ```cpp
+    #include <print>
+    
+    std::println("User {} has {} points.", user.name, user.score);
+    std::println(stderr, "Error: connection failed");
+    ```
 
-### 1.1 Basic Usage
-
+### 2. Formatting Ranges
+`std::print` natively understands standard ranges and containers.
 ```cpp
-#include <print>
-
-int main() {
-    int id = 42;
-    std::string name = "Alice";
-
-    std::println("User {} has ID {}", name, id);
-    // Output: User Alice has ID 42
-}
-```
-
-### 1.2 Performance
-
-`std::print` writes directly to the unicode-aware buffer, avoiding stream overhead and allocation. It is often faster than `printf`.
-
-### 1.3 Formatting
-
-Uses the same format specifications as `std::format` (C++20).
-
-```cpp
-std::println("Pi: {:.2f}", 3.14159); // Pi: 3.14
-std::println("Hex: {:#x}", 255);     // Hex: 0xff
-```
-
-### 1.4 Output to Streams
-
-```cpp
-#include <fstream>
-
-std::ofstream file("log.txt");
-std::println(file, "Error code: {}", 500);
-```
-
-## 2. `std::spanstream`
-
-A stream wrapper around a fixed buffer (`std::span`), replacing the deprecated `std::strstream`. No allocation.
-
-```cpp
-#include <spanstream>
-#include <iostream>
-
-char buffer[128];
-std::spanstream ss(buffer);
-
-ss << "Hello " << 123;
-std::string_view result = ss.span(); // "Hello 123"
+std::vector<int> v = {1, 2, 3};
+std::println("{}", v); // Output: [1, 2, 3]
 ```

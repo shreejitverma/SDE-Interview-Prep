@@ -2,95 +2,147 @@
 \section{CHAPTER 30: C20 CORE LANGUAGE
 FEATURES}\label{chapter-30-c20-core-language-features}}
 
-\hypertarget{c20-core-language-features}{%
+\hypertarget{c20-core-language-upgrades}{%
 \section{C++20 CORE LANGUAGE
-FEATURES}\label{c20-core-language-features}}
+UPGRADES}\label{c20-core-language-upgrades}}
 
-\hypertarget{three-way-comparison}{%
-\subsection{\texorpdfstring{1. Three-Way Comparison
-(\texttt{\textless{}=\textgreater{}})}{1. Three-Way Comparison (\textless=\textgreater)}}\label{three-way-comparison}}
+Beyond the ``Big Four,'' C++20 added essential tools for performance,
+safety, and syntactic clarity.
 
-The ``Spaceship Operator''. Generates all 6 comparison operators
-(\passthrough{\lstinline!==!}, \passthrough{\lstinline"!="},
-\passthrough{\lstinline!<!}, \passthrough{\lstinline!<=!},
-\passthrough{\lstinline!>!}, \passthrough{\lstinline!>=!})
-automatically.
+\hypertarget{comparison-constant-expressions}{%
+\subsubsection{1. Comparison \& Constant
+Expressions}\label{comparison-constant-expressions}}
 
-\begin{lstlisting}[language={C++}]
-#include <compare>
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Three-way comparison (\textless=\textgreater)}: The
+  ``spaceship operator'' compares two values and returns ordering
+  (\passthrough{\lstinline!strong\_ordering!}, etc.). Defaulting it
+  generates all 6 comparison operators.
+  \passthrough{\lstinline!cpp     struct S \{         int x;         auto operator<=>(const S\&) const = default;     \};!}
+\item
+  \textbf{consteval}: Declares a function as an ``immediate function''
+  that MUST be evaluated at compile time.
+  \passthrough{\lstinline!cpp     consteval int sq(int x) \{ return x * x; \}!}
+\item
+  \textbf{constinit}: Ensures a variable is initialized with a constant
+  expression at static initialization; unlike
+  \passthrough{\lstinline!const!}, it remains mutable.
+  \passthrough{\lstinline!cpp     constinit int counter = 0;!}
+\item
+  \textbf{constexpr virtual functions}: Virtual functions can now be
+  \passthrough{\lstinline!constexpr!}, enabling compile-time
+  polymorphism.
+  \passthrough{\lstinline!cpp     struct B \{ constexpr virtual int get() const = 0; \};!}
+\item
+  \textbf{constexpr try-catch blocks}:
+  \passthrough{\lstinline!try/catch!} is allowed in
+  \passthrough{\lstinline!constexpr!} functions; the catch block is
+  ignored at compile time.
+\item
+  \textbf{constexpr dynamic\_cast and typeid}: Allowed inside
+  \passthrough{\lstinline!constexpr!} evaluation.
+\item
+  \textbf{constexpr allocations}: \passthrough{\lstinline!new/delete!}
+  are allowed in \passthrough{\lstinline!constexpr!} functions as long
+  as memory is freed before evaluation ends.
+\end{itemize}
 
-struct Point {
-    int x, y;
-    auto operator<=>(const Point&) const = default;
-};
+\hypertarget{syntactic-ergonomics}{%
+\subsubsection{2. Syntactic Ergonomics}\label{syntactic-ergonomics}}
 
-Point p1{1, 2}, p2{1, 3};
-// p1 < p2 works!
-// p1 == p2 works!
-\end{lstlisting}
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Designated initializers}: Struct members can be initialized by
+  name in brace-init, matching C99 syntax.
+  \passthrough{\lstinline!cpp     Point p\{.x = 1, .y = 2\};!}
+\item
+  \textbf{Init-statements for range-based for}: A range-based for loop
+  can have an initializer statement before the range expression.
+  \passthrough{\lstinline!cpp     for (auto\& data = getData(); auto\& x : data) \{ /* ... */ \}!}
+\item
+  \textbf{using enum}: Injects all enumerator names from an enum class
+  into the current scope.
+  \passthrough{\lstinline!cpp     using enum Color;      auto c = Red;!}
+\item
+  \textbf{Conditionally explicit constructors}:
+  \passthrough{\lstinline!explicit(bool\_expr)!} allows conditional
+  explicitness.
+  \passthrough{\lstinline"cpp     template<class T> struct W \{          explicit(!std::is\_convertible\_v<T,int>) W(T);      \};"}
+\item
+  \textbf{Array size deduction in new-expressions}:
+  \passthrough{\lstinline!int* p = new int[]\{1, 2, 3\};!}
+\end{itemize}
 
-Returns \passthrough{\lstinline!strong\_ordering!},
-\passthrough{\lstinline!weak\_ordering!}, or
-\passthrough{\lstinline!partial\_ordering!}.
+\hypertarget{lambda-improvements}{%
+\subsubsection{3. Lambda Improvements}\label{lambda-improvements}}
 
-\hypertarget{designated-initializers}{%
-\subsection{2. Designated Initializers}\label{designated-initializers}}
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Template parameter list for generic lambdas}: Explicit
+  template syntax for finer control.
+  \passthrough{\lstinline!cpp     []<typename T>(std::vector<T> v) \{ /* use T */ \};!}
+\item
+  \textbf{Lambda {[}=, this{]} capture}: Explicitly capture
+  \passthrough{\lstinline!this!} by reference with implicit by-value
+  captures.
+\item
+  \textbf{Pack expansion in lambda init-capture}: Direct capture of
+  parameter packs.
+  \passthrough{\lstinline!cpp     [...args = std::forward<Args>(args)]()\{ f(args...); \}!}
+\item
+  \textbf{Lambdas in unevaluated contexts}: Lambdas can appear in
+  \passthrough{\lstinline!decltype!}, \passthrough{\lstinline!sizeof!},
+  etc.
+\item
+  \textbf{Default-constructible stateless lambdas}: Allows using lambda
+  types as comparators directly in containers.
+  \passthrough{\lstinline!cpp     std::map<std::string, int, decltype([](auto\& a, auto\& b)\{ return a < b; \})> m;!}
+\end{itemize}
 
-C-style struct initialization syntax.
+\hypertarget{attributes-hardware-sympathy}{%
+\subsubsection{4. Attributes \& Hardware
+Sympathy}\label{attributes-hardware-sympathy}}
 
-\begin{lstlisting}[language={C++}]
-struct Config {
-    int id;
-    std::string name;
-    bool active;
-};
+\begin{itemize}
+\tightlist
+\item
+  \textbf{{[}{[}likely{]}{]} / {[}{[}unlikely{]}{]}}: Hints to the
+  optimizer about branch probability.
+  \passthrough{\lstinline!cpp     if (x > 0) [[likely]] \{ fast\_path(); \}!}
+\item
+  \textbf{{[}{[}no\_unique\_address{]}{]}}: Allows a non-static data
+  member to share address with others (optimization).
+\item
+  \textbf{{[}{[}nodiscard{]}{]} with message}:
+  \passthrough{\lstinline![[nodiscard("check error code")]]!}.
+\item
+  \textbf{char8\_t}: A distinct type for UTF-8 character data.
+\item
+  \textbf{Signed integers are two's complement}: Now mandated by the
+  standard.
+\item
+  \textbf{Deprecate some uses of volatile}: Compound assignment and
+  increment on \passthrough{\lstinline!volatile!} are deprecated.
+\end{itemize}
 
-Config c = {
-    .id = 1,
-    .active = true // Order must match declaration! Name is default constructed.
-};
-\end{lstlisting}
+\hypertarget{template-power}{%
+\subsubsection{5. Template Power}\label{template-power}}
 
-\hypertarget{consteval-immediate-functions}{%
-\subsection{\texorpdfstring{3. \texttt{consteval} (Immediate
-Functions)}{3. consteval (Immediate Functions)}}\label{consteval-immediate-functions}}
-
-Functions that \emph{must} be executed at compile time.
-
-\begin{lstlisting}[language={C++}]
-consteval int square(int n) {
-    return n * n;
-}
-
-int x = square(5); // OK: computed at compile time
-int runtime_val = 10;
-// int y = square(runtime_val); // Error: argument not constant
-\end{lstlisting}
-
-\hypertarget{constinit}{%
-\subsection{\texorpdfstring{4.
-\texttt{constinit}}{4. constinit}}\label{constinit}}
-
-Ensures a variable has static initialization (no runtime overhead, no
-static initialization order fiasco).
-
-\begin{lstlisting}[language={C++}]
-constinit int g_val = 42; // OK
-// constinit int g_rand = rand(); // Error
-\end{lstlisting}
-
-\hypertarget{non-type-template-parameters-nttp-enhancements}{%
-\subsection{5. Non-Type Template Parameters (NTTP)
-Enhancements}\label{non-type-template-parameters-nttp-enhancements}}
-
-You can now use floating-point types and structural types (classes with
-public members) as template parameters.
-
-\begin{lstlisting}[language={C++}]
-template<double Threshold>
-bool check(double val) { return val > Threshold; }
-
-struct FixedString { char buf[16]; };
-template<FixedString S>
-void print() { std::cout << S.buf; }
-\end{lstlisting}
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Class types as non-type template params}: Literal class types
+  can be non-type template arguments.
+  \passthrough{\lstinline!cpp     template<std::string\_view S> struct Tag \{\};!}
+\item
+  \textbf{CTAD for aggregates}: Template deduction now works for
+  aggregate types.
+\item
+  \textbf{CTAD for alias templates}: Extended to template aliases.
+\item
+  \textbf{\textbf{VA\_OPT}}: Variadic macro helper for non-empty packs.
+\end{itemize}

@@ -2,239 +2,107 @@
 \section{CHAPTER 31: C20 STANDARD LIBRARY
 ADDITIONS}\label{chapter-31-c20-standard-library-additions}}
 
-\hypertarget{c20-standard-library-additions}{%
+\hypertarget{c20-standard-library-expansion}{%
 \section{C++20 STANDARD LIBRARY
-ADDITIONS}\label{c20-standard-library-additions}}
+EXPANSION}\label{c20-standard-library-expansion}}
 
-\hypertarget{stdformat-python-style-formatting}{%
-\subsection{\texorpdfstring{1. \texttt{std::format} (Python-style
-Formatting)}{1. std::format (Python-style Formatting)}}\label{stdformat-python-style-formatting}}
-
-Type-safe, fast, and readable string formatting. Replaces
-\passthrough{\lstinline!printf!} and \passthrough{\lstinline!iostream!}.
-
-\begin{lstlisting}[language={C++}]
-#include <format>
-#include <iostream>
-
-std::string s = std::format("Hello, {}! The answer is {}.", "World", 42);
-// "Hello, World! The answer is 42."
-
-// Positional arguments
-std::string s2 = std::format("{1} {0}", "World", "Hello");
-\end{lstlisting}
-
-\hypertarget{stdspan}{%
-\subsection{\texorpdfstring{2.
-\texttt{std::span}}{2. std::span}}\label{stdspan}}
-
-A non-owning view of a contiguous sequence (array, vector). Replaces
-\passthrough{\lstinline!pointer + size!}.
-
-\begin{lstlisting}[language={C++}]
-#include <span>
-
-void process(std::span<int> data) {
-    for (int& x : data) x *= 2;
-}
-
-int arr[] = {1, 2, 3};
-std::vector<int> vec = {4, 5, 6};
-
-process(arr); // Works
-process(vec); // Works
-\end{lstlisting}
-
-\hypertarget{stdjthread-joinable-thread}{%
-\subsection{\texorpdfstring{3. \texttt{std::jthread} (Joinable
-Thread)}{3. std::jthread (Joinable Thread)}}\label{stdjthread-joinable-thread}}
-
-Automatically joins on destruction. Supports cooperative interruption
-(\passthrough{\lstinline!stop\_token!}).
-
-\begin{lstlisting}[language={C++}]
-#include <thread>
-
-void worker(std::stop_token st) {
-    while (!st.stop_requested()) {
-        // work...
-    }
-}
-
-{
-    std::jthread t(worker);
-} // t requests stop and joins automatically here
-\end{lstlisting}
-
-\hypertarget{concurrency-primitives-semaphore-barrier-latch}{%
-\subsection{\texorpdfstring{4. Concurrency Primitives
-(\texttt{\textless{}semaphore\textgreater{}},
-\texttt{\textless{}barrier\textgreater{}},
-\texttt{\textless{}latch\textgreater{}})}{4. Concurrency Primitives (\textless semaphore\textgreater, \textless barrier\textgreater, \textless latch\textgreater)}}\label{concurrency-primitives-semaphore-barrier-latch}}
+\hypertarget{the-powerhouses}{%
+\subsubsection{1. The Powerhouses}\label{the-powerhouses}}
 
 \begin{itemize}
 \tightlist
 \item
-  \passthrough{\lstinline!std::binary\_semaphore!},
-  \passthrough{\lstinline!std::counting\_semaphore!}: Lightweight
-  signaling.
+  \textbf{std::format}: Type-safe, compile-time-checked Python-style
+  string formatting.
+  \passthrough{\lstinline!cpp     std::string s = std::format("Hello \{\} \{\}", "C++", 20);!}
 \item
-  \passthrough{\lstinline!std::latch!}: Single-use countdown barrier.
+  \textbf{std::span}: Lightweight non-owning view over contiguous memory
+  (arrays, vectors).
+  \passthrough{\lstinline!cpp     void f(std::span<int> s) \{ for(auto x : s) \{ /* ... */ \} \}!}
 \item
-  \passthrough{\lstinline!std::barrier!}: Reusable barrier for phases of
-  work.
+  \textbf{std::jthread}: A joining thread that automatically
+  \passthrough{\lstinline!join()!}s on destruction and supports
+  cooperative cancellation.
+  \passthrough{\lstinline"cpp     std::jthread t([](std::stop\_token s)\{ while(!s.stop\_requested())\{\} \});"}
+\item
+  \textbf{std::stop\_token / stop\_source}: Mechanism for cooperative
+  thread cancellation.
 \end{itemize}
 
-\hypertarget{mathematical-constants-numbers}{%
-\subsection{\texorpdfstring{5. Mathematical Constants
-(\texttt{\textless{}numbers\textgreater{}})}{5. Mathematical Constants (\textless numbers\textgreater)}}\label{mathematical-constants-numbers}}
-
-\begin{lstlisting}[language={C++}]
-#include <numbers>
-double pi = std::numbers::pi;
-double e = std::numbers::e;
-\end{lstlisting}
-
-\hypertarget{bit-manipulation-bit}{%
-\subsection{\texorpdfstring{6. Bit Manipulation
-(\texttt{\textless{}bit\textgreater{}})}{6. Bit Manipulation (\textless bit\textgreater)}}\label{bit-manipulation-bit}}
-
-\begin{itemize}
-\item
-  \passthrough{\lstinline!std::popcount!}: Count set bits.
-\item
-  \passthrough{\lstinline!std::bit\_ceil!}: Next power of 2.
-\item ~
-  \hypertarget{stdendian-check-system-endianness.}{%
-  \subsection{\texorpdfstring{\texttt{std::endian}: Check system
-  endianness.}{std::endian: Check system endianness.}}\label{stdendian-check-system-endianness.}}
-\end{itemize}
-
-\hypertarget{professional-notes-c20-deep-dives}{%
-\subsection{7. Professional Notes: C++20 Deep
-Dives}\label{professional-notes-c20-deep-dives}}
-
-\hypertarget{modules-the-semantic-revolution}{%
-\subsubsection{7.1 Modules: The Semantic
-Revolution}\label{modules-the-semantic-revolution}}
-
-Modules replace textual inclusion with a binary semantic model,
-fundamentally changing the Compilation Pipeline.
+\hypertarget{synchronization-primitives}{%
+\subsubsection{2. Synchronization
+Primitives}\label{synchronization-primitives}}
 
 \begin{itemize}
 \tightlist
 \item
-  \textbf{Physical Structure \& BMI}: A Module Interface Unit
-  (\passthrough{\lstinline!.cppm!}/\passthrough{\lstinline!.ixx!}) is
-  compiled into a \textbf{Binary Module Interface (BMI)}. Unlike
-  headers, which are re-parsed in every translation unit, the BMI
-  contains a serialized AST (Abstract Syntax Tree). Importing a BMI is a
-  constant-time operation rather than a linear-time parsing task.
+  \textbf{std::latch}: Single-use countdown synchronization.
 \item
-  \textbf{Build System Integration}: Modules introduce a strict
-  compilation order. If \passthrough{\lstinline!main.cpp!} imports
-  \passthrough{\lstinline!math!}, the BMI for
-  \passthrough{\lstinline!math!} must exist first. Modern build systems
-  (CMake 3.28+, Ninja) now include a ``scanning'' phase to dynamically
-  generate the dependency DAG before compilation begins.
+  \textbf{std::barrier}: Reusable synchronization point for multiple
+  threads.
+\item
+  \textbf{std::semaphore}:
+  \passthrough{\lstinline!std::counting\_semaphore!} and
+  \passthrough{\lstinline!std::binary\_semaphore!}.
+\item
+  \textbf{std::atomic\_ref}: Temporarily apply atomic operations to
+  non-atomic objects.
+\item
+  \textbf{Atomic smart pointers}:
+  \passthrough{\lstinline!std::atomic<std::shared\_ptr<T>>!} is now
+  fully supported.
 \end{itemize}
 
-\hypertarget{compilation-pipeline-with-modules}{%
-\paragraph{Compilation Pipeline with
-Modules}\label{compilation-pipeline-with-modules}}
-
-\begin{lstlisting}
-graph TD
-    A[Module Interface: math.cppm] -->|Compiler| B(BMI: math.pcm)
-    A -->|Compiler| C(Object File: math.o)
-    D[Source: main.cpp] -->|Scan Dependencies| E{Build System}
-    E -->|Wait for BMI| B
-    B -->|Import| D
-    D -->|Compile| F(Object File: main.o)
-    C -->|Linker| G[Executable]
-    F -->|Linker| G
-\end{lstlisting}
-
-\hypertarget{coroutines-stackless-state-machines}{%
-\subsubsection{7.2 Coroutines: Stackless State
-Machines}\label{coroutines-stackless-state-machines}}
-
-C++ coroutines are stackless, meaning they don't have a private call
-stack. Their state is stored in a heap-allocated \textbf{Coroutine
-Frame}.
+\hypertarget{modern-utilities}{%
+\subsubsection{3. Modern Utilities}\label{modern-utilities}}
 
 \begin{itemize}
 \tightlist
 \item
-  \textbf{Lifecycle of \passthrough{\lstinline!promise\_type!}}:
-
-  \begin{enumerate}
-  \def\labelenumi{\arabic{enumi}.}
-  \tightlist
-  \item
-    \textbf{Allocation}: Frame is allocated on the heap.
-  \item
-    \textbf{Initial Suspend}:
-    \passthrough{\lstinline!co\_await promise.initial\_suspend()!}
-    determines if the coroutine starts immediately or waits.
-  \item
-    \textbf{Body}: Executes until a suspension point.
-  \item
-    \textbf{Final Suspend}:
-    \passthrough{\lstinline!promise.final\_suspend()!} allows the frame
-    to persist so the caller can retrieve values before destruction.
-  \end{enumerate}
+  \textbf{std::source\_location}: Capture call-site info (file, line,
+  function) without macros.
 \item
-  \textbf{The \passthrough{\lstinline!co\_await!} Sequence}: When
-  \passthrough{\lstinline!co\_await!} is hit:
-
-  \begin{enumerate}
-  \def\labelenumi{\arabic{enumi}.}
-  \tightlist
-  \item
-    \passthrough{\lstinline!await\_ready()!} is checked.
-  \item
-    If false, \passthrough{\lstinline!await\_suspend(handle)!} saves the
-    CPU registers and instruction pointer to the frame and returns
-    control to the caller.
-  \item
-    On \passthrough{\lstinline!handle.resume()!}, the state is restored,
-    and execution continues.
-  \end{enumerate}
+  \textbf{std::bit\_cast}: Reinterpret bit representations safely (and
+  in \passthrough{\lstinline!constexpr!}).
+  \passthrough{\lstinline!cpp     float f = std::bit\_cast<float>(0x3F800000u);!}
+\item
+  \textbf{std::endian}: Compile-time byte order check.
+\item
+  \textbf{std::is\_constant\_evaluated()}: Detect if code is running at
+  compile vs run time.
+\item
+  \textbf{std::ssize}: Signed version of
+  \passthrough{\lstinline!size()!}.
+\item
+  \textbf{std::numbers}: Math constants like
+  \passthrough{\lstinline!pi!}, \passthrough{\lstinline!e!},
+  \passthrough{\lstinline!sqrt2!} in
+  \passthrough{\lstinline!<numbers>!}.
 \end{itemize}
 
-\hypertarget{coroutine-state-machine}{%
-\paragraph{Coroutine State Machine}\label{coroutine-state-machine}}
-
-\begin{lstlisting}
-stateDiagram-v2
-    [*] --> InitialSuspend: Call
-    InitialSuspend --> Body: Resume
-    state Body {
-        Execution --> CoAwait: co_await
-        CoAwait --> Suspend: Save State
-        Suspend --> [*]: Return to Caller\n(Yield Control)
-        [*] --> Resumption: Resume()
-        Resumption --> Execution
-    }
-    Body --> FinalSuspend: co_return
-    FinalSuspend --> [*]
-\end{lstlisting}
-
-\hypertarget{ranges-views-lazy-composition}{%
-\subsubsection{7.3 Ranges \& Views: Lazy
-Composition}\label{ranges-views-lazy-composition}}
+\hypertarget{container-string-upgrades}{%
+\subsubsection{4. Container \& String
+Upgrades}\label{container-string-upgrades}}
 
 \begin{itemize}
 \tightlist
 \item
-  \textbf{Range vs.~View}: A Range owns or provides access to data; a
-  \textbf{View} is a lightweight, lazy range that doesn't own data.
+  ** associative::contains**: \passthrough{\lstinline!map!} and
+  \passthrough{\lstinline!set!} now have a
+  \passthrough{\lstinline!.contains(key)!} member.
 \item
-  \textbf{Performance}: Views use expression templates to collapse
-  multiple operations (filter, transform) into a single loop. This
-  avoids intermediate allocations but can lead to ``Template Bloat'' and
-  increased compile times in extremely deep pipe chains.
+  \textbf{string::starts\_with / ends\_with}: For
+  \passthrough{\lstinline!std::string!} and
+  \passthrough{\lstinline!std::string\_view!}.
+\item
+  \textbf{std::erase / std::erase\_if}: Free function versions of the
+  erase-remove idiom.
+  \passthrough{\lstinline!cpp     std::erase\_if(v, [](int x)\{ return x < 0; \});!}
+\item
+  \textbf{std::midpoint / std::lerp}: Numerically correct math.
+\item
+  \textbf{std::make\_shared for arrays}:
+  \passthrough{\lstinline!auto p = std::make\_shared<int[]>(10);!}
 \end{itemize}
 
 \hypertarget{volume-05-godhood-summary}{%

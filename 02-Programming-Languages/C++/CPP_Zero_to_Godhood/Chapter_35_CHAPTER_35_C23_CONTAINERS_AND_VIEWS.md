@@ -1,61 +1,35 @@
 # CHAPTER 35: C23 CONTAINERS AND VIEWS
 
 
-# C++23 CONTAINERS & VIEWS
+# C++23 DATA STRUCTURES
 
-## 1. `std::mdspan`
-
-A non-owning, multidimensional view of a contiguous memory block. Crucial for scientific computing, linear algebra, and image processing.
-
-### 1.1 Basics
-
+### 1. `std::mdspan`
+A non-owning multidimensional view over contiguous memory. It is the cornerstone for modern C++ linear algebra and scientific computing, allowing you to treat a flat `std::vector` as a 2D, 3D, or ND matrix.
 ```cpp
 #include <mdspan>
 #include <vector>
 
-int main() {
-    std::vector<int> data(12); // 3x4 matrix
-    std::mdspan m(data.data(), 3, 4);
+std::vector<int> data = {1,2,3,4,5,6};
+// View data as a 2x3 matrix
+std::mdspan matrix(data.data(), 2, 3);
 
-    m[1, 2] = 42; // Set row 1, col 2
-}
+matrix[1, 2] = 42; // Uses C++23 multidimensional subscript
 ```
 
-### 1.2 Layouts
-
-*   `std::layout_right` (Row-Major): C/C++ default. Last index varies fastest.
-*   `std::layout_left` (Column-Major): Fortran/BLAS compatible. First index varies fastest.
-
-## 2. `std::flat_map` and `std::flat_set`
-
-Associative containers implemented as sorted vectors.
-
-*   **Pros:** contiguous memory, cache-friendly, faster iteration/lookup for small-to-medium datasets.
-*   **Cons:** O(N) insertion/deletion (vs O(log N) for `std::map`). Iterators invalidated on insertion.
-
+### 2. `std::flat_map` and `std::flat_set`
+Node-based containers (`std::map`, `std::set`) have terrible cache locality. Flat containers provide the same API but are backed by contiguous `std::vector`s, meaning binary search lookup is highly optimized for the CPU cache.
 ```cpp
 #include <flat_map>
 
-std::flat_map<int, std::string> m;
-m[1] = "One"; // Insert
+std::flat_map<int, std::string> cache_friendly_map;
+cache_friendly_map[1] = "A"; // O(N) insert, but O(log N) cache-friendly lookup
 ```
 
-## 3. Ranges Enhancements
-
-*   `std::ranges::to`: Convert a range to a container.
+### 3. New Range Adaptors
+C++23 dramatically expands the `<ranges>` library.
+*   **`views::enumerate`**: Python-like index + value iteration.
     ```cpp
-    auto v = some_view | std::ranges::to<std::vector>();
+    for (auto [index, value] : std::views::enumerate(vec)) { ... }
     ```
-*   `views::zip`: Iterate multiple ranges in lockstep.
-    ```cpp
-    std::vector<int> a = {1, 2}, b = {3, 4};
-    for (auto [x, y] : std::views::zip(a, b)) {
-        // x=1, y=3 ...
-    }
-    ```
-*   `views::enumerate`: Index + Value.
-    ```cpp
-    for (auto [idx, val] : std::views::enumerate(data)) {
-        // ...
-    }
-    ```
+*   **`views::zip`**: Iterate over multiple ranges simultaneously.
+*   **`views::chunk` / `views::slide`**: Process ranges in blocks or sliding windows.
