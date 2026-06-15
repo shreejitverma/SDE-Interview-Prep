@@ -1,7 +1,6 @@
 # Appendix G: C++ Standard Library Headers Reference
 
 
-
 ### Concepts & Utilities
 *   `<concepts>` (C++20): Fundamental concepts library.
 *   `<coroutine>` (C++20): Coroutine support library.
@@ -56,11 +55,5 @@
 *   `<ratio>` (C++11): Compile-time rational arithmetic.
 *   `<valarray>`: Class for representing and manipulating arrays of values.
 *   `<numbers>` (C++20): Mathematical constants.
-
-
-
-
-
-
 
 ---

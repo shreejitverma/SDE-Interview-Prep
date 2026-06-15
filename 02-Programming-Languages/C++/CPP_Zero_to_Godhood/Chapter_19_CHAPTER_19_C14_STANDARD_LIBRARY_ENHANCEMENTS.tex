@@ -1,0 +1,166 @@
+\hypertarget{chapter-19-c14-standard-library-enhancements}{%
+\section{CHAPTER 19: C14 STANDARD LIBRARY
+ENHANCEMENTS}\label{chapter-19-c14-standard-library-enhancements}}
+
+\hypertarget{c14-standard-library-enhancements}{%
+\section{C++14 STANDARD LIBRARY
+ENHANCEMENTS}\label{c14-standard-library-enhancements}}
+
+The C++14 library updates were targeted at consistency and fixing
+omissions from C++11. Most notably, it finally gave us
+\passthrough{\lstinline!std::make\_unique!} and introduced the first
+standardized reader-writer lock.
+
+\hypertarget{stdmake_unique-completing-the-set}{%
+\subsection{\texorpdfstring{1. \texttt{std::make\_unique}: Completing
+the
+Set}{1. std::make\_unique: Completing the Set}}\label{stdmake_unique-completing-the-set}}
+
+In C++11, we had \passthrough{\lstinline!std::make\_shared!} but no
+\passthrough{\lstinline!std::make\_unique!}. This was a strange omission
+that forced developers to use \passthrough{\lstinline!new!} for unique
+pointers.
+
+\hypertarget{why-use-make_unique}{%
+\subsubsection{\texorpdfstring{1.1 Why use
+\texttt{make\_unique}?}{1.1 Why use make\_unique?}}\label{why-use-make_unique}}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  \textbf{Exception Safety:} Prevents memory leaks in complex
+  expressions where multiple allocations occur.
+\item
+  \textbf{No \passthrough{\lstinline!new!} Keyword:} Keeps code clean
+  and adheres to the ``No Raw New/Delete'' modern C++ philosophy.
+\item
+  \textbf{Efficiency:} While it doesn't offer the control-block
+  optimization of \passthrough{\lstinline!make\_shared!}, it is the
+  standard way to construct unique pointers.
+\end{enumerate}
+
+\begin{lstlisting}[language={C++}]
+// BAD: Potential leak if foo() throws
+process(std::unique_ptr<T>(new T()), foo());
+
+// GOOD: Exception safe
+process(std::make_unique<T>(), foo());
+\end{lstlisting}
+
+\hypertarget{stdexchange-move-semantics-utility}{%
+\subsection{\texorpdfstring{2. \texttt{std::exchange}: Move Semantics
+Utility}{2. std::exchange: Move Semantics Utility}}\label{stdexchange-move-semantics-utility}}
+
+\passthrough{\lstinline!std::exchange!} replaces the value of an object
+with a new value and returns the old value. It is particularly useful
+for implementing move constructors and move assignment operators.
+
+\begin{lstlisting}[language={C++}]
+struct Node {
+    int* data;
+    Node(Node&& other) noexcept
+        : data(std::exchange(other.data, nullptr)) {}
+
+    Node& operator=(Node&& other) noexcept {
+        if (this != &other) {
+            delete data;
+            data = std::exchange(other.data, nullptr);
+        }
+        return *this;
+    }
+};
+\end{lstlisting}
+
+\hypertarget{stdshared_timed_mutex-reader-writer-lock}{%
+\subsection{\texorpdfstring{3. \texttt{std::shared\_timed\_mutex}
+(Reader-Writer
+Lock)}{3. std::shared\_timed\_mutex (Reader-Writer Lock)}}\label{stdshared_timed_mutex-reader-writer-lock}}
+
+One of the most requested features: a mutex that allows multiple readers
+OR one writer.
+
+\hypertarget{performance-considerations}{%
+\subsubsection{3.1 Performance
+Considerations}\label{performance-considerations}}
+
+Use a shared mutex when: - Reads are frequent and cheap. - Writes are
+infrequent and expensive.
+
+\begin{lstlisting}[language={C++}]
+#include <shared_mutex>
+#include <map>
+
+class ThreadSafeMap {
+    std::map<int, std::string> data;
+    mutable std::shared_timed_mutex mtx;
+
+public:
+    std::string get(int key) const {
+        std::shared_lock lock(mtx); // Shared lock (Read)
+        return data.at(key);
+    }
+
+    void set(int key, std::string val) {
+        std::unique_lock lock(mtx); // Exclusive lock (Write)
+        data[key] = std::move(val);
+    }
+};
+\end{lstlisting}
+
+\hypertarget{stdquoted-stream-parsing-hero}{%
+\subsection{\texorpdfstring{4. \texttt{std::quoted}: Stream Parsing
+Hero}{4. std::quoted: Stream Parsing Hero}}\label{stdquoted-stream-parsing-hero}}
+
+Parsing CSVs or logs with quoted strings used to be a nightmare of
+manual character escaping. \passthrough{\lstinline!std::quoted!} handles
+this automatically.
+
+\begin{lstlisting}[language={C++}]
+#include <iomanip>
+#include <sstream>
+
+void test_quoted() {
+    std::stringstream ss;
+    std::string s = "Hello \"C++14\" World";
+
+    ss << std::quoted(s);
+    // ss now contains: "Hello \"C++14\" World" (with quotes and escaping)
+
+    std::string output;
+    ss >> std::quoted(output);
+    // output now contains original string: Hello "C++14" World
+}
+\end{lstlisting}
+
+\hypertarget{volume-03-godhood-summary}{%
+\section{VOLUME 03: GODHOOD SUMMARY}\label{volume-03-godhood-summary}}
+
+C++14 was the release where \textbf{Modern C++ became ``Fluid.''}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  \textbf{Constexpr is King:} Logic migrated from runtime to
+  compile-time. If it doesn't involve I/O or dynamic allocation, it
+  should probably be \passthrough{\lstinline!constexpr!}.
+\item
+  \textbf{Lambdas are Complete:} With Generic Lambdas and Init-Capture,
+  lambdas are now the preferred tool for almost all local logic,
+  closures, and callback patterns.
+\item
+  \textbf{Standard Consistency:}
+  \passthrough{\lstinline!std::make\_unique!} and
+  \passthrough{\lstinline!\_t/\_v!} aliases removed the ``boilerplate
+  friction'' that made C++11 feel verbose.
+\end{enumerate}
+
+\textbf{The Golden Rule of C++14:} If you find yourself writing a manual
+loop in a template or a manual move in a constructor, check if a C++14
+utility (\passthrough{\lstinline!integer\_sequence!},
+\passthrough{\lstinline!std::exchange!}) can do it for you in one line.
+
+\hypertarget{volume-04-simplification-modernization-c17}{%
+\section{VOLUME 04 SIMPLIFICATION MODERNIZATION
+C17}\label{volume-04-simplification-modernization-c17}}

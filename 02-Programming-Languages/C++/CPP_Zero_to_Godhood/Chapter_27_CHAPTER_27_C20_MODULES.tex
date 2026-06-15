@@ -1,0 +1,112 @@
+\hypertarget{chapter-27-c20-modules}{%
+\section{CHAPTER 27: C20 MODULES}\label{chapter-27-c20-modules}}
+
+\hypertarget{c20-modules}{%
+\section{C++20 MODULES}\label{c20-modules}}
+
+\hypertarget{the-death-of-headers}{%
+\subsection{1. The Death of Headers}\label{the-death-of-headers}}
+
+Headers (\passthrough{\lstinline!\#include!}) are text substitution.
+They are slow, fragile, and leak macros/symbols. Modules
+(\passthrough{\lstinline!import!}) are compiled components.
+
+\hypertarget{problems-with-headers}{%
+\subsubsection{1.1 Problems with Headers}\label{problems-with-headers}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Slow Compilation:} A 10,000 line header included in 100 files
+  is parsed 100 times.
+\item
+  \textbf{Macro Leaks:} Macros defined in one header affect all
+  subsequent code.
+\item
+  \textbf{ODR Violations:} Different compiler flags for different TUs
+  can break binary compatibility.
+\end{itemize}
+
+\hypertarget{basic-module-syntax}{%
+\subsection{2. Basic Module Syntax}\label{basic-module-syntax}}
+
+\hypertarget{interface-unit-.cppm-or-.ixx}{%
+\subsubsection{\texorpdfstring{2.1 Interface Unit (\texttt{.cppm} or
+\texttt{.ixx})}{2.1 Interface Unit (.cppm or .ixx)}}\label{interface-unit-.cppm-or-.ixx}}
+
+\begin{lstlisting}[language={C++}]
+export module math; // Module declaration
+
+export int add(int a, int b) { // Exported function
+    return a + b;
+}
+
+int internal_helper() { // Not exported (private)
+    return 42;
+}
+\end{lstlisting}
+
+\hypertarget{importing-a-module}{%
+\subsubsection{2.2 Importing a Module}\label{importing-a-module}}
+
+\begin{lstlisting}[language={C++}]
+import math;
+import <iostream>; // Import header unit (if supported)
+
+int main() {
+    std::cout << add(1, 2) << "\n";
+    // internal_helper(); // Error: undeclared identifier
+}
+\end{lstlisting}
+
+\hypertarget{module-partitions}{%
+\subsection{3. Module Partitions}\label{module-partitions}}
+
+Large modules can be split into partitions.
+
+\passthrough{\lstinline!math\_impl.cppm!}:
+
+\begin{lstlisting}[language={C++}]
+module math:impl; // Partition
+
+int heavy_computation() { return 100; }
+\end{lstlisting}
+
+\passthrough{\lstinline!math.cppm!}:
+
+\begin{lstlisting}[language={C++}]
+export module math;
+import :impl; // Import partition
+
+export int compute() {
+    return heavy_computation();
+}
+\end{lstlisting}
+
+\hypertarget{the-global-module-fragment}{%
+\subsection{4. The Global Module
+Fragment}\label{the-global-module-fragment}}
+
+Used to include legacy headers within a module.
+
+\begin{lstlisting}[language={C++}]
+module;
+#include <vector>
+#include <cmath>
+
+export module geometry;
+
+export double distance(double x, double y) {
+    return std::sqrt(x*x + y*y);
+}
+\end{lstlisting}
+
+\hypertarget{build-system-implications}{%
+\subsection{5. Build System
+Implications}\label{build-system-implications}}
+
+Modules require a dependency graph to be built \emph{before} compilation
+(unlike headers). Modern build systems (CMake 3.26+, Build2, XMake)
+support this.
+
+```

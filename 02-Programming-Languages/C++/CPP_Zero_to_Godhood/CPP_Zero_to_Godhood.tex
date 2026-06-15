@@ -9,10 +9,11 @@
 \usepackage{geometry}
 \usepackage{longtable}
 \usepackage{booktabs}
-\usepackage{calc}
-\usepackage{array}
 \usepackage{amssymb}
 \usepackage{fancyhdr}
+\usepackage{amsmath}
+\usepackage{array}
+\usepackage{calc}
 
 % Pandoc compatibility
 \newcommand{\passthrough}[1]{#1}
@@ -20,12 +21,31 @@
   \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
 
 % Page Layout
-\geometry{margin=1in}
+\geometry{margin=0.7in}
+\setlength{\headheight}{15pt}
 \pagestyle{fancy}
 \fancyhf{}
 \fancyhead[LE,RO]{\thepage}
 \fancyhead[RE]{\leftmark}
 \fancyhead[LO]{\rightmark}
+\raggedbottom
+
+% Re-define chapter for compactness
+\makeatletter
+\def\@makechapterhead#1{%
+  {\parindent \z@ \raggedright \normalfont
+    \ifnum \c@secnumdepth >\m@ne
+      \if@mainmatter
+        \large\bfseries \@chapapp\space \thechapter
+        \par\nobreak
+        \vskip 5\p@
+      \fi
+    \fi
+    \interlinepenalty\@M
+    \Huge \bfseries #1\par\nobreak
+    \vskip 20\p@
+  }}
+\makeatother
 
 % Colors for code
 \definecolor{codegreen}{rgb}{0,0.6,0}
@@ -91,91 +111,81 @@
 
 \mainmatter
 \input{00_Preface.tex}
-
 \part{Volume 01: FOUNDATION (C++98/03)}
-\input{Chapter_1_FOUNDATIONS_AND_COMPILATION.tex}
-\input{Chapter_2_MEMORY_TYPES_AND_POINTERS.tex}
-\input{Chapter_3_CONTROL_FLOW_AND_PREPROCESSOR.tex}
-\input{Chapter_4_ADVANCED_FUNCTIONS_AND_CALLBACKS.tex}
-\input{Chapter_5_OOP_AND_ENCAPSULATION.tex}
-\input{Chapter_6_POLYMORPHISM_AND_VIRTUALIZATION.tex}
-\input{Chapter_7_STANDARD_TEMPLATE_LIBRARY_CORE.tex}
-\input{Chapter_8_STL_UNDER_THE_HOOD.tex}
-\input{Chapter_9_ERROR_HANDLING_AND_ROBUSTNESS.tex}
-
+\input{Chapter_1_CHAPTER_1_FOUNDATIONS_AND_COMPILATION.tex}
+\input{Chapter_2_CHAPTER_2_MEMORY_TYPES_AND_POINTERS.tex}
+\input{Chapter_3_CHAPTER_3_CONTROL_FLOW_AND_PREPROCESSOR.tex}
+\input{Chapter_4_CHAPTER_4_ADVANCED_FUNCTIONS_AND_CALLBACKS.tex}
+\input{Chapter_5_CHAPTER_5_OOP_AND_ENCAPSULATION.tex}
+\input{Chapter_6_CHAPTER_6_POLYMORPHISM_AND_VIRTUALIZATION.tex}
+\input{Chapter_7_CHAPTER_7_STANDARD_TEMPLATE_LIBRARY_CORE.tex}
+\input{Chapter_8_CHAPTER_8_STL_UNDER_THE_HOOD.tex}
+\input{Chapter_9_CHAPTER_9_ERROR_HANDLING_AND_ROBUSTNESS.tex}
 \part{Volume 02: MODERN REVOLUTION (C++11)}
-\input{Chapter_10_THE_MODERN_C11_CORE.tex}
-\input{Chapter_11_MOVE_SEMANTICS_AND_SMART_POINTERS.tex}
-\input{Chapter_12_FUNCTIONAL_PROGRAMMING.tex}
-\input{Chapter_13_TEMPLATE_METAPROGRAMMING.tex}
-\input{Chapter_14_STANDARD_LIBRARY_EXPANSION.tex}
-\input{Chapter_15_CONCURRENCY.tex}
-
+\input{Chapter_10_CHAPTER_10_THE_MODERN_C11_CORE.tex}
+\input{Chapter_11_CHAPTER_11_MOVE_SEMANTICS_AND_SMART_POINTERS.tex}
+\input{Chapter_12_CHAPTER_12_FUNCTIONAL_PROGRAMMING.tex}
+\input{Chapter_13_CHAPTER_13_TEMPLATE_METAPROGRAMMING.tex}
+\input{Chapter_14_CHAPTER_14_STANDARD_LIBRARY_EXPANSION.tex}
+\input{Chapter_15_CHAPTER_15_CONCURRENCY.tex}
 \part{Volume 03: REFINEMENT (C++14)}
-\input{Chapter_16_C14_CORE_LANGUAGE_UPGRADES.tex}
-\input{Chapter_17_C14_FUNCTIONS_AND_LAMBDAS.tex}
-\input{Chapter_18_C14_TEMPLATES_AND_METAPROGRAMMING.tex}
-\input{Chapter_19_C14_STANDARD_LIBRARY_ENHANCEMENTS.tex}
-
+\input{Chapter_16_CHAPTER_16_C14_CORE_LANGUAGE_UPGRADES.tex}
+\input{Chapter_17_CHAPTER_17_C14_FUNCTIONS_AND_LAMBDAS.tex}
+\input{Chapter_18_CHAPTER_18_C14_TEMPLATES_AND_METAPROGRAMMING.tex}
+\input{Chapter_19_CHAPTER_19_C14_STANDARD_LIBRARY_ENHANCEMENTS.tex}
 \part{Volume 04: MODERNIZATION (C++17)}
-\input{Chapter_20_C17_CORE_LANGUAGE_FEATURES.tex}
-\input{Chapter_21_C17_TEMPLATE_METAPROGRAMMING.tex}
-\input{Chapter_22_C17_VOCABULARY_TYPES.tex}
-\input{Chapter_23_C17_FILESYSTEM_AND_IO.tex}
-\input{Chapter_24_C17_PARALLEL_ALGORITHMS_AND_CONCURRENCY.tex}
-\input{Chapter_25_C17_STANDARD_LIBRARY_ADDITIONS.tex}
-
+\input{Chapter_20_CHAPTER_20_C17_CORE_LANGUAGE_FEATURES.tex}
+\input{Chapter_21_CHAPTER_21_C17_TEMPLATE_METAPROGRAMMING.tex}
+\input{Chapter_22_CHAPTER_22_C17_VOCABULARY_TYPES.tex}
+\input{Chapter_23_CHAPTER_23_C17_FILESYSTEM_AND_IO.tex}
+\input{Chapter_24_CHAPTER_24_C17_PARALLEL_ALGORITHMS_AND_CONCURRENCY.tex}
+\input{Chapter_25_CHAPTER_25_C17_STANDARD_LIBRARY_ADDITIONS.tex}
 \part{Volume 05: GIGANTIC LEAP (C++20)}
-\input{Chapter_26_C20_CONCEPTS.tex}
-\input{Chapter_27_C20_MODULES.tex}
-\input{Chapter_28_C20_COROUTINES.tex}
-\input{Chapter_29_C20_RANGES.tex}
-\input{Chapter_30_C20_CORE_LANGUAGE_FEATURES.tex}
-\input{Chapter_31_C20_STANDARD_LIBRARY_ADDITIONS.tex}
-
+\input{Chapter_26_CHAPTER_26_C20_CONCEPTS.tex}
+\input{Chapter_27_CHAPTER_27_C20_MODULES.tex}
+\input{Chapter_28_CHAPTER_28_C20_COROUTINES.tex}
+\input{Chapter_29_CHAPTER_29_C20_RANGES.tex}
+\input{Chapter_30_CHAPTER_30_C20_CORE_LANGUAGE_FEATURES.tex}
+\input{Chapter_31_CHAPTER_31_C20_STANDARD_LIBRARY_ADDITIONS.tex}
 \part{Volume 06: LATEST EVOLUTION (C++23)}
-\input{Chapter_32_C23_CORE_LANGUAGE.tex}
-\input{Chapter_33_C23_STD_PRINT.tex}
-\input{Chapter_34_C23_MONADIC_OPERATIONS_AND_EXPECTED.tex}
-\input{Chapter_35_C23_CONTAINERS_AND_VIEWS.tex}
-\input{Chapter_36_C23_COROUTINES_AND_STACKTRACE.tex}
-\input{Chapter_37_C23_LIBRARY_UTILITIES.tex}
-
+\input{Chapter_32_CHAPTER_32_C23_CORE_LANGUAGE.tex}
+\input{Chapter_33_CHAPTER_33_C23_STD_PRINT.tex}
+\input{Chapter_34_CHAPTER_34_C23_MONADIC_OPERATIONS_AND_EXPECTED.tex}
+\input{Chapter_35_CHAPTER_35_C23_CONTAINERS_AND_VIEWS.tex}
+\input{Chapter_36_CHAPTER_36_C23_COROUTINES_AND_STACKTRACE.tex}
+\input{Chapter_37_CHAPTER_37_C23_LIBRARY_UTILITIES.tex}
 \part{Volume 07: THE NEXT FRONTIER (C++26)}
-\input{Chapter_38_C26_-_THE_NEXT_FRONTIER.tex}
-
+\input{Chapter_38_CHAPTER_38_C26_-_THE_NEXT_FRONTIER.tex}
 \part{Volume 08: ADVANCED SYSTEMS}
-\input{Chapter_39_ADVANCED_TEMPLATE_METAPROGRAMMING.tex}
-\input{Chapter_40_COMPILE_TIME_PROGRAMMING.tex}
-\input{Chapter_41_THE_CPP_MEMORY_MODEL.tex}
-\input{Chapter_42_LOCK_FREE_PROGRAMMING.tex}
-\input{Chapter_43_ADVANCED_CONCURRENCY_PATTERNS.tex}
-\input{Chapter_44_CUSTOM_MEMORY_ALLOCATORS.tex}
-\input{Chapter_45_HIGH_PERFORMANCE_OPTIMIZATION.tex}
-\input{Chapter_46_WRITING_A_C_COMPILER_BASICS.tex}
-\input{Chapter_47_WRITING_A_GARBAGE_COLLECTOR.tex}
-\input{Chapter_48_THE_STANDARD_LIBRARY_FROM_SCRATCH.tex}
-
+\input{Chapter_39_CHAPTER_39_ADVANCED_TEMPLATE_METAPROGRAMMING.tex}
+\input{Chapter_40_CHAPTER_40_COMPILE_TIME_PROGRAMMING.tex}
+\input{Chapter_41_CHAPTER_41_THE_CPP_MEMORY_MODEL.tex}
+\input{Chapter_42_CHAPTER_42_LOCK_FREE_PROGRAMMING.tex}
+\input{Chapter_43_CHAPTER_43_ADVANCED_CONCURRENCY_PATTERNS.tex}
+\input{Chapter_44_CHAPTER_44_CUSTOM_MEMORY_ALLOCATORS.tex}
+\input{Chapter_45_CHAPTER_45_HIGH_PERFORMANCE_OPTIMIZATION.tex}
+\input{Chapter_46_CHAPTER_46_WRITING_A_C_COMPILER_BASICS.tex}
+\input{Chapter_47_CHAPTER_47_WRITING_A_GARBAGE_COLLECTOR.tex}
+\input{Chapter_48_CHAPTER_48_THE_STANDARD_LIBRARY_FROM_SCRATCH.tex}
 \part{Volume 09: SPECIALIZED MASTERY}
-\input{Chapter_49_DISTRIBUTED_C.tex}
-\input{Chapter_50_NETWORKING_FROM_SCRATCH.tex}
-\input{Chapter_51_C_IN_THE_CLOUD.tex}
-\input{Chapter_52_CROSS-PLATFORM_DEVELOPMENT.tex}
-\input{Chapter_53_GUI_DEVELOPMENT_WITH_C.tex}
-\input{Chapter_54_SCIENTIFIC_COMPUTING__GPU.tex}
-\input{Chapter_55_INTEROPERABILITY.tex}
-\input{Chapter_56_SECURITY_ENGINEERING.tex}
-\input{Chapter_57_SPECIALIZED_DOMAINS.tex}
-\input{Chapter_58_ABA_PROBLEM__MEMORY_RECLAMATION.tex}
-\input{Chapter_59_TEMPLATE_METAPROGRAMMING_PATTERNS.tex}
-\input{Chapter_60_HIGH-PERFORMANCE_DATA_STRUCTURES.tex}
-\input{Chapter_61_REAL-TIME_AUDIO__SIGNAL_PROCESSING.tex}
-\input{Chapter_62_ROBOTICS__ROS2_DEVELOPMENT.tex}
-\input{Chapter_63_MACHINE_LEARNING_INFRASTRUCTURE.tex}
-\input{Chapter_64_DATABASE_INTERNALS_LSM_TREES.tex}
-\input{Chapter_65_THE_ULTIMATE_ALGORITHM_REFERENCE.tex}
-\input{Chapter_66_CAPSTONE_PROJECT_-_HIGH-PERFORMANCE_ORDER_BOOK.tex}
-
+\input{Chapter_49_CHAPTER_49_DISTRIBUTED_C.tex}
+\input{Chapter_50_CHAPTER_50_NETWORKING_FROM_SCRATCH.tex}
+\input{Chapter_51_CHAPTER_51_C_IN_THE_CLOUD.tex}
+\input{Chapter_52_CHAPTER_52_CROSS-PLATFORM_DEVELOPMENT.tex}
+\input{Chapter_53_CHAPTER_53_GUI_DEVELOPMENT_WITH_C.tex}
+\input{Chapter_54_CHAPTER_54_SCIENTIFIC_COMPUTING__GPU.tex}
+\input{Chapter_55_CHAPTER_55_INTEROPERABILITY.tex}
+\input{Chapter_56_CHAPTER_56_SECURITY_ENGINEERING.tex}
+\input{Chapter_57_CHAPTER_57_SPECIALIZED_DOMAINS.tex}
+\input{Chapter_58_CHAPTER_58_ABA_PROBLEM__MEMORY_RECLAMATION.tex}
+\input{Chapter_59_CHAPTER_59_TEMPLATE_METAPROGRAMMING_PATTERNS.tex}
+\input{Chapter_60_CHAPTER_60_HIGH-PERFORMANCE_DATA_STRUCTURES.tex}
+\input{Chapter_61_CHAPTER_61_REAL-TIME_AUDIO__SIGNAL_PROCESSING.tex}
+\input{Chapter_62_CHAPTER_62_ROBOTICS__ROS2_DEVELOPMENT.tex}
+\input{Chapter_63_CHAPTER_63_MACHINE_LEARNING_INFRASTRUCTURE.tex}
+\input{Chapter_64_CHAPTER_64_DATABASE_INTERNALS_LSM_TREES.tex}
+\input{Chapter_65_CHAPTER_65_THE_ULTIMATE_ALGORITHM_REFERENCE.tex}
+\input{Chapter_66_CHAPTER_66_CAPSTONE_PROJECT_-_HIGH-PERFORMANCE_ORD.tex}
 \appendix
 \input{Appendix_A_Appendix_A_C_Keywords__Operators_Reference.tex}
 \input{Appendix_B_Appendix_B_Common_Acronyms.tex}
@@ -185,5 +195,4 @@
 \input{Appendix_F_Appendix_F_The_C_Standard_Evolution_Matrix.tex}
 \input{Appendix_G_Appendix_G_C_Standard_Library_Headers_Reference.tex}
 \input{Appendix_H_Appendix_H_Professional_C_Idioms.tex}
-
 \end{document}

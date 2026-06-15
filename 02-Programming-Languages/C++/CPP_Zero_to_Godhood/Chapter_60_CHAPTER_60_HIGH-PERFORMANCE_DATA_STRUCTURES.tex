@@ -1,0 +1,48 @@
+\hypertarget{chapter-60-high-performance-data-structures}{%
+\section{CHAPTER 60: HIGH-PERFORMANCE DATA
+STRUCTURES}\label{chapter-60-high-performance-data-structures}}
+
+\hypertarget{high-performance-data-structures}{%
+\section{HIGH-PERFORMANCE DATA
+STRUCTURES}\label{high-performance-data-structures}}
+
+When \passthrough{\lstinline!std::unordered\_map!} is too slow, we
+descend into the hardware.
+
+\hypertarget{the-disruptor-ring-buffer-on-steroids}{%
+\subsubsection{1. The Disruptor (Ring Buffer on
+Steroids)}\label{the-disruptor-ring-buffer-on-steroids}}
+
+A lock-free ring buffer designed for high-throughput messaging (LMAX
+Trading). * \textbf{Key Concept:} Pre-allocated memory, sequence
+numbers, and ``barriers''. * \textbf{False Sharing Prevention:} Padding
+sequence counters to 64 bytes (cache line). * \textbf{Batching:}
+Consumers process up to the known ``published'' sequence.
+
+\hypertarget{swiss-table-open-addressing-metadata}{%
+\subsubsection{2. Swiss Table (Open Addressing +
+Metadata)}\label{swiss-table-open-addressing-metadata}}
+
+Used in \passthrough{\lstinline!absl::flat\_hash\_map!}. *
+\textbf{Structure:} Arrays of control bytes (metadata) and data slots. *
+\textbf{Control Byte:} 7 bits of hash + 1 bit for empty/deleted. *
+\textbf{SIMD Probing:} Load 16 control bytes into a vector register
+(SSE/AVX). Compare all 16 tags in parallel to find the slot. *
+\textbf{Result:} Drastically fewer cache misses than chaining.
+
+\hypertarget{burst-tries-judy-arrays}{%
+\subsubsection{3. Burst Tries / Judy
+Arrays}\label{burst-tries-judy-arrays}}
+
+Cache-efficient digital trees (tries) for integer keys. * \textbf{Idea:}
+Nodes dynamically change type based on population (Linear list
+-\textgreater{} Bitmap -\textgreater{} Sub-trie).
+
+\hypertarget{slot-map}{%
+\subsubsection{4. Slot Map}\label{slot-map}}
+
+O(1) insertion, deletion, and access with stable ``handles'' (indices)
+instead of pointers. * \textbf{Generational Indices:} Handle =
+\passthrough{\lstinline![Index | Generation]!}. Prevents ``Dangling
+Reference'' equivalent (accessing a slot that was re-used for a new
+object).

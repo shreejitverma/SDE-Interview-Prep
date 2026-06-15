@@ -1,7 +1,6 @@
 # Appendix H: Professional C++ Idioms
 
 
-
 ### 1. RAII (Resource Acquisition Is Initialization)
 *   **Concept**: Bind resource lifecycle to object lifecycle. Constructor acquires, destructor releases.
 *   **Use Case**: Memory, file handles, mutex locks, sockets.
@@ -63,7 +62,3 @@
 *   **Example**: `std::enable_shared_from_this`.
 
 ---
-
-
----
-
