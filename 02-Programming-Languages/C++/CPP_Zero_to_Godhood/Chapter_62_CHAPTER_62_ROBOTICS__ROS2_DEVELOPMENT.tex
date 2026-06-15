@@ -1,0 +1,43 @@
+\hypertarget{chapter-62-robotics-ros2-development}{%
+\section{CHAPTER 62: ROBOTICS ROS2
+DEVELOPMENT}\label{chapter-62-robotics-ros2-development}}
+
+\hypertarget{robotics-ros2-development}{%
+\section{ROBOTICS \& ROS2 DEVELOPMENT}\label{robotics-ros2-development}}
+
+Robotics is where Soft Real-Time (Navigation) meets Hard Real-Time
+(Motor Control).
+
+\hypertarget{ros2-architecture-dds}{%
+\subsubsection{1. ROS2 Architecture \&
+DDS}\label{ros2-architecture-dds}}
+
+Robot Operating System 2 (ROS2) runs on top of DDS (Data Distribution
+Service). * \textbf{Nodes:} Independent processes. * \textbf{Topics:}
+Pub/Sub channels. * \textbf{Services:} RPC-style calls.
+
+\hypertarget{zero-copy-transport-iceoryx}{%
+\subsubsection{2. Zero-Copy Transport
+(Iceoryx)}\label{zero-copy-transport-iceoryx}}
+
+Standard ROS2 serialization is slow for large data (LiDAR point clouds,
+4K video). * \textbf{Solution:} Shared Memory. * \textbf{Mechanism:} 1.
+Publisher requests a memory chunk from shared segment. 2. Publisher
+writes data directly. 3. Publisher sends the \emph{offset} (pointer) to
+Subscriber. 4. Subscriber reads directly. \textbf{Zero copies.}
+
+\hypertarget{real-time-executors}{%
+\subsubsection{3. Real-Time Executors}\label{real-time-executors}}
+
+Standard ROS2 executors can suffer from priority inversion. *
+\textbf{Callback-group-level Executor:} Prioritize ``Safety Stop'' topic
+callbacks over ``Camera Logging'' callbacks.
+
+\hypertarget{custom-allocators-stdpmr}{%
+\subsubsection{\texorpdfstring{4. Custom Allocators
+(\texttt{std::pmr})}{4. Custom Allocators (std::pmr)}}\label{custom-allocators-stdpmr}}
+
+In the real-time control loop (1kHz+), heap fragmentation is fatal. *
+\textbf{Pattern:} Use
+\passthrough{\lstinline!std::pmr::monotonic\_buffer\_resource!} on the
+stack for message generation.

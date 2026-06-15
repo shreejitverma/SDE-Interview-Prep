@@ -1,0 +1,63 @@
+\hypertarget{chapter-63-machine-learning-infrastructure}{%
+\section{CHAPTER 63: MACHINE LEARNING
+INFRASTRUCTURE}\label{chapter-63-machine-learning-infrastructure}}
+
+\hypertarget{machine-learning-infrastructure}{%
+\section{MACHINE LEARNING
+INFRASTRUCTURE}\label{machine-learning-infrastructure}}
+
+Deep Learning frameworks (PyTorch, TensorFlow) are C++ engines wrapped
+in Python.
+
+\hypertarget{tensor-memory-layout}{%
+\subsubsection{1. Tensor Memory Layout}\label{tensor-memory-layout}}
+
+A Tensor is a block of memory + a ``View''. * \textbf{Strides:} The
+number of elements to skip to reach the next index in a dimension. *
+\passthrough{\lstinline!Element(i, j) = data[i * stride\_i + j * stride\_j]!}
+* \textbf{Contiguity:} Transposing a tensor
+(\passthrough{\lstinline!A.T!}) usually just modifies strides, touching
+\textbf{zero} data.
+
+\hypertarget{broadcasting-implementation}{%
+\subsubsection{2. Broadcasting
+Implementation}\label{broadcasting-implementation}}
+
+How to add \passthrough{\lstinline![32, 1]!} vector to
+\passthrough{\lstinline![32, 100]!} matrix? * \textbf{Virtual
+Expansion:} Set stride for the dimension of size
+\passthrough{\lstinline!1!} to \passthrough{\lstinline!0!}. Accessing
+that dimension repeatedly reads the same value.
+
+\hypertarget{automatic-differentiation-autograd}{%
+\subsubsection{3. Automatic Differentiation
+(Autograd)}\label{automatic-differentiation-autograd}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Computational Graph:} Directed Acyclic Graph (DAG) of
+  operations.
+\item
+  \textbf{Reverse Mode (Backprop):}
+
+  \begin{enumerate}
+  \def\labelenumi{\arabic{enumi}.}
+  \tightlist
+  \item
+    Forward pass: Compute \passthrough{\lstinline!y = f(x)!}, store
+    intermediate values (tape).
+  \item
+    Backward pass: Compute \passthrough{\lstinline!dL/dx!} using stored
+    values and chain rule.
+  \end{enumerate}
+\item
+  \textbf{Implementation:} \passthrough{\lstinline!Node!} class with
+  \passthrough{\lstinline!virtual Tensor backward(Tensor grad)!}.
+\end{itemize}
+
+\hypertarget{operator-fusion}{%
+\subsubsection{4. Operator Fusion}\label{operator-fusion}}
+
+Optimizing \passthrough{\lstinline!ReLU(Add(MatMul(A, B), C))!} into a
+single kernel launch to minimize VRAM bandwidth.

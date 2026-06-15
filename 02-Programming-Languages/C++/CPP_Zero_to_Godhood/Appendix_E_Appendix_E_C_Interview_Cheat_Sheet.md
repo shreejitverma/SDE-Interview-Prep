@@ -1,7 +1,6 @@
 # Appendix E: C++ Interview Cheat Sheet
 
 
-
 ### Core Concepts
 1.  **Virtual Functions**: Enable runtime polymorphism via vtable/vptr. Destructors must be virtual in base classes.
 2.  **Smart Pointers**:
@@ -33,8 +32,5 @@
 *   **Implement Singleton**: Use static local variable (Thread-safe in C++11+).
 *   **Implement String Class**: Handle deep copy, move semantics, and destructor.
 *   **Reverse Linked List**: Classic pointer manipulation.
-
----
-
 
 ---

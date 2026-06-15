@@ -1,0 +1,96 @@
+\hypertarget{chapter-30-c20-core-language-features}{%
+\section{CHAPTER 30: C20 CORE LANGUAGE
+FEATURES}\label{chapter-30-c20-core-language-features}}
+
+\hypertarget{c20-core-language-features}{%
+\section{C++20 CORE LANGUAGE
+FEATURES}\label{c20-core-language-features}}
+
+\hypertarget{three-way-comparison}{%
+\subsection{\texorpdfstring{1. Three-Way Comparison
+(\texttt{\textless{}=\textgreater{}})}{1. Three-Way Comparison (\textless=\textgreater)}}\label{three-way-comparison}}
+
+The ``Spaceship Operator''. Generates all 6 comparison operators
+(\passthrough{\lstinline!==!}, \passthrough{\lstinline"!="},
+\passthrough{\lstinline!<!}, \passthrough{\lstinline!<=!},
+\passthrough{\lstinline!>!}, \passthrough{\lstinline!>=!})
+automatically.
+
+\begin{lstlisting}[language={C++}]
+#include <compare>
+
+struct Point {
+    int x, y;
+    auto operator<=>(const Point&) const = default;
+};
+
+Point p1{1, 2}, p2{1, 3};
+// p1 < p2 works!
+// p1 == p2 works!
+\end{lstlisting}
+
+Returns \passthrough{\lstinline!strong\_ordering!},
+\passthrough{\lstinline!weak\_ordering!}, or
+\passthrough{\lstinline!partial\_ordering!}.
+
+\hypertarget{designated-initializers}{%
+\subsection{2. Designated Initializers}\label{designated-initializers}}
+
+C-style struct initialization syntax.
+
+\begin{lstlisting}[language={C++}]
+struct Config {
+    int id;
+    std::string name;
+    bool active;
+};
+
+Config c = {
+    .id = 1,
+    .active = true // Order must match declaration! Name is default constructed.
+};
+\end{lstlisting}
+
+\hypertarget{consteval-immediate-functions}{%
+\subsection{\texorpdfstring{3. \texttt{consteval} (Immediate
+Functions)}{3. consteval (Immediate Functions)}}\label{consteval-immediate-functions}}
+
+Functions that \emph{must} be executed at compile time.
+
+\begin{lstlisting}[language={C++}]
+consteval int square(int n) {
+    return n * n;
+}
+
+int x = square(5); // OK: computed at compile time
+int runtime_val = 10;
+// int y = square(runtime_val); // Error: argument not constant
+\end{lstlisting}
+
+\hypertarget{constinit}{%
+\subsection{\texorpdfstring{4.
+\texttt{constinit}}{4. constinit}}\label{constinit}}
+
+Ensures a variable has static initialization (no runtime overhead, no
+static initialization order fiasco).
+
+\begin{lstlisting}[language={C++}]
+constinit int g_val = 42; // OK
+// constinit int g_rand = rand(); // Error
+\end{lstlisting}
+
+\hypertarget{non-type-template-parameters-nttp-enhancements}{%
+\subsection{5. Non-Type Template Parameters (NTTP)
+Enhancements}\label{non-type-template-parameters-nttp-enhancements}}
+
+You can now use floating-point types and structural types (classes with
+public members) as template parameters.
+
+\begin{lstlisting}[language={C++}]
+template<double Threshold>
+bool check(double val) { return val > Threshold; }
+
+struct FixedString { char buf[16]; };
+template<FixedString S>
+void print() { std::cout << S.buf; }
+\end{lstlisting}

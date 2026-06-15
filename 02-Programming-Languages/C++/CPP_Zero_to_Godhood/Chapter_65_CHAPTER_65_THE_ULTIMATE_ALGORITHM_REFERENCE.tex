@@ -1,0 +1,126 @@
+\hypertarget{chapter-65-the-ultimate-algorithm-reference}{%
+\section{CHAPTER 65: THE ULTIMATE ALGORITHM
+REFERENCE}\label{chapter-65-the-ultimate-algorithm-reference}}
+
+\hypertarget{the-ultimate-algorithm-reference}{%
+\section{THE ULTIMATE ALGORITHM
+REFERENCE}\label{the-ultimate-algorithm-reference}}
+
+Stop writing loops. Use the STL.
+
+\hypertarget{non-modifying-sequence-operations}{%
+\subsubsection{27.1 Non-Modifying Sequence
+Operations}\label{non-modifying-sequence-operations}}
+
+\begin{itemize}
+\tightlist
+\item
+  \passthrough{\lstinline!std::all\_of(begin, end, pred)!}: True if all
+  match.
+\item
+  \passthrough{\lstinline!std::any\_of(begin, end, pred)!}: True if any
+  match.
+\item
+  \passthrough{\lstinline!std::none\_of(begin, end, pred)!}: True if
+  none match.
+\item
+  \passthrough{\lstinline!std::for\_each(begin, end, func)!}: Apply
+  function to all.
+\item
+  \passthrough{\lstinline!std::count(begin, end, val)!}: Count
+  occurrences.
+\item
+  \passthrough{\lstinline!std::mismatch(b1, e1, b2)!}: Find first
+  difference.
+\item
+  \passthrough{\lstinline!std::find(begin, end, val)!}: Linear search.
+\end{itemize}
+
+\hypertarget{modifying-sequence-operations}{%
+\subsubsection{27.2 Modifying Sequence
+Operations}\label{modifying-sequence-operations}}
+
+\begin{itemize}
+\tightlist
+\item
+  \passthrough{\lstinline!std::copy(b, e, out)!}: Copy range.
+\item
+  \passthrough{\lstinline!std::transform(b, e, out, op)!}: Map function
+  over range.
+\item
+  \passthrough{\lstinline!std::generate(b, e, gen)!}: Fill with
+  generator.
+\item
+  \passthrough{\lstinline!std::remove\_if(b, e, pred)!}:
+  \textbf{Erase-Remove Idiom} step 1. Move valid elements to front.
+\item
+  \passthrough{\lstinline!std::replace(b, e, old, new)!}: Replace
+  values.
+\item
+  \passthrough{\lstinline!std::unique(b, e)!}: Remove consecutive
+  duplicates.
+\end{itemize}
+
+\hypertarget{partitioning}{%
+\subsubsection{27.3 Partitioning}\label{partitioning}}
+
+\begin{itemize}
+\tightlist
+\item
+  \passthrough{\lstinline!std::partition(b, e, pred)!}: Reorder so true
+  predicates come first. O(N).
+\item
+  \passthrough{\lstinline!std::stable\_partition!}: Preserves relative
+  order.
+\end{itemize}
+
+\hypertarget{sorting}{%
+\subsubsection{27.4 Sorting}\label{sorting}}
+
+\begin{itemize}
+\tightlist
+\item
+  \passthrough{\lstinline!std::sort(b, e)!}: IntroSort (Quick + Heap +
+  Insertion). O(N log N).
+\item
+  \passthrough{\lstinline!std::partial\_sort(b, mid, e)!}: Top K
+  elements sorted.
+\item
+  \passthrough{\lstinline!std::nth\_element(b, nth, e)!}: Element at
+  \passthrough{\lstinline!nth!} is what it would be if sorted. O(N).
+\end{itemize}
+
+\hypertarget{binary-search-on-sorted-ranges}{%
+\subsubsection{27.5 Binary Search (On Sorted
+Ranges)}\label{binary-search-on-sorted-ranges}}
+
+\begin{itemize}
+\tightlist
+\item
+  \passthrough{\lstinline!std::lower\_bound(b, e, val)!}: First element
+  \passthrough{\lstinline!>=!} val.
+\item
+  \passthrough{\lstinline!std::upper\_bound(b, e, val)!}: First element
+  \passthrough{\lstinline!>!} val.
+\item
+  \passthrough{\lstinline!std::binary\_search(b, e, val)!}: True/False
+  existence.
+\end{itemize}
+
+\hypertarget{numeric-operations}{%
+\subsubsection{27.6 Numeric Operations ()}\label{numeric-operations}}
+
+\begin{itemize}
+\tightlist
+\item
+  \passthrough{\lstinline!std::iota(b, e, start)!}: Fill with 0, 1,
+  2\ldots{}
+\item
+  \passthrough{\lstinline!std::accumulate(b, e, init)!}: Sum (fold
+  left).
+\item
+  \passthrough{\lstinline!std::reduce(b, e)!}: Parallelizable sum
+  (C++17).
+\item
+  \passthrough{\lstinline!std::inner\_product!}: Dot product.
+\end{itemize}

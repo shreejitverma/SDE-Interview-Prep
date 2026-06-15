@@ -1,0 +1,121 @@
+\hypertarget{chapter-18-c14-templates-and-metaprogramming}{%
+\section{CHAPTER 18: C14 TEMPLATES AND
+METAPROGRAMMING}\label{chapter-18-c14-templates-and-metaprogramming}}
+
+\hypertarget{c14-templates-metaprogramming}{%
+\section{C++14 TEMPLATES \&
+METAPROGRAMMING}\label{c14-templates-metaprogramming}}
+
+C++14 simplified template metaprogramming (TMP) by introducing variable
+templates and utility classes that replaced complex, recursive
+boilerplate with cleaner, more intuitive syntax.
+
+\hypertarget{variable-templates}{%
+\subsection{1. Variable Templates}\label{variable-templates}}
+
+Before C++14, if you wanted a templated constant (like
+\passthrough{\lstinline!pi!}), you had to wrap it in a
+\passthrough{\lstinline!struct!} or a
+\passthrough{\lstinline!constexpr!} function. Variable templates allow
+direct templating of variables.
+
+\hypertarget{mathematical-constants-and-type-traits}{%
+\subsubsection{1.1 Mathematical Constants and Type
+Traits}\label{mathematical-constants-and-type-traits}}
+
+This feature is heavily used in the standard library and mathematical
+libraries.
+
+\begin{lstlisting}[language={C++}]
+template<typename T>
+constexpr T pi = T(3.1415926535897932385L);
+
+// Usage
+float  f_pi = pi<float>;
+double d_pi = pi<double>;
+
+// Type traits (Internal simplification)
+template <typename T>
+constexpr bool is_floating_point_v = std::is_floating_point<T>::value;
+\end{lstlisting}
+
+\hypertarget{professional-note-_v-suffixes}{%
+\subsubsection{\texorpdfstring{1.2 Professional Note: \texttt{\_v}
+Suffixes}{1.2 Professional Note: \_v Suffixes}}\label{professional-note-_v-suffixes}}
+
+C++14 (and later C++17) introduced \passthrough{\lstinline!\_v!} aliases
+for most type traits. Instead of writing
+\passthrough{\lstinline!std::is\_integral<T>::value!}, you can write
+\passthrough{\lstinline!std::is\_integral\_v<T>!}. This reduces noise in
+complex template expressions.
+
+\hypertarget{stdinteger_sequence-the-indices-trick}{%
+\subsection{\texorpdfstring{2. \texttt{std::integer\_sequence} \& The
+Indices
+Trick}{2. std::integer\_sequence \& The Indices Trick}}\label{stdinteger_sequence-the-indices-trick}}
+
+Meta-programming often involves working with variadic templates and
+tuples. \passthrough{\lstinline!std::integer\_sequence!} provides a way
+to generate a sequence of integers at compile-time.
+
+\hypertarget{unpacking-a-tuple}{%
+\subsubsection{2.1 Unpacking a Tuple}\label{unpacking-a-tuple}}
+
+The ``Indices Trick'' is the classic use case: converting a
+\passthrough{\lstinline!std::tuple!} into a pack of arguments for a
+function.
+
+\begin{lstlisting}[language={C++}]
+template<typename F, typename Tuple, std::size_t... I>
+auto apply_impl(F f, Tuple&& t, std::index_sequence<I...>) {
+    return f(std::get<I>(std::forward<Tuple>(t))...);
+}
+
+template<typename F, typename Tuple>
+auto apply(F f, Tuple&& t) {
+    using Indices = std::make_index_sequence<std::tuple_size_v<std::decay_t<Tuple>>>;
+    return apply_impl(f, std::forward<Tuple>(t), Indices{});
+}
+
+// Result: apply(func, make_tuple(1, 2)) calls func(1, 2)
+\end{lstlisting}
+
+\textbf{Godhood Insight:} \passthrough{\lstinline!std::index\_sequence!}
+(an alias for
+\passthrough{\lstinline!std::integer\_sequence<size\_t, ...>!}) is the
+glue that connects the ``Value World'' (Tuples) to the ``Pack World''
+(Variadic Templates).
+
+\hypertarget{alias-templates-and-_t-suffixes}{%
+\subsection{\texorpdfstring{3. Alias Templates and \texttt{\_t}
+Suffixes}{3. Alias Templates and \_t Suffixes}}\label{alias-templates-and-_t-suffixes}}
+
+C++14 introduced alias templates for all type traits in
+\passthrough{\lstinline!<type\_traits>!}.
+
+\hypertarget{reducing-typename-...type-boilerplate}{%
+\subsubsection{\texorpdfstring{3.1 Reducing \texttt{typename\ ...::type}
+Boilerplate}{3.1 Reducing typename ...::type Boilerplate}}\label{reducing-typename-...type-boilerplate}}
+
+In C++11, using a trait that returns a type required the
+\passthrough{\lstinline!typename!} keyword and the
+\passthrough{\lstinline!::type!} suffix. C++14 added
+\passthrough{\lstinline!\_t!} versions.
+
+\begin{lstlisting}[language={C++}]
+// C++11 (Verbosely painful)
+typename std::enable_if<Condition, T>::type
+
+// C++14 (Clean and readable)
+std::enable_if_t<Condition, T>
+
+// Example: SFINAE made easy
+template<typename T, typename = std::enable_if_t<std::is_integral_v<T>>>
+void only_integers(T val) { /* ... */ }
+\end{lstlisting}
+
+\textbf{Professional Note:} Always prefer the
+\passthrough{\lstinline!\_t!} and \passthrough{\lstinline!\_v!} versions
+in modern C++. They are not just shorter; they are conceptually cleaner
+because they treat the trait as a function that returns a type/value
+directly.

@@ -1,7 +1,6 @@
 # Appendix B: Common Acronyms
 
 
-
 *   **ABI**: Application Binary Interface.
 *   **API**: Application Programming Interface.
 *   **COW**: Copy On Write.
@@ -20,8 +19,5 @@
 *   **STL**: Standard Template Library.
 *   **TMP**: Template Metaprogramming.
 *   **TU**: Translation Unit.
-
----
-
 
 ---

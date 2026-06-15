@@ -1,0 +1,99 @@
+\hypertarget{chapter-58-aba-problem-memory-reclamation}{%
+\section{CHAPTER 58: ABA PROBLEM MEMORY
+RECLAMATION}\label{chapter-58-aba-problem-memory-reclamation}}
+
+\hypertarget{aba-problem-memory-reclamation}{%
+\section{ABA PROBLEM \& MEMORY
+RECLAMATION}\label{aba-problem-memory-reclamation}}
+
+In the rarefied air of lock-free programming, the \textbf{ABA Problem}
+is the dragon that guards the gate. Conquering it requires understanding
+the very fabric of memory lifecycles.
+
+\hypertarget{the-aba-problem-explained}{%
+\subsubsection{1. The ABA Problem
+Explained}\label{the-aba-problem-explained}}
+
+The Compare-And-Swap (CAS) primitive
+(\passthrough{\lstinline!std::atomic::compare\_exchange\_weak!}) checks
+if a value is \emph{equal} to an expected value. It does \textbf{not}
+check if it is the \emph{same} object.
+
+\textbf{The Scenario:} 1. Thread 1 reads pointer
+\passthrough{\lstinline!A!} from a lock-free stack top. 2. Thread 1 is
+preempted. 3. Thread 2 pops \passthrough{\lstinline!A!}, frees it, then
+pushes \passthrough{\lstinline!B!}, then pushes a \emph{new} object
+allocated at address \passthrough{\lstinline!A!} (recycled memory). 4.
+Thread 1 wakes up, performs CAS. The address is still
+\passthrough{\lstinline!A!}. CAS succeeds. 5. \textbf{Catastrophe:}
+Thread 1 has popped the \emph{new} \passthrough{\lstinline!A!}, but its
+local logic assumes it's the \emph{old} \passthrough{\lstinline!A!}
+(e.g., pointing to \passthrough{\lstinline!B!} as the next node). The
+stack is now corrupted.
+
+\hypertarget{solution-i-tagged-pointers-version-counters}{%
+\subsubsection{2. Solution I: Tagged Pointers (Version
+Counters)}\label{solution-i-tagged-pointers-version-counters}}
+
+Pack a version counter into the unused bits of a pointer (usually top 16
+bits on 64-bit systems). * \textbf{Mechanism:} Every modification
+increments the counter. \passthrough{\lstinline!Ptr(A, v1)!} !=
+\passthrough{\lstinline!Ptr(A, v2)!}. * \textbf{Limitation:} Reduces
+addressable memory space; requires platform-specific bit manipulation.
+
+\begin{lstlisting}[language={C++}]
+// Example of a 64-bit tagged pointer
+struct TaggedPtr {
+    uint64_t data; // 48 bits pointer, 16 bits tag
+
+    TaggedPtr(void* ptr, uint16_t tag) {
+        data = (reinterpret_cast<uint64_t>(ptr) & 0x0000FFFFFFFFFFFF) | (static_cast<uint64_t>(tag) << 48);
+    }
+
+    void* get_ptr() const { return reinterpret_cast<void*>(data & 0x0000FFFFFFFFFFFF); }
+    uint16_t get_tag() const { return static_cast<uint16_t>(data >> 48); }
+};
+\end{lstlisting}
+
+\hypertarget{solution-ii-hazard-pointers-the-gold-standard}{%
+\subsubsection{3. Solution II: Hazard Pointers (The Gold
+Standard)}\label{solution-ii-hazard-pointers-the-gold-standard}}
+
+A \textbf{Hazard Pointer (HP)} is a thread-local signal saying ``I am
+reading this object, do not delete it.''
+
+\textbf{The Protocol:} 1. \textbf{Reader:} publish the pointer
+\passthrough{\lstinline!P!} to a thread-local HP slot. 2.
+\textbf{Reader:} Verify \passthrough{\lstinline!P!} is still in the data
+structure. If not, retry. 3. \textbf{Writer (Deleter):} Unlink
+\passthrough{\lstinline!P!} from the structure. 4. \textbf{Writer:}
+Check all other threads' HPs. * If \passthrough{\lstinline!P!} is found
+in any HP, add \passthrough{\lstinline!P!} to a ``Retire List'' (do not
+\passthrough{\lstinline!delete!} yet). * If \passthrough{\lstinline!P!}
+is not found, \passthrough{\lstinline!delete!} immediately. 5.
+\textbf{Cleanup:} Periodically scan the Retire List and free objects no
+longer protected by HPs.
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Pros:} Wait-free readers, deterministic memory bound.
+\item
+  \textbf{Cons:} Heavy memory barrier usage (Store-Load fence needed
+  after publishing HP).
+\end{itemize}
+
+\hypertarget{solution-iii-epoch-based-reclamation-ebr}{%
+\subsubsection{4. Solution III: Epoch-Based Reclamation
+(EBR)}\label{solution-iii-epoch-based-reclamation-ebr}}
+
+Used by \passthrough{\lstinline!malloc!} implementations and databases
+(like Silo). * \textbf{Concept:} A Global Epoch counter (E) and
+per-thread Local Epochs (e\_t). * \textbf{Operation:} 1. Global Epoch
+\passthrough{\lstinline!E!} increments periodically. 2. Threads update
+\passthrough{\lstinline!e\_t = E!} when entering a critical section. 3.
+Objects retired in Epoch \passthrough{\lstinline!E!} can be safely
+deleted when all threads have reached Epoch
+\passthrough{\lstinline!E+1!} or higher. * \textbf{Pros:} Extremely fast
+(just checking integers). * \textbf{Cons:} One stalled thread prevents
+\emph{all} memory reclamation (OOM risk).

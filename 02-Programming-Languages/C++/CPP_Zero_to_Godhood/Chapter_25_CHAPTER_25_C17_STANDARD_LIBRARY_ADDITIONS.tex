@@ -1,0 +1,138 @@
+\hypertarget{chapter-25-c17-standard-library-additions}{%
+\section{CHAPTER 25: C17 STANDARD LIBRARY
+ADDITIONS}\label{chapter-25-c17-standard-library-additions}}
+
+\hypertarget{c17-standard-library-additions}{%
+\section{C++17 STANDARD LIBRARY
+ADDITIONS}\label{c17-standard-library-additions}}
+
+\hypertarget{stdbyte}{%
+\subsection{\texorpdfstring{1.
+\texttt{std::byte}}{1. std::byte}}\label{stdbyte}}
+
+A distinct type for byte-oriented memory access. Unlike
+\passthrough{\lstinline!char!}, it is not an arithmetic type (prevents
+accidental math).
+
+\begin{lstlisting}[language={C++}]
+#include <cstddef>
+
+std::byte b = std::byte{0xAB};
+// b += 1; // Error
+int i = std::to_integer<int>(b);
+\end{lstlisting}
+
+\hypertarget{algorithms}{%
+\subsection{2. Algorithms}\label{algorithms}}
+
+\begin{itemize}
+\tightlist
+\item
+  \passthrough{\lstinline!std::sample!}: Selects n random elements from
+  a range.
+\item
+  \passthrough{\lstinline!std::clamp!}: Clamps a value between lo and
+  hi.
+\item
+  \passthrough{\lstinline!std::gcd!},
+  \passthrough{\lstinline!std::lcm!}: Math utilities.
+\end{itemize}
+
+\begin{lstlisting}[language={C++}]
+int x = std::clamp(10, 0, 5); // 5
+int g = std::gcd(12, 18);     // 6
+\end{lstlisting}
+
+\hypertarget{mathematical-special-functions}{%
+\subsection{3. Mathematical Special
+Functions}\label{mathematical-special-functions}}
+
+Support for Laguerre polynomials, Bessel functions, elliptic integrals,
+etc., in \passthrough{\lstinline!<cmath>!}.
+
+\hypertarget{elementary-string-conversions-charconv}{%
+\subsection{\texorpdfstring{4. Elementary String Conversions
+(\texttt{\textless{}charconv\textgreater{}})}{4. Elementary String Conversions (\textless charconv\textgreater)}}\label{elementary-string-conversions-charconv}}
+
+Low-level, allocation-free, locale-independent string conversions.
+Extremely fast.
+
+```cpp \#include
+
+char buffer{[}10{]}; int value = 42;
+
+// To chars std::to\_chars(buffer, buffer + 10, value);
+
+// From chars std::from\_chars(buffer, buffer + 10, value); \# VOLUME
+04: GODHOOD SUMMARY
+
+\hypertarget{c17-landmark-features-reference}{%
+\subsubsection{C++17 LANDMARK FEATURES
+REFERENCE}\label{c17-landmark-features-reference}}
+
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.25}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.25}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.25}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.25}}@{}}
+\toprule
+\# & Feature & Explanation & Code Example \\
+\midrule
+\endhead
+1 & \textbf{Structured Bindings} & Unpack tuples, pairs, and structs
+into named variables &
+\passthrough{\lstinline!auto [x, y] = my\_pair;!} \\
+2 & \textbf{if constexpr} & Compile-time conditional branching in
+templates & \passthrough{\lstinline!if constexpr (is\_int\_v<T>)!} \\
+3 & \textbf{Init-statements} & \passthrough{\lstinline!if!} and
+\passthrough{\lstinline!switch!} can now initialize local variables &
+\passthrough{\lstinline"if (auto it = m.find(k); it != m.end())"} \\
+4 & \textbf{Fold Expressions} & Simplify variadic template unpacking
+with operators & \passthrough{\lstinline!(... + args)!} \\
+5 & \textbf{CTAD} & Class Template Argument Deduction from constructors
+& \passthrough{\lstinline!std::vector v = \{1, 2, 3\};!} \\
+6 & \textbf{Inline Variables} & Define static data members in headers
+without ODR issues &
+\passthrough{\lstinline!static inline int val = 5;!} \\
+7 & \textbf{std::string\_view} & Non-owning, zero-allocation string
+reference & \passthrough{\lstinline!void f(std::string\_view sv);!} \\
+8 & \textbf{std::optional} & Type-safe representation of a maybe-present
+value & \passthrough{\lstinline!std::optional<int> res;!} \\
+9 & \textbf{std::variant} & Type-safe union (discriminated union) &
+\passthrough{\lstinline!std::variant<int, float> v;!} \\
+10 & \textbf{std::any} & Type-safe container for any single value &
+\passthrough{\lstinline!std::any a = 42;!} \\
+11 & \textbf{std::filesystem} & Standard library for file and directory
+manipulation & \passthrough{\lstinline!fs::exists("path");!} \\
+12 & \textbf{Parallel Algos} & Standard algorithms with execution
+policies &
+\passthrough{\lstinline!std::sort(std::execution::par, v.begin(), v.end());!} \\
+13 & \textbf{std::scoped\_lock} & Deadlock-avoiding multi-mutex RAII
+lock & \passthrough{\lstinline!std::scoped\_lock lk(m1, m2);!} \\
+14 & \textbf{Guaranteed Copy Elision} & Compiler MUST omit copies in
+specific return scenarios &
+\passthrough{\lstinline!T f() \{ return T(); \}!} \\
+15 & \textbf{std::byte} & Distinct type for raw memory bits &
+\passthrough{\lstinline!std::byte b\{0xFF\};!} \\
+\bottomrule
+\end{longtable}
+
+C++17 was the release of \textbf{Simplification and Vocabulary}. It
+focused on making the language cleaner and providing standard types for
+common patterns. 1. \textbf{Structured Bindings}: Unpacking tuples and
+structs became trivial. 2. \textbf{if constexpr}: Compile-time branching
+simplified template metaprogramming. 3. \textbf{Vocabulary Types}:
+\passthrough{\lstinline!std::optional!},
+\passthrough{\lstinline!std::variant!}, and
+\passthrough{\lstinline!std::any!} replaced unsafe C-style patterns. 4.
+\textbf{Filesystem}: Finally, a standard way to talk to the OS about
+files.
+
+\textbf{The Golden Rule of C++17}: Use
+\passthrough{\lstinline!std::optional!} instead of null pointers, and
+\passthrough{\lstinline!string\_view!} for efficient string passing. You
+have simplified the vocabulary of your code.
+
+\hypertarget{volume-05-gigantic-leap-c20}{%
+\section{VOLUME 05 GIGANTIC LEAP
+C20}\label{volume-05-gigantic-leap-c20}}

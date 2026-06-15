@@ -1,7 +1,6 @@
 # Appendix D: Common C++ Traps & Pitfalls
 
 
-
 ### I. General & Syntax Traps
 1.  **Most Vexing Parse**
     *   *Issue*: `MyClass obj();` declares a function returning `MyClass`, not a default-constructed object.
@@ -90,8 +89,5 @@
 21. **Static Initialization Order Fiasco**
     *   *Issue*: Global objects in different files have undefined initialization order.
     *   *Fix*: Use the "Construct On First Use" idiom (Meyers Singleton).
-
----
-
 
 ---

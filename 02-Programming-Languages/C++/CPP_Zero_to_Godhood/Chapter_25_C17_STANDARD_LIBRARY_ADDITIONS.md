@@ -45,7 +45,17 @@ std::to_chars(buffer, buffer + 10, value);
 
 // From chars
 std::from_chars(buffer, buffer + 10, value);
-```
+# VOLUME 04: GODHOOD SUMMARY
+
+C++17 was the release of **Simplification and Vocabulary**. It focused on making the language cleaner and providing standard types for common patterns.
+1. **Structured Bindings**: Unpacking tuples and structs became trivial.
+2. **if constexpr**: Compile-time branching simplified template metaprogramming.
+3. **Vocabulary Types**: `std::optional`, `std::variant`, and `std::any` replaced unsafe C-style patterns.
+4. **Filesystem**: Finally, a standard way to talk to the OS about files.
+
+**The Golden Rule of C++17**: Use `std::optional` instead of null pointers, and `string_view` for efficient string passing. You have simplified the vocabulary of your code.
+
+---
 
 
 ---

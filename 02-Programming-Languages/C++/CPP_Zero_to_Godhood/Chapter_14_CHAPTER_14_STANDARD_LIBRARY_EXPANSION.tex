@@ -1,0 +1,143 @@
+\hypertarget{chapter-14-standard-library-expansion}{%
+\section{CHAPTER 14: STANDARD LIBRARY
+EXPANSION}\label{chapter-14-standard-library-expansion}}
+
+\hypertarget{the-c11-standard-library-expansion}{%
+\section{THE C++11 STANDARD LIBRARY
+EXPANSION}\label{the-c11-standard-library-expansion}}
+
+\hypertarget{unordered-containers}{%
+\subsection{1. Unordered Containers}\label{unordered-containers}}
+
+Hash maps/sets. O(1) average access.
+
+\begin{itemize}
+\tightlist
+\item
+  \passthrough{\lstinline!std::unordered\_map!}
+\item
+  \passthrough{\lstinline!std::unordered\_set!}
+\item
+  \passthrough{\lstinline!std::unordered\_multimap!}
+\item
+  \passthrough{\lstinline!std::unordered\_multiset!}
+\end{itemize}
+
+Requires a hash function for the key type.
+
+\hypertarget{stdarray}{%
+\subsection{\texorpdfstring{2.
+\texttt{std::array}}{2. std::array}}\label{stdarray}}
+
+Fixed-size, stack-allocated array. Wrapper around C-style array with STL
+interface.
+
+\begin{lstlisting}[language={C++}]
+std::array<int, 5> arr = {1, 2, 3, 4, 5};
+// Bounds checking available: arr.at(10) throws
+// Knows its size: arr.size()
+// Doesn't decay to pointer automatically
+\end{lstlisting}
+
+\hypertarget{stdregex}{%
+\subsection{\texorpdfstring{3.
+\texttt{std::regex}}{3. std::regex}}\label{stdregex}}
+
+Regular expression support for pattern matching and text manipulation.
+
+\begin{lstlisting}[language={C++}]
+#include <regex>
+#include <iostream>
+#include <string>
+
+int main() {
+    std::string text = "Contact: user@example.com";
+    std::regex email_regex("(\\w+)@(\\w+)\\.com");
+
+    // 1. Search: Find first occurrence
+    std::smatch matches;
+    if (std::regex_search(text, matches, email_regex)) {
+        std::cout << "Found: " << matches[0] << std::endl;
+        std::cout << "User: " << matches[1] << std::endl;
+    }
+
+    // 2. Match: Must match entire string
+    bool is_full_match = std::regex_match(text, email_regex); // false
+
+    // 3. Replace:
+    std::string new_text = std::regex_replace(text, email_regex, "REDACTED");
+
+    return 0;
+}
+\end{lstlisting}
+
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 0\tabcolsep) * \real{0.06}}@{}}
+\toprule
+\endhead
+\#\#\# Professional Notes: Regular Expressions \\
+\#\#\#\# 1. Regex Grammar Flavors \passthrough{\lstinline!std::regex!}
+supports different syntax standards. The default is \textbf{ECMAScript}.
+* \passthrough{\lstinline!std::regex\_constants::basic!}: POSIX Basic
+Regular Expressions. *
+\passthrough{\lstinline!std::regex\_constants::extended!}: POSIX
+Extended Regular Expressions. *
+\passthrough{\lstinline!std::regex\_constants::awk!},
+\passthrough{\lstinline!grep!}, \passthrough{\lstinline!egrep!}. \\
+\#\#\#\# 2. Performance Trap: \passthrough{\lstinline!std::regex!} is
+Heavy In many implementations (including GCC),
+\passthrough{\lstinline!std::regex!} is notoriously slow and can cause
+massive binary size increases due to complex template instantiations. *
+\textbf{Optimization}: Always pre-compile your regex objects outside of
+tight loops. * \textbf{Alternatives}: If performance is critical,
+consider \passthrough{\lstinline!RE2!} or
+\passthrough{\lstinline!Boost.Regex!}. \\
+\#\#\#\# 3. Capture Groups and \passthrough{\lstinline!smatch!} Capture
+groups allow you to extract specific sub-strings. *
+\passthrough{\lstinline!matches[0]!} is the entire match. *
+\passthrough{\lstinline!matches[1], matches[2]...!} are the captured
+sub-patterns. * Use \passthrough{\lstinline!std::ssub\_match!} to get
+individual pieces without creating new strings immediately. \\
+\bottomrule
+\end{longtable}
+
+\hypertarget{stdchrono}{%
+\subsection{\texorpdfstring{4.
+\texttt{std::chrono}}{4. std::chrono}}\label{stdchrono}}
+
+Type-safe time library.
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Clocks:} \passthrough{\lstinline!system\_clock!},
+  \passthrough{\lstinline!steady\_clock!}.
+\item
+  \textbf{Durations:} \passthrough{\lstinline!milliseconds!},
+  \passthrough{\lstinline!seconds!}.
+\item
+  \textbf{Time Points:} \passthrough{\lstinline!time\_point!}.
+\end{itemize}
+
+\begin{lstlisting}[language={C++}]
+auto start = std::chrono::steady_clock::now();
+// ...
+auto end = std::chrono::steady_clock::now();
+auto diff = end - start;
+\end{lstlisting}
+
+\hypertarget{stdrandom}{%
+\subsection{\texorpdfstring{5.
+\texttt{std::random}}{5. std::random}}\label{stdrandom}}
+
+Better random number generation than \passthrough{\lstinline!rand()!}.
+
+\begin{lstlisting}[language={C++}]
+#include <random>
+
+std::random_device rd;
+std::mt19937 gen(rd()); // Mersenne Twister
+std::uniform_int_distribution<> dis(1, 6);
+
+int roll = dis(gen);
+\end{lstlisting}

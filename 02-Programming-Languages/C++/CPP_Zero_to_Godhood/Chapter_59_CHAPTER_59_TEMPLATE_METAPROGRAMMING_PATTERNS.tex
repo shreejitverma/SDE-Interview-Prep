@@ -1,0 +1,81 @@
+\hypertarget{chapter-59-template-metaprogramming-patterns}{%
+\section{CHAPTER 59: TEMPLATE METAPROGRAMMING
+PATTERNS}\label{chapter-59-template-metaprogramming-patterns}}
+
+\hypertarget{template-metaprogramming-patterns}{%
+\section{TEMPLATE METAPROGRAMMING
+PATTERNS}\label{template-metaprogramming-patterns}}
+
+Moving computation from runtime to compile-time saves cycles and enables
+zero-cost abstractions.
+
+\hypertarget{expression-templates-lazy-evaluation}{%
+\subsubsection{1. Expression Templates (Lazy
+Evaluation)}\label{expression-templates-lazy-evaluation}}
+
+Avoid temporary objects in math operations. \textbf{Naive:}
+\passthrough{\lstinline!Vector sum = A + B + C;!} creates
+\passthrough{\lstinline!tmp = A+B!}, then
+\passthrough{\lstinline!sum = tmp+C!}. Allocations! \textbf{Expression
+Template:} \passthrough{\lstinline!A + B!} returns a lightweight
+\passthrough{\lstinline!Sum<Vec, Vec>!} object.
+
+\begin{lstlisting}[language={C++}]
+template <typename L, typename R>
+struct Sum {
+    const L& l; const R& r;
+    auto operator[](size_t i) const { return l[i] + r[i]; }
+};
+
+template <typename L, typename R>
+auto operator+(const L& l, const R& r) {
+    return Sum<L, R>{l, r};
+}
+
+// Usage
+// Vector result = A + B + C;
+// Becomes: result[i] = A[i] + B[i] + C[i] in a single loop!
+\end{lstlisting}
+
+\hypertarget{type-erasure-the-stdany-pattern}{%
+\subsubsection{\texorpdfstring{2. Type Erasure (The \texttt{std::any}
+Pattern)}{2. Type Erasure (The std::any Pattern)}}\label{type-erasure-the-stdany-pattern}}
+
+Polymorphism without inheritance. * \textbf{Technique:} Hold a
+\passthrough{\lstinline!void*!} or a
+\passthrough{\lstinline!unique\_ptr<Base>!}, where
+\passthrough{\lstinline!Base!} is an abstract class inside a templated
+wrapper. * \textbf{Example:} \passthrough{\lstinline!std::function!},
+\passthrough{\lstinline!std::any!}.
+
+\hypertarget{the-detection-idiom-void_t}{%
+\subsubsection{3. The Detection Idiom
+(void\_t)}\label{the-detection-idiom-void_t}}
+
+Check if a type has a member function or typedef at compile time.
+
+\begin{lstlisting}[language={C++}]
+template <typename, typename = std::void_t<>>
+struct has_serialize : std::false_type {};
+
+template <typename T>
+struct has_serialize<T, std::void_t<decltype(std::declval<T>().serialize())>> : std::true_type {};
+
+static_assert(has_serialize<MyClass>::value, "MyClass must implement serialize()");
+\end{lstlisting}
+
+\emph{Note: In C++20, simply use Concepts.}
+
+\hypertarget{policy-based-design}{%
+\subsubsection{4. Policy-Based Design}\label{policy-based-design}}
+
+Compose behavior via template arguments.
+
+\begin{lstlisting}[language={C++}]
+template <typename T, typename CheckingPolicy, typename ThreadingPolicy>
+class SmartPtr : public CheckingPolicy, public ThreadingPolicy {
+    T* ptr;
+    // ...
+};
+// User chooses: SmartPtr<int, NoCheck, MultiThreaded>
+\end{lstlisting}
