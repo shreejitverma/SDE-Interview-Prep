@@ -1,0 +1,150 @@
+\hypertarget{appendix-u-the-standard-library-concurrency-toolkit-a-cppreference-breakdown}{%
+\section{Appendix U: THE STANDARD LIBRARY CONCURRENCY TOOLKIT (A
+Cppreference
+Breakdown)}\label{appendix-u-the-standard-library-concurrency-toolkit-a-cppreference-breakdown}}
+
+If you look at the \passthrough{\lstinline!<thread>!} or
+\passthrough{\lstinline!<atomic>!} pages on cppreference, they are
+written in ``Standardese'' (the language of the ISO C++ committee). This
+appendix translates the most critical concurrency tools into ``Head
+First'' English.
+
+\hypertarget{u.1-thread-and-jthread}{%
+\subsection{\texorpdfstring{U.1 \texttt{\textless{}thread\textgreater{}}
+and
+\texttt{\textless{}jthread\textgreater{}}}{U.1 \textless thread\textgreater{} and \textless jthread\textgreater{}}}\label{u.1-thread-and-jthread}}
+
+\hypertarget{stdthreadhardware_concurrency}{%
+\subsubsection{\texorpdfstring{\texttt{std::thread::hardware\_concurrency()}}{std::thread::hardware\_concurrency()}}\label{stdthreadhardware_concurrency}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Cppreference says}: Returns the number of concurrent threads
+  supported by the implementation.
+\item
+  \textbf{Head First Translation}: ``How many physical/logical CPU cores
+  do I have?''
+\item
+  \textbf{Godhood Tip}: Do not spawn 1,000 threads if you only have 8
+  cores. The OS will spend all its time context-switching between
+  threads instead of actually doing work. Create a Thread Pool with
+  exactly \passthrough{\lstinline!hardware\_concurrency()!} workers.
+\end{itemize}
+
+\hypertarget{stdthis_threadyield}{%
+\subsubsection{\texorpdfstring{\texttt{std::this\_thread::yield()}}{std::this\_thread::yield()}}\label{stdthis_threadyield}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Cppreference says}: Provides a hint to the implementation to
+  reschedule the execution of threads, allowing other threads to run.
+\item
+  \textbf{Head First Translation}: ``I don't have anything important to
+  do right now, so let someone else use the CPU.''
+\item
+  \textbf{Godhood Tip}: Often used in lock-free programming spin-loops.
+  If a lock-free CAS fails, you \passthrough{\lstinline!yield()!} to let
+  the thread holding the lock finish its work faster.
+\end{itemize}
+
+\hypertarget{u.2-mutex-and-shared_mutex}{%
+\subsection{\texorpdfstring{U.2 \texttt{\textless{}mutex\textgreater{}}
+and
+\texttt{\textless{}shared\_mutex\textgreater{}}}{U.2 \textless mutex\textgreater{} and \textless shared\_mutex\textgreater{}}}\label{u.2-mutex-and-shared_mutex}}
+
+\hypertarget{stdtry_lock}{%
+\subsubsection{\texorpdfstring{\texttt{std::try\_lock()}}{std::try\_lock()}}\label{stdtry_lock}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Cppreference says}: Tries to lock the mutex. Returns
+  immediately. On successful lock acquisition returns true, otherwise
+  returns false.
+\item
+  \textbf{Head First Translation}: ``Is the bathroom door locked? If
+  yes, I won't wait. I'll go do something else and come back later.''
+\item
+  \textbf{Godhood Tip}: This is a non-blocking operation. It is
+  extremely useful in real-time systems (like games) where a thread
+  cannot afford to block. If the mutex is locked, the thread abandons
+  the task and moves on to the next frame.
+\end{itemize}
+
+\hypertarget{stdcall_once-and-stdonce_flag}{%
+\subsubsection{\texorpdfstring{\texttt{std::call\_once} and
+\texttt{std::once\_flag}}{std::call\_once and std::once\_flag}}\label{stdcall_once-and-stdonce_flag}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Cppreference says}: Executes the Callable object exactly once,
+  even if called concurrently, from several threads.
+\item
+  \textbf{Head First Translation}: ``The Ultimate Singleton Enforcer.''
+\item
+  \textbf{Godhood Tip}: This is the only thread-safe way to initialize
+  global state or singletons before C++11's ``Magic Statics'' (where
+  static local variables are thread-safe initialized).
+\end{itemize}
+
+\hypertarget{u.3-atomic}{%
+\subsection{\texorpdfstring{U.3
+\texttt{\textless{}atomic\textgreater{}}}{U.3 \textless atomic\textgreater{}}}\label{u.3-atomic}}
+
+\hypertarget{stdatomicfetch_add-vs-stdatomicoperator}{%
+\subsubsection{\texorpdfstring{\texttt{std::atomic::fetch\_add} vs
+\texttt{std::atomic::operator++}}{std::atomic::fetch\_add vs std::atomic::operator++}}\label{stdatomicfetch_add-vs-stdatomicoperator}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Cppreference says}: Atomically adds arg to the current value
+  of the atomic object and returns the value held previously.
+\item
+  \textbf{Head First Translation}: ``Add 1 to the counter safely, but
+  give me the number \emph{before} you added 1.''
+\item
+  \textbf{Godhood Tip}: \passthrough{\lstinline!fetch\_add!} returns the
+  old value. If you need the new value, you have to add 1 to the result
+  of \passthrough{\lstinline!fetch\_add!}, or just use
+  \passthrough{\lstinline!operator++()!}. However,
+  \passthrough{\lstinline!fetch\_add!} allows you to specify the
+  \passthrough{\lstinline!memory\_order!}, whereas
+  \passthrough{\lstinline!operator++!} always uses the heavy
+  \passthrough{\lstinline!memory\_order\_seq\_cst!}. In high performance
+  code, ALWAYS use
+  \passthrough{\lstinline!fetch\_add(1, std::memory\_order\_relaxed)!}.
+\end{itemize}
+
+\hypertarget{stdatomiccompare_exchange_weak-vs-strong}{%
+\subsubsection{\texorpdfstring{\texttt{std::atomic::compare\_exchange\_weak}
+vs
+\texttt{strong}}{std::atomic::compare\_exchange\_weak vs strong}}\label{stdatomiccompare_exchange_weak-vs-strong}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Cppreference says}: Atomically compares the value
+  representation of \passthrough{\lstinline!*this!} with that of
+  \passthrough{\lstinline!expected!}. If they are bitwise-equal,
+  replaces the former with \passthrough{\lstinline!desired!}.
+\item
+  \textbf{Head First Translation}: The CAS loop. We discussed this in
+  Chapter 111.
+\item
+  \textbf{The Difference}: \passthrough{\lstinline!weak!} can fail
+  ``spuriously'' (even if the values match, it might fail due to
+  hardware reasons like a cache line eviction). You MUST put
+  \passthrough{\lstinline!weak!} inside a
+  \passthrough{\lstinline!while!} loop. \passthrough{\lstinline!strong!}
+  will never fail spuriously, but it takes more CPU cycles.
+\item
+  \textbf{Godhood Tip}: If your algorithm requires a loop anyway (like
+  traversing a linked list), use \passthrough{\lstinline!weak!}. If you
+  don't have a loop, use \passthrough{\lstinline!strong!}.
+\end{itemize}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}

@@ -203,10 +203,213 @@ and master the beast.
 
 \begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
 
-\hypertarget{appendices}{%
-\section{APPENDICES}\label{appendices}}
+\hypertarget{volume-10-the-c-ecosystem-engineering}{%
+\section{VOLUME 10: THE C++ ECOSYSTEM \&
+ENGINEERING}\label{volume-10-the-c-ecosystem-engineering}}
+
+\hypertarget{chapter-67-build-systems-the-blueprint-battle}{%
+\subsection{Chapter 67: Build Systems (The Blueprint
+Battle)}\label{chapter-67-build-systems-the-blueprint-battle}}
+
+\hypertarget{the-master-contractor-analogy}{%
+\subsubsection{The ``Master Contractor''
+Analogy}\label{the-master-contractor-analogy}}
+
+Imagine you are building a skyscraper. You don't just tell workers
+``build a wall.'' You have a \textbf{Master Contractor} (The Build
+System) who looks at the \textbf{Blueprints} (The Build Scripts), hires
+\textbf{Sub-contractors} (The Compiler, Linker), and ensures that the
+foundation is poured \emph{before} the roof is built.
+
+\hypertarget{cmake-the-standard-blueprint}{%
+\paragraph{1. CMake: The Standard
+Blueprint}\label{cmake-the-standard-blueprint}}
+
+CMake isn't a build system itself; it's a \textbf{Build System
+Generator}. It generates the actual instructions for Ninja or Make.
+
+\textbf{The Target-Based Philosophy} In modern C++, everything is a
+\textbf{Target}.
+
+\begin{lstlisting}
+add_library(Network src/net.cpp)
+target_include_directories(Network PUBLIC include/)
+target_compile_definitions(Network PRIVATE USE_AVX=1)
+\end{lstlisting}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{PUBLIC}: I need this, and anyone who uses me needs it too.
+\item
+  \textbf{PRIVATE}: I use this internally; hide it from the world.
+\item
+  \textbf{INTERFACE}: I'm just a header (no
+  \passthrough{\lstinline!.cpp!} file); use this to talk to me.
+\end{itemize}
+
+\hypertarget{bazel-the-monorepo-monster}{%
+\paragraph{2. Bazel: The Monorepo
+Monster}\label{bazel-the-monorepo-monster}}
+
+Used by Google and HFT firms. It is \textbf{Hermetic}. If you build on
+your machine, and I build on mine, we get the EXACT same binary. This is
+critical for debugging distributed systems.
 
 \begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
 
-\hypertarget{appendices-1}{%
-\section{APPENDICES}\label{appendices-1}}
+\hypertarget{chapter-68-dependency-management-the-parts-warehouse}{%
+\subsection{Chapter 68: Dependency Management (The Parts
+Warehouse)}\label{chapter-68-dependency-management-the-parts-warehouse}}
+
+\hypertarget{the-c-chaos}{%
+\subsubsection{The C++ Chaos}\label{the-c-chaos}}
+
+C++ doesn't have a built-in \passthrough{\lstinline!npm!} or
+\passthrough{\lstinline!pip!}. For 30 years, we manually downloaded
+\passthrough{\lstinline!.zip!} files.
+
+\hypertarget{vcpkg-the-microsoft-way}{%
+\paragraph{1. vcpkg (The Microsoft Way)}\label{vcpkg-the-microsoft-way}}
+
+Simple, source-based, and integrated into Visual Studio.
+
+\begin{lstlisting}[language=bash]
+vcpkg install openssl:x64-linux
+\end{lstlisting}
+
+\hypertarget{conan-the-jfrog-way}{%
+\paragraph{2. Conan (The JFrog Way)}\label{conan-the-jfrog-way}}
+
+Python-based, decentralized, and better at handling pre-compiled binary
+packages. Ideal for large enterprises.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{chapter-69-testing-benchmarking-the-quality-lab}{%
+\subsection{Chapter 69: Testing \& Benchmarking (The Quality
+Lab)}\label{chapter-69-testing-benchmarking-the-quality-lab}}
+
+\hypertarget{google-test-gtest}{%
+\subsubsection{Google Test (GTest)}\label{google-test-gtest}}
+
+The ``Gold Standard'' for unit testing.
+
+\begin{lstlisting}[language={C++}]
+TEST(OrderBookTest, MatchExactPrice) {
+    OrderBook book;
+    book.limit_order(Side::Buy, 100, 10);
+    book.limit_order(Side::Sell, 100, 10);
+    EXPECT_EQ(book.total_volume(), 10);
+}
+\end{lstlisting}
+
+\hypertarget{google-benchmark-the-optimization-trap}{%
+\subsubsection{Google Benchmark: The Optimization
+Trap}\label{google-benchmark-the-optimization-trap}}
+
+\textbf{WARNING}: The compiler is too smart for you.
+
+\begin{lstlisting}[language={C++}]
+for (auto _ : state) {
+    int x = 1 + 1; // COMPILER DELETES THIS!
+}
+\end{lstlisting}
+
+\textbf{The Solution}:
+
+\begin{lstlisting}[language={C++}]
+benchmark::DoNotOptimize(result);
+benchmark::ClobberMemory();
+\end{lstlisting}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{volume-11-the-hardware-whisperer-mechanical-sympathy}{%
+\section{VOLUME 11: THE HARDWARE WHISPERER (Mechanical
+Sympathy)}\label{volume-11-the-hardware-whisperer-mechanical-sympathy}}
+
+\hypertarget{chapter-70-cpu-internals-for-c}{%
+\subsection{Chapter 70: CPU Internals for
+C++}\label{chapter-70-cpu-internals-for-c}}
+
+\hypertarget{the-instruction-pipeline}{%
+\subsubsection{The Instruction
+Pipeline}\label{the-instruction-pipeline}}
+
+Modern CPUs are like an assembly line. While one worker is ``Fetching''
+an instruction, another is ``Decoding'' the previous one, and another is
+``Executing'' the one before that.
+
+\hypertarget{branch-prediction-the-crystal-ball}{%
+\subsubsection{Branch Prediction (The Crystal
+Ball)}\label{branch-prediction-the-crystal-ball}}
+
+When the CPU sees an \passthrough{\lstinline!if!} statement, it doesn't
+wait. It \textbf{guesses} which way it will go and starts executing! -
+If it guesses right: \textbf{Zero cost}. - If it guesses wrong: It has
+to throw away all the work and restart. \textbf{Huge penalty}.
+
+\textbf{Godhood Tip}: This is why \passthrough{\lstinline!std::sort!}
+makes your code faster. Sorted data is predictable. The CPU ``Crystal
+Ball'' works 99\% of the time.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{chapter-71-the-memory-hierarchy}{%
+\subsection{Chapter 71: The Memory
+Hierarchy}\label{chapter-71-the-memory-hierarchy}}
+
+\hypertarget{the-speed-gap}{%
+\subsubsection{The Speed Gap}\label{the-speed-gap}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{L1 Cache}: \textasciitilde1ns (Grabbing a pen from your
+  pocket).
+\item
+  \textbf{L2 Cache}: \textasciitilde4ns (Grabbing a book from your
+  desk).
+\item
+  \textbf{L3 Cache}: \textasciitilde40ns (Walking to the bookshelf).
+\item
+  \textbf{RAM}: \textasciitilde100ns (Driving to the library).
+\end{itemize}
+
+\hypertarget{false-sharing}{%
+\subsubsection{False Sharing}\label{false-sharing}}
+
+If two threads are on different cores but update variables in the same
+64-byte \textbf{Cache Line}, the CPU hardware goes crazy trying to keep
+them synced. \textbf{Fix}: \passthrough{\lstinline!alignas(64)!}.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{chapter-72-simd-vectorization}{%
+\subsection{Chapter 72: SIMD \&
+Vectorization}\label{chapter-72-simd-vectorization}}
+
+\hypertarget{the-assembly-line-analogy}{%
+\subsubsection{The ``Assembly Line''
+Analogy}\label{the-assembly-line-analogy}}
+
+Standard code: 1 worker handles 1 part. \textbf{SIMD}: 1 worker has a
+special tool that lets them handle \textbf{8 parts at once}.
+
+\begin{lstlisting}[language={C++}]
+#include <simd> // C++26
+std::simd<float, 8> a, b;
+auto c = a + b; // 8 additions in one instruction.
+\end{lstlisting}
+
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 0\tabcolsep) * \real{0.06}}@{}}
+\toprule
+\endhead
+\# APPENDICES \\
+\bottomrule
+\end{longtable}
+
+\hypertarget{appendices}{%
+\section{APPENDICES}\label{appendices}}

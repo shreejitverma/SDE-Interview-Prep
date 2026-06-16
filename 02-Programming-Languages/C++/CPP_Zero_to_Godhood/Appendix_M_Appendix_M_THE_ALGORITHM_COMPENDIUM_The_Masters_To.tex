@@ -1,0 +1,1277 @@
+\hypertarget{appendix-m-the-algorithm-compendium-the-masters-toolkit}{%
+\section{Appendix M: THE ALGORITHM COMPENDIUM (The Master's
+Toolkit)}\label{appendix-m-the-algorithm-compendium-the-masters-toolkit}}
+
+Welcome to the Master's Toolkit. Most C++ developers write
+\passthrough{\lstinline!for!} loops. Gods use
+\passthrough{\lstinline!<algorithm>!}. Why? Because the algorithms in
+the STL are already optimized, exception-safe, and carry semantic
+meaning. When you see \passthrough{\lstinline!std::partition!}, you
+immediately know what the code is doing. When you see a 20-line
+\passthrough{\lstinline!for!} loop, you have to play computer in your
+head to figure it out.
+
+The following is a comprehensive, ``Godhood-level'' breakdown of the
+110+ functions available in \passthrough{\lstinline!<algorithm>!},
+\passthrough{\lstinline!<numeric>!}, and
+\passthrough{\lstinline!<memory>!}. This is not just a list; it is a
+tactical guide to hardware-aware, expressive, and high-performance C++
+programming.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{stdall_of}{%
+\subsubsection{\texorpdfstring{1.
+\texttt{std::all\_of}}{1. std::all\_of}}\label{stdall_of}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Analogy}: The ``Strict Bouncer''. If even one person in the
+  line doesn't have an ID, nobody gets in.
+\item
+  \textbf{When to use it}: When you need to verify that a property holds
+  for an entire collection (e.g., ``Are all these packets valid?'').
+\item
+  \textbf{Complexity}: \(O(n)\).
+\item
+  \textbf{Common Pitfall}: Forgetting that an empty range returns
+  \passthrough{\lstinline!true!} (Vacuous Truth).
+\item
+  \textbf{Hardware Sympathy}: Short-circuits immediately. If the first
+  element fails, the CPU doesn't even fetch the rest of the array into
+  the cache.
+\item
+  \textbf{Example}:
+  \passthrough{\lstinline!cpp     std::vector<int> v = \{2, 4, 6, 8\};     bool all\_even = std::all\_of(v.begin(), v.end(), [](int i)\{ return i \% 2 == 0; \});!}
+\end{itemize}
+
+\hypertarget{stdany_of}{%
+\subsubsection{\texorpdfstring{2.
+\texttt{std::any\_of}}{2. std::any\_of}}\label{stdany_of}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Analogy}: The ``Optimist''. As long as one person has a
+  ticket, the party is a success.
+\item
+  \textbf{When to use it}: To check if at least one element satisfies a
+  condition (e.g., ``Is there any corrupted data in this block?'').
+\item
+  \textbf{Complexity}: \(O(n)\).
+\item
+  \textbf{Common Pitfall}: Returns \passthrough{\lstinline!false!} for
+  empty ranges.
+\item
+  \textbf{Hardware Sympathy}: High branch misprediction potential if the
+  matching element is near the middle of a large range.
+\item
+  \textbf{Example}:
+  \passthrough{\lstinline!cpp     bool has\_negative = std::any\_of(v.begin(), v.end(), [](int i)\{ return i < 0; \});!}
+\end{itemize}
+
+\hypertarget{stdnone_of}{%
+\subsubsection{\texorpdfstring{3.
+\texttt{std::none\_of}}{3. std::none\_of}}\label{stdnone_of}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Analogy}: The ``Clean Slate''. Ensuring there are no spiders
+  in the room.
+\item
+  \textbf{When to use it}: To verify that no elements satisfy a negative
+  condition.
+\item
+  \textbf{Complexity}: \(O(n)\).
+\item
+  \textbf{Hardware Sympathy}: Effectively
+  \passthrough{\lstinline"!any\_of"}. Compilers often optimize this
+  identically to \passthrough{\lstinline!any\_of!} with a negated
+  predicate.
+\item
+  \textbf{Example}:
+  \passthrough{\lstinline!cpp     bool no\_zeros = std::none\_of(v.begin(), v.end(), [](int i)\{ return i == 0; \});!}
+\end{itemize}
+
+\hypertarget{stdfor_each}{%
+\subsubsection{\texorpdfstring{4.
+\texttt{std::for\_each}}{4. std::for\_each}}\label{stdfor_each}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Analogy}: The ``Delivery Driver''. Stopping at every house to
+  drop off a package.
+\item
+  \textbf{When to use it}: When you want to perform an action on every
+  element (usually for side effects like logging or updating a hardware
+  register).
+\item
+  \textbf{Complexity}: \(O(n)\).
+\item
+  \textbf{Godhood Tip}: Since C++17, use the execution policy
+  \passthrough{\lstinline!std::execution::par!} to make this
+  multi-threaded instantly!
+\item
+  \textbf{Hardware Sympathy}: Perfect for prefetching. The CPU sees the
+  linear access pattern and starts pulling data into L1 cache before you
+  even ask for it.
+\item
+  \textbf{Example}:
+  \passthrough{\lstinline!cpp     std::for\_each(std::execution::par, v.begin(), v.end(), [](int\& i)\{ i *= 2; \});!}
+\end{itemize}
+
+\hypertarget{stdfind}{%
+\subsubsection{\texorpdfstring{5.
+\texttt{std::find}}{5. std::find}}\label{stdfind}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Analogy}: ``Where's Waldo?''. Looking through a crowd until
+  you find the exact match.
+\item
+  \textbf{When to use it}: Simple value searching in an unsorted
+  container.
+\item
+  \textbf{Complexity}: \(O(n)\).
+\item
+  \textbf{Hardware Sympathy}: Linear scan. Extremely cache-friendly
+  compared to \passthrough{\lstinline!std::set::find!} or
+  \passthrough{\lstinline!std::map::find!}, which involve pointer
+  chasing.
+\item
+  \textbf{Example}:
+  \passthrough{\lstinline!cpp     auto it = std::find(v.begin(), v.end(), 42);!}
+\end{itemize}
+
+\hypertarget{stdfind_if}{%
+\subsubsection{\texorpdfstring{6.
+\texttt{std::find\_if}}{6. std::find\_if}}\label{stdfind_if}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Analogy}: The ``Headhunter''. Looking for anyone who speaks 5
+  languages and knows COBOL.
+\item
+  \textbf{When to use it}: Searching for an element that matches a
+  specific, complex predicate.
+\item
+  \textbf{Complexity}: \(O(n)\).
+\item
+  \textbf{Common Pitfall}: Passing a heavy predicate by value. If the
+  predicate has a large state, use a reference or a lambda.
+\item
+  \textbf{Example}:
+  \passthrough{\lstinline!cpp     auto it = std::find\_if(v.begin(), v.end(), [](const auto\& emp)\{ return emp.salary > 200000; \});!}
+\end{itemize}
+
+\hypertarget{stdfind_if_not}{%
+\subsubsection{\texorpdfstring{7.
+\texttt{std::find\_if\_not}}{7. std::find\_if\_not}}\label{stdfind_if_not}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Analogy}: The ``Odd One Out''. Looking for the first person
+  who ISN'T wearing a uniform.
+\item
+  \textbf{When to use it}: Finding the first element that fails a
+  condition.
+\item
+  \textbf{Complexity}: \(O(n)\).
+\item
+  \textbf{Example}:
+  \passthrough{\lstinline!cpp     auto it = std::find\_if\_not(v.begin(), v.end(), [](int i)\{ return i \% 2 == 0; \});!}
+\end{itemize}
+
+\hypertarget{stdfind_end}{%
+\subsubsection{\texorpdfstring{8.
+\texttt{std::find\_end}}{8. std::find\_end}}\label{stdfind_end}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Analogy}: The ``Last Occurrence''. Finding the \emph{last}
+  time a specific sequence appeared in a stream.
+\item
+  \textbf{When to use it}: When you need the tail end of a sub-sequence
+  (e.g., finding the last occurrence of a file extension).
+\item
+  \textbf{Complexity}: \(O(n \cdot m)\).
+\item
+  \textbf{Hardware Sympathy}: This is a heavy hitter. If the
+  sub-sequence \(m\) is large, this can be slow. Consider C++17
+  searchers for better performance.
+\item
+  \textbf{Example}:
+  \passthrough{\lstinline!cpp     auto it = std::find\_end(text.begin(), text.end(), sub.begin(), sub.end());!}
+\end{itemize}
+
+\hypertarget{stdfind_first_of}{%
+\subsubsection{\texorpdfstring{9.
+\texttt{std::find\_first\_of}}{9. std::find\_first\_of}}\label{stdfind_first_of}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Analogy}: The ``Scavenger Hunt''. Looking for any one of
+  several target items.
+\item
+  \textbf{When to use it}: Searching for the first occurrence of any
+  element from a set of values (e.g., finding the first punctuation mark
+  in a string).
+\item
+  \textbf{Complexity}: \(O(n \cdot m)\).
+\item
+  \textbf{Example}:
+  \passthrough{\lstinline"cpp     std::vector<char> delimiters = \{',', '.', ';', '!'\};\\n    auto it = std::find\_first\_of(str.begin(), str.end(), delimiters.begin(), delimiters.end());"}
+\end{itemize}
+
+\hypertarget{stdadjacent_find}{%
+\subsubsection{\texorpdfstring{10.
+\texttt{std::adjacent\_find}}{10. std::adjacent\_find}}\label{stdadjacent_find}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Analogy}: The ``Glitch Spotter''. Finding two identical frames
+  in a row in a video stream.
+\item
+  \textbf{When to use it}: Detecting duplicates that are positioned next
+  to each other.
+\item
+  \textbf{Complexity}: \(O(n)\).
+\item
+  \textbf{Hardware Sympathy}: Only compares neighbors. High spatial
+  locality.
+\item
+  \textbf{Example}:
+  \passthrough{\lstinline!cpp     auto it = std::adjacent\_find(v.begin(), v.end());!}
+\end{itemize}
+
+\hypertarget{stdcount}{%
+\subsubsection{\texorpdfstring{11.
+\texttt{std::count}}{11. std::count}}\label{stdcount}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Analogy}: The ``Census Taker''. Counting how many people named
+  ``Smith'' live in the city.
+\item
+  \textbf{When to use it}: Simple frequency counting.
+\item
+  \textbf{Complexity}: \(O(n)\).
+\item
+  \textbf{Example}:
+  \passthrough{\lstinline!cpp     int num\_sevens = std::count(v.begin(), v.end(), 7);!}
+\end{itemize}
+
+\hypertarget{stdcount_if}{%
+\subsubsection{\texorpdfstring{12.
+\texttt{std::count\_if}}{12. std::count\_if}}\label{stdcount_if}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Analogy}: The ``Pollster''. Counting how many people plan to
+  vote ``Yes''.
+\item
+  \textbf{When to use it}: Counting elements that match a dynamic
+  condition.
+\item
+  \textbf{Complexity}: \(O(n)\).
+\item
+  \textbf{Godhood Tip}: Many modern compilers will auto-vectorize this
+  using SIMD (Single Instruction Multiple Data) if the predicate is
+  simple.
+\item
+  \textbf{Example}:
+  \passthrough{\lstinline!cpp     int positives = std::count\_if(v.begin(), v.end(), [](int i)\{ return i > 0; \});!}
+\end{itemize}
+
+\hypertarget{stdmismatch}{%
+\subsubsection{\texorpdfstring{13.
+\texttt{std::mismatch}}{13. std::mismatch}}\label{stdmismatch}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Analogy}: ``Spot the Difference''. Comparing two photos and
+  finding the first pixel that changed.
+\item
+  \textbf{When to use it}: Comparing two sequences (e.g., two versions
+  of a config file) to find where they diverge.
+\item
+  \textbf{Complexity}: \(O(n)\).
+\item
+  \textbf{Common Pitfall}: Ensure the second range is at least as long
+  as the first, or use the C++14 four-iterator version to avoid
+  out-of-bounds access.
+\item
+  \textbf{Example}:
+  \passthrough{\lstinline!cpp     auto [it1, it2] = std::mismatch(v1.begin(), v1.end(), v2.begin(), v2.end());!}
+\end{itemize}
+
+\hypertarget{stdequal}{%
+\subsubsection{\texorpdfstring{14.
+\texttt{std::equal}}{14. std::equal}}\label{stdequal}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Analogy}: The ``Clone Check''. Verifying two documents are
+  identical.
+\item
+  \textbf{When to use it}: Deep comparison of two ranges.
+\item
+  \textbf{Complexity}: \(O(n)\).
+\item
+  \textbf{Hardware Sympathy}: Compilers often optimize this to
+  \passthrough{\lstinline!memcmp!} for primitive types, which is the
+  gold standard for performance.
+\item
+  \textbf{Example}:
+  \passthrough{\lstinline!cpp     bool is\_equal = std::equal(v1.begin(), v1.end(), v2.begin());!}
+\end{itemize}
+
+\hypertarget{stdis_permutation}{%
+\subsubsection{\texorpdfstring{15.
+\texttt{std::is\_permutation}}{15. std::is\_permutation}}\label{stdis_permutation}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Analogy}: The ``Anagram''. Checking if ``Listen'' and
+  ``Silent'' have the same letters.
+\item
+  \textbf{When to use it}: Checking if two ranges have the same elements
+  in any order.
+\item
+  \textbf{Complexity}: \(O(n^2)\) (Worst case).
+\item
+  \textbf{Godhood Tip}: This is expensive! If you need to do this often
+  on large sets, sort both ranges first and use
+  \passthrough{\lstinline!std::equal!} (\(O(n \log n)\) total).
+\item
+  \textbf{Example}:
+  \passthrough{\lstinline!cpp     bool anagram = std::is\_permutation(word1.begin(), word1.end(), word2.begin());!}
+\end{itemize}
+
+\hypertarget{stdsearch}{%
+\subsubsection{\texorpdfstring{16.
+\texttt{std::search}}{16. std::search}}\label{stdsearch}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Analogy}: ``Ctrl+F''. Searching for a specific word in a
+  sentence.
+\item
+  \textbf{When to use it}: Finding a sub-sequence within a range.
+\item
+  \textbf{Complexity}: \(O(n \cdot m)\).
+\item
+  \textbf{Godhood Tip}: In C++17, you can pass a
+  \passthrough{\lstinline!Searcher!} object (like
+  \passthrough{\lstinline!std::boyer\_moore\_searcher!}) to achieve
+  sub-linear performance (\(O(n/m)\)).
+\item
+  \textbf{Example}:
+  \passthrough{\lstinline!cpp     auto it = std::search(text.begin(), text.end(), \\n                         std::boyer\_moore\_searcher(pattern.begin(), pattern.end()));!}
+\end{itemize}
+
+\hypertarget{stdsearch_n}{%
+\subsubsection{\texorpdfstring{17.
+\texttt{std::search\_n}}{17. std::search\_n}}\label{stdsearch_n}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Analogy}: The ``Winning Streak''. Finding the first place
+  where someone won 5 times in a row.
+\item
+  \textbf{When to use it}: Looking for \passthrough{\lstinline!n!}
+  consecutive occurrences of a specific value.
+\item
+  \textbf{Complexity}: \(O(n)\).
+\item
+  \textbf{Example}:
+  \passthrough{\lstinline!cpp     auto it = std::search\_n(v.begin(), v.end(), 5, 100); // 5 consecutive 100s!}
+\end{itemize}
+
+\hypertarget{stdcopy}{%
+\subsubsection{\texorpdfstring{18.
+\texttt{std::copy}}{18. std::copy}}\label{stdcopy}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Analogy}: The ``Photocopier''. Making an exact duplicate of a
+  stack of papers.
+\item
+  \textbf{When to use it}: Moving data from one range to another.
+\item
+  \textbf{Complexity}: \(O(n)\).
+\item
+  \textbf{Hardware Sympathy}: Usually compiles down to
+  \passthrough{\lstinline!memcpy!}, the fastest possible way to move
+  bytes in a computer.
+\item
+  \textbf{Example}:
+  \passthrough{\lstinline!cpp     std::copy(src.begin(), src.end(), dest.begin());!}
+\end{itemize}
+
+\hypertarget{stdcopy_n}{%
+\subsubsection{\texorpdfstring{19.
+\texttt{std::copy\_n}}{19. std::copy\_n}}\label{stdcopy_n}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Analogy}: The ``Limited Edition''. Only copying the first 10
+  pages of a book.
+\item
+  \textbf{When to use it}: When you know exactly how many elements to
+  move, avoiding the need for an end iterator.
+\item
+  \textbf{Complexity}: \(O(n)\).
+\item
+  \textbf{Example}:
+  \passthrough{\lstinline!cpp     std::copy\_n(src.begin(), 10, dest.begin());!}
+\end{itemize}
+
+\hypertarget{stdcopy_if}{%
+\subsubsection{\texorpdfstring{20.
+\texttt{std::copy\_if}}{20. std::copy\_if}}\label{stdcopy_if}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Analogy}: The ``Filter''. Only copying the ``VIP'' names from
+  the guest list.
+\item
+  \textbf{When to use it}: Moving data that meets a certain criteria.
+\item
+  \textbf{Complexity}: \(O(n)\).
+\item
+  \textbf{Hardware Sympathy}: Can be slower than
+  \passthrough{\lstinline!std::copy!} due to branch mispredictions in
+  the predicate if the data is random.
+\item
+  \textbf{Example}:
+  \passthrough{\lstinline!cpp     std::copy\_if(src.begin(), src.end(), std::back\_inserter(dest), [](int i)\{ return i > 0; \});!}
+\end{itemize}
+
+\hypertarget{stdcopy_backward}{%
+\subsubsection{\texorpdfstring{21.
+\texttt{std::copy\_backward}}{21. std::copy\_backward}}\label{stdcopy_backward}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Analogy}: The ``Reverse Conveyor''. Copying items but starting
+  from the end of the destination to avoid overwriting.
+\item
+  \textbf{When to use it}: When source and destination ranges overlap
+  and the destination is further ahead in memory (shifting right).
+\item
+  \textbf{Complexity}: \(O(n)\).
+\item
+  \textbf{Example}:
+  \passthrough{\lstinline!cpp     std::copy\_backward(v.begin(), v.begin() + 5, v.begin() + 7);!}
+\end{itemize}
+
+\hypertarget{stdmove-algorithm}{%
+\subsubsection{\texorpdfstring{22. \texttt{std::move}
+(algorithm)}{22. std::move (algorithm)}}\label{stdmove-algorithm}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Analogy}: The ``Moving Van''. Not just copying, but actually
+  taking the furniture out of the old house.
+\item
+  \textbf{When to use it}: Efficiency! Use when you don't need the
+  source elements anymore and they support move semantics.
+\item
+  \textbf{Complexity}: \(O(n)\).
+\item
+  \textbf{Hardware Sympathy}: For types like
+  \passthrough{\lstinline!std::string!} or
+  \passthrough{\lstinline!std::vector!}, this is vastly faster than
+  \passthrough{\lstinline!copy!} because it just swaps pointers.
+\item
+  \textbf{Example}:
+  \passthrough{\lstinline!cpp     std::move(src.begin(), src.end(), dest.begin());!}
+\end{itemize}
+
+\hypertarget{stdmove_backward}{%
+\subsubsection{\texorpdfstring{23.
+\texttt{std::move\_backward}}{23. std::move\_backward}}\label{stdmove_backward}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Analogy}: Shifting a row of expensive vases to the right,
+  moving the last one first to avoid breakage.
+\item
+  \textbf{When to use it}: Overlapping ranges where the destination
+  starts inside the source range and is to the right.
+\item
+  \textbf{Complexity}: \(O(n)\).
+\item
+  \textbf{Example}:
+  \passthrough{\lstinline!cpp     std::move\_backward(src.begin(), src.end(), dest.end());!}
+\end{itemize}
+
+\hypertarget{stdswap_ranges}{%
+\subsubsection{\texorpdfstring{24.
+\texttt{std::swap\_ranges}}{24. std::swap\_ranges}}\label{stdswap_ranges}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Analogy}: The ``Trading Places''. Two rows of students
+  swapping seats with each other simultaneously.
+\item
+  \textbf{When to use it}: Swapping chunks of data between containers
+  without temporary allocations.
+\item
+  \textbf{Complexity}: \(O(n)\).
+\item
+  \textbf{Example}:
+  \passthrough{\lstinline!cpp     std::swap\_ranges(v1.begin(), v1.end(), v2.begin());!}
+\end{itemize}
+
+\hypertarget{stdtransform}{%
+\subsubsection{\texorpdfstring{25.
+\texttt{std::transform}}{25. std::transform}}\label{stdtransform}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Analogy}: The ``Assembly Line''. Every part comes in raw and
+  gets polished on its way out.
+\item
+  \textbf{When to use it}: Applying a function to every element and
+  storing the result elsewhere. This is the ``Map'' in MapReduce.
+\item
+  \textbf{Complexity}: \(O(n)\).
+\item
+  \textbf{Godhood Tip}: You can also use the binary version to combine
+  two ranges into one (e.g., adding two vectors).
+\item
+  \textbf{Example}:
+  \passthrough{\lstinline!cpp     std::transform(v.begin(), v.end(), v.begin(), [](int i)\{ return i * i; \});!}
+\end{itemize}
+
+\hypertarget{stdreplace}{%
+\subsubsection{\texorpdfstring{26.
+\texttt{std::replace}}{26. std::replace}}\label{stdreplace}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Analogy}: ``Search and Replace''. Changing every ``Apple'' to
+  ``Orange'' in a document.
+\item
+  \textbf{When to use it}: Simple value replacement across a container.
+\item
+  \textbf{Complexity}: \(O(n)\).
+\item
+  \textbf{Example}:
+  \passthrough{\lstinline!cpp     std::replace(v.begin(), v.end(), old\_val, new\_val);!}
+\end{itemize}
+
+\hypertarget{stdreplace_if}{%
+\subsubsection{\texorpdfstring{27.
+\texttt{std::replace\_if}}{27. std::replace\_if}}\label{stdreplace_if}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Analogy}: The ``Tax Man''. Replacing every salary over 100k
+  with a fixed ``Cap''.
+\item
+  \textbf{When to use it}: Conditional replacement based on a predicate.
+\item
+  \textbf{Complexity}: \(O(n)\).
+\item
+  \textbf{Example}:
+  \passthrough{\lstinline!cpp     std::replace\_if(v.begin(), v.end(), [](int i)\{ return i > 100; \}, 100);!}
+\end{itemize}
+
+\hypertarget{stdfill}{%
+\subsubsection{\texorpdfstring{28.
+\texttt{std::fill}}{28. std::fill}}\label{stdfill}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Analogy}: The ``Paint Bucket''. Filling a whole canvas with a
+  single color.
+\item
+  \textbf{When to use it}: Initializing a range (e.g., a buffer) with a
+  constant value.
+\item
+  \textbf{Complexity}: \(O(n)\).
+\item
+  \textbf{Hardware Sympathy}: Compiles to
+  \passthrough{\lstinline!memset!} for byte-sized types. The fastest
+  possible memory write.
+\item
+  \textbf{Example}:
+  \passthrough{\lstinline!cpp     std::fill(v.begin(), v.end(), 0);!}
+\end{itemize}
+
+\hypertarget{stdfill_n}{%
+\subsubsection{\texorpdfstring{29.
+\texttt{std::fill\_n}}{29. std::fill\_n}}\label{stdfill_n}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Analogy}: ``First 10 are Free''. Only painting the first 10
+  items in a row.
+\item
+  \textbf{When to use it}: When you have a pointer/iterator and a count
+  but no end iterator.
+\item
+  \textbf{Complexity}: \(O(n)\).
+\item
+  \textbf{Example}:
+  \passthrough{\lstinline!cpp     std::fill\_n(v.begin(), 10, -1);!}
+\end{itemize}
+
+\hypertarget{stdgenerate}{%
+\subsubsection{\texorpdfstring{30.
+\texttt{std::generate}}{30. std::generate}}\label{stdgenerate}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Analogy}: The ``Random Number Generator''. Calling a function
+  to create a new value for every slot.
+\item
+  \textbf{When to use it}: Filling a range with dynamic or random
+  values.
+\item
+  \textbf{Complexity}: \(O(n)\).
+\item
+  \textbf{Example}:
+  \passthrough{\lstinline!cpp     std::generate(v.begin(), v.end(), std::rand);!}
+\end{itemize}
+
+\hypertarget{stdgenerate_n}{%
+\subsubsection{\texorpdfstring{31.
+\texttt{std::generate\_n}}{31. std::generate\_n}}\label{stdgenerate_n}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Analogy}: ``Print 5 Tickets''. Generating a specific number of
+  new items.
+\item
+  \textbf{When to use it}: Populating a specific count of elements
+  dynamically into a container.
+\item
+  \textbf{Complexity}: \(O(n)\).
+\item
+  \textbf{Example}:
+  \passthrough{\lstinline!cpp     std::generate\_n(std::back\_inserter(v), 5, []()\{ return rand() \% 100; \});!}
+\end{itemize}
+
+\hypertarget{stdremove-the-shifting-seats}{%
+\subsubsection{\texorpdfstring{32. \texttt{std::remove} (The Shifting
+Seats)}{32. std::remove (The Shifting Seats)}}\label{stdremove-the-shifting-seats}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Analogy}: Moving all the ``Empty'' chairs to the back of the
+  room so the front rows are full and usable.
+\item
+  \textbf{When to use it}: ``Deleting'' elements from a container
+  (Vector/Array).
+\item
+  \textbf{Complexity}: \(O(n)\).
+\item
+  \textbf{CRITICAL WARNING}: It doesn't actually change the size of the
+  container! You MUST use the \textbf{Erase-Remove Idiom}.
+\item
+  \textbf{Hardware Sympathy}: Very fast because it only performs
+  \(O(n)\) moves instead of \(O(n^2)\) shifts.
+\item
+  \textbf{Example}:
+  \passthrough{\lstinline!cpp     v.erase(std::remove(v.begin(), v.end(), 99), v.end());!}
+\end{itemize}
+
+\hypertarget{stdremove_if}{%
+\subsubsection{\texorpdfstring{33.
+\texttt{std::remove\_if}}{33. std::remove\_if}}\label{stdremove_if}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Analogy}: ``Excommunicated''. Shifting everyone who failed a
+  test to the back of the line.
+\item
+  \textbf{When to use it}: Conditional removal from a collection.
+\item
+  \textbf{Complexity}: \(O(n)\).
+\item
+  \textbf{Example}:
+  \passthrough{\lstinline!cpp     v.erase(std::remove\_if(v.begin(), v.end(), [](int i)\{ return i < 0; \}), v.end());!}
+\end{itemize}
+
+\hypertarget{stdremove_copy}{%
+\subsubsection{\texorpdfstring{34.
+\texttt{std::remove\_copy}}{34. std::remove\_copy}}\label{stdremove_copy}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Analogy}: ``Selective Copying''. Copying a list but skipping
+  specific ``Banned'' names.
+\item
+  \textbf{When to use it}: When you want to keep the original data but
+  need a cleaned-up copy.
+\item
+  \textbf{Complexity}: \(O(n)\).
+\item
+  \textbf{Example}:
+  \passthrough{\lstinline!cpp     std::remove\_copy(src.begin(), src.end(), std::back\_inserter(dest), 99);!}
+\end{itemize}
+
+\hypertarget{stdremove_copy_if}{%
+\subsubsection{\texorpdfstring{35.
+\texttt{std::remove\_copy\_if}}{35. std::remove\_copy\_if}}\label{stdremove_copy_if}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Analogy}: ``The Purge''. Copying a list but leaving out anyone
+  who doesn't meet the criteria.
+\item
+  \textbf{When to use it}: Copying only elements that fail a specific
+  condition.
+\item
+  \textbf{Complexity}: \(O(n)\).
+\item
+  \textbf{Example}:
+  \passthrough{\lstinline!cpp     std::remove\_copy\_if(src.begin(), src.end(), std::back\_inserter(dest), [](int i)\{ return i < 10; \});!}
+\end{itemize}
+
+\hypertarget{stdunique}{%
+\subsubsection{\texorpdfstring{36.
+\texttt{std::unique}}{36. std::unique}}\label{stdunique}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Analogy}: ``Stop Repeating Yourself!''. If someone says the
+  same word twice in a row, tell them to stop.
+\item
+  \textbf{When to use it}: Removing \emph{consecutive} duplicates.
+\item
+  \textbf{Complexity}: \(O(n)\).
+\item
+  \textbf{Godhood Tip}: To remove \emph{all} duplicates, you must
+  \passthrough{\lstinline!sort()!} before calling
+  \passthrough{\lstinline!unique()!}.
+\item
+  \textbf{Example}:
+  \passthrough{\lstinline!cpp     v.erase(std::unique(v.begin(), v.end()), v.end());!}
+\end{itemize}
+
+\hypertarget{stdunique_copy}{%
+\subsubsection{\texorpdfstring{37.
+\texttt{std::unique\_copy}}{37. std::unique\_copy}}\label{stdunique_copy}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Analogy}: ``Recording the Highlights''. Copying a sequence but
+  only taking one instance of any consecutive group.
+\item
+  \textbf{When to use it}: Creating a ``de-duplicated'' version of a
+  range.
+\item
+  \textbf{Complexity}: \(O(n)\).
+\item
+  \textbf{Example}:
+  \passthrough{\lstinline!cpp     std::unique\_copy(src.begin(), src.end(), std::back\_inserter(dest));!}
+\end{itemize}
+
+\hypertarget{stdreverse}{%
+\subsubsection{\texorpdfstring{38.
+\texttt{std::reverse}}{38. std::reverse}}\label{stdreverse}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Analogy}: ``The Rewind''. Flipping the whole sequence upside
+  down.
+\item
+  \textbf{When to use it}: When you need the order completely inverted
+  (e.g., converting big-endian to little-endian manually).
+\item
+  \textbf{Complexity}: \(O(n)\).
+\item
+  \textbf{Hardware Sympathy}: High bandwidth usage. Swaps elements from
+  outside-in, moving linearly through memory.
+\item
+  \textbf{Example}:
+  \passthrough{\lstinline!cpp     std::reverse(v.begin(), v.end());!}
+\end{itemize}
+
+\hypertarget{stdreverse_copy}{%
+\subsubsection{\texorpdfstring{39.
+\texttt{std::reverse\_copy}}{39. std::reverse\_copy}}\label{stdreverse_copy}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Analogy}: ``Mirror Image''. Copying a list into another
+  container but in reverse order.
+\item
+  \textbf{When to use it}: Keeping the original order while obtaining a
+  reversed version.
+\item
+  \textbf{Complexity}: \(O(n)\).
+\item
+  \textbf{Example}:
+  \passthrough{\lstinline!cpp     std::reverse\_copy(src.begin(), src.end(), dest.begin());!}
+\end{itemize}
+
+\hypertarget{stdrotate-the-pivot-dance}{%
+\subsubsection{\texorpdfstring{40. \texttt{std::rotate} (The Pivot
+Dance)}{40. std::rotate (The Pivot Dance)}}\label{stdrotate-the-pivot-dance}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Analogy}: ``The Conveyor Belt''. Moving the 3rd item to the
+  front and shifting everything else.
+\item
+  \textbf{When to use it}: Cyclic shifts. This is the magic behind
+  moving an element from index A to index B.
+\item
+  \textbf{Complexity}: \(O(n)\).
+\item
+  \textbf{Hardware Sympathy}: One of the most highly optimized
+  algorithms. Can be used for ``O(1)'' front-deletion in a vector if
+  order doesn't matter (rotate + pop\_back).
+\item
+  \textbf{Example}:
+  \passthrough{\lstinline!cpp     std::rotate(v.begin(), v.begin() + 2, v.end());!}
+\end{itemize}
+
+\hypertarget{stdrotate_copy}{%
+\subsubsection{\texorpdfstring{41.
+\texttt{std::rotate\_copy}}{41. std::rotate\_copy}}\label{stdrotate_copy}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Analogy}: ``Circular Snapshot''. Taking a picture of the
+  conveyor belt after it has rotated.
+\item
+  \textbf{When to use it}: Getting a shifted copy of a range without
+  modifying the original.
+\item
+  \textbf{Complexity}: \(O(n)\).
+\item
+  \textbf{Example}:
+  \passthrough{\lstinline!cpp     std::rotate\_copy(src.begin(), src.begin() + 3, src.end(), dest.begin());!}
+\end{itemize}
+
+\hypertarget{stdshift_left-c20}{%
+\subsubsection{\texorpdfstring{42. \texttt{std::shift\_left}
+(C++20)}{42. std::shift\_left (C++20)}}\label{stdshift_left-c20}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Analogy}: ``The Slide''. Everyone slides to the left by 2
+  seats. The people at the far left are discarded.
+\item
+  \textbf{When to use it}: Shifting data without the overhead of
+  rotation.
+\item
+  \textbf{Complexity}: \(O(n)\).
+\item
+  \textbf{Hardware Sympathy}: Efficiently moves data without wrapping
+  around, useful in buffer management.
+\item
+  \passthrough{\lstinline!cpp     std::shift\_left(v.begin(), v.end(), 2);!}
+\end{itemize}
+
+\hypertarget{stdshift_right-c20}{%
+\subsubsection{\texorpdfstring{43. \texttt{std::shift\_right}
+(C++20)}{43. std::shift\_right (C++20)}}\label{stdshift_right-c20}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Analogy}: ``The Push''. Everyone moves right. The people at
+  the end are pushed out of the room.
+\item
+  \textbf{When to use it}: Shifting data right.
+\item
+  \textbf{Complexity}: \(O(n)\).
+\item
+  \passthrough{\lstinline!cpp     std::shift\_right(v.begin(), v.end(), 2);!}
+\end{itemize}
+
+\hypertarget{stdshuffle}{%
+\subsubsection{\texorpdfstring{44.
+\texttt{std::shuffle}}{44. std::shuffle}}\label{stdshuffle}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Analogy}: ``The Vegas Dealer''. Mixing the deck so perfectly
+  that the outcome is statistically unpredictable.
+\item
+  \textbf{When to use it}: Randomizing a range for simulations or games.
+\item
+  \textbf{Complexity}: \(O(n)\).
+\item
+  \textbf{Common Pitfall}: Using \passthrough{\lstinline!rand()!} or
+  \passthrough{\lstinline!random\_shuffle!} (which are deprecated/poor).
+  Use \passthrough{\lstinline!std::mt19937!} for true randomness.
+\item
+  \textbf{Example}:
+  \passthrough{\lstinline!cpp     std::shuffle(v.begin(), v.end(), std::mt19937\{std::random\_device\{\}()\});!}
+\end{itemize}
+
+\hypertarget{stdis_partitioned}{%
+\subsubsection{\texorpdfstring{45.
+\texttt{std::is\_partitioned}}{45. std::is\_partitioned}}\label{stdis_partitioned}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Analogy}: ``Sorted by Side''. Checking if all the ``Blue''
+  shirts are on the left and ``Red'' shirts on the right.
+\item
+  \textbf{When to use it}: Validating if a range has been successfully
+  divided by a predicate.
+\item
+  \textbf{Complexity}: \(O(n)\).
+\item
+  \textbf{Example}:
+  \passthrough{\lstinline!cpp     bool is\_p = std::is\_partitioned(v.begin(), v.end(), [](int i)\{ return i < 0; \});!}
+\end{itemize}
+
+\hypertarget{stdpartition}{%
+\subsubsection{\texorpdfstring{46.
+\texttt{std::partition}}{46. std::partition}}\label{stdpartition}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Analogy}: ``The Middle School Dance''. Boys on the left, girls
+  on the right.
+\item
+  \textbf{When to use it}: Fast separation of elements based on a
+  condition without the cost of a full sort.
+\item
+  \textbf{Complexity}: \(O(n)\).
+\item
+  \textbf{Hardware Sympathy}: Much faster than
+  \passthrough{\lstinline!std::sort!}. This is the fundamental building
+  block of QuickSort.
+\item
+  \textbf{Example}:
+  \passthrough{\lstinline!cpp     auto it = std::partition(v.begin(), v.end(), [](int i)\{ return i \% 2 == 0; \});!}
+\end{itemize}
+
+\hypertarget{stdstable_partition}{%
+\subsubsection{\texorpdfstring{47.
+\texttt{std::stable\_partition}}{47. std::stable\_partition}}\label{stdstable_partition}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Analogy}: ``The Dance (Respecting Friendships)''. Boys on the
+  left, girls on the right, but everyone keeps their original relative
+  order with their friends.
+\item
+  \textbf{When to use it}: When the relative order of elements within
+  the two partitions must be preserved.
+\item
+  \textbf{Complexity}: \(O(n \log n)\) or \(O(n)\) if extra memory is
+  available.
+\item
+  \textbf{Example}:
+  \passthrough{\lstinline!cpp     std::stable\_partition(v.begin(), v.end(), [](int i)\{ return i > 100; \});!}
+\end{itemize}
+
+\hypertarget{stdpartition_copy}{%
+\subsubsection{\texorpdfstring{48.
+\texttt{std::partition\_copy}}{48. std::partition\_copy}}\label{stdpartition_copy}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Analogy}: ``Sorting the Mail''. Putting ``Bills'' in one bin
+  and ``Letters'' in another.
+\item
+  \textbf{When to use it}: Moving elements into two separate containers
+  based on a boolean condition.
+\item
+  \textbf{Complexity}: \(O(n)\).
+\item
+  \textbf{Example}:
+  \passthrough{\lstinline!cpp     std::partition\_copy(src.begin(), src.end(), std::back\_inserter(v1), std::back\_inserter(v2), pred);!}
+\end{itemize}
+
+\hypertarget{stdpartition_point}{%
+\subsubsection{\texorpdfstring{49.
+\texttt{std::partition\_point}}{49. std::partition\_point}}\label{stdpartition_point}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Analogy}: ``The Boundary Line''. Finding the exact spot where
+  the ``Blue'' shirts end and ``Red'' shirts begin.
+\item
+  \textbf{When to use it}: Finding the pivot iterator in a previously
+  partitioned range.
+\item
+  \textbf{Complexity}: \(O(\log n)\).
+\item
+  \textbf{Example}:
+  \passthrough{\lstinline!cpp     auto it = std::partition\_point(v.begin(), v.end(), [](int i)\{ return i < 10; \});!}
+\end{itemize}
+
+\hypertarget{stdsort}{%
+\subsubsection{\texorpdfstring{50.
+\texttt{std::sort}}{50. std::sort}}\label{stdsort}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Analogy}: ``The Library''. Putting every book in perfect
+  alphabetical order.
+\item
+  \textbf{When to use it}: General purpose sorting.
+\item
+  \textbf{Complexity}: \(O(n \log n)\).
+\item
+  \textbf{Hardware Sympathy}: Typically implements \textbf{Introsort}
+  (QuickSort + HeapSort + InsertionSort). It is extremely cache-friendly
+  and avoids the \(O(n^2)\) worst-case of pure QuickSort.
+\item
+  \textbf{Example}:
+  \passthrough{\lstinline!cpp     std::sort(v.begin(), v.end());!}
+\end{itemize}
+
+\hypertarget{stdstable_sort}{%
+\subsubsection{\texorpdfstring{51.
+\texttt{std::stable\_sort}}{51. std::stable\_sort}}\label{stdstable_sort}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Analogy}: ``Sorting by Group, then Rank''. Sorting students by
+  score, but ensuring students with the same score stay in the order
+  they were in.
+\item
+  \textbf{When to use it}: When relative order of ``equal'' elements is
+  semantically important.
+\item
+  \textbf{Complexity}: \(O(n \log^2 n)\) (or \(O(n \log n)\) with extra
+  memory).
+\item
+  \textbf{Example}:
+  \passthrough{\lstinline!cpp     std::stable\_sort(v.begin(), v.end());!}
+\end{itemize}
+
+\hypertarget{stdpartial_sort}{%
+\subsubsection{\texorpdfstring{52.
+\texttt{std::partial\_sort}}{52. std::partial\_sort}}\label{stdpartial_sort}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Analogy}: ``The Top 10 Leaderboard''. Finding the 10 fastest
+  runners and sorting them, while the other 990 stay in any order.
+\item
+  \textbf{When to use it}: When you only need the smallest/largest \(k\)
+  elements in order.
+\item
+  \textbf{Complexity}: \(O(n \log k)\).
+\item
+  \textbf{Hardware Sympathy}: Uses a heap internally. Much faster than a
+  full sort if \(k \ll n\).
+\item
+  \textbf{Example}:
+  \passthrough{\lstinline!cpp     std::partial\_sort(v.begin(), v.begin() + 5, v.end()); // Top 5 are sorted!}
+\end{itemize}
+
+\hypertarget{stdpartial_sort_copy}{%
+\subsubsection{\texorpdfstring{53.
+\texttt{std::partial\_sort\_copy}}{53. std::partial\_sort\_copy}}\label{stdpartial_sort_copy}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Analogy}: ``Extracting the Top 10''. Finding the 10 best items
+  and copying them to a separate list, sorted.
+\item
+  \textbf{When to use it}: Creating leaderboards without modifying the
+  original dataset.
+\item
+  \textbf{Complexity}: \(O(n \log k)\).
+\item
+  \passthrough{\lstinline!cpp     std::partial\_sort\_copy(src.begin(), src.end(), top\_5.begin(), top\_5.end());!}
+\end{itemize}
+
+\hypertarget{stdis_sorted}{%
+\subsubsection{\texorpdfstring{54.
+\texttt{std::is\_sorted}}{54. std::is\_sorted}}\label{stdis_sorted}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Analogy}: ``The Quality Control Check''. Making sure every
+  single item on the conveyor belt is in the correct order.
+\item
+  \textbf{When to use it}: Verification and assertions in
+  high-reliability code.
+\item
+  \textbf{Complexity}: \(O(n)\).
+\item
+  \passthrough{\lstinline!cpp     assert(std::is\_sorted(v.begin(), v.end()));!}
+\end{itemize}
+
+\hypertarget{stdis_sorted_until}{%
+\subsubsection{\texorpdfstring{55.
+\texttt{std::is\_sorted\_until}}{55. std::is\_sorted\_until}}\label{stdis_sorted_until}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Analogy}: ``Finding the Point of Failure''. Finding the first
+  item that breaks the sorted order.
+\item
+  \textbf{When to use it}: Identifying how much of a prefix is already
+  sorted.
+\item
+  \textbf{Complexity}: \(O(n)\).
+\item
+  \passthrough{\lstinline!cpp     auto it = std::is\_sorted\_until(v.begin(), v.end());!}
+\end{itemize}
+
+\hypertarget{stdnth_element-the-median-finder}{%
+\subsubsection{\texorpdfstring{56. \texttt{std::nth\_element} (The
+Median
+Finder)}{56. std::nth\_element (The Median Finder)}}\label{stdnth_element-the-median-finder}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Analogy}: ``Finding the Middle Person''. Putting the person of
+  median height in the center, and ensuring everyone shorter is to their
+  left.
+\item
+  \textbf{When to use it}: Finding the median, the 99th percentile, or
+  the top \(k\)-th element without the cost of sorting.
+\item
+  \textbf{Complexity}: \(O(n)\) (Average).
+\item
+  \textbf{Godhood Tip}: This is arguably the most under-used powerful
+  algorithm in the STL. It's essentially a partial QuickSort.
+\item
+  \passthrough{\lstinline!cpp     std::nth\_element(v.begin(), v.begin() + v.size()/2, v.end());!}
+\end{itemize}
+
+\hypertarget{stdlower_bound}{%
+\subsubsection{\texorpdfstring{57.
+\texttt{std::lower\_bound}}{57. std::lower\_bound}}\label{stdlower_bound}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Analogy}: ``The Insertion Point''. Finding the first place you
+  could insert a value without breaking the sorted order.
+\item
+  \textbf{When to use it}: Binary search for the first element \(\ge\)
+  value.
+\item
+  \textbf{Complexity}: \(O(\log n)\).
+\item
+  \textbf{CRITICAL}: The range MUST be sorted.
+\item
+  \textbf{Hardware Sympathy}: While \(O(\log n)\) is fast, large jumps
+  in binary search can cause cache misses. For small ranges, a linear
+  search (\passthrough{\lstinline!std::find!}) can actually be faster.
+\item
+  \textbf{Example}:
+  \passthrough{\lstinline!cpp     auto it = std::lower\_bound(v.begin(), v.end(), 42);!}
+\end{itemize}
+
+\hypertarget{stdupper_bound}{%
+\subsubsection{\texorpdfstring{58.
+\texttt{std::upper\_bound}}{58. std::upper\_bound}}\label{stdupper_bound}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Analogy}: ``The Last Insertion Point''. Finding the last
+  possible place to insert a value.
+\item
+  \textbf{When to use it}: Binary search for the first element \(>\)
+  value.
+\item
+  \textbf{Complexity}: \(O(\log n)\).
+\item
+  \textbf{Example}:
+  \passthrough{\lstinline!cpp     auto it = std::upper\_bound(v.begin(), v.end(), 42);!}
+\end{itemize}
+
+\hypertarget{stdequal_range}{%
+\subsubsection{\texorpdfstring{59.
+\texttt{std::equal\_range}}{59. std::equal\_range}}\label{stdequal_range}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Analogy}: ``The Target Zone''. Finding the beginning and end
+  of all instances of a specific value.
+\item
+  \textbf{When to use it}: When you need both the first and last
+  position of a value in a sorted range.
+\item
+  \textbf{Complexity}: \(O(\log n)\).
+\item
+  \passthrough{\lstinline!cpp     auto [first, last] = std::equal\_range(v.begin(), v.end(), 42);!}
+\end{itemize}
+
+\hypertarget{stdbinary_search}{%
+\subsubsection{\texorpdfstring{60.
+\texttt{std::binary\_search}}{60. std::binary\_search}}\label{stdbinary_search}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Analogy}: ``The Yes/No Question''. Checking if a book is in
+  the library without checking how many copies there are.
+\item
+  \textbf{When to use it}: Existence check in a sorted range when you
+  don't need the iterator.
+\item
+  \textbf{Complexity}: \(O(\log n)\).
+\item
+  \passthrough{\lstinline!cpp     bool exists = std::binary\_search(v.begin(), v.end(), 42);!}
+\end{itemize}
+
+---\n
