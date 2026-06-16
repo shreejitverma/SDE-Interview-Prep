@@ -3,26 +3,29 @@
 
 # C++23 LIBRARY UTILITIES
 
-### 1. Hardware Sympathy
-*   **`std::unreachable`**: Tells the optimizer that a specific branch of code can never be reached. If it is reached, it is Undefined Behavior. This allows the compiler to strip out safety checks.
+### 1. Hardware & Memory
+*   **std::unreachable()**: Marks code that should never be reached. Gives the compiler optimization permission and causes UB if reached.
     ```cpp
-    enum class State { A, B };
-    void f(State s) {
-        if (s == State::A) do_a();
-        else if (s == State::B) do_b();
-        else std::unreachable(); // Compiler optimizes knowing this is impossible
-    }
+    default: std::unreachable();
     ```
-*   **`std::byteswap`**: Highly optimized byte reversal (endianness swap), mapping directly to compiler intrinsics like `bswap`.
+*   **std::byteswap**: Reverses the byte order of an integral value; useful for endianness conversion.
+    ```cpp
+    uint32_t be = std::byteswap(0x01020304u);
+    ```
+*   **std::out_ptr / std::inout_ptr**: Helpers for passing smart pointers to legacy C APIs that expect `T**` output parameters.
+    ```cpp
+    legacy_init(std::out_ptr(my_unique_ptr));
+    ```
+*   **std::spanstream**: A string stream that operates on a fixed `std::span<char>` buffer rather than allocating heap memory (faster than `stringstream`).
+    ```cpp
+    std::spanstream ss{buf}; ss << 42;
+    ```
 
-### 2. Core Utilities
-*   **`std::to_underlying`**: A safe, clean way to extract the numeric value of an `enum class`.
-    ```cpp
-    enum class Flags : uint8_t { Read = 1, Write = 2 };
-    auto val = std::to_underlying(Flags::Write); // uint8_t 2
-    ```
-*   **`std::move_only_function`**: A lightweight version of `std::function` that can hold non-copyable callables (like lambdas capturing `std::unique_ptr`). It has significantly less overhead.
-*   **`std::string::contains`**: Finally, a readable way to check for substrings without comparing against `std::string::npos`.
-    ```cpp
-    if (str.contains("error")) { /* ... */ }
-    ```
+### 2. Functional Utilities
+*   **std::move_only_function**: Like `std::function` but only move-constructible; supports move-only callables (lambdas capturing `unique_ptr`) and avoids unnecessary copies.
+*   **std::to_underlying**: Converts an enum to its underlying integer type without a `static_cast`.
+*   **string::contains**: `std::string` and `std::string_view` gain `.contains()` to check for substring presence.
+
+### 3. Math & Constexpr Upgrades
+*   **Fixed-width floating-point types**: `<stdfloat>` introduces `std::float16_t`, `std::float32_t`, `std::float64_t`, and `std::bfloat16_t` (if supported by platform).
+*   **constexpr upgrades**: `std::optional`, `std::variant`, `std::unique_ptr`, and many `<cmath>` functions (e.g., `abs`, `ceil`) are now fully `constexpr`.
