@@ -6,6 +6,90 @@ VIRTUALIZATION}\label{chapter-6-polymorphism-and-virtualization}}
 \section{POLYMORPHISM \&
 VIRTUALIZATION}\label{polymorphism-virtualization}}
 
+Polymorphism sounds like a complex word from a biology textbook, but
+it's actually a very simple idea: \textbf{``One interface, many
+forms.''}
+
+\hypertarget{the-restaurant-menu-analogy}{%
+\subsubsection{The Restaurant Menu
+Analogy}\label{the-restaurant-menu-analogy}}
+
+Imagine you go to a global restaurant chain called \textbf{The C++
+Cafe}.
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  \textbf{Base Class (The Menu)}: Every C++ Cafe has the same menu. It
+  says you can order a \passthrough{\lstinline!make\_drink()!} item.
+\item
+  \textbf{Derived Classes (The Specific Locations)}:
+
+  \begin{itemize}
+  \tightlist
+  \item
+    The \textbf{Paris location} implements
+    \passthrough{\lstinline!make\_drink()!} by serving Wine.
+  \item
+    The \textbf{London location} implements
+    \passthrough{\lstinline!make\_drink()!} by serving Tea.
+  \end{itemize}
+\item
+  \textbf{Polymorphism (The Customer)}: You, the customer, just look at
+  the menu and say \passthrough{\lstinline!cafe->make\_drink()!}. You
+  don't care \emph{which} location you're in; you just know the menu
+  promised you a drink.
+\end{enumerate}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{deep-dive-the-virtual-table-vtable}{%
+\subsubsection{Deep Dive: The Virtual Table
+(vtable)}\label{deep-dive-the-virtual-table-vtable}}
+
+How does the computer know which \passthrough{\lstinline!make\_drink()!}
+to call? It uses a secret lookup table called the \textbf{vtable}.
+
+Think of the \textbf{vtable} as a \textbf{Phone Directory} kept in the
+back of the restaurant: * When you call
+\passthrough{\lstinline!cafe->make\_drink()!}, the computer doesn't jump
+straight to a function. * Instead, it looks at the \textbf{vptr} (a
+hidden pointer inside the \passthrough{\lstinline!cafe!} object). * The
+\passthrough{\lstinline!vptr!} tells the computer: ``Look at Directory
+\#42.'' * Directory \#42 (the vtable) says: ``For
+\passthrough{\lstinline!make\_drink!}, call the function at address
+\passthrough{\lstinline!0x123!} (Paris Wine).''
+
+\begin{quote}
+\textbf{Godhood Tip}: This lookup is very fast, but it \emph{is} an
+extra step. In high-frequency trading (HFT), we sometimes avoid
+\passthrough{\lstinline!virtual!} functions to save those few
+nanoseconds. This is called \textbf{Static Polymorphism}.
+\end{quote}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{the-danger-zone-virtual-destructors}{%
+\subsubsection{The Danger Zone: Virtual
+Destructors}\label{the-danger-zone-virtual-destructors}}
+
+Imagine you borrow a book from a library
+(\passthrough{\lstinline!Base* pointer = new Derived()!}).
+
+If your \passthrough{\lstinline!Base!} class doesn't have a
+\passthrough{\lstinline!virtual!} destructor, when you return the book
+(\passthrough{\lstinline!delete pointer!}), the librarian only knows how
+to handle a generic \passthrough{\lstinline!Base!} object. If the
+\passthrough{\lstinline!Derived!} part of the book had a special ``Bonus
+Chapter'' (allocated memory), that part will never be cleaned up.
+
+\textbf{Always mark your Base destructor
+\passthrough{\lstinline!virtual!}.} If you don't, you're leaving trash
+in the library.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
 \hypertarget{deep-object-model-virtualization}{%
 \section{DEEP OBJECT MODEL \&
 VIRTUALIZATION}\label{deep-object-model-virtualization}}
