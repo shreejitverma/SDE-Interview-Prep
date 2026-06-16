@@ -6,6 +6,74 @@ ENCAPSULATION}\label{chapter-5-oop-and-encapsulation}}
 \section{OBJECT-ORIENTED PROGRAMMING: ENCAPSULATION \&
 DESIGN}\label{object-oriented-programming-encapsulation-design}}
 
+Welcome to the world of objects. In the previous chapters, we were
+writing ``Procedural'' codeessentially a long list of instructions for
+the computer to follow. Now, were going to start thinking about
+\textbf{things}.
+
+\hypertarget{the-blueprint-vs.-the-house}{%
+\subsubsection{The Blueprint vs.~The
+House}\label{the-blueprint-vs.-the-house}}
+
+Think of a \textbf{Class} as a \textbf{Blueprint} for a house. * The
+blueprint isn't a house. You can't live in it, and it doesn't take up
+any space in Mem-City. * It just describes \emph{what} a house should
+have (windows, doors, rooms) and \emph{what} it can do (open doors, turn
+on lights).
+
+An \textbf{Object} is the actual \textbf{House} built from that
+blueprint. * You can build 1,000 houses from a single blueprint. * Each
+house has its own address in Mem-City, and each house can have different
+colored walls (data).
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{encapsulation-the-smart-tv-analogy}{%
+\subsubsection{Encapsulation: The Smart TV
+Analogy}\label{encapsulation-the-smart-tv-analogy}}
+
+Why do we make data \passthrough{\lstinline!private!}?
+
+Imagine your Smart TV. It has a lot of complex wiring and circuit boards
+inside. If the manufacturer left all those wires exposed, you might
+accidentally pull one out or touch a high-voltage capacitor.
+
+Instead, they \textbf{Encapsulate} the TV. They put all the dangerous,
+complex stuff inside a plastic shell and give you a \textbf{Remote
+Control} (the \passthrough{\lstinline!public!} functions).
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  \textbf{Private}: The circuit boards and wires. Only the TV itself
+  (the class) can touch these.
+\item
+  \textbf{Public}: The Power button, Volume Up, and Netflix button.
+  These are the only things the user (the caller) is allowed to touch.
+\end{enumerate}
+
+\begin{quote}
+\textbf{There are no dumb questions\ldots{}}
+
+\textbf{Q: If I want to change the volume, why can't I just go inside
+and move the volume wire manually?} \textbf{A:} Because if the
+manufacturer changes how the volume works (replaces a wire with a chip),
+your ``manual'' way will break the TV. If you use the remote control,
+you don't care how it works inside. This is called \textbf{Decoupling}.
+
+\textbf{Q: Is a \passthrough{\lstinline!struct!} just a
+\passthrough{\lstinline!class!} with everything public?} \textbf{A:}
+Almost exactly! In C++, the only technical difference is that
+\passthrough{\lstinline!struct!} members are public by default, while
+\passthrough{\lstinline!class!} members are private by default. By
+convention, we use \passthrough{\lstinline!struct!} for simple data
+containers and \passthrough{\lstinline!class!} for objects with complex
+behavior.
+\end{quote}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
 \hypertarget{object-oriented-programming-fundamentals-c98}{%
 \section{OBJECT-ORIENTED PROGRAMMING FUNDAMENTALS
 (C++98)}\label{object-oriented-programming-fundamentals-c98}}

@@ -1,0 +1,195 @@
+\hypertarget{appendix-l-100-more-interview-questions-part-5-8}{%
+\section{Appendix L: 100 More Interview Questions (Part
+5-8)}\label{appendix-l-100-more-interview-questions-part-5-8}}
+
+These questions are designed to separate the ``Senior Engineers'' from
+the ``Gods.'' If you can answer these without looking at the notes, you
+are ready for any HFT or Systems Architecture interview on the planet.
+
+\hypertarget{part-5-the-c-memory-model-atomics}{%
+\subsection{Part 5: The C++ Memory Model \&
+Atomics}\label{part-5-the-c-memory-model-atomics}}
+
+\hypertarget{what-is-the-difference-between-stdmemory_order_relaxed-and-stdmemory_order_seq_cst}{%
+\subsubsection{\texorpdfstring{1. What is the difference between
+\texttt{std::memory\_order\_relaxed} and
+\texttt{std::memory\_order\_seq\_cst}?}{1. What is the difference between std::memory\_order\_relaxed and std::memory\_order\_seq\_cst?}}\label{what-is-the-difference-between-stdmemory_order_relaxed-and-stdmemory_order_seq_cst}}
+
+\textbf{Answer}: \passthrough{\lstinline!seq\_cst!} (Sequentially
+Consistent) provides a global total ordering of all operations. It is
+the safest but slowest. \passthrough{\lstinline!relaxed!} only
+guarantees atomicity of the operation itselfit provides no guarantees
+about the order of other memory operations.
+
+\hypertarget{explain-release-acquire-semantics.}{%
+\subsubsection{2. Explain ``Release-Acquire''
+semantics.}\label{explain-release-acquire-semantics.}}
+
+\textbf{Answer}: A \passthrough{\lstinline!memory\_order\_release!}
+store ``synchronizes-with'' a
+\passthrough{\lstinline!memory\_order\_acquire!} load of the same
+variable. All memory writes performed by the storing thread
+\emph{before} the release store are guaranteed to be visible to the
+loading thread \emph{after} the acquire load.
+
+\hypertarget{what-is-a-fences-memory-barrier}{%
+\subsubsection{3. What is a ``Fences'' (Memory
+Barrier)?}\label{what-is-a-fences-memory-barrier}}
+
+\textbf{Answer}: A fence is an instruction that prevents the CPU or
+compiler from reordering instructions across the fence boundary.
+\passthrough{\lstinline!std::atomic\_thread\_fence!} can be used to
+establish synchronization without a specific atomic variable.
+
+\hypertarget{what-is-the-aba-problem-in-lock-free-programming}{%
+\subsubsection{4. What is the ABA problem in lock-free
+programming?}\label{what-is-the-aba-problem-in-lock-free-programming}}
+
+\textbf{Answer}: It occurs when a thread reads a value A, another thread
+changes it to B and then back to A. The first thread thinks nothing has
+changed, but it might have (e.g., a node in a linked list was deleted
+and a new one was allocated at the same address). \textbf{Fix}: Use
+versioned pointers (hazard pointers) or
+\passthrough{\lstinline!std::atomic<T>::compare\_exchange\_strong!} with
+a counter.
+
+\hypertarget{why-is-compare_exchange_weak-used-in-a-loop-instead-of-strong}{%
+\subsubsection{\texorpdfstring{5. Why is
+\texttt{compare\_exchange\_weak} used in a loop instead of
+\texttt{strong}?}{5. Why is compare\_exchange\_weak used in a loop instead of strong?}}\label{why-is-compare_exchange_weak-used-in-a-loop-instead-of-strong}}
+
+\textbf{Answer}: On some architectures (like ARM/Load-Link
+Store-Conditional), \passthrough{\lstinline!weak!} can fail spuriously
+even if the values match. However, \passthrough{\lstinline!weak!} is
+faster in a loop because it allows the compiler to generate more
+efficient code.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{part-6-lock-free-structures-concurrency}{%
+\subsection{Part 6: Lock-Free Structures \&
+Concurrency}\label{part-6-lock-free-structures-concurrency}}
+
+\hypertarget{implement-a-lock-free-stack-treiber-stack.}{%
+\subsubsection{6. Implement a Lock-Free Stack (Treiber
+Stack).}\label{implement-a-lock-free-stack-treiber-stack.}}
+
+\begin{lstlisting}[language={C++}]
+template <typename T>
+class LockFreeStack {
+    struct Node { T data; Node* next; };
+    std::atomic<Node*> head;
+public:
+    void push(T val) {
+        Node* newNode = new Node{val, head.load()};
+        while (!head.compare_exchange_weak(newNode->next, newNode));
+    }
+};
+\end{lstlisting}
+
+\hypertarget{what-is-false-sharing-and-how-do-you-prevent-it-in-c17}{%
+\subsubsection{7. What is ``False Sharing'' and how do you prevent it in
+C++17?}\label{what-is-false-sharing-and-how-do-you-prevent-it-in-c17}}
+
+\textbf{Answer}: It happens when two independent atomic variables reside
+on the same CPU cache line. Updating one invalidates the cache for the
+other core. \textbf{Fix}: Use
+\passthrough{\lstinline!alignas(hardware\_destructive\_interference\_size)!}
+from \passthrough{\lstinline!<new>!}.
+
+\hypertarget{explain-the-double-checked-locking-pattern-and-why-it-was-broken-before-c11.}{%
+\subsubsection{8. Explain the ``Double-Checked Locking'' pattern and why
+it was broken before
+C++11.}\label{explain-the-double-checked-locking-pattern-and-why-it-was-broken-before-c11.}}
+
+\textbf{Answer}: It was broken because the compiler could reorder the
+object allocation and the pointer assignment, leading a second thread to
+see a non-null pointer to an uninitialized object. C++11's memory model
+(and \passthrough{\lstinline!std::atomic!}) fixed this.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{part-7-template-metaprogramming-tmp}{%
+\subsection{Part 7: Template Metaprogramming
+(TMP)}\label{part-7-template-metaprogramming-tmp}}
+
+\hypertarget{what-is-sfinae-give-a-concrete-example.}{%
+\subsubsection{9. What is SFINAE? Give a concrete
+example.}\label{what-is-sfinae-give-a-concrete-example.}}
+
+\textbf{Answer}: ``Substitution Failure Is Not An Error.'' It allows the
+compiler to discard a template overload if the type substitution fails,
+instead of throwing a hard error.
+
+\begin{lstlisting}[language={C++}]
+template <typename T>
+auto func(T t) -> decltype(t.push_back(0)) { ... } // Only works for containers
+\end{lstlisting}
+
+\hypertarget{how-do-c20-concepts-improve-upon-sfinae}{%
+\subsubsection{10. How do C++20 Concepts improve upon
+SFINAE?}\label{how-do-c20-concepts-improve-upon-sfinae}}
+
+\textbf{Answer}: Concepts provide a formal, readable way to constrain
+templates. Instead of cryptic template vomit, you get clear errors:
+``Type X does not satisfy requirement `HasPushBack'.''
+
+\hypertarget{what-is-the-curiously-recurring-template-pattern-crtp}{%
+\subsubsection{11. What is the Curiously Recurring Template Pattern
+(CRTP)?}\label{what-is-the-curiously-recurring-template-pattern-crtp}}
+
+\textbf{Answer}: A pattern where a class
+\passthrough{\lstinline!Derived!} inherits from
+\passthrough{\lstinline!Base<Derived>!}. It allows for ``Static
+Polymorphism''achieving polymorphic behavior without the cost of virtual
+functions.
+
+\hypertarget{explain-stdvoid_t-and-how-its-used-for-trait-detection.}{%
+\subsubsection{\texorpdfstring{12. Explain \texttt{std::void\_t} and how
+it's used for trait
+detection.}{12. Explain std::void\_t and how it's used for trait detection.}}\label{explain-stdvoid_t-and-how-its-used-for-trait-detection.}}
+
+\textbf{Answer}: \passthrough{\lstinline!void\_t!} is a template that
+always maps any list of types to \passthrough{\lstinline!void!}. It's
+used to check if a certain member or type exists within a class during
+template instantiation.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{part-8-systems-performance}{%
+\subsection{Part 8: Systems \&
+Performance}\label{part-8-systems-performance}}
+
+\hypertarget{what-is-rtti-and-why-do-hft-developers-often-disable-it}{%
+\subsubsection{13. What is RTTI and why do HFT developers often disable
+it?}\label{what-is-rtti-and-why-do-hft-developers-often-disable-it}}
+
+\textbf{Answer}: Runtime Type Information. It powers
+\passthrough{\lstinline!dynamic\_cast!} and
+\passthrough{\lstinline!typeid!}. It's disabled
+(\passthrough{\lstinline!-fno-rtti!}) to save space in the binary and
+avoid the overhead of storing type info in the vtable.
+
+\hypertarget{what-is-the-difference-between-inline-and-__attribute__always_inline}{%
+\subsubsection{\texorpdfstring{14. What is the difference between
+\texttt{inline} and
+\texttt{\_\_attribute\_\_((always\_inline))}?}{14. What is the difference between inline and \_\_attribute\_\_((always\_inline))?}}\label{what-is-the-difference-between-inline-and-__attribute__always_inline}}
+
+\textbf{Answer}: \passthrough{\lstinline!inline!} is just a suggestion;
+the compiler can ignore it. \passthrough{\lstinline!always\_inline!} (a
+GCC/Clang intrinsic) forces the compiler to inline the function unless
+it's physically impossible.
+
+\hypertarget{explain-instruction-cache-warming.}{%
+\subsubsection{15. Explain ``Instruction Cache
+Warming.''}\label{explain-instruction-cache-warming.}}
+
+\textbf{Answer}: It's the practice of running a piece of code (like a
+trading strategy) with ``dummy data'' before the market opens, just to
+ensure the instructions are loaded into the CPU's L1-Instruction cache.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\emph{Note: This is just the beginning. The next 85 questions in your
+journey will cover everything from SIMD intrinsics to Linux Kernel
+tuning. Keep pushing. The machine is waiting.}

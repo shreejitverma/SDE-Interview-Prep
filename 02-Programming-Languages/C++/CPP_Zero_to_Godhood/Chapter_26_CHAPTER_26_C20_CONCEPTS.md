@@ -5,8 +5,16 @@
 
 Concepts are the first of the "Four Great Pillars" of C++20. They revolutionize template programming by providing a formal way to specify requirements on template arguments.
 
-### 1. The Core Mechanics
-*   **Concepts**: Compile-time constraints on template parameters, replacing cryptic SFINAE errors with clear diagnostics.
+### 1. The Bouncer Analogy (Detailed)
+
+Imagine you have a template function called `sort()`.
+*   **Old C++**: You give it a `std::list`. It doesn't know anything is wrong until it's 50 levels deep in the code and tries to do `list + 5`. The error message is 200 lines of gibberish.
+*   **Modern C++ (Concepts)**: The `sort()` function says: "Wait! I only allow types that are `RandomAccess`. Show me your ID." The compiler immediately says: "Error: `std::list` is not a `RandomAccess` type." 
+
+The error message is short, sweet, and saves you 2 hours of debugging.
+
+### 2. The Core Mechanics
+*   **Concepts**: Compile-time constraints on template parameters.
     ```cpp
     template<typename T>
     concept Addable = requires(T a, T b) { a + b; };

@@ -2,9 +2,218 @@
 \section{CHAPTER 11: MOVE SEMANTICS AND SMART
 POINTERS}\label{chapter-11-move-semantics-and-smart-pointers}}
 
+\hypertarget{the-history-why-we-were-desperate-for-move-semantics}{%
+\subsubsection{1.1 The History: Why we were desperate for Move
+Semantics}\label{the-history-why-we-were-desperate-for-move-semantics}}
+
+In the early 2000s, C++ was starting to feel ``heavy.'' If you had a
+\passthrough{\lstinline!std::vector<std::string>!} with 10,000 long
+strings, and you wanted to pass that vector to another function, you had
+two bad choices:
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  \textbf{Pass by Pointer}: Fast, but dangerous. Who owns the memory? Do
+  I need to delete it?
+\item
+  \textbf{Pass by Value}: Safe, but \textbf{Incredibly Slow}. C++ would
+  spend 10 milliseconds ``Cloning'' all 10,000 strings, only to destroy
+  the original set 1 microsecond later.
+\end{enumerate}
+
+This was called the \textbf{``Performance Tax''} of C++. C++11 finally
+abolished this tax.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{fireside-chat-the-magic-box-of-rvalues}{%
+\subsubsection{Fireside Chat: The ``Magic Box'' of
+Rvalues}\label{fireside-chat-the-magic-box-of-rvalues}}
+
+\textbf{Student}: ``You said an Rvalue is like a temporary shipping box.
+But why do we need special syntax for it?''
+
+\textbf{The Architect}: ``Because the compiler needs your
+\textbf{Permission} to steal. If I see you holding a sandwich
+(\textbf{Lvalue}), I can't just take a bite. That's theft! But if I see
+a sandwich sitting in a trash can marked `FREE' (\textbf{Rvalue}), I can
+take the whole thing. \passthrough{\lstinline!std::move!} is how you put
+the `FREE' sign on your variables.''
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{annotated-code-the-move-constructor}{%
+\subsubsection{Annotated Code: The Move
+Constructor}\label{annotated-code-the-move-constructor}}
+
+Let's look at what actually happens inside a class that supports moving.
+
+\begin{lstlisting}[language={C++}]
+class BigData {
+    int* buffer;
+    size_t size;
+public:
+    // 1. The "Move Constructor"
+    // Takes an Rvalue Reference (BigData&&)
+    BigData(BigData&& other) noexcept 
+        : buffer(other.buffer), size(other.size) { // A. STEAL THE DATA
+        
+        // B. THE CRITICAL STEP: Set the victim to null!
+        // If we don't do this, 'other' will delete our stolen buffer
+        // when it goes out of scope.
+        other.buffer = nullptr;
+        other.size = 0;
+    }
+};
+\end{lstlisting}
+
+\hypertarget{why-noexcept-is-godhood-required}{%
+\paragraph{\texorpdfstring{Why \texttt{noexcept} is Godhood
+Required}{Why noexcept is Godhood Required}}\label{why-noexcept-is-godhood-required}}
+
+If your Move Constructor doesn't have
+\passthrough{\lstinline!noexcept!}, the STL (like
+\passthrough{\lstinline!std::vector!}) will often \textbf{refuse to use
+it}. Why? Because if the move fails halfway through, the vector can't
+``undo'' the move safely. It will revert to the slow ``Copy'' method
+just to be safe.
+
+\textbf{Always mark your moves \passthrough{\lstinline!noexcept!}.}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{the-reference-collapsing-rules-the-hidden-magic}{%
+\subsubsection{The Reference Collapsing Rules (The Hidden
+Magic)}\label{the-reference-collapsing-rules-the-hidden-magic}}
+
+When templates and references mix, C++ uses a set of ``Collapsing
+Rules'' to decide what \passthrough{\lstinline!T\&\&!} actually means.
+This is how \textbf{Universal References} (Forwarding References) work.
+
+\begin{itemize}
+\tightlist
+\item
+  \passthrough{\lstinline!\&!} + \passthrough{\lstinline!\&!}
+  -\textgreater{} \passthrough{\lstinline!\&!}
+\item
+  \passthrough{\lstinline!\&!} + \passthrough{\lstinline!\&\&!}
+  -\textgreater{} \passthrough{\lstinline!\&!}
+\item
+  \passthrough{\lstinline!\&\&!} + \passthrough{\lstinline!\&!}
+  -\textgreater{} \passthrough{\lstinline!\&!}
+\item
+  \passthrough{\lstinline!\&\&!} + \passthrough{\lstinline!\&\&!}
+  -\textgreater{} \passthrough{\lstinline!\&\&!}
+\end{itemize}
+
+\textbf{Analogy}: The ``Lvalue'' is like a ``Black Hole'' of references.
+If an Lvalue (\passthrough{\lstinline!\&!}) touches anything else, the
+whole thing becomes an Lvalue. The only way to stay an Rvalue
+(\passthrough{\lstinline!\&\&!}) is if both sides are Rvalues.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
 \hypertarget{move-semantics-smart-pointers}{%
 \section{MOVE SEMANTICS \& SMART
 POINTERS}\label{move-semantics-smart-pointers}}
+
+\hypertarget{the-cloning-vs.-moving-problem}{%
+\subsubsection{The ``Cloning vs.~Moving''
+Problem}\label{the-cloning-vs.-moving-problem}}
+
+Imagine you just bought a massive 75-inch TV. You decide to move to a
+new apartment.
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  \textbf{C++98 (The Copy Era)}: To move your TV, you call a high-tech
+  company that builds an \emph{exact replica} of your TV in your new
+  apartment, and then they burn your old TV down. This is
+  \textbf{Cloning}. It's safe, but it's incredibly slow and expensive.
+\item
+  \textbf{C++11 (The Move Era)}: You just pick up the TV, put it in a
+  box, and drive it to the new apartment. This is \textbf{Moving}. You
+  didn't build anything new; you just changed its location.
+\end{enumerate}
+
+\hypertarget{why-do-we-care}{%
+\paragraph{Why do we care?}\label{why-do-we-care}}
+
+In the old days, every time you returned a
+\passthrough{\lstinline!std::vector!} from a function, C++ would
+``Clone'' all 1,000,000 items into a new vector and destroy the old one.
+C++11 stopped this insanity.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{understanding-the-players-lvalues-vs.-rvalues}{%
+\subsubsection{Understanding the Players: Lvalues
+vs.~Rvalues}\label{understanding-the-players-lvalues-vs.-rvalues}}
+
+Think of your memory as a neighborhood:
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Lvalue}: A \textbf{House}. It has a permanent address, a name
+  (like ``The Smith Residence''), and it's going to be there for a
+  while.
+\item
+  \textbf{Rvalue}: A \textbf{Shipping Box}. Its temporary. Its on the
+  move. Its about to be opened and discarded.
+\end{itemize}
+
+When you see \passthrough{\lstinline!int x = 10;!}: *
+\passthrough{\lstinline!x!} is an \textbf{Lvalue} (The house where the
+data lives). * \passthrough{\lstinline!10!} is an \textbf{Rvalue} (The
+temporary box used to deliver the number 10).
+
+\hypertarget{rvalue-references-t-the-box-snatcher}{%
+\paragraph{\texorpdfstring{Rvalue References (\texttt{T\&\&}): The ``Box
+Snatcher''}{Rvalue References (T\&\&): The ``Box Snatcher''}}\label{rvalue-references-t-the-box-snatcher}}
+
+An rvalue reference is a special hook that lets you grab these temporary
+boxes before they are thrown away. It says: ``Hey! Don't delete that
+box! I want to steal the contents!''
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{the-secret-of-stdmove}{%
+\subsubsection{\texorpdfstring{The Secret of
+\texttt{std::move}}{The Secret of std::move}}\label{the-secret-of-stdmove}}
+
+Here is a secret that surprises everyone:
+\textbf{\passthrough{\lstinline!std::move!} does not move anything.}
+
+Wait, what?
+
+Think of \passthrough{\lstinline!std::move!} as a \textbf{Shipping
+Label}. * If you have an \textbf{Lvalue} (a permanent house),
+\passthrough{\lstinline!std::move!} just sticks a label on it that says:
+``This house is now a shipping box. Feel free to steal the furniture.''
+* It just \textbf{casts} the object to an rvalue reference so the
+compiler knows its okay to ``move'' its contents.
+
+\begin{quote}
+\textbf{There are no dumb questions\ldots{}}
+
+\textbf{Q: What happens to the ``Moved-From'' object?} \textbf{A:} Its
+like a house after a professional heist. Its still a house, but its
+\textbf{Empty}. Its pointers are null, its size is 0. You shouldn't try
+to use it for anything other than destroying it or giving it new data.
+
+\textbf{Q: Should I use \passthrough{\lstinline!std::move!} on
+everything?} \textbf{A:} No! Use it only when you are \textbf{done} with
+an object and want to hand its guts over to someone else. If you move
+from a variable and then try to use it later, your program will crash or
+behave strangely.
+\end{quote}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
 
 \hypertarget{rvalue-references-move-semantics}{%
 \subsection{1. Rvalue References \& Move

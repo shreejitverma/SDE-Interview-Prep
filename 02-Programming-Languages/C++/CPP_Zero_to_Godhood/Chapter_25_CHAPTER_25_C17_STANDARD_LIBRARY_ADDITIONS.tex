@@ -136,3 +136,43 @@ have simplified the vocabulary of your code.
 \hypertarget{volume-05-gigantic-leap-c20}{%
 \section{VOLUME 05 GIGANTIC LEAP
 C20}\label{volume-05-gigantic-leap-c20}}
+
+C++20 is the most significant update to the language since C++11. It
+introduces the \textbf{Four Great Pillars} that fundamentally change how
+we architect C++ software.
+
+\hypertarget{the-four-great-pillars-head-first-style}{%
+\subsubsection{The Four Great Pillars (Head First
+Style)}\label{the-four-great-pillars-head-first-style}}
+
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.33}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.33}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.33}}@{}}
+\toprule
+Pillar & Analogy & Why we need it \\
+\midrule
+\endhead
+\textbf{Concepts} & \textbf{The Bouncer at the Club} & Before C++20,
+templates were ``all are welcome.'' If you brought the wrong type, the
+compiler would wait until you were inside the club to scream at you.
+Concepts are like a bouncer at the door who checks your ID (type) before
+you even enter. \\
+\textbf{Modules} & \textbf{Sealed Folders vs.~Messy Desks} &
+\passthrough{\lstinline!\#include!} is like dumping a giant pile of
+messy blueprints on your desk every time you want to build a small part.
+Modules are like sealed folders; you just grab exactly what you need
+without making a mess of your current workspace. \\
+\textbf{Coroutines} & \textbf{The Expert Chef} & A normal function is
+like a chef who \emph{must} finish a whole recipe before doing anything
+else. A Coroutine is a chef who can pause a recipe to wait for the oven
+to heat up, work on another dish, and then come back exactly where they
+left off. \\
+\textbf{Ranges} & \textbf{The LEGO Pipe Factory} & Instead of manually
+moving items from one box to another using iterators, Ranges let you
+snap together ``pipes'' (filters, transforms) to create a high-speed
+data assembly line. \\
+\bottomrule
+\end{longtable}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}

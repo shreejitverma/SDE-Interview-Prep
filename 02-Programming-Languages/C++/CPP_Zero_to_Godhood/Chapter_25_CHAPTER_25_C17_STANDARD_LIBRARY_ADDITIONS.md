@@ -76,3 +76,16 @@ C++17 was the release of **Simplification and Vocabulary**. It focused on making
 **The Golden Rule of C++17**: Use `std::optional` instead of null pointers, and `string_view` for efficient string passing. You have simplified the vocabulary of your code.
 
 # VOLUME 05 GIGANTIC LEAP C20
+
+C++20 is the most significant update to the language since C++11. It introduces the **Four Great Pillars** that fundamentally change how we architect C++ software.
+
+### The Four Great Pillars (Head First Style)
+
+| Pillar | Analogy | Why we need it |
+| :--- | :--- | :--- |
+| **Concepts** | **The Bouncer at the Club** | Before C++20, templates were "all are welcome." If you brought the wrong type, the compiler would wait until you were inside the club to scream at you. Concepts are like a bouncer at the door who checks your ID (type) before you even enter. |
+| **Modules** | **Sealed Folders vs. Messy Desks** | `#include` is like dumping a giant pile of messy blueprints on your desk every time you want to build a small part. Modules are like sealed folders; you just grab exactly what you need without making a mess of your current workspace. |
+| **Coroutines** | **The Expert Chef** | A normal function is like a chef who *must* finish a whole recipe before doing anything else. A Coroutine is a chef who can pause a recipe to wait for the oven to heat up, work on another dish, and then come back exactly where they left off. |
+| **Ranges** | **The LEGO Pipe Factory** | Instead of manually moving items from one box to another using iterators, Ranges let you snap together "pipes" (filters, transforms) to create a high-speed data assembly line. |
+
+---

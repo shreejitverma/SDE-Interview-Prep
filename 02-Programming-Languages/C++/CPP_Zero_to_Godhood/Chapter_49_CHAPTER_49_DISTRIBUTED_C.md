@@ -5,7 +5,13 @@
 
 Moving beyond a single process: Networking, RPC, and Consensus.
 
-### 16.1 Serialization (Binary Protocols)
+### 1. Serialization: The "Box and Label" Problem
+
+When you send an object (like a `User` class) over the network, you can't just send the memory address. The address `0x123` on your computer doesn't mean anything to another computer across the world.
+
+Instead, you have to **Serialize** it. This is like taking a LEGO castle, breaking it down into individual bricks, putting them in a numbered box with instructions, and shipping it. The receiver then **Deserializes** itrebuilding the castle brick-by-brick.
+
+#### 1.1 Serialization (Binary Protocols)
 Efficiently packing data for network transmission.
 
 ```cpp
