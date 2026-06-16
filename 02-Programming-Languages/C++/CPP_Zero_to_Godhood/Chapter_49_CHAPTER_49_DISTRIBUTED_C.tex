@@ -6,8 +6,22 @@
 
 Moving beyond a single process: Networking, RPC, and Consensus.
 
+\hypertarget{serialization-the-box-and-label-problem}{%
+\subsubsection{1. Serialization: The ``Box and Label''
+Problem}\label{serialization-the-box-and-label-problem}}
+
+When you send an object (like a \passthrough{\lstinline!User!} class)
+over the network, you can't just send the memory address. The address
+\passthrough{\lstinline!0x123!} on your computer doesn't mean anything
+to another computer across the world.
+
+Instead, you have to \textbf{Serialize} it. This is like taking a LEGO
+castle, breaking it down into individual bricks, putting them in a
+numbered box with instructions, and shipping it. The receiver then
+\textbf{Deserializes} itrebuilding the castle brick-by-brick.
+
 \hypertarget{serialization-binary-protocols}{%
-\subsubsection{16.1 Serialization (Binary
+\paragraph{1.1 Serialization (Binary
 Protocols)}\label{serialization-binary-protocols}}
 
 Efficiently packing data for network transmission.
