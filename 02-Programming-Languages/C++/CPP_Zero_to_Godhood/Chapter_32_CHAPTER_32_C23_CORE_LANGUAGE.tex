@@ -15,16 +15,94 @@ paradigm.
 Object
 Parameters)}{1. Deducing this (Explicit Object Parameters)}}\label{deducing-this-explicit-object-parameters}}
 
-One of the most revolutionary changes for class design. It makes the
-implicit \passthrough{\lstinline!this!} pointer explicit as a named
-parameter. * \textbf{Recursive Lambdas}: A lambda can easily call itself
-without \passthrough{\lstinline!std::function!} overhead.
-\passthrough{\lstinline!cpp     auto fib = [](this auto self, int n) -> int \{         return n <= 1 ? n : self(n - 1) + self(n - 2);     \};!}
-* \textbf{Simplifying CRTP \& Forwarding}: You no longer need 4
+One of the most revolutionary changes for class design in modern C++. By
+making the implicit \passthrough{\lstinline!this!} pointer explicit as a
+named parameter, we unlock capabilities that previously required heavy
+template metaprogramming.
+
+\hypertarget{pattern-a-replacing-crtp-curiously-recurring-template-pattern}{%
+\paragraph{Pattern A: Replacing CRTP (Curiously Recurring Template
+Pattern)}\label{pattern-a-replacing-crtp-curiously-recurring-template-pattern}}
+
+Historically, to achieve static polymorphism, we had to inject the
+derived type into the base class via CRTP. With C++23, the base class
+can simply deduce the derived type via the explicit
+\passthrough{\lstinline!this!} parameter.
+
+\textbf{Before C++23 (The CRTP Way):}
+
+\begin{lstlisting}[language={C++}]
+template <typename Derived>
+struct Base {
+    void interface() {
+        // Cast 'this' to the Derived type to call its implementation
+        static_cast<Derived*>(this)->implementation();
+    }
+};
+
+struct Derived : Base<Derived> {
+    void implementation() { std::println("Derived implementation"); }
+};
+\end{lstlisting}
+
+\textbf{After C++23 (Deducing \passthrough{\lstinline!this!}):}
+
+\begin{lstlisting}[language={C++}]
+struct Base {
+    // 'Self' deduces to the exact type of the object invoking the method
+    template <typename Self>
+    void interface(this Self&& self) {
+        std::forward<Self>(self).implementation();
+    }
+};
+
+// No more angle brackets in inheritance!
+struct Derived : Base {
+    void implementation() { std::println("Derived implementation"); }
+};
+\end{lstlisting}
+
+\hypertarget{pattern-b-de-duplicating-accessors}{%
+\paragraph{Pattern B: De-duplicating
+Accessors}\label{pattern-b-de-duplicating-accessors}}
+
+Before C++23, if you had a wrapper class, you needed up to four
 overloads (\passthrough{\lstinline!\&!},
 \passthrough{\lstinline!const\&!}, \passthrough{\lstinline!\&\&!},
-\passthrough{\lstinline!const\&\&!}) to perfectly forward a member.
-\passthrough{\lstinline!cpp     template<typename Self>     auto\&\& get\_data(this Self\&\& self) \{         return std::forward<Self>(self).data;      \}!}
+\passthrough{\lstinline!const\&\&!}) to correctly forward the underlying
+data. Now, you only need one.
+
+\begin{lstlisting}[language={C++}]
+template <typename T>
+class OptionalWrapper {
+    T payload;
+public:
+    // This single function perfectly forwards payload depending on 
+    // whether the OptionalWrapper is an lvalue, rvalue, or const.
+    template <typename Self>
+    auto&& value(this Self&& self) {
+        return std::forward<Self>(self).payload;
+    }
+};
+\end{lstlisting}
+
+\hypertarget{pattern-c-recursive-lambdas}{%
+\paragraph{Pattern C: Recursive
+Lambdas}\label{pattern-c-recursive-lambdas}}
+
+Because lambdas are just unnamed structs with an
+\passthrough{\lstinline!operator()!}, they didn't have a name to call
+themselves recursively without using heavy wrappers like
+\passthrough{\lstinline!std::function!}. Now, they can pass themselves
+as an explicit parameter.
+
+\begin{lstlisting}[language={C++}]
+auto fib = [](this auto self, int n) -> int {
+    if (n <= 1) return n;
+    return self(n - 1) + self(n - 2);
+};
+std::println("Fibonacci(10) = {}", fib(10));
+\end{lstlisting}
 
 \hypertarget{syntactic-ergonomics-operations}{%
 \subsubsection{2. Syntactic Ergonomics \&
