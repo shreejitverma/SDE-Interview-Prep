@@ -160,6 +160,120 @@ You have reached the end of the roadmap. You have mastered:
 
 ---
 
+
+# VOLUME 10: THE C++ ECOSYSTEM & ENGINEERING
+
+## Chapter 67: Build Systems (The Blueprint Battle)
+
+### The "Master Contractor" Analogy
+Imagine you are building a skyscraper. You don't just tell workers "build a wall." You have a **Master Contractor** (The Build System) who looks at the **Blueprints** (The Build Scripts), hires **Sub-contractors** (The Compiler, Linker), and ensures that the foundation is poured *before* the roof is built.
+
+#### 1. CMake: The Standard Blueprint
+CMake isn't a build system itself; it's a **Build System Generator**. It generates the actual instructions for Ninja or Make.
+
+**The Target-Based Philosophy**
+In modern C++, everything is a **Target**.
+```cmake
+add_library(Network src/net.cpp)
+target_include_directories(Network PUBLIC include/)
+target_compile_definitions(Network PRIVATE USE_AVX=1)
+```
+- **PUBLIC**: I need this, and anyone who uses me needs it too.
+- **PRIVATE**: I use this internally; hide it from the world.
+- **INTERFACE**: I'm just a header (no `.cpp` file); use this to talk to me.
+
+#### 2. Bazel: The Monorepo Monster
+Used by Google and HFT firms. It is **Hermetic**. If you build on your machine, and I build on mine, we get the EXACT same binary. This is critical for debugging distributed systems.
+
+---
+
+## Chapter 68: Dependency Management (The Parts Warehouse)
+
+### The C++ Chaos
+C++ doesn't have a built-in `npm` or `pip`. For 30 years, we manually downloaded `.zip` files. 
+
+#### 1. vcpkg (The Microsoft Way)
+Simple, source-based, and integrated into Visual Studio.
+```bash
+vcpkg install openssl:x64-linux
+```
+
+#### 2. Conan (The JFrog Way)
+Python-based, decentralized, and better at handling pre-compiled binary packages. Ideal for large enterprises.
+
+---
+
+## Chapter 69: Testing & Benchmarking (The Quality Lab)
+
+### Google Test (GTest)
+The "Gold Standard" for unit testing.
+```cpp
+TEST(OrderBookTest, MatchExactPrice) {
+    OrderBook book;
+    book.limit_order(Side::Buy, 100, 10);
+    book.limit_order(Side::Sell, 100, 10);
+    EXPECT_EQ(book.total_volume(), 10);
+}
+```
+
+### Google Benchmark: The Optimization Trap
+**WARNING**: The compiler is too smart for you.
+```cpp
+for (auto _ : state) {
+    int x = 1 + 1; // COMPILER DELETES THIS!
+}
+```
+**The Solution**:
+```cpp
+benchmark::DoNotOptimize(result);
+benchmark::ClobberMemory();
+```
+
+---
+
+# VOLUME 11: THE HARDWARE WHISPERER (Mechanical Sympathy)
+
+## Chapter 70: CPU Internals for C++
+
+### The Instruction Pipeline
+Modern CPUs are like an assembly line. While one worker is "Fetching" an instruction, another is "Decoding" the previous one, and another is "Executing" the one before that.
+
+### Branch Prediction (The Crystal Ball)
+When the CPU sees an `if` statement, it doesn't wait. It **guesses** which way it will go and starts executing!
+- If it guesses right: **Zero cost**.
+- If it guesses wrong: It has to throw away all the work and restart. **Huge penalty**.
+
+**Godhood Tip**: This is why `std::sort` makes your code faster. Sorted data is predictable. The CPU "Crystal Ball" works 99% of the time.
+
+---
+
+## Chapter 71: The Memory Hierarchy
+
+### The Speed Gap
+- **L1 Cache**: ~1ns (Grabbing a pen from your pocket).
+- **L2 Cache**: ~4ns (Grabbing a book from your desk).
+- **L3 Cache**: ~40ns (Walking to the bookshelf).
+- **RAM**: ~100ns (Driving to the library).
+
+### False Sharing
+If two threads are on different cores but update variables in the same 64-byte **Cache Line**, the CPU hardware goes crazy trying to keep them synced.
+**Fix**: `alignas(64)`.
+
+---
+
+## Chapter 72: SIMD & Vectorization
+
+### The "Assembly Line" Analogy
+Standard code: 1 worker handles 1 part.
+**SIMD**: 1 worker has a special tool that lets them handle **8 parts at once**.
+
+```cpp
+#include <simd> // C++26
+std::simd<float, 8> a, b;
+auto c = a + b; // 8 additions in one instruction.
+```
+
+---
 # APPENDICES
 
 ---

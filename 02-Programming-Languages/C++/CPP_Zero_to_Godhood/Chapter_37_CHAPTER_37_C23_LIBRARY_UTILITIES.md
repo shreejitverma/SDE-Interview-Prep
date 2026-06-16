@@ -29,3 +29,5 @@
 ### 3. Math & Constexpr Upgrades
 *   **Fixed-width floating-point types**: `<stdfloat>` introduces `std::float16_t`, `std::float32_t`, `std::float64_t`, and `std::bfloat16_t` (if supported by platform).
 *   **constexpr upgrades**: `std::optional`, `std::variant`, `std::unique_ptr`, and many `<cmath>` functions (e.g., `abs`, `ceil`) are now fully `constexpr`.
+
+# VOLUME 07 THE NEXT FRONTIER C26
