@@ -1,35 +1,40 @@
 # CHAPTER 35: C23 CONTAINERS AND VIEWS
 
 
-# C++23 DATA STRUCTURES
+# C++23 DATA STRUCTURES & RANGES
 
 ### 1. `std::mdspan`
-A non-owning multidimensional view over contiguous memory. It is the cornerstone for modern C++ linear algebra and scientific computing, allowing you to treat a flat `std::vector` as a 2D, 3D, or ND matrix.
+A multidimensional non-owning span with a layout policy. The `operator[i, j]` from C++23 is directly used here. It is the cornerstone for modern linear algebra.
 ```cpp
 #include <mdspan>
-#include <vector>
-
-std::vector<int> data = {1,2,3,4,5,6};
-// View data as a 2x3 matrix
-std::mdspan matrix(data.data(), 2, 3);
-
-matrix[1, 2] = 42; // Uses C++23 multidimensional subscript
+std::vector<int> v(12);
+auto view = std::mdspan(v.data(), 3, 4);
+view[1, 2] = 99;
 ```
 
-### 2. `std::flat_map` and `std::flat_set`
-Node-based containers (`std::map`, `std::set`) have terrible cache locality. Flat containers provide the same API but are backed by contiguous `std::vector`s, meaning binary search lookup is highly optimized for the CPU cache.
-```cpp
-#include <flat_map>
-
-std::flat_map<int, std::string> cache_friendly_map;
-cache_friendly_map[1] = "A"; // O(N) insert, but O(log N) cache-friendly lookup
-```
-
-### 3. New Range Adaptors
-C++23 dramatically expands the `<ranges>` library.
-*   **`views::enumerate`**: Python-like index + value iteration.
+### 2. Flat Containers
+*   **std::flat_map / std::flat_set**: Sorted associative containers backed by contiguous storage (vectors). They offer drastically better cache performance for read-heavy workloads compared to tree-based maps.
     ```cpp
-    for (auto [index, value] : std::views::enumerate(vec)) { ... }
+    #include <flat_map>
+    std::flat_map<std::string, int> m; 
+    m["a"] = 1;
     ```
-*   **`views::zip`**: Iterate over multiple ranges simultaneously.
-*   **`views::chunk` / `views::slide`**: Process ranges in blocks or sliding windows.
+
+### 3. Extensive Range Updates
+C++23 dramatically expands the `<ranges>` library with new views and algorithms.
+*   **std::ranges::to**: Converts any range into a specified container type, with optional nesting.
+    ```cpp
+    auto v = std::views::iota(0, 5) | std::ranges::to<std::vector>();
+    ```
+*   **New Views**: 
+    *   `views::enumerate`: Yields index/value pairs.
+    *   `views::zip`: Iterate over multiple ranges simultaneously.
+    *   `views::chunk` / `views::slide`: Process ranges in blocks or sliding windows.
+    *   *Others*: `adjacent`, `cartesian_product`, `join_with`, `repeat`, `stride`.
+    ```cpp
+    for(auto [i, x] : std::views::enumerate(v)){ std::println("{}: {}", i, x); }
+    ```
+*   **New Algorithms**: `fold_left`, `fold_right`, `contains`, `find_last`, `starts_with`.
+    ```cpp
+    auto sum = std::ranges::fold_left(v, 0, std::plus{});
+    ```

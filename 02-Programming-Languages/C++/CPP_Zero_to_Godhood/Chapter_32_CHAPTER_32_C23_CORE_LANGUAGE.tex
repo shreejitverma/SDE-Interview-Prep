@@ -15,53 +15,91 @@ paradigm.
 Object
 Parameters)}{1. Deducing this (Explicit Object Parameters)}}\label{deducing-this-explicit-object-parameters}}
 
-One of the most revolutionary changes for class design. It allows a
-member function to explicitly declare the object it is called on as its
-first parameter. * \textbf{Recursive Lambdas}: A lambda can now easily
-call itself without \passthrough{\lstinline!std::function!} overhead.
+One of the most revolutionary changes for class design. It makes the
+implicit \passthrough{\lstinline!this!} pointer explicit as a named
+parameter. * \textbf{Recursive Lambdas}: A lambda can easily call itself
+without \passthrough{\lstinline!std::function!} overhead.
 \passthrough{\lstinline!cpp     auto fib = [](this auto self, int n) -> int \{         return n <= 1 ? n : self(n - 1) + self(n - 2);     \};!}
 * \textbf{Simplifying CRTP \& Forwarding}: You no longer need 4
 overloads (\passthrough{\lstinline!\&!},
 \passthrough{\lstinline!const\&!}, \passthrough{\lstinline!\&\&!},
-\passthrough{\lstinline!const\&\&!}) or complex CRTP inheritance to
-perfectly forward a member.
-\passthrough{\lstinline!cpp     template<typename Self>     auto\&\& get\_data(this Self\&\& self) \{         // Automatically preserves const/ref qualifiers of the object         return std::forward<Self>(self).data;      \}!}
+\passthrough{\lstinline!const\&\&!}) to perfectly forward a member.
+\passthrough{\lstinline!cpp     template<typename Self>     auto\&\& get\_data(this Self\&\& self) \{         return std::forward<Self>(self).data;      \}!}
 
-\hypertarget{syntactic-ergonomics}{%
-\subsubsection{2. Syntactic Ergonomics}\label{syntactic-ergonomics}}
+\hypertarget{syntactic-ergonomics-operations}{%
+\subsubsection{2. Syntactic Ergonomics \&
+Operations}\label{syntactic-ergonomics-operations}}
 
 \begin{itemize}
 \tightlist
 \item
-  \textbf{Multidimensional Subscript Operator}: You can now pass
-  multiple arguments to \passthrough{\lstinline!operator[]!}, which is
-  crucial for linear algebra (pairs perfectly with
-  \passthrough{\lstinline!std::mdspan!}).
-  \passthrough{\lstinline!cpp     struct Matrix \{         double\& operator[](size\_t row, size\_t col) \{ return data[row * cols + col]; \}     \};     matrix[1, 2] = 42.0;!}
+  \textbf{Multidimensional operator{[}{]}}: You can now pass multiple
+  arguments to \passthrough{\lstinline!operator[]!}, enabling clean
+  multi-index syntax (\passthrough{\lstinline!arr[i, j]!}).
+  \passthrough{\lstinline!cpp     struct Matrix \{         double\& operator[](size\_t r, size\_t c) \{ return data[r * cols + c]; \}     \};!}
 \item
-  \textbf{\passthrough{\lstinline!if consteval!}}: A cleaner,
-  standardized way to execute different code depending on whether the
-  function is evaluated at compile time or run time.
-  \passthrough{\lstinline!cpp     constexpr double power(double d, int p) \{         if consteval \{ return compile\_time\_pow(d, p); \}         else \{ return std::pow(d, p); \} // Run time     \}!}
+  \textbf{if consteval}: A cleaner language-level replacement for
+  \passthrough{\lstinline!if (std::is\_constant\_evaluated())!}. The
+  body can call \passthrough{\lstinline!consteval!} functions directly.
+  \passthrough{\lstinline!cpp     constexpr int f(int i)\{          if consteval \{ return i * 2; \}          else \{ return i; \}      \}!}
 \item
-  \textbf{\passthrough{\lstinline!auto(x)!} and
-  \passthrough{\lstinline!auto\{x\}!} (Decay Copy)}: Explicitly requests
-  a PR-value copy of a variable, forcing decay (useful in generic macros
-  and templates).
-  \passthrough{\lstinline!cpp     void f(auto\& x) \{         auto copy = auto(x); // Explicit copy, stripping references     \}!}
+  \textbf{auto(x) / auto\{x\} (Decay Copy)}: Creates a decay-copy of an
+  expression as a prvalue. Replaces the internal
+  \passthrough{\lstinline!decay\_copy!} workaround.
+  \passthrough{\lstinline!cpp     std::erase(v.begin(), v.end(), auto(v.front()));!}
 \item
-  \textbf{Static \passthrough{\lstinline!operator()!}}: Lambdas that
-  don't capture anything can now have a \passthrough{\lstinline!static!}
-  call operator, allowing them to be passed as traditional C function
-  pointers seamlessly.
-  \passthrough{\lstinline!cpp     auto f = [] static (int x) \{ return x * 2; \};!}
+  \textbf{Static operator() and operator{[}{]}}: Lambdas and functors
+  without state can declare these operators
+  \passthrough{\lstinline!static!}, allowing the compiler to omit
+  passing the hidden \passthrough{\lstinline!this!} pointer.
+  \passthrough{\lstinline!cpp     auto fn = [](int x) static \{ return x * 2; \};!}
 \item
-  \textbf{Size\_t Literal Suffixes}: Use \passthrough{\lstinline!z!} for
-  signed \passthrough{\lstinline!ssize\_t!} and
-  \passthrough{\lstinline!uz!} for unsigned
-  \passthrough{\lstinline!size\_t!}.
-  \passthrough{\lstinline!cpp     for (auto i = 0uz; i < vec.size(); ++i) \{\}!}
+  \textbf{uz / z literals}: New literal suffixes
+  (\passthrough{\lstinline!uz!} for \passthrough{\lstinline!size\_t!},
+  \passthrough{\lstinline!z!} for \passthrough{\lstinline!ptrdiff\_t!}),
+  eliminating signed/unsigned mismatch warnings in loop counters.
+  \passthrough{\lstinline!cpp     for (auto i = 0uz; i < v.size(); ++i)\{\}!}
+\end{itemize}
+
+\hypertarget{preprocessor-imports}{%
+\subsubsection{3. Preprocessor \& Imports}\label{preprocessor-imports}}
+
+\begin{itemize}
+\tightlist
 \item
-  \textbf{Labels at the end of compound statements}: You no longer need
-  to put a dummy statement after a label at the end of a block.
+  \textbf{import std;}: The holy grail. The entire C++ standard library
+  is importable as a single module unit, eliminating dozens of
+  \passthrough{\lstinline!\#include!} directives.
+  \passthrough{\lstinline'cpp     import std;     int main()\{ std::println("Hello C++23!"); \}'}
+\item
+  \textbf{\#elifdef / \#elifndef}: Chain preprocessor directives
+  cleanly, removing deeply nested conditionals.
+\item
+  \textbf{\#warning}: Standardizes the widely-supported
+  \passthrough{\lstinline!\#warning!} preprocessor diagnostic.
+\end{itemize}
+
+\hypertarget{safety-optimization}{%
+\subsubsection{4. Safety \& Optimization}\label{safety-optimization}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Lifetime extension of temporaries in range-for}: Temporaries
+  created in the range-initializer now live for the full duration of the
+  loop, fixing a massive UB footgun.
+  \passthrough{\lstinline"cpp     for (auto e : getVector()[0]) \{\} // Now safe!"}
+\item
+  \textbf{{[}{[}assume(expr){]}{]} attribute}: Tells the compiler that
+  \passthrough{\lstinline!expr!} is always true. Replaces vendor
+  extensions like \passthrough{\lstinline!\_\_builtin\_assume!}.
+\item
+  \textbf{Simpler implicit move}: A move-eligible id-expression in a
+  \passthrough{\lstinline!return!} or \passthrough{\lstinline!throw!} is
+  always treated as an xvalue.
+\item
+  \textbf{constexpr relaxations}: Static
+  \passthrough{\lstinline!constexpr!} local variables and
+  \passthrough{\lstinline!std::unique\_ptr!} are now allowed in
+  \passthrough{\lstinline!constexpr!} contexts.
 \end{itemize}

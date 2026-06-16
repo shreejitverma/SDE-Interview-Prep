@@ -5,42 +5,69 @@ UTILITIES}\label{chapter-37-c23-library-utilities}}
 \hypertarget{c23-library-utilities}{%
 \section{C++23 LIBRARY UTILITIES}\label{c23-library-utilities}}
 
-\hypertarget{hardware-sympathy}{%
-\subsubsection{1. Hardware Sympathy}\label{hardware-sympathy}}
+\hypertarget{hardware-memory}{%
+\subsubsection{1. Hardware \& Memory}\label{hardware-memory}}
 
 \begin{itemize}
 \tightlist
 \item
-  \textbf{\passthrough{\lstinline!std::unreachable!}}: Tells the
-  optimizer that a specific branch of code can never be reached. If it
-  is reached, it is Undefined Behavior. This allows the compiler to
-  strip out safety checks.
-  \passthrough{\lstinline!cpp     enum class State \{ A, B \};     void f(State s) \{         if (s == State::A) do\_a();         else if (s == State::B) do\_b();         else std::unreachable(); // Compiler optimizes knowing this is impossible     \}!}
+  \textbf{std::unreachable()}: Marks code that should never be reached.
+  Gives the compiler optimization permission and causes UB if reached.
+  \passthrough{\lstinline!cpp     default: std::unreachable();!}
 \item
-  \textbf{\passthrough{\lstinline!std::byteswap!}}: Highly optimized
-  byte reversal (endianness swap), mapping directly to compiler
-  intrinsics like \passthrough{\lstinline!bswap!}.
+  \textbf{std::byteswap}: Reverses the byte order of an integral value;
+  useful for endianness conversion.
+  \passthrough{\lstinline!cpp     uint32\_t be = std::byteswap(0x01020304u);!}
+\item
+  \textbf{std::out\_ptr / std::inout\_ptr}: Helpers for passing smart
+  pointers to legacy C APIs that expect \passthrough{\lstinline!T**!}
+  output parameters.
+  \passthrough{\lstinline!cpp     legacy\_init(std::out\_ptr(my\_unique\_ptr));!}
+\item
+  \textbf{std::spanstream}: A string stream that operates on a fixed
+  \passthrough{\lstinline!std::span<char>!} buffer rather than
+  allocating heap memory (faster than
+  \passthrough{\lstinline!stringstream!}).
+  \passthrough{\lstinline!cpp     std::spanstream ss\{buf\}; ss << 42;!}
 \end{itemize}
 
-\hypertarget{core-utilities}{%
-\subsubsection{2. Core Utilities}\label{core-utilities}}
+\hypertarget{functional-utilities}{%
+\subsubsection{2. Functional Utilities}\label{functional-utilities}}
 
 \begin{itemize}
 \tightlist
 \item
-  \textbf{\passthrough{\lstinline!std::to\_underlying!}}: A safe, clean
-  way to extract the numeric value of an
-  \passthrough{\lstinline!enum class!}.
-  \passthrough{\lstinline!cpp     enum class Flags : uint8\_t \{ Read = 1, Write = 2 \};     auto val = std::to\_underlying(Flags::Write); // uint8\_t 2!}
+  \textbf{std::move\_only\_function}: Like
+  \passthrough{\lstinline!std::function!} but only move-constructible;
+  supports move-only callables (lambdas capturing
+  \passthrough{\lstinline!unique\_ptr!}) and avoids unnecessary copies.
 \item
-  \textbf{\passthrough{\lstinline!std::move\_only\_function!}}: A
-  lightweight version of \passthrough{\lstinline!std::function!} that
-  can hold non-copyable callables (like lambdas capturing
-  \passthrough{\lstinline!std::unique\_ptr!}). It has significantly less
-  overhead.
+  \textbf{std::to\_underlying}: Converts an enum to its underlying
+  integer type without a \passthrough{\lstinline!static\_cast!}.
 \item
-  \textbf{\passthrough{\lstinline!std::string::contains!}}: Finally, a
-  readable way to check for substrings without comparing against
-  \passthrough{\lstinline!std::string::npos!}.
-  \passthrough{\lstinline!cpp     if (str.contains("error")) \{ /* ... */ \}!}
+  \textbf{string::contains}: \passthrough{\lstinline!std::string!} and
+  \passthrough{\lstinline!std::string\_view!} gain
+  \passthrough{\lstinline!.contains()!} to check for substring presence.
+\end{itemize}
+
+\hypertarget{math-constexpr-upgrades}{%
+\subsubsection{3. Math \& Constexpr
+Upgrades}\label{math-constexpr-upgrades}}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Fixed-width floating-point types}:
+  \passthrough{\lstinline!<stdfloat>!} introduces
+  \passthrough{\lstinline!std::float16\_t!},
+  \passthrough{\lstinline!std::float32\_t!},
+  \passthrough{\lstinline!std::float64\_t!}, and
+  \passthrough{\lstinline!std::bfloat16\_t!} (if supported by platform).
+\item
+  \textbf{constexpr upgrades}: \passthrough{\lstinline!std::optional!},
+  \passthrough{\lstinline!std::variant!},
+  \passthrough{\lstinline!std::unique\_ptr!}, and many
+  \passthrough{\lstinline!<cmath>!} functions (e.g.,
+  \passthrough{\lstinline!abs!}, \passthrough{\lstinline!ceil!}) are now
+  fully \passthrough{\lstinline!constexpr!}.
 \end{itemize}
