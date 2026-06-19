@@ -1,0 +1,725 @@
+\chapter{Control Flow \& Preprocessor}
+\label{ch:control-flow-preprocessor}
+
+\textit{Making decisions, repeating actions, and bending the compiler to your will before it even runs.}
+
+Every program you have written so far has been a straight line---executing from top to bottom, never deviating. Real software does not work this way. A trading engine must react to market signals in microseconds. A game must loop sixty times per second, branching on player input. An operating system must route interrupts to the correct handler without a single wasted cycle. This chapter equips you with the complete control-flow toolkit of C++98/03 and the preprocessor machinery that operates \textit{before} your code ever reaches the compiler.
+
+%% ============================================================
+\section{Conditional Branching: \texttt{if}, \texttt{else if}, \texttt{else}}
+\label{sec:if-else}
+
+The \texttt{if} statement is the most fundamental decision-making tool in programming. It evaluates a boolean condition and executes a block of code only if the condition is \texttt{true}.
+
+\begin{lstlisting}[language=C++, caption={Basic if-else chain}]
+#include <iostream>
+
+int main() {
+    int health = 45;
+
+    if (health > 50) {
+        std::cout << "You feel fine." << std::endl;
+    } else if (health > 20) {
+        std::cout << "You are injured. Find a medkit." << std::endl;
+    } else {
+        std::cout << "Critical warning! Health is dangerously low." << std::endl;
+    }
+
+    return 0;
+}
+\end{lstlisting}
+
+The conditions are evaluated from top to bottom. As soon as one condition evaluates to \texttt{true}, its block executes, and the rest of the chain is completely skipped. The \texttt{else} block is a catch-all that executes only when every preceding condition evaluated to \texttt{false}.
+
+\subsection{The Boolean Nature of Conditions}
+
+In C++, the \texttt{if} condition can be any expression convertible to \texttt{bool}. Integers are truthy if non-zero, and pointers are truthy if non-null:
+
+\begin{lstlisting}[language=C++, caption={Truthiness of non-boolean types}]
+int x = 42;
+if (x) {
+    std::cout << "x is non-zero" << std::endl;  // This executes
+}
+
+int* ptr = NULL;
+if (ptr) {
+    std::cout << "ptr is valid" << std::endl;
+} else {
+    std::cout << "ptr is null" << std::endl;      // This executes
+}
+\end{lstlisting}
+
+%% ============================================================
+\section{The Ternary Operator \texttt{?:}}
+\label{sec:ternary}
+
+When you need to assign a value based on a simple condition, a full \texttt{if/else} block can feel needlessly verbose. The \textbf{ternary operator} condenses the pattern into a single expression.
+
+\begin{lstlisting}[language=C++, caption={Ternary operator for conditional assignment}]
+int player_score = 8500;
+int high_score = 10000;
+
+// Syntax: condition ? value_if_true : value_if_false;
+int new_high_score = (player_score > high_score) ? player_score : high_score;
+\end{lstlisting}
+
+\textbf{Warning:} Do not nest ternary operators. Code like \texttt{(age < 18) ? "Minor" : (age < 65) ? "Adult" : "Senior"} is difficult to read. Use \texttt{if/else} instead.
+
+\begin{lstlisting}[language=C++, caption={Ternary operator examples}]
+#include <iostream>
+
+int main() {
+    int x = 10, y = 5;
+
+    int max = (x > y) ? x : y;
+    std::cout << "Max: " << max << std::endl;  // 10
+
+    std::cout << (x % 2 == 0 ? "Even" : "Odd") << std::endl;  // Even
+
+    return 0;
+}
+\end{lstlisting}
+
+%% ============================================================
+\section{\texttt{switch} and \texttt{case}}
+\label{sec:switch}
+
+When you have a single integer or character and want to check it against many possible exact values, a \texttt{switch} statement is cleaner---and often faster---than a massive chain of \texttt{else if} statements. The compiler can optimize a \texttt{switch} into a \textbf{jump table}, yielding O(1) dispatch.
+
+\begin{lstlisting}[language=C++, caption={Basic switch statement}]
+#include <iostream>
+
+int main() {
+    int day = 3;
+
+    switch (day) {
+        case 1:
+            std::cout << "Monday" << std::endl;
+            break;
+        case 2:
+            std::cout << "Tuesday" << std::endl;
+            break;
+        case 3:
+            std::cout << "Wednesday" << std::endl;
+            break;
+        default:
+            std::cout << "Unknown day" << std::endl;
+            break;
+    }
+
+    return 0;
+}
+\end{lstlisting}
+
+\subsection{The \texttt{break} Imperative and Fall-Through}
+
+Without \texttt{break;}, C++ will \textbf{fall through} and execute the code for the next case, even if the value does not match. This historical quirk inherited from C has caused billions of dollars in software bugs.
+
+Sometimes, you actually want cases to fall through---for example, stacking multiple cases together:
+
+\begin{lstlisting}[language=C++, caption={Intentional fall-through in switch}]
+char grade = 'B';
+
+switch (grade) {
+    case 'A':
+    case 'B':
+    case 'C':
+        std::cout << "You passed!" << std::endl;
+        break;
+    case 'F':
+        std::cout << "Please see the professor." << std::endl;
+        break;
+    default:
+        std::cout << "Invalid grade." << std::endl;
+        break;
+}
+\end{lstlisting}
+
+\subsection{The \texttt{default} Label}
+
+The \texttt{default} label introduces a block that will be jumped to if the condition's value does not equal any of the \texttt{case} labels' values. The condition must be an expression or declaration of integer or enumeration type, or a class type with a conversion function to integer or enumeration type.
+
+%% ============================================================
+\section{\texttt{while} and \texttt{do-while} Loops}
+\label{sec:while-loops}
+
+Use a \texttt{while} loop when you want to repeat an action but do not know exactly how many times---you only know it should stop when a condition becomes \texttt{false}.
+
+\begin{lstlisting}[language=C++, caption={While loop}]
+#include <iostream>
+
+int main() {
+    int ammo = 3;
+
+    while (ammo > 0) {
+        std::cout << "Bang!" << std::endl;
+        ammo--;
+    }
+    std::cout << "Click. Out of ammo." << std::endl;
+
+    return 0;
+}
+\end{lstlisting}
+
+A \textbf{\texttt{do-while}} loop is identical, except the condition is checked at the \textit{end} of the loop body, not the beginning. This guarantees the code will run \textbf{at least once}, even if the condition is \texttt{false} from the start.
+
+\begin{lstlisting}[language=C++, caption={Do-while loop for input validation}]
+#include <iostream>
+
+int main() {
+    int choice;
+    do {
+        std::cout << "Press 1 to start, 0 to exit: ";
+        std::cin >> choice;
+    } while (choice != 0 && choice != 1);
+
+    return 0;
+}
+\end{lstlisting}
+
+\subsection{\texttt{while} vs.\ \texttt{do-while} Semantics}
+
+The distinction is critical. A \texttt{while} loop with a false condition at entry never executes its body. A \texttt{do-while} loop always executes at least once.
+
+Do not forget the semicolon at the end of \texttt{while(condition);} in the \texttt{do-while} construct.
+
+%% ============================================================
+\section{\texttt{for} Loops}
+\label{sec:for-loops}
+
+When you know exactly how many times you want to iterate, use a \texttt{for} loop. It packs initialization, condition, and increment into a single, clean line.
+
+\begin{lstlisting}[language=C++, caption={Basic for loop}]
+for (int i = 0; i < 5; i++) {
+    std::cout << "Count: " << i << std::endl;
+}
+// Note: The variable 'i' dies here. It only exists inside the loop!
+\end{lstlisting}
+
+\subsection{Advanced \texttt{for} Loop Patterns}
+
+The \texttt{for} loop header supports multiple variable declarations and multiple iteration expressions:
+
+\begin{lstlisting}[language=C++, caption={Multi-variable for loop}]
+for (int a = 0, b = 10, c = 20; (a + b + c < 100); c--, b++, a += c) {
+    std::cout << a << " " << b << " " << c << std::endl;
+}
+\end{lstlisting}
+
+\subsection{Variable Hiding in \texttt{for} Loops}
+
+A variable declared in the \texttt{for} initialization hides any variable of the same name in the enclosing scope. To use an already-declared variable, omit the type declaration.
+
+\subsection{The \texttt{for} Loop as a \texttt{while} Loop}
+
+Every \texttt{for} loop is equivalent to a \texttt{while} loop: \texttt{for(init; cond; incr) \{body;\}} becomes \texttt{init; while(cond) \{body; incr;\}}.
+
+\subsection{Infinite Loops}
+
+An empty \texttt{for} header creates an infinite loop: \texttt{for (;;) \{...\}}. The equivalent \texttt{while} form is \texttt{while (true) \{...\}}.
+
+\subsection{Iterator-Based Loops (C++98)}
+
+Before C++11, iterating over STL containers required explicit iterator declarations:
+
+\begin{lstlisting}[language=C++, caption={Iterator-based loop over std::vector}]
+#include <iostream>
+#include <vector>
+#include <string>
+
+int main() {
+    std::vector<std::string> names;
+    names.push_back("Albert Einstein");
+    names.push_back("Stephen Hawking");
+
+    for (std::vector<std::string>::iterator it = names.begin();
+         it != names.end(); ++it) {
+        std::cout << *it << std::endl;
+    }
+
+    return 0;
+}
+\end{lstlisting}
+
+%% ============================================================
+\section{Loop Control: \texttt{break} and \texttt{continue}}
+\label{sec:break-continue}
+
+\begin{itemize}
+    \item \textbf{\texttt{break}}: Instantly destroys the loop. Execution jumps to the first line after the loop block.
+    \item \textbf{\texttt{continue}}: Instantly skips the rest of the current iteration and jumps back to the loop's condition check.
+\end{itemize}
+
+\begin{lstlisting}[language=C++, caption={break and continue}]
+for (int i = 1; i <= 10; i++) {
+    if (i == 3) {
+        continue;  // Skips printing 3
+    }
+    if (i == 8) {
+        break;     // Destroys the loop at 8
+    }
+    std::cout << i << " ";
+}
+// Output: 1 2 4 5 6 7
+\end{lstlisting}
+
+Because control flow changes are sometimes difficult for humans to reason about, \texttt{break} and \texttt{continue} should be used sparingly. A more straightforward implementation is usually easier to read.
+
+%% ============================================================
+\section{The \texttt{goto} Statement}
+\label{sec:goto}
+
+C++ supports the \texttt{goto} statement, which jumps execution to an arbitrary label within the current function. \textbf{Never use \texttt{goto} for control flow.} It creates ``spaghetti code'' that is impossible to follow and debug.
+
+\subsection{The One Acceptable Use: Error Cleanup in C-Style Code}
+
+In legacy C-style resource management (before RAII), \texttt{goto} was sometimes used to jump to a single cleanup block:
+
+\begin{lstlisting}[language=C++, caption={goto for error cleanup (C-style pattern)}]
+#include <iostream>
+#include <cstdlib>
+#include <cstdio>
+
+int main() {
+    FILE* file = NULL;
+    char* buffer = NULL;
+
+    file = fopen("test.txt", "r");
+    if (!file) {
+        std::cout << "Failed to open file" << std::endl;
+        goto cleanup;
+    }
+
+    buffer = new char[100];
+    if (!buffer) {
+        std::cout << "Memory allocation failed" << std::endl;
+        goto cleanup;
+    }
+
+    // Do work...
+
+cleanup:
+    if (buffer) delete[] buffer;
+    if (file) fclose(file);
+
+    return 0;
+}
+\end{lstlisting}
+
+In modern C++, RAII and exceptions make \texttt{goto} entirely unnecessary. See Chapter~9 for details.
+
+%% ============================================================
+\section{Nested Control Flow and the Arrow Anti-Pattern}
+\label{sec:nested-flow}
+
+You can nest loops inside loops and \texttt{if} statements inside \texttt{if} statements. Be wary of deeply nested control flow. If your code looks like a giant sideways arrow due to many nested blocks, your code is unreadable.
+
+The solutions:
+\begin{enumerate}
+    \item Use \textbf{early returns}. If a condition fails, \texttt{return} or \texttt{continue} immediately.
+    \item Break inner loops out into separate \textbf{functions}.
+\end{enumerate}
+
+%% ============================================================
+\section{Operator Precedence and Short-Circuit Evaluation}
+\label{sec:operator-precedence}
+
+Understanding operator precedence is not optional for professional C++ engineering. Bugs born from incorrect assumptions about evaluation order are among the hardest to diagnose.
+
+\subsection{Short-Circuit Evaluation}
+
+C++ uses \textbf{short-circuit evaluation} in \texttt{\&\&} and \texttt{||}:
+\begin{itemize}
+    \item \texttt{\&\&}: If the left operand is \texttt{false}, the right operand is \textit{never evaluated}.
+    \item \texttt{||}: If the left operand is \texttt{true}, the right operand is \textit{never evaluated}.
+\end{itemize}
+
+\begin{lstlisting}[language=C++, caption={Short-circuit evaluation and precedence}]
+#include <iostream>
+#include <string>
+
+bool True(std::string id) {
+    std::cout << "True" << id << std::endl;
+    return true;
+}
+
+bool False(std::string id) {
+    std::cout << "False" << id << std::endl;
+    return false;
+}
+
+int main() {
+    bool result;
+
+    // Equivalent to: False("A") || (False("B") && False("C"))
+    result = False("A") || False("B") && False("C");
+    // Output: FalseA, FalseB  (C is skipped)
+
+    // Equivalent to: True("A") || (False("B") && False("C"))
+    result = True("A") || False("B") && False("C");
+    // Output: TrueA  (B and C are both skipped)
+
+    return 0;
+}
+\end{lstlisting}
+
+\subsection{Unary Operators and Postfix Semantics}
+
+\textbf{Unary operators} act on a single operand and have high precedence. When used in postfix form, the side-effect occurs only after the entire expression is evaluated:
+
+\begin{lstlisting}[language=C++, caption={Prefix vs.\ postfix increment}]
+int a = 1;
+++a;            // a is now 2
+a--;            // a is now 1
+int minusa = -a;  // minusa is -1
+
+a = 4;
+int c = a++ / 2;  // c = 4/2 = 2, then a becomes 5
+int d = ++a / 2;  // a becomes 6, then d = 6/2 = 3
+\end{lstlisting}
+
+\textbf{Undefined Behavior Warning}: Never write expressions like \texttt{a = b++ + ++b;}. Modifying a variable twice between sequence points is Undefined Behavior.
+
+\subsection{Arithmetic Precedence}
+
+Arithmetic operators follow mathematical precedence: multiplication and division before addition and subtraction, all with left-to-right associativity.
+
+\begin{lstlisting}[language=C++, caption={Arithmetic precedence}]
+int a = 2 + 4 / 2;       // 2 + (4/2) = 4
+int b = (3 + 3) / 2;     // (3+3)/2 = 3
+int c = 3 + 4 / 2 * 6;   // 3 + ((4/2)*6) = 15
+int d = 3 * (3 + 6) / 9; // (3*(3+6))/9 = 3
+\end{lstlisting}
+
+\subsection{Logical AND/OR Precedence}
+
+AND (\texttt{\&\&}) binds tighter than OR (\texttt{||}). In professional code, always parenthesize mixed \texttt{\&\&}/\texttt{||} expressions:
+
+\begin{lstlisting}[language=C++, caption={AND before OR}]
+bool can_drive = has_domestic_license || (has_foreign_license && num_days <= 60);
+\end{lstlisting}
+
+%% ============================================================
+\section{Bitwise Operators}
+\label{sec:bitwise}
+
+Bitwise operators manipulate individual bits of integer types. They are essential for embedded systems, graphics programming, cryptography, and network protocol implementation.
+
+\subsection{\texttt{|} --- Bitwise OR}
+
+Each bit in the result is \texttt{1} if \textit{either} corresponding bit is \texttt{1}:
+
+\begin{lstlisting}[language=C++, caption={Bitwise OR}]
+int a = 5;      // 0101b
+int b = 12;     // 1100b
+int c = a | b;  // 1101b = 13
+std::cout << "a = " << a << ", b = " << b << ", c = " << c << std::endl;
+\end{lstlisting}
+
+\subsection{\texttt{\^{}} --- Bitwise XOR}
+
+Each bit in the result is \texttt{1} if the corresponding bits are \textit{different}:
+
+\begin{lstlisting}[language=C++, caption={Bitwise XOR}]
+int a = 5;      // 0101b
+int b = 9;      // 1001b
+int c = a ^ b;  // 1100b = 12
+\end{lstlisting}
+
+\textbf{XOR Swap} --- a classic trick that swaps two variables without a temporary:
+
+\begin{lstlisting}[language=C++, caption={XOR swap (demonstration only)}]
+void doXORSwap(int& a, int& b) {
+    if (&a != &b) {  // Swapping a variable with itself zeros it!
+        a ^= b;
+        b ^= a;
+        a ^= b;
+    }
+}
+\end{lstlisting}
+
+On modern CPUs, the XOR swap is slower than using a temporary variable due to pipeline stalls. Use \texttt{std::swap()} instead.
+
+\subsection{\texttt{\&} --- Bitwise AND}
+
+Each bit in the result is \texttt{1} only if \textit{both} corresponding bits are \texttt{1}:
+
+\begin{lstlisting}[language=C++, caption={Bitwise AND}]
+int a = 6;      // 0110b
+int b = 10;     // 1010b
+int c = a & b;  // 0010b = 2
+\end{lstlisting}
+
+\subsection{\texttt{<<} --- Left Shift}
+
+Shifts all bits left by N positions, padding the least significant bits with zeros. Equivalent to multiplying by $2^N$:
+
+\begin{lstlisting}[language=C++, caption={Left shift}]
+int a = 1;       // 0001b
+int b = a << 1;  // 0010b = 2
+int c = a << 4;  // 00010000b = 16
+\end{lstlisting}
+
+Left-shifting a signed number so that the sign bit is affected is \textbf{Undefined Behavior}. Shifting by a negative amount or by more bits than the type can hold is also UB.
+
+\subsection{\texttt{>>} --- Right Shift}
+
+Shifts all bits right by N positions. For unsigned types, zeros are shifted in. For signed negative numbers, the behavior is \textbf{implementation-defined}:
+
+\begin{lstlisting}[language=C++, caption={Right shift}]
+int a = 8;       // 1000b
+int b = a >> 1;  // 0100b = 4
+
+int x = -2;
+int y = x >> 1;  // Result depends on the compiler!
+\end{lstlisting}
+
+%% ============================================================
+\section{Preprocessor Directives: \texttt{\#define} and \texttt{\#include}}
+\label{sec:preprocessor}
+
+The \textbf{preprocessor} operates on your source code \textit{before} the compiler sees it. It performs textual substitution, file inclusion, and conditional compilation. Every line beginning with \texttt{\#} is a preprocessor directive.
+
+\subsection{\texttt{\#define} --- Object-Like and Function-Like Macros}
+
+\begin{lstlisting}[language=C++, caption={Basic preprocessor macros}]
+#define PI 3.14159
+#define MAX_SIZE 100
+#define SQUARE(x) ((x) * (x))
+
+#define DEBUG
+
+#ifdef DEBUG
+    #define LOG(msg) std::cout << msg << std::endl
+#else
+    #define LOG(msg)  // Expands to nothing in release builds
+#endif
+
+#include <iostream>
+
+int main() {
+    std::cout << "PI = " << PI << std::endl;
+
+    int arr[MAX_SIZE];
+    std::cout << "Array size: " << sizeof(arr) << std::endl;
+
+    std::cout << "Square of 5: " << SQUARE(5) << std::endl;
+
+    LOG("Debug message");
+
+    return 0;
+}
+\end{lstlisting}
+
+\textbf{Macro Pitfall}: Macros perform textual substitution. Always parenthesize macro parameters.
+
+%% ============================================================
+\section{Conditional Compilation}
+\label{sec:conditional-compilation}
+
+Conditional compilation directives allow you to include or exclude blocks of code at compile time:
+
+\begin{lstlisting}[language=C++, caption={Platform-specific conditional compilation}]
+#include <iostream>
+
+#ifdef _WIN32
+    #define OS "Windows"
+#elif __APPLE__
+    #define OS "macOS"
+#elif __linux__
+    #define OS "Linux"
+#else
+    #define OS "Unknown"
+#endif
+
+int main() {
+    std::cout << "Running on: " << OS << std::endl;
+
+#if defined(DEBUG)
+    std::cout << "Debug mode" << std::endl;
+#else
+    std::cout << "Release mode" << std::endl;
+#endif
+
+    return 0;
+}
+\end{lstlisting}
+
+%% ============================================================
+\section{Pragma Directives}
+\label{sec:pragma}
+
+\texttt{\#pragma} directives provide compiler-specific instructions:
+
+\begin{lstlisting}[language=C++, caption={Pragma directives}]
+#include <iostream>
+
+#pragma warning(disable: 4996)  // MSVC
+
+#pragma pack(1)
+
+struct PackedData {
+    char a;      // 1 byte
+    int b;       // 4 bytes
+    double c;    // 8 bytes
+};
+
+#pragma pack()   // Restore default packing
+
+int main() {
+    std::cout << "Size of PackedData: " << sizeof(PackedData) << std::endl;
+    // Without pragma pack: likely 24 (with alignment padding)
+    // With pragma pack(1): 13 (tightly packed)
+
+    return 0;
+}
+\end{lstlisting}
+
+%% ============================================================
+\section{Inline Functions vs.\ Macros}
+\label{sec:inline-vs-macros}
+
+Macros and inline functions both aim to eliminate function-call overhead, but they are fundamentally different mechanisms.
+
+\begin{lstlisting}[language=C++, caption={Macro vs.\ inline function}]
+#include <iostream>
+
+// Macro function --- preprocessor substitution (no type safety)
+#define ADD_MACRO(a, b) ((a) + (b))
+
+// Inline function --- type-safe, debuggable
+inline int add_inline(int a, int b) {
+    return a + b;
+}
+
+int main() {
+    std::cout << ADD_MACRO(5, 3) << std::endl;    // 8
+    std::cout << add_inline(5, 3) << std::endl;   // 8
+
+    // Macro danger: side effects with increment operators
+    int x = 5, y = 3;
+    std::cout << ADD_MACRO(x++, y++) << std::endl;
+
+    // Inline function is safer
+    x = 5; y = 3;
+    std::cout << add_inline(x++, y++) << std::endl;
+
+    return 0;
+}
+\end{lstlisting}
+
+\subsection{The \texttt{do \{ ... \} while(0)} Macro Idiom}
+
+Multi-statement macros must be wrapped in \texttt{do \{ ... \} while(0)} to behave correctly in all contexts:
+
+\begin{lstlisting}[language=C++, caption={Safe multi-statement macro}]
+#define BAD_MACRO(x)  f1(x); f2(x); f3(x);
+// Dangerous: if (cond) BAD_MACRO(var);  // Only f1 is inside the if!
+
+#define GOOD_MACRO(x)  do { f1(x); f2(x); f3(x); } while(0)
+// Safe: if (cond) GOOD_MACRO(var);  // All three calls protected
+\end{lstlisting}
+
+%% ============================================================
+\section{Professional Insights: Loop Mechanics In Depth}
+\label{sec:loop-mechanics}
+
+\subsection{Variable Declaration in Loop Conditions}
+
+In \texttt{for} and \texttt{while} loops, you may declare a variable in the condition. The variable is in scope until the loop ends and persists through each iteration. This is not permitted in \texttt{do-while} loops.
+
+\subsection{The \texttt{for} Loop Execution Model}
+
+The \texttt{for} loop has three optional clauses: initialization (once), condition (before each iteration), and increment (after each iteration). Any or all may be omitted.
+
+\subsection{Breaking Out of Nested Loops}
+
+\texttt{break} only exits the innermost enclosing loop. To break out of multiple nested loops:
+\begin{enumerate}
+    \item Extract the nested loops into a function and use \texttt{return}.
+    \item Use a flag variable checked by the outer loop.
+    \item In extreme low-level code, \texttt{goto} to a label after the outer loop.
+\end{enumerate}
+
+%% ============================================================
+\section{Professional Insights: Flow Control Keywords Reference}
+\label{sec:flow-keywords}
+
+\subsection{\texttt{try}, \texttt{catch}, and \texttt{throw}}
+
+Exception handling keywords provide structured error propagation. They are covered in depth in Chapter~9.
+
+\begin{lstlisting}[language=C++, caption={Exception handling basics}]
+#include <iostream>
+#include <vector>
+#include <stdexcept>
+
+void print_asterisks(int count) {
+    if (count < 0) {
+        throw std::invalid_argument("count cannot be negative!");
+    }
+    while (count--) { putchar('*'); }
+}
+
+int main() {
+    try {
+        std::vector<int> v(1000000000);
+    } catch (const std::bad_alloc&) {
+        std::cout << "failed to allocate memory!" << std::endl;
+    } catch (const std::runtime_error& e) {
+        std::cout << "runtime error: " << e.what() << std::endl;
+    } catch (...) {
+        std::cout << "unexpected exception!" << std::endl;
+        throw;  // Rethrow to caller
+    }
+
+    return 0;
+}
+\end{lstlisting}
+
+\subsection{\texttt{throw} in Expressions}
+
+A \texttt{throw} expression has type \texttt{void} and can be nested in ternary expressions:
+
+\begin{lstlisting}[language=C++, caption={throw in ternary expression}]
+unsigned int predecessor(unsigned int x) {
+    return (x > 0) ? (x - 1)
+                    : (throw std::invalid_argument("0 has no predecessor"));
+}
+\end{lstlisting}
+
+%% ============================================================
+\section{Forward Reference: C++11/17 Control Flow Enhancements}
+\label{sec:forward-ref}
+
+The following features are \textbf{not available in C++98/03} but are included as forward references. They will be covered in the C++11 and C++17 volumes.
+
+\subsection{Range-Based \texttt{for} Loops [C++11]}
+
+C++11 introduced the range-based \texttt{for} loop, which drastically simplifies iteration over containers:
+
+\begin{lstlisting}[language=C++, caption={Range-based for loop [C++11]}]
+#include <vector>
+#include <iostream>
+
+int main() {
+    std::vector<double> prices;
+    prices.push_back(19.99);
+    prices.push_back(5.50);
+    prices.push_back(42.00);
+
+    for (double price : prices) {
+        std::cout << "Price: $" << price << std::endl;
+    }
+
+    return 0;
+}
+\end{lstlisting}
+
+\subsection{\texttt{if} and \texttt{switch} with Initializers [C++17]}
+
+C++17 allows initialization statements directly inside \texttt{if} and \texttt{switch} conditions, keeping variable scope minimal.
+
+\subsection{\texttt{[[fallthrough]]} Attribute [C++17]}
+
+The \texttt{[[fallthrough]]} attribute signals intentional fall-through in switch cases, silencing compiler warnings.
