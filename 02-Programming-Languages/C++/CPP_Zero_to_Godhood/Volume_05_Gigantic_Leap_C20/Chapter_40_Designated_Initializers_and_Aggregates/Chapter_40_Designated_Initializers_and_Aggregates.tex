@@ -1,0 +1,130 @@
+\chapter{Designated Initializers and Aggregate Refinements}
+\label{ch:c20-designated-init}
+
+\begin{quote}
+\emph{C++20 finally brings designated initializers --- the \texttt{\{.x = 1, .y = 2\}} syntax C programmers have had since C99 --- to C++, along with refinements to what counts as an aggregate. This chapter covers the syntax and its strict rules, range-\texttt{for} init-statements, array-size deduction in \texttt{new}-expressions, and the aggregate model underneath.}
+\end{quote}
+
+Designated initializers make struct construction self-documenting, but C++'s version is intentionally stricter than C's: declaration order only, no nesting in one brace pair, no mixing with positional initializers.
+
+\section{Aggregates: The Foundation}
+\label{sec:c20-aggregates}
+
+A class is an aggregate when it has no user-declared/inherited constructors, no private/protected non-static data members, no virtual functions, and no virtual/private/protected bases.
+
+\begin{lstlisting}[language=C++,caption={Aggregates --- what qualifies}]
+struct Point  { int x; int y; };                               // aggregate
+struct Config { int timeout; int retries; bool verbose; };     // aggregate
+
+struct NotAgg { NotAgg(int); int v; };   // user-declared ctor -> NOT aggregate
+
+Point  p{1, 2};
+Config c{30, 3, true};
+\end{lstlisting}
+
+\section{Designated Initializers}
+\label{sec:c20-designated}
+
+\begin{lstlisting}[language=C++,caption={Designated initializers name each field at the call site}]
+struct Point { int x; int y; };
+Point p{.x = 1, .y = 2};
+
+struct Config { int timeout; int retries; bool verbose; };
+Config c{.timeout = 30, .retries = 3, .verbose = true};
+Config d{.timeout = 30};          // retries = 0, verbose = false (value-initialized)
+\end{lstlisting}
+
+Omitted members are value-initialized.
+
+\section{The Rules: Order, No Mixing, No Repeats}
+\label{sec:c20-designated-rules}
+
+\begin{lstlisting}[language=C++,caption={What is and isn't allowed}]
+struct S { int a; int b; int c; };
+
+S ok    {.a = 1, .b = 2, .c = 3};   // OK: declaration order
+S skip  {.a = 1, .c = 3};           // OK: skip b (value-initialized)
+// S bad1  {.b = 2, .a = 1};        // ERROR: out of order
+// S bad2  {.a = 1, 2};             // ERROR: mixed designated + positional
+// S bad3  {.a = 1, .a = 2};        // ERROR: repeated designator
+\end{lstlisting}
+
+Declaration order is mandatory (skipping allowed, reordering not); no mixing positional; each member at most once.
+
+\section{Designated Initializers vs C99}
+\label{sec:c20-vs-c99}
+
+\begin{center}
+\begin{tabular}{lll}
+\hline
+\textbf{Capability} & \textbf{C99} & \textbf{C++20} \\
+\hline
+\texttt{.field = value} & yes & yes \\
+out-of-order designators & yes & no \\
+mixed designated + positional & yes & no \\
+array designators \texttt{[3] = x} & yes & no \\
+nested designators \texttt{.a.b = x} & yes & no (nest braces) \\
+\hline
+\end{tabular}
+\end{center}
+
+\begin{lstlisting}[language=C++,caption={Nested aggregates use nested braces}]
+struct Inner { int u; int v; };
+struct Outer { Inner in; int w; };
+Outer o{.in = {.u = 1, .v = 2}, .w = 3};   // C++20
+// Outer o{.in.u = 1, .in.v = 2, .w = 3};  // ERROR in C++20 (legal in C99)
+\end{lstlisting}
+
+\section{Init-Statements in Range-Based for}
+\label{sec:c20-rangefor-init}
+
+\begin{lstlisting}[language=C++,caption={Init-statement in a range-based for}]
+#include <vector>
+std::vector<int>& getData();
+
+void process() {
+    for (auto& data = getData(); auto& x : data) {
+        // 'data' scoped to the loop; fixes dangling-temporary iteration
+    }
+}
+\end{lstlisting}
+
+The canonical use is the dangling-range fix: bind a temporary to a named variable whose lifetime spans the loop.
+
+\section{Array Size Deduction in new-Expressions}
+\label{sec:c20-new-array-deduction}
+
+\begin{lstlisting}[language=C++,caption={Array size deduced in a new-expression}]
+int*  p = new int[]{1, 2, 3};          // size 3 deduced
+char* s = new char[]{'a', 'b', '\0'};  // size 3 deduced
+// int* q = new int[3]{1, 2, 3};       // previously required explicit count
+delete[] p; delete[] s;
+\end{lstlisting}
+
+\section{Aggregate Refinements in C++20}
+\label{sec:c20-aggregate-refinements}
+
+\begin{lstlisting}[language=C++,caption={The C++20 aggregate tightening and parenthesized init}]
+struct A { A() = default; int x; };   // C++20: NOT an aggregate (declared ctor)
+// A a{42};                           // ERROR in C++20 (was OK in C++17)
+
+struct Point { int x; int y; };
+Point p1{1, 2};                       // brace init
+Point p2(1, 2);                       // C++20: parenthesized aggregate init
+auto up = std::make_unique<Point>(1, 2);  // now works for aggregates
+\end{lstlisting}
+
+A user-declared constructor (even \texttt{= default}/\texttt{= delete}) now makes a type a non-aggregate; parenthesized aggregate init unblocks \texttt{make\_unique}/\texttt{emplace}.
+
+\section{Professional Insights}
+\label{sec:c20-designated-insights}
+
+\textbf{Use designated initializers for config and message structs} --- they prevent argument transposition in wide same-typed structs (critical in HFT).
+
+\textbf{The feature requires an aggregate} --- adding any constructor silently disables every \texttt{\{.field=...\}} site.
+
+\textbf{Lean on the init-statement range-for to kill dangling-range bugs.}
+
+\textbf{Treat C99 designated-init habits as non-portable} --- out-of-order, array, and chained designators are rejected by C++20.
+
+\textbf{Prefer deduced array bounds in \texttt{new[]}} --- counts cannot drift out of sync with the data.

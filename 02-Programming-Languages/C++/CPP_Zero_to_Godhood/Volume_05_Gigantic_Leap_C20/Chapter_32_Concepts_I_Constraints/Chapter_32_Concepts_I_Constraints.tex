@@ -1,0 +1,257 @@
+\chapter{Concepts I --- Constraints, requires-Clauses, and requires-Expressions}
+\label{ch:c20-concepts-i}
+
+\begin{quote}
+\emph{Concepts are the first of C++20's four pillars and the one that most directly changes day-to-day template code. They turn template parameters from unchecked ``duck typing resolved deep inside instantiation'' into named, compile-time-verified contracts. This chapter covers the mechanics: defining a concept, attaching constraints with a requires-clause, expressing ad-hoc requirements with a requires-expression, and the four ways to spell a constrained template.}
+\end{quote}
+
+Before C++20, expressing ``this template only works for types that support \texttt{+}'' meant SFINAE, \texttt{std::enable\_if}, tag dispatch, or a buried \texttt{static\_assert} --- all producing diagnostics measured in screenfuls. Concepts replace that machinery with a first-class language feature that names the requirement, checks it at the call site, and emits a one-line error when it fails.
+
+\section{The Problem Concepts Solve}
+\label{sec:c20-concepts-problem}
+
+Hand a \texttt{std::list} to a random-access algorithm and pre-C++20 the compiler complains \textbf{deep inside the algorithm}, dozens of instantiation frames from the call site. The \textbf{bouncer} analogy: old C++ admits everyone and discovers the problem inside; concepts check IDs at the door.
+
+\begin{itemize}
+\item \textbf{Diagnostics} become short and point at the call site.
+\item \textbf{Overload resolution} can select by type properties cleanly.
+\item \textbf{Interfaces} become self-documenting --- the constraint \emph{is} the contract.
+\end{itemize}
+
+There is \textbf{no runtime cost}: concepts are evaluated at compile time and erased.
+
+\section{Defining a Concept}
+\label{sec:c20-defining-concept}
+
+A \textbf{concept} is a named compile-time predicate over template parameters, introduced with the \texttt{concept} keyword.
+
+\begin{lstlisting}[language=C++,caption={Defining concepts from a trait and from a requires-expression}]
+#include <concepts>
+#include <type_traits>
+
+// Form 1: built on a type trait
+template<typename T>
+concept Integral = std::is_integral_v<T>;
+
+// Form 2: built on a requires-expression (tests expression validity)
+template<typename T>
+concept Addable = requires(T a, T b) {
+    { a + b } -> std::convertible_to<T>;   // a + b must be valid AND convertible to T
+};
+\end{lstlisting}
+
+Concepts compose with \texttt{\&\&} and \texttt{||}, which (unlike a plain \texttt{bool}) participate in \textbf{subsumption} (Chapter~33).
+
+\begin{lstlisting}[language=C++,caption={Composing concepts}]
+template<typename T>
+concept Number = std::integral<T> || std::floating_point<T>;
+
+template<typename T>
+concept SignedNumber = Number<T> && std::is_signed_v<T>;
+\end{lstlisting}
+
+\section{The Four Ways to Constrain a Template}
+\label{sec:c20-four-syntaxes}
+
+\begin{lstlisting}[language=C++,caption={The four constraint syntaxes, all equivalent in effect}]
+#include <concepts>
+
+// (1) Trailing requires-clause
+template<typename T>
+T inc1(T x) requires std::integral<T> { return x + 1; }
+
+// (2) Leading requires-clause
+template<typename T>
+    requires std::integral<T>
+T inc2(T x) { return x + 1; }
+
+// (3) Constrained template parameter (concept in place of 'typename')
+template<std::integral T>
+T inc3(T x) { return x + 1; }
+
+// (4) Abbreviated function template (constrained auto parameter)
+std::integral auto inc4(std::integral auto x) { return x + 1; }
+\end{lstlisting}
+
+\begin{center}
+\begin{tabular}{ll}
+\hline
+\textbf{Syntax} & \textbf{Best when} \\
+\hline
+Trailing \texttt{requires} & constraint depends on parameter types or is complex \\
+Leading \texttt{requires} & standalone clause you want prominent \\
+\texttt{template<C T>} & single simple concept on one parameter \\
+\texttt{C auto} & terse generic functions \\
+\hline
+\end{tabular}
+\end{center}
+
+\section{requires-Clauses}
+\label{sec:c20-requires-clause}
+
+A \textbf{requires-clause} attaches a boolean constraint expression to a template. Its operand must be a concept, a parenthesized \texttt{bool} constant expression, or a conjunction/disjunction of these.
+
+\begin{lstlisting}[language=C++,caption={requires-clauses with composed and parenthesized constraints}]
+#include <concepts>
+#include <type_traits>
+
+template<typename T>
+    requires std::integral<T> && (sizeof(T) >= 4)   // concept && parenthesized bool
+T checked_double(T x) { return x * 2; }
+
+template<typename T>
+    requires std::copyable<T>
+class Box { T value; };
+\end{lstlisting}
+
+A \textbf{raw boolean expression} like \texttt{sizeof(T) >= 4} must be \textbf{parenthesized} when combined with \texttt{\&\&}/\texttt{||}, because only primary expressions are allowed there.
+
+\section{requires-Expressions}
+\label{sec:c20-requires-expression}
+
+A \textbf{requires-expression} yields a \texttt{bool} at compile time: \texttt{true} if every requirement is satisfied. Its optional parameter list introduces fictional variables, never evaluated.
+
+\begin{lstlisting}[language=C++,caption={Anatomy of a requires-expression}]
+template<typename T>
+concept Stack = requires(T s, typename T::value_type v) {
+    s.push(v);          // simple requirement
+    s.pop();
+    { s.top() } -> std::same_as<typename T::value_type&>;  // compound requirement
+    typename T::value_type;                                 // type requirement
+    requires std::default_initializable<T>;                 // nested requirement
+};
+\end{lstlisting}
+
+\subsection{Simple Requirements}
+\label{sec:c20-simple-req}
+
+A \textbf{simple requirement} is an expression followed by \texttt{;}, satisfied if the expression is \emph{valid} (it is never evaluated).
+
+\begin{lstlisting}[language=C++,caption={Simple requirements}]
+template<typename T>
+concept Incrementable = requires(T x) {
+    x++;        // postfix increment must be valid
+    ++x;        // prefix increment must be valid
+    x + x;      // addition must be valid
+};
+\end{lstlisting}
+
+\subsection{Type Requirements}
+\label{sec:c20-type-req}
+
+A \textbf{type requirement} is \texttt{typename} followed by a type name, satisfied if the named type exists.
+
+\begin{lstlisting}[language=C++,caption={Type requirements}]
+template<typename T>
+concept HasValueType = requires {
+    typename T::value_type;
+    typename T::iterator;
+};
+\end{lstlisting}
+
+\subsection{Compound Requirements}
+\label{sec:c20-compound-req}
+
+A \textbf{compound requirement} wraps an expression in braces and optionally asserts \texttt{noexcept} and/or a return-type constraint.
+
+\begin{lstlisting}[language=C++,caption={Compound requirements with return-type constraints and noexcept}]
+#include <concepts>
+
+template<typename T>
+concept Hashable = requires(const T& x) {
+    { std::hash<T>{}(x) } -> std::convertible_to<std::size_t>;
+};
+
+template<typename T>
+concept NothrowSwappable = requires(T& a, T& b) {
+    { a.swap(b) } noexcept;
+};
+\end{lstlisting}
+
+\texttt{\{ expr \} -> Concept;} means ``\texttt{expr} is valid, and \texttt{Concept<decltype((expr))>} holds.''
+
+\subsection{Nested Requirements}
+\label{sec:c20-nested-req}
+
+A \textbf{nested requirement} is \texttt{requires} followed by a constraint expression; its boolean value must be \texttt{true}.
+
+\begin{lstlisting}[language=C++,caption={Nested requirement enforces a predicate, not just validity}]
+#include <concepts>
+
+template<typename T>
+concept SmallTrivial = requires {
+    requires std::is_trivially_copyable_v<T>;   // the predicate must be TRUE
+    requires sizeof(T) <= 16;                    // and this one too
+};
+\end{lstlisting}
+
+\texttt{sizeof(T) <= 16;} as a \emph{simple} requirement only checks validity (useless); \texttt{requires sizeof(T) <= 16;} checks truth.
+
+\section{Constrained auto}
+\label{sec:c20-constrained-auto}
+
+A concept can replace \texttt{auto} in parameters, return types, and variables.
+
+\begin{lstlisting}[language=C++,caption={Constrained auto in parameters, returns, and variables}]
+#include <concepts>
+#include <ranges>
+
+void take_integer(std::integral auto x);          // abbreviated function template
+std::integral auto make_index() { return 0u; }    // constrained return type
+std::ranges::range auto first_n(auto&& r);         // constrained return
+std::integral auto n = compute();                  // constrained variable
+\end{lstlisting}
+
+Each \texttt{Concept auto} parameter introduces an \textbf{independent} template parameter; for identical types use a named parameter.
+
+\section{Constraint-Based Overloading vs. SFINAE}
+\label{sec:c20-overloading}
+
+\begin{lstlisting}[language=C++,caption={Overloading on concepts replaces enable\_if}]
+#include <concepts>
+#include <iostream>
+
+void describe(std::integral auto x)       { std::cout << "integer: " << x << '\n'; }
+void describe(std::floating_point auto x) { std::cout << "float: "   << x << '\n'; }
+
+int main() {
+    describe(42);     // integer
+    describe(3.14);   // float
+}
+\end{lstlisting}
+
+When multiple constrained overloads are viable, the \textbf{most constrained} wins via subsumption (Chapter~33).
+
+\section{Diagnostics: The Real Payoff}
+\label{sec:c20-diagnostics}
+
+\begin{lstlisting}[language=C++,caption={A constraint violation produces a localized, readable error}]
+#include <concepts>
+#include <list>
+#include <ranges>
+
+void needs_random_access(std::ranges::random_access_range auto&& r);
+
+int main() {
+    std::list<int> lst{1, 2, 3};
+    needs_random_access(lst);
+    // error: constraints not satisfied
+    //   note: 'random_access_range<std::list<int>&>' was not satisfied
+    //   note: 'std::list<int>::iterator' does not satisfy 'random_access_iterator'
+}
+\end{lstlisting}
+
+This is the difference between a two-minute fix and a two-hour spelunk.
+
+\section{Professional Insights}
+\label{sec:c20-concepts-i-insights}
+
+\textbf{Constrain every public template interface.} The cost is one concept name; the benefit is a call-site diagnostic and a self-documenting contract. An unconstrained public template parameter is now a code smell.
+
+\textbf{Prefer named concepts to inline requires-expressions in interfaces.} Named concepts are reusable, appear in diagnostics by name, and participate in subsumption so overloads order correctly.
+
+\textbf{Know the simple-vs-nested requirement trap cold.} \texttt{sizeof(T) <= 16;} checks validity, not truth --- almost always a silent bug. The predicate form is \texttt{requires sizeof(T) <= 16;}.
+
+\textbf{Use compound requirements to constrain results, not just calls.} \texttt{\{ expr \} -> std::convertible\_to<U>;} pins down what an expression yields, far stronger than the bare \texttt{expr;}.
+
+\textbf{Remember there is no runtime cost and no ABI footprint.} Concepts generate no code and add no indirection --- precisely why they belong in hot-path template libraries.

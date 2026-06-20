@@ -1,0 +1,134 @@
+\chapter{Container and Algorithm Additions}
+\label{ch:c20-containers}
+
+\begin{quote}
+\emph{C++20 sands down the rough edges of the standard containers and algorithms. \texttt{.contains()} ends the \texttt{find() != end()} dance; \texttt{starts\_with}/\texttt{ends\_with} give strings the prefix/suffix tests they lacked; the uniform \texttt{std::erase}/\texttt{std::erase\_if} free functions fix the erase-remove idiom; and \texttt{make\_shared} finally supports arrays.}
+\end{quote}
+
+\section{Associative contains()}
+\label{sec:c20-contains}
+
+\begin{lstlisting}[language=C++,caption={Membership tests, before and after}]
+#include <map>
+#include <set>
+#include <string>
+
+std::map<std::string, int> ages{{"alice", 30}, {"bob", 25}};
+if (ages.find("alice") != ages.end()) { /* before */ }
+if (ages.contains("alice")) { /* C++20 */ }
+
+std::set<int> s{1, 2, 3};
+bool has = s.contains(2);   // true
+\end{lstlisting}
+
+\texttt{contains} returns only presence; use \texttt{find} when you need the value (avoid \texttt{contains} then \texttt{find} --- two lookups).
+
+\section{String starts\_with and ends\_with}
+\label{sec:c20-starts-ends-with}
+
+\begin{lstlisting}[language=C++,caption={Prefix and suffix tests}]
+#include <string>
+#include <string_view>
+
+std::string url = "https://example.com";
+bool secure = url.starts_with("https://");     // true
+bool com    = url.ends_with(".com");           // true
+bool slash  = url.starts_with('h');            // single char overload
+
+std::string_view sv = "filename.txt";
+bool is_txt = sv.ends_with(".txt");            // true
+\end{lstlisting}
+
+\texttt{constexpr}, allocation-free, identical on \texttt{string}/\texttt{string\_view}. The string \texttt{contains} member (substring) is C++23.
+
+\section{Uniform std::erase and std::erase\_if}
+\label{sec:c20-erase}
+
+\begin{lstlisting}[language=C++,caption={Erasing elements the right way}]
+#include <vector>
+#include <string>
+#include <algorithm>
+
+std::vector<int> v{1, 2, 3, 2, 4, 2, 5};
+v.erase(std::remove(v.begin(), v.end(), 2), v.end());   // old erase-remove idiom
+
+std::vector<int> w{1, 2, 3, 2, 4, 2, 5};
+std::erase(w, 2);                                   // removes all 2s
+std::erase_if(w, [](int x){ return x % 2 == 0; });  // removes all evens
+
+std::string s = "a1b2c3";
+std::erase_if(s, [](char c){ return std::isdigit(c); });  // "abc"
+\end{lstlisting}
+
+Returns the number of elements removed; specialized per container (compact-and-shrink for contiguous, node-splice for linked).
+
+\section{make\_shared and make\_unique for Arrays}
+\label{sec:c20-make-shared-array}
+
+\begin{lstlisting}[language=C++,caption={Making shared and unique arrays}]
+#include <memory>
+
+auto u  = std::make_unique<int[]>(100);     // 100 value-initialized ints (C++14)
+auto s1 = std::make_shared<int[]>(100);     // NEW in C++20: shared array, zeroed
+auto s2 = std::make_shared<int[]>(100, 7);  // 100 ints, each 7
+auto s3 = std::make_shared<int[10]>();      // fixed-size shared array of 10
+int first = s1[0];                          // operator[] on the shared array
+\end{lstlisting}
+
+One combined allocation for control block + array: cache-friendly and exception-safe.
+
+\section{Heterogeneous Lookup for Unordered Containers}
+\label{sec:c20-heterogeneous-lookup}
+
+\begin{lstlisting}[language=C++,caption={Looking up by string\_view in a string-keyed hash map}]
+#include <unordered_map>
+#include <string>
+#include <string_view>
+
+struct StringHash {
+    using is_transparent = void;             // enables heterogeneous lookup
+    std::size_t operator()(std::string_view sv) const {
+        return std::hash<std::string_view>{}(sv);
+    }
+    std::size_t operator()(const std::string& s) const {
+        return std::hash<std::string_view>{}(s);
+    }
+};
+
+std::unordered_map<std::string, int, StringHash, std::equal_to<>> m{
+    {"hello", 1}, {"world", 2}
+};
+std::string_view key = "hello";
+auto it = m.find(key);   // no temporary std::string constructed
+\end{lstlisting}
+
+Requires a transparent hasher (with \texttt{is\_transparent}) AND \texttt{std::equal\_to<>}; eliminates a per-lookup allocation.
+
+\section{shift\_left and shift\_right}
+\label{sec:c20-shift}
+
+\begin{lstlisting}[language=C++,caption={In-place element shifting}]
+#include <algorithm>
+#include <vector>
+
+std::vector<int> v{1, 2, 3, 4, 5};
+std::shift_left(v.begin(), v.end(), 2);    // {3, 4, 5, ?, ?}
+
+std::vector<int> w{1, 2, 3, 4, 5};
+std::shift_right(w.begin(), w.end(), 2);   // {?, ?, 1, 2, 3}
+\end{lstlisting}
+
+Unlike \texttt{std::rotate}, shifted-out elements are discarded, not wrapped --- right for sliding windows and ring-buffer compaction.
+
+\section{Professional Insights}
+\label{sec:c20-containers-insights}
+
+\textbf{Use \texttt{.contains()} for membership and reserve \texttt{find} for value retrieval} --- but never \texttt{contains} then \texttt{find} (two lookups).
+
+\textbf{Replace the erase-remove idiom everywhere with \texttt{std::erase}/\texttt{std::erase\_if}} --- correct by construction, returns the count, retires the classic ``forgot the trailing .end()'' bug.
+
+\textbf{Add \texttt{starts\_with}/\texttt{ends\_with} to your vocabulary; string \texttt{contains} is C++23} --- under C++20 use \texttt{find(sub) != npos}.
+
+\textbf{Opt into heterogeneous lookup on hot string-keyed hash maps} --- eliminates a temporary \texttt{std::string} allocation per query.
+
+\textbf{Prefer \texttt{make\_shared<T[]>} and the right shifting primitive} --- distinguish \texttt{shift\_left}/\texttt{shift\_right} (discard) from \texttt{std::rotate} (wrap).

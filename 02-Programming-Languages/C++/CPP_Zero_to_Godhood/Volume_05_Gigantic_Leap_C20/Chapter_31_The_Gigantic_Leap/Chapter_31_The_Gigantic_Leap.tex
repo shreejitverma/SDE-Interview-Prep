@@ -1,0 +1,165 @@
+\chapter{C++20 --- The Gigantic Leap}
+\label{ch:c20-map}
+
+\begin{quote}
+\emph{C++20 is the largest single release of the language since C++11, and arguably larger. It does not merely add features; it changes how idiomatic C++ is written, compiled, and reasoned about. This chapter is the map for the volume --- it names the four pillars, situates the dozens of core-language and library additions around them, and sets the conventions and version-discipline used throughout the chapters that follow.}
+\end{quote}
+
+This volume targets C++20 specifically. Every code example compiles under a conforming C++20 toolchain (GCC 11+, Clang 14+, MSVC 19.29+), and any place where an idiom only reaches its full ergonomic form in C++23 or later is \textbf{explicitly flagged} so you never ship a ``C++20'' feature that silently requires a newer standard.
+
+\section{Why C++20 Is a Generational Release}
+\label{sec:c20-generational}
+
+Every decade or so, a C++ standard arrives that resets the defaults of good practice. C++11 was such a release. \textbf{C++20 is the second.} After it, SFINAE-heavy metaprogramming looks archaic next to \textbf{concepts}; iterator-pair algorithms look archaic next to \textbf{ranges}; callback state machines look archaic next to \textbf{coroutines}; and the \texttt{\#include} model looks archaic next to \textbf{modules}.
+
+C++20 merged on the order of \textbf{70+ language and library papers}, touching nearly every header. For an engineer in high-frequency trading, kernel space, or large distributed systems:
+
+\begin{itemize}
+\item \textbf{Concepts} give compile-time interface contracts with intelligible diagnostics.
+\item \textbf{Ranges} collapse multi-pass algorithm chains into single-pass lazy pipelines with no intermediate allocations.
+\item \textbf{Coroutines} provide a zero-overhead-when-suspended mechanism for asynchronous I/O and generators.
+\item \textbf{Modules} attack build-time scaling while tightening encapsulation and ABI surfaces.
+\end{itemize}
+
+\section{The Four Pillars at a Glance}
+\label{sec:c20-pillars}
+
+\begin{center}
+\begin{tabular}{llll}
+\hline
+\textbf{Pillar} & \textbf{Definition} & \textbf{Supersedes} & \textbf{Chapters} \\
+\hline
+Concepts & compile-time constraints & \texttt{enable\_if}/SFINAE & 32, 33 \\
+Ranges & lazy, projection-aware algorithms & iterator-pair \texttt{<algorithm>} & 34, 35 \\
+Coroutines & stackless suspendable functions & hand-rolled state machines & 36, 37 \\
+Modules & compiled semantic units & textual \texttt{\#include} & 38 \\
+\hline
+\end{tabular}
+\end{center}
+
+A useful mental model: \textbf{Concepts and Ranges are tightly coupled} --- the ranges library is defined entirely in terms of concepts. \textbf{Coroutines and Modules are largely orthogonal}, reshaping program structure rather than expression-level code.
+
+\section{The Core-Language Additions}
+\label{sec:c20-core-additions}
+
+\begin{itemize}
+\item \textbf{Three-way comparison} (\texttt{operator<=>}) and defaulted comparisons; \texttt{strong/weak/partial\_ordering} (Chapter~39).
+\item \textbf{Designated initializers} and aggregate refinements (Chapter~40).
+\item \textbf{Compile-time expansion} --- \texttt{consteval}, \texttt{constinit}, \texttt{constexpr} virtual / try-catch / dynamic\_cast / allocation, and \texttt{constexpr std::vector}/\texttt{std::string} (Chapter~41).
+\item \textbf{Abbreviated function templates}, \texttt{explicit(bool)}, and lambda enhancements (Chapter~42).
+\item \textbf{\texttt{using enum}}, \texttt{\_\_VA\_OPT\_\_}, \texttt{char8\_t}, two's-complement, class-type NTTPs, feature-test macros (Chapter~43).
+\item \textbf{\texttt{[[likely]]}/\texttt{[[unlikely]]}} and \textbf{\texttt{[[no\_unique\_address]]}} (Chapter~44).
+\end{itemize}
+
+\section{The Standard-Library Additions}
+\label{sec:c20-lib-additions}
+
+\begin{center}
+\begin{tabular}{lll}
+\hline
+\textbf{Facility} & \textbf{Header} & \textbf{Chapter} \\
+\hline
+\texttt{std::span} & \texttt{<span>} & 45 \\
+\texttt{std::format} & \texttt{<format>} & 46 \\
+Calendars / time zones & \texttt{<chrono>} & 47 \\
+Bit utilities & \texttt{<bit>} & 48 \\
+\texttt{jthread} / \texttt{stop\_token} & \texttt{<thread>}, \texttt{<stop\_token>} & 49 \\
+\texttt{atomic\_ref}, latch, barrier, semaphore & \texttt{<atomic>}, \texttt{<latch>}, \texttt{<barrier>}, \texttt{<semaphore>} & 50 \\
+\texttt{source\_location}, \texttt{ssize}, \texttt{to\_array}, \texttt{osyncstream} & various & 51 \\
+\texttt{erase}/\texttt{erase\_if}, \texttt{bind\_front}, \texttt{shift\_*} & various & 52 \\
+\texttt{<numbers>}, \texttt{assume\_aligned}, \texttt{is\_constant\_evaluated} & various & 53 \\
+\hline
+\end{tabular}
+\end{center}
+
+\section{How the Pieces Reinforce One Another}
+\label{sec:c20-reinforce}
+
+C++20's features interlock. Understanding the couplings prevents learning each in isolation and missing the leverage.
+
+\begin{lstlisting}[language=C++,caption={A single expression touching four C++20 subsystems}]
+#include <ranges>
+#include <vector>
+#include <format>
+#include <iostream>
+
+namespace rng = std::ranges;
+namespace vws = std::views;
+
+void report(std::ranges::input_range auto&& data)   // Concepts: constrained auto parameter
+    requires std::integral<std::ranges::range_value_t<decltype(data)>>
+{
+    auto squares_of_evens = data
+        | vws::filter([](int x){ return x % 2 == 0; })   // Ranges: lazy view
+        | vws::transform([](int x){ return x * x; });
+
+    for (int v : squares_of_evens)
+        std::cout << std::format("{} ", v);              // std::format
+}
+\end{lstlisting}
+
+The constraint is a \textbf{Concept}; the pipeline is \textbf{Ranges}; the output uses \textbf{\texttt{std::format}}. Learn the pillars in order, but expect them together in real code.
+
+\section{Migration Strategy for Low-Latency and Systems Code}
+\label{sec:c20-migration}
+
+\begin{enumerate}
+\item \textbf{\texttt{std::span}, \texttt{<bit>}, \texttt{<numbers>}, attributes} --- drop-in, zero-overhead. Adopt freely.
+\item \textbf{Concepts} --- incremental; no runtime cost. Replace \texttt{enable\_if} at boundaries first.
+\item \textbf{\texttt{std::format}} --- adopt for non-hot-path formatting; benchmark before hot paths.
+\item \textbf{Ranges} --- adopt for clarity; in hot loops verify the generated code and watch compile times.
+\item \textbf{Coroutines} --- high payoff for async I/O; mind frame allocation and ABI.
+\item \textbf{Modules} --- highest effort, coupled to the build system; pilot on a leaf library.
+\end{enumerate}
+
+\section{Version Discipline and Feature-Test Macros}
+\label{sec:c20-version}
+
+\begin{center}
+\begin{tabular}{ll}
+\hline
+\textbf{Looks like C++20, actually later} & \textbf{Correct C++20 approach} \\
+\hline
+\texttt{std::generator} & hand-write a generator coroutine (Ch.~37) \\
+\texttt{std::print}/\texttt{println} & \texttt{std::cout << std::format(...)} \\
+\texttt{std::ranges::to<vector>} & manual materialization \\
+\texttt{std::expected} & \texttt{std::optional} + error channel \\
+\texttt{views::zip}/\texttt{enumerate}/\texttt{chunk} & not in C++20; emulate \\
+\texttt{import std;} & header units / global module fragment \\
+\hline
+\end{tabular}
+\end{center}
+
+C++20 standardized \textbf{feature-test macros} for portable conditional code.
+
+\begin{lstlisting}[language=C++,caption={Gating on a standardized feature-test macro}]
+#if defined(__cpp_lib_format) && __cpp_lib_format >= 201907L
+    std::string s = std::format("{}", value);
+#else
+    std::string s = fallback_to_string(value);
+#endif
+\end{lstlisting}
+
+Each feature has a macro (\texttt{\_\_cpp\_concepts}, \texttt{\_\_cpp\_lib\_ranges}, \texttt{\_\_cpp\_impl\_coroutine}, \texttt{\_\_cpp\_modules}, \texttt{\_\_cpp\_lib\_span}, \dots).
+
+\section{How to Read This Volume}
+\label{sec:c20-how-to-read}
+
+\begin{enumerate}
+\item \textbf{Concepts (32--33)} first --- ranges and much of the library are defined in terms of them.
+\item \textbf{Ranges (34--35)} next, applying concepts immediately.
+\item \textbf{Coroutines (36--37)} and \textbf{Modules (38)} as the remaining structural pillars.
+\item \textbf{Core-language chapters (39--44)}.
+\item \textbf{Library chapters (45--53)}.
+\end{enumerate}
+
+\section{Professional Insights}
+\label{sec:c20-map-insights}
+
+\textbf{Treat C++20 as a defaults reset, not a feature buffet.} The value is in adopting the new defaults --- constraints over SFINAE, ranges over raw iterator pairs, \texttt{span} over pointer-plus-length, \texttt{jthread} over \texttt{thread}, modules over headers.
+
+\textbf{Adopt by risk, not by excitement.} Zero-overhead drop-ins (\texttt{span}, \texttt{<bit>}, attributes, \texttt{<numbers>}) belong in hot paths today; structurally invasive features (coroutines, modules) deserve a pilot and a profile first.
+
+\textbf{Police your standard-language version aggressively.} The most common modernization bug is reaching for a C++23 facility under a C++20 flag. Gate optional features behind feature-test macros and compile CI with the exact \texttt{-std=c++20} you ship.
+
+\textbf{Learn the pillars together.} Concepts define ranges; ranges feed \texttt{format}; coroutines produce ranges; modules package all of it. Internalize the couplings early.

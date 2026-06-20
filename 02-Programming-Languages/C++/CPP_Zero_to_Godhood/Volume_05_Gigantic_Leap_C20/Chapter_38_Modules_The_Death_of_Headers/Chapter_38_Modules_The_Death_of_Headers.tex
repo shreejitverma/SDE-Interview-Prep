@@ -1,0 +1,172 @@
+\chapter{Modules --- The Death of Headers}
+\label{ch:c20-modules}
+
+\begin{quote}
+\emph{Modules are the fourth pillar and the most disruptive to the build pipeline. For forty years C++ has shipped code as headers --- raw text spliced into every translation unit by the preprocessor. Modules replace that text-substitution model with compiled, importable components that parse once, leak nothing, and let the compiler skip redundant work. This chapter covers what is wrong with headers, the full module syntax, and the build-system and ABI consequences.}
+\end{quote}
+
+\texttt{import} links against a precompiled representation of a dependency instead of pasting its source. This attacks quadratic re-parsing, macro leakage, and ODR fragility at the root, but inverts the build into a scan-then-compile pipeline.
+
+\section{The Death of Headers: Why the Model Had to Change}
+\label{sec:c20-death-of-headers}
+
+Headers (\texttt{\#include}) are text substitution; modules (\texttt{import}) are compiled components. The three chronic header pathologies:
+
+\begin{itemize}
+\item \textbf{Slow compilation.} A 10,000-line header in 100 TUs is parsed 100 times; cost scales with (headers $\times$ consumers).
+\item \textbf{Macro leaks.} A macro affects all code textually following the \texttt{\#include}; order-dependence and accidental token replacement are endemic.
+\item \textbf{ODR violations / ABI fragility.} Different flags or include orders can produce different definitions of the ``same'' entity.
+\end{itemize}
+
+Modules fix all three: an interface is parsed once into a Binary Module Interface (BMI); non-exported names are invisible; the imported entity is identical for every importer; and \texttt{import} is order-independent.
+
+\section{Basic Module Syntax: Interface Units}
+\label{sec:c20-interface-units}
+
+\begin{lstlisting}[language=C++,caption={A module interface unit (math.cppm)}]
+export module math;          // module declaration
+
+export int add(int a, int b) // exported: visible to importers
+{
+    return a + b;
+}
+
+int internal_helper()        // not exported: private to the module
+{
+    return 42;
+}
+\end{lstlisting}
+
+\begin{lstlisting}[language=C++,caption={Exporting groups and namespaces}]
+export module geometry;
+
+export namespace geo {       // every name in this namespace is exported
+    struct Point { double x, y; };
+    double norm(Point p);
+}
+
+export {                     // export block: several declarations at once
+    int  area(int w, int h);
+    int  perimeter(int w, int h);
+}
+\end{lstlisting}
+
+By convention interface units use \texttt{.cppm} (Clang/CMake) or \texttt{.ixx} (MSVC).
+
+\section{Importing a Module}
+\label{sec:c20-importing}
+
+\begin{lstlisting}[language=C++,caption={Importing and using a module (main.cpp)}]
+import math;
+import <iostream>;           // a header unit (Section 38.7)
+
+int main() {
+    std::cout << add(1, 2) << "\n";   // 3
+    // internal_helper();             // error: not exported
+}
+\end{lstlisting}
+
+Macros do not cross a named-module \texttt{import} (header units are the exception).
+
+\section{Module Implementation Units}
+\label{sec:c20-impl-units}
+
+\begin{lstlisting}[language=C++,caption={Interface declares (math.cppm)}]
+export module math;
+export int add(int a, int b);     // declaration only
+export int multiply(int a, int b);
+\end{lstlisting}
+
+\begin{lstlisting}[language=C++,caption={Implementation unit defines (math\_impl.cpp)}]
+module math;                       // NOT 'export module' -- impl unit
+
+int add(int a, int b)      { return a + b; }
+int multiply(int a, int b) { return a * b; }
+\end{lstlisting}
+
+Changing a definition in the implementation unit does not invalidate the interface BMI, so consumers need not recompile.
+
+\section{Module Partitions}
+\label{sec:c20-partitions}
+
+\begin{lstlisting}[language=C++,caption={An internal partition (math\_impl.cppm)}]
+module math:impl;                 // partition ':impl' of module 'math'
+
+int heavy_computation() { return 100; }
+\end{lstlisting}
+
+\begin{lstlisting}[language=C++,caption={The primary interface unit assembles the module (math.cppm)}]
+export module math;               // primary module interface unit
+import :impl;                     // import the partition (same module)
+
+export int compute() {
+    return heavy_computation();
+}
+\end{lstlisting}
+
+Interface partitions (\texttt{export module math:part;}) are re-exported by the primary unit; internal partitions (\texttt{module math:part;}) are private. Both are imported with \texttt{import :part;} and visible only within the module.
+
+\section{The Global Module Fragment}
+\label{sec:c20-gmf}
+
+\begin{lstlisting}[language=C++,caption={Global module fragment for legacy headers (geometry.cppm)}]
+module;                           // global module fragment begins
+#include <vector>
+#include <cmath>
+
+export module geometry;           // module declaration ends the fragment
+
+export double distance(double x, double y) {
+    return std::sqrt(x * x + y * y);   // usable, but NOT re-exported
+}
+\end{lstlisting}
+
+Entities from the fragment are not re-exported; the fragment lets a module use legacy headers internally without leaking them. Order: \texttt{module;}, then preprocessor directives only, then \texttt{export module NAME;}.
+
+\section{Header Units and the Migration Bridge}
+\label{sec:c20-header-units}
+
+\begin{lstlisting}[language=C++,caption={Header units vs named-module import}]
+import <iostream>;        // header unit: faster than #include, exports macros too
+import <vector>;          // header unit
+import math;              // named module: no macros, fully encapsulated
+// #include <iostream>    // legacy: text substitution, re-parsed every TU
+\end{lstlisting}
+
+A header unit synthesizes a BMI from an existing header and does export its macros --- a migration bridge, not the destination.
+
+\section{Build-System Implications and the BMI Pipeline}
+\label{sec:c20-bmi-pipeline}
+
+Modules invert the build: the compiler must produce a module's BMI before compiling its importers. The build system must scan for \texttt{export module}/\texttt{import}, topologically order compilation, and compile interfaces to BMIs (\texttt{.pcm} Clang, \texttt{.ifc} MSVC, \texttt{.gcm} GCC) before consumers.
+
+\begin{lstlisting}[language=C++,caption={The BMI build pipeline (conceptual)}]
+// math.cppm --scan--> "exports module math"
+//   compile interface --> math.pcm  (Binary Module Interface)
+// main.cpp  --scan--> "imports math" --depends-on--> math.pcm
+//   compile (reads math.pcm) --> main.o --> link --> executable
+\end{lstlisting}
+
+A BMI is compiler- and flag-specific and never checked in. Modules require a build system that understands scan-then-compile: CMake 3.26+ (3.28+ for \texttt{import std;}), Build2, XMake, MSBuild.
+
+\section{ABI, the std Module, and Tooling Maturity}
+\label{sec:c20-modules-abi}
+
+\begin{itemize}
+\item \textbf{\texttt{import std;} is C++23.} Under C++20, import the standard library via header units (\texttt{import <vector>;}); \texttt{import std;}/\texttt{import std.compat;} arrived in C++23.
+\item \textbf{No standardized BMI format / ABI.} BMIs do not interoperate across compilers and are not a distribution format --- ship source.
+\item \textbf{Tooling lagged the standard.} Clang, MSVC, GCC support named modules and CMake 3.28+ handles them, but mixing with legacy headers/PCH still needs care.
+\end{itemize}
+
+\section{Professional Insights}
+\label{sec:c20-modules-insights}
+
+\textbf{Adopt modules bottom-up, starting with header units.} Convert consumption of stable headers to \texttt{import} first; convert your own code leaf-first. Avoid a big-bang rewrite.
+
+\textbf{Pin toolchain versions.} CMake 3.28+ is the practical floor; write minimum compiler/CMake versions into project requirements.
+
+\textbf{Never check in or distribute BMIs.} A \texttt{.pcm}/\texttt{.ifc}/\texttt{.gcm} is a local artifact tied to one compiler/flags --- ship source.
+
+\textbf{Use the global module fragment narrowly; it does not re-export.} Export thin wrappers if consumers need names from legacy headers.
+
+\textbf{No \texttt{import std;} in C++20.} Import the standard library via header units; \texttt{import std;} is C++23.

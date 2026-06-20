@@ -1,0 +1,168 @@
+\chapter{Three-Way Comparison --- The Spaceship Operator}
+\label{ch:c20-spaceship}
+
+\begin{quote}
+\emph{C++20's three-way comparison operator \texttt{<=>} --- the ``spaceship'' --- replaces the six hand-written comparison operators most types needed with a single defaulted declaration, and gives the language a principled vocabulary for the three kinds of ordering a type can have. This chapter covers the operator, its ordering category types, defaulted versus custom comparisons, the operator-rewriting rules, and the performance subtleties.}
+\end{quote}
+
+The spaceship operator collapses six operators to one function whose return value encodes the full ordering; the compiler rewrites the relational operators in terms of it.
+
+\section{The Problem: Six Operators Per Type}
+\label{sec:c20-six-operators}
+
+\begin{lstlisting}[language=C++,caption={The pre-C++20 boilerplate --- six operators by hand}]
+struct Version {
+    int major, minor, patch;
+    bool operator==(const Version& o) const {
+        return major==o.major && minor==o.minor && patch==o.patch;
+    }
+    bool operator!=(const Version& o) const { return !(*this == o); }
+    bool operator<(const Version& o) const {
+        if (major != o.major) return major < o.major;
+        if (minor != o.minor) return minor < o.minor;
+        return patch < o.patch;
+    }
+    bool operator>(const Version& o) const  { return o < *this; }
+    bool operator<=(const Version& o) const { return !(o < *this); }
+    bool operator>=(const Version& o) const { return !(*this < o); }
+};
+\end{lstlisting}
+
+\section{The Spaceship Operator and Defaulted Comparison}
+\label{sec:c20-defaulted-comparison}
+
+\begin{lstlisting}[language=C++,caption={The entire block replaced by two defaulted lines}]
+#include <compare>
+
+struct Version {
+    int major, minor, patch;
+    auto operator<=>(const Version&) const = default;   // generates <, >, <=, >=
+    bool operator==(const Version&) const = default;    // generates ==, !=
+};
+\end{lstlisting}
+
+\texttt{= default} on \texttt{<=>} produces a member-wise, in-declaration-order, lexicographic comparison. \texttt{<compare>} is required.
+
+\section{The Three Ordering Categories}
+\label{sec:c20-ordering-categories}
+
+\begin{center}
+\begin{tabular}{lll}
+\hline
+\textbf{Return type} & \textbf{Meaning} & \textbf{Key property} \\
+\hline
+\texttt{strong\_ordering} & total order, substitutable & \texttt{a==b} $\Rightarrow$ indistinguishable \\
+\texttt{weak\_ordering} & total order, not substitutable & equivalence classes \\
+\texttt{partial\_ordering} & some pairs unordered & \texttt{NaN <=> x} is \texttt{unordered} \\
+\hline
+\end{tabular}
+\end{center}
+
+\begin{lstlisting}[language=C++,caption={The named result values of each category}]
+#include <compare>
+
+void inspect(std::strong_ordering o) {
+    if (o == std::strong_ordering::less)    { /* a < b */ }
+    if (o == std::strong_ordering::equal)   { /* fully substitutable */ }
+    if (o == std::strong_ordering::greater) { /* a > b */ }
+}
+void inspect_fp(std::partial_ordering o) {
+    if (o == std::partial_ordering::unordered) { /* involves NaN */ }
+}
+\end{lstlisting}
+
+\texttt{strong} has \texttt{less/equal/greater}; \texttt{weak} has \texttt{less/equivalent/greater}; \texttt{partial} adds \texttt{unordered}. Integers yield strong; \texttt{float}/\texttt{double} yield partial.
+
+\section{Operator Rewriting and Synthesized Candidates}
+\label{sec:c20-operator-rewriting}
+
+\begin{lstlisting}[language=C++,caption={How the compiler rewrites relational operators}]
+// Source you write:          Compiler rewrites to:
+//   a < b           ->          (a <=> b) < 0
+//   a > b           ->          (a <=> b) > 0
+//   a <= b          ->          (a <=> b) <= 0
+//   a >= b          ->          (a <=> b) >= 0
+//   a > b           ->          0 < (b <=> a)    // synthesized (reversed) candidate
+\end{lstlisting}
+
+A single \texttt{friend auto operator<=>} makes all eight relational comparisons (both orders) work. The rewrite applies only to \texttt{<,>,<=,>=}.
+
+\section{== Is Special: Why Equality Is Separate}
+\label{sec:c20-equality-special}
+
+\begin{lstlisting}[language=C++,caption={Equality must be defaulted separately}]
+#include <compare>
+#include <string>
+#include <vector>
+
+struct Record {
+    int id;
+    std::vector<std::string> tags;
+    auto operator<=>(const Record&) const = default;   // lexicographic ordering
+    bool operator==(const Record&) const = default;    // cheaper: short-circuits on size
+};
+\end{lstlisting}
+
+\texttt{==} can short-circuit on size in O(1); \texttt{<=>} must compare element-by-element. \texttt{!=} is always rewritten from \texttt{==}.
+
+\section{Custom Three-Way Comparisons}
+\label{sec:c20-custom-spaceship}
+
+\begin{lstlisting}[language=C++,caption={A custom <=> with a chosen ordering category}]
+#include <compare>
+#include <string>
+#include <cctype>
+
+struct CaseInsensitive {
+    std::string s;
+    std::weak_ordering operator<=>(const CaseInsensitive& o) const {
+        auto lower = [](std::string x){
+            for (char& c : x) c = static_cast<char>(std::tolower(c));
+            return x;
+        };
+        return lower(s) <=> lower(o.s);   // narrow string's strong order to weak
+    }
+    bool operator==(const CaseInsensitive& o) const { return (*this <=> o) == 0; }
+};
+\end{lstlisting}
+
+Standard helpers: \texttt{std::compare\_three\_way}, and \texttt{std::strong\_order}/\texttt{weak\_order}/\texttt{partial\_order}.
+
+\section{Member-wise Semantics and Ordering Strength Deduction}
+\label{sec:c20-strength-deduction}
+
+\begin{lstlisting}[language=C++,caption={Deduced category is the weakest among members}]
+#include <compare>
+
+struct Mixed {
+    int    n;     // contributes strong_ordering
+    double d;     // contributes partial_ordering
+    auto operator<=>(const Mixed&) const = default;
+    // deduced return type: std::partial_ordering (weakest member wins)
+};
+\end{lstlisting}
+
+\texttt{std::common\_comparison\_category} computes the result. Name the category explicitly to assert a minimum strength.
+
+\section{Performance Considerations}
+\label{sec:c20-spaceship-perf}
+
+\begin{itemize}
+\item \textbf{Prefer \texttt{==} for equality on containers} --- it short-circuits on size; \texttt{<=>} does not.
+\item \textbf{A single \texttt{<=>} call yields all relations} --- capture \texttt{auto c = a <=> b;} once in hot comparators.
+\item \textbf{\texttt{partial\_ordering} carries an extra state} --- four outcomes, marginally heavier; NaN keys make ordered containers ill-formed.
+\item \textbf{Defaulted comparisons are \texttt{constexpr}-friendly} when members are.
+\end{itemize}
+
+\section{Professional Insights}
+\label{sec:c20-spaceship-insights}
+
+\textbf{Default both \texttt{<=>} and \texttt{==}.} The review-friendly habit; guarantees the fast \texttt{==} path for container members.
+
+\textbf{Choose the ordering category deliberately --- it is part of the contract.} A case-insensitive string returning \texttt{strong\_ordering} is a latent bug; return \texttt{weak\_ordering}.
+
+\textbf{Compute \texttt{<=>} once and reuse it in comparison-heavy code} --- halves work in sort comparators and tree inserts.
+
+\textbf{Floating-point keys yield \texttt{partial\_ordering}, and NaN breaks ordered containers} --- use \texttt{std::strong\_order} or guarantee no NaNs.
+
+\textbf{Reach for \texttt{<=>} to delete CRTP comparison helpers} --- removes boilerplate, shrinks inline footprint, eliminates inconsistency bugs.
