@@ -1,0 +1,475 @@
+\chapter{STL Under the Hood}
+\label{ch:stl-under-the-hood}
+
+\textit{Knowing what happens inside the containers is the difference between writing correct code and writing fast code.}
+
+Chapter 7 taught you the STL interface. This chapter pulls back the curtain: how \texttt{vector} manages its buffer, why \texttt{list} is almost always the wrong choice, what makes \texttt{map} O(\(\log n\)), when iterators become invalid, and the essential idioms every C++ programmer must know. It closes with a preview of C++11 lambdas.
+
+%% ============================================================
+\section{\texttt{std::vector} Internals}
+\label{sec:vector-internals}
+
+Every \texttt{std::vector} object contains exactly \textbf{three pointers}:
+
+\begin{itemize}
+    \item \textbf{\texttt{start}}: points to the first element.
+    \item \textbf{\texttt{finish}}: points one-past-the-last active element. \texttt{size() = finish - start}.
+    \item \textbf{\texttt{end\_of\_storage}}: points one-past-the-last allocated byte. \texttt{capacity() = end\_of\_storage - start}.
+\end{itemize}
+
+\subsection{Growth Strategy}
+
+When \texttt{size() == capacity()} and you call \texttt{push\_back()}:
+
+\begin{enumerate}
+    \item Allocate a new buffer --- typically \textbf{1.5× or 2×} the current capacity.
+    \item \textbf{Copy} every element to the new buffer (C++98 has no move semantics).
+    \item Destroy the old buffer.
+\end{enumerate}
+
+\begin{lstlisting}[language=C++, caption={Observing reallocation}]
+#include <vector>
+#include <iostream>
+using namespace std;
+
+int main() {
+    vector<int> v;
+    size_t last_cap = 0;
+    for (int i = 0; i < 20; ++i) {
+        v.push_back(i);
+        if (v.capacity() != last_cap) {
+            cout << "size=" << v.size()
+                 << " capacity=" << v.capacity() << "\n";
+            last_cap = v.capacity();
+        }
+    }
+    return 0;
+}
+// Capacity jumps: 1, 2, 4, 8, 16, 32...
+\end{lstlisting}
+
+\textbf{Always \texttt{reserve(n)} if you know the final size.}
+
+\begin{lstlisting}[language=C++, caption={reserve avoids reallocations}]
+#include <vector>
+using namespace std;
+
+int main() {
+    vector<int> v;
+    v.reserve(1000);
+    for (int i = 0; i < 1000; ++i)
+        v.push_back(i);  // Never reallocates
+    return 0;
+}
+\end{lstlisting}
+
+\subsection{Shrinking a Vector (C++98 Swap Trick)}
+
+\begin{lstlisting}[language=C++, caption={Swap trick to release excess capacity}]
+#include <vector>
+using namespace std;
+
+int main() {
+    vector<int> v(1000);
+    v.erase(v.begin() + 10, v.end()); // capacity still 1000
+    vector<int>(v).swap(v);           // Tight-fit copy, then swap
+    return 0;
+}
+\end{lstlisting}
+
+%% ============================================================
+\section{\texttt{std::deque} Internals}
+\label{sec:deque-internals}
+
+\texttt{std::deque} stores elements in \textbf{fixed-size chunks}. A dynamic array of pointers (the ``map'') points to these chunks. A \texttt{deque} iterator stores:
+\begin{itemize}
+    \item A pointer to the current element.
+    \item A pointer to its chunk.
+    \item Pointers to the start/end of the chunk (to jump between chunks).
+\end{itemize}
+
+\textbf{Consequences:}
+\begin{itemize}
+    \item \texttt{push\_front/push\_back}: O(1), adds/removes a chunk without copying the whole structure.
+    \item Random access: O(1) but requires two pointer dereferences --- slower than \texttt{vector}.
+    \item Cache locality: worse than \texttt{vector}, better than \texttt{list}.
+\end{itemize}
+
+%% ============================================================
+\section{\texttt{std::list} --- The Cache-Miss Machine}
+\label{sec:list-internals}
+
+Each list node is individually heap-allocated:
+
+\begin{lstlisting}[language=C++, caption={Conceptual list node layout}]
+template<typename T>
+struct ListNode {
+    T         val;
+    ListNode* prev;
+    ListNode* next;
+};
+\end{lstlisting}
+
+On a 64-bit system, every element in a \texttt{list<int>} uses 4 bytes of data and 16 bytes of pointer overhead --- a \textbf{4× memory overhead} per element.
+
+Traversal causes constant CPU cache misses because nodes are at random heap addresses. Iterating a \texttt{vector<int>} is typically \textbf{10--20× faster} than a \texttt{list<int>} of the same size.
+
+\textbf{Use \texttt{list} only for:}
+\begin{itemize}
+    \item O(1) insert/erase when you have the iterator (and genuinely can't batch).
+    \item Iterator/reference stability after insertions.
+    \item O(1) \texttt{splice} --- moving a sub-range between two lists.
+\end{itemize}
+
+%% ============================================================
+\section{Associative Container Internals (Red-Black Trees)}
+\label{sec:rbtree-internals}
+
+\texttt{std::map}, \texttt{std::set}, \texttt{std::multimap}, \texttt{std::multiset}: all Red-Black Trees.
+
+\begin{lstlisting}[language=C++, caption={Conceptual RB-tree node}]
+template<typename K, typename V>
+struct RBNode {
+    std::pair<K,V> data;
+    RBNode* left;
+    RBNode* right;
+    RBNode* parent;
+    bool    is_red;
+};
+\end{lstlisting}
+
+RB-tree invariants (max height \(\le 2\log_2(n+1)\)) guarantee O(\(\log n\)) worst-case for all operations. Per-node overhead: 3 pointers + 1 bool + payload. For small keys/values this overhead dominates; prefer a sorted \texttt{vector} + \texttt{lower\_bound} for read-heavy workloads.
+
+%% ============================================================
+\section{Iterator Invalidation: The Complete Reference}
+\label{sec:iterator-invalidation}
+
+Using an invalidated iterator is \textbf{undefined behaviour}.
+
+\begin{center}
+\begin{tabular}{|l|l|l|}
+\hline
+\textbf{Container} & \textbf{Operation} & \textbf{What is invalidated} \\
+\hline
+\texttt{vector} & Reallocation & ALL iterators, ptrs, refs \\
+\texttt{vector} & Insert/erase at \(p\) (no realloc) & All at \(p\) and after \\
+\texttt{deque} & push\_front / push\_back & All iterators (not refs) \\
+\texttt{deque} & Insert/erase in middle & ALL \\
+\texttt{list} & Any insert & None \\
+\texttt{list} & Erase & Only the erased node \\
+\texttt{map} / \texttt{set} & Any insert & None \\
+\texttt{map} / \texttt{set} & Erase & Only the erased node \\
+\hline
+\end{tabular}
+\end{center}
+
+\begin{lstlisting}[language=C++, caption={Safe erase during iteration --- map}]
+#include <map>
+#include <string>
+
+int main() {
+    std::map<std::string, int> m;
+    m["a"] = 1; m["b"] = 2; m["c"] = 3;
+
+    std::map<std::string, int>::iterator it = m.begin();
+    while (it != m.end()) {
+        if (it->second == 2)
+            it = m.erase(it); // returns next valid iterator
+        else
+            ++it;
+    }
+    return 0;
+}
+\end{lstlisting}
+
+%% ============================================================
+\section{Container Adapters Under the Hood}
+\label{sec:adapter-internals}
+
+Container adapters are thin wrappers:
+
+\begin{lstlisting}[language=C++, caption={Approximate stack implementation}]
+template<typename T, typename Container = std::deque<T> >
+class stack {
+    Container c;
+public:
+    void push(const T& x) { c.push_back(x); }
+    void pop()            { c.pop_back(); }
+    T&   top()            { return c.back(); }
+    bool empty() const    { return c.empty(); }
+    size_t size() const   { return c.size(); }
+};
+\end{lstlisting}
+
+Use \texttt{vector} as the backing container for better cache performance when you know the maximum depth:
+
+\begin{lstlisting}[language=C++, caption={stack backed by vector}]
+#include <stack>
+#include <vector>
+std::stack<int, std::vector<int> > fast_stack;
+\end{lstlisting}
+
+%% ============================================================
+\section{Algorithm Internals}
+\label{sec:algo-internals}
+
+\begin{description}
+    \item[\texttt{std::sort} --- Introsort] Hybrid of Quicksort (average case), Heapsort (worst-case fallback when recursion exceeds $2\log_2 N$), and Insertion Sort (small sub-arrays). Guaranteed O($N\log N$) worst-case.
+    \item[\texttt{std::stable\_sort} --- Mergesort] O($N\log N$), preserves relative order of equal elements. Requires O(N) extra memory.
+    \item[\texttt{std::partial\_sort} --- Heap-sort variant] O($N\log k$) where $k$ is the output size. Builds a heap of size $k$ over the full range.
+    \item[\texttt{std::nth\_element} --- Introselect] Average O($N$). Places the correct element at position $n$; elements before are $\le$ it, elements after are $\ge$ it, no further ordering guaranteed.
+\end{description}
+
+%% ============================================================
+\section{The Erase-Remove Idiom}
+\label{sec:erase-remove}
+
+\texttt{std::remove} does NOT erase --- it compacts the ``kept'' elements to the front and returns an iterator to the start of the ``junk'' zone. You must follow it with \texttt{erase}:
+
+\begin{lstlisting}[language=C++, caption={Erase-remove idiom}]
+#include <algorithm>
+#include <vector>
+#include <iostream>
+using namespace std;
+
+int main() {
+    vector<int> v;
+    v.push_back(1); v.push_back(2); v.push_back(3);
+    v.push_back(2); v.push_back(4); v.push_back(2);
+
+    vector<int>::iterator new_end = remove(v.begin(), v.end(), 2);
+    v.erase(new_end, v.end());
+    // v: {1, 3, 4}
+
+    for (vector<int>::iterator it = v.begin(); it != v.end(); ++it)
+        cout << *it << " ";
+    return 0;
+}
+\end{lstlisting}
+
+\begin{lstlisting}[language=C++, caption={erase-remove\_if}]
+#include <algorithm>
+#include <vector>
+using namespace std;
+
+bool is_even(int x) { return x % 2 == 0; }
+
+int main() {
+    vector<int> v;
+    v.push_back(1); v.push_back(2); v.push_back(3);
+    v.push_back(4); v.push_back(5);
+
+    v.erase(remove_if(v.begin(), v.end(), is_even), v.end());
+    // v: {1, 3, 5}
+    return 0;
+}
+\end{lstlisting}
+
+%% ============================================================
+\section{Essential STL Patterns}
+\label{sec:stl-patterns}
+
+\begin{lstlisting}[language=C++, caption={Sort and deduplicate}]
+#include <algorithm>
+#include <vector>
+using namespace std;
+
+int main() {
+    int arr[] = {3, 1, 4, 1, 5, 9, 2, 6};
+    vector<int> v(arr, arr + 8);
+    sort(v.begin(), v.end());
+    v.erase(unique(v.begin(), v.end()), v.end());
+    // v: {1, 2, 3, 4, 5, 6, 9}
+    return 0;
+}
+\end{lstlisting}
+
+\begin{lstlisting}[language=C++, caption={Frequency counting with map}]
+#include <map>
+#include <string>
+#include <iostream>
+using namespace std;
+
+int main() {
+    const char* words[] = {"apple", "banana", "apple", "cherry", "banana"};
+    int n = sizeof(words) / sizeof(words[0]);
+    map<string, int> freq;
+    for (int i = 0; i < n; ++i) freq[words[i]]++;
+    for (map<string, int>::iterator it = freq.begin(); it != freq.end(); ++it)
+        cout << it->first << ": " << it->second << "\n";
+    return 0;
+}
+\end{lstlisting}
+
+\begin{lstlisting}[language=C++, caption={back\_inserter with transform}]
+#include <algorithm>
+#include <vector>
+#include <iterator>
+using namespace std;
+
+int square(int x) { return x * x; }
+
+int main() {
+    int arr[] = {1, 2, 3, 4, 5};
+    vector<int> src(arr, arr + 5);
+    vector<int> dst;
+    transform(src.begin(), src.end(), back_inserter(dst), square);
+    // dst: {1, 4, 9, 16, 25}
+    return 0;
+}
+\end{lstlisting}
+
+%% ============================================================
+\section{Algorithm Complexity Reference}
+\label{sec:algo-complexity}
+
+\begin{lstlisting}[language={}, caption={Algorithm complexity cheat sheet}]
+SEARCHING
+  find, find_if                  O(n)
+  count, count_if                O(n)
+  binary_search                  O(log n)   sorted range
+  lower_bound, upper_bound       O(log n)   sorted range
+
+SORTING
+  sort                           O(n log n) Introsort
+  stable_sort                    O(n log n) Mergesort
+  partial_sort                   O(n log k)
+  nth_element                    O(n)       avg
+
+MODIFYING
+  copy, transform, fill          O(n)
+  reverse, rotate, unique        O(n)
+  remove, partition              O(n)
+
+NUMERIC
+  accumulate                     O(n)
+  inner_product                  O(n)
+
+SET OPERATIONS (sorted ranges)
+  set_union, set_intersection    O(n+m)
+  set_difference                 O(n+m)
+\end{lstlisting}
+
+%% ============================================================
+\section{Container and Iterator Comparison Tables}
+\label{sec:comparison-tables}
+
+\begin{lstlisting}[language={}, caption={Container complexity at a glance}]
+               Insert  Delete  Search  Random  Memory
+vector         O(n)    O(n)    O(n)    O(1)    Contiguous
+deque          O(n)    O(n)    O(n)    O(1)    Block chunks
+list           O(1)*   O(1)*   O(n)    --      Scattered
+map/set        O(lgn)  O(lgn)  O(lgn)  --      Red-Black Tree
+queue          O(1)    O(1)    --      --      Adapter
+stack          O(1)    O(1)    --      --      Adapter
+priority_queue O(lgn)  O(lgn)  --      --      Heap (vector)
+
+* Given an iterator to the target node.
+\end{lstlisting}
+
+\begin{lstlisting}[language={}, caption={Iterator category by container}]
+Container      Iterator Type       Bidirectional  Random Access
+vector         Random Access       Yes            Yes
+deque          Random Access       Yes            Yes
+list           Bidirectional       Yes            No
+map / set      Bidirectional       Yes            No
+\end{lstlisting}
+
+%% ============================================================
+\section{Forward Reference: C++11 Lambdas and Functors}
+\label{sec:lambda-forward-ref}
+
+In C++98, custom algorithm predicates require a functor struct:
+
+\begin{lstlisting}[language=C++, caption={C++98 functor --- verbose but correct}]
+#include <algorithm>
+#include <vector>
+#include <iostream>
+using namespace std;
+
+struct IsGreaterThan {
+    int threshold;
+    explicit IsGreaterThan(int t) : threshold(t) {}
+    bool operator()(int value) const { return value > threshold; }
+};
+
+int main() {
+    int arr[] = {10, 20, 30, 40};
+    vector<int> v(arr, arr + 4);
+    int n = count_if(v.begin(), v.end(), IsGreaterThan(25));
+    cout << n << "\n"; // 2
+    return 0;
+}
+\end{lstlisting}
+
+C++11 replaces functor boilerplate with \textbf{lambda expressions}:
+
+\begin{lstlisting}[language=C++, caption={C++11 lambda (forward reference, not C++98)}]
+// int threshold = 25;
+// int n = count_if(v.begin(), v.end(),
+//     [threshold](int value) { return value > threshold; }
+// );
+\end{lstlisting}
+
+Lambda syntax: \texttt{[captures](parameters) \{ body \}}
+
+\begin{center}
+\begin{tabular}{|l|l|}
+\hline
+\textbf{Capture form} & \textbf{Meaning} \\
+\hline
+\texttt{[]} & Capture nothing \\
+\texttt{[x]} & Capture \texttt{x} by value (read-only copy) \\
+\texttt{[\&x]} & Capture \texttt{x} by reference \\
+\texttt{[=]} & Capture all locals by value \\
+\texttt{[\&]} & Capture all locals by reference \\
+\hline
+\end{tabular}
+\end{center}
+
+\textbf{In C++98/03:} use functors with \texttt{operator()} wherever C++11 would use a lambda.
+
+%% ============================================================
+\section{Professional Insights: When Not to Use the STL}
+\label{sec:stl-pro-insights-ch8}
+
+\subsection{Reach for an Algorithm First}
+
+Before writing a \texttt{for} loop, ask whether an STL algorithm does it. \texttt{std::find\_if}, \texttt{std::count\_if}, \texttt{std::transform}, and \texttt{std::accumulate} cover 90\% of loop patterns with zero risk of off-by-one errors.
+
+\subsection{The Cache Argument Against \texttt{list}}
+
+Modern CPUs are 100--1000× faster at sequential reads than random pointer dereferences. Choose \texttt{list} only when you need iterator stability or O(1) \texttt{splice}.
+
+\subsection{\texttt{map} vs Sorted Vector for Lookup}
+
+A sorted \texttt{vector<pair<K,V>>} searched with \texttt{lower\_bound} gives the same O(\(\log n\)) complexity as \texttt{map}, but with far better cache performance. For read-heavy, build-once workloads, the sorted vector often wins by 2--4×.
+
+\subsection{The Destination-Size Trap}
+
+\texttt{std::copy}, \texttt{std::transform}, and similar algorithms write to an existing range --- they do not allocate. Always pre-size the destination or use \texttt{back\_inserter}.
+
+\subsection{Avoid \texttt{operator[]} on \texttt{map} for Read-Only Lookup}
+
+\begin{lstlisting}[language=C++, caption={Safe read-only map lookup}]
+#include <map>
+#include <string>
+#include <iostream>
+using namespace std;
+
+int main() {
+    map<string, int> m;
+    m["key"] = 42;
+
+    // WRONG: inserts "missing" -> 0 if absent
+    // cout << m["missing"] << "\n";
+
+    // CORRECT: use find()
+    map<string, int>::const_iterator it = m.find("missing");
+    if (it != m.end())
+        cout << it->second << "\n";
+    else
+        cout << "Key not found\n";
+    return 0;
+}
+\end{lstlisting}

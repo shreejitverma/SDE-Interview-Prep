@@ -1,0 +1,221 @@
+\chapter{Standard Library Enhancements}
+\label{ch:c14-stdlib-enhancements}
+
+\begin{quote}
+\emph{The C++11 library shipped \texttt{make\_shared} but not \texttt{make\_unique}, a \texttt{shared\_mutex} proposal that didn't make it, and associative containers that forced a temporary on every heterogeneous lookup. C++14 closed these gaps: \texttt{make\_unique} completes the factory pair, \texttt{shared\_timed\_mutex} brings reader-writer locking, transparent functors enable allocation-free lookup, and a wave of small utilities (\texttt{exchange}, \texttt{quoted}, \texttt{get<T>}) remove daily friction.}
+\end{quote}
+
+This chapter collects the library additions of C++14. None is large, but each removes a recurring papercut: an exception-safe \texttt{unique\_ptr} factory, a one-line move-and-replace idiom, a reader-writer mutex, quoted-string I/O, tuple access by type, heterogeneous container lookup without temporaries, and the start of the standard library's migration to \texttt{constexpr}.
+
+\section{\texttt{std::make\_unique}}
+\label{sec:c14-make-unique}
+
+C++11 shipped \texttt{std::make\_shared} but, by an oversight, no \texttt{std::make\_unique}. C++14 fixed the omission. \texttt{std::make\_unique<T>(args...)} constructs a \texttt{T} (forwarding \texttt{args} to its constructor) and returns a \texttt{std::unique\_ptr<T>} owning it --- with no visible \texttt{new}.
+
+\begin{lstlisting}[language=C++,caption={make\_unique vs raw new}]
+#include <memory>
+
+// Old, error-prone:
+std::unique_ptr<Widget> w1(new Widget(42));
+
+// C++14: no raw new, deduced type, exception-safe:
+auto w2 = std::make_unique<Widget>(42);
+
+// Arrays are supported via the T[] overload (value-initialized elements):
+auto buf = std::make_unique<int[]>(1000);    // 1000 ints, zero-initialized
+\end{lstlisting}
+
+Beyond brevity, \texttt{make\_unique} eliminates a real exception-safety hole. In a call like \texttt{f(std::unique\_ptr<A>(new A), may\_throw())}, the compiler may evaluate \texttt{new A}, then \texttt{may\_throw()}, then the \texttt{unique\_ptr} constructor; if \texttt{may\_throw()} throws, the raw \texttt{A} leaks. Wrapping each argument in \texttt{make\_unique} makes the allocation and the ownership transfer a single, indivisible call.
+
+\begin{quote}
+\textbf{Rule:} prefer \texttt{make\_unique}/\texttt{make\_shared} to a raw \texttt{new} everywhere. The only routine exception is when you need a custom deleter (the make-functions don't accept one) or must adopt an already-constructed pointer.
+\end{quote}
+
+\section{\texttt{std::exchange}}
+\label{sec:c14-exchange}
+
+\texttt{std::exchange(obj, new\_value)} assigns \texttt{new\_value} to \texttt{obj} and returns the \textbf{old} value of \texttt{obj}. It is the missing primitive for the move-and-reset pattern that pervades move constructors and move-assignment operators.
+
+\begin{lstlisting}[language=C++,caption={std::exchange in a move constructor}]
+#include <utility>
+
+class Buffer {
+    char*       data_;
+    std::size_t size_;
+public:
+    // Move-construct: take other's pointer, leave other null -- one expression each.
+    Buffer(Buffer&& other) noexcept
+        : data_(std::exchange(other.data_, nullptr)),
+          size_(std::exchange(other.size_, 0)) {}
+
+    Buffer& operator=(Buffer&& other) noexcept {
+        if (this != &other) {
+            delete[] data_;
+            data_ = std::exchange(other.data_, nullptr);
+            size_ = std::exchange(other.size_, 0);
+        }
+        return *this;
+    }
+};
+\end{lstlisting}
+
+The semantics are exactly ``set, return the previous.'' It generalizes the classic swap-out beyond move semantics --- resetting a flag while reading its prior state, or rotating a value out of a slot --- in a single, self-documenting expression.
+
+\section{\texttt{std::shared\_timed\_mutex} and \texttt{std::shared\_lock}}
+\label{sec:c14-shared-mutex}
+
+C++14 introduced the first standard \textbf{reader-writer lock}: \texttt{std::shared\_timed\_mutex}. It supports two ownership modes:
+
+\begin{itemize}
+    \item \textbf{Shared (read) ownership} --- many threads may hold it simultaneously, acquired via \texttt{std::shared\_lock}.
+    \item \textbf{Exclusive (write) ownership} --- only one thread, no readers concurrent with it, acquired via \texttt{std::unique\_lock} (or \texttt{std::lock\_guard}).
+\end{itemize}
+
+This is the right tool when reads vastly outnumber writes, since readers no longer serialize against one another.
+
+\begin{lstlisting}[language=C++,caption={A read-mostly map guarded by a shared\_timed\_mutex}]
+#include <shared_mutex>
+#include <mutex>
+#include <map>
+#include <string>
+
+class ThreadSafeMap {
+    mutable std::shared_timed_mutex mtx_;
+    std::map<std::string, int>      data_;
+public:
+    // Reads: shared ownership -- concurrent readers do not block each other.
+    int get(const std::string& key) const {
+        std::shared_lock<std::shared_timed_mutex> lock(mtx_);
+        auto it = data_.find(key);
+        return it != data_.end() ? it->second : -1;
+    }
+
+    // Writes: exclusive ownership -- blocks all readers and other writers.
+    void set(const std::string& key, int value) {
+        std::unique_lock<std::shared_timed_mutex> lock(mtx_);
+        data_[key] = value;
+    }
+};
+\end{lstlisting}
+
+Two points of precision matter in C++14:
+
+\begin{enumerate}
+    \item \textbf{Spell the lock's template argument.} Class template argument deduction (\texttt{std::shared\_lock lock(mtx\_)}) is a C++17 feature; in C++14 you must write \texttt{std::shared\_lock<std::shared\_timed\_mutex> lock(mtx\_)}.
+    \item \textbf{It is the \emph{timed} mutex.} C++14 provides only \texttt{std::shared\_timed\_mutex}. The lighter, non-timed \texttt{std::shared\_mutex} was added later, in \textbf{C++17} --- flagged here because it is a common version trap.
+\end{enumerate}
+
+\begin{quote}
+\textbf{Performance note:} a reader-writer lock is not free --- its bookkeeping is heavier than a plain mutex, and under heavy \emph{write} contention it can be slower. Use it only when the read-to-write ratio is genuinely high; for short critical sections a plain \texttt{std::mutex} often wins.
+\end{quote}
+
+\section{\texttt{std::quoted}}
+\label{sec:c14-quoted}
+
+\texttt{std::quoted} (in \texttt{<iomanip>}) is an I/O manipulator that handles the quoting and escaping of strings containing spaces, quotes, and delimiters --- symmetrically on output and input. It removes the hand-rolled escaping that string serialization (CSV, logs, config) otherwise requires.
+
+\begin{lstlisting}[language=C++,caption={Round-tripping a string with embedded quotes and spaces}]
+#include <iomanip>
+#include <sstream>
+#include <string>
+
+std::string original = R"(He said "hello world")";
+
+std::stringstream ss;
+ss << std::quoted(original);      // writes:  "He said \"hello world\""
+
+std::string restored;
+ss >> std::quoted(restored);      // parses the quoting/escaping back out
+// restored == original, exactly -- spaces and embedded quotes preserved
+\end{lstlisting}
+
+On output \texttt{std::quoted} wraps the string in delimiters and escapes any embedded delimiter; on input it reads a delimited, escaped sequence and reconstructs the original. Because the two are inverses, it is the simplest correct way to serialize a string field that may contain whitespace or the delimiter itself.
+
+\section{Tuple Addressing by Type: \texttt{std::get<T>}}
+\label{sec:c14-get-by-type}
+
+C++11 let you index a \texttt{std::tuple} only positionally --- \texttt{std::get<0>(t)}. C++14 added \texttt{std::get<T>(t)}, which retrieves the element \textbf{of type \texttt{T}}. It is well-formed only when exactly one element has that type; otherwise the program is ill-formed (ambiguous or absent).
+
+\begin{lstlisting}[language=C++,caption={Addressing tuple elements by type}]
+#include <tuple>
+#include <string>
+
+std::tuple<int, std::string, double> record{42, "alpha", 3.14};
+
+auto n    = std::get<int>(record);          // 42      -- by type, not index
+auto name = std::get<std::string>(record);  // "alpha"
+auto x    = std::get<double>(record);       // 3.14
+\end{lstlisting}
+
+Addressing by type is more robust than by index: it does not silently break when the tuple's element order changes, and it reads as intent (\texttt{get<Timestamp>}) rather than as a magic position (\texttt{get<2>}). The constraint --- type must be unique within the tuple --- is the price of that clarity; for tuples with repeated types, fall back to positional \texttt{get<N>}.
+
+\section{Transparent Operators and Heterogeneous Lookup}
+\label{sec:c14-transparent-operators}
+
+The ordered associative containers (\texttt{std::map}, \texttt{std::set}, and their \texttt{multi} variants) use a comparator --- by default \texttt{std::less<Key>}. In C++11, looking up a \texttt{std::map<std::string, V>} with a \texttt{const char*} \textbf{constructed a temporary \texttt{std::string}} for every probe, because the comparator's operands were both fixed to \texttt{Key}.
+
+C++14 added \textbf{transparent comparators}: the \texttt{void} specializations \texttt{std::less<>} (i.e.\ \texttt{std::less<void>}), \texttt{std::greater<>}, etc., whose \texttt{operator()} is a \emph{template} accepting heterogeneous operand types. When a container's comparator declares the nested type \texttt{is\_transparent}, its \texttt{find}/\texttt{count}/\texttt{lower\_bound}/\texttt{equal\_range} gain overloads that accept \textbf{any} key-like argument comparable to \texttt{Key} --- with no temporary.
+
+\begin{lstlisting}[language=C++,caption={Heterogeneous lookup avoids constructing a temporary string}]
+#include <map>
+#include <string>
+
+// std::less<> is transparent: it defines is_transparent and a templated operator().
+std::map<std::string, int, std::less<>> scores{
+    {"alice", 1}, {"bob", 2}
+};
+
+const char* key = "alice";
+auto it = scores.find(key);   // C++14: NO temporary std::string is built --
+                              // const char* is compared directly against the keys.
+\end{lstlisting}
+
+\begin{lstlisting}[language=C++,caption={The transparent functor itself}]
+struct CaseInsensitiveLess {
+    using is_transparent = void;     // <-- opt in to heterogeneous lookup
+    template <typename A, typename B>
+    bool operator()(const A& a, const B& b) const {
+        return ci_compare(a, b) < 0; // compares any two key-like types
+    }
+};
+std::set<std::string, CaseInsensitiveLess> names;
+\end{lstlisting}
+
+The \texttt{is\_transparent} member is a deliberate opt-in: it tells the container ``my comparator can compare across types, so enable the templated lookup overloads.'' Without it, the container keeps the homogeneous (temporary-constructing) interface for backward compatibility.
+
+\begin{quote}
+\textbf{Godhood tip:} default every \texttt{std::map}/\texttt{std::set} whose key is \texttt{std::string} to \texttt{std::less<>}. Combined with \texttt{string\_view}-style probe types, it removes a heap allocation from every lookup. (Heterogeneous lookup for the \emph{unordered} containers arrived later, in C++20.)
+\end{quote}
+
+\section{The \texttt{constexpr}-ification of the Standard Library}
+\label{sec:c14-constexpr-stdlib}
+
+Relaxed \texttt{constexpr} (Chapter~\ref{ch:c14-core-language-upgrades}) was not only a language change --- C++14 also went through the library and marked many functions \texttt{constexpr} so they can participate in compile-time evaluation. Most of \texttt{<array>}'s accessors and capacity functions, much of \texttt{std::tuple}'s and \texttt{std::pair}'s interface, \texttt{std::min}/\texttt{std::max}/\texttt{std::minmax}, the \texttt{std::initializer\_list} member functions, and several others became usable inside constant expressions.
+
+\begin{lstlisting}[language=C++,caption={Standard-library calls evaluated at compile time (C++14)}]
+#include <array>
+#include <algorithm>
+
+constexpr std::array<int, 4> a{4, 1, 3, 2};
+constexpr int first = std::get<0>(a);      // get<> is constexpr
+constexpr int n     = a.size();            // size() is constexpr
+constexpr int hi    = std::max(10, 20);    // std::max is constexpr in C++14
+
+static_assert(first == 4, "");
+static_assert(hi == 20, "");
+\end{lstlisting}
+
+The practical effect: small lookup tables, fixed-size buffers, and bounds derived from \texttt{std::array}/\texttt{std::min}/\texttt{std::max} can be computed during compilation and embedded as immediates. This is the library half of the same shift Chapter~\ref{ch:c14-core-language-upgrades} describes for the language.
+
+\section{Professional Insights}
+\label{sec:c14-stdlib-insights}
+
+\textbf{Make \texttt{make\_unique} the default and \texttt{new} the exception.} It is shorter, deduces the type, and --- critically --- closes the multi-argument exception-safety hole that bare \texttt{new} leaves open. Reserve raw \texttt{new}/\texttt{unique\_ptr(ptr)} for custom deleters or adopting a pointer you didn't allocate.
+
+\textbf{\texttt{std::exchange} is the move-assignment primitive.} \texttt{data\_ = std::exchange(other.data\_, nullptr)} says ``take theirs, null theirs'' in one expression with no temporary and no ordering mistake. It makes \texttt{noexcept} move operations both shorter and easier to audit.
+
+\textbf{Choose the reader-writer lock on evidence, not instinct.} \texttt{shared\_timed\_mutex} shines only when reads dominate writes; its overhead exceeds a plain \texttt{std::mutex} for short or write-heavy sections. Measure the ratio first --- and remember the non-timed \texttt{shared\_mutex} is C++17.
+
+\textbf{Default string-keyed ordered containers to \texttt{std::less<>}.} Transparent comparators turn every \texttt{find} with a \texttt{const char*} or view from a heap-allocating temporary into a direct comparison --- a zero-risk allocation removed from the hot path.
+
+\textbf{Prefer \texttt{get<T>} and \texttt{constexpr} library calls where they fit.} Address tuples by type when types are unique --- it survives reordering and documents intent. And lean on the now-\texttt{constexpr} \texttt{<array>}/\texttt{<algorithm>}/\texttt{<tuple>} interface to push fixed-size table and bound computation to compile time.

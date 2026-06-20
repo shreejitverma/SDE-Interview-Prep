@@ -1,0 +1,153 @@
+\chapter{Functions and Lambdas}
+\label{ch:c14-functions-and-lambdas}
+
+\begin{quote}
+\emph{C++14's lambda and function-deduction changes are where the ``Refinement'' release pays off daily. Generic lambdas turn a closure into a template; init-capture lets a closure own a moved-in resource; return-type deduction removes the trailing-return-type ceremony; and \texttt{decltype(auto)} finally lets a forwarding wrapper preserve references exactly.}
+\end{quote}
+
+In C++11 a lambda's parameters had to be concretely typed, a closure could only capture by copy or reference, and any function whose return type you wanted deduced needed an explicit \texttt{auto ... -> decltype(...)} tail. C++14 lifts all three limits and adds \texttt{decltype(auto)}, a deduction rule that --- unlike \texttt{auto} --- keeps references and \texttt{const} intact. Together they make generic, move-aware, perfectly-forwarding code dramatically shorter.
+
+\section{Generic Lambdas}
+\label{sec:c14-generic-lambdas}
+
+In C++11 every lambda parameter needed a concrete type, so a closure was monomorphic --- one that summed \texttt{int}s could not sum \texttt{double}s. \textbf{C++14 allows \texttt{auto} in a lambda's parameter list}, making the lambda \emph{generic}: the compiler synthesizes a templated \texttt{operator()} on the closure type, and the actual types are deduced per call, exactly as for a function template.
+
+\begin{lstlisting}[language=C++,caption={A generic lambda is a closure with a templated operator()}]
+auto sum = [](auto a, auto b) { return a + b; };
+
+sum(3, 4);              // a, b deduced as int    -> 7
+sum(1.5, 2.5);          // a, b deduced as double -> 4.0
+sum(std::string("x"), std::string("y"));  // -> "xy"
+\end{lstlisting}
+
+Conceptually, \texttt{sum} is an object whose class has:
+
+\begin{lstlisting}[language=C++,caption={The closure type the compiler generates (schematic)}]
+struct __sum_closure {
+    template <typename T, typename U>
+    auto operator()(T a, U b) const { return a + b; }
+};
+\end{lstlisting}
+
+Each parameter spelled \texttt{auto} becomes an independent template type parameter, so \texttt{sum(1, 2.0)} deduces \texttt{T=int}, \texttt{U=double}. This makes generic lambdas the natural callable to pass to standard algorithms when the element type is awkward to spell:
+
+\begin{lstlisting}[language=C++,caption={A generic comparator without naming the iterator's value type}]
+std::sort(v.begin(), v.end(),
+          [](const auto& lhs, const auto& rhs) { return lhs.key < rhs.key; });
+\end{lstlisting}
+
+Take parameters by \texttt{const auto\&} (or forwarding \texttt{auto\&\&}) to avoid copies --- the same guidance as for ordinary template parameters.
+
+\section{Lambda Init-Capture (Generalized Capture)}
+\label{sec:c14-init-capture}
+
+C++11 captures were limited to \emph{copy} (\texttt{[x]}) and \emph{reference} (\texttt{[\&x]}) of an existing variable. There was no way to \textbf{move} a variable into a closure, which made it impossible to capture a \texttt{unique\_ptr} or other move-only resource. \textbf{C++14 init-capture} (also called \emph{generalized capture}) lets you introduce a new closure member and initialize it with an arbitrary expression --- including a \texttt{std::move}.
+
+\begin{lstlisting}[language=C++,caption={Moving a move-only resource into a closure}]
+auto data = std::make_unique<int[]>(1000);
+
+// [p = std::move(data)] creates a closure member 'p' initialized by moving 'data'
+auto task = [p = std::move(data)]() {
+    return p[0];          // the closure now owns the buffer; 'data' is null
+};
+\end{lstlisting}
+
+The general form is \texttt{[name = expression]}: \texttt{name} is a fresh data member of the closure, and \texttt{expression} is evaluated in the enclosing scope to initialize it. This subsumes ordinary capture and adds two new capabilities:
+
+\begin{lstlisting}[language=C++,caption={Renaming/transforming a capture, and capturing by computed value}]
+int x = 10;
+auto f = [val = x + 5]() { return val; };   // val == 15, independent of x
+
+// Capture a reference under a new name:
+auto g = [&r = x]() { r += 1; };             // r is a reference to x
+\end{lstlisting}
+
+Init-capture is the idiomatic C++14 way to give a closure exclusive ownership of a resource --- essential when handing a task with a \texttt{unique\_ptr} payload to a thread pool or \texttt{std::async}, where the closure must outlive the enclosing scope.
+
+\begin{quote}
+\textbf{Godhood tip:} prefer init-capture by move over capturing a raw pointer by copy. The closure then owns the resource with correct lifetime semantics; capturing a raw pointer risks the pointee being destroyed before the closure runs.
+\end{quote}
+
+\section{Function Return Type Deduction}
+\label{sec:c14-return-type-deduction}
+
+C++11 allowed \texttt{auto} as a function's return type only with a trailing \texttt{-> decltype(...)}. \textbf{C++14 lets an ordinary function return \texttt{auto} with no trailing type}, deducing the return type from the \texttt{return} statements using the same rules as \texttt{auto} variable initialization.
+
+\begin{lstlisting}[language=C++,caption={Return type deduction}]
+// C++11 required the trailing return type:
+auto add11(int a, int b) -> int { return a + b; }
+
+// C++14: deduced automatically
+auto add14(int a, int b) { return a + b; }   // returns int
+\end{lstlisting}
+
+Two rules govern it:
+
+\begin{enumerate}
+    \item \textbf{All \texttt{return} statements must deduce the same type}, or the program is ill-formed (mixing \texttt{int} and \texttt{double} returns is an error).
+    \item \textbf{A recursive function must have at least one \texttt{return} the compiler sees before the recursive call}, so the type is known when it is needed:
+\end{enumerate}
+
+\begin{lstlisting}[language=C++,caption={Recursion with deduced return type}]
+auto factorial(int n) {
+    if (n <= 1) return 1;           // establishes return type = int
+    return n * factorial(n - 1);    // OK: type already deduced
+}
+\end{lstlisting}
+
+Because \texttt{auto} return deduction applies the \texttt{auto} decay rules, the returned type is always a \emph{value} (references and top-level \texttt{const} are stripped). When you need to preserve a reference --- as in a forwarding accessor --- use \texttt{decltype(auto)}, next.
+
+\section{\texttt{decltype(auto)}}
+\label{sec:c14-decltype-auto}
+
+\texttt{auto} deduction \textbf{decays}: it strips references and top-level \texttt{const}, always yielding a value type. That is wrong for a function that should forward whatever its expression yields --- returning \texttt{auto} from an accessor silently copies. \textbf{\texttt{decltype(auto)}} deduces using \texttt{decltype} rules instead, which \emph{preserve} references and \texttt{const} exactly.
+
+\begin{lstlisting}[language=C++,caption={auto decays; decltype(auto) preserves}]
+int  global = 100;
+int& get_ref() { return global; }
+
+auto           proxy1() { return get_ref(); }  // deduces int   (a COPY)
+decltype(auto) proxy2() { return get_ref(); }  // deduces int&  (the reference)
+
+proxy1() = 200;   // ERROR: assigning to an int prvalue
+proxy2() = 200;   // OK: writes through the reference -> global == 200
+\end{lstlisting}
+
+The two forms differ precisely because the deduction rule differs:
+
+\begin{center}
+\begin{tabular}{lll}
+\hline
+\textbf{Form} & \textbf{Deduction rule} & \textbf{On an lvalue \texttt{int\&}} \\
+\hline
+\texttt{auto} & template-argument deduction (decays) & \texttt{int} (copy) \\
+\texttt{decltype(auto)} & \texttt{decltype} of the expression (exact) & \texttt{int\&} (reference) \\
+\hline
+\end{tabular}
+\end{center}
+
+The canonical use is a \textbf{perfectly forwarding wrapper} whose return type must match the wrapped call's value category:
+
+\begin{lstlisting}[language=C++,caption={A forwarding wrapper that preserves the callee's return category}]
+template <typename F, typename... Args>
+decltype(auto) invoke_logged(F&& f, Args&&... args) {
+    log_call();
+    return std::forward<F>(f)(std::forward<Args>(args)...);
+    // returns exactly what f returns: T, T&, or T&& -- no accidental copy
+}
+\end{lstlisting}
+
+\begin{quote}
+\textbf{Caution:} \texttt{decltype(auto)} returning a reference to a local, or to a temporary's subobject, dangles just as a hand-written \texttt{T\&} return would. It preserves whatever category the expression has --- including a dangling one. Use it for \emph{forwarding} an existing object's category, not for returning locals.
+\end{quote}
+
+\section{Professional Insights}
+\label{sec:c14-functions-insights}
+
+\textbf{Reach for generic lambdas to cut comparator and projection boilerplate.} A \texttt{[](const auto\& a, const auto\& b)\{ ... \}} comparator passed to \texttt{std::sort} or \texttt{std::max\_element} avoids spelling the iterator's value type and adapts automatically if that type changes. Keep parameters \texttt{const auto\&} or \texttt{auto\&\&} so you don't silently copy elements.
+
+\textbf{Init-capture is how you make closures own resources.} Any time a closure outlives its enclosing scope --- a task queued to a thread pool, a continuation handed to \texttt{std::async}, a callback stored in a handler table --- capture move-only payloads with \texttt{[p = std::move(ptr)]}. It gives the closure correct ownership and lifetime instead of a borrowed pointer that may dangle.
+
+\textbf{Default to deduced returns for templates and small functions, but pin the type at API boundaries.} Return-type deduction is excellent for internal helpers and template glue. For public headers, prefer an explicit return type: it documents the contract, keeps the type stable across refactors, and avoids forcing every caller to recompile when an internal \texttt{return} expression changes.
+
+\textbf{Use \texttt{decltype(auto)} exactly when category preservation matters --- and nowhere else.} Forwarding wrappers, transparent accessors, and \texttt{operator[]} proxies need it to avoid an accidental copy or to return a true reference. Everywhere else, plain \texttt{auto} is clearer and its decay-to-value is the safer default. Never use \texttt{decltype(auto)} to return something that lives only inside the function.
