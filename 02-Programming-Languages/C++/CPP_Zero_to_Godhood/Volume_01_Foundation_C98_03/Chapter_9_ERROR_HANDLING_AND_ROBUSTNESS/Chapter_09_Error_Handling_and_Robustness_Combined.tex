@@ -1,0 +1,429 @@
+\chapter{Error Handling and Robustness}
+\label{ch:error-handling}
+
+\textit{Expecting the unexpected without crashing the system.}
+
+C++ provides two orthogonal mechanisms: \textbf{assertions} for catching programmer bugs at development time, and \textbf{exceptions} for handling runtime environmental failures gracefully. This chapter covers both, along with RAII's role in exception safety, the standard exception hierarchy, custom exception types, and debugging strategies for C++98/03.
+
+%% ============================================================
+\section{The Philosophy of Failure}
+\label{sec:philosophy-failure}
+
+\begin{center}
+\begin{tabular}{|l|l|l|}
+\hline
+\textbf{Failure type} & \textbf{Cause} & \textbf{Mechanism} \\
+\hline
+Bug               & Programmer violated a precondition & \texttt{assert} — crash in debug, removed in release \\
+Runtime error     & Environmental failure               & Exception — survive and recover \\
+\hline
+\end{tabular}
+\end{center}
+
+Never use exceptions as a control-flow mechanism for normal program paths.
+
+%% ============================================================
+\section{Assertions}
+\label{sec:assertions}
+
+\texttt{assert} from \texttt{<cassert>} evaluates a condition at runtime. If false, it prints a diagnostic and calls \texttt{abort()}. In release builds (\texttt{-DNDEBUG}), all \texttt{assert} calls compile out to zero overhead.
+
+\begin{lstlisting}[language=C++, caption={Using assert to enforce preconditions}]
+#include <iostream>
+#include <cassert>
+
+int divide(int a, int b) {
+    assert(b != 0 && "Denominator cannot be zero!");
+    return a / b;
+}
+
+int main() {
+    std::cout << divide(10, 2) << "\n";
+    return 0;
+}
+\end{lstlisting}
+
+\begin{lstlisting}[language=C++, caption={Conditional debug logging macro}]
+#include <iostream>
+
+#ifdef DEBUG
+    #define LOG(x) std::cout << "DEBUG: " << x << "\n"
+#else
+    #define LOG(x)
+#endif
+
+int main() {
+    int x = 10;
+    LOG("x is " << x); // Only printed with -DDEBUG
+    return 0;
+}
+\end{lstlisting}
+
+%% ============================================================
+\section{Basic \texttt{try-catch-throw}}
+\label{sec:try-catch-throw}
+
+\begin{lstlisting}[language=C++, caption={Basic exception flow}]
+#include <iostream>
+#include <stdexcept>
+
+void connect_to_server() {
+    bool network_down = true;
+    if (network_down)
+        throw std::runtime_error("No internet connection.");
+    std::cout << "Connected!\n";
+}
+
+int main() {
+    try {
+        connect_to_server();
+    }
+    catch (const std::runtime_error& e) {
+        std::cerr << "Error: " << e.what() << "\n";
+    }
+    return 0;
+}
+\end{lstlisting}
+
+%% ============================================================
+\section{Catching Multiple Exception Types}
+\label{sec:multiple-catch}
+
+\begin{lstlisting}[language=C++, caption={Multiple catch clauses — specific before general}]
+#include <iostream>
+#include <stdexcept>
+
+void risky(int choice) {
+    if (choice == 1) throw std::out_of_range("Index out of bounds");
+    if (choice == 2) throw std::runtime_error("Network failure");
+    if (choice == 3) throw 42;
+}
+
+int main() {
+    for (int i = 1; i <= 4; ++i) {
+        try { risky(i); }
+        catch (const std::out_of_range& e) {
+            std::cerr << "Range error: " << e.what() << "\n"; }
+        catch (const std::runtime_error& e) {
+            std::cerr << "Runtime error: " << e.what() << "\n"; }
+        catch (int e) {
+            std::cerr << "Integer exception: " << e << "\n"; }
+        catch (...) {
+            std::cerr << "Unknown exception!\n"; }
+    }
+    return 0;
+}
+\end{lstlisting}
+
+%% ============================================================
+\section{The Standard Exception Hierarchy}
+\label{sec:std-exceptions}
+
+\begin{lstlisting}[language={}, caption={Standard exception hierarchy}]
+std::exception (base)
+├── std::logic_error
+│   ├── std::invalid_argument
+│   ├── std::domain_error
+│   ├── std::length_error
+│   └── std::out_of_range
+└── std::runtime_error
+    ├── std::range_error
+    ├── std::overflow_error
+    └── std::underflow_error
+std::bad_alloc
+std::bad_cast
+std::bad_typeid
+\end{lstlisting}
+
+\begin{lstlisting}[language=C++, caption={Catching via the base class}]
+#include <iostream>
+#include <stdexcept>
+
+int main() {
+    try {
+        throw std::out_of_range("Index 99 out of [0,10)");
+    }
+    catch (const std::exception& e) { // Catches any standard exception
+        std::cerr << "Caught: " << e.what() << "\n";
+    }
+    return 0;
+}
+\end{lstlisting}
+
+%% ============================================================
+\section{Custom Exception Classes}
+\label{sec:custom-exceptions}
+
+\begin{lstlisting}[language=C++, caption={Simple custom exception}]
+#include <exception>
+#include <iostream>
+
+class DatabaseError : public std::exception {
+public:
+    virtual const char* what() const throw() {
+        return "Database connection failed";
+    }
+};
+
+int main() {
+    try { throw DatabaseError(); }
+    catch (const std::exception& e) { std::cerr << e.what() << "\n"; }
+    return 0;
+}
+\end{lstlisting}
+
+\begin{lstlisting}[language=C++, caption={Custom exception with structured error data}]
+#include <stdexcept>
+#include <string>
+#include <iostream>
+
+class AppError : public std::runtime_error {
+    int error_code;
+    int line_number;
+public:
+    AppError(const std::string& msg, int code, int line)
+        : std::runtime_error(msg), error_code(code), line_number(line) {}
+    virtual ~AppError() throw() {}
+    int getCode()       const throw() { return error_code; }
+    int getLineNumber() const throw() { return line_number; }
+};
+
+int main() {
+    try { throw AppError("Parse failed", -12, 42); }
+    catch (const AppError& e) {
+        std::cerr << e.what()
+                  << " (code=" << e.getCode()
+                  << ", line=" << e.getLineNumber() << ")\n";
+    }
+    return 0;
+}
+\end{lstlisting}
+
+%% ============================================================
+\section{Exception Specifications (C++98)}
+\label{sec:exception-specifications}
+
+\begin{lstlisting}[language=C++, caption={C++98 exception specifications}]
+void func()     throw(int)  { throw 42; } // May throw int
+void no_throw() throw()     {}            // No exceptions (deprecated in C++11)
+void anything()             {}            // May throw anything
+\end{lstlisting}
+
+If a function with \texttt{throw(T)} throws an unlisted type, \texttt{std::unexpected()} is called, which by default calls \texttt{std::terminate()}. Exception specifications were \textbf{deprecated in C++11} and \textbf{removed in C++17}; replaced by \texttt{noexcept}.
+
+%% ============================================================
+\section{Stack Unwinding and RAII}
+\label{sec:stack-unwinding}
+
+When an exception is thrown, C++ exits each scope between the \texttt{throw} and the matching \texttt{catch}, calling the \textbf{destructor} of every local object in reverse order.
+
+\begin{lstlisting}[language=C++, caption={Stack unwinding guarantees destructors run}]
+#include <iostream>
+#include <stdexcept>
+
+class Resource {
+    const char* name;
+public:
+    explicit Resource(const char* n) : name(n) {
+        std::cout << name << ": Acquired\n";
+    }
+    ~Resource() { std::cout << name << ": Released\n"; }
+};
+
+void risky() {
+    Resource r("File handle");
+    throw std::runtime_error("Boom!");
+}  // r's destructor IS called during unwinding
+
+int main() {
+    try { risky(); }
+    catch (...) { std::cout << "Caught exception\n"; }
+    return 0;
+}
+/* Output:
+   File handle: Acquired
+   File handle: Released
+   Caught exception */
+\end{lstlisting}
+
+\textbf{Raw \texttt{new}/\texttt{delete} inside a function is dangerous} --- the \texttt{delete} is skipped on exception. Wrap resources in RAII classes or \texttt{std::vector}.
+
+%% ============================================================
+\section{Rethrowing Exceptions}
+\label{sec:rethrow}
+
+\begin{lstlisting}[language=C++, caption={Correct rethrow preserves dynamic type}]
+#include <iostream>
+#include <stdexcept>
+
+void log_and_rethrow() {
+    try {
+        throw std::runtime_error("Original error");
+    }
+    catch (const std::exception& e) {
+        std::cerr << "Logging: " << e.what() << "\n";
+        throw;     // Correct: rethrows original type
+        // throw e; // WRONG: slices to std::exception copy!
+    }
+}
+
+int main() {
+    try { log_and_rethrow(); }
+    catch (const std::exception& e) {
+        std::cerr << "Final: " << e.what() << "\n";
+    }
+    return 0;
+}
+\end{lstlisting}
+
+%% ============================================================
+\section{Best Practices: Throw by Value, Catch by \texttt{const\&}}
+\label{sec:throw-catch-rules}
+
+\begin{lstlisting}[language=C++, caption={Correct throw/catch pattern}]
+try {
+    throw std::runtime_error("Disk full"); // Throw by VALUE
+}
+catch (const std::runtime_error& e) {     // Catch by CONST REFERENCE
+    std::cout << e.what() << "\n";
+}
+\end{lstlisting}
+
+\begin{itemize}
+    \item \textbf{No copy}: catching by reference avoids constructing a copy of the exception object.
+    \item \textbf{No slicing}: catching a derived type by reference preserves all derived-class data via polymorphism.
+    \item \textbf{No pointer ownership}: never throw \texttt{new ExceptionType()} --- the catcher cannot safely \texttt{delete} it.
+\end{itemize}
+
+%% ============================================================
+\section{Nested Exceptions and Function Try Blocks}
+\label{sec:nested-exceptions}
+
+\begin{lstlisting}[language=C++, caption={Nested try-catch}]
+#include <iostream>
+#include <stdexcept>
+
+int main() {
+    try {
+        try {
+            throw std::out_of_range("inner error");
+        }
+        catch (const std::out_of_range& e) {
+            std::cerr << "Inner: " << e.what() << "\n";
+            throw; // Propagate
+        }
+    }
+    catch (const std::exception& e) {
+        std::cerr << "Outer: " << e.what() << "\n";
+    }
+    return 0;
+}
+\end{lstlisting}
+
+\begin{lstlisting}[language=C++, caption={Constructor function try block}]
+#include <stdexcept>
+#include <iostream>
+
+class Widget {
+    int* data;
+public:
+    Widget(int n)
+    try : data(new int[n])
+    {
+        if (n == 0) throw std::invalid_argument("Size must be > 0");
+    }
+    catch (const std::bad_alloc& e) {
+        std::cerr << "Allocation failed: " << e.what() << "\n";
+        throw;
+    }
+    ~Widget() { delete[] data; }
+};
+
+int main() {
+    try { Widget w(0); }
+    catch (const std::exception& e) {
+        std::cerr << "Caught: " << e.what() << "\n";
+    }
+    return 0;
+}
+\end{lstlisting}
+
+%% ============================================================
+\section{Debugging Strategies for C++98/03}
+\label{sec:debugging}
+
+\subsection{GDB / LLDB Command Reference}
+
+\begin{center}
+\begin{tabular}{|l|l|}
+\hline
+\textbf{Command} & \textbf{Effect} \\
+\hline
+\texttt{break file.cpp:42}  & Set breakpoint at line 42 \\
+\texttt{run}                & Start the program \\
+\texttt{print varname}      & Print variable value \\
+\texttt{backtrace} / \texttt{bt} & Show call stack \\
+\texttt{watch varname}      & Pause when variable changes \\
+\texttt{step} / \texttt{next}  & Step into / step over \\
+\hline
+\end{tabular}
+\end{center}
+
+\subsection{Compile-Time Assertions (C++98)}
+
+\begin{lstlisting}[language=C++, caption={C++98 compile-time assertion trick}]
+template<bool B> struct CompileTimeCheck {};
+template<>       struct CompileTimeCheck<true> { typedef void type; };
+
+// Fails at compile time if sizeof(int) != 4
+typedef CompileTimeCheck<sizeof(int) == 4>::type INT_IS_4_BYTES;
+\end{lstlisting}
+
+C++11 provides the cleaner \texttt{static\_assert(condition, "message")}.
+
+%% ============================================================
+\section{Professional Insights: Exception Safety and Design}
+\label{sec:exception-safety}
+
+\subsection{Exception Safety Guarantees}
+
+\begin{center}
+\begin{tabular}{|l|l|}
+\hline
+\textbf{Guarantee} & \textbf{What it means} \\
+\hline
+\textbf{No-throw}  & Never throws. Marked \texttt{throw()} in C++98 or \texttt{noexcept} in C++11. \\
+\textbf{Strong}    & If it throws, no observable state change (rollback semantics). \\
+\textbf{Basic}     & If it throws, no resources are leaked; objects are in a valid state. \\
+\hline
+\end{tabular}
+\end{center}
+
+\subsection{\texttt{noexcept} Forward Reference (C++11)}
+
+C++11 replaces \texttt{throw()} with \texttt{noexcept}:
+
+\begin{lstlisting}[language=C++, caption={noexcept marks non-throwing functions}]
+void increment(int& x) noexcept { x++; }
+// If it does throw: std::terminate() is called immediately.
+// Compiler skips all exception-unwinding bookkeeping.
+\end{lstlisting}
+
+\subsection{Exception Hierarchy Design Rules}
+
+\begin{itemize}
+    \item Derive all application exceptions from \texttt{std::exception} so catch-all handlers use \texttt{const std::exception\&}.
+    \item Use \texttt{std::runtime\_error} for recoverable failures; \texttt{std::logic\_error} for programming errors.
+    \item \textbf{Never throw from destructors.} A destructor called during stack unwinding that itself throws results in \texttt{std::terminate()}.
+\end{itemize}
+
+\subsection{When Not to Use Exceptions}
+
+Exceptions carry overhead for setting up unwinding tables and branch-testing on every entry to a try block. They are inappropriate for:
+\begin{itemize}
+    \item Functions on hot paths called millions of times per second (HFT, game physics).
+    \item Signal handlers and interrupt service routines.
+    \item Deeply embedded systems where unwinding tables inflate binary size.
+\end{itemize}
+
+In these contexts, prefer error codes (\texttt{int}, \texttt{enum}) or sentinel return values with explicit caller-side checking.

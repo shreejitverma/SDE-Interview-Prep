@@ -1,0 +1,282 @@
+\chapter{Move Semantics and Smart Pointers}
+\label{ch:move-smart-pointers}
+
+\textit{The two features that, together, abolished the ``performance tax'' of C++ and replaced manual memory management with a formal model of ownership.}
+
+C++11 made two intertwined contributions to resource management. \textbf{Move semantics} let an object transfer ownership of its internal resources instead of deep-copying them, collapsing expensive copies into pointer swaps. \textbf{Smart pointers} encode ownership in the type system, making \texttt{new}/\texttt{delete} obsolete in user code. This chapter develops both from first principles, then unifies them through perfect forwarding.
+
+%% ============================================================
+\section{The Move Revolution}
+
+Given a \texttt{std::vector<std::string>} of 10,000 long strings, C++98 offered two bad choices: pass by pointer (fast but ambiguous ownership) or pass by value (safe but cloning all 10,000 strings only to destroy the originals microseconds later). This was the \textbf{performance tax}. C++11 abolished it with \textbf{move semantics}: when the source of a copy is a temporary, its resources can be \emph{stolen} rather than duplicated.
+
+An \textbf{lvalue} is a \emph{house} --- a permanent address with a name that persists. An \textbf{rvalue} is a \emph{shipping box} --- temporary, in transit, about to be discarded. In \texttt{int x = 10;}, \texttt{x} is the house and \texttt{10} is the delivery box.
+
+%% ============================================================
+\section{Value Categories: lvalue, rvalue, and the Full Taxonomy}
+
+Every expression has a \textbf{value category}, defined by two properties: \emph{identity} (refers to a named object with an address) and \emph{movability} (may be bound to a \texttt{T\&\&} parameter).
+
+\begin{center}
+\begin{tabular}{|l|c|c|l|}
+\hline
+\textbf{Category} & \textbf{Identity} & \textbf{Movable} & \textbf{Examples} \\
+\hline
+lvalue            & Yes & No  & \texttt{x}, \texttt{*ptr}, string literal \\
+xvalue            & Yes & Yes & \texttt{std::move(x)}, \texttt{X\{4\}.n} \\
+prvalue           & No  & Yes & \texttt{42}, \texttt{x + 2}, \texttt{X\{4\}}, a lambda \\
+glvalue = lval$\cup$xval & Yes & --- & anything with identity \\
+rvalue = xval$\cup$prval  & --- & Yes & anything movable-from \\
+\hline
+\end{tabular}
+\end{center}
+
+\begin{lstlisting}[language=C++, caption={classifying expressions}]
+struct X { int n; };
+extern X x;
+4;                   // prvalue: no identity
+x;                   // lvalue
+std::move(x);        // xvalue: identity AND movable
+X{4};                // prvalue
+X{4}.n;              // xvalue
+\end{lstlisting}
+
+The crucial rule: \textbf{a named rvalue reference is itself an lvalue.}
+
+\begin{lstlisting}[language=C++, caption={a named rvalue reference is an lvalue}]
+std::string str("init");
+std::string&& str_ref = std::move(str); // str_ref is a named variable
+std::string test(str_ref);              // COPY -- str_ref is an lvalue!
+std::string test2(std::move(str_ref));  // MOVE -- re-apply std::move
+\end{lstlisting}
+
+%% ============================================================
+\section{Rvalue References (\texttt{T\&\&})}
+
+The \textbf{rvalue reference} \texttt{T\&\&} binds \emph{only} to rvalues. Two reference types enable two behaviors: lvalue-reference overloads copy; rvalue-reference overloads move.
+
+\begin{lstlisting}[language=C++, caption={rvalue references bind only to rvalues}]
+int x = 10;
+int&  lref = x;   // lvalue ref binds to an lvalue
+// int&& bad = x; // ERROR: cannot bind rvalue ref to an lvalue
+int&& rref = 20;  // OK: 20 is an rvalue
+\end{lstlisting}
+
+%% ============================================================
+\section{\texttt{std::move}: The Shipping Label}
+
+\textbf{\texttt{std::move} does not move anything.} It is an unconditional cast to an rvalue reference --- a \emph{shipping label} on an lvalue. The actual transfer happens inside a move constructor or move assignment.
+
+\begin{lstlisting}[language=C++, caption={std::move enables the move overload}]
+Vector v1(100);
+Vector v2 = std::move(v1); // selects the move constructor
+// v1 is now valid-but-unspecified (typically empty)
+\end{lstlisting}
+
+Do not read a moved-from object except to assign to it or destroy it.
+
+%% ============================================================
+\section{The Move Constructor and Move Assignment}
+
+\begin{lstlisting}[language=C++, caption={move constructor and move assignment}]
+class BigData {
+    int*   buffer;
+    size_t size;
+public:
+    BigData(BigData&& other) noexcept
+        : buffer(other.buffer), size(other.size) { // A. steal
+        other.buffer = nullptr;                     // B. nullify victim
+        other.size   = 0;
+    }
+    BigData& operator=(BigData&& other) noexcept {
+        if (this != &other) {
+            delete[] buffer;        // free own resources
+            buffer = other.buffer;  // steal
+            size   = other.size;
+            other.buffer = nullptr; // nullify source
+            other.size   = 0;
+        }
+        return *this;
+    }
+};
+\end{lstlisting}
+
+\textbf{Why \texttt{noexcept} is mandatory.} If a move constructor is not \texttt{noexcept}, \texttt{std::vector} reallocation cannot preserve the strong exception guarantee, so it falls back to \emph{copying} --- silently discarding your optimization. Always mark moves \texttt{noexcept}. (Declaring any of copy/dtor/move --- the ``Rule of Five'' --- suppresses implicit moves; \texttt{= default} or declare them all.)
+
+%% ============================================================
+\section{Complexity Optimization: O(n\textsuperscript{2}) to O(n)}
+
+Moving a container is O(1); copying is O(n). Immutable-style recursion that logically copies a container each step can collapse from O(n\textsuperscript{2}) to O(n).
+
+\begin{lstlisting}[language=C++, caption={immutable-style recursion made linear by moves}]
+std::vector<int> concat(std::vector<int> const& v, int x) {
+    auto result = v;     // the only real copy
+    result.push_back(x);
+    return result;       // returned by move / RVO
+}
+\end{lstlisting}
+
+Never write \texttt{return std::move(local);} --- it can defeat copy elision.
+
+%% ============================================================
+\section{Perfect Forwarding and Reference Collapsing}
+
+\subsection{Forwarding (Universal) References}
+When \texttt{T} is a \emph{deduced} template parameter, \texttt{T\&\&} is a \textbf{forwarding reference}: it binds to anything, and \texttt{T} encodes the argument's value category.
+
+\subsection{Reference Collapsing Rules}
+\begin{center}
+\begin{tabular}{|c|c|}
+\hline \textbf{Combination} & \textbf{Collapses to} \\ \hline
+\texttt{\&} + \texttt{\&}   & \texttt{\&} \\
+\texttt{\&} + \texttt{\&\&} & \texttt{\&} \\
+\texttt{\&\&} + \texttt{\&} & \texttt{\&} \\
+\texttt{\&\&} + \texttt{\&\&} & \texttt{\&\&} \\ \hline
+\end{tabular}
+\end{center}
+Mnemonic: an lvalue reference is a ``black hole'' --- any \texttt{\&} makes the result \texttt{\&}; only \texttt{\&\& + \&\&} stays \texttt{\&\&}.
+
+\subsection{\texttt{std::forward} and Factory Functions}
+
+\begin{lstlisting}[language=C++, caption={a perfectly-forwarding wrapper}]
+template<typename T>
+void wrapper(T&& arg) {           // forwarding reference
+    func(std::forward<T>(arg));   // preserves value category
+}
+\end{lstlisting}
+
+\begin{lstlisting}[language=C++, caption={variadic perfect-forwarding factory (this IS make\_unique)}]
+template<class T, class... A>
+std::unique_ptr<T> make_unique(A&&... args) {
+    return std::unique_ptr<T>(new T(std::forward<A>(args)...));
+}
+\end{lstlisting}
+
+This is how \texttt{emplace\_back}, \texttt{make\_shared}, and \texttt{make\_unique} avoid extra copies.
+
+%% ============================================================
+\section{Smart Pointers and RAII}
+
+Manual dynamic memory invited four defects: memory leaks, dangling pointers, double frees, and exception-unsafety. Smart pointers solve all four via \textbf{RAII}. The distinguishing axis is \textbf{ownership}:
+
+\begin{center}
+\begin{tabular}{|l|l|l|l|}
+\hline
+\textbf{Type} & \textbf{Ownership} & \textbf{Copyable?} & \textbf{Use case} \\
+\hline
+\texttt{unique\_ptr} & Exclusive & No (move-only) & Default single-owner \\
+\texttt{shared\_ptr} & Shared    & Yes & Multiple co-owners \\
+\texttt{weak\_ptr}   & None      & Yes & Observe; break cycles \\
+\hline
+\end{tabular}
+\end{center}
+
+%% ============================================================
+\section{\texttt{std::unique\_ptr}: Exclusive Ownership}
+
+A \texttt{unique\_ptr} exclusively owns its pointee, cannot be copied (only moved), and has zero overhead over a raw pointer. It is the \textbf{default}.
+
+\begin{lstlisting}[language=C++, caption={move-only ownership transfer}]
+std::unique_ptr<int> make() { return std::unique_ptr<int>(new int(5)); }
+auto p1 = make();
+// auto bad = p1;        // ERROR: copy deleted
+auto p2 = std::move(p1); // ownership transferred; p1 is null
+\end{lstlisting}
+
+\begin{lstlisting}[language=C++, caption={custom deleters and arrays}]
+auto closer = [](FILE* f){ if (f) fclose(f); };
+std::unique_ptr<FILE, decltype(closer)> file(fopen("d.txt","r"), closer);
+
+std::unique_ptr<int[]> arr(new int[10]); // array specialization
+arr[2] = 10;
+\end{lstlisting}
+
+\texttt{std::make\_unique} is \textbf{C++14}, not C++11. A C++11 version:
+
+\begin{lstlisting}[language=C++, caption={a C++11 make\_unique}]
+template<typename T, typename... Args>
+typename std::enable_if<!std::is_array<T>::value, std::unique_ptr<T> >::type
+make_unique(Args&&... args) {
+    return std::unique_ptr<T>(new T(std::forward<Args>(args)...));
+}
+\end{lstlisting}
+
+%% ============================================================
+\section{\texttt{std::shared\_ptr}: Shared Ownership}
+
+\texttt{shared\_ptr} implements shared ownership via reference counting; the object is destroyed when the last owner is. It carries two pointers (object + control block); the \textbf{control block} stores the strong count, weak count, deleter/allocator, and (with \texttt{make\_shared}) the object itself.
+
+\begin{lstlisting}[language=C++, caption={reference counting in action}]
+auto p1 = std::make_shared<int>(100); // strong count = 1; one allocation
+{ auto p2 = p1;  /* count = 2 */  std::cout << p1.use_count(); }
+// p2 gone -> count = 1; p1 gone -> count = 0 -> freed
+\end{lstlisting}
+
+\textbf{Prefer \texttt{make\_shared}}: one allocation, exception-safe. Pitfall --- two \texttt{shared\_ptr}s from the \emph{same raw pointer} create independent control blocks and double-free:
+
+\begin{lstlisting}[language=C++, caption={the double-free trap}]
+Foo* raw = new Foo;
+std::shared_ptr<Foo> a(raw);
+std::shared_ptr<Foo> b(raw);  // WRONG: separate control block -> UB
+\end{lstlisting}
+
+\begin{lstlisting}[language=C++, caption={minimal shared\_ptr showing the control block}]
+template<typename T>
+class SharedPtr {
+    T* ptr;
+    struct ControlBlock { std::atomic<int> ref_count{1}; }* cb;
+public:
+    explicit SharedPtr(T* p) : ptr(p), cb(new ControlBlock()) {}
+    SharedPtr(const SharedPtr& o) : ptr(o.ptr), cb(o.cb) { if (cb) ++cb->ref_count; }
+    ~SharedPtr() { if (cb && --cb->ref_count == 0) { delete ptr; delete cb; } }
+};
+\end{lstlisting}
+
+A \texttt{shared\_ptr} is twice a raw pointer's size, and every copy/destruction is an \emph{atomic} increment/decrement. Use it only when ownership is genuinely shared.
+
+%% ============================================================
+\section{\texttt{std::weak\_ptr}: Non-Owning Observation}
+
+A \texttt{weak\_ptr} references a \texttt{shared\_ptr}-managed object without affecting the strong count. \texttt{lock()} yields a \texttt{shared\_ptr} if alive, else empty.
+
+\begin{lstlisting}[language=C++, caption={observing without owning}]
+auto sp = std::make_shared<int>(42);
+std::weak_ptr<int> wp = sp;
+if (auto locked = wp.lock()) { use(*locked); }
+sp.reset();                       // last owner gone -> destroyed
+if (auto locked = wp.lock()) { /*...*/ } else { /* expired */ }
+\end{lstlisting}
+
+\begin{lstlisting}[language=C++, caption={weak\_ptr breaks an ownership cycle}]
+struct B;
+struct A { std::shared_ptr<B> b; };
+struct B { std::weak_ptr<A> a; };   // back-edge is weak -> no leak
+\end{lstlisting}
+
+%% ============================================================
+\section{\texttt{enable\_shared\_from\_this} and Smart-Pointer Casts}
+
+\begin{lstlisting}[language=C++, caption={shared\_from\_this}]
+class Widget : public std::enable_shared_from_this<Widget> {
+public:
+    void register_self() {
+        std::shared_ptr<Widget> self = shared_from_this(); // shares existing block
+        EventManager::add(self);
+    }
+};
+auto w = std::make_shared<Widget>();
+w->register_self();
+\end{lstlisting}
+
+Calling \texttt{shared\_from\_this()} on an object not already owned by a \texttt{shared\_ptr} is undefined behavior. To convert between related \texttt{shared\_ptr} types preserving the control block, use \texttt{static\_pointer\_cast}, \texttt{dynamic\_pointer\_cast}, \texttt{const\_pointer\_cast}.
+
+%% ============================================================
+\section{Professional Insights}
+
+\textbf{Design rules.} Default to \texttt{unique\_ptr}; upgrade to \texttt{shared\_ptr} only when ownership is genuinely shared; use \texttt{weak\_ptr} for non-owning access and to break cycles; avoid \texttt{new}/\texttt{delete}; think in ownership.
+
+\textbf{pImpl / value\_ptr.} A value-semantics smart pointer underpins the pImpl idiom, hiding implementation behind a forward-declared pointer and cutting compile-time coupling.
+
+\textbf{\texttt{noexcept} moves.} \texttt{std::vector} growth uses \texttt{std::move\_if\_noexcept}; a throwing move forces the slow copy path. Audit that movable types' moves are \texttt{noexcept}.
+
+\textbf{Atomic ref-counts are not free.} Every \texttt{shared\_ptr} copy is an atomic RMW serializing cache lines across cores. In hot paths pass \texttt{const shared\_ptr\&} or an observer, reserving by-value \texttt{shared\_ptr} for genuine ownership transfer.

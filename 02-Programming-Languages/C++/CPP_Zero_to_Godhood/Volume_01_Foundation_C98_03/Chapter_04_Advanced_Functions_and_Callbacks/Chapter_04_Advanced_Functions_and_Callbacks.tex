@@ -1,0 +1,578 @@
+\chapter{Advanced Functions \& Callbacks}
+\label{ch:advanced-functions-callbacks}
+
+\textit{The engines of your application --- and the low-level data manipulation that powers them.}
+
+A function is the smallest unit of reusable logic in C++, but the language wraps that simple idea in a surprising amount of machinery: parameter-passing semantics that decide whether you copy a megabyte or a pointer, overload resolution that picks one of many same-named functions, the call stack that makes recursion possible and stack overflow inevitable, and function pointers that let you treat code itself as data. This chapter takes you from the anatomy of a single function through the callback patterns that underpin every event-driven system, and closes with the bit-level and floating-point fundamentals that separate engineers who \textit{use} the hardware from those who merely tolerate it.
+
+%% ============================================================
+\section{Anatomy of a Function}
+\label{sec:function-anatomy}
+
+Consider writing a game where every time the player takes damage you must calculate armor reduction, deduct health, play a sound effect, and update the screen. Inlining those twenty lines at every call site produces a bloated, unmaintainable program. \textbf{Functions} solve this: a function is a named block of code that performs a specific task, written once and called as often as needed. This is the core of the \textbf{DRY Principle --- Don't Repeat Yourself}.
+
+To define a function you specify four things:
+
+\begin{enumerate}
+    \item \textbf{Return type} --- what kind of data the function gives back when it finishes. If it returns nothing, the type is \texttt{void}.
+    \item \textbf{Name} --- the identifier for the action, e.g.\ \texttt{calculateDamage}.
+    \item \textbf{Parameters} --- the data the function needs to do its job, e.g.\ \texttt{int damage\_amount}.
+    \item \textbf{Body} --- the code to execute, wrapped in \texttt{\{ \}}.
+\end{enumerate}
+
+\begin{lstlisting}[language=C++, caption={The four parts of a function definition}]
+// return_type  name (parameters)
+int add(int a, int b) {
+    int result = a + b; // The body
+    return result;      // The return statement
+}
+\end{lstlisting}
+
+Once defined, you \textbf{call} the function from \texttt{main()} or from any other function:
+
+\begin{lstlisting}[language=C++, caption={Calling a function}]
+int main() {
+    int sum = add(5, 10); // sum becomes 15
+    return 0;
+}
+\end{lstlisting}
+
+%% ============================================================
+\section{Passing Arguments: Value, Reference, and \texttt{const} Reference}
+\label{sec:argument-passing}
+
+How an argument travels into a function is one of the most consequential decisions in C++. There are three mechanisms.
+
+\subsection{Pass by Value (The Copy)}
+
+By default, C++ copies the value into the function. The function operates on a private duplicate.
+
+\begin{lstlisting}[language=C++, caption={Pass by value modifies only a copy}]
+void tryToChange(int x) {
+    x = 99; // Only changes the local copy
+}
+
+int main() {
+    int score = 10;
+    tryToChange(score);
+    // score is STILL 10! The function only modified a photocopy.
+    return 0;
+}
+\end{lstlisting}
+
+\textbf{Pros:} Safe --- the function cannot corrupt your original data. \textbf{Cons:} Slow for large objects --- passing a 3D model copies millions of bytes just to hand it over.
+
+\subsection{Pass by Reference (\texttt{\&}) (The Original)}
+
+Adding an ampersand \texttt{\&} to the parameter type passes a \textbf{reference}. You instruct the function: do not make a copy; operate on the exact memory where the original variable lives.
+
+\begin{lstlisting}[language=C++, caption={Pass by reference modifies the original}]
+void actuallyChange(int& x) {
+    x = 99; // Modifies the original variable directly!
+}
+
+int main() {
+    int score = 10;
+    actuallyChange(score);
+    // score is now 99!
+    return 0;
+}
+\end{lstlisting}
+
+\textbf{Pros:} No copying, and the function can modify the original. \textbf{Cons:} Dangerous if modification was not intended.
+
+\subsection{Pass by \texttt{const} Reference (The Holy Grail)}
+
+To combine the speed of a reference with a guarantee against accidental modification, make the reference \texttt{const}.
+
+\begin{lstlisting}[language=C++, caption={const reference --- fast and safe}]
+#include <iostream>
+#include <string>
+
+// Fast because it's a reference. Safe because it's const.
+void printScore(const std::string& player_name) {
+    std::cout << player_name;
+    // player_name = "Hacker"; // ERROR! The compiler will stop this.
+}
+\end{lstlisting}
+
+\textbf{Godhood Tip --- When to use which:}
+\begin{itemize}
+    \item \textbf{Fundamental types} (\texttt{int}, \texttt{double}, \texttt{bool}): pass by \textbf{value}. They are so small that copying is faster than dereferencing a hidden pointer.
+    \item \textbf{Large objects} (\texttt{std::string}, \texttt{std::vector}, classes): pass by \textbf{\texttt{const} reference}.
+    \item \textbf{When you must modify the caller's variable}: pass by \textbf{reference}.
+\end{itemize}
+
+%% ============================================================
+\section{Default Parameters}
+\label{sec:default-parameters}
+
+You can supply default values for parameters. If the caller omits them, the compiler fills them in.
+
+\begin{lstlisting}[language=C++, caption={Default parameter values}]
+#include <iostream>
+#include <string>
+
+void greet(std::string name = "Traveler", int level = 1) {
+    std::cout << "Hello, " << name << " (Lvl " << level << ")\n";
+}
+
+int main() {
+    greet("Aloy", 50); // Prints: Hello, Aloy (Lvl 50)
+    greet("Link");     // Prints: Hello, Link (Lvl 1)
+    greet();           // Prints: Hello, Traveler (Lvl 1)
+    return 0;
+}
+\end{lstlisting}
+
+\textbf{Rule:} default parameters must always appear at the \textit{end} of the parameter list. Once a parameter has a default, every parameter to its right must also have one.
+
+%% ============================================================
+\section{Function Overloading}
+\label{sec:function-overloading}
+
+In C, printing an \texttt{int} and a \texttt{double} required two differently named functions, \texttt{print\_int()} and \texttt{print\_double()}. C++ supports \textbf{function overloading}: multiple functions may share the \textit{exact same name} as long as their parameter lists differ. The compiler selects the correct overload from the argument types at the call site.
+
+\begin{lstlisting}[language=C++, caption={Two overloads of print}]
+#include <iostream>
+
+void print(int x) {
+    std::cout << "Printing an integer: " << x << "\n";
+}
+
+void print(double x) {
+    std::cout << "Printing a double: " << x << "\n";
+}
+
+int main() {
+    print(42);    // Calls the int version
+    print(3.14);  // Calls the double version
+    return 0;
+}
+\end{lstlisting}
+
+Note that the \textbf{return type alone cannot distinguish overloads} --- overload resolution considers only the parameter list.
+
+%% ============================================================
+\section{The \texttt{inline} Keyword}
+\label{sec:inline}
+
+Every function call carries a small penalty: the CPU saves its current state, jumps to the function's address, executes, and jumps back. For trivially small functions, this overhead can exceed the work itself. The \texttt{inline} keyword \textit{suggests} that the compiler copy the function body directly into each call site, eliminating the jump.
+
+\begin{lstlisting}[language=C++, caption={inline suggestion}]
+inline int square(int x) {
+    return x * x;
+}
+
+int main() {
+    int y = square(5);
+    // The compiler may rewrite the above as: int y = 5 * 5;
+    return 0;
+}
+\end{lstlisting}
+
+\texttt{inline} also accepts conditional expressions and floating-point work:
+
+\begin{lstlisting}[language=C++, caption={inline with a conditional expression}]
+#include <iostream>
+using namespace std;
+
+inline int square(int x) {
+    return x * x;
+}
+
+inline double max_value(double a, double b) {
+    return (a > b) ? a : b;
+}
+
+int main() {
+    cout << square(5) << endl;            // 25
+    cout << max_value(3.5, 2.1) << endl;  // 3.5
+    return 0;
+}
+\end{lstlisting}
+
+\texttt{inline} is only a hint. Modern compilers (GCC, Clang) routinely ignore the keyword and make their own inlining decisions from complex heuristics. The keyword's \textit{guaranteed} effect in C++98/03 is on linkage: an \texttt{inline} function may be defined in a header and included in multiple translation units without violating the One Definition Rule.
+
+%% ============================================================
+\section{Recursion}
+\label{sec:recursion}
+
+A \textbf{recursive function} calls itself. Recursion is the natural expression of problems with self-similar structure --- tree traversal, sorting, and divide-and-conquer algorithms. Every recursive function \textit{must} have a \textbf{base case}: a condition that stops the recursion. Without one, it calls itself forever.
+
+\begin{lstlisting}[language=C++, caption={Factorial via recursion}]
+int factorial(int n) {
+    if (n <= 1) {
+        return 1;  // Base case: stop calling yourself
+    }
+    return n * factorial(n - 1);  // Recursive case
+}
+\end{lstlisting}
+
+The classic Fibonacci sequence is elegant recursively but exponentially slow, because it recomputes the same subproblems repeatedly. \textbf{Memoization} --- caching already-computed results --- collapses the exponential blowup to linear time.
+
+\begin{lstlisting}[language=C++, caption={Naive vs. memoized recursion}]
+#include <iostream>
+using namespace std;
+
+// Fibonacci using recursion (inefficient: O(2^n))
+int fibonacci(int n) {
+    if (n <= 1) return n;
+    return fibonacci(n - 1) + fibonacci(n - 2);
+}
+
+// Fibonacci with memoization (efficient: O(n))
+int fib_memo(int n, int memo[]) {
+    if (n <= 1) return n;
+    if (memo[n] != -1) return memo[n];
+
+    memo[n] = fib_memo(n - 1, memo) + fib_memo(n - 2, memo);
+    return memo[n];
+}
+
+int main() {
+    cout << factorial(5) << endl;   // 120
+    cout << fibonacci(10) << endl;  // 55
+
+    int memo[11];
+    for (int i = 0; i < 11; i++) memo[i] = -1;
+    cout << fib_memo(10, memo) << endl;  // 55
+
+    return 0;
+}
+\end{lstlisting}
+
+%% ============================================================
+\section{The Call Stack and Stack Overflow}
+\label{sec:call-stack}
+
+To understand recursion --- and to understand why programs crash --- you must understand the \textbf{call stack}.
+
+Think of the stack as a physical stack of cafeteria trays. When your program starts, the OS places a tray for \texttt{main()} on the table. Inside \texttt{main()} you call \texttt{add()}; a new tray for \texttt{add()} goes on top. If \texttt{add()} calls \texttt{multiply()}, a \texttt{multiply()} tray goes on top of that.
+
+\textbf{The rule of the stack:} the CPU can only see and work on the tray at the very top. When \texttt{multiply()} finishes, its tray is popped off and destroyed, revealing the \texttt{add()} tray beneath it; the CPU resumes \texttt{add()}. Each tray (a \textbf{stack frame}) holds that invocation's local variables and bookkeeping.
+
+\textbf{Stack Overflow.} What happens when a recursive function forgets its base case? It calls itself, adding a tray. It calls itself again, another tray. After tens of thousands of calls the stack of trays hits the ceiling. The operating system detects the exhaustion and instantly kills the program before it consumes all available memory. This is a \textbf{stack overflow} --- the most famous crash in computer science.
+
+%% ============================================================
+\section{Variadic Functions}
+\label{sec:variadic-functions}
+
+A \textbf{variadic function} accepts a variable number of arguments. The C-style mechanism uses the \texttt{<cstdarg>} macros \texttt{va\_list}, \texttt{va\_start}, \texttt{va\_arg}, and \texttt{va\_end}. The first fixed parameter typically encodes how many variadic arguments follow.
+
+\begin{lstlisting}[language=C++, caption={A variadic sum using <cstdarg>}]
+#include <iostream>
+#include <cstdarg>
+using namespace std;
+
+// Function with a variable number of arguments
+int sum(int count, ...) {
+    va_list args;
+    va_start(args, count);
+
+    int total = 0;
+    for (int i = 0; i < count; i++) {
+        total += va_arg(args, int);
+    }
+
+    va_end(args);
+    return total;
+}
+
+int main() {
+    cout << sum(3, 10, 20, 30) << endl;     // 60
+    cout << sum(5, 1, 2, 3, 4, 5) << endl;  // 15
+    return 0;
+}
+\end{lstlisting}
+
+This mechanism is type-unsafe: the compiler cannot verify that the arguments match the types \texttt{va\_arg} extracts. C++11's variadic templates supersede it for type-safe variadic code, but \texttt{<cstdarg>} remains the only option in C++98/03.
+
+%% ============================================================
+\section{Static Functions and Internal Linkage}
+\label{sec:static-functions}
+
+The \texttt{static} keyword at file scope gives a function \textbf{internal linkage} --- it is visible only within its own translation unit, preventing name collisions across files. Applied to a \textit{local variable}, \texttt{static} gives that variable \textbf{static storage duration}: it is initialized once and persists across calls.
+
+\begin{lstlisting}[language=C++, caption={static for file scope and persistent state}]
+#include <iostream>
+using namespace std;
+
+// File scope - only visible in this file
+static void internal_function() {
+    cout << "Internal function" << endl;
+}
+
+// Static local persists between calls
+int get_call_count() {
+    static int count = 0;  // Initialized once; survives across calls
+    return ++count;
+}
+
+int main() {
+    cout << get_call_count() << endl;  // 1
+    cout << get_call_count() << endl;  // 2
+    cout << get_call_count() << endl;  // 3
+
+    internal_function();  // OK in same file
+    return 0;
+}
+\end{lstlisting}
+
+%% ============================================================
+\section{Function Pointers}
+\label{sec:function-pointers}
+
+A \textbf{function pointer} stores the address of a function, letting you treat code as data --- selecting and invoking behavior at runtime. The declaration syntax names the return type, a parenthesized \texttt{(*name)}, and the parameter list.
+
+\begin{lstlisting}[language=C++, caption={Declaring and reassigning a function pointer}]
+#include <iostream>
+using namespace std;
+
+// Function pointer declaration: return_type (*name)(parameters)
+int add(int a, int b)      { return a + b; }
+int subtract(int a, int b) { return a - b; }
+int multiply(int a, int b) { return a * b; }
+
+int main() {
+    // Declare function pointer
+    int (*operation)(int, int);
+
+    // Assign a function to the pointer, then call through it
+    operation = add;
+    cout << operation(5, 3) << endl;  // 8
+
+    operation = subtract;
+    cout << operation(5, 3) << endl;  // 2
+
+    operation = multiply;
+    cout << operation(5, 3) << endl;  // 15
+
+    return 0;
+}
+\end{lstlisting}
+
+%% ============================================================
+\section{Arrays of Function Pointers}
+\label{sec:function-pointer-arrays}
+
+Because a function pointer is an ordinary value, you can store many of them in an array and dispatch by index --- a compact alternative to a \texttt{switch} for tabular dispatch (the foundation of jump tables and bytecode interpreters).
+
+\begin{lstlisting}[language=C++, caption={An array of function pointers as a dispatch table}]
+#include <iostream>
+using namespace std;
+
+int add(int a, int b)      { return a + b; }
+int subtract(int a, int b) { return a - b; }
+int multiply(int a, int b) { return a * b; }
+int divide(int a, int b)   { return a / b; }
+
+int main() {
+    // Array of function pointers
+    int (*operations[4])(int, int) = {
+        add, subtract, multiply, divide
+    };
+
+    int a = 20, b = 4;
+
+    for (int i = 0; i < 4; i++) {
+        cout << "Result: " << operations[i](a, b) << endl;
+    }
+    // Output: 24, 16, 80, 5
+
+    return 0;
+}
+\end{lstlisting}
+
+%% ============================================================
+\section{Callbacks}
+\label{sec:callbacks}
+
+A \textbf{callback} is a function passed into another component so that the component can ``call back'' into your code when an event occurs. This inverts control: the library decides \textit{when}, your code decides \textit{what}. Callbacks are the backbone of event-driven systems --- GUI buttons, network handlers, and signal dispatch.
+
+\begin{lstlisting}[language=C++, caption={A callback-driven Button}]
+#include <iostream>
+#include <string>
+using namespace std;
+
+// Callback function type
+typedef void (*Callback)(const string&);
+
+class Button {
+private:
+    Callback on_click;
+
+public:
+    void set_click_handler(Callback callback) {
+        on_click = callback;
+    }
+
+    void click() {
+        if (on_click) {
+            on_click("Button clicked!");
+        }
+    }
+};
+
+void handle_click(const string& message) {
+    cout << message << endl;
+}
+
+int main() {
+    Button button;
+    button.set_click_handler(handle_click);
+    button.click();  // Output: Button clicked!
+    return 0;
+}
+\end{lstlisting}
+
+%% ============================================================
+\section{Professional Insights: Functional Depth}
+\label{sec:functional-depth}
+
+\subsection{Recursion and Tail-Call Optimization (TCO)}
+
+When the recursive call is the \textit{last} action a function performs, it is a \textbf{tail call}. Some compilers can transform tail recursion into an iterative loop, reusing a single stack frame and eliminating the stack-overflow risk of deep recursion.
+
+\begin{lstlisting}[language=C++, caption={Tail-recursive factorial}]
+int factorial_tail(int n, int acc = 1) {
+    if (n <= 1) return acc;
+    return factorial_tail(n - 1, n * acc);
+}
+\end{lstlisting}
+
+TCO is permitted but not mandated by the C++ standard; treat it as an optimization you can encourage, not one you can rely on for correctness.
+
+\subsection{Callable Objects (Functors)}
+
+In C++, anything invocable with \texttt{()} is a \textbf{callable}:
+
+\begin{itemize}
+    \item \textbf{Function pointers} --- \texttt{void (*ptr)(int)}.
+    \item \textbf{Functors} --- classes that overload \texttt{operator()}, carrying state between calls.
+    \item \textbf{Lambdas} \textit{(C++11)} --- anonymous inline functions.
+    \item \textbf{\texttt{std::function}} \textit{(C++11)} --- a polymorphic wrapper that can hold any callable with a given signature.
+\end{itemize}
+
+\subsection{Argument-Dependent Lookup (ADL)}
+
+Functions are also searched for in the namespaces of their arguments. This is why \texttt{std::cout << obj} resolves the overloaded \texttt{operator<<} defined in the same namespace as \texttt{obj} without explicit qualification.
+
+%% ============================================================
+\section{Floating-Point Arithmetic}
+\label{sec:floating-point}
+
+Understanding how data is stored at the bit level and how floating-point numbers approximate real values is essential for high-performance C++ engineering. \textbf{Floating-point numbers store approximations}, because most base-10 decimals have no exact finite representation in binary.
+
+\subsection{The Imprecision Pitfall}
+
+Assuming floating-point equality behaves like mathematical equality is a classic mistake:
+
+\begin{lstlisting}[language=C++, caption={Floating-point equality is treacherous}]
+double a = 0.1;
+double b = 0.2;
+double c = 0.3;
+if (a + b == c) {
+    std::cout << "Exact match!" << std::endl;
+} else {
+    std::cout << "Imprecise!" << std::endl; // Usually prints this
+}
+\end{lstlisting}
+
+Under the \textbf{IEEE 754} standard used by most C++ compilers, \texttt{0.1} and \texttt{0.2} cannot be represented exactly in binary, so their sum carries a tiny rounding error and differs from the stored value of \texttt{0.3}.
+
+\subsection{Comparison Strategy}
+
+Never compare floating-point values with \texttt{==}. Compare against a small tolerance, an \textbf{epsilon}:
+
+\begin{lstlisting}[language=C++, caption={Tolerance-based floating-point comparison}]
+#include <cmath>
+#include <limits>
+
+bool nearly_equal(double a, double b) {
+    return std::abs(a - b) < std::numeric_limits<double>::epsilon();
+}
+\end{lstlisting}
+
+For values far from 1.0, a fixed epsilon is too strict or too loose; production code typically scales the tolerance by the magnitude of the operands (relative comparison).
+
+\subsection{Special Values: NaN and Infinity}
+
+\begin{itemize}
+    \item \texttt{std::numeric\_limits<double>::quiet\_NaN()} --- Not a Number, produced by undefined operations such as \texttt{0.0/0.0}. A NaN compares unequal to everything, including itself.
+    \item \texttt{std::numeric\_limits<double>::infinity()} --- positive infinity, produced by operations such as \texttt{1.0/0.0}.
+\end{itemize}
+
+%% ============================================================
+\section{Bitwise Operations and Low-Level Optimization}
+\label{sec:bitwise}
+
+Bitwise operators manipulate individual bits and are essential for embedded systems, graphics, networking, and cryptography.
+
+\begin{center}
+\begin{tabular}{|l|l|l|}
+\hline
+\textbf{Operator} & \textbf{Name} & \textbf{Effect} \\
+\hline
+\texttt{\&} & AND & Result bit is 1 only if both bits are 1 \\
+\texttt{|} & OR & Result bit is 1 if at least one bit is 1 \\
+\texttt{\^{}} & XOR & Result bit is 1 if the bits differ \\
+\texttt{\~{}} & NOT & Flips every bit \\
+\texttt{<<} & Left shift & Multiply by $2^N$ \\
+\texttt{>>} & Right shift & Divide by $2^N$ \\
+\hline
+\end{tabular}
+\end{center}
+
+\subsection{Essential Bit Tricks}
+
+\begin{enumerate}
+    \item \textbf{Check odd/even:} \texttt{(x \& 1) == 0} is even --- faster than \texttt{\% 2}.
+    \item \textbf{Multiply by 2:} \texttt{x << 1}.
+    \item \textbf{Divide by 2:} \texttt{x >> 1}.
+    \item \textbf{Clear the lowest set bit:} \texttt{x \& (x - 1)} --- the basis of Kernighan's set-bit-counting algorithm.
+    \item \textbf{Check power of two:} \texttt{(x > 0) \&\& ((x \& (x - 1)) == 0)}.
+    \item \textbf{Toggle bit N:} \texttt{x \^{}= (1 << N)}.
+    \item \textbf{Set bit N:} \texttt{x |= (1 << N)}.
+    \item \textbf{Clear bit N:} \texttt{x \&= \~{}(1 << N)}.
+\end{enumerate}
+
+\begin{lstlisting}[language=C++, caption={Branch-free power-of-two test}]
+bool isPowerOf2(int x) {
+    return x && !(x & (x - 1));
+}
+\end{lstlisting}
+
+%% ============================================================
+\section{Bit Fields}
+\label{sec:bit-fields}
+
+\textbf{Bit fields} let you specify exactly how many bits each member of a struct or class occupies --- crucial for matching hardware register layouts or wire protocols and for packing flags densely.
+
+\begin{lstlisting}[language=C++, caption={A bit-field struct mirroring a hardware register}]
+struct HardwareRegister {
+    unsigned int enable : 1;  // 1 bit
+    unsigned int mode   : 3;  // 3 bits
+    unsigned int value  : 4;  // 4 bits
+};
+\end{lstlisting}
+
+\textbf{Professional note:} the exact memory layout of bit fields --- bit ordering, straddling of storage units, padding --- is implementation-defined and depends on the platform's endianness and alignment rules. Never assume a portable on-the-wire layout from a bit-field struct.
+
+%% ============================================================
+\section{Professional Insights: Bit and Float Tricks}
+\label{sec:bit-float-tricks}
+
+\subsection{Bit Manipulation Hacks}
+
+\begin{itemize}
+    \item \textbf{Swap without a temporary:} \texttt{a \^{}= b; b \^{}= a; a \^{}= b;}. \textit{Warning:} on modern CPUs this is usually \textbf{slower} than a temporary variable because it introduces a data-dependency chain that stalls the pipeline.
+    \item \textbf{Branch-free absolute value (32-bit signed):} \texttt{(x + (x >> 31)) \^{} (x >> 31)}. This exploits arithmetic right-shift producing all-ones or all-zeros from the sign bit.
+\end{itemize}
+
+\subsection{Floating-Point Models}
+
+\begin{itemize}
+    \item \textbf{\texttt{fast-math}} --- a compiler flag (e.g.\ \texttt{-ffast-math} in GCC) that permits the compiler to ignore some IEEE 754 guarantees for speed, potentially altering precision and breaking NaN/Inf semantics. Enable it only when you understand the numerical consequences.
+    \item \textbf{\texttt{long double}} --- on many platforms this provides 80-bit or 128-bit precision for high-precision scientific computation, at the cost of performance and portability.
+\end{itemize}

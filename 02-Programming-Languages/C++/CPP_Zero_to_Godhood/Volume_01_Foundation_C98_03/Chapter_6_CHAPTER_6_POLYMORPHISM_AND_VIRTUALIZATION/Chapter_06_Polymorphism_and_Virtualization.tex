@@ -1,0 +1,678 @@
+\chapter{Polymorphism and Virtualization}
+\label{ch:polymorphism-virtualization}
+
+\textit{One interface, many implementations --- and the machinery that makes it work.}
+
+Inheritance lets you express ``is-a'' relationships and reuse code. Polymorphism elevates that to runtime behaviour: a single base-class pointer can point to any derived object and call the correct implementation automatically. This chapter covers how C++98/03 implements polymorphism through virtual functions and vtables, the hazards that accompany it (the virtual-destructor trap, virtual calls in constructors, the diamond problem), the full taxonomy of inheritance types, \texttt{const} correctness in class hierarchies, alignment and padding in the object model, and the copy-and-swap idiom for exception-safe assignment.
+
+%% ============================================================
+\section{Inheritance: The ``Is-A'' Relationship}
+\label{sec:inheritance-isa}
+
+\textbf{Inheritance} models an ``is-a'' relationship. A \texttt{Dog} \textit{is an} \texttt{Animal}; a \texttt{Sword} \textit{is a} \texttt{Weapon}. Inheritance lets a \textbf{derived class} acquire the members and methods of a \textbf{base class} without copying code.
+
+\begin{lstlisting}[language=C++, caption={Single public inheritance}]
+#include <iostream>
+
+class Animal {
+public:
+    void eat() { std::cout << "Eating food...\n"; }
+};
+
+class Dog : public Animal {
+public:
+    void bark() { std::cout << "Woof!\n"; }
+};
+
+int main() {
+    Dog my_dog;
+    my_dog.bark();
+    my_dog.eat();  // Inherited from Animal
+    return 0;
+}
+\end{lstlisting}
+
+Because a \texttt{Dog} is-a \texttt{Animal}, a \texttt{Dog*} may be passed wherever an \texttt{Animal*} is expected --- this is the \textbf{Liskov Substitution Principle}:
+
+\begin{lstlisting}[language=C++, caption={Passing derived as base}]
+void feed_animal(Animal* a) { a->eat(); }
+
+int main() {
+    Dog* d = new Dog();
+    feed_animal(d); // Valid: Dog is-a Animal
+    delete d;
+    return 0;
+}
+\end{lstlisting}
+
+%% ============================================================
+\section{The \texttt{protected} Access Modifier}
+\label{sec:protected}
+
+\texttt{protected} members are \textbf{private to the outside world} but \textbf{fully accessible to derived classes}:
+
+\begin{lstlisting}[language=C++, caption={protected member shared with derived classes}]
+class Animal {
+protected:
+    int weight;
+};
+
+class Dog : public Animal {
+public:
+    void grow() { weight += 5; }
+};
+\end{lstlisting}
+
+%% ============================================================
+\section{Inheritance Specifiers: \texttt{public}, \texttt{protected}, \texttt{private}}
+\label{sec:inheritance-specifiers}
+
+\begin{center}
+\begin{tabular}{|l|l|l|l|}
+\hline
+\textbf{Base member} & \textbf{public inh.} & \textbf{protected inh.} & \textbf{private inh.} \\
+\hline
+\texttt{public}    & \texttt{public}    & \texttt{protected} & \texttt{private} \\
+\texttt{protected} & \texttt{protected} & \texttt{protected} & \texttt{private} \\
+\texttt{private}   & inaccessible       & inaccessible       & inaccessible     \\
+\hline
+\end{tabular}
+\end{center}
+
+\begin{lstlisting}[language=C++, caption={Access under three inheritance modes}]
+struct A {
+public:    int p1;
+protected: int p2;
+private:   int p3;
+};
+
+struct B_pub : public A {
+    void foo() { p1 = 0; p2 = 0; /* p3 inaccessible */ }
+};
+
+struct B_pri : private A {
+    void foo() { p1 = 0; p2 = 0; /* both private in B_pri */ }
+};
+\end{lstlisting}
+
+\textbf{Public inheritance} models ``is-a''. \textbf{Private inheritance} models ``is-implemented-in-terms-of''. \textbf{Protected inheritance} is rarely used.
+
+%% ============================================================
+\section{Virtual Functions and Dynamic Dispatch}
+\label{sec:virtual-functions}
+
+Without virtual functions, method calls on a base-class pointer are resolved at \textbf{compile time} (static dispatch):
+
+\begin{lstlisting}[language=C++, caption={Non-virtual --- always calls base version}]
+#include <iostream>
+struct X { void f() { std::cout << "X::f()\n"; } };
+struct Y : X { void f() { std::cout << "Y::f()\n"; } };
+
+void call(X& a) { a.f(); }
+
+int main() {
+    X x; Y y;
+    call(x); // X::f()
+    call(y); // X::f() --- Y::f() is NEVER called!
+    return 0;
+}
+\end{lstlisting}
+
+Marking the base function \texttt{virtual} switches to \textbf{dynamic dispatch}:
+
+\begin{lstlisting}[language=C++, caption={virtual --- correct override called at runtime}]
+#include <iostream>
+
+class Animal {
+public:
+    virtual void speak() { std::cout << "...\n"; }
+    virtual ~Animal() {}
+};
+
+class Dog : public Animal {
+public:
+    void speak() { std::cout << "Woof!\n"; }
+};
+
+class Cat : public Animal {
+public:
+    void speak() { std::cout << "Meow!\n"; }
+};
+
+int main() {
+    Animal* pet = new Dog();
+    pet->speak(); // "Woof!" -- resolved at runtime
+    delete pet;
+    return 0;
+}
+\end{lstlisting}
+
+%% ============================================================
+\section{The vTable Mechanism}
+\label{sec:vtable}
+
+When a class contains at least one virtual function, the compiler:
+
+\begin{enumerate}
+    \item Creates a \textbf{vtable} (virtual table) for the class --- a static array of function pointers, one entry per virtual function.
+    \item Inserts a hidden \textbf{vptr} (virtual pointer) into every instance, pointing to its class's vtable.
+\end{enumerate}
+
+\begin{lstlisting}[language=C++, caption={vtable overhead illustration}]
+class Base {
+    int data;
+    virtual void func() {}
+};
+// On 64-bit: sizeof(Base) = sizeof(vptr=8) + sizeof(int=4) + padding = 16 bytes
+// Without virtual: sizeof(Base) = sizeof(int=4) = 4 bytes
+\end{lstlisting}
+
+Dynamic dispatch adds one pointer dereference per virtual call. In tight loops this can cause cache misses; this is a real concern in game engines and HFT hot paths.
+
+%% ============================================================
+\section{Pure Virtual Functions and Abstract Classes}
+\label{sec:pure-virtual}
+
+A \textbf{pure virtual function} (\texttt{= 0}) has no default implementation. Any class with at least one pure virtual function is \textbf{abstract} --- it cannot be instantiated.
+
+\begin{lstlisting}[language=C++, caption={Abstract base class with pure virtual functions}]
+#include <iostream>
+
+class Weapon {
+public:
+    virtual void attack() = 0;
+    virtual ~Weapon() {}
+};
+
+class Sword : public Weapon {
+public:
+    void attack() { std::cout << "Swing!\n"; }
+};
+
+int main() {
+    // Weapon w; // ERROR: cannot instantiate abstract class
+    Weapon* w = new Sword();
+    w->attack();
+    delete w;
+    return 0;
+}
+\end{lstlisting}
+
+A pure virtual function may still have a body --- derived classes can call it via \texttt{Base::func()}:
+
+\begin{lstlisting}[language=C++, caption={Pure virtual with default body}]
+struct DefaultAbstract {
+    virtual void configure() = 0;
+};
+
+void DefaultAbstract::configure() { /* shared setup */ }
+
+struct Derived : DefaultAbstract {
+    void configure() { DefaultAbstract::configure(); }
+};
+\end{lstlisting}
+
+%% ============================================================
+\section{The Virtual Destructor Trap}
+\label{sec:virtual-destructor}
+
+\begin{lstlisting}[language=C++, caption={Non-virtual destructor causes resource leak}]
+class Base {
+public:
+    ~Base() { std::cout << "Base destroyed.\n"; }
+};
+
+class Derived : public Base {
+    int* array;
+public:
+    Derived() { array = new int[100]; }
+    ~Derived() { delete[] array; std::cout << "Derived destroyed.\n"; }
+};
+
+int main() {
+    Base* b = new Derived();
+    delete b; // ONLY prints "Base destroyed." -- array is LEAKED!
+    return 0;
+}
+\end{lstlisting}
+
+\textbf{The Golden Rule:} if a class has even one \texttt{virtual} function, give it a \texttt{virtual} destructor:
+
+\begin{lstlisting}[language=C++, caption={Correct --- virtual destructor}]
+class Base {
+public:
+    virtual ~Base() { std::cout << "Base destroyed.\n"; }
+};
+\end{lstlisting}
+
+To prevent deletion through a base pointer entirely, make the destructor \texttt{protected} (non-virtual):
+
+\begin{lstlisting}[language=C++, caption={Protected destructor blocks base-pointer deletion}]
+struct NoDeletionViaBase {
+protected:
+    ~NoDeletionViaBase() {}
+};
+\end{lstlisting}
+
+%% ============================================================
+\section{Virtual Functions in Constructors and Destructors}
+\label{sec:virtual-in-ctor}
+
+Never call virtual functions during construction or destruction:
+
+\begin{lstlisting}[language=C++, caption={Virtual call during construction does not dispatch to derived}]
+#include <iostream>
+using namespace std;
+
+class Base {
+public:
+    Base()  { f("base constructor"); }
+    ~Base() { f("base destructor"); }
+    virtual const char* v() { return "Base::v()"; }
+    void f(const char* caller) {
+        cout << "From " << caller << ": " << v() << "\n";
+    }
+};
+
+class Derived : public Base {
+public:
+    Derived()  { f("derived constructor"); }
+    ~Derived() { f("derived destructor"); }
+    const char* v() { return "Derived::v()"; }
+};
+
+int main() {
+    Derived d;
+    return 0;
+}
+/* Output:
+   From base constructor: Base::v()    <-- NOT Derived::v()!
+   From derived constructor: Derived::v()
+   From derived destructor: Derived::v()
+   From base destructor: Base::v()     <-- NOT Derived::v()! */
+\end{lstlisting}
+
+During \texttt{Base::Base()}, the dynamic type is \texttt{Base}; the derived subobject does not yet exist.
+
+%% ============================================================
+\section{Multiple Inheritance and Thunks}
+\label{sec:multiple-inheritance}
+
+\begin{lstlisting}[language=C++, caption={Multiple inheritance and subobject layout}]
+class A { int a; virtual void f() {} };
+class B { int b; virtual void g() {} };
+class C : public A, public B { int c; };
+
+int main() {
+    C obj;
+    A* pa = &obj; // Points to start of obj (A subobject at offset 0)
+    B* pb = &obj; // Points to obj + sizeof(A): different address!
+    return 0;
+}
+\end{lstlisting}
+
+When a virtual function from \texttt{B} is called through \texttt{pb}, the compiler generates a \textbf{thunk} --- a small code fragment --- to adjust the \texttt{this} pointer before entering the function body.
+
+%% ============================================================
+\section{Virtual Inheritance and the Diamond Problem}
+\label{sec:diamond-problem}
+
+Without virtual inheritance, two base classes that share a common ancestor duplicate it:
+
+\begin{lstlisting}[language=C++, caption={Diamond problem --- ambiguous Top::t}]
+struct Top { int t; };
+struct Left  : public Top { int l; };
+struct Right : public Top { int r; };
+struct Bottom : public Left, public Right { int b; };
+
+void f() {
+    Bottom obj;
+    // obj.t;         // ERROR: ambiguous
+    obj.Left::t = 1;  // Two separate copies of t
+    obj.Right::t = 2;
+}
+\end{lstlisting}
+
+\texttt{virtual} inheritance ensures one shared instance:
+
+\begin{lstlisting}[language=C++, caption={Virtual inheritance resolves the diamond}]
+struct Top  { int t; };
+struct Left  : virtual public Top { int l; };
+struct Right : virtual public Top { int r; };
+struct Bottom : public Left, public Right { int b; };
+
+void f() {
+    Bottom obj;
+    obj.t = 42; // Unambiguous: one copy of Top
+}
+\end{lstlisting}
+
+\textbf{Cost:} \texttt{Left} and \texttt{Right} each contain a hidden \textbf{vbptr} (virtual base pointer). Accessing \texttt{Top} members requires an extra indirection. The most-derived class (\texttt{Bottom}) must directly initialise \texttt{Top}.
+
+%% ============================================================
+\section{Multilevel and Hierarchical Inheritance}
+\label{sec:inheritance-types}
+
+\subsection{Multilevel Inheritance}
+
+\begin{lstlisting}[language=C++, caption={Three-level inheritance chain}]
+#include <iostream>
+#include <string>
+using namespace std;
+
+class Vehicle {
+protected:
+    string brand;
+public:
+    Vehicle(const string& b) : brand(b) {}
+    virtual void start() { cout << brand << " is starting\n"; }
+    virtual ~Vehicle() {}
+};
+
+class Car : public Vehicle {
+protected:
+    int numDoors;
+public:
+    Car(const string& b, int doors) : Vehicle(b), numDoors(doors) {}
+    void start() {
+        cout << brand << " car (" << numDoors << " doors) starting\n";
+    }
+    virtual ~Car() {}
+};
+
+class ElectricCar : public Car {
+    int batteryPct;
+public:
+    ElectricCar(const string& b, int doors, int bat)
+        : Car(b, doors), batteryPct(bat) {}
+    void start() {
+        cout << "Electric " << brand << " (battery: "
+             << batteryPct << "%) starting\n";
+    }
+};
+
+int main() {
+    ElectricCar tesla("Tesla", 4, 95);
+    tesla.start();
+    return 0;
+}
+\end{lstlisting}
+
+\subsection{Hierarchical Inheritance}
+
+\begin{lstlisting}[language=C++, caption={Hierarchical inheritance --- three employee types}]
+#include <iostream>
+#include <string>
+using namespace std;
+
+class Employee {
+protected:
+    string name;
+    double salary;
+public:
+    Employee(const string& n, double s) : name(n), salary(s) {}
+    virtual void work() = 0;
+    virtual ~Employee() {}
+};
+
+class Manager : public Employee {
+public:
+    Manager(const string& n, double s) : Employee(n, s) {}
+    void work() { cout << name << " is managing the team\n"; }
+};
+
+class Developer : public Employee {
+    string language;
+public:
+    Developer(const string& n, double s, const string& lang)
+        : Employee(n, s), language(lang) {}
+    void work() { cout << name << " is coding in " << language << "\n"; }
+};
+
+int main() {
+    Manager   alice("Alice", 80000);
+    Developer bob("Bob", 70000, "C++");
+    alice.work();
+    bob.work();
+    return 0;
+}
+\end{lstlisting}
+
+%% ============================================================
+\section{Polymorphic Design: The Shape Pattern}
+\label{sec:shape-pattern}
+
+\begin{lstlisting}[language=C++, caption={Polymorphic Shape hierarchy}]
+#include <iostream>
+#include <string>
+using namespace std;
+
+class Shape {
+public:
+    virtual void   draw()   = 0;
+    virtual double area()   = 0;
+    virtual string name()   = 0;
+    virtual ~Shape() {}
+};
+
+class Circle : public Shape {
+    double radius;
+public:
+    explicit Circle(double r) : radius(r) {}
+    void   draw()   { cout << "Drawing Circle\n"; }
+    double area()   { return 3.14159 * radius * radius; }
+    string name()   { return "Circle"; }
+};
+
+class Rectangle : public Shape {
+    double w, h;
+public:
+    Rectangle(double w, double h) : w(w), h(h) {}
+    void   draw()   { cout << "Drawing Rectangle\n"; }
+    double area()   { return w * h; }
+    string name()   { return "Rectangle"; }
+};
+
+int main() {
+    Shape* shapes[2];
+    shapes[0] = new Circle(5.0);
+    shapes[1] = new Rectangle(4.0, 6.0);
+
+    for (int i = 0; i < 2; ++i) {
+        shapes[i]->draw();
+        cout << "Area: " << shapes[i]->area() << "\n";
+        delete shapes[i];
+    }
+    return 0;
+}
+\end{lstlisting}
+
+%% ============================================================
+\section{Safe Downcasting in Polymorphic Hierarchies}
+\label{sec:safe-downcast}
+
+\begin{lstlisting}[language=C++, caption={Safe downcast with dynamic\_cast}]
+#include <iostream>
+using namespace std;
+
+class Shape {
+public:
+    virtual double area() const = 0;
+    virtual ~Shape() {}
+};
+
+class Circle : public Shape {
+    double radius;
+public:
+    explicit Circle(double r) : radius(r) {}
+    double area()     const { return 3.14159 * radius * radius; }
+    double diameter() const { return 2.0 * radius; }
+};
+
+int main() {
+    Shape* s = new Circle(5.0);
+    cout << "Area: " << s->area() << "\n";
+
+    Circle* c = dynamic_cast<Circle*>(s);
+    if (c != NULL) {
+        cout << "Diameter: " << c->diameter() << "\n";
+    }
+
+    delete s;
+    return 0;
+}
+\end{lstlisting}
+
+%% ============================================================
+\section{\texttt{const} Correctness in OOP}
+\label{sec:const-correctness}
+
+\textbf{const member functions} promise not to modify any non-\texttt{mutable} member. They are callable on \texttt{const} instances; non-\texttt{const} methods are not.
+
+\begin{lstlisting}[language=C++, caption={const member functions and mutable}]
+#include <iostream>
+#include <string>
+using namespace std;
+
+class Person {
+    mutable int accessCount;
+    string name;
+    int age;
+public:
+    Person(const string& n, int a) : name(n), age(a), accessCount(0) {}
+
+    string getName() const {
+        ++accessCount; // OK: mutable
+        return name;
+    }
+
+    void setAge(int a) { age = a; } // Non-const
+
+    int getAge() const { return age; }
+};
+
+int main() {
+    const Person cp("Bob", 25);
+    cout << cp.getName() << "\n";
+    cout << cp.getAge()  << "\n";
+    // cp.setAge(26); // ERROR: non-const method on const object
+    return 0;
+}
+\end{lstlisting}
+
+%% ============================================================
+\section{Alignment, Padding, and the Cost of Polymorphism}
+\label{sec:alignment-padding}
+
+A member of size $N$ must reside at an offset divisible by $N$. The compiler inserts \textbf{padding} bytes to satisfy this constraint.
+
+\begin{lstlisting}[language=C++, caption={Struct padding}]
+struct Mixed {
+    char  a;   // 1 byte at offset 0
+               // 3 bytes padding
+    int   b;   // 4 bytes at offset 4
+    short c;   // 2 bytes at offset 8
+               // 6 bytes padding
+};
+// sizeof(Mixed) = 16 on 64-bit
+\end{lstlisting}
+
+Sort members largest-to-smallest to minimise padding:
+
+\begin{lstlisting}[language=C++, caption={Padding-minimised layout}]
+struct Optimised {
+    int   b;   // 4 bytes at offset 0
+    short c;   // 2 bytes at offset 4
+    char  a;   // 1 byte at offset 6
+               // 1 byte padding
+};
+// sizeof(Optimised) = 8
+\end{lstlisting}
+
+Every polymorphic class adds a hidden vptr (8 bytes on 64-bit) plus alignment padding:
+
+\begin{lstlisting}[language=C++, caption={vptr adds size to the object}]
+class WithVirtual {
+    int data;
+    virtual void f() {}
+};
+// sizeof(WithVirtual) = 16 (vptr=8, int=4, padding=4) on 64-bit
+\end{lstlisting}
+
+%% ============================================================
+\section{The Copy-and-Swap Idiom}
+\label{sec:copy-and-swap}
+
+The naive copy-assignment operator violates the strong exception guarantee and duplicates copy-constructor logic. \textbf{Copy-and-swap} solves both:
+
+\begin{lstlisting}[language=C++, caption={Copy-and-swap for exception-safe assignment}]
+#include <cstring>
+#include <algorithm>
+
+class Person {
+    char* name;
+    int   age;
+public:
+    Person(const char* n, int a)
+        : name(new char[std::strlen(n) + 1]), age(a) {
+        std::strcpy(name, n);
+    }
+
+    ~Person() { delete[] name; }
+
+    Person(const Person& other)
+        : name(new char[std::strlen(other.name) + 1]), age(other.age) {
+        std::strcpy(name, other.name);
+    }
+
+    friend void swap(Person& lhs, Person& rhs) {
+        std::swap(lhs.name, rhs.name);
+        std::swap(lhs.age,  rhs.age);
+    }
+
+    Person& operator=(Person rhs) { // rhs is a copy
+        swap(*this, rhs);
+        return *this;
+    } // rhs (old state) is destroyed here
+};
+\end{lstlisting}
+
+If copy-construction throws, the assignment operator body is never entered and \texttt{*this} is untouched --- the strong exception guarantee is satisfied.
+
+%% ============================================================
+\section{Professional Insights: Virtual Mechanics and Destructor Policy}
+\label{sec:pro-insights-ch6}
+
+\subsection{Virtual Destructor Policy}
+
+\begin{center}
+\begin{tabular}{|l|l|}
+\hline
+\textbf{Scenario} & \textbf{Required destructor} \\
+\hline
+Polymorphic base class                & \texttt{virtual \~{}Base()} \\
+Prevent base-pointer deletion         & \texttt{protected \~{}Base()} \\
+Concrete leaf class, no polymorphism  & Non-virtual (implicit or explicit) \\
+Pure interface (all pure virtual)     & \texttt{virtual \~{}Interface() = 0} + out-of-line body \\
+\hline
+\end{tabular}
+\end{center}
+
+\subsection{\texttt{override} and \texttt{final} --- Forward Reference: C++11}
+
+C++11 introduced two contextual keywords:
+
+\begin{itemize}
+    \item \textbf{\texttt{override}} --- instructs the compiler to verify the function actually overrides a base virtual function. A signature mismatch becomes a compile error instead of a silent new overload.
+    \item \textbf{\texttt{final}} --- prevents further overriding or further subclassing.
+\end{itemize}
+
+In C++98/03, a mismatched signature silently creates a new overload --- a notoriously hard-to-find bug.
+
+\subsection{Never Call Virtual Functions in Constructors or Destructors}
+
+During a base-class constructor, the dynamic type is the base class. Calling a virtual function calls the base implementation, not the derived override. Design constructors to avoid virtual dispatch.
+
+\subsection{The Liskov Substitution Principle}
+
+Public inheritance is correctly used only when an instance of the derived class can be substituted for the base in every context without breaking correctness. Private inheritance (``is-implemented-in-terms-of'') should be used when you want the implementation but not the interface of the base class.

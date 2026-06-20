@@ -1,0 +1,250 @@
+\chapter{The Modern C++11 Core}
+\label{ch:modern-cpp11-core}
+
+\textit{The ``Modern Revolution'' begins here. C++11 redefined the language --- this chapter covers the everyday syntax and type-system features you will reach for in every modern translation unit.}
+
+C++11 was the largest revision in the language's history. This chapter establishes the \textbf{core syntax and type-system} features: type inference, uniform initialization, range iteration, the class-authoring keywords, compile-time evaluation, and compile-time assertions. The heavier machinery --- move semantics (Chapter~\ref{ch:move-smart-pointers}), lambdas, variadics, the library expansion, concurrency, and the advanced literal/union/alignment features --- builds on the foundation laid here.
+
+%% ============================================================
+\section{Type Inference and Safety}
+
+\subsection{\texttt{auto}: Automatic Type Deduction}
+
+C++11 introduced \textbf{\texttt{auto}} to let the compiler deduce a variable's type from its initializer, removing redundant type spelling and guaranteeing the variable has exactly the initializer's type.
+
+\begin{lstlisting}[language=C++, caption={auto deduction basics}]
+auto i = 42;          // int
+auto d = 3.14;        // double
+auto s = "hello";     // const char*
+auto& ref = i;        // int&
+const auto* ptr = &i; // const int*
+\end{lstlisting}
+
+\texttt{auto} uses template type-deduction rules. Two dominate daily use:
+
+\textbf{Rule 1 --- reference and top-level \texttt{const} are dropped by default.}
+
+\begin{lstlisting}[language=C++, caption={auto drops references and top-level const}]
+int x = 0; int& y = x;
+auto z = y;     // int, NOT int& -- reference dropped
+const int cx = 10;
+auto copy = cx; // int -- const dropped (it is a copy)
+\end{lstlisting}
+
+\textbf{Rule 2 --- re-add qualifiers explicitly with \texttt{auto\&} / \texttt{const auto\&}.}
+
+\begin{lstlisting}[language=C++, caption={preserving qualifiers}]
+const int cx = 10;
+const auto& ref = cx; // const int& -- binds without copying
+auto&& uref = 42;     // forwarding reference (see Chapter 12)
+\end{lstlisting}
+
+\subsection{\texttt{decltype}: Inspecting Types}
+
+Unlike \texttt{auto}, \textbf{\texttt{decltype}} yields the \emph{exact declared type} of an expression --- including references and \texttt{const}.
+
+\begin{lstlisting}[language=C++, caption={decltype preserves the exact type}]
+int x = 0;
+decltype(x)   y = 5;  // int  -- declared type of the name
+decltype((x)) z = y;  // int& -- a parenthesized lvalue expression
+\end{lstlisting}
+
+The \texttt{(x)} subtlety is the classic gotcha: a bare name gives the declared type; a parenthesized lvalue expression gives an lvalue reference.
+
+\subsection{Trailing Return Types}
+
+When a return type depends on the parameters, it cannot be named before they are in scope. The \textbf{trailing return type} (\texttt{auto f(...) -> type}) solves this, typically with \texttt{decltype}.
+
+\begin{lstlisting}[language=C++, caption={trailing return type with decltype}]
+template<typename T, typename U>
+auto add(T a, U b) -> decltype(a + b) {
+    return a + b;
+}
+\end{lstlisting}
+
+\begin{quote}
+\textbf{C++14 forward reference:} C++14 allows plain \texttt{auto} return-type deduction, making the trailing \texttt{-> decltype(...)} unnecessary in many cases. In C++11 it is mandatory.
+\end{quote}
+
+\subsection{\texttt{nullptr}: The Null Pointer Literal}
+
+\texttt{nullptr} is a dedicated null-pointer literal of type \texttt{std::nullptr\_t}, replacing \texttt{NULL} and \texttt{0} and eliminating overload ambiguity.
+
+\begin{lstlisting}[language=C++, caption={nullptr resolves overload ambiguity}]
+void f(int);
+void f(char*);
+
+f(0);       // Calls f(int)
+f(NULL);    // Implementation-defined (NULL is usually 0)
+f(nullptr); // Calls f(char*) -- unambiguous
+\end{lstlisting}
+
+\texttt{nullptr} converts to any pointer type but \emph{not} to an integral type --- exactly the safety \texttt{0}/\texttt{NULL} lacked.
+
+%% ============================================================
+\section{Initialization Uniformity}
+
+\subsection{Uniform (Brace) Initialization}
+
+\begin{lstlisting}[language=C++, caption={brace initialization everywhere}]
+int x{5};                 // Direct-list-initialization
+int y = {5};              // Copy-list-initialization
+std::vector<int> v{1, 2, 3};
+std::map<int, std::string> m{{1, "a"}, {2, "b"}};
+int* p = new int[3]{1, 2, 3};
+\end{lstlisting}
+
+\subsection{Narrowing Prevention}
+
+Brace initialization \textbf{forbids narrowing conversions}, catching a class of silent bugs at compile time.
+
+\begin{lstlisting}[language=C++, caption={narrowing is a hard error inside braces}]
+int a = 3.14;  // Compiles (warning); a becomes 3
+int b{3.14};   // ERROR: narrowing from double to int
+char c{300};   // ERROR: 300 does not fit in char
+\end{lstlisting}
+
+\begin{quote}
+\textbf{Pitfall:} for types with an \texttt{initializer\_list} constructor, braces \emph{prefer} it. \texttt{vector<int> v(10, 5)} makes ten 5s, but \texttt{vector<int> v\{10, 5\}} makes the two-element list. Choose parentheses vs braces deliberately.
+\end{quote}
+
+\subsection{\texttt{std::initializer\_list}}
+
+\begin{lstlisting}[language=C++, caption={accepting a brace list in a constructor}]
+#include <initializer_list>
+class MyVector {
+public:
+    MyVector(std::initializer_list<int> list) {
+        for (int value : list) { /* append value */ }
+    }
+};
+MyVector mv{1, 2, 3, 4};
+\end{lstlisting}
+
+An \texttt{initializer\_list} is a lightweight, read-only view over a compiler-generated array; its elements are \texttt{const} and it is cheap to copy.
+
+%% ============================================================
+\section{Control Flow and Iteration}
+
+\subsection{Range-Based For Loops}
+
+\begin{lstlisting}[language=C++, caption={the three idiomatic range-for forms}]
+std::vector<int> v = {1, 2, 3};
+for (int x : v)         { /* by value -- a copy */ }
+for (auto& x : v)       { x *= 2; }   // by reference -- modify
+for (const auto& x : v) { use(x); }   // by const ref -- read-only
+\end{lstlisting}
+
+Use \texttt{const auto\&} to read, \texttt{auto\&} to modify, plain value only for cheap-to-copy elements. The loop expands to \texttt{begin(range)}/\texttt{end(range)}.
+
+%% ============================================================
+\section{Class Authoring Features}
+
+\subsection{Explicit Overrides: \texttt{override} and \texttt{final}}
+
+\begin{lstlisting}[language=C++, caption={override and final}]
+class Base { virtual void foo(int); };
+
+class Derived : public Base {
+    void foo(int) override;     // OK -- matches Base::foo
+    // void foo(float) override; // ERROR -- no matching base virtual
+};
+
+class Last final : public Base { // Cannot be inherited from
+    void foo(int) final;          // Cannot be overridden further
+};
+\end{lstlisting}
+
+Always write \texttt{override}: it converts the most common inheritance bug (a typo'd signature creating a new function) into a hard error.
+
+\subsection{Defaulted and Deleted Functions}
+
+\begin{lstlisting}[language=C++, caption={=default and =delete}]
+class Widget {
+public:
+    Widget() = default;
+    Widget(const Widget&)            = delete; // non-copyable
+    Widget& operator=(const Widget&) = delete;
+};
+\end{lstlisting}
+
+\texttt{= default} documents intent and keeps the function trivial; \texttt{= delete} removes a function from overload resolution entirely.
+
+\subsection{Strongly-Typed Enums (\texttt{enum class})}
+
+\begin{lstlisting}[language=C++, caption={enum class}]
+enum class Color : char { Red, Green, Blue }; // underlying type char
+Color c = Color::Red;          // scoped enumerators
+// int i = c;                  // ERROR -- no implicit conversion
+int i = static_cast<int>(c);   // explicit conversion is allowed
+\end{lstlisting}
+
+Fixing the underlying type guarantees size and enables forward declaration --- valuable for ABI-stable headers.
+
+\subsection{Delegating Constructors}
+
+\begin{lstlisting}[language=C++, caption={delegating constructors}]
+class Box {
+    int w, h;
+public:
+    Box(int width, int height) : w(width), h(height) {}
+    Box() : Box(1, 1) {} // delegates to the two-argument constructor
+};
+\end{lstlisting}
+
+\begin{quote}
+\textbf{Related:} inheriting constructors (\texttt{using Base::Base;}) and non-static data member initializers are covered in Chapter~\ref{ch:advanced-core-literals}, with the advanced literal, union, and alignment features.
+\end{quote}
+
+%% ============================================================
+\section{\texttt{constexpr}: Compile-Time Evaluation}
+
+\begin{lstlisting}[language=C++, caption={a C++11 constexpr function}]
+constexpr int square(int x) {
+    return x * x;     // C++11: body must be a single return statement
+}
+int array[square(5)];        // OK -- size 25 at compile time
+constexpr int n = square(8); // forced compile-time evaluation
+\end{lstlisting}
+
+\textbf{C++11 restriction:} a \texttt{constexpr} function body may contain essentially only a single \texttt{return} (plus \texttt{typedef}s, \texttt{static\_assert}s, \texttt{using} declarations). Recursion is the standard workaround.
+
+\begin{lstlisting}[language=C++, caption={compile-time factorial via recursion}]
+constexpr long factorial(int n) {
+    return n <= 1 ? 1 : n * factorial(n - 1);
+}
+static_assert(factorial(5) == 120, "math is broken");
+\end{lstlisting}
+
+\begin{quote}
+\textbf{C++14 forward reference:} C++14 allows loops, local variables, and multiple statements in \texttt{constexpr} functions, removing the need for the recursive workaround.
+\end{quote}
+
+%% ============================================================
+\section{\texttt{static\_assert}: Compile-Time Assertions}
+
+\begin{lstlisting}[language=C++, caption={static\_assert}]
+static_assert(sizeof(void*) == 8, "64-bit platform required");
+
+template<typename T>
+struct Wrapper {
+    static_assert(std::is_default_constructible<T>::value,
+                  "Wrapper requires a default-constructible T");
+    T value;
+};
+\end{lstlisting}
+
+Because it fires during compilation, \texttt{static\_assert} costs nothing at runtime and catches violated assumptions before a binary is produced. (The message became optional only in C++17; in C++11 it is mandatory.)
+
+%% ============================================================
+\section{Professional Insights}
+
+\textbf{\texttt{auto} and low-latency code.} \texttt{auto} never introduces a hidden conversion --- it binds the exact type of the initializer, making it safer than a spelled type that might narrow. The one trap is proxy types (\texttt{vector<bool>}, expression templates).
+
+\textbf{Brace-init in hot paths.} Narrowing prevention is a compile-time check with zero runtime cost; uniform initialization compiles identically to direct initialization.
+
+\textbf{\texttt{enum class} for ABI stability.} Fixing the underlying type lets you forward-declare enums in headers, decoupling translation units and shrinking rebuild times.
+
+\textbf{\texttt{constexpr} pushes work off the runtime budget.} Moving lookup tables, masks, and dimension calculations into \texttt{constexpr} shifts them from runtime to compile time entirely.
+
+\textbf{\texttt{static\_assert} as a contract.} Encoding type and platform assumptions as \texttt{static\_assert}s turns ``works on my machine'' into a compiler-enforced contract.

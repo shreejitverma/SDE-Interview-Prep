@@ -1,0 +1,473 @@
+\chapter{Advanced Streams and File I/O}
+\label{ch:streams-file-io}
+
+\textit{Talking to the outside world --- files, formatted output, and the iostream hierarchy.}
+
+C++ streams share a uniform model for console, file, and in-memory string I/O. This chapter covers: C-strings, \texttt{std::string}, the iostream class hierarchy, file I/O with \texttt{<fstream>}, stream states and error recovery, format manipulators from \texttt{<iomanip>}, binary I/O, string streams, stream internals, and custom manipulators.
+
+%% ============================================================
+\section{C-Strings: The Null-Terminated Array}
+\label{sec:c-strings}
+
+\begin{lstlisting}[language=C++, caption={C-string basics and null terminator}]
+#include <cstring>
+#include <iostream>
+
+int main() {
+    char name[6] = {'H', 'e', 'l', 'l', 'o', '\0'};
+    const char* greeting = "World"; // Compiler adds '\0'
+
+    std::cout << name << " " << greeting << "\n";
+    std::cout << "Length: " << strlen(name) << "\n"; // 5
+    return 0;
+}
+\end{lstlisting}
+
+\begin{lstlisting}[language=C++, caption={Safer C-string manipulation}]
+#include <cstring>
+#include <cstdio>
+
+int main() {
+    char src[] = "Hello";
+    char dst[20];
+
+    strncpy(dst, src, sizeof(dst) - 1); // Bounded copy
+    dst[sizeof(dst) - 1] = '\0';
+
+    printf("Length: %zu\n", strlen(dst));
+    printf("Compare: %d\n", strcmp("abc", "abd")); // negative
+    return 0;
+}
+\end{lstlisting}
+
+\textbf{Prefer \texttt{std::string}} in C++ code; use \texttt{strncpy}/\texttt{snprintf} only when interoperating with C APIs.
+
+%% ============================================================
+\section{\texttt{std::string}: The Safe Alternative}
+\label{sec:std-string-ch10}
+
+\begin{lstlisting}[language=C++, caption={std::string replaces C-strings}]
+#include <string>
+#include <iostream>
+using namespace std;
+
+int main() {
+    string first = "John";
+    string last  = "Wick";
+    string full  = first + " " + last;
+
+    cout << "Name: "   << full << "\n";
+    cout << "Length: " << full.length() << "\n";
+
+    const char* cstr = full.c_str(); // Null-terminated const pointer
+    return 0;
+}
+\end{lstlisting}
+
+%% ============================================================
+\section{Basic Console I/O}
+\label{sec:console-io}
+
+\begin{center}
+\begin{tabular}{|l|l|l|}
+\hline
+\textbf{Object} & \textbf{Direction} & \textbf{Description} \\
+\hline
+\texttt{std::cout} & Output & Standard output, buffered \\
+\texttt{std::cin}  & Input  & Standard input (keyboard) \\
+\texttt{std::cerr} & Output & Standard error, unbuffered \\
+\texttt{std::clog} & Output & Standard error, buffered \\
+\hline
+\end{tabular}
+\end{center}
+
+\begin{lstlisting}[language=C++, caption={Console I/O and getline}]
+#include <iostream>
+#include <string>
+using namespace std;
+
+int main() {
+    string line;
+    cout << "Enter a sentence: ";
+    getline(cin, line); // Reads until '\n', discards the newline
+    cout << "You typed: " << line << "\n";
+    return 0;
+}
+\end{lstlisting}
+
+%% ============================================================
+\section{Stream States and Error Recovery}
+\label{sec:stream-states}
+
+\begin{center}
+\begin{tabular}{|l|l|l|}
+\hline
+\textbf{Flag} & \textbf{Access} & \textbf{Meaning} \\
+\hline
+goodbit & \texttt{good()} & No errors \\
+eofbit  & \texttt{eof()}  & End of file reached \\
+failbit & \texttt{fail()} & Non-fatal error (type mismatch) \\
+badbit  & \texttt{bad()}  & Fatal error (hardware failure) \\
+\hline
+\end{tabular}
+\end{center}
+
+\begin{lstlisting}[language=C++, caption={Recovering from stream error state}]
+#include <iostream>
+using namespace std;
+
+int main() {
+    int age;
+    cout << "Enter age: ";
+    if (!(cin >> age)) {
+        cout << "Invalid input.\n";
+        cin.clear();            // Reset error bits
+        cin.ignore(10000, '\n'); // Discard bad input
+    }
+    return 0;
+}
+\end{lstlisting}
+
+%% ============================================================
+\section{File I/O with \texttt{<fstream>}}
+\label{sec:fstream}
+
+\begin{lstlisting}[language=C++, caption={Writing and reading text files}]
+#include <fstream>
+#include <string>
+#include <iostream>
+using namespace std;
+
+int main() {
+    // Write
+    ofstream out("save_data.txt");
+    if (out.is_open()) {
+        out << "PlayerLevel: 99\n";
+        out << "Gold: 5000\n";
+        out.close();
+    }
+
+    // Read line-by-line
+    ifstream in("save_data.txt");
+    if (!in.is_open()) { cerr << "File not found.\n"; return 1; }
+
+    string line;
+    while (getline(in, line))
+        cout << "Read: " << line << "\n";
+    in.close();
+    return 0;
+}
+\end{lstlisting}
+
+%% ============================================================
+\section{Open Modes}
+\label{sec:open-modes}
+
+\begin{center}
+\begin{tabular}{|l|l|}
+\hline
+\textbf{Flag} & \textbf{Meaning} \\
+\hline
+\texttt{ios::in}     & Open for reading \\
+\texttt{ios::out}    & Open for writing (creates or truncates) \\
+\texttt{ios::app}    & All writes go to end-of-file \\
+\texttt{ios::ate}    & Open, seek to end \\
+\texttt{ios::binary} & Binary mode --- no CRLF translation \\
+\texttt{ios::trunc}  & Truncate existing file to zero \\
+\hline
+\end{tabular}
+\end{center}
+
+\begin{lstlisting}[language=C++, caption={Combining open modes}]
+#include <fstream>
+using namespace std;
+
+int main() {
+    ofstream log("app.log", ios::out | ios::app); // Append mode
+    log << "Session started\n";
+    log.close();
+
+    fstream db("data.bin", ios::in | ios::out | ios::binary);
+    if (db) { /* read/write binary data */ db.close(); }
+    return 0;
+}
+\end{lstlisting}
+
+%% ============================================================
+\section{Binary File I/O}
+\label{sec:binary-io}
+
+\begin{lstlisting}[language=C++, caption={Binary write and read}]
+#include <fstream>
+#include <iostream>
+using namespace std;
+
+int main() {
+    // Write
+    {
+        ofstream out("data.bin", ios::binary);
+        int numbers[] = {10, 20, 30, 40, 50};
+        out.write(reinterpret_cast<const char*>(numbers), sizeof(numbers));
+    }
+    // Read
+    {
+        ifstream in("data.bin", ios::binary);
+        int buffer[5];
+        in.read(reinterpret_cast<char*>(buffer), sizeof(buffer));
+        for (int i = 0; i < 5; ++i) cout << buffer[i] << " ";
+        cout << "\n";
+    }
+    return 0;
+}
+\end{lstlisting}
+
+\begin{lstlisting}[language=C++, caption={Struct serialisation to binary file}]
+#include <fstream>
+#include <iostream>
+using namespace std;
+
+struct PlayerRecord { int level; float health; char name[32]; };
+
+int main() {
+    PlayerRecord rec = {99, 100.0f, "Arthur"};
+    { ofstream out("player.bin", ios::binary);
+      out.write(reinterpret_cast<const char*>(&rec), sizeof(rec)); }
+
+    PlayerRecord loaded;
+    { ifstream in("player.bin", ios::binary);
+      in.read(reinterpret_cast<char*>(&loaded), sizeof(loaded)); }
+
+    cout << loaded.name << " level=" << loaded.level << "\n";
+    return 0;
+}
+\end{lstlisting}
+
+%% ============================================================
+\section{Stream Positioning}
+\label{sec:stream-positioning}
+
+\begin{lstlisting}[language=C++, caption={seekg, tellg, seekg with direction}]
+#include <fstream>
+#include <iostream>
+using namespace std;
+
+int main() {
+    { ofstream out("test.txt"); out << "0123456789"; }
+
+    ifstream in("test.txt");
+    cout << "Position: " << in.tellg() << "\n"; // 0
+
+    in.seekg(5);        // Seek to byte 5
+    char c;
+    in.get(c); cout << "At pos 5: " << c << "\n"; // '5'
+
+    in.seekg(-3, ios::end); // 3 bytes before end
+    in.get(c); cout << "3 from end: " << c << "\n"; // '7'
+
+    in.close();
+    return 0;
+}
+\end{lstlisting}
+
+%% ============================================================
+\section{Format Manipulators (\texttt{<iomanip>})}
+\label{sec:manipulators}
+
+\begin{lstlisting}[language=C++, caption={Integer base and prefix}]
+#include <iostream>
+#include <iomanip>
+using namespace std;
+
+int main() {
+    int n = 255;
+    cout << dec << n << "\n";              // 255
+    cout << hex << n << "\n";              // ff
+    cout << uppercase << hex << n << "\n"; // FF
+    cout << showbase  << hex << n << "\n"; // 0XFF
+    cout << oct << n << "\n";             // 0377
+    cout << dec;                           // Reset to decimal
+    return 0;
+}
+\end{lstlisting}
+
+\begin{lstlisting}[language=C++, caption={Floating-point precision and notation}]
+#include <iostream>
+#include <iomanip>
+using namespace std;
+
+int main() {
+    double pi = 3.14159265358979;
+    cout << pi                                << "\n"; // 3.14159
+    cout << fixed      << setprecision(2) << pi << "\n"; // 3.14
+    cout << scientific << setprecision(4) << pi << "\n"; // 3.1416e+00
+    cout << defaultfloat; // Reset
+    return 0;
+}
+\end{lstlisting}
+
+\begin{lstlisting}[language=C++, caption={Width, fill, and alignment}]
+#include <iostream>
+#include <iomanip>
+using namespace std;
+
+int main() {
+    cout << "no setw: "   << 51 << "\n";
+    cout << "setw(7): "   << setw(7) << 51 << "\n";             // "     51"
+    cout << "setfill(*): " << setw(7) << setfill('*') << 51 << "\n"; // "*****51"
+    cout << left  << setw(10) << setfill(' ') << "left"  << "|\n"; // "left      |"
+    cout << right << setw(10) << "right" << "|\n"; // "     right|"
+    cout << boolalpha << true << " " << false << "\n"; // true false
+    return 0;
+}
+\end{lstlisting}
+
+%% ============================================================
+\section{String Streams (\texttt{<sstream>})}
+\label{sec:sstream}
+
+\begin{lstlisting}[language=C++, caption={ostringstream for in-memory serialisation}]
+#include <sstream>
+#include <string>
+#include <iostream>
+using namespace std;
+
+int main() {
+    ostringstream ss;
+    ss << "The answer to everything is " << 42;
+    string result = ss.str(); // "The answer to everything is 42"
+    cout << result << "\n";
+    return 0;
+}
+\end{lstlisting}
+
+\begin{lstlisting}[language=C++, caption={istringstream for parsing}]
+#include <sstream>
+#include <string>
+#include <iostream>
+using namespace std;
+
+int main() {
+    string data = "Alice 30 3.14";
+    istringstream ss(data);
+    string name; int age; double value;
+    ss >> name >> age >> value;
+    cout << name << " age=" << age << " val=" << value << "\n";
+    return 0;
+}
+\end{lstlisting}
+
+\begin{lstlisting}[language=C++, caption={C++98 number-to-string idiom}]
+#include <sstream>
+#include <string>
+using namespace std;
+
+template<typename T>
+string to_string_98(const T& val) {
+    ostringstream ss; ss << val; return ss.str();
+}
+
+template<typename T>
+T from_string_98(const string& s) {
+    T result; istringstream ss(s); ss >> result; return result;
+}
+
+int main() {
+    string s = to_string_98(42);
+    int    n = from_string_98<int>("99");
+    return 0;
+}
+\end{lstlisting}
+
+%% ============================================================
+\section{Stream Iterators}
+\label{sec:stream-iterators}
+
+\begin{lstlisting}[language=C++, caption={ostream\_iterator with algorithms}]
+#include <algorithm>
+#include <vector>
+#include <iterator>
+#include <iostream>
+using namespace std;
+
+int square(int x) { return x * x; }
+
+int main() {
+    int arr[] = {1, 2, 3, 4, 8, 16};
+    vector<int> v(arr, arr + 6);
+
+    copy(v.begin(), v.end(), ostream_iterator<int>(cout, " "));
+    cout << "\n"; // 1 2 3 4 8 16
+
+    transform(v.begin(), v.end(),
+              ostream_iterator<int>(cout, " "), square);
+    cout << "\n"; // 1 4 9 16 64 256
+    return 0;
+}
+\end{lstlisting}
+
+%% ============================================================
+\section{Professional Insights: Stream Architecture}
+\label{sec:stream-architecture}
+
+\subsection{The \texttt{ios\_base} Class Hierarchy}
+
+\begin{lstlisting}[language={}, caption={iostream class hierarchy}]
+ios_base
+└── basic_ios<charT>
+    ├── basic_istream  → istream, ifstream, istringstream
+    ├── basic_ostream  → ostream, ofstream, ostringstream
+    └── basic_iostream → iostream, fstream, stringstream
+\end{lstlisting}
+
+\subsection{Redirecting Streams via \texttt{rdbuf}}
+
+\begin{lstlisting}[language=C++, caption={Redirect cout to a file}]
+#include <fstream>
+#include <iostream>
+using namespace std;
+
+int main() {
+    ofstream log("log.txt");
+    streambuf* old = cout.rdbuf();  // Save original buffer
+    cout.rdbuf(log.rdbuf());         // Redirect to file
+    cout << "This goes to log.txt\n";
+    cout.rdbuf(old);                 // Restore
+    cout << "Back to screen\n";
+    return 0;
+}
+\end{lstlisting}
+
+\subsection{Custom Manipulators}
+
+\begin{lstlisting}[language=C++, caption={User-defined stream manipulator}]
+#include <iostream>
+using namespace std;
+
+ostream& tab(ostream& os)       { return os << "\t"; }
+ostream& separator(ostream& os) { return os << "---\n"; }
+
+int main() {
+    cout << "Col1" << tab << "Col2" << "\n";
+    cout << separator;
+    return 0;
+}
+\end{lstlisting}
+
+\subsection{Fast I/O: Decoupling C and C++ Streams}
+
+\begin{lstlisting}[language=C++, caption={sync\_with\_stdio and cin.tie}]
+#include <iostream>
+using namespace std;
+
+int main() {
+    ios::sync_with_stdio(false); // 2-10x faster; do NOT mix with printf after this
+    cin.tie(NULL);               // No auto-flush before cin reads
+
+    int n;
+    cin >> n;
+    cout << n << "\n";
+    return 0;
+}
+\end{lstlisting}
+
+After calling \texttt{sync\_with\_stdio(false)}, mixing \texttt{printf}/\texttt{scanf} with \texttt{cout}/\texttt{cin} in the same program produces undefined output ordering.

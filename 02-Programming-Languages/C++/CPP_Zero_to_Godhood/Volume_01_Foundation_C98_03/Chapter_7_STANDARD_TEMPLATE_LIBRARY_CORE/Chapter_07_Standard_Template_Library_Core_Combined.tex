@@ -1,0 +1,607 @@
+\chapter{Standard Template Library Core}
+\label{ch:stl-core}
+
+\textit{Generic containers, iterators, and algorithms --- the vocabulary every C++ program uses every day.}
+
+The \textbf{Standard Template Library (STL)} is the most important library in C++. It delivers production-quality implementations of the most common data structures (containers), traversal abstractions (iterators), and algorithms --- all expressed as templates, so they work with any element type. This chapter covers the C++98/03 STL in full: the nine containers, the five iterator categories, the algorithm header, \texttt{std::string}, streams, and functors.
+
+%% ============================================================
+\section{STL Architecture}
+\label{sec:stl-architecture}
+
+The STL is organised around four cooperating components:
+
+\begin{lstlisting}[language={},caption={STL component tree}]
+          STL (Standard Template Library)
+                       |
+   -----------------------------------------
+   |              |            |           |
+CONTAINERS     ITERATORS    ALGORITHMS   FUNCTORS
+   |              |            |           |
+Sequence       Input        Searching    Predicates
+Associative    Output       Sorting      Comparators
+Adapters       Forward      Modifying
+               Bidir        Numeric
+               Random
+\end{lstlisting}
+
+\textbf{Containers} store data. \textbf{Iterators} point into containers and define ranges. \textbf{Algorithms} operate on iterator ranges, blind to the underlying container. \textbf{Functors} parametrise algorithm behaviour without calling convention overhead.
+
+Key advantages:
+\begin{itemize}
+    \item \textbf{Generic programming}: algorithms written once work with any container of any element type.
+    \item \textbf{Separation of concerns}: swapping from \texttt{vector} to \texttt{list} changes only the container type, not the algorithm.
+    \item \textbf{Performance}: implementations are heavily optimised; the abstractions typically compile to zero overhead.
+\end{itemize}
+
+%% ============================================================
+\section{Container Characteristics at a Glance}
+\label{sec:container-overview}
+
+\begin{center}
+\begin{tabular}{|l|l|l|l|l|l|}
+\hline
+\textbf{Container} & \textbf{Type} & \textbf{Insert} & \textbf{Search} & \textbf{Random Access} & \textbf{Memory} \\
+\hline
+\texttt{vector}   & Sequence    & O(1) back†   & O(n)      & O(1)  & Contiguous \\
+\texttt{deque}    & Sequence    & O(1) ends    & O(n)      & O(1)  & Block chunks \\
+\texttt{list}     & Sequence    & O(1)‡        & O(n)      & None  & Scattered \\
+\texttt{map/set}  & Associative & O(log n)     & O(log n)  & None  & Red-Black Tree \\
+\texttt{stack}    & Adapter     & O(1)         & ---       & None  & Underlying \\
+\texttt{queue}    & Adapter     & O(1)         & ---       & None  & Underlying \\
+\texttt{priority\_queue} & Adapter & O(log n)  & ---       & None  & Heap (vector) \\
+\hline
+\end{tabular}
+\end{center}
+
+†Amortised; reallocation is O(n). ‡Given an iterator to the target node.
+
+%% ============================================================
+\section{\texttt{std::vector} --- The Dynamic Array}
+\label{sec:vector}
+
+\textbf{\texttt{std::vector}} is the default container. It stores elements contiguously in heap memory, growing automatically. Use it unless you have a specific reason not to.
+
+\begin{lstlisting}[language=C++, caption={Declaring and initialising vectors}]
+#include <vector>
+using namespace std;
+
+vector<int> v1;               // Empty
+vector<int> v2(10);           // 10 elements, value-initialised to 0
+vector<int> v3(5, 42);        // 5 elements, all 42
+vector<int> v4(v3);           // Copy
+
+int arr[] = {1, 2, 3, 4, 5};
+vector<int> v5(arr, arr + 5); // Construct from C array
+\end{lstlisting}
+
+\subsection{Element Access}
+
+\begin{lstlisting}[language=C++, caption={Vector element access}]
+vector<int> v;
+v.push_back(10);
+v.push_back(20);
+
+v[0];       // No bounds check
+v.at(1);    // Throws std::out_of_range if out of range
+v.front();  // 10
+v.back();   // 20
+\end{lstlisting}
+
+\subsection{Modifying a Vector}
+
+\begin{lstlisting}[language=C++, caption={Common vector mutations}]
+vector<int> v;
+v.push_back(10); v.push_back(20); v.push_back(30); // {10, 20, 30}
+v.insert(v.begin() + 1, 15);  // {10, 15, 20, 30}
+v.pop_back();                  // {10, 15, 20}
+v.erase(v.begin() + 1);        // {10, 20}
+v.clear();                     // {}
+\end{lstlisting}
+
+\subsection{Size and Capacity}
+
+\begin{lstlisting}[language=C++, caption={size vs capacity}]
+vector<int> v(10);
+v.size();      // 10 -- elements actually stored
+v.capacity();  // >= 10 -- allocated slots
+v.reserve(100); // Allocate space for 100, no new elements
+v.resize(20);   // Add default-initialised elements to size 20
+v.resize(5);    // Truncate to 5 elements
+\end{lstlisting}
+
+Always \texttt{reserve()} if you know the final size --- reallocation copies every element and invalidates all iterators.
+
+\subsection{Iterating}
+
+\begin{lstlisting}[language=C++, caption={Three iteration patterns}]
+#include <vector>
+#include <iostream>
+using namespace std;
+
+int main() {
+    vector<int> v;
+    v.push_back(10); v.push_back(20); v.push_back(30);
+
+    for (size_t i = 0; i < v.size(); ++i)           // Index
+        cout << v[i] << " ";
+
+    for (vector<int>::iterator it = v.begin(); it != v.end(); ++it) // Iterator
+        cout << *it << " ";
+
+    for (vector<int>::reverse_iterator rit = v.rbegin(); rit != v.rend(); ++rit)
+        cout << *rit << " ";
+    return 0;
+}
+\end{lstlisting}
+
+%% ============================================================
+\section{\texttt{std::deque} --- Double-Ended Queue}
+\label{sec:deque}
+
+\begin{lstlisting}[language=C++, caption={deque basics}]
+#include <deque>
+#include <iostream>
+using namespace std;
+
+int main() {
+    deque<int> dq;
+    dq.push_back(10);
+    dq.push_front(5);   // {5, 10}
+    dq.pop_back();      // {5}
+    dq.pop_front();     // {}
+    dq.push_back(100);
+    cout << dq[0] << "\n"; // Random access
+    return 0;
+}
+\end{lstlisting}
+
+%% ============================================================
+\section{\texttt{std::list} --- Doubly Linked List}
+\label{sec:list}
+
+\begin{lstlisting}[language=C++, caption={list operations}]
+#include <list>
+using namespace std;
+
+int main() {
+    list<int> lst;
+    lst.push_back(10); lst.push_front(5); // {5, 10}
+
+    list<int>::iterator it = lst.begin();
+    ++it;
+    lst.insert(it, 7); // {5, 7, 10}
+
+    lst.remove(7);     // {5, 10}
+    lst.push_back(10);
+    lst.unique();      // Remove consecutive duplicates -> {5, 10}
+    lst.sort();        // std::sort won't work; use member sort()
+    return 0;
+}
+\end{lstlisting}
+
+%% ============================================================
+\section{\texttt{std::map} --- Sorted Key-Value Store}
+\label{sec:map}
+
+\begin{lstlisting}[language=C++, caption={map operations}]
+#include <map>
+#include <string>
+#include <iostream>
+using namespace std;
+
+int main() {
+    map<string, int> ages;
+    ages["Alice"] = 30;
+    ages["Bob"]   = 25;
+    ages.insert(make_pair("Charlie", 28));
+
+    cout << ages["Alice"] << "\n"; // WARNING: inserts default if absent!
+
+    map<string, int>::iterator it = ages.find("Bob");
+    if (it != ages.end())
+        cout << "Bob is " << it->second << " years old.\n";
+
+    for (it = ages.begin(); it != ages.end(); ++it)
+        cout << it->first << ": " << it->second << "\n";
+    return 0;
+}
+\end{lstlisting}
+
+\begin{lstlisting}[language=C++, caption={map with custom comparator}]
+#include <map>
+#include <string>
+#include <cstring>
+
+struct CaseInsensitive {
+    bool operator()(const std::string& a, const std::string& b) const {
+        return strcasecmp(a.c_str(), b.c_str()) < 0;
+    }
+};
+std::map<std::string, int, CaseInsensitive> ci_map;
+\end{lstlisting}
+
+%% ============================================================
+\section{\texttt{std::set}, \texttt{std::multimap}, \texttt{std::multiset}}
+\label{sec:set-multi}
+
+\begin{lstlisting}[language=C++, caption={set and multimap}]
+#include <set>
+#include <map>
+#include <string>
+#include <iostream>
+using namespace std;
+
+int main() {
+    // set -- sorted, unique
+    set<int> s;
+    s.insert(10); s.insert(5); s.insert(10); // {5, 10}
+    if (s.find(5) != s.end()) cout << "5 found\n";
+    s.erase(s.begin());
+
+    // multimap -- allows duplicate keys
+    multimap<string, int> scores;
+    scores.insert(make_pair("Alice", 90));
+    scores.insert(make_pair("Alice", 85));
+
+    typedef multimap<string, int>::iterator MMit;
+    pair<MMit, MMit> range = scores.equal_range("Alice");
+    for (MMit it = range.first; it != range.second; ++it)
+        cout << it->second << " ";
+    return 0;
+}
+\end{lstlisting}
+
+%% ============================================================
+\section{Container Adapters: \texttt{stack}, \texttt{queue}, \texttt{priority\_queue}}
+\label{sec:adapters}
+
+\begin{lstlisting}[language=C++, caption={Container adapters}]
+#include <stack>
+#include <queue>
+#include <vector>
+#include <functional>
+#include <iostream>
+using namespace std;
+
+int main() {
+    // LIFO stack
+    stack<int> st;
+    st.push(10); st.push(20);
+    cout << st.top() << "\n"; // 20
+    st.pop();
+
+    // FIFO queue
+    queue<int> q;
+    q.push(10); q.push(20);
+    cout << q.front() << "\n"; // 10
+    q.pop();
+
+    // Max-heap
+    priority_queue<int> pq;
+    pq.push(10); pq.push(30); pq.push(20);
+    cout << pq.top() << "\n"; // 30
+
+    // Min-heap
+    priority_queue<int, vector<int>, greater<int> > min_pq;
+    min_pq.push(10); min_pq.push(30);
+    cout << min_pq.top() << "\n"; // 10
+
+    return 0;
+}
+\end{lstlisting}
+
+%% ============================================================
+\section{Iterators}
+\label{sec:iterators}
+
+\begin{center}
+\begin{tabular}{|l|l|l|}
+\hline
+\textbf{Category} & \textbf{Example containers} & \textbf{Extra operations} \\
+\hline
+Input            & \texttt{istream\_iterator} & \texttt{*it}, \texttt{++it} (single pass, read) \\
+Output           & \texttt{ostream\_iterator} & \texttt{*it=v}, \texttt{++it} (single pass, write) \\
+Forward          & \texttt{slist} (non-std)   & Input + multi-pass \\
+Bidirectional    & \texttt{list}, \texttt{map}, \texttt{set} & Forward + \texttt{-{}-it} \\
+Random Access    & \texttt{vector}, \texttt{deque} & Bidir + \texttt{it+n}, \texttt{it-it2}, \texttt{it[n]} \\
+\hline
+\end{tabular}
+\end{center}
+
+\begin{lstlisting}[language=C++, caption={advance and distance}]
+#include <vector>
+#include <iterator>
+#include <iostream>
+using namespace std;
+
+int main() {
+    vector<int> v;
+    v.push_back(1); v.push_back(2); v.push_back(3); v.push_back(4); v.push_back(5);
+
+    vector<int>::iterator it = v.begin();
+    advance(it, 2);                            // Now points to element 3
+    cout << distance(v.begin(), it) << "\n";  // 2
+    cout << *it << "\n";                       // 3
+    ++it; // Prefer ++it over it++ for all iterators
+    return 0;
+}
+\end{lstlisting}
+
+%% ============================================================
+\section{Algorithms}
+\label{sec:algorithms}
+
+Algorithms operate on half-open ranges \texttt{[first, last)} --- \texttt{last} is past-the-end and must never be dereferenced.
+
+\begin{lstlisting}[language=C++, caption={Non-modifying, modifying, and sorting algorithms}]
+#include <algorithm>
+#include <vector>
+#include <iostream>
+using namespace std;
+
+bool descending(int a, int b) { return a > b; }
+
+int main() {
+    int arr[] = {5, 2, 9, 1, 5, 6};
+    vector<int> v(arr, arr + 6);
+
+    // find / count
+    vector<int>::iterator it = find(v.begin(), v.end(), 9);
+    cout << count(v.begin(), v.end(), 5) << "\n"; // 2
+
+    // sort ascending, then descending
+    sort(v.begin(), v.end());
+    sort(v.begin(), v.end(), descending);
+
+    // binary search (range must be sorted)
+    sort(v.begin(), v.end());
+    cout << binary_search(v.begin(), v.end(), 5) << "\n"; // 1
+
+    vector<int>::iterator lo = lower_bound(v.begin(), v.end(), 5);
+    vector<int>::iterator hi = upper_bound(v.begin(), v.end(), 5);
+    cout << "Count of 5: " << (hi - lo) << "\n";
+
+    // reverse, fill, copy
+    reverse(v.begin(), v.end());
+    fill(v.begin(), v.end(), 0);
+    return 0;
+}
+\end{lstlisting}
+
+\begin{lstlisting}[language=C++, caption={Numeric algorithms}]
+#include <numeric>
+#include <vector>
+#include <iostream>
+using namespace std;
+
+int main() {
+    int arr[] = {1, 2, 3, 4, 5};
+    vector<int> v(arr, arr + 5);
+
+    int total = accumulate(v.begin(), v.end(), 0); // 15
+    int dot   = inner_product(v.begin(), v.end(), v.begin(), 0); // 55
+
+    cout << total << "\n" << dot << "\n";
+    return 0;
+}
+\end{lstlisting}
+
+%% ============================================================
+\section{\texttt{std::string}}
+\label{sec:string}
+
+\begin{lstlisting}[language=C++, caption={std::string fundamentals}]
+#include <string>
+#include <iostream>
+using namespace std;
+
+int main() {
+    string s = "Hello";
+    s += " World";               // "Hello World"
+
+    string sub = s.substr(0, 5); // "Hello"
+
+    size_t pos = s.find("World");
+    if (pos != string::npos)
+        cout << "Found at " << pos << "\n"; // 6
+
+    s.replace(6, 5, "C++");    // "Hello C++"
+    s.insert(5, " there");     // "Hello there C++"
+    s.erase(5, 6);             // "Hello C++"
+
+    const char* cstr = s.c_str(); // null-terminated const pointer
+    return 0;
+}
+\end{lstlisting}
+
+%% ============================================================
+\section{Streams and String Streams}
+\label{sec:streams}
+
+\begin{lstlisting}[language=C++, caption={Basic file I/O}]
+#include <fstream>
+#include <string>
+#include <iostream>
+using namespace std;
+
+int main() {
+    ofstream out("test.txt");
+    if (out) { out << "Hello file\n" << 42 << "\n"; }
+    out.close();
+
+    ifstream in("test.txt");
+    string line;
+    while (getline(in, line)) cout << line << "\n";
+    in.close();
+    return 0;
+}
+\end{lstlisting}
+
+\begin{lstlisting}[language=C++, caption={stringstream for type conversion (C++98/03 idiom)}]
+#include <sstream>
+#include <string>
+#include <iostream>
+using namespace std;
+
+int main() {
+    int x = 42;
+    stringstream ss;
+    ss << x;
+    string s = ss.str(); // "42"
+
+    string s2 = "100";
+    stringstream ss2(s2);
+    int y;
+    ss2 >> y; // y == 100
+
+    cout << s << " " << y << "\n";
+    return 0;
+}
+\end{lstlisting}
+
+%% ============================================================
+\section{Functors (Function Objects)}
+\label{sec:functors}
+
+\begin{lstlisting}[language=C++, caption={Custom functor with state}]
+#include <vector>
+#include <algorithm>
+#include <iostream>
+using namespace std;
+
+struct AddX {
+    int x;
+    explicit AddX(int val) : x(val) {}
+    int operator()(int y) const { return x + y; }
+};
+
+int main() {
+    int arr[] = {1, 2, 3, 4, 5};
+    vector<int> v(arr, arr + 5);
+
+    transform(v.begin(), v.end(), v.begin(), AddX(10));
+    // v is now {11, 12, 13, 14, 15}
+
+    for (vector<int>::iterator it = v.begin(); it != v.end(); ++it)
+        cout << *it << " ";
+    cout << "\n";
+    return 0;
+}
+\end{lstlisting}
+
+\begin{lstlisting}[language=C++, caption={Standard functors from <functional>}]
+#include <algorithm>
+#include <functional>
+#include <vector>
+using namespace std;
+
+int main() {
+    int arr[] = {5, 1, 3, 9, 2};
+    vector<int> v(arr, arr + 5);
+    sort(v.begin(), v.end(), greater<int>()); // {9, 5, 3, 2, 1}
+    return 0;
+}
+\end{lstlisting}
+
+%% ============================================================
+\section{Advanced String Operations}
+\label{sec:string-advanced}
+
+\begin{lstlisting}[language=C++, caption={String manipulation}]
+#include <iostream>
+#include <string>
+#include <algorithm>
+using namespace std;
+
+int main() {
+    string s = "Hello World";
+    size_t pos = s.find("World");
+    s.replace(6, 5, "C++");   // "Hello C++"
+    s.insert(5, " there");    // "Hello there C++"
+    s.erase(5, 6);            // "Hello C++"
+    cout << s.substr(0, 5) << "\n"; // "Hello"
+    reverse(s.begin(), s.end());
+    cout << s << "\n"; // "++C olleH"
+    return 0;
+}
+\end{lstlisting}
+
+\begin{lstlisting}[language=C++, caption={C++98 string tokenisation}]
+#include <iostream>
+#include <string>
+#include <sstream>
+using namespace std;
+
+int main() {
+    string line = "apple,banana,orange,grape";
+    stringstream ss(line);
+    string token;
+    while (getline(ss, token, ','))
+        cout << token << "\n";
+    return 0;
+}
+\end{lstlisting}
+
+%% ============================================================
+\section{Professional Insights: STL Internals and Pitfalls}
+\label{sec:stl-pro-insights}
+
+\subsection{Container Selection}
+
+\begin{center}
+\begin{tabular}{|l|l|}
+\hline
+\textbf{Need} & \textbf{Best container} \\
+\hline
+Fast random access, cache-friendly iteration & \texttt{vector} \\
+Fast push/pop at both ends                   & \texttt{deque} \\
+Fast insert/erase with stable iterators      & \texttt{list} \\
+Key-based lookup, sorted traversal           & \texttt{map} / \texttt{set} \\
+Priority queue                               & \texttt{priority\_queue} \\
+Bounded LIFO/FIFO                            & \texttt{stack} / \texttt{queue} \\
+\hline
+\end{tabular}
+\end{center}
+
+\subsection{Iterator Invalidation}
+
+Misusing invalidated iterators is undefined behaviour. Key rules:
+
+\begin{itemize}
+    \item \textbf{vector}: Any insertion that causes reallocation invalidates all iterators. Insertions at or after point of change also invalidate.
+    \item \textbf{deque}: Any insertion or erasure invalidates all iterators.
+    \item \textbf{list / map / set}: Insertion never invalidates existing iterators. Erasure only invalidates the erased node's iterator.
+\end{itemize}
+
+\subsection{\texttt{vector<bool>} Is Not a Regular Vector}
+
+\texttt{std::vector<bool>} packs bits one per bit. \texttt{operator[]} returns a \textbf{proxy object}, not a \texttt{bool\&}. This breaks generic code. Prefer \texttt{vector<char>} or \texttt{std::bitset<N>}.
+
+\subsection{Prefer \texttt{++it} Over \texttt{it++}}
+
+Postfix \texttt{it++} creates a temporary iterator copy. Prefix \texttt{++it} advances in place. Always use prefix in loops.
+
+\subsection{Strict Weak Ordering for Comparators}
+
+Any comparator passed to \texttt{sort}, \texttt{map}, or \texttt{priority\_queue} must be irreflexive, asymmetric, and transitive. Using \texttt{<=} instead of \texttt{<} is undefined behaviour.
+
+\subsection{The \texttt{equal\_range} Pattern}
+
+\begin{lstlisting}[language=C++, caption={equal\_range for multi-element lookup}]
+#include <algorithm>
+#include <vector>
+#include <iostream>
+using namespace std;
+
+int main() {
+    int arr[] = {1, 2, 5, 5, 5, 9};
+    vector<int> v(arr, arr + 6);
+
+    pair<vector<int>::iterator, vector<int>::iterator> range
+        = equal_range(v.begin(), v.end(), 5);
+
+    cout << "Count of 5: " << (range.second - range.first) << "\n"; // 3
+    return 0;
+}
+\end{lstlisting}

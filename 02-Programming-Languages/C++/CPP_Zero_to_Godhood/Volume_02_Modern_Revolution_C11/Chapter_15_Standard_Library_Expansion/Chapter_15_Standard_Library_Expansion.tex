@@ -1,0 +1,183 @@
+\chapter{Standard Library Expansion}
+\label{ch:standard-library-expansion}
+
+\textit{C++11 doubled the standard library's surface area: hashed containers, fixed and singly-linked sequences, type-safe time, a real random-number framework, regular expressions, and the small conveniences --- numeric conversions, compile-time ratios --- that remove a decade of hand-rolled code.}
+
+The language features of C++11 (Chapters~\ref{ch:the-modern-c11-core}--\ref{ch:template-metaprogramming}) are matched by an equally large library expansion. This chapter covers the containers and utilities a systems engineer reaches for daily: \textbf{unordered (hashed) containers}, \textbf{\texttt{std::array}}, \textbf{\texttt{std::forward\_list}}, \textbf{\texttt{std::regex}}, \textbf{\texttt{std::chrono}} with \textbf{\texttt{std::ratio}}, the \textbf{\texttt{<random>}} framework, and the new \textbf{numeric string conversions}. The emphasis throughout is on the memory and latency characteristics that decide whether a facility belongs in a hot path.
+
+%% ============================================================
+\section{Unordered (Hashed) Containers}
+
+C++11 added four \textbf{hash-based} associative containers, complementing the red-black-tree (\texttt{std::map}/\texttt{std::set}) family.
+
+\begin{center}
+\begin{tabular}{|l|l|l|l|}
+\hline \textbf{Container} & \textbf{Keys} & \textbf{Values} & \textbf{Dup keys} \\ \hline
+\texttt{unordered\_set}      & yes & ---  & no  \\
+\texttt{unordered\_map}      & yes & yes  & no  \\
+\texttt{unordered\_multiset} & yes & ---  & yes \\
+\texttt{unordered\_multimap} & yes & yes  & yes \\
+\hline
+\end{tabular}
+\end{center}
+
+They offer \textbf{O(1) average} lookup, insertion, and erasure (versus O(log n) for the trees), at the cost of \textbf{no ordering} and worst-case O(n) on pathological collisions. Each needs a \textbf{hash function} for the key --- automatic for built-ins and \texttt{std::string}, supplied by you for user types.
+
+\begin{lstlisting}[language=C++, caption={unordered\_map basics}]
+#include <unordered_map>
+std::unordered_map<std::string, int> counts;
+counts["apple"] = 3;
+++counts["banana"];           // value-initialized to 0, then incremented
+auto it = counts.find("apple");
+\end{lstlisting}
+
+The container is an array of \textbf{buckets}, each a linked list of nodes that hash to it. \texttt{load\_factor()} and \texttt{max\_load\_factor()} govern when the table \textbf{rehashes} --- an O(n) reallocation that invalidates iterators (never references).
+
+\begin{lstlisting}[language=C++, caption={pre-sizing to avoid rehashes}]
+std::unordered_map<int, int> m;
+m.reserve(1000000);           // allocate buckets up front
+m.max_load_factor(0.7f);      // trade memory for fewer collisions
+\end{lstlisting}
+
+\begin{quote}
+\textbf{Systems note:} node-per-element heap allocation makes unordered containers cache-unfriendly. For small or hot key sets, a sorted \texttt{std::vector} with binary search, or an open-addressing flat hash map, often beats \texttt{unordered\_map} on real hardware.
+\end{quote}
+
+%% ============================================================
+\section{\texttt{std::array}}
+
+\texttt{std::array<T, N>} is a \textbf{fixed-size}, \textbf{stack-allocated} sequence --- a zero-overhead wrapper around a C array with the STL interface. N is a compile-time parameter; no heap, no stored size.
+
+\begin{lstlisting}[language=C++, caption={std::array vs C array}]
+#include <array>
+std::array<int, 5> arr = {1, 2, 3, 4, 5};
+arr.size();          // 5 - known at compile time
+arr.at(10);          // throws std::out_of_range (bounds-checked)
+arr[2];              // unchecked, like a raw array
+int* p = arr.data(); // contiguous, interoperable with C APIs
+// does NOT decay to a pointer; copyable, comparable, returnable
+\end{lstlisting}
+
+Versus \texttt{std::vector}: no dynamic allocation, no capacity overhead, footprint exactly \texttt{N * sizeof(T)}. The correct choice whenever size is a compile-time constant: lookup tables, fixed protocol frames, SIMD lanes, small math vectors.
+
+%% ============================================================
+\section{\texttt{std::forward\_list}}
+
+\texttt{std::forward\_list<T>} is a \textbf{singly-linked list} --- the most memory-frugal node-based sequence. One forward pointer per node (versus two for \texttt{std::list}), so it exists where that saving matters and backward traversal is never needed.
+
+\begin{lstlisting}[language=C++, caption={forward\_list and its "after" operations}]
+#include <forward_list>
+std::forward_list<int> fl = {1, 2, 3};
+fl.push_front(0);             // O(1); there is NO push_back
+auto it = fl.before_begin();  // iterator to the slot before the first element
+fl.insert_after(it, 99);      // insertion is "after" a position
+fl.erase_after(it);           // erase the element after it
+\end{lstlisting}
+
+With no back pointer the API is built on \texttt{\_after} operations and \texttt{before\_begin()}; there is intentionally \textbf{no \texttt{size()}} and \textbf{no \texttt{push\_back}/\texttt{back}}.
+
+\begin{quote}
+\textbf{When to use it:} only in large collections of small nodes where the one-pointer saving is significant, or in intrusive/lock-free designs needing a singly-linked structure. Otherwise \texttt{std::vector} wins on locality. A specialist, not a default.
+\end{quote}
+
+%% ============================================================
+\section{\texttt{std::regex}}
+
+\texttt{<regex>} brings regular expressions into the standard library for searching, matching, and replacing.
+
+\begin{lstlisting}[language=C++, caption={search, match, and replace}]
+#include <regex>
+std::string text = "Contact: user@example.com";
+std::regex email(R"((\w+)@(\w+)\.com)");    // raw string avoids backslash doubling
+std::smatch m;
+if (std::regex_search(text, m, email)) {     // first match anywhere
+    // m[0] == whole match, m[1] == capture group 1
+}
+bool full = std::regex_match(text, email);   // false - must match ENTIRE string
+std::string redacted = std::regex_replace(text, email, "REDACTED");
+\end{lstlisting}
+
+Three algorithms: \texttt{regex\_search} (first match anywhere), \texttt{regex\_match} (whole input), \texttt{regex\_replace} (substitute). Capture groups come through \texttt{std::smatch}/\texttt{std::cmatch}: \texttt{m[0]} whole, \texttt{m[1..]} sub-patterns. The default grammar is \textbf{ECMAScript}; \texttt{std::regex\_constants} selects POSIX \texttt{basic}/\texttt{extended}, \texttt{awk}/\texttt{grep}/\texttt{egrep}.
+
+\begin{quote}
+\textbf{Performance trap --- \texttt{std::regex} is heavy.} On several implementations it is slow and bloats binaries. (1) Construct the \texttt{std::regex} \emph{once} and reuse it --- never compile inside a loop. (2) For critical throughput prefer \textbf{RE2} or \textbf{Boost.Regex}. Read groups via \texttt{std::ssub\_match} to avoid materializing substrings.
+\end{quote}
+
+%% ============================================================
+\section{\texttt{std::chrono} and \texttt{std::ratio}}
+
+\texttt{<chrono>} is a \textbf{type-safe} time library on three concepts: \textbf{clocks} (\texttt{system\_clock} --- wall-clock, can jump; \texttt{steady\_clock} --- monotonic, for intervals; \texttt{high\_resolution\_clock}); \textbf{durations} (a tick count with a compile-time tick length: \texttt{nanoseconds} \ldots \texttt{hours}); and \textbf{time points} measured from a clock's epoch.
+
+\begin{lstlisting}[language=C++, caption={measuring an interval with the monotonic clock}]
+#include <chrono>
+auto start = std::chrono::steady_clock::now();
+// ... work ...
+auto end = std::chrono::steady_clock::now();
+auto ns = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
+\end{lstlisting}
+
+The type system prevents unit mixing: a lossy implicit conversion (e.g. \texttt{nanoseconds} $\rightarrow$ \texttt{seconds}) is a compile error unless requested via \texttt{duration\_cast}.
+
+\textbf{\texttt{std::ratio}} is the compile-time rational machinery beneath durations: \texttt{std::ratio<Num, Den>} is an exact fraction as a \emph{type}, with arithmetic done by the compiler.
+
+\begin{lstlisting}[language=C++, caption={std::ratio underlies durations}]
+#include <ratio>
+using half = std::ratio<1, 2>;
+static_assert(std::ratio_add<half, half>::type::num == 1, "1/2 + 1/2 == 1");
+using milliseconds = std::chrono::duration<long long, std::milli>; // std::milli == ratio<1,1000>
+\end{lstlisting}
+
+SI prefixes (\texttt{std::milli}, \texttt{std::micro}, \texttt{std::nano}, \texttt{std::kilo}) are predefined \texttt{ratio} aliases. Because the tick period lives in the type, all unit conversions are resolved and checked at compile time with \textbf{zero runtime cost}.
+
+%% ============================================================
+\section{The \texttt{<random>} Framework}
+
+C++11 replaced \texttt{rand()} with a composable framework separating an \textbf{engine} (raw bits) from a \textbf{distribution} (the shape of the numbers).
+
+\begin{lstlisting}[language=C++, caption={rolling a fair six-sided die}]
+#include <random>
+std::random_device rd;                        // non-deterministic seed source
+std::mt19937 gen(rd());                        // Mersenne Twister, seeded
+std::uniform_int_distribution<int> die(1, 6);  // uniform integers in [1,6]
+int roll = die(gen);                           // draw
+\end{lstlisting}
+
+Engines: \texttt{mt19937}, \texttt{mt19937\_64}, \texttt{minstd\_rand}, \texttt{ranlux}. \texttt{std::random\_device} is a (typically) hardware/OS entropy source for \textbf{seeding} only --- slow, never a per-draw generator. Distributions: \texttt{uniform\_int\_distribution}, \texttt{uniform\_real\_distribution}, \texttt{normal\_distribution}, \texttt{bernoulli\_distribution}, \texttt{poisson\_distribution}, and more. Any engine feeds any distribution; seeding the engine replays a sequence (deterministic tests); state is local, so each thread owning its engine is thread-safe by construction.
+
+\begin{quote}
+\textbf{Systems note:} seed once, draw many. Re-seeding per call destroys performance and quality. Give each thread its own \texttt{thread\_local} engine (Chapter~\ref{ch:concurrency}) to avoid contention.
+\end{quote}
+
+%% ============================================================
+\section{Numeric String Conversions}
+
+C++11 added simple conversions between numbers and \texttt{std::string}, retiring \texttt{atoi}/\texttt{strtol} boilerplate for the common case.
+
+\begin{lstlisting}[language=C++, caption={string to number, and back}]
+#include <string>
+int    i   = std::stoi("42");            // also stol, stoll, stoul, stoull
+double d   = std::stod("3.14");          // also stof, stold
+std::size_t pos;
+int    hex = std::stoi("ff", &pos, 16);  // base-16; pos receives chars consumed
+std::string s1 = std::to_string(42);     // "42"
+std::string s2 = std::to_string(3.14);   // "3.140000"
+\end{lstlisting}
+
+The \texttt{sto*} family parses leading whitespace and an optional sign, accepts an explicit base, and reports consumed characters via \texttt{pos}. They \textbf{throw}: \texttt{std::invalid\_argument} (no conversion) or \texttt{std::out\_of\_range} (overflow).
+
+\begin{quote}
+\textbf{Caveats:} \texttt{to\_string} for floating point uses \texttt{\%f} (fixed, 6 digits) and is locale-dependent --- wrong for round-tripping. The \texttt{sto*} functions throw, unacceptable on a no-throw hot path. For round-tripping and zero-allocation/no-throw conversion use C++17's \texttt{from\_chars}/\texttt{to\_chars}. In C++11, prefer these for convenience; hand-tune in latency-critical paths.
+\end{quote}
+
+%% ============================================================
+\section{Professional Insights}
+
+\textbf{Match the container to the access pattern, not the asymptotics.} \texttt{unordered\_map}'s O(1) hides node-per-element allocation and pointer chasing. For small, hot, or scan-heavy key sets a sorted \texttt{std::vector} or flat hash map frequently wins on wall-clock. Profile on representative data.
+
+\textbf{Pre-size hashed containers.} Every rehash is O(n) and invalidates iterators. Know the count, \texttt{reserve()} once, tune \texttt{max\_load\_factor} --- critical in allocation-sensitive paths.
+
+\textbf{Default to \texttt{std::array}/\texttt{std::vector}; treat lists as specialists.} Linked lists win only for stable addresses or O(1) splicing \emph{and} rare traversal. Pointer-chasing usually dwarfs the algorithmic benefit on modern memory hierarchies.
+
+\textbf{Always measure intervals with \texttt{steady\_clock}.} \texttt{system\_clock} can jump (NTP, leap seconds), producing negative or absurd durations. \texttt{steady\_clock} is monotonic --- the only correct choice for benchmarks, timeouts, rate limiting.
+
+\textbf{Treat \texttt{std::regex} and \texttt{to\_string} as convenience, not performance, tools.} Fine for config and cold paths; wrong in a tight loop. Compile regexes once; move hot numeric formatting to \texttt{to\_chars}/\texttt{from\_chars} (C++17) or a bespoke routine.

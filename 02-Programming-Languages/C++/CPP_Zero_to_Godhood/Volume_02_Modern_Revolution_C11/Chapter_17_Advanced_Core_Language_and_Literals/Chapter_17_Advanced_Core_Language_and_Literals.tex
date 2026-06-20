@@ -1,0 +1,241 @@
+\chapter{Advanced Core Language \& Literals}
+\label{ch:advanced-core-language-and-literals}
+
+\textit{The headline features get the attention, but C++11 also shipped a dozen smaller core-language refinements --- inheriting constructors, member initializers, explicit conversions, user-defined literals, Unicode, alignment control, and \texttt{noexcept} --- that together close the gaps a systems programmer hits every day.}
+
+This chapter collects the remaining C++11 core-language features into one reference: the class-authoring conveniences (\textbf{inheriting constructors}, \textbf{NSDMI}, \textbf{explicit conversion operators}), the \textbf{\texttt{noexcept}} contract the library depends on, the \textbf{literal} machinery (\textbf{user-defined literals}, \textbf{raw strings}, \textbf{Unicode}), low-level control (\textbf{\texttt{alignas}/\texttt{alignof}}, \textbf{unrestricted unions}, \textbf{fixed-width integers}), and the quiet usability fixes (\textbf{right-angle brackets}, \textbf{\texttt{extern template}}).
+
+%% ============================================================
+\section{Inheriting Constructors}
+
+Before C++11 a derived class re-declared and forwarded every base constructor by hand. C++11 imports them with a single \texttt{using} declaration.
+
+\begin{lstlisting}[language=C++, caption={using Base::Base imports the base's constructors}]
+struct Base {
+    Base(int);
+    Base(int, const std::string&);
+    Base(double, double);
+};
+struct Derived : Base {
+    using Base::Base;   // inherit ALL of Base's constructors
+};
+Derived d(42);          // calls Base(int)
+Derived e(1.0, 2.0);    // calls Base(double, double)
+\end{lstlisting}
+
+The compiler synthesizes a derived constructor per inherited base constructor, forwarding arguments and \textbf{default-initializing the derived's own members} (combine with NSDMI). Inherited constructors are skipped if the derived class declares one with the same signature; default/copy/move constructors are never inherited.
+
+\begin{quote}
+\textbf{Use it for:} policy wrappers, strong-typedefs, and exception hierarchies (\texttt{struct my\_error : std::runtime\_error \{ using std::runtime\_error::runtime\_error; \};}).
+\end{quote}
+
+%% ============================================================
+\section{Non-Static Data Member Initializers (NSDMI)}
+
+C++11 lets you give a data member a \textbf{default initializer at its declaration}. Every constructor that does not explicitly initialize that member uses this value.
+
+\begin{lstlisting}[language=C++, caption={members initialized at the point of declaration}]
+class Connection {
+    int         timeout_ms = 5000;     // NSDMI
+    bool        keep_alive = true;
+    std::string host       = "localhost";
+public:
+    Connection() = default;            // all members get NSDMI values
+    explicit Connection(std::string h) // member-init-list overrides the NSDMI
+        : host(std::move(h)) {}        // timeout_ms, keep_alive still defaulted
+};
+\end{lstlisting}
+
+A member-initializer-list entry \textbf{overrides} the NSDMI; otherwise the NSDMI applies. There is exactly one place each member's default lives --- a major safety win for multi-constructor classes.
+
+%% ============================================================
+\section{Explicit Conversion Operators}
+
+C++11 allows \texttt{explicit} on \textbf{conversion operators}, fixing the ``safe bool'' problem.
+
+\begin{lstlisting}[language=C++, caption={explicit operator bool}]
+class UniqueHandle {
+    int fd_ = -1;
+public:
+    explicit operator bool() const { return fd_ != -1; }  // explicit!
+};
+UniqueHandle h = open_something();
+if (h) { /* OK: contextual conversion to bool */ }
+int x = h;            // ERROR: would require an implicit conversion
+\end{lstlisting}
+
+An \texttt{explicit} conversion operator participates in \textbf{contextual conversions to \texttt{bool}} (conditions of \texttt{if}/\texttt{while}/\texttt{for}, \texttt{\&\&}, \texttt{||}, \texttt{!}, ternary) but is excluded from implicit conversions --- exactly what \texttt{unique\_ptr}, \texttt{shared\_ptr}, and streams use, retiring the old ``safe bool idiom''.
+
+%% ============================================================
+\section{\texttt{noexcept}: Specifier and Operator}
+
+\texttt{noexcept} is both a \textbf{specifier} (a function will not throw) and an \textbf{operator} (queries whether an expression is non-throwing). It replaced runtime-checked dynamic exception specifications.
+
+\begin{lstlisting}[language=C++, caption={the noexcept specifier}]
+void cleanup() noexcept;                     // promises not to throw
+void maybe() noexcept(false);                // may throw (the default)
+template <class T>
+void wrap(T x) noexcept(noexcept(x.foo()));  // conditional
+\end{lstlisting}
+
+A \texttt{noexcept} function that throws calls \texttt{std::terminate()} immediately --- no unwinding past the boundary. \textbf{Why it is load-bearing:} move operations must be \texttt{noexcept} for \texttt{std::vector} to use them on reallocation (else it copies, to keep the strong guarantee --- Chapter~\ref{ch:move-semantics-and-smart-pointers}); and the compiler omits exception-handling machinery around \texttt{noexcept} calls.
+
+\begin{lstlisting}[language=C++, caption={the noexcept move constructor containers require}]
+class Buffer {
+    char* data_;
+public:
+    Buffer(Buffer&& o) noexcept : data_(o.data_) { o.data_ = nullptr; }
+    Buffer& operator=(Buffer&&) noexcept;
+};
+\end{lstlisting}
+
+\begin{quote}
+\textbf{Rule:} mark every move constructor, move assignment, and swap \texttt{noexcept}. Do not mark a function \texttt{noexcept} if it may throw --- \texttt{terminate()} is a brutal failure mode.
+\end{quote}
+
+%% ============================================================
+\section{User-Defined Literals}
+
+\textbf{User-defined literals (UDLs)} attach a custom suffix to literals, dispatching to an \texttt{operator""} function --- type-safe, readable domain quantities.
+
+\begin{lstlisting}[language=C++, caption={a units UDL}]
+constexpr long double operator"" _km(long double x) { return x * 1000.0L; } // metres
+constexpr long double operator"" _m (long double x) { return x; }
+long double distance = 3.0_km + 250.0_m;   // 3250.0 metres, at compile time
+\end{lstlisting}
+
+The standard restricts the operator's parameter types: a single \texttt{unsigned long long} or \texttt{long double} (cooked), \texttt{const char*} + \texttt{std::size\_t} (strings), single character types, or a \texttt{const char*} (raw). User suffixes \textbf{must begin with an underscore}; suffix-without-underscore is reserved for the standard library (e.g. \texttt{10ms}, \texttt{"x"s} --- added in C++14).
+
+\begin{lstlisting}[language=C++, caption={a string UDL}]
+std::string operator"" _upper(const char* s, std::size_t n) {
+    std::string r(s, n);
+    for (char& c : r) c = std::toupper((unsigned char)c);
+    return r;
+}
+auto shout = "hello"_upper;   // "HELLO"
+\end{lstlisting}
+
+%% ============================================================
+\section{Raw String Literals}
+
+A \textbf{raw string literal}, \texttt{R"(...)"}, disables all escape processing --- invaluable for regexes (Chapter~\ref{ch:standard-library-expansion}), Windows paths, and embedded text.
+
+\begin{lstlisting}[language=C++, caption={raw vs ordinary string}]
+std::string path = "C:\\temp\\new\\file";   // ordinary: doubled backslashes
+std::string raw  = R"(C:\temp\new\file)";    // raw: exactly as written
+std::regex re(R"((\d{4})-(\d{2})-(\d{2}))"); // no backslash doubling
+\end{lstlisting}
+
+If the content contains \texttt{)"}, use a \textbf{custom delimiter}: \texttt{R"delim( ... )delim"} (up to 16 characters). Raw strings combine with encoding prefixes: \texttt{u8R"(...)"}, \texttt{LR"(...)"}.
+
+%% ============================================================
+\section{Unicode and New Character Types}
+
+C++11 added \textbf{portable, fixed-width character types} and literal prefixes so UTF-16/UTF-32 have a defined representation (unlike platform-dependent \texttt{wchar\_t}).
+
+\begin{center}
+\begin{tabular}{|l|l|l|}
+\hline \textbf{Type} & \textbf{Encoding} & \textbf{Prefix} \\ \hline
+\texttt{char} (UTF-8 bytes) & UTF-8  & \texttt{u8"..."} \\
+\texttt{char16\_t}          & UTF-16 & \texttt{u"..."} / \texttt{u'x'} \\
+\texttt{char32\_t}          & UTF-32 & \texttt{U"..."} / \texttt{U'x'} \\
+\hline
+\end{tabular}
+\end{center}
+
+\begin{lstlisting}[language=C++, caption={the new character types and literals}]
+const char*     u8s  = u8"UTF-8 text";   // UTF-8 encoded bytes
+const char16_t* u16s = u"UTF-16 text";   // std::u16string for the owning type
+const char32_t* u32s = U"UTF-32 text";   // std::u32string
+char32_t        grin = U'\U0001F600';    // a single code point
+\end{lstlisting}
+
+Library support: \texttt{std::u16string}, \texttt{std::u32string}. Universal character names (\texttt{\textbackslash uXXXX}, \texttt{\textbackslash U00XXXXXX}) name code points portably. \texttt{char16\_t} is exactly a UTF-16 code unit on every platform.
+
+%% ============================================================
+\section{\texttt{alignas} and \texttt{alignof}}
+
+C++11 standardized \textbf{alignment control}. \texttt{alignof(T)} queries a type's required alignment; \texttt{alignas(N)} (or \texttt{alignas(T)}) imposes one.
+
+\begin{lstlisting}[language=C++, caption={querying and imposing alignment}]
+alignof(double);                       // typically 8
+struct alignas(64) CacheLineAligned {  // aligned to a 64-byte cache line
+    std::atomic<int> counter;
+    char padding[60];
+};
+alignas(16) float simd_vec[4];          // 16-byte aligned for SSE
+\end{lstlisting}
+
+A core systems tool: aligning per-thread state to a \textbf{cache line (typically 64 bytes)} prevents \emph{false sharing} (Chapter~\ref{ch:concurrency}); it also satisfies SIMD and DMA requirements. \texttt{alignas} may only \emph{strengthen} alignment, never weaken it.
+
+%% ============================================================
+\section{Unrestricted Unions}
+
+C++11 lets a union contain \textbf{any type}, including non-trivial ones, at the cost of manual lifetime management.
+
+\begin{lstlisting}[language=C++, caption={a union with a non-trivial member}]
+union Value {
+    int          i;
+    double        d;
+    std::string   s;     // non-trivial - legal in C++11
+    Value() {}           // must be user-provided
+    ~Value() {}          // user-provided; does NOT auto-destroy s
+};
+Value v;
+new (&v.s) std::string("hello");   // placement-new the active member
+v.s.~basic_string();               // explicit destruction before switching
+\end{lstlisting}
+
+With a non-trivial member, the union's special members are implicitly \textbf{deleted} unless provided, and you must construct the active member with \textbf{placement new} and destroy it explicitly. This builds \emph{discriminated unions} (track the active member with a tag) --- the machinery beneath \texttt{std::variant} (C++17).
+
+%% ============================================================
+\section{Fixed-Width Integers and \texttt{long long}}
+
+C++11 guarantees \textbf{\texttt{long long}} (\(\geq\)64 bits) and adopts C's \textbf{\texttt{<cstdint>}} fixed-width types for exact, portable integer control.
+
+\begin{lstlisting}[language=C++, caption={portable, exact-width integers}]
+#include <cstdint>
+long long      big  = 9000000000LL;        // at least 64 bits
+std::int32_t   i32  = -1;                    // exactly 32 bits, two's complement
+std::uint64_t  u64  = 0xFFFFFFFFFFFFFFFF;    // exactly 64 bits, unsigned
+std::int_fast16_t fast;                      // fastest type with >= 16 bits
+std::intptr_t  as_int = reinterpret_cast<std::intptr_t>(&big); // holds a pointer
+\end{lstlisting}
+
+\texttt{<cstdint>} provides exact-width (\texttt{int8\_t}\ldots\texttt{int64\_t}), fastest-minimum (\texttt{int\_fast*\_t}), smallest-minimum (\texttt{int\_least*\_t}), pointer-sized (\texttt{intptr\_t}), and \texttt{intmax\_t}. For wire formats and hardware registers --- where a field is \emph{defined} as 32 bits --- these replace the non-portable assumption that \texttt{int} is 32 or \texttt{long} is 64 bits.
+
+%% ============================================================
+\section{Usability Fixes: Right-Angle Brackets and \texttt{extern template}}
+
+\textbf{The right-angle bracket fix.} Two closing template brackets no longer need a separating space:
+
+\begin{lstlisting}[language=C++, caption={nested templates no longer need a space}]
+std::vector<std::vector<int>> grid;   // C++11: fine
+// std::vector<std::vector<int> >     // pre-C++11: space was mandatory
+\end{lstlisting}
+
+\textbf{\texttt{extern template}.} Suppresses implicit instantiation in a translation unit, promising the instantiation exists elsewhere; a matching explicit instantiation provides it once.
+
+\begin{lstlisting}[language=C++, caption={control template instantiation across TUs}]
+// in a header:
+extern template class std::vector<MyHeavyType>;   // "do NOT instantiate here"
+// in exactly one .cpp:
+template class std::vector<MyHeavyType>;            // instantiate once, here
+\end{lstlisting}
+
+For heavily-used instantiations this measurably cuts compile time and object-file bloat in large codebases.
+
+%% ============================================================
+\section{Professional Insights}
+
+\textbf{\texttt{noexcept} on moves is not optional.} An un-\texttt{noexcept}'d move constructor makes \texttt{std::vector} fall back to copying on reallocation, silently erasing move semantics' benefit. Audit every move constructor and move assignment.
+
+\textbf{Use \texttt{alignas} to kill false sharing deliberately.} Align hot, independently-written per-thread fields to a cache line (\texttt{alignas(64)}) --- one of the highest-leverage, lowest-effort scaling fixes in concurrent code (Chapter~\ref{ch:concurrency}).
+
+\textbf{Reach for \texttt{<cstdint>} at every external boundary.} Wire protocols, file formats, and hardware interfaces must use exact-width types. Reserve \texttt{int}/\texttt{long} for local arithmetic; never assume their size in a serialized layout.
+
+\textbf{\texttt{explicit operator bool} is the right truthiness idiom.} Resource-handle and optional-like types should expose it rather than an implicit conversion --- enabling \texttt{if (handle)} while blocking accidental \texttt{int n = handle;}.
+
+\textbf{Inheriting constructors + NSDMI make thin wrappers free.} Together they let strong-typedef, policy, and exception classes inherit construction and default their own members with zero boilerplate.
+
+\textbf{Treat unrestricted unions as a primitive, not a tool.} Use them only to \emph{build} tagged-variant abstractions; prefer \texttt{std::variant} (C++17) once available, and encapsulate the union behind a class that owns the active-member discipline.
