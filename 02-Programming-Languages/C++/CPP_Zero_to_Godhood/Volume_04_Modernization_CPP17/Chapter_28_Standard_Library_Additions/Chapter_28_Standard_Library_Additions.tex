@@ -1,0 +1,239 @@
+\chapter{Standard Library Additions}
+\label{ch:c17-stdlib-additions}
+
+\begin{quote}
+\emph{Beyond the headline vocabulary types and parallel algorithms, C++17 scattered a set of smaller but high-value utilities across the standard library: a real byte type, new clamping and number-theory algorithms, an enormous catalogue of special mathematical functions, the blazingly fast \texttt{<charconv>} conversions, free-function container accessors, and the subtle correctness tools \texttt{launder}, \texttt{as\_const}, and \texttt{uncaught\_exceptions}. Individually modest, together they remove a long list of ``why isn't this in the standard?'' gaps.}
+\end{quote}
+
+This chapter collects the C++17 additions that don't belong to a single large theme but each pull their weight in real code. \texttt{std::byte} gives raw-memory code a type the compiler won't let you accidentally do arithmetic on. \texttt{std::to\_chars}/\texttt{from\_chars} give locale-independent, allocation-free, round-trip-exact number conversion. The free-function \texttt{std::size}/\texttt{empty}/\texttt{data} complete the generic-accessor family \texttt{std::begin}/\texttt{end} started. And \texttt{std::launder}, \texttt{std::as\_const}, and \texttt{std::uncaught\_exceptions()} are the precision instruments for low-level and exception-aware code.
+
+\section{\texttt{std::byte}}
+\label{sec:c17-byte}
+
+\texttt{std::byte} (header \texttt{<cstddef>}) is a distinct type for \textbf{byte-oriented memory access}. Unlike \texttt{char}, it is \textbf{not an arithmetic type}; it supports only the bitwise operators.
+
+\begin{lstlisting}[language=C++,caption={std::byte models raw memory, not a number}]
+#include <cstddef>
+
+std::byte b = std::byte{0xAB};
+
+// b += 1;                       // ERROR: std::byte is not arithmetic
+b = b | std::byte{0x01};         // OK: bitwise ops are allowed
+b <<= 1;                         // OK
+
+// Explicit conversion to/from an integer is required:
+int i = std::to_integer<int>(b); // 0xAB as int
+\end{lstlisting}
+
+The win is \textbf{intent and safety}. A \texttt{std::byte*} buffer expresses ``these are bytes, not text or numbers,'' and every crossing between the byte world and the number world is explicit via \texttt{std::to\_integer<T>} and \texttt{std::byte\{value\}}.
+
+\section{New Algorithms: \texttt{clamp}, \texttt{gcd}, \texttt{lcm}, \texttt{sample}}
+\label{sec:c17-new-algos}
+
+\textbf{\texttt{std::clamp(v, lo, hi)}} (header \texttt{<algorithm>}) constrains a value to a range, replacing the error-prone \texttt{std::max(lo, std::min(v, hi))} idiom:
+
+\begin{lstlisting}[language=C++,caption={clamp constrains a value to [lo, hi]}]
+#include <algorithm>
+
+int x = std::clamp(10, 0, 5);     // 5  (10 > hi)
+int y = std::clamp(-3, 0, 5);     // 0  (-3 < lo)
+int z = std::clamp(3, 0, 5);      // 3  (in range)
+\end{lstlisting}
+
+\textbf{\texttt{std::gcd(a, b)}} and \textbf{\texttt{std::lcm(a, b)}} (header \texttt{<numeric>}) compute the greatest common divisor and least common multiple:
+
+\begin{lstlisting}[language=C++,caption={gcd and lcm}]
+#include <numeric>
+
+int g = std::gcd(12, 18);         // 6
+int l = std::lcm(4, 6);           // 12
+\end{lstlisting}
+
+\textbf{\texttt{std::sample}} (header \texttt{<algorithm>}) selects \texttt{n} elements at random, without replacement, from a range:
+
+\begin{lstlisting}[language=C++,caption={sample draws a random subset}]
+#include <algorithm>
+#include <random>
+#include <vector>
+#include <iterator>
+
+std::vector<int> population(100);
+std::vector<int> chosen;
+std::sample(population.begin(), population.end(),
+            std::back_inserter(chosen),
+            5, std::mt19937{std::random_device{}()});   // 5 random elements
+\end{lstlisting}
+
+\section{Mathematical Special Functions}
+\label{sec:c17-special-functions}
+
+C++17 folds a large catalogue of \textbf{mathematical special functions} into \texttt{<cmath>}: Bessel functions (\texttt{cyl\_bessel\_j}, \texttt{sph\_bessel}), Legendre and associated Legendre polynomials, Laguerre and Hermite polynomials, the elliptic integrals (\texttt{ellint\_1/2/3}), and the \texttt{beta}, \texttt{riemann\_zeta}, \texttt{expint} family.
+
+\begin{lstlisting}[language=C++,caption={Special functions now live in <cmath>}]
+#include <cmath>
+
+double z  = std::riemann_zeta(2.0);     // pi^2 / 6
+double j0 = std::cyl_bessel_j(0, 1.0);  // Bessel function J_0(1)
+double p  = std::legendre(3, 0.5);      // Legendre polynomial P_3(0.5)
+double b  = std::beta(2.0, 3.0);        // Beta function B(2, 3)
+\end{lstlisting}
+
+For scientific, signal-processing, and quantitative-finance code, standardizing these --- with defined accuracy requirements --- removes a dependency and makes numerically heavy code portable.
+
+\section{Elementary String Conversions (\texttt{<charconv>})}
+\label{sec:c17-charconv}
+
+\texttt{std::to\_chars} and \texttt{std::from\_chars} (header \texttt{<charconv>}) are \textbf{low-level, allocation-free, locale-independent} conversions between numbers and text --- the fastest the standard provides.
+
+\begin{lstlisting}[language=C++,caption={to\_chars and from\_chars over a caller-provided buffer}]
+#include <charconv>
+
+char buffer[16];
+int value = 42;
+
+// number -> text: writes into [buffer, buffer+16), no allocation
+auto [ptr, ec] = std::to_chars(buffer, buffer + sizeof(buffer), value);
+if (ec == std::errc{}) {
+    // [buffer, ptr) now holds "42"
+}
+
+// text -> number: parses from the buffer, no locale, no allocation
+int parsed;
+auto [p2, ec2] = std::from_chars(buffer, buffer + sizeof(buffer), parsed);
+if (ec2 == std::errc{}) {
+    // parsed == 42
+}
+\end{lstlisting}
+
+Both return a small struct with a one-past-the-end pointer and an \texttt{errc}; no exceptions are thrown. Because they ignore the locale and never allocate, they are the correct primitives for \textbf{serialization, protocol parsing, and latency-sensitive formatting}. The floating-point overloads provide the shortest round-trippable representation.
+
+\section{Non-Member \texttt{size}, \texttt{empty}, and \texttt{data}}
+\label{sec:c17-nonmember-size}
+
+C++17 completes the free-function accessor family begun by \texttt{std::begin}/\texttt{end}. \textbf{\texttt{std::size(c)}}, \textbf{\texttt{std::empty(c)}}, and \textbf{\texttt{std::data(c)}} (header \texttt{<iterator>}) work uniformly on standard containers, \texttt{initializer\_list}, and built-in arrays.
+
+\begin{lstlisting}[language=C++,caption={Free-function accessors work on containers AND raw arrays}]
+#include <iterator>
+#include <vector>
+
+std::vector<int> v{1, 2, 3};
+int arr[5] = {};
+
+std::size_t n1 = std::size(v);      // 3
+std::size_t n2 = std::size(arr);    // 5 -- and it's a compile-time constant
+bool e        = std::empty(v);      // false
+int* p        = std::data(arr);     // pointer to the first element
+\end{lstlisting}
+
+\texttt{std::size} on a built-in array yields a \texttt{constexpr} value, a safer replacement for \texttt{sizeof(arr)/sizeof(arr[0])}. In templates, preferring \texttt{std::size(r)}/\texttt{std::data(r)} lets the same code accept arrays and containers alike.
+
+\section{\texttt{std::as\_const}}
+\label{sec:c17-as-const}
+
+\texttt{std::as\_const(x)} (header \texttt{<utility>}) returns a \texttt{const} reference to its argument, making ``treat this as const here'' explicit. Its main use is forcing selection of a \texttt{const} overload without a \texttt{const\_cast}.
+
+\begin{lstlisting}[language=C++,caption={as\_const forces the const overload}]
+#include <utility>
+#include <vector>
+
+std::vector<int> v{1, 2, 3};
+
+auto it  = v.begin();                 // iterator (mutable)
+auto cit = std::as_const(v).begin();  // const_iterator -- selects begin() const
+
+for (const auto& x : std::as_const(v)) { /* guaranteed read-only view */ }
+\end{lstlisting}
+
+\texttt{std::as\_const} is deleted for rvalues, preventing a \texttt{const} reference to a dying temporary.
+
+\section{\texttt{std::launder}}
+\label{sec:c17-launder}
+
+\texttt{std::launder} (header \texttt{<new>}) is a low-level \textbf{pointer-laundering} barrier. When you construct a new object in storage that previously held a different object --- especially one with \texttt{const} or reference members --- a pointer obtained before the re-construction may not legally refer to the new object. \texttt{std::launder(p)} returns a pointer to the object actually now living at that address.
+
+\begin{lstlisting}[language=C++,caption={launder after constructing a new object over an old one}]
+#include <new>
+
+struct Widget { const int id; };   // const member is the trap
+
+alignas(Widget) unsigned char buf[sizeof(Widget)];
+Widget* p1 = new (buf) Widget{1};
+
+p1->~Widget();
+Widget* p2 = new (buf) Widget{2};  // different object, same storage
+
+// Using p1 here is UB (it has a const member). Launder to get a valid pointer:
+Widget* valid = std::launder(reinterpret_cast<Widget*>(buf));
+int id = valid->id;                // 2 -- correct and well-defined
+\end{lstlisting}
+
+This is a tool for implementers of \texttt{optional}, \texttt{variant}, small-buffer-optimized containers, and arena allocators. In ordinary application code you should never need it.
+
+\section{\texttt{std::uncaught\_exceptions}}
+\label{sec:c17-uncaught-exceptions}
+
+\texttt{std::uncaught\_exceptions()} (header \texttt{<exception>}) returns the \textbf{number} of exceptions currently in flight. It replaces the C++98 boolean \texttt{std::uncaught\_exception()}, which could not distinguish ``an exception is propagating'' from ``\emph{another} exception started while I was already unwinding.''
+
+\begin{lstlisting}[language=C++,caption={A transaction guard that detects unwinding correctly}]
+#include <exception>
+
+class TransactionGuard {
+    int entry_count = std::uncaught_exceptions();
+public:
+    ~TransactionGuard() {
+        if (std::uncaught_exceptions() > entry_count) {
+            rollback();   // MORE exceptions in flight than at construction -> unwinding
+        } else {
+            commit();     // normal exit
+        }
+    }
+};
+\end{lstlisting}
+
+Comparing the count at construction with the count at destruction is robust even when the guard lives inside another exception's unwinding --- the correct foundation for \texttt{scope\_success}/\texttt{scope\_fail}-style guards.
+
+\section{Searchers: \texttt{default\_searcher}, \texttt{boyer\_moore\_searcher}, \texttt{boyer\_moore\_horspool\_searcher}}
+\label{sec:c17-searchers}
+
+C++17 generalizes \texttt{std::search} to accept a \textbf{searcher} object (header \texttt{<functional>}), letting you choose the substring-search \emph{algorithm} while keeping one call site:
+
+\begin{itemize}
+    \item \textbf{\texttt{std::default\_searcher}} --- the naive O(n$\cdot$m) scan, equivalent to plain \texttt{std::search}.
+    \item \textbf{\texttt{std::boyer\_moore\_searcher}} --- Boyer-Moore: skip tables give sublinear average-case time on long texts.
+    \item \textbf{\texttt{std::boyer\_moore\_horspool\_searcher}} --- the Horspool simplification: a single skip table, lower preprocessing cost and memory.
+\end{itemize}
+
+\begin{lstlisting}[language=C++,caption={Choosing a substring-search algorithm via a searcher}]
+#include <functional>
+#include <algorithm>
+#include <string>
+
+std::string text    = "...a long body of text to scan...";
+std::string pattern = "needle";
+
+// Boyer-Moore: preprocess the pattern once, then search (sublinear on average):
+auto bm = std::boyer_moore_searcher(pattern.begin(), pattern.end());
+auto it = std::search(text.begin(), text.end(), bm);
+if (it != text.end()) {
+    // found at position std::distance(text.begin(), it)
+}
+
+// The Horspool variant -- cheaper preprocessing, less memory:
+auto hs = std::boyer_moore_horspool_searcher(pattern.begin(), pattern.end());
+auto it2 = std::search(text.begin(), text.end(), hs);
+\end{lstlisting}
+
+The key efficiency point is \textbf{reuse}: a searcher precomputes its skip tables at construction, so searching for the same pattern in many texts amortizes that preprocessing. For a one-off search of a short pattern, \texttt{default\_searcher} wins; Boyer-Moore pays off for long patterns, long texts, or repeated searches.
+
+\section{Professional Insights}
+\label{sec:c17-stdlib-insights}
+
+\textbf{Use \texttt{std::byte} for raw-memory buffers and \texttt{to\_chars}/\texttt{from\_chars} for number conversion in hot paths.} \texttt{std::byte} makes ``this is memory, not a number'' a type-system fact. \texttt{to\_chars}/\texttt{from\_chars} are the only standard conversions that neither allocate nor touch the locale and report failure without exceptions --- the correct primitives for parsers and latency-sensitive formatting.
+
+\textbf{Prefer \texttt{std::clamp} and the free-function accessors as defaults.} \texttt{clamp} says what it means; \texttt{std::size}/\texttt{empty}/\texttt{data} make generic code accept raw arrays as well as containers and give a \texttt{constexpr} array size the \texttt{sizeof} trick cannot safely guarantee.
+
+\textbf{Build a searcher once and reuse it across many searches.} Boyer-Moore and Horspool front-load preprocessing; their advantage materializes only when amortized over repeated searches or a long text. For a single short search, the default searcher is faster.
+
+\textbf{Reserve \texttt{std::launder} for deliberate storage reuse, and \texttt{uncaught\_exceptions()} for unwinding-aware guards.} \texttt{launder} is a precision tool for \texttt{variant}/\texttt{optional}-like containers and arena allocators. \texttt{uncaught\_exceptions()} (plural) is the correct way for a scope-guard destructor to tell normal exit from stack unwinding.
+
+\textbf{Let \texttt{std::as\_const} express read-only intent precisely.} When you want a \texttt{const\_iterator} or to force the \texttt{const} overload without a \texttt{const\_cast}, \texttt{std::as\_const(x)} says so in one token and refuses to bind to a dying temporary.
