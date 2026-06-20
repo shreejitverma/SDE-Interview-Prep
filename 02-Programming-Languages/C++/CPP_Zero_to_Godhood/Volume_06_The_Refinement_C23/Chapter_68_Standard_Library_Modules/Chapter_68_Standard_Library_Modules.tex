@@ -1,0 +1,87 @@
+\chapter{Standard Library Modules --- \texttt{import std;}}
+\label{ch:standard-library-modules}
+
+C++20 gave the language \emph{modules} but did not modularize the standard library itself. C++23 closes that gap with two named modules: \lstinline|import std;| brings in the entire C++ standard library, and \lstinline|import std.compat;| adds the C library names in the global namespace as well. This is the single line that lets a C++23 program replace its forest of \lstinline|#include|s with one import --- and, where the toolchain cooperates, compile dramatically faster.
+
+\section{The Cost of Textual Inclusion}
+
+\lstinline|#include| is a preprocessor copy-paste: every \lstinline|#include <vector>| pastes the entire header --- and everything it includes transitively --- into the translation unit. A single \lstinline|#include <algorithm>| can pull in over 100{,}000 lines, and this happens \textbf{per translation unit}. Include guards stop re-inclusion within one TU but do nothing across TUs, so 500 \lstinline|.cpp| files re-parse the same headers 500 times --- the dominant cost in many C++ builds.
+
+\section{\texttt{import std;} and \texttt{import std.compat;}}
+
+\begin{itemize}
+    \item \lstinline|import std;| --- exports the entire C++ standard library (namespace \lstinline|std|), plus the C facilities under their \lstinline|std::| names.
+    \item \lstinline|import std.compat;| --- everything \lstinline|import std;| does, \textbf{plus} the C library names in the \emph{global} namespace (\lstinline|::printf|, \lstinline|::size_t|).
+\end{itemize}
+
+\begin{lstlisting}[language=C++, caption={An entire program's includes replaced by one import}]
+import std;            // the whole standard library, as one module
+
+int main() {
+    std::vector<int> v{5, 3, 8, 1, 9, 2};
+    std::ranges::sort(v);
+    for (auto [i, x] : std::views::enumerate(v))
+        std::println("v[{}] = {}", i, x);
+}
+\end{lstlisting}
+
+Rule of thumb: \textbf{\lstinline|import std;| for new code; \lstinline|import std.compat;| when porting code that relies on unqualified C names.}
+
+\section{What the Modules Export}
+
+\begin{itemize}
+    \item \textbf{Macros are not exported.} \lstinline|assert|, \lstinline|errno|, \lstinline|offsetof|, and feature-test macros are \emph{not} brought in --- still \lstinline|#include| the header for them. This is the most common migration surprise.
+    \item \textbf{All-or-nothing granularity.} You import the whole library, not one header; the linker still emits only what you use.
+    \item \textbf{Everything keeps its \lstinline|std::| qualification.} \lstinline|import std;| does not pollute the global namespace; only \lstinline|import std.compat;| adds the C names globally.
+\end{itemize}
+
+\section{Mixing Imports with Includes}
+
+\begin{itemize}
+    \item You \emph{may} mix \lstinline|import std;| with \lstinline|#include| of standard headers; the entities are the same type and interoperate.
+    \item \lstinline|import| declarations must appear before other declarations (after the optional \lstinline|module;| preamble), so imports go at the top.
+\end{itemize}
+
+\begin{lstlisting}[language=C++, caption={A pragmatic mixed translation unit}]
+import std;                       // standard library via module
+
+#include "my_project/widget.hpp" // your own headers stay as includes
+#include <cassert>               // included for the assert MACRO (not exported)
+
+int main() {
+    Widget w;
+    assert(w.valid());      // macro from <cassert>
+    std::println("{}", w.name());
+}
+\end{lstlisting}
+
+\section{Build-System and Toolchain Reality}
+
+\begin{itemize}
+    \item \textbf{The BMI must be built first.} \lstinline|import std;| needs the \lstinline|std| module's binary interface compiled for your exact compiler, version, and flags before any importing TU. BMIs are not portable across compilers or flag sets.
+    \item \textbf{Build-system support is the gating factor.} Recent GCC, Clang, and MSVC ship the \lstinline|std| module; CMake, Build2, and MSBuild can drive it, but ad-hoc Makefiles need manual BMI rules.
+    \item \textbf{Flag consistency is enforced} --- mismatched flags against one \lstinline|std| BMI is an error, not a silent mismatch.
+\end{itemize}
+
+\begin{quote}
+\textbf{Version-trap flag:} \lstinline|import std;| and \lstinline|import std.compat;| are \textbf{C++23} and require toolchain \emph{and} build-system support. C++20 introduced modules and \lstinline|import| but not the \lstinline|std| named module. Macros are not exported --- \lstinline|#include| the header when you need them.
+\end{quote}
+
+\section{Performance: Why This Is the Compile-Time Feature}
+
+\begin{itemize}
+    \item \textbf{Parse once, import many} --- the library is compiled into a BMI a single time; every TU imports pre-analyzed declarations instead of re-parsing six-figure line counts.
+    \item \textbf{Better incremental builds} --- an edit no longer re-chews the standard library for that TU.
+    \item \textbf{Order-independent, macro-clean semantics} --- immune to \lstinline|#include|-order bugs and macro cross-contamination.
+    \item \textbf{No runtime cost or benefit} --- purely translation-time; emitted code is identical to the \lstinline|#include| equivalent.
+\end{itemize}
+
+\section{Professional Insights}
+
+\textbf{Adopt \lstinline|import std;| for new code once your build system supports it.} It removes the largest source of redundant parsing in most builds, and the imported \lstinline|std| is the same library you already use --- a mechanical migration. The gating question is whether your build system drives the \lstinline|std| BMI correctly.
+
+\textbf{Default to \lstinline|import std;|, reserve \lstinline|import std.compat;| for unqualified-C-name codebases.} The plain module keeps everything \lstinline|std::|-qualified; \lstinline|std.compat| is a porting crutch for code calling \lstinline|printf|/\lstinline|memcpy|/\lstinline|size_t| globally.
+
+\textbf{Remember macros do not come through the module.} \lstinline|assert|, \lstinline|errno|, and feature-test macros are absent until you \lstinline|#include| their header --- a one-line fix, not a redesign. Plan for hybrid translation units.
+
+\textbf{Treat this as a build-engineering feature.} BMIs are non-portable, flag-sensitive, and dependency-ordered. Confirm every compiler/build-system combination produces and consumes the \lstinline|std| BMI cleanly in CI, and keep an \lstinline|#include| fallback until proven.

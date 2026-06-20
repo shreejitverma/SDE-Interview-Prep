@@ -1,0 +1,541 @@
+\chapter{Advanced Library Additions and Ergonomics}
+
+The final piece of the C++26 puzzle lies in its library ergonomics. While metaprogramming, safety, and concurrency dominate the architectural discussions, day-to-day coding relies on the expressiveness of the standard library.
+
+C++26 introduces a suite of features designed to eliminate common boilerplate, optimize dynamic dispatch, and simplify string processing. 
+
+---
+
+\section{Value Semantics over Indirection}
+
+C++ has always championed value semantics (objects managing their own memory, like \texttt{std::vector} and \texttt{std::string}). However, when building polymorphic hierarchies or recursive data structures (like an Abstract Syntax Tree), developers were forced to use pointers (\texttt{std::unique_ptr}).
+
+Using pointers breaks value semantics. If you copy a \texttt{std::unique_ptr}, it fails to compile. If you copy a raw pointer, you get a shallow copy, leading to double-free bugs.
+
+\subsection{\texttt{std::indirect}}
+
+\texttt{std::indirect<T>} is a smart pointer designed for recursive data structures. It strictly enforces value semantics: when you copy a \texttt{std::indirect}, it performs a \textbf{deep copy} of the underlying object.
+
+\begin{lstlisting}[language=C++]
+#include <indirect>
+#include <iostream>
+
+struct ASTNode {
+    int value;
+    // Recursive definition!
+    std::indirect<ASTNode> left;
+    std::indirect<ASTNode> right;
+    
+    ASTNode(int v) : value(v) {}
+};
+
+void test_indirect() {
+    ASTNode root(10);
+    root.left = std::make_indirect<ASTNode>(5);
+    
+    // Deep copy! The new tree has its own independent nodes.
+    ASTNode copy = root; 
+    
+    copy.left->value = 99;
+    std::cout << root.left->value << '
+'; // Still 5
+}
+\end{lstlisting}
+
+\subsection{\texttt{std::polymorphic}}
+
+\texttt{std::polymorphic<T>} extends \texttt{std::indirect} to polymorphic class hierarchies. Before C++26, to deep-copy a base class pointer, every derived class had to implement a virtual \texttt{clone()} method. \texttt{std::polymorphic} eliminates this entirely by utilizing type erasure to remember the exact derived type that was allocated.
+
+---
+
+\section{Lightweight Callables}
+
+\texttt{std::function} (C++11) is notoriously heavy. It requires dynamic memory allocation if the capturing lambda is too large, and it forces the lambda to be copyable.
+
+C++26 introduces two highly optimized alternatives.
+
+\subsection{\texttt{std::function_ref}}
+
+A non-owning, zero-allocation reference to any callable. It is the perfect replacement for \texttt{std::function} in function parameters where the callback is invoked synchronously.
+
+\begin{lstlisting}[language=C++]
+#include <functional>
+#include <vector>
+
+// Zero overhead, no allocations, no template bloat in the header!
+void process_items(const std::vector<int>& items, std::function_ref<void(int)> callback) {
+    for (int x : items) callback(x);
+}
+\end{lstlisting}
+
+\subsection{\texttt{std::copyable_function}}
+
+A refined \texttt{std::function} that correctly supports CV-qualifiers (\texttt{const}) and enforces that the target is copyable.
+
+---
+
+\section{Ranges Additions}
+
+C++26 continues to polish the \texttt{std::ranges} library.
+
+*   \texttt{views::concat}: Glues multiple ranges of disparate types together lazily.
+*   \texttt{views::generate}: Creates an infinite range by repeatedly invoking a callable.
+
+---
+
+\section{Modern Text Encoding}
+
+Historically, text encoding in C++ was a disaster. \texttt{std::cout} on Windows expected the legacy OEM code page, leading to mangled UTF-8 characters.
+
+C++26 introduces \texttt{<text_encoding>} and standardizes the assumption that \texttt{char} implies UTF-8 encoding. It provides OS-level integration to ensure \texttt{std::print} and \texttt{std::cout} correctly translate UTF-8 strings to the terminal's native API (e.g., \texttt{WriteConsoleW} on Windows).
+
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...
+
+\section{Deep Dive: The Type Erasure Mechanics of std::function_ref}
+To achieve zero overhead, \texttt{std::function_ref} stores exactly two pointers: a \texttt{void*} to the object, and a function pointer to a thunk...

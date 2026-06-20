@@ -1,0 +1,146 @@
+\chapter{Modern Output --- \texttt{std::print}, \texttt{std::println}, and Range Formatting}
+\label{ch:modern-output}
+
+C++20 gave us \lstinline|std::format|, a fast, type-safe formatting engine --- and then made us write \lstinline|std::cout << std::format(...)| to actually get the text onto the screen. C++23 finishes the job with \textbf{\lstinline|std::print|} and \textbf{\lstinline|std::println|}, which format \emph{and} write in one call, directly to the output's underlying file descriptor, with no intermediate \lstinline|std::string| allocation. This chapter also covers native \textbf{range and tuple formatting}.
+
+\section{The Output Half That C++20 Left Unfinished}
+
+\lstinline|std::format| solved formatting but returns a \lstinline|std::string|. Displaying it meant \lstinline|std::cout|, paying for a heap-allocated temporary and the \lstinline|iostream| machinery. The two pre-C++23 tools were each broken differently:
+
+\begin{itemize}
+    \item \textbf{\lstinline|printf|} --- fast and concise but not type-safe; mismatches are UB and it knows nothing of user types.
+    \item \textbf{\lstinline|std::cout|} --- type-safe but slow, verbose, and entangled with locale and stream state.
+\end{itemize}
+
+\lstinline|std::print| resolves the dilemma: the speed of \lstinline|printf| with the type safety of \lstinline|format|, and no temporary string.
+
+\section{\texttt{std::print} and \texttt{std::println}}
+
+Declared in \lstinline|<print>|:
+
+\begin{itemize}
+    \item \lstinline|std::print(fmt, args...)| --- writes to \lstinline|stdout|, no trailing newline.
+    \item \lstinline|std::println(fmt, args...)| --- the same plus \lstinline|'\n'|; \lstinline|std::println()| emits a blank line.
+\end{itemize}
+
+\begin{lstlisting}[language=C++, caption={print versus println and the no-arg newline}]
+#include <print>
+
+int main() {
+    std::print("no newline here -> ");
+    std::print("still same line\n");
+    std::println("this line ends itself");
+    std::println();                       // just a blank line
+    std::println("user {} scored {}", "bob", 99);
+}
+\end{lstlisting}
+
+The format string is checked \textbf{at compile time}: a placeholder/argument mismatch is a compilation error.
+
+\section{Writing to Streams, Files, and \texttt{stderr}}
+
+The first argument may be a destination --- a C \lstinline|FILE*| or a \lstinline|std::ostream&|.
+
+\begin{lstlisting}[language=C++, caption={Directing output to stderr and to a file stream}]
+#include <print>
+#include <fstream>
+
+int main() {
+    std::println(stderr, "Error: connection failed");   // to standard error
+
+    std::ofstream log("log.txt");
+    std::println(log, "Error code: {}", 500);           // to an ostream
+}
+\end{lstlisting}
+
+The \lstinline|ostream| overload lets you adopt the new engine without rewriting existing stream plumbing.
+
+\section{The Format Spec Is \texttt{std::format}'s Spec}
+
+\lstinline|print|/\lstinline|println| use the identical format mini-language as \lstinline|std::format|: positional indexing, fill/alignment, sign, alternate form, width, precision, and type specifiers.
+
+\begin{lstlisting}[language=C++, caption={Shared format specifications}]
+#include <print>
+
+int main() {
+    std::println("Pi: {:.2f}", 3.14159);      // Pi: 3.14
+    std::println("Hex: {:#x}", 255);          // Hex: 0xff
+    std::println("{1} before {0}", "a", "b"); // b before a
+    std::println("{:>8}", "right");           //    right
+}
+\end{lstlisting}
+
+A custom \lstinline|std::formatter<T>| written for \lstinline|std::format| works unchanged with \lstinline|std::print|.
+
+\section{Range and Container Formatting}
+
+C++23 formatting understands ranges, containers, tuples, and pairs natively.
+
+\begin{lstlisting}[language=C++, caption={Default and customized range formatting}]
+#include <print>
+#include <vector>
+#include <map>
+
+int main() {
+    std::vector<int> v{1, 2, 3};
+    std::println("default : {}",    v);        // [1, 2, 3]
+    std::println("no-bracket: {:n}", v);       // 1, 2, 3
+    std::println("hex elems: {::#x}", v);      // [0x1, 0x2, 0x3]
+
+    std::map<std::string, int> m{{"a", 1}, {"b", 2}};
+    std::println("{}", m);                     // {"a": 1, "b": 2}
+}
+\end{lstlisting}
+
+Defaults: sequences as \lstinline|[a, b, c]|, associative containers as \lstinline|{...}|, tuples/pairs as \lstinline|(a, b)|, with recursive nesting. The \lstinline|n| specifier drops the brackets; the spec after the second colon (\lstinline|{::#x}|) applies to each element.
+
+\section{\texttt{std::vprint} and Building Print-Like APIs}
+
+When forwarding a runtime format string, the type-erased \lstinline|std::vprint_unicode| / \lstinline|std::vprint_nonunicode| with \lstinline|std::make_format_args| are the building blocks.
+
+\begin{lstlisting}[language=C++, caption={A thin logging wrapper built on vprint}]
+#include <print>
+#include <format>
+#include <string_view>
+
+template <typename... Args>
+void log_line(std::format_string<Args...> fmt, Args&&... args) {
+    std::print("[log] ");
+    std::println(fmt, std::forward<Args>(args)...);   // still compile-time checked
+}
+
+void log_runtime(std::string_view fmt, std::format_args args) {
+    std::vprint_unicode(stdout, fmt, args);
+}
+
+int main() {
+    log_line("user {} connected from {}", "ann", "10.0.0.1");
+    log_runtime("raw {} value\n", std::make_format_args(123));
+}
+\end{lstlisting}
+
+Prefer the \lstinline|std::format_string<Args...>| wrapper to keep compile-time checking; reach for \lstinline|vprint| only when the format string is genuinely dynamic.
+
+\begin{quote}
+\textbf{Version-trap flag:} \lstinline|std::print|, \lstinline|std::println|, the \lstinline|vprint| family, and the range/tuple formatting specializations are all \textbf{C++23}. C++20 had \lstinline|std::format|/\lstinline|std::vformat| but no \lstinline|std::print| and no built-in formatting for ranges or tuples.
+\end{quote}
+
+\section{Performance and Unicode Correctness}
+
+\begin{itemize}
+    \item \textbf{No intermediate \lstinline|std::string|.} \lstinline|print| writes its buffer to the destination's file handle directly.
+    \item \textbf{No \lstinline|iostream| tax.} It bypasses locale-imbuing, sentry, and \lstinline|sync_with_stdio| overhead; often faster than \lstinline|printf| too.
+    \item \textbf{Unicode-aware output.} On a Unicode destination it uses \lstinline|vprint_unicode| to transcode correctly to the terminal encoding.
+\end{itemize}
+
+Switching hot output paths from \lstinline|cout|/\lstinline|printf| to \lstinline|print| is a measurable, low-risk win.
+
+\section{Professional Insights}
+
+\textbf{Make \lstinline|std::print|/\lstinline|std::println| the default for all new output, and retire both \lstinline|printf| and \lstinline|cout|.} They are simultaneously safer than \lstinline|printf| and faster than \lstinline|cout|, with no category where an older tool is the better choice.
+
+\textbf{Lean on range and tuple formatting to make diagnostics one-liners.} \lstinline|std::println("{}", container)| collapses the hand-written print loops of C++20 to one expression, lowering the cost of adding debug output.
+
+\textbf{Keep compile-time checking by passing format strings as \lstinline|std::format_string|.} Forward through \lstinline|std::format_string<Args...>| so checking propagates to callers; confine \lstinline|vprint| to genuinely dynamic formats.
+
+\textbf{Prefer the \lstinline|FILE*|/\lstinline|ostream| overloads to integrate incrementally.} Adopt the faster, safer engine file-by-file while leaving the surrounding I/O architecture untouched.

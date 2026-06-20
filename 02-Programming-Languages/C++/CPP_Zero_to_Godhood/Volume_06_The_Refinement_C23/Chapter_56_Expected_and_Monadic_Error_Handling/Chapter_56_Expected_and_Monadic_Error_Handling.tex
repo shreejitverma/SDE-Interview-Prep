@@ -1,0 +1,163 @@
+\chapter{\texttt{std::expected} and Monadic Error Handling}
+\label{ch:expected-monadic}
+
+C++ has long forced a false choice between exceptions --- powerful but with control flow many domains forbid --- and sentinel returns like \lstinline|std::optional|, which tell you that something failed but throw away \emph{why}. \lstinline|std::expected<T, E>| is the resolution: a value-based result type that holds either a success value of type \lstinline|T| \textbf{or} an error of type \lstinline|E|, with the error reason preserved and zero hidden allocation. Paired with the monadic operations added to both \lstinline|expected| and \lstinline|optional|, it lets you compose fallible operations into flat pipelines instead of nested \lstinline|if| checks. For the exception-averse worlds of trading and kernel code, this is the most consequential library addition in C++23.
+
+\section{The Error-Handling Trilemma}
+
+Before C++23, returning failure from a function meant choosing one of three imperfect tools:
+
+\begin{enumerate}
+    \item \textbf{Exceptions.} Expressive and composable, but they impose unpredictable control flow and a cost on the throw path that is unacceptable in latency-bounded code. Many shops compile with \lstinline|-fno-exceptions|, and most kernels forbid them.
+    \item \textbf{\lstinline|std::optional<T>|.} Cheap and exception-free, but it collapses every failure mode into a single bit: you learn \emph{that} the operation produced nothing, never \emph{why}.
+    \item \textbf{Error codes / out-parameters.} Carries the reason, but pollutes the signature, is trivially ignored, and decouples the error from the value.
+\end{enumerate}
+
+\lstinline|std::expected<T, E>| keeps the virtues of each while shedding their costs: a single return value, the full error reason, exception-free, no heap allocation. It makes ``this function can fail, and here is how'' a visible part of the type.
+
+\section{Anatomy of \texttt{std::expected<T, E>}}
+
+\lstinline|std::expected<T, E>|, declared in \lstinline|<expected>|, is a discriminated union: at any moment it holds \emph{either} a \lstinline|T| (the \textbf{expected} value) or an \lstinline|E| (the \textbf{unexpected} error), never both and never neither. It is conceptually \lstinline|variant<T, E>| with an asymmetry baked in --- \lstinline|T| is the ``normal'' outcome.
+
+The error side is wrapped in the helper type \lstinline|std::unexpected<E>| so that \lstinline|T| and \lstinline|E| can be the same type without ambiguity. The companion \lstinline|std::bad_expected_access<E>| exception is thrown only if you call \lstinline|.value()| on an object that holds an error.
+
+\begin{lstlisting}[language=C++, caption={A function returning std::expected}]
+#include <expected>
+#include <string>
+
+enum class Error { NotFound, PermissionDenied };
+
+std::expected<std::string, Error> read_file(int id) {
+    if (id < 0) return std::unexpected(Error::NotFound);
+    return "File Content";   // implicit construction of the success value
+}
+\end{lstlisting}
+
+A bare \lstinline|return "File Content";| constructs the success side implicitly, while the error side must be spelled \lstinline|std::unexpected(...)|.
+
+\section{Constructing Success and Failure}
+
+\begin{itemize}
+    \item \textbf{Implicit success:} \lstinline|return value;| --- the value converts into the \lstinline|T| slot.
+    \item \textbf{Explicit error:} \lstinline|return std::unexpected(err);|.
+    \item \textbf{In-place success:} \lstinline|{std::in_place, args...}| constructs \lstinline|T| directly.
+    \item \textbf{In-place error:} \lstinline|{std::unexpect, args...}| constructs \lstinline|E| in place.
+    \item \textbf{\lstinline|void| success type:} \lstinline|std::expected<void, E>| models an operation that succeeds with no value or fails with reason \lstinline|E|.
+\end{itemize}
+
+\begin{lstlisting}[language=C++, caption={A validation function returning expected<void, E>}]
+#include <expected>
+#include <string>
+#include <print>
+
+enum class FormError { TooShort, MissingAt };
+
+std::expected<void, FormError> validate_email(std::string_view s) {
+    if (s.size() < 3)                          return std::unexpected(FormError::TooShort);
+    if (s.find('@') == std::string_view::npos) return std::unexpected(FormError::MissingAt);
+    return {};   // success carries no value
+}
+
+int main() {
+    if (auto r = validate_email("a@b"); r)
+        std::println("valid");
+    else
+        std::println("invalid: code {}", std::to_underlying(r.error()));
+}
+\end{lstlisting}
+
+\section{Inspecting and Extracting the Result}
+
+\begin{itemize}
+    \item \lstinline|e.has_value()| / \lstinline|explicit operator bool| --- \lstinline|true| if holding a value.
+    \item \lstinline|*e|, \lstinline|e->m| --- unchecked access to the value (UB if it holds an error).
+    \item \lstinline|e.value()| --- checked access; throws \lstinline|bad_expected_access<E>| on error.
+    \item \lstinline|e.error()| --- access to the error (UB if it holds a value).
+    \item \lstinline|e.value_or(fallback)| --- the value, or \lstinline|fallback| on error.
+\end{itemize}
+
+The idiomatic pattern is to test with \lstinline|if (e)| and then use \lstinline|*e|, reserving \lstinline|.value()| for paths where success is proven or a throw is wanted.
+
+\section{Monadic Composition}
+
+The monadic interface lets you chain fallible operations without manually unpacking at each step --- eliminating the nested-\lstinline|if| ``pyramid of doom.''
+
+\begin{itemize}
+    \item \textbf{\lstinline|and_then(f)|} --- if holding a value, call \lstinline|f(value)|; \lstinline|f| returns an \lstinline|expected| (it can fail). On error, the error passes through. Monadic \emph{bind}.
+    \item \textbf{\lstinline|transform(f)|} --- if holding a value, call \lstinline|f(value)| and wrap the \emph{raw} result; \lstinline|f| returns a plain value. \emph{Map}.
+    \item \textbf{\lstinline|or_else(f)|} --- if holding an error, call \lstinline|f(error)|, returning an \lstinline|expected| (recovery).
+    \item \textbf{\lstinline|transform_error(f)|} --- if holding an error, replace it with \lstinline|f(error)|. Translate error types across a layer boundary.
+\end{itemize}
+
+Rule of thumb: \textbf{\lstinline|and_then| when the next step can fail, \lstinline|transform| when it cannot; \lstinline|or_else| to recover, \lstinline|transform_error| to translate.}
+
+\begin{lstlisting}[language=C++, caption={A flat, fail-fast pipeline over expected}]
+#include <expected>
+#include <string>
+#include <print>
+
+enum class Error { NotFound, Parse, OutOfRange };
+
+std::expected<std::string, Error> fetch(int id);
+std::expected<int, Error>         parse(const std::string&);
+int                               scale(int x) { return x * 10; }
+
+std::expected<int, Error> pipeline(int id) {
+    return fetch(id)
+        .and_then(parse)          // string -> int, may fail
+        .transform(scale)         // int -> int, cannot fail
+        .transform_error([](Error e) {
+            return e == Error::NotFound ? Error::OutOfRange : e;
+        });
+}
+
+int main() {
+    auto r = pipeline(7);
+    std::println("{}", r ? std::to_string(*r) : "failed");
+}
+\end{lstlisting}
+
+\section{Monadic \texttt{std::optional}}
+
+C++23 retrofits \lstinline|and_then| / \lstinline|transform| / \lstinline|or_else| onto \lstinline|std::optional|. The difference is that \lstinline|optional| carries no error payload --- \lstinline|or_else| takes a nullary callable.
+
+\begin{lstlisting}[language=C++, caption={Flattening nested optional lookups}]
+#include <optional>
+#include <string>
+
+struct User { std::string email; };
+std::optional<User>        get_user();
+std::optional<std::string> get_email(const User&);
+
+std::optional<std::string> verified_email() {
+    return get_user()
+        .and_then(get_email)
+        .transform([](auto e){ return e + " verified"; })
+        .or_else([]{ return std::optional<std::string>{"Unknown"}; });
+}
+\end{lstlisting}
+
+\section{Performance: Why \texttt{expected} Belongs in Hot Paths}
+
+\begin{itemize}
+    \item \textbf{No heap allocation.} Value and error live inline, in storage sized to \lstinline|max(sizeof(T), sizeof(E))| plus a discriminant.
+    \item \textbf{No throw on the failure path.} \lstinline|std::unexpected(...)| is an ordinary value return --- usable under \lstinline|-fno-exceptions|.
+    \item \textbf{Branch-predictable.} Failure is a normal early return.
+    \item \textbf{Monadic chains optimize well.} \lstinline|and_then|/\lstinline|transform| are small inline templates the optimizer collapses.
+\end{itemize}
+
+The cost to watch is \textbf{object size}: keep \lstinline|E| small (an \lstinline|enum| or compact struct) when the type appears in hot return paths.
+
+\begin{quote}
+\textbf{Version-trap flag:} \lstinline|std::expected|, its monadic members, and the monadic members of \lstinline|std::optional| are all C++23. The C++20 \lstinline|std::optional| had \lstinline|value_or| but none of \lstinline|and_then|/\lstinline|transform|/\lstinline|or_else|.
+\end{quote}
+
+\section{Professional Insights}
+
+\textbf{Make fallibility part of the type, and \lstinline|expected| will improve your API design.} A function returning \lstinline|std::expected<T, E>| advertises both that it can fail and the vocabulary of its failures, where callers cannot ignore it. Retrofitting forces you to enumerate \lstinline|E| --- usually clarifying.
+
+\textbf{Keep \lstinline|E| small and stable; treat it as part of your ABI.} A fat error type taxes every call on the happy path. Prefer a compact \lstinline|enum class| and translate to a richer form only at the boundary, with \lstinline|transform_error|.
+
+\textbf{Use \lstinline|and_then|/\lstinline|transform| to flatten, but do not over-monadize.} The monadic style earns its keep by removing nesting. A single fallible call followed by ordinary logic is clearer with an \lstinline|if (!r) return r.error();| guard.
+
+\textbf{Standardize on \lstinline|expected| even in exception-using codebases.} Reserve exceptions for unrecoverable conditions; use \lstinline|expected| for \emph{expected} failures. In \lstinline|-fno-exceptions| environments it is your only principled error channel.

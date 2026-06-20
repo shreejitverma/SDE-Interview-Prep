@@ -1,0 +1,206 @@
+\chapter{Deducing \texttt{this} --- The Explicit Object Parameter}
+\label{ch:deducing-this}
+
+For its entire history, C++ passed the object a member function operates on through a hidden, untyped \lstinline|this| pointer. You could not name it, deduce its value category, or write one function that adapts to being called on an lvalue versus an rvalue versus a \lstinline|const| object --- so the language forced you into overload sets, CRTP scaffolding, and \lstinline|std::function|-wrapped recursion. C++23's \emph{explicit object parameter}, universally called \textbf{deducing \lstinline|this|}, makes the object a normal, named, deducible template parameter. This single change collapses four idioms into one and is the most far-reaching core-language feature in the release.
+
+\section{The Hidden Parameter and Why It Hurt}
+
+Every non-static member function has an implicit first parameter: the object it is called on, reachable through \lstinline|this|. That pointer has always been a second-class citizen. You cannot name it as a parameter, you cannot deduce its type, and --- critically --- its \textbf{value category} (is the object an lvalue, an rvalue, \lstinline|const|, \lstinline|volatile|?) is expressed only through \emph{trailing qualifiers} on the function, not through the type system in a way templates can grab.
+
+The consequence is a family of well-known boilerplate idioms, each a workaround for the same missing capability:
+
+\begin{itemize}
+    \item \textbf{The four-overload accessor explosion.} A getter that wants to forward the object's value category correctly must be written four times --- \lstinline|&|, \lstinline|const&|, \lstinline|&&|, \lstinline|const&&|.
+    \item \textbf{CRTP} (the Curiously Recurring Template Pattern), where a base class is parameterized on its own derived type purely so it can \lstinline|static_cast<Derived*>(this)|.
+    \item \textbf{Recursive lambdas}, which had no name to call themselves with and so required a \lstinline|std::function| wrapper or a Y-combinator trick.
+\end{itemize}
+
+Deducing \lstinline|this| addresses all three with one mechanism: let the member function declare the object as an explicit, named, deducible parameter.
+
+\section{Syntax and Semantics of the Explicit Object Parameter}
+
+A member function may declare its first parameter with the keyword \lstinline|this|:
+
+\begin{lstlisting}[language=C++, caption={Declaring an explicit object parameter}]
+struct Widget {
+    template <typename Self>
+    void process(this Self&& self) {
+        // 'self' IS the object. 'this' is not available here.
+    }
+};
+\end{lstlisting}
+
+The parameter \lstinline|this Self&& self| is the \textbf{explicit object parameter}. The keyword \lstinline|this| appears only on the \emph{first} parameter and only in its declaration; everywhere else \lstinline|self| is an ordinary parameter name.
+
+The defining behaviors:
+
+\begin{enumerate}
+    \item \textbf{\lstinline|Self| is deduced like any forwarding reference.} Call \lstinline|process| on a \lstinline|Widget&| and \lstinline|Self| deduces to \lstinline|Widget&|; on a \lstinline|const Widget&| it is \lstinline|const Widget&|; on a temporary it is \lstinline|Widget|.
+    \item \textbf{Inside the function, \lstinline|this| does not exist.} You use the named parameter (\lstinline|self|) instead. Member access is \lstinline|self.member|.
+    \item \textbf{No trailing ref-qualifiers.} A function with an explicit object parameter may not also be \lstinline|const|, \lstinline|&|, \lstinline|&&|, \lstinline|volatile|, \lstinline|static|, or \lstinline|virtual|.
+    \item \textbf{It is still a member function} for overload resolution and name lookup; the explicit object parameter is purely a different \emph{spelling} of the implicit one.
+\end{enumerate}
+
+The object parameter need not be a template. You can pin it to an exact type when that is what you want:
+
+\begin{lstlisting}[language=C++, caption={Non-deduced explicit object parameter}]
+struct Logger {
+    void log(this const Logger& self, std::string_view msg);  // explicit, non-deduced
+};
+\end{lstlisting}
+
+But the deduced, forwarding-reference form is where the power lies, because one function body then serves every value category.
+
+\section{Pattern A: Collapsing Ref-Qualified Overloads}
+
+To forward a data member with the correct value category, pre-C++23 code needed the full overload set:
+
+\begin{lstlisting}[language=C++, caption={Before C++23: four near-identical overloads}]
+struct Widget {
+    void process() &;        // lvalue
+    void process() const&;   // const lvalue
+    void process() &&;       // rvalue
+    void process() const&&;  // const rvalue
+};
+\end{lstlisting}
+
+With deducing \lstinline|this|, a single function template handles all four, forwarding \lstinline|self| so that the value category propagates correctly:
+
+\begin{lstlisting}[language=C++, caption={After C++23: one function}]
+struct Widget {
+    template <typename Self>
+    void process(this Self&& self) {
+        handle(std::forward<Self>(self));   // value category preserved
+    }
+};
+\end{lstlisting}
+
+\begin{lstlisting}[language=C++, caption={One accessor that perfectly forwards value category and constness}]
+#include <utility>
+#include <print>
+
+template <typename T>
+class OptionalWrapper {
+    T payload{};
+public:
+    // Replaces the four overloads &, const&, &&, const&&.
+    template <typename Self>
+    auto&& value(this Self&& self) {
+        return std::forward<Self>(self).payload;
+    }
+};
+
+int main() {
+    OptionalWrapper<std::string> w;
+    auto& lref = w.value();                       // T&        (lvalue)
+    const auto& cref = std::as_const(w).value();  // const T&  (const lvalue)
+    auto moved = OptionalWrapper<std::string>{}.value();  // T&& -> moved-from temporary
+    std::println("ok: {} {}", lref.size(), moved.size());
+}
+\end{lstlisting}
+
+This is not just less code; it is \emph{more correct} code, because the four hand-written overloads were a frequent source of subtle const- or move-correctness bugs.
+
+\section{Pattern B: Replacing CRTP for Static Polymorphism}
+
+The Curiously Recurring Template Pattern existed so a base class could call into its derived type without a virtual dispatch. The base had to be a template parameterized on the derived class, and every call site performed a \lstinline|static_cast|.
+
+\begin{lstlisting}[language=C++, caption={Before C++23: the CRTP way}]
+template <typename Derived>
+struct Base {
+    void interface() {
+        // Cast 'this' to the Derived type to call its implementation.
+        static_cast<Derived*>(this)->implementation();
+    }
+};
+
+struct Derived : Base<Derived> {
+    void implementation() { std::println("Derived implementation"); }
+};
+\end{lstlisting}
+
+With deducing \lstinline|this|, the base function deduces the \emph{actual} most-derived type from the object it was invoked on --- no template parameter on the base, no \lstinline|static_cast|.
+
+\begin{lstlisting}[language=C++, caption={Static polymorphism without CRTP}]
+#include <print>
+#include <utility>
+
+struct Base {
+    // 'Self' deduces to the exact type that invoked interface().
+    template <typename Self>
+    void interface(this Self&& self) {
+        std::forward<Self>(self).implementation();
+    }
+};
+
+// No angle brackets in the inheritance list.
+struct Derived : Base {
+    void implementation() { std::println("Derived implementation"); }
+};
+
+int main() {
+    Derived d;
+    d.interface();   // resolves to Derived::implementation(), statically
+}
+\end{lstlisting}
+
+\lstinline|Self| deduces to \lstinline|Derived| because that is the type of the object the call was made on, so \lstinline|self.implementation()| binds to the derived member with no runtime dispatch.
+
+\section{Pattern C: Recursive Lambdas}
+
+A lambda is an unnamed closure object with an \lstinline|operator()|. Because it has no name in its own scope, it historically could not call itself. The explicit object parameter solves this directly: the lambda's own closure object can be the deduced \lstinline|self|.
+
+\begin{lstlisting}[language=C++, caption={A self-recursive lambda with no std::function overhead}]
+#include <print>
+
+int main() {
+    // 'self' is the closure object itself; it can be invoked recursively.
+    auto fib = [](this auto&& self, int n) -> int {
+        if (n <= 1) return n;
+        return self(n - 1) + self(n - 2);
+    };
+
+    std::println("Fibonacci(10) = {}", fib(10));   // 55
+}
+\end{lstlisting}
+
+Because \lstinline|self| is the concrete closure type (deduced, not type-erased), the recursive calls are ordinary, inlinable function calls --- no allocation, no indirect call through a \lstinline|std::function| vtable.
+
+\section{The Rules: What You Can and Cannot Do}
+
+\begin{itemize}
+    \item \textbf{Position:} the explicit object parameter must be the first parameter, and only the first may carry the \lstinline|this| keyword.
+    \item \textbf{No trailing qualifiers:} such a function cannot be \lstinline|const|, \lstinline|&|, \lstinline|&&|, \lstinline|volatile|, \lstinline|static|, or \lstinline|virtual|.
+    \item \textbf{\lstinline|this| is gone in the body:} use the named parameter instead.
+    \item \textbf{No mixing in one declaration:} a function is either explicit-object-parameter or implicit-object, not both.
+    \item \textbf{Overloading is allowed} against implicit-object overloads, subject to ambiguity rules.
+    \item \textbf{Constructors and destructors} may not have an explicit object parameter.
+    \item \textbf{Taking its address:} \lstinline|&Widget::process| yields a pointer-to-member whose signature includes the object parameter type.
+\end{itemize}
+
+A subtle pitfall: because \lstinline|Self| is a forwarding reference, a derived class invoking an inherited deducing-\lstinline|this| member deduces \lstinline|Self| to the derived type. That is what makes Pattern B work, but it means a base member can be instantiated once per derived type. Constrain \lstinline|Self| with a concept when you need to restrict it.
+
+\begin{quote}
+\textbf{Version-trap flag:} Deducing \lstinline|this| is C++23. It is frequently demonstrated alongside \lstinline|std::println| (also C++23) and \lstinline|std::forward_like| (C++23) --- none compile under \lstinline|-std=c++20|. Do not confuse the explicit object parameter with the unrelated C++26 reflection features.
+\end{quote}
+
+\section{Performance and Code-Size Implications}
+
+Deducing \lstinline|this| is, at the call level, a \textbf{zero-overhead} abstraction: the explicit object parameter compiles to the same calling convention as the implicit one, and \lstinline|self.member| is identical to \lstinline|this->member|.
+
+The two angles a senior engineer must weigh:
+
+\begin{enumerate}
+    \item \textbf{It removes overhead that workarounds imposed.} Replacing a \lstinline|std::function|-wrapped recursive lambda eliminates a heap allocation and an indirect call.
+    \item \textbf{Templated object parameters multiply instantiations.} A \lstinline|template <typename Self>| member is instantiated for every distinct value category and derived type. When the body does not depend on the deduced type, factor it into a non-template helper that a thin templated wrapper forwards to.
+\end{enumerate}
+
+\section{Professional Insights}
+
+\textbf{Reach for deducing \lstinline|this| to delete overload sets, not to show off.} The clearest wins are the four-overload accessor collapse and CRTP elimination --- both replace error-prone boilerplate with a single, provably-correct function. If a member does not need to adapt to value category or derived type, a plain member function is still right.
+
+\textbf{Constrain \lstinline|Self| when the base is shared.} An unconstrained \lstinline|template <typename Self>| base member instantiates for any caller, including derived types you never intended. Add a \lstinline|requires| clause so the compiler enforces the contract.
+
+\textbf{Watch the instantiation count in hot, header-heavy code.} Each value category and derived type can spawn a separate instantiation. When the body is value-category-agnostic, forward from a thin templated shell to a single concrete implementation.
+
+\textbf{Prefer it for recursive lambdas in performance code.} The \lstinline|[](this auto&& self, ...)| form gives recursion with no type erasure, no allocation, and full inlinability --- strictly better than the \lstinline|std::function| idiom it replaces.

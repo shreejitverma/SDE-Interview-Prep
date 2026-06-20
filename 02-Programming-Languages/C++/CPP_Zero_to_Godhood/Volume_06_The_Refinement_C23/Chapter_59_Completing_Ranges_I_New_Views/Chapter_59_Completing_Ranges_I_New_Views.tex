@@ -1,0 +1,192 @@
+\chapter{Completing Ranges I --- The New Views}
+\label{ch:ranges-views}
+
+C++20's \lstinline|<ranges>| shipped with a deliberately minimal set of views. The everyday adaptors --- pairing a range with its indices, walking two ranges in lockstep, sliding a window, breaking a range into chunks --- were all cut. C++23 restores them. This chapter covers the new \emph{views}: lazy, composable, non-owning range adaptors that compute their elements on demand.
+
+\section{Why So Many Views Were Missing}
+
+The C++20 ranges library was a pared-down subset of \lstinline|range-v3|. The casualties --- \lstinline|zip|, \lstinline|enumerate|, \lstinline|chunk|, \lstinline|slide|, \lstinline|cartesian_product| --- are among the most-used adaptors anywhere, and their absence forced C++20 users back to index-based loops.
+
+C++23 adds roughly a dozen new views. Each is \textbf{lazy} (computed only when iterated), \textbf{non-owning} (refers to its underlying range), and \textbf{composable} (chains with \lstinline+|+, fused into a single pass). None allocates.
+
+\begin{itemize}
+    \item \lstinline|enumerate| --- \lstinline|(index, element)| tuples.
+    \item \lstinline|zip| / \lstinline|zip_transform| --- lockstep tuples / a function applied across them.
+    \item \lstinline|adjacent<N>| / \lstinline|pairwise| / \lstinline|adjacent_transform<N>| --- sliding fixed-arity tuples.
+    \item \lstinline|chunk| / \lstinline|slide| / \lstinline|chunk_by| --- non-overlapping blocks / overlapping windows / predicate-split groups.
+    \item \lstinline|stride| / \lstinline|cartesian_product| / \lstinline|join_with| --- every n-th element / cross-product / delimited flatten.
+    \item \lstinline|repeat| / \lstinline|as_const| / \lstinline|as_rvalue| --- repeated value / const elements / rvalue elements.
+\end{itemize}
+
+\section{\texttt{views::enumerate}}
+
+\lstinline|std::views::enumerate| pairs each element with its zero-based index.
+
+\begin{lstlisting}[language=C++, caption={Enumerating a range}]
+#include <ranges>
+#include <vector>
+#include <print>
+
+int main() {
+    std::vector<char> v{'a', 'b', 'c'};
+    for (auto [i, x] : std::views::enumerate(v))
+        std::println("{}: {}", i, x);     // 0: a / 1: b / 2: c
+}
+\end{lstlisting}
+
+The element member is a reference into the underlying range, so you can mutate through it if the range is mutable.
+
+\section{\texttt{views::zip} and \texttt{views::zip\_transform}}
+
+\lstinline|std::views::zip| iterates several ranges in lockstep, stopping at the shortest. \lstinline|std::views::zip_transform| applies a function to the zipped elements and yields the result --- \lstinline|zip| followed by \lstinline|transform|, fused.
+
+\begin{lstlisting}[language=C++, caption={Element-wise vector addition with zip_transform}]
+#include <ranges>
+#include <vector>
+#include <print>
+
+int main() {
+    std::vector<int> a{1, 2, 3}, b{10, 20, 30};
+
+    auto sums = std::views::zip_transform(std::plus{}, a, b);
+    for (int s : sums) std::print("{} ", s);   // 11 22 33
+    std::println("");
+}
+\end{lstlisting}
+
+\section{\texttt{views::adjacent}, \texttt{pairwise}, and \texttt{adjacent\_transform}}
+
+\lstinline|std::views::adjacent<N>| slides a window of \lstinline|N| consecutive elements, yielding an \lstinline|N|-tuple; \lstinline|pairwise| is \lstinline|adjacent<2>|. \lstinline|adjacent_transform<N>| applies a function to each window.
+
+\begin{lstlisting}[language=C++, caption={Consecutive differences via adjacent_transform}]
+#include <ranges>
+#include <vector>
+#include <print>
+
+int main() {
+    std::vector<int> v{1, 4, 9, 16, 25};
+
+    auto diffs = std::views::adjacent_transform<2>(v, [](int lo, int hi){ return hi - lo; });
+    for (int d : diffs) std::print("{} ", d);   // 3 5 7 9
+    std::println("");
+}
+\end{lstlisting}
+
+\section{\texttt{views::chunk}, \texttt{slide}, and \texttt{chunk\_by}}
+
+\begin{itemize}
+    \item \lstinline|chunk(n)| --- non-overlapping blocks of size \lstinline|n| (last may be shorter); batching.
+    \item \lstinline|slide(n)| --- overlapping windows of \lstinline|n| consecutive elements; moving statistics.
+    \item \lstinline|chunk_by(pred)| --- splits wherever \lstinline|pred(prev, cur)| is \lstinline|false|; grouping adjacent runs.
+\end{itemize}
+
+\begin{lstlisting}[language=C++, caption={Batching, windowing, and grouping}]
+#include <ranges>
+#include <vector>
+#include <print>
+
+int main() {
+    std::vector<int> v{1, 2, 3, 4, 5};
+
+    for (auto block : std::views::chunk(v, 2))      // [1,2] [3,4] [5]
+        std::println("chunk: {}", block);
+
+    for (auto win : std::views::slide(v, 3))        // [1,2,3] [2,3,4] [3,4,5]
+        std::println("slide: {}", win);
+
+    std::vector<int> w{1, 1, 2, 2, 2, 3};
+    for (auto grp : std::views::chunk_by(w, std::equal_to{}))  // [1,1] [2,2,2] [3]
+        std::println("group: {}", grp);
+}
+\end{lstlisting}
+
+\section{\texttt{views::stride}, \texttt{cartesian\_product}, \texttt{join\_with}}
+
+\begin{itemize}
+    \item \lstinline|stride(n)| --- every \lstinline|n|-th element.
+    \item \lstinline|cartesian_product(r1, r2, ...)| --- every combination, one from each range.
+    \item \lstinline|join_with(r, delim)| --- flattens a range-of-ranges, inserting \lstinline|delim|.
+\end{itemize}
+
+\begin{lstlisting}[language=C++, caption={Stride, product, and delimited join}]
+#include <ranges>
+#include <vector>
+#include <string>
+#include <print>
+
+int main() {
+    std::vector<int> v{0, 1, 2, 3, 4, 5, 6};
+    for (int x : v | std::views::stride(2)) std::print("{} ", x);  // 0 2 4 6
+    std::println("");
+
+    for (auto [a, b] : std::views::cartesian_product(std::vector{1, 2}, std::vector{'x', 'y'}))
+        std::print("({},{}) ", a, b);     // (1,x) (1,y) (2,x) (2,y)
+    std::println("");
+
+    std::vector<std::string> parts{"a", "b", "c"};
+    std::string joined;
+    for (char c : parts | std::views::join_with('-')) joined += c;  // "a-b-c"
+    std::println("{}", joined);
+}
+\end{lstlisting}
+
+\section{\texttt{views::repeat}, \texttt{as\_const}, \texttt{as\_rvalue}}
+
+\begin{itemize}
+    \item \lstinline|repeat(value)| / \lstinline|repeat(value, n)| --- a factory producing an endlessly (or \lstinline|n|-times) repeated value.
+    \item \lstinline|as_const| --- yields elements as \lstinline|const|.
+    \item \lstinline|as_rvalue| --- yields each element as an rvalue, so downstream code moves rather than copies.
+\end{itemize}
+
+\begin{lstlisting}[language=C++, caption={Moving elements out of a source with as_rvalue}]
+#include <ranges>
+#include <vector>
+#include <string>
+
+int main() {
+    std::vector<std::string> src{"alpha", "beta", "gamma"};
+
+    std::vector<std::string> dst;
+    for (auto&& s : src | std::views::as_rvalue)
+        dst.push_back(std::move(s));   // strings are moved, not copied
+}
+\end{lstlisting}
+
+\section{Custom Adaptors with \texttt{range\_adaptor\_closure}}
+
+Deriving a callable from \lstinline|std::ranges::range_adaptor_closure| marks it as a pipeable closure, so \lstinline|r | my_adaptor| becomes \lstinline|my_adaptor(r)|.
+
+\begin{lstlisting}[language=C++, caption={A custom pipeable adaptor}]
+#include <ranges>
+#include <vector>
+#include <print>
+
+struct above_t : std::ranges::range_adaptor_closure<above_t> {
+    int threshold;
+    auto operator()(std::ranges::viewable_range auto&& r) const {
+        return std::views::filter(std::forward<decltype(r)>(r),
+                                  [t = threshold](int x){ return x > t; });
+    }
+};
+
+int main() {
+    above_t above{2};
+    std::vector<int> v{1, 2, 3, 4};
+    for (int x : v | above) std::print("{} ", x);   // 3 4
+    std::println("");
+}
+\end{lstlisting}
+
+\begin{quote}
+\textbf{Version-trap flag:} every view in this chapter and \lstinline|std::ranges::range_adaptor_closure| are \textbf{C++23}. None exist under \lstinline|-std=c++20|, which shipped only \lstinline|filter|, \lstinline|transform|, \lstinline|take|, \lstinline|drop|, \lstinline|join|, \lstinline|split|, \lstinline|reverse|, \lstinline|elements|, \lstinline|keys|, \lstinline|values|, \lstinline|common|, and the basic factories.
+\end{quote}
+
+\section{Professional Insights}
+
+\textbf{The new views finally let you write index-free code for the patterns that needed indices in C++20.} When you find yourself writing \lstinline|for (size_t i = 0; ...)| to walk two arrays together or inspect neighbors, reach for \lstinline|zip| or \lstinline|adjacent| --- the code states intent and cannot desynchronize its indices.
+
+\textbf{Remember that views are lazy and non-owning.} A view holds a reference to its source; a temporary source dangles the view. Iterating a chain twice does the work twice. Materialize with \lstinline|ranges::to| when you need the result more than once or need to outlive the source.
+
+\textbf{Prefer \lstinline|adjacent<N>| for fixed-arity neighbor work and \lstinline|slide(n)|/\lstinline|chunk(n)| for runtime windows.} Compile-time arity yields tuples the optimizer can unroll; runtime size yields sub-ranges for streaming batches.
+
+\textbf{Use \lstinline|as_rvalue| to drain containers and \lstinline|range_adaptor_closure| to extend the pipeline.} The former turns a copy-out into a move-out for free; the latter makes a recurring transformation compose with \lstinline+|+ like a native view.

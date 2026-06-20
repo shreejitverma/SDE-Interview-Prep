@@ -1,0 +1,141 @@
+\chapter{\texttt{std::generator} --- The First Standard Coroutine}
+\label{ch:std-generator}
+
+C++20 shipped coroutines as a \emph{language} feature --- \lstinline|co_await|, \lstinline|co_yield|, \lstinline|co_return| --- but provided no library types to use them with. To write even a trivial lazy sequence you had to hand-author a promise type, an iterator, and the suspension plumbing. C++23 fixes the most common case by shipping \textbf{\lstinline|std::generator<T>|}, a ready-made coroutine return type for synchronous, lazy sequences. It is the first concrete coroutine type in the standard library, it models a \lstinline|view|, and it plugs directly into ranges.
+
+\section{The Coroutine Library Gap in C++20}
+
+A coroutine is a function that can suspend and later resume, preserving its local state. C++20 standardized the \emph{machinery} --- the compiler transformation, the coroutine frame, and the customization points --- but no usable return type. To produce a lazy generator a C++20 programmer had to write a \lstinline|promise_type| with \lstinline|yield_value|, \lstinline|initial_suspend|, \lstinline|final_suspend|, and exception handling; an \lstinline|iterator| that resumes on \lstinline|++|; \lstinline|begin|/\lstinline|end|; and careful \lstinline|coroutine_handle| lifetime management --- 60--80 lines of intricate code for the simplest use of a coroutine.
+
+\lstinline|std::generator<T>| (header \lstinline|<generator>|) is the standard library finally supplying that type.
+
+\section{\texttt{std::generator<T>} at a Glance}
+
+\lstinline|std::generator<Ref, Value, Allocator>| represents a \textbf{synchronous} sequence of elements produced lazily via \lstinline|co_yield|. Its defining properties:
+
+\begin{itemize}
+    \item \textbf{It is a \lstinline|view|.} It models \lstinline|std::ranges::view| and \lstinline|input_range|, composing with the entire ranges pipeline.
+    \item \textbf{It is move-only.} It owns the coroutine frame.
+    \item \textbf{It is single-pass.} The iterator is an input iterator.
+    \item \textbf{It is lazy.} No element is computed until the consumer advances; an infinite generator is legal.
+\end{itemize}
+
+\section{Writing a Generator: \texttt{co\_yield}}
+
+Declaring the return type as \lstinline|std::generator<T>| turns the function into a coroutine; each \lstinline|co_yield expr| suspends and surfaces \lstinline|expr| as the next element.
+
+\begin{lstlisting}[language=C++, caption={An infinite Fibonacci generator}]
+#include <generator>
+#include <ranges>
+#include <print>
+
+std::generator<int> fibonacci() {
+    int a = 0, b = 1;
+    while (true) {                 // legitimately infinite: it is lazy
+        co_yield a;                // suspend here, hand 'a' to the consumer
+        int next = a + b;
+        a = b;
+        b = next;
+    }
+}
+
+int main() {
+    for (int x : fibonacci() | std::views::take(10))
+        std::print("{} ", x);
+    std::println("");
+}
+\end{lstlisting}
+
+The \lstinline|views::take(10)| adaptor stops pulling after ten values, so the coroutine is destroyed mid-flight and its frame cleaned up automatically.
+
+\section{Generators Are Views: Ranges Integration}
+
+Because a generator \emph{is} a range, every range adaptor and algorithm works on it directly.
+
+\begin{lstlisting}[language=C++, caption={Composing a generator with the ranges pipeline}]
+#include <generator>
+#include <ranges>
+#include <vector>
+#include <print>
+
+std::generator<int> naturals() {
+    for (int i = 1; ; ++i) co_yield i;     // 1, 2, 3, ...
+}
+
+int main() {
+    auto result = naturals()
+        | std::views::filter([](int n){ return n % 2 == 0; })
+        | std::views::transform([](int n){ return n * n; })
+        | std::views::take(5)
+        | std::ranges::to<std::vector>();    // C++23, see Chapter 60
+
+    std::println("{}", result);              // [4, 16, 36, 64, 100]
+}
+\end{lstlisting}
+
+Each stage pulls exactly the elements the downstream \lstinline|take(5)| demands --- the C++23 realization of the lazy-sequence model, with no per-element heap allocation in the pipeline itself.
+
+\section{Reference, Value, and the Two Type Parameters}
+
+The full template is \lstinline|std::generator<Ref, Value = void, Allocator = void>|.
+
+\begin{itemize}
+    \item \textbf{\lstinline|std::generator<T>|} --- reference type \lstinline|T&&|, value type \lstinline|T|; yielding does not copy.
+    \item \textbf{\lstinline|std::generator<const T&>|} --- yields by \lstinline|const| reference for expensive-to-copy read-only elements.
+    \item \textbf{\lstinline|std::generator<Ref, Value>|} --- decouples reference type from value type for generic code.
+\end{itemize}
+
+Because the reference type defaults to \lstinline|T&&|, \textbf{yielding does not force a copy}; a copy happens only if the consumer asks for one.
+
+\section{Recursive Generators with \texttt{ranges::elements\_of}}
+
+A naive recursive generator pays O(depth) per element as each value bubbles up through every enclosing coroutine. \lstinline|co_yield std::ranges::elements_of(inner_range);| yields all elements of \lstinline|inner_range| directly, short-circuiting the nested resumption.
+
+\begin{lstlisting}[language=C++, caption={A recursive tree traversal generator}]
+#include <generator>
+#include <vector>
+#include <ranges>
+#include <print>
+
+struct Node {
+    int value;
+    std::vector<Node> children;
+};
+
+std::generator<int> preorder(const Node& n) {
+    co_yield n.value;
+    for (const Node& child : n.children)
+        co_yield std::ranges::elements_of(preorder(child));  // flatten the subtree
+}
+
+int main() {
+    Node tree{1, {{2, {{4, {}}, {5, {}}}}, {3, {}}}};
+    for (int v : preorder(tree))
+        std::print("{} ", v);          // 1 2 4 5 3
+    std::println("");
+}
+\end{lstlisting}
+
+\begin{quote}
+\textbf{Version-trap flag:} \lstinline|std::generator| and \lstinline|std::ranges::elements_of| are C++23, in \lstinline|<generator>|. C++20 had the coroutine \emph{keywords} but no \lstinline|<generator>| header. Check \lstinline|__cpp_lib_generator| --- it lagged in libc++.
+\end{quote}
+
+\section{Performance: The Cost of Suspension}
+
+\begin{itemize}
+    \item \textbf{Coroutine frame allocation.} Each generator owns a frame; unless the compiler performs HALO (Heap Allocation eLision Optimization), that frame is a heap allocation. HALO often elides it when creation and consumption are in one scope.
+    \item \textbf{Suspend/resume is an indirect jump.} Cheaper than a thread context switch but more expensive than a plain loop iteration.
+    \item \textbf{It defeats some loop optimizations.} The compiler cannot vectorize or fully unroll the producer.
+\end{itemize}
+
+Use it where laziness, composition, or the elimination of materialized intermediates is the goal --- not as a default replacement for ordinary loops.
+
+\section{Professional Insights}
+
+\textbf{\lstinline|std::generator| turns coroutines from an expert tool into an everyday one.} Writing a lazy sequence is now as easy as a loop with \lstinline|co_yield| in place of \lstinline|push_back|. If your codebase avoided coroutines because of the ceremony, C++23 removes that excuse for the synchronous-generator case.
+
+\textbf{Prefer generators to materialized intermediate containers.} When you see ``build a temporary container, loop over it, discard it,'' a generator expresses the same logic with less memory and earlier results.
+
+\textbf{Respect the frame allocation and suspension cost in hot loops.} Negligible for I/O-bound work, but it can dominate a tight, vectorizable numerical kernel. Keep creation and consumption in the same scope to enable HALO.
+
+\textbf{Use \lstinline|ranges::elements_of| for any recursive or nested generator.} It is the only version that composes recursively without the O(depth)-per-element blow-up.

@@ -1,0 +1,141 @@
+\chapter{Diagnostics and Lifetime Utilities}
+\label{ch:diagnostics-lifetime}
+
+This chapter collects the C++23 additions that operate at the boundary between your program and the machine: capturing a call stack with \textbf{\lstinline|std::stacktrace|}, bridging smart pointers to legacy \lstinline|T**| C APIs with \textbf{\lstinline|std::out_ptr|}/\textbf{\lstinline|std::inout_ptr|}, formally blessing byte-to-object reinterpretation with \textbf{\lstinline|std::start_lifetime_as|}, and doing allocation-free stream I/O with \textbf{\lstinline|std::spanstream|}.
+
+\section{\texttt{std::stacktrace} --- Standard Call-Stack Capture}
+
+Portable call-stack capture was impossible before C++23. \lstinline|<stacktrace>| standardizes it: \lstinline|std::stacktrace::current()| captures the stack as a copyable, iterable container of frames.
+
+\begin{lstlisting}[language=C++, caption={Capturing and printing the current stack}]
+#include <stacktrace>
+#include <print>
+
+void crash_handler() {
+    std::println("Crash! Stacktrace:\n{}", std::stacktrace::current());
+}
+
+void inner()  { crash_handler(); }
+void outer()  { inner(); }
+
+int main() { outer(); }
+\end{lstlisting}
+
+\lstinline|std::stacktrace| is a regular container --- \lstinline|size()|, \lstinline|begin()|/\lstinline|end()|, \lstinline|operator[]| --- and is directly formattable, so \lstinline|std::println("{}", trace)| produces a symbolized backtrace. The capture is a value you can store and attach to a log record or exception.
+
+\section{Inspecting Frames with \texttt{stacktrace\_entry}}
+
+Each element is a \lstinline|std::stacktrace_entry|: \lstinline|description()|, \lstinline|source_file()|, \lstinline|source_line()|, and \lstinline|explicit operator bool|.
+
+\begin{lstlisting}[language=C++, caption={Walking individual frames}]
+#include <stacktrace>
+#include <print>
+
+void report() {
+    auto trace = std::stacktrace::current();
+    for (const auto& frame : trace)
+        std::println("{} at {}:{}", frame.description(),
+                     frame.source_file(), frame.source_line());
+}
+
+int main() { report(); }
+\end{lstlisting}
+
+\section{\texttt{std::out\_ptr} and \texttt{std::inout\_ptr}}
+
+A C API initializes a resource through a \lstinline|T**| output parameter, but you want to own it in a smart pointer. \lstinline|std::out_ptr|/\lstinline|std::inout_ptr| (header \lstinline|<memory>|) present a smart pointer to such an API as if it were a \lstinline|T**|, adopting the result on destruction.
+
+\begin{itemize}
+    \item \lstinline|std::out_ptr(sp)| --- pure output; the previous value is released, the written pointer adopted.
+    \item \lstinline|std::inout_ptr(sp)| --- in-out; hands the current raw pointer to the API and adopts the result.
+\end{itemize}
+
+\begin{lstlisting}[language=C++, caption={Adopting a C API's output into a unique_ptr}]
+#include <memory>
+
+struct Widget;
+extern "C" int widget_create(Widget** out);   // writes *out, returns status
+extern "C" void widget_destroy(Widget*);
+
+int main() {
+    std::unique_ptr<Widget, decltype(&widget_destroy)> w(nullptr, &widget_destroy);
+
+    if (widget_create(std::out_ptr(w)) == 0) {
+        // 'w' now owns the Widget the C function allocated; auto-freed via deleter.
+    }
+}
+\end{lstlisting}
+
+This turns a leak-prone manual handshake into a single exception-safe expression.
+
+\section{\texttt{std::start\_lifetime\_as} --- Legitimizing Byte-to-Object Reinterpretation}
+
+Interpreting raw bytes as a trivially-copyable struct via \lstinline|reinterpret_cast| is, by the letter of the object model, undefined behavior --- no object's lifetime has begun in that storage. \lstinline|std::start_lifetime_as<T>(ptr)| (header \lstinline|<memory>|) \emph{starts the lifetime} of a \lstinline|T| in the storage using the bytes present, returning a well-defined pointer with no copy.
+
+\begin{lstlisting}[language=C++, caption={Well-defined reinterpretation of a received buffer}]
+#include <memory>
+#include <cstdint>
+#include <print>
+
+struct PacketHeader {        // trivially copyable
+    std::uint16_t type;
+    std::uint16_t length;
+    std::uint32_t seq;
+};
+
+void on_bytes(std::byte* buffer, std::size_t n) {
+    PacketHeader* h = std::start_lifetime_as<PacketHeader>(buffer);
+    std::println("type={} len={} seq={}", h->type, h->length, h->seq);  // defined
+}
+\end{lstlisting}
+
+\lstinline|start_lifetime_as| makes the access defined, so the compiler cannot treat it as unreachable UB. There is a companion \lstinline|std::start_lifetime_as_array<T>|. Contrast \lstinline|std::bit_cast| (Volume 5), which \emph{copies} bytes into a fresh object; \lstinline|start_lifetime_as| begins an object's lifetime in place with no copy.
+
+\section{\texttt{std::spanstream} --- Allocation-Free Stream I/O}
+
+\lstinline|std::stringstream| owns and grows a heap buffer. \lstinline|std::spanstream| (header \lstinline|<spanstream>|) is an \lstinline|iostream| over a caller-provided \lstinline|std::span<char>| --- the safe replacement for the deprecated \lstinline|strstream|, with zero allocation.
+
+\begin{lstlisting}[language=C++, caption={Formatting into and parsing from a fixed buffer}]
+#include <spanstream>
+#include <print>
+#include <string>
+
+int main() {
+    char buffer[128];
+    std::spanstream ss(buffer);     // stream over the fixed buffer, no heap
+
+    ss << "Hello " << 123;
+    std::string_view written = ss.span();
+    std::println("wrote: {}", written);     // Hello 123
+
+    std::spanstream in(buffer);
+    std::string word; int n;
+    in >> word >> n;                // word="Hello", n=123
+    std::println("parsed: {} {}", word, n);
+}
+\end{lstlisting}
+
+Because the buffer is caller-supplied and never reallocated, \lstinline|spanstream| suits hot paths and allocation-prohibited embedded contexts.
+
+\begin{quote}
+\textbf{Version-trap flag:} \lstinline|std::stacktrace|, \lstinline|out_ptr|/\lstinline|inout_ptr|, \lstinline|start_lifetime_as|, and \lstinline|spanstream| are all \textbf{C++23}. \lstinline|std::stacktrace| depends on the platform unwinder and symbol info; some libraries require linking a backend. Check \lstinline|__cpp_lib_stacktrace|, \lstinline|__cpp_lib_out_ptr|, \lstinline|__cpp_lib_start_lifetime_as|, \lstinline|__cpp_lib_spanstream|.
+\end{quote}
+
+\section{Performance and Safety Notes}
+
+\begin{itemize}
+    \item \textbf{\lstinline|std::stacktrace| capture is not free.} Symbolizing reads debug info and costs microseconds to milliseconds --- fine for an error path, never a hot loop. Capture, then symbolize lazily.
+    \item \textbf{\lstinline|out_ptr|/\lstinline|inout_ptr| are zero-overhead and exception-safe.}
+    \item \textbf{\lstinline|start_lifetime_as| generates no code.} Its precondition is real: storage must be sized and aligned for \lstinline|T|, which must be an implicit-lifetime type.
+    \item \textbf{\lstinline|spanstream| never allocates and never grows} --- writing past capacity sets the fail bit; size for the worst case and check state.
+\end{itemize}
+
+\section{Professional Insights}
+
+\textbf{Attach a captured \lstinline|std::stacktrace| to your errors, but symbolize lazily.} Embed \lstinline|current()| into an exception or log record at the failure point; symbolize only when the trace is rendered, never on a hot path.
+
+\textbf{Use \lstinline|out_ptr|/\lstinline|inout_ptr| everywhere you launder a raw pointer into a smart pointer across a C API.} The manual pattern is a recurring leak source and is obsolete; the adaptors are a pure correctness upgrade at no performance cost.
+
+\textbf{Replace \lstinline|reinterpret_cast|-onto-bytes with \lstinline|std::start_lifetime_as| in serialization and wire-protocol code.} It makes the in-place, no-copy reinterpretation defined, closing a latent miscompilation risk --- provided you honor alignment and implicit-lifetime preconditions.
+
+\textbf{Reach for \lstinline|spanstream| when you want \lstinline|stringstream| ergonomics without the allocation.} Size the buffer for the worst case and check the fail bit; it is the safe successor to \lstinline|strstream|.
