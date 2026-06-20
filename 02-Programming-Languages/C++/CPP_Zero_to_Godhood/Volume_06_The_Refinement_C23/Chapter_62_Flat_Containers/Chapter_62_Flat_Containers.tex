@@ -1,0 +1,117 @@
+\chapter{Flat Containers --- \texttt{flat\_map}, \texttt{flat\_set}, and Their Multi Variants}
+\label{ch:flat-containers}
+
+Every performance-conscious C++ programmer has replaced a \lstinline|std::map| with a \emph{sorted \lstinline|std::vector|} --- trading the map's pointer-chasing red-black tree for contiguous storage that the cache loves. C++23 standardizes the idiom as the \textbf{flat container adaptors}: \lstinline|flat_map|, \lstinline|flat_multimap|, \lstinline|flat_set|, and \lstinline|flat_multiset| --- associative containers with the familiar map/set interface, backed by sorted contiguous sequences.
+
+\section{Why Tree-Based Maps Hurt on Modern Hardware}
+
+\lstinline|std::map| and \lstinline|std::set| are red-black trees. Each node is a separate heap allocation holding the key, value, three pointers, and a color bit. Excellent asymptotics, but a disaster for the memory hierarchy:
+
+\begin{itemize}
+    \item \textbf{Every node is a separate allocation}, so adjacent keys are scattered with no spatial locality.
+    \item \textbf{A lookup is a pointer-chase}; each step likely misses last-level cache (hundreds of cycles).
+    \item \textbf{Per-node overhead is large}: three pointers plus a color bit per element.
+\end{itemize}
+
+The classic remedy --- keep keys in a sorted \lstinline|std::vector| and binary-search --- gives contiguous, prefetcher-friendly lookups at the cost of O(n) mid-sequence insert/erase. For build-once-query-many workloads this is an enormous net win. C++23 makes it a standard container.
+
+\section{The Four Flat Containers}
+
+In \lstinline|<flat_map>| and \lstinline|<flat_set>|:
+
+\begin{itemize}
+    \item \lstinline|std::flat_map| mirrors \lstinline|std::map| (unique keys).
+    \item \lstinline|std::flat_multimap| mirrors \lstinline|std::multimap| (duplicates allowed).
+    \item \lstinline|std::flat_set| mirrors \lstinline|std::set| (unique keys).
+    \item \lstinline|std::flat_multiset| mirrors \lstinline|std::multiset| (duplicates allowed).
+\end{itemize}
+
+They are \emph{adaptors}: each wraps one or more underlying sequence containers (default \lstinline|std::vector|) and maintains the sorted invariant, with the ordered-associative interface (\lstinline|find|, \lstinline|lower_bound|, \lstinline|count|, \lstinline|operator[]|, ordered iteration).
+
+\section{How a \texttt{flat\_map} Is Built: Two Parallel Sequences}
+
+\lstinline|std::flat_map| does \textbf{not} store \lstinline|std::pair<Key, Value>| in one vector. It keeps \textbf{two parallel sorted sequences} --- one of keys, one of values --- index-aligned. A key-only operation touches only the keys vector, packing far more keys per cache line. \lstinline|std::flat_set| is one sorted sequence.
+
+Consequences:
+
+\begin{itemize}
+    \item \lstinline|value_type| is still \lstinline|pair<const Key, Value>|, but it is \emph{materialized on access} via a proxy iterator; pairs are not stored contiguously.
+    \item \textbf{References and iterators are invalidated by any insert or erase} --- unlike \lstinline|std::map|'s stable node addresses.
+    \item \textbf{Lookups are maximally cache-efficient} because keys are dense and values are out of the way.
+\end{itemize}
+
+\section{Using \texttt{flat\_map} and \texttt{flat\_set}}
+
+\begin{lstlisting}[language=C++, caption={Basic flat_map and flat_set usage}]
+#include <flat_map>
+#include <flat_set>
+#include <string>
+#include <print>
+
+int main() {
+    std::flat_map<std::string, int> scores;
+    scores["alice"] = 50;          // same interface as std::map
+    scores["bob"]   = 42;
+    scores.insert({"cara", 71});
+
+    if (auto it = scores.find("bob"); it != scores.end())
+        std::println("bob -> {}", it->second);
+
+    for (const auto& [name, score] : scores)   // ordered: alice, bob, cara
+        std::println("{}: {}", name, score);
+
+    std::flat_set<int> seen{5, 1, 3, 1};       // duplicates dropped -> {1, 3, 5}
+    std::println("contains 3? {}", seen.contains(3));
+    std::println("size = {}", seen.size());    // 3
+}
+\end{lstlisting}
+
+The differences are not in the interface but in the complexity and invalidation profile.
+
+\section{The Performance Trade-Off, Quantified}
+
+\begin{itemize}
+    \item \textbf{Lookup:} both O(log n), but \lstinline|flat_map|'s contiguous binary search has far fewer cache misses.
+    \item \textbf{Insert/erase (random position):} \lstinline|map| O(log n) vs \lstinline|flat_map| \textbf{O(n)} (elements shift).
+    \item \textbf{Ordered iteration:} \lstinline|flat_map| is sequential and prefetcher-friendly.
+    \item \textbf{Memory per element:} \lstinline|flat_map| stores key+value only; \lstinline|map| adds three pointers + color.
+    \item \textbf{Reference stability:} \lstinline|map| stable; \lstinline|flat_map| invalidated by insert/erase.
+\end{itemize}
+
+\lstinline|flat_map| wins decisively on lookup, iteration, and memory, and loses on mid-sequence insert/erase. If ordering is not needed, \lstinline|std::unordered_map| (O(1) average) may beat both; flat containers occupy the niche where you want ordering \emph{and} cache-friendly lookup-heavy access.
+
+\section{Bulk Construction and the \texttt{sorted\_unique} Tag}
+
+Element-by-element insertion is O(n) each (O(n\textsuperscript{2}) overall). Build in bulk so the sequence is sorted once. When data is already sorted and de-duplicated, pass \lstinline|std::sorted_unique| (or \lstinline|std::sorted_equivalent| for multi-variants) to make construction linear.
+
+\begin{lstlisting}[language=C++, caption={Efficient bulk construction}]
+#include <flat_map>
+#include <vector>
+#include <print>
+
+int main() {
+    std::vector<std::pair<int, std::string>> data{ {3, "c"}, {1, "a"}, {2, "b"} };
+    std::flat_map<int, std::string> m(data.begin(), data.end());  // sorted once
+
+    std::vector<int> keys{1, 2, 3};
+    std::vector<std::string> vals{"a", "b", "c"};
+    std::flat_map<int, std::string> fast(
+        std::sorted_unique, std::move(keys), std::move(vals));    // linear construction
+
+    std::println("{} / {}", m.size(), fast.size());
+}
+\end{lstlisting}
+
+\begin{quote}
+\textbf{Version-trap flag:} the flat containers and the \lstinline|sorted_unique|/\lstinline|sorted_equivalent| tags are all \textbf{C++23}, with no C++20 equivalent. Library support arrived late --- verify with \lstinline|__cpp_lib_flat_map| / \lstinline|__cpp_lib_flat_set|.
+\end{quote}
+
+\section{Professional Insights}
+
+\textbf{Reach for flat containers when the access pattern is build-then-query, not churn.} A lookup table or parsed configuration loaded at startup and queried for the program's life is the ideal candidate. A container under continuous random insert/erase is the wrong fit. Decide by the mutation-to-lookup ratio, not by reflex.
+
+\textbf{Build in bulk and promise \lstinline|sorted_unique| when you can.} Filling with a loop of \lstinline|insert| calls is O(n\textsuperscript{2}). Construct from the range in one shot, and pass \lstinline|std::sorted_unique| for already-ordered data.
+
+\textbf{Treat reference and iterator invalidation as a correctness hazard.} Any insert or erase can reallocate and shift the underlying sequences. Code ported from \lstinline|std::map| that caches a reference across a modification will corrupt memory.
+
+\textbf{Remember the structure-of-arrays layout.} The split keys/values storage is why lookups are fast, but \lstinline|value_type| pairs are synthesized on access, not stored --- do not expect a contiguous \lstinline|pair| array.

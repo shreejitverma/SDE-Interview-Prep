@@ -1,0 +1,150 @@
+\chapter{Core Language Conveniences}
+\label{ch:core-language-conveniences}
+
+Beyond deducing \lstinline|this| and \lstinline|if consteval|, C++23 makes a dozen smaller core-language changes, each removing a specific papercut. Multidimensional \lstinline|operator[]| enables \lstinline|m[i, j]|; static \lstinline|operator()|/\lstinline|operator[]| shrink stateless functors; \lstinline|auto(x)| gives a clean decay-copy; \lstinline|z|/\lstinline|uz| literals end the signed/unsigned loop warning; the preprocessor gains \lstinline|#elifdef|/\lstinline|#elifndef|/\lstinline|#warning|; string literals gain named and delimited escapes; and the range-\lstinline|for| temporary-lifetime footgun is fixed.
+
+\section{Multidimensional \texttt{operator[]}}
+
+Before C++23, \lstinline|operator[]| took exactly one argument, forcing matrix types to fake multi-index access with \lstinline|operator()| or chained proxies. C++23 lets \lstinline|operator[]| take any number of arguments.
+
+\begin{lstlisting}[language=C++, caption={A two-index subscript operator}]
+#include <vector>
+#include <cstddef>
+
+struct Matrix {
+    std::vector<double> data;
+    std::size_t cols;
+
+    double& operator[](std::size_t r, std::size_t c) {   // multidimensional
+        return data[r * cols + c];
+    }
+};
+
+int main() {
+    Matrix m{std::vector<double>(12), 4};
+    m[1, 2] = 3.14;        // clean two-index syntax
+}
+\end{lstlisting}
+
+This is the core-language hook that \lstinline|std::mdspan| is built on. The old comma-operator meaning inside \lstinline|[]| was deprecated in C++20 to free this syntax.
+
+\section{Static \texttt{operator()} and \texttt{operator[]}}
+
+A stateless functor still received a hidden \lstinline|this| on every call. C++23 lets you declare \lstinline|operator()| (and \lstinline|operator[]|) \lstinline|static|, so no \lstinline|this| is passed.
+
+\begin{lstlisting}[language=C++, caption={Static call operators}]
+struct Hash {
+    static std::size_t operator()(int x) { return x * 2654435761u; }
+};
+
+auto doubler = [](int x) static { return x * 2; };  // stateless lambda
+\end{lstlisting}
+
+For a comparator or hash functor in a hot loop, dropping the unused \lstinline|this| can reduce register pressure --- a free micro-optimization for stateless callables.
+
+\section{\texttt{auto(x)} and \texttt{auto\{x\}} --- Explicit Decay-Copy}
+
+\lstinline|auto(x)| (and braced \lstinline|auto{x}|) creates a prvalue \textbf{decay-copy} of \lstinline|x|, stripping references and cv-qualifiers --- the standard library's internal \lstinline|decay-copy| helper, now exposed as syntax.
+
+\begin{lstlisting}[language=C++, caption={Decay-copy to avoid self-aliasing}]
+#include <vector>
+#include <algorithm>
+
+void demo(std::vector<int>& v) {
+    // Copy the value before erase invalidates the referenced element.
+    std::erase(v, auto(v.front()));
+}
+\end{lstlisting}
+
+It is more readable than \lstinline|static_cast<std::decay_t<decltype(x)>>(x)| and makes ``I want an independent copy'' explicit.
+
+\section{\texttt{size\_t} Literals: \texttt{z} and \texttt{uz}}
+
+\begin{itemize}
+    \item \lstinline|z| produces a \lstinline|std::ptrdiff_t| (signed).
+    \item \lstinline|uz| (or \lstinline|zu|) produces a \lstinline|std::size_t| (unsigned).
+\end{itemize}
+
+\begin{lstlisting}[language=C++, caption={Loop counters that match size()}]
+#include <vector>
+
+void demo(const std::vector<int>& v) {
+    for (auto i = 0uz; i < v.size(); ++i) { /* i is size_t -- no warning */ }
+    for (auto j = 0z;  j < std::ssize(v); ++j) { /* j is ptrdiff_t */ }
+}
+\end{lstlisting}
+
+\section{Preprocessor: \texttt{\#elifdef}, \texttt{\#elifndef}, \texttt{\#warning}}
+
+\begin{itemize}
+    \item \lstinline|#elifdef NAME| $\equiv$ \lstinline|#elif defined(NAME)|; \lstinline|#elifndef NAME| $\equiv$ \lstinline|#elif !defined(NAME)|.
+    \item \lstinline|#warning "message"| emits a diagnostic warning (the counterpart to \lstinline|#error|), standardizing a universal extension.
+\end{itemize}
+
+\begin{lstlisting}[language=C++, caption={Cleaner conditional compilation}]
+#ifdef USE_BACKEND_A
+#elifdef USE_BACKEND_B          // was: #elif defined(USE_BACKEND_B)
+#elifndef DISABLE_BACKEND       // was: #elif !defined(DISABLE_BACKEND)
+    #warning "No backend selected; using reference implementation"
+#endif
+\end{lstlisting}
+
+\section{String-Literal Escapes: Named and Delimited}
+
+\begin{itemize}
+    \item \textbf{Named escapes:} \lstinline|\N{NAME}| denotes a code point by its Unicode name, e.g. \lstinline|"\N{GREEK SMALL LETTER ALPHA}"|.
+    \item \textbf{Delimited escapes:} \lstinline|\x{...}|, \lstinline|\o{...}|, \lstinline|\u{...}| make the escape boundary explicit, fixing the \lstinline|"\x41B"| ambiguity.
+\end{itemize}
+
+\begin{lstlisting}[language=C++, caption={Self-documenting and unambiguous escapes}]
+#include <print>
+
+int main() {
+    std::println("{}", "caf\N{LATIN SMALL LETTER E WITH ACUTE}");  // cafe-acute
+    std::println("{}", "\u{1F600}");                                // emoji (delimited)
+    char c = '\x{41}';                                              // 'A', unambiguous
+    std::println("{}", c);
+}
+\end{lstlisting}
+
+\section{Range-\texttt{for} Temporary Lifetime, \texttt{[[assume]]}, and Other Cleanups}
+
+\begin{itemize}
+    \item \textbf{Range-\lstinline|for| temporary lifetime fix.} The \lstinline|for (auto e : getVector()[0])| dangling-range bug is fixed: \emph{all} temporaries in the range expression now live for the whole loop. Code that was silently UB now works.
+    \item \textbf{\lstinline|[[assume(expr)]]|} standardizes the ``\lstinline|expr| is true'' optimizer hint, replacing \lstinline|__builtin_assume|/\lstinline|__assume|. A false assumption is UB, not a check.
+    \item \textbf{Simpler implicit move} --- more \lstinline|return|/\lstinline|throw| of move-eligible id-expressions move rather than copy without explicit \lstinline|std::move|.
+    \item \textbf{Attributes on lambdas}, \textbf{CTAD from inherited constructors}, \textbf{mandated UTF-8 source encoding}, \textbf{whitespace trimming before line-splice}, and \textbf{removal of garbage-collection support} round out the release.
+\end{itemize}
+
+\begin{lstlisting}[language=C++, caption={Fixed range-for lifetime and [[assume]]}]
+#include <vector>
+#include <print>
+
+std::vector<std::vector<int>> getGrid() { return {{1, 2, 3}, {4, 5, 6}}; }
+
+int divide(int x) {
+    [[assume(x > 0)]];          // promise the optimizer x is positive
+    return 100 / x;
+}
+
+int main() {
+    for (int e : getGrid()[0])  // was a dangling-range bug pre-C++23
+        std::print("{} ", e);   // 1 2 3
+    std::println("");
+    std::println("{}", divide(4));   // 25
+}
+\end{lstlisting}
+
+\begin{quote}
+\textbf{Version-trap flag:} every feature in this chapter is \textbf{C++23}. The range-\lstinline|for| fix in particular \emph{changes the behavior of existing code} --- from UB to defined --- a rare and welcome kind of breaking change.
+\end{quote}
+
+\section{Professional Insights}
+
+\textbf{The range-\lstinline|for| temporary-lifetime fix is the one to internalize, because it silently repairs latent bugs.} The \lstinline|for (auto x : f().g())| pattern was UB whenever \lstinline|f()| returned a temporary; C++23 makes it correct. Moving to \lstinline|-std=c++23| is a free correctness upgrade.
+
+\textbf{Adopt \lstinline|m[i, j]| and \lstinline|std::mdspan| together; they are the same idea at two levels.} Define \lstinline|operator[](i, j, ...)| for grid/matrix types so call sites read like the mathematics, and prefer \lstinline|mdspan| over hand-rolled index arithmetic.
+
+\textbf{Use \lstinline|0uz|/\lstinline|0z| and \lstinline|auto(x)| as small, deliberate clarity wins.} The suffixes make loop-counter types match \lstinline|size()|/\lstinline|ssize()|; \lstinline|auto(x)| states ``independent copy'' and prevents self-aliasing bugs.
+
+\textbf{Treat \lstinline|[[assume]]| with the same caution as \lstinline|std::unreachable|: it is a UB contract, not an assertion.} A correct assumption speeds up hot code; a false one is UB. Use it only where the condition is provably true, never on untrusted input. The named/delimited escapes and \lstinline|#warning| are pure clarity wins you can adopt without reservation.

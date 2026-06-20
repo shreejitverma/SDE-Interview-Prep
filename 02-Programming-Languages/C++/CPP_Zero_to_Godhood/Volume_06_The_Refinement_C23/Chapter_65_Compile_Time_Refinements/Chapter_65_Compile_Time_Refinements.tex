@@ -1,0 +1,145 @@
+\chapter{Compile-Time Refinements --- \texttt{if consteval} and Expanded \texttt{constexpr}}
+\label{ch:compile-time-refinements}
+
+C++23 continues the march of computation into the compiler on two fronts. \textbf{\lstinline|if consteval|} gives a clean, safe way for a function to behave differently at compile time versus run time, fixing the footguns of \lstinline|std::is_constant_evaluated()|. And C++23 \textbf{relaxes the rules of \lstinline|constexpr|}: more of the language is legal inside \lstinline|constexpr| functions, and far more of the standard library is usable at compile time --- including \lstinline|constexpr std::unique_ptr|, much of \lstinline|<cmath>|, and \lstinline|std::bitset|.
+
+\section{\texttt{is\_constant\_evaluated()} and Its Trap}
+
+C++20's \lstinline|std::is_constant_evaluated()| is an ordinary runtime function that always returns a \lstinline|bool|, inviting two mistakes:
+
+\begin{enumerate}
+    \item \lstinline|if constexpr (std::is_constant_evaluated())| is \emph{always} \lstinline|true| --- the runtime branch is silently discarded.
+    \item You cannot call a \lstinline|consteval| (immediate) function in the ``compile-time'' branch, because you are still in a normal runtime \lstinline|if|.
+\end{enumerate}
+
+\section{\texttt{if consteval}: The Fix}
+
+\lstinline|if consteval { A } else { B }| is a language construct that selects \lstinline|A| during constant evaluation and \lstinline|B| otherwise. Inside the \lstinline|consteval| branch you may call immediate functions directly.
+
+\begin{lstlisting}[language=C++, caption={if consteval selecting a compile-time-only algorithm}]
+#include <print>
+
+consteval int compile_time_algo(int n) { return n * n; }
+int          runtime_algo(int n)       { return n * n; }
+
+constexpr int heavy_math(int n) {
+    if consteval {
+        return compile_time_algo(n);   // legal: definitely at compile time
+    } else {
+        return runtime_algo(n);        // taken at run time
+    }
+}
+
+int main() {
+    constexpr int a = heavy_math(5);   // 25 at compile time
+    int b = heavy_math(6);             // runtime
+    std::println("{} {}", a, b);
+}
+\end{lstlisting}
+
+There is a negated form \lstinline|if !consteval|. \lstinline|if consteval| makes \lstinline|is_constant_evaluated()| largely obsolete for new code.
+
+\section{Relaxed \texttt{constexpr} Function Bodies}
+
+A \lstinline|constexpr| function may now use:
+
+\begin{itemize}
+    \item \textbf{Non-literal variables / non-constexpr constructs that are never evaluated} at compile time --- the function is no longer rejected for merely containing a non-constexpr branch.
+    \item \textbf{\lstinline|goto| and labels} --- previously banned.
+    \item \textbf{\lstinline|static| and \lstinline|thread_local| local variables} --- their presence no longer disqualifies the function.
+    \item \textbf{Labels at the end of compound statements} and other parser relaxations.
+\end{itemize}
+
+\begin{lstlisting}[language=C++, caption={A constexpr function using formerly-forbidden constructs}]
+#include <print>
+
+constexpr int classify(int n) {
+    if (n < 0) goto negative;     // goto now allowed in constexpr
+    return n == 0 ? 0 : 1;
+negative:
+    return -1;
+}
+
+int main() {
+    static_assert(classify(5) == 1);
+    static_assert(classify(-3) == -1);
+    std::println("{}", classify(0));
+}
+\end{lstlisting}
+
+\section{\texttt{constexpr} \texttt{std::unique\_ptr} and Compile-Time Allocation}
+
+Building on C++20's \lstinline|constexpr| dynamic allocation, C++23 makes \lstinline|std::unique_ptr| itself \lstinline|constexpr|, so you can build, mutate, and tear down owning data structures at compile time.
+
+\begin{lstlisting}[language=C++, caption={A constexpr function that allocates and owns memory}]
+#include <memory>
+#include <print>
+
+constexpr int sum_dynamic(int n) {
+    auto buf = std::make_unique<int[]>(n);   // constexpr allocation + ownership
+    for (int i = 0; i < n; ++i) buf[i] = i + 1;
+    int total = 0;
+    for (int i = 0; i < n; ++i) total += buf[i];
+    return total;                            // buf freed before evaluation ends
+}
+
+int main() {
+    static_assert(sum_dynamic(5) == 15);
+    std::println("{}", sum_dynamic(10));
+}
+\end{lstlisting}
+
+Every byte allocated during constant evaluation must be freed before that evaluation finishes --- no compile-time leak into the runtime.
+
+\section{\texttt{constexpr} Library Growth: \texttt{<cmath>}, \texttt{bitset}, \texttt{type\_info}}
+
+\begin{itemize}
+    \item \textbf{Much of \lstinline|<cmath>|}: \lstinline|abs|, \lstinline|fmin|/\lstinline|fmax|, \lstinline|ceil|, \lstinline|floor|, \lstinline|trunc|, \lstinline|round|, etc. (transcendentals remain gradual).
+    \item \textbf{\lstinline|std::bitset| is largely \lstinline|constexpr|} --- compile-time masks and flag tables.
+    \item \textbf{\lstinline|constexpr std::type_info::operator==|} --- type-identity checks in compile-time logic.
+    \item Other pieces (\lstinline|<cstdlib>| integer functions, more \lstinline|<optional>|/\lstinline|<variant>|).
+\end{itemize}
+
+\begin{lstlisting}[language=C++, caption={Compile-time use of newly-constexpr library facilities}]
+#include <cmath>
+#include <bitset>
+#include <print>
+
+constexpr double rounded = std::ceil(3.2);          // 4.0 at compile time
+
+constexpr unsigned mask = [] {
+    std::bitset<8> b;
+    b.set(0); b.set(3); b.set(5);
+    return static_cast<unsigned>(b.to_ulong());      // 41
+}();
+
+int main() {
+    static_assert(rounded == 4.0);
+    static_assert(mask == 41);
+    std::println("rounded={} mask={}", rounded, mask);
+}
+\end{lstlisting}
+
+\begin{quote}
+\textbf{Version-trap flag:} \lstinline|if consteval|, the relaxed body rules, \lstinline|constexpr std::unique_ptr|, and the expanded \lstinline|constexpr| library coverage are \textbf{C++23}. C++20 introduced \lstinline|is_constant_evaluated()|, \lstinline|consteval|, and \lstinline|constexpr| allocation --- but not \lstinline|if consteval| or \lstinline|constexpr unique_ptr|. Verify specific \lstinline|<cmath>| functions with \lstinline|__cpp_lib_constexpr_*| macros.
+\end{quote}
+
+\section{Performance: Paying at Compile Time Instead of Run Time}
+
+\begin{itemize}
+    \item A value computed in a \lstinline|constexpr|/\lstinline|consteval| context is baked into the binary as a literal --- zero startup cost.
+    \item \lstinline|if consteval| lets one function be optimal in both worlds; each call site pays only for the path it takes, with no runtime branch.
+    \item \lstinline|constexpr unique_ptr| enables compile-time data structures with no runtime residue.
+\end{itemize}
+
+The cost is build time and compiler memory. Push genuinely-constant work to compile time, but do not turn an expensive runtime computation into an expensive build-time one unless the value is truly constant.
+
+\section{Professional Insights}
+
+\textbf{Prefer \lstinline|if consteval| to \lstinline|std::is_constant_evaluated()| in all new code.} The library function is a runtime \lstinline|bool| that is dangerous in a \lstinline|constexpr if| and cannot gate immediate-function calls. \lstinline|if consteval| has the correct semantics; treat \lstinline|is_constant_evaluated()| as legacy.
+
+\textbf{Mark functions \lstinline|constexpr| more liberally now that the body rules are relaxed.} \lstinline|goto|, labels, \lstinline|static| locals, and un-evaluated non-constexpr branches no longer disqualify a function. The default for pure functions should lean toward \lstinline|constexpr|.
+
+\textbf{Use \lstinline|constexpr unique_ptr| and compile-time allocation to precompute, not to show off.} Turn a startup-time table build into a compile-time constant --- but every allocation must be freed within the evaluation, and large computations tax the build.
+
+\textbf{Watch the build-time budget as you push more to compile time.} Treat compile-time computation as an optimization with its own cost model: measure build impact and lean on feature-test macros so code degrades gracefully.
