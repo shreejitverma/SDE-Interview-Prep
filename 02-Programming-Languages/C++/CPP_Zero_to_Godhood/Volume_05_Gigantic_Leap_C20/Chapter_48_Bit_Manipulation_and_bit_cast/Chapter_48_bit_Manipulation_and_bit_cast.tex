@@ -1,0 +1,148 @@
+\chapter{Bit Manipulation and \texttt{bit\_cast}}
+\label{ch:c20-bit}
+
+\begin{quote}
+\emph{C++20's \texttt{<bit>} header standardizes bit-twiddling previously written with intrinsics, \texttt{reinterpret\_cast}, or UB \texttt{union} punning. \texttt{std::bit\_cast} reinterprets an object's bits safely and at compile time; \texttt{popcount}, \texttt{bit\_width}, \texttt{countl\_zero}, \texttt{rotl}, and friends expose CPU instructions; and \texttt{std::endian} makes byte order a queryable property.}
+\end{quote}
+
+\section{std::bit\_cast: Type Punning Without UB}
+\label{sec:c20-bit-cast}
+
+\begin{lstlisting}[language=C++,caption={Reinterpreting the bits of a float as an integer}]
+#include <bit>
+#include <cstdint>
+
+float f = 1.0f;
+std::uint32_t bits = std::bit_cast<std::uint32_t>(f);   // 0x3F800000
+constexpr float one = std::bit_cast<float>(0x3F800000u);  // 1.0f, in constexpr
+static_assert(std::bit_cast<std::uint32_t>(1.0f) == 0x3F800000u);
+\end{lstlisting}
+
+Requires \texttt{sizeof(To)==sizeof(From)} and both trivially copyable; semantically a \texttt{memcpy} into a fresh object, but \texttt{constexpr}.
+
+\section{Why bit\_cast Beats reinterpret\_cast and unions}
+\label{sec:c20-bit-cast-why}
+
+\begin{lstlisting}[language=C++,caption={The four approaches, ranked}]
+#include <bit>
+#include <cstdint>
+#include <cstring>
+
+float f = 3.14f;
+// (1) reinterpret_cast — violates strict aliasing; UB.
+// (2) union punning — UB in C++ (legal in C only).
+std::uint32_t c; std::memcpy(&c, &f, sizeof c);   // (3) defined but not constexpr
+std::uint32_t d = std::bit_cast<std::uint32_t>(f); // (4) defined, concise, constexpr
+\end{lstlisting}
+
+\section{Power-of-Two Operations}
+\label{sec:c20-bit-pow2}
+
+\begin{lstlisting}[language=C++,caption={Power-of-two helpers}]
+#include <bit>
+#include <cstdint>
+
+std::has_single_bit(8u);     // true
+std::bit_ceil(5u);           // 8  — smallest power of two >= 5
+std::bit_floor(5u);          // 4  — largest power of two <= 5
+std::bit_width(5u);          // 3  — bits to represent 5 (0b101)
+
+std::size_t round_up_pow2(std::size_t n) {
+    return n <= 1 ? 1 : std::bit_ceil(n);
+}
+\end{lstlisting}
+
+\section{Bit Counting: popcount, countl/countr, bit\_width}
+\label{sec:c20-bit-count}
+
+\begin{lstlisting}[language=C++,caption={The bit-counting catalogue}]
+#include <bit>
+#include <cstdint>
+
+std::uint8_t x = 0b0010'1100;   // 44
+std::popcount(x);        // 3  — set bits
+std::countl_zero(x);     // 2  — leading zero bits
+std::countr_zero(x);     // 2  — trailing zero bits
+bool is_pow2 = std::popcount(x) == 1;
+int  highest = 7 - std::countl_zero(x);   // index of highest set bit
+\end{lstlisting}
+
+\begin{center}
+\begin{tabular}{ll}
+\hline
+\textbf{Function} & \textbf{Returns} \\
+\hline
+\texttt{popcount(x)} & count of 1-bits \\
+\texttt{countl\_zero(x)} & leading 0-bits (MSB end) \\
+\texttt{countr\_zero(x)} & trailing 0-bits (LSB end) \\
+\texttt{bit\_width(x)} & 0 if x==0 else 1+floor(log2(x)) \\
+\hline
+\end{tabular}
+\end{center}
+
+\section{Bit Rotation: rotl and rotr}
+\label{sec:c20-bit-rotate}
+
+\begin{lstlisting}[language=C++,caption={Circular shifts}]
+#include <bit>
+#include <cstdint>
+
+std::uint8_t x = 0b1001'0000;
+std::rotl(x, 1);    // 0b0010'0001 — top bit wrapped to bottom
+std::rotr(x, 1);    // 0b0100'1000
+std::rotl(x, 0);    // unchanged — defined, no UB
+std::rotl(x, 8);    // unchanged (full rotation) — defined
+\end{lstlisting}
+
+The hand-rolled \texttt{(x<<n)|(x>>(W-n))} is UB when \texttt{n==0}; \texttt{rotl}/\texttt{rotr} take the count modulo the width.
+
+\section{std::endian: Querying Byte Order}
+\label{sec:c20-bit-endian}
+
+\begin{lstlisting}[language=C++,caption={Querying and acting on byte order}]
+#include <bit>
+#include <cstdint>
+
+if constexpr (std::endian::native == std::endian::little) {
+    // little-endian path
+} else if constexpr (std::endian::native == std::endian::big) {
+    // big-endian path
+}
+
+constexpr std::uint32_t to_big_endian(std::uint32_t v) {
+    if constexpr (std::endian::native == std::endian::big) return v;
+    else return std::byteswap(v);   // NOTE: std::byteswap is C++23, not C++20
+}
+\end{lstlisting}
+
+\texttt{std::endian} is C++20; \texttt{std::byteswap} is C++23. On mixed-endian platforms \texttt{native} equals neither, so compare explicitly.
+
+\section{Putting It Together: A Serialization Primitive}
+\label{sec:c20-bit-serialize}
+
+\begin{lstlisting}[language=C++,caption={Reading a big-endian float from a byte buffer (C++20)}]
+#include <bit>
+#include <cstdint>
+
+float read_be_float(const std::byte* p) {
+    std::uint32_t bits =
+        (std::uint32_t(std::to_integer<std::uint8_t>(p[0])) << 24) |
+        (std::uint32_t(std::to_integer<std::uint8_t>(p[1])) << 16) |
+        (std::uint32_t(std::to_integer<std::uint8_t>(p[2])) <<  8) |
+        (std::uint32_t(std::to_integer<std::uint8_t>(p[3])));
+    return std::bit_cast<float>(bits);
+}
+\end{lstlisting}
+
+\section{Professional Insights}
+\label{sec:c20-bit-insights}
+
+\textbf{Replace every \texttt{reinterpret\_cast}/\texttt{union} type pun with \texttt{std::bit\_cast}} --- the old idioms are UB that breaks under optimization.
+
+\textbf{Use the bit-counting functions instead of hand-rolled loops in hot paths} --- they map to \texttt{POPCNT}/\texttt{LZCNT}/\texttt{TZCNT}.
+
+\textbf{Prefer \texttt{rotl}/\texttt{rotr} over the shift-or idiom} --- it fixes the \texttt{n==0} UB and compiles to \texttt{ROL}/\texttt{ROR}.
+
+\textbf{Query byte order with \texttt{std::endian} and \texttt{if constexpr}}, never the preprocessor; compare against both \texttt{little} and \texttt{big}.
+
+\textbf{Remember \texttt{std::byteswap} is C++23} --- in C++20 reverse bytes with shifts, an intrinsic, or by assembling in order.

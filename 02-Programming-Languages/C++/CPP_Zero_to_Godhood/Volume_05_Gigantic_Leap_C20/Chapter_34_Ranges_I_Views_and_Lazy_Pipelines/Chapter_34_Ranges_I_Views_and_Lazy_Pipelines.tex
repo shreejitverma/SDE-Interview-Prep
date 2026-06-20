@@ -1,0 +1,216 @@
+\chapter{Ranges I --- Views, Range Adaptors, and Lazy Pipelines}
+\label{ch:c20-ranges-i}
+
+\begin{quote}
+\emph{The ranges library is the second pillar and the one that most changes how you express data transformations. It replaces the iterator-pair calling convention of classic \texttt{<algorithm>} with composable, lazy pipelines built from the pipe operator. This chapter covers the range abstraction, what a view is and why it is cheap, the standard adaptors, and the lazy-evaluation model.}
+\end{quote}
+
+Ranges collapse ``copy\_if then a squaring loop'' into \texttt{data | views::filter(even) | views::transform(square)} --- a declarative pipeline that allocates nothing and computes each element on demand.
+
+\section{The End of Iterator Pairs}
+\label{sec:c20-end-iter-pairs}
+
+\begin{lstlisting}[language=C++,caption={The old way vs. the ranges way}]
+#include <vector>
+#include <algorithm>
+#include <ranges>
+#include <iostream>
+
+int main() {
+    std::vector<int> nums{1, 2, 3, 4, 5, 6};
+
+    // Old way: a temporary container and two passes
+    std::vector<int> temp;
+    std::copy_if(nums.begin(), nums.end(), std::back_inserter(temp),
+                 [](int i){ return i % 2 == 0; });
+    for (auto& x : temp) x = x * x;
+
+    // C++20 ranges: one lazy pipeline, no temporary, single pass
+    namespace views = std::views;
+    auto result = nums
+        | views::filter([](int i){ return i % 2 == 0; })
+        | views::transform([](int i){ return i * i; });
+
+    for (int i : result) std::cout << i << ' ';   // 4 16 36
+}
+\end{lstlisting}
+
+\section{Ranges, Views, and the Core Concepts}
+\label{sec:c20-ranges-views-concepts}
+
+A \textbf{range} provides \texttt{begin()}/\texttt{end()}. A \textbf{view} is a range that is \textbf{cheap to copy and non-owning}.
+
+\begin{center}
+\begin{tabular}{llll}
+\hline
+\textbf{Term} & \textbf{Owns data?} & \textbf{Copy cost} & \textbf{Example} \\
+\hline
+Container (range) & yes & O(n) & \texttt{std::vector<int>} \\
+View & no & O(1) & \texttt{views::filter(v, pred)} \\
+\hline
+\end{tabular}
+\end{center}
+
+Key concepts: \texttt{sized\_range}, \texttt{common\_range}, \texttt{viewable\_range}, and the iterator-strength ladder.
+
+\section{The Pipe Operator and Range Adaptors}
+\label{sec:c20-pipe-adaptors}
+
+A \textbf{range adaptor} takes a range and produces a view. \texttt{range | adaptor} equals \texttt{adaptor(range)}.
+
+\begin{lstlisting}[language=C++,caption={Function-call form and pipe form are equivalent}]
+#include <ranges>
+#include <vector>
+
+std::vector<int> v{1,2,3,4,5};
+namespace vws = std::views;
+
+auto a = vws::transform(vws::filter(v, [](int x){ return x>2; }),
+                        [](int x){ return x*10; });
+
+auto b = v | vws::filter([](int x){ return x>2; })
+           | vws::transform([](int x){ return x*10; });
+\end{lstlisting}
+
+\section{The Standard Views Catalogue}
+\label{sec:c20-views-catalogue}
+
+Several popular views (\texttt{zip}, \texttt{enumerate}, \texttt{chunk}, \texttt{slide}, \texttt{join\_with}) are \textbf{C++23, not available here}.
+
+\begin{center}
+\begin{tabular}{ll}
+\hline
+\textbf{View} & \textbf{Effect} \\
+\hline
+\texttt{all} & view over an entire range \\
+\texttt{filter(pred)} / \texttt{transform(f)} & select / map \\
+\texttt{take(n)} / \texttt{take\_while(pred)} & leading elements \\
+\texttt{drop(n)} / \texttt{drop\_while(pred)} & skip leading elements \\
+\texttt{reverse} & reversed traversal \\
+\texttt{join} & flatten range-of-ranges \\
+\texttt{split(delim)} & tokenize on delimiter \\
+\texttt{elements<N>} / \texttt{keys} / \texttt{values} & project tuple fields \\
+\texttt{iota(a[,b])} & arithmetic sequence \\
+\texttt{single(x)} / \texttt{empty<T>} & degenerate generators \\
+\texttt{counted(it,n)} / \texttt{common} & misc adaptors \\
+\hline
+\end{tabular}
+\end{center}
+
+\begin{lstlisting}[language=C++,caption={Composing several adaptors}]
+#include <ranges>
+#include <vector>
+#include <iostream>
+
+int main() {
+    std::vector<int> v{5, 1, 8, 2, 9, 3, 7};
+    namespace vws = std::views;
+    auto pipeline = v
+        | vws::filter([](int x){ return x > 2; })
+        | vws::transform([](int x){ return x - 1; })
+        | vws::take(3)
+        | vws::reverse;
+    for (int x : pipeline) std::cout << x << ' ';     // 8 7 4
+}
+\end{lstlisting}
+
+\section{Lazy Evaluation: What Actually Happens During Iteration}
+\label{sec:c20-laziness}
+
+Building a pipeline does no work; computation happens element-by-element \emph{during iteration}.
+
+\begin{lstlisting}[language=C++,caption={Laziness: each element flows through the whole chain on demand}]
+#include <ranges>
+#include <vector>
+#include <iostream>
+
+int main() {
+    std::vector<int> v{1, 2, 3, 4};
+    namespace vws = std::views;
+    auto pipe = v
+        | vws::filter([](int x){ std::cout << "filter " << x << '\n'; return x % 2 == 0; })
+        | vws::transform([](int x){ std::cout << "transform " << x << '\n'; return x * x; });
+    for (int x : pipe) std::cout << "got " << x << "\n";
+}
+\end{lstlisting}
+
+Infinite views are usable when bounded downstream; the optimizer fuses the chain into one loop. C++20 ships views (lazy), not eager actions.
+
+\section{Generating Views: iota and Friends}
+\label{sec:c20-iota}
+
+\begin{lstlisting}[language=C++,caption={iota generates sequences; bounded and infinite}]
+#include <ranges>
+#include <iostream>
+
+int main() {
+    namespace vws = std::views;
+    for (int i : vws::iota(0, 5)) std::cout << i << ' ';   // 0 1 2 3 4
+    std::cout << '\n';
+    auto first_squares = vws::iota(1)
+                       | vws::transform([](int n){ return n*n; })
+                       | vws::take(5);                       // 1 4 9 16 25
+    for (int s : first_squares) std::cout << s << ' ';
+}
+\end{lstlisting}
+
+\section{Decomposing and Splitting: join, split, elements}
+\label{sec:c20-join-split}
+
+\begin{lstlisting}[language=C++,caption={join flattens, split tokenizes, keys/values project}]
+#include <ranges>
+#include <vector>
+#include <string>
+#include <map>
+#include <iostream>
+
+int main() {
+    namespace vws = std::views;
+    std::vector<std::vector<int>> nested{{1,2},{3,4},{5}};
+    for (int x : nested | vws::join) std::cout << x << ' ';   // 1 2 3 4 5
+
+    std::string text = "a,bb,ccc";
+    for (auto tok : text | vws::split(','))
+        std::cout << std::string_view(tok.begin(), tok.end()) << '|';
+
+    std::map<std::string,int> m{{"x",1},{"y",2}};
+    for (auto& k : m | vws::keys)   std::cout << k << ' ';
+    for (auto& val : m | vws::values) std::cout << val << ' ';
+}
+\end{lstlisting}
+
+\texttt{views::split} tokens are not always contiguous; build \texttt{string\_view} from \texttt{tok.begin()/end()}.
+
+\section{Performance and the Materialization Question}
+\label{sec:c20-materialization}
+
+\begin{itemize}
+\item \textbf{No intermediate allocation} is the headline win.
+\item \textbf{Re-traversal cost}: \texttt{filter} recomputes its predicate each pass; \texttt{begin()} is O(n). Materialize if iterated repeatedly.
+\item \textbf{No \texttt{std::ranges::to} in C++20} (that is C++23).
+\end{itemize}
+
+\begin{lstlisting}[language=C++,caption={Materializing a view into a container in C++20}]
+#include <ranges>
+#include <vector>
+
+auto view = std::views::iota(1, 6) | std::views::transform([](int n){ return n*n; });
+
+std::vector<int> out1(view.begin(), view.end());    // requires common_range
+std::vector<int> out2;
+for (int x : view) out2.push_back(x);
+// C++23 would allow: view | std::ranges::to<std::vector>(); -- NOT C++20
+\end{lstlisting}
+
+\section{Professional Insights}
+\label{sec:c20-ranges-i-insights}
+
+\textbf{Default to pipelines for clarity, verify codegen for hot paths.} Laziness plus inlining usually matches a hand-written loop; confirm once with the disassembler in a latency-critical loop.
+
+\textbf{Materialize a filtered view you iterate more than once.} \texttt{filter} re-evaluates its predicate and pays O(n) for \texttt{begin()} each traversal.
+
+\textbf{Mind the C++20 materialization gap.} \texttt{std::ranges::to} is C++23; materialize via iterator-pair constructor or a loop.
+
+\textbf{Know which views are not in C++20.} \texttt{zip}, \texttt{enumerate}, \texttt{chunk}, \texttt{slide}, \texttt{join\_with} are C++23.
+
+\textbf{Exploit laziness deliberately with infinite generators.} \texttt{views::iota(0)} plus \texttt{take} is the idiomatic allocation-free replacement for index loops.

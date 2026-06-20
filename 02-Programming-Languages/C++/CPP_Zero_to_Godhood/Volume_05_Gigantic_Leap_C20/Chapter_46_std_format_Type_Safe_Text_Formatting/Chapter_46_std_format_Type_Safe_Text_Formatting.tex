@@ -1,0 +1,160 @@
+\chapter{std::format --- Type-Safe Text Formatting}
+\label{ch:c20-format}
+
+\begin{quote}
+\emph{\texttt{std::format} brings Python-style, type-safe, compile-time-checked string formatting to C++, ending the choice between \texttt{printf} (fast but type-unsafe) and iostreams (type-safe but verbose and stateful). A format string with \texttt{\{\}} placeholders is checked against its arguments at compile time, and user types opt in via one trait.}
+\end{quote}
+
+\section{The Problem: printf vs iostreams}
+\label{sec:c20-format-problem}
+
+\begin{lstlisting}[language=C++,caption={The three eras, side by side}]
+#include <format>
+#include <cstdio>
+#include <iostream>
+#include <string>
+
+void demo(const std::string& name, int version) {
+    std::printf("Hello %s %d\n", name.c_str(), version);   // terse, type-UNSAFE
+    std::cout << "Hello " << name << ' ' << version << '\n'; // safe, verbose
+    std::string s = std::format("Hello {} {}\n", name, version); // safe + terse + checked
+    std::cout << s;
+}
+\end{lstlisting}
+
+\section{Basic Usage and Compile-Time Checking}
+\label{sec:c20-format-basic}
+
+\begin{lstlisting}[language=C++,caption={Placeholders and compile-time validation}]
+#include <format>
+#include <string>
+
+std::string a = std::format("{} + {} = {}", 2, 3, 5);     // "2 + 3 = 5"
+std::string b = std::format("{}", 3.14159);               // "3.14159"
+std::string c = std::format("{}", true);                  // "true"
+// std::format("{}");            // ERROR: missing argument
+// std::format("{:d}", "text");  // ERROR: integer spec on a string
+\end{lstlisting}
+
+The format string is validated at compile time; \texttt{std::vformat} performs the runtime-checked variant.
+
+\section{Argument Indexing}
+\label{sec:c20-format-indexing}
+
+\begin{lstlisting}[language=C++,caption={Explicit argument indices}]
+#include <format>
+
+auto s1 = std::format("{0} {1} {0}", "ab", "cd");    // "ab cd ab"
+auto s2 = std::format("{1}, {0}!", "World", "Hello"); // "Hello, World!"
+// std::format("{} {1}", a, b);   // ERROR: cannot mix automatic and manual
+\end{lstlisting}
+
+\section{The Format Specification Mini-Language}
+\label{sec:c20-format-spec}
+
+\begin{lstlisting}[language=C++,caption={The anatomy of a format spec}]
+#include <format>
+// {:[[fill]align][sign][#][0][width][.precision][type]}
+std::format("{:<10}", "left");     // "left      "
+std::format("{:>10}", "right");    // "     right"
+std::format("{:^10}", "mid");      // "   mid    "
+std::format("{:*^10}", "mid");     // "***mid****"
+std::format("{:+}", 42);           // "+42"
+std::format("{:08.3f}", 3.14159);  // "0003.142"
+\end{lstlisting}
+
+\begin{center}
+\begin{tabular}{ll}
+\hline
+\textbf{Field} & \textbf{Meaning} \\
+\hline
+fill + align & \texttt{<} left, \texttt{>} right, \texttt{\^} center \\
+sign & \texttt{+} always, \texttt{-} negatives, space \\
+\texttt{\#} & alternate form (\texttt{0x}, \texttt{0b}) \\
+\texttt{0} & zero-pad to width \\
+width / .precision & field width / digits or max chars \\
+type & \texttt{d b o x f e g s} \\
+\hline
+\end{tabular}
+\end{center}
+
+\section{Formatting Numbers}
+\label{sec:c20-format-numbers}
+
+\begin{lstlisting}[language=C++,caption={Numeric formatting}]
+#include <format>
+
+std::format("{:x}",  255);        // "ff"
+std::format("{:#X}", 255);        // "0XFF"
+std::format("{:#b}", 5);          // "0b101"
+std::format("{:.2f}", 3.14159);   // "3.14"
+std::format("{:.3e}", 31415.9);   // "3.142e+04"
+std::format("{:{}.{}f}", 3.14159, 8, 2);   // width/precision as arguments -> "    3.14"
+\end{lstlisting}
+
+\section{format\_to and Output Iterators}
+\label{sec:c20-format-to}
+
+\begin{lstlisting}[language=C++,caption={Formatting without allocating a fresh string}]
+#include <format>
+#include <string>
+#include <iterator>
+
+void append_log(std::string& log, int code) {
+    std::format_to(std::back_inserter(log), "[error {}]\n", code);
+}
+void into_buffer() {
+    char buf[64];
+    auto result = std::format_to_n(buf, sizeof(buf), "{}-{}", 42, 7);
+    *result.out = '\0';   // result.size = chars that WOULD have been written
+}
+std::size_t n = std::formatted_size("{}-{}", 42, 7);   // 4
+\end{lstlisting}
+
+\section{Custom Formatters for User Types}
+\label{sec:c20-format-custom}
+
+\begin{lstlisting}[language=C++,caption={Making a user type formattable}]
+#include <format>
+
+struct Point { int x, y; };
+
+template<>
+struct std::formatter<Point> {
+    constexpr auto parse(std::format_parse_context& ctx) { return ctx.begin(); }
+    auto format(const Point& p, std::format_context& ctx) const {
+        return std::format_to(ctx.out(), "({}, {})", p.x, p.y);
+    }
+};
+auto s = std::format("origin = {}", Point{0, 0});   // "origin = (0, 0)"
+\end{lstlisting}
+
+Inherit from \texttt{std::formatter<std::string>} to reuse width/alignment parsing.
+
+\section{Performance and the C++20/23 Landscape}
+\label{sec:c20-format-perf}
+
+\begin{lstlisting}[language=C++,caption={C++20 output vs the C++23 conveniences (flagged)}]
+#include <format>
+#include <iostream>
+
+int x = 42;
+std::cout << std::format("value = {}\n", x);   // C++20: format then stream
+// std::print("value = {}\n", x);              // C++23 ONLY
+// std::println("value = {}", x);              // C++23 ONLY
+\end{lstlisting}
+
+\texttt{std::format} still allocates a string by default; \texttt{std::print}/\texttt{println} and ranges formatting are C++23.
+
+\section{Professional Insights}
+\label{sec:c20-format-insights}
+
+\textbf{Default to \texttt{std::format} over both \texttt{printf} and iostreams} --- compile-time checking turns a class of stack-corrupting bugs into build errors.
+
+\textbf{Use \texttt{format\_to}/\texttt{format\_to\_n} with a reused buffer on hot logging paths} --- avoids per-call allocation.
+
+\textbf{Specialize \texttt{std::formatter} for domain types early} --- they then drop into every log line with \texttt{\{\}}.
+
+\textbf{No \texttt{std::print} or ranges formatting in C++20} --- format-then-stream is the portable idiom.
+
+\textbf{Prefer argument indexing for user-facing or localized text} --- translators reorder without touching code.

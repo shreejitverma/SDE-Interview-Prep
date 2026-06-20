@@ -1,0 +1,150 @@
+\chapter{Abbreviated Templates, explicit(bool), and Lambda Enhancements}
+\label{ch:c20-abbreviated-templates}
+
+\begin{quote}
+\emph{C++20 polishes the everyday ergonomics of generic code. Abbreviated function templates let \texttt{auto} parameters stand in for template parameters; \texttt{explicit(bool)} makes a constructor's explicitness a compile-time condition; and lambdas gain a template-parameter list, pack capture, default-constructibility, and unevaluated-context use.}
+\end{quote}
+
+Each feature removes boilerplate but has a sharp edge: an abbreviated template is still a template, \texttt{explicit(bool)} silently changes conversion behavior, and pack capture interacts with forwarding.
+
+\section{Abbreviated Function Templates}
+\label{sec:c20-abbreviated}
+
+\begin{lstlisting}[language=C++,caption={An auto parameter makes the function a template}]
+auto add(auto a, auto b) {        // two invented type parameters
+    return a + b;
+}
+add(1, 2);        // add<int, int>
+add(1.0, 2.0);    // add<double, double>
+add(1, 2.0);      // add<int, double>
+\end{lstlisting}
+
+\section{The Equivalence: auto Parameters Are Template Parameters}
+\label{sec:c20-auto-equivalence}
+
+\begin{lstlisting}[language=C++,caption={The abbreviated form and its desugared equivalent}]
+auto twice(auto x) { return x + x; }
+// IDENTICAL to:
+template<class T> auto twice(T x) { return x + x; }
+
+template<class T>
+auto scale(T factor, auto value) { return factor * value; }  // mix explicit + invented
+\end{lstlisting}
+
+It is a real template: body errors surface on instantiation; no unspecialized function pointer.
+
+\section{Constrained auto Parameters}
+\label{sec:c20-constrained-auto}
+
+\begin{lstlisting}[language=C++,caption={Constraining abbreviated-template parameters with concepts}]
+#include <concepts>
+
+auto add(std::integral auto a, std::integral auto b) {   // both must be integral
+    return a + b;
+}
+add(1, 2);        // OK
+// add(1.0, 2.0); // ERROR: double is not std::integral
+
+void log_value(std::convertible_to<std::string_view> auto msg, auto level);
+\end{lstlisting}
+
+A constrained \texttt{auto} gives call-site diagnostics; an unconstrained one defers errors into the body.
+
+\section{explicit(bool): Conditional Explicitness}
+\label{sec:c20-explicit-bool}
+
+\begin{lstlisting}[language=C++,caption={explicit(bool) --- explicitness depends on the type}]
+#include <type_traits>
+
+template<class T>
+struct Wrapper {
+    explicit(!std::is_convertible_v<T, int>) Wrapper(T);
+};
+
+Wrapper<int> a = 5;                       // implicit
+Wrapper<std::string> b{std::string{}};    // explicit form required
+// Wrapper<std::string> c = std::string{}; // ERROR: copy-init blocked
+\end{lstlisting}
+
+\texttt{explicit(true)} == \texttt{explicit}; \texttt{explicit(false)} == non-explicit. Collapses twin SFINAE constructors (as in \texttt{std::tuple}).
+
+\section{Template Parameter Lists for Lambdas}
+\label{sec:c20-lambda-template}
+
+\begin{lstlisting}[language=C++,caption={An explicit template parameter list gives the type a name}]
+#include <vector>
+
+auto first = []<typename T>(const std::vector<T>& v) -> T {
+    return v.front();                  // T directly usable
+};
+auto same = []<typename T>(T a, T b) { return a == b; };
+// same(1, 2.0);   // ERROR: T cannot be both int and double -- intended
+\end{lstlisting}
+
+Names the deduced type, relates parameters, and accepts \texttt{requires} clauses.
+
+\section{Pack Expansion in Lambda Init-Capture}
+\label{sec:c20-lambda-pack}
+
+\begin{lstlisting}[language=C++,caption={Capturing a forwarded parameter pack into a lambda}]
+#include <utility>
+
+template<class F, class... Args>
+auto defer(F f, Args&&... args) {
+    return [f = std::move(f), ...args = std::forward<Args>(args)]() mutable {
+        return f(std::move(args)...);
+    };
+}
+\end{lstlisting}
+
+Replaces the pre-C++20 tuple+\texttt{std::apply} workaround; enables correct deferred-call utilities.
+
+\section{Default-Constructible and Assignable Stateless Lambdas}
+\label{sec:c20-stateless-lambda}
+
+\begin{lstlisting}[language=C++,caption={A stateless lambda as a container comparator, via its type}]
+#include <map>
+#include <set>
+#include <string>
+
+std::map<std::string, int,
+         decltype([](const std::string& a, const std::string& b){ return a < b; })> m;
+std::set<int, decltype([](int a, int b){ return a > b; })> descending;
+
+auto cmp = [](int a, int b){ return a < b; };
+decltype(cmp) cmp2;        // C++20: default-constructible
+cmp2 = cmp;                // C++20: assignable
+\end{lstlisting}
+
+Requires a capture-less lambda; pre-C++20 the closure's default constructor was deleted.
+
+\section{Lambdas in Unevaluated Contexts and [=, this]}
+\label{sec:c20-lambda-unevaluated}
+
+\begin{lstlisting}[language=C++,caption={Explicit this-capture and a lambda in an unevaluated context}]
+#include <type_traits>
+
+struct Widget {
+    int value = 0;
+    auto make_reader()   { return [=, this]() { return value; }; }  // [=] alone deprecated
+    auto make_snapshot() { return [*this]()   { return value; }; }  // copy of *this
+};
+
+using Closure = decltype([](int x){ return x * 2; });
+static_assert(std::is_default_constructible_v<Closure>);   // true in C++20
+\end{lstlisting}
+
+\texttt{[=]} capturing \texttt{this} by pointer is deprecated; choose \texttt{this} (pointer) or \texttt{*this} (copy) explicitly.
+
+\section{Professional Insights}
+\label{sec:c20-abbreviated-insights}
+
+\textbf{Always constrain abbreviated-template \texttt{auto} parameters} --- turns body errors into call-site diagnostics and documents the contract.
+
+\textbf{An abbreviated template is a real template, with template lateness} --- keep them small and well-constrained.
+
+\textbf{Use \texttt{explicit(bool)} to collapse twin SFINAE constructors into one} --- mirror \texttt{std::tuple}/\texttt{std::optional}.
+
+\textbf{Reach for the lambda template-parameter list when a generic lambda must name or relate its types.}
+
+\textbf{Make the \texttt{this}-capture lifetime decision explicit, and prefer \texttt{[*this]} for escaping lambdas.}

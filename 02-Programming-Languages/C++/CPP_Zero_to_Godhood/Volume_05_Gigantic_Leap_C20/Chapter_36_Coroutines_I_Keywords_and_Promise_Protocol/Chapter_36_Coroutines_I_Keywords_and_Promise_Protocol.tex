@@ -1,0 +1,180 @@
+\chapter{Coroutines I --- co\_await, co\_yield, co\_return, and the Promise Protocol}
+\label{ch:c20-coroutines-i}
+
+\begin{quote}
+\emph{Coroutines are the third pillar and the most unusual: C++20 ships the low-level language machinery --- three keywords and a customization protocol --- but almost none of the high-level types you would actually use (\texttt{std::generator} and a \texttt{task} type are C++23 and beyond). This chapter explains the keywords, the compiler-generated state machine and coroutine frame, and the promise-type protocol.}
+\end{quote}
+
+A coroutine can \textbf{suspend}, hand control back to its caller, and later be \textbf{resumed} with its locals intact. C++20 gives you the engine, not the car: to use coroutines you implement a \textbf{promise type}.
+
+\section{What a Coroutine Is}
+\label{sec:c20-what-coroutine}
+
+C++20 coroutines are \textbf{stackless}: the compiler transforms the function into a state machine whose state lives in a heap-allocated \textbf{coroutine frame}. Two dominant uses: \textbf{generators} (\texttt{co\_yield} a sequence on demand) and \textbf{tasks/async} (\texttt{co\_await} operations without blocking a thread).
+
+\section{The Three Keywords}
+\label{sec:c20-three-keywords}
+
+\begin{center}
+\begin{tabular}{ll}
+\hline
+\textbf{Keyword} & \textbf{Meaning} \\
+\hline
+\texttt{co\_await expr} & suspend until \texttt{expr} (awaitable) is ready \\
+\texttt{co\_yield expr} & suspend and produce a value (sugar for \texttt{co\_await promise.yield\_value}) \\
+\texttt{co\_return expr} & finish, delivering a final value \\
+\hline
+\end{tabular}
+\end{center}
+
+\begin{lstlisting}[language=C++,caption={Each keyword makes the enclosing function a coroutine}]
+#include <coroutine>
+
+Generator<int> counter();         // uses co_yield
+Task<int>      fetch();           // uses co_await/co_return
+Task<void>     fire_and_forget(); // uses co_return;
+\end{lstlisting}
+
+A coroutine cannot use plain \texttt{return}, be \texttt{constexpr}/\texttt{consteval}, be \texttt{main}, or be variadic.
+
+\section{The Coroutine Frame and the Generated State Machine}
+\label{sec:c20-frame}
+
+On call, the compiler allocates the frame (heap, possibly elided via HALO), copies parameters by value, constructs the promise, calls \texttt{get\_return\_object()}, then evaluates \texttt{co\_await promise.initial\_suspend()}. A \textbf{\texttt{std::coroutine\_handle<Promise>}} resumes (\texttt{.resume()}), queries (\texttt{.done()}), reaches the promise (\texttt{.promise()}), and destroys (\texttt{.destroy()}).
+
+\begin{lstlisting}[language=C++,caption={coroutine\_handle drives a coroutine from non-coroutine code}]
+#include <coroutine>
+
+template<typename Promise>
+void drive(std::coroutine_handle<Promise> h) {
+    while (!h.done()) h.resume();
+    h.destroy();
+}
+\end{lstlisting}
+
+\section{The Promise Type Protocol}
+\label{sec:c20-promise-protocol}
+
+The promise type is found via \texttt{std::coroutine\_traits<ReturnType, Args...>::promise\_type} (default: nested \texttt{ReturnType::promise\_type}).
+
+\begin{center}
+\begin{tabular}{ll}
+\hline
+\textbf{Promise member} & \textbf{Purpose} \\
+\hline
+\texttt{get\_return\_object()} & object returned to caller \\
+\texttt{initial\_suspend()} & suspend or run immediately \\
+\texttt{final\_suspend() noexcept} & keep frame alive or end \\
+\texttt{unhandled\_exception()} & handle escaping exception \\
+\texttt{return\_value(v)} / \texttt{return\_void()} & store result (exactly one) \\
+\texttt{yield\_value(v)} & transport yielded value \\
+\hline
+\end{tabular}
+\end{center}
+
+\section{The Coroutine Lifecycle, Step by Step}
+\label{sec:c20-lifecycle}
+
+\begin{enumerate}
+\item Call $\rightarrow$ frame allocated, parameters copied, promise constructed.
+\item \texttt{get\_return\_object()} $\rightarrow$ caller's handle/value.
+\item \texttt{co\_await initial\_suspend()} $\rightarrow$ suspend or run.
+\item Body executes to a \texttt{co\_await}/\texttt{co\_yield} or completion.
+\item \texttt{return\_value}/\texttt{return\_void} on completion.
+\item \texttt{unhandled\_exception()} if the body throws.
+\item \texttt{co\_await final\_suspend()} $\rightarrow$ usually \texttt{suspend\_always}.
+\end{enumerate}
+
+\section{initial\_suspend and final\_suspend}
+\label{sec:c20-suspend-points}
+
+\begin{lstlisting}[language=C++,caption={The two standard trivial awaitables drive start/end policy}]
+#include <coroutine>
+
+std::suspend_always initial_suspend() noexcept { return {}; }  // lazy (generator)
+std::suspend_never  initial_suspend() noexcept { return {}; }  // eager (task)
+std::suspend_always final_suspend()   noexcept { return {}; }  // keep frame alive
+\end{lstlisting}
+
+\texttt{initial\_suspend} defines lazy vs eager; \texttt{final\_suspend} must be \texttt{noexcept}.
+
+\section{A Complete Minimal Generator}
+\label{sec:c20-minimal-generator}
+
+\begin{lstlisting}[language=C++,caption={A complete hand-written generator coroutine in C++20}]
+#include <coroutine>
+#include <iostream>
+#include <utility>
+
+template<typename T>
+struct Generator {
+    struct promise_type;
+    using handle_type = std::coroutine_handle<promise_type>;
+
+    struct promise_type {
+        T current_value;
+        Generator get_return_object() {
+            return Generator{ handle_type::from_promise(*this) };
+        }
+        std::suspend_always initial_suspend() noexcept { return {}; }
+        std::suspend_always final_suspend() noexcept { return {}; }
+        std::suspend_always yield_value(T value) {
+            current_value = std::move(value);
+            return {};
+        }
+        void return_void() {}
+        void unhandled_exception() { std::terminate(); }
+    };
+
+    handle_type h;
+    explicit Generator(handle_type handle) : h(handle) {}
+    Generator(const Generator&) = delete;
+    Generator(Generator&& o) noexcept : h(std::exchange(o.h, {})) {}
+    ~Generator() { if (h) h.destroy(); }
+
+    bool next() { h.resume(); return !h.done(); }
+    const T& value() const { return h.promise().current_value; }
+};
+
+Generator<int> sequence(int start, int end) {
+    for (int i = start; i < end; ++i)
+        co_yield i;
+}
+
+int main() {
+    auto gen = sequence(0, 5);
+    while (gen.next())
+        std::cout << gen.value() << ' ';   // 0 1 2 3 4
+}
+\end{lstlisting}
+
+\section{Exceptions and unhandled\_exception}
+\label{sec:c20-coro-exceptions}
+
+\begin{lstlisting}[language=C++,caption={Capturing the exception to rethrow on the consumer side}]
+#include <coroutine>
+#include <exception>
+
+struct promise_type_with_errors {
+    std::exception_ptr error;
+    void unhandled_exception() noexcept {
+        error = std::current_exception();
+    }
+    // consumer: if (h.promise().error) std::rethrow_exception(h.promise().error);
+};
+\end{lstlisting}
+
+Because \texttt{final\_suspend} is \texttt{noexcept}, the frame is intact when the consumer inspects the captured exception.
+
+\section{Professional Insights}
+\label{sec:c20-coroutines-i-insights}
+
+\textbf{C++20 ships the engine, not the car.} No standard \texttt{generator}/\texttt{task}/executor --- hand-roll or import (cppcoro, libcoro, Asio).
+
+\textbf{Never capture a reference parameter across a suspension.} Parameters are copied into the frame, but a reference copies the reference; a temporary referent dangles after the first suspension. Pass by value.
+
+\textbf{Make \texttt{final\_suspend} \texttt{noexcept} and usually \texttt{suspend\_always}.} It keeps the frame alive so the consumer can read the result or exception.
+
+\textbf{Budget for the frame allocation in hot paths.} HALO may elide it, but not across TUs or type-erased handles; supply a custom promise \texttt{operator new} (pool/arena) and profile.
+
+\textbf{Capture exceptions in the promise.} Store \texttt{std::current\_exception()} and rethrow from the consumer accessor rather than calling \texttt{std::terminate}.

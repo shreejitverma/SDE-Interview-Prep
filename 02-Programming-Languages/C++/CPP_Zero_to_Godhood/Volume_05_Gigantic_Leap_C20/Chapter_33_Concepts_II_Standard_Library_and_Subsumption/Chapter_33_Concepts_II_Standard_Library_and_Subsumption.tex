@@ -1,0 +1,216 @@
+\chapter{Concepts II --- The Standard Concepts Library and Constraint Subsumption}
+\label{ch:c20-concepts-ii}
+
+\begin{quote}
+\emph{Chapter 32 covered how to write and apply constraints. This chapter covers the two things that make concepts a system rather than a syntax: the rich library of predefined concepts in \texttt{<concepts>} (and across \texttt{<iterator>}, \texttt{<ranges>}), and the subsumption rules that let the compiler order overloads by specificity.}
+\end{quote}
+
+The standard concepts library encodes accumulated wisdom about type categories. Subsumption is the formal partial ordering over constraints that resolves ``which overload is more specialized.''
+
+\section{Why a Standard Concepts Library Matters}
+\label{sec:c20-std-concepts-why}
+
+If every team invented its own \texttt{Addable} and \texttt{Iterator}, constraints would not compose. C++20 ships a \textbf{standard vocabulary} in \texttt{<concepts>}, with iterator/range concepts in \texttt{<iterator>}/\texttt{<ranges>}. These are the predicates the standard algorithms are constrained with, so building on them makes your code interoperate with \texttt{std::ranges} for free.
+
+\section{Core Language Concepts}
+\label{sec:c20-core-concepts}
+
+\begin{center}
+\begin{tabular}{ll}
+\hline
+\textbf{Concept} & \textbf{Holds when} \\
+\hline
+\texttt{same\_as<T,U>} & same type \\
+\texttt{derived\_from<D,B>} & public unambiguous derivation \\
+\texttt{convertible\_to<From,To>} & implicit+explicit conversion \\
+\texttt{common\_reference\_with<T,U>} & share a common reference \\
+\texttt{integral<T>} / \texttt{floating\_point<T>} & arithmetic categories \\
+\texttt{signed\_integral} / \texttt{unsigned\_integral} & integral + signedness \\
+\texttt{assignable\_from<L,R>} & \texttt{R} assignable to lvalue \texttt{L} \\
+\texttt{swappable<T>} & \texttt{ranges::swap} works \\
+\hline
+\end{tabular}
+\end{center}
+
+\begin{lstlisting}[language=C++,caption={Composing core concepts}]
+#include <concepts>
+
+template<typename T>
+concept Arithmetic = std::integral<T> || std::floating_point<T>;
+
+template<typename From, typename To>
+    requires std::convertible_to<From, To>
+To narrow_cast(From f) { return static_cast<To>(f); }
+\end{lstlisting}
+
+\texttt{signed\_integral} is \texttt{integral<T> \&\& is\_signed\_v<T>} --- built \emph{from} \texttt{integral}, which is what makes it \textbf{subsume} it.
+
+\section{Comparison Concepts}
+\label{sec:c20-comparison-concepts}
+
+\begin{center}
+\begin{tabular}{ll}
+\hline
+\textbf{Concept} & \textbf{Meaning} \\
+\hline
+\texttt{equality\_comparable<T>} & \texttt{==}/\texttt{!=} as equivalence \\
+\texttt{totally\_ordered<T>} & total order via relational ops \\
+\texttt{three\_way\_comparable<T>} & \texttt{<=>} valid \\
+\texttt{*\_with<T,U>} & cross-type variants \\
+\hline
+\end{tabular}
+\end{center}
+
+\begin{lstlisting}[language=C++,caption={Constraining on comparability}]
+#include <concepts>
+
+template<std::totally_ordered T>
+const T& max_of(const T& a, const T& b) { return (a < b) ? b : a; }
+\end{lstlisting}
+
+\section{Object and Lifetime Concepts: The Regular Hierarchy}
+\label{sec:c20-regular-hierarchy}
+
+\begin{lstlisting}[language=C++,caption={The object-concept hierarchy (paraphrased)}]
+// movable     = move-constructible + move-assignable + swappable
+// copyable    = movable + copy-constructible + copy-assignable
+// semiregular = copyable + default_initializable
+// regular     = semiregular + equality_comparable
+\end{lstlisting}
+
+\textbf{\texttt{std::regular}} is the gold standard: behaves like a built-in \texttt{int}.
+
+\begin{lstlisting}[language=C++,caption={A component requiring regular value semantics}]
+#include <concepts>
+
+template<std::regular T>
+class ValueCache {
+    T cached{};
+public:
+    bool matches(const T& x) const { return x == cached; }
+    void store(const T& x) { cached = x; }
+};
+\end{lstlisting}
+
+\section{Callable Concepts}
+\label{sec:c20-callable-concepts}
+
+\begin{center}
+\begin{tabular}{ll}
+\hline
+\textbf{Concept} & \textbf{Holds when} \\
+\hline
+\texttt{invocable<F,Args...>} & \texttt{f(args...)} valid \\
+\texttt{regular\_invocable} & + equality-preserving \\
+\texttt{predicate<F,Args...>} & + boolean-testable result \\
+\texttt{relation<R,T,U>} & binary predicate \\
+\texttt{strict\_weak\_order} & relation modeling strict weak order \\
+\hline
+\end{tabular}
+\end{center}
+
+\begin{lstlisting}[language=C++,caption={Constraining a higher-order function on std::predicate}]
+#include <concepts>
+#include <vector>
+
+template<typename T, std::predicate<const T&> Pred>
+std::size_t count_if_simple(const std::vector<T>& v, Pred pred) {
+    std::size_t n = 0;
+    for (const auto& x : v) if (pred(x)) ++n;
+    return n;
+}
+\end{lstlisting}
+
+\section{Iterator and Range Concepts}
+\label{sec:c20-iter-range-concepts}
+
+\begin{center}
+\begin{tabular}{lll}
+\hline
+\textbf{Iterator} & \textbf{Range} & \textbf{Capability} \\
+\hline
+\texttt{input\_iterator} & \texttt{input\_range} & single-pass read \\
+\texttt{forward\_iterator} & \texttt{forward\_range} & multi-pass \\
+\texttt{bidirectional\_iterator} & \texttt{bidirectional\_range} & \texttt{-{}-} \\
+\texttt{random\_access\_iterator} & \texttt{random\_access\_range} & \texttt{+n}, \texttt{[]} \\
+\texttt{contiguous\_iterator} & \texttt{contiguous\_range} & contiguous memory \\
+\hline
+\end{tabular}
+\end{center}
+
+\begin{lstlisting}[language=C++,caption={Constraining an algorithm on the right iterator strength}]
+#include <ranges>
+#include <concepts>
+
+template<std::ranges::contiguous_range R>
+auto* raw_data(R&& r) { return std::ranges::data(r); }
+\end{lstlisting}
+
+Constrain on the \emph{weakest} category that suffices.
+
+\section{Constraint Normalization and Atomic Constraints}
+\label{sec:c20-normalization}
+
+The compiler \textbf{normalizes} constraints into a tree of conjunctions/disjunctions of \textbf{atomic constraints}. Two atomic constraints are identical only if they come from the \emph{same source expression}. Subsumption can see through concept-and-\texttt{\&\&}/\texttt{||} composition, not arbitrary \texttt{bool} expressions.
+
+\begin{lstlisting}[language=C++,caption={Layering makes integral's atomic constraint appear inside signed\_integral}]
+// integral<T>        => is_integral_v<T>                 (atomic A)
+// signed_integral<T> => integral<T> && is_signed_v<T>    (A && B)
+// signed_integral CONTAINS A, so it subsumes integral.
+\end{lstlisting}
+
+\section{Subsumption and the Partial Ordering of Constraints}
+\label{sec:c20-subsumption}
+
+\textbf{Subsumption} decides that one constrained declaration is at least as constrained as another. When two overloads are viable and one subsumes the other, the \textbf{more-constrained} one is selected.
+
+\begin{lstlisting}[language=C++,caption={Subsumption selects the most-constrained viable overload}]
+#include <concepts>
+#include <iostream>
+
+template<std::integral T>          void process(T) { std::cout << "integral\n"; }
+template<std::signed_integral T>   void process(T) { std::cout << "signed_integral\n"; }
+
+int main() {
+    process(42);    // signed -> "signed_integral"
+    process(42u);   // unsigned -> "integral"
+}
+\end{lstlisting}
+
+\section{Pitfalls: When Subsumption Does Not Apply}
+\label{sec:c20-subsumption-pitfalls}
+
+\begin{lstlisting}[language=C++,caption={Type-trait constraints do NOT subsume each other}]
+#include <type_traits>
+
+template<typename T> requires std::is_integral_v<T>
+void f(T);   // (1)
+
+template<typename T> requires (std::is_integral_v<T> && std::is_signed_v<T>)
+void f(T);   // (2)
+
+// f(42) is AMBIGUOUS: unrelated atomic expressions, neither subsumes the other.
+\end{lstlisting}
+
+\begin{lstlisting}[language=C++,caption={Wrapping traits in concepts restores subsumption}]
+#include <concepts>
+
+template<std::integral T> void g(T);          // (1)
+template<std::signed_integral T> void g(T);   // (2) subsumes (1)
+// g(42) -> calls (2) unambiguously.
+\end{lstlisting}
+
+Expressing constraint logic as a single precomputed \texttt{bool} collapses it into one opaque atomic constraint that subsumes nothing. Always compose with concepts and \texttt{\&\&}/\texttt{||}.
+
+\section{Professional Insights}
+\label{sec:c20-concepts-ii-insights}
+
+\textbf{Build from the standard concepts; do not reinvent them.} They encode subtle correct requirements and interoperate with \texttt{std::ranges} automatically.
+
+\textbf{Constrain on the weakest sufficient concept.} Demanding \texttt{random\_access\_range} when \texttt{forward\_range} suffices needlessly excludes valid callers.
+
+\textbf{Express composition with concepts and \texttt{\&\&}/\texttt{||}, never a precomputed \texttt{bool}.} Subsumption only orders constraints visible to normalization.
+
+\textbf{Wrap type traits in named concepts at interface boundaries.} This turns unrelated \texttt{enable\_if}-style conditions into a properly ordered overload set.
+
+\textbf{Reach for \texttt{std::regular} as the default element constraint.} It captures ``behaves like a built-in value type,'' enforces it, and diagnoses cleanly.

@@ -1,0 +1,136 @@
+\chapter{Attributes for Performance and Safety}
+\label{ch:c20-attributes}
+
+\begin{quote}
+\emph{C++20 adds three attributes that matter to performance- and correctness-critical code: \texttt{[[likely]]}/\texttt{[[unlikely]]} give branch-probability hints for code layout, \texttt{[[no\_unique\_address]]} lets empty members occupy zero bytes, and \texttt{[[nodiscard("reason")]]} attaches an explanatory message to the discard warning.}
+\end{quote}
+
+\section{[[likely]] and [[unlikely]]}
+\label{sec:c20-likely}
+
+\begin{lstlisting}[language=C++,caption={Branch-probability hints on if/else and switch}]
+int process(int x) {
+    if (x > 0) [[likely]] { return fast_path(x); }
+    else       [[unlikely]] { return slow_path(x); }
+}
+
+int classify(int code) {
+    switch (code) {
+        case 0: [[likely]]   return ok();
+        case 1: [[unlikely]] return rare_error();
+        default:             return other();
+    }
+}
+\end{lstlisting}
+
+The standardized form of \texttt{\_\_builtin\_expect}.
+
+\section{What the Branch Hints Actually Do}
+\label{sec:c20-branch-hints-effect}
+
+They influence code layout and register/spill decisions, not the hardware predictor directly. A compiler typically lays the likely path inline (fall-through), exiles the unlikely path to a cold section (better i-cache density), biases the conditional jump, and prioritizes the hot path for register allocation.
+
+\begin{lstlisting}[language=C++,caption={The mental model --- cold paths get exiled}]
+void handle(Request& r) {
+    if (r.malformed()) [[unlikely]] {
+        log_and_reject(r);    // moved out-of-line (cold section)
+        return;
+    }
+    serve(r);                 // common path stays inline, cache-dense
+}
+\end{lstlisting}
+
+\section{When to Use Branch Hints --- and When Not To}
+\label{sec:c20-branch-hints-when}
+
+\begin{itemize}
+\item Use only where certain and the path is hot (null checks, overflow guards, malformed-input rejection).
+\item Do not sprinkle speculatively --- a wrong hint pessimizes by exiling the real hot path.
+\item Prefer Profile-Guided Optimization when available; it measures real frequencies.
+\item Measure --- the effect is layout-level; confirm via benchmark and assembly.
+\end{itemize}
+
+\section{[[no\_unique\_address]]}
+\label{sec:c20-no-unique-address}
+
+\begin{lstlisting}[language=C++,caption={An empty member costs zero bytes with [[no_unique_address]]}]
+#include <cstddef>
+
+struct Empty {};   // size 1 by default (objects must be addressable)
+
+struct WithoutAttr { Empty e; int value; };           // e >= 1 byte + padding
+struct WithAttr    { [[no_unique_address]] Empty e; int value; };  // e may be 0 bytes
+
+static_assert(sizeof(WithoutAttr) >= sizeof(int) + alignof(int));
+static_assert(sizeof(WithAttr)    == sizeof(int));    // Empty vanished
+\end{lstlisting}
+
+Brings the Empty Base Optimization to member subobjects; no effect on non-empty members.
+
+\section{[[no\_unique\_address]] in Practice: EBO Without Inheritance}
+\label{sec:c20-ebo}
+
+\begin{lstlisting}[language=C++,caption={A container storing a (usually empty) comparator at zero cost}]
+#include <functional>
+
+template<class T, class Compare = std::less<T>>
+class SortedBox {
+    T* data_;
+    std::size_t size_;
+    [[no_unique_address]] Compare comp_;   // empty std::less<T> costs nothing
+public:
+    bool less(const T& a, const T& b) const { return comp_(a, b); }
+};
+\end{lstlisting}
+
+How the standard library keeps stateless allocators/comparators/deleters free, via composition instead of private inheritance. MSVC: \texttt{[[msvc::no\_unique\_address]]}.
+
+\section{[[nodiscard]] with a Message}
+\label{sec:c20-nodiscard-message}
+
+\begin{lstlisting}[language=C++,caption={[[nodiscard]] with an actionable message}]
+struct [[nodiscard("handle this error code")]] ErrorCode { int value; };
+
+[[nodiscard("leaking this handle leaks the resource")]]
+Handle acquire();
+
+[[nodiscard("comparison has no effect if discarded")]]
+bool empty() const;
+
+void caller() {
+    acquire();        // warning includes the message
+}
+\end{lstlisting}
+
+Applies to a function or a type; converts a generic warning into the consequence and fix.
+
+\section{Attribute Placement and Portability}
+\label{sec:c20-attribute-portability}
+
+\begin{lstlisting}[language=C++,caption={Portable spelling for the layout attribute}]
+#if defined(_MSC_VER)
+  #define NO_UNIQUE_ADDRESS [[msvc::no_unique_address]]
+#else
+  #define NO_UNIQUE_ADDRESS [[no_unique_address]]
+#endif
+
+struct Wrapper {
+    NO_UNIQUE_ADDRESS std::less<int> comp;   // zero-cost on all major compilers
+    int value;
+};
+\end{lstlisting}
+
+Unknown standard attributes are ignored (safe incremental adoption); \texttt{[[no\_unique\_address]]} is ABI-affecting, the other two are not.
+
+\section{Professional Insights}
+\label{sec:c20-attributes-insights}
+
+\textbf{Apply branch hints only to known-cold error paths and proven-hot loops, and verify with a benchmark.} Prefer PGO, which measures rather than guesses.
+
+\textbf{Reach for \texttt{[[no\_unique\_address]]} on every stateless policy member in generic code} --- EBO via clean composition.
+
+\textbf{Guard \texttt{[[no\_unique\_address]]} for MSVC --- it is ABI-affecting} and not a safe drop-in across a stable binary boundary.
+
+\textbf{Always supply a reason string with \texttt{[[nodiscard]]}} --- on error codes, RAII factories, and pure observers.
+
+\textbf{Treat attributes as safe-to-adopt because unknown ones are ignored} --- except the layout effect of \texttt{[[no\_unique\_address]]}.

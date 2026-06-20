@@ -1,0 +1,133 @@
+\chapter{Numbers, Alignment, and Type-Trait Additions}
+\label{ch:c20-numbers}
+
+\begin{quote}
+\emph{The final cluster of C++20 library additions serves numeric and generic code: \texttt{<numbers>} provides typed mathematical constants; \texttt{std::midpoint} and \texttt{std::lerp} give overflow-safe averaging and interpolation; \texttt{std::assume\_aligned} promises the optimizer a pointer's alignment; and new type traits (\texttt{remove\_cvref}, \texttt{type\_identity}, \texttt{is\_bounded\_array}, \texttt{common\_reference}) refine metaprogramming.}
+\end{quote}
+
+\section{The <numbers> Header: Mathematical Constants}
+\label{sec:c20-numbers-header}
+
+\begin{lstlisting}[language=C++,caption={Typed, full-precision mathematical constants}]
+#include <numbers>
+
+double pi   = std::numbers::pi;          // 3.14159265358979... (double)
+float  pi_f = std::numbers::pi_v<float>; // float-precision pi
+double e    = std::numbers::e;
+double sqrt2= std::numbers::sqrt2;
+double phi  = std::numbers::phi;         // golden ratio
+double area = std::numbers::pi * r * r;  // no #define, no magic digits
+\end{lstlisting}
+
+\begin{center}
+\begin{tabular}{ll}
+\hline
+\textbf{Constant} & \textbf{Value} \\
+\hline
+\texttt{pi} & $\pi$ \\
+\texttt{e} & Euler's number \\
+\texttt{sqrt2}, \texttt{sqrt3} & $\sqrt2$, $\sqrt3$ \\
+\texttt{ln2}, \texttt{ln10} & natural logs \\
+\texttt{phi} & golden ratio \\
+\texttt{inv\_pi}, \texttt{inv\_sqrt2} & reciprocals \\
+\texttt{egamma} & Euler--Mascheroni constant \\
+\hline
+\end{tabular}
+\end{center}
+
+The \texttt{\_v<T>} forms give the constant at a chosen precision; all are \texttt{constexpr}.
+
+\section{std::midpoint: Overflow-Safe Averaging}
+\label{sec:c20-midpoint}
+
+\begin{lstlisting}[language=C++,caption={Averaging without overflow}]
+#include <numeric>
+#include <cstdint>
+
+std::int32_t a = 2'000'000'000, b = 2'000'000'000;
+// int mid_bad = (a + b) / 2;            // overflow -> UB
+std::int32_t mid = std::midpoint(a, b);  // 2'000'000'000, computes a + (b-a)/2
+
+int arr[100];
+int* m = std::midpoint(arr, arr + 100);  // arr + 50, no pointer overflow
+\end{lstlisting}
+
+Fixes the famous binary-search overflow bug; overloaded for integers, floats, and pointers.
+
+\section{std::lerp: Linear Interpolation}
+\label{sec:c20-lerp}
+
+\begin{lstlisting}[language=C++,caption={Well-behaved linear interpolation}]
+#include <cmath>
+
+double a = 0.0, b = 10.0;
+double mid   = std::lerp(a, b, 0.5);   // 5.0
+double start = std::lerp(a, b, 0.0);   // exactly a
+double end   = std::lerp(a, b, 1.0);   // exactly b (guaranteed)
+double beyond= std::lerp(a, b, 2.0);   // 20.0 — extrapolation
+\end{lstlisting}
+
+Guarantees exact endpoints and monotonicity in \texttt{t}, unlike the naive \texttt{a + t*(b-a)}; \texttt{constexpr}.
+
+\section{std::assume\_aligned: Promising Alignment to the Optimizer}
+\label{sec:c20-assume-aligned}
+
+\begin{lstlisting}[language=C++,caption={Informing the optimizer of alignment}]
+#include <memory>
+#include <cstddef>
+
+void scale(float* data, std::size_t n, float k) {
+    float* aligned = std::assume_aligned<64>(data);   // promise 64-byte alignment
+    for (std::size_t i = 0; i < n; ++i)
+        aligned[i] *= k;          // may emit aligned SIMD loads/stores
+}
+\end{lstlisting}
+
+A hard promise: if the pointer is not actually aligned to N, behavior is undefined. Use only when you control the allocation.
+
+\section{Type-Trait Additions: remove\_cvref and type\_identity}
+\label{sec:c20-remove-cvref}
+
+\begin{lstlisting}[language=C++,caption={remove\_cvref and type\_identity}]
+#include <type_traits>
+
+static_assert(std::is_same_v<std::remove_cvref_t<const int&>, int>);
+
+template <typename T>
+void store(T&& value) {
+    using Stored = std::remove_cvref_t<T>;   // bare value type for a forwarding ref
+    Stored copy = std::forward<T>(value);
+}
+
+template <typename T>
+void clamp_to(T value, std::type_identity_t<T> lo, std::type_identity_t<T> hi);
+// T deduced ONLY from 'value'; bounds are a non-deduced context.
+\end{lstlisting}
+
+\section{Type-Trait Additions: is\_bounded\_array and common\_reference}
+\label{sec:c20-is-bounded-array}
+
+\begin{lstlisting}[language=C++,caption={Array classification and common\_reference}]
+#include <type_traits>
+
+static_assert(std::is_bounded_array_v<int[10]>);   // true  — known size
+static_assert(std::is_unbounded_array_v<int[]>);   // true  — unknown size
+
+using CR = std::common_reference_t<int&, const int&>;   // const int&
+static_assert(std::is_same_v<CR, const int&>);
+\end{lstlisting}
+
+\texttt{common\_reference} underpins the Ranges/iterator concepts (relating an iterator's \texttt{reference} and \texttt{value\_type}).
+
+\section{Professional Insights}
+\label{sec:c20-numbers-insights}
+
+\textbf{Replace \texttt{M\_PI} and hand-typed literals with \texttt{<numbers>}} --- standard, full-precision, \texttt{constexpr}, precision-parameterized; eliminates the seed-precision bug.
+
+\textbf{Use \texttt{std::midpoint} for every bisection} --- fixes the famous \texttt{(low+high)/2} overflow; overloaded for pointers.
+
+\textbf{Reach for \texttt{std::lerp} whenever interpolation feeds further computation} --- exact endpoints and monotonicity the naive formula lacks.
+
+\textbf{Treat \texttt{std::assume\_aligned} as a hard, dangerous promise} --- UB if the alignment is wrong; use only on allocations you control.
+
+\textbf{Adopt \texttt{std::remove\_cvref\_t} as the standard forwarding-reference value trait} --- and know the niches of \texttt{type\_identity}, \texttt{is\_bounded\_array}, and \texttt{common\_reference}.

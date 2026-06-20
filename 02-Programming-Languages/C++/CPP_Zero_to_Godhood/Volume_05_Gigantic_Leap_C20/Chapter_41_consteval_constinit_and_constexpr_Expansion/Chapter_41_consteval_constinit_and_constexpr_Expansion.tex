@@ -1,0 +1,190 @@
+\chapter{consteval, constinit, and the constexpr Expansion}
+\label{ch:c20-constexpr-family}
+
+\begin{quote}
+\emph{C++20 turns compile-time computation into a first-class programming model. It adds \texttt{consteval} (functions that must run at compile time) and \texttt{constinit} (variables that must be constant-initialized), and it widens \texttt{constexpr} to allow virtual calls, \texttt{try}/\texttt{catch}, \texttt{dynamic\_cast}, \texttt{typeid}, and dynamic allocation --- which is what makes \texttt{constexpr std::vector} and \texttt{constexpr std::string} possible.}
+\end{quote}
+
+With this power comes a need for precision about when evaluation happens: \texttt{consteval} forces compile time, \texttt{constinit} forces constant initialization without const-ness, and \texttt{std::is\_constant\_evaluated()} lets one body branch per context.
+
+\section{A Quick Map of the Four constexpr-Family Specifiers}
+\label{sec:c20-constexpr-map}
+
+\begin{center}
+\begin{tabular}{llll}
+\hline
+\textbf{Specifier} & \textbf{Question} & \textbf{Forces CT?} & \textbf{Forces const?} \\
+\hline
+\texttt{constexpr} (fn) & may run at CT? & no & n/a \\
+\texttt{constexpr} (var) & is it a CT constant? & yes & yes \\
+\texttt{consteval} (fn) & must run at CT? & yes & n/a \\
+\texttt{constinit} (var) & constant-initialized? & yes (init only) & no \\
+\hline
+\end{tabular}
+\end{center}
+
+\section{consteval: Immediate Functions}
+\label{sec:c20-consteval}
+
+\begin{lstlisting}[language=C++,caption={consteval forces compile-time evaluation}]
+consteval int sq(int x) { return x * x; }
+
+constexpr int a = sq(5);     // OK: 25 at compile time
+int n = 7;
+// int b = sq(n);            // ERROR: n is not a constant expression
+
+constexpr int csq(int x) { return x * x; }
+int c = csq(n);              // OK with constexpr: runs at runtime
+\end{lstlisting}
+
+An immediate function never appears as a callable symbol in the binary.
+
+\section{constinit: Guaranteed Constant Initialization}
+\label{sec:c20-constinit}
+
+\begin{lstlisting}[language=C++,caption={constinit guarantees constant init but allows mutation}]
+constinit int counter = 0;       // constant-initialized; still writable
+void bump() { ++counter; }       // OK: constinit is not const
+
+int runtime_value();
+// constinit int bad = runtime_value();  // ERROR: not constant-initialized
+
+const int kMax = 100;            // read-only, may be runtime-initialized
+constexpr int kMin = 0;          // const AND a constant expression
+\end{lstlisting}
+
+\texttt{constinit} solves the static initialization order fiasco without forcing immutability; valuable for \texttt{thread\_local} (removes the per-access init guard).
+
+\section{The constexpr Expansion: What Became Legal}
+\label{sec:c20-constexpr-expansion}
+
+\begin{center}
+\begin{tabular}{lll}
+\hline
+\textbf{Construct} & \textbf{Pre-C++20} & \textbf{C++20} \\
+\hline
+\texttt{try}/\texttt{catch} in constexpr & no & yes (catch inert) \\
+\texttt{dynamic\_cast}, \texttt{typeid} & no & yes \\
+virtual calls & no & yes \\
+\texttt{new}/\texttt{delete} (transient) & no & yes \\
+\texttt{std::vector}/\texttt{std::string} & no & yes \\
+\hline
+\end{tabular}
+\end{center}
+
+\begin{lstlisting}[language=C++,caption={try/catch now allowed in constexpr (catch ignored at compile time)}]
+#include <stdexcept>
+
+constexpr int safe_div(int a, int b) {
+    try {
+        if (b == 0) throw std::runtime_error("div by zero");
+        return a / b;
+    } catch (...) {
+        return 0;          // a throw during constant eval makes it non-constant
+    }
+}
+constexpr int r = safe_div(10, 2);   // 5, at compile time
+\end{lstlisting}
+
+\section{constexpr Dynamic Allocation and Transient Allocation}
+\label{sec:c20-transient-alloc}
+
+\begin{lstlisting}[language=C++,caption={Transient allocation --- allocate and free within the same evaluation}]
+constexpr int sum_first_n(int n) {
+    int* buf = new int[n];
+    for (int i = 0; i < n; ++i) buf[i] = i + 1;
+    int total = 0;
+    for (int i = 0; i < n; ++i) total += buf[i];
+    delete[] buf;                   // MUST free before evaluation ends
+    return total;
+}
+constexpr int s = sum_first_n(100);  // 5050 at compile time
+\end{lstlisting}
+
+Memory cannot escape a constant expression --- which is why a namespace-scope \texttt{constexpr std::vector} variable does not compile in C++20.
+
+\section{constexpr Containers: vector and string}
+\label{sec:c20-constexpr-containers}
+
+\begin{lstlisting}[language=C++,caption={std::vector and std::string at compile time}]
+#include <vector>
+#include <string>
+#include <algorithm>
+
+constexpr int count_evens_up_to(int n) {
+    std::vector<int> v;
+    for (int i = 0; i <= n; ++i) v.push_back(i);
+    return static_cast<int>(
+        std::count_if(v.begin(), v.end(), [](int x){ return x % 2 == 0; }));
+}
+constexpr bool starts_with_cpp(std::string s) {
+    return s.size() >= 3 && s[0]=='C' && s[1]=='+' && s[2]=='+';
+}
+constexpr int  evens = count_evens_up_to(10);                 // 6
+constexpr bool ok    = starts_with_cpp(std::string("C++20")); // true
+\end{lstlisting}
+
+Containers must be transient: build with them, return a scalar or \texttt{std::array}.
+
+\section{constexpr Virtual Functions and Polymorphism}
+\label{sec:c20-constexpr-virtual}
+
+\begin{lstlisting}[language=C++,caption={Compile-time polymorphism via constexpr virtual functions}]
+struct Shape {
+    constexpr virtual double area() const = 0;
+    constexpr virtual ~Shape() = default;
+};
+struct Square : Shape {
+    double side;
+    constexpr Square(double s) : side(s) {}
+    constexpr double area() const override { return side * side; }
+};
+struct Circle : Shape {
+    double r;
+    constexpr Circle(double radius) : r(radius) {}
+    constexpr double area() const override { return 3.141592653589793 * r * r; }
+};
+constexpr double total_area() {
+    Square sq{2.0}; Circle ci{1.0};
+    const Shape* shapes[] = {&sq, &ci};
+    double sum = 0;
+    for (const Shape* s : shapes) sum += s->area();   // virtual call at compile time
+    return sum;
+}
+constexpr double t = total_area();   // 4 + pi
+\end{lstlisting}
+
+\section{is\_constant\_evaluated: Branching on Context}
+\label{sec:c20-is-constant-evaluated}
+
+\begin{lstlisting}[language=C++,caption={One function, two implementations by context}]
+#include <type_traits>
+#include <cmath>
+
+constexpr double power(double base, int exp) {
+    if (std::is_constant_evaluated()) {
+        double r = 1.0;
+        for (int i = 0; i < exp; ++i) r *= base;     // compile-time path
+        return r;
+    } else {
+        return std::pow(base, static_cast<double>(exp));  // runtime path
+    }
+}
+constexpr double ct = power(2.0, 10);   // 1024, compile-time loop
+double rt = power(2.0, 10);             // runtime: std::pow
+\end{lstlisting}
+
+Two traps: use a plain \texttt{if} (in \texttt{if constexpr} the trait is always true); C++23's \texttt{if consteval} is the clearer spelling.
+
+\section{Professional Insights}
+\label{sec:c20-constexpr-insights}
+
+\textbf{Use \texttt{consteval} to guarantee work disappears from the runtime binary} --- lookup tables, format validation, compile-time-only factories.
+
+\textbf{Reach for \texttt{constinit} to kill the static init order fiasco without losing mutability} --- ideal for writable globals and \texttt{thread\_local}.
+
+\textbf{Treat \texttt{constexpr} containers as compute-time scratch space} --- build with them, return a \texttt{std::array}/count; no persistent \texttt{constexpr std::vector} in C++20.
+
+\textbf{Call \texttt{std::is\_constant\_evaluated()} inside a plain \texttt{if}, never \texttt{if constexpr}.}
+
+\textbf{Lean on the constexpr expansion to validate at build time what you used to assert at startup} --- malformed config becomes a build failure.

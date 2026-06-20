@@ -1,0 +1,122 @@
+\chapter{Diagnostics and Utility Additions}
+\label{ch:c20-diagnostics}
+
+\begin{quote}
+\emph{C++20 adds high-leverage utilities that close gaps in diagnostics and everyday code. \texttt{std::source\_location} captures file/line/function at the call site without macros; \texttt{std::ssize} returns a signed size to end unsigned-comparison bugs; and \texttt{std::is\_constant\_evaluated} lets one function take different paths at compile time versus run time.}
+\end{quote}
+
+\section{std::source\_location: Macro-Free Call-Site Info}
+\label{sec:c20-source-location}
+
+\begin{lstlisting}[language=C++,caption={Capturing the call site without macros}]
+#include <source_location>
+#include <iostream>
+
+void trace(std::source_location loc = std::source_location::current()) {
+    std::cout << loc.file_name() << ':' << loc.line() << ':'
+              << loc.column() << " in " << loc.function_name() << '\n';
+}
+int main() { trace(); }   // current() bound at the call site
+\end{lstlisting}
+
+As a default argument, \texttt{current()} is substituted at the caller's location; it is \texttt{consteval}, so capture is free at run time.
+
+\section{Building a Logger with source\_location}
+\label{sec:c20-source-location-logger}
+
+\begin{lstlisting}[language=C++,caption={A log function that knows where it was called}]
+#include <source_location>
+#include <string_view>
+#include <iostream>
+#include <format>
+
+void log_error(std::string_view msg,
+               std::source_location loc = std::source_location::current()) {
+    std::cerr << std::format("[ERROR] {}:{} ({}): {}\n",
+                             loc.file_name(), loc.line(),
+                             loc.function_name(), msg);
+}
+void risky() { log_error("disk full"); }   // location points inside risky()
+\end{lstlisting}
+
+Put the defaulted \texttt{source\_location} last; callers pass only their real arguments.
+
+\section{std::ssize: Signed Size}
+\label{sec:c20-ssize}
+
+\begin{lstlisting}[language=C++,caption={Signed size for clean comparisons}]
+#include <iterator>
+#include <vector>
+
+void demo(const std::vector<int>& v, int offset) {
+    // for (std::size_t i = 0; i < v.size() - 1; ++i)  // wraps if empty!
+    for (int i = 0; i < std::ssize(v) - 1; ++i) { /* ... */ }   // safe when empty
+    if (offset < std::ssize(v)) { /* ... */ }   // no sign-compare warning
+}
+\end{lstlisting}
+
+\texttt{ssize} returns \texttt{ptrdiff\_t}; \texttt{v.size()-1} on an empty container wraps to a huge value, \texttt{ssize(v)-1} is \texttt{-1}.
+
+\section{std::is\_constant\_evaluated: One Function, Two Paths}
+\label{sec:c20-is-constant-evaluated}
+
+\begin{lstlisting}[language=C++,caption={Branching on compile-time vs run-time evaluation}]
+#include <type_traits>
+
+constexpr double power(double base, int exp) {
+    if (std::is_constant_evaluated()) {
+        double r = 1.0;
+        for (int i = 0; i < exp; ++i) r *= base;   // compile-time path
+        return r;
+    } else {
+        return __builtin_powi(base, exp);          // fast run-time path
+    }
+}
+constexpr double a = power(2.0, 10);   // loop (compile time)
+double b = power(2.0, 10);             // fast path (run time)
+\end{lstlisting}
+
+Use a plain \texttt{if}, NEVER \texttt{if constexpr} (which is always true here, deleting the runtime path). C++23's \texttt{if consteval} is the safer successor.
+
+\section{std::to\_array: Deducing Array Types}
+\label{sec:c20-to-array}
+
+\begin{lstlisting}[language=C++,caption={Deducing std::array element type and size}]
+#include <array>
+
+std::array<int, 3> a1{1, 2, 3};
+auto a2 = std::to_array({1, 2, 3});        // std::array<int, 3>
+auto a3 = std::to_array<long>({1, 2, 3});  // std::array<long, 3>
+auto a4 = std::to_array("hello");          // std::array<char, 6> (incl. '\0')
+int c_arr[] = {10, 20, 30};
+auto a5 = std::to_array(c_arr);            // std::array<int, 3>
+\end{lstlisting}
+
+\section{std::bind\_front: Cleaner Partial Application}
+\label{sec:c20-bind-front}
+
+\begin{lstlisting}[language=C++,caption={Partial application without placeholders}]
+#include <functional>
+
+int add(int a, int b, int c) { return a + b + c; }
+auto add10 = std::bind_front(add, 10);     // fixes a=10
+int r = add10(20, 30);                     // 60
+
+struct Net { void send(int channel, std::string_view msg); };
+Net net;
+auto send_ch0 = std::bind_front(&Net::send, &net, 0);  // fix object + channel
+send_ch0("hello");                          // net.send(0, "hello")
+\end{lstlisting}
+
+No \texttt{\_1}/\texttt{\_2} placeholders; C++23 adds the symmetric \texttt{std::bind\_back}.
+
+\section{Professional Insights}
+\label{sec:c20-diagnostics-insights}
+
+\textbf{Replace every \texttt{\_\_FILE\_\_}/\texttt{\_\_LINE\_\_} logging macro with \texttt{std::source\_location}} --- typed, storable, no preprocessor fragility; put the defaulted parameter last.
+
+\textbf{Adopt \texttt{std::ssize} to kill signed/unsigned comparison bugs} --- the \texttt{size()-1} underflow on an empty container is a perennial production bug.
+
+\textbf{Use \texttt{std::is\_constant\_evaluated} only inside a plain \texttt{if}}, never \texttt{if constexpr} (always true, silently deletes the runtime path); C++23's \texttt{if consteval} is safer.
+
+\textbf{Prefer \texttt{std::bind\_front} over \texttt{std::bind}, and \texttt{std::to\_array} over restating array types} --- focused, readable, less error-prone; their C++23 companions are unavailable in C++20.

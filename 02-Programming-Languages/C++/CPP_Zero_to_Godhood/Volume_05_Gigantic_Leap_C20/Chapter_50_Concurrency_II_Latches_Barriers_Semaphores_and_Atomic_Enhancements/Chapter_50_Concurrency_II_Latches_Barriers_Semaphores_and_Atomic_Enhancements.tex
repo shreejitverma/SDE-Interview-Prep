@@ -1,0 +1,152 @@
+\chapter{Concurrency II --- Latches, Barriers, Semaphores, and Atomic Enhancements}
+\label{ch:c20-concurrency2}
+
+\begin{quote}
+\emph{C++20 rounds out the concurrency toolkit with primitives previously built by hand: \texttt{std::latch} (one-shot countdown gate), \texttt{std::barrier} (reusable rendezvous with a completion phase), and \texttt{std::counting\_semaphore}/\texttt{binary\_semaphore}. It also upgrades atomics with \texttt{std::atomic\_ref}, \texttt{std::atomic<std::shared\_ptr<T>>}, and \texttt{wait}/\texttt{notify}.}
+\end{quote}
+
+\section{std::latch: A One-Shot Countdown Gate}
+\label{sec:c20-latch}
+
+\begin{lstlisting}[language=C++,caption={A latch coordinating a startup fan-in}]
+#include <latch>
+#include <thread>
+#include <vector>
+
+void run_with_latch() {
+    constexpr int N = 4;
+    std::latch ready{N};
+    std::vector<std::jthread> workers;
+    for (int i = 0; i < N; ++i)
+        workers.emplace_back([&ready]{
+            // ... one-time initialization ...
+            ready.count_down();
+        });
+    ready.wait();      // blocks until the counter hits zero
+}
+\end{lstlisting}
+
+A latch cannot be reset; \texttt{count\_down(n)}, \texttt{try\_wait()}, and \texttt{arrive\_and\_wait()} round out the interface.
+
+\section{std::barrier: A Reusable Rendezvous}
+\label{sec:c20-barrier}
+
+\begin{lstlisting}[language=C++,caption={A barrier synchronizing iterative phases}]
+#include <barrier>
+#include <thread>
+#include <vector>
+#include <iostream>
+
+void run_with_barrier() {
+    constexpr int N = 4;
+    auto on_phase_done = []() noexcept { std::cout << "phase complete\n"; };
+    std::barrier sync{N, on_phase_done};
+    std::vector<std::jthread> workers;
+    for (int i = 0; i < N; ++i)
+        workers.emplace_back([&sync](std::stop_token st){
+            while (!st.stop_requested()) {
+                // ... compute this phase ...
+                sync.arrive_and_wait();   // wait for all N, then proceed
+            }
+        });
+}
+\end{lstlisting}
+
+The completion function runs once per phase on the last arriving thread, before any thread is released; \texttt{arrive\_and\_drop()} bows out of future phases.
+
+\section{Semaphores}
+\label{sec:c20-semaphore}
+
+\begin{lstlisting}[language=C++,caption={Limiting concurrency with a counting semaphore}]
+#include <semaphore>
+
+std::counting_semaphore<3> pool{3};   // 3 permits
+void use_resource() {
+    pool.acquire();                   // block if all 3 are out
+    // ... use the rate-limited resource ...
+    pool.release();
+}
+
+std::binary_semaphore signal{0};      // counting_semaphore<1>, unsignaled
+void producer() { signal.release(); }
+void consumer() { signal.acquire(); }
+\end{lstlisting}
+
+Template param = maximum count; constructor arg = initial count. Semaphores have no ownership --- any thread may \texttt{release()}.
+
+\section{std::atomic\_ref: Atomic Ops on Non-Atomic Objects}
+\label{sec:c20-atomic-ref}
+
+\begin{lstlisting}[language=C++,caption={Atomic operations on plain array elements}]
+#include <atomic>
+#include <vector>
+
+void parallel_histogram(std::vector<int>& buckets, const std::vector<int>& samples) {
+    for (int s : samples) {
+        std::atomic_ref<int> bucket{buckets[s]};   // atomic view of one plain int
+        bucket.fetch_add(1, std::memory_order_relaxed);
+    }
+}
+\end{lstlisting}
+
+While any \texttt{atomic\_ref} to an object exists, all concurrent access must go through \texttt{atomic\_ref}s; honor \texttt{required\_alignment}.
+
+\section{atomic wait and notify}
+\label{sec:c20-atomic-wait}
+
+\begin{lstlisting}[language=C++,caption={Blocking on an atomic without a condition variable}]
+#include <atomic>
+
+std::atomic<bool> ready{false};
+void waiter() { ready.wait(false); /* wakes when value != false */ }
+void setter() { ready.store(true); ready.notify_one(); }
+\end{lstlisting}
+
+\texttt{wait(old)} blocks while the value equals \texttt{old}; it handles spurious wakeups internally (futex-backed).
+
+\section{std::atomic<std::shared\_ptr<T>>}
+\label{sec:c20-atomic-shared-ptr}
+
+\begin{lstlisting}[language=C++,caption={Atomically swapping shared configuration}]
+#include <atomic>
+#include <memory>
+
+struct Config { /* immutable snapshot */ };
+std::atomic<std::shared_ptr<Config>> g_config{std::make_shared<Config>()};
+
+std::shared_ptr<Config> current() { return g_config.load(); }
+void update(std::shared_ptr<Config> next) { g_config.store(std::move(next)); }
+\end{lstlisting}
+
+Replaces the deprecated \texttt{std::atomic\_*(shared\_ptr*)} free functions; the canonical read-mostly snapshot pattern. Check \texttt{is\_lock\_free()}.
+
+\section{Choosing the Right Primitive}
+\label{sec:c20-concurrency2-choose}
+
+\begin{center}
+\begin{tabular}{lll}
+\hline
+\textbf{Primitive} & \textbf{One-shot?} & \textbf{Use when} \\
+\hline
+\texttt{latch} & yes & wait once for N tasks; release-all gate \\
+\texttt{barrier} & no (resets) & iterative phases; rendezvous each round \\
+\texttt{counting\_semaphore} & reusable & limit concurrency to K; permit pool \\
+\texttt{binary\_semaphore} & reusable & one-shot signal; non-owning lock \\
+\texttt{atomic::wait/notify} & reusable & block on a single value change \\
+\texttt{mutex}+\texttt{condition\_variable} & reusable & complex predicates over shared state \\
+\hline
+\end{tabular}
+\end{center}
+
+\section{Professional Insights}
+\label{sec:c20-concurrency2-insights}
+
+\textbf{Replace hand-built counter/condvar coordination with \texttt{latch} and \texttt{barrier}} --- correct by construction; the barrier completion function is a race-free serial point between phases.
+
+\textbf{Use \texttt{counting\_semaphore} to cap concurrency and \texttt{binary\_semaphore} to signal} --- their lack of ownership is what enables cross-thread signalling a mutex cannot.
+
+\textbf{Reach for \texttt{std::atomic\_ref} when atomicity must be selective or the type must stay plain} --- but every concurrent access must then go through an \texttt{atomic\_ref}.
+
+\textbf{Prefer \texttt{atomic::wait}/\texttt{notify} over spin loops and over condvars for single-value waits} --- futex-backed, spurious-wakeup-safe.
+
+\textbf{Adopt \texttt{std::atomic<std::shared\_ptr<T>>} for read-mostly published snapshots} --- the modern replacement for the deprecated free functions; eliminates torn-pointer and refcount races.

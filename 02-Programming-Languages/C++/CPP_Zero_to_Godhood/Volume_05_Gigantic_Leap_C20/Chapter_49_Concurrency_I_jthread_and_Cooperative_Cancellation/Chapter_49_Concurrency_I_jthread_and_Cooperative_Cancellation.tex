@@ -1,0 +1,157 @@
+\chapter{Concurrency I --- \texttt{jthread} and Cooperative Cancellation}
+\label{ch:c20-jthread}
+
+\begin{quote}
+\emph{\texttt{std::jthread} fixes the two most dangerous defaults of \texttt{std::thread}: it joins automatically in its destructor (no more \texttt{std::terminate} from a forgotten \texttt{join}), and it carries built-in cooperative cancellation via \texttt{std::stop\_token}. With \texttt{std::stop\_source} and \texttt{std::stop\_callback}, C++20 gives the standard library a structured, RAII-clean way to start, stop, and wait for threads.}
+\end{quote}
+
+\section{The std::thread Problem jthread Solves}
+\label{sec:c20-jthread-problem}
+
+\begin{lstlisting}[language=C++,caption={The std::thread footgun vs jthread}]
+#include <thread>
+
+void with_plain_thread() {
+    std::thread t{[]{ /* work */ }};
+    // Returning without join()/detach() calls std::terminate().
+    t.join();   // mandatory, easy to forget
+}
+void with_jthread() {
+    std::jthread t{[]{ /* work */ }};
+    // ~jthread() requests stop and joins automatically.
+}
+\end{lstlisting}
+
+\section{Automatic Joining: RAII for Threads}
+\label{sec:c20-jthread-raii}
+
+\begin{lstlisting}[language=C++,caption={Scope-bounded thread lifetime}]
+#include <thread>
+#include <vector>
+
+void process(const std::vector<int>& data) {
+    std::jthread worker{[&]{ for (int x : data) { /* ... */ } }};
+    if (data.empty()) return;   // ~jthread joins here — no leak, no terminate
+}                               // ~jthread joins here on the normal path too
+\end{lstlisting}
+
+\section{The Cancellation Trio}
+\label{sec:c20-jthread-trio}
+
+\begin{center}
+\begin{tabular}{ll}
+\hline
+\textbf{Type} & \textbf{Role} \\
+\hline
+\texttt{std::stop\_source} & requester: \texttt{request\_stop()} sets the state \\
+\texttt{std::stop\_token} & observer: polls \texttt{stop\_requested()} \\
+\texttt{std::stop\_callback} & reaction: runs a callable on stop \\
+\hline
+\end{tabular}
+\end{center}
+
+\begin{lstlisting}[language=C++,caption={How the three types share one stop-state}]
+#include <stop_token>
+
+std::stop_source source;
+std::stop_token  token = source.get_token();
+bool before = token.stop_requested();   // false
+source.request_stop();
+bool after  = token.stop_requested();   // true
+\end{lstlisting}
+
+\section{Writing a Cancellable Thread Function}
+\label{sec:c20-jthread-cancellable}
+
+\begin{lstlisting}[language=C++,caption={A cooperatively cancellable worker}]
+#include <thread>
+#include <stop_token>
+#include <chrono>
+
+void worker(std::stop_token st, int id) {   // stop_token MUST be the first param
+    while (!st.stop_requested()) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    }
+}
+int main() {
+    std::jthread t{worker, 42};   // jthread injects the stop_token as arg 0
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+}   // ~jthread() calls request_stop() then join()
+\end{lstlisting}
+
+There is no forced thread termination in C++; the thread must voluntarily poll at safe points.
+
+\section{stop\_source: Requesting a Stop from Outside}
+\label{sec:c20-jthread-source}
+
+\begin{lstlisting}[language=C++,caption={Explicit and external stop requests}]
+#include <thread>
+#include <stop_token>
+
+std::jthread t{[](std::stop_token st){ while (!st.stop_requested()){} }};
+t.request_stop();                 // non-blocking; thread stops at next poll
+
+std::stop_source group;           // fan-out cancellation
+auto tok = group.get_token();
+std::jthread b{[tok]{ while (!tok.stop_requested()){} }};
+group.request_stop();             // stops every worker holding a token from 'group'
+\end{lstlisting}
+
+\section{stop\_callback: Reacting to Cancellation}
+\label{sec:c20-jthread-callback}
+
+\begin{lstlisting}[language=C++,caption={Running code the instant a stop is requested}]
+#include <stop_token>
+#include <atomic>
+
+void register_reaction(std::stop_token st, std::atomic_flag& wake) {
+    std::stop_callback cb{st, [&wake]{
+        wake.test_and_set();
+        wake.notify_one();
+    }};
+    // Fires immediately if already stopped, else on request_stop().
+}
+\end{lstlisting}
+
+The callback runs on the thread calling \texttt{request\_stop()}; \texttt{cb}'s destructor deregisters it and blocks until any in-progress call finishes.
+
+\section{Interrupting a Blocking Wait}
+\label{sec:c20-jthread-wait}
+
+\begin{lstlisting}[language=C++,caption={A condition-variable wait that honors cancellation}]
+#include <stop_token>
+#include <condition_variable>
+#include <mutex>
+#include <queue>
+
+template <typename T>
+class BlockingQueue {
+    std::mutex m_;
+    std::condition_variable_any cv_;
+    std::queue<T> q_;
+public:
+    bool pop(std::stop_token st, T& out) {
+        std::unique_lock lock{m_};
+        if (!cv_.wait(lock, st, [&]{ return !q_.empty(); }))
+            return false;             // stop requested -> bail out
+        out = std::move(q_.front());
+        q_.pop();
+        return true;
+    }
+};
+\end{lstlisting}
+
+Requires \texttt{condition\_variable\_any}; the overload registers an internal \texttt{stop\_callback} that wakes the waiter on \texttt{request\_stop()}.
+
+\section{Professional Insights}
+\label{sec:c20-jthread-insights}
+
+\textbf{Default to \texttt{std::jthread} for every new thread} --- automatic join eliminates the forgotten-\texttt{join} \texttt{terminate} crash; reserve \texttt{std::thread} for interop.
+
+\textbf{Cancellation is cooperative} --- design frequent, responsive checkpoints; an unchecked loop hangs the destructor's join.
+
+\textbf{Make blocking waits stop-aware} with the \texttt{condition\_variable\_any} + \texttt{stop\_token} overload, or the worker sleeps through cancellation.
+
+\textbf{Use one shared \texttt{stop\_source} for fan-out cancellation} of a pool --- a single \texttt{request\_stop()} shuts down the group race-free.
+
+\textbf{Rely on \texttt{stop\_callback}'s destructor semantics} for safe cleanup, but keep callbacks short and non-blocking (signal, don't compute).

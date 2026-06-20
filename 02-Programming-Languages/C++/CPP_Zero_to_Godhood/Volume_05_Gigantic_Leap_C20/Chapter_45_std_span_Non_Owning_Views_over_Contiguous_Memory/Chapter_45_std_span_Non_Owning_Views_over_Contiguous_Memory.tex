@@ -1,0 +1,167 @@
+\chapter{std::span --- Non-Owning Views over Contiguous Memory}
+\label{ch:c20-span}
+
+\begin{quote}
+\emph{\texttt{std::span} is C++20's answer to passing a contiguous block of elements without committing to a container, copying, or decaying to a length-less pointer. A span is a fat pointer --- pointer plus size --- that views a C array, \texttt{std::array}, \texttt{std::vector}, or raw buffer. This chapter covers construction, fixed/dynamic extents, subviews, and lifetime.}
+\end{quote}
+
+\section{The Problem span Solves}
+\label{sec:c20-span-problem}
+
+\begin{lstlisting}[language=C++,caption={One function signature accepts every contiguous source}]
+#include <span>
+#include <vector>
+#include <array>
+
+int sum(std::span<const int> s) {
+    int total = 0;
+    for (int x : s) total += x;
+    return total;
+}
+
+int main() {
+    int               c_array[] = {1, 2, 3};
+    std::array<int,4> std_arr   = {1, 2, 3, 4};
+    std::vector<int>  vec       = {1, 2, 3, 4, 5};
+    sum(c_array); sum(std_arr); sum(vec);   // all work: no copy, no template
+}
+\end{lstlisting}
+
+\section{Constructing a span}
+\label{sec:c20-span-construct}
+
+\begin{lstlisting}[language=C++,caption={The ways to make a span}]
+#include <span>
+#include <vector>
+#include <array>
+
+std::vector<int> v{10, 20, 30, 40, 50};
+std::span<int> s1{v};                    // from a container
+std::span<int> s2{v.data(), 3};          // pointer + length
+std::span<int> s3{v.begin(), v.end()};   // iterator pair
+
+int arr[] = {1, 2, 3};
+std::span<int> s4{arr};                  // C array (size deduced)
+std::array<int, 4> a{1, 2, 3, 4};
+std::span<int> s5{a};
+\end{lstlisting}
+
+\section{Dynamic Extent vs Fixed Extent}
+\label{sec:c20-span-extent}
+
+\begin{lstlisting}[language=C++,caption={Dynamic vs fixed extent}]
+#include <span>
+#include <array>
+
+void dyn(std::span<int> s);         // dynamic extent (size at runtime)
+void fix(std::span<int, 3> s);      // fixed extent: exactly 3 elements
+
+std::array<int, 3> a{1, 2, 3};
+std::array<int, 5> b{1, 2, 3, 4, 5};
+fix(a);          // OK
+// fix(b);       // ERROR: size 5 != 3, checked at compile time
+\end{lstlisting}
+
+\begin{center}
+\begin{tabular}{lll}
+\hline
+\textbf{Form} & \textbf{Size stored} & \textbf{Checked} \\
+\hline
+\texttt{span<T>} & pointer + size (2 words) & runtime \\
+\texttt{span<T, N>} & pointer only (1 word) & compile time \\
+\hline
+\end{tabular}
+\end{center}
+
+\section{Accessing Elements and the span Interface}
+\label{sec:c20-span-access}
+
+\begin{lstlisting}[language=C++,caption={The span access interface}]
+#include <span>
+#include <cstddef>
+
+void process(std::span<int> s) {
+    if (s.empty()) return;
+    int first = s.front();
+    int last  = s.back();
+    int third = s[2];                     // unchecked, like vector::operator[]
+    std::size_t n      = s.size();
+    std::size_t nbytes = s.size_bytes();
+    int*        raw    = s.data();
+    for (int& x : s) x *= 2;              // writes through to storage
+}
+\end{lstlisting}
+
+\section{Subviews: first, last, subspan}
+\label{sec:c20-span-subviews}
+
+\begin{lstlisting}[language=C++,caption={Slicing a span into subviews}]
+#include <span>
+#include <vector>
+
+std::vector<int> v{0, 1, 2, 3, 4, 5, 6, 7};
+std::span<int> s{v};
+
+auto head = s.first(3);          // {0, 1, 2}
+auto tail = s.last(2);           // {6, 7}
+auto mid  = s.subspan(2, 4);     // {2, 3, 4, 5}
+auto rest = s.subspan(5);        // {5, 6, 7}
+auto head_fixed = s.first<3>();  // std::span<int, 3> (fixed extent)
+\end{lstlisting}
+
+Each subview is O(1) and shares the storage; template forms produce fixed-extent subspans.
+
+\section{const-Correctness and Byte Views}
+\label{sec:c20-span-const}
+
+\begin{lstlisting}[language=C++,caption={span of const vs const span, and byte views}]
+#include <span>
+#include <vector>
+#include <cstddef>
+
+std::vector<int> v{1, 2, 3};
+std::span<const int> read_only{v};   // elements const: cannot write through
+std::span<int> writable{v};
+const std::span<int> fixed_view{v};  // span const; elements mutable
+fixed_view[0] = 9;                    // OK
+
+std::span<const std::byte> bytes  = std::as_bytes(writable);
+std::span<std::byte>       wbytes = std::as_writable_bytes(writable);
+\end{lstlisting}
+
+Prefer \texttt{span<const T>} for read-only parameters; \texttt{as\_bytes} replaces \texttt{reinterpret\_cast} for byte views.
+
+\section{Lifetime: span Does Not Own}
+\label{sec:c20-span-lifetime}
+
+\begin{lstlisting}[language=C++,caption={The dangling traps}]
+#include <span>
+#include <vector>
+
+std::span<int> make_bad() {
+    std::vector<int> local{1, 2, 3};
+    return std::span<int>{local};      // BUG: local dies -> dangling span
+}
+
+void reallocation_trap() {
+    std::vector<int> v{1, 2, 3};
+    std::span<int> s{v};
+    v.push_back(4);                    // may REALLOCATE -> s dangles
+    // int x = s[0];                   // undefined behavior
+}
+\end{lstlisting}
+
+Treat span lifetime like iterator/\texttt{string\_view} lifetime: never return a span to a local; re-derive after reallocation.
+
+\section{Professional Insights}
+\label{sec:c20-span-insights}
+
+\textbf{Make \texttt{std::span<const T>} the default ``read a contiguous range'' parameter} --- replaces \texttt{const vector\&}, \texttt{(const T*, size\_t)}, and container templates at once.
+
+\textbf{Prefer fixed-extent spans where the length is a compile-time constant} --- smaller and compile-time-checked.
+
+\textbf{Treat span lifetime exactly like iterator and \texttt{string\_view} lifetime} --- it borrows, never owns; beware the reallocation trap.
+
+\textbf{Use \texttt{as\_bytes}/\texttt{as\_writable\_bytes} instead of \texttt{reinterpret\_cast}} for byte-level I/O.
+
+\textbf{Slice with subviews rather than passing offset/length pairs} --- each subview carries its own size; O(1), no copy.
