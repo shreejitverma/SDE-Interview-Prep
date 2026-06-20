@@ -1,0 +1,176 @@
+\chapter{Ranges II --- Range Algorithms, Projections, and Borrowed Ranges}
+\label{ch:c20-ranges-ii}
+
+\begin{quote}
+\emph{Chapter 34 covered views and lazy pipelines. This chapter covers the other half of the ranges library: the \texttt{std::ranges::*} algorithms that take a whole range instead of an iterator pair, the projection parameter that sorts or searches by a member without a custom comparator, and the borrowed-range model that makes returning an iterator into a temporary a compile error instead of a dangling-pointer bug.}
+\end{quote}
+
+The range algorithms are constrained, accept projections, and return borrow-aware results --- turning classic \texttt{<algorithm>} into a safer, more expressive toolkit.
+
+\section{Range Algorithms: One Argument Instead of Two}
+\label{sec:c20-range-algos}
+
+\begin{lstlisting}[language=C++,caption={Ranges algorithms take a whole range}]
+#include <algorithm>
+#include <ranges>
+#include <vector>
+
+int main() {
+    std::vector<int> v{4, 2, 5, 1, 3};
+    std::ranges::sort(v);
+    bool has3 = std::ranges::binary_search(v, 3);
+    auto it   = std::ranges::find(v, 5);
+    std::ranges::sort(v.begin(), v.begin() + 3);   // iterator-pair form still exists
+}
+\end{lstlisting}
+
+\section{The Constrained-Algorithm Guarantee}
+\label{sec:c20-constrained-algos}
+
+Every \texttt{std::ranges::} algorithm is constrained with concepts.
+
+\begin{lstlisting}[language=C++,caption={The constraint fires at the call site, not deep inside}]
+#include <algorithm>
+#include <list>
+
+int main() {
+    std::list<int> lst{3, 1, 2};
+    std::ranges::sort(lst);
+    // error: constraint 'sortable' / 'random_access_range' not satisfied (localized)
+}
+\end{lstlisting}
+
+\section{Projections}
+\label{sec:c20-projections}
+
+A \textbf{projection} is applied to each element \emph{before} the algorithm examines it. The slot is last and defaults to \texttt{std::identity}.
+
+\begin{lstlisting}[language=C++,caption={Sort/find by a member using a projection}]
+#include <algorithm>
+#include <ranges>
+#include <vector>
+#include <string>
+
+struct User { int id; std::string name; };
+
+int main() {
+    std::vector<User> users{{2,"Bob"},{1,"Alice"},{3,"Carol"}};
+    std::ranges::sort(users, {}, &User::id);     // sort by id
+    std::ranges::sort(users, {}, &User::name);   // sort by name
+    auto it     = std::ranges::find(users, 3, &User::id);
+    auto oldest = std::ranges::max(users, {}, &User::id);
+}
+\end{lstlisting}
+
+The pattern is \texttt{algorithm(range, comparator = \{\}, projection = identity)}.
+
+\section{Combining Projections, Comparators, and Predicates}
+\label{sec:c20-proj-combine}
+
+\begin{lstlisting}[language=C++,caption={Projection + comparator, and projection + predicate}]
+#include <algorithm>
+#include <ranges>
+#include <vector>
+#include <string>
+
+struct User { int id; std::string name; };
+
+int main() {
+    std::vector<User> users{{2,"bob"},{1,"ALICE"},{3,"Carol"}};
+    std::ranges::sort(users, std::ranges::greater{},
+                      [](const User& u){ return u.name.size(); });
+    auto big_ids = std::ranges::count_if(users,
+                      [](int id){ return id >= 2; }, &User::id);
+}
+\end{lstlisting}
+
+Prefer the constrained \texttt{std::ranges::less}/\texttt{greater} comparator objects.
+
+\section{Borrowed Ranges and std::ranges::dangling}
+\label{sec:c20-dangling}
+
+\begin{lstlisting}[language=C++,caption={Protection against returning an iterator into a temporary}]
+#include <algorithm>
+#include <ranges>
+#include <vector>
+
+std::vector<int> make_vec() { return {1, 2, 3}; }
+
+int main() {
+    auto it = std::ranges::max_element(make_vec());
+    // 'it' has type std::ranges::dangling -- *it would not compile.
+}
+\end{lstlisting}
+
+Passing an rvalue range that is not a \texttt{borrowed\_range} makes the algorithm return \textbf{\texttt{std::ranges::dangling}}, turning a runtime crash into a build error.
+
+\section{borrowed\_range and view Lifetime Safety}
+\label{sec:c20-borrowed-range}
+
+A range models \textbf{\texttt{borrowed\_range}} when its iterators remain valid after the range object is destroyed.
+
+\begin{lstlisting}[language=C++,caption={borrowed\_range types return real iterators even as rvalues}]
+#include <algorithm>
+#include <ranges>
+#include <span>
+#include <vector>
+
+int main() {
+    std::vector<int> store{5, 2, 8};
+    auto it = std::ranges::max_element(std::span{store});   // span is borrowed: safe
+    // Opt a custom view in:
+    // template<> inline constexpr bool std::ranges::enable_borrowed_range<MyView> = true;
+}
+\end{lstlisting}
+
+\section{Algorithms Over Pipelines}
+\label{sec:c20-algos-over-pipelines}
+
+\begin{lstlisting}[language=C++,caption={A view pipeline fed straight into a range algorithm}]
+#include <algorithm>
+#include <ranges>
+#include <vector>
+#include <iostream>
+
+int main() {
+    std::vector<int> v{5, 1, 8, 2, 9, 3};
+    namespace vws = std::views;
+    auto evens = v | vws::filter([](int x){ return x % 2 == 0; });
+    auto max_even = std::ranges::max(evens);                 // C++20: fine
+    bool any_big  = std::ranges::any_of(evens, [](int x){ return x > 6; });
+    std::cout << *max_even << ' ' << any_big << '\n';
+    // std::ranges::fold_left is C++23 -- use std::reduce/accumulate in C++20.
+}
+\end{lstlisting}
+
+\section{The C++20 Algorithm Catalogue and What Is Missing}
+\label{sec:c20-algo-catalogue}
+
+\begin{center}
+\begin{tabular}{ll}
+\hline
+\textbf{Want} & \textbf{C++20 status} \\
+\hline
+\texttt{ranges::sort}/\texttt{find}/\texttt{transform}/\texttt{max\_element} & available \\
+projections on all the above & available \\
+\texttt{ranges::fold\_left}/\texttt{fold\_right} & C++23 \\
+\texttt{ranges::to} (materialize) & C++23 \\
+range \texttt{<numeric>} (\texttt{reduce}, scans) & mostly C++23 \\
+\hline
+\end{tabular}
+\end{center}
+
+For numeric reductions in C++20, use non-ranges \texttt{<numeric>} on a container or materialized view.
+
+\section{Professional Insights}
+\label{sec:c20-ranges-ii-insights}
+
+\textbf{Prefer the projection slot to a throwaway comparator lambda.} \texttt{sort(users, \{\}, \&User::id)} is clearer and often better-optimized.
+
+\textbf{Let the dangling protection do its job.} \texttt{std::ranges::dangling} is the library catching a lifetime bug at compile time; bind to a named lvalue rather than casting it away.
+
+\textbf{Opt custom views into \texttt{borrowed\_range} only when true.} Enabling it on an owning view reintroduces the dangling bug.
+
+\textbf{Watch the C++20/23 line in numeric/materialization code.} \texttt{fold\_left}, \texttt{ranges::to}, and most ranges \texttt{<numeric>} are C++23.
+
+\textbf{Reach for constrained range algorithms at API boundaries for the diagnostics alone.} Callers get a localized, concept-named error for unsuitable ranges.

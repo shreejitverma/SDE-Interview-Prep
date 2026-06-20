@@ -1,0 +1,237 @@
+\chapter{Coroutines II --- Awaitables, Tasks, coroutine\_handle, and Symmetric Transfer}
+\label{ch:c20-coroutines-ii}
+
+\begin{quote}
+\emph{Chapter 36 built the generator: the \texttt{co\_yield} side, driven synchronously by a consumer. This chapter completes the picture with the \texttt{co\_await} side: the awaitable protocol, how to build a \texttt{Task<T>}, how coroutines resume one another without growing the stack via symmetric transfer, and the lifetime rules that keep \texttt{coroutine\_handle} from becoming a use-after-free machine.}
+\end{quote}
+
+\texttt{co\_await} is a three-method protocol (\texttt{await\_ready}, \texttt{await\_suspend}, \texttt{await\_resume}) the compiler calls on whatever you await.
+
+\section{The Awaitable Protocol}
+\label{sec:c20-awaitable-protocol}
+
+\begin{center}
+\begin{tabular}{lll}
+\hline
+\textbf{Method} & \textbf{Returns} & \textbf{Role} \\
+\hline
+\texttt{await\_ready()} & \texttt{bool} & is the result already available? \\
+\texttt{await\_suspend(h)} & void/bool/handle & schedule the resumption \\
+\texttt{await\_resume()} & \texttt{T} & result of the \texttt{co\_await} expression \\
+\hline
+\end{tabular}
+\end{center}
+
+\begin{lstlisting}[language=C++,caption={The two trivial awaiters reveal the protocol}]
+#include <coroutine>
+
+struct always_suspend {                // == std::suspend_always
+    bool await_ready()  const noexcept { return false; }
+    void await_suspend(std::coroutine_handle<>) const noexcept {}
+    void await_resume() const noexcept {}
+};
+
+struct never_suspend {                 // == std::suspend_never
+    bool await_ready()  const noexcept { return true; }
+    void await_suspend(std::coroutine_handle<>) const noexcept {}
+    void await_resume() const noexcept {}
+};
+\end{lstlisting}
+
+\section{await\_suspend Return Types and What They Mean}
+\label{sec:c20-await-suspend-returns}
+
+\begin{lstlisting}[language=C++,caption={The three await\_suspend signatures}]
+#include <coroutine>
+
+// (a) void  -> suspend and return control to the caller/resumer.
+void await_suspend(std::coroutine_handle<> h);
+
+// (b) bool  -> false means "do not suspend; resume me now"; true means stay suspended.
+bool await_suspend(std::coroutine_handle<> h);
+
+// (c) coroutine_handle -> SYMMETRIC TRANSFER: tail-call the returned coroutine.
+//     Return std::noop_coroutine() to return to the loop.
+std::coroutine_handle<> await_suspend(std::coroutine_handle<> h);
+\end{lstlisting}
+
+Form (c) is symmetric transfer (Section~\ref{sec:c20-symmetric-transfer}); \texttt{std::noop\_coroutine()} means ``return to the scheduler.''
+
+\section{awaitable vs awaiter and operator co\_await}
+\label{sec:c20-awaitable-vs-awaiter}
+
+An \textbf{awaitable} is anything you can \texttt{co\_await}; an \textbf{awaiter} has the three methods. The compiler resolves: (1) \texttt{promise.await\_transform(expr)} if present; (2) \texttt{operator co\_await}; (3) otherwise the result must already be an awaiter.
+
+\begin{lstlisting}[language=C++,caption={operator co\_await turns a value type into an awaiter}]
+#include <coroutine>
+#include <chrono>
+
+struct sleep_for { std::chrono::milliseconds dur; };
+
+struct sleep_awaiter {
+    std::chrono::milliseconds dur;
+    bool await_ready() const noexcept { return dur.count() <= 0; }
+    void await_suspend(std::coroutine_handle<> h) const {
+        // hand h + dur to a timer service that resumes(h) when it fires
+    }
+    void await_resume() const noexcept {}
+};
+
+sleep_awaiter operator co_await(sleep_for s) { return {s.dur}; }
+// now: co_await sleep_for{100ms};
+\end{lstlisting}
+
+A deleted \texttt{await\_transform} disables \texttt{co\_await} in a generator.
+
+\section{Building a Task<T>}
+\label{sec:c20-task}
+
+\begin{lstlisting}[language=C++,caption={A lazy Task<T> with a continuation, in pure C++20}]
+#include <coroutine>
+#include <exception>
+#include <utility>
+#include <variant>
+
+template<typename T>
+struct Task {
+    struct promise_type {
+        std::variant<std::monostate, T, std::exception_ptr> result;
+        std::coroutine_handle<> continuation;
+
+        Task get_return_object() {
+            return Task{ std::coroutine_handle<promise_type>::from_promise(*this) };
+        }
+        std::suspend_always initial_suspend() noexcept { return {}; }
+
+        struct final_awaiter {
+            bool await_ready() const noexcept { return false; }
+            std::coroutine_handle<> await_suspend(
+                std::coroutine_handle<promise_type> h) noexcept {
+                auto cont = h.promise().continuation;
+                return cont ? cont : std::noop_coroutine();
+            }
+            void await_resume() const noexcept {}
+        };
+        final_awaiter final_suspend() noexcept { return {}; }
+
+        void return_value(T v) { result.template emplace<1>(std::move(v)); }
+        void unhandled_exception() {
+            result.template emplace<2>(std::current_exception());
+        }
+    };
+
+    std::coroutine_handle<promise_type> h;
+    explicit Task(std::coroutine_handle<promise_type> handle) : h(handle) {}
+    Task(Task&& o) noexcept : h(std::exchange(o.h, {})) {}
+    ~Task() { if (h) h.destroy(); }
+
+    bool await_ready() const noexcept { return false; }
+    std::coroutine_handle<> await_suspend(std::coroutine_handle<> awaiting) noexcept {
+        h.promise().continuation = awaiting;
+        return h;
+    }
+    T await_resume() {
+        auto& r = h.promise().result;
+        if (r.index() == 2) std::rethrow_exception(std::get<2>(r));
+        return std::move(std::get<1>(r));
+    }
+};
+
+Task<int> add(int a, int b) { co_return a + b; }
+Task<int> compute() {
+    int x = co_await add(2, 3);
+    co_return x * 10;            // -> 50
+}
+\end{lstlisting}
+
+\section{Symmetric Transfer and the Stack-Overflow Trap}
+\label{sec:c20-symmetric-transfer}
+
+\begin{lstlisting}[language=C++,caption={The WRONG way: nested resume() grows the stack unboundedly}]
+void await_suspend(std::coroutine_handle<> awaiting) {
+    h.promise().continuation = awaiting;
+    h.resume();          // BUG: nested frame per await -> stack overflow in a loop
+}
+\end{lstlisting}
+
+\begin{lstlisting}[language=C++,caption={The RIGHT way: return the handle, compiler tail-calls it}]
+std::coroutine_handle<> await_suspend(std::coroutine_handle<> awaiting) noexcept {
+    h.promise().continuation = awaiting;
+    return h;            // tail call: no net stack growth across the chain
+}
+\end{lstlisting}
+
+Returning the handle makes the compiler perform a guaranteed tail call, keeping stack depth constant. \texttt{std::noop\_coroutine()} terminates the chain.
+
+\section{coroutine\_handle: Ownership, Lifetime, and Type Erasure}
+\label{sec:c20-handle-lifetime}
+
+\begin{lstlisting}[language=C++,caption={Handle operations and the type-erased form}]
+#include <coroutine>
+
+template<typename P>
+void inspect(std::coroutine_handle<P> h) {
+    if (!h) return;
+    P& promise = h.promise();
+    bool finished = h.done();
+    if (!finished) h.resume();              // == h()
+
+    std::coroutine_handle<> erased = h;     // type-erase for storage
+    void* raw = erased.address();
+    auto  back = std::coroutine_handle<>::from_address(raw);
+    (void)back; (void)promise;
+}
+\end{lstlisting}
+
+Rules: exactly one owner calls \texttt{.destroy()}; never resume a \texttt{done()} coroutine; type-erased \texttt{coroutine\_handle<>} loses \texttt{.promise()} but round-trips via \texttt{address()}/\texttt{from\_address()}.
+
+\section{Integrating with an Event Loop}
+\label{sec:c20-event-loop}
+
+\begin{lstlisting}[language=C++,caption={An awaiter that parks the coroutine on an external completion}]
+#include <coroutine>
+
+struct AsyncRead {
+    int fd; char* buf; size_t len;
+    bool await_ready() const noexcept { return false; }
+    void await_suspend(std::coroutine_handle<> h) {
+        reactor().on_readable(fd, [h, this]() mutable {
+            ::read(fd, buf, len);
+            h.resume();          // resume on the reactor's thread
+        });
+    }
+    ssize_t await_resume() const noexcept { return len; }
+};
+// usage:  ssize_t n = co_await AsyncRead{fd, buffer, 4096};
+\end{lstlisting}
+
+The resuming thread is the reactor's thread, and the frame must outlive the pending operation or \texttt{resume()} is a use-after-free.
+
+\section{What C++20 Lacks: generator, task, and Executors}
+\label{sec:c20-coro-lacks}
+
+\begin{center}
+\begin{tabular}{lll}
+\hline
+\textbf{You want} & \textbf{Status} & \textbf{C++20 workaround} \\
+\hline
+\texttt{std::generator<T>} & C++23 & hand-roll (Ch.\ 36) \\
+standard \texttt{task<T>} & not even C++23 & hand-roll / library \\
+executors (\texttt{std::execution}) & C++26 & Asio, libunifex, stdexec \\
+\texttt{when\_all}, \texttt{sync\_wait} & library-only & cppcoro, libcoro, Cobalt \\
+\hline
+\end{tabular}
+\end{center}
+
+\section{Professional Insights}
+\label{sec:c20-coroutines-ii-insights}
+
+\textbf{Symmetric transfer is non-negotiable for chaining task types.} Return a handle from \texttt{await\_suspend}; never nest \texttt{resume()}. Otherwise it stack-overflows in production under deep chains.
+
+\textbf{Treat \texttt{coroutine\_handle} like a raw pointer.} One move-only RAII owner calls \texttt{.destroy()} once; null the moved-from handle with \texttt{std::exchange}; never resume a \texttt{done()} handle.
+
+\textbf{Anchor frame lifetime to operation completion.} Destroying the owning \texttt{Task} mid-flight makes the eventual \texttt{resume()} a use-after-free.
+
+\textbf{Use \texttt{await\_transform} to enforce discipline.} Delete it to forbid \texttt{co\_await} in a generator; define it to route all awaits through a scheduler.
+
+\textbf{Reach for a library before hand-rolling async coroutines.} A full task system with cancellation and composition is library work; C++20 ships no executor model.

@@ -1,0 +1,153 @@
+\chapter{Calendars and Time Zones in \texttt{<chrono>}}
+\label{ch:c20-chrono-calendar}
+
+\begin{quote}
+\emph{C++20 extends \texttt{<chrono>} from a duration-and-clock library into a full date, calendar, and time-zone library --- the standardized successor to Howard Hinnant's \texttt{date} library. You can construct calendar dates naturally, convert between \texttt{system\_clock} time points and year/month/day, query the IANA time-zone database, and format with \texttt{std::format}.}
+\end{quote}
+
+\section{The chrono Expansion at a Glance}
+\label{sec:c20-chrono-overview}
+
+\begin{center}
+\begin{tabular}{ll}
+\hline
+\textbf{Layer} & \textbf{Key types} \\
+\hline
+Calendar & \texttt{year}, \texttt{month}, \texttt{day}, \texttt{year\_month\_day}, \texttt{weekday} \\
+Date$\leftrightarrow$time-point & \texttt{sys\_days}, \texttt{local\_days} \\
+Clocks & \texttt{system\_clock}, \texttt{utc\_clock} \\
+Time-of-day & \texttt{hh\_mm\_ss} \\
+Time zones & \texttt{time\_zone}, \texttt{zoned\_time}, \texttt{tzdb} \\
+Formatting & \texttt{\{:\%Y-\%m-\%d\}} \\
+\hline
+\end{tabular}
+\end{center}
+
+Strong typing throughout: a \texttt{year} is not an \texttt{int}; the types are literal, so dates are \texttt{constexpr}-constructible.
+
+\section{Calendar Types and the Civil-Date Syntax}
+\label{sec:c20-civil-dates}
+
+\begin{lstlisting}[language=C++,caption={Constructing civil dates with the / syntax}]
+#include <chrono>
+using namespace std::chrono;
+
+year_month_day d1 = 2026y / June / 18;        // June 18, 2026
+year_month_day d2 = 2026y / 6 / 18;           // numeric month
+year_month_day d3 = June / 18 / 2026y;        // US-style
+year_month_day d4 = 18d / June / 2026;        // day/month/year
+
+year  y  = d1.year();
+month m  = d1.month();
+day   dd = d1.day();
+weekday wd{sys_days{d1}};
+\end{lstlisting}
+
+\texttt{operator/} disambiguates by type, not position --- ending the month/day vs day/month ambiguity.
+
+\section{sys\_days: Bridging Dates and Time Points}
+\label{sec:c20-sys-days}
+
+\begin{lstlisting}[language=C++,caption={Converting between field dates and serial time points}]
+#include <chrono>
+using namespace std::chrono;
+
+year_month_day ymd = 2026y / June / 18;
+sys_days sd = sys_days{ymd};
+year_month_day back = year_month_day{sd};
+
+sys_days a = sys_days{2026y / 1 / 1};
+sys_days b = sys_days{2026y / 12 / 31};
+days span = b - a;                     // 364 days
+
+system_clock::time_point tp = sys_days{ymd};
+\end{lstlisting}
+
+\section{Date Validation and Arithmetic}
+\label{sec:c20-date-arithmetic}
+
+\begin{lstlisting}[language=C++,caption={Validation and calendar arithmetic}]
+#include <chrono>
+using namespace std::chrono;
+
+year_month_day bad = 2026y / February / 30;
+bool valid = bad.ok();                 // false
+
+year_month_day jan31 = 2026y / January / 31;
+year_month_day feb   = jan31 + months{1};   // Feb 31 -> NOT ok()
+bool feb_ok = feb.ok();                       // false
+
+year_month_day last_feb = 2026y / February / last;   // Feb 28/29
+sys_days plus10 = sys_days{jan31} + days{10};        // always valid
+\end{lstlisting}
+
+Field arithmetic preserves day-of-month (may be invalid); serial arithmetic via \texttt{sys\_days} is always exact.
+
+\section{Calendar Clocks and Time-of-Day}
+\label{sec:c20-time-of-day}
+
+\begin{lstlisting}[language=C++,caption={Extracting time-of-day from a time point}]
+#include <chrono>
+using namespace std::chrono;
+
+system_clock::time_point now = system_clock::now();
+sys_days today = floor<days>(now);             // midnight (date part)
+auto since_midnight = now - today;
+hh_mm_ss tod{since_midnight};
+auto h = tod.hours(); auto m = tod.minutes(); auto s = tod.seconds();
+year_month_day date{today};
+\end{lstlisting}
+
+\section{Time Zones and zoned\_time}
+\label{sec:c20-zoned-time}
+
+\begin{lstlisting}[language=C++,caption={Time-zone-aware time points}]
+#include <chrono>
+using namespace std::chrono;
+
+system_clock::time_point now = system_clock::now();
+zoned_time ny{"America/New_York", now};
+zoned_time tokyo{"Asia/Tokyo", now};        // same instant, different local times
+
+const time_zone* tz = locate_zone("Europe/London");
+local_time<system_clock::duration> london = tz->to_local(now);
+sys_time<system_clock::duration>   utc    = tz->to_sys(london);
+
+zoned_time local{current_zone(), now};
+\end{lstlisting}
+
+A \texttt{zoned\_time} attaches a zone for display without changing the instant; the tz database supplies the correct offset at that instant (handling DST). The database must be present on the platform.
+
+\section{Formatting and Parsing Dates}
+\label{sec:c20-chrono-format}
+
+\begin{lstlisting}[language=C++,caption={Formatting and parsing chrono types}]
+#include <chrono>
+#include <format>
+#include <sstream>
+using namespace std::chrono;
+
+year_month_day d = 2026y / June / 18;
+std::string iso  = std::format("{:%Y-%m-%d}", d);          // "2026-06-18"
+std::string full = std::format("{:%A, %B %d, %Y}", d);
+
+zoned_time zt{"Asia/Tokyo", system_clock::now()};
+std::string z = std::format("{:%Y-%m-%d %H:%M:%S %Z}", zt);
+
+std::istringstream in{"2026-06-18"};
+year_month_day parsed;
+in >> parse("%Y-%m-%d", parsed);
+\end{lstlisting}
+
+\section{Professional Insights}
+\label{sec:c20-chrono-insights}
+
+\textbf{Abandon \texttt{<ctime>}/\texttt{struct tm} for new code} --- mutable, not thread-safe, zone-naive, off-by-one traps.
+
+\textbf{Choose field vs serial arithmetic deliberately} --- field for ``same day next month'' (check \texttt{ok()}); serial for exact elapsed time.
+
+\textbf{Treat \texttt{zoned\_time} as a display view, never a stored instant} --- store UTC, convert at the boundary.
+
+\textbf{Verify the tz database is present on every target platform} --- some libraries need a separate tzdata component.
+
+\textbf{Use \texttt{std::format} \% specifiers and \texttt{std::chrono::parse}} instead of \texttt{strftime}/\texttt{strptime}.

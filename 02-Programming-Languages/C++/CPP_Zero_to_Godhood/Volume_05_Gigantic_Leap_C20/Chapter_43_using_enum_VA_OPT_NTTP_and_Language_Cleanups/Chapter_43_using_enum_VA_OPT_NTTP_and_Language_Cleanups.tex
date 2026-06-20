@@ -1,0 +1,139 @@
+\chapter{using enum, \_\_VA\_OPT\_\_, Class-Type NTTPs, and Language Cleanups}
+\label{ch:c20-cleanups}
+
+\begin{quote}
+\emph{This chapter collects the remaining smaller C++20 core-language changes: \texttt{using enum}, \texttt{\_\_VA\_OPT\_\_} for variadic macros, class types as non-type template parameters (which lets string literals parameterize templates), the two's-complement mandate, \texttt{char8\_t} for UTF-8, and the deprecation of several \texttt{volatile} uses. Individually minor; collectively they sand down the rough edges of daily C++.}
+\end{quote}
+
+\section{using enum}
+\label{sec:c20-using-enum}
+
+\begin{lstlisting}[language=C++,caption={using enum removes the repeated scope qualifier}]
+enum class Color { Red, Green, Blue };
+
+const char* name(Color c) {
+    switch (c) {
+        using enum Color;          // bring Red/Green/Blue into scope
+        case Red:   return "red";
+        case Green: return "green";
+        case Blue:  return "blue";
+    }
+    return "?";
+}
+\end{lstlisting}
+
+Preserves scoped-enum type safety; bring in one enumerator with \texttt{using Color::Red;}. Scope it tightly.
+
+\section{\_\_VA\_OPT\_\_ for Variadic Macros}
+\label{sec:c20-va-opt}
+
+\begin{lstlisting}[language=C++,caption={__VA_OPT__ handles the zero-argument case correctly}]
+#include <cstdio>
+
+#define LOG(fmt, ...) std::printf(fmt __VA_OPT__(,) __VA_ARGS__)
+//   LOG("hello\n");        -> std::printf("hello\n")        (no trailing comma)
+//   LOG("%d %d\n", 1, 2);  -> std::printf("%d %d\n", 1, 2)
+
+#define WRAP(...) f(0 __VA_OPT__(,) __VA_ARGS__)
+//   WRAP()     -> f(0)
+//   WRAP(a, b) -> f(0, a, b)
+\end{lstlisting}
+
+The standard, portable replacement for GCC's \texttt{, \#\#\_\_VA\_ARGS\_\_}.
+
+\section{Class Types as Non-Type Template Parameters}
+\label{sec:c20-class-nttp}
+
+\begin{lstlisting}[language=C++,caption={A structural class type as a template parameter}]
+struct Point { int x; int y; };          // structural: literal, all-public members
+
+template<Point P>
+struct Tagged {
+    static constexpr int sum() { return P.x + P.y; }
+};
+
+using T = Tagged<Point{3, 4}>;
+static_assert(T::sum() == 7);
+\end{lstlisting}
+
+A structural type has all-public, non-mutable, themselves-structural members; the compiler compares NTTP arguments member-wise.
+
+\section{String Literals as Template Parameters}
+\label{sec:c20-string-nttp}
+
+\begin{lstlisting}[language=C++,caption={A fixed-string NTTP wrapper enables string template parameters}]
+#include <algorithm>
+#include <cstddef>
+
+template<std::size_t N>
+struct FixedString {
+    char data[N]{};
+    constexpr FixedString(const char (&str)[N]) { std::copy_n(str, N, data); }
+};
+
+template<FixedString S>
+struct Named {
+    static constexpr const char* value() { return S.data; }
+};
+
+constexpr auto n = Named<"hello">::value();   // "hello" parameterizes the template
+\end{lstlisting}
+
+The foundation for compile-time string processing: type-safe format strings, named units, reflection-style tags.
+
+\section{Signed Integers Are Two's Complement}
+\label{sec:c20-twos-complement}
+
+\begin{lstlisting}[language=C++,caption={Two's complement is now guaranteed}]
+#include <climits>
+#include <cstdint>
+
+static_assert(INT_MIN == -INT_MAX - 1);   // guaranteed asymmetric range
+
+std::int32_t mix(std::uint32_t u) {
+    return static_cast<std::int32_t>(u);   // well-defined two's-complement reinterpret
+}
+\end{lstlisting}
+
+Representation is fixed and portable; signed-overflow arithmetic remains undefined behavior.
+
+\section{char8\_t and UTF-8}
+\label{sec:c20-char8}
+
+\begin{lstlisting}[language=C++,caption={char8_t and u8 literals}]
+#include <string>
+
+const char8_t* utf8 = u8"hello";        // type is const char8_t[], not const char[]
+std::u8string s = u8"naive";            // basic_string<char8_t>
+
+// const char* p = u8"x";               // ERROR in C++20 (was OK in C++17)
+auto as_bytes = reinterpret_cast<const char*>(utf8);   // explicit boundary cast
+\end{lstlisting}
+
+Distinct UTF-8 type for encoding safety; the most common C++17$\rightarrow$C++20 source break.
+
+\section{Deprecated volatile Uses and Other Cleanups}
+\label{sec:c20-volatile-deprecation}
+
+\begin{lstlisting}[language=C++,caption={Deprecated volatile patterns in C++20}]
+volatile int v = 0;
+// v += 1;  ++v;  v *= 2;   // deprecated: ambiguous read-modify-write semantics
+int x = v;        // OK: volatile read
+v = 5;            // OK: volatile write
+// volatile-qualified parameters/returns and volatile structured bindings: deprecated
+\end{lstlisting}
+
+\texttt{volatile} is for MMIO/signal handlers, never thread synchronization (use \texttt{std::atomic}).
+
+\section{Professional Insights}
+\label{sec:c20-cleanups-insights}
+
+\textbf{Scope \texttt{using enum} tightly} --- inside the \texttt{switch} or a small block, to avoid name collisions.
+
+\textbf{Replace \texttt{, \#\#\_\_VA\_ARGS\_\_} with \texttt{\_\_VA\_OPT\_\_(,)}} for portable variadic macros.
+
+\textbf{Use class-type NTTPs and \texttt{FixedString} to move string-keyed logic to compile time.}
+
+\textbf{Treat \texttt{char8\_t} as a deliberate, breaking encoding-safety upgrade} --- cast explicitly at legacy \texttt{char} boundaries.
+
+\textbf{Rely on two's complement for representation, never for overflow} --- signed overflow is still UB.
