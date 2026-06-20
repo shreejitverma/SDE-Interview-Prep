@@ -1,0 +1,195 @@
+\chapter{Associative Container Advances}
+\label{ch:c17-associative-advances}
+
+\begin{quote}
+\emph{C++17 quietly reworked the associative containers --- \texttt{map}, \texttt{set}, \texttt{unordered\_map}, \texttt{unordered\_set}, and their \texttt{multi} variants --- to fix two long-standing inefficiencies: moving an element between containers used to require a copy-out/erase/insert-in cycle that reallocated the node, and inserting ``if not already present'' forced you to construct the value even when it would be thrown away. Node handles, \texttt{try\_emplace}, and \texttt{insert\_or\_assign} close both gaps, and the \texttt{emplace}/\texttt{emplace\_back} family now returns a reference to the element it created.}
+\end{quote}
+
+This chapter is authored to complete the C++17 coverage; it has no predecessor source material. \textbf{Node handles} let you splice a node out of one container and into another --- or change a key --- \emph{without touching the heap}. \textbf{\texttt{try\_emplace}} solves ``insert-or-do-nothing'' without constructing a doomed temporary or moving from your arguments when the key already exists. \textbf{\texttt{insert\_or\_assign}} is the honest ``upsert'' that tells you whether it inserted or overwrote. And the \textbf{reference-returning \texttt{emplace}/\texttt{emplace\_back}} removes a redundant \texttt{back()} call after every emplacement.
+
+\section{Node Handles: Moving Nodes Without Reallocation}
+\label{sec:c17-node-handles}
+
+Before C++17, moving an element between associative containers meant \textbf{copy or move the value out, erase the source node, and insert a fresh node} --- two node allocations and a deallocation for what is conceptually a pointer re-link.
+
+C++17 introduces the \textbf{node handle} (\texttt{container::node\_type}): a movable, owning handle to a single detached node --- the actual allocated node, removed from its container but not destroyed. A node handle moves a node \emph{out} of one container and \emph{into} another \textbf{without any allocation}.
+
+\begin{center}
+\begin{tabular}{ll}
+\hline
+\textbf{Operation} & \textbf{Effect} \\
+\hline
+\texttt{c.extract(key)} / \texttt{c.extract(iter)} & detach a node, returning its \texttt{node\_type} \\
+\texttt{c.insert(std::move(handle))} & splice a node handle into \texttt{c} \\
+\texttt{c.merge(other)} & move all transferable nodes from \texttt{other} into \texttt{c} \\
+\hline
+\end{tabular}
+\end{center}
+
+A node handle is move-only and owns its node: if it goes out of scope still holding a node, that node is destroyed and freed. An empty handle is contextually convertible to \texttt{false}.
+
+\section{\texttt{extract}: Removing a Node Without Destroying It}
+\label{sec:c17-extract}
+
+\texttt{extract} removes an element and hands you ownership of its node via a \texttt{node\_type}. The element is \textbf{not} destroyed --- it lives on inside the handle.
+
+\begin{lstlisting}[language=C++,caption={extract detaches a node without destroying its element}]
+#include <map>
+#include <string>
+
+std::map<int, std::string> m{{1, "one"}, {2, "two"}, {3, "three"}};
+
+// Detach the node for key 2. No deallocation occurs; the node now lives in 'nh'.
+auto nh = m.extract(2);          // m is now {1:"one", 3:"three"}
+
+if (nh) {                         // the handle owns a node
+    // For a map, the handle exposes mutable key() and mapped():
+    std::string& v = nh.mapped(); // "two" -- can be modified in place
+}
+// If 'nh' is destroyed here still holding the node, the element is destroyed then.
+\end{lstlisting}
+
+For a \texttt{map} the handle exposes \texttt{key()} (a \textbf{mutable} reference --- see Section~\ref{sec:c17-rekey}) and \texttt{mapped()}; for a \texttt{set} it exposes \texttt{value()}.
+
+\section{\texttt{insert(node\_handle)}: Splicing a Node In}
+\label{sec:c17-insert-node}
+
+Passing a node handle to \texttt{insert} \textbf{splices} the node into the container --- no allocation, no element copy or move.
+
+\begin{lstlisting}[language=C++,caption={Transferring a node between maps with zero reallocation}]
+#include <map>
+#include <string>
+
+std::map<int, std::string> src{{1, "one"}, {2, "two"}};
+std::map<int, std::string> dst{{3, "three"}};
+
+// Move the node holding {2, "two"} from src into dst -- the std::string "two"
+// is never copied or moved; only the node's links change.
+auto result = dst.insert(src.extract(2));
+
+// dst is now {2:"two", 3:"three"}; src is {1:"one"}.
+// result is an insert_return_type:
+//   result.inserted  -> bool: did the splice succeed?
+//   result.position  -> iterator to the (existing or new) element
+//   result.node      -> the handle, NON-empty if insertion FAILED (key clash)
+\end{lstlisting}
+
+For unique-key containers, \texttt{insert(node)} returns an \texttt{insert\_return\_type} with \texttt{inserted}, \texttt{position}, and \texttt{node} (returned \textbf{non-empty if the key already existed}). For \texttt{multi} containers the splice always succeeds and \texttt{insert} returns a plain iterator. The element inside the node is never reconstructed.
+
+\section{\texttt{merge}: Bulk Node Transfer Between Containers}
+\label{sec:c17-merge}
+
+\texttt{merge} moves \textbf{every transferable node} from a source into the destination, splicing rather than copying. Conflicting-key nodes are left behind in the source (for unique-key containers).
+
+\begin{lstlisting}[language=C++,caption={merge splices all non-conflicting nodes at once}]
+#include <map>
+#include <string>
+
+std::map<int, std::string> a{{1, "a1"}, {2, "a2"}};
+std::map<int, std::string> b{{2, "b2"}, {3, "b3"}};
+
+a.merge(b);
+// Key 2 already exists in 'a', so b's node for 2 stays in b.
+// a -> {1:"a1", 2:"a2", 3:"b3"};  b -> {2:"b2"}  (the conflicting node remains)
+\end{lstlisting}
+
+No element is copied or moved and no node is allocated. Source and destination must use compatible node types but may differ in comparator/hash, making \texttt{merge} useful for consolidating differently-ordered maps.
+
+\section{Changing a Key Through a Node Handle}
+\label{sec:c17-rekey}
+
+A \texttt{map}'s key is \texttt{const} while the element is \emph{in} the container. Once \textbf{extracted}, the node is in no container, so the handle exposes the key as a \textbf{mutable} reference --- making ``rename a key, keeping its value'' allocation-free.
+
+\begin{lstlisting}[language=C++,caption={Re-keying an element without reallocation}]
+#include <map>
+#include <string>
+
+std::map<int, std::string> m{{1, "one"}, {2, "two"}};
+
+auto nh = m.extract(1);   // detach node for key 1
+nh.key() = 10;            // mutate the key -- legal only while extracted
+m.insert(std::move(nh));  // re-insert under the new key
+
+// m is now {2:"two", 10:"one"} -- the std::string "one" was never copied or moved.
+\end{lstlisting}
+
+Before C++17 this required erasing the old entry and inserting a new one, destroying and reconstructing the value. The node-handle route mutates one key field and re-links one node.
+
+\section{\texttt{try\_emplace}: Insert Without Constructing on Failure}
+\label{sec:c17-try-emplace}
+
+\texttt{emplace}/\texttt{insert} may \textbf{construct the value (and move from your arguments)} \emph{before} discovering the key already exists. \texttt{try\_emplace} fixes both: \textbf{if the key already exists, it does nothing and does not touch your arguments.}
+
+\begin{lstlisting}[language=C++,caption={try\_emplace does not construct or move-from on a key clash}]
+#include <map>
+#include <string>
+#include <memory>
+
+std::map<std::string, std::unique_ptr<Widget>> cache;
+
+auto ptr = std::make_unique<Widget>();
+
+// If "key" is absent: constructs the value from std::move(ptr) and inserts.
+// If "key" is PRESENT: does nothing, and ptr is NOT moved-from -- still valid!
+auto [it, inserted] = cache.try_emplace("key", std::move(ptr));
+
+if (!inserted) {
+    // ptr is still usable here because try_emplace left it alone:
+    use(std::move(ptr));
+}
+\end{lstlisting}
+
+\texttt{try\_emplace} takes the \textbf{key and value-constructor-arguments separately} (\texttt{try\_emplace(key, args...)}), constructing the mapped value only on an actual insertion, and \textbf{leaves the arguments untouched} on a clash --- so move-only types passed as arguments survive a failed insert.
+
+\section{\texttt{insert\_or\_assign}: The Honest Upsert}
+\label{sec:c17-insert-or-assign}
+
+\texttt{m[key] = value} requires the mapped type to be \textbf{default-constructible} and \textbf{silently hides} whether it created or overwrote. \texttt{insert\_or\_assign} inserts when absent, assigns when present, works with non-default-constructible types, and \textbf{reports which happened}.
+
+\begin{lstlisting}[language=C++,caption={insert\_or\_assign reports insert vs overwrite}]
+#include <map>
+#include <string>
+
+std::map<std::string, int> scores;
+
+auto [it1, inserted1] = scores.insert_or_assign("alice", 10);
+// inserted1 == true  -- "alice" was newly added
+
+auto [it2, inserted2] = scores.insert_or_assign("alice", 20);
+// inserted2 == false -- "alice" existed; its value was reassigned to 20
+\end{lstlisting}
+
+Unlike \texttt{try\_emplace}, \texttt{insert\_or\_assign} updates the value when present (assigning directly to the existing object); unlike \texttt{operator[]}, it never default-constructs and its \texttt{bool} return distinguishes a create from an update.
+
+\section{Reference-Returning \texttt{emplace} and \texttt{emplace\_back}}
+\label{sec:c17-emplace-return}
+
+Before C++17, \texttt{emplace\_back}/\texttt{emplace\_front} returned \texttt{void}, forcing a follow-up \texttt{back()}. \textbf{C++17 changes them to return a reference to the element they construct.}
+
+\begin{lstlisting}[language=C++,caption={emplace\_back returns the new element directly}]
+#include <vector>
+#include <string>
+
+std::vector<std::string> v;
+
+// Pre-C++17: emplace_back returned void, forcing a follow-up back():
+//   v.emplace_back("hello");
+//   std::string& s = v.back();
+
+// C++17: the reference comes straight back:
+std::string& s = v.emplace_back("hello");
+s += " world";                 // operate on the new element immediately
+\end{lstlisting}
+
+The returned reference is to the newly constructed element, so you can configure it in place without the extra \texttt{back()}/\texttt{front()} lookup and without the risk of indexing the wrong end.
+
+\section{Professional Insights}
+\label{sec:c17-associative-insights}
+
+\textbf{Transfer elements between associative containers with \texttt{extract}/\texttt{insert(node)}/\texttt{merge}, never copy-erase-insert.} The node-handle path relinks one node with zero allocations and never reconstructs the element --- so even move-only or expensive-to-move mapped types transfer for the cost of a few pointer writes. For bulk moves, \texttt{merge} is the one-call form.
+
+\textbf{Use a node handle to re-key an element in place.} \texttt{extract}, mutate \texttt{key()}, \texttt{insert(std::move(handle))} changes a key without touching the value or the heap. Reach for it whenever a key must change but its (possibly expensive) value should be preserved untouched.
+
+\textbf{Default to \texttt{try\_emplace} for ``insert if absent'' and \texttt{insert\_or\_assign} for ``upsert.''} \texttt{try\_emplace} is the only insertion that guarantees it will not construct the value or move from your arguments on a key clash --- the safe choice for move-only arguments you still need on failure. \texttt{insert\_or\_assign} avoids \texttt{operator[]}'s default-construction requirement and reports insert-vs-overwrite.
+
+\textbf{Capture the reference that \texttt{emplace\_back} now returns.} \texttt{auto\& x = v.emplace\_back(...)} is clearer and cheaper than \texttt{emplace\_back(...)} plus \texttt{v.back()}, and removes any chance of touching the wrong element.

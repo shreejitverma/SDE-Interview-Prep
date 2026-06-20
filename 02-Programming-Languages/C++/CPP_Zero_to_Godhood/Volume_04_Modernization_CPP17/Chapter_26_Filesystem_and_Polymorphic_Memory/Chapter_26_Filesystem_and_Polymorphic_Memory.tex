@@ -1,0 +1,224 @@
+\chapter{Filesystem and Polymorphic Memory}
+\label{ch:c17-filesystem-pmr}
+
+\begin{quote}
+\emph{C++17 brought two long-missing capabilities into the standard library: a portable filesystem API --- paths, directory traversal, and file operations, distilled from \texttt{boost::filesystem} --- and a polymorphic memory model (\texttt{std::pmr}) that decouples a container's type from where it allocates. The first lets you write file-manipulating code once and run it on any platform; the second lets you redirect a \texttt{std::pmr::vector}'s allocations to a stack buffer, an arena, or a pool without changing its type.}
+\end{quote}
+
+These two features answer questions every systems programmer had been solving by hand. ``How do I list a directory, copy a file, or read a path's extension portably?'' previously meant \texttt{\#ifdef}-laden POSIX/Win32 code or a third-party dependency; \texttt{<filesystem>} makes it standard. ``How do I make this container allocate from \emph{my} memory, not the global heap?'' previously meant writing a custom \texttt{Allocator} and threading it through every template instantiation; \texttt{<memory\_resource>} makes the allocation strategy a \emph{runtime} parameter behind a single type. For low-latency code the second is the headline: a \texttt{std::pmr::vector<int>} backed by a \texttt{monotonic\_buffer\_resource} over a stack array performs zero heap allocations until that buffer is exhausted.
+
+\section{\texttt{std::filesystem}: Overview}
+\label{sec:c17-fs-overview}
+
+\texttt{std::filesystem} (header \texttt{<filesystem>}, namespace conventionally aliased \texttt{fs}) standardizes file-system operations --- path manipulation, directory traversal, and file operations such as copy, rename, and remove. It is based directly on \texttt{boost::filesystem}.
+
+\begin{lstlisting}[language=C++,caption={The conventional namespace alias}]
+#include <filesystem>
+namespace fs = std::filesystem;
+\end{lstlisting}
+
+The library divides into three layers: the \textbf{\texttt{path}} value type, \textbf{directory iterators}, and \textbf{free-function operations}. Every operation comes in two forms --- one that throws \texttt{fs::filesystem\_error} and one that reports through a \texttt{std::error\_code} (Section~\ref{sec:c17-fs-errors}).
+
+\section{Paths and Their Decomposition}
+\label{sec:c17-fs-paths}
+
+\texttt{fs::path} is a value type wrapping a filesystem path in the platform's native format. It offers decomposition accessors that return the path's components without any string parsing on your part.
+
+\begin{lstlisting}[language=C++,caption={Constructing and decomposing a path}]
+#include <filesystem>
+#include <iostream>
+
+namespace fs = std::filesystem;
+
+fs::path p = "/home/user/data.txt";
+
+std::cout << p.filename()    << "\n";   // "data.txt"
+std::cout << p.extension()   << "\n";   // ".txt"
+std::cout << p.parent_path() << "\n";   // "/home/user"
+std::cout << p.stem()        << "\n";   // "data"  (filename without extension)
+\end{lstlisting}
+
+Paths compose with \texttt{operator/}, which appends a component using the platform's preferred separator:
+
+\begin{lstlisting}[language=C++,caption={Building paths portably with operator/}]
+fs::path dir  = "/home/user";
+fs::path full = dir / "logs" / "today.txt";   // "/home/user/logs/today.txt"
+\end{lstlisting}
+
+Because \texttt{path} is a first-class value type, it converts cleanly to and from \texttt{std::string}/\texttt{std::wstring}, compares, and is hashable.
+
+\section{Iterating Directories}
+\label{sec:c17-fs-iteration}
+
+\texttt{fs::directory\_iterator} yields the entries of a single directory; \texttt{fs::recursive\_directory\_iterator} descends into subdirectories. Both model an input range:
+
+\begin{lstlisting}[language=C++,caption={Shallow and recursive directory traversal}]
+#include <filesystem>
+#include <iostream>
+
+namespace fs = std::filesystem;
+
+// One directory level:
+for (const auto& entry : fs::directory_iterator("/home/user")) {
+    std::cout << entry.path() << "\n";
+}
+
+// Every level beneath the root:
+for (const auto& entry : fs::recursive_directory_iterator("/home/user")) {
+    if (entry.is_regular_file())
+        std::cout << entry.path() << "  " << entry.file_size() << " bytes\n";
+}
+\end{lstlisting}
+
+\texttt{directory\_entry} exposes status queries (\texttt{is\_regular\_file()}, \texttt{is\_directory()}, \texttt{file\_size()}, \texttt{last\_write\_time()}) cached from the directory read where the OS supports it --- avoiding a second \texttt{stat} call per entry when walking large trees.
+
+\section{Filesystem Operations and Queries}
+\label{sec:c17-fs-operations}
+
+The free-function operations are the verbs of the library:
+
+\begin{lstlisting}[language=C++,caption={Core filesystem operations}]
+#include <filesystem>
+
+namespace fs = std::filesystem;
+
+fs::create_directory("sandbox");       // mkdir
+fs::copy("a.txt", "b.txt");            // cp
+fs::rename("b.txt", "c.txt");          // mv
+bool removed = fs::remove("c.txt");    // rm -- returns true if a file was removed
+
+bool exists       = fs::exists("sandbox");      // does the path exist?
+std::uintmax_t sz = fs::file_size("a.txt");     // size in bytes
+\end{lstlisting}
+
+\begin{center}
+\begin{tabular}{ll}
+\hline
+\textbf{Function} & \textbf{Purpose} \\
+\hline
+\texttt{create\_directory} / \texttt{create\_directories} & make one directory / a full chain \\
+\texttt{copy} / \texttt{copy\_file} & copy a tree / a single file \\
+\texttt{rename} & move or rename \\
+\texttt{remove} / \texttt{remove\_all} & delete a file / a tree (returns count) \\
+\texttt{exists} / \texttt{is\_directory} / \texttt{is\_regular\_file} & existence and type queries \\
+\texttt{file\_size} & size of a regular file in bytes \\
+\texttt{current\_path} & get or set the working directory \\
+\texttt{space} & free/available/total capacity \\
+\hline
+\end{tabular}
+\end{center}
+
+\texttt{remove} returns a \texttt{bool}; \texttt{remove\_all} returns the \textbf{count} of entries removed, doubling as a recursive delete.
+
+\section{Error Handling: Exceptions vs \texttt{error\_code}}
+\label{sec:c17-fs-errors}
+
+Each operation is overloaded two ways:
+
+\begin{itemize}
+    \item \textbf{Throwing form} --- on failure throws \texttt{fs::filesystem\_error}, carrying the failing paths and an \texttt{error\_code}.
+    \item \textbf{\texttt{error\_code} form} --- takes a trailing \texttt{std::error\_code\&} out-parameter, sets it on failure, and does \textbf{not} throw.
+\end{itemize}
+
+\begin{lstlisting}[language=C++,caption={The non-throwing overload for expected failures}]
+#include <filesystem>
+#include <system_error>
+
+namespace fs = std::filesystem;
+
+std::error_code ec;
+std::uintmax_t sz = fs::file_size("maybe_missing.txt", ec);
+if (ec) {
+    // handle the error without an exception -- ec.message() describes it
+} else {
+    // use sz
+}
+\end{lstlisting}
+
+Choosing the \texttt{error\_code} form is the disciplined default for systems and low-latency code: it makes the failure path explicit and avoids exception-unwinding cost where file absence is a normal condition.
+
+\section{Polymorphic Memory Resources (\texttt{std::pmr})}
+\label{sec:c17-pmr-overview}
+
+The C++11 allocator model bakes the allocator into the container's \emph{type}. C++17's \texttt{<memory\_resource>} breaks this coupling. A \textbf{memory resource} is a runtime object --- derived from the abstract base \texttt{std::pmr::memory\_resource} --- that knows how to \texttt{allocate} and \texttt{deallocate} bytes. Containers hold a \emph{pointer} to one, so the allocation \textbf{strategy is a runtime parameter, not a type parameter}.
+
+\begin{lstlisting}[language=C++,caption={A container that allocates from a stack buffer}]
+#include <memory_resource>
+#include <vector>
+
+char buffer[1024];                                     // storage on the stack
+std::pmr::monotonic_buffer_resource pool(buffer, sizeof(buffer));
+std::pmr::vector<int> v(&pool);                        // allocates from 'pool'
+
+v.push_back(1);
+v.push_back(2);
+// No heap allocation occurs until the 1024-byte buffer is exhausted;
+// only then does the resource fall back to its upstream (the heap).
+\end{lstlisting}
+
+Every \texttt{std::pmr} container is the \textbf{same type} regardless of which resource backs it, so a function taking \texttt{std::pmr::vector<int>\&} accepts a stack-backed, pool-backed, or heap-backed vector interchangeably; and the resource is chosen at construction, at runtime, with no template plumbing.
+
+\section{The \texttt{pmr} Container Aliases and \texttt{polymorphic\_allocator}}
+\label{sec:c17-pmr-aliases}
+
+For every standard container, the \texttt{std::pmr} namespace provides an alias that fixes the allocator to \textbf{\texttt{std::pmr::polymorphic\_allocator<T>}} --- an allocator that forwards to whatever \texttt{memory\_resource} it was given.
+
+\begin{lstlisting}[language=C++,caption={The pmr container aliases all share one allocator type}]
+namespace pmr = std::pmr;
+
+pmr::vector<int>                      v;     // == std::vector<int, polymorphic_allocator<int>>
+pmr::string                           s;
+pmr::map<int, pmr::string>            m;
+pmr::unordered_map<int, int>          um;
+\end{lstlisting}
+
+A \texttt{polymorphic\_allocator} constructed from a \texttt{memory\_resource*} routes all allocations through that resource:
+
+\begin{lstlisting}[language=C++,caption={Passing a resource explicitly via polymorphic\_allocator}]
+#include <memory_resource>
+
+std::pmr::monotonic_buffer_resource arena(64 * 1024);
+std::pmr::polymorphic_allocator<int> alloc(&arena);
+
+std::pmr::vector<int> v(alloc);   // every (re)allocation comes from 'arena'
+\end{lstlisting}
+
+If no resource is supplied, a \texttt{pmr} container uses the process-wide \textbf{default resource} (\texttt{std::pmr::get\_default\_resource()}, initially the heap), which \texttt{std::pmr::set\_default\_resource()} can override globally.
+
+\section{The Standard Memory Resources}
+\label{sec:c17-pmr-resources}
+
+\texttt{<memory\_resource>} ships several ready-made resources, each taking an optional \textbf{upstream} resource to fall back on when its own storage is exhausted.
+
+\begin{itemize}
+    \item \textbf{\texttt{std::pmr::monotonic\_buffer\_resource}} --- allocates by bumping a pointer; \textbf{never frees individual allocations}, releasing everything at once on destruction. Fastest possible allocation; ideal for allocate-much-then-discard-all phases.
+    \item \textbf{\texttt{std::pmr::unsynchronized\_pool\_resource}} / \textbf{\texttt{synchronized\_pool\_resource}} --- pool allocators grouping allocations into size classes; the \texttt{synchronized} variant is thread-safe. For many small, individually-freed objects.
+    \item \textbf{\texttt{std::pmr::new\_delete\_resource()}} --- forwards to \texttt{::operator new}/\texttt{delete}; the default upstream and default resource.
+    \item \textbf{\texttt{std::pmr::null\_memory\_resource()}} --- always throws \texttt{std::bad\_alloc}. Used as an \emph{upstream} to guarantee a buffer-backed resource never silently falls back to the heap.
+\end{itemize}
+
+\begin{lstlisting}[language=C++,caption={A strictly heap-free arena via null\_memory\_resource upstream}]
+#include <memory_resource>
+#include <vector>
+
+char buf[4096];
+// If 'buf' is exhausted, the null upstream throws bad_alloc instead of heap-allocating:
+std::pmr::monotonic_buffer_resource arena(buf, sizeof(buf),
+                                          std::pmr::null_memory_resource());
+std::pmr::vector<int> v(&arena);   // provably allocates ONLY from buf
+\end{lstlisting}
+
+This composition --- a monotonic arena bounded by a null upstream --- is the canonical low-latency idiom: fast, contiguous, allocation-free storage that \emph{proves} at runtime it never touches the global heap.
+
+\section{Professional Insights}
+\label{sec:c17-fs-pmr-insights}
+
+\textbf{Prefer the \texttt{error\_code} overloads of filesystem operations in systems code.} File operations fail for environmental reasons that are not program bugs. The non-throwing overload makes that failure path explicit and avoids exception-unwinding cost on a path that is often expected. Reserve the throwing form for unrecoverable I/O failures.
+
+\textbf{Use \texttt{directory\_entry}'s cached status when walking large trees.} Querying \texttt{is\_regular\_file()} / \texttt{file\_size()} through the \texttt{directory\_entry} reuses information gathered during the directory read, avoiding a second \texttt{stat} per entry.
+
+\textbf{Reach for \texttt{std::pmr} whenever allocation pattern, not element type, is the performance lever.} A \texttt{std::pmr::vector<int>} over a \texttt{monotonic\_buffer\_resource} is the same type as any other \texttt{pmr::vector<int>}, so you can localize an arena to a request, frame, or scope without rewriting interfaces.
+
+\textbf{Bound a \texttt{monotonic\_buffer\_resource} with \texttt{null\_memory\_resource()} when ``no heap'' is a hard requirement.} Giving the arena a null upstream converts exhaustion into a thrown \texttt{bad\_alloc} you can detect in testing, guaranteeing the allocation-free property rather than hoping for it.
+
+\textbf{Match the resource to the lifetime pattern.} Monotonic for allocate-much-then-discard-all phases; a pool resource for many small objects freed individually; \texttt{new\_delete\_resource} as the general fallback. The wrong resource turns into a leak; the right one makes the allocator a tuned, measurable component of the design.

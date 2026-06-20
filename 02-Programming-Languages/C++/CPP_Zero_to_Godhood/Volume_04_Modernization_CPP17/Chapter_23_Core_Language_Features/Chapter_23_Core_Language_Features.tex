@@ -1,0 +1,412 @@
+\chapter{Core Language Features}
+\label{ch:c17-core-language}
+
+\begin{quote}
+\emph{C++17 is the ``Modernization'' release. Its core-language changes are not a new paradigm but a systematic removal of ceremony: decompose aggregates in one line, branch at compile time without SFINAE, scope variables to the condition that uses them, and stop paying for copies the standard now forbids. This chapter covers every core-language change C++17 made --- from the headline ergonomic features down to the literal syntax, evaluation-order guarantees, and the dead syntax the committee finally deleted.}
+\end{quote}
+
+The through-line of C++17's core language is \textbf{make the common case correct and cheap by default}. Structured bindings and init-statements cut boilerplate at every call site; \texttt{if constexpr} replaces tag dispatch and \texttt{enable\_if} for the majority of compile-time branching; guaranteed copy elision turns a long-standing optimization into a language rule you can rely on for non-movable types; and a stricter evaluation order closes a category of subtle bugs. The chapter ends with the cleanups --- new literal forms, attribute refinements, and the removal of \texttt{auto\_ptr}, \texttt{register}, trigraphs, and dynamic exception specifications.
+
+\section{Structured Bindings}
+\label{sec:c17-structured-bindings}
+
+\textbf{Structured bindings} decompose a tuple, pair, struct, or array into named variables in a single declaration. They replace the C++11 \texttt{std::tie} dance --- which required pre-declaring every target variable and could not bind references cleanly --- with \texttt{auto [a, b, c] = expr;}.
+
+\subsection{Unpacking Tuples and Pairs}
+
+\begin{lstlisting}[language=C++,caption={Structured bindings vs the C++11 std::tie idiom}]
+#include <tuple>
+#include <iostream>
+
+std::tuple<int, double, std::string> get_data() {
+    return {1, 3.14, "hello"};
+}
+
+int main() {
+    // Old way (C++11/14): pre-declare, then assign
+    // int i; double d; std::string s;
+    // std::tie(i, d, s) = get_data();
+
+    // C++17 structured binding: declare and decompose in one statement
+    auto [id, val, name] = get_data();
+    std::cout << id << ", " << val << ", " << name << "\n";
+}
+\end{lstlisting}
+
+\subsection{Unpacking Structs and Arrays}
+
+Any class type whose non-static data members are all public can be decomposed positionally, as can a built-in array:
+
+\begin{lstlisting}[language=C++,caption={Decomposing a struct and an array}]
+struct Point { int x, y; };
+
+Point p = {10, 20};
+auto [px, py] = p;          // px = 10, py = 20
+
+int arr[3] = {1, 2, 3};
+auto [a, b, c] = arr;       // a=1, b=2, c=3
+\end{lstlisting}
+
+\subsection{Reference and \texttt{const} Qualifiers}
+
+The \texttt{auto} in a structured binding carries the same qualifier rules as ordinary \texttt{auto}. Binding by reference lets you mutate the source; \texttt{const auto\&} gives cheap read-only views:
+
+\begin{lstlisting}[language=C++,caption={Reference and const-reference bindings}]
+std::pair<int, int> p = {1, 2};
+
+auto& [refX, refY] = p;       // references into p.first / p.second
+refX = 10;                    // modifies p.first
+
+const auto& [cRefX, cRefY] = p;   // const references -- no copy, no mutation
+\end{lstlisting}
+
+The canonical use is iterating an associative container without naming \texttt{std::pair}:
+
+\begin{lstlisting}[language=C++,caption={Structured bindings in a range-for over a map}]
+for (const auto& [key, value] : my_map) {
+    std::cout << key << " => " << value << "\n";
+}
+\end{lstlisting}
+
+\begin{quote}
+\textbf{Note:} a structured binding introduces \emph{names for the members}, not independent objects --- the underlying object is a hidden compiler-generated entity. Binding by value copies that entity once; binding by reference copies nothing.
+\end{quote}
+
+\section{Compile-Time Branching: \texttt{if constexpr}}
+\label{sec:c17-if-constexpr}
+
+\textbf{\texttt{if constexpr}} evaluates its condition at compile time and \textbf{discards the not-taken branch} before instantiation. The discarded branch is not type-checked against the current template arguments, so each branch may contain code that would be ill-formed for the other case. This single feature replaces the bulk of C++11/14 tag dispatch and \texttt{std::enable\_if} overload sets.
+
+\begin{lstlisting}[language=C++,caption={One function body, two compile-time-selected behaviors}]
+#include <type_traits>
+
+template <typename T>
+auto get_value(T t) {
+    if constexpr (std::is_pointer_v<T>) {
+        return *t;   // instantiated ONLY when T is a pointer
+    } else {
+        return t;    // instantiated ONLY when T is not a pointer
+    }
+}
+
+int main() {
+    int  x   = 5;
+    int* ptr = &x;
+    get_value(x);     // returns int  (5)
+    get_value(ptr);   // returns int  (dereferenced)
+}
+\end{lstlisting}
+
+The key contrast with a runtime \texttt{if}: with a plain \texttt{if}, \emph{both} branches must compile for every instantiation, so \texttt{*t} would be ill-formed when \texttt{T = int}. With \texttt{if constexpr}, the false branch is discarded and never type-checked. This makes it the primary tool for writing one generic function that adapts its body to trait queries.
+
+\section{Init-Statements in \texttt{if} and \texttt{switch}}
+\label{sec:c17-init-statements}
+
+C++17 allows an \textbf{initializer statement} before the condition in \texttt{if} and \texttt{switch}: \texttt{if (init; condition)}. The declared variable is scoped to the entire \texttt{if}/\texttt{else} (or \texttt{switch}) construct and destroyed at its end.
+
+\begin{lstlisting}[language=C++,caption={Init-statement scopes the variable to the branch}]
+// Old way -- an extra block to bound the lifetime of 'it':
+{
+    auto it = map.find(key);
+    if (it != map.end()) { /* use it */ }
+}   // 'it' leaks into this artificial scope
+
+// C++17 -- 'it' lives exactly as long as the if/else:
+if (auto it = map.find(key); it != map.end()) {
+    std::cout << it->second;
+}   // 'it' destroyed here
+
+// switch with an init-statement:
+switch (auto status = get_status(); status) {
+    case OK:    break;
+    case ERROR: break;
+}
+\end{lstlisting}
+
+Beyond brevity, this is a locking idiom: a lock guard declared in the init-statement is held for exactly the guarded region. It pairs naturally with structured bindings --- \texttt{if (auto [it, ok] = m.try\_emplace(k, v); ok) \{ ... \}}.
+
+\section{Inline Variables}
+\label{sec:c17-inline-variables}
+
+Before C++17, a variable defined in a header and included in multiple translation units violated the One Definition Rule. \textbf{\texttt{inline} variables} let the linker merge identical definitions, so a single definition can live in a header.
+
+\begin{lstlisting}[language=C++,caption={Header-only global and in-class static initialization}]
+#pragma once
+
+// C++14: a linker error if this header is included in 2+ .cpp files
+// int global_config = 5;
+
+// C++17: safe -- the linker merges all definitions into one
+inline int global_config = 5;
+
+struct MyClass {
+    // A static data member initialized in-class, no .cpp definition needed:
+    static inline double tolerance = 0.001;
+};
+\end{lstlisting}
+
+This makes header-only libraries practical for stateful globals, and for systems code it removes a class of fragile out-of-line definitions.
+
+\section{Nested Namespace Definitions}
+\label{sec:c17-nested-namespaces}
+
+C++17 permits the compact \texttt{namespace A::B::C \{ \}} form for opening a deeply nested namespace.
+
+\begin{lstlisting}[language=C++,caption={Compact nested namespace definition}]
+// Old:
+namespace A { namespace B { namespace C {
+    // ...
+} } }
+
+// C++17:
+namespace A::B::C {
+    // ...
+}
+\end{lstlisting}
+
+Purely syntactic, but it removes indentation noise from library code that lives several namespaces deep.
+
+\section{Guaranteed Copy Elision}
+\label{sec:c17-copy-elision}
+
+In C++14, eliding the copy/move when returning or initializing from a \textbf{prvalue} was a permitted \emph{optimization} --- the copy/move constructor still had to exist. \textbf{C++17 makes this elision mandatory} by redefining a prvalue as an initializer for an object rather than a temporary that must be materialized: the object is constructed directly in its final location.
+
+\begin{lstlisting}[language=C++,caption={Guaranteed elision lets you return a non-movable type by value}]
+struct NonMovable {
+    NonMovable() = default;
+    NonMovable(const NonMovable&) = delete;   // no copy
+    NonMovable(NonMovable&&)      = delete;    // no move
+};
+
+NonMovable make() {
+    return NonMovable{};   // C++17: constructed directly in the caller's storage --
+                           // NO copy or move is even considered. Ill-formed in C++14.
+}
+
+int main() {
+    NonMovable nm = make();   // also direct-constructed; no copy/move required
+}
+\end{lstlisting}
+
+Two consequences matter. First, factory functions can return deliberately non-copyable, non-movable types (locks, scope guards) \textbf{by value}. Second, the optimization is now a guarantee you can reason about: prvalue return and prvalue initialization never construct an intermediate object. (Elision of a \emph{named} local return value --- NRVO --- remains non-guaranteed, because a named object is an lvalue, not a prvalue.)
+
+\section{constexpr Lambdas and Capturing \texttt{*this} by Value}
+\label{sec:c17-constexpr-lambdas}
+
+C++17 sharpens lambdas in two independent ways.
+
+\textbf{constexpr lambdas:} a lambda whose body satisfies the \texttt{constexpr} requirements is implicitly \texttt{constexpr}, so its \texttt{operator()} can be evaluated at compile time.
+
+\begin{lstlisting}[language=C++,caption={A lambda usable in a constant expression}]
+constexpr auto square = [](int n) { return n * n; };
+static_assert(square(5) == 25, "evaluated at compile time");
+
+constexpr int table_size = square(4);   // 16, computed at compile time
+int buffer[table_size];
+\end{lstlisting}
+
+\textbf{Capturing \texttt{*this} by value:} C++11/14 let a lambda capture \texttt{this} (a pointer), which dangles if the closure outlives the object. C++17 adds \texttt{[*this]}, copying the entire object into the closure.
+
+\begin{lstlisting}[language=C++,caption={[*this] copies the object into the closure}]
+struct Worker {
+    int id = 7;
+    auto make_task() {
+        // [*this] -- the closure owns a COPY of *this; safe even if Worker dies.
+        return [*this] { return id * 2; };
+    }
+};
+\end{lstlisting}
+
+\texttt{[this]} (pointer capture) remains correct and cheaper when the object outlives the closure; \texttt{[*this]} is the safe choice for deferred or asynchronous execution.
+
+\section{Aggregate Initialization with Base Classes}
+\label{sec:c17-aggregate-bases}
+
+C++17 extends the definition of an \textbf{aggregate} to include classes with public, non-virtual base classes (when the derived class adds no user-declared constructors). Such a type can be brace-initialized, with the base subobjects initialized first, in declaration order.
+
+\begin{lstlisting}[language=C++,caption={Brace-initializing an aggregate with a base class}]
+struct Base { int a; int b; };
+
+struct Derived : Base {     // C++17: still an aggregate
+    int c;
+};
+
+// Initialize the Base subobject, then the Derived member:
+Derived d{{1, 2}, 3};       // Base{a=1, b=2}, c=3
+// Braces may also be elided:
+Derived e{1, 2, 3};         // same result
+\end{lstlisting}
+
+This removes the need to hand-write a forwarding constructor purely to initialize an inherited POD base --- common in tag-augmented data structures and CRTP value types.
+
+\section{\texttt{\_\_has\_include} and Conditional Compilation}
+\label{sec:c17-has-include}
+
+\texttt{\_\_has\_include(<header>)} is a preprocessor expression that evaluates to \texttt{1} if the named header can be found and \texttt{0} otherwise. It lets code adapt to header availability without a build-system probe.
+
+\begin{lstlisting}[language=C++,caption={Feature-detecting a header at preprocessing time}]
+#if __has_include(<optional>)
+#  include <optional>
+#  define HAS_OPTIONAL 1
+#elif __has_include(<experimental/optional>)
+#  include <experimental/optional>
+#  define HAS_OPTIONAL 1
+#else
+#  define HAS_OPTIONAL 0
+#endif
+\end{lstlisting}
+
+This is the portable mechanism behind graceful fallback across versions, and it composes with the \texttt{\_\_cpp\_*} feature-test macros standardized alongside it in C++17.
+
+\section{New Literal Forms: Hexadecimal Floats and \texttt{u8} Characters}
+\label{sec:c17-literals}
+
+\textbf{Hexadecimal floating-point literals} (\texttt{0x1.8p3}) specify a floating value by its exact binary representation: a hex mantissa and a binary exponent after \texttt{p}. They express the precise bit pattern with no decimal rounding.
+
+\begin{lstlisting}[language=C++,caption={Hex-float literals express exact binary values}]
+double a = 0x1.8p3;     // (1 + 8/16) * 2^3 = 1.5 * 8 = 12.0
+double b = 0x1p-4;      // 2^-4 = 0.0625, exactly representable
+\end{lstlisting}
+
+\textbf{\texttt{u8} character literals} (\texttt{u8'a'}) denote a single UTF-8 code unit of type \texttt{char}.
+
+\begin{lstlisting}[language=C++,caption={A u8 character literal}]
+char c = u8'A';   // UTF-8 code unit, type char
+\end{lstlisting}
+
+For HFT and systems code, hex-floats reliably pin a floating constant to an exact value across platforms and read straight from a spec given in hex.
+
+\section{\texttt{noexcept} as Part of the Type System}
+\label{sec:c17-noexcept-type}
+
+In C++17, \textbf{\texttt{noexcept} becomes part of a function's type}. A pointer to a \texttt{noexcept} function and a pointer to a potentially-throwing function are now distinct, incompatible types, and overload resolution and template deduction can distinguish them.
+
+\begin{lstlisting}[language=C++,caption={noexcept is now type-significant}]
+void may_throw();
+void never_throws() noexcept;
+
+void (*p1)()          = may_throw;     // ok
+void (*p2)() noexcept = never_throws;  // ok
+// void (*p3)() noexcept = may_throw;  // ERROR in C++17: drops noexcept
+
+template <typename F>
+void run(F) noexcept;                  // can detect/forward noexcept-ness
+\end{lstlisting}
+
+The practical effect is stronger guarantees: an API that requires a non-throwing callback can now enforce it in the type system. A \texttt{noexcept(true)} pointer implicitly converts to a potentially-throwing pointer, but not the reverse.
+
+\section{Stricter Expression Evaluation Order}
+\label{sec:c17-eval-order}
+
+C++17 \textbf{defines the evaluation order} for several expression forms that were previously unsequenced, eliminating a class of portability bugs.
+
+\begin{itemize}
+    \item In \texttt{a << b}, \texttt{a >> b}, and assignment \texttt{a = b}, the \textbf{right-hand operand is sequenced before the left-hand operand}; for \texttt{a.b}, \texttt{a->b}, \texttt{a[b]} the object expression is evaluated first.
+    \item In a function call, each argument is \textbf{indeterminately sequenced} but no longer interleaved --- one argument is fully evaluated before another begins (relative order still unspecified).
+\end{itemize}
+
+\begin{lstlisting}[language=C++,caption={Chained calls and string operations are now well-defined}]
+std::string s = "x";
+// C++14: order of the side effects was unspecified.
+// C++17: left-to-right; the result is well-defined.
+s = s + s[0] + s[1];
+\end{lstlisting}
+
+This makes fluent interfaces, \texttt{map[k] = f()}-style updates, and chained stream insertions behave consistently. It does \textbf{not} fully order all function-argument evaluation --- depending on argument order is still unportable --- but it removes the most common surprises.
+
+\section{Using-Declaration Pack Expansion and Attribute Namespaces}
+\label{sec:c17-using-pack}
+
+\textbf{Using-declaration pack expansion} lets a single \texttt{using} introduce names from a parameter pack of base classes --- the enabling idiom for the ``overloaded lambda'' visitor used with \texttt{std::variant}.
+
+\begin{lstlisting}[language=C++,caption={Pack expansion in a using-declaration (the overload set idiom)}]
+template <typename... Ts>
+struct overloaded : Ts... {
+    using Ts::operator()...;    // C++17: expand each base's operator()
+};
+template <typename... Ts> overloaded(Ts...) -> overloaded<Ts...>;  // deduction guide
+
+// Used to build an inline visitor:
+std::visit(overloaded{
+    [](int i)                { /* handle int */ },
+    [](const std::string& s) { /* handle string */ }
+}, my_variant);
+\end{lstlisting}
+
+C++17 also regularizes \textbf{attribute syntax}: attributes may be grouped under a namespace with \texttt{using}, and unknown attributes are ignored rather than rejected.
+
+\begin{lstlisting}[language=C++,caption={Attribute-namespace using-directive}]
+[[using gnu: const, always_inline]] int fast();   // == [[gnu::const, gnu::always_inline]]
+\end{lstlisting}
+
+\section{Standard Attributes: \texttt{[[nodiscard]]}, \texttt{[[maybe\_unused]]}, \texttt{[[fallthrough]]}}
+\label{sec:c17-attributes}
+
+C++17 standardizes three attributes that turn previously compiler-specific warnings into portable, intent-expressing annotations.
+
+\textbf{\texttt{[[nodiscard]]}} --- warns if the return value is ignored. Apply it to functions whose result must be checked:
+
+\begin{lstlisting}[language=C++,caption={[[nodiscard]] flags ignored results}]
+[[nodiscard]] int calculate_important_value();
+calculate_important_value();   // compiler warning: result discarded
+\end{lstlisting}
+
+\textbf{\texttt{[[maybe\_unused]]}} --- suppresses ``unused entity'' warnings for an entity used only in some configurations:
+
+\begin{lstlisting}[language=C++,caption={[[maybe\_unused]] for conditionally-used entities}]
+[[maybe_unused]] int debug_id = compute_id();   // used only in asserts/logging
+\end{lstlisting}
+
+\textbf{\texttt{[[fallthrough]]}} --- marks an intentional fall-through between \texttt{switch} cases:
+
+\begin{lstlisting}[language=C++,caption={[[fallthrough]] documents intentional case fall-through}]
+switch (device_state) {
+    case State::INIT:
+        initialize_device();
+        [[fallthrough]];        // intentional -- no break here
+    case State::RUNNING:
+        run_process();
+        break;
+}
+\end{lstlisting}
+
+\texttt{[[nodiscard]]} is especially high-value in systems APIs: it converts ``caller forgot to check the error'' from a runtime incident into a compile-time warning.
+
+\section{Language Cleanups: Removed and Deprecated Features}
+\label{sec:c17-cleanups}
+
+C++17 deletes long-deprecated syntax. Code relying on these must be modernized:
+
+\begin{center}
+\begin{tabular}{ll}
+\hline
+\textbf{Removed / changed} & \textbf{Replacement} \\
+\hline
+\texttt{std::auto\_ptr} (removed) & \texttt{std::unique\_ptr} \\
+\texttt{register} keyword (removed) & nothing --- compiler allocates registers \\
+Trigraphs (\texttt{??=}, \texttt{??/}, \dots) removed & the literal characters \\
+\texttt{operator++} on \texttt{bool} (removed) & explicit \texttt{b = true;} \\
+Dynamic exception specs \texttt{throw(...)} (removed) & \texttt{noexcept} / \texttt{noexcept(false)} \\
+\hline
+\end{tabular}
+\end{center}
+
+\begin{lstlisting}[language=C++,caption={The C++17 replacements}]
+std::unique_ptr<Widget> w = std::make_unique<Widget>();   // not auto_ptr
+void f() noexcept;                                         // not throw()
+\end{lstlisting}
+
+The removal of dynamic exception specifications is the most consequential: \texttt{throw(TypeList)} is gone entirely, and \texttt{noexcept} (Section~\ref{sec:c17-noexcept-type}) is the only supported mechanism. \texttt{throw()} survives as a deprecated synonym for \texttt{noexcept(true)}.
+
+\section{Professional Insights}
+\label{sec:c17-core-insights}
+
+\textbf{Make structured bindings and init-statements your default at every container/lookup site.} \texttt{if (auto [it, inserted] = m.try\_emplace(k, v); inserted)} expresses intent, scopes the result precisely, and avoids both the \texttt{std::tie} pre-declaration and the artificial enclosing block.
+
+\textbf{Reach for \texttt{if constexpr} before SFINAE or tag dispatch.} For the majority of ``do X for pointers, Y otherwise'' generic code, a single function with \texttt{if constexpr} is clearer, compiles faster, and produces better diagnostics than an \texttt{enable\_if}-guarded overload set.
+
+\textbf{Rely on guaranteed copy elision in API design.} You can now return non-movable RAII types by value from factory functions, and reason about prvalue return as allocation-free. Design factories around it instead of returning by \texttt{unique\_ptr} purely to dodge a copy.
+
+\textbf{Use \texttt{[*this]} for any lambda that outlives its enclosing object.} Pointer capture dangles when a closure is posted to a thread pool or stored as a continuation; \texttt{[*this]} copies the object and is the safe default for deferred execution.
+
+\textbf{Enforce contracts in the type system where C++17 now lets you.} \texttt{[[nodiscard]]} on must-check results and \texttt{noexcept} in callback signatures move whole classes of caller mistakes from runtime to compile time. And purge the removed features (\texttt{auto\_ptr}, \texttt{throw(...)}) proactively; they will not survive a C++17 build.

@@ -1,0 +1,206 @@
+\chapter{Low-Latency Facilities}
+\label{ch:c17-low-latency}
+
+\begin{quote}
+\emph{Three C++17 features matter disproportionately to high-frequency trading, kernel, and lock-free systems code, yet sit far enough apart in the standard that they are easy to overlook: the \texttt{hardware\_*\_interference\_size} constants that let you align away false sharing portably, the language-level support for over-aligned (extended-alignment) dynamic allocation so \texttt{new} finally respects \texttt{alignas}, and the \texttt{shared\_ptr} refinements --- array support, \texttt{weak\_type}, and \texttt{reinterpret\_pointer\_cast} --- that close gaps in the smart-pointer toolkit.}
+\end{quote}
+
+This chapter is authored to complete the C++17 coverage; it has no predecessor source material. Each feature here is about \textbf{the memory below the abstraction}: \texttt{hardware\_destructive\_interference\_size} puts a number on the cache-line padding you previously hard-coded as a magic \texttt{64}; over-aligned \texttt{new} makes the language allocate SIMD vectors and cache-line-aligned control blocks correctly; and the \texttt{shared\_ptr} improvements let a \texttt{shared\_ptr} own an array, expose its companion \texttt{weak\_ptr} type generically, and be \texttt{reinterpret\_cast} while preserving shared ownership.
+
+\section{False Sharing and the Interference-Size Constants}
+\label{sec:c17-false-sharing}
+
+Modern CPUs move memory between cores in \textbf{cache-line} units (commonly 64 bytes). \textbf{False sharing} occurs when two cores repeatedly write to \emph{different} variables that live in the \emph{same} cache line: the coherence protocol treats the whole line as contended, bouncing it between caches and serializing independent writes.
+
+C++17 standardizes two \texttt{constexpr std::size\_t} constants in \texttt{<new>}:
+
+\begin{itemize}
+\item \textbf{\texttt{std::hardware\_destructive\_interference\_size}} --- the minimum offset between two objects to \textbf{avoid} false sharing (guarantee different cache lines). Pad \emph{up to} this to separate contended data.
+\item \textbf{\texttt{std::hardware\_constructive\_interference\_size}} --- the maximum size of contiguous memory likely to share a cache line, i.e. the granularity within which to \textbf{pack} data you want fetched together.
+\end{itemize}
+
+\section{\texttt{hardware\_destructive\_interference\_size}: Padding Against False Sharing}
+\label{sec:c17-destructive}
+
+To stop two hot, independently-written members from sharing a line, align each to \texttt{std::hardware\_destructive\_interference\_size}.
+
+\begin{lstlisting}[language=C++,caption={Separating two contended atomics onto distinct cache lines}]
+#include <new>
+#include <atomic>
+
+struct alignas(std::hardware_destructive_interference_size) PaddedCounter {
+    std::atomic<long> value{0};
+};
+
+// Two counters written by two different threads -- now provably on different lines:
+PaddedCounter producer_count;
+PaddedCounter consumer_count;
+\end{lstlisting}
+
+\begin{lstlisting}[language=C++,caption={Aligning a member to break false sharing within a struct}]
+#include <new>
+#include <atomic>
+
+struct SpscQueue {
+    std::atomic<size_t> head{0};
+    // Push 'tail' onto its own cache line so producer (tail) and consumer (head)
+    // writes never contend the same line:
+    alignas(std::hardware_destructive_interference_size)
+        std::atomic<size_t> tail{0};
+};
+\end{lstlisting}
+
+In a single-producer/single-consumer ring buffer, false sharing between head and tail indices is a textbook throughput killer, and one \texttt{alignas} removes it portably --- without the magic \texttt{64} that breaks where lines are effectively 128 bytes (adjacent-line prefetch), which is exactly why the constant may be \emph{larger} than the raw line size.
+
+\section{\texttt{hardware\_constructive\_interference\_size}: Packing for Locality}
+\label{sec:c17-constructive}
+
+The complementary goal is \textbf{locality}: data always accessed together should fit within one cache line so a single fetch brings all of it in.
+
+\begin{lstlisting}[language=C++,caption={Keeping a hot struct within one cache line}]
+#include <new>
+#include <cstdint>
+
+// Keep the frequently-co-accessed fields together under the constructive size,
+// so touching one pulls the rest into cache on the same fetch:
+struct alignas(std::hardware_constructive_interference_size) HotRecord {
+    std::uint64_t key;
+    std::uint64_t timestamp;
+    std::uint32_t flags;
+    // ... keep total size <= hardware_constructive_interference_size ...
+};
+
+static_assert(sizeof(HotRecord) <= std::hardware_constructive_interference_size,
+              "HotRecord must fit in one cache line for single-fetch locality");
+\end{lstlisting}
+
+The two constants express opposite intents --- \texttt{destructive} says ``keep these \emph{apart},'' \texttt{constructive} says ``keep these \emph{together}'' --- and both replace a hard-coded line size with a value the implementation chooses for the target. They are hints, but the portable best estimate.
+
+\section{Over-Aligned (Extended-Alignment) Dynamic Allocation}
+\label{sec:c17-overaligned}
+
+A type with alignment greater than \texttt{alignof(std::max\_align\_t)} --- a SIMD vector, a cache-line-aligned control block, anything carrying the \texttt{alignas} from Section~\ref{sec:c17-destructive} --- is \textbf{over-aligned} (\emph{extended alignment}). Before C++17, \texttt{new} ignored such alignment, silently under-aligning the object.
+
+\textbf{C++17 makes \texttt{new} honor extended alignment} by routing the allocation to an alignment-aware \texttt{operator new} taking a \texttt{std::align\_val\_t}.
+
+\begin{lstlisting}[language=C++,caption={new now respects extended alignment automatically}]
+#include <new>
+#include <cstddef>
+
+struct alignas(64) CacheLineAligned {   // over-aligned: 64-byte alignment
+    std::byte data[64];
+};
+
+// C++17: this allocation is guaranteed 64-byte aligned. Pre-C++17 it was NOT.
+CacheLineAligned* p = new CacheLineAligned;
+// ... use p ...
+delete p;   // routed to the matching aligned operator delete
+
+// Arrays of over-aligned types are handled too:
+CacheLineAligned* arr = new CacheLineAligned[16];   // each element 64-aligned
+delete[] arr;
+\end{lstlisting}
+
+SIMD code, lock-free structures with cache-line-aligned members, and DMA buffers can now be heap-allocated with plain \texttt{new}/\texttt{make\_unique}/\texttt{make\_shared} and trust the alignment.
+
+\section{Aligned \texttt{operator new} and \texttt{operator delete}}
+\label{sec:c17-aligned-new}
+
+The mechanism is a family of allocation-function overloads (header \texttt{<new>}) taking a \texttt{std::align\_val\_t}:
+
+\begin{lstlisting}[language=C++,caption={The aligned allocation-function signatures C++17 added}]
+void* operator new  (std::size_t size, std::align_val_t alignment);
+void* operator new[](std::size_t size, std::align_val_t alignment);
+void  operator delete  (void* ptr, std::align_val_t alignment) noexcept;
+void  operator delete[](void* ptr, std::align_val_t alignment) noexcept;
+// (plus the sized-delete and nothrow variants)
+\end{lstlisting}
+
+The compiler selects these whenever the type's alignment exceeds \texttt{\_\_STDCPP\_DEFAULT\_NEW\_ALIGNMENT\_\_}. You can override them to route over-aligned allocations through your own allocator:
+
+\begin{lstlisting}[language=C++,caption={A class-specific aligned operator new}]
+#include <new>
+#include <cstdlib>
+
+struct Avx512Block {
+    alignas(64) float lanes[16];
+
+    // Custom aligned allocation for this type:
+    static void* operator new(std::size_t n, std::align_val_t al) {
+        return ::operator new(n, al);   // forward to the global aligned new
+    }
+    static void operator delete(void* p, std::align_val_t al) noexcept {
+        ::operator delete(p, al);
+    }
+};
+\end{lstlisting}
+
+The matching aligned \texttt{operator delete} \textbf{must} free aligned storage; mixing an aligned allocation with a non-aligned deallocation is undefined behavior, so when overriding, provide the pair.
+
+\section{\texttt{shared\_ptr} to Arrays}
+\label{sec:c17-shared-array}
+
+C++11's \texttt{shared\_ptr} could point at an array only with a hand-written \texttt{delete[]} deleter and offered no \texttt{operator[]}. C++17 adds \textbf{first-class array support}: \texttt{std::shared\_ptr<T[]>} calls \texttt{delete[]} and exposes \texttt{operator[]}.
+
+\begin{lstlisting}[language=C++,caption={shared\_ptr that owns an array correctly}]
+#include <memory>
+
+// C++17: the T[] specialization calls delete[] automatically and indexes:
+std::shared_ptr<int[]> arr(new int[100]);
+
+arr[0] = 42;            // operator[] -- no .get()[0] dance
+arr[1] = 7;
+// On destruction, delete[] is invoked correctly (not delete).
+\end{lstlisting}
+
+This brings \texttt{shared\_ptr} to parity with \texttt{unique\_ptr<T[]>} and removes the two classic bugs: forgetting the \texttt{delete[]} deleter and verbose \texttt{ptr.get()[i]} indexing. (\texttt{std::make\_shared<T[]>(n)} array support followed in C++20; in C++17 construct from \texttt{new T[n]}.)
+
+\section{\texttt{shared\_ptr::weak\_type}}
+\label{sec:c17-weak-type}
+
+C++17 adds the nested alias \textbf{\texttt{std::shared\_ptr<T>::weak\_type}}, naming the corresponding \texttt{std::weak\_ptr<T>}. Generic code can obtain the companion weak-pointer type \textbf{without re-spelling the element type}.
+
+\begin{lstlisting}[language=C++,caption={Deriving the weak\_ptr type generically}]
+#include <memory>
+
+template <typename SharedPtr>
+class Cache {
+    // Get the matching weak_ptr type without naming SharedPtr's element type:
+    using Weak = typename SharedPtr::weak_type;
+    std::vector<Weak> observers_;   // weak references that don't keep objects alive
+public:
+    void observe(const SharedPtr& sp) { observers_.push_back(sp); }
+};
+\end{lstlisting}
+
+Without \texttt{weak\_type}, generic code had to extract \texttt{element\_type} and re-form \texttt{std::weak\_ptr<element\_type>} --- workable but noisy. \texttt{weak\_type} cleans up ownership-graph templates (caches, observer registries, back-references).
+
+\section{\texttt{reinterpret\_pointer\_cast}}
+\label{sec:c17-reinterpret-pointer-cast}
+
+C++11 provided \texttt{static\_pointer\_cast}, \texttt{dynamic\_pointer\_cast}, and \texttt{const\_pointer\_cast} to convert a \texttt{shared\_ptr<T>} to \texttt{shared\_ptr<U>} \textbf{while sharing ownership}. C++17 completes the set with \textbf{\texttt{std::reinterpret\_pointer\_cast}}.
+
+\begin{lstlisting}[language=C++,caption={Reinterpreting a shared\_ptr while preserving the control block}]
+#include <memory>
+#include <cstdint>
+
+std::shared_ptr<std::uint8_t> bytes(new std::uint8_t[sizeof(Header)],
+                                    std::default_delete<std::uint8_t[]>());
+
+// Reinterpret the shared byte buffer as a Header, sharing the SAME ownership:
+std::shared_ptr<Header> hdr = std::reinterpret_pointer_cast<Header>(bytes);
+// hdr and bytes now share one control block; the buffer lives until BOTH release.
+\end{lstlisting}
+
+The cast produces a \texttt{shared\_ptr} that \textbf{shares the original's reference count}, rather than a raw \texttt{reinterpret\_cast<Header*>(bytes.get())} that would dangle when \texttt{bytes} died. This matters when overlaying a typed view on a shared raw buffer --- parsing a network/DMA buffer as a header type, or aliasing a shared byte arena. The usual aliasing and lifetime caveats of \texttt{reinterpret\_cast} apply.
+
+\section{Professional Insights}
+\label{sec:c17-low-latency-insights}
+
+\textbf{Pad contended data with \texttt{hardware\_destructive\_interference\_size}, not a magic \texttt{64}.} False sharing between independently-written hot variables silently serializes throughput and scales negatively with cores. One \texttt{alignas(std::hardware\_destructive\_interference\_size)} separates them portably, and because the constant may exceed the raw line size, it is more correct than the value it replaces.
+
+\textbf{Rely on C++17's aligned \texttt{new} instead of bespoke aligned allocators.} Over-aligned types are now allocated correctly by plain \texttt{new}, \texttt{make\_unique}, and \texttt{make\_shared}. Drop the \texttt{posix\_memalign}/\texttt{\_aligned\_malloc} wrappers; and when you override \texttt{operator new} for an over-aligned type, always provide the matching aligned \texttt{operator delete}.
+
+\textbf{Use \texttt{shared\_ptr<T[]>} for shared array ownership, and prefer the pointer-cast family over raw casts.} The array specialization calls \texttt{delete[]} and indexes with \texttt{operator[]}. When you must retype a \texttt{shared\_ptr}, use \texttt{static\_pointer\_cast}/\texttt{dynamic\_pointer\_cast}/\texttt{const\_pointer\_cast}/\texttt{reinterpret\_pointer\_cast} rather than casting \texttt{get()} --- only the pointer-cast family preserves the shared control block.
+
+\textbf{Treat \texttt{weak\_type} and the interference constants as ``writes intent into the type system'' tools.} \texttt{SharedPtr::weak\_type} lets ownership-graph templates name their non-owning references; the \texttt{static\_assert(sizeof(T) <= hardware\_constructive\_interference\_size)} pattern makes ``this struct must stay within one cache line'' a compile-time contract. In latency-critical code, encoding layout and ownership intent where the compiler can check it is what keeps a fast design fast as it evolves.
