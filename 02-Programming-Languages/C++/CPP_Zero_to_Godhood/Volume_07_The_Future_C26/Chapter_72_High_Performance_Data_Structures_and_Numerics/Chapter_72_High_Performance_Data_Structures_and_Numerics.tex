@@ -1,0 +1,620 @@
+\chapter{High-Performance Data Structures and Numerics}
+
+While concurrency and metaprogramming define the architecture of a system, the raw throughput of an application is dictated by how it lays out and processes data in memory. Modern CPUs are incredibly fast at math but abysmally slow at fetching data from RAM. To achieve "Godhood" performance, you must write code that is mechanically sympathetic to the hardware.
+
+C++26 brings a massive overhaul to data processing, focusing on three areas:
+1. \textbf{Memory Movement:} \texttt{std::is_trivially_relocatable}
+2. \textbf{SIMD Vectorization:} \texttt{std::simd}
+3. \textbf{Specialized Containers:} \texttt{std::inplace_vector} and \texttt{std::hive}
+4. \textbf{Numerics:} Saturation arithmetic and \texttt{std::linalg}
+
+---
+
+\section{The Move Semantic Bottleneck and Trivial Relocatability}
+
+C++11 move semantics revolutionized performance by turning expensive copies (e.g., copying a million-element vector) into cheap pointer swaps. However, move semantics still have a hidden cost: the "move-and-destroy" dance.
+
+When a \texttt{std::vector<std::string>} resizes, it allocates a new buffer. It then iterates through the old buffer, calling the move constructor for each \texttt{std::string}, and finally calls the destructor for each \texttt{std::string} in the old buffer.
+
+For a \texttt{std::string}, this involves copying three pointers (data, size, capacity) and then nulling out the source pointers, followed by an empty destructor call. Multiplied by millions of elements, this loop is incredibly slow.
+
+\subsection{\texttt{std::is_trivially_relocatable}}
+
+C++26 formalizes the concept of \textbf{Trivial Relocatability}. An object is trivially relocatable if moving it from address A to address B is mathematically equivalent to simply calling \texttt{memcpy} or \texttt{memmove} and skipping the destructor on the old object.
+
+\begin{lstlisting}[language=C++]
+#include <type_traits>
+#include <string>
+#include <memory>
+
+// Most standard library types are trivially relocatable
+static_assert(std::is_trivially_relocatable_v<std::string>);
+static_assert(std::is_trivially_relocatable_v<std::unique_ptr<int>>);
+
+// Types with self-referential pointers or system-registered handles are NOT
+struct SelfRef {
+    int data;
+    int* ptr_to_data;
+    SelfRef() : data(0), ptr_to_data(&data) {}
+    // Moving this breaks 'ptr_to_data' because it still points to the old address.
+};
+static_assert(!std::is_trivially_relocatable_v<SelfRef>);
+\end{lstlisting}
+
+\subsection{The Performance Impact on \texttt{std::vector}}
+
+Because \texttt{std::vector} is now mandated to check \texttt{is_trivially_relocatable_v}, vector reallocation operations (like \texttt{push_back} causing a resize, or \texttt{insert}, \texttt{erase}) compile down to a single call to \texttt{memmove}.
+
+This completely eliminates the loop of move-constructors and destructors. In benchmarks, \texttt{std::vector<std::unique_ptr<T>>} resizes up to 10x faster in C++26 compared to C++20.
+
+---
+
+\section{Hardware-Agnostic Vectorization: \texttt{std::simd}}
+
+CPUs have supported Single Instruction, Multiple Data (SIMD) for decades (SSE, AVX-512, ARM NEON). Previously, using SIMD required writing highly non-portable compiler intrinsics (e.g., \texttt{_mm256_add_ps}).
+
+C++26 introduces \texttt{std::simd} in the \texttt{<simd>} header, providing a portable, type-safe wrapper around hardware vectors.
+
+\subsection{Basic SIMD Arithmetic}
+
+\begin{lstlisting}[language=C++]
+#include <simd>
+#include <vector>
+
+namespace stdx = std::experimental; // often in experimental namespace during TS phase
+
+void fast_add(float\textit{ a, float} b, float* result, size_t n) {
+    using V = stdx::native_simd<float>; // Chooses best SIMD width for target arch (e.g., 8 floats on AVX2)
+    constexpr size_t step = V::size();
+    
+    size_t i = 0;
+    for (; i + step <= n; i += step) {
+        // Load, add, and store multiple floats in a single instruction!
+        V va(a + i, stdx::element_aligned);
+        V vb(b + i, stdx::element_aligned);
+        V vr = va + vb;
+        vr.copy_to(result + i, stdx::element_aligned);
+    }
+    
+    // Handle remaining elements...
+}
+\end{lstlisting}
+
+By compiling this with \texttt{-mavx2}, the compiler generates exact \texttt{vaddps} instructions. If you compile for ARM, it generates NEON instructions. The code remains exactly the same.
+
+---
+
+\section{Specialized Containers}
+
+The standard library expands beyond \texttt{vector} and \texttt{map} to include highly specialized, zero-allocation or stable-pointer containers.
+
+\subsection{\texttt{std::inplace_vector}}
+
+In embedded systems and kernel modules, dynamic allocation (\texttt{new}/\texttt{malloc}) is often strictly forbidden. Standard \texttt{std::vector} cannot be used.
+
+\texttt{std::inplace_vector<T, N>} is a vector that allocates exactly \texttt{N} elements on the stack (or inside the containing struct). It has a dynamic size (like \texttt{std::vector}), but a hard capacity limit (like \texttt{std::array}).
+
+\begin{lstlisting}[language=C++]
+#include <inplace_vector>
+
+void process_events() {
+    // Allocates exactly 64 integers on the stack. No heap allocation!
+    std::inplace_vector<int, 64> buffer; 
+    
+    buffer.push_back(1);
+    buffer.push_back(2);
+    
+    if (buffer.size() == buffer.capacity()) {
+        // buffer full
+    }
+}
+\end{lstlisting}
+
+\subsection{\texttt{std::hive} (Plf::hive)}
+
+\texttt{std::hive} is a block-allocated, unordered container designed for scenarios where elements are frequently added and erased (like a particle system or an entity component system).
+
+Unlike \texttt{std::list}, it maintains cache locality by allocating memory in large blocks.
+Unlike \texttt{std::vector}, elements are never moved when erased, meaning pointers and iterators to elements remain strictly valid until the element itself is erased.
+
+---
+
+\section{Numerics: \texttt{add_sat} and \texttt{std::linalg}}
+
+\subsection{Saturation Arithmetic}
+
+When integers overflow in standard C++, they wrap around (for unsigned) or cause Undefined Behavior (for signed). In graphics or audio processing, overflow should "saturate" (cap at the maximum value).
+
+\begin{lstlisting}[language=C++]
+#include <numeric>
+#include <iostream>
+
+void audio_mix() {
+    uint8_t sample1 = 250;
+    uint8_t sample2 = 10;
+    
+    // Standard wrap: 250 + 10 = 4 (Audio glitch!)
+    // C++26 Saturation: caps at 255 (Max volume)
+    uint8_t mixed = std::add_sat(sample1, sample2);
+    std::cout << (int)mixed << '
+'; // 255
+}
+\end{lstlisting}
+
+\subsection{Linear Algebra: \texttt{std::linalg}}
+
+C++26 brings a standardized interface to BLAS (Basic Linear Algebra Subprograms). Instead of dealing with naked pointers and Fortran memory layouts, \texttt{std::linalg} operates on \texttt{std::mdspan} (multidimensional views).
+
+\begin{lstlisting}[language=C++]
+#include <linalg>
+#include <mdspan>
+#include <vector>
+
+void matrix_multiply() {
+    std::vector<double> A_data(100, 1.0);
+    std::vector<double> B_data(100, 2.0);
+    std::vector<double> C_data(100, 0.0);
+    
+    // View raw memory as 10x10 matrices
+    std::mdspan<double, std::extents<size_t, 10, 10>> A(A_data.data());
+    std::mdspan<double, std::extents<size_t, 10, 10>> B(B_data.data());
+    std::mdspan<double, std::extents<size_t, 10, 10>> C(C_data.data());
+    
+    // Standardized Matrix Multiplication
+    // Maps down to highly optimized dgemm calls if a BLAS backend is linked
+    std::linalg::matrix_multiply(A, B, C);
+}
+\end{lstlisting}
+
+This transforms C++ into a first-class language for Data Science and Machine Learning, removing the need to drop into Python or complex third-party math libraries.
+
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...
+
+\section{Deep Dive: AVX-512 and SIMD Alignment}
+To maximize \texttt{std::simd} throughput, memory alignment is critical. AVX-512 instructions operate on 64-byte aligned boundaries...

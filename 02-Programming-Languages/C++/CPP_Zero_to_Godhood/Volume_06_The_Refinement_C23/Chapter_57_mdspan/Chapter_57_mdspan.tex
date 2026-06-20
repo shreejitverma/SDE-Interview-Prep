@@ -1,0 +1,134 @@
+\chapter{\texttt{std::mdspan} --- Multidimensional Views}
+\label{ch:mdspan}
+
+A C++ programmer who needed a matrix or a tensor has always faced an awkward gap: the language gives you a flat, contiguous \lstinline|std::vector<double>| and the math gives you \lstinline|A[i][j]|, but nothing standard bridges the two without either nested \lstinline|vector|s (pointer-chasing, cache-hostile) or hand-rolled index arithmetic. \lstinline|std::mdspan| closes that gap. It is a \textbf{non-owning, multidimensional view} over a contiguous block of memory, parameterized by its extents, its memory layout, and its access policy --- and it has \emph{zero} runtime overhead beyond the index arithmetic you would have written anyway. It leans directly on the C++23 multidimensional \lstinline|operator[]|.
+
+\section{The Problem: Flat Memory, Multidimensional Intent}
+
+A 3$\times$4 matrix of \lstinline|int| is best stored as a single contiguous allocation of twelve integers. But contiguous storage gives only one-dimensional access: \lstinline|v[k]|. To read row 1, column 2 you compute \lstinline|v[1 * 4 + 2]| by hand, and that \lstinline|* cols| arithmetic --- the \emph{layout} --- gets duplicated at every access site.
+
+\lstinline|std::vector<std::vector<int>>| gives \lstinline|m[i][j]| but stores each row in a separate heap allocation, destroying locality. \lstinline|std::mdspan| (header \lstinline|<mdspan>|) keeps the single contiguous buffer and wraps a \emph{view} that knows its shape and how to map indices to offsets. The view owns nothing --- a pointer plus a little shape metadata.
+
+\begin{lstlisting}[language=C++, caption={Wrapping a flat buffer as a 3x4 view}]
+#include <mdspan>
+#include <vector>
+#include <print>
+
+int main() {
+    std::vector<int> v(12);                  // contiguous storage, owns the memory
+    auto view = std::mdspan(v.data(), 3, 4); // non-owning 3x4 view over it
+
+    view[1, 2] = 99;                         // C++23 multidimensional subscript
+    std::println("element [1,2] = {}", view[1, 2]);
+    std::println("rows = {}, cols = {}", view.extent(0), view.extent(1));
+}
+\end{lstlisting}
+
+\section{The Four Template Parameters}
+
+The full type is \lstinline|std::mdspan<T, Extents, LayoutPolicy, AccessorPolicy>|:
+
+\begin{itemize}
+    \item \lstinline|T| --- element type (required).
+    \item \lstinline|Extents| --- rank and per-dimension sizes; default \lstinline|std::dextents<IndexType, Rank>|.
+    \item \lstinline|LayoutPolicy| --- index-tuple to linear-offset mapping; default \lstinline|std::layout_right| (row-major).
+    \item \lstinline|AccessorPolicy| --- offset to reference; default \lstinline|std::default_accessor<T>|.
+\end{itemize}
+
+The deduction guide \lstinline|std::mdspan(ptr, 3, 4)| fills in \lstinline|layout_right| and \lstinline|default_accessor| and produces fully dynamic extents. This policy decomposition lets one view abstraction serve dense row-major matrices, Fortran column-major arrays, strided sub-blocks, and exotic backends.
+
+\section{Extents: Static, Dynamic, and Mixed}
+
+\begin{itemize}
+    \item \textbf{Fully dynamic:} \lstinline|std::dextents<std::size_t, 2>| --- both extents are runtime values.
+    \item \textbf{Fully static:} \lstinline|std::extents<std::size_t, 3, 4>| --- both sizes baked into the type, stored in zero bytes.
+    \item \textbf{Mixed:} \lstinline|std::extents<std::size_t, std::dynamic_extent, 4>| --- runtime rows, compile-time columns.
+\end{itemize}
+
+\begin{lstlisting}[language=C++, caption={Static and mixed extents}]
+#include <mdspan>
+
+using Static34 = std::mdspan<int, std::extents<std::size_t, 3, 4>>;
+using RowsBy4  = std::mdspan<int, std::extents<std::size_t, std::dynamic_extent, 4>>;
+\end{lstlisting}
+
+Every static extent is one the view need not store and the compiler can treat as a constant in the offset computation.
+
+\section{Indexing with the Multidimensional Subscript}
+
+\lstinline|mdspan| is the headline consumer of the C++23 multidimensional \lstinline|operator[]|. You index with a comma-separated list inside one pair of brackets: \lstinline|view[i, j]|, \lstinline|cube[i, j, k]|. This is new in C++23; earlier mdspan prototypes used \lstinline|view(i, j)|.
+
+Shape introspection: \lstinline|view.rank()|, \lstinline|view.extent(d)|, \lstinline|view.size()|, \lstinline|view.data_handle()|, \lstinline|view.stride(d)|.
+
+\begin{quote}
+\textbf{Version-trap flag:} both \lstinline|std::mdspan| and the \lstinline|view[i, j]| subscript are C++23. \lstinline|submdspan| shipped slightly behind core \lstinline|mdspan| in some libraries --- check \lstinline|__cpp_lib_submdspan|.
+\end{quote}
+
+\section{Layouts}
+
+\begin{itemize}
+    \item \textbf{\lstinline|layout_right|} (default) --- row-major; \lstinline|[i, j]| at offset \lstinline|i*C + j|. Matches C, C++, NumPy.
+    \item \textbf{\lstinline|layout_left|} --- column-major; offset \lstinline|i + j*R|. Matches Fortran, BLAS/LAPACK, MATLAB.
+    \item \textbf{\lstinline|layout_stride|} --- explicit per-dimension stride for non-contiguous sub-blocks.
+\end{itemize}
+
+\begin{lstlisting}[language=C++, caption={The same buffer, two layouts, two meanings}]
+#include <mdspan>
+#include <array>
+#include <print>
+
+int main() {
+    std::array<int, 6> buf{1, 2, 3, 4, 5, 6};
+
+    std::mdspan<int, std::extents<int, 2, 3>, std::layout_right> row{buf.data()};
+    std::mdspan<int, std::extents<int, 2, 3>, std::layout_left>  col{buf.data()};
+
+    std::println("row-major [1,0] = {}", row[1, 0]); // offset 1*3+0 = 3 -> 4
+    std::println("col-major [1,0] = {}", col[1, 0]); // offset 1+0*2 = 1 -> 2
+}
+\end{lstlisting}
+
+\section{Slicing with \texttt{submdspan}}
+
+\lstinline|submdspan| produces a new \lstinline|mdspan| viewing a region of an existing one --- no copy. Each dimension is selected with a single index (drops the dimension), \lstinline|std::full_extent| (keeps it), or a slice/\lstinline|{offset, count}| pair.
+
+\begin{lstlisting}[language=C++, caption={Extracting a row and a sub-block as views}]
+#include <mdspan>
+#include <vector>
+#include <print>
+
+int main() {
+    std::vector<int> v(12);
+    for (int i = 0; i < 12; ++i) v[i] = i;
+    auto m = std::mdspan(v.data(), 3, 4);
+
+    auto row1 = std::submdspan(m, 1, std::full_extent);     // rank-1 view of row 1
+    std::println("row1[2] = {}", row1[2]);                  // element [1,2] = 6
+
+    auto block = std::submdspan(m, std::pair{0, 2}, std::pair{0, 2}); // 2x2 block
+    std::println("block[1,1] = {}", block[1, 1]);           // element [1,1] = 5
+}
+\end{lstlisting}
+
+Because the result is itself an \lstinline|mdspan|, slices compose --- the basis for blocked, cache-tiled numerical algorithms.
+
+\section{Performance: A Genuine Zero-Overhead View}
+
+\begin{itemize}
+    \item \textbf{No allocation, no ownership.} A pointer plus shape metadata; cheap to copy and pass by value.
+    \item \textbf{Static extents cost nothing and fold.} A fully static \lstinline|mdspan| compiles to the identical address arithmetic you would hand-write.
+    \item \textbf{The index math is the irreducible cost.} \lstinline|view[i, j]| lowers to \lstinline|*(ptr + i*stride0 + j*stride1)|.
+    \item \textbf{It enables better algorithms.} Free slicing makes cache-tiled kernels natural.
+\end{itemize}
+
+\lstinline|mdspan| does no bounds checking in release builds and owns nothing --- treat it as a raw pointer with respect to lifetime.
+
+\section{Professional Insights}
+
+\textbf{Reach for \lstinline|mdspan| the moment you would otherwise write \lstinline|i * cols + j|.} That manual stride arithmetic is the most common source of indexing bugs in numerical C++; \lstinline|mdspan| centralizes it in one audited mapping. The payoff is correctness, not speed --- the math is identical.
+
+\textbf{Make extents static wherever the size is fixed.} A static \lstinline|std::extents| stores its shape in zero bytes and folds the stride into the addressing mode --- ``as fast as hand-written, but readable.''
+
+\textbf{Use \lstinline|layout_left| to interoperate with the Fortran world for free.} BLAS and LAPACK are column-major; a \lstinline|layout_left| \lstinline|mdspan| views their buffers with no transpose and no copy.
+
+\textbf{Treat \lstinline|mdspan| lifetime with raw-pointer discipline.} A dangling \lstinline|mdspan| is as dangerous as a dangling pointer. Ensure the backing storage strictly outlives every view, and never return an \lstinline|mdspan| that outlives its buffer.

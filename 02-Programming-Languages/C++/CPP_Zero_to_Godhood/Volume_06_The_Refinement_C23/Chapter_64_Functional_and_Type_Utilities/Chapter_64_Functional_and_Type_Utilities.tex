@@ -1,0 +1,166 @@
+\chapter{Functional and Type Utilities}
+\label{ch:functional-type-utilities}
+
+C++23 sprinkles a generous handful of small, sharp library utilities across \lstinline|<functional>|, \lstinline|<utility>|, \lstinline|<bit>|, \lstinline|<type_traits>|, and \lstinline|<string>|. Collectively they retire a long list of hand-written helpers: a move-aware \lstinline|std::function|, value-category-correct member forwarding, a clean enum-to-integer cast, an optimization-enabling impossibility marker, endianness swapping, substring membership, and in-place buffer filling.
+
+\section{\texttt{std::move\_only\_function} --- A Movable \texttt{std::function}}
+
+\lstinline|std::function| requires its callable to be copy-constructible, so a lambda capturing a \lstinline|unique_ptr| cannot be stored in it. \lstinline|std::move_only_function<Signature>| (header \lstinline|<functional>|) is the type-erased wrapper for \textbf{move-only} callables: move-constructible, not copyable, and it supports cv/ref-qualified signatures.
+
+\begin{lstlisting}[language=C++, caption={Storing a move-only closure}]
+#include <functional>
+#include <memory>
+#include <print>
+
+std::move_only_function<void()> make_task() {
+    auto resource = std::make_unique<int>(42);
+    return [r = std::move(resource)] { std::println("value = {}", *r); };
+}
+
+int main() {
+    auto task = make_task();   // no shared_ptr workaround needed
+    task();
+}
+\end{lstlisting}
+
+Use it for task queues, one-shot callbacks, and continuations whose closure owns a unique resource.
+
+\section{\texttt{std::forward\_like} --- Value-Category-Correct Member Forwarding}
+
+\lstinline|std::forward| forwards the member's own type, not the owner's value category. \lstinline|std::forward_like<Owner>(member)| (header \lstinline|<utility>|) casts \lstinline|member| to the value category and constness of \lstinline|Owner| --- the natural companion to deducing \lstinline|this|.
+
+\begin{lstlisting}[language=C++, caption={Forwarding a member with the object's value category}]
+#include <utility>
+#include <string>
+
+struct Holder {
+    std::string data;
+
+    template <typename Self>
+    auto&& get_data(this Self&& self) {
+        return std::forward_like<Self>(self.data);
+        // lvalue Holder -> string&; rvalue Holder -> string&&
+    }
+};
+\end{lstlisting}
+
+\section{\texttt{std::bind\_back} and \texttt{std::invoke\_r}}
+
+\begin{itemize}
+    \item \lstinline|std::bind_back(f, args...)| --- mirror of \lstinline|bind_front|; binds the \emph{trailing} parameters.
+    \item \lstinline|std::invoke_r<R>(f, args...)| --- \lstinline|invoke| with an explicit return type \lstinline|R| (valid for \lstinline|void|).
+\end{itemize}
+
+\begin{lstlisting}[language=C++, caption={Trailing-argument binding and typed invocation}]
+#include <functional>
+#include <print>
+
+int subtract(int a, int b) { return a - b; }
+
+int main() {
+    auto minus10 = std::bind_back(subtract, 10);  // fixes b = 10
+    std::println("{}", minus10(30));               // subtract(30, 10) = 20
+
+    auto r = std::invoke_r<int>([]{ return 3.9; });
+    std::println("{}", r);                         // 3
+}
+\end{lstlisting}
+
+\section{Enum Utilities: \texttt{to\_underlying} and \texttt{is\_scoped\_enum}}
+
+\begin{itemize}
+    \item \lstinline|std::to_underlying(e)| (header \lstinline|<utility>|) --- converts an enum to its underlying integer; replaces \lstinline|static_cast<std::underlying_type_t<E>>(e)| and cannot pick the wrong width.
+    \item \lstinline|std::is_scoped_enum_v<T>| (header \lstinline|<type_traits>|) --- distinguishes \lstinline|enum class| from unscoped \lstinline|enum|.
+\end{itemize}
+
+\begin{lstlisting}[language=C++, caption={Clean enum-to-integer conversion}]
+#include <utility>
+#include <type_traits>
+#include <print>
+
+enum class Color : std::uint8_t { Red = 1, Green = 2, Blue = 4 };
+
+int main() {
+    Color c = Color::Green;
+    auto raw = std::to_underlying(c);          // std::uint8_t{2}
+    std::println("raw = {}", raw);
+    static_assert(std::is_scoped_enum_v<Color>);
+}
+\end{lstlisting}
+
+\section{\texttt{std::unreachable} and \texttt{std::byteswap}}
+
+\begin{itemize}
+    \item \lstinline|std::unreachable()| (header \lstinline|<utility>|) --- marks an unreachable point; not a check (reaching it is UB), it lets the optimizer drop dead branches.
+    \item \lstinline|std::byteswap(x)| (header \lstinline|<bit>|) --- reverses byte order; the \lstinline|constexpr| endianness swap replacing \lstinline|__builtin_bswap|.
+\end{itemize}
+
+\begin{lstlisting}[language=C++, caption={Optimization hint and endianness conversion}]
+#include <utility>
+#include <bit>
+#include <cstdint>
+#include <print>
+
+enum class Op { Add, Sub };
+
+int apply(Op op, int a, int b) {
+    switch (op) {
+        case Op::Add: return a + b;
+        case Op::Sub: return a - b;
+    }
+    std::unreachable();   // every Op is handled
+}
+
+int main() {
+    std::println("{}", apply(Op::Add, 2, 3));        // 5
+    std::uint32_t swapped = std::byteswap(0x01020304u); // 0x04030201
+    std::println("{:#010x}", swapped);
+}
+\end{lstlisting}
+
+\section{String Additions: \texttt{contains} and \texttt{resize\_and\_overwrite}}
+
+\begin{itemize}
+    \item \lstinline|std::string|/\lstinline|string_view::contains| --- replaces \lstinline|s.find(sub) != npos|.
+    \item \lstinline|std::string::resize_and_overwrite(n, op)| --- resizes and fills the buffer in place via \lstinline|op(ptr, n)|, skipping the redundant zero-init of \lstinline|resize|.
+\end{itemize}
+
+\begin{lstlisting}[language=C++, caption={Substring test and zero-copy buffer fill}]
+#include <string>
+#include <string_view>
+#include <print>
+#include <cstdio>
+
+int main() {
+    std::string_view url = "https://example.com/path";
+    std::println("{}", url.contains("example"));     // true
+
+    std::string buf;
+    buf.resize_and_overwrite(32, [](char* p, std::size_t cap) {
+        int written = std::snprintf(p, cap, "pid=%d", 1234);
+        return static_cast<std::size_t>(written);
+    });
+    std::println("{}", buf);                          // pid=1234
+}
+\end{lstlisting}
+
+\section{\texttt{reference\_constructs\_from\_temporary} and \texttt{<stdatomic.h>} Interop}
+
+\begin{itemize}
+    \item \lstinline|std::reference_constructs_from_temporary<T, U>| (header \lstinline|<type_traits>|) --- detects at compile time whether binding a reference \lstinline|T| from \lstinline|U| would bind a temporary (dangle). The standard library uses it to reject lifetime-prone conversions in \lstinline|tuple|/\lstinline|pair|.
+    \item \textbf{\lstinline|<stdatomic.h>| interop} --- C++23 makes the C atomics header usable from C++, so \lstinline|_Atomic| types map onto \lstinline|std::atomic| across a C/C++ boundary.
+\end{itemize}
+
+\begin{quote}
+\textbf{Version-trap flag:} every facility in this chapter is \textbf{C++23}. C++20 had \lstinline|bind_front| but not \lstinline|bind_back|; \lstinline|starts_with|/\lstinline|ends_with| (C++20) but not \lstinline|contains| (C++23).
+\end{quote}
+
+\section{Professional Insights}
+
+\textbf{Default to \lstinline|std::move_only_function| for callable storage.} The copyability requirement of \lstinline|std::function| forces an avoidable \lstinline|shared_ptr| allocation for move-only closures. Task queues, callbacks, and continuations fit \lstinline|move_only_function| exactly.
+
+\textbf{Adopt the small enum and string utilities wholesale --- they remove entire bug categories.} \lstinline|to_underlying| cannot pick the wrong width; \lstinline|string::contains| cannot forget \lstinline|!= npos|; \lstinline|byteswap| cannot get the masking wrong.
+
+\textbf{Use \lstinline|unreachable| (and \lstinline|[[assume]]|) only where impossibility is proven.} They are UB contracts, not assertions; if control can reach them you have written UB. When in doubt, use a real assertion.
+
+\textbf{Lean on \lstinline|forward_like| and the temporary-binding traits to keep generic code lifetime-correct.} \lstinline|forward_like<Self>| encodes correct member forwarding in one call; \lstinline|reference_constructs_from_temporary| lets your templates refuse conversions that would dangle.

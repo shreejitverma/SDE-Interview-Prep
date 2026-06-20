@@ -1,0 +1,145 @@
+\chapter{Completing Ranges II --- Folds, \texttt{ranges::to}, and Search}
+\label{ch:ranges-folds-to-search}
+
+If the new \emph{views} of Chapter~59 are how you build a lazy pipeline, the additions in this chapter are how you \emph{finish} one: collapse it to a single value with the new \textbf{fold algorithms}, materialize it into a concrete container with \textbf{\lstinline|ranges::to|}, or interrogate it with the new \textbf{search algorithms} that C++20 forgot.
+
+\section{The Missing Endpoints of a Pipeline}
+
+A ranges pipeline built from views is lazy and produces \emph{another view}. At some point you must leave the lazy world. C++20 left this final step bare: no standard ``collect into a \lstinline|std::vector|,'' no range-based \lstinline|accumulate| in \lstinline|std::ranges|, and gaps in search (\lstinline|contains|, \lstinline|find_last|, \lstinline|starts_with|). C++23 fills all three.
+
+\section{\texttt{ranges::to} --- Materializing a Range into a Container}
+
+\lstinline|std::ranges::to<Container>()| converts any range --- including a lazy view pipeline --- into a concrete container.
+
+\begin{lstlisting}[language=C++, caption={Basic materialization}]
+#include <ranges>
+#include <vector>
+
+int main() {
+    auto v = std::views::iota(0, 5) | std::ranges::to<std::vector>();  // {0,1,2,3,4}
+}
+\end{lstlisting}
+
+\begin{itemize}
+    \item \lstinline|to<std::vector>()| deduces the element type; \lstinline|to<std::vector<int>>()| names it.
+    \item Works for any container: \lstinline|to<std::set>()|, \lstinline|to<std::map>()|, \lstinline|to<std::string>()|, \lstinline|to<std::list>()|.
+    \item Nests: \lstinline|to<std::vector<std::vector<int>>>()| recursively converts inner ranges.
+\end{itemize}
+
+\begin{lstlisting}[language=C++, caption={Materializing a pipeline, including nested conversion}]
+#include <ranges>
+#include <vector>
+#include <string>
+#include <print>
+
+int main() {
+    auto squares = std::views::iota(1, 6)
+        | std::views::filter([](int n){ return n % 2 == 1; })
+        | std::views::transform([](int n){ return n * n; })
+        | std::ranges::to<std::vector>();          // {1, 9, 25}
+    std::println("{}", squares);
+
+    auto grid = std::views::iota(0, 6)
+        | std::views::chunk(2)
+        | std::ranges::to<std::vector<std::vector<int>>>();  // {{0,1},{2,3},{4,5}}
+    std::println("{}", grid);
+}
+\end{lstlisting}
+
+\lstinline|ranges::to| forwards extra constructor arguments (allocators, comparators) to the target container.
+
+\section{The Fold Family}
+
+A \textbf{fold} reduces a range to a single value by repeatedly applying a binary operation. C++23 adds the range-native, concept-constrained successors to \lstinline|std::accumulate|.
+
+\begin{itemize}
+    \item \lstinline|fold_left(r, init, f)| --- left to right, explicit init, returns the accumulator.
+    \item \lstinline|fold_right(r, init, f)| --- right to left.
+    \item \lstinline|fold_left_first(r, f)| --- seeds from the first element; returns \lstinline|optional|.
+    \item \lstinline|fold_right_last(r, f)| --- seeds from the last element; returns \lstinline|optional|.
+    \item \lstinline|fold_left_with_iter(r, init, f)| --- also returns the end iterator.
+\end{itemize}
+
+\begin{lstlisting}[language=C++, caption={The fold family in action}]
+#include <ranges>
+#include <vector>
+#include <functional>
+#include <print>
+
+int main() {
+    std::vector<int> v{1, 2, 3, 4};
+
+    int sum  = std::ranges::fold_left(v, 0, std::plus{});          // 10
+    int prod = std::ranges::fold_left(v, 1, std::multiplies{});    // 24
+
+    std::optional<int> maxv = std::ranges::fold_left_first(v,
+        [](int a, int b){ return a > b ? a : b; });                // 4
+
+    std::println("sum={} prod={} max={}", sum, prod, *maxv);
+
+    int alt = std::ranges::fold_right(v, 0, std::minus{});         // 1-(2-(3-(4-0))) = -2
+    std::println("fold_right minus = {}", alt);
+}
+\end{lstlisting}
+
+Being concept-constrained, a mismatch between accumulator and operation is a clear compile-time error --- not the silent narrowing of \lstinline|std::accumulate(v.begin(), v.end(), 0)|.
+
+\section{Choosing the Right Fold}
+
+\begin{itemize}
+    \item Explicit identity (sum from 0, product from 1)? \lstinline|fold_left| --- the default.
+    \item Non-associative or right-nesting needed? \lstinline|fold_right|.
+    \item No natural identity, range may be empty? \lstinline|fold_left_first| / \lstinline|fold_right_last| (handle the \lstinline|optional|).
+    \item Folding a prefix and resuming? \lstinline|fold_left_with_iter|.
+\end{itemize}
+
+\section{New Range Search}
+
+\begin{itemize}
+    \item \lstinline|contains(r, value)| --- replaces \lstinline|find(r, value) != r.end()|.
+    \item \lstinline|contains_subrange(r, sub)| --- contiguous subsequence search.
+    \item \lstinline|find_last|, \lstinline|find_last_if|, \lstinline|find_last_if_not| --- subrange at the last match.
+    \item \lstinline|starts_with(r, prefix)| / \lstinline|ends_with(r, suffix)| --- over any ranges.
+\end{itemize}
+
+\begin{lstlisting}[language=C++, caption={The new range queries}]
+#include <ranges>
+#include <vector>
+#include <print>
+
+int main() {
+    std::vector<int> v{1, 2, 3, 2, 5};
+
+    std::println("{}", std::ranges::contains(v, 3));                          // true
+    std::println("{}", std::ranges::contains_subrange(v, std::vector{3, 2})); // true
+    std::println("{}", std::ranges::starts_with(v, std::vector{1, 2}));       // true
+    std::println("{}", std::ranges::ends_with(v, std::vector{2, 5}));         // true
+
+    auto last2 = std::ranges::find_last(v, 2);   // subrange at the LAST 2 (index 3)
+    std::println("last 2 at index {}", last2.begin() - v.begin());           // 3
+}
+\end{lstlisting}
+
+\begin{quote}
+\textbf{Version-trap flag:} \lstinline|std::ranges::to|, the \lstinline|fold_*| family, and the search additions are \textbf{C++23}. C++20's \lstinline|std::accumulate| is unconstrained and iterator-based. The \lstinline|std::string|/\lstinline|string_view| \lstinline|contains| member is also C++23 but a separate facility (Chapter~64).
+\end{quote}
+
+\section{Performance of Eager Range Operations}
+
+\begin{itemize}
+    \item \textbf{\lstinline|ranges::to| allocates once} when the range is \lstinline|sized_range| (it reserves up front); a \lstinline|filter| chain grows like \lstinline|push_back|.
+    \item \textbf{Folds are tight loops.} \lstinline|fold_left| over a contiguous range vectorizes when the operation is visible; prefer it over \lstinline|fold_right|.
+    \item \textbf{Search algorithms are linear and short-circuiting.} \lstinline|find_last| scans from the end --- do not materialize a reversed copy.
+\end{itemize}
+
+Build lazily with views (no allocation, fused), and pay the single eager cost only at the endpoint.
+
+\section{Professional Insights}
+
+\textbf{\lstinline|ranges::to| is the piece that makes the whole ranges library usable in production code.} Most code eventually needs a real container to store, return, or hand to an ABI boundary. With \lstinline|to|, the entire computation including materialization reads as one declarative expression, and the library reserves capacity when it can.
+
+\textbf{Replace \lstinline|std::accumulate| with \lstinline|fold_left|, and let the type system catch your reduction bugs.} \lstinline|fold_left| is concept-constrained, takes the range directly, composes with views, and expresses the empty-range case through the \lstinline|_first|/\lstinline|_last| variants.
+
+\textbf{Use the \lstinline|_first|/\lstinline|_last| folds to retire the ``what is the identity?'' question.} They seed from the data and return an \lstinline|optional|, making the empty case a value you must handle.
+
+\textbf{Prefer the named search algorithms over hand-rolled equivalents.} \lstinline|contains| cannot be gotten subtly wrong, \lstinline|find_last| scans from the end, and all accept projections so you rarely need to pre-transform the range.

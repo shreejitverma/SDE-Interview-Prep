@@ -1,0 +1,116 @@
+\chapter{Extended Floating-Point Types}
+\label{ch:extended-floating-point-types}
+
+For decades C++ offered exactly three floating-point types --- \lstinline|float|, \lstinline|double|, and \lstinline|long double| --- whose bit widths were implementation-defined. C++23's new header \lstinline|<stdfloat>| finally gives portable, fixed-width names for the IEEE and industry formats: \lstinline|std::float16_t|, \lstinline|std::float32_t|, \lstinline|std::float64_t|, \lstinline|std::float128_t|, and \lstinline|std::bfloat16_t|.
+
+\section{Why Fixed-Width Floats Were Missing}
+
+The classic types are defined by \emph{minimum} guarantees, not exact layouts: \lstinline|long double| is 80-bit on x86 Linux, 64-bit on MSVC, 128-bit elsewhere. This makes three things impossible to write portably:
+
+\begin{enumerate}
+    \item \textbf{Binary interchange} --- there was no \emph{named} ``exactly binary32'' type.
+    \item \textbf{Narrow-precision computing} --- ML runs on 16-bit floats, but C++ had no standard name for half or brain-float.
+    \item \textbf{Guaranteed wide precision} --- code needing a true 128-bit float could not portably ask for one.
+\end{enumerate}
+
+\section{The \texttt{<stdfloat>} Types}
+
+The header defines up to five optional aliases, each provided only if the implementation supports the format, each with a feature-test macro.
+
+\begin{center}
+\begin{tabular}{lllll}
+\textbf{Type} & \textbf{Format} & \textbf{Bits} & \textbf{Exp/Mant} & \textbf{Use} \\
+\hline
+\lstinline|float16_t|  & IEEE binary16 & 16  & 5 / 10  & Graphics, ML storage \\
+\lstinline|bfloat16_t| & bfloat16      & 16  & 8 / 7   & ML (wide range) \\
+\lstinline|float32_t|  & IEEE binary32 & 32  & 8 / 23  & Portable ``float'' \\
+\lstinline|float64_t|  & IEEE binary64 & 64  & 11 / 52 & Portable ``double'' \\
+\lstinline|float128_t| & IEEE binary128& 128 & 15 / 112& High-precision sci. \\
+\end{tabular}
+\end{center}
+
+These are \textbf{distinct types} (separate for overload resolution even when layout-identical to \lstinline|float|), and \textbf{availability is optional} --- guard on the feature-test macros.
+
+\begin{lstlisting}[language=C++, caption={Detecting and using the fixed-width types}]
+#include <stdfloat>
+#include <print>
+
+int main() {
+#if defined(__STDCPP_FLOAT32_T__)
+    std::float32_t a = 1.5f32;          // exactly IEEE binary32
+    std::float64_t b = 3.141592653589793f64;
+    std::println("a={} b={}", a, b);
+#else
+    std::println("float32_t not supported");
+#endif
+}
+\end{lstlisting}
+
+\section{\texttt{bfloat16\_t} vs \texttt{float16\_t}: Range vs Precision}
+
+\begin{itemize}
+    \item \textbf{\lstinline|float16_t| (IEEE half)} --- 5 exp / 10 mant: more precision, narrow range (max $\approx$ 65504). For bounded, normalized data.
+    \item \textbf{\lstinline|bfloat16_t| (brain float)} --- 8 exp / 7 mant: \emph{same range as \lstinline|float|}, less precision. For ML, where overflow is fatal.
+\end{itemize}
+
+\begin{lstlisting}[language=C++, caption={The same value, two 16-bit formats}]
+#include <stdfloat>
+#include <print>
+
+int main() {
+#if defined(__STDCPP_FLOAT16_T__) && defined(__STDCPP_BFLOAT16_T__)
+    std::bfloat16_t big_bf = 1.0e30bf16;   // fine: bfloat16 has float's range
+    std::float16_t  big_h  = 1000.0f16;    // 1.0e30 would overflow half to inf
+    std::println("bf={} half={}", static_cast<float>(big_bf),
+                                  static_cast<float>(big_h));
+#endif
+}
+\end{lstlisting}
+
+Rule of thumb: \textbf{\lstinline|bfloat16_t| when dynamic range matters; \lstinline|float16_t| when precision-per-bit matters and values are bounded.}
+
+\section{Literals, Conversions, and the Usual Arithmetic Conversions}
+
+Each type has a suffix: \lstinline|f16|, \lstinline|bf16|, \lstinline|f32|, \lstinline|f64|, \lstinline|f128|. Conversion rules are stricter than the classic types':
+
+\begin{itemize}
+    \item \textbf{Widening} (e.g. \lstinline|float16_t| $\to$ \lstinline|float64_t|) is implicit and safe.
+    \item \textbf{Narrowing} requires an explicit cast --- no silent precision loss.
+    \item Where there is no common type that represents both without loss, the expression is \textbf{ill-formed} rather than silently converting.
+\end{itemize}
+
+\begin{lstlisting}[language=C++, caption={Literals and the widening/narrowing distinction}]
+#include <stdfloat>
+
+int main() {
+#if defined(__STDCPP_FLOAT16_T__) && defined(__STDCPP_FLOAT64_T__)
+    std::float16_t h = 1.5f16;
+    std::float64_t d = h;                       // OK: widening is implicit
+    // std::float16_t back = d;                 // ERROR: narrowing needs a cast
+    std::float16_t back = static_cast<std::float16_t>(d);
+    (void)back;
+#endif
+}
+\end{lstlisting}
+
+\section{Performance and Hardware Acceleration}
+
+\begin{itemize}
+    \item \textbf{Memory and bandwidth} --- a 16-bit type halves an array vs \lstinline|float|, quarters vs \lstinline|double|; bandwidth-bound kernels see 2--4$\times$ throughput.
+    \item \textbf{Native SIMD/accelerator paths} --- AVX-512 FP16, ARM FP16/BF16, and ML accelerators emit native half/bfloat arithmetic.
+    \item \textbf{The emulation cliff} --- without hardware support, a format may be software-emulated and \emph{dramatically slower} than \lstinline|float|. Then use narrow types for storage and widen to \lstinline|float| for math.
+\end{itemize}
+
+\begin{quote}
+\textbf{Version-trap flag:} \lstinline|<stdfloat>| and all five aliases plus their literal suffixes are \textbf{C++23}. Every type is optional --- guard on \lstinline|__STDCPP_FLOAT16_T__|, \lstinline|__STDCPP_BFLOAT16_T__|, etc. Do not confuse them with vendor spellings \lstinline|_Float16|/\lstinline|__fp16|/\lstinline|__bf16|.
+\end{quote}
+
+\section{Professional Insights}
+
+\textbf{Use \lstinline|std::float32_t|/\lstinline|std::float64_t| whenever the bit layout is part of a contract.} Wire protocols, file formats, GPU buffers, FFI, and device registers all rely on an exact IEEE layout that \lstinline|float|/\lstinline|double| give only by convention. The fixed-width aliases give it by guarantee and let you \lstinline|static_assert| the format.
+
+\textbf{Choose between \lstinline|bfloat16_t| and \lstinline|float16_t| by dynamic range, not name similarity.} The wrong pick produces silent infinities or silent precision collapse. \lstinline|bfloat16_t| keeps \lstinline|float|'s exponent range (ML default); \lstinline|float16_t| keeps more mantissa (bounded data).
+
+\textbf{Treat narrow floats as a storage and bandwidth optimization first, an arithmetic format second.} The portable win is halving memory traffic; native arithmetic exists only where the hardware supports it and becomes a slowdown under emulation. Store narrow, widen to \lstinline|float| for math where needed, and always gate on the feature-test macros.
+
+\textbf{Let the stricter conversion rules protect you.} Narrowing requires an explicit cast precisely because silent precision loss is insidious. Treat a required \lstinline|static_cast| as a prompt to confirm the loss is intended.
