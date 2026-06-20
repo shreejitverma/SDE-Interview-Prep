@@ -1,0 +1,329 @@
+\chapter{Template Metaprogramming}
+\label{ch:c17-template-metaprogramming}
+
+\begin{quote}
+\emph{If C++14 made metaprogramming legible, C++17 makes it concise and, in places, unnecessary. Fold expressions collapse hand-rolled variadic recursion to a single line; class template argument deduction lets you drop the angle brackets the compiler can infer; \texttt{auto} non-type parameters free templates from spelling the type of a value parameter; and a cluster of new \texttt{<functional>}/\texttt{<type\_traits>} utilities --- \texttt{invoke}, \texttt{apply}, \texttt{make\_from\_tuple}, \texttt{is\_invocable}, \texttt{not\_fn}, \texttt{void\_t}, and the logical trait combinators --- turn previously bespoke machinery into standard tools.}
+\end{quote}
+
+The C++17 template features attack the two biggest sources of metaprogramming pain: \textbf{variadic recursion} and \textbf{redundant type spelling}. Before C++17, summing a parameter pack meant a two-overload recursive template; now it is \texttt{(args + ...)}. Before C++17, \texttt{std::pair<int, double> p\{1, 3.14\}} named types the compiler could already see; now \texttt{std::pair p\{1, 3.14\}} deduces them. The library additions standardize the ``call anything callable'' and ``expand a tuple into a call'' primitives that every generic library had been re-implementing.
+
+\section{Fold Expressions}
+\label{sec:c17-fold-expressions}
+
+A \textbf{fold expression} applies a binary operator across every element of a parameter pack, in one expression, with no recursion. The four syntactic forms differ in associativity and whether an identity element is supplied:
+
+\begin{center}
+\begin{tabular}{lll}
+\hline
+\textbf{Form} & \textbf{Syntax} & \textbf{Expansion} \\
+\hline
+Unary right fold  & \texttt{(args op ...)}          & \texttt{a1 op (a2 op (... op aN))} \\
+Unary left fold   & \texttt{(... op args)}          & \texttt{((a1 op a2) op ...) op aN} \\
+Binary right fold & \texttt{(args op ... op init)}  & \texttt{a1 op (... op (aN op init))} \\
+Binary left fold  & \texttt{(init op ... op args)}  & \texttt{((init op a1) op ...) op aN} \\
+\hline
+\end{tabular}
+\end{center}
+
+\begin{lstlisting}[language=C++,caption={Summing a pack --- the C++11 recursion vs the C++17 fold}]
+// C++11/14: two overloads, base case + recursive case
+// template <typename T> T sum(T v) { return v; }
+// template <typename T, typename... Rest>
+// T sum(T first, Rest... rest) { return first + sum(rest...); }
+
+// C++17: one line, a unary left fold
+template <typename... Args>
+auto sum(Args... args) {
+    return (... + args);          // ((a1 + a2) + a3) + ...
+}
+
+int main() {
+    return sum(1, 2, 3, 4);       // 10
+}
+\end{lstlisting}
+
+The \textbf{binary} forms supply an identity so the fold is well-defined for an empty pack, and are the idiom for variadic printing:
+
+\begin{lstlisting}[language=C++,caption={A variadic printer via a binary left fold over operator<<}]
+#include <iostream>
+
+template <typename... Args>
+void print(Args&&... args) {
+    (std::cout << ... << args) << "\n";   // ((cout << a1) << a2) << ...
+}
+
+print("x = ", 42, ", y = ", 3.14);        // x = 42, y = 3.14
+\end{lstlisting}
+
+A fold over the comma operator runs an arbitrary statement per pack element --- the general ``do something for each argument'' loop:
+
+\begin{lstlisting}[language=C++,caption={A comma fold invokes a side effect per element}]
+template <typename... Args>
+void call_each(Args&&... args) {
+    (void(std::cout << args << ' '), ...);   // unary right fold over comma
+}
+\end{lstlisting}
+
+Folds are supported over the 32 binary operators. For an \textbf{empty} pack, only \texttt{\&\&} (yields \texttt{true}), \texttt{||} (yields \texttt{false}), and \texttt{,} (yields \texttt{void()}) have defined values in the unary forms; any other operator requires the binary form with an explicit identity.
+
+\section{Class Template Argument Deduction (CTAD)}
+\label{sec:c17-ctad}
+
+\textbf{Class template argument deduction} lets the compiler deduce a class template's arguments from its constructor arguments, so you can omit the angle-bracket list entirely.
+
+\begin{lstlisting}[language=C++,caption={CTAD removes redundant type arguments}]
+#include <utility>
+#include <vector>
+#include <mutex>
+
+// C++14: the type arguments restate what the initializers already say
+std::pair<int, double> p1(1, 3.14);
+
+// C++17: deduced from the constructor arguments
+std::pair p2(1, 3.14);             // -> std::pair<int, double>
+std::vector v{1, 2, 3};            // -> std::vector<int>
+
+std::mutex mtx;
+std::lock_guard lk2(mtx);          // -> std::lock_guard<std::mutex>
+\end{lstlisting}
+
+This removes a class of \texttt{make\_*} helper functions whose only job was to deduce: \texttt{std::make\_pair(a, b)} becomes simply \texttt{std::pair(a, b)}, and RAII lock types no longer need their lock type spelled at every guard site. CTAD works from the visible constructors plus any deduction guides (Section~\ref{sec:c17-deduction-guides}).
+
+\section{User-Defined Deduction Guides}
+\label{sec:c17-deduction-guides}
+
+When the compiler cannot deduce the template arguments correctly from the constructors alone, you supply an explicit \textbf{deduction guide}: a trailing-return-style mapping from constructor argument types to the intended specialization.
+
+\begin{lstlisting}[language=C++,caption={A deduction guide maps const char* to std::string}]
+#include <string>
+
+template <typename T>
+struct Wrapper {
+    T value;
+    Wrapper(T v) : value(v) {}
+};
+
+// Without a guide, Wrapper w("hi") would deduce Wrapper<const char*>.
+// This guide redirects a string-literal argument to Wrapper<std::string>:
+Wrapper(const char*) -> Wrapper<std::string>;
+
+int main() {
+    Wrapper w("hello");        // deduced as Wrapper<std::string>
+    Wrapper n(42);             // deduced as Wrapper<int> from the constructor
+}
+\end{lstlisting}
+
+The syntax \texttt{TemplateName(parameter-types) -> TemplateName<chosen-args>;} is written at namespace scope. Deduction guides are the mechanism behind the \texttt{overloaded\{...\}} visitor idiom and behind every container's ability to deduce its element type from an iterator pair or initializer list.
+
+\section{\texttt{auto} Non-Type Template Parameters}
+\label{sec:c17-auto-nttp}
+
+C++17 allows \texttt{template <auto V>}, letting a \textbf{non-type template parameter deduce its own type} from the argument. Previously you had to spell both the type and the value (\texttt{template <typename T, T V>}).
+
+\begin{lstlisting}[language=C++,caption={auto NTTP deduces the value's type}]
+template <auto Value>
+struct Constant {
+    static constexpr auto value = Value;
+    using type = decltype(Value);
+};
+
+Constant<42>     ci;     // Value is int,  type == int
+Constant<'A'>    cc;     // Value is char, type == char
+Constant<true>   cb;     // Value is bool, type == bool
+\end{lstlisting}
+
+Combined with a pack, \texttt{template <auto... Vs>} carries a list of values of possibly different types --- the building block for compile-time value sequences:
+
+\begin{lstlisting}[language=C++,caption={A heterogeneous compile-time value pack}]
+template <auto... Vs>
+struct ValueList {
+    static constexpr std::size_t size = sizeof...(Vs);
+};
+
+ValueList<1, 'c', true, 4L> mixed;   // size == 4
+\end{lstlisting}
+
+\section{\texttt{typename} in Template Template Parameters}
+\label{sec:c17-typename-ttp}
+
+C++17 permits \texttt{typename} (in addition to \texttt{class}) when declaring a \textbf{template template parameter}. Before C++17 the grammar required \texttt{class} in that position even though the argument is a type-producing template.
+
+\begin{lstlisting}[language=C++,caption={typename now allowed for template template parameters}]
+// Pre-C++17: only 'class' was accepted in this position
+template <template <typename> class Container>
+struct OldStyle {};
+
+// C++17: 'typename' is accepted too, matching ordinary type-parameter syntax
+template <template <typename> typename Container>
+struct NewStyle {
+    Container<int> data;
+};
+
+NewStyle<std::vector> nv;   // Container = std::vector
+\end{lstlisting}
+
+The change lets a codebase adopt a single keyword (\texttt{typename}) everywhere a type or type-template parameter is declared, removing a long-standing special case.
+
+\section{\texttt{std::invoke} and the Uniform Call Mechanism}
+\label{sec:c17-invoke}
+
+\texttt{std::invoke(f, args...)} (in \texttt{<functional>}) calls \emph{any} \textbf{Callable} with a single, uniform syntax: a free function, a function object or lambda, a pointer to member function, or a pointer to member data. It encapsulates the awkward \texttt{INVOKE} rules behind one call.
+
+\begin{lstlisting}[language=C++,caption={One call form for every kind of callable}]
+#include <functional>
+
+struct Foo {
+    int bar(int x) const { return x * 2; }
+    int data = 7;
+};
+
+int free_fn(int x) { return x + 1; }
+
+int main() {
+    Foo f;
+    // Pointer to member function -- invoke supplies the (obj.*pmf)(args) form:
+    int a = std::invoke(&Foo::bar, f, 21);    // 42
+    // Pointer to member data -- invoke yields obj.*pmd:
+    int b = std::invoke(&Foo::data, f);       // 7
+    // Free function and lambda -- ordinary call:
+    int c = std::invoke(free_fn, 10);         // 11
+    int d = std::invoke([](int x){ return -x; }, 5);   // -5
+}
+\end{lstlisting}
+
+\texttt{std::invoke} is the foundation the rest of the callable machinery builds on: \texttt{std::apply}, \texttt{std::bind}, \texttt{std::thread}, \texttt{std::async}, and \texttt{std::function} all use the same \texttt{INVOKE} semantics.
+
+\section{\texttt{std::apply} and \texttt{std::make\_from\_tuple}}
+\label{sec:c17-apply}
+
+\textbf{\texttt{std::apply(f, tuple)}} unpacks a tuple's elements and forwards them as the arguments to \texttt{f} --- standardizing the C++14 ``indices trick'' as a single library call.
+
+\begin{lstlisting}[language=C++,caption={std::apply replaces the hand-written index-sequence unpacker}]
+#include <tuple>
+#include <functional>
+
+int add3(int a, int b, int c) { return a + b + c; }
+
+int main() {
+    auto args = std::make_tuple(1, 2, 3);
+    int sum = std::apply(add3, args);          // add3(1, 2, 3) == 6
+
+    auto t = std::make_tuple(2, 3.5, std::string("x"));
+    std::apply([](int i, double d, const std::string& s) {
+        // use i, d, s ...
+    }, t);
+}
+\end{lstlisting}
+
+\textbf{\texttt{std::make\_from\_tuple<T>(tuple)}} constructs a \texttt{T} by unpacking the tuple as constructor arguments --- the construction analogue of \texttt{apply}.
+
+\begin{lstlisting}[language=C++,caption={Constructing an object from a tuple of arguments}]
+#include <tuple>
+#include <memory>
+
+struct Vec3 { double x, y, z; Vec3(double a, double b, double c); };
+
+auto params = std::make_tuple(1.0, 2.0, 3.0);
+Vec3 v = std::make_from_tuple<Vec3>(params);   // Vec3(1.0, 2.0, 3.0)
+\end{lstlisting}
+
+Both are implemented in terms of \texttt{std::invoke} and \texttt{index\_sequence}, but you no longer write that scaffolding.
+
+\section{Callable Traits: \texttt{is\_invocable}, \texttt{invoke\_result}, \texttt{not\_fn}}
+\label{sec:c17-callable-traits}
+
+C++17 modernizes the callable-introspection traits to match \texttt{std::invoke}'s semantics and deprecates the flawed \texttt{std::result\_of}.
+
+\textbf{\texttt{std::is\_invocable<F, Args...>}} and \textbf{\texttt{std::is\_invocable\_r<R, F, Args...>}} ask whether \texttt{F} can be called with \texttt{Args...} (and whether the result is convertible to \texttt{R}):
+
+\begin{lstlisting}[language=C++,caption={Detecting callability before committing to a call}]
+#include <type_traits>
+
+int f(int);
+
+static_assert( std::is_invocable_v<decltype(f), int>);
+static_assert(!std::is_invocable_v<decltype(f), std::string>);
+static_assert( std::is_invocable_r_v<long, decltype(f), int>);
+\end{lstlisting}
+
+\textbf{\texttt{std::invoke\_result\_t<F, Args...>}} gives the return type of that call --- the correct, member-pointer-aware replacement for \texttt{std::result\_of\_t}:
+
+\begin{lstlisting}[language=C++,caption={Deducing a callable's return type the modern way}]
+template <typename F, typename... Args>
+auto call_and_log(F&& f, Args&&... args)
+    -> std::invoke_result_t<F, Args...> {     // not result_of_t (deprecated)
+    return std::invoke(std::forward<F>(f), std::forward<Args>(args)...);
+}
+\end{lstlisting}
+
+\textbf{\texttt{std::not\_fn(callable)}} returns a callable that negates the wrapped one --- the general replacement for the deprecated \texttt{std::not1}/\texttt{std::not2}:
+
+\begin{lstlisting}[language=C++,caption={Negating a predicate without not1/not2}]
+#include <functional>
+#include <algorithm>
+#include <vector>
+
+bool is_even(int n) { return n % 2 == 0; }
+
+std::vector<int> v{1, 2, 3, 4, 5};
+auto odd_count = std::count_if(v.begin(), v.end(), std::not_fn(is_even));  // 3
+\end{lstlisting}
+
+\section{Logical Trait Combinators: \texttt{void\_t}, \texttt{bool\_constant}, \texttt{conjunction}/\texttt{disjunction}/\texttt{negation}}
+\label{sec:c17-trait-combinators}
+
+C++17 standardizes the metaprogramming combinators that libraries had been re-deriving.
+
+\textbf{\texttt{std::void\_t<...>}} maps any list of well-formed types to \texttt{void}. It is the enabling trick for \textbf{detection idioms}: a partial specialization that mentions a possibly-ill-formed expression inside \texttt{void\_t} is selected only when that expression is valid.
+
+\begin{lstlisting}[language=C++,caption={void\_t detection idiom --- does T have a ::value\_type?}]
+#include <type_traits>
+
+template <typename T, typename = void>
+struct has_value_type : std::false_type {};
+
+template <typename T>
+struct has_value_type<T, std::void_t<typename T::value_type>>
+    : std::true_type {};
+
+static_assert( has_value_type<std::vector<int>>::value);
+static_assert(!has_value_type<int>::value);
+\end{lstlisting}
+
+\textbf{\texttt{std::bool\_constant<B>}} is shorthand for \texttt{std::integral\_constant<bool, B>}.
+
+\textbf{\texttt{std::conjunction}, \texttt{std::disjunction}, \texttt{std::negation}} are the logical AND/OR/NOT over traits, and crucially they \textbf{short-circuit} during instantiation --- avoiding instantiating (and erroring on) later traits.
+
+\begin{lstlisting}[language=C++,caption={Composing traits with short-circuiting combinators}]
+#include <type_traits>
+
+// "all of Ts are integral":
+template <typename... Ts>
+using all_integral = std::conjunction<std::is_integral<Ts>...>;
+
+static_assert( all_integral<int, long, char>::value);
+static_assert(!all_integral<int, double>::value);
+
+static_assert(std::negation_v<std::is_pointer<int>>);
+
+template <typename T,
+          typename = std::enable_if_t<
+              std::disjunction_v<std::is_integral<T>,
+                                 std::is_floating_point<T>>>>
+T twice(T x) { return x + x; }
+\end{lstlisting}
+
+These turn error-prone hand-written recursive traits into composable, short-circuiting one-liners.
+
+\section{Professional Insights}
+\label{sec:c17-templates-insights}
+
+\textbf{Replace every variadic recursion you can with a fold expression.} A two-overload recursive template to sum, print, or AND-reduce a pack is now a single fold --- less code, faster to compile, clearer intent. Reserve recursion for genuinely position-dependent processing.
+
+\textbf{Let CTAD delete your \texttt{make\_*} helpers.} \texttt{std::pair(a, b)}, \texttt{std::lock\_guard(m)}, and \texttt{std::vector\{1, 2, 3\}} are now self-deducing. Write a deduction guide when your own class type's constructors don't lead the compiler to the specialization you intend.
+
+\textbf{Use \texttt{std::invoke} whenever you call a stored, unknown callable.} It is the only spelling that correctly handles pointers-to-member alongside ordinary callables, and it is what \texttt{apply}, \texttt{thread}, and \texttt{function} use internally. Raw \texttt{f(args...)} silently fails to compile for member pointers; \texttt{std::invoke} will not.
+
+\textbf{Prefer \texttt{invoke\_result\_t} and \texttt{is\_invocable\_v} over \texttt{result\_of}.} \texttt{std::result\_of} is deprecated in C++17 (removed later) because it cannot express all \texttt{INVOKE} cases. Likewise reach for \texttt{std::not\_fn} over \texttt{not1}/\texttt{not2}.
+
+\textbf{\texttt{void\_t} and the conjunction/disjunction/negation combinators are your standard detection toolkit.} Before writing a bespoke recursive trait, ask whether \texttt{void\_t} plus a partial specialization expresses the detection, and whether the logical combinators express the constraint with short-circuiting.

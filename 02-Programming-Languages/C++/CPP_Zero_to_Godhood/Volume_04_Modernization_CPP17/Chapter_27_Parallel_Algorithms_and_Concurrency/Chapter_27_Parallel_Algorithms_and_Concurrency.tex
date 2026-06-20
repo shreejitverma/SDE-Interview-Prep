@@ -1,0 +1,222 @@
+\chapter{Parallel Algorithms and Concurrency}
+\label{ch:c17-parallel-concurrency}
+
+\begin{quote}
+\emph{C++17 made the standard algorithms parallel. Most of \texttt{<algorithm>} and a set of new numeric algorithms now accept an execution policy as their first argument, letting \texttt{std::sort}, \texttt{std::for\_each}, and \texttt{std::reduce} run across threads or SIMD lanes without you writing a single thread. Alongside, the concurrency primitives gained \texttt{std::scoped\_lock} for deadlock-free multi-mutex locking and the untimed \texttt{std::shared\_mutex} reader-writer lock.}
+\end{quote}
+
+The parallel algorithms are C++17's most ambitious library addition: a uniform, opt-in path to parallelism that reuses the algorithm names you already know. The new \textbf{generalized numeric algorithms} --- \texttt{reduce}, \texttt{transform\_reduce}, and the scans --- exist precisely because their classic counterparts (\texttt{accumulate}, \texttt{partial\_sum}) impose a strict left-to-right order that forbids parallelism; the new versions relax that ordering so the work can be split. This chapter also covers \texttt{scoped\_lock} (the multi-mutex successor to \texttt{lock\_guard}) and \texttt{shared\_mutex} (the untimed reader-writer lock superseding C++14's \texttt{shared\_timed\_mutex}).
+
+\section{Parallel Algorithms and Execution Policies}
+\label{sec:c17-exec-policies-intro}
+
+C++17 adds overloads of roughly 60 standard algorithms that take an \textbf{execution policy} as their first argument (header \texttt{<execution>}). The policy is a hint about \emph{how} the work may be executed; the algorithm's \emph{meaning} is unchanged.
+
+\begin{lstlisting}[language=C++,caption={The same sort, three execution strategies}]
+#include <algorithm>
+#include <execution>
+#include <vector>
+
+std::vector<int> v(1'000'000);
+
+// Sequential -- equivalent to the classic overload:
+std::sort(std::execution::seq, v.begin(), v.end());
+
+// Parallel -- may distribute the sort across multiple threads:
+std::sort(std::execution::par, v.begin(), v.end());
+
+// Parallel + vectorized -- threads AND SIMD interleaving permitted:
+std::sort(std::execution::par_unseq, v.begin(), v.end());
+\end{lstlisting}
+
+The policy is a \emph{permission}, not a guarantee: an implementation may execute a \texttt{par} call sequentially, but may never execute a \texttt{seq} call in parallel. The benefit appears on large datasets; for small ranges the sequential overload is often faster.
+
+\section{The Three Execution Policies}
+\label{sec:c17-three-policies}
+
+\begin{center}
+\begin{tabular}{lll}
+\hline
+\textbf{Policy} & \textbf{Object} & \textbf{Constraint on your code} \\
+\hline
+Sequenced & \texttt{std::execution::seq} & none \\
+Parallel & \texttt{std::execution::par} & element ops must be \textbf{thread-safe} \\
+Parallel-unsequenced & \texttt{std::execution::par\_unseq} & element ops must be \textbf{vectorization-safe} \\
+\hline
+\end{tabular}
+\end{center}
+
+Under \texttt{par}, each element's operation runs to completion on \emph{some} thread, so an ordinary mutex inside the operation is fine. Under \texttt{par\_unseq}, the library may \textbf{interleave instructions from different element operations on the same thread}, so the operation must not assume it runs as an uninterrupted unit.
+
+\begin{quote}
+\textbf{Caution:} under \texttt{par\_unseq}, the element operation must be \textbf{vector-safe}: it must not acquire mutexes, allocate or free memory, or perform any operation that cannot be safely interleaved with another invocation on the same thread. Use \texttt{par} (not \texttt{par\_unseq}) whenever the body locks or allocates.
+\end{quote}
+
+\begin{lstlisting}[language=C++,caption={par is safe with a lock; par\_unseq is NOT}]
+#include <execution>
+#include <algorithm>
+#include <mutex>
+
+std::mutex m;
+
+// OK: par -- each body runs as a unit on some thread
+std::for_each(std::execution::par, v.begin(), v.end(), [&](int& x){
+    std::lock_guard lk(m);   // safe under par
+    x = transform(x);
+});
+
+// WRONG: par_unseq -- locking inside a vectorized body can deadlock
+// std::for_each(std::execution::par_unseq, ... lock ...);  // undefined behavior
+\end{lstlisting}
+
+\section{Generalized Numeric Algorithms: \texttt{reduce} and \texttt{transform\_reduce}}
+\label{sec:c17-reduce}
+
+The classic \texttt{std::accumulate} folds left-to-right in a strictly defined order, making it inherently sequential. C++17 adds \textbf{generalized} numeric algorithms (header \texttt{<numeric>}) whose combining operation must be \textbf{associative and commutative}, freeing the implementation to split the range.
+
+\begin{lstlisting}[language=C++,caption={reduce -- accumulate without the ordering constraint}]
+#include <numeric>
+#include <execution>
+#include <vector>
+
+std::vector<int> v(1'000'000, 1);
+
+int total = std::reduce(std::execution::par, v.begin(), v.end());        // sum, parallel
+int prod  = std::reduce(std::execution::par, v.begin(), v.end(),
+                        1, std::multiplies<>{});                          // product
+\end{lstlisting}
+
+\texttt{std::transform\_reduce} fuses a transform with a reduction --- the standard map-reduce:
+
+\begin{lstlisting}[language=C++,caption={transform\_reduce -- fused map-reduce (e.g. a dot product)}]
+#include <numeric>
+#include <execution>
+#include <vector>
+
+std::vector<double> a(N), b(N);
+
+// inner product: sum over i of a[i] * b[i], computed in parallel
+double dot = std::transform_reduce(
+    std::execution::par,
+    a.begin(), a.end(), b.begin(),
+    0.0);                                   // default ops: + and *
+
+// unary form: sum of f(x) over the range
+double sumsq = std::transform_reduce(
+    std::execution::par,
+    a.begin(), a.end(),
+    0.0, std::plus<>{},
+    [](double x){ return x * x; });
+\end{lstlisting}
+
+Because the reduction order is unspecified, \texttt{reduce} and \texttt{transform\_reduce} can give \textbf{slightly different floating-point results} than \texttt{accumulate}. Where bit-exact reproducibility is required, use \texttt{accumulate} (or \texttt{seq}).
+
+\section{The Scan Algorithms}
+\label{sec:c17-scans}
+
+A \textbf{scan} (prefix sum) produces a sequence of running totals. C++17 adds parallel-friendly scans that relax the ordering, in inclusive/exclusive pairs, each with a plain and a transform-fused form:
+
+\begin{itemize}
+    \item \textbf{\texttt{std::inclusive\_scan}} --- \texttt{out[i] = in[0] + ... + in[i]}.
+    \item \textbf{\texttt{std::exclusive\_scan}} --- \texttt{out[i] = init + in[0] + ... + in[i-1]}.
+    \item \textbf{\texttt{std::transform\_inclusive\_scan}} / \textbf{\texttt{transform\_exclusive\_scan}} --- apply a unary transform before scanning, fused.
+\end{itemize}
+
+\begin{lstlisting}[language=C++,caption={inclusive vs exclusive scan}]
+#include <numeric>
+#include <execution>
+#include <vector>
+
+std::vector<int> in{1, 2, 3, 4};
+std::vector<int> out(in.size());
+
+// inclusive: {1, 3, 6, 10} -- out[i] includes in[i]
+std::inclusive_scan(std::execution::par, in.begin(), in.end(), out.begin());
+
+// exclusive with init 0: {0, 1, 3, 6} -- out[i] excludes in[i]
+std::exclusive_scan(std::execution::par, in.begin(), in.end(), out.begin(), 0);
+
+// fused transform + inclusive scan: scan of squares -> {1, 5, 14, 30}
+std::transform_inclusive_scan(
+    std::execution::par,
+    in.begin(), in.end(), out.begin(),
+    std::plus<>{}, [](int x){ return x * x; });
+\end{lstlisting}
+
+Scans are the building block of stream compaction, histogram offsets, and parallel partitioning. The exclusive form takes the initial value as a separate argument; the inclusive form takes the binary op (and an optional init) but not a leading init by position --- a frequent point of confusion.
+
+\section{\texttt{std::for\_each\_n}}
+\label{sec:c17-for-each-n}
+
+\texttt{std::for\_each\_n} applies a function to the \textbf{first \texttt{n} elements} of a range, given only the start iterator and a count --- no end iterator --- and accepts an execution policy.
+
+\begin{lstlisting}[language=C++,caption={for\_each\_n processes a count, not a range}]
+#include <algorithm>
+#include <execution>
+#include <vector>
+
+std::vector<int> v(1000);
+
+// Process exactly the first 100 elements, in parallel:
+std::for_each_n(std::execution::par, v.begin(), 100, [](int& x){
+    x = process(x);
+});
+\end{lstlisting}
+
+It returns an iterator past the last processed element, composing with further range operations.
+
+\section{\texttt{std::scoped\_lock}}
+\label{sec:c17-scoped-lock}
+
+\texttt{std::scoped\_lock} is a variadic RAII wrapper that locks \textbf{one or more} mutexes for the duration of a scope. With multiple mutexes it uses the same deadlock-avoidance algorithm as \texttt{std::lock}, so two threads locking the same set in different orders cannot deadlock.
+
+\begin{lstlisting}[language=C++,caption={Deadlock-free multi-mutex locking}]
+#include <mutex>
+
+std::mutex m1, m2;
+
+void swap_data() {
+    // Locks BOTH m1 and m2 atomically, deadlock-free, unlocks on scope exit:
+    std::scoped_lock lock(m1, m2);
+    // ... safely touch data guarded by m1 and m2 ...
+}
+\end{lstlisting}
+
+Before C++17, locking two mutexes safely required \texttt{std::lock(m1, m2);} plus two adopting \texttt{lock\_guard}s. \texttt{scoped\_lock} collapses that to one line, and with a single mutex is a drop-in for \texttt{lock\_guard}. Thanks to CTAD, the mutex types are deduced.
+
+\section{\texttt{std::shared\_mutex}}
+\label{sec:c17-shared-mutex}
+
+\texttt{std::shared\_mutex} is a \textbf{reader-writer lock}: it permits either many concurrent \emph{shared} (reader) owners or a single \emph{exclusive} (writer) owner. It is the untimed counterpart standardized in C++17; C++14 had shipped only \texttt{std::shared\_timed\_mutex}.
+
+\begin{lstlisting}[language=C++,caption={Reader-writer locking with shared\_mutex}]
+#include <shared_mutex>
+
+std::shared_mutex smtx;
+
+void writer() {
+    std::unique_lock lock(smtx);    // EXCLUSIVE -- blocks all other readers/writers
+    // ... modify shared state ...
+}
+
+int reader() {
+    std::shared_lock lock(smtx);    // SHARED -- concurrent with other readers
+    // ... read shared state ...
+    return value;
+}
+\end{lstlisting}
+
+Writers take a \texttt{std::unique\_lock}, readers a \texttt{std::shared\_lock}. This is the right primitive for data \textbf{read far more often than written}. When writes are frequent, a \texttt{shared\_mutex}'s extra bookkeeping can be slower than a plain \texttt{mutex}; profile before assuming the reader-writer lock wins.
+
+\section{Professional Insights}
+\label{sec:c17-parallel-insights}
+
+\textbf{Reach for \texttt{par}, not \texttt{par\_unseq}, unless the body is provably vector-safe.} \texttt{par} only requires thread safety; \texttt{par\_unseq} permits interleaving instructions from different invocations on one thread, so any lock, allocation, or non-reentrant call inside the body is undefined behavior. Default to \texttt{par} and promote only after confirming the body does nothing it cannot do mid-instruction-stream.
+
+\textbf{Prefer \texttt{reduce}/\texttt{transform\_reduce} to \texttt{accumulate} when order doesn't matter --- and know when it does.} The generalized algorithms parallelize because their combiner is assumed associative and commutative; the cost is floating-point results that may differ from strict left-to-right \texttt{accumulate}. For checksums or bit-exact reproducibility, stay with \texttt{accumulate} or \texttt{seq}.
+
+\textbf{Measure before parallelizing.} An execution policy is permission, not a promise, and parallel execution has real fixed costs. On small ranges the sequential overload usually wins; benchmark the actual data sizes.
+
+\textbf{Make \texttt{std::scoped\_lock} your default lock guard.} It is a strict superset of \texttt{lock\_guard}: identical for one mutex, deadlock-free for many. Standardizing on it removes a whole class of lock-ordering deadlocks.
+
+\textbf{Use \texttt{shared\_mutex} only for genuinely read-heavy data, and prefer it over \texttt{shared\_timed\_mutex} when timing isn't needed.} A reader-writer lock pays for itself when reads vastly outnumber writes; under frequent writes its bookkeeping can lose to a plain \texttt{mutex}. The untimed \texttt{shared\_mutex} omits the timed-locking overhead of C++14's \texttt{shared\_timed\_mutex}.

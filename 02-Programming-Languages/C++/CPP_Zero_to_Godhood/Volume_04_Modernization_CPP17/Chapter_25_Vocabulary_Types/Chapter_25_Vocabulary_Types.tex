@@ -1,0 +1,423 @@
+\chapter{Vocabulary Types}
+\label{ch:c17-vocabulary-types}
+
+\begin{quote}
+\emph{C++17 standardizes four ``vocabulary types'' --- \texttt{optional}, \texttt{variant}, \texttt{any}, and \texttt{string\_view} --- that give the language a shared, type-safe way to express ideas every codebase had previously hand-rolled: a value that may be absent, a value that is one of several types, a value of any type, and a non-owning view of a string. Because they are standard, they become a common interface across libraries; because they are value types, they integrate with the type system instead of subverting it the way \texttt{void*}, sentinel values, and naked pointers do.}
+\end{quote}
+
+The term \emph{vocabulary type} means a type so broadly useful that it belongs in the shared vocabulary of every interface. Before C++17, ``no value'' was a null pointer or a magic \texttt{-1}, ``one of several types'' was a tagged union maintained by hand, ``any type'' was a \texttt{void*} with a separate tag, and ``a substring without copying'' was a \texttt{const char* + length} pair. Each workaround reduced the space of valid values, leaked memory-management concerns, or threw away type safety. The four types in this chapter replace them with safe, efficient, standard alternatives --- and the \texttt{std::in\_place} tag family and \texttt{std::monostate} round out the construction and empty-state machinery they depend on.
+
+\section{\texttt{std::string\_view}}
+\label{sec:c17-string-view}
+
+\texttt{std::string\_view} is a \textbf{non-owning reference} to a contiguous sequence of characters --- a \texttt{const char*} plus a length, wrapped in an interface that mirrors \texttt{std::string}'s read-only methods. It enables \textbf{zero-copy} string operations.
+
+\subsection{Efficiency}
+
+A \texttt{std::string} parameter copies (and may allocate); a \texttt{std::string\_view} parameter binds to a \texttt{std::string}, a string literal, or a \texttt{const char*} with no copy at all.
+
+\begin{lstlisting}[language=C++,caption={string\_view parameters avoid copies and allocations}]
+#include <string>
+#include <string_view>
+#include <iostream>
+
+// Bad: copies the string (potentially an expensive allocation)
+void print_str(std::string s) {
+    std::cout << s << "\n";
+}
+
+// Good: no copy, no allocation
+void print_view(std::string_view sv) {
+    std::cout << sv << "\n";
+}
+
+int main() {
+    const char* cstr = "Hello World";
+    // print_str(cstr); // would construct a std::string (allocates!)
+    print_view(cstr);   // no allocation
+
+    std::string s = "Hello World";
+    print_view(s);      // also binds to a std::string, no copy
+
+    // Substrings are cheap -- substr() returns another view, not a new buffer:
+    std::string_view sub = std::string_view(cstr).substr(0, 5);
+    print_view(sub);    // "Hello"
+}
+\end{lstlisting}
+
+\subsection{Caveats}
+
+\begin{itemize}
+    \item \textbf{Non-owning / lifetime:} the viewed character buffer must outlive the view. A \texttt{string\_view} to a temporary \texttt{std::string} dangles.
+    \item \textbf{Not null-terminated:} \texttt{sv.data()} is \emph{not} guaranteed to point at a null-terminated C string, so passing it to a C API that expects null termination is a bug unless you have ensured termination separately.
+\end{itemize}
+
+\begin{quote}
+\textbf{Caution:} never store a \texttt{string\_view} member that outlives the string it views, and never return a \texttt{string\_view} to a local string. For ownership, use \texttt{std::string}; for a borrowed read-only view bounded by the call, use \texttt{string\_view}.
+\end{quote}
+
+\section{\texttt{std::optional}}
+\label{sec:c17-optional}
+
+\texttt{std::optional<T>} represents a value that \textbf{may or may not be present}. It replaces null pointers and ``magic'' sentinel values with an explicit ``maybe a \texttt{T}'' --- and, unlike a pointer, stores its \texttt{T} inline with no dynamic allocation.
+
+\begin{lstlisting}[language=C++,caption={Returning ``maybe a value'' with std::optional}]
+#include <optional>
+#include <vector>
+#include <iostream>
+
+std::optional<int> find_even(const std::vector<int>& v) {
+    for (int x : v) {
+        if (x % 2 == 0) return x;
+    }
+    return std::nullopt;   // or {} -- the empty state
+}
+
+int main() {
+    auto res = find_even({1, 3, 5});
+    if (res) {                    // or res.has_value()
+        std::cout << *res;        // or res.value() -- value() throws if empty
+    } else {
+        std::cout << "Not found";
+    }
+    std::cout << res.value_or(0); // the value, or 0 if empty
+}
+\end{lstlisting}
+
+The interface is small and deliberate: \texttt{has\_value()}, \texttt{operator*}/\texttt{operator->} (unchecked, UB if empty), \texttt{value()} (checked, throws \texttt{std::bad\_optional\_access}), \texttt{value\_or(default)}, and the \texttt{std::nullopt} empty literal. The two access styles encode intent: \texttt{*opt} says ``I have already checked''; \texttt{value()} says ``check for me.''
+
+\section{\texttt{std::variant}}
+\label{sec:c17-variant}
+
+\texttt{std::variant<Ts...>} is a \textbf{type-safe union}: it holds exactly one value, of one of its listed alternatives, and always knows which.
+
+\begin{lstlisting}[language=C++,caption={A type-safe union and the visitor pattern}]
+#include <variant>
+#include <string>
+#include <iostream>
+
+int main() {
+    std::variant<int, float, std::string> v;
+    v = 10;
+    v = 3.14f;
+    v = "hello";        // now holds a std::string
+
+    // Direct access by type -- throws std::bad_variant_access on the wrong type:
+    try {
+        std::string s = std::get<std::string>(v);
+        // int i = std::get<int>(v);  // would throw: active type is string
+    } catch (const std::bad_variant_access&) {}
+
+    // std::visit applies a callable to whichever alternative is active:
+    std::visit([](auto&& arg) {
+        std::cout << arg << "\n";
+    }, v);
+}
+\end{lstlisting}
+
+The access mechanisms differ in how they handle a wrong guess: \texttt{std::get<T>(v)} throws \texttt{std::bad\_variant\_access}; \texttt{std::get\_if<T>(\&v)} returns \texttt{nullptr}; \texttt{std::visit} requires the visitor to handle every alternative; \texttt{v.index()} gives the active index. A \texttt{variant} guarantees \textbf{no dynamic allocation} beyond what its contained types allocate.
+
+\section{\texttt{std::monostate} and Valueless Variants}
+\label{sec:c17-monostate}
+
+A \texttt{variant} is never ``empty'' in the \texttt{optional} sense, but two situations need handling: a variant whose \textbf{first alternative is not default-constructible}, and the rare \textbf{valueless} state.
+
+\textbf{\texttt{std::monostate}} is an empty placeholder type that serves as a default-constructible first alternative.
+
+\begin{lstlisting}[language=C++,caption={monostate provides a default-constructible empty state}]
+#include <variant>
+
+struct NoDefault { NoDefault() = delete; NoDefault(int) {} };
+
+// std::variant<NoDefault, int> v;  // ERROR: first alternative not default-constructible
+
+std::variant<std::monostate, NoDefault, int> v;  // OK: default-constructs to monostate
+// v.index() == 0  -> holds monostate, i.e. "empty / uninitialized"
+\end{lstlisting}
+
+\textbf{The valueless state} arises only when an assignment or emplacement throws \emph{while changing the active alternative}. \texttt{v.valueless\_by\_exception()} detects it (then \texttt{index() == std::variant\_npos}), and \texttt{std::visit} on a valueless variant throws.
+
+\begin{lstlisting}[language=C++,caption={Detecting the valueless-by-exception state}]
+if (v.valueless_by_exception()) {
+    // recovery: reassign a known-good alternative before visiting
+}
+\end{lstlisting}
+
+\section{\texttt{std::any}}
+\label{sec:c17-any}
+
+\texttt{std::any} is a type-safe container for a \textbf{single value of any type} --- the safe replacement for \texttt{void*}. The set of types is not fixed in advance, the stored type is remembered, and every extraction is checked.
+
+\begin{lstlisting}[language=C++,caption={Type-erased storage with checked extraction}]
+#include <any>
+#include <string>
+#include <iostream>
+
+int main() {
+    std::any a = 1;                       // holds an int
+    a = std::string("hello");             // now holds a std::string
+
+    try {
+        std::string s = std::any_cast<std::string>(a);   // ok
+        // int i = std::any_cast<int>(a);  // throws: active type is string
+    } catch (const std::bad_any_cast& e) {
+        std::cout << e.what();
+    }
+}
+\end{lstlisting}
+
+\texttt{std::any\_cast<T>(a)} throws \texttt{std::bad\_any\_cast} on a mismatch; the pointer form \texttt{std::any\_cast<T>(\&a)} returns \texttt{nullptr}. \texttt{a.has\_value()} and \texttt{a.type()} report the state. \texttt{any} typically allocates for larger stored types, making it the least suited of the four to a hot path. Choose by how much you know: \texttt{variant} for a fixed set (no allocation), \texttt{any} for open-ended types, \texttt{optional} for present-or-not of one type.
+
+\section{In-Place Construction: \texttt{in\_place}, \texttt{in\_place\_type}, \texttt{in\_place\_index}}
+\label{sec:c17-in-place}
+
+The vocabulary types must sometimes construct their contained object \textbf{directly inside themselves}. C++17 provides empty \textbf{tag types} that select in-place construction:
+
+\begin{itemize}
+    \item \textbf{\texttt{std::in\_place}} (type \texttt{std::in\_place\_t}) --- tells \texttt{std::optional} to construct its \texttt{T} in place from the following arguments.
+    \item \textbf{\texttt{std::in\_place\_type<T>}} --- tells \texttt{std::variant}/\texttt{std::any} to construct the alternative \emph{of type \texttt{T}} in place.
+    \item \textbf{\texttt{std::in\_place\_index<I>}} --- tells \texttt{std::variant} to construct the alternative \emph{at index \texttt{I}} in place.
+\end{itemize}
+
+\begin{lstlisting}[language=C++,caption={In-place construction avoids a temporary in optional}]
+#include <optional>
+#include <string>
+
+// Without in_place: construct a temporary string, then move it into the optional.
+std::optional<std::string> o1{std::string(5, 'x')};
+
+// With in_place: construct the string directly inside the optional from (5, 'x').
+std::optional<std::string> o2{std::in_place, 5, 'x'};   // "xxxxx", no temporary
+\end{lstlisting}
+
+For \texttt{variant}, the tags resolve ambiguity that argument types alone cannot --- especially with \texttt{initializer\_list} constructors and deleted default constructors:
+
+\begin{lstlisting}[language=C++,caption={Constructing variants with in\_place\_type / in\_place\_index}]
+#include <variant>
+#include <initializer_list>
+
+struct A {};
+struct B { B() = default; B(B const&) = default; B(int) {} };
+struct C { C() = delete; C(int) {} C(C const&) = default; };
+struct D { D(std::initializer_list<int>) {} D(D const&) = default; D() = default; };
+
+std::variant<A, B>    var_ab0;                              // contains A()
+std::variant<A, B>    var_ab1 = 7;                          // contains B(7)
+std::variant<A, B>    var_ab2 = var_ab1;                    // contains B(7)
+std::variant<A, B, C> var_abc0{std::in_place_type<C>, 7};   // contains C(7)
+// std::variant<C>    var_c0;                               // illegal: no default ctor for C
+std::variant<A, D>    var_ad0(std::in_place_type<D>, {1,3,3,4});   // contains D{1,3,3,4}
+std::variant<A, D>    var_ad1(std::in_place_index<0>);             // contains A{}
+std::variant<A, D>    var_ad2(std::in_place_index<1>, {1,3,3,4});  // contains D{1,3,3,4}
+\end{lstlisting}
+
+The same tags appear in \texttt{std::any}'s constructor. Across all three the principle is identical: the tag names \emph{what} to build, the trailing arguments are forwarded to \emph{its} constructor, and no intermediate object is created.
+
+\section{Professional Insights: \texttt{std::optional}}
+\label{sec:c17-optional-insights}
+
+\subsection{Representing the Absence of a Value}
+
+Before C++17, a \texttt{nullptr} pointer commonly represented ``no value.'' That works for large heap-managed objects but badly for small or primitive types such as \texttt{int}. \texttt{std::optional} is a value type that can be present or absent without involving the heap.
+
+\begin{lstlisting}[language=C++,caption={optional as an optional member}]
+#include <iostream>
+#include <optional>
+#include <string>
+
+struct Animal { std::string name; };
+
+struct Person {
+    std::string name;
+    std::optional<Animal> pet;
+};
+
+int main() {
+    Person person;
+    person.name = "John";
+    if (person.pet) {
+        std::cout << person.name << "'s pet's name is "
+                  << person.pet->name << std::endl;
+    } else {
+        std::cout << person.name << " is alone." << std::endl;
+    }
+}
+\end{lstlisting}
+
+\subsection{\texttt{optional} as a Return Value}
+
+\begin{lstlisting}[language=C++,caption={Returning the empty optional for an undefined result}]
+std::optional<float> divide(float a, float b) {
+    if (b != 0.f) return a / b;
+    return {};                         // division undefined -> empty
+}
+\end{lstlisting}
+
+A richer case returns an optional \emph{iterator} from a generic search, testable directly in an \texttt{if}:
+
+\begin{lstlisting}[language=C++,caption={A find that returns optional<iterator>}]
+template <class Range, class Pred>
+auto find_if(Range&& r, Pred&& p) {
+    using std::begin; using std::end;
+    auto b = begin(r), e = end(r);
+    auto it = std::find_if(b, e, p);
+    using iterator = decltype(it);
+    if (it == e) return std::optional<iterator>();
+    return std::optional<iterator>(it);
+}
+
+template <class Range, class T>
+auto find(Range&& r, T const& t) {
+    return find_if(std::forward<Range>(r),
+                   [&t](auto&& x){ return x == t; });
+}
+\end{lstlisting}
+
+This enables \texttt{if (find(vec, 7)) \{ ... \}} and \texttt{if (auto oit = find(vec, 7)) \{ vec.erase(*oit); \}} --- no separate begin/end juggling.
+
+\subsection{\texttt{value\_or} Pushes the Default Decision to the Call Site}
+
+\begin{lstlisting}[language=C++,caption={value\_or supplies a fallback exactly where it is needed}]
+void print_name(std::ostream& os, std::optional<std::string> const& name) {
+    os << "Name is: " << name.value_or("<name missing>") << '\n';
+}
+\end{lstlisting}
+
+\texttt{value\_or} returns the stored value, or its argument when empty. The ``what to do when absent'' decision is made \textbf{at the point of use}, where the right default is known --- not baked into a default deep inside the engine that produced the optional.
+
+\subsection{Why \texttt{optional}, Not the Alternatives}
+
+\begin{itemize}
+    \item \textbf{vs.\ a pointer:} a pointer signals failure with \texttt{nullptr} only for objects that already exist; \texttt{optional}, a value type, can return a \emph{new} object with no allocation.
+    \item \textbf{vs.\ a sentinel value:} reserving \texttt{0}/\texttt{-1}/\texttt{nullptr} shrinks the space of valid values and many types have no natural sentinel.
+    \item \textbf{vs.\ \texttt{std::pair<bool, T>}:} this requires \texttt{T} to be default-constructible for the failure case; \texttt{optional<T>} constructs nothing when empty.
+\end{itemize}
+
+\subsection{Representing the Failure of a Function}
+
+Historically a function signaled failure by returning a null pointer, a reserved value, or a value paired with a \texttt{bool}. \texttt{optional} subsumes all three:
+
+\begin{lstlisting}[language=C++,caption={optional as a clean function-failure signal}]
+#include <iostream>
+#include <optional>
+#include <string>
+#include <vector>
+
+struct Animal { std::string name; };
+
+struct Person {
+    std::string name;
+    std::vector<Animal> pets;
+    std::optional<Animal> pet_with_name(const std::string& name) {
+        for (const Animal& pet : pets) {
+            if (pet.name == name) return pet;
+        }
+        return std::nullopt;
+    }
+};
+
+int main() {
+    Person john;
+    john.name = "John";
+    Animal fluffy;  fluffy.name  = "Fluffy";  john.pets.push_back(fluffy);
+    Animal furball; furball.name = "Furball"; john.pets.push_back(furball);
+
+    std::optional<Animal> whiskers = john.pet_with_name("Whiskers");
+    if (whiskers) {
+        std::cout << "John has a pet named Whiskers." << std::endl;
+    } else {
+        std::cout << "Whiskers must not belong to John." << std::endl;
+    }
+}
+\end{lstlisting}
+
+\section{Professional Insights: \texttt{std::variant}}
+\label{sec:c17-variant-insights}
+
+\subsection{Lightweight Type Erasure: Pseudo-Method Pointers}
+
+\texttt{variant} can drive a form of lightweight type erasure. This advanced example overloads \texttt{operator->*} with a variant on the left, producing something that behaves like a method pointer across unrelated types --- using CTAD and \texttt{std::visit}:
+
+\begin{lstlisting}[language=C++,caption={A variant-driven ``pseudo-method'' via operator->*}]
+template <class F>
+struct pseudo_method {
+    F f;
+    // enable C++17 class template argument deduction:
+    pseudo_method(F&& fin) : f(std::move(fin)) {}
+
+    // Koenig-lookup operator->*; LHS is a variant:
+    template <class Variant>   // (one could add a SFINAE test that LHS is a variant)
+    friend decltype(auto) operator->*(Variant&& var, pseudo_method const& method) {
+        // returns a lambda that perfect-forwards the call, like a method pointer:
+        return [&](auto&&... args) -> decltype(auto) {
+            return std::visit(
+                [&](auto&& self) -> decltype(auto) {
+                    // decltype(x)(x) is perfect forwarding inside a lambda:
+                    return method.f(decltype(self)(self), decltype(args)(args)...);
+                },
+                std::forward<Variant>(var));
+        };
+    }
+};
+\end{lstlisting}
+
+Defining a \texttt{print} pseudo-method whose first parameter is \texttt{self} lets a single call dispatch to the active alternative's own \texttt{print}:
+
+\begin{lstlisting}[language=C++,caption={Dispatching across unrelated types through the variant}]
+pseudo_method print = [](auto&& self, auto&&... args) -> decltype(auto) {
+    return decltype(self)(self).print(decltype(args)(args)...);
+};
+
+struct A { void print(std::ostream& os) const { os << "A"; } };
+struct B { void print(std::ostream& os) const { os << "B"; } };
+
+std::variant<A, B> var = A{};
+(var->*print)(std::cout);     // dispatches to A::print; B{} would dispatch to B::print
+\end{lstlisting}
+
+This is checked at compile time: adding an alternative with no \texttt{print} member fails to compile.
+
+\begin{lstlisting}[language=C++,caption={The compile-time exhaustiveness guarantee}]
+struct C {};
+std::variant<A, B, C> var2 = A{};
+// (var2->*print)(std::cout);   // FAILS TO COMPILE: C has no print(std::ostream&)
+\end{lstlisting}
+
+The technique extends to detecting free-function \texttt{print} overloads, possibly using \texttt{if constexpr} inside the pseudo-method.
+
+\subsection{Basic Use and the No-Allocation Guarantee}
+
+\begin{lstlisting}[language=C++,caption={Storing and accessing a variant}]
+using namespace std::string_literals;
+
+std::variant<int, std::string> var;   // a tagged union of int | string
+var = "hello"s;                        // now holds a string
+
+// Access via std::visit with a polymorphic lambda -- prints "hello\n":
+std::visit([](auto&& e){ std::cout << e << '\n'; }, var);
+
+// If certain of the type, get it (throws on a wrong guess):
+auto str = std::get<std::string>(var);
+
+// get_if returns nullptr instead of throwing on a wrong guess:
+auto* p = std::get_if<std::string>(&var);
+\end{lstlisting}
+
+A variant performs \textbf{no dynamic allocation} beyond what its contained types allocate; only one alternative is stored at a time. In rare cases --- an exception while assigning, with no safe way to back out --- a variant can become valueless. Variants are smart, type-safe unions that store multiple value types in one variable safely and efficiently.
+
+\subsection{Constructing a \texttt{std::variant}}
+
+The construction rules (allocators aside) follow from the alternative list and the \texttt{in\_place} tags of Section~\ref{sec:c17-in-place}: default construction of the first alternative, conversion to the best-matching alternative, copy, and the \texttt{in\_place\_type}/\texttt{in\_place\_index} disambiguators for deleted-default and \texttt{initializer\_list} constructors.
+
+\section{Professional Insights}
+\label{sec:c17-vocabulary-insights}
+
+\textbf{Reach for the vocabulary type that matches what you know about the value.} \texttt{optional<T>} for present-or-absent of one type; \texttt{variant<Ts...>} for one-of-a-fixed-set (no allocation, fastest); \texttt{any} only when the type is genuinely open-ended. Each replaces an unsafe idiom --- null pointers, hand-tagged unions, \texttt{void*} --- with one the compiler checks.
+
+\textbf{Treat \texttt{string\_view} strictly as a borrowed, call-scoped view.} It is the right parameter type for read-only string input, but it owns nothing and is not null-terminated: never let one outlive its buffer, never return one to a local string, and never hand \texttt{.data()} to a C API expecting termination.
+
+\textbf{Use the two accessor styles to encode intent.} \texttt{*opt} and \texttt{std::get<T>(v)} say ``I have already verified the state''; \texttt{opt.value()}, \texttt{v.index()}, and \texttt{std::get\_if} say ``check for me.'' An unchecked \texttt{*} on an empty optional or a wrong-type \texttt{get} is UB or a thrown exception respectively.
+
+\textbf{Prefer \texttt{std::visit} over chains of \texttt{get\_if} for variants.} Visitation forces you to handle every alternative, turning ``forgot a case'' into a compile error. Combined with the \texttt{overloaded\{...\}} idiom, it is the idiomatic way to consume a variant.
+
+\textbf{Default variants with \texttt{std::monostate} first when no alternative is default-constructible, and use the \texttt{in\_place} tags to construct without temporaries.} \texttt{monostate} gives a well-defined empty state; \texttt{in\_place}, \texttt{in\_place\_type<T>}, and \texttt{in\_place\_index<I>} build the contained object directly, avoiding a temporary and disambiguating overlapping alternatives.
