@@ -1,0 +1,161 @@
+\chapter{New Iterator and Algorithm Facilities}
+\label{ch:c14-iterator-algorithm}
+
+\begin{quote}
+\emph{C++11 made generic, range-based iteration the default style; C++14 patched the rough edges that style exposed. The non-member \texttt{c}/\texttt{r} range accessors complete the free-function family, \texttt{make\_reverse\_iterator} removes a type-spelling chore, value-initialized forward iterators gain defined comparison so they can serve as sentinels, and the two-range \texttt{<algorithm>} overloads close a long-standing buffer-overrun hole.}
+\end{quote}
+
+These additions share a theme: they make iterator-and-algorithm code that \emph{looked} correct in C++11 actually safe and uniform. The headline item is the new four-iterator overloads of \texttt{equal}, \texttt{mismatch}, and \texttt{is\_permutation}, which finally let the standard algorithms know where the \textbf{second} range ends --- eliminating a class of out-of-bounds reads that the three-iterator forms invite. The rest are ergonomic completions of the C++11 generic-iteration model.
+
+This chapter is authored to complete the C++14 coverage; it has no predecessor source material.
+
+\section{Non-Member \texttt{cbegin}/\texttt{cend}/\texttt{rbegin}/\texttt{rend}/\texttt{crbegin}/\texttt{crend}}
+\label{sec:c14-nonmember-accessors}
+
+C++11 added the non-member \texttt{std::begin(c)} and \texttt{std::end(c)} so generic code could iterate any range --- including C arrays --- through a uniform free-function call. But it stopped there: the \texttt{const} and reverse accessors existed only as \emph{member} functions, so generic code that wanted a const or reverse iterator had to assume a member interface, which arrays do not have. \textbf{C++14 completed the set} with non-member \texttt{std::cbegin}, \texttt{std::cend}, \texttt{std::rbegin}, \texttt{std::rend}, \texttt{std::crbegin}, and \texttt{std::crend}.
+
+\begin{lstlisting}[language=C++,caption={Uniform const/reverse access across containers AND arrays}]
+#include <iterator>
+#include <vector>
+
+template <typename Range>
+auto sum_const(const Range& r) {
+    typename Range::value_type acc{};
+    for (auto it = std::cbegin(r); it != std::cend(r); ++it)
+        acc += *it;                 // *it is read-only regardless of r's constness
+    return acc;
+}
+
+std::vector<int> v{1, 2, 3};
+int  arr[] = {4, 5, 6};
+
+auto a = std::cbegin(v);            // const_iterator into the vector
+auto b = std::cbegin(arr);         // const int* -- works on a raw array too
+auto r = std::crbegin(v);          // const reverse iterator, last element first
+\end{lstlisting}
+
+The win is \textbf{uniformity}: a template can now obtain a const or reverse iterator from \emph{any} range --- STL container, \texttt{std::array}, or built-in array --- through one spelling, with no \texttt{typename Range::const\_iterator} and no member-function assumption. \texttt{std::cbegin} also guarantees a true \texttt{const\_iterator} even when called on a non-\texttt{const} container.
+
+\section{\texttt{std::make\_reverse\_iterator}}
+\label{sec:c14-make-reverse-iterator}
+
+Constructing a \texttt{std::reverse\_iterator} by hand requires naming the underlying iterator type, which in generic code means an ugly \texttt{std::reverse\_iterator<decltype(it)>(it)}. \textbf{C++14's \texttt{std::make\_reverse\_iterator(it)}} is a factory that \emph{deduces} that type --- the same convenience \texttt{make\_pair}/\texttt{make\_tuple} provide.
+
+\begin{lstlisting}[language=C++,caption={Building reverse iterators without spelling the type}]
+#include <iterator>
+#include <vector>
+
+std::vector<int> v{1, 2, 3, 4, 5};
+
+// Verbose, C++11:
+auto r1 = std::reverse_iterator<std::vector<int>::iterator>(v.end());
+
+// C++14: the type is deduced from the argument:
+auto r2    = std::make_reverse_iterator(v.end());     // points at 5
+auto r2end = std::make_reverse_iterator(v.begin());
+// [r2, r2end) traverses v back-to-front: 5, 4, 3, 2, 1
+\end{lstlisting}
+
+It is most valuable inside templates, where the iterator type is a dependent name:
+
+\begin{lstlisting}[language=C++,caption={A generic ``find from the back'' using the factory}]
+template <typename It, typename T>
+It find_last(It first, It last, const T& value) {
+    auto rfirst = std::make_reverse_iterator(last);
+    auto rlast  = std::make_reverse_iterator(first);
+    auto found  = std::find(rfirst, rlast, value);
+    return found == rlast ? last : std::prev(found.base());
+}
+\end{lstlisting}
+
+The factory carries the standard reverse-iterator semantics: a reverse iterator built from position \texttt{p} dereferences to \texttt{*(p-1)}, so \texttt{make\_reverse\_iterator(container.end())} points at the last element and \texttt{make\_reverse\_iterator(container.begin())} is the reverse end.
+
+\section{Null (Value-Initialized) Forward Iterators}
+\label{sec:c14-null-forward-iterators}
+
+C++14 tightened the iterator requirements so that \textbf{value-initialized forward iterators may be compared, and all value-initialized iterators of the same type compare equal} --- regardless of which container (if any) they came from. Before this, a default-constructed forward iterator was \emph{singular}: comparing it was undefined behavior, so it could not portably be used as a sentinel.
+
+\begin{lstlisting}[language=C++,caption={A value-initialized iterator is a well-defined ``null'' sentinel}]
+#include <vector>
+
+std::vector<int>::iterator a{};   // value-initialized -> null forward iterator
+std::vector<int>::iterator b{};   // also null
+
+bool same = (a == b);             // C++14: well-defined, and true
+\end{lstlisting}
+
+The guarantee makes a default-constructed iterator usable as a portable \textbf{``end of an empty range'' / not-found marker} --- the iterator analogue of \texttt{nullptr}.
+
+\begin{lstlisting}[language=C++,caption={Using a null iterator as an explicit ``unset'' state}]
+template <typename It>
+class OptionalCursor {
+    It pos_{};                              // null forward iterator = "unset"
+public:
+    bool engaged() const { return pos_ != It{}; }   // compare against the null value
+    void set(It p) { pos_ = p; }
+    It   get() const { return pos_; }
+};
+\end{lstlisting}
+
+Two value-initialized iterators of the same type form an \textbf{empty range} \texttt{[It\{\}, It\{\})}, which any algorithm processes as zero elements. The contract is narrow but important: it applies to \emph{value-initialized} iterators, not to arbitrary singular iterators left over from a destroyed container --- those remain invalid.
+
+\section{Two-Range \texttt{<algorithm>} Overloads}
+\label{sec:c14-two-range-algorithms}
+
+This is the most consequential addition in the chapter. C++11's \texttt{std::equal}, \texttt{std::mismatch}, and \texttt{std::is\_permutation} came in a \textbf{three-iterator} form: \texttt{(first1, last1, first2)}. They receive the end of the \emph{first} range but only the \emph{beginning} of the second, and simply assume the second range is at least as long. If it is shorter, the algorithm reads past its end --- \textbf{undefined behavior}.
+
+\begin{lstlisting}[language=C++,caption={The three-iterator form is unsafe when ranges differ in length}]
+#include <algorithm>
+#include <vector>
+
+std::vector<int> a{1, 2, 3, 4, 5};
+std::vector<int> b{1, 2, 3};
+
+// THREE-iterator form: reads b[3], b[4] -- PAST THE END of b. UB.
+bool bad = std::equal(a.begin(), a.end(), b.begin());   // do NOT do this
+\end{lstlisting}
+
+\textbf{C++14 added four-iterator overloads} --- \texttt{(first1, last1, first2, last2)} --- that take the end of the second range too. They compare both lengths and never read past either end: \texttt{equal} returns \texttt{false} immediately if the ranges differ in length, \texttt{mismatch} stops at whichever range ends first, and \texttt{is\_permutation} knows both sizes up front.
+
+\begin{lstlisting}[language=C++,caption={The C++14 four-iterator form is length-safe}]
+#include <algorithm>
+#include <vector>
+
+std::vector<int> a{1, 2, 3, 4, 5};
+std::vector<int> b{1, 2, 3};
+
+bool eq = std::equal(a.begin(), a.end(), b.begin(), b.end());  // false: sizes differ
+                                                               // and NO overrun
+
+auto m = std::mismatch(a.begin(), a.end(), b.begin(), b.end());
+// stops at b.end(); m.first points into a at the first unmatched/leftover position
+
+std::vector<int> p{3, 1, 2};
+bool perm = std::is_permutation(b.begin(), b.end(), p.begin(), p.end());  // true
+\end{lstlisting}
+
+Each algorithm also has a four-iterator overload taking a custom binary predicate:
+
+\begin{lstlisting}[language=C++,caption={Four-iterator form with a predicate}]
+bool ci_equal = std::equal(s1.begin(), s1.end(), s2.begin(), s2.end(),
+                           [](char x, char y) {
+                               return std::tolower(x) == std::tolower(y);
+                           });
+\end{lstlisting}
+
+The three-iterator overloads were not removed --- they remain for the case where you have \emph{already} verified the lengths match --- but the four-iterator forms should be your default. They turn a latent buffer overrun into a correct \texttt{false}.
+
+\begin{quote}
+\textbf{Godhood tip:} treat the three-iterator \texttt{equal}/\texttt{mismatch}/\texttt{is\_permutation} as a code smell in review. Unless a comment proves the second range's length is guaranteed, the four-iterator form is the only safe choice --- and it is also the one that gives the right answer for unequal lengths instead of UB.
+\end{quote}
+
+\section{Professional Insights}
+\label{sec:c14-iterator-algorithm-insights}
+
+\textbf{Use the non-member \texttt{c}/\texttt{r} accessors in every generic algorithm.} \texttt{std::cbegin(r)}/\texttt{std::cend(r)} give you a read-only traversal of \emph{any} range --- container or raw array --- without assuming a member interface or spelling a dependent \texttt{const\_iterator} type. Defaulting to them makes template code work uniformly across more argument types.
+
+\textbf{Prefer \texttt{make\_reverse\_iterator} to a hand-spelled \texttt{reverse\_iterator<...>}.} In generic code the underlying iterator is a dependent type; the factory deduces it, keeping reverse-traversal helpers short and refactor-stable.
+
+\textbf{A value-initialized iterator is the portable iterator equivalent of \texttt{nullptr}.} When you need an ``unset position'' or an empty-range sentinel in generic code, value-initialize the iterator type and compare against \texttt{It\{\}} --- C++14 makes that comparison defined. Don't, however, treat \emph{any} singular iterator as comparable; the guarantee is specifically for value-initialized ones.
+
+\textbf{Make the four-iterator \texttt{equal}/\texttt{mismatch}/\texttt{is\_permutation} your default --- always.} The three-iterator forms silently read past the end of the second range when lengths differ, which is undefined behavior and a genuine security and stability bug. Passing both ends costs nothing, removes the overrun, and returns the correct result for unequal-length inputs. In latency-critical and security-sensitive code especially, the four-iterator overload is the only defensible choice.

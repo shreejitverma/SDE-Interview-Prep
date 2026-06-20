@@ -1,0 +1,802 @@
+\chapter{OOP and Encapsulation}
+\label{ch:oop-encapsulation}
+
+\textit{Organising state, binding behaviour, and building types that feel like the language itself.}
+
+Procedural C++ gives you functions that operate on data passed through parameters. Object-Oriented Programming gives you something more powerful: the ability to define entirely new \textit{types} that bundle state and behaviour together, enforce invariants through access control, and interact with the language's built-in syntax through operator overloading. This chapter covers the full OOP toolkit of C++98/03 --- enumerations, unions, namespaces, class design, constructors, the Rule of Three, operator overloading, templates, and the casting system --- everything you need before tackling inheritance and polymorphism in Chapter~6.
+
+%% ============================================================
+\section{Enumerations}
+\label{sec:enumerations}
+
+When a variable must represent one of a fixed, named set of states, use an \textbf{enumeration} rather than raw integers. A bare integer forces every reader to look up what \texttt{3} means; an enum makes intent explicit.
+
+\subsection{C-Style Enums}
+
+\begin{lstlisting}[language=C++, caption={C-style (unscoped) enumeration}]
+enum GameState {
+    MENU,       // Implicitly 0
+    PLAYING,    // Implicitly 1
+    PAUSED,     // Implicitly 2
+    GAME_OVER   // Implicitly 3
+};
+
+GameState current = PLAYING;
+
+if (current == 1) {             // Valid but terrible practice
+    std::cout << "Playing.\n";
+}
+\end{lstlisting}
+
+\textbf{Danger:} C-style enum names leak into the enclosing scope. Two enums in the same translation unit cannot share a name (e.g.\ both defining \texttt{PLAYING}). They also convert implicitly to \texttt{int}, destroying type safety.
+
+\subsection{Scoped Enums --- Forward Reference: C++11}
+
+C++11 introduced \texttt{enum class}. Names are contained inside the enum's scope and do not convert to integers implicitly. Always prefer scoped enums in new code.
+
+%% ============================================================
+\section{Unions and Shared Memory Layout}
+\label{sec:unions}
+
+A \textbf{union} places all its members at the same starting address. The size of a union equals the size of its largest member. Only one member may hold a meaningful value at any given time.
+
+\begin{lstlisting}[language=C++, caption={Union for low-level byte reinterpretation}]
+union PacketData {
+    int   as_integer;
+    float as_float;
+    char  as_bytes[4];
+};
+
+int main() {
+    PacketData packet;
+    std::cout << "Size: " << sizeof(packet) << "\n"; // 4 bytes
+
+    packet.as_integer = 42;
+    std::cout << packet.as_integer << "\n"; // 42
+
+    packet.as_float = 3.14f;
+    // as_integer is now garbage -- float bits overwrite the same 4 bytes
+    std::cout << packet.as_integer << "\n"; // Undefined value
+    return 0;
+}
+\end{lstlisting}
+
+Unions are essential in network drivers and embedded microcontrollers where the same bytes must be interpreted as different types without copying. The compiler tracks nothing about which member is ``active''; that responsibility falls entirely on the programmer.
+
+%% ============================================================
+\section{Namespaces}
+\label{sec:namespaces}
+
+As a codebase grows and third-party libraries are integrated, \textbf{naming collisions} become inevitable. \textbf{Namespaces} partition the global scope into named regions.
+
+\begin{lstlisting}[language=C++, caption={Namespace basics}]
+#include <iostream>
+using namespace std;
+
+namespace Math {
+    double PI = 3.14159;
+    double circle_area(double r) { return PI * r * r; }
+}
+
+namespace Graphics {
+    double PI = 3.14;
+    void draw_circle(double r) {
+        cout << "Drawing circle, radius " << r << endl;
+    }
+}
+
+int main() {
+    cout << Math::PI << endl;
+    cout << Graphics::PI << endl;
+    cout << Math::circle_area(5) << endl;
+    Graphics::draw_circle(5);
+    return 0;
+}
+\end{lstlisting}
+
+\subsection{Namespace Aliases}
+
+\begin{lstlisting}[language=C++, caption={Namespace alias shortening a long path}]
+namespace Very { namespace Long { namespace Namespace {
+    void function() { std::cout << "Long namespace\n"; }
+}}}
+
+namespace VLN = Very::Long::Namespace;
+
+int main() { VLN::function(); return 0; }
+\end{lstlisting}
+
+\subsection{The \texttt{using} Directive and Its Dangers}
+
+\texttt{using namespace std;} is tolerable in \texttt{.cpp} files for small programs. \textbf{Never} place it in a header: every file that includes the header gets the entire standard library injected into its global namespace, causing unpredictable collisions across large codebases.
+
+\subsection{Anonymous Namespaces}
+
+An unnamed namespace gives its contents \textbf{internal linkage} --- the modern replacement for C-style \texttt{static} at file scope:
+
+\begin{lstlisting}[language=C++, caption={Anonymous namespace for internal linkage}]
+// math_helpers.cpp
+namespace {
+    int secret_internal_calculation(int x) { return x * x; }
+}
+
+int public_math_function(int x) {
+    return secret_internal_calculation(x);
+}
+\end{lstlisting}
+
+%% ============================================================
+\section{The Class Blueprint: Classes vs.\ Objects}
+\label{sec:class-blueprint}
+
+A \textbf{class} is a blueprint. An \textbf{object} (or \textit{instance}) is a concrete realisation of that blueprint built at runtime. Each object occupies its own region of memory and holds its own copy of instance data.
+
+\begin{lstlisting}[language=C++, caption={Class definition and object instantiation}]
+class Player {
+public:
+    int health;
+    int ammo;
+
+    void shoot() { ammo -= 1; }
+};
+
+int main() {
+    Player player1, player2;
+    player1.ammo = 10;
+    player2.ammo = 100;
+    player1.shoot(); // Only player1 loses ammo
+    return 0;
+}
+\end{lstlisting}
+
+The \texttt{class} keyword and the \texttt{struct} keyword produce identical constructs with one difference: members of a \texttt{class} default to \textbf{private}; members of a \texttt{struct} default to \textbf{public}.
+
+%% ============================================================
+\section{Access Modifiers and Encapsulation}
+\label{sec:access-encapsulation}
+
+\textbf{Encapsulation} is the practice of hiding internal state behind a public interface.
+
+\begin{center}
+\begin{tabular}{|l|l|}
+\hline
+\textbf{Specifier} & \textbf{Accessible from} \\
+\hline
+\texttt{public}    & Anywhere \\
+\texttt{protected} & The class itself and derived classes \\
+\texttt{private}   & Only the class itself (and declared friends) \\
+\hline
+\end{tabular}
+\end{center}
+
+\begin{lstlisting}[language=C++, caption={Encapsulated BankAccount}]
+class BankAccount {
+private:
+    double balance;
+
+public:
+    void deposit(double amount) {
+        if (amount > 0) balance += amount;
+    }
+    double get_balance() const { return balance; }
+};
+\end{lstlisting}
+
+Separating the \textit{interface} from the \textit{implementation} is \textbf{decoupling}: callers remain unaffected when internal storage changes.
+
+%% ============================================================
+\section{Constructors and Destructors}
+\label{sec:constructors-destructors}
+
+A \textbf{constructor} is called automatically when an object is created; a \textbf{destructor} is called when the object is destroyed. Both have the same name as the class (destructor prefixed with \texttt{\~}).
+
+\begin{lstlisting}[language=C++, caption={Default, parameterised constructors and destructor}]
+#include <iostream>
+#include <string>
+
+class Car {
+private:
+    std::string brand;
+    int*        buffer;
+
+public:
+    Car() : brand("Unknown"), buffer(new int[10]) {
+        std::cout << "Default constructor\n";
+    }
+
+    Car(const std::string& b) : brand(b), buffer(new int[10]) {
+        std::cout << "Param constructor: " << brand << "\n";
+    }
+
+    Car(const Car& other) : brand(other.brand), buffer(new int[10]) {
+        std::cout << "Copy constructor\n";
+    }
+
+    ~Car() {
+        delete[] buffer;
+        std::cout << "Destructor: " << brand << "\n";
+    }
+};
+
+int main() {
+    {
+        Car c1("Toyota");
+    } // Destructor fires here
+    return 0;
+}
+\end{lstlisting}
+
+The \textbf{member initialiser list} (\texttt{: brand(b), buffer(new int[10])}) is preferred over assignment inside the body because it initialises members directly rather than default-constructing then assigning.
+
+%% ============================================================
+\section{The Rule of Three}
+\label{sec:rule-of-three}
+
+If your class manages a heap resource, compiler-generated copy operations perform \textbf{shallow copies} (copying the pointer, not the data). Two objects then share the same resource, and both destructors will attempt to release it --- a double-free crash.
+
+\textbf{The Rule of Three:} if you explicitly define any one of the following, you almost certainly need to define all three:
+
+\begin{enumerate}
+    \item \textbf{Destructor} --- to release the resource.
+    \item \textbf{Copy constructor} --- to allocate a new resource and deep-copy the data.
+    \item \textbf{Copy assignment operator} --- to handle \texttt{a = b} between two live objects.
+\end{enumerate}
+
+\begin{lstlisting}[language=C++, caption={Rule of Three for heap-managed buffer}]
+class Buffer {
+    int* ptr;
+    int  sz;
+
+public:
+    Buffer(int n) : sz(n), ptr(new int[n]) {}
+
+    ~Buffer() { delete[] ptr; }
+
+    Buffer(const Buffer& other) : sz(other.sz), ptr(new int[other.sz]) {
+        for (int i = 0; i < sz; ++i) ptr[i] = other.ptr[i];
+    }
+
+    Buffer& operator=(const Buffer& other) {
+        if (this == &other) return *this; // Self-assignment guard
+        delete[] ptr;
+        sz  = other.sz;
+        ptr = new int[sz];
+        for (int i = 0; i < sz; ++i) ptr[i] = other.ptr[i];
+        return *this;
+    }
+};
+\end{lstlisting}
+
+%% ============================================================
+\section{Static Members}
+\label{sec:static-members}
+
+A \textbf{static data member} belongs to the class, not to any individual instance. It must be defined (storage allocated) outside the class in exactly one translation unit.
+
+\begin{lstlisting}[language=C++, caption={Static member for instance counting}]
+class Player {
+public:
+    static int player_count;
+    Player()  { ++player_count; }
+    ~Player() { --player_count; }
+};
+
+int Player::player_count = 0; // One definition in a .cpp file
+
+int main() {
+    Player p1, p2;
+    std::cout << Player::player_count << "\n"; // 2
+    return 0;
+}
+\end{lstlisting}
+
+A \textbf{static member function} has no \texttt{this} pointer and may only access static members.
+
+%% ============================================================
+\section{Friend Functions and Friend Classes}
+\label{sec:friends}
+
+A \texttt{friend} declaration grants a specific function or class access to \texttt{private} and \texttt{protected} members. Friendship is not symmetric and not inherited.
+
+\subsection{Friend Function}
+
+\begin{lstlisting}[language=C++, caption={Friend function accessing private data}]
+class PrivateHolder {
+    int private_value;
+public:
+    PrivateHolder(int v) : private_value(v) {}
+    friend void friend_function(PrivateHolder& ph);
+};
+
+void friend_function(PrivateHolder& ph) {
+    std::cout << ph.private_value << "\n";
+}
+\end{lstlisting}
+
+\subsection{Friend Class}
+
+\begin{lstlisting}[language=C++, caption={Friend class given full access}]
+class Accesser {
+public:
+    void access1(const PrivateHolder& ph);
+    void access2(const PrivateHolder& ph);
+};
+
+class PrivateHolder {
+    int private_value;
+public:
+    PrivateHolder(int v) : private_value(v) {}
+    friend class Accesser;
+};
+\end{lstlisting}
+
+Use friends sparingly. Legitimate use cases: overloading \texttt{operator<<} and tightly coupled iterator/container pairs.
+
+%% ============================================================
+\section{Operator Overloading}
+\label{sec:operator-overloading}
+
+\textbf{Operator overloading} allows user-defined types to interact with C++ syntax exactly like built-in types.
+
+\subsection{Binary Arithmetic Operators as Member Functions}
+
+\begin{lstlisting}[language=C++, caption={Complex number with overloaded + operator}]
+class Complex {
+    double r, i;
+public:
+    Complex(double real, double imag) : r(real), i(imag) {}
+
+    Complex operator+(const Complex& other) const {
+        return Complex(r + other.r, i + other.i);
+    }
+
+    void print() const { std::cout << r << " + " << i << "i\n"; }
+};
+
+int main() {
+    Complex c1(1.0, 2.0), c2(3.0, 4.0);
+    Complex c3 = c1 + c2;
+    c3.print(); // 4.0 + 6.0i
+    return 0;
+}
+\end{lstlisting}
+
+\subsection{Non-Member Operators for Symmetric Conversions}
+
+\begin{lstlisting}[language=C++, caption={Non-member operator+ allowing double + Complex}]
+class Complex {
+    double r, i;
+public:
+    Complex(double real, double imag) : r(real), i(imag) {}
+    friend Complex operator+(double left, const Complex& right);
+};
+
+Complex operator+(double left, const Complex& right) {
+    return Complex(left + right.r, right.i);
+}
+\end{lstlisting}
+
+\subsection{Comparison Operators}
+
+\begin{lstlisting}[language=C++, caption={Comparison operators enabling sorting}]
+class Player {
+public:
+    int score;
+    explicit Player(int s) : score(s) {}
+    bool operator==(const Player& other) const { return score == other.score; }
+    bool operator< (const Player& other) const { return score <  other.score; }
+};
+\end{lstlisting}
+
+\subsection{The Stream Output Operator \texttt{<<}}
+
+Because \texttt{std::cout} is the left operand, \texttt{operator<<} must be a non-member friend:
+
+\begin{lstlisting}[language=C++, caption={Overloading << for stream output}]
+#include <iostream>
+#include <string>
+
+class Player {
+    std::string name;
+    int score;
+public:
+    Player(const std::string& n, int s) : name(n), score(s) {}
+
+    friend std::ostream& operator<<(std::ostream& os, const Player& p) {
+        os << "[" << p.name << " - Score: " << p.score << "]";
+        return os;
+    }
+};
+
+int main() {
+    Player p1("Alice", 99);
+    std::cout << p1 << "\n";
+    return 0;
+}
+\end{lstlisting}
+
+\subsection{The Assignment Operator and Self-Assignment}
+
+\begin{lstlisting}[language=C++, caption={Copy assignment operator with self-assignment guard}]
+class Buffer {
+    int* data;
+public:
+    Buffer()  { data = new int[10]; }
+    ~Buffer() { delete[] data; }
+
+    Buffer& operator=(const Buffer& other) {
+        if (this == &other) return *this;
+        delete[] data;
+        data = new int[10];
+        for (int i = 0; i < 10; ++i) data[i] = other.data[i];
+        return *this;
+    }
+};
+\end{lstlisting}
+
+%% ============================================================
+\section{Functors: Overloading \texttt{operator()}}
+\label{sec:functors}
+
+Overloading \texttt{operator()} produces a \textbf{functor} --- an object that can be called with \texttt{()} syntax. Unlike function pointers, functors carry state.
+
+\begin{lstlisting}[language=C++, caption={Functor with captured state}]
+class Multiplier {
+    int factor;
+public:
+    explicit Multiplier(int f) : factor(f) {}
+    int operator()(int value) const { return value * factor; }
+};
+
+int main() {
+    Multiplier times_five(5);
+    std::cout << times_five(10) << "\n"; // 50
+    return 0;
+}
+\end{lstlisting}
+
+Functors are the primary mechanism for passing custom behaviour to STL algorithms in C++98/03.
+
+%% ============================================================
+\section{Generic Programming: Templates}
+\label{sec:templates}
+
+\textbf{Templates} enable code parameterised by type, resolved at compile time with zero runtime overhead.
+
+\subsection{Function Templates}
+
+\begin{lstlisting}[language=C++, caption={Function template deducing type from arguments}]
+#include <iostream>
+
+template <typename T>
+T myMax(T a, T b) { return (a > b) ? a : b; }
+
+int main() {
+    std::cout << myMax(10, 20)     << "\n"; // T = int
+    std::cout << myMax(3.14, 2.71) << "\n"; // T = double
+    return 0;
+}
+\end{lstlisting}
+
+\subsection{Class Templates}
+
+\begin{lstlisting}[language=C++, caption={Class template for a generic container}]
+#include <string>
+
+template <typename T>
+class Box {
+    T content;
+public:
+    explicit Box(T val) : content(val) {}
+    T getContent() const { return content; }
+    void setContent(T val) { content = val; }
+};
+
+int main() {
+    Box<int>         intBox(123);
+    Box<std::string> strBox("Hello");
+    return 0;
+}
+\end{lstlisting}
+
+\subsection{Multiple Template Parameters}
+
+\begin{lstlisting}[language=C++, caption={Template with two type parameters}]
+template <typename T1, typename T2>
+struct Pair {
+    T1 first;
+    T2 second;
+    Pair(T1 a, T2 b) : first(a), second(b) {}
+};
+\end{lstlisting}
+
+\subsection{Non-Type Template Parameters}
+
+\begin{lstlisting}[language=C++, caption={Non-type template parameter for compile-time size}]
+template <typename T, int N>
+class Array {
+    T data[N];
+public:
+    int size() const { return N; }
+    T& operator[](int i) { return data[i]; }
+};
+
+int main() {
+    Array<int, 5> arr; // Fixed 5-element stack array
+    return 0;
+}
+\end{lstlisting}
+
+\subsection{Full Template Specialisation}
+
+\begin{lstlisting}[language=C++, caption={Full template specialisation for bool}]
+template <typename T>
+class Formatter {
+public:
+    void format(T val) { std::cout << "General: " << val << "\n"; }
+};
+
+template <>
+class Formatter<bool> {
+public:
+    void format(bool val) {
+        std::cout << "Boolean: " << (val ? "true" : "false") << "\n";
+    }
+};
+\end{lstlisting}
+
+\subsection{Partial Specialisation}
+
+\begin{lstlisting}[language=C++, caption={Partial specialisation for same-typed parameters}]
+template <typename T1, typename T2>
+class MyMap { /* general */ };
+
+template <typename T>
+class MyMap<T, T> { /* optimised when key and value share a type */ };
+\end{lstlisting}
+
+\subsection{The \texttt{typename} Keyword for Dependent Types}
+
+\begin{lstlisting}[language=C++, caption={typename disambiguates dependent type names}]
+template <typename T>
+void print_front(T& container) {
+    typename T::iterator it = container.begin();
+    std::cout << *it << "\n";
+}
+\end{lstlisting}
+
+\subsection{Templates vs.\ Macros}
+
+\begin{center}
+\begin{tabular}{|l|l|l|}
+\hline
+\textbf{Property} & \textbf{Templates} & \textbf{Macros} \\
+\hline
+Type safety   & Yes --- compiler checks types & No --- text substitution \\
+Debugging     & Named in error messages       & Invisible after substitution \\
+Scoping       & Obeys C++ scoping rules       & No scoping \\
+Performance   & Zero overhead after instantiation & Same \\
+\hline
+\end{tabular}
+\end{center}
+
+Always prefer templates over macros for multi-type code.
+
+%% ============================================================
+\section{Type Conversions and Casting}
+\label{sec:casting}
+
+C++ is strongly typed. Four named cast operators cover every legitimate conversion need.
+
+\subsection{Implicit Conversions}
+
+\begin{lstlisting}[language=C++, caption={Implicit truncation}]
+double pi = 3.14159;
+int x = pi; // Silently truncated to 3
+\end{lstlisting}
+
+Mark single-argument constructors \texttt{explicit} to block unintended implicit construction:
+
+\begin{lstlisting}[language=C++, caption={explicit constructor prevents silent conversions}]
+class Vector {
+public:
+    explicit Vector(int size) { /* ... */ }
+};
+// Vector v = 5; // ERROR
+Vector v(5);     // OK
+\end{lstlisting}
+
+\subsection{C-Style Cast --- Avoid}
+
+\begin{lstlisting}[language=C++, caption={C-style cast (never use in new code)}]
+double pi = 3.14;
+int x = (int)pi; // Dangerous and unsearchable
+\end{lstlisting}
+
+\subsection{\texttt{static\_cast} --- The Workhorse}
+
+Performs conversions valid according to compile-time type relationships. No runtime checks.
+
+\begin{lstlisting}[language=C++, caption={static\_cast for numeric conversion}]
+double gravity = 9.81;
+int g = static_cast<int>(gravity); // Truncates to 9
+\end{lstlisting}
+
+\subsection{\texttt{dynamic\_cast} --- Safe Downcasting}
+
+Uses \textbf{RTTI} to validate downcasts at runtime. Returns \texttt{NULL} (pointer) or throws \texttt{std::bad\_cast} (reference) on failure. Requires a polymorphic base class (at least one virtual function).
+
+\begin{lstlisting}[language=C++, caption={dynamic\_cast with null check}]
+struct Animal { virtual ~Animal() {} };
+struct Dog : Animal { void bark() {} };
+struct Cat : Animal {};
+
+int main() {
+    Animal* a = new Cat();
+    Dog* d = dynamic_cast<Dog*>(a);
+    if (d != NULL) { d->bark(); }
+    else { std::cout << "Not a Dog.\n"; }
+    delete a;
+    return 0;
+}
+\end{lstlisting}
+
+\subsection{\texttt{const\_cast} --- Stripping \texttt{const}}
+
+\begin{lstlisting}[language=C++, caption={const\_cast for legacy API compatibility}]
+void legacy_function(int* p) { /* does not modify *p */ }
+
+int main() {
+    const int value = 42;
+    legacy_function(const_cast<int*>(&value));
+    return 0;
+}
+\end{lstlisting}
+
+If the underlying object is truly \texttt{const} and the callee writes through the stripped pointer, the result is undefined behaviour.
+
+\subsection{\texttt{reinterpret\_cast} --- Raw Bit Reinterpretation}
+
+\begin{lstlisting}[language=C++, caption={reinterpret\_cast for bit-level access}]
+int original = 65;
+char* c = reinterpret_cast<char*>(&original);
+std::cout << *c << "\n"; // 'A' on little-endian systems
+\end{lstlisting}
+
+Use only when you understand the exact memory layout and the target platform's byte order.
+
+%% ============================================================
+\section{Advanced Class Features}
+\label{sec:advanced-class}
+
+\subsection{Pointers to Static Member Functions}
+
+Static member functions have no \texttt{this} pointer; their pointer type is identical to a free function:
+
+\begin{lstlisting}[language=C++, caption={Pointer to static member function}]
+typedef int Fn(int);
+
+class Calc {
+public:
+    static int doubled(int i) { return 2 * i; }
+};
+
+int main() {
+    Fn* fn = &Calc::doubled;
+    std::cout << fn(4) << "\n"; // 8
+    return 0;
+}
+\end{lstlisting}
+
+\subsection{Pointers to Non-Static Member Functions}
+
+Non-static member functions carry an implicit \texttt{this} argument. The operators \texttt{.*} and \texttt{->*} dereference member-function pointers through an instance:
+
+\begin{lstlisting}[language=C++, caption={Pointer to non-static member function}]
+class Calc {
+public:
+    int doubled(int a) { return 2 * a; }
+    int tripled(int b) { return 3 * b; }
+};
+
+int main() {
+    Calc c;
+    Calc* p = &c;
+
+    int (Calc::*fn)(int) = &Calc::doubled;
+    std::cout << (c.*fn)(5)  << "\n"; // 10
+    fn = &Calc::tripled;
+    std::cout << (p->*fn)(5) << "\n"; // 15
+    return 0;
+}
+\end{lstlisting}
+
+\subsection{Pointers to Data Members}
+
+\begin{lstlisting}[language=C++, caption={Pointer to data member}]
+class Point { public: int x, y; };
+
+int main() {
+    Point pt;
+    int Point::*mp = &Point::x;
+    pt.*mp = 10;
+    mp = &Point::y;
+    pt.*mp = 20;
+    return 0;
+}
+\end{lstlisting}
+
+\subsection{Nested Classes}
+
+A class may define another class inside itself. Member functions of the nested class are defined in the enclosing namespace, not inside the enclosing class:
+
+\begin{lstlisting}[language=C++, caption={Nested class definition}]
+struct Outer {
+    struct Inner {
+        void do_something();
+    };
+    Inner in;
+};
+
+void Outer::Inner::do_something() {
+    std::cout << "Inner function\n";
+}
+\end{lstlisting}
+
+\subsection{Member Type Aliases}
+
+The C++98/03 idiom for publishing the element type of a container uses \texttt{typedef} as a class member:
+
+\begin{lstlisting}[language=C++, caption={Member typedef for type-alias publication}]
+template <typename T>
+class SimpleContainer {
+public:
+    typedef T         value_type;
+    typedef T*        pointer;
+    typedef const T*  const_pointer;
+    typedef T&        reference;
+    typedef size_t    size_type;
+};
+
+template <typename C>
+typename C::value_type front(C& container) {
+    return container[0];
+}
+\end{lstlisting}
+
+%% ============================================================
+\section{Professional Insights: Name Mangling, ADL, and Copy Semantics}
+\label{sec:pro-insights-ch5}
+
+\subsection{Function Overloading and Name Mangling}
+
+The linker must distinguish between overloads. C++ compilers accomplish this by \textbf{name mangling}: encoding parameter types into the symbol name in the object file (e.g.\ \texttt{void func(int)} becomes \texttt{\_Z4funci} in GCC's scheme). The mangling convention is implementation-defined; object files from different compilers are generally not interchangeable.
+
+\texttt{extern "C"} disables name mangling:
+
+\begin{lstlisting}[language=C++, caption={extern "C" for C linkage}]
+extern "C" void c_compatible_function(int x);
+\end{lstlisting}
+
+\subsection{Copy Constructor vs.\ Assignment Operator}
+
+\begin{center}
+\begin{tabular}{|l|l|l|}
+\hline
+\textbf{Operation} & \textbf{When it fires} & \textbf{Target state} \\
+\hline
+\texttt{T a = b;} (copy ctor)   & Initialising a new object     & Not yet alive \\
+\texttt{a = b;} (assignment op) & Assigning to existing object  & Already alive --- must release old resources \\
+\hline
+\end{tabular}
+\end{center}
+
+The self-assignment check in \texttt{operator=} is non-optional for resource-owning classes.
+
+\subsection{Operator Overloading: Member vs.\ Non-Member}
+
+\begin{itemize}
+    \item Use \textbf{member functions} when the left operand is always your class (e.g.\ \texttt{+=}, unary operators).
+    \item Use \textbf{non-member (friend) functions} when the left operand may be a different type (e.g.\ \texttt{+}, \texttt{<<}). This enables symmetric conversions.
+    \item You cannot create new operators, change precedence, change arity, or overload \texttt{::}, \texttt{.}, \texttt{.*}, or \texttt{?:}.
+\end{itemize}

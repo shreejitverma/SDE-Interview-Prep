@@ -1,0 +1,260 @@
+\chapter{Concurrency}
+\label{ch:concurrency}
+
+\textit{Before C++11 the language had no idea threads existed. C++11 standardized a memory model, threads, mutexes, condition variables, futures, and atomics --- turning portable, well-defined concurrency into a first-class part of the language.}
+
+C++11 defined, for the first time, \textbf{what a program means when multiple threads touch the same memory} --- the \emph{memory model} --- and built a portable concurrency library on top of it: \texttt{std::thread}, the \texttt{std::mutex} family, \texttt{std::condition\_variable}, \texttt{std::call\_once}, the futures framework, and \texttt{std::atomic}. We cover each with the correctness traps and performance characteristics that decide their use in low-latency and kernel-adjacent code, and close with OpenMP for data-parallel loops.
+
+%% ============================================================
+\section{The C++11 Threading Model}
+
+A \texttt{std::thread} is a separate flow of execution, constructed with a callable and its arguments; it starts immediately. Before a \texttt{std::thread} is destroyed you \textbf{must} call \texttt{join()} (block until done) or \texttt{detach()} (run independently) --- else the destructor calls \texttt{std::terminate()}.
+
+\begin{lstlisting}[language=C++, caption={launching a thread with any callable}]
+#include <thread>
+void free_fn(int a);
+struct Functor { void operator()(int a) const; };
+
+std::thread t1(free_fn, 10);                       // free function
+std::thread t2(Functor{}, 20);                     // functor
+std::thread t3([](int a){ /*...*/ }, 30);          // lambda
+// member fn: std::thread t4(&Class::method, &obj, args...);
+t1.join(); t2.join(); t3.join();
+\end{lstlisting}
+
+\textbf{Arguments are copied/moved into the thread}, never passed by reference. To pass a real reference, wrap with \texttt{std::ref}/\texttt{std::cref}.
+
+\begin{lstlisting}[language=C++, caption={passing by reference requires std::ref}]
+void fill(int& out) { out = 10; }
+int a = 1;
+std::thread t(fill, std::ref(a));   // without ref(), 'a' would be copied
+t.join();                           // a == 10
+\end{lstlisting}
+
+\textbf{Joinability and exception safety.} If code between creation and \texttt{join()} throws, the join is skipped and the program terminates. Fix with RAII (codified as C++20's \texttt{std::jthread}):
+
+\begin{lstlisting}[language=C++, caption={an RAII thread joiner (exception-safe)}]
+class thread_joiner {
+    std::thread t_;
+public:
+    explicit thread_joiner(std::thread t) : t_(std::move(t)) {}
+    ~thread_joiner() { if (t_.joinable()) t_.join(); }
+};
+\end{lstlisting}
+
+Current-thread operations live in \texttt{std::this\_thread}: \texttt{get\_id()}, \texttt{sleep\_for}, \texttt{sleep\_until}, \texttt{yield()}.
+
+%% ============================================================
+\section{Mutexes and Locks}
+
+A \textbf{mutex} serializes access to shared data.
+
+\begin{center}
+\begin{tabular}{|l|l|}
+\hline \textbf{Type} & \textbf{Purpose} \\ \hline
+\texttt{std::mutex}                 & basic, non-recursive lock \\
+\texttt{std::recursive\_mutex}      & same thread may lock repeatedly \\
+\texttt{std::timed\_mutex}          & adds \texttt{try\_lock\_for}/\texttt{try\_lock\_until} \\
+\texttt{std::recursive\_timed\_mutex} & recursive + timed \\
+\hline
+\end{tabular}
+\end{center}
+
+Use an RAII \textbf{lock wrapper} so the mutex is released on every exit path.
+
+\begin{lstlisting}[language=C++, caption={lock\_guard locks for the full scope}]
+std::mutex m;
+void worker() {
+    std::lock_guard<std::mutex> guard(m);  // locks here
+    // critical section
+}                                          // unlocks automatically
+\end{lstlisting}
+
+\texttt{std::unique\_lock} is heavier but flexible (defer, manual unlock/relock, transfer ownership, required by condition variables).
+
+\begin{lstlisting}[language=C++, caption={unique\_lock with manual control}]
+std::unique_lock<std::mutex> guard(m, std::defer_lock); // not locked yet
+guard.lock();
+// critical section
+guard.unlock();                                          // release early
+\end{lstlisting}
+
+Lock strategies: \texttt{std::defer\_lock} (don't lock yet), \texttt{std::try\_to\_lock} (non-blocking; test \texttt{owns\_lock()}), \texttt{std::adopt\_lock} (already owned). Locking multiple mutexes uses \texttt{std::lock} for deadlock avoidance:
+
+\begin{lstlisting}[language=C++, caption={deadlock-free multi-lock}]
+std::mutex m1, m2;
+std::lock(m1, m2);                                  // order-independent
+std::lock_guard<std::mutex> g1(m1, std::adopt_lock);
+std::lock_guard<std::mutex> g2(m2, std::adopt_lock);
+\end{lstlisting}
+
+\begin{quote}
+\textbf{C++14/17 forward references:} C++14 added \texttt{std::shared\_timed\_mutex}/\texttt{std::shared\_lock} (reader-writer). C++17 added \texttt{std::shared\_mutex} and \texttt{std::scoped\_lock} (variadic deadlock-avoiding RAII lock --- prefer it over \texttt{std::lock} + \texttt{adopt\_lock}).
+\end{quote}
+
+%% ============================================================
+\section{Condition Variables}
+
+A \textbf{condition variable} lets a thread sleep until another signals a state change. Always used with a \texttt{std::unique\_lock<std::mutex>} so the wait atomically releases and re-acquires the mutex.
+
+\begin{lstlisting}[language=C++, caption={the predicate form guards against spurious wakeups}]
+std::mutex mtx; std::condition_variable cv; bool ready = false;
+// Waiter:
+{
+    std::unique_lock<std::mutex> lk(mtx);
+    cv.wait(lk, []{ return ready; });   // sleeps until ready == true
+}
+// Notifier:
+{ std::lock_guard<std::mutex> lk(mtx); ready = true; }
+cv.notify_one();                        // notify_all wakes all waiters
+\end{lstlisting}
+
+\textbf{Always use the predicate overload.} A condition variable may wake \emph{spuriously}; the predicate re-check sends it back to sleep. The bare \texttt{cv.wait(lk)} is a bug magnet. The notifier must hold the mutex while modifying shared state; updating-then-notifying in the wrong order causes lost wakeups.
+
+%% ============================================================
+\section{\texttt{std::call\_once} and \texttt{std::once\_flag}}
+
+\texttt{std::call\_once} runs a callable \textbf{exactly once} across all threads --- the race-free way to do lazy one-time init. It pairs with a \texttt{std::once\_flag}.
+
+\begin{lstlisting}[language=C++, caption={thread-safe lazy initialization}]
+std::once_flag init_flag;
+Resource* g_resource = nullptr;
+void init() { g_resource = new Resource(/* expensive */); }
+Resource& get() {
+    std::call_once(init_flag, init);  // runs once; others block until done
+    return *g_resource;
+}
+\end{lstlisting}
+
+If the callable throws, the flag is \textbf{not} marked done and the next caller retries --- exactly-once-on-success. Cleaner and safer than hand-written double-checked locking.
+
+\begin{quote}
+\textbf{Note:} a function-local \texttt{static} with a non-trivial initializer also gives thread-safe one-time init in C++11 (``magic statics''). Use \texttt{call\_once} when init and storage are separated or must be triggered explicitly.
+\end{quote}
+
+%% ============================================================
+\section{Futures, Promises, and \texttt{std::async}}
+
+The futures framework moves a \emph{result} (or exception) from producer to consumer across threads. \texttt{std::future<T>} (consumer; \texttt{get()} blocks), \texttt{std::promise<T>} (producer; \texttt{set\_value}/\texttt{set\_exception}), \texttt{std::packaged\_task<R(Args...)>} (wraps a callable into a future), \texttt{std::async} (high-level launcher).
+
+\begin{lstlisting}[language=C++, caption={std::async for fire-and-fetch}]
+#include <future>
+unsigned square(unsigned i) { return i * i; }
+auto f = std::async(std::launch::async, square, 8); // forces a new thread
+// ... other work ...
+unsigned r = f.get();                               // blocks -> 64
+\end{lstlisting}
+
+\textbf{Two notorious pitfalls.} (1) \emph{Launch policy:} \texttt{std::async(square,8)} without a policy may run \texttt{deferred} (synchronously inside \texttt{get()}); pass \texttt{std::launch::async} for a real thread. (2) \emph{Blocking destructor:} the future from \texttt{std::async} blocks in its destructor until the task finishes --- a discarded return value makes the call effectively synchronous. Bind the future to a named variable.
+
+\begin{lstlisting}[language=C++, caption={promise/future for explicit hand-off}]
+std::promise<int> p;
+std::future<int> f = p.get_future();
+std::thread producer([&p]{ p.set_value(42); });
+int v = f.get();          // 42
+producer.join();
+\end{lstlisting}
+
+Exceptions escaping a task are captured and rethrown from \texttt{future::get()} (\texttt{std::exception\_ptr} is the lower-level vehicle).
+
+%% ============================================================
+\section{Atomics and the C++11 Memory Model}
+
+The deepest part of C++11 concurrency is the \textbf{memory model}: the contract for when one thread's writes become visible to another. \texttt{std::atomic} is how you program against it. \texttt{std::atomic<T>} provides indivisible operations on a \texttt{TriviallyCopyable} \texttt{T}; concurrent read/write of one atomic is well-defined, not a data race. It is neither copyable nor movable.
+
+\begin{lstlisting}[language=C++, caption={atomic counter --- no mutex required}]
+#include <atomic>
+std::atomic<int> counter{0};
+counter.fetch_add(1);          // atomic read-modify-write
+int now = counter.load();      // atomic read
+counter.store(100);            // atomic write
+\end{lstlisting}
+
+Every atomic operation carries a \textbf{memory ordering} constraining how surrounding non-atomic accesses may be reordered --- the mechanism that makes lock-free code correct.
+
+\begin{center}
+\begin{tabular}{|l|l|}
+\hline \textbf{\texttt{std::memory\_order}} & \textbf{Guarantee} \\ \hline
+\texttt{seq\_cst} & \textbf{Default.} Single global total order; strongest, slowest \\
+\texttt{acquire}  & load: no later access moves before it \\
+\texttt{release}  & store: no earlier access moves after it (publishes) \\
+\texttt{acq\_rel} & both, for read-modify-write \\
+\texttt{relaxed}  & atomicity only --- no ordering constraints \\
+\hline
+\end{tabular}
+\end{center}
+
+\begin{lstlisting}[language=C++, caption={acquire/release publishes data without a lock}]
+std::atomic<bool> ready{false};
+int payload = 0;
+// producer:
+payload = 42;
+ready.store(true, std::memory_order_release);  // publish
+// consumer:
+while (!ready.load(std::memory_order_acquire)) {}
+// payload is now guaranteed to read 42
+\end{lstlisting}
+
+\begin{lstlisting}[language=C++, caption={relaxed is enough for a pure counter}]
+std::atomic<long> hits{0};
+hits.fetch_add(1, std::memory_order_relaxed);  // count only; no ordering
+\end{lstlisting}
+
+\textbf{Why this matters.} Default \texttt{seq\_cst} is correct everywhere and the right starting point, but its fences cost real cycles on multi-socket hardware. In a profiled hot path --- a lock-free queue, a counter, a seqlock --- \texttt{acquire}/\texttt{release} or \texttt{relaxed} removes fences the algorithm does not need. This is where the \textbf{ABA problem} and \texttt{compare\_exchange\_weak}/\texttt{strong} subtleties live; weakening ordering demands both a happens-before argument and a measurement. \texttt{std::atomic\_flag} is the only always-lock-free type; for other \texttt{T} query \texttt{is\_lock\_free()}.
+
+%% ============================================================
+\section{\texttt{thread\_local} Storage}
+
+The \texttt{thread\_local} specifier gives each thread its own instance of a variable. A function-local \texttt{thread\_local} is implicitly \texttt{static}, initialized the first time control reaches it per thread; a namespace/class-scope one initializes at thread startup; each copy is destroyed at thread exit.
+
+\begin{lstlisting}[language=C++, caption={per-thread state without locking}]
+void record() {
+    thread_local int calls = 0;     // one counter per thread
+    ++calls;                        // no synchronization needed
+}
+\end{lstlisting}
+
+It is the idiomatic way to give each thread a private RNG engine (Chapter~\ref{ch:standard-library-expansion}), scratch buffer, or allocator arena --- eliminating contention by eliminating sharing. A class member may be \texttt{thread\_local} only if also \texttt{static}.
+
+%% ============================================================
+\section{Data Parallelism with OpenMP}
+
+The standard library gives \emph{task} concurrency; \textbf{OpenMP} is a complementary compiler-directive API for \emph{data} parallelism --- splitting loop iterations across a thread team with minimal code change.
+
+\begin{lstlisting}[language=C++, caption={a parallel region and a parallel loop}]
+#include <omp.h>
+#pragma omp parallel
+{ int id = omp_get_thread_num(); }   // each thread runs this block
+
+#pragma omp parallel for
+for (int i = 0; i < 1000; ++i)
+    results[i] = compute(i);          // iterations distributed across threads
+\end{lstlisting}
+
+Data-sharing clauses: \texttt{shared} (one instance), \texttt{private} (per-thread copy), \texttt{reduction} (per-thread partials combined):
+
+\begin{lstlisting}[language=C++, caption={reduction combines per-thread partial sums safely}]
+double total = 0;
+#pragma omp parallel for reduction(+:total)
+for (int i = 0; i < 100; ++i)
+    total += data[i];
+\end{lstlisting}
+
+Scheduling: \texttt{static} (fixed chunks, lowest overhead), \texttt{dynamic} (runtime hand-out, uneven workloads), \texttt{guided} (shrinking chunks, cuts tail latency).
+
+\begin{quote}
+\textbf{Performance traps.} \emph{False sharing} --- two threads writing different variables on the same cache line --- destroys scaling as the line ping-pongs between cores; fix by padding to cache-line boundaries. \emph{Thread affinity} (\texttt{OMP\_PROC\_BIND=true}) pins threads to cores, preventing cache-thrashing migration.
+\end{quote}
+
+%% ============================================================
+\section{Professional Insights}
+
+\textbf{Always make \texttt{join}/\texttt{detach} exception-safe.} A bare \texttt{std::thread} whose \texttt{join()} is skipped by an exception terminates the process. Wrap in an RAII joiner (or C++20's \texttt{std::jthread}).
+
+\textbf{Prefer the highest-level tool that fits.} Futures for ``compute elsewhere''; a condition-variable queue for streaming; mutexes for shared mutable state; atomics only when locking is the measured bottleneck. Reaching for \texttt{relaxed} first is premature optimization that produces subtly broken code.
+
+\textbf{Lock ordering is a global invariant.} Deadlocks come from inconsistent acquisition order. Acquire in one documented order, or use \texttt{std::scoped\_lock}/\texttt{std::lock}. Keep critical sections short --- hold locks for data, not for I/O or computation.
+
+\textbf{\texttt{seq\_cst} first, relax with evidence.} Start lock-free designs at sequential consistency. Weaken only in a profiled hot path, with a written happens-before argument and ThreadSanitizer verification. The fences \texttt{seq\_cst} inserts are exactly what make multi-socket atomics expensive --- and exactly what naive weakening breaks.
+
+\textbf{Minimize sharing before optimizing synchronization.} The fastest lock is the one you never take. \texttt{thread\_local} state, per-thread queues, and partitioned data eliminate contention at the design level --- far more effective than tuning memory orders on a contended cache line.
