@@ -1,0 +1,56 @@
+\chapter{Advanced Systems --- The Engineer's Model of the Machine}
+
+Every chapter that follows rests on one shift in perspective: the C++ abstract machine is a fiction the compiler maintains for your convenience, and the real machine underneath --- pipelined, cached, virtually addressed, multi-core, talking to an OS across an expensive boundary --- behaves nothing like the simple sequential model in your head. This opening chapter establishes the mental model the rest of the volume sharpens.
+
+\section*{Chapter Roadmap}
+\begin{itemize}
+\item 85.1 The Abstract Machine vs the Real Machine
+\item 85.2 The Layers Between Source and Silicon
+\item 85.3 Latency Numbers Every Engineer Must Know
+\item 85.4 The Three Cost Models: Compute, Memory, and the OS Boundary
+\item 85.5 The Volume's Throughline: Determinism and the Tail
+\item 85.6 How to Read the Rest of This Volume
+\end{itemize}
+
+\section{The Abstract Machine vs the Real Machine}
+C++ is defined against an abstract machine: sequential, in-order, every read returns the last write, operations cost what they look like. The compiler preserves only this model's observable behaviour (the as-if rule). The real machine violates the implied cost and ordering everywhere: out-of-order and speculative execution, caches (a miss $\sim$100$\times$ a hit), virtual addressing (TLB, page tables), many cores seeing each other's writes with delay, and an OS boundary costing hundreds of cycles.
+
+\textbf{Why this matters.} The abstract machine is why code is correct; the real machine is why it is fast or slow. Hold both: reason about correctness in the abstract machine, performance in the real one. Almost every performance surprise is the gap between them.
+
+\section{The Layers Between Source and Silicon}
+\begin{lstlisting}[language=text, caption={The transformation stack; each layer can make identical source perform differently.}]
+C++ source -> compiler front-end [Ch 81] -> optimizer/IR [Ch 80,89,104]
+ -> machine code [Ch 89] -> CPU front-end (decode, predict) [Ch 86]
+ -> out-of-order core [Ch 86] -> cache hierarchy + coherence [Ch 87,76]
+ -> virtual memory (TLB, pages, NUMA) [Ch 88] -> OS boundary [Ch 98-101]
+\end{lstlisting}
+
+\textbf{Why this matters.} Performance problems live at a specific layer; fixing them requires identifying which. A mispredict is CPU front-end; a cache miss is memory hierarchy; a page fault is virtual memory; a \texttt{seq\_cst} stall is coherence; a hot-path syscall is the OS boundary. Mistaking the layer wastes effort.
+
+\section{Latency Numbers Every Engineer Must Know}
+\begin{itemize}
+\item 1 cycle $\sim$0.3\,ns; L1 hit $\sim$1\,ns; branch mispredict $\sim$5\,ns; L2 $\sim$4\,ns; L3 $\sim$15\,ns.
+\item DRAM $\sim$100\,ns ($\sim$300$\times$ a cycle); NVMe read $\sim$10--100\,$\mu$s; datacenter round trip $\sim$50--500\,$\mu$s.
+\item HDD seek $\sim$10\,ms; cross-continent round trip $\sim$100+\,ms.
+\end{itemize}
+
+\textbf{Why this matters.} As ratios, these are the engineer's intuition: a cache miss costs $\sim$300 instructions (layout dominates compute); a syscall/round trip is so costly that avoiding it beats optimizing around it; a mispredict is cheap alone but lethal in a tight loop. Memorise the orders of magnitude; measure the exact nanoseconds (Chapters 101, 103).
+
+\section{The Three Cost Models: Compute, Memory, and the OS Boundary}
+\begin{enumerate}
+\item \textbf{Compute} --- instruction count, pipelining, mispredicts, vectorization (Chapters 86, 89, 91--92).
+\item \textbf{Memory} --- cache vs DRAM, prefetchability, layout, false sharing (Chapters 76, 79, 87--88, 90, 97).
+\item \textbf{OS boundary} --- syscalls, I/O, scheduling, clocks (Chapters 96, 98--101).
+\end{enumerate}
+
+\textbf{Why this matters.} Identifying which model dominates is the first move in optimization. Numeric kernels are compute-bound (vectorize); graph traversals memory-bound (improve locality); network servers OS-boundary-bound (reduce syscalls). Applying the wrong model's techniques is the most common waste of effort (Chapters 103, 105 tell you which model you are in).
+
+\section{The Volume's Throughline: Determinism and the Tail}
+The target systems care less about average latency than about the tail: the 99.9th-percentile request, the worst case that violates an SLA.
+
+\textbf{Why this matters.} Every villain here is a source of variance: page faults, GC pauses, lock convoys, cache misses, syscalls, mispredicts, thread migrations, slow-path allocations. The hot-path discipline (Chapter 106) eliminates jitter --- preallocate, pin, warm, avoid the kernel --- so the worst case approaches the average. Measure full distributions and tail percentiles, never means (Chapter 103).
+
+\section{How to Read the Rest of This Volume}
+Hardware (86--89); data \& vectorisation (90--92); concurrency (76--78, 93--96); memory management (79, 97); OS interface (98--102); discipline (80, 103--106).
+
+\textbf{The discipline.} Read each chapter asking: What does the hardware or OS actually do? What does it cost (in the units of 85.3)? When should I not do this? The techniques are only as good as the judgement of when to apply them.

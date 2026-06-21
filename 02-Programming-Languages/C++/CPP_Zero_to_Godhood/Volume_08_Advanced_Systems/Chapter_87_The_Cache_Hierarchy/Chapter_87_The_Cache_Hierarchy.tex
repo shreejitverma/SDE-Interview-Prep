@@ -1,0 +1,86 @@
+\chapter{The Cache Hierarchy, False Sharing, and Cache-Conscious Layout}
+
+For most real workloads the bottleneck is not computing but \emph{feeding} the computation with data, and the cache hierarchy is the apparatus for doing so. A single miss to main memory costs $\sim$300 instructions; whether your data is laid out so the hardware can predict and prefetch it is the difference between fast and unusably slow. This chapter explains the cache --- lines, levels, associativity, prefetching, coherence --- and turns it into layout disciplines: locality, hot/cold splitting, and the elimination of false sharing.
+
+\section*{Chapter Roadmap}
+\begin{itemize}
+\item 87.1 Why the Cache Exists: The Memory Wall
+\item 87.2 Cache Lines: The Unit of Transfer
+\item 87.3 The Levels: L1, L2, L3, and Inclusivity
+\item 87.4 Associativity and Conflict Misses
+\item 87.5 Spatial and Temporal Locality
+\item 87.6 Hardware Prefetching
+\item 87.7 Cache Coherence and the Cost of Sharing
+\item 87.8 False Sharing and Interference Sizes
+\item 87.9 Cache-Conscious Data Layout
+\end{itemize}
+
+\section{Why the Cache Exists: The Memory Wall}
+A core executes $\sim$4 instructions per $\sim$0.3\,ns cycle, but DRAM takes $\sim$100\,ns ($\sim$1000+ instructions). Caches are small fast SRAM holding recently/soon-used data near the core.
+
+\textbf{Why this matters.} Fast memory is small; large memory is slow. You cannot make DRAM faster, but you can change your hit rate by layout and traversal --- and hit rate governs memory-bound performance.
+
+\section{Cache Lines: The Unit of Transfer}
+The cache moves 64-byte lines, not bytes. Touching one byte fetches its whole line; adjacent data comes for free.
+
+\textbf{Why this matters / cost model.} The 64-byte line is the key number: a sub-line struct accessed fully costs one miss; a contiguous array amortises one miss over many elements; a scattered linked list pays a miss per node. The line is also the unit of coherence (hence false sharing). Most layout rules follow from the 64-byte granularity.
+
+\section{The Levels: L1, L2, L3, and Inclusivity}
+\begin{itemize}
+\item L1 (split I/D): 32--64\,KB each, $\sim$4 cycles, per core.
+\item L2: 256\,KB--2\,MB, $\sim$12 cycles, per core.
+\item L3 (LLC): 8--64\,MB, $\sim$40 cycles, shared.
+\item DRAM: GBs, $\sim$100\,ns, all cores.
+\end{itemize}
+
+\textbf{Why this matters.} The order-of-magnitude steps make working-set size matter: a loop fitting in L1 runs an order faster than one spilling to L2, another faster than DRAM. Blocking/tiling keeps the active set in L1/L2. Know your structure's size relative to the levels.
+
+\section{Associativity and Conflict Misses}
+An N-way set-associative cache maps each address to a set of N slots; more than N hot lines in one set evict each other (a conflict miss) despite free capacity elsewhere.
+
+\textbf{Why this matters / cost model.} This explains the power-of-two stride pathology: large power-of-two strides map many addresses to one set, thrashing it. Fix by padding array dimensions to avoid such strides. A profiler-only bug; awareness lets you recognise it.
+
+\section{Spatial and Temporal Locality}
+Spatial: nearby addresses accessed soon (contiguous/sequential access). Temporal: the same address reused soon (loop blocking, small hot data).
+
+\textbf{Why this matters.} These explain the recurring advice: \texttt{vector} over \texttt{list} (spatial), SoA for partial-field access (Chapter 90), and loop blocking (temporal). Cache-conscious design is the pursuit of both.
+
+\section{Hardware Prefetching}
+Prefetchers detect sequential/strided patterns and fetch lines ahead of use, hiding DRAM latency.
+
+\begin{lstlisting}[language=C++, caption={Sequential access is prefetched; random access is not. Min standard: C++11.}]
+long sum = 0;  for (size_t i=0;i<n;++i) sum += a[i];            // unit stride: prefetched
+long sum2 = 0; for (size_t i=0;i<n;++i) sum2 += a[index[i]];    // random: a miss per access
+\end{lstlisting}
+
+\textbf{Why this matters / cost model.} A sequential 1\,GB scan is near bandwidth-limited; random 1\,GB access pays a $\sim$100\,ns miss each --- 50$\times$ slower for the same data. This is why pointer-chasing is slow: each \texttt{->next} is a data-dependent load the prefetcher cannot predict. Make access sequential first.
+
+\section{Cache Coherence and the Cost of Sharing}
+Coherence (MESI-family) keeps cores consistent: before writing a line, a core gains exclusive ownership, invalidating other copies; another core's read then re-fetches.
+
+\textbf{Why this matters / cost model.} Writes to shared lines cost a coherence round-trip (tens to hundreds of cycles); a line written by one core and read by another ping-pongs. This is the reality beneath the memory model: an atomic RMW must win exclusive ownership. Minimise shared mutable lines (thread-per-core, Chapter 96).
+
+\section{False Sharing and Interference Sizes}
+Two cores writing logically independent variables on one 64-byte line: each write invalidates the other's line though no data is shared.
+
+\begin{lstlisting}[language=C++, caption={Padding to destructive interference size eliminates false sharing. Min standard: C++17.}]
+struct Bad { std::atomic<long> a; std::atomic<long> b; };       // both within 64 bytes
+struct Good {
+    alignas(std::hardware_destructive_interference_size) std::atomic<long> a;
+    alignas(std::hardware_destructive_interference_size) std::atomic<long> b;
+};
+\end{lstlisting}
+
+C++17 \texttt{<new>} provides \texttt{hardware\_destructive\_interference\_size} (offset to separate lines --- avoid false sharing) and \texttt{hardware\_constructive\_interference\_size} (size to keep on one line --- promote locality).
+
+\textbf{Why this matters / cost model.} False sharing can make a parallel program slower than serial: N per-thread counters on one line ping-pong on every increment. Invisible in source; only \texttt{perf c2c} or a layout audit reveals it. Pad each hot per-thread datum to its own line.
+
+\section{Cache-Conscious Data Layout}
+\begin{lstlisting}[language=C++, caption={Hot/cold splitting keeps the hot working set dense. Min standard: C++11.}]
+struct OrderBad  { double price; int qty; char description[200]; };   // cold bloats the line
+struct OrderGood { double price; int qty; const char* description; }; // hot part < 1 line
+\end{lstlisting}
+
+Layout rules: contiguous over linked; hot/cold splitting; structure-of-arrays for cross-object field access; pack hot data within a line and pad shared-mutable data across lines; size working sets to the cache via blocking.
+
+\textbf{The discipline.} Memory-bound performance is won at design time by layout. Ask of every hot structure: contiguous? does a line carry only used bytes? are per-thread writes on separate lines? does the working set fit in cache? These deliver the largest gains in this volume (2--50$\times$).

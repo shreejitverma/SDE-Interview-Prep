@@ -1,0 +1,128 @@
+\chapter{Advanced Concurrency Patterns}
+
+Primitives --- atomics, locks, lock-free queues --- are necessary but not sufficient; at scale you need \emph{architectures} that arrange work so contention is rare, allocation is absent from the hot path, and the design itself prevents data races. This chapter surveys the patterns senior engineers compose systems from: thread pools, the actor model, the Disruptor, coroutine pipelines, and C++26 structured concurrency.
+
+\section*{Chapter Roadmap}
+\begin{itemize}
+\item 78.1 From Primitives to Architectures
+\item 78.2 Thread Pools and Work Queues
+\item 78.3 The Actor Model: Concurrency by Message Passing
+\item 78.4 The Disruptor: Ring-Buffer Inter-Thread Messaging
+\item 78.5 Coroutines for Async Pipelines
+\item 78.6 Structured Concurrency and \texttt{std::execution}
+\item 78.7 False Sharing and Padding
+\item 78.8 Choosing a Pattern
+\end{itemize}
+
+\section{From Primitives to Architectures}
+The dominant performance problems at scale are architectural: too many threads on one lock, hot-path allocation, cache lines ping-ponging, threads migrating across NUMA nodes.
+
+\textbf{Why this matters.} The cheapest synchronisation is the synchronisation you avoid. Every pattern here reduces the surface area of sharing: a pool funnels work through one tunable queue; an actor owns its state; the Disruptor pre-allocates single-writer slots; coroutines and senders express dependencies so the scheduler manages waiting.
+
+\section{Thread Pools and Work Queues}
+Spawning a thread costs a syscall, a stack allocation, and scheduler bookkeeping --- tens of microseconds. A thread pool amortises this.
+
+\begin{lstlisting}[language=C++, caption={A minimal thread pool with one mutex-protected queue. Min standard: C++17.}]
+class ThreadPool {
+    std::vector<std::thread> workers_;
+    std::queue<std::function<void()>> tasks_;
+    std::mutex m_; std::condition_variable cv_; bool stop_ = false;
+public:
+    explicit ThreadPool(unsigned n) {
+        for (unsigned i = 0; i < n; ++i) workers_.emplace_back([this]{ worker_loop(); });
+    }
+    void submit(std::function<void()> t) {
+        { std::lock_guard lk(m_); tasks_.push(std::move(t)); } cv_.notify_one();
+    }
+    ~ThreadPool() {
+        { std::lock_guard lk(m_); stop_ = true; } cv_.notify_all();
+        for (auto& t : workers_) t.join();
+    }
+private:
+    void worker_loop() {
+        for (;;) {
+            std::function<void()> task;
+            { std::unique_lock lk(m_);
+              cv_.wait(lk, [this]{ return stop_ || !tasks_.empty(); });
+              if (stop_ && tasks_.empty()) return;
+              task = std::move(tasks_.front()); tasks_.pop(); }
+            task();
+        }
+    }
+};
+\end{lstlisting}
+
+\textbf{Why this matters / cost model.} The single global queue is the bottleneck. Production pools use per-worker deques with work stealing: cache-hot LIFO on the owner's deque, contended FIFO steals only when idle. Size to \texttt{hardware\_concurrency()} for CPU-bound work; more threads cause scheduler thrash.
+
+\section{The Actor Model: Concurrency by Message Passing}
+Each actor owns private state, has a mailbox, and processes one message at a time. Communication is by immutable messages only.
+
+\begin{lstlisting}[language=C++, caption={Actor skeleton: private state, serial mutation. Min standard: C++17.}]
+class Actor {
+    SpscRing<Message> mailbox_;
+public:
+    void send(Message m) { mailbox_.push(std::move(m)); }
+    void run() { Message m; while (mailbox_.pop(m)) handle(m); }
+private:
+    void handle(const Message&);   // single-threaded by construction: no lock
+};
+\end{lstlisting}
+
+\textbf{Why this matters.} A correctness guarantee by construction: only the actor's thread mutates its state, so there is no race and no lock. The cost is message-passing overhead. It maps naturally onto thread-per-core. Hazard: unbounded mailboxes need backpressure.
+
+\section{The Disruptor: Ring-Buffer Inter-Thread Messaging}
+A pre-allocated ring with published sequence numbers, generalising the SPSC ring to a consumer dependency graph using barriers, not locks.
+\begin{itemize}
+\item Pre-allocated fixed entries --- zero hot-path allocation.
+\item Published sequences --- release/acquire publication, not a lock.
+\item Consumers form a dependency graph; downstream waits on the slowest upstream sequence; slots are not copied between stages.
+\item Cache-line padding on every sequence counter.
+\end{itemize}
+
+\textbf{Why this matters / cost model.} A queue's real cost is allocation, the contended head/tail, and cache traffic. Pre-allocation plus padded per-actor sequences reduce per-event cost to a few cache-hot operations, sustaining tens of millions of events/sec sub-microsecond. Trade-off: fixed-capacity, busy-spinning; dedicate a core (Chapter 96).
+
+\section{Coroutines for Async Pipelines}
+\begin{lstlisting}[language=C++, caption={Async logic that reads like synchronous code. Min standard: C++20.}]
+Task<int> async_algo() {
+    int a = co_await fetch_a();   // suspends; thread is free
+    int b = co_await fetch_b();
+    co_return a + b;
+}
+\end{lstlisting}
+
+\textbf{Why this matters / cost model.} The alternative is callback hell or thread-per-request (one blocked OS thread each, unscalable). A coroutine frame is a small heap allocation (often elided by HALO) holding only live locals across suspension. Ten thousand requests cost ten thousand frames, not ten thousand 8\,MB stacks. Hazard: a captured reference dangling across a suspension point is a use-after-free.
+
+\section{Structured Concurrency and \texttt{std::execution}}
+C++26 \texttt{std::execution} (senders/receivers) gives a composable async model: a sender describes work, algorithms (\texttt{then}, \texttt{when\_all}) compose a graph, a scheduler places it. Structured concurrency bounds an async operation's lifetime to a lexical scope.
+
+\begin{lstlisting}[language=C++, caption={A sender pipeline; the scheduler manages waiting. Min standard: C++26 (stabilising).}]
+// auto work = schedule(pool) | then([]{ return load(); })
+//                            | then([](Data d){ return process(d); });
+// auto [result] = sync_wait(std::move(work)).value();
+\end{lstlisting}
+
+\textbf{Why this matters.} Unstructured async leaks work, races on shutdown, and propagates errors poorly. Structured concurrency makes errors and cancellation flow back to the launching scope like exceptions up a stack. Until \texttt{std::execution} stabilises, the principle applies today via libunifex/stdexec.
+
+\section{False Sharing and Padding}
+False sharing: two threads write different variables on the same cache line, so each write invalidates the other core's copy.
+
+\begin{lstlisting}[language=C++, caption={Padding each per-thread counter to its own line. Min standard: C++17.}]
+#include <new>
+struct alignas(64) PaddedCounter { std::atomic<long> value{0}; };
+PaddedCounter counters[NUM_THREADS];
+\end{lstlisting}
+
+\texttt{std::hardware\_destructive\_interference\_size} names the portable alignment.
+
+\textbf{Why this matters / cost model.} False sharing serialises an embarrassingly-parallel design: N threads on one line run slower than one thread, because every increment triggers an invalidation and re-fetch. It is invisible in source; only \texttt{perf c2c} or a cache-aware layout reading reveals it (Chapter 87).
+
+\section{Choosing a Pattern}
+\begin{itemize}
+\item Work-stealing pool --- general CPU-bound parallelism; cost is queue contention.
+\item Actor model --- stateful independent entities; cost is message passing.
+\item Disruptor --- lowest-latency pipelines; cost is a busy-spinning dedicated core.
+\item Coroutines --- high-concurrency I/O; cost is frame allocation and lifetime subtlety.
+\item \texttt{std::execution} --- composable async with cancellation; cost is immaturity.
+\end{itemize}
+
+\textbf{The discipline.} Choose the pattern that removes the hazard by design rather than guarding it with locks: actors/thread-per-core for independent state, a work-stealing pool for fan-out, a Disruptor/SPSC ring for latency-critical hand-offs, coroutines for I/O.

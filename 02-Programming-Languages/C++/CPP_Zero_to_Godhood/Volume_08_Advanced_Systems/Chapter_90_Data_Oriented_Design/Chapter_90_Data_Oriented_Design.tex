@@ -1,0 +1,69 @@
+\chapter{Data-Oriented Design --- AoS vs SoA and Hot/Cold Splitting}
+
+Object-oriented design organises code around objects bundling data with behaviour; data-oriented design (DOD) organises it around the transformations the program performs on bulk data, laying memory out to match. The shift matters because memory-bound performance is governed by what the cache fetches --- and the natural OO layout (an array of fat objects) drags unused bytes through cache, defeats prefetching, and blocks vectorisation. This chapter develops struct-of-arrays and hot/cold splitting with the cost model for each.
+
+\section*{Chapter Roadmap}
+\begin{itemize}
+\item 90.1 The Data-Oriented Mindset
+\item 90.2 Array-of-Structs vs Struct-of-Arrays
+\item 90.3 The Cost Model: Why SoA Wins (and When It Doesn't)
+\item 90.4 Hot/Cold Splitting
+\item 90.5 SoA and Vectorisation
+\item 90.6 Practical Patterns and Hazards
+\end{itemize}
+
+\section{The Data-Oriented Mindset}
+OOP asks ``what is this entity and what can it do?''; DOD asks ``what transformations run over many items, and how should data be laid out so those run fast?'' The unit of thought is the batch operation over a collection.
+
+\textbf{Why this matters.} Hot loops rarely touch one whole object; they touch one or two fields across thousands of objects. For that pattern the OO layout is pessimal --- each access pulls a full line of mostly-irrelevant fields. DOD aligns layout with the hot loop's access pattern; on the hot path the cache beats the conceptual model.
+
+\section{Array-of-Structs vs Struct-of-Arrays}
+\begin{lstlisting}[language=C++, caption={The same data as AoS and SoA. Min standard: C++11.}]
+struct Particle { float x,y,z, vx,vy,vz, mass; };  // 28 bytes
+std::vector<Particle> aos(N);
+for (auto& p : aos) { p.x += p.vx; p.y += p.vy; p.z += p.vz; }   // loads mass,vel too
+
+struct Particles { std::vector<float> x,y,z, vx,vy,vz, mass; };
+Particles soa;
+for (size_t i = 0; i < N; ++i) {
+    soa.x[i] += soa.vx[i]; soa.y[i] += soa.vy[i]; soa.z[i] += soa.vz[i];   // only needed fields
+}
+\end{lstlisting}
+
+AoS stores each object's fields together; SoA stores each field's values together.
+
+\textbf{Why this matters.} If the hot loop reads most fields of one object, AoS wins; if it reads few fields across many objects, SoA streams exactly the needed fields while AoS wastes $\sim$60\% of every line --- SoA wins 2--4$\times$.
+
+\section{The Cost Model: Why SoA Wins (and When It Doesn't)}
+\begin{itemize}
+\item Whole-object access: AoS one/two lines; SoA scattered across all field arrays.
+\item One field over many objects: AoS wastes the line; SoA streams densely.
+\item Vectorisation: AoS hard (interleaved); SoA easy (unit stride).
+\item Random whole-object access/clarity: AoS natural; SoA awkward (indices).
+\end{itemize}
+
+\textbf{Why this matters / cost model.} The decisive quantity is cache-line utilisation: of 64 fetched bytes, what fraction does the loop use? SoA pushes it toward 100\% for the fields in use. SoA's costs: whole-object access touches every array, insert/delete updates every array, and the code is less readable. Rule: SoA for bulk field-wise transforms, AoS for whole-object random access; many systems use both.
+
+\section{Hot/Cold Splitting}
+\begin{lstlisting}[language=C++, caption={Hot/cold splitting moves rarely-used fields out of the dense array. Min standard: C++11.}]
+struct OrderBad {
+    uint64_t id; double price; uint32_t qty;   // hot
+    char trader_note[128]; std::string source_system;   // cold
+};
+struct OrderCold { char trader_note[128]; std::string source_system; };
+struct OrderGood { uint64_t id; double price; uint32_t qty; OrderCold* cold = nullptr; };
+\end{lstlisting}
+
+\textbf{Why this matters / cost model.} A hot scan over \texttt{OrderBad} fetches the note and string on every line though the engine never reads them. Splitting shrinks the hot object so several fit per line. Cost: one indirection when the cold data is needed (rare) and a separate allocation. The per-field analogue of SoA.
+
+\section{SoA and Vectorisation}
+A SIMD instruction operates on N contiguous lanes; SoA's per-field arrays present exactly that with unit stride. AoS forces strided gathers, so AoS loops often stay scalar.
+
+\textbf{Why this matters.} SoA improves cache utilisation \emph{and} enables vectorisation AoS blocks, so a SoA loop is both more cache-efficient and processes 4--16 lanes per instruction. Attempting SIMD on an AoS loop usually fails to vectorise; the real problem is the layout, not SIMD.
+
+\section{Practical Patterns and Hazards}
+Patterns: Entity-Component-Systems (entities are IDs, components in SoA arrays, systems are batch transforms); indices over pointers (smaller, survive reallocation, cache-friendly); \texttt{std::simd} over SoA.
+
+Hazards: premature DOD (apply only to measured hot memory-bound loops); keeping parallel arrays consistent (encapsulate behind a class); whole-object access regression (profile both paths).
+
+\textbf{The discipline.} DOD bridges the cache model and real code: design the memory layout around the hot loop's access pattern. AoS for whole-object random access, SoA for field-wise bulk transforms, hot/cold splitting when a few fields dominate --- always driven by a profiler showing the loop is memory-bound.

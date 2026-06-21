@@ -1,0 +1,82 @@
+\chapter{Linking, Loading, ABI, and Whole-Program Optimisation}
+
+The compiler sees one translation unit at a time; the linker assembles them, the loader maps the program at run time, and the ABI is the binary contract that lets independently-compiled pieces interoperate. This layer is invisible until an undefined-reference error, a silent ODR violation, a slow startup, or a failed cross-TU inline reveals it. This chapter explains the linking and loading model, symbol visibility and ABI stability, and the whole-program optimisations (LTO, PGO) that recover cross-TU performance.
+
+\section*{Chapter Roadmap}
+\begin{itemize}
+\item 102.1 The Compilation and Linking Model
+\item 102.2 Symbol Visibility and Name Mangling
+\item 102.3 Static vs Dynamic Linking and the Loader
+\item 102.4 PIC, PIE, and Relocations
+\item 102.5 The ABI and Its Stability
+\item 102.6 Whole-Program Optimisation: LTO and PGO
+\item 102.7 Build Hazards and the Discipline
+\end{itemize}
+
+\section{The Compilation and Linking Model}
+Each TU compiles independently to an object file with defined and undefined symbols; the linker resolves every undefined symbol, merges sections, and produces the binary.
+
+\begin{lstlisting}[language=bash, caption={Separate compilation then linking.}]
+g++ -c a.cpp -o a.o
+g++ -c b.cpp -o b.o
+g++ a.o b.o -o app
+\end{lstlisting}
+
+\textbf{Why this matters.} \texttt{undefined reference to X} means a used symbol was never defined; \texttt{multiple definition of X} means two TUs defined a non-inline symbol (an ODR violation, Chapter 104). The per-TU view is also why the optimizer cannot inline across TUs by default (102.6).
+
+\section{Symbol Visibility and Name Mangling}
+C++ mangles names (encoding the signature) so overloads get distinct symbols; \texttt{extern "C"} disables mangling for C interop.
+
+\begin{lstlisting}[language=C++, caption={Mangling distinguishes overloads; extern "C" gives a plain symbol. Min standard: C++98.}]
+void f(int);                  // _Z1fi
+void f(double);               // _Z1fd
+extern "C" void c_api(int);   // symbol "c_api", no mangling/overloading
+\end{lstlisting}
+
+Visibility controls which symbols a shared library exports; \texttt{-fvisibility=hidden} keeps internal symbols private.
+
+\textbf{Why this matters / cost model.} Mismatched declarations fail to link rather than misbehave. Exporting every symbol bloats the dynamic symbol table (slow load/relocation), risks ODR clashes, and blocks inlining of exported functions. Hiding internals shrinks the table, speeds loading, and unlocks optimization.
+
+\section{Static vs Dynamic Linking and the Loader}
+Static linking copies code into the executable; dynamic linking records a dependency and the loader maps the \texttt{.so} at run time, resolving symbols.
+
+\begin{itemize}
+\item Static: larger binary, fast startup, duplicated memory, self-contained, recompile to update.
+\item Dynamic: smaller binary, slower startup (load+relocate+resolve), shared memory, needs the libs, swap to update.
+\end{itemize}
+
+\textbf{Why this matters / cost model.} The loader maps each \texttt{.so}, applies relocations, and resolves symbols (lazily via the PLT or eagerly with \texttt{-z now}) --- measurable startup latency and a tiny per-call PLT cost. Static linking eliminates all of it and lets LTO see the library code, hence its use in latency-critical binaries. Trade-offs: size, no shared memory, no hot library patching.
+
+\section{PIC, PIE, and Relocations}
+Shared libraries and PIE executables use position-independent code, accessing globals via the GOT and exported functions via the PLT; the loader applies relocations to fix these up.
+
+\textbf{Why this matters / cost model.} PIC/PIE add a GOT indirection per global and a PLT jump per inter-module call (lazily resolved) --- negligible mostly, but a hot loop touching PI globals can feel it (\texttt{-fno-plt}, static linking help). The larger cost is load-time relocation for binaries with many symbols/libraries. Reduce exported symbols, prefer static linking, and choose \texttt{-z now} vs lazy binding. PIE enables ASLR (a security feature).
+
+\section{The ABI and Its Stability}
+The ABI is the binary contract: calling convention, name mangling, class layout, vtable layout, exception propagation. Components interoperate only if they agree.
+
+\textbf{Why this matters.} ABI stability lets you link libraries built by other compiler versions or load plugins without recompiling --- but it is a cage: the standard library ABI is frozen because changing \texttt{std::string}'s layout would break every old binary. Practical consequences: never mix incompatible ABIs (\texttt{\_GLIBCXX\_USE\_CXX11\_ABI} mismatch corrupts silently); be cautious passing standard types across uncontrolled \texttt{.so} boundaries; and design your own ABIs with Pimpl/pure-virtual interfaces and \texttt{extern "C"} factories. An ABI break is a recompile-the-world event.
+
+\section{Whole-Program Optimisation: LTO and PGO}
+LTO emits IR into objects and re-runs the optimizer at link time with the whole program visible, inlining across TUs. PGO feeds a profiling run back into codegen.
+
+\begin{lstlisting}[language=bash, caption={LTO enables cross-TU inlining; PGO feeds real execution data into codegen.}]
+g++ -O2 -flto -c a.cpp b.cpp
+g++ -O2 -flto a.o b.o -o app
+g++ -O2 -fprofile-generate app.cpp -o app && ./app <representative-input>
+g++ -O2 -fprofile-use     app.cpp -o app
+\end{lstlisting}
+
+\textbf{Why this matters / cost model.} LTO is how zero-cost abstraction survives separate compilation: a hot cross-TU accessor that could not inline now does, often a 5--15\% win plus dead-code reductions. PGO lays out the binary for I-cache locality and inlines genuinely-hot callees. Costs: LTO increases link time and memory; PGO needs a representative workload (a bad profile can pessimize). Enable LTO broadly; add PGO for the hottest services.
+
+\section{Build Hazards and the Discipline}
+\begin{itemize}
+\item \texttt{undefined reference} --- link the library; match declarations.
+\item \texttt{multiple definition} --- \texttt{inline}/\texttt{static}; one definition (Chapter 104).
+\item Silent ABI mismatch --- consistent toolchain/flags; stable public ABI.
+\item Slow startup --- \texttt{-fvisibility=hidden}; static link; \texttt{-z now}.
+\item Abstraction not free --- enable LTO.
+\item Wrong hot-path layout --- PGO with representative input.
+\end{itemize}
+
+\textbf{The discipline.} Mastering this layer pays off in correctness (mangling, ODR, ABI), startup latency (visibility, static linking), and steady-state performance (LTO, PGO). Defaults for a performance-critical binary: hide internal symbols, prefer static linking, enable LTO in release, add PGO for the hottest paths, and treat your public ABI as a long-lived contract.

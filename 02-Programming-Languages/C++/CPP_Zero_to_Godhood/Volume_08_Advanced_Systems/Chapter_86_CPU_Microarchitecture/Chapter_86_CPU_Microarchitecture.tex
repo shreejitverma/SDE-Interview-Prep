@@ -1,0 +1,78 @@
+\chapter{CPU Microarchitecture for Performance Engineers}
+
+The ISA says \emph{what} instructions do; the microarchitecture says \emph{how fast}, and the two are almost unrelated for performance. A modern core decodes instructions into micro-ops, executes dozens at once out of order across multiple ports, speculates past unresolved branches, and stalls a hundred cycles on a single cache miss. This chapter builds the working model: pipelines, superscalar out-of-order execution, speculation, branch prediction, and the dependency chains that determine throughput.
+
+\section*{Chapter Roadmap}
+\begin{itemize}
+\item 86.1 Why Microarchitecture, Not the ISA, Determines Speed
+\item 86.2 The Pipeline
+\item 86.3 Superscalar and Out-of-Order Execution
+\item 86.4 Speculative Execution and Branch Prediction
+\item 86.5 The Cost of a Misprediction
+\item 86.6 Data Dependencies and the Real Throughput Limit
+\item 86.7 Ports, Execution Units, and ILP
+\item 86.8 Implications for the C++ Programmer
+\end{itemize}
+
+\section{Why Microarchitecture, Not the ISA, Determines Speed}
+The core decodes each instruction into micro-ops (\(\mu\)ops) and schedules them dynamically. The same instruction costs 1 cycle or 200 depending on operand location, prior branch prediction, and input dependencies.
+
+\textbf{Why this matters.} Instruction count poorly predicts performance; \(\mu\)op flow and dependencies do. Two sequences with identical counts differ 10$\times$ if one has a long dependency chain and the other independent ops. The unit of performance is the \(\mu\)op and its dependencies.
+
+\section{The Pipeline}
+A pipelined CPU overlaps fetch/decode/execute/memory/write-back like an assembly line, approaching one instruction per cycle though each still takes \emph{k} cycles end to end (its latency).
+
+\textbf{Why this matters / cost model.} The line stays full only with a predictable, independent instruction stream. Control hazards (branches) and data hazards (dependencies) introduce bubbles or flushes. Most microarchitectural techniques keep the pipeline fed.
+
+\section{Superscalar and Out-of-Order Execution}
+Superscalar cores issue several \(\mu\)ops/cycle across multiple units; out-of-order cores execute later independent instructions whose operands are ready, then retire in program order. Register renaming removes false dependencies; \(\mu\)ops wait in a scheduler, execute on a free port, and retire from a reorder buffer.
+
+\textbf{Why this matters.} OoO hides a cache miss: while one load waits $\sim$100 cycles, the core runs dozens of independent later instructions (memory-level parallelism), so independent work around a miss matters (Chapter 87). Renaming means do not hand-minimise registers --- the physical file is far larger than the $\sim$16 architectural registers.
+
+\section{Speculative Execution and Branch Prediction}
+A branch's direction is unknown until it executes, so the core predicts and speculatively executes the predicted path; a wrong prediction is flushed. The predictor tracks per-branch and global history, exceeding 95\% accuracy; loops and biased branches predict near-perfectly.
+
+\textbf{Why this matters / cost model.} A well-predicted branch is effectively free. The cost of a branch is its misprediction rate, not the instruction --- which is why a sorted array processes faster than an unsorted one for identical instructions (Chapter 91).
+
+\section{The Cost of a Misprediction}
+A mispredict discards all speculative work and refills the pipeline --- $\sim$15--20 cycles.
+
+\begin{lstlisting}[language=C++, caption={The sorted-array effect: predictability, not work, dominates. Min standard: C++11.}]
+long sum = 0;
+for (int i = 0; i < N; ++i)
+    if (data[i] >= 128)        // unpredictable on random data: ~50% mispredict
+        sum += data[i];
+// Sorting data first makes the branch predictable -> several times faster, same instructions.
+\end{lstlisting}
+
+\textbf{Why this matters.} A flush is $\sim$50--60 instructions of lost work; in a tight loop, mispredicts can dominate. Mitigations (sort/group, branchless, \texttt{[[likely]]}) target this cost --- but a predictable branch beats the branchless alternative (which always does both sides), so fix only genuinely unpredictable branches. Measure \texttt{branch-misses} first.
+
+\section{Data Dependencies and the Real Throughput Limit}
+OoO parallelises only independent instructions. A dependency chain (critical path) cannot be parallelised; its length times per-op latency floors runtime.
+
+\begin{lstlisting}[language=C++, caption={Breaking a dependency chain unlocks ILP. Min standard: C++11.}]
+float sum = 0;
+for (int i = 0; i < N; ++i) sum += a[i];        // latency-bound serial chain
+float s0=0,s1=0,s2=0,s3=0;
+for (int i = 0; i < N; i += 4) { s0+=a[i]; s1+=a[i+1]; s2+=a[i+2]; s3+=a[i+3]; }
+float total = s0+s1+s2+s3;                      // throughput-bound: ~4x faster
+\end{lstlisting}
+
+\textbf{Why this matters / cost model.} (b) does the same arithmetic as (a) but $\sim$4$\times$ faster: (a) is limited by FP-add latency (each waits for the previous), (b) has four independent accumulators the core advances simultaneously. This is why compilers unroll-and-reduce and why \texttt{-ffast-math} (FP reassociation) can multiply performance.
+
+\section{Ports, Execution Units, and ILP}
+Execution units sit behind $\sim$8--10 ports, each starting one \(\mu\)op/cycle. Achievable ILP is bounded by which ports your \(\mu\)ops need: four adds may issue together; four loads bottleneck on two load ports.
+
+\textbf{Why this matters.} Port pressure caps the parallel version of Listing 86.2; unroll only until ports saturate (factor 2--8). LLVM-MCA and uops.info model port usage. Qualitatively: mix operation types to keep more ports busy.
+
+\section{Implications for the C++ Programmer}
+\begin{itemize}
+\item \(\mu\)ops, not instructions, are the unit --- model dependencies (Chapter 89).
+\item OoO hides miss latency behind independent work (Chapter 87).
+\item Predictable branches are free; branchless only for unpredictable ones (Chapter 91).
+\item Mispredict $\approx$ 15--20 cycle flush --- measure first.
+\item Dependency-chain length is the throughput floor --- break reductions.
+\item Finite ports cap ILP --- unroll modestly, mix types.
+\end{itemize}
+
+\textbf{The discipline.} Program for the microarchitecture: give the OoO engine independent work to hide latency, keep branches predictable or remove them, and break dependency chains. These levers underlie branchless code (91), SIMD (92), and reading the optimizer (89).

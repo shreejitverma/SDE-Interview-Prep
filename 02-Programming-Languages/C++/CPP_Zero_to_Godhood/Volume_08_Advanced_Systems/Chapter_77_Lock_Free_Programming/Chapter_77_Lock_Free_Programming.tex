@@ -1,0 +1,152 @@
+\chapter{Lock-Free Programming}
+
+Lock-free programming removes the mutex from the critical path so that the \emph{system as a whole} always makes progress, even when a thread is preempted mid-operation. The problem it solves is tail latency and convoying: a thread that holds a lock and is then descheduled stalls every other waiter, producing latency spikes that are fatal in trading, audio, and kernel paths. This chapter builds lock-free reasoning from compare-and-swap up through real stacks, queues, and ring buffers, deferring the deepest CAS/ABA treatment to Chapter 93 and reclamation to Chapter 94.
+
+\section*{Chapter Roadmap}
+\begin{itemize}
+\item 77.1 Progress Guarantees: Lock-Free, Wait-Free, Obstruction-Free
+\item 77.2 Why Lock-Free: The Cost Model vs Mutexes
+\item 77.3 Compare-And-Swap: The Primitive
+\item 77.4 The ABA Problem
+\item 77.5 The Lock-Free Stack (Treiber)
+\item 77.6 The Lock-Free Queue (Michael--Scott)
+\item 77.7 The SPSC Ring Buffer
+\item 77.8 The Reclamation Problem
+\item 77.9 When \emph{Not} to Go Lock-Free
+\end{itemize}
+
+\section{Progress Guarantees: Lock-Free, Wait-Free, Obstruction-Free}
+A coffee-shop analogy: a mutex is the \textbf{locked door} --- you lock the shop to talk to the barista, and if you fall asleep (preemption) everyone is blocked. Lock-free is the \textbf{ticket system} --- everyone is inside; you attempt an instant swap and retry if someone beat you; no one is blocked by a sleeping customer.
+
+\begin{itemize}
+\item \textbf{Obstruction-free} --- progress if run in isolation; livelock possible.
+\item \textbf{Lock-free} --- at least one thread always progresses system-wide; no deadlock, individual starvation possible.
+\item \textbf{Wait-free} --- every thread completes in bounded steps; strongest, hardest.
+\end{itemize}
+
+\textbf{Why this matters.} Lock-free does not mean fast and does not bound per-thread latency; it means the system cannot deadlock or be stalled by one preempted thread. Wait-free is what hard-real-time wants but is far harder to build. Most production ``lock-free'' code is lock-free, not wait-free.
+
+\section{Why Lock-Free: The Cost Model vs Mutexes}
+An uncontended mutex is cheap. The problem is convoying (a preempted lock holder stalls all waiters), priority inversion, and the futex syscall + context switch on contention.
+
+\textbf{Why this matters / cost model.} Lock-free trades worst-case stalls for more common-case work: a CAS-retry loop may spin, and every op pays a full-barrier atomic RMW (\texttt{lock}-prefixed, $\sim$20--40 cycles on x86). The win is bounded tail latency and preemption immunity, not better average throughput. Under low contention a mutex is often faster and always simpler.
+
+\section{Compare-And-Swap: The Primitive}
+CAS is an ``honest exchange'': show the barista a photo of the counter (\emph{expected}); if it still matches, place the coffee (\emph{new}) atomically; else the swap is denied and you get a fresh photo (the current value).
+
+\begin{lstlisting}[language=C++, caption={A CAS retry loop; expected is refreshed on failure. Min standard: C++11.}]
+std::atomic<int> value{0};
+void try_update(int new_val) {
+    int expected = value.load(std::memory_order_relaxed);
+    while (!value.compare_exchange_weak(expected, new_val,
+               std::memory_order_acq_rel, std::memory_order_relaxed)) { }
+}
+\end{lstlisting}
+
+\texttt{compare\_exchange\_weak} may fail spuriously (it maps to LL/SC on ARM); use it inside loops. Use \texttt{strong} for one-shot CAS.
+
+\textbf{Why this matters.} CAS is the universal primitive. Every CAS is a full-barrier atomic RMW; a tight loop failing repeatedly under high contention can be slower than a lock, because each retry re-pays the barrier and re-reads contended lines.
+
+\section{The ABA Problem}
+The water-cooler analogy: you see a full bottle (A); a colleague empties it (B) and refills it (A); you return, see ``full'' (A), and wrongly conclude nothing changed. CAS sees the value, not the history.
+
+\begin{lstlisting}[language=text, caption={ABA sequence on a naive lock-free stack.}]
+T1: reads head -> node A
+T2: pops A, pops B, frees A, pushes a new node malloc returns at A's address
+T1: CAS(head, A, A->next) SUCCEEDS but A->next is now garbage
+\end{lstlisting}
+
+\textbf{Why this matters.} Solutions: tagged/versioned pointers (\texttt{\{ptr,tag\}} in a double-width atomic via \texttt{cmpxchg16b}); hazard pointers; RCU (Chapter 94). ABA and reclamation are two faces of: when is it safe to free a node another thread may still inspect?
+
+\section{The Lock-Free Stack (Treiber)}
+\begin{lstlisting}[language=C++, caption={Treiber stack; pop cannot free nodes without reclamation. Min standard: C++11.}]
+template <typename T>
+class TreiberStack {
+    struct Node { T value; Node* next; };
+    std::atomic<Node*> head_{nullptr};
+public:
+    void push(T v) {
+        Node* n = new Node{std::move(v), head_.load(std::memory_order_relaxed)};
+        while (!head_.compare_exchange_weak(n->next, n,
+                   std::memory_order_release, std::memory_order_relaxed)) {}
+    }
+    bool pop(T& out) {
+        Node* old = head_.load(std::memory_order_acquire);
+        while (old && !head_.compare_exchange_weak(old, old->next,
+                          std::memory_order_acquire, std::memory_order_relaxed)) {}
+        if (!old) return false;
+        out = std::move(old->value);   // delete old is UNSAFE here: see reclamation
+        return true;
+    }
+};
+\end{lstlisting}
+
+\textbf{Why this matters.} Push is simple and correct; pop is where ABA and reclamation bite (\texttt{old->next} after another thread may free \texttt{old}). The release on push pairs with the acquire on pop so the node is fully constructed before any consumer reads it.
+
+\section{The Lock-Free Queue (Michael--Scott)}
+A FIFO queue has two hot pointers. The MS-queue uses a dummy sentinel and a two-step tail advance; threads that see a lagging tail \emph{help} advance it.
+
+\begin{lstlisting}[language=C++, caption={MS-queue enqueue; the help step makes it lock-free. Min standard: C++11.}]
+void enqueue(T v) {
+    Node* n = new Node{std::move(v), {}};
+    for (;;) {
+        Node* tail = tail_.load(std::memory_order_acquire);
+        Node* next = tail->next.load(std::memory_order_acquire);
+        if (tail == tail_.load(std::memory_order_acquire)) {
+            if (next == nullptr) {
+                if (tail->next.compare_exchange_weak(next, n,
+                        std::memory_order_release, std::memory_order_relaxed)) {
+                    tail_.compare_exchange_strong(tail, n,
+                        std::memory_order_release, std::memory_order_relaxed);
+                    return;
+                }
+            } else {
+                tail_.compare_exchange_strong(tail, next,   // help advance
+                    std::memory_order_release, std::memory_order_relaxed);
+            }
+        }
+    }
+}
+\end{lstlisting}
+
+\textbf{Why this matters.} The \textbf{helping} principle guarantees system-wide progress when a thread is preempted between its two CAS steps. The sentinel decouples head and tail so empty and one-element queues are not special cases. Reclamation is again the hard part.
+
+\section{The SPSC Ring Buffer}
+With one producer and one consumer, no CAS is needed --- only release/acquire on two indices. This is the highest-throughput queue and the backbone of the Disruptor and HFT message paths.
+
+\begin{lstlisting}[language=C++, caption={SPSC ring buffer; no CAS, no ABA. Min standard: C++11. Single producer/consumer only.}]
+template <typename T>
+class SpscRing {
+    std::vector<T> buf_; const size_t mask_;
+    alignas(64) std::atomic<size_t> head_{0};
+    alignas(64) std::atomic<size_t> tail_{0};
+public:
+    explicit SpscRing(size_t cap) : buf_(cap), mask_(cap - 1) {}
+    bool push(T v) {
+        size_t t = tail_.load(std::memory_order_relaxed);
+        if (((t + 1) & mask_) == (head_.load(std::memory_order_acquire) & mask_)) return false;
+        buf_[t & mask_] = std::move(v);
+        tail_.store(t + 1, std::memory_order_release);
+        return true;
+    }
+    bool pop(T& out) {
+        size_t h = head_.load(std::memory_order_relaxed);
+        if (h == tail_.load(std::memory_order_acquire)) return false;
+        out = std::move(buf_[h & mask_]);
+        head_.store(h + 1, std::memory_order_release);
+        return true;
+    }
+};
+\end{lstlisting}
+
+\textbf{Why this matters / cost model.} The cheapest concurrency is the concurrency you design out. Only one thread writes each index, so there is no CAS --- just release/acquire. The indices live on separate cache lines (\texttt{alignas(64)}) to avoid false sharing; the pre-allocated buffer means zero hot-path allocation. Wait-free for both parties; routinely hundreds of millions of messages per second.
+
+\section{The Reclamation Problem}
+Every pointer-based lock-free structure must answer: when is it safe to \texttt{delete} a removed node, given another thread may have just loaded a pointer to it? The production answers (Chapter 94) are hazard pointers, RCU, and epoch-based reclamation.
+
+\textbf{Why this matters.} Reclamation is the hardest part and the reason most engineers should use a vetted library (folly, boost.lockfree, libcds). The data-structure logic is the easy 20\%; safe reclamation is the other 80\%. A lock-free structure without correct reclamation is broken.
+
+\section{When \emph{Not} to Go Lock-Free}
+Prefer a plain mutex under low contention; an SPSC ring for single producer/consumer; a lock for complex multi-word invariants; a lock when the team cannot maintain lock-free; and measurement before assuming a lock is the bottleneck.
+
+\textbf{The discipline.} Prefer, in order: no sharing (thread-per-core) $\rightarrow$ SPSC rings $\rightarrow$ a good lock $\rightarrow$ a vetted lock-free library $\rightarrow$ hand-rolled lock-free. Only the last, after measurement, justifies these techniques.

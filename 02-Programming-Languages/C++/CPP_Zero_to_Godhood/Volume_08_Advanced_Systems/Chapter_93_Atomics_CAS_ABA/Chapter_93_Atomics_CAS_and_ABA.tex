@@ -1,0 +1,90 @@
+\chapter{Atomics, CAS, and the ABA Problem}
+
+Atomics are the bricks of every lock and every lock-free structure: indivisible operations the hardware guarantees no thread observes half-completed. This chapter goes beneath Chapter 77 to the atomic toolkit itself --- the full \texttt{compare\_exchange} semantics, the weak/strong distinction, RMW operations, \texttt{atomic\_ref} and \texttt{atomic<shared\_ptr>}, double-width CAS --- and treats ABA in the depth it demands, because ABA silently corrupts naive atomic code and is why safe reclamation (Chapter 94) exists.
+
+\section*{Chapter Roadmap}
+\begin{itemize}
+\item 93.1 Atomic Operations: The Hardware Reality
+\item 93.2 Read-Modify-Write and \texttt{fetch\_*}
+\item 93.3 Compare-Exchange: Semantics in Full
+\item 93.4 Weak vs Strong, and the Two Memory Orders
+\item 93.5 The CAS Loop Pattern
+\item 93.6 \texttt{atomic\_ref}, \texttt{atomic<shared\_ptr>}, and Atomic Max/Min
+\item 93.7 The ABA Problem in Depth
+\item 93.8 Defeating ABA: Tags and Double-Width CAS
+\end{itemize}
+
+\section{Atomic Operations: The Hardware Reality}
+An atomic operation completes indivisibly via \texttt{lock}-prefixed x86 instructions or ARM LL/SC. \texttt{std::atomic<T>} exposes these, falling back to a hidden lock for unsupported types (check \texttt{is\_lock\_free()}).
+
+\textbf{Why this matters / cost model.} An atomic RMW costs $\sim$15--40 cycles on x86, acts as a full barrier, and must acquire exclusive ownership of the line --- so contended atomics serialise on coherence. Reducing the number of contended atomic operations is the real scalability lever. Uncontended cache-hot atomics are cheap; contended ones are bottlenecks.
+
+\section{Read-Modify-Write and \texttt{fetch\_*}}
+\begin{lstlisting}[language=C++, caption={Atomic RMW operations return the previous value. Min standard: C++11.}]
+std::atomic<long> counter{0};
+long prev = counter.fetch_add(5, std::memory_order_relaxed);
+long old  = counter.exchange(0, std::memory_order_acq_rel);
+\end{lstlisting}
+
+\textbf{Why this matters.} \texttt{fetch\_add} is a single instruction (\texttt{lock xadd}), cheaper than a CAS loop and unable to fail or spin. If the update is one of the dedicated RMWs, use it directly; reach for CAS only when the new value depends on the old in a way no RMW expresses.
+
+\section{Compare-Exchange: Semantics in Full}
+\begin{lstlisting}[language=C++, caption={compare_exchange writes the current value into expected on failure. Min standard: C++11.}]
+// bool compare_exchange_strong(T& expected, T desired, order success, order failure);
+//   if (*this == expected) { *this = desired; return true; }     // success order
+//   else                   { expected = *this; return false; }   // failure order
+\end{lstlisting}
+
+\textbf{Why this matters.} \texttt{expected} is an in-out parameter --- overwritten with the current value on failure, enabling retry loops. There are two memory orders; the failure order is a load only, so it cannot be \texttt{release}/\texttt{acq\_rel} and must be no stronger than success. Forgetting the mutation or over-ordering failure are the two common CAS bugs.
+
+\section{Weak vs Strong, and the Two Memory Orders}
+\begin{itemize}
+\item \texttt{weak} --- may fail spuriously; use inside a loop; cheaper on LL/SC.
+\item \texttt{strong} --- fails only on a real mismatch; use for one-shot CAS; adds an inner loop on LL/SC.
+\end{itemize}
+
+\textbf{Why this matters / cost model.} On ARM LL/SC the store-conditional fails for unrelated reasons (interrupt, eviction); \texttt{weak} exposes this, \texttt{strong} retries internally. On x86 weak and strong are identical. Use \texttt{weak} in loops, \texttt{strong} for a single non-looping CAS.
+
+\section{The CAS Loop Pattern}
+\begin{lstlisting}[language=C++, caption={The canonical CAS loop; f is recomputed each retry. Min standard: C++11.}]
+template <typename T, typename F>
+void atomic_update(std::atomic<T>& a, F f) {
+    T expected = a.load(std::memory_order_relaxed), desired;
+    do { desired = f(expected); }
+    while (!a.compare_exchange_weak(expected, desired,
+               std::memory_order_acq_rel, std::memory_order_relaxed));
+}
+\end{lstlisting}
+
+\textbf{Why this matters / cost model.} This makes any single-word update atomic and lock-free (the engine of Treiber stacks and atomic max/min). Under high contention it spins, each retry re-paying the barrier and re-reading the contended line --- sometimes worse than a lock. Keep \texttt{f} cheap and the footprint small; consider back-off.
+
+\section{\texttt{atomic\_ref}, \texttt{atomic<shared\_ptr>}, and Atomic Max/Min}
+\texttt{std::atomic\_ref<T>} (C++20) applies atomic ops to an existing object; \texttt{std::atomic<std::shared\_ptr<T>>} (C++20) gives atomic shared-pointer ops; \texttt{fetch\_max}/\texttt{fetch\_min} (C++26) add native atomic max/min.
+
+\begin{lstlisting}[language=C++, caption={atomic_ref updates one element of a plain array. Min standard: C++20.}]
+void bump_element(long* big_array, size_t i) {
+    std::atomic_ref<long> ref(big_array[i]);
+    ref.fetch_add(1, std::memory_order_relaxed);
+}
+\end{lstlisting}
+
+\textbf{Why this matters.} \texttt{atomic\_ref} atomically updates one slot of a large buffer without making the whole buffer atomic; \texttt{atomic<shared\_ptr>} is the standard way to do lock-free reference-counted node management. These express more lock-free designs in portable code, with the same coherence cost and alignment requirements.
+
+\section{The ABA Problem in Depth}
+\begin{lstlisting}[language=text, caption={ABA via free-and-reallocate during a stalled CAS.}]
+head holds A. T1 reads head==A, prepares CAS(A -> A.next). T1 preempted.
+T2: pop A; pop B; free A; malloc returns A's address; push it. head==A again.
+T1 resumes: CAS(head, expected=A, desired=A.next) SUCCEEDS, but A.next is stale -> corrupt.
+\end{lstlisting}
+
+\textbf{Why this matters.} ABA is a hazard of pointer-reusing, manually-reclaimed lock-free structures; it does not occur in monotonic-counter algorithms or where freed memory is never reused mid-CAS. It passes light tests and corrupts only under a precise interleaving. The key skill: recognise whether a CAS'd value can be freed and reallocated.
+
+\section{Defeating ABA: Tags and Double-Width CAS}
+\begin{lstlisting}[language=C++, caption={Tagged pointer; double-width CAS compares pointer and version. Needs cmpxchg16b/casp. Min standard: C++11.}]
+struct TaggedPtr { void* ptr; uint64_t tag; };
+std::atomic<TaggedPtr> head;   // 128-bit atomic; CAS the pair, tag++ each success
+\end{lstlisting}
+
+\textbf{Why this matters / cost model.} Tagging is cheap and effective where double-width CAS exists (\texttt{cmpxchg16b}, ARMv8.1 \texttt{casp}); elsewhere \texttt{atomic<TaggedPtr>} falls back to a lock (check \texttt{is\_lock\_free()}). The tag must not realistically wrap (64 bits is ample). Hazard pointers and RCU (Chapter 94) defeat ABA differently --- by preventing reuse --- which also solves reclamation. Tagging solves ABA but not reclamation.
+
+\textbf{The discipline.} Use dedicated \texttt{fetch\_*} when one exists; a \texttt{weak} CAS loop only for value-dependent updates; keep the loop cheap and footprint small; and the moment you CAS a pointer that can be freed and reallocated, choose a defence (tag, hazard pointer, RCU) deliberately.

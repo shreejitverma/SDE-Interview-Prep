@@ -1,0 +1,118 @@
+\chapter{The Standard Library From Scratch}
+
+The standard library looks like magic until you implement it --- then it becomes precise engineering decisions about memory, lifetime, exception safety, and atomic synchronisation, each with a nameable cost. This chapter reconstructs \texttt{vector} and \texttt{shared\_ptr} from raw memory up, not to replace the standard library but to understand what every line of it buys you, so you can read its performance and know when its guarantees cost more than your hot path can afford.
+
+\section*{Chapter Roadmap}
+\begin{itemize}
+\item 83.1 Why Reimplement the Standard Library
+\item 83.2 \texttt{my::vector}: Raw Memory, Growth, and Placement New
+\item 83.3 Exception Safety in \texttt{reallocate}
+\item 83.4 Move-vs-Copy on Growth and \texttt{noexcept}
+\item 83.5 \texttt{my::shared\_ptr}: The Control Block
+\item 83.6 \texttt{make\_shared}, \texttt{weak\_ptr}, and the Cost Model
+\item 83.7 What Reimplementation Teaches
+\end{itemize}
+
+\section{Why Reimplement the Standard Library}
+\texttt{vector}'s amortised-O(1) \texttt{push\_back} hides a reallocation strategy; \texttt{shared\_ptr}'s convenience hides an atomic control block and a second allocation.
+
+\textbf{Why this matters.} Every \texttt{push\_back} might reallocate and move; every \texttt{shared\_ptr} copy is an atomic increment; passing one by value is two atomics. Reimplementing them turns these invisible costs into measurable ones.
+
+\section{\texttt{my::vector}: Raw Memory, Growth, and Placement New}
+A vector separates allocation (raw storage) from construction (placement new), allocating capacity beyond current size.
+
+\begin{lstlisting}[language=C++, caption={vector core: raw storage plus in-place construction. Min standard: C++11.}]
+template <typename T>
+class Vector {
+    T* data_ = nullptr; std::size_t sz_ = 0; std::size_t cap_ = 0;
+public:
+    void push_back(const T& val) {
+        if (sz_ == cap_) reallocate(cap_ == 0 ? 1 : cap_ * 2);
+        ::new (data_ + sz_) T(val);   // placement new
+        ++sz_;
+    }
+    std::size_t size() const { return sz_; }
+    T& operator[](std::size_t i) { return data_[i]; }
+private:
+    void reallocate(std::size_t new_cap);
+};
+\end{lstlisting}
+
+\texttt{::operator new(n)} allocates raw bytes without constructing; placement new constructs one object in that storage; you must call \texttt{p->\~{}T()} explicitly to destroy it.
+
+\textbf{Why this matters / cost model.} Geometric growth (doubling) makes \texttt{push\_back} amortised O(1): N pushes cause O(log N) reallocations moving O(N) elements total. Linear growth would be O(N$^2$). Separating allocation from construction is why \texttt{vector} is efficient and why \texttt{reserve()} is valuable.
+
+\section{Exception Safety in \texttt{reallocate}}
+\begin{lstlisting}[language=C++, caption={Exception-safe reallocation with rollback. Min standard: C++17.}]
+template <typename T>
+void Vector<T>::reallocate(std::size_t new_cap) {
+    T* new_data = static_cast<T*>(::operator new(new_cap * sizeof(T)));
+    std::size_t i = 0;
+    try {
+        for (; i < sz_; ++i)
+            if constexpr (std::is_nothrow_move_constructible_v<T>)
+                ::new (new_data + i) T(std::move(data_[i]));
+            else
+                ::new (new_data + i) T(data_[i]);
+    } catch (...) {
+        for (std::size_t j = 0; j < i; ++j) new_data[j].~T();
+        ::operator delete(new_data);
+        throw;
+    }
+    for (std::size_t j = 0; j < sz_; ++j) data_[j].~T();
+    ::operator delete(data_);
+    data_ = new_data; cap_ = new_cap;
+}
+\end{lstlisting}
+
+\textbf{Why this matters.} The strong exception guarantee: if a copy throws mid-move, destroy the already-constructed new objects and free the new buffer, leaving the original intact. Explicit \texttt{\~{}T()} mirrors placement new --- in raw storage the compiler destroys nothing for you.
+
+\section{Move-vs-Copy on Growth and \texttt{noexcept}}
+\textbf{Why this matters / cost model.} \texttt{vector} moves on growth only if \texttt{T}'s move is \texttt{noexcept}; otherwise it copies, because a throwing move mid-reallocation cannot be rolled back. Mark move constructors \texttt{noexcept} whenever they truly cannot throw, or \texttt{vector} silently copies them on every growth --- one of the highest-value annotations in C++.
+
+\section{\texttt{my::shared\_ptr}: The Control Block}
+\begin{lstlisting}[language=C++, caption={shared\_ptr with an atomic control block. Min standard: C++11.}]
+template <typename T>
+class SharedPtr {
+    T* ptr_ = nullptr;
+    struct ControlBlock { std::atomic<long> ref_count{1}; };
+    ControlBlock* cb_ = nullptr;
+public:
+    explicit SharedPtr(T* p) : ptr_(p), cb_(new ControlBlock()) {}
+    SharedPtr(const SharedPtr& o) : ptr_(o.ptr_), cb_(o.cb_) {
+        if (cb_) cb_->ref_count.fetch_add(1, std::memory_order_relaxed);
+    }
+    ~SharedPtr() {
+        if (cb_ && cb_->ref_count.fetch_sub(1, std::memory_order_acq_rel) == 1) {
+            delete ptr_; delete cb_;
+        }
+    }
+    T* operator->() const { return ptr_; }
+    T& operator*()  const { return *ptr_; }
+};
+\end{lstlisting}
+
+\textbf{Why this matters / cost model.} The increment can be \texttt{relaxed} (sharing creates no ordering requirement); the decrement must be \texttt{acq\_rel} so the thread dropping the count to zero observes all prior uses before destroying. A naive \texttt{relaxed} decrement passes on x86 and fails on ARM. Every copy is an atomic RMW --- contended when many threads share one object.
+
+\section{\texttt{make\_shared}, \texttt{weak\_ptr}, and the Cost Model}
+\begin{lstlisting}[language=C++, caption={make\_shared fuses two allocations into one. Min standard: C++11.}]
+auto p = std::make_shared<Widget>(args);       // ONE allocation
+std::shared_ptr<Widget> q(new Widget(args));   // TWO allocations
+\end{lstlisting}
+
+\texttt{weak\_ptr} adds a second (weak) count; the object is destroyed at strong-count zero but the block survives until the weak count also reaches zero.
+
+\textbf{Why this matters.} \texttt{make\_shared} is the right default --- one allocation, better locality, fewer atomics --- but a lingering \texttt{weak\_ptr} pins the whole fused block. Prefer \texttt{unique\_ptr} (zero overhead) unless ownership is genuinely shared, and pass \texttt{shared\_ptr} by \texttt{const\&} to avoid per-call atomics.
+
+\section{What Reimplementation Teaches}
+\begin{itemize}
+\item \texttt{vector} growth --- geometric reallocation; move-vs-copy; \texttt{reserve}/\texttt{noexcept}.
+\item Placement new --- allocation $\ne$ construction; explicit destructor symmetry.
+\item Exception safety --- the strong guarantee and rollback.
+\item \texttt{shared\_ptr} --- second allocation; atomic count; acq\_rel decrement.
+\item \texttt{make\_shared}/\texttt{weak\_ptr} --- fused allocation; the weak count pinning storage.
+\end{itemize}
+
+\textbf{The discipline.} Knowing how these are built lets you predict their cost from the call site and choose \texttt{reserve}, \texttt{unique\_ptr}, \texttt{noexcept}, and \texttt{make\_shared} deliberately. The placement-new machinery here is what Chapter 97 builds on to eliminate these costs on the critical path.
+
+\textbf{Editorial note.} The original source file concatenated unrelated material (Design Patterns, ODR/ADL/UB, Linkage, Build Systems), preserved in the volume \texttt{\_archive} and folded into Chapters 104 (UB/ODR) and 102 (linkage/ABI/build) rather than buried here.

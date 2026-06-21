@@ -1,0 +1,81 @@
+\chapter{Threading Discipline --- Affinity, Core Isolation, and Thread-Per-Core}
+
+The OS scheduler is optimised for fairness and throughput across many processes --- the wrong objective for a latency-critical thread that wants a core to itself, caches warm, and no interruptions. This chapter is about taking control from the scheduler: pinning threads, isolating cores, deciding when to busy-spin, and adopting thread-per-core to eliminate shared-state contention by construction.
+
+\section*{Chapter Roadmap}
+\begin{itemize}
+\item 96.1 Why the Scheduler Is Your Adversary
+\item 96.2 Thread Affinity and Pinning
+\item 96.3 Core Isolation
+\item 96.4 Busy-Spin vs Blocking
+\item 96.5 SMT, NUMA, and IRQ Placement
+\item 96.6 The Thread-Per-Core Architecture
+\item 96.7 The Discipline and Its Costs
+\end{itemize}
+
+\section{Why the Scheduler Is Your Adversary}
+The scheduler time-slices threads, migrates them to balance load, and preempts them. For a latency-critical thread this injects jitter: migration leaves hot data on the old core (cache misses), preemption deschedules mid-critical-path, and involuntary context switches flush the pipeline and pollute caches/TLB ($\sim$1--5\,$\mu$s plus refill).
+
+\textbf{Why this matters.} Each is a tail-latency event: fine 99.9\% of the time, then a spike. Threading discipline removes the scheduler's discretion --- pin so it never migrates, isolate so nothing else runs there, busy-spin so it never yields. You trade average-case efficiency for worst-case determinism.
+
+\section{Thread Affinity and Pinning}
+\begin{lstlisting}[language=C++, caption={Pinning a thread to a core; Linux-specific. Min standard: C++11 + POSIX.}]
+#include <pthread.h>
+#include <sched.h>
+void pin_to_core(int core) {
+    cpu_set_t set; CPU_ZERO(&set); CPU_SET(core, &set);
+    pthread_setaffinity_np(pthread_self(), sizeof(set), &set);
+}
+// Or: taskset -c 2 ./app  ;  numactl --physcpubind=2 ./app
+\end{lstlisting}
+
+\textbf{Why this matters / cost model.} Pinning eliminates migration, keeping the working set resident in one core's L1/L2/TLB, and lets you place a thread NUMA-local and away from IRQ cores. Cost: loss of automatic load balancing. Pinning is necessary but not sufficient --- the core must also be isolated.
+
+\section{Core Isolation}
+\begin{lstlisting}[language=bash, caption={Isolating cores at boot; Linux-specific, requires reboot.}]
+# isolcpus=2,3 nohz_full=2,3 rcu_nocbs=2,3
+# Pin the hot thread to core 2; leave OS work on cores 0-1.
+\end{lstlisting}
+
+\textbf{Why this matters / cost model.} A merely pinned thread still suffers the scheduler tick ($\sim$100--1000/sec), kernel housekeeping, and other threads. \texttt{nohz\_full} removes the tick on a single-thread core; \texttt{isolcpus} stops the load balancer. The result approaches bare-metal determinism. Cost: those cores leave the general pool; configuration is system-level. This is the HFT/real-time configuration.
+
+\section{Busy-Spin vs Blocking}
+\begin{itemize}
+\item Block (futex/condvar): $\sim$0\% CPU, $\sim$1--10\,$\mu$s wake latency; most code, oversubscribed cores.
+\item Busy-spin: 100\% of one core, $\sim$tens of ns wake; latency-critical, dedicated isolated core.
+\end{itemize}
+
+\begin{lstlisting}[language=C++, caption={A busy-spin loop on an isolated core. Min standard: C++11.}]
+while (running) {
+    if (queue.pop(msg)) process(msg);   // SPSC ring: no lock, no syscall
+    else cpu_relax();                   // PAUSE; do not yield on a dedicated core
+}
+\end{lstlisting}
+
+\textbf{Why this matters / cost model.} Blocking is the default (frees the core, saves power) but waking costs a syscall + reschedule ($\sim$microseconds), fatal for nanosecond reaction. Busy-spin trades a whole core for the lowest wake latency: the thread reacts in an acquire load. Sane only on a dedicated isolated core.
+
+\section{SMT, NUMA, and IRQ Placement}
+SMT siblings share a core's units, L1, L2; a busy sibling steals resources unpredictably, so latency shops disable SMT or idle the sibling. Pin NUMA-local and first-touch memory there (Chapter 88). Steer device IRQs away from isolated hot cores (\texttt{/proc/irq/*/smp\_affinity}).
+
+\textbf{Why this matters.} These leaks survive pinning/isolation: an un-steered NIC interrupt stalls the hot core; a sibling GC thread steals L1; a remote allocation doubles miss latency. Complete recipe: isolate, pin, idle the SMT sibling, place memory NUMA-local, steer interrupts away.
+
+\section{The Thread-Per-Core Architecture}
+\begin{lstlisting}[language=C++, caption={Thread-per-core: exclusive ownership replaces locking. Min standard: C++11.}]
+// Per isolated core c: pin a worker; give it an exclusive shard; route work to the
+// owning core's SPSC ring; the worker busy-spins and processes its shard with NO locks.
+// Cross-shard work is an explicit message, never a shared write.
+\end{lstlisting}
+
+\textbf{Why this matters / cost model.} Thread-per-core makes data races impossible by construction (like actors), eliminates lock contention and false sharing (each core writes only its own lines), keeps caches warm, and uses SPSC rings for the cheapest communication. It is behind Seastar, ScyllaDB, Redis, and HFT engines. Cost: the problem must shard cleanly; cross-shard ops are explicit messages; load imbalance cannot be smoothed by a shared queue. When it shards well, it scales linearly.
+
+\section{The Discipline and Its Costs}
+\begin{itemize}
+\item Pinning --- removes migration; cost is manual placement.
+\item Core isolation --- removes the tick and foreign threads; cost is cores out of the pool.
+\item Busy-spin --- removes wake-up latency; cost is a consumed core.
+\item SMT disable --- removes sibling contention; cost is half the logical cores.
+\item NUMA-local + IRQ steering --- removes remote/interrupt jitter; cost is system tuning.
+\item Thread-per-core --- removes locks/false-sharing/races; needs a shardable workload.
+\end{itemize}
+
+\textbf{The discipline.} Threading discipline seizes control from the OS: decide where each hot thread runs, guarantee it owns its core, keep caches/memory local, and busy-spin so it never sleeps through an event. Justified only when the tail demands it; for these systems, thread-per-core on isolated pinned cores makes nanosecond determinism achievable.

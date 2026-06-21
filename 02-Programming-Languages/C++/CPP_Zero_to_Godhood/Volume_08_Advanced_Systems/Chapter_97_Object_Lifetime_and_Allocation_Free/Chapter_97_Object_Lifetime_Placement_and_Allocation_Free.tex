@@ -1,0 +1,95 @@
+\chapter{Object Lifetime, Placement, and Allocation-Free Hot Paths}
+
+A latency-critical hot path must not call \texttt{malloc} --- not because allocation is always slow, but because it is unpredictable: one allocation in a million falls through to a locked heap, an \texttt{mmap}, or a page fault, blowing the tail budget. An allocation-free steady state requires mastering the object lifetime model --- placement new, explicit destruction, \texttt{std::launder}, trivial relocatability --- and the preallocation patterns built on it.
+
+\section*{Chapter Roadmap}
+\begin{itemize}
+\item 97.1 Why Allocation-Free
+\item 97.2 The Object Lifetime Model
+\item 97.3 Placement New and Explicit Destruction
+\item 97.4 \texttt{std::launder} and the Lifetime Rules
+\item 97.5 \texttt{start\_lifetime\_as} and Mapping Bytes to Objects
+\item 97.6 Trivial Relocatability and Alignment
+\item 97.7 Allocation-Free Patterns: Pools and Preallocation
+\item 97.8 Finding and Eliminating Hidden Allocations
+\end{itemize}
+
+\section{Why Allocation-Free}
+\texttt{malloc} is bimodal: a fast path (thread-cache hit) and a slow path (central-heap lock, \texttt{mmap}, page fault). On a hot path the tail is everything, and the slow path is an unpredictable latency cliff.
+
+\textbf{Why this matters.} The defence is no allocation in steady state: allocate everything before the hot phase and reuse it, constructing/destroying objects in pre-owned storage by hand. Allocation-free hot paths bridge the allocator chapter to the volume's determinism goal.
+
+\section{The Object Lifetime Model}
+C++ distinguishes storage (bytes) from an object (a typed entity with a lifetime). Lifetime begins at initialisation and ends at destruction; accessing an object outside its lifetime is UB even if the bytes remain.
+
+\textbf{Why this matters.} Allocators exploit this gap: \texttt{::operator new} gives storage without an object; placement new starts a lifetime; an explicit destructor ends it without freeing. The hazards are confusing the two: use-before-construct or use-after-destroy.
+
+\section{Placement New and Explicit Destruction}
+\begin{lstlisting}[language=C++, caption={The placement-new / explicit-destructor pair. Min standard: C++11.}]
+alignas(T) std::byte storage[sizeof(T)];
+T* p = ::new (storage) T(args...);   // begin lifetime
+// ... use *p ...
+p->~T();                              // end lifetime; storage is raw again
+\end{lstlisting}
+
+\textbf{Why this matters / cost model.} The foundation of every container and pool; the cost is zero allocation. Hazards: forgetting \texttt{\~{}T()} leaks owned resources; double-destroy is UB; using storage as a \texttt{T*} without placement new is UB. Treat the pair as matched, like \texttt{new}/\texttt{delete}.
+
+\section{\texttt{std::launder} and the Lifetime Rules}
+\begin{lstlisting}[language=C++, caption={launder after reusing storage that held a const member. Min standard: C++17.}]
+struct S { const int id; };
+alignas(S) std::byte buf[sizeof(S)];
+S* a = ::new (buf) S{1}; a->~S();
+S* b = ::new (buf) S{2};
+int x = std::launder(b)->id;   // correct: pointer to the NEW object
+\end{lstlisting}
+
+\textbf{Why this matters.} \texttt{std::launder} emits no code; it tells the optimizer not to assume the old object's invariants hold. Required when reusing storage for types with const/reference members, or obtaining a pointer via a different-typed pointer. Omitting it there is UB that may only manifest at high optimization.
+
+\section{\texttt{start\_lifetime\_as} and Mapping Bytes to Objects}
+\begin{lstlisting}[language=C++, caption={start_lifetime_as makes byte-buffer-as-object well-defined. Min standard: C++23.}]
+struct Packet { uint32_t seq; uint16_t len; uint16_t flags; };   // implicit-lifetime
+void on_bytes(std::byte* buf, size_t n) {
+    Packet* p = std::start_lifetime_as<Packet>(buf);   // begins lifetime, no ctor
+    use(p->seq);
+}
+\end{lstlisting}
+
+\textbf{Why this matters.} Zero-copy parsing previously relied on \texttt{reinterpret\_cast} that was formally UB under strict aliasing. \texttt{start\_lifetime\_as} makes the intended operation legal: no constructor runs, but a real object exists. Works only for implicit-lifetime types --- exactly what wire formats should be.
+
+\section{Trivial Relocatability and Alignment}
+A trivially relocatable type's move-construct-then-destroy equals a \texttt{memcpy}. When a \texttt{vector} of such elements grows, it \texttt{memcpy}s instead of running N constructors/destructors --- often several times faster.
+
+\textbf{Why this matters / cost model.} This speeds resizing hot structures; folly's \texttt{fbvector} and others detect/annotate it. Alignment is the companion: placement new and \texttt{start\_lifetime\_as} require storage aligned to \texttt{alignof}, so the \texttt{alignas(T)} on storage is not optional.
+
+\section{Allocation-Free Patterns: Pools and Preallocation}
+\begin{lstlisting}[language=C++, caption={A fixed-capacity object pool; never allocates on the hot path. Min standard: C++11.}]
+template <typename T, size_t N>
+class ObjectPool {
+    alignas(T) std::byte storage_[N * sizeof(T)];
+    std::array<T*, N> free_; size_t free_count_ = N;
+public:
+    ObjectPool() { for (size_t i=0;i<N;++i) free_[i]=reinterpret_cast<T*>(storage_+i*sizeof(T)); }
+    template <typename... A> T* acquire(A&&... a) {
+        if (free_count_ == 0) return nullptr;            // bounded: no hidden growth
+        T* slot = free_[--free_count_];
+        return ::new (slot) T(std::forward<A>(a)...);
+    }
+    void release(T* p) { p->~T(); free_[free_count_++] = p; }
+};
+\end{lstlisting}
+
+Recipe: preallocate during warmup sized for the worst case; \texttt{reserve()} every container; object pools for churned objects; ring buffers for queues; stack/\texttt{monotonic\_buffer\_resource} for scratch.
+
+\textbf{Why this matters / cost model.} Each replaces an unbounded allocation with a bounded O(1) operation. \texttt{acquire} is a pop plus a placement new --- no lock, syscall, or fault (storage pre-faulted). The \texttt{return nullptr} on exhaustion is a feature: a hot path must fail loudly, not silently allocate.
+
+\section{Finding and Eliminating Hidden Allocations}
+Allocations hide in: \texttt{string}/\texttt{vector} past SSO/capacity; \texttt{std::function} capturing too much; \texttt{shared\_ptr(new T)}; exceptions; map node inserts; return-by-value where the callee allocates.
+
+\begin{lstlisting}[language=C++, caption={null_memory_resource turns stray allocation into a loud failure. Min standard: C++17.}]
+std::pmr::monotonic_buffer_resource arena{buffer, size, std::pmr::null_memory_resource()};
+// Overflow throws std::bad_alloc instead of silently heap-allocating.
+\end{lstlisting}
+
+\textbf{Why this matters.} Route hot-path containers through a \texttt{pmr} arena backed by \texttt{null\_memory\_resource} so overflow throws; hook \texttt{operator new} to abort on the hot path in test builds; use heaptrack to count allocations per request. Make stray allocation a loud failure to keep the path allocation-free.
+
+\textbf{The discipline.} Preallocate storage, construct with placement new, destroy explicitly, reuse via pools and rings, and view received bytes with \texttt{start\_lifetime\_as} not copies --- then prove it allocation-free by making any stray allocation throw in testing.

@@ -1,0 +1,72 @@
+\chapter{Undefined Behaviour and the Optimiser}
+
+Undefined behaviour is the bargain at the heart of C++'s performance: the standard declares certain operations to have no defined meaning, and in exchange the optimizer may assume they never happen --- which is what lets it generate fast code. But the same bargain means a single UB anywhere licenses the optimizer to do anything, including deleting your safety checks. This chapter explains what UB is, how the optimizer exploits it, the common sources, and the distinction from merely unspecified or implementation-defined behaviour.
+
+\section*{Chapter Roadmap}
+\begin{itemize}
+\item 104.1 The Three Kinds of ``It Depends''
+\item 104.2 What Undefined Behaviour Actually Means
+\item 104.3 How the Optimiser Exploits UB
+\item 104.4 The Common Sources of UB
+\item 104.5 Strict Aliasing
+\item 104.6 The One Definition Rule
+\item 104.7 Avoiding and Detecting UB
+\end{itemize}
+
+\section{The Three Kinds of ``It Depends''}
+\begin{itemize}
+\item Implementation-defined --- compiler chooses and documents, consistent (\texttt{sizeof(int)}). Safe but non-portable.
+\item Unspecified --- compiler chooses, may vary (argument evaluation order). Safe but non-deterministic.
+\item Undefined (UB) --- no requirements whatsoever (signed overflow, OOB, null deref).
+\end{itemize}
+
+\textbf{Why this matters.} UB is not ``some unpredictable value''; it is ``no constraints at all,'' and the optimizer assumes it never occurs. Treating UB like unspecified behaviour is the fundamental misunderstanding --- UB can delete code, corrupt unrelated data, and time-travel.
+
+\section{What Undefined Behaviour Actually Means}
+\begin{lstlisting}[language=C++, caption={Each line is UB; the program has no defined behaviour if reached. Min standard: C++11.}]
+int overflow(int x)  { return x + 1 > x; }   // signed overflow UB -> may return true ALWAYS
+int deref(int* p)    { int v = *p; if (p) return v; return 0; }   // deref then null-check: p assumed non-null
+int oob(int* a)      { return a[1000000]; }  // out-of-bounds UB
+\end{lstlisting}
+
+\textbf{Why this matters.} \texttt{x+1>x} overflows at \texttt{INT\_MAX} (UB), so the compiler may assume overflow never happens and compile to \texttt{return true;}. In \texttt{deref}, \texttt{*p} implies \texttt{p} is non-null, so the \texttt{if (p)} is deleted as redundant. UB is a compile-time license the optimizer cashes in.
+
+\section{How the Optimiser Exploits UB}
+The optimizer assumes conditions (if a path is UB unless C holds, assume C), deletes code reachable only via UB, and ``time-travels'' (UB poisons the whole execution, so effects before it may be reordered or removed).
+
+\textbf{Why this matters / cost model.} UB is undefined for the entire execution that reaches it, not from that point. A \texttt{printf} before guaranteed UB may not run. This is why ``worked in debug, broke in release'' traces to UB: \texttt{-O0} doesn't exploit the assumptions, \texttt{-O2} does. The performance from no-overflow/no-aliasing/no-null assumptions is conditional on you upholding the contract.
+
+\section{The Common Sources of UB}
+Signed integer overflow (unsigned wraps, defined); out-of-bounds access; null/invalid deref and use-after-free/scope; uninitialized reads; data races (Chapter 76); invalid downcasts; strict-aliasing violations and misaligned access; infinite loops with no side effects.
+
+\textbf{Why this matters.} These bugs work until a compiler upgrade or \texttt{-O3} flip changes the exploitation. Defined counterexamples clarify the boundary: unsigned overflow wraps (used for hashes/ring indices); \texttt{memcpy} is the defined type-pun. Knowing UB vs defined is the difference between safely-transformable and silently-broken code.
+
+\section{Strict Aliasing}
+\begin{lstlisting}[language=C++, caption={Type-punning through a mismatched pointer is UB; memcpy/bit_cast is defined. Min standard: C++11/C++20.}]
+float reinterpret_bad(int x) { return *reinterpret_cast<float*>(&x); }   // UB
+float reinterpret_ok(int x)  { float f; std::memcpy(&f, &x, sizeof f); return f; }   // defined, no-op at -O2
+// C++20: std::bit_cast<float>(x)
+\end{lstlisting}
+
+\textbf{Why this matters / cost model.} Strict aliasing lets the compiler assume different-typed pointers don't overlap, enabling register allocation and vectorisation. The classic type-pun is UB at \texttt{-O2}; \texttt{memcpy}/\texttt{bit\_cast} expresses it legally and compiles to zero extra instructions. Use \texttt{-Wstrict-aliasing}.
+
+\section{The One Definition Rule}
+\begin{lstlisting}[language=C++, caption={An ODR violation from incompatible definitions; the linker does not catch it. Min standard: C++11.}]
+// a.cpp:  struct S { int x; };      void f(S s);
+// b.cpp:  struct S { int x, y; };   // different layout -> ODR violation -> silent corruption
+\end{lstlisting}
+
+\textbf{Why this matters.} The ODR is behind \texttt{multiple definition} (diagnosed) and a class of undiagnosed silent-corruption bugs (two definitions of a type/inline function from inconsistent macros/flags/headers). The standard makes it UB without requiring a diagnostic, so the linker merges incompatible definitions. \texttt{inline} functions and templates must be defined identically in every TU.
+
+\section{Avoiding and Detecting UB}
+\begin{itemize}
+\item Signed overflow --- UBSan; unsigned where wrap is intended; \texttt{-ftrapv}.
+\item OOB / use-after-free --- ASan; \texttt{.at()}; \texttt{std::span}.
+\item Uninitialized reads --- MSan; initialize at declaration.
+\item Data races --- TSan (Chapter 105).
+\item Strict aliasing --- \texttt{memcpy}/\texttt{bit\_cast}; \texttt{-Wstrict-aliasing}.
+\item ODR --- consistent headers/flags.
+\item General --- UBSan in CI; \texttt{-Wall -Wextra}; warnings as errors.
+\end{itemize}
+
+\textbf{The discipline.} The optimizer is fast because it assumes no UB, so the price of speed is upholding the contract everywhere. Understand the boundary and use defined alternatives (unsigned wrap, \texttt{memcpy}/\texttt{bit\_cast}, atomics, consistent definitions), and detect what slips through with sanitizers in CI. The only safe amount of UB is zero.

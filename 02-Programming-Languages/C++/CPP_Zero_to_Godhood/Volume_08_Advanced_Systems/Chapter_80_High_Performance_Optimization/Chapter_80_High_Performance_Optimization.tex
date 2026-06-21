@@ -1,0 +1,132 @@
+\chapter{High-Performance Optimization}
+
+Optimization is the discipline of spending effort where the machine actually spends time --- which is almost never where intuition says. This chapter is the synthesis hub of the volume: it surveys the full optimization toolbox and, crucially, the methodology --- measure first, optimize the hot path, respect the cost model --- that prevents making correct code slower and uglier. Several topics open into dedicated chapters (87, 91, 92, 102, 103); this chapter ties them together and covers the optimizations with no other home.
+
+\section*{Chapter Roadmap}
+\begin{itemize}
+\item 80.1 The Methodology: Measure First
+\item 80.2 Cache Is King
+\item 80.3 Branch Prediction and Branchless Code
+\item 80.4 SIMD: Single Instruction, Multiple Data
+\item 80.5 Executing Less Code
+\item 80.6 Choosing Efficient Containers
+\item 80.7 Copy Elision and RVO
+\item 80.8 Small Object / Small String Optimization
+\item 80.9 The Empty Base Class Optimization
+\item 80.10 Whole-Program Optimization: LTO and PGO
+\item 80.11 The Optimization Discipline
+\end{itemize}
+
+\section{The Methodology: Measure First}
+The first priority is correct, maintainable code; optimization comes second, guided by measurement. Classic mistakes: premature optimization (complex code may perform worse), optimizing the wrong use case (helping the 1\% slows the 99\%), and hand micro-optimization (the compiler does it better and can be defeated by obscured code). Negative side effects: higher memory use, unreadable code, compromised APIs. Goals, in order of leverage: do less work, use better structures, use the hardware better.
+
+\textbf{Why this matters.} Intuition about where time goes is usually wrong. Sampling profilers (\texttt{perf}, VTune) find hot spots cheaply; instrumentation profilers (\texttt{gprof}, callgrind) give exact call graphs; microbenchmarks (Google Benchmark) isolate functions. Never optimize without one (Chapter 103).
+
+\section{Cache Is King}
+A cache miss to DRAM stalls the core hundreds of cycles. Data-oriented design (SoA over AoS) brings only touched fields into cache and vectorizes; linear access prefetches while pointer chasing serializes misses.
+
+\textbf{Why this matters / cost model.} Prefer \texttt{std::vector} over \texttt{std::list}, contiguous linear access, no heap pointer-chasing. A list with the same big-O can be 10--50$\times$ slower than a vector. Memory layout, not instruction count, dominates most workloads (Chapter 87).
+
+\section{Branch Prediction and Branchless Code}
+A misprediction flushes the pipeline ($\sim$15--20 cycles).
+
+\begin{lstlisting}[language=C++, caption={Replacing an unpredictable branch with computation. Min standard: C++11/C++20.}]
+if (x > 0) y = 1; else y = 0;   // branchy
+y = (x > 0);                    // branchless
+\end{lstlisting}
+
+Predictable branches are nearly free (sorted data); \texttt{[[likely]]}/\texttt{[[unlikely]]} hint layout.
+
+\textbf{Why this matters.} Branchless trades a possible misprediction for guaranteed work; it wins only on genuinely unpredictable, cheap branches (Chapter 91).
+
+\section{SIMD: Single Instruction, Multiple Data}
+Routes: intrinsics (\texttt{\_mm256\_add\_ps}; control, non-portable), auto-vectorization (maintainable when it triggers), libraries (\texttt{std::simd} (C++26), Highway, Vc).
+
+\textbf{Why this matters / cost model.} Up to N$\times$ on data-parallel arithmetic when data is contiguous, aligned, SoA, and dependency-free; no help for branchy or memory-bound code (Chapter 92).
+
+\section{Executing Less Code}
+\begin{lstlisting}[language=C++, caption={Prefer stack objects to needless heap allocation. Min standard: C++14.}]
+auto a1 = std::make_unique<A>(); func(a1.get());   // useless alloc/dealloc
+auto a2 = A{}; func(&a2);                           // stack object
+\end{lstlisting}
+
+\begin{lstlisting}[language=C++, caption={Collapsing three map traversals into one. Min standard: C++11.}]
+const A* lazyLookupSlow(const std::string& key) {
+    if (lookup.find(key) == lookup.cend()) lookup.emplace(key, std::make_unique<A>());
+    return lookup[key].get();            // three traversals
+}
+const A* lazyLookupFast(const std::string& key) {
+    auto& value = lookup[key];
+    if (!value) value = std::make_unique<A>();
+    return value.get();                  // one traversal
+}
+\end{lstlisting}
+
+\begin{lstlisting}[language=C++, caption={insert().second avoids a second probe; reserve avoids growth. Min standard: C++11.}]
+std::vector<std::string> stableUnique(const std::vector<std::string>& v) {
+    std::vector<std::string> result; result.reserve(v.size());
+    std::unordered_set<std::string> seen;
+    for (const auto& s : v) if (seen.insert(s).second) result.push_back(s);
+    return result;
+}
+\end{lstlisting}
+
+\textbf{Why this matters / cost model.} Constant-factor wins, valuable only on hot paths. \texttt{reserve} is nearly free and removes intermediate reallocations and moves; eliminate redundant traversals/allocations/copies the compiler cannot.
+
+\section{Choosing Efficient Containers}
+\texttt{stableUnique} is O(N log N) with \texttt{std::set} (tree) versus O(N) expected with \texttt{std::unordered\_set} (hash), which also reduces \texttt{std::string} comparisons to intra-bucket collisions.
+
+\textbf{Why this matters.} A tree-to-hash swap changes the complexity class. But hashing has its own cost, unordered containers have worse locality, and you lose ordering; for small N a sorted \texttt{vector} with binary search often wins. Match the container to the operation mix and size.
+
+\section{Copy Elision and RVO}
+\begin{lstlisting}[language=C++, caption={Returning large objects by value is cheap. Min standard: C++17.}]
+std::vector<int> make_big() { std::vector<int> v(1'000'000); /* fill */ return v; } // NRVO
+auto data = make_big();   // no copy
+\end{lstlisting}
+
+\textbf{Why this matters.} Mandatory copy elision (C++17) guarantees elision for prvalue returns, making return-by-value the correct default even for expensive types. Do not write \texttt{return std::move(local)} --- it can disable NRVO.
+
+\section{Small Object / Small String Optimization}
+SSO/SOO stores small payloads inline, avoiding \texttt{malloc}/\texttt{free} and improving locality (\texttt{std::string}, \texttt{std::function}).
+
+\begin{lstlisting}[language=C++, caption={A naive SSO string. Min standard: C++11.}]
+class string final {
+    constexpr static auto SMALL_BUFFER_SIZE = 16;
+    bool _isAllocated{false}; char* _buffer{nullptr}; char _smallBuffer[SMALL_BUFFER_SIZE] = {'\0'};
+public:
+    ~string() { if (_isAllocated) delete[] _buffer; }
+    explicit string(const char* cstr) {
+        auto n = std::strlen(cstr);
+        _isAllocated = (n > SMALL_BUFFER_SIZE);
+        _buffer = _isAllocated ? new char[n + 1] : &_smallBuffer[0];
+        std::strcpy(_buffer, cstr);
+    }
+    string(string&& rhs) : _isAllocated(rhs._isAllocated), _buffer(rhs._buffer) {
+        if (_isAllocated) rhs._buffer = nullptr;
+        else { std::strcpy(_smallBuffer, rhs._smallBuffer); _buffer = &_smallBuffer[0]; }
+    }
+};
+\end{lstlisting}
+
+\textbf{Why this matters / cost model.} SSO trades a larger \texttt{sizeof} and branching for eliminating heap traffic on short strings. Moving an SSO object is more expensive (inline bytes must be copied, not a pointer stolen). Implementations pack \texttt{\_isAllocated} into a pointer bit. Worth it only in heavily-used low-level types with mostly small data.
+
+\section{The Empty Base Class Optimization}
+\texttt{sizeof(T) >= 1}, but an empty base need not add to the derived size.
+
+\begin{lstlisting}[language=C++, caption={EBO collapses an empty base to zero size. Min standard: C++98.}]
+class Base {};
+class Derived : public Base { public: int i; };
+// sizeof(Derived) == sizeof(int)
+\end{lstlisting}
+
+EBO applies only if the first member differs in type from any base.
+
+\textbf{Why this matters.} EBO is why stateless policies, allocators, and comparators add zero bytes: \texttt{std::vector} stores its allocator as an EBO base; \texttt{unique\_ptr} stores a stateless deleter for free. C++20 \texttt{[[no\_unique\_address]]} extends this to members.
+
+\section{Whole-Program Optimization: LTO and PGO}
+LTO defers codegen to link time so the optimizer sees all TUs, enabling cross-TU inlining. PGO instruments, runs on representative input, then recompiles with the profile to lay out hot paths and inline hot callees.
+
+\textbf{Why this matters / cost model.} The highest-leverage free optimizations (5--20\%, no source change), fixing what local optimization cannot see. Cost: build complexity and a representative workload for PGO (Chapter 102).
+
+\section{The Optimization Discipline}
+Optimize in order of leverage: algorithm/container (asymptotic), cache-friendly layout, executing less code, branchless/SIMD where profiling justifies, then free LTO/PGO --- measuring at every step.
