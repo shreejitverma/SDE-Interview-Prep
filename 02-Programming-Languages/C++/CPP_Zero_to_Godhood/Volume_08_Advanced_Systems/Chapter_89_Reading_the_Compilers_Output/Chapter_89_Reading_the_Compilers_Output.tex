@@ -1,0 +1,78 @@
+\chapter{Reading the Compiler's Output --- Assembly, Inlining, and the Optimiser}
+
+The only ground truth about what code costs is the machine code the compiler emitted --- not the source, not intuition, not a benchmark that may have been optimised away. Reading disassembly converts performance work from speculation into observation: you can see whether a function inlined, a loop vectorised, a bounds check was elided. This chapter teaches the Godbolt workflow, enough x86-64 to read a hot loop, and the optimiser behaviours that decide whether abstractions are free.
+
+\section*{Chapter Roadmap}
+\begin{itemize}
+\item 89.1 Why Read Assembly at All
+\item 89.2 The Godbolt Workflow
+\item 89.3 Enough x86-64 to Read a Hot Loop
+\item 89.4 Mapping C++ Constructs to Assembly
+\item 89.5 Inlining: The Optimiser's Master Lever
+\item 89.6 Recognising Vectorisation and Other Optimisations
+\item 89.7 The As-If Rule and What It Lets the Optimiser Do
+\item 89.8 A Practical Reading Discipline
+\end{itemize}
+
+\section{Why Read Assembly at All}
+The optimiser may inline a function to nothing, vectorise a loop, fold a \texttt{constexpr}, hoist a load, or delete effect-free code --- or fail to, because of a hidden dependency or missing \texttt{noexcept}. Source tells you none of this; assembly tells you all of it.
+
+\textbf{Why this matters.} Only assembly answers ``did the optimisation happen?'' and ``why is this slow?'' A zero-cost abstraction is zero-cost only if it compiled to the same instructions as the hand-written version. Assembly is also the defence against the benchmark trap: a deleted workload shows an empty loop.
+
+\section{The Godbolt Workflow}
+\begin{lstlisting}[language=bash, caption={Emitting assembly locally; always read -O2, not -O0.}]
+g++ -O2 -S -masm=intel -fverbose-asm hot.cpp -o hot.s
+objdump -d -M intel --no-show-raw-insn a.out
+clang++ -O2 -S -emit-llvm hot.cpp -o hot.ll
+\end{lstlisting}
+
+\textbf{Why this matters.} Always read optimised output. \texttt{-O0} spills every variable and inlines nothing --- it bears no resemblance to release performance. Compiler Explorer's source-to-asm colour mapping finds which instructions a line produced; side-by-side comparison settles ``is A faster than B'' at the instruction level.
+
+\section{Enough x86-64 to Read a Hot Loop}
+\begin{itemize}
+\item \texttt{rax/eax/al} --- 64/32/8-bit registers; \texttt{xmm/ymm/zmm} --- SIMD registers.
+\item \texttt{mov rax,[rbx]} load; \texttt{lea} address computation; \texttt{add/sub/imul} arithmetic.
+\item \texttt{cmp}+\texttt{jne/jl} compare-and-branch; \texttt{call/ret}; \texttt{vaddps/mulps} packed SIMD.
+\end{itemize}
+
+\begin{lstlisting}[language=bash, caption={A scalar reduction loop at -O2 (Intel syntax).}]
+.L3:
+    add    eax, [rdi+rcx*4]   ; sum += a[i]
+    add    rcx, 1             ; ++i
+    cmp    rcx, rdx           ; i < n ?
+    jne    .L3
+\end{lstlisting}
+
+\textbf{Why this matters.} A few patterns cover 90\% of reading: an unexpected \texttt{call} (not inlined); \texttt{ymm}/\texttt{vaddps} (vectorised); a tight loop with no \texttt{call} (inlined); a \texttt{cmp}/\texttt{jae} (bounds check). Read for shape, not every instruction.
+
+\section{Mapping C++ Constructs to Assembly}
+A call is \texttt{call sym} (callee not inlined); a virtual call is a vtable load then indirect \texttt{call [rax]} (an inlining barrier); \texttt{vector::operator[]} is base+index addressing with no extra code, while \texttt{.at()} adds a compare and throw path; a \texttt{constexpr} result is an immediate.
+
+\textbf{Why this matters.} This mapping verifies the abstractions are free: \texttt{operator[]} matches raw indexing; \texttt{unique\_ptr} compiles to a raw-pointer load; an inlined comparator shows the comparison in the sort body. Each verification is a side-by-side disassembly diff.
+
+\section{Inlining: The Optimiser's Master Lever}
+Inlining replaces a call with the callee's body. It is the master optimisation because it enables the rest: constant propagation into the callee, dead-branch elimination per call site, register allocation across the boundary, and cross-call vectorisation. A non-inlined call is an opaque barrier.
+
+\textbf{Why this matters / cost model.} The call/return saving is the least of inlining's value; enabling every other optimisation is the real win. The compiler inlines by heuristics; you force with \texttt{always\_inline} (non-portable) and defeat it with virtual calls, function pointers, cross-TU calls (Chapter 102), and large bodies. First check when a hot path is slow: did the key function inline?
+
+\section{Recognising Vectorisation and Other Optimisations}
+Spot auto-vectorisation (\texttt{xmm}/\texttt{ymm}/\texttt{zmm}, \texttt{vaddps}, \texttt{vfmadd}), unrolling (repeated body), constant folding (immediates), dead-code elimination (absent code), strength reduction (multiply $\to$ shift/\texttt{lea}), and hoisting (loop-invariant moved out).
+
+\textbf{Why this matters.} Each is actionable. If a loop did not vectorise, \texttt{-fopt-info-vec-missed} (GCC) / \texttt{-Rpass-missed=loop-vectorize} (Clang) explains why --- usually a dependency, aliasing, or non-unit stride (Chapter 92).
+
+\section{The As-If Rule and What It Lets the Optimiser Do}
+The optimiser may perform any transformation preserving observable behaviour (I/O, volatile, atomics, termination).
+
+\textbf{Why this matters.} The as-if rule is why a benchmark loop with no observable effect is deleted (Chapter 103); why UB is exploitable (once UB occurs there is no defined behaviour to preserve, so a safety check can be removed --- Chapter 104); and why \texttt{volatile} marks accesses observable so they cannot be elided (correct for MMIO, useless for threading --- Chapter 76).
+
+\section{A Practical Reading Discipline}
+\begin{itemize}
+\item Inlined? --- absence of \texttt{call} to it.
+\item Vectorised? --- \texttt{ymm}/\texttt{zmm}, \texttt{vaddps}/\texttt{vfmadd}.
+\item Abstraction free? --- identical to the hand-written version.
+\item Hidden cost? --- unexpected \texttt{call}, bounds-check \texttt{cmp}/\texttt{jae}, virtual \texttt{call [reg]}.
+\item Benchmark deleted? --- empty loop body.
+\item Why not optimised? --- \texttt{-Rpass-missed=}/\texttt{-fopt-info-missed}.
+\end{itemize}
+
+\textbf{The discipline.} Reading assembly is verification: ground every performance claim in the emitted instructions. This makes the branchless and SIMD chapters trustworthy and underpins the measurement rigour of Chapter 103.

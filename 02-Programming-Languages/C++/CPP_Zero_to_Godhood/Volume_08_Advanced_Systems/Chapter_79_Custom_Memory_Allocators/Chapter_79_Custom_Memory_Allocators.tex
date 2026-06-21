@@ -1,0 +1,111 @@
+\chapter{Custom Memory Allocators}
+
+The general-purpose allocator (\texttt{malloc}/\texttt{new}) is the wrong tool for a latency-critical hot path: it is thread-safe (so it locks), general (so it searches free lists), and unpredictable (so a single allocation can fault a page or take a microsecond). Custom allocators trade generality for control --- O(1) allocation, perfect locality, zero fragmentation, bounded latency --- by exploiting what you know about your allocation pattern.
+
+\section*{Chapter Roadmap}
+\begin{itemize}
+\item 79.1 Why \texttt{malloc} Is the Wrong Default on the Hot Path
+\item 79.2 The Arena / Bump (Linear) Allocator
+\item 79.3 The Pool (Free-List) Allocator
+\item 79.4 The Slab Allocator
+\item 79.5 \texttt{std::pmr}: Polymorphic Memory Resources
+\item 79.6 Alignment
+\item 79.7 The Allocator Cost Model and Hazards
+\end{itemize}
+
+\section{Why \texttt{malloc} Is the Wrong Default on the Hot Path}
+\texttt{malloc} maintains size-class free lists, coalesces freed blocks, and synchronises across threads. The consequences: latency variance (thread-cache hit $\sim$tens of ns, but a miss falls to a locked central list and heap growth to an \texttt{mmap} + page fault), lock contention, and poor locality.
+
+\textbf{Why this matters.} The fix is not a faster \texttt{malloc} but not calling it on the hot path. Custom allocators exploit structure: shared lifetime (arena), single size (pool), or pre-allocation (Chapter 97). A bump allocation is a pointer add and compare; \texttt{malloc} is an unbounded search.
+
+\section{The Arena / Bump (Linear) Allocator}
+The arena owns a contiguous buffer and a cursor; allocation advances the cursor; you free the entire arena at once.
+
+\begin{lstlisting}[language=C++, caption={A bump allocator: O(1) allocate, O(1) bulk reset. Min standard: C++11.}]
+class ArenaAllocator {
+    std::byte* begin_; std::byte* cursor_; std::byte* end_;
+public:
+    ArenaAllocator(void* buf, std::size_t size)
+        : begin_(static_cast<std::byte*>(buf)), cursor_(begin_), end_(begin_ + size) {}
+    void* allocate(std::size_t n, std::size_t align = alignof(std::max_align_t)) {
+        std::size_t space = static_cast<std::size_t>(end_ - cursor_);
+        void* p = cursor_;
+        if (!std::align(align, n, p, space)) return nullptr;
+        cursor_ = static_cast<std::byte*>(p) + n;
+        return p;
+    }
+    void reset() { cursor_ = begin_; }
+};
+\end{lstlisting}
+
+\textbf{Why this matters / cost model.} Allocation is a few instructions; no free list, no locking, no fragmentation, perfect spatial locality. The trade-off is the lifetime model: every object dies together. Ideal for request- and frame-scoped work; wrong for individual unpredictable lifetimes.
+
+\section{The Pool (Free-List) Allocator}
+A pool serves fixed-size blocks, threading an intrusive free list through the free blocks themselves. Allocate pops the head; free pushes it.
+
+\begin{lstlisting}[language=C++, caption={Pool allocator with intrusive free list; O(1), zero fragmentation. Min standard: C++11.}]
+class PoolAllocator {
+    struct Node { Node* next; };
+    Node* free_list_ = nullptr;
+public:
+    PoolAllocator(void* buffer, std::size_t count, std::size_t block_size) {
+        auto* p = static_cast<std::byte*>(buffer);
+        for (std::size_t i = 0; i < count; ++i) {
+            auto* node = reinterpret_cast<Node*>(p + i * block_size);
+            node->next = free_list_; free_list_ = node;
+        }
+    }
+    void* allocate() { if (!free_list_) return nullptr; Node* n = free_list_; free_list_ = n->next; return n; }
+    void deallocate(void* p) { Node* n = static_cast<Node*>(p); n->next = free_list_; free_list_ = n; }
+};
+\end{lstlisting}
+
+\textbf{Why this matters / cost model.} Right for churning many objects of one type with individual lifetimes. Same-size blocks mean no fragmentation and no search; the free list lives inside the free blocks (zero overhead). Give each thread its own pool to keep allocation contention-free.
+
+\section{The Slab Allocator}
+The slab generalises the pool: it manages page-sized slabs carved into one size class and caches constructed objects so allocation can return a pre-initialised object.
+
+\textbf{Why this matters / cost model.} Size-class segregation keeps each cache fragmentation-free and line-friendly; object caching amortises constructor/destructor cost for expensive objects (a kernel \texttt{inode}). jemalloc/tcmalloc are sophisticated multi-size-class slab/arena hybrids with per-thread caches. Trade-off: memory overhead from partially-full slabs and added complexity.
+
+\section{\texttt{std::pmr}: Polymorphic Memory Resources}
+\texttt{std::pmr} makes the allocator a runtime polymorphic object, so \texttt{std::pmr::vector<int>} is one type regardless of the backing resource.
+
+\begin{lstlisting}[language=C++, caption={A stack-backed monotonic arena driving standard containers, zero heap. Min standard: C++17.}]
+void process() {
+    std::array<std::byte, 1 << 16> buffer;
+    std::pmr::monotonic_buffer_resource arena{buffer.data(), buffer.size()};
+    std::pmr::vector<int> v{&arena};
+    std::pmr::vector<std::pmr::string> names{&arena};
+    v.reserve(1000);                  // no malloc
+    names.emplace_back("zero heap allocation");
+}
+\end{lstlisting}
+
+Resources: \texttt{monotonic\_buffer\_resource} (arena), \texttt{(un)synchronized\_pool\_resource}, \texttt{new\_delete\_resource}, \texttt{null\_memory\_resource} (allocation fails --- proves a region is allocation-free).
+
+\textbf{Why this matters.} \texttt{pmr} deploys custom allocators without rewriting the standard library: keep \texttt{std::vector}/\texttt{string}, back them with an arena/pool chosen at runtime. A stack-backed \texttt{monotonic\_buffer\_resource} eliminates hot-path heap latency. Cost is one indirect \texttt{do\_allocate} call, negligible. \texttt{null\_memory\_resource} turns stray allocations into hard failures during testing.
+
+\section{Alignment}
+Every allocator must return suitably-aligned memory. Misaligned access is a penalty on x86 and a \texttt{SIGBUS} fault on stricter architectures; SIMD aligned loads fault on misaligned data.
+
+\begin{lstlisting}[language=C++, caption={Over-alignment and C++17 aligned new. Min standard: C++17.}]
+struct alignas(64) CacheLineAligned { std::atomic<long> counter; };
+void* p = ::operator new(size, std::align_val_t{64});
+::operator delete(p, std::align_val_t{64});
+\end{lstlisting}
+
+Facilities: \texttt{alignof}, \texttt{alignas}, \texttt{std::max\_align\_t}, \texttt{std::align}, C++17 \texttt{std::align\_val\_t}.
+
+\textbf{Why this matters.} An allocator that ignores alignment is a latent crash that appears the day someone stores a \texttt{\_\_m256}. Deliberate over-alignment (\texttt{alignas(64)}) is the tool for cache-line isolation and SIMD.
+
+\section{The Allocator Cost Model and Hazards}
+\begin{itemize}
+\item Arena: O(1) cursor add, no per-object free, all-die-together; request/frame scoped.
+\item Pool: O(1) pop/push, one size, individual lifetimes; same-type churn.
+\item Slab: O(1) plus cached ctor/dtor, few sizes; kernel objects.
+\item \texttt{pmr} monotonic: O(1), no free; containers without heap.
+\end{itemize}
+
+Hazards: dangling pointers after an arena reset; non-trivial destructors not run on monotonic reset (resource leaks --- Chapter 97); alignment must be honoured; the simple allocators are single-threaded; fixed buffers exhaust.
+
+\textbf{The discipline.} Match the allocator to the lifetime pattern of the data. If all objects of a phase die together, use an arena; if you churn one type, a pool; for standard containers without heap latency, a stack \texttt{monotonic\_buffer\_resource}.

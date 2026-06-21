@@ -1,0 +1,74 @@
+\chapter{High-Performance I/O --- io\_uring, mmap, and Zero-Copy}
+
+I/O performance is dominated by two costs unrelated to the device: the syscall crossings to initiate each operation, and the memory copies between kernel and user buffers. This chapter develops the models that attack both --- the evolution from blocking to readiness (\texttt{epoll}) to completion (\texttt{io\_uring}), memory-mapped I/O, and zero-copy techniques. The throughline: amortise the crossings, eliminate the copies.
+
+\section*{Chapter Roadmap}
+\begin{itemize}
+\item 99.1 The Two Costs of I/O
+\item 99.2 Blocking, Non-Blocking, and Readiness (\texttt{epoll})
+\item 99.3 The Completion Model: \texttt{io\_uring}
+\item 99.4 Memory-Mapped I/O
+\item 99.5 Zero-Copy Techniques
+\item 99.6 Choosing an I/O Model
+\end{itemize}
+
+\section{The Two Costs of I/O}
+Reading from a socket involves a kernel$\to$user copy and a syscall to request it. For high throughput/low latency these dominate: crossings (hundreds of ns each $\times$ rate) and copies (memory bandwidth and cache, sometimes exceeding device time).
+
+\textbf{Why this matters.} Traditional I/O pays both costs on every operation. Completion models (\texttt{io\_uring}) amortise the crossings; zero-copy eliminates the copies. The fastest I/O does both.
+
+\section{Blocking, Non-Blocking, and Readiness (\texttt{epoll})}
+Blocking I/O sleeps the thread (one thread per connection, unscalable). Non-blocking + readiness asks which fds are ready: \texttt{select}/\texttt{poll} are O(n); \texttt{epoll} is O(ready).
+
+\begin{lstlisting}[language=C++, caption={epoll: one wait returns all ready fds; each still needs a read/write. Linux. Min standard: C++11.}]
+// int ep = epoll_create1(0); epoll_ctl(ep, EPOLL_CTL_ADD, fd, &ev);
+// for (;;) {
+//   int n = epoll_wait(ep, events, MAX, -1);
+//   for (int i = 0; i < n; ++i) handle(events[i].data.fd);   // a read()/write() per fd
+// }
+\end{lstlisting}
+
+\textbf{Why this matters / cost model.} \texttt{epoll} decouples connection count from the cost of finding ready ones (O(ready)), the foundation of nginx/Redis. But it is a readiness model: one syscall per ready operation plus the copy. It solves C10K but not the per-operation crossing/copy cost.
+
+\section{The Completion Model: \texttt{io\_uring}}
+\texttt{io\_uring} uses two shared rings --- submission (SQ) and completion (CQ) --- so you submit and reap many operations without a syscall each.
+
+\begin{lstlisting}[language=C++, caption={io_uring: batch-submit via a shared ring, reap asynchronously. Linux 5.1+. Min standard: C++11+liburing.}]
+// for (each request) { sqe = io_uring_get_sqe(&ring);
+//   io_uring_prep_read(sqe, fd, buf, len, offset); }
+// io_uring_submit(&ring);          // ONE syscall submits the batch
+// io_uring_wait_cqe(&ring, &cqe);  // reap completions
+\end{lstlisting}
+
+\textbf{Why this matters / cost model.} \texttt{io\_uring} batches dozens of operations into one submit, and in SQPOLL mode a kernel thread polls the SQ so submission makes zero syscalls. As a completion model it submits the whole operation and notifies when done (vs \texttt{epoll}'s ready-then-read), eliminating the second syscall. Supports nearly all I/O with registered buffers/fds. Cost: async complexity, buffer-lifetime management, recency (5.1+).
+
+\section{Memory-Mapped I/O}
+\begin{lstlisting}[language=C++, caption={mmap turns file access into memory access, paging on demand. POSIX/Linux. Min standard: C++11.}]
+// int fd = open(path, O_RDONLY);
+// void* p = mmap(nullptr, size, PROT_READ, MAP_PRIVATE, fd, 0);
+// // Access p[i] like memory; the kernel faults pages in. No read() syscalls.
+// munmap(p, size);
+\end{lstlisting}
+
+\textbf{Why this matters / cost model.} \texttt{mmap} removes the explicit-read-plus-copy model: code reads the page cache directly, sharing physical pages (no user-space copy). Ideal for random access to large files and read-only sharing. Trade-offs: access latency is now a page fault (a major fault stalls ms), faults are unpredictable (pre-fault with \texttt{MAP\_POPULATE}), and writes have subtle \texttt{msync} semantics.
+
+\section{Zero-Copy Techniques}
+\begin{itemize}
+\item \texttt{sendfile} --- copy a file directly to a socket in the kernel; bytes never enter user space.
+\item \texttt{splice}/\texttt{vmsplice} --- move data between an fd and a pipe without copying.
+\item \texttt{MSG\_ZEROCOPY} / \texttt{io\_uring} registered buffers --- the NIC DMAs directly from user pages.
+\end{itemize}
+
+\textbf{Why this matters / cost model.} For large transfers the kernel$\leftrightarrow$user copy consumes bandwidth and cache; at 10--100\,Gbps the copy can be the bottleneck. \texttt{sendfile} does zero user-space copies (disk$\to$page-cache$\to$NIC). Costs: zero-copy send needs the buffer stable until completion; \texttt{MSG\_ZEROCOPY} only pays above a size threshold (page-pinning overhead). For small messages a plain copy is cheaper.
+
+\section{Choosing an I/O Model}
+\begin{itemize}
+\item Blocking --- low connection counts, simplicity.
+\item \texttt{epoll} --- scalable servers (C10K+).
+\item \texttt{io\_uring} --- highest-throughput modern I/O.
+\item \texttt{mmap} --- random access to large files.
+\item \texttt{sendfile}/zero-copy --- large/streaming transfers.
+\item Kernel bypass (Chapter 100) --- extreme packet rates.
+\end{itemize}
+
+\textbf{The discipline.} Climb from the simple model to the one your rate demands, each step trading simplicity for the elimination of a crossing or a copy --- the stopping point dictated by measurement (\texttt{strace -c}, \texttt{perf}), not ambition. When even the kernel is too much, the next chapter removes it.

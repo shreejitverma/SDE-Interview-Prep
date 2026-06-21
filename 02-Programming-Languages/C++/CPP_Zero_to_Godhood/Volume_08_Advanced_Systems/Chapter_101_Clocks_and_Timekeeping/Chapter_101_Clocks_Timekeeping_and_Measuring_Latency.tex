@@ -1,0 +1,77 @@
+\chapter{Clocks, Timekeeping, and Measuring Latency Correctly}
+
+You cannot optimise what you cannot measure, and measuring nanosecond-scale latency correctly is itself a hard problem: the clock has its own cost and resolution, the timestamp instruction can be reordered, and the measurement overhead can exceed the thing measured. This chapter covers the clock sources C++ exposes, the \texttt{rdtsc}/TSC counter low-latency code times with, and the methodology for measuring latency without lying to yourself.
+
+\section*{Chapter Roadmap}
+\begin{itemize}
+\item 101.1 Why Timekeeping Is Hard
+\item 101.2 The C++ \texttt{<chrono>} Clocks
+\item 101.3 The TSC and \texttt{rdtsc}
+\item 101.4 Measurement Overhead and Reordering
+\item 101.5 Measuring Latency Correctly
+\item 101.6 The Discipline
+\end{itemize}
+
+\section{Why Timekeeping Is Hard}
+Sub-microsecond accuracy is hard: multiple clock sources (TSC, HPET, software clock) with different costs; wall-clock time can jump backwards (NTP, leap seconds); reading a clock has a cost; and the CPU can reorder the timestamp relative to the timed code.
+
+\textbf{Why this matters.} The wrong clock or careless measurement produces confidently wrong numbers --- a negative duration, a measurement dominated by clock cost, or an interval not bracketing the code. At the nanosecond scale each is a real failure mode. Correct timekeeping is a prerequisite for the volume's measurement discipline.
+
+\section{The C++ \texttt{<chrono>} Clocks}
+\begin{itemize}
+\item \texttt{system\_clock} --- not monotonic (can jump); wall-clock timestamps, dates.
+\item \texttt{steady\_clock} --- monotonic; measuring intervals.
+\item \texttt{high\_resolution\_clock} --- implementation-defined; avoid.
+\end{itemize}
+
+\begin{lstlisting}[language=C++, caption={steady_clock is the correct choice for interval measurement. Min standard: C++11.}]
+auto start = std::chrono::steady_clock::now();
+do_work();
+auto elapsed = std::chrono::steady_clock::now() - start;
+auto ns = std::chrono::duration_cast<std::chrono::nanoseconds>(elapsed).count();
+\end{lstlisting}
+
+\textbf{Why this matters.} The most common timing bug is measuring an interval with \texttt{system\_clock}: an NTP adjustment can make the duration negative. \texttt{steady\_clock} is guaranteed monotonic --- use it for every ``how long'' question, reserve \texttt{system\_clock} for ``what time is it.'' On Linux it is backed by \texttt{CLOCK\_MONOTONIC} via the vDSO ($\sim$15--30\,ns).
+
+\section{The TSC and \texttt{rdtsc}}
+\begin{lstlisting}[language=C++, caption={Reading the TSC with ordering; x86-specific. Min standard: C++11.}]
+#include <x86intrin.h>
+static inline uint64_t read_tsc() { unsigned aux; return __rdtscp(&aux); }
+// Or _mm_lfence(); __rdtsc(); _mm_lfence();  Convert cycles to ns via the calibrated frequency.
+\end{lstlisting}
+
+\textbf{Why this matters / cost model.} \texttt{rdtsc} is the fastest timestamp (a few cycles vs $\sim$15--30\,ns for vDSO \texttt{clock\_gettime}). Caveats: invariance (modern TSCs tick at a constant rate; old ones tracked the variable core clock); per-core skew (pin the thread); calibration (it counts cycles, not ns); and reordering (plain \texttt{rdtsc} can float). Used carefully on a pinned thread with an invariant TSC, it is the HFT timing primitive.
+
+\section{Measurement Overhead and Reordering}
+Overhead: the timestamp read costs time; bracketing a 5\,ns op with two 20\,ns reads measures mostly the clock. Fix: batch N iterations and divide, or subtract a baseline. Reordering: the out-of-order CPU may execute the timestamp before/after the timed code. Fix: a serializing form (\texttt{rdtscp}+\texttt{lfence}) and a compiler barrier.
+
+\begin{lstlisting}[language=C++, caption={A compiler barrier stops the optimizer moving/eliding timed code; non-portable. Min standard: C++11.}]
+static inline void compiler_barrier() { asm volatile("" ::: "memory"); }
+// barrier(); t0 = read(); barrier(); work(); barrier(); t1 = read(); barrier();
+\end{lstlisting}
+
+\textbf{Why this matters.} Un-amortised overhead makes fast code look slow; reordering makes the interval wrong; and the optimizer may delete unused timed code (Chapter 103). Defences: batch-and-amortise, fence the timestamps, and force the result observed.
+
+\section{Measuring Latency Correctly}
+\begin{enumerate}
+\item Use \texttt{steady\_clock} or a calibrated pinned TSC, never \texttt{system\_clock}.
+\item Pin the thread (consistent TSC, no migration artefacts).
+\item Warm up before measuring (prime caches/TLB/predictors).
+\item Amortise overhead (batch and divide, or subtract a baseline).
+\item Fence the timestamps.
+\item Record the full distribution (p50/p99/p99.9/max), not the mean.
+\end{enumerate}
+
+\textbf{Why this matters.} Each step removes a lie: skipping warmup measures cold-cache penalties; the mean hides the tail (a great average with a terrible p99.9 is a bad system for trading/real-time); pinning and fencing tie the number to the code. The output is a distribution whose shape reveals determinism vs jitter.
+
+\section{The Discipline}
+\begin{itemize}
+\item Interval clock: \texttt{steady\_clock}/calibrated TSC, not \texttt{system\_clock}.
+\item Lowest overhead: pinned invariant \texttt{rdtscp}.
+\item Tiny operation: batch N, divide; subtract baseline.
+\item Reordering: \texttt{rdtscp}/\texttt{lfence} + compiler barrier.
+\item Reporting: full distribution, not the mean.
+\item Cross-core: pin the thread.
+\end{itemize}
+
+\textbf{The discipline.} Timekeeping is the volume's instrument; a miscalibrated instrument gives confidently wrong conclusions. Use \texttt{steady\_clock}/pinned invariant TSC; warm up, amortise, and fence; and report the distribution and its tail. Chapter 103 turns these fundamentals into a rigorous benchmarking practice.

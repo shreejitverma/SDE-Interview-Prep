@@ -1,0 +1,196 @@
+\chapter{Advanced Template Metaprogramming}
+
+Template metaprogramming (TMP) turns the C++ type system into a compile-time programming language: the compiler becomes an interpreter that runs your meta-program during translation and emits specialised machine code as its output. The central problem this chapter addresses is \textbf{abstraction without cost} --- how to express generic, policy-driven, statically-dispatched designs that the optimiser can collapse to the same instructions a hand-written specialisation would produce. We cover the techniques, but more importantly the cost model (compile time, binary size, diagnostic quality) and the failure modes (instantiation blowup, ODR hazards, unreadable errors) that decide whether TMP is the right tool.
+
+\section*{Chapter Roadmap}
+\begin{itemize}
+\item 74.1 The Evolution of TMP and Why It Exists
+\item 74.2 SFINAE: Substitution Failure Is Not An Error
+\item 74.3 Detection Idioms: \texttt{void\_t}, \texttt{declval}, and Trait Construction
+\item 74.4 The Curiously Recurring Template Pattern (CRTP)
+\item 74.5 Policy-Based Design
+\item 74.6 Modern TMP with Concepts (C++20)
+\item 74.7 Variadic Templates, Fold Expressions, and Type Lists
+\item 74.8 The Cost Model: Compile Time, Binary Size, and Diagnostics
+\item 74.9 Correctness Hazards and Anti-Patterns
+\item 74.10 When \emph{Not} to Use TMP
+\end{itemize}
+
+\section{The Evolution of TMP and Why It Exists}
+
+\textbf{Template metaprogramming} is the art of computing with types and compile-time values so that the compiler generates specialised code on your behalf. The motivation is not cleverness for its own sake: it is the elimination of runtime dispatch. A \texttt{virtual} call costs an indirect branch the predictor may miss and a pointer chase that defeats inlining; a template specialisation resolved at compile time costs nothing --- the call is inlined and the abstraction disappears.
+
+\begin{itemize}
+\item \textbf{C++98:} Recursive \texttt{struct} instantiation, \texttt{enum} value hacks. Turing-complete but painful; values smuggled through \texttt{enum}/\texttt{static const}.
+\item \textbf{C++11:} \texttt{constexpr}, \texttt{static\_assert}, alias templates (\texttt{using}), variadic templates. Real compile-time functions; type lists become ergonomic.
+\item \textbf{C++14:} Variable templates, relaxed \texttt{constexpr}. Trait values as \texttt{name\_v<T>}.
+\item \textbf{C++17:} \texttt{if constexpr}, fold expressions, \texttt{std::void\_t}. Branch on traits without specialisation.
+\item \textbf{C++20:} Concepts (\texttt{requires}), \texttt{consteval}, constrained \texttt{auto}. Constraints become first-class and diagnosable.
+\end{itemize}
+
+\textbf{Why this matters.} Each generation removed an entire category of boilerplate \emph{and} improved diagnostics. Pre-C++11 TMP errors were multi-page template backtraces; C++20 concepts produce a single line naming the unsatisfied constraint. Choosing the newest idiom your toolchain supports is usually the correct engineering decision --- because compile time and diagnosability are real costs paid by every engineer who later touches the code.
+
+\section{SFINAE: Substitution Failure Is Not An Error}
+
+Before concepts, \textbf{SFINAE} was the only mechanism to constrain a template. The rule: when the compiler substitutes template arguments into a candidate's \emph{immediate context} and that substitution produces an ill-formed type or expression, the candidate is silently removed from the overload set rather than causing a hard error. Only if \emph{no} candidate survives do you get an error.
+
+\subsection{\texttt{std::enable\_if}}
+
+\texttt{std::enable\_if<Cond, T>} has a member \texttt{type} only when \texttt{Cond} is true. Referencing \texttt{::type} when the condition is false is a substitution failure, which prunes the overload.
+
+\begin{lstlisting}[language=C++, caption={Overload selection by trait via enable\_if. Min standard: C++11. Portable.}]
+#include <type_traits>
+#include <iostream>
+
+template <typename T>
+typename std::enable_if<std::is_integral<T>::value, void>::type
+process(T t) { std::cout << "Integral: " << t << "\n"; }
+
+template <typename T>
+typename std::enable_if<std::is_floating_point<T>::value, void>::type
+process(T t) { std::cout << "Float: " << t << "\n"; }
+\end{lstlisting}
+
+\textbf{Why this matters / cost model.} SFINAE has zero runtime cost --- it is a purely overload-resolution-time decision. Its cost is paid by the compiler: every candidate is substituted, and dense \texttt{enable\_if} chains multiply front-end work per call site. The deeper hazard is the phrase \emph{immediate context}: a failure buried inside an instantiated function body is \textbf{not} a substitution failure --- it is a hard error. Constraints must live in the signature, never in the body.
+
+\subsection{The three placements of enable\_if}
+
+\begin{lstlisting}[language=C++, caption={Three SFINAE placements. enable\_if\_t/is\_integral\_v require C++14/C++17.}]
+template <typename T>
+std::enable_if_t<std::is_integral_v<T>, T> negate_a(T t) { return -t; }
+
+template <typename T, std::enable_if_t<std::is_integral_v<T>, int> = 0>
+T negate_b(T t) { return -t; }   // preferred: signature stays clean
+
+template <typename T>
+T negate_c(T t, std::enable_if_t<std::is_integral_v<T>, int> = 0) { return -t; }
+\end{lstlisting}
+
+Placement (b) is the production default: it keeps the visible signature clean and avoids the bug where two overloads differing only by their \texttt{enable\_if} return type are still the \emph{same} signature for redeclaration purposes.
+
+\section{Detection Idioms: void\_t, declval, and Trait Construction}
+
+The \textbf{detection idiom} answers ``does type \texttt{T} have member \texttt{X}?'' with partial specialisation and \texttt{std::void\_t}.
+
+\begin{lstlisting}[language=C++, caption={The detection idiom for a member function. Min standard: C++17.}]
+#include <type_traits>
+#include <utility>
+
+template <typename T, typename = void>
+struct has_print : std::false_type {};
+
+template <typename T>
+struct has_print<T, std::void_t<decltype(std::declval<T>().print())>>
+    : std::true_type {};
+\end{lstlisting}
+
+The partial specialisation is preferred when \texttt{std::void\_t<...>} is well-formed --- i.e. when \texttt{declval<T>().print()} is a valid expression. \texttt{std::declval<T>()} produces an unevaluated rvalue of \texttt{T} without requiring a constructor; \texttt{std::void\_t<Ts...>} converts ``this expression compiles'' into ``this type exists.''
+
+\textbf{Why this matters.} Detection lets a generic component \emph{adapt} to a type's capabilities instead of demanding a fixed interface. The cost is compile-time only. In C++20 the same intent is expressed far more legibly with a \texttt{requires} expression; prefer that when available.
+
+\section{The Curiously Recurring Template Pattern (CRTP)}
+
+\textbf{CRTP} is static polymorphism: a base class is parameterised on its own derived type, so the base can call into the derived class with the concrete type known at compile time.
+
+\begin{lstlisting}[language=C++, caption={CRTP for zero-overhead static dispatch. Min standard: C++11.}]
+template <typename Derived>
+class Base {
+public:
+    void interface() { static_cast<Derived*>(this)->implementation(); }
+};
+
+class Concrete : public Base<Concrete> {
+public:
+    void implementation() { std::cout << "Concrete impl\n"; }
+};
+\end{lstlisting}
+
+\textbf{Why this matters / cost model.} A \texttt{virtual} call costs a vptr load, a vtable load, an indirect branch the predictor may mispredict (a $\sim$15--20 cycle flush), and a hard inlining barrier. CRTP collapses all four to nothing: \texttt{static\_cast} is a no-op, the call is direct, and the inliner sees straight through it, enabling constant propagation across the abstraction boundary.
+
+\begin{itemize}
+\item Dynamic dispatch enables heterogeneous containers (\texttt{vector<Base*>}); CRTP cannot --- each \texttt{Base<D>} is a distinct type.
+\item CRTP emits one function body \emph{per derived type} (code bloat); \texttt{virtual} emits one.
+\item CRTP is closed at compile time; \texttt{virtual} supports plugins/late binding.
+\end{itemize}
+
+\textbf{Hazard:} \texttt{static\_cast<Derived*>(this)} is undefined behaviour if the object is not actually a \texttt{Derived}.
+
+\section{Policy-Based Design}
+
+\textbf{Policy-based design} composes a class from orthogonal \emph{policy} classes supplied as template parameters, each defining one axis of behaviour.
+
+\begin{lstlisting}[language=C++, caption={Behaviour composed from orthogonal policies. Min standard: C++11.}]
+struct ConsoleOutput { void print(const std::string& s) { std::cout << s << "\n"; } };
+struct EnglishLanguage { std::string message() { return "Hello, World!"; } };
+
+template <typename OutputPolicy, typename LanguagePolicy>
+class HelloWorld : private OutputPolicy, private LanguagePolicy {
+public:
+    void run() { this->print(this->message()); }
+};
+\end{lstlisting}
+
+\textbf{Why this matters / trade-offs.} Policies turn an explosion of behavioural combinations into independent, separately-testable units resolved at compile time so dispatch is free. The cost is code bloat (one instantiation per combination), error-message complexity, and a hard boundary against runtime configuration. Inheriting policies \emph{privately} avoids leaking their interface and enables the empty base optimisation, so stateless policies add zero bytes.
+
+\section{Modern TMP with Concepts (C++20)}
+
+\textbf{Concepts} make constraints first-class: named predicates over types that participate in overload resolution and produce a single-line diagnostic when unsatisfied.
+
+\begin{lstlisting}[language=C++, caption={A constraint that replaces both SFINAE and a detection trait. Min standard: C++20.}]
+#include <concepts>
+
+template <typename T>
+concept Printable = requires(T t) {
+    { t.print() } -> std::same_as<void>;
+};
+
+void process(Printable auto& obj) { obj.print(); }
+\end{lstlisting}
+
+Concepts subsume the prior sections: they replace \texttt{enable\_if} and \emph{partially order} overloads by constraint strength; a \texttt{requires}-expression replaces the \texttt{void\_t} detection idiom; they constrain CRTP bases and policy parameters so misuse is reported at the definition.
+
+\textbf{Why this matters.} The dominant cost of pre-C++20 TMP was diagnosability. A concept reports \texttt{constraint 'Printable<Widget>' not satisfied} at the call site, and checks the constraint \emph{before} instantiation, so an unsatisfied requirement is a clean rejection rather than a hard error escaping the immediate context.
+
+\section{Variadic Templates, Fold Expressions, and Type Lists}
+
+Variadic templates accept arbitrary parameter packs; fold expressions collapse a pack with a binary operator without recursion.
+
+\begin{lstlisting}[language=C++, caption={Fold expressions replace recursive pack expansion. Min standard: C++17.}]
+template <typename... Args>
+auto sum(Args... args) { return (args + ...); }   // unary right fold
+
+template <typename... Args>
+void print_all(const Args&... args) {
+    ((std::cout << args << ' '), ...);             // fold over comma
+    std::cout << '\n';
+}
+\end{lstlisting}
+
+\textbf{Why this matters / cost model.} Pre-C++17, processing a pack required recursive templates generating one instantiation per pack length per call arity --- a real compile-time and binary-size cost. Folds emit a single non-recursive expansion. For genuine type-level computation recursion is still common; minimise its depth, because instantiation depth is bounded and front-end memoisation pressure is a frequent cause of slow builds.
+
+\section{The Cost Model: Compile Time, Binary Size, and Diagnostics}
+
+TMP moves work from runtime to compile time, but compile time is paid by every engineer on every build.
+
+\begin{itemize}
+\item \textbf{Compile time} --- driven by distinct instantiation count, recursion depth, SFINAE candidate count. Mitigate with folds, reduced arity, and \texttt{extern template}.
+\item \textbf{Binary size} --- one code body per instantiation. Type-erase cold paths; share non-dependent code in a non-template base.
+\item \textbf{Diagnostics} --- concepts/\texttt{static\_assert} with messages at the boundary.
+\item \textbf{Link time} --- duplicate instantiations merged by COMDAT folding; \texttt{extern template} suppresses redundant work.
+\end{itemize}
+
+\textbf{Why this matters.} Measure with Clang's \texttt{-ftime-trace}, then cut the worst offenders --- usually by reducing the number of \emph{distinct} instantiations, since the compiler memoises identical ones but pays full price for each new combination.
+
+\section{Correctness Hazards and Anti-Patterns}
+
+\begin{itemize}
+\item Constraints outside the immediate context become hard errors, not SFINAE rejections.
+\item Differing template definitions across TUs are an ODR violation --- the linker silently picks one (UB).
+\item \texttt{static\_cast} in CRTP on the wrong type is UB.
+\item Unbounded recursive metafunctions blow \texttt{-ftemplate-depth} and build time.
+\item Over- and under-constraining both yield opaque ``no matching function'' errors; named concepts cure both.
+\end{itemize}
+
+\section{When \emph{Not} to Use TMP}
+
+Prefer runtime polymorphism or plain functions when the set of types is open or chosen at runtime, when the dispatch is cold (the indirect-branch cost is irrelevant outside hot loops), when the abstraction would multiply binary size without a measured win, or when the team cannot absorb the diagnostic and build-time cost. The mastery position is to use the compiler to erase cost on the hot path and pay for flexibility with runtime dispatch everywhere else.

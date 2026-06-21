@@ -1,0 +1,122 @@
+\chapter{Compile-Time Programming}
+
+Compile-time programming moves computation from the running process into the translation pipeline: tables are precomputed, invariants are proven, and code paths are eliminated before a single instruction executes. The problem it solves is twofold --- \textbf{zero runtime cost} for work whose inputs are known at build time, and \textbf{correctness by construction} via checks the program cannot even link without satisfying. This chapter develops \texttt{constexpr}/\texttt{consteval}, the type-traits machinery they build on, and the cost model that decides when shifting work to the compiler pays.
+
+\section*{Chapter Roadmap}
+\begin{itemize}
+\item 75.1 Why Compute at Compile Time
+\item 75.2 The \texttt{constexpr} Evolution
+\item 75.3 \texttt{consteval} and \texttt{constinit}
+\item 75.4 Type Traits: Queries and Transformations
+\item 75.5 \texttt{std::integral\_constant} and Value-as-Type
+\item 75.6 \texttt{if constexpr} and Compile-Time Branching
+\item 75.7 Static Reflection (C++26 Preview)
+\item 75.8 The Cost Model and Hazards
+\end{itemize}
+
+\section{Why Compute at Compile Time}
+Three payoffs motivate pushing work into translation:
+\begin{enumerate}
+\item \textbf{Zero runtime cost.} A \texttt{constexpr} lookup table is materialised into \texttt{.rodata}; the program just reads it.
+\item \textbf{Correctness by construction.} \texttt{static\_assert} and \texttt{consteval} turn classes of bug into build errors.
+\item \textbf{Specialisation.} A known value lets the optimiser propagate constants, unroll loops, and eliminate dead branches.
+\end{enumerate}
+
+\textbf{Why this matters / cost model.} The runtime saving is unconditional but purchased with compiler time and memory: a \texttt{constexpr} evaluation runs in the front-end's interpreter, orders of magnitude slower than native execution and bounded by step limits. Precompute when the input is fixed and the table is small-to-moderate; otherwise generate it once at startup.
+
+\section{The \texttt{constexpr} Evolution}
+\texttt{constexpr} marks a function or variable as usable in a constant expression; the permitted constructs widened across standards: C++11 (single \texttt{return}), C++14 (loops, locals, mutation), C++17 (\texttt{if constexpr}, constexpr lambdas), C++20 (transient \texttt{new}, \texttt{virtual}, \texttt{is\_constant\_evaluated}), C++23 (much of the standard library).
+
+\begin{lstlisting}[language=C++, caption={A C++14-style imperative constexpr function. Min standard: C++14.}]
+constexpr unsigned long long factorial(unsigned n) {
+    unsigned long long acc = 1;
+    for (unsigned i = 2; i <= n; ++i) acc *= i;
+    return acc;
+}
+constexpr auto F10 = factorial(10);
+static_assert(F10 == 3628800);
+\end{lstlisting}
+
+A \texttt{constexpr} function is not \emph{required} to run at compile time; it does so only in a constant-expression context.
+
+\begin{lstlisting}[language=C++, caption={Dual-mode evaluation. The builtin is GCC/Clang-specific (non-portable). Min standard: C++20.}]
+constexpr double power(double b, int e) {
+    if (std::is_constant_evaluated()) {
+        double r = 1.0; for (int i = 0; i < e; ++i) r *= b; return r;
+    } else {
+        return __builtin_pow(b, e);
+    }
+}
+\end{lstlisting}
+
+\textbf{Why this matters.} \texttt{is\_constant\_evaluated()} resolves the tension that the fastest runtime algorithm is often not legal or cheap at compile time. Beware: \texttt{if constexpr (std::is\_constant\_evaluated())} is always-true and is a bug --- it must be a plain \texttt{if}. C++23's \texttt{if consteval} makes the correct form unambiguous.
+
+\section{\texttt{consteval} and \texttt{constinit}}
+\textbf{\texttt{consteval}} declares an immediate function: every call must produce a constant or the program is ill-formed.
+
+\begin{lstlisting}[language=C++, caption={consteval forces compile-time evaluation. Min standard: C++20.}]
+consteval int square(int n) { return n * n; }
+constexpr int a = square(5);   // OK
+// int b = square(runtime);    // ERROR
+\end{lstlisting}
+
+\textbf{\texttt{constinit}} asserts a static-storage variable is initialised by a constant expression, eliminating the static initialisation order fiasco and the runtime init guard.
+
+\textbf{Why this matters / cost model.} A function-local \texttt{static} carries a hidden thread-safe guard; a namespace-scope non-constant \texttt{static} introduces unpredictably-ordered dynamic init. \texttt{constinit} removes both: the object lands fully formed in \texttt{.data}/\texttt{.rodata}.
+
+\section{Type Traits: Queries and Transformations}
+\texttt{<type\_traits>} is the foundation library: compile-time predicates and type transformations.
+
+\begin{lstlisting}[language=C++, caption={Trait queries gate optimisation. Min standard: C++17.}]
+static_assert(std::is_integral_v<int>);
+static_assert(std::is_same_v<int, int>);
+static_assert(std::is_trivially_copyable_v<int>);   // gates memcpy-style optimisation
+\end{lstlisting}
+
+Transformations yield types: \texttt{remove\_const\_t}, \texttt{remove\_reference\_t}, \texttt{decay\_t} (the by-value parameter transform), \texttt{conditional\_t<B,T,F>} (compile-time \texttt{if}), \texttt{common\_type\_t}.
+
+\textbf{Why this matters.} Traits like \texttt{is\_trivially\_copyable} let the library branch to \texttt{memcpy}, elide destructors, and enable relocation. A trait query is the compile-time evidence that licenses an aggressive code path; getting it wrong is a memory-safety bug, not a slowdown.
+
+\section{\texttt{std::integral\_constant} and Value-as-Type}
+\texttt{std::integral\_constant<T,v>} wraps a compile-time value as a type; \texttt{true\_type}/\texttt{false\_type} are the return types of the entire trait library and the basis of tag dispatch.
+
+\begin{lstlisting}[language=C++, caption={A value carried in the type system. Min standard: C++11.}]
+using Two = std::integral_constant<int, 2>;
+using Four = std::integral_constant<int, 4>;
+static_assert(Two::value + Two::value == Four::value);
+\end{lstlisting}
+
+\section{\texttt{if constexpr} and Compile-Time Branching}
+\texttt{if constexpr} discards the not-taken branch during instantiation --- it need not compile for the current type.
+
+\begin{lstlisting}[language=C++, caption={One function, statically-selected bodies. Min standard: C++17.}]
+template <typename T>
+std::string describe(const T& x) {
+    if constexpr (std::is_integral_v<T>)        return "integer:" + std::to_string(x);
+    else if constexpr (std::is_floating_point_v<T>) return "float:" + std::to_string(x);
+    else                                        return "other";
+}
+\end{lstlisting}
+
+\textbf{Why this matters.} The not-taken branch is removed before type-checking, so \texttt{to\_string(x)} is never instantiated for a \texttt{T} that lacks it. With a plain \texttt{if}, both branches must compile. Prefer \texttt{if constexpr} over SFINAE for in-body dispatch.
+
+\section{Static Reflection (C++26 Preview)}
+C++26 introduces standard static reflection: a \texttt{std::meta::info} handle for an entity, splicable back into code.
+
+\begin{lstlisting}[language=C++, caption={Proposed reflection; provisional syntax, non-portable/unstable. Min standard: C++26.}]
+// constexpr auto r = ^^MyClass;
+// template for (constexpr auto m : std::meta::nonstatic_data_members_of(r)) ...
+\end{lstlisting}
+
+\textbf{Why this matters.} Reflection eliminates the largest remaining source of boilerplate --- serialisation, enum-to-string, ORM mapping --- letting these be ordinary \texttt{constexpr} code. Until it stabilises, isolate reflection-dependent designs behind a thin interface.
+
+\section{The Cost Model and Hazards}
+\begin{itemize}
+\item \textbf{Compile time:} the \texttt{constexpr} interpreter is slow and step-bounded; precompute only small/medium tables.
+\item \textbf{Compiler memory:} large compile-time structures can OOM the front-end.
+\item \textbf{Transient allocation:} C++20 \texttt{constexpr new} must be freed before evaluation ends --- no heap leaks into runtime.
+\item \textbf{\texttt{is\_constant\_evaluated} misuse:} always-true under \texttt{if constexpr}; use plain \texttt{if} or \texttt{if consteval}.
+\item \textbf{FP determinism:} compile-time IEEE rules can differ in the last bit from a runtime FMA path.
+\end{itemize}
+
+\textbf{Why this matters.} The headline risk is silently trading runtime speed for build speed. Measure compile-time cost as you measure runtime cost, and reserve heavy compile-time evaluation for cases where the correctness guarantee or zero-runtime-cost table justifies it.

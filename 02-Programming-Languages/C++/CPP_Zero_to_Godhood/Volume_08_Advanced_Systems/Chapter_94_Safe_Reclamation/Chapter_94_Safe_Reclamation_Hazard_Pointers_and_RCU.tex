@@ -1,0 +1,75 @@
+\chapter{Safe Reclamation --- Hazard Pointers and RCU}
+
+The data-structure logic of a lock-free stack is the easy part; the hard 80\% is answering \emph{when is it safe to free a node another thread might still be reading?} A thread can load a pointer a microsecond before another unlinks and frees it, then dereference freed memory. This chapter develops the two production answers --- hazard pointers and RCU --- plus epoch-based reclamation, with the cost model to choose between them. This is what makes Chapter 77's structures actually safe.
+
+\section*{Chapter Roadmap}
+\begin{itemize}
+\item 94.1 The Reclamation Problem, Precisely
+\item 94.2 Why Reference Counting Isn't Enough
+\item 94.3 Hazard Pointers
+\item 94.4 RCU: Read-Copy-Update
+\item 94.5 Epoch-Based Reclamation
+\item 94.6 Choosing a Scheme
+\end{itemize}
+
+\section{The Reclamation Problem, Precisely}
+Removal has two non-simultaneous steps: unlink, then free. Between a reader loading a pointer and dereferencing it, another thread can unlink and free that node.
+
+\begin{lstlisting}[language=text, caption={The reclamation use-after-free window.}]
+Reader:  p = head.load();      // pointer to node X
+Remover: unlink X; free(X);    // X is now freed
+Reader:  use *p;               // USE-AFTER-FREE
+\end{lstlisting}
+
+\textbf{Why this matters.} This is the defining hazard of pointer-based lock-free code, distinct from ABA (a CAS succeeding wrongly vs a dereference of freed memory). A mutex serialises removal against use; lock-free code needs an explicit protocol so a remover knows no reader holds a pointer before freeing. A lock-free structure without one is incorrect.
+
+\section{Why Reference Counting Isn't Enough}
+A per-node atomic count has a bootstrapping problem: to increment it you must dereference the node, but the node may be freed before you increment.
+
+\textbf{Why this matters / cost model.} This is why naive \texttt{shared\_ptr}-per-node is unsafe (and why \texttt{atomic<shared\_ptr>} needs a split count or hidden lock). Reference counting also puts a contended atomic RMW on every traversal step --- catastrophic for read-heavy structures. The schemes below make the read side cheap and defer cost to the rare reclaimer.
+
+\section{Hazard Pointers}
+A hazard pointer is a per-thread slot publishing the pointer a thread is currently dereferencing; a reclaimer scans all slots before freeing.
+
+\begin{lstlisting}[language=C++, caption={Hazard pointers: publish-then-recheck; scan-before-free. Min standard: C++11.}]
+std::atomic<void*> hazard[MAX_THREADS];
+template <typename T>
+T* protect(int tid, std::atomic<T*>& src) {
+    T* p;
+    do { p = src.load(std::memory_order_acquire);
+         hazard[tid].store(p, std::memory_order_release);
+    } while (p != src.load(std::memory_order_acquire));
+    return p;
+}
+void retire(T* p, std::vector<T*>& retired) {
+    retired.push_back(p);
+    if (retired.size() >= THRESHOLD) scan_and_free(retired);
+}
+\end{lstlisting}
+
+\textbf{Why this matters / cost model.} The read side is a store plus a recheck load --- no RMW, no reader contention. The reclaim side is O(retired $\times$ threads) amortised over the batch. Publish-then-recheck guarantees any node a reader will dereference is visible to the scanner first. Memory is tightly bounded (threads $\times$ slots). Slated as \texttt{std::hazard\_pointer}. Cost: a hazard slot and recheck per traversal step.
+
+\section{RCU: Read-Copy-Update}
+RCU makes readers nearly free (no read-side atomics) at the cost of writers waiting a grace period before reclaiming.
+
+\begin{lstlisting}[language=C++, caption={RCU: free read side, writer waits a grace period. Min standard: C++14 (liburcu semantics).}]
+// READ:  rcu_read_lock(); p = rcu_dereference(head); use(*p); rcu_read_unlock();
+// WRITE: rcu_assign_pointer(head, new_node); synchronize_rcu(); free(old);
+\end{lstlisting}
+
+\textbf{Why this matters / cost model.} Classic RCU's read side is a no-op or cheap per-CPU counter --- no RMW, no contention --- so readers scale perfectly (routing tables, the kernel dcache). The cost moves to the writer's \texttt{synchronize\_rcu()}, which waits a grace period (milliseconds). Reclamation is deferred and unbounded: a stalled reader delays all reclamation. Right when reads dominate and writers tolerate latency; wrong when memory must be bounded.
+
+\section{Epoch-Based Reclamation}
+A global epoch advances periodically; each thread announces its entry epoch; a retired node is freed once all threads pass its epoch (typically two later).
+
+\textbf{Why this matters / cost model.} EBR keeps the read side cheap (one relaxed store per section, no per-pointer recheck) while bounding lag to a couple of epochs. Simpler than full RCU, better read-side than hazard pointers --- hence its dominance in user-space libraries (crossbeam, folly). Weakness: a stalled thread pins the epoch, risking unbounded growth; assumes short critical sections.
+
+\section{Choosing a Scheme}
+\begin{itemize}
+\item Reference counting --- atomic RMW per step, immediate reclamation; simplicity.
+\item Hazard pointers --- publish+recheck per pointer, tightly bounded; mixed read/write, bounded memory.
+\item RCU --- near-zero read side, unbounded reclamation; read-mostly, latency-tolerant writers.
+\item EBR --- one epoch store per section, bounded to $\sim$2 epochs; general lock-free libraries.
+\end{itemize}
+
+\textbf{The discipline.} Reclamation separates a prototype from a correct system. Drivers: how read-heavy (read-mostly $\to$ RCU/EBR; mixed $\to$ hazard pointers) and how tightly bounded memory must be (tight $\to$ hazard pointers; tolerant $\to$ RCU/EBR). Above all, use a vetted library (folly, liburcu, libcds, crossbeam-style EBR) --- these schemes are subtle and their bugs are non-deterministic use-after-frees.

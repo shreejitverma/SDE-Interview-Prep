@@ -1,0 +1,130 @@
+\chapter{The C++ Memory Model in Depth}
+
+The C++ memory model is the contract that makes multithreaded code \emph{meaningful}: it defines, for a program with concurrent access to shared memory, which writes a read is permitted to observe. Without it, the compiler, the CPU, and the cache coherence protocol are each free to reorder memory operations for performance, and ``the value of \texttt{x}'' stops being a well-defined question. Every lock-free structure, atomic flag, and correctness argument in later chapters rests on this model.
+
+\section*{Chapter Roadmap}
+\begin{itemize}
+\item 76.1 Why a Memory Model Exists: Reordering and the Abstract Machine
+\item 76.2 Data Races and Undefined Behaviour
+\item 76.3 The Relations: Sequenced-Before, Synchronizes-With, Happens-Before
+\item 76.4 \texttt{std::atomic} and Atomicity
+\item 76.5 The Six Memory Orderings
+\item 76.6 The Release/Acquire Pattern in Depth
+\item 76.7 Relaxed Ordering and Its Legitimate Uses
+\item 76.8 Sequential Consistency and Its Cost
+\item 76.9 Fences
+\item 76.10 The Hardware Cost Model: x86 vs ARM/POWER
+\item 76.11 Common Bugs and Anti-Patterns
+\end{itemize}
+
+\section{Why a Memory Model Exists: Reordering and the Abstract Machine}
+C++ is defined in terms of an \textbf{abstract machine}. The compiler must preserve single-thread observable behaviour (the ``as-if'' rule) but is otherwise free to reorder memory operations. Three independent layers reorder memory: the compiler (hoisting, register caching), the CPU (out-of-order and speculative execution), and the memory subsystem (store buffers, invalidation queues, coherence latency).
+
+\textbf{Why this matters.} In a single thread none of this is observable. Across threads, all three layers are visible, and the naive assumption that thread B sees thread A's writes in A's order is false. The memory model specifies what \emph{is} guaranteed so you can reason without modelling every microarchitecture.
+
+\section{Data Races and Undefined Behaviour}
+A \textbf{data race} occurs when two threads access the same location concurrently, at least one writes, and the accesses are unsynchronised. \textbf{A data race is undefined behaviour} --- the optimiser is entitled to assume races never happen.
+
+\begin{lstlisting}[language=C++, caption={A textbook data race (buggy). Min standard: C++11.}]
+int data = 0; bool ready = false;            // plain bool, not atomic
+void producer() { data = 42; ready = true; }
+void consumer() { while (!ready) {} assert(data == 42); }
+\end{lstlisting}
+
+\textbf{Why this matters / cost model.} The fix is not \texttt{volatile} (no atomicity, no inter-thread ordering) but \texttt{std::atomic}. Because the optimiser proves no race can exist, it may delete the spin loop or assume \texttt{ready} never changes. Every cross-thread shared access must be a mutex-protected or atomic operation.
+
+\section{The Relations: Sequenced-Before, Synchronizes-With, Happens-Before}
+\begin{itemize}
+\item \textbf{Sequenced-before} --- intra-thread program order; gives single-threaded code its meaning.
+\item \textbf{Synchronizes-with} --- the cross-thread edge from a release operation to an acquire that reads its value; the only way to manufacture inter-thread ordering.
+\item \textbf{Happens-before} --- transitive closure of the two. If write W happens-before read R, R observes W or a later write; if neither orders the other and they conflict, it is a race.
+\end{itemize}
+
+\textbf{Why this matters.} Never reason about caches directly; ask whether a happens-before edge exists from a write to a read. Every primitive (mutex lock/unlock, atomic release/acquire, thread create/join) exists to create these edges.
+
+\section{\texttt{std::atomic} and Atomicity}
+\texttt{std::atomic<T>} makes operations indivisible and race-free.
+
+\begin{lstlisting}[language=C++, caption={Atomic read-modify-write. Min standard: C++11.}]
+std::atomic<int> count{0};
+count.fetch_add(1, std::memory_order_relaxed);
+int c = count.load(std::memory_order_relaxed);
+\end{lstlisting}
+
+Atomicity and ordering are orthogonal: \texttt{fetch\_add} is always atomic; the order argument controls only relative ordering of other memory ops. Check \texttt{is\_lock\_free()} --- wide types may fall back to a hidden lock.
+
+\section{The Six Memory Orderings}
+\begin{itemize}
+\item \texttt{relaxed} --- atomicity only, no ordering.
+\item \texttt{acquire} (load/RMW) --- no later access may move before it; pairs with release.
+\item \texttt{release} (store/RMW) --- no earlier access may move after it; publishes prior writes.
+\item \texttt{acq\_rel} (RMW) --- both.
+\item \texttt{seq\_cst} --- acquire/release plus a single global total order; the default.
+\item \texttt{consume} --- weaker, dependency-ordered; effectively deprecated, promoted to acquire.
+\end{itemize}
+
+\textbf{Why this matters.} Each names a precise guarantee. Too weak is a correctness bug that may never reproduce on x86 and fail on ARM; too strong is a performance bug. Derive the \emph{minimum} ordering from a happens-before argument.
+
+\section{The Release/Acquire Pattern in Depth}
+\begin{lstlisting}[language=C++, caption={Release/acquire publication; data need not be atomic. Min standard: C++11.}]
+std::atomic<bool> ready{false}; int data = 0;
+void producer() { data = 42; ready.store(true, std::memory_order_release); }
+void consumer() { while (!ready.load(std::memory_order_acquire)) {} assert(data == 42); }
+\end{lstlisting}
+
+\textbf{Why this matters / cost model.} The workhorse of lock-free code. \texttt{data} is plain because the release/acquire pair transitively orders it. On x86 both compile to plain \texttt{mov}; on ARM to \texttt{stlr}/\texttt{ldar} --- far cheaper than the \texttt{dmb ish} a \texttt{seq\_cst} op needs. Synchronisation is pairwise, not global.
+
+\section{Relaxed Ordering and Its Legitimate Uses}
+\begin{lstlisting}[language=C++, caption={A relaxed statistic counter. Min standard: C++11.}]
+std::atomic<long> hits{0};
+void on_request() { hits.fetch_add(1, std::memory_order_relaxed); }
+\end{lstlisting}
+
+Legitimate: monotonic statistics, reference-count increments (the destroying decrement needs release+acquire), unique IDs. The litmus test: does any other access depend on this atomic's ordering? If no, relaxed is correct and optimal; if yes, you need at least release/acquire.
+
+\section{Sequential Consistency and Its Cost}
+\begin{lstlisting}[language=C++, caption={Dekker-style: only seq\_cst forbids z==2. Min standard: C++11.}]
+std::atomic<bool> x{false}, y{false}; std::atomic<int> z{0};
+void t1() { x.store(true); if (!y.load()) ++z; }
+void t2() { y.store(true); if (!x.load()) ++z; }
+\end{lstlisting}
+
+\textbf{Why this matters / cost model.} The global total order is exactly what release/acquire does not provide across independent locations. The cost is a full barrier on the store side: x86 \texttt{xchg}/\texttt{mfence} drains the store buffer, ARM uses \texttt{dmb ish}. Use \texttt{seq\_cst} only when the total order is genuinely required.
+
+\section{Fences}
+\begin{lstlisting}[language=C++, caption={A standalone fence pairs with another fence/operation. Min standard: C++11.}]
+void producer() {
+    data = 42;
+    std::atomic_thread_fence(std::memory_order_release);
+    ready.store(true, std::memory_order_relaxed);
+}
+void consumer() {
+    while (!ready.load(std::memory_order_relaxed)) {}
+    std::atomic_thread_fence(std::memory_order_acquire);
+    assert(data == 42);
+}
+\end{lstlisting}
+
+\textbf{Why this matters.} Fences amortise one ordering point over many relaxed operations. A fence's ordering is positional (orders ops before/after it), unlike an operation's. Misplacing a fence relative to its atomic is a classic bug.
+
+\section{The Hardware Cost Model: x86 vs ARM/POWER}
+\begin{itemize}
+\item \texttt{relaxed}: plain \texttt{mov} (x86) / \texttt{ldr/str} (ARM).
+\item \texttt{acquire}/\texttt{release}: free \texttt{mov} on x86; \texttt{ldar}/\texttt{stlr} on ARM.
+\item \texttt{seq\_cst} store: \texttt{xchg}/\texttt{mfence} (x86) drains store buffer; \texttt{dmb ish} (ARM).
+\item RMW: \texttt{lock xadd} (x86); \texttt{ldaxr/stlxr} retry loop (ARM).
+\end{itemize}
+
+\textbf{Why this matters.} x86 TSO makes acquire/release free, so under-synchronised code passes on x86 and fails on ARM (Apple Silicon, Graviton). Reason from the C++ memory model, not x86 behaviour, and test on a weakly-ordered target.
+
+\section{Common Bugs and Anti-Patterns}
+\begin{itemize}
+\item \texttt{volatile} for synchronisation --- no atomicity, no ordering.
+\item Under-ordering that passes on x86, races on ARM.
+\item Assuming release/acquire gives a global order --- it does not.
+\item \texttt{seq\_cst} everywhere --- correct but serialises the store buffer.
+\item Non-lock-free wide atomics with a hidden lock.
+\item Mixed orderings without a stated happens-before argument.
+\end{itemize}
+
+\textbf{The discipline.} For every atomic operation, write the happens-before edge it participates in and the minimum ordering that establishes it.
