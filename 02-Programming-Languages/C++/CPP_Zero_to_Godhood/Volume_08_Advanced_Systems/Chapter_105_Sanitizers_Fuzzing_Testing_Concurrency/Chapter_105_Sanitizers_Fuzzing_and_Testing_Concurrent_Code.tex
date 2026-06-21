@@ -1,0 +1,75 @@
+\chapter{Sanitizers, Fuzzing, and Testing Concurrent Code}
+
+Undefined behaviour and data races are bugs that pass tests --- they corrupt silently, manifest only under specific inputs or interleavings, and may not surface until a compiler upgrade or a load spike. Ordinary unit tests cannot find them, because the bug is the absence of a crash that should have happened. This chapter covers the tools built to expose these latent defects: the sanitizers, fuzzing, and the hard discipline of testing concurrent code.
+
+\section*{Chapter Roadmap}
+\begin{itemize}
+\item 105.1 Why Ordinary Tests Miss These Bugs
+\item 105.2 AddressSanitizer (ASan)
+\item 105.3 UndefinedBehaviorSanitizer (UBSan)
+\item 105.4 ThreadSanitizer (TSan)
+\item 105.5 MemorySanitizer (MSan)
+\item 105.6 Fuzzing
+\item 105.7 Testing Concurrent Code
+\item 105.8 The Discipline
+\end{itemize}
+
+\section{Why Ordinary Tests Miss These Bugs}
+A use-after-free may return the right value because the memory isn't reused yet; a race may not interleave badly in the test run; overflow may wrap as expected at \texttt{-O0}. These bugs are latent: present but symptom-dependent on layout, timing, optimization, or unexercised input.
+
+\textbf{Why this matters.} UB and race bugs are non-deterministic in manifestation --- pass a thousand times, fail the next; pass in CI, fail in production; pass at \texttt{-O0}, miscompile at \texttt{-O2}. Output-checking cannot find them because the output is often correct by luck. These tools detect the moment the contract is violated instead.
+
+\section{AddressSanitizer (ASan)}
+\begin{lstlisting}[language=bash, caption={ASan turns memory errors into immediate, well-located failures.}]
+g++ -fsanitize=address -fno-omit-frame-pointer -g app.cpp -o app
+./app    # aborts with allocation/free/access stack traces on first error
+\end{lstlisting}
+
+\textbf{Why this matters / cost model.} ASan uses redzones around allocations and shadow memory recording valid bytes; every access checks the shadow. It catches the exact bad access with all three stack traces, converting a heisenbug into a deterministic one. Cost $\sim$2$\times$ slowdown, $\sim$3$\times$ memory --- CI/testing, not production. The highest-value tool for the lifetime bugs of Chapter 97 and lock-free reclamation (Chapter 94).
+
+\section{UndefinedBehaviorSanitizer (UBSan)}
+\begin{lstlisting}[language=bash, caption={UBSan catches the UB itself, not just its eventual corruption.}]
+g++ -fsanitize=undefined,address -fno-sanitize-recover=all -g app.cpp -o app
+./app
+\end{lstlisting}
+
+\textbf{Why this matters.} UBSan flags signed overflow, null deref, misalignment, and bad enum/bool values the moment they execute, with file and line --- attacking the root cause before the optimizer exploits it (Chapter 104). With \texttt{-fno-sanitize-recover} it aborts on first violation. Combined with ASan it closes most single-threaded UB.
+
+\section{ThreadSanitizer (TSan)}
+\begin{lstlisting}[language=bash, caption={TSan reports data races even if they did not corrupt anything this run.}]
+g++ -fsanitize=thread -g app.cpp -o app
+./app    # reports racing accesses, both stack traces, the missing synchronization
+\end{lstlisting}
+
+\textbf{Why this matters / cost model.} TSan tracks happens-before and flags conflicting accesses not ordered by synchronization --- finding races that did not manifest. It catches under-synchronised atomics that ``work on x86'' before they reach ARM (Chapter 76), forgotten locks, and racy lazy init. Cost $\sim$5--15$\times$; only flags executed paths, so pair with good concurrent coverage. For the memory-model and lock-free chapters, TSan is the only practical validation.
+
+\section{MemorySanitizer (MSan)}
+\textbf{Why this matters.} MSan (Clang) tracks the initialization state of every bit and flags uninitialized reads (UB, and a security leak source). Its caveat: all code, including the standard library, must be instrumented, making it harder to deploy --- but it closes a gap ASan/UBSan don't for sensitive data.
+
+\section{Fuzzing}
+\begin{lstlisting}[language=C++, caption={A libFuzzer harness; with ASan/UBSan it finds the input and the bug. Min standard: C++11.}]
+extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
+    parse_packet(data, size);
+    return 0;
+}
+// clang++ -fsanitize=fuzzer,address,undefined parser.cpp -o fuzz && ./fuzz
+\end{lstlisting}
+
+\textbf{Why this matters / cost model.} Fuzzing generates inputs to trigger bugs, especially in parsers of untrusted input (Chapter 84). Coverage-guided fuzzers (libFuzzer, AFL++) evolve the corpus toward unexplored branches. Combined with sanitizers, the fuzzer finds the input and ASan/UBSan catch the violation. Continuous fuzzing runs in CI; cost is harness setup and compute.
+
+\section{Testing Concurrent Code}
+A concurrency bug depends on a specific interleaving among astronomically many. Techniques: stress testing under TSan (finds races without the bad interleaving); randomized/forced scheduling; model checking (CDSChecker/GenMC for the C++ memory model, TLA+/Spin for protocols); deterministic replay (\texttt{rr}).
+
+\textbf{Why this matters.} Running a test ``a lot'' and seeing it pass proves little --- you may never hit the 1-in-$10^9$ schedule. TSan reasons about happens-before (no bad interleaving needed); model checkers exhaustively verify small lock-free algorithms (the gold standard for Chapters 77, 93, 94); \texttt{rr} makes a rare failure reproducible. This is the strongest argument for using vetted concurrent libraries.
+
+\section{The Discipline}
+\begin{itemize}
+\item ASan --- OOB/use-after-free; $\sim$2$\times$; all CI.
+\item UBSan --- overflow/null/misalign; low; all CI.
+\item TSan --- data races; $\sim$5--15$\times$; concurrent suites.
+\item MSan --- uninitialized reads; high; sensitive code.
+\item Fuzzing + sanitizers --- input-triggered bugs; parsers.
+\item Model checking / \texttt{rr} --- interleaving bugs; hand-rolled lock-free.
+\end{itemize}
+
+\textbf{The discipline.} Run the suite under ASan+UBSan continuously in CI, concurrent tests under TSan, fuzz untrusted-input parsers, and reserve model checking for unavoidable hand-rolled lock-free. For these systems, where a single latent UB or race is a production incident, these tools are the only practical way to know the code is correct.

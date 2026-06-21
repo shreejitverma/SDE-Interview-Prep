@@ -1,0 +1,83 @@
+\chapter{Writing a Garbage Collector}
+
+C++ deliberately has no garbage collector --- it gives you RAII and deterministic destruction instead --- yet building one teaches exactly why that choice was made, and equips you to implement GC where it belongs (a scripting engine embedded in a C++ host, a managed runtime, a cyclic graph RAII cannot break). This chapter implements mark-and-sweep, surveys reference counting and tri-colour concurrent collection, and quantifies the cost model that makes GC the wrong default for latency-critical systems.
+
+\section*{Chapter Roadmap}
+\begin{itemize}
+\item 82.1 Why a GC in a Language That Has RAII
+\item 82.2 Reachability: Roots and the Object Graph
+\item 82.3 Mark-and-Sweep
+\item 82.4 Reference Counting and Its Cycle Problem
+\item 82.5 Tri-Colour Marking and Concurrent Collection
+\item 82.6 Conservative vs Precise Collection
+\item 82.7 The Cost Model: Why C++ Chose RAII
+\end{itemize}
+
+\section{Why a GC in a Language That Has RAII}
+C++ manages memory through RAII: destructors run deterministically at scope exit. GC reclaims non-deterministically. Legitimate reasons to build one: embedding a managed language (Lua/JS/Python) whose scripts create cyclic, dynamically-typed graphs; cyclic data structures that \texttt{shared\_ptr} leaks; and understanding the trade-off.
+
+\textbf{Why this matters.} Modern C++ is automatic \emph{and} deterministic via RAII --- automatic reclamation without GC pauses. This volume's latency chapters never use GC precisely because of the cost model in 82.7.
+
+\section{Reachability: Roots and the Object Graph}
+An object is live if reachable from a root, garbage otherwise. Roots are stack locals/parameters, globals/statics, and register pointers. The collector traverses the object graph from the roots; everything unreached may be freed.
+
+\textbf{Why this matters.} The hard part in C++ is finding the roots and pointer fields. A managed runtime knows its layout (precise collection); a collector over arbitrary C++ cannot tell pointers from integers (conservative collection, 82.6).
+
+\section{Mark-and-Sweep}
+Mark from the roots, setting a flag on every reachable object; sweep the heap, freeing unmarked objects and clearing marks.
+
+\begin{lstlisting}[language=C++, caption={Mark-and-sweep; the marked check terminates cyclic traversal. Min standard: C++17.}]
+struct GCObject {
+    bool marked = false;
+    virtual void trace(class VM&) {}
+    virtual ~GCObject() = default;
+};
+class VM {
+    std::vector<GCObject*> heap_, roots_;
+public:
+    GCObject* track(GCObject* o) { heap_.push_back(o); return o; }
+    void add_root(GCObject* o)   { roots_.push_back(o); }
+    void mark() { for (auto* o : roots_) mark_object(o); }
+    void mark_object(GCObject* o) {
+        if (!o || o->marked) return;
+        o->marked = true; o->trace(*this);
+    }
+    void sweep() {
+        auto it = std::remove_if(heap_.begin(), heap_.end(), [](GCObject* o) {
+            if (!o->marked) { delete o; return true; }
+            o->marked = false; return false;
+        });
+        heap_.erase(it, heap_.end());
+    }
+    void collect() { mark(); sweep(); }
+};
+\end{lstlisting}
+
+\textbf{Why this matters / cost model.} Marking is O(live), sweeping O(heap); naively stop-the-world --- the program must pause so the graph is stable. That pause (milliseconds for a large heap) is GC's defining cost. Mark-and-sweep handles cycles (the flag breaks recursion), unlike reference counting.
+
+\section{Reference Counting and Its Cycle Problem}
+\begin{lstlisting}[language=C++, caption={shared\_ptr is reference counting. Min standard: C++11.}]
+struct Node { std::shared_ptr<Node> next; };
+\end{lstlisting}
+
+\textbf{Why this matters / cost model.} Reference counting is deterministic (no pause), fitting C++'s philosophy, but every copy/destroy is a contended atomic inc/dec, and it cannot collect cycles --- a self-referential \texttt{Node} leaks. Fix with \texttt{weak\_ptr} back-edges or a tracing collector.
+
+\section{Tri-Colour Marking and Concurrent Collection}
+White = unvisited; grey = visited, children unscanned; black = fully scanned. The collector advances grey to black, greying white children, until no grey remains; surviving white is garbage. Invariant: no black points to white without greying it, enforced by a write barrier on mutator pointer stores.
+
+\textbf{Why this matters / cost model.} This is how Go/Java/.NET keep pauses sub-millisecond on huge heaps --- most marking runs concurrently. The cost moves to a write barrier on every pointer store and collector threads competing for CPU/cache. The fundamental trade-off: low pauses or zero per-op overhead, not both.
+
+\section{Conservative vs Precise Collection}
+Precise collection knows exact layouts and follows only genuine pointers (supports moving/compaction). Conservative collection (Boehm) treats any address-like word as a pointer: integer coincidences pin dead objects (leaks), and objects cannot be moved (no compaction).
+
+\textbf{Why this matters.} C++ records no pointer maps, so a drop-in collector must be conservative. The toy GC avoids this by being a managed-object GC whose \texttt{trace} enumerates children precisely --- exactly where GC in C++ makes sense.
+
+\section{The Cost Model: Why C++ Chose RAII}
+\begin{itemize}
+\item RAII/\texttt{unique\_ptr}: deterministic, zero overhead, no pauses.
+\item Reference counting: deterministic, atomic inc/dec per copy, leaks cycles.
+\item Mark-and-sweep: non-deterministic, no mutator cost, stop-the-world.
+\item Tri-colour concurrent: non-deterministic, write barrier per store, sub-ms pauses, can move.
+\end{itemize}
+
+\textbf{The discipline.} C++ chose RAII because deterministic reclamation with zero steady-state overhead and no pauses beats GC's convenience for its target systems --- the same imperative behind the allocator, threading-discipline, and jitter chapters. Use tracing GC only when implementing a managed runtime with cyclic, dynamic graphs, and isolate it from the latency-critical host.

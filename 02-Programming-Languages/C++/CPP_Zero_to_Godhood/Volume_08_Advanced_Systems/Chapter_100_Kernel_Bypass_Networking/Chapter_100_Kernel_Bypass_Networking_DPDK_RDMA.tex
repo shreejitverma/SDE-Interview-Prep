@@ -1,0 +1,59 @@
+\chapter{Kernel-Bypass Networking --- DPDK, User-Space Stacks, and RDMA}
+
+At the highest packet rates and lowest latencies, even an optimised kernel network stack is too slow: every packet traverses interrupts, the socket layer, protocol processing, copies, and a syscall. Kernel-bypass removes the kernel from the data path entirely --- the NIC DMAs packets directly into user memory and the application polls for them. This chapter covers DPDK, user-space stacks, and RDMA, the cost model justifying their complexity, and when not to use them.
+
+\section*{Chapter Roadmap}
+\begin{itemize}
+\item 100.1 Why Bypass the Kernel
+\item 100.2 DPDK: Poll-Mode User-Space Packet Processing
+\item 100.3 User-Space TCP/IP Stacks
+\item 100.4 RDMA: Remote Direct Memory Access
+\item 100.5 The Cost Model and When Not To
+\end{itemize}
+
+\section{Why Bypass the Kernel}
+A packet at a normal socket traverses an interrupt, driver, softirq, routing, the TCP/IP stack, a copy into the socket buffer, a thread wakeup, and a \texttt{recv} with another copy --- several microseconds and a ceiling of a few Mpps/core.
+
+\textbf{Why this matters.} For trading, 5G, or telemetry, microseconds per packet and interrupt jitter are unacceptable. Bypass DMAs packets straight into user buffers polled on a dedicated core --- no interrupt, kernel stack, copy, or syscall --- giving sub-microsecond latency and tens of Mpps/core. The price: you give up TCP, routing, firewalling, multiplexing, and must supply them yourself.
+
+\section{DPDK: Poll-Mode User-Space Packet Processing}
+DPDK binds the NIC to a user-space poll-mode driver; the application reads/writes packets directly from the NIC rings.
+
+\begin{lstlisting}[language=C++, caption={DPDK poll-mode receive: no interrupts/syscalls, packets in user memory. Non-portable. Min standard: C++11.}]
+// rte_eal_init(...);
+// for (;;) {
+//   uint16_t n = rte_eth_rx_burst(port, queue, bufs, BURST);  // poll NIC ring
+//   for (uint16_t i = 0; i < n; ++i) process(bufs[i]);
+//   rte_eth_tx_burst(port, queue, out, m);
+// }
+\end{lstlisting}
+
+\textbf{Why this matters / cost model.} DPDK applies this volume's disciplines to networking: poll-mode (no interrupts), hugepage mbuf pools (no TLB misses/faults), lockless per-core rings (thread-per-core), batched burst APIs, and NUMA-aware pools. Each \texttt{rx\_burst} pulls packets already in user memory --- no copy, no crossing. Cost: the NIC leaves the kernel; you need hugepages, privileged setup, a dedicated polled core, and DIY protocols.
+
+\section{User-Space TCP/IP Stacks}
+Bypass loses the kernel TCP stack, so systems run a user-space stack (mTCP, F-Stack, Seastar, VMA, Onload) integrated with the polling loop.
+
+\textbf{Why this matters / cost model.} A co-designed user-space stack is radically faster --- zero-copy into app buffers, per-core lockless connection tables, no syscalls --- at the cost of reimplementing TCP's subtleties and losing kernel hardening. Onload/VMA offer a \texttt{LD\_PRELOAD} middle path that accelerates normal sockets transparently; full custom stacks (Seastar) suit ground-up thread-per-core systems.
+
+\section{RDMA: Remote Direct Memory Access}
+RDMA lets one machine read/write another's memory directly via hardware queue pairs, with the remote CPU uninvolved.
+
+\begin{lstlisting}[language=C++, caption={One-sided RDMA write; the remote CPU is bypassed. Non-portable (libibverbs). Min standard: C++11.}]
+// Register pinned memory regions on both sides.
+// ibv_post_send(qp, &wr);   // RDMA WRITE directly into remote registered memory; remote CPU idle.
+// Poll the completion queue locally.
+\end{lstlisting}
+
+\textbf{Why this matters / cost model.} One-sided operations access remote memory with no remote CPU involvement, collapsing remote latency to $\sim$1--2\,$\mu$s and offloading the transport to hardware. The backbone of HPC and distributed databases. Costs: memory must be registered/pinned, it needs special hardware (InfiniBand/RoCE + lossless fabric), the verbs model is low-level, and one-sided ordering semantics are subtle.
+
+\section{The Cost Model and When Not To}
+\begin{itemize}
+\item Kernel sockets + \texttt{epoll} --- tens of $\mu$s, full kernel services.
+\item Kernel sockets + \texttt{io\_uring} --- $\mu$s amortised, still kernel stack.
+\item DPDK + user stack --- sub-$\mu$s, $\sim$10s Mpps/core; lose kernel networking, dedicate a core, DIY protocols.
+\item RDMA --- $\sim$1--2\,$\mu$s remote; needs special hardware and pinned memory.
+\end{itemize}
+
+\textbf{Why this matters.} Bypass costs are categorical: a dedicated 100\%-CPU polled core, special hardware or exclusive NIC ownership, privileged configuration, loss of all kernel network services, and a high operational burden. Justified only when latency/rate exceed what the kernel (with \texttt{io\_uring}, \texttt{SO\_BUSY\_POLL}, tuning) delivers. Many teams reach for DPDK when \texttt{io\_uring} or \texttt{AF\_XDP} would suffice.
+
+\textbf{The discipline.} Kernel bypass is the endpoint of the OS-boundary cost model: remove the kernel for the data path, taking on its responsibilities in exchange for latency --- a good trade only for a small set of high-rate systems on dedicated hardware. Reach for it last, after \texttt{io\_uring} and tuning, and after measurement proves the kernel is the bottleneck.

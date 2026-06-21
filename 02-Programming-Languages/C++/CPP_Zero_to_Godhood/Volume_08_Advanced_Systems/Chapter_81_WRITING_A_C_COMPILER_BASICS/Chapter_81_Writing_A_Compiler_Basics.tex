@@ -1,0 +1,123 @@
+\chapter{Writing a Compiler --- The Basics}
+
+Nothing demystifies C++ like building a compiler for a slice of it. The translation pipeline --- lexing, parsing, semantic analysis, code generation --- is exactly what runs on every build, and understanding it changes how you read error messages, why undefined behaviour is exploitable, and what the optimizer can prove. This chapter builds a toy front-end and connects each stage to the real cost model and the language-lawyer concepts the rest of the volume depends on.
+
+\section*{Chapter Roadmap}
+\begin{itemize}
+\item 81.1 Why Build a Compiler
+\item 81.2 The Translation Pipeline
+\item 81.3 Lexical Analysis (Tokenizing)
+\item 81.4 Parsing (Recursive Descent and the AST)
+\item 81.5 Semantic Analysis: Symbol Tables and Scopes
+\item 81.6 Type Checking
+\item 81.7 From AST to IR and Code Generation
+\item 81.8 What This Teaches About C++ and Performance
+\end{itemize}
+
+\section{Why Build a Compiler}
+A compiler translates source into a semantically-equivalent lower form. Building a toy one internalises what the C++ front-end does per TU: tokenize, parse to an AST, resolve names and types, lower to IR.
+
+\textbf{Why this matters.} A missing semicolon is reported on the next line because the parser only notices when it fails to find an expected token; ADL finds an overload because lookup is a deliberate scope algorithm; the optimizer deletes a null check because a prior dereference proved the pointer non-null. The compiler is the algorithms in this chapter, scaled up.
+
+\section{The Translation Pipeline}
+\begin{lstlisting}[language=text, caption={The phases of translation; the first three are this chapter's focus.}]
+source -> [lexer] -> tokens -> [parser] -> AST -> [semantic] -> annotated AST
+       -> [IR lowering] -> IR -> [optimizer] -> optimized IR -> [codegen] -> machine code
+\end{lstlisting}
+
+\textbf{Why this matters / cost model.} Lexing/parsing are linear and rarely the bottleneck; semantic analysis hosts template instantiation (super-linear, the usual cause of slow builds); the optimizer dominates \texttt{-O2}/\texttt{-O3} time. Stage separation lets a compiler distinguish syntax from type errors and lets tools walk the AST without codegen.
+
+\section{Lexical Analysis (Tokenizing)}
+The lexer converts characters into tokens, discarding whitespace and comments.
+
+\begin{lstlisting}[language=C++, caption={A hand-written lexer for an arithmetic language. Min standard: C++17.}]
+enum class TokenType { Int, Identifier, Plus, Minus, Star, Slash, LParen, RParen, End };
+struct Token { TokenType type; std::string text; };
+
+std::vector<Token> tokenize(std::string_view src) {
+    std::vector<Token> tokens; size_t i = 0;
+    while (i < src.size()) {
+        char c = src[i];
+        if (std::isspace((unsigned char)c)) { ++i; continue; }
+        if (std::isdigit((unsigned char)c)) {
+            size_t j = i; while (j < src.size() && std::isdigit((unsigned char)src[j])) ++j;
+            tokens.push_back({TokenType::Int, std::string(src.substr(i, j - i))}); i = j;
+        } else if (std::isalpha((unsigned char)c) || c == '_') {
+            size_t j = i; while (j < src.size() && (std::isalnum((unsigned char)src[j]) || src[j]=='_')) ++j;
+            tokens.push_back({TokenType::Identifier, std::string(src.substr(i, j - i))}); i = j;
+        } else {
+            switch (c) {
+                case '+': tokens.push_back({TokenType::Plus,"+"}); break;
+                case '-': tokens.push_back({TokenType::Minus,"-"}); break;
+                case '*': tokens.push_back({TokenType::Star,"*"}); break;
+                case '/': tokens.push_back({TokenType::Slash,"/"}); break;
+                case '(': tokens.push_back({TokenType::LParen,"("}); break;
+                case ')': tokens.push_back({TokenType::RParen,")"}); break;
+            }
+            ++i;
+        }
+    }
+    tokens.push_back({TokenType::End, ""}); return tokens;
+}
+\end{lstlisting}
+
+\textbf{Why this matters.} Lexing hosts maximal munch (\texttt{>>} as one token, a C++ ambiguity fixed in C++11), keyword classification, and literal formats. Production lexers are DFAs generated from regexes. Tokens, not characters, are what the parser reasons about.
+
+\section{Parsing (Recursive Descent and the AST)}
+The parser builds an AST; recursive descent uses one function per grammar rule, encoding precedence in the call nesting.
+
+\begin{lstlisting}[language=C++, caption={AST nodes and the precedence-encoding grammar. Min standard: C++14.}]
+struct ASTNode { virtual ~ASTNode() = default; };
+struct NumberLit : ASTNode { long value; };
+struct BinaryExpr : ASTNode { std::unique_ptr<ASTNode> left, right; char op; };
+// expression := term (('+'|'-') term)*;  term := factor (('*'|'/') factor)*;
+// factor := NUMBER | '(' expression ')'.  parseExpression -> parseTerm -> parseFactor.
+\end{lstlisting}
+
+\textbf{Why this matters / cost model.} The AST is the central structure of every later stage. Recursive descent is O(n) and matches the grammar one-to-one, which is why Clang hand-writes its parser. C++'s grammar is not context-free: \texttt{T * p;} is multiplication or a declaration depending on whether \texttt{T} is a type --- the parser must consult the symbol table.
+
+\section{Semantic Analysis: Symbol Tables and Scopes}
+Semantic analysis proves the program meaningful via a symbol table: a stack of scopes.
+
+\begin{lstlisting}[language=C++, caption={A scoped symbol table; lookup searches inner-to-outer (shadowing). Min standard: C++11.}]
+struct Symbol { std::string type; };
+using Scope = std::map<std::string, Symbol>;
+std::vector<Scope> scopes;
+void enter_scope() { scopes.emplace_back(); }
+void exit_scope()  { scopes.pop_back(); }
+void declare(const std::string& n, Symbol s) { scopes.back()[n] = std::move(s); }
+const Symbol* lookup(const std::string& n) {
+    for (auto it = scopes.rbegin(); it != scopes.rend(); ++it)
+        if (auto f = it->find(n); f != it->end()) return &f->second;
+    return nullptr;
+}
+\end{lstlisting}
+
+\textbf{Why this matters.} This structure is C++ name resolution scaled up: block/function/namespace/class scopes are stacks-of-scopes; shadowing is the inner-to-outer search; ADL adds scopes by argument type; the ODR is the linker's global table rejecting duplicate definitions.
+
+\section{Type Checking}
+With names bound, the type checker walks the AST verifying operand compatibility and computing each expression's type bottom-up.
+
+\begin{lstlisting}[language=C++, caption={Type checking as a bottom-up annotating tree walk. Min standard: C++14.}]
+// BinaryExpr: type-check left/right; verify the operator for those types (apply conversions);
+//             compute and annotate the result type.
+// Identifier: look up in the symbol table (error if absent); type is the symbol's type.
+\end{lstlisting}
+
+\textbf{Why this matters / cost model.} Overload resolution, conversions, template deduction, and concept satisfaction all live here --- the most complex part of the front-end. Catching a type error here is the entire value of static typing. Every \texttt{static\_assert}, concept, and \texttt{enable\_if} is a hook into this phase.
+
+\section{From AST to IR and Code Generation}
+The annotated AST is lowered to IR (often SSA, each variable assigned once), on which the optimizer runs before the back-end emits machine code.
+
+\textbf{Why this matters.} The optimizer transforms the IR under the as-if rule, acting on any fact it can prove (dead branch, non-null pointer, effect-free loop). This is the mechanism behind ``the compiler optimized away my benchmark'' (Chapter 103) and ``UB deleted my safety check'' (Chapter 104). SSA makes those proofs tractable.
+
+\section{What This Teaches About C++ and Performance}
+\begin{itemize}
+\item Token stream --- maximal munch, \texttt{>>} ambiguity, keyword classification.
+\item Recursive-descent AST --- precedence, lagging error locations, the \texttt{T * p} ambiguity.
+\item Symbol table --- name lookup, shadowing, ADL, the ODR.
+\item Type checker --- overload resolution, conversions, templates, concepts.
+\item IR/SSA/as-if --- optimization, dead-code elimination, exploitable UB.
+\end{itemize}
+
+\textbf{The discipline.} Knowing how a compiler works converts it from an oracle into a tool you can reason about --- the basis for reading assembly (Chapter 89), controlling cross-TU inlining (Chapter 102), and understanding UB exploitation (Chapter 104).

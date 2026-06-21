@@ -1,0 +1,73 @@
+\chapter{Branchless Programming and Predication}
+
+A branch the CPU predicts correctly is nearly free; a misprediction costs a $\sim$15--20 cycle flush. Branchless programming replaces an unpredictable branch with straight-line arithmetic or a conditional move, trading a possible misprediction for the guaranteed small cost of computing both outcomes. The technique is powerful and frequently misapplied: on a predictable branch it is a pessimisation. This chapter develops predication, the bit-trick toolkit, and the cost model that decides when removing a branch helps.
+
+\section*{Chapter Roadmap}
+\begin{itemize}
+\item 91.1 The Branch Cost Model, Revisited
+\item 91.2 Predication and Conditional Moves
+\item 91.3 The Branchless Toolkit
+\item 91.4 When Branchless Wins --- and When It Loses
+\item 91.5 Branchless and SIMD Masking
+\item 91.6 Hazards and the Measurement Rule
+\end{itemize}
+
+\section{The Branch Cost Model, Revisited}
+The cost of a branch is the misprediction penalty times the misprediction rate: \(\text{cost} \approx \text{overhead} + \text{mispredict\_rate} \times \text{flush\_penalty}\). A biased/patterned/sorted condition predicts $>$99\% (essentially free); a random condition mispredicts $\sim$50\% ($\sim$7--10 cycles average penalty per branch, dominating a tight loop).
+
+\textbf{Why this matters.} This formula is the whole decision procedure: remove a branch only when its misprediction rate is high, because the branchless replacement pays a fixed cost every iteration. You cannot decide from source alone; measure \texttt{branch-misses} on real data.
+
+\section{Predication and Conditional Moves}
+Predication computes a value unconditionally and selects without a branch --- the conditional move (\texttt{cmov} on x86, \texttt{csel} on ARM).
+
+\begin{lstlisting}[language=C++, caption={A ternary often compiles to cmov; an if may or may not. Min standard: C++11.}]
+int max_branchy(int a, int b)    { if (a > b) return a; else return b; }
+int max_predicated(int a, int b) { return (a > b) ? a : b; }   // compiler may emit cmov
+\end{lstlisting}
+
+\textbf{Why this matters / cost model.} \texttt{cmov} turns a control dependency into a data dependency: both operands are computed and selected, so nothing can mispredict. The cost is fixed: \texttt{cmov} extends the dependency chain and both candidates are computed. The compiler chooses branch vs \texttt{cmov}; only the disassembly tells you what you got.
+
+\section{The Branchless Toolkit}
+\begin{lstlisting}[language=C++, caption={Branchless idioms; the mask trick is the workhorse. Min standard: C++11.}]
+int y = (x > 0);                                  // 0 or 1, no branch
+sum += (data[i] >= 128) * data[i];                // conditional accumulate
+int abs_b(int x){ int m = x >> (sizeof(int)*8-1); return (x ^ m) - m; }
+int min_b(int a,int b){ return b ^ ((a ^ b) & -(a < b)); }
+unsigned select(bool c, unsigned a, unsigned b){
+    unsigned mask = -(unsigned)c; return (a & mask) | (b & ~mask);
+}
+\end{lstlisting}
+
+\textbf{Why this matters.} The unifying technique is the mask: convert a boolean to all-ones/all-zeros (\texttt{-(unsigned)cond}), then select with AND/OR. This generalises to SIMD, where masking is the only conditional mechanism. The idioms trade readability for speed --- confine to measured hot paths with comments.
+
+\section{When Branchless Wins --- and When It Loses}
+\begin{itemize}
+\item Biased / loop-counter / sorted: $\sim$0\% mispredict --- keep the branch.
+\item Random predicate: $\sim$50\% --- go branchless.
+\item Inside a SIMD loop: must use masking.
+\item Guarding expensive/unsafe work: keep the branch --- do not compute the expensive side unconditionally.
+\end{itemize}
+
+\textbf{Why this matters / cost model.} Branchless computes both sides, so an expensive or unsafe side (a call, a faulting load, a division) can cost more than an occasional mispredict --- or be incorrect. Branchless is for cheap, side-effect-free alternatives in unpredictable, hot branches. Otherwise make the branch predictable.
+
+\section{Branchless and SIMD Masking}
+SIMD has no per-lane control flow; masking is the only conditional mechanism: compute a comparison mask, compute all lanes, blend by mask.
+
+\begin{lstlisting}[language=C++, caption={SIMD conditional accumulation via masking. AVX, x86-specific. Min standard: C++17.}]
+// mask = (data >= 128); sum += blend(0, data, mask);
+// __m256i mask = _mm256_cmpgt_epi32(v, thresh);
+// vsum = _mm256_add_epi32(vsum, _mm256_and_si256(v, mask));
+\end{lstlisting}
+
+\textbf{Why this matters.} Branchless thinking is a prerequisite for SIMD: a loop of unpredictable scalar branches cannot vectorise (no vector ``if''). Recasting as mask-and-blend removes the mispredict and unlocks vectorisation --- a compounding win.
+
+\section{Hazards and the Measurement Rule}
+\begin{itemize}
+\item Pessimising predictable branches --- the most common mistake.
+\item Evaluating expensive/unsafe sides unconditionally.
+\item Assuming source dictates assembly --- verify with disassembly.
+\item Two's-complement assumptions (guaranteed only since C++20) --- document them.
+\item Readability debt --- confine and comment.
+\end{itemize}
+
+\textbf{The discipline.} Branchless is a precision tool: profile for a hot branch with high mispredict rate; first try to make it predictable; if inherently unpredictable and guarding cheap safe work, go branchless; verify in disassembly; measure the speedup. Skipping the profiling step makes code slower and unreadable.

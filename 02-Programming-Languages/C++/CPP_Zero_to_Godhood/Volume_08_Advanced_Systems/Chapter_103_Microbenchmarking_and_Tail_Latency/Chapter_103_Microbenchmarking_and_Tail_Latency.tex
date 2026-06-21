@@ -1,0 +1,78 @@
+\chapter{Microbenchmarking and Tail-Latency Measurement}
+
+A benchmark is an experiment that can be designed so badly its result is worse than no data --- a confidently wrong number sending a team optimising the wrong thing. The optimizer deletes work you meant to time, the mean hides the tail that matters, and the measurement loop perturbs what it measures. This chapter is the rigorous practice: defeating elision, measuring steady state, and characterising the full latency distribution and its tail.
+
+\section*{Chapter Roadmap}
+\begin{itemize}
+\item 103.1 Why Benchmarks Lie
+\item 103.2 Defeating Dead-Code Elimination
+\item 103.3 Warmup and Steady State
+\item 103.4 Statistical Rigour
+\item 103.5 Tail Latency: Why the Mean Is Useless
+\item 103.6 Coordinated Omission
+\item 103.7 The Profiling Workflow
+\item 103.8 The Discipline
+\end{itemize}
+
+\section{Why Benchmarks Lie}
+The ways a plausible-but-wrong number arises: dead-code elimination (the optimizer deletes unused work); constant folding (compile-time inputs); cold start (warmup costs); measurement perturbation (timing overhead); and unrepresentative conditions (idle machine, L1-resident data).
+
+\textbf{Why this matters.} Each has caused real teams to optimise something already free or ship a change that helped the benchmark and hurt production. Microbenchmarking is a discipline because the naive version is reliably misleading.
+
+\section{Defeating Dead-Code Elimination}
+\begin{lstlisting}[language=C++, caption={DoNotOptimize forces observation; ClobberMemory defeats store elision. Google Benchmark. Min standard: C++11.}]
+static void BM_hash(benchmark::State& state) {
+    std::string input = make_input(state.range(0));   // runtime value
+    for (auto _ : state) {
+        auto h = compute_hash(input);
+        benchmark::DoNotOptimize(h);
+        benchmark::ClobberMemory();
+    }
+}
+BENCHMARK(BM_hash)->Arg(64)->Arg(4096);
+\end{lstlisting}
+
+\textbf{Why this matters.} \texttt{DoNotOptimize} tells the compiler the value escapes; \texttt{ClobberMemory} simulates an external read. Without them, a discarded \texttt{compute\_hash} compiles to nothing. Make inputs runtime values so they cannot constant-fold, and verify the work is present in the disassembly.
+
+\section{Warmup and Steady State}
+The first iterations are unrepresentative (cold caches/TLB, untrained predictors, low CPU frequency, cold I-cache). Warmup reaches steady state before measuring.
+
+\textbf{Why this matters / cost model.} Including cold-start costs measures a transient production never sees --- or, for a latency-critical first request, must be measured separately, not averaged in. Frequency scaling is a trap; pin the frequency or warm until the clock saturates. Steady-state measures the warm hot path; the cold path is separate (Chapter 106).
+
+\section{Statistical Rigour}
+A single run is a sample. Run many times; report a robust central estimate (median, not mean), the spread, and whether two results differ by more than the noise.
+
+\textbf{Why this matters.} ``3\% faster'' from one run each is noise when variance is 5\%. Use repetitions (\texttt{--benchmark\_repetitions}), a quiet pinned machine, interleaved A/B (so thermal drift doesn't bias one), and \texttt{perf stat -r N} for variance. A claim without a variance is not a claim.
+
+\section{Tail Latency: Why the Mean Is Useless}
+\begin{lstlisting}[language=C++, caption={Report the distribution, not the mean; production uses HdrHistogram. Min standard: C++11.}]
+std::vector<uint64_t> samples;     // one entry per op, pre-reserved
+std::sort(samples.begin(), samples.end());
+auto pct = [&](double p){ return samples[size_t(p/100.0 * (samples.size()-1))]; };
+// p50=pct(50) p99=pct(99) p99.9=pct(99.9) max=samples.back()
+\end{lstlisting}
+
+\textbf{Why this matters.} These systems are judged by p99/p99.9/max --- the requests that lose money or breach SLAs. A 1\,$\mu$s mean with a 10\,ms p99.9 is broken, and the mean hides it. Every villain (cache miss, page fault, lock convoy, slow allocation, migration, syscall) is a tail event. Use HdrHistogram and always report p50/p99/p99.9/max.
+
+\section{Coordinated Omission}
+A closed-loop tester that sends, waits, then sends omits the latency of requests that would have been sent during a stall: a 100\,ms freeze records one slow request, but at a fixed arrival rate thousands would have queued.
+
+\textbf{Why this matters.} Coordinated omission makes the tail look orders of magnitude better than reality by stopping the clock during the stalls that matter. Fix: measure against a fixed schedule and record from the intended send time. wrk2 and proper HdrHistogram harnesses do this; naive closed-loop benchmarks under-report the tail.
+
+\section{The Profiling Workflow}
+Sampling profilers (\texttt{perf record}, VTune) find hot functions cheaply; hardware counters (\texttt{perf stat}) report cache misses, mispredicts, IPC, stalls (the cost model); \texttt{perf c2c} finds false sharing; \texttt{strace -c} counts syscalls; heaptrack counts allocations.
+
+\textbf{Why this matters.} Profiling assigns a hot loop to a cost model: high cache-miss $\to$ memory-bound; high branch-miss $\to$ fix branches; high IPC but slow $\to$ compute-bound; low IPC, few misses $\to$ dependency- or syscall-bound. Profile first, microbenchmark the hot spot, verify in disassembly.
+
+\section{The Discipline}
+\begin{itemize}
+\item Dead-code elimination --- \texttt{DoNotOptimize}/\texttt{ClobberMemory}; read disasm.
+\item Constant folding --- runtime inputs.
+\item Cold start --- warmup to steady state.
+\item Single run --- repetitions + variance; interleave A/B.
+\item Reporting the mean --- p50/p99/p99.9/max; HdrHistogram.
+\item Coordinated omission --- fixed schedule, intended send time.
+\item Wrong target --- profile first; hardware counters.
+\end{itemize}
+
+\textbf{The discipline.} Force the work observed, feed runtime inputs, warm to steady state, beat the noise, and report the full distribution and tail without coordinated omission. Pair microbenchmarks with whole-program profiling and verify in disassembly --- the measurement foundation the whole volume rests on.

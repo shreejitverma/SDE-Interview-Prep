@@ -1,0 +1,88 @@
+\chapter{SIMD in Practice --- Intrinsics, Auto-Vectorisation, and std::simd}
+
+A modern core can add eight \texttt{float}s (sixteen with AVX-512) in one instruction --- an 8--16$\times$ speedup left on the table by scalar code. SIMD exploits the wide vector registers every server CPU has carried for a decade. But the speedup is conditional: it materialises only when the data is laid out for it, the loop has no cross-lane dependencies, and the operation is arithmetic-bound. This chapter covers the three routes (auto-vectorisation, intrinsics, \texttt{std::simd}), the prerequisites, and the cost model.
+
+\section*{Chapter Roadmap}
+\begin{itemize}
+\item 92.1 What SIMD Is and Why It Exists
+\item 92.2 The Three Routes to SIMD
+\item 92.3 Auto-Vectorisation: The Default First Try
+\item 92.4 Intrinsics: Explicit Control
+\item 92.5 \texttt{std::simd}: Portable Explicit SIMD
+\item 92.6 Alignment, Tails, and Horizontal Operations
+\item 92.7 When Vectorisation Does and Doesn't Pay
+\end{itemize}
+
+\section{What SIMD Is and Why It Exists}
+A SIMD instruction operates on a vector: 128-bit SSE (4 floats), 256-bit AVX (8), 512-bit AVX-512 (16); ARM NEON/SVE. The same add hardware, widened, does N additions per instruction.
+
+\textbf{Why this matters / cost model.} SIMD is data parallelism within a core, distinct from ILP and thread parallelism; the three compose. The ceiling is the vector width: 8-wide \texttt{float} AVX caps a compute-bound loop at $\sim$8$\times$ --- if you keep the units fed. SIMD multiplies arithmetic throughput, so it helps only when arithmetic, not memory or branches, is the bottleneck.
+
+\section{The Three Routes to SIMD}
+\begin{itemize}
+\item Auto-vectorisation --- compiler decides, fully portable, lowest effort; always try first.
+\item \texttt{std::simd}/libraries --- explicit, portable, medium effort; guaranteed vectorisation.
+\item Intrinsics --- per-instruction, ISA-specific, highest effort; the last 10--20\%.
+\end{itemize}
+
+\textbf{Why this matters.} Climb the ladder only as far as you must. Auto-vectorisation is free but fragile; \texttt{std::simd}/Highway/Vc give guaranteed portable vectorisation; intrinsics give max performance but lock you to one ISA. Start at the bottom, verify in disassembly, escalate only when the compiler demonstrably fails.
+
+\section{Auto-Vectorisation: The Default First Try}
+\begin{lstlisting}[language=C++, caption={A vectorisable loop; __restrict promises no aliasing. Min standard: C++11.}]
+void scale(float* __restrict a, const float* __restrict b, float k, size_t n) {
+    for (size_t i = 0; i < n; ++i) a[i] = b[i] * k;
+}
+\end{lstlisting}
+
+Blockers: possible aliasing (fix with \texttt{\_\_restrict}); loop-carried dependencies; branches with side effects (recast as masks); non-unit stride (use SoA); calls in the loop (inline first).
+
+\textbf{Why this matters.} Auto-vectorisation fails silently for fixable reasons. \texttt{-Rpass[-missed]=loop-vectorize} (Clang) / \texttt{-fopt-info-vec[-missed]} (GCC) say which loops vectorised and why others didn't. A one-line \texttt{\_\_restrict} or SoA change can unlock 8$\times$ with zero unportable code. Exhaust this route first.
+
+\section{Intrinsics: Explicit Control}
+\begin{lstlisting}[language=C++, caption={AVX intrinsics; non-portable, x86-only, requires alignment and a tail. Min standard: C++11+AVX.}]
+#include <immintrin.h>
+void add_avx(float* a, const float* b, size_t n) {   // n % 8 == 0, 32-byte aligned
+    for (size_t i = 0; i < n; i += 8) {
+        __m256 va = _mm256_load_ps(a + i);
+        __m256 vb = _mm256_load_ps(b + i);
+        _mm256_store_ps(a + i, _mm256_add_ps(va, vb));
+    }
+}
+\end{lstlisting}
+
+\textbf{Why this matters / cost model.} Intrinsics extract the last 10--20\% and enable algorithms with no scalar analogue. Costs: non-portable (a path per ISA, runtime-selected), unreadable, error-prone. \texttt{\_mm256\_load\_ps} requires 32-byte alignment (use \texttt{loadu} otherwise). Reserve for proven-hot kernels.
+
+\section{\texttt{std::simd}: Portable Explicit SIMD}
+\begin{lstlisting}[language=C++, caption={std::simd: one source, native width across ISAs. Min standard: C++26 / experimental TS.}]
+#include <simd>
+namespace stdx = std;
+void add_simd(float* a, const float* b, size_t n) {
+    using V = stdx::simd<float>;
+    size_t w = V::size(), i = 0;
+    for (; i + w <= n; i += w) {
+        V va(&a[i], stdx::element_aligned), vb(&b[i], stdx::element_aligned);
+        (va + vb).copy_to(&a[i], stdx::element_aligned);
+    }
+    for (; i < n; ++i) a[i] += b[i];   // scalar tail
+}
+\end{lstlisting}
+
+\textbf{Why this matters.} The sweet spot: guaranteed vectorisation (unlike auto), portable (unlike intrinsics), readable (operators). Width adapts per target from one source. Limits: exotic shuffles are less direct than intrinsics, and it is still stabilising. For most guaranteed vectorisation, \texttt{std::simd} or Highway beats per-ISA intrinsics.
+
+\section{Alignment, Tails, and Horizontal Operations}
+Alignment: aligned loads require vector-width alignment (32 bytes for AVX) and fault otherwise; allocate with \texttt{alignas}. Tails: handle \texttt{N \% W} leftovers scalar or masked. Horizontal vs vertical: vertical ops (lane $i$ with lane $i$) are cheap; horizontal reductions (sum across lanes) are expensive --- keep N partial sums and reduce once at the end (the multiple-accumulator pattern).
+
+\textbf{Why this matters / cost model.} A horizontal reduction inside the loop serialises lanes and erases the win; the fix is the SIMD form of breaking the dependency chain. Misalignment faults or costs a little; a forgotten tail corrupts the last elements.
+
+\section{When Vectorisation Does and Doesn't Pay}
+\begin{itemize}
+\item Dense numeric arrays, DSP, ML kernels: yes --- arithmetic-bound, regular.
+\item Pointer-chasing: no --- no parallelism, memory-bound.
+\item Branchy per-element flow: only via masking.
+\item Memory-bandwidth-bound: marginal --- already DRAM-limited.
+\item Short loops (N $<$ width): no --- overhead exceeds gain.
+\end{itemize}
+
+\textbf{Why this matters.} SIMD multiplies compute throughput, paying only when compute is the bottleneck and data is regular. Fix layout (SoA, Chapter 87/90) and branches (Chapter 91) first --- those unblock vectorisation and make compute the bottleneck.
+
+\textbf{The discipline.} Climb the ladder: write vectorisable loops; let the compiler vectorise and verify; reach for \texttt{std::simd}/Highway if it can't; drop to intrinsics only for proven-hot per-ISA kernels --- and confirm the workload is compute-bound first.

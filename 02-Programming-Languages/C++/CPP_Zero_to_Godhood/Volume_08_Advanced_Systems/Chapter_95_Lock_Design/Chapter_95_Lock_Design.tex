@@ -1,0 +1,128 @@
+\chapter{Lock Design --- Spinlocks, MCS Locks, Futexes, and Contention}
+
+``Use a mutex'' is the right default and a non-answer at the systems level, because a mutex hides a design space of radically different cost and fairness. A spinlock burns CPU but never sleeps; a futex sleeps but pays a syscall; a ticket lock is fair but bounces cache lines; an MCS lock scales but needs a per-thread node. This chapter builds locks from the atomic up, exposes the coherence cost that makes naive locks collapse, and gives the cost model for choosing.
+
+\section*{Chapter Roadmap}
+\begin{itemize}
+\item 95.1 What a Lock Must Do, and the Cost of Contention
+\item 95.2 The Naive Spinlock and Why It Collapses
+\item 95.3 Test-and-Test-and-Set with Back-off
+\item 95.4 Ticket Locks: Fairness
+\item 95.5 MCS Locks: Scalable Queueing
+\item 95.6 Futexes: Sleeping Without a Syscall (Usually)
+\item 95.7 Adaptive and Reader-Writer Locks
+\item 95.8 Choosing a Lock --- and Choosing Not To
+\end{itemize}
+
+\section{What a Lock Must Do, and the Cost of Contention}
+A lock provides mutual exclusion. Design axes: spin or sleep, fair (FIFO) or arbitrary, and behaviour as contenders grow. The dominant cost under contention is cache coherence: the lock variable is a shared line, and every contender that writes it forces a coherence round-trip.
+
+\textbf{Why this matters / cost model.} An uncontended lock is one atomic RMW. A contended lock is dominated by the line bouncing: N spinners writing the line generate O(N) traffic per release. Lock design is largely minimising writes to the shared line under contention.
+
+\section{The Naive Spinlock and Why It Collapses}
+\begin{lstlisting}[language=C++, caption={A test-and-set spinlock; every spin writes the shared line. Min standard: C++11.}]
+class SpinLock {
+    std::atomic<bool> locked_{false};
+public:
+    void lock() { while (locked_.exchange(true, std::memory_order_acquire)) {} }
+    void unlock() { locked_.store(false, std::memory_order_release); }
+};
+\end{lstlisting}
+
+\textbf{Why this matters.} Fine uncontended, but \texttt{exchange} is a write, so every spinner invalidates every copy each iteration; the line ping-pongs, the holder is slowed releasing, and throughput drops as cores are added. Burns 100\% CPU and is unfair. Do not ship a naive spinlock.
+
+\section{Test-and-Test-and-Set with Back-off}
+\begin{lstlisting}[language=C++, caption={TTAS: spin on a read, write only when free; PAUSE is x86-specific. Min standard: C++11.}]
+class TTASLock {
+    std::atomic<bool> locked_{false};
+public:
+    void lock() {
+        for (;;) {
+            while (locked_.load(std::memory_order_relaxed)) cpu_relax();   // read-spin: no traffic
+            if (!locked_.exchange(true, std::memory_order_acquire)) return;
+        }
+    }
+    void unlock() { locked_.store(false, std::memory_order_release); }
+    static void cpu_relax() {
+    #if defined(__x86_64__)
+        __builtin_ia32_pause();
+    #else
+        std::this_thread::yield();
+    #endif
+    }
+};
+\end{lstlisting}
+
+\textbf{Why this matters / cost model.} The read-spin keeps the line Shared --- no coherence traffic while spinning; traffic occurs only at release and the brief write race. \texttt{PAUSE} reduces power and frees pipeline/SMT resources. Better than the naive lock, but still unfair and bounces the line once per release; true scaling needs queueing.
+
+\section{Ticket Locks: Fairness}
+\begin{lstlisting}[language=C++, caption={A ticket lock: FIFO-fair, but all waiters spin on serving_. Min standard: C++11.}]
+class TicketLock {
+    std::atomic<unsigned> next_{0}, serving_{0};
+public:
+    void lock() {
+        unsigned my = next_.fetch_add(1, std::memory_order_relaxed);
+        while (serving_.load(std::memory_order_acquire) != my) TTASLock::cpu_relax();
+    }
+    void unlock() { serving_.fetch_add(1, std::memory_order_release); }
+};
+\end{lstlisting}
+
+\textbf{Why this matters / cost model.} Fairness prevents starvation (a tail-latency disaster). But all waiters spin on one \texttt{serving\_}, so every release invalidates every copy --- O(N) traffic per release. Fair but not scalable; for both, each waiter must spin on a different line (MCS).
+
+\section{MCS Locks: Scalable Queueing}
+\begin{lstlisting}[language=C++, caption={MCS lock: each waiter spins on its own node; O(1) traffic per handoff. Min standard: C++11.}]
+struct McsNode { std::atomic<McsNode*> next{nullptr}; std::atomic<bool> locked{true}; };
+class McsLock {
+    std::atomic<McsNode*> tail_{nullptr};
+public:
+    void lock(McsNode* self) {
+        self->next.store(nullptr, std::memory_order_relaxed);
+        self->locked.store(true, std::memory_order_relaxed);
+        McsNode* pred = tail_.exchange(self, std::memory_order_acq_rel);
+        if (pred) {
+            pred->next.store(self, std::memory_order_release);
+            while (self->locked.load(std::memory_order_acquire)) ;
+        }
+    }
+    void unlock(McsNode* self) {
+        McsNode* succ = self->next.load(std::memory_order_acquire);
+        if (!succ) {
+            McsNode* expected = self;
+            if (tail_.compare_exchange_strong(expected, nullptr,
+                    std::memory_order_release, std::memory_order_relaxed)) return;
+            while (!(succ = self->next.load(std::memory_order_acquire))) ;
+        }
+        succ->locked.store(false, std::memory_order_release);
+    }
+};
+\end{lstlisting}
+
+\textbf{Why this matters / cost model.} Each waiter spins on a private node, so a release writes exactly one other line --- O(1) traffic per handoff regardless of contender count, scaling to dozens of cores. FIFO-fair. Cost: each acquirer supplies a node, the protocol is complex, and uncontended acquisition is slightly heavier. Linux queued spinlocks use MCS-family designs.
+
+\section{Futexes: Sleeping Without a Syscall (Usually)}
+\begin{lstlisting}[language=C++, caption={Futex fast/slow path; std::mutex is built on this. Linux-specific. Min standard: C++11.}]
+// lock():   if (CAS 0->1) return;              // fast path, no syscall
+//           else futex_wait(&val, 1);          // slow path, sleep in kernel
+// unlock(): store 0; if (waiters) futex_wake(&val, 1);
+\end{lstlisting}
+
+\textbf{Why this matters / cost model.} The uncontended case never enters the kernel (one CAS); only contention triggers \texttt{futex\_wait}/\texttt{futex\_wake} (syscall + context switch). \texttt{std::mutex} is built on this. Sleeping is good for long or rare-contention sections and oversubscription but catastrophic for sub-microsecond sections; spin there instead.
+
+\section{Adaptive and Reader-Writer Locks}
+Adaptive mutexes spin briefly then futex-sleep --- the sensible default that good \texttt{std::mutex} implementations use. Reader-writer locks (\texttt{std::shared\_mutex}) allow many readers or one writer, but the shared reader count is itself a contended atomic; under short frequent reads the rwlock can be slower than a plain mutex --- exactly where RCU wins.
+
+\textbf{Why this matters.} A modern \texttt{std::mutex} already spins-then-sleeps optimally, so it is good default advice. Use an rwlock only for long read sections; for read-mostly short sections prefer RCU/seqlocks.
+
+\section{Choosing a Lock --- and Choosing Not To}
+\begin{itemize}
+\item Naive spinlock --- never ship.
+\item TTAS+back-off --- short sections, low contention.
+\item Ticket lock --- short sections needing fairness; does not scale.
+\item MCS lock --- short sections, high core count; scales and is fair.
+\item Futex/\texttt{std::mutex} --- general; long or rare-contention sections.
+\item Adaptive mutex --- the sensible default.
+\item \texttt{shared\_mutex} --- long read sections only.
+\end{itemize}
+
+\textbf{The discipline.} Choose by critical-section length and contention: sub-microsecond, lightly contended $\to$ spin (TTAS/MCS); longer or oversubscribed $\to$ sleep (futex); default to adaptive \texttt{std::mutex}. The deepest lesson: the best lock is often no lock --- partition per thread (Chapter 96), use an SPSC ring (Chapter 77), or make reads free with RCU (Chapter 94).

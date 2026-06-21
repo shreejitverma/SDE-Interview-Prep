@@ -1,0 +1,62 @@
+\chapter{System Calls, the vDSO, and Syscall Overhead}
+
+A system call is the only way a program can do anything the hardware protects, and one of the most expensive routine operations in its life, because it is a controlled transition into the kernel with a full privilege change. This chapter quantifies that cost, explains the mechanism and why modern security mitigations made it worse, introduces the vDSO that eliminates it for a few hot calls, and establishes the discipline of minimising kernel crossings.
+
+\section*{Chapter Roadmap}
+\begin{itemize}
+\item 98.1 What a System Call Actually Costs
+\item 98.2 The Mechanism: Crossing the Privilege Boundary
+\item 98.3 Why Mitigations Made Syscalls Slower
+\item 98.4 The vDSO: Syscalls Without the Crossing
+\item 98.5 Reducing Syscall Overhead
+\item 98.6 The Discipline
+\end{itemize}
+
+\section{What a System Call Actually Costs}
+A syscall requests a privileged operation from the kernel. Unlike a function call ($\sim$1--5 cycles), it costs hundreds to thousands of cycles even for trivial work: \texttt{getpid()} $\sim$100--300\,ns; \texttt{read}/\texttt{write} $\sim$0.5--2\,$\mu$s; \texttt{clock\_gettime} via vDSO $\sim$15--30\,ns (no crossing).
+
+\textbf{Why this matters.} The syscall is the boundary between the two halves of the cost model; how often you cross often dominates I/O-bound performance more than the work on either side. A loop with one syscall per item is bottlenecked on crossings. Hence high-performance I/O is about amortising or eliminating syscalls.
+
+\section{The Mechanism: Crossing the Privilege Boundary}
+A syscall (\texttt{syscall} on x86-64, \texttt{svc} on ARM) switches to kernel privilege and stack, saves user registers, dispatches by syscall number, runs the kernel code (which may sleep/schedule/do I/O), and restores user state.
+
+\textbf{Why this matters / cost model.} Even with fast \texttt{syscall}/\texttt{sysret}, the fixed cost of saving/restoring state and switching privilege is unavoidable --- the price of the protection boundary. On top sits the variable kernel work, which for a blocking call can include a context switch. The fixed cost is why even a do-nothing syscall is hundreds of cycles; reducing the count is a first-order optimization.
+
+\section{Why Mitigations Made Syscalls Slower}
+Meltdown/Spectre mitigations added work at the boundary: KPTI unmaps kernel memory from user page tables (every syscall swaps page tables and flushes TLB entries); retpolines and buffer clears run on entry/exit.
+
+\textbf{Why this matters / cost model.} These multiplied syscall cost --- a bare syscall went 2--3$\times$, and the TLB flush turns subsequent user accesses into page walks. Syscall-heavy code got slower industry-wide overnight, sharpening the incentive to avoid the kernel. Benchmarks must state their mitigation status.
+
+\section{The vDSO: Syscalls Without the Crossing}
+The vDSO is a kernel-mapped shared object containing user-space implementations of a few read-only ``syscalls'' (\texttt{clock\_gettime}, \texttt{gettimeofday}, \texttt{getcpu}).
+
+\begin{lstlisting}[language=C++, caption={clock_gettime is serviced by the vDSO with no privilege transition. Linux. Min standard: C++11.}]
+#include <time.h>
+struct timespec ts;
+clock_gettime(CLOCK_MONOTONIC, &ts);   // user-space via vDSO: ~15-30 ns, no kernel entry
+\end{lstlisting}
+
+\textbf{Why this matters / cost model.} Time queries are extremely frequent in timestamping/latency code; as real syscalls they would dominate. The kernel publishes timekeeping data into a page the user reads directly, turning a hundreds-of-ns syscall into a tens-of-ns function call (Chapter 101). It works only for safely-exposable read-only data, but for those hot calls it removes the boundary cost entirely.
+
+\section{Reducing Syscall Overhead}
+\begin{itemize}
+\item Batch: \texttt{writev}/\texttt{readv}, \texttt{sendmmsg}/\texttt{recvmmsg}, \texttt{io\_uring} (Chapter 99).
+\item Buffer: user-space buffering coalesces small writes into few large syscalls.
+\item Avoid blocking syscalls on the hot path: use \texttt{epoll}/\texttt{io\_uring} so the thread never blocks.
+\item Use the vDSO for time/CPU queries (automatic).
+\item Bypass the kernel for the highest rates (DPDK/RDMA, Chapter 100).
+\end{itemize}
+
+\textbf{Why this matters.} The principle is amortise the fixed crossing over more work per crossing. One \texttt{writev} of 100 buffers pays the cost once. Buffering is the everyday form; the hot path escalates to readiness/completion models and, at the extreme, kernel bypass.
+
+\section{The Discipline}
+\begin{itemize}
+\item One syscall per item --- worst; avoid on hot paths.
+\item User-space buffering --- default for I/O.
+\item Scatter-gather --- one per batch.
+\item \texttt{io\_uring} --- amortised, async; high-rate I/O.
+\item vDSO --- zero, for time/CPU queries.
+\item Kernel bypass --- zero, for extreme rates.
+\end{itemize}
+
+\textbf{The discipline.} Treat every syscall as a hundreds-of-cycles event that may block and context-switch; cross as rarely as possible. Count syscalls with \texttt{strace -c}. The next chapters realise this: I/O models that amortise the crossing, and kernel bypass that removes it.
