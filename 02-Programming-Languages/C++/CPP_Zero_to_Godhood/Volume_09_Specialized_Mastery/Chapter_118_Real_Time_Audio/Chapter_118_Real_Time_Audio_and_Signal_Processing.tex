@@ -1,0 +1,67 @@
+\chapter{Real-Time Audio and Signal Processing}
+
+Real-time audio is hard real-time with an unforgiving deadline: the hardware demands a buffer of samples every few milliseconds, and if your callback is even once late, the user hears a click, pop, or dropout --- with no retry. This makes the audio callback the strictest application of the determinism discipline in this book, codifying as inviolable rules exactly what Volume 8 argued for the hot path.
+
+\section*{Chapter Roadmap}
+\begin{itemize}
+\item 118.1 The Audio Callback and Its Deadline
+\item 118.2 The Golden Rules
+\item 118.3 Lock-Free UI$\leftrightarrow$Audio Communication
+\item 118.4 SIMD for DSP
+\item 118.5 Double Buffering for Block Processing
+\item 118.6 The Real-Time Audio Discipline
+\end{itemize}
+
+\section{The Audio Callback and Its Deadline}
+Audio hardware requests small buffers (64--512 samples) through a callback on a high-priority real-time thread; it must fill the buffer and return before the next is needed --- a 1--10\,ms deadline. Miss it and the hardware plays an unfilled buffer, heard as a glitch.
+
+\textbf{Why this matters.} A late audio callback produces an audible, unrecoverable artifact --- the purest test of the determinism discipline (Chapter 106): the worst-case execution time, not the average, is all that matters. Every variance-reducing technique (no allocation, locks, syscalls, faults; cache-warm data) is a correctness requirement, not an optimization.
+
+\section{The Golden Rules}
+In the callback, thou shalt not: (1) Block --- no mutexes (priority inversion, Chapter 95); (2) Allocate --- no \texttt{new}/\texttt{malloc} (slow path: lock, \texttt{mmap}, fault); (3) Perform I/O or syscalls --- no file/\texttt{printf}/logging.
+
+\begin{lstlisting}[language=C++, caption={The audio callback: pre-allocated, lock-free, no I/O, bounded. Min standard: C++11.}]
+void audio_callback(float* out, int num_frames) {
+    for (int i = 0; i < num_frames; ++i)
+        out[i] = process_sample(input_[i]);   // bounded, allocation-free, no locks
+    // FORBIDDEN: new/malloc, std::mutex, file/printf, anything unbounded.
+}
+\end{lstlisting}
+
+\textbf{Why this matters.} These are the Chapter 106 hot-path checklist elevated to law, because the deadline is hard. Each forbidden operation is a source of unbounded latency: a mutex blocks indefinitely, an allocation faults, a syscall sleeps --- any blowing the deadline is audible. Pre-allocate everything before audio starts; communicate lock-free; push heavy work to other threads.
+
+\section{Lock-Free UI$\leftrightarrow$Audio Communication}
+\begin{lstlisting}[language=C++, caption={UI/audio parameter passing via a wait-free SPSC ring (Chapter 77). Min standard: C++11.}]
+// UI (producer):    params_queue.push(new_cutoff);
+// Audio (consumer): if (params_queue.pop(cutoff)) ...
+// Atomic head/tail, pre-allocated buffer, NO locks -> wait-free for both.
+\end{lstlisting}
+
+\textbf{Why this matters / cost model.} The SPSC ring is wait-free for both parties (Chapter 77): the audio thread's \texttt{pop} is bounded, lock-free, allocation-free, so it never blocks the callback. Parameters are published via release/acquire ordering (Chapter 76). The reverse (audio$\to$UI level meters) uses another ring or an \texttt{atomic<float>}. A shared parameter behind a mutex works 99.99\% of the time, then the UI thread holds the lock during a context switch and the user hears a pop.
+
+\section{SIMD for DSP}
+\begin{lstlisting}[language=C++, caption={SIMD DSP: 8 samples per instruction. AVX, x86-specific. Min standard: C++11.}]
+#include <immintrin.h>
+// __m256 samples = _mm256_loadu_ps(input + i);
+// __m256 gained  = _mm256_mul_ps(samples, _mm256_set1_ps(gain));
+// _mm256_storeu_ps(output + i, gained);
+\end{lstlisting}
+
+\textbf{Why this matters / cost model.} DSP is the compute-bound, data-parallel workload SIMD was made for (Chapter 92): same arithmetic per sample, no branches, unit stride. The biquad filter and FFT are the canonical kernels; processing channels in parallel lanes fits SoA layout (Chapter 90). SIMD lets the bounded callback do more DSP within its deadline --- a richer effects chain still fitting the budget.
+
+\section{Double Buffering for Block Processing}
+Some DSP needs blocks (an FFT wants 1024 samples) but audio arrives in 64-sample chunks. Double buffering accumulates chunks into buffer A; when full, hand A to a worker thread and fill buffer B.
+
+\textbf{Why this matters.} Double buffering decouples the real-time constraint (return fast) from the block constraint (the FFT needs a window and takes longer than one callback). The callback only copies its chunk and signals a worker (lock-free) when a buffer fills; the worker, off the real-time path, does the FFT. The same decoupling as the Disruptor (Chapter 78) and the hot/cold split (Chapter 106).
+
+\section{The Real-Time Audio Discipline}
+\begin{itemize}
+\item Hard deadline --- bounded worst-case callback; pre-allocate everything.
+\item No blocking --- SPSC rings for communication (Ch 77).
+\item No allocation --- object pools, fixed buffers (Ch 97).
+\item No I/O --- defer to worker threads (Ch 106).
+\item Fit more DSP --- SIMD (Ch 92).
+\item Block processing --- double buffering / worker thread.
+\end{itemize}
+
+\textbf{The discipline.} The audio callback is a hot path whose worst-case latency is a hard correctness requirement. The golden rules are the Chapter 106 checklist as law; the SPSC ring is the only correct cross-thread mechanism; SIMD packs more DSP into the budget; double buffering pushes block work off the deadline. Audio is where you cannot be sloppy about jitter.

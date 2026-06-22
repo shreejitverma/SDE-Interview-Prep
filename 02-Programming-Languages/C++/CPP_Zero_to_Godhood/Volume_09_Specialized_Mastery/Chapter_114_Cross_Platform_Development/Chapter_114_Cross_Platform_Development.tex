@@ -1,0 +1,67 @@
+\chapter{Cross-Platform Development}
+
+C++'s reach is unmatched: the same C++ core can run on a server, compile to a browser via WebAssembly, link into an Android app through the NDK, and ship inside an iOS app --- which is why C++ is the natural choice for the performance-critical engine shared across every platform a product targets. This chapter covers the portability disciplines and the major targets, along with the architecture that makes it work: a portable C++ core behind thin platform-specific shells.
+
+\section*{Chapter Roadmap}
+\begin{itemize}
+\item 114.1 The Portable-Core Architecture
+\item 114.2 WebAssembly with Emscripten
+\item 114.3 Mobile C++: Android NDK and iOS
+\item 114.4 Portability Disciplines
+\item 114.5 Conditional Compilation and Its Hazards
+\end{itemize}
+
+\section{The Portable-Core Architecture}
+The performance-critical, platform-independent logic is written once in standard C++; each platform gets a thin shell adapting it to that platform's UI, lifecycle, and APIs.
+
+\textbf{Why this matters.} The hard, valuable logic (a codec, a database engine, a game's simulation) is implemented and optimised once; only the small platform glue is rewritten per target --- how Figma (C++ core to Wasm), Google's mobile apps (shared C++ via the NDK), and game engines work. Keep the core free of platform dependencies, behind abstract interfaces the shell implements.
+
+\section{WebAssembly with Emscripten}
+\begin{lstlisting}[language=C++, caption={A C++ function exported to JavaScript via Emscripten. Non-portable. Min standard: C++11.}]
+#include <emscripten/emscripten.h>
+extern "C" {
+    EMSCRIPTEN_KEEPALIVE
+    int add(int a, int b) { return a + b; }   // JS: Module._add(a, b)
+}
+// emcc main.cpp -o index.html -s WASM=1
+\end{lstlisting}
+
+\textbf{Why this matters / cost model.} Wasm brings C++ performance to the browser (in-browser editing, CAD, games). \texttt{extern "C"} exposes unmangled names; the JS$\leftrightarrow$Wasm boundary has crossing overhead and passes only numeric types directly (strings/objects marshal through linear memory), so do bulk work per call. Constraints: a sandbox (no direct OS; emulated FS), linear memory, threads via SharedArrayBuffer. Cost: larger download and marshalling --- worth it when compute justifies native speed.
+
+\section{Mobile C++: Android NDK and iOS}
+\begin{lstlisting}[language=C++, caption={An Android NDK native method exposed to Kotlin via JNI. Non-portable. Min standard: C++11.}]
+#include <jni.h>
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_example_myapp_MainActivity_stringFromJNI(JNIEnv* env, jobject) {
+    return env->NewStringUTF("Hello from C++");
+}
+\end{lstlisting}
+
+\textbf{Why this matters / cost model.} A shared C++ engine (often the same one compiled to Wasm) powers both Android and iOS, with platform UI in Kotlin and Swift calling into it. Boundary hazards are Chapter 111's: JNI's thread-local \texttt{JNIEnv*} and local-reference leaks on Android, ownership across Objective-C ARC on iOS. Favour coarse-grained crossings. Payoff: one optimised core across both mobile platforms plus web.
+
+\section{Portability Disciplines}
+\begin{itemize}
+\item Sizes/layout --- \texttt{int}/\texttt{long} differ; use fixed-width types at boundaries.
+\item Endianness --- convert explicitly for wire/hardware.
+\item Alignment/padding --- do not rely on struct layout across platforms.
+\item Filesystem/paths --- use \texttt{std::filesystem} (C++17).
+\item Standard-library completeness --- not every platform has full library/threads/exceptions.
+\end{itemize}
+
+\textbf{Why this matters.} Portability bugs are latent: code working on the dev platform fails elsewhere on an implicit assumption (a \texttt{long} that changed size, an endianness mismatch). Make assumptions explicit, feature-test (\texttt{\_\_has\_include}), and test on all targets in CI --- cross-platform only on one CI is aspirational.
+
+\section{Conditional Compilation and Its Hazards}
+\begin{lstlisting}[language=C++, caption={Isolate platform code behind an interface, not scattered #if. Min standard: C++17.}]
+#if defined(_WIN32)
+    // Windows
+#elif defined(__linux__)
+    // Linux
+#elif defined(__APPLE__)
+    // macOS/iOS
+#endif
+// Better: a portable interface, one small .cpp per platform.
+\end{lstlisting}
+
+\textbf{Why this matters.} Scattered \texttt{\#ifdef}s are unmaintainable: each platform path is only compiled/tested on that platform so others rot. Define a platform-neutral interface and implement it in one file per platform, selected by the build system (Chapter 110), confining platform differences to thin separately-tested files.
+
+\textbf{The discipline.} Write the performance-critical logic once in standard, platform-free C++, and adapt per target through thin shells --- JNI/Objective-C++ for mobile, Emscripten for web, native UI on desktop. Make assumptions explicit, confine platform code behind interfaces, and test on every target. The reward: one optimised engine running everywhere.

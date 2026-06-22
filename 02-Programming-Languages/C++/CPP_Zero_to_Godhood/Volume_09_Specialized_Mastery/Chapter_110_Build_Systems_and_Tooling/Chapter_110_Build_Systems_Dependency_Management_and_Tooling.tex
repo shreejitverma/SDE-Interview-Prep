@@ -1,0 +1,78 @@
+\chapter{Build Systems, Dependency Management, and Tooling}
+
+C++ has no built-in package manager and no canonical build system, so ``how do I build and depend on other code'' was long the language's most painful problem --- and getting it wrong costs hours of every engineer's day in slow, non-reproducible, or broken builds. This chapter covers the modern answer: target-based CMake, reproducible Bazel builds, vcpkg and Conan, and the tooling that turns a codebase from a fragile pile of source files into an engineered system.
+
+\section*{Chapter Roadmap}
+\begin{itemize}
+\item 110.1 The C++ Build Problem
+\item 110.2 The Build Process and Make
+\item 110.3 Modern CMake: Targets and Usage Requirements
+\item 110.4 Bazel and Hermetic, Reproducible Builds
+\item 110.5 Dependency Management: vcpkg and Conan
+\item 110.6 Common Linker Errors
+\item 110.7 Tooling: Sanitizers, Static Analysis, PCH, and Compilation Databases
+\end{itemize}
+
+\section{The C++ Build Problem}
+A build system is the master contractor: it invokes the compiler and linker in order, rebuilds only what changed, and produces the artefacts. C++ has many build systems and no standard dependency manager, so the build is itself a significant engineering artefact.
+
+\textbf{Why this matters.} The build decides correctness (ODR/ABI hazards live in flags), performance (LTO/PGO are build config), and velocity (incremental time). Modern tooling makes builds fast (incremental, parallel, cached), correct (consistent flags, declared dependencies), and reproducible.
+
+\section{The Build Process and Make}
+Building is preprocess $\to$ compile each TU to an object $\to$ link. Make declares targets, prerequisites, and recipes, rebuilding a target only if a prerequisite is newer.
+
+\begin{lstlisting}[language=bash, caption={A Makefile's target/prerequisite/recipe model.}]
+CXX = g++
+CXXFLAGS = -std=c++20 -Wall -Wextra -O2
+app: main.o util.o
+	$(CXX) main.o util.o -o app
+main.o: main.cpp util.h
+	$(CXX) $(CXXFLAGS) -c main.cpp
+\end{lstlisting}
+
+\textbf{Why this matters.} A dependency graph rebuilt only when inputs change is the core of every build system. It explains incremental builds, why a missing header dependency causes stale builds, and why \texttt{make -j} parallelises. Hand-written Makefiles do not scale, hence a generator (CMake).
+
+\section{Modern CMake: Targets and Usage Requirements}
+CMake is a build-system generator: it reads \texttt{CMakeLists.txt} and generates files for Make/Ninja/IDEs. Modern CMake treats everything as a target with usage requirements that propagate.
+
+\begin{lstlisting}[language=bash, caption={Modern CMake: usage requirements propagate transitively. Min: CMake 3.x.}]
+add_library(Network src/net.cpp)
+target_include_directories(Network PUBLIC  include/)
+target_compile_definitions(Network PRIVATE USE_AVX=1)
+target_link_libraries(Network PUBLIC Threads::Threads)
+add_executable(app src/main.cpp)
+target_link_libraries(app PRIVATE Network)
+\end{lstlisting}
+
+\textbf{Why this matters.} \texttt{PUBLIC} (I and my consumers need it), \texttt{PRIVATE} (internal only), \texttt{INTERFACE} (consumers only, header-only). Pre-modern global commands polluted every target, the source of inconsistent-flag ODR/ABI bugs (Chapter 104). Target-based CMake propagates requirements consistently --- correctness tooling that eliminates ``works on my machine'' bugs.
+
+\section{Bazel and Hermetic, Reproducible Builds}
+Bazel builds are hermetic: they depend only on explicitly-declared inputs, so the same source produces the exact same binary anywhere.
+
+\textbf{Why this matters / cost model.} Hermeticity buys reproducibility (rebuild a release binary bit-for-bit for incident debugging and supply-chain verification) and cross-machine caching (anyone's identical-input build result is reused). Cost: rigidity (every dependency declared) and a steep curve. Used by Google and HFT firms where reproducibility and caching justify it at scale.
+
+\section{Dependency Management: vcpkg and Conan}
+\begin{lstlisting}[language=bash, caption={Declarative dependency acquisition.}]
+vcpkg install fmt:x64-linux            # source-based, CMake-integrated
+# conan install . --build=missing      # resolves a graph, can fetch prebuilt binaries
+\end{lstlisting}
+
+\textbf{Why this matters.} Manual dependencies drift in version and flags (ABI mismatches), are not reproducible, and are not auditable. Package managers make dependencies declarative, versioned, and consistent. vcpkg suits CMake-centric simplicity; Conan suits enterprises needing binary distribution and complex resolution. ``What does this depend on'' becomes a file in the repo.
+
+\section{Common Linker Errors}
+\texttt{undefined reference to 'X'} --- a symbol declared/used but never defined or not linked (missing source/library, signature mismatch, missing \texttt{extern "C"}). \texttt{multiple definition of 'X'} --- two TUs defined a non-inline symbol (a header definition without \texttt{inline}).
+
+\textbf{Why this matters.} These surface the ODR: zero vs more-than-one definition reaching the linker. Fixes: link the library / fix the declaration; mark header functions \texttt{inline} or move to one \texttt{.cpp}; use \texttt{inline} variables (C++17) for header constants. Demangle with \texttt{c++filt} to see the exact signature wanted.
+
+\section{Tooling: Sanitizers, Static Analysis, PCH, and Compilation Databases}
+Sanitizers (Chapter 105) are \texttt{-fsanitize} flags in CI; static analysers (clang-tidy, \texttt{-Wall -Wextra -Werror}) catch bugs without running; PCH compiles common headers once; compilation databases (\texttt{compile\_commands.json}) record each TU's exact compile command for clangd/clang-tidy.
+
+\begin{lstlisting}[language=bash, caption={Wiring sanitizers, warnings-as-errors, and a compilation database. Min: GCC/Clang + CMake.}]
+cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ..
+g++ -std=c++20 -Wall -Wextra -Werror -fsanitize=address,undefined -c file.cpp
+clang-tidy file.cpp
+\end{lstlisting}
+
+\textbf{Why this matters.} The build hosts the quality gates: \texttt{-Werror} makes static analysis a hard requirement, sanitizers in CI catch the UB and races tests miss, and the compilation database powers editor intelligence and refactoring (they need each file's exact flags). Wired in once, enforced every commit.
+
+\textbf{The discipline.} The build and tooling are infrastructure determining correctness, performance, and velocity. Baseline: target-based CMake (or Bazel for monorepo reproducibility), a declarative package manager, and a tooling pipeline (warnings-as-errors, sanitizers in CI, a compilation database). Invest early; it pays back daily.

@@ -1,0 +1,67 @@
+\chapter{Scientific Computing and GPU}
+
+C++ is the language beneath nearly all high-performance numerical computing --- the linear-algebra libraries, physics simulations, and deep-learning kernels --- because scientific computing is dominated by the two things C++ exposes best: arithmetic throughput and memory layout. This chapter covers the CPU side (template-based linear algebra via Eigen) and the GPU side (CUDA), unified by one principle: numerical performance is about keeping the arithmetic units fed.
+
+\section*{Chapter Roadmap}
+\begin{itemize}
+\item 116.1 Why C++ Dominates Numerical Computing
+\item 116.2 Eigen: Expression Templates for Linear Algebra
+\item 116.3 The GPU Execution Model
+\item 116.4 CUDA Kernels and the Host/Device Boundary
+\item 116.5 GPU Memory: The Real Bottleneck
+\item 116.6 The Numerical Performance Discipline
+\end{itemize}
+
+\section{Why C++ Dominates Numerical Computing}
+Scientific computing is the purest compute cost model: dense arithmetic over large arrays, bounded by how fully you use the arithmetic units and feed them from memory. C++ gives direct control over layout (Chapter 90) and vectorisation (Chapter 92) with zero-overhead abstractions.
+
+\textbf{Why this matters.} Python/R/MATLAB are the interfaces; the engines are C++/Fortran (NumPy, PyTorch, TensorFlow). An interpreted loop over a million elements is hopeless; a C++ kernel vectorises and parallelises. C++'s layout control, expression templates, and SIMD/GPU access are what numerical performance requires.
+
+\section{Eigen: Expression Templates for Linear Algebra}
+\begin{lstlisting}[language=C++, caption={Eigen: natural syntax, fused evaluation. Non-portable. Min standard: C++14.}]
+#include <Eigen/Dense>
+using Eigen::MatrixXd; using Eigen::VectorXd;
+void solve_system() {
+    MatrixXd A(3, 3);
+    A << 1,2,3, 4,5,6, 7,8,10;
+    VectorXd b(3); b << 3, 3, 4;
+    VectorXd x = A.colPivHouseholderQr().solve(b);
+}
+\end{lstlisting}
+
+\textbf{Why this matters / cost model.} A naive library computes \texttt{A + B + C} as two passes with a temporary; Eigen's expression templates (Chapter 108) collapse it to one fused, auto-vectorised pass with no temporary --- natural syntax, hand-tuned performance. Eigen also blocks for the cache (Chapter 87). Hazard: \texttt{auto x = A + B;} captures references that dangle for temporaries.
+
+\section{The GPU Execution Model}
+The GPU is a throughput machine: it hides memory latency not with caches and out-of-order execution but with massive thread oversubscription --- when one thread group stalls, the scheduler runs another.
+
+\textbf{Why this matters.} The GPU inverts the CPU's priorities: a CPU core is latency-optimised (caches, prediction, OoO); a GPU is throughput-optimised (thousands of simple cores, latency hidden by excess threads). GPUs crush CPUs on data-parallel problems and lose on latency-sensitive, branchy, or serial ones. Fit determines everything.
+
+\section{CUDA Kernels and the Host/Device Boundary}
+\begin{lstlisting}[language=C++, caption={A CUDA kernel: each of N threads computes one element. Non-portable.}]
+__global__ void vectorAdd(const float* A, const float* B, float* C, int N) {
+    int i = blockDim.x * blockIdx.x + threadIdx.x;
+    if (i < N) C[i] = A[i] + B[i];
+}
+void launch(const float* dA, const float* dB, float* dC, int N) {
+    int threadsPerBlock = 256;
+    int blocksPerGrid = (N + threadsPerBlock - 1) / threadsPerBlock;
+    vectorAdd<<<blocksPerGrid, threadsPerBlock>>>(dA, dB, dC, N);
+}
+\end{lstlisting}
+
+\textbf{Why this matters / cost model.} You express the per-element computation once; the hardware runs it across thousands of threads. The critical cost is the host/device boundary: separate memories, so data crosses the PCIe bus (slow) before and after the kernel --- the GPU analogue of the syscall/copy cost. Move data over once, do many operations, move results back once; never ping-pong per operation.
+
+\section{GPU Memory: The Real Bottleneck}
+GPU performance is usually memory-bound, and the key concept is coalescing: when a thread group accesses consecutive addresses, the hardware combines them into one wide transaction; scattered accesses issue many, wasting bandwidth.
+
+\textbf{Why this matters / cost model.} Coalescing is the GPU's cache-line utilisation (Chapter 87) and the most important GPU optimization. Thread $i$ reading element $i$ (coalesced) achieves full bandwidth; strided/scattered access a fraction of it --- the AoS-vs-SoA lesson (Chapter 90) on the GPU. Fast on-chip shared memory and tiling apply the blocking technique. Layout dominates on both processors.
+
+\section{The Numerical Performance Discipline}
+\begin{itemize}
+\item Parallelism --- SIMD lanes + cores (CPU) vs thousands of threads (GPU).
+\item Fusing --- expression templates (CPU) vs kernel fusion (GPU).
+\item Layout --- cache lines/SoA/blocking (CPU) vs coalescing/shared memory/tiling (GPU).
+\item Expensive boundary --- DRAM bandwidth (CPU) vs PCIe transfer (GPU).
+\end{itemize}
+
+\textbf{The discipline.} Performance is keeping the arithmetic units fed. On the CPU: fuse (expression templates), lay out cache-friendly (SoA, blocking), vectorise. On the GPU: massive parallelism, minimise transfers, coalesce memory. The judgement is fit: GPU when massively data-parallel and the data justifies the transfer; CPU (vectorised) otherwise. Layout and bandwidth, not raw FLOPs, decide the speed.

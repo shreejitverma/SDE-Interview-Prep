@@ -1,0 +1,62 @@
+\chapter{Database Internals and LSM-Trees}
+
+A storage engine is one of the most demanding things to build in C++: durable (survive crashes), concurrent (many readers and writers), and fast against storage orders of magnitude slower than RAM. The central insight of modern write-optimised databases --- RocksDB, LevelDB, Cassandra --- is to turn slow random writes into fast sequential ones, via the Log-Structured Merge-tree (LSM-tree).
+
+\section*{Chapter Roadmap}
+\begin{itemize}
+\item 120.1 The Storage Cost Model: Sequential Beats Random
+\item 120.2 The LSM-Tree Architecture
+\item 120.3 The Write Path: MemTable and WAL
+\item 120.4 SSTables and Compaction
+\item 120.5 The Read Path: Bloom Filters and mmap
+\item 120.6 LSM vs B-Tree and the Engine Discipline
+\end{itemize}
+
+\section{The Storage Cost Model: Sequential Beats Random}
+Random access is far slower than sequential --- dramatically on disks (a $\sim$10\,ms seek vs hundreds of MB/s sequential) and significantly on SSDs (random writes cause amplification and wear). A B-tree updates in place, making a random-key write a random disk write.
+
+\textbf{Why this matters.} The storage analogue of the cache cost model (Chapter 87): the device prefers sequential writes over random ones. The LSM-tree transforms random writes into sequential by never updating in place --- it always appends. Performance comes from matching the access pattern to what the hardware does well: sequential.
+
+\section{The LSM-Tree Architecture}
+Three tiers: a MemTable (in-memory sorted skip list/tree absorbing writes at RAM speed); a Write-Ahead Log (append-only on-disk log for durability); and SSTables (immutable sorted on-disk files written sequentially when a MemTable fills).
+
+\textbf{Why this matters.} A memory-buffer-plus-sequential-flush design --- the shape of a CPU write buffer or batching I/O: absorb small operations in fast memory, commit them to slow storage in one sequential batch. Writes hit the MemTable and WAL (both fast), so write latency is tiny; sorting and flushing happen in the background. Immutability makes SSTables concurrent-friendly and crash-safe.
+
+\section{The Write Path: MemTable and WAL}
+\begin{lstlisting}[language=text, caption={The LSM write path.}]
+write(key, value):
+  1. append (key, value) to the WAL          # durable, sequential
+  2. insert (key, value) into the MemTable   # query-able, in-memory sorted
+MemTable full:
+  3. freeze it (immutable), start a new MemTable
+  4. background: flush to a new SSTable (sequential), then drop the WAL segment
+\end{lstlisting}
+
+\textbf{Why this matters / cost model.} The WAL is durability: a crash would lose the in-RAM MemTable, so every write is first appended to the on-disk WAL (cheap sequential), and on restart the MemTable is replayed from it. Writes are fast (sequential append, not random in-place) and durable. A skip-list MemTable supports sorted iteration and lock-free concurrent insertion (Chapter 77). The cost is write amplification deferred to compaction.
+
+\section{SSTables and Compaction}
+Compaction is the background process merging multiple SSTables into fewer, discarding shadowed (overwritten/deleted) entries.
+
+\textbf{Why this matters / cost model.} Without it, reads check ever more SSTables and deleted data is never reclaimed. Compaction merges sorted SSTables (sequential, cheap) keeping the latest version of each key. The cost is write amplification: data is rewritten as it moves through levels, consuming bandwidth and SSD endurance. Leveled (RocksDB) vs size-tiered (Cassandra) compaction tunes the read/write/space trade-off. The price of turning random writes into sequential is paid in background I/O, not user-visible latency.
+
+\section{The Read Path: Bloom Filters and mmap}
+\begin{lstlisting}[language=C++, caption={The read path: a Bloom filter lets a read skip SSTables. Min standard: C++11.}]
+// value get(key):
+//   if MemTable has key -> return it (newest)
+//   for each SSTable, newest to oldest:
+//       if (!sstable.bloom_filter.might_contain(key)) continue;   // SKIP
+//       if (auto v = sstable.lookup(key)) return v;
+//   return not_found;
+\end{lstlisting}
+
+\textbf{Why this matters / cost model.} The Bloom filter is the read-path hero: without it a read might touch every SSTable; with it a read skips files that cannot contain the key, turning an N-file scan into one or two lookups. Its false positives (an unnecessary lookup) but never false negatives are the right trade. \texttt{mmap} (Chapter 99) removes the syscall-and-copy cost (with the page-fault caveat of Chapter 88). Together they fix the LSM-tree's inherent read weakness.
+
+\section{LSM vs B-Tree and the Engine Discipline}
+\begin{itemize}
+\item Writes --- random in-place (B-tree, IOPS-bound) vs sequential batches (LSM, fast).
+\item Reads --- one path (B-tree, fast) vs multiple files (LSM, Bloom-filtered).
+\item Write/space amplification --- low (B-tree) vs higher (LSM, compaction/shadowed data).
+\item Best for --- read-heavy point queries (B-tree) vs write-heavy ingest (LSM).
+\end{itemize}
+
+\textbf{The discipline.} The LSM-tree exists because sequential I/O beats random, and its every feature follows: MemTable buffers, WAL durable append, immutable sequential SSTables, background compaction, Bloom filters plus \texttt{mmap} for reads. The trade-off is explicit: LSM optimises writes (at write amplification and read complexity), B-tree optimises reads (at random-write cost) --- chosen by workload. Building one exercises durability, lock-free concurrency, batched/mapped I/O, cache-conscious structures, and a hard cost model.

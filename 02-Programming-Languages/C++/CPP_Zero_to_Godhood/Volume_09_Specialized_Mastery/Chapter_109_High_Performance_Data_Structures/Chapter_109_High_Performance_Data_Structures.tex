@@ -1,0 +1,78 @@
+\chapter{High-Performance Data Structures}
+
+When \texttt{std::unordered\_map} or \texttt{std::map} is the bottleneck, the answer is rarely a cleverer same-big-O algorithm --- it is a data structure designed around the hardware: minimising cache misses, exploiting SIMD, avoiding pointer chasing, and reusing memory without reallocation. This chapter presents the structures production low-latency systems use --- the Disruptor, the Swiss table, cache-conscious tries, and the slot map --- justified by the cost models of Volume 8.
+
+\section*{Chapter Roadmap}
+\begin{itemize}
+\item 109.1 Why Big-O Is Not Enough
+\item 109.2 The Disruptor: A Ring Buffer on Steroids
+\item 109.3 The Swiss Table: Open Addressing with SIMD Metadata
+\item 109.4 Cache-Conscious Tries: Judy Arrays and Burst Tries
+\item 109.5 The Slot Map: Stable Handles and Generational Indices
+\item 109.6 Choosing a Structure
+\end{itemize}
+
+\section{Why Big-O Is Not Enough}
+Asymptotic complexity assumes uniform operation cost, but a cache miss costs $\sim$100$\times$ a hit, so an O(n) scan of contiguous memory beats an O(log n) pointer-chasing tree. These structures are designed by the constant factors: cache-line utilisation, branch predictability, prefetchability, SIMD width, coherence traffic.
+
+\textbf{Why this matters.} \texttt{std::map} and \texttt{std::unordered\_map} are correct and general but pointer-chasing: each node a separate allocation, traversal a sequence of misses. The structures here trade generality for hardware sympathy and run several times faster for the same big-O. Layout and access pattern dominate operation count.
+
+\section{The Disruptor: A Ring Buffer on Steroids}
+A pre-allocated lock-free ring for high-throughput inter-thread messaging, generalising the SPSC ring to a consumer dependency graph using sequences and barriers.
+\begin{itemize}
+\item Pre-allocated entries --- no hot-path \texttt{malloc}, no fragmentation, no GC pause.
+\item Sequence numbers --- release/acquire publication, not a lock.
+\item Barriers, not locks --- consumers wait on the slowest upstream sequence.
+\item Cache-line padding --- every counter \texttt{alignas(64)} to prevent false sharing.
+\item Batching --- process all newly-published entries in one batch.
+\end{itemize}
+
+\textbf{Why this matters / cost model.} A queue's real cost is allocation, the contended head/tail, and cache ping-pong --- not the logic. Pre-allocation, padded sequences, and batching reduce per-message cost to a few cache-hot operations, sustaining tens of millions of messages/sec sub-microsecond. Trade-off: fixed-capacity, busy-spinning, dedicates a core (Chapter 96).
+
+\section{The Swiss Table: Open Addressing with SIMD Metadata}
+Replaces chained nodes with open addressing plus a control-byte array probed with SIMD: parallel control-byte and slot arrays; each control byte is 7 hash bits + 1 empty/deleted bit; lookup loads 16 control bytes and compares all 16 in parallel.
+
+\begin{lstlisting}[language=C++, caption={Swiss-table SIMD probe: 16 candidates in one instruction. x86-specific. Min standard: C++17.}]
+// __m128i ctrl = _mm_loadu_si128(&control[group]);
+// __m128i want = _mm_set1_epi8(h2);
+// int matches = _mm_movemask_epi8(_mm_cmpeq_epi8(ctrl, want));
+// for each set bit: compare the full key (rarely needed)
+\end{lstlisting}
+
+\textbf{Why this matters / cost model.} Chaining follows a pointer per lookup (cache misses); the Swiss table keeps everything contiguous, and a 16-candidate group fits one cache line probed with one SIMD compare --- drastically fewer misses, typically 2--3$\times$ faster. Costs: open addressing resizes to stay sparse (more memory), tombstones accumulate (periodic rehash), and the probe is ISA-specific (libraries provide fallbacks).
+
+\section{Cache-Conscious Tries: Judy Arrays and Burst Tries}
+Adaptive tries restructure by density: Judy arrays change node representation (linear list $\to$ bitmap $\to$ sub-array) by fullness; burst tries keep keys in leaf buckets and burst only when large; ART uses Node4/16/48/256 by child count, achieving B-tree performance with trie simplicity.
+
+\textbf{Why this matters / cost model.} A naive trie wastes memory; a naive tree chases a pointer per level. Adaptive structures change node representation to match the data: dense regions get array-like nodes, sparse get compact ones, small nodes fit a cache line and SIMD-search. Payoff: ordered-map performance near a hash map's, with range queries. Cost: complexity --- use a vetted library; know they exist and why they win.
+
+\section{The Slot Map: Stable Handles and Generational Indices}
+\begin{lstlisting}[language=C++, caption={A slot map: stable handles with a generation counter detecting use-after-free. Min standard: C++11.}]
+struct Handle { uint32_t index; uint32_t generation; };
+template <typename T>
+class SlotMap {
+    struct Slot { T value; uint32_t generation = 0; bool alive = false; };
+    std::vector<Slot> slots_; std::vector<uint32_t> free_list_;
+public:
+    Handle insert(T v) { uint32_t i; /* pop free or push_back */ return {i, slots_[i].generation}; }
+    T* get(Handle h) {
+        if (h.index >= slots_.size()) return nullptr;
+        Slot& s = slots_[h.index];
+        if (!s.alive || s.generation != h.generation) return nullptr;   // generation check
+        return &s.value;
+    }
+    void erase(Handle h) { if (get(h)) { slots_[h.index].alive=false; ++slots_[h.index].generation; } }
+};
+\end{lstlisting}
+
+\textbf{Why this matters / cost model.} Slot maps back game-engine entity systems and any churning objects referenced from many places. They give a handle's stability (survives growth/removal, unlike a raw pointer/index) and a generation check's safety (a reused-slot handle returns \texttt{nullptr}, catching use-after-free). Contiguous storage, O(1) access, small (32-bit) handles. Cost: a generation field and an indirection.
+
+\section{Choosing a Structure}
+\begin{itemize}
+\item Inter-thread queue --- Disruptor/SPSC ring over \texttt{queue}+mutex: no allocation/lock, cache-padded.
+\item Hot-path hash map --- Swiss/flat map over \texttt{unordered\_map}: contiguous + SIMD probe.
+\item Ordered integer map --- Judy/ART over \texttt{map}: adaptive nodes, range queries.
+\item Stable references to churning objects --- slot map over vector+indices: stable handles + generation safety.
+\end{itemize}
+
+\textbf{The discipline.} Reach past the standard containers only when profiling shows a bottleneck and the cost model explains why (cache misses or contention). These win by hardware sympathy: contiguous storage, SIMD probing, pre-allocation, small stable handles. Prefer a vetted implementation but know which exists and why.

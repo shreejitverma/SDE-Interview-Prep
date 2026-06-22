@@ -1,0 +1,64 @@
+\chapter{GUI Development with C++}
+
+Graphical user interfaces sit at the opposite end of C++'s spectrum from lock-free queues --- event-driven, stateful, human-facing --- but they are still where much professional C++ lives: CAD tools, DAWs, IDEs, game editors, trading terminals. The central question of any GUI is how UI state relates to rendered pixels, and the two answers --- retained mode and immediate mode --- lead to fundamentally different architectures. This chapter covers both through Qt and Dear ImGui, and the threading discipline GUIs demand.
+
+\section*{Chapter Roadmap}
+\begin{itemize}
+\item 115.1 The Two GUI Paradigms
+\item 115.2 Retained Mode: Qt and Signals/Slots
+\item 115.3 Immediate Mode: Dear ImGui
+\item 115.4 The UI Thread Rule
+\item 115.5 Choosing a Paradigm
+\end{itemize}
+
+\section{The Two GUI Paradigms}
+Retained mode keeps a persistent widget tree the framework owns, renders, and you mutate on events. Immediate mode has no tree: every frame you call functions describing the UI, which is a function of your application state re-derived each frame.
+
+\textbf{Why this matters.} Retained mode (Qt, GTK, the DOM) suits complex static UIs but requires keeping the tree synchronised with data (the source of ``the UI didn't update'' bugs). Immediate mode (ImGui) suits dynamic data-driven UIs, eliminating synchronisation bugs at the cost of redrawing every frame. They fit different problems.
+
+\section{Retained Mode: Qt and Signals/Slots}
+\begin{lstlisting}[language=C++, caption={Qt signals/slots: a type-safe event connection. Non-portable. Min standard: C++11.}]
+class MainWindow : public QMainWindow {
+    Q_OBJECT
+public:
+    explicit MainWindow(QWidget* parent = nullptr) : QMainWindow(parent) {
+        auto* button = new QPushButton("Click me", this);
+        connect(button, &QPushButton::clicked, this, &MainWindow::handleButton);
+    }
+public slots:
+    void handleButton() { /* respond */ }
+};
+\end{lstlisting}
+
+\textbf{Why this matters / cost model.} Signals/slots solve the Observer lifetime hazard (Chapter 107): a connection is severed when either \texttt{QObject} is destroyed. The cost is the MOC, a pre-compilation code-generation step (C++ lacked reflection --- Chapter 75), wired into the build (Chapter 110). Qt brings its own object model (parent-owned \texttt{QObject} trees) and widget/layout/accessibility system. Trade-off: you adopt Qt's whole paradigm.
+
+\section{Immediate Mode: Dear ImGui}
+\begin{lstlisting}[language=C++, caption={Dear ImGui: the UI is a function of state, re-described each frame. Non-portable. Min standard: C++11.}]
+void render_debug_panel(float bg_color[3]) {
+    ImGui::Begin("Debug Tools");
+    ImGui::ColorEdit3("Background", bg_color);
+    if (ImGui::Button("Reset")) { bg_color[0]=bg_color[1]=bg_color[2]=0.0f; }
+    ImGui::End();
+}
+\end{lstlisting}
+
+\textbf{Why this matters / cost model.} Immediate mode eliminates synchronisation bugs: the UI is recomputed from state every frame, so a button's enabled-state is just \texttt{if (state.ready)}. Ideal for rapidly-changing data-driven UIs. Cost: it re-renders the entire UI every frame, appropriate where you already render continuously but wasteful for static document UIs; it also lacks accessibility and native look-and-feel.
+
+\section{The UI Thread Rule}
+\begin{lstlisting}[language=C++, caption={Background work marshals its result to the UI thread. Min standard: C++11.}]
+// Worker thread computes result, then:
+//   QMetaObject::invokeMethod(widget, [result]{ widget->setText(result); }, Qt::QueuedConnection);
+\end{lstlisting}
+
+\textbf{Why this matters.} GUI state is not thread-safe and the windowing system often requires single-threaded access; touching a widget off-thread is a data race (Chapter 76) producing intermittent crashes. The discipline is the hot/cold split (Chapter 106) in GUI form: do no blocking/heavy work on the UI thread (it freezes the interface), run it on background threads, and marshal only results back via the framework's thread-safe mechanism. A responsive GUI never blocks its UI thread.
+
+\section{Choosing a Paradigm}
+\begin{itemize}
+\item State ownership --- framework (Qt) vs application (ImGui).
+\item Synchronisation bugs --- possible (Qt) vs eliminated (ImGui).
+\item Redraw cost --- on change (Qt) vs every frame (ImGui).
+\item Best for --- complex static UIs/accessibility (Qt) vs dynamic tools/overlays (ImGui).
+\item Build --- MOC step (Qt) vs header-only (ImGui). Both: single UI thread.
+\end{itemize}
+
+\textbf{The discipline.} GUI development is governed by the paradigm choice (retained vs immediate, by whether the UI is complex-static or dynamic-data-driven) and the universal threading rule (all UI on one thread, heavy work off it, results marshalled back). Both manage the state-to-pixels relationship. Never block or race the UI thread.

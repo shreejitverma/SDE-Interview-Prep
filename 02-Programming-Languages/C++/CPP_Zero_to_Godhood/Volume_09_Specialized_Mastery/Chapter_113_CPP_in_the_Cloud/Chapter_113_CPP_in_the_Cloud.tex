@@ -1,0 +1,63 @@
+\chapter{C++ in the Cloud}
+
+C++ is often dismissed as a ``systems language,'' not a cloud language --- but that intuition is wrong: in cloud-native architectures where you pay per millisecond of compute and per gigabyte of memory, C++'s speed and tiny footprint translate directly into lower bills and better latency. This chapter covers C++ as a first-class cloud citizen: high-throughput microservices, serverless functions where fast cold start is decisive, and the deployment realities that make native services practical.
+
+\section*{Chapter Roadmap}
+\begin{itemize}
+\item 113.1 Why C++ Belongs in the Cloud
+\item 113.2 High-Throughput Microservices
+\item 113.3 Serverless C++ and Cold-Start Advantage
+\item 113.4 Containers and Static Linking
+\item 113.5 Observability and Operational Reality
+\item 113.6 The Cloud Cost Discipline
+\end{itemize}
+
+\section{Why C++ Belongs in the Cloud}
+At scale or on per-millisecond serverless, machine cost dominates, and a service using half the CPU and a tenth the memory of its Java/Node equivalent costs proportionally less. Modern C++'s zero-overhead abstractions produce small, fast binaries.
+
+\textbf{Why this matters.} Every performance property becomes a cost lever: lower CPU per request means fewer instances; lower memory means a cheaper tier; fast startup means less serverless duration; no GC means no pause forcing over-provisioning for an SLA. The cloud is where the determinism discipline of Volume 8 pays a literal dividend.
+
+\section{High-Throughput Microservices}
+\begin{lstlisting}[language=C++, caption={A Drogon-style async HTTP handler. Non-portable. Min standard: C++17.}]
+void Handler::get(const HttpRequestPtr& req,
+                  std::function<void(const HttpResponsePtr&)>&& callback) {
+    auto resp = HttpResponse::newHttpResponse();
+    resp->setBody("Hello from a high-performance microservice!");
+    callback(resp);   // async completion
+}
+\end{lstlisting}
+
+\textbf{Why this matters / cost model.} Built on the async event-loop architecture of Chapter 112 and the patterns of Chapter 78, these frameworks sustain hundreds of thousands of requests/sec/core where thread-per-request saturates sooner. The handler is asynchronous, so one loop serves many concurrent requests. The payoff is density --- one C++ service does the work of several JVM instances. Trade-off: less mature ecosystem.
+
+\section{Serverless C++ and Cold-Start Advantage}
+\begin{lstlisting}[language=C++, caption={A native AWS Lambda handler; sub-5ms cold start. Non-portable. Min standard: C++11.}]
+#include <aws/lambda-runtime/runtime.h>
+using namespace aws::lambda_runtime;
+invocation_response handler(invocation_request const& req) {
+    return invocation_response::success("Processed!", "application/json");
+}
+int main() { run_handler(handler); }
+\end{lstlisting}
+
+\textbf{Why this matters / cost model.} A native binary has no runtime to initialise, so cold start is under 5\,ms vs 100ms+ for JVM/.NET. This matters twice: cold-start latency is user-visible, and you pay for it on every cold invocation. With faster execution (less duration billed) and lower memory (priced by tier), native functions can be dramatically cheaper for bursty workloads. Cost: less polished toolchain.
+
+\section{Containers and Static Linking}
+A statically-linked C++ binary has no external shared-library dependencies, so it runs in a minimal distroless/scratch container --- a few MB versus hundreds for a JVM image.
+
+\textbf{Why this matters / cost model.} Image size affects costs: smaller images pull faster (lower scale-up latency, less bandwidth), have a smaller attack surface (fewer CVEs --- Chapter 121), and start faster. A static C++ service can be 5--20\,MB; a JVM image 200--500\,MB. The Chapter 102 trade-off favours static linking strongly in containers, where each service is isolated and rebuilt to update anyway --- why Go dominated cloud-native and static C++ gets the same benefits.
+
+\section{Observability and Operational Reality}
+Observability --- structured logging, metrics, distributed tracing --- is non-negotiable, and C++ integrates with OpenTelemetry and Prometheus. The Volume 8 discipline applies: keep logging and metrics off the hot path (Chapter 106), emitted via a ring buffer to a background thread.
+
+\textbf{Why this matters.} The operational gap, not performance, is why teams hesitate. Modern C++ closes it (OpenTelemetry C++ SDK, Prometheus clients, spdlog). The key point: the same hot-path discipline that makes the service fast must apply to its instrumentation --- a synchronous log write or metrics mutex on the request path reintroduces the jitter you used C++ to avoid. Emit telemetry asynchronously, sample tracing, keep the request path clean.
+
+\section{The Cloud Cost Discipline}
+\begin{itemize}
+\item Per-request CPU --- lower; fewer instances, lower compute bill.
+\item Memory footprint --- lower; cheaper tier, higher density.
+\item Cold start --- $<$5\,ms; less serverless duration, faster scale-up.
+\item Image size --- MBs; faster pulls, smaller attack surface.
+\item GC pauses --- none; no over-provisioning for tail SLA.
+\end{itemize}
+
+\textbf{The discipline.} At scale and on serverless, machine efficiency is money --- C++'s speed, small footprint, fast startup, and absence of GC pauses translate into lower bills and better latency. Build on the async reactor (Chapter 112), keep telemetry off the hot path (Chapter 106), static-link into minimal containers (Chapter 102), and treat performance disciplines as cost-optimisation disciplines.

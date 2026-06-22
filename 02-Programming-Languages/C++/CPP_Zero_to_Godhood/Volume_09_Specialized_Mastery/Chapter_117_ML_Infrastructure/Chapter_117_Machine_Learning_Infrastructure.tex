@@ -1,0 +1,67 @@
+\chapter{Machine Learning Infrastructure}
+
+Deep-learning frameworks present a Python face, but PyTorch, TensorFlow, and JAX are C++ engines --- the tensors, automatic differentiation, operator kernels, and GPU dispatch are native code, with Python merely orchestrating. Understanding that C++ core separates an engineer who uses a framework from one who can optimise, extend, or build one. This chapter covers the four pillars: tensor layout, broadcasting, automatic differentiation, and operator fusion.
+
+\section*{Chapter Roadmap}
+\begin{itemize}
+\item 117.1 Frameworks Are C++ Engines
+\item 117.2 The Tensor: Memory Plus a View
+\item 117.3 Broadcasting via Zero Strides
+\item 117.4 Automatic Differentiation
+\item 117.5 Operator Fusion and Memory Bandwidth
+\item 117.6 The ML Infrastructure Discipline
+\end{itemize}
+
+\section{Frameworks Are C++ Engines}
+A framework is a Python layer over a C++ engine: the user describes a model in Python, but every computation runs in C++/CUDA kernels. Python builds the graph; C++ executes it.
+
+\textbf{Why this matters.} This is the Chapter 111 interop pattern at scale: a thin Python API over a heavy C++/CUDA core, crossed coarsely (one call dispatches a whole tensor operation). It explains lazy vs eager execution, explicit costly CPU/GPU transfers, C++/CUDA custom operators, and why tuning means understanding the kernels.
+
+\section{The Tensor: Memory Plus a View}
+\begin{lstlisting}[language=C++, caption={A tensor is memory + strides; transpose swaps strides. Min standard: C++11.}]
+struct Tensor {
+    float* data;
+    std::vector<int> shape;
+    std::vector<int> strides;
+    float& at(int i, int j) { return data[i * strides[0] + j * strides[1]]; }
+};
+// Transpose: swap strides and shape. Touches ZERO data.
+\end{lstlisting}
+
+\textbf{Why this matters / cost model.} Data-plus-view makes operations cheap: transpose swaps strides (no byte moved); slicing, reshaping, and broadcasting are zero-copy view manipulations --- the Chapter 90 layout discipline formalised, decoupling logical shape from physical layout. Contiguity matters: a kernel over a contiguous tensor streams memory efficiently, a strided view is cache-hostile, so frameworks sometimes materialise a contiguous copy.
+
+\section{Broadcasting via Zero Strides}
+\begin{lstlisting}[language=C++, caption={Broadcasting: a zero stride re-reads one element, allocation-free. Min standard: C++11.}]
+// Add [32,1] to [32,100]: set the vector's stride along the size-100 dim to 0
+//   vector.at(i,j) = vector.data[i*stride_i + j*0] = vector.data[i*stride_i]  (same for all j)
+\end{lstlisting}
+
+\textbf{Why this matters.} Broadcasting solves a problem through layout cleverness, not computation: the naive version materialises a full matrix (32$\times$ memory + a copy); the zero-stride trick re-reads one value with no extra memory --- the same philosophy as expression templates (Chapter 108) and the tensor view. Why broadcasting has no performance cliff.
+
+\section{Automatic Differentiation}
+\begin{lstlisting}[language=C++, caption={Reverse-mode autograd: a DAG of operations, each with a local gradient. Min standard: C++11.}]
+struct Node {
+    virtual ~Node() = default;
+    virtual Tensor forward() = 0;
+    virtual Tensor backward(const Tensor& grad_output) = 0;
+    std::vector<Node*> inputs;
+};
+// Forward: compute, store intermediates. Backward: from the loss, call backward() in reverse order.
+\end{lstlisting}
+
+\textbf{Why this matters / cost model.} Reverse-mode computes the gradient of a scalar loss w.r.t. all parameters in one backward pass (forward-cost), versus forward-mode's one pass per parameter --- feasible vs impossible for millions of parameters. The cost is memory: the forward pass stores activations the backward pass needs, dominating GPU RAM and driving gradient checkpointing (recompute vs store) --- the time/space trade-off at the heart of training.
+
+\section{Operator Fusion and Memory Bandwidth}
+ML kernels are memory-bandwidth-bound: \texttt{ReLU(Add(MatMul(A,B),C))} reads/writes the full tensor at each step. Operator fusion combines the chain into one kernel doing all of them with intermediates in registers, writing main memory once.
+
+\textbf{Why this matters / cost model.} The expression-template lesson (Chapters 108, 116) on GPU kernels: three naive kernels make three memory round trips; a fused kernel keeps intermediates in registers, touching global memory only for inputs and the final result --- often halving runtime for bandwidth-bound chains. Why frameworks invest in fusion (XLA, TensorRT) and why memory bandwidth, not FLOPs, governs ML performance.
+
+\section{The ML Infrastructure Discipline}
+\begin{itemize}
+\item Tensor --- data + strides; transpose swaps strides (view vs layout).
+\item Broadcasting --- a zero stride re-reads one element (avoid copies via layout).
+\item Autograd --- reverse-mode DAG + stored activations (time/space trade-off).
+\item Operator fusion --- one kernel, intermediates in registers (bandwidth dominates).
+\end{itemize}
+
+\textbf{The discipline.} ML infrastructure is scientific computing at industrial scale: a C++/CUDA engine behind a Python face; tensors decoupling logical shape from physical layout via strides; copies avoided through views and fusion; and performance bounded by memory bandwidth, not arithmetic. Optimise by minimising memory traffic --- fusing operators, exploiting contiguity, trading activation storage for recomputation.

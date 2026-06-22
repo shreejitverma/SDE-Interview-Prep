@@ -1,0 +1,70 @@
+\chapter{Specialized Domains --- Embedded, Games, HFT, and Automotive}
+
+C++ is unique in spanning from an 8-kilobyte microcontroller with no operating system to a multi-socket trading server processing millions of messages per second --- and each extreme imposes its own dialect of constraints. This chapter surveys four demanding domains --- games, embedded, high-frequency trading, and safety-critical automotive --- each of which forbids or mandates specific language features for hard engineering reasons.
+
+\section*{Chapter Roadmap}
+\begin{itemize}
+\item 122.1 One Language, Many Dialects
+\item 122.2 Game Development: Data-Oriented Design
+\item 122.3 Embedded Systems: Freestanding C++
+\item 122.4 High-Frequency Trading: The Latency Extreme
+\item 122.5 Automotive and Safety-Critical: MISRA and AUTOSAR
+\item 122.6 The Constraint-Driven Discipline
+\end{itemize}
+
+\section{One Language, Many Dialects}
+Each domain adopts a subset and rule set tuned to its constraints: a game disables exceptions for frame times, embedded forbids the heap, trading pins cores and bypasses the kernel, automotive bans dynamic memory and must certify. Each follows from a hard requirement (memory, latency, safety, determinism).
+
+\textbf{Why this matters.} Mastery means knowing when to disable features. Exceptions, allocation, RTTI, and the full library are liabilities where size, determinism, or certifiability dominate. Recognising which dialect a problem demands is a senior skill; the wrong dialect doesn't fit or fails certification.
+
+\section{Game Development: Data-Oriented Design}
+\begin{lstlisting}[language=text, caption={Games use SoA/ECS for cache-friendly batch updates (Chapter 90).}]
+AoS: [Pos,Vel][Pos,Vel]      -> updating Pos loads Vel too (bad stride)
+SoA: [Pos,Pos,Pos][Vel,Vel]  -> updating Pos streams only Pos (SIMD-friendly)
+ECS: entities are IDs; components in SoA arrays; systems are batch transforms.
+\end{lstlisting}
+
+\textbf{Why this matters / cost model.} A game updates a few fields across thousands of entities per frame --- where AoS wastes cache bandwidth and SoA wins (Chapter 90). ECS stores components in contiguous SoA arrays with systems as batch transforms --- cache-friendly, vectorisable, parallelisable. Games disable exceptions/RTTI and use frame allocators (Chapter 79). The 16.6\,ms frame budget is a soft deadline; an overrun stutters.
+
+\section{Embedded Systems: Freestanding C++}
+\begin{lstlisting}[language=C++, caption={Embedded MMIO via a volatile pointer at a fixed address. Min standard: C++11.}]
+volatile uint32_t* const GPIO_PORT = reinterpret_cast<volatile uint32_t*>(0x40020000);
+*GPIO_PORT |= (1u << 5);   // volatile forbids optimizing the hardware write away
+\end{lstlisting}
+
+\textbf{Why this matters / cost model.} Memory-mapped I/O places hardware registers at fixed addresses; \texttt{volatile} (essential here, never for threading --- Chapter 76) tells the compiler the value changes outside the program and writes have side effects. No heap means \texttt{new}/\texttt{malloc} is forbidden (non-deterministic, fragments tiny RAM) --- everything static or stack, with fixed-capacity containers. The freestanding subset excludes exceptions/RTTI. C++'s zero-overhead promise tested hardest.
+
+\section{High-Frequency Trading: The Latency Extreme}
+\begin{itemize}
+\item Kernel bypass (Chapter 100) --- Onload/DPDK map NIC rings into user space, saving $\sim$2--3\,$\mu$s/packet.
+\item Warm-up (Chapter 106) --- run synthetic orders pre-open to prime caches/TLB/predictors, open the congestion window, and keep the CPU in turbo.
+\item Everything from Volume 8 --- pinned isolated cores, busy-spinning, allocation-free hot paths, lock-free rings, cache-conscious order books (Chapter 124).
+\end{itemize}
+
+\textbf{Why this matters.} HFT justifies the most extreme techniques because the payoff is direct and measurable --- the synthesis of the Advanced Systems volume, engineered for worst-case determinism (Chapter 106) and measured at the tail (Chapter 103). Even CPU frequency scaling is an enemy, so cores are kept busy (Chapter 96) to prevent slowdown. Here the disciplines are the core product.
+
+\section{Automotive and Safety-Critical: MISRA and AUTOSAR}
+\begin{lstlisting}[language=C++, caption={A fixed-capacity stack-only container --- no dynamic memory. Min standard: C++11.}]
+template <typename T, size_t N>
+class FixedVector {
+    T data_[N]; size_t count_ = 0;
+public:
+    bool push_back(const T& val) { if (count_ >= N) return false; data_[count_++] = val; return true; }
+    size_t size() const { return count_; }
+    T& operator[](size_t i) { return data_[i]; }
+};
+\end{lstlisting}
+
+\textbf{Why this matters / cost model.} Safety standards forbid non-deterministic/unanalysable features: no dynamic memory (fixed-capacity containers; bounded memory known at compile time); no exceptions (non-deterministic unwind paths; use return codes or \texttt{std::expected}); mandatory static analysis (every index checked, no implicit conversions). The requirement is provable bounded behaviour --- worst-case memory and time, absence of UB --- the determinism discipline (Chapter 106) as a regulatory requirement, because the alternative is a recall or fatality.
+
+\section{The Constraint-Driven Discipline}
+\begin{itemize}
+\item Games --- 60+ fps soft deadline; SoA/ECS, frame allocators, often no exceptions/RTTI.
+\item Embedded --- KB of RAM, no OS/heap; freestanding, \texttt{volatile} MMIO, no dynamic memory.
+\item HFT --- nanosecond tick-to-trade; kernel bypass, warm-up, isolated busy-spinning cores.
+\item Automotive --- certifiable safety; no dynamic memory, no exceptions, MISRA static analysis.
+\end{itemize}
+
+\textbf{The discipline.} Mastery is knowing which subset and rules each problem demands, and why. Each domain's constraints flow from a hard requirement --- memory, latency, safety. C++ spans all four because it lets you pay for exactly what you use and strip away what you don't.
+
+\textbf{Editorial note.} The source also contained a comprehensive feature checklist and learning path across C++98--C++23; that reference material is preserved in the chapter's \texttt{\_archive} rather than reproduced here, as it duplicates the per-standard coverage of Volumes 1--7.

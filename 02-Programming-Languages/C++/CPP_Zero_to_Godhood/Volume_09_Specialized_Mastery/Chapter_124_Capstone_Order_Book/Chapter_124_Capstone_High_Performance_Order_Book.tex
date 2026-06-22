@@ -1,0 +1,100 @@
+\chapter{Capstone --- A High-Performance Order Book}
+
+This final chapter synthesises the entire book into one artefact: a low-latency limit order book, the matching engine at the heart of every electronic exchange. The order book is the perfect capstone because it demands everything --- zero-allocation hot paths, cache-conscious data structures, lock-free communication, mechanical sympathy, and the determinism discipline --- applied together. We build it from a correct foundation and then layer on the optimizations that take it from ``works'' to ``Godhood.''
+
+\section*{Chapter Roadmap}
+\begin{itemize}
+\item 124.1 The Problem: What an Order Book Does
+\item 124.2 Architectural Principles
+\item 124.3 The Matching Engine
+\item 124.4 From Correct to Fast: The Optimization Path
+\item 124.5 Line-Rate Processing and the Production Reality
+\item 124.6 The Ultimate Synthesis
+\end{itemize}
+
+\section{The Problem: What an Order Book Does}
+A limit order book maintains all outstanding bids and asks for an instrument, organised by price, and matches incoming orders against the opposite side. An aggressive buy at price $p$ matches the lowest asks at or below $p$; the unfilled remainder rests as passive liquidity. It must be correct (price-time priority, exact quantities) and fast (the tick-to-trade latency of Chapter 106).
+
+\textbf{Why this matters.} The order book is where every discipline converges on one hot path: a tick arrives, the book is matched, an order leaves --- every nanosecond and jitter source in play. It is a genuinely hard structure problem (best bid/ask, insert, cancel, match-and-remove all fast), and the naive \texttt{std::map} per side is correct but far from optimal.
+
+\section{Architectural Principles}
+\begin{itemize}
+\item Zero dynamic allocation on the hot path (Chapters 79, 97) --- pre-allocated orders and levels.
+\item Cache locality (Chapters 87, 90) --- contiguous price-level storage, not pointer-chasing.
+\item Mechanical sympathy (Chapter 87) --- \texttt{alignas(64)} between engine and gateway state.
+\item Lock-free hot path (Chapters 77, 78) --- order entry via an SPSC ring.
+\end{itemize}
+
+\textbf{Why this matters.} These translate the hot-path checklist (Chapter 106) into the order book and are decided at design time because they shape the data structures --- you cannot bolt zero-allocation onto a per-order-allocating design. Low latency is an architectural property, not an end-of-project tuning pass.
+
+\section{The Matching Engine}
+\begin{lstlisting}[language=C++, caption={A complete, correct matching engine. Min standard: C++23 (std::expected, std::print).}]
+namespace hft {
+    using OrderId = uint64_t; using Price = int64_t; using Quantity = uint32_t;
+    enum class Side { Buy, Sell };
+    struct Order {
+        OrderId id; Side side; Price price; Quantity quantity;
+        auto operator<=>(const Order&) const = default;
+    };
+    class OrderBook {
+        std::map<Price, std::vector<Order>, std::greater<Price>> bids_;
+        std::map<Price, std::vector<Order>, std::less<Price>>    asks_;
+    public:
+        std::expected<void, std::string> add_order(const Order& order) {
+            if (order.quantity == 0) return std::unexpected("Quantity must be > 0");
+            if (order.side == Side::Buy) match_order(order, asks_, bids_);
+            else                         match_order(order, bids_, asks_);
+            return {};
+        }
+    private:
+        template <typename CounterSide, typename OwnSide>
+        void match_order(Order order, CounterSide& counter, OwnSide& own) {
+            auto it = counter.begin();
+            while (it != counter.end() && order.quantity > 0) {
+                const Price top = it->first;
+                const bool crosses = (order.side == Side::Buy) ? order.price >= top : order.price <= top;
+                if (!crosses) break;
+                auto& level = it->second; auto o_it = level.begin();
+                while (o_it != level.end() && order.quantity > 0) {
+                    const Quantity fill = std::min(order.quantity, o_it->quantity);
+                    std::println("MATCH: {} x {} <-> {} @ {}", order.id, fill, o_it->id, top);
+                    order.quantity -= fill; o_it->quantity -= fill;
+                    if (o_it->quantity == 0) o_it = level.erase(o_it); else ++o_it;
+                }
+                if (level.empty()) it = counter.erase(it); else ++it;
+            }
+            if (order.quantity > 0) own[order.price].push_back(order);   // rest the remainder
+        }
+    };
+}
+\end{lstlisting}
+
+\textbf{Why this matters.} Two non-negotiable correctness decisions: price is a scaled integer, never \texttt{double} (floating-point cannot represent decimal money exactly --- a costly classic bug); and price-time priority is structural (the map orders by price, vector insertion order gives time priority). The loop walks the opposite side from the best price, filling until exhausted or no price crosses, then rests the remainder. Correctness first (Chapter 80); now make it fast.
+
+\section{From Correct to Fast: The Optimization Path}
+\begin{itemize}
+\item Flat array of price levels indexed by price (over a bounded tick range) replaces \texttt{std::map}'s tree (Ch 87, 109).
+\item Pre-allocated order pool with generational handles replaces per-order allocation (Ch 79, 97, 109).
+\item Intrusive linked list within a level gives O(1) cancel vs \texttt{vector::erase} (Ch 79, 109).
+\item SPSC ring for ingress replaces a locked queue (Ch 77, 78).
+\item \texttt{alignas(64)} on engine vs gateway state prevents false sharing (Ch 87).
+\item \texttt{[[likely]]} on the no-match path and no virtual calls (Ch 86, 91).
+\end{itemize}
+
+\textbf{Why this matters / cost model.} Each replacement targets a predicted cost. \texttt{std::map} is the biggest liability (pointer-chasing tree nodes, each a \texttt{malloc}); a flat array indexed by price gives O(1) cache-local access near the touch. Orders come from a pool and live in an intrusive list for O(1) cancel; ingress is an SPSC ring so the matching thread never locks. The result is a handful of cache-hot, allocation-free, lock-free operations --- microseconds to tens of nanoseconds per order. Every optimization is a chapter applied.
+
+\section{Line-Rate Processing and the Production Reality}
+At the extreme, networking is offloaded to kernel bypass (Onload/DPDK --- Chapter 100) or an FPGA doing parsing and pre-risk in hardware, while the C++ engine handles matching and risk. The hot path is wrapped in the full Chapter 106 discipline: pinned isolated busy-spinning cores, pre-faulted \texttt{mlock}'d memory, warm-up before open.
+
+\textbf{Why this matters.} A real trading system is the entire Advanced Systems volume deployed at once: an isolated core (Chapter 96), kernel-bypass market data (Chapter 100) into pre-faulted memory (Chapter 88), the allocation-free cache-conscious engine, SPSC-ring publication (Chapter 77), TSC timing (Chapter 101), cold-thread logging (Chapter 106), measured at p99.9 (Chapter 103). Nothing here is academic.
+
+\section{The Ultimate Synthesis}
+\begin{enumerate}
+\item A packet is read without the kernel (Ch 100) into pre-faulted, NUMA-local, \texttt{mlock}'d memory (Ch 88).
+\item A pinned, isolated, busy-spinning core (Ch 96) picks it from an SPSC ring (Ch 77) --- no syscall, no lock.
+\item The bytes become an \texttt{Order} via \texttt{start\_lifetime\_as}, zero-copy, zero-allocation (Ch 97), in a cache-conscious flat price-level array (Ch 87, 109).
+\item The matching engine runs branchless, \texttt{[[likely]]}-hinted, virtual-call-free logic (Ch 86, 91), inlined and LTO-optimised (Ch 89, 102), with no UB (Ch 104, 105).
+\item The order is published through another SPSC ring with release/acquire ordering (Ch 76, 93) and sent, bypassing the kernel --- while logging and risk run on a cold thread (Ch 106), measured at the tail with a calibrated TSC (Ch 101, 103).
+\end{enumerate}
+
+\textbf{The synthesis.} Mastery of C++ is not knowledge of features in isolation but the judgement to compose them into a system whose worst-case behaviour you have engineered. The order book required the foundations, the modern abstractions, the systems disciplines, and the measurement rigour to prove it --- every volume of \emph{C++ Zero to Godhood} on one hard problem. The fastest code is the code that doesn't run; the second fastest is the code that respects the hardware. You now know how to write both. Go forth and master the beast.

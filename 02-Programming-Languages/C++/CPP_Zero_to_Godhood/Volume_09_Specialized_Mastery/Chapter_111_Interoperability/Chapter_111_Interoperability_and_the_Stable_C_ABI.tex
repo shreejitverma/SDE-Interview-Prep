@@ -1,0 +1,84 @@
+\chapter{Interoperability and the Stable C ABI}
+
+C++ is the dark matter of software: it sits beneath Python data-science stacks, Java enterprise systems, game engines, and services in Rust, Go, and C\#. But every language boundary is a contract --- about memory ownership, name mangling, object layout, and threading --- and getting it wrong produces crashes, leaks, and corruption at the seam. This chapter covers crossing those boundaries safely: linkage rules, the stable C ABI as lingua franca, and the hazards of Python (pybind11) and Java (JNI) interop.
+
+\section*{Chapter Roadmap}
+\begin{itemize}
+\item 111.1 Why Interoperability Is Hard
+\item 111.2 Linkage and \texttt{extern "C"}
+\item 111.3 The Stable C ABI as Lingua Franca
+\item 111.4 C Incompatibilities to Watch
+\item 111.5 Python Bindings with pybind11
+\item 111.6 The Java Native Interface (JNI)
+\item 111.7 C++ Attributes and the Interop Discipline
+\end{itemize}
+
+\section{Why Interoperability Is Hard}
+Two languages call each other only if they agree on a binary contract: naming, argument passing, object layout, allocation ownership, error and thread handling. C++'s mangling, exceptions, RAII, templates, and virtual layout are exactly what other languages cannot see.
+
+\textbf{Why this matters.} Every interop bug is a contract mismatch: a pointer freed on one side and used on the other, a C++ exception across a C boundary (UB), an unfindable mangled name, or an assumed-but-mismatched layout. Safe interop narrows the boundary to a contract both sides understand --- almost always the C ABI --- and is explicit about ownership at every crossing.
+
+\section{Linkage and \texttt{extern "C"}}
+External linkage (referable across TUs), internal linkage (\texttt{static}/anonymous-namespace, TU-local), no linkage (local). \texttt{extern "C"} gives C-style linkage --- no mangling --- so the symbol is the plain name.
+
+\begin{lstlisting}[language=C++, caption={extern "C" disables mangling; anonymous namespaces give internal linkage. Min standard: C++98.}]
+extern "C" { int compute(int x); }   // symbol "compute", callable from C/Rust/Go/Python ctypes
+namespace { void helper(); }          // internal linkage
+\end{lstlisting}
+
+\textbf{Why this matters.} \texttt{extern "C"} exposes a C++ function under a name other languages can link to (every FFI speaks the C ABI and cannot demangle). Constraints: no overloading, and no exceptions may escape. Anonymous namespaces hide implementation symbols, shrinking the exported surface.
+
+\section{The Stable C ABI as Lingua Franca}
+\begin{lstlisting}[language=C++, caption={A stable C ABI: opaque handle, paired create/destroy, error codes. Min standard: C++11.}]
+extern "C" {
+    typedef struct Engine Engine;
+    Engine* engine_create();
+    int     engine_process(Engine* e, const char* in, char* out, int out_len);
+    void    engine_destroy(Engine* e);
+}
+\end{lstlisting}
+
+Rules: \texttt{extern "C"} everywhere; standard-layout types at the boundary; explicit ownership (paired create/destroy); no exceptions across; opaque handles.
+
+\textbf{Why this matters.} The C ABI is the only contract every systems language agrees on. The opaque-handle + paired-lifetime pattern makes it safe: the caller never sees the layout (surviving ABI changes) and never frees with the wrong allocator. Designing this thin, stable surface is the foundational interop skill.
+
+\section{C Incompatibilities to Watch}
+\begin{itemize}
+\item \texttt{void*}: C allows implicit \texttt{void*}$\to$\texttt{T*}; C++ requires a cast.
+\item Struct names: C needs the \texttt{struct} keyword on use; C++ does not.
+\item Empty parameter lists: \texttt{int f()} is variadic in C, no-arguments in C++.
+\item Stricter type rules: C++ forbids narrowing/enum laxity C permits.
+\end{itemize}
+
+\textbf{Why this matters.} A C header may not compile cleanly in C++. Wrap C headers in \texttt{extern "C" \{ \#include <clib.h> \}}, and when writing dual headers use the common subset. At a boundary a single trap (\texttt{f()} as variadic, an assumed layout) corrupts the call.
+
+\section{Python Bindings with pybind11}
+\begin{lstlisting}[language=C++, caption={pybind11: a C++ class exposed to Python. Non-portable. Min standard: C++14.}]
+#include <pybind11/pybind11.h>
+namespace py = pybind11;
+struct Pet { std::string name; explicit Pet(std::string n) : name(std::move(n)) {} };
+PYBIND11_MODULE(example, m) {
+    py::class_<Pet>(m, "Pet").def(py::init<std::string>()).def_readwrite("name", &Pet::name);
+}
+\end{lstlisting}
+
+\textbf{Why this matters / cost model.} The core problem is ownership across the GC boundary. Return-value policies make it explicit: \texttt{copy} (safe), \texttt{reference} (dangling if C++ frees), \texttt{take\_ownership} (Python deletes). Choosing wrong is a use-after-free/double-free across the line. Each crossing has overhead (conversion, GIL), so do bulk work per call --- how NumPy/PyTorch/TensorFlow work.
+
+\section{The Java Native Interface (JNI)}
+\begin{lstlisting}[language=C++, caption={A JNI native method; extern "C", JNIEnv*. Non-portable. Min standard: C++11.}]
+#include <jni.h>
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_example_MyClass_nativeMethod(JNIEnv* env, jobject thiz) {
+    return env->NewStringUTF("Hello from C++");   // creates a LOCAL reference
+}
+\end{lstlisting}
+
+\textbf{Why this matters / cost model.} JNI hazards: boundary cost (pinning, bookkeeping --- batch per call); thread-locality (\texttt{JNIEnv*} is thread-local; sharing it is UB); local-reference leaks (every returned object is a local ref; not \texttt{DeleteLocalRef}-ing in a loop exhausts the table). These are JVM resource bugs manifesting in C++ code. JNI finds methods by an unmangled fully-qualified C name.
+
+\section{C++ Attributes and the Interop Discipline}
+\begin{lstlisting}[language=C++, caption={nodiscard forces checking an error code; deprecated manages evolution. Min standard: C++17.}]
+[[nodiscard]] int engine_process(Engine*, const char* in, char* out, int len);
+[[deprecated("use engine_process_v2")]] int engine_process_old(Engine*);
+\end{lstlisting}
+
+\textbf{The discipline.} Interop reduces C++'s rich world to a narrow, explicit C-ABI contract: \texttt{extern "C"} over standard-layout types and opaque handles; explicit ownership via paired create/destroy and documented return-value policies; no exceptions across; batch work per crossing; and respect the other runtime's rules (Python refcounting, JVM thread-local environment and local references). \texttt{[[nodiscard]]} hardens the contract.

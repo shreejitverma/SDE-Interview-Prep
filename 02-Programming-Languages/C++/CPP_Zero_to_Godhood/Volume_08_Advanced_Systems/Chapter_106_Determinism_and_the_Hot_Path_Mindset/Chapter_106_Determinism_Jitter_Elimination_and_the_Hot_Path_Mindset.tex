@@ -1,0 +1,98 @@
+\chapter{Determinism, Jitter Elimination, and the Hot-Path Mindset}
+
+This is the capstone of the volume, unifying every preceding chapter under one objective: not raw speed, but \textbf{determinism} --- a hot path whose worst case is close to its average, because for trading, real-time, and infrastructure systems the tail is the product. Average latency is easy and almost irrelevant; eliminating the rare multi-microsecond spike --- the page fault, the cache miss, the lock convoy, the GC pause, the syscall --- is the hard, valuable work.
+
+\section*{Chapter Roadmap}
+\begin{itemize}
+\item 106.1 Determinism vs Throughput: The Tail Is the Product
+\item 106.2 The Complete Catalogue of Jitter Sources
+\item 106.3 The Hot Path / Cold Path Split
+\item 106.4 Warmup and Keeping Things Hot
+\item 106.5 The Tick-to-Trade Mindset
+\item 106.6 The Hot-Path Checklist
+\item 106.7 Synthesis: The Whole Volume on One Path
+\end{itemize}
+
+\section{Determinism vs Throughput: The Tail Is the Product}
+Most performance engineering optimises average throughput; these systems optimise predictability. A system that responds in 1\,$\mu$s on average but spikes to 1\,ms has missed the trade on every spike; an audio callback that occasionally overruns glitches; a control loop that sometimes misses its deadline is unsafe.
+
+\textbf{Why this matters.} The metric is the tail (p99.9, p99.99, max), not the mean, and the tail is governed by variance --- the rare events that make one request 1000$\times$ slower. You are not making the common case faster (it is fast enough) but making the worst case rare and bounded by eliminating variance. Every technique in this volume is a jitter-reduction technique.
+
+\section{The Complete Catalogue of Jitter Sources}
+\begin{itemize}
+\item Cache miss (Ch 87) --- $\sim$100\,ns --- cache-conscious layout, locality.
+\item Branch mispredict (86, 91) --- $\sim$5\,ns --- predictable/branchless code.
+\item TLB miss (88) --- $\sim$100s\,ns --- huge pages, smaller footprint.
+\item Minor page fault (88) --- $\sim$$\mu$s --- pre-fault during warmup.
+\item Major page fault/swap (88) --- $\sim$ms --- \texttt{mlock}; disable swap.
+\item \texttt{malloc} slow path (79, 97) --- $\sim$$\mu$s--ms --- preallocate; pools.
+\item Lock convoy (95) --- $\sim$$\mu$s--ms --- lock-free, SPSC, thread-per-core.
+\item GC pause (82) --- $\sim$ms --- RAII; no GC on the path.
+\item Syscall (98) --- $\sim$100s\,ns--$\mu$s --- batch, vDSO, kernel bypass.
+\item Thread migration (96) --- $\sim$$\mu$s + cold cache --- pin threads.
+\item Preemption / scheduler tick (96) --- $\sim$$\mu$s--ms --- core isolation, \texttt{nohz\_full}.
+\item NIC interrupt on hot core (96, 100) --- $\sim$$\mu$s --- IRQ steering; poll-mode.
+\item NUMA remote access (88) --- $\sim$1.5--2$\times$ --- first-touch local, pin.
+\item Frequency scaling (103) --- $\sim$$\mu$s --- pin frequency; keep the core busy.
+\end{itemize}
+
+\textbf{Why this matters.} The sources span orders of magnitude (a mispredict $\sim$5\,ns; a swap-in $\sim$1\,ms --- a 200{,}000$\times$ range), so eliminate them by magnitude: the millisecond events absolutely (one occurrence destroys the tail), the nanosecond events statistically. The discipline is a systematic walk down this table.
+
+\section{The Hot Path / Cold Path Split}
+\begin{lstlisting}[language=C++, caption={The hot path does only essential work; everything else is deferred. Min standard: C++17.}]
+void on_market_data(const Tick& tick) {            // HOT PATH
+    if (auto signal = strategy_.evaluate(tick)) [[unlikely]]
+        emit_order(*signal);                        // into a preallocated SPSC ring
+    stats_.record_relaxed(tick);                    // relaxed counter, read by cold thread
+}
+void cold_housekeeping() {                          // COLD PATH (separate thread)
+    flush_logs(); update_config(); export_metrics();   // allocation, locks, syscalls fine here
+}
+\end{lstlisting}
+
+\textbf{Why this matters.} You cannot make a whole program deterministic, but you can make a small hot path deterministic and push messy variable work (logging, allocation, config, errors) onto a cold path on another thread/core (Chapter 96). The discipline is ruthless: nothing that can fault, allocate, lock, or syscall belongs on the hot path. Logging becomes a record into a ring; errors set a flag; stats bump a relaxed counter.
+
+\section{Warmup and Keeping Things Hot}
+\begin{lstlisting}[language=C++, caption={Warmup primes every microarchitectural resource before the first real event. Min standard: C++11.}]
+void warmup() {
+    pre_fault_all_buffers();                       // Ch 88
+    for (int i = 0; i < 100000; ++i) on_market_data(synthetic_tick(i));   // prime caches/TLB/predictors
+    reset_state_after_warmup();
+}
+// Keep the core busy-spinning so it never drops frequency or evicts the hot working set.
+\end{lstlisting}
+
+\textbf{Why this matters / cost model.} The first execution is the slowest (cold I/D-cache, empty TLB, untrained predictors, low frequency). For a system whose first real event matters as much as the millionth, warm up on synthetic data until primed and keep it warm by busy-spinning and exercising rare paths. The cost --- a burned core and startup time --- is the determinism-for-resources trade.
+
+\section{The Tick-to-Trade Mindset}
+Measure and optimise the entire path from input event to output action as one budgeted latency, accounting for every nanosecond.
+
+\textbf{Why this matters.} Three habits unify the volume: measure the whole path at the tail (the system's latency is the end-to-end p99.9); budget every nanosecond (each stage gets a measured slice; over-budget is a bug); and account for the tail of every stage (the path's tail is dominated by whichever stage spikes). This turns individual techniques into an engineered system --- you apply branchless code or lock-free structures because the budget demands this stage cost less and vary less.
+
+\section{The Hot-Path Checklist}
+\begin{itemize}
+\item No allocation (preallocate, pools, rings --- Ch 79, 97); prove with \texttt{null\_memory\_resource}.
+\item No contending locks (lock-free, SPSC, no sharing --- Ch 77, 95, 96).
+\item No syscalls (batch, buffer, vDSO, bypass --- Ch 98--100).
+\item No page faults (pre-fault, \texttt{mlock} --- Ch 88).
+\item No inline logging/I/O (defer to a cold thread).
+\item Pinned thread on an isolated core, SMT idle, IRQs steered, NUMA-local (Ch 96).
+\item Cache-conscious layout, hot/cold split, no false sharing (Ch 87, 90).
+\item Predictable or branchless hot branch (Ch 91).
+\item Warmed up and kept hot.
+\item No UB (sanitizers in CI --- Ch 104, 105).
+\item Measured at the tail, end to end, without coordinated omission (Ch 101, 103).
+\end{itemize}
+
+\textbf{Why this matters.} Each item closes one row of the jitter catalogue --- absolute for the millisecond-class items (zero, because one occurrence ruins the tail) and statistical for the nanosecond-class. A path that passes every item is, by construction, deterministic.
+
+\section{Synthesis: The Whole Volume on One Path}
+\begin{enumerate}
+\item The packet is read without the kernel (Ch 99--100) into a pre-faulted, NUMA-local, \texttt{mlock}'d buffer (Ch 88).
+\item A pinned thread on an isolated core (Ch 96) busy-spins on an SPSC ring (Ch 77), with no syscall or lock.
+\item The bytes are viewed as a struct via \texttt{start\_lifetime\_as}, no copy, no allocation (Ch 97), in cache-conscious hot/cold layout (Ch 87, 90).
+\item The decision logic runs branchless/SIMD (Ch 91--92), inlined and LTO-optimized (Ch 89, 102), read in disassembly and measured at the tail (Ch 101, 103), with no UB (Ch 104--105).
+\item The order is published into another SPSC ring with release/acquire ordering (Ch 76, 93) and sent, bypassing the kernel --- while logging, stats, and housekeeping run on a cold thread.
+\end{enumerate}
+
+\textbf{The discipline.} Determinism is not a technique but the objective that gives every technique its purpose. The CPU/cache models (86--88) locate variance; data-oriented design, branchless code, and SIMD (90--92) make compute deterministic; the memory model, lock-free structures, reclamation, locks, and threading (76--78, 93--96) make concurrency deterministic; allocators and allocation-free hot paths (79, 97) make memory deterministic; the OS-boundary and clock chapters (98--102) make I/O and timing deterministic; and the measurement and correctness chapters (103--105) prove you achieved it. A system whose tail you can guarantee, not just whose average you can report, is the mastery this volume set out to build.
