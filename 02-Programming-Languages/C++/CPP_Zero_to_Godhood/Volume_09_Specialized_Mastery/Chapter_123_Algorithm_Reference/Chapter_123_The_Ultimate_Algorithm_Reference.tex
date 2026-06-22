@@ -1,0 +1,70 @@
+\chapter{The Ultimate Algorithm Reference}
+
+The single highest-leverage habit in everyday C++ is also the simplest: stop writing raw loops, and use the standard algorithms. The \texttt{<algorithm>} and \texttt{<numeric>} headers encode decades of correct, optimised, well-named implementations --- producing code that is shorter, less bug-prone, often faster, and instantly recognisable. This chapter is a structured reference, organised by what the algorithms do, with the cost model and the C++20 Ranges evolution.
+
+\section*{Chapter Roadmap}
+\begin{itemize}
+\item 123.1 Why Algorithms Over Raw Loops
+\item 123.2 Non-Modifying Sequence Operations
+\item 123.3 Modifying Sequence Operations
+\item 123.4 Partitioning and Sorting
+\item 123.5 Binary Search on Sorted Ranges
+\item 123.6 Numeric Operations
+\item 123.7 Ranges: Composable Algorithms (C++20)
+\end{itemize}
+
+\section{Why Algorithms Over Raw Loops}
+A standard algorithm states its intent in its name, is implemented correctly once, and is often better-optimised than a naive loop.
+
+\textbf{Why this matters.} ``No raw loops'' is the most actionable everyday advice: the named algorithm \emph{is} the purpose, so the reader sees \texttt{any\_of(v, is\_valid)} instead of decoding a flag-and-break loop. Implementations are correct (no off-by-one/invalidation bugs) and optimised (\texttt{copy} becomes \texttt{memmove}; \texttt{reduce} vectorises). Zero abstraction cost --- pure upside.
+
+\section{Non-Modifying Sequence Operations}
+\begin{itemize}
+\item \texttt{all\_of}/\texttt{any\_of}/\texttt{none\_of(b,e,pred)} --- O(n) predicate checks.
+\item \texttt{for\_each}, \texttt{count}, \texttt{find} (linear search), \texttt{mismatch} --- O(n).
+\end{itemize}
+
+\textbf{Why this matters.} These replace common loops with intention-revealing calls. \texttt{find} is linear (O(n)); if the data is sorted, use binary search (O(log n)). Choosing the right algorithm requires knowing what it does and its cost.
+
+\section{Modifying Sequence Operations}
+\begin{itemize}
+\item \texttt{copy}, \texttt{transform} (map), \texttt{generate}.
+\item \texttt{remove\_if} (moves kept elements to the front, returns the new end), \texttt{replace}, \texttt{unique} (consecutive duplicates).
+\end{itemize}
+
+\textbf{Why this matters.} \texttt{remove\_if} is the erase-remove trap: it erases nothing (algorithms operate on iterators, not containers); follow it with \texttt{container.erase(remove\_if(...), end())}, or use C++20 \texttt{std::erase\_if}. \texttt{unique} removes only consecutive duplicates, so sort first. Knowing what these don't do matters as much as what they do.
+
+\section{Partitioning and Sorting}
+\begin{itemize}
+\item \texttt{partition} (O(n)), \texttt{stable\_partition} (O(n log n)).
+\item \texttt{sort} (introsort, O(n log n)), \texttt{stable\_sort}, \texttt{partial\_sort} (top k, O(n log k)), \texttt{nth\_element} (O(n) average).
+\end{itemize}
+
+\textbf{Why this matters / cost model.} \texttt{sort} is introsort (quick + heap fallback + insertion), the right default. For the top k, \texttt{partial\_sort} is cheaper; for a single position (median, percentile --- Chapter 103), \texttt{nth\_element} is O(n) average. Don't sort the whole array to find the top 10 or the median --- use the specialised, cheaper algorithm.
+
+\section{Binary Search on Sorted Ranges}
+\begin{itemize}
+\item \texttt{lower\_bound} (first $\geq$ val), \texttt{upper\_bound} (first $>$ val), \texttt{binary\_search} (existence), \texttt{equal\_range}.
+\end{itemize}
+
+\textbf{Why this matters / cost model.} O(log n) versus linear \texttt{find}, but the range must be sorted (UB otherwise --- silently wrong). A sorted \texttt{vector} with \texttt{lower\_bound} often beats a hash map for read-heavy lookups (contiguous, cache-friendly --- Chapter 109), and answers range queries a hash map cannot. Match the structure to the query mix.
+
+\section{Numeric Operations}
+\begin{itemize}
+\item \texttt{iota} (fill 0,1,2...), \texttt{accumulate} (left fold, sequential), \texttt{reduce} (unordered, parallelisable, C++17), \texttt{inner\_product}, \texttt{transform\_reduce} (fused map-reduce).
+\end{itemize}
+
+\textbf{Why this matters / cost model.} \texttt{accumulate} is a strict left fold (sequential, order-guaranteed, matters for non-associative FP --- Chapter 75); \texttt{reduce} makes no ordering guarantee, so it parallelises and vectorises (\texttt{std::execution::par}), but FP results may differ by reassociation (the \texttt{-ffast-math} caveat). Use \texttt{accumulate} when order matters, \texttt{reduce} when it doesn't. \texttt{transform\_reduce} fuses map-then-reduce (a dot product).
+
+\section{Ranges: Composable Algorithms (C++20)}
+\begin{lstlisting}[language=C++, caption={Ranges: composable, lazy views fuse operations into one pass. Min standard: C++20.}]
+#include <ranges>
+std::vector<int> v = {1, 2, 3, 4, 5, 6};
+auto result = v | std::views::filter([](int x){ return x % 2 == 0; })
+                | std::views::transform([](int x){ return x * x; });
+// result is a lazy view; iterating runs filter+transform in ONE pass, no temporary.
+\end{lstlisting}
+
+\textbf{Why this matters / cost model.} Ranges fix ergonomics (\texttt{ranges::sort(v)} over iterator pairs --- no mismatched-iterator bug) and performance/clarity (lazy composable views: \texttt{v | filter | transform} fuses both into one pass with no intermediate container --- the temporary-elimination of expression templates as a standard facility). A pre-Ranges version would \texttt{copy\_if} then \texttt{transform} --- two passes, two allocations. Caveat: a view holds references to its source, so it dangles if the source dies.
+
+\textbf{The discipline.} The standard algorithms make code shorter, clearer, correct-by-construction, and often faster at zero abstraction cost. Reach for the named algorithm first, and choose the right one by its cost model: \texttt{find} linear vs \texttt{lower\_bound} logarithmic; \texttt{sort} overkill when \texttt{nth\_element}/\texttt{partial\_sort} suffices; \texttt{accumulate} sequential vs \texttt{reduce} parallel; and Ranges compose them into lazy, fused pipelines.

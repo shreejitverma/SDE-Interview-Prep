@@ -1,0 +1,71 @@
+\chapter{Security Engineering}
+
+C++'s power --- direct memory access, no runtime safety net --- is also its security liability: the majority of critical vulnerabilities in C/C++ software are memory-safety bugs, and the language's performance features (speculative execution, data-dependent timing) open whole categories of side-channel attacks. Writing secure C++ means treating every input as hostile, every allocation as a potential overflow, and every timing difference as a leak.
+
+\section*{Chapter Roadmap}
+\begin{itemize}
+\item 121.1 Why C++ Security Is Hard
+\item 121.2 Memory Safety as the Primary Battlefront
+\item 121.3 Fuzzing: Finding Bugs Before Attackers
+\item 121.4 Cryptography and Timing Attacks
+\item 121.5 Side-Channels: Spectre and Speculative Execution
+\item 121.6 The Security Discipline
+\end{itemize}
+
+\section{Why C++ Security Is Hard}
+C++ gives direct memory control with no bounds checking, GC, or runtime safety net. Microsoft and Google both report $\sim$70\% of serious vulnerabilities are memory-safety issues in C/C++: overflows, use-after-free, type confusion, uninitialised reads --- the UB of Chapter 104 weaponised.
+
+\textbf{Why this matters.} Unmediated memory access means a bug is an exploitable primitive: an overflow overwrites a return address, a use-after-free controls a freed vtable, an uninitialised read leaks secrets. Security is inseparable from the correctness discipline: every UB is a potential vulnerability, and UB-catching tools (sanitizers) are security tools. Treat all input as adversarial.
+
+\section{Memory Safety as the Primary Battlefront}
+\begin{itemize}
+\item Buffer overflows --- \texttt{std::span} (C++20), \texttt{.at()}, containers over raw buffers, never \texttt{strcpy}/\texttt{sprintf}.
+\item Use-after-free --- RAII and smart pointers, no raw owning pointers (Chapter 97).
+\item Integer overflow $\to$ undersized allocation --- checked arithmetic, validate untrusted sizes.
+\item Uninitialised reads --- always initialise; MSan (Chapter 105).
+\end{itemize}
+
+\textbf{Why this matters.} Modern C++ can be memory-safe in practice: a codebase using \texttt{span}/\texttt{vector}/\texttt{string}, RAII, and bounds-checked access on untrusted indices eliminates the majority of exploitable classes. The bugs result from using the unsafe subset. Where raw memory is required (hot path, FFI), wrap it in audited bounds-checked abstractions and fuzz relentlessly.
+
+\section{Fuzzing: Finding Bugs Before Attackers}
+\begin{lstlisting}[language=C++, caption={Fuzzing a parser with ASan+UBSan. Min standard: C++11.}]
+extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
+    parse_untrusted_input(data, size);
+    return 0;
+}
+// clang++ -fsanitize=fuzzer,address,undefined parser.cpp -o fuzz && ./fuzz
+\end{lstlisting}
+
+\textbf{Why this matters.} Attack surfaces are almost always parsers of untrusted input (Chapter 84). Coverage-guided fuzzers evolve toward unexplored branches, finding deep bugs. Run fuzzing with sanitizers: the fuzzer generates the malicious input, the sanitizer catches the violation precisely. Continuous fuzzing (OSS-Fuzz) has found tens of thousands of vulnerabilities. Anything parsing untrusted input must be fuzzed continuously.
+
+\section{Cryptography and Timing Attacks}
+\begin{lstlisting}[language=C++, caption={memcmp leaks via early-exit timing; use a constant-time comparison. Min standard: C++11.}]
+// VULNERABLE: memcmp returns early -> time leaks how many bytes matched.
+//   if (memcmp(received_mac, expected_mac, 32) == 0) { /* authenticated */ }
+// SAFE: constant-time, examines all bytes, time independent of data.
+//   if (crypto_verify_32(received_mac, expected_mac) == 0) { /* authenticated */ }  // libsodium
+\end{lstlisting}
+
+\textbf{Why this matters / cost model.} Never write your own crypto; use audited libraries. \texttt{memcmp} returns on the first differing byte (Chapter 80's ``execute less code''), so comparing an auth tag takes longer the more leading bytes match --- an attacker measuring time guesses the secret byte by byte. The fix is a constant-time comparison examining every byte --- the opposite of normal optimization. In security, performance optimizations can be vulnerabilities.
+
+\section{Side-Channels: Spectre and Speculative Execution}
+\begin{lstlisting}[language=C++, caption={A Spectre v1 gadget: speculation leaves a cache trace leaking data. Min standard: C++11.}]
+// VULNERABLE: speculatively executes the body even when x >= array_len,
+//   loading array[x] (out-of-bounds secret) into the cache.
+//   if (x < array_len) { value = array2[array[x] * 64]; }
+// MITIGATION: mask the index so out-of-bounds x is clamped even under speculation.
+//   if (x < array_len) { x &= mask; value = array2[array[x] * 64]; }   // or an LFENCE barrier
+\end{lstlisting}
+
+\textbf{Why this matters / cost model.} Spectre broke the assumption that a failed bounds check protects data: speculative execution (Chapter 86) runs the protected access before the check resolves, and the cache trace survives the rollback and is measurable. Software mitigates a hardware vulnerability: \texttt{LFENCE}, index masking (Chapter 91), and kernel mitigations (KPTI, retpolines) that made syscalls slower (Chapter 98). Even correct code with a valid check can leak beneath the abstract machine (Chapter 85).
+
+\section{The Security Discipline}
+\begin{itemize}
+\item Buffer overflow --- \texttt{span}/\texttt{.at()}; never \texttt{strcpy}.
+\item Use-after-free --- RAII, smart pointers (Ch 97).
+\item Input-triggered memory bug --- fuzzing + sanitizers (Ch 105).
+\item Timing attack --- constant-time comparison; vetted crypto.
+\item Spectre/side-channel --- \texttt{LFENCE}, index masking, kernel mitigations.
+\end{itemize}
+
+\textbf{The discipline.} The language's power is double-edged: memory access and aggressive optimization (including hardware speculation) are performance features and attack surfaces. Defence is layered: use the memory-safe subset to eliminate bug classes; fuzz every untrusted-input parser under sanitizers; use audited constant-time crypto; and reason about hardware side-channels for the most sensitive code. Security and correctness are the same discipline --- every UB is a potential exploit.

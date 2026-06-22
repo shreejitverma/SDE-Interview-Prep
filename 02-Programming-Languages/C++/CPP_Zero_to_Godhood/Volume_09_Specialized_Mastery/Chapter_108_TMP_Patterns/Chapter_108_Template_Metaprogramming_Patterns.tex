@@ -1,0 +1,95 @@
+\chapter{Template Metaprogramming Patterns}
+
+Where Chapter 74 covered the mechanics of template metaprogramming, this chapter covers the patterns --- the reusable, named designs engineers build from those mechanics to move computation to compile time and erase abstraction cost. Expression templates eliminate temporaries; type erasure provides polymorphism without inheritance; the detection idiom adapts to a type's capabilities; policy-based design composes behaviour at zero cost.
+
+\section*{Chapter Roadmap}
+\begin{itemize}
+\item 108.1 Why Patterns, Not Just Mechanics
+\item 108.2 Expression Templates and Lazy Evaluation
+\item 108.3 Type Erasure: Polymorphism Without Inheritance
+\item 108.4 The Detection Idiom
+\item 108.5 Policy-Based Design
+\item 108.6 Tag Dispatch and Compile-Time Selection
+\item 108.7 Cost Model and When to Stop
+\end{itemize}
+
+\section{Why Patterns, Not Just Mechanics}
+Raw TMP mechanics are a language; these patterns are the idioms written in it: eliminating temporaries, erasing types, querying capabilities, composing policies.
+
+\textbf{Why this matters.} Each targets a runtime cost: expression templates target temporaries and extra passes; type erasure targets coupling and per-type code; the detection idiom targets fixed-interface rigidity. Recognising which fits --- and which is overkill --- separates productive metaprogramming from unmaintainable template thickets.
+
+\section{Expression Templates and Lazy Evaluation}
+Naive operator overloading creates a temporary per sub-expression: \texttt{A + B + C} does two passes and a temporary. Expression templates make \texttt{operator+} return a lightweight object describing the computation, evaluated once on assignment.
+
+\begin{lstlisting}[language=C++, caption={Expression templates: A+B+C becomes one fused loop with zero temporaries. Min standard: C++14.}]
+template <typename L, typename R>
+struct Sum {
+    const L& l; const R& r;
+    auto operator[](size_t i) const { return l[i] + r[i]; }
+    size_t size() const { return l.size(); }
+};
+template <typename L, typename R>
+Sum<L, R> operator+(const L& l, const R& r) { return Sum<L, R>{l, r}; }
+// result = A + B + C;  ->  one loop: result[i] = A[i] + B[i] + C[i]
+\end{lstlisting}
+
+\textbf{Why this matters / cost model.} N chained operations collapse into one pass with no intermediate allocations --- how Eigen and Blaze achieve hand-tuned performance from natural syntax. Costs: intricate technique, bad error messages, and dangling-reference hazards (\texttt{auto x = a + b;} holding references to temporaries). Reserve for libraries where the payoff justifies the complexity.
+
+\section{Type Erasure: Polymorphism Without Inheritance}
+\begin{lstlisting}[language=C++, caption={Type erasure: heterogeneous storage of unrelated types with a draw() interface. Min standard: C++14.}]
+class Drawable {
+    struct Concept { virtual ~Concept() = default; virtual void draw() const = 0; };
+    template <typename T>
+    struct Model : Concept { T obj; explicit Model(T o):obj(std::move(o)){} void draw() const override { obj.draw(); } };
+    std::unique_ptr<Concept> self_;
+public:
+    template <typename T> Drawable(T obj) : self_(std::make_unique<Model<T>>(std::move(obj))) {}
+    void draw() const { self_->draw(); }
+};
+\end{lstlisting}
+
+\textbf{Why this matters / cost model.} Type erasure decouples interface from hierarchy: unrelated types stored together and dispatched polymorphically (the pattern behind \texttt{std::function}, \texttt{std::any}). More flexible than inheritance (works with types you don't own) and avoids template bloat. Cost is \texttt{virtual}'s: an indirect call and a heap allocation (\texttt{std::function}'s small buffer avoids the latter). Use for an open set of unrelated types.
+
+\section{The Detection Idiom}
+\begin{lstlisting}[language=C++, caption={Detection idiom: query a capability at compile time; C++20 requires is clearer. Min standard: C++17.}]
+template <typename, typename = std::void_t<>>
+struct has_serialize : std::false_type {};
+template <typename T>
+struct has_serialize<T, std::void_t<decltype(std::declval<T>().serialize())>> : std::true_type {};
+\end{lstlisting}
+
+\textbf{Why this matters.} Detection lets one generic function service types of varying capability --- call \texttt{reserve()} if present, serialize via member else free function. C++20 concepts express this far more legibly; reserve \texttt{void\_t} for pre-C++20. The value is graceful adaptation without failing on less capable types.
+
+\section{Policy-Based Design}
+\begin{lstlisting}[language=C++, caption={Policy-based design: orthogonal axes chosen at compile time. Min standard: C++11.}]
+template <typename T, typename CheckingPolicy, typename ThreadingPolicy>
+class SmartPtr : private CheckingPolicy, private ThreadingPolicy {
+    T* ptr_ = nullptr;
+public:
+    T& operator*() { CheckingPolicy::check(ptr_); return *ptr_; }
+};
+\end{lstlisting}
+
+\textbf{Why this matters / cost model.} Policies turn a combinatorial explosion into independent units resolved at compile time; stateless policies add zero bytes (empty base optimisation). How \texttt{unique\_ptr}'s deleter and \texttt{vector}'s allocator work. Costs: code bloat and no runtime configuration.
+
+\section{Tag Dispatch and Compile-Time Selection}
+\begin{lstlisting}[language=C++, caption={Tag dispatch: the iterator category selects the optimal overload. Min standard: C++11.}]
+template <typename It> void advance_impl(It& it, int n, std::random_access_iterator_tag) { it += n; }
+template <typename It> void advance_impl(It& it, int n, std::forward_iterator_tag) { while (n--) ++it; }
+template <typename It> void my_advance(It& it, int n) {
+    advance_impl(it, n, typename std::iterator_traits<It>::iterator_category{});
+}
+\end{lstlisting}
+
+\textbf{Why this matters.} Tag dispatch branches on a compile-time property by overload selection --- clearer than \texttt{if constexpr} for dispatching to entirely separate implementations. Zero-cost: the tag is empty, the wrong overload is never instantiated. C++17 \texttt{if constexpr} subsumes many uses, but tag dispatch shines for large separate alternatives.
+
+\section{Cost Model and When to Stop}
+\begin{itemize}
+\item Expression templates --- eliminate temporaries/passes; pay complexity and lifetime hazards.
+\item Type erasure --- eliminate coupling/bloat; pay an indirect call and allocation.
+\item Detection idiom --- eliminate rigidity; compile-time only (concepts in C++20).
+\item Policy-based design --- eliminate runtime dispatch; pay code bloat, no runtime config.
+\item Tag dispatch --- eliminate runtime branching; compile-time only.
+\end{itemize}
+
+\textbf{The discipline.} These deliver zero-cost abstraction by moving real costs into the compiler, paying in compile time and complexity. Reach for them when the payoff is measured and significant, and prefer the simplest tool: \texttt{if constexpr}/concepts over SFINAE/\texttt{void\_t}, plain \texttt{virtual} over hand-rolled type erasure when the call is cold.
