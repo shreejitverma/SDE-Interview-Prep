@@ -1,0 +1,80 @@
+\chapter{Networking from Scratch}
+
+Every C++ networking library --- Asio, gRPC, Seastar --- is ultimately a wrapper over the operating system's Berkeley sockets API, and you cannot reason about a network library's performance or debug its failures without understanding the syscalls underneath. This chapter builds networking from sockets up: the blocking server, the readiness model (\texttt{epoll}) that serves tens of thousands of connections from one thread, and the path to kernel bypass. The throughline is the cost model: networking is dominated by syscall crossings and copies.
+
+\section*{Chapter Roadmap}
+\begin{itemize}
+\item 112.1 Why Learn the Sockets API
+\item 112.2 The Berkeley Sockets API
+\item 112.3 The Blocking Server and Its Limits
+\item 112.4 Non-Blocking I/O and \texttt{epoll}
+\item 112.5 The Event Loop and the Reactor Pattern
+\item 112.6 From \texttt{epoll} to the Modern Stack
+\end{itemize}
+
+\section{Why Learn the Sockets API}
+The BSD sockets API (\texttt{socket}, \texttt{bind}, \texttt{listen}, \texttt{accept}, \texttt{read}, \texttt{write}) is the foundation of the Internet. High-level libraries hide it, but understanding it lets you reason about their behaviour.
+
+\textbf{Why this matters.} Asio's ``async read completed'' and gRPC's ``backpressure'' are abstractions over \texttt{epoll}/\texttt{io\_uring} readiness and buffer fullness; when they misbehave, the diagnosis lives in the sockets layer. Every networking cost model reduces to this: a \texttt{read}/\texttt{write} is a syscall plus a kernel copy.
+
+\section{The Berkeley Sockets API}
+\begin{lstlisting}[language=C++, caption={A minimal blocking TCP echo server. POSIX-specific. Min standard: C++11.}]
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <unistd.h>
+int main() {
+    int server_fd = socket(AF_INET, SOCK_STREAM, 0);
+    sockaddr_in address{};
+    address.sin_family = AF_INET; address.sin_addr.s_addr = INADDR_ANY;
+    address.sin_port = htons(8080);
+    bind(server_fd, reinterpret_cast<sockaddr*>(&address), sizeof(address));
+    listen(server_fd, 16);
+    int conn = accept(server_fd, nullptr, nullptr);   // BLOCKS
+    char buffer[1024] = {};
+    read(conn, buffer, sizeof(buffer));               // BLOCKS
+    const char* resp = "HTTP/1.1 200 OK\r\nContent-Length: 6\r\n\r\nHello!";
+    write(conn, resp, std::strlen(resp));
+    close(conn); close(server_fd);
+}
+\end{lstlisting}
+
+\textbf{Why this matters.} Byte order: \texttt{htons}/\texttt{htonl} convert to network big-endian --- forgetting them misinterprets the port/address. The \texttt{listen} backlog bounds queued connections. Each call is a syscall crossing, which is why naive per-message networking is syscall-bound.
+
+\section{The Blocking Server and Its Limits}
+The blocking server handles one connection because \texttt{accept}/\texttt{read} sleep the thread. Thread-per-connection does not scale: each thread is $\sim$8\,MB of stack and a scheduling entity.
+
+\textbf{Why this matters / cost model.} The C10K problem cannot be solved by thread-per-connection. The scalable answers: coroutines (cheap user-space frames, Chapter 78) or non-blocking multiplexing with a readiness API. Both eliminate one-OS-thread-per-connection; \texttt{epoll} is the classic foundation.
+
+\section{Non-Blocking I/O and \texttt{epoll}}
+\begin{lstlisting}[language=C++, caption={epoll: one epoll_wait returns all ready fds. Linux-specific. Min standard: C++11.}]
+#include <sys/epoll.h>
+int epoll_fd = epoll_create1(0);
+epoll_event ev{}; ev.events = EPOLLIN; ev.data.fd = server_fd;
+epoll_ctl(epoll_fd, EPOLL_CTL_ADD, server_fd, &ev);
+epoll_event events[64];
+while (true) {
+    int n = epoll_wait(epoll_fd, events, 64, -1);
+    for (int i = 0; i < n; ++i) {
+        if (events[i].data.fd == server_fd) { /* accept, set non-blocking, register */ }
+        else { /* read available data, process */ }
+    }
+}
+\end{lstlisting}
+
+\textbf{Why this matters / cost model.} \texttt{epoll} serves tens of thousands of connections from one thread (nginx, Redis, Node). Over \texttt{select}/\texttt{poll} (O(n) rescans) it is O(ready): register once, return only ready fds. It remains a readiness model (one syscall per ready operation plus the copy), which is why \texttt{io\_uring}'s completion model (Chapter 99) is the next step.
+
+\section{The Event Loop and the Reactor Pattern}
+The structure is the reactor pattern: an event loop waits for readiness and dispatches each event to a handler --- the architecture of every async library (Asio's \texttt{io\_context}, libuv), with a proactor variant for completion-based I/O.
+
+\textbf{Why this matters.} The reactor decouples what to do on an event from how events are detected, so the same logic runs over different OS mechanisms --- why understanding \texttt{epoll} transfers to Asio. The hazard: a blocking operation in a handler stalls the entire loop, so handlers must never block; long work is offloaded to a thread pool.
+
+\section{From \texttt{epoll} to the Modern Stack}
+\begin{itemize}
+\item Blocking thread-per-conn --- thousands; simple.
+\item Coroutine-per-connection --- tens of thousands; removes OS-thread overhead.
+\item \texttt{epoll} reactor --- tens of thousands; removes thread-per-connection.
+\item \texttt{io\_uring} proactor --- hundreds of thousands; removes the readiness syscall.
+\item Kernel bypass --- line rate; removes the kernel (Chapter 100).
+\end{itemize}
+
+\textbf{The discipline.} Every networking library issues the same sockets syscalls; performance is minimising crossings and copies. Reach up the stack as scale demands, and whatever the library: handle byte order, never block the event loop, size buffers/backlogs for load, and amortise the kernel crossing.

@@ -1,0 +1,90 @@
+\chapter{Design Patterns in Modern C++}
+
+Design patterns are named, reusable solutions to recurring design problems --- but in C++ the classic Gang-of-Four catalogue is only half the story, because templates, value semantics, and zero-overhead abstractions let you implement many patterns \emph{without} the runtime indirection the original object-oriented formulations assume. For each pattern this chapter asks the book's recurring question: what does it cost, and is the C++ idiom achieving the same intent cheaper?
+
+\section*{Chapter Roadmap}
+\begin{itemize}
+\item 107.1 Patterns as Vocabulary, Not Dogma
+\item 107.2 Creational: Singleton and Factory
+\item 107.3 Structural: Adapter, Composite, and Pimpl
+\item 107.4 Behavioral: Strategy and Observer
+\item 107.5 The C++ Idioms: CRTP and Static Polymorphism
+\item 107.6 The Pimpl Idiom and Compilation Firewalls
+\item 107.7 Cost-Aware Pattern Selection
+\end{itemize}
+
+\section{Patterns as Vocabulary, Not Dogma}
+A pattern is a tested solution shape with a shared name. C++ leverages strong typing, templates, and the object model to implement patterns with high performance --- but the GoF book described patterns for languages where every object is heap-allocated and every method virtual, costs C++ can often avoid.
+
+\textbf{Why this matters.} Recognise a pattern's intent and choose the cheapest C++ mechanism. Strategy's intent --- interchangeable algorithms --- can be a \texttt{virtual} interface (runtime, dispatch cost), a template parameter (compile-time, zero cost), or a \texttt{std::function} (runtime, may allocate). All are ``Strategy''; they differ by orders of magnitude.
+
+\section{Creational: Singleton and Factory}
+\begin{lstlisting}[language=C++, caption={The Meyers Singleton: thread-safe, lazy. Min standard: C++11.}]
+class Singleton {
+public:
+    static Singleton& instance() { static Singleton s; return s; }   // C++11: once, thread-safe
+    Singleton(const Singleton&) = delete;
+    Singleton& operator=(const Singleton&) = delete;
+private:
+    Singleton() = default;
+};
+\end{lstlisting}
+
+\textbf{Why this matters / cost model.} Singleton is the most over-used pattern --- a global in disguise that defeats testing and carries a static-init-order hazard (Chapter 102). The C++11 guarantee costs a one-time atomic check (a guard check per access in some ABIs; \texttt{constinit} removes it). Prefer dependency injection where testability matters. Factories earn their keep for non-trivial construction, but returning \texttt{unique\_ptr<Base>} reintroduces virtual dispatch and allocation.
+
+\section{Structural: Adapter, Composite, and Pimpl}
+Adapter converts one interface into another (a thin, inlinable forwarding wrapper); Composite composes objects into part-whole trees treated uniformly; Pimpl hides implementation behind an opaque pointer (107.6).
+
+\textbf{Why this matters.} These are about interface shape and interact with the cost model through dispatch. A Composite using \texttt{virtual} is free on a cold path (a UI tree) but a tax on a hot one (an expression tree), where expression templates (Chapter 108) compose at compile time. A structural pattern introducing a \texttt{virtual} boundary is free cold, costly hot.
+
+\section{Behavioral: Strategy and Observer}
+\begin{lstlisting}[language=C++, caption={Strategy via std::function (runtime) or a template (compile-time). Min standard: C++17.}]
+class Compressor {
+    std::function<std::string(const std::string&)> strategy_;   // runtime, may allocate
+public:
+    explicit Compressor(std::function<std::string(const std::string&)> s) : strategy_(std::move(s)) {}
+    std::string run(const std::string& in) { return strategy_(in); }
+};
+// vs. template <typename Strategy> class Compressor { Strategy s_; ... };  // zero cost
+\end{lstlisting}
+
+\textbf{Why this matters / cost model.} One pattern, three costs: \texttt{virtual} (vtable dispatch), \texttt{std::function} (type-erased, may heap-allocate beyond its small buffer), or a template (inlined, zero cost, not runtime-swappable). Observer's hazard is lifetime: an observer destroyed without unregistering dangles --- use \texttt{weak\_ptr}/scoped connections. Re-entrant modification of the observer list mid-notification is a classic bug.
+
+\section{The C++ Idioms: CRTP and Static Polymorphism}
+\begin{lstlisting}[language=C++, caption={CRTP: static polymorphism with zero dispatch cost. Min standard: C++11.}]
+template <typename Derived>
+class Base { public: void interface() { static_cast<Derived*>(this)->implementation(); } };
+class Concrete : public Base<Concrete> { public: void implementation() { /* ... */ } };
+\end{lstlisting}
+
+\textbf{Why this matters / cost model.} CRTP eliminates the vtable load and indirect branch, enabling inlining across the dispatch boundary --- the technique behind mixins, \texttt{enable\_shared\_from\_this}, and expression templates. Costs are the inverse of \texttt{virtual}'s: no heterogeneous containers and code bloat. C++ often realises a GoF pattern's intent with a cheaper mechanism (Chapter 74).
+
+\section{The Pimpl Idiom and Compilation Firewalls}
+\begin{lstlisting}[language=C++, caption={Pimpl: the header reveals no implementation. Min standard: C++11.}]
+// widget.h
+class Widget {
+    class Impl; std::unique_ptr<Impl> pImpl_;
+public:
+    Widget(); ~Widget();              // dtor MUST be defined in the .cpp
+    void draw();
+};
+// widget.cpp
+class Widget::Impl { /* hidden members/includes */ };
+Widget::Widget() : pImpl_(std::make_unique<Impl>()) {}
+Widget::~Widget() = default;          // defined where Impl is complete
+\end{lstlisting}
+
+\textbf{Why this matters / cost model.} Pimpl is an ABI-stability tool (a fixed layout regardless of implementation, Chapter 102) and a build-time tool (clients recompile one \texttt{.cpp}, not the project). Costs: a pointer indirection (likely cache miss), a heap allocation, and lost inlining. The destructor must be defined in the \texttt{.cpp} where \texttt{Impl} is complete --- \texttt{unique\_ptr<Impl>} cannot destroy an incomplete type. For cold/ABI/build-bottleneck classes only, never a hot-path value type.
+
+\section{Cost-Aware Pattern Selection}
+\begin{itemize}
+\item Strategy --- template parameter (zero cost) or \texttt{std::function} instead of \texttt{virtual}.
+\item Template Method/polymorphism --- CRTP instead of \texttt{virtual}.
+\item Singleton --- dependency injection; \texttt{constinit} if constant.
+\item Adapter --- inline forwarding wrapper.
+\item Composite (hot) --- expression templates (Ch 108).
+\item Observer --- \texttt{weak\_ptr}/scoped connections.
+\item Pimpl --- keep, but only for cold/ABI/build cases.
+\end{itemize}
+
+\textbf{The discipline.} Use the pattern to name the problem, then pick the implementation whose cost fits the path: \texttt{virtual}/\texttt{std::function} for cold, runtime-flexible code; templates and CRTP for hot paths where the abstraction must be free.

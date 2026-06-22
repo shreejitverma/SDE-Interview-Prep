@@ -1,0 +1,62 @@
+\chapter{Robotics and ROS2 Development}
+
+Robotics is where multiple timescales of real-time meet: a navigation planner taking hundreds of milliseconds runs alongside a motor-control loop at a kilohertz with hard deadlines, and a perception pipeline moving gigabytes of sensor data per second sits between them. C++ is the language of serious robotics, and ROS2 is its dominant framework. This chapter covers the ROS2 architecture, the zero-copy transport that makes high-bandwidth sensor data feasible, and the real-time disciplines that protect the control loop.
+
+\section*{Chapter Roadmap}
+\begin{itemize}
+\item 119.1 The Many Timescales of Robotics
+\item 119.2 ROS2 Architecture and DDS
+\item 119.3 Zero-Copy Transport
+\item 119.4 Real-Time Executors and Priority
+\item 119.5 Allocation Discipline in the Control Loop
+\item 119.6 The Robotics Discipline
+\end{itemize}
+
+\section{The Many Timescales of Robotics}
+A robot is several coupled real-time systems: hard real-time (motor control, safety) with microsecond-to-millisecond deadlines; soft real-time (navigation, planning) tolerating occasional lateness; and throughput (perception) moving enormous sensor streams.
+
+\textbf{Why this matters.} These have conflicting requirements: the control loop needs determinism (Chapter 106), perception needs bandwidth (Chapter 99), the planner needs compute --- and they must coexist without perception jittering the control loop. The engineering isolates the timescales: the control loop runs allocation-free on a dedicated isolated core (Chapter 96), perception runs elsewhere with zero-copy transport. C++ serves all three.
+
+\section{ROS2 Architecture and DDS}
+ROS2 structures a robot as nodes communicating through topics (pub/sub streaming), services (request/response), and actions (long-running goals). Underneath, DDS handles discovery, serialization, and quality-of-service policies.
+
+\textbf{Why this matters.} The node/topic architecture is the actor model (Chapter 78) for robotics: independent nodes, message passing, giving modularity and fault isolation. DDS's QoS knobs matter for the timescales: control commands use reliable low-latency QoS, camera feeds best-effort (drop rather than buffer). The pub/sub design is the distributed-systems pattern (Chapter 84) at robot scale, with the same message-passing overhead cost.
+
+\section{Zero-Copy Transport}
+\begin{lstlisting}[language=text, caption={Zero-copy transport via shared memory: publish a pointer, not the data.}]
+Standard:  Publisher -serialize-> copy -transport-> copy -deserialize-> Subscriber
+Zero-copy (Iceoryx, same host):
+  1. Publisher requests a chunk from shared memory.
+  2. Publisher writes data directly into the chunk.
+  3. Publisher sends only the OFFSET to the subscriber.
+  4. Subscriber reads directly.  -> ZERO copies, zero serialization.
+\end{lstlisting}
+
+\textbf{Why this matters / cost model.} For megabyte-scale messages at 30--100\,Hz, serialize-and-copy dominates. Zero-copy shared memory reduces the per-message cost to passing an offset --- the kernel-bypass/zero-copy principle of Chapters 99--100 applied to IPC, making high-bandwidth perception feasible. Constraints: standard-layout types, chunk lifetime management, intra-host only.
+
+\section{Real-Time Executors and Priority}
+A node's callbacks are run by an executor; the default can suffer priority inversion (a low-priority camera-log callback delaying a high-priority emergency-stop). Real-time robotics uses prioritised executors.
+
+\textbf{Why this matters.} Priority inversion (Chapter 95) is the cardinal sin: a safety callback waiting behind bulk data delays the robot's stop --- a safety failure. The fix is the Chapter 96 threading discipline: assign callbacks to priority groups, run safety-critical callbacks on a dedicated high-priority executor and isolated core, and never share the control path with low-priority bulk work. The executor configuration is the real-time guarantee.
+
+\section{Allocation Discipline in the Control Loop}
+\begin{lstlisting}[language=C++, caption={A control callback using a stack arena --- no heap. Min standard: C++17.}]
+#include <memory_resource>
+void control_callback() {
+    std::array<std::byte, 4096> buf;
+    std::pmr::monotonic_buffer_resource arena{buf.data(), buf.size()};
+    std::pmr::vector<float> message(&arena);   // no malloc (Chapter 79)
+}
+\end{lstlisting}
+
+\textbf{Why this matters / cost model.} The control loop is a hard-real-time hot path: pre-allocate, use pools and fixed-capacity containers, and use a stack-backed \texttt{monotonic\_buffer\_resource} for scratch (Chapter 79). ROS2 supports custom allocators for this. The deeper reason is determinism over time: repeated allocation fragments the heap, and a fragmented heap's latency drifts upward, so a robot degrades over hours. Allocation-free loops stay deterministic indefinitely.
+
+\section{The Robotics Discipline}
+\begin{itemize}
+\item Hard real-time --- allocation-free, prioritised executor, isolated core.
+\item Soft real-time --- standard executor, separate threads.
+\item Throughput --- zero-copy shared-memory transport.
+\item Inter-node --- ROS2 topics/DDS with appropriate QoS.
+\end{itemize}
+
+\textbf{The discipline.} Robotics composes the book's disciplines per subsystem: the control loop a hard-real-time hot path (Chapters 96, 106, 118); perception a throughput pipeline (Chapters 99--100); the architecture the actor model (Chapter 78); on DDS pub/sub with per-timescale QoS. The unifying skill is isolation: bulk perception data must never jitter the safety loop, enforced via prioritised executors, isolated cores, and zero-copy transport.
