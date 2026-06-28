@@ -1,0 +1,233 @@
+\chapter{Low-Level File I/O and Exception Unwinding (Python 2.x to modern)}
+
+This chapter closes Volume I with the two runtime subsystems an engineer touches on every
+program: how bytes move between a process and the operating system, and how control unwinds when
+something fails. Both were re-architected away from their 2.x forms. File I/O moved from thin C
+\texttt{stdio} wrappers to the \textbf{layered \texttt{io} stack} (PEP 3116) that talks to the
+kernel directly. Exception handling moved from a per-frame \textbf{runtime block stack} to a
+static \textbf{exception table} (Python 3.11) that makes a \texttt{try} block cost \emph{nothing}
+when no exception is raised. We teach the modern mechanisms and use the 2.x originals only to
+show what problem each redesign solved.
+
+\section*{Section Index}
+\begin{itemize}
+  \item \textbf{6.1} The layered I/O architecture (PEP 3116)
+  \item \textbf{6.2} Exception objects and per-thread exception state
+  \item \textbf{6.3} Zero-cost exceptions: the exception table (Python 3.11)
+  \item \textbf{6.4} Exception chaining: \texttt{\_\_context\_\_}, \texttt{\_\_cause\_\_}, and \texttt{raise from}
+  \item \textbf{6.5} Performance and anti-patterns (EAFP vs LBYL)
+  \item \textbf{6.6} Summary and cross-references
+\end{itemize}
+
+\section{The layered I/O architecture (PEP 3116)}
+
+\textbf{Why this exists.} In Python 2, \texttt{open()} returned a \texttt{file} object wrapping a
+C \texttt{stdio} \texttt{FILE *}, inheriting \texttt{stdio}'s buffering \emph{and} its per-call
+internal mutex---locks that are pure waste under the GIL, which already serializes interpreter
+execution. \textbf{PEP 3116} replaced this with a composable three-layer stack (the \texttt{io}
+module) that calls \texttt{read(2)}/\texttt{write(2)} directly:
+
+\begin{lstlisting}[caption={The io layer stack}]
+text   :  TextIOWrapper   -- encode/decode str <-> bytes, universal newlines
+            |
+buffered:  BufferedReader / BufferedWriter -- in-memory buffer, batches syscalls
+            |
+raw    :  FileIO          -- a bare OS file descriptor; one syscall per read/write
+\end{lstlisting}
+
+\begin{lstlisting}[language=Python, caption={open() builds a three-object stack; each layer is reachable.}]
+with open("demo.txt", "w", encoding="utf-8") as f:
+    print("text layer:    ", type(f).__name__)
+    print("buffered layer:", type(f.buffer).__name__)
+    print("raw layer:     ", type(f.buffer.raw).__name__)
+    print("OS descriptor: ", f.fileno())
+    f.write("hello")
+\end{lstlisting}
+
+Verified output (CPython 3.13.5):
+
+\begin{lstlisting}[caption={Output}]
+text layer:     TextIOWrapper
+buffered layer: BufferedWriter
+raw layer:      FileIO
+OS descriptor:  3
+\end{lstlisting}
+
+\textbf{What each layer buys you.} \texttt{FileIO} issues one syscall per call (the foundation,
+slow for many small ops). \texttt{BufferedReader}/\texttt{BufferedWriter} hold a buffer (default
+$\sim$8\,KiB, \texttt{io.DEFAULT\_BUFFER\_SIZE}) so many small operations collapse into few
+syscalls---crossing the user/kernel boundary is the dominant I/O cost. \texttt{TextIOWrapper}
+adds the \texttt{str}$\leftrightarrow$\texttt{bytes} codec and newline translation; binary mode
+(\texttt{"rb"}/\texttt{"wb"}) omits it and hands you \texttt{bytes}.
+
+\textbf{The senior-engineer contrast.} A C programmer chooses \texttt{fopen}/\texttt{fread}
+(buffered \texttt{stdio}) or \texttt{open}/\texttt{read} (raw) explicitly. Python's \texttt{io}
+stack gives both in one object: \texttt{f} is buffered text, \texttt{f.buffer} buffered bytes,
+\texttt{f.buffer.raw} the unbuffered descriptor.
+
+\section{Exception objects and per-thread exception state}
+
+\textbf{Why this exists.} An exception carries its type, value, and traceback, per thread.
+CPython stores the active exception on the \texttt{PyThreadState}. Two historical facts frame the
+modern design.
+
+\textbf{The string-exception era (pre-2.6).} You could once \texttt{raise "some error"}---a bare
+string matched by identity. It made hierarchies impossible and was removed: \textbf{every
+exception must derive from \texttt{BaseException}}. The hierarchy matters---\texttt{except
+Exception} deliberately does \emph{not} catch \texttt{KeyboardInterrupt}, \texttt{SystemExit}, or
+\texttt{GeneratorExit}, which subclass \texttt{BaseException} directly.
+
+\textbf{State consolidation (3.11).} Python 2.x kept two triples on the thread state; modern
+CPython stores a single exception \textbf{value} (type and traceback are derivable), and
+\texttt{sys.exc\_info()} reconstructs the familiar tuple:
+
+\begin{lstlisting}[language=Python, caption={sys.exc\_info() inside an except block.}]
+import sys
+try:
+    raise ValueError("v")
+except ValueError:
+    exc_type, exc_value, exc_tb = sys.exc_info()
+    print("type:", exc_type.__name__, "| value:", exc_value)
+\end{lstlisting}
+
+Verified output (CPython 3.13.5):
+
+\begin{lstlisting}[caption={Output}]
+type: ValueError | value: v
+\end{lstlisting}
+
+Prefer \texttt{except SomeError as e:}; \texttt{sys.exc\_info()} is mainly for generic
+logging/framework code.
+
+\section{Zero-cost exceptions: the exception table (Python 3.11)}
+
+\textbf{Why this exists --- the big change.} Through 3.10, each frame carried a runtime
+\textbf{block stack}: entering a \texttt{try} executed a \texttt{SETUP\_FINALLY} opcode that
+pushed a \texttt{PyTryBlock} (handler address, stack level), and leaving popped it---real work on
+\emph{every} \texttt{try}, even with no exception (the common case). Python 3.11 removed the block
+stack and replaced it with a static, per-code-object \textbf{exception table} mapping bytecode
+ranges to handlers. On the non-exception path a \texttt{try} now executes \textbf{nothing extra};
+cost is paid only when an exception is raised and the interpreter consults the table. This is
+``zero-cost exceptions.''
+
+\begin{lstlisting}[language=Python, caption={A try/except compiles to an exception table, not block-stack setup.}]
+import dis
+
+def guarded(x):
+    try:
+        return 10 / x
+    except ZeroDivisionError:
+        return -1
+
+dis.dis(guarded)
+\end{lstlisting}
+
+Verified output (CPython 3.13.5, excerpt):
+
+\begin{lstlisting}[caption={Output}]
+  L1:     LOAD_CONST    1 (10)
+          LOAD_FAST     0 (x)
+          BINARY_OP    11 (/)
+  L2:     RETURN_VALUE
+  --  L3: PUSH_EXC_INFO
+          LOAD_GLOBAL   0 (ZeroDivisionError)
+          CHECK_EXC_MATCH
+          POP_JUMP_IF_FALSE  3 (to L5)
+          POP_TOP
+  L4:     POP_EXCEPT
+          RETURN_CONST  2 (-1)
+  L5:     RERAISE       0
+  ...
+ExceptionTable:
+  L1 to L2 -> L3 [0]
+  L3 to L4 -> L6 [1] lasti
+  L5 to L6 -> L6 [1] lasti
+\end{lstlisting}
+
+The \texttt{try} body (\texttt{L1}--\texttt{L2}) carries no setup. If \texttt{BINARY\_OP /}
+raises, the interpreter looks up the offset in the \texttt{ExceptionTable}, finds the handler at
+\texttt{L3}, pushes exception info (\texttt{PUSH\_EXC\_INFO}), tests it
+(\texttt{CHECK\_EXC\_MATCH}), runs the handler, and clears state (\texttt{POP\_EXCEPT}). If no
+handler matches, \texttt{RERAISE} propagates to the caller, building the traceback frame by frame.
+The unwinding \emph{semantics} match the 2.x block-stack diagrams; only the \emph{mechanism} and
+its cost model changed.
+
+\section{Exception chaining: \texttt{\_\_context\_\_}, \texttt{\_\_cause\_\_}, and \texttt{raise from}}
+
+\textbf{Why this exists (PEP 3134).} When handling one error raises another, both matter. Python
+links them: \textbf{implicit chaining} sets \texttt{\_\_context\_\_} to the original; explicit
+\texttt{raise New() from original} sets \texttt{\_\_cause\_\_}; \texttt{raise New() from None}
+suppresses the chain.
+
+\begin{lstlisting}[language=Python, caption={raise ... from ... sets \_\_cause\_\_; the original is also kept as \_\_context\_\_.}]
+def chained():
+    try:
+        1 / 0
+    except ZeroDivisionError as e:
+        raise RuntimeError("wrapped") from e
+
+try:
+    chained()
+except RuntimeError as e:
+    print("__cause__:   ", type(e.__cause__).__name__)
+    print("__context__: ", type(e.__context__).__name__)
+\end{lstlisting}
+
+Verified output (CPython 3.13.5):
+
+\begin{lstlisting}[caption={Output}]
+__cause__:    ZeroDivisionError
+__context__:  ZeroDivisionError
+\end{lstlisting}
+
+This wraps low-level errors in domain errors without losing the trail. The multi-error
+generalization---exception groups and \texttt{except*} (PEP 654)---is covered in Vol VI.
+
+\section{Performance and anti-patterns (EAFP vs LBYL)}
+
+\textbf{EAFP is now genuinely cheap.} Python favors \textbf{EAFP} (try, then handle) over
+\textbf{LBYL} (pre-check). With zero-cost exceptions, the \texttt{try} adds no overhead on the
+success path, so EAFP is efficient \emph{when exceptions are rare}. But raising/catching is still
+expensive \emph{per exception}, so EAFP loses in a loop where the exceptional case is common.
+
+\begin{lstlisting}[language=Python, caption={EAFP vs LBYL}]
+# EAFP (preferred when the miss is rare):
+try:
+    value = config["timeout"]
+except KeyError:
+    value = DEFAULT_TIMEOUT
+# LBYL (preferred when misses are common / the check is cheaper than the raise):
+value = config["timeout"] if "timeout" in config else DEFAULT_TIMEOUT
+\end{lstlisting}
+
+\textbf{Anti-patterns.} Bare \texttt{except:} or \texttt{except BaseException} (catches
+\texttt{KeyboardInterrupt}/\texttt{SystemExit}); swallowing exceptions
+(\texttt{except Exception: pass}); not using \texttt{with} for files (leaks the descriptor until
+GC); forgetting \texttt{f.flush()} + \texttt{os.fsync()} for crash durability; reading huge files
+with \texttt{.read()} instead of iterating.
+
+\section{Summary and cross-references}
+
+\begin{itemize}
+  \item File I/O is a \textbf{three-layer stack} (PEP 3116): \texttt{FileIO} $\rightarrow$
+    \texttt{BufferedReader/Writer} $\rightarrow$ \texttt{TextIOWrapper}; reach to
+    \texttt{f.buffer}/\texttt{f.buffer.raw} to pick a layer.
+  \item Every exception derives from \textbf{\texttt{BaseException}}; \texttt{except Exception}
+    spares \texttt{KeyboardInterrupt}/\texttt{SystemExit}. The thread-state triples collapsed to
+    a single value in 3.11.
+  \item Python 3.11 replaced the runtime \textbf{block stack} with a static \textbf{exception
+    table}, making \texttt{try} \textbf{zero-cost} on the success path.
+  \item \textbf{Chaining}: implicit \texttt{\_\_context\_\_}, explicit \texttt{\_\_cause\_\_} via
+    \texttt{raise from}, suppressed via \texttt{from None}.
+  \item \textbf{EAFP} is cheap on the happy path; reserve LBYL for hot loops with common misses.
+\end{itemize}
+
+\textbf{Cross-references.} Deterministic cleanup with \texttt{with} $\rightarrow$ Chapter 5.
+Refcounting vs. GC finalization of file objects $\rightarrow$ Chapter 2. The text/bytes/Unicode
+and codec model $\rightarrow$ Vol II. Exception groups and \texttt{except*} $\rightarrow$ Vol VI.
+``Faster CPython'' $\rightarrow$ Vol VI, Ch 17. The complete \texttt{io} and OS-interface
+reference $\rightarrow$ Vol XIV.
+
+\bigskip
+\noindent\emph{Volume I complete. The next volume opens the Python 3 era with the Unicode
+paradigm shift (Vol II, Ch 7).}

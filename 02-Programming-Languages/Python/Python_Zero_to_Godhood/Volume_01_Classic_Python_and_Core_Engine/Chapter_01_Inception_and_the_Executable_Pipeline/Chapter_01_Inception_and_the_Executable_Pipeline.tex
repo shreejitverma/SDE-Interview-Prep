@@ -1,0 +1,503 @@
+\chapter{Inception and the Executable Pipeline (Python 1.0--1.6)}
+
+Python's surface is famously simple; its execution model is not. To master the language
+you must first hold one mental picture firmly: \textbf{source text is not run---it is
+compiled, ahead of time, into an immutable \texttt{PyCodeObject}, which a stack-based
+virtual machine then interprets.} This chapter follows a single line of source from the
+tokenizer to the evaluation loop, establishing the vocabulary---names, bindings, scopes,
+cells, code objects, frames, opcodes---that every later chapter assumes. We anchor in
+Python's 1.x origins because the design decisions made then (names as bindings,
+everything-is-an-object, a static scope-analysis pass before execution) still govern how
+CPython 3.13 behaves today.
+
+\section*{Section Index}
+\begin{itemize}
+  \item \textbf{1.1} Inception and the core design philosophy
+  \item \textbf{1.2} Names are bindings, not storage: the object model and the senior-engineer contrast
+  \item \textbf{1.3} The execution pipeline, end to end
+  \item \textbf{1.4} Parser evolution: LL(1) to PEG (PEP 617)
+  \item \textbf{1.5} The symbol table and static scope classification
+  \item \textbf{1.6} Closures and cell objects
+  \item \textbf{1.7} \texttt{PyCodeObject}: the compiled blueprint
+  \item \textbf{1.8} The virtual machine: frames and the evaluation loop
+  \item \textbf{1.9} Performance model and anti-patterns
+  \item \textbf{1.10} Summary and cross-references
+\end{itemize}
+
+\section{Inception and the core design philosophy}
+
+\textbf{Why this exists.} Python was conceived in December 1989 by Guido van Rossum at CWI
+(Centrum Wiskunde \& Informatica) in the Netherlands, first released publicly as version
+0.9.0 in February 1991, and reached 1.0 in January 1994. It was a deliberate successor to
+the \textbf{ABC language}---elegant for teaching, but crippled in practice by three
+architectural decisions Python set out to reverse:
+
+\begin{enumerate}
+  \item \textbf{A monolithic, unextensible runtime.} ABC could not load native libraries or
+    be driven from C. Python was built around a C-extension boundary: the interpreter
+    \emph{is} a C library, and any data structure or algorithm can be dropped to C without
+    changing the Python-level interface. This is why NumPy, the \texttt{re} engine, and
+    \texttt{asyncio}'s selectors can exist at all.
+  \item \textbf{A global, filesystem-backed state model.} ABC persisted variables in a
+    global database, making it slow and impossible to compose. Python uses ordinary
+    in-memory namespaces (dictionaries) with lexical scoping.
+  \item \textbf{A closed ecosystem.} ABC could not reach the operating system. Python
+    exposed system calls, signals, and process control as first-class library surface from
+    its earliest versions.
+\end{enumerate}
+
+Three design commitments fell out of these reversals and never changed:
+
+\begin{itemize}
+  \item \textbf{Significant whitespace.} CPython's tokenizer emits explicit \texttt{INDENT}
+    and \texttt{DEDENT} tokens; block structure is part of the grammar, not a convention.
+    The \emph{visual} structure a reader sees is, by construction, the \emph{execution}
+    structure the compiler sees---the two cannot drift apart, as they can in brace
+    languages.
+  \item \textbf{A unified object model.} Every value---an integer, a function, a class, a
+    module, a stack frame---is a heap-allocated object reachable through a
+    \texttt{PyObject *}. There is no separate world of ``primitives'' as in Java or C\#.
+    This uniformity is what makes introspection total rather than partial.
+  \item \textbf{Names as bindings.} \texttt{x = 5} does not create a typed memory slot named
+    \texttt{x}; it binds the \emph{name} \texttt{x}, in some namespace, to the object
+    \texttt{5}. This is the most consequential decision in the language, and §1.2 unpacks it.
+\end{itemize}
+
+\textbf{What the interpreter actually does at startup.} Running \texttt{python script.py}
+initializes a process-wide runtime (\texttt{PyInterpreterState}) and at least one thread
+state (\texttt{PyThreadState}), imports the \texttt{builtins}, \texttt{sys}, and
+\texttt{\_\_main\_\_} modules, then compiles and executes \texttt{script.py} in the
+\texttt{\_\_main\_\_} namespace. ``Running a script'' is therefore ``compile a module body to
+a code object, then evaluate it in a fresh frame.''
+
+\section{Names are bindings, not storage: the object model and the senior-engineer contrast}
+
+\textbf{The model.} A Python name lives in a namespace---a mapping from \texttt{str} to
+\texttt{PyObject *}. Assignment rebinds the name; it never copies or mutates the object the
+name previously referred to. Every object carries, at minimum, a \textbf{reference count}
+and a \textbf{type pointer} (Chapter 2 dissects the \texttt{PyObject} header). Assignment is
+a constant two-step: bind the name, and increment the target object's refcount.
+
+\textbf{The senior-engineer contrast.} This is where intuition from systems languages
+misleads:
+
+\begin{itemize}
+  \item \textbf{What a variable is.} C/C++: typed storage at an address. Java: a typed slot
+    holding a primitive or a reference. Python: a name bound to an object reference; the
+    name has no type.
+  \item \textbf{\texttt{a = b}.} C/C++: copies bytes per the declared type. Java: copies a
+    primitive or a reference. Python: binds \texttt{a} to the same object \texttt{b} refers
+    to; no copy.
+  \item \textbf{Type.} C/C++ and Java: belongs to the variable. Python: belongs to the
+    \emph{object}, not the name.
+  \item \textbf{Lifetime.} C/C++: scope / \texttt{new}--\texttt{delete} / RAII. Java:
+    tracing GC. Python: refcount $\rightarrow$ immediate free, plus a cyclic collector
+    (Chapter 3).
+\end{itemize}
+
+\begin{lstlisting}[language=Python, caption={Assignment binds; it does not copy. Mutating through one name is visible through every name bound to the same object.}]
+a = [1, 2, 3]
+b = a            # b is NOT a copy; a and b name the same list object
+b.append(4)
+print(a)         # [1, 2, 3, 4]
+print(a is b)    # True  -> identity, not equality
+\end{lstlisting}
+
+Verified output (CPython 3.13.5):
+
+\begin{lstlisting}[caption={Output}]
+[1, 2, 3, 4]
+True
+\end{lstlisting}
+
+\texttt{is} compares \textbf{identity} (are these the same object?), \texttt{==} compares
+\textbf{value}. The distinction is meaningless in C, where \texttt{a == b} on pointers
+\emph{is} identity; in Python the two are separate operators because a name and an object are
+separate things. Fix the model: \textbf{a Python program is a graph of objects, and names
+are merely labelled edges into it.}
+
+\section{The execution pipeline, end to end}
+
+\textbf{Why this exists.} Python feels interpreted, but nothing executes until it has been
+compiled to bytecode. The pipeline tells you \emph{where} each kind of error is produced (a
+\texttt{SyntaxError} cannot occur at runtime; a \texttt{NameError} cannot occur at compile
+time) and \emph{why} constructs are fast or slow.
+
+\begin{lstlisting}[caption={From text to result}]
+[ source text ]
+   | tokenizer (Parser/tokenizer.c): token stream, incl. INDENT/DEDENT
+   v
+[ token stream ]
+   | parser (PEG since 3.9): builds the Abstract Syntax Tree (AST)
+   v
+[   AST   ]   ( the ast module exposes this tree )
+   | symbol-table pass (Python/symtable.c): classifies every name into a scope
+   v
+[ symbol table ]
+   | compiler (Python/compile.c): emits bytecode + metadata
+   v
+[ PyCodeObject ]   ( immutable: bytecode, constants, names, flags )
+   | evaluation loop (Python/ceval.c, _PyEval_EvalFrameDefault): runs per frame
+   v
+[  result  ]
+\end{lstlisting}
+
+The first four stages are \textbf{ahead-of-time compilation}; only the last is
+``interpretation.'' Each boundary is observable from the standard library: \texttt{tokenize}
+for stage 1, \texttt{ast} for stages 2--3, \texttt{symtable} for stage 4, \texttt{compile()}
+and \texttt{dis} for stage 5's input.
+
+\section{Parser evolution: LL(1) to PEG (PEP 617)}
+
+\textbf{Why this exists.} For most of its life CPython used a hand-tunable \textbf{LL(1)}
+parser---\textbf{L}eft-to-right scan, \textbf{L}eftmost derivation, \textbf{1} token of
+lookahead. LL(1) is fast and simple but structurally limited. \textbf{PEP 617} replaced it
+with a \textbf{PEG} parser in Python 3.9.
+
+\textbf{The LL(1) limitation: left recursion.} A top-down LL(1) parser cannot directly
+handle a \textbf{left-recursive} rule---one whose right-hand side begins with the
+non-terminal itself:
+\[ A \rightarrow A\,\alpha \;\mid\; \beta \]
+Asked to expand $A$, the parser would expand $A$ again before consuming any input,
+recursing forever:
+\[ A \rightarrow A\alpha \rightarrow A\alpha\alpha \rightarrow A\alpha\alpha\alpha \rightarrow \cdots \]
+The classic workaround mechanically rewrites the rule into an equivalent right-recursive
+pair:
+\[ A \rightarrow \beta A' \qquad A' \rightarrow \alpha A' \;\mid\; \varepsilon \]
+This is equivalent as a \emph{language} but distorts the grammar: the natural
+left-associative shape of \texttt{a - b - c} must be reconstructed afterward.
+
+\textbf{The PEG parser} is also top-down, but adds \textbf{ordered choice} (first match
+wins), \textbf{unlimited lookahead} via backtracking, \textbf{packrat memoization} (caching
+each rule/position result, which both bounds backtracking to linear time and supports left
+recursion directly), and \textbf{direct AST construction}, skipping the intermediate Concrete
+Syntax Tree.
+
+\begin{lstlisting}[caption={Parser pipelines, old and new}]
+LL(1) pipeline (pre-3.9):
+[source] -> [tokenizer] -> [Concrete Syntax Tree] -> [AST builder] -> [AST]
+
+PEG pipeline (3.9+, PEP 617):
+[source] -> [tokenizer] -> [PEG parser (memoized)] -> [AST]
+\end{lstlisting}
+
+\textbf{Old-vs-new, why it mattered.} The \textbf{structural pattern matching} of
+\texttt{match}/\texttt{case} (PEP 634, Chapter 15) is expressible largely \emph{because} the
+grammar is no longer bound by LL(1). The parser is an implementation detail---the
+\emph{language} is defined by the grammar in the reference (covered in Vol X)---but the
+switch enabled strictly more expressive syntax and better diagnostics.
+
+\section{The symbol table and static scope classification}
+
+\textbf{Why this exists.} Before emitting a single opcode, the compiler walks the AST to
+decide, \textbf{statically}, what every name \emph{means}: local, parameter, global,
+builtin, or free variable. This classification lets CPython use array-indexed local access
+(\texttt{LOAD\_FAST}) instead of a dictionary lookup per variable---the single largest reason
+Python functions are not even slower than they are.
+
+CPython classifies each binding (\texttt{Python/symtable.c}) as: \textbf{local} (bound in the
+current function); \textbf{global, explicit} (\texttt{global x}); \textbf{global, implicit}
+(referenced but never bound; resolved at runtime against module globals, then builtins); or
+\textbf{enclosing/free} (bound in an outer function and read, or with \texttt{nonlocal}
+rebound, by a nested function).
+
+\begin{lstlisting}[language=Python, caption={Inspect CPython's static scope analysis without running the code.}]
+import symtable
+
+src = """
+def outer_func(x):
+    z = 10
+    def inner_func():
+        nonlocal z
+        return x + z
+    return inner_func
+"""
+
+table = symtable.symtable(src, filename="<string>", compile_type="exec")
+outer = table.lookup("outer_func").get_namespace()
+print("outer identifiers:", sorted(outer.get_identifiers()))
+print("'z' is_local in outer:", outer.lookup("z").is_local())
+print("'x' is_parameter in outer:", outer.lookup("x").is_parameter())
+
+inner = outer.lookup("inner_func").get_namespace()
+print("inner free vars (closure):", inner.get_frees())
+print("'z' is_free in inner:", inner.lookup("z").is_free())
+\end{lstlisting}
+
+Verified output (CPython 3.13.5):
+
+\begin{lstlisting}[caption={Output}]
+outer identifiers: ['inner_func', 'x', 'z']
+'z' is_local in outer: True
+'x' is_parameter in outer: True
+inner free vars (closure): ('z', 'x')
+'z' is_free in inner: True
+\end{lstlisting}
+
+\textbf{Correctness note.} Earlier drafts called \texttt{Symbol.is\_cell()}. That method does
+not exist in the \texttt{symtable} API (verified on 3.13.5; it raises
+\texttt{AttributeError}). The supported predicates are \texttt{is\_local}, \texttt{is\_global},
+\texttt{is\_free}, \texttt{is\_parameter}, \texttt{is\_namespace}, \texttt{is\_nonlocal},
+\texttt{is\_declared\_global}, \texttt{is\_assigned}, \texttt{is\_referenced},
+\texttt{is\_imported}, \texttt{is\_annotated}. To see which locals became \textbf{cells}, read
+the compiled code object's \texttt{co\_cellvars} (§1.6).
+
+\section{Closures and cell objects}
+
+\textbf{Why this exists.} A nested function may outlive the call that created it, yet still
+read the enclosing function's locals. Those locals cannot live in the outer frame's
+fast-locals array, because that array dies when the frame is popped. CPython promotes a
+captured local to a \textbf{cell}---a tiny heap object shared by reference between the
+enclosing and nested functions.
+
+\begin{lstlisting}[language=C, caption={Illustrative; Objects/cellobject.c. A cell is a one-slot indirection on the heap.}]
+typedef struct {
+    PyObject_HEAD
+    PyObject *ob_ref;   /* the captured object, shared by closure and enclosing scope */
+} PyCellObject;
+\end{lstlisting}
+
+The compiler records, on each code object, \texttt{co\_cellvars} (locals of \emph{this}
+function captured by a nested function) and \texttt{co\_freevars} (names \emph{this} function
+reads from an enclosing scope).
+
+\begin{lstlisting}[language=Python, caption={The code-object view of cells and free variables (authoritative).}]
+src = """
+def outer_func(x):
+    z = 10
+    def inner_func():
+        nonlocal z
+        return x + z
+    return inner_func
+"""
+top = compile(src, "<string>", "exec")
+(outer_code,) = [c for c in top.co_consts if getattr(c, "co_name", None) == "outer_func"]
+(inner_code,) = [c for c in outer_code.co_consts if getattr(c, "co_name", None) == "inner_func"]
+print("outer_func co_cellvars:", outer_code.co_cellvars)
+print("inner_func co_freevars:", inner_code.co_freevars)
+\end{lstlisting}
+
+Verified output (CPython 3.13.5):
+
+\begin{lstlisting}[caption={Output}]
+outer_func co_cellvars: ('x', 'z')
+inner_func co_freevars: ('x', 'z')
+\end{lstlisting}
+
+Both \texttt{x} and \texttt{z} are cells in \texttt{outer\_func} and free variables of
+\texttt{inner\_func}. The shared cell is why a closure sees \emph{live} updates to a captured
+variable, not a snapshot---the source of the ``late-binding closure in a loop'' bug dissected
+in Chapter 3.
+
+\section{\texttt{PyCodeObject}: the compiled blueprint}
+
+\textbf{Why this exists.} Compilation produces a \texttt{PyCodeObject}: an \textbf{immutable},
+shareable description of an executable unit (module body, function, \texttt{lambda},
+comprehension, class body). Immutability lets it be cached, shared across calls and threads,
+and reasoned about statically. A \emph{function} is a thin, mutable wrapper
+(\texttt{\_\_defaults\_\_}, \texttt{\_\_closure\_\_}, \texttt{\_\_globals\_\_}) around an
+immutable code object.
+
+\begin{lstlisting}[language=C, caption={Illustrative; fields from Include/cpython/code.h. The struct changed across versions; these co\_* fields are stable and observable from Python.}]
+struct PyCodeObject {
+    PyObject_HEAD
+    int co_argcount;        /* positional parameters */
+    int co_posonlyargcount; /* positional-only parameters (PEP 570, 3.8+) */
+    int co_kwonlyargcount;  /* keyword-only parameters */
+    int co_nlocals;         /* number of local variables */
+    int co_stacksize;       /* max evaluation-stack depth the VM must reserve */
+    int co_flags;           /* compiler flags (CO_OPTIMIZED, CO_NEWLOCALS, CO_GENERATOR...) */
+    PyObject *co_consts;    /* tuple of literal constants */
+    PyObject *co_names;     /* tuple of global/attribute names */
+    PyObject *co_varnames;  /* tuple of local variable names */
+    PyObject *co_freevars;  /* tuple of free (captured) names */
+    PyObject *co_cellvars;  /* tuple of local names boxed into cells */
+};
+\end{lstlisting}
+
+\begin{lstlisting}[language=Python, caption={Read the compiled blueprint of a live function.}]
+def example_fn(a, b):
+    local_val = 42
+    return a + b + local_val
+
+co = example_fn.__code__
+print("co_varnames:", co.co_varnames)
+print("co_consts:", co.co_consts)
+print("co_argcount:", co.co_argcount, "co_nlocals:", co.co_nlocals,
+      "co_stacksize:", co.co_stacksize)
+print("co_flags:", bin(co.co_flags))
+\end{lstlisting}
+
+Verified output (CPython 3.13.5):
+
+\begin{lstlisting}[caption={Output}]
+co_varnames: ('a', 'b', 'local_val')
+co_consts: (None, 42)
+co_argcount: 2 co_nlocals: 3 co_stacksize: 2
+co_flags: 0b11
+\end{lstlisting}
+
+\begin{itemize}
+  \item \texttt{co\_consts} contains \texttt{None} even though the source never mentions
+    it---the implicit return value's constant. The literal \texttt{42} is interned into the
+    pool; bytecode refers to it by index.
+  \item \texttt{co\_flags == 0b11} sets \texttt{CO\_OPTIMIZED | CO\_NEWLOCALS}: ``this is a
+    real function---use fast array-indexed locals and a fresh locals namespace per call.'' A
+    module or class body does \emph{not} set these, which is why module-level code uses
+    dictionary-based \texttt{LOAD\_NAME} and is slower (§1.9).
+  \item \textbf{\texttt{EXTENDED\_ARG}.} An opcode's inline argument is one byte. To reference
+    the 300th constant, the compiler prefixes \texttt{EXTENDED\_ARG} to supply the high-order
+    bits; the VM shifts and combines them, allowing arguments up to 32 bits wide.
+\end{itemize}
+
+\section{The virtual machine: frames and the evaluation loop}
+
+\textbf{Why this exists.} CPython is a \textbf{stack-based virtual machine}. Each call
+creates a \textbf{frame} holding the code object, the locals, and an \textbf{evaluation
+stack}. A single monolithic C function, \texttt{\_PyEval\_EvalFrameDefault} in
+\texttt{Python/ceval.c}, dispatches opcodes in a loop until the frame returns.
+
+\begin{lstlisting}[language=C, caption={Illustrative dispatch loop, Python/ceval.c. The modern loop uses computed-goto threaded dispatch and inline caches, but the skeleton is this.}]
+PyObject *_PyEval_EvalFrameDefault(PyThreadState *tstate,
+                                   _PyInterpreterFrame *frame, int throwflag) {
+    for (;;) {
+        _Py_CODEUNIT word = *next_instr++;
+        switch (word.op.code) {
+            case LOAD_FAST: {                 /* push a local by array index  */
+                PyObject *v = GETLOCAL(word.op.arg);
+                Py_INCREF(v); PUSH(v); DISPATCH();
+            }
+            case BINARY_OP: {                 /* pop two, push their combination */
+                PyObject *r = POP(), *l = POP();
+                PyObject *res = PyNumber_BinaryOp(l, r, word.op.arg);
+                Py_DECREF(l); Py_DECREF(r); PUSH(res); DISPATCH();
+            }
+            case RETURN_VALUE:
+                return POP();
+        }
+    }
+}
+\end{lstlisting}
+
+Do not trust the textbook picture---read what \emph{this} interpreter emits. The \texttt{dis}
+module disassembles a code object into the real instruction stream:
+
+\begin{lstlisting}[language=Python, caption={The actual bytecode CPython 3.13 runs for example\_fn.}]
+def example_fn(a, b):
+    local_val = 42
+    return a + b + local_val
+
+import dis
+dis.dis(example_fn)
+\end{lstlisting}
+
+Verified output (CPython 3.13.5):
+
+\begin{lstlisting}[caption={Output}]
+  1           RESUME                   0
+
+  2           LOAD_CONST               1 (42)
+              STORE_FAST               2 (local_val)
+
+  3           LOAD_FAST_LOAD_FAST      1 (a, b)
+              BINARY_OP                0 (+)
+              LOAD_FAST                2 (local_val)
+              BINARY_OP                0 (+)
+              RETURN_VALUE
+\end{lstlisting}
+
+This listing demolishes several outdated mental models:
+
+\begin{itemize}
+  \item \textbf{\texttt{RESUME 0}} opens every code object since 3.11: a no-op hook used by
+    the specializing adaptive interpreter and by debuggers/profilers. Its presence marks
+    modern bytecode.
+  \item \textbf{\texttt{BINARY\_OP 0 (+)}}, not \texttt{BINARY\_ADD}. Python 3.11 collapsed
+    the per-operator binary opcodes into a single \texttt{BINARY\_OP} whose argument selects
+    the operation. Material showing \texttt{BINARY\_ADD} predates 3.11.
+  \item \textbf{\texttt{LOAD\_FAST\_LOAD\_FAST 1 (a, b)}} is a \textbf{superinstruction}: the
+    compiler fused two adjacent \texttt{LOAD\_FAST}s to cut dispatch overhead. The VM is no
+    longer one opcode per source operation.
+  \item There is \textbf{no trailing \texttt{LOAD\_CONST None} / \texttt{RETURN\_VALUE}}
+    pair: the explicit \texttt{return} means the compiler omits the implicit
+    \texttt{return None}.
+\end{itemize}
+
+\begin{lstlisting}[caption={Evaluation-stack trace for a + b}]
+  LOAD_FAST_LOAD_FAST(a,b)   BINARY_OP(+)        ...        RETURN_VALUE
+  +---------+                +---------+                    +---------+
+  |    b    |                |  a + b  |                    | (empty) |
+  +---------+                +---------+        -->         +---------+
+  |    a    |       -->      | (empty) |                    | (empty) |
+  +---------+                +---------+                    +---------+
+\end{lstlisting}
+
+\textbf{3.11+ reality: the specializing adaptive interpreter.} Modern CPython does not
+execute a fixed opcode stream forever. As code runs hot, generic opcodes are
+\textbf{specialized} in place into faster variants, with \textbf{inline caches} stored in the
+code units themselves. This is \emph{not} the JIT (PEP 744, Vol VII)---it is interpretation
+that rewrites itself. Covered in depth in Vol VI, Ch 17.
+
+\section{Performance model and anti-patterns}
+
+\textbf{Local access is array indexing; global/builtin access is dictionary lookup.} Inside
+an optimized function, a local read is \texttt{LOAD\_FAST} (an index into a C array). A global
+or builtin read is \texttt{LOAD\_GLOBAL}, which probes the module \texttt{\_\_dict\_\_} and
+then \texttt{builtins}. The classic hot-loop optimization---binding a global or method to a
+local before the loop---exploits exactly this difference:
+
+\begin{lstlisting}[language=Python, caption={Hoisting a global lookup to a local turns N dict probes into N array reads.}]
+import math
+
+def slow(xs):
+    return [math.sqrt(x) for x in xs]      # LOAD_GLOBAL math; LOAD_ATTR sqrt -- each item
+
+def fast(xs):
+    sqrt = math.sqrt                       # one lookup, hoisted
+    return [sqrt(x) for x in xs]           # LOAD_FAST sqrt -- each item
+\end{lstlisting}
+
+Both are correct; \texttt{fast} pays the lookup once. This is a constant-factor win, not an
+algorithmic one---reach for it only in genuine hot loops (see the profiling discipline in
+Vol IX).
+
+\textbf{The dynamic-namespace trap.} If the compiler cannot statically know a function's
+locals---because it contains \texttt{exec()} against an implicit namespace---it abandons fast
+locals and falls back to dictionary-based \texttt{LOAD\_NAME}, searching local, then global,
+then builtin namespaces at runtime. (\texttt{from module import *} is itself a
+\texttt{SyntaxError} at function scope in Python 3.) Keep function scopes statically
+analyzable.
+
+\textbf{\texttt{SyntaxError} vs \texttt{NameError}.} Parsing and symbol analysis happen
+before execution, so a malformed expression is rejected at compile time and never reaches the
+VM; an unbound name is a runtime \texttt{NameError}. Knowing which stage owns an error tells
+you where to look.
+
+\textbf{Don't fight immutability of code objects.} ``Patching bytecode at runtime'' is a
+stunt, not an optimization. The supported lever is the \emph{function} wrapper around the
+code object---decorators, \texttt{functools.partial}, closures.
+
+\section{Summary and cross-references}
+
+\begin{itemize}
+  \item A Python program is a \textbf{graph of heap objects}; names are \textbf{bindings},
+    not typed storage. Assignment rebinds and adjusts refcounts; it never copies.
+    \texttt{is} is identity, \texttt{==} is value.
+  \item Source is \textbf{compiled ahead of time} (tokenizer $\rightarrow$ PEG parser,
+    PEP 617 $\rightarrow$ symbol table $\rightarrow$ compiler) into an immutable
+    \textbf{\texttt{PyCodeObject}}. Only the \textbf{evaluation loop} is interpretation.
+  \item The \textbf{symbol table} statically classifies every name, enabling array-indexed
+    \texttt{LOAD\_FAST} locals and \textbf{cell}-based closures.
+  \item Modern bytecode (3.11+) includes \texttt{RESUME}, the unified \texttt{BINARY\_OP},
+    and fused \textbf{superinstructions}, and it \textbf{specializes itself} as it
+    runs---read \texttt{dis} output, not folklore.
+  \item Performance is governed by the pipeline: \textbf{locals beat globals}, dynamic
+    namespaces defeat optimization, and errors belong to the stage that produces them.
+\end{itemize}
+
+\textbf{Cross-references.} The \texttt{PyObject} header and reference counting $\rightarrow$
+Chapter 2. Cyclic garbage collection and comprehension/closure scope $\rightarrow$
+Chapter 3. The specializing adaptive interpreter in depth $\rightarrow$ Vol VI, Ch 17. The
+copy-and-patch JIT (PEP 744) $\rightarrow$ Vol VII. The formal grammar, lexical rules, and
+the data model $\rightarrow$ Vol X. The \texttt{ceval.c} evaluation loop in full $\rightarrow$
+Vol VIII.

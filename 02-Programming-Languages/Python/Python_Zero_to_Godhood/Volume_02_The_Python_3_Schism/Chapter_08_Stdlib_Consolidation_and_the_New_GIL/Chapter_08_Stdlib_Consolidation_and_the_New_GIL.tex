@@ -1,0 +1,202 @@
+\chapter{Standard Library Consolidation and the New GIL (Python 3.1--3.2)}
+
+The 3.1--3.2 releases were consolidation, not revolution---but two of their additions shaped how
+Python is written for the next decade: \textbf{Antoine Pitrou's new GIL} (3.2), which replaced a
+pathological thread-switching scheme, and \textbf{\texttt{concurrent.futures}} (PEP 3148), which
+gave thread and process parallelism one clean API. Alongside them came the collection types
+(\texttt{OrderedDict}, \texttt{Counter}) and \texttt{argparse}. This chapter treats each at the
+level appropriate to its release and points to the volume where it is taught in full---the GIL's
+complete model and the free-threaded build are Vol VII; concurrency engineering is Vol IX; the
+collections and \texttt{argparse} references are Vol XII and XV.
+
+\section*{Section Index}
+\begin{itemize}
+  \item \textbf{8.1} The new GIL: from the convoy effect to interval switching (3.2)
+  \item \textbf{8.2} \texttt{concurrent.futures}: unified thread and process pools (PEP 3148)
+  \item \textbf{8.3} Standard-library consolidation: \texttt{OrderedDict}, \texttt{Counter}, \texttt{argparse}
+  \item \textbf{8.4} Performance and anti-patterns
+  \item \textbf{8.5} Summary and cross-references
+\end{itemize}
+
+\section{The new GIL: from the convoy effect to interval switching (3.2)}
+
+\textbf{Why this exists.} The \textbf{GIL} (Global Interpreter Lock) lets only one thread execute
+Python bytecode at a time, so CPython's reference counting (Chapter 2) needs no per-object
+locking. Before 3.2, the GIL was handed off by a \textbf{bytecode ticker}: after a thread ran
+$\sim$100 bytecodes, it released the GIL and immediately tried to reacquire it. On multi-core
+hardware this produced the \textbf{convoy effect}---the just-released thread, still hot on its
+core, usually won the GIL back before a thread sleeping on another core could wake, so the waiter
+starved and the machine burned cycles on failed hand-offs. The ticker also counted
+\emph{bytecodes}, not time, so one long opcode could hold the GIL arbitrarily long.
+
+\textbf{The fix (Python 3.2): time-based switching.} Pitrou's GIL switches on a \textbf{time
+interval} (default 5\,ms). A waiting thread waits on a condition variable for the interval; if it
+times out, it sets a shared \texttt{gil\_drop\_request}. The running thread checks that flag at
+safe points in the eval loop and hands off---guaranteeing a contender a turn within roughly one
+interval. It is observable:
+
+\begin{lstlisting}[language=Python, caption={The new GIL switches on time, not bytecode count.}]
+import sys
+print("switch interval (seconds):", sys.getswitchinterval())
+\end{lstlisting}
+
+Verified output (CPython 3.13.5):
+
+\begin{lstlisting}[caption={Output}]
+switch interval (seconds): 0.005
+\end{lstlisting}
+
+That 5\,ms is the maximum a CPU-bound thread holds the GIL before being asked to yield.
+Crucially, \textbf{this changed fairness, not parallelism}: two CPU-bound Python threads still
+cannot run bytecode simultaneously. True multi-core CPU parallelism needs processes (§8.2),
+subinterpreters, or the free-threaded build---all in \textbf{Vol VII}, the canonical home for the
+GIL model.
+
+\section{\texttt{concurrent.futures}: unified thread and process pools (PEP 3148)}
+
+\textbf{Why this exists.} Before 3.2, concurrency meant hand-managing \texttt{Thread}/\texttt{Process}
+objects and result plumbing. \textbf{PEP 3148} added \texttt{concurrent.futures}: one
+\texttt{Executor} interface with two interchangeable backends---\texttt{ThreadPoolExecutor} and
+\texttt{ProcessPoolExecutor}---and a \texttt{Future} carrying each task's result or exception.
+
+\begin{lstlisting}[language=Python, caption={One API, two backends. Pool code lives under the \_\_main\_\_ guard for the spawn start method.}]
+import time
+from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor, as_completed
+
+def io_task(n):          # mostly waiting -> threads release the GIL during the sleep
+    time.sleep(0.01)
+    return n * n
+
+def cpu_task(n):         # pure computation -> needs separate processes to parallelize
+    return sum(i * i for i in range(n))
+
+def main():
+    with ThreadPoolExecutor(max_workers=4) as ex:
+        futs = [ex.submit(io_task, i) for i in range(5)]
+        thread_results = sorted(f.result() for f in as_completed(futs))
+    print("thread pool (I/O):  ", thread_results)
+
+    with ProcessPoolExecutor(max_workers=2) as ex:
+        process_results = list(ex.map(cpu_task, [1000, 2000, 3000]))
+    print("process pool (CPU): ", process_results)
+
+if __name__ == "__main__":
+    main()
+\end{lstlisting}
+
+Verified output (CPython 3.13.5):
+
+\begin{lstlisting}[caption={Output}]
+thread pool (I/O):   [0, 1, 4, 9, 16]
+process pool (CPU):  [332833500, 2664667000, 8995500500]
+\end{lstlisting}
+
+\textbf{Two mechanics you must internalize.} \emph{Threads parallelize I/O, not CPU}---a
+\texttt{ThreadPoolExecutor} shares one GIL and overlaps only while blocked in C-level I/O that
+releases it. \emph{Processes pay a serialization tax}---a \texttt{ProcessPoolExecutor} pickles
+arguments and results across an OS pipe, with cost $\approx t_{\text{pickle}} + t_{\text{IPC}} +
+t_{\text{compute}} + t_{\text{IPC}} + t_{\text{unpickle}}$; for tiny tasks the transfer dominates.
+
+\textbf{The spawn gotcha (verified).} On macOS and Windows the default start method is
+\textbf{spawn}, which launches a fresh interpreter that \textbf{re-imports your module}. Module
+top-level code runs again in every worker---hence the \texttt{if \_\_name\_\_ == "\_\_main\_\_"}
+guard, and worker functions must be importable top-level names (not lambdas/closures, which are
+unpicklable). The full concurrency treatment is \textbf{Vol IX}.
+
+\section{Standard-library consolidation: \texttt{OrderedDict}, \texttt{Counter}, \texttt{argparse}}
+
+\textbf{\texttt{OrderedDict} (PEP 372).} Added in 3.1 when dicts were unordered. Since
+\textbf{Python 3.7 made insertion order a \texttt{dict} guarantee}, most of its purpose is gone,
+but two behaviors remain distinct: order-sensitive \texttt{==} and \texttt{move\_to\_end()}.
+
+\begin{lstlisting}[language=Python, caption={OrderedDict's distinguishing features today.}]
+from collections import OrderedDict
+
+od1 = OrderedDict([("a", 1), ("b", 2)])
+od2 = OrderedDict([("b", 2), ("a", 1)])
+print("OrderedDict == is order-sensitive:", od1 == od2)
+print("plain dict   == is order-insensitive:", {"a": 1, "b": 2} == {"b": 2, "a": 1})
+od1.move_to_end("a")
+print("after move_to_end('a'):", list(od1))
+\end{lstlisting}
+
+Verified output (CPython 3.13.5):
+
+\begin{lstlisting}[caption={Output}]
+OrderedDict == is order-sensitive: False
+plain dict   == is order-insensitive: True
+after move_to_end('a'): ['b', 'a']
+\end{lstlisting}
+
+\begin{lstlisting}[language=Python, caption={Counter --- frequency counting and multiset arithmetic.}]
+from collections import Counter
+
+c = Counter("mississippi")
+print("most_common(2):", c.most_common(2))
+print("addition:", Counter(a=3, b=1) + Counter(a=1, b=2))
+\end{lstlisting}
+
+Verified output (CPython 3.13.5):
+
+\begin{lstlisting}[caption={Output}]
+most_common(2): [('i', 4), ('s', 4)]
+addition: Counter({'a': 4, 'b': 3})
+\end{lstlisting}
+
+\begin{lstlisting}[language=Python, caption={argparse --- declarative, typed command-line parsing.}]
+import argparse
+
+parser = argparse.ArgumentParser(prog="demo")
+parser.add_argument("--count", type=int, default=1)
+parser.add_argument("name")
+ns = parser.parse_args(["--count", "3", "widget"])
+print("name:", ns.name, "| count:", ns.count)
+\end{lstlisting}
+
+Verified output (CPython 3.13.5):
+
+\begin{lstlisting}[caption={Output}]
+name: widget | count: 3
+\end{lstlisting}
+
+The full \texttt{collections} reference is Vol XII; \texttt{argparse} in depth is Vol XV.
+
+\section{Performance and anti-patterns}
+
+\begin{itemize}
+  \item \textbf{Threads for CPU-bound work}---no speedup (or a slowdown). CPU $\rightarrow$
+    processes / free-threaded build (Vol VII); I/O $\rightarrow$ threads or \texttt{asyncio}.
+  \item \textbf{Process pools over microtasks}---if a task is faster than its pickling+IPC, the
+    pool loses; batch into coarse chunks.
+  \item \textbf{Missing \texttt{\_\_main\_\_} guard} with a process pool under spawn---re-runs
+    module code in every worker.
+  \item \textbf{Unpicklable pool payloads}---lambdas, closures, open sockets.
+  \item \textbf{Reaching for \texttt{OrderedDict} reflexively}---since 3.7 a \texttt{dict} is
+    ordered; use \texttt{OrderedDict} only for its \texttt{==} or \texttt{move\_to\_end}.
+  \item \textbf{Tuning \texttt{setswitchinterval} blindly}---adds switching overhead, not
+    parallelism.
+\end{itemize}
+
+\section{Summary and cross-references}
+
+\begin{itemize}
+  \item The \textbf{new GIL (3.2)} switches on a \textbf{5\,ms interval}
+    (\texttt{sys.getswitchinterval()}) via a \texttt{gil\_drop\_request} hand-off, ending the
+    \textbf{convoy effect}---fairness, not multi-core CPU parallelism.
+  \item \textbf{\texttt{concurrent.futures}} (PEP 3148) gives one \texttt{Executor}/\texttt{Future}
+    API over two backends: \textbf{threads for I/O}, \textbf{processes for CPU} (paying a
+    \texttt{pickle}+IPC tax). \textbf{spawn} re-imports your module---guard pool code.
+  \item \textbf{\texttt{OrderedDict}} survives for order-sensitive \texttt{==} and
+    \texttt{move\_to\_end}; \textbf{\texttt{Counter}} tallies; \textbf{\texttt{argparse}} is the
+    standard CLI parser.
+\end{itemize}
+
+\textbf{Cross-references.} Reference counting (why the GIL exists) $\rightarrow$ Chapter 2. The GIL
+model, free-threaded build, per-interpreter GILs $\rightarrow$ Vol VII. Threads vs. processes vs.
+asyncio, shared memory, structured concurrency $\rightarrow$ Vol IX. \texttt{asyncio} and
+coroutines $\rightarrow$ Vol III. The \texttt{collections} reference $\rightarrow$ Vol XII.
+\texttt{argparse} in depth $\rightarrow$ Vol XV.
+
+\bigskip
+\noindent\emph{Volume II complete. Volume III opens the iterator, generator, and async-inception
+story (3.3--3.5): \texttt{yield from}, \texttt{asyncio}, and native \texttt{async}/\texttt{await}.}

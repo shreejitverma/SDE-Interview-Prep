@@ -1,0 +1,292 @@
+\chapter{Decorators, Context Managers, and the 2.x Twilight (Python 2.4--2.7)}
+
+The late 2.x line added three features that turned Python's first-class functions and frames
+into reusable structure: \textbf{decorators} (callable transformers applied with \texttt{@}),
+\textbf{context managers} (the \texttt{with} protocol for deterministic acquire/release), and
+\textbf{generator coroutines} (two-way \texttt{send}/\texttt{throw}/\texttt{close}). Decorators
+are function composition made declarative; context managers are Python's answer to C++ RAII
+built on \texttt{try}/\texttt{finally}; and generator coroutines are the suspendable frame
+that, a decade later, became \texttt{async}/\texttt{await}. This chapter teaches all three at
+working depth and grounds each in the bytecode the 3.13 interpreter actually emits.
+
+\section*{Section Index}
+\begin{itemize}
+  \item \textbf{5.1} Decorators: composition made declarative (PEP 318, PEP 3129)
+  \item \textbf{5.2} Context managers and \texttt{with} (PEP 343)
+  \item \textbf{5.3} Generator coroutines: \texttt{send}, \texttt{throw}, \texttt{close} (PEP 342)
+  \item \textbf{5.4} Performance and anti-patterns
+  \item \textbf{5.5} Summary and cross-references
+\end{itemize}
+
+\section{Decorators: composition made declarative (PEP 318, PEP 3129)}
+
+\textbf{Why this exists.} Before Python 2.4, wrapping a function meant defining it and then
+rebinding the name, with the transformation written after and away from the definition
+(\texttt{query = transaction(log(query))}). \textbf{PEP 318} introduced \texttt{@decorator}
+syntax so the transformation sits \emph{on} the definition. It is pure compile-time sugar:
+\texttt{@d} above \texttt{def f} means ``after building \texttt{f}, replace it with
+\texttt{d(f)}.'' Stacked decorators apply \textbf{bottom-up} (nearest the \texttt{def} first).
+
+\begin{lstlisting}[language=Python, caption={Stacked decorators compose bottom-up; functools.wraps preserves identity.}]
+import functools
+
+def dec1(f):
+    @functools.wraps(f)
+    def wrapper(*args, **kwargs):
+        return "dec1(" + f(*args, **kwargs) + ")"
+    return wrapper
+
+def dec2(f):
+    @functools.wraps(f)
+    def wrapper(*args, **kwargs):
+        return "dec2(" + f(*args, **kwargs) + ")"
+    return wrapper
+
+@dec1
+@dec2
+def target():
+    return "target"
+
+print("result:", target())
+print("__name__ preserved:", target.__name__)
+\end{lstlisting}
+
+Verified output (CPython 3.13.5):
+
+\begin{lstlisting}[caption={Output}]
+result: dec1(dec2(target))
+__name__ preserved: target
+\end{lstlisting}
+
+The result is the bottom-up composition $\text{target} = \text{dec1}(\text{dec2}(\text{target}))$.
+The bytecode makes the mechanism explicit:
+
+\begin{lstlisting}[caption={dis of stacked decorators on CPython 3.13.5}]
+LOAD_NAME    0 (dec1)
+LOAD_NAME    1 (dec2)
+LOAD_CONST   0 (<code object t>)
+MAKE_FUNCTION
+CALL         0          # dec2(t)
+CALL         0          # dec1(dec2(t))
+STORE_NAME   2 (t)
+RETURN_CONST 1 (None)
+\end{lstlisting}
+
+This is current bytecode: \texttt{MAKE\_FUNCTION} now takes no inline argument, and the call
+opcode is the unified \texttt{CALL}, not the pre-3.11 \texttt{CALL\_FUNCTION}.
+
+\textbf{\texttt{functools.wraps} is not optional.} A naive wrapper replaces the function's
+identity---\texttt{\_\_name\_\_}, \texttt{\_\_doc\_\_}, \texttt{\_\_qualname\_\_},
+\texttt{\_\_wrapped\_\_}, \texttt{\_\_module\_\_}. \texttt{@functools.wraps(f)} copies them so
+introspection, tracebacks, and tools still see the original. Omitting it is the most common
+decorator bug.
+
+\textbf{Decorators with arguments} are decorator \emph{factories}---a function returning a
+decorator:
+
+\begin{lstlisting}[language=Python, caption={A parameterized decorator is a function that returns a decorator.}]
+import functools
+
+def repeat(n):
+    def decorator(f):
+        @functools.wraps(f)
+        def wrapper(*args, **kwargs):
+            return [f(*args, **kwargs) for _ in range(n)]
+        return wrapper
+    return decorator
+
+@repeat(3)
+def greet(name):
+    return f"hi {name}"
+
+print(greet("ada"))
+\end{lstlisting}
+
+Verified output (CPython 3.13.5):
+
+\begin{lstlisting}[caption={Output}]
+['hi ada', 'hi ada', 'hi ada']
+\end{lstlisting}
+
+\textbf{Class decorators (PEP 3129, Python 2.6)} apply the same rule to a class:
+\texttt{Model = class\_decorator(Model)}. This is how \texttt{@dataclass},
+\texttt{@functools.total\_ordering}, and registration decorators work (Vol IV).
+
+\section{Context managers and \texttt{with} (PEP 343)}
+
+\textbf{Why this exists.} Cleanup that must happen regardless of how a block exits---close a
+file, release a lock, roll back a transaction---is what C++ expresses with RAII and
+destructors. Python's reference-counting finalization (Chapter 2) is too imprecise to rely on
+(and useless across cycles), so \textbf{PEP 343} added \texttt{with} and the
+\textbf{context-manager protocol}: \texttt{\_\_enter\_\_(self)} acquires (its return value
+binds to the \texttt{as} target); \texttt{\_\_exit\_\_(self, exc\_type, exc\_val, exc\_tb)}
+releases. On a clean exit all three are \texttt{None}; on an exception they carry its details,
+and \textbf{returning a truthy value suppresses the exception}.
+
+\begin{lstlisting}[language=Python, caption={\_\_exit\_\_ sees the exception and can suppress it by returning truthy.}]
+class Ctx:
+    def __enter__(self):
+        print("  __enter__")
+        return self
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        print("  __exit__ exc_type =", exc_type.__name__ if exc_type else None)
+        return exc_type is ValueError      # suppress only ValueError
+
+with Ctx() as c:
+    print("  body (clean)")
+print("clean exit done")
+
+with Ctx():
+    print("  body raising ValueError")
+    raise ValueError("boom")
+print("ValueError was suppressed by __exit__")
+\end{lstlisting}
+
+Verified output (CPython 3.13.5):
+
+\begin{lstlisting}[caption={Output}]
+  __enter__
+  body (clean)
+  __exit__ exc_type = None
+clean exit done
+  __enter__
+  body raising ValueError
+  __exit__ exc_type = ValueError
+ValueError was suppressed by __exit__
+\end{lstlisting}
+
+\textbf{What the compiler does.} \texttt{with} desugars to a guaranteed \texttt{try}/finally
+with the exception path routed through \texttt{\_\_exit\_\_}:
+
+\begin{lstlisting}[language=Python, caption={Conceptual desugaring of: with expr as target: suite}]
+mgr = expr
+value = type(mgr).__enter__(mgr)
+try:
+    target = value          # if an "as" clause is present
+    suite
+except:                     # exception path
+    if not type(mgr).__exit__(mgr, *sys.exc_info()):
+        raise
+else:                       # clean path
+    type(mgr).__exit__(mgr, None, None, None)
+\end{lstlisting}
+
+The VM implements this with dedicated opcodes (\texttt{BEFORE\_WITH}/\texttt{WITH\_EXCEPT\_START})
+and the frame's \textbf{exception table} (3.11+) rather than the older block stack, but the
+guarantee is identical.
+
+\begin{lstlisting}[language=Python, caption={A generator-based context manager.}]
+import contextlib
+
+@contextlib.contextmanager
+def managed():
+    print("  acquire")
+    try:
+        yield 42
+    finally:
+        print("  release")
+
+with managed() as v:
+    print("  using", v)
+\end{lstlisting}
+
+Verified output (CPython 3.13.5):
+
+\begin{lstlisting}[caption={Output}]
+  acquire
+  using 42
+  release
+\end{lstlisting}
+
+\texttt{contextlib} adds \texttt{suppress}, \texttt{closing}, \texttt{ExitStack}, and
+\texttt{nullcontext}; the full reference is in Vol X. The point here is the \emph{protocol} and
+that it is Python's deterministic-cleanup primitive---use it for every OS resource instead of
+trusting \texttt{\_\_del\_\_}.
+
+\section{Generator coroutines: \texttt{send}, \texttt{throw}, \texttt{close} (PEP 342)}
+
+\textbf{Why this exists.} Python 2.5's \textbf{PEP 342} upgraded generators from one-way
+producers into two-way \textbf{coroutines}---a suspended frame you can resume \emph{with a
+value}, inject an exception into, or shut down. This is the conceptual seed of
+\texttt{async}/\texttt{await} (Vol III). The protocol adds \texttt{.send(value)} (resume; the
+paused \texttt{yield} expression evaluates to \texttt{value}; \texttt{.send(None)} equals
+\texttt{next()}), \texttt{.throw(exc)} (raise at the \texttt{yield} point), and
+\texttt{.close()} (raise \texttt{GeneratorExit}).
+
+\begin{lstlisting}[language=Python, caption={A running-average coroutine driven by send(), shut down by close().}]
+def averager():
+    total, count, avg = 0.0, 0, None
+    while True:
+        try:
+            x = yield avg                 # value arrives via .send(x)
+        except GeneratorExit:
+            print("  averager closing")
+            return
+        total += x
+        count += 1
+        avg = total / count
+
+g = averager()
+next(g)                                   # prime to the first yield
+print("avg after 10:       ", g.send(10))
+print("avg after 10,20:    ", g.send(20))
+print("avg after 10,20,30: ", g.send(30))
+g.close()
+\end{lstlisting}
+
+Verified output (CPython 3.13.5):
+
+\begin{lstlisting}[caption={Output}]
+avg after 10:        10.0
+avg after 10,20:     15.0
+avg after 10,20,30:  20.0
+  averager closing
+\end{lstlisting}
+
+\textbf{What the interpreter actually does.} At a \texttt{yield},
+\texttt{\_PyEval\_EvalFrameDefault} does not destroy the frame: it records the resume point
+(\texttt{f\_lasti}), freezes the evaluation-stack depth, marks the generator
+\texttt{GEN\_SUSPENDED}, and detaches the frame from the thread state, returning control while
+the frame stays alive on the heap. \texttt{.send}/\texttt{next} re-attach and resume at
+\texttt{f\_lasti}. That suspendable heap frame is what \texttt{yield from} (Vol III, Ch 9) and
+native coroutines (Vol III, Ch 11) generalize.
+
+\section{Performance and anti-patterns}
+
+\begin{itemize}
+  \item \textbf{Decorator call overhead.} Each decoration adds a Python-level call per
+    invocation; in hot paths a thin forwarding wrapper can dominate. Measure; consider
+    \texttt{functools.cache} (a decorator that \emph{removes} work) or inlining.
+  \item \textbf{Always \texttt{functools.wraps}.} Missing metadata breaks
+    \texttt{inspect.signature}, \texttt{pydoc}, framework route detection, and \texttt{typing}
+    tools; \texttt{\_\_wrapped\_\_} lets tools unwrap to the original.
+  \item \textbf{Context managers over \texttt{try}/finally} for anything reused: composable
+    (\texttt{ExitStack}), nestable, harder to get wrong. Reserve bare \texttt{try}/finally for
+    one-off local cleanup.
+  \item \textbf{Prime your coroutines.} Sending a non-\texttt{None} value to a just-started
+    generator raises \texttt{TypeError}; new code should prefer \texttt{async}/\texttt{await}.
+  \item \textbf{Don't swallow exceptions silently} in \texttt{\_\_exit\_\_}: suppress narrowly
+    (check \texttt{exc\_type}) or use \texttt{contextlib.suppress} with explicit types.
+\end{itemize}
+
+\section{Summary and cross-references}
+
+\begin{itemize}
+  \item \textbf{Decorators} are compile-time sugar for \texttt{f = d(f)}, applied
+    \textbf{bottom-up}; parameterized decorators are factories; class decorators (PEP 3129)
+    apply the same rule to classes. Always use \textbf{\texttt{functools.wraps}}.
+  \item \textbf{Context managers} are Python's \textbf{deterministic cleanup}
+    primitive---RAII on a guaranteed \texttt{try}/finally; \texttt{\_\_exit\_\_} returning
+    truthy suppresses the exception.
+  \item \textbf{Generator coroutines} (PEP 342) add \texttt{send}/\texttt{throw}/\texttt{close},
+    making a generator a \textbf{suspendable, resumable frame}---the origin of
+    \texttt{async}/\texttt{await}.
+  \item Modern bytecode for all three differs from pre-3.11 listings; read \texttt{dis}.
+\end{itemize}
+
+\textbf{Cross-references.} First-class functions, frames, \texttt{f\_lasti} $\rightarrow$
+Chapter 1. Reference counting vs. deterministic cleanup $\rightarrow$ Chapter 2. Descriptors
+$\rightarrow$ Chapter 4. \texttt{yield from} and native coroutines $\rightarrow$ Vol III, Ch 9
+and Ch 11. \texttt{dataclass} class decorators $\rightarrow$ Vol IV. Full \texttt{contextlib}
+$\rightarrow$ Vol X. \textbf{CPython container internals} (archived source §5.4) $\rightarrow$
+Vol XII.
