@@ -1,0 +1,320 @@
+\chapter{Comprehensions, Nested Scopes, and Cyclic GC (Python 2.0--2.1)}
+
+Python 2.0--2.1 added three features whose interactions define how names live and die in
+modern Python: \textbf{list comprehensions}, \textbf{lexically nested scopes} (PEP 227), and
+the \textbf{cyclic garbage collector}. Each looks like a convenience and is in fact a deep
+statement about the execution model. Comprehensions force the question ``what is a scope,
+mechanically?'' Nested scopes complete the LEGB lookup the compiler from Chapter 1 was
+already preparing for. And the cyclic collector exists for exactly one reason: reference
+counting (Chapter 2) cannot free a cycle. We treat all three at their modern depth, including
+the changes---PEP 709 comprehension inlining (3.12) and PEP 442 finalization order---that make
+the original 2.x descriptions obsolete.
+
+\section*{Section Index}
+\begin{itemize}
+  \item \textbf{3.1} List comprehensions: the scope-leak bug, the fix, and PEP 709 inlining
+  \item \textbf{3.2} Nested scopes and LEGB resolution (PEP 227)
+  \item \textbf{3.3} Closures and cell objects, and the late-binding trap
+  \item \textbf{3.4} The cyclic garbage collector
+  \item \textbf{3.5} Performance and anti-patterns
+  \item \textbf{3.6} Summary and cross-references
+\end{itemize}
+
+\section{List comprehensions: the scope-leak bug, the fix, and PEP 709 inlining}
+
+\textbf{Why this exists.} A list comprehension is sugar for ``build a list by iterating,'' but
+\emph{where the loop variable lives} turned out to be a subtle, evolving design decision that
+touches frames, isolation, and performance.
+
+\textbf{The original bug (Python 2.x).} Python 2.0 compiled a comprehension as an inline loop
+in the enclosing function---\texttt{STORE\_FAST} wrote the loop variable straight into the
+host's locals, which \textbf{leaked}:
+
+\begin{lstlisting}[language=Python, caption={Python 2.x behaviour (historical --- not how Python 3 works).}]
+x = 999
+data = [x for x in range(5)]
+print(x)   # -> 4 in Python 2: the comprehension clobbered the outer x
+\end{lstlisting}
+
+\textbf{The fix (Python 3.0): isolation via a hidden function scope.} Python 3.0 gave each
+list, set, and dict comprehension its own scope by compiling it as an implicit nested function
+with its own frame; the loop variable became local to that hidden function.
+
+\begin{lstlisting}[language=Python, caption={In Python 3 the comprehension's loop variable is isolated.}]
+x = 999
+data = [x for x in range(5)]
+print("x after comprehension:", x, "| data:", data)
+\end{lstlisting}
+
+Verified output (CPython 3.13.5):
+
+\begin{lstlisting}[caption={Output}]
+x after comprehension: 999 | data: [0, 1, 2, 3, 4]
+\end{lstlisting}
+
+\textbf{The modern reality (Python 3.12, PEP 709): isolation \emph{without} a frame.} Creating
+and tearing down a whole frame per comprehension was pure overhead. \textbf{PEP 709} inlined
+list/set/dict comprehensions back into the enclosing code object in Python 3.12, preserving
+isolation by \emph{saving and restoring} the loop variable rather than creating a scope. An
+inlined comprehension leaves \textbf{no nested code object}, whereas a generator expression
+(which must suspend, so it needs its own frame) still does:
+
+\begin{lstlisting}[language=Python, caption={PEP 709 --- list comprehensions are inlined; generator expressions still get a code object.}]
+def make_list(n):
+    return [i * i for i in range(n)]
+
+def make_gen(n):
+    return (i * i for i in range(n))
+
+list_nested = [c.co_name for c in make_list.__code__.co_consts if hasattr(c, "co_name")]
+gen_nested = [c.co_name for c in make_gen.__code__.co_consts if hasattr(c, "co_name")]
+print("nested code objects in make_list:", list_nested)
+print("nested code objects in make_gen: ", gen_nested)
+\end{lstlisting}
+
+Verified output (CPython 3.13.5):
+
+\begin{lstlisting}[caption={Output}]
+nested code objects in make_list: []
+nested code objects in make_gen:  ['<genexpr>']
+\end{lstlisting}
+
+The inlined bytecode reveals the save/restore mechanism --- \texttt{LOAD\_FAST\_AND\_CLEAR}
+stashes the outer \texttt{i} and blanks it on entry, with a matching restore in an exception
+table so the outer name survives even if the comprehension raises:
+
+\begin{lstlisting}[caption={dis of [i*i for i in range(n)] on CPython 3.13.5 (excerpt)}]
+LOAD_GLOBAL              1 (range + NULL)
+LOAD_FAST                0 (n)
+CALL                     1
+GET_ITER
+LOAD_FAST_AND_CLEAR      1 (i)      # save outer i, clear the slot for isolation
+SWAP                     2
+BUILD_LIST               0
+...
+FOR_ITER -> STORE_FAST_LOAD_FAST (i,i); LOAD_FAST i; BINARY_OP 5 (*); LIST_APPEND 2
+...
+SWAP 2; STORE_FAST 1 (i)           # restore outer i
+RETURN_VALUE
+\end{lstlisting}
+
+\textbf{Old-vs-new, three eras.} 2.x: inline, leaks. 3.0--3.11: hidden function frame,
+isolated but slower. 3.12+: inlined with save/restore, isolated \emph{and} fast. The
+user-visible semantics (isolation) has held since 3.0; only the mechanism changed.
+
+\section{Nested scopes and LEGB resolution (PEP 227)}
+
+\textbf{Why this exists.} Before Python 2.1, name lookup was three-tier---\textbf{LGB} (Local,
+Global, Built-in). A nested function could not see its enclosing function's locals, so a bare
+reference raised \texttt{NameError}; the workaround was to smuggle the value through a default
+argument (\texttt{def inner(x=x):}). \textbf{PEP 227} (optional in 2.1 via
+\texttt{from \_\_future\_\_ import nested\_scopes}, standard in 2.2) inserted the
+\textbf{Enclosing} scope, giving the modern \textbf{LEGB} order:
+
+\begin{itemize}
+  \item \textbf{L}ocal --- the active frame's fast-locals array --- \texttt{LOAD\_FAST}.
+  \item \textbf{E}nclosing --- cells captured from outer functions --- \texttt{LOAD\_DEREF}.
+  \item \textbf{G}lobal --- the module \texttt{\_\_dict\_\_} --- \texttt{LOAD\_GLOBAL}.
+  \item \textbf{B}uilt-in --- the \texttt{builtins} namespace --- \texttt{LOAD\_GLOBAL}
+    (falls through after globals).
+\end{itemize}
+
+Crucially, \textbf{LEGB is resolved statically by the compiler} (Chapter 1's symbol-table
+pass), not by searching dictionaries at runtime. The opcode chosen \emph{is} the lookup
+decision. Only module-top-level code and dynamic scopes fall back to dictionary-based
+\texttt{LOAD\_NAME}.
+
+\begin{lstlisting}[language=Python, caption={The compiler bakes the scope decision into the opcode.}]
+import dis
+
+def fast_local_demo(x):
+    y = x + 1
+    return y
+
+dis.dis(fast_local_demo)
+\end{lstlisting}
+
+Verified output (CPython 3.13.5):
+
+\begin{lstlisting}[caption={Output}]
+  1           RESUME                   0
+
+  2           LOAD_FAST                0 (x)
+              LOAD_CONST               1 (1)
+              BINARY_OP                0 (+)
+              STORE_FAST               1 (y)
+
+  3           LOAD_FAST                1 (y)
+              RETURN_VALUE
+\end{lstlisting}
+
+Both \texttt{x} and \texttt{y} are \texttt{LOAD\_FAST}/\texttt{STORE\_FAST}---array indexing,
+no dictionary. (\texttt{BINARY\_OP 0 (+)} is the unified 3.11 add from Chapter 1.)
+
+\section{Closures and cell objects, and the late-binding trap}
+
+\textbf{Why this exists.} When \texttt{inner} reads \texttt{outer}'s local \texttt{x}, that
+local must outlive \texttt{outer}'s frame. The compiler promotes \texttt{x} to a \textbf{cell}
+(\texttt{PyCellObject})---a heap box shared by reference between the two functions.
+
+\begin{lstlisting}[language=Python, caption={Closure cells are live, shared boxes --- inspectable at runtime.}]
+def outer_scope(multiplier):
+    secret_value = 100
+    def inner_scope(val):
+        return val * multiplier + secret_value   # two free variables
+    return inner_scope
+
+fn = outer_scope(5)
+print("closure cells:", [c.cell_contents for c in fn.__closure__])
+print("inner co_freevars:", fn.__code__.co_freevars)
+print("outer co_cellvars:", outer_scope.__code__.co_cellvars)
+\end{lstlisting}
+
+Verified output (CPython 3.13.5):
+
+\begin{lstlisting}[caption={Output}]
+closure cells: [5, 100]
+inner co_freevars: ('multiplier', 'secret_value')
+outer co_cellvars: ('multiplier', 'secret_value')
+\end{lstlisting}
+
+The compiler emits \texttt{LOAD\_CLOSURE} + \texttt{MAKE\_FUNCTION} in the enclosing function
+to bundle the cells into \texttt{\_\_closure\_\_}, and \texttt{LOAD\_DEREF} inside the closure
+to read through a cell.
+
+\textbf{The late-binding trap.} A cell holds a \emph{reference to a live variable}, not a
+snapshot, so closures created in a loop all share the \emph{same} cell and see the loop
+variable's \textbf{final} value:
+
+\begin{lstlisting}[language=Python, caption={The classic late-binding closure bug, and the standard fix.}]
+funcs = [lambda: i for i in range(3)]
+print("late-binding (all see final i):", [f() for f in funcs])
+
+funcs_fixed = [lambda i=i: i for i in range(3)]   # capture by default-arg value
+print("default-arg capture fix:    ", [f() for f in funcs_fixed])
+\end{lstlisting}
+
+Verified output (CPython 3.13.5):
+
+\begin{lstlisting}[caption={Output}]
+late-binding (all see final i): [2, 2, 2]
+default-arg capture fix:     [0, 1, 2]
+\end{lstlisting}
+
+The fix uses the fact that \textbf{default arguments are evaluated once, at definition time}
+(Chapter 5): \texttt{i=i} snapshots the current value, decoupling it from the shared cell.
+C++ forces you to choose capture-by-value (\texttt{[i]}) or by-reference (\texttt{[\&i]});
+Python only has the cell (by-reference), and \texttt{i=i} simulates capture-by-value.
+
+\section{The cyclic garbage collector}
+
+\textbf{Why this exists.} Chapter 2 showed reference counting cannot reclaim a \textbf{cycle}.
+Python 2.0 added a separate, \textbf{generational, cycle-detecting collector} (the \texttt{gc}
+module) on top of refcounting. Refcounting still frees acyclic garbage instantly; the cyclic
+collector runs periodically to break unreachable cycles.
+
+\textbf{What it tracks.} Only \textbf{container} objects can form cycles (lists, dicts, sets,
+tuples, instances of Python classes). Atomic objects (\texttt{int}, \texttt{str},
+\texttt{float}) are never tracked. Tracked objects carry a \texttt{PyGC\_Head} header.
+
+\textbf{The detection algorithm} (per collected generation):
+\begin{enumerate}
+  \item \textbf{Snapshot.} Copy each tracked object's real refcount into a private
+    \texttt{gc\_refs}.
+  \item \textbf{Subtract internal references.} Traverse references (\texttt{tp\_traverse}); for
+    each reference to another object \emph{in the set}, decrement that target's
+    \texttt{gc\_refs}. Now \texttt{gc\_refs} counts only references from \emph{outside}.
+  \item \textbf{Partition.} \texttt{gc\_refs > 0} means reachable from outside (a root); it
+    and all it reaches are \textbf{live}. Still-zero objects are garbage.
+  \item \textbf{Reclaim.} Break the garbage cycles (\texttt{tp\_clear}) and free them.
+\end{enumerate}
+
+\textbf{Generations.} Objects are grouped into three generations; new objects start in
+generation 0 and survivors are promoted. Generation 0 is scanned often and older generations
+rarely---the \emph{weak generational hypothesis}: most objects die young.
+
+\begin{lstlisting}[language=Python, caption={A cycle survives refcounting and is reclaimed only by gc.collect(); finalizers in cycles run (PEP 442, 3.4+).}]
+import gc, sys
+
+class Node:
+    def __init__(self, name):
+        self.name = name
+        self.ref = None
+    def __del__(self):
+        print(f"  __del__ {self.name}")
+
+gc.collect()                       # clean slate
+a = Node("A"); b = Node("B")
+a.ref = b; b.ref = a               # build the cycle
+print("refcount(A) in cycle:", sys.getrefcount(a) - 1)
+del a, b                           # bindings gone; cycle keeps both alive
+print("after del; running gc.collect() ...")
+reclaimed = gc.collect()
+print("objects reclaimed:", reclaimed)
+print("default threshold:", gc.get_threshold())
+\end{lstlisting}
+
+Verified output (CPython 3.13.5):
+
+\begin{lstlisting}[caption={Output}]
+refcount(A) in cycle: 2
+after del; running gc.collect() ...
+  __del__ A
+  __del__ B
+objects reclaimed: 2
+default threshold: (2000, 10, 10)
+\end{lstlisting}
+
+Two modern facts the original 2.x description predates:
+\begin{itemize}
+  \item \textbf{Finalizers in cycles now run (PEP 442, 3.4+).} Before 3.4, a cyclic object
+    with \texttt{\_\_del\_\_} was \emph{uncollectable} and parked in \texttt{gc.garbage}. PEP
+    442 finalizes then collects cyclic objects---both \texttt{\_\_del\_\_}s fire above.
+  \item \textbf{The generation-0 threshold on this interpreter is 2000} (\texttt{gc.get\_threshold()}).
+    The triple \texttt{(t0, t1, t2)} means: collect generation 0 when (allocations $-$
+    deallocations) exceeds \texttt{t0}; generation 1 after \texttt{t1} gen-0 collections;
+    generation 2 after \texttt{t2} gen-1 collections. The values are build/version-dependent
+    and adjustable via \texttt{gc.set\_threshold()}; do not hard-code them.
+\end{itemize}
+
+\section{Performance and anti-patterns}
+
+\textbf{The collector has a cost, and you can control it.} Tracing is $O(\text{tracked objects
+scanned})$. In allocation-heavy or latency-sensitive code, GC pauses are real:
+\begin{itemize}
+  \item \texttt{gc.disable()} / \texttt{gc.enable()}---turn off automatic collection in a hot
+    phase; collect explicitly at a safe point. Refcounting still reclaims acyclic garbage,
+    so this leaks only genuine cycles, briefly.
+  \item \texttt{gc.freeze()} (3.7+)---move everything currently alive into a permanent
+    generation never scanned again; ideal right before forking server workers (better
+    copy-on-write sharing, no rescanning of long-lived objects).
+  \item \textbf{Avoid needless cycles.} Parent$\leftrightarrow$child back-references are the
+    usual culprit; \texttt{weakref} (Vol VIII) lets plain refcounting reclaim immediately.
+\end{itemize}
+
+\textbf{Anti-patterns.} The late-binding closure in a loop (use \texttt{i=i} or
+\texttt{functools.partial}); relying on \texttt{gc.garbage} (obsolete since PEP 442); assuming
+a comprehension leaks (it does not, but a plain \texttt{for} variable persists after the loop);
+confusing eager inlined comprehensions with lazy framed generator expressions.
+
+\section{Summary and cross-references}
+
+\begin{itemize}
+  \item \textbf{Comprehensions} isolate their loop variable (since 3.0) and, as of
+    \textbf{PEP 709 (3.12)}, do so \emph{inlined} with save/restore---no nested frame.
+    Generator expressions still own a frame.
+  \item \textbf{PEP 227} added the \textbf{Enclosing} scope, completing \textbf{LEGB}, which
+    the compiler resolves \emph{statically} into the load opcodes.
+  \item \textbf{Closures} capture by \textbf{cell} (shared live reference), the source of the
+    \textbf{late-binding loop} trap; \texttt{i=i} simulates the capture-by-value Python lacks.
+  \item The \textbf{cyclic collector} reclaims only what refcounting cannot---cycles---via a
+    generational copy-and-subtract algorithm; since \textbf{PEP 442} it finalizes cyclic
+    objects rather than abandoning them.
+  \item The collector is \textbf{tunable} (\texttt{disable}/\texttt{freeze}/\texttt{set\_threshold}).
+\end{itemize}
+
+\textbf{Cross-references.} The compiler/symbol-table pass $\rightarrow$ Chapter 1. Reference
+counting and why cycles leak $\rightarrow$ Chapter 2. Default-argument evaluation timing
+$\rightarrow$ Chapter 5. Generator expressions and lazy iteration $\rightarrow$ Chapter 9 and
+Vol III. \texttt{weakref}, \texttt{\_\_slots\_\_}, and allocator/GC internals $\rightarrow$
+Vol VIII. GC tuning for low latency $\rightarrow$ Vol IX.

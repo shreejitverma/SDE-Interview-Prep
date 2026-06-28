@@ -1,0 +1,251 @@
+\chapter{Iterators, Generators, and \texttt{yield from} (Python 3.3)}
+
+This chapter is the canonical home for the \textbf{iteration model} that pervades Python ---
+\texttt{for} loops, comprehensions, unpacking, \texttt{in}, and ultimately \texttt{async for} all
+rest on it. We build it from the bottom: the \textbf{iterator protocol}
+(\texttt{\_\_iter\_\_}/\texttt{\_\_next\_\_}), then \textbf{generators} as the ergonomic way to
+write iterators by suspending a frame, then \textbf{\texttt{yield from}} (PEP 380), the delegation
+operator that turned generators into composable coroutines and laid the last stone before native
+\texttt{async}/\texttt{await} (Chapter 11). We close with \textbf{implicit namespace packages}
+(PEP 420). Chapter 5 introduced generator \texttt{send}/\texttt{throw}/\texttt{close}; here we
+complete the model.
+
+\section*{Section Index}
+\begin{itemize}
+  \item \textbf{9.1} The iterator protocol
+  \item \textbf{9.2} Generators: iterators written as suspended frames
+  \item \textbf{9.3} \texttt{yield from}: delegation and the coroutine bridge (PEP 380)
+  \item \textbf{9.4} Implicit namespace packages (PEP 420)
+  \item \textbf{9.5} Performance and anti-patterns
+  \item \textbf{9.6} Summary and cross-references
+\end{itemize}
+
+\section{The iterator protocol}
+
+\textbf{Why this exists.} Python decouples \emph{consuming} a sequence from \emph{being} a
+sequence, so one \texttt{for} loop drives a list, a file, a cursor, an infinite counter, or a
+network stream. An \textbf{iterable} implements \texttt{\_\_iter\_\_()} (returns a fresh
+iterator); an \textbf{iterator} implements \texttt{\_\_next\_\_()} (next item or
+\texttt{StopIteration}) and \texttt{\_\_iter\_\_()} returning \texttt{self}.
+
+\begin{lstlisting}[language=Python, caption={A hand-written iterator; for-loops speak exactly this protocol.}]
+class Countdown:
+    def __init__(self, n):
+        self.n = n
+    def __iter__(self):
+        return self
+    def __next__(self):
+        if self.n <= 0:
+            raise StopIteration
+        self.n -= 1
+        return self.n + 1
+
+print("iterate:", list(Countdown(3)))
+\end{lstlisting}
+
+Verified output (CPython 3.13.5):
+
+\begin{lstlisting}[caption={Output}]
+iterate: [3, 2, 1]
+\end{lstlisting}
+
+\begin{lstlisting}[language=Python, caption={The bytecode of any for-loop.}]
+import dis
+def loop(xs):
+    for x in xs:
+        pass
+dis.dis(loop)
+\end{lstlisting}
+
+Verified output (CPython 3.13.5):
+
+\begin{lstlisting}[caption={Output}]
+ 14           LOAD_FAST                0 (xs)
+              GET_ITER
+      L1:     FOR_ITER                 3 (to L2)
+              STORE_FAST               1 (x)
+              JUMP_BACKWARD            5 (to L1)
+      L2:     END_FOR
+              POP_TOP
+              RETURN_CONST             0 (None)
+\end{lstlisting}
+
+\texttt{StopIteration} is \emph{control flow}, not an error---\texttt{FOR\_ITER} catches it to end
+the loop. (A stray \texttt{StopIteration} inside a generator body is a bug; PEP 479 converts it to
+\texttt{RuntimeError}.)
+
+\textbf{The senior-engineer contrast.} Java separates \texttt{Iterable} from \texttt{Iterator}
+with a look-ahead \texttt{hasNext()}. Python has no \texttt{hasNext()}; iteration is
+\textbf{exhaustion-by-exception}. C++ iterators are \emph{positions} compared against
+\texttt{end()}. Python's is the most minimal---and \textbf{iterators are single-pass and
+stateful}.
+
+\section{Generators: iterators written as suspended frames}
+
+\textbf{Why this exists.} Writing the iterator class by hand is boilerplate. A \textbf{generator
+function}---any \texttt{def} containing \texttt{yield}---lets you write the logic and have CPython
+synthesize the iterator. Calling it returns a generator object; each \texttt{next()} runs to the
+next \texttt{yield} and suspends.
+
+\begin{lstlisting}[language=Python, caption={A generator is a lazy iterator; its frame lives on the heap between yields.}]
+def gen_squares(n):
+    for i in range(n):
+        yield i * i
+
+g = gen_squares(4)
+print("type:", type(g).__name__, "| has a live frame:", g.gi_frame is not None)
+print("values:", list(g))
+\end{lstlisting}
+
+Verified output (CPython 3.13.5):
+
+\begin{lstlisting}[caption={Output}]
+type: generator | has a live frame: True
+values: [0, 1, 4, 9]
+\end{lstlisting}
+
+\textbf{What the interpreter actually does.} A generator wraps a \texttt{PyGenObject} holding a
+\texttt{gi\_frame}. At each \texttt{yield}, CPython saves the resume offset (\texttt{f\_lasti}) and
+stack depth, marks the generator suspended, and returns control---the frame is not freed, it lives
+on the heap. \texttt{next()}/\texttt{send()} re-attach and resume. This is what makes generators
+\textbf{lazy and $O(1)$ in memory}: \texttt{gen\_squares(10**9)} allocates one frame, not a
+billion-element list. The two-way protocol (\texttt{send}/\texttt{throw}/\texttt{close}) was
+covered in Chapter 5.
+
+\section{\texttt{yield from}: delegation and the coroutine bridge (PEP 380)}
+
+\textbf{Why this exists.} Before 3.3, a generator delegating to a sub-generator \emph{and}
+correctly forwarding \texttt{send}/\texttt{throw}/\texttt{close} and capturing its return value had
+to hand-write a fragile loop. \textbf{PEP 380's \texttt{yield from}} makes the delegator a
+transparent channel: yielded values pass to the caller; \texttt{send} values pass to the
+sub-generator; thrown exceptions raise inside it; \texttt{close} propagates; and the
+sub-generator's \textbf{return value becomes the value of the \texttt{yield from} expression} (via
+\texttt{StopIteration.value}).
+
+\begin{lstlisting}[language=Python, caption={yield from delegates send/throw and captures the sub-generator's return value.}]
+def subgen():
+    received = yield "a"
+    yield f"got {received}"
+    return "subgen-result"
+
+def delegator():
+    result = yield from subgen()       # transparent channel; captures the return
+    print("delegator captured return:", result)
+    yield "after"
+
+d = delegator()
+print("next:", next(d))                 # -> "a" (from subgen)
+print("send:", d.send("X"))             # "X" routed into subgen -> "got X"
+print("next:", next(d))                 # subgen returns; result captured; -> "after"
+\end{lstlisting}
+
+Verified output (CPython 3.13.5):
+
+\begin{lstlisting}[caption={Output}]
+next: a
+send: got X
+delegator captured return: subgen-result
+next: after
+\end{lstlisting}
+
+\begin{lstlisting}[language=Python, caption={yield from composes generators cleanly (recursive flatten).}]
+def flatten(nested):
+    for item in nested:
+        if isinstance(item, list):
+            yield from flatten(item)
+        else:
+            yield item
+
+print("flatten:", list(flatten([1, [2, [3, 4], 5], 6])))
+\end{lstlisting}
+
+Verified output (CPython 3.13.5):
+
+\begin{lstlisting}[caption={Output}]
+flatten: [1, 2, 3, 4, 5, 6]
+\end{lstlisting}
+
+\textbf{The coroutine bridge.} \texttt{yield from} let a generator delegate to another that
+performs I/O and yields control upward---the exact pattern early \texttt{asyncio} used
+(\texttt{@asyncio.coroutine} + \texttt{yield from}) before 3.5 gave it dedicated syntax. When you
+read \texttt{await expr} in Chapter 11, picture \texttt{yield from} with a typed, awaitable-only
+channel: the suspension mechanism is the same heap frame.
+
+\section{Implicit namespace packages (PEP 420)}
+
+\textbf{Why this exists.} Through 3.2, a directory was a package only with \texttt{\_\_init\_\_.py},
+which blocked distributing one logical package across \textbf{multiple installs/directories}.
+\textbf{PEP 420} lets a package span directories with \emph{no} \texttt{\_\_init\_\_.py}: a
+\textbf{namespace package}.
+
+\textbf{The finder algorithm.} During \texttt{import foo}, \texttt{PathFinder} scans
+\texttt{sys.path}. A \texttt{foo/\_\_init\_\_.py} makes a regular package and stops the search. With
+no \texttt{\_\_init\_\_.py} but one or more directories named \texttt{foo}, it \textbf{accumulates
+all} of them into a namespace package whose \texttt{\_\_path\_\_} lists them and whose
+\texttt{\_\_file\_\_} is \texttt{None}.
+
+\begin{lstlisting}[language=Python, caption={One namespace package 'company' spanning two directories (no company/\_\_init\_\_.py in either).}]
+import sys
+sys.path.insert(0, "path1")
+sys.path.insert(0, "path2")
+
+import company             # no __init__.py anywhere -> namespace package
+import company.core        # contributed by path1
+import company.extra       # contributed by path2
+
+print("company.__file__:", company.__file__)
+print("company.__path__:", list(company.__path__))
+print("core:", company.core.VALUE, "| extra:", company.extra.VALUE)
+\end{lstlisting}
+
+Verified output (CPython 3.13.5):
+
+\begin{lstlisting}[caption={Output}]
+company.__file__: None
+company.__path__: ['/private/tmp/.../path2/company', '/private/tmp/.../path1/company']
+core: from path1 | extra: from path2
+\end{lstlisting}
+
+Two directories contribute submodules to one importable \texttt{company} namespace---how
+ecosystems ship plugins (\texttt{zope.*}, \texttt{google.cloud.*}) as separately-installable
+distributions. \textbf{Trade-off:} namespace resolution is slower (the finder scans all of
+\texttt{sys.path}), and accidentally omitting an \texttt{\_\_init\_\_.py} from a regular package
+silently turns it into a namespace package. The complete import machinery is Vol X.
+
+\section{Performance and anti-patterns}
+
+\begin{itemize}
+  \item \textbf{Generators trade memory for laziness}---$O(1)$ vs $O(N)$; the right default for
+    pipelines/streams. The cost is a per-item Python-level resume; for small materialized data a
+    list comprehension can be faster and re-iterable.
+  \item \textbf{Iterators are single-pass}---exhausting one leaves it empty; a second pass yields
+    nothing. Re-create or materialize. Bites with \texttt{zip}/\texttt{map}/dict views iterated
+    twice.
+  \item \textbf{Don't \texttt{list()} a generator just to index} if you iterate once; \emph{do}
+    materialize when you need \texttt{len}, random access, or reuse.
+  \item \textbf{\texttt{return} inside a generator} sets \texttt{StopIteration.value} (for
+    \texttt{yield from}); a bare \texttt{StopIteration} raised in generator code becomes
+    \texttt{RuntimeError} (PEP 479)---just \texttt{return}.
+  \item \textbf{Reach for \texttt{itertools}} before hand-rolling generator plumbing (Vol XII).
+  \item \textbf{Namespace-package footgun:} a missing \texttt{\_\_init\_\_.py} silently creates one.
+\end{itemize}
+
+\section{Summary and cross-references}
+
+\begin{itemize}
+  \item The \textbf{iterator protocol} is \texttt{\_\_iter\_\_} + \texttt{\_\_next\_\_}
+    (\texttt{StopIteration} to stop); \texttt{for} compiles to \texttt{GET\_ITER}/\texttt{FOR\_ITER};
+    iterators are \textbf{single-pass}.
+  \item \textbf{Generators} synthesize iterators from \texttt{yield} by \textbf{suspending a heap
+    frame}, giving $O(1)$-memory laziness and a two-way protocol.
+  \item \textbf{\texttt{yield from}} (PEP 380) delegates transparently and \textbf{captures the
+    return value}---the direct ancestor of \texttt{await}.
+  \item \textbf{Implicit namespace packages} (PEP 420) span directories without
+    \texttt{\_\_init\_\_.py} (\texttt{\_\_file\_\_ is None}, multi-entry \texttt{\_\_path\_\_}).
+\end{itemize}
+
+\textbf{Cross-references.} Generator \texttt{send}/\texttt{throw}/\texttt{close} origins
+$\rightarrow$ Chapter 5. Comprehensions vs. generator expressions $\rightarrow$ Chapter 3. PEP 393
+flexible strings $\rightarrow$ Chapter 7. The buffer protocol and \texttt{memoryview} $\rightarrow$
+Vol IX. \texttt{asyncio} and native \texttt{async}/\texttt{await} $\rightarrow$ Chapter 11. The
+complete import machinery $\rightarrow$ Vol X. \texttt{itertools} $\rightarrow$ Vol XII.

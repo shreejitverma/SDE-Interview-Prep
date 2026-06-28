@@ -1,0 +1,198 @@
+\chapter{Asyncio Inception, Pathlib, and Enum (Python 3.4)}
+
+Python 3.4 shipped three additions that each replaced a pile of ad-hoc idioms with a designed
+abstraction: \textbf{asyncio} (PEP 3156) gave single-threaded I/O concurrency a standard event
+loop; \textbf{pathlib} (PEP 428) replaced string-based path juggling with path \emph{objects};
+and \textbf{enum} (PEP 435) gave Python real enumerations. For asyncio we focus on the
+\textbf{event loop and the Future/Task machinery}---its 3.4 inception---and defer the
+\texttt{async}/\texttt{await} \emph{syntax} to Chapter 11 and the full internals and structured
+concurrency to Vol IX.
+
+\section*{Section Index}
+\begin{itemize}
+  \item \textbf{10.1} Asyncio inception: the event loop, selectors, Futures, and Tasks (PEP 3156)
+  \item \textbf{10.2} \texttt{pathlib}: object-oriented filesystem paths (PEP 428)
+  \item \textbf{10.3} \texttt{enum}: enumerations via a metaclass (PEP 435)
+  \item \textbf{10.4} Performance and anti-patterns
+  \item \textbf{10.5} Summary and cross-references
+\end{itemize}
+
+\section{Asyncio inception: the event loop, selectors, Futures, and Tasks (PEP 3156)}
+
+\textbf{Why this exists.} For I/O-bound workloads---thousands of sockets mostly \emph{waiting}---a
+thread per connection wastes memory and pays context-switch and GIL-contention costs, while raw
+callbacks become ``callback hell.'' \textbf{asyncio} offers a third model: \textbf{one thread, one
+event loop, cooperative multitasking}. Tasks voluntarily suspend at \texttt{await} points; while
+one waits on I/O, the loop runs others.
+
+\textbf{What the loop actually does.} asyncio builds on the OS's \textbf{I/O multiplexing}: it
+registers descriptors with the \texttt{selectors} module (mapping to \texttt{epoll}/\texttt{kqueue}/
+\texttt{select}), calls \texttt{selector.select()} which \textbf{blocks the single thread in the
+kernel} until a descriptor is ready, then runs the ready descriptors' callbacks to resume suspended
+tasks. A \textbf{\texttt{Future}} holds a value that will exist later (PENDING $\to$
+FINISHED/CANCELLED, with done-callbacks); a \textbf{\texttt{Task}} is a \texttt{Future} subclass
+that drives a coroutine---its \texttt{\_step} calls \texttt{coro.send(...)}, registers itself as the
+done-callback of the awaited future, and yields to the loop.
+
+\begin{lstlisting}[language=Python, caption={3.4-era generator coroutine. NOT executed --- @asyncio.coroutine was REMOVED in 3.11. Shown to connect asyncio to Chapter 9's yield from.}]
+import asyncio
+
+@asyncio.coroutine
+def fetch_data():
+    yield from asyncio.sleep(1)     # delegate to asyncio.sleep's awaitable
+    return "payload_data"
+\end{lstlisting}
+
+\begin{lstlisting}[language=Python, caption={The legacy decorator no longer exists.}]
+import asyncio
+print("hasattr(asyncio, 'coroutine'):", hasattr(asyncio, "coroutine"))
+\end{lstlisting}
+
+Verified output (CPython 3.13.5):
+
+\begin{lstlisting}[caption={Output}]
+hasattr(asyncio, 'coroutine'): False
+\end{lstlisting}
+
+The \textbf{modern equivalent} uses Chapter 11's \texttt{async}/\texttt{await} but the same
+event-loop model. Three 0.05\,s sleeps run \textbf{concurrently}, finishing in $\sim$0.05\,s:
+
+\begin{lstlisting}[language=Python, caption={The event loop overlaps waits --- concurrency on a single thread.}]
+import asyncio, time
+
+async def worker(name, delay):
+    await asyncio.sleep(delay)
+    return f"{name} done"
+
+async def main():
+    t0 = time.perf_counter()
+    results = await asyncio.gather(worker("A", 0.05), worker("B", 0.05), worker("C", 0.05))
+    return results, time.perf_counter() - t0
+
+results, elapsed = asyncio.run(main())
+print("results:", results)
+print("elapsed (~0.05s, not 0.15s):", round(elapsed, 3), "s")
+\end{lstlisting}
+
+Verified output (CPython 3.13.5):
+
+\begin{lstlisting}[caption={Output}]
+results: ['A done', 'B done', 'C done']
+elapsed (~0.05s, not 0.15s): 0.051 s
+\end{lstlisting}
+
+\textbf{The senior-engineer contrast.} This is cooperative scheduling, like Go goroutines or
+Node's loop---but explicit: a task runs uninterrupted until it \texttt{await}s, so no preemption
+and no lock for data touched only between awaits. The flip side (§10.4) is that a \emph{blocking}
+call stalls the \textbf{entire} loop. Syntax is Chapter 11; internals, \texttt{TaskGroup}, and
+structured concurrency are Vol IX.
+
+\section{\texttt{pathlib}: object-oriented filesystem paths (PEP 428)}
+
+\textbf{Why this exists.} Before 3.4 a path was a \texttt{str} manipulated by scattered
+\texttt{os.path} functions. \textbf{pathlib} makes a path a typed object with an overloaded
+\texttt{/} join and a split between \emph{pure} (no I/O) and \emph{concrete} (filesystem)
+operations: \texttt{PurePath} does algebra (and parses foreign paths); \texttt{Path} adds I/O and
+instantiates \texttt{PosixPath}/\texttt{WindowsPath} for the host.
+
+\begin{lstlisting}[language=Python, caption={Path objects --- / for joining, rich accessors, cross-platform pure paths.}]
+from pathlib import Path, PureWindowsPath
+
+p = Path("/var") / "log" / "nginx.log"     # __truediv__ joins
+print("joined:", p)
+print("parts:", p.parts, "| name:", p.name, "| suffix:", p.suffix, "| stem:", p.stem)
+print("with_suffix:", p.with_suffix(".gz"))
+print("parent:", p.parent)
+print("Windows path parsed on this host:", PureWindowsPath("C:/a/b"))
+print("Path('.') concrete type:", type(Path(".")).__name__)
+\end{lstlisting}
+
+Verified output (CPython 3.13.5):
+
+\begin{lstlisting}[caption={Output}]
+joined: /var/log/nginx.log
+parts: ('/', 'var', 'log', 'nginx.log') | name: nginx.log | suffix: .log | stem: nginx
+with_suffix: /var/log/nginx.gz
+parent: /var/log
+Windows path parsed on this host: C:\a\b
+Path('.') concrete type: PosixPath
+\end{lstlisting}
+
+The \texttt{/} operator handles separators per-OS, so the same code is correct on Windows and
+POSIX. \texttt{Path} unifies \texttt{read\_text}, \texttt{write\_bytes}, \texttt{glob},
+\texttt{mkdir}, \texttt{exists}, \texttt{stat}. Prefer \texttt{pathlib} over \texttt{os.path}.
+
+\section{\texttt{enum}: enumerations via a metaclass (PEP 435)}
+
+\textbf{Why this exists.} Before 3.4, ``enums'' were bare constants---no namespacing, type safety,
+iteration, or readable \texttt{repr}. \textbf{enum} provides named, singleton, immutable, iterable
+members. \textbf{What the metaclass does:} \texttt{EnumMeta} uses a custom namespace
+(\texttt{\_EnumDict}) to capture members in order and reject duplicates, replaces each
+\texttt{NAME = value} with a \textbf{singleton instance}, and installs lookup hooks.
+
+\begin{lstlisting}[language=Python, caption={enum members are singletons, iterable, looked up by name or value, and immutable.}]
+from enum import Enum
+
+class Color(Enum):
+    RED = 1
+    GREEN = 2
+    BLUE = 3
+
+print("members:", [c.name for c in Color])          # __iter__ in declaration order
+print("by name  Color['RED']:", Color["RED"])        # __getitem__
+print("by value Color(2):", Color(2))                # __call__
+print("singleton:", Color.RED is Color(1))           # same object every time
+try:
+    Color.RED.value = 99                              # immutable
+except AttributeError as e:
+    print("immutable ->", type(e).__name__)
+\end{lstlisting}
+
+Verified output (CPython 3.13.5):
+
+\begin{lstlisting}[caption={Output}]
+members: ['RED', 'GREEN', 'BLUE']
+by name  Color['RED']: Color.RED
+by value Color(2): Color.GREEN
+singleton: True
+immutable -> AttributeError
+\end{lstlisting}
+
+Compare members with \texttt{is}/\texttt{==} and switch on them in \texttt{match}/\texttt{case}
+(Chapter 15). \texttt{IntEnum}, \texttt{Flag}/\texttt{IntFlag}, \texttt{auto()}, and
+\texttt{StrEnum} (3.11) are developed in Vol XII.
+
+\section{Performance and anti-patterns}
+
+\begin{itemize}
+  \item \textbf{Never block the event loop}---a sync call or CPU loop in a coroutine freezes every
+    task. Use async libraries or offload via \texttt{run\_in\_executor}/\texttt{asyncio.to\_thread}
+    (Vol IX). The most common asyncio bug.
+  \item \textbf{Don't conflate paradigms}---asyncio is I/O concurrency; CPU parallelism needs
+    processes or the free-threaded build (Vol VII).
+  \item \textbf{\texttt{pathlib} has slight overhead vs raw \texttt{str}}---each op builds a new
+    \texttt{Path}; in million-path loops \texttt{os.path} can be faster, otherwise prefer
+    \texttt{pathlib}.
+  \item \textbf{Enum pitfalls}---duplicate values create \textbf{aliases} (use \texttt{@enum.unique}
+    to forbid); \texttt{IntEnum} members compare equal to ints (prefer plain \texttt{Enum} unless
+    needed).
+\end{itemize}
+
+\section{Summary and cross-references}
+
+\begin{itemize}
+  \item \textbf{asyncio} (PEP 3156) is a \textbf{single-threaded cooperative event loop} over OS
+    multiplexing; \textbf{Futures} hold pending results, \textbf{Tasks} drive coroutines. The 3.4
+    \texttt{@asyncio.coroutine}+\texttt{yield from} syntax is gone (removed 3.11); the model is
+    unchanged.
+  \item \textbf{pathlib} (PEP 428): \texttt{PurePath} (algebra) vs \texttt{Path} (I/O), the
+    \texttt{/} join, a rich API. Prefer over \texttt{os.path}.
+  \item \textbf{enum} (PEP 435) builds \textbf{singleton, immutable, iterable} members via
+    \texttt{EnumMeta}, with lookup by name and value.
+\end{itemize}
+
+\textbf{Cross-references.} \texttt{yield from} and the suspendable frame $\rightarrow$ Chapter 9.
+Native \texttt{async}/\texttt{await} $\rightarrow$ Chapter 11. Event-loop internals,
+\texttt{TaskGroup}, structured concurrency $\rightarrow$ Vol IX. The GIL $\rightarrow$ Vol VII. The
+full \texttt{enum} family and \texttt{graphlib} $\rightarrow$ Vol XII. \texttt{pathlib}/\texttt{os}
+reference $\rightarrow$ Vol XIV.

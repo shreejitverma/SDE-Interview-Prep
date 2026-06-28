@@ -1,0 +1,353 @@
+\chapter{Type--Class Unification, Descriptors, and C3 MRO (Python 2.2--2.3)}
+
+Python 2.2 made the single most important change to the object model after its inception: it
+\textbf{unified types and classes}. Before it, user-defined classes and built-in types were
+different kinds of thing at the C level, and you could not subclass \texttt{list}. After it, a
+class \emph{is} a type, every class descends from \texttt{object}, and three mechanisms---the
+\textbf{descriptor protocol}, the \textbf{C3 linearized MRO}, and the
+\textbf{\_\_new\_\_/\_\_init\_\_ split}---became the machinery underneath properties, methods,
+\texttt{super()}, and \texttt{@classmethod}. This chapter is the origin story and the working
+reference for all three; it is where the dunder-to-slot wiring of Chapter 2 becomes a usable
+protocol you can implement yourself.
+
+\textbf{One home.} Descriptors and the MRO are taught in full here. Metaclasses and the
+construction of \texttt{type} itself get their dedicated treatment in Vol VIII; this chapter
+establishes the model they build on.
+
+\section*{Section Index}
+\begin{itemize}
+  \item \textbf{4.1} New-style classes: unifying types and classes (PEP 252/253)
+  \item \textbf{4.2} The descriptor protocol
+  \item \textbf{4.3} The attribute-lookup algorithm and descriptor precedence
+  \item \textbf{4.4} Methods, \texttt{classmethod}, \texttt{staticmethod}, and \texttt{property} as descriptors
+  \item \textbf{4.5} Method Resolution Order and C3 linearization
+  \item \textbf{4.6} Instance lifecycle: \texttt{\_\_new\_\_} vs \texttt{\_\_init\_\_}
+  \item \textbf{4.7} Performance, the senior-engineer contrast, and anti-patterns
+  \item \textbf{4.8} Summary and cross-references
+\end{itemize}
+
+\section{New-style classes: unifying types and classes (PEP 252/253)}
+
+\textbf{Why this exists.} Before Python 2.2 there were two parallel universes. \emph{Classic
+classes} (\texttt{class C:}) were all instances of one C type, \texttt{PyClass\_Type}; their
+instances were all \texttt{PyInstance\_Type}. \emph{Built-in types} were
+\texttt{PyTypeObject}s. The two could not mix: \texttt{type(c)} of a classic instance returned
+\texttt{<type 'instance'>}, and \textbf{you could not subclass a built-in type}. \textbf{PEP
+252} and \textbf{PEP 253} introduced \textbf{new-style classes}: a class deriving from
+\texttt{object} is itself a \texttt{PyTypeObject}---an instance of \texttt{type}.
+
+\begin{lstlisting}[language=Python, caption={In Python 3 every class is new-style; type(instance) IS the class.}]
+class NewStyle:        # implicitly subclasses object in Python 3
+    pass
+
+n = NewStyle()
+print("type(n):", type(n).__name__)
+print("issubclass(NewStyle, object):", issubclass(NewStyle, object))
+print("type(NewStyle) is type:", type(NewStyle) is type)
+\end{lstlisting}
+
+Verified output (CPython 3.13.5):
+
+\begin{lstlisting}[caption={Output}]
+type(n): NewStyle
+issubclass(NewStyle, object): True
+type(NewStyle) is type: True
+\end{lstlisting}
+
+The key C-level consequence (Chapter 2): every class is a \texttt{PyTypeObject} whose
+\textbf{slots} hold the function pointers the interpreter calls. A Python \texttt{\_\_init\_\_}
+installs a \textbf{slot wrapper} (\texttt{slot\_tp\_init}) into \texttt{tp\_init} that calls
+your function; a built-in's C slot is exposed to Python as a \textbf{wrapper descriptor}. Python
+methods and C slots are bridged in both directions.
+
+\section{The descriptor protocol}
+
+\textbf{Why this exists.} A \textbf{descriptor} customizes what happens when it is accessed as a
+\emph{class attribute} of another object. It is the single mechanism behind methods,
+\texttt{property}, \texttt{classmethod}, \texttt{staticmethod}, \texttt{\_\_slots\_\_} members,
+and \texttt{cached\_property}. The protocol is three optional methods: \texttt{\_\_get\_\_(self,
+instance, owner=None)}, \texttt{\_\_set\_\_(self, instance, value)}, and
+\texttt{\_\_delete\_\_(self, instance)}.
+
+The presence of \texttt{\_\_set\_\_}/\texttt{\_\_delete\_\_} splits descriptors into two kinds:
+a \textbf{data descriptor} defines \texttt{\_\_set\_\_} and/or \texttt{\_\_delete\_\_}
+(\texttt{property} is canonical); a \textbf{non-data descriptor} defines only
+\texttt{\_\_get\_\_} (a plain function is canonical).
+
+\begin{lstlisting}[language=Python, caption={A minimal data descriptor that validates writes.}]
+class Positive:
+    def __set_name__(self, owner, name):      # 3.6+: learn the attribute name
+        self.private = "_" + name
+    def __get__(self, obj, owner=None):
+        if obj is None:
+            return self                        # accessed on the class
+        return getattr(obj, self.private)
+    def __set__(self, obj, value):
+        if value <= 0:
+            raise ValueError("must be positive")
+        setattr(obj, self.private, value)
+
+class Account:
+    balance = Positive()
+    def __init__(self, b):
+        self.balance = b
+
+a = Account(100)
+print("balance:", a.balance)
+try:
+    a.balance = -5
+except ValueError as e:
+    print("rejected:", e)
+\end{lstlisting}
+
+Verified output (CPython 3.13.5):
+
+\begin{lstlisting}[caption={Output}]
+balance: 100
+rejected: must be positive
+\end{lstlisting}
+
+\texttt{\_\_set\_name\_\_} (PEP 487, Python 3.6) tells the descriptor its own attribute name at
+class-creation time, removing 2.x-era boilerplate.
+
+\section{The attribute-lookup algorithm and descriptor precedence}
+
+\textbf{What the interpreter actually does.} Every \texttt{obj.name} read goes through the
+type's \texttt{tp\_getattro} slot, which for ordinary objects is
+\texttt{PyObject\_GenericGetAttr} (\texttt{Objects/object.c}):
+\begin{enumerate}
+  \item \textbf{Search the MRO} (\texttt{\_PyType\_Lookup}) for \texttt{name}; call any result
+    \texttt{descr}.
+  \item \textbf{Data-descriptor short-circuit.} If \texttt{descr} is a data descriptor, call
+    \texttt{descr.\_\_get\_\_(obj, type(obj))} and return---\emph{the instance dict is never
+    consulted}.
+  \item \textbf{Instance dict.} Otherwise, if \texttt{name} is in \texttt{obj.\_\_dict\_\_},
+    return it.
+  \item \textbf{Non-data descriptor / class attribute.} Otherwise, if \texttt{descr} exists:
+    if non-data, call \texttt{\_\_get\_\_}; if a plain class attribute, return it.
+  \item \textbf{\_\_getattr\_\_ fallback.} Otherwise raise \texttt{AttributeError}, which
+    triggers \texttt{\_\_getattr\_\_} if defined.
+\end{enumerate}
+
+\begin{lstlisting}[caption={Attribute-lookup flow}]
+obj.name
+  -> MRO has a DATA descriptor?  yes -> descr.__get__(obj, type)  (dict ignored)
+  -> name in obj.__dict__?       yes -> return obj.__dict__[name]
+  -> MRO has NON-DATA descriptor? yes -> descr.__get__(obj, type)
+  -> MRO has plain class attr?   yes -> return it
+  -> raise AttributeError -> __getattr__(self, name) if defined
+\end{lstlisting}
+
+\begin{lstlisting}[language=Python, caption={Data descriptors beat the instance dict; non-data descriptors do not.}]
+class DataDesc:
+    def __get__(self, obj, owner): return "data-descriptor"
+    def __set__(self, obj, value): pass          # makes it a DATA descriptor
+class NonDataDesc:
+    def __get__(self, obj, owner): return "non-data-descriptor"
+
+class C:
+    d = DataDesc()
+    n = NonDataDesc()
+
+c = C()
+c.__dict__["d"] = "instance-d"     # attempt to shadow the data descriptor
+c.__dict__["n"] = "instance-n"     # attempt to shadow the non-data descriptor
+print("c.d ->", c.d)
+print("c.n ->", c.n)
+\end{lstlisting}
+
+Verified output (CPython 3.13.5):
+
+\begin{lstlisting}[caption={Output}]
+c.d -> data-descriptor
+c.n -> instance-n
+\end{lstlisting}
+
+This is why you cannot accidentally clobber a \texttt{property} (data descriptor) by assigning
+\texttt{self.x} in \texttt{\_\_init\_\_}, but you \emph{can} shadow a method (non-data
+descriptor) with an instance attribute---and why ordinary instance attributes are cheap (they
+resolve at step 3).
+
+\section{Methods, \texttt{classmethod}, \texttt{staticmethod}, and \texttt{property} as descriptors}
+
+Every flavor of ``method'' is a descriptor, differing only in \texttt{\_\_get\_\_}: a
+\textbf{plain function} is a non-data descriptor whose \texttt{\_\_get\_\_} returns a
+\textbf{bound method} pairing function and instance; \texttt{@classmethod} binds the
+\textbf{class}; \texttt{@staticmethod} returns the function unchanged; \texttt{@property} is a
+\textbf{data descriptor} wrapping \texttt{fget}/\texttt{fset}/\texttt{fdel}.
+
+\begin{lstlisting}[language=Python, caption={A method is a function (non-data descriptor) that binds via \_\_get\_\_.}]
+class Demo:
+    def method(self):
+        return "called"
+
+d = Demo()
+print("type(d.method).__name__:", type(d.method).__name__)       # method (bound)
+print("type(Demo.method).__name__:", type(Demo.method).__name__) # function (raw)
+print("manual __get__ == d.method:", Demo.method.__get__(d, Demo) == d.method)
+\end{lstlisting}
+
+Verified output (CPython 3.13.5):
+
+\begin{lstlisting}[caption={Output}]
+type(d.method).__name__: method
+type(Demo.method).__name__: function
+manual __get__ == d.method: True
+\end{lstlisting}
+
+The bound method holds \texttt{obj} in \texttt{\_\_self\_\_} and the function in
+\texttt{\_\_func\_\_}; calling it prepends \texttt{\_\_self\_\_}. That is the entire mechanism
+of \texttt{self}.
+
+\section{Method Resolution Order and C3 linearization}
+
+\textbf{Why this exists.} With multiple inheritance, ``which base defines this method?'' needs a
+\emph{consistent} total order over ancestors. Classic depth-first, left-to-right reached a
+shared ancestor before a sibling that overrode it. Python 2.3 adopted \textbf{C3
+linearization}, guaranteeing \textbf{local precedence} (bases in declared order) and
+\textbf{monotonicity} (if \texttt{X} precedes \texttt{Y} in one MRO, it does in every
+subclass's MRO).
+
+Let \texttt{L(C)} be the MRO of \texttt{C} with parents $B_1 \dots B_n$:
+\[ L(C) = [C] + \mathrm{merge}\big(L(B_1), \dots, L(B_n), [B_1, \dots, B_n]\big) \]
+\texttt{merge} repeatedly takes a \textbf{good head}---the head of some list absent from the
+\emph{tail} of every other list---appends it, and removes it everywhere. If none exists, CPython
+raises \texttt{TypeError}.
+
+\textbf{Worked example (simple diamond).} For $O\to\{X,Y\}\to A$: $L(X)=[X,O,\text{object}]$,
+$L(Y)=[Y,O,\text{object}]$, and merging yields $L(A)=[A,X,Y,O,\text{object}]$.
+
+\begin{lstlisting}[language=Python, caption={C3 in practice --- confirm the worked result against the real \_\_mro\_\_.}]
+class O: pass
+class X(O): pass
+class Y(O): pass
+class A(X, Y): pass
+print("A.__mro__:", [c.__name__ for c in A.__mro__])
+\end{lstlisting}
+
+Verified output (CPython 3.13.5):
+
+\begin{lstlisting}[caption={Output}]
+A.__mro__: ['A', 'X', 'Y', 'O', 'object']
+\end{lstlisting}
+
+\textbf{Worked example (Pedroni's monotonicity stress test).}
+
+\begin{lstlisting}[language=Python, caption={The Pedroni example --- C3 produces a single consistent order.}]
+class Ao: pass
+class Bo: pass
+class Co: pass
+class Do: pass
+class Eo: pass
+class K1(Ao, Bo, Co): pass
+class K2(Do, Bo, Eo): pass
+class K3(Do, Ao): pass
+class Z(K1, K2, K3): pass
+print("Z.__mro__:", [c.__name__ for c in Z.__mro__])
+\end{lstlisting}
+
+Verified output (CPython 3.13.5):
+
+\begin{lstlisting}[caption={Output}]
+Z.__mro__: ['Z', 'K1', 'K2', 'K3', 'Do', 'Ao', 'Bo', 'Co', 'Eo', 'object']
+\end{lstlisting}
+
+This matches the hand computation $[Z, K1, K2, K3, D, A, B, C, E, \text{object}]$ exactly.
+
+\begin{lstlisting}[language=Python, caption={An impossible hierarchy is rejected at class-creation time.}]
+try:
+    class Bad1: pass
+    class Bad2(Bad1): pass
+    class Bad3(Bad1, Bad2): pass     # demands Bad1 before AND after Bad2
+except TypeError as e:
+    print("TypeError:", e)
+\end{lstlisting}
+
+Verified output (CPython 3.13.5):
+
+\begin{lstlisting}[caption={Output}]
+TypeError: Cannot create a consistent method resolution order (MRO) for bases Bad1, Bad2
+\end{lstlisting}
+
+\textbf{\texttt{super()} follows the MRO}, dispatching to the next class in
+\texttt{type(self).\_\_mro\_\_} after the current one---which is why cooperative multiple
+inheritance works only when every class calls \texttt{super()}.
+
+\section{Instance lifecycle: \texttt{\_\_new\_\_} vs \texttt{\_\_init\_\_}}
+
+CPython splits construction into two slots: \textbf{\texttt{\_\_new\_\_}} ($\rightarrow$
+\texttt{tp\_new}), a static method that \textbf{allocates} and returns the instance (ultimately
+\texttt{PyType\_GenericNew}, setting up the \texttt{PyObject} header), running first; and
+\textbf{\texttt{\_\_init\_\_}} ($\rightarrow$ \texttt{tp\_init}), an instance method that
+\textbf{initializes} the object and returns \texttt{None}, running only if \texttt{\_\_new\_\_}
+returned an instance of \texttt{cls}.
+
+\begin{lstlisting}[language=Python, caption={\_\_new\_\_ allocates and runs first; \_\_init\_\_ initializes after.}]
+class Lifecycle:
+    def __new__(cls, *args, **kwargs):
+        print("  __new__ (allocate)")
+        return super().__new__(cls)
+    def __init__(self, v):
+        print("  __init__ (initialize) with", v)
+        self.v = v
+
+obj = Lifecycle(7)
+print("obj.v:", obj.v)
+\end{lstlisting}
+
+Verified output (CPython 3.13.5):
+
+\begin{lstlisting}[caption={Output}]
+  __new__ (allocate)
+  __init__ (initialize) with 7
+obj.v: 7
+\end{lstlisting}
+
+This split is what makes immutable types possible: \texttt{int}, \texttt{str}, \texttt{tuple},
+and frozen dataclasses do their work in \texttt{\_\_new\_\_}. Overriding \texttt{\_\_new\_\_} to
+return an object of a \emph{different} type silently skips \texttt{\_\_init\_\_}.
+
+\section{Performance, the senior-engineer contrast, and anti-patterns}
+
+\textbf{The senior-engineer contrast.} C++ supports multiple inheritance via virtual
+inheritance and per-class vtables, with no language-level linearization guarantee. Java forbids
+multiple class inheritance (only interfaces). Python's C3 gives multiple inheritance a single,
+predictable, monotonic order and a cooperative \texttt{super()}.
+
+\textbf{Attribute-lookup cost.} The MRO walk of §4.3 would be expensive on every access, so
+CPython caches \texttt{\_PyType\_Lookup} results keyed by a \textbf{type version tag}
+invalidated on class mutation, and the 3.11+ specializing interpreter specializes
+\texttt{LOAD\_ATTR} with inline caches (Vol VI). Practical rules: \texttt{\_\_slots\_\_}
+(Vol VIII) removes the per-instance \texttt{\_\_dict\_\_} (less memory, faster access) and is
+itself built from data descriptors; mutating classes at runtime invalidates the version cache
+and de-optimizes dependent call sites.
+
+\textbf{Anti-patterns.} Forgetting \texttt{super().\_\_init\_\_()} in a multiple-inheritance
+hierarchy; implementing only \texttt{\_\_get\_\_} when you need write interception (use a data
+descriptor); doing real work in \texttt{\_\_init\_\_} for an immutable type; heavy
+\texttt{\_\_getattribute\_\_} (runs on every access; always delegate via
+\texttt{super().\_\_getattribute\_\_}).
+
+\section{Summary and cross-references}
+
+\begin{itemize}
+  \item Python 2.2 \textbf{unified types and classes}; Python 3 has only new-style classes.
+  \item A \textbf{descriptor} customizes access via \texttt{\_\_get\_\_}/\texttt{\_\_set\_\_}/\texttt{\_\_delete\_\_};
+    \textbf{data descriptors} outrank the instance dict, \textbf{non-data} do not---explaining
+    methods, \texttt{property}, \texttt{classmethod}, \texttt{staticmethod}, \texttt{\_\_slots\_\_}.
+  \item \texttt{PyObject\_GenericGetAttr} resolves: data descriptor $\rightarrow$ instance dict
+    $\rightarrow$ non-data/class attr $\rightarrow$ \texttt{\_\_getattr\_\_}.
+  \item \textbf{C3 linearization} gives multiple inheritance \textbf{local precedence} and
+    \textbf{monotonicity}; \texttt{super()} walks it; inconsistent hierarchies raise
+    \texttt{TypeError}.
+  \item Construction is \textbf{\_\_new\_\_ (allocate) then \_\_init\_\_ (initialize)}.
+  \item CPython makes lookup fast via the \textbf{type version cache} and 3.11+
+    \texttt{LOAD\_ATTR} specialization; runtime class mutation defeats both.
+\end{itemize}
+
+\textbf{Cross-references.} \texttt{PyObject}/\texttt{PyTypeObject} and dunder-to-slot wiring
+$\rightarrow$ Chapter 2. \texttt{property} and context managers $\rightarrow$ Chapter 5.
+Metaclasses and the construction of \texttt{type} $\rightarrow$ Vol VIII. \texttt{\_\_slots\_\_}
+and attribute-access optimization $\rightarrow$ Vol VIII. The specializing interpreter and
+\texttt{LOAD\_ATTR} inline caches $\rightarrow$ Vol VI, Ch 17. \texttt{cached\_property}
+$\rightarrow$ Vol IV.

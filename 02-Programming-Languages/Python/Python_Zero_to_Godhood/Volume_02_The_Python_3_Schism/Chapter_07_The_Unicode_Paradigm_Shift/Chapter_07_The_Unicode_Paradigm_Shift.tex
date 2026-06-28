@@ -1,0 +1,277 @@
+\chapter{The Unicode Paradigm Shift and Text vs. Bytes (Python 3.0)}
+
+Python 3.0 was a deliberate, compatibility-breaking reset, and its defining change was the
+\textbf{hard separation of text from bytes}. In Python 2, one type (\texttt{str}) was both a byte
+string and an ASCII text string, and the interpreter silently decoded between them---a design
+that worked until a non-ASCII byte appeared, then failed at a distance. Python 3 made
+\texttt{str} a sequence of \textbf{Unicode code points} and \texttt{bytes} a sequence of
+\textbf{octets}, with \textbf{no implicit conversion}. This chapter covers that split and the
+cluster of 3.0 changes that followed from taking correctness seriously: the \texttt{print}
+function, true division, lazy iterators and views, and---reaching to 3.3---the \textbf{PEP 393}
+flexible string representation that made correct Unicode also memory-efficient.
+
+\section*{Section Index}
+\begin{itemize}
+  \item \textbf{7.1} The text/bytes split (PEP 3112) and the coercion ban
+  \item \textbf{7.2} \texttt{bytes} and \texttt{bytearray}: the binary types
+  \item \textbf{7.3} Unicode internals: from narrow/wide builds to PEP 393
+  \item \textbf{7.4} Encoding, decoding, and error handlers (incl. \texttt{surrogateescape})
+  \item \textbf{7.5} \texttt{print()} as a function (PEP 3105)
+  \item \textbf{7.6} Division unification (PEP 238) and the floor-vs-truncate contrast
+  \item \textbf{7.7} Lazy iterators, dictionary views, and \texttt{memoryview}
+  \item \textbf{7.8} Performance, anti-patterns, and summary
+\end{itemize}
+
+\section{The text/bytes split (PEP 3112) and the coercion ban}
+
+\textbf{Why this exists.} In Python 2, \texttt{"caf\'e"} was a byte string whose meaning depended
+on the source encoding, and \texttt{u"caf\'e"} was text; mixing them implicitly decoded the bytes
+with ASCII and raised \texttt{UnicodeDecodeError} the moment a byte exceeded 127. Python 3 removes
+the ambiguity: \textbf{\texttt{str} is text (code points), \texttt{bytes} is binary (octets), and
+the two never implicitly convert.} Any implicit mix is an immediate, local \texttt{TypeError}.
+
+\begin{lstlisting}[language=Python, caption={Python 3 bans implicit text/bytes coercion --- a local error, not a distant one.}]
+try:
+    b"data" + "string"
+except TypeError as e:
+    print("TypeError:", e)
+\end{lstlisting}
+
+Verified output (CPython 3.13.5):
+
+\begin{lstlisting}[caption={Output}]
+TypeError: can't concat str to bytes
+\end{lstlisting}
+
+The domains are disjoint down to the C API: \texttt{PyBytes\_Concat} rejects \texttt{str}, and
+text/bytes comparisons never coerce.
+
+\textbf{The senior-engineer contrast.} A C \texttt{char*} is bytes. A Java \texttt{String} is
+text but internally UTF-16, so a \texttt{char} is a 16-bit code \emph{unit} and astral code
+points span two---\texttt{"\ensuremath{\ldots}".length() == 2} for an emoji. Python 3's
+\texttt{str} is a sequence of \textbf{code points}: \texttt{len} of one emoji is 1, indexing
+returns whole code points, and the \emph{encoding is not part of the object}---it exists only
+when you \texttt{encode()} to \texttt{bytes}. Decode at input, work in \texttt{str}, encode at
+output: the ``Unicode sandwich.''
+
+\section{\texttt{bytes} and \texttt{bytearray}: the binary types}
+
+\texttt{bytes} is the \textbf{immutable} octet sequence; \texttt{bytearray} its \textbf{mutable}
+sibling. Both support the \textbf{buffer protocol} (Vol IX).
+
+\begin{lstlisting}[language=C, caption={Illustrative; bytes is immutable with storage inline; bytearray is mutable with a separate buffer.}]
+typedef struct {                 /* Include/bytesobject.h */
+    PyObject_VAR_HEAD
+    Py_hash_t ob_shash;          /* cached hash; -1 if uncomputed */
+    char ob_sval[1];             /* octets, inline, NUL-terminated for C interop */
+} PyBytesObject;
+
+typedef struct {                 /* Include/bytearrayobject.h */
+    PyObject_VAR_HEAD
+    Py_ssize_t ob_alloc;         /* capacity */
+    char *ob_bytes;              /* start of allocation */
+    char *ob_start;              /* start of logical data (>= ob_bytes) */
+    Py_ssize_t ob_exports;       /* active buffer exports (e.g. memoryviews) */
+} PyByteArrayObject;
+\end{lstlisting}
+
+The split between \texttt{ob\_bytes} and \texttt{ob\_start} makes a left-end deletion
+(\texttt{del ba[0]}) $O(1)$---advance \texttt{ob\_start} instead of shifting. And
+\texttt{ob\_exports} is a safety interlock: while a \texttt{memoryview} is live, any reallocation
+raises \texttt{BufferError}, so a view can never dangle. \texttt{bytearray} grows with the same
+amortized-$O(1)$ overallocation as \texttt{list}.
+
+\section{Unicode internals: from narrow/wide builds to PEP 393}
+
+\textbf{The original problem.} Through Python 3.2, a build stored \emph{every} string in one fixed
+width: a \textbf{narrow build} used 2-byte \texttt{Py\_UNICODE} (UCS-2), a \textbf{wide build}
+4-byte (UCS-4). Narrow builds mishandled astral characters as surrogate pairs (breaking
+\texttt{len}/indexing); wide builds made \texttt{"hello"} cost 20 payload bytes.
+
+\textbf{PEP 393 (Python 3.3): flexible string representation.} CPython now picks the
+\textbf{narrowest storage that fits the string's largest code point}, per string: 1 byte
+(Latin-1, with a pure-ASCII fast path), 2 bytes (BMP), or 4 bytes (full Unicode). Correct
+indexing for all code points \emph{and} compact memory, no build-time tradeoff.
+
+\begin{lstlisting}[language=Python, caption={PEP 393 chooses storage width per string from its largest code point.}]
+import sys
+for label, s in [("ASCII  'hello'", "hello"),
+                 ("Latin-1 'hn'", "hñ"),         # max U+00F1 -> 1 byte/char
+                 ("BMP/UCS-2 'h.'", "h你"),       # max U+4F60 -> 2 bytes/char
+                 ("Astral/UCS-4 'h.'", "h\U0001F600")]:# max U+1F600 -> 4 bytes/char
+    print(f"  {label:20s} len={len(s)} getsizeof={sys.getsizeof(s)}")
+print("  empty str:", sys.getsizeof(""))
+\end{lstlisting}
+
+Verified output (CPython 3.13.5):
+
+\begin{lstlisting}[caption={Output}]
+  ASCII  'hello'        len=5 getsizeof=46
+  Latin-1 'hn'          len=2 getsizeof=59
+  BMP/UCS-2 'h.'        len=2 getsizeof=62
+  Astral/UCS-4 'h.'     len=2 getsizeof=68
+  empty str: 41
+\end{lstlisting}
+
+Pure ASCII is cheapest; a single non-ASCII code point promotes the \emph{whole string} to a wider
+kind with a larger header. Guarantees: \textbf{\texttt{len} and indexing are always $O(1)$ in code
+points} (no surrogate surprises), and ASCII/Latin-1 stays as cheap as a byte string. But one emoji
+in a megabyte of ASCII promotes the entire string to 4 bytes/char.
+
+\section{Encoding, decoding, and error handlers (incl. \texttt{surrogateescape})}
+
+\texttt{str.encode(encoding)} turns code points into \texttt{bytes}; \texttt{bytes.decode(encoding)}
+the reverse. Both take an \textbf{error handler}: \texttt{strict} (default---raise),
+\texttt{ignore}, \texttt{replace}, \texttt{backslashreplace}, and \texttt{surrogateescape}.
+
+\textbf{\texttt{surrogateescape} (PEP 383)} is how Python survives the Unix filesystem. POSIX
+paths are arbitrary bytes, not guaranteed UTF-8. Each undecodable byte $b$ maps to a lone
+surrogate $U{+}DC00 + b$ on decode and back to $b$ on encode:
+
+\begin{lstlisting}[language=Python, caption={surrogateescape round-trips arbitrary bytes through a str losslessly.}]
+raw = b"bad_\xff_path.txt"
+decoded = raw.decode("utf-8", "surrogateescape")
+reencoded = decoded.encode("utf-8", "surrogateescape")
+print("round-trips exactly:", reencoded == raw)
+print("contains lone surrogate U+DCFF:", "\udcff" in decoded)
+\end{lstlisting}
+
+Verified output (CPython 3.13.5):
+
+\begin{lstlisting}[caption={Output}]
+round-trips exactly: True
+contains lone surrogate U+DCFF: True
+\end{lstlisting}
+
+This is how \texttt{os.fsencode}/\texttt{os.fsdecode} and \texttt{sys.argv} handle filenames.
+\textbf{The discipline:} always pass \texttt{encoding=} explicitly. Relying on the locale default
+causes ``works on my machine, \texttt{UnicodeDecodeError} in the container.''
+
+\section{\texttt{print()} as a function (PEP 3105)}
+
+Python 2's \texttt{print} was a statement compiled to dedicated opcodes---behavior fixed at
+compile time. Python 3 made it an ordinary builtin, resolved by name lookup and therefore
+overridable and keyword-configurable (\texttt{sep}, \texttt{end}, \texttt{file}, \texttt{flush}).
+
+\begin{lstlisting}[language=Python, caption={print is a function call --- note the modern CALL opcode.}]
+import dis
+dis.dis(compile('print("x")', "<s>", "exec"))
+\end{lstlisting}
+
+Verified output (CPython 3.13.5):
+
+\begin{lstlisting}[caption={Output}]
+  0           RESUME                   0
+  1           LOAD_NAME                0 (print)
+              PUSH_NULL
+              LOAD_CONST               0 ('x')
+              CALL                     1
+              POP_TOP
+              RETURN_CONST             1 (None)
+\end{lstlisting}
+
+\section{Division unification (PEP 238) and the floor-vs-truncate contrast}
+
+Python 2's \texttt{/} was floor division for two ints but true division if either was a
+float---a silent precision trap. Python 3 split the operators: \textbf{\texttt{/} is always true
+division} (returns \texttt{float}), \textbf{\texttt{//} is floor division}.
+
+\begin{lstlisting}[language=Python, caption={/ is true division; // floors toward negative infinity.}]
+print("7/2 =", 7 / 2)
+print("7//2 =", 7 // 2)
+print("-7//2 =", -7 // 2)
+\end{lstlisting}
+
+Verified output (CPython 3.13.5):
+
+\begin{lstlisting}[caption={Output}]
+7/2 = 3.5
+7//2 = 3
+-7//2 = -4
+\end{lstlisting}
+
+\textbf{The senior-engineer contrast --- a real portability hazard.} C, C++, Java, and Go integer
+division \textbf{truncates toward zero}: \texttt{-7 / 2 == -3}. Python's \texttt{//} \textbf{floors
+toward $-\infty$}: \texttt{-7 // 2 == -4}. Likewise \texttt{\%} follows the divisor's sign in
+Python (\texttt{-7 \% 2 == 1}) but the dividend's in C. Porting modular arithmetic without
+accounting for this yields off-by-one bugs that pass every positive-number test. For truncation
+in Python, use \texttt{int(a / b)} or \texttt{math.trunc}.
+
+\section{Lazy iterators, dictionary views, and \texttt{memoryview}}
+
+Python 3 made \texttt{range}, \texttt{zip}, \texttt{map}, \texttt{filter} \textbf{lazy}, and
+\texttt{dict.keys/values/items} \textbf{live views}.
+
+\begin{lstlisting}[language=Python, caption={range is constant-memory with O(1) indexing and membership.}]
+import sys
+r = range(0, 10_000_000, 3)
+print("getsizeof(range):", sys.getsizeof(r), "| len:", len(r))
+print("9_999_999 in r:", 9_999_999 in r, "| r[1_000_000]:", r[1_000_000])
+print("getsizeof(list(range(1000))):", sys.getsizeof(list(range(1000))))
+\end{lstlisting}
+
+Verified output (CPython 3.13.5):
+
+\begin{lstlisting}[caption={Output}]
+getsizeof(range): 48 | len: 3333334
+9_999_999 in r: True | r[1_000_000]: 3000000
+getsizeof(list(range(1000))): 8056
+\end{lstlisting}
+
+\begin{lstlisting}[language=Python, caption={dict views track the dict; they do not copy.}]
+d = {"a": 1, "b": 2}
+ks = d.keys()
+d["c"] = 3
+print("view reflects the insert:", list(ks))
+\end{lstlisting}
+
+Verified output (CPython 3.13.5):
+
+\begin{lstlisting}[caption={Output}]
+view reflects the insert: ['a', 'b', 'c']
+\end{lstlisting}
+
+\begin{lstlisting}[language=Python, caption={memoryview slices and edits a buffer with zero copy.}]
+data = bytearray(b"system_payload_data")
+view = memoryview(data)
+sub = view[7:14]
+print("slice:", sub.tobytes())
+sub[0] = ord(b"P")
+print("in-place edit visible in original:", bytes(data))
+\end{lstlisting}
+
+Verified output (CPython 3.13.5):
+
+\begin{lstlisting}[caption={Output}]
+slice: b'payload'
+in-place edit visible in original: b'system_Payload_data'
+\end{lstlisting}
+
+A \texttt{range} over ten million values costs 48 bytes; a list of one thousand ints already costs
+8\,KB. The full buffer protocol and \texttt{memoryview} mechanics are in Vol IX.
+
+\section{Performance, anti-patterns, and summary}
+
+\textbf{Anti-patterns.} Omitting \texttt{encoding=} (top source of cross-platform
+\texttt{UnicodeDecodeError}); confusing \texttt{str}/\texttt{bytes} at API boundaries; \texttt{str}
+concatenation in a loop (use \texttt{"".join}); materializing lazy iterators needlessly; assuming
+C division/modulo semantics.
+
+\textbf{Summary.}
+\begin{itemize}
+  \item \texttt{str} is \textbf{code points}, \texttt{bytes}/\texttt{bytearray} are
+    \textbf{octets}; \textbf{no implicit conversion} (PEP 3112)---the Unicode sandwich.
+  \item \textbf{PEP 393} stores each string in the narrowest of three widths, giving correct
+    $O(1)$ indexing \emph{and} compact memory.
+  \item Error handlers (esp. \textbf{\texttt{surrogateescape}}, PEP 383) round-trip arbitrary
+    bytes; always specify the encoding.
+  \item \texttt{print} is a \textbf{function} (PEP 3105); \texttt{/} is \textbf{true division},
+    \texttt{//} \textbf{floors toward $-\infty$} (PEP 238), unlike C/Java truncation.
+  \item \texttt{range}/\texttt{zip}/\texttt{map}/\texttt{filter} are \textbf{lazy}, dict views are
+    \textbf{live}, and \texttt{memoryview} shares buffers \textbf{zero-copy}.
+\end{itemize}
+
+\textbf{Cross-references.} The layered text/binary I/O stack $\rightarrow$ Chapter 6. Stdlib
+consolidation and UTF-8 mode $\rightarrow$ Chapter 8. Iterators and generators $\rightarrow$
+Vol III. The buffer protocol and zero-copy numerics $\rightarrow$ Vol IX. CPython string/container
+internals $\rightarrow$ Vol XII. The complete codecs reference $\rightarrow$ Vol XI.
