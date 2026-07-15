@@ -1,0 +1,171 @@
+\chapter{The Walrus Operator and Positional-Only Parameters (Python 3.8)}
+
+Python 3.8 added two syntax features that look small and are quietly significant. The \textbf{walrus
+operator} \texttt{:=} (PEP 572) broke Python's long-standing wall between statements and
+expressions, letting you bind a name \emph{inside} an expression. \textbf{Positional-only
+parameters} \texttt{/} (PEP 570) gave function authors the same control over the positional/keyword
+boundary that C-implemented builtins always had. Both are about precision: \texttt{:=} removes a
+redundant evaluation or a temporary line, and \texttt{/} lets a library fix its calling contract so
+callers cannot couple to parameter \emph{names}.
+
+\section*{Section Index}
+\begin{itemize}
+  \item \textbf{14.1} The assignment expression \texttt{:=} (PEP 572)
+  \item \textbf{14.2} Positional-only parameters \texttt{/} (PEP 570)
+  \item \textbf{14.3} Performance and anti-patterns
+  \item \textbf{14.4} Summary and cross-references
+\end{itemize}
+
+\section{The assignment expression \texttt{:=} (PEP 572)}
+
+\textbf{Why this exists.} Python separated \emph{statements} (assignment \texttt{x = 1}, no value)
+from \emph{expressions} (which yield a value). That forced two patterns to be clumsy: computing a
+value to \emph{test} then \emph{reuse} required a pre-loop assignment plus \texttt{while
+True}/\texttt{break}, or computing it twice. The walrus operator adds an \textbf{assignment
+expression}---it binds a name \textbf{and} evaluates to the value---without abolishing the
+statement/expression distinction (it is a separate operator, not a redefinition of \texttt{=}).
+
+At the AST level a normal assignment is an \texttt{Assign} statement; \texttt{x := 1} is a
+\texttt{NamedExpr} expression. The bytecode shows the extra step: the value is duplicated so the
+binding consumes one copy and the surrounding expression gets the other.
+
+\begin{lstlisting}[language=Python, caption={:= duplicates the value on the stack (COPY in 3.11+, DUP\_TOP pre-3.11).}]
+import dis
+dis.dis(compile("(x := 1)", "<s>", "exec"))
+\end{lstlisting}
+
+Verified output (CPython 3.13.5):
+
+\begin{lstlisting}[caption={Output}]
+  1   LOAD_CONST    0 (1)
+      COPY          1            # 3.11+ uses COPY; pre-3.11 used DUP_TOP
+      STORE_NAME    0 (x)
+      POP_TOP                    # top-level expr statement discards the residual value
+      RETURN_CONST  1 (None)
+\end{lstlisting}
+
+\begin{lstlisting}[language=Python, caption={The two canonical uses --- loop-until-sentinel, and filter-and-reuse.}]
+import io
+
+# (a) read-until-empty without a while True / break dance
+stream = io.StringIO("aaa\nbbb\nccc\n")
+lines = []
+while (line := stream.readline()):
+    lines.append(line.strip())
+print("walrus while:", lines)
+
+# (b) compute once in a comprehension filter, then reuse in the output
+def parent_func(data):
+    result = [y for x in data if (y := x * 2) > 2]
+    return result, y            # y survives: it binds in the *surrounding* scope
+print("result, y:", parent_func([1, 2, 3]))
+\end{lstlisting}
+
+Verified output (CPython 3.13.5):
+
+\begin{lstlisting}[caption={Output}]
+walrus while: ['aaa', 'bbb', 'ccc']
+result, y: ([4, 6], 6)
+\end{lstlisting}
+
+\textbf{Scoping --- the subtle part.} Inside a comprehension a walrus target \textbf{binds in the
+enclosing scope}, which is why \texttt{y} is still visible (and equals the last value) after the
+comprehension. This hoisting survived \textbf{PEP 709} (3.12) inlining: the comprehension is inlined
+(no nested code object), yet the walrus still targets the surrounding scope.
+
+\begin{lstlisting}[language=Python, caption={PEP 709 --- the comprehension is inlined; the walrus still binds outward.}]
+nested = [c.co_name for c in parent_func.__code__.co_consts if hasattr(c, "co_name")]
+print("nested code objects:", nested, "(empty => inlined)")
+\end{lstlisting}
+
+Verified output (CPython 3.13.5):
+
+\begin{lstlisting}[caption={Output}]
+nested code objects: [] (empty => inlined)
+\end{lstlisting}
+
+\begin{lstlisting}[language=Python, caption={Rebinding the comprehension loop variable is a SyntaxError.}]
+try:
+    compile("[i for i in range(3) if (i := 2)]", "<s>", "eval")
+except SyntaxError as e:
+    print("SyntaxError:", str(e).split(" (")[0])
+\end{lstlisting}
+
+Verified output (CPython 3.13.5):
+
+\begin{lstlisting}[caption={Output}]
+SyntaxError: assignment expression cannot rebind comprehension iteration variable 'i'
+\end{lstlisting}
+
+A walrus is also disallowed bare at statement top level (parenthesize it) and inside a class-body
+comprehension (class namespaces aren't function frames and can't carry the closure cell). \textbf{When
+not to use it:} if \texttt{:=} makes a line harder to scan, use a plain assignment.
+
+\section{Positional-only parameters \texttt{/} (PEP 570)}
+
+\textbf{Why this exists.} Before 3.8, pure-Python functions could not express what every C builtin
+did: ``pass these positionally only.'' That mattered for \textbf{API stability} (a keyword-passable
+parameter's \emph{name} becomes public contract you can never rename) and \textbf{\texttt{**kwargs}
+safety} (a key could collide with a parameter name). The \texttt{/} marker makes every parameter
+before it positional-only.
+
+\begin{lstlisting}[language=Python, caption={Parameters before / are positional-only; after * are keyword-only.}]
+def func(a, b, /, c, d, *, e, f):
+    return (a, b, c, d, e, f)
+
+co = func.__code__
+print("co_posonlyargcount:", co.co_posonlyargcount,
+      "| co_argcount:", co.co_argcount, "| co_kwonlyargcount:", co.co_kwonlyargcount)
+print("positional call:", func(1, 2, 3, 4, e=5, f=6))
+
+try:
+    func(a=1, b=2, c=3, d=4, e=5, f=6)     # a, b are positional-only
+except TypeError as e:
+    print("TypeError:", e)
+\end{lstlisting}
+
+Verified output (CPython 3.13.5):
+
+\begin{lstlisting}[caption={Output}]
+co_posonlyargcount: 2 | co_argcount: 4 | co_kwonlyargcount: 2
+positional call: (1, 2, 3, 4, 5, 6)
+TypeError: func() got some positional-only arguments passed as keyword arguments: 'a, b'
+\end{lstlisting}
+
+The boundaries are encoded in the code object: \texttt{a, b} positional-only
+(\texttt{co\_posonlyargcount == 2}); \texttt{c, d} positional-or-keyword (\texttt{co\_argcount ==
+4} counts all positionals); \texttt{e, f} keyword-only (\texttt{co\_kwonlyargcount == 2}).
+
+\textbf{The performance angle.} Under \textbf{vectorcall} (PEP 590, 3.8), arguments arrive as a flat
+C array; for positional-only parameters the interpreter copies references into the frame's slots
+\emph{by index}, skipping keyword-name hash-matching. For small hot functions this trims call
+overhead---why CPython builtins use positional-only parameters pervasively. (Full vectorcall: Vol
+VIII.)
+
+\section{Performance and anti-patterns}
+
+\begin{itemize}
+  \item \textbf{\texttt{:=} is for de-duplication, not density}---avoid chaining several into one
+    unreadable expression.
+  \item \textbf{Mind the comprehension hoist}---a walrus leaks its target to the enclosing scope.
+  \item \textbf{Positional-only for libraries and hot paths}; for ordinary code keyword arguments
+    are clearer.
+  \item \textbf{\texttt{/} plus \texttt{*} is the full toolkit:}
+    \texttt{def f(pos\_only, /, normal, *, kw\_only)}.
+\end{itemize}
+
+\section{Summary and cross-references}
+
+\begin{itemize}
+  \item The \textbf{walrus operator} \texttt{:=} (PEP 572) is an \textbf{assignment expression}
+    (bytecode duplicates via \texttt{COPY}); in comprehensions it \textbf{binds in the enclosing
+    scope} (hoisting survives PEP 709); rebinding the loop variable is a \texttt{SyntaxError}.
+  \item \textbf{Positional-only parameters} \texttt{/} (PEP 570) make pre-\texttt{/} parameters
+    un-passable by keyword, protecting names from becoming API, avoiding \texttt{**kwargs}
+    collisions, and enabling index-based vectorcall copying.
+\end{itemize}
+
+\textbf{Cross-references.} Comprehension scope and PEP 709 inlining $\rightarrow$ Chapter 3. Closures
+and cells $\rightarrow$ Chapters 1 and 3. The vectorcall calling convention $\rightarrow$ Vol VIII.
+Keyword-only parameters and signature design $\rightarrow$ Vol XV. The PEG parser $\rightarrow$
+Chapter 15.

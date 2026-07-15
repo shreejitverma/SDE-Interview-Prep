@@ -1,0 +1,200 @@
+\chapter{Faster CPython --- the Specializing Adaptive Interpreter (Python 3.11)}
+
+Python 3.11 was the first release of the multi-year ``Faster CPython'' project, making typical
+programs \textbf{10--60\% faster} without changing a line of your code. The engine is \textbf{PEP
+659: the specializing adaptive interpreter}---the interpreter \emph{rewrites its own bytecode at
+runtime}, replacing generic opcodes with type-specialized ones backed by \textbf{inline caches}.
+This is not a JIT (that is PEP 744, Vol VII): no machine code is generated; the interpreter loop
+simply gets smarter about the common case. This chapter explains the mechanism, demonstrates
+specialization \emph{happening} via \texttt{dis(..., adaptive=True)}, and derives the coding
+guidelines that keep hot paths fast.
+
+\section*{Section Index}
+\begin{itemize}
+  \item \textbf{17.1} PEP 659: the specialization lifecycle
+  \item \textbf{17.2} Inline caches and type versioning
+  \item \textbf{17.3} Specialization families and deoptimization
+  \item \textbf{17.4} The rest of the 3.11 leap: zero-cost exceptions, cheaper frames, PEP 657
+  \item \textbf{17.5} Performance and anti-patterns
+  \item \textbf{17.6} Summary and cross-references
+\end{itemize}
+
+\section{PEP 659: the specialization lifecycle}
+
+\textbf{Why this exists.} A generic \texttt{LOAD\_ATTR} must handle \emph{any} object: walk the MRO,
+consult \texttt{\_\_getattribute\_\_}, probe instance and class dicts. But real code is overwhelmingly
+\textbf{monomorphic}---a given \texttt{p.x} almost always sees the same type at that call site, run
+after run. PEP 659 observes what actually flows through each instruction and, once stable,
+\textbf{patches the bytecode in memory} with a specialized opcode that assumes that shape and falls
+back safely if the assumption breaks.
+
+\begin{lstlisting}[caption={The specialization lifecycle}]
+[ generic ]  LOAD_ATTR
+     | first executions: gather type info, decrement a counter
+     v
+[ adaptive / warming ]  (counter counting down)
+     | types stayed consistent -> counter hits 0
+     v
+[ specialized ]  LOAD_ATTR_INSTANCE_VALUE   <- fast path, validated by a cheap guard
+     | guard fails (a different type appears)
+     v
+[ deoptimize ]  -> generic slow path; if it keeps missing, stop specializing
+\end{lstlisting}
+
+A specialized opcode is \textbf{always guarded}: it checks a cheap invariant (a cached type version,
+§17.2); if the guard holds it takes the fast path, else it \textbf{deoptimizes}. Correctness is never
+at risk---only speed.
+
+\section{Inline caches and type versioning}
+
+\textbf{What the interpreter actually does.} The specialized opcode stores what it learned---the
+expected type and the attribute offset---in an \textbf{inline cache}: extra \texttt{\_Py\_CODEUNIT}
+slots placed \emph{directly after the instruction} in the code array, in the same cache line the
+interpreter is already reading.
+
+\begin{lstlisting}[language=C, caption={Illustrative; Include/internal/pycore\_code.h}]
+typedef struct {
+    uint16_t counter;        /* adaptive counter: when it hits 0, try to specialize */
+    uint16_t version[2];     /* the target type's tp_version_tag (cache guard) */
+    uint16_t index;          /* the attribute's offset in the instance values array */
+} _PyAttrCache;
+\end{lstlisting}
+
+The guard is the type's \textbf{\texttt{tp\_version\_tag}}---bumped whenever the class is mutated (a
+method added, an attribute set, the MRO changed). A specialized \texttt{LOAD\_ATTR} checks the live
+object's type version against the cached one; on a match it reads \texttt{obj\_values[index]}
+directly---no dict lookup, no MRO walk. \texttt{LOAD\_GLOBAL} works the same way against the module
+and builtins dictionaries' keys version.
+
+\begin{lstlisting}[language=Python, caption={After warm-up, generic opcodes have been patched to specialized ones.}]
+import dis
+
+class P:
+    def __init__(self, x):
+        self.x = x
+
+def hot(p):
+    return p.x + p.x
+
+for _ in range(1000):       # make the call site hot and monomorphic
+    hot(P(5))
+
+dis.dis(hot, adaptive=True)
+\end{lstlisting}
+
+Verified output (CPython 3.13.5):
+
+\begin{lstlisting}[caption={Output}]
+  9   LOAD_FAST                 0 (p)
+      LOAD_ATTR_INSTANCE_VALUE  0 (x)     # specialized: direct offset read, no dict lookup
+      LOAD_FAST                 0 (p)
+      LOAD_ATTR_INSTANCE_VALUE  0 (x)
+      BINARY_OP_ADD_INT         0 (+)     # specialized: int + int fast path
+      RETURN_VALUE
+\end{lstlisting}
+
+(The function opens with \texttt{RESUME\_CHECK}, the specialized \texttt{RESUME}.) Both the load and
+the add specialized.
+
+\begin{lstlisting}[language=Python, caption={Confirm the binary-op specialization in isolation.}]
+import dis
+def addints(a, b):
+    return a + b
+for _ in range(1000):
+    addints(1, 2)
+print([i.opname for i in dis.get_instructions(addints, adaptive=True)
+       if i.opname.startswith("BINARY_OP")])
+\end{lstlisting}
+
+Verified output (CPython 3.13.5):
+
+\begin{lstlisting}[caption={Output}]
+['BINARY_OP_ADD_INT']
+\end{lstlisting}
+
+\section{Specialization families and deoptimization}
+
+PEP 659 specializes the opcodes that dominate real workloads: \texttt{LOAD\_ATTR}
+($\to$\texttt{\_INSTANCE\_VALUE}/\texttt{\_SLOT}/\texttt{\_METHOD\_*}), \texttt{LOAD\_GLOBAL}
+($\to$\texttt{\_MODULE}/\texttt{\_BUILTIN}), \texttt{BINARY\_OP}
+($\to$\texttt{\_ADD\_INT}/\texttt{\_ADD\_FLOAT}/\texttt{\_ADD\_UNICODE}), \texttt{BINARY\_SUBSCR},
+\texttt{CALL} ($\to$\texttt{\_PY\_EXACT\_ARGS}/\texttt{\_BUILTIN\_*}), \texttt{STORE\_ATTR},
+\texttt{COMPARE\_OP}, \texttt{FOR\_ITER}, \texttt{TO\_BOOL}, \texttt{CONTAINS\_OP}, \texttt{SEND}.
+
+\textbf{Deoptimization and thrashing.} Specialization bets on monomorphism. A \textbf{polymorphic}
+site---\texttt{p.x} seeing a \texttt{Dog} then a \texttt{Cat} with \texttt{.x} at a different offset,
+or \texttt{a + b} seeing ints then strings---keeps failing the guard, deoptimizes, may re-warm,
+re-specialize, miss again, and \textbf{thrash}, paying the combined cost. The worst case is worse
+than the pre-3.11 generic interpreter.
+
+\textbf{Coding for the specializer:} keep hot call sites \textbf{monomorphic}; \textbf{don't mutate
+classes at runtime} in steady state (it bumps \texttt{tp\_version\_tag} and invalidates dependent
+caches); \texttt{\_\_slots\_\_} specializes well (\texttt{LOAD\_ATTR\_SLOT}) and removes the
+per-instance dict. Guidelines for \emph{hot} code only.
+
+\section{The rest of the 3.11 leap: zero-cost exceptions, cheaper frames, PEP 657}
+
+\begin{itemize}
+  \item \textbf{Zero-cost exceptions} (Chapter 6): the runtime block stack became a static exception
+    table, so a non-raising \texttt{try} costs nothing.
+  \item \textbf{Cheaper, lazy frames}: slimmer frames allocated on a per-thread data stack make
+    Python-to-Python calls faster (the basis of \texttt{CALL\_PY\_EXACT\_ARGS}).
+  \item \textbf{Fine-grained error locations (PEP 657)}: tracebacks point a caret at the exact
+    sub-expression.
+\end{itemize}
+
+\begin{lstlisting}[language=Python, caption={PEP 657 --- the traceback marks which sub-expression raised.}]
+import traceback
+def f():
+    a, b, c = 1, 2, 0
+    return a / b / c
+try:
+    f()
+except ZeroDivisionError:
+    for line in traceback.format_exc().splitlines():
+        if "a / b" in line or "~" in line or "^" in line:
+            print(line.strip())
+\end{lstlisting}
+
+Verified output (CPython 3.13.5):
+
+\begin{lstlisting}[caption={Output}]
+return a / b / c
+~~~~~~^~~
+\end{lstlisting}
+
+The carets isolate \texttt{(a / b) / c}'s failing division. This location data lives in the code
+object's line table (disable via \texttt{-X no\_debug\_ranges}).
+
+\section{Performance and anti-patterns}
+
+\begin{itemize}
+  \item \textbf{Warm up before benchmarking}---measure steady state (\texttt{timeit}/\texttt{pyperf},
+    Vol IX), not the cold first call.
+  \item \textbf{Monomorphism is the lever}, not hand-tweaking opcode counts.
+  \item \textbf{Runtime class mutation is a cache killer}---monkeypatching in a hot loop deoptimizes
+    dependent sites globally.
+  \item \textbf{This is interpretation, not compilation}---no vectorization or cross-call inlining;
+    for order-of-magnitude numeric speed use NumPy/Cython/C (Vol IX) or the 3.13+ JIT (Vol VII),
+    which builds on these specialized opcodes.
+\end{itemize}
+
+\section{Summary and cross-references}
+
+\begin{itemize}
+  \item \textbf{PEP 659} makes the interpreter \textbf{specialize its own bytecode at runtime}
+    (generic $\to$ adaptive $\to$ specialized), with a cheap \textbf{guard} and safe
+    \textbf{deoptimization}---not a JIT.
+  \item Specialized opcodes use \textbf{inline caches} guarded by \textbf{\texttt{tp\_version\_tag}};
+    \texttt{dis(..., adaptive=True)} reveals them.
+  \item \textbf{Polymorphic} sites \textbf{deoptimize} and \textbf{thrash}; keep hot paths
+    \textbf{monomorphic}; \texttt{\_\_slots\_\_} specializes well.
+  \item 3.11 also brought \textbf{zero-cost exceptions}, \textbf{cheaper frames}, and \textbf{PEP
+    657} caret-precise tracebacks.
+\end{itemize}
+
+\textbf{Cross-references.} The base interpreter loop and \texttt{RESUME} $\rightarrow$ Chapter 1.
+Zero-cost exceptions $\rightarrow$ Chapter 6. \texttt{\_\_slots\_\_} $\rightarrow$ Chapters 4, 13 and
+Vol VIII. The copy-and-patch JIT (PEP 744) $\rightarrow$ Vol VII. \texttt{ceval.c} and the full
+opcode set $\rightarrow$ Vol VIII. Benchmarking $\rightarrow$ Vol IX. PEP 695 generics and exception
+groups $\rightarrow$ Chapters 18 and 19.
