@@ -14,9 +14,9 @@ Verification interpreter: **CPython 3.13.5** (`/opt/anaconda3/bin/python3`).
 |---|---|---|---|
 | I | Classic Python & the Core Engine | 1.0–2.7, the execution pipeline | **DONE** |
 | II | The Python 3 Schism | 3.0–3.2: unicode/bytes, stdlib consolidation | **DONE** |
-| III | Generators, Iterators & Async Inception | 3.3–3.5 | PLANNED |
-| IV | Expressiveness & Ergonomics | 3.6–3.7 | PLANNED |
-| V | Structural Shifts & Pattern Matching | 3.8–3.10 | PLANNED |
+| III | Generators, Iterators & Async Inception | 3.3–3.5 | **DONE** |
+| IV | Expressiveness & Ergonomics | 3.6–3.7 | **DONE** |
+| V | Structural Shifts & Pattern Matching | 3.8–3.10 | **DONE** |
 | VI | Performance Leap & Runtime Mechanics | 3.11–3.12 | PLANNED |
 | VII | The GIL-less Future & JIT | 3.13–3.14+, free-threading, JIT | PLANNED |
 | VIII | Runtime Internals & C Extensions | allocator/GC, C-API, descriptors/MRO model, ceval | PLANNED |
@@ -54,7 +54,36 @@ Verification interpreter: **CPython 3.13.5** (`/opt/anaconda3/bin/python3`).
 
 **Volume II wrap-up:** 2/2 chapters DONE; 14 examples executed live on 3.13.5, 0 gated; sources archived. Corrections: `TypeError` text is "can't concat str to bytes" (draft reversed); real PEP 393 sizes replace draft guesses; spawn re-import gotcha demonstrated.
 
-*(Volumes III–XVI matrices appended as each volume is executed.)*
+## Volume III — Generators, Iterators & Async Inception
+
+| Ch | Title | Seed source(s) | Mined legacy | Status | Examples (exec/gated) |
+|---|---|---|---|---|---|
+| 9 | Iterators, Generators & `yield from` | `Chapter_09_Python_33…` | `Chapter_09_ITERATORS…` | **DONE** | 6/0 |
+| 10 | Asyncio Inception, Pathlib & Enum (3.4) | `Chapter_10_Python_34…` | — | **DONE** | 5/0 |
+| 11 | Native Async/Await & New Operators (3.5) | `Chapter_11_Python_35…` | `Chapter_11_NATIVE_ASYNCAWAIT…`, `Chapter_10_Python_35…` | **DONE** | 7/0 |
+
+**Volume III wrap-up:** 3/3 DONE; 18 examples executed live on 3.13.5, 0 gated; sources archived. Corrections: PEP 393/buffer-protocol overlap deferred to Ch7/Vol IX (no dup); `@asyncio.coroutine` removed in 3.11 (gated as historical); modern `await` bytecode (`GET_AWAITABLE`/`SEND`/`END_SEND`) and `LIST_EXTEND` unpacking replace 3.5-era listings. Deferred: `Chapter_10_CONCURRENCY_MECHANICS` (GIL) → Vol VII.
+
+## Volume IV — Expressive Modern Python
+
+| Ch | Title | Seed source(s) | Mined legacy | Status | Examples (exec/gated) |
+|---|---|---|---|---|---|
+| 12 | F-Strings, Annotations & the Compact Dict (3.6) | `Chapter_12_Python_36…` | `Chapter_12_SYNTAX_ERGONOMICS…`, `Chapter_11_Python_36…` | **DONE** | 5/0 |
+| 13 | Dataclasses, ContextVars & Dict Ordering (3.7) | `Chapter_13_Python_37…` | `Chapter_13_DATACLASSES…`, `Chapter_12_Python_37…` | **DONE** | 5/0 |
+
+**Volume IV wrap-up:** 2/2 DONE; 10 examples executed live on 3.13.5, 0 gated; sources archived. Corrections: real 3.13 f-string bytecode (`CONVERT_VALUE`/`FORMAT_SIMPLE`/`FORMAT_WITH_SPEC`) + PEP 701 features replace `FORMAT_VALUE` flags; descriptor/`__slots__` overlap deferred to Ch4/Vol VIII (taught as applications, not re-derived).
+
+## Volume V — Structural Shifts & Pattern Matching
+
+| Ch | Title | Seed source(s) | Mined legacy | Status | Examples (exec/gated) |
+|---|---|---|---|---|---|
+| 14 | Walrus & Positional-Only Parameters (3.8) | `Chapter_14_Python_38…` | `Chapter_14_WALRUS…`, `Chapter_13_Python_38…` | **DONE** | 5/0 |
+| 15 | PEG Parser, Dict Union & Pattern Matching (3.9–3.10) | `Chapter_15_Python_39_to_310…` | `Chapter_15_STRUCTURAL…`, `Chapter_14_Python_39_to_310…` | **DONE** | 6/0 |
+| 16 | Typing Protocols & Structural Subtyping (3.8–3.10) | `Chapter_16_Python_38_to_310…` | `Chapter_16_STATIC_TYPING…`, `Chapter_15_Python_38_to_310…` | **DONE** | 6/0 |
+
+**Volume V wrap-up:** 3/3 DONE; 17 examples executed live on 3.13.5, 0 gated; sources archived. Corrections: `:=` `COPY` bytecode + PEP 709 walrus-comprehension inlining; real `match` decision-tree bytecode; capture-vs-value gotcha + 3.13 unreachable-capture `SyntaxError`; PEG (Ch1) and full type-system (Vol XV) overlaps cross-referenced, not duplicated. Builtin generics (PEP 585) / `X|Y` (PEP 604) taught in Ch16.
+
+*(Volumes VI–XVI matrices appended as each volume is executed.)*
 
 ---
 
