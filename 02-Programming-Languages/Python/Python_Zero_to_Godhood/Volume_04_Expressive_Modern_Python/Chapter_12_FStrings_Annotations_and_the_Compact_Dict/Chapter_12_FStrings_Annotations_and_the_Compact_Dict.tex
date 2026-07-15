@@ -1,0 +1,199 @@
+\chapter{F-Strings, Variable Annotations, and the Compact Dict (Python 3.6)}
+
+Python 3.6 is the release that made modern Python \emph{feel} modern. Three changes did it:
+\textbf{f-strings} (PEP 498) replaced \texttt{\%} and \texttt{.format()} with compile-time
+interpolation; \textbf{variable annotations} (PEP 526) extended type hints from function signatures
+to any binding; and the \textbf{compact dict} turned the core mapping type ordered and 30--40\%
+smaller---an ``implementation detail'' in 3.6 that became a language guarantee in 3.7. We teach each
+with \emph{current} mechanics, including the \textbf{PEP 701} f-string overhaul (3.12) that the
+original 3.6 descriptions predate.
+
+\section*{Section Index}
+\begin{itemize}
+  \item \textbf{12.1} Formatted string literals (PEP 498) and the PEP 701 overhaul
+  \item \textbf{12.2} Variable annotations (PEP 526)
+  \item \textbf{12.3} The compact, ordered dictionary
+  \item \textbf{12.4} Performance and anti-patterns
+  \item \textbf{12.5} Summary and cross-references
+\end{itemize}
+
+\section{Formatted string literals (PEP 498) and the PEP 701 overhaul}
+
+\textbf{Why this exists.} The pre-3.6 options pay runtime cost: \texttt{\%}-formatting uses rigid C
+printf routines and a temporary tuple; \texttt{"...".format(x)} does an attribute lookup, a
+function call, \emph{and} re-parses the format string every call. \textbf{f-strings} move
+interpolation to \textbf{compile time}: the parser splits the literal into constant chunks and
+embedded expression AST sub-trees, and the compiler emits inline opcodes.
+
+\begin{lstlisting}[language=Python, caption={An f-string compiles to inline formatting opcodes --- no .format() call.}]
+import dis
+def fstring_format(name, age):
+    return f"Name: {name!r:>10}, Age: {age}"
+dis.dis(fstring_format)
+\end{lstlisting}
+
+Verified output (CPython 3.13.5):
+
+\begin{lstlisting}[caption={Output}]
+  6   LOAD_CONST        1 ('Name: ')
+      LOAD_FAST         0 (name)
+      CONVERT_VALUE     2 (repr)        # the !r conversion
+      LOAD_CONST        2 ('>10')
+      FORMAT_WITH_SPEC                  # apply the :>10 format spec
+      LOAD_CONST        3 (', Age: ')
+      LOAD_FAST         1 (age)
+      FORMAT_SIMPLE                     # no conversion, no spec
+      BUILD_STRING      4               # C-level concat of the 4 pieces
+      RETURN_VALUE
+\end{lstlisting}
+
+\textbf{This is modern (3.13) bytecode and differs from every pre-3.12 text.} The original 3.6
+implementation used a single \texttt{FORMAT\_VALUE} opcode with packed flag bits. \textbf{PEP 701
+(Python 3.12)} reimplemented f-strings in the PEG grammar and split formatting into
+\texttt{CONVERT\_VALUE}, \texttt{FORMAT\_SIMPLE}, and \texttt{FORMAT\_WITH\_SPEC}, finished by
+\texttt{BUILD\_STRING}. If you see \texttt{FORMAT\_VALUE}, you are reading pre-3.12 output.
+
+\begin{lstlisting}[language=Python, caption={Format specs, conversions, the = debug form, and PEP 701 relaxations.}]
+x = 3.14159
+print("spec:", f"{x:.2f}")
+print("conv:", f"{'hi'!r}")
+print("debug:", f"{x=}")
+val = {"k": "v"}
+print("nested same-quotes (PEP 701, 3.12+):", f"{val["k"]}")
+print("multiline expression (PEP 701):", f"{
+    1 + 2
+}")
+\end{lstlisting}
+
+Verified output (CPython 3.13.5):
+
+\begin{lstlisting}[caption={Output}]
+spec: 3.14
+conv: 'hi'
+debug: x=3.14159
+nested same-quotes (PEP 701, 3.12+): v
+multiline expression (PEP 701): 3
+\end{lstlisting}
+
+\textbf{PEP 701 lifted the old restrictions}: reusing the f-string's own quote character,
+backslashes, multiline expressions, and comments inside the braces all now work. The trade-off
+remains: f-strings format \emph{eagerly} (§12.4).
+
+\section{Variable annotations (PEP 526)}
+
+\textbf{Why this exists.} PEP 3107 allowed annotations on function parameters/returns; \textbf{PEP
+526} extended the syntax to any binding---module, class, and local variables---giving static
+checkers a place to read types and the typing ecosystem its foundation.
+
+\textbf{The static boundary---annotations are metadata, not checks.} The interpreter never
+type-checks an annotation. At module/class level the compiler emits \texttt{SETUP\_ANNOTATIONS} and
+records each in \texttt{\_\_annotations\_\_}; at function-local level annotations are
+\textbf{discarded entirely}---zero runtime cost.
+
+\begin{lstlisting}[language=Python, caption={Class annotations are stored; function-local annotations are stripped.}]
+import dis
+
+class Profile:
+    name: str = "Anon"
+    age: int                      # annotation only, no value
+
+print("Profile.__annotations__:", Profile.__annotations__)
+
+def process():
+    y: int = 42                   # the ': int' is discarded by the compiler
+    return y
+dis.dis(process)
+\end{lstlisting}
+
+Verified output (CPython 3.13.5):
+
+\begin{lstlisting}[caption={Output}]
+Profile.__annotations__: {'name': <class 'str'>, 'age': <class 'int'>}
+ 26   LOAD_CONST  1 (42)
+      STORE_FAST  0 (y)
+ 27   LOAD_FAST   0 (y)
+      RETURN_VALUE
+\end{lstlisting}
+
+\begin{lstlisting}[language=Python, caption={An unresolved forward reference raises at class-definition time; quote it to defer.}]
+try:
+    class Node:
+        parent: Node              # Node is not bound yet during its own body
+except NameError as e:
+    print("NameError:", e)
+
+class NodeOK:
+    parent: "NodeOK"              # string forward reference -- stored unevaluated
+print("string forward ref:", NodeOK.__annotations__)
+\end{lstlisting}
+
+Verified output (CPython 3.13.5):
+
+\begin{lstlisting}[caption={Output}]
+NameError: name 'Node' is not defined
+string forward ref: {'parent': 'NodeOK'}
+\end{lstlisting}
+
+Frameworks resolve string annotations with \texttt{typing.get\_type\_hints()}. \textbf{PEP 563}
+(\texttt{from \_\_future\_\_ import annotations}) and \textbf{PEP 649} (lazy evaluation, default in
+3.14) are covered in Vol V; the type \emph{system} is Vol XV.
+
+\section{The compact, ordered dictionary}
+
+\textbf{Why this exists.} \texttt{dict} backs every namespace, object \texttt{\_\_dict\_\_}, and
+kwargs bundle, so its layout matters. Before 3.6 a dict was \emph{one} sparse table of 24-byte
+slots kept $\le 2/3$ full---many empty 24-byte slots wasting memory and scattering cache lines.
+
+\textbf{The compact design (Raymond Hettinger).} 3.6 split the table: \textbf{\texttt{dk\_indices}}
+(a small sparse array of integer indices, 1/2/4/8 bytes each) and \textbf{\texttt{dk\_entries}}
+(a dense contiguous array of \texttt{(hash, key, value)} appended in insertion order). A lookup
+hashes into \texttt{dk\_indices}, reads the small integer, and indexes \texttt{dk\_entries}. Empty
+slots cost 1--8 bytes, cutting dict memory \textbf{$\sim$30--40\%}, and iteration order = insertion
+order, for free.
+
+\begin{lstlisting}[language=Python, caption={The compact dict preserves insertion order (impl detail in 3.6, guaranteed since 3.7).}]
+d = {}
+for k in ["z", "a", "m", "b"]:
+    d[k] = 1
+print("insertion order:", list(d))
+\end{lstlisting}
+
+Verified output (CPython 3.13.5):
+
+\begin{lstlisting}[caption={Output}]
+insertion order: ['z', 'a', 'm', 'b']
+\end{lstlisting}
+
+Order was an implementation detail in 3.6 and a \textbf{language guarantee in 3.7}. The
+senior-engineer contrast: Java provides this only via a separate \texttt{LinkedHashMap}; in Python
+the default \texttt{dict} is ordered, at no extra cost, because it falls out of the compact layout.
+
+\section{Performance and anti-patterns}
+
+\begin{itemize}
+  \item \textbf{f-strings are fastest but format eagerly}---in logging use
+    \texttt{logging.info("x=\%s", x)} (formatted only if enabled), not \texttt{logging.info(f"x=\{x\}")}.
+  \item \textbf{Never f-string untrusted data into SQL/HTML/shell}---interpolation is not escaping.
+  \item \textbf{Annotations are not runtime validation}---\texttt{x: int = "nope"} runs; use
+    pydantic/validators (Vol XV).
+  \item \textbf{Function-local annotations cost nothing; class/module ones cost a little}
+    (\texttt{SETUP\_ANNOTATIONS} at import).
+  \item \textbf{Relying on dict order is safe (3.7+)}---but sets are unordered.
+\end{itemize}
+
+\section{Summary and cross-references}
+
+\begin{itemize}
+  \item \textbf{f-strings} (PEP 498) interpolate at compile time (3.13:
+    \texttt{CONVERT\_VALUE}/\texttt{FORMAT\_SIMPLE}/\texttt{FORMAT\_WITH\_SPEC}/\texttt{BUILD\_STRING});
+    \textbf{PEP 701} removed nesting/multiline/backslash restrictions. Eager---avoid in logging.
+  \item \textbf{Variable annotations} (PEP 526) are metadata, not checks: stored at module/class
+    scope, stripped at function scope; forward references need quoting.
+  \item The \textbf{compact dict} (3.6) cuts memory $\sim$30--40\% and makes \textbf{insertion
+    order} intrinsic---a guarantee since 3.7.
+\end{itemize}
+
+\textbf{Cross-references.} \texttt{\%}/\texttt{.format} and the \texttt{string} module $\rightarrow$
+Vol XI. Deferred annotations (PEP 563/649) $\rightarrow$ Vol V. The type system $\rightarrow$
+Vol XV. Dataclasses $\rightarrow$ Chapter 13. CPython dict internals $\rightarrow$ Vol XII. f-string
+codegen and the PEG grammar $\rightarrow$ Vol X.

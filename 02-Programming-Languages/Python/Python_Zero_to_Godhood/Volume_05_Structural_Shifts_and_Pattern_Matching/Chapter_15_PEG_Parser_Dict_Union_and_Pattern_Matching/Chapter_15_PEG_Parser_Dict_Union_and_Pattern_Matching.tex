@@ -1,0 +1,247 @@
+\chapter{The PEG Parser, Dict Union, and Pattern Matching (Python 3.9--3.10)}
+
+The 3.9--3.10 cycle delivered the most visible syntax addition since Python 3.0: \textbf{structural
+pattern matching} (\texttt{match}/\texttt{case}, PEP 634). It became possible only because 3.9
+replaced the 30-year-old LL(1) parser with a \textbf{PEG parser} (PEP 617). The same window added
+the daily-useful \textbf{dict union operators} \texttt{|} and \texttt{|=} (PEP 584). This chapter
+treats pattern matching as the deep topic---it is \emph{destructuring plus matching}, not a C
+\texttt{switch}---and is precise about the one feature that bites everyone: a bare name in a pattern
+\textbf{captures}, it does not compare.
+
+\section*{Section Index}
+\begin{itemize}
+  \item \textbf{15.1} The PEG parser and the syntax it unlocked (PEP 617)
+  \item \textbf{15.2} Dictionary union operators \texttt{|} and \texttt{|=} (PEP 584)
+  \item \textbf{15.3} Structural pattern matching (PEP 634)
+  \item \textbf{15.4} The capture-vs-value gotcha, performance, and anti-patterns
+  \item \textbf{15.5} Summary and cross-references
+\end{itemize}
+
+\section{The PEG parser and the syntax it unlocked (PEP 617)}
+
+Chapter 1 covered the LL(1)$\to$PEG transition in depth; here is what it \emph{bought}. The
+\textbf{PEG} parser (PEP 617, 3.9) brings \textbf{ordered choice} (first match wins) and
+\textbf{unlimited lookahead} with \textbf{packrat memoization} (linear-time). Freed from one-token
+lookahead, the grammar could express constructs the old parser could not---most visibly the
+\textbf{parenthesized context managers} of 3.10:
+
+\begin{lstlisting}[language=Python, caption={Parenthesized, multi-line context managers --- only parseable with PEG lookahead.}]
+with (
+    open("a.txt") as a,
+    open("b.txt") as b,
+):
+    ...
+\end{lstlisting}
+
+The PEG rewrite also improved error messages and made the \texttt{match} grammar feasible. Parser
+internals and the formal grammar are Vol X.
+
+\section{Dictionary union operators \texttt{|} and \texttt{|=} (PEP 584)}
+
+\textbf{Why this exists.} Merging dicts meant either \texttt{\{**d1, **d2\}} (cryptic) or
+\texttt{m = d1.copy(); m.update(d2)} (two statements). \textbf{PEP 584} gave \texttt{dict} the binary
+\texttt{|} (merge into a new dict) and \texttt{|=} (in-place update), via the
+\texttt{nb\_or}/\texttt{nb\_inplace\_or} slots. Right-hand keys win.
+
+\begin{lstlisting}[language=Python, caption={| merges (right wins), |= updates in place; non-mappings raise.}]
+d1, d2 = {"a": 1, "b": 2}, {"b": 99, "c": 3}
+print("d1 | d2 (right wins):", d1 | d2)
+
+merged = d1.copy()
+merged |= d2
+print("|= update:", merged)
+
+try:
+    d1 | [1, 2]                  # right operand isn't a mapping
+except TypeError as e:
+    print("non-mapping:", str(e).split(":")[0])
+\end{lstlisting}
+
+Verified output (CPython 3.13.5):
+
+\begin{lstlisting}[caption={Output}]
+d1 | d2 (right wins): {'a': 1, 'b': 99, 'c': 3}
+|= update: {'a': 1, 'b': 99, 'c': 3}
+non-mapping: unsupported operand type(s) for |
+\end{lstlisting}
+
+\texttt{|} always returns a plain \texttt{dict} (even from subclasses); \texttt{|=} accepts any
+mapping or key/value iterable on the right, while \texttt{|} requires a mapping.
+
+\section{Structural pattern matching (PEP 634)}
+
+\textbf{Why this exists --- and what it is not.} \texttt{match}/\texttt{case} is \textbf{not} a C
+\texttt{switch}. It is \textbf{structural matching}: each \texttt{case} is a \emph{pattern} that
+tests the \emph{shape} of the subject and \emph{binds} names from its components---closer to Rust's
+\texttt{match}. It shines branching on the \emph{structure} of data (ASTs, JSON-ish messages,
+command tokens).
+
+\begin{lstlisting}[language=Python, caption={The pattern taxonomy --- literal, sequence, mapping, class, OR, guard, capture, wildcard.}]
+def classify(x):
+    match x:
+        case 0:                              # literal (value) pattern
+            return "zero"
+        case [a]:                            # sequence pattern, length 1
+            return f"one-list:{a}"
+        case [a, b, *rest]:                  # sequence with star-capture
+            return f"seq:{a},{b},rest={rest}"
+        case {"type": t, "value": v}:        # mapping pattern (subset of keys)
+            return f"map:{t}={v}"
+        case str() as s if len(s) > 3:       # class pattern + 'as' binding + guard
+            return f"long-str:{s}"
+        case int() | float():                # OR pattern of class patterns
+            return f"number:{x}"
+        case _:                              # wildcard
+            return "unknown"
+
+for v in [0, [7], [1, 2, 3, 4], {"type": "pt", "value": 9}, "hello", 3.5, (1, 2)]:
+    print(f"  {v!r:>22} -> {classify(v)}")
+\end{lstlisting}
+
+Verified output (CPython 3.13.5):
+
+\begin{lstlisting}[caption={Output}]
+                       0 -> zero
+                     [7] -> one-list:7
+            [1, 2, 3, 4] -> seq:1,2,rest=[3, 4]
+  {'type': 'pt', 'value': 9} -> map:pt=9
+                 'hello' -> long-str:hello
+                     3.5 -> number:3.5
+                  (1, 2) -> seq:1,2,rest=[]
+\end{lstlisting}
+
+\texttt{(1, 2)} matched the \textbf{sequence} pattern: sequence patterns match any
+\texttt{collections.abc.Sequence} \emph{except} \texttt{str}/\texttt{bytes}/\texttt{bytearray}.
+Mapping patterns match a \emph{subset} of keys.
+
+\begin{lstlisting}[language=Python, caption={Class patterns destructure by \_\_match\_args\_\_ (positional) or by keyword.}]
+class Point:
+    __match_args__ = ("x", "y")
+    def __init__(self, x, y):
+        self.x, self.y = x, y
+
+def locate(p):
+    match p:
+        case Point(0, 0):  return "origin"
+        case Point(x, 0):  return f"x-axis@{x}"
+        case Point(0, y):  return f"y-axis@{y}"
+        case Point(x, y):  return f"point@{x},{y}"
+
+print("  Point(0,0):", locate(Point(0, 0)))
+print("  Point(5,0):", locate(Point(5, 0)))
+print("  Point(2,3):", locate(Point(2, 3)))
+\end{lstlisting}
+
+Verified output (CPython 3.13.5):
+
+\begin{lstlisting}[caption={Output}]
+  Point(0,0): origin
+  Point(5,0): x-axis@5
+  Point(2,3): point@2,3
+\end{lstlisting}
+
+\textbf{What the compiler does.} A \texttt{match} compiles to a decision tree with dedicated opcodes
+---\texttt{MATCH\_SEQUENCE}, \texttt{MATCH\_MAPPING}, \texttt{MATCH\_KEYS}, \texttt{MATCH\_CLASS},
+plus \texttt{GET\_LEN}/\texttt{UNPACK\_SEQUENCE}---testing shape once and failing fast before binding.
+
+\begin{lstlisting}[language=Python, caption={Real 3.13 bytecode for a sequence pattern.}]
+import dis
+def seqmatch(data):
+    match data:
+        case [1, y]:
+            return y
+        case _:
+            return None
+dis.dis(seqmatch)
+\end{lstlisting}
+
+Verified output (CPython 3.13.5, excerpt):
+
+\begin{lstlisting}[caption={Output}]
+ 56   LOAD_FAST         0 (data)
+      MATCH_SEQUENCE
+      POP_JUMP_IF_FALSE  ... (to L1)
+      GET_LEN
+      LOAD_CONST        1 (2)
+      COMPARE_OP        72 (==)        # length must be 2
+      POP_JUMP_IF_FALSE  ... (to L1)
+      UNPACK_SEQUENCE   2
+      LOAD_CONST        2 (1)
+      COMPARE_OP        88 (bool(==))  # first element must equal 1
+      POP_JUMP_IF_FALSE  ... (to L1)
+      STORE_FAST        1 (y)          # only now bind y
+\end{lstlisting}
+
+Bindings happen only on the success path---a failed sub-pattern cleans the stack, so a half-matched
+pattern never leaks a partial binding.
+
+\section{The capture-vs-value gotcha, performance, and anti-patterns}
+
+\textbf{The one gotcha that bites everyone: a bare name captures.} An unqualified name is a
+\textbf{capture pattern}---it matches \emph{anything} and binds the name; it is \textbf{not} a
+comparison. To compare against a named constant, use a \textbf{dotted (value) pattern}.
+
+\begin{lstlisting}[language=Python, caption={Bare name = capture (always matches); dotted name = value (compares).}]
+import http
+
+def capture(code):
+    match code:
+        case x:                       # bare name: captures, always matches
+            return f"captured x={x}"
+print("bare-name captures:", capture(404))
+
+def check(code):
+    match code:
+        case http.HTTPStatus.OK:      # dotted: VALUE pattern, compares equality
+            return "ok"
+        case _:
+            return "other"
+print("dotted value 200:", check(200))
+print("dotted value 404:", check(404))
+\end{lstlisting}
+
+Verified output (CPython 3.13.5):
+
+\begin{lstlisting}[caption={Output}]
+bare-name captures: captured x=404
+dotted value 200: ok
+dotted value 404: other
+\end{lstlisting}
+
+\begin{lstlisting}[language=Python, caption={3.13 rejects a capture that shadows later cases.}]
+try:
+    compile("match c:\n case NAME:\n  pass\n case 1:\n  pass\n", "<s>", "exec")
+except SyntaxError as e:
+    print("SyntaxError:", str(e).split(" (")[0])
+\end{lstlisting}
+
+Verified output (CPython 3.13.5):
+
+\begin{lstlisting}[caption={Output}]
+SyntaxError: name capture 'NAME' makes remaining patterns unreachable
+\end{lstlisting}
+
+\textbf{Other notes.} Don't use \texttt{match} for plain scalar equality (an \texttt{if/elif} or dict
+dispatch is clearer); remember the str/bytes exclusion in sequence patterns; mapping patterns are
+subset matches (use \texttt{**rest} or guards for exactness); \texttt{\_\_match\_args\_\_} is your
+class's public destructuring contract (dataclasses set it automatically).
+
+\section{Summary and cross-references}
+
+\begin{itemize}
+  \item The \textbf{PEG parser} (PEP 617, 3.9) replaced LL(1) and unlocked richer syntax.
+  \item \textbf{\texttt{|}/\texttt{|=}} (PEP 584) merge/update dicts; \texttt{|} returns a plain
+    \texttt{dict}, right keys win.
+  \item \textbf{Structural pattern matching} (PEP 634) is \textbf{destructuring + matching},
+    compiled to a decision tree; patterns include literal, capture, wildcard, sequence (excludes
+    str/bytes), mapping (subset), class (\texttt{\_\_match\_args\_\_}), \texttt{|}, \texttt{as}, and
+    guards.
+  \item \textbf{A bare name captures, not compares}---use a dotted value pattern for constants; 3.13
+    errors on captures that make later cases unreachable.
+\end{itemize}
+
+\textbf{Cross-references.} LL(1)$\to$PEG in depth $\rightarrow$ Chapter 1. \texttt{\{**a, **b\}}
+$\rightarrow$ Chapter 11. dict internals $\rightarrow$ Vol XII. \texttt{\_\_match\_args\_\_} on
+dataclasses $\rightarrow$ Chapter 13. Enums in \texttt{match} $\rightarrow$ Chapter 10. The formal
+grammar $\rightarrow$ Vol X. Builtin generics (PEP 585) and \texttt{X | Y} unions (PEP 604)
+$\rightarrow$ Chapter 16.

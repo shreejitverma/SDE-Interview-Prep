@@ -1,0 +1,242 @@
+\chapter{Dataclasses, Context Variables, and Dict Ordering (Python 3.7)}
+
+Python 3.7 turned the 3.6 groundwork into tools you reach for daily. \textbf{Dataclasses} (PEP 557)
+generate the \texttt{\_\_init\_\_}/\texttt{\_\_repr\_\_}/\texttt{\_\_eq\_\_} boilerplate from the
+annotations of Chapter 12. \textbf{Context variables} (PEP 567) fix a problem thread-local storage
+cannot: per-\emph{task} state in a single-threaded async runtime. And the \textbf{dict
+insertion-order} behavior of 3.6 became a \textbf{language guarantee}. We give dataclasses and
+contextvars the deep treatment, and revisit \texttt{cached\_property} and \texttt{\_\_slots\_\_} as
+applications of the descriptor precedence from Chapter 4.
+
+\section*{Section Index}
+\begin{itemize}
+  \item \textbf{13.1} Dataclasses (PEP 557): code generation from annotations
+  \item \textbf{13.2} Context variables (PEP 567)
+  \item \textbf{13.3} The dict insertion-order guarantee
+  \item \textbf{13.4} \texttt{cached\_property} and \texttt{\_\_slots\_\_} as descriptor applications
+  \item \textbf{13.5} Performance and anti-patterns
+  \item \textbf{13.6} Summary and cross-references
+\end{itemize}
+
+\section{Dataclasses (PEP 557): code generation from annotations}
+
+\textbf{Why this exists.} A ``plain data'' class needs \texttt{\_\_init\_\_},
+\texttt{\_\_repr\_\_}, \texttt{\_\_eq\_\_}, often ordering and hashing---boilerplate that is easy to
+get subtly wrong. \texttt{@dataclass} reads the class's \texttt{\_\_annotations\_\_} and
+\textbf{generates} those methods.
+
+\textbf{What the decorator actually does.} \texttt{@dataclass} is not a runtime wrapper: at
+class-definition time it (1) reads \texttt{\_\_annotations\_\_} for the fields and order,
+(2) assembles the \textbf{source text} of each method, (3) \texttt{compile()}s and \texttt{exec()}s
+it in the class namespace, and (4) attaches the real functions to the class \texttt{\_\_dict\_\_}.
+The generated \texttt{\_\_init\_\_} is ordinary bytecode---hand-written speed, no per-call overhead.
+
+\begin{lstlisting}[language=Python, caption={@dataclass generates methods; field() handles mutable defaults.}]
+from dataclasses import dataclass, field, FrozenInstanceError, asdict
+
+@dataclass(order=True)
+class Point:
+    x: int
+    y: int = 0
+    tags: list = field(default_factory=list)   # per-instance mutable default (see 13.5)
+    def __post_init__(self):
+        self.dist = (self.x ** 2 + self.y ** 2) ** 0.5
+
+p = Point(3, 4)
+print("repr:", repr(p))
+print("eq:", Point(3, 4, []) == Point(3, 4, []))
+print("order:", Point(1, 0) < Point(2, 0))
+print("post_init dist:", p.dist)
+print("asdict:", asdict(Point(1, 2)))
+
+@dataclass(frozen=True)
+class Config:
+    name: str
+
+c = Config("prod")
+try:
+    c.name = "dev"
+except FrozenInstanceError as e:
+    print("frozen blocks mutation:", type(e).__name__)
+\end{lstlisting}
+
+Verified output (CPython 3.13.5):
+
+\begin{lstlisting}[caption={Output}]
+repr: Point(x=3, y=4, tags=[])
+eq: True
+order: True
+post_init dist: 5.0
+asdict: {'x': 1, 'y': 2, 'tags': []}
+frozen blocks mutation: FrozenInstanceError
+\end{lstlisting}
+
+Key knobs: \textbf{\texttt{field(default\_factory=list)}} fixes the mutable-default trap (each
+instance gets a fresh list; a bare \texttt{tags: list = []} is rejected); \textbf{\texttt{frozen=True}}
+generates raising \texttt{\_\_setattr\_\_}/\texttt{\_\_delattr\_\_} (and makes the instance hashable;
+\texttt{object.\_\_setattr\_\_} still bypasses, as \texttt{\_\_post\_init\_\_} relies on);
+\textbf{\texttt{order=True}} generates tuple comparisons; \textbf{\texttt{\_\_post\_init\_\_}} runs
+after \texttt{\_\_init\_\_}; \textbf{\texttt{asdict}/\texttt{astuple}} convert recursively. Later
+releases add \textbf{\texttt{slots=True}} (3.10, §13.4) and \textbf{\texttt{kw\_only=True}} (3.10).
+
+\textbf{The senior-engineer contrast.} This is Python's analogue to a Java \texttt{record} or Kotlin
+\texttt{data class}---but decorator-generated, fully introspectable
+(\texttt{dataclasses.fields()}), and composable with the data model.
+
+\section{Context variables (PEP 567)}
+
+\textbf{Why this exists.} \texttt{threading.local} isolates per \emph{OS thread}---wrong for
+\texttt{asyncio}, where many tasks share one thread: task A sets a thread-local, \texttt{await}s,
+task B runs on the same thread and clobbers it. \textbf{Context variables} isolate per logical
+context (per task), surviving \texttt{await}.
+
+\begin{lstlisting}[language=Python, caption={Each async task sees its own contextvar value, despite sharing one thread.}]
+import asyncio, contextvars
+
+request_id = contextvars.ContextVar("request_id", default="none")
+
+async def handler(rid):
+    request_id.set(rid)
+    await asyncio.sleep(0.01)        # yield to other tasks on the same thread
+    return request_id.get()          # still this task's own value
+
+async def main():
+    return await asyncio.gather(handler("req-A"), handler("req-B"), handler("req-C"))
+
+print("per-task values:", asyncio.run(main()))
+\end{lstlisting}
+
+Verified output (CPython 3.13.5):
+
+\begin{lstlisting}[caption={Output}]
+per-task values: ['req-A', 'req-B', 'req-C']
+\end{lstlisting}
+
+\textbf{What the interpreter actually does.} A \texttt{Context} holds variables in a C-level
+\textbf{Hash Array Mapped Trie (HAMT)}---immutable and persistent. \texttt{var.set(value)} produces
+a new trie root \textbf{sharing unchanged branches} with the old (structural sharing), so a write
+allocates only the changed path ($O(\log_{32} N) \approx O(1)$). Saving/restoring a task's whole
+context at \texttt{await} is just swapping the root pointer---$O(1)$. \texttt{asyncio} gives each
+\texttt{Task} its own \texttt{Context}; \texttt{copy\_context()} and \texttt{Context.run()} run a
+callable under a snapshot. The full async-state treatment is Vol IX.
+
+\section{The dict insertion-order guarantee}
+
+The compact dict of Chapter 12 made order an implementation detail in 3.6; \textbf{Python 3.7
+codified it as a language guarantee} for iteration, \texttt{.keys()}/\texttt{.values()}/\texttt{.items()}
+views, \texttt{**kwargs}, and class namespaces.
+
+\begin{lstlisting}[language=Python, caption={**kwargs preserves call-site order --- guaranteed since 3.7.}]
+def show(**kwargs):
+    return list(kwargs)
+print("kwargs order:", show(z=1, a=2, m=3))
+\end{lstlisting}
+
+Verified output (CPython 3.13.5):
+
+\begin{lstlisting}[caption={Output}]
+kwargs order: ['z', 'a', 'm']
+\end{lstlisting}
+
+Consequence: \texttt{json.dumps} is deterministic; \texttt{OrderedDict} is reserved for its
+order-sensitive \texttt{==}/\texttt{move\_to\_end} (Chapter 8). Internals: Chapter 12 / Vol XII.
+
+\section{\texttt{cached\_property} and \texttt{\_\_slots\_\_} as descriptor applications}
+
+\textbf{\texttt{functools.cached\_property}} (3.8) is a \textbf{non-data descriptor} (only
+\texttt{\_\_get\_\_}). By Chapter 4's rules an instance-dict entry outranks a non-data descriptor,
+so first access computes the value and \textbf{writes it into \texttt{instance.\_\_dict\_\_}}; later
+accesses find it there and never call \texttt{\_\_get\_\_}.
+
+\begin{lstlisting}[language=Python, caption={cached\_property computes once, then is shadowed by the instance-dict value it wrote.}]
+from functools import cached_property
+
+calls = []
+class Data:
+    @cached_property
+    def heavy(self):
+        calls.append(1)
+        return sum(range(1000))
+
+d = Data()
+print("first:", d.heavy, "| second:", d.heavy, "| computed times:", len(calls))
+print("cached in __dict__:", "heavy" in d.__dict__)
+\end{lstlisting}
+
+Verified output (CPython 3.13.5):
+
+\begin{lstlisting}[caption={Output}]
+first: 499500 | second: 499500 | computed times: 1
+cached in __dict__: True
+\end{lstlisting}
+
+This is why \texttt{@property} (a \emph{data} descriptor) is not cacheable this way---it outranks the
+instance dict and intercepts every access.
+
+\textbf{\texttt{\_\_slots\_\_}} removes the per-instance \texttt{\_\_dict\_\_}, storing attributes in
+fixed offsets reached by \textbf{member descriptors} (data descriptors with a hard-coded offset).
+
+\begin{lstlisting}[language=Python, caption={\_\_slots\_\_ trades dynamic attributes for a large memory saving.}]
+import sys
+class DictClass:
+    def __init__(self): self.x = 1; self.y = 2
+class SlotsClass:
+    __slots__ = ("x", "y")
+    def __init__(self): self.x = 1; self.y = 2
+
+dd, ss = DictClass(), SlotsClass()
+print("dict-based total:", sys.getsizeof(dd) + sys.getsizeof(dd.__dict__))
+print("slots-based:", sys.getsizeof(ss))
+try:
+    ss.z = 3
+except AttributeError as e:
+    print("slots block new attr:", type(e).__name__)
+\end{lstlisting}
+
+Verified output (CPython 3.13.5):
+
+\begin{lstlisting}[caption={Output}]
+dict-based total: 344
+slots-based: 48
+slots block new attr: AttributeError
+\end{lstlisting}
+
+A $\sim$7$\times$ reduction (344 $\to$ 48 bytes), compounding to gigabytes across millions of
+objects. Trade-offs (no dynamic attributes; \texttt{\_\_weakref\_\_} omitted unless listed;
+subclasses without their own \texttt{\_\_slots\_\_} reintroduce \texttt{\_\_dict\_\_}) and member-
+descriptor internals are Vol VIII; dataclasses get this with \texttt{@dataclass(slots=True)}.
+
+\section{Performance and anti-patterns}
+
+\begin{itemize}
+  \item \textbf{Never use a mutable literal as a dataclass default}---use
+    \texttt{field(default\_factory=list)} (the mutable default-argument bug, Chapter 5).
+  \item \textbf{\texttt{frozen=True} has a small write cost} and makes instances hashable; for value
+    objects and keys, not hot mutable state.
+  \item \textbf{\texttt{contextvars}, not \texttt{threading.local}, in async code}; thread-locals
+    leak across tasks on one loop thread.
+  \item \textbf{\texttt{cached\_property} caches permanently per instance} (clear via
+    \texttt{del instance.attr}) and is \emph{not} thread-safe on first access.
+  \item \textbf{\texttt{\_\_slots\_\_} and inheritance}: a subclass omitting \texttt{\_\_slots\_\_}
+    regains a \texttt{\_\_dict\_\_}, erasing the savings.
+\end{itemize}
+
+\section{Summary and cross-references}
+
+\begin{itemize}
+  \item \textbf{Dataclasses} (PEP 557) generate methods by reading annotations and \texttt{exec}-ing
+    assembled source at definition time---zero per-call overhead;
+    \texttt{field(default\_factory)}/\texttt{frozen}/\texttt{order}/\texttt{\_\_post\_init\_\_}/
+    \texttt{slots}/\texttt{kw\_only} are the knobs.
+  \item \textbf{Context variables} (PEP 567) give per-task state via an immutable \textbf{HAMT} with
+    structural sharing, making context save/restore $O(1)$.
+  \item \textbf{Dict insertion order} is a \textbf{guarantee since 3.7}.
+  \item \textbf{\texttt{cached\_property}} and \textbf{\texttt{\_\_slots\_\_}} apply Chapter 4's
+    descriptor precedence; \texttt{\_\_slots\_\_} cut instance size $\sim$7$\times$ here.
+\end{itemize}
+
+\textbf{Cross-references.} Annotations $\rightarrow$ Chapter 12. Descriptor precedence $\rightarrow$
+Chapter 4. Mutable-default trap $\rightarrow$ Chapter 5. contextvars in the async runtime
+$\rightarrow$ Vol IX. dict internals $\rightarrow$ Vol XII. \texttt{\_\_slots\_\_}/member-descriptor
+internals and \texttt{weakref} $\rightarrow$ Vol VIII. Pattern matching over dataclasses
+$\rightarrow$ Chapter 15.
