@@ -190,6 +190,11 @@ FIND_ACTIONS = frozenset({
 })
 GLOB_CHARS = set("*?[")
 
+# Programs whose first non-flag operand is a search pattern rather than a path,
+# so a search for an absolute string such as `rg /etc/passwd` is not mistaken
+# for an attempt to read that file. Their later operands still name paths.
+PATTERN_LEADING = frozenset({"rg", "grep", "egrep", "fgrep"})
+
 
 def escapes_root(arg: str) -> bool:
     """True if an argument names a path outside ROOT, tilde included."""
@@ -200,6 +205,15 @@ def escapes_root(arg: str) -> bool:
 def unexpanded_glob(arg: str) -> bool:
     """True if a shell would have expanded this argument and nothing here will."""
     return bool(GLOB_CHARS & set(arg)) and bool(glob.glob(arg, root_dir=ROOT))
+
+
+def path_operands(argv: list[str]) -> list[str]:
+    """The operands of argv that name files, dropping a leading search pattern
+    for the tools whose first operand is a pattern rather than a path."""
+    operands = [a for a in argv[1:] if not a.startswith("-")]
+    if argv[0] in PATTERN_LEADING and operands:
+        return operands[1:]
+    return operands
 
 
 def vet_command(cmd: str, allowlist: tuple[str, ...]) -> tuple[list[str] | None, str]:
@@ -217,8 +231,8 @@ def vet_command(cmd: str, allowlist: tuple[str, ...]) -> tuple[list[str] | None,
     if argv[0] == "find" and FIND_ACTIONS.intersection(argv[1:]):
         return None, ("find may search but not act; -exec, -delete and the -f* "
                       "actions run programs or write files.")
-    for arg in argv[1:]:
-        if not arg.startswith("-") and escapes_root(arg):
+    for arg in path_operands(argv):
+        if escapes_root(arg):
             return None, f"{arg!r} names a path outside the project root."
         if unexpanded_glob(arg):
             return None, (f"{arg!r} is a glob and nothing here expands it; "
@@ -424,14 +438,17 @@ This is the same fact that keeps a bare `python` off the automation list, arrivi
 An allowlist keyed on `argv[0]` alone therefore authorizes far more than it appears to.
 So `vet_command` checks the arguments too, on three rules that are small enough to read in one sitting.
 It rejects `find`'s action verbs, because a search tool that runs programs and deletes files is not a read-only tool.
-It rejects any plain argument that resolves outside `ROOT`, which is `resolve`'s rule applied at a second entry point, so `cat ../../etc/passwd` and `cat ~/.ssh/id_rsa` are refused by the bash tool for the same reason `read_file` refuses them; path confinement is a property of the agent only when every tool that takes a path enforces it.
+It rejects any plain path argument that resolves outside `ROOT`, which is `resolve`'s rule applied at a second entry point, so `cat ../../etc/passwd` and `cat ~/.ssh/id_rsa` are refused by the bash tool for the same reason `read_file` refuses them; path confinement is a property of the agent only when every tool that takes a path enforces it.
+Which operands count as paths is where a search tool needs care, because `rg` and `grep` take a regex as their first operand and file targets after it.
+So `path_operands` exempts that leading operand and confines the rest, which lets a review agent hunting a hardcoded string run `rg /etc/passwd src/` while `grep secret /etc/shadow` is still refused for pointing the tool at a file outside the tree.
 And it rejects a glob that a shell would have expanded.
 
 That last rule is about a failure that is misleading rather than loud.
 Running with `shell=False` removes expansion along with interpretation, so `ls *.py` parses cleanly, matches the allowlist, runs, and reports `*.py: No such file or directory`, which reads as an empty project rather than as a policy effect.
 Expanding the pattern inside the harness would be worse than refusing it, because `shlex.split` has already thrown the quotes away, so `find . -name "*.py"` would silently become a search for whichever filename the glob happened to match.
 Refusing with a sentence that names the cause is the honest option: interactively it becomes a prompt, and headless it becomes a denial the model can read and route around.
-The check probes the filesystem so that only a pattern that would really have expanded is refused, which keeps `rg 'foo.*bar'` working as the regex it is; the cost is that `find . -name "*.py"` is refused in a repository that contains Python files, and telling a pattern argument from a path argument needs a schema per program rather than one rule for all of them.
+The glob check runs on those same path operands and probes the filesystem first, so `ls *.py` is refused while a search pattern like `rg '*.py'` is passed through as the regex it is.
+The leading-operand rule settles the pattern-versus-path question only for `rg` and `grep`, and the residue is honest to name: `find . -name "*.py"` is still refused in a repository that contains Python files, and a value that a flag consumes, such as the message in `git commit -m ../notes`, is still read as a path, because separating every flag's value and every tool's pattern from a genuine path needs a schema per program rather than one rule for all of them.
 Tilde, `$VAR`, and `$(...)` are not expanded either, and they get no special case: they arrive as literal characters, and the path rule catches the `~` form because it expands the argument before comparing it to `ROOT`.
 
 Note honestly what remains uncovered.
