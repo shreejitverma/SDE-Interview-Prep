@@ -6,4 +6,4 @@ idna==3.4
 Pillow==9.5.0
 pytz==2018.5
 requests==2.28.2
-urllib3==1.26.20
+urllib3==2.7.0
