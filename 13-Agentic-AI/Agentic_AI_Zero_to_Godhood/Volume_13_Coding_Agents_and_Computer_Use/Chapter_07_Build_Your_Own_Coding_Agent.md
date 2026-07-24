@@ -267,6 +267,7 @@ def shell_operators(cmd: str) -> list[str]:
     if "\n" in cmd or "\r" in cmd:
         return ["newline"]      # shlex calls it whitespace; the shell does not
     lexer = shlex.shlex(cmd, punctuation_chars=True)
+    lexer.commenters = ""   # the shell starts a comment only at a word boundary
     lexer.whitespace_split = True
     try:
         tokens = list(lexer)
@@ -348,7 +349,10 @@ It misses operators, because the obvious list is incomplete: a bare newline chai
 It also invents operators that are not there, because `rg 'foo|bar'` and `git commit -m "handle a || b"` carry those characters inside quotes, where the shell treats them as ordinary text.
 Inventing them is not a harmless excess of caution: the system prompt tells the model to search with `rg`, and section 8 runs the agent with no human to overrule the guard, so a false denial lands on the scoreboard as a failed task.
 So `shell_operators` tokenizes with `shlex` in punctuation mode, which understands quoting, and reports only the tokens that are made entirely of operator characters.
+Borrowing a tokenizer written for a different grammar is not free, though, and the two places `shlex` disagrees with the shell both have to be repaired by hand or the guard reopens the hole it was written to close.
 The newline case is settled before tokenizing, because `shlex` classifies a line break as whitespace while the shell classifies it as a command separator, and `.strip()` removes only the leading and trailing whitespace, not an embedded one.
+The comment character is the second disagreement and the more dangerous one, because `shlex` strips everything after a `#` anywhere in the string while the shell begins a comment only at a word boundary.
+Left at its default, the tokenizer reads `ls foo#bar; rm -rf build` as the single word `ls foo`, reports no operators at all, and hands a command the shell will happily split in two to the auto-allow tier; clearing `commenters` restores the `;` and costs nothing, since `ls # comment` still tokenizes without operators either way.
 Unbalanced quotes are reported as an operator as well, so a command the tokenizer cannot parse fails closed rather than open.
 Backticks are checked directly because `shlex` has no notion of command substitution, while `$(...)` needs no special case: the parentheses tokenize on their own.
 Both the auto-allow tier and the headless tier call that one function, so the two policies cannot drift apart.
@@ -416,11 +420,30 @@ def save_transcript(messages: list, path: Path = Path(".agent_transcript.json"))
     path.write_text(json.dumps(serializable, indent=2), encoding="utf-8")
 
 
+def carries_tool_result(message: dict) -> bool:
+    content = message["content"]
+    if isinstance(content, str):
+        return False
+    return any((b.get("type") if isinstance(b, dict) else getattr(b, "type", None))
+               == "tool_result" for b in content)
+
+
+def split_point(messages: list, keep: int = 4) -> int:
+    """Index of the first retained message, moved back off any tool_result."""
+    i = max(len(messages) - keep, 0)
+    while i > 0 and carries_tool_result(messages[i]):
+        i -= 1
+    return i
+
+
 def compact(messages: list, s: Session) -> list:
     """Summarize all but the last two turns into a single user message."""
     if len(messages) <= 6:
         return messages
-    head, tail = messages[:-4], messages[-4:]
+    cut = split_point(messages)
+    if cut == 0:
+        return messages         # nothing can be summarized without orphaning a result
+    head, tail = messages[:cut], messages[cut:]
     resp = client.messages.create(
         model=MODEL,
         max_tokens=2000,
@@ -492,7 +515,7 @@ def run_turn(messages: list, s: Session, max_steps: int = 60) -> list:
     return messages
 ```
 
-Six details in this loop are where hand-rolled agents usually break.
+Seven details in this loop are where hand-rolled agents usually break.
 
 - **Append the whole `resp.content`**, not extracted text.
 Dropping `tool_use` blocks breaks the pairing the API requires on the next request.
@@ -504,6 +527,10 @@ Splitting them across messages is accepted but trains the model out of parallel 
 - **Save the transcript after every step**, so a crash or a Ctrl-C leaves a resumable artifact.
 - **Compaction preserves intent.**
 The summary prompt explicitly pins the original task and acceptance criteria, because a compaction that loses them is how agents confidently finish the wrong task (Chapter 3, section 7).
+- **Compaction also preserves pairing**, which is why the split point is computed rather than hardcoded to `messages[-4:]`.
+A fixed slice is safe here only by accident of parity: called from inside the loop the history always ends with a `tool_result` message, so the last four entries begin with an assistant turn.
+Called from `/compact` after `run_turn` has returned, the history ends with an assistant message instead, the same slice begins with a `tool_result` whose `tool_use` is about to be replaced by summary text, and the next request fails with a 400 for an unmatched result.
+Walking the boundary backwards off any `tool_result` keeps every pair on the same side of the cut, and retaining one extra turn is a cheaper mistake than an unrecoverable request.
 
 ## 6. The entry point
 

