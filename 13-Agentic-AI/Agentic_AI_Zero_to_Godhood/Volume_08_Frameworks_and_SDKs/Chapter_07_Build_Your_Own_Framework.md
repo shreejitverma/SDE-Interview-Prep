@@ -330,6 +330,8 @@ The payoff: a complete agent with path confinement, command policy, logging, and
 
 ```python
 # review_agent.py
+import glob
+import os
 import shlex
 import subprocess
 from pathlib import Path
@@ -345,18 +347,25 @@ ROOT = Path.cwd().resolve()
 provider = AnthropicProvider(model="claude-sonnet-4-5")
 tools = ToolRegistry()
 
+def confined(path: str) -> Path:
+    """Resolve a model-supplied path and confine it to ROOT."""
+    p = (ROOT / os.path.expanduser(path)).resolve()
+    if p != ROOT and ROOT not in p.parents:
+        raise ValueError(f"path {path!r} escapes the project root")
+    return p
+
 @tools.tool
 def read_file(path: str) -> str:
     """Read a text file inside the project and return its contents."""
-    p = (ROOT / path).resolve()
-    if p != ROOT and ROOT not in p.parents:
-        raise ValueError(f"path {path!r} escapes the project root")
-    return p.read_text(encoding="utf-8")
+    return confined(path).read_text(encoding="utf-8")
 
 # Each entry is matched as a whole token sequence against the parsed argument
 # vector, never as a string prefix, so "ls" admits `ls -la` and not `lsof`.
+# The entry authorizes a program; the argument rules below decide what it may
+# be told to do.
 ALLOWED_COMMANDS = ("git status", "git diff", "git log", "git show",
                     "ls", "cat", "rg", "python -m pytest")
+GLOB_CHARS = set("*?[")
 
 def allowed_argv(command: str) -> list[str] | None:
     """Parse command into an argv that needs no shell, or None if not allowed."""
@@ -366,19 +375,28 @@ def allowed_argv(command: str) -> list[str] | None:
         return None                     # unbalanced quotes: fail closed
     if not argv:
         return None
-    for entry in ALLOWED_COMMANDS:
-        head = entry.split()
-        if argv[:len(head)] == head:
-            return argv
-    return None
+    if not any(argv[:len(head)] == head
+               for head in (entry.split() for entry in ALLOWED_COMMANDS)):
+        return None
+    for arg in argv[1:]:
+        if arg.startswith("-"):
+            continue                    # flags are the gap; see the notes below
+        try:
+            confined(arg)
+        except ValueError:
+            return None                 # a path argument outside the project
+        if GLOB_CHARS & set(arg) and glob.glob(arg, root_dir=ROOT):
+            return None                 # no shell runs here to expand it
+    return argv
 
 @tools.tool
 def run_command(command: str) -> str:
     """Run one allowlisted command with plain arguments and no shell syntax,
-    and return its stdout and stderr."""
+    reading only paths inside the project, and return its stdout and stderr."""
     argv = allowed_argv(command)
     if argv is None:
-        return "Error: not an allowlisted command, or it needs a shell."
+        return ("Error: not an allowlisted command, or it needs a shell, "
+                "an unexpanded glob, or a path outside the project.")
     proc = subprocess.run(argv, cwd=ROOT, capture_output=True, text=True, timeout=60)
     return proc.stdout + proc.stderr
 
@@ -387,7 +405,8 @@ def command_allowlist(name: str, args: dict) -> HookDecision:
         return HookDecision(
             allow=False,
             reason=("Allowed commands are " + ", ".join(ALLOWED_COMMANDS) +
-                    ", with plain arguments and no shell syntax."),
+                    ", with plain arguments, no shell syntax, no globs, and "
+                    "paths inside the project."),
         )
     return HookDecision()
 
@@ -421,11 +440,18 @@ Unbalanced quotes make `shlex.split` raise, and the command fails closed.
 Comparing token lists rather than strings also makes the match exact for free, so `ls` no longer admits `lsof` and `git status` no longer admits `git status-hack`.
 The entries are subcommands rather than programs for the same reason: a bare `git` on the allowlist of a review agent also authorizes `git push`, `git reset --hard`, and `git clean -fdx`, which is why Volume 13 Chapter 07 names `git push` on its deny list, and naming the four read-only subcommands here settles the question in one place instead of two.
 
+Naming the right program is still not the whole policy, which is why the loop over `argv[1:]` is there.
+`cat` is as read-only as a program gets, and `cat ~/.ssh/id_rsa` is an exfiltration tool built out of it, because `cwd=ROOT` constrains where relative paths start and says nothing about where an absolute one ends.
+So every plain argument goes through `confined`, the same function `read_file` uses, and an argument that resolves outside the project takes the command off the allowlist.
+Globs are refused rather than expanded for a different reason: with no shell there is nothing to expand `*.py`, so `ls *.py` would otherwise run and report a missing file, which reads as an empty directory rather than as the policy effect it is, and expanding it here would be worse because `shlex.split` has already discarded the quoting that says whether the model meant a pattern or a filename.
+The check probes the filesystem first, so only a pattern that would really have expanded is refused and `rg 'foo.*bar'` still works as a regex.
+
 The check appears twice on purpose, and the duplication is the point rather than an oversight.
 The hook is the policy layer: it produces the denial the model reads and the `allowed: False` line in the transcript, which is what makes the decision reviewable.
 The tool's own call is capability confinement: `run_command` is incapable of constructing a shell no matter which registry it is wired into or whose hooks are attached, so a future caller who forgets the gate loses the audit trail rather than the sandbox.
 Policy you can read and a capability you cannot exceed are different guarantees, and a framework that offers only the first has talked itself into trusting every future wiring decision.
-`read_file` resolves before it reads for the same reason, so the review agent and the research subagent it delegates to are both confined to the project, and neither can be talked into returning `~/.ssh/id_rsa` through the parent's context.
+`read_file` and `run_command` both route their paths through `confined` for the same reason, so the confinement is a property of the agent rather than of whichever tool the model happens to reach for, and the research subagent inherits it twice over because its registry holds only the read tool.
+Be exact about how far that goes, because a guarantee stated wider than the code is worse than no guarantee at all: the rule covers plain path arguments, and it does not look behind a `-`, so `rg --file=/etc/passwd` is a hole that stays open until each allowed program has a schema saying which of its flags take paths.
 Write it this way and the hook is policy as code; write it as a `startswith` over a tuple of program names with a shell behind it and it is a suggestion.
 
 The ordering in the last three statements is load-bearing.

@@ -34,6 +34,7 @@ Four tools, chosen using Chapter 2's promotion rule: bash for breadth, and three
 # agent.py  (part 1 of 6)
 from __future__ import annotations
 
+import glob
 import json
 import os
 import shlex
@@ -53,14 +54,18 @@ TOOLS = [
     {
         "name": "bash",
         "description": (
-            "Run a shell command in the project root and return combined "
-            "stdout and stderr plus the exit code. Use for building, testing, "
-            "searching (rg/grep), and inspecting the repository."
+            "Run one command in the project root and return combined stdout and "
+            "stderr plus the exit code. Allowlisted commands run without a shell, "
+            "so operators, globs, and substitutions are not interpreted and arrive "
+            "as literal arguments; paths must stay inside the project. Anything "
+            "needing shell syntax requires human approval, and is refused outright "
+            "when the agent runs headless. Use for building, testing, searching "
+            "(rg/grep), and inspecting the repository."
         ),
         "input_schema": {
             "type": "object",
             "properties": {
-                "command": {"type": "string", "description": "The shell command to run."},
+                "command": {"type": "string", "description": "One command with plain arguments."},
                 "timeout": {"type": "integer", "description": "Seconds before the command is killed. Default 120."},
             },
             "required": ["command"],
@@ -160,7 +165,8 @@ class Session:
 
 # Commands that may run with no shell and no human. Each entry is matched as a
 # whole token sequence against the parsed argument vector, never as a string
-# prefix, so "ls" admits `ls -la` and not `lsof`.
+# prefix, so "ls" admits `ls -la` and not `lsof`. Naming a program here is not
+# enough on its own: the argument rules below decide what it may be told to do.
 READ_ONLY_COMMANDS = (
     "ls", "cat", "head", "tail", "grep", "rg", "find", "wc", "git status",
     "git diff", "git log", "pwd", "which", "python --version", "pytest --collect-only",
@@ -176,19 +182,48 @@ AUTOMATION_COMMANDS = READ_ONLY_COMMANDS + (
 )
 
 
-def allowed_argv(cmd: str, allowlist: tuple[str, ...]) -> list[str] | None:
-    """Parse cmd into an argv that needs no shell, or None if it is not allowed."""
+# An allowlist authorizes a program, so the arguments need rules of their own.
+# These turn `find` from a search into an execution or deletion primitive.
+FIND_ACTIONS = frozenset({
+    "-exec", "-execdir", "-ok", "-okdir", "-delete",
+    "-fprint", "-fprint0", "-fprintf", "-fls",
+})
+GLOB_CHARS = set("*?[")
+
+
+def escapes_root(arg: str) -> bool:
+    """True if an argument names a path outside ROOT, tilde included."""
+    p = (ROOT / os.path.expanduser(arg)).resolve()
+    return p != ROOT and ROOT not in p.parents
+
+
+def unexpanded_glob(arg: str) -> bool:
+    """True if a shell would have expanded this argument and nothing here will."""
+    return bool(GLOB_CHARS & set(arg)) and bool(glob.glob(arg, root_dir=ROOT))
+
+
+def vet_command(cmd: str, allowlist: tuple[str, ...]) -> tuple[list[str] | None, str]:
+    """Parse cmd into an argv that needs no shell, or say why it may not run."""
     try:
         argv = shlex.split(cmd)
     except ValueError:
-        return None                     # unbalanced quotes: fail closed
+        return None, "the command has unbalanced quotes."
     if not argv:
-        return None
-    for entry in allowlist:
-        head = entry.split()
-        if argv[:len(head)] == head:
-            return argv
-    return None
+        return None, "the command is empty."
+    if not any(argv[:len(head)] == head
+               for head in (entry.split() for entry in allowlist)):
+        return None, (f"{cmd!r} is not on this mode's allowlist, or it needs "
+                      "shell syntax that no shell is here to interpret.")
+    if argv[0] == "find" and FIND_ACTIONS.intersection(argv[1:]):
+        return None, ("find may search but not act; -exec, -delete and the -f* "
+                      "actions run programs or write files.")
+    for arg in argv[1:]:
+        if not arg.startswith("-") and escapes_root(arg):
+            return None, f"{arg!r} names a path outside the project root."
+        if unexpanded_glob(arg):
+            return None, (f"{arg!r} is a glob and nothing here expands it; "
+                          "name the paths, or use rg --files to list them.")
+    return argv, ""
 
 
 def shell_free_allowlist(s: Session) -> tuple[str, ...]:
@@ -198,7 +233,7 @@ def shell_free_allowlist(s: Session) -> tuple[str, ...]:
 def tool_bash(args: dict, s: Session) -> str:
     command = args["command"].strip()
     timeout = int(args.get("timeout", 120))
-    argv = allowed_argv(command, shell_free_allowlist(s))
+    argv, reason = vet_command(command, shell_free_allowlist(s))
     if argv is not None:
         # No shell exists, so operators arrive as literal arguments.
         proc = subprocess.run(
@@ -206,10 +241,7 @@ def tool_bash(args: dict, s: Session) -> str:
             timeout=timeout, errors="replace",
         )
     elif s.headless:
-        raise ToolError(
-            "headless mode runs allowlisted commands without a shell; "
-            "this command needs one."
-        )
+        raise ToolError(f"headless mode runs no shell: {reason}")
     else:
         # Reached only after a human read this exact string and approved it.
         proc = subprocess.run(
@@ -281,8 +313,9 @@ Five safety properties are already present and each is a capability scaffold tha
 
 - **Path confinement.** `resolve` canonicalizes before comparing, so `../../etc/passwd`, symlinks, and absolute paths are all caught by the same check.
 Doing the check on the raw string instead is the classic vulnerable version.
-- **No shell on the unattended path.** `allowed_argv` parses the command into an argument vector once, and `tool_bash` runs that vector with `shell=False`, so nothing ever re-interprets the string.
-Section 4 explains why this replaced a guard that scanned for shell operators, and why the scanning approach could not be made correct.
+`escapes_root` applies the same rule to the arguments of an allowlisted command, because a confinement one tool honors and another ignores is not a confinement.
+- **No shell on the unattended path.** `vet_command` parses the command into an argument vector once, checks the arguments as well as the program, and `tool_bash` runs that vector with `shell=False`, so nothing ever re-interprets the string.
+Section 4 explains why this replaced a guard that scanned for shell operators, why the scanning approach could not be made correct, and why removing the shell is necessary rather than sufficient.
 - **Staleness invariant.** `edit_file` and overwrite refuse to act on a file the model has not read, which eliminates blind clobbering.
 - **Output clipping.** A single `find /` must not consume the context window.
 Clipping head and tail preserves the informative ends.
@@ -309,7 +342,8 @@ def needs_approval(name: str, args: dict, s: Session) -> bool:
         if cmd in s.approved:
             return False
         # Auto-allow only what can run as an argv, with no shell at all.
-        return allowed_argv(cmd, READ_ONLY_COMMANDS) is None
+        argv, _ = vet_command(cmd, READ_ONLY_COMMANDS)
+        return argv is None
     return f"{name}:{args.get('path', '')}" not in s.approved
 
 
@@ -318,10 +352,11 @@ def automation_decision(name: str, args: dict) -> tuple[bool, str]:
     if name != "bash":
         return True, ""     # confined to ROOT, and read-before-write still applies
     cmd = args["command"].strip()
-    if allowed_argv(cmd, AUTOMATION_COMMANDS) is None:
-        return False, (f"{cmd!r} is not on the headless allowlist, or needs a "
-                       "shell to run. Issue one allowlisted command with plain "
-                       "arguments, or re-run the agent interactively.")
+    argv, reason = vet_command(cmd, AUTOMATION_COMMANDS)
+    if argv is None:
+        return False, (f"denied: {reason} Issue one allowlisted command with "
+                       "plain arguments inside the project, or re-run the agent "
+                       "interactively.")
     return True, ""
 
 
@@ -368,13 +403,13 @@ The guard reads a string and forms a belief about how the shell will split it, a
 Any such guard is a partial reimplementation of `bash`, so it should be assumed wrong until proven otherwise rather than correct until someone bypasses it.
 The fix is therefore not a better scanner.
 The fix is to stop creating a shell on the path where no human is reading the command.
-`allowed_argv` parses the command once with `shlex.split`, matches the leading tokens against one allowlist entry, and returns the argument vector; `tool_bash` runs that vector with `shell=False`.
+`vet_command` parses the command once with `shlex.split`, matches the leading tokens against one allowlist entry, and returns the argument vector; `tool_bash` runs that vector with `shell=False`.
 There is then no shell to interpret `;`, `&&`, a newline, `#`, `` ` ``, or `$(...)`, and each of those characters reaches the program as a literal argument instead.
 `ls "$(rm -rf build)"` becomes `ls` with one filename that does not exist, which is the correct outcome for a command nobody approved.
-A command with unbalanced quotes fails closed, because `shlex.split` raises and `allowed_argv` returns `None`.
+A command with unbalanced quotes fails closed, because `shlex.split` raises and `vet_command` returns no argv.
 
 Commands that genuinely need shell features are not blocked, they are moved.
-`allowed_argv` returns `None`, the auto-allow tier declines, and a human sees the exact string and decides.
+`vet_command` returns no argv, the auto-allow tier declines, and a human sees the exact string and decides.
 That is the only path in the agent that constructs a shell, and it does so with a person who read the command standing behind it.
 Headless mode has no such person, so it gets no shell at all: `automation_decision` allows only what parses into an argument vector, and `tool_bash` raises rather than falling back.
 
@@ -383,19 +418,36 @@ Matching whole tokens rather than string prefixes is the second half of the guar
 Comparing token lists also makes the multi-word entries exact for free: `git status` matches `git status --short` and not `git status-hack`.
 Both the auto-allow tier and the headless tier call the one function, so the two policies cannot drift apart, and they differ only in which allowlist they pass it.
 
-Note honestly what removing the shell does not cover.
-The allowlist authorizes programs, not arguments, so `pytest --rootdir=/` is on it, and `make test` runs whatever the repository's `Makefile` says.
+Naming the program is still not enough, because some programs are execution primitives on their own.
+`find` sits on the read-only list, and `find . -delete` begins with `find`, as does `find . -exec python -c '...' \;`, and neither of them needs a shell to do what its name says.
+This is the same fact that keeps a bare `python` off the automation list, arriving one layer down: removing the shell settled how a string gets split, and left completely untouched the question of what a program does once it holds the arguments.
+An allowlist keyed on `argv[0]` alone therefore authorizes far more than it appears to.
+So `vet_command` checks the arguments too, on three rules that are small enough to read in one sitting.
+It rejects `find`'s action verbs, because a search tool that runs programs and deletes files is not a read-only tool.
+It rejects any plain argument that resolves outside `ROOT`, which is `resolve`'s rule applied at a second entry point, so `cat ../../etc/passwd` and `cat ~/.ssh/id_rsa` are refused by the bash tool for the same reason `read_file` refuses them; path confinement is a property of the agent only when every tool that takes a path enforces it.
+And it rejects a glob that a shell would have expanded.
+
+That last rule is about a failure that is misleading rather than loud.
+Running with `shell=False` removes expansion along with interpretation, so `ls *.py` parses cleanly, matches the allowlist, runs, and reports `*.py: No such file or directory`, which reads as an empty project rather than as a policy effect.
+Expanding the pattern inside the harness would be worse than refusing it, because `shlex.split` has already thrown the quotes away, so `find . -name "*.py"` would silently become a search for whichever filename the glob happened to match.
+Refusing with a sentence that names the cause is the honest option: interactively it becomes a prompt, and headless it becomes a denial the model can read and route around.
+The check probes the filesystem so that only a pattern that would really have expanded is refused, which keeps `rg 'foo.*bar'` working as the regex it is; the cost is that `find . -name "*.py"` is refused in a repository that contains Python files, and telling a pattern argument from a path argument needs a schema per program rather than one rule for all of them.
+Tilde, `$VAR`, and `$(...)` are not expanded either, and they get no special case: they arrive as literal characters, and the path rule catches the `~` form because it expands the argument before comparing it to `ROOT`.
+
+Note honestly what remains uncovered.
+The argument rules handle paths, globs, and `find`'s action verbs, and they do not model flags at all, so `pytest --rootdir=/` is still on the list, `rg --file=/etc/passwd` slips past the path rule by wearing a `-`, and `make test` still runs whatever the repository's `Makefile` says.
 Section 7 takes that up.
 Removing the shell eliminates one class of bypass completely; it does not make the remaining surface small, which is why the deny list, the path confinement, and - in real deployments - a container all exist as layers rather than alternatives.
-`DENY_SUBSTRINGS` is still a substring scan, and it is still the weakest thing here, but it now guards only the path a human is already reading.
+`DENY_SUBSTRINGS` is still a substring scan and still the weakest thing here, and it is worth being exact about its reach: it runs at the top of `needs_approval`, so it sees every bash call, the auto-allowed and headless ones included, not only the ones a human reads.
+Treat it as a backstop that earns its keep mainly on the shell path, since the argv path is already narrowed by the allowlist and the argument rules, and never as the thing standing between the model and the shell.
 
 The headless branch exists because an interactive prompt is not a policy when nobody is at the terminal.
 Calling `input()` from a process whose stdin is a closed pipe either blocks until the caller's timeout kills it or raises `EOFError` from inside the tool loop, and both outcomes look like an agent that mysteriously cannot finish.
-So `ask_permission` consults `automation_decision` first: file writes are allowed because `resolve` confines them to `ROOT` and the read-before-edit invariant still holds, while bash is held to the argv rule plus an explicit allowlist wide enough to run the project's tests.
+So `ask_permission` consults `automation_decision` first: file writes are allowed because `resolve` confines them to `ROOT` and the read-before-edit invariant still holds, while bash is held to the argv rule plus the argument rules plus an explicit allowlist wide enough to run the project's tests.
 That allowlist stops deliberately short of a bare interpreter.
 `python -m pytest` is on it and `python` is not, because `python -c "__import__('shutil').rmtree('/')"` needs no shell to do damage and an entry that admits it makes the entire tier decorative.
 Dropping the shell does not help here, which is the point: it closes the parsing class of bug and leaves the question of which programs you trust exactly where it was.
-The same reasoning keeps a bare `make` off the list in favor of the specific targets a build is expected to use.
+The same reasoning keeps a bare `make` off the list in favor of the specific targets a build is expected to use, and it is why `find` is admitted only with its action verbs stripped rather than as a whole program.
 Anything outside the allowlist comes back as a readable denial the model can act on, which means the run always terminates with a result rather than hanging.
 The `EOFError` guard on the interactive path is the same lesson applied to the case where a terminal disappears mid-session.
 
@@ -625,11 +677,12 @@ Every guard in section 3 is defense in depth *behind* this, not a substitute for
 
 **Finish the allowlist.**
 Deny lists lose to creativity.
-The headless path inverts it already, running only what parses into an argument vector whose leading tokens match `AUTOMATION_COMMANDS`, which is why the same harness can offer a permissive interactive mode and a strict automation mode.
-Two gaps remain, and both are about arguments rather than programs.
-The first is flag and path validation: `pytest` is on the list, and `pytest --rootdir=/` is on the list too.
+The headless path inverts it already, running only what parses into an argument vector whose leading tokens match `AUTOMATION_COMMANDS` and whose arguments clear the path, glob, and action-verb rules, which is why the same harness can offer a permissive interactive mode and a strict automation mode.
+Two gaps remain.
+The first is flags, which the argument rules skip entirely: `pytest` is on the list and so is `pytest --rootdir=/`, and `rg --file=/etc/passwd` reaches outside the project through a `-` the path rule does not look behind.
 The second is indirection: `make test` and `npm run test` run whatever the repository's `Makefile` and `package.json` define, and the agent can edit both, so a program on the allowlist can still execute code the allowlist never inspected.
-Parse the command, bind each allowed program to a schema for its flags and paths, reject anything that resolves outside `ROOT`, and treat the build definitions as protected files the agent may not rewrite mid-run.
+Bind each allowed program to a schema that says which of its flags take paths and which take patterns, run every path through the same `ROOT` check the plain arguments already get, and treat the build definitions as protected files the agent may not rewrite mid-run.
+The schema is also what would let a pattern like `find -name "*.py"` through without loosening the glob rule for path arguments.
 Then consider holding the interactive mode to the same allowlist, treating the prompt as a way to widen it for one command rather than as the only thing standing between the model and the shell.
 
 **Handle API failure properly.**
@@ -757,7 +810,8 @@ The check treats a missing file as tampering rather than reading it and crashing
 
 One coupling to keep in mind: the harness runs the agent with `-p`, so every command the agent needs in order to verify its own work has to be on `AUTOMATION_COMMANDS`.
 If a fixture's `test_cmd` is `npm run test:unit`, the whole-token match against `npm run test` does not cover it, so the agent is denied its verification step and the task scores FAILED for a policy reason rather than a capability one.
-Widen `AUTOMATION_COMMANDS` to cover every fixture's test command, and copy `.agent_transcript.json` out of the temp directory before the run tears it down, because the denial text lands in a tool result and a scoreboard that cannot distinguish a policy denial from a real failure is measuring your allowlist rather than your agent.
+The argument rules can do the same thing in a quieter way: a verification step written as `pytest tests/*.py` is refused for its glob, and one written against a path outside the fixture is refused for leaving `ROOT`.
+Widen `AUTOMATION_COMMANDS` to cover every fixture's test command and write those commands with plain paths, and copy `.agent_transcript.json` out of the temp directory before the run tears it down, because the denial text lands in a tool result and a scoreboard that cannot distinguish a policy denial from a real failure is measuring your allowlist rather than your agent.
 Note that the runner invokes `test_cmd` itself with `shell=True`, which is fine because you wrote it, and is exactly the distinction the agent's own bash tool draws between a string a human authored and a string a model produced.
 
 What to do with the numbers.
@@ -775,7 +829,7 @@ Knowing which half of your own code you expect to throw away is the mark of some
 1. Type the agent in, run it on a real repository, and complete three tasks: a one-line bug fix, adding a test, and a two-file refactor; record how many permission prompts you answered and which ones you would auto-allow permanently.
 2. Break the loop deliberately in four ways - drop `tool_use` blocks from the appended assistant message, return only one result for two tool calls, raise instead of returning an error result, and loop on tool-block count instead of `stop_reason` - and record the exact failure each produces so you recognize them in the wild.
 3. Add a `grep` tool that wraps ripgrep with a result cap and a clear too-many-results message; measure task completion on your eval before and after, and state whether it was capability or compensation.
-4. Add an argument validator on top of the headless allowlist and hold the interactive mode to the same policy, then write ten adversarial commands attempting to escape it; report how many succeeded and fix the ones that did.
+4. Extend the argument rules with a per-program flag schema, covering the `--rootdir=` and `--file=` shapes the current rules skip, and hold the interactive mode to the same policy; then write ten adversarial commands attempting to escape it, report how many succeeded, and fix the ones that did.
 Run the same ten against a deliberately reintroduced string-scanning guard with `shell=True` behind it, and compare the two counts.
 5. Build five eval tasks from real bugs in your own git history: use the pre-fix commit as the fixture and the test added in the fixing commit as the hidden test; run the agent three times per task and report resolved-fraction with variance.
 6. Implement compaction two ways - the summary above, and simple truncation that keeps the first and last N messages - and measure resolved-fraction and token cost on a long task; state which lost more.
@@ -787,10 +841,11 @@ Run the same ten against a deliberately reintroduced string-scanning guard with 
 You have mastered this chapter when you can:
 
 - Write the agent loop from memory, including appending full assistant content, pairing every tool result, batching results in one user message, and looping on `stop_reason`.
-- Explain each safety property in the tool layer - path confinement after canonicalization, argv execution with no shell on the unattended path, the read-before-edit staleness invariant, output clipping, recoverable tool errors - and the specific bug each prevents.
+- Explain each safety property in the tool layer - path confinement after canonicalization, argv execution with no shell on the unattended path, argument rules covering paths, globs, and action verbs, the read-before-edit staleness invariant, output clipping, recoverable tool errors - and the specific bug each prevents.
 - Justify the exactly-once edit semantics and the line-numbered read format on ACI grounds without appealing to convention.
 - Describe the permission gradient you implemented, explain why scanning a command string for shell operators cannot be made correct while the same string is later handed to a shell, and state why the container is the real control.
 - Say what changes when the allowlisted path runs an argument vector with `shell=False`, which class of bypass that closes outright, and which one it leaves entirely untouched.
+- Explain why an allowlist keyed on the program name alone is insufficient, using `find -delete` and `python -c` as the worked cases, and say which argument rules your harness enforces and which it does not.
 - Explain why an interactive prompt is not a policy for an unattended run, and what your harness does instead when no terminal is attached.
 - Write a compaction prompt that preserves task intent and say what breaks when it does not.
 - Build a fail-to-pass eval harness from scratch, name its four integrity properties, and explain why tamper detection is not optional.
