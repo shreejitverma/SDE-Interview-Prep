@@ -366,17 +366,14 @@ def read_file(path: str) -> str:
 ALLOWED_COMMANDS = ("git status", "git diff", "git log", "git show",
                     "ls", "cat", "rg", "python -m pytest")
 GLOB_CHARS = set("*?[")
-# Programs whose first non-flag operand is a search pattern rather than a path,
-# so a search for an absolute string is not mistaken for an attempt to read it.
-PATTERN_LEADING = frozenset({"rg", "grep", "egrep", "fgrep"})
 
 def path_operands(argv: list[str]) -> list[str]:
-    """The operands of argv that name files, dropping a leading search pattern
-    for the tools whose first operand is a pattern rather than a path."""
-    operands = [a for a in argv[1:] if not a.startswith("-")]
-    if argv[0] in PATTERN_LEADING and operands:
-        return operands[1:]
-    return operands
+    """Every non-flag operand of argv, each treated as a path to confine.
+    Nothing is exempted: telling a file target from a search pattern reliably
+    would mean modeling each tool's full flag grammar, and a wrong guess reopens
+    the hole this check exists to close, so an operand that looks like a path is
+    confined even when it is really a pattern."""
+    return [a for a in argv[1:] if not a.startswith("-")]
 
 def allowed_argv(command: str) -> list[str] | None:
     """Parse command into an argv that needs no shell, or None if not allowed."""
@@ -389,7 +386,7 @@ def allowed_argv(command: str) -> list[str] | None:
     if not any(argv[:len(head)] == head
                for head in (entry.split() for entry in ALLOWED_COMMANDS)):
         return None
-    for arg in path_operands(argv):     # patterns skipped, file targets confined
+    for arg in path_operands(argv):     # every non-flag operand confined to ROOT
         try:
             confined(arg)
         except ValueError:
@@ -452,9 +449,13 @@ The entries are subcommands rather than programs for the same reason: a bare `gi
 Naming the right program is still not the whole policy, which is why the loop over `argv[1:]` is there.
 `cat` is as read-only as a program gets, and `cat ~/.ssh/id_rsa` is an exfiltration tool built out of it, because `cwd=ROOT` constrains where relative paths start and says nothing about where an absolute one ends.
 So every plain path argument goes through `confined`, the same function `read_file` uses, and an argument that resolves outside the project takes the command off the allowlist.
-Which operands count as paths needs one distinction: `rg` takes a regex as its first operand and file targets after it, so `path_operands` exempts that leading operand and confines the rest, which lets a review agent search for a hardcoded `/etc/passwd` string while `cat /etc/passwd` and `rg secret /etc/shadow` stay refused.
+Which operands count as paths tempts a shortcut: `rg` takes a regex as its first operand and file targets after it, so exempting that leading operand would let a review agent search for a hardcoded `/etc/passwd` string.
+That shortcut is a trap, because the pattern can also arrive through `-e`, `--regexp=`, or `-f`, so the leading operand is not reliably the pattern, and any positional guess that exempts it lets `rg --regexp=secret /etc/shadow` slip a file target past `confined`.
+Telling a path from a pattern for an arbitrary command means reimplementing that command's flag grammar, which is the same losing game as reimplementing the shell, so `path_operands` confines every non-flag operand with no exemption.
+The honest cost is that `rg /etc/passwd src/` is now refused for naming a path outside the tree even though the token is really a pattern, and `cat /etc/passwd` and `rg secret /etc/shadow` stay refused for the same reason.
+Argument-level confinement over an allowlist is deliberately conservative in this direction, and it is a second line rather than the real boundary: the containment that does not depend on parsing arguments correctly is the operating-system sandbox from Volume 11.
 Globs are refused rather than expanded for a different reason: with no shell there is nothing to expand `*.py`, so `ls *.py` would otherwise run and report a missing file, which reads as an empty directory rather than as the policy effect it is, and expanding it here would be worse because `shlex.split` has already discarded the quoting that says whether the model meant a pattern or a filename.
-The check runs on those same path operands and probes the filesystem first, so `ls *.py` is refused while a search pattern like `rg '*.py'` is passed through as the regex it is.
+The check runs on every non-flag operand and probes the filesystem first, so `ls *.py` is refused, and a pattern like `rg '*.py'` that matches files in the tree is refused too rather than treated as a regex, which is the same conservative bias the path check has: a token that looks like a glob is refused even when the model meant it literally.
 
 The check appears twice on purpose, and the duplication is the point rather than an oversight.
 The hook is the policy layer: it produces the denial the model reads and the `allowed: False` line in the transcript, which is what makes the decision reviewable.
