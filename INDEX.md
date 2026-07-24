@@ -39,5 +39,13 @@ This repository is a structured knowledge base designed to take you from a Junio
 *   **[Distributed Systems](./08-Distinguished-Engineering/02-Distributed-Systems-Internals):** Raft Consensus, Consistent Hashing.
 *   **[Leadership](./09-Engineering-Leadership):** RFC Template, Code Review Checklist.
 
+### Phase 6: Agentic AI
+*   **[Agentic AI: Zero to Godhood](./13-Agentic-AI/Agentic_AI_Zero_to_Godhood):** Fourteen volumes from transformer internals to production agent systems.
+    *   Foundations: LLM internals, inference mechanics, working with model APIs.
+    *   Core craft: the agent loop from scratch, architectures, RAG, context engineering.
+    *   Systems: multi-agent orchestration, frameworks and SDKs, Model Context Protocol.
+    *   Rigor: evaluation and observability, safety and security, production engineering.
+    *   Frontier: coding agents, computer use, RL for agents, capstone projects.
+
 ---
 *Built for Excellence.*
