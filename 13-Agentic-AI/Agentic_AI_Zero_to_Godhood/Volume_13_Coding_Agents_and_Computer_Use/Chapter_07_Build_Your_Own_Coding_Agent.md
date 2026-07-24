@@ -190,11 +190,6 @@ FIND_ACTIONS = frozenset({
 })
 GLOB_CHARS = set("*?[")
 
-# Programs whose first non-flag operand is a search pattern rather than a path,
-# so a search for an absolute string such as `rg /etc/passwd` is not mistaken
-# for an attempt to read that file. Their later operands still name paths.
-PATTERN_LEADING = frozenset({"rg", "grep", "egrep", "fgrep"})
-
 
 def escapes_root(arg: str) -> bool:
     """True if an argument names a path outside ROOT, tilde included."""
@@ -208,12 +203,12 @@ def unexpanded_glob(arg: str) -> bool:
 
 
 def path_operands(argv: list[str]) -> list[str]:
-    """The operands of argv that name files, dropping a leading search pattern
-    for the tools whose first operand is a pattern rather than a path."""
-    operands = [a for a in argv[1:] if not a.startswith("-")]
-    if argv[0] in PATTERN_LEADING and operands:
-        return operands[1:]
-    return operands
+    """Every non-flag operand of argv, each treated as a path to confine.
+    Nothing is exempted: telling a file target from a search pattern reliably
+    would mean modeling each tool's full flag grammar, and a wrong guess reopens
+    the hole this check exists to close, so an operand that looks like a path is
+    confined even when it is really a pattern."""
+    return [a for a in argv[1:] if not a.startswith("-")]
 
 
 def vet_command(cmd: str, allowlist: tuple[str, ...]) -> tuple[list[str] | None, str]:
@@ -439,16 +434,19 @@ An allowlist keyed on `argv[0]` alone therefore authorizes far more than it appe
 So `vet_command` checks the arguments too, on three rules that are small enough to read in one sitting.
 It rejects `find`'s action verbs, because a search tool that runs programs and deletes files is not a read-only tool.
 It rejects any plain path argument that resolves outside `ROOT`, which is `resolve`'s rule applied at a second entry point, so `cat ../../etc/passwd` and `cat ~/.ssh/id_rsa` are refused by the bash tool for the same reason `read_file` refuses them; path confinement is a property of the agent only when every tool that takes a path enforces it.
-Which operands count as paths is where a search tool needs care, because `rg` and `grep` take a regex as their first operand and file targets after it.
-So `path_operands` exempts that leading operand and confines the rest, which lets a review agent hunting a hardcoded string run `rg /etc/passwd src/` while `grep secret /etc/shadow` is still refused for pointing the tool at a file outside the tree.
+Which operands count as paths is where a search tool tempts a shortcut, because `rg` and `grep` take a regex as their first operand and file targets after it, so exempting that leading operand would let a review agent run `rg /etc/passwd src/` to hunt a hardcoded string.
+That shortcut is a trap, because the pattern can also arrive through `-e`, `--regexp=`, or `-f`, so the leading operand is not reliably the pattern, and any positional guess that exempts it lets `grep --regexp=secret /etc/shadow` slip a file target past the confinement check.
+Telling a path from a pattern for an arbitrary command means reimplementing that command's flag grammar, which is the same losing game as reimplementing the shell, so `path_operands` confines every non-flag operand with no exemption.
+The honest cost is that `rg /etc/passwd src/` is now refused for naming a path outside the tree even though the token is really a pattern, and a search that genuinely needs an absolute string is routed to the human-approval path rather than auto-allowed.
+Argument-level confinement over an allowlist is deliberately conservative in this direction, and it is a second line rather than the real boundary: the containment that does not depend on parsing arguments correctly is the operating-system sandbox from Volume 11.
 And it rejects a glob that a shell would have expanded.
 
 That last rule is about a failure that is misleading rather than loud.
 Running with `shell=False` removes expansion along with interpretation, so `ls *.py` parses cleanly, matches the allowlist, runs, and reports `*.py: No such file or directory`, which reads as an empty project rather than as a policy effect.
 Expanding the pattern inside the harness would be worse than refusing it, because `shlex.split` has already thrown the quotes away, so `find . -name "*.py"` would silently become a search for whichever filename the glob happened to match.
 Refusing with a sentence that names the cause is the honest option: interactively it becomes a prompt, and headless it becomes a denial the model can read and route around.
-The glob check runs on those same path operands and probes the filesystem first, so `ls *.py` is refused while a search pattern like `rg '*.py'` is passed through as the regex it is.
-The leading-operand rule settles the pattern-versus-path question only for `rg` and `grep`, and the residue is honest to name: `find . -name "*.py"` is still refused in a repository that contains Python files, and a value that a flag consumes, such as the message in `git commit -m ../notes`, is still read as a path, because separating every flag's value and every tool's pattern from a genuine path needs a schema per program rather than one rule for all of them.
+The glob check runs on every non-flag operand and probes the filesystem first, so `ls *.py` is refused, and a pattern like `rg '*.py'` that matches files in the tree is refused too rather than read as a regex, which is the same conservative bias the path rule has.
+That bias is the residue worth naming: `find . -name "*.py"` is refused in a repository that contains Python files, `rg /etc/passwd src/` is refused for a pattern that looks like an absolute path, and a value a flag consumes, such as the message in `git commit -m ../notes`, is read as a path, because separating every flag's value and every tool's pattern from a genuine path needs a schema per program rather than one rule for all of them.
 Tilde, `$VAR`, and `$(...)` are not expanded either, and they get no special case: they arrive as literal characters, and the path rule catches the `~` form because it expands the argument before comparing it to `ROOT`.
 
 Note honestly what remains uncovered.
