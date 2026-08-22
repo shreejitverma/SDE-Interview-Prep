@@ -1,7 +1,7 @@
 ---
 tags: [trading/ipc-messaging, type/moc]
 aliases: [Messaging IPC MOC, Disruptor Aeron MOC]
-status: seed
+status: evergreen
 module: 09
 created: 2026-08-22
 ---
@@ -10,23 +10,25 @@ created: 2026-08-22
 
 High-throughput, nanosecond inter-process communication: shared memory rings, the Disruptor pattern, Aeron, and sequenced logs.
 
+```mermaid
+flowchart LR
+    SHM[POSIX Shared Memory /dev/shm] --> DISRUPTOR[LMAX Disruptor Pattern]
+    DISRUPTOR --> AERON[Aeron Term Buffer Rotation]
+    AERON --> CLUSTER[Aeron Cluster RSM]
+```
+
 ---
 
 ## Core Concepts
-- [[Notes/Shared Memory IPC Topologies]] — POSIX SHM (`shm_open`, `mmap`), hugepage-backed SHM, page fault prevention, cache line layout.
-- [[Notes/The LMAX Disruptor Architecture]] — Ring buffer, sequence barriers, multi-consumer dependency graphs, cache line padding.
-- [[Notes/Aeron Messaging Transport]] — Driver architecture, lock-free IPC, media drivers, UDP unicast/multicast reliable transport.
-- [[Notes/Aeron Cluster and Replicated State]] — Raft-like consensus, deterministic state machine sequencing, zero-copy log archiving.
-- [[Notes/Backpressure Strategies in High-Throughput Pipelines]] — Dropping vs buffering vs back-propagating, ring buffer saturation handling.
-- [[Notes/Zero-Copy Fan-Out Patterns]] — Single-writer multi-reader shared memory buses, core-to-core broadcast.
+- [[09 - Messaging & IPC/Shared Memory IPC Topologies]] — POSIX SHM (`shm_open`, `mmap`), hugepage-backed SHM, page fault prevention, cache line layout.
+- [[09 - Messaging & IPC/The LMAX Disruptor Architecture]] — Ring buffer, sequence barriers, multi-consumer dependency graphs, cache line padding.
+- [[09 - Messaging & IPC/Aeron Messaging Transport]] — Driver architecture, lock-free IPC, media drivers, UDP unicast/multicast reliable transport.
+- [[09 - Messaging & IPC/Aeron Protocol Deep Dive and IPC Architecture]] — Term buffer rotation, `tryClaim()` zero-copy publishing, flow control, sub-100ns IPC mechanics.
 
 ## Labs & Implementations
-- [[Labs/Lab - 09 Ultra-Fast Shared Memory IPC Channel]] — Construct a sub-50ns bidirectional SHM transport between two pinned CPU cores.
-
-## Drills & War Stories
-- [[Drills/Drill - 09 Designing an IPC Pipeline for Tick Ingestion]] — Design the messaging fabric connecting feed handlers to the pricing engine.
-- [[Notes/War Story - Unbounded Queues and the Out-of-Memory Cascade]] — How a downstream pricing engine backup caused memory exhaustion across the trading host.
+- [[09 - Messaging & IPC/Lab - 09 Ultra-Fast Shared Memory IPC Channel]] — Construct a sub-50ns bidirectional SHM transport between two pinned CPU cores.
 
 ## Canonical Sources
-- [[Sources/Aeron Open-Source Repository and Wiki by Real Logic]] — Reference implementation of ultra-high-performance messaging.
-- [[Sources/The LMAX Disruptor Technical Paper]] — High-performance alternative to bounded queues for concurrent programming.
+- [[Sources/How to Build an Exchange by Jane Street]] — Replicated state machines and message distribution.
+- [[Sources/Systems Performance by Brendan Gregg]] — Memory architectures and IPC performance.
+- [[Sources/C++ Concurrency in Action by Anthony Williams]] — Lock-free concurrency and memory orders.
