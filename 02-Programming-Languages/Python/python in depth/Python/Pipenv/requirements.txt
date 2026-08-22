@@ -1,4 +1,4 @@
-Django==4.2.30
+Django==5.2.16
 django-crispy-forms==1.7.2
 Pillow==9.5.0
 pytz==2018.5
