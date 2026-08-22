@@ -24,6 +24,7 @@ flowchart TD
     subgraph AppliedLabs ["Practicum & Drills"]
         QUEUE --> LAB1["Lab 01: Double Auction & Cross Simulator"]
         QUEUE --> DRILL1["Drill 01: Microstructure Mechanics Drill"]
+        QUEUE --> WS1["War Story: 2010 Flash Crash"]
     end
 ```
 
@@ -43,9 +44,9 @@ flowchart TD
 
 ## Drills & War Stories
 - [[01 - Market & Microstructure Fundamentals/Drill - 01 Microstructure and Order Matching Mechanics]] — Rapid-fire calibration on order lifecycles, race conditions, fee-adjusted routing, and queue depletion.
+- [[01 - Market & Microstructure Fundamentals/War Story - The 2010 Flash Crash]] — Deep-dive forensic breakdown of the May 6, 2010 Flash Crash: Waddell & Reed algorithm cascades, cross-market E-mini to equity contagion, and \$0.01 stub quotes.
 
 ## Canonical Sources
 - [[Sources/Trading and Exchanges by Larry Harris]] — Canonical text on market structure and practitioner dynamics.
-- [[Sources/Empirical Market Microstructure by Joel Hasbrouck]] — Statistical foundations of microstructure noise and price discovery.
-- [[Sources/SEC Regulation NMS Final Rules Release 34-51808]] — Complete legal specification of Rules 610 and 611.
-- [[Sources/ESMA MiFID II - Regulatory Technical Standard 25 (RTS 25)]] — Regulatory standards for European algorithmic and HFT clock sync.
+- [[Sources/The Microstructure of Financial Markets by Rama Cont and Sasha Stoikov]] — Foundational quantitative microstructure models.
+- [[Sources/Flash Boys by Michael Lewis]] — Physical telecommunications race and market fragmentation.

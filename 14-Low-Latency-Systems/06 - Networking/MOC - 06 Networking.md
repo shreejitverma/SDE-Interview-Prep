@@ -44,8 +44,9 @@ flowchart LR
 
 ## Drills & War Stories
 - [[06 - Networking/Drill - 06 Multicast Packet Drop Diagnostics]] — Troubleshoot dropped packets and switch microbursts during the 09:30:00 market open.
+- [[06 - Networking/War Story - The 2015 CME Globex Multicast Freeze]] — Deep-dive forensic breakdown of market open microbursts, shallow switch buffer exhaustion, and the cascading TCP gap-fill storm.
 
 ## Canonical Sources
-- [[Sources/Solarflare ef_vi User Guide]] — Low-level interface documentation for direct hardware packet injection.
-- [[Sources/DPDK Programmer's Guide]] — Core architecture manual for DPDK polling drivers.
-- [[Sources/Arista 7150 Series Low Latency Switch Architecture]] — Hardware manual on cut-through switching.
+- [[Sources/Systems Performance by Brendan Gregg]] — Network stack performance and NIC observability.
+- [[Sources/Flash Boys by Michael Lewis]] — Physical telecommunications propagation speeds (glass vs microwave).
+- [[Sources/How to Build an Exchange by Jane Street]] — High-throughput network topologies.

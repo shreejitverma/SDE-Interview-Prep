@@ -1,7 +1,7 @@
 ---
 tags: [trading/matching-engine, type/moc]
 aliases: [Matching Engine MOC, Order Book Internals MOC]
-status: seed
+status: evergreen
 module: 03
 created: 2026-08-22
 ---
@@ -10,22 +10,30 @@ created: 2026-08-22
 
 Data structures, allocation-free memory topologies, matching algorithms, and deterministic replay loops.
 
+```mermaid
+flowchart LR
+    ORDER[Inbound Sequenced Order] --> LOB[Intrusive Double-Linked LOB]
+    LOB --> ALGO[Matching Algorithm: FIFO / Pro-Rata]
+    ALGO --> SMP[Self-Match Prevention Gate]
+    SMP --> EXEC[Execution Report Generator]
+    EXEC --> SNAP[Deterministic Snapshot Journal]
+```
+
 ---
 
 ## Core Concepts
-- [[Notes/Order Book Data Structures]] — Price-indexed arrays, flat-map B-trees, contiguous circular buffers, and intrusive double-linked lists.
-- [[Notes/Matching Algorithms]] — Price-Time Priority (FIFO), Pro-Rata, Size-Time Priority, Split-Spread models.
-- [[Notes/Self-Match Prevention Mechanisms]] — Cancel Oldest, Cancel Newest, Decrement and Cancel, price modification rules.
-- [[Notes/Complex Order Types Execution]] — Hidden orders, Icebergs, Discretionary offsets, Stop-Loss triggers, Pegged orders.
-- [[Notes/Deterministic Matching Engine State Recovery]] — Journal snapshotting, zero-allocation state replay, checksum verifications.
-- [[Notes/Active-Active vs Active-Passive Failover]] — Lockstep dual-execution vs hot-standby ring replication.
+- [[03 - Matching Engine Internals/Order Book Data Structures]] — Price-indexed flat arrays, intrusive doubly-linked lists, bitmask level scans, eliminating pointer chasing.
+- [[03 - Matching Engine Internals/Matching Algorithms]] — Price-Time Priority (FIFO), Pro-Rata allocation, Size-Time Priority, Split-Spread matching.
+- [[03 - Matching Engine Internals/Self-Match Prevention Mechanisms]] — Cancel Oldest (CO), Cancel Newest (CN), Decrement and Cancel (DC), regulatory cross-wash prevention.
+- [[03 - Matching Engine Internals/Deterministic Matching Engine State Recovery]] — Journal snapshotting, zero-allocation state replay, checksum verifications.
 
 ## Labs & Implementations
-- [[Labs/Lab - 03 High-Performance Intrusive LOB]] — Implement an allocation-free C++20 Limit Order Book achieving <20ns insertion/cancellation.
+- [[03 - Matching Engine Internals/Lab - 03 High-Performance Intrusive LOB]] — Implement an allocation-free C++20 Limit Order Book achieving <20ns insertion/cancellation.
 
 ## Drills & War Stories
-- [[Drills/Drill - 03 Order Book Memory Layout Optimization]] — Cache-line alignment, pointer chasing elimination, and benchmark validation.
-- [[Notes/War Story - The Knight Capital Disaster]] — Analysis of dead code activation, deployment failure, and missing automated kill switches.
+- [[03 - Matching Engine Internals/War Story - The 2013 NASDAQ SIP Outage]] — Deep-dive forensic breakdown of the August 22, 2013 3-Hour Tape C freeze: NYSE Arca reconnect surge, unbounded queue memory exhaustion, and cascading failover collapse.
 
 ## Canonical Sources
-- [[Sources/Building a Matching Engine in C++]] — Design patterns for ultra-low-latency deterministic execution cores.
+- [[Sources/How to Build an Exchange by Jane Street]] — Foundational architecture of modern deterministic financial venues.
+- [[Sources/What Every Programmer Should Know About Memory by Ulrich Drepper]] — Cache hierarchies and memory alignment.
+- [[Sources/Site Reliability Engineering at Scale for Financial Systems]] — High availability and zero-loss operations.

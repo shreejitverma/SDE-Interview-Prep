@@ -37,8 +37,9 @@ flowchart LR
 
 ## Drills & War Stories
 - [[02 - Exchange Architecture/Drill - 02 Exchange System Topologies]] — System design interview: design an exchange sustaining 2M orders/sec with <5µs p99.99 latency.
+- [[02 - Exchange Architecture/War Story - The 2012 Knight Capital Disaster]] — Deep-dive forensic breakdown of Knight Capital's \$440M collapse: Power Peg dead code flag reuse, manual deployment failure, and runaway order loops.
 
 ## Canonical Sources
 - [[Sources/How to Build an Exchange by Jane Street]] — Foundational architecture of modern deterministic financial venues.
-- [[Sources/The LMAX Architecture by Martin Fowler]] — The single-writer, lock-free memory architecture.
-- [[Sources/SEC Rule 15c3-5 - Risk Management Controls for Broker-Dealers with Market Access]] — Market Access Rule specification.
+- [[Sources/Site Reliability Engineering at Scale for Financial Systems]] — High-availability doctrines and non-stop operational standards.
+- [[Sources/Trading and Exchanges by Larry Harris]] — Market microstructure foundations.
