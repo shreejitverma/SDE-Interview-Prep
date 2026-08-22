@@ -11,10 +11,14 @@
             "id": "e62be47c843382d0",
             "type": "leaf",
             "state": {
-              "type": "empty",
-              "state": {},
+              "type": "markdown",
+              "state": {
+                "file": "14-Low-Latency-Systems/01 - Market & Microstructure Fundamentals/Market Fragmentation and Reg NMS.md",
+                "mode": "source",
+                "source": false
+              },
               "icon": "lucide-file",
-              "title": "New tab"
+              "title": "Market Fragmentation and Reg NMS"
             }
           }
         ]
@@ -95,6 +99,7 @@
             "state": {
               "type": "backlink",
               "state": {
+                "file": "14-Low-Latency-Systems/01 - Market & Microstructure Fundamentals/Market Fragmentation and Reg NMS.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -113,6 +118,7 @@
             "state": {
               "type": "outgoing-link",
               "state": {
+                "file": "14-Low-Latency-Systems/01 - Market & Microstructure Fundamentals/Market Fragmentation and Reg NMS.md",
                 "linksCollapsed": false,
                 "unlinkedCollapsed": true
               },
@@ -155,6 +161,7 @@
             "state": {
               "type": "outline",
               "state": {
+                "file": "14-Low-Latency-Systems/01 - Market & Microstructure Fundamentals/Market Fragmentation and Reg NMS.md",
                 "followCursor": false,
                 "showSearch": false,
                 "searchQuery": ""
@@ -192,34 +199,34 @@
       "obsidian-git:Open Git source control": false
     }
   },
-  "active": "e62be47c843382d0",
+  "active": "02294fe3d8e57257",
   "lastOpenFiles": [
-    "14-Low-Latency-Systems/01 - Market & Microstructure Fundamentals/Maker-Taker vs Inverted Fee Models.md",
-    "14-Low-Latency-Systems/01 - Market & Microstructure Fundamentals/Continuous Trading vs Discrete Auctions.md",
-    "14-Low-Latency-Systems/01 - Market & Microstructure Fundamentals/Order Types and State Transitions.md",
-    "14-Low-Latency-Systems/Notes/CPU Power States and Jitter Sources.md",
-    "14-Low-Latency-Systems/09 - Messaging & IPC/Lab - 09 Ultra-Fast Shared Memory IPC Channel.md",
-    "14-Low-Latency-Systems/09 - Messaging & IPC/Aeron Messaging Transport.md",
-    "14-Low-Latency-Systems/09 - Messaging & IPC/The LMAX Disruptor Architecture.md",
-    "14-Low-Latency-Systems/09 - Messaging & IPC/Shared Memory IPC Topologies.md",
-    "14-Low-Latency-Systems/08 - Low-Latency Programming/Lab - 08 Ultra-Low Latency SPSC Ring Buffer.md",
-    "14-Low-Latency-Systems/08 - Low-Latency Programming/Lock-Free MPMC Queue Mechanics.md",
-    "14-Low-Latency-Systems/08 - Low-Latency Programming/Allocation-Free Steady State Patterns.md",
-    "14-Low-Latency-Systems/08 - Low-Latency Programming/Lock-Free SPSC Ring Buffer Design.md",
-    "14-Low-Latency-Systems/08 - Low-Latency Programming/C++ Memory Model and Memory Orders.md",
-    "14-Low-Latency-Systems/07 - Time & Measurement/Lab - 07 Cycle-Accurate RDTSC Profiler with HdrHistogram.md",
-    "14-Low-Latency-Systems/07 - Time & Measurement/One-Way Latency vs Round-Trip Time Measurement.md",
-    "14-Low-Latency-Systems/07 - Time & Measurement/Coordinated Omission in Low Latency Systems.md",
-    "14-Low-Latency-Systems/07 - Time & Measurement/Precision Time Protocol and White Rabbit.md",
-    "14-Low-Latency-Systems/07 - Time & Measurement/Clock Sources and Hardware Timestamping.md",
-    "14-Low-Latency-Systems/07 - Time & Measurement/CPU Timestamp Counter RDTSC Mechanics.md",
-    "14-Low-Latency-Systems/05 - OS & Kernel Tuning/Lab - 05 Production Core Isolation and Jitter Measurement.md",
-    "14-Low-Latency-Systems/05 - OS & Kernel Tuning/Interrupt Routing and MSI-X Tuning.md",
-    "14-Low-Latency-Systems/05 - OS & Kernel Tuning/Linux Thread Pinning and Core Affinity.md",
-    "14-Low-Latency-Systems/05 - OS & Kernel Tuning/Kernel Boot Parameters for Core Isolation.md",
-    "14-Low-Latency-Systems/04 - Hardware Mechanical Sympathy/Lab - 04 Cache Line Contention and Latency Benchmark.md",
-    "14-Low-Latency-Systems/04 - Hardware Mechanical Sympathy/CPU Power States and Jitter Sources.md",
-    "14-Low-Latency-Systems/04 - Hardware Mechanical Sympathy/Branch Predictors and Pipeline Stalls.md",
+    "14-Low-Latency-Systems/10 - Protocols & Codecs/SIMD-Accelerated Text Parsing.md",
+    "14-Low-Latency-Systems/10 - Protocols & Codecs/Zero-Copy and In-Place Parsing Techniques.md",
+    "14-Low-Latency-Systems/10 - Protocols & Codecs/FIX Protocol and Fast Encoding FAST.md",
+    "14-Low-Latency-Systems/10 - Protocols & Codecs/CME iLink 3 Binary Order Entry.md",
+    "14-Low-Latency-Systems/10 - Protocols & Codecs/CME MDP 3.0 and Simple Binary Encoding SBE.md",
+    "14-Low-Latency-Systems/10 - Protocols & Codecs/NASDAQ OUCH 4.2 Protocol Specification.md",
+    "14-Low-Latency-Systems/10 - Protocols & Codecs/NASDAQ ITCH 5.0 Protocol Specification.md",
+    "14-Low-Latency-Systems/06 - Networking/Drill - 06 Multicast Packet Drop Diagnostics.md",
+    "14-Low-Latency-Systems/06 - Networking/Lab - 06 Zero-Loss Multicast Feed Arbitrator.md",
+    "14-Low-Latency-Systems/06 - Networking/Colocation and Physical Layer Infrastructure.md",
+    "14-Low-Latency-Systems/06 - Networking/Switch Architectures in Trading.md",
+    "14-Low-Latency-Systems/06 - Networking/Low-Latency TCP for Order Entry.md",
+    "14-Low-Latency-Systems/06 - Networking/UDP Multicast Market Data and A-B Feed Arbitration.md",
+    "14-Low-Latency-Systems/06 - Networking/DPDK Architecture for Trading.md",
+    "14-Low-Latency-Systems/06 - Networking/Solarflare ef_vi Zero-Copy API.md",
+    "14-Low-Latency-Systems/06 - Networking/Kernel Bypass Technologies Overview.md",
+    "14-Low-Latency-Systems/06 - Networking/Network Interface Card Architecture.md",
+    "14-Low-Latency-Systems/02 - Exchange Architecture/Drill - 02 Exchange System Topologies.md",
+    "14-Low-Latency-Systems/02 - Exchange Architecture/Lab - 02 Sequenced Event Log Engine.md",
+    "14-Low-Latency-Systems/02 - Exchange Architecture/Fairness and Determinism Metrics.md",
+    "14-Low-Latency-Systems/02 - Exchange Architecture/Drop Copy and Clearing Feeds.md",
+    "14-Low-Latency-Systems/02 - Exchange Architecture/Market Data Publisher Architecture.md",
+    "14-Low-Latency-Systems/02 - Exchange Architecture/Replicated State Machine Pattern in Exchanges.md",
+    "14-Low-Latency-Systems/02 - Exchange Architecture/Pre-Trade Risk Checks at Wire Speed.md",
+    "14-Low-Latency-Systems/02 - Exchange Architecture/Exchange Gateway Architecture.md",
+    "14-Low-Latency-Systems/01 - Market & Microstructure Fundamentals/Drill - 01 Microstructure and Order Matching Mechanics.md",
     "14-Low-Latency-Systems/14 - Industry Map & Canon",
     "14-Low-Latency-Systems/13 - Reliability, Ops & Testing",
     "14-Low-Latency-Systems/12 - FPGAs & Hardware Acceleration",
