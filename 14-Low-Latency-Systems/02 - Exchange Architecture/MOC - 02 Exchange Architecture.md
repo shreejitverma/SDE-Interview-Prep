@@ -1,7 +1,7 @@
 ---
 tags: [trading/exchange-arch, type/moc]
 aliases: [Exchange Architecture MOC]
-status: seed
+status: evergreen
 module: 02
 created: 2026-08-22
 ---
@@ -24,21 +24,21 @@ flowchart LR
 ---
 
 ## Core Concepts
-- [[Notes/Exchange Gateway Architecture]] — Line handlers, session management, protocol transcoders, TCP terminator offload.
-- [[Notes/Pre-Trade Risk Checks at Wire Speed]] — Credit limits, price collars, fat-finger checks, leaky-bucket throttles at line rate.
-- [[Notes/The Sequenced-Stream Architecture]] — Total order broadcasting, hardware sequencers, deterministic log replication.
-- [[Notes/Replicated State Machine Pattern in Exchanges]] — Raft vs. Paxos vs. single-sequencer architectures for nanosecond failover.
-- [[Notes/Market Data Publisher Architecture]] — Multicast line handlers, snapshot/incremental generators, packet pacing.
-- [[Notes/Drop Copy and Clearing Feeds]] — Asynchronous execution broadcast, guaranteed delivery mechanisms, risk clearing pipelines.
-- [[Notes/Fairness and Determinism Metrics]] — Tail latency bounds, strict FIFO ingestion, matching engine jitter envelopes.
+- [[02 - Exchange Architecture/Exchange Gateway Architecture]] — Line handlers, session management, protocol transcoders, TCP terminator offload.
+- [[02 - Exchange Architecture/Pre-Trade Risk Checks at Wire Speed]] — SEC Rule 15c3-5, gross credit limits, price collars, fat-finger checks, leaky-bucket throttles.
+- [[02 - Exchange Architecture/The Sequenced-Stream Architecture]] — Total order broadcasting, hardware sequencers, deterministic log replication.
+- [[02 - Exchange Architecture/Replicated State Machine Pattern in Exchanges]] — Raft vs Paxos vs single-sequencer architectures for nanosecond failover.
+- [[02 - Exchange Architecture/Market Data Publisher Architecture]] — Multicast line handlers, snapshot/incremental generators, packet pacing, Feed A/B arbitration.
+- [[02 - Exchange Architecture/Drop Copy and Clearing Feeds]] — Asynchronous execution broadcast, out-of-band delivery mechanisms, risk clearing pipelines.
+- [[02 - Exchange Architecture/Fairness and Determinism Metrics]] — Tail latency bounds, cable length equalization, strict FIFO ingestion, jitter envelopes.
 
 ## Labs & Implementations
-- [[Labs/Lab - 02 Sequenced Event Log Engine]] — Build a lock-free, memory-mapped deterministic sequencer with zero-copy persistence.
+- [[02 - Exchange Architecture/Lab - 02 Sequenced Event Log Engine]] — Build a lock-free, memory-mapped deterministic sequencer with zero-copy persistence.
 
 ## Drills & War Stories
-- [[Drills/Drill - 02 Exchange System Topologies]] — System design interview: design an exchange sustaining 2M orders/sec with <5µs p99.9 latency.
-- [[Notes/War Story - LMAX Disruptor and the Death of Queues]] — How replacing actor-based queue locks with ring buffers redefined financial messaging.
+- [[02 - Exchange Architecture/Drill - 02 Exchange System Topologies]] — System design interview: design an exchange sustaining 2M orders/sec with <5µs p99.99 latency.
 
 ## Canonical Sources
 - [[Sources/How to Build an Exchange by Jane Street]] — Foundational architecture of modern deterministic financial venues.
 - [[Sources/The LMAX Architecture by Martin Fowler]] — The single-writer, lock-free memory architecture.
+- [[Sources/SEC Rule 15c3-5 - Risk Management Controls for Broker-Dealers with Market Access]] — Market Access Rule specification.
