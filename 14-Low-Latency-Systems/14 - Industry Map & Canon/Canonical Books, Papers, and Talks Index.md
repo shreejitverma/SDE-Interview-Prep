@@ -42,16 +42,22 @@ flowchart TD
 | **Memory Architecture** | *What Every Programmer Should Know About Memory* | Ulrich Drepper | Deep dive into L1/L2/L3 cache associativity, NUMA, TLBs, MESI cache coherence, and hardware prefetching. |
 | **C++ Concurrency** | *C++ Concurrency in Action (2nd Ed)* | Anthony Williams | C++ memory models, atomics, lock-free data structures, memory order acquire-release semantics. |
 
-### 2. Seminal Academic Papers
+### 2. Seminal Academic Papers & Technical Whitepapers
 
-| Paper Title | Authors | Year | Core Mathematical Contribution |
-| :--- | :--- | :--- | :--- |
-| *Continuous Auctions and Informed Trader* | Albert S. Kyle | 1985 | Formulates **Kyle's $\lambda$** (price impact of order flow) and insider trading adverse selection. |
-| *Bid, Ask and Transaction Prices in a Specialist Market*| Lawrence Glosten & Paul Milgrom | 1985 | Proves that the bid-ask spread is a dynamic response to **information asymmetry**. |
-| *A Simple Implicit Measure of the Effective Spread* | Richard Roll | 1984 | Derives effective spread from serial covariance of price changes ($s = 2\sqrt{-\text{Cov}}$). |
-| *The Price Impact of Order Book Events* | Rama Cont, Arseniy Kukanov, Sasha Stoikov | 2014 | Introduces **Order Flow Imbalance (OFI)** as a linear predictor of short-term tick price movements. |
-| *The Micro-Price: A High-Frequency Estimator* | Sasha Stoikov | 2018 | Introduces the **Volume-Weighted Micro-Price** incorporating Markov transitions and queue imbalances. |
-| *The High-Frequency Trading Arms Race* | Eric Budish, Peter Cramton, John Shim | 2015 | Explains the continuous double auction latency arbitrage race and proposes **Frequent Batch Auctions (FBA)**. |
+| Paper Title | Authors | Year | Core Technical / Mathematical Contribution | Detailed Notes |
+| :--- | :--- | :--- | :--- | :--- |
+| *Continuous Auctions and Informed Trader* | Albert S. Kyle | 1985 | Formulates **Kyle's $\lambda$** (price impact of order flow) and insider trading adverse selection. | [[15-Technical-Whitepapers/10-Seminal-Low-Latency-Systems-Papers/04-Market-Microstructure-and-Order-Dynamics\|Kyle (1985)]] |
+| *Bid, Ask and Transaction Prices in a Specialist Market*| Lawrence Glosten & Paul Milgrom | 1985 | Proves that the bid-ask spread is a dynamic response to **information asymmetry**. | [[15-Technical-Whitepapers/10-Seminal-Low-Latency-Systems-Papers/04-Market-Microstructure-and-Order-Dynamics\|Glosten-Milgrom (1985)]] |
+| *A Simple Implicit Measure of the Effective Spread* | Richard Roll | 1984 | Derives effective spread from serial covariance of price changes ($s = 2\sqrt{-\text{Cov}}$). | [[15-Technical-Whitepapers/10-Seminal-Low-Latency-Systems-Papers/04-Market-Microstructure-and-Order-Dynamics\|Roll (1984)]] |
+| *High-Frequency Trading in a Limit Order Book* | Marco Avellaneda & Sasha Stoikov | 2008 | Formulates **optimal inventory-risk market making** via HJB equations and reservation price shading. | [[Sources/Optimal High-Frequency Market Making by Avellaneda and Stoikov\|Source Summary]] • [[15-Technical-Whitepapers/10-Seminal-Low-Latency-Systems-Papers/04-Market-Microstructure-and-Order-Dynamics\|Whitepaper Analysis]] |
+| *The Price Impact of Order Book Events* | Rama Cont, Arseniy Kukanov, Sasha Stoikov | 2014 | Introduces **Order Flow Imbalance (OFI)** as a linear predictor of short-term tick price movements. | [[Sources/The Microstructure of Financial Markets by Rama Cont and Sasha Stoikov\|Source Summary]] • [[15-Technical-Whitepapers/10-Seminal-Low-Latency-Systems-Papers/04-Market-Microstructure-and-Order-Dynamics\|Whitepaper Analysis]] |
+| *The Micro-Price: A High-Frequency Estimator* | Sasha Stoikov | 2018 | Introduces the **Volume-Weighted Micro-Price** incorporating Markov transitions and queue imbalances. | [[Sources/The Microstructure of Financial Markets by Rama Cont and Sasha Stoikov\|Source Summary]] • [[15-Technical-Whitepapers/10-Seminal-Low-Latency-Systems-Papers/04-Market-Microstructure-and-Order-Dynamics\|Whitepaper Analysis]] |
+| *The High-Frequency Trading Arms Race* | Eric Budish, Peter Cramton, John Shim | 2015 | Explains the continuous double auction latency arbitrage race and proposes **Frequent Batch Auctions (FBA)**. | [[Sources/The High-Frequency Trading Arms Race by Eric Budish et al\|Source Summary]] • [[15-Technical-Whitepapers/10-Seminal-Low-Latency-Systems-Papers/04-Market-Microstructure-and-Order-Dynamics\|Whitepaper Analysis]] |
+| *Wait-Free Synchronization* | Maurice Herlihy | 1991 | Mathematical proof of the **Consensus Hierarchy** (CAS universality vs atomic registers) and wait-free progress. | [[Sources/Wait-Free Synchronization by Maurice Herlihy\|Source Summary]] • [[15-Technical-Whitepapers/10-Seminal-Low-Latency-Systems-Papers/02-Lock-Free-and-Wait-Free-Algorithms\|Whitepaper Analysis]] |
+| *Memory Barriers: a Hardware View for Software Hackers* | Paul E. McKenney | 2010 | Explains why hardware store buffers and invalidate queues produce out-of-order execution and require fences. | [[Sources/Memory Barriers - a Hardware View for Software Hackers by Paul E McKenney\|Source Summary]] • [[15-Technical-Whitepapers/10-Seminal-Low-Latency-Systems-Papers/01-Memory-Models-and-Hardware-Coherence\|Whitepaper Analysis]] |
+| *The LMAX Disruptor Architecture* | Martin Thompson et al. | 2011 | Hardware **mechanical sympathy**, pre-allocated circular ring buffers, and lock-free sequence barriers. | [[Sources/The LMAX Disruptor Architecture by Martin Thompson et al\|Source Summary]] • [[15-Technical-Whitepapers/10-Seminal-Low-Latency-Systems-Papers/02-Lock-Free-and-Wait-Free-Algorithms\|Whitepaper Analysis]] |
+| *Netmap: a Novel Framework for Fast Packet I/O* | Luigi Rizzo | 2012 | Zero-copy circular ring buffers and memory-mapped buffers achieving 14.88 Mpps line-rate packet I/O. | [[15-Technical-Whitepapers/10-Seminal-Low-Latency-Systems-Papers/03-Kernel-Bypass-and-Sub-Microsecond-IO\|Whitepaper Analysis]] |
+| *What Every Programmer Should Know About Memory* | Ulrich Drepper | 2007 | Physical microarchitecture of caches, lines, MESI coherence, TLBs, and HugePages for software developers. | [[Sources/What Every Programmer Should Know About Memory by Ulrich Drepper\|Source Summary]] • [[15-Technical-Whitepapers/03-Memory-Architecture-and-Concurrency/Ulrich-Drepper-Memory-Architecture\|Whitepaper Analysis]] |
 
 ### 3. Essential Industry Talks & Conference Presentations
 1. **Carl Cook (CppCon 2017)** — *When a Microsecond is an Eternity: High Performance C++ in Very Fast Trading*:
@@ -139,9 +145,16 @@ flowchart TD
 - [[01 - Market & Microstructure Fundamentals/Price Discovery and Microstructure Noise]]
 - [[11 - Participant-Side Systems/Low-Latency Signal Generation and Feature Calculators]]
 - [[14 - Industry Map & Canon/MOC - 14 Industry Map & Canon]]
+- [[15-Technical-Whitepapers/10-Seminal-Low-Latency-Systems-Papers/README|10-Seminal-Low-Latency-Systems-Papers]]
+- [[15-Technical-Whitepapers/09-Seminal-Computer-Science-Papers/README|09-Seminal-Computer-Science-Papers]]
 
 ## Sources
 - [[Sources/Trading and Exchanges by Larry Harris]]
 - [[Sources/Systems Performance by Brendan Gregg]]
 - [[Sources/What Every Programmer Should Know About Memory by Ulrich Drepper]]
 - [[Sources/The Microstructure of Financial Markets by Rama Cont and Sasha Stoikov]]
+- [[Sources/Optimal High-Frequency Market Making by Avellaneda and Stoikov]]
+- [[Sources/The High-Frequency Trading Arms Race by Eric Budish et al]]
+- [[Sources/Wait-Free Synchronization by Maurice Herlihy]]
+- [[Sources/Memory Barriers - a Hardware View for Software Hackers by Paul E McKenney]]
+- [[Sources/The LMAX Disruptor Architecture by Martin Thompson et al]]
