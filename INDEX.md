@@ -33,6 +33,7 @@ This repository is a structured knowledge base designed to take you from a Junio
 *   **[Dev Practices](./10-Development-Practices):** CI/CD (GitHub Actions), Docker, Unit Testing.
 *   **[Security](./11-Security-And-Cryptography):** Secure Coding, OWASP Top 10.
 *   **[Performance](./12-Performance-Engineering):** Profiling (Valgrind), False Sharing.
+*   **[Technical Whitepapers](./15-Technical-Whitepapers):** Systems Performance (Gregg), Kernel Internals, Memory Hierarchy (Drepper), Exploitation & Hardening, plus Seminal Computer Science & Low-Latency Systems Canon (~159 papers).
 
 ### Phase 5: Distinguished Engineering
 *   **[Advanced Concurrency](./08-Distinguished-Engineering/01-Advanced-Concurrency):** Lock-Free Stack.
@@ -46,6 +47,16 @@ This repository is a structured knowledge base designed to take you from a Junio
     *   Systems: multi-agent orchestration, frameworks and SDKs, Model Context Protocol.
     *   Rigor: evaluation and observability, safety and security, production engineering.
     *   Frontier: coding agents, computer use, RL for agents, capstone projects.
+
+### Phase 7: Interview Command Center
+*   **[Interview Command Center](./16-Interview-Command-Center/00-Dashboard.md):** Mission control for clearing every interview.
+    *   **[Coaching Prompt](./16-Interview-Command-Center/Coaching-Prompt.md):** AI coaching system prompt for all 5 roles.
+    *   **Role Hubs:** [SDE](./16-Interview-Command-Center/01-Roles/SDE/_Hub.md) · [Quant Dev](./16-Interview-Command-Center/01-Roles/Quant-Dev/_Hub.md) · [Quant Research](./16-Interview-Command-Center/01-Roles/Quant-Research/_Hub.md) · [AI Engineer](./16-Interview-Command-Center/01-Roles/AI-Engineer/_Hub.md) · [Low Latency](./16-Interview-Command-Center/01-Roles/Low-Latency/_Hub.md)
+    *   **[Company Index](./16-Interview-Command-Center/02-Companies/_Company-Index.md):** 25+ company profiles (FAANG, Quant, AI Labs, Tech).
+    *   **[Pipeline](./16-Interview-Command-Center/03-Pipeline/_Pipeline-Dashboard.md):** Interview tracking by stage (Applied → Offer).
+    *   **[Retrospectives](./16-Interview-Command-Center/04-Retrospectives/_Retro-Dashboard.md):** Post-interview analysis and pattern detection.
+    *   **[Behavioral](./16-Interview-Command-Center/05-Behavioral/_Story-Index.md):** STAR story bank with company-specific mapping.
+    *   **[Daily Log](./16-Interview-Command-Center/06-Daily-Log/_Daily-Log-Hub.md):** Practice journal and weekly reviews.
 
 ---
 *Built for Excellence.*
