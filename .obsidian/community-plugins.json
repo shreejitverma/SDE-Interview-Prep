@@ -1,3 +1,14 @@
 [
-  "obsidian-git"
+  "obsidian-git",
+  "dataview",
+  "obsidian-kanban",
+  "templater-obsidian",
+  "obsidian-tasks-plugin",
+  "calendar",
+  "homepage",
+  "quickadd",
+  "table-editor-obsidian",
+  "obsidian-icon-folder",
+  "recent-files-obsidian",
+  "omnisearch"
 ]

@@ -21,7 +21,10 @@ It has been built and maintained continuously since 2021.
 | Low-latency systems | 129-note Obsidian vault on exchange architecture, matching engines, kernel bypass, FPGAs, lock-free C++ |
 | Agentic AI | 14-volume curriculum from LLM foundations to multi-agent systems, MCP, evals, and coding agents |
 | Distinguished engineering | Lock-free stack, Raft, consistent hashing, LSM tree, WAL, circuit breaker |
+| Technical whitepapers | ~159 papers: Linux eBPF, memory hierarchies, Windows NT, exploitation, hardening, plus seminal CS and low-latency/HFT canon |
 | Interview prep | Behavioral, resume, mock interview checklists, and a phased roadmap |
+| Interview Command Center | Obsidian mission control: 5 role hubs, 25+ company profiles, active pipeline tracking, Gmail sync, STAR story bank, retrospectives |
+
 
 Roughly 15,000 tracked files. Most of the value is in the code and the long-form notes, not in this README.
 
@@ -61,7 +64,10 @@ Roughly 15,000 tracked files. Most of the value is in the code and the long-form
 12-Performance-Engineering/    CPU architecture, profiling
 13-Agentic-AI/                 Agentic AI: Zero to Godhood (14 volumes)
 14-Low-Latency-Systems/        Low-latency trading systems vault (Obsidian)
+15-Technical-Whitepapers/      Technical whitepapers archive (eBPF, Memory, Kernels, Exploitation, Hardening)
+16-Interview-Command-Center/   Obsidian mission control: 5 role hubs, 25+ companies, pipeline tracker, retro system
 INDEX.md                       Phased table of contents with direct links
+
 ```
 
 ### 01 - CS Foundations
@@ -136,6 +142,21 @@ An Obsidian vault (open the folder as a vault; start at [00 Home.md](./14-Low-La
 market microstructure, exchange architecture, matching engine internals, hardware mechanical sympathy (caches, MESI, NUMA, TLB), OS and kernel tuning (`isolcpus`, `nohz_full`, IRQ affinity), kernel-bypass networking (Onload, DPDK), time and measurement (PTP, `rdtsc`, HDR histograms, coordinated omission), low-latency C++ (memory model, SPSC/MPMC rings, allocation-free loops), messaging and IPC (Disruptor, Aeron), protocols and codecs (ITCH, OUCH, MDP3/SBE, FIX), participant-side tick-to-trade pipelines, FPGAs, reliability and testing, and an industry map with canonical papers and talks.
 
 Includes a [12-week production calibration roadmap](./14-Low-Latency-Systems/Roadmap%20-%2012-Week%20Production%20Calibration.md) and an [interview question bank with answers](./14-Low-Latency-Systems/Interview).
+
+### 15 - Technical Whitepapers
+
+A curated library of [~159 technical whitepapers](./15-Technical-Whitepapers) for hackers, pentesters, system administrators, programmers, and security researchers, audited and verified clean via [ClamAV](./15-Technical-Whitepapers/ClamAV-Audit-Report.md).
+
+- [Systems Performance & eBPF](./15-Technical-Whitepapers/01-Systems-Performance-and-Tracing): the 14-paper Brendan Gregg canon (BPF superpowers, the USE method, flamegraphs, off-CPU analysis), plus syscall tracing overhead benchmarks.
+- [Operating Systems & Kernels](./15-Technical-Whitepapers/02-Operating-Systems-and-Kernels): Dennis Ritchie's 1974 UNIX treatise, MIT's xv6 teaching OS, Nick Blundell's OS from scratch, the Linux scheduler wasted cores analysis, and the Windows NT Executive architecture.
+- [Memory Architecture & Concurrency](./15-Technical-Whitepapers/03-Memory-Architecture-and-Concurrency): Ulrich Drepper's 114-page masterwork on caches, TLBs, and NUMA; the Ousterhout threading debate; and database join memory effects.
+- [Networking & Diagnostics](./15-Technical-Whitepapers/04-Networking-and-Protocols): TCP Fast Open (0-RTT), Van Jacobson's netchannels, tcpdump/tcptrace analysis, and DDoS mitigation.
+- [Offensive Security & Exploitation](./15-Technical-Whitepapers/05-Offensive-Security-and-Exploitation): reverse engineering, stack buffer overflows, PE binary infection, advanced SQL injection (Chris Anley), and Same-Origin Policy bypasses.
+- [Defensive Security & Hardening](./15-Technical-Whitepapers/06-Defensive-Security-and-Hardening): Michael Boelen's Linux hardening trilogy, container security (Docker, LXC, Chromium sandbox), and the OWASP ASVS standard.
+- [Polish Technical Papers (pl)](./15-Technical-Whitepapers/07-Polish-Technical-Papers-pl): 31 Polish research papers on ELF analysis, kernel rootkits, web security (Michał Sajdak), and SELinux.
+- [Developer Tooling](./15-Technical-Whitepapers/08-Developer-Tooling-and-Foundations): The AWK Programming Language (Aho, Kernighan, Weinberg) and Vim for humans.
+- [Seminal Computer Science Papers](./15-Technical-Whitepapers/09-Seminal-Computer-Science-Papers): 20 foundational papers spanning computability (Turing), information theory (Shannon), distributed consensus (Lamport, Paxos, Raft, FLP), cloud & big data (GFS, MapReduce, Bigtable, Dynamo, Spark), relational databases (Codd, Gray, Mohan ARIES), and Internet architecture (Cerf-Kahn, Saltzer, Van Jacobson).
+- [Seminal Low-Latency Systems Papers](./15-Technical-Whitepapers/10-Seminal-Low-Latency-Systems-Papers): 18 seminal papers for low-latency & HFT engineers covering C++ memory models (Boehm-Adve, McKenney), lock-free/wait-free algorithms (Herlihy, LMAX Disruptor, RCU), kernel bypass (Netmap, Stanford IX, RAMCloud), and market microstructure dynamics (Kyle, Glosten-Milgrom, Cont OFI, Stoikov Micro-Price, Budish, Avellaneda-Stoikov).
 
 ---
 

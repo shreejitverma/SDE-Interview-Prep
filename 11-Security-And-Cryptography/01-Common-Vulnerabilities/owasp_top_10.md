@@ -22,3 +22,13 @@ Every SDE must know these.
     *   *Fix:* `npm audit`, Snyk, Dependabot.
 10. **Insufficient Logging:** Not knowing you were hacked.
     *   *Fix:* Centralized logging (ELK/Splunk), Alerting on anomalies.
+
+---
+
+## Advanced Deep-Dives & Technical Whitepapers
+
+For rigorous exploit mechanics, penetration testing methodologies, and defensive benchmarks:
+- [[../../15-Technical-Whitepapers/05-Offensive-Security-and-Exploitation/Database-Exploitation-and-SQL-Injection|Database Exploitation & SQL Injection Canon]]: Chris Anley's advanced SQL Server vectors, blind inferential extraction, and second-order injection.
+- [[../../15-Technical-Whitepapers/05-Offensive-Security-and-Exploitation/Binary-Exploitation-and-Reverse-Eng|Binary Exploitation & Reverse Engineering]]: Stack buffer overflows, EIP hijacking, and shellcode mechanics.
+- [[../../15-Technical-Whitepapers/06-Defensive-Security-and-Hardening/Application-and-Infrastructure-Sec|Enterprise Application Security Standards]]: OWASP Application Security Verification Standard (ASVS 3.0.1) and OWASP Testing Guide v4.
+- [[../../15-Technical-Whitepapers/06-Defensive-Security-and-Hardening/Linux-Operating-System-Hardening|Linux OS Hardening]]: Sysctl baseline, kernel self-protection, and SELinux mandatory access control.
