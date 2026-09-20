@@ -36,7 +36,7 @@
   "httpApiEnabled": false,
   "httpApiPort": "51361",
   "httpApiNotice": true,
-  "welcomeMessage": "",
+  "welcomeMessage": "1.21.0",
   "verboseLogging": false,
   "DANGER_httpHost": null,
   "DANGER_forceSaveCache": false
