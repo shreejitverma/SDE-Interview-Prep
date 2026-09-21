@@ -1,11 +1,20 @@
-# 🔄 Quant Dev Common Patterns
+---
+type: playbook
+track: [sde, quant-dev, quant-research, low-latency, ai-eng, distinguished]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
+# Quant Dev Common Patterns
 
 ---
 
 ## C++ Interview Patterns
 
 ### 1. Rule of Five
-When you define any of: destructor, copy constructor, copy assignment, move constructor, move assignment — you should define ALL five.
+When you define any of: destructor, copy constructor, copy assignment, move constructor, move assignment - you should define ALL five.
 
 ### 2. RAII (Resource Acquisition Is Initialization)
 Tie resource lifetime to object lifetime. Use smart pointers. Never use raw `new`/`delete` in production code.
@@ -54,8 +63,8 @@ Order → Pre-trade Risk → OMS → Exchange
 
 ## Probability Problem-Solving Framework
 
-1. **Define the sample space** — What are all possible outcomes?
-2. **Identify the event** — What are we computing the probability of?
+1. **Define the sample space** - What are all possible outcomes?
+2. **Identify the event** - What are we computing the probability of?
 3. **Choose technique:**
    - Direct counting / combinatorics
    - Conditional probability / Bayes

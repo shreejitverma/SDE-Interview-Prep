@@ -1,3 +1,12 @@
+---
+type: concept
+track: [distinguished]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Code Review Checklist for Senior Engineers
 
 **Goal:** Improve quality, not just find bugs.

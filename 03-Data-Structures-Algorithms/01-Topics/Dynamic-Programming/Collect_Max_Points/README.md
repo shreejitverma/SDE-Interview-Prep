@@ -1,3 +1,12 @@
+---
+type: moc
+track: [sde, quant-dev]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Problem Statement#1
 You have a friend named Shivam and he is going to school from his house. He finds out that there are coins scattered on the roads and since he is greedy he wants to collect them all but since he doesn't want to be late for school, he decides to collect as many as he can on his way. He is a student and knows math so he figures he could travel the path in the form of a 2-D grid.
 

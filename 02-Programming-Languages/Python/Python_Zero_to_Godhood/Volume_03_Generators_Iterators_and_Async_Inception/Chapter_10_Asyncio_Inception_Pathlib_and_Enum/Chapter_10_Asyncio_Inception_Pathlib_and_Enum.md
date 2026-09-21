@@ -1,10 +1,19 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 10: Asyncio Inception, Pathlib, and Enum (Python 3.4)
 
 Python 3.4 shipped three additions that each replaced a pile of ad-hoc idioms with a designed
 abstraction: **asyncio** (PEP 3156) gave single-threaded I/O concurrency a standard event loop;
 **pathlib** (PEP 428) replaced string-based path juggling with path *objects*; and **enum**
 (PEP 435) gave Python real enumerations. This chapter teaches the model behind each. For asyncio
-we focus on the **event loop and the Future/Task machinery** — its 3.4 inception — and defer the
+we focus on the **event loop and the Future/Task machinery** - its 3.4 inception - and defer the
 `async`/`await` *syntax* to Chapter 11 and the full internals and structured concurrency to
 Vol IX.
 
@@ -19,7 +28,7 @@ Vol IX.
 
 ## 10.1 Asyncio inception: the event loop, selectors, Futures, and Tasks (PEP 3156)
 
-**Why this exists.** For I/O-bound workloads — thousands of sockets mostly *waiting* — a thread
+**Why this exists.** For I/O-bound workloads - thousands of sockets mostly *waiting* - a thread
 per connection wastes memory and pays context-switch and GIL-contention costs, while raw callback
 code becomes "callback hell." **asyncio** offers a third model: **one thread, one event loop,
 cooperative multitasking**. Tasks voluntarily suspend at `await` points; while one waits on I/O,
@@ -29,7 +38,7 @@ within the loop.
 **What the interpreter/loop actually does.** asyncio is built on the OS's **I/O multiplexing**:
 
 1. The loop registers each socket/file descriptor with the `selectors` module, which maps to the
-   best available syscall — `epoll` (Linux), `kqueue` (macOS/BSD), or `select`/`poll` elsewhere —
+   best available syscall - `epoll` (Linux), `kqueue` (macOS/BSD), or `select`/`poll` elsewhere - 
    noting which event (readable/writable) each task awaits.
 2. The loop calls `selector.select()`, which **blocks the single thread in the kernel** until at
    least one descriptor is ready (or a timer fires).
@@ -44,11 +53,11 @@ waiting on, and yields to the loop; when that future completes, `_step` runs aga
 coroutine with the result.
 
 **The historical syntax (3.4, removed in 3.11).** In 3.4 a coroutine was a generator decorated
-with `@asyncio.coroutine` that delegated with `yield from` — exactly the `yield from` channel from
+with `@asyncio.coroutine` that delegated with `yield from` - exactly the `yield from` channel from
 Chapter 9, now feeding the event loop:
 
 ```python
-# Caption: 3.4-era generator coroutine. NOT executed here — @asyncio.coroutine was REMOVED
+# Caption: 3.4-era generator coroutine. NOT executed here - @asyncio.coroutine was REMOVED
 # in Python 3.11. Shown to connect asyncio to the yield-from machinery of Chapter 9.
 import asyncio
 
@@ -73,11 +82,11 @@ hasattr(asyncio, 'coroutine'): False
 ```
 
 **The modern equivalent** uses Chapter 11's `async`/`await` syntax but the *same* event-loop model.
-The payoff — true overlap of waits on one thread — is measurable: three 0.05 s sleeps run
+The payoff - true overlap of waits on one thread - is measurable: three 0.05 s sleeps run
 **concurrently**, finishing in ~0.05 s, not 0.15 s:
 
 ```python
-# Caption: the event loop overlaps waits — concurrency on a single thread.
+# Caption: the event loop overlaps waits - concurrency on a single thread.
 import asyncio, time
 
 async def worker(name, delay):
@@ -102,7 +111,7 @@ elapsed (~0.05s, not 0.15s): 0.051 s
 ```
 
 **The senior-engineer contrast.** This is cooperative scheduling, like Go's goroutines or
-Node's event loop — but explicit: a task runs uninterrupted until it `await`s, so there is no
+Node's event loop - but explicit: a task runs uninterrupted until it `await`s, so there is no
 preemption and no lock needed for data touched only between awaits. The flip side (the headline
 anti-pattern, §10.4) is that a *blocking* call (a synchronous `requests.get`, a CPU-bound loop)
 stalls the **entire** loop and every other task. The `async`/`await` syntax is Chapter 11; event
@@ -127,12 +136,12 @@ between *pure* (string-only) and *concrete* (touches the filesystem) operations:
              Path                 (instantiates Posix/Windows for the host OS)
 ```
 
-`PurePath` does path *algebra* with no syscalls — and lets you parse foreign paths (Windows paths
+`PurePath` does path *algebra* with no syscalls - and lets you parse foreign paths (Windows paths
 on Linux). `Path` adds filesystem operations. `Path(".")` dynamically becomes a `PosixPath` or
 `WindowsPath` for the host.
 
 ```python
-# Caption: path objects — / for joining, rich component accessors, cross-platform pure paths.
+# Caption: path objects - / for joining, rich component accessors, cross-platform pure paths.
 from pathlib import Path, PureWindowsPath
 
 p = Path("/var") / "log" / "nginx.log"     # __truediv__ joins
@@ -165,7 +174,7 @@ accepts path-like objects everywhere via `os.PathLike`.
 
 ## 10.3 `enum`: enumerations via a metaclass (PEP 435)
 
-**Why this exists.** Before 3.4, "enums" were bare module constants (`RED = 1`) — no namespacing,
+**Why this exists.** Before 3.4, "enums" were bare module constants (`RED = 1`) - no namespacing,
 no type safety, no iteration, no readable `repr`, and any int compared equal to them. **enum**
 provides real enumerations: named, singleton, immutable, iterable members.
 
@@ -205,8 +214,8 @@ immutable -> AttributeError
 ```
 
 Because members are singletons, compare them with `is`/`==` and switch on them in `match`/`case`
-(Chapter 15). The `enum` family extends well beyond this base — `IntEnum` (int-compatible),
-`Flag`/`IntFlag` (bitwise combinations), `auto()` (auto-numbering), and `StrEnum` (3.11) — all of
+(Chapter 15). The `enum` family extends well beyond this base - `IntEnum` (int-compatible),
+`Flag`/`IntFlag` (bitwise combinations), `auto()` (auto-numbering), and `StrEnum` (3.11) - all of
 which are developed in the dedicated `enum` reference in Vol XII.
 
 ---
@@ -223,7 +232,7 @@ which are developed in the dedicated `enum` reference in Vol XII.
   `Path`. In a tight loop over millions of paths, `os.path` string ops can be faster; everywhere
   else, prefer `pathlib` for correctness and readability.
 - **Enum pitfalls:** duplicate *values* create **aliases** (a second name for the same member),
-  not new members — use `@enum.unique` to forbid that; and `IntEnum` members compare equal to
+  not new members - use `@enum.unique` to forbid that; and `IntEnum` members compare equal to
   plain ints, which can mask type errors (prefer plain `Enum` unless int-compatibility is
   required).
 

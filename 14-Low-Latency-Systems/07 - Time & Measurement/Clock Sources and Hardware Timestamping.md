@@ -4,6 +4,11 @@ aliases: [Hardware Timestamping, PHY Timestamping, MAC Timestamping, SO_TIMESTAM
 status: evergreen
 module: 07
 created: 2026-08-22
+type: concept
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
 > [!summary]
@@ -179,13 +184,13 @@ uint64_t extract_hw_timestamp_ns(struct msghdr* msg) {
 ---
 
 ## Related
-- [[Notes/Precision Time Protocol and White Rabbit]]
-- [[Notes/One-Way Latency vs Round-Trip Time Measurement]]
-- [[Notes/CPU Timestamp Counter RDTSC Mechanics]]
-- [[Notes/Latency Numbers Every Trading Engineer Knows]]
+- [[Precision Time Protocol and White Rabbit]]
+- [[One-Way Latency vs Round-Trip Time Measurement]]
+- [[CPU Timestamp Counter RDTSC Mechanics]]
+- [[Latency Numbers Every Trading Engineer Knows]]
 - [[MOC - 07 Time & Measurement]]
 
 ## Sources
 - [[Sources/IEEE 1588-2019 Standard for Precision Clock Synchronization]]
 - [[Sources/Solarflare ef_vi User Guide]]
-- [[Sources/Linux Kernel Documentation - networking/timestamping.rst]]
+- [timestamping.rst](../Sources/timestamping.rst.md)

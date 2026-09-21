@@ -3,6 +3,11 @@ tags: [cloud-infrastructure, big-data, gfs, mapreduce, bigtable, dynamo, spark, 
 aliases: [Cloud Infrastructure and Big Data, Google File System Paper, MapReduce Paper, Dynamo Paper, Apache Spark RDD]
 status: evergreen
 created: 2026-09-17
+type: paper
+track: [distinguished, sde]
+level:
+last_reviewed:
+sources: []
 ---
 
 # Cloud Infrastructure & Big Data Foundations
@@ -126,6 +131,6 @@ Matei Zaharia created **Resilient Distributed Datasets (RDDs)**:
 ## Related Notes
 - [[02-Distributed-Systems-and-Consensus|Distributed Systems and Consensus Mechanics]]
 - [[04-Databases-and-Transaction-Processing|Databases and Transaction Processing]]
-- [[../../08-Distinguished-Engineering/02-Distributed-Systems-Internals/consistent_hashing|08-Distinguished-Engineering: Consistent Hashing]]
-- [[../../08-Distinguished-Engineering/03-Database-Internals/lsm_tree|08-Distinguished-Engineering: LSM Tree]]
+- [08-Distinguished-Engineering: Consistent Hashing](../../08-Distinguished-Engineering/02-Distributed-Systems-Internals/consistent_hashing.py)
+- [08-Distinguished-Engineering: LSM Tree](../../08-Distinguished-Engineering/03-Database-Internals/lsm_tree.cpp)
 - [[README|Seminal Computer Science Papers MOC]]

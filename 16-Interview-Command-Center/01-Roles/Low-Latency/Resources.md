@@ -1,4 +1,13 @@
-# 📚 Low Latency Resources
+---
+type: playbook
+track: [sde, quant-dev, quant-research, low-latency, ai-eng, distinguished]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
+# Low Latency Resources
 
 ## Vault (Your 14-Module Knowledge Base)
 | Module | Link |
@@ -10,7 +19,7 @@
 | C++ Mastery Problems | [[14-Low-Latency-Systems/Interview/Coding-Problems-Low-Latency-CPP-Mastery]] |
 | C++ Cheatsheet | [[14-Low-Latency-Systems/Interview/Core-CPP-Low-Latency-Interview-Cheatsheet]] |
 | Staff System Design | [[14-Low-Latency-Systems/Interview/Staff-Principal-System-Design-Blueprint]] |
-| Performance Engineering | [[12-Performance-Engineering]] |
+| Performance Engineering | [[12-Performance-Engineering/README\|12-Performance-Engineering]] |
 | Seminal LL Papers | [[15-Technical-Whitepapers/10-Seminal-Low-Latency-Systems-Papers]] |
 
 ## Books

@@ -399,7 +399,7 @@ throw-speciﬁcation
 noexcept or throw(std::exception).
 attributes
 (optional) Any attributes for the lambda function. For example, if the lambda-body always throws
-an exception then [[noreturn]] can be used.
+an exception then `[[noreturn]]` can be used.
 -> return-type
 (optional) Speciﬁes the return type of the lambda function. Required when the return type
 cannot be determined by the compiler.

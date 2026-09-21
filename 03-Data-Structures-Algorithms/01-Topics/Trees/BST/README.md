@@ -1,3 +1,12 @@
+---
+type: moc
+track: [sde, quant-dev]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Binary Search Tree (BST)
 
 Binary Search Tree is a node-based binary tree data structure which has the following properties:

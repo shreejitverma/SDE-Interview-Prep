@@ -1,3 +1,12 @@
+---
+type: problem
+track: [sde, quant-dev]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 The MIT License (MIT)
 
 Copyright (c) 2018 https://github.com/kamyu104/LeetCode-Solutions

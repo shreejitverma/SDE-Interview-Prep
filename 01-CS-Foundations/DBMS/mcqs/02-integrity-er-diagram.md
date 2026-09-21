@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Questions
 1. Joe Bloggs is helping us build Scaler. He is trying to delete some batches but the database throws an error that the batch is used by a tuple in another table. Which type of integrity constraint is being enforced here?
     >A. User-defined integrity \

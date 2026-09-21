@@ -3,6 +3,11 @@ tags: [security/defensive, containers, docker, microservices, sandboxing, namesp
 aliases: [Container and Microservice Security, Docker High Security Microservices, Chromium Sandbox Guide, LXC Docker Security]
 status: evergreen
 created: 2026-09-17
+type: paper
+track: [distinguished, sde]
+level:
+last_reviewed:
+sources: []
 ---
 
 # Container & Microservice Security

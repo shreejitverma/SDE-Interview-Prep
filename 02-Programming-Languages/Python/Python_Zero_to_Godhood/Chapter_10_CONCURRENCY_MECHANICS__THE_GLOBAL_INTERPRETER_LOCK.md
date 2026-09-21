@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 10: Concurrency Mechanics: The Global Interpreter Lock
 
 Python's approach to concurrency is defined by a single, controversial mechanism: the **Global Interpreter Lock (GIL)**. This chapter explores how it works and how Python 3.13 is finally moving past it.

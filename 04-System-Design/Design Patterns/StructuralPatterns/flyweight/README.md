@@ -1,3 +1,12 @@
+---
+type: moc
+track: [sde, distinguished]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 ## Flyweight
 
 Flyweight pattern has has structural purpose, applies to objects and uses sharing to support 

@@ -1,8 +1,17 @@
-# Chapter 37: Coroutines II — Awaitables, Tasks, coroutine_handle, and Symmetric Transfer
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
+# Chapter 37: Coroutines II - Awaitables, Tasks, coroutine_handle, and Symmetric Transfer
 
 > *Chapter 36 built the generator: the `co_yield` side of coroutines, driven synchronously by a consumer pulling values. This chapter completes the picture with the `co_await` side: the awaitable protocol that `co_await` actually invokes, how to build a `Task<T>` that represents an asynchronous result, how coroutines resume one another without growing the stack via symmetric transfer, and the lifetime and ownership rules that keep `coroutine_handle` from becoming a use-after-free machine.*
 
-`co_await` is not magic — it is a three-method protocol (`await_ready`, `await_suspend`, `await_resume`) that the compiler calls on whatever you await. Understanding that protocol is what lets you write `Task` types, integrate with event loops, chain coroutines, and avoid the stack-overflow and dangling-handle traps that make naive coroutine code dangerous. This chapter assumes the promise-type machinery of Chapter 36 and builds the asynchronous half on top of it.
+`co_await` is not magic - it is a three-method protocol (`await_ready`, `await_suspend`, `await_resume`) that the compiler calls on whatever you await. Understanding that protocol is what lets you write `Task` types, integrate with event loops, chain coroutines, and avoid the stack-overflow and dangling-handle traps that make naive coroutine code dangerous. This chapter assumes the promise-type machinery of Chapter 36 and builds the asynchronous half on top of it.
 
 ---
 
@@ -47,7 +56,7 @@ struct never_suspend {                 // == std::suspend_never
 };
 ```
 
-The pattern is: `await_ready` is the fast-path optimization (skip the suspend machinery when the value is already there); `await_suspend` is where you stash the handle somewhere so something — an event loop, another thread, an I/O completion — can resume it later; `await_resume` produces the value `co_await` evaluates to (or rethrows a stored exception).
+The pattern is: `await_ready` is the fast-path optimization (skip the suspend machinery when the value is already there); `await_suspend` is where you stash the handle somewhere so something - an event loop, another thread, an I/O completion - can resume it later; `await_resume` produces the value `co_await` evaluates to (or rethrows a stored exception).
 
 ---
 
@@ -72,7 +81,7 @@ bool await_suspend(std::coroutine_handle<> h);
 std::coroutine_handle<> await_suspend(std::coroutine_handle<> h);
 ```
 
-The `bool` form is an optimization for "I checked and the result is ready after all — don't pay for suspension." The `coroutine_handle` form (c) is **symmetric transfer**, the key to chaining coroutines without overflowing the stack — covered in Section 37.5. Returning `std::noop_coroutine()` is the idiomatic "nothing to resume; go back to the scheduler."
+The `bool` form is an optimization for "I checked and the result is ready after all - don't pay for suspension." The `coroutine_handle` form (c) is **symmetric transfer**, the key to chaining coroutines without overflowing the stack - covered in Section 37.5. Returning `std::noop_coroutine()` is the idiomatic "nothing to resume; go back to the scheduler."
 
 ---
 
@@ -107,7 +116,7 @@ sleep_awaiter operator co_await(sleep_for s) { return {s.dur}; }
 // now: co_await sleep_for{100ms};
 ```
 
-`await_transform` on the promise is the hook libraries use to (a) make *every* `co_await` in a coroutine go through a scheduler, or (b) **disable** `co_await` in a generator by declaring it deleted — a clean way to make `co_yield`-only coroutines reject `co_await`.
+`await_transform` on the promise is the hook libraries use to (a) make *every* `co_await` in a coroutine go through a scheduler, or (b) **disable** `co_await` in a generator by declaring it deleted - a clean way to make `co_yield`-only coroutines reject `co_await`.
 
 ---
 
@@ -176,7 +185,7 @@ Task<int> compute() {
 }
 ```
 
-The flow: `co_await add(2,3)` suspends `compute`, records `compute`'s handle as `add`'s continuation, and symmetric-transfers into `add`. When `add` hits `final_suspend`, its `final_awaiter` transfers control straight back to `compute` — no growing call stack, and `await_resume` extracts the `int` (or rethrows).
+The flow: `co_await add(2,3)` suspends `compute`, records `compute`'s handle as `add`'s continuation, and symmetric-transfers into `add`. When `add` hits `final_suspend`, its `final_awaiter` transfers control straight back to `compute` - no growing call stack, and `await_resume` extracts the `int` (or rethrows).
 
 ---
 
@@ -192,7 +201,7 @@ void await_suspend(std::coroutine_handle<> awaiting) {
 }                        // For a loop of awaits, each resume nests -> stack overflow.
 ```
 
-Every `resume()` called from within `await_suspend` adds a stack frame. A coroutine that awaits another in a loop (or deep recursion of tasks) accumulates frames and eventually **overflows the stack**. **Symmetric transfer** fixes this: by *returning* the handle from `await_suspend` (form (c) in Section 37.2), the compiler performs a guaranteed **tail call** — the current frame is torn down *before* the next coroutine resumes, so stack depth stays constant no matter how long the chain.
+Every `resume()` called from within `await_suspend` adds a stack frame. A coroutine that awaits another in a loop (or deep recursion of tasks) accumulates frames and eventually **overflows the stack**. **Symmetric transfer** fixes this: by *returning* the handle from `await_suspend` (form (c) in Section 37.2), the compiler performs a guaranteed **tail call** - the current frame is torn down *before* the next coroutine resumes, so stack depth stays constant no matter how long the chain.
 
 ```cpp
 // Listing 37.6: the RIGHT way -- return the handle, compiler tail-calls it
@@ -231,7 +240,7 @@ void inspect(std::coroutine_handle<P> h) {
 }
 ```
 
-Three rules prevent the common crashes: (1) **exactly one owner** calls `.destroy()` — typically the RAII wrapper (`Task`/`Generator`) in its destructor, which is why those types are move-only and null out the moved-from handle with `std::exchange`; (2) **never resume a `done()` coroutine** — it is undefined behavior; (3) **`coroutine_handle<>` (type-erased)** loses `.promise()` access but is what you store in heterogeneous scheduler queues, round-tripping through `.address()`/`from_address()`.
+Three rules prevent the common crashes: (1) **exactly one owner** calls `.destroy()` - typically the RAII wrapper (`Task`/`Generator`) in its destructor, which is why those types are move-only and null out the moved-from handle with `std::exchange`; (2) **never resume a `done()` coroutine** - it is undefined behavior; (3) **`coroutine_handle<>` (type-erased)** loses `.promise()` access but is what you store in heterogeneous scheduler queues, round-tripping through `.address()`/`from_address()`.
 
 ---
 
@@ -266,7 +275,7 @@ struct AsyncRead {
 // usage:  ssize_t n = co_await AsyncRead{fd, buffer, 4096};
 ```
 
-Two correctness notes for production reactors: the resuming thread is the reactor's thread, so anything after the `co_await` runs there (mind data races and thread-affinity); and the coroutine frame must outlive the pending operation — if the `Task` owning the frame is destroyed while the read is in flight, the `h.resume()` is a use-after-free. Real frameworks tie frame lifetime to operation completion precisely to avoid this.
+Two correctness notes for production reactors: the resuming thread is the reactor's thread, so anything after the `co_await` runs there (mind data races and thread-affinity); and the coroutine frame must outlive the pending operation - if the `Task` owning the frame is destroyed while the read is in flight, the `h.resume()` is a use-after-free. Real frameworks tie frame lifetime to operation completion precisely to avoid this.
 
 ---
 
@@ -281,7 +290,7 @@ Everything in this chapter is hand-written for a reason: **C++20 standardizes no
 | executors / `std::execution` (senders/receivers) | C++26 | use Asio, libunifex, stdexec |
 | `std::lazy`, `when_all`, `sync_wait` | library-only | cppcoro, libcoro, Boost.Cobalt |
 
-For real asynchronous systems on C++20, the pragmatic path is a vetted library (Asio's coroutine support, cppcoro, libunifex) rather than re-deriving symmetric transfer and cancellation from scratch — the `Task` above is correct but minimal, lacking cancellation, allocator customization, and `when_all`-style composition.
+For real asynchronous systems on C++20, the pragmatic path is a vetted library (Asio's coroutine support, cppcoro, libunifex) rather than re-deriving symmetric transfer and cancellation from scratch - the `Task` above is correct but minimal, lacking cancellation, allocator customization, and `when_all`-style composition.
 
 ---
 
@@ -293,6 +302,6 @@ For real asynchronous systems on C++20, the pragmatic path is a vetted library (
 
 **Anchor frame lifetime to operation completion in async code.** When `await_suspend` hands a handle to a reactor or thread pool, the frame must stay alive until that external party resumes it. Destroying the owning `Task` mid-flight turns the eventual `resume()` into a use-after-free. Design ownership so the in-flight operation keeps the frame alive (e.g., the operation holds the owning object, or the scheduler does).
 
-**Use `await_transform` to enforce coroutine discipline.** Declaring `await_transform` deleted in a generator's promise makes `co_await` a compile error there, cleanly separating pull-based generators from async tasks. Conversely, a non-deleted `await_transform` routes every `co_await` through your scheduler — the standard hook for imposing thread-affinity or cancellation on all awaits in a coroutine.
+**Use `await_transform` to enforce coroutine discipline.** Declaring `await_transform` deleted in a generator's promise makes `co_await` a compile error there, cleanly separating pull-based generators from async tasks. Conversely, a non-deleted `await_transform` routes every `co_await` through your scheduler - the standard hook for imposing thread-affinity or cancellation on all awaits in a coroutine.
 
 **Reach for a library before hand-rolling async coroutines.** The generator in Chapter 36 is reasonable to own; a full task system with cancellation, `when_all`, `sync_wait`, and allocator control is not. C++20 ships no executor model (that is C++26's `std::execution`), so use Asio, libunifex, or cppcoro for real async work and reserve hand-written awaiters for narrow, well-understood integration points like Listing 37.8.

@@ -1,3 +1,12 @@
+---
+type: moc
+track: [sde, quant-dev]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Collatz Conjecture #
 In the field of mathematics the collatz conjecture was posed by L. Collatz in 1937 which states that given a number n, one can  always
 'get to one' by applying the following function recursively on the number.

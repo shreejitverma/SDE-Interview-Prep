@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 57: Internationalization (`gettext`, `locale`)
 
 Software that reaches the world must be adaptable to local languages, customs, and cultural conventions. Python's `gettext` and `locale` modules provide the infrastructure for I18N (Internationalization) and L10N (Localization).

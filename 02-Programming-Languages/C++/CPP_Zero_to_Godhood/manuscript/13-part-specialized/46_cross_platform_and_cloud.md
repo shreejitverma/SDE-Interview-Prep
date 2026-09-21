@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 46: Cross-Platform and Cloud
 
 > *Write once, compile everywhere.*
@@ -12,7 +21,7 @@ The challenge is not the language; the challenge is the *toolchain*.
 
 ## 46.1 The Cross-Compilation Model
 
-If you are on an Intel Mac and you want to compile a C++ app for an ARM Android phone, you cannot use your standard `g++`. You must use a **Cross-Compiler**—a compiler that runs on Architecture A but produces machine code for Architecture B.
+If you are on an Intel Mac and you want to compile a C++ app for an ARM Android phone, you cannot use your standard `g++`. You must use a **Cross-Compiler** - a compiler that runs on Architecture A but produces machine code for Architecture B.
 
 Managing cross-compilers manually is excruciating. This is why CMake (Chapter 39) is mandatory. You provide CMake with a **Toolchain File**, which tells it exactly where the Android compiler, linker, and sysroot (system headers) are located.
 

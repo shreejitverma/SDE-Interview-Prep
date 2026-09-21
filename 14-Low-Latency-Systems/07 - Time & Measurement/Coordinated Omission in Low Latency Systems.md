@@ -4,10 +4,15 @@ aliases: [Coordinated Omission, Gil Tene Latency, HDR Histogram, Service Time vs
 status: evergreen
 module: 07
 created: 2026-08-22
+type: concept
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
 > [!summary]
-> Coordinated Omission occurs when a benchmarking tool measures only Service Time instead of Response Time, inadvertently synchronizing with system stalls. When a server freezes for 100 milliseconds, a synchronous load generator pauses and sends nothing, recording a single slow sample while omitting the thousands of requests that would have backed up in reality—drastically hiding the true $p99.99$ tail latency.
+> Coordinated Omission occurs when a benchmarking tool measures only Service Time instead of Response Time, inadvertently synchronizing with system stalls. When a server freezes for 100 milliseconds, a synchronous load generator pauses and sends nothing, recording a single slow sample while omitting the thousands of requests that would have backed up in reality - drastically hiding the true $p99.99$ tail latency.
 
 ---
 
@@ -172,10 +177,10 @@ public:
 ---
 
 ## Related
-- [[Notes/Clock Sources and Hardware Timestamping]]
-- [[Notes/Precision Time Protocol and White Rabbit]]
-- [[Notes/One-Way Latency vs Round-Trip Time Measurement]]
-- [[Notes/Latency Numbers Every Trading Engineer Knows]]
+- [[Clock Sources and Hardware Timestamping]]
+- [[Precision Time Protocol and White Rabbit]]
+- [[One-Way Latency vs Round-Trip Time Measurement]]
+- [[Latency Numbers Every Trading Engineer Knows]]
 - [[MOC - 07 Time & Measurement]]
 
 ## Sources

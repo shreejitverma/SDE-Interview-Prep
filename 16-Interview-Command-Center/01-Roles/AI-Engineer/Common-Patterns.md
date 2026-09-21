@@ -1,4 +1,13 @@
-# 🔄 AI Engineer Common Patterns
+---
+type: playbook
+track: [sde, quant-dev, quant-research, low-latency, ai-eng, distinguished]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
+# AI Engineer Common Patterns
 
 ## ML System Design Framework (45 min)
 
@@ -37,4 +46,4 @@
 | Topic | Link |
 |-------|------|
 | Agentic AI | [[13-Agentic-AI/Agentic_AI_Zero_to_Godhood]] |
-| System Design | [[04-System-Design]] |
+| System Design | [[04-System-Design/README\|04-System-Design]] |

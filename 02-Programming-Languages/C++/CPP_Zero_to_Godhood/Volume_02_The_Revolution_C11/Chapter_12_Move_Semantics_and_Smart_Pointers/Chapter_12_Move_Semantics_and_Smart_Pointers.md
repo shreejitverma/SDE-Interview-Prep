@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 12: Move Semantics and Smart Pointers
 
 > *The two features that, together, abolished the "performance tax" of C++ and replaced manual memory management with a formal model of ownership.*
@@ -28,16 +37,16 @@ C++11 made two intertwined contributions that define modern C++ resource managem
 
 In the early 2000s C++ felt "heavy." Given a `std::vector<std::string>` of 10,000 long strings, passing it to a function offered two bad choices:
 
-1. **Pass by pointer** — fast, but ownership is ambiguous and dangerous.
-2. **Pass by value** — safe, but the program would *clone* all 10,000 strings, then destroy the originals a microsecond later.
+1. **Pass by pointer** - fast, but ownership is ambiguous and dangerous.
+2. **Pass by value** - safe, but the program would *clone* all 10,000 strings, then destroy the originals a microsecond later.
 
 This was the **performance tax** of C++. C++11 abolished it with **move semantics**: when the source of a copy is a temporary (or something you have explicitly given up), its resources can be *stolen* rather than duplicated.
 
-> **Fireside chat — the "magic box."**
+> **Fireside chat - the "magic box."**
 > *Student:* "Why does stealing need special syntax?"
-> *Architect:* "Because the compiler needs your **permission** to steal. If you are holding a sandwich (an **lvalue**), I cannot take a bite — that is theft. But a sandwich in a trash can marked *FREE* (an **rvalue**) is fair game. `std::move` is how you put the *FREE* sign on a variable you are done with."
+> *Architect:* "Because the compiler needs your **permission** to steal. If you are holding a sandwich (an **lvalue**), I cannot take a bite - that is theft. But a sandwich in a trash can marked *FREE* (an **rvalue**) is fair game. `std::move` is how you put the *FREE* sign on a variable you are done with."
 
-Think of memory as a neighborhood: an **lvalue** is a *house* — a permanent address with a name that persists; an **rvalue** is a *shipping box* — temporary, in transit, about to be discarded. In `int x = 10;`, `x` is the house (lvalue) and `10` is the delivery box (rvalue).
+Think of memory as a neighborhood: an **lvalue** is a *house* - a permanent address with a name that persists; an **rvalue** is a *shipping box* - temporary, in transit, about to be discarded. In `int x = 10;`, `x` is the house (lvalue) and `10` is the delivery box (rvalue).
 
 ---
 
@@ -45,8 +54,8 @@ Think of memory as a neighborhood: an **lvalue** is a *house* — a permanent ad
 
 Every C++ expression has a **value category**. Two independent properties define them:
 
-- **Identity** — does the expression refer to a named object with an address?
-- **Movability** — may the expression be implicitly moved from (bound to a `T&&` parameter)?
+- **Identity** - does the expression refer to a named object with an address?
+- **Movability** - may the expression be implicitly moved from (bound to a `T&&` parameter)?
 
 The standard combines these into three primary categories, plus two umbrella groupings:
 
@@ -55,8 +64,8 @@ The standard combines these into three primary categories, plus two umbrella gro
 | **lvalue** | Yes | No | `x`, `*ptr`, `foo_ref()`, a string literal |
 | **xvalue** (eXpiring) | Yes | Yes | `std::move(x)`, `X{4}.n` |
 | **prvalue** (pure rvalue) | No | Yes | `42`, `x + 2`, `X{4}`, a lambda, `foo()` returning by value |
-| **glvalue** = lvalue ∪ xvalue | Yes | — | anything with identity |
-| **rvalue** = xvalue ∪ prvalue | — | Yes | anything movable-from |
+| **glvalue** = lvalue ∪ xvalue | Yes | - | anything with identity |
+| **rvalue** = xvalue ∪ prvalue | - | Yes | anything movable-from |
 
 ```cpp
 // Listing 12.1: classifying expressions
@@ -78,8 +87,8 @@ The crucial, counter-intuitive rule: **a named rvalue reference is itself an lva
 // Listing 12.2: a named rvalue reference is an lvalue
 std::string str("init");
 std::string &&str_ref = std::move(str); // str_ref is a named variable
-std::string test(str_ref);              // COPY — str_ref is an lvalue expression!
-std::string test2(std::move(str_ref));  // MOVE — re-apply std::move
+std::string test(str_ref);              // COPY - str_ref is an lvalue expression!
+std::string test2(std::move(str_ref));  // MOVE - re-apply std::move
 ```
 
 This is *why* `std::forward` exists (§12.7): inside a function, the parameter is always a named lvalue, even when it was initialized from an rvalue.
@@ -88,7 +97,7 @@ This is *why* `std::forward` exists (§12.7): inside a function, the parameter i
 
 ## 12.3 Rvalue References (`T&&`)
 
-C++11 introduced the **rvalue reference** `T&&`, which binds *only* to rvalues. It is the "box snatcher" — a hook that grabs a temporary before it is destroyed so its contents can be pilfered.
+C++11 introduced the **rvalue reference** `T&&`, which binds *only* to rvalues. It is the "box snatcher" - a hook that grabs a temporary before it is destroyed so its contents can be pilfered.
 
 ```cpp
 // Listing 12.3: rvalue references bind only to rvalues
@@ -104,7 +113,7 @@ The point of having two reference types is to select two behaviors via overload 
 
 ## 12.4 `std::move`: The Shipping Label
 
-**`std::move` does not move anything.** It is an unconditional cast to an rvalue reference — a *shipping label* you stick on an lvalue that says "this house is now a box; feel free to take the furniture." The actual transfer happens later, inside a move constructor or move assignment operator.
+**`std::move` does not move anything.** It is an unconditional cast to an rvalue reference - a *shipping label* you stick on an lvalue that says "this house is now a box; feel free to take the furniture." The actual transfer happens later, inside a move constructor or move assignment operator.
 
 ```cpp
 // Listing 12.4: std::move enables the move overload
@@ -150,15 +159,15 @@ public:
 
 ### Why `noexcept` is mandatory for moves
 
-If your move constructor is **not** `noexcept`, the standard containers will often *refuse to use it*. When `std::vector` reallocates, it must preserve the **strong exception guarantee**: if moving an element could throw mid-reallocation, the vector could not roll back to a consistent state. So it falls back to *copying* — silently discarding your move optimization. **Always mark moves `noexcept`.**
+If your move constructor is **not** `noexcept`, the standard containers will often *refuse to use it*. When `std::vector` reallocates, it must preserve the **strong exception guarantee**: if moving an element could throw mid-reallocation, the vector could not roll back to a consistent state. So it falls back to *copying* - silently discarding your move optimization. **Always mark moves `noexcept`.**
 
-> The compiler generates move operations for you when the class has no user-declared copy operations, destructor, or move operations. Declaring any of those (the "Rule of Five") suppresses the implicit moves — declare them all, or `= default` them, when managing a resource.
+> The compiler generates move operations for you when the class has no user-declared copy operations, destructor, or move operations. Declaring any of those (the "Rule of Five") suppresses the implicit moves - declare them all, or `= default` them, when managing a resource.
 
 ---
 
 ## 12.6 Complexity Optimization: O(n²) to O(n)
 
-Moving a container is **O(1)** (steal a pointer); copying is **O(n)**. In code written in an immutable style — where loops are expressed as recursion that logically copies a container each step (e.g. generating a Collatz sequence) — moves can collapse the overall complexity from **O(n²)** to **O(n)**.
+Moving a container is **O(1)** (steal a pointer); copying is **O(n)**. In code written in an immutable style - where loops are expressed as recursion that logically copies a container each step (e.g. generating a Collatz sequence) - moves can collapse the overall complexity from **O(n²)** to **O(n)**.
 
 ```cpp
 // Listing 12.6: immutable-style recursion made linear by moves
@@ -177,7 +186,7 @@ std::vector<int> collatz_aux(int n, std::vector<int> const& result) {
 }
 ```
 
-Returning a local by value is automatically a move (or is elided entirely by RVO) — never write `return std::move(local);`, which can *defeat* copy elision.
+Returning a local by value is automatically a move (or is elided entirely by RVO) - never write `return std::move(local);`, which can *defeat* copy elision.
 
 ---
 
@@ -187,7 +196,7 @@ Generic wrappers must pass arguments onward while preserving their value categor
 
 ### 12.7.1 Forwarding (Universal) References
 
-When `T` is a *deduced* template parameter, `T&&` is a **forwarding reference**, not a plain rvalue reference — it binds to anything, and `T` encodes whether the argument was an lvalue or rvalue.
+When `T` is a *deduced* template parameter, `T&&` is a **forwarding reference**, not a plain rvalue reference - it binds to anything, and `T` encodes whether the argument was an lvalue or rvalue.
 
 ### 12.7.2 Reference Collapsing Rules
 
@@ -198,7 +207,7 @@ When `T` is a *deduced* template parameter, `T&&` is a **forwarding reference**,
 | `&&` + `& ` | `&` |
 | `&&` + `&&` | `&&` |
 
-**Mnemonic:** an lvalue reference is a "black hole" — if `&` appears anywhere, the result is `&`. Only `&& + &&` stays `&&`.
+**Mnemonic:** an lvalue reference is a "black hole" - if `&` appears anywhere, the result is `&`. Only `&& + &&` stays `&&`.
 
 ### 12.7.3 `std::forward`
 
@@ -236,10 +245,10 @@ This is exactly how `emplace_back`, `make_shared`, and `make_unique` avoid extra
 
 Manual dynamic memory in C++98 invited four classic defects:
 
-1. **Memory leaks** — forgetting `delete`.
-2. **Dangling pointers** — using memory after `delete`.
-3. **Double free** — deleting the same memory twice.
-4. **Exception-unsafety** — an exception thrown before `delete` leaks.
+1. **Memory leaks** - forgetting `delete`.
+2. **Dangling pointers** - using memory after `delete`.
+3. **Double free** - deleting the same memory twice.
+4. **Exception-unsafety** - an exception thrown before `delete` leaks.
 
 Smart pointers solve all four through **RAII** (Resource Acquisition Is Initialization): the resource's lifetime is tied to an object's lifetime, so the destructor always releases it.
 
@@ -255,7 +264,7 @@ The single axis that distinguishes the smart pointers is **ownership**:
 
 ## 12.9 `std::unique_ptr`: Exclusive Ownership
 
-A non-null `std::unique_ptr` *exclusively* owns its pointee. It cannot be copied — only **moved** — which is how the type enforces a single owner at compile time. It is the lightest smart pointer, with essentially zero overhead over a raw pointer, and should be your **default**.
+A non-null `std::unique_ptr` *exclusively* owns its pointee. It cannot be copied - only **moved** - which is how the type enforces a single owner at compile time. It is the lightest smart pointer, with essentially zero overhead over a raw pointer, and should be your **default**.
 
 ```cpp
 // Listing 12.9: move-only ownership transfer
@@ -273,7 +282,7 @@ int main() {
 }
 ```
 
-Returning a `unique_ptr` is the **preferred C++11 way to write factory functions** — the return type documents that the caller now owns the resource, unlike a raw `int* foo();` where ownership is unclear.
+Returning a `unique_ptr` is the **preferred C++11 way to write factory functions** - the return type documents that the caller now owns the resource, unlike a raw `int* foo();` where ownership is unclear.
 
 ### Custom deleters
 
@@ -298,7 +307,7 @@ std::unique_ptr<int[]> arr(new int[10]);
 arr[2] = 10;   // index access on the array specialization
 ```
 
-### `make_unique` is C++14 — and how to write it in C++11
+### `make_unique` is C++14 - and how to write it in C++11
 
 `std::make_unique` was added in **C++14**, not C++11. It is trivial to provide in C++11:
 
@@ -373,7 +382,7 @@ std::shared_ptr<int> p2(p1, &p1->x); // p2 points at x, co-owns the Foo
 
 ### A toy implementation
 
-The mechanism is small enough to sketch — note the **atomic** count, which is what makes copies thread-safe (and costly):
+The mechanism is small enough to sketch - note the **atomic** count, which is what makes copies thread-safe (and costly):
 
 ```cpp
 // Listing 12.16: minimal shared_ptr to show the control block
@@ -392,13 +401,13 @@ public:
 };
 ```
 
-**The cost of sharing:** a `shared_ptr` is twice the size of a raw pointer, and every copy/destruction performs an *atomic* increment/decrement. Use it only when ownership is genuinely shared or indeterminate — never merely because it "feels safer."
+**The cost of sharing:** a `shared_ptr` is twice the size of a raw pointer, and every copy/destruction performs an *atomic* increment/decrement. Use it only when ownership is genuinely shared or indeterminate - never merely because it "feels safer."
 
 ---
 
 ## 12.11 `std::weak_ptr`: Non-Owning Observation
 
-A `std::weak_ptr` references an object owned by `shared_ptr`s **without** affecting the strong count — so it never keeps the object alive. To use it you must `lock()` it, which atomically produces a `shared_ptr` if the object is still alive, or an empty one if it has expired.
+A `std::weak_ptr` references an object owned by `shared_ptr`s **without** affecting the strong count - so it never keeps the object alive. To use it you must `lock()` it, which atomically produces a `shared_ptr` if the object is still alive, or an empty one if it has expired.
 
 ```cpp
 // Listing 12.17: observing without owning
@@ -415,7 +424,7 @@ else { /* object expired */ }
 
 ### Breaking reference cycles
 
-Two objects that hold `shared_ptr`s to each other form a cycle whose counts never reach zero — a leak. Make the back-reference a `weak_ptr`:
+Two objects that hold `shared_ptr`s to each other form a cycle whose counts never reach zero - a leak. Make the back-reference a `weak_ptr`:
 
 ```cpp
 // Listing 12.18: weak_ptr breaks an ownership cycle
@@ -430,7 +439,7 @@ The rule: if `Parent` owns `Child` via `shared_ptr`, `Child` should refer back t
 
 ## 12.12 `enable_shared_from_this` and Smart-Pointer Casts
 
-To obtain a `shared_ptr` to `this` from inside a member function — without creating a *second* control block — derive from `std::enable_shared_from_this<T>` and call `shared_from_this()`:
+To obtain a `shared_ptr` to `this` from inside a member function - without creating a *second* control block - derive from `std::enable_shared_from_this<T>` and call `shared_from_this()`:
 
 ```cpp
 // Listing 12.19: shared_from_this
@@ -457,13 +466,13 @@ To convert between related `shared_ptr` types while preserving the shared contro
 ## 12.13 Professional Insights
 
 **Design rules.**
-- **Default to `unique_ptr`** — simpler, faster, clearer; zero overhead.
+- **Default to `unique_ptr`** - simpler, faster, clearer; zero overhead.
 - **Upgrade to `shared_ptr` only when ownership is genuinely shared** or its end is indeterminate.
 - **Use `weak_ptr` for non-owning access** and to break cycles.
-- **Avoid `new`/`delete`** — prefer `make_unique` (C++14) and `make_shared` (C++11) for exception safety and a single allocation.
+- **Avoid `new`/`delete`** - prefer `make_unique` (C++14) and `make_shared` (C++11) for exception safety and a single allocation.
 - **Think in ownership:** "Who owns this? Who merely uses it? Can two objects accidentally keep each other alive?"
 
-**The `value_ptr` / pImpl pattern.** A `value_ptr` (not standard, but common in expert code) is a smart pointer with *value* semantics: copying it deep-copies the pointee. It is the natural backbone of the **pImpl** ("pointer to implementation") idiom, giving a class value semantics while hiding its implementation behind a forward-declared pointer in the header — cutting compile-time coupling, a real win in large codebases.
+**The `value_ptr` / pImpl pattern.** A `value_ptr` (not standard, but common in expert code) is a smart pointer with *value* semantics: copying it deep-copies the pointee. It is the natural backbone of the **pImpl** ("pointer to implementation") idiom, giving a class value semantics while hiding its implementation behind a forward-declared pointer in the header - cutting compile-time coupling, a real win in large codebases.
 
 **`noexcept` moves and the standard library.** This is not stylistic: `std::vector`'s growth uses `std::move_if_noexcept`. A throwing move constructor forces the slow copy path during reallocation, silently erasing the very optimization you wrote the move constructor for. In latency-sensitive systems, audit that your movable types' move operations are `noexcept`.
 

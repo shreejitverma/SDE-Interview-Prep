@@ -1,10 +1,19 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 4: Type–Class Unification, Descriptors, and C3 MRO (Python 2.2–2.3)
 
 Python 2.2 made the single most important change to the object model after its inception: it
 **unified types and classes**. Before it, user-defined classes and built-in types were
 different kinds of thing at the C level, and you could not subclass `list`. After it, a class
-*is* a type, every class descends from `object`, and three mechanisms — the **descriptor
-protocol**, the **C3 linearized MRO**, and the **`__new__`/`__init__` split** — became the
+*is* a type, every class descends from `object`, and three mechanisms - the **descriptor
+protocol**, the **C3 linearized MRO**, and the **`__new__`/`__init__` split** - became the
 machinery underneath properties, methods, `super()`, and `@classmethod`. This chapter is the
 origin story and the working reference for all three. It is where the dunder-to-slot wiring of
 Chapter 2 becomes a usable protocol you can implement yourself.
@@ -31,11 +40,11 @@ Chapter 2 becomes a usable protocol you can implement yourself.
 (`class C:`) were all instances of one C type, `PyClass_Type`; their instances were all
 `PyInstance_Type`. *Built-in types* (`int`, `list`, `str`) were `PyTypeObject`s. The two could
 not mix: `type(c)` of any classic instance returned `<type 'instance'>` rather than the class,
-and **you could not subclass a built-in type** — the classic-class machinery had no idea how
+and **you could not subclass a built-in type** - the classic-class machinery had no idea how
 to manage a built-in's C memory layout.
 
 **PEP 252 and PEP 253** introduced **new-style classes**: a class that derives (directly or
-transitively) from `object` is itself a `PyTypeObject` — an instance of `type`. This collapsed
+transitively) from `object` is itself a `PyTypeObject` - an instance of `type`. This collapsed
 the two universes into one:
 
 ```python
@@ -57,7 +66,7 @@ issubclass(NewStyle, object): True
 type(NewStyle) is type: True
 ```
 
-In Python 3 the classic class is gone entirely — every class is new-style — but the
+In Python 3 the classic class is gone entirely - every class is new-style - but the
 *mechanisms* unification introduced are exactly what the rest of this chapter dissects. The
 key C-level consequence, from Chapter 2: every class is a `PyTypeObject` whose **slots**
 (`tp_init`, `tp_new`, `tp_getattro`, `tp_descr_get`, …) hold the function pointers the
@@ -74,7 +83,7 @@ both directions.
 **Why this exists.** A **descriptor** is an object that customizes what happens when it is
 accessed as a *class attribute* of another object. It is the single mechanism behind methods,
 `property`, `classmethod`, `staticmethod`, `__slots__` members, and `functools.cached_property`
-— and you can implement it yourself. The protocol is three optional methods:
+\- and you can implement it yourself. The protocol is three optional methods:
 
 ```python
 def __get__(self, instance, owner=None): ...   # attribute is read
@@ -85,9 +94,9 @@ def __delete__(self, instance): ...            # attribute is deleted
 The presence of `__set__`/`__delete__` splits descriptors into two kinds, and the distinction
 governs lookup precedence (§4.3):
 
-- **Data descriptor** — defines `__set__` and/or `__delete__` (with or without `__get__`).
+- **Data descriptor** - defines `__set__` and/or `__delete__` (with or without `__get__`).
   `property` is the canonical example.
-- **Non-data descriptor** — defines only `__get__`. Plain functions are the canonical example.
+- **Non-data descriptor** - defines only `__get__`. Plain functions are the canonical example.
 
 ```python
 # Caption: a minimal data descriptor that logs and validates writes.
@@ -138,12 +147,12 @@ the source of every descriptor behavior:
 
 1. **Search the type's MRO** (`_PyType_Lookup`) for `name`; call any result `descr`.
 2. **Data-descriptor short-circuit.** If `descr` is a **data descriptor** (its type defines
-   `__set__`/`__delete__`), call `descr.__get__(obj, type(obj))` and return — *the instance
+   `__set__`/`__delete__`), call `descr.__get__(obj, type(obj))` and return - *the instance
    dict is never consulted.*
 3. **Instance dict.** Otherwise, if `name` is in `obj.__dict__`, return that value.
 4. **Non-data descriptor / class attribute.** Otherwise, if `descr` exists: if it is a
    non-data descriptor, call `descr.__get__(...)`; if it is a plain class attribute, return it.
-5. **`__getattr__` fallback.** If nothing was found, raise `AttributeError` — which triggers
+5. **`__getattr__` fallback.** If nothing was found, raise `AttributeError` - which triggers
    `__getattr__(self, name)` if the class defines it.
 
 ```text
@@ -195,7 +204,7 @@ c.n -> instance-n
 ```
 
 This is *why* you cannot accidentally clobber a `property` (data descriptor) by assigning to
-`self.x` in `__init__` — the property's `__set__` intercepts the assignment — but you *can*
+`self.x` in `__init__` - the property's `__set__` intercepts the assignment - but you *can*
 shadow a method (non-data descriptor) by storing a callable in the instance dict. It is also
 why instance attributes are normally cheap: they live in the instance dict (step 3) and only
 methods/properties pay the MRO walk.
@@ -236,7 +245,7 @@ manual __get__ == d.method: True
 ```
 
 The bound method holds `obj` in `__self__` and the function in `__func__`; calling it prepends
-`__self__` as the first positional argument. This is the entire mechanism of `self` — there is
+`__self__` as the first positional argument. This is the entire mechanism of `self` - there is
 no magic, only a non-data descriptor returning a small wrapper.
 
 ---
@@ -246,7 +255,7 @@ no magic, only a non-data descriptor returning a small wrapper.
 **Why this exists.** With multiple inheritance, "which base defines this method?" needs a
 total order over the ancestors that is *consistent*. Classic classes used naive **depth-first,
 left-to-right (DFLR)**, which in a diamond reached the shared ancestor *before* a sibling that
-overrode it — so the ancestor's method shadowed the override, the opposite of what
+overrode it - so the ancestor's method shadowed the override, the opposite of what
 specialization demands. Python 2.3 adopted **C3 linearization**, which guarantees two
 properties:
 
@@ -258,8 +267,8 @@ properties:
 
 $$L(C) = [C] + \mathrm{merge}\big(L(B_1), L(B_2), \dots, L(B_n), [B_1, B_2, \dots, B_n]\big)$$
 
-`merge` repeatedly takes a **good head** — the head of some list that does not appear in the
-*tail* (everything past the head) of any other list — appends it, and removes it from all
+`merge` repeatedly takes a **good head** - the head of some list that does not appear in the
+*tail* (everything past the head) of any other list - appends it, and removes it from all
 lists. If no good head exists, the hierarchy is inconsistent and CPython raises `TypeError`.
 
 **Worked example (simple diamond).** For `O→{X,Y}→A`:
@@ -273,7 +282,7 @@ Take `X` (not in any tail) → take `Y` (now `O` is blocked because it is in `Y`
 $$L(A)=[A,X,Y,O,\text{object}]$$
 
 ```python
-# Caption: C3 in practice — confirm the worked result against the real __mro__.
+# Caption: C3 in practice - confirm the worked result against the real __mro__.
 class O: pass
 class X(O): pass
 class Y(O): pass
@@ -291,7 +300,7 @@ A.__mro__: ['A', 'X', 'Y', 'O', 'object']
 old "keep last occurrence" 2.2 algorithm but resolves cleanly under C3:
 
 ```python
-# Caption: the Pedroni example — C3 produces a single consistent order.
+# Caption: the Pedroni example - C3 produces a single consistent order.
 class Ao: pass
 class Bo: pass
 class Co: pass
@@ -311,7 +320,7 @@ Z.__mro__: ['Z', 'K1', 'K2', 'K3', 'Do', 'Ao', 'Bo', 'Co', 'Eo', 'object']
 ```
 
 This matches the hand computation `[Z, K1, K2, K3, D, A, B, C, E, object]` exactly (with
-`Do=D`, `Ao=A`, etc.) — local precedence and monotonicity both preserved.
+`Do=D`, `Ao=A`, etc.) - local precedence and monotonicity both preserved.
 
 **When C3 fails.** If the constraints are contradictory, there is no consistent order:
 
@@ -332,7 +341,7 @@ TypeError: Cannot create a consistent method resolution order (MRO) for bases Ba
 ```
 
 **`super()` follows the MRO, not the parent.** `super().method()` dispatches to the *next*
-class in `type(self).__mro__` after the current one — which is why cooperative multiple
+class in `type(self).__mro__` after the current one - which is why cooperative multiple
 inheritance works only when every class calls `super()`. This is the practical payoff of C3:
 the MRO is a single linear chain the whole hierarchy agrees on.
 
@@ -344,7 +353,7 @@ CPython splits construction into two slots:
 
 - **`__new__` → `tp_new`**: a *static* method that **allocates** and returns the instance
   (typically via `super().__new__(cls)`, ultimately `PyType_GenericNew`, which sets up the
-  `PyObject` header — `ob_refcnt`, `ob_type` — from Chapter 2). It runs first.
+  `PyObject` header - `ob_refcnt`, `ob_type` - from Chapter 2). It runs first.
 - **`__init__` → `tp_init`**: an instance method that **initializes** the already-allocated
   object and must return `None`. It runs only if `__new__` returned an instance of `cls`.
 
@@ -374,18 +383,18 @@ The split is what makes immutable types possible: `int`, `str`, `tuple`, and fro
 do their work in `__new__` (you cannot mutate them in `__init__` because there is nothing to
 mutate). Override `__new__` to control allocation (singletons, instance caching, subclassing
 immutables); override `__init__` for ordinary setup. Overriding `__new__` to return an object
-of a *different* type silently skips `__init__` — a common surprise.
+of a *different* type silently skips `__init__` - a common surprise.
 
 ---
 
 ## 4.7 Performance, the senior-engineer contrast, and anti-patterns
 
 **The senior-engineer contrast.** C++ supports multiple inheritance but resolves it through
-virtual inheritance and per-class vtables, with no language-level linearization guarantee — the
+virtual inheritance and per-class vtables, with no language-level linearization guarantee - the
 notorious diamond requires `virtual` base classes and careful design. Java sidesteps the
 problem by forbidding multiple class inheritance (only interfaces, with default methods
 resolved by explicit rules). Python's C3 gives multiple inheritance a *single, predictable,
-monotonic order* and a cooperative `super()` — more powerful than Java, more principled than
+monotonic order* and a cooperative `super()` - more powerful than Java, more principled than
 raw C++.
 
 **Attribute-lookup cost and how CPython mitigates it.** Step 1 of §4.3 walks the MRO on every
@@ -396,7 +405,7 @@ inline caches, so a monomorphic attribute access on a stable class is nearly fre
 practical rules:
 
 - **`__slots__`** (Vol VIII) removes the per-instance `__dict__`, replacing it with member
-  descriptors stored in fixed offsets — less memory and faster attribute access, at the cost
+  descriptors stored in fixed offsets - less memory and faster attribute access, at the cost
   of dynamic attributes. It is itself implemented with data descriptors, tying back to §4.2.
 - **Mutating classes at runtime** (monkeypatching, setting attributes on a class in a hot
   path) invalidates the type version cache and de-optimizes every dependent call site. Prefer
@@ -420,7 +429,7 @@ practical rules:
   descending from `object`; Python 3 has only new-style classes.
 - A **descriptor** customizes attribute access via `__get__`/`__set__`/`__delete__`.
   **Data descriptors** (with `__set__`/`__delete__`) outrank the instance dict; **non-data
-  descriptors** (only `__get__`) do not — this single rule explains methods, `property`,
+  descriptors** (only `__get__`) do not - this single rule explains methods, `property`,
   `classmethod`, `staticmethod`, and `__slots__`.
 - `PyObject_GenericGetAttr` resolves `obj.name` as: data descriptor → instance dict →
   non-data descriptor / class attr → `__getattr__`.

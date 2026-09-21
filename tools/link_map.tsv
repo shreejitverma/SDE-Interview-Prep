@@ -1,0 +1,22 @@
+# Curated renames for tools/fix_links.py: missing note name<TAB>existing note it means.
+# Only clear equivalents belong here; anything else should become a seed stub.
+C++11 Memory Model and Atomic Operations	C++ Memory Model and Memory Orders
+CPU Cache Hierarchy L1 L2 L3	CPU Cache Hierarchy and Line Alignment
+CPU Pipeline Branch Prediction and Speculative Execution	Branch Predictors and Pipeline Stalls
+FPGA-Based Feed Handlers	FPGA Feed Handlers and Parsing Pipelines
+False Sharing and Cache Line Alignment	False Sharing and Cache Contention
+Latency Regression Testing in CI-CD	Latency Regression Testing in Continuous Integration
+NASDAQ ITCH 5.0 Protocol Architecture	NASDAQ ITCH 5.0 Protocol Specification
+NASDAQ OUCH Protocol Architecture	NASDAQ OUCH 4.2 Protocol Specification
+Order Book Data Structures and Algorithms	Order Book Data Structures
+Order Types and Execution Semantics	Order Types and State Transitions
+PTP IEEE 1588 and White Rabbit Network Synchronization	Precision Time Protocol and White Rabbit
+TLB Mechanics and HugePages	TLB Architecture and Huge Pages
+Lock-Free Ring Buffers and Disruptor Pattern	The LMAX Disruptor Architecture
+Matching Engine Architecture Overview	MOC - 03 Matching Engine Internals
+CME MDP 3.0 Market Data Specification	CME MDP 3.0 Market Data Protocol Specification
+Designing for Hardware Mechanical Sympathy by Martin Thompson	Mechanical Sympathy by Martin Thompson
+Flash Boys by Michael Lewis (Aleynikov Legal Background)	Flash Boys by Michael Lewis
+Flash Boys by Michael Lewis (IEX Speed Bump Mechanics)	Flash Boys by Michael Lewis
+Flash Boys by Michael Lewis (Spread Networks Fiber History)	Flash Boys by Michael Lewis
+The High-Frequency Trading Arms Race - Frequent Batch Auctions by Eric Budish et al	The High-Frequency Trading Arms Race by Eric Budish et al

@@ -4,6 +4,11 @@ aliases: [Smart Order Router, SOR, Execution Algorithms, ISO Routing, Inverted V
 status: evergreen
 module: 11
 created: 2026-08-22
+type: concept
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
 > [!summary]
@@ -201,4 +206,4 @@ public:
 ## Sources
 - [[Sources/Empirical Market Microstructure by Joel Hasbrouck]]
 - [[Sources/Trading and Exchanges by Larry Harris]]
-- [[Sources/Flash Boys by Michael Lewis (IEX Speed Bump Mechanics)]]
+- [[Flash Boys by Michael Lewis]]

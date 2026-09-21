@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 63: Writing a C Extension from Scratch
 
 True "Godhood" involves the ability to extend the Python interpreter with performance-critical code written in C. This chapter provides a complete walk-through of creating a high-performance math extension.

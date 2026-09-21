@@ -10,7 +10,7 @@ Before C++11, doing this was a nightmare.
 
 ## 17.1 The Problem with Functors (C++98)
 
-In the old days, if you wanted to pass a custom condition to `std::count_if`, you had to create a **Functor**—a completely separate struct or class that overloads the `operator()`.
+In the old days, if you wanted to pass a custom condition to `std::count_if`, you had to create a **Functor** - a completely separate struct or class that overloads the `operator()`.
 
 ```cpp
 // 1. You had to scroll to the top of your file and define a struct

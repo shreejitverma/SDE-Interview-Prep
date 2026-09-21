@@ -3,6 +3,11 @@ tags: [operating-systems, kernel/internals, unix, linux, windows-nt, xv6, type/m
 aliases: [Operating Systems and Kernels MOC, Kernel Architecture Canon]
 status: evergreen
 created: 2026-09-17
+type: moc
+track: [distinguished, sde]
+level:
+last_reviewed:
+sources: []
 ---
 
 # Operating Systems & Kernel Internals
@@ -21,7 +26,7 @@ created: 2026-09-17
    - *The Linux Scheduler: a Decade of Wasted Cores (Lozi et al., 2016)*: Seminal EuroSys paper documenting four major bugs in the Linux CFS multi-core scheduler causing up to $138\times$ slowdowns.
 2. **[[OS-From-Scratch-and-Teaching-Kernels|Teaching Operating Systems & OS From Scratch]]**
    - *xv6: a simple, Unix-like teaching operating system (Russ Cox, Frans Kaashoek, Robert Morris, MIT, 2012)*: Re-implementation of Dennis Ritchie's Version 6 Unix in ANSI C for multi-core x86.
-   - *Writing a Simple Operating System — from Scratch (Nick Blundell, 2010)*: Bootloaders, 16-bit real mode, switching to 32-bit protected mode, GDT setup, and basic paging.
+   - *Writing a Simple Operating System - from Scratch (Nick Blundell, 2010)*: Bootloaders, 16-bit real mode, switching to 32-bit protected mode, GDT setup, and basic paging.
 3. **[[Windows-NT-Internals-Architecture|Windows NT Internals & Architecture]]**
    - *Windows NT Alerts Design Note (David N. Cutler, 1989)*: Asynchronous Procedure Calls (APCs) and interrupt mechanisms by NT's chief architect.
    - *Windows: A Software Engineering Odyssey (Mark Lucovsky)*: Architectural retrospective on building NT.

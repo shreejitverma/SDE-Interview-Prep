@@ -1,3 +1,12 @@
+---
+type: moc
+track: [sde, quant-dev]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # 0/1 Knapsack Problem (using BRANCH & BOUND)
 
 ## Problem:

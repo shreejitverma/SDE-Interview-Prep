@@ -4,6 +4,11 @@ aliases: [SMP, Self-Match Prevention, Wash Trade Prevention, Cancel Oldest, Canc
 status: evergreen
 module: 03
 created: 2026-08-22
+type: concept
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
 > [!summary]
@@ -192,10 +197,10 @@ inline bool handle_self_match_prevention(Order* taker, Order* maker, PriceLevel&
 ---
 
 ## Related
-- [[Notes/Order Book Data Structures]]
-- [[Notes/Matching Algorithms]]
-- [[Notes/Deterministic Matching Engine State Recovery]]
-- [[Notes/Order Types and State Transitions]]
+- [[Order Book Data Structures]]
+- [[Matching Algorithms]]
+- [[Deterministic Matching Engine State Recovery]]
+- [[Order Types and State Transitions]]
 - [[MOC - 03 Matching Engine Internals]]
 - [[MOC - 01 Market & Microstructure Fundamentals]]
 

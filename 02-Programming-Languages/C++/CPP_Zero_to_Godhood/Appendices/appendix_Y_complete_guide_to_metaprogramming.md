@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Appendix Y: THE COMPLETE GUIDE TO METAPROGRAMMING
 
 If you can write a program that writes programs, you have reached Godhood. C++ template metaprogramming is exactly that. It is a Turing-complete functional programming language that executes entirely during compilation.

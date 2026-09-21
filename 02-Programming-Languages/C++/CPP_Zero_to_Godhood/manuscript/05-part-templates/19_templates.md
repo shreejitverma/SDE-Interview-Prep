@@ -1,4 +1,13 @@
-# Chapter 19: Templates — The Cookie Cutter
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
+# Chapter 19: Templates - The Cookie Cutter
 
 > *Write once, compile for any type.*
 

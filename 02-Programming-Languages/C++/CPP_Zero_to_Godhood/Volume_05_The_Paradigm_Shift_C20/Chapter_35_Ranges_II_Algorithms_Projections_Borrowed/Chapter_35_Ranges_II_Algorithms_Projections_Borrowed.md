@@ -1,8 +1,17 @@
-# Chapter 35: Ranges II — Range Algorithms, Projections, and Borrowed Ranges
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
+# Chapter 35: Ranges II - Range Algorithms, Projections, and Borrowed Ranges
 
 > *Chapter 34 covered views and lazy pipelines. This chapter covers the other half of the ranges library: the `std::ranges::*` algorithms that take a whole range instead of an iterator pair, the projection parameter that lets one algorithm sort or search by a member without a custom comparator, and the borrowed-range model that makes returning an iterator into a temporary a compile error instead of a dangling-pointer bug.*
 
-The range algorithms are not merely convenience wrappers — they are **constrained** (every parameter checked by the concepts of Chapter 33), they accept **projections** (a second function that transforms each element before the algorithm inspects it), and they return **borrow-aware** results (`std::ranges::dangling` when handing back an iterator would dangle). Together these turn the classic `<algorithm>` into a safer, more expressive toolkit that composes directly with the views of Chapter 34.
+The range algorithms are not merely convenience wrappers - they are **constrained** (every parameter checked by the concepts of Chapter 33), they accept **projections** (a second function that transforms each element before the algorithm inspects it), and they return **borrow-aware** results (`std::ranges::dangling` when handing back an iterator would dangle). Together these turn the classic `<algorithm>` into a safer, more expressive toolkit that composes directly with the views of Chapter 34.
 
 ---
 
@@ -42,13 +51,13 @@ int main() {
 }
 ```
 
-This eliminates the most common iterator bug class — passing `begin()` of one container and `end()` of another — because there is simply one range to name. It also composes with views: any view from Chapter 34 is a range and can be handed to a range algorithm directly.
+This eliminates the most common iterator bug class - passing `begin()` of one container and `end()` of another - because there is simply one range to name. It also composes with views: any view from Chapter 34 is a range and can be handed to a range algorithm directly.
 
 ---
 
 ## 35.2 The Constrained-Algorithm Guarantee
 
-Every `std::ranges::` algorithm is **constrained with concepts**. `std::ranges::sort` requires a `random_access_range` whose iterator is `sortable`; `std::ranges::find` requires an `input_range`. The payoff is the Chapter 32 diagnostic: hand `sort` a `std::list` and you get a one-line "constraints not satisfied: list iterator is not random_access" at the call site — not a template explosion inside the sort implementation.
+Every `std::ranges::` algorithm is **constrained with concepts**. `std::ranges::sort` requires a `random_access_range` whose iterator is `sortable`; `std::ranges::find` requires an `input_range`. The payoff is the Chapter 32 diagnostic: hand `sort` a `std::list` and you get a one-line "constraints not satisfied: list iterator is not random_access" at the call site - not a template explosion inside the sort implementation.
 
 ```cpp
 // Listing 35.2: the constraint fires at the call site, not deep inside
@@ -69,7 +78,7 @@ The classic `std::sort` would have failed with an obscure error about `operator-
 
 ## 35.3 Projections
 
-A **projection** is an extra argument — a function, member pointer, or lambda — applied to each element *before* the algorithm examines it. It replaces the most common reason for writing a custom comparator: "compare by this member." The projection slot is the last parameter and defaults to `std::identity` (no-op).
+A **projection** is an extra argument - a function, member pointer, or lambda - applied to each element *before* the algorithm examines it. It replaces the most common reason for writing a custom comparator: "compare by this member." The projection slot is the last parameter and defaults to `std::identity` (no-op).
 
 ```cpp
 // Listing 35.3: sort/find by a member using a projection, no custom comparator
@@ -126,7 +135,7 @@ int main() {
 }
 ```
 
-Note `std::ranges::less`, `std::ranges::greater`, etc. are the **transparent, constrained** comparator objects to prefer here — they are `totally_ordered_with`-constrained and handle heterogeneous comparison correctly.
+Note `std::ranges::less`, `std::ranges::greater`, etc. are the **transparent, constrained** comparator objects to prefer here - they are `totally_ordered_with`-constrained and handle heterogeneous comparison correctly.
 
 ---
 
@@ -146,7 +155,7 @@ int main() {
     // std::max_element(make_vec().begin(), make_vec().end()); // classic UB territory
 
     auto it = std::ranges::max_element(make_vec());
-    // 'it' has type std::ranges::dangling — NOT a real iterator.
+    // 'it' has type std::ranges::dangling - NOT a real iterator.
     // *it would not compile: the library refuses to hand back a dangling iterator.
 }
 ```
@@ -157,7 +166,7 @@ When you pass an **rvalue** range that does not model `borrowed_range`, a range 
 
 ## 35.6 borrowed_range and view Lifetime Safety
 
-A range models **`std::ranges::borrowed_range`** when its iterators remain valid even after the range object itself is destroyed — i.e., the range does not own the elements. Lvalue containers, `std::span`, `std::string_view`, and most views are borrowed ranges; an rvalue `std::vector` is not (it owns and will destroy its storage).
+A range models **`std::ranges::borrowed_range`** when its iterators remain valid even after the range object itself is destroyed - i.e., the range does not own the elements. Lvalue containers, `std::span`, `std::string_view`, and most views are borrowed ranges; an rvalue `std::vector` is not (it owns and will destroy its storage).
 
 ```cpp
 // Listing 35.6: borrowed_range types return real iterators even as rvalues
@@ -171,20 +180,20 @@ int main() {
 
     // span is a borrowed_range: it does not own, so an rvalue span is safe.
     auto it = std::ranges::max_element(std::span{store});
-    // 'it' is a real iterator into 'store' — safe, *it == 8.
+    // 'it' is a real iterator into 'store' - safe, *it == 8.
 
     // To opt a user-defined view into this guarantee, specialize the variable template:
     // template<> inline constexpr bool std::ranges::enable_borrowed_range<MyView> = true;
 }
 ```
 
-You opt a custom view into borrowed-ness with the `std::ranges::enable_borrowed_range` variable-template specialization — asserting that its iterators outlive it. This is the formal contract the dangling protection of Section 35.5 keys off.
+You opt a custom view into borrowed-ness with the `std::ranges::enable_borrowed_range` variable-template specialization - asserting that its iterators outlive it. This is the formal contract the dangling protection of Section 35.5 keys off.
 
 ---
 
 ## 35.7 Algorithms Over Pipelines
 
-Because views are ranges, range algorithms apply directly to pipelines — the two halves of the library compose without glue.
+Because views are ranges, range algorithms apply directly to pipelines - the two halves of the library compose without glue.
 
 ```cpp
 // Listing 35.7: a view pipeline fed straight into a range algorithm
@@ -218,11 +227,11 @@ Practically the entire `<algorithm>` set has a `std::ranges::` form in C++20: `f
 
 | Want | C++20 status |
 |------|--------------|
-| `std::ranges::sort`, `find`, `transform`, `max_element` | ✅ available |
-| projections on all the above | ✅ available |
-| `std::ranges::fold_left` / `fold_right` | ❌ C++23 |
-| `std::ranges::to` (materialize) | ❌ C++23 |
-| range versions of `<numeric>` (`reduce`, `inclusive_scan`) | ❌ mostly C++23 |
+| `std::ranges::sort`, `find`, `transform`, `max_element` | ✓ available |
+| projections on all the above | ✓ available |
+| `std::ranges::fold_left` / `fold_right` | ✗ C++23 |
+| `std::ranges::to` (materialize) | ✗ C++23 |
+| range versions of `<numeric>` (`reduce`, `inclusive_scan`) | ✗ mostly C++23 |
 
 For numeric reductions in C++20, fall back to the non-ranges `<numeric>` algorithms on a container or materialized view.
 
@@ -232,10 +241,10 @@ For numeric reductions in C++20, fall back to the non-ranges `<numeric>` algorit
 
 **Prefer the projection slot to a throwaway comparator lambda.** `std::ranges::sort(users, {}, &User::id)` is clearer, less error-prone, and often better-optimized than `sort(users, [](auto&a,auto&b){return a.id<b.id;})`. Reserve explicit comparators for genuinely custom orderings; use a member-pointer projection for "by this field."
 
-**Let the dangling protection do its job — do not cast it away.** When a range algorithm hands you `std::ranges::dangling`, that is the library catching a lifetime bug at compile time. The fix is to bind the range to a named lvalue first (or use a borrowed range like `std::span`), never to contrive a way to extract an iterator from a temporary. The whole point is that the compile error replaced a crash.
+**Let the dangling protection do its job - do not cast it away.** When a range algorithm hands you `std::ranges::dangling`, that is the library catching a lifetime bug at compile time. The fix is to bind the range to a named lvalue first (or use a borrowed range like `std::span`), never to contrive a way to extract an iterator from a temporary. The whole point is that the compile error replaced a crash.
 
 **Opt your custom views into `borrowed_range` only when the guarantee is true.** Specializing `enable_borrowed_range` asserts that your view's iterators outlive the view object. If that is not actually true (the view owns a buffer), enabling it reintroduces exactly the dangling bug the system prevents. Enable it for non-owning adapters; leave it off for anything that holds storage.
 
 **Watch the C++20/23 line in numeric and materialization code.** `fold_left`, `ranges::to`, and most ranges `<numeric>` algorithms are C++23. In C++20, reduce with `std::reduce`/`std::accumulate` and materialize with iterator-pair constructors. Mixing these up is the most common compile failure when porting range-heavy code to a strict C++20 build.
 
-**Reach for constrained range algorithms at API boundaries for the diagnostics alone.** Even when an iterator-pair call would work, the `std::ranges::` form gives callers a localized, concept-named error if they pass an unsuitable range — the same maintainability win as constraining your own templates, inherited for free from the standard library.
+**Reach for constrained range algorithms at API boundaries for the diagnostics alone.** Even when an iterator-pair call would work, the `std::ranges::` form gives callers a localized, concept-named error if they pass an unsuitable range - the same maintainability win as constraining your own templates, inherited for free from the standard library.

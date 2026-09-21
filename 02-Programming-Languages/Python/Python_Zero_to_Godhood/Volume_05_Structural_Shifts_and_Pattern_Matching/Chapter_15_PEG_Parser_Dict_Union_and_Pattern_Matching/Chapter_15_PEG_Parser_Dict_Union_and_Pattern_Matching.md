@@ -1,11 +1,20 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 15: The PEG Parser, Dict Union, and Pattern Matching (Python 3.9–3.10)
 
 The 3.9–3.10 cycle delivered the most visible syntax addition since Python 3.0: **structural
 pattern matching** (`match`/`case`, PEP 634). It became possible only because 3.9 replaced the
 30-year-old LL(1) parser with a **PEG parser** (PEP 617) capable of the richer grammar. The same
 window added the small but daily-useful **dict union operators** `|` and `|=` (PEP 584). This
-chapter treats pattern matching as the deep topic — it is *destructuring plus matching*, not a C
-`switch` — and is precise about the one feature that bites everyone: a bare name in a pattern
+chapter treats pattern matching as the deep topic - it is *destructuring plus matching*, not a C
+`switch` - and is precise about the one feature that bites everyone: a bare name in a pattern
 **captures**, it does not compare.
 
 ## Section Index
@@ -20,14 +29,14 @@ chapter treats pattern matching as the deep topic — it is *destructuring plus 
 ## 15.1 The PEG parser and the syntax it unlocked (PEP 617)
 
 Chapter 1 covered the LL(1)→PEG transition in depth; here is what it *bought* the language. The
-**PEG** parser (PEP 617, Python 3.9) brings **ordered choice** (`e1 / e2` — first match wins,
+**PEG** parser (PEP 617, Python 3.9) brings **ordered choice** (`e1 / e2` - first match wins,
 deterministically) and **unlimited lookahead** with **packrat memoization** (caching each
 (rule, position) result keeps parsing linear-time). Freed from one-token lookahead, the grammar
-could express constructs the old parser could not — most visibly the **parenthesized context
+could express constructs the old parser could not - most visibly the **parenthesized context
 managers** of 3.10:
 
 ```python
-# Caption: parenthesized, multi-line context managers — only parseable with PEG lookahead.
+# Caption: parenthesized, multi-line context managers - only parseable with PEG lookahead.
 with (
     open("a.txt") as a,
     open("b.txt") as b,
@@ -80,14 +89,14 @@ and is marginally faster for merging many dicts at once.
 
 ## 15.3 Structural pattern matching (PEP 634)
 
-**Why this exists — and what it is not.** `match`/`case` is **not** a C/Java `switch` (which only
+**Why this exists - and what it is not.** `match`/`case` is **not** a C/Java `switch` (which only
 compares a scalar against constants). It is **structural matching**: each `case` is a *pattern* that
-simultaneously **tests the shape** of the subject and **binds names** from its components — closer
+simultaneously **tests the shape** of the subject and **binds names** from its components - closer
 to Rust's `match` or ML-family destructuring. It shines when branching on the *structure* of data
 (ASTs, JSON-ish messages, command tokens, geometric types).
 
 ```python
-# Caption: the pattern taxonomy — literal, sequence, mapping, class, OR, guard, capture, wildcard.
+# Caption: the pattern taxonomy - literal, sequence, mapping, class, OR, guard, capture, wildcard.
 def classify(x):
     match x:
         case 0:                              # literal (value) pattern
@@ -156,8 +165,8 @@ Verified output (CPython 3.13.5):
 ```
 
 **What the compiler does.** A `match` does not compile to a linear `if/elif` chain; the compiler
-builds a decision tree with dedicated opcodes — `MATCH_SEQUENCE`, `MATCH_MAPPING`, `MATCH_KEYS`,
-`MATCH_CLASS`, plus `GET_LEN`/`UNPACK_SEQUENCE` — that test shape once and fail fast before binding:
+builds a decision tree with dedicated opcodes - `MATCH_SEQUENCE`, `MATCH_MAPPING`, `MATCH_KEYS`,
+`MATCH_CLASS`, plus `GET_LEN`/`UNPACK_SEQUENCE` - that test shape once and fail fast before binding:
 
 ```python
 # Caption: real 3.13 bytecode for a sequence pattern.
@@ -188,7 +197,7 @@ Verified output (CPython 3.13.5, excerpt):
       STORE_FAST        1 (y)          # only now bind y
 ```
 
-Bindings happen only on the success path — a failed sub-pattern cleans the stack and tries the next
+Bindings happen only on the success path - a failed sub-pattern cleans the stack and tries the next
 case, so a half-matched pattern never leaks a partial binding.
 
 ---
@@ -196,7 +205,7 @@ case, so a half-matched pattern never leaks a partial binding.
 ## 15.4 The capture-vs-value gotcha, performance, and anti-patterns
 
 **The one gotcha that bites everyone: a bare name captures.** In a pattern, an unqualified name is a
-**capture pattern** — it matches *anything* and binds the name. It is **not** a comparison against a
+**capture pattern** - it matches *anything* and binds the name. It is **not** a comparison against a
 variable of that name. So `case STATUS_OK:` does not test `subject == STATUS_OK`; it binds the
 subject to `STATUS_OK`. To compare against a named constant, use a **dotted (value) pattern**:
 
@@ -246,20 +255,20 @@ SyntaxError: name capture 'NAME' makes remaining patterns unreachable
 ```
 
 **Other anti-patterns and notes.**
-- **Don't use `match` for plain equality** on a scalar against a few constants — an `if/elif` (or a
+- **Don't use `match` for plain equality** on a scalar against a few constants - an `if/elif` (or a
   dict dispatch) is clearer and no slower for that case. `match` earns its keep on *structure*.
 - **Remember the str/bytes exclusion**: `case [x, y]:` will not match `"ab"`; match strings with
   `str()` patterns or guards.
 - **Mapping patterns are subset matches**: `case {"id": i}:` matches any mapping containing `"id"`.
   Use `**rest` to capture the remainder, or guards to assert exactness.
-- **`__match_args__` is the public destructuring contract** of your class — dataclasses set it
+- **`__match_args__` is the public destructuring contract** of your class - dataclasses set it
   automatically from their field order (Chapter 13).
 
 ---
 
 ## 15.5 Summary and cross-references
 
-- The **PEG parser** (PEP 617, 3.9) — ordered choice + unlimited lookahead + packrat memoization —
+- The **PEG parser** (PEP 617, 3.9) - ordered choice + unlimited lookahead + packrat memoization - 
   replaced LL(1) and unlocked richer syntax (parenthesized context managers; the `match` grammar).
 - **`|`/`|=`** (PEP 584) merge/update dicts; `|` returns a plain `dict`, right keys win, non-mappings
   raise `TypeError`.
@@ -267,7 +276,7 @@ SyntaxError: name capture 'NAME' makes remaining patterns unreachable
   tree (`MATCH_SEQUENCE`/`MATCH_CLASS`/…). Patterns: literal, capture, wildcard `_`, sequence
   (excludes str/bytes), mapping (subset), class (via `__match_args__`), `|` OR, `as` binding, and
   `if` guards.
-- **A bare name captures, it does not compare** — use a **dotted value pattern** for constants;
+- **A bare name captures, it does not compare** - use a **dotted value pattern** for constants;
   3.13 errors on captures that make later cases unreachable.
 
 **Cross-references.** LL(1)→PEG in depth → Chapter 1. `{**a, **b}` unpacking → Chapter 11. dict

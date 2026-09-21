@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Database and the relational model
 
 ![Morpheus](https://www.memecreator.org/static/images/memes/3788910.jpg)

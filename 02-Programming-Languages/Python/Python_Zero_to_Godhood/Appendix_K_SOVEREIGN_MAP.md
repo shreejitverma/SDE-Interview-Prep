@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Appendix K: The Complete Python Standard Library Reference Table
 
 This appendix provides a definitive reference for the entire Python 3.13 Standard Library. For each module, we list its primary purpose, its underlying implementation (C vs. Python), and its thread-safety characteristics.

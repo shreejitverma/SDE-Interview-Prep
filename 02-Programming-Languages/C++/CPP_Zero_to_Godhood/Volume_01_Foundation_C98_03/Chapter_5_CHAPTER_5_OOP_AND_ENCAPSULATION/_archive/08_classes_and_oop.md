@@ -2,15 +2,15 @@
 
 > *Building your own types.*
 
-Welcome to the world of objects. Up until now, we have been writing "Procedural" code—essentially a long list of instructions for the computer to follow. We used built-in types like `int`, `float`, and `char`. 
+Welcome to the world of objects. Up until now, we have been writing "Procedural" code - essentially a long list of instructions for the computer to follow. We used built-in types like `int`, `float`, and `char`. 
 
-But what if you are building a game and need a `Player` type? A player isn't just an integer. A player has a name (string), health (int), and an inventory (array). More importantly, a player has *behaviors*—they can jump, take damage, and heal.
+But what if you are building a game and need a `Player` type? A player isn't just an integer. A player has a name (string), health (int), and an inventory (array). More importantly, a player has *behaviors* - they can jump, take damage, and heal.
 
 Object-Oriented Programming (OOP) allows you to bind data and behavior together into a single, cohesive unit.
 
 ---
 
-## 8.1 🛋️ Fireside Chat: The Blueprint vs. The House
+## 8.1 Fireside Chat: The Blueprint vs. The House
 
 To understand OOP, you must understand the difference between a **Class** and an **Object**.
 
@@ -151,7 +151,7 @@ int main() {
 } // CRASH!
 ```
 
-When `b2` is created, C++ does a "shallow copy"—it copies the memory address. Both `b1` and `b2` now point to the *exact same locker* in the warehouse.
+When `b2` is created, C++ does a "shallow copy" - it copies the memory address. Both `b1` and `b2` now point to the *exact same locker* in the warehouse.
 When `main()` ends, `b2`'s destructor deletes the locker. Then `b1`'s destructor runs and tries to delete the locker *again*. This is a "Double Free" error, and your program will instantly crash.
 
 **The Rule of Three states:** If you need to manually define *any* of the following three functions, you almost certainly need to define *all three* to safely manage memory:

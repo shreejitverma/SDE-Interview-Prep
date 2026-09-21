@@ -3,6 +3,11 @@ tags: [networking, internet-architecture, tcp, end-to-end, congestion-control, a
 aliases: [Internet Architecture and End-to-End, Cerf Kahn TCP 1974, End-to-End Arguments Saltzer, Lampson Hints]
 status: evergreen
 created: 2026-09-17
+type: paper
+track: [distinguished, sde]
+level:
+last_reviewed:
+sources: []
 ---
 
 # Internet Architecture & End-to-End Systems

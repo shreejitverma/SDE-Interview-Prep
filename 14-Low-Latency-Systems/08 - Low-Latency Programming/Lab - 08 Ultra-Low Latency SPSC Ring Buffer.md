@@ -4,9 +4,14 @@ aliases: [Lab 08, SPSC Ring Buffer Lab, Lock-Free Lab, Wait-Free Ring Buffer Lab
 status: evergreen
 module: 08
 created: 2026-08-22
+type: playbook
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
-# Lab 08 — Ultra-Low Latency SPSC Ring Buffer
+# Lab 08 - Ultra-Low Latency SPSC Ring Buffer
 
 > [!summary]
 > In this lab, you will build, compile, and benchmark an exchange-grade, wait-free Single-Producer Single-Consumer (SPSC) ring buffer in C++20. You will pin the producer and consumer to separate physical CPU cores, measure end-to-end transfer latency down to the nanosecond, and prove sustained throughput exceeding **50,000,000 messages/second**.
@@ -305,9 +310,9 @@ Starting SPSC Benchmark on Pinned Cores (Core 2 -> Core 4)...
 ---
 
 ## Related Notes
-- [[Notes/Lock-Free SPSC Ring Buffer Design]]
-- [[Notes/C++ Memory Model and Memory Orders]]
-- [[Notes/Allocation-Free Steady State Patterns]]
-- [[Notes/False Sharing and Cache Contention]]
-- [[Notes/The LMAX Disruptor Architecture]]
+- [[Lock-Free SPSC Ring Buffer Design]]
+- [[C++ Memory Model and Memory Orders]]
+- [[Allocation-Free Steady State Patterns]]
+- [[False Sharing and Cache Contention]]
+- [[The LMAX Disruptor Architecture]]
 - [[MOC - 08 Low-Latency Programming]]

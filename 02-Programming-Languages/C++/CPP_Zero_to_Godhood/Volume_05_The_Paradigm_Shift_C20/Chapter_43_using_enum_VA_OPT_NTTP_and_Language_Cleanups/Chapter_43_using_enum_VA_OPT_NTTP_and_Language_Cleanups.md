@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 43: using enum, __VA_OPT__, Class-Type NTTPs, and Language Cleanups
 
 > *This chapter collects the remaining smaller C++20 core-language changes that do not belong to one of the big pillars but each remove a long-standing irritation: `using enum` to pull scoped-enum names into scope, `__VA_OPT__` to write variadic macros that behave correctly with zero arguments, class types as non-type template parameters (which is what lets string literals parameterize templates), the mandate that signed integers are two's complement, the new `char8_t` type for UTF-8, and the deprecation of several `volatile` uses. Individually minor; collectively they sand down the rough edges of daily C++.*
@@ -44,7 +53,7 @@ void demo() {
 }
 ```
 
-`using enum` preserves the type-safety of scoped enums — `Green` is still a `Color`, not a bare `int` — while removing only the syntactic verbosity. You can also bring in a *single* enumerator with `using Color::Red;`. Scope the `using enum` as tightly as possible (inside the `switch` or a small block) so the unqualified names do not leak and collide elsewhere.
+`using enum` preserves the type-safety of scoped enums - `Green` is still a `Color`, not a bare `int` - while removing only the syntactic verbosity. You can also bring in a *single* enumerator with `using Color::Red;`. Scope the `using enum` as tightly as possible (inside the `switch` or a small block) so the unqualified names do not leak and collide elsewhere.
 
 ---
 
@@ -68,7 +77,7 @@ void demo() {
 //   WRAP(a, b)    -> f(0, a, b)
 ```
 
-The mechanism: `__VA_OPT__(,)` emits the comma only if `__VA_ARGS__` is non-empty, so `LOG("hi")` does not produce the malformed `printf("hi",)`. This is the **standard, portable** replacement for the GCC `, ##__VA_ARGS__` hack. It can wrap any tokens, not just a comma — `__VA_OPT__(prefix)` is occasionally used to conditionally emit a keyword or separator.
+The mechanism: `__VA_OPT__(,)` emits the comma only if `__VA_ARGS__` is non-empty, so `LOG("hi")` does not produce the malformed `printf("hi",)`. This is the **standard, portable** replacement for the GCC `, ##__VA_ARGS__` hack. It can wrap any tokens, not just a comma - `__VA_OPT__(prefix)` is occasionally used to conditionally emit a keyword or separator.
 
 ---
 
@@ -98,7 +107,7 @@ The requirements for a **structural type** are strict: all base classes and non-
 
 ## 43.4 String Literals as Template Parameters
 
-The most important consequence of class-type NTTPs is that you can build a structural wrapper around a character array and thereby **pass string literals as template arguments** — long requested, finally possible.
+The most important consequence of class-type NTTPs is that you can build a structural wrapper around a character array and thereby **pass string literals as template arguments** - long requested, finally possible.
 
 ```cpp
 // Listing 43.4: a fixed-string NTTP wrapper enables string template parameters
@@ -121,7 +130,7 @@ struct Named {
 constexpr auto n = Named<"hello">::value();   // "hello" parameterizes the template
 ```
 
-`FixedString` is a structural type (public `char[N]` member, literal, `constexpr` constructor), so `Named<"hello">` deduces `N` from the literal and stores its characters in the NTTP. This is the foundation for compile-time string processing: type-safe format strings, compile-time-named dimensions/units, reflection-style tags, and DSLs that take string keys — all checkable at compile time. The pattern underpins many modern C++20 libraries (compile-time JSON pointers, fixed-string event names, etc.).
+`FixedString` is a structural type (public `char[N]` member, literal, `constexpr` constructor), so `Named<"hello">` deduces `N` from the literal and stores its characters in the NTTP. This is the foundation for compile-time string processing: type-safe format strings, compile-time-named dimensions/units, reflection-style tags, and DSLs that take string keys - all checkable at compile time. The pattern underpins many modern C++20 libraries (compile-time JSON pointers, fixed-string event names, etc.).
 
 ---
 
@@ -146,7 +155,7 @@ std::int32_t mix(std::uint32_t u) {
 }
 ```
 
-The practical effect: the bit representation of signed integers is now portable and predictable, `INT_MIN` is always `-INT_MAX - 1` (the asymmetric range), and reasoning about sign/unsigned bit tricks is sound on every conforming implementation. **Signed integer overflow is still undefined behavior** — the mandate fixes the *representation*, not the *arithmetic-overflow* rules. This distinction trips people up: `INT_MAX + 1` is still UB; what changed is that `-1` is guaranteed to be all-bits-set.
+The practical effect: the bit representation of signed integers is now portable and predictable, `INT_MIN` is always `-INT_MAX - 1` (the asymmetric range), and reasoning about sign/unsigned bit tricks is sound on every conforming implementation. **Signed integer overflow is still undefined behavior** - the mandate fixes the *representation*, not the *arithmetic-overflow* rules. This distinction trips people up: `INT_MAX + 1` is still UB; what changed is that `-1` is guaranteed to be all-bits-set.
 
 ---
 
@@ -194,18 +203,18 @@ v = 5;            // OK: volatile write
 // and volatile structured bindings.
 ```
 
-The reasoning: a compound assignment like `v += 1` on a `volatile` is a read-modify-write whose ordering and atomicity were never well-specified — it looks atomic but is not, a trap for the device-driver programmers `volatile` is meant to serve. C++20 deprecates these compound forms (and `volatile` parameters/returns) to push code toward explicit `load`/`store` patterns or, for concurrency, `std::atomic` — `volatile` is for hardware-visible side effects, never for thread synchronization. Other minor cleanups in the same release include the range-`for` init-statement (Chapter 40) and the deprecation of the comma operator inside subscript expressions (`a[i, j]`), reserved for C++23's multidimensional `operator[]`.
+The reasoning: a compound assignment like `v += 1` on a `volatile` is a read-modify-write whose ordering and atomicity were never well-specified - it looks atomic but is not, a trap for the device-driver programmers `volatile` is meant to serve. C++20 deprecates these compound forms (and `volatile` parameters/returns) to push code toward explicit `load`/`store` patterns or, for concurrency, `std::atomic` - `volatile` is for hardware-visible side effects, never for thread synchronization. Other minor cleanups in the same release include the range-`for` init-statement (Chapter 40) and the deprecation of the comma operator inside subscript expressions (`a[i, j]`), reserved for C++23's multidimensional `operator[]`.
 
 ---
 
 ## 43.8 Professional Insights
 
-**Scope `using enum` tightly — inside the `switch` or a small block.** Its value is killing the repeated `Color::` prefix in a `switch`, and placing it at the top of the `switch` body confines the unqualified names to exactly where they help. Pulling enumerators into a wide scope (a whole function or, worse, a header namespace) reintroduces the name-collision risk that scoped enums were designed to eliminate. Use it as a local convenience, not a global import.
+**Scope `using enum` tightly - inside the `switch` or a small block.** Its value is killing the repeated `Color::` prefix in a `switch`, and placing it at the top of the `switch` body confines the unqualified names to exactly where they help. Pulling enumerators into a wide scope (a whole function or, worse, a header namespace) reintroduces the name-collision risk that scoped enums were designed to eliminate. Use it as a local convenience, not a global import.
 
 **Replace GCC's `, ##__VA_ARGS__` with `__VA_OPT__(,)` for portable variadic macros.** The old comma-elision hack is non-standard and silently behaves differently across compilers. `__VA_OPT__` is the standard, portable mechanism and handles the zero-argument case correctly on every C++20 compiler. When modernizing logging and assertion macros, this is a mechanical, safe substitution that removes a long-standing portability wart.
 
 **Use class-type NTTPs and `FixedString` to move string-keyed logic to compile time.** Passing string literals as template parameters enables compile-time-checked format strings, named units, and tag-based dispatch with zero runtime cost. The `FixedString` structural-type wrapper is the canonical idiom; recognize it when reading modern libraries and reach for it when a key or name is known at compile time and you want the type system to enforce it.
 
-**Treat `char8_t` as a deliberate, breaking encoding-safety upgrade.** Migrating to C++20 will break code that fed `u8"..."` into `const char*` APIs — this is intended. The right response is an explicit `reinterpret_cast<const char*>` (or a `std::u8string`-aware boundary) at the point where UTF-8 data meets legacy `char` APIs, keeping the encoding distinction visible in the types rather than silently erased. Audit `u8` literal usage when bumping the standard.
+**Treat `char8_t` as a deliberate, breaking encoding-safety upgrade.** Migrating to C++20 will break code that fed `u8"..."` into `const char*` APIs - this is intended. The right response is an explicit `reinterpret_cast<const char*>` (or a `std::u8string`-aware boundary) at the point where UTF-8 data meets legacy `char` APIs, keeping the encoding distinction visible in the types rather than silently erased. Audit `u8` literal usage when bumping the standard.
 
-**Rely on the two's-complement mandate for representation, but never for overflow.** You may now portably assume `-1` is all-bits-set and `INT_MIN == -INT_MAX - 1`, which legitimizes a class of well-reasoned bit manipulations. But signed *overflow* remains undefined behavior — the mandate did not change that — so continue to guard arithmetic against overflow (or use unsigned/`std::numeric_limits` checks). Conflating "representation is defined" with "overflow is defined" is a subtle and dangerous mistake.
+**Rely on the two's-complement mandate for representation, but never for overflow.** You may now portably assume `-1` is all-bits-set and `INT_MIN == -INT_MAX - 1`, which legitimizes a class of well-reasoned bit manipulations. But signed *overflow* remains undefined behavior - the mandate did not change that - so continue to guard arithmetic against overflow (or use unsigned/`std::numeric_limits` checks). Conflating "representation is defined" with "overflow is defined" is a subtle and dangerous mistake.

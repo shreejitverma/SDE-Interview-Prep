@@ -3,9 +3,14 @@ tags: [security/audit, audit/antivirus, clamav, provenance]
 aliases: [ClamAV Scan Report, Whitepapers Security Audit, Antivirus Verification]
 status: verified
 created: 2026-09-17
+type: paper
+track: [distinguished, sde]
+level:
+last_reviewed:
+sources: []
 ---
 
-# Security Audit Report — Technical Whitepapers Archive
+# Security Audit Report - Technical Whitepapers Archive
 
 > [!summary]
 > All files in this technical whitepapers archive were subjected to automated anti-malware and signature verification using the ClamAV scanning engine prior to indexing. The scan confirmed **0 infected files** across all scanned directories and payload archives.

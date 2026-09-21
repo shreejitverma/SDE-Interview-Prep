@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Appendix H: Professional C++ Idioms
 
 ### 1. RAII (Resource Acquisition Is Initialization)

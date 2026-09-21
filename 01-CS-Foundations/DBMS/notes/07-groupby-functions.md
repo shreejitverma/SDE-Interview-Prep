@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Group by and built-in functions
 
 - [Group by and built-in functions](#group-by-and-built-in-functions)

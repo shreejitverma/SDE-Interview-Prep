@@ -4,12 +4,17 @@ aliases: [The 2012 Leap Second Bug, Leap Second Linux Lockup, Futex Spinlock Fre
 status: evergreen
 module: 05
 created: 2026-08-22
+type: case-study
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
-# War Story — The June 30, 2012 Leap Second Bug: Linux Futex Spinlock Cascades & 100% CPU Freezes
+# War Story - The June 30, 2012 Leap Second Bug: Linux Futex Spinlock Cascades & 100% CPU Freezes
 
 > [!summary]
-> On June 30, 2012, at 23:59:60 UTC, the International Earth Rotation and Reference Systems Service (IERS) inserted a positive "Leap Second" to synchronize UTC with Earth's rotation. A dormant bug in the Linux kernel's timekeeping and high-resolution timer (`hrtimer`) subsystem caused millions of multi-threaded server applications worldwide—including high-frequency trading systems, exchange gateways, and database clusters—to enter catastrophic, unyielding 100% CPU spinlocks.
+> On June 30, 2012, at 23:59:60 UTC, the International Earth Rotation and Reference Systems Service (IERS) inserted a positive "Leap Second" to synchronize UTC with Earth's rotation. A dormant bug in the Linux kernel's timekeeping and high-resolution timer (`hrtimer`) subsystem caused millions of multi-threaded server applications worldwide - including high-frequency trading systems, exchange gateways, and database clusters - to enter catastrophic, unyielding 100% CPU spinlocks.
 
 ---
 
@@ -78,7 +83,7 @@ To ensure financial systems survive leap seconds without disruption, the electro
 
 ## Related Notes
 - [[07 - Time & Measurement/Clock Sources and Hardware Timestamping]]
-- [[07 - Time & Measurement/PTP IEEE 1588 and White Rabbit Network Synchronization]]
+- [[Precision Time Protocol and White Rabbit]]
 - [[05 - OS & Kernel Tuning/Kernel Boot Parameters for Core Isolation]]
 - [[13 - Reliability, Ops & Testing/Disaster Recovery and High Availability Topologies]]
 - [[14 - Industry Map & Canon/MOC - 14 Industry Map & Canon]]

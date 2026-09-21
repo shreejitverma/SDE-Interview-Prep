@@ -4,9 +4,14 @@ aliases: [Lab 11, Tick-to-Trade Lab, End-to-End HFT Pipeline Lab, Sub-Microsecon
 status: evergreen
 module: 11
 created: 2026-08-22
+type: playbook
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
-# Lab 11 — End-to-End Sub-Microsecond Tick-to-Trade Engine
+# Lab 11 - End-to-End Sub-Microsecond Tick-to-Trade Engine
 
 > [!summary]
 > In this lab, you will build, compile, and benchmark a complete, fully inlined high-frequency trading (HFT) pipeline in C++20. You will connect a zero-copy ITCH 5.0 feed handler, an in-memory LOB reconstructor, a Stoikov volume-weighted micro-price alpha signal generator, an inlined pre-trade risk gate, and a zero-copy OUCH 4.2 order serializer, measuring an **end-to-end software turnaround time of under 65 nanoseconds**.

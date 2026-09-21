@@ -1,3 +1,12 @@
+---
+type: case-study
+track: [sde, distinguished]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Design a Rate Limiter
 
 ## 1. Requirements

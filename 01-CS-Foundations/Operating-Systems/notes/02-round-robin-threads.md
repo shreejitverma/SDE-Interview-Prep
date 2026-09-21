@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Round Robin scheduling algorithm and threads
 - [Round Robin scheduling algorithm and threads](#round-robin-scheduling-algorithm-and-threads)
   - [Round Robin](#round-robin)

@@ -1,11 +1,20 @@
+---
+type: moc
+track: [quant-dev, quant-research]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Quantitative Finance Roadmap
 
 Author: Shreejit Verma
 
-## 🎯 Objective
+## Objective
 Bridge the gap between Software Engineering and Financial Mathematics.
 
-## 📚 Modules
+## Modules
 
 ### 1. Mathematics (The Foundation)
 - **Probability & Statistics:** Distributions, Expectation, Variance.
@@ -22,5 +31,5 @@ Bridge the gap between Software Engineering and Financial Mathematics.
 - **Strategies:** Arbitrage, Mean Reversion, Momentum.
 - **Backtesting:** Event-driven vs Vectorized.
 
-## 🛠 Recommended Resources
+## Recommended Resources
 *Check the '01-Mathematics' folder for the 'Practical Guide to Quantitative Finance Interviews'.*

@@ -1,8 +1,17 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 11: The Modern C++11 Core
 
-> *The "Modern Revolution" begins here. C++11 redefined the language — this chapter covers the everyday syntax and type-system features you will reach for in every modern translation unit.*
+> *The "Modern Revolution" begins here. C++11 redefined the language - this chapter covers the everyday syntax and type-system features you will reach for in every modern translation unit.*
 
-C++11 was the largest revision in the language's history. This chapter establishes the **core syntax and type-system** features: type inference, uniform initialization, range iteration, the class-authoring keywords, compile-time evaluation, and compile-time assertions. The heavier machinery — move semantics (Chapter 12), lambdas (Chapter 13), variadics (Chapter 14), the library expansion (Chapter 15), concurrency (Chapter 16), and the advanced literal/union/alignment features (Chapter 17) — builds on the foundation laid here.
+C++11 was the largest revision in the language's history. This chapter establishes the **core syntax and type-system** features: type inference, uniform initialization, range iteration, the class-authoring keywords, compile-time evaluation, and compile-time assertions. The heavier machinery - move semantics (Chapter 12), lambdas (Chapter 13), variadics (Chapter 14), the library expansion (Chapter 15), concurrency (Chapter 16), and the advanced literal/union/alignment features (Chapter 17) - builds on the foundation laid here.
 
 ---
 
@@ -47,24 +56,24 @@ const auto* ptr = &i; // const int*
 
 `auto` uses the same deduction rules as template type deduction. Two rules dominate day-to-day use:
 
-**Rule 1 — Reference and top-level `const` are dropped by default.**
+**Rule 1 - Reference and top-level `const` are dropped by default.**
 
 ```cpp
 // Listing 11.2: auto drops references and top-level const
 int x = 0;
 int& y = x;
-auto z = y;   // z is int, NOT int& — the reference is dropped
+auto z = y;   // z is int, NOT int& - the reference is dropped
 
 const int cx = 10;
-auto copy = cx; // int — the const is dropped (it is a copy)
+auto copy = cx; // int - the const is dropped (it is a copy)
 ```
 
-**Rule 2 — Re-add qualifiers explicitly with `auto&` / `const auto&`.**
+**Rule 2 - Re-add qualifiers explicitly with `auto&` / `const auto&`.**
 
 ```cpp
 // Listing 11.3: preserving qualifiers
 const int cx = 10;
-const auto& ref = cx; // const int& — binds without copying
+const auto& ref = cx; // const int& - binds without copying
 auto&& uref = 42;     // forwarding/universal reference (see Chapter 12)
 ```
 
@@ -72,13 +81,13 @@ auto&& uref = 42;     // forwarding/universal reference (see Chapter 12)
 
 ### 11.1.2 `decltype`: Inspecting Types
 
-Unlike `auto`, **`decltype`** yields the *exact declared type* of an expression — including references and `const`. It does not strip qualifiers.
+Unlike `auto`, **`decltype`** yields the *exact declared type* of an expression - including references and `const`. It does not strip qualifiers.
 
 ```cpp
 // Listing 11.4: decltype preserves the exact type
 int x = 0;
-decltype(x)   y = 5;   // int        — decltype of a name: its declared type
-decltype((x)) z = y;   // int&       — decltype of a parenthesized lvalue expression
+decltype(x)   y = 5;   // int        - decltype of a name: its declared type
+decltype((x)) z = y;   // int&       - decltype of a parenthesized lvalue expression
 ```
 
 The `(x)` subtlety is the classic gotcha: a bare name gives the declared type; **a parenthesized lvalue expression** gives an lvalue reference. This matters when computing return types.
@@ -109,7 +118,7 @@ void f(char*);
 
 f(0);       // Calls f(int)
 f(NULL);    // Implementation-defined (NULL is usually an integer 0)
-f(nullptr); // Calls f(char*) — unambiguous
+f(nullptr); // Calls f(char*) - unambiguous
 ```
 
 `nullptr` converts implicitly to any pointer type but **not** to an integral type, which is exactly the safety property `0`/`NULL` lacked.
@@ -133,7 +142,7 @@ int* p = new int[3]{1, 2, 3};
 
 ### 11.2.2 Narrowing Prevention
 
-Brace initialization **forbids narrowing conversions** — implicit conversions that lose information. This catches a whole class of silent bugs.
+Brace initialization **forbids narrowing conversions** - implicit conversions that lose information. This catches a whole class of silent bugs.
 
 ```cpp
 // Listing 11.8: narrowing is a hard error inside braces
@@ -142,7 +151,7 @@ int b{3.14};    // ERROR: narrowing conversion from double to int
 char c{300};    // ERROR: 300 does not fit in char
 ```
 
-> **Pitfall — the "most vexing" brace surprise:** for types with an `initializer_list` constructor, braces *prefer* it. `std::vector<int> v(10, 5)` makes ten 5s, but `std::vector<int> v{10, 5}` makes the two-element list `{10, 5}`. Choose parentheses vs braces deliberately.
+> **Pitfall - the "most vexing" brace surprise:** for types with an `initializer_list` constructor, braces *prefer* it. `std::vector<int> v(10, 5)` makes ten 5s, but `std::vector<int> v{10, 5}` makes the two-element list `{10, 5}`. Choose parentheses vs braces deliberately.
 
 ### 11.2.3 `std::initializer_list`
 
@@ -178,9 +187,9 @@ The range-based `for` loop is syntactic sugar for iterating over anything with `
 // Listing 11.10: the three idiomatic range-for forms
 std::vector<int> v = {1, 2, 3};
 
-for (int x : v)          { /* by value — a copy each iteration */ }
-for (auto& x : v)        { x *= 2; }     // by reference — modify in place
-for (const auto& x : v)  { use(x); }     // by const reference — read-only, no copy
+for (int x : v)          { /* by value - a copy each iteration */ }
+for (auto& x : v)        { x *= 2; }     // by reference - modify in place
+for (const auto& x : v)  { use(x); }     // by const reference - read-only, no copy
 ```
 
 **Rule of thumb:** use `const auto&` to read, `auto&` to modify, and a plain value type only for cheap-to-copy elements. The loop expands to a call to `begin(range)`/`end(range)`, so it works on standard containers, C arrays, `std::initializer_list`, and any type that provides those iterators.
@@ -203,8 +212,8 @@ class Base {
 };
 
 class Derived : public Base {
-    void foo(int) override;     // OK — matches Base::foo
-    // void foo(float) override; // ERROR — no matching base virtual
+    void foo(int) override;     // OK - matches Base::foo
+    // void foo(float) override; // ERROR - no matching base virtual
 };
 
 class Last final : public Base { // Cannot be inherited from
@@ -230,7 +239,7 @@ public:
 };
 ```
 
-`= default` documents intent and keeps the function *trivial* (important for `constexpr`/POD properties), while still letting you declare other constructors. `= delete` removes a function from overload resolution entirely — use it to forbid copying, or to ban specific argument types (`void f(double) = delete;` rejects `f(3.14)`).
+`= default` documents intent and keeps the function *trivial* (important for `constexpr`/POD properties), while still letting you declare other constructors. `= delete` removes a function from overload resolution entirely - use it to forbid copying, or to ban specific argument types (`void f(double) = delete;` rejects `f(3.14)`).
 
 ### 11.4.3 Strongly-Typed Enums (`enum class`)
 
@@ -241,11 +250,11 @@ Scoped enumerations fix the three defects of C-style enums: they do not leak the
 enum class Color : char { Red, Green, Blue }; // Underlying type fixed to char
 
 Color c = Color::Red;   // Enumerators are scoped: Color::Red
-// int i = c;           // ERROR — no implicit conversion to int
+// int i = c;           // ERROR - no implicit conversion to int
 int i = static_cast<int>(c); // Explicit conversion is allowed
 ```
 
-Fixing the underlying type (`: char`, `: unsigned`, etc.) guarantees size and enables forward declaration of the enum — valuable for ABI-stable headers in large systems.
+Fixing the underlying type (`: char`, `: unsigned`, etc.) guarantees size and enables forward declaration of the enum - valuable for ABI-stable headers in large systems.
 
 ### 11.4.4 Delegating Constructors
 
@@ -263,7 +272,7 @@ public:
 
 The delegating constructor's body runs *after* the target constructor completes. You cannot both delegate and initialize a member in the same member-initializer list.
 
-> **Related C++11 class features** — inheriting constructors (`using Base::Base;`) and non-static data member initializers (`int x = 0;` in the class body) are covered in **Chapter 17**, alongside the advanced literal, union, and alignment features.
+> **Related C++11 class features** - inheriting constructors (`using Base::Base;`) and non-static data member initializers (`int x = 0;` in the class body) are covered in **Chapter 17**, alongside the advanced literal, union, and alignment features.
 
 ---
 
@@ -277,11 +286,11 @@ constexpr int square(int x) {
     return x * x;     // C++11: body must be a single return statement
 }
 
-int array[square(5)]; // OK — size 25 computed at compile time
+int array[square(5)]; // OK - size 25 computed at compile time
 constexpr int n = square(8); // Forced compile-time evaluation
 ```
 
-**C++11 restriction:** a `constexpr` function body may contain essentially only a single `return` statement (plus `typedef`s, `static_assert`s, and `using` declarations) — no loops, no local variables, no branches except the ternary `?:`. Recursion is the standard workaround.
+**C++11 restriction:** a `constexpr` function body may contain essentially only a single `return` statement (plus `typedef`s, `static_assert`s, and `using` declarations) - no loops, no local variables, no branches except the ternary `?:`. Recursion is the standard workaround.
 
 ```cpp
 // Listing 11.16: compile-time factorial via recursion (C++11 style)
@@ -291,7 +300,7 @@ constexpr long factorial(int n) {
 static_assert(factorial(5) == 120, "math is broken");
 ```
 
-> **C++14 forward reference:** C++14 relaxes these rules dramatically — `constexpr` functions may use loops, local variables, and multiple statements, making the recursive workaround unnecessary.
+> **C++14 forward reference:** C++14 relaxes these rules dramatically - `constexpr` functions may use loops, local variables, and multiple statements, making the recursive workaround unnecessary.
 
 A `constexpr` function called with non-constant arguments simply runs at runtime, so the keyword is "compile-time *if possible*," never a penalty.
 
@@ -321,11 +330,11 @@ Because it fires during compilation, `static_assert` costs nothing at runtime an
 
 ## 11.7 Professional Insights
 
-**`auto` and low-latency code.** `auto` never introduces a hidden conversion — it binds the exact type of the initializer. This makes it *safer* than spelling a type that might trigger an implicit narrowing or a temporary. The one trap is proxy types (`vector<bool>`, expression templates): `auto x = vec[i];` may capture a proxy rather than the logical value. Prefer `auto` for clarity but know your value types.
+**`auto` and low-latency code.** `auto` never introduces a hidden conversion - it binds the exact type of the initializer. This makes it *safer* than spelling a type that might trigger an implicit narrowing or a temporary. The one trap is proxy types (`vector<bool>`, expression templates): `auto x = vec[i];` may capture a proxy rather than the logical value. Prefer `auto` for clarity but know your value types.
 
-**Brace-init in hot paths.** Narrowing prevention is a compile-time check with zero runtime cost, and uniform initialization compiles to the same code as the equivalent direct initialization. There is no performance reason to avoid braces — only the `initializer_list`-preference pitfall (§11.2.2) to keep in mind.
+**Brace-init in hot paths.** Narrowing prevention is a compile-time check with zero runtime cost, and uniform initialization compiles to the same code as the equivalent direct initialization. There is no performance reason to avoid braces - only the `initializer_list`-preference pitfall (§11.2.2) to keep in mind.
 
-**`enum class` for ABI stability.** Fixing the underlying type lets you forward-declare enums in headers, decoupling translation units and shrinking rebuild times — a real win in large systems. Strong typing also prevents the accidental mixing of unrelated enumerations that plagues flag-heavy systems code.
+**`enum class` for ABI stability.** Fixing the underlying type lets you forward-declare enums in headers, decoupling translation units and shrinking rebuild times - a real win in large systems. Strong typing also prevents the accidental mixing of unrelated enumerations that plagues flag-heavy systems code.
 
 **`constexpr` pushes work off the runtime budget.** In HFT and kernel paths, every cycle counts; moving computation (lookup tables, bit masks, dimension calculations) into `constexpr` shifts it from runtime to compile time entirely. Even with the C++11 single-return restriction, recursion covers a surprising amount of ground.
 

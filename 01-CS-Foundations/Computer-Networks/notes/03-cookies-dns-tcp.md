@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Cookies, DNS and TCP
 ## Agenda
 * What are cookies, and how do they work?

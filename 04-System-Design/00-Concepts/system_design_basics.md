@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, distinguished]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # System Design Concepts Cheatsheet
 
 ## 1. Scalability

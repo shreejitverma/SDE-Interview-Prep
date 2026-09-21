@@ -1,3 +1,12 @@
+---
+type: moc
+track: [sde, quant-dev]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 ## Description of the problem
 
 There is a merchant ship whose capacity to load is K tons and a set of containers with their respective weights

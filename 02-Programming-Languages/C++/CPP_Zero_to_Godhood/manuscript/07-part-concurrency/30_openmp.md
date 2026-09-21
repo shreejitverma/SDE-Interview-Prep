@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 30: OpenMP and Parallel Computing
 
 > *Parallelizing existing code with compiler directives.*

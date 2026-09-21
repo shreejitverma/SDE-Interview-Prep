@@ -3,6 +3,11 @@ tags: [operating-systems, xv6, kernel/internals, bootloader, x86, paging, gdt]
 aliases: [OS From Scratch, xv6 Teaching OS, Nick Blundell OS Guide, Kernel From Scratch]
 status: evergreen
 created: 2026-09-17
+type: paper
+track: [distinguished, sde]
+level:
+last_reviewed:
+sources: []
 ---
 
 # Teaching Operating Systems: xv6 & OS From Scratch
@@ -80,7 +85,7 @@ flowchart TD
 
 ---
 
-## 2. Writing a Simple Operating System — From Scratch (Nick Blundell, 2010)
+## 2. Writing a Simple Operating System - From Scratch (Nick Blundell, 2010)
 
 ### The Boot Process Step-by-Step
 Nick Blundell demystifies how a bare-metal computer transitions from BIOS firmware execution to a compiled C kernel.

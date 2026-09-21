@@ -1,6 +1,15 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Appendix Z: THE ENCYCLOPEDIA OF MODERN C++ IDIOMS (The Master's Vault)
 
-Over the past 40 years, C++ developers have invented hundreds of "Idioms"—standardized workarounds for language limitations, or brilliant structural patterns that maximize performance and safety. 
+Over the past 40 years, C++ developers have invented hundreds of "Idioms" - standardized workarounds for language limitations, or brilliant structural patterns that maximize performance and safety. 
 
 If you want to read the source code of the STL, Boost, or Folly (Facebook's C++ library), you must know these idioms. They are the secret language of Senior Engineers.
 

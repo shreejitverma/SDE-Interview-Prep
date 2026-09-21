@@ -1,3 +1,12 @@
+---
+type: pattern
+track: [sde, distinguished]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Strategy design pattern and UML diagrams
 
 - [Strategy design pattern and UML diagrams](#strategy-design-pattern-and-uml-diagrams)

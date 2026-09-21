@@ -4,9 +4,14 @@ aliases: [Optimal High-Frequency Market Making, Avellaneda-Stoikov Model, Market
 status: evergreen
 module: 14
 created: 2026-09-17
+type: paper
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
-# Source Summary — High-Frequency Trading in a Limit Order Book
+# Source Summary - High-Frequency Trading in a Limit Order Book
 **Authors**: Marco Avellaneda (Courant Institute of Mathematical Sciences, NYU) and Sasha Stoikov (Cornell Financial Engineering)  
 **Publication**: Quantitative Finance, Vol. 8, No. 3, 217–224 (2008)  
 **Category**: Quantitative Finance, Market Microstructure, Stochastic Control, Market Making
@@ -89,6 +94,6 @@ $$r^b(s, q, t) = r(s, q, t) - \frac{1}{2} \left[ \frac{2}{\gamma}\ln\left(1 + \f
 ## Related Notes
 - [[15-Technical-Whitepapers/10-Seminal-Low-Latency-Systems-Papers/04-Market-Microstructure-and-Order-Dynamics]]
 - [[Sources/The Microstructure of Financial Markets by Rama Cont and Sasha Stoikov]]
-- [[08 - Order Book & Matching Engine/Order Book Data Structures and Algorithms]]
-- [[10 - Quantitative Strategies/Market Making Models and Inventory Management]]
+- [[Order Book Data Structures]]
+- [[Market Making Models and Inventory Management]]
 - [[14 - Industry Map & Canon/MOC - 14 Industry Map & Canon]]

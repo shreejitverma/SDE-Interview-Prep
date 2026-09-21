@@ -1,3 +1,12 @@
+---
+type: moc
+track: [sde, distinguished]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 ## Command
 
 Command pattern encapsulates a request as an object, thereby letting you parameterize

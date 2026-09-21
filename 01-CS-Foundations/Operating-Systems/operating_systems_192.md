@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Complete Operating Systems Reference - 192 Keywords
 
 ## 1. CORE OS CONCEPTS (56 KEYWORDS)

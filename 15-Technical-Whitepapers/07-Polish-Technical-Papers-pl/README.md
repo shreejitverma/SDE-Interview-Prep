@@ -3,6 +3,11 @@ tags: [security/offensive, security/defensive, reverse-engineering, malware, roo
 aliases: [Polskie Whitepapery Techniczne MOC, Polish Technical Papers MOC]
 status: evergreen
 created: 2026-09-17
+type: moc
+track: [distinguished, sde]
+level:
+last_reviewed:
+sources: []
 ---
 
 # Polskie Whitepapery Techniczne (Katalog pl)
@@ -16,7 +21,7 @@ created: 2026-09-17
 
 1. **[[Inzynieria-Wsteczna-i-Analiza-Kodu|Inżynieria Wsteczna i Analiza Kodu Wykonywalnego]]**
    - *Wojciech Warpechowski (2005)*: Szperając w nagłówkach, czyli wstęp do reverse engineeringu.
-   - *Marek Janiczek*: Reverse engineering — analiza dynamiczna kodu wykonywalnego ELF.
+   - *Marek Janiczek*: Reverse engineering - analiza dynamiczna kodu wykonywalnego ELF.
    - *Andrzej Stasiak*: Tryb chroniony mikroprocesorów x86.
    - *Itzik Kotler*: Ewolucja Kodów Powłoki.
    - *Michał Piotrowski*: Tworzenie polimorficznego szelkodu.
@@ -30,13 +35,13 @@ created: 2026-09-17
    - *Leszek Miś*: Aplikacje webowe na celowniku.
    - *Bogusław Kluge, Karina Łuksza, Ewa Mąkosa*: Metody włamań do systemów komputerowych: SQL injection.
    - *Kenny Kerr*: Ochrona aplikacji poprzez stosowanie technik kodowania defensywnego.
-   - *Michał Piotrowski*: Niebezpieczne Google — wyszukiwanie poufnych informacji.
+   - *Michał Piotrowski*: Niebezpieczne Google - wyszukiwanie poufnych informacji.
    - *Obrona przed Fingerprinting warstwy aplikacji*.
 4. **[[Bezpieczenstwo-Systemow-i-Sieci|Bezpieczeństwo Systemów, Sieci i Administracja]]**
    - *Robert Jaroszuk (2011) & Bartosz Brodecki, Piotr Sasak (2007)*: SELinux i obowiązkowa kontrola dostępu (MAC) w Linuksie.
    - *Leszek Miś (2011)*: Przegląd nowych mechanizmów bezpieczeństwa w RHEL6.
    - *Marcin Żurakowski (2004)*: Obrona przed atakami typu odmowa usługi (DoS).
-   - *Adam Augustyn (2005)*: Karty elektroniczne w PKI — znane ataki i sposoby przeciwdziałania.
+   - *Adam Augustyn (2005)*: Karty elektroniczne w PKI - znane ataki i sposoby przeciwdziałania.
    - *Antoni Ligęza, Marcin Szpyrka*: Podstawy administracji PostgreSQL (DCL, role, uprawnienia).
    - *Jacek Kobus (2016) & Mateusz Kocielski (2015)*: Administrowanie sieciami i IT Security Services.
    - *Gentoo Linux Instrukcja instalacji* & *Struktury systemów operacyjnych*.

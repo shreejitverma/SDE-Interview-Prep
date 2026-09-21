@@ -1,3 +1,12 @@
+---
+type: moc
+track: [sde, distinguished]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 ## Factory Method
 
 Define an interface for creating an object, but let subclasses decide which class to instantiate. 

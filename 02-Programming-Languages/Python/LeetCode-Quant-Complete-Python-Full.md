@@ -1,10 +1,19 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # LeetCode for Quant Trading & HFT Firms - Python Complete Masterclass
 ## 300+ Problems for Citadel, Jane Street, Hudson River Trading, Two Sigma, Optiver, DRW, IMC
-## ✅ WITH PROBLEM DESCRIPTIONS & LEETCODE LINKS
+## ✓ WITH PROBLEM DESCRIPTIONS & LEETCODE LINKS
 
 ---
 
-## 🎯 TABLE OF CONTENTS & PROGRESS
+## TABLE OF CONTENTS & PROGRESS
 
 ### Part 1: Core Patterns (Fundamental)
 - [x] 1. [Prefix Sum & Array Optimization](#prefix-sum) - 50 problems
@@ -8851,7 +8860,7 @@ Design a data structure that can effectively answer queries about the frequency 
 ```
 Input
 ["RangeFreqQuery", "query", "rangeFreqQuery"]
-[[[12, 33, 4, 56, 22, 2, 34, 33, 22, 12, 34, 56]], [1, 2, 4], [0, 11, 33]]
+[`[[12, 33, 4, 56, 22, 2, 34, 33, 22, 12, 34, 56]]`, [1, 2, 4], [0, 11, 33]]
 Output
 [null, 0, 2]
 ```
@@ -9502,7 +9511,7 @@ Design a data structure that can query the majority element in a subarray. A maj
 ```
 Input
 ["MajorityChecker", "query"]
-[[[1, 1, 2, 2, 1, 1]], [0, 5, 4]]
+[`[[1, 1, 2, 2, 1, 1]]`, [0, 5, 4]]
 Output
 [null, 1]
 ```
@@ -10484,7 +10493,7 @@ Implement the StreamChecker class that checks if any suffix of the stream of cha
 ```
 Input
 ["StreamChecker", "query", "query", "query"]
-[[["cd","f","kl"]], ["a"], ["b"], ["c"]]
+[`[["cd","f","kl"]]`, ["a"], ["b"], ["c"]]
 Output
 [null, false, false, false]
 ```
@@ -10863,7 +10872,7 @@ In a town, there are n people labeled from 1 to n. There is a rumor that one of 
 
 **Test Cases:**
 ```
-Input: n = 2, trust = [[1,2]]
+Input: n = 2, trust = `[[1,2]]`
 Output: 2
 ```
 
@@ -10891,7 +10900,7 @@ def findJudge(n, trust):
     return -1
 
 # Test cases
-print(findJudge(2, [[1, 2]]))  # 2
+print(findJudge(2, `[[1, 2]]`))  # 2
 ```
 
 ---
@@ -11054,7 +11063,7 @@ def maxAreaOfIsland(grid):
     return max_area
 
 # Test cases
-# print(maxAreaOfIsland([[0,0,1,0,0]])) # 1
+# print(maxAreaOfIsland(`[[0,0,1,0,0]]`)) # 1
 ```
 
 ---
@@ -11247,7 +11256,7 @@ Return true if you can finish all courses. Otherwise, return false.
 
 **Test Cases:**
 ```
-Input: numCourses = 2, prerequisites = [[1,0]]
+Input: numCourses = 2, prerequisites = `[[1,0]]`
 Output: true
 ```
 
@@ -11286,7 +11295,7 @@ def canFinish(numCourses, prerequisites):
     return count == numCourses
 
 # Test cases
-print(canFinish(2, [[1, 0]]))  # True
+print(canFinish(2, `[[1, 0]]`))  # True
 ```
 
 ---
@@ -15944,7 +15953,7 @@ def check_arbitrage(n, rates): # rates = list of (from, to, rate)
 
 ---
 
-## 📊 OVERALL PROGRESS TRACKING
+## OVERALL PROGRESS TRACKING
 
 ### Core Patterns Summary
 - [x] Pattern 1 (50 problems): 50/50
@@ -15998,41 +16007,41 @@ def check_arbitrage(n, rates): # rates = list of (from, to, rate)
 
 ---
 
-## 🎯 QUICK REFERENCE GUIDE
+## QUICK REFERENCE GUIDE
 
 ### Problem Information Available For Each:
-- ✅ **Difficulty Level** - Easy, Medium, Hard
-- ✅ **Acceptance Rate** - Real LeetCode acceptance %
-- ✅ **Companies** - Top companies asking this
-- ✅ **Direct Link** - Direct URL to LeetCode
-- ✅ **Full Description** - What the problem asks
-- ✅ **Constraints** - Input/output bounds
-- ✅ **Test Cases** - Example test cases
-- ✅ **Solution Code** - Full Python implementation
-- ✅ **Complexity Analysis** - Time & space
-- ✅ **Approach Explanation** - How it works
+- ✓ **Difficulty Level** - Easy, Medium, Hard
+- ✓ **Acceptance Rate** - Real LeetCode acceptance %
+- ✓ **Companies** - Top companies asking this
+- ✓ **Direct Link** - Direct URL to LeetCode
+- ✓ **Full Description** - What the problem asks
+- ✓ **Constraints** - Input/output bounds
+- ✓ **Test Cases** - Example test cases
+- ✓ **Solution Code** - Full Python implementation
+- ✓ **Complexity Analysis** - Time & space
+- ✓ **Approach Explanation** - How it works
 
 ---
 
-## 🏆 ACHIEVEMENT UNLOCKED
+## ACHIEVEMENT UNLOCKED
 
 **You now have the MOST COMPREHENSIVE LeetCode guide with FULL PROBLEM DETAILS!**
 
 This includes:
-- ✅ 350+ complete problems
-- ✅ Full problem descriptions
-- ✅ Direct LeetCode links
-- ✅ All test cases
-- ✅ Production-grade solutions
-- ✅ Detailed explanations
-- ✅ Company information
-- ✅ Acceptance rates
-- ✅ Progress tracking
-- ✅ All 35 patterns
+- ✓ 350+ complete problems
+- ✓ Full problem descriptions
+- ✓ Direct LeetCode links
+- ✓ All test cases
+- ✓ Production-grade solutions
+- ✓ Detailed explanations
+- ✓ Company information
+- ✓ Acceptance rates
+- ✓ Progress tracking
+- ✓ All 35 patterns
 
 ---
 
-**CLICK LINKS AND SOLVE ON LEETCODE!** 🚀
+**CLICK LINKS AND SOLVE ON LEETCODE!**
 
 
 ---
@@ -18392,7 +18401,7 @@ def check_arbitrage(n, rates): # rates = list of (from, to, rate)
 
 ---
 
-## 📊 OVERALL PROGRESS TRACKING
+## OVERALL PROGRESS TRACKING
 
 ### Core Patterns Summary
 - [x] Pattern 1 (50 problems): 50/50
@@ -18436,39 +18445,39 @@ def check_arbitrage(n, rates): # rates = list of (from, to, rate)
 
 ---
 
-## 🎯 QUICK REFERENCE GUIDE
+## QUICK REFERENCE GUIDE
 
 ### Problem Information Available For Each:
-- ✅ **Difficulty Level** - Easy, Medium, Hard
-- ✅ **Acceptance Rate** - Real LeetCode acceptance %
-- ✅ **Companies** - Top companies asking this
-- ✅ **Direct Link** - Direct URL to LeetCode
-- ✅ **Full Description** - What the problem asks
-- ✅ **Constraints** - Input/output bounds
-- ✅ **Test Cases** - Example test cases
-- ✅ **Solution Code** - Full Python implementation
-- ✅ **Complexity Analysis** - Time & space
-- ✅ **Approach Explanation** - How it works
+- ✓ **Difficulty Level** - Easy, Medium, Hard
+- ✓ **Acceptance Rate** - Real LeetCode acceptance %
+- ✓ **Companies** - Top companies asking this
+- ✓ **Direct Link** - Direct URL to LeetCode
+- ✓ **Full Description** - What the problem asks
+- ✓ **Constraints** - Input/output bounds
+- ✓ **Test Cases** - Example test cases
+- ✓ **Solution Code** - Full Python implementation
+- ✓ **Complexity Analysis** - Time & space
+- ✓ **Approach Explanation** - How it works
 
 ---
 
-## 🏆 ACHIEVEMENT UNLOCKED
+## ACHIEVEMENT UNLOCKED
 
 **You now have the MOST COMPREHENSIVE LeetCode guide with FULL PROBLEM DETAILS!**
 
 This includes:
-- ✅ 350+ complete problems
-- ✅ Full problem descriptions
-- ✅ Direct LeetCode links
-- ✅ All test cases
-- ✅ Production-grade solutions
-- ✅ Detailed explanations
-- ✅ Company information
-- ✅ Acceptance rates
-- ✅ Progress tracking
-- ✅ All 35 patterns
+- ✓ 350+ complete problems
+- ✓ Full problem descriptions
+- ✓ Direct LeetCode links
+- ✓ All test cases
+- ✓ Production-grade solutions
+- ✓ Detailed explanations
+- ✓ Company information
+- ✓ Acceptance rates
+- ✓ Progress tracking
+- ✓ All 35 patterns
 
 ---
 
-**CLICK LINKS AND SOLVE ON LEETCODE!** 🚀
+**CLICK LINKS AND SOLVE ON LEETCODE!**
 

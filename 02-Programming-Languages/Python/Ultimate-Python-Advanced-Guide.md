@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # The Ultimate Advanced Python Programmer's Guide: From Mastery to Godhood
 
 ## Table of Contents
@@ -2422,7 +2431,7 @@ print(user_with_posts.posts)
 
 ---
 
-**You are now ready to become the best Python programmer in the universe!** 🚀
+**You are now ready to become the best Python programmer in the universe!**
 
 Go forth and build amazing things!
 

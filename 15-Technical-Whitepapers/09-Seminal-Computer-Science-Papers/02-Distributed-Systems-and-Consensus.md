@@ -3,6 +3,11 @@ tags: [distributed-systems, consensus, lamport-clocks, paxos, raft, flp-impossib
 aliases: [Distributed Systems and Consensus, Lamport 1978, Paxos Made Simple, Raft Consensus Paper, FLP Impossibility]
 status: evergreen
 created: 2026-09-17
+type: paper
+track: [distinguished, sde]
+level:
+last_reviewed:
+sources: []
 ---
 
 # Distributed Systems & Consensus Mechanics
@@ -128,5 +133,5 @@ flowchart TD
 ## Related Notes
 - [[03-Cloud-Infrastructure-and-Big-Data|Cloud Infrastructure and Big Data Foundations]]
 - [[04-Databases-and-Transaction-Processing|Databases and Transaction Processing]]
-- [[../../08-Distinguished-Engineering/02-Distributed-Systems-Internals/raft_consensus|08-Distinguished-Engineering: Raft Consensus]]
+- [08-Distinguished-Engineering: Raft Consensus](../../08-Distinguished-Engineering/02-Distributed-Systems-Internals/raft_consensus.py)
 - [[README|Seminal Computer Science Papers MOC]]

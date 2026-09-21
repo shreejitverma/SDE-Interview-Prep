@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Appendix T: Exhaustive Python Built-in Exceptions
 
 This appendix provides a complete hierarchy and description of all built-in exceptions in Python 3.13.

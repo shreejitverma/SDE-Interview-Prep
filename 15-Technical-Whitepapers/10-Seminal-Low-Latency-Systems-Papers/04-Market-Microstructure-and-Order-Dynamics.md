@@ -3,6 +3,11 @@ tags: [market-microstructure, order-book, hft, kyle-lambda, stoikov, micro-price
 aliases: [Market Microstructure and Order Dynamics, Kyle Lambda Paper, Micro-Price Stoikov, OFI Rama Cont, Avellaneda-Stoikov]
 status: evergreen
 created: 2026-09-17
+type: paper
+track: [distinguished, sde]
+level:
+last_reviewed:
+sources: []
 ---
 
 # Market Microstructure & Order Dynamics
@@ -28,7 +33,7 @@ flowchart LR
     MM --> PRICE["Market Clearing Price: P = P_0 + lambda * y"]
 ```
 
-### Kyle's Lambda ($\lambda$) — The Measure of Market Depth
+### Kyle's Lambda ($\lambda$) - The Measure of Market Depth
 Market makers set prices as a linear function of order flow:
 
 $$P = P_0 + \lambda y$$
@@ -99,7 +104,7 @@ Budish, Cramton, and Shim (University of Chicago) proved that modern financial m
 - Symmetrically correlated securities (e.g., S&P 500 ETF `SPY` in New York vs S&P 500 E-mini futures `ES` in Chicago) fluctuate continuously.
 - When `ES` moves in Chicago, there is a race to snipe stale quotes in `SPY` in New York.
 - Because CDA processes orders serially down to the nanosecond, whoever is **1 nanosecond faster** wins $100\%$ of the profit, forcing firms to spend billions on microwave towers and laser links.
-- **The Solution**: **Frequent Batch Auctions (FBA)**—accumulate orders into discrete 100-millisecond batches and execute all orders at a single uniform clearing price, eliminating latency arbitrage.
+- **The Solution**: **Frequent Batch Auctions (FBA)** - accumulate orders into discrete 100-millisecond batches and execute all orders at a single uniform clearing price, eliminating latency arbitrage.
 
 ---
 

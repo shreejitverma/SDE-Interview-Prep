@@ -2,16 +2,22 @@
 role: SDE
 aliases: [Software Engineer, SWE]
 tags: [role-hub, sde]
+type: playbook
+track: [sde, quant-dev, quant-research, low-latency, ai-eng, distinguished]
+level:
+status: draft
+last_reviewed:
+sources: []
 ---
 
-# 💻 Software Engineer — Preparation Hub
+# Software Engineer - Preparation Hub
 
 > **Target Companies:** Google, Meta, Amazon, Apple, Microsoft, Netflix, Stripe, Uber
 > **Target Levels:** L4–L6 (or equivalent)
 
 ---
 
-## 🎯 What SDE Interviews Test
+## What SDE Interviews Test
 
 | Round | Weight | What They Want |
 |-------|--------|----------------|
@@ -22,27 +28,27 @@ tags: [role-hub, sde]
 
 ---
 
-## 📚 Study Plan
+## Study Plan
 
-→ [[Study-Plan|📋 Detailed Week-by-Week Study Plan]]
+→ [[Study-Plan|Detailed Week-by-Week Study Plan]]
 
 ### Quick Priority Matrix
 
 | Topic | Priority | Your Level | Target Level | Vault Resource |
 |-------|----------|-----------|-------------|----------------|
-| Arrays/Strings | 🔴 Critical | | 5/5 | [[03-Data-Structures-Algorithms/01-Topics]] |
-| Trees/Graphs | 🔴 Critical | | 5/5 | [[03-Data-Structures-Algorithms/01-Topics]] |
-| Dynamic Programming | 🔴 Critical | | 4/5 | [[03-Data-Structures-Algorithms/01-Topics]] |
-| System Design (HLD) | 🔴 Critical | | 5/5 | [[04-System-Design/00-Concepts]] |
-| System Design (LLD) | 🟡 High | | 4/5 | [[04-System-Design/01-LLD]] |
-| Concurrency | 🟡 High | | 4/5 | [[01-CS-Foundations]] |
-| OOP / Design Patterns | 🟡 High | | 4/5 | [[04-System-Design/03-Design-Patterns]] |
-| OS / Networking | 🟢 Medium | | 3/5 | [[01-CS-Foundations]] |
-| Behavioral (STAR) | 🔴 Critical | | 5/5 | [[05-Behavioral/_Story-Index]] |
+| Arrays/Strings | Critical | | 5/5 | [[03-Data-Structures-Algorithms/01-Topics]] |
+| Trees/Graphs | Critical | | 5/5 | [[03-Data-Structures-Algorithms/01-Topics]] |
+| Dynamic Programming | Critical | | 4/5 | [[03-Data-Structures-Algorithms/01-Topics]] |
+| System Design (HLD) | Critical | | 5/5 | [[04-System-Design/00-Concepts]] |
+| System Design (LLD) | High | | 4/5 | [[04-System-Design/01-LLD]] |
+| Concurrency | High | | 4/5 | [[01-CS-Foundations/README\|01-CS-Foundations]] |
+| OOP / Design Patterns | High | | 4/5 | [[04-System-Design/03-Design-Patterns]] |
+| OS / Networking | Medium | | 3/5 | [[01-CS-Foundations/README\|01-CS-Foundations]] |
+| Behavioral (STAR) | Critical | | 5/5 | [[05-Behavioral/_Story-Index]] |
 
 ---
 
-## 🏢 Target Companies
+## Target Companies
 
 ```dataview
 TABLE WITHOUT ID
@@ -54,7 +60,7 @@ WHERE contains(target_roles, "SDE")
 SORT file.name ASC
 ```
 
-## 📊 My Active SDE Interviews
+## My Active SDE Interviews
 
 ```dataview
 TABLE WITHOUT ID
@@ -68,7 +74,7 @@ WHERE role = "SDE" AND stage != "rejected" AND stage != "withdrawn"
 SORT next_deadline ASC
 ```
 
-## 📝 SDE Retrospectives
+## SDE Retrospectives
 
 ```dataview
 TABLE WITHOUT ID
@@ -85,19 +91,19 @@ LIMIT 10
 
 ---
 
-## 🔗 Role Resources
-- → [[Skill-Matrix|📊 Self-Assessment Skill Matrix]]
-- → [[Question-Bank|🧩 Curated Question Bank]]
-- → [[Common-Patterns|🔄 Common Patterns & Frameworks]]
-- → [[Resources|📚 Resources & Links]]
+## Role Resources
+- → [[Skill-Matrix|Self-Assessment Skill Matrix]]
+- → [[Question-Bank|Curated Question Bank]]
+- → [[Common-Patterns|Common Patterns & Frameworks]]
+- → [[Resources|Resources & Links]]
 
 ---
 
-## 📖 Key Vault Links
+## Key Vault Links
 | Domain | Link |
 |--------|------|
 | DSA Gold Standard | [[03-Data-Structures-Algorithms/04-Gold-Standard-Cpp-Patterns]] |
 | System Design Case Studies | [[04-System-Design/02-Case-Studies]] |
 | Design Patterns | [[04-System-Design/03-Design-Patterns]] |
 | Behavioral Guide | [[06-Interview-Prep/01-Behavioral/star_method]] |
-| Programming Languages | [[02-Programming-Languages]] |
+| Programming Languages | [[02-Programming-Languages/README\|02-Programming-Languages]] |

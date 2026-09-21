@@ -1,11 +1,20 @@
-# 🎯 Interview Command Center
+---
+type: moc
+track: [sde, quant-dev, quant-research, low-latency, ai-eng, distinguished]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
+# Interview Command Center
 
 > *Last updated: `= date(today)`*
 > Your mission control for clearing every interview across all target roles.
 
 ---
 
-## 🔥 Active Pipeline Overview
+## Active Pipeline Overview
 
 ### By Stage
 ```dataview
@@ -24,7 +33,7 @@ SORT choice(priority, "high", 1, "medium", 2, "low", 3) ASC, next_deadline ASC
 ```
 
 
-### 📊 Pipeline Stats
+### Pipeline Stats
 ```dataview
 TABLE WITHOUT ID
   length(rows) AS "Count",
@@ -35,37 +44,37 @@ GROUP BY stage AS key
 
 ---
 
-## 🚀 Quick Actions
+## Quick Actions
 
 | Action | Link |
 |--------|------|
-| ➕ New Interview | Use Templater → `_Templates/Interview-Note` |
-| 📬 Ingest Gmail Emails | [[03-Pipeline/Gmail-Sync-Guide|Gmail Job Sync & Prompts]] |
-| 📝 New Retrospective | Use Templater → `_Templates/Retrospective` |
-| 🏢 New Company | Use Templater → `_Templates/Company-Profile` |
-| 📖 New Story | Use Templater → `_Templates/Behavioral-Story` |
-| 📅 Today's Log | Use Templater → `_Templates/Daily-Log` |
-| 📊 Weekly Review | Use Templater → `_Templates/Weekly-Review` |
+| New Interview | Use Templater → `_Templates/Interview-Note` |
+| Ingest Gmail Emails | [[03-Pipeline/Gmail-Sync-Guide\|Gmail Job Sync & Prompts]] |
+| New Retrospective | Use Templater → `_Templates/Retrospective` |
+| New Company | Use Templater → `_Templates/Company-Profile` |
+| New Story | Use Templater → `_Templates/Behavioral-Story` |
+| Today's Log | Use Templater → `_Templates/Daily-Log` |
+| Weekly Review | Use Templater → `_Templates/Weekly-Review` |
 
 
 ---
 
-## 🎯 Role Hubs
+## Role Hubs
 
 | Role | Hub | Readiness |
 |------|-----|-----------|
-| 💻 Software Engineer | [[01-Roles/SDE/_Hub]] | → See Skill Matrix |
-| 📊 Quantitative Developer | [[01-Roles/Quant-Dev/_Hub]] | → See Skill Matrix |
-| 🧮 Quantitative Researcher | [[01-Roles/Quant-Research/_Hub]] | → See Skill Matrix |
-| 🤖 AI Engineer | [[01-Roles/AI-Engineer/_Hub]] | → See Skill Matrix |
-| ⚡ Low Latency Systems | [[01-Roles/Low-Latency/_Hub]] | → See Skill Matrix |
+| Software Engineer | [[01-Roles/SDE/_Hub]] | → See Skill Matrix |
+| Quantitative Developer | [[01-Roles/Quant-Dev/_Hub]] | → See Skill Matrix |
+| Quantitative Researcher | [[01-Roles/Quant-Research/_Hub]] | → See Skill Matrix |
+| AI Engineer | [[01-Roles/AI-Engineer/_Hub]] | → See Skill Matrix |
+| Low Latency Systems | [[01-Roles/Low-Latency/_Hub]] | → See Skill Matrix |
 
 
 ---
 
-## 🏢 Company Intelligence
+## Company Intelligence
 
-> [[02-Companies/_Company-Index|📋 Full Company Index]]
+> [[02-Companies/_Company-Index|Full Company Index]]
 
 ### Recently Updated Companies
 ```dataview
@@ -81,7 +90,7 @@ LIMIT 10
 
 ---
 
-## 📝 Recent Retrospectives
+## Recent Retrospectives
 
 ```dataview
 TABLE WITHOUT ID
@@ -100,7 +109,7 @@ LIMIT 10
 
 ---
 
-## 📈 Performance Trends
+## Performance Trends
 
 ### Win Rate by Role
 ```dataview
@@ -116,7 +125,7 @@ GROUP BY role
 
 ---
 
-## 🗓️ Upcoming Deadlines (Next 7 Days)
+## Upcoming Deadlines (Next 7 Days)
 
 ```dataview
 TABLE WITHOUT ID
@@ -131,20 +140,34 @@ SORT next_deadline ASC
 
 ---
 
-## 🔗 Vault Knowledge Base
+## Vault Knowledge Base
 
 | Domain | Location | For Roles |
 |--------|----------|-----------|
-| CS Foundations | [[01-CS-Foundations]] | All |
-| DSA & Patterns | [[03-Data-Structures-Algorithms]] | SDE, Quant Dev |
-| System Design | [[04-System-Design]] | SDE, AI Eng, Low Latency |
-| Quant Finance | [[05-Quantitative-Finance]] | Quant Dev, Quant Research |
-| Behavioral | [[06-Interview-Prep]] | All |
-| Performance Engineering | [[12-Performance-Engineering]] | Low Latency, SDE |
-| Agentic AI | [[13-Agentic-AI]] | AI Engineer |
-| Low Latency Systems | [[14-Low-Latency-Systems]] | Low Latency, Quant Dev |
-| Technical Whitepapers | [[15-Technical-Whitepapers]] | All |
+| CS Foundations | [[01-CS-Foundations/README\|01-CS-Foundations]] | All |
+| DSA & Patterns | [[03-Data-Structures-Algorithms/README\|03-Data-Structures-Algorithms]] | SDE, Quant Dev |
+| System Design | [[04-System-Design/README\|04-System-Design]] | SDE, AI Eng, Low Latency |
+| Quant Finance | [[05-Quantitative-Finance/README\|05-Quantitative-Finance]] | Quant Dev, Quant Research |
+| Behavioral | [[06-Interview-Prep/README\|06-Interview-Prep]] | All |
+| Performance Engineering | [[12-Performance-Engineering/README\|12-Performance-Engineering]] | Low Latency, SDE |
+| Agentic AI | [[13-Agentic-AI/README\|13-Agentic-AI]] | AI Engineer |
+| Low Latency Systems | [[14-Low-Latency-Systems/00 Home\|14-Low-Latency-Systems]] | Low Latency, Quant Dev |
+| Technical Whitepapers | [[15-Technical-Whitepapers/README\|15-Technical-Whitepapers]] | All |
 
 ---
 
-> *"The impediment to action advances action. What stands in the way becomes the way." — Marcus Aurelius*
+> *"The impediment to action advances action. What stands in the way becomes the way." - Marcus Aurelius*
+
+<!-- moc:start (generated by tools/build_mocs.py; edits inside are overwritten) -->
+## Also in this folder
+
+**Sections**
+
+- [Roles](01-Roles/README.md)
+- [Templates](_Templates/README.md)
+
+**Notes**
+
+- [The Ultimate Interview Coaching Prompt](Coaching-Prompt.md)
+
+<!-- moc:end -->

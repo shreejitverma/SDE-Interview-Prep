@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, distinguished]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 These are 20 popular system design questions. Each question requires you to think of how it's core engineering requirements can be fulfilled.
 
 Since these requirements are (largely) mutually-exclusive, you see a diverse set of engineering patterns while solving them. These patterns help solve problems in both interviews and real-world design discussions.

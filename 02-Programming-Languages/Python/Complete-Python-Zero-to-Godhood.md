@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Python Zero to Godhood: Complete Evolution and Comprehensive Feature Guide
 
 **Author:** Shreejit Verma
@@ -8,7 +17,7 @@
 Shreejit Verma is a systems architect, quantitative software engineer, and high-performance computing practitioner. This guide represents a masterclass in CPython internals, language syntax evolution, runtime mechanics, and hardware-sympathetic programming.
 
 ### Book Purpose & Scope
-This book provides a transition pathway from standard Python development to **low-level CPython mastery and high-performance computing**. It spans the entire chronological architecture of the language—from Python 1.0 to Python 3.14—revealing how bytecode interpreters, memory systems, GIL execution models, and compiler optimizations interact.
+This book provides a transition pathway from standard Python development to **low-level CPython mastery and high-performance computing**. It spans the entire chronological architecture of the language - from Python 1.0 to Python 3.14 - revealing how bytecode interpreters, memory systems, GIL execution models, and compiler optimizations interact.
 
 ---
 
@@ -1820,7 +1829,7 @@ If a string operation (e.g., concatenation or substitution) appends a character 
 s = "abc"      # Kind: 1-byte (ASCII)
 s += "é"       # Promoted to Kind: 1-byte (Latin-1)
 s += "π"       # Promoted to Kind: 2-byte (UCS-2)
-s += "🐍"      # Promoted to Kind: 4-byte (UCS-4)
+s += ""      # Promoted to Kind: 4-byte (UCS-4)
 ```
 During promotion from 1-byte to 2-byte, CPython executes a C conversion loop:
 ```c
@@ -3152,7 +3161,7 @@ PEP 695 resolves this by introducing **Annotation Scopes** and lazy evaluation.
 #### 1. Annotation Scopes
 When the compiler encounters type parameters or the `type` statement, it wraps their evaluation code inside a new lexical scope called an **Annotation Scope**:
 *   An annotation scope is a nested compiler-generated scope (similar to a hidden function block).
-*   Variables and bounds defined inside this scope are evaluated **lazily**—only when they are explicitly queried at runtime.
+*   Variables and bounds defined inside this scope are evaluated **lazily** - only when they are explicitly queried at runtime.
 
 #### 2. Bytecode Disassembly of the `type` Statement
 Let's analyze how CPython compiles a modern type alias:
@@ -4070,7 +4079,7 @@ if __name__ == '__main__':
 ## CHAPTER 23: CPython Memory Allocator (PyMalloc) & Generational Garbage Collection
 
 ### 23.1 CPython's Memory Allocation Engine (PyMalloc)
-For large allocations (greater than 512 bytes), CPython forwards the request directly to the system's standard C library allocator (`malloc()`). However, for small objects ($\le 512$ bytes)—which represent the vast majority of Python allocations—standard operating system allocators introduce high fragmentation and locking overhead. 
+For large allocations (greater than 512 bytes), CPython forwards the request directly to the system's standard C library allocator (`malloc()`). However, for small objects ($\le 512$ bytes) - which represent the vast majority of Python allocations - standard operating system allocators introduce high fragmentation and locking overhead. 
 To resolve this, CPython implements a custom small-object allocator called **PyMalloc**.
 
 #### 1. PyMalloc Memory Hierarchy
@@ -6053,7 +6062,7 @@ An `email.message.EmailMessage` object consists of:
 
 #### 2. Policy and Content Management
 Modern Python (3.6+) introduced the **Policy** system.
-*   **`policy.default`**: Uses the modern "Godhood" approach—handling Unicode, binary attachments, and folded headers automatically according to the latest RFCs (5322, 6532).
+*   **`policy.default`**: Uses the modern "Godhood" approach-handling Unicode, binary attachments, and folded headers automatically according to the latest RFCs (5322, 6532).
 *   **Lazy Loading**: The `BytesParser` can lazily parse attachments, only reading them from the disk when the content is actually requested.
 
 ---

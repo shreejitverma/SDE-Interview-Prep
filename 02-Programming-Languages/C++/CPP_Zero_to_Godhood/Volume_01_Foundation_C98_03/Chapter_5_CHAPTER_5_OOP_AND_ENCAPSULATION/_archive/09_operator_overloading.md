@@ -2,7 +2,7 @@
 
 > *Teaching your objects how to do math.*
 
-In most programming languages, you can add two integers together using the `+` operator. If you want to add two custom objects together—say, two `Vector2D` math objects—you usually have to write a clunky function:
+In most programming languages, you can add two integers together using the `+` operator. If you want to add two custom objects together - say, two `Vector2D` math objects - you usually have to write a clunky function:
 
 ```java
 // Java or older languages
@@ -164,7 +164,7 @@ As discussed in the Rule of Three, if your class manages memory, you must overlo
 When someone types `a = b;`, you must clean up `a`'s old memory and copy `b`'s memory.
 
 > [!WARNING]
-> **⚠️ The Danger Zone: Self-Assignment**
+> **The Danger Zone: Self-Assignment**
 > What happens if a programmer writes `a = a;`?
 > If your assignment operator deletes its own memory first, it will delete `a`'s memory. Then, when it tries to copy `a`'s data to the new memory, the data is already gone! 
 > You **must** check for self-assignment.

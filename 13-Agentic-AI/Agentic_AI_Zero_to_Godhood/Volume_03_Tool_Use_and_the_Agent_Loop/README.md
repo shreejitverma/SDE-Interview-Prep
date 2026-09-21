@@ -1,3 +1,12 @@
+---
+type: moc
+track: [ai-eng]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Volume 03 - Tool Use and the Agent Loop
 
 This is the keystone volume of the track: by the end of it you have personally built a working agent from scratch against a real API, and you understand every line of the harness because you wrote it.

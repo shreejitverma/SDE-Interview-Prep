@@ -4,6 +4,11 @@ aliases: [Proprietary Secrecy, Trade Secrets, Public Knowledge Boundary, Clean-R
 status: evergreen
 module: 14
 created: 2026-08-22
+type: concept
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
 > [!summary]
@@ -133,7 +138,7 @@ When an engineer transitions between trading firms or builds an independent trad
 
 > [!question]- Self-test
 > 1. **What is the fundamental difference between universal systems engineering knowledge and a proprietary trade secret in electronic trading?**
->    *Answer*: **Universal systems engineering knowledge** comprises public computer science principles (C++ memory models, cache line alignment, lock-free queues, kernel bypass networking via DPDK/`ef_vi`, public ITCH/SBE specifications, and academic microstructure math). **Proprietary trade secrets** are confidential, firm-specific intellectual assets—such as calibrated alpha feature weights, internal source code, proprietary microwave tower coordinates, and custom FPGA bitstreams—that provide a private competitive advantage and are protected by law.
+>    *Answer*: **Universal systems engineering knowledge** comprises public computer science principles (C++ memory models, cache line alignment, lock-free queues, kernel bypass networking via DPDK/`ef_vi`, public ITCH/SBE specifications, and academic microstructure math). **Proprietary trade secrets** are confidential, firm-specific intellectual assets - such as calibrated alpha feature weights, internal source code, proprietary microwave tower coordinates, and custom FPGA bitstreams - that provide a private competitive advantage and are protected by law.
 > 2. **What is "Clean-Room Engineering" and how does a developer practice it?**
 >    *Answer*: Clean-Room Engineering is a software development methodology where systems are designed and implemented entirely from scratch without using, viewing, or copying proprietary source code or documentation from a competitor. A developer practices clean-room engineering by relying exclusively on public technical specifications, RFCs, and academic papers, ensuring zero intellectual property contamination.
 > 3. **What was the legal significance of the landmark *United States v. Aleynikov* trade secrets case?**
@@ -150,5 +155,5 @@ When an engineer transitions between trading firms or builds an independent trad
 
 ## Sources
 - [[Sources/Defend Trade Secrets Act of 2016 (DTSA)]]
-- [[Sources/Flash Boys by Michael Lewis (Aleynikov Legal Background)]]
+- [[Flash Boys by Michael Lewis]]
 - [[Sources/How to Build an Exchange by Jane Street]]

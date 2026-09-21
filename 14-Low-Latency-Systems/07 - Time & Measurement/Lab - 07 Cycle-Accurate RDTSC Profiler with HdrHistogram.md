@@ -4,9 +4,14 @@ aliases: [Lab 07, HdrHistogram Lab, RDTSC Profiler Lab, Coordinated Omission Lab
 status: evergreen
 module: 07
 created: 2026-08-22
+type: playbook
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
-# Lab 07 — Cycle-Accurate RDTSC Profiler with HdrHistogram
+# Lab 07 - Cycle-Accurate RDTSC Profiler with HdrHistogram
 
 > [!summary]
 > In this lab, you will build an allocation-free C++20 High Dynamic Range (HDR) histogram profiler that records cycle-accurate event distributions ($1\text{ ns}$ to $1\text{ second}$) with constant relative precision. You will run a simulated trading pipeline, inject periodic microsecond-to-millisecond stalls, and prove mathematically how Coordinated Omission correction exposes hidden tail-latency blowouts.
@@ -239,8 +244,8 @@ Total Samples Counted: Raw = 1000000 | Corrected = 1002499 (+ 2499 omitted sampl
 ---
 
 ## Related Notes
-- [[Notes/Coordinated Omission in Low Latency Systems]]
-- [[Notes/Clock Sources and Hardware Timestamping]]
-- [[Notes/One-Way Latency vs Round-Trip Time Measurement]]
-- [[Notes/CPU Timestamp Counter RDTSC Mechanics]]
+- [[Coordinated Omission in Low Latency Systems]]
+- [[Clock Sources and Hardware Timestamping]]
+- [[One-Way Latency vs Round-Trip Time Measurement]]
+- [[CPU Timestamp Counter RDTSC Mechanics]]
 - [[MOC - 07 Time & Measurement]]

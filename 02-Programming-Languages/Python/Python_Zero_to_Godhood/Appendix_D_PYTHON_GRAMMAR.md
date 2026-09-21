@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Appendix D: The Complete Python Grammar (EBNF)
 
 This appendix provides the formal EBNF (Extended Backus-Naur Form) grammar for Python 3.13. Understanding this grammar is the final step in "Godhood," as it allows you to predict how any sequence of tokens will be parsed by the PEG engine.

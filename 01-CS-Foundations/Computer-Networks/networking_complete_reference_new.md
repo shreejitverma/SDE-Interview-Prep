@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Networking Complete Reference - Full Markdown with Tables and Examples
 
 ## Table of Contents

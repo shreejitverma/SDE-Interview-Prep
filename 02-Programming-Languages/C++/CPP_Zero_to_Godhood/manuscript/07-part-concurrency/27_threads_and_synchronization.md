@@ -1,10 +1,19 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Part VII: Concurrency and Parallelism
 
 *Threading, atomics, lock-free programming, and the memory model.*
 
 # Chapter 27: Threads and Synchronization
 
-> *The kitchen analogy — multiple chefs, one knife.*
+> *The kitchen analogy - multiple chefs, one knife.*
 
 For the first 30 years of its existence, C++ had no concept of threads. Developers relied on OS-specific APIs like POSIX Threads (pthreads) on Linux or the Windows API. 
 

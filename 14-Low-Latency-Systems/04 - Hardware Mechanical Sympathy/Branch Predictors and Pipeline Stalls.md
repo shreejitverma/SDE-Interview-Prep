@@ -4,6 +4,11 @@ aliases: [Branch Predictor, Pipeline Stalls, Branchless C++, TAGE Predictor, CMO
 status: evergreen
 module: 04
 created: 2026-08-22
+type: concept
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
 > [!summary]
@@ -177,10 +182,10 @@ void process_inbound_order(uint32_t order_qty, uint32_t max_risk_limit) {
 ---
 
 ## Related
-- [[Notes/Latency Numbers Every Trading Engineer Knows]]
-- [[Notes/Static vs Virtual Dispatch in Hot Paths]]
-- [[Notes/Branchless Programming Idioms]]
-- [[Notes/CPU Cache Hierarchy and Line Alignment]]
+- [[Latency Numbers Every Trading Engineer Knows]]
+- [[Static vs Virtual Dispatch in Hot Paths]]
+- [[Branchless Programming Idioms]]
+- [[CPU Cache Hierarchy and Line Alignment]]
 - [[MOC - 04 Hardware Mechanical Sympathy]]
 - [[MOC - 08 Low-Latency Programming]]
 

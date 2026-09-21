@@ -4,9 +4,14 @@ aliases: [Lab 03, Intrusive LOB Lab, Order Book Lab, Matching Engine Lab]
 status: evergreen
 module: 03
 created: 2026-08-22
+type: playbook
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
-# Lab 03 — High-Performance Intrusive Limit Order Book
+# Lab 03 - High-Performance Intrusive Limit Order Book
 
 > [!summary]
 > In this lab, you will build, compile, and benchmark an exchange-grade, allocation-free Limit Order Book (LOB) and Price-Time Priority matching engine in C++20. You will verify sub-20ns order insertions, sub-12ns $O(1)$ cancellations, and multi-level price sweeps with zero dynamic memory allocation.
@@ -409,9 +414,9 @@ Total Trade Executions Emitted: 125000
 ---
 
 ## Related Notes
-- [[Notes/Order Book Data Structures]]
-- [[Notes/Matching Algorithms]]
-- [[Notes/Self-Match Prevention Mechanisms]]
-- [[Notes/Deterministic Matching Engine State Recovery]]
-- [[Notes/Allocation-Free Steady State Patterns]]
+- [[Order Book Data Structures]]
+- [[Matching Algorithms]]
+- [[Self-Match Prevention Mechanisms]]
+- [[Deterministic Matching Engine State Recovery]]
+- [[Allocation-Free Steady State Patterns]]
 - [[MOC - 03 Matching Engine Internals]]

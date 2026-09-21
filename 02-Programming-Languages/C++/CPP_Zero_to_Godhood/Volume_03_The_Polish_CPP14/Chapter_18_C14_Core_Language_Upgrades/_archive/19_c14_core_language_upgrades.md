@@ -2,7 +2,7 @@
 
 # C++14 CORE LANGUAGE UPGRADES
 
-While C++11 was a revolution, C++14 was the "refinement" release—polishing the rough edges of modern C++. It turned `constexpr` from a toy into a powerful compile-time engine and added "quality of life" features that brought C++ syntax into the 21st century.
+While C++11 was a revolution, C++14 was the "refinement" release - polishing the rough edges of modern C++. It turned `constexpr` from a toy into a powerful compile-time engine and added "quality of life" features that brought C++ syntax into the 21st century.
 
 ## 1. Relaxed constexpr: The Deep Dive
 

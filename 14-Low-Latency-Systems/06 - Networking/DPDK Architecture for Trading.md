@@ -4,6 +4,11 @@ aliases: [DPDK, Data Plane Development Kit, Poll Mode Driver, PMD, rte_mbuf, rte
 status: evergreen
 module: 06
 created: 2026-08-22
+type: concept
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
 > [!summary]

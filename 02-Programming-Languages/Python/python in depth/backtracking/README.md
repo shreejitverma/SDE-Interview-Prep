@@ -1,3 +1,12 @@
+---
+type: moc
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Backtracking
 
 Backtracking is a way to speed up the search process by removing candidates when they can't be the solution of a problem.

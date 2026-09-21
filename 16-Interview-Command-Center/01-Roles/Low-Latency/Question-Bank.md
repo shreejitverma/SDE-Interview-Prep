@@ -1,4 +1,13 @@
-# 🧩 Low Latency Question Bank
+---
+type: playbook
+track: [sde, quant-dev, quant-research, low-latency, ai-eng, distinguished]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
+# Low Latency Question Bank
 
 > Also see: [[14-Low-Latency-Systems/Interview/question-bank-answers|Full LL Question Bank (290KB)]]
 
@@ -11,7 +20,7 @@
 | 4 | Explain all 6 memory orders. When would you use each? | Hard | ☐ |
 | 5 | What is false sharing? How do you detect and fix it? | Medium | ☐ |
 | 6 | Implement a cache-friendly matrix transpose | Medium | ☐ |
-| 7 | compare_exchange_weak vs strong — when to use which? | Medium | ☐ |
+| 7 | compare_exchange_weak vs strong - when to use which? | Medium | ☐ |
 | 8 | Why is `volatile` not sufficient for concurrency? | Medium | ☐ |
 | 9 | Implement a wait-free bounded MPMC queue | Insane | ☐ |
 | 10 | Hot-path audit: given this code, eliminate all latency sources | Hard | ☐ |

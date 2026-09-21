@@ -1,3 +1,12 @@
+---
+type: pattern
+track: [sde, distinguished]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Class diagram and schema design
 
 - [Class diagram and schema design](#class-diagram-and-schema-design)

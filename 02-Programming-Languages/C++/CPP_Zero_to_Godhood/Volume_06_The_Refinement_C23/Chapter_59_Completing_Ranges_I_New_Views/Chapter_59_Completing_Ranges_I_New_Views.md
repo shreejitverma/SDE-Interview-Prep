@@ -1,11 +1,20 @@
-# Chapter 59: Completing Ranges I — The New Views
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
 
-> C++20's `<ranges>` shipped with a deliberately minimal set of views because the library was enormous and time was short. The everyday adaptors that programmers reach for constantly — pairing a range with its indices, walking two ranges in lockstep, sliding a window across a sequence, breaking a range into fixed-size chunks — were all cut. C++23 restores them. This chapter covers the new *views*: lazy, composable, non-owning range adaptors that compute their elements on demand. Together with the new algorithms of Chapter 60, they make the C++ ranges library finally feel complete.
+# Chapter 59: Completing Ranges I - The New Views
+
+> C++20's `<ranges>` shipped with a deliberately minimal set of views because the library was enormous and time was short. The everyday adaptors that programmers reach for constantly - pairing a range with its indices, walking two ranges in lockstep, sliding a window across a sequence, breaking a range into fixed-size chunks - were all cut. C++23 restores them. This chapter covers the new *views*: lazy, composable, non-owning range adaptors that compute their elements on demand. Together with the new algorithms of Chapter 60, they make the C++ ranges library finally feel complete.
 
 ## Table of Contents
 
 1. [Why So Many Views Were Missing](#591-why-so-many-views-were-missing)
-2. [`views::enumerate` — Index/Value Pairs](#592-viewsenumerate--indexvalue-pairs)
+2. [`views::enumerate` - Index/Value Pairs](#592-viewsenumerate--indexvalue-pairs)
 3. [`views::zip` and `views::zip_transform`](#593-viewszip-and-viewszip_transform)
 4. [`views::adjacent`, `views::pairwise`, and `views::adjacent_transform`](#594-viewsadjacent-viewspairwise-and-viewsadjacent_transform)
 5. [`views::chunk`, `views::slide`, and `views::chunk_by`](#595-viewschunk-viewsslide-and-viewschunk_by)
@@ -42,7 +51,7 @@ A reference summary before the detail:
 
 ---
 
-## 59.2 `views::enumerate` — Index/Value Pairs
+## 59.2 `views::enumerate` - Index/Value Pairs
 
 `std::views::enumerate` pairs each element with its zero-based index, yielding tuples `(index, element)`. It is the standard, bug-free answer to "I need both the value and its position," replacing the manual counter that so often drifts out of sync with the iteration.
 
@@ -106,9 +115,9 @@ Both stop at the shortest input, which makes them safe for ranges of differing l
 
 ## 59.4 `views::adjacent`, `views::pairwise`, and `views::adjacent_transform`
 
-`std::views::adjacent<N>` slides a window of `N` *consecutive* elements across a single range, yielding an `N`-tuple at each position. `std::views::pairwise` is the named shortcut for `adjacent<2>`. Where `slide` (next section) takes a runtime window size and yields sub-*ranges*, `adjacent<N>` takes a compile-time `N` and yields fixed-size *tuples* — better suited to fixed-arity element-wise work.
+`std::views::adjacent<N>` slides a window of `N` *consecutive* elements across a single range, yielding an `N`-tuple at each position. `std::views::pairwise` is the named shortcut for `adjacent<2>`. Where `slide` (next section) takes a runtime window size and yields sub-*ranges*, `adjacent<N>` takes a compile-time `N` and yields fixed-size *tuples* - better suited to fixed-arity element-wise work.
 
-`std::views::adjacent_transform<N>` applies a function to each adjacent window and yields the result — the natural tool for finite differences, moving relationships between neighbors, and similar stencil computations.
+`std::views::adjacent_transform<N>` applies a function to each adjacent window and yields the result - the natural tool for finite differences, moving relationships between neighbors, and similar stencil computations.
 
 **Listing 59.3: Consecutive differences via `adjacent_transform`.**
 
@@ -135,9 +144,9 @@ The window arity is part of the type (`<2>`), so the lambda's parameter count mu
 
 These three carve a range into sub-ranges, differing in *how* they cut.
 
-- **`std::views::chunk(n)`** partitions into **non-overlapping** blocks of size `n` (the last block may be shorter). Use it for batching — processing a stream `n` items at a time.
+- **`std::views::chunk(n)`** partitions into **non-overlapping** blocks of size `n` (the last block may be shorter). Use it for batching - processing a stream `n` items at a time.
 - **`std::views::slide(n)`** produces **overlapping** windows of exactly `n` consecutive elements, advancing by one each step. Use it for moving averages and any fixed-width windowed statistic where you want the window as a sub-range.
-- **`std::views::chunk_by(pred)`** splits the range wherever the binary predicate `pred(prev, cur)` returns `false` — i.e. it groups maximal runs of adjacent elements that satisfy the relation. Use it to group consecutive equal (or related) elements without sorting.
+- **`std::views::chunk_by(pred)`** splits the range wherever the binary predicate `pred(prev, cur)` returns `false` - i.e. it groups maximal runs of adjacent elements that satisfy the relation. Use it to group consecutive equal (or related) elements without sorting.
 
 **Listing 59.4: Batching, windowing, and grouping.**
 
@@ -167,9 +176,9 @@ Each yielded chunk/window/group is itself a view (a sub-range), so it composes f
 
 ## 59.6 `views::stride`, `views::cartesian_product`, `views::join_with`
 
-- **`std::views::stride(n)`** yields every `n`-th element (indices 0, n, 2n, …) — downsampling without copying.
-- **`std::views::cartesian_product(r1, r2, …)`** yields every combination, one element drawn from each input range — the lazy equivalent of nested loops, useful for grid generation and exhaustive parameter sweeps.
-- **`std::views::join_with(r, delim)`** flattens a range-of-ranges into a single range, inserting `delim` (a single element or a range) between the inner ranges — the range-native `string`/sequence join.
+- **`std::views::stride(n)`** yields every `n`-th element (indices 0, n, 2n, …) - downsampling without copying.
+- **`std::views::cartesian_product(r1, r2, …)`** yields every combination, one element drawn from each input range - the lazy equivalent of nested loops, useful for grid generation and exhaustive parameter sweeps.
+- **`std::views::join_with(r, delim)`** flattens a range-of-ranges into a single range, inserting `delim` (a single element or a range) between the inner ranges - the range-native `string`/sequence join.
 
 **Listing 59.5: Stride, product, and delimited join.**
 
@@ -200,8 +209,8 @@ int main() {
 ## 59.7 `views::repeat`, `views::as_const`, `views::as_rvalue`
 
 - **`std::views::repeat(value)`** is a *factory* (not an adaptor) producing an endlessly repeated `value`; `std::views::repeat(value, n)` repeats it `n` times. It is the lazy counterpart to filling a container, and pairs naturally with `zip` to attach a constant column to another range.
-- **`std::views::as_const`** yields the underlying elements as `const`, the view-level analogue of `std::as_const` — useful to hand a read-only view to an interface without copying.
-- **`std::views::as_rvalue`** yields each element as an rvalue (`std::move`-ing it on access), so a downstream algorithm or `ranges::to` *moves* elements out of the source instead of copying them — the efficient way to drain a container into another.
+- **`std::views::as_const`** yields the underlying elements as `const`, the view-level analogue of `std::as_const` - useful to hand a read-only view to an interface without copying.
+- **`std::views::as_rvalue`** yields each element as an rvalue (`std::move`-ing it on access), so a downstream algorithm or `ranges::to` *moves* elements out of the source instead of copying them - the efficient way to drain a container into another.
 
 **Listing 59.6: Moving elements out of a source with `as_rvalue`.**
 
@@ -251,18 +260,18 @@ int main() {
 }
 ```
 
-Inheriting from `range_adaptor_closure` is the supported, standard way to integrate custom adaptors — previously this relied on implementation-specific base classes.
+Inheriting from `range_adaptor_closure` is the supported, standard way to integrate custom adaptors - previously this relied on implementation-specific base classes.
 
-> **Version-trap flag:** every view in this chapter — `enumerate`, `zip`, `zip_transform`, `adjacent`, `pairwise`, `adjacent_transform`, `chunk`, `slide`, `chunk_by`, `stride`, `cartesian_product`, `join_with`, `repeat`, `as_const`, `as_rvalue` — and `std::ranges::range_adaptor_closure` are **C++23**. None exist under `-std=c++20`, which shipped only `filter`, `transform`, `take`, `drop`, `join`, `split`, `reverse`, `elements`, `keys`, `values`, `common`, and the basic factories.
+> **Version-trap flag:** every view in this chapter - `enumerate`, `zip`, `zip_transform`, `adjacent`, `pairwise`, `adjacent_transform`, `chunk`, `slide`, `chunk_by`, `stride`, `cartesian_product`, `join_with`, `repeat`, `as_const`, `as_rvalue` - and `std::ranges::range_adaptor_closure` are **C++23**. None exist under `-std=c++20`, which shipped only `filter`, `transform`, `take`, `drop`, `join`, `split`, `reverse`, `elements`, `keys`, `values`, `common`, and the basic factories.
 
 ---
 
 ## 59.9 Professional Insights
 
-**The new views finally let you write index-free code for the patterns that needed indices in C++20.** `enumerate`, `zip`, `slide`, and `chunk` eliminate exactly the manual-counter and parallel-index loops that are the richest source of off-by-one and length-mismatch bugs. When you find yourself writing `for (size_t i = 0; i < a.size(); ++i)` to walk two arrays together or to look at neighbors, reach for `zip` or `adjacent` — the resulting code states intent and cannot desynchronize its indices.
+**The new views finally let you write index-free code for the patterns that needed indices in C++20.** `enumerate`, `zip`, `slide`, and `chunk` eliminate exactly the manual-counter and parallel-index loops that are the richest source of off-by-one and length-mismatch bugs. When you find yourself writing `for (size_t i = 0; i < a.size(); ++i)` to walk two arrays together or to look at neighbors, reach for `zip` or `adjacent` - the resulting code states intent and cannot desynchronize its indices.
 
-**Remember that views are lazy and non-owning — mind dangling and re-traversal cost.** A view holds a reference to its source; if the source is a temporary that dies, the view dangles, exactly like an `mdspan` or a `string_view`. And because views recompute on each pass, iterating a `filter|transform` chain twice does the work twice. When you need the result more than once, or need to outlive the source, materialize with `ranges::to` (Chapter 60) — but until then, the lazy chain is allocation-free and single-pass.
+**Remember that views are lazy and non-owning - mind dangling and re-traversal cost.** A view holds a reference to its source; if the source is a temporary that dies, the view dangles, exactly like an `mdspan` or a `string_view`. And because views recompute on each pass, iterating a `filter|transform` chain twice does the work twice. When you need the result more than once, or need to outlive the source, materialize with `ranges::to` (Chapter 60) - but until then, the lazy chain is allocation-free and single-pass.
 
 **Prefer `adjacent<N>`/`adjacent_transform<N>` for fixed-arity neighbor work and `slide(n)`/`chunk(n)` for runtime windows.** The compile-time-arity views yield tuples the optimizer can fully unroll and keep in registers, ideal for stencils and finite differences; the runtime-size views yield sub-ranges, ideal for streaming batches and moving windows whose width is a parameter. Choosing the right one is both a clarity and a performance decision.
 
-**Use `as_rvalue` to drain containers and `range_adaptor_closure` to extend the pipeline.** `views::as_rvalue` turns a copy-out into a move-out for free, which matters when relocating ranges of strings or other heap-owning elements. And when a transformation recurs across your codebase, packaging it as a `range_adaptor_closure` makes it compose with `|` like a native view — turning ad-hoc helper functions into reusable, readable pipeline stages.
+**Use `as_rvalue` to drain containers and `range_adaptor_closure` to extend the pipeline.** `views::as_rvalue` turns a copy-out into a move-out for free, which matters when relocating ranges of strings or other heap-owning elements. And when a transformation recurs across your codebase, packaging it as a `range_adaptor_closure` makes it compose with `|` like a native view - turning ad-hoc helper functions into reusable, readable pipeline stages.

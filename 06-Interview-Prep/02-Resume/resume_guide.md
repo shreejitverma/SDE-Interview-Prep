@@ -1,3 +1,12 @@
+---
+type: playbook
+track: [sde, quant-dev, quant-research, low-latency, ai-eng]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Resume Building Tips for SDE & Quant
 
 ## General Rules

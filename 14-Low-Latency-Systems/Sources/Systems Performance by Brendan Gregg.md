@@ -4,9 +4,14 @@ aliases: [Systems Performance, Brendan Gregg, Systems Performance Engineering, U
 status: evergreen
 module: 14
 created: 2026-08-22
+type: paper
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
-# Source Summary — Systems Performance: Enterprise and the Cloud (2nd Edition)
+# Source Summary - Systems Performance: Enterprise and the Cloud (2nd Edition)
 **Author**: Brendan Gregg (Distinguished Engineer at Intel, former Netflix & Sun Microsystems Performance Architect)  
 **Publication**: Addison-Wesley Professional  
 **Category**: Systems Engineering & Performance Profiling
@@ -14,7 +19,7 @@ created: 2026-08-22
 ---
 
 ## Executive Summary & Core Thesis
-*Systems Performance* is the definitive modern treatise on operating system and hardware performance engineering. Gregg establishes rigorous, measurement-first methodologies—such as the **USE Method (Utilization, Saturation, Errors)**—to diagnose, benchmark, and eliminate latency bottlenecks across CPUs, memory architectures, storage subsystems, and kernel network stacks.
+*Systems Performance* is the definitive modern treatise on operating system and hardware performance engineering. Gregg establishes rigorous, measurement-first methodologies - such as the **USE Method (Utilization, Saturation, Errors)** - to diagnose, benchmark, and eliminate latency bottlenecks across CPUs, memory architectures, storage subsystems, and kernel network stacks.
 
 For a low-latency trading systems engineer, Gregg provides the diagnostic toolkit required to trace execution from hardware PMU performance counters through kernel scheduler interrupts down to individual instruction retirements.
 

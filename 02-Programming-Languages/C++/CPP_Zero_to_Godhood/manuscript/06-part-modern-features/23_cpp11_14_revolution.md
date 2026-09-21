@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Part VI: Modern C++ Features Tour
 
 *The features that transformed C++ from C++11 through C++26.*

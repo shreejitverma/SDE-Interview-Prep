@@ -1,3 +1,12 @@
+---
+type: moc
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Cellular Automata
 
 Cellular automata are a way to simulate the behavior of "life", no matter if it is a robot or cell.

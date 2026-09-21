@@ -10871,7 +10871,7 @@ throw-speciﬁcation
 noexcept or throw(std::exception).
 attributes
 (optional) Any attributes for the lambda function. For example, if the lambda-body always throws
-an exception then [[noreturn]] can be used.
+an exception then `[[noreturn]]` can be used.
 -> return-type
 (optional) Speciﬁes the return type of the lambda function. Required when the return type
 cannot be determined by the compiler.
@@ -13736,11 +13736,11 @@ C++14 (finalized in 2014) is a **refinement and maintenance release** of C++11.
 
 #### Why C++14 Matters
 While smaller than C++11, C++14 makes C++11 more practical:
-- ✅ Fixes usability issues
-- ✅ Adds convenient features
-- ✅ Improves compile-time computation
-- ✅ Better template support
-- ✅ More standard library features
+- ✓ Fixes usability issues
+- ✓ Adds convenient features
+- ✓ Improves compile-time computation
+- ✓ Better template support
+- ✓ More standard library features
 
 ***
 
@@ -15364,14 +15364,14 @@ C++17 (finalized in 2017) is a **major language update** rivaling C++11 in scope
 
 #### Why C++17 Matters
 C++17 addresses real pain points:
-- ✅ Safer null handling (optional)
-- ✅ Type-safe unions (variant)
-- ✅ Zero-copy string operations (string_view)
-- ✅ Compile-time branching (if constexpr)
-- ✅ Pattern matching (structured bindings)
-- ✅ Safe filesystem access
-- ✅ Automatic template deduction
-- ✅ Flexible type storage (any)
+- ✓ Safer null handling (optional)
+- ✓ Type-safe unions (variant)
+- ✓ Zero-copy string operations (string_view)
+- ✓ Compile-time branching (if constexpr)
+- ✓ Pattern matching (structured bindings)
+- ✓ Safe filesystem access
+- ✓ Automatic template deduction
+- ✓ Flexible type storage (any)
 
 ***
 
@@ -17020,14 +17020,14 @@ C++20 (finalized in 2020) is a **revolutionary language update** rivaling C++11 
 
 #### Why C++20 Matters
 C++20 addresses fundamental limitations:
-- ✅ Readable generic programming (concepts)
-- ✅ Composable iteration (ranges)
-- ✅ Async/await patterns (coroutines)
-- ✅ Lazy evaluation (ranges with coroutines)
-- ✅ Modular code (modules)
-- ✅ Type-safe formatting (std::format)
-- ✅ Compile-time validation (consteval)
-- ✅ Powerful iteration patterns
+- ✓ Readable generic programming (concepts)
+- ✓ Composable iteration (ranges)
+- ✓ Async/await patterns (coroutines)
+- ✓ Lazy evaluation (ranges with coroutines)
+- ✓ Modular code (modules)
+- ✓ Type-safe formatting (std::format)
+- ✓ Compile-time validation (consteval)
+- ✓ Powerful iteration patterns
 
 ***
 

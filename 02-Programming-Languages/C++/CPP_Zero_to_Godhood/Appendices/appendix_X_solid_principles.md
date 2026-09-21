@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Appendix X: C++ OBJECT-ORIENTED DESIGN (SOLID Principles)
 
 When you write a 1,000-line program, you can keep the whole thing in your head. When you write a 1,000,000-line program, you need rules. The SOLID principles are the golden rules of Object-Oriented Architecture.

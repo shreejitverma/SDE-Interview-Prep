@@ -1,8 +1,17 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 42: Abbreviated Templates, explicit(bool), and Lambda Enhancements
 
 > *C++20 polishes the everyday ergonomics of generic code. Abbreviated function templates let `auto` parameters stand in for template parameters so an ordinary-looking function is silently a template; `explicit(bool)` makes a constructor's explicitness a compile-time condition rather than an all-or-nothing decision; and lambdas gain a real template-parameter list, pack capture, default-constructibility, and the ability to appear in unevaluated contexts. This chapter covers all three clusters and the subtle rules that make them safe.*
 
-These features share a theme: removing boilerplate that previously stood between intent and expression. The `template<typename T>` header that added nothing, the pair of constructors that differed only in `explicit`, the verbose `template` parameter list bolted onto a generic lambda — C++20 collapses each into a tighter form. But each also has a sharp edge: an abbreviated template is still a template (with all the overload-resolution consequences), `explicit(bool)` silently changes implicit-conversion behavior, and lambda pack capture interacts with forwarding in ways that reward precision.
+These features share a theme: removing boilerplate that previously stood between intent and expression. The `template<typename T>` header that added nothing, the pair of constructors that differed only in `explicit`, the verbose `template` parameter list bolted onto a generic lambda - C++20 collapses each into a tighter form. But each also has a sharp edge: an abbreviated template is still a template (with all the overload-resolution consequences), `explicit(bool)` silently changes implicit-conversion behavior, and lambda pack capture interacts with forwarding in ways that reward precision.
 
 ---
 
@@ -35,7 +44,7 @@ add(1.0, 2.0);    // instantiates add<double, double>
 add(1, 2.0);      // instantiates add<int, double>
 ```
 
-Each `auto` in the parameter list is independent — `add(auto, auto)` is a two-parameter template, equivalent to `template<class T, class U> auto add(T, U)`. This is the function-parameter analogue of the generic lambda's `auto` parameters, generalized to ordinary functions. The syntax is at its best for short, obviously-generic utilities where the explicit template header would be pure noise.
+Each `auto` in the parameter list is independent - `add(auto, auto)` is a two-parameter template, equivalent to `template<class T, class U> auto add(T, U)`. This is the function-parameter analogue of the generic lambda's `auto` parameters, generalized to ordinary functions. The syntax is at its best for short, obviously-generic utilities where the explicit template header would be pure noise.
 
 ---
 
@@ -55,7 +64,7 @@ auto scale(T factor, auto value) { return factor * value; }
 //  ^ explicit T                ^ invented second parameter
 ```
 
-Two consequences engineers must internalize. First, because it is a template, it is only fully type-checked on instantiation — a typo in the body compiles until someone calls it (the classic template-lateness problem). Second, you cannot take a plain function pointer to an abbreviated template without specifying the types, exactly as with any template. Treat `auto` parameters as a spelling shortcut for a template, not as a distinct "polymorphic function" feature.
+Two consequences engineers must internalize. First, because it is a template, it is only fully type-checked on instantiation - a typo in the body compiles until someone calls it (the classic template-lateness problem). Second, you cannot take a plain function pointer to an abbreviated template without specifying the types, exactly as with any template. Treat `auto` parameters as a spelling shortcut for a template, not as a distinct "polymorphic function" feature.
 
 ---
 
@@ -78,7 +87,7 @@ add(1, 2);        // OK
 void log_value(std::convertible_to<std::string_view> auto msg, auto level);
 ```
 
-This is the single most important habit for abbreviated templates: an *unconstrained* `auto` parameter accepts anything and defers all errors to deep inside the body, while a *constrained* one (`std::integral auto`, `std::ranges::range auto`, a custom concept) produces a clear, localized diagnostic at the call site. The constrained-`auto` form is what makes abbreviated templates production-grade rather than a footgun — it pairs the brevity of `auto` with the diagnostics of concepts.
+This is the single most important habit for abbreviated templates: an *unconstrained* `auto` parameter accepts anything and defers all errors to deep inside the body, while a *constrained* one (`std::integral auto`, `std::ranges::range auto`, a custom concept) produces a clear, localized diagnostic at the call site. The constrained-`auto` form is what makes abbreviated templates production-grade rather than a footgun - it pairs the brevity of `auto` with the diagnostics of concepts.
 
 ---
 
@@ -87,7 +96,7 @@ This is the single most important habit for abbreviated templates: an *unconstra
 `explicit(bool-expr)` makes a constructor (or conversion operator) explicit **only when the compile-time condition is true**. This replaces the pre-C++20 pattern of writing two near-identical constructors selected by SFINAE.
 
 ```cpp
-// Listing 42.4: explicit(bool) — explicitness depends on the type
+// Listing 42.4: explicit(bool) - explicitness depends on the type
 #include <type_traits>
 
 template<class T>
@@ -123,7 +132,7 @@ auto first = []<typename T>(const std::vector<T>& v) -> T {
 
 // Enforce that two parameters share a type:
 auto same = []<typename T>(T a, T b) { return a == b; };
-// same(1, 2.0);   // ERROR: T cannot be both int and double — exactly the intent
+// same(1, 2.0);   // ERROR: T cannot be both int and double - exactly the intent
 ```
 
 The explicit list solves real problems `auto` cannot: naming the element type of a container parameter, requiring two arguments to be the *same* type (rather than independently deduced), perfect-forwarding with a named type, and applying `requires` clauses to the lambda. It is the lambda equivalent of writing a full template header and is the right tool whenever a generic lambda needs to *refer to* its deduced types.
@@ -148,13 +157,13 @@ auto defer(F f, Args&&... args) {
 }
 ```
 
-Before C++20, capturing a pack required wrapping it in a `std::tuple` and unpacking with `std::apply` — verbose and error-prone. The `[...args = std::forward<Args>(args)]` syntax captures each pack element directly into the closure, with the value category chosen by `std::forward`. This is the enabling feature for writing correct deferred-call, continuation, and task-wrapping utilities that must own their arguments, exactly the building blocks the coroutine and concurrency chapters rely on.
+Before C++20, capturing a pack required wrapping it in a `std::tuple` and unpacking with `std::apply` - verbose and error-prone. The `[...args = std::forward<Args>(args)]` syntax captures each pack element directly into the closure, with the value category chosen by `std::forward`. This is the enabling feature for writing correct deferred-call, continuation, and task-wrapping utilities that must own their arguments, exactly the building blocks the coroutine and concurrency chapters rely on.
 
 ---
 
 ## 42.7 Default-Constructible and Assignable Stateless Lambdas
 
-In C++20 a **stateless** (capture-less) lambda's closure type is **default-constructible and assignable**. This lets a lambda type be used where a default-constructed instance is needed — most usefully as a comparator or hasher template argument for associative containers.
+In C++20 a **stateless** (capture-less) lambda's closure type is **default-constructible and assignable**. This lets a lambda type be used where a default-constructed instance is needed - most usefully as a comparator or hasher template argument for associative containers.
 
 ```cpp
 // Listing 42.7: a stateless lambda as a container comparator, via its type
@@ -174,7 +183,7 @@ decltype(cmp) cmp2;        // C++20: default-constructible
 cmp2 = cmp;                // C++20: assignable
 ```
 
-Pre-C++20, a lambda closure had a deleted default constructor, so you could not name its type as a container's comparator and let the container construct it — you had to pass an instance to the constructor or use a named function object. C++20's default-constructibility removes that friction: `decltype([...])` as a template argument "just works," making inline lambdas first-class comparators and hashers. The lambda must be **capture-less** for this — a stateful lambda has nothing sensible to default-construct.
+Pre-C++20, a lambda closure had a deleted default constructor, so you could not name its type as a container's comparator and let the container construct it - you had to pass an instance to the constructor or use a named function object. C++20's default-constructibility removes that friction: `decltype([...])` as a template argument "just works," making inline lambdas first-class comparators and hashers. The lambda must be **capture-less** for this - a stateful lambda has nothing sensible to default-construct.
 
 ---
 
@@ -197,7 +206,7 @@ struct Widget {
         return [=, this]() { return value; };   // C++20: [=] alone is deprecated here
     }
     auto make_snapshot() {
-        // Capture a COPY of *this — safe to outlive the Widget.
+        // Capture a COPY of *this - safe to outlive the Widget.
         return [*this]() { return value; };
     }
 };
@@ -207,7 +216,7 @@ using Closure = decltype([](int x){ return x * 2; });
 static_assert(std::is_default_constructible_v<Closure>);   // true in C++20
 ```
 
-The `[=, this]` change matters for correctness: the old implicit-`this`-under-`[=]` capture looked like a value capture but was a pointer capture, so the lambda dangled if it outlived the object. C++20 forces you to choose — `this` (pointer, must not outlive the object) or `*this` (copy, may outlive it) — making the lifetime decision explicit at the capture site.
+The `[=, this]` change matters for correctness: the old implicit-`this`-under-`[=]` capture looked like a value capture but was a pointer capture, so the lambda dangled if it outlived the object. C++20 forces you to choose - `this` (pointer, must not outlive the object) or `*this` (copy, may outlive it) - making the lifetime decision explicit at the capture site.
 
 ---
 
@@ -217,8 +226,8 @@ The `[=, this]` change matters for correctness: the old implicit-`this`-under-`[
 
 **Remember an abbreviated template is a real template, with template lateness.** Body errors surface only on instantiation, you cannot take an unspecialized function pointer to it, and it participates fully in overload resolution. The terse syntax can lull you into thinking it is an ordinary function; it is not. Keep abbreviated templates small and well-constrained so the template-lateness surface stays manageable.
 
-**Use `explicit(bool)` to collapse twin SFINAE constructors into one.** Wrapper, optional, variant, and tuple-like types historically carried duplicate constructors differing only in `explicit`, selected by `enable_if`. `explicit(trait)` expresses the same conditional explicitness in a single declaration — less code, clearer intent, and no overload-set bloat. Mirror the standard library's own use of it in `std::tuple`/`std::optional` for your generic wrappers.
+**Use `explicit(bool)` to collapse twin SFINAE constructors into one.** Wrapper, optional, variant, and tuple-like types historically carried duplicate constructors differing only in `explicit`, selected by `enable_if`. `explicit(trait)` expresses the same conditional explicitness in a single declaration - less code, clearer intent, and no overload-set bloat. Mirror the standard library's own use of it in `std::tuple`/`std::optional` for your generic wrappers.
 
-**Reach for the lambda template-parameter list when a generic lambda must name or relate its types.** `[]<typename T>(T a, T b)` enforces that two arguments share a type — something `(auto a, auto b)` cannot express, since each `auto` deduces independently. Use it to constrain relationships, name a container's element type, and attach `requires` clauses; fall back to plain `auto` parameters only when the types are truly independent and unnamed.
+**Reach for the lambda template-parameter list when a generic lambda must name or relate its types.** `[]<typename T>(T a, T b)` enforces that two arguments share a type - something `(auto a, auto b)` cannot express, since each `auto` deduces independently. Use it to constrain relationships, name a container's element type, and attach `requires` clauses; fall back to plain `auto` parameters only when the types are truly independent and unnamed.
 
-**Make the `this`-capture lifetime decision explicit, and prefer `[*this]` for escaping lambdas.** Any lambda that may outlive its enclosing object must capture `*this` (a copy), not `this` (a pointer). C++20 deprecated the silent `[=]`-captures-`this`-by-pointer behavior precisely because it produced dangling captures that looked safe. Spell `[=, this]` when the lambda stays within the object's lifetime and `[*this]` when it escapes — and treat any stored or asynchronous lambda as escaping by default.
+**Make the `this`-capture lifetime decision explicit, and prefer `[*this]` for escaping lambdas.** Any lambda that may outlive its enclosing object must capture `*this` (a copy), not `this` (a pointer). C++20 deprecated the silent `[=]`-captures-`this`-by-pointer behavior precisely because it produced dangling captures that looked safe. Spell `[=, this]` when the lambda stays within the object's lifetime and `[*this]` when it escapes - and treat any stored or asynchronous lambda as escaping by default.

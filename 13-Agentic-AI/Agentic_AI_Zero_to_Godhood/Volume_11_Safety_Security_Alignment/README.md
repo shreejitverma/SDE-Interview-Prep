@@ -1,3 +1,12 @@
+---
+type: moc
+track: [ai-eng]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Volume 11 - Safety, Security, and Alignment
 
 Defensive security education for engineers who build agent systems.

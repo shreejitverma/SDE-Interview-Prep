@@ -4,9 +4,14 @@ aliases: [C++ Concurrency in Action, Anthony Williams, C++ Memory Model Bible, L
 status: evergreen
 module: 14
 created: 2026-08-22
+type: paper
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
-# Source Summary — C++ Concurrency in Action (2nd Edition)
+# Source Summary - C++ Concurrency in Action (2nd Edition)
 **Author**: Anthony Williams (Primary Author of `boost::thread`, ISO C++ Standards Committee Member)  
 **Publication**: Manning Publications  
 **Category**: C++ Systems Programming & Lock-Free Concurrency
@@ -73,5 +78,5 @@ flowchart LR
 - [[08 - Low-Latency Programming/C++ Memory Model and Memory Orders]]
 - [[08 - Low-Latency Programming/Lock-Free SPSC and MPMC Queues]]
 - [[08 - Low-Latency Programming/Atomic Operations and Lock-Free Primitives]]
-- [[04 - Hardware Mechanical Sympathy/False Sharing and Cache Line Alignment]]
+- [[False Sharing and Cache Contention]]
 - [[14 - Industry Map & Canon/MOC - 14 Industry Map & Canon]]

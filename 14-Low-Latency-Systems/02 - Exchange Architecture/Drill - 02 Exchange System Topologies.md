@@ -4,9 +4,14 @@ aliases: [Drill 02, Exchange System Design Drill, Architecture Drill]
 status: evergreen
 module: 02
 created: 2026-08-22
+type: playbook
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
-# Drill 02 — Exchange System Design & Infrastructure Topologies
+# Drill 02 - Exchange System Design & Infrastructure Topologies
 
 > [!summary]
 > Principal-level systems design drill calibrating your exchange architecture intuition. You are tasked with architecting a modern electronic exchange matching engine capable of sustaining **2,000,000 orders/second** with a **sub-5-microsecond $p99.99$ order-to-ack latency**. Attempt each design section before unfolding the solution.
@@ -46,17 +51,17 @@ Break down the sub-microsecond latency budget across all 6 physical and software
 > [!question]- Unfold Solution
 > **End-to-End Latency Budget (Target: <2,500 ns Median / <5,000 ns $p99.99$)**:
 >
-> 1. **Stage 1 — Ingress PHY / MAC & Kernel Bypass RX (~550 ns)**:
+> 1. **Stage 1 - Ingress PHY / MAC & Kernel Bypass RX (~550 ns)**:
 >    - Optical signal enters SFP28 transceiver $\to$ NIC PCS/PMA SerDes $\to$ DMA push to host RX ring $\to$ Gateway thread detects new frame via `ef_vi` poll.
-> 2. **Stage 2 — Gateway Framing & Session Check (~35 ns)**:
+> 2. **Stage 2 - Gateway Framing & Session Check (~35 ns)**:
 >    - Gateway validates binary OUCH header $\to$ checks monotonic client sequence $\to$ extracts order parameters using single-cycle `BSWAP`.
-> 3. **Stage 3 — Pre-Trade Risk Gate (~20 ns)**:
+> 3. **Stage 3 - Pre-Trade Risk Gate (~20 ns)**:
 >    - Validates fat-finger quantity $\to$ evaluates price collar against reference price $\to$ updates atomic gross credit counter.
-> 4. **Stage 4 — Total-Order Sequencer & Journal Append (~25 ns)**:
+> 4. **Stage 4 - Total-Order Sequencer & Journal Append (~25 ns)**:
 >    - Dequeues from MPSC ingress ring $\to$ stamps 64-bit sequence number $\to$ copies zero-copy into `mmap` NVMe journal.
-> 5. **Stage 5 — Matching Engine Execution (~25 ns)**:
+> 5. **Stage 5 - Matching Engine Execution (~25 ns)**:
 >    - Sweeps top-of-book ask level $\to$ unlinks matched maker orders $\to$ updates level depth $\to$ emits internal trade record to egress SHM ring.
-> 6. **Stage 6 — Market Data Formatting & Egress TX (~350 ns)**:
+> 6. **Stage 6 - Market Data Formatting & Egress TX (~350 ns)**:
 >    - Publisher thread formats ITCH 5.0 'E' (Order Executed) message $\to$ pushes frame to Solarflare TX DMA ring $\to$ NIC PHY serializes to optical wire.
 >
 > **Total Wire-to-Wire Latency: $\approx 1,005\text{ nanoseconds}$ (1.005 µs).**

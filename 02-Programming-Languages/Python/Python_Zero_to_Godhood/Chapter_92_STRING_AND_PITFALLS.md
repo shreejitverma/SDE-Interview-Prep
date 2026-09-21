@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Phase XXI: Senior Engineering: Patterns, Pitfalls, and Breadth
 
 This phase integrates the vast breadth of the community-driven "Python Notes for Professionals," deconstructing common idioms, anti-patterns, and the long tail of the standard library.

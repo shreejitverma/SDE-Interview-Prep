@@ -4,12 +4,17 @@ aliases: [The CME Globex Multicast Freeze, Microburst Packet Drops, TCP Gap Fill
 status: evergreen
 module: 06
 created: 2026-08-22
+type: case-study
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
-# War Story — The CME Globex Multicast Microburst Freeze: Switch Buffer Exhaustion & TCP Gap-Fill Storms
+# War Story - The CME Globex Multicast Microburst Freeze: Switch Buffer Exhaustion & TCP Gap-Fill Storms
 
 > [!summary]
-> In high-frequency futures trading on CME Globex, market volatility surges frequently trigger extreme network microbursts—concentrating over 100,000 UDP multicast packets into a single 2-millisecond window. This war story analyzes how shallow Top-of-Rack switch buffers and naive single-feed participant architectures caused cascading packet drops, overwhelming CME historical TCP gap-fill servers and driving the industry-wide adoption of dual-feed (A/B) line-rate arbitration.
+> In high-frequency futures trading on CME Globex, market volatility surges frequently trigger extreme network microbursts - concentrating over 100,000 UDP multicast packets into a single 2-millisecond window. This war story analyzes how shallow Top-of-Rack switch buffers and naive single-feed participant architectures caused cascading packet drops, overwhelming CME historical TCP gap-fill servers and driving the industry-wide adoption of dual-feed (A/B) line-rate arbitration.
 
 ---
 

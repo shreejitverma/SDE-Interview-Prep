@@ -4,9 +4,14 @@ aliases: [What Every Programmer Should Know About Memory, Ulrich Drepper, Memory
 status: evergreen
 module: 14
 created: 2026-08-22
+type: paper
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
-# Source Summary — What Every Programmer Should Know About Memory
+# Source Summary - What Every Programmer Should Know About Memory
 **Author**: Ulrich Drepper (Lead Maintainer of GNU C Library `glibc`, Red Hat Engineer)  
 **Publication**: Red Hat Technical Whitepaper (114 Pages)  
 **Category**: Hardware Mechanical Sympathy & Computer Architecture
@@ -16,7 +21,7 @@ created: 2026-08-22
 ## Executive Summary & Core Thesis
 Drepper's seminal 2007 paper is the foundational text on the physical and microarchitectural reality of computer memory systems. Drepper demonstrates that modern CPUs are not uniform execution engines, but rather **cache-hierarchical processors where memory access patterns dictate up to 95% of total program runtime**.
 
-For an ultra-low-latency C++ trading engineer, Drepper explains the physics behind cache lines, MESI coherence invalidations, Translation Lookaside Buffers (TLBs), and HugePages—providing the exact rules for designing zero-overhead, cache-resident data structures.
+For an ultra-low-latency C++ trading engineer, Drepper explains the physics behind cache lines, MESI coherence invalidations, Translation Lookaside Buffers (TLBs), and HugePages - providing the exact rules for designing zero-overhead, cache-resident data structures.
 
 ```mermaid
 flowchart TD
@@ -65,8 +70,8 @@ When multiple CPU cores access shared memory addresses:
 ---
 
 ## Related Notes
-- [[04 - Hardware Mechanical Sympathy/CPU Cache Hierarchy L1 L2 L3]]
+- [[CPU Cache Hierarchy and Line Alignment]]
 - [[04 - Hardware Mechanical Sympathy/Cache Coherence Protocols MESI MOESI]]
-- [[04 - Hardware Mechanical Sympathy/False Sharing and Cache Line Alignment]]
-- [[04 - Hardware Mechanical Sympathy/TLB Mechanics and HugePages]]
+- [[False Sharing and Cache Contention]]
+- [[TLB Architecture and Huge Pages]]
 - [[14 - Industry Map & Canon/MOC - 14 Industry Map & Canon]]

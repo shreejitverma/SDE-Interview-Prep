@@ -1,8 +1,17 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 71: Concurrency, Execution, and Lock-Free Constructs
 
 For over a decade, the C++ concurrency story has been a tale of two extremes: either you use high-level, heavy abstractions like `std::async` and `std::thread`, which incur massive OS overhead and lack composability, or you drop down to the hyper-complex world of `std::atomic` and memory orders, fighting cache-coherence protocols and ABA problems manually.
 
-C++26 fundamentally rewrites this narrative. It introduces the `std::execution` framework—a unified, zero-overhead paradigm for asynchronous execution based on Senders and Receivers. Simultaneously, it delivers powerful lock-free primitives, including Hazard Pointers and Read-Copy-Update (RCU), directly into the standard library.
+C++26 fundamentally rewrites this narrative. It introduces the `std::execution` framework - a unified, zero-overhead paradigm for asynchronous execution based on Senders and Receivers. Simultaneously, it delivers powerful lock-free primitives, including Hazard Pointers and Read-Copy-Update (RCU), directly into the standard library.
 
 This chapter is the definitive guide to modern C++26 concurrency. We will explore how to write non-blocking, multi-core algorithms that scale linearly, avoiding both thread-spawning overhead and lock contention.
 
@@ -189,7 +198,7 @@ Hazard pointers are highly optimized. Reading (acquiring protection) is wait-fre
 
 Read-Copy-Update (RCU) is an alternative memory reclamation strategy heavily used in the Linux Kernel. It is optimized for data structures that are read *constantly* but updated *rarely* (e.g., routing tables, configuration maps).
 
-RCU operates on the concept of "grace periods". Readers declare when they enter and exit a critical section. Writers create a *copy* of the data, update the copy, and swap the atomic pointer. The old data is deleted only after a "grace period" passes—meaning all readers that started before the swap have finished.
+RCU operates on the concept of "grace periods". Readers declare when they enter and exit a critical section. Writers create a *copy* of the data, update the copy, and swap the atomic pointer. The old data is deleted only after a "grace period" passes - meaning all readers that started before the swap have finished.
 
 ### 71.7.1 RCU in C++26
 

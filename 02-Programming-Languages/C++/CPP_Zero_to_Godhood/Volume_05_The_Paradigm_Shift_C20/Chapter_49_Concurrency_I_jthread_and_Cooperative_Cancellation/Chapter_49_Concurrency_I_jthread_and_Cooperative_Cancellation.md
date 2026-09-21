@@ -1,8 +1,17 @@
-# Chapter 49: Concurrency I — `jthread` and Cooperative Cancellation
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
+# Chapter 49: Concurrency I - `jthread` and Cooperative Cancellation
 
 > *`std::jthread` fixes the two most dangerous defaults of `std::thread`: it joins automatically in its destructor (no more `std::terminate` from a forgotten `join`), and it carries a built-in cooperative cancellation mechanism via `std::stop_token`. Together with `std::stop_source` and `std::stop_callback`, C++20 finally gives the standard library a structured, RAII-clean way to start, stop, and wait for threads. This chapter covers automatic joining, the stop-token cancellation protocol, and the callback mechanism.*
 
-`std::thread` has a notorious trap: if a joinable thread is destroyed without `join()` or `detach()`, the program calls `std::terminate()`. Every `std::thread` therefore needs careful RAII wrapping or scrupulous discipline, and the language offered no standard way to *ask* a thread to stop — you rolled your own `std::atomic<bool> done` flag every time. `std::jthread` (the "j" is for *joining*) solves both: its destructor requests a stop and then joins, and the stop request flows through a standard `std::stop_token` that the thread function polls. This is the foundation of structured concurrency in C++20.
+`std::thread` has a notorious trap: if a joinable thread is destroyed without `join()` or `detach()`, the program calls `std::terminate()`. Every `std::thread` therefore needs careful RAII wrapping or scrupulous discipline, and the language offered no standard way to *ask* a thread to stop - you rolled your own `std::atomic<bool> done` flag every time. `std::jthread` (the "j" is for *joining*) solves both: its destructor requests a stop and then joins, and the stop request flows through a standard `std::stop_token` that the thread function polls. This is the foundation of structured concurrency in C++20.
 
 ---
 
@@ -30,7 +39,7 @@
 void with_plain_thread() {
     std::thread t{[]{ /* work */ }};
     // If we return here WITHOUT t.join() or t.detach(),
-    // ~thread() calls std::terminate() — the program crashes.
+    // ~thread() calls std::terminate() - the program crashes.
     t.join();   // mandatory, easy to forget
 }
 
@@ -59,13 +68,13 @@ void process(const std::vector<int>& data) {
     }};
 
     if (data.empty())
-        return;            // ~jthread joins here — no leak, no terminate
+        return;            // ~jthread joins here - no leak, no terminate
 
     // ... more work on the main thread ...
 }                          // ~jthread joins here on the normal path too
 ```
 
-Because the destructor both requests stop and joins, an early `return` or a thrown exception cannot leave the worker running or crash the process. This is the same guarantee `std::lock_guard` gives for mutexes and `unique_ptr` gives for memory, finally extended to threads — RAII all the way down.
+Because the destructor both requests stop and joins, an early `return` or a thrown exception cannot leave the worker running or crash the process. This is the same guarantee `std::lock_guard` gives for mutexes and `unique_ptr` gives for memory, finally extended to threads - RAII all the way down.
 
 ---
 
@@ -88,10 +97,10 @@ std::stop_token  token = source.get_token(); // a view onto that state
 
 bool before = token.stop_requested();        // false
 source.request_stop();                       // sets the shared flag
-bool after  = token.stop_requested();        // true — observed through the token
+bool after  = token.stop_requested();        // true - observed through the token
 ```
 
-A `stop_source` and all `stop_token`s derived from it refer to the same shared, thread-safe stop-state. One side requests the stop; the other side observes it. `jthread` wires this up for you — it owns an internal `stop_source` and passes a `stop_token` to your thread function — but the types are usable standalone for any cancellation scenario.
+A `stop_source` and all `stop_token`s derived from it refer to the same shared, thread-safe stop-state. One side requests the stop; the other side observes it. `jthread` wires this up for you - it owns an internal `stop_source` and passes a `stop_token` to your thread function - but the types are usable standalone for any cancellation scenario.
 
 ---
 
@@ -121,13 +130,13 @@ int main() {
 }
 ```
 
-The contract is purely cooperative: there is **no forced thread termination** in C++ (and there never will be — killing a thread mid-operation cannot run destructors or release locks safely). The thread must voluntarily check `stop_requested()` at safe points. Make those checkpoints frequent enough that cancellation is responsive but not so frequent that polling dominates the work.
+The contract is purely cooperative: there is **no forced thread termination** in C++ (and there never will be - killing a thread mid-operation cannot run destructors or release locks safely). The thread must voluntarily check `stop_requested()` at safe points. Make those checkpoints frequent enough that cancellation is responsive but not so frequent that polling dominates the work.
 
 ---
 
 ## 49.5 stop_source: Requesting a Stop from Outside
 
-You can request a stop explicitly — from another thread, a signal handler's flagged state, or a controlling object — via the `jthread`'s `request_stop()` or a standalone `stop_source`.
+You can request a stop explicitly - from another thread, a signal handler's flagged state, or a controlling object - via the `jthread`'s `request_stop()` or a standalone `stop_source`.
 
 ```cpp
 // Listing 49.5: explicit and external stop requests
@@ -150,13 +159,13 @@ std::jthread b{[tok]{ while (!tok.stop_requested()){} }};
 group.request_stop();             // stops every worker holding a token from 'group'
 ```
 
-`request_stop()` is non-blocking — it sets the flag and returns; the actual stopping happens when each worker next polls. Sharing one `stop_source` across many workers gives **fan-out cancellation**: a single `request_stop()` signals an entire pool. `request_stop()` is idempotent and thread-safe, and returns whether *this* call was the one that performed the transition.
+`request_stop()` is non-blocking - it sets the flag and returns; the actual stopping happens when each worker next polls. Sharing one `stop_source` across many workers gives **fan-out cancellation**: a single `request_stop()` signals an entire pool. `request_stop()` is idempotent and thread-safe, and returns whether *this* call was the one that performed the transition.
 
 ---
 
 ## 49.6 stop_callback: Reacting to Cancellation
 
-`std::stop_callback` registers a callable that runs **automatically** when a stop is requested on its token — useful for waking a blocked thread, closing a socket, or signalling a condition variable, without polling.
+`std::stop_callback` registers a callable that runs **automatically** when a stop is requested on its token - useful for waking a blocked thread, closing a socket, or signalling a condition variable, without polling.
 
 ```cpp
 // Listing 49.6: running code the instant a stop is requested
@@ -175,7 +184,7 @@ void register_reaction(std::stop_token st, std::atomic_flag& wake) {
 }
 ```
 
-A `stop_callback` runs its callable on the thread that calls `request_stop()` (or on the constructing thread if a stop was already pending). Its destructor unregisters the callback, and if a stop is in progress the destructor blocks until the callback finishes — preventing the classic use-after-free where the callback outlives the data it captures. This is the push-based counterpart to polling `stop_requested()`.
+A `stop_callback` runs its callable on the thread that calls `request_stop()` (or on the constructing thread if a stop was already pending). Its destructor unregisters the callback, and if a stop is in progress the destructor blocks until the callback finishes - preventing the classic use-after-free where the callback outlives the data it captures. This is the push-based counterpart to polling `stop_requested()`.
 
 ---
 
@@ -216,12 +225,12 @@ The `wait(lock, stop_token, predicate)` overload internally registers a `stop_ca
 
 ## 49.8 Professional Insights
 
-**Default to `std::jthread` for every new thread; reserve `std::thread` for interop only.** The automatic join eliminates the single most common threading crash — a forgotten `join()` calling `std::terminate()` on an exceptional path — and the integrated stop-token removes the boilerplate `std::atomic<bool>` flag you would otherwise write by hand. There is essentially no reason to start a raw `std::thread` in new code; `jthread` is strictly safer and carries no overhead you would not have added yourself.
+**Default to `std::jthread` for every new thread; reserve `std::thread` for interop only.** The automatic join eliminates the single most common threading crash - a forgotten `join()` calling `std::terminate()` on an exceptional path - and the integrated stop-token removes the boilerplate `std::atomic<bool>` flag you would otherwise write by hand. There is essentially no reason to start a raw `std::thread` in new code; `jthread` is strictly safer and carries no overhead you would not have added yourself.
 
-**Cancellation is cooperative — design responsive, frequent checkpoints.** There is no safe way to forcibly kill a thread (it would skip destructors and leak locks), so a `jthread` only stops when its function polls `stop_requested()` or waits on a stop-aware primitive. Place checkpoints at natural unit-of-work boundaries: frequent enough that `request_stop()` takes effect promptly, coarse enough that polling does not dominate. A long-running, unchecked loop inside a `jthread` will hang the destructor's join just as a `std::thread` would.
+**Cancellation is cooperative - design responsive, frequent checkpoints.** There is no safe way to forcibly kill a thread (it would skip destructors and leak locks), so a `jthread` only stops when its function polls `stop_requested()` or waits on a stop-aware primitive. Place checkpoints at natural unit-of-work boundaries: frequent enough that `request_stop()` takes effect promptly, coarse enough that polling does not dominate. A long-running, unchecked loop inside a `jthread` will hang the destructor's join just as a `std::thread` would.
 
-**Make blocking waits stop-aware with the `condition_variable_any` + `stop_token` overload.** A worker that blocks on a queue or condition must use `cv.wait(lock, stop_token, pred)` (requiring `condition_variable_any`), or it will sleep through a cancellation request and stall shutdown. This overload registers an internal `stop_callback` that wakes the waiter on `request_stop()`, giving you both efficient blocking and prompt cancellation — the combination that naive `atomic<bool>` polling cannot achieve without busy-waiting.
+**Make blocking waits stop-aware with the `condition_variable_any` + `stop_token` overload.** A worker that blocks on a queue or condition must use `cv.wait(lock, stop_token, pred)` (requiring `condition_variable_any`), or it will sleep through a cancellation request and stall shutdown. This overload registers an internal `stop_callback` that wakes the waiter on `request_stop()`, giving you both efficient blocking and prompt cancellation - the combination that naive `atomic<bool>` polling cannot achieve without busy-waiting.
 
 **Use one shared `stop_source` for fan-out cancellation of a thread pool.** Handing the same `stop_source`'s token to many workers lets a single `request_stop()` shut down the entire group atomically and race-free, which is far cleaner than signalling each thread individually. This is the building block of structured shutdown: a controller owns the `stop_source`, the pool observes tokens, and teardown is one call.
 
-**Rely on `stop_callback`'s destructor semantics for safe cleanup.** Because a `stop_callback`'s destructor deregisters the callback and blocks until any in-progress invocation completes, you can safely capture local state in the callback as long as the `stop_callback` object outlives that state's scope. This prevents the use-after-free that ad-hoc cancellation callbacks invite, but it also means a callback that blocks can stall the thread calling `request_stop()` — keep callbacks short and non-blocking (signal, don't compute).
+**Rely on `stop_callback`'s destructor semantics for safe cleanup.** Because a `stop_callback`'s destructor deregisters the callback and blocks until any in-progress invocation completes, you can safely capture local state in the callback as long as the `stop_callback` object outlives that state's scope. This prevents the use-after-free that ad-hoc cancellation callbacks invite, but it also means a callback that blocks can stall the thread calling `request_stop()` - keep callbacks short and non-blocking (signal, don't compute).

@@ -4,6 +4,11 @@ aliases: [Cache Hierarchy, Line Alignment, Cache Sets, L1 L2 L3 Caches]
 status: evergreen
 module: 04
 created: 2026-08-22
+type: concept
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
 > [!summary]
@@ -58,7 +63,7 @@ $$\text{Number of Sets } S = \frac{\text{Total Cache Size}}{\text{Line Size (64 
 - Bits 12–63: Cache Tag.
 
 > [!important] Set Conflict (Aliasing) Hazard
-> If your application accesses multiple memory addresses whose bits 6–11 are identical, they all compete for the **same 12 slots** in that set. If more than 12 such addresses are accessed in a hot loop, the CPU will repeatedly evict them to L2/L3—even if the other 63 sets in L1d are completely empty. This causes a massive performance cliff ($4\text{ cycles} \to 14\text{ cycles}$).
+> If your application accesses multiple memory addresses whose bits 6–11 are identical, they all compete for the **same 12 slots** in that set. If more than 12 such addresses are accessed in a hot loop, the CPU will repeatedly evict them to L2/L3 - even if the other 63 sets in L1d are completely empty. This causes a massive performance cliff ($4\text{ cycles} \to 14\text{ cycles}$).
 
 ### 3. Spatial and Adjacent Cache Line Prefetching
 Modern CPUs incorporate hardware prefetchers:
@@ -158,10 +163,10 @@ struct UnalignedOrder {
 ---
 
 ## Related
-- [[Notes/Latency Numbers Every Trading Engineer Knows]]
-- [[Notes/False Sharing and Cache Contention]]
-- [[Notes/Cache-Conscious Data Layout]]
-- [[Notes/CPU Timestamp Counter RDTSC Mechanics]]
+- [[Latency Numbers Every Trading Engineer Knows]]
+- [[False Sharing and Cache Contention]]
+- [[Cache-Conscious Data Layout]]
+- [[CPU Timestamp Counter RDTSC Mechanics]]
 - [[MOC - 04 Hardware Mechanical Sympathy]]
 
 ## Sources

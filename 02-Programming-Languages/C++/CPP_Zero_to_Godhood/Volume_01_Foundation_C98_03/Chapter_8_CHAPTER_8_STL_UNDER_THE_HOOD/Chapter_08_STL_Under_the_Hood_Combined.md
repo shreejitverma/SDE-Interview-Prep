@@ -1,8 +1,17 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 08: STL Under the Hood
 
 > *Knowing what happens inside the containers is the difference between writing correct code and writing fast code.*
 
-Chapter 7 taught you the STL interface. This chapter pulls back the curtain: how `vector` manages its buffer, why `list` is almost always the wrong choice, what makes `map` O(log n), when iterators become invalid, and the essential idioms every C++ programmer must know. It closes with a preview of C++11 lambdas — the feature that completed the STL's design intent.
+Chapter 7 taught you the STL interface. This chapter pulls back the curtain: how `vector` manages its buffer, why `list` is almost always the wrong choice, what makes `map` O(log n), when iterators become invalid, and the essential idioms every C++ programmer must know. It closes with a preview of C++11 lambdas - the feature that completed the STL's design intent.
 
 ---
 
@@ -10,7 +19,7 @@ Chapter 7 taught you the STL interface. This chapter pulls back the curtain: how
 
 - [8.1 `std::vector` Internals](#81-stdvector-internals)
 - [8.2 `std::deque` Internals](#82-stddeque-internals)
-- [8.3 `std::list` — The Cache-Miss Machine](#83-stdlist--the-cache-miss-machine)
+- [8.3 `std::list` - The Cache-Miss Machine](#83-stdlist--the-cache-miss-machine)
 - [8.4 Associative Container Internals (Red-Black Trees)](#84-associative-container-internals-red-black-trees)
 - [8.5 Iterator Invalidation: The Complete Reference](#85-iterator-invalidation-the-complete-reference)
 - [8.6 Container Adapters Under the Hood](#86-container-adapters-under-the-hood)
@@ -45,7 +54,7 @@ Every `std::vector` object contains exactly **three pointers**:
 
 When `size() == capacity()` and you call `push_back()`:
 
-1. Allocate a new buffer — typically **1.5× or 2×** the current capacity.
+1. Allocate a new buffer - typically **1.5× or 2×** the current capacity.
 2. **Copy** every element to the new buffer (in C++98; C++11 would move them).
 3. Destroy the old buffer.
 
@@ -130,13 +139,13 @@ A `deque` iterator is a **smart pointer** that stores:
 - Pointers to the start and end of that chunk (to know when to jump to the next chunk).
 
 **Implications:**
-- `push_front` and `push_back` never reallocate the whole structure — they add a new chunk.
+- `push_front` and `push_back` never reallocate the whole structure - they add a new chunk.
 - Random access is O(1) but requires **two pointer dereferences** (slow the chunk pointer, then index into it), making it slower than `vector`.
 - Cache locality is between `vector` (bad compared to) and `list` (better than).
 
 ---
 
-## 8.3 `std::list` — The Cache-Miss Machine
+## 8.3 `std::list` - The Cache-Miss Machine
 
 `std::list` allocates each node individually on the heap:
 
@@ -150,7 +159,7 @@ struct ListNode {
 };
 ```
 
-Each node holds **two extra pointers** beyond its payload. On a 64-bit system, every element in a `list<int>` uses 4 bytes of data and 16 bytes of overhead (prev + next) — a **4× memory overhead** just for the links.
+Each node holds **two extra pointers** beyond its payload. On a 64-bit system, every element in a `list<int>` uses 4 bytes of data and 16 bytes of overhead (prev + next) - a **4× memory overhead** just for the links.
 
 **The cache problem:** Nodes are allocated at random heap addresses. Iterating the list means each `++it` follows a pointer to a random location, causing a CPU cache miss. Modern CPUs prefetch contiguous memory; they cannot predict random pointer chains.
 
@@ -159,7 +168,7 @@ Each node holds **two extra pointers** beyond its payload. On a 64-bit system, e
 **When `list` is the right choice:**
 - You have an iterator to the exact insertion/deletion point and need O(1) operation.
 - You need **pointer/reference stability**: after inserting into a `list`, all existing pointers to other elements remain valid forever. `vector` cannot guarantee this after any reallocation.
-- You need `splice()` — moving a subrange from one list to another in O(1) without copying elements.
+- You need `splice()` - moving a subrange from one list to another in O(1) without copying elements.
 
 ---
 
@@ -194,7 +203,7 @@ These invariants guarantee the tree height is bounded by `2 * log2(n+1)`, giving
 
 ## 8.5 Iterator Invalidation: The Complete Reference
 
-This is the most common source of undefined behaviour in STL code. When an iterator is **invalidated**, using it is UB — the program may crash, silently corrupt data, or appear to work.
+This is the most common source of undefined behaviour in STL code. When an iterator is **invalidated**, using it is UB - the program may crash, silently corrupt data, or appear to work.
 
 | Container | Operation | What is invalidated |
 | :-------- | :-------- | :------------------ |
@@ -234,7 +243,7 @@ int main() {
 
 ## 8.6 Container Adapters Under the Hood
 
-`std::stack`, `std::queue`, and `std::priority_queue` are thin wrappers — they store an instance of an underlying container and expose a restricted interface.
+`std::stack`, `std::queue`, and `std::priority_queue` are thin wrappers - they store an instance of an underlying container and expose a restricted interface.
 
 ```cpp
 // Listing 8.7: How stack is approximately implemented
@@ -270,22 +279,22 @@ fast_stack.push(2);
 
 ## 8.7 Algorithm Internals
 
-### 8.7.1 `std::sort` — Introsort
+### 8.7.1 `std::sort` - Introsort
 
 `std::sort` is required to be O(N log N) worst-case. Modern implementations use **Introsort**: a hybrid of:
-1. **Quicksort** — average O(N log N), in-place, fast in practice.
-2. **Heapsort** — guaranteed O(N log N), triggered when recursion depth exceeds 2 × log2(N).
-3. **Insertion sort** — O(N²) but very fast for small arrays (N < ~16).
+1. **Quicksort** - average O(N log N), in-place, fast in practice.
+2. **Heapsort** - guaranteed O(N log N), triggered when recursion depth exceeds 2 × log2(N).
+3. **Insertion sort** - O(N²) but very fast for small arrays (N < ~16).
 
-### 8.7.2 `std::stable_sort` — Mergesort
+### 8.7.2 `std::stable_sort` - Mergesort
 
 `std::stable_sort` preserves the relative order of equal elements. It uses **mergesort**, which requires O(N) extra memory for the merge buffer. Complexity is O(N log N) when memory is available, O(N log² N) if not.
 
-### 8.7.3 `std::partial_sort` — Heap-Sort Variant
+### 8.7.3 `std::partial_sort` - Heap-Sort Variant
 
 `std::partial_sort(first, middle, last)` guarantees the `[first, middle)` range is sorted with the smallest elements. Internally it uses a heap of size `middle - first` over `[first, last)`. Complexity: O(N log k) where k = `middle - first`.
 
-### 8.7.4 `std::nth_element` — Introselect
+### 8.7.4 `std::nth_element` - Introselect
 
 `std::nth_element(first, nth, last)` rearranges the range such that `*nth` is what it would be if the range were sorted. Elements before `*nth` are `<=` it; elements after are `>=` it. No guarantee on relative order within the groups. Average O(N) via **introselect** (quickselect + median-of-3 pivoting).
 
@@ -293,7 +302,7 @@ fast_stack.push(2);
 
 ## 8.8 The Erase-Remove Idiom
 
-`std::remove` does **not** erase elements from a container — it rearranges them so that the "removed" values are compacted to the end, then returns an iterator to the first "removed" element. You must follow it with `container.erase()`:
+`std::remove` does **not** erase elements from a container - it rearranges them so that the "removed" values are compacted to the end, then returns an iterator to the first "removed" element. You must follow it with `container.erase()`:
 
 ```cpp
 // Listing 8.9: The erase-remove idiom (standard pattern)
@@ -462,7 +471,7 @@ int square(int x) { return x * x; }
 int main() {
     int arr[] = {1, 2, 3, 4, 5};
     vector<int> src(arr, arr + 5);
-    vector<int> dst;    // empty — safe because back_inserter grows it
+    vector<int> dst;    // empty - safe because back_inserter grows it
 
     transform(src.begin(), src.end(), back_inserter(dst), square);
     // dst: {1, 4, 9, 16, 25}
@@ -544,10 +553,10 @@ priority_queue      None (no iterators)
 
 ## 8.12 Forward Reference: C++11 Lambdas and Functional Programming
 
-In C++98, passing custom logic to algorithms requires a **functor** — a class with `operator()`:
+In C++98, passing custom logic to algorithms requires a **functor** - a class with `operator()`:
 
 ```cpp
-// Listing 8.16: C++98 functor — verbose but equivalent
+// Listing 8.16: C++98 functor - verbose but equivalent
 #include <algorithm>
 #include <vector>
 #include <iostream>
@@ -570,10 +579,10 @@ int main() {
 }
 ```
 
-**C++11 replaces this with lambda expressions** — anonymous functions defined inline:
+**C++11 replaces this with lambda expressions** - anonymous functions defined inline:
 
 ```cpp
-// Listing 8.17: C++11 lambda — same logic, zero boilerplate
+// Listing 8.17: C++11 lambda - same logic, zero boilerplate
 // (For reference: not valid C++98 syntax)
 // int threshold = 25;
 // int n = count_if(v.begin(), v.end(),
@@ -616,7 +625,7 @@ Modern CPUs are **100×–1000× faster** at sequential memory reads (due to har
 
 ### 8.13.4 The Destination-Size Trap
 
-Algorithms like `std::copy`, `std::transform`, and `std::fill` write into an existing range — they do **not** allocate memory. Writing past the end of the output range is UB. Always either:
+Algorithms like `std::copy`, `std::transform`, and `std::fill` write into an existing range - they do **not** allocate memory. Writing past the end of the output range is UB. Always either:
 - Pre-size the destination: `vector<int> dst(src.size());`
 - Or use `back_inserter(dst)` to append via `push_back`.
 

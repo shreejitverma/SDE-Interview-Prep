@@ -4,6 +4,11 @@ aliases: [Drop Copy, Clearing Feeds, Trade Capture Report, Post-Trade Risk, FIX 
 status: evergreen
 module: 02
 created: 2026-08-22
+type: concept
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
 > [!summary]
@@ -183,7 +188,7 @@ public:
 ## Related
 - [[02 - Exchange Architecture/Exchange Gateway Architecture]]
 - [[02 - Exchange Architecture/Pre-Trade Risk Checks at Wire Speed]]
-- [[10 - Protocols & Codecs/NASDAQ OUCH Protocol Architecture]]
+- [[NASDAQ OUCH 4.2 Protocol Specification]]
 - [[09 - Messaging & IPC/The LMAX Disruptor Architecture]]
 - [[02 - Exchange Architecture/MOC - 02 Exchange Architecture]]
 

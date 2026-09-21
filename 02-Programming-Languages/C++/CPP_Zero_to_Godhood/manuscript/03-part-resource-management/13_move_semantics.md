@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 13: Move Semantics and Perfect Forwarding
 
 > *Why copy a house when you can just steal the keys?*
@@ -12,7 +21,7 @@ C++11 finally abolished this tax by introducing the most significant feature in 
 
 ---
 
-## 13.1 🛋️ Fireside Chat: The "Magic Box" of Rvalues
+## 13.1 Fireside Chat: The "Magic Box" of Rvalues
 
 **Student**: "I keep hearing about 'Lvalues' and 'Rvalues', but they just sound like math equations."
 

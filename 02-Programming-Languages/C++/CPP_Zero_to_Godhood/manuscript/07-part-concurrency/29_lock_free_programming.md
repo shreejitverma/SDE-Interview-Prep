@@ -1,6 +1,15 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 29: Lock-Free Programming
 
-> *Programming without mutexes — the ultimate performance unlock.*
+> *Programming without mutexes - the ultimate performance unlock.*
 
 If you use a `std::mutex`, you are at the mercy of the Operating System's scheduler. If a thread acquires a lock and is then immediately preempted (put to sleep by the OS to let another program run), every other thread waiting for that lock is now blocked. This is a disaster in high-performance or real-time systems.
 

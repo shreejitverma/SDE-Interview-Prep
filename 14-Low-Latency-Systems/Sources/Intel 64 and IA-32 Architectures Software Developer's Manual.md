@@ -4,9 +4,14 @@ aliases: [Intel SDM, Intel Manual, IA-32 Architecture Manual, x86-64 Hardware Ma
 status: evergreen
 module: 14
 created: 2026-08-22
+type: paper
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
-# Source Summary — Intel 64 and IA-32 Architectures Software Developer's Manual
+# Source Summary - Intel 64 and IA-32 Architectures Software Developer's Manual
 **Author**: Intel Corporation  
 **Publication**: Official Intel Technical Documentation (Volumes 1–4)  
 **Category**: Hardware Architecture & x86-64 Microarchitecture
@@ -49,7 +54,7 @@ Intel x86-64 enforces a strong **Total Store Order (TSO)** memory consistency mo
    - `MFENCE`: Serializes all loads and stores; blocks until all prior stores drain to L1 cache.
 
 ### 2. Precise Hardware Cycle Timing: `RDTSC` vs `RDTSCP`
-- **`RDTSC` (Read Time-Stamp Counter)**: Returns the 64-bit cycle count since CPU reset. *Is not an execution barrier*—subsequent instructions can execute out-of-order before `RDTSC` finishes!
+- **`RDTSC` (Read Time-Stamp Counter)**: Returns the 64-bit cycle count since CPU reset. *Is not an execution barrier* - subsequent instructions can execute out-of-order before `RDTSC` finishes!
 - **`RDTSCP` (Read Time-Stamp Counter and Processor ID)**: Guarantees all prior instructions retire before reading the cycle counter, and returns the CPU core ID (`IA32_TSC_AUX`).
 - **Canonical Cycle Measurement Pattern**:
 ```cpp
@@ -94,7 +99,7 @@ inline uint64_t rdtsc_end() noexcept {
 
 ## Related Notes
 - [[07 - Time & Measurement/CPU Timestamp Counter RDTSC Mechanics]]
-- [[04 - Hardware Mechanical Sympathy/CPU Pipeline Branch Prediction and Speculative Execution]]
-- [[04 - Hardware Mechanical Sympathy/False Sharing and Cache Line Alignment]]
+- [[Branch Predictors and Pipeline Stalls]]
+- [[False Sharing and Cache Contention]]
 - [[10 - Protocols & Codecs/Zero-Copy and In-Place Parsing Techniques]]
 - [[14 - Industry Map & Canon/MOC - 14 Industry Map & Canon]]

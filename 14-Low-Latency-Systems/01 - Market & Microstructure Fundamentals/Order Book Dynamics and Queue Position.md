@@ -4,6 +4,11 @@ aliases: [Queue Position, Queue Depletion, Cancel Ratios, Level 2 Queue Estimati
 status: evergreen
 module: 01
 created: 2026-08-22
+type: concept
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
 > [!summary]
@@ -143,7 +148,7 @@ public:
 ---
 
 > [!warning] Gotchas
-> 1. **The Toxic Sweep Sweep-Through**: An algorithm sitting at position 3,000 of 3,500 in a Treasury queue observes its queue position advance to 0 in a single millisecond. This is not a lucky fill—it means an institutional sweep just cleared all 3,500 contracts and is about to push the market 2 ticks higher. *The strategy must immediately cancel hedging orders on the opposite side to prevent double-losses.*
+> 1. **The Toxic Sweep Sweep-Through**: An algorithm sitting at position 3,000 of 3,500 in a Treasury queue observes its queue position advance to 0 in a single millisecond. This is not a lucky fill - it means an institutional sweep just cleared all 3,500 contracts and is about to push the market 2 ticks higher. *The strategy must immediately cancel hedging orders on the opposite side to prevent double-losses.*
 > 2. **Assuming Front-Loaded Cancellations**: In illiquid stocks, cancellations are not uniformly distributed; market makers near the front of the queue cancel *faster* than retail orders at the back when prices shift. Using a uniform proportional model can overestimate queue priority during rapid selloffs.
 
 ---

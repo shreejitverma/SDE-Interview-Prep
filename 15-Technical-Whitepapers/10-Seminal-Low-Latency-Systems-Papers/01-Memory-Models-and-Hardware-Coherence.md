@@ -3,6 +3,11 @@ tags: [low-latency, memory-models, c++20, memory-barriers, cache-coherence, mcke
 aliases: [Memory Models and Hardware Coherence, C++ Memory Model Boehm Adve, Memory Barriers McKenney, Memory Wall Wulf McKee]
 status: evergreen
 created: 2026-09-17
+type: paper
+track: [distinguished, sde]
+level:
+last_reviewed:
+sources: []
 ---
 
 # Memory Models & Hardware Coherence

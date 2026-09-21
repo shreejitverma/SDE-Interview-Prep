@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Appendix M: THE ALGORITHM COMPENDIUM (The Master's Toolkit)
 
 Welcome to the Master's Toolkit. Most C++ developers write `for` loops. Gods use `<algorithm>`. Why? Because the algorithms in the STL are already optimized, exception-safe, and carry semantic meaning. When you see `std::partition`, you immediately know what the code is doing. When you see a 20-line `for` loop, you have to play computer in your head to figure it out.

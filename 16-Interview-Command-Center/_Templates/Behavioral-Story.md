@@ -19,33 +19,33 @@ tags:
 
 ---
 
-## 📖 The STAR Story
+## The STAR Story
 
-### S — Situation
+### S - Situation
 > Set the scene in 1-2 sentences. When, where, what team, what context?
 
 
 
-### T — Task
+### T - Task
 > What was YOUR specific goal or responsibility?
 
 
 
-### A — Action
+### A - Action
 > What did YOU do? (Use "I", not "we"). Be specific about technical contributions.
 
 1. 
 2. 
 3. 
 
-### R — Result
+### R - Result
 > Quantify the outcome. Use numbers, percentages, dollar amounts.
 
 
 
 ---
 
-## 🎯 Variations
+## Variations
 
 ### For Amazon (Leadership Principles)
 **Best maps to:** 
@@ -61,11 +61,11 @@ tags:
 
 ---
 
-## 🗣️ Practice Notes
+## Practice Notes
 | Date | Medium | Duration | Feedback |
 |------|--------|----------|----------|
 | | Self | | |
 
-## 💡 Refinement Notes
+## Refinement Notes
 > What to emphasize more, what to cut, what feedback have I received?
 

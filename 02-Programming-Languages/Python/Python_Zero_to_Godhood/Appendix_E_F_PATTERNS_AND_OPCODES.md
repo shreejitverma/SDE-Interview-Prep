@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Appendix E: Design Patterns in Python
 
 While Python's dynamic nature makes some classic "Gang of Four" patterns redundant, others are transformed into elegant, language-native idioms.

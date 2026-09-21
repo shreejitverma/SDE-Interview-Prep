@@ -4,9 +4,14 @@ aliases: [Lab 13, PCAP Replay Lab, Deterministic Testing Lab, Bitwise Verificati
 status: evergreen
 module: 13
 created: 2026-08-22
+type: playbook
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
-# Lab 13 — Deterministic PCAP Replay & Bitwise Verification Engine
+# Lab 13 - Deterministic PCAP Replay & Bitwise Verification Engine
 
 > [!summary]
 > In this lab, you will build, compile, and benchmark an offline, high-speed Deterministic PCAP Replay and State Verification Engine in C++20. You will replay 10,000,000 historical ITCH 5.0 messages across virtualized clock domains, proving **100% bit-for-bit state reproducibility** with CRC64 checksum verification at **>60,000,000 messages/second**.

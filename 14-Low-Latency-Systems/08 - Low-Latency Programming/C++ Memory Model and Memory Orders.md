@@ -4,6 +4,11 @@ aliases: [Memory Model, Memory Ordering, acquire release, seq_cst, TSO, Total St
 status: evergreen
 module: 08
 created: 2026-08-22
+type: concept
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
 > [!summary]
@@ -163,10 +168,10 @@ uint64_t consume_acquire() {
 ---
 
 ## Related
-- [[Notes/Lock-Free SPSC Ring Buffer Design]]
-- [[Notes/Lock-Free MPMC Queue Mechanics]]
-- [[Notes/Allocation-Free Steady State Patterns]]
-- [[Notes/False Sharing and Cache Contention]]
+- [[Lock-Free SPSC Ring Buffer Design]]
+- [[Lock-Free MPMC Queue Mechanics]]
+- [[Allocation-Free Steady State Patterns]]
+- [[False Sharing and Cache Contention]]
 - [[MOC - 08 Low-Latency Programming]]
 
 ## Sources

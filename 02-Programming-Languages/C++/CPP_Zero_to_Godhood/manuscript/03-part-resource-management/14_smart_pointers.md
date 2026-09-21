@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 14: Smart Pointers
 
 > *Delegating memory management to the compiler.*
@@ -139,7 +148,7 @@ int main() {
 
 Smart pointers aren't just for memory allocated with `new`. They can manage *any* resource that needs cleanup, such as a file handle from C or a texture from the SDL graphics library.
 
-You can provide a **Custom Deleter**—a function that the smart pointer will call instead of `delete` when it's time to clean up.
+You can provide a **Custom Deleter** - a function that the smart pointer will call instead of `delete` when it's time to clean up.
 
 ```cpp
 #include <memory>

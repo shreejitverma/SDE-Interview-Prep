@@ -4,9 +4,14 @@ aliases: [Drill 06, Packet Drop Diagnostics, Multicast Troubleshooting, Microbur
 status: evergreen
 module: 06
 created: 2026-08-22
+type: playbook
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
-# Drill 06 — Multicast Packet Drop Diagnostics & Microburst Triage
+# Drill 06 - Multicast Packet Drop Diagnostics & Microburst Triage
 
 > [!summary]
 > Production-grade diagnostic drill simulating an urgent high-stakes trading incident: your market making engine experiences massive UDP packet drops and 15ms gap-fill freezes during the 09:30:00 US Market Open and 08:30:00 macro economic releases. Attempt each diagnostic step before unfolding the solution.

@@ -4,6 +4,11 @@ aliases: [SIMD Parsing, Vectorized Parsing, AVX2 Parsing, AVX-512, Fast FIX Pars
 status: evergreen
 module: 10
 created: 2026-08-22
+type: concept
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
 > [!summary]

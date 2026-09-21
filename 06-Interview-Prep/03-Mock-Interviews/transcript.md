@@ -1,3 +1,12 @@
+---
+type: playbook
+track: [sde, quant-dev, quant-research, low-latency, ai-eng]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Mock Interview: System Design (Rate Limiter)
 
 **Interviewer (I):** "Hello! Today I'd like you to design a Rate Limiter for our API Gateway."
@@ -29,7 +38,7 @@ We could optimize this by implementing a **multi-tier cache**. A small local cou
 
 ---
 
-## 🔑 Key Takeaways
+## Key Takeaways
 
 1.  **Clarify Requirements First:** Don't just start coding. Ask about scale, strictness, and latency.
 2.  **Propose Options:** Discuss Token Bucket vs Leaky Bucket vs Sliding Window.

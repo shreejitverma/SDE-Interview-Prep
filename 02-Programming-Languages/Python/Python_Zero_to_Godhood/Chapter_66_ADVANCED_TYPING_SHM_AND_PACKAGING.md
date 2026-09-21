@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 66: Advanced Concurrency: Shared Memory and Proxies
 
 Building on Chapter 27, this chapter explores the high-performance communication mechanisms required for massive scale data processing in Python.

@@ -4,9 +4,14 @@ aliases: [Flash Boys, Michael Lewis, HFT History, IEX Speed Bump, Spread Network
 status: evergreen
 module: 14
 created: 2026-08-22
+type: paper
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
-# Source Summary — Flash Boys: A Wall Street Revolt
+# Source Summary - Flash Boys: A Wall Street Revolt
 **Author**: Michael Lewis  
 **Publication**: W. W. Norton & Company (2014)  
 **Category**: Financial History, Market Structure & Latency Infrastructure

@@ -4,6 +4,11 @@ aliases: [Fairness, Determinism, Jitter Envelope, Cable Equalization, Tail Laten
 status: evergreen
 module: 02
 created: 2026-08-22
+type: concept
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
 > [!summary]
@@ -182,7 +187,7 @@ public:
 ---
 
 ## Related
-- [[07 - Time & Measurement/Latency Numbers Every Trading Engineer Knows]]
+- [[Latency Numbers Every Trading Engineer Knows]]
 - [[07 - Time & Measurement/Coordinated Omission in Low Latency Systems]]
 - [[07 - Time & Measurement/Clock Sources and Hardware Timestamping]]
 - [[02 - Exchange Architecture/The Sequenced-Stream Architecture]]

@@ -4,6 +4,11 @@ aliases: [MPMC Queue, Lock-Free MPMC, Vyukov Queue, ABA Problem, Hazard Pointers
 status: evergreen
 module: 08
 created: 2026-08-22
+type: concept
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
 > [!summary]
@@ -16,7 +21,7 @@ In low-latency systems, choosing the correct concurrency primitive determines th
 - **SPSC Ring Buffers**: Wait-free ($O(1)$ in finite cycles), zero CAS contention, ~10 ns latency.
 - **MPMC Queues**: Lock-free (optimistic CAS retries), heavy RFO cache line bouncing, ~50–150 ns latency.
 
-While SPSC is the mandatory standard for the ultra-fast internal tick-to-trade critical path, MPMC queues are required in outer layers—such as multi-threaded network gateways distributing client TCP connections to worker threads or multi-venue order routing pools.
+While SPSC is the mandatory standard for the ultra-fast internal tick-to-trade critical path, MPMC queues are required in outer layers - such as multi-threaded network gateways distributing client TCP connections to worker threads or multi-venue order routing pools.
 
 ```mermaid
 flowchart TD
@@ -234,10 +239,10 @@ public:
 ---
 
 ## Related
-- [[Notes/Lock-Free SPSC Ring Buffer Design]]
-- [[Notes/C++ Memory Model and Memory Orders]]
-- [[Notes/Allocation-Free Steady State Patterns]]
-- [[Notes/False Sharing and Cache Contention]]
+- [[Lock-Free SPSC Ring Buffer Design]]
+- [[C++ Memory Model and Memory Orders]]
+- [[Allocation-Free Steady State Patterns]]
+- [[False Sharing and Cache Contention]]
 - [[MOC - 08 Low-Latency Programming]]
 
 ## Sources

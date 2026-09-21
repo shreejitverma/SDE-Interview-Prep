@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 12: RAII and the Rule of Five
 
 > *Tying the lifetime of a resource to the lifetime of an object.*
@@ -32,7 +41,7 @@ If `error_occurred()` is true, the function exits early. The `delete[]` line is 
 
 In older languages like C, you had to meticulously track every exit path (every `return`, `break`, or `throw`) to make sure you freed the memory. This is practically impossible in large codebases.
 
-Java and C# solved this with a **Garbage Collector**—a slow, background program that periodically sweeps the city looking for abandoned houses to bulldoze. C++ rejected this because Garbage Collectors cause random performance stutters. 
+Java and C# solved this with a **Garbage Collector** - a slow, background program that periodically sweeps the city looking for abandoned houses to bulldoze. C++ rejected this because Garbage Collectors cause random performance stutters. 
 
 C++ solved it with **RAII**.
 

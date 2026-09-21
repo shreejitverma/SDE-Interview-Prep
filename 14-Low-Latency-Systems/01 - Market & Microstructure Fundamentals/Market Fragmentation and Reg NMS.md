@@ -4,6 +4,11 @@ aliases: [Reg NMS, Rule 611, Rule 610, Intermarket Sweep Order, ISO, SIP vs Dire
 status: evergreen
 module: 01
 created: 2026-08-22
+type: concept
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
 > [!summary]

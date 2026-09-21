@@ -11,7 +11,7 @@ tags:
   - mock-interview
 ---
 
-# 🎤 Mock Interview: <% tp.file.title %>
+# Mock Interview: <% tp.file.title %>
 
 > **Partner:** `= this.partner` | **Role:** `= this.role` | **Type:** `= this.type`
 > **Target Company:** `= this.target_company` | **Duration:** `= this.duration_minutes` min
@@ -19,7 +19,7 @@ tags:
 
 ---
 
-## 📋 Scoring Rubric
+## Scoring Rubric
 
 | Dimension | Score (1-5) | Notes |
 |-----------|-------------|-------|
@@ -30,7 +30,7 @@ tags:
 | Time Management | | |
 | Optimality | | |
 
-## 📝 Questions & Performance
+## Questions & Performance
 
 ### Question 1
 **Problem:**
@@ -39,13 +39,13 @@ tags:
 **Optimal Solution:**
 **Gap:**
 
-## 🗣️ Feedback Received
+## Feedback Received
 ### Strengths
 - 
 
 ### Areas for Improvement
 - 
 
-## 📋 Action Items
+## Action Items
 - [ ] 
 - [ ] 

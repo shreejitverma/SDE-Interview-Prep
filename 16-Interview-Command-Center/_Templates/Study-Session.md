@@ -9,7 +9,7 @@ tags:
   - study-session
 ---
 
-# 📖 Study Session: <% tp.file.title %>
+# Study Session: <% tp.file.title %>
 
 > **Topic:** `= this.topic` | **Role:** `= this.role`
 > **Duration:** `= this.duration_minutes` min
@@ -17,30 +17,30 @@ tags:
 
 ---
 
-## 🎯 Session Goals
+## Session Goals
 - [ ] 
 - [ ] 
 - [ ] 
 
-## 📝 Key Concepts & Notes
+## Key Concepts & Notes
 
 
-## 🧩 Practice Problems Attempted
+## Practice Problems Attempted
 
 | Problem | Difficulty | Solved? | Time | Key Insight |
 |---------|-----------|---------|------|-------------|
 | | | | min | |
 
-## 💡 Key Takeaways
+## Key Takeaways
 1. 
 2. 
 3. 
 
-## ❓ Questions / Gaps Remaining
+## Questions / Gaps Remaining
 - 
 
-## 🔗 Resources Used
+## Resources Used
 - 
 
-## 📋 Follow-Up Actions
+## Follow-Up Actions
 - [ ] 

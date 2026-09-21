@@ -1,3 +1,12 @@
+---
+type: moc
+track: [sde, distinguished]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 ## Bridge
 
 Decouple an abstraction from its implementation so that the two can vary independently. 

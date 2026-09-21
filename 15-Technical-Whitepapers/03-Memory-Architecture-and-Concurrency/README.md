@@ -3,6 +3,11 @@ tags: [memory/architecture, concurrency, cpu/cache, numa, drepper, threading, ty
 aliases: [Memory Architecture and Concurrency MOC, Memory Mechanics Canon]
 status: evergreen
 created: 2026-09-17
+type: moc
+track: [distinguished, sde]
+level:
+last_reviewed:
+sources: []
 ---
 
 # Memory Architecture, CPU Microarchitecture & Concurrency
@@ -14,7 +19,7 @@ created: 2026-09-17
 
 ## Pillar Guides
 
-1. **[[Ulrich-Drepper-Memory-Architecture|Ulrich Drepper — What Every Programmer Should Know About Memory (2007)]]**
+1. **[[Ulrich-Drepper-Memory-Architecture|Ulrich Drepper - What Every Programmer Should Know About Memory (2007)]]**
    - The definitive treatise on physical RAM, L1/L2/L3 CPU cache line indexing, set associativity, NUMA memory interconnects (QPI/UPI), Translation Lookaside Buffers (TLBs), and the MESI/MOESI cache coherence protocols.
 2. **[[Concurrency-and-Threading-Debates|Concurrency & Threading Debates]]**
    - *Why Threads Are A Bad Idea (for most purposes) (John Ousterhout, 1995)*: Event-driven concurrency vs kernel threads, lock overhead, synchronization bugs.
@@ -47,5 +52,5 @@ flowchart TD
 ## Related Notes
 - [[../README|Technical Whitepapers Master MOC]]
 - [[../01-Systems-Performance-and-Tracing/Brendan-Gregg-Performance-Canon|Brendan Gregg Performance Canon]]
-- [[../../12-Performance-Engineering/01-Cpu-Architecture/false_sharing|12-Performance-Engineering: False Sharing Demo]]
+- [12-Performance-Engineering: False Sharing Demo](../../12-Performance-Engineering/01-Cpu-Architecture/false_sharing.cpp)
 - [[../../14-Low-Latency-Systems/04 - Hardware Mechanical Sympathy/MOC - 04 Hardware Mechanical Sympathy|14-Low-Latency-Systems: Hardware Mechanical Sympathy]]

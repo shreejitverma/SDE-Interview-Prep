@@ -1,3 +1,12 @@
+---
+type: concept
+track: [ai-eng]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Appendix A: Glossary
 
 A reference glossary of agentic AI terminology, alphabetized.

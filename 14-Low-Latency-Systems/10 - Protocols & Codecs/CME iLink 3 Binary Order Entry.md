@@ -4,6 +4,11 @@ aliases: [iLink 3, CME iLink 3, MSGW, SBE Order Entry, SOFH, Simple Open Framing
 status: evergreen
 module: 10
 created: 2026-08-22
+type: concept
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
 > [!summary]

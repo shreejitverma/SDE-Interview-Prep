@@ -2,7 +2,7 @@
 
 > *Talking to the outside world.*
 
-Computers are incredibly fast calculators, but a calculator is useless if it can't show you the result. Software needs to communicate—with the user, with the hard drive, and with the network. In most languages, handling text and printing it to the screen is trivial. In C++, because you have direct access to memory, text is a fascinating (and sometimes dangerous) topic.
+Computers are incredibly fast calculators, but a calculator is useless if it can't show you the result. Software needs to communicate - with the user, with the hard drive, and with the network. In most languages, handling text and printing it to the screen is trivial. In C++, because you have direct access to memory, text is a fascinating (and sometimes dangerous) topic.
 
 ---
 
@@ -19,7 +19,7 @@ Notice the `'\0'` at the very end? That is the **Null Terminator**. Because C-ar
 If you forget the `\0`, the computer will keep reading memory past the end of the array, printing whatever garbage happens to be stored in the adjacent memory houses until it accidentally hits a `0`.
 
 > [!WARNING]
-> **⚠️ The Danger Zone: Buffer Overflows**
+> **The Danger Zone: Buffer Overflows**
 > C-Strings are the root cause of countless security vulnerabilities. If a hacker gives you a 100-character name, and you copy it into a 10-character C-String array, the extra 90 characters will overwrite adjacent memory. The hacker can use this to overwrite the function's return address and hijack your program!
 
 You can write C-Strings more simply using string literals, and the compiler will add the `\0` for you:
@@ -27,7 +27,7 @@ You can write C-Strings more simply using string literals, and the compiler will
 const char* name = "Hello"; // Still just an array of characters in memory!
 ```
 
-## 6.2 `std::string` — The Modern Way
+## 6.2 `std::string` - The Modern Way
 
 To save us from the madness of null-terminators and buffer overflows, C++ gave us `<string>`. `std::string` is an intelligent, dynamic object that automatically resizes itself to fit whatever text you give it.
 
@@ -73,7 +73,7 @@ int main() {
 ```
 
 > [!TIP]
-> **🔥 Godhood Tip: Read-Only Text**
+> **Godhood Tip: Read-Only Text**
 > A `string_view` is just two things under the hood: a pointer to the start of the text, and an integer representing the length. That's it. It doesn't own the memory. If you are writing a function that only *reads* text, always use `std::string_view`. 
 
 ## 6.4 Basic I/O: `cin`, `cout`, `cerr`
@@ -164,7 +164,7 @@ Every stream has internal state flags you can check:
 *   `bad()`: Fatal error (the hard drive was ripped out of the computer).
 
 > [!NOTE]
-> **📋 Professional Notes: Fast I/O**
+> **Professional Notes: Fast I/O**
 > Are you doing competitive programming or processing gigabytes of text? C++ streams are synchronized with C-style `stdio` by default, which makes them slow. 
 > To make `std::cout` and `std::cin` blazing fast, put this at the very top of `main()`:
 > `std::ios::sync_with_stdio(false);`

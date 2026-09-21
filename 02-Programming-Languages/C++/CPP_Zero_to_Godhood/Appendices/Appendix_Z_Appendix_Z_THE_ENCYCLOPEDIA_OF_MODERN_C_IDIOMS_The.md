@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Appendix Z: THE ENCYCLOPEDIA OF MODERN C++ IDIOMS (The Master's Vault)
 
 

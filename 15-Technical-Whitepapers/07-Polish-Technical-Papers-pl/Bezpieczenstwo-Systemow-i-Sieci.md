@@ -3,6 +3,11 @@ tags: [security/defensive, selinux, rhel6, dos, pki, postgresql, linux/administr
 aliases: [Bezpieczeństwo Systemów i Sieci, SELinux Obowiązkowa Kontrola Dostępu, RHEL6 Bezpieczeństwo, Administracja PostgreSQL]
 status: evergreen
 created: 2026-09-17
+type: paper
+track: [distinguished, sde]
+level:
+last_reviewed:
+sources: []
 ---
 
 # Bezpieczeństwo Systemów, Sieci i Administracja
@@ -82,7 +87,7 @@ Antoni Ligęza i Marcin Szpyrka omawiają architekturę Data Control Language (D
   GRANT SELECT ON ALL TABLES IN SCHEMA public TO auditor;
   ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO auditor;
   ```
-- **Kopie Zapasowe i Odzyskiwanie**: Wykorzystanie narzędzi `pg_dump` do zrzutów logicznych oraz archiwizacji logów transakcyjnych WAL (Write-Ahead Logging) w celu odzyskiwania stanu bazy do określonego punktu w czasie (Point-in-Time Recovery — PITR).
+- **Kopie Zapasowe i Odzyskiwanie**: Wykorzystanie narzędzi `pg_dump` do zrzutów logicznych oraz archiwizacji logów transakcyjnych WAL (Write-Ahead Logging) w celu odzyskiwania stanu bazy do określonego punktu w czasie (Point-in-Time Recovery - PITR).
 
 ---
 

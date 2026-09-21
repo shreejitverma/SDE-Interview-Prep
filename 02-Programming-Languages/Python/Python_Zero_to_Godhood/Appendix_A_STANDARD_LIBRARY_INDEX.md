@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Appendix A: The Comprehensive Standard Library Index
 
 This appendix provides a "Godhood" level reference for the remaining components of the Python Standard Library, ensuring every module in the official documentation is addressed.

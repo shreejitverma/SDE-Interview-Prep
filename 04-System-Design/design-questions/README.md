@@ -1,3 +1,12 @@
+---
+type: moc
+track: [sde, distinguished]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Design problems and solutions
 This repository contains a set of design problems and solutions for the following topics:
 - [Pen](#Pen)

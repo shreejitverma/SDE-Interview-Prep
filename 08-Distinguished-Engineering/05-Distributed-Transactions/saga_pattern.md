@@ -1,3 +1,12 @@
+---
+type: concept
+track: [distinguished]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # SAGA Pattern (Distributed Transactions)
 
 **Topic:** Handling transactions across microservices where ACID is impossible.

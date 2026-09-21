@@ -4,9 +4,14 @@ aliases: [Drill 14, Mock Interview, Principal Engineer Interview, Comprehensive 
 status: evergreen
 module: 14
 created: 2026-08-22
+type: playbook
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
-# Drill 14 — Comprehensive Technical Mock Interview: Staff/Principal Low-Latency Engineer
+# Drill 14 - Comprehensive Technical Mock Interview: Staff/Principal Low-Latency Engineer
 
 > [!summary]
 > Comprehensive, full-scale 60-minute technical mock interview simulating an elite Tier-1 high-frequency trading firm interview (Citadel Securities, Jane Street, HRT, Jump, Optiver). Attempt each part under strict timed conditions before unfolding the principal-level solutions.

@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Appendix V: THE STANDARD LIBRARY MEMORY TOOLKIT
 
 Memory management is the soul of C++. Cppreference has hundreds of pages on allocators. Let's simplify.

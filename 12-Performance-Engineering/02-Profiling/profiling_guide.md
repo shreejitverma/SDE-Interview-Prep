@@ -1,3 +1,12 @@
+---
+type: concept
+track: [low-latency, sde]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Memory Profiling Guide
 
 ## 1. Valgrind (Linux)
@@ -37,4 +46,4 @@ g++ -fsanitize=address -g memory_leak_demo.cpp -o app
 For enterprise-scale Linux performance engineering, kernel tracing, and hardware memory hierarchies:
 - [[../../15-Technical-Whitepapers/01-Systems-Performance-and-Tracing/Brendan-Gregg-Performance-Canon|Brendan Gregg Performance Canon]]: The USE Method, eBPF superpowers, CPU flamegraphs, off-CPU analysis, and production SRE checklists.
 - [[../../15-Technical-Whitepapers/01-Systems-Performance-and-Tracing/Linux-Tracing-and-Instrumentation|Linux Tracing & Instrumentation Guide]]: Ian Munsie's tracepoints and Jörg Zinke's syscall tracing overhead benchmarks.
-- [[../../15-Technical-Whitepapers/03-Memory-Architecture-and-Concurrency/Ulrich-Drepper-Memory-Architecture|Ulrich Drepper — What Every Programmer Should Know About Memory]]: Cache line associativity, TLBs, NUMA topologies, and false sharing elimination.
+- [[../../15-Technical-Whitepapers/03-Memory-Architecture-and-Concurrency/Ulrich-Drepper-Memory-Architecture|Ulrich Drepper - What Every Programmer Should Know About Memory]]: Cache line associativity, TLBs, NUMA topologies, and false sharing elimination.

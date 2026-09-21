@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # MEMALLOC UNDER THE HOOD: ARENAS, POOLS, AND THE GC
 
 *   **PyMalloc**: CPython's custom memory allocator for small objects ($\le 512$ bytes).

@@ -4,6 +4,11 @@ aliases: [Colocation, Physical Layer, Fiber Optics, Microwave Networks, Propagat
 status: evergreen
 module: 06
 created: 2026-08-22
+type: concept
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
 > [!summary]
@@ -16,9 +21,9 @@ Software optimizations (kernel bypass, lock-free rings, C++ assembly tuning) ope
 
 However:
 - Moving a server cabinet **20 meters** farther from the exchange matching engine room adds **100 nanoseconds of optical fiber propagation delay** ($20\text{ m} \times 4.89\text{ ns/m}$).
-- Running cross-market arbitrage between CME futures (Aurora, IL) and NASDAQ equities (Carteret, NJ) over fiber takes **14.5 milliseconds**, whereas an ultra-short-path microwave network takes **7.85 milliseconds**—a staggering **6,650,000-nanosecond advantage** that renders fiber completely obsolete for cross-market price signals.
+- Running cross-market arbitrage between CME futures (Aurora, IL) and NASDAQ equities (Carteret, NJ) over fiber takes **14.5 milliseconds**, whereas an ultra-short-path microwave network takes **7.85 milliseconds** - a staggering **6,650,000-nanosecond advantage** that renders fiber completely obsolete for cross-market price signals.
 
-Understanding the physical layer—colocation data centers, optical fiber refraction, hollow-core glass, and wireless RF—is mandatory for global trading architecture.
+Understanding the physical layer - colocation data centers, optical fiber refraction, hollow-core glass, and wireless RF - is mandatory for global trading architecture.
 
 ```mermaid
 flowchart LR
@@ -161,11 +166,11 @@ int main() {
 ## Related
 - [[06 - Networking/Network Interface Card Architecture]]
 - [[06 - Networking/Switch Architectures in Trading]]
-- [[07 - Time & Measurement/Latency Numbers Every Trading Engineer Knows]]
+- [[Latency Numbers Every Trading Engineer Knows]]
 - [[07 - Time & Measurement/One-Way Latency vs Round-Trip Time Measurement]]
 - [[06 - Networking/MOC - 06 Networking]]
 
 ## Sources
-- [[Sources/Flash Boys by Michael Lewis (Spread Networks Fiber History)]]
+- [[Flash Boys by Michael Lewis]]
 - [[Sources/Corning SMF-28 Ultra Optical Fiber Specification]]
 - [[Sources/How to Build an Exchange by Jane Street]]

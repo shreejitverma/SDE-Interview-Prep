@@ -4,6 +4,11 @@ aliases: [Order Book, LOB Internals, Intrusive Order Book, Price Level Array, Li
 status: evergreen
 module: 03
 created: 2026-08-22
+type: concept
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
 > [!summary]
@@ -268,11 +273,11 @@ public:
 ---
 
 ## Related
-- [[Notes/Matching Algorithms]]
-- [[Notes/Self-Match Prevention Mechanisms]]
-- [[Notes/Allocation-Free Steady State Patterns]]
-- [[Notes/Deterministic Matching Engine State Recovery]]
-- [[Notes/Cache-Conscious Data Layout]]
+- [[Matching Algorithms]]
+- [[Self-Match Prevention Mechanisms]]
+- [[Allocation-Free Steady State Patterns]]
+- [[Deterministic Matching Engine State Recovery]]
+- [[Cache-Conscious Data Layout]]
 - [[MOC - 03 Matching Engine Internals]]
 
 ## Sources
