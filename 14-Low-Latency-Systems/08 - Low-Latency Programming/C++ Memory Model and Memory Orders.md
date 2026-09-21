@@ -163,10 +163,10 @@ uint64_t consume_acquire() {
 ---
 
 ## Related
-- [[Notes/Lock-Free SPSC Ring Buffer Design]]
-- [[Notes/Lock-Free MPMC Queue Mechanics]]
-- [[Notes/Allocation-Free Steady State Patterns]]
-- [[Notes/False Sharing and Cache Contention]]
+- [[Lock-Free SPSC Ring Buffer Design]]
+- [[Lock-Free MPMC Queue Mechanics]]
+- [[Allocation-Free Steady State Patterns]]
+- [[False Sharing and Cache Contention]]
 - [[MOC - 08 Low-Latency Programming]]
 
 ## Sources

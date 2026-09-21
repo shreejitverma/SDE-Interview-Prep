@@ -409,9 +409,9 @@ Total Trade Executions Emitted: 125000
 ---
 
 ## Related Notes
-- [[Notes/Order Book Data Structures]]
-- [[Notes/Matching Algorithms]]
-- [[Notes/Self-Match Prevention Mechanisms]]
-- [[Notes/Deterministic Matching Engine State Recovery]]
-- [[Notes/Allocation-Free Steady State Patterns]]
+- [[Order Book Data Structures]]
+- [[Matching Algorithms]]
+- [[Self-Match Prevention Mechanisms]]
+- [[Deterministic Matching Engine State Recovery]]
+- [[Allocation-Free Steady State Patterns]]
 - [[MOC - 03 Matching Engine Internals]]

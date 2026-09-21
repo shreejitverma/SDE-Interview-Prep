@@ -211,5 +211,5 @@ public:
 
 ## Sources
 - [[Sources/CME Simple Binary Encoding SBE Specification]]
-- [[Sources/CME MDP 3.0 Market Data Specification]]
+- [[CME MDP 3.0 Market Data Protocol Specification]]
 - [[Sources/Simple Binary Encoding Specification by FIX Trading Community]]

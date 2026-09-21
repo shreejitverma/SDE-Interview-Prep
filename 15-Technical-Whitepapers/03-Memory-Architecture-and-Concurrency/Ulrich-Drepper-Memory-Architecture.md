@@ -115,6 +115,6 @@ When multiple CPU cores share data across L1/L2 caches, the hardware enforces ca
 ## Related Notes
 - [[Concurrency-and-Threading-Debates|Concurrency and Threading Debates]]
 - [[Data-Structures-and-Memory-Opt|Data Structures and Memory Optimization]]
-- [[../../12-Performance-Engineering/01-Cpu-Architecture/false_sharing|12-Performance-Engineering: False Sharing Demo]]
+- [12-Performance-Engineering: False Sharing Demo](../../12-Performance-Engineering/01-Cpu-Architecture/false_sharing.cpp)
 - [[../01-Systems-Performance-and-Tracing/Brendan-Gregg-Performance-Canon|Brendan Gregg Performance Canon]]
 - [[../README|Technical Whitepapers Master MOC]]

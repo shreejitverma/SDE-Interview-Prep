@@ -208,5 +208,5 @@ UncrossResult calculate_uncross_price(std::vector<AuctionPriceLevel>& sorted_lev
 
 ## Sources
 - [[Sources/Trading and Exchanges by Larry Harris]]
-- [[Sources/The High-Frequency Trading Arms Race - Frequent Batch Auctions by Eric Budish et al]]
+- [[The High-Frequency Trading Arms Race by Eric Budish et al]]
 - [[Sources/NASDAQ TotalView-ITCH 5.0 Specification]]

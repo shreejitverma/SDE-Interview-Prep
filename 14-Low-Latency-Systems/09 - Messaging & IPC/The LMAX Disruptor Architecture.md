@@ -189,10 +189,10 @@ public:
 ---
 
 ## Related
-- [[Notes/Shared Memory IPC Topologies]]
-- [[Notes/Aeron Messaging Transport]]
-- [[Notes/Lock-Free SPSC Ring Buffer Design]]
-- [[Notes/False Sharing and Cache Contention]]
+- [[Shared Memory IPC Topologies]]
+- [[Aeron Messaging Transport]]
+- [[Lock-Free SPSC Ring Buffer Design]]
+- [[False Sharing and Cache Contention]]
 - [[MOC - 09 Messaging & IPC]]
 
 ## Sources

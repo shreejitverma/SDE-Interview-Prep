@@ -76,8 +76,8 @@ flowchart TD
 
 ## Related Notes
 - [[02 - Exchange Architecture/The Sequenced-Stream Architecture]]
-- [[03 - Matching Engine Internals/Matching Engine Architecture Overview]]
-- [[09 - Messaging & IPC/Lock-Free Ring Buffers and Disruptor Pattern]]
+- [[MOC - 03 Matching Engine Internals]]
+- [[The LMAX Disruptor Architecture]]
 - [[13 - Reliability, Ops & Testing/Disaster Recovery and High Availability Topologies]]
 - [[14 - Industry Map & Canon/MOC - 14 Industry Map & Canon]]
 

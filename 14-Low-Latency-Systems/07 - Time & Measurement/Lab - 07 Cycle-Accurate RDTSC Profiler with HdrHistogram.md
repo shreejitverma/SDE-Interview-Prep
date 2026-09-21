@@ -239,8 +239,8 @@ Total Samples Counted: Raw = 1000000 | Corrected = 1002499 (+ 2499 omitted sampl
 ---
 
 ## Related Notes
-- [[Notes/Coordinated Omission in Low Latency Systems]]
-- [[Notes/Clock Sources and Hardware Timestamping]]
-- [[Notes/One-Way Latency vs Round-Trip Time Measurement]]
-- [[Notes/CPU Timestamp Counter RDTSC Mechanics]]
+- [[Coordinated Omission in Low Latency Systems]]
+- [[Clock Sources and Hardware Timestamping]]
+- [[One-Way Latency vs Round-Trip Time Measurement]]
+- [[CPU Timestamp Counter RDTSC Mechanics]]
 - [[MOC - 07 Time & Measurement]]

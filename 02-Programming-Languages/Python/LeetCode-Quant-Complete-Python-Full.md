@@ -8851,7 +8851,7 @@ Design a data structure that can effectively answer queries about the frequency 
 ```
 Input
 ["RangeFreqQuery", "query", "rangeFreqQuery"]
-[[[12, 33, 4, 56, 22, 2, 34, 33, 22, 12, 34, 56]], [1, 2, 4], [0, 11, 33]]
+[`[[12, 33, 4, 56, 22, 2, 34, 33, 22, 12, 34, 56]]`, [1, 2, 4], [0, 11, 33]]
 Output
 [null, 0, 2]
 ```
@@ -9502,7 +9502,7 @@ Design a data structure that can query the majority element in a subarray. A maj
 ```
 Input
 ["MajorityChecker", "query"]
-[[[1, 1, 2, 2, 1, 1]], [0, 5, 4]]
+[`[[1, 1, 2, 2, 1, 1]]`, [0, 5, 4]]
 Output
 [null, 1]
 ```
@@ -10484,7 +10484,7 @@ Implement the StreamChecker class that checks if any suffix of the stream of cha
 ```
 Input
 ["StreamChecker", "query", "query", "query"]
-[[["cd","f","kl"]], ["a"], ["b"], ["c"]]
+[`[["cd","f","kl"]]`, ["a"], ["b"], ["c"]]
 Output
 [null, false, false, false]
 ```
@@ -10863,7 +10863,7 @@ In a town, there are n people labeled from 1 to n. There is a rumor that one of 
 
 **Test Cases:**
 ```
-Input: n = 2, trust = [[1,2]]
+Input: n = 2, trust = `[[1,2]]`
 Output: 2
 ```
 
@@ -10891,7 +10891,7 @@ def findJudge(n, trust):
     return -1
 
 # Test cases
-print(findJudge(2, [[1, 2]]))  # 2
+print(findJudge(2, `[[1, 2]]`))  # 2
 ```
 
 ---
@@ -11054,7 +11054,7 @@ def maxAreaOfIsland(grid):
     return max_area
 
 # Test cases
-# print(maxAreaOfIsland([[0,0,1,0,0]])) # 1
+# print(maxAreaOfIsland(`[[0,0,1,0,0]]`)) # 1
 ```
 
 ---
@@ -11247,7 +11247,7 @@ Return true if you can finish all courses. Otherwise, return false.
 
 **Test Cases:**
 ```
-Input: numCourses = 2, prerequisites = [[1,0]]
+Input: numCourses = 2, prerequisites = `[[1,0]]`
 Output: true
 ```
 
@@ -11286,7 +11286,7 @@ def canFinish(numCourses, prerequisites):
     return count == numCourses
 
 # Test cases
-print(canFinish(2, [[1, 0]]))  # True
+print(canFinish(2, `[[1, 0]]`))  # True
 ```
 
 ---

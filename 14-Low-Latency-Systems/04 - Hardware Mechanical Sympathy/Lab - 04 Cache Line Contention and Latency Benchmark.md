@@ -283,8 +283,8 @@ Speedup with Cache Padding:        9.50x FASTER
 ---
 
 ## Related Notes
-- [[Notes/Latency Numbers Every Trading Engineer Knows]]
-- [[Notes/CPU Cache Hierarchy and Line Alignment]]
-- [[Notes/False Sharing and Cache Contention]]
-- [[Notes/CPU Timestamp Counter RDTSC Mechanics]]
+- [[Latency Numbers Every Trading Engineer Knows]]
+- [[CPU Cache Hierarchy and Line Alignment]]
+- [[False Sharing and Cache Contention]]
+- [[CPU Timestamp Counter RDTSC Mechanics]]
 - [[MOC - 04 Hardware Mechanical Sympathy]]

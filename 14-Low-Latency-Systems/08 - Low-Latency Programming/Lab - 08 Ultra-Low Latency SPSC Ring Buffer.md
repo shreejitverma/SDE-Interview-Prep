@@ -305,9 +305,9 @@ Starting SPSC Benchmark on Pinned Cores (Core 2 -> Core 4)...
 ---
 
 ## Related Notes
-- [[Notes/Lock-Free SPSC Ring Buffer Design]]
-- [[Notes/C++ Memory Model and Memory Orders]]
-- [[Notes/Allocation-Free Steady State Patterns]]
-- [[Notes/False Sharing and Cache Contention]]
-- [[Notes/The LMAX Disruptor Architecture]]
+- [[Lock-Free SPSC Ring Buffer Design]]
+- [[C++ Memory Model and Memory Orders]]
+- [[Allocation-Free Steady State Patterns]]
+- [[False Sharing and Cache Contention]]
+- [[The LMAX Disruptor Architecture]]
 - [[MOC - 08 Low-Latency Programming]]

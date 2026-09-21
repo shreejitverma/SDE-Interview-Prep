@@ -186,10 +186,10 @@ void run_aeron_publisher() {
 ---
 
 ## Related
-- [[Notes/Shared Memory IPC Topologies]]
-- [[Notes/The LMAX Disruptor Architecture]]
-- [[Notes/The Sequenced-Stream Architecture]]
-- [[Notes/Lock-Free SPSC Ring Buffer Design]]
+- [[Shared Memory IPC Topologies]]
+- [[The LMAX Disruptor Architecture]]
+- [[The Sequenced-Stream Architecture]]
+- [[Lock-Free SPSC Ring Buffer Design]]
 - [[MOC - 09 Messaging & IPC]]
 
 ## Sources

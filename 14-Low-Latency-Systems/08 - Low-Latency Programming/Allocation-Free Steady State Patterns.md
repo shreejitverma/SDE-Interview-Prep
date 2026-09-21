@@ -215,11 +215,11 @@ void operator delete(void* ptr) noexcept {
 ---
 
 ## Related
-- [[Notes/C++ Memory Model and Memory Orders]]
-- [[Notes/Lock-Free SPSC Ring Buffer Design]]
-- [[Notes/Lock-Free MPMC Queue Mechanics]]
-- [[Notes/Cache-Conscious Data Layout]]
-- [[Notes/Order Book Data Structures]]
+- [[C++ Memory Model and Memory Orders]]
+- [[Lock-Free SPSC Ring Buffer Design]]
+- [[Lock-Free MPMC Queue Mechanics]]
+- [[Cache-Conscious Data Layout]]
+- [[Order Book Data Structures]]
 - [[MOC - 08 Low-Latency Programming]]
 
 ## Sources

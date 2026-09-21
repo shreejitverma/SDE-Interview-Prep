@@ -185,7 +185,7 @@ public:
 - [[06 - Networking/Network Interface Card Architecture]]
 - [[06 - Networking/Kernel Bypass Technologies Overview]]
 - [[02 - Exchange Architecture/Exchange Gateway Architecture]]
-- [[10 - Protocols & Codecs/NASDAQ OUCH Protocol Architecture]]
+- [[NASDAQ OUCH 4.2 Protocol Specification]]
 - [[06 - Networking/MOC - 06 Networking]]
 
 ## Sources

@@ -1270,7 +1270,7 @@ std::string newstr = str.substr(); // "Hello foo, bar and world!"
 Section 47.10: Accessing a character
 There are several ways to extract characters from a std::string and each is subtly diﬀerent.
 std::string str("Hello world!");
-operator[](n)
+operator`[](n)`
 Returns a reference to the character at index n.
 std::string::operator[] is not bounds-checked and does not throw an exception. The caller is responsible for
 asserting that the index is within the range of the string:

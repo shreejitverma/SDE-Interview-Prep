@@ -126,6 +126,6 @@ Matei Zaharia created **Resilient Distributed Datasets (RDDs)**:
 ## Related Notes
 - [[02-Distributed-Systems-and-Consensus|Distributed Systems and Consensus Mechanics]]
 - [[04-Databases-and-Transaction-Processing|Databases and Transaction Processing]]
-- [[../../08-Distinguished-Engineering/02-Distributed-Systems-Internals/consistent_hashing|08-Distinguished-Engineering: Consistent Hashing]]
-- [[../../08-Distinguished-Engineering/03-Database-Internals/lsm_tree|08-Distinguished-Engineering: LSM Tree]]
+- [08-Distinguished-Engineering: Consistent Hashing](../../08-Distinguished-Engineering/02-Distributed-Systems-Internals/consistent_hashing.py)
+- [08-Distinguished-Engineering: LSM Tree](../../08-Distinguished-Engineering/03-Database-Internals/lsm_tree.cpp)
 - [[README|Seminal Computer Science Papers MOC]]

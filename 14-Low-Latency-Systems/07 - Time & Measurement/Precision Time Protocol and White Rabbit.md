@@ -162,10 +162,10 @@ sudo phc2sys -s eth0 -c CLOCK_REALTIME -w -m -O 0
 ---
 
 ## Related
-- [[Notes/Clock Sources and Hardware Timestamping]]
-- [[Notes/One-Way Latency vs Round-Trip Time Measurement]]
-- [[Notes/Coordinated Omission in Low Latency Systems]]
-- [[Notes/Latency Numbers Every Trading Engineer Knows]]
+- [[Clock Sources and Hardware Timestamping]]
+- [[One-Way Latency vs Round-Trip Time Measurement]]
+- [[Coordinated Omission in Low Latency Systems]]
+- [[Latency Numbers Every Trading Engineer Knows]]
 - [[MOC - 07 Time & Measurement]]
 
 ## Sources

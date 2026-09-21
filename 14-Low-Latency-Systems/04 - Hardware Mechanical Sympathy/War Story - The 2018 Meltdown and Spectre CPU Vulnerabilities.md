@@ -85,7 +85,7 @@ flowchart LR
 ---
 
 ## Related Notes
-- [[04 - Hardware Mechanical Sympathy/CPU Pipeline Branch Prediction and Speculative Execution]]
+- [[Branch Predictors and Pipeline Stalls]]
 - [[06 - Networking/Kernel Bypass Technologies Overview]]
 - [[06 - Networking/Solarflare ef_vi Zero-Copy API]]
 - [[05 - OS & Kernel Tuning/Kernel Boot Parameters for Core Isolation]]

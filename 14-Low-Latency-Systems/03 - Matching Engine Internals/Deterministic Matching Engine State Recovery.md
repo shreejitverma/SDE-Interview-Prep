@@ -181,11 +181,11 @@ private:
 ---
 
 ## Related
-- [[Notes/Order Book Data Structures]]
-- [[Notes/Matching Algorithms]]
-- [[Notes/The Sequenced-Stream Architecture]]
-- [[Notes/Replicated State Machine Pattern in Exchanges]]
-- [[Notes/Deterministic Replay and Packet Injection Testing]]
+- [[Order Book Data Structures]]
+- [[Matching Algorithms]]
+- [[The Sequenced-Stream Architecture]]
+- [[Replicated State Machine Pattern in Exchanges]]
+- [[Deterministic Replay and Packet Injection Testing]]
 - [[MOC - 03 Matching Engine Internals]]
 - [[MOC - 02 Exchange Architecture]]
 

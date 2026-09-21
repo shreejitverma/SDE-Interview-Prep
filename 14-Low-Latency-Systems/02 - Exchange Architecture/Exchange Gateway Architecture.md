@@ -184,7 +184,7 @@ public:
 ## Related
 - [[02 - Exchange Architecture/Pre-Trade Risk Checks at Wire Speed]]
 - [[02 - Exchange Architecture/The Sequenced-Stream Architecture]]
-- [[10 - Protocols & Codecs/NASDAQ OUCH Protocol Architecture]]
+- [[NASDAQ OUCH 4.2 Protocol Specification]]
 - [[06 - Networking/Solarflare ef_vi Zero-Copy API]]
 - [[02 - Exchange Architecture/MOC - 02 Exchange Architecture]]
 

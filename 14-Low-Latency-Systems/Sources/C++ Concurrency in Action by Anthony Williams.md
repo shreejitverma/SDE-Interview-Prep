@@ -73,5 +73,5 @@ flowchart LR
 - [[08 - Low-Latency Programming/C++ Memory Model and Memory Orders]]
 - [[08 - Low-Latency Programming/Lock-Free SPSC and MPMC Queues]]
 - [[08 - Low-Latency Programming/Atomic Operations and Lock-Free Primitives]]
-- [[04 - Hardware Mechanical Sympathy/False Sharing and Cache Line Alignment]]
+- [[False Sharing and Cache Contention]]
 - [[14 - Industry Map & Canon/MOC - 14 Industry Map & Canon]]

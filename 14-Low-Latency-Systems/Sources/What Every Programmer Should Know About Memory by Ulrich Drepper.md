@@ -65,8 +65,8 @@ When multiple CPU cores access shared memory addresses:
 ---
 
 ## Related Notes
-- [[04 - Hardware Mechanical Sympathy/CPU Cache Hierarchy L1 L2 L3]]
+- [[CPU Cache Hierarchy and Line Alignment]]
 - [[04 - Hardware Mechanical Sympathy/Cache Coherence Protocols MESI MOESI]]
-- [[04 - Hardware Mechanical Sympathy/False Sharing and Cache Line Alignment]]
-- [[04 - Hardware Mechanical Sympathy/TLB Mechanics and HugePages]]
+- [[False Sharing and Cache Contention]]
+- [[TLB Architecture and Huge Pages]]
 - [[14 - Industry Map & Canon/MOC - 14 Industry Map & Canon]]

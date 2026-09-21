@@ -181,10 +181,10 @@ inline uint64_t rdtsc_end() noexcept {
 
 ## Related
 - [[MOC - 04 Hardware Mechanical Sympathy]]
-- [[Notes/CPU Cache Hierarchy and Line Alignment]]
-- [[Notes/False Sharing and Cache Contention]]
-- [[Notes/CPU Timestamp Counter RDTSC Mechanics]]
-- [[Notes/Kernel Boot Parameters for Core Isolation]]
+- [[CPU Cache Hierarchy and Line Alignment]]
+- [[False Sharing and Cache Contention]]
+- [[CPU Timestamp Counter RDTSC Mechanics]]
+- [[Kernel Boot Parameters for Core Isolation]]
 
 ## Sources
 - [[Sources/What Every Programmer Should Know About Memory by Ulrich Drepper]]

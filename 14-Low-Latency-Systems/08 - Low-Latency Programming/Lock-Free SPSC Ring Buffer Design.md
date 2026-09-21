@@ -214,11 +214,11 @@ public:
 ---
 
 ## Related
-- [[Notes/C++ Memory Model and Memory Orders]]
-- [[Notes/Lock-Free MPMC Queue Mechanics]]
-- [[Notes/Allocation-Free Steady State Patterns]]
-- [[Notes/False Sharing and Cache Contention]]
-- [[Notes/The LMAX Disruptor Architecture]]
+- [[C++ Memory Model and Memory Orders]]
+- [[Lock-Free MPMC Queue Mechanics]]
+- [[Allocation-Free Steady State Patterns]]
+- [[False Sharing and Cache Contention]]
+- [[The LMAX Disruptor Architecture]]
 - [[MOC - 08 Low-Latency Programming]]
 
 ## Sources

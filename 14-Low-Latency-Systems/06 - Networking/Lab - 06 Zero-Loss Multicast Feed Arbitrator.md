@@ -330,5 +330,5 @@ g++ -O3 -std=c++20 -pthread -march=native multicast_arbitrator_bench.cpp -o mult
 - [[06 - Networking/UDP Multicast Market Data and A-B Feed Arbitration]]
 - [[06 - Networking/Solarflare ef_vi Zero-Copy API]]
 - [[06 - Networking/DPDK Architecture for Trading]]
-- [[10 - Protocols & Codecs/NASDAQ ITCH 5.0 Protocol Architecture]]
+- [[NASDAQ ITCH 5.0 Protocol Specification]]
 - [[06 - Networking/MOC - 06 Networking]]

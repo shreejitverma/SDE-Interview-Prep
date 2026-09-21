@@ -158,10 +158,10 @@ struct UnalignedOrder {
 ---
 
 ## Related
-- [[Notes/Latency Numbers Every Trading Engineer Knows]]
-- [[Notes/False Sharing and Cache Contention]]
-- [[Notes/Cache-Conscious Data Layout]]
-- [[Notes/CPU Timestamp Counter RDTSC Mechanics]]
+- [[Latency Numbers Every Trading Engineer Knows]]
+- [[False Sharing and Cache Contention]]
+- [[Cache-Conscious Data Layout]]
+- [[CPU Timestamp Counter RDTSC Mechanics]]
 - [[MOC - 04 Hardware Mechanical Sympathy]]
 
 ## Sources

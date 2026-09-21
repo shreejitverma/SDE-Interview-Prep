@@ -47,5 +47,5 @@ flowchart TD
 ## Related Notes
 - [[../README|Technical Whitepapers Master MOC]]
 - [[../01-Systems-Performance-and-Tracing/Brendan-Gregg-Performance-Canon|Brendan Gregg Performance Canon]]
-- [[../../12-Performance-Engineering/01-Cpu-Architecture/false_sharing|12-Performance-Engineering: False Sharing Demo]]
+- [12-Performance-Engineering: False Sharing Demo](../../12-Performance-Engineering/01-Cpu-Architecture/false_sharing.cpp)
 - [[../../14-Low-Latency-Systems/04 - Hardware Mechanical Sympathy/MOC - 04 Hardware Mechanical Sympathy|14-Low-Latency-Systems: Hardware Mechanical Sympathy]]

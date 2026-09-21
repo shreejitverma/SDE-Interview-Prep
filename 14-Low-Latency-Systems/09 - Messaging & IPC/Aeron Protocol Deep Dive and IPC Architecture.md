@@ -182,7 +182,7 @@ public:
 ---
 
 ## Related Notes
-- [[09 - Messaging & IPC/Lock-Free Ring Buffers and Disruptor Pattern]]
+- [[The LMAX Disruptor Architecture]]
 - [[09 - Messaging & IPC/Shared Memory IPC Topologies]]
 - [[08 - Low-Latency Programming/Lock-Free SPSC and MPMC Queues]]
 - [[13 - Reliability, Ops & Testing/Disaster Recovery and High Availability Topologies]]
@@ -190,5 +190,5 @@ public:
 
 ## Sources
 - [[Sources/Aeron Open-Source High-Performance Messaging Specification]]
-- [[Sources/Designing for Hardware Mechanical Sympathy by Martin Thompson]]
+- [[Mechanical Sympathy by Martin Thompson]]
 - [[Sources/Systems Performance by Brendan Gregg]]

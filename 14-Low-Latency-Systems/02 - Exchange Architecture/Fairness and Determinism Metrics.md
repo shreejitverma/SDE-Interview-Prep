@@ -182,7 +182,7 @@ public:
 ---
 
 ## Related
-- [[07 - Time & Measurement/Latency Numbers Every Trading Engineer Knows]]
+- [[Latency Numbers Every Trading Engineer Knows]]
 - [[07 - Time & Measurement/Coordinated Omission in Low Latency Systems]]
 - [[07 - Time & Measurement/Clock Sources and Hardware Timestamping]]
 - [[02 - Exchange Architecture/The Sequenced-Stream Architecture]]

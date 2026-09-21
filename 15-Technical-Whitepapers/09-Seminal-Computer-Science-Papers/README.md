@@ -72,5 +72,5 @@ flowchart TD
 ## Related Notes
 - [[../README|Technical Whitepapers Master MOC]]
 - [[../10-Seminal-Low-Latency-Systems-Papers/README|Seminal Low-Latency Systems Papers MOC]]
-- [[../../08-Distinguished-Engineering/02-Distributed-Systems-Internals/raft_consensus|08-Distinguished-Engineering: Raft Consensus]]
-- [[../../08-Distinguished-Engineering/02-Distributed-Systems-Internals/consistent_hashing|08-Distinguished-Engineering: Consistent Hashing]]
+- [08-Distinguished-Engineering: Raft Consensus](../../08-Distinguished-Engineering/02-Distributed-Systems-Internals/raft_consensus.py)
+- [08-Distinguished-Engineering: Consistent Hashing](../../08-Distinguished-Engineering/02-Distributed-Systems-Internals/consistent_hashing.py)

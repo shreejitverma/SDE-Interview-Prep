@@ -188,5 +188,5 @@ endmodule
 
 ## Sources
 - [[Sources/PCI Express Base Specification Revision 5.0]]
-- [[Sources/Intel Data Direct I/O Technology (Intel DDIO) Architecture Guide]]
+- [[O Technology (Intel DDIO) Architecture Guide]]
 - [[Sources/FPGA-Based Trading Systems Architecture]]

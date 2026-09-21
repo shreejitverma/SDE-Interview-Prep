@@ -128,5 +128,5 @@ flowchart TD
 ## Related Notes
 - [[03-Cloud-Infrastructure-and-Big-Data|Cloud Infrastructure and Big Data Foundations]]
 - [[04-Databases-and-Transaction-Processing|Databases and Transaction Processing]]
-- [[../../08-Distinguished-Engineering/02-Distributed-Systems-Internals/raft_consensus|08-Distinguished-Engineering: Raft Consensus]]
+- [08-Distinguished-Engineering: Raft Consensus](../../08-Distinguished-Engineering/02-Distributed-Systems-Internals/raft_consensus.py)
 - [[README|Seminal Computer Science Papers MOC]]

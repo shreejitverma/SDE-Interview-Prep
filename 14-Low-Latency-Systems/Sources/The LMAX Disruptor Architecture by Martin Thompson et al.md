@@ -78,8 +78,8 @@ $$\text{Index} = \text{Sequence} \ \& \ (\text{Buffer Size} - 1)$$
 
 ## Related Notes
 - [[15-Technical-Whitepapers/10-Seminal-Low-Latency-Systems-Papers/02-Lock-Free-and-Wait-Free-Algorithms]]
-- [[04 - Hardware Mechanical Sympathy/CPU Cache Hierarchy L1 L2 L3]]
-- [[04 - Hardware Mechanical Sympathy/False Sharing and Cache Line Alignment]]
-- [[05 - Concurrency & Multithreading/Lock-Free Ring Buffers SPSC and MPMC]]
-- [[08 - Order Book & Matching Engine/Deterministic Matching Engine Architecture]]
+- [[CPU Cache Hierarchy and Line Alignment]]
+- [[False Sharing and Cache Contention]]
+- [[Lock-Free Ring Buffers SPSC and MPMC]]
+- [[Deterministic Matching Engine Architecture]]
 - [[14 - Industry Map & Canon/MOC - 14 Industry Map & Canon]]

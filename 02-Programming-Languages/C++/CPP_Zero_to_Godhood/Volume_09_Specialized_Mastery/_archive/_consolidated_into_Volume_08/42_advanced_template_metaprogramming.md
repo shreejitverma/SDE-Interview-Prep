@@ -970,7 +970,7 @@ std::popcount(x);              // Count 1 bits
 
 ## ATTRIBUTES & FEATURES
 
-### 11.1 [[assume]] Attribute
+### 11.1 `[[assume]]` Attribute
 
 `[[assume]]` allows providing hints to optimizer.
 
@@ -1000,7 +1000,7 @@ int* find_first(int* arr, int size) {
 ```
 
 
-### 11.2 [[stdcall]] and ABI Attributes
+### 11.2 `[[stdcall]]` and ABI Attributes
 
 ```cpp
 // Platform-specific calling conventions
@@ -1631,7 +1631,7 @@ Section 104.11: Incorrect pairing of memory allocation and deallocation
 Section 104.12: Signed Integer Overﬂow 
 Section 104.13: Multiple non-identical deﬁnitions (the One Deﬁnition Rule) 
 Section 104.14: Modifying a const object 
-Section 104.15: Returning from a [[noreturn]] function 
+Section 104.15: Returning from a `[[noreturn]]` function 
 Section 104.16: Inﬁnite template recursion 
 Section 104.17: Overﬂow during conversion to or from ﬂoating point type 
 Section 104.18: Modifying a string literal 

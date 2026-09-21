@@ -8,18 +8,18 @@ Attributes are advisory annotations the compiler may act on. The three covered h
 
 ## Table of Contents
 
-- [44.1 [[likely]] and [[unlikely]]](#441-likely-and-unlikely)
+- [44.1 `[[likely]]` and `[[unlikely]]`](#441-likely-and-unlikely)
 - [44.2 What the Branch Hints Actually Do](#442-what-the-branch-hints-actually-do)
 - [44.3 When to Use Branch Hints — and When Not To](#443-when-to-use-branch-hints--and-when-not-to)
-- [44.4 [[no_unique_address]]](#444-no_unique_address)
-- [44.5 [[no_unique_address]] in Practice: EBO Without Inheritance](#445-no_unique_address-in-practice-ebo-without-inheritance)
-- [44.6 [[nodiscard]] with a Message](#446-nodiscard-with-a-message)
+- [44.4 `[[no_unique_address]]`](#444-no_unique_address)
+- [44.5 `[[no_unique_address]]` in Practice: EBO Without Inheritance](#445-no_unique_address-in-practice-ebo-without-inheritance)
+- [44.6 `[[nodiscard]]` with a Message](#446-nodiscard-with-a-message)
 - [44.7 Attribute Placement and Portability](#447-attribute-placement-and-portability)
 - [44.8 Professional Insights](#448-professional-insights)
 
 ---
 
-## 44.1 [[likely]] and [[unlikely]]
+## 44.1 `[[likely]]` and `[[unlikely]]`
 
 `[[likely]]` and `[[unlikely]]` mark a statement or branch as the expected (or unexpected) execution path, hinting to the optimizer how to lay out code. They are the standardized form of GCC/Clang's `__builtin_expect`.
 
@@ -85,7 +85,7 @@ In short: branch hints are a precision tool for known-cold error paths and hot i
 
 ---
 
-## 44.4 [[no_unique_address]]
+## 44.4 `[[no_unique_address]]`
 
 `[[no_unique_address]]` tells the compiler that a non-static data member **need not have a distinct address** from other members, so an *empty* member can occupy **zero bytes**. This brings the Empty Base Optimization (EBO) to member subobjects, which previously had to occupy at least one byte.
 
@@ -113,7 +113,7 @@ Without the attribute, every member must have a unique address, so an empty memb
 
 ---
 
-## 44.5 [[no_unique_address]] in Practice: EBO Without Inheritance
+## 44.5 `[[no_unique_address]]` in Practice: EBO Without Inheritance
 
 The attribute's killer application is **stateless function objects** — comparators, hashers, deleters, allocators — stored as members. Historically, library authors inherited from these empty types (the EBO trick) to avoid the size cost; `[[no_unique_address]]` achieves the same thing by composition, which is cleaner and more flexible.
 
@@ -139,7 +139,7 @@ This is exactly how standard-library implementations keep `std::vector`'s alloca
 
 ---
 
-## 44.6 [[nodiscard]] with a Message
+## 44.6 `[[nodiscard]]` with a Message
 
 C++17's `[[nodiscard]]` warns when a function's return value is ignored. C++20 lets you attach an **explanatory string**: `[[nodiscard("reason")]]`, which the compiler includes in the diagnostic so the caller learns *why* the value matters.
 

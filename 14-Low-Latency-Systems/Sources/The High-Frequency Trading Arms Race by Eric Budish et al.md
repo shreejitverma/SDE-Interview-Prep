@@ -88,7 +88,7 @@ $$t_0, t_0 + \tau, t_0 + 2\tau, \dots$$
 
 ## Related Notes
 - [[15-Technical-Whitepapers/10-Seminal-Low-Latency-Systems-Papers/04-Market-Microstructure-and-Order-Dynamics]]
-- [[08 - Order Book & Matching Engine/Order Book Data Structures and Algorithms]]
-- [[08 - Order Book & Matching Engine/Matching Engine Core Logic and Execution]]
-- [[10 - Quantitative Strategies/Statistical Arbitrage and Pairs Trading]]
+- [[Order Book Data Structures]]
+- [[Matching Engine Core Logic and Execution]]
+- [[Statistical Arbitrage and Pairs Trading]]
 - [[14 - Industry Map & Canon/MOC - 14 Industry Map & Canon]]

@@ -156,11 +156,11 @@ inline void log_latency_budget(const TickToTradeProfile& p, double tsc_ghz) {
 ---
 
 ## Related
-- [[Notes/Clock Sources and Hardware Timestamping]]
-- [[Notes/Precision Time Protocol and White Rabbit]]
-- [[Notes/Coordinated Omission in Low Latency Systems]]
-- [[Notes/Latency Numbers Every Trading Engineer Knows]]
-- [[Notes/Tick-to-Trade Critical Path Optimization]]
+- [[Clock Sources and Hardware Timestamping]]
+- [[Precision Time Protocol and White Rabbit]]
+- [[Coordinated Omission in Low Latency Systems]]
+- [[Latency Numbers Every Trading Engineer Knows]]
+- [[Tick-to-Trade Critical Path Optimization]]
 - [[MOC - 07 Time & Measurement]]
 
 ## Sources

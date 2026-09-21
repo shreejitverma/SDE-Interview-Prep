@@ -161,11 +161,11 @@ int main() {
 ## Related
 - [[06 - Networking/Network Interface Card Architecture]]
 - [[06 - Networking/Switch Architectures in Trading]]
-- [[07 - Time & Measurement/Latency Numbers Every Trading Engineer Knows]]
+- [[Latency Numbers Every Trading Engineer Knows]]
 - [[07 - Time & Measurement/One-Way Latency vs Round-Trip Time Measurement]]
 - [[06 - Networking/MOC - 06 Networking]]
 
 ## Sources
-- [[Sources/Flash Boys by Michael Lewis (Spread Networks Fiber History)]]
+- [[Flash Boys by Michael Lewis]]
 - [[Sources/Corning SMF-28 Ultra Optical Fiber Specification]]
 - [[Sources/How to Build an Exchange by Jane Street]]

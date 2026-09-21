@@ -268,11 +268,11 @@ public:
 ---
 
 ## Related
-- [[Notes/Matching Algorithms]]
-- [[Notes/Self-Match Prevention Mechanisms]]
-- [[Notes/Allocation-Free Steady State Patterns]]
-- [[Notes/Deterministic Matching Engine State Recovery]]
-- [[Notes/Cache-Conscious Data Layout]]
+- [[Matching Algorithms]]
+- [[Self-Match Prevention Mechanisms]]
+- [[Allocation-Free Steady State Patterns]]
+- [[Deterministic Matching Engine State Recovery]]
+- [[Cache-Conscious Data Layout]]
 - [[MOC - 03 Matching Engine Internals]]
 
 ## Sources

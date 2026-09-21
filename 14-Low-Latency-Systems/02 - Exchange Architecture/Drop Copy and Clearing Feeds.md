@@ -183,7 +183,7 @@ public:
 ## Related
 - [[02 - Exchange Architecture/Exchange Gateway Architecture]]
 - [[02 - Exchange Architecture/Pre-Trade Risk Checks at Wire Speed]]
-- [[10 - Protocols & Codecs/NASDAQ OUCH Protocol Architecture]]
+- [[NASDAQ OUCH 4.2 Protocol Specification]]
 - [[09 - Messaging & IPC/The LMAX Disruptor Architecture]]
 - [[02 - Exchange Architecture/MOC - 02 Exchange Architecture]]
 

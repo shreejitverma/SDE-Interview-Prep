@@ -105,5 +105,5 @@ sequenceDiagram
 ## Related Notes
 - [[02-Distributed-Systems-and-Consensus|Distributed Systems and Consensus Mechanics]]
 - [[03-Cloud-Infrastructure-and-Big-Data|Cloud Infrastructure and Big Data Foundations]]
-- [[../../08-Distinguished-Engineering/03-Database-Internals/wal|08-Distinguished-Engineering: Write-Ahead Log (WAL)]]
+- [08-Distinguished-Engineering: Write-Ahead Log (WAL)](../../08-Distinguished-Engineering/03-Database-Internals/wal.cpp)
 - [[README|Seminal Computer Science Papers MOC]]

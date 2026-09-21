@@ -138,7 +138,7 @@ $$\text{Forwarding Latency} = \text{Time to receive 64 bytes} + \text{ASIC Pipel
 - [[06 - Networking/Network Interface Card Architecture]]
 - [[06 - Networking/UDP Multicast Market Data and A-B Feed Arbitration]]
 - [[06 - Networking/Colocation and Physical Layer Infrastructure]]
-- [[07 - Time & Measurement/Latency Numbers Every Trading Engineer Knows]]
+- [[Latency Numbers Every Trading Engineer Knows]]
 - [[06 - Networking/MOC - 06 Networking]]
 
 ## Sources

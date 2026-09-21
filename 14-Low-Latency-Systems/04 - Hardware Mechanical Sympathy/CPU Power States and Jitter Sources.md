@@ -198,10 +198,10 @@ echo "CPU frequency and C-states successfully locked to maximum performance."
 ---
 
 ## Related
-- [[Notes/Kernel Boot Parameters for Core Isolation]]
-- [[Notes/Linux Thread Pinning and Core Affinity]]
-- [[Notes/Latency Numbers Every Trading Engineer Knows]]
-- [[Notes/CPU Timestamp Counter RDTSC Mechanics]]
+- [[Kernel Boot Parameters for Core Isolation]]
+- [[Linux Thread Pinning and Core Affinity]]
+- [[Latency Numbers Every Trading Engineer Knows]]
+- [[CPU Timestamp Counter RDTSC Mechanics]]
 - [[MOC - 04 Hardware Mechanical Sympathy]]
 - [[MOC - 05 OS & Kernel Tuning]]
 

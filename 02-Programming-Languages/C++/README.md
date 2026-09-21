@@ -6,7 +6,7 @@ C++ is the primary language for **High-Frequency Trading (HFT)**, **Kernel Devel
 
 ## 📖 The "Zero to Godhood" Guide
 
-The cornerstone of this repository is the **[Complete-CPP-Zero-to-Godhood.md](./Complete-CPP-Zero-to-Godhood.md)**, a 520-page comprehensive manual organized by C++ versions and technical mastery.
+The cornerstone of this repository is the **[Complete-CPP-Zero-to-Godhood.md](./CPP_Zero_to_Godhood/Complete-CPP-Zero-to-Godhood.md)**, a 520-page comprehensive manual organized by C++ versions and technical mastery.
 
 ### 🏛️ Roadmap & Volume Structure
 
@@ -36,9 +36,9 @@ The cornerstone of this repository is the **[Complete-CPP-Zero-to-Godhood.md](./
 - **Safety**: Contracts, Erroneous Behavior, Vocabulary Types.
 
 ## 📂 Key Files
-- **[Complete-CPP-Zero-to-Godhood.md](./Complete-CPP-Zero-to-Godhood.md)**: The full technical manuscript.
-- **[Complete-CPP-Zero-to-Godhood.pdf](./Complete-CPP-Zero-to-Godhood.pdf)**: The compiled 520-page PDF edition.
+- **[Complete-CPP-Zero-to-Godhood.md](./CPP_Zero_to_Godhood/Complete-CPP-Zero-to-Godhood.md)**: The full technical manuscript.
+- **[Complete-CPP-Zero-to-Godhood.pdf](./CPP_Zero_to_Godhood/Complete-CPP-Zero-to-Godhood.pdf)**: The compiled 520-page PDF edition.
 - **[LeetCode-Quant-Complete-CPP-Full.md](./LeetCode-Quant-Complete-CPP-Full.md)**: Coding patterns and algorithms.
-- **[01-Modern-Cpp-for-Quants/](./01-Modern-Cpp-for-Quants/)**: Specialized interview examples.
+- **Quant interview material:** see [Appendix J: The Quantitative Developer's Toolkit](CPP_Zero_to_Godhood/Appendices/Appendix_J_Appendix_J_The_Quantitative_Developers_Toolkit.md).
 
 

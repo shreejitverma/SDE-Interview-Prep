@@ -14,7 +14,7 @@ created: 2026-08-22
 ## Why it matters
 In high-frequency trading engines and multi-threaded order routing fabrics, false sharing is one of the most insidious performance killers. It does not produce compiler errors, race conditions, or incorrect results—it simply destroys throughput by **80–95%** and injects massive tail-latency jitter.
 
-A classic example: in a Single-Producer Single-Consumer ([[Notes/Lock-Free SPSC Ring Buffer Design|SPSC Ring Buffer]]), if the producer's `write_index` and the consumer's `read_index` share a single 64-byte cache line, every single push and pop invalidates the other core's L1/L2 cache, degrading a 5 ns queue operation to a 35–50 ns interconnect stall.
+A classic example: in a Single-Producer Single-Consumer ([[Lock-Free SPSC Ring Buffer Design|SPSC Ring Buffer]]), if the producer's `write_index` and the consumer's `read_index` share a single 64-byte cache line, every single push and pop invalidates the other core's L1/L2 cache, degrading a 5 ns queue operation to a 35–50 ns interconnect stall.
 
 ```mermaid
 sequenceDiagram
@@ -158,10 +158,10 @@ struct alignas(hardware_destructive_interference_size) GoodQueueIndexes {
 ---
 
 ## Related
-- [[Notes/CPU Cache Hierarchy and Line Alignment]]
-- [[Notes/Latency Numbers Every Trading Engineer Knows]]
-- [[Notes/Lock-Free SPSC Ring Buffer Design]]
-- [[Notes/C++ Memory Model and Memory Orders]]
+- [[CPU Cache Hierarchy and Line Alignment]]
+- [[Latency Numbers Every Trading Engineer Knows]]
+- [[Lock-Free SPSC Ring Buffer Design]]
+- [[C++ Memory Model and Memory Orders]]
 - [[MOC - 04 Hardware Mechanical Sympathy]]
 
 ## Sources

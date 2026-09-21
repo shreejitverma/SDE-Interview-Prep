@@ -261,9 +261,9 @@ sudo ./os_jitter_profiler --tuned
 ---
 
 ## Related Notes
-- [[Notes/Kernel Boot Parameters for Core Isolation]]
-- [[Notes/Linux Thread Pinning and Core Affinity]]
-- [[Notes/Interrupt Routing and MSI-X Tuning]]
-- [[Notes/CPU Power States and Jitter Sources]]
-- [[Notes/Latency Numbers Every Trading Engineer Knows]]
+- [[Kernel Boot Parameters for Core Isolation]]
+- [[Linux Thread Pinning and Core Affinity]]
+- [[Interrupt Routing and MSI-X Tuning]]
+- [[CPU Power States and Jitter Sources]]
+- [[Latency Numbers Every Trading Engineer Knows]]
 - [[MOC - 05 OS & Kernel Tuning]]

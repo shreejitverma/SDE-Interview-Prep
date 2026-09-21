@@ -165,10 +165,10 @@ public:
 ---
 
 ## Related
-- [[Notes/Kernel Boot Parameters for Core Isolation]]
-- [[Notes/NUMA Topologies and Inter-Socket Jitter]]
-- [[Notes/CPU Cache Hierarchy and Line Alignment]]
-- [[Notes/Interrupt Routing and MSI-X Tuning]]
+- [[Kernel Boot Parameters for Core Isolation]]
+- [[NUMA Topologies and Inter-Socket Jitter]]
+- [[CPU Cache Hierarchy and Line Alignment]]
+- [[Interrupt Routing and MSI-X Tuning]]
 - [[MOC - 05 OS & Kernel Tuning]]
 
 ## Sources

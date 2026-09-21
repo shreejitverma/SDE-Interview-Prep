@@ -171,10 +171,10 @@ public:
 ---
 
 ## Related
-- [[Notes/Latency Numbers Every Trading Engineer Knows]]
-- [[Notes/Coordinated Omission in Low Latency Systems]]
-- [[Notes/One-Way Latency vs Round-Trip Time Measurement]]
-- [[Notes/Clock Sources and Hardware Timestamping]]
+- [[Latency Numbers Every Trading Engineer Knows]]
+- [[Coordinated Omission in Low Latency Systems]]
+- [[One-Way Latency vs Round-Trip Time Measurement]]
+- [[Clock Sources and Hardware Timestamping]]
 - [[MOC - 07 Time & Measurement]]
 
 ## Sources

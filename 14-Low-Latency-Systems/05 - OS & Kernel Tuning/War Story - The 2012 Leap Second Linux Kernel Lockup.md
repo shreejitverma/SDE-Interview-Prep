@@ -78,7 +78,7 @@ To ensure financial systems survive leap seconds without disruption, the electro
 
 ## Related Notes
 - [[07 - Time & Measurement/Clock Sources and Hardware Timestamping]]
-- [[07 - Time & Measurement/PTP IEEE 1588 and White Rabbit Network Synchronization]]
+- [[Precision Time Protocol and White Rabbit]]
 - [[05 - OS & Kernel Tuning/Kernel Boot Parameters for Core Isolation]]
 - [[13 - Reliability, Ops & Testing/Disaster Recovery and High Availability Topologies]]
 - [[14 - Industry Map & Canon/MOC - 14 Industry Map & Canon]]

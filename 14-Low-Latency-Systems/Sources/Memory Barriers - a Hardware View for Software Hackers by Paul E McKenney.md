@@ -91,8 +91,8 @@ flowchart TD
 
 ## Related Notes
 - [[15-Technical-Whitepapers/10-Seminal-Low-Latency-Systems-Papers/01-Memory-Models-and-Hardware-Coherence]]
-- [[04 - Hardware Mechanical Sympathy/CPU Cache Hierarchy L1 L2 L3]]
+- [[CPU Cache Hierarchy and Line Alignment]]
 - [[04 - Hardware Mechanical Sympathy/Cache Coherence Protocols MESI MOESI]]
-- [[05 - Concurrency & Multithreading/C++11 Memory Model and Atomic Operations]]
-- [[05 - Concurrency & Multithreading/Memory Fences and Compiler Barriers]]
+- [[C++ Memory Model and Memory Orders]]
+- [[Memory Fences and Compiler Barriers]]
 - [[14 - Industry Map & Canon/MOC - 14 Industry Map & Canon]]

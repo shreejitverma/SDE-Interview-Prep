@@ -79,6 +79,6 @@ flowchart TD
 ## Related Notes
 - [[02 - Exchange Architecture/The Sequenced-Stream Architecture]]
 - [[02 - Exchange Architecture/Replicated State Machine Pattern in Exchanges]]
-- [[03 - Matching Engine Internals/Matching Engine Architecture Overview]]
+- [[MOC - 03 Matching Engine Internals]]
 - [[13 - Reliability, Ops & Testing/Deterministic Replay and Packet Injection Testing]]
 - [[14 - Industry Map & Canon/MOC - 14 Industry Map & Canon]]

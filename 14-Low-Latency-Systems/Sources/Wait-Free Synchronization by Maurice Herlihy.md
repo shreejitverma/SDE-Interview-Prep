@@ -81,7 +81,7 @@ Herlihy proved a constructive theorem: **Any deterministic sequential object wit
 
 ## Related Notes
 - [[15-Technical-Whitepapers/10-Seminal-Low-Latency-Systems-Papers/02-Lock-Free-and-Wait-Free-Algorithms]]
-- [[05 - Concurrency & Multithreading/Atomic Operations and Lock-Free Programming]]
-- [[05 - Concurrency & Multithreading/Lock-Free Ring Buffers SPSC and MPMC]]
-- [[08 - Order Book & Matching Engine/Deterministic Matching Engine Architecture]]
+- [[Atomic Operations and Lock-Free Programming]]
+- [[Lock-Free Ring Buffers SPSC and MPMC]]
+- [[Deterministic Matching Engine Architecture]]
 - [[14 - Industry Map & Canon/MOC - 14 Industry Map & Canon]]

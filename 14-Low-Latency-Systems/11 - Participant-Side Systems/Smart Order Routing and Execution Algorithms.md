@@ -201,4 +201,4 @@ public:
 ## Sources
 - [[Sources/Empirical Market Microstructure by Joel Hasbrouck]]
 - [[Sources/Trading and Exchanges by Larry Harris]]
-- [[Sources/Flash Boys by Michael Lewis (IEX Speed Bump Mechanics)]]
+- [[Flash Boys by Michael Lewis]]

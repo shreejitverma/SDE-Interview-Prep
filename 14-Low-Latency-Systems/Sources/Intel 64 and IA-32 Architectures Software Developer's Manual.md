@@ -94,7 +94,7 @@ inline uint64_t rdtsc_end() noexcept {
 
 ## Related Notes
 - [[07 - Time & Measurement/CPU Timestamp Counter RDTSC Mechanics]]
-- [[04 - Hardware Mechanical Sympathy/CPU Pipeline Branch Prediction and Speculative Execution]]
-- [[04 - Hardware Mechanical Sympathy/False Sharing and Cache Line Alignment]]
+- [[Branch Predictors and Pipeline Stalls]]
+- [[False Sharing and Cache Contention]]
 - [[10 - Protocols & Codecs/Zero-Copy and In-Place Parsing Techniques]]
 - [[14 - Industry Map & Canon/MOC - 14 Industry Map & Canon]]

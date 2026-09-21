@@ -196,10 +196,10 @@ void match_aggressive_buy(Order* aggressor,
 ---
 
 ## Related
-- [[Notes/Order Book Data Structures]]
-- [[Notes/Self-Match Prevention Mechanisms]]
-- [[Notes/Deterministic Matching Engine State Recovery]]
-- [[Notes/Allocation-Free Steady State Patterns]]
+- [[Order Book Data Structures]]
+- [[Self-Match Prevention Mechanisms]]
+- [[Deterministic Matching Engine State Recovery]]
+- [[Allocation-Free Steady State Patterns]]
 - [[MOC - 03 Matching Engine Internals]]
 
 ## Sources

@@ -89,6 +89,6 @@ $$r^b(s, q, t) = r(s, q, t) - \frac{1}{2} \left[ \frac{2}{\gamma}\ln\left(1 + \f
 ## Related Notes
 - [[15-Technical-Whitepapers/10-Seminal-Low-Latency-Systems-Papers/04-Market-Microstructure-and-Order-Dynamics]]
 - [[Sources/The Microstructure of Financial Markets by Rama Cont and Sasha Stoikov]]
-- [[08 - Order Book & Matching Engine/Order Book Data Structures and Algorithms]]
-- [[10 - Quantitative Strategies/Market Making Models and Inventory Management]]
+- [[Order Book Data Structures]]
+- [[Market Making Models and Inventory Management]]
 - [[14 - Industry Map & Canon/MOC - 14 Industry Map & Canon]]

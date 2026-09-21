@@ -365,9 +365,9 @@ sudo ./shm_ipc_bench --producer 2
 ---
 
 ## Related Notes
-- [[Notes/Shared Memory IPC Topologies]]
-- [[Notes/The LMAX Disruptor Architecture]]
-- [[Notes/Aeron Messaging Transport]]
-- [[Notes/The Sequenced-Stream Architecture]]
-- [[Notes/Lock-Free SPSC Ring Buffer Design]]
+- [[Shared Memory IPC Topologies]]
+- [[The LMAX Disruptor Architecture]]
+- [[Aeron Messaging Transport]]
+- [[The Sequenced-Stream Architecture]]
+- [[Lock-Free SPSC Ring Buffer Design]]
 - [[MOC - 09 Messaging & IPC]]

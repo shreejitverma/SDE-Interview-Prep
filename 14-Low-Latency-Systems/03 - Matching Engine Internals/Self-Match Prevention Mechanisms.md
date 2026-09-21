@@ -192,10 +192,10 @@ inline bool handle_self_match_prevention(Order* taker, Order* maker, PriceLevel&
 ---
 
 ## Related
-- [[Notes/Order Book Data Structures]]
-- [[Notes/Matching Algorithms]]
-- [[Notes/Deterministic Matching Engine State Recovery]]
-- [[Notes/Order Types and State Transitions]]
+- [[Order Book Data Structures]]
+- [[Matching Algorithms]]
+- [[Deterministic Matching Engine State Recovery]]
+- [[Order Types and State Transitions]]
 - [[MOC - 03 Matching Engine Internals]]
 - [[MOC - 01 Market & Microstructure Fundamentals]]
 

@@ -172,10 +172,10 @@ public:
 ---
 
 ## Related
-- [[Notes/Clock Sources and Hardware Timestamping]]
-- [[Notes/Precision Time Protocol and White Rabbit]]
-- [[Notes/One-Way Latency vs Round-Trip Time Measurement]]
-- [[Notes/Latency Numbers Every Trading Engineer Knows]]
+- [[Clock Sources and Hardware Timestamping]]
+- [[Precision Time Protocol and White Rabbit]]
+- [[One-Way Latency vs Round-Trip Time Measurement]]
+- [[Latency Numbers Every Trading Engineer Knows]]
 - [[MOC - 07 Time & Measurement]]
 
 ## Sources

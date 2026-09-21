@@ -1867,7 +1867,7 @@ Section 8.4: Array size: type safe at compile time
 //----------------------------------- Machinery:
 using Size = ptrdiff_t;
 template< class Item, size_t n >
-constexpr auto n_items( Item [&](n) ) noexcept
+constexpr auto n_items( Item `[&](n)` ) noexcept
 -> Size
 { return n; }
 //----------------------------------- Usage:

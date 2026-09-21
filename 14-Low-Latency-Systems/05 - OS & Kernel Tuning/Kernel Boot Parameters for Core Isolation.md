@@ -170,10 +170,10 @@ sudo reboot
 ---
 
 ## Related
-- [[Notes/Linux Thread Pinning and Core Affinity]]
-- [[Notes/Interrupt Routing and MSI-X Tuning]]
-- [[Notes/CPU Power States and Jitter Sources]]
-- [[Notes/Memory Locking and Zero Page Faults]]
+- [[Linux Thread Pinning and Core Affinity]]
+- [[Interrupt Routing and MSI-X Tuning]]
+- [[CPU Power States and Jitter Sources]]
+- [[Memory Locking and Zero Page Faults]]
 - [[MOC - 05 OS & Kernel Tuning]]
 
 ## Sources

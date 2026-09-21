@@ -12,7 +12,7 @@ We are very happy that you consider implementing algorithms and data structures 
 
 - You did your work - no plagiarism allowed
   - Any plagiarized work will not be merged.
-- Your work will be distributed under [MIT License](LICENSE.md) once your pull request is merged
+- Your work will be distributed under [MIT License](../../../03-Data-Structures-Algorithms/02-Practice-Platforms/LeetCode/LICENSE.md) once your pull request is merged
 - Your submitted work fulfils or mostly fulfils our styles and standards
 
 __New implementation__ is welcome! For example, new solutions for a problem, different representations for a graph data structure or algorithm designs with different complexity but __identical implementation__ of an existing implementation is not allowed. Please check whether the solution is already implemented or not before submitting your pull request.

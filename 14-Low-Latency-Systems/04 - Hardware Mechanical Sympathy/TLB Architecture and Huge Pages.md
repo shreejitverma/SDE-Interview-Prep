@@ -180,10 +180,10 @@ void free_hugepage_2mb(void* ptr, size_t size_bytes) {
 ---
 
 ## Related
-- [[Notes/Latency Numbers Every Trading Engineer Knows]]
-- [[Notes/Kernel Boot Parameters for Core Isolation]]
-- [[Notes/Memory Locking and Zero Page Faults]]
-- [[Notes/Transparent Huge Pages vs Explicit HugeTLBFS]]
+- [[Latency Numbers Every Trading Engineer Knows]]
+- [[Kernel Boot Parameters for Core Isolation]]
+- [[Memory Locking and Zero Page Faults]]
+- [[Transparent Huge Pages vs Explicit HugeTLBFS]]
 - [[MOC - 04 Hardware Mechanical Sympathy]]
 - [[MOC - 05 OS & Kernel Tuning]]
 

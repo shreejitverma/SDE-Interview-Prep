@@ -150,5 +150,5 @@ When an engineer transitions between trading firms or builds an independent trad
 
 ## Sources
 - [[Sources/Defend Trade Secrets Act of 2016 (DTSA)]]
-- [[Sources/Flash Boys by Michael Lewis (Aleynikov Legal Background)]]
+- [[Flash Boys by Michael Lewis]]
 - [[Sources/How to Build an Exchange by Jane Street]]

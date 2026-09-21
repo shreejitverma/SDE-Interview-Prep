@@ -69,6 +69,6 @@ Harris provides a rigorous taxonomy of market execution instructions:
 ## Related Notes
 - [[01 - Market & Microstructure Fundamentals/Limit Order Book Mechanics]]
 - [[01 - Market & Microstructure Fundamentals/Price Discovery and Microstructure Noise]]
-- [[01 - Market & Microstructure Fundamentals/Order Types and Execution Semantics]]
+- [[Order Types and State Transitions]]
 - [[14 - Industry Map & Canon/The Quantitative Trading Firm Landscape]]
 - [[14 - Industry Map & Canon/MOC - 14 Industry Map & Canon]]

@@ -198,10 +198,10 @@ public:
 ---
 
 ## Related
-- [[Notes/The LMAX Disruptor Architecture]]
-- [[Notes/Aeron Messaging Transport]]
-- [[Notes/Lock-Free SPSC Ring Buffer Design]]
-- [[Notes/NUMA Topologies and Inter-Socket Jitter]]
+- [[The LMAX Disruptor Architecture]]
+- [[Aeron Messaging Transport]]
+- [[Lock-Free SPSC Ring Buffer Design]]
+- [[NUMA Topologies and Inter-Socket Jitter]]
 - [[MOC - 09 Messaging & IPC]]
 
 ## Sources

@@ -217,10 +217,10 @@ public:
 - [[06 - Networking/Network Interface Card Architecture]]
 - [[06 - Networking/Solarflare ef_vi Zero-Copy API]]
 - [[06 - Networking/DPDK Architecture for Trading]]
-- [[10 - Protocols & Codecs/NASDAQ ITCH 5.0 Protocol Architecture]]
+- [[NASDAQ ITCH 5.0 Protocol Specification]]
 - [[06 - Networking/MOC - 06 Networking]]
 
 ## Sources
 - [[Sources/NASDAQ TotalView-ITCH 5.0 Specification]]
-- [[Sources/CME MDP 3.0 Market Data Specification]]
+- [[CME MDP 3.0 Market Data Protocol Specification]]
 - [[Sources/Solarflare ef_vi User Guide]]

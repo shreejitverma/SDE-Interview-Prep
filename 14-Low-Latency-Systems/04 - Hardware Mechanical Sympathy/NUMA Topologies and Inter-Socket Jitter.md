@@ -192,11 +192,11 @@ void* allocate_numa_local_buffer(size_t size_bytes, int numa_node) {
 ---
 
 ## Related
-- [[Notes/Latency Numbers Every Trading Engineer Knows]]
-- [[Notes/CPU Cache Hierarchy and Line Alignment]]
-- [[Notes/False Sharing and Cache Contention]]
-- [[Notes/Linux Thread Pinning and Core Affinity]]
-- [[Notes/Kernel Boot Parameters for Core Isolation]]
+- [[Latency Numbers Every Trading Engineer Knows]]
+- [[CPU Cache Hierarchy and Line Alignment]]
+- [[False Sharing and Cache Contention]]
+- [[Linux Thread Pinning and Core Affinity]]
+- [[Kernel Boot Parameters for Core Isolation]]
 - [[MOC - 04 Hardware Mechanical Sympathy]]
 
 ## Sources

@@ -306,7 +306,7 @@ classDiagram
 
 ### Java Code
 
-[Java Code](../src/main/java/com/scaler/lld/pen/multipleclasses/)
+[Java Code](../design-questions/src/main/java/com/scaler/lld/pen/multipleclasses/)
 
 ### Improvements
   * `Single Responsibility Principle` is followed. Each class has a single responsibility.
@@ -355,7 +355,7 @@ classDiagram
 ```
 
 ### Java Code
-[Pen class with strategy](../src/main/java/com/scaler/lld/pen/withstrategy/Pen.java)
+[Pen class with strategy](../design-questions/src/main/java/com/scaler/lld/pen/withstrategy/Pen.java)
 
 ---
 
@@ -415,7 +415,7 @@ NonRefillablePen <|-- FountainPen
 ```
 
 ### Java Code
-[Pen class with abstract classes](../src/main/java/com/scaler/lld/pen/abstractclasses/)
+[Pen class with abstract classes](../design-questions/src/main/java/com/scaler/lld/pen/abstractclasses/)
 
 ### Improvements
   * `Liskov Substitution Principle` is followed since `FountainPen` does not have a refill, and it throws an exception when `changeRefill` is called.
@@ -476,7 +476,7 @@ classDiagram
 ```
 
 ### Java Code
-[Pen class with interface](../src/main/java/com/scaler/lld/pen/withinterface/)
+[Pen class with interface](../design-questions/src/main/java/com/scaler/lld/pen/withinterface/)
 
 ### Problems
   * Field duplication in child classes.

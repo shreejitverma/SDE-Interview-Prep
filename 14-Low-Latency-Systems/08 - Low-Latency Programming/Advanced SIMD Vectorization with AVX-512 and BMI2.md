@@ -174,7 +174,7 @@ Historically (on Intel Skylake-X / Cascade Lake), executing heavy 512-bit vector
 ## Related Notes
 - [[10 - Protocols & Codecs/SIMD-Accelerated Text Parsing]]
 - [[10 - Protocols & Codecs/Zero-Copy and In-Place Parsing Techniques]]
-- [[04 - Hardware Mechanical Sympathy/CPU Pipeline Branch Prediction and Speculative Execution]]
+- [[Branch Predictors and Pipeline Stalls]]
 - [[08 - Low-Latency Programming/C++ Memory Model and Memory Orders]]
 - [[14 - Industry Map & Canon/MOC - 14 Industry Map & Canon]]
 
