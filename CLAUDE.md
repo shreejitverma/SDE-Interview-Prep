@@ -9,6 +9,7 @@ Everything committed here is public; private job-search data lives in the privat
 - `tools/private_paths.py` is the single list of private locations; change it there, never in individual tools.
 - Never copy recruiter names, contact details, compensation, application status, or email content into a public note.
 - The Obsidian git plugin commits the whole vault automatically, so keep the pre-commit guard installed: `git config core.hooksPath tools/hooks`.
+- Third-party books, course notes, and paid course PDFs are never committed; they live in `career-ops/library/`. `.gitignore` blocks `*.pdf` and allowlists only the vault's own books and openly licensed files.
 
 ## Notes
 

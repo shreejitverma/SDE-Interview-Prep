@@ -8,16 +8,18 @@ sources: []
 ---
 
 ## Notes
-<!-- Table with .md and .pdf links -->
-| Name                         | .md                                    | .pdf                                    | Handwritten                                | MCQs                                  | Worksheet | Worksheet with Answers |
-| ---------------------------- | -------------------------------------- | --------------------------------------- | ------------------------------------------ | ------------------------------------- | --------- | ---------------------- |
-| Database Fundamentals        | [1](notes/01-database-fundamentals.md) | [2](notes/01-database-fundamentals.pdf) | [3](notes/01-database-fundamentals-hw.pdf) | [4](mcqs/01-database-fundamentals.md) | _ | _ |
-| Data Integrity & ER Diagrams | [1](notes/02-integrity-er-diagram.md)  | [2](notes/02-integrity-er-diagram.pdf)  | [3](notes/02-integrity-er-diagram-hw.pdf)  | [4](mcqs/02-integrity-er-diagram.md)  | _ | _ |
-| Data Normalisation and ACID  | [1](notes/03-normalisation-acid.md)    | [2](notes/03-normalisation-acid.pdf)    | [3](notes/03-normalisation-acid-hw.pdf)    | [4](mcqs/03-normalisation-acid.md)    |_ | _ |
-| Transactions and Indexes     | [1](notes/04-transactions-indexes.md)  | [2](notes/04-transactions-indexes.pdf)  | [3](notes/04-transactions-indexes-hw.pdf)  | _  | _ | _ |
-| SQL Primer                   | [1](notes/05-sql-primer.md)            | [2](notes/05-sql-primer.pdf)            | [3](notes/05-sql-primer-hw.pdf)            | _            | [5](notes/05-sql-primer-worksheet.md) | [6](notes/05-sql-primer-worksheet-answers.md) |
-| SQL Joins and Aggregation | [1](notes/06-sql-joins-aggregation.md) | [2](notes/06-sql-joins-aggregation.pdf) | [3](notes/06-sql-joins-aggregation-hw.pdf) | _ | [5](notes/06-sql-joins-aggregation-worksheet.md) | [6](notes/06-sql-joins-aggregation-worksheet-answers.md) |
-| Subqueries and Functions | [1](notes/07-subqueries-functions.md)  | [2](notes/07-subqueries-functions.pdf)  | [3](notes/07-subqueries-functions-hw.pdf)  | _  | [5](notes/07-subqueries-functions-worksheet.md) | [6](notes/07-subqueries-functions-worksheet-answers.md) |
+<!-- Table with .md links -->
+| Name                         | .md                                    | MCQs                                  | Worksheet | Worksheet with Answers |
+| ---------------------------- | -------------------------------------- | ------------------------------------- | --------- | ---------------------- |
+| Database Fundamentals        | [1](notes/01-database-fundamentals.md) | [4](mcqs/01-database-fundamentals.md) | _ | _ |
+| Data Integrity & ER Diagrams | [1](notes/02-integrity-er-diagram.md)  | [4](mcqs/02-integrity-er-diagram.md)  | _ | _ |
+| Data Normalisation and ACID  | [1](notes/03-normalisation-acid.md)    | [4](mcqs/03-normalisation-acid.md)    |_ | _ |
+| Transactions and Indexes     | [1](notes/04-transactions-indexes.md)  | _  | _ | _ |
+| SQL Primer                   | [1](notes/05-sql-primer.md)            | _            | [5](notes/05-sql-primer-worksheet.md) | [6](notes/05-sql-primer-worksheet-answers.md) |
+| SQL Joins and Aggregation | [1](notes/06-sql-joins-aggregation.md) | _ | [5](notes/06-sql-joins-aggregation-worksheet.md) | [6](notes/06-sql-joins-aggregation-worksheet-answers.md) |
+| Subqueries and Functions | [1](notes/07-subqueries-functions.md)  | _  | [5](notes/07-subqueries-functions-worksheet.md) | [6](notes/07-subqueries-functions-worksheet-answers.md) |
+
+Lecture PDFs and handwritten notes from the original course are not redistributed here; the Markdown notes and MCQs cover the same material.
 
 
 ## Assignments

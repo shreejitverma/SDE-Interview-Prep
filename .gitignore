@@ -31,3 +31,27 @@ cmake-build-release/
 
 # Local task backlog written by tasks-axi; personal, never public
 backlog.md
+
+# Third-party PDFs are never republished here (they live in the private
+# career-ops library). Only the vault's own books and openly licensed ones
+# are allowlisted; add a negation after checking the license.
+*.pdf
+*.PDF
+!02-Programming-Languages/C++/CPP_Zero_to_Godhood/*.pdf
+!02-Programming-Languages/C++/CPlusPlusNotesForProfessionals.pdf
+!02-Programming-Languages/Python/Python_Zero_to_Godhood/*.pdf
+
+# Images downloaded by the Python threading and multiprocessing demos
+02-Programming-Languages/Python/python\ in\ depth/Python/*/photo-*.jpg
+
+# Obsidian plugin code is reinstalled per machine; settings stay tracked
+.obsidian/plugins/*/main.js
+.obsidian/plugins/*/styles.css
+
+# Editor and build output
+.idea/
+.vscode/
+.gemini/
+*.o
+*.obj
+*.class
