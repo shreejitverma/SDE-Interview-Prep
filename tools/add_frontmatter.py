@@ -22,7 +22,7 @@ import argparse
 import re
 import sys
 from collections import Counter
-from pathlib import Path, PurePosixPath
+from pathlib import Path
 
 import audit_vault as av
 from vault_schema import tracks_for
