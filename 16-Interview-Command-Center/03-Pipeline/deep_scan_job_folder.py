@@ -7,7 +7,6 @@ and extracting real job applications, recruiter conversations, OAs, and rejectio
 
 import subprocess
 import json
-import re
 import os
 import sys
 

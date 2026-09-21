@@ -6,7 +6,6 @@ archived pipelines, and company intelligence dossiers.
 """
 
 import os
-import json
 
 VAULT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ACTIVE_DIR = os.path.join(VAULT_ROOT, "03-Pipeline", "Active")

@@ -1,9 +1,7 @@
 #!/usr/bin/env python3
 import subprocess
 import json
-import re
 import os
-from datetime import datetime
 
 ACCOUNTS_FOLDERS = [
     ("Exchange", ["Interviews", "Rejections", "In Progress", "GA Job", "BigInterview", "Career Brew", "Bloomberg", "Ford", "Inbox"]),

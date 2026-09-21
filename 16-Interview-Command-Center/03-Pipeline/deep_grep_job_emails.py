@@ -16,7 +16,6 @@ import json
 import re
 import os
 import sys
-from datetime import datetime
 
 IGNORE_SENDERS = [
     "notifications@github.com",

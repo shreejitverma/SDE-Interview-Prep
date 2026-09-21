@@ -11,10 +11,8 @@ Modes:
 import os
 import sys
 import json
-import re
 import argparse
 import subprocess
-from datetime import datetime, timedelta
 
 # Target vault directories
 PIPELINE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -123,10 +121,10 @@ def is_job_related(subject, sender, snippet):
     return any(k in combined for k in JOB_KEYWORDS)
 
 def sync(mode="daily"):
-    print(f"\n=======================================================")
+    print("\n=======================================================")
     print(f"🚀 Running Job Email Sync [MODE: {mode.upper()}]")
-    print(f"Connected to macOS Apple Mail across 9 accounts")
-    print(f"=======================================================\n")
+    print("Connected to macOS Apple Mail across 9 accounts")
+    print("=======================================================\n")
 
     limit = 20 if mode == "daily" else 60
     results = []
