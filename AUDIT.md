@@ -8,7 +8,7 @@ Re-run the script after every structural change; this file is its output and sho
 
 | Check | Result |
 | :--- | ---: |
-| Tracked files | 15511 |
+| Tracked files | 15510 |
 | Markdown notes | 1322 |
 | Internal links checked | 8313 |
 | Broken links (links into private locations are not counted) | 684 |
@@ -35,7 +35,7 @@ Re-run the script after every structural change; this file is its output and sho
 | `01-CS-Foundations` | 205 | 59 | 59 | 57 | 30 | 139.7 | 2026-07-24 |
 | `02-Programming-Languages` | 5832 | 764 | 2856 | 482 | 1730 | 422.6 | 2026-08-22 |
 | `03-Data-Structures-Algorithms` | 7733 | 66 | 7506 | 27 | 134 | 29.5 | 2026-01-26 |
-| `04-System-Design` | 1229 | 58 | 719 | 143 | 309 | 706.4 | 2026-07-24 |
+| `04-System-Design` | 1228 | 58 | 719 | 142 | 309 | 706.2 | 2026-07-24 |
 | `05-Quantitative-Finance` | 9 | 1 | 7 | 1 | 0 | 12.1 | 2026-01-26 |
 | `06-Interview-Prep` | 3 | 3 | 0 | 0 | 0 | 0.0 | 2026-01-26 |
 | `07-Project-Portfolio` | 1 | 1 | 0 | 0 | 0 | 0.0 | 2026-01-26 |
@@ -47,7 +47,7 @@ Re-run the script after every structural change; this file is its output and sho
 | `13-Agentic-AI` | 121 | 121 | 0 | 0 | 0 | 2.2 | 2026-07-24 |
 | `14-Low-Latency-Systems` | 148 | 148 | 0 | 0 | 0 | 1.6 | 2026-09-18 |
 | `15-Technical-Whitepapers` | 44 | 44 | 0 | 0 | 0 | 0.3 | 2026-09-18 |
-| `16-Interview-Command-Center` | 40 | 40 | 0 | 0 | 0 | 0.1 | 2026-09-21 |
+| `16-Interview-Command-Center` | 40 | 40 | 0 | 0 | 0 | 0.1 | 2026-09-18 |
 | `CS-Subjects` | 1 | 1 | 0 | 0 | 0 | 0.0 | 2025-12-04 |
 | `tools` | 4 | 1 | 3 | 0 | 0 | 0.0 | 2026-09-21 |
 

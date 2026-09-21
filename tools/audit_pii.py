@@ -12,6 +12,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import os
 import re
 import subprocess
 import sys
@@ -60,11 +61,16 @@ def scan_text(text: str) -> Counter:
 def history_deleted_paths(repo: Path) -> list[str]:
     """Deleted paths still reachable in history that look private."""
     out = subprocess.run(
-        ["git", "log", "--all", "--diff-filter=D", "--name-only", "--format="],
+        ["git", "-c", "core.quotePath=false", "log", "--all", "--diff-filter=D", "--name-only", "--format="],
         cwd=repo, check=True, capture_output=True, text=True,
     ).stdout
     suspicious = re.compile(r"(?i)(gmail -|receipt|invoice|subscription|resume|offer letter|pipeline|extracted_emails)")
     return sorted({p for p in out.splitlines() if p and suspicious.search(p)})
+
+
+def is_inside(path: Path, repo: Path) -> bool:
+    """True if path or any existing ancestor is the repo, by file identity (catches case variants and symlinks)."""
+    return any(p.exists() and os.path.samefile(p, repo) for p in (path, *path.parents))
 
 
 def main() -> int:
@@ -75,7 +81,7 @@ def main() -> int:
 
     repo = args.repo.resolve()
     out = args.out.expanduser().resolve()
-    if out == repo or repo in out.parents:
+    if is_inside(out, repo):
         print(f"error: refusing to write PII report inside the public repo: {out}", file=sys.stderr)
         return 2
 

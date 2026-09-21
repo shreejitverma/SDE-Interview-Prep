@@ -101,7 +101,7 @@ def has_frontmatter(text: str) -> bool:
 class Resolver:
     def __init__(self, files: list[str]):
         self.files = set(files)
-        self.files_lower = {f.lower() for f in files}
+        self.files_lower = {f.lower(): f for f in files}
         self.dirs = {str(PurePosixPath(f).parent) for f in files}
         for f in files:  # every ancestor directory exists too
             p = PurePosixPath(f).parent
@@ -129,9 +129,7 @@ class Resolver:
         norm = "/".join(parts)
         if norm in self.files or norm in self.dirs:
             return norm
-        if norm.lower() in self.files_lower:
-            return norm
-        return None
+        return self.files_lower.get(norm.lower())
 
     def wiki(self, src: str, raw: str) -> str | None | bool:
         """Return the resolved path, None if broken, True if it is a same-note anchor."""
@@ -197,7 +195,7 @@ def last_touched(repo: Path) -> dict[str, str]:
     """Most recent commit date per tracked path, in one pass over history."""
     seen: dict[str, str] = {}
     current = ""
-    for line in git(repo, "log", "--format=@%cs", "--name-only", "--no-renames").splitlines():
+    for line in git(repo, "-c", "core.quotePath=false", "log", "--format=@%cs", "--name-only", "--no-renames").splitlines():
         if line.startswith("@"):
             current = line[1:]
         elif line and line not in seen:
