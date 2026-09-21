@@ -216,6 +216,7 @@
   },
   "active": "25e9a2f618275701",
   "lastOpenFiles": [
+    "backlog.md",
     "16-Interview-Command-Center/03-Pipeline/__pycache__/sync_job_emails.cpython-314.pyc",
     "16-Interview-Command-Center/03-Pipeline/__pycache__/generate_vault_trackers.cpython-314.pyc",
     "16-Interview-Command-Center/03-Pipeline/__pycache__/extract_mail_history.cpython-314.pyc",
@@ -251,7 +252,6 @@
     "14-Low-Latency-Systems/Sources",
     "14-Low-Latency-Systems/14 - Industry Map & Canon",
     "14-Low-Latency-Systems/13 - Reliability, Ops & Testing",
-    "14-Low-Latency-Systems/12 - FPGAs & Hardware Acceleration",
     "02-Programming-Languages/C++/CPP_Zero_to_Godhood/C++ Zero to Godhood: Complete Evolution and Comprehensive Feature Guide.mindnode/QuickLook/Preview.jpg"
   ]
 }
