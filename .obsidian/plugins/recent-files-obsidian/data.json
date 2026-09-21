@@ -1,6 +1,18 @@
 {
   "recentFiles": [
     {
+      "basename": "Chapter_01_What_Is_An_Agent",
+      "path": "13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_03_Tool_Use_and_the_Agent_Loop/Chapter_01_What_Is_An_Agent.md"
+    },
+    {
+      "basename": "Chapter_01_The_API_Layer",
+      "path": "13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_02_Working_With_LLMs/Chapter_01_The_API_Layer.md"
+    },
+    {
+      "basename": "Chapter_01_From_N_Grams_to_Neural_Language_Models",
+      "path": "13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_01_LLM_Foundations/Chapter_01_From_N_Grams_to_Neural_Language_Models.md"
+    },
+    {
       "basename": "Market Fragmentation and Reg NMS",
       "path": "14-Low-Latency-Systems/01 - Market & Microstructure Fundamentals/Market Fragmentation and Reg NMS.md"
     }
