@@ -214,8 +214,15 @@
       "obsidian-git:Open Git source control": false
     }
   },
-  "active": "e7a7b303c61786dc",
+  "active": "25e9a2f618275701",
   "lastOpenFiles": [
+    "16-Interview-Command-Center/03-Pipeline/__pycache__/sync_job_emails.cpython-314.pyc",
+    "16-Interview-Command-Center/03-Pipeline/__pycache__/generate_vault_trackers.cpython-314.pyc",
+    "16-Interview-Command-Center/03-Pipeline/__pycache__/extract_mail_history.cpython-314.pyc",
+    "16-Interview-Command-Center/03-Pipeline/__pycache__/deep_scan_job_folder.cpython-314.pyc",
+    "16-Interview-Command-Center/03-Pipeline/__pycache__/deep_grep_job_emails.cpython-314.pyc",
+    "16-Interview-Command-Center/03-Pipeline/__pycache__/build_complete_vault_dataset.cpython-314.pyc",
+    "16-Interview-Command-Center/03-Pipeline/__pycache__",
     "13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_02_Working_With_LLMs/Chapter_01_The_API_Layer.md",
     "13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_01_LLM_Foundations/Chapter_01_From_N_Grams_to_Neural_Language_Models.md",
     "14-Low-Latency-Systems/01 - Market & Microstructure Fundamentals/Market Fragmentation and Reg NMS.md",
@@ -241,17 +248,10 @@
     "14-Low-Latency-Systems/Sources/C++ Concurrency in Action by Anthony Williams.md",
     "14-Low-Latency-Systems/Sources/How to Build an Exchange by Jane Street.md",
     "14-Low-Latency-Systems/Sources/What Every Programmer Should Know About Memory by Ulrich Drepper.md",
-    "14-Low-Latency-Systems/Sources/Systems Performance by Brendan Gregg.md",
     "14-Low-Latency-Systems/Sources",
     "14-Low-Latency-Systems/14 - Industry Map & Canon",
     "14-Low-Latency-Systems/13 - Reliability, Ops & Testing",
     "14-Low-Latency-Systems/12 - FPGAs & Hardware Acceleration",
-    "14-Low-Latency-Systems/11 - Participant-Side Systems",
-    "14-Low-Latency-Systems/10 - Protocols & Codecs",
-    "14-Low-Latency-Systems/09 - Messaging & IPC",
-    "14-Low-Latency-Systems/08 - Low-Latency Programming",
-    "14-Low-Latency-Systems/07 - Time & Measurement",
-    "14-Low-Latency-Systems/06 - Networking",
     "02-Programming-Languages/C++/CPP_Zero_to_Godhood/C++ Zero to Godhood: Complete Evolution and Comprehensive Feature Guide.mindnode/QuickLook/Preview.jpg"
   ]
 }
