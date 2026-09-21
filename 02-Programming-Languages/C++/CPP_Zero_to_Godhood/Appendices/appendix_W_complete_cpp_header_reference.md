@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Appendix W: THE COMPLETE C++ HEADER REFERENCE (Head First Edition)
 
 If you read cppreference.com, you are presented with a massive list of headers like `<cstddef>` and `<cwchar>`. What do they actually do? Which ones are legacy C trash, and which ones are modern C++ gold? 

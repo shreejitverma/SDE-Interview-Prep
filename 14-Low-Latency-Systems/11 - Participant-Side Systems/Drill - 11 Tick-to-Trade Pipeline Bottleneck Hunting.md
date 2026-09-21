@@ -4,9 +4,14 @@ aliases: [Drill 11, Bottleneck Hunting Drill, Latency Profiling Drill, Perf Prof
 status: evergreen
 module: 11
 created: 2026-08-22
+type: playbook
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
-# Drill 11 — Tick-to-Trade Pipeline Bottleneck Hunting & Tail Spike Triage
+# Drill 11 - Tick-to-Trade Pipeline Bottleneck Hunting & Tail Spike Triage
 
 > [!summary]
 > Principal-level performance engineering drill simulating an urgent latency investigation: your firm's market making engine exhibits an excellent median software turnaround of 45ns, but suffers intermittent **2.8-microsecond ($p99.9$) tail spikes** during macro volatility bursts. Attempt each diagnostic phase before unfolding the solution.

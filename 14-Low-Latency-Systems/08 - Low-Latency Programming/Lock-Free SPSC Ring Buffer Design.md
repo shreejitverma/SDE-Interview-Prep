@@ -4,6 +4,11 @@ aliases: [SPSC Ring Buffer, Lock-Free SPSC, Circular Buffer, Single Producer Sin
 status: evergreen
 module: 08
 created: 2026-08-22
+type: concept
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
 > [!summary]
@@ -12,7 +17,7 @@ created: 2026-08-22
 ---
 
 ## Why it matters
-In high-frequency execution pipelines (e.g., handing off incoming market data from a kernel-bypass network thread to a strategy pricing thread), traditional mutexes (`std::mutex`) or multi-producer queues (`std::condition_variable`, MPMC queues) are far too slow—they introduce context switching and atomic CAS bus locking (**50–2,000 ns penalty**).
+In high-frequency execution pipelines (e.g., handing off incoming market data from a kernel-bypass network thread to a strategy pricing thread), traditional mutexes (`std::mutex`) or multi-producer queues (`std::condition_variable`, MPMC queues) are far too slow - they introduce context switching and atomic CAS bus locking (**50–2,000 ns penalty**).
 
 A properly designed SPSC ring buffer:
 1. Is **Wait-Free**: Guarantees completion in a finite number of deterministic instructions without loops or retries.
@@ -214,11 +219,11 @@ public:
 ---
 
 ## Related
-- [[Notes/C++ Memory Model and Memory Orders]]
-- [[Notes/Lock-Free MPMC Queue Mechanics]]
-- [[Notes/Allocation-Free Steady State Patterns]]
-- [[Notes/False Sharing and Cache Contention]]
-- [[Notes/The LMAX Disruptor Architecture]]
+- [[C++ Memory Model and Memory Orders]]
+- [[Lock-Free MPMC Queue Mechanics]]
+- [[Allocation-Free Steady State Patterns]]
+- [[False Sharing and Cache Contention]]
+- [[The LMAX Disruptor Architecture]]
 - [[MOC - 08 Low-Latency Programming]]
 
 ## Sources

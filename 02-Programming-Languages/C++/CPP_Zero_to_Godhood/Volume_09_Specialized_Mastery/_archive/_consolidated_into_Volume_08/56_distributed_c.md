@@ -8,7 +8,7 @@ Moving beyond a single process: Networking, RPC, and Consensus.
 
 When you send an object (like a `User` class) over the network, you can't just send the memory address. The address `0x123` on your computer doesn't mean anything to another computer across the world.
 
-Instead, you have to **Serialize** it. This is like taking a LEGO castle, breaking it down into individual bricks, putting them in a numbered box with instructions, and shipping it. The receiver then **Deserializes** it—rebuilding the castle brick-by-brick.
+Instead, you have to **Serialize** it. This is like taking a LEGO castle, breaking it down into individual bricks, putting them in a numbered box with instructions, and shipping it. The receiver then **Deserializes** it - rebuilding the castle brick-by-brick.
 
 #### 1.1 Serialization (Binary Protocols)
 

@@ -1,3 +1,12 @@
+---
+type: moc
+track: [ai-eng]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Volume 13 - Coding Agents and Computer Use
 
 Software engineering was the first domain where agents crossed from demo to daily infrastructure.

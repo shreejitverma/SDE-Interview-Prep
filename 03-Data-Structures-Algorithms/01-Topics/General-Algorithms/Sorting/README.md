@@ -1,3 +1,12 @@
+---
+type: moc
+track: [sde, quant-dev]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Analysis of QuickSort
 Analysing QuickSort over a randomly generated array.
 

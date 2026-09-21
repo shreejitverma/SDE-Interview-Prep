@@ -1,3 +1,12 @@
+---
+type: moc
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # A naive recursive implementation of 0-1 Knapsack Problem
 
 This overview is taken from:

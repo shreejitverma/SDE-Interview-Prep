@@ -289,7 +289,7 @@ struct pseudo_method {
   friend decltype(auto) operator->*( Variant&& var, pseudo_method const& method ) {
     // var->*method returns a lambda that perfect forwards a function call,
     // behaving like a method pointer basically:
-    return [&](auto&&...args)->decltype(auto) {
+    return `[&](auto&&...args)`->decltype(auto) {
       // use visit to get the type of the variant:
       return std::visit(
         [&](auto&& self)->decltype(auto) {

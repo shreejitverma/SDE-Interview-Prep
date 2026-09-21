@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Window functions worksheet
 
 1. Print the student names along with the number of students in their batch.

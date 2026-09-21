@@ -1,3 +1,12 @@
+---
+type: pattern
+track: [sde, distinguished]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Factory design pattern
 
 ## Key terms
@@ -12,7 +21,7 @@
 
 ## Factory
 
-> The factory method pattern is a creational pattern that uses factory methods to deal with the problem of creating objects without having to specify the exact class of the object that will be created. This is done by creating objects by calling a factory method—either specified in an interface and implemented by child classes, or implemented in a base class and optionally overridden by derived classes—rather than by calling a constructor.
+> The factory method pattern is a creational pattern that uses factory methods to deal with the problem of creating objects without having to specify the exact class of the object that will be created. This is done by creating objects by calling a factory method - either specified in an interface and implemented by child classes, or implemented in a base class and optionally overridden by derived classes - rather than by calling a constructor.
 
 In our previous session, we learnt how to use the prototype to create a clone of the object. One of the motivations for using the prototype is to create a new object without having to know the exact class of the object that will be created. For an instance, there is an external library that we want to use in our application. We don't know the exact class of the object that will be created. We just know that the object will have a method called `doSomething()`. We can use the prototype to create a new object without having to know the exact class of the object that will be created. The library will provide us with a prototype object that we can use to create a new object. But if the library does not expose the prototype object, we will create a prototype object ourselves and use it to create a new object.
 

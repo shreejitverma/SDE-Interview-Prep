@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 42: Regular Expressions Engine Internals (`re`, `sre_compile`)
 
 Regular expressions are a language within a language. While most developers use them as black boxes, the CPython `re` module is a sophisticated engine that translates patterns into a custom bytecode executed by a specialized virtual machine.

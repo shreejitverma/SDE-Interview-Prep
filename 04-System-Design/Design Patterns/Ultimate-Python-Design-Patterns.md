@@ -1,3 +1,12 @@
+---
+type: pattern
+track: [sde, distinguished]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # The Ultimate Python Design Patterns Guide: From Basics to Advanced Mastery
 
 ## Table of Contents
@@ -163,7 +172,7 @@ Ensures a class has **only one instance** and provides a **global access point**
 ### When to Use
 
 - Logging, configuration, database connections
-- But use sparingly—can hurt testability
+- But use sparingly - can hurt testability
 
 ### Implementation 1: Class-Based (Classic)
 
@@ -3128,7 +3137,7 @@ class Service:
 
 ---
 
-**Master these 40+ patterns and write professional, maintainable Python code!** 🚀
+**Master these 40+ patterns and write professional, maintainable Python code!**
 
 *Last Updated: December 2025*
 *Python Version: 3.8+*

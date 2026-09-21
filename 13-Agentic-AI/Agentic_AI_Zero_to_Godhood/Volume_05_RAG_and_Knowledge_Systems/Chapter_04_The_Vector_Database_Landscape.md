@@ -1,3 +1,12 @@
+---
+type: concept
+track: [ai-eng]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 04 - The Vector Database Landscape
 
 All product observations in this chapter are stated as of early 2026 and will rot; verify current capabilities before deciding.

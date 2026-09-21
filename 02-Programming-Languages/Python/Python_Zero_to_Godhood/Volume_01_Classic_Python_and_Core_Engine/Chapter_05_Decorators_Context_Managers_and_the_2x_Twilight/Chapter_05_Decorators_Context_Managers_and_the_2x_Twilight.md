@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 5: Decorators, Context Managers, and the 2.x Twilight (Python 2.4–2.7)
 
 The late 2.x line added three features that turned Python's first-class functions and frames
@@ -21,7 +30,7 @@ in the bytecode the 3.13 interpreter actually emits.
 ## 5.1 Decorators: composition made declarative (PEP 318, PEP 3129)
 
 **Why this exists.** Before Python 2.4, wrapping a function meant defining it and then
-rebinding the name — with the transformation written *after* and *away from* the definition:
+rebinding the name - with the transformation written *after* and *away from* the definition:
 
 ```python
 # Pre-2.4 idiom: the wrapping is separated from the definition.
@@ -68,7 +77,7 @@ __name__ preserved: target
 
 The result `dec1(dec2(target))` is exactly the bottom-up composition
 $\text{target} = \text{dec1}(\text{dec2}(\text{target}))$. The bytecode makes the mechanism
-explicit — the decorators are loaded, the function is built, then the calls are applied
+explicit - the decorators are loaded, the function is built, then the calls are applied
 outermost-last:
 
 ```text
@@ -88,12 +97,12 @@ applied by separate `SET_FUNCTION_ATTRIBUTE` opcodes when needed), and the call 
 unified `CALL`, not the pre-3.11 `CALL_FUNCTION`. Older texts showing `CALL_FUNCTION 1` predate
 3.11.
 
-**`functools.wraps` is not optional.** A naive wrapper replaces the function's identity — its
+**`functools.wraps` is not optional.** A naive wrapper replaces the function's identity - its
 `__name__`, `__doc__`, `__qualname__`, `__wrapped__`, and `__module__` all become the
 wrapper's. `@functools.wraps(f)` copies them across so introspection, tracebacks, and tools
 still see the original. Omitting it is the single most common decorator bug.
 
-**Decorators with arguments** are decorator *factories* — a function returning a decorator:
+**Decorators with arguments** are decorator *factories* - a function returning a decorator:
 
 ```python
 # Caption: a parameterized decorator is a function that returns a decorator.
@@ -121,27 +130,27 @@ Verified output (CPython 3.13.5):
 ```
 
 **Class decorators (PEP 3129, Python 2.6)** apply the same rule to a class: after the class
-object is built, it is passed through the decorator — `Model = class_decorator(Model)`. This is
+object is built, it is passed through the decorator - `Model = class_decorator(Model)`. This is
 how `@dataclass`, `@functools.total_ordering`, and registration decorators work (Vol IV).
 
 **When not to use a decorator.** When the transformation needs to compose state across many
 call sites, or to be configurable per instance, a descriptor (Chapter 4) or an explicit
 wrapper object is clearer. And a decorator that changes a function's *signature* without
-updating its metadata breaks tooling — prefer `functools.wraps` plus, for strict cases,
+updating its metadata breaks tooling - prefer `functools.wraps` plus, for strict cases,
 `inspect.signature` preservation.
 
 ---
 
 ## 5.2 Context managers and `with` (PEP 343)
 
-**Why this exists.** Resource cleanup that must happen *regardless of how a block exits* — close
-a file, release a lock, roll back a transaction — is exactly what C++ expresses with RAII and
+**Why this exists.** Resource cleanup that must happen *regardless of how a block exits* - close
+a file, release a lock, roll back a transaction - is exactly what C++ expresses with RAII and
 destructors. Python's reference-counting finalization (Chapter 2) is too imprecise to rely on
 for this (and useless across cycles), so **PEP 343** added the `with` statement and the
 **context-manager protocol**:
 
-- `__enter__(self)` — acquire; its return value is bound to the `as` target.
-- `__exit__(self, exc_type, exc_val, exc_tb)` — release. On a clean exit all three are `None`.
+- `__enter__(self)` - acquire; its return value is bound to the `as` target.
+- `__exit__(self, exc_type, exc_val, exc_tb)` - release. On a clean exit all three are `None`.
   On an exception they carry its details; **returning a truthy value suppresses the
   exception**, a falsy value (including `None`) lets it propagate.
 
@@ -199,7 +208,7 @@ The VM implements this with dedicated opcodes (`BEFORE_WITH`/`WITH_EXCEPT_START`
 CPython) and the frame's **exception table** (3.11+) rather than the older runtime block stack,
 but the guarantee is identical: `__exit__` runs on every exit path.
 
-**`contextlib.contextmanager`** lets you write a context manager as a single generator —
+**`contextlib.contextmanager`** lets you write a context manager as a single generator - 
 everything before `yield` is `__enter__`, the `finally` is `__exit__`:
 
 ```python
@@ -229,7 +238,7 @@ Verified output (CPython 3.13.5):
 `contextlib` adds the rest of the toolkit: `suppress(exc)` (swallow specific exceptions),
 `closing(obj)` (call `.close()` on exit), `ExitStack` (dynamically manage a variable number of
 context managers), and `nullcontext`. The full `contextlib` reference lives in Vol X; here the
-point is the *protocol* and that it is Python's deterministic-cleanup primitive — use it for
+point is the *protocol* and that it is Python's deterministic-cleanup primitive - use it for
 every OS resource instead of trusting `__del__`.
 
 ---
@@ -237,18 +246,18 @@ every OS resource instead of trusting `__del__`.
 ## 5.3 Generator coroutines: `send`, `throw`, `close` (PEP 342)
 
 **Why this exists.** Python 2.5's **PEP 342** upgraded generators from one-way producers into
-two-way **coroutines** — a suspended frame you can resume *with a value*, inject an exception
+two-way **coroutines** - a suspended frame you can resume *with a value*, inject an exception
 into, or shut down. This is the conceptual seed of `async`/`await` (Vol III): a coroutine is a
 frame whose execution can pause at a point and continue later.
 
 The protocol adds three methods to a generator:
 
-- **`.send(value)`** — resume the generator; the paused `yield` *expression* evaluates to
+- **`.send(value)`** - resume the generator; the paused `yield` *expression* evaluates to
   `value`. `.send(None)` is equivalent to `next()`; you must prime a fresh generator with
   `next()` (or `.send(None)`) before sending a real value.
-- **`.throw(exc)`** — raise `exc` at the suspended `yield` point, letting the generator handle
+- **`.throw(exc)`** - raise `exc` at the suspended `yield` point, letting the generator handle
   or clean up.
-- **`.close()`** — raise `GeneratorExit` at the `yield` point; the generator should release
+- **`.close()`** - raise `GeneratorExit` at the `yield` point; the generator should release
   resources and return.
 
 ```python
@@ -305,7 +314,7 @@ the 2.5 milestone and develop the full iterator/coroutine model in Vol III.
   bare `try`/`finally` for one-off, local cleanup.
 - **Prime your coroutines.** Calling `.send(non_None)` on an un-primed generator raises
   `TypeError: can't send non-None value to a just-started generator`. A priming decorator
-  (`next(gen)` on creation) is a common pattern — superseded in practice by `async`/`await`
+  (`next(gen)` on creation) is a common pattern - superseded in practice by `async`/`await`
   for new code.
 - **Don't swallow exceptions silently** in `__exit__`: returning a truthy value suppresses
   *all* matching exceptions, which can hide bugs. Suppress narrowly (check `exc_type`) or use
@@ -319,10 +328,10 @@ the 2.5 milestone and develop the full iterator/coroutine model in Vol III.
   decorators are factories; class decorators (PEP 3129) apply the same rule to classes. Always
   use **`functools.wraps`**.
 - **Context managers** (`__enter__`/`__exit__`) are Python's **deterministic cleanup**
-  primitive — RAII built on a guaranteed `try`/finally; `__exit__` returning truthy suppresses
+  primitive - RAII built on a guaranteed `try`/finally; `__exit__` returning truthy suppresses
   the exception. `contextlib` provides generator-based managers and a toolkit.
 - **Generator coroutines** (PEP 342) add `send`/`throw`/`close`, making a generator a
-  **suspendable, resumable frame** — the conceptual origin of `async`/`await`.
+  **suspendable, resumable frame** - the conceptual origin of `async`/`await`.
 - The modern bytecode for all three (`MAKE_FUNCTION`/`CALL`, `BEFORE_WITH`, generator
   suspension via `f_lasti`) differs from pre-3.11 listings; read `dis`, not folklore.
 
@@ -331,5 +340,5 @@ counting vs. deterministic cleanup → Chapter 2. Descriptors (an alternative to
 attribute behavior) → Chapter 4. `yield from`, full iterator/generator semantics, and native
 coroutines → Vol III, Ch 9 and Ch 11. `dataclass` and `total_ordering` class decorators →
 Vol IV. The full `contextlib` reference → Vol X. **CPython container internals** (list
-overallocation, dict/set/tuple layout and free lists — covered in this chapter's archived
+overallocation, dict/set/tuple layout and free lists - covered in this chapter's archived
 source §5.4) → Vol XII (data-structures internals).

@@ -1,4 +1,13 @@
-# 📋 Quant Research Study Plan — 10-Week Sprint
+---
+type: playbook
+track: [sde, quant-dev, quant-research, low-latency, ai-eng, distinguished]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
+# Quant Research Study Plan - 10-Week Sprint
 
 ## Week 1-2: Probability Foundations
 - [ ] Combinatorics: permutations, combinations, stars and bars, inclusion-exclusion

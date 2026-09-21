@@ -1,7 +1,16 @@
-# STYLE.md — The Canonical Style Guide for *Python Zero to Godhood*
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
+# STYLE.md - The Canonical Style Guide for *Python Zero to Godhood*
 
 This file is the single source of truth for voice, terminology, notation, and code
-conventions across the entire book. Every chapter — combined or authored — conforms
+conventions across the entire book. Every chapter - combined or authored - conforms
 to it. Update it deliberately, never ad hoc.
 
 ---
@@ -56,14 +65,14 @@ to it. Update it deliberately, never ad hoc.
    ("See Vol VII, Ch 20 for the free-threaded model").
 
 ### The depth bar (every major topic must include)
-- **Motivation & model** — the problem and what the runtime actually does.
-- **Senior-engineer contrast** — vs. C++/Java/Go where it illuminates.
+- **Motivation & model** - the problem and what the runtime actually does.
+- **Senior-engineer contrast** - vs. C++/Java/Go where it illuminates.
 - **Precise semantics & mechanics.**
-- **Worked examples** — minimal → production-realistic, all runnable.
-- **Performance & memory** — object overhead, allocations, refcount/GC, GIL/free-threading,
+- **Worked examples** - minimal → production-realistic, all runnable.
+- **Performance & memory** - object overhead, allocations, refcount/GC, GIL/free-threading,
   big-O *and* constant factors where they matter.
 - **Interactions, anti-patterns, and when NOT to use it.**
-- **Old-vs-new** for version features — the pre-feature idiom and why it was inadequate.
+- **Old-vs-new** for version features - the pre-feature idiom and why it was inadequate.
 
 ## 4. Code Conventions
 
@@ -78,7 +87,7 @@ to it. Update it deliberately, never ad hoc.
   interpreter. REPL transcripts use `pycon`.
 - **Version gating:** if a construct requires a newer interpreter than the verification
   interpreter, label it `# Requires Python 3.X+` and mark the chapter note
-  *"not executed here — requires 3.X; verified against PEP NNN / What's New."*
+  *"not executed here - requires 3.X; verified against PEP NNN / What's New."*
 - **C source** (CPython internals) is shown with `c` fencing and labelled as illustrative /
   version-specific, with the file it derives from (e.g. `Objects/object.c`). When a struct
   has changed across versions, say so and point to current reality.
@@ -102,13 +111,13 @@ to it. Update it deliberately, never ad hoc.
 - `\begin{lstlisting}[language=Python, caption={...}]` for code (set `language` per listing;
   use `language=C` for C, and a plain verbatim style for transcripts/diagrams).
 - `\textbf{}` for key terms on first introduction; `itemize`/`enumerate` for lists.
-- Emit only the chapter body, from `\chapter{}` onward. The preamble already exists — never
+- Emit only the chapter body, from `\chapter{}` onward. The preamble already exists - never
   emit `\documentclass`, `\usepackage`, or `\begin{document}`.
 
 ## 7. One Home Per Topic
 
 A feature is taught in depth in **exactly one** canonical chapter; everywhere else
-cross-references it. Canonical homes (authoritative — see the master coverage matrix):
+cross-references it. Canonical homes (authoritative - see the master coverage matrix):
 
 - **Free-threading / GIL model** → Vol VII (3.13 free-threaded build).
 - **Descriptors / MRO / metaclasses (the model)** → Vol VIII; Vol I Ch 4 keeps the
@@ -121,11 +130,11 @@ cross-references it. Canonical homes (authoritative — see the master coverage 
 ## 8. Recurring Example Domains
 
 Reuse a small set of domains so examples compound rather than scatter:
-- **Trading / market microstructure** (order books, ticks, fixed-point prices) — the HPC
+- **Trading / market microstructure** (order books, ticks, fixed-point prices) - the HPC
   through-line and the Vol IX capstone.
-- **Text & encoding** (Unicode, bytes, protocols) — for the data/encoding chapters.
-- **Geometry / vectors** (`Vec2`, `Point`) — for the data-model and operator chapters.
-- **A small task scheduler** — for the concurrency/async chapters.
+- **Text & encoding** (Unicode, bytes, protocols) - for the data/encoding chapters.
+- **Geometry / vectors** (`Vec2`, `Point`) - for the data-model and operator chapters.
+- **A small task scheduler** - for the concurrency/async chapters.
 
 ## 9. Cross-Reference Notation
 

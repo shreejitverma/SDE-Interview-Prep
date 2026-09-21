@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Window Functions and Indexes
 ## Agenda
 - [Window Functions and Indexes](#window-functions-and-indexes)

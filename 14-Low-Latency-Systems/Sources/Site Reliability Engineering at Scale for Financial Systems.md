@@ -4,16 +4,21 @@ aliases: [SRE for Financial Systems, Financial Reliability, Financial SRE Canon,
 status: evergreen
 module: 14
 created: 2026-08-22
+type: paper
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
-# Source Summary — Site Reliability Engineering at Scale for Financial Systems
+# Source Summary - Site Reliability Engineering at Scale for Financial Systems
 **Category**: Site Reliability Engineering (SRE), Exchange Operations & High-Availability Topologies  
 **Context**: Best Practices from Global Exchange Operators & Tier-1 Electronic Trading Firms
 
 ---
 
 ## Executive Summary & Core Thesis
-*Site Reliability Engineering for Financial Systems* synthesizes the operational, architectural, and failure-domain principles required to operate mission-critical trading infrastructure. Unlike standard web SRE—where 99.9% availability allows for 43 minutes of downtime per month—**financial infrastructure mandates continuous zero-data-loss availability during trading hours, where a 5-second failure can destroy millions in capital or corrupt exchange state**.
+*Site Reliability Engineering for Financial Systems* synthesizes the operational, architectural, and failure-domain principles required to operate mission-critical trading infrastructure. Unlike standard web SRE - where 99.9% availability allows for 43 minutes of downtime per month - **financial infrastructure mandates continuous zero-data-loss availability during trading hours, where a 5-second failure can destroy millions in capital or corrupt exchange state**.
 
 This canon defines the operational doctrines of **Deterministic Replicated State Machines (RSM), non-bypassable pre-trade risk gates, automated hardware kill-switches, and zero-overhead telemetry**.
 
@@ -51,7 +56,7 @@ flowchart TD
 
 1. **Continuous Automated Latency CI Gates**: Mandate that every software merge passes through an isolated bare-metal performance testbed verifying that $p50$ and $p99.9$ latency regressions are strictly under 10 nanoseconds.
 2. **Post-Mortem Root Cause Analysis (RCA)**: Treat every production reject, microsecond latency spike, or unexpected failover as a critical incident. Conduct rigorous "5-Whys" post-mortems and enforce permanent, code-level regression assertions.
-3. **Deterministic Disaster Simulation**: Regularly subject trading and exchange gateways to synthetic chaos tests—injecting 5% multicast packet loss, out-of-order sequence arrivals, and abrupt socket buffer fills—to verify automated recovery mechanisms.
+3. **Deterministic Disaster Simulation**: Regularly subject trading and exchange gateways to synthetic chaos tests - injecting 5% multicast packet loss, out-of-order sequence arrivals, and abrupt socket buffer fills - to verify automated recovery mechanisms.
 
 ---
 

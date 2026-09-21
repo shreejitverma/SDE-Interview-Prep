@@ -4,6 +4,11 @@ aliases: [Zero-Copy, In-Place Parsing, Unaligned Memory, BSWAP, Split-Cache Pena
 status: evergreen
 module: 10
 created: 2026-08-22
+type: concept
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
 > [!summary]

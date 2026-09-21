@@ -4,6 +4,11 @@ aliases: [Aeron Protocol, Aeron IPC, Martin Thompson Aeron, Log Buffers, Term Bu
 status: evergreen
 module: 09
 created: 2026-08-22
+type: concept
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
 > [!summary]
@@ -13,7 +18,7 @@ created: 2026-08-22
 
 ## Why it matters
 In distributed trading architectures and multi-process exchange infrastructures:
-- Traditional message brokers (RabbitMQ, Kafka, ZeroMQ) rely on operating system socket buffers, dynamic heap allocations, and heavy thread context switching—adding **50 to 500 microseconds of latency jitter**.
+- Traditional message brokers (RabbitMQ, Kafka, ZeroMQ) rely on operating system socket buffers, dynamic heap allocations, and heavy thread context switching - adding **50 to 500 microseconds of latency jitter**.
 - Custom in-house shared memory rings often suffer from lack of standardized backpressure handling, flow control, and loss recovery.
 
 **Aeron** solves this by providing:
@@ -182,7 +187,7 @@ public:
 ---
 
 ## Related Notes
-- [[09 - Messaging & IPC/Lock-Free Ring Buffers and Disruptor Pattern]]
+- [[The LMAX Disruptor Architecture]]
 - [[09 - Messaging & IPC/Shared Memory IPC Topologies]]
 - [[08 - Low-Latency Programming/Lock-Free SPSC and MPMC Queues]]
 - [[13 - Reliability, Ops & Testing/Disaster Recovery and High Availability Topologies]]
@@ -190,5 +195,5 @@ public:
 
 ## Sources
 - [[Sources/Aeron Open-Source High-Performance Messaging Specification]]
-- [[Sources/Designing for Hardware Mechanical Sympathy by Martin Thompson]]
+- [[Mechanical Sympathy by Martin Thompson]]
 - [[Sources/Systems Performance by Brendan Gregg]]

@@ -4,9 +4,14 @@ aliases: [Wait-Free Synchronization, Maurice Herlihy, Consensus Hierarchy, Lock-
 status: evergreen
 module: 14
 created: 2026-09-17
+type: paper
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
-# Source Summary — Wait-Free Synchronization
+# Source Summary - Wait-Free Synchronization
 **Author**: Maurice Herlihy (Professor of Computer Science, Brown University)  
 **Publication**: ACM Transactions on Programming Languages and Systems (TOPLAS, 1991)  
 **Category**: Concurrent Algorithms, Formal Theory, Lock-Free & Wait-Free Synchronization
@@ -81,7 +86,7 @@ Herlihy proved a constructive theorem: **Any deterministic sequential object wit
 
 ## Related Notes
 - [[15-Technical-Whitepapers/10-Seminal-Low-Latency-Systems-Papers/02-Lock-Free-and-Wait-Free-Algorithms]]
-- [[05 - Concurrency & Multithreading/Atomic Operations and Lock-Free Programming]]
-- [[05 - Concurrency & Multithreading/Lock-Free Ring Buffers SPSC and MPMC]]
-- [[08 - Order Book & Matching Engine/Deterministic Matching Engine Architecture]]
+- [[Atomic Operations and Lock-Free Programming]]
+- [[Lock-Free Ring Buffers SPSC and MPMC]]
+- [[Deterministic Matching Engine Architecture]]
 - [[14 - Industry Map & Canon/MOC - 14 Industry Map & Canon]]

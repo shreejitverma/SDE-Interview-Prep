@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # SOLID principles - Liskov, Interface Segregation, and Dependency Inversion
 
 ## Key Terms

@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 69: The Heart of the Machine: `ceval.c` and the Interpreter Loop
 
 To understand Python execution is to understand the main evaluation loop. In CPython, this resides in `Python/ceval.c`, specifically in the function `_PyEval_EvalFrameDefault`.

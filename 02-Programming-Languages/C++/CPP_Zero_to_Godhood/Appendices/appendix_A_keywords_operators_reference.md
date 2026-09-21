@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Appendix A: C++ Keywords & Operators Reference
 
 ### Essential Keywords (Non-Exhaustive)

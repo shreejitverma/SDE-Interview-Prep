@@ -3,6 +3,11 @@ tags: [low-latency, kernel-bypass, netmap, dpdk, rdma, ramcloud, jitter, sub-mic
 aliases: [Kernel Bypass and Sub-Microsecond IO, Grosvenor Jitter Paper, Netmap Paper, Stanford IX Dataplane, RAMCloud Low Latency]
 status: evergreen
 created: 2026-09-17
+type: paper
+track: [distinguished, sde]
+level:
+last_reviewed:
+sources: []
 ---
 
 # Kernel-Bypass & Sub-Microsecond I/O
@@ -77,7 +82,7 @@ Adam Belay and the Stanford team resolved the fundamental trade-off between **sa
 ## 4. It's Time for Low Latency (RAMCloud) (Rumble et al., 2011)
 
 ### The 10-Microsecond Storage Vision
-John Ousterhout, Stephen Rumble, and the Stanford RAMCloud team proved that slashing distributed RPC latency from 5 milliseconds to **5–10 microseconds** is not an incremental improvement—it **fundamentally transforms application design**:
+John Ousterhout, Stephen Rumble, and the Stanford RAMCloud team proved that slashing distributed RPC latency from 5 milliseconds to **5–10 microseconds** is not an incremental improvement - it **fundamentally transforms application design**:
 
 ```text
 At 5 milliseconds latency:

@@ -1,0 +1,4 @@
+#!/bin/sh
+# Blocks commits that would publish private job-search data (see tools/private_paths.py).
+# Install once per clone: git config core.hooksPath tools/hooks
+exec python3 "$(git rev-parse --show-toplevel)/tools/audit_pii.py" --check --staged

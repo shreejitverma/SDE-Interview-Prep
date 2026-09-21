@@ -4,6 +4,11 @@ aliases: [PCIe DMA, SmartNIC DMA, XDMA, QDMA, MMIO Latency, Intel DDIO, TLP Proc
 status: evergreen
 module: 12
 created: 2026-08-22
+type: concept
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
 > [!summary]
@@ -188,5 +193,5 @@ endmodule
 
 ## Sources
 - [[Sources/PCI Express Base Specification Revision 5.0]]
-- [[Sources/Intel Data Direct I/O Technology (Intel DDIO) Architecture Guide]]
+- [[O Technology (Intel DDIO) Architecture Guide]]
 - [[Sources/FPGA-Based Trading Systems Architecture]]

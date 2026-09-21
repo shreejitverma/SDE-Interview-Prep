@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 28: The C++ Memory Model and Atomics
 
 > *The rules that govern multi-threaded memory access.*
@@ -71,7 +80,7 @@ Instead, `std::atomic` provides special hardware-backed operations:
 
 *   **`fetch_add()` / `fetch_sub()`**: Adds/subtracts a value and returns the *old* value.
 *   **`exchange()`**: Writes a new value and returns the *old* value.
-*   **`compare_exchange_weak()` / `compare_exchange_strong()`**: The holy grail of lock-free programming (often called CAS — Compare-And-Swap). 
+*   **`compare_exchange_weak()` / `compare_exchange_strong()`**: The holy grail of lock-free programming (often called CAS - Compare-And-Swap). 
 
 ### Compare-And-Swap (CAS)
 CAS says: *"Look at the atomic variable. If it equals `expected`, change it to `desired`. If it doesn't equal `expected`, update my `expected` variable with the real value so I can try again."*

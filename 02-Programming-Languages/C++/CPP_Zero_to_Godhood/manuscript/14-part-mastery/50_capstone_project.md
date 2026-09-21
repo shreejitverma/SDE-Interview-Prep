@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 50: The Capstone Project
 
 > *Knowledge is only potential power. Execution is actual power.*

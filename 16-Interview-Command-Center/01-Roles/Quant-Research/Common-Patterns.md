@@ -1,4 +1,13 @@
-# 🔄 Quant Research Common Patterns
+---
+type: playbook
+track: [sde, quant-dev, quant-research, low-latency, ai-eng, distinguished]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
+# Quant Research Common Patterns
 
 ## Probability Techniques
 1. **Indicator Variables:** E[X] = Σ E[Xi]. Break complex expectations into simple indicators.

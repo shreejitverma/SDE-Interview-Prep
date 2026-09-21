@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Networking Reference - Table-Formatted with Statistics & Quick Reference
 
 ## PART 1: OSI LAYERS QUICK REFERENCE

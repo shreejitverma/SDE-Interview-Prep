@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Volume XXI: Hardware-Sympathetic Python
 
 To achieve the ultimate level of "Godhood," one must look beyond the virtual machine and understand how Python interacts with physical hardware.

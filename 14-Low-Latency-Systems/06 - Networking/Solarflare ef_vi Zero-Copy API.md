@@ -4,6 +4,11 @@ aliases: [ef_vi, Solarflare ef_vi, Virtual Interface, EVQ, Zero-Copy RX, Hardwar
 status: evergreen
 module: 06
 created: 2026-08-22
+type: concept
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
 > [!summary]

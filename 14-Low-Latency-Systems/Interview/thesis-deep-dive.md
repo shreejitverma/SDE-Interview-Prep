@@ -1,3 +1,12 @@
+---
+type: concept
+track: [low-latency, quant-dev]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Thesis Deep Dive: Defense Dossier
 
 **Thesis:** AI-Integrated FPGA for Market Making in Volatile Environments (Stevens, FE900).

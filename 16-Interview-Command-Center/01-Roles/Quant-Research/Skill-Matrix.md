@@ -1,4 +1,13 @@
-# 📊 Quant Research Skill Matrix
+---
+type: playbook
+track: [sde, quant-dev, quant-research, low-latency, ai-eng, distinguished]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
+# Quant Research Skill Matrix
 
 | Skill | Level (1-5) | Last Assessed | Notes |
 |-------|-------------|---------------|-------|

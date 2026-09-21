@@ -3,6 +3,11 @@ tags: [security/defensive, linux/hardening, selinux, kernel/security, kspp, audi
 aliases: [Linux Operating System Hardening, Boelen Linux Hardening, Hardened Kernels Guide, SELinux Policy Framework]
 status: evergreen
 created: 2026-09-17
+type: paper
+track: [distinguished, sde]
+level:
+last_reviewed:
+sources: []
 ---
 
 # Linux Operating System Hardening

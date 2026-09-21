@@ -4,6 +4,11 @@ aliases: [Tick-to-Trade, T2T, Critical Path, Wire-to-Wire, Latency Budget, Nanos
 status: evergreen
 module: 11
 created: 2026-08-22
+type: concept
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
 > [!summary]

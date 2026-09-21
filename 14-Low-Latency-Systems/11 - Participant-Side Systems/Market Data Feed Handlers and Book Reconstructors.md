@@ -4,6 +4,11 @@ aliases: [Feed Handler, Book Reconstructor, L3 Book Builder, BBO Cache, Order Bo
 status: evergreen
 module: 11
 created: 2026-08-22
+type: concept
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
 > [!summary]

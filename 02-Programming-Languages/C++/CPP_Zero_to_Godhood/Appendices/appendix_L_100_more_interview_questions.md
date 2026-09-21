@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Appendix L: 100 More Interview Questions (Part 5-8)
 
 These questions are designed to separate the "Senior Engineers" from the "Gods." If you can answer these without looking at the notes, you are ready for any HFT or Systems Architecture interview on the planet.
@@ -5,7 +14,7 @@ These questions are designed to separate the "Senior Engineers" from the "Gods."
 ## Part 5: The C++ Memory Model & Atomics
 
 ### 1. What is the difference between `std::memory_order_relaxed` and `std::memory_order_seq_cst`?
-**Answer**: `seq_cst` (Sequentially Consistent) provides a global total ordering of all operations. It is the safest but slowest. `relaxed` only guarantees atomicity of the operation itself—it provides no guarantees about the order of other memory operations.
+**Answer**: `seq_cst` (Sequentially Consistent) provides a global total ordering of all operations. It is the safest but slowest. `relaxed` only guarantees atomicity of the operation itself - it provides no guarantees about the order of other memory operations.
 
 ### 2. Explain "Release-Acquire" semantics.
 **Answer**: A `memory_order_release` store "synchronizes-with" a `memory_order_acquire` load of the same variable. All memory writes performed by the storing thread *before* the release store are guaranteed to be visible to the loading thread *after* the acquire load.
@@ -60,7 +69,7 @@ auto func(T t) -> decltype(t.push_back(0)) { ... } // Only works for containers
 **Answer**: Concepts provide a formal, readable way to constrain templates. Instead of cryptic template vomit, you get clear errors: "Type X does not satisfy requirement 'HasPushBack'."
 
 ### 11. What is the Curiously Recurring Template Pattern (CRTP)?
-**Answer**: A pattern where a class `Derived` inherits from `Base<Derived>`. It allows for "Static Polymorphism"—achieving polymorphic behavior without the cost of virtual functions.
+**Answer**: A pattern where a class `Derived` inherits from `Base<Derived>`. It allows for "Static Polymorphism" - achieving polymorphic behavior without the cost of virtual functions.
 
 ### 12. Explain `std::void_t` and how it's used for trait detection.
 **Answer**: `void_t` is a template that always maps any list of types to `void`. It's used to check if a certain member or type exists within a class during template instantiation.

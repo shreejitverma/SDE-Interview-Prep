@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Locally Weighted Linear Regression
 It is a non-parametric ML algorithm that does not learn on a fixed set of parameters such as **linear regression**. \
 So, here comes a question of what is *linear regression*? \

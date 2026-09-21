@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Phase XVIII: Python for CyberSecurity
 
 Senior Python engineers often find themselves in roles requiring security auditing or exploit development. Python's flexibility makes it the premier language for security research.

@@ -4,6 +4,11 @@ aliases: [C++ Interview Cheatsheet, Low-Latency Cheatsheet, HFT C++ Quick Refere
 status: evergreen
 module: 14
 created: 2026-08-22
+type: concept
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
 # Core C++ & Low-Latency Systems Interview Cheat Sheet

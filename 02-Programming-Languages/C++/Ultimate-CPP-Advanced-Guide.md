@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # The Ultimate Advanced C++ Programmer's Guide: From Mastery to Godhood
 
 ## Table of Contents
@@ -2504,7 +2513,7 @@ void loop() {
 
 ---
 
-**You are now ready to become the best C++ programmer in the universe!** 🚀
+**You are now ready to become the best C++ programmer in the universe!**
 
 ---
 

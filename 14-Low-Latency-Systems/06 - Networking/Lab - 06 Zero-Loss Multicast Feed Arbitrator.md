@@ -4,9 +4,14 @@ aliases: [Lab 06, Feed Arbitrator Lab, Multicast Arbitration Lab, Zero-Loss Feed
 status: evergreen
 module: 06
 created: 2026-08-22
+type: playbook
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
-# Lab 06 — Zero-Loss UDP Multicast A/B Feed Arbitrator
+# Lab 06 - Zero-Loss UDP Multicast A/B Feed Arbitrator
 
 > [!summary]
 > In this lab, you will build, compile, and benchmark an exchange-grade, lock-free UDP Multicast A/B Feed Arbitrator in C++20. You will simulate dual redundant market data streams (Feed A and Feed B) subjected to synthetic packet drops and network jitter, proving **100% zero-loss order stream reconstruction** with **sub-12ns arbitration latency**.
@@ -330,5 +335,5 @@ g++ -O3 -std=c++20 -pthread -march=native multicast_arbitrator_bench.cpp -o mult
 - [[06 - Networking/UDP Multicast Market Data and A-B Feed Arbitration]]
 - [[06 - Networking/Solarflare ef_vi Zero-Copy API]]
 - [[06 - Networking/DPDK Architecture for Trading]]
-- [[10 - Protocols & Codecs/NASDAQ ITCH 5.0 Protocol Architecture]]
+- [[NASDAQ ITCH 5.0 Protocol Specification]]
 - [[06 - Networking/MOC - 06 Networking]]

@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 42: The Standard Library from Scratch
 
 > *To achieve Godhood, you must build the world yourself.*
@@ -75,7 +84,7 @@ private:
 
 ## 42.2 Implementing `std::shared_ptr`
 
-How does `std::shared_ptr` know when the last copy has been destroyed? It uses a **Control Block**—a small, dynamically allocated struct that sits on the heap alongside your object. 
+How does `std::shared_ptr` know when the last copy has been destroyed? It uses a **Control Block** - a small, dynamically allocated struct that sits on the heap alongside your object. 
 Every copy of the `shared_ptr` points to the exact same Control Block.
 
 To ensure it works safely across multiple threads, the reference count inside the Control Block must be a `std::atomic<int>`.

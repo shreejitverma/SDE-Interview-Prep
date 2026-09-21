@@ -1,4 +1,13 @@
-# 🧩 AI Engineer Question Bank
+---
+type: playbook
+track: [sde, quant-dev, quant-research, low-latency, ai-eng, distinguished]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
+# AI Engineer Question Bank
 
 ## ML Theory
 | # | Question | Difficulty | Status |

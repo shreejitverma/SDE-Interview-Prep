@@ -2,7 +2,7 @@
 
 > *Making decisions and repeating actions.*
 
-Code that runs straight from top to bottom is boring. It does the exact same thing every single time. To make software truly useful—to make it react to user input, process data files, or run game loops—your code needs to make decisions. It needs to branch. It needs to repeat.
+Code that runs straight from top to bottom is boring. It does the exact same thing every single time. To make software truly useful - to make it react to user input, process data files, or run game loops - your code needs to make decisions. It needs to branch. It needs to repeat.
 
 This is **Control Flow**. 
 
@@ -41,7 +41,7 @@ int new_high_score = (player_score > high_score) ? player_score : high_score;
 ```
 
 > [!CAUTION]
-> **⚠️ The Danger Zone: Nested Ternaries**
+> **The Danger Zone: Nested Ternaries**
 > Just because you *can* chain ternaries together doesn't mean you *should*. 
 > `std::string status = (age < 18) ? "Minor" : (age < 65) ? "Adult" : "Senior";`
 > This is difficult to read. Code is read ten times more often than it is written. Use `if/else` instead.
@@ -129,7 +129,7 @@ for (int i = 0; i < 5; i++) {
 ```
 
 > [!IMPORTANT]
-> **🧠 Brain Power: How a `for` Loop Actually Executes**
+> **Brain Power: How a `for` Loop Actually Executes**
 > 1. `int i = 0;` runs exactly once.
 > 2. `i < 5;` is checked. If true, proceed to step 3. If false, exit the loop.
 > 3. The body `std::cout...` runs.
@@ -231,7 +231,7 @@ for (int y = 0; y < 10; y++) {
 ```
 
 > [!NOTE]
-> **📋 Professional Notes: The Arrow Anti-Pattern**
+> **Professional Notes: The Arrow Anti-Pattern**
 > Be highly wary of deeply nested control flow. If your code looks like a giant sideways arrow `>` because of so many nested `if` and `for` blocks, your code is unreadable. 
 > 
 > The solution? 

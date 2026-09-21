@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Data Integrity and ER Diagrams
 
 ![ERD](https://www.memecreator.org/static/images/memes/5074790.jpg)

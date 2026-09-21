@@ -1,8 +1,17 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 40: Designated Initializers and Aggregate Refinements
 
-> *C++20 finally brings designated initializers — the `{.x = 1, .y = 2}` syntax C programmers have had since C99 — to C++, along with quieter but consequential refinements to what counts as an aggregate and how aggregates may be initialized. This chapter covers the designated-initializer syntax and its deliberately strict rules, the new ability to range-`for` with an init-statement, array-size deduction in `new`-expressions, and the aggregate model that underpins all of it.*
+> *C++20 finally brings designated initializers - the `{.x = 1, .y = 2}` syntax C programmers have had since C99 - to C++, along with quieter but consequential refinements to what counts as an aggregate and how aggregates may be initialized. This chapter covers the designated-initializer syntax and its deliberately strict rules, the new ability to range-`for` with an init-statement, array-size deduction in `new`-expressions, and the aggregate model that underpins all of it.*
 
-Designated initializers make struct construction self-documenting: the field names appear at the call site, so `Config{.timeout = 30, .retries = 3}` cannot silently transpose two `int` arguments the way `Config{30, 3}` can. But C++'s version is intentionally more restrictive than C's — designators must appear in declaration order, cannot be nested in the same brace pair, and cannot be mixed with positional initializers. Understanding those rules, and the aggregate concept they rest on, is what makes this feature safe to rely on.
+Designated initializers make struct construction self-documenting: the field names appear at the call site, so `Config{.timeout = 30, .retries = 3}` cannot silently transpose two `int` arguments the way `Config{30, 3}` can. But C++'s version is intentionally more restrictive than C's - designators must appear in declaration order, cannot be nested in the same brace pair, and cannot be mixed with positional initializers. Understanding those rules, and the aggregate concept they rest on, is what makes this feature safe to rely on.
 
 ---
 
@@ -24,7 +33,7 @@ Designated initializers make struct construction self-documenting: the field nam
 Designated initializers apply only to **aggregates**, so the feature begins with that definition. In C++20 a class type is an aggregate when it has: no user-*declared* or inherited constructors, no private or protected non-static data members, no virtual functions, and no virtual/private/protected base classes. Aggregates can be initialized member-by-member with braces, bypassing constructors entirely.
 
 ```cpp
-// Listing 40.1: aggregates — what qualifies
+// Listing 40.1: aggregates - what qualifies
 struct Point   { int x; int y; };              // aggregate
 struct Config  { int timeout; int retries; bool verbose; }; // aggregate
 
@@ -37,7 +46,7 @@ Point  p{1, 2};                                // positional aggregate init (alw
 Config c{30, 3, true};
 ```
 
-The aggregate rules matter because designated initialization is *only* available for these types — adding a single user-declared constructor disqualifies a struct and makes `{.field = ...}` a compile error. This is why plain data-holder structs ("POD-like" config and message types) are the natural home for the feature.
+The aggregate rules matter because designated initialization is *only* available for these types - adding a single user-declared constructor disqualifies a struct and makes `{.field = ...}` a compile error. This is why plain data-holder structs ("POD-like" config and message types) are the natural home for the feature.
 
 ---
 
@@ -59,7 +68,7 @@ Config c{.timeout = 30, .retries = 3, .verbose = true};
 Config d{.timeout = 30};          // retries = 0, verbose = false
 ```
 
-The win is readability and safety at the call site. `Config{30, 3, true}` requires the reader to know the field order; `Config{.timeout = 30, .retries = 3, .verbose = true}` states it. Any member you omit is **value-initialized** — scalars become zero, class members are default-constructed — so you initialize only the fields you care about and the rest take well-defined defaults.
+The win is readability and safety at the call site. `Config{30, 3, true}` requires the reader to know the field order; `Config{.timeout = 30, .retries = 3, .verbose = true}` states it. Any member you omit is **value-initialized** - scalars become zero, class members are default-constructed - so you initialize only the fields you care about and the rest take well-defined defaults.
 
 ---
 
@@ -79,11 +88,11 @@ S skip  {.a = 1, .c = 3};           // OK: skip b (b is value-initialized to 0)
 // S bad3  {.a = 1, .a = 2};        // ERROR: cannot designate the same member twice
 ```
 
-1. **Declaration order is mandatory.** Designators must appear in the same order as the members are declared. You may *skip* members, but you may not *reorder* them — unlike C, where any order is legal.
+1. **Declaration order is mandatory.** Designators must appear in the same order as the members are declared. You may *skip* members, but you may not *reorder* them - unlike C, where any order is legal.
 2. **No mixing with positional initializers.** A brace list is either all-designated or all-positional, never a blend.
 3. **Each member at most once.** No repeated designators.
 
-These restrictions exist so that the order of side effects in the initializer matches the order of member construction — C++ guarantees members are initialized in declaration order, and allowing out-of-order designators would let the written order diverge from the evaluation order. The strictness is a feature, not an oversight.
+These restrictions exist so that the order of side effects in the initializer matches the order of member construction - C++ guarantees members are initialized in declaration order, and allowing out-of-order designators would let the written order diverge from the evaluation order. The strictness is a feature, not an oversight.
 
 ---
 
@@ -93,11 +102,11 @@ Because the syntax is borrowed from C99, the differences are a common source of 
 
 | Capability | C99 | C++20 |
 |------------|-----|-------|
-| `.field = value` syntax | ✅ | ✅ |
-| Out-of-order designators | ✅ allowed | ❌ must be declaration order |
-| Mixed designated + positional | ✅ allowed | ❌ forbidden |
-| Array designators `[3] = x` | ✅ allowed | ❌ not supported |
-| Nested designators `.a.b = x` | ✅ allowed | ❌ one level (use nested braces) |
+| `.field = value` syntax | ✓ | ✓ |
+| Out-of-order designators | ✓ allowed | ✗ must be declaration order |
+| Mixed designated + positional | ✓ allowed | ✗ forbidden |
+| Array designators `[3] = x` | ✓ allowed | ✗ not supported |
+| Nested designators `.a.b = x` | ✓ allowed | ✗ one level (use nested braces) |
 
 ```cpp
 // Listing 40.4: nested aggregates use nested braces, not chained designators
@@ -150,7 +159,7 @@ delete[] p;
 delete[] s;
 ```
 
-This parallels the long-standing rule for non-`new` array declarations (`int a[] = {1,2,3};`). The benefit is the same: the count is computed from the data, so adding or removing an initializer element cannot leave a stale, mismatched size — a small but real safety improvement for dynamically allocated arrays.
+This parallels the long-standing rule for non-`new` array declarations (`int a[] = {1,2,3};`). The benefit is the same: the count is computed from the data, so adding or removing an initializer element cannot leave a stale, mismatched size - a small but real safety improvement for dynamically allocated arrays.
 
 ---
 
@@ -158,7 +167,7 @@ This parallels the long-standing rule for non-`new` array declarations (`int a[]
 
 Beyond designated initializers, C++20 refines the aggregate model itself in two further ways worth knowing:
 
-- **Aggregates may have user-declared but not user-provided special members in some cases relaxed** — more precisely, C++20 tightened the rule so that a class with a *user-declared* constructor (even `= default`/`= delete`) is **no longer** an aggregate. This closed a C++17 loophole where `struct X { X() = default; int a; };` was an aggregate and could be brace-initialized around its own defaulted constructor, which was surprising. In C++20, declaring any constructor — defaulted or deleted — makes the type a non-aggregate.
+- **Aggregates may have user-declared but not user-provided special members in some cases relaxed** - more precisely, C++20 tightened the rule so that a class with a *user-declared* constructor (even `= default`/`= delete`) is **no longer** an aggregate. This closed a C++17 loophole where `struct X { X() = default; int a; };` was an aggregate and could be brace-initialized around its own defaulted constructor, which was surprising. In C++20, declaring any constructor - defaulted or deleted - makes the type a non-aggregate.
 - **Parenthesized aggregate initialization** (a related C++20 feature) lets aggregates be initialized with parentheses, `T(a, b)`, not just braces, which makes `std::make_unique<Aggregate>(1, 2)` and `emplace`-style construction work for aggregates that previously rejected parens.
 
 ```cpp
@@ -178,9 +187,9 @@ The net effect is that aggregates behave more predictably: declaring a construct
 
 ## 40.8 Professional Insights
 
-**Use designated initializers for config and message structs — they prevent argument transposition.** The highest-value use is wide structs of same-typed fields (timeouts, flags, counts) where positional initialization silently accepts a wrong order. `Order{.price = p, .qty = q}` makes a transposition a visible diff; `Order{q, p}` compiles and trades wrong. In domains like HFT where such a bug is catastrophic, prefer designated initializers at every aggregate construction site.
+**Use designated initializers for config and message structs - they prevent argument transposition.** The highest-value use is wide structs of same-typed fields (timeouts, flags, counts) where positional initialization silently accepts a wrong order. `Order{.price = p, .qty = q}` makes a transposition a visible diff; `Order{q, p}` compiles and trades wrong. In domains like HFT where such a bug is catastrophic, prefer designated initializers at every aggregate construction site.
 
-**Remember the feature requires an aggregate — adding a constructor silently disables it.** A struct that gains a single user-declared constructor (even `= default`) stops being an aggregate in C++20, and every `{.field = ...}` site for it becomes a compile error. Keep data-holder structs constructor-free if you rely on designated initialization, and be aware that "just adding one convenience constructor" is a breaking change for all designated call sites.
+**Remember the feature requires an aggregate - adding a constructor silently disables it.** A struct that gains a single user-declared constructor (even `= default`) stops being an aggregate in C++20, and every `{.field = ...}` site for it becomes a compile error. Keep data-holder structs constructor-free if you rely on designated initialization, and be aware that "just adding one convenience constructor" is a breaking change for all designated call sites.
 
 **Lean on the init-statement range-for to kill dangling-range bugs.** `for (auto&& obj = make_temp(); auto& x : obj.items())` is the idiomatic fix for iterating over members of a temporary. It binds the temporary to a named variable whose lifetime covers the loop, eliminating one of the most common and hard-to-spot lifetime bugs in range-based iteration.
 

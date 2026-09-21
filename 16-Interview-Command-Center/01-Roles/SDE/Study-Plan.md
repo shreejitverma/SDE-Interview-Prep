@@ -1,4 +1,13 @@
-# 📋 SDE Study Plan — 8-Week Sprint
+---
+type: playbook
+track: [sde, quant-dev, quant-research, low-latency, ai-eng, distinguished]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
+# SDE Study Plan - 8-Week Sprint
 
 > Adjust timelines based on your interview dates. Focus on weak areas first.
 
@@ -47,7 +56,7 @@
 
 ---
 
-## 📊 Progress Tracking
+## Progress Tracking
 
 | Week | Problems Target | Problems Done | System Design | Mocks |
 |------|----------------|---------------|---------------|-------|

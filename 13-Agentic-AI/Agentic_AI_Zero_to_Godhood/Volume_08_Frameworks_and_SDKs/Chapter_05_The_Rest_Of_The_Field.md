@@ -1,3 +1,12 @@
+---
+type: concept
+track: [ai-eng]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 05 - The Rest of the Field
 
 Knowledge in this chapter is current as of early 2026.

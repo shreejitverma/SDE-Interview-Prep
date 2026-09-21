@@ -14,7 +14,7 @@ It has been built and maintained continuously since 2021.
 | Layer | Content |
 | :--- | :--- |
 | Foundations | OS, networks, DBMS, OOP, with runnable C++ and Python |
-| Languages | Deep "Zero to Godhood" guides for C++ and Python, plus Java, Go, Rust, JavaScript |
+| Languages | Deep "Zero to Godhood" guides for C++ and Python, plus Java and JavaScript |
 | DSA | ~6,800 solved problems in C++ and Python, organized by pattern, plus Blind 75 and NeetCode 150 |
 | System design | HLD case studies, LLD problems, 80+ "design a ..." implementations, design pattern catalogs in C++, Python, Java |
 | Quant finance | Black-Scholes, Greeks, Monte Carlo, order book in C++, memory pools, event-driven backtester |
@@ -51,7 +51,7 @@ Roughly 15,000 tracked files. Most of the value is in the code and the long-form
 ```
 00-Start-Here/                 Roadmap and progress checklist
 01-CS-Foundations/             OS, Networks, DBMS, OOP (with C++ concurrency and socket code)
-02-Programming-Languages/      C++, Python, Java, Go, Rust, JavaScript
+02-Programming-Languages/      C++, Python, Java, JavaScript
 03-Data-Structures-Algorithms/ Topic-wise solutions, LeetCode, gold-standard C++ patterns
 04-System-Design/              Concepts, LLD, HLD case studies, design patterns, reference PDFs
 05-Quantitative-Finance/       Mathematics, quant dev (C++), algo trading (Python)
@@ -82,12 +82,12 @@ Not just notes: there is working code for the concepts that interviewers actuall
 
 The two flagship guides are written as full books, with LaTeX and PDF builds checked in.
 
-- [C++ Zero to Godhood](./02-Programming-Languages/C++/CPP_Zero_to_Godhood): the complete evolution of the language, C++98 through C++23, with a mindmap and a compiled PDF.
+- [C++ Zero to Godhood](./02-Programming-Languages/C++/CPP_Zero_to_Godhood): the complete evolution of the language, C++98 through C++26, with a mindmap and a compiled PDF.
 - [Python Zero to Godhood](./02-Programming-Languages/Python/Complete-Python-Zero-to-Godhood.md): generators, decorators, async, quant libraries.
 - [C++ STL complete reference](./02-Programming-Languages/C++/stl_complete_reference.md): every container, algorithm, and complexity in one table.
 - [Ultimate C++ Advanced Guide](./02-Programming-Languages/C++/Ultimate-CPP-Advanced-Guide.md) and [Ultimate C++ Design Patterns](./02-Programming-Languages/C++/Ultimate-CPP-Design-Patterns.md).
 - Blind 75 and NeetCode 150 solved in [C++](./02-Programming-Languages/C++/Blind-75-LeetCode-CPP.md) and [Python](./02-Programming-Languages/Python/Blind-75-LeetCode-Python.md).
-- [Java](./02-Programming-Languages/Java), [Go](./02-Programming-Languages/Go), [Rust](./02-Programming-Languages/Rust), [JavaScript](./02-Programming-Languages/JavaScript).
+- [Java](./02-Programming-Languages/Java), [JavaScript](./02-Programming-Languages/JavaScript).
 
 ### 03 - Data Structures and Algorithms
 

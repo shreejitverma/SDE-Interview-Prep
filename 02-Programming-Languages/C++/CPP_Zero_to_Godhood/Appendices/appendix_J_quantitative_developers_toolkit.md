@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Appendix J: The Quantitative Developer's Toolkit
 
 Welcome to the big leagues. If you've made it this far, you're no longer just a "C++ programmer." You are an engineer who cares about the **nanosecond**. In the world of High-Frequency Trading (HFT), "slow" isn't a bug; it's a bankruptcy.

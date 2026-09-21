@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Appendix J: Standard Library Source Code Map
 
 This appendix provides a comprehensive mapping of the Python 3.13 standard library modules to their respective source files in the CPython repository. Use this as a guide for your own source-code explorations.

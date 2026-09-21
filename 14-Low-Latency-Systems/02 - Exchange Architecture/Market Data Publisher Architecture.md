@@ -4,6 +4,11 @@ aliases: [Market Data Publisher, ITCH Publisher, MDP3 Publisher, Multicast Line 
 status: evergreen
 module: 02
 created: 2026-08-22
+type: concept
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
 > [!summary]
@@ -175,12 +180,12 @@ public:
 
 ## Related
 - [[06 - Networking/UDP Multicast Market Data and A-B Feed Arbitration]]
-- [[10 - Protocols & Codecs/NASDAQ ITCH 5.0 Protocol Architecture]]
+- [[NASDAQ ITCH 5.0 Protocol Specification]]
 - [[10 - Protocols & Codecs/CME MDP 3.0 SBE Protocol Architecture]]
 - [[02 - Exchange Architecture/The Sequenced-Stream Architecture]]
 - [[02 - Exchange Architecture/MOC - 02 Exchange Architecture]]
 
 ## Sources
 - [[Sources/NASDAQ TotalView-ITCH 5.0 Specification]]
-- [[Sources/CME MDP 3.0 Market Data Specification]]
+- [[CME MDP 3.0 Market Data Protocol Specification]]
 - [[Sources/How to Build an Exchange by Jane Street]]

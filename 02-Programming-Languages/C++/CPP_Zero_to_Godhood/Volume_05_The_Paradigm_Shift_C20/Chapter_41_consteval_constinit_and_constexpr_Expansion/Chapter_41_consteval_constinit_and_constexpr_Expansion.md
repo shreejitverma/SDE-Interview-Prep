@@ -1,8 +1,17 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 41: consteval, constinit, and the constexpr Expansion
 
-> *C++20 turns compile-time computation from a constrained niche into a first-class programming model. It adds two new keywords — `consteval` for functions that must run at compile time and `constinit` for variables that must be constant-initialized — and it massively widens what `constexpr` can do: virtual calls, `try`/`catch`, `dynamic_cast`, `typeid`, and even dynamic allocation are now legal in constant evaluation, which is what makes `constexpr std::vector` and `constexpr std::string` possible. This chapter covers all three and the boundary rules that govern when code runs at compile time versus runtime.*
+> *C++20 turns compile-time computation from a constrained niche into a first-class programming model. It adds two new keywords - `consteval` for functions that must run at compile time and `constinit` for variables that must be constant-initialized - and it massively widens what `constexpr` can do: virtual calls, `try`/`catch`, `dynamic_cast`, `typeid`, and even dynamic allocation are now legal in constant evaluation, which is what makes `constexpr std::vector` and `constexpr std::string` possible. This chapter covers all three and the boundary rules that govern when code runs at compile time versus runtime.*
 
-The pre-C++20 `constexpr` world was a restricted dialect: no allocation, no virtual dispatch, no exceptions. C++20 demolishes most of those walls, so the same ordinary-looking C++ can now execute during compilation. With that power comes a need for precision about *when* evaluation happens — `consteval` forces compile time, `constinit` forces constant initialization without forcing const-ness, and `std::is_constant_evaluated()` lets one function body take different paths in each context. Getting these distinctions right is the difference between code that compiles to a baked-in constant and code that silently runs at startup.
+The pre-C++20 `constexpr` world was a restricted dialect: no allocation, no virtual dispatch, no exceptions. C++20 demolishes most of those walls, so the same ordinary-looking C++ can now execute during compilation. With that power comes a need for precision about *when* evaluation happens - `consteval` forces compile time, `constinit` forces constant initialization without forcing const-ness, and `std::is_constant_evaluated()` lets one function body take different paths in each context. Getting these distinctions right is the difference between code that compiles to a baked-in constant and code that silently runs at startup.
 
 ---
 
@@ -26,18 +35,18 @@ Four specifiers govern compile-time behavior, and they answer different question
 
 | Specifier | Question it answers | Forces compile-time? | Forces const? |
 |-----------|---------------------|----------------------|---------------|
-| `constexpr` (function) | *may* this run at compile time? | no — usable at runtime too | n/a |
+| `constexpr` (function) | *may* this run at compile time? | no - usable at runtime too | n/a |
 | `constexpr` (variable) | is this a compile-time constant? | yes (initializer) | yes |
-| `consteval` (function) | *must* this run at compile time? | **yes — always** | n/a |
-| `constinit` (variable) | is this constant-*initialized*? | yes (initialization only) | **no — stays mutable** |
+| `consteval` (function) | *must* this run at compile time? | **yes - always** | n/a |
+| `constinit` (variable) | is this constant-*initialized*? | yes (initialization only) | **no - stays mutable** |
 
-The two key contrasts: `consteval` is "`constexpr` that *must* evaluate at compile time" (a call that cannot be a constant expression is an error), and `constinit` is "guaranteed constant *initialization* without const-ness" — the variable is set up at compile time but remains modifiable at runtime.
+The two key contrasts: `consteval` is "`constexpr` that *must* evaluate at compile time" (a call that cannot be a constant expression is an error), and `constinit` is "guaranteed constant *initialization* without const-ness" - the variable is set up at compile time but remains modifiable at runtime.
 
 ---
 
 ## 41.2 consteval: Immediate Functions
 
-A `consteval` function is an **immediate function**: every call to it must produce a constant expression, evaluated during compilation. Unlike `constexpr`, there is no runtime fallback — if the arguments are not constant expressions, the program is ill-formed.
+A `consteval` function is an **immediate function**: every call to it must produce a constant expression, evaluated during compilation. Unlike `constexpr`, there is no runtime fallback - if the arguments are not constant expressions, the program is ill-formed.
 
 ```cpp
 // Listing 41.1: consteval forces compile-time evaluation
@@ -47,18 +56,18 @@ constexpr int a = sq(5);     // OK: 25, computed at compile time
 int n = 7;
 // int b = sq(n);            // ERROR: n is not a constant expression
 
-// constexpr would have allowed both — consteval forbids the runtime call entirely.
+// constexpr would have allowed both - consteval forbids the runtime call entirely.
 constexpr int csq(int x) { return x * x; }
 int c = csq(n);              // OK with constexpr: runs at runtime
 ```
 
-`consteval` is the right tool when a function *only makes sense* at compile time — building a lookup table, validating a string literal's format, computing a type-level constant, or factory functions that must not leak into the runtime binary. Because the call is guaranteed to vanish into a constant, a `consteval` function can do compile-time-only work (like consuming a `std::source_location`) without runtime cost. A useful consequence: an immediate function never appears in the compiled binary as a callable symbol — there is nothing to call.
+`consteval` is the right tool when a function *only makes sense* at compile time - building a lookup table, validating a string literal's format, computing a type-level constant, or factory functions that must not leak into the runtime binary. Because the call is guaranteed to vanish into a constant, a `consteval` function can do compile-time-only work (like consuming a `std::source_location`) without runtime cost. A useful consequence: an immediate function never appears in the compiled binary as a callable symbol - there is nothing to call.
 
 ---
 
 ## 41.3 constinit: Guaranteed Constant Initialization
 
-`constinit` asserts that a variable with static or thread storage duration is **initialized with a constant expression**, eliminating the **static initialization order fiasco** for that variable — but it does *not* make the variable `const`. The variable is constant-*initialized* yet remains mutable.
+`constinit` asserts that a variable with static or thread storage duration is **initialized with a constant expression**, eliminating the **static initialization order fiasco** for that variable - but it does *not* make the variable `const`. The variable is constant-*initialized* yet remains mutable.
 
 ```cpp
 // Listing 41.2: constinit guarantees constant init but allows mutation
@@ -75,7 +84,7 @@ const int kMax = 100;            // const: read-only, may be runtime-initialized
 constexpr int kMin = 0;          // constexpr: const AND a constant expression
 ```
 
-The problem `constinit` solves is real and subtle: globals across translation units are initialized in an unspecified order, so a global that depends on another may read it before it is set (the static init order fiasco). `constinit` forces the initialization to happen at compile time / load time as a constant, so it is ready before any dynamic initialization runs — without paying the cost of making the variable immutable, which matters for globals that must be written during the program (counters, caches, flags). It is especially valuable for `thread_local` variables, guaranteeing they avoid a runtime initialization guard on every access.
+The problem `constinit` solves is real and subtle: globals across translation units are initialized in an unspecified order, so a global that depends on another may read it before it is set (the static init order fiasco). `constinit` forces the initialization to happen at compile time / load time as a constant, so it is ready before any dynamic initialization runs - without paying the cost of making the variable immutable, which matters for globals that must be written during the program (counters, caches, flags). It is especially valuable for `thread_local` variables, guaranteeing they avoid a runtime initialization guard on every access.
 
 ---
 
@@ -85,13 +94,13 @@ C++20 enormously widened the set of operations permitted inside `constexpr` eval
 
 | Construct | Pre-C++20 | C++20 |
 |-----------|-----------|-------|
-| `try`/`catch` in a `constexpr` function | ❌ | ✅ (catch is inert at compile time) |
-| `dynamic_cast` | ❌ | ✅ |
-| `typeid` | ❌ | ✅ |
-| Virtual function calls | ❌ | ✅ |
-| `new`/`delete` (transient) | ❌ | ✅ (must free before eval ends) |
-| Changing the active member of a union | ❌ | ✅ |
-| `std::vector`, `std::string` operations | ❌ | ✅ |
+| `try`/`catch` in a `constexpr` function | ✗ | ✓ (catch is inert at compile time) |
+| `dynamic_cast` | ✗ | ✓ |
+| `typeid` | ✗ | ✓ |
+| Virtual function calls | ✗ | ✓ |
+| `new`/`delete` (transient) | ✗ | ✓ (must free before eval ends) |
+| Changing the active member of a union | ✗ | ✓ |
+| `std::vector`, `std::string` operations | ✗ | ✓ |
 
 ```cpp
 // Listing 41.3: try/catch is now allowed in constexpr (catch ignored at compile time)
@@ -109,16 +118,16 @@ constexpr int safe_div(int a, int b) {
 constexpr int r = safe_div(10, 2);   // 5, at compile time
 ```
 
-The semantics of `try`/`catch` in constant evaluation: the `try` block is evaluated normally, but **throwing during constant evaluation makes the expression non-constant** — you cannot actually catch at compile time, so a `throw` that fires terminates the constant evaluation with an error. The feature exists mainly so that functions containing `try`/`catch` (perhaps for their runtime path) can *also* be used in constant expressions on the paths that do not throw.
+The semantics of `try`/`catch` in constant evaluation: the `try` block is evaluated normally, but **throwing during constant evaluation makes the expression non-constant** - you cannot actually catch at compile time, so a `throw` that fires terminates the constant evaluation with an error. The feature exists mainly so that functions containing `try`/`catch` (perhaps for their runtime path) can *also* be used in constant expressions on the paths that do not throw.
 
 ---
 
 ## 41.5 constexpr Dynamic Allocation and Transient Allocation
 
-The headline enabler is **constexpr dynamic allocation**: `new` and `delete` are allowed during constant evaluation, subject to one strict rule — **transient allocation**: any memory allocated during constant evaluation must be freed before the evaluation ends. Memory cannot "escape" a constant expression into the runtime.
+The headline enabler is **constexpr dynamic allocation**: `new` and `delete` are allowed during constant evaluation, subject to one strict rule - **transient allocation**: any memory allocated during constant evaluation must be freed before the evaluation ends. Memory cannot "escape" a constant expression into the runtime.
 
 ```cpp
-// Listing 41.4: transient allocation — allocate and free within the same evaluation
+// Listing 41.4: transient allocation - allocate and free within the same evaluation
 constexpr int sum_first_n(int n) {
     int* buf = new int[n];          // allocation during constant evaluation
     for (int i = 0; i < n; ++i) buf[i] = i + 1;
@@ -131,7 +140,7 @@ constexpr int sum_first_n(int n) {
 constexpr int s = sum_first_n(100);  // 5050, computed at compile time
 ```
 
-The transient rule is what keeps the model sound: the compiler runs a little interpreter during constant evaluation, and any heap it hands out must be returned before it finishes, because there is no runtime heap to carry it into. This is precisely why `constexpr std::vector` works *inside* a `constexpr` function but a `constexpr std::vector` **variable** at namespace scope does not compile in C++20 — the variable would need its allocation to persist past evaluation, which the transient rule forbids (lifting that restriction is a later-standard topic).
+The transient rule is what keeps the model sound: the compiler runs a little interpreter during constant evaluation, and any heap it hands out must be returned before it finishes, because there is no runtime heap to carry it into. This is precisely why `constexpr std::vector` works *inside* a `constexpr` function but a `constexpr std::vector` **variable** at namespace scope does not compile in C++20 - the variable would need its allocation to persist past evaluation, which the transient rule forbids (lifting that restriction is a later-standard topic).
 
 ---
 
@@ -146,7 +155,7 @@ Because allocation and the necessary member functions are now `constexpr`, **`st
 #include <algorithm>
 
 constexpr int count_evens_up_to(int n) {
-    std::vector<int> v;                  // constexpr vector — fine inside the function
+    std::vector<int> v;                  // constexpr vector - fine inside the function
     for (int i = 0; i <= n; ++i) v.push_back(i);
     return static_cast<int>(
         std::count_if(v.begin(), v.end(), [](int x){ return x % 2 == 0; }));
@@ -160,7 +169,7 @@ constexpr int evens = count_evens_up_to(10);          // 6, at compile time
 constexpr bool ok   = starts_with_cpp(std::string("C++20"));  // true, at compile time
 ```
 
-The critical caveat is the one from Section 41.5: the container must be **transient** — created and destroyed within the constant evaluation. You can compute *with* a `constexpr std::vector` and return a scalar or a fixed-size result, but you cannot declare a `constexpr std::vector` that survives to runtime in C++20. The idiom is "use the container to compute, return a `std::array` or a count."
+The critical caveat is the one from Section 41.5: the container must be **transient** - created and destroyed within the constant evaluation. You can compute *with* a `constexpr std::vector` and return a scalar or a fixed-size result, but you cannot declare a `constexpr std::vector` that survives to runtime in C++20. The idiom is "use the container to compute, return a `std::array` or a count."
 
 ---
 
@@ -205,7 +214,7 @@ This collapses a long-standing dichotomy where "compile-time" meant "no polymorp
 
 ## 41.8 is_constant_evaluated: Branching on Context
 
-`std::is_constant_evaluated()` (from `<type_traits>`) lets a single function body **detect whether it is currently running in a constant-evaluation context** and choose a different implementation — a compile-time-friendly path versus a runtime-optimized one.
+`std::is_constant_evaluated()` (from `<type_traits>`) lets a single function body **detect whether it is currently running in a constant-evaluation context** and choose a different implementation - a compile-time-friendly path versus a runtime-optimized one.
 
 ```cpp
 // Listing 41.7: one function, two implementations by context
@@ -228,18 +237,18 @@ constexpr double ct = power(2.0, 10);   // 1024, compile-time loop
 double rt = power(2.0, 10);             // runtime: calls std::pow
 ```
 
-The classic use is exactly this: `std::pow` is not `constexpr`, so a `constexpr` function that wants compile-time evaluation provides a hand-rolled loop for the constant path while delegating to the optimized library routine at runtime. **Two traps**: (1) it must be called as a function with `()` — `if constexpr (std::is_constant_evaluated())` is a bug, because in a `constexpr if` the trait is *always* true (it is being evaluated in a manifestly-constant context), defeating the purpose; (2) C++23 adds `if consteval` as a clearer, less error-prone spelling, but in C++20 you use the function form inside a plain `if`.
+The classic use is exactly this: `std::pow` is not `constexpr`, so a `constexpr` function that wants compile-time evaluation provides a hand-rolled loop for the constant path while delegating to the optimized library routine at runtime. **Two traps**: (1) it must be called as a function with `()` - `if constexpr (std::is_constant_evaluated())` is a bug, because in a `constexpr if` the trait is *always* true (it is being evaluated in a manifestly-constant context), defeating the purpose; (2) C++23 adds `if consteval` as a clearer, less error-prone spelling, but in C++20 you use the function form inside a plain `if`.
 
 ---
 
 ## 41.9 Professional Insights
 
-**Use `consteval` to guarantee work disappears from the runtime binary.** When a computation must happen at compile time — a generated lookup table, format-string validation, a factory that should never run at runtime — `consteval` makes the requirement enforced, not hoped-for. A `constexpr` function *might* run at runtime if called with non-constant arguments; `consteval` makes that a compile error, which is exactly what you want for code whose entire value is being precomputed.
+**Use `consteval` to guarantee work disappears from the runtime binary.** When a computation must happen at compile time - a generated lookup table, format-string validation, a factory that should never run at runtime - `consteval` makes the requirement enforced, not hoped-for. A `constexpr` function *might* run at runtime if called with non-constant arguments; `consteval` makes that a compile error, which is exactly what you want for code whose entire value is being precomputed.
 
-**Reach for `constinit` to kill the static initialization order fiasco without giving up mutability.** Globals and `thread_local`s that must be writable but must also be ready before dynamic initialization are the precise use case. `const`/`constexpr` would force immutability; `constinit` guarantees constant initialization while leaving the variable mutable, and for `thread_local`s it removes the per-access initialization guard — a measurable win in hot multithreaded paths.
+**Reach for `constinit` to kill the static initialization order fiasco without giving up mutability.** Globals and `thread_local`s that must be writable but must also be ready before dynamic initialization are the precise use case. `const`/`constexpr` would force immutability; `constinit` guarantees constant initialization while leaving the variable mutable, and for `thread_local`s it removes the per-access initialization guard - a measurable win in hot multithreaded paths.
 
 **Treat `constexpr` containers as compute-time scratch space, not persistent data.** The transient-allocation rule means a `constexpr std::vector` lives only within a constant evaluation in C++20. The productive idiom is "build with a vector/string inside a `constexpr` function, return a `std::array`, a count, or a bool." Trying to declare a `constexpr std::vector` variable that survives to runtime will not compile, and understanding *why* (no escape from the constant evaluator's heap) prevents a frustrating fight with the compiler.
 
-**Call `std::is_constant_evaluated()` inside a plain `if`, never `if constexpr`.** Inside `if constexpr` the trait is always `true`, silently disabling your runtime path. The correct pattern is a regular `if` so both branches are compiled and the right one is selected per call context. If your toolchain supports C++23, prefer `if consteval` for clarity — but in a strict C++20 build, the plain-`if` function-call form is the only correct spelling.
+**Call `std::is_constant_evaluated()` inside a plain `if`, never `if constexpr`.** Inside `if constexpr` the trait is always `true`, silently disabling your runtime path. The correct pattern is a regular `if` so both branches are compiled and the right one is selected per call context. If your toolchain supports C++23, prefer `if consteval` for clarity - but in a strict C++20 build, the plain-`if` function-call form is the only correct spelling.
 
-**Lean on the constexpr expansion to validate at build time what you used to assert at startup.** Virtual dispatch, `dynamic_cast`, exceptions-on-the-happy-path, and dynamic containers in constant evaluation mean configuration validation, protocol-table construction, and invariant checks can move from program startup into the compile. A malformed table or invalid config becomes a build failure rather than a runtime crash — the strongest possible place to catch it, and a natural fit for the zero-runtime-overhead discipline of latency-critical systems.
+**Lean on the constexpr expansion to validate at build time what you used to assert at startup.** Virtual dispatch, `dynamic_cast`, exceptions-on-the-happy-path, and dynamic containers in constant evaluation mean configuration validation, protocol-table construction, and invariant checks can move from program startup into the compile. A malformed table or invalid config becomes a build failure rather than a runtime crash - the strongest possible place to catch it, and a natural fit for the zero-runtime-overhead discipline of latency-critical systems.

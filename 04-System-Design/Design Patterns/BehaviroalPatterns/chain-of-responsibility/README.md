@@ -1,3 +1,12 @@
+---
+type: moc
+track: [sde, distinguished]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 ## Chain of Responsibility
 
 Chain of Responsibility pattern avoids coupling the sender of a request to its receiver 

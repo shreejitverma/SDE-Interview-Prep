@@ -1,3 +1,12 @@
+---
+type: concept
+track: [ai-eng]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Authoring Style for Agentic AI: Zero to Godhood
 
 These rules govern every chapter in this track.

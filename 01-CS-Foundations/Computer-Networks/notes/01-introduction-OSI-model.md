@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Computer Networks and the OSI model
 ## Agenda
 * What are computer networks, and why do we care?

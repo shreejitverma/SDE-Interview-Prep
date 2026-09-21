@@ -4,9 +4,14 @@ aliases: [How to Build an Exchange, Jane Street Tech, Exchange Engineering Canon
 status: evergreen
 module: 14
 created: 2026-08-22
+type: paper
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
-# Source Summary — How to Build an Exchange: Systems Architecture
+# Source Summary - How to Build an Exchange: Systems Architecture
 **Author**: Jane Street Engineering (Yaron Minsky, Ron Minsky, and Core Infrastructure Leads)  
 **Publication**: Jane Street *Signals & Threads* & Public Technical Publications  
 **Category**: Exchange Architecture & Deterministic Distributed Systems
@@ -63,7 +68,7 @@ flowchart TD
 - If the Primary crashes, the Standby assumes active transmission in under 50 microseconds with zero state reconstruction delay.
 
 ### 3. Separation of Concerns: Pre-Trade vs Post-Trade
-- **Pre-Trade (Hot Path)**: Kept maximally lean—only immediate balance checks and sequence stamping.
+- **Pre-Trade (Hot Path)**: Kept maximally lean - only immediate balance checks and sequence stamping.
 - **Post-Trade (Async Path)**: Clearing, regulatory reporting, drop copy distribution, and trade billing are completely offloaded to asynchronous downstream consumers reading the execution event log.
 
 ---
@@ -79,6 +84,6 @@ flowchart TD
 ## Related Notes
 - [[02 - Exchange Architecture/The Sequenced-Stream Architecture]]
 - [[02 - Exchange Architecture/Replicated State Machine Pattern in Exchanges]]
-- [[03 - Matching Engine Internals/Matching Engine Architecture Overview]]
+- [[MOC - 03 Matching Engine Internals]]
 - [[13 - Reliability, Ops & Testing/Deterministic Replay and Packet Injection Testing]]
 - [[14 - Industry Map & Canon/MOC - 14 Industry Map & Canon]]

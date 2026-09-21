@@ -4,10 +4,15 @@ aliases: [Feed Arbitration, A-B Feed Arbitration, UDP Multicast, Sequence Gap De
 status: evergreen
 module: 06
 created: 2026-08-22
+type: concept
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
 > [!summary]
-> Electronic exchanges distribute market data over redundant UDP Multicast channels (Feed A and Feed B) across physically distinct network fabrics. A zero-loss Feed Arbitrator ingests both packet streams in user-space, immediately dispatching whichever packet arrives first on the wire and discarding duplicate frames in under 10 nanoseconds—eliminating packet loss without initiating slow TCP recovery requests.
+> Electronic exchanges distribute market data over redundant UDP Multicast channels (Feed A and Feed B) across physically distinct network fabrics. A zero-loss Feed Arbitrator ingests both packet streams in user-space, immediately dispatching whichever packet arrives first on the wire and discarding duplicate frames in under 10 nanoseconds - eliminating packet loss without initiating slow TCP recovery requests.
 
 ---
 
@@ -217,10 +222,10 @@ public:
 - [[06 - Networking/Network Interface Card Architecture]]
 - [[06 - Networking/Solarflare ef_vi Zero-Copy API]]
 - [[06 - Networking/DPDK Architecture for Trading]]
-- [[10 - Protocols & Codecs/NASDAQ ITCH 5.0 Protocol Architecture]]
+- [[NASDAQ ITCH 5.0 Protocol Specification]]
 - [[06 - Networking/MOC - 06 Networking]]
 
 ## Sources
 - [[Sources/NASDAQ TotalView-ITCH 5.0 Specification]]
-- [[Sources/CME MDP 3.0 Market Data Specification]]
+- [[CME MDP 3.0 Market Data Protocol Specification]]
 - [[Sources/Solarflare ef_vi User Guide]]

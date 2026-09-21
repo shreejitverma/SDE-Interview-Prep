@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 36: Advanced Debugging and Tooling
 
 > *Finding the needle in the megabyte haystack.*

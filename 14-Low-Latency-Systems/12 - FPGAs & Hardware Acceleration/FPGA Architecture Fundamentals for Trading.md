@@ -4,10 +4,15 @@ aliases: [FPGA Architecture, LUTs, Flip-Flops, BRAM, UltraRAM, DSP48E2, GTY SerD
 status: evergreen
 module: 12
 created: 2026-08-22
+type: concept
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
 > [!summary]
-> An FPGA silicon die is an array of reconfigurable hardware primitives—6-input Look-Up Tables (LUTs), Flip-Flops (FFs), Block RAM (BRAM), UltraRAM (URAM), DSP arithmetic slices, and high-speed GTY SerDes transceivers. Structuring trading logic to match these hardware primitives enables financial pipelines to process 25G Ethernet packets at 322.26 MHz with single-cycle register transitions.
+> An FPGA silicon die is an array of reconfigurable hardware primitives - 6-input Look-Up Tables (LUTs), Flip-Flops (FFs), Block RAM (BRAM), UltraRAM (URAM), DSP arithmetic slices, and high-speed GTY SerDes transceivers. Structuring trading logic to match these hardware primitives enables financial pipelines to process 25G Ethernet packets at 322.26 MHz with single-cycle register transitions.
 
 ---
 

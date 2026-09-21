@@ -1,0 +1,193 @@
+#!/usr/bin/env python3
+"""Inventory tracked files that hold PII or private job-search data.
+
+The report names files and counts matches per category; it never prints the
+matched values. It still reveals where private data lives, so it must be
+written outside this public repo (--out is required and refused inside it).
+
+Usage:
+    python3 tools/audit_pii.py --out ~/github/career-ops/command-center/PII-INVENTORY.md
+    python3 tools/audit_pii.py --check     # CI and pre-commit guard; prints paths only, exit 1 on a violation
+
+--check fails when a tracked file sits in a private location, when a public
+Interview Command Center note contains an email address or phone number, or
+when the personal task backlog is tracked. It never prints matched values.
+"""
+
+from __future__ import annotations
+
+import argparse
+import os
+import re
+import subprocess
+import sys
+from collections import Counter
+from dataclasses import dataclass, field
+from pathlib import Path
+
+from private_paths import PRIVATE_LOCATIONS
+
+# Only these extensions are scanned for content patterns; code is too noisy for phones.
+TEXT_EXTS = {".md", ".txt", ".json", ".csv", ".log", ".yaml", ".yml", ".tex"}
+
+EMAIL_RE = re.compile(r"[A-Za-z0-9._%+-]+@([A-Za-z0-9-]+\.)+[A-Za-z]{2,}")
+PERSONAL_MAIL_DOMAINS = ("gmail.com", "outlook.com", "hotmail.com", "yahoo.com", "icloud.com", "proton.me")
+PHONE_RE = re.compile(r"(?<!\d)(?:\+?1[-.\s])?\(?\d{3}\)?[-.\s]\d{3}[-.\s]\d{4}(?!\d)")
+COMP_RE = re.compile(
+    r"(?i)\b(base|salary|total comp|\bTC\b|bonus|sign[- ]on|RSU|equity|comp band|offer)\b[^\n]{0,40}"
+    r"\$\s?\d{2,3}(?:,\d{3}|\s?[kK])"
+)
+PIPELINE_TERMS_RE = re.compile(r"(?i)\b(rejection|regret to inform|unfortunately|moving forward with other|recruiter)\b")
+
+
+@dataclass
+class FileHit:
+    path: str
+    location_reason: str | None = None
+    counts: Counter = field(default_factory=Counter)
+
+
+def git_ls_files(repo: Path) -> list[str]:
+    out = subprocess.run(["git", "ls-files", "-z"], cwd=repo, check=True, capture_output=True).stdout
+    return [p for p in out.decode().split("\0") if p]
+
+
+def scan_text(text: str) -> Counter:
+    counts: Counter = Counter()
+    for m in EMAIL_RE.finditer(text):
+        domain = m.group(0).rsplit("@", 1)[1].lower()
+        counts["email:personal" if domain.endswith(PERSONAL_MAIL_DOMAINS) else "email:other"] += 1
+    counts["phone"] += len(PHONE_RE.findall(text))
+    counts["compensation"] += len(COMP_RE.findall(text))
+    counts["pipeline-terms"] += len(PIPELINE_TERMS_RE.findall(text))
+    return +counts  # drop zeros
+
+
+def history_deleted_paths(repo: Path) -> list[str]:
+    """Deleted paths still reachable in history that look private."""
+    out = subprocess.run(
+        ["git", "-c", "core.quotePath=false", "log", "--all", "--diff-filter=D", "--name-only", "--format="],
+        cwd=repo, check=True, capture_output=True, text=True,
+    ).stdout
+    suspicious = re.compile(r"(?i)(gmail -|receipt|invoice|subscription|resume|offer letter|pipeline|extracted_emails)")
+    return sorted({p for p in out.splitlines() if p and suspicious.search(p)})
+
+
+def is_inside(path: Path, repo: Path) -> bool:
+    """True if path or any existing ancestor is the repo, by file identity (catches case variants and symlinks)."""
+    return any(p.exists() and os.path.samefile(p, repo) for p in (path, *path.parents))
+
+
+PUBLIC_CAREER_PREFIX = "16-Interview-Command-Center/"
+NEVER_TRACKED = {"backlog.md"}
+
+
+def check(repo: Path, paths: list[str]) -> int:
+    """Guard mode: report violations by path and category, never by value."""
+    problems = []
+    for rel in paths:
+        if any(rel.startswith(prefix) for prefix, _ in PRIVATE_LOCATIONS):
+            problems.append(f"{rel}: private location, belongs in career-ops/command-center")
+        elif rel in NEVER_TRACKED:
+            problems.append(f"{rel}: personal file, must stay untracked")
+        elif rel.startswith(PUBLIC_CAREER_PREFIX) and Path(rel).suffix.lower() in TEXT_EXTS and (repo / rel).is_file():
+            counts = scan_text((repo / rel).read_text(errors="ignore"))
+            hits = [k for k in ("email:personal", "email:other", "phone") if counts.get(k)]
+            if hits:
+                problems.append(f"{rel}: contains {', '.join(hits)}")
+    for line in problems:
+        print(f"private-data guard: {line}")
+    print(f"private_data_violations: {len(problems)}")
+    return 1 if problems else 0
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--out", type=Path, help="report path; must be outside the repo")
+    ap.add_argument("--check", action="store_true", help="guard mode for CI and pre-commit")
+    ap.add_argument("--staged", action="store_true", help="with --check, only inspect staged files")
+    ap.add_argument("--repo", type=Path, default=Path(__file__).resolve().parent.parent)
+    args = ap.parse_args()
+
+    repo = args.repo.resolve()
+    if args.check:
+        if args.staged:
+            out = subprocess.run(["git", "diff", "--cached", "--name-only", "-z", "--diff-filter=ACMR"],
+                                 cwd=repo, check=True, capture_output=True).stdout
+            paths = [p for p in out.decode().split("\0") if p]
+        else:
+            paths = git_ls_files(repo)
+        return check(repo, paths)
+    if args.out is None:
+        ap.error("--out is required unless --check is given")
+    out = args.out.expanduser().resolve()
+    if is_inside(out, repo):
+        print(f"error: refusing to write PII report inside the public repo: {out}", file=sys.stderr)
+        return 2
+
+    hits: list[FileHit] = []
+    for rel in git_ls_files(repo):
+        if rel.startswith(".obsidian/plugins/"):
+            continue  # third-party plugin manifests carry author emails, not user PII
+        hit = FileHit(rel)
+        for prefix, reason in PRIVATE_LOCATIONS:
+            if rel.startswith(prefix):
+                hit.location_reason = reason
+        if Path(rel).suffix.lower() in TEXT_EXTS:
+            try:
+                hit.counts = scan_text((repo / rel).read_text(errors="ignore"))
+            except OSError:
+                pass
+            # pipeline terms alone are only meaningful inside private locations
+            if not hit.location_reason:
+                hit.counts.pop("pipeline-terms", None)
+        if hit.location_reason or hit.counts:
+            hits.append(hit)
+
+    by_location = [h for h in hits if h.location_reason]
+    by_content = [h for h in hits if not h.location_reason]
+    personal_elsewhere = [h for h in by_content if h.counts.get("email:personal") or h.counts.get("phone") or h.counts.get("compensation")]
+
+    lines = [
+        "# PII inventory (private - never commit to the public repo)",
+        "",
+        f"Repo: `{repo}`",
+        "Generated by `tools/audit_pii.py`; values are never printed, only counts.",
+        "",
+        "## Summary",
+        "",
+        f"- Tracked files private by location: {len(by_location)}",
+        f"- Tracked files elsewhere with personal email, phone, or compensation patterns: {len(personal_elsewhere)}",
+        f"- Tracked files elsewhere with only third-party emails (usually code authors): {len(by_content) - len(personal_elsewhere)}",
+        "",
+        "## Private by location (move to the private vault)",
+        "",
+        "| File | Why | Content matches |",
+        "| :--- | :--- | :--- |",
+    ]
+    for h in sorted(by_location, key=lambda h: h.path):
+        matches = ", ".join(f"{k}={v}" for k, v in sorted(h.counts.items())) or "-"
+        lines.append(f"| `{h.path}` | {h.location_reason} | {matches} |")
+
+    lines += ["", "## Personal patterns outside private locations (review each)", "",
+              "| File | Matches |", "| :--- | :--- |"]
+    for h in sorted(personal_elsewhere, key=lambda h: h.path):
+        lines.append(f"| `{h.path}` | {', '.join(f'{k}={v}' for k, v in sorted(h.counts.items()))} |")
+
+    deleted = history_deleted_paths(repo)
+    lines += ["", "## Deleted but still in git history (only a history rewrite removes these)", ""]
+    lines += [f"- `{p}`" for p in deleted] or ["- none"]
+    lines.append("")
+
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text("\n".join(lines))
+    print(f"private_by_location: {len(by_location)}")
+    print(f"personal_patterns_elsewhere: {len(personal_elsewhere)}")
+    print(f"third_party_email_files: {len(by_content) - len(personal_elsewhere)}")
+    print(f"deleted_in_history: {len(deleted)}")
+    print(f"report: {out}")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

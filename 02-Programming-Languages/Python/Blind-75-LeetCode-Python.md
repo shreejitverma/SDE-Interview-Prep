@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # The Blind 75 LeetCode Problems - Complete Python Solutions Guide
 
 A curated list of 75 essential LeetCode problems that cover all major algorithmic concepts. Each problem includes optimal time/space complexity and production-grade Python solutions.
@@ -2898,7 +2907,7 @@ def rightSideView(self, root: Optional[TreeNode]) -> list[int]:
 
 ---
 
-**Master the Blind 75 in Python and you're interview-ready!** 🚀
+**Master the Blind 75 in Python and you're interview-ready!**
 
 *Last Updated: December 2025*
 *Language: Python 3.8+*

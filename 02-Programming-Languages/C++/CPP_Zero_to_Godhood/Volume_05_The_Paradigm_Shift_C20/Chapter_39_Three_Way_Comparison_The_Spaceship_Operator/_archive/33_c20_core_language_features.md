@@ -78,12 +78,12 @@ Beyond the "Big Four," C++20 added essential tools for performance, safety, and 
 
 ### 4. Attributes & Hardware Sympathy
 
-*   **[[likely]] / [[unlikely]]**: Hints to the optimizer about branch probability.
+*   **`[[likely]]` / `[[unlikely]]`**: Hints to the optimizer about branch probability.
 ```cpp
     if (x > 0) [[likely]] { fast_path(); }
 ```
-*   **[[no_unique_address]]**: Allows a non-static data member to share address with others (optimization).
-*   **[[nodiscard]] with message**: `[[nodiscard("check error code")]]`.
+*   **`[[no_unique_address]]`**: Allows a non-static data member to share address with others (optimization).
+*   **`[[nodiscard]]` with message**: `[[nodiscard("check error code")]]`.
 *   **char8_t**: A distinct type for UTF-8 character data.
 *   **Signed integers are two's complement**: Now mandated by the standard.
 *   **Deprecate some uses of volatile**: Compound assignment and increment on `volatile` are deprecated.

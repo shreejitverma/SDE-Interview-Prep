@@ -4,9 +4,14 @@ aliases: [The 2015 NYSE Outage, July 8 2015 Shutdown, NYSE Gateway Desync, Proto
 status: evergreen
 module: 07
 created: 2026-08-22
+type: case-study
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
-# War Story — The July 8, 2015 NYSE 3.5-Hour Gateway Freeze: Protocol State Mismatches & Live Reconfiguration Cascades
+# War Story - The July 8, 2015 NYSE 3.5-Hour Gateway Freeze: Protocol State Mismatches & Live Reconfiguration Cascades
 
 > [!summary]
 > On July 8, 2015, between 11:32:00 and 15:10:00 EST, the New York Stock Exchange (NYSE) suffered a total, unprecedented 3.5-hour market-wide trading suspension across all listed equities. A pre-market software release on client gateway communication handlers triggered an internal protocol state and sequence verification desynchronization with the matching engine, demonstrating the fatal danger of live session reconfigurations during active market hours.
@@ -72,7 +77,7 @@ flowchart TD
 ## Related Notes
 - [[02 - Exchange Architecture/Exchange Gateway Architecture]]
 - [[02 - Exchange Architecture/The Sequenced-Stream Architecture]]
-- [[03 - Matching Engine Internals/Matching Engine Architecture Overview]]
+- [[MOC - 03 Matching Engine Internals]]
 - [[13 - Reliability, Ops & Testing/Disaster Recovery and High Availability Topologies]]
 - [[14 - Industry Map & Canon/MOC - 14 Industry Map & Canon]]
 

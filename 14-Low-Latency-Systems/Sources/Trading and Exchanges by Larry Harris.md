@@ -4,9 +4,14 @@ aliases: [Trading and Exchanges, Larry Harris, Market Microstructure Bible]
 status: evergreen
 module: 14
 created: 2026-08-22
+type: paper
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
-# Source Summary — Trading and Exchanges: Market Microstructure for Practitioners
+# Source Summary - Trading and Exchanges: Market Microstructure for Practitioners
 **Author**: Larry Harris (Former Chief Economist of the SEC, Professor of Finance at USC)  
 **Publication**: Oxford University Press  
 **Category**: Market Microstructure & Market Design
@@ -69,6 +74,6 @@ Harris provides a rigorous taxonomy of market execution instructions:
 ## Related Notes
 - [[01 - Market & Microstructure Fundamentals/Limit Order Book Mechanics]]
 - [[01 - Market & Microstructure Fundamentals/Price Discovery and Microstructure Noise]]
-- [[01 - Market & Microstructure Fundamentals/Order Types and Execution Semantics]]
+- [[Order Types and State Transitions]]
 - [[14 - Industry Map & Canon/The Quantitative Trading Firm Landscape]]
 - [[14 - Industry Map & Canon/MOC - 14 Industry Map & Canon]]

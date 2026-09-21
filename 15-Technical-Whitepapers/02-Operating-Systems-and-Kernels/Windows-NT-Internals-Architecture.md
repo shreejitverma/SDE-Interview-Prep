@@ -3,6 +3,11 @@ tags: [operating-systems, windows-nt, kernel/internals, windbg, cutler, probert,
 aliases: [Windows NT Internals Architecture, David Probert Windows Kernel, WinDbg Guide, WSL1 Architecture]
 status: evergreen
 created: 2026-09-17
+type: paper
+track: [distinguished, sde]
+level:
+last_reviewed:
+sources: []
 ---
 
 # Windows NT Internals & Architecture
@@ -31,7 +36,7 @@ flowchart TD
         NTDLL["ntdll.dll (Native API System Call Stubs)"]
     end
 
-    subgraph KernelSpace ["Kernel Mode (Ring 0) — ntoskrnl.exe"]
+    subgraph KernelSpace ["Kernel Mode (Ring 0) - ntoskrnl.exe"]
         SYS["System Service Dispatcher (KiSystemService)"]
         
         subgraph Executive ["The Windows Executive"]
@@ -91,7 +96,7 @@ flowchart TD
 - Small messages ($<256$ bytes) copied directly across kernel ports; large payloads transferred via shared memory mapped sections.
 
 #### 6. NTFS Architecture
-- Metadata-driven journaling file system. Everything on NTFS is a file—including `$MFT` (Master File Table), `$LogFile` (transaction log), and `$Bitmap` (free cluster allocation).
+- Metadata-driven journaling file system. Everything on NTFS is a file - including `$MFT` (Master File Table), `$LogFile` (transaction log), and `$Bitmap` (free cluster allocation).
 - Uses transaction recovery logging to ensure file system consistency across crashes.
 
 #### 7. NT Registry Implementation

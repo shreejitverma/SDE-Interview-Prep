@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Part IX: Software Architecture and Design
 
 *Structuring massive codebases for maintainability and scale.*

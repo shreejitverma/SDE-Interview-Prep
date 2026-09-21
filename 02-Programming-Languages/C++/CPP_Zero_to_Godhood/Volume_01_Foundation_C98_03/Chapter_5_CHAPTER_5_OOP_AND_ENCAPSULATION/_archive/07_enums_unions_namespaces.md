@@ -32,7 +32,7 @@ if (current == 1) {
 ```
 
 > [!WARNING]
-> **⚠️ The Danger Zone: Global Leakage**
+> **The Danger Zone: Global Leakage**
 > C-style enums are notoriously leaky. The names `MENU`, `PLAYING`, etc., leak out into the surrounding scope. If you try to create another enum later like `enum VideoState { PLAYING, STOPPED };`, the compiler will throw a massive error because the word `PLAYING` has already been taken by `GameState`. Furthermore, C-style enums will implicitly convert to integers, defeating the purpose of strict typing.
 
 ### The Modern Way: Scoped Enums (`enum class`) `[C++11]`
@@ -57,7 +57,7 @@ if (current == GameState::Playing) {
 ```
 Always use `enum class`. It guarantees that your names stay contained and prevents accidental math operations on your game states.
 
-## 7.2 Unions — Shared Memory Layout
+## 7.2 Unions - Shared Memory Layout
 
 A `union` is a special data structure where all members share the *exact same memory location*. 
 
@@ -87,7 +87,7 @@ Unions are heavily used in low-level systems programming (like network drivers o
 
 However, they are highly dangerous. The compiler does not know which type is currently "active" inside the union.
 
-## 7.3 `std::variant` — The Safe Union `[C++17]`
+## 7.3 `std::variant` - The Safe Union `[C++17]`
 
 To solve the safety issues of raw Unions, C++17 introduced `<variant>`. A `std::variant` is a "type-safe union." It remembers exactly which type it is currently holding.
 
@@ -149,7 +149,7 @@ using namespace std; // Pulls EVERYTHING from 'std' into the global scope
 ```
 
 > [!CAUTION]
-> **⚠️ The Danger Zone: `using namespace std;` in Headers**
+> **The Danger Zone: `using namespace std;` in Headers**
 > While it is fine to write `using namespace std;` in a `.cpp` file for a small homework assignment, **NEVER** put it in a header (`.h`) file. 
 > 
 > If you put it in a header, every single file that `#include`s your header will violently be forced to dump the entire standard library into their global namespace, causing massive naming collisions and ruining the compilation of massive codebases.

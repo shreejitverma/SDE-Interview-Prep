@@ -4,9 +4,14 @@ aliases: [Drill 13, Production Outage Post-Mortem, 2012 BATS IPO Bug, Split-Brai
 status: evergreen
 module: 13
 created: 2026-08-22
+type: playbook
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
-# Drill 13 — Production Outage Post-Mortem & Root-Cause Engineering
+# Drill 13 - Production Outage Post-Mortem & Root-Cause Engineering
 
 > [!summary]
 > Principal SRE and low-latency infrastructure drill: conduct a forensic root-cause analysis (RCA) and formulate permanent engineering remediations for two catastrophic financial outages: the famous 2012 BATS IPO matching engine failure and a dual-gateway split-brain trading disaster. Attempt each section before unfolding the solutions.

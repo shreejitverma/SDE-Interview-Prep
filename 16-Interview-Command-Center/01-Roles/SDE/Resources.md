@@ -1,4 +1,13 @@
-# 📚 SDE Resources
+---
+type: playbook
+track: [sde, quant-dev, quant-research, low-latency, ai-eng, distinguished]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
+# SDE Resources
 
 > Links to vault knowledge and external resources.
 
@@ -7,7 +16,7 @@
 ## Vault Resources
 | Topic | Vault Location |
 |-------|---------------|
-| CS Foundations | [[01-CS-Foundations]] |
+| CS Foundations | [[01-CS-Foundations/README\|01-CS-Foundations]] |
 | C++ Deep Dive | [[02-Programming-Languages/C++]] |
 | Python Deep Dive | [[02-Programming-Languages/Python]] |
 | DSA Topics | [[03-Data-Structures-Algorithms/01-Topics]] |
@@ -18,7 +27,7 @@
 | Case Studies | [[04-System-Design/02-Case-Studies]] |
 | Design Patterns | [[04-System-Design/03-Design-Patterns]] |
 | STAR Method | [[06-Interview-Prep/01-Behavioral/star_method]] |
-| Dev Practices | [[10-Development-Practices]] |
+| Dev Practices | [[10-Development-Practices/README\|10-Development-Practices]] |
 
 ## External Resources
 | Resource | URL | Type |

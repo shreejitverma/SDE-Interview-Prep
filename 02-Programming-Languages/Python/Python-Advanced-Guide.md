@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Advanced Python: Generators, Decorators, and Functional Programming
 
 ## Table of Contents
@@ -1234,4 +1243,4 @@ with position_lock('AAPL') as lock:
 
 ---
 
-**Good luck with your BNPP interview! 🚀**
+**Good luck with your BNPP interview!**

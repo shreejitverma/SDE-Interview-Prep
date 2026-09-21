@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Normalisation and SQL CRUD operations
 
 - [Normalisation and SQL CRUD operations](#normalisation-and-sql-crud-operations)

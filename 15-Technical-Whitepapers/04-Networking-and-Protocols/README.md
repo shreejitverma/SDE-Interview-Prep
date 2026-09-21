@@ -3,6 +3,11 @@ tags: [networking, tcp, protocols, ddos, firewalls, iptables, packet-analysis, t
 aliases: [Networking and Protocols MOC, Network Engineering Canon]
 status: evergreen
 created: 2026-09-17
+type: moc
+track: [distinguished, sde]
+level:
+last_reviewed:
+sources: []
 ---
 
 # Networking, TCP/IP & Network Diagnostics

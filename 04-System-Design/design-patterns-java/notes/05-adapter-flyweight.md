@@ -1,3 +1,12 @@
+---
+type: pattern
+track: [sde, distinguished]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Structural design patterns - Adapter and Flyweight
 
 - [Structural design patterns - Adapter and Flyweight](#structural-design-patterns---adapter-and-flyweight)

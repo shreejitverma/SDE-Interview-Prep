@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 60: Virtual Environments (`venv`)
 
 Dependency isolation is the bedrock of reproducible software engineering. Python's `venv` module provides the standard way to create isolated environments, leveraging the interpreter's flexible search path machinery.

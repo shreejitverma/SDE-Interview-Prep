@@ -1,3 +1,12 @@
+---
+type: moc
+track: [sde, distinguished]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Design Patterns in Python
 
 This Repository contains Python examples for all classic Gangs of Four design patterns.

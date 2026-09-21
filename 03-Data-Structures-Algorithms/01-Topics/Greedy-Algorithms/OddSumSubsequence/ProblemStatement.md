@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 ### Odd Sum Subsequence
 
 You are given sequence *a<sub>1</sub>*, *a<sub>2</sub>*, ..., *a<sub>n</sub>* of integer numbers of length *n*. Your task is to find such subsequence that its sum is odd and maximum among all such subsequences. 

@@ -4,10 +4,15 @@ aliases: [Exchange Simulator, Conformance Testing, AutoCert+, Impairment Injecti
 status: evergreen
 module: 13
 created: 2026-08-22
+type: concept
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
 > [!summary]
-> Exchange Simulators and Conformance Test Harnesses are software frameworks that emulate full exchange matching engines, gateway session protocols (OUCH, iLink 3, FIX), and market data feeds (ITCH, MDP3). By injecting deterministic network impairments—such as multicast packet drops, microbursts, out-of-order sequences, and socket freezes—they validate client trading system resilience before production deployment.
+> Exchange Simulators and Conformance Test Harnesses are software frameworks that emulate full exchange matching engines, gateway session protocols (OUCH, iLink 3, FIX), and market data feeds (ITCH, MDP3). By injecting deterministic network impairments - such as multicast packet drops, microbursts, out-of-order sequences, and socket freezes - they validate client trading system resilience before production deployment.
 
 ---
 

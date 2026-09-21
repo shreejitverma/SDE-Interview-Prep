@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Appendix M: The Complete CPython C-API Reference Table
 
 This appendix provides a quick-reference for the most important functions in the Python C-API. Mastery of these is required for building high-performance extension modules.

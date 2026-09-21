@@ -1,3 +1,12 @@
+---
+type: concept
+track: [distinguished]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Microservices vs Monolith
 
 **Topic:** Choosing the right architecture.

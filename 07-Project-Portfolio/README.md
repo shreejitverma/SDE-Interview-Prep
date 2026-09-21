@@ -1,3 +1,12 @@
+---
+type: moc
+track: [sde]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Project Portfolio Ideas
 
 Building impressive projects is the best way to stand out. Here are "Gold Standard" project ideas for SDE and Quant roles.

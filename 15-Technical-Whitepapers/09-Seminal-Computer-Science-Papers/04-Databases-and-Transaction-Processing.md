@@ -3,6 +3,11 @@ tags: [databases, relational-model, codd, jim-gray, acid, 2pl, aries, transactio
 aliases: [Databases and Transaction Processing, Codd Relational Model 1970, Jim Gray ACID Paper, ARIES Recovery Algorithm]
 status: evergreen
 created: 2026-09-17
+type: paper
+track: [distinguished, sde]
+level:
+last_reviewed:
+sources: []
 ---
 
 # Databases & Transaction Processing
@@ -82,7 +87,7 @@ If a database crashes mid-transaction (e.g., power loss), some committed transac
 ARIES is implemented by virtually all modern relational engines (PostgreSQL, MySQL InnoDB, SQL Server, Oracle). It relies on three fundamental principles:
 1. **Write-Ahead Logging (WAL)**: An in-memory page cannot be flushed to disk until its corresponding log record has been synchronously flushed to persistent storage.
 2. **Repeating History during Redo**: Upon restart, ARIES reconstructs the exact state of the system up to the instant of the crash.
-3. **Logging Changes during Undo (Compensation Log Records — CLRs)**: When rolling back active uncommitted transactions, ARIES logs CLRs so that if the system crashes *during recovery*, it never repeats undone work.
+3. **Logging Changes during Undo (Compensation Log Records - CLRs)**: When rolling back active uncommitted transactions, ARIES logs CLRs so that if the system crashes *during recovery*, it never repeats undone work.
 
 ```mermaid
 sequenceDiagram
@@ -105,5 +110,5 @@ sequenceDiagram
 ## Related Notes
 - [[02-Distributed-Systems-and-Consensus|Distributed Systems and Consensus Mechanics]]
 - [[03-Cloud-Infrastructure-and-Big-Data|Cloud Infrastructure and Big Data Foundations]]
-- [[../../08-Distinguished-Engineering/03-Database-Internals/wal|08-Distinguished-Engineering: Write-Ahead Log (WAL)]]
+- [08-Distinguished-Engineering: Write-Ahead Log (WAL)](../../08-Distinguished-Engineering/03-Database-Internals/wal.cpp)
 - [[README|Seminal Computer Science Papers MOC]]

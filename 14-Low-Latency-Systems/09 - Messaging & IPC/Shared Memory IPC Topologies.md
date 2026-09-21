@@ -4,6 +4,11 @@ aliases: [Shared Memory IPC, POSIX SHM, shm_open, mmap IPC, Zero-Copy IPC, Inter
 status: evergreen
 module: 09
 created: 2026-08-22
+type: concept
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
 > [!summary]
@@ -198,10 +203,10 @@ public:
 ---
 
 ## Related
-- [[Notes/The LMAX Disruptor Architecture]]
-- [[Notes/Aeron Messaging Transport]]
-- [[Notes/Lock-Free SPSC Ring Buffer Design]]
-- [[Notes/NUMA Topologies and Inter-Socket Jitter]]
+- [[The LMAX Disruptor Architecture]]
+- [[Aeron Messaging Transport]]
+- [[Lock-Free SPSC Ring Buffer Design]]
+- [[NUMA Topologies and Inter-Socket Jitter]]
 - [[MOC - 09 Messaging & IPC]]
 
 ## Sources

@@ -4,6 +4,11 @@ aliases: [Order State Management, Position Tracking, Real-Time PnL, Order State 
 status: evergreen
 module: 11
 created: 2026-08-22
+type: concept
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
 > [!summary]

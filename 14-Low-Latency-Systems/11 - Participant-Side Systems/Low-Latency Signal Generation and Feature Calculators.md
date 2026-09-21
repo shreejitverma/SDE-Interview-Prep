@@ -4,6 +4,11 @@ aliases: [Signal Generation, Microstructure Alpha, Micro-Price, Stoikov Model, O
 status: evergreen
 module: 11
 created: 2026-08-22
+type: concept
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
 > [!summary]

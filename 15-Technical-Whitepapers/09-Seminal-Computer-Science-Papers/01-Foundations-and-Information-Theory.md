@@ -3,6 +3,11 @@ tags: [computer-science, turing, shannon, information-theory, von-neumann, dijks
 aliases: [Foundations and Information Theory, Turing 1936, Shannon 1948, Von Neumann Architecture, Dijkstra Multiprogramming]
 status: evergreen
 created: 2026-09-17
+type: paper
+track: [distinguished, sde]
+level:
+last_reviewed:
+sources: []
 ---
 
 # Foundations of Computation & Information Theory
@@ -17,7 +22,7 @@ created: 2026-09-17
 ### Historical & Mathematical Significance
 Published in 1936 in the *Proceedings of the London Mathematical Society*, Alan Turing sought to answer David Hilbert's *Entscheidungsproblem* (the Decision Problem): Is there a mechanical procedure by which the truth or falsity of any mathematical proposition can be decided?
 
-To answer this, Turing invented the abstract mathematical model of a computing machine—now known as the **Turing Machine (TM)**.
+To answer this, Turing invented the abstract mathematical model of a computing machine - now known as the **Turing Machine (TM)**.
 
 ```mermaid
 flowchart LR
@@ -52,7 +57,7 @@ Turing proved that computation has fundamental limits:
 ## 2. A Mathematical Theory of Communication (Claude Shannon, 1948)
 
 ### Founding Information Theory
-Published in the *Bell System Technical Journal*, Claude Shannon created the mathematics of modern digital communication. Before Shannon, communications engineering was an analog discipline concerned with signal voltages and vacuum tubes. Shannon showed that all information—voice, text, images, video—can be represented as **discrete binary digits (Bits)**.
+Published in the *Bell System Technical Journal*, Claude Shannon created the mathematics of modern digital communication. Before Shannon, communications engineering was an analog discipline concerned with signal voltages and vacuum tubes. Shannon showed that all information - voice, text, images, video - can be represented as **discrete binary digits (Bits)**.
 
 ```mermaid
 flowchart LR

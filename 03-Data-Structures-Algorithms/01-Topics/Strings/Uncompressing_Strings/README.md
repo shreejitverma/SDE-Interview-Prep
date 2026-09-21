@@ -1,3 +1,12 @@
+---
+type: moc
+track: [sde, quant-dev]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 Arya has 2 strings, s and t. She has been given a task to uncompress the string s and verify if string t can be constructed. While uncompressing the string s, she can repeat each letter in s any non-zero number of times, i.e for s="aab", possible uncompressed forms can be "aabbb", "aaabb" etc.
 
 Determine if she is able to perform the task.

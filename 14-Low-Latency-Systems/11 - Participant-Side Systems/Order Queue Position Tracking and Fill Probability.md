@@ -4,6 +4,11 @@ aliases: [Queue Position Tracking, Fill Probability, Level-2 Queue Estimation, P
 status: evergreen
 module: 11
 created: 2026-08-22
+type: concept
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
 > [!summary]
@@ -14,7 +19,7 @@ created: 2026-08-22
 ## Why it matters
 In Price-Time Priority (FIFO) financial markets:
 - Resting limit orders at the **head of the queue** have near-100% execution probability on the next price cross and experience virtually zero adverse selection.
-- Resting limit orders at the **tail of the queue** only get filled when a massive aggressive sweep eats through the entire price level—meaning the market is violently moving against the resting order (**100% Adverse Selection Trap**).
+- Resting limit orders at the **tail of the queue** only get filled when a massive aggressive sweep eats through the entire price level - meaning the market is violently moving against the resting order (**100% Adverse Selection Trap**).
 
 On **Level-3 direct feeds (NASDAQ ITCH 5.0)**:
 - Queue position is deterministic because every individual order insertion and cancellation carries a unique `order_reference_id`.

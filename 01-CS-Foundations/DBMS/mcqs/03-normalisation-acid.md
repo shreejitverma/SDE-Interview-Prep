@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Questions
 1. Joe Bloggs is creating a social media today. However, Joe has kept user and group information in the same table. Now whenever Joe removes a user, the group information is also gone. Which type of anomaly is this?
     >A. Insertion \

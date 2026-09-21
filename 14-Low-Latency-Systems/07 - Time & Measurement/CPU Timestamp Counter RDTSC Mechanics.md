@@ -4,6 +4,11 @@ aliases: [RDTSC, RDTSCP, TSC Mechanics, Cycle Accurate Profiling, Invariant TSC]
 status: evergreen
 module: 07
 created: 2026-08-22
+type: concept
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
 > [!summary]
@@ -12,9 +17,9 @@ created: 2026-08-22
 ---
 
 ## Why it matters
-In high-frequency trading and matching engine development, syscalls like `clock_gettime(CLOCK_MONOTONIC)` or `std::chrono::high_resolution_clock` are too slow for inner loops—they cost **15–30 ns (60–120 cycles)** and can trigger context switches or VDSO overhead. 
+In high-frequency trading and matching engine development, syscalls like `clock_gettime(CLOCK_MONOTONIC)` or `std::chrono::high_resolution_clock` are too slow for inner loops - they cost **15–30 ns (60–120 cycles)** and can trigger context switches or VDSO overhead. 
 
-The `RDTSC` instruction executes in user-space in **~15–25 cycles (~4–6 ns)** without kernel involvement. However, using `RDTSC` naively produces completely bogus data—including zero or negative latencies—because modern superscalar out-of-order execution engines reorder instructions around the TSC read.
+The `RDTSC` instruction executes in user-space in **~15–25 cycles (~4–6 ns)** without kernel involvement. However, using `RDTSC` naively produces completely bogus data - including zero or negative latencies - because modern superscalar out-of-order execution engines reorder instructions around the TSC read.
 
 ```mermaid
 flowchart TD
@@ -171,10 +176,10 @@ public:
 ---
 
 ## Related
-- [[Notes/Latency Numbers Every Trading Engineer Knows]]
-- [[Notes/Coordinated Omission in Low Latency Systems]]
-- [[Notes/One-Way Latency vs Round-Trip Time Measurement]]
-- [[Notes/Clock Sources and Hardware Timestamping]]
+- [[Latency Numbers Every Trading Engineer Knows]]
+- [[Coordinated Omission in Low Latency Systems]]
+- [[One-Way Latency vs Round-Trip Time Measurement]]
+- [[Clock Sources and Hardware Timestamping]]
 - [[MOC - 07 Time & Measurement]]
 
 ## Sources

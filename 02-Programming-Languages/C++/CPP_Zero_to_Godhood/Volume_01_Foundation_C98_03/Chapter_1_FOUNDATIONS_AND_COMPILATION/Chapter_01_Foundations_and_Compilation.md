@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 01: Foundations & Compilation Model
 
 > *What is C++, and why does it matter?*
@@ -12,15 +21,15 @@ At its core, a computer is just a very fast, very obedient rock that we tricked 
 
 Programming is the act of translation. It is how we bridge the gap between human intention ("Show a picture of a cat on the screen") and machine execution ("Send these specific electrical signals to these specific pixels").
 
-When you write code, you are writing a highly structured, logical set of instructions. But computers don't run C++. They run *machine code*. C++ is the intermediary—a language designed to be readable by humans but easily translatable into the pure, high-voltage speed that the CPU craves.
+When you write code, you are writing a highly structured, logical set of instructions. But computers don't run C++. They run *machine code*. C++ is the intermediary - a language designed to be readable by humans but easily translatable into the pure, high-voltage speed that the CPU craves.
 
 ## 1.2 Why C++?
 
 C++ is a statically-typed, compiled programming language that combines low-level memory manipulation with high-level abstractions.
 
 > [!IMPORTANT]
-> **🧠 Brain Power: Why C++?**
-> Think of C++ as the "Power Tool" of programming. Python is like a high-end digital camera—press a button, and it does everything for you automatically. C++ is like a professional cinema camera where you manually adjust the aperture, shutter speed, and focus. It’s harder to use, but it gives you absolute control over the final result. If you’re building a rocket, a game engine, or a high-frequency trading system, you don't want a "press here" tool; you want C++.
+> **Brain Power: Why C++?**
+> Think of C++ as the "Power Tool" of programming. Python is like a high-end digital camera - press a button, and it does everything for you automatically. C++ is like a professional cinema camera where you manually adjust the aperture, shutter speed, and focus. It’s harder to use, but it gives you absolute control over the final result. If you’re building a rocket, a game engine, or a high-frequency trading system, you don't want a "press here" tool; you want C++.
 
 C++ was created in 1979 by Bjarne Stroustrup as an extension to the C programming language. He wanted the bare-metal speed of C, but with the organizational tools (like classes and objects) necessary to build massive software systems without the code collapsing under its own weight.
 
@@ -57,7 +66,7 @@ For beginners, we highly recommend an IDE (Integrated Development Environment) w
 * **Cross-Platform**: **CLion** (paid, but phenomenal) or **Visual Studio Code** (free, but requires some manual setup of the C++ extensions).
 
 > [!TIP]
-> **🔥 Godhood Tip: Compiler Explorer**
+> **Godhood Tip: Compiler Explorer**
 > Don't want to install anything right now? Go to [godbolt.org](https://godbolt.org). Compiler Explorer allows you to write C++ in your browser and instantly see the compiled assembly code. It is an indispensable tool used by senior engineers daily.
 
 ## 1.5 Your First Program: Hello, World
@@ -85,12 +94,12 @@ Let's break down exactly what you just wrote. C++ is a language of strict rules,
 2. **`int main() { ... }`**: Every C++ program, no matter how large, must have exactly one `main` function. This is the entry point. When you double-click your program, the Operating System looks for `main` and starts executing the code inside the curly braces `{}`. The `int` means this function will return an integer back to the OS when it finishes.
 3. **`std::cout`**: Think of this as a "pipe" that leads to your monitor. The `std::` part means it lives in the "Standard Library" namespace (we'll cover namespaces later).
 4. **`<<`**: This is the stream insertion operator. We are taking the string `"Hello, World!"` and "pushing" it into the `cout` pipe.
-5. **`std::endl`**: This stands for "end line". It moves the cursor to the next line and **flushes the buffer**. Flushing the buffer is like hitting "Send" on a text message—it forces the computer to actually display the text on the screen right now.
+5. **`std::endl`**: This stands for "end line". It moves the cursor to the next line and **flushes the buffer**. Flushing the buffer is like hitting "Send" on a text message - it forces the computer to actually display the text on the screen right now.
 6. **`return 0;`**: This tells the Operating System, "I finished successfully." A non-zero return value (like `return 1;`) would signal that an error occurred.
 7. **`;` (The Semicolon)**: Notice the semicolons at the end of the instructions. In C++, a semicolon is like a period at the end of a sentence. It tells the compiler that the statement is complete. If you forget it, your code will not compile.
 
 > [!WARNING]
-> **🤔 There Are No Dumb Questions**
+> **There Are No Dumb Questions**
 > **Q: Why is the standard library called `std`? Is it an STD?**
 > A: It stands for "Standard". As in, the Standard Library. Yes, we know the acronym is unfortunate. You'll get used to typing it.
 
@@ -118,9 +127,9 @@ Why is C++ so fast? It comes down to how the code is processed.
 
 Languages like Python or JavaScript are **Interpreted**. When you run a Python script, another program (the interpreter) reads your code line-by-line, translates it, and executes it on the fly. It's like having a live translator at a United Nations meeting. It's flexible, but the translation takes time.
 
-C++ is **Ahead-Of-Time (AOT) Compiled**. Before you can ever run a C++ program, the entire source code is translated into pure machine code tailored specifically for your exact CPU architecture. When you run the resulting executable, there is no translator. The CPU just executes the raw voltage instructions at maximum speed. It's like translating a book into a foreign language and printing it—it takes a lot of time upfront (compiling), but reading it is lightning fast.
+C++ is **Ahead-Of-Time (AOT) Compiled**. Before you can ever run a C++ program, the entire source code is translated into pure machine code tailored specifically for your exact CPU architecture. When you run the resulting executable, there is no translator. The CPU just executes the raw voltage instructions at maximum speed. It's like translating a book into a foreign language and printing it - it takes a lot of time upfront (compiling), but reading it is lightning fast.
 
-## 1.9 🛋️ Fireside Chat: The Assembly Line of Compilation
+## 1.9 Fireside Chat: The Assembly Line of Compilation
 
 Imagine you are building a custom car. You don't just "run" a car; you build it in stages. C++ works exactly the same way. The "compilation" process is actually a four-stage factory pipeline.
 
@@ -146,7 +155,7 @@ You now know what C++ is, why it's fast, and how it turns text into software. In
 C++ is a statically-typed, compiled programming language that combines low-level memory manipulation with high-level abstractions. It's the language of choice for performance-critical applications.
 
 > **Brain Power: Why C++?**
-> Think of C++ as the "Power Tool" of programming. Python is like a high-end digital camera—press a button, and it does everything for you. C++ is like a professional film camera where you manually adjust the aperture, shutter speed, and focus. It’s harder to use, but it gives you absolute control over the final result. If you’re building a rocket, a game engine, or a high-frequency trading system, you don't want a "press here" tool; you want C++.
+> Think of C++ as the "Power Tool" of programming. Python is like a high-end digital camera - press a button, and it does everything for you. C++ is like a professional film camera where you manually adjust the aperture, shutter speed, and focus. It’s harder to use, but it gives you absolute control over the final result. If you’re building a rocket, a game engine, or a high-frequency trading system, you don't want a "press here" tool; you want C++.
 
 ### Your First Program (C++98)
 
@@ -159,12 +168,12 @@ int main() {         // 2. The Entry Point
 }
 ```
 
-#### 🔍 Technical Decomposition
+#### Technical Decomposition
 
 1. **`#include <iostream>`**: This tells the compiler to go find the code for "Standard Input/Output" and paste it right here. Without this, the computer wouldn't know what `std::cout` is.
 2. **`int main()`**: Every C++ program starts here. The `int` means this function will return an integer to the Operating System when it's done.
 3. **`std::cout`**: Think of this as a "pipe" that leads to your screen. The `<<` operators are "pushing" the string into that pipe.
-4. **`std::endl`**: This ends the line and **flushes the buffer**. Flushing the buffer is like hitting "Send" on a message—it forces the computer to actually display it right now.
+4. **`std::endl`**: This ends the line and **flushes the buffer**. Flushing the buffer is like hitting "Send" on a message - it forces the computer to actually display it right now.
 
 ***
 
@@ -185,7 +194,7 @@ Imagine you are building a custom car. You don't just "run" a car; you build it 
 > **A:** Because C++ is "AOT" (Ahead-Of-Time) compiled. Python is interpreted (translated as it runs). By doing all this work upfront, C++ creates a binary that is perfectly optimized for your specific hardware. It's like the difference between buying a tailored suit (C++) vs. a one-size-fits-all poncho (Python).
 >
 > **Q: What happens if I forget a semicolon?**
-> **A:** The Compiler (Stage 2) will scream at you. It’s like trying to build a car engine with a missing bolt—it just won't fit together.
+> **A:** The Compiler (Stage 2) will scream at you. It’s like trying to build a car engine with a missing bolt - it just won't fit together.
 
 ***
 
@@ -1498,7 +1507,7 @@ for(float a = 0; a != 2; a += 0.01f) {
     total += a;
 }
 The novice programmer assumes that this will sum up every single number in the range 0, 0.01, 0.02, 0.03,
-..., 1.97, 1.98, 1.99, to yield the result 199—the mathematically correct answer.
+..., 1.97, 1.98, 1.99, to yield the result 199-the mathematically correct answer.
 Two things happen that make this untrue:
 1.
 2.
@@ -1521,8 +1530,8 @@ if(a + b == c)
 else
     std::cout << "This Computer is pretty normal, all things considered." << std::endl;
 Though what we the programmer see is three numbers written in base10, what the compiler (and the underlying
-hardware) see are binary numbers. Because 0.1, 0.2, and 0.3 require perfect division by 10—which is quite easy in
-a base-10 system, but impossible in a base-2 system—these numbers have to be stored in imprecise formats,
+hardware) see are binary numbers. Because 0.1, 0.2, and 0.3 require perfect division by 10-which is quite easy in
+a base-10 system, but impossible in a base-2 system-these numbers have to be stored in imprecise formats,
 similar to how the number 1/3 has to be stored in the imprecise form 0.333333333333333... in base-10.
 //64-bit floats have 53 digits of precision, including the whole-number-part.
 double a =     0011111110111001100110011001100110011001100110011001100110011010; //imperfect

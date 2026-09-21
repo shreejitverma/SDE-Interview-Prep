@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 09: Error Handling and Robustness
 
 > *Expecting the unexpected without crashing the system.*
@@ -30,13 +39,13 @@ Before writing any error-handling code, ask: **Whose fault is this?**
 
 | Failure type | Cause | Mechanism |
 | :----------- | :---- | :-------- |
-| **Bug** | Programmer violated a precondition | `assert` — crash immediately in debug, removed in release |
-| **Runtime error** | Environmental failure the code cannot prevent | Exception — survive and recover |
+| **Bug** | Programmer violated a precondition | `assert` - crash immediately in debug, removed in release |
+| **Runtime error** | Environmental failure the code cannot prevent | Exception - survive and recover |
 
 - If `calculate_speed(distance, time)` is called with `time == 0`, that is a programming error. Use `assert(time != 0)`.
 - If `load_file("save.dat")` fails because the user deleted the file, that is not a bug. Use an exception.
 
-Never use exceptions as a control-flow mechanism for normal program paths — the overhead and cognitive cost are not worth it.
+Never use exceptions as a control-flow mechanism for normal program paths - the overhead and cognitive cost are not worth it.
 
 ---
 
@@ -97,9 +106,9 @@ int main() {
 ## 9.3 Basic try-catch-throw
 
 The exception model has three keywords:
-- `throw` — signals a failure, exits the current scope immediately.
-- `try` — marks a block whose execution may produce exceptions.
-- `catch` — handles an exception of a specific type.
+- `throw` - signals a failure, exits the current scope immediately.
+- `try` - marks a block whose execution may produce exceptions.
+- `catch` - handles an exception of a specific type.
 
 ```cpp
 // Listing 9.4: Basic exception flow
@@ -178,18 +187,18 @@ Never throw raw integers, strings, or pointers. Always throw objects that derive
 
 ```
 std::exception (base)
-├── std::logic_error     — programming errors (detectable by inspection)
+├── std::logic_error     - programming errors (detectable by inspection)
 │   ├── std::invalid_argument
 │   ├── std::domain_error
 │   ├── std::length_error
 │   └── std::out_of_range
-└── std::runtime_error   — runtime errors (not detectable in advance)
+└── std::runtime_error   - runtime errors (not detectable in advance)
     ├── std::range_error
     ├── std::overflow_error
     └── std::underflow_error
-std::bad_alloc           — thrown by operator new when heap exhausted
-std::bad_cast            — thrown by dynamic_cast on reference types
-std::bad_typeid          — thrown by typeid on null pointer
+std::bad_alloc           - thrown by operator new when heap exhausted
+std::bad_cast            - thrown by dynamic_cast on reference types
+std::bad_typeid          - thrown by typeid on null pointer
 ```
 
 ```cpp
@@ -359,11 +368,11 @@ int main() {
 **RAII is critical for exception safety.** Raw `new`/`delete` inside a function is dangerous:
 
 ```cpp
-// Listing 9.11: Raw new/delete — memory leak on exception
+// Listing 9.11: Raw new/delete - memory leak on exception
 void dangerous() {
     int* buf = new int[1000]; // Allocated
     throw std::runtime_error("Error!");
-    delete[] buf;             // NEVER REACHED — 4000 bytes leaked
+    delete[] buf;             // NEVER REACHED - 4000 bytes leaked
 }
 ```
 
@@ -434,13 +443,13 @@ catch (const std::runtime_error& e) {     // Catch by const reference
 **Why not throw by pointer?**
 
 ```cpp
-// Listing 9.15: Throwing by pointer — ownership nightmare
+// Listing 9.15: Throwing by pointer - ownership nightmare
 // throw new std::runtime_error("Error!"); // Who deletes this?
 // The catcher would have to: catch (std::runtime_error* e) { ... delete e; }
 // Manual memory management in exception handlers is error-prone.
 ```
 
-Always throw by value — the exception mechanism manages the exception object's lifetime.
+Always throw by value - the exception mechanism manages the exception object's lifetime.
 
 ---
 
@@ -448,7 +457,7 @@ Always throw by value — the exception mechanism manages the exception object's
 
 ### 9.11.1 Nested try-catch
 
-Exception handlers may be nested — the inner `catch` handles specific errors; if it rethrows, the outer `catch` handles the remainder:
+Exception handlers may be nested - the inner `catch` handles specific errors; if it rethrows, the outer `catch` handles the remainder:
 
 ```cpp
 // Listing 9.16: Nested exception handling
@@ -492,7 +501,7 @@ public:
     catch (const std::bad_alloc& e) {
         std::cerr << "Allocation failed: " << e.what() << "\n";
         // data is already null; nothing to free
-        throw; // Re-throw: constructor cannot "recover" — object not fully built
+        throw; // Re-throw: constructor cannot "recover" - object not fully built
     }
 
     ~Widget() { delete[] data; }
@@ -544,7 +553,7 @@ template<>       struct CompileTimeCheck<true> { typedef void type; };
 typedef CompileTimeCheck<sizeof(int) == 4>::type INT_IS_4_BYTES;
 ```
 
-C++11 introduced `static_assert(condition, "message")` — a cleaner replacement.
+C++11 introduced `static_assert(condition, "message")` - a cleaner replacement.
 
 ### 9.12.4 Core Dumps (Linux)
 
@@ -569,7 +578,7 @@ Well-written C++ code provides one of three exception safety levels:
 | Guarantee | What it means |
 | :-------- | :------------ |
 | **No-throw** | The operation never throws. Guaranteed by `throw()` or (C++11) `noexcept`. |
-| **Strong** | If an exception is thrown, the operation has no visible effect — the program state is exactly as it was before the call (rollback semantics). |
+| **Strong** | If an exception is thrown, the operation has no visible effect - the program state is exactly as it was before the call (rollback semantics). |
 | **Basic** | If an exception is thrown, no resources are leaked, and all objects are in a valid (though not necessarily the original) state. |
 
 The standard library guarantees at least the basic guarantee for all operations. Functions that modify a single object in place without allocating often achieve the strong guarantee.
@@ -584,7 +593,7 @@ void increment(int& x) noexcept { x++; }
 // If it does throw, std::terminate() is called immediately
 ```
 
-`noexcept` allows the compiler to skip exception-unwinding bookkeeping in the function, producing smaller, faster code. It is especially important for **move constructors and move assignment operators** — the standard library's move-aware containers require `noexcept` moves to guarantee the strong exception safety during reallocation.
+`noexcept` allows the compiler to skip exception-unwinding bookkeeping in the function, producing smaller, faster code. It is especially important for **move constructors and move assignment operators** - the standard library's move-aware containers require `noexcept` moves to guarantee the strong exception safety during reallocation.
 
 In C++98/03, use `throw()` to mark non-throwing functions.
 
@@ -592,7 +601,7 @@ In C++98/03, use `throw()` to mark non-throwing functions.
 
 - Derive all exceptions from `std::exception` so catch-all handlers can use `const std::exception&`.
 - Prefer inheriting from `std::runtime_error` for recoverable conditions, `std::logic_error` for programming errors.
-- Keep exception message strings short and descriptive — they survive across call stack boundaries.
+- Keep exception message strings short and descriptive - they survive across call stack boundaries.
 - Never throw in destructors. A destructor called during stack unwinding that throws produces `std::terminate()`.
 
 ### 9.13.4 When Not to Use Exceptions

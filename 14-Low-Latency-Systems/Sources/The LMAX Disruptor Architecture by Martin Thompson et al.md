@@ -4,9 +4,14 @@ aliases: [LMAX Disruptor Architecture, Martin Thompson, Mechanical Sympathy Ring
 status: evergreen
 module: 14
 created: 2026-09-17
+type: paper
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
-# Source Summary — The LMAX Disruptor: High Performance Alternative to Bounded Queues
+# Source Summary - The LMAX Disruptor: High Performance Alternative to Bounded Queues
 **Authors**: Martin Thompson, Dave Farley, Michael Barker, Patricia Gee, and Adrian Colyer  
 **Publication**: LMAX Technical Whitepaper (2011)  
 **Category**: Mechanical Sympathy, Lock-Free Concurrency, Inter-Thread Messaging
@@ -16,7 +21,7 @@ created: 2026-09-17
 ## Executive Summary & Core Thesis
 The LMAX Disruptor whitepaper revolutionized high-performance message processing architecture. LMAX sought to build an institutional-grade financial exchange processing 6 million orders per second with deterministic sub-millisecond latencies. They discovered that traditional concurrent architectures based on multi-threaded actor models, queues (`java.util.concurrent.ArrayBlockingQueue`), and lock-based synchronization collapsed under high throughput due to **cache coherence ping-pong, kernel context switches, and false sharing**.
 
-Their breakthrough was **Mechanical Sympathy**—designing software to work in alignment with underlying CPU cache hardware. The result is the **Disruptor**: a pre-allocated circular ring buffer accessed via lock-free sequence barriers, single-writer invariants, and cache-line padding, eliminating locks, garbage collection pauses, and memory allocation from the critical path.
+Their breakthrough was **Mechanical Sympathy** - designing software to work in alignment with underlying CPU cache hardware. The result is the **Disruptor**: a pre-allocated circular ring buffer accessed via lock-free sequence barriers, single-writer invariants, and cache-line padding, eliminating locks, garbage collection pauses, and memory allocation from the critical path.
 
 ```mermaid
 flowchart LR
@@ -78,8 +83,8 @@ $$\text{Index} = \text{Sequence} \ \& \ (\text{Buffer Size} - 1)$$
 
 ## Related Notes
 - [[15-Technical-Whitepapers/10-Seminal-Low-Latency-Systems-Papers/02-Lock-Free-and-Wait-Free-Algorithms]]
-- [[04 - Hardware Mechanical Sympathy/CPU Cache Hierarchy L1 L2 L3]]
-- [[04 - Hardware Mechanical Sympathy/False Sharing and Cache Line Alignment]]
-- [[05 - Concurrency & Multithreading/Lock-Free Ring Buffers SPSC and MPMC]]
-- [[08 - Order Book & Matching Engine/Deterministic Matching Engine Architecture]]
+- [[CPU Cache Hierarchy and Line Alignment]]
+- [[False Sharing and Cache Contention]]
+- [[Lock-Free Ring Buffers SPSC and MPMC]]
+- [[Deterministic Matching Engine Architecture]]
 - [[14 - Industry Map & Canon/MOC - 14 Industry Map & Canon]]

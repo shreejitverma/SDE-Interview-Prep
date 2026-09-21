@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 38: The Compilation Model Deep Dive
 
 > *How text becomes machine code.*
@@ -14,7 +23,7 @@ When you type `g++ main.cpp math.cpp -o my_app`, you are actually invoking a mas
 
 ### Stage 1: The Preprocessor
 We discussed this in the previous chapter. The preprocessor handles all `#` directives. It replaces `#include` with the contents of header files, expands macros, and strips out comments. 
-The output of this stage is a **Translation Unit**—a massive, purely C++ text file with no preprocessor directives left.
+The output of this stage is a **Translation Unit** - a massive, purely C++ text file with no preprocessor directives left.
 
 ### Stage 2: The Compiler (Front-End & Middle-End)
 The compiler takes the Translation Unit and begins analysis.

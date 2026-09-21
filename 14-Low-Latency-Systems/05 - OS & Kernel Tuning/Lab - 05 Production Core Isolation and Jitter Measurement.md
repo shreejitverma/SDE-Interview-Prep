@@ -4,9 +4,14 @@ aliases: [Lab 05, Core Isolation Lab, Jitter Measurement Lab, OS Jitter Lab]
 status: evergreen
 module: 05
 created: 2026-08-22
+type: playbook
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
-# Lab 05 — Production Core Isolation and Jitter Measurement
+# Lab 05 - Production Core Isolation and Jitter Measurement
 
 > [!summary]
 > In this lab, you will construct a cycle-accurate C++20 jitter profiler that executes an uninterrupted 10-second polling loop to measure OS-induced latency spikes down to the nanosecond. You will experimentally quantify the tail-latency reduction from:
@@ -261,9 +266,9 @@ sudo ./os_jitter_profiler --tuned
 ---
 
 ## Related Notes
-- [[Notes/Kernel Boot Parameters for Core Isolation]]
-- [[Notes/Linux Thread Pinning and Core Affinity]]
-- [[Notes/Interrupt Routing and MSI-X Tuning]]
-- [[Notes/CPU Power States and Jitter Sources]]
-- [[Notes/Latency Numbers Every Trading Engineer Knows]]
+- [[Kernel Boot Parameters for Core Isolation]]
+- [[Linux Thread Pinning and Core Affinity]]
+- [[Interrupt Routing and MSI-X Tuning]]
+- [[CPU Power States and Jitter Sources]]
+- [[Latency Numbers Every Trading Engineer Knows]]
 - [[MOC - 05 OS & Kernel Tuning]]

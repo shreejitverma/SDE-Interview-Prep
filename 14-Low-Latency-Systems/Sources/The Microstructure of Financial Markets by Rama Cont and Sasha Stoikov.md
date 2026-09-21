@@ -4,9 +4,14 @@ aliases: [Cont and Stoikov, Microstructure Papers, Order Flow Imbalance Paper, M
 status: evergreen
 module: 14
 created: 2026-08-22
+type: paper
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
-# Source Summary — The Microstructure of Financial Markets: Quantitative Foundations
+# Source Summary - The Microstructure of Financial Markets: Quantitative Foundations
 **Authors**: Rama Cont (Professor of Mathematics, University of Oxford) & Sasha Stoikov (Senior Research Associate, Cornell Financial Engineering)  
 **Publication**: Journal of Financial and Quantitative Analysis / Applied Mathematical Finance / SSRN  
 **Category**: Quantitative Finance & High-Frequency Alpha Modeling

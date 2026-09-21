@@ -4,6 +4,11 @@ aliases: [Sequencer, Sequenced Stream, Total Order Broadcast, Inbound Ordering, 
 status: evergreen
 module: 02
 created: 2026-08-22
+type: concept
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
 > [!summary]
@@ -172,11 +177,11 @@ public:
 ---
 
 ## Related
-- [[Notes/Deterministic Matching Engine State Recovery]]
-- [[Notes/Replicated State Machine Pattern in Exchanges]]
-- [[Notes/Exchange Gateway Architecture]]
-- [[Notes/The LMAX Disruptor Architecture]]
-- [[Notes/Aeron Messaging Transport]]
+- [[Deterministic Matching Engine State Recovery]]
+- [[Replicated State Machine Pattern in Exchanges]]
+- [[Exchange Gateway Architecture]]
+- [[The LMAX Disruptor Architecture]]
+- [[Aeron Messaging Transport]]
 - [[MOC - 02 Exchange Architecture]]
 - [[MOC - 09 Messaging & IPC]]
 

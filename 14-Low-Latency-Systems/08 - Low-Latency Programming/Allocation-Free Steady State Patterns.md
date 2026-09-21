@@ -4,6 +4,11 @@ aliases: [Allocation-Free, Zero-Allocation, Object Pools, Arena Allocator, Intru
 status: evergreen
 module: 08
 created: 2026-08-22
+type: concept
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
 > [!summary]
@@ -63,7 +68,7 @@ For long-lived objects (e.g., active orders in an order book):
 ### 3. Intrusive Data Containers
 Standard containers like `std::list<Order>` or `std::map<Price, Order>` allocate an external heap node wrapping your data on every insert.
 - **Intrusive Containers**: Pointers (`next`, `prev`) are embedded directly inside the `Order` struct itself.
-- Inserting an order into a price level linked list requires **zero memory allocation**—the order *is* the list node.
+- Inserting an order into a price level linked list requires **zero memory allocation** - the order *is* the list node.
 
 ---
 
@@ -215,11 +220,11 @@ void operator delete(void* ptr) noexcept {
 ---
 
 ## Related
-- [[Notes/C++ Memory Model and Memory Orders]]
-- [[Notes/Lock-Free SPSC Ring Buffer Design]]
-- [[Notes/Lock-Free MPMC Queue Mechanics]]
-- [[Notes/Cache-Conscious Data Layout]]
-- [[Notes/Order Book Data Structures]]
+- [[C++ Memory Model and Memory Orders]]
+- [[Lock-Free SPSC Ring Buffer Design]]
+- [[Lock-Free MPMC Queue Mechanics]]
+- [[Cache-Conscious Data Layout]]
+- [[Order Book Data Structures]]
 - [[MOC - 08 Low-Latency Programming]]
 
 ## Sources

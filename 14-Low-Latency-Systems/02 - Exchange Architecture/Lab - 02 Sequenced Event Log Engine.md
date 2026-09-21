@@ -4,9 +4,14 @@ aliases: [Lab 02, Sequencer Lab, Event Log Lab, Deterministic Sequencer Lab]
 status: evergreen
 module: 02
 created: 2026-08-22
+type: playbook
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
-# Lab 02 — Sequenced Event Log & Total-Order Broadcasting Engine
+# Lab 02 - Sequenced Event Log & Total-Order Broadcasting Engine
 
 > [!summary]
 > In this lab, you will build, compile, and benchmark an exchange-grade, lock-free Multi-Gateway Total-Order Sequencer and Memory-Mapped Binary Journal in C++20. You will simulate concurrent order streams from 4 independent gateway line handlers, funnel them into a single-writer sequencer, and achieve sub-25ns sequencing latency with zero sequence gaps across 10,000,000 orders.

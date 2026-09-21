@@ -1,10 +1,19 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 32: Memory Allocators
 
 > *Taking absolute control over `new` and `delete`.*
 
 In most C++ applications, when you need memory on the heap, you call `new` (or the underlying `malloc`), and when you are done, you call `delete` (or `free`). 
 
-For 95% of applications, the default OS allocator is fantastic. But for the remaining 5%—game engines, embedded systems, high-frequency trading, and database engines—`malloc` is a major bottleneck.
+For 95% of applications, the default OS allocator is fantastic. But for the remaining 5% - game engines, embedded systems, high-frequency trading, and database engines - `malloc` is a major bottleneck.
 
 ---
 

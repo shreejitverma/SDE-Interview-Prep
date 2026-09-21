@@ -1,8 +1,17 @@
-# Chapter 32: Concepts I — Constraints, requires-Clauses, and requires-Expressions
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
+# Chapter 32: Concepts I - Constraints, requires-Clauses, and requires-Expressions
 
 > *Concepts are the first of C++20's four pillars and the one that most directly changes day-to-day template code. They turn template parameters from unchecked "duck typing resolved deep inside instantiation" into named, compile-time-verified contracts. This chapter covers the mechanics: how to define a concept, how to attach constraints with a requires-clause, how to express ad-hoc requirements with a requires-expression, and the four ways to spell a constrained template.*
 
-Before C++20, expressing "this template only works for types that support `+`" meant SFINAE, `std::enable_if`, tag dispatch, or a `static_assert` buried in the body — all of which produced diagnostics measured in screenfuls. Concepts replace that machinery with a first-class language feature that names the requirement, checks it at the call site, and emits a one-line error when it fails. This chapter is the foundation; Chapter 33 covers the standard concepts library and the subsumption rules that make constrained overloading work.
+Before C++20, expressing "this template only works for types that support `+`" meant SFINAE, `std::enable_if`, tag dispatch, or a `static_assert` buried in the body - all of which produced diagnostics measured in screenfuls. Concepts replace that machinery with a first-class language feature that names the requirement, checks it at the call site, and emits a one-line error when it fails. This chapter is the foundation; Chapter 33 covers the standard concepts library and the subsumption rules that make constrained overloading work.
 
 ---
 
@@ -26,15 +35,15 @@ Before C++20, expressing "this template only works for types that support `+`" m
 
 ## 32.1 The Problem Concepts Solve
 
-Consider a generic `sort`-like function template. If you hand it a `std::list` (which lacks random-access iterators), pre-C++20 the compiler does not complain at the call site. It complains **deep inside the algorithm**, where `it + n` fails — often dozens of instantiation frames away, in a message hundreds of lines long that names internal helper types you have never heard of.
+Consider a generic `sort`-like function template. If you hand it a `std::list` (which lacks random-access iterators), pre-C++20 the compiler does not complain at the call site. It complains **deep inside the algorithm**, where `it + n` fails - often dozens of instantiation frames away, in a message hundreds of lines long that names internal helper types you have never heard of.
 
-The standard analogy is the **bouncer**: old C++ lets everyone into the club and only discovers the problem when someone tries to do something they cannot, far inside. Concepts put a bouncer at the door who checks IDs: *"I only admit types that are `std::random_access_iterator`. `std::list::iterator` is not one. Denied — at the call site, in one line."*
+The standard analogy is the **bouncer**: old C++ lets everyone into the club and only discovers the problem when someone tries to do something they cannot, far inside. Concepts put a bouncer at the door who checks IDs: *"I only admit types that are `std::random_access_iterator`. `std::list::iterator` is not one. Denied - at the call site, in one line."*
 
 The benefit is threefold:
 
 - **Diagnostics** become short and point at the call site.
 - **Overload resolution** can select between functions based on type properties, cleanly.
-- **Interfaces** become self-documenting — the constraint *is* the contract.
+- **Interfaces** become self-documenting - the constraint *is* the contract.
 
 There is **no runtime cost**: concepts are evaluated entirely at compile time and erased.
 
@@ -42,7 +51,7 @@ There is **no runtime cost**: concepts are evaluated entirely at compile time an
 
 ## 32.2 Defining a Concept
 
-A **concept** is a named compile-time predicate over template parameters, introduced with the `concept` keyword. Its body is a constant expression of type `bool` — most usefully, a type trait or a requires-expression.
+A **concept** is a named compile-time predicate over template parameters, introduced with the `concept` keyword. Its body is a constant expression of type `bool` - most usefully, a type trait or a requires-expression.
 
 ```cpp
 // Listing 32.1: defining concepts from a trait and from a requires-expression
@@ -136,7 +145,7 @@ A subtlety that trips people: a **raw boolean expression** like `sizeof(T) >= 4`
 
 ## 32.5 requires-Expressions
 
-A **requires-expression** is a distinct construct (note: *expression*, not *clause*) that yields a `bool` at compile time: `true` if every requirement inside is satisfied, `false` otherwise. It is the workhorse for defining concepts. Its optional parameter list introduces fictional variables used only to test expression validity — they are never evaluated.
+A **requires-expression** is a distinct construct (note: *expression*, not *clause*) that yields a `bool` at compile time: `true` if every requirement inside is satisfied, `false` otherwise. It is the workhorse for defining concepts. Its optional parameter list introduces fictional variables used only to test expression validity - they are never evaluated.
 
 ```cpp
 // Listing 32.5: anatomy of a requires-expression
@@ -154,7 +163,7 @@ There are exactly four kinds of requirement inside the braces.
 
 ### 32.5.1 Simple Requirements
 
-A **simple requirement** is just an expression followed by `;`. It is satisfied if the expression is *valid* (compiles) — the expression is never evaluated and its result is discarded.
+A **simple requirement** is just an expression followed by `;`. It is satisfied if the expression is *valid* (compiles) - the expression is never evaluated and its result is discarded.
 
 ```cpp
 // Listing 32.6: simple requirements
@@ -202,7 +211,7 @@ The form `{ expr } -> Concept;` means "`expr` is valid, and `Concept<decltype((e
 
 ### 32.5.4 Nested Requirements
 
-A **nested requirement** is the keyword `requires` followed by a constraint expression. Unlike a simple requirement (which only checks validity), a nested requirement checks that the constraint is *satisfied* — its boolean value must be `true`.
+A **nested requirement** is the keyword `requires` followed by a constraint expression. Unlike a simple requirement (which only checks validity), a nested requirement checks that the constraint is *satisfied* - its boolean value must be `true`.
 
 ```cpp
 // Listing 32.9: nested requirement enforces a predicate, not just validity
@@ -300,12 +309,12 @@ This is the difference between a two-minute fix and a two-hour spelunk. In templ
 
 ## 32.9 Professional Insights
 
-**Constrain every public template interface.** The cost is one concept name; the benefit is a call-site diagnostic instead of an instantiation-depth explosion, plus a self-documenting contract. For a library others build against, an unconstrained template parameter is now a code smell — it defers all type-checking to the worst possible place. Start at your API boundaries and work inward.
+**Constrain every public template interface.** The cost is one concept name; the benefit is a call-site diagnostic instead of an instantiation-depth explosion, plus a self-documenting contract. For a library others build against, an unconstrained template parameter is now a code smell - it defers all type-checking to the worst possible place. Start at your API boundaries and work inward.
 
 **Prefer named concepts to inline requires-expressions in interfaces.** An inline `requires(...)` on a function works, but a named concept (`template<class T> concept Sortable = ...;`) is reusable, appears in diagnostics by name, and participates in subsumption so overloads order correctly. Reserve bare requires-expressions for one-off internal constraints.
 
-**Know the simple-vs-nested requirement trap cold.** Writing `sizeof(T) <= 16;` inside a requires-expression checks *validity*, not *truth* — it is almost always a silent bug. The predicate form is `requires sizeof(T) <= 16;`. This single distinction is the most common concepts mistake in production code; internalize that compound/simple requirements test "does it compile" while nested requirements test "is it true."
+**Know the simple-vs-nested requirement trap cold.** Writing `sizeof(T) <= 16;` inside a requires-expression checks *validity*, not *truth* - it is almost always a silent bug. The predicate form is `requires sizeof(T) <= 16;`. This single distinction is the most common concepts mistake in production code; internalize that compound/simple requirements test "does it compile" while nested requirements test "is it true."
 
 **Use compound requirements to constrain results, not just calls.** `{ expr } -> std::convertible_to<U>;` is far stronger than the bare `expr;` simple requirement, because it pins down what the expression *yields*. When you care that `container.size()` returns something `size_t`-like, or that `*it` is convertible to your value type, the compound form is what actually enforces it.
 
-**Remember there is no runtime cost and no ABI footprint.** Concepts are pure compile-time predicates — they generate no code, occupy no space, and add no indirection. This is precisely why they belong in hot-path template libraries: they make the code safer and the diagnostics humane while leaving the emitted machine code identical to the unconstrained version.
+**Remember there is no runtime cost and no ABI footprint.** Concepts are pure compile-time predicates - they generate no code, occupy no space, and add no indirection. This is precisely why they belong in hot-path template libraries: they make the code safer and the diagnostics humane while leaving the emitted machine code identical to the unconstrained version.

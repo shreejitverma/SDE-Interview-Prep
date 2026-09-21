@@ -23,7 +23,7 @@ tags:
 
 ---
 
-## 📝 Questions Asked
+## Questions Asked
 
 ### Question 1
 **Topic:** 
@@ -44,41 +44,41 @@ tags:
 
 ---
 
-## ✅ What Went Well
+## ✓ What Went Well
 - 
 - 
 - 
 
-## ❌ What Went Wrong
+## ✗ What Went Wrong
 - 
 - 
 - 
 
-## 💡 Key Learnings
+## Key Learnings
 1. 
 2. 
 3. 
 
-## 🔧 Knowledge Gaps Exposed
+## Knowledge Gaps Exposed
 | Gap | Severity (1-5) | Study Resource | Target Date |
 |-----|----------------|----------------|-------------|
 | | | | |
 
-## 📋 Action Items
+## Action Items
 - [ ] 
 - [ ] 
 - [ ] 
 
-## ⏱️ Time Analysis
+## Time Analysis
 | Question | Allotted | Actual | Verdict |
 |----------|----------|--------|---------|
-| Q1 | min | min | ✅/❌ |
-| Q2 | min | min | ✅/❌ |
+| Q1 | min | min | ✓/✗ |
+| Q2 | min | min | ✓/✗ |
 
-## 🎯 If I Could Redo This Interview
+## If I Could Redo This Interview
 > What would I do differently?
 
 
-## 🔗 Related
+## Related
 - Interview Note: `= "[[03-Pipeline/Active/" + this.company + "-" + this.role + "]]"`
 - Company Profile: `= "[[02-Companies/" + this.company + "]]"`

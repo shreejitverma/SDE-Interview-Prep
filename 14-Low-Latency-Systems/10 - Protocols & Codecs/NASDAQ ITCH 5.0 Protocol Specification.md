@@ -4,6 +4,11 @@ aliases: [ITCH 5.0, NASDAQ ITCH, TotalView-ITCH, MoldUDP64, Order Book Protocol,
 status: evergreen
 module: 10
 created: 2026-08-22
+type: concept
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
 > [!summary]

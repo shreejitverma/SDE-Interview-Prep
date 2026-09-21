@@ -3,6 +3,11 @@ tags: [concurrency, threads, event-driven, virtual-threads, async, ousterhout]
 aliases: [Concurrency and Threading Debates, Why Threads Are A Bad Idea, Virtual Threads Paper]
 status: evergreen
 created: 2026-09-17
+type: paper
+track: [distinguished, sde]
+level:
+last_reviewed:
+sources: []
 ---
 
 # Concurrency & Threading Debates

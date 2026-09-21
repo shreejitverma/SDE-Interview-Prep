@@ -1,8 +1,17 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 25: Vocabulary Types
 
-> *C++17 standardizes four "vocabulary types" — `optional`, `variant`, `any`, and `string_view` — that give the language a shared, type-safe way to express ideas every codebase had previously hand-rolled: a value that may be absent, a value that is one of several types, a value of any type, and a non-owning view of a string. Because they are standard, they become a common interface across libraries; because they are value types, they integrate with the type system instead of subverting it the way `void*`, sentinel values, and naked pointers do.*
+> *C++17 standardizes four "vocabulary types" - `optional`, `variant`, `any`, and `string_view` - that give the language a shared, type-safe way to express ideas every codebase had previously hand-rolled: a value that may be absent, a value that is one of several types, a value of any type, and a non-owning view of a string. Because they are standard, they become a common interface across libraries; because they are value types, they integrate with the type system instead of subverting it the way `void*`, sentinel values, and naked pointers do.*
 
-The term *vocabulary type* means a type so broadly useful that it belongs in the shared vocabulary of every interface — the way `std::string` and `std::vector` already were. Before C++17, "no value" was a null pointer or a magic `-1`, "one of several types" was a tagged union maintained by hand, "any type" was a `void*` with a separate type tag, and "a substring without copying" was a `const char* + length` pair. Each of these workarounds reduced the space of valid values, leaked memory-management concerns, or threw away type safety. The four types in this chapter replace them with safe, efficient, standard alternatives — and the `std::in_place` tag family and `std::monostate` round out the construction and empty-state machinery they depend on.
+The term *vocabulary type* means a type so broadly useful that it belongs in the shared vocabulary of every interface - the way `std::string` and `std::vector` already were. Before C++17, "no value" was a null pointer or a magic `-1`, "one of several types" was a tagged union maintained by hand, "any type" was a `void*` with a separate type tag, and "a substring without copying" was a `const char* + length` pair. Each of these workarounds reduced the space of valid values, leaked memory-management concerns, or threw away type safety. The four types in this chapter replace them with safe, efficient, standard alternatives - and the `std::in_place` tag family and `std::monostate` round out the construction and empty-state machinery they depend on.
 
 ---
 
@@ -22,7 +31,7 @@ The term *vocabulary type* means a type so broadly useful that it belongs in the
 
 ## 25.1 `std::string_view`
 
-`std::string_view` is a **non-owning reference** to a contiguous sequence of characters — a `const char*` plus a length, wrapped in an interface that mirrors `std::string`'s read-only methods. It enables **zero-copy** string operations: passing, slicing, and searching strings without allocating or copying.
+`std::string_view` is a **non-owning reference** to a contiguous sequence of characters - a `const char*` plus a length, wrapped in an interface that mirrors `std::string`'s read-only methods. It enables **zero-copy** string operations: passing, slicing, and searching strings without allocating or copying.
 
 ### 25.1.1 Efficiency
 
@@ -52,7 +61,7 @@ int main() {
     std::string s = "Hello World";
     print_view(s);      // also binds to a std::string, no copy
 
-    // Substrings are cheap — substr() returns another view, not a new buffer:
+    // Substrings are cheap - substr() returns another view, not a new buffer:
     std::string_view sub = std::string_view(cstr).substr(0, 5);
     print_view(sub);    // "Hello"
 }
@@ -71,7 +80,7 @@ A `string_view` borrows; it does not own. Two failure modes follow directly:
 
 ## 25.2 `std::optional`
 
-`std::optional<T>` represents a value that **may or may not be present**. It replaces null pointers for nullable values and "magic" sentinel values (`-1`, `""`, `0`) with an explicit, type-safe "maybe a `T`." An `optional<int>` either contains an `int` or contains nothing — and, unlike a pointer, it stores its `T` inline with no dynamic allocation.
+`std::optional<T>` represents a value that **may or may not be present**. It replaces null pointers for nullable values and "magic" sentinel values (`-1`, `""`, `0`) with an explicit, type-safe "maybe a `T`." An `optional<int>` either contains an `int` or contains nothing - and, unlike a pointer, it stores its `T` inline with no dynamic allocation.
 
 ```cpp
 // Listing 25.2: returning "maybe a value" with std::optional
@@ -83,13 +92,13 @@ std::optional<int> find_even(const std::vector<int>& v) {
     for (int x : v) {
         if (x % 2 == 0) return x;
     }
-    return std::nullopt;   // or {} — the empty state
+    return std::nullopt;   // or {} - the empty state
 }
 
 int main() {
     auto res = find_even({1, 3, 5});
     if (res) {                    // or res.has_value()
-        std::cout << *res;        // or res.value() — value() throws if empty
+        std::cout << *res;        // or res.value() - value() throws if empty
     } else {
         std::cout << "Not found";
     }
@@ -100,11 +109,11 @@ int main() {
 
 The interface is small and deliberate:
 
-- `has_value()` / contextual `bool` — is a value present?
-- `operator*` / `operator->` — access the value **without** a check (UB if empty, like dereferencing a pointer).
-- `value()` — access the value **with** a check (throws `std::bad_optional_access` if empty).
-- `value_or(default)` — the value, or a supplied fallback.
-- `std::nullopt` — the empty-state literal; `{}` also constructs an empty optional.
+- `has_value()` / contextual `bool` - is a value present?
+- `operator*` / `operator->` - access the value **without** a check (UB if empty, like dereferencing a pointer).
+- `value()` - access the value **with** a check (throws `std::bad_optional_access` if empty).
+- `value_or(default)` - the value, or a supplied fallback.
+- `std::nullopt` - the empty-state literal; `{}` also constructs an empty optional.
 
 The two distinct accessors encode intent: `*opt` says "I have already checked," `value()` says "check for me." Sections 25.7 develops the design rationale in depth.
 
@@ -126,7 +135,7 @@ int main() {
     v = 3.14f;
     v = "hello";        // now holds a std::string
 
-    // Direct access by type — throws std::bad_variant_access on the wrong type:
+    // Direct access by type - throws std::bad_variant_access on the wrong type:
     try {
         std::string s = std::get<std::string>(v);
         // int i = std::get<int>(v);  // would throw: active type is string
@@ -141,18 +150,18 @@ int main() {
 
 The access mechanisms differ in how they handle a wrong guess:
 
-- `std::get<T>(v)` / `std::get<I>(v)` — returns the value, **throws** `std::bad_variant_access` if `T`/index `I` is not active.
-- `std::get_if<T>(&v)` — returns a **pointer** to the value, or `nullptr` if `T` is not active (no exception).
-- `std::visit(visitor, v)` — calls `visitor` with the active alternative; the compiler requires the visitor to handle every alternative, which is what makes exhaustive dispatch checkable at compile time.
-- `v.index()` — the zero-based index of the active alternative.
+- `std::get<T>(v)` / `std::get<I>(v)` - returns the value, **throws** `std::bad_variant_access` if `T`/index `I` is not active.
+- `std::get_if<T>(&v)` - returns a **pointer** to the value, or `nullptr` if `T` is not active (no exception).
+- `std::visit(visitor, v)` - calls `visitor` with the active alternative; the compiler requires the visitor to handle every alternative, which is what makes exhaustive dispatch checkable at compile time.
+- `v.index()` - the zero-based index of the active alternative.
 
-A `variant` guarantees **no dynamic allocation** beyond whatever its contained types allocate — the storage for the largest alternative is held inline. This makes it suitable for low-latency code where a tagged value must avoid the heap.
+A `variant` guarantees **no dynamic allocation** beyond whatever its contained types allocate - the storage for the largest alternative is held inline. This makes it suitable for low-latency code where a tagged value must avoid the heap.
 
 ---
 
 ## 25.4 `std::monostate` and Valueless Variants
 
-A `std::variant` is never "empty" in the `optional` sense — it always holds one of its alternatives. But two situations need handling: a variant whose **first alternative is not default-constructible**, and the rare **valueless** state.
+A `std::variant` is never "empty" in the `optional` sense - it always holds one of its alternatives. But two situations need handling: a variant whose **first alternative is not default-constructible**, and the rare **valueless** state.
 
 **`std::monostate`** is an empty placeholder type whose sole purpose is to be a default-constructible first alternative. Because a default-constructed `variant` value-initializes its *first* alternative, listing `monostate` first gives the variant a well-defined "no meaningful value yet" state even when none of the real alternatives can be default-constructed.
 
@@ -181,7 +190,7 @@ if (v.valueless_by_exception()) {
 
 ## 25.5 `std::any`
 
-`std::any` is a type-safe container for a **single value of any type** — the safe replacement for `void*`. Unlike `variant`, the set of types is not fixed in advance; unlike `void*`, the stored type is remembered and every extraction is checked.
+`std::any` is a type-safe container for a **single value of any type** - the safe replacement for `void*`. Unlike `variant`, the set of types is not fixed in advance; unlike `void*`, the stored type is remembered and every extraction is checked.
 
 ```cpp
 // Listing 25.6: type-erased storage with checked extraction
@@ -214,11 +223,11 @@ Choose between the three "holds something" types by how much you know: `variant`
 
 ## 25.6 In-Place Construction: `in_place`, `in_place_type`, `in_place_index`
 
-The vocabulary types must sometimes construct their contained object **directly inside themselves** from constructor arguments — to avoid a temporary, or to disambiguate which alternative to build. C++17 provides a family of empty **tag types** that select in-place construction:
+The vocabulary types must sometimes construct their contained object **directly inside themselves** from constructor arguments - to avoid a temporary, or to disambiguate which alternative to build. C++17 provides a family of empty **tag types** that select in-place construction:
 
-- **`std::in_place`** (type `std::in_place_t`) — tells `std::optional` to construct its `T` in place from the following arguments, rather than copying or moving an existing `T`.
-- **`std::in_place_type<T>`** — tells `std::variant` or `std::any` to construct the alternative *of type `T`* in place.
-- **`std::in_place_index<I>`** — tells `std::variant` to construct the alternative *at index `I`* in place (needed when two alternatives share a type, or to be explicit).
+- **`std::in_place`** (type `std::in_place_t`) - tells `std::optional` to construct its `T` in place from the following arguments, rather than copying or moving an existing `T`.
+- **`std::in_place_type<T>`** - tells `std::variant` or `std::any` to construct the alternative *of type `T`* in place.
+- **`std::in_place_index<I>`** - tells `std::variant` to construct the alternative *at index `I`* in place (needed when two alternatives share a type, or to be explicit).
 
 ```cpp
 // Listing 25.7: in-place construction avoids a temporary in optional
@@ -232,7 +241,7 @@ std::optional<std::string> o1{std::string(5, 'x')};
 std::optional<std::string> o2{std::in_place, 5, 'x'};   // "xxxxx", no temporary
 ```
 
-For `variant`, the tags resolve ambiguity that argument types alone cannot — especially with `initializer_list` constructors and deleted default constructors:
+For `variant`, the tags resolve ambiguity that argument types alone cannot - especially with `initializer_list` constructors and deleted default constructors:
 
 ```cpp
 // Listing 25.8: constructing variants with in_place_type / in_place_index
@@ -324,7 +333,7 @@ auto find(Range&& r, T const& t) {
 }
 ```
 
-This enables the clean call-site idioms `if (find(vec, 7)) { ... }` and, binding the result, `if (auto oit = find(vec, 7)) { vec.erase(*oit); }` — no separate begin/end juggling.
+This enables the clean call-site idioms `if (find(vec, 7)) { ... }` and, binding the result, `if (auto oit = find(vec, 7)) { vec.erase(*oit); }` - no separate begin/end juggling.
 
 ### 25.7.3 `value_or` Pushes the Default Decision to the Call Site
 
@@ -335,14 +344,14 @@ void print_name(std::ostream& os, std::optional<std::string> const& name) {
 }
 ```
 
-`value_or` returns the stored value, or its argument when the optional is empty. The design win is that the "what to do when absent" decision is made **at the point of use**, where the right default is known and immediately needed — instead of being baked into some default value deep inside the engine that produced the optional.
+`value_or` returns the stored value, or its argument when the optional is empty. The design win is that the "what to do when absent" decision is made **at the point of use**, where the right default is known and immediately needed - instead of being baked into some default value deep inside the engine that produced the optional.
 
 ### 25.7.4 Why `optional`, Not the Alternatives
 
 `std::optional<T>` is more complete than the three traditional workarounds:
 
 - **vs. a pointer:** a pointer can signal failure with `nullptr`, but only for objects that already exist. `optional`, being a value type, can also *return a new object* with no memory allocation.
-- **vs. a sentinel value:** reserving `0`/`-1`/`nullptr` to mean "meaningless" shrinks the space of valid values — you cannot distinguish a valid `0` from a meaningless one — and many types have no natural sentinel.
+- **vs. a sentinel value:** reserving `0`/`-1`/`nullptr` to mean "meaningless" shrinks the space of valid values - you cannot distinguish a valid `0` from a meaningless one - and many types have no natural sentinel.
 - **vs. `std::pair<bool, T>`:** this requires `T` to be default-constructible for the failure case, which is impossible for some types and undesirable for others. `optional<T>` constructs nothing in the empty case.
 
 ### 25.7.5 Representing the Failure of a Function
@@ -390,7 +399,7 @@ int main() {
 
 ### 25.8.1 Lightweight Type Erasure: Pseudo-Method Pointers
 
-`variant` can drive a form of lightweight type erasure. The following advanced example overloads `operator->*` with a variant on the left, producing something that behaves like a method pointer dispatching across unrelated types — using CTAD (Chapter 24) to deduce the callable's type and `std::visit` to recover the active alternative:
+`variant` can drive a form of lightweight type erasure. The following advanced example overloads `operator->*` with a variant on the left, producing something that behaves like a method pointer dispatching across unrelated types - using CTAD (Chapter 24) to deduce the callable's type and `std::visit` to recover the active alternative:
 
 ```cpp
 // Listing 25.14: a variant-driven "pseudo-method" via operator->*
@@ -450,7 +459,7 @@ using namespace std::string_literals;
 std::variant<int, std::string> var;   // a tagged union of int | string
 var = "hello"s;                        // now holds a string
 
-// Access via std::visit with a polymorphic lambda — prints "hello\n":
+// Access via std::visit with a polymorphic lambda - prints "hello\n":
 std::visit([](auto&& e){ std::cout << e << '\n'; }, var);
 
 // If certain of the type, get it (throws on a wrong guess):
@@ -460,22 +469,22 @@ auto str = std::get<std::string>(var);
 auto* p = std::get_if<std::string>(&var);
 ```
 
-A variant performs **no dynamic allocation** beyond what its contained types allocate; only one alternative is stored at a time. In rare cases — an exception while assigning, with no safe way to back out — a variant can become valueless (Section 25.4). Variants are, in short, smart, type-safe unions that store multiple value types in one variable safely and efficiently.
+A variant performs **no dynamic allocation** beyond what its contained types allocate; only one alternative is stored at a time. In rare cases - an exception while assigning, with no safe way to back out - a variant can become valueless (Section 25.4). Variants are, in short, smart, type-safe unions that store multiple value types in one variable safely and efficiently.
 
 ### 25.8.3 Constructing a `std::variant`
 
-The construction rules (allocators aside) follow naturally from the alternative list and the `in_place` tags of Section 25.6. The full set of cases — default construction of the first alternative, conversion to the best-matching alternative, copy, and the `in_place_type`/`in_place_index` disambiguators for deleted-default and `initializer_list` constructors — is shown in Listing 25.8.
+The construction rules (allocators aside) follow naturally from the alternative list and the `in_place` tags of Section 25.6. The full set of cases - default construction of the first alternative, conversion to the best-matching alternative, copy, and the `in_place_type`/`in_place_index` disambiguators for deleted-default and `initializer_list` constructors - is shown in Listing 25.8.
 
 ---
 
 ## 25.9 Professional Insights
 
-**Reach for the vocabulary type that matches what you know about the value.** `optional<T>` for present-or-absent of one type; `variant<Ts...>` for one-of-a-fixed-set (no allocation, fastest); `any` only when the type is genuinely open-ended (and accept its allocation cost). Each replaces an unsafe idiom — null pointers, hand-tagged unions, `void*` — with one the compiler checks.
+**Reach for the vocabulary type that matches what you know about the value.** `optional<T>` for present-or-absent of one type; `variant<Ts...>` for one-of-a-fixed-set (no allocation, fastest); `any` only when the type is genuinely open-ended (and accept its allocation cost). Each replaces an unsafe idiom - null pointers, hand-tagged unions, `void*` - with one the compiler checks.
 
 **Treat `string_view` strictly as a borrowed, call-scoped view.** It is the right parameter type for read-only string input because it copies nothing and accepts every string-like source. But it owns nothing and is not null-terminated: never let one outlive its buffer, never return one to a local string, and never hand `.data()` to a C API expecting termination. For ownership, store a `std::string`.
 
-**Use the two `optional`/`variant` accessor styles to encode intent.** `*opt` and `std::get<T>(v)` say "I have already verified the state"; `opt.value()`, `v.index()`, and `std::get_if` say "check for me." Pick deliberately — an unchecked `*` on an empty optional or a wrong-type `get` is undefined behavior or a thrown exception, respectively.
+**Use the two `optional`/`variant` accessor styles to encode intent.** `*opt` and `std::get<T>(v)` say "I have already verified the state"; `opt.value()`, `v.index()`, and `std::get_if` say "check for me." Pick deliberately - an unchecked `*` on an empty optional or a wrong-type `get` is undefined behavior or a thrown exception, respectively.
 
-**Prefer `std::visit` over chains of `get_if` for variants.** Visitation forces you to handle every alternative, turning "forgot a case" into a compile error — the same exhaustiveness guarantee a `switch` over an enum should give but rarely does. Combined with the `overloaded{...}` idiom (Chapter 23), it is the idiomatic, future-proof way to consume a variant.
+**Prefer `std::visit` over chains of `get_if` for variants.** Visitation forces you to handle every alternative, turning "forgot a case" into a compile error - the same exhaustiveness guarantee a `switch` over an enum should give but rarely does. Combined with the `overloaded{...}` idiom (Chapter 23), it is the idiomatic, future-proof way to consume a variant.
 
-**Default variants with `std::monostate` first when no alternative is default-constructible, and use the `in_place` tags to construct without temporaries.** `monostate` gives a well-defined empty/uninitialized state; `in_place`, `in_place_type<T>`, and `in_place_index<I>` build the contained object directly inside the optional/variant/any, avoiding a temporary and disambiguating overlapping alternatives — the same efficiency principle as `emplace` for containers.
+**Default variants with `std::monostate` first when no alternative is default-constructible, and use the `in_place` tags to construct without temporaries.** `monostate` gives a well-defined empty/uninitialized state; `in_place`, `in_place_type<T>`, and `in_place_index<I>` build the contained object directly inside the optional/variant/any, avoiding a temporary and disambiguating overlapping alternatives - the same efficiency principle as `emplace` for containers.

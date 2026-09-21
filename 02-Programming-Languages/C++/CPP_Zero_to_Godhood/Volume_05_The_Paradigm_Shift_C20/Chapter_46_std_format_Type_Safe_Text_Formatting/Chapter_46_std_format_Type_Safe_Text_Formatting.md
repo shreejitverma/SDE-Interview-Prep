@@ -1,8 +1,17 @@
-# Chapter 46: std::format — Type-Safe Text Formatting
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
+# Chapter 46: std::format - Type-Safe Text Formatting
 
 > *`std::format` brings Python-style, type-safe, compile-time-checked string formatting to C++, ending the long-standing choice between `printf` (fast, terse, but type-unsafe and crash-prone) and iostreams (type-safe but verbose, stateful, and slow). A format string with `{}` placeholders is checked against its arguments at compile time, the arguments carry their own types, and user-defined types can opt in by specializing one trait. This chapter covers the syntax, the format specification mini-language, custom formatters, and the performance and version landscape.*
 
-The two pre-C++20 options each failed in a different way. `printf("%d", "oops")` compiles and then corrupts the stack at runtime, because the format specifier and the argument type are checked by nobody. `std::cout << x` is type-safe but drags in manipulator state (`std::setprecision`, `std::hex` that persists), reads poorly for anything with structure, and is hard to localize. `std::format("{}", x)` is type-safe like iostreams, terse like `printf`, **compile-time-validated** unlike either, and extensible to your own types — the format string and arguments are checked together when the program is built.
+The two pre-C++20 options each failed in a different way. `printf("%d", "oops")` compiles and then corrupts the stack at runtime, because the format specifier and the argument type are checked by nobody. `std::cout << x` is type-safe but drags in manipulator state (`std::setprecision`, `std::hex` that persists), reads poorly for anything with structure, and is hard to localize. `std::format("{}", x)` is type-safe like iostreams, terse like `printf`, **compile-time-validated** unlike either, and extensible to your own types - the format string and arguments are checked together when the program is built.
 
 ---
 
@@ -32,7 +41,7 @@ The two pre-C++20 options each failed in a different way. `printf("%d", "oops")`
 #include <string>
 
 void demo(const std::string& name, int version) {
-    // printf: terse but type-UNSAFE — a wrong specifier is UB, no checking.
+    // printf: terse but type-UNSAFE - a wrong specifier is UB, no checking.
     std::printf("Hello %s %d\n", name.c_str(), version);   // must remember .c_str()
 
     // iostreams: type-safe but verbose and stateful.
@@ -73,7 +82,7 @@ The compile-time checking is the headline safety property: the format string lit
 
 ## 46.3 Argument Indexing
 
-Placeholders may name their argument by **index** (`{0}`, `{1}`), allowing reordering and reuse of arguments — impossible with positional `printf`.
+Placeholders may name their argument by **index** (`{0}`, `{1}`), allowing reordering and reuse of arguments - impossible with positional `printf`.
 
 ```cpp
 // Listing 46.3: explicit argument indices
@@ -118,13 +127,13 @@ std::format("{:08.3f}", 3.14159);  // "0003.142"    (zero-pad, width 8, 3 decima
 | `.precision` | digits after point (float) / max chars (string) | `{:.3f}` |
 | type | conversion: `d b o x f e g s` etc. | `{:x}` |
 
-This single mini-language covers alignment, padding, sign control, number base, and precision uniformly across all types — replacing the scattered `printf` flags and the stateful iostream manipulators with one composable spec.
+This single mini-language covers alignment, padding, sign control, number base, and precision uniformly across all types - replacing the scattered `printf` flags and the stateful iostream manipulators with one composable spec.
 
 ---
 
 ## 46.5 Formatting Numbers: Width, Precision, Base, Alignment
 
-Numeric formatting is where the spec language earns its keep — bases, fixed/scientific notation, and precision are all one-liners.
+Numeric formatting is where the spec language earns its keep - bases, fixed/scientific notation, and precision are all one-liners.
 
 ```cpp
 // Listing 46.5: numeric formatting
@@ -147,13 +156,13 @@ std::format("{:<10.2f}",3.14159); // "3.14      " left-aligned
 std::format("{:{}.{}f}", 3.14159, 8, 2);   // width=8, precision=2 -> "    3.14"
 ```
 
-The nested-brace form `{:{}.{}f}` takes the width and precision as *arguments*, enabling runtime-computed field sizes — something `printf` does only with the awkward `*` specifier. Booleans format as `true`/`false` by default (or `1`/`0` with `{:d}`), and `char`/string types accept alignment and precision (truncation) specs.
+The nested-brace form `{:{}.{}f}` takes the width and precision as *arguments*, enabling runtime-computed field sizes - something `printf` does only with the awkward `*` specifier. Booleans format as `true`/`false` by default (or `1`/`0` with `{:d}`), and `char`/string types accept alignment and precision (truncation) specs.
 
 ---
 
 ## 46.6 format_to and Output Iterators
 
-`std::format` allocates a `std::string`. When you want to write into an existing buffer or container — avoiding the allocation, or appending to a log — use **`std::format_to`** (write to an output iterator) and **`std::format_to_n`** (bounded write).
+`std::format` allocates a `std::string`. When you want to write into an existing buffer or container - avoiding the allocation, or appending to a log - use **`std::format_to`** (write to an output iterator) and **`std::format_to_n`** (bounded write).
 
 ```cpp
 // Listing 46.6: formatting without allocating a fresh string
@@ -163,7 +172,7 @@ The nested-brace form `{:{}.{}f}` takes the width and precision as *arguments*, 
 #include <iterator>
 
 void append_log(std::string& log, int code) {
-    // Append directly into 'log' — no temporary string allocated.
+    // Append directly into 'log' - no temporary string allocated.
     std::format_to(std::back_inserter(log), "[error {}]\n", code);
 }
 
@@ -210,7 +219,7 @@ struct std::formatter<Point> {
 auto s = std::format("origin = {}", Point{0, 0});   // "origin = (0, 0)"
 ```
 
-The common shortcut for "format my type by delegating to existing specs" is to **inherit from `std::formatter<std::string>`** (or another built-in formatter) and override only `format`, reusing the inherited `parse` so your type automatically supports width/alignment specs. Specializing `std::formatter` is how the standard library itself makes `std::chrono` types, `std::thread::id`, and others formattable — and the same mechanism makes your domain types first-class in every log line and message.
+The common shortcut for "format my type by delegating to existing specs" is to **inherit from `std::formatter<std::string>`** (or another built-in formatter) and override only `format`, reusing the inherited `parse` so your type automatically supports width/alignment specs. Specializing `std::formatter` is how the standard library itself makes `std::chrono` types, `std::thread::id`, and others formattable - and the same mechanism makes your domain types first-class in every log line and message.
 
 ---
 
@@ -228,22 +237,22 @@ The common shortcut for "format my type by delegating to existing specs" is to *
 
 int x = 42;
 std::cout << std::format("value = {}\n", x);   // C++20: format then stream
-// std::print("value = {}\n", x);              // C++23 ONLY — not available in C++20
+// std::print("value = {}\n", x);              // C++23 ONLY - not available in C++20
 // std::println("value = {}", x);              // C++23 ONLY
 ```
 
-Also C++23: `std::format` gaining `constexpr`-friendliness and ranges formatting (`std::format("{}", a_vector)`), which C++20 does not provide — in C++20 you format container elements yourself.
+Also C++23: `std::format` gaining `constexpr`-friendliness and ranges formatting (`std::format("{}", a_vector)`), which C++20 does not provide - in C++20 you format container elements yourself.
 
 ---
 
 ## 46.9 Professional Insights
 
-**Default to `std::format` over both `printf` and iostreams for new code.** It is type-safe like iostreams, terse like `printf`, compile-time-checked unlike either, and extensible to your own types. The compile-time validation alone — turning the `printf("%d", str)` class of stack-corrupting bugs into build errors — justifies the switch in any codebase where correctness matters, and the performance is competitive with `printf`.
+**Default to `std::format` over both `printf` and iostreams for new code.** It is type-safe like iostreams, terse like `printf`, compile-time-checked unlike either, and extensible to your own types. The compile-time validation alone - turning the `printf("%d", str)` class of stack-corrupting bugs into build errors - justifies the switch in any codebase where correctness matters, and the performance is competitive with `printf`.
 
 **Use `format_to`/`format_to_n` with a reused buffer on hot logging paths.** Plain `std::format` allocates a `std::string` per call; in a high-frequency logger or serializer that allocation dominates. Formatting into a `std::back_inserter` over a pre-sized buffer (or a bounded `format_to_n` into a stack array) eliminates the per-call heap traffic, and `formatted_size` lets you allocate exactly once when you do need a string. This is the difference between acceptable and unacceptable in latency-sensitive logging.
 
-**Specialize `std::formatter` for your domain types early.** Once a type has a formatter, it drops into every log message, error string, and diagnostic with `{}` — no per-call-site conversion code. Inherit from `std::formatter<std::string>` and override only `format` to get width/alignment support for free. Treating formattability as part of a type's public interface pays off across the whole codebase the way `operator<<` once did, but type-safely and faster.
+**Specialize `std::formatter` for your domain types early.** Once a type has a formatter, it drops into every log message, error string, and diagnostic with `{}` - no per-call-site conversion code. Inherit from `std::formatter<std::string>` and override only `format` to get width/alignment support for free. Treating formattability as part of a type's public interface pays off across the whole codebase the way `operator<<` once did, but type-safely and faster.
 
-**Know the C++20/23 line: no `std::print`, no ranges formatting, in C++20.** Under a strict C++20 build you write `std::cout << std::format(...)`; `std::print`/`std::println` and direct formatting of containers (`std::format("{}", vec)`) are C++23. Code copied from C++23 examples using `std::print` will not compile against C++20 — the most common surprise. Format-then-stream is the portable C++20 idiom.
+**Know the C++20/23 line: no `std::print`, no ranges formatting, in C++20.** Under a strict C++20 build you write `std::cout << std::format(...)`; `std::print`/`std::println` and direct formatting of containers (`std::format("{}", vec)`) are C++23. Code copied from C++23 examples using `std::print` will not compile against C++20 - the most common surprise. Format-then-stream is the portable C++20 idiom.
 
 **Prefer argument indexing for any user-facing or localized text.** `std::format("{1} {0}", a, b)` lets translators reorder arguments without touching code, and lets one argument appear multiple times. For internal diagnostics automatic `{}` is fine, but anything that may be localized should use explicit indices from the start, since retrofitting indices into a positional format string across a translation catalog is tedious and error-prone.

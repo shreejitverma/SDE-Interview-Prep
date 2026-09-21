@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Operating System Primer
 
 - [Operating System Primer](#operating-system-primer)

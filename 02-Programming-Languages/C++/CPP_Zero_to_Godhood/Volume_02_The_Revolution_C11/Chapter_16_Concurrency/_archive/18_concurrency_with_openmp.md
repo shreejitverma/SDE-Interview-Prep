@@ -150,7 +150,7 @@ Use environment variables like `OMP_PROC_BIND=true` to bind threads to specific 
 | 26 | **Raw string literals** | Strings without backslash escaping using `R"(...)"` | `std::string s = R"(C:\temp)";` |
 | 27 | **char16_t / char32_t** | Dedicated types for Unicode UTF-16 and UTF-32 code units | `char16_t c = u'a';` |
 | 28 | **User-defined literals** | Custom meaning to literal suffixes | `long double operator"" _km(long double x);` |
-| 29 | **[[attributes]] syntax** | Standard double-bracket attribute syntax | `[[noreturn]] void fail();` |
+| 29 | **`[[attributes]]` syntax** | Standard double-bracket attribute syntax | `[[noreturn]] void fail();` |
 | 30 | **Right-angle bracket fix**| `>>` in nested templates no longer needs to be written as `> >` | `std::vector<std::vector<int>> grid;` |
 | 31 | **alignas / alignof** | Control and query alignment requirements | `struct alignas(16) Vec4;` |
 | 32 | **Inline namespaces** | Names are visible from enclosing namespace; useful for versioning | `inline namespace v1 { void f(); }` |

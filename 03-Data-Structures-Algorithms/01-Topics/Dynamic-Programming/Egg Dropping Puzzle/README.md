@@ -1,3 +1,12 @@
+---
+type: moc
+track: [sde, quant-dev]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 Suppose there is a building with n floors, if we have m eggs, then how can we find the minimum number of drops needed to find a floor from which it is safe to drop an egg without breaking it.
 
 There some important points to remember:

@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 51: Delimited and Configuration Files (`csv`, `configparser`)
 
 Handling structured data from diverse sources is a primary use case for Python. The `csv` and `configparser` modules offer standardized ways to interact with these common formats, with the former being highly optimized for performance.
@@ -70,7 +79,7 @@ An `email.message.EmailMessage` object consists of:
 
 #### 2. Policy and Content Management
 Modern Python (3.6+) introduced the **Policy** system.
-*   **`policy.default`**: Uses the modern "Godhood" approach—handling Unicode, binary attachments, and folded headers automatically according to the latest RFCs (5322, 6532).
+*   **`policy.default`**: Uses the modern "Godhood" approach - handling Unicode, binary attachments, and folded headers automatically according to the latest RFCs (5322, 6532).
 *   **Lazy Loading**: The `BytesParser` can lazily parse attachments, only reading them from the disk when the content is actually requested.
 
 ---

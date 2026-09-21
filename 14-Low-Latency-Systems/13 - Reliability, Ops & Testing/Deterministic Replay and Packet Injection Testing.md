@@ -4,6 +4,11 @@ aliases: [Deterministic Replay, Packet Injection, PCAP Replay, Event Sourcing Te
 status: evergreen
 module: 13
 created: 2026-08-22
+type: concept
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
 > [!summary]

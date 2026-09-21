@@ -19,3 +19,15 @@ __pycache__/
 .vscode/
 cmake-build-debug/
 cmake-build-release/
+
+# Private job-search data lives in the private career-ops repo
+# (command-center/) and is symlinked here so the vault still renders it.
+# Never commit these paths; see tools/private_paths.py.
+16-Interview-Command-Center/02-Companies
+16-Interview-Command-Center/03-Pipeline
+16-Interview-Command-Center/04-Retrospectives
+16-Interview-Command-Center/05-Behavioral
+16-Interview-Command-Center/06-Daily-Log
+
+# Local task backlog written by tasks-axi; personal, never public
+backlog.md

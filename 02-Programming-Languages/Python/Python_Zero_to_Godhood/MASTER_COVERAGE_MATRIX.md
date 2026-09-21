@@ -1,4 +1,13 @@
-# Master Coverage Matrix — *Python Zero to Godhood*
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
+# Master Coverage Matrix - *Python Zero to Godhood*
 
 Auditable map of the whole book. Updated as each volume completes. Status legend:
 **DONE** (combined/authored, examples verified, sources archived) · **WIP** ·
@@ -22,17 +31,17 @@ Verification interpreter: **CPython 3.13.5** (`/opt/anaconda3/bin/python3`).
 | VIII | Runtime Internals & C Extensions | allocator/GC, C-API, descriptors/MRO model, ceval | PLANNED |
 | IX | High-Performance & Low-Latency Concurrency | threads/mp/async, SIMD/GPU, structured concurrency, capstone | PLANNED |
 | X | The Language Reference Formalisms | lexical/exec model, data model, import, runtime services | PLANNED |
-| XI | Standard Library I — Text, Binary & Crypto | re, string, struct, hashlib | PLANNED |
-| XII | Standard Library II — Data, Time, Numeric, Functional | datetime, enum, collections, functools | PLANNED |
-| XIII | Standard Library III — Compression & Persistence | zlib/bz2/lzma, zip/tar, pickle/shelve | PLANNED |
-| XIV | Standard Library IV — Networking & Internet | sockets, http, email, xml, ipaddress | PLANNED |
-| XV | Standard Library V — System, Tooling & Packaging | os/subprocess, argparse, venv, packaging, **typing in depth** | PLANNED |
+| XI | Standard Library I - Text, Binary & Crypto | re, string, struct, hashlib | PLANNED |
+| XII | Standard Library II - Data, Time, Numeric, Functional | datetime, enum, collections, functools | PLANNED |
+| XIII | Standard Library III - Compression & Persistence | zlib/bz2/lzma, zip/tar, pickle/shelve | PLANNED |
+| XIV | Standard Library IV - Networking & Internet | sockets, http, email, xml, ipaddress | PLANNED |
+| XV | Standard Library V - System, Tooling & Packaging | os/subprocess, argparse, venv, packaging, **typing in depth** | PLANNED |
 | XVI | Applied & Domain Python | scientific, web, data, quant, frontier | PLANNED |
 | App | Appendices A–W | references, grammar, opcodes, glossaries | PLANNED |
 
 ---
 
-## Volume I — Classic Python & the Core Engine
+## Volume I - Classic Python & the Core Engine
 
 | Ch | Title | Seed source(s) | Mined legacy | Status | Examples (exec/gated) |
 |---|---|---|---|---|---|
@@ -40,31 +49,31 @@ Verification interpreter: **CPython 3.13.5** (`/opt/anaconda3/bin/python3`).
 | 2 | The PyObject Model & Reference Counting | `Chapter_02_Python_1x…` | `Chapter_02_THE_PYOBJECT_CORE…` | **DONE** | 5/0 |
 | 3 | Comprehensions, Nested Scopes & Cyclic GC | `Chapter_03_Python_20_to_21…` | `Chapter_03_SCOPES_NAMESPACES…` | **DONE** | 6/0 |
 | 4 | Type–Class Unification, Descriptors & C3 MRO | `Chapter_04_Python_22_to_23…` | `Chapter_04_OBJECT-ORIENTED…` | **DONE** | 6/0 |
-| 5 | Decorators, Context Managers & the 2.x Twilight | `Chapter_05_Python_24_to_27…` | — (see note) | **DONE** | 5/0 |
+| 5 | Decorators, Context Managers & the 2.x Twilight | `Chapter_05_Python_24_to_27…` | - (see note) | **DONE** | 5/0 |
 | 6 | Low-Level File I/O & Exception Unwinding | `Chapter_06_Python_2x…` | `Chapter_06_FILE_IO…` | **DONE** | 4/0 |
 
-**Volume I wrap-up:** 6/6 chapters DONE; 30 examples executed live on CPython 3.13.5, 0 version-gated; every why-obligation covered; all sources archived. **Deferred mining:** the canonical Ch 5 source §5.4 (CPython container internals — list overallocation, dict/set/tuple layout, free lists) and the legacy `Chapter_05_UNDER_THE_HOOD_BUILT-IN_DATA_STRUCTURES.{md,tex}` (still in root) → to be mined for the Vol XII data-structures chapter. Anomalies: Track-C CAPS numbering is topic-misaligned (Ch5 CAPS = data structures, not decorators), handled by topic not number.
+**Volume I wrap-up:** 6/6 chapters DONE; 30 examples executed live on CPython 3.13.5, 0 version-gated; every why-obligation covered; all sources archived. **Deferred mining:** the canonical Ch 5 source §5.4 (CPython container internals - list overallocation, dict/set/tuple layout, free lists) and the legacy `Chapter_05_UNDER_THE_HOOD_BUILT-IN_DATA_STRUCTURES.{md,tex}` (still in root) → to be mined for the Vol XII data-structures chapter. Anomalies: Track-C CAPS numbering is topic-misaligned (Ch5 CAPS = data structures, not decorators), handled by topic not number.
 
-## Volume II — The Python 3 Schism
+## Volume II - The Python 3 Schism
 
 | Ch | Title | Seed source(s) | Mined legacy | Status | Examples (exec/gated) |
 |---|---|---|---|---|---|
 | 7 | The Unicode Paradigm Shift (text vs bytes, PEP 393) | `Chapter_07_Python_30…` | `Chapter_07_THE_PYTHON_30…`, `Chapter_08_ADVANCED_TEXT_VS_BYTES…` | **DONE** | 8/0 |
-| 8 | Stdlib Consolidation & the New GIL (3.1–3.2) | `Chapter_08_Python_31_to_32…` | — | **DONE** | 6/0 |
+| 8 | Stdlib Consolidation & the New GIL (3.1–3.2) | `Chapter_08_Python_31_to_32…` | - | **DONE** | 6/0 |
 
 **Volume II wrap-up:** 2/2 chapters DONE; 14 examples executed live on 3.13.5, 0 gated; sources archived. Corrections: `TypeError` text is "can't concat str to bytes" (draft reversed); real PEP 393 sizes replace draft guesses; spawn re-import gotcha demonstrated.
 
-## Volume III — Generators, Iterators & Async Inception
+## Volume III - Generators, Iterators & Async Inception
 
 | Ch | Title | Seed source(s) | Mined legacy | Status | Examples (exec/gated) |
 |---|---|---|---|---|---|
 | 9 | Iterators, Generators & `yield from` | `Chapter_09_Python_33…` | `Chapter_09_ITERATORS…` | **DONE** | 6/0 |
-| 10 | Asyncio Inception, Pathlib & Enum (3.4) | `Chapter_10_Python_34…` | — | **DONE** | 5/0 |
+| 10 | Asyncio Inception, Pathlib & Enum (3.4) | `Chapter_10_Python_34…` | - | **DONE** | 5/0 |
 | 11 | Native Async/Await & New Operators (3.5) | `Chapter_11_Python_35…` | `Chapter_11_NATIVE_ASYNCAWAIT…`, `Chapter_10_Python_35…` | **DONE** | 7/0 |
 
 **Volume III wrap-up:** 3/3 DONE; 18 examples executed live on 3.13.5, 0 gated; sources archived. Corrections: PEP 393/buffer-protocol overlap deferred to Ch7/Vol IX (no dup); `@asyncio.coroutine` removed in 3.11 (gated as historical); modern `await` bytecode (`GET_AWAITABLE`/`SEND`/`END_SEND`) and `LIST_EXTEND` unpacking replace 3.5-era listings. Deferred: `Chapter_10_CONCURRENCY_MECHANICS` (GIL) → Vol VII.
 
-## Volume IV — Expressive Modern Python
+## Volume IV - Expressive Modern Python
 
 | Ch | Title | Seed source(s) | Mined legacy | Status | Examples (exec/gated) |
 |---|---|---|---|---|---|
@@ -73,7 +82,7 @@ Verification interpreter: **CPython 3.13.5** (`/opt/anaconda3/bin/python3`).
 
 **Volume IV wrap-up:** 2/2 DONE; 10 examples executed live on 3.13.5, 0 gated; sources archived. Corrections: real 3.13 f-string bytecode (`CONVERT_VALUE`/`FORMAT_SIMPLE`/`FORMAT_WITH_SPEC`) + PEP 701 features replace `FORMAT_VALUE` flags; descriptor/`__slots__` overlap deferred to Ch4/Vol VIII (taught as applications, not re-derived).
 
-## Volume V — Structural Shifts & Pattern Matching
+## Volume V - Structural Shifts & Pattern Matching
 
 | Ch | Title | Seed source(s) | Mined legacy | Status | Examples (exec/gated) |
 |---|---|---|---|---|---|
@@ -94,5 +103,5 @@ Verification interpreter: **CPython 3.13.5** (`/opt/anaconda3/bin/python3`).
 - **Structured concurrency & the free-threaded memory model** (Vol IX). *(NEW)*
 - **Buffer protocol / memoryview / zero-copy** as a first-class section (Vol IX).
 - **3.14 verification pass** (Vol VII): t-strings (PEP 750), deferred annotations
-  (PEP 649), subinterpreters stdlib (PEP 734), zstd — version-gated, source-verified.
+  (PEP 649), subinterpreters stdlib (PEP 734), zstd - version-gated, source-verified.
 - Heavy depth expansion of all thin Track-B stdlib + applied chapters.

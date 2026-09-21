@@ -110,6 +110,6 @@ std::println("Fibonacci(10) = {}", fib(10));
     ```cpp
     for (auto e : getVector()[0]) {} // Now safe!
     ```
-*   **[[assume(expr)]] attribute**: Tells the compiler that `expr` is always true. Replaces vendor extensions like `__builtin_assume`.
+*   **`[[assume(expr)]]` attribute**: Tells the compiler that `expr` is always true. Replaces vendor extensions like `__builtin_assume`.
 *   **Simpler implicit move**: A move-eligible id-expression in a `return` or `throw` is always treated as an xvalue.
 *   **constexpr relaxations**: Static `constexpr` local variables and `std::unique_ptr` are now allowed in `constexpr` contexts.

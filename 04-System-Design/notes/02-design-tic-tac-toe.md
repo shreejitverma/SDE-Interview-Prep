@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, distinguished]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Design Tic-Tac-Toe
 
 ## What is Tic-Tac-Toe?

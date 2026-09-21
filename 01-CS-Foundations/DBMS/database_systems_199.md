@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Complete Database Management Systems Reference - 199 Keywords
 
 ## 1. CORE DBMS CONCEPTS (23 KEYWORDS)

@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 72: High-Performance Data Structures and Numerics
 
 While concurrency and metaprogramming define the architecture of a system, the raw throughput of an application is dictated by how it lays out and processes data in memory. Modern CPUs are incredibly fast at math but abysmally slow at fetching data from RAM. To achieve "Godhood" performance, you must write code that is mechanically sympathetic to the hardware.

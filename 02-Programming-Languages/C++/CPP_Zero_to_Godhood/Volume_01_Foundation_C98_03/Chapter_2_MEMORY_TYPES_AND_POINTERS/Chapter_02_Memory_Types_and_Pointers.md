@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 02: Memory Types and Pointers
 
 > *The building blocks of every program.*
@@ -11,7 +20,7 @@ To move data, you need to store it. To store it, you need variables.
 ## 2.1 What Is a Variable? (The Hotel Room Analogy)
 
 > [!NOTE]
-> **🛋️ Fireside Chat: The Memory Hotel**
+> **Fireside Chat: The Memory Hotel**
 > Imagine your computer's RAM (Random Access Memory) is a massive hotel with billions of rooms.
 >
 > When you declare a **variable**, you are walking up to the front desk and saying: *"I need a room. I want to name it `score`, and I am going to put an integer inside it."*
@@ -80,7 +89,7 @@ You can also use prefixes and suffixes to change how literals are read:
 * `3.14f` (Forces the compiler to treat this as a `float` instead of a `double`)
 * `1'000'000` (Digit separators for readability) `[C++14]`
 
-## 2.5 `const` and `constexpr` — Values That Never Change
+## 2.5 `const` and `constexpr` - Values That Never Change
 
 If a variable shouldn't change, explicitly lock it down using `const`. This prevents you from accidentally overwriting it, and allows the compiler to optimize your code better.
 
@@ -111,7 +120,7 @@ int c{5};
 ```
 
 > [!TIP]
-> **🔥 Godhood Tip: Use Uniform Initialization `{}`**
+> **Godhood Tip: Use Uniform Initialization `{}`**
 > The `{}` syntax prevents "narrowing conversions". If you try `int a = 3.14;`, the compiler will silently chop off the `.14` and make `a = 3`. If you try `int a{3.14};`, the compiler will throw a hard error and save you from a nasty bug.
 
 ## 2.7 `auto` Type Deduction `[C++11]`
@@ -181,7 +190,7 @@ At the lowest level, everything is bits. Bitwise operators let you manipulate th
 * `>>` (Right Shift): Shift bits right (effectively divides by 2^N).
 
 > [!TIP]
-> **🔥 Godhood Tip: Fast Power of 2 Check**
+> **Godhood Tip: Fast Power of 2 Check**
 > A legendary bitwise trick to check if a number is a power of 2:
 > `bool isPowerOf2 = (x > 0) && ((x & (x - 1)) == 0);`
 
@@ -211,7 +220,7 @@ int main() {
 }
 ```
 
-## 2.13 🔥 Data Representation Deep Dive
+## 2.13 Data Representation Deep Dive
 
 To achieve Godhood, you must know what your variables actually look like in memory.
 
@@ -229,7 +238,7 @@ If you add 1 to the maximum possible positive integer, it flips the sign bit and
 Floating-point numbers are not exact. They are approximations based on scientific notation, storing a *Sign*, an *Exponent*, and a *Mantissa/Fraction*.
 
 > [!WARNING]
-> **⚠️ The Danger Zone: Float Equality**
+> **The Danger Zone: Float Equality**
 > Never do this: `if (0.1 + 0.2 == 0.3)`.
 > Because 0.1 cannot be perfectly represented in binary, the left side actually evaluates to something like `0.30000000000000004`. The statement will be `false`.
 > Instead, check if the difference is smaller than a tiny tolerance (epsilon).
@@ -271,7 +280,7 @@ When your program starts, the Operating System divides Mem-City into several "Zo
 
 **Student**: "Okay, the location is easier. But what if the librarian moves the book?"
 
-**The Architect**: "That's exactly why Pointers are dangerous! If the book moves but you still have the old address, you're looking at an empty shelf—or worse, a different book entirely. That's a **Dangling Pointer**."
+**The Architect**: "That's exactly why Pointers are dangerous! If the book moves but you still have the old address, you're looking at an empty shelf - or worse, a different book entirely. That's a **Dangling Pointer**."
 
 ***
 
@@ -305,7 +314,7 @@ int main() {
 
 ### Deep Dive: Pointer Arithmetic (Walking the Streets)
 
-Pointers are just numbers (addresses), so you can add or subtract from them. But C++ is smart—it knows the "size" of the houses.
+Pointers are just numbers (addresses), so you can add or subtract from them. But C++ is smart - it knows the "size" of the houses.
 
 * If you have an `int* p` pointing at address `100`, and you do `p++`, it doesn't go to `101`.
 * It jumps to `104` (because an `int` is 4 bytes).
@@ -1867,7 +1876,7 @@ Section 8.4: Array size: type safe at compile time
 //----------------------------------- Machinery:
 using Size = ptrdiff_t;
 template< class Item, size_t n >
-constexpr auto n_items( Item [&](n) ) noexcept
+constexpr auto n_items( Item `[&](n)` ) noexcept
 -> Size
 { return n; }
 //----------------------------------- Usage:
@@ -2113,7 +2122,7 @@ Pointers are just numbers (addresses), so you can add or subtract from them. But
 
 > *Handing over the keys to the city.*
 
-Welcome to the heart of C++. Most modern languages—like Java, Python, or C#—try to hide memory from you. They handle the allocation, the cleanup, and the addresses automatically.
+Welcome to the heart of C++. Most modern languages - like Java, Python, or C# - try to hide memory from you. They handle the allocation, the cleanup, and the addresses automatically.
 
 C++ does not hide the memory. C++ hands you the keys to the city and says, *"Don't burn it down."*
 
@@ -2123,7 +2132,7 @@ To master C++, you must stop thinking about variables as abstract concepts and s
 
 ***
 
-## 5.1 🛋️ Fireside Chat: The Memory City Analogy
+## 5.1 Fireside Chat: The Memory City Analogy
 
 Imagine your computer's RAM (Random Access Memory) is a giant metropolis called **Mem-City**.
 
@@ -2158,7 +2167,7 @@ std::cout << scores[4]; // Prints 50
 ```
 
 > [!WARNING]
-> **⚠️ The Danger Zone: Array Bounds**
+> **The Danger Zone: Array Bounds**
 > C++ does absolutely **zero bounds checking**. If you ask for `scores[100]`, C++ won't stop you. It will just walk 100 houses down the street, break into whoever lives there, and read their data. This causes **Undefined Behavior**.
 
 **Array Decay:**
@@ -2186,7 +2195,7 @@ std::cout << secret_number;       // Prints 100!
 ## 5.5 Pointer Arithmetic (Walking the Streets)
 
 Because pointers are just numbers (addresses), you can add or subtract from them.
-But C++ is smart—it knows how wide the houses are.
+But C++ is smart - it knows how wide the houses are.
 
 ```cpp
 int arr[3] = {10, 20, 30};
@@ -2209,7 +2218,7 @@ Pointers are the number one cause of bugs in C++. Here are the street gangs of M
 ## 5.7 References `&` vs Pointers `*`
 
 Because Pointers are so dangerous, C++ introduced **References**.
-A reference is just an alias—a second name for an existing variable.
+A reference is just an alias - a second name for an existing variable.
 
 ```cpp
 int original = 100;
@@ -2276,4 +2285,4 @@ const int* const p3 = &x;
 
 ***
 
-You now understand the fabric of the Matrix. You can allocate memory, navigate addresses, and manipulate data exactly how the CPU sees it. In the next chapter, we will look at how C++ handles text—a concept that is surprisingly complex when you are working directly with memory arrays.
+You now understand the fabric of the Matrix. You can allocate memory, navigate addresses, and manipulate data exactly how the CPU sees it. In the next chapter, we will look at how C++ handles text - a concept that is surprisingly complex when you are working directly with memory arrays.

@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Complete Networking Keywords Reference - 235 Keywords
 
 ## 1. OSI MODEL LAYERS (52 KEYWORDS)

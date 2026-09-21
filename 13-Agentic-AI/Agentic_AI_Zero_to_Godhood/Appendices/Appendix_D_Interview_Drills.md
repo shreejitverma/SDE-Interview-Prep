@@ -1,3 +1,12 @@
+---
+type: concept
+track: [ai-eng]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Appendix D: Interview Drills
 
 Ninety-plus interview questions for agentic AI engineering roles, organized by area, each with a model answer.

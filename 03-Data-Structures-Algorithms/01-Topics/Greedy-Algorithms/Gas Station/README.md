@@ -1,3 +1,12 @@
+---
+type: moc
+track: [sde, quant-dev]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 ## Description of the problem
 
 There are N gas stations along a circular route, where the amount of gas at station i is gas[i].

@@ -110,7 +110,7 @@ inline ThreadPool::~ThreadPool() {
 }
 ```
 
-### 🔍 Architectural Highlights:
+### Architectural Highlights:
 
 1. **Perfect Forwarding & Binding:** The `enqueue` function uses `std::forward` and `std::bind` to capture any callable object along with its arguments without unnecessary copying.
 2. **`std::packaged_task`:** This wraps the callable so its execution writes to a shared state, which is read asynchronously by the caller via a `std::future`.

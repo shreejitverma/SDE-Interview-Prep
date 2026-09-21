@@ -3,9 +3,14 @@ tags: [memory/architecture, cpu/cache, numa, tlb, mesi, drepper, false-sharing]
 aliases: [Ulrich Drepper Memory Architecture, What Every Programmer Should Know About Memory, Drepper Memory Paper]
 status: evergreen
 created: 2026-09-17
+type: paper
+track: [distinguished, sde]
+level:
+last_reviewed:
+sources: []
 ---
 
-# Ulrich Drepper — What Every Programmer Should Know About Memory
+# Ulrich Drepper - What Every Programmer Should Know About Memory
 
 > **Author**: Ulrich Drepper (Former Lead Maintainer of the GNU C Library `glibc`, Red Hat Engineer)  
 > **Publication**: Red Hat Technical Whitepaper (114 Pages, 2007)  
@@ -115,6 +120,6 @@ When multiple CPU cores share data across L1/L2 caches, the hardware enforces ca
 ## Related Notes
 - [[Concurrency-and-Threading-Debates|Concurrency and Threading Debates]]
 - [[Data-Structures-and-Memory-Opt|Data Structures and Memory Optimization]]
-- [[../../12-Performance-Engineering/01-Cpu-Architecture/false_sharing|12-Performance-Engineering: False Sharing Demo]]
+- [12-Performance-Engineering: False Sharing Demo](../../12-Performance-Engineering/01-Cpu-Architecture/false_sharing.cpp)
 - [[../01-Systems-Performance-and-Tracing/Brendan-Gregg-Performance-Canon|Brendan Gregg Performance Canon]]
 - [[../README|Technical Whitepapers Master MOC]]

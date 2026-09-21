@@ -4,9 +4,14 @@ aliases: [Lab 09, Shared Memory IPC Lab, POSIX SHM Lab, Cross-Process Latency La
 status: evergreen
 module: 09
 created: 2026-08-22
+type: playbook
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
-# Lab 09 — Ultra-Fast Shared Memory IPC Channel
+# Lab 09 - Ultra-Fast Shared Memory IPC Channel
 
 > [!summary]
 > In this lab, you will build, compile, and benchmark an exchange-grade, cross-process Shared Memory (POSIX SHM) IPC channel in C++20. You will spawn two independent operating system processes (Producer and Consumer) pinned to dedicated physical CPU cores, measure true process-to-process transit latency down to the nanosecond, and verify sustained throughput exceeding **40,000,000 messages/second**.
@@ -365,9 +370,9 @@ sudo ./shm_ipc_bench --producer 2
 ---
 
 ## Related Notes
-- [[Notes/Shared Memory IPC Topologies]]
-- [[Notes/The LMAX Disruptor Architecture]]
-- [[Notes/Aeron Messaging Transport]]
-- [[Notes/The Sequenced-Stream Architecture]]
-- [[Notes/Lock-Free SPSC Ring Buffer Design]]
+- [[Shared Memory IPC Topologies]]
+- [[The LMAX Disruptor Architecture]]
+- [[Aeron Messaging Transport]]
+- [[The Sequenced-Stream Architecture]]
+- [[Lock-Free SPSC Ring Buffer Design]]
 - [[MOC - 09 Messaging & IPC]]

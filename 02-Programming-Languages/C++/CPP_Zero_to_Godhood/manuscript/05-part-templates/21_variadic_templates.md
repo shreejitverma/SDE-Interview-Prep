@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 21: Variadic Templates and Fold Expressions
 
 > *Templates that accept an infinite number of arguments.*
@@ -85,7 +94,7 @@ auto sum(Ts... args) {
 int total = sum(1, 2, 3, 4, 5); // 15
 ```
 
-## 21.4 `sizeof...` — Counting Elements
+## 21.4 `sizeof...` - Counting Elements
 
 You can ask the compiler exactly how many items are inside a pack using the `sizeof...` operator.
 

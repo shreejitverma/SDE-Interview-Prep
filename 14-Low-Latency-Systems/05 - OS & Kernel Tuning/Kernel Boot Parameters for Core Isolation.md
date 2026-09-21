@@ -4,6 +4,11 @@ aliases: [Core Isolation, isolcpus, nohz_full, rcu_nocbs, Linux Boot Parameters,
 status: evergreen
 module: 05
 created: 2026-08-22
+type: concept
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
 > [!summary]
@@ -170,10 +175,10 @@ sudo reboot
 ---
 
 ## Related
-- [[Notes/Linux Thread Pinning and Core Affinity]]
-- [[Notes/Interrupt Routing and MSI-X Tuning]]
-- [[Notes/CPU Power States and Jitter Sources]]
-- [[Notes/Memory Locking and Zero Page Faults]]
+- [[Linux Thread Pinning and Core Affinity]]
+- [[Interrupt Routing and MSI-X Tuning]]
+- [[CPU Power States and Jitter Sources]]
+- [[Memory Locking and Zero Page Faults]]
 - [[MOC - 05 OS & Kernel Tuning]]
 
 ## Sources

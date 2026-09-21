@@ -4,9 +4,14 @@ aliases: [Drill 12, Hybrid Architecture Drill, System Design Drill, FPGA Partiti
 status: evergreen
 module: 12
 created: 2026-08-22
+type: playbook
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
-# Drill 12 — Hybrid CPU-FPGA Architecture Design & Nanosecond Budgeting
+# Drill 12 - Hybrid CPU-FPGA Architecture Design & Nanosecond Budgeting
 
 > [!summary]
 > Principal-level systems architecture drill: you are tasked with designing an institutional-grade, hybrid CPU-FPGA trading system executing cross-market statistical arbitrage between CME E-mini Futures (Aurora, IL) and NASDAQ Equities (Carteret, NJ). Attempt each design phase before unfolding the solution.

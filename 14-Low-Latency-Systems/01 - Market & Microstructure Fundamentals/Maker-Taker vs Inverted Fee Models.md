@@ -4,10 +4,15 @@ aliases: [Maker-Taker, Inverted Fee, Taker-Maker, Exchange Fees, Rebates, Access
 status: evergreen
 module: 01
 created: 2026-08-22
+type: concept
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
 > [!summary]
-> Exchange pricing models establish the economic incentives for liquidity provision. While standard Maker-Taker venues subsidize passive quotes via maker rebates and charge aggressive takers, Inverted (Taker-Maker) venues pay takers to remove liquidity and charge makers—offering faster queue execution at the cost of significantly higher adverse selection toxicity.
+> Exchange pricing models establish the economic incentives for liquidity provision. While standard Maker-Taker venues subsidize passive quotes via maker rebates and charge aggressive takers, Inverted (Taker-Maker) venues pay takers to remove liquidity and charge makers - offering faster queue execution at the cost of significantly higher adverse selection toxicity.
 
 ---
 

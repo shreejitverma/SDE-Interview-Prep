@@ -1,3 +1,12 @@
+---
+type: concept
+track: [ai-eng]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 04 - LangChain and LangGraph
 
 Knowledge in this chapter is current as of early 2026.

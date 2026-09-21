@@ -4,6 +4,11 @@ aliases: [MSI-X, Interrupt Routing, IRQ Affinity, smp_affinity, irqbalance, Rece
 status: evergreen
 module: 05
 created: 2026-08-22
+type: concept
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
 > [!summary]
@@ -161,11 +166,11 @@ watch -n 1 "cat /proc/interrupts | grep -E '(CPU0|CPU1|CPU2|CPU3)'"
 ---
 
 ## Related
-- [[Notes/Kernel Boot Parameters for Core Isolation]]
-- [[Notes/Linux Thread Pinning and Core Affinity]]
-- [[Notes/Network Interface Card Architecture]]
-- [[Notes/Solarflare ef_vi Zero-Copy API]]
-- [[Notes/DPDK Architecture for Trading]]
+- [[Kernel Boot Parameters for Core Isolation]]
+- [[Linux Thread Pinning and Core Affinity]]
+- [[Network Interface Card Architecture]]
+- [[Solarflare ef_vi Zero-Copy API]]
+- [[DPDK Architecture for Trading]]
 - [[MOC - 05 OS & Kernel Tuning]]
 - [[MOC - 06 Networking]]
 
