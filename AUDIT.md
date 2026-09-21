@@ -8,7 +8,7 @@ Re-run the script after every structural change; this file is its output and sho
 
 | Check | Result |
 | :--- | ---: |
-| Tracked files | 15716 |
+| Tracked files | 15717 |
 | Markdown notes | 1516 |
 | Internal links checked | 9389 |
 | Broken links (links into private locations are not counted) | 0 |
@@ -52,7 +52,7 @@ Re-run the script after every structural change; this file is its output and sho
 | `15-Technical-Whitepapers` | 44 | 44 | 0 | 0 | 0 | 0.3 | 2026-09-21 |
 | `16-Interview-Command-Center` | 47 | 47 | 0 | 0 | 0 | 0.1 | 2026-09-21 |
 | `CS-Subjects` | 1 | 1 | 0 | 0 | 0 | 0.0 | 2026-09-21 |
-| `tools` | 14 | 1 | 11 | 0 | 2 | 0.1 | 2026-09-21 |
+| `tools` | 15 | 1 | 12 | 0 | 2 | 0.1 | 2026-09-21 |
 
 ## 2. Duplicate and overlapping sections
 
