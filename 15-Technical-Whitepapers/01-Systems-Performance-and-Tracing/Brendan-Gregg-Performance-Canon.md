@@ -47,11 +47,15 @@ flowchart TD
 ## The 14 Brendan Gregg Whitepapers Deep Dive
 
 ### 1. BPF: Tracing and More (2017)
+
+**Source:** [open copy](https://www.brendangregg.com/Slides/LCA2017_BPF_tracing_and_more.pdf)
 - **Core Contribution**: Traces the transition of BPF from a network packet filter (cBPF, 1992) to a general-purpose in-kernel 64-bit virtual machine (eBPF) with 11 registers and JIT compilation.
 - **Key Mechanism**: eBPF programs attach to **kprobes** (kernel dynamic probes), **kretprobes** (return probes), **uprobes** (user-space probes), and **tracepoints**. Data is aggregated in-kernel using BPF maps (hash maps, arrays, per-CPU histograms), preventing user/kernel context-switch overhead.
 - **Production Takeaway**: Instead of dumping millions of raw events to user-space via `perf_event_open`, eBPF aggregates distributions in kernel memory, outputting only a 20-line histogram table.
 
 ### 2. Container Performance Analysis
+
+**Source:** [open copy](https://www.brendangregg.com/Slides/DockerCon2017_performance_analysis.pdf)
 - **Core Contribution**: Demystifies container performance by demonstrating that containers are **not lightweight virtual machines**, but isolated Linux processes governed by **cgroups (Control Groups)** and **namespaces**.
 - **Key Bottlenecks**:
   - *CPU Throttling*: Hard enforcement of `cpu.cfs_quota_us` vs `cpu.cfs_period_us` causes latency spikes even when total host CPU is idle.
@@ -59,10 +63,14 @@ flowchart TD
   - *Resource Masking*: Traditional tools like `top` and `uptime` running inside a container read host-wide `/proc` counters rather than container-specific cgroup metrics.
 
 ### 3. From DTrace To Linux (2014)
+
+**Source:** [open copy](https://www.brendangregg.com/Slides/TracingSummit2014_FromDTraceToLinux.pdf)
 - **Core Contribution**: Historical chronicle of porting dynamic instrumentation concepts from Solaris DTrace to the Linux kernel ecosystem.
 - **Comparison**: Evaluates SystemTap, LTTng, ftrace, perf_events, and the emerging eBPF architecture. Concludes that eBPF with BCC provides the safety, speed, and standard upstream kernel integration required for high-security cloud production environments.
 
 ### 4. Linux 4.x Performance Using BPF Superpowers (2016)
+
+**Source:** [open copy](https://www.brendangregg.com/Slides/PerformanceAtScale2016_LinuxBPFSuperpowers.pdf)
 - **Core Contribution**: Demonstrates the transformative performance tools introduced in the Linux 4.x kernel series (4.1 through 4.9), enabling programmable tracing without kernel crashes.
 - **Breakthrough Tools Introduced**:
   - `execsnoop`: Traces short-lived transient process executions that escape `ps` polling.
@@ -71,6 +79,8 @@ flowchart TD
   - `offcputime`: Profiles the stack traces of threads when they are descheduled and sleeping.
 
 ### 5. Linux Performance Tools (2014 & 2015 Editions)
+
+**Source:** [open copy](https://www.brendangregg.com/Slides/Velocity2015_LinuxPerfTools.pdf)
 - **Core Contribution**: The definitive taxonomy of Linux performance observability tools categorized by subsystem:
   - *CPUs*: `uptime`, `mpstat -P ALL 1`, `pidstat 1`, `perf top`.
   - *Memory*: `free -m`, `vmstat 1`, `sar -B 1` (page paging), `numastat`.
@@ -79,6 +89,8 @@ flowchart TD
 - **Latency Anti-Pattern**: Never rely on averages. Averages hide tail latency (P99, P99.9) caused by micro-bursts and lock contention.
 
 ### 6. Linux Performance Analysis New Tools and Old Secrets
+
+**Source:** [open copy](https://www.brendangregg.com/Slides/LISA2014_LinuxPerfAnalysisNewTools.pdf)
 - **Core Contribution**: Modernizing old UNIX diagnostic tricks with modern microarchitectural insights.
 - **Old Secrets Rediscovered**:
   - Interrogating `/proc/interrupts` to find CPU core interrupt storm imbalances.
@@ -86,11 +98,15 @@ flowchart TD
   - Reading `/proc/net/snmp` for TCP retransmissions, fast retransmits, and out-of-order packets.
 
 ### 7. Linux Profiling at Netflix (2015)
+
+**Source:** [open copy](https://www.brendangregg.com/Slides/SCALE2015_Linux_perf_profiling.pdf)
 - **Core Contribution**: Case study of running continuous low-overhead profiling across tens of thousands of AWS EC2 cloud instances.
 - **The Vector Architecture**: Building self-service web dashboards showing real-time CPU flame graphs generated via hardware PMU counters without user application recompilation.
 - **Java on Linux**: Enabling Java stack symbol resolution with `perf-map-agent` to preserve frame pointers (`-XX:+PreserveFramePointer`), allowing `perf` to walk compiled JVM call frames.
 
 ### 8. Linux Systems Performance (2016)
+
+**Source:** [open copy](https://www.brendangregg.com/Slides/Percona2016_LinuxSystemsPerf.pdf)
 - **Core Contribution**: Deep dive into hardware PMU (Performance Monitoring Unit) integration in Linux.
 - **Instructions Per Cycle (IPC)**:
   $$\text{IPC} = \frac{\text{Instructions Retired}}{\text{CPU Cycles}}$$
@@ -98,10 +114,14 @@ flowchart TD
   - $\text{IPC} > 2.0$: Compute-bound execution. The CPU is operating efficiently in L1/L2 caches.
 
 ### 9. Open Source Systems Performance (2013)
+
+**Source:** [open copy](https://www.brendangregg.com/Slides/OSCON2013_sysperf.pdf)
 - **Core Contribution**: Philosophical framework for debugging complex open-source software stacks.
 - **Methodology**: Treat the operating system, runtimes, libraries, and kernel as a single continuous execution hierarchy rather than isolated black boxes.
 
 ### 10. Performance Analysis: The USE Method (2012)
+
+**Source:** [author page](https://www.brendangregg.com/usemethod.html)
 - **Core Contribution**: The most influential resource-triage methodology in modern systems engineering.
 - **The Formula**: For **every resource** (CPU, memory, storage disk, network bus, PCIe controller), evaluate three metrics:
   1. **Utilization**: The percentage of time the resource was busy during a specific time window.
@@ -121,6 +141,8 @@ flowchart TD
 ```
 
 ### 11. Performance Checklists for SREs (2016)
+
+**Source:** [open copy](https://www.brendangregg.com/Slides/SREcon_2016_perf_checklists.pdf)
 - **Core Contribution**: The **"First 60 Seconds"** standard triage command sequence for site reliability engineers responding to a production incident:
   ```bash
   uptime                      # Check 1, 5, 15 min load averages vs CPU core count
@@ -136,6 +158,8 @@ flowchart TD
   ```
 
 ### 12. Performance Methodologies for Production Systems (2013)
+
+**Source:** [open copy](https://www.brendangregg.com/Slides/VelocityStopTheGuessing2013.pdf)
 - **Core Contribution**: Taxonomy of anti-methodologies vs rigorous methodologies:
   - *Streetlamp Anti-Methodology*: Looking only where tools are easy to run (e.g., running `top` repeatedly because it is familiar).
   - *Blame-Someone-Else Anti-Methodology*: Guessing the bottleneck belongs to another team's component (e.g., blaming "the network" or "the database").
@@ -143,9 +167,13 @@ flowchart TD
   - *Drill-Down Analysis*: Profiling from high-level system calls down to individual cache lines.
 
 ### 13. System Performance (2013 Treatise)
+
+**Source:** [author page](https://www.brendangregg.com/sysperfbook.html)
 - **Core Contribution**: Foundational textbook covering queueing theory (Little's Law: $L = \lambda W$), latency distributions, cache hierarchies, and kernel scheduler internals.
 
 ### 14. Performance Analysis Superpowers with Linux eBPF (2015)
+
+**Source:** [open copy](https://www.brendangregg.com/Slides/Velocity2017_BPF_superpowers.pdf)
 - **Core Contribution**: Early showcase demonstrating how eBPF enables measuring sub-microsecond latency histograms inside the kernel without instrumenting application source code.
 
 ---

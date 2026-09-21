@@ -1,12 +1,165 @@
 {
-  "choices": [],
+  "choices": [
+    {
+      "id": "d32da942-4011-537e-85ae-d3462c8d97b8",
+      "name": "New application",
+      "type": "Template",
+      "command": true,
+      "templatePath": "16-Interview-Command-Center/_Templates/Application.md",
+      "fileNameFormat": {
+        "enabled": true,
+        "format": "New application {{DATE:YYYYMMDDHHmmss}}"
+      },
+      "discoverExistingNotesBeforeCreate": false,
+      "folder": {
+        "enabled": true,
+        "folders": [
+          "16-Interview-Command-Center/03-Pipeline/Active"
+        ],
+        "chooseWhenCreatingNote": false,
+        "createInSameFolderAsActiveFile": false,
+        "chooseFromSubfolders": false
+      },
+      "appendLink": false,
+      "copyLinkToClipboard": false,
+      "openFile": true,
+      "fileOpening": {
+        "focus": true
+      },
+      "fileExistsBehavior": {
+        "kind": "prompt"
+      }
+    },
+    {
+      "id": "d45a7ad0-b494-5297-882c-792eade3b6e4",
+      "name": "Log interview round",
+      "type": "Template",
+      "command": true,
+      "templatePath": "16-Interview-Command-Center/_Templates/Interview-Note.md",
+      "fileNameFormat": {
+        "enabled": true,
+        "format": "Round {{DATE:YYYYMMDDHHmmss}}"
+      },
+      "discoverExistingNotesBeforeCreate": false,
+      "folder": {
+        "enabled": true,
+        "folders": [
+          "16-Interview-Command-Center/03-Pipeline/Active"
+        ],
+        "chooseWhenCreatingNote": false,
+        "createInSameFolderAsActiveFile": false,
+        "chooseFromSubfolders": false
+      },
+      "appendLink": false,
+      "copyLinkToClipboard": false,
+      "openFile": true,
+      "fileOpening": {
+        "focus": true
+      },
+      "fileExistsBehavior": {
+        "kind": "prompt"
+      }
+    },
+    {
+      "id": "5be4405f-0b10-5bde-8c07-cce546982ee9",
+      "name": "Post-interview retro",
+      "type": "Template",
+      "command": true,
+      "templatePath": "16-Interview-Command-Center/_Templates/Retrospective.md",
+      "fileNameFormat": {
+        "enabled": true,
+        "format": "{{DATE:YYYY-MM-DD}} {{VALUE:Retro title (company and round)}}"
+      },
+      "discoverExistingNotesBeforeCreate": false,
+      "folder": {
+        "enabled": true,
+        "folders": [
+          "16-Interview-Command-Center/04-Retrospectives"
+        ],
+        "chooseWhenCreatingNote": false,
+        "createInSameFolderAsActiveFile": false,
+        "chooseFromSubfolders": false
+      },
+      "appendLink": false,
+      "copyLinkToClipboard": false,
+      "openFile": true,
+      "fileOpening": {
+        "focus": true
+      },
+      "fileExistsBehavior": {
+        "kind": "prompt"
+      }
+    },
+    {
+      "id": "c816d262-6b94-59f4-8052-944bd02fd392",
+      "name": "New STAR story",
+      "type": "Template",
+      "command": true,
+      "templatePath": "16-Interview-Command-Center/_Templates/Behavioral-Story.md",
+      "fileNameFormat": {
+        "enabled": true,
+        "format": "{{VALUE:Story title}}"
+      },
+      "discoverExistingNotesBeforeCreate": false,
+      "folder": {
+        "enabled": true,
+        "folders": [
+          "16-Interview-Command-Center/05-Behavioral/Stories"
+        ],
+        "chooseWhenCreatingNote": false,
+        "createInSameFolderAsActiveFile": false,
+        "chooseFromSubfolders": false
+      },
+      "appendLink": false,
+      "copyLinkToClipboard": false,
+      "openFile": true,
+      "fileOpening": {
+        "focus": true
+      },
+      "fileExistsBehavior": {
+        "kind": "prompt"
+      }
+    },
+    {
+      "id": "9112caed-345a-58fe-9bbd-c1c25298fbb0",
+      "name": "Weekly review",
+      "type": "Template",
+      "command": true,
+      "templatePath": "16-Interview-Command-Center/_Templates/Weekly-Review.md",
+      "fileNameFormat": {
+        "enabled": true,
+        "format": "{{DATE:YYYY-[W]ww}} Weekly Review"
+      },
+      "discoverExistingNotesBeforeCreate": false,
+      "folder": {
+        "enabled": true,
+        "folders": [
+          "16-Interview-Command-Center/06-Daily-Log"
+        ],
+        "chooseWhenCreatingNote": false,
+        "createInSameFolderAsActiveFile": false,
+        "chooseFromSubfolders": false
+      },
+      "appendLink": false,
+      "copyLinkToClipboard": false,
+      "openFile": true,
+      "fileOpening": {
+        "focus": true
+      },
+      "fileExistsBehavior": {
+        "kind": "prompt"
+      }
+    }
+  ],
   "inputPrompt": "single-line",
   "persistInputPromptDrafts": true,
   "useSelectionAsCaptureValue": true,
   "searchNestedChoices": true,
   "templateFolderLauncherRow": "bottom",
   "devMode": false,
-  "templateFolderPaths": [],
+  "templateFolderPaths": [
+    "16-Interview-Command-Center/_Templates"
+  ],
   "announceUpdates": "major",
   "version": "2.22.0",
   "globalVariables": {},

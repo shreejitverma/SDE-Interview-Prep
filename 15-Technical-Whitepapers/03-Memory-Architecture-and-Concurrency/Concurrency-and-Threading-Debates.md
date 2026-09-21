@@ -19,6 +19,8 @@ sources: []
 
 ## 1. Why Threads Are A Bad Idea (for most purposes) (John Ousterhout, 1995)
 
+**Source:** [open copy](https://web.stanford.edu/~ouster/cgi-bin/papers/threads.pdf)
+
 ### Author & Context
 John Ousterhout (creator of Tcl/Tk, Raft consensus algorithm, and RAMCloud) presented this seminal slide-deck paper arguing that multi-threading is fundamentally too complex and error-prone for general application programming.
 
@@ -48,6 +50,8 @@ flowchart TD
 ---
 
 ## 2. Virtual Threads (Elaine Cheong & Fred Reiss, 2000)
+
+**Source:** [open copy](https://www.elainetron.com/pubs/cs263_cheong_reiss.pdf)
 
 ### Architectural Context & Vision
 Decades before Java 21 popularized Virtual Threads (Project Loom) or Go built goroutines, Cheong and Reiss explored how to combine the **intuitive synchronous programming model of threads** with the **scalability and performance of event loops**.

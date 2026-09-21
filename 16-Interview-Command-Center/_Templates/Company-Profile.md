@@ -74,10 +74,10 @@ tags:
 
 ## My Applications
 ```dataview
-TABLE role, stage, confidence, next_deadline
+TABLE role, stage, confidence, next_action_date
 FROM "16-Interview-Command-Center/03-Pipeline"
 WHERE company = this.file.name
-SORT next_deadline ASC
+SORT next_action_date ASC
 ```
 
 ## My Retrospectives

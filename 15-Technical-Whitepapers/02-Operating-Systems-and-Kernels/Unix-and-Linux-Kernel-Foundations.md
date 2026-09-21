@@ -19,6 +19,8 @@ sources: []
 
 ## 1. The UNIX Time-Sharing System (Dennis M. Ritchie & Ken Thompson, 1974)
 
+**Source:** [open copy](https://www.nokia.com/bell-labs/about/dennis-m-ritchie/cacm.pdf)
+
 ### Historical & Engineering Significance
 Published in *Communications of the ACM*, this paper introduced the fundamental abstractions that continue to govern modern computing 50+ years later. Ritchie and Thompson designed UNIX for the PDP-11 with three revolutionary goals: simplicity, elegance, and composability.
 
@@ -50,6 +52,8 @@ flowchart LR
 
 ## 2. The Linux Kernel Hackers' Guide (Michael K. Johnson, 1995)
 
+**Source:** [publisher page](https://tldp.org/LDP/khg/HyperNews/get/khg.html)
+
 ### Architectural Blueprint of Early Linux
 Johnson's guide provided the first comprehensive documentation of the Linux monolithic kernel architecture (v1.2/v2.0):
 - **Monolithic with Modular Extensibility**: All kernel subsystems (scheduler, virtual memory, network stack, filesystems) execute in a single shared supervisor address space (Ring 0), but support dynamic loading/unloading via Loadable Kernel Modules (LKMs).
@@ -62,6 +66,8 @@ Johnson's guide provided the first comprehensive documentation of the Linux mono
 ---
 
 ## 3. Unreliable Guide To Hacking The Linux Kernel (Paul Rusty Russell, 2000)
+
+**Source:** [publisher page](https://docs.kernel.org/kernel-hacking/hacking.html)
 
 ### Concurrency Rules in Kernel Space
 Rusty Russell's humorous yet rigorous guide established the cardinal rules of Linux kernel programming:
@@ -79,6 +85,8 @@ Rusty Russell's humorous yet rigorous guide established the cardinal rules of Li
 ---
 
 ## 4. The Linux Scheduler: A Decade of Wasted Cores (EuroSys 2016)
+
+**Source:** [open copy](https://people.ece.ubc.ca/sasha/papers/eurosys16-final29.pdf)
 
 ### The Discovery: Catastrophic Multi-Core CFS Bugs
 Lozi, David, Thomas, et al. analyzed the Completely Fair Scheduler (CFS) on modern multi-socket NUMA machines (64+ cores) and discovered four major algorithmic design bugs causing threads to wait in run queues while dozens of CPU cores remained completely idle - leading to **slowdowns of up to $138\times$**!

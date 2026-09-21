@@ -19,6 +19,8 @@ sources: []
 
 ## 1. A Protocol for Packet Network Intercommunication (Cerf & Kahn, 1974)
 
+**Source:** [open copy](https://www.cs.princeton.edu/courses/archive/fall06/cos561/papers/cerf74.pdf)
+
 ### The Birth of the Internet
 Published in *IEEE Transactions on Communications*, Vint Cerf and Bob Kahn designed the architecture to connect disparate, incompatible packet networks (ARPANET, SATNET, PRNET) into a unified **Inter-net**.
 
@@ -37,6 +39,8 @@ flowchart LR
 ---
 
 ## 2. End-to-End Arguments in System Design (Saltzer, Reed, Clark, 1984)
+
+**Source:** [open copy](https://web.mit.edu/Saltzer/www/publications/endtoend/endtoend.pdf)
 
 ### The Philosophical Rule of System Architecture
 Saltzer, Reed, and Clark formulated the single most influential design principle in networking and distributed systems:
@@ -62,6 +66,8 @@ Therefore, making intermediate network hops complex and 'reliable' is redundant 
 
 ## 3. Congestion Avoidance and Control (Van Jacobson & Karels, 1988)
 
+**Source:** [open copy](https://ee.lbl.gov/papers/congavoid.pdf)
+
 ### Rescuing the Internet from Congestion Collapse
 In 1986, the Internet suffered a catastrophic collapse: Throughput on the 400-mile link between LBL and UC Berkeley dropped from 32 Kbps to **40 bps ($1000\times$ degradation)** due to packet drops and synchronized retransmission storms. Van Jacobson introduced four algorithms that saved the Internet:
 
@@ -85,6 +91,8 @@ flowchart TD
 ---
 
 ## 4. Hints for Computer System Design (Butler Lampson, 1983)
+
+**Source:** [open copy](https://bwlampson.site/33-Hints/Acrobat.pdf)
 
 ### Wisdom of a Turing Award Laureate
 Butler Lampson (Xerox PARC pioneer, architect of Alto and Ethernet) codified 30+ years of engineering experience into practical maxims:

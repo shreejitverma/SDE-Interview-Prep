@@ -19,6 +19,8 @@ sources: []
 
 ## 1. Wait-Free Synchronization (Maurice Herlihy, 1991)
 
+**Source:** [open copy](https://cs.brown.edu/~mph/Herlihy91/p124-herlihy.pdf)
+
 ### Non-Blocking Definitions
 Published in *ACM TOPLAS*, Maurice Herlihy established the rigorous definitions that categorize concurrent data structures:
 
@@ -47,6 +49,8 @@ Herlihy proved that hardware atomic instructions have different computational po
 
 ## 2. The Michael-Scott Non-Blocking Queue (Michael & Scott, 1996)
 
+**Source:** [open copy](https://www.cs.rochester.edu/u/scott/papers/1996_PODC_queues.pdf)
+
 ### The Canonical Multi-Producer Multi-Consumer (MPMC) Queue
 Maged Michael and Michael Scott designed the standard linked-list lock-free FIFO queue using single-word CAS.
 
@@ -65,6 +69,8 @@ flowchart LR
 ---
 
 ## 3. The Treiber Lock-Free Stack (R. Kent Treiber, 1986)
+
+**Source:** [open copy](http://web.archive.org/web/20260211101351/https://dominoweb.draco.res.ibm.com/reports/rj5118.pdf)
 
 ### Implementation
 ```cpp
@@ -93,6 +99,8 @@ public:
 ---
 
 ## 4. The LMAX Disruptor Architecture (Martin Thompson et al., 2011)
+
+**Source:** [open copy](https://lmax-exchange.github.io/disruptor/files/Disruptor-1.0.pdf)
 
 ### Mechanical Sympathy in Electronic Trading
 Built by LMAX to power a financial exchange processing **6,000,000 orders per second with under 100-nanosecond latency**, Thompson et al. proved that standard queues (`java.util.concurrent.ArrayBlockingQueue`) destroy performance due to **lock contention and cache false sharing**.
@@ -125,6 +133,8 @@ flowchart TD
 ---
 
 ## 5. Read-Copy Update (RCU) (Paul E. McKenney, 1998)
+
+**Source:** [open copy](http://www.rdrop.com/users/paulmck/RCU/rclockpdcsproof.pdf)
 
 ### Zero-Cost Reads in Operating Systems
 RCU is a synchronization mechanism used across thousands of subsystems in the Linux kernel:

@@ -19,6 +19,8 @@ sources: []
 
 ## 1. Jumpstarting the Network: Sub-Microsecond Jitter (Grosvenor et al., 2015)
 
+**Source:** [open copy](https://www.usenix.org/system/files/conference/nsdi15/nsdi15-paper-grosvenor_update.pdf)
+
 ### Cambridge University / Low-Latency Systems Research
 Published in *USENIX NSDI*, Grosvenor et al. deployed nanosecond-precision hardware taps to dissect network latency in financial trading environments and modern cloud datacenters.
 
@@ -41,6 +43,8 @@ than the entire physical network fabric combined!
 ---
 
 ## 2. Netmap: Fast Packet I/O (Luigi Rizzo, 2012)
+
+**Source:** [open copy](https://www.usenix.org/system/files/conference/atc12/atc12-final186.pdf)
 
 ### Architectural Shift: Kernel Bypass
 Luigi Rizzo's paper in *USENIX ATC* established the foundational architecture that led to **DPDK (Data Plane Development Kit)** and Linux **AF_XDP**:
@@ -70,6 +74,8 @@ flowchart TD
 
 ## 3. IX: A Protected Dataplane Operating System (Adam Belay et al., 2014)
 
+**Source:** [open copy](https://www.usenix.org/system/files/conference/osdi14/osdi14-paper-belay.pdf)
+
 ### The OSDI 2014 Breakthrough
 Adam Belay and the Stanford team resolved the fundamental trade-off between **safety** and **ultra-low latency**:
 - Kernel bypass frameworks (DPDK) provide raw speed but sacrifice security: An untrusted or buggy user process can crash the host or read other processes' raw network packets.
@@ -80,6 +86,8 @@ Adam Belay and the Stanford team resolved the fundamental trade-off between **sa
 ---
 
 ## 4. It's Time for Low Latency (RAMCloud) (Rumble et al., 2011)
+
+**Source:** [open copy](https://www.usenix.org/legacy/events/hotos11/tech/final_files/Rumble.pdf)
 
 ### The 10-Microsecond Storage Vision
 John Ousterhout, Stephen Rumble, and the Stanford RAMCloud team proved that slashing distributed RPC latency from 5 milliseconds to **5–10 microseconds** is not an incremental improvement - it **fundamentally transforms application design**:
@@ -97,6 +105,8 @@ Applications can use simple, normalized, strongly consistent data models.
 ---
 
 ## 5. DaRPC: Data-Center RPC over RDMA (Patrick Stuedi et al., 2014)
+
+**Source:** [DOI](https://doi.org/10.1145/2670979.2670994)
 
 ### Remote Direct Memory Access (RDMA)
 RDMA allows one computer to read or write directly to the physical memory of another computer across an Infiniband or RoCE (RDMA over Converged Ethernet) network **without involving the operating system or CPU on either end**:

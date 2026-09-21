@@ -68,10 +68,10 @@ TABLE WITHOUT ID
   level AS "Level",
   stage AS "Stage",
   confidence + "/5" AS "Confidence",
-  next_deadline AS "Deadline"
+  next_action_date AS "Deadline"
 FROM "16-Interview-Command-Center/03-Pipeline"
 WHERE role = "SDE" AND stage != "rejected" AND stage != "withdrawn"
-SORT next_deadline ASC
+SORT next_action_date ASC
 ```
 
 ## SDE Retrospectives

@@ -19,6 +19,8 @@ sources: []
 
 ## 1. xv6: A Simple, Unix-like Teaching Operating System (MIT, 2012)
 
+**Source:** [author page](https://pdos.csail.mit.edu/6.828/2012/xv6.html)
+
 ### Authors & Origin
 Created by Russ Cox, M. Frans Kaashoek, and Robert Morris at MIT. xv6 re-implements Dennis Ritchie and Ken Thompson's Sixth Edition Unix (v6, 1975) in clean ANSI C for multi-core x86 processors.
 
@@ -86,6 +88,8 @@ flowchart TD
 ---
 
 ## 2. Writing a Simple Operating System - From Scratch (Nick Blundell, 2010)
+
+**Source:** [open copy](http://web.archive.org/web/2016/https://www.cs.bham.ac.uk/~exr/lectures/opsys/10_11/lectures/os-dev.pdf)
 
 ### The Boot Process Step-by-Step
 Nick Blundell demystifies how a bare-metal computer transitions from BIOS firmware execution to a compiled C kernel.

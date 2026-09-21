@@ -19,6 +19,8 @@ sources: []
 
 ## 1. TCP Fast Open (Radhakrishnan et al., 2011)
 
+**Source:** [publisher page](https://research.google/pubs/tcp-fast-open/)
+
 ### The Latency Problem of the 3-Way Handshake
 In traditional TCP, establishing a connection requires a full 3-way handshake before any application payload data can be exchanged:
 1. Client sends `SYN`.
@@ -64,6 +66,8 @@ sequenceDiagram
 ---
 
 ## 2. Speeding up Networking (Van Jacobson & Bob Felderman, 2006)
+
+**Source:** [open copy](http://www.lemis.com/grog/Documentation/vj/lca06vj.pdf)
 
 ### Author & Context
 Van Jacobson (inventor of TCP Congestion Control, Traceroute, and Path MTU Discovery) analyzed why 10 Gbps and 40 Gbps networks failed to achieve wire speed on modern multi-core operating systems.

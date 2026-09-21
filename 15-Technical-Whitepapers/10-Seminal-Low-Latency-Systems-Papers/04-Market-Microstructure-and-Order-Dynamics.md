@@ -19,6 +19,8 @@ sources: []
 
 ## 1. Continuous Auctions and Informed Trader (Albert S. Kyle, 1985)
 
+**Source:** [DOI](https://doi.org/10.2307/1913210)
+
 ### Foundational Market Model
 Published in *Econometrica*, Albert Kyle modeled the interaction between three market participants:
 1. **A Single Informed Trader**: Possesses private information about the true asset value $v \sim \mathcal{N}(p_0, \Sigma_0)$.
@@ -47,6 +49,8 @@ $$\lambda = \frac{\text{Cov}(v, y)}{\text{Var}(y)} = \frac{\sqrt{\Sigma_0}}{2 \s
 
 ## 2. Information Asymmetry & The Bid-Ask Spread (Glosten & Milgrom, 1985)
 
+**Source:** [DOI](https://doi.org/10.1016/0304-405X(85)90044-3)
+
 ### Why Does the Bid-Ask Spread Exist?
 Before Glosten-Milgrom, economists assumed spreads existed only to cover administrative inventory costs. Glosten and Milgrom proved that **the spread is a dynamic response to Adverse Selection**:
 
@@ -63,6 +67,8 @@ uninformed noise traders offset the systematic losses surrendered to informed tr
 
 ## 3. Order Flow Imbalance (OFI) (Rama Cont et al., 2014)
 
+**Source:** [open copy](https://arxiv.org/abs/1011.6402)
+
 ### High-Frequency Price Impact in Modern Limit Order Books
 Published in *Journal of Financial Econometrics*, Cont, Kukanov, and Stoikov showed that price movements in electronic limit order books (LOB) over sub-second horizons are driven linearly by **Order Flow Imbalance (OFI)**:
 
@@ -78,6 +84,8 @@ Where $I_k^{\text{bid}}$ captures the net change in available liquidity at the b
 ---
 
 ## 4. The Micro-Price: A High-Frequency Estimator (Sasha Stoikov, 2018)
+
+**Source:** [DOI](https://doi.org/10.1080/14697688.2018.1489139)
 
 ### Moving Beyond the Mid-Price
 The traditional mid-price $M = \frac{P^A + P^B}{2}$ is naive because it completely ignores **queue depth**:
@@ -99,6 +107,8 @@ flowchart TD
 
 ## 5. The HFT Arms Race & Frequent Batch Auctions (Eric Budish et al., 2015)
 
+**Source:** [open copy](https://www.cramton.umd.edu/papers2015-2019/budish-cramton-shim-hft-frequent-batch-auctions.pdf)
+
 ### The Flaw of the Continuous Double Auction (CDA)
 Budish, Cramton, and Shim (University of Chicago) proved that modern financial markets operating as continuous double auctions create a socially wasteful **latency arms race**:
 - Symmetrically correlated securities (e.g., S&P 500 ETF `SPY` in New York vs S&P 500 E-mini futures `ES` in Chicago) fluctuate continuously.
@@ -109,6 +119,8 @@ Budish, Cramton, and Shim (University of Chicago) proved that modern financial m
 ---
 
 ## 6. Optimal High-Frequency Market Making (Avellaneda & Stoikov, 2008)
+
+**Source:** [open copy](https://math.nyu.edu/~avellane/HighFrequencyTrading.pdf)
 
 ### Managing Inventory Risk in Limit Order Books
 Avellaneda and Stoikov solved the optimal quoting problem for high-frequency market makers who face inventory risk (the risk of holding too much long or short stock during an adverse price trend):
