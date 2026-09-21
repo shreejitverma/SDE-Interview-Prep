@@ -299,8 +299,7 @@ def main() -> int:
             elif res != f:
                 inbound[folder_entry(res) or res if res in resolver.dirs else res] += 1
     archived = [f for f in md_files if ARCHIVED_RE.search(f)]
-    roots = {"README.md", "AUDIT.md"}  # vault entry point and generated report
-    orphans = [f for f in md_files if inbound[f] == 0 and not ARCHIVED_RE.search(f) and f not in roots]
+    orphans = [f for f in md_files if inbound[f] == 0 and is_knowledge_note(f)]
     fixable = []  # broken wikilinks whose last path segment names exactly one existing note
     for f, kind, t in broken:
         if kind == "wiki":
@@ -439,7 +438,7 @@ def write_report(path, s, counts, top_last, broken, orphans, no_fm, no_readme, e
             ["Internal links checked", s["links_checked"]], ["Broken links (links into private locations are not counted)", s["broken_links"]],
             ["Wikilink aliases that split a table cell", s["table_breaking_links"]],
             ["Broken wikilinks fixable by unique basename", s["broken_fixable_by_basename"]],
-            ["Orphan notes (no inbound links; archived drafts excluded)", s["orphans"]],
+            ["Orphan knowledge notes (no inbound links)", s["orphans"]],
             ["Archived drafts (`_archive/`, `_consolidated*/`)", s["archived_notes"]], ["Knowledge notes without frontmatter", s["no_frontmatter"]],
             ["Note folders without README (depth <= 3)", s["folders_without_readme"]],
             ["Notes with emojis / total emojis", f"{s['emoji_files']} / {s['emoji_count']}"],
