@@ -3,10 +3,10 @@
 ## Vault Resources
 | Topic | Vault Location |
 |-------|---------------|
-| Quant Finance Overview | [[05-Quantitative-Finance]] |
+| Quant Finance Overview | [[05-Quantitative-Finance/README\|05-Quantitative-Finance]] |
 | Mathematics (Black-Scholes, MC) | [[05-Quantitative-Finance/01-Mathematics]] |
 | Quant Dev (Order Book, Memory) | [[05-Quantitative-Finance/02-Quant-Dev]] |
-| Low Latency Systems (all 14 modules) | [[14-Low-Latency-Systems]] |
+| Low Latency Systems (all 14 modules) | [[14-Low-Latency-Systems/00 Home\|14-Low-Latency-Systems]] |
 | LL Interview Deep Dive | [[14-Low-Latency-Systems/Interview/interview]] |
 | LL Question Bank | [[14-Low-Latency-Systems/Interview/question-bank-answers]] |
 | LL Thesis Deep Dive | [[14-Low-Latency-Systems/Interview/thesis-deep-dive]] |
@@ -14,8 +14,8 @@
 | C++ Interview Cheatsheet | [[14-Low-Latency-Systems/Interview/Core-CPP-Low-Latency-Interview-Cheatsheet]] |
 | Staff System Design | [[14-Low-Latency-Systems/Interview/Staff-Principal-System-Design-Blueprint]] |
 | C++ Language | [[02-Programming-Languages/C++]] |
-| Performance Engineering | [[12-Performance-Engineering]] |
-| Technical Whitepapers | [[15-Technical-Whitepapers]] |
+| Performance Engineering | [[12-Performance-Engineering/README\|12-Performance-Engineering]] |
+| Technical Whitepapers | [[15-Technical-Whitepapers/README\|15-Technical-Whitepapers]] |
 
 ## Books
 | Title | Author | Focus |

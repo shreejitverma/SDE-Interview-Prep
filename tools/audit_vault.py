@@ -35,6 +35,8 @@ CODE_EXTS = {".py", ".cpp", ".cc", ".c", ".h", ".hpp", ".java", ".go", ".rs", ".
 DOC_EXTS = {".md"}
 PAPER_EXTS = {".pdf", ".tex"}
 README_NAMES = {"readme.md", "_readme.md", "index.md", "_index.md"}
+ENTRY_PREFIXES = ("00 home", "00-dashboard", "moc - ")
+ARCHIVED_RE = re.compile(r"(^|/)(_archive|_consolidated[^/]*)/")
 
 FENCE_RE = re.compile(r"^(\s*)(`{3,}|~{3,})")
 INLINE_CODE_RE = re.compile(r"`[^`\n]*`")
@@ -45,6 +47,7 @@ EMOJI_RE = re.compile(
     "[\U0001F000-\U0001FAFF\U00002600-\U000027BF\U00002B00-\U00002BFF\U0001F900-\U0001F9FF\uFE0F\u200D]"
 )
 EM_DASH = "\u2014"
+TABLE_ALIAS_RE = re.compile(r"\[\[[^\]\n]*[^\\\]]\|[^\]\n]*\]\]")  # [[a|b]] without the escaped \| a table needs
 
 VENDOR_MARKERS = {"license", "license.md", "license.txt", "code_of_conduct.md", "contributing.md",
                   "package.json", "setup.py", "pom.xml", "cargo.toml", "go.mod"}
@@ -72,6 +75,17 @@ def tracked_files(repo: Path) -> list[str]:
 
 def top(path: str) -> str:
     return path.split("/", 1)[0] if "/" in path else "(root)"
+
+
+def entry_note(folder: str, names: set[str]) -> str | None:
+    """The note that introduces a folder, by vault convention, or None.
+
+    names holds the lower-cased file names directly inside folder.
+    """
+    for n in ("readme.md", "_readme.md", "index.md", "_index.md", f"{PurePosixPath(folder).name.lower()}.md"):
+        if n in names:
+            return n
+    return next((n for n in sorted(names) if n.endswith(".md") and n.startswith(ENTRY_PREFIXES)), None)
 
 
 def strip_code(text: str) -> str:
@@ -239,6 +253,26 @@ def main() -> int:
         c[kind] += 1
         c["bytes"] += (repo / f).stat().st_size
 
+    names_in_dir: dict[str, set[str]] = defaultdict(set)
+    for f in files:
+        pp = PurePosixPath(f)
+        names_in_dir[str(pp.parent)].add(pp.name.lower())
+    live_notes_in: dict[str, list[str]] = defaultdict(list)
+    for f in md_files:
+        if not ARCHIVED_RE.search(f):
+            live_notes_in[str(PurePosixPath(f).parent)].append(f)
+    dirs_with_notes = {str(p) for f in md_files for p in PurePosixPath(f).parents if str(p) != "."}
+
+    def folder_entry(d: str) -> str | None:
+        """Entry note of a folder: a conventional name, else its only note when it has no note sub-folders."""
+        e = entry_note(d, names_in_dir[d])
+        if e:
+            return next((f for f in files if str(PurePosixPath(f).parent) == d and PurePosixPath(f).name.lower() == e), None)
+        subdirs = {x for x in dirs_with_notes if str(PurePosixPath(x).parent) == d}
+        if len(live_notes_in[d]) == 1 and not subdirs:
+            return live_notes_in[d][0]
+        return None
+
     # 2. Links, broken links, inbound counts.
     broken: list[tuple[str, str, str]] = []
     inbound: Counter = Counter()
@@ -252,8 +286,10 @@ def main() -> int:
             if res is None:
                 broken.append((f, link.kind, link.target))
             elif res != f:
-                inbound[res] += 1
-    orphans = [f for f in md_files if inbound[f] == 0]
+                inbound[folder_entry(res) or res if res in resolver.dirs else res] += 1
+    archived = [f for f in md_files if ARCHIVED_RE.search(f)]
+    roots = {"README.md", "AUDIT.md"}  # vault entry point and generated report
+    orphans = [f for f in md_files if inbound[f] == 0 and not ARCHIVED_RE.search(f) and f not in roots]
     fixable = []  # broken wikilinks whose last path segment names exactly one existing note
     for f, kind, t in broken:
         if kind == "wiki":
@@ -270,13 +306,14 @@ def main() -> int:
         parts = PurePosixPath(f).parent.parts
         for d in range(1, min(len(parts), 3) + 1):
             note_dirs.add("/".join(parts[:d]))
-    names_in_dir: dict[str, set[str]] = defaultdict(set)
-    for f in files:
-        pp = PurePosixPath(f)
-        names_in_dir[str(pp.parent)].add(pp.name.lower())
-    no_readme = sorted(d for d in note_dirs
-                       if not (names_in_dir[d] & README_NAMES)
-                       and f"{PurePosixPath(d).name.lower()}.md" not in names_in_dir[d])
+    no_readme = sorted(d for d in note_dirs if not ARCHIVED_RE.search(d + "/") and folder_entry(d) is None)
+
+    # 4b. Wikilink aliases that split a table cell: inside a table row the pipe must be escaped.
+    table_breaks = []
+    for f, text in texts.items():
+        for i, line in enumerate(strip_code(text).split("\n"), 1):
+            if line.lstrip().startswith("|") and TABLE_ALIAS_RE.search(line):
+                table_breaks.append(f"{f}:{i}")
 
     # 5. Style: emojis and em dashes in notes.
     emoji_files = {f: len(EMOJI_RE.findall(t)) for f, t in texts.items() if EMOJI_RE.search(t)}
@@ -348,7 +385,7 @@ def main() -> int:
     summary = {
         "generated": date.today().isoformat(), "private_files_excluded": private_count,
         "files": len(files), "notes": len(md_files), "links_checked": total_links,
-        "broken_links": len(broken), "broken_fixable_by_basename": len(fixable), "orphans": len(orphans), "no_frontmatter": len(no_fm),
+        "archived_notes": len(archived), "broken_links": len(broken), "table_breaking_links": len(table_breaks), "broken_fixable_by_basename": len(fixable), "orphans": len(orphans), "no_frontmatter": len(no_fm),
         "folders_without_readme": len(no_readme), "emoji_files": len(emoji_files),
         "emoji_count": sum(emoji_files.values()), "emdash_files": len(emdash_files),
         "emdash_count": sum(emdash_files.values()), "duplicate_groups": len(dup_groups),
@@ -366,7 +403,9 @@ def main() -> int:
             print(f"{k}: {v}")
 
     if args.check == "links":
-        return 1 if broken else 0
+        for loc in table_breaks:
+            print(f"table-breaking wikilink: {loc}")
+        return 1 if broken or table_breaks else 0
     if args.check == "style":
         return 1 if emoji_files or emdash_files else 0
     return 0
@@ -387,8 +426,10 @@ def write_report(path, s, counts, top_last, broken, orphans, no_fm, no_readme, e
         *fmt_table(["Check", "Result"], [
             ["Tracked files", s["files"]], ["Markdown notes", s["notes"]],
             ["Internal links checked", s["links_checked"]], ["Broken links (links into private locations are not counted)", s["broken_links"]],
+            ["Wikilink aliases that split a table cell", s["table_breaking_links"]],
             ["Broken wikilinks fixable by unique basename", s["broken_fixable_by_basename"]],
-            ["Orphan notes (no inbound links)", s["orphans"]], ["Notes without frontmatter", s["no_frontmatter"]],
+            ["Orphan notes (no inbound links; archived drafts excluded)", s["orphans"]],
+            ["Archived drafts (`_archive/`, `_consolidated*/`)", s["archived_notes"]], ["Notes without frontmatter", s["no_frontmatter"]],
             ["Note folders without README (depth <= 3)", s["folders_without_readme"]],
             ["Notes with emojis / total emojis", f"{s['emoji_files']} / {s['emoji_count']}"],
             ["Notes with em dashes / total em dashes", f"{s['emdash_files']} / {s['emdash_count']}"],
@@ -436,7 +477,7 @@ def write_report(path, s, counts, top_last, broken, orphans, no_fm, no_readme, e
     L += details(f"All {len(no_fm)} notes", [f"- `{f}`" for f in sorted(no_fm)])
 
     L += ["## 6. Note folders without a README", "",
-          "A folder counts as covered by `README.md`, `_README.md`, `index.md`, or a folder note named after it.", ""]
+          "A folder counts as covered by `README.md`, `_README.md`, `index.md`, a folder note named after it, `00 Home`, `00-Dashboard`, or a `MOC - ` note.", ""]
     L += details(f"All {len(no_readme)} folders", [f"- `{d}`" for d in no_readme])
 
     L += ["## 7. Emoji and em-dash violations", "",

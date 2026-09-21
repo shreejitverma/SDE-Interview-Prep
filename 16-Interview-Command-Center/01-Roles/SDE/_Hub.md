@@ -35,9 +35,9 @@ tags: [role-hub, sde]
 | Dynamic Programming | 🔴 Critical | | 4/5 | [[03-Data-Structures-Algorithms/01-Topics]] |
 | System Design (HLD) | 🔴 Critical | | 5/5 | [[04-System-Design/00-Concepts]] |
 | System Design (LLD) | 🟡 High | | 4/5 | [[04-System-Design/01-LLD]] |
-| Concurrency | 🟡 High | | 4/5 | [[01-CS-Foundations]] |
+| Concurrency | 🟡 High | | 4/5 | [[01-CS-Foundations/README\|01-CS-Foundations]] |
 | OOP / Design Patterns | 🟡 High | | 4/5 | [[04-System-Design/03-Design-Patterns]] |
-| OS / Networking | 🟢 Medium | | 3/5 | [[01-CS-Foundations]] |
+| OS / Networking | 🟢 Medium | | 3/5 | [[01-CS-Foundations/README\|01-CS-Foundations]] |
 | Behavioral (STAR) | 🔴 Critical | | 5/5 | [[05-Behavioral/_Story-Index]] |
 
 ---
@@ -100,4 +100,4 @@ LIMIT 10
 | System Design Case Studies | [[04-System-Design/02-Case-Studies]] |
 | Design Patterns | [[04-System-Design/03-Design-Patterns]] |
 | Behavioral Guide | [[06-Interview-Prep/01-Behavioral/star_method]] |
-| Programming Languages | [[02-Programming-Languages]] |
+| Programming Languages | [[02-Programming-Languages/README\|02-Programming-Languages]] |

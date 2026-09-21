@@ -4,9 +4,9 @@
 | Topic | Link |
 |-------|------|
 | Agentic AI Zero to Godhood | [[13-Agentic-AI/Agentic_AI_Zero_to_Godhood]] |
-| System Design | [[04-System-Design]] |
+| System Design | [[04-System-Design/README\|04-System-Design]] |
 | Python | [[02-Programming-Languages/Python]] |
-| DSA | [[03-Data-Structures-Algorithms]] |
+| DSA | [[03-Data-Structures-Algorithms/README\|03-Data-Structures-Algorithms]] |
 
 ## Must-Read Papers
 | Paper | Year | Key Concept |

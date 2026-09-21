@@ -39,7 +39,7 @@ tags: [role-hub, ai-engineer]
 | ML System Design | 🟡 High | | 4/5 | |
 | Distributed Training | 🟡 High | | 4/5 | |
 | RLHF / Alignment | 🟡 High | | 4/5 | |
-| Coding (Python + DSA) | 🟡 High | | 4/5 | [[03-Data-Structures-Algorithms]] |
+| Coding (Python + DSA) | 🟡 High | | 4/5 | [[03-Data-Structures-Algorithms/README\|03-Data-Structures-Algorithms]] |
 | MLOps / Serving | 🟢 Medium | | 3/5 | |
 | Classical ML | 🟢 Medium | | 3/5 | |
 
@@ -75,6 +75,6 @@ SORT next_deadline ASC
 | Domain | Link |
 |--------|------|
 | Agentic AI Zero to Godhood | [[13-Agentic-AI/Agentic_AI_Zero_to_Godhood]] |
-| System Design | [[04-System-Design]] |
+| System Design | [[04-System-Design/README\|04-System-Design]] |
 | Python | [[02-Programming-Languages/Python]] |
-| DSA | [[03-Data-Structures-Algorithms]] |
+| DSA | [[03-Data-Structures-Algorithms/README\|03-Data-Structures-Algorithms]] |

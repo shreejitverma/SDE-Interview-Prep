@@ -78,10 +78,10 @@ SORT next_deadline ASC
 ## 📖 Key Vault Links
 | Domain | Link |
 |--------|------|
-| Quant Finance | [[05-Quantitative-Finance]] |
-| Low Latency Systems | [[14-Low-Latency-Systems]] |
+| Quant Finance | [[05-Quantitative-Finance/README\|05-Quantitative-Finance]] |
+| Low Latency Systems | [[14-Low-Latency-Systems/00 Home\|14-Low-Latency-Systems]] |
 | LL Interview Bank | [[14-Low-Latency-Systems/Interview/interview]] |
 | LL Question Bank | [[14-Low-Latency-Systems/Interview/question-bank-answers]] |
 | Matching Engine | [[14-Low-Latency-Systems/03 - Matching Engine Internals]] |
 | C++ Gold Standard | [[03-Data-Structures-Algorithms/04-Gold-Standard-Cpp-Patterns]] |
-| Performance Engineering | [[12-Performance-Engineering]] |
+| Performance Engineering | [[12-Performance-Engineering/README\|12-Performance-Engineering]] |

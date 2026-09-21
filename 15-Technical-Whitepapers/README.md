@@ -188,7 +188,7 @@ The 18 architectural, algorithmic, and financial microstructure papers every low
 ---
 
 ## Vault Integration & Cross-Links
-- **[[../14-Low-Latency-Systems/README|14-Low-Latency-Systems]]**: Deeply cross-linked with Module 10 (Hardware Mechanical Sympathy, Lock-Free Ring Buffers, Kernel Bypass, Order Book Architecture, and Microstructure Sources).
+- **[[14-Low-Latency-Systems/00 Home|14-Low-Latency-Systems]]**: Deeply cross-linked with Module 10 (Hardware Mechanical Sympathy, Lock-Free Ring Buffers, Kernel Bypass, Order Book Architecture, and Microstructure Sources).
 - **[[../11-Security-And-Cryptography/README|11-Security-And-Cryptography]]**: Connected to Offensive Exploitation, Web Security, and Hardening Guides.
 - **[[../12-Performance-Engineering/README|12-Performance-Engineering]]**: Connected to Brendan Gregg Tracing and Ulrich Drepper Memory Architectures.
 - **[[../01-CS-Foundations/Operating-Systems/README|01-CS-Foundations / Operating-Systems]]**: Connected to xv6, UNIX, and Kernel Scheduling foundations.

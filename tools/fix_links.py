@@ -90,6 +90,7 @@ class Fixer:
         self.files = av.tracked_files(repo)
         self.stub_root = stub_root
         self.link_map = load_map()
+        self.in_table = False
         self.reindex()
 
     def reindex(self) -> None:
@@ -102,6 +103,21 @@ class Fixer:
             self.by_norm[(av.top(f), norm(pp.stem) + pp.suffix.lower())].append(f)
 
     # -- choosing a replacement -------------------------------------------------
+
+    def folder_entry(self, src: str, target: str) -> str | None:
+        """[[01-CS-Foundations]] or [[../X/README]] -> that folder's entry note."""
+        t = target.rstrip("/")
+        if t.endswith("/README"):
+            t = t[: -len("/README")]
+        for d in (str(PurePosixPath(src).parent / t), t.lstrip("./")):
+            d = self.resolver.exists(d)
+            if d and d in self.resolver.dirs:
+                names = {PurePosixPath(f).name.lower() for f in self.files if str(PurePosixPath(f).parent) == d}
+                e = av.entry_note(d, names)
+                if e:
+                    return next(str(PurePosixPath(f).with_suffix("")) for f in self.files
+                                if str(PurePosixPath(f).parent) == d and PurePosixPath(f).name.lower() == e)
+        return None
 
     def wiki_target(self, src: str, target: str) -> str | None:
         stem = PurePosixPath(target).name
@@ -173,7 +189,11 @@ class Fixer:
             if t.lower() in CPP_ATTRIBUTES or t.lower().startswith("assume(") or LITERAL_RE.match(t) or t.startswith('"'):
                 plan.rewrites["code-in-prose"] += 1
                 return f"`{whole}`"
-            new = self.wiki_target(src, t)
+            new = self.folder_entry(src, t)
+            if new is not None and "|" not in rest:  # keep the text readers saw; tables need an escaped pipe
+                rest = rest + ("\\|" if self.in_table else "|") + PurePosixPath(t.removesuffix("/README")).name
+            if new is None:
+                new = self.wiki_target(src, t)
             if new is None and t.startswith("../"):
                 new = self.wiki_target(src, PurePosixPath(t).name)
             if new is None:
@@ -226,6 +246,7 @@ class Fixer:
                 fence = m.group(2)
                 out.append(line)
                 continue
+            self.in_table = line.lstrip().startswith("|")
             parts = INLINE_CODE_SPLIT.split(line)
             out.append("".join(p if p.startswith("`") else self.fix_segment(src, p, plan) for p in parts))
         return "\n".join(out)
