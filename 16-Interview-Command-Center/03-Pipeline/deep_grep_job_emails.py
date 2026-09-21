@@ -325,7 +325,7 @@ def main():
         seen.add(key)
         combined.append(item)
         
-    out_file = "/Users/shreejitverma/github/SDE-Interview-Prep/16-Interview-Command-Center/03-Pipeline/all_job_emails_deep_grep.json"
+    out_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "all_job_emails_deep_grep.json")
     with open(out_file, "w") as f:
         json.dump(combined, f, indent=2)
         

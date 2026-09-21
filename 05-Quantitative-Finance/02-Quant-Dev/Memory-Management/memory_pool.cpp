@@ -8,54 +8,59 @@
  *           In Low Latency C++, we pre-allocate a large chunk of memory and manage it manually.
  */
 
+#include <cstddef>
 #include <iostream>
+#include <memory>
+#include <new>
+#include <utility>
 #include <vector>
-#include <cassert>
 
-template <typename T, size_t BlockSize = 1024>
+// Arena semantics: objects are never freed individually. Every object is destroyed
+// (in reverse construction order) when the pool itself is destroyed, e.g. at end of day.
+// Individual reuse would need a free list threaded through the unused slots.
+template <typename T, std::size_t BlockSize = 1024>
 class MemoryPool {
+    // Raw, correctly aligned storage: no T is constructed until allocate() is called,
+    // so T does not need a default constructor.
     struct Block {
-        T data[BlockSize];
+        alignas(T) std::byte storage[sizeof(T) * BlockSize];
     };
 
-    std::vector<Block*> pools;
-    T* free_ptr = nullptr;     // Pointer to the next free slot
-    size_t current_slot = 0;   // Index in the current block
+    std::vector<std::unique_ptr<Block>> blocks;
+    std::size_t current_slot = BlockSize; // Index of the next free slot in blocks.back()
 
 public:
-    MemoryPool() {
-        allocateBlock();
-    }
+    MemoryPool() = default;
+    MemoryPool(const MemoryPool&) = delete;
+    MemoryPool& operator=(const MemoryPool&) = delete;
 
     ~MemoryPool() {
-        for (auto ptr : pools) {
-            delete ptr; // Cleanup
+        // Destroy every constructed object; the blocks are released by unique_ptr.
+        for (std::size_t b = blocks.size(); b-- > 0;) {
+            const std::size_t used = (b + 1 == blocks.size()) ? current_slot : BlockSize;
+            for (std::size_t i = used; i-- > 0;) {
+                slot(*blocks[b], i)->~T();
+            }
         }
     }
 
-    // Allocate 1 object (O(1) time)
+    // Allocate and construct one object in O(1); allocates a new block only when full.
     template <typename... Args>
     T* allocate(Args&&... args) {
         if (current_slot >= BlockSize) {
-            allocateBlock();
+            blocks.push_back(std::make_unique<Block>());
+            current_slot = 0;
         }
-        
-        // Placement New: Construct object at specific memory address
-        T* obj = new (&pools.back()->data[current_slot]) T(std::forward<Args>(args)...);
-        current_slot++;
+        // Placement new: construct the object at a pre-allocated address.
+        T* obj = ::new (static_cast<void*>(blocks.back()->storage + current_slot * sizeof(T)))
+            T(std::forward<Args>(args)...);
+        ++current_slot;
         return obj;
     }
 
-    void deallocate(T* ptr) {
-        // In a simple Linear/Arena allocator, we usually don't support individual deallocation.
-        // We free the entire pool at the end (e.g., end of a trading day).
-        // For individual deallocation, we'd need a "Free List".
-    }
-
 private:
-    void allocateBlock() {
-        pools.push_back(new Block());
-        current_slot = 0;
+    static T* slot(Block& block, std::size_t i) {
+        return std::launder(reinterpret_cast<T*>(block.storage + i * sizeof(T)));
     }
 };
 
@@ -75,6 +80,7 @@ int main() {
     Order* o2 = pool.allocate(2, 101.00);
 
     std::cout << "Order 1 Price: " << o1->price << "\n";
+    std::cout << "Order 2 Price: " << o2->price << "\n";
     
     return 0;
 }

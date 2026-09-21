@@ -17,9 +17,11 @@ import subprocess
 from datetime import datetime, timedelta
 
 # Target vault directories
-PIPELINE_ACTIVE = "/Users/shreejitverma/github/SDE-Interview-Prep/16-Interview-Command-Center/03-Pipeline/Active"
-PIPELINE_ARCHIVE = "/Users/shreejitverma/github/SDE-Interview-Prep/16-Interview-Command-Center/03-Pipeline/Archive"
-DAILY_LOG_DIR = "/Users/shreejitverma/github/SDE-Interview-Prep/16-Interview-Command-Center/06-Daily-Log"
+PIPELINE_DIR = os.path.dirname(os.path.abspath(__file__))
+VAULT_ROOT = os.path.dirname(PIPELINE_DIR)
+PIPELINE_ACTIVE = os.path.join(PIPELINE_DIR, "Active")
+PIPELINE_ARCHIVE = os.path.join(PIPELINE_DIR, "Archive")
+DAILY_LOG_DIR = os.path.join(VAULT_ROOT, "06-Daily-Log")
 
 # Accounts and dedicated mailboxes to monitor
 TARGET_ACCOUNTS = [

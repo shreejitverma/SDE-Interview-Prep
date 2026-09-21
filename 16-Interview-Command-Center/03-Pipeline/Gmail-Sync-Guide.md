@@ -159,7 +159,7 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 
 SCOPES = ['https://www.googleapis.com/auth/gmail.readonly']
-VAULT_DIR = "/Users/shreejitverma/github/SDE-Interview-Prep/16-Interview-Command-Center/03-Pipeline/Active"
+VAULT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "Active")
 
 BASE_FILTER = (
     '("application" OR "interview" OR "recruiter" OR "hiring team" OR "assessment" OR '

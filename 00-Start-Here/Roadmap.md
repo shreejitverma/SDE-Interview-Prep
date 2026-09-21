@@ -1,45 +1,69 @@
-# The World's Best SDE and Quant Developer Roadmap
+# Roadmap
 
-Author: Shreejit Verma  
+Author: Shreejit Verma
 GitHub: https://github.com/shreejitverma
 
-## How to Use This Repository
-This repository is a structured learning pathway designed to take you from a beginner to a world-class Software Developer and Quantitative Developer.
+## How to use this repository
 
-## Directory Structure
+First Principles Engineering is organized as a dependency graph, not a reading list.
+Each track assumes the ones beneath it, so gaps show up as confusion higher up.
+When something higher up stops making sense, drop one layer and rebuild it there.
 
-### 01-CS-Foundations
-Master the bedrock of computer science.
-- **Operating Systems:** Process management, concurrency, memory.
-- **Networks:** TCP/IP, HTTP, Protocols.
-- **DBMS:** SQL, NoSQL, Indexing, Transactions.
-- **OOP:** Design principles, SOLID.
+```
+Foundations (01, 02)
+  -> Core engineering (03, 04)
+       -> Production engineering (10, 11, 12, 15)
+            -> Distinguished engineering (08, 09)
+       -> Quantitative finance (05) -> Low-latency systems (14)
+       -> Agentic AI (13)
+Career (06, 07, 16) draws on all of the above.
+```
 
-### 02-Programming-Languages
-Deep dive into language internals.
-- **C++:** Crucial for HFT and Low-Latency systems.
-- **Python:** The language of Data Science and Quant finance.
-- **Java/Go/Rust:** For general systems engineering.
+## Tracks
 
-### 03-Data-Structures-Algorithms
-The core of problem-solving.
-- **01-Topics:** Comprehensive study materials organized by pattern (Arrays, Graphs, DP).
-- **02-Practice-Platforms:** Solutions and guides for LeetCode.
-- **03-Resources:** E-books and cheat sheets.
+### 01 - CS Foundations
+The bedrock that everything else reduces to.
+- **Operating systems:** processes, threads, synchronization, memory.
+- **Networks:** TCP/IP, HTTP, sockets.
+- **DBMS:** SQL, indexing, transactions.
+- **OOP:** design principles and SOLID.
 
-### 04-System-Design
-Scalable architecture for senior roles.
-- **LLD (Low-Level Design):** Class diagrams, Schema design.
-- **HLD (High-Level Design):** Distributed systems, Scalability.
+### 02 - Programming Languages
+Language internals, not just syntax.
+- **C++:** the language of HFT and low-latency systems; start with C++ Zero to Godhood.
+- **Python:** the language of data science and quant research.
+- **Java, Go, Rust, JavaScript:** for general systems and application engineering.
 
-### 05-Quantitative-Finance
-The specialized pathway for Quant roles.
-- **Mathematics:** Stochastic Calculus, Linear Algebra, Probability.
-- **Quant Dev:** Low-latency C++, Market Data protocols.
-- **Algo Trading:** Strategies, Backtesting.
+### 03 - Data Structures and Algorithms
+Problem solving by pattern.
+- **01-Topics:** solutions organized by pattern (arrays, graphs, DP, and more).
+- **02-Practice-Platforms:** LeetCode solutions and guides.
+- **03-Resources:** e-books and cheat sheets.
+- **04-Gold-Standard-Cpp-Patterns:** the implementations to know cold.
 
-### 06-Interview-Prep
-Behavioral guides, resume templates, and mock interview checklists.
+### 04 - System Design
+Architecture at scale.
+- **LLD:** class design, schema design, design patterns.
+- **HLD:** distributed systems, scalability, case studies.
 
----
-*Created by Shreejit Verma*
+### 05 - Quantitative Finance
+The specialized pathway for quant roles.
+- **Mathematics:** probability, stochastic calculus, option pricing.
+- **Quant dev:** order books and allocation-free C++.
+- **Algorithmic trading:** strategies and backtesting.
+
+### 08 and 09 - Distinguished Engineering and Leadership
+Build the systems senior engineers are expected to reason about: lock-free structures, consensus, storage engines, resilience patterns.
+Then learn to communicate designs through RFCs and code review.
+
+### 10, 11, 12, 15 - Production Engineering
+Testing, CI/CD, secure coding, and performance measurement, backed by the primary literature in the whitepaper archive.
+
+### 13 - Agentic AI
+Fourteen volumes from transformer internals to production agent systems.
+
+### 14 - Low-Latency Systems
+The full stack of electronic trading, from market microstructure to kernel bypass and FPGAs.
+
+### 06, 07, 16 - Career
+Behavioral and resume guides, portfolio projects, and the Interview Command Center for running an active search.

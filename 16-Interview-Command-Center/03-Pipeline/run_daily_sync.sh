@@ -1,8 +1,8 @@
 #!/bin/bash
 export PATH="/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:$PATH"
-REPO_DIR="/Users/shreejitverma/github/SDE-Interview-Prep"
-SCRIPT_PATH="$REPO_DIR/16-Interview-Command-Center/03-Pipeline/sync_job_emails.py"
-LOG_FILE="$REPO_DIR/16-Interview-Command-Center/03-Pipeline/sync.log"
+PIPELINE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_PATH="$PIPELINE_DIR/sync_job_emails.py"
+LOG_FILE="$PIPELINE_DIR/sync.log"
 
 echo "==========================================" >> "$LOG_FILE"
 echo "🕒 Daily Job Sync started at $(date)" >> "$LOG_FILE"
