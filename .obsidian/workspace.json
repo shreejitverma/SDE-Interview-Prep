@@ -11,10 +11,14 @@
             "id": "e7a7b303c61786dc",
             "type": "leaf",
             "state": {
-              "type": "empty",
-              "state": {},
+              "type": "markdown",
+              "state": {
+                "file": "13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_03_Tool_Use_and_the_Agent_Loop/Chapter_01_What_Is_An_Agent.md",
+                "mode": "source",
+                "source": false
+              },
               "icon": "lucide-file",
-              "title": "New tab"
+              "title": "Chapter_01_What_Is_An_Agent"
             }
           }
         ]
@@ -79,7 +83,7 @@
       }
     ],
     "direction": "horizontal",
-    "width": 300
+    "width": 362.421875
   },
   "right": {
     "id": "98efdf8a7344e8c8",
@@ -212,6 +216,8 @@
   },
   "active": "e7a7b303c61786dc",
   "lastOpenFiles": [
+    "13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_02_Working_With_LLMs/Chapter_01_The_API_Layer.md",
+    "13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_01_LLM_Foundations/Chapter_01_From_N_Grams_to_Neural_Language_Models.md",
     "14-Low-Latency-Systems/01 - Market & Microstructure Fundamentals/Market Fragmentation and Reg NMS.md",
     "14-Low-Latency-Systems/07 - Time & Measurement/War Story - The 2015 NYSE 3.5-Hour Gate Freeze.md",
     "14-Low-Latency-Systems/11 - Participant-Side Systems/Order Queue Position Tracking and Fill Probability.md",
@@ -236,9 +242,7 @@
     "14-Low-Latency-Systems/Sources/How to Build an Exchange by Jane Street.md",
     "14-Low-Latency-Systems/Sources/What Every Programmer Should Know About Memory by Ulrich Drepper.md",
     "14-Low-Latency-Systems/Sources/Systems Performance by Brendan Gregg.md",
-    "14-Low-Latency-Systems/Sources/Trading and Exchanges by Larry Harris.md",
     "14-Low-Latency-Systems/Sources",
-    "14-Low-Latency-Systems/14 - Industry Map & Canon/Drill - 14 Comprehensive Technical Mock Interview.md",
     "14-Low-Latency-Systems/14 - Industry Map & Canon",
     "14-Low-Latency-Systems/13 - Reliability, Ops & Testing",
     "14-Low-Latency-Systems/12 - FPGAs & Hardware Acceleration",
