@@ -33,7 +33,7 @@ This repository tries to teach the reasons the answers are true, so they can be 
 | Layer | What is in it |
 | :--- | :--- |
 | Foundations | Operating systems, networks, DBMS, OOP, with runnable C++ for concurrency and sockets |
-| Languages | Book-length "Zero to Godhood" guides for C++ (C++98 to C++23, with LaTeX and PDF builds) and Python, plus Java, Go, Rust, JavaScript |
+| Languages | Book-length "Zero to Godhood" guides for C++ (C++98 to C++23, with LaTeX and PDF builds) and Python, plus Java and JavaScript |
 | Algorithms | About 6,800 solution files (3,500 C++, 3,300 Python) organized by pattern, plus Blind 75 and NeetCode 150 |
 | System design | Concepts, LLD, HLD case studies, 80+ "Design X" implementations, pattern catalogs in C++, Python, and Java |
 | Quant finance | Black-Scholes, Greeks, Monte Carlo, a C++ order book, an arena allocator, an event-driven backtester |
@@ -72,7 +72,7 @@ Most of the value is in the code and the long-form notes, not in this README.
 ```
 00-Start-Here/                 Roadmap and progress checklist
 01-CS-Foundations/             OS, networks, DBMS, OOP (with C++ concurrency and socket code)
-02-Programming-Languages/      C++, Python, Java, Go, Rust, JavaScript
+02-Programming-Languages/      C++, Python, Java, JavaScript
 03-Data-Structures-Algorithms/ Pattern-wise solutions, practice platforms, gold-standard C++ patterns
 04-System-Design/              Concepts, LLD, HLD case studies, design patterns, reference PDFs
 05-Quantitative-Finance/       Mathematics, quant dev (C++), algorithmic trading (Python)
@@ -107,7 +107,7 @@ The two flagship guides are written as full books.
 - [C++ STL complete reference](./02-Programming-Languages/C++/stl_complete_reference.md): every container and algorithm with its complexity.
 - [Ultimate C++ Advanced Guide](./02-Programming-Languages/C++/Ultimate-CPP-Advanced-Guide.md) and [Ultimate C++ Design Patterns](./02-Programming-Languages/C++/Ultimate-CPP-Design-Patterns.md).
 - Blind 75 and NeetCode 150 solved in [C++](./02-Programming-Languages/C++/Blind-75-LeetCode-CPP.md) and [Python](./02-Programming-Languages/Python/Blind-75-LeetCode-Python.md).
-- [Java](./02-Programming-Languages/Java), [Go](./02-Programming-Languages/Go), [Rust](./02-Programming-Languages/Rust), [JavaScript](./02-Programming-Languages/JavaScript).
+- [Java](./02-Programming-Languages/Java), [JavaScript](./02-Programming-Languages/JavaScript).
 
 ### 03 - Data Structures and Algorithms
 

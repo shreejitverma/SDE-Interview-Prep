@@ -32,7 +32,7 @@ The bedrock that everything else reduces to.
 Language internals, not just syntax.
 - **C++:** the language of HFT and low-latency systems; start with C++ Zero to Godhood.
 - **Python:** the language of data science and quant research.
-- **Java, Go, Rust, JavaScript:** for general systems and application engineering.
+- **Java, JavaScript:** for general systems and application engineering.
 
 ### 03 - Data Structures and Algorithms
 Problem solving by pattern.

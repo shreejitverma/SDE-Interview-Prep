@@ -19,7 +19,7 @@ Each phase builds on the ones before it; the [Roadmap](./00-Start-Here/Roadmap.m
   - [C++](./02-Programming-Languages/C++): [C++ Zero to Godhood](./02-Programming-Languages/C++/CPP_Zero_to_Godhood), the [STL reference](./02-Programming-Languages/C++/stl_complete_reference.md), the [advanced guide](./02-Programming-Languages/C++/Ultimate-CPP-Advanced-Guide.md).
   - [Python](./02-Programming-Languages/Python): [Python Zero to Godhood](./02-Programming-Languages/Python/Complete-Python-Zero-to-Godhood.md).
   - [Java](./02-Programming-Languages/Java): collections and advanced concurrency.
-  - [Go](./02-Programming-Languages/Go), [Rust](./02-Programming-Languages/Rust), [JavaScript](./02-Programming-Languages/JavaScript).
+  - [JavaScript](./02-Programming-Languages/JavaScript).
 
 ## Phase 2: Core Engineering
 - **Data structures and algorithms**
