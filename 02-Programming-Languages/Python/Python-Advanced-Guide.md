@@ -1243,4 +1243,4 @@ with position_lock('AAPL') as lock:
 
 ---
 
-**Good luck with your BNPP interview! 🚀**
+**Good luck with your BNPP interview!**

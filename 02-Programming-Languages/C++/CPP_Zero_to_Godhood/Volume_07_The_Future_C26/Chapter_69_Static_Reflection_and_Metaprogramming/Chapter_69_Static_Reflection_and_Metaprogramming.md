@@ -786,7 +786,7 @@ There are no hash maps, no RTTI (Run-Time Type Information), no strings, and no 
 
 ## 69.13 Exploring Compiler Memory Limits with Large ASTs
 
-With great power comes great compilation times—if used irresponsibly. 
+With great power comes great compilation times - if used irresponsibly. 
 
 Because C++26 allows you to treat the compiler's AST as a massive database and query it using `std::vector` and `std::ranges`, you are effectively running a C++ program *inside* the compiler (Clang/GCC).
 

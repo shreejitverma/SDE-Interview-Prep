@@ -13,7 +13,7 @@ sources: []
 
 We have explored the depths of C++. We have written templates that execute at compile time, and we have rebuilt the Standard Library. But there is one final system left to demystify: the compiler itself. 
 
-In this chapter, we will walk through the architecture of a C++ compiler. As a bonus, we will implement a Garbage Collector—something C++ explicitly lacks—to understand how managed languages like Java and Python work under the hood.
+In this chapter, we will walk through the architecture of a C++ compiler. As a bonus, we will implement a Garbage Collector - something C++ explicitly lacks - to understand how managed languages like Java and Python work under the hood.
 
 ---
 
@@ -83,7 +83,7 @@ If the parser sees `5 + 3`, it creates a `BinaryOpNode` with `+` as the operator
 
 Before we can generate assembly code, we must ensure the AST makes sense. This is where Type Checking happens.
 
-The compiler maintains a **Symbol Table**—a dictionary mapping variable names to their types. When it encounters `x = y + 5`, it looks up `x` and `y` in the Symbol Table.
+The compiler maintains a **Symbol Table** - a dictionary mapping variable names to their types. When it encounters `x = y + 5`, it looks up `x` and `y` in the Symbol Table.
 If `y` is a `std::string` and `5` is an `int`, the compiler flags a Type Error and halts.
 
 ```cpp

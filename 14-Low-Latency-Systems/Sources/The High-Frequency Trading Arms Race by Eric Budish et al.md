@@ -11,7 +11,7 @@ last_reviewed:
 sources: []
 ---
 
-# Source Summary — The High-Frequency Trading Arms Race: Frequent Batch Auctions as a Market Design Response
+# Source Summary - The High-Frequency Trading Arms Race: Frequent Batch Auctions as a Market Design Response
 **Authors**: Eric Budish (University of Chicago Booth), Peter Cramton (University of Maryland), and John Shim (University of Chicago)  
 **Publication**: The Quarterly Journal of Economics (QJE, 2015)  
 **Category**: Market Microstructure, Exchange Architecture, High-Frequency Trading Economics
@@ -23,7 +23,7 @@ Budish, Cramton, and Shim's 2015 paper is the definitive critique of the **Conti
 
 In continuous time, two economically identical assets (such as the SPY ETF and E-mini S&P 500 futures) have correlated equilibrium values. Whenever a correlated asset moves, there is a race between market makers attempting to cancel stale quotes and predatory high-frequency traders attempting to pick off those stale quotes. Because continuous time rewards speed down to single picoseconds, market participants engage in a socially wasteful, multi-billion-dollar latency arms race (microwave towers, custom silicon, FPGA matching) that widens bid-ask spreads and harms organic liquidity. 
 
-As a structural market design solution, the authors propose **Frequent Batch Auctions (FBA)**—discretizing time into uniform intervals (e.g., 100 milliseconds) and matching orders at a single uniform clearing price.
+As a structural market design solution, the authors propose **Frequent Batch Auctions (FBA)** - discretizing time into uniform intervals (e.g., 100 milliseconds) and matching orders at a single uniform clearing price.
 
 ```mermaid
 flowchart TD
@@ -62,7 +62,7 @@ At time $t$, new information arrives indicating asset value increases by $\Delta
 - In a continuous limit order book, whoever reaches the exchange matching engine first wins:
   - If the market maker cancels first: no trade occurs; spread remains tight.
   - If the latency arbitrageur arrives first: the arbitrageur buys at the stale price $p$, making an instantaneous riskless profit $\pi = \Delta v$, and the market maker suffers an adverse selection loss $-\pi$.
-- Because both participants have access to identical public information, this is not fundamental price discovery—it is a pure transfer rent driven by nanosecond speed advantages.
+- Because both participants have access to identical public information, this is not fundamental price discovery - it is a pure transfer rent driven by nanosecond speed advantages.
 
 ### 2. The Inefficiency of Continuous Time
 - Market makers anticipate getting sniped on every correlated price jump. To break even, they must widen their bid-ask spreads:

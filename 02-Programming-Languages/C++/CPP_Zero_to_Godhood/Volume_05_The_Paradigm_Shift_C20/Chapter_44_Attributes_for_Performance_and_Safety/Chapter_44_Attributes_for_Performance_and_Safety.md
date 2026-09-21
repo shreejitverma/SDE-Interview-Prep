@@ -11,7 +11,7 @@ sources: []
 
 > *C++20 adds three attributes that matter to performance-critical and correctness-critical code: `[[likely]]` and `[[unlikely]]` give the optimizer branch-probability hints it can use for code layout, `[[no_unique_address]]` lets empty members occupy zero bytes so wrappers and allocators stop paying for nothing, and `[[nodiscard("reason")]]` attaches an explanatory message to the existing discard warning. This chapter covers what each attribute actually does at the machine level, when it helps, and the traps that make `[[likely]]` in particular easy to misuse.*
 
-Attributes are advisory annotations the compiler may act on. The three covered here are the ones with real, measurable consequences for systems code: branch hints steer the layout of hot and cold paths in the instruction stream; `[[no_unique_address]]` is the difference between a stateless comparator costing a byte (plus padding) and costing nothing; and the `[[nodiscard]]` message turns a generic warning into actionable guidance. Used well they sharpen both speed and safety; used carelessly — especially the branch hints — they can pessimize the very paths they were meant to help.
+Attributes are advisory annotations the compiler may act on. The three covered here are the ones with real, measurable consequences for systems code: branch hints steer the layout of hot and cold paths in the instruction stream; `[[no_unique_address]]` is the difference between a stateless comparator costing a byte (plus padding) and costing nothing; and the `[[nodiscard]]` message turns a generic warning into actionable guidance. Used well they sharpen both speed and safety; used carelessly - especially the branch hints - they can pessimize the very paths they were meant to help.
 
 ---
 
@@ -19,7 +19,7 @@ Attributes are advisory annotations the compiler may act on. The three covered h
 
 - [44.1 `[[likely]]` and `[[unlikely]]`](#441-likely-and-unlikely)
 - [44.2 What the Branch Hints Actually Do](#442-what-the-branch-hints-actually-do)
-- [44.3 When to Use Branch Hints — and When Not To](#443-when-to-use-branch-hints--and-when-not-to)
+- [44.3 When to Use Branch Hints - and When Not To](#443-when-to-use-branch-hints--and-when-not-to)
 - [44.4 `[[no_unique_address]]`](#444-no_unique_address)
 - [44.5 `[[no_unique_address]]` in Practice: EBO Without Inheritance](#445-no_unique_address-in-practice-ebo-without-inheritance)
 - [44.6 `[[nodiscard]]` with a Message](#446-nodiscard-with-a-message)
@@ -51,7 +51,7 @@ int classify(int code) {
 }
 ```
 
-The attribute is placed on the branch statement (or `case` label) whose probability you are asserting. `[[likely]]` says "optimize for this being taken"; `[[unlikely]]` says "this is the exceptional path — move it out of the way." They express a claim about runtime behavior that the compiler otherwise can only guess at without profile data.
+The attribute is placed on the branch statement (or `case` label) whose probability you are asserting. `[[likely]]` says "optimize for this being taken"; `[[unlikely]]` says "this is the exceptional path - move it out of the way." They express a claim about runtime behavior that the compiler otherwise can only guess at without profile data.
 
 ---
 
@@ -61,12 +61,12 @@ The hints influence **code layout and register/spill decisions**, not (directly)
 
 Concretely, a compiler acting on `[[likely]]`/`[[unlikely]]` typically:
 
-- **Lays the likely path inline (fall-through)** and moves the unlikely path to a cold section at the end of the function, improving instruction-cache density on the hot path — the unlikely code does not pollute the cache lines the hot loop touches.
+- **Lays the likely path inline (fall-through)** and moves the unlikely path to a cold section at the end of the function, improving instruction-cache density on the hot path - the unlikely code does not pollute the cache lines the hot loop touches.
 - **Biases the conditional jump** so the common case is the not-taken (fall-through) direction, which is cheaper and aids the front-end before dynamic prediction warms up.
 - **Prioritizes the hot path for register allocation**, spilling in the cold path instead.
 
 ```cpp
-// Listing 44.2: the mental model — cold paths get exiled
+// Listing 44.2: the mental model - cold paths get exiled
 void handle(Request& r) {
     if (r.malformed()) [[unlikely]] {
         log_and_reject(r);    // compiler moves this block out-of-line (cold section)
@@ -81,7 +81,7 @@ The win is real but bounded: it is primarily an **instruction-cache and code-lay
 
 ---
 
-## 44.3 When to Use Branch Hints — and When Not To
+## 44.3 When to Use Branch Hints - and When Not To
 
 Branch hints are easy to apply and easy to misapply. The discipline:
 
@@ -90,7 +90,7 @@ Branch hints are easy to apply and easy to misapply. The discipline:
 - **Prefer Profile-Guided Optimization (PGO) when available.** PGO feeds the compiler real measured branch frequencies, which are more accurate and more complete than hand annotations. Reserve `[[likely]]`/`[[unlikely]]` for cases where PGO is impractical, or for paths so obviously one-sided (assertions, error exits) that no profiling is needed.
 - **Measure.** Because the effect is layout-level, the only proof is a benchmark and, ideally, a look at the generated assembly. Treat an unmeasured branch hint as a hypothesis, not a fact.
 
-In short: branch hints are a precision tool for known-cold error paths and hot inner loops, not a general decoration — and PGO supersedes them whenever you can run a representative workload.
+In short: branch hints are a precision tool for known-cold error paths and hot inner loops, not a general decoration - and PGO supersedes them whenever you can run a representative workload.
 
 ---
 
@@ -102,7 +102,7 @@ In short: branch hints are a precision tool for known-cold error paths and hot i
 // Listing 44.3: an empty member costs zero bytes with [[no_unique_address]]
 #include <cstddef>
 
-struct Empty {};   // no data members — size 1 by default (objects must be addressable)
+struct Empty {};   // no data members - size 1 by default (objects must be addressable)
 
 struct WithoutAttr {
     Empty e;       // occupies >= 1 byte, plus padding
@@ -124,7 +124,7 @@ Without the attribute, every member must have a unique address, so an empty memb
 
 ## 44.5 `[[no_unique_address]]` in Practice: EBO Without Inheritance
 
-The attribute's killer application is **stateless function objects** — comparators, hashers, deleters, allocators — stored as members. Historically, library authors inherited from these empty types (the EBO trick) to avoid the size cost; `[[no_unique_address]]` achieves the same thing by composition, which is cleaner and more flexible.
+The attribute's killer application is **stateless function objects** - comparators, hashers, deleters, allocators - stored as members. Historically, library authors inherited from these empty types (the EBO trick) to avoid the size cost; `[[no_unique_address]]` achieves the same thing by composition, which is cleaner and more flexible.
 
 ```cpp
 // Listing 44.4: a container storing a (usually empty) comparator at zero cost
@@ -140,11 +140,11 @@ public:
     bool less(const T& a, const T& b) const { return comp_(a, b); }
 };
 
-// sizeof(SortedBox<int>) == sizeof(T*) + sizeof(size_t) — the comparator is free.
+// sizeof(SortedBox<int>) == sizeof(T*) + sizeof(size_t) - the comparator is free.
 // If Compare is a stateful lambda or functor, it occupies its real size as normal.
 ```
 
-This is exactly how standard-library implementations keep `std::vector`'s allocator, `std::map`'s comparator, and `unique_ptr`'s deleter free when they are stateless, without the awkward private-inheritance EBO pattern. For your own generic wrappers — handle types, scope guards, policy-based designs — `[[no_unique_address]]` on the policy member is the idiomatic C++20 way to pay zero for statelessness while keeping the member a normal, named, composed subobject. (Note: MSVC spells it `[[msvc::no_unique_address]]` for ABI reasons; see Section 44.7.)
+This is exactly how standard-library implementations keep `std::vector`'s allocator, `std::map`'s comparator, and `unique_ptr`'s deleter free when they are stateless, without the awkward private-inheritance EBO pattern. For your own generic wrappers - handle types, scope guards, policy-based designs - `[[no_unique_address]]` on the policy member is the idiomatic C++20 way to pay zero for statelessness while keeping the member a normal, named, composed subobject. (Note: MSVC spells it `[[msvc::no_unique_address]]` for ABI reasons; see Section 44.7.)
 
 ---
 
@@ -179,7 +179,7 @@ The message can be applied to a function or to a **type** (every function return
 Attributes have specific grammatical positions, and two of these three have portability caveats worth knowing:
 
 - **Placement.** `[[likely]]`/`[[unlikely]]` attach to statements and labels; `[[no_unique_address]]` to a non-static data member declaration; `[[nodiscard]]` to a function declaration or a class/enum type. Misplacement is typically ignored (attributes are designed to be safely unknown) but may warn.
-- **Unknown attributes are ignored.** The standard requires that an unrecognized standard-form attribute be ignored, not rejected — so code using a newer attribute still compiles on an older toolchain, just without the effect. This is what makes attributes safe to adopt incrementally.
+- **Unknown attributes are ignored.** The standard requires that an unrecognized standard-form attribute be ignored, not rejected - so code using a newer attribute still compiles on an older toolchain, just without the effect. This is what makes attributes safe to adopt incrementally.
 - **`[[no_unique_address]]` and ABI.** Because it changes object layout, `[[no_unique_address]]` is an **ABI-affecting** attribute. MSVC, to preserve its existing ABI, ignores the standard spelling and provides `[[msvc::no_unique_address]]` instead. Cross-platform code that depends on the layout effect must account for this (often via a macro selecting the right spelling).
 
 ```cpp
@@ -196,18 +196,18 @@ struct Wrapper {
 };
 ```
 
-The other two attributes are pure hints/diagnostics and carry no ABI implications — they are safe to use unconditionally.
+The other two attributes are pure hints/diagnostics and carry no ABI implications - they are safe to use unconditionally.
 
 ---
 
 ## 44.8 Professional Insights
 
-**Apply `[[likely]]`/`[[unlikely]]` only to known-cold error paths and proven-hot loops, and verify with a benchmark.** The attributes are a code-layout optimization, so a wrong hint actively pessimizes by exiling the real hot path. The safe, high-value uses are unambiguous: null checks, overflow guards, malformed-input rejection (`[[unlikely]]`) and the dominant case of a tight dispatch loop (`[[likely]]`). For everything else, prefer Profile-Guided Optimization, which measures rather than guesses — and never ship a branch hint you have not confirmed in the generated assembly or a microbenchmark.
+**Apply `[[likely]]`/`[[unlikely]]` only to known-cold error paths and proven-hot loops, and verify with a benchmark.** The attributes are a code-layout optimization, so a wrong hint actively pessimizes by exiling the real hot path. The safe, high-value uses are unambiguous: null checks, overflow guards, malformed-input rejection (`[[unlikely]]`) and the dominant case of a tight dispatch loop (`[[likely]]`). For everything else, prefer Profile-Guided Optimization, which measures rather than guesses - and never ship a branch hint you have not confirmed in the generated assembly or a microbenchmark.
 
-**Reach for `[[no_unique_address]]` on every stateless policy member in generic code.** Comparators, hashers, deleters, and allocators are usually empty, and without the attribute each one silently costs a byte plus alignment padding — multiplied across millions of small objects, that is real memory and cache pressure. The attribute delivers the Empty Base Optimization via clean composition instead of private inheritance. Make it the default for policy members in your containers, smart pointers, and scope guards.
+**Reach for `[[no_unique_address]]` on every stateless policy member in generic code.** Comparators, hashers, deleters, and allocators are usually empty, and without the attribute each one silently costs a byte plus alignment padding - multiplied across millions of small objects, that is real memory and cache pressure. The attribute delivers the Empty Base Optimization via clean composition instead of private inheritance. Make it the default for policy members in your containers, smart pointers, and scope guards.
 
-**Guard `[[no_unique_address]]` for MSVC — it is ABI-affecting.** MSVC ignores the standard spelling and offers `[[msvc::no_unique_address]]`; cross-platform layout-sensitive code needs a macro to select the right one. Equally, remember that adding or removing this attribute *changes the ABI* of a type, so it is not a safe drop-in change for a type that crosses a stable binary boundary. Decide on it at design time.
+**Guard `[[no_unique_address]]` for MSVC - it is ABI-affecting.** MSVC ignores the standard spelling and offers `[[msvc::no_unique_address]]`; cross-platform layout-sensitive code needs a macro to select the right one. Equally, remember that adding or removing this attribute *changes the ABI* of a type, so it is not a safe drop-in change for a type that crosses a stable binary boundary. Decide on it at design time.
 
-**Always supply a reason string with `[[nodiscard]]`.** The bare attribute produces a generic "ignoring return value" warning; the message form tells the developer the consequence and the remedy ("leaking this handle leaks the resource"). Put `[[nodiscard("…")]]` on error-code returns, RAII-handle factories, and pure observers, and apply it to the *type* when every function returning it should warn — the marginal cost is a few words, and it converts a vague warning into a fix.
+**Always supply a reason string with `[[nodiscard]]`.** The bare attribute produces a generic "ignoring return value" warning; the message form tells the developer the consequence and the remedy ("leaking this handle leaks the resource"). Put `[[nodiscard("…")]]` on error-code returns, RAII-handle factories, and pure observers, and apply it to the *type* when every function returning it should warn - the marginal cost is a few words, and it converts a vague warning into a fix.
 
-**Treat attributes as safe-to-adopt because unknown ones are ignored.** The standard mandates that unrecognized standard attributes be ignored rather than rejected, so newer annotations degrade gracefully on older compilers. This lets you adopt `[[likely]]` and `[[nodiscard("…")]]` across a codebase without version-gating — the worst case on an old toolchain is that the hint or message simply has no effect, never a build failure. The one exception is the ABI-affecting `[[no_unique_address]]`, where the *effect*, not just the recognition, must be considered per platform.
+**Treat attributes as safe-to-adopt because unknown ones are ignored.** The standard mandates that unrecognized standard attributes be ignored rather than rejected, so newer annotations degrade gracefully on older compilers. This lets you adopt `[[likely]]` and `[[nodiscard("…")]]` across a codebase without version-gating - the worst case on an old toolchain is that the hint or message simply has no effect, never a build failure. The one exception is the ABI-affecting `[[no_unique_address]]`, where the *effect*, not just the recognition, must be considered per platform.

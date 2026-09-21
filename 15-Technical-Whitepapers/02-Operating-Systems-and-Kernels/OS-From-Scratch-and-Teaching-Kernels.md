@@ -85,7 +85,7 @@ flowchart TD
 
 ---
 
-## 2. Writing a Simple Operating System — From Scratch (Nick Blundell, 2010)
+## 2. Writing a Simple Operating System - From Scratch (Nick Blundell, 2010)
 
 ### The Boot Process Step-by-Step
 Nick Blundell demystifies how a bare-metal computer transitions from BIOS firmware execution to a compiled C kernel.

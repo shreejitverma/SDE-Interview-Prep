@@ -139,11 +139,11 @@ inline uint64_t rdtsc_end() noexcept {
 | **Remote NUMA DRAM Access** | 400–1000 cycles | **100–250 ns** | Pin memory to local socket using `numactl`. |
 | **OS Context Switch (Pinned Core)** | 4,000–12,000 cycles | **1.0–3.0 µs** | Never yield; run dedicated spinning threads. |
 | **Linux Kernel Socket Path (Syscall)**| 8,000–20,000 cycles | **2.0–5.0 µs** | Mandatory kernel bypass (`ef_vi`, DPDK). |
-| **Solarflare `ef_vi` Wire-to-Host** | — | **400–700 ns** | Ingress frame to L1 user-space packet handler. |
-| **FPGA Wire-to-Wire Parse & Filter**| — | **30–80 ns** | Direct hardware pipeline execution. |
-| **Layer-1 Switch (Metamako/Arista)** | — | **4–6 ns** | Zero-buffer physical layer packet tapping. |
-| **Cut-Through Switch (Arista 7150)** | — | **100–250 ns** | Layer-2 packet forwarding inside colocation. |
-| **Fiber Optic Cable Propagation** | — | **~5 ns / meter** | Equalize cable lengths across server racks. |
+| **Solarflare `ef_vi` Wire-to-Host** | - | **400–700 ns** | Ingress frame to L1 user-space packet handler. |
+| **FPGA Wire-to-Wire Parse & Filter**| - | **30–80 ns** | Direct hardware pipeline execution. |
+| **Layer-1 Switch (Metamako/Arista)** | - | **4–6 ns** | Zero-buffer physical layer packet tapping. |
+| **Cut-Through Switch (Arista 7150)** | - | **100–250 ns** | Layer-2 packet forwarding inside colocation. |
+| **Fiber Optic Cable Propagation** | - | **~5 ns / meter** | Equalize cable lengths across server racks. |
 
 ---
 

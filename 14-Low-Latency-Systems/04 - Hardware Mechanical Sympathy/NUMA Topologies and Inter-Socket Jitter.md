@@ -17,7 +17,7 @@ sources: []
 ---
 
 ## Why it matters
-In a dual-socket trading server, Core 0 (Socket 0) accessing local DRAM takes **~55–65 ns**. If that same core accesses memory allocated on Socket 1, the request must traverse the Ultra Path Interconnect (UPI), inflating latency to **~140–250 ns**—a **3x to 4x latency penalty**.
+In a dual-socket trading server, Core 0 (Socket 0) accessing local DRAM takes **~55–65 ns**. If that same core accesses memory allocated on Socket 1, the request must traverse the Ultra Path Interconnect (UPI), inflating latency to **~140–250 ns** - a **3x to 4x latency penalty**.
 
 Furthermore, high-speed Network Interface Cards (Solarflare, Mellanox) and FPGA acceleration cards are physically wired to the PCIe lanes of a **specific CPU socket** (Root Complex). If your trading process runs on Socket 0 but the NIC is plugged into a PCIe slot wired to Socket 1, every incoming packet descriptor and Direct Memory Access (DMA) transfer must cross the UPI bus, injecting non-deterministic jitter into the critical tick-to-trade path.
 
@@ -154,8 +154,8 @@ void* allocate_numa_local_buffer(size_t size_bytes, int numa_node) {
 | **Local DRAM Access (Node 0)** | 220–260 cycles | **~55–65 ns** | ~300 GB/s (8 channels DDR5) |
 | **Remote NUMA DRAM (Node 1 via UPI)**| 560–900 cycles | **~140–225 ns** | ~90–120 GB/s (UPI limited) |
 | **Cross-Socket Cache Line Bounce (RFO)**| 600–1000 cycles | **~150–250 ns** | Severely degraded by snoops |
-| **Local PCIe DMA (NIC on Socket 0)** | — | **~100–150 ns** | Direct Root Complex |
-| **Remote PCIe DMA (NIC on Socket 1 -> Node 0)**| — | **~250–400 ns** | Traverses UPI twice |
+| **Local PCIe DMA (NIC on Socket 0)** | - | **~100–150 ns** | Direct Root Complex |
+| **Remote PCIe DMA (NIC on Socket 1 -> Node 0)**| - | **~250–400 ns** | Traverses UPI twice |
 
 ---
 

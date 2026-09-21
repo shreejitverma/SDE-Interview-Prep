@@ -11,7 +11,7 @@ last_reviewed:
 sources: []
 ---
 
-# Lab 04 — Cache Line Contention and Latency Benchmark
+# Lab 04 - Cache Line Contention and Latency Benchmark
 
 > [!summary]
 > In this hands-on lab, you will build and execute a compilation-ready C++20 microbenchmark harness that experimentally proves:

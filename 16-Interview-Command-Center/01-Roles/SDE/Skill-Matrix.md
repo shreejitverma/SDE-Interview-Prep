@@ -7,7 +7,7 @@ last_reviewed:
 sources: []
 ---
 
-# 📊 SDE Skill Matrix — Self-Assessment
+# SDE Skill Matrix - Self-Assessment
 
 > Rate yourself 1-5 for each skill. Update after each study session or interview.
 > **1** = No knowledge | **2** = Basic understanding | **3** = Can solve medium problems | **4** = Can solve hard problems | **5** = Can teach it

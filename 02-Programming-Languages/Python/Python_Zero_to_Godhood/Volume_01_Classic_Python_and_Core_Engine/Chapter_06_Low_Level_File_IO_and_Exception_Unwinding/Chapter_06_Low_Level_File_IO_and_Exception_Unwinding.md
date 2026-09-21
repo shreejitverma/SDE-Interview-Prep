@@ -32,16 +32,16 @@ redesign solved.
 
 **Why this exists.** In Python 2, `open()` returned a `file` object that was a thin wrapper
 around a C `stdio` `FILE *`. That inherited `stdio`'s buffering policy *and* its per-call
-internal mutex — locks that are pure waste under the GIL, which already serializes interpreter
+internal mutex - locks that are pure waste under the GIL, which already serializes interpreter
 execution. **PEP 3116** replaced this with a composable three-layer stack (the `io` module)
 that calls the kernel's `read(2)`/`write(2)` directly and lets each layer do one job:
 
 ```text
-text   :  TextIOWrapper   — encode/decode str <-> bytes, universal newlines
+text   :  TextIOWrapper   - encode/decode str <-> bytes, universal newlines
             │
-buffered:  BufferedReader / BufferedWriter — in-memory buffer, batches syscalls
+buffered:  BufferedReader / BufferedWriter - in-memory buffer, batches syscalls
             │
-raw    :  FileIO          — a bare OS file descriptor; one syscall per read/write
+raw    :  FileIO          - a bare OS file descriptor; one syscall per read/write
 ```
 
 The stack is observable: `open()` in text mode returns the top layer, and you can reach down
@@ -67,14 +67,14 @@ OS descriptor:  3
 ```
 
 **What each layer buys you.**
-- **`FileIO` (raw)** issues exactly one `read`/`write` syscall per call — unbuffered, slow if
+- **`FileIO` (raw)** issues exactly one `read`/`write` syscall per call - unbuffered, slow if
   used directly for many small operations, but the foundation.
 - **`BufferedReader`/`BufferedWriter`** hold an in-memory buffer (default ~8 KiB, exposed as
   `io.DEFAULT_BUFFER_SIZE`) so many small reads/writes collapse into few syscalls. Crossing the
   user/kernel boundary is the dominant cost in I/O; this layer is what makes line-by-line
   reading affordable.
 - **`TextIOWrapper`** adds the `str`↔`bytes` codec and newline translation. Opening in binary
-  mode (`"rb"`/`"wb"`) omits this layer and hands you `bytes` directly — the right choice for
+  mode (`"rb"`/`"wb"`) omits this layer and hands you `bytes` directly - the right choice for
   protocols, images, and anything non-textual. The full text/bytes/Unicode model is Vol II.
 
 **The senior-engineer contrast.** A C programmer reaches for `fopen`/`fread` (`stdio`,
@@ -88,20 +88,20 @@ gives a raw binary stream when you want to manage buffering yourself.
 ## 6.2 Exception objects and per-thread exception state
 
 **Why this exists.** An exception must carry its type, a message/value, and the traceback of
-where it propagated — and that state must be *per thread*, since two threads can be handling
+where it propagated - and that state must be *per thread*, since two threads can be handling
 different exceptions at once. CPython stores the active exception on the `PyThreadState`.
 
 Two historical facts frame the modern design:
 
-- **The string-exception era (pre-2.6).** You could once `raise "some error"` — a bare string,
+- **The string-exception era (pre-2.6).** You could once `raise "some error"` - a bare string,
   matched by identity. It made hierarchies and categorization impossible and was removed:
-  **every exception must derive from `BaseException`.** The hierarchy matters — `except
+  **every exception must derive from `BaseException`.** The hierarchy matters - `except
   Exception` deliberately does *not* catch `KeyboardInterrupt`, `SystemExit`, or
   `GeneratorExit`, which subclass `BaseException` directly so that "catch all errors" does not
   also swallow shutdown signals.
 - **State consolidation (3.11).** Python 2.x kept two separate triples on the thread state
   (`curexc_type/value/traceback` for the propagating exception, `exc_type/value/traceback` for
-  the one being handled). Modern CPython stores a single exception **value** object — type and
+  the one being handled). Modern CPython stores a single exception **value** object - type and
   traceback are derivable from it (`exc.__traceback__`, `type(exc)`), so the triples collapsed
   to one pointer. `sys.exc_info()` still returns the familiar `(type, value, traceback)` tuple,
   reconstructed from that single object:
@@ -129,17 +129,17 @@ logging/framework code that must work without naming the exception.
 
 ## 6.3 Zero-cost exceptions: the exception table (Python 3.11)
 
-**Why this exists — the big change.** Through Python 3.10, each frame carried a runtime **block
+**Why this exists - the big change.** Through Python 3.10, each frame carried a runtime **block
 stack**: entering a `try` executed a `SETUP_FINALLY`/`SETUP_EXCEPT` opcode that *pushed* a
 `PyTryBlock` (handler address, stack level) onto that stack, and leaving the block popped it.
-That meant every `try` cost real work on entry and exit **even when no exception was raised** —
+That meant every `try` cost real work on entry and exit **even when no exception was raised** - 
 the common case. Python 3.11 (the "Faster CPython" work) removed the block stack entirely and
 replaced it with a static, per-code-object **exception table**: a side table mapping ranges of
 bytecode offsets to their handler. On the non-exception path a `try` now executes **nothing
 extra**; the cost is paid only when an exception is actually raised and the interpreter consults
 the table to find the handler. This is what "zero-cost exceptions" means.
 
-You can see it directly — there is no `SETUP_*` opcode, and an `ExceptionTable` appears at the
+You can see it directly - there is no `SETUP_*` opcode, and an `ExceptionTable` appears at the
 end of the disassembly:
 
 ```python
@@ -181,7 +181,7 @@ The `try` body (`L1`–`L2`) carries no setup overhead. If `BINARY_OP /` raises,
 looks up the current offset in the `ExceptionTable`, finds the handler at `L3`, pushes the
 exception info (`PUSH_EXC_INFO`), tests it (`CHECK_EXC_MATCH`), runs the handler, and clears the
 exception state (`POP_EXCEPT`). If no handler in this frame matches, `RERAISE` propagates to the
-caller, whose frame is searched the same way — building the traceback (`PyTracebackObject`)
+caller, whose frame is searched the same way - building the traceback (`PyTracebackObject`)
 frame by frame as it unwinds, until a handler catches it or the program exits via the top-level
 traceback. The unwinding *semantics* are what the 2.x block-stack diagrams described; only the
 *mechanism* (table lookup vs. runtime stack) changed, and with it the cost model.
@@ -194,12 +194,12 @@ traceback. The unwinding *semantics* are what the 2.x block-stack diagrams descr
 new one for the abstraction you present, the original for the root cause. Python links them
 automatically.
 
-- **Implicit chaining** — if an exception is raised *during* the handling of another, the new
+- **Implicit chaining** - if an exception is raised *during* the handling of another, the new
   exception's `__context__` is set to the original. Tracebacks print "During handling of the
   above exception, another exception occurred."
-- **Explicit chaining** — `raise New() from original` sets `__cause__` (and implies the link is
+- **Explicit chaining** - `raise New() from original` sets `__cause__` (and implies the link is
   deliberate), printing "The above exception was the direct cause."
-- **Suppression** — `raise New() from None` clears the chain when the original is noise.
+- **Suppression** - `raise New() from None` clears the chain when the original is noise.
 
 ```python
 # Caption: raise ... from ... sets __cause__; the original is also kept as __context__.
@@ -224,20 +224,20 @@ __context__:  ZeroDivisionError
 ```
 
 This is the right way to wrap low-level errors in domain errors without losing the diagnostic
-trail — wrap a `KeyError` from a config lookup in a `ConfigError`, `raise ConfigError(...) from
-e`, and the traceback shows both. The multi-error generalization — **exception groups** and
-`except*` (PEP 654) — belongs to concurrent code and is covered in Vol VI.
+trail - wrap a `KeyError` from a config lookup in a `ConfigError`, `raise ConfigError(...) from
+e`, and the traceback shows both. The multi-error generalization - **exception groups** and
+`except*` (PEP 654) - belongs to concurrent code and is covered in Vol VI.
 
 ---
 
 ## 6.5 Performance and anti-patterns (EAFP vs LBYL)
 
 **EAFP is now genuinely cheap.** Python idiom favors **EAFP** ("easier to ask forgiveness than
-permission") — try the operation, handle the exception — over **LBYL** ("look before you leap")
+permission") - try the operation, handle the exception - over **LBYL** ("look before you leap")
 with pre-checks. With zero-cost exceptions (§6.3), the `try` itself adds no overhead on the
 success path, so EAFP is not merely idiomatic but efficient *when exceptions are rare*. The
 caveat is unchanged: raising and catching is still expensive *per exception*, so EAFP loses
-badly in a loop where the exceptional case is common — there, a cheap pre-check wins.
+badly in a loop where the exceptional case is common - there, a cheap pre-check wins.
 
 ```python
 # EAFP (preferred when the miss is rare):
@@ -256,7 +256,7 @@ value = config["timeout"] if "timeout" in config else DEFAULT_TIMEOUT
 - **Swallowing exceptions** (`except Exception: pass`) destroys diagnostics. At minimum log;
   better, re-raise or wrap with `raise ... from e`.
 - **Not using a context manager for files.** `open()` without `with` leaks the descriptor until
-  the GC happens to finalize it (and never deterministically — Chapter 2). Always `with
+  the GC happens to finalize it (and never deterministically - Chapter 2). Always `with
   open(...) as f:`.
 - **Forgetting to flush/`fsync` for durability.** Buffering (§6.1) means a write is in user
   space until flushed; for crash-durable writes, `f.flush()` then `os.fsync(f.fileno())`.

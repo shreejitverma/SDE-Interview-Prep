@@ -15,7 +15,7 @@ sources: []
 
 1. [Multidimensional `operator[]`](#661-multidimensional-operator)
 2. [Static `operator()` and `operator[]`](#662-static-operator-and-operator)
-3. [`auto(x)` and `auto{x}` — Explicit Decay-Copy](#663-autox-and-autox--explicit-decay-copy)
+3. [`auto(x)` and `auto{x}` - Explicit Decay-Copy](#663-autox-and-autox--explicit-decay-copy)
 4. [`size_t` Literals: `z` and `uz`](#664-size_t-literals-z-and-uz)
 5. [Preprocessor: `#elifdef`, `#elifndef`, `#warning`](#665-preprocessor-elifdef-elifndef-warning)
 6. [String-Literal Escapes: Named and Delimited](#666-string-literal-escapes-named-and-delimited)
@@ -53,7 +53,7 @@ This is the core-language feature that `std::mdspan` (Chapter 57) is built on. N
 
 ## 66.2 Static `operator()` and `operator[]`
 
-A stateless functor — a lambda or a function object with no captures or data members — still, pre-C++23, received a hidden `this` pointer on every call, even though it had no state to access. C++23 lets you declare `operator()` (and `operator[]`) as **`static`**, so no `this` is passed; the call becomes an ordinary static dispatch.
+A stateless functor - a lambda or a function object with no captures or data members - still, pre-C++23, received a hidden `this` pointer on every call, even though it had no state to access. C++23 lets you declare `operator()` (and `operator[]`) as **`static`**, so no `this` is passed; the call becomes an ordinary static dispatch.
 
 ```cpp
 struct Hash {
@@ -68,7 +68,7 @@ For a comparator or hash functor passed to an algorithm and invoked in a hot loo
 
 ---
 
-## 66.3 `auto(x)` and `auto{x}` — Explicit Decay-Copy
+## 66.3 `auto(x)` and `auto{x}` - Explicit Decay-Copy
 
 Generic code sometimes needs to force a **decay-copy**: produce a prvalue copy of an lvalue, stripping references and cv-qualifiers, so that subsequent operations act on an independent value rather than aliasing the original. The standard library had an internal `decay-copy` helper for this; C++23 exposes it as syntax: **`auto(x)`** (and the braced `auto{x}`) creates a prvalue decay-copy of `x`.
 
@@ -85,7 +85,7 @@ void demo(std::vector<int>& v) {
 }
 ```
 
-`auto(x)` is more readable than the old workarounds (`static_cast<std::decay_t<decltype(x)>>(x)` or an explicit named copy) and makes the intent — "I want an independent copy here" — explicit at the point of use.
+`auto(x)` is more readable than the old workarounds (`static_cast<std::decay_t<decltype(x)>>(x)` or an explicit named copy) and makes the intent - "I want an independent copy here" - explicit at the point of use.
 
 ---
 
@@ -100,7 +100,7 @@ The signed/unsigned mismatch in loop counters is a perennial source of compiler 
 #include <vector>
 
 void demo(const std::vector<int>& v) {
-    for (auto i = 0uz; i < v.size(); ++i) { /* i is size_t — no warning */ }
+    for (auto i = 0uz; i < v.size(); ++i) { /* i is size_t - no warning */ }
     for (auto j = 0z;  j < std::ssize(v); ++j) { /* j is ptrdiff_t (signed) */ }
 }
 ```
@@ -113,8 +113,8 @@ With `0uz`, the loop counter's type matches `size()` exactly, so the comparison 
 
 The preprocessor gains three long-overdue directives:
 
-- **`#elifdef NAME`** is shorthand for `#elif defined(NAME)`, and **`#elifndef NAME`** for `#elif !defined(NAME)` — flattening the deeply-nested `#if/#else/#if` chains that platform and feature detection otherwise require.
-- **`#warning "message"`** emits a diagnostic *warning* (not an error) at preprocessing time — the standardization of a directive every major compiler already supported as an extension. It is the counterpart to the long-standard `#error`.
+- **`#elifdef NAME`** is shorthand for `#elif defined(NAME)`, and **`#elifndef NAME`** for `#elif !defined(NAME)` - flattening the deeply-nested `#if/#else/#if` chains that platform and feature detection otherwise require.
+- **`#warning "message"`** emits a diagnostic *warning* (not an error) at preprocessing time - the standardization of a directive every major compiler already supported as an extension. It is the counterpart to the long-standard `#error`.
 
 ```cpp
 #ifdef USE_BACKEND_A
@@ -126,7 +126,7 @@ The preprocessor gains three long-overdue directives:
 #endif
 ```
 
-These are small, but they make conditional-compilation blocks — which every cross-platform codebase has in abundance — markedly cleaner and let you surface non-fatal configuration notices through the standard `#warning`.
+These are small, but they make conditional-compilation blocks - which every cross-platform codebase has in abundance - markedly cleaner and let you surface non-fatal configuration notices through the standard `#warning`.
 
 ---
 
@@ -134,7 +134,7 @@ These are small, but they make conditional-compilation blocks — which every cr
 
 C++23 modernizes how characters are spelled inside string and character literals:
 
-- **Named universal character escapes:** `\N{NAME}` denotes a Unicode code point by its official Unicode *name* rather than its hex value. `"\N{GREEK SMALL LETTER ALPHA}"` is `α`, and `"\N{LATIN SMALL LETTER E WITH ACUTE}"` is `é` — self-documenting where `α` is opaque.
+- **Named universal character escapes:** `\N{NAME}` denotes a Unicode code point by its official Unicode *name* rather than its hex value. `"\N{GREEK SMALL LETTER ALPHA}"` is `α`, and `"\N{LATIN SMALL LETTER E WITH ACUTE}"` is `é` - self-documenting where `α` is opaque.
 - **Delimited escape sequences:** the numeric escapes gain brace-delimited forms that remove the old ambiguity about where the escape ends. `\x{...}` for hex, `\o{...}` for octal, and `\u{...}` for a Unicode code point of any width: `"\x{1F600}"`, `"\o{777}"`, `"\u{1F600}"`. The braces make the boundary explicit, fixing the classic `"\x41B"` problem where it is unclear whether `B` is part of the hex value or a following character.
 
 ```cpp
@@ -142,13 +142,13 @@ C++23 modernizes how characters are spelled inside string and character literals
 
 int main() {
     std::println("{}", "caf\N{LATIN SMALL LETTER E WITH ACUTE}");  // café
-    std::println("{}", "\u{1F600}");                                // 😀 (delimited)
+    std::println("{}", "\u{1F600}");                                // (delimited)
     char c = '\x{41}';                                              // 'A', unambiguous
     std::println("{}", c);
 }
 ```
 
-These remove a real class of bugs in code that embeds Unicode or precise byte values in literals — common in protocol, rendering, and internationalization code.
+These remove a real class of bugs in code that embeds Unicode or precise byte values in literals - common in protocol, rendering, and internationalization code.
 
 ---
 
@@ -156,8 +156,8 @@ These remove a real class of bugs in code that embeds Unicode or precise byte va
 
 Several remaining changes fix footguns and standardize hints:
 
-- **Lifetime extension of temporaries in range-`for`.** The notorious `for (auto e : getVector()[0])` bug — where a temporary in the range *initializer* (here the `vector` returned by `getVector()`, of which `[0]` is taken) was destroyed before the loop ran, leaving the loop iterating a dangling range — is **fixed**. C++23 extends the lifetime of *all* temporaries in the range expression to cover the entire loop. Code that was silently undefined now works as written.
-- **`[[assume(expr)]]`** standardizes the optimization hint that `expr` is `true`, replacing vendor-specific `__builtin_assume` / `__assume`. Like `std::unreachable` (Chapter 64), it is a promise to the optimizer, not a runtime check — a false assumption is UB.
+- **Lifetime extension of temporaries in range-`for`.** The notorious `for (auto e : getVector()[0])` bug - where a temporary in the range *initializer* (here the `vector` returned by `getVector()`, of which `[0]` is taken) was destroyed before the loop ran, leaving the loop iterating a dangling range - is **fixed**. C++23 extends the lifetime of *all* temporaries in the range expression to cover the entire loop. Code that was silently undefined now works as written.
+- **`[[assume(expr)]]`** standardizes the optimization hint that `expr` is `true`, replacing vendor-specific `__builtin_assume` / `__assume`. Like `std::unreachable` (Chapter 64), it is a promise to the optimizer, not a runtime check - a false assumption is UB.
 - **Simpler implicit move.** A move-eligible id-expression in a `return` or `throw` is now consistently treated as an xvalue, so more returns move rather than copy without an explicit `std::move`, and the rules are simpler than the tangle C++20 left.
 - **Attributes on lambdas** are now permitted on the lambda's `operator()` (e.g. `[](int x) [[nodiscard]] { ... }`).
 - **CTAD from inherited constructors**, **mandated UTF-8 as the source encoding** for the basic character set, **whitespace trimming before line-splice (`\`) continuations**, and the **removal of garbage-collection support** (the never-implemented `std::declare_reachable` family and the `pointer_safety` machinery from C++11) are the quieter cleanups that round out the release.
@@ -184,13 +184,13 @@ int main() {
 }
 ```
 
-> **Version-trap flag:** every feature in this chapter — multidimensional `operator[]`, static `operator()`/`operator[]`, `auto(x)`, `z`/`uz` literals, `#elifdef`/`#elifndef`/`#warning`, named/delimited escapes, the range-`for` lifetime fix, `[[assume]]`, simpler implicit move, attributes on lambdas, CTAD-from-inherited-constructors, and the GC-support removal — is **C++23**. The range-`for` fix in particular *changes the behavior of existing code* (from UB to defined), which is a rare and welcome kind of breaking change.
+> **Version-trap flag:** every feature in this chapter - multidimensional `operator[]`, static `operator()`/`operator[]`, `auto(x)`, `z`/`uz` literals, `#elifdef`/`#elifndef`/`#warning`, named/delimited escapes, the range-`for` lifetime fix, `[[assume]]`, simpler implicit move, attributes on lambdas, CTAD-from-inherited-constructors, and the GC-support removal - is **C++23**. The range-`for` fix in particular *changes the behavior of existing code* (from UB to defined), which is a rare and welcome kind of breaking change.
 
 ---
 
 ## 66.8 Professional Insights
 
-**The range-`for` temporary-lifetime fix is the one to internalize, because it silently repairs latent bugs.** The `for (auto x : f().g())` pattern was undefined behavior whenever `f()` returned a temporary container, and it bit people regularly — often intermittently, since it sometimes "worked." C++23 extends every temporary in the range expression to the loop's lifetime, turning that UB into correct behavior. When you move a codebase to `-std=c++23`, this is a free correctness upgrade; just be aware that code which appeared to work by luck is now actually guaranteed to.
+**The range-`for` temporary-lifetime fix is the one to internalize, because it silently repairs latent bugs.** The `for (auto x : f().g())` pattern was undefined behavior whenever `f()` returned a temporary container, and it bit people regularly - often intermittently, since it sometimes "worked." C++23 extends every temporary in the range expression to the loop's lifetime, turning that UB into correct behavior. When you move a codebase to `-std=c++23`, this is a free correctness upgrade; just be aware that code which appeared to work by luck is now actually guaranteed to.
 
 **Adopt `m[i, j]` and `std::mdspan` together; they are the same idea at two levels.** The multidimensional subscript is the language hook, and `mdspan` is its flagship library consumer. For any type that models a grid, matrix, or tensor, define `operator[](i, j, ...)` so call sites read like the mathematics, and prefer `mdspan` over hand-rolled index arithmetic for views over flat buffers. The combination eliminates the proxy-object `m[i][j]` hacks and the duplicated stride math that plagued numeric C++.
 

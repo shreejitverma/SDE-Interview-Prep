@@ -139,7 +139,7 @@ Publisher  ──→  Topic/Channel  ←──  Subscriber 1
 
 #### What They Are
 
-Signals are software interrupts—a way to asynchronously notify a process that an event has occurred.
+Signals are software interrupts - a way to asynchronously notify a process that an event has occurred.
 
 ```
 Signal Definition:
@@ -729,7 +729,7 @@ Latency Profile (loopback):
 
 #### Concept
 
-Multiple processes map the same physical memory region. No copying—processes read/write directly.
+Multiple processes map the same physical memory region. No copying - processes read/write directly.
 
 ```
 Virtual Address Spaces:

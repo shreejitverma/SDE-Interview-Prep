@@ -20,7 +20,7 @@ sources: []
 ## 1. The AWK Programming Language (Aho, Kernighan, Weinberg, 1988)
 
 ### Authors & Origin
-Written by the creators of AWK—**Alfred Aho** (Aho-Corasick, Dragon Book), **Brian Kernighan** (K&R C, Unix programming environment), and **Peter Weinberg**. AWK was designed at Bell Labs as a data-driven pattern-action language tailored for high-speed textual stream processing.
+Written by the creators of AWK - **Alfred Aho** (Aho-Corasick, Dragon Book), **Brian Kernighan** (K&R C, Unix programming environment), and **Peter Weinberg**. AWK was designed at Bell Labs as a data-driven pattern-action language tailored for high-speed textual stream processing.
 
 ```mermaid
 flowchart LR

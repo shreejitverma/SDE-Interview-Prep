@@ -153,13 +153,13 @@ flowchart TD
 ## Technical Interview & Production Cheatsheet
 
 ### Question 1: What is the difference between CPU Utilization and CPU Saturation?
-- **Answer**: Utilization measures the percentage of time that a CPU core was actively executing instructions or kernel code over a time window. Saturation measures whether there is excess demand waiting for CPU execution that cannot be serviced immediately—indicated by the Linux scheduler run queue length (`r` column in `vmstat`) or threads in runnable state waiting for a CPU. A system can have 100% utilization with 0 saturation (running smoothly at capacity), or 60% utilization with high saturation (due to core pinning or CPU quota throttling).
+- **Answer**: Utilization measures the percentage of time that a CPU core was actively executing instructions or kernel code over a time window. Saturation measures whether there is excess demand waiting for CPU execution that cannot be serviced immediately - indicated by the Linux scheduler run queue length (`r` column in `vmstat`) or threads in runnable state waiting for a CPU. A system can have 100% utilization with 0 saturation (running smoothly at capacity), or 60% utilization with high saturation (due to core pinning or CPU quota throttling).
 
 ### Question 2: Why are averages misleading in systems performance?
 - **Answer**: Averages smooth out micro-bursts and spike phenomena. For instance, a 1-second interval average may show disk utilization at 20%, while in reality, a 50-millisecond storage flush locked the disk at 100% utilization, introducing an unobservable 45ms P99 latency spike to real-time client requests. Modern performance engineering mandates logarithmic histogram distributions and high-percentile analysis (P99, P99.9).
 
 ### Question 3: How does Off-CPU analysis differ from On-CPU profiling?
-- **Answer**: On-CPU profiling samples the Instruction Pointer while a thread is executing on a physical CPU core (e.g., via `perf record -g`). Off-CPU analysis records the stack trace when a thread is descheduled and sleeping—identifying time spent waiting for lock acquisition (mutexes, futexes), synchronous disk I/O, network socket reads, or scheduler preemption.
+- **Answer**: On-CPU profiling samples the Instruction Pointer while a thread is executing on a physical CPU core (e.g., via `perf record -g`). Off-CPU analysis records the stack trace when a thread is descheduled and sleeping - identifying time spent waiting for lock acquisition (mutexes, futexes), synchronous disk I/O, network socket reads, or scheduler preemption.
 
 ---
 

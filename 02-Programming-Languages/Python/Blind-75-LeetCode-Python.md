@@ -2907,7 +2907,7 @@ def rightSideView(self, root: Optional[TreeNode]) -> list[int]:
 
 ---
 
-**Master the Blind 75 in Python and you're interview-ready!** 🚀
+**Master the Blind 75 in Python and you're interview-ready!**
 
 *Last Updated: December 2025*
 *Language: Python 3.8+*

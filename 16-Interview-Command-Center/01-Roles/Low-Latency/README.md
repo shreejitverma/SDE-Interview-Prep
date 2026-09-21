@@ -13,11 +13,11 @@ sources: []
 
 **Notes**
 
-- [🔄 Low Latency Common Patterns](Common-Patterns.md)
-- [🧩 Low Latency Question Bank](Question-Bank.md)
-- [📚 Low Latency Resources](Resources.md)
-- [📊 Low Latency Skill Matrix](Skill-Matrix.md)
-- [📋 Low Latency Study Plan — 12-Week Deep Dive](Study-Plan.md)
-- [⚡ Low Latency Systems Engineer — Preparation Hub](_Hub.md)
+- [Low Latency Common Patterns](Common-Patterns.md)
+- [Low Latency Question Bank](Question-Bank.md)
+- [Low Latency Resources](Resources.md)
+- [Low Latency Skill Matrix](Skill-Matrix.md)
+- [Low Latency Study Plan - 12-Week Deep Dive](Study-Plan.md)
+- [Low Latency Systems Engineer - Preparation Hub](_Hub.md)
 
 <!-- moc:end -->

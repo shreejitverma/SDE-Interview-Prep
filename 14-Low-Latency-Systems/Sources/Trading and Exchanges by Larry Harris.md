@@ -11,7 +11,7 @@ last_reviewed:
 sources: []
 ---
 
-# Source Summary — Trading and Exchanges: Market Microstructure for Practitioners
+# Source Summary - Trading and Exchanges: Market Microstructure for Practitioners
 **Author**: Larry Harris (Former Chief Economist of the SEC, Professor of Finance at USC)  
 **Publication**: Oxford University Press  
 **Category**: Market Microstructure & Market Design

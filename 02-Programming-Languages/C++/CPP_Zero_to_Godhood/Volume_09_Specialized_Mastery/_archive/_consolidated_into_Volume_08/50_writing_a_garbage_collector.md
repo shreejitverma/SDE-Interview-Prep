@@ -13,7 +13,7 @@ A Mark-and-Sweep collector works in two distinct phases:
 1.  **Mark Phase:** Start from a set of known pointers (the **Roots**), traverse the directed object reference graph, and mark every reachable object as `marked = true`.
 2.  **Sweep Phase:** Iterate through all memory blocks allocated on the heap. If an object is not marked, it is unreachable and is immediately freed (`delete`). If it *is* marked, clear the mark flag (`marked = false`) to reset it for the next collection cycle.
 
-### 🔍 Finding the "Roots"
+### Finding the "Roots"
 
 In a real runtime (like Java's JVM or .NET's CLR), the root set consists of:
 *   Pointers stored in CPU registers.
@@ -209,7 +209,7 @@ int main() {
 }
 ```
 
-### 🧠 Performance Tuning Considerations:
+### Performance Tuning Considerations:
 
 1.  **Stop-The-World (STW):** The implementation above pauses execution completely to run GC. In latency-sensitive systems, this causes unacceptable spikes in execution time (jitter).
 2.  **Incremental & Generational GC:** Production GCs run concurrently alongside the main threads and group objects by age (Generations), under the heuristic that "most objects die young", significantly reducing collection sweep scopes.

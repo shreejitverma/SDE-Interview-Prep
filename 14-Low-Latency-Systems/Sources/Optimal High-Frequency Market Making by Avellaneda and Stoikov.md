@@ -11,7 +11,7 @@ last_reviewed:
 sources: []
 ---
 
-# Source Summary — High-Frequency Trading in a Limit Order Book
+# Source Summary - High-Frequency Trading in a Limit Order Book
 **Authors**: Marco Avellaneda (Courant Institute of Mathematical Sciences, NYU) and Sasha Stoikov (Cornell Financial Engineering)  
 **Publication**: Quantitative Finance, Vol. 8, No. 3, 217–224 (2008)  
 **Category**: Quantitative Finance, Market Microstructure, Stochastic Control, Market Making

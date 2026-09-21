@@ -13,11 +13,11 @@ sources: []
 
 **Notes**
 
-- [🔄 Quant Dev Common Patterns](Common-Patterns.md)
-- [🧩 Quant Dev Question Bank](Question-Bank.md)
-- [📚 Quant Dev Resources](Resources.md)
-- [📊 Quant Dev Skill Matrix](Skill-Matrix.md)
-- [📋 Quant Dev Study Plan — 10-Week Sprint](Study-Plan.md)
-- [📊 Quantitative Developer — Preparation Hub](_Hub.md)
+- [Quant Dev Common Patterns](Common-Patterns.md)
+- [Quant Dev Question Bank](Question-Bank.md)
+- [Quant Dev Resources](Resources.md)
+- [Quant Dev Skill Matrix](Skill-Matrix.md)
+- [Quant Dev Study Plan - 10-Week Sprint](Study-Plan.md)
+- [Quantitative Developer - Preparation Hub](_Hub.md)
 
 <!-- moc:end -->

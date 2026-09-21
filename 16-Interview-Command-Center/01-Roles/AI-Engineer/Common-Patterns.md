@@ -7,7 +7,7 @@ last_reviewed:
 sources: []
 ---
 
-# 🔄 AI Engineer Common Patterns
+# AI Engineer Common Patterns
 
 ## ML System Design Framework (45 min)
 

@@ -1705,16 +1705,16 @@ Already covered extensively. This guide continues with remaining 115 problems...
 
 ## Success Metrics
 
-✅ Can solve easy problems in < 10 minutes
-✅ Can solve medium problems in < 20 minutes
-✅ Can solve hard problems in < 30 minutes
-✅ Know optimal complexity for each problem
-✅ Can explain trade-offs between approaches
-✅ Can optimize from O(n²) to O(n) solutions
+✓ Can solve easy problems in < 10 minutes
+✓ Can solve medium problems in < 20 minutes
+✓ Can solve hard problems in < 30 minutes
+✓ Know optimal complexity for each problem
+✓ Can explain trade-offs between approaches
+✓ Can optimize from O(n²) to O(n) solutions
 
 ---
 
-**Master NeetCode 150 and you'll be FAANG-ready!** 🚀
+**Master NeetCode 150 and you'll be FAANG-ready!**
 
 *Note: This guide covers the first 40 problems in detail. The structure and approach apply to all 150.*
 

@@ -17,7 +17,7 @@ sources: []
 
 Welcome to the mountain.
 
-If you're reading this, you probably already know that C++ has a reputation. It's often described as a massive, sprawling beast of a language—a language that gives you enough rope to shoot yourself in the foot (and blow off your entire leg in the process).
+If you're reading this, you probably already know that C++ has a reputation. It's often described as a massive, sprawling beast of a language - a language that gives you enough rope to shoot yourself in the foot (and blow off your entire leg in the process).
 
 But here is the truth: C++ is not just a language. It is a philosophy of *zero-overhead abstraction*. It is the invisible scaffolding holding up the modern world. When performance, scale, and control matter, the world turns to C++. From the trading floors of Wall Street to the rovers roaming the surface of Mars, C++ is the language of Gods.
 
@@ -25,7 +25,7 @@ This book is the culmination of a decade-long journey through the depths of C++.
 
 The "Zero to Godhood" series was born from a frustration with existing resources. Tutorials often stop at syntax, leaving engineers ill-equipped for the brutal reality of high-frequency trading, kernel development, and large-scale distributed systems. This book bridges that gap.
 
-This book is titled **"Zero to Godhood"** for a very specific reason. We are not just going to teach you syntax. We are going to teach you *how to think* like a systems engineer. We will start from absolute zero—assuming you have never written a line of code in your life—and we will climb all the way to the highest peaks of template metaprogramming, lock-free concurrency, and the absolute bleeding edge of C++26.
+This book is titled **"Zero to Godhood"** for a very specific reason. We are not just going to teach you syntax. We are going to teach you *how to think* like a systems engineer. We will start from absolute zero - assuming you have never written a line of code in your life - and we will climb all the way to the highest peaks of template metaprogramming, lock-free concurrency, and the absolute bleeding edge of C++26.
 
 ### The "Zero to Godhood" Philosophy
 
@@ -98,7 +98,7 @@ Here is how you should navigate this text depending on your current skill level.
 If you have never programmed before, or if your only experience is a little bit of Python or JavaScript:
 
 1. **Read Part I (From Zero)** cover to cover. Do not skip Chapter 1 or 2.
-2. Work carefully through **Part II (Core C++)**. Pointers (Chapter 5) are the great filter—take your time here.
+2. Work carefully through **Part II (Core C++)**. Pointers (Chapter 5) are the great filter - take your time here.
 3. Learn to use the tools in **Part IV (Standard Library)** before trying to build your own.
 
 #### The Intermediate Path (Level 20 to 60)
@@ -124,27 +124,27 @@ If you've been writing C++ for 5 years and want to master the machine:
 Throughout this book, you will see special callout boxes. We use these to break up the text, provide deeper insights, and warn you about the sharp edges of the language.
 
 > [!TIP]
-> **🔥 Godhood Tip**
+> **Godhood Tip**
 > These are pro-level tricks, performance optimizations, and "secret weapons" used by senior engineers to write blazingly fast code.
 
 > [!NOTE]
-> **🛋️ Fireside Chat**
+> **Fireside Chat**
 > Programming isn't just math; it's a human endeavor. Fireside chats are conversational interludes where we use real-world analogies (like hotels, U-Haul boxes, or kitchens) to explain complex abstract concepts.
 
 > [!IMPORTANT]
-> **🧠 Brain Power**
+> **Brain Power**
 > When we need to look under the hood. These callouts explain *how* the compiler translates your C++ code into assembly, how memory is actually laid out, or how an algorithm achieves O(1) complexity.
 
 > [!WARNING]
-> **🤔 There Are No Dumb Questions**
-> Common questions that beginners often think but are too afraid to ask. If you're confused, look for these boxes—someone else probably asked the exact same thing.
+> **There Are No Dumb Questions**
+> Common questions that beginners often think but are too afraid to ask. If you're confused, look for these boxes - someone else probably asked the exact same thing.
 
 > [!CAUTION]
-> **⚠️ The Danger Zone**
+> **The Danger Zone**
 > Undefined Behavior (UB), memory leaks, and historical traps. When you see this, pay attention, or you will spend a week debugging a core dump.
 
 > [!NOTE]
-> **📋 Professional Notes**
+> **Professional Notes**
 > Architectural advice, C++ Core Guidelines references, and clean code principles designed to help your code survive 10 years and 50 developers.
 
 ***
@@ -181,7 +181,7 @@ Alternatively, if you want to test snippets quickly without installing a compile
 
 ### Table of Contents (High-Level)
 
-This series is structured to mirror the evolution of C++ itself—from its archaic roots to its cutting-edge future.
+This series is structured to mirror the evolution of C++ itself - from its archaic roots to its cutting-edge future.
 
 #### VOLUME 01: FOUNDATION (C++98/03)
 

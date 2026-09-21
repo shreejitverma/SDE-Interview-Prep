@@ -1843,7 +1843,7 @@ while q:
 
 ---
 
-**Master NeetCode 150 in Python and you're FAANG-ready!** 🚀
+**Master NeetCode 150 in Python and you're FAANG-ready!**
 
 *Last Updated: December 2025*
 *Language: Python 3.8+*

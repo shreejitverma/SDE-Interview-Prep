@@ -13,4 +13,4 @@ _Please do not post personal videos or podcast resources, unless relevant to sys
 
 Please give a short description of the link(s) before raising a pull request to add them.
 
-Try to look for good video and blog sources 💪🙂
+Try to look for good video and blog sources

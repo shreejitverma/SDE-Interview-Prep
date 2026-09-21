@@ -9,7 +9,7 @@ sources: []
 
 # Chapter 14: Template Metaprogramming
 
-> *Templates are a Turing-complete functional language that runs inside the compiler. C++11 gave it variadics, type traits, and `constexpr` — turning a clever trick into an engineering discipline.*
+> *Templates are a Turing-complete functional language that runs inside the compiler. C++11 gave it variadics, type traits, and `constexpr` - turning a clever trick into an engineering discipline.*
 
 Template metaprogramming (TMP) generates and selects code at **compile time**. C++11 transformed TMP from arcane to practical with **variadic templates**, a real **`<type_traits>`** library, **alias templates**, **`constexpr`**, and **`std::tuple`**. This chapter develops the functional model of templates, then the toolkit: parameter packs, metafunctions, type traits, SFINAE, the detection idiom, tag dispatch, and tuples.
 
@@ -57,9 +57,9 @@ Because metafunction results are compile-time constants, they can size arrays, p
 
 A **variadic template** accepts an arbitrary number of template arguments via a **parameter pack**. Three pieces of syntax govern packs:
 
-- `typename... Args` — a **template parameter pack**
-- `Args... args` — a **function parameter pack**
-- `sizeof...(Args)` — the **number** of elements in the pack
+- `typename... Args` - a **template parameter pack**
+- `Args... args` - a **function parameter pack**
+- `sizeof...(Args)` - the **number** of elements in the pack
 
 A pack is consumed by **expansion** (`pattern...`), typically with recursion: peel off the first argument, recurse on the rest, stop at a non-variadic base case.
 
@@ -80,7 +80,7 @@ int main() {
 }
 ```
 
-Packs combine with perfect forwarding (Chapter 12): `std::forward<Args>(args)...` expands each argument while preserving its value category — the mechanism behind `make_unique`, `make_shared`, and `emplace_back`.
+Packs combine with perfect forwarding (Chapter 12): `std::forward<Args>(args)...` expands each argument while preserving its value category - the mechanism behind `make_unique`, `make_shared`, and `emplace_back`.
 
 ---
 
@@ -99,7 +99,7 @@ void print_all(std::ostream& os, Ts const&... args) {
 
 The expander is harder to read than recursion but avoids a base-case overload.
 
-> **C++14/17 forward references:** C++17 **fold expressions** make this a one-liner — `((os << args), ...);` — and **`if constexpr`** lets the recursive form live in a single function by compiling the recursive call only when `sizeof...(rest) > 0`. Both are unavailable in C++11.
+> **C++14/17 forward references:** C++17 **fold expressions** make this a one-liner - `((os << args), ...);` - and **`if constexpr`** lets the recursive form live in a single function by compiling the recursive call only when `sizeof...(rest) > 0`. Both are unavailable in C++11.
 
 ---
 
@@ -119,7 +119,7 @@ struct factorial<0> : std::integral_constant<long long, 1> {};
 // factorial<7>::value == 5040
 ```
 
-**A `constexpr` function** (Chapter 11) is usually the cleanest tool, and — unlike a metafunction — it *also* works at runtime when its arguments are not compile-time constants:
+**A `constexpr` function** (Chapter 11) is usually the cleanest tool, and - unlike a metafunction - it *also* works at runtime when its arguments are not compile-time constants:
 
 ```cpp
 // Listing 14.5: constexpr replaces many metafunctions
@@ -175,18 +175,18 @@ static_assert(is_pointer<int* const>::value, "yes");
 // Listing 14.8: select a type at compile time
 template<typename T>
 struct ValueOrPointer {
-    // store T directly if small, else store a T* — sizeof stays <= a pointer
+    // store T directly if small, else store a T* - sizeof stays <= a pointer
     typename std::conditional<(sizeof(T) > sizeof(void*)), T*, T>::type vop;
 };
 ```
 
-Traits power generic decisions: e.g. choose `unordered_map` when a key is hashable, otherwise `map` (combining a detection trait — §14.7 — with `std::conditional`).
+Traits power generic decisions: e.g. choose `unordered_map` when a key is hashable, otherwise `map` (combining a detection trait - §14.7 - with `std::conditional`).
 
 ---
 
 ## 14.6 SFINAE
 
-**SFINAE** — *Substitution Failure Is Not An Error* — is the rule that makes constrained overloading work: if substituting template arguments produces an ill-formed type or expression **in the immediate context**, that candidate is silently *removed* from overload resolution rather than causing a hard error.
+**SFINAE** - *Substitution Failure Is Not An Error* - is the rule that makes constrained overloading work: if substituting template arguments produces an ill-formed type or expression **in the immediate context**, that candidate is silently *removed* from overload resolution rather than causing a hard error.
 
 ```cpp
 // Listing 14.9: SFINAE removes a non-viable candidate
@@ -217,7 +217,7 @@ Use `enable_if` when the *intent* of a constraint (`is_signed`, `is_sizeable`) r
 
 ## 14.7 The Detection Idiom (`void_t`)
 
-A recurring need is to ask "is this expression valid for type `T`?" — does `T` have a member, an operator, a nested type? The **detection idiom** answers it, built on **`void_t`**, a metafunction that maps any well-formed type list to `void`:
+A recurring need is to ask "is this expression valid for type `T`?" - does `T` have a member, an operator, a nested type? The **detection idiom** answers it, built on **`void_t`**, a metafunction that maps any well-formed type list to `void`:
 
 ```cpp
 // Listing 14.11: void_t (a C++11 one-liner; standardized as std::void_t in C++17)
@@ -277,14 +277,14 @@ The tag argument is an empty struct that the optimizer erases entirely; its sole
 
 ## 14.9 Type Aliases and Alias Templates (`using`)
 
-C++11's **`using`** declaration replaces `typedef` and, crucially, supports **templated aliases** — something `typedef` cannot express.
+C++11's **`using`** declaration replaces `typedef` and, crucially, supports **templated aliases** - something `typedef` cannot express.
 
 ```cpp
 // Listing 14.14: alias and alias template
 using Bytes = unsigned char;                 // like typedef, clearer left-to-right
 
 template<typename T>
-using Dictionary = std::map<std::string, T>; // alias TEMPLATE — impossible with typedef
+using Dictionary = std::map<std::string, T>; // alias TEMPLATE - impossible with typedef
 Dictionary<int> scores;                      // std::map<std::string, int>
 ```
 
@@ -294,7 +294,7 @@ Alias templates are the idiomatic way to provide trait shortcuts (the `_t`/`_v` 
 
 ## 14.10 `std::tuple`
 
-`std::tuple<Ts...>` generalizes `std::pair` to any number of heterogeneous elements — a variadic product type.
+`std::tuple<Ts...>` generalizes `std::pair` to any number of heterogeneous elements - a variadic product type.
 
 ```cpp
 // Listing 14.15: tuple basics
@@ -326,12 +326,12 @@ Tuples shine for returning multiple values, storing deferred call arguments (Cha
 
 ## 14.11 Professional Insights
 
-**Recursion depth is bounded.** Compilers cap template instantiation depth (g++ defaults to ~900; older builds 256). Deeply recursive metafunctions can blow this limit — raise it with `-ftemplate-depth=N`, or restructure to logarithmic depth (divide-and-conquer instantiation) for large packs.
+**Recursion depth is bounded.** Compilers cap template instantiation depth (g++ defaults to ~900; older builds 256). Deeply recursive metafunctions can blow this limit - raise it with `-ftemplate-depth=N`, or restructure to logarithmic depth (divide-and-conquer instantiation) for large packs.
 
 **Prefer `constexpr` over struct metafunctions when you can.** A `constexpr` function reads like ordinary code, debugs like ordinary code, and serves both compile-time and runtime callers from one definition. Reserve struct metafunctions for *type-level* computation that `constexpr` cannot express (transforming types, not values).
 
-**TMP is a build-time cost.** Every distinct instantiation is compiled. Heavy trait machinery and large variadic expansions inflate compile times and binary size — a real concern in large systems. Measure; cache common instantiations behind explicit `extern template` declarations (Chapter 17) where appropriate.
+**TMP is a build-time cost.** Every distinct instantiation is compiled. Heavy trait machinery and large variadic expansions inflate compile times and binary size - a real concern in large systems. Measure; cache common instantiations behind explicit `extern template` declarations (Chapter 17) where appropriate.
 
-**`if constexpr` is the future, but not a total replacement.** C++17's `if constexpr` cleans up *implementation* branching that used to require `enable_if`, but it does **not** replace SFINAE for *overload-set* and *open* extensibility (tag dispatch still wins where third parties must add overloads). In C++11 you have neither `if constexpr` nor fold expressions — recursion, the expander trick, `enable_if`, and tag dispatch are your tools.
+**`if constexpr` is the future, but not a total replacement.** C++17's `if constexpr` cleans up *implementation* branching that used to require `enable_if`, but it does **not** replace SFINAE for *overload-set* and *open* extensibility (tag dispatch still wins where third parties must add overloads). In C++11 you have neither `if constexpr` nor fold expressions - recursion, the expander trick, `enable_if`, and tag dispatch are your tools.
 
 **Name your constraints.** A trait named `is_sizeable<T>` or `is_signed<T>` documents intent far better than an inline `decltype(...)` leaking implementation into a signature. Readability of constraints is a maintainability multiplier in template-heavy code.

@@ -11,7 +11,7 @@ sources: []
 
 > *Making decisions, repeating actions, and bending the compiler to your will before it even runs.*
 
-Every program you have written so far has been a straight line—executing from top to bottom, never deviating. Real software does not work this way. A trading engine must react to market signals in microseconds. A game must loop sixty times per second, branching on player input. An operating system must route interrupts to the correct handler without a single wasted cycle. This chapter equips you with the complete control-flow toolkit of C++98/03 and the preprocessor machinery that operates *before* your code ever reaches the compiler.
+Every program you have written so far has been a straight line - executing from top to bottom, never deviating. Real software does not work this way. A trading engine must react to market signals in microseconds. A game must loop sixty times per second, branching on player input. An operating system must route interrupts to the correct handler without a single wasted cycle. This chapter equips you with the complete control-flow toolkit of C++98/03 and the preprocessor machinery that operates *before* your code ever reaches the compiler.
 
 ---
 
@@ -97,7 +97,7 @@ int new_high_score = (player_score > high_score) ? player_score : high_score;
 ```
 
 > [!CAUTION]
-> **⚠️ The Danger Zone: Nested Ternaries**
+> **The Danger Zone: Nested Ternaries**
 > Just because you *can* chain ternaries does not mean you *should*.
 > `std::string status = (age < 18) ? "Minor" : (age < 65) ? "Adult" : "Senior";`
 > This is difficult to read. Code is read ten times more often than it is written. Use `if/else` instead.
@@ -122,7 +122,7 @@ int main() {
 
 ## 3.3 `switch` and `case`
 
-When you have a single integer or character and want to check it against many possible exact values, a `switch` statement is cleaner—and often faster—than a massive chain of `else if` statements. The compiler can optimize a `switch` into a **jump table**, yielding O(1) dispatch.
+When you have a single integer or character and want to check it against many possible exact values, a `switch` statement is cleaner - and often faster - than a massive chain of `else if` statements. The compiler can optimize a `switch` into a **jump table**, yielding O(1) dispatch.
 
 ```cpp
 // Listing 3.5: Basic switch statement
@@ -154,7 +154,7 @@ int main() {
 
 Notice the `break;` statement at the end of every case. Without it, C++ will **fall through** and execute the code for the *next* case, even if the value does not match. This historical quirk inherited from C has caused billions of dollars in software bugs.
 
-Sometimes, you actually *want* cases to fall through—for example, stacking multiple cases together:
+Sometimes, you actually *want* cases to fall through - for example, stacking multiple cases together:
 
 ```cpp
 // Listing 3.6: Intentional fall-through in switch
@@ -200,7 +200,7 @@ switch (c) {
 
 ## 3.4 `while` and `do-while` Loops
 
-Use a `while` loop when you want to repeat an action but do not know exactly how many times—you only know it should stop when a condition becomes `false`.
+Use a `while` loop when you want to repeat an action but do not know exactly how many times - you only know it should stop when a condition becomes `false`.
 
 ```cpp
 // Listing 3.8: While loop
@@ -280,7 +280,7 @@ for (int i = 0; i < 5; i++) {
 ```
 
 > [!IMPORTANT]
-> **🧠 Brain Power: How a `for` Loop Actually Executes**
+> **Brain Power: How a `for` Loop Actually Executes**
 > 1. `int i = 0;` runs exactly once.
 > 2. `i < 5;` is checked. If true, proceed to step 3. If false, exit the loop.
 > 3. The body `std::cout...` runs.
@@ -475,7 +475,7 @@ cleanup:
 ```
 
 > [!TIP]
-> **🔥 Godhood Tip**: In modern C++, RAII (Resource Acquisition Is Initialization) and exceptions make `goto` entirely unnecessary. Smart pointers and scope-based resource managers eliminate the need for manual cleanup blocks. See Chapter 9 for details.
+> **Godhood Tip**: In modern C++, RAII (Resource Acquisition Is Initialization) and exceptions make `goto` entirely unnecessary. Smart pointers and scope-based resource managers eliminate the need for manual cleanup blocks. See Chapter 9 for details.
 
 ---
 
@@ -484,7 +484,7 @@ cleanup:
 You can nest loops inside loops and `if` statements inside `if` statements:
 
 ```cpp
-// Listing 3.24: Nested loops — diagonal pattern
+// Listing 3.24: Nested loops - diagonal pattern
 for (int y = 0; y < 10; y++) {
     for (int x = 0; x < 10; x++) {
         if (x == y) {
@@ -498,7 +498,7 @@ for (int y = 0; y < 10; y++) {
 ```
 
 > [!NOTE]
-> **📋 Professional Note: The Arrow Anti-Pattern**
+> **Professional Note: The Arrow Anti-Pattern**
 > Be wary of deeply nested control flow. If your code looks like a giant sideways arrow `>` because of many nested `if` and `for` blocks, your code is unreadable.
 >
 > The solutions:
@@ -622,7 +622,7 @@ Adding explicit parentheses does not change behavior but dramatically improves r
 
 Bitwise operators manipulate individual bits of integer types. They are essential for embedded systems, graphics programming, cryptography, and network protocol implementation.
 
-### 3.10.1 `|` — Bitwise OR
+### 3.10.1 `|` - Bitwise OR
 
 Each bit in the result is `1` if *either* corresponding bit is `1`:
 
@@ -642,7 +642,7 @@ int a = 5;   // 0101b
 a |= 12;     // a = 0101b | 1100b = 1101b = 13
 ```
 
-### 3.10.2 `^` — Bitwise XOR (Exclusive OR)
+### 3.10.2 `^` - Bitwise XOR (Exclusive OR)
 
 Each bit in the result is `1` if the corresponding bits are *different*:
 
@@ -653,7 +653,7 @@ int b = 9;      // 1001b
 int c = a ^ b;  // 1100b = 12
 ```
 
-**XOR Swap** — a classic trick that swaps two variables without a temporary:
+**XOR Swap** - a classic trick that swaps two variables without a temporary:
 
 ```cpp
 // Listing 3.31: XOR swap (demonstration only)
@@ -669,7 +669,7 @@ void doXORSwap(int& a, int& b) {
 > [!NOTE]
 > The XOR swap is a historical curiosity. On modern CPUs, it is *slower* than using a temporary variable due to pipeline stalls and data dependencies. Use `std::swap()` instead.
 
-### 3.10.3 `&` — Bitwise AND
+### 3.10.3 `&` - Bitwise AND
 
 Each bit in the result is `1` only if *both* corresponding bits are `1`:
 
@@ -680,7 +680,7 @@ int b = 10;     // 1010b
 int c = a & b;  // 0010b = 2
 ```
 
-### 3.10.4 `<<` — Left Shift
+### 3.10.4 `<<` - Left Shift
 
 Shifts all bits left by N positions, padding the least significant bits with zeros. Equivalent to multiplying by 2^N:
 
@@ -694,7 +694,7 @@ int c = a << 4;  // 00010000b = 16
 > [!WARNING]
 > Left-shifting a signed number so that the sign bit is affected is **Undefined Behavior**. Shifting by a negative amount or by more bits than the type can hold is also UB.
 
-### 3.10.5 `>>` — Right Shift
+### 3.10.5 `>>` - Right Shift
 
 Shifts all bits right by N positions. For unsigned types, zeros are shifted in. For signed negative numbers, the behavior is **implementation-defined**:
 
@@ -706,7 +706,7 @@ int c = a >> 2;  // 0010b = 2
 ```
 
 ```cpp
-// Listing 3.35: Right shift of negative numbers — implementation-defined
+// Listing 3.35: Right shift of negative numbers - implementation-defined
 int a = -2;
 int b = a >> 1;  // Result depends on the compiler!
 ```
@@ -717,7 +717,7 @@ int b = a >> 1;  // Result depends on the compiler!
 
 The **preprocessor** operates on your source code *before* the compiler sees it. It performs textual substitution, file inclusion, and conditional compilation. Every line beginning with `#` is a preprocessor directive.
 
-### 3.11.1 `#define` — Object-Like and Function-Like Macros
+### 3.11.1 `#define` - Object-Like and Function-Like Macros
 
 ```cpp
 // Listing 3.36: Basic preprocessor macros
@@ -813,7 +813,7 @@ Every header file must use include guards to prevent multiple inclusion:
 // Disable specific warnings (MSVC)
 #pragma warning(disable: 4996)
 
-// Pack structure — remove padding
+// Pack structure - remove padding
 #pragma pack(1)
 
 struct PackedData {
@@ -834,7 +834,7 @@ int main() {
 ```
 
 > [!TIP]
-> **🔥 Godhood Tip**: `#pragma pack` is critical when your struct must match an external binary protocol (network packets, hardware registers, file formats). But packed structs may cause performance penalties on architectures requiring aligned access.
+> **Godhood Tip**: `#pragma pack` is critical when your struct must match an external binary protocol (network packets, hardware registers, file formats). But packed structs may cause performance penalties on architectures requiring aligned access.
 
 ---
 
@@ -846,10 +846,10 @@ Macros and inline functions both aim to eliminate function-call overhead, but th
 // Listing 3.40: Macro vs. inline function
 #include <iostream>
 
-// Macro function — preprocessor substitution (no type safety)
+// Macro function - preprocessor substitution (no type safety)
 #define ADD_MACRO(a, b) ((a) + (b))
 
-// Inline function — type-safe, debuggable
+// Inline function - type-safe, debuggable
 inline int add_inline(int a, int b) {
     return a + b;
 }
@@ -863,7 +863,7 @@ int main() {
     std::cout << ADD_MACRO(x++, y++) << std::endl;  // Evaluates ((x++) + (y++))
     std::cout << "x = " << x << ", y = " << y << std::endl;  // x = 6, y = 4
 
-    // Inline function is safer — arguments evaluated exactly once
+    // Inline function is safer - arguments evaluated exactly once
     x = 5; y = 3;
     std::cout << add_inline(x++, y++) << std::endl;  // 8
     std::cout << "x = " << x << ", y = " << y << std::endl;  // x = 6, y = 4
@@ -912,7 +912,7 @@ for (int i = 0; i < 5; ++i) {
 }
 // i is no longer in scope
 
-// while loop with declaration (C++98 — pointer check)
+// while loop with declaration (C++98 - pointer check)
 while (Node* p = get_next_node()) {
     p->process();
 }
@@ -1033,7 +1033,7 @@ if (int status = connect_to_server(); status == 200) {
 } else {
     std::cout << "Failed with code: " << status << std::endl;
 }
-// 'status' is out of scope here — clean!
+// 'status' is out of scope here - clean!
 ```
 
 ### 3.17.3 `[[fallthrough]]` Attribute [C++17]

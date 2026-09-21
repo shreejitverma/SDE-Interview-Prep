@@ -7,7 +7,7 @@ last_reviewed:
 sources: []
 ---
 
-# 🧩 AI Engineer Question Bank
+# AI Engineer Question Bank
 
 ## ML Theory
 | # | Question | Difficulty | Status |

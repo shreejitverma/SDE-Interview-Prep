@@ -11,7 +11,7 @@ last_reviewed:
 sources: []
 ---
 
-# Source Summary — Wait-Free Synchronization
+# Source Summary - Wait-Free Synchronization
 **Author**: Maurice Herlihy (Professor of Computer Science, Brown University)  
 **Publication**: ACM Transactions on Programming Languages and Systems (TOPLAS, 1991)  
 **Category**: Concurrent Algorithms, Formal Theory, Lock-Free & Wait-Free Synchronization

@@ -10,8 +10,8 @@ sources: []
 # Chapter 11: Native Async/Await and New Operators (Python 3.5)
 
 Python 3.5 turned the coroutine pattern of Chapters 9–10 into first-class syntax. **PEP 492** gave
-`async def` and `await` — a coroutine that is a *distinct type* from a generator, not a clever use
-of one — along with `async for` and `async with`. Two more operators arrived the same release:
+`async def` and `await` - a coroutine that is a *distinct type* from a generator, not a clever use
+of one - along with `async for` and `async with`. Two more operators arrived the same release:
 **PEP 465's `@`** matrix-multiplication operator and **PEP 448's** generalized `*`/`**` unpacking.
 This chapter is the canonical home for the async/await *syntax and object model*; the event-loop
 internals it drives are Chapter 10 (model) and Vol IX (depth).
@@ -36,7 +36,7 @@ them: `async def` produces a **coroutine object of a distinct C type** (`PyCoroO
 *not* implement the iterator protocol, and `await` is a dedicated keyword.
 
 ```python
-# Caption: async def returns a coroutine — a distinct type that is not an iterator.
+# Caption: async def returns a coroutine - a distinct type that is not an iterator.
 import asyncio
 
 async def get_val():
@@ -58,7 +58,7 @@ run result: 42
 ```
 
 Calling an `async def` builds a `PyCoroObject` and runs *nothing* until it is driven by `await` or
-an event loop (`asyncio.run`). The coroutine has `__await__` but no `__next__` — you cannot iterate
+an event loop (`asyncio.run`). The coroutine has `__await__` but no `__next__` - you cannot iterate
 it, which is exactly the safety PEP 492 bought.
 
 **The `await` protocol.** `await expr` requires `expr` to be **awaitable**: a coroutine, or any
@@ -66,7 +66,7 @@ object whose type implements `__await__` (the C `am_await` slot in the `tp_as_as
 returns an iterator. You can build your own awaitable:
 
 ```python
-# Caption: a custom awaitable — __await__ yields control to the loop, then returns a value.
+# Caption: a custom awaitable - __await__ yields control to the loop, then returns a value.
 import asyncio
 
 class Delayed:
@@ -89,11 +89,11 @@ result: custom-result
 ```
 
 **What the interpreter actually does.** `await` compiles to `GET_AWAITABLE` followed by a
-`SEND`/`YIELD_VALUE` resume loop — the modern descendant of the `yield from` machinery from
+`SEND`/`YIELD_VALUE` resume loop - the modern descendant of the `yield from` machinery from
 Chapter 9, now driving an awaitable rather than a generator:
 
 ```python
-# Caption: modern await bytecode (3.13) — GET_AWAITABLE + SEND/YIELD_VALUE loop.
+# Caption: modern await bytecode (3.13) - GET_AWAITABLE + SEND/YIELD_VALUE loop.
 import dis
 async def main():
     val = await get_val()
@@ -134,7 +134,7 @@ case where *advancing an iterator* or *acquiring a resource* is itself I/O.
 
 - **`async for`** drives the **asynchronous iterator protocol**: `__aiter__` returns an async
   iterator; `__anext__` is a coroutine returning the next item or raising `StopAsyncIteration`.
-- **`async with`** drives `__aenter__`/`__aexit__`, both coroutines — so acquiring/releasing a
+- **`async with`** drives `__aenter__`/`__aexit__`, both coroutines - so acquiring/releasing a
   connection can `await`.
 - **Async comprehensions** (`[x async for x in ...]`) followed in 3.6 (PEP 530).
 
@@ -177,7 +177,7 @@ collected: [0, 1, 2]
 ```
 
 These are the building blocks for async database cursors, streaming HTTP bodies, and async
-connection pools — anywhere "get the next item" or "open the resource" must await I/O.
+connection pools - anywhere "get the next item" or "open the resource" must await I/O.
 
 ---
 
@@ -187,7 +187,7 @@ connection pools — anywhere "get the next item" or "open the resource" must aw
 multiplication: before 3.5, `A.dot(B).dot(C)` nested awkwardly and `*` was already taken by
 element-wise multiplication. **PEP 465** added `@` (and in-place `@=`), mapping to the dunder
 `__matmul__`/`__rmatmul__`/`__imatmul__` and the C slot `nb_matrix_multiply`. The operator carries
-*no* built-in meaning — like every operator, it dispatches to the operands' type:
+*no* built-in meaning - like every operator, it dispatches to the operands' type:
 
 ```python
 # Caption: @ dispatches to __matmul__; here, a vector dot product.
@@ -212,7 +212,7 @@ operator.matmul exists: True
 
 Dispatch follows the standard binary-operator rules: try `type(A).__matmul__(A, B)`; on
 `NotImplemented` try `type(B).__rmatmul__(B, A)`; a subclass's reflected method takes precedence.
-The payoff is readability where it matters most — `result = (A @ B @ C) + (D @ E)` instead of
+The payoff is readability where it matters most - `result = (A @ B @ C) + (D @ E)` instead of
 chained `.dot()` calls. NumPy implements `nb_matrix_multiply` on `ndarray` to call optimized
 BLAS/LAPACK routines that **release the GIL** during the heavy C computation (Vol IX), so `@` on
 large arrays is both readable *and* parallelizable.
@@ -246,8 +246,8 @@ f(*a, *b): (1, 2, 3, 4)
 ```
 
 **Modern bytecode.** The original 3.5 implementation used `BUILD_LIST_UNPACK`/`BUILD_MAP_UNPACK`
-(building temporary lists then merging). Python 3.9 replaced those with leaner incremental opcodes —
-`LIST_EXTEND`, `LIST_APPEND`, `DICT_UPDATE`, `DICT_MERGE` — that build the result in place:
+(building temporary lists then merging). Python 3.9 replaced those with leaner incremental opcodes - 
+`LIST_EXTEND`, `LIST_APPEND`, `DICT_UPDATE`, `DICT_MERGE` - that build the result in place:
 
 ```python
 # Caption: 3.9+ builds unpacked literals incrementally (no temporary-list merge).
@@ -271,7 +271,7 @@ Verified output (CPython 3.13.5):
 **Collision rules differ by context.** In a `dict` literal, a duplicate key is *silently
 overwritten* by the rightmost value (`{**d1, **d2}` lets `d2` win). In a function *call*,
 `f(**d1, **d2)` with overlapping keys raises `TypeError: got multiple values for keyword argument`
-— because keyword arguments must be unambiguous. Dict merging via `|`/`|=` (PEP 584) is Vol V.
+\- because keyword arguments must be unambiguous. Dict merging via `|`/`|=` (PEP 584) is Vol V.
 
 ---
 
@@ -280,13 +280,13 @@ overwritten* by the rightmost value (`{**d1, **d2}` lets `d2` win). In a functio
 - **The un-awaited coroutine.** Calling `async def` without `await`ing or scheduling it does
   nothing and emits `RuntimeWarning: coroutine ... was never awaited`. Always `await` it, pass it
   to `asyncio.create_task`/`gather`, or `close()` it.
-- **Blocking the loop** (restated from Chapter 10) — a synchronous call inside a coroutine stalls
+- **Blocking the loop** (restated from Chapter 10) - a synchronous call inside a coroutine stalls
   every task. `await` only non-blocking operations; offload blocking work.
-- **`@` has no inherent meaning** — it does whatever the operands' `__matmul__` defines. For plain
+- **`@` has no inherent meaning** - it does whatever the operands' `__matmul__` defines. For plain
   Python objects it raises `TypeError` unless you implement it; it shines with NumPy, not lists.
 - **Unpacking copies.** `[*a, *b]` builds a new list (O(total length)); `{**d1, **d2}` a new dict.
   Convenient, but do not use it inside hot loops where you could extend in place.
-- **`**` keyword collisions in calls raise**, unlike dict literals — don't assume "right wins"
+- **`**` keyword collisions in calls raise**, unlike dict literals - don't assume "right wins"
   semantics carry over to function calls.
 
 ---
@@ -299,7 +299,7 @@ overwritten* by the rightmost value (`{**d1, **d2}` lets `d2` win). In a functio
 - **`async for`/`async with`** drive `__aiter__`/`__anext__`/`StopAsyncIteration` and
   `__aenter__`/`__aexit__`; async comprehensions arrived in 3.6 (PEP 530).
 - **PEP 465** adds `@`/`@=` (`__matmul__`/`__imatmul__`); the operator is meaning-free and
-  dispatches to the type — the basis of NumPy's BLAS-backed matrix product.
+  dispatches to the type - the basis of NumPy's BLAS-backed matrix product.
 - **PEP 448** generalizes `*`/`**` unpacking in literals and calls; 3.9+ compiles it to
   `LIST_EXTEND`/`DICT_MERGE`. Dict literals let the right key win; call kwargs collisions raise.
 

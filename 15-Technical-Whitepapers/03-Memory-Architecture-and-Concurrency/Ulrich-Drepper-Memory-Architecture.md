@@ -10,7 +10,7 @@ last_reviewed:
 sources: []
 ---
 
-# Ulrich Drepper — What Every Programmer Should Know About Memory
+# Ulrich Drepper - What Every Programmer Should Know About Memory
 
 > **Author**: Ulrich Drepper (Former Lead Maintainer of the GNU C Library `glibc`, Red Hat Engineer)  
 > **Publication**: Red Hat Technical Whitepaper (114 Pages, 2007)  

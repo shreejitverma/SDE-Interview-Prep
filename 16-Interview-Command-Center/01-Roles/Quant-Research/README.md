@@ -13,11 +13,11 @@ sources: []
 
 **Notes**
 
-- [🔄 Quant Research Common Patterns](Common-Patterns.md)
-- [🧩 Quant Research Question Bank](Question-Bank.md)
-- [📚 Quant Research Resources](Resources.md)
-- [📊 Quant Research Skill Matrix](Skill-Matrix.md)
-- [📋 Quant Research Study Plan — 10-Week Sprint](Study-Plan.md)
-- [🧮 Quantitative Researcher — Preparation Hub](_Hub.md)
+- [Quant Research Common Patterns](Common-Patterns.md)
+- [Quant Research Question Bank](Question-Bank.md)
+- [Quant Research Resources](Resources.md)
+- [Quant Research Skill Matrix](Skill-Matrix.md)
+- [Quant Research Study Plan - 10-Week Sprint](Study-Plan.md)
+- [Quantitative Researcher - Preparation Hub](_Hub.md)
 
 <!-- moc:end -->

@@ -17,9 +17,9 @@ sources: []
 ---
 
 ## Why it matters
-In high-frequency trading and matching engine development, syscalls like `clock_gettime(CLOCK_MONOTONIC)` or `std::chrono::high_resolution_clock` are too slow for inner loops—they cost **15–30 ns (60–120 cycles)** and can trigger context switches or VDSO overhead. 
+In high-frequency trading and matching engine development, syscalls like `clock_gettime(CLOCK_MONOTONIC)` or `std::chrono::high_resolution_clock` are too slow for inner loops - they cost **15–30 ns (60–120 cycles)** and can trigger context switches or VDSO overhead. 
 
-The `RDTSC` instruction executes in user-space in **~15–25 cycles (~4–6 ns)** without kernel involvement. However, using `RDTSC` naively produces completely bogus data—including zero or negative latencies—because modern superscalar out-of-order execution engines reorder instructions around the TSC read.
+The `RDTSC` instruction executes in user-space in **~15–25 cycles (~4–6 ns)** without kernel involvement. However, using `RDTSC` naively produces completely bogus data - including zero or negative latencies - because modern superscalar out-of-order execution engines reorder instructions around the TSC read.
 
 ```mermaid
 flowchart TD

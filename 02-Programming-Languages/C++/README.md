@@ -13,11 +13,11 @@ sources: []
 
 C++ is the primary language for **High-Frequency Trading (HFT)**, **Kernel Development**, and **Low-Latency Systems Architecture**.
 
-## 📖 The "Zero to Godhood" Guide
+## The "Zero to Godhood" Guide
 
 The cornerstone of this repository is the **[Complete-CPP-Zero-to-Godhood.md](./CPP_Zero_to_Godhood/Complete-CPP-Zero-to-Godhood.md)**, a 520-page comprehensive manual organized by C++ versions and technical mastery.
 
-### 🏛️ Roadmap & Volume Structure
+### Roadmap & Volume Structure
 
 | Volume | Focus | C++ Version | Key Features |
 | :--- | :--- | :--- | :--- |
@@ -33,7 +33,7 @@ The cornerstone of this repository is the **[Complete-CPP-Zero-to-Godhood.md](./
 
 ---
 
-## 📌 Technical Deep Dives
+## Technical Deep Dives
 
 ### 1. High Performance Computing
 - **Memory Management**: Custom Pool Allocators, `std::pmr`, Alignment.
@@ -44,7 +44,7 @@ The cornerstone of this repository is the **[Complete-CPP-Zero-to-Godhood.md](./
 - **Compile-Time Programming**: Template Metaprogramming, `constexpr` engines.
 - **Safety**: Contracts, Erroneous Behavior, Vocabulary Types.
 
-## 📂 Key Files
+## Key Files
 - **[Complete-CPP-Zero-to-Godhood.md](./CPP_Zero_to_Godhood/Complete-CPP-Zero-to-Godhood.md)**: The full technical manuscript.
 - **[Complete-CPP-Zero-to-Godhood.pdf](./CPP_Zero_to_Godhood/Complete-CPP-Zero-to-Godhood.pdf)**: The compiled 520-page PDF edition.
 - **[LeetCode-Quant-Complete-CPP-Full.md](./LeetCode-Quant-Complete-CPP-Full.md)**: Coding patterns and algorithms.

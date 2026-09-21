@@ -49,9 +49,14 @@ INLINE_CODE_RE = re.compile(r"`[^`\n]*`")
 WIKILINK_RE = re.compile(r"!?\[\[([^\[\]\n]+?)\]\]")
 MDLINK_RE = re.compile(r"!?\[(?:[^\[\]\n]|\[[^\[\]\n]*\])*\]\(\s*(<[^>\n]+>|[^()\s]+(?:\([^()\s]*\)[^()\s]*)*)(?:\s+[\"'(][^\n]*?[\"')])?\s*\)")
 SCHEME_RE = re.compile(r"^[a-zA-Z][a-zA-Z0-9+.-]*:")
-EMOJI_RE = re.compile(
-    "[\U0001F000-\U0001FAFF\U00002600-\U000027BF\U00002B00-\U00002BFF\U0001F900-\U0001F9FF\uFE0F\u200D]"
+# Emoji characters. The typographic symbols U+2610-2612 (ballot boxes), U+2713/2714 (check marks)
+# and U+2717/2718 (crosses) are not emojis and are deliberately excluded. Arrows and other
+# symbols count only when followed by the emoji variation selector U+FE0F.
+EMOJI_CHAR = (
+    "(?:[\U0001F000-\U0001FAFF\u2600-\u260F\u2613-\u2712\u2715\u2716\u2719-\u27BF"
+    "\u2B50\u2B55\u2B1B\u2B1C]|[\u2190-\u21FF\u2300-\u23FF\u2B00-\u2BFF](?=\uFE0F))"
 )
+EMOJI_RE = re.compile(EMOJI_CHAR)
 EM_DASH = "\u2014"
 TABLE_ALIAS_RE = re.compile(r"\[\[[^\]\n]*[^\\\]]\|[^\]\n]*\]\]")  # [[a|b]] without the escaped \| a table needs
 

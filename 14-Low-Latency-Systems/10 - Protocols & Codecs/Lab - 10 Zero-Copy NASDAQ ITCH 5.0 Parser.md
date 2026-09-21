@@ -11,7 +11,7 @@ last_reviewed:
 sources: []
 ---
 
-# Lab 10 — Zero-Copy NASDAQ ITCH 5.0 & MoldUDP64 Parser
+# Lab 10 - Zero-Copy NASDAQ ITCH 5.0 & MoldUDP64 Parser
 
 > [!summary]
 > In this lab, you will build, compile, and benchmark an exchange-grade, zero-copy NASDAQ TotalView-ITCH 5.0 binary parser in C++20. You will decode bundled MoldUDP64 datagrams across all core ITCH message types (`'A'`, `'E'`, `'X'`, `'D'`, `'U'`) with hardware byte-swapping (`BSWAP`), verifying sustained decoding throughput exceeding **35,000,000 messages/second** with **sub-15ns per-message latency**.

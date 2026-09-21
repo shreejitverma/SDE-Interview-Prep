@@ -11,10 +11,10 @@ last_reviewed:
 sources: []
 ---
 
-# War Story — The 2012 Knight Capital \$440M Disaster: Dead Code Reuse & Rogue Execution
+# War Story - The 2012 Knight Capital \$440M Disaster: Dead Code Reuse & Rogue Execution
 
 > [!summary]
-> On August 1, 2012, between 09:30:00 and 10:15:00 EST, a catastrophic software deployment failure at Knight Capital Group (one of the largest US market makers) caused its trading servers to enter an uncontrolled runaway order generation loop. In 45 minutes, Knight executed over 4 million rogue trades across 154 stocks, accumulating a \$3.5 billion unwanted long position and losing \$440 million—bankrupting the firm and leading to its emergency acquisition by Getco.
+> On August 1, 2012, between 09:30:00 and 10:15:00 EST, a catastrophic software deployment failure at Knight Capital Group (one of the largest US market makers) caused its trading servers to enter an uncontrolled runaway order generation loop. In 45 minutes, Knight executed over 4 million rogue trades across 154 stocks, accumulating a \$3.5 billion unwanted long position and losing \$440 million - bankrupting the firm and leading to its emergency acquisition by Getco.
 
 ---
 

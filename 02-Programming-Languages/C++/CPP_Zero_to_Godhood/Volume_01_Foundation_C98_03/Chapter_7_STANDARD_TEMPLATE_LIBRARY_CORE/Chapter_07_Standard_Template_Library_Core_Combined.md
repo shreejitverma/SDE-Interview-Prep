@@ -9,9 +9,9 @@ sources: []
 
 # Chapter 07: Standard Template Library Core
 
-> *Generic containers, iterators, and algorithms — the vocabulary every C++ program uses every day.*
+> *Generic containers, iterators, and algorithms - the vocabulary every C++ program uses every day.*
 
-The **Standard Template Library (STL)** is the most important library in C++. It delivers production-quality implementations of the most common data structures (containers), traversal abstractions (iterators), and algorithms — all expressed as templates, so they work with any element type. This chapter covers the C++98/03 STL in full: the nine containers, the five iterator categories, the algorithm header, `std::string`, streams, and functors.
+The **Standard Template Library (STL)** is the most important library in C++. It delivers production-quality implementations of the most common data structures (containers), traversal abstractions (iterators), and algorithms - all expressed as templates, so they work with any element type. This chapter covers the C++98/03 STL in full: the nine containers, the five iterator categories, the algorithm header, `std::string`, streams, and functors.
 
 ---
 
@@ -19,15 +19,15 @@ The **Standard Template Library (STL)** is the most important library in C++. It
 
 - [7.1 STL Architecture](#71-stl-architecture)
 - [7.2 Container Characteristics at a Glance](#72-container-characteristics-at-a-glance)
-- [7.3 `std::vector` — The Dynamic Array](#73-stdvector--the-dynamic-array)
-- [7.4 `std::deque` — Double-Ended Queue](#74-stddeque--double-ended-queue)
-- [7.5 `std::list` — Doubly Linked List](#75-stdlist--doubly-linked-list)
-- [7.6 `std::map` — Sorted Key-Value Store](#76-stdmap--sorted-key-value-store)
-- [7.7 `std::set` — Sorted Unique Keys](#77-stdset--sorted-unique-keys)
+- [7.3 `std::vector` - The Dynamic Array](#73-stdvector--the-dynamic-array)
+- [7.4 `std::deque` - Double-Ended Queue](#74-stddeque--double-ended-queue)
+- [7.5 `std::list` - Doubly Linked List](#75-stdlist--doubly-linked-list)
+- [7.6 `std::map` - Sorted Key-Value Store](#76-stdmap--sorted-key-value-store)
+- [7.7 `std::set` - Sorted Unique Keys](#77-stdset--sorted-unique-keys)
 - [7.8 `std::multimap` and `std::multiset`](#78-stdmultimap-and-stdmultiset)
-- [7.9 `std::stack` — LIFO Adapter](#79-stdstack--lifo-adapter)
-- [7.10 `std::queue` — FIFO Adapter](#710-stdqueue--fifo-adapter)
-- [7.11 `std::priority_queue` — Heap Adapter](#711-stdpriority_queue--heap-adapter)
+- [7.9 `std::stack` - LIFO Adapter](#79-stdstack--lifo-adapter)
+- [7.10 `std::queue` - FIFO Adapter](#710-stdqueue--fifo-adapter)
+- [7.11 `std::priority_queue` - Heap Adapter](#711-stdpriority_queue--heap-adapter)
 - [7.12 Iterators](#712-iterators)
 - [7.13 Algorithms](#713-algorithms)
 - [7.14 `std::string`](#714-stdstring)
@@ -76,15 +76,15 @@ Adapters       Forward      Modifying
 | `set` | Associative | O(log n) | O(log n) | O(log n) | None | Red-Black Tree |
 | `multimap` | Associative | O(log n) | O(log n) | O(log n) | None | Red-Black Tree |
 | `multiset` | Associative | O(log n) | O(log n) | O(log n) | None | Red-Black Tree |
-| `stack` | Adapter (deque) | O(1) | O(1) | — | None | Underlying |
-| `queue` | Adapter (deque) | O(1) | O(1) | — | None | Underlying |
-| `priority_queue` | Adapter (vector) | O(log n) | O(log n) | — | None | Heap |
+| `stack` | Adapter (deque) | O(1) | O(1) | - | None | Underlying |
+| `queue` | Adapter (deque) | O(1) | O(1) | - | None | Underlying |
+| `priority_queue` | Adapter (vector) | O(log n) | O(log n) | - | None | Heap |
 
 †Given an iterator to the insertion/deletion point.
 
 ---
 
-## 7.3 `std::vector` — The Dynamic Array
+## 7.3 `std::vector` - The Dynamic Array
 
 **`std::vector`** is the default container. It stores elements contiguously in heap memory, growing automatically by allocating a new buffer when capacity is exceeded. Use it unless you have a specific reason to choose another container.
 
@@ -118,7 +118,7 @@ int main() {
     v.push_back(10);
     v.push_back(20);
 
-    v[0];          // No bounds check — undefined behaviour if out of range
+    v[0];          // No bounds check - undefined behaviour if out of range
     v.at(1);       // Throws std::out_of_range if out of range
     v.front();     // First element: 10
     v.back();      // Last element: 20
@@ -156,8 +156,8 @@ using namespace std;
 
 int main() {
     vector<int> v(10);
-    v.size();      // 10 — elements actually stored
-    v.capacity();  // >= 10 — allocated slots
+    v.size();      // 10 - elements actually stored
+    v.capacity();  // >= 10 - allocated slots
     v.empty();     // false
 
     v.reserve(100); // Allocate space for 100, no new elements
@@ -167,7 +167,7 @@ int main() {
 }
 ```
 
-**Always `reserve()` if you know the final size** — each reallocation copies every element to a new buffer and invalidates all iterators.
+**Always `reserve()` if you know the final size** - each reallocation copies every element to a new buffer and invalidates all iterators.
 
 ### 7.3.4 Iterating
 
@@ -185,7 +185,7 @@ int main() {
     for (size_t i = 0; i < v.size(); ++i)
         cout << v[i] << " ";
 
-    // Iterator loop — preferred
+    // Iterator loop - preferred
     for (vector<int>::iterator it = v.begin(); it != v.end(); ++it)
         cout << *it << " ";
 
@@ -199,7 +199,7 @@ int main() {
 
 ---
 
-## 7.4 `std::deque` — Double-Ended Queue
+## 7.4 `std::deque` - Double-Ended Queue
 
 **`std::deque`** (pronounced "deck") provides O(1) insertion and removal at **both** ends. Unlike `vector`, storage is in fixed-size blocks (not a single contiguous array), so there is no single reallocation. Random access is O(1) but slightly slower than `vector` due to the two-level indirection.
 
@@ -225,9 +225,9 @@ int main() {
 
 ---
 
-## 7.5 `std::list` — Doubly Linked List
+## 7.5 `std::list` - Doubly Linked List
 
-**`std::list`** provides O(1) insertion and removal at any position if you have an iterator to the target node. There is no random access. Its non-contiguous layout causes poor cache performance — avoid it in latency-critical code unless the iterator-stability guarantee is essential.
+**`std::list`** provides O(1) insertion and removal at any position if you have an iterator to the target node. There is no random access. Its non-contiguous layout causes poor cache performance - avoid it in latency-critical code unless the iterator-stability guarantee is essential.
 
 ```cpp
 // Listing 7.7: list operations
@@ -254,7 +254,7 @@ int main() {
 
 ---
 
-## 7.6 `std::map` — Sorted Key-Value Store
+## 7.6 `std::map` - Sorted Key-Value Store
 
 **`std::map`** is an associative container storing unique key-value pairs sorted by key. Internally implemented as a Red-Black Tree, giving O(log n) for insert, erase, and find.
 
@@ -282,7 +282,7 @@ int main() {
     if (it != ages.end())
         cout << "Bob is " << it->second << " years old.\n";
 
-    // Iteration — sorted by key (Alice, Bob, Charlie)
+    // Iteration - sorted by key (Alice, Bob, Charlie)
     for (it = ages.begin(); it != ages.end(); ++it)
         cout << it->first << ": " << it->second << "\n";
 
@@ -309,7 +309,7 @@ std::map<std::string, int, CaseInsensitive> ci_map;
 
 ---
 
-## 7.7 `std::set` — Sorted Unique Keys
+## 7.7 `std::set` - Sorted Unique Keys
 
 **`std::set`** stores unique elements in sorted order. Like `map`, backed by a Red-Black Tree.
 
@@ -323,7 +323,7 @@ int main() {
     set<int> s;
     s.insert(10);
     s.insert(5);
-    s.insert(10); // Duplicate — ignored. {5, 10}
+    s.insert(10); // Duplicate - ignored. {5, 10}
 
     if (s.find(5) != s.end())
         cout << "5 is present.\n";
@@ -361,7 +361,7 @@ int main() {
 
 ---
 
-## 7.9 `std::stack` — LIFO Adapter
+## 7.9 `std::stack` - LIFO Adapter
 
 **`std::stack`** wraps an underlying container (default `deque`) and exposes a Last-In-First-Out interface. Template signature: `stack<T, Container = deque<T>>`.
 
@@ -385,7 +385,7 @@ int main() {
 
 ---
 
-## 7.10 `std::queue` — FIFO Adapter
+## 7.10 `std::queue` - FIFO Adapter
 
 **`std::queue`** wraps `deque` and exposes First-In-First-Out semantics.
 
@@ -409,12 +409,12 @@ int main() {
 
 ---
 
-## 7.11 `std::priority_queue` — Heap Adapter
+## 7.11 `std::priority_queue` - Heap Adapter
 
 **`std::priority_queue`** wraps a `vector` and maintains a max-heap. The element with the highest value is always accessible via `top()`. Provide `greater<T>` as the comparator for a min-heap.
 
 ```cpp
-// Listing 7.14: priority_queue — max and min heap
+// Listing 7.14: priority_queue - max and min heap
 #include <queue>
 #include <vector>
 #include <functional>
@@ -449,7 +449,7 @@ An **iterator** is an object that refers to an element in a container and suppor
 | **Bidirectional** | `list`, `map`, `set` | Forward + `--it` |
 | **Random Access** | `vector`, `deque`, arrays | Bidirectional + `it+n`, `it-it2`, `it[n]` |
 
-Every algorithm specifies the minimum iterator category it requires — you can always substitute a stronger category.
+Every algorithm specifies the minimum iterator category it requires - you can always substitute a stronger category.
 
 ```cpp
 // Listing 7.15: Iterator operations and helpers
@@ -478,7 +478,7 @@ int main() {
 
 ## 7.13 Algorithms
 
-Algorithms live in `<algorithm>` and `<numeric>`. They operate on **half-open ranges** `[first, last)` — `last` points past the final element and must never be dereferenced.
+Algorithms live in `<algorithm>` and `<numeric>`. They operate on **half-open ranges** `[first, last)` - `last` points past the final element and must never be dereferenced.
 
 ### 7.13.1 Non-Modifying Algorithms
 
@@ -493,12 +493,12 @@ int main() {
     int arr[] = {5, 2, 9, 1, 5, 6};
     vector<int> v(arr, arr + 6);
 
-    // find — returns iterator to first match, or end()
+    // find - returns iterator to first match, or end()
     vector<int>::iterator it = find(v.begin(), v.end(), 9);
     if (it != v.end())
         cout << "Found 9 at index " << (it - v.begin()) << "\n";
 
-    // count — how many times does 5 appear?
+    // count - how many times does 5 appear?
     cout << count(v.begin(), v.end(), 5) << "\n"; // 2
 
     return 0;
@@ -642,7 +642,7 @@ int main() {
 }
 ```
 
-**`string::npos`** is the "not found" sentinel (`static const size_type npos = -1` — the maximum value of `size_t`).
+**`string::npos`** is the "not found" sentinel (`static const size_type npos = -1` - the maximum value of `size_t`).
 
 ---
 
@@ -678,7 +678,7 @@ int main() {
 
 ### 7.15.2 String Streams (`<sstream>`)
 
-`std::stringstream` acts as an in-memory stream — use it for number-to-string and string-to-number conversions in C++98/03 (where `std::to_string` is not yet available):
+`std::stringstream` acts as an in-memory stream - use it for number-to-string and string-to-number conversions in C++98/03 (where `std::to_string` is not yet available):
 
 ```cpp
 // Listing 7.23: stringstream for type conversion
@@ -880,13 +880,13 @@ Misusing invalidated iterators is undefined behaviour:
 | `list` | Any insert | None; erase only invalidates the erased node |
 | `map` / `set` | `insert` | None; `erase` only invalidates the erased node |
 
-### 7.18.3 `vector<bool>` — The Exception
+### 7.18.3 `vector<bool>` - The Exception
 
 `std::vector<bool>` is **not** a regular `vector`. It packs bits one per bit, so `operator[]` returns a **proxy object**, not a `bool&`. This breaks code that takes the address of an element or uses generic template code. Prefer `vector<char>` or `bitset<N>` when you need bit storage without the proxy surprises.
 
 ### 7.18.4 Prefer `++it` Over `it++`
 
-`++it` (prefix increment) advances in place. `it++` (postfix) creates a temporary copy, advances, and returns the old value. For iterators to tree nodes or list links, this temporary copy is non-trivial. Write `++it` everywhere in loops — the compiler can optimise it away for random-access iterators, and it is always correct.
+`++it` (prefix increment) advances in place. `it++` (postfix) creates a temporary copy, advances, and returns the old value. For iterators to tree nodes or list links, this temporary copy is non-trivial. Write `++it` everywhere in loops - the compiler can optimise it away for random-access iterators, and it is always correct.
 
 ### 7.18.5 `std::sort` and Strict Weak Ordering
 

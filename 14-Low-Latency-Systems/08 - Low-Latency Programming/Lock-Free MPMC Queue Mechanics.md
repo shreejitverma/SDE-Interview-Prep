@@ -21,7 +21,7 @@ In low-latency systems, choosing the correct concurrency primitive determines th
 - **SPSC Ring Buffers**: Wait-free ($O(1)$ in finite cycles), zero CAS contention, ~10 ns latency.
 - **MPMC Queues**: Lock-free (optimistic CAS retries), heavy RFO cache line bouncing, ~50–150 ns latency.
 
-While SPSC is the mandatory standard for the ultra-fast internal tick-to-trade critical path, MPMC queues are required in outer layers—such as multi-threaded network gateways distributing client TCP connections to worker threads or multi-venue order routing pools.
+While SPSC is the mandatory standard for the ultra-fast internal tick-to-trade critical path, MPMC queues are required in outer layers - such as multi-threaded network gateways distributing client TCP connections to worker threads or multi-venue order routing pools.
 
 ```mermaid
 flowchart TD

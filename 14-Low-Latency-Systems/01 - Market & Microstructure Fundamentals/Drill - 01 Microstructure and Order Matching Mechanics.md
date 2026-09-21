@@ -11,7 +11,7 @@ last_reviewed:
 sources: []
 ---
 
-# Drill 01 — Microstructure & Order Matching Mechanics
+# Drill 01 - Microstructure & Order Matching Mechanics
 
 > [!summary]
 > Rapid-fire technical drill calibrating your operational intuition across order state machine races, fee-adjusted routing economics, auction uncrossing rules, and Level-2 queue depletion mechanics. Attempt each problem before unfolding the solution.

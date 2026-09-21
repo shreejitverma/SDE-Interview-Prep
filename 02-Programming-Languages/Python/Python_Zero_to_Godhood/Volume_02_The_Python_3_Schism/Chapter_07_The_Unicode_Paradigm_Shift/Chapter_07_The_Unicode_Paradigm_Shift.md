@@ -11,12 +11,12 @@ sources: []
 
 Python 3.0 was a deliberate, compatibility-breaking reset, and its defining change was the
 **hard separation of text from bytes**. In Python 2, one type (`str`) was both a byte string
-and an ASCII text string, and the interpreter silently decoded between them — a design that
+and an ASCII text string, and the interpreter silently decoded between them - a design that
 worked until a non-ASCII byte appeared, then failed at a distance, in production, on someone
 else's data. Python 3 made `str` a sequence of **Unicode code points** and `bytes` a sequence
 of **octets**, with **no implicit conversion** between them. This chapter covers that split and
 the cluster of 3.0 changes that followed from taking correctness seriously: the `print`
-function, true division, lazy iterators and views, and — reaching to 3.3 — the **PEP 393**
+function, true division, lazy iterators and views, and - reaching to 3.3 - the **PEP 393**
 flexible string representation that made correct Unicode also memory-efficient.
 
 ## Section Index
@@ -41,7 +41,7 @@ cause. Python 3 removes the ambiguity: **`str` is text (code points), `bytes` is
 `TypeError`:
 
 ```python
-# Caption: Python 3 bans implicit text/bytes coercion — a local error, not a distant one.
+# Caption: Python 3 bans implicit text/bytes coercion - a local error, not a distant one.
 try:
     b"data" + "string"
 except TypeError as e:
@@ -54,15 +54,15 @@ Verified output (CPython 3.13.5):
 TypeError: can't concat str to bytes
 ```
 
-(Note the message reads "can't concat str to bytes" — the `str` operand cannot be concatenated
+(Note the message reads "can't concat str to bytes" - the `str` operand cannot be concatenated
 to the `bytes` left operand.) The domains are disjoint all the way down to the C API:
 `PyBytes_Concat` rejects `str`, and text/bytes comparisons never silently coerce.
 
 **The senior-engineer contrast.** A C `char*` is bytes; "text" is a convention layered on top. A
 Java `String` is text, but internally UTF-16, so a "character" (`char`) is a 16-bit code *unit*,
-and code points above U+FFFF span two of them — `"😀".length() == 2` in Java. Python 3's `str`
-is a sequence of **code points**: `len("😀") == 1`, indexing returns whole code points, and the
-*encoding is not part of the object* — it exists only when you `encode()` to `bytes`. You decode
+and code points above U+FFFF span two of them - `"".length() == 2` in Java. Python 3's `str`
+is a sequence of **code points**: `len("") == 1`, indexing returns whole code points, and the
+*encoding is not part of the object* - it exists only when you `encode()` to `bytes`. You decode
 bytes into text at the boundary (input), work in `str`, and encode back to bytes at the boundary
 (output). This "Unicode sandwich" is the discipline the whole language is built to enforce.
 
@@ -75,7 +75,7 @@ support the **buffer protocol** (Vol IX), letting C code and `memoryview` access
 without copying.
 
 ```c
-/* Illustrative; Include/bytesobject.h — immutable, storage inline with the object. */
+/* Illustrative; Include/bytesobject.h - immutable, storage inline with the object. */
 typedef struct {
     PyObject_VAR_HEAD
     Py_hash_t ob_shash;     /* cached hash; -1 if uncomputed (bytes are hashable) */
@@ -84,7 +84,7 @@ typedef struct {
 ```
 
 ```c
-/* Illustrative; Include/bytearrayobject.h — mutable, storage via a separate buffer. */
+/* Illustrative; Include/bytearrayobject.h - mutable, storage via a separate buffer. */
 typedef struct {
     PyObject_VAR_HEAD
     Py_ssize_t ob_alloc;    /* capacity of the buffer */
@@ -95,7 +95,7 @@ typedef struct {
 ```
 
 Two design details earn their keep. The split between `ob_bytes` and `ob_start` makes a
-left-end deletion (`del ba[0]`) *O(1)* — just advance `ob_start` rather than shift the whole
+left-end deletion (`del ba[0]`) *O(1)* - just advance `ob_start` rather than shift the whole
 buffer. And `ob_exports` is a safety interlock: while a `memoryview` is live (`ob_exports > 0`),
 any operation that would reallocate the buffer raises `BufferError`, so a view can never end up
 pointing at freed memory. `bytearray` grows with the same amortized-*O*(1) overallocation policy
@@ -112,7 +112,7 @@ surrogate pairs, breaking `len()` and indexing; wide builds made `"hello"` cost 
 payload. Neither was acceptable.
 
 **PEP 393 (Python 3.3): flexible string representation.** CPython now picks the **narrowest
-storage that fits the string's largest code point**, per string, at creation time — three
+storage that fits the string's largest code point**, per string, at creation time - three
 "kinds": 1 byte (Latin-1 range, including a pure-ASCII fast path), 2 bytes (BMP), or 4 bytes
 (full Unicode). The result is correct indexing for all code points *and* compact memory, with no
 build-time tradeoff. You can watch the kind change with the data:
@@ -123,7 +123,7 @@ import sys
 for label, s in [("ASCII  'hello'", "hello"),
                  ("Latin-1 'hñ'", "hñ"),                # max U+00F1 -> 1 byte/char
                  ("BMP/UCS-2 'h你'", "h你"),            # max U+4F60 -> 2 bytes/char
-                 ("Astral/UCS-4 'h😀'", "h😀")]:        # max U+1F600 -> 4 bytes/char
+                 ("Astral/UCS-4 'h'", "h")]:        # max U+1F600 -> 4 bytes/char
     print(f"  {label:20s} len={len(s)} getsizeof={sys.getsizeof(s)}")
 print("  empty str:", sys.getsizeof(""))
 ```
@@ -134,7 +134,7 @@ Verified output (CPython 3.13.5):
   ASCII  'hello'        len=5 getsizeof=46
   Latin-1 'hñ'          len=2 getsizeof=59
   BMP/UCS-2 'h你'        len=2 getsizeof=62
-  Astral/UCS-4 'h😀'     len=2 getsizeof=68
+  Astral/UCS-4 'h'     len=2 getsizeof=68
   empty str: 41
 ```
 
@@ -143,14 +143,14 @@ non-ASCII code point promotes the *whole string* to a wider kind with a larger h
 Latin-1/BMP/astral headers carry extra fields). The crucial guarantees: **`len()` and indexing
 are always *O*(1) and always in code points** (no surrogate-pair surprises), and ASCII/Latin-1
 text stays as cheap as a byte string. One emoji in a megabyte of ASCII, though, promotes the
-entire string to 4 bytes/char — a real memory consideration for large text buffers.
+entire string to 4 bytes/char - a real memory consideration for large text buffers.
 
 ---
 
 ## 7.4 Encoding, decoding, and error handlers (incl. `surrogateescape`)
 
 `str.encode(encoding)` turns code points into `bytes`; `bytes.decode(encoding)` turns octets
-back into a `str`. Both take an **error handler** governing malformed data: `strict` (default —
+back into a `str`. Both take an **error handler** governing malformed data: `strict` (default - 
 raise), `ignore` (drop), `replace` (insert U+FFFD or `?`), `backslashreplace` (escape), and
 `surrogateescape`.
 
@@ -185,13 +185,13 @@ until then, be explicit. See Vol II, Ch 8 and Vol XIV.)
 
 ## 7.5 `print()` as a function (PEP 3105)
 
-Python 2's `print` was a statement compiled to dedicated `PRINT_ITEM`/`PRINT_NEWLINE` opcodes —
+Python 2's `print` was a statement compiled to dedicated `PRINT_ITEM`/`PRINT_NEWLINE` opcodes - 
 its behavior fixed at compile time. Python 3 made it an ordinary builtin function, resolved by
 normal name lookup and therefore overridable, composable, and keyword-configurable
 (`sep`, `end`, `file`, `flush`):
 
 ```python
-# Caption: print is a function call — note the modern CALL opcode, not a print statement.
+# Caption: print is a function call - note the modern CALL opcode, not a print statement.
 import dis
 dis.dis(compile('print("x")', "<s>", "exec"))
 ```
@@ -216,8 +216,8 @@ can be passed around, and can be replaced (`builtins.print = ...`) for logging s
 
 ## 7.6 Division unification (PEP 238) and the floor-vs-truncate contrast
 
-In Python 2, `/` was floor division for two integers but true division if either was a float —
-`5/2 == 2` but `5.0/2 == 2.5` — a silent precision trap. Python 3 split the operators cleanly:
+In Python 2, `/` was floor division for two integers but true division if either was a float - 
+`5/2 == 2` but `5.0/2 == 2.5` - a silent precision trap. Python 3 split the operators cleanly:
 **`/` is always true division** (returns `float`), **`//` is floor division**.
 
 ```python
@@ -235,7 +235,7 @@ Verified output (CPython 3.13.5):
 -7//2 = -4
 ```
 
-**The senior-engineer contrast — and a real portability hazard.** C, C++, Java, and Go integer
+**The senior-engineer contrast - and a real portability hazard.** C, C++, Java, and Go integer
 division **truncates toward zero**: `-7 / 2 == -3`. Python's `//` **floors toward negative
 infinity**: `-7 // 2 == -4`. Likewise `%` follows the divisor's sign in Python (`-7 % 2 == 1`)
 but the dividend's sign in C (`-7 % 2 == -1`). Porting modular-arithmetic code between Python and
@@ -250,7 +250,7 @@ Python 3 made the sequence-producing builtins **lazy**: `range`, `zip`, `map`, a
 return iterators/iterable views instead of materializing lists, and `dict.keys/values/items`
 return **live views** onto the dict.
 
-**`range` is O(1) memory and O(1) random access** — it stores only `start`/`stop`/`step` and
+**`range` is O(1) memory and O(1) random access** - it stores only `start`/`stop`/`step` and
 computes `start + i*step` on demand, with arithmetic membership testing:
 
 ```python
@@ -271,7 +271,7 @@ getsizeof(list(range(1000))): 8056
 ```
 
 A `range` over ten million values costs 48 bytes; the equivalent list of just one thousand ints
-already costs 8 KB (plus the int objects). **Dictionary views are live** — they reflect mutations
+already costs 8 KB (plus the int objects). **Dictionary views are live** - they reflect mutations
 to the underlying dict rather than snapshotting:
 
 ```python
@@ -317,19 +317,19 @@ buffer protocol and `memoryview` mechanics are developed in Vol IX.
 ## 7.8 Performance, anti-patterns, and summary
 
 **Anti-patterns.**
-- **Omitting `encoding=`** on `open`/`encode`/`decode` — the top source of cross-platform
+- **Omitting `encoding=`** on `open`/`encode`/`decode` - the top source of cross-platform
   `UnicodeDecodeError`. Always be explicit; use `surrogateescape` for filesystem paths.
-- **Confusing `str` and `bytes`** at API boundaries — sockets, files in binary mode, and
+- **Confusing `str` and `bytes`** at API boundaries - sockets, files in binary mode, and
   hashing all speak `bytes`; decode/encode at the edge, not in the middle.
-- **`str` concatenation in a loop** — each `+=` builds a new immutable string (*O*(n²) overall).
+- **`str` concatenation in a loop** - each `+=` builds a new immutable string (*O*(n²) overall).
   Accumulate in a `list` and `"".join(parts)` once.
-- **Materializing lazy iterators needlessly** — `list(range(n))`, `list(d.keys())` to "use it
+- **Materializing lazy iterators needlessly** - `list(range(n))`, `list(d.keys())` to "use it
   twice." Iterate directly; reach for a list only when you need indexing or multiple passes.
-- **Assuming C division semantics** — `//` floors toward −∞ and `%` follows the divisor's sign.
+- **Assuming C division semantics** - `//` floors toward −∞ and `%` follows the divisor's sign.
 
 **Summary.**
 - `str` is **code points**, `bytes`/`bytearray` are **octets**; there is **no implicit
-  conversion** (PEP 3112). Decode at input, work in `str`, encode at output — the Unicode
+  conversion** (PEP 3112). Decode at input, work in `str`, encode at output - the Unicode
   sandwich.
 - **PEP 393** stores each string in the narrowest of three widths from its largest code point,
   giving correct *O*(1) indexing *and* compact memory.

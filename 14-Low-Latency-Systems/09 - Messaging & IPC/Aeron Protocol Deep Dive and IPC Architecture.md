@@ -18,7 +18,7 @@ sources: []
 
 ## Why it matters
 In distributed trading architectures and multi-process exchange infrastructures:
-- Traditional message brokers (RabbitMQ, Kafka, ZeroMQ) rely on operating system socket buffers, dynamic heap allocations, and heavy thread context switching—adding **50 to 500 microseconds of latency jitter**.
+- Traditional message brokers (RabbitMQ, Kafka, ZeroMQ) rely on operating system socket buffers, dynamic heap allocations, and heavy thread context switching - adding **50 to 500 microseconds of latency jitter**.
 - Custom in-house shared memory rings often suffer from lack of standardized backpressure handling, flow control, and loss recovery.
 
 **Aeron** solves this by providing:

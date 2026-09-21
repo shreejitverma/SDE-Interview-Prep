@@ -94,7 +94,7 @@ auto sum(Ts... args) {
 int total = sum(1, 2, 3, 4, 5); // 15
 ```
 
-## 21.4 `sizeof...` — Counting Elements
+## 21.4 `sizeof...` - Counting Elements
 
 You can ask the compiler exactly how many items are inside a pack using the `sizeof...` operator.
 

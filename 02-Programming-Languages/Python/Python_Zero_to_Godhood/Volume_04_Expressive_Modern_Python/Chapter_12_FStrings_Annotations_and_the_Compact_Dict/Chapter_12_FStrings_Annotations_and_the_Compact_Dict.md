@@ -13,7 +13,7 @@ Python 3.6 is the release that made modern Python *feel* modern. Three changes d
 **f-strings** (PEP 498) replaced `%` and `.format()` with compile-time interpolation; **variable
 annotations** (PEP 526) extended type hints from function signatures to any binding, building the
 runway for the whole typing ecosystem; and the **compact dict** turned the core mapping type
-ordered and 30–40% smaller — an "implementation detail" in 3.6 that became a language guarantee in
+ordered and 30–40% smaller - an "implementation detail" in 3.6 that became a language guarantee in
 3.7 and reshaped how Python code is written. We teach each with the *current* mechanics, including
 the **PEP 701** f-string overhaul (3.12) that the original 3.6 descriptions predate.
 
@@ -32,11 +32,11 @@ the **PEP 701** f-string overhaul (3.12) that the original 3.6 descriptions pred
 printf routines and builds a temporary tuple; `"...".format(x)` does an attribute lookup for
 `.format`, a function call (new frame, `*args`/`**kwargs`), *and* re-parses the format string on
 every call. **f-strings** move interpolation to **compile time**: the parser splits the literal
-into constant chunks and embedded expression AST sub-trees, and the compiler emits inline opcodes —
+into constant chunks and embedded expression AST sub-trees, and the compiler emits inline opcodes - 
 no method lookup, no call frame, no runtime format parsing.
 
 ```python
-# Caption: an f-string compiles to inline formatting opcodes — no .format() call.
+# Caption: an f-string compiles to inline formatting opcodes - no .format() call.
 import dis
 def fstring_format(name, age):
     return f"Name: {name!r:>10}, Age: {age}"
@@ -102,17 +102,17 @@ formatting should be deferred (logging, §12.4).
 ## 12.2 Variable annotations (PEP 526)
 
 **Why this exists.** PEP 3107 (Python 3.0) allowed annotations on *function parameters and return
-values*; **PEP 526** extended the syntax to *any* binding — module, class, and local variables —
+values*; **PEP 526** extended the syntax to *any* binding - module, class, and local variables - 
 giving static type checkers a place to read types and the typing ecosystem (mypy, pyright,
 dataclasses, pydantic) its foundation.
 
-**The static boundary — annotations are metadata, not checks.** The interpreter never type-checks
+**The static boundary - annotations are metadata, not checks.** The interpreter never type-checks
 an annotation. Where it *stores* them depends on scope:
 
 - **Module/class level**: the compiler emits `SETUP_ANNOTATIONS` and records each annotation in an
-  `__annotations__` dict — they are introspectable at runtime.
-- **Function-local level**: annotations are **discarded entirely** — no `__annotations__`, no
-  storage, zero runtime cost — because locals are executed on hot paths.
+  `__annotations__` dict - they are introspectable at runtime.
+- **Function-local level**: annotations are **discarded entirely** - no `__annotations__`, no
+  storage, zero runtime cost - because locals are executed on hot paths.
 
 ```python
 # Caption: class annotations are stored; function-local annotations are stripped.
@@ -140,7 +140,7 @@ Profile.__annotations__: {'name': <class 'str'>, 'age': <class 'int'>}
       RETURN_VALUE
 ```
 
-The class keeps `{'name': str, 'age': int}`; the function body is just `LOAD_CONST`/`STORE_FAST` —
+The class keeps `{'name': str, 'age': int}`; the function body is just `LOAD_CONST`/`STORE_FAST` - 
 the `: int` left no trace.
 
 **Forward references.** Because class/module annotations are *evaluated* at definition time, naming
@@ -155,7 +155,7 @@ except NameError as e:
     print("NameError:", e)
 
 class NodeOK:
-    parent: "NodeOK"              # string forward reference — stored unevaluated
+    parent: "NodeOK"              # string forward reference - stored unevaluated
 print("string forward ref:", NodeOK.__annotations__)
 ```
 
@@ -169,7 +169,7 @@ string forward ref: {'parent': 'NodeOK'}
 Frameworks resolve string annotations later with `typing.get_type_hints()` / `inspect.get_type_hints()`,
 which evaluate them in the right namespace. Two evolutions follow this chapter: **PEP 563**
 (`from __future__ import annotations`, stringizing *all* annotations) and **PEP 649** (lazy,
-on-demand annotation evaluation, becoming the default in 3.14) — both covered in Vol V. The type
+on-demand annotation evaluation, becoming the default in 3.14) - both covered in Vol V. The type
 *system* (variance, protocols, narrowing, mypy/pyright) is Vol XV.
 
 ---
@@ -178,15 +178,15 @@ on-demand annotation evaluation, becoming the default in 3.14) — both covered 
 
 **Why this exists.** `dict` is the most-used container in Python and the backbone of every
 namespace, object `__dict__`, and keyword-args bundle, so its memory layout matters enormously.
-Before 3.6, a dict was *one* sparse hash table of 24-byte `PyDictKeyEntry` slots kept ≤2/3 full —
+Before 3.6, a dict was *one* sparse hash table of 24-byte `PyDictKeyEntry` slots kept ≤2/3 full - 
 so a dict held large numbers of empty 24-byte slots, wasting memory and scattering entries across
 cache lines.
 
 **The compact design (Raymond Hettinger).** 3.6 split the table in two:
 
-- **`dk_indices`** — a small, sparse array of *integer indices* (1/2/4/8 bytes each depending on
+- **`dk_indices`** - a small, sparse array of *integer indices* (1/2/4/8 bytes each depending on
   size), the actual hash table.
-- **`dk_entries`** — a *dense*, contiguous array of `(hash, key, value)` entries, appended in
+- **`dk_entries`** - a *dense*, contiguous array of `(hash, key, value)` entries, appended in
   insertion order.
 
 A lookup hashes into `dk_indices`, reads the small integer there, and indexes into the dense
@@ -208,7 +208,7 @@ Verified output (CPython 3.13.5):
 insertion order: ['z', 'a', 'm', 'b']
 ```
 
-**Insertion order was an implementation detail in 3.6 and a *language guarantee* in 3.7** — code
+**Insertion order was an implementation detail in 3.6 and a *language guarantee* in 3.7** - code
 may now rely on it. Iteration is also faster: traversing the dense array touches contiguous memory
 with no empty-slot skipping (cache-friendly). The senior-engineer contrast: this is what Java
 provides only via a *separate* `LinkedHashMap`; in Python the *default* `dict` is ordered, and the
@@ -218,16 +218,16 @@ ordering costs nothing extra because it falls out of the compact layout.
 
 ## 12.4 Performance and anti-patterns
 
-- **f-strings are the fastest interpolation** — but they format **eagerly**. In logging, write
+- **f-strings are the fastest interpolation** - but they format **eagerly**. In logging, write
   `logging.info("x=%s", x)` (the `%`-args are formatted only if the level is enabled), *not*
   `logging.info(f"x={x}")` (formats unconditionally, even when the log is suppressed).
 - **Never f-string untrusted format specs or user data into SQL/HTML/shell.** f-strings are string
-  interpolation, not escaping — use parameterized queries / proper escaping.
+  interpolation, not escaping - use parameterized queries / proper escaping.
 - **Annotations are not runtime validation.** `x: int = "nope"` runs fine. If you need runtime
   enforcement, use pydantic/`dataclasses` validators or a runtime checker (Vol XV).
 - **Function-local annotations cost nothing; class/module ones cost a little.** Don't annotate hot
-  module-level constants expecting zero cost — `SETUP_ANNOTATIONS` + `STORE_SUBSCR` run at import.
-- **Relying on dict order is now safe** (3.7+) — but don't rely on order for *sets*, which are
+  module-level constants expecting zero cost - `SETUP_ANNOTATIONS` + `STORE_SUBSCR` run at import.
+- **Relying on dict order is now safe** (3.7+) - but don't rely on order for *sets*, which are
   unordered, or assume order survives a round-trip through an unordered structure.
 
 ---
@@ -236,12 +236,12 @@ ordering costs nothing extra because it falls out of the compact layout.
 
 - **f-strings** (PEP 498) interpolate at **compile time**; 3.13 emits `CONVERT_VALUE`/
   `FORMAT_SIMPLE`/`FORMAT_WITH_SPEC`/`BUILD_STRING`. **PEP 701 (3.12)** removed the nesting,
-  multiline, backslash, and comment restrictions. They format eagerly — avoid in logging.
+  multiline, backslash, and comment restrictions. They format eagerly - avoid in logging.
 - **Variable annotations** (PEP 526) are **metadata, not checks**: stored in `__annotations__` at
   module/class scope, **stripped** at function scope. Forward references need quoting (or PEP
   563/649, Vol V).
 - The **compact dict** (3.6) splits a sparse index array from a dense entry array, cutting memory
-  ~30–40% and making **insertion order** intrinsic — an implementation detail in 3.6, a
+  ~30–40% and making **insertion order** intrinsic - an implementation detail in 3.6, a
   **guarantee since 3.7**.
 
 **Cross-references.** Old string/`%`/`.format` mechanics and the `string` module → Vol XI. Deferred

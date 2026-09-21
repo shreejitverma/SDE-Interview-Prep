@@ -9,49 +9,49 @@ tags:
   - daily-log
 ---
 
-# 📅 <% tp.date.now("dddd, MMMM Do YYYY") %>
+# <% tp.date.now("dddd, MMMM Do YYYY") %>
 
 > **Energy:** `= this.energy`/5 | **Focus:** `= this.focus`/5 | **Problems:** `= this.total_problems` | **Study Hours:** `= this.total_study_hours`
 
 ---
 
-## 🧩 Problems Solved
+## Problems Solved
 
 | # | Problem | Platform | Difficulty | Time | Verdict | Topics |
 |---|---------|----------|------------|------|---------|--------|
-| 1 | | LeetCode | | min | ✅/❌/🔄 | |
+| 1 | | LeetCode | | min | ✓/✗/| |
 | 2 | | | | min | | |
 | 3 | | | | min | | |
 
-## 📚 Topics Studied
+## Topics Studied
 
 | Topic | Duration | Resource | Notes |
 |-------|----------|----------|-------|
 | | min | | |
 
-## 🎤 Mock Interviews
+## Mock Interviews
 
 | Partner/AI | Role | Type | Duration | Score | Notes |
 |-----------|------|------|----------|-------|-------|
 | | | | min | /5 | |
 
-## 🏆 Wins
+## Wins
 - 
 
-## 😤 Struggles
+## Struggles
 - 
 
-## 📬 Pipeline & Recruiter Sync (48h Refresh)
+## Pipeline & Recruiter Sync (48h Refresh)
 - [ ] Checked Gmail for new applications, recruiter replies, OAs, or interview invites (`newer_than:2d`)
 - [ ] Updated active trackers in `03-Pipeline/Active/`
 - **Key Pipeline Updates Today:** 
 
-## 📋 Tomorrow's Plan
+## Tomorrow's Plan
 - [ ] 
 - [ ] 
 - [ ] 
 
 
-## 💭 Reflections
+## Reflections
 > Free-form thoughts on today's prep. What clicked? What's still fuzzy?
 

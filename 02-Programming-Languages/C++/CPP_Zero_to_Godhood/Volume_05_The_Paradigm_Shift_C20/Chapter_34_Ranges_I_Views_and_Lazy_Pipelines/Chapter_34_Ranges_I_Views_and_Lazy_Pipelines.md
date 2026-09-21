@@ -7,11 +7,11 @@ last_reviewed:
 sources: []
 ---
 
-# Chapter 34: Ranges I — Views, Range Adaptors, and Lazy Pipelines
+# Chapter 34: Ranges I - Views, Range Adaptors, and Lazy Pipelines
 
 > *The ranges library is the second pillar and the one that most changes how you express data transformations. It replaces the iterator-pair calling convention of the classic `<algorithm>` with composable, lazy pipelines built from the pipe operator. This chapter covers the range abstraction, what a view is and why it is cheap, the standard adaptors, and the lazy-evaluation model that makes a chain of `filter | transform | take` compile down to a single pass with no intermediate containers.*
 
-For two decades, calling `std::copy_if` then a manual squaring loop meant naming `begin()`/`end()` twice and materializing a temporary vector between stages. Ranges collapse that into `data | views::filter(even) | views::transform(square)` — a declarative pipeline that allocates nothing and computes each element on demand during iteration. This chapter is the foundation; Chapter 35 covers the range *algorithms* (`std::ranges::*`), projections, and the borrowed/dangling model.
+For two decades, calling `std::copy_if` then a manual squaring loop meant naming `begin()`/`end()` twice and materializing a temporary vector between stages. Ranges collapse that into `data | views::filter(even) | views::transform(square)` - a declarative pipeline that allocates nothing and computes each element on demand during iteration. This chapter is the foundation; Chapter 35 covers the range *algorithms* (`std::ranges::*`), projections, and the borrowed/dangling model.
 
 ---
 
@@ -31,7 +31,7 @@ For two decades, calling `std::copy_if` then a manual squaring loop meant naming
 
 ## 34.1 The End of Iterator Pairs
 
-The classic standard algorithms take two iterators delimiting a range. This convention is verbose, error-prone (mismatched `begin`/`end` from different containers compile and then corrupt memory), and **non-composable** — the output of one algorithm cannot be piped into the next without an intermediate container.
+The classic standard algorithms take two iterators delimiting a range. This convention is verbose, error-prone (mismatched `begin`/`end` from different containers compile and then corrupt memory), and **non-composable** - the output of one algorithm cannot be piped into the next without an intermediate container.
 
 ```cpp
 // Listing 34.1: the old way vs. the ranges way
@@ -59,7 +59,7 @@ int main() {
 }
 ```
 
-The ranges version is shorter, names the data once, cannot mismatch iterators, and — critically — performs no intermediate allocation.
+The ranges version is shorter, names the data once, cannot mismatch iterators, and - critically - performs no intermediate allocation.
 
 ---
 
@@ -67,7 +67,7 @@ The ranges version is shorter, names the data once, cannot mismatch iterators, a
 
 A **range** is anything you can iterate: it provides `begin()` and `end()` (via `std::ranges::begin`/`end`). Every standard container is a range. Formally, `std::ranges::range<T>` holds when those calls are valid.
 
-A **view** is a special kind of range that is **cheap to copy/move and non-owning** — it refers to elements stored elsewhere and adapts how they are traversed. `std::ranges::view<T>` requires the type to be movable in O(1) and to not own its elements. Views are the building blocks of pipelines; because copying a view is cheap, pipelines can pass them around freely.
+A **view** is a special kind of range that is **cheap to copy/move and non-owning** - it refers to elements stored elsewhere and adapts how they are traversed. `std::ranges::view<T>` requires the type to be movable in O(1) and to not own its elements. Views are the building blocks of pipelines; because copying a view is cheap, pipelines can pass them around freely.
 
 | Term | Owns data? | Copy cost | Example |
 |------|-----------|-----------|---------|
@@ -83,7 +83,7 @@ Key range concepts beyond `range` and `view` (introduced in Chapter 33): `sized_
 A **range adaptor** is an object that takes a range and produces a view. C++20 overloads `operator|` so that `range | adaptor` is equivalent to `adaptor(range)`, enabling left-to-right reading of a transformation chain. Adaptors are **partial-application-friendly**: `views::filter(pred)` (one argument) yields an adaptor closure that you pipe a range into later.
 
 ```cpp
-// Listing 34.2: two equivalent spellings — function-call form and pipe form
+// Listing 34.2: two equivalent spellings - function-call form and pipe form
 #include <ranges>
 #include <vector>
 
@@ -105,7 +105,7 @@ The pipe form is preferred for readability: data flows left to right through eac
 
 ## 34.4 The Standard Views Catalogue
 
-C++20 ships a core set of views in `std::views`. The table below is the C++20 set; note that several popular views (`zip`, `enumerate`, `chunk`, `slide`, `join_with`) are **C++23 and are not available here** — a frequent version trap.
+C++20 ships a core set of views in `std::views`. The table below is the C++20 set; note that several popular views (`zip`, `enumerate`, `chunk`, `slide`, `join_with`) are **C++23 and are not available here** - a frequent version trap.
 
 | View | Effect |
 |------|--------|
@@ -151,7 +151,7 @@ int main() {
 
 ## 34.5 Lazy Evaluation: What Actually Happens During Iteration
 
-The single most important property of views is **laziness**: building a pipeline does no work. `v | filter(p) | transform(f)` does not iterate `v`, does not call `p` or `f`, and allocates nothing. The work happens **element-by-element during iteration of the result** — when you advance the pipeline's iterator, it pulls one element through every stage.
+The single most important property of views is **laziness**: building a pipeline does no work. `v | filter(p) | transform(f)` does not iterate `v`, does not call `p` or `f`, and allocates nothing. The work happens **element-by-element during iteration of the result** - when you advance the pipeline's iterator, it pulls one element through every stage.
 
 ```cpp
 // Listing 34.4: laziness means each element flows through the whole chain on demand
@@ -167,13 +167,13 @@ int main() {
         | vws::filter([](int x){ std::cout << "filter " << x << '\n'; return x % 2 == 0; })
         | vws::transform([](int x){ std::cout << "transform " << x << '\n'; return x * x; });
 
-    // Nothing printed yet — the pipeline is built but not run.
+    // Nothing printed yet - the pipeline is built but not run.
     for (int x : pipe) std::cout << "got " << x << "\n";
     // Output interleaves filter/transform per element: the chain is single-pass and lazy.
 }
 ```
 
-Two consequences follow. First, **infinite views are usable** as long as something downstream bounds them (`views::iota(0) | views::take(5)`). Second, the optimizer typically fuses the whole chain into one loop with no per-stage container — the lazy model is what enables the zero-allocation claim. The opposite of lazy is **eager** "actions" that modify a container in place; C++20 ships only views (lazy), not actions — actions remain a range-v3 extension.
+Two consequences follow. First, **infinite views are usable** as long as something downstream bounds them (`views::iota(0) | views::take(5)`). Second, the optimizer typically fuses the whole chain into one loop with no per-stage container - the lazy model is what enables the zero-allocation claim. The opposite of lazy is **eager** "actions" that modify a container in place; C++20 ships only views (lazy), not actions - actions remain a range-v3 extension.
 
 ---
 
@@ -239,7 +239,7 @@ int main() {
 }
 ```
 
-`views::elements<N>` generalizes `keys`/`values` to any tuple-like element (e.g., the 2nd field of a `std::tuple`). Note a C++20 sharp edge: `views::split` produces subrange tokens whose iterator type is not always a `contiguous_iterator`, so constructing a `string_view` from a token may need `std::string_view(tok.begin(), tok.end())` rather than a pointer-based constructor — and the older `lazy_split` behavior differs; this was smoothed in later standards.
+`views::elements<N>` generalizes `keys`/`values` to any tuple-like element (e.g., the 2nd field of a `std::tuple`). Note a C++20 sharp edge: `views::split` produces subrange tokens whose iterator type is not always a `contiguous_iterator`, so constructing a `string_view` from a token may need `std::string_view(tok.begin(), tok.end())` rather than a pointer-based constructor - and the older `lazy_split` behavior differs; this was smoothed in later standards.
 
 ---
 
@@ -263,21 +263,21 @@ std::vector<int> out1(view.begin(), view.end());    // works when the view is a 
 std::vector<int> out2;                               // ...otherwise loop:
 for (int x : view) out2.push_back(x);
 
-// (C++23 would allow: auto out = view | std::ranges::to<std::vector>(); — NOT C++20)
+// (C++23 would allow: auto out = view | std::ranges::to<std::vector>(); - NOT C++20)
 ```
 
-The iterator-pair constructor requires the view to be a `common_range` (matching `begin`/`end` types); pipe through `views::common` first if it is not, or use the explicit loop. **Compile time** is the other cost: deeply nested pipelines instantiate large template types and can slow builds — a reason to keep hot-path pipelines readable and not pathologically deep.
+The iterator-pair constructor requires the view to be a `common_range` (matching `begin`/`end` types); pipe through `views::common` first if it is not, or use the explicit loop. **Compile time** is the other cost: deeply nested pipelines instantiate large template types and can slow builds - a reason to keep hot-path pipelines readable and not pathologically deep.
 
 ---
 
 ## 34.9 Professional Insights
 
-**Default to pipelines for clarity, verify codegen for hot paths.** A `filter | transform | take` chain reads like a specification and usually compiles to the same loop you would have written by hand. In a latency-critical inner loop, confirm that with the disassembler once — laziness plus inlining almost always delivers, but a stray non-inlinable lambda or a `filter` whose `begin()` is O(n) can surprise you.
+**Default to pipelines for clarity, verify codegen for hot paths.** A `filter | transform | take` chain reads like a specification and usually compiles to the same loop you would have written by hand. In a latency-critical inner loop, confirm that with the disassembler once - laziness plus inlining almost always delivers, but a stray non-inlinable lambda or a `filter` whose `begin()` is O(n) can surprise you.
 
 **Materialize a filtered view you iterate more than once.** `views::filter` re-evaluates its predicate on every traversal and pays O(n) to find its first element. If you build a filtered view and loop over it repeatedly, snapshot it into a `vector` once; otherwise you silently pay the filter cost each pass.
 
 **Mind the C++20 materialization gap.** `std::ranges::to` does not exist until C++23. In C++20, materialize with the iterator-pair constructor (after `views::common` if needed) or an explicit `push_back` loop. Reaching for `ranges::to` under `-std=c++20` is one of the most common version-trap compile errors.
 
-**Know which views are not in C++20.** `zip`, `enumerate`, `chunk`, `slide`, `join_with`, and `ranges::to` are C++23. If your design wants them, either emulate (e.g., index with `views::iota` for a poor-man's enumerate) or gate behind a feature-test macro — do not assume they ship with C++20.
+**Know which views are not in C++20.** `zip`, `enumerate`, `chunk`, `slide`, `join_with`, and `ranges::to` are C++23. If your design wants them, either emulate (e.g., index with `views::iota` for a poor-man's enumerate) or gate behind a feature-test macro - do not assume they ship with C++20.
 
 **Exploit laziness deliberately with infinite generators.** `views::iota(0)` plus a downstream `take`/`take_while` expresses bounded-from-an-unbounded-source cleanly and allocation-free. It is the idiomatic C++20 replacement for index loops and is a natural source for feeding coroutine generators (Chapter 37).

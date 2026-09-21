@@ -12,7 +12,7 @@ sources: []
 ---
 
 > [!summary]
-> Coordinated Omission occurs when a benchmarking tool measures only Service Time instead of Response Time, inadvertently synchronizing with system stalls. When a server freezes for 100 milliseconds, a synchronous load generator pauses and sends nothing, recording a single slow sample while omitting the thousands of requests that would have backed up in reality—drastically hiding the true $p99.99$ tail latency.
+> Coordinated Omission occurs when a benchmarking tool measures only Service Time instead of Response Time, inadvertently synchronizing with system stalls. When a server freezes for 100 milliseconds, a synchronous load generator pauses and sends nothing, recording a single slow sample while omitting the thousands of requests that would have backed up in reality - drastically hiding the true $p99.99$ tail latency.
 
 ---
 

@@ -11,7 +11,7 @@ last_reviewed:
 sources: []
 ---
 
-# Source Summary — C++ Concurrency in Action (2nd Edition)
+# Source Summary - C++ Concurrency in Action (2nd Edition)
 **Author**: Anthony Williams (Primary Author of `boost::thread`, ISO C++ Standards Committee Member)  
 **Publication**: Manning Publications  
 **Category**: C++ Systems Programming & Lock-Free Concurrency

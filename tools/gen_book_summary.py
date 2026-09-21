@@ -39,7 +39,7 @@ def notes(folder: Path, book: Path) -> list[Path]:
     out, seen = [], set()
     for p in sorted(folder.rglob("*.md"), key=lambda p: [number(part) for part in p.relative_to(folder).parts]):
         rel = p.relative_to(book).as_posix()
-        if SKIP_RE.search(rel):
+        if SKIP_RE.search(rel) or p.name.lower() == "readme.md":  # folder entry notes are navigation, not chapters
             continue
         digest = hashlib.sha1(p.read_bytes()).hexdigest()
         if digest in seen:

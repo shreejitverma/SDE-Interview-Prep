@@ -57,7 +57,7 @@ Assuming a 64-bit system (where pointers are 8 bytes and `int` is 4 bytes).
 Total Size: 32 bytes
 ```
 
-### 🔍 Why the Padding?
+### Why the Padding?
 
 The CPU likes to read 8-byte chunks (on a 64-bit machine). If an 8-byte pointer (`vptr_B`) started at an odd address like 12, the CPU would have to do two memory reads to get one pointer. The compiler adds **padding** at offset 12 to ensure `vptr_B` starts at offset 16 (a multiple of 8).
 
@@ -87,7 +87,7 @@ This vtable is used when you have a `B* ptr = new C();`.
 [ 1     ] [ thunk to C::f() ] -- Magic!
 ```
 
-### 🧙 What is a "Thunk"?
+### What is a "Thunk"?
 
 When you call `ptr->f()` through a `B*`, the pointer is pointing to the *middle* of the object (offset 16). But `C::f()` expects the `this` pointer to point to the *start* of the object (offset 0). A **thunk** is a tiny piece of assembly that subtracts 16 from the `this` pointer before jumping to the real `C::f()`.
 
@@ -141,6 +141,6 @@ clang++ -Xclang -fdump-record-layouts -c my_file.cpp
 g++ -fdump-lang-class my_file.cpp
 ```
 
-This will output the exact byte offsets the compiler is using. Don't take my word for it—verify it with the machine!
+This will output the exact byte offsets the compiler is using. Don't take my word for it - verify it with the machine!
 
 

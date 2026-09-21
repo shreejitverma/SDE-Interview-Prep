@@ -69,7 +69,7 @@ Long-distance latency arbitrage between CME (Aurora, IL) and NASDAQ/BATS/ICE (Ca
 - **Distance**: ~1,180 km (733 miles) straight-line.
 - **Standard Terrestrial Fiber ($n \approx 1.468$)**: One-way transit time is **~7.5–8.0 ms** ($\text{RTT} \approx 15.0\text{–}16.0\text{ ms}$).
 - **Shortest-Path Fiber (Spread Networks)**: $\text{RTT} \approx \mathbf{13.1\text{ ms}}$.
-- **Microwave / Millimeter-Wave Line-of-Sight ($n \approx 1.0003$)**: Radio signals travel at the speed of light in air ($~3.3\text{ ns/m}$), cutting one-way transit time to **~4.0–4.2 ms** ($\text{RTT} \approx \mathbf{8.0\text{–}8.4\text{ ms}}$)—nearly **2x faster than fiber**.
+- **Microwave / Millimeter-Wave Line-of-Sight ($n \approx 1.0003$)**: Radio signals travel at the speed of light in air ($~3.3\text{ ns/m}$), cutting one-way transit time to **~4.0–4.2 ms** ($\text{RTT} \approx \mathbf{8.0\text{–}8.4\text{ ms}}$) - nearly **2x faster than fiber**.
 
 ---
 

@@ -74,14 +74,14 @@ Rusty Russell's humorous yet rigorous guide established the cardinal rules of Li
    - **Mutexes / Semaphores**: Used when the critical section may sleep or perform I/O.
 3. **Safe Memory Copying**:
    - Kernel code must **never** directly dereference a user-space pointer (`char *user_buf`). The page might not be paged into RAM, or could belong to an attacker trying to crash the kernel.
-   - Always use `copy_from_user()` and `copy_to_user()`—which handle page faults and MMU permission checks safely.
+   - Always use `copy_from_user()` and `copy_to_user()` - which handle page faults and MMU permission checks safely.
 
 ---
 
 ## 4. The Linux Scheduler: A Decade of Wasted Cores (EuroSys 2016)
 
 ### The Discovery: Catastrophic Multi-Core CFS Bugs
-Lozi, David, Thomas, et al. analyzed the Completely Fair Scheduler (CFS) on modern multi-socket NUMA machines (64+ cores) and discovered four major algorithmic design bugs causing threads to wait in run queues while dozens of CPU cores remained completely idle—leading to **slowdowns of up to $138\times$**!
+Lozi, David, Thomas, et al. analyzed the Completely Fair Scheduler (CFS) on modern multi-socket NUMA machines (64+ cores) and discovered four major algorithmic design bugs causing threads to wait in run queues while dozens of CPU cores remained completely idle - leading to **slowdowns of up to $138\times$**!
 
 ```text
 The 4 Major Linux Scheduler Bugs Documented:

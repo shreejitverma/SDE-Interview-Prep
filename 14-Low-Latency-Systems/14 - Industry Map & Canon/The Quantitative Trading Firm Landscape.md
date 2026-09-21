@@ -144,7 +144,7 @@ flowchart TD
 
 > [!warning] Gotchas
 > 1. **Underestimating the FPGA vs C++ Division**: In top market makers, engineers do not choose between C++ or FPGA; the fastest firms deploy **tightly coupled hybrid pipelines** where FPGAs handle line-rate ingress, risk, and order injection, while C++ cores perform online parameter recalibration and position management.
-> 2. **Over-Engineering Machine Learning for Ultra-Low Latency**: Complex deep learning models (Transformers, RNNs) have inference times of 50 to 500 microseconds—far too slow for tick-level quoting on NASDAQ (<1 µs). *On tick timescales, linear regressions, Order Flow Imbalance, and micro-price estimators calculated via branchless fixed-point integer math consistently outperform heavy neural networks.*
+> 2. **Over-Engineering Machine Learning for Ultra-Low Latency**: Complex deep learning models (Transformers, RNNs) have inference times of 50 to 500 microseconds - far too slow for tick-level quoting on NASDAQ (<1 µs). *On tick timescales, linear regressions, Order Flow Imbalance, and micro-price estimators calculated via branchless fixed-point integer math consistently outperform heavy neural networks.*
 
 ---
 
@@ -160,7 +160,7 @@ flowchart TD
 
 > [!question]- Self-test
 > 1. **What is the fundamental difference between an Automated Market Maker (e.g. Citadel Securities, Optiver) and a Multi-Strategy Proprietary Trading Firm (e.g. Hudson River Trading, Jump)?**
->    *Answer*: An **Automated Market Maker (AMM)** primarily focuses on passive two-sided liquidity provision, capturing the bid-ask spread and exchange maker rebates on microsecond timescales while managing inventory risk and adverse selection. A **Multi-Strategy Prop Firm** deploys a broader range of strategies—including aggressive statistical arbitrage, cross-market lead-lag momentum, futures calendar spreads, and medium-frequency quantitative models holding positions from seconds to hours.
+>    *Answer*: An **Automated Market Maker (AMM)** primarily focuses on passive two-sided liquidity provision, capturing the bid-ask spread and exchange maker rebates on microsecond timescales while managing inventory risk and adverse selection. A **Multi-Strategy Prop Firm** deploys a broader range of strategies - including aggressive statistical arbitrage, cross-market lead-lag momentum, futures calendar spreads, and medium-frequency quantitative models holding positions from seconds to hours.
 > 2. **What is "Adverse Selection" in electronic market making and how do firms use low-latency technology to mitigate it?**
 >    *Answer*: Adverse selection occurs when a market maker's resting limit order is filled by an informed trader immediately before the market moves against the market maker (e.g. a maker's resting Ask is bought right before a macro event pushes prices higher). Market makers use sub-microsecond FPGA feed handlers and microwave networks to detect correlated price changes first, instantly canceling stale quotes before aggressive informed orders arrive.
 > 3. **Why do ultra-low-latency market makers deploy linear and fixed-point statistical models rather than deep neural networks on the critical execution path?**

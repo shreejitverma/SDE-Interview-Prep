@@ -10,11 +10,11 @@ sources: []
 # Chapter 1: Inception and the Executable Pipeline (Python 1.0–1.6)
 
 Python's surface is famously simple; its execution model is not. To master the language
-you must first hold one mental picture firmly: **source text is not run — it is compiled,
+you must first hold one mental picture firmly: **source text is not run - it is compiled,
 ahead of time, into an immutable `PyCodeObject`, which a stack-based virtual machine then
 interprets.** This chapter follows a single line of source from the tokenizer to the
-evaluation loop, establishing the vocabulary — names, bindings, scopes, cells, code
-objects, frames, opcodes — that every later chapter assumes. We anchor in Python's 1.x
+evaluation loop, establishing the vocabulary - names, bindings, scopes, cells, code
+objects, frames, opcodes - that every later chapter assumes. We anchor in Python's 1.x
 origins because the design decisions made then (names as bindings, everything-is-an-object,
 a static scope-analysis pass before execution) still govern how CPython 3.13 behaves today.
 
@@ -37,7 +37,7 @@ a static scope-analysis pass before execution) still govern how CPython 3.13 beh
 **Why this exists.** Python was conceived in December 1989 by Guido van Rossum at CWI
 (Centrum Wiskunde & Informatica) in the Netherlands, and first released publicly as
 version 0.9.0 in February 1991, reaching 1.0 in January 1994. It was a deliberate
-successor to the **ABC language** — elegant for teaching, but crippled in practice by
+successor to the **ABC language** - elegant for teaching, but crippled in practice by
 three architectural decisions Python set out to reverse:
 
 1. **A monolithic, unextensible runtime.** ABC could not load native libraries or be
@@ -57,9 +57,9 @@ Three design commitments fell out of these reversals and never changed:
 - **Significant whitespace.** CPython's tokenizer emits explicit `INDENT` and `DEDENT`
   tokens; block structure is part of the grammar, not a convention. The intent is that the
   *visual* structure a reader sees is, by construction, the *execution* structure the
-  compiler sees — the two cannot drift apart, as they can in brace languages.
-- **A unified object model.** Every value — an integer, a function, a class, a module, a
-  stack frame — is a heap-allocated object reachable through a `PyObject *`. There is no
+  compiler sees - the two cannot drift apart, as they can in brace languages.
+- **A unified object model.** Every value - an integer, a function, a class, a module, a
+  stack frame - is a heap-allocated object reachable through a `PyObject *`. There is no
   separate world of "primitives" as in Java or C#. This uniformity is what makes
   introspection (`x.__class__`, `dis`, `inspect`) total rather than partial.
 - **Names as bindings.** `x = 5` does not create a typed memory slot named `x`; it binds
@@ -76,7 +76,7 @@ Three design commitments fell out of these reversals and never changed:
 
 ## 1.2 Names are bindings, not storage: the object model and the senior-engineer contrast
 
-**The model.** A Python name lives in a namespace — a mapping from `str` to `PyObject *`.
+**The model.** A Python name lives in a namespace - a mapping from `str` to `PyObject *`.
 Assignment rebinds the name; it never copies or mutates the object the name previously
 referred to. Every object carries, at minimum, a **reference count** and a **type
 pointer** (Chapter 2 dissects the `PyObject` header). Assignment is therefore a constant
@@ -122,7 +122,7 @@ into it.**
 
 ## 1.3 The execution pipeline, end to end
 
-**Why this exists.** Python feels interpreted — you can type a line and see it run — but
+**Why this exists.** Python feels interpreted - you can type a line and see it run - but
 nothing executes until it has been compiled to bytecode. Understanding the pipeline tells
 you *where* each kind of error is produced (a `SyntaxError` cannot occur at runtime; a
 `NameError` cannot occur at compile time) and *why* certain constructs are fast or slow.
@@ -157,13 +157,13 @@ running program for the loop itself. Sections 1.4–1.8 take each in turn.
 
 ## 1.4 Parser evolution: LL(1) to PEG (PEP 617)
 
-**Why this exists.** For most of its life CPython used a hand-tunable **LL(1)** parser —
+**Why this exists.** For most of its life CPython used a hand-tunable **LL(1)** parser - 
 **L**eft-to-right scan, **L**eftmost derivation, **1** token of lookahead. LL(1) is fast
 and simple but structurally limited, and those limits shaped the grammar (and therefore
 the language) for two decades. **PEP 617** replaced it with a **PEG** parser in Python 3.9.
 
 **The LL(1) limitation: left recursion.** A top-down LL(1) parser cannot directly handle a
-**left-recursive** rule — one whose right-hand side begins with the non-terminal itself:
+**left-recursive** rule - one whose right-hand side begins with the non-terminal itself:
 
 $$A \rightarrow A\,\alpha \;\mid\; \beta$$
 
@@ -204,7 +204,7 @@ PEG pipeline (3.9+, PEP 617):
 **Old-vs-new, why it mattered.** The PEG switch was not cosmetic. The **structural pattern
 matching** of `match`/`case` (PEP 634, Chapter 15) is expressible largely *because* the
 grammar is no longer bound by LL(1). The cost is that the grammar can now encode rules
-whose meaning is order-dependent, which places more responsibility on the grammar authors —
+whose meaning is order-dependent, which places more responsibility on the grammar authors - 
 but for the language user, the result is strictly more expressive syntax and better error
 messages.
 
@@ -221,16 +221,16 @@ messages.
 **statically**, what every name *means*: is it local to this function, a parameter, a
 global, a builtin, or a free variable captured from an enclosing function? This
 classification is what lets CPython use array-indexed local access (`LOAD_FAST`) instead of
-a dictionary lookup for every variable — the single largest reason Python functions are not
+a dictionary lookup for every variable - the single largest reason Python functions are not
 even slower than they are.
 
 CPython classifies each name binding into one of these scopes (`Python/symtable.c`):
 
-1. **Local** — bound inside the current function.
-2. **Global, explicit** — declared with `global x`.
-3. **Global, implicit** — referenced but never bound in the function; resolved at runtime
+1. **Local** - bound inside the current function.
+2. **Global, explicit** - declared with `global x`.
+3. **Global, implicit** - referenced but never bound in the function; resolved at runtime
    against module globals, then builtins.
-4. **Enclosing / free** — bound in an outer function and read (or, with `nonlocal`,
+4. **Enclosing / free** - bound in an outer function and read (or, with `nonlocal`,
    rebound) by a nested function.
 
 The `symtable` module exposes exactly this pass:
@@ -275,7 +275,7 @@ inner free vars (closure): ('z', 'x')
 > `is_parameter`, `is_namespace`, `is_nonlocal`, `is_declared_global`, `is_assigned`,
 > `is_referenced`, `is_imported`, `is_annotated`. To see which of an enclosing function's
 > locals were promoted to **cells**, read the *compiled code object's* `co_cellvars`, as in
-> §1.6 — that is the authoritative view.
+> §1.6 - that is the authoritative view.
 
 ---
 
@@ -284,7 +284,7 @@ inner free vars (closure): ('z', 'x')
 **Why this exists.** A nested function may outlive the call that created it, yet still read
 the enclosing function's locals. Those locals cannot live in the outer frame's fast-locals
 array, because that array dies when the frame is popped. CPython solves this by promoting a
-captured local to a **cell** — a tiny heap object shared by reference between the enclosing
+captured local to a **cell** - a tiny heap object shared by reference between the enclosing
 and nested functions.
 
 ```c
@@ -297,9 +297,9 @@ typedef struct {
 
 The compiler records, on each code object, which locals are cells and which names are free:
 
-- `co_cellvars` — locals of *this* function that are captured by a nested function (boxed
+- `co_cellvars` - locals of *this* function that are captured by a nested function (boxed
   into cells).
-- `co_freevars` — names *this* function reads from an enclosing scope (read through cells
+- `co_freevars` - names *this* function reads from an enclosing scope (read through cells
   passed in at closure-construction time).
 
 ```python
@@ -328,7 +328,7 @@ inner_func co_freevars: ('x', 'z')
 
 Both `x` and `z` are cells in `outer_func` (each is captured by `inner_func`), and both are
 free variables of `inner_func`. The shared cell is why a closure sees *live* updates to a
-captured variable, not a snapshot — a frequent source of the "late-binding closure in a
+captured variable, not a snapshot - a frequent source of the "late-binding closure in a
 loop" bug, which we dissect in Chapter 3 alongside comprehension scope.
 
 ---
@@ -393,7 +393,7 @@ Three details worth internalizing:
 - `co_consts` contains `None` even though the source never mentions it: it is the implicit
   return value's constant. The literal `42` is interned into the pool; the bytecode refers
   to it by index, not by value.
-- `co_flags == 0b11` sets `CO_OPTIMIZED | CO_NEWLOCALS` — the flags that say "this is a real
+- `co_flags == 0b11` sets `CO_OPTIMIZED | CO_NEWLOCALS` - the flags that say "this is a real
   function: use fast array-indexed locals and a fresh locals namespace per call." A module
   or class body does **not** set these, which is precisely why module-level code uses
   dictionary-based `LOAD_NAME` and is slower (§1.9).
@@ -436,7 +436,7 @@ PyObject *_PyEval_EvalFrameDefault(PyThreadState *tstate,
 }
 ```
 
-Do not trust the textbook picture of the bytecode, though — read what *this* interpreter
+Do not trust the textbook picture of the bytecode, though - read what *this* interpreter
 actually emits. The `dis` module disassembles a code object into the real instruction
 stream:
 
@@ -494,20 +494,20 @@ Tracing the evaluation stack for `a + b` makes the stack discipline concrete:
 > a fixed opcode stream forever. As code runs hot, generic opcodes are **specialized** in
 > place into faster variants (e.g. `BINARY_OP` over two `int`s can specialize to an
 > integer-add path that skips the general dispatch), with **inline caches** stored in the
-> code units themselves. This is *not* the JIT (PEP 744, Vol VII) — it is interpretation
+> code units themselves. This is *not* the JIT (PEP 744, Vol VII) - it is interpretation
 > that rewrites itself. We cover it in depth in Vol VI, Ch 17.
 
 ---
 
 ## 1.9 Performance model and anti-patterns
 
-The pipeline is not academic — it dictates the constant factors of real code.
+The pipeline is not academic - it dictates the constant factors of real code.
 
 **Local access is array indexing; global/builtin access is dictionary lookup.** Inside an
 optimized function, a local read is `LOAD_FAST` (an index into a C array). A global or
 builtin read is `LOAD_GLOBAL`, which probes the module `__dict__` and then the `builtins`
-dict. The classic hot-loop optimization — binding a global or method to a local before the
-loop — is *purely* an exploit of this difference:
+dict. The classic hot-loop optimization - binding a global or method to a local before the
+loop - is *purely* an exploit of this difference:
 
 ```python
 # Caption: hoisting a global lookup to a local turns N dict probes into N array reads.
@@ -523,12 +523,12 @@ def fast(xs):
 
 Both are correct; `fast` simply pays the attribute/global lookup once. On large inputs the
 difference is measurable, and the *reason* is visible in the disassembly. (This is a
-constant-factor win, not an algorithmic one — reach for it only in genuine hot loops; see
+constant-factor win, not an algorithmic one - reach for it only in genuine hot loops; see
 the profiling discipline in Vol IX.)
 
 **The dynamic-namespace trap.** If the compiler cannot statically know a function's locals
-— because it contains `exec()` against an implicit namespace, or `from module import *` at
-function scope (the latter is in fact a `SyntaxError` in a function in Python 3) — it must
+\- because it contains `exec()` against an implicit namespace, or `from module import *` at
+function scope (the latter is in fact a `SyntaxError` in a function in Python 3) - it must
 abandon fast locals and fall back to the dictionary-based `LOAD_NAME`, which searches local,
 then global, then builtin namespaces at runtime. The lesson is structural: **keep function
 scopes statically analyzable.** Dynamic features defeat the single most important
@@ -542,7 +542,7 @@ error tells you where to look for it.
 
 **Don't fight immutability of code objects.** Code objects are immutable by design;
 "patching bytecode at runtime" is a stunt, not an optimization. The supported lever is the
-*function* wrapper around the code object — decorators, `functools.partial`, closures — not
+*function* wrapper around the code object - decorators, `functools.partial`, closures - not
 the blueprint itself.
 
 ---
@@ -559,7 +559,7 @@ the blueprint itself.
   enables array-indexed `LOAD_FAST` locals and **cell**-based closures.
 - The real bytecode of modern CPython (3.11+) includes `RESUME`, the unified `BINARY_OP`,
   and fused **superinstructions** like `LOAD_FAST_LOAD_FAST`, and it **specializes itself**
-  as it runs — read `dis` output, not folklore.
+  as it runs - read `dis` output, not folklore.
 - Performance is governed by the pipeline: **locals beat globals**, dynamic namespaces
   defeat optimization, and errors are owned by the stage that produces them.
 

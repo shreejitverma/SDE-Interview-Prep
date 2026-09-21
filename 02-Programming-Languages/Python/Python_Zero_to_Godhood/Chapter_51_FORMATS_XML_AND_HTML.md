@@ -79,7 +79,7 @@ An `email.message.EmailMessage` object consists of:
 
 #### 2. Policy and Content Management
 Modern Python (3.6+) introduced the **Policy** system.
-*   **`policy.default`**: Uses the modern "Godhood" approach—handling Unicode, binary attachments, and folded headers automatically according to the latest RFCs (5322, 6532).
+*   **`policy.default`**: Uses the modern "Godhood" approach - handling Unicode, binary attachments, and folded headers automatically according to the latest RFCs (5322, 6532).
 *   **Lazy Loading**: The `BytesParser` can lazily parse attachments, only reading them from the disk when the content is actually requested.
 
 ---

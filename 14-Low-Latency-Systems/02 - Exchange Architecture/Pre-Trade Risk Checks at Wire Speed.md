@@ -12,7 +12,7 @@ sources: []
 ---
 
 > [!summary]
-> Pre-trade risk systems enforce credit, position, price, and regulatory limits on inbound order flow before orders reach the matching engine. Mandated under SEC Rule 15c3-5 (Market Access Rule), modern exchange and broker risk gates execute a comprehensive suite of invariant checks—including gross notional exposure, price collars, fat-finger size limits, and leaky-bucket throttles—in under 25 nanoseconds.
+> Pre-trade risk systems enforce credit, position, price, and regulatory limits on inbound order flow before orders reach the matching engine. Mandated under SEC Rule 15c3-5 (Market Access Rule), modern exchange and broker risk gates execute a comprehensive suite of invariant checks - including gross notional exposure, price collars, fat-finger size limits, and leaky-bucket throttles - in under 25 nanoseconds.
 
 ---
 

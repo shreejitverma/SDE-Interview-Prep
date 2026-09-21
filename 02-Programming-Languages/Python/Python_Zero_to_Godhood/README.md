@@ -185,7 +185,7 @@ sources: []
 - [Phase XXI: Senior Engineering: Patterns, Pitfalls, and Breadth](Chapter_92_STRING_AND_PITFALLS.md)
 - [Phase XXII: Visualization and Interface Engineering](Chapter_95_VISUALIZATION_AND_TOOLING.md)
 - [Phase XXIV: Cloud Native and Distributed Architectures](Chapter_99_CLOUD_AND_DISTRIBUTED.md)
-- [Master Coverage Matrix — *Python Zero to Godhood*](MASTER_COVERAGE_MATRIX.md)
-- [STYLE.md — The Canonical Style Guide for *Python Zero to Godhood*](STYLE.md)
+- [Master Coverage Matrix - *Python Zero to Godhood*](MASTER_COVERAGE_MATRIX.md)
+- [STYLE.md - The Canonical Style Guide for *Python Zero to Godhood*](STYLE.md)
 
 <!-- moc:end -->

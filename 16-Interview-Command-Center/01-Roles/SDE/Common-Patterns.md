@@ -7,7 +7,7 @@ last_reviewed:
 sources: []
 ---
 
-# 🔄 SDE Common Patterns & Frameworks
+# SDE Common Patterns & Frameworks
 
 ---
 

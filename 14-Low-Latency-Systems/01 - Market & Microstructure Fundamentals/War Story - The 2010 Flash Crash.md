@@ -11,7 +11,7 @@ last_reviewed:
 sources: []
 ---
 
-# War Story — The May 6, 2010 Flash Crash: Cross-Market Cascades & Liquidity Evaporation
+# War Story - The May 6, 2010 Flash Crash: Cross-Market Cascades & Liquidity Evaporation
 
 > [!summary]
 > On May 6, 2010, between 14:32 and 14:45 EST, the US equity and derivatives markets suffered the fastest collapse in financial history: the Dow Jones plunged ~1,000 points (~9%) in minutes, wiping out nearly \$1 trillion in market value before recovering within 20 minutes. This war story examines the cross-asset execution feedback loops, algorithmic order book depletion, stub quotes, and the resulting regulatory reforms (Limit-Up/Limit-Down & SEC Rule 15c3-5).

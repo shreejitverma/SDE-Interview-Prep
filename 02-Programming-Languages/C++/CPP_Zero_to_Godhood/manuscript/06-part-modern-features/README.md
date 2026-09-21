@@ -14,8 +14,8 @@ sources: []
 **Notes**
 
 - [Part VI: Modern C++ Features Tour](23_cpp11_14_revolution.md)
-- [Chapter 24: C++17 — The Modernization Standard](24_cpp17.md)
-- [Chapter 25: C++20 — The Big Four and Beyond](25_cpp20.md)
-- [Chapter 26: C++23 and C++26 — The Cutting Edge](26_cpp23_and_cpp26.md)
+- [Chapter 24: C++17 - The Modernization Standard](24_cpp17.md)
+- [Chapter 25: C++20 - The Big Four and Beyond](25_cpp20.md)
+- [Chapter 26: C++23 and C++26 - The Cutting Edge](26_cpp23_and_cpp26.md)
 
 <!-- moc:end -->

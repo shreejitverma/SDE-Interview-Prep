@@ -11,7 +11,7 @@ sources: []
 
 > *Organising state, binding behaviour, and building types that feel like the language itself.*
 
-Procedural C++ gives you functions that operate on data passed through parameters. Object-Oriented Programming gives you something more powerful: the ability to define entirely new *types* that bundle state and behaviour together, enforce invariants through access control, and interact with the language's built-in syntax through operator overloading. This chapter covers the full OOP toolkit of C++98/03 — enumerations, unions, namespaces, class design, constructors, the Rule of Three, operator overloading, templates, and the casting system — everything you need before tackling inheritance and polymorphism in Chapter 6.
+Procedural C++ gives you functions that operate on data passed through parameters. Object-Oriented Programming gives you something more powerful: the ability to define entirely new *types* that bundle state and behaviour together, enforce invariants through access control, and interact with the language's built-in syntax through operator overloading. This chapter covers the full OOP toolkit of C++98/03 - enumerations, unions, namespaces, class design, constructors, the Rule of Three, operator overloading, templates, and the casting system - everything you need before tackling inheritance and polymorphism in Chapter 6.
 
 ---
 
@@ -59,7 +59,7 @@ if (current == 1) {              // Valid but terrible practice
 
 **Danger:** C-style enum names leak into the enclosing scope. Defining `enum VideoState { PLAYING, STOPPED };` in the same translation unit collides with `GameState::PLAYING`. They also convert implicitly to `int`, destroying type safety.
 
-### 5.1.2 Scoped Enums (`enum class`) — Forward Reference: C++11
+### 5.1.2 Scoped Enums (`enum class`) - Forward Reference: C++11
 
 C++11 introduced scoped enumerations. The names are contained inside the enum's scope and do not convert to integers implicitly.
 
@@ -94,7 +94,7 @@ int main() {
     std::cout << packet.as_integer << "\n"; // 42
 
     packet.as_float = 3.14f;
-    // as_integer is now garbage — float bits overwrite the same 4 bytes
+    // as_integer is now garbage - float bits overwrite the same 4 bytes
     std::cout << packet.as_integer << "\n"; // Undefined value
     return 0;
 }
@@ -158,7 +158,7 @@ int main() {
 
 ### 5.3.3 Anonymous Namespaces
 
-An unnamed namespace gives its contents **internal linkage** — the modern, superior replacement for C-style `static` at file scope:
+An unnamed namespace gives its contents **internal linkage** - the modern, superior replacement for C-style `static` at file scope:
 
 ```cpp
 // Listing 5.6: Anonymous namespace for internal linkage
@@ -222,7 +222,7 @@ The `class` keyword and the `struct` keyword produce identical constructs with o
 // Listing 5.8: Encapsulated BankAccount
 class BankAccount {
 private:
-    double balance; // Internal state — no direct external access
+    double balance; // Internal state - no direct external access
 
 public:
     void deposit(double amount) {
@@ -250,10 +250,10 @@ struct MyStruct { int x; };
 class  MyClass  { int x; };
 
 MyStruct s;
-s.x = 9;   // OK — x is public
+s.x = 9;   // OK - x is public
 
 MyClass c;
-// c.x = 9; // ill-formed — x is private
+// c.x = 9; // ill-formed - x is private
 ```
 
 ---
@@ -311,13 +311,13 @@ The **member initialiser list** (`: brand(b), buffer(new int[10])`) is preferred
 
 ## 5.7 The Rule of Three
 
-If your class manages a resource acquired with `new` (or a file handle, network socket, or any other resource that requires manual release), the compiler-generated copy operations perform **shallow copies** — they copy the pointer value, not the pointed-to data. Two objects then point to the same resource, and the destructor of each will attempt to release it, producing a double-free.
+If your class manages a resource acquired with `new` (or a file handle, network socket, or any other resource that requires manual release), the compiler-generated copy operations perform **shallow copies** - they copy the pointer value, not the pointed-to data. Two objects then point to the same resource, and the destructor of each will attempt to release it, producing a double-free.
 
 **The Rule of Three:** if you explicitly define *any* of the following, you almost certainly need to define all three:
 
-1. **Destructor** — to release the resource.
-2. **Copy constructor** — to allocate a new resource and deep-copy the data.
-3. **Copy assignment operator** — to handle `a = b` between two live objects.
+1. **Destructor** - to release the resource.
+2. **Copy constructor** - to allocate a new resource and deep-copy the data.
+3. **Copy assignment operator** - to handle `a = b` between two live objects.
 
 ```cpp
 // Listing 5.11: Rule of Three for heap-managed buffer
@@ -349,7 +349,7 @@ public:
 };
 ```
 
-The self-assignment check (`if (this == &other)`) is mandatory: without it, the assignment operator deletes `ptr` before copying from `other.ptr` — which is the same pointer when `a = a`.
+The self-assignment check (`if (this == &other)`) is mandatory: without it, the assignment operator deletes `ptr` before copying from `other.ptr` - which is the same pointer when `a = a`.
 
 ---
 
@@ -367,7 +367,7 @@ public:
     ~Player() { --player_count; }
 };
 
-int Player::player_count = 0; // Definition — one occurrence in a .cpp file
+int Player::player_count = 0; // Definition - one occurrence in a .cpp file
 
 int main() {
     Player p1, p2;
@@ -396,14 +396,14 @@ public:
 };
 
 void friend_function(PrivateHolder& ph) {
-    std::cout << ph.private_value << "\n"; // OK — declared as friend
+    std::cout << ph.private_value << "\n"; // OK - declared as friend
 }
 ```
 
 ### 5.9.2 Friend Class
 
 ```cpp
-// Listing 5.14: Friend class — whole class given access
+// Listing 5.14: Friend class - whole class given access
 class Accesser {
 public:
     void access1(const PrivateHolder& ph) { /* can see private_value */ }
@@ -453,7 +453,7 @@ int main() {
 
 ### 5.10.2 Non-Member Operators for Symmetric Conversions
 
-When the left-hand operand is not a class instance (e.g., `5.0 + complex_value`), a member function cannot be used — the operator must be a free function, declared `friend` if it needs private access:
+When the left-hand operand is not a class instance (e.g., `5.0 + complex_value`), a member function cannot be used - the operator must be a free function, declared `friend` if it needs private access:
 
 ```cpp
 // Listing 5.16: Non-member operator+ allowing double + Complex
@@ -540,7 +540,7 @@ public:
 
 ## 5.11 Functors: Overloading `operator()`
 
-Overloading `operator()` produces a **functor** (function object) — an instance of a class that can be called with `()` syntax. Unlike plain function pointers, functors carry state.
+Overloading `operator()` produces a **functor** (function object) - an instance of a class that can be called with `()` syntax. Unlike plain function pointers, functors carry state.
 
 ```cpp
 // Listing 5.20: Functor with captured state
@@ -559,7 +559,7 @@ int main() {
 }
 ```
 
-Functors are the primary mechanism for passing custom behaviour to STL algorithms in C++98/03 — before lambdas arrived in C++11.
+Functors are the primary mechanism for passing custom behaviour to STL algorithms in C++98/03 - before lambdas arrived in C++11.
 
 ---
 
@@ -581,7 +581,7 @@ T myMax(T a, T b) {
 int main() {
     std::cout << myMax(10, 20) << "\n";       // T = int
     std::cout << myMax(3.14, 2.71) << "\n";   // T = double
-    // myMax(10, 3.14) would fail — mismatched deduced types
+    // myMax(10, 3.14) would fail - mismatched deduced types
     return 0;
 }
 ```
@@ -698,7 +698,7 @@ void print_front(T& container) {
 
 | Property | Templates | Macros |
 | :-------- | :-------- | :----- |
-| Type safety | Yes — compiler checks types | No — text substitution |
+| Type safety | Yes - compiler checks types | No - text substitution |
 | Debugging | Named in error messages | Invisible after substitution |
 | Scoping | Obeys C++ scoping rules | No scoping |
 | Performance | Zero overhead after instantiation | Same |
@@ -734,7 +734,7 @@ public:
 Vector v(5);      // OK: direct initialisation
 ```
 
-### 5.13.2 C-Style Cast — Avoid
+### 5.13.2 C-Style Cast - Avoid
 
 ```cpp
 double pi = 3.14;
@@ -743,7 +743,7 @@ int x = (int)pi;  // Legal but dangerous and unsearchable
 
 C-style casts try every possible conversion including dangerous `reinterpret_cast`-style reinterpretations. They produce no diagnostic, are invisible in search results, and should never appear in new C++ code.
 
-### 5.13.3 `static_cast` — The Workhorse
+### 5.13.3 `static_cast` - The Workhorse
 
 `static_cast` performs conversions that are valid according to compile-time type relationships. It does no runtime checks.
 
@@ -761,7 +761,7 @@ int main() {
 
 Use it for: numeric type conversions, navigating up the inheritance hierarchy (upcasting), and intentional explicit truncation.
 
-### 5.13.4 `dynamic_cast` — Safe Downcasting
+### 5.13.4 `dynamic_cast` - Safe Downcasting
 
 `dynamic_cast` uses **Run-Time Type Information (RTTI)** to validate a downcast at runtime. For pointer targets it returns `nullptr` on failure; for reference targets it throws `std::bad_cast`.
 
@@ -786,7 +786,7 @@ int main() {
 
 `dynamic_cast` requires at least one virtual function in the base class (RTTI is only generated for polymorphic types). It carries runtime overhead; architectures that need it frequently signal a design problem.
 
-### 5.13.5 `const_cast` — Stripping `const`
+### 5.13.5 `const_cast` - Stripping `const`
 
 `const_cast` removes the `const` qualifier. Its sole legitimate use is adapting `const`-correct code to legacy APIs that forgot to declare their parameters `const`:
 
@@ -803,7 +803,7 @@ int main() {
 
 If the underlying object is actually `const` and the legacy function writes through the stripped pointer, the result is **undefined behaviour**.
 
-### 5.13.6 `reinterpret_cast` — Raw Bit Reinterpretation
+### 5.13.6 `reinterpret_cast` - Raw Bit Reinterpretation
 
 `reinterpret_cast` tells the compiler to treat the raw bit pattern at one address as a completely different type. It performs no conversion. It is used for memory-mapped I/O, network packet parsing, and custom allocators.
 
@@ -857,9 +857,9 @@ int main() {
     Calc* p = &c;
 
     int (Calc::*fn)(int) = &Calc::doubled;
-    std::cout << (c.*fn)(5)  << "\n"; // 10 — via instance
+    std::cout << (c.*fn)(5)  << "\n"; // 10 - via instance
     fn = &Calc::tripled;
-    std::cout << (p->*fn)(5) << "\n"; // 15 — via pointer
+    std::cout << (p->*fn)(5) << "\n"; // 15 - via pointer
     return 0;
 }
 ```
@@ -885,7 +885,7 @@ int main() {
 
 ### 5.14.4 Nested Classes
 
-A class may define another class inside itself. The nested class is a member of the enclosing class and can be used without qualification from within the enclosing scope. Member functions of the nested class are defined either inside the nested class or in the enclosing namespace — never inside the enclosing class body.
+A class may define another class inside itself. The nested class is a member of the enclosing class and can be used without qualification from within the enclosing scope. Member functions of the nested class are defined either inside the nested class or in the enclosing namespace - never inside the enclosing class body.
 
 ```cpp
 // Listing 5.37: Nested class definition
@@ -943,12 +943,12 @@ extern "C" void c_compatible_function(int x);
 | Operation | When it fires | Target object state |
 | :-------- | :------------ | :------------------ |
 | Copy constructor `T a = b;` | Initialising a new object | Not yet alive |
-| Assignment `a = b;` | Assigning to an existing object | Already alive — must release old resources |
+| Assignment `a = b;` | Assigning to an existing object | Already alive - must release old resources |
 
 The self-assignment check in `operator=` is non-optional for resource-owning classes: `a = a` must be a no-op.
 
 ### 5.15.3 Operator Overloading: Member vs. Non-Member
 
 - Use **member functions** when the left operand is always your class (e.g. `+=`, `-=`, unary operators).
-- Use **non-member (friend) functions** when the left operand may be a different type (e.g. `+`, `-`, `<<`). This enables symmetric conversions — `complex + 1.0` and `1.0 + complex` both work.
+- Use **non-member (friend) functions** when the left operand may be a different type (e.g. `+`, `-`, `<<`). This enables symmetric conversions - `complex + 1.0` and `1.0 + complex` both work.
 - You cannot create new operators, change precedence, change arity, or overload `::`, `.`, `.*`, or `?:`.

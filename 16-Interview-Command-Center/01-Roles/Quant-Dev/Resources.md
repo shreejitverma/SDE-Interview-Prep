@@ -7,7 +7,7 @@ last_reviewed:
 sources: []
 ---
 
-# 📚 Quant Dev Resources
+# Quant Dev Resources
 
 ## Vault Resources
 | Topic | Vault Location |

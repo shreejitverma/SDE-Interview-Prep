@@ -10,14 +10,14 @@ last_reviewed:
 sources: []
 ---
 
-# ⚡ Low Latency Systems Engineer — Preparation Hub
+# Low Latency Systems Engineer - Preparation Hub
 
 > **Target Companies:** Optiver, Jump Trading, Citadel Securities, HRT, IMC, Virtu Financial, Tower Research
 > **Target Levels:** Mid to Senior Systems Engineer / Infrastructure
 
 ---
 
-## 🎯 What Low Latency Interviews Test
+## What Low Latency Interviews Test
 
 | Round | Weight | What They Want |
 |-------|--------|----------------|
@@ -29,28 +29,28 @@ sources: []
 
 ---
 
-## 📚 Study Plan
+## Study Plan
 
-→ [[Study-Plan|📋 Detailed Week-by-Week Study Plan]]
+→ [[Study-Plan|Detailed Week-by-Week Study Plan]]
 
 ### Quick Priority Matrix
 
 | Topic | Priority | Your Level | Target Level | Vault Resource |
 |-------|----------|-----------|-------------|----------------|
-| Lock-Free Programming | 🔴 Critical | | 5/5 | [[14-Low-Latency-Systems/08 - Low-Latency Programming]] |
-| Memory Models & Atomics | 🔴 Critical | | 5/5 | [[14-Low-Latency-Systems/08 - Low-Latency Programming]] |
-| Cache Architecture | 🔴 Critical | | 5/5 | [[14-Low-Latency-Systems/04 - Hardware Mechanical Sympathy]] |
-| Kernel Bypass / DPDK | 🔴 Critical | | 4/5 | [[14-Low-Latency-Systems/06 - Networking]] |
-| OS & Kernel Tuning | 🔴 Critical | | 4/5 | [[14-Low-Latency-Systems/05 - OS & Kernel Tuning]] |
-| Networking (TCP/UDP) | 🟡 High | | 4/5 | [[14-Low-Latency-Systems/06 - Networking]] |
-| FPGA Concepts | 🟡 High | | 3/5 | [[14-Low-Latency-Systems/12 - FPGAs & Hardware Acceleration]] |
-| Time & Measurement | 🟡 High | | 4/5 | [[14-Low-Latency-Systems/07 - Time & Measurement]] |
-| IPC & Messaging | 🟢 Medium | | 3/5 | [[14-Low-Latency-Systems/09 - Messaging & IPC]] |
-| Protocols (FIX/SBE) | 🟢 Medium | | 3/5 | [[14-Low-Latency-Systems/10 - Protocols & Codecs]] |
+| Lock-Free Programming | Critical | | 5/5 | [[14-Low-Latency-Systems/08 - Low-Latency Programming]] |
+| Memory Models & Atomics | Critical | | 5/5 | [[14-Low-Latency-Systems/08 - Low-Latency Programming]] |
+| Cache Architecture | Critical | | 5/5 | [[14-Low-Latency-Systems/04 - Hardware Mechanical Sympathy]] |
+| Kernel Bypass / DPDK | Critical | | 4/5 | [[14-Low-Latency-Systems/06 - Networking]] |
+| OS & Kernel Tuning | Critical | | 4/5 | [[14-Low-Latency-Systems/05 - OS & Kernel Tuning]] |
+| Networking (TCP/UDP) | High | | 4/5 | [[14-Low-Latency-Systems/06 - Networking]] |
+| FPGA Concepts | High | | 3/5 | [[14-Low-Latency-Systems/12 - FPGAs & Hardware Acceleration]] |
+| Time & Measurement | High | | 4/5 | [[14-Low-Latency-Systems/07 - Time & Measurement]] |
+| IPC & Messaging | Medium | | 3/5 | [[14-Low-Latency-Systems/09 - Messaging & IPC]] |
+| Protocols (FIX/SBE) | Medium | | 3/5 | [[14-Low-Latency-Systems/10 - Protocols & Codecs]] |
 
 ---
 
-## 🏢 Target Companies
+## Target Companies
 
 ```dataview
 TABLE WITHOUT ID
@@ -60,7 +60,7 @@ WHERE contains(target_roles, "Low-Latency")
 SORT file.name ASC
 ```
 
-## 📊 Active Interviews
+## Active Interviews
 
 ```dataview
 TABLE WITHOUT ID
@@ -73,10 +73,10 @@ SORT next_deadline ASC
 
 ---
 
-## 🔗 Role Resources
+## Role Resources
 - → [[Skill-Matrix]] | → [[Question-Bank]] | → [[Common-Patterns]] | → [[Resources]]
 
-## 📖 Key Vault Links — Your 14-Module LL Knowledge Base
+## Key Vault Links - Your 14-Module LL Knowledge Base
 | # | Module | Link |
 |---|--------|------|
 | 01 | Market & Microstructure | [[14-Low-Latency-Systems/01 - Market & Microstructure Fundamentals]] |
@@ -93,5 +93,5 @@ SORT next_deadline ASC
 | 12 | FPGAs & HW Acceleration | [[14-Low-Latency-Systems/12 - FPGAs & Hardware Acceleration]] |
 | 13 | Reliability, Ops & Testing | [[14-Low-Latency-Systems/13 - Reliability, Ops & Testing]] |
 | 14 | Industry Map & Canon | [[14-Low-Latency-Systems/14 - Industry Map & Canon]] |
-| — | Interview Prep | [[14-Low-Latency-Systems/Interview/interview]] |
-| — | 12-Week Roadmap | [[14-Low-Latency-Systems/Roadmap - 12-Week Production Calibration]] |
+| - | Interview Prep | [[14-Low-Latency-Systems/Interview/interview]] |
+| - | 12-Week Roadmap | [[14-Low-Latency-Systems/Roadmap - 12-Week Production Calibration]] |

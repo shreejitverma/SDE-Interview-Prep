@@ -11,7 +11,7 @@ last_reviewed:
 sources: []
 ---
 
-# Lab 09 — Ultra-Fast Shared Memory IPC Channel
+# Lab 09 - Ultra-Fast Shared Memory IPC Channel
 
 > [!summary]
 > In this lab, you will build, compile, and benchmark an exchange-grade, cross-process Shared Memory (POSIX SHM) IPC channel in C++20. You will spawn two independent operating system processes (Producer and Consumer) pinned to dedicated physical CPU cores, measure true process-to-process transit latency down to the nanosecond, and verify sustained throughput exceeding **40,000,000 messages/second**.

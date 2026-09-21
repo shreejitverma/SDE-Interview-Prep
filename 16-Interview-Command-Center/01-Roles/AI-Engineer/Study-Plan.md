@@ -7,7 +7,7 @@ last_reviewed:
 sources: []
 ---
 
-# 📋 AI Engineer Study Plan — 10-Week Sprint
+# AI Engineer Study Plan - 10-Week Sprint
 
 ## Week 1-2: ML Fundamentals Refresh
 - [ ] Linear/logistic regression, gradient descent, regularization (L1/L2)

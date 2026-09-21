@@ -13,7 +13,7 @@ sources: []
 
 **Notes**
 
-- [Chapter 19: Templates — The Cookie Cutter](19_templates.md)
+- [Chapter 19: Templates - The Cookie Cutter](19_templates.md)
 - [Chapter 20: Concepts and Constraints](20_concepts.md)
 - [Chapter 21: Variadic Templates and Fold Expressions](21_variadic_templates.md)
 - [Chapter 22: Type Traits and Compile-Time Introspection](22_type_traits.md)

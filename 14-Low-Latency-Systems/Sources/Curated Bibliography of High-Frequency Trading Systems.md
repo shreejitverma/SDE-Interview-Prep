@@ -11,7 +11,7 @@ last_reviewed:
 sources: []
 ---
 
-# Curated Master Bibliography — High-Frequency Trading & Low-Latency Systems
+# Curated Master Bibliography - High-Frequency Trading & Low-Latency Systems
 
 > [!summary]
 > The definitive scholarly and industrial bibliography of low-latency electronic trading, quantitative market microstructure, computer architecture, and distributed systems engineering.

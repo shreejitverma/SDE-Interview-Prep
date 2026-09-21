@@ -9,7 +9,7 @@ sources: []
 
 # Chapter 70: Contracts, Memory Safety, and Diagnostics
 
-The C++ language is built on a foundation of trust: trust that the programmer knows what they are doing. This core philosophy—"you don't pay for what you don't use"—enabled C++ to dominate high-performance computing, kernel development, and embedded systems. However, this same philosophy led to the proliferation of Undefined Behavior (UB), security vulnerabilities, and logic bugs that are notoriously difficult to track down.
+The C++ language is built on a foundation of trust: trust that the programmer knows what they are doing. This core philosophy - "you don't pay for what you don't use" - enabled C++ to dominate high-performance computing, kernel development, and embedded systems. However, this same philosophy led to the proliferation of Undefined Behavior (UB), security vulnerabilities, and logic bugs that are notoriously difficult to track down.
 
 C++26 fundamentally shifts the paradigm. Recognizing the immense pressure from memory-safe languages like Rust and Swift, the C++ committee introduced a massive suite of features designed to drastically improve the safety and diagnostic capabilities of the language, without sacrificing the zero-overhead principle.
 
@@ -320,7 +320,7 @@ Combined with the quality-of-life improvements of `#embed` and programmatic brea
 In the next chapter, we will shift our focus to the domain where C++ truly reigns supreme: ultra-low latency concurrency. We will explore the revolutionary `std::execution` framework, Senders/Receivers, Hazard Pointers, and Read-Copy-Update (RCU).
 # Chapter 70: Contracts, Memory Safety, and Diagnostics
 
-The C++ language is built on a foundation of trust: trust that the programmer knows what they are doing. This core philosophy—"you don't pay for what you don't use"—enabled C++ to dominate high-performance computing, kernel development, and embedded systems. However, this same philosophy led to the proliferation of Undefined Behavior (UB), security vulnerabilities, and logic bugs that are notoriously difficult to track down.
+The C++ language is built on a foundation of trust: trust that the programmer knows what they are doing. This core philosophy - "you don't pay for what you don't use" - enabled C++ to dominate high-performance computing, kernel development, and embedded systems. However, this same philosophy led to the proliferation of Undefined Behavior (UB), security vulnerabilities, and logic bugs that are notoriously difficult to track down.
 
 C++26 fundamentally shifts the paradigm. Recognizing the immense pressure from memory-safe languages like Rust and Swift, the C++ committee introduced a massive suite of features designed to drastically improve the safety and diagnostic capabilities of the language, without sacrificing the zero-overhead principle.
 
@@ -631,7 +631,7 @@ Combined with the quality-of-life improvements of `#embed` and programmatic brea
 In the next chapter, we will shift our focus to the domain where C++ truly reigns supreme: ultra-low latency concurrency. We will explore the revolutionary `std::execution` framework, Senders/Receivers, Hazard Pointers, and Read-Copy-Update (RCU).
 # Chapter 70: Contracts, Memory Safety, and Diagnostics
 
-The C++ language is built on a foundation of trust: trust that the programmer knows what they are doing. This core philosophy—"you don't pay for what you don't use"—enabled C++ to dominate high-performance computing, kernel development, and embedded systems. However, this same philosophy led to the proliferation of Undefined Behavior (UB), security vulnerabilities, and logic bugs that are notoriously difficult to track down.
+The C++ language is built on a foundation of trust: trust that the programmer knows what they are doing. This core philosophy - "you don't pay for what you don't use" - enabled C++ to dominate high-performance computing, kernel development, and embedded systems. However, this same philosophy led to the proliferation of Undefined Behavior (UB), security vulnerabilities, and logic bugs that are notoriously difficult to track down.
 
 C++26 fundamentally shifts the paradigm. Recognizing the immense pressure from memory-safe languages like Rust and Swift, the C++ committee introduced a massive suite of features designed to drastically improve the safety and diagnostic capabilities of the language, without sacrificing the zero-overhead principle.
 
@@ -942,7 +942,7 @@ Combined with the quality-of-life improvements of `#embed` and programmatic brea
 In the next chapter, we will shift our focus to the domain where C++ truly reigns supreme: ultra-low latency concurrency. We will explore the revolutionary `std::execution` framework, Senders/Receivers, Hazard Pointers, and Read-Copy-Update (RCU).
 # Chapter 70: Contracts, Memory Safety, and Diagnostics
 
-The C++ language is built on a foundation of trust: trust that the programmer knows what they are doing. This core philosophy—"you don't pay for what you don't use"—enabled C++ to dominate high-performance computing, kernel development, and embedded systems. However, this same philosophy led to the proliferation of Undefined Behavior (UB), security vulnerabilities, and logic bugs that are notoriously difficult to track down.
+The C++ language is built on a foundation of trust: trust that the programmer knows what they are doing. This core philosophy - "you don't pay for what you don't use" - enabled C++ to dominate high-performance computing, kernel development, and embedded systems. However, this same philosophy led to the proliferation of Undefined Behavior (UB), security vulnerabilities, and logic bugs that are notoriously difficult to track down.
 
 C++26 fundamentally shifts the paradigm. Recognizing the immense pressure from memory-safe languages like Rust and Swift, the C++ committee introduced a massive suite of features designed to drastically improve the safety and diagnostic capabilities of the language, without sacrificing the zero-overhead principle.
 

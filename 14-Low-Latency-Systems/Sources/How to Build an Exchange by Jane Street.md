@@ -11,7 +11,7 @@ last_reviewed:
 sources: []
 ---
 
-# Source Summary — How to Build an Exchange: Systems Architecture
+# Source Summary - How to Build an Exchange: Systems Architecture
 **Author**: Jane Street Engineering (Yaron Minsky, Ron Minsky, and Core Infrastructure Leads)  
 **Publication**: Jane Street *Signals & Threads* & Public Technical Publications  
 **Category**: Exchange Architecture & Deterministic Distributed Systems
@@ -68,7 +68,7 @@ flowchart TD
 - If the Primary crashes, the Standby assumes active transmission in under 50 microseconds with zero state reconstruction delay.
 
 ### 3. Separation of Concerns: Pre-Trade vs Post-Trade
-- **Pre-Trade (Hot Path)**: Kept maximally lean—only immediate balance checks and sequence stamping.
+- **Pre-Trade (Hot Path)**: Kept maximally lean - only immediate balance checks and sequence stamping.
 - **Post-Trade (Async Path)**: Clearing, regulatory reporting, drop copy distribution, and trade billing are completely offloaded to asynchronous downstream consumers reading the execution event log.
 
 ---

@@ -7,7 +7,7 @@ last_reviewed:
 sources: []
 ---
 
-# 📊 Quant Dev Skill Matrix
+# Quant Dev Skill Matrix
 
 | Skill | Level (1-5) | Last Assessed | Notes |
 |-------|-------------|---------------|-------|

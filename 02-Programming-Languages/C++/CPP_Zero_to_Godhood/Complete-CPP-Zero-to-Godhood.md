@@ -18,7 +18,7 @@ Here is how you should navigate this text depending on your current skill level.
 ### The Beginner's Path (Level 0 to 20)
 If you have never programmed before, or if your only experience is a little bit of Python or JavaScript:
 1. **Read Part I (From Zero)** cover to cover. Do not skip Chapter 1 or 2.
-2. Work carefully through **Part II (Core C++)**. Pointers (Chapter 5) are the great filter—take your time here.
+2. Work carefully through **Part II (Core C++)**. Pointers (Chapter 5) are the great filter - take your time here.
 3. Learn to use the tools in **Part IV (Standard Library)** before trying to build your own.
 
 ### The Intermediate Path (Level 20 to 60)
@@ -40,27 +40,27 @@ If you've been writing C++ for 5 years and want to master the machine:
 Throughout this book, you will see special callout boxes. We use these to break up the text, provide deeper insights, and warn you about the sharp edges of the language.
 
 > [!TIP]
-> **🔥 Godhood Tip**
+> **Godhood Tip**
 > These are pro-level tricks, performance optimizations, and "secret weapons" used by senior engineers to write blazingly fast code.
 
 > [!NOTE]
-> **🛋️ Fireside Chat**
+> **Fireside Chat**
 > Programming isn't just math; it's a human endeavor. Fireside chats are conversational interludes where we use real-world analogies (like hotels, U-Haul boxes, or kitchens) to explain complex abstract concepts.
 
 > [!IMPORTANT]
-> **🧠 Brain Power**
+> **Brain Power**
 > When we need to look under the hood. These callouts explain *how* the compiler translates your C++ code into assembly, how memory is actually laid out, or how an algorithm achieves O(1) complexity.
 
 > [!WARNING]
-> **🤔 There Are No Dumb Questions**
-> Common questions that beginners often think but are too afraid to ask. If you're confused, look for these boxes—someone else probably asked the exact same thing.
+> **There Are No Dumb Questions**
+> Common questions that beginners often think but are too afraid to ask. If you're confused, look for these boxes - someone else probably asked the exact same thing.
 
 > [!CAUTION]
-> **⚠️ The Danger Zone**
+> **The Danger Zone**
 > Undefined Behavior (UB), memory leaks, and historical traps. When you see this, pay attention, or you will spend a week debugging a core dump.
 
 > [!NOTE]
-> **📋 Professional Notes**
+> **Professional Notes**
 > Architectural advice, C++ Core Guidelines references, and clean code principles designed to help your code survive 10 years and 50 developers.
 
 ---
@@ -99,11 +99,11 @@ Now, turn the page. It's time to build.
 
 Welcome to the mountain. 
 
-If you're reading this, you probably already know that C++ has a reputation. It's often described as a massive, sprawling beast of a language—a language that gives you enough rope to shoot yourself in the foot (and blow off your entire leg in the process). 
+If you're reading this, you probably already know that C++ has a reputation. It's often described as a massive, sprawling beast of a language - a language that gives you enough rope to shoot yourself in the foot (and blow off your entire leg in the process). 
 
 But here is the truth: C++ is not just a language. It is a philosophy of *zero-overhead abstraction*. It is the invisible scaffolding holding up the modern world. When performance, scale, and control matter, the world turns to C++. From the trading floors of Wall Street to the rovers roaming the surface of Mars, C++ is the language of Gods.
 
-This book is titled **"Zero to Godhood"** for a very specific reason. We are not just going to teach you syntax. We are going to teach you *how to think* like a systems engineer. We will start from absolute zero—assuming you have never written a line of code in your life—and we will climb all the way to the highest peaks of template metaprogramming, lock-free concurrency, and the absolute bleeding edge of C++26.
+This book is titled **"Zero to Godhood"** for a very specific reason. We are not just going to teach you syntax. We are going to teach you *how to think* like a systems engineer. We will start from absolute zero - assuming you have never written a line of code in your life - and we will climb all the way to the highest peaks of template metaprogramming, lock-free concurrency, and the absolute bleeding edge of C++26.
 
 ## The "Zero to Godhood" Philosophy
 
@@ -162,15 +162,15 @@ At its core, a computer is just a very fast, very obedient rock that we tricked 
 
 Programming is the act of translation. It is how we bridge the gap between human intention ("Show a picture of a cat on the screen") and machine execution ("Send these specific electrical signals to these specific pixels").
 
-When you write code, you are writing a highly structured, logical set of instructions. But computers don't run C++. They run *machine code*. C++ is the intermediary—a language designed to be readable by humans but easily translatable into the pure, high-voltage speed that the CPU craves.
+When you write code, you are writing a highly structured, logical set of instructions. But computers don't run C++. They run *machine code*. C++ is the intermediary - a language designed to be readable by humans but easily translatable into the pure, high-voltage speed that the CPU craves.
 
 ## 1.2 Why C++?
 
 C++ is a statically-typed, compiled programming language that combines low-level memory manipulation with high-level abstractions. 
 
 > [!IMPORTANT]
-> **🧠 Brain Power: Why C++?**
-> Think of C++ as the "Power Tool" of programming. Python is like a high-end digital camera—press a button, and it does everything for you automatically. C++ is like a professional cinema camera where you manually adjust the aperture, shutter speed, and focus. It’s harder to use, but it gives you absolute control over the final result. If you’re building a rocket, a game engine, or a high-frequency trading system, you don't want a "press here" tool; you want C++.
+> **Brain Power: Why C++?**
+> Think of C++ as the "Power Tool" of programming. Python is like a high-end digital camera - press a button, and it does everything for you automatically. C++ is like a professional cinema camera where you manually adjust the aperture, shutter speed, and focus. It’s harder to use, but it gives you absolute control over the final result. If you’re building a rocket, a game engine, or a high-frequency trading system, you don't want a "press here" tool; you want C++.
 
 C++ was created in 1979 by Bjarne Stroustrup as an extension to the C programming language. He wanted the bare-metal speed of C, but with the organizational tools (like classes and objects) necessary to build massive software systems without the code collapsing under its own weight. 
 
@@ -202,7 +202,7 @@ For beginners, we highly recommend an IDE (Integrated Development Environment) w
 *   **Cross-Platform**: **CLion** (paid, but phenomenal) or **Visual Studio Code** (free, but requires some manual setup of the C++ extensions).
 
 > [!TIP]
-> **🔥 Godhood Tip: Compiler Explorer**
+> **Godhood Tip: Compiler Explorer**
 > Don't want to install anything right now? Go to [godbolt.org](https://godbolt.org). Compiler Explorer allows you to write C++ in your browser and instantly see the compiled assembly code. It is an indispensable tool used by senior engineers daily.
 
 ## 1.5 Your First Program: Hello, World!
@@ -230,12 +230,12 @@ Let's break down exactly what you just wrote. C++ is a language of strict rules,
 2.  **`int main() { ... }`**: Every C++ program, no matter how large, must have exactly one `main` function. This is the entry point. When you double-click your program, the Operating System looks for `main` and starts executing the code inside the curly braces `{}`. The `int` means this function will return an integer back to the OS when it finishes.
 3.  **`std::cout`**: Think of this as a "pipe" that leads to your monitor. The `std::` part means it lives in the "Standard Library" namespace (we'll cover namespaces later). 
 4.  **`<<`**: This is the stream insertion operator. We are taking the string `"Hello, World!"` and "pushing" it into the `cout` pipe.
-5.  **`std::endl`**: This stands for "end line". It moves the cursor to the next line and **flushes the buffer**. Flushing the buffer is like hitting "Send" on a text message—it forces the computer to actually display the text on the screen right now.
+5.  **`std::endl`**: This stands for "end line". It moves the cursor to the next line and **flushes the buffer**. Flushing the buffer is like hitting "Send" on a text message - it forces the computer to actually display the text on the screen right now.
 6.  **`return 0;`**: This tells the Operating System, "I finished successfully." A non-zero return value (like `return 1;`) would signal that an error occurred.
 7.  **`;` (The Semicolon)**: Notice the semicolons at the end of the instructions. In C++, a semicolon is like a period at the end of a sentence. It tells the compiler that the statement is complete. If you forget it, your code will not compile.
 
 > [!WARNING]
-> **🤔 There Are No Dumb Questions**
+> **There Are No Dumb Questions**
 > **Q: Why is the standard library called `std`? Is it an STD?**
 > A: It stands for "Standard". As in, the Standard Library. Yes, we know the acronym is unfortunate. You'll get used to typing it.
 
@@ -263,9 +263,9 @@ Why is C++ so fast? It comes down to how the code is processed.
 
 Languages like Python or JavaScript are **Interpreted**. When you run a Python script, another program (the interpreter) reads your code line-by-line, translates it, and executes it on the fly. It's like having a live translator at a United Nations meeting. It's flexible, but the translation takes time.
 
-C++ is **Ahead-Of-Time (AOT) Compiled**. Before you can ever run a C++ program, the entire source code is translated into pure machine code tailored specifically for your exact CPU architecture. When you run the resulting executable, there is no translator. The CPU just executes the raw voltage instructions at maximum speed. It's like translating a book into a foreign language and printing it—it takes a lot of time upfront (compiling), but reading it is lightning fast.
+C++ is **Ahead-Of-Time (AOT) Compiled**. Before you can ever run a C++ program, the entire source code is translated into pure machine code tailored specifically for your exact CPU architecture. When you run the resulting executable, there is no translator. The CPU just executes the raw voltage instructions at maximum speed. It's like translating a book into a foreign language and printing it - it takes a lot of time upfront (compiling), but reading it is lightning fast.
 
-## 1.9 🛋️ Fireside Chat: The Assembly Line of Compilation
+## 1.9 Fireside Chat: The Assembly Line of Compilation
 
 Imagine you are building a custom car. You don't just "run" a car; you build it in stages. C++ works exactly the same way. The "compilation" process is actually a four-stage factory pipeline.
 
@@ -296,7 +296,7 @@ To move data, you need to store it. To store it, you need variables.
 ## 2.1 What Is a Variable? (The Hotel Room Analogy)
 
 > [!NOTE]
-> **🛋️ Fireside Chat: The Memory Hotel**
+> **Fireside Chat: The Memory Hotel**
 > Imagine your computer's RAM (Random Access Memory) is a massive hotel with billions of rooms. 
 > 
 > When you declare a **variable**, you are walking up to the front desk and saying: *"I need a room. I want to name it `score`, and I am going to put an integer inside it."*
@@ -363,7 +363,7 @@ You can also use prefixes and suffixes to change how literals are read:
 *   `3.14f` (Forces the compiler to treat this as a `float` instead of a `double`)
 *   `1'000'000` (Digit separators for readability) `[C++14]`
 
-## 2.5 `const` and `constexpr` — Values That Never Change
+## 2.5 `const` and `constexpr` - Values That Never Change
 
 If a variable shouldn't change, explicitly lock it down using `const`. This prevents you from accidentally overwriting it, and allows the compiler to optimize your code better.
 
@@ -394,7 +394,7 @@ int c{5};
 ```
 
 > [!TIP]
-> **🔥 Godhood Tip: Use Uniform Initialization `{}`**
+> **Godhood Tip: Use Uniform Initialization `{}`**
 > The `{}` syntax prevents "narrowing conversions". If you try `int a = 3.14;`, the compiler will silently chop off the `.14` and make `a = 3`. If you try `int a{3.14};`, the compiler will throw a hard error and save you from a nasty bug.
 
 ## 2.7 `auto` Type Deduction `[C++11]`
@@ -462,7 +462,7 @@ At the lowest level, everything is bits. Bitwise operators let you manipulate th
 *   `>>` (Right Shift): Shift bits right (effectively divides by 2^N).
 
 > [!TIP]
-> **🔥 Godhood Tip: Fast Power of 2 Check**
+> **Godhood Tip: Fast Power of 2 Check**
 > A legendary bitwise trick to check if a number is a power of 2:
 > `bool isPowerOf2 = (x > 0) && ((x & (x - 1)) == 0);`
 
@@ -492,7 +492,7 @@ int main() {
 }
 ```
 
-## 2.13 🔥 Data Representation Deep Dive
+## 2.13 Data Representation Deep Dive
 
 To achieve Godhood, you must know what your variables actually look like in memory.
 
@@ -507,7 +507,7 @@ If you add 1 to the maximum possible positive integer, it flips the sign bit and
 Floating-point numbers are not exact. They are approximations based on scientific notation, storing a *Sign*, an *Exponent*, and a *Mantissa/Fraction*.
 
 > [!WARNING]
-> **⚠️ The Danger Zone: Float Equality**
+> **The Danger Zone: Float Equality**
 > Never do this: `if (0.1 + 0.2 == 0.3)`. 
 > Because 0.1 cannot be perfectly represented in binary, the left side actually evaluates to something like `0.30000000000000004`. The statement will be `false`. 
 > Instead, check if the difference is smaller than a tiny tolerance (epsilon).
@@ -521,7 +521,7 @@ Variables are the nouns of our code. Operators are the verbs. In the next chapte
 
 > *Making decisions and repeating actions.*
 
-Code that runs straight from top to bottom is boring. It does the exact same thing every single time. To make software truly useful—to make it react to user input, process data files, or run game loops—your code needs to make decisions. It needs to branch. It needs to repeat.
+Code that runs straight from top to bottom is boring. It does the exact same thing every single time. To make software truly useful - to make it react to user input, process data files, or run game loops - your code needs to make decisions. It needs to branch. It needs to repeat.
 
 This is **Control Flow**. 
 
@@ -560,7 +560,7 @@ int new_high_score = (player_score > high_score) ? player_score : high_score;
 ```
 
 > [!CAUTION]
-> **⚠️ The Danger Zone: Nested Ternaries**
+> **The Danger Zone: Nested Ternaries**
 > Just because you *can* chain ternaries together doesn't mean you *should*. 
 > `std::string status = (age < 18) ? "Minor" : (age < 65) ? "Adult" : "Senior";`
 > This is difficult to read. Code is read ten times more often than it is written. Use `if/else` instead.
@@ -648,7 +648,7 @@ for (int i = 0; i < 5; i++) {
 ```
 
 > [!IMPORTANT]
-> **🧠 Brain Power: How a `for` Loop Actually Executes**
+> **Brain Power: How a `for` Loop Actually Executes**
 > 1. `int i = 0;` runs exactly once.
 > 2. `i < 5;` is checked. If true, proceed to step 3. If false, exit the loop.
 > 3. The body `std::cout...` runs.
@@ -750,7 +750,7 @@ for (int y = 0; y < 10; y++) {
 ```
 
 > [!NOTE]
-> **📋 Professional Notes: The Arrow Anti-Pattern**
+> **Professional Notes: The Arrow Anti-Pattern**
 > Be highly wary of deeply nested control flow. If your code looks like a giant sideways arrow `>` because of so many nested `if` and `for` blocks, your code is unreadable. 
 > 
 > The solution? 
@@ -845,7 +845,7 @@ void printScore(const std::string& player_name) {
 ```
 
 > [!TIP]
-> **🔥 Godhood Tip: When to use which?**
+> **Godhood Tip: When to use which?**
 > *   **Fundamental types** (`int`, `double`, `bool`): Pass by **Value**. They are so small that copying them is actually faster than creating a reference pointer under the hood.
 > *   **Large objects** (`std::string`, `std::vector`, Classes): Pass by **`const` Reference**.
 > *   **When you need to modify the original**: Pass by **Reference**.
@@ -921,7 +921,7 @@ int factorial(int n) {
 }
 ```
 
-## 4.7 🛋️ Fireside Chat: How the Stack Actually Works
+## 4.7 Fireside Chat: How the Stack Actually Works
 
 To understand recursion, and to understand why programs crash, you must understand **The Call Stack**.
 
@@ -937,7 +937,7 @@ When `multiply()` finishes, its tray is popped off the stack and destroyed, reve
 Every time a tray is created, it allocates memory for the function's local variables. 
 
 > [!CAUTION]
-> **⚠️ Stack Overflow**
+> **Stack Overflow**
 > What happens if a recursive function forgets its Base Case?
 > It calls itself. A tray is added. It calls itself. Another tray. It calls itself 100,000 times. The stack of trays hits the ceiling of the cafeteria.
 > 
@@ -954,7 +954,7 @@ You now possess the foundational tools of C++: Variables, Control Flow, and Func
 
 > *Handing over the keys to the city.*
 
-Welcome to the heart of C++. Most modern languages—like Java, Python, or C#—try to hide memory from you. They handle the allocation, the cleanup, and the addresses automatically. 
+Welcome to the heart of C++. Most modern languages - like Java, Python, or C# - try to hide memory from you. They handle the allocation, the cleanup, and the addresses automatically. 
 
 C++ does not hide the memory. C++ hands you the keys to the city and says, *"Don't burn it down."*
 
@@ -964,7 +964,7 @@ To master C++, you must stop thinking about variables as abstract concepts and s
 
 ---
 
-## 5.1 🛋️ Fireside Chat: The Memory City Analogy
+## 5.1 Fireside Chat: The Memory City Analogy
 
 Imagine your computer's RAM (Random Access Memory) is a giant metropolis called **Mem-City**.
 
@@ -998,7 +998,7 @@ std::cout << scores[4]; // Prints 50
 ```
 
 > [!WARNING]
-> **⚠️ The Danger Zone: Array Bounds**
+> **The Danger Zone: Array Bounds**
 > C++ does absolutely **zero bounds checking**. If you ask for `scores[100]`, C++ won't stop you. It will just walk 100 houses down the street, break into whoever lives there, and read their data. This causes **Undefined Behavior**.
 
 **Array Decay:** 
@@ -1025,7 +1025,7 @@ std::cout << secret_number;       // Prints 100!
 ## 5.5 Pointer Arithmetic (Walking the Streets)
 
 Because pointers are just numbers (addresses), you can add or subtract from them. 
-But C++ is smart—it knows how wide the houses are.
+But C++ is smart - it knows how wide the houses are.
 
 ```cpp
 int arr[3] = {10, 20, 30};
@@ -1048,7 +1048,7 @@ Pointers are the number one cause of bugs in C++. Here are the street gangs of M
 ## 5.7 References `&` vs Pointers `*`
 
 Because Pointers are so dangerous, C++ introduced **References**. 
-A reference is just an alias—a second name for an existing variable.
+A reference is just an alias - a second name for an existing variable.
 
 ```cpp
 int original = 100;
@@ -1114,14 +1114,14 @@ const int* const p3 = &x;
 
 ---
 
-You now understand the fabric of the Matrix. You can allocate memory, navigate addresses, and manipulate data exactly how the CPU sees it. In the next chapter, we will look at how C++ handles text—a concept that is surprisingly complex when you are working directly with memory arrays.
+You now understand the fabric of the Matrix. You can allocate memory, navigate addresses, and manipulate data exactly how the CPU sees it. In the next chapter, we will look at how C++ handles text - a concept that is surprisingly complex when you are working directly with memory arrays.
 
 
 # Chapter 6: Strings and I/O
 
 > *Talking to the outside world.*
 
-Computers are incredibly fast calculators, but a calculator is useless if it can't show you the result. Software needs to communicate—with the user, with the hard drive, and with the network. In most languages, handling text and printing it to the screen is trivial. In C++, because you have direct access to memory, text is a fascinating (and sometimes dangerous) topic.
+Computers are incredibly fast calculators, but a calculator is useless if it can't show you the result. Software needs to communicate - with the user, with the hard drive, and with the network. In most languages, handling text and printing it to the screen is trivial. In C++, because you have direct access to memory, text is a fascinating (and sometimes dangerous) topic.
 
 ---
 
@@ -1138,7 +1138,7 @@ Notice the `'\0'` at the very end? That is the **Null Terminator**. Because C-ar
 If you forget the `\0`, the computer will keep reading memory past the end of the array, printing whatever garbage happens to be stored in the adjacent memory houses until it accidentally hits a `0`.
 
 > [!WARNING]
-> **⚠️ The Danger Zone: Buffer Overflows**
+> **The Danger Zone: Buffer Overflows**
 > C-Strings are the root cause of countless security vulnerabilities. If a hacker gives you a 100-character name, and you copy it into a 10-character C-String array, the extra 90 characters will overwrite adjacent memory. The hacker can use this to overwrite the function's return address and hijack your program!
 
 You can write C-Strings more simply using string literals, and the compiler will add the `\0` for you:
@@ -1146,7 +1146,7 @@ You can write C-Strings more simply using string literals, and the compiler will
 const char* name = "Hello"; // Still just an array of characters in memory!
 ```
 
-## 6.2 `std::string` — The Modern Way
+## 6.2 `std::string` - The Modern Way
 
 To save us from the madness of null-terminators and buffer overflows, C++ gave us `<string>`. `std::string` is an intelligent, dynamic object that automatically resizes itself to fit whatever text you give it.
 
@@ -1192,7 +1192,7 @@ int main() {
 ```
 
 > [!TIP]
-> **🔥 Godhood Tip: Read-Only Text**
+> **Godhood Tip: Read-Only Text**
 > A `string_view` is just two things under the hood: a pointer to the start of the text, and an integer representing the length. That's it. It doesn't own the memory. If you are writing a function that only *reads* text, always use `std::string_view`. 
 
 ## 6.4 Basic I/O: `cin`, `cout`, `cerr`
@@ -1283,7 +1283,7 @@ Every stream has internal state flags you can check:
 *   `bad()`: Fatal error (the hard drive was ripped out of the computer).
 
 > [!NOTE]
-> **📋 Professional Notes: Fast I/O**
+> **Professional Notes: Fast I/O**
 > Are you doing competitive programming or processing gigabytes of text? C++ streams are synchronized with C-style `stdio` by default, which makes them slow. 
 > To make `std::cout` and `std::cin` blazing fast, put this at the very top of `main()`:
 > `std::ios::sync_with_stdio(false);`
@@ -1328,7 +1328,7 @@ if (current == 1) {
 ```
 
 > [!WARNING]
-> **⚠️ The Danger Zone: Global Leakage**
+> **The Danger Zone: Global Leakage**
 > C-style enums are notoriously leaky. The names `MENU`, `PLAYING`, etc., leak out into the surrounding scope. If you try to create another enum later like `enum VideoState { PLAYING, STOPPED };`, the compiler will throw a massive error because the word `PLAYING` has already been taken by `GameState`. Furthermore, C-style enums will implicitly convert to integers, defeating the purpose of strict typing.
 
 ### The Modern Way: Scoped Enums (`enum class`) `[C++11]`
@@ -1353,7 +1353,7 @@ if (current == GameState::Playing) {
 ```
 Always use `enum class`. It guarantees that your names stay contained and prevents accidental math operations on your game states.
 
-## 7.2 Unions — Shared Memory Layout
+## 7.2 Unions - Shared Memory Layout
 
 A `union` is a special data structure where all members share the *exact same memory location*. 
 
@@ -1383,7 +1383,7 @@ Unions are heavily used in low-level systems programming (like network drivers o
 
 However, they are highly dangerous. The compiler does not know which type is currently "active" inside the union.
 
-## 7.3 `std::variant` — The Safe Union `[C++17]`
+## 7.3 `std::variant` - The Safe Union `[C++17]`
 
 To solve the safety issues of raw Unions, C++17 introduced `<variant>`. A `std::variant` is a "type-safe union." It remembers exactly which type it is currently holding.
 
@@ -1445,7 +1445,7 @@ using namespace std; // Pulls EVERYTHING from 'std' into the global scope
 ```
 
 > [!CAUTION]
-> **⚠️ The Danger Zone: `using namespace std;` in Headers**
+> **The Danger Zone: `using namespace std;` in Headers**
 > While it is fine to write `using namespace std;` in a `.cpp` file for a small homework assignment, **NEVER** put it in a header (`.h`) file. 
 > 
 > If you put it in a header, every single file that `#include`s your header will violently be forced to dump the entire standard library into their global namespace, causing massive naming collisions and ruining the compilation of massive codebases.
@@ -1482,15 +1482,15 @@ With your data states and naming scopes organized, you are finally ready to bund
 
 > *Building your own types.*
 
-Welcome to the world of objects. Up until now, we have been writing "Procedural" code—essentially a long list of instructions for the computer to follow. We used built-in types like `int`, `float`, and `char`. 
+Welcome to the world of objects. Up until now, we have been writing "Procedural" code - essentially a long list of instructions for the computer to follow. We used built-in types like `int`, `float`, and `char`. 
 
-But what if you are building a game and need a `Player` type? A player isn't just an integer. A player has a name (string), health (int), and an inventory (array). More importantly, a player has *behaviors*—they can jump, take damage, and heal.
+But what if you are building a game and need a `Player` type? A player isn't just an integer. A player has a name (string), health (int), and an inventory (array). More importantly, a player has *behaviors* - they can jump, take damage, and heal.
 
 Object-Oriented Programming (OOP) allows you to bind data and behavior together into a single, cohesive unit.
 
 ---
 
-## 8.1 🛋️ Fireside Chat: The Blueprint vs. The House
+## 8.1 Fireside Chat: The Blueprint vs. The House
 
 To understand OOP, you must understand the difference between a **Class** and an **Object**.
 
@@ -1631,7 +1631,7 @@ int main() {
 } // CRASH!
 ```
 
-When `b2` is created, C++ does a "shallow copy"—it copies the memory address. Both `b1` and `b2` now point to the *exact same locker* in the warehouse.
+When `b2` is created, C++ does a "shallow copy" - it copies the memory address. Both `b1` and `b2` now point to the *exact same locker* in the warehouse.
 When `main()` ends, `b2`'s destructor deletes the locker. Then `b1`'s destructor runs and tries to delete the locker *again*. This is a "Double Free" error, and your program will instantly crash.
 
 **The Rule of Three states:** If you need to manually define *any* of the following three functions, you almost certainly need to define *all three* to safely manage memory:
@@ -1701,7 +1701,7 @@ You now know how to design Blueprints, manage their lifespans, and protect their
 
 > *Teaching your objects how to do math.*
 
-In most programming languages, you can add two integers together using the `+` operator. If you want to add two custom objects together—say, two `Vector2D` math objects—you usually have to write a clunky function:
+In most programming languages, you can add two integers together using the `+` operator. If you want to add two custom objects together - say, two `Vector2D` math objects - you usually have to write a clunky function:
 
 ```java
 // Java or older languages
@@ -1863,7 +1863,7 @@ As discussed in the Rule of Three, if your class manages memory, you must overlo
 When someone types `a = b;`, you must clean up `a`'s old memory and copy `b`'s memory.
 
 > [!WARNING]
-> **⚠️ The Danger Zone: Self-Assignment**
+> **The Danger Zone: Self-Assignment**
 > What happens if a programmer writes `a = a;`?
 > If your assignment operator deletes its own memory first, it will delete `a`'s memory. Then, when it tries to copy `a`'s data to the new memory, the data is already gone! 
 > You **must** check for self-assignment.
@@ -2052,7 +2052,7 @@ int main() {
 }
 ```
 
-## 10.4 🧠 Brain Power: The vTable (How it Actually Works)
+## 10.4 Brain Power: The vTable (How it Actually Works)
 
 How does `my_pet->speak()` know to print "Woof!" when `my_pet` is just an `Animal*` pointer? 
 
@@ -2122,7 +2122,7 @@ Notice what happened? The `Derived` destructor was **never called**! The integer
 Because the pointer `b` is of type `Base*`, and the `Base` destructor is NOT `virtual`, the compiler just statically destroys the `Base` part of the object and stops. 
 
 > [!CAUTION]
-> **⚠️ The Golden Rule of Inheritance**
+> **The Golden Rule of Inheritance**
 > If your class is designed to be inherited from (if it has even one `virtual` function), you **MUST** give it a `virtual` destructor. 
 
 ```cpp
@@ -2329,7 +2329,7 @@ If `error_occurred()` is true, the function exits early. The `delete[]` line is 
 
 In older languages like C, you had to meticulously track every exit path (every `return`, `break`, or `throw`) to make sure you freed the memory. This is practically impossible in large codebases.
 
-Java and C# solved this with a **Garbage Collector**—a slow, background program that periodically sweeps the city looking for abandoned houses to bulldoze. C++ rejected this because Garbage Collectors cause random performance stutters. 
+Java and C# solved this with a **Garbage Collector** - a slow, background program that periodically sweeps the city looking for abandoned houses to bulldoze. C++ rejected this because Garbage Collectors cause random performance stutters. 
 
 C++ solved it with **RAII**.
 
@@ -2441,7 +2441,7 @@ C++11 finally abolished this tax by introducing the most significant feature in 
 
 ---
 
-## 13.1 🛋️ Fireside Chat: The "Magic Box" of Rvalues
+## 13.1 Fireside Chat: The "Magic Box" of Rvalues
 
 **Student**: "I keep hearing about 'Lvalues' and 'Rvalues', but they just sound like math equations."
 
@@ -2720,7 +2720,7 @@ int main() {
 
 Smart pointers aren't just for memory allocated with `new`. They can manage *any* resource that needs cleanup, such as a file handle from C or a texture from the SDL graphics library.
 
-You can provide a **Custom Deleter**—a function that the smart pointer will call instead of `delete` when it's time to clean up.
+You can provide a **Custom Deleter** - a function that the smart pointer will call instead of `delete` when it's time to clean up.
 
 ```cpp
 #include <memory>
@@ -3040,7 +3040,7 @@ Before C++11, doing this was a nightmare.
 
 ## 17.1 The Problem with Functors (C++98)
 
-In the old days, if you wanted to pass a custom condition to `std::count_if`, you had to create a **Functor**—a completely separate struct or class that overloads the `operator()`.
+In the old days, if you wanted to pass a custom condition to `std::count_if`, you had to create a **Functor** - a completely separate struct or class that overloads the `operator()`.
 
 ```cpp
 // 1. You had to scroll to the top of your file and define a struct
@@ -3329,7 +3329,7 @@ We have now covered the vast majority of the Standard Library. You know how to s
 But wait. How does `std::vector` manage to hold an `int`, a `std::string`, or a custom `Player` class using the exact same code? In the next chapter, we descend into the dark arts of C++: **Templates**.
 
 
-# Chapter 19: Templates — The Cookie Cutter
+# Chapter 19: Templates - The Cookie Cutter
 
 > *Write once, compile for any type.*
 
@@ -3858,7 +3858,7 @@ auto sum(Ts... args) {
 int total = sum(1, 2, 3, 4, 5); // 15
 ```
 
-## 21.4 `sizeof...` — Counting Elements
+## 21.4 `sizeof...` - Counting Elements
 
 You can ask the compiler exactly how many items are inside a pack using the `sizeof...` operator.
 
@@ -4280,7 +4280,7 @@ C++11 and C++14 laid the foundation. We had RAII, Move Semantics, Lambdas, and `
 But the language was still missing standard tools for daily tasks like reading the filesystem or returning optional values. In the next chapter, we look at **C++17**, the standard that finally gave C++ a modern standard library vocabulary.
 
 
-# Chapter 24: C++17 — The Modernization Standard
+# Chapter 24: C++17 - The Modernization Standard
 
 > *Vocabulary types, compile-time selection, and structural polish.*
 
@@ -4309,7 +4309,7 @@ for (const auto& [id, name] : users) {
 }
 ```
 
-## 24.2 `if constexpr` — Compile-Time Branching
+## 24.2 `if constexpr` - Compile-Time Branching
 
 Before C++17, if you wanted a generic template to do one thing for a pointer and another thing for a regular value, you had to write multiple functions and use SFINAE. 
 
@@ -4375,7 +4375,7 @@ namespace game::engine::physics {
 
 ## The Vocabulary Types
 
-C++17 introduced several "vocabulary types"—standardized wrappers designed to replace countless custom implementations and raw pointers across the industry.
+C++17 introduced several "vocabulary types" - standardized wrappers designed to replace countless custom implementations and raw pointers across the industry.
 
 ### 24.6 `std::optional`
 Instead of returning a pointer (which might be null) or a magic number (like `-1` to indicate an error), return `std::optional`. It represents a value that *might* exist.
@@ -4479,7 +4479,7 @@ C++17 was the cleanup C++ desperately needed. It gave developers standard vocabu
 But the language designers weren't done. While C++17 was a modernization pass, C++20 was about to change the foundation of the language yet again. Next, we look at the standard that introduced Concepts, Coroutines, Modules, and **Ranges**.
 
 
-# Chapter 25: C++20 — The Big Four and Beyond
+# Chapter 25: C++20 - The Big Four and Beyond
 
 > *Concepts, Ranges, Coroutines, and Modules.*
 
@@ -4670,7 +4670,7 @@ C++20 is a staggering achievement. If you master Concepts, Ranges, Modules, and 
 But evolution never stops. In the next chapter, we look at the cutting edge: **C++23 and the upcoming C++26**.
 
 
-# Chapter 26: C++23 and C++26 — The Cutting Edge
+# Chapter 26: C++23 and C++26 - The Cutting Edge
 
 > *Deducing this, reflection, contracts, and the future.*
 
@@ -4858,7 +4858,7 @@ It is time to cross the threshold into **Part VII: Concurrency and Parallelism**
 
 # Chapter 27: Threads and Synchronization
 
-> *The kitchen analogy — multiple chefs, one knife.*
+> *The kitchen analogy - multiple chefs, one knife.*
 
 For the first 30 years of its existence, C++ had no concept of threads. Developers relied on OS-specific APIs like POSIX Threads (pthreads) on Linux or the Windows API. 
 
@@ -5119,7 +5119,7 @@ Instead, `std::atomic` provides special hardware-backed operations:
 
 *   **`fetch_add()` / `fetch_sub()`**: Adds/subtracts a value and returns the *old* value.
 *   **`exchange()`**: Writes a new value and returns the *old* value.
-*   **`compare_exchange_weak()` / `compare_exchange_strong()`**: The holy grail of lock-free programming (often called CAS — Compare-And-Swap). 
+*   **`compare_exchange_weak()` / `compare_exchange_strong()`**: The holy grail of lock-free programming (often called CAS - Compare-And-Swap). 
 
 ### Compare-And-Swap (CAS)
 CAS says: *"Look at the atomic variable. If it equals `expected`, change it to `desired`. If it doesn't equal `expected`, update my `expected` variable with the real value so I can try again."*
@@ -5209,7 +5209,7 @@ Now that we understand the rules of the Memory Model and how `std::atomic` works
 
 # Chapter 29: Lock-Free Programming
 
-> *Programming without mutexes — the ultimate performance unlock.*
+> *Programming without mutexes - the ultimate performance unlock.*
 
 If you use a `std::mutex`, you are at the mercy of the Operating System's scheduler. If a thread acquires a lock and is then immediately preempted (put to sleep by the OS to let another program run), every other thread waiting for that lock is now blocked. This is a disaster in high-performance or real-time systems.
 
@@ -5611,7 +5611,7 @@ We've talked about how expensive RAM is. In the next chapter, we will take absol
 
 In most C++ applications, when you need memory on the heap, you call `new` (or the underlying `malloc`), and when you are done, you call `delete` (or `free`). 
 
-For 95% of applications, the default OS allocator is fantastic. But for the remaining 5%—game engines, embedded systems, high-frequency trading, and database engines—`malloc` is a major bottleneck.
+For 95% of applications, the default OS allocator is fantastic. But for the remaining 5% - game engines, embedded systems, high-frequency trading, and database engines - `malloc` is a major bottleneck.
 
 ---
 
@@ -6411,7 +6411,7 @@ When you type `g++ main.cpp math.cpp -o my_app`, you are actually invoking a mas
 
 ### Stage 1: The Preprocessor
 We discussed this in the previous chapter. The preprocessor handles all `#` directives. It replaces `#include` with the contents of header files, expands macros, and strips out comments. 
-The output of this stage is a **Translation Unit**—a massive, purely C++ text file with no preprocessor directives left.
+The output of this stage is a **Translation Unit** - a massive, purely C++ text file with no preprocessor directives left.
 
 ### Stage 2: The Compiler (Front-End & Middle-End)
 The compiler takes the Translation Unit and begins analysis.
@@ -7038,7 +7038,7 @@ private:
 
 ## 42.2 Implementing `std::shared_ptr`
 
-How does `std::shared_ptr` know when the last copy has been destroyed? It uses a **Control Block**—a small, dynamically allocated struct that sits on the heap alongside your object. 
+How does `std::shared_ptr` know when the last copy has been destroyed? It uses a **Control Block** - a small, dynamically allocated struct that sits on the heap alongside your object. 
 Every copy of the `shared_ptr` points to the exact same Control Block.
 
 To ensure it works safely across multiple threads, the reference count inside the Control Block must be a `std::atomic<int>`.
@@ -7144,7 +7144,7 @@ You now know how to build the tools you use every day. But what about the tools 
 
 We have explored the depths of C++. We have written templates that execute at compile time, and we have rebuilt the Standard Library. But there is one final system left to demystify: the compiler itself. 
 
-In this chapter, we will walk through the architecture of a C++ compiler. As a bonus, we will implement a Garbage Collector—something C++ explicitly lacks—to understand how managed languages like Java and Python work under the hood.
+In this chapter, we will walk through the architecture of a C++ compiler. As a bonus, we will implement a Garbage Collector - something C++ explicitly lacks - to understand how managed languages like Java and Python work under the hood.
 
 ---
 
@@ -7214,7 +7214,7 @@ If the parser sees `5 + 3`, it creates a `BinaryOpNode` with `+` as the operator
 
 Before we can generate assembly code, we must ensure the AST makes sense. This is where Type Checking happens.
 
-The compiler maintains a **Symbol Table**—a dictionary mapping variable names to their types. When it encounters `x = y + 5`, it looks up `x` and `y` in the Symbol Table.
+The compiler maintains a **Symbol Table** - a dictionary mapping variable names to their types. When it encounters `x = y + 5`, it looks up `x` and `y` in the Symbol Table.
 If `y` is a `std::string` and `5` is an `int`, the compiler flags a Type Error and halts.
 
 ```cpp
@@ -7363,7 +7363,7 @@ send(client_socket, "Hello", 5, 0);
 
 When you send a `std::string` or a custom `User` class over a socket, you cannot just send the memory address. The address `0x1A42` on your computer means absolutely nothing to a server in Japan.
 
-You must **Serialize** the data. Serialization is like taking a LEGO castle, breaking it down into individual bricks, putting them in a numbered box with instructions, and shipping it. The receiver then **Deserializes** it—rebuilding the castle brick-by-brick.
+You must **Serialize** the data. Serialization is like taking a LEGO castle, breaking it down into individual bricks, putting them in a numbered box with instructions, and shipping it. The receiver then **Deserializes** it - rebuilding the castle brick-by-brick.
 
 ### A Simple Binary Serializer
 
@@ -7586,7 +7586,7 @@ The challenge is not the language; the challenge is the *toolchain*.
 
 ## 46.1 The Cross-Compilation Model
 
-If you are on an Intel Mac and you want to compile a C++ app for an ARM Android phone, you cannot use your standard `g++`. You must use a **Cross-Compiler**—a compiler that runs on Architecture A but produces machine code for Architecture B.
+If you are on an Intel Mac and you want to compile a C++ app for an ARM Android phone, you cannot use your standard `g++`. You must use a **Cross-Compiler** - a compiler that runs on Architecture A but produces machine code for Architecture B.
 
 Managing cross-compilers manually is excruciating. This is why CMake (Chapter 39) is mandatory. You provide CMake with a **Toolchain File**, which tells it exactly where the Android compiler, linker, and sysroot (system headers) are located.
 
@@ -8630,7 +8630,7 @@ Welcome to the inner circle.
 
 *The year is 2026. We are sitting in a cozy library, the smell of old paper and fresh espresso in the air. Across from you sits the "Architect," a grizzled veteran who has seen every standard from the first '98 draft to the cutting-edge '26 modules.*
 
-**You:** "Architect, I see these version numbers—C++98, C++11, C++20. It feels like I'm looking at different languages sometimes. How did we get here?"
+**You:** "Architect, I see these version numbers - C++98, C++11, C++20. It feels like I'm looking at different languages sometimes. How did we get here?"
 
 **The Architect:** *Leans back, chuckling.* "Ah, the Great Evolution. You’re right. C++ isn't a museum piece; it’s a living organism. It’s had its dark ages, its renaissance, and now, its golden era. To understand the language today, you have to understand the scars it carries."
 
@@ -8638,7 +8638,7 @@ Welcome to the inner circle.
 
 ### The Dark Ages: C++98 and C++03
 
-**The Architect:** "In the late 90s, C++ was the wild west. Bjarne Stroustrup had given us the core—classes, templates, exceptions. But it was heavy. We had the STL, but it felt like alien technology to most. Compilers were... let's just say 'creative' with how they interpreted the standard. If you wrote code for MSVC, it might not even compile on GCC."
+**The Architect:** "In the late 90s, C++ was the wild west. Bjarne Stroustrup had given us the core - classes, templates, exceptions. But it was heavy. We had the STL, but it felt like alien technology to most. Compilers were... let's just say 'creative' with how they interpreted the standard. If you wrote code for MSVC, it might not even compile on GCC."
 
 **You:** "So it was unstable?"
 
@@ -8666,7 +8666,7 @@ Welcome to the inner circle.
 
 ### The Refinement: C++14 and C++17
 
-**The Architect:** "C++14 and '17 were about polishing the diamond. C++14 gave us generic lambdas and `make_unique`. C++17 was a bigger deal—it gave us `std::optional`, `std::variant`, and 'Structured Bindings.' Finally, we could return two values from a function and unpack them like we were in Python: `auto [status, value] = calculate();`. It made the language feel... friendly."
+**The Architect:** "C++14 and '17 were about polishing the diamond. C++14 gave us generic lambdas and `make_unique`. C++17 was a bigger deal - it gave us `std::optional`, `std::variant`, and 'Structured Bindings.' Finally, we could return two values from a function and unpack them like we were in Python: `auto [status, value] = calculate();`. It made the language feel... friendly."
 
 ***
 
@@ -8680,7 +8680,7 @@ Welcome to the inner circle.
 
 **You:** "So, is C++ finished?"
 
-**The Architect:** *Smiles.* "C++23 is already here, giving us `std::print` and `std::expected`. C++26 is whispering about Reflection—where code can look at itself. The journey never ends. But remember: the new features don't replace the old ones; they just give you better tools to manage the same raw power of the machine."
+**The Architect:** *Smiles.* "C++23 is already here, giving us `std::print` and `std::expected`. C++26 is whispering about Reflection - where code can look at itself. The journey never ends. But remember: the new features don't replace the old ones; they just give you better tools to manage the same raw power of the machine."
 
 ***
 
@@ -8875,7 +8875,7 @@ Assuming a 64-bit system (where pointers are 8 bytes and `int` is 4 bytes).
 Total Size: 32 bytes
 ```
 
-### 🔍 Why the Padding?
+### Why the Padding?
 
 The CPU likes to read 8-byte chunks (on a 64-bit machine). If an 8-byte pointer (`vptr_B`) started at an odd address like 12, the CPU would have to do two memory reads to get one pointer. The compiler adds **padding** at offset 12 to ensure `vptr_B` starts at offset 16 (a multiple of 8).
 
@@ -8905,7 +8905,7 @@ This vtable is used when you have a `B* ptr = new C();`.
 [ 1     ] [ thunk to C::f() ] -- Magic!
 ```
 
-### 🧙 What is a "Thunk"?
+### What is a "Thunk"?
 
 When you call `ptr->f()` through a `B*`, the pointer is pointing to the *middle* of the object (offset 16). But `C::f()` expects the `this` pointer to point to the *start* of the object (offset 0). A **thunk** is a tiny piece of assembly that subtracts 16 from the `this` pointer before jumping to the real `C::f()`.
 
@@ -8959,7 +8959,7 @@ clang++ -Xclang -fdump-record-layouts -c my_file.cpp
 g++ -fdump-lang-class my_file.cpp
 ```
 
-This will output the exact byte offsets the compiler is using. Don't take my word for it—verify it with the machine!
+This will output the exact byte offsets the compiler is using. Don't take my word for it - verify it with the machine!
 
 
 
@@ -8971,7 +8971,7 @@ These questions are designed to separate the "Senior Engineers" from the "Gods."
 ## Part 5: The C++ Memory Model & Atomics
 
 ### 1. What is the difference between `std::memory_order_relaxed` and `std::memory_order_seq_cst`?
-**Answer**: `seq_cst` (Sequentially Consistent) provides a global total ordering of all operations. It is the safest but slowest. `relaxed` only guarantees atomicity of the operation itself—it provides no guarantees about the order of other memory operations.
+**Answer**: `seq_cst` (Sequentially Consistent) provides a global total ordering of all operations. It is the safest but slowest. `relaxed` only guarantees atomicity of the operation itself - it provides no guarantees about the order of other memory operations.
 
 ### 2. Explain "Release-Acquire" semantics.
 **Answer**: A `memory_order_release` store "synchronizes-with" a `memory_order_acquire` load of the same variable. All memory writes performed by the storing thread *before* the release store are guaranteed to be visible to the loading thread *after* the acquire load.
@@ -9026,7 +9026,7 @@ auto func(T t) -> decltype(t.push_back(0)) { ... } // Only works for containers
 **Answer**: Concepts provide a formal, readable way to constrain templates. Instead of cryptic template vomit, you get clear errors: "Type X does not satisfy requirement 'HasPushBack'."
 
 ### 11. What is the Curiously Recurring Template Pattern (CRTP)?
-**Answer**: A pattern where a class `Derived` inherits from `Base<Derived>`. It allows for "Static Polymorphism"—achieving polymorphic behavior without the cost of virtual functions.
+**Answer**: A pattern where a class `Derived` inherits from `Base<Derived>`. It allows for "Static Polymorphism" - achieving polymorphic behavior without the cost of virtual functions.
 
 ### 12. Explain `std::void_t` and how it's used for trait detection.
 **Answer**: `void_t` is a template that always maps any list of types to `void`. It's used to check if a certain member or type exists within a class during template instantiation.
@@ -12251,7 +12251,7 @@ If you use `std::find(v.begin(), v.end(), 42)`, the person reading your code ins
 
 # Appendix Z: THE ENCYCLOPEDIA OF MODERN C++ IDIOMS (The Master's Vault)
 
-Over the past 40 years, C++ developers have invented hundreds of "Idioms"—standardized workarounds for language limitations, or brilliant structural patterns that maximize performance and safety. 
+Over the past 40 years, C++ developers have invented hundreds of "Idioms" - standardized workarounds for language limitations, or brilliant structural patterns that maximize performance and safety. 
 
 If you want to read the source code of the STL, Boost, or Folly (Facebook's C++ library), you must know these idioms. They are the secret language of Senior Engineers.
 

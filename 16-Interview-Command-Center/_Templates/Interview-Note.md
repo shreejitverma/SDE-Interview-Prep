@@ -10,7 +10,7 @@ referral: ""
 recruiter: ""
 recruiter_email: ""
 confidence: 3
-priority: "<% tp.system.suggester(['🔴 high', '🟡 medium', '🟢 low'], ['high', 'medium', 'low']) %>"
+priority: "<% tp.system.suggester(['high', 'medium', 'low'], ['high', 'medium', 'low']) %>"
 salary_range: ""
 location: ""
 remote: false
@@ -26,13 +26,13 @@ tags:
 
 ---
 
-## 📋 Interview Timeline
+## Interview Timeline
 
 | Date | Round | Interviewer | Format | Duration | Status |
 |------|-------|-------------|--------|----------|--------|
 | | | | | | |
 
-## 🎯 Pre-Interview Prep
+## Pre-Interview Prep
 
 ### Key Topics to Review
 - [ ] 
@@ -50,7 +50,7 @@ tags:
 2. 
 3. 
 
-## 📝 Interview Notes
+## Interview Notes
 
 ### Round 1
 **Date:**
@@ -63,7 +63,7 @@ tags:
 
 ---
 
-## 📊 Post-Interview
+## Post-Interview
 
 ### Gut Feel (immediately after)
 - Energy level: /5
@@ -76,6 +76,6 @@ tags:
 - [ ] Create retrospective note
 - [ ] Update study plan based on gaps
 
-## 🔗 Related
+## Related
 - Role Hub: `= "[[01-Roles/" + this.role + "/_Hub]]"`
 - Company Profile: `= "[[02-Companies/" + this.company + "]]"`

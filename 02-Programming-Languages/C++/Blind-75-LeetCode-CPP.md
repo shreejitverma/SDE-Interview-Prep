@@ -3550,7 +3550,7 @@ public:
 
 ---
 
-**Master these 75 problems and you'll be ready for ANY technical interview!** 🚀
+**Master these 75 problems and you'll be ready for ANY technical interview!**
 
 *Last Updated: December 2025*
 *Language: C++17*

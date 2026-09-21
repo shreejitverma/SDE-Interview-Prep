@@ -11,7 +11,7 @@ last_reviewed:
 sources: []
 ---
 
-# Source Summary — Memory Barriers: A Hardware View for Software Hackers
+# Source Summary - Memory Barriers: A Hardware View for Software Hackers
 **Author**: Paul E. McKenney (Distinguished Engineer, Linux Kernel RCU Maintainer)  
 **Publication**: Linux Kernel Documentation & Technical Whitepaper (2010)  
 **Category**: Microarchitecture, Cache Coherence, Memory Models, Kernel Engineering

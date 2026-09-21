@@ -7,13 +7,13 @@ last_reviewed:
 sources: []
 ---
 
-# 📋 Quant Dev Study Plan — 10-Week Sprint
+# Quant Dev Study Plan - 10-Week Sprint
 
 ---
 
 ## Week 1-2: C++ Mastery Sprint
 - [ ] Move semantics, perfect forwarding, universal references
-- [ ] Smart pointers (unique_ptr, shared_ptr, weak_ptr) — ownership semantics
+- [ ] Smart pointers (unique_ptr, shared_ptr, weak_ptr) - ownership semantics
 - [ ] Templates: SFINAE, CRTP, variadic templates, constexpr
 - [ ] Memory layout: struct padding, cache lines, false sharing
 - [ ] std::atomic, memory_order, happens-before relationships
@@ -61,7 +61,7 @@ sources: []
 
 ---
 
-## 📊 Progress Tracking
+## Progress Tracking
 
 | Week | C++ Practice | Problems | Math/Prob | System Design | Mocks |
 |------|-------------|----------|-----------|---------------|-------|

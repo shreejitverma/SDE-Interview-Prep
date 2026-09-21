@@ -744,7 +744,7 @@ Very poor efficiency!
 **Example (N=4)**:
 ```
 Sender sends:           Frame 0, Frame 1, Frame 2, Frame 3
-Receiver gets:          Frame 0, Frame 1, ❌ Frame 2 (error), Frame 3
+Receiver gets:          Frame 0, Frame 1, ✗ Frame 2 (error), Frame 3
 Receiver sends:         ACK(1) [acknowledges up to Frame 1]
 Sender receives ACK(1): Discards 0,1 but must retransmit 2,3
 Sender sends:           Frame 2, Frame 3, Frame 4, ...
@@ -770,7 +770,7 @@ Sender sends:           Frame 2, Frame 3, Frame 4, ...
 **Example**:
 ```
 Sender sends:       Frame 0, 1, 2, 3, 4, 5
-Receiver gets:      Frame 0, 1, ❌ 2, 3, 4, 5
+Receiver gets:      Frame 0, 1, ✗ 2, 3, 4, 5
 Receiver sends:     SACK: ack_range=(3-5) [acknowledges 3,4,5 missing only 2]
 Sender retransmits: Frame 2
 ```
@@ -796,7 +796,7 @@ cat /proc/net/tcp
 **Example**:
 ```
 Sender sends:           Seg 1, 2, 3, 4, 5
-Receiver gets:          Seg 1, ❌ 2, 3, 4, 5
+Receiver gets:          Seg 1, ✗ 2, 3, 4, 5
 Receiver sends ACKs:    ACK(2), ACK(2), ACK(2) [3 duplicates]
 Sender sees 3 dup ACKs: Immediately retransmit Seg 2
 No need to wait for timeout!

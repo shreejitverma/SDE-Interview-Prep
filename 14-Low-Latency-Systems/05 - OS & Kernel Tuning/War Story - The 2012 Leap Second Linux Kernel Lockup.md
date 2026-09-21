@@ -11,10 +11,10 @@ last_reviewed:
 sources: []
 ---
 
-# War Story — The June 30, 2012 Leap Second Bug: Linux Futex Spinlock Cascades & 100% CPU Freezes
+# War Story - The June 30, 2012 Leap Second Bug: Linux Futex Spinlock Cascades & 100% CPU Freezes
 
 > [!summary]
-> On June 30, 2012, at 23:59:60 UTC, the International Earth Rotation and Reference Systems Service (IERS) inserted a positive "Leap Second" to synchronize UTC with Earth's rotation. A dormant bug in the Linux kernel's timekeeping and high-resolution timer (`hrtimer`) subsystem caused millions of multi-threaded server applications worldwide—including high-frequency trading systems, exchange gateways, and database clusters—to enter catastrophic, unyielding 100% CPU spinlocks.
+> On June 30, 2012, at 23:59:60 UTC, the International Earth Rotation and Reference Systems Service (IERS) inserted a positive "Leap Second" to synchronize UTC with Earth's rotation. A dormant bug in the Linux kernel's timekeeping and high-resolution timer (`hrtimer`) subsystem caused millions of multi-threaded server applications worldwide - including high-frequency trading systems, exchange gateways, and database clusters - to enter catastrophic, unyielding 100% CPU spinlocks.
 
 ---
 

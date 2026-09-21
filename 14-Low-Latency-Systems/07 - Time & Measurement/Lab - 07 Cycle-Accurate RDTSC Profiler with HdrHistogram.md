@@ -11,7 +11,7 @@ last_reviewed:
 sources: []
 ---
 
-# Lab 07 — Cycle-Accurate RDTSC Profiler with HdrHistogram
+# Lab 07 - Cycle-Accurate RDTSC Profiler with HdrHistogram
 
 > [!summary]
 > In this lab, you will build an allocation-free C++20 High Dynamic Range (HDR) histogram profiler that records cycle-accurate event distributions ($1\text{ ns}$ to $1\text{ second}$) with constant relative precision. You will run a simulated trading pipeline, inject periodic microsecond-to-millisecond stalls, and prove mathematically how Coordinated Omission correction exposes hidden tail-latency blowouts.

@@ -7,7 +7,7 @@ last_reviewed:
 sources: []
 ---
 
-# 📚 SDE Resources
+# SDE Resources
 
 > Links to vault knowledge and external resources.
 

@@ -9,9 +9,9 @@ sources: []
 
 # Chapter 23: Core Language Features
 
-> *C++17 is the "Modernization" release. Its core-language changes are not a new paradigm but a systematic removal of ceremony: decompose aggregates in one line, branch at compile time without SFINAE, scope variables to the condition that uses them, and stop paying for copies the standard now forbids. This chapter covers every core-language change C++17 made — from the headline ergonomic features down to the literal syntax, evaluation-order guarantees, and the dead syntax the committee finally deleted.*
+> *C++17 is the "Modernization" release. Its core-language changes are not a new paradigm but a systematic removal of ceremony: decompose aggregates in one line, branch at compile time without SFINAE, scope variables to the condition that uses them, and stop paying for copies the standard now forbids. This chapter covers every core-language change C++17 made - from the headline ergonomic features down to the literal syntax, evaluation-order guarantees, and the dead syntax the committee finally deleted.*
 
-The through-line of C++17's core language is **make the common case correct and cheap by default**. Structured bindings and init-statements cut boilerplate at every call site; `if constexpr` replaces tag dispatch and `enable_if` for the majority of compile-time branching; guaranteed copy elision turns a long-standing optimization into a language rule you can rely on for non-movable types; and a stricter evaluation order closes a category of subtle bugs. The chapter ends with the cleanups — new literal forms, attribute refinements, and the removal of `auto_ptr`, `register`, trigraphs, and dynamic exception specifications.
+The through-line of C++17's core language is **make the common case correct and cheap by default**. Structured bindings and init-statements cut boilerplate at every call site; `if constexpr` replaces tag dispatch and `enable_if` for the majority of compile-time branching; guaranteed copy elision turns a long-standing optimization into a language rule you can rely on for non-movable types; and a stricter evaluation order closes a category of subtle bugs. The chapter ends with the cleanups - new literal forms, attribute refinements, and the removal of `auto_ptr`, `register`, trigraphs, and dynamic exception specifications.
 
 ---
 
@@ -38,7 +38,7 @@ The through-line of C++17's core language is **make the common case correct and 
 
 ## 23.1 Structured Bindings
 
-**Structured bindings** decompose a tuple, pair, struct, or array into named variables in a single declaration. They replace the C++11 `std::tie` dance — which required pre-declaring every target variable and could not bind references cleanly — with `auto [a, b, c] = expr;`.
+**Structured bindings** decompose a tuple, pair, struct, or array into named variables in a single declaration. They replace the C++11 `std::tie` dance - which required pre-declaring every target variable and could not bind references cleanly - with `auto [a, b, c] = expr;`.
 
 ### 23.1.1 Unpacking Tuples and Pairs
 
@@ -88,7 +88,7 @@ std::pair<int, int> p = {1, 2};
 auto& [refX, refY] = p;       // references into p.first / p.second
 refX = 10;                    // modifies p.first
 
-const auto& [cRefX, cRefY] = p;   // const references — no copy, no mutation
+const auto& [cRefX, cRefY] = p;   // const references - no copy, no mutation
 ```
 
 The canonical use is iterating an associative container without naming `std::pair`:
@@ -100,7 +100,7 @@ for (const auto& [key, value] : my_map) {
 }
 ```
 
-> **Note:** a structured binding introduces *names for the members*, not independent objects — the underlying object is a hidden compiler-generated entity. Binding by value copies that entity once; binding by reference copies nothing.
+> **Note:** a structured binding introduces *names for the members*, not independent objects - the underlying object is a hidden compiler-generated entity. Binding by value copies that entity once; binding by reference copies nothing.
 
 ---
 
@@ -129,23 +129,23 @@ int main() {
 }
 ```
 
-The key contrast with a runtime `if`: with a plain `if`, *both* branches must compile for every instantiation, so `*t` would be ill-formed when `T = int`. With `if constexpr`, the false branch is discarded and never type-checked. This makes `if constexpr` the primary tool for writing one generic function that adapts its body to trait queries — recursion termination in variadic templates, dispatching on `std::is_same_v`, or selecting an algorithm by iterator category.
+The key contrast with a runtime `if`: with a plain `if`, *both* branches must compile for every instantiation, so `*t` would be ill-formed when `T = int`. With `if constexpr`, the false branch is discarded and never type-checked. This makes `if constexpr` the primary tool for writing one generic function that adapts its body to trait queries - recursion termination in variadic templates, dispatching on `std::is_same_v`, or selecting an algorithm by iterator category.
 
 ---
 
 ## 23.3 Init-Statements in `if` and `switch`
 
-C++17 allows an **initializer statement** before the condition in `if` and `switch`: `if (init; condition)`. The declared variable is scoped to the entire `if`/`else` (or `switch`) construct and destroyed at its end — tightening scope and eliminating an extra enclosing block.
+C++17 allows an **initializer statement** before the condition in `if` and `switch`: `if (init; condition)`. The declared variable is scoped to the entire `if`/`else` (or `switch`) construct and destroyed at its end - tightening scope and eliminating an extra enclosing block.
 
 ```cpp
 // Listing 23.6: init-statement scopes the variable to the branch
-// Old way — an extra block to bound the lifetime of 'it':
+// Old way - an extra block to bound the lifetime of 'it':
 {
     auto it = map.find(key);
     if (it != map.end()) { /* use it */ }
 }   // 'it' leaks into this artificial scope
 
-// C++17 — 'it' lives exactly as long as the if/else:
+// C++17 - 'it' lives exactly as long as the if/else:
 if (auto it = map.find(key); it != map.end()) {
     std::cout << it->second;
 }   // 'it' destroyed here
@@ -157,7 +157,7 @@ switch (auto status = get_status(); status) {
 }
 ```
 
-Beyond brevity, this is a correctness and locking idiom: a lock guard or transaction object declared in the init-statement is held for exactly the guarded region. It pairs naturally with structured bindings — `if (auto [it, ok] = m.try_emplace(k, v); ok) { ... }`.
+Beyond brevity, this is a correctness and locking idiom: a lock guard or transaction object declared in the init-statement is held for exactly the guarded region. It pairs naturally with structured bindings - `if (auto [it, ok] = m.try_emplace(k, v); ok) { ... }`.
 
 ---
 
@@ -172,7 +172,7 @@ Before C++17, a variable defined in a header and included in multiple translatio
 // C++14: a linker error if this header is included in 2+ .cpp files
 // int global_config = 5;
 
-// C++17: safe — the linker merges all definitions into one
+// C++17: safe - the linker merges all definitions into one
 inline int global_config = 5;
 
 struct MyClass {
@@ -202,13 +202,13 @@ namespace A::B::C {
 }
 ```
 
-Purely syntactic, but it removes indentation noise from the library code that lives several namespaces deep — a real readability gain in large codebases organized by `project::module::detail`.
+Purely syntactic, but it removes indentation noise from the library code that lives several namespaces deep - a real readability gain in large codebases organized by `project::module::detail`.
 
 ---
 
 ## 23.6 Guaranteed Copy Elision
 
-In C++14, eliding the copy/move when returning or initializing from a **prvalue** (a pure rvalue temporary) was a permitted *optimization* — the copy/move constructor still had to exist and be accessible. **C++17 makes this elision mandatory** by redefining a prvalue as an initializer for an object rather than a temporary that must be materialized: the object is constructed directly in its final location.
+In C++14, eliding the copy/move when returning or initializing from a **prvalue** (a pure rvalue temporary) was a permitted *optimization* - the copy/move constructor still had to exist and be accessible. **C++17 makes this elision mandatory** by redefining a prvalue as an initializer for an object rather than a temporary that must be materialized: the object is constructed directly in its final location.
 
 ```cpp
 // Listing 23.9: guaranteed elision lets you return a non-movable type by value
@@ -219,7 +219,7 @@ struct NonMovable {
 };
 
 NonMovable make() {
-    return NonMovable{};   // C++17: constructed directly in the caller's storage —
+    return NonMovable{};   // C++17: constructed directly in the caller's storage -
                            // NO copy or move is even considered. Ill-formed in C++14.
 }
 
@@ -228,7 +228,7 @@ int main() {
 }
 ```
 
-Two consequences matter in practice. First, factory functions can return types that are deliberately non-copyable and non-movable (locks, `std::atomic` wrappers, scope guards) **by value** — previously impossible. Second, the optimization is now a guarantee you can reason about for performance: prvalue return and prvalue initialization never construct an intermediate object. (Elision of a *named* local return value — NRVO — remains a non-guaranteed optimization, because a named object is an lvalue, not a prvalue.)
+Two consequences matter in practice. First, factory functions can return types that are deliberately non-copyable and non-movable (locks, `std::atomic` wrappers, scope guards) **by value** - previously impossible. Second, the optimization is now a guarantee you can reason about for performance: prvalue return and prvalue initialization never construct an intermediate object. (Elision of a *named* local return value - NRVO - remains a non-guaranteed optimization, because a named object is an lvalue, not a prvalue.)
 
 ---
 
@@ -247,14 +247,14 @@ constexpr int table_size = square(4);   // 16, computed at compile time
 int buffer[table_size];
 ```
 
-**Capturing `*this` by value:** C++11/14 let a lambda capture `this` (a pointer), which dangles if the closure outlives the object. C++17 adds `[*this]`, copying the entire object into the closure so member access is safe after the original is gone — essential for lambdas posted to thread pools or stored as continuations.
+**Capturing `*this` by value:** C++11/14 let a lambda capture `this` (a pointer), which dangles if the closure outlives the object. C++17 adds `[*this]`, copying the entire object into the closure so member access is safe after the original is gone - essential for lambdas posted to thread pools or stored as continuations.
 
 ```cpp
 // Listing 23.11: [*this] copies the object into the closure
 struct Worker {
     int id = 7;
     auto make_task() {
-        // [*this] — the closure owns a COPY of *this; safe even if Worker dies.
+        // [*this] - the closure owns a COPY of *this; safe even if Worker dies.
         return [*this] { return id * 2; };
     }
 };
@@ -282,13 +282,13 @@ Derived d{{1, 2}, 3};       // Base{a=1, b=2}, c=3
 Derived e{1, 2, 3};         // same result
 ```
 
-This removes the need to hand-write a forwarding constructor purely to initialize an inherited POD base — common in tag-augmented data structures and CRTP value types in systems code.
+This removes the need to hand-write a forwarding constructor purely to initialize an inherited POD base - common in tag-augmented data structures and CRTP value types in systems code.
 
 ---
 
 ## 23.9 `__has_include` and Conditional Compilation
 
-`__has_include(<header>)` is a preprocessor expression that evaluates to `1` if the named header can be found and `0` otherwise. It lets code adapt to the availability of a header — a standard one that may not yet be implemented, or an optional dependency — without a build-system probe.
+`__has_include(<header>)` is a preprocessor expression that evaluates to `1` if the named header can be found and `0` otherwise. It lets code adapt to the availability of a header - a standard one that may not yet be implemented, or an optional dependency - without a build-system probe.
 
 ```cpp
 // Listing 23.13: feature-detecting a header at preprocessing time
@@ -309,7 +309,7 @@ This is the portable mechanism behind graceful fallback across compiler/standard
 
 ## 23.10 New Literal Forms: Hexadecimal Floats and `u8` Characters
 
-**Hexadecimal floating-point literals** (`0x1.8p3`) specify a floating value by its exact binary representation: a hex mantissa and a binary exponent after `p`. They express the precise bit pattern with no decimal-to-binary rounding — critical for reproducible numeric constants and unit tests of floating-point code.
+**Hexadecimal floating-point literals** (`0x1.8p3`) specify a floating value by its exact binary representation: a hex mantissa and a binary exponent after `p`. They express the precise bit pattern with no decimal-to-binary rounding - critical for reproducible numeric constants and unit tests of floating-point code.
 
 ```cpp
 // Listing 23.14: hex-float literals express exact binary values
@@ -356,7 +356,7 @@ C++17 **defines the evaluation order** for several expression forms that were pr
 The now-guaranteed orderings include:
 
 - In `a.b`, `a->b`, `a[b]`, `a << b`, `a >> b`, and assignment `a = b`, the **right-hand operand is sequenced before the left-hand operand** for the shifts and assignment; for postfix forms the object expression is evaluated first.
-- In a function call, each argument's evaluation is **indeterminately sequenced** but no longer interleaved — one argument is fully evaluated before another begins (though their relative order is still unspecified).
+- In a function call, each argument's evaluation is **indeterminately sequenced** but no longer interleaved - one argument is fully evaluated before another begins (though their relative order is still unspecified).
 
 ```cpp
 // Listing 23.17: chained calls and string operations are now well-defined
@@ -369,13 +369,13 @@ s = s + s[0] + s[1];
 // now evaluates the stream/object before the inserted operands as specified.
 ```
 
-This makes idiomatic fluent interfaces, `map[k] = f()`-style updates, and chained stream insertions behave consistently across compilers. It does **not** fully order all function-argument evaluation — writing code that depends on argument order is still unportable — but it removes the most common surprises.
+This makes idiomatic fluent interfaces, `map[k] = f()`-style updates, and chained stream insertions behave consistently across compilers. It does **not** fully order all function-argument evaluation - writing code that depends on argument order is still unportable - but it removes the most common surprises.
 
 ---
 
 ## 23.13 Using-Declaration Pack Expansion and Attribute Namespaces
 
-**Using-declaration pack expansion** lets a single `using` introduce names from a parameter pack of base classes — the enabling idiom for the "overloaded lambda" visitor used with `std::variant`.
+**Using-declaration pack expansion** lets a single `using` introduce names from a parameter pack of base classes - the enabling idiom for the "overloaded lambda" visitor used with `std::variant`.
 
 ```cpp
 // Listing 23.18: pack expansion in a using-declaration (the overload set idiom)
@@ -405,7 +405,7 @@ C++17 also regularizes **attribute syntax**: attributes may be grouped under a n
 
 C++17 standardizes three attributes that turn previously compiler-specific warnings into portable, intent-expressing annotations.
 
-**`[[nodiscard]]`** — warns if the return value is ignored. Apply it to functions whose result must be checked (error codes, `[[nodiscard]] bool empty()`, allocation results, RAII guards):
+**`[[nodiscard]]`** - warns if the return value is ignored. Apply it to functions whose result must be checked (error codes, `[[nodiscard]] bool empty()`, allocation results, RAII guards):
 
 ```cpp
 // Listing 23.20: [[nodiscard]] flags ignored results
@@ -413,21 +413,21 @@ C++17 standardizes three attributes that turn previously compiler-specific warni
 calculate_important_value();   // compiler warning: result discarded
 ```
 
-**`[[maybe_unused]]`** — suppresses "unused entity" warnings for a variable, parameter, or function used only in some configurations (e.g. only inside `assert`):
+**`[[maybe_unused]]`** - suppresses "unused entity" warnings for a variable, parameter, or function used only in some configurations (e.g. only inside `assert`):
 
 ```cpp
 // Listing 23.21: [[maybe_unused]] for conditionally-used entities
 [[maybe_unused]] int debug_id = compute_id();   // used only in asserts/logging
 ```
 
-**`[[fallthrough]]`** — marks an intentional fall-through between `switch` cases, silencing the implicit-fallthrough warning:
+**`[[fallthrough]]`** - marks an intentional fall-through between `switch` cases, silencing the implicit-fallthrough warning:
 
 ```cpp
 // Listing 23.22: [[fallthrough]] documents intentional case fall-through
 switch (device_state) {
     case State::INIT:
         initialize_device();
-        [[fallthrough]];        // intentional — no break here
+        [[fallthrough]];        // intentional - no break here
     case State::RUNNING:
         run_process();
         break;
@@ -445,7 +445,7 @@ C++17 deletes long-deprecated syntax, reducing the language surface. Code relyin
 | Removed / changed | Replacement |
 |-------------------|-------------|
 | `std::auto_ptr` (removed) | `std::unique_ptr` |
-| `register` keyword (removed as a storage specifier) | nothing — the compiler allocates registers |
+| `register` keyword (removed as a storage specifier) | nothing - the compiler allocates registers |
 | Trigraphs (`??=`, `??/`, …) removed | the literal characters, or `\` line continuation |
 | `operator++` on `bool` (removed) | explicit `b = true;` / arithmetic on an integer |
 | Dynamic exception specifications `throw(...)` (removed; `throw()` deprecated) | `noexcept` / `noexcept(false)` |
@@ -470,4 +470,4 @@ The removal of dynamic exception specifications is the most consequential: `thro
 
 **Use `[*this]` for any lambda that outlives its enclosing object.** Pointer capture (`[this]`) dangles when a closure is posted to a thread pool or stored as a continuation; `[*this]` copies the object and is the safe default for deferred execution. Use `[this]` only when lifetime is provably contained.
 
-**Enforce contracts in the type system where C++17 now lets you.** `[[nodiscard]]` on must-check results and `noexcept` in callback signatures move whole classes of caller mistakes from runtime to compile time — cheap, high-leverage hardening for systems and low-latency interfaces. And purge the removed features (`auto_ptr`, `throw(...)`) proactively; they will not survive a C++17 build.
+**Enforce contracts in the type system where C++17 now lets you.** `[[nodiscard]]` on must-check results and `noexcept` in callback signatures move whole classes of caller mistakes from runtime to compile time - cheap, high-leverage hardening for systems and low-latency interfaces. And purge the removed features (`auto_ptr`, `throw(...)`) proactively; they will not survive a C++17 build.

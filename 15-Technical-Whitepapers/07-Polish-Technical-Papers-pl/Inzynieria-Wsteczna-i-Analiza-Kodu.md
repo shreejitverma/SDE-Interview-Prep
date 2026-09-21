@@ -17,13 +17,13 @@ sources: []
 
 ---
 
-## 1. Szperając w Nagłówkach — Wstęp do Reverse Engineeringu (Wojciech Warpechowski, 2005)
+## 1. Szperając w Nagłówkach - Wstęp do Reverse Engineeringu (Wojciech Warpechowski, 2005)
 
 ### Budowa Plików Wykonywalnych (PE i ELF)
 Warpechowski omawia wewnętrzną architekturę formatów binarnych i techniki ekstrakcji informacji z nagłówków bez uruchamiania kodu:
 - **Format Portable Executable (PE)**:
   - Nagłówek DOS (`MZ`) $\to$ Wskaźnik `e_lfanew` $\to$ Sygnatura PE $\to$ File Header $\to$ Optional Header.
-  - Tablica Importów (**IAT — Import Address Table**): Analiza importowanych funkcji API (np. `VirtualAlloc`, `WriteProcessMemory`, `CreateRemoteThread`) pozwala natychmiast określić intencje oprogramowania (np. techniki Process Hollowing).
+  - Tablica Importów (**IAT - Import Address Table**): Analiza importowanych funkcji API (np. `VirtualAlloc`, `WriteProcessMemory`, `CreateRemoteThread`) pozwala natychmiast określić intencje oprogramowania (np. techniki Process Hollowing).
   - Tablica Eksportów (**EAT**): Struktura eksportowanych symboli w bibliotekach DLL.
 - **Format Executable and Linkable Format (ELF)**:
   - Nagłówek ELF (`\x7fELF`), identyfikator architektury (32/64-bit), endianness.
@@ -31,7 +31,7 @@ Warpechowski omawia wewnętrzną architekturę formatów binarnych i techniki ek
 
 ---
 
-## 2. Reverse Engineering — Analiza Dynamiczna Kodu ELF (Marek Janiczek)
+## 2. Reverse Engineering - Analiza Dynamiczna Kodu ELF (Marek Janiczek)
 
 ### Techniki Analizy w Środowisku Linux
 W przeciwieństwie do analizy statycznej (deasemblacja w IDA Pro / Ghidra), analiza dynamiczna bada zachowanie programu w czasie rzeczywistym:

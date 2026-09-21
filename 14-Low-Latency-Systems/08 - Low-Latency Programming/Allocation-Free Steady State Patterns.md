@@ -68,7 +68,7 @@ For long-lived objects (e.g., active orders in an order book):
 ### 3. Intrusive Data Containers
 Standard containers like `std::list<Order>` or `std::map<Price, Order>` allocate an external heap node wrapping your data on every insert.
 - **Intrusive Containers**: Pointers (`next`, `prev`) are embedded directly inside the `Order` struct itself.
-- Inserting an order into a price level linked list requires **zero memory allocation**—the order *is* the list node.
+- Inserting an order into a price level linked list requires **zero memory allocation** - the order *is* the list node.
 
 ---
 

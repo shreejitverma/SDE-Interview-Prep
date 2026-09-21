@@ -2431,7 +2431,7 @@ print(user_with_posts.posts)
 
 ---
 
-**You are now ready to become the best Python programmer in the universe!** 🚀
+**You are now ready to become the best Python programmer in the universe!**
 
 Go forth and build amazing things!
 

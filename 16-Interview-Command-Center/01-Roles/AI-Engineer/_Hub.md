@@ -10,14 +10,14 @@ last_reviewed:
 sources: []
 ---
 
-# 🤖 AI Engineer — Preparation Hub
+# AI Engineer - Preparation Hub
 
 > **Target Companies:** Google DeepMind, OpenAI, Anthropic, Meta AI (FAIR), NVIDIA, xAI, Cohere
 > **Target Levels:** Senior ML Engineer / AI Engineer / Research Engineer
 
 ---
 
-## 🎯 What AI Engineer Interviews Test
+## What AI Engineer Interviews Test
 
 | Round | Weight | What They Want |
 |-------|--------|----------------|
@@ -29,29 +29,29 @@ sources: []
 
 ---
 
-## 📚 Study Plan
+## Study Plan
 
-→ [[Study-Plan|📋 Detailed Week-by-Week Study Plan]]
+→ [[Study-Plan|Detailed Week-by-Week Study Plan]]
 
 ### Quick Priority Matrix
 
 | Topic | Priority | Your Level | Target Level | Vault Resource |
 |-------|----------|-----------|-------------|----------------|
-| Transformer Architecture | 🔴 Critical | | 5/5 | [[13-Agentic-AI/Agentic_AI_Zero_to_Godhood]] |
-| Attention Mechanisms | 🔴 Critical | | 5/5 | |
-| Training & Optimization | 🔴 Critical | | 4/5 | |
-| LLMs (GPT, Claude, Gemini) | 🔴 Critical | | 5/5 | [[13-Agentic-AI/Agentic_AI_Zero_to_Godhood]] |
-| RAG & Agentic Systems | 🔴 Critical | | 4/5 | [[13-Agentic-AI/Agentic_AI_Zero_to_Godhood]] |
-| ML System Design | 🟡 High | | 4/5 | |
-| Distributed Training | 🟡 High | | 4/5 | |
-| RLHF / Alignment | 🟡 High | | 4/5 | |
-| Coding (Python + DSA) | 🟡 High | | 4/5 | [[03-Data-Structures-Algorithms/README\|03-Data-Structures-Algorithms]] |
-| MLOps / Serving | 🟢 Medium | | 3/5 | |
-| Classical ML | 🟢 Medium | | 3/5 | |
+| Transformer Architecture | Critical | | 5/5 | [[13-Agentic-AI/Agentic_AI_Zero_to_Godhood]] |
+| Attention Mechanisms | Critical | | 5/5 | |
+| Training & Optimization | Critical | | 4/5 | |
+| LLMs (GPT, Claude, Gemini) | Critical | | 5/5 | [[13-Agentic-AI/Agentic_AI_Zero_to_Godhood]] |
+| RAG & Agentic Systems | Critical | | 4/5 | [[13-Agentic-AI/Agentic_AI_Zero_to_Godhood]] |
+| ML System Design | High | | 4/5 | |
+| Distributed Training | High | | 4/5 | |
+| RLHF / Alignment | High | | 4/5 | |
+| Coding (Python + DSA) | High | | 4/5 | [[03-Data-Structures-Algorithms/README\|03-Data-Structures-Algorithms]] |
+| MLOps / Serving | Medium | | 3/5 | |
+| Classical ML | Medium | | 3/5 | |
 
 ---
 
-## 🏢 Target Companies
+## Target Companies
 
 ```dataview
 TABLE WITHOUT ID
@@ -61,7 +61,7 @@ WHERE contains(target_roles, "AI-Engineer")
 SORT file.name ASC
 ```
 
-## 📊 Active Interviews
+## Active Interviews
 
 ```dataview
 TABLE WITHOUT ID
@@ -74,10 +74,10 @@ SORT next_deadline ASC
 
 ---
 
-## 🔗 Role Resources
+## Role Resources
 - → [[Skill-Matrix]] | → [[Question-Bank]] | → [[Common-Patterns]] | → [[Resources]]
 
-## 📖 Key Vault Links
+## Key Vault Links
 | Domain | Link |
 |--------|------|
 | Agentic AI Zero to Godhood | [[13-Agentic-AI/Agentic_AI_Zero_to_Godhood]] |

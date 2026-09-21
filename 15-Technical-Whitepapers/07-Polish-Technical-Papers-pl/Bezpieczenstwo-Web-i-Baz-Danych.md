@@ -79,7 +79,7 @@ Kenny Kerr definiuje fundamenty programowania defensywnego:
 
 ---
 
-## 4. Niebezpieczne Google — Google Dorking (Michał Piotrowski)
+## 4. Niebezpieczne Google - Google Dorking (Michał Piotrowski)
 
 ### Wykrywanie Informacji za Pomocą Zaawansowanych Zapytań
 Michał Piotrowski demonstruje technikę Google Dorkingu do pasywnego rekonesansu podatnych systemów bez wysyłania pakietów bezpośrednio do celu:

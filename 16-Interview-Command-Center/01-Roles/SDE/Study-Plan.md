@@ -7,7 +7,7 @@ last_reviewed:
 sources: []
 ---
 
-# 📋 SDE Study Plan — 8-Week Sprint
+# SDE Study Plan - 8-Week Sprint
 
 > Adjust timelines based on your interview dates. Focus on weak areas first.
 
@@ -56,7 +56,7 @@ sources: []
 
 ---
 
-## 📊 Progress Tracking
+## Progress Tracking
 
 | Week | Problems Target | Problems Done | System Design | Mocks |
 |------|----------------|---------------|---------------|-------|

@@ -11,7 +11,7 @@ last_reviewed:
 sources: []
 ---
 
-# Lab 12 — Synthesizable FPGA Parser & Pre-Trade Risk Filter
+# Lab 12 - Synthesizable FPGA Parser & Pre-Trade Risk Filter
 
 > [!summary]
 > In this lab, you will design, simulate, and verify a complete, synthesizable FPGA market data parser and "bump-in-the-wire" pre-trade risk filter in C++ Vitis HLS and SystemVerilog. You will process streaming 128-bit AXI4-Stream words at 322.26 MHz, extract ITCH order fields, evaluate price collars, and execute hardware CRC poisoning on risk breaches in **under 15 nanoseconds (5 clock cycles)**.

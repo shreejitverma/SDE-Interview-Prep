@@ -10,14 +10,14 @@ last_reviewed:
 sources: []
 ---
 
-# 📊 Quantitative Developer — Preparation Hub
+# Quantitative Developer - Preparation Hub
 
 > **Target Companies:** Citadel, Two Sigma, Jane Street, DE Shaw, Jump Trading, Tower Research, HRT, Optiver, IMC
 > **Target Levels:** Mid to Senior Quant Dev / VP
 
 ---
 
-## 🎯 What Quant Dev Interviews Test
+## What Quant Dev Interviews Test
 
 | Round | Weight | What They Want |
 |-------|--------|----------------|
@@ -29,28 +29,28 @@ sources: []
 
 ---
 
-## 📚 Study Plan
+## Study Plan
 
-→ [[Study-Plan|📋 Detailed Week-by-Week Study Plan]]
+→ [[Study-Plan|Detailed Week-by-Week Study Plan]]
 
 ### Quick Priority Matrix
 
 | Topic | Priority | Your Level | Target Level | Vault Resource |
 |-------|----------|-----------|-------------|----------------|
-| Modern C++ (11/14/17/20) | 🔴 Critical | | 5/5 | [[02-Programming-Languages/C++]] |
-| Lock-Free / Wait-Free | 🔴 Critical | | 5/5 | [[14-Low-Latency-Systems/08 - Low-Latency Programming]] |
-| Memory Models & Atomics | 🔴 Critical | | 4/5 | [[14-Low-Latency-Systems/08 - Low-Latency Programming]] |
-| Order Book Implementation | 🔴 Critical | | 5/5 | [[05-Quantitative-Finance/02-Quant-Dev]] |
-| Probability & Statistics | 🔴 Critical | | 4/5 | [[05-Quantitative-Finance/01-Mathematics]] |
-| Market Microstructure | 🟡 High | | 4/5 | [[14-Low-Latency-Systems/01 - Market & Microstructure Fundamentals]] |
-| Networking (TCP/UDP/Multicast) | 🟡 High | | 4/5 | [[14-Low-Latency-Systems/06 - Networking]] |
-| Hardware Sympathy | 🟡 High | | 4/5 | [[14-Low-Latency-Systems/04 - Hardware Mechanical Sympathy]] |
-| OS & Kernel Tuning | 🟢 Medium | | 3/5 | [[14-Low-Latency-Systems/05 - OS & Kernel Tuning]] |
-| FIX / SBE Protocols | 🟢 Medium | | 3/5 | [[14-Low-Latency-Systems/10 - Protocols & Codecs]] |
+| Modern C++ (11/14/17/20) | Critical | | 5/5 | [[02-Programming-Languages/C++]] |
+| Lock-Free / Wait-Free | Critical | | 5/5 | [[14-Low-Latency-Systems/08 - Low-Latency Programming]] |
+| Memory Models & Atomics | Critical | | 4/5 | [[14-Low-Latency-Systems/08 - Low-Latency Programming]] |
+| Order Book Implementation | Critical | | 5/5 | [[05-Quantitative-Finance/02-Quant-Dev]] |
+| Probability & Statistics | Critical | | 4/5 | [[05-Quantitative-Finance/01-Mathematics]] |
+| Market Microstructure | High | | 4/5 | [[14-Low-Latency-Systems/01 - Market & Microstructure Fundamentals]] |
+| Networking (TCP/UDP/Multicast) | High | | 4/5 | [[14-Low-Latency-Systems/06 - Networking]] |
+| Hardware Sympathy | High | | 4/5 | [[14-Low-Latency-Systems/04 - Hardware Mechanical Sympathy]] |
+| OS & Kernel Tuning | Medium | | 3/5 | [[14-Low-Latency-Systems/05 - OS & Kernel Tuning]] |
+| FIX / SBE Protocols | Medium | | 3/5 | [[14-Low-Latency-Systems/10 - Protocols & Codecs]] |
 
 ---
 
-## 🏢 Target Companies
+## Target Companies
 
 ```dataview
 TABLE WITHOUT ID
@@ -62,7 +62,7 @@ WHERE contains(target_roles, "Quant-Dev")
 SORT file.name ASC
 ```
 
-## 📊 Active Interviews
+## Active Interviews
 
 ```dataview
 TABLE WITHOUT ID
@@ -75,13 +75,13 @@ SORT next_deadline ASC
 
 ---
 
-## 🔗 Role Resources
-- → [[Skill-Matrix|📊 Self-Assessment Skill Matrix]]
-- → [[Question-Bank|🧩 Curated Question Bank]]
-- → [[Common-Patterns|🔄 Common Patterns & Frameworks]]
-- → [[Resources|📚 Resources & Links]]
+## Role Resources
+- → [[Skill-Matrix|Self-Assessment Skill Matrix]]
+- → [[Question-Bank|Curated Question Bank]]
+- → [[Common-Patterns|Common Patterns & Frameworks]]
+- → [[Resources|Resources & Links]]
 
-## 📖 Key Vault Links
+## Key Vault Links
 | Domain | Link |
 |--------|------|
 | Quant Finance | [[05-Quantitative-Finance/README\|05-Quantitative-Finance]] |

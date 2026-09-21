@@ -7,7 +7,7 @@ last_reviewed:
 sources: []
 ---
 
-# 📚 Low Latency Resources
+# Low Latency Resources
 
 ## Vault (Your 14-Module Knowledge Base)
 | Module | Link |

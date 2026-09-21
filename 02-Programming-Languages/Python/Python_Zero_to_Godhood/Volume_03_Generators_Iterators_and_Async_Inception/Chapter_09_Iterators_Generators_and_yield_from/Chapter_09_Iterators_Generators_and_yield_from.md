@@ -9,7 +9,7 @@ sources: []
 
 # Chapter 9: Iterators, Generators, and `yield from` (Python 3.3)
 
-This chapter is the canonical home for the **iteration model** that pervades Python — `for`
+This chapter is the canonical home for the **iteration model** that pervades Python - `for`
 loops, comprehensions, unpacking, `in`, and ultimately `async for` all rest on it. We build it
 from the bottom: the **iterator protocol** (`__iter__`/`__next__`), then **generators** as the
 language's ergonomic way to write iterators by suspending a frame, then **`yield from`** (PEP
@@ -85,15 +85,15 @@ Verified output (CPython 3.13.5):
               RETURN_CONST             0 (None)
 ```
 
-`StopIteration` is *control flow*, not an error — `FOR_ITER` catches it internally to end the
+`StopIteration` is *control flow*, not an error - `FOR_ITER` catches it internally to end the
 loop (this is why a stray `StopIteration` raised *inside* a generator body is a bug; PEP 479,
 Chapter handled in Vol III, converts it to `RuntimeError`).
 
 **The senior-engineer contrast.** Java separates `Iterable` (`iterator()`) from `Iterator`
-(`hasNext()`/`next()`) — a *look-ahead* model. Python has no `hasNext()`; the iterator is
+(`hasNext()`/`next()`) - a *look-ahead* model. Python has no `hasNext()`; the iterator is
 **exhaustion-by-exception** (`StopIteration` on `next()`). C++ iterators are *positions* compared
 against an `end()` sentinel. Python's model is the most minimal: one method, one sentinel
-exception, and a hard rule that **iterators are single-pass and stateful** — once exhausted, they
+exception, and a hard rule that **iterators are single-pass and stateful** - once exhausted, they
 stay exhausted (§9.5).
 
 ---
@@ -101,8 +101,8 @@ stay exhausted (§9.5).
 ## 9.2 Generators: iterators written as suspended frames
 
 **Why this exists.** Writing the `Countdown` class above is tedious; the state machine
-(`self.n`, the `StopIteration`) is boilerplate. A **generator function** — any `def` containing
-`yield` — lets you write the *logic* and have CPython synthesize the iterator. Calling it returns
+(`self.n`, the `StopIteration`) is boilerplate. A **generator function** - any `def` containing
+`yield` - lets you write the *logic* and have CPython synthesize the iterator. Calling it returns
 a generator object; each `next()` runs to the next `yield` and suspends.
 
 ```python
@@ -126,10 +126,10 @@ values: [0, 1, 4, 9]
 **What the interpreter actually does** (the mechanism from Chapter 5, now named). A generator
 wraps a `PyGenObject` holding a `gi_frame`. At each `yield`, CPython saves the resume offset
 (`f_lasti`) and the evaluation-stack depth in that frame, marks the generator suspended, and
-returns control — the frame is *not* freed, it lives on the heap. `next()`/`send()` re-attach the
+returns control - the frame is *not* freed, it lives on the heap. `next()`/`send()` re-attach the
 frame and resume. This is what makes generators **lazy and *O*(1) in memory**: `gen_squares(10**9)`
-allocates one frame, not a billion-element list. The two-way protocol — `send(value)`,
-`throw(exc)`, `close()` — was covered in Chapter 5; a generator is a producer (`next`) *and* a
+allocates one frame, not a billion-element list. The two-way protocol - `send(value)`,
+`throw(exc)`, `close()` - was covered in Chapter 5; a generator is a producer (`next`) *and* a
 consumer (`send`).
 
 ---
@@ -176,7 +176,7 @@ next: after
 ```
 
 The compiler implements this with `GET_YIELD_FROM_ITER` (prepare the sub-iterator) and a
-delegation loop; the value/exception routing lives in `ceval.c`. The everyday use is far simpler —
+delegation loop; the value/exception routing lives in `ceval.c`. The everyday use is far simpler - 
 flattening and composition without manual loops:
 
 ```python
@@ -198,7 +198,7 @@ flatten: [1, 2, 3, 4, 5, 6]
 ```
 
 **The coroutine bridge.** `yield from` made it possible to write a generator that delegates to
-another generator that performs I/O and yields control upward — the exact pattern early `asyncio`
+another generator that performs I/O and yields control upward - the exact pattern early `asyncio`
 used (`@asyncio.coroutine` + `yield from`) before Python 3.5 gave it dedicated syntax. When you
 read `await expr` in Chapter 11, picture `yield from` with a typed, awaitable-only channel: the
 suspension mechanism is the same heap frame you have been building since Chapter 5.
@@ -209,13 +209,13 @@ suspension mechanism is the same heap frame you have been building since Chapter
 
 **Why this exists.** Through 3.2, a directory was a package only if it contained `__init__.py`.
 That blocked a real use case: distributing one logical package (`company.core`, `company.plugins`)
-across **multiple installs / directories** — each separate distribution would need its own
+across **multiple installs / directories** - each separate distribution would need its own
 `company/__init__.py`, and they would collide. **PEP 420** lets a package span directories with
 *no* `__init__.py`: a **namespace package**.
 
 **The finder algorithm.** During `import foo`, `PathFinder` scans `sys.path`. If it finds a
 `foo/__init__.py`, that is a normal (regular) package and the search stops. If it finds *no*
-`__init__.py` but one or more directories named `foo`, it does **not** fail — it accumulates *all*
+`__init__.py` but one or more directories named `foo`, it does **not** fail - it accumulates *all*
 matching directories into a namespace package whose `__path__` is the list of them and whose
 `__file__` is `None`.
 
@@ -249,7 +249,7 @@ large ecosystems ship plugins (`zope.*`, `google.cloud.*`, your own `company.*` 
 namespace) as independent, separately-installable distributions. **The trade-off:** namespace
 packages are slightly slower to resolve (the finder must scan all of `sys.path` rather than stop
 at the first hit), and accidentally omitting an `__init__.py` from a *regular* package silently
-turns it into a namespace package — a subtle source of "why is my package data missing" bugs. Use
+turns it into a namespace package - a subtle source of "why is my package data missing" bugs. Use
 namespace packages deliberately, for genuinely split distributions; use a normal `__init__.py`
 package otherwise. The complete import machinery (`importlib`, finders, loaders, `meta_path`) is
 Vol X.
@@ -259,18 +259,18 @@ Vol X.
 ## 9.5 Performance and anti-patterns
 
 - **Generators trade memory for laziness.** A generator over *N* items is *O*(1) memory vs. *O*(N)
-  for the equivalent list — the right default for pipelines and large/streamed data. The cost is a
+  for the equivalent list - the right default for pipelines and large/streamed data. The cost is a
   per-item Python-level resume; for small, fully-materialized data a list comprehension can be
   faster (and re-iterable).
-- **Iterators are single-pass.** Exhausting a generator (or any iterator) leaves it empty — a
+- **Iterators are single-pass.** Exhausting a generator (or any iterator) leaves it empty - a
   second `for`/`sum`/`list` over it yields nothing. Re-create the generator, or materialize to a
   list if you need multiple passes. This bites hard with `zip`, `map`, and `dict.items()` views
   fed into a function that iterates twice.
-- **Don't `list()` a generator just to index it** if you only iterate once — that discards the
+- **Don't `list()` a generator just to index it** if you only iterate once - that discards the
   memory win. Conversely, *do* materialize when you need `len`, random access, or reuse.
 - **`return` inside a generator** sets `StopIteration.value` (for `yield from` capture); it does
   not return a value to a plain `next()` caller. A bare `StopIteration` raised in generator code
-  is converted to `RuntimeError` (PEP 479) — never raise it manually to end a generator; just
+  is converted to `RuntimeError` (PEP 479) - never raise it manually to end a generator; just
   `return`.
 - **Reach for `itertools`** (`chain`, `islice`, `tee`, `groupby`) before hand-rolling generator
   plumbing; it is C-speed and composable (Vol XII).
@@ -287,8 +287,8 @@ Vol X.
 - **Generators** synthesize iterators from `yield`-containing functions by **suspending a heap
   frame** (`gi_frame`/`f_lasti`), giving *O*(1)-memory laziness and a two-way `send`/`throw`/`close`
   protocol.
-- **`yield from`** (PEP 380) delegates transparently to a sub-generator — routing values and
-  exceptions and **capturing its return value** — and is the direct conceptual ancestor of
+- **`yield from`** (PEP 380) delegates transparently to a sub-generator - routing values and
+  exceptions and **capturing its return value** - and is the direct conceptual ancestor of
   `await`.
 - **Implicit namespace packages** (PEP 420) let one package span multiple directories without
   `__init__.py` (`__file__ is None`, multi-entry `__path__`), enabling split distributions.

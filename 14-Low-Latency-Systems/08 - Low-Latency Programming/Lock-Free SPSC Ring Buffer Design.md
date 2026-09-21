@@ -17,7 +17,7 @@ sources: []
 ---
 
 ## Why it matters
-In high-frequency execution pipelines (e.g., handing off incoming market data from a kernel-bypass network thread to a strategy pricing thread), traditional mutexes (`std::mutex`) or multi-producer queues (`std::condition_variable`, MPMC queues) are far too slow—they introduce context switching and atomic CAS bus locking (**50–2,000 ns penalty**).
+In high-frequency execution pipelines (e.g., handing off incoming market data from a kernel-bypass network thread to a strategy pricing thread), traditional mutexes (`std::mutex`) or multi-producer queues (`std::condition_variable`, MPMC queues) are far too slow - they introduce context switching and atomic CAS bus locking (**50–2,000 ns penalty**).
 
 A properly designed SPSC ring buffer:
 1. Is **Wait-Free**: Guarantees completion in a finite number of deterministic instructions without loops or retries.

@@ -9,7 +9,7 @@ sources: []
 
 # Chapter 06: Polymorphism and Virtualization
 
-> *One interface, many implementations — and the machinery that makes it work.*
+> *One interface, many implementations - and the machinery that makes it work.*
 
 Inheritance lets you express "is-a" relationships and reuse code. Polymorphism elevates that to runtime behaviour: a single base-class pointer can point to any derived object and call the correct implementation automatically. This chapter covers how C++98/03 implements polymorphism through virtual functions and vtables, the hazards that accompany it (the virtual-destructor trap, virtual calls in constructors, the diamond problem), the full taxonomy of inheritance types, `const` correctness in class hierarchies, alignment and padding in the object model, and the copy-and-swap idiom for exception-safe assignment.
 
@@ -69,7 +69,7 @@ int main() {
 }
 ```
 
-Because a `Dog` *is an* `Animal`, a `Dog*` or `Dog&` may be passed wherever an `Animal*` or `Animal&` is expected — this is the **Liskov Substitution Principle**:
+Because a `Dog` *is an* `Animal`, a `Dog*` or `Dog&` may be passed wherever an `Animal*` or `Animal&` is expected - this is the **Liskov Substitution Principle**:
 
 ```cpp
 // Listing 6.2: Passing derived as base
@@ -142,10 +142,10 @@ struct B_pri : private A {
 
 ## 6.4 Virtual Functions and Dynamic Dispatch
 
-Without virtual functions, method calls on a base-class pointer are resolved at **compile time** (static dispatch) — always calling the base's version regardless of the actual object type:
+Without virtual functions, method calls on a base-class pointer are resolved at **compile time** (static dispatch) - always calling the base's version regardless of the actual object type:
 
 ```cpp
-// Listing 6.5: Non-virtual — always calls base version
+// Listing 6.5: Non-virtual - always calls base version
 #include <iostream>
 
 struct X { void f() { std::cout << "X::f()\n"; } };
@@ -156,7 +156,7 @@ void call(X& a) { a.f(); }
 int main() {
     X x; Y y;
     call(x); // X::f()
-    call(y); // X::f() — Y::f() is NEVER called!
+    call(y); // X::f() - Y::f() is NEVER called!
     return 0;
 }
 ```
@@ -164,7 +164,7 @@ int main() {
 Marking the base function `virtual` switches to **dynamic dispatch**: the correct override is located at runtime from the actual object type:
 
 ```cpp
-// Listing 6.6: virtual — correct override called at runtime
+// Listing 6.6: virtual - correct override called at runtime
 #include <iostream>
 
 class Animal {
@@ -191,7 +191,7 @@ public:
 
 int main() {
     Animal* pet = new Dog();
-    pet->speak(); // Prints "Woof!" — resolved at runtime
+    pet->speak(); // Prints "Woof!" - resolved at runtime
     delete pet;
     return 0;
 }
@@ -203,7 +203,7 @@ int main() {
 
 When a class contains at least one virtual function, the compiler:
 
-1. Creates a **vtable** (virtual table) for the class — a static array of function pointers, one entry per virtual function.
+1. Creates a **vtable** (virtual table) for the class - a static array of function pointers, one entry per virtual function.
 2. Inserts a hidden **vptr** (virtual pointer) into every instance of that class, pointing to its class's vtable.
 
 When `pet->speak()` is called, the CPU:
@@ -230,7 +230,7 @@ Each class in the hierarchy has its own vtable. Derived classes that override vi
 
 ## 6.6 Pure Virtual Functions and Abstract Classes
 
-A **pure virtual function** (declared `= 0`) has no default implementation in the base class. Any class with at least one pure virtual function becomes an **abstract class** — it cannot be instantiated. Derived classes must override every pure virtual function to become concrete.
+A **pure virtual function** (declared `= 0`) has no default implementation in the base class. Any class with at least one pure virtual function becomes an **abstract class** - it cannot be instantiated. Derived classes must override every pure virtual function to become concrete.
 
 ```cpp
 // Listing 6.8: Abstract base class with pure virtual functions
@@ -256,7 +256,7 @@ int main() {
 }
 ```
 
-A pure virtual function **may** still have a body — defined outside the class. Derived classes can invoke it explicitly via `Base::func()`. This pattern is useful when sharing common implementation across all overrides:
+A pure virtual function **may** still have a body - defined outside the class. Derived classes can invoke it explicitly via `Base::func()`. This pattern is useful when sharing common implementation across all overrides:
 
 ```cpp
 // Listing 6.9: Pure virtual with a body
@@ -273,7 +273,7 @@ struct Derived : DefaultAbstract {
 };
 ```
 
-**Interface idiom in C++98/03:** a class with *only* public pure virtual functions and a virtual destructor acts as a pure interface — no data members, no implementation, just a contract.
+**Interface idiom in C++98/03:** a class with *only* public pure virtual functions and a virtual destructor acts as a pure interface - no data members, no implementation, just a contract.
 
 ---
 
@@ -297,17 +297,17 @@ public:
 
 int main() {
     Base* b = new Derived();
-    delete b; // Only prints "Base destroyed." — array is LEAKED!
+    delete b; // Only prints "Base destroyed." - array is LEAKED!
     return 0;
 }
 ```
 
-Because `Base::~Base` is not `virtual`, `delete b` only calls the statically known destructor — `~Base`. The `~Derived` destructor never runs, and the heap array is permanently leaked.
+Because `Base::~Base` is not `virtual`, `delete b` only calls the statically known destructor - `~Base`. The `~Derived` destructor never runs, and the heap array is permanently leaked.
 
 **The Golden Rule:** if a class has even one `virtual` function, or is intended to be used as a base class, give it a `virtual` destructor:
 
 ```cpp
-// Listing 6.11: Correct — virtual destructor
+// Listing 6.11: Correct - virtual destructor
 class Base {
 public:
     virtual ~Base() { std::cout << "Base destroyed.\n"; }
@@ -333,7 +333,7 @@ protected:
 Never call virtual functions during construction or destruction:
 
 ```cpp
-// Listing 6.13: Virtual call during construction — does not dispatch to derived
+// Listing 6.13: Virtual call during construction - does not dispatch to derived
 #include <iostream>
 using namespace std;
 
@@ -367,7 +367,7 @@ int main() {
    From base destructor: Base::v()         <-- NOT Derived::v()! */
 ```
 
-During `Base::Base()`, the `Derived` subobject has not yet been constructed — calling `Derived::v()` would access uninitialised members. C++ therefore treats the dynamic type of `*this` as `Base` during `Base`'s constructor, and as `Derived` only after the `Derived` constructor body begins.
+During `Base::Base()`, the `Derived` subobject has not yet been constructed - calling `Derived::v()` would access uninitialised members. C++ therefore treats the dynamic type of `*this` as `Base` during `Base`'s constructor, and as `Derived` only after the `Derived` constructor body begins.
 
 ---
 
@@ -385,7 +385,7 @@ class C : public A, public B { int c; };
 int main() {
     C obj;
     A* pa = &obj; // Points to start of obj (A subobject at offset 0)
-    B* pb = &obj; // Points to obj + sizeof(A) — B subobject at a non-zero offset!
+    B* pb = &obj; // Points to obj + sizeof(A) - B subobject at a non-zero offset!
     return 0;
 }
 ```
@@ -407,7 +407,7 @@ struct Bottom : public Left, public Right { int b; };
 
 void f() {
     Bottom obj;
-    // obj.t;          // ERROR: ambiguous — is it Left::Top::t or Right::Top::t?
+    // obj.t;          // ERROR: ambiguous - is it Left::Top::t or Right::Top::t?
     obj.Left::t = 1;   // Must qualify
     obj.Right::t = 2;  // Two separate copies of 't'
 }
@@ -484,10 +484,10 @@ int main() {
 
 ### 6.11.2 Hierarchical Inheritance
 
-Multiple derived classes sharing a single base class — a common pattern for implementing a family of related types:
+Multiple derived classes sharing a single base class - a common pattern for implementing a family of related types:
 
 ```cpp
-// Listing 6.18: Hierarchical inheritance — three employee types
+// Listing 6.18: Hierarchical inheritance - three employee types
 #include <iostream>
 #include <string>
 using namespace std;
@@ -538,7 +538,7 @@ int main() {
 
 ## 6.12 Polymorphic Design: The Shape Pattern
 
-The canonical illustration of polymorphism — a collection of different shape types manipulated uniformly through a base-class interface:
+The canonical illustration of polymorphism - a collection of different shape types manipulated uniformly through a base-class interface:
 
 ```cpp
 // Listing 6.19: Polymorphic Shape hierarchy
@@ -773,7 +773,7 @@ public:
 
 When `a = b` executes:
 1. `rhs` is copy-constructed from `b`. If `new` throws, the assignment operator body is never entered and `a` is unchanged.
-2. `swap(*this, rhs)` exchanges resources in two pointer swaps — cannot throw.
+2. `swap(*this, rhs)` exchanges resources in two pointer swaps - cannot throw.
 3. The old resources of `a` are destroyed when `rhs` leaves scope.
 
 Self-assignment (`a = a`) is handled correctly but less efficiently than a manual check; for typical use cases this trade-off is acceptable.
@@ -791,17 +791,17 @@ Self-assignment (`a = a`) is handled correctly but less efficiently than a manua
 | Concrete leaf class, not used polymorphically | Non-virtual destructor (implicit or explicit) |
 | Abstract interface (pure virtual only) | `virtual ~Interface() = 0` with out-of-line definition |
 
-### 6.17.2 `override` and `final` — Forward Reference: C++11
+### 6.17.2 `override` and `final` - Forward Reference: C++11
 
 C++11 introduced two contextual keywords:
-- `override` — instructs the compiler to verify the function actually overrides a base virtual function. A signature mismatch becomes a compile error instead of a silent new overload.
-- `final` — prevents further overriding of a virtual function, or prevents subclassing of an entire class.
+- `override` - instructs the compiler to verify the function actually overrides a base virtual function. A signature mismatch becomes a compile error instead of a silent new overload.
+- `final` - prevents further overriding of a virtual function, or prevents subclassing of an entire class.
 
 In C++98/03, a mismatched signature silently creates a new overload instead of overriding, a notoriously hard-to-find bug.
 
 ### 6.17.3 Never Call Virtual Functions in Constructors or Destructors
 
-During a base class constructor, the vtable entry for the object points to the **base** class's implementation, not the derived class's. Calling a virtual function will invoke the base version — not the override. The same applies during destruction in reverse order. Design your constructors to not rely on virtual dispatch.
+During a base class constructor, the vtable entry for the object points to the **base** class's implementation, not the derived class's. Calling a virtual function will invoke the base version - not the override. The same applies during destruction in reverse order. Design your constructors to not rely on virtual dispatch.
 
 ### 6.17.4 The Liskov Substitution Principle
 

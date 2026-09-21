@@ -11,7 +11,7 @@ last_reviewed:
 sources: []
 ---
 
-# Lab 03 — High-Performance Intrusive Limit Order Book
+# Lab 03 - High-Performance Intrusive Limit Order Book
 
 > [!summary]
 > In this lab, you will build, compile, and benchmark an exchange-grade, allocation-free Limit Order Book (LOB) and Price-Time Priority matching engine in C++20. You will verify sub-20ns order insertions, sub-12ns $O(1)$ cancellations, and multi-level price sweeps with zero dynamic memory allocation.

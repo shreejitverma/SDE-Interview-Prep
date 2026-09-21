@@ -15,11 +15,11 @@ sources: []
 
 - [<% tp.file.title %>](Behavioral-Story.md)
 - [<% tp.file.title %>](Company-Profile.md)
-- [📅 <% tp.date.now("dddd, MMMM Do YYYY") %>](Daily-Log.md)
+- [<% tp.date.now("dddd, MMMM Do YYYY") %>](Daily-Log.md)
 - [<% tp.file.title %>](Interview-Note.md)
-- [🎤 Mock Interview: <% tp.file.title %>](Mock-Interview.md)
+- [Mock Interview: <% tp.file.title %>](Mock-Interview.md)
 - [Retrospective: <% tp.file.title %>](Retrospective.md)
-- [📖 Study Session: <% tp.file.title %>](Study-Session.md)
-- [📊 Weekly Review — <% tp.date.now('YYYY (Week) ww') %>](Weekly-Review.md)
+- [Study Session: <% tp.file.title %>](Study-Session.md)
+- [Weekly Review - <% tp.date.now('YYYY (Week) ww') %>](Weekly-Review.md)
 
 <!-- moc:end -->

@@ -11,7 +11,7 @@ last_reviewed:
 sources: []
 ---
 
-# War Story — The August 22, 2013 NASDAQ 3-Hour SIP Freeze: Buffer Exhaustion & Failover Cascades
+# War Story - The August 22, 2013 NASDAQ 3-Hour SIP Freeze: Buffer Exhaustion & Failover Cascades
 
 > [!summary]
 > On August 22, 2013, between 12:14:03 and 15:25:00 EST, the NASDAQ stock market suffered a total trading halt across all Tape C securities (over 3,000 stocks including Apple, Microsoft, and Google). A surge of invalid disconnect/reconnect cycles from NYSE Arca triggered an internal buffer exhaustion and memory corruption cascade in the Securities Information Processor (UTP SIP), revealing critical flaws in capacity planning, backpressure handling, and failover synchronization.
@@ -37,7 +37,7 @@ timeline
 
 ### A. The Ingress Surge & NYSE Arca Disconnect Loop
 - **The Protocol Defect**: NYSE Arca’s gateway software experienced an internal state desynchronization, causing it to transmit a stream of **duplicate connect, disconnect, and quote registration frames** to the NASDAQ UTP SIP.
-- **The Volume Multiplier**: Because each reconnection request required the SIP to query and transmit all resting quote states, the burst generated an aggregate inbound load of **over 260,000 messages per second**—more than **26 times the SIP’s tested peak capacity (10,000 msgs/sec)**.
+- **The Volume Multiplier**: Because each reconnection request required the SIP to query and transmit all resting quote states, the burst generated an aggregate inbound load of **over 260,000 messages per second** - more than **26 times the SIP’s tested peak capacity (10,000 msgs/sec)**.
 
 ### B. The Memory Queue Exhaustion & Unbounded Buffering Flaw
 - **The Architecture**: The 2013 UTP SIP was designed with a naive **unbounded heap queue** (`std::queue` / linked lists) between its network receive threads and its single-threaded matching/consolidation engine.

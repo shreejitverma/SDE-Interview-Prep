@@ -15,8 +15,8 @@ modern Python: **list comprehensions**, **lexically nested scopes** (PEP 227), a
 about the execution model. Comprehensions force the question "what is a scope, mechanically?"
 Nested scopes complete the LEGB lookup the compiler from Chapter 1 was already preparing for.
 And the cyclic collector exists for exactly one reason: reference counting (Chapter 2) cannot
-free a cycle. We treat all three at their modern depth, including the changes — PEP 709
-comprehension inlining (3.12) and PEP 442 finalization order — that make the original 2.x
+free a cycle. We treat all three at their modern depth, including the changes - PEP 709
+comprehension inlining (3.12) and PEP 442 finalization order - that make the original 2.x
 descriptions obsolete.
 
 ## Section Index
@@ -36,11 +36,11 @@ descriptions obsolete.
 touches frames, isolation, and performance.
 
 **The original bug (Python 2.x).** Python 2.0 compiled a comprehension as an inline loop in
-the enclosing function — `STORE_FAST` wrote the loop variable straight into the host's
+the enclosing function - `STORE_FAST` wrote the loop variable straight into the host's
 locals. The loop variable **leaked**:
 
 ```python
-# Python 2.x behaviour (historical — not how Python 3 works):
+# Python 2.x behaviour (historical - not how Python 3 works):
 x = 999
 data = [x for x in range(5)]
 print(x)   # -> 4 in Python 2: the comprehension clobbered the outer x
@@ -66,14 +66,14 @@ x after comprehension: 999 | data: [0, 1, 2, 3, 4]
 
 **The modern reality (Python 3.12, PEP 709): isolation *without* a frame.** Creating and
 tearing down a whole function frame per comprehension was pure overhead. **PEP 709** inlined
-list/set/dict comprehensions back into the enclosing code object in Python 3.12 — but
+list/set/dict comprehensions back into the enclosing code object in Python 3.12 - but
 preserved isolation by *saving and restoring* the loop variable around the comprehension
 rather than by creating a scope. You can prove the frame is gone: an inlined comprehension
 leaves **no nested code object** behind, whereas a generator expression (which must suspend,
 so it genuinely needs its own frame) still does:
 
 ```python
-# Caption: PEP 709 — list comprehensions are inlined (no nested code object);
+# Caption: PEP 709 - list comprehensions are inlined (no nested code object);
 # generator expressions still get their own code object.
 def make_list(n):
     return [i * i for i in range(n)]
@@ -94,7 +94,7 @@ nested code objects in make_list: []
 nested code objects in make_gen:  ['<genexpr>']
 ```
 
-The inlined bytecode reveals the save/restore mechanism — note `LOAD_FAST_AND_CLEAR` (stash
+The inlined bytecode reveals the save/restore mechanism - note `LOAD_FAST_AND_CLEAR` (stash
 the outer `i` and blank it) on entry and the matching restore in an exception table so the
 outer name survives even if the comprehension raises:
 
@@ -124,7 +124,7 @@ twice.**
 
 ## 3.2 Nested scopes and LEGB resolution (PEP 227)
 
-**Why this exists.** Before Python 2.1, name lookup was three-tier — **LGB** (Local, Global,
+**Why this exists.** Before Python 2.1, name lookup was three-tier - **LGB** (Local, Global,
 Built-in). A nested function could *not* see its enclosing function's locals, so this raised
 `NameError`:
 
@@ -179,7 +179,7 @@ Verified output (CPython 3.13.5):
               RETURN_VALUE
 ```
 
-Both `x` and `y` are `LOAD_FAST`/`STORE_FAST` — array indexing, no dictionary involved.
+Both `x` and `y` are `LOAD_FAST`/`STORE_FAST` - array indexing, no dictionary involved.
 (`BINARY_OP 0 (+)` is the unified 3.11 add from Chapter 1, not the pre-3.11 `BINARY_ADD`.)
 
 ---
@@ -188,11 +188,11 @@ Both `x` and `y` are `LOAD_FAST`/`STORE_FAST` — array indexing, no dictionary 
 
 **Why this exists.** When `inner` reads `outer`'s local `x`, that local must outlive `outer`'s
 frame. Chapter 1 introduced the solution: the compiler promotes `x` to a **cell**
-(`PyCellObject`) — a heap box shared by reference between the two functions. Here we make the
+(`PyCellObject`) - a heap box shared by reference between the two functions. Here we make the
 mechanism observable and expose the bug it causes.
 
 ```python
-# Caption: closure cells are live, shared boxes — inspectable at runtime.
+# Caption: closure cells are live, shared boxes - inspectable at runtime.
 def outer_scope(multiplier):
     secret_value = 100
     def inner_scope(val):
@@ -274,7 +274,7 @@ into the collector's doubly-linked lists.
 **Generations and the weak generational hypothesis.** Objects are grouped into three
 generations. New objects start in generation 0; survivors are promoted. The collector scans
 generation 0 frequently and the older generations rarely, betting that *most objects die
-young* — so most collections are cheap.
+young* - so most collections are cheap.
 
 ```python
 # Caption: a cycle survives refcounting and is reclaimed only by gc.collect();
@@ -314,7 +314,7 @@ Two modern facts the original 2.x description predates:
 
 - **Finalizers in cycles are now run (PEP 442, Python 3.4+).** Before 3.4, an object with a
   `__del__` method inside a cycle was deemed *uncollectable* and parked in `gc.garbage`
-  forever. PEP 442 reworked finalization so cyclic objects are finalized then collected — as
+  forever. PEP 442 reworked finalization so cyclic objects are finalized then collected - as
   the output above shows, both `__del__`s fire.
 - **The generation-0 threshold on this interpreter is 2000**, read via `gc.get_threshold()`.
   The threshold is a tunable triple `(t0, t1, t2)`: a collection of generation 0 is triggered
@@ -332,10 +332,10 @@ Two modern facts the original 2.x description predates:
 scanned generations). In allocation-heavy or latency-sensitive code (the trading loop of
 Vol IX, request handlers, large batch loads), GC pauses are real:
 
-- `gc.disable()` / `gc.enable()` — turn off automatic collection in a hot phase; collect
+- `gc.disable()` / `gc.enable()` - turn off automatic collection in a hot phase; collect
   explicitly at a safe point. Refcounting still reclaims all acyclic garbage while disabled,
   so this leaks only genuine cycles, briefly.
-- `gc.freeze()` (3.7+) — move everything currently alive into a permanent generation that is
+- `gc.freeze()` (3.7+) - move everything currently alive into a permanent generation that is
   never scanned. The canonical use is right after import/startup and before forking a server:
   it keeps long-lived objects out of every future scan and improves copy-on-write sharing
   across forked workers.
@@ -348,7 +348,7 @@ Vol IX, request handlers, large batch loads), GC pauses are real:
 - **Relying on `gc.garbage`** for finalizer-in-cycle objects: obsolete since PEP 442; design
   finalization to not assume it.
 - **Leaking the loop variable** mentally: it does not leak from a comprehension, but a plain
-  `for` loop's variable *does* persist after the loop — a real difference, not a bug.
+  `for` loop's variable *does* persist after the loop - a real difference, not a bug.
 - **Comprehension vs generator expression confusion**: a comprehension is eager and inlined
   (no frame); a generator expression is lazy and keeps its own frame. Reach for the generator
   when you won't consume all results or the sequence is large (Chapter 9 / Vol III).
@@ -364,8 +364,8 @@ Vol IX, request handlers, large batch loads), GC pauses are real:
   *statically* into `LOAD_FAST`/`LOAD_DEREF`/`LOAD_GLOBAL`/`LOAD_NAME`.
 - **Closures** capture variables by **cell** (shared, live reference), which is why the
   **late-binding loop** trap exists; `i=i` simulates the capture-by-value Python lacks.
-- The **cyclic garbage collector** exists solely to reclaim what refcounting cannot — cycles
-  — using a generational copy-and-subtract algorithm; since **PEP 442** it finalizes cyclic
+- The **cyclic garbage collector** exists solely to reclaim what refcounting cannot - cycles
+  \- using a generational copy-and-subtract algorithm; since **PEP 442** it finalizes cyclic
   objects rather than abandoning them.
 - The collector is **tunable** (`disable`/`freeze`/`set_threshold`); know these levers for
   latency-sensitive code.

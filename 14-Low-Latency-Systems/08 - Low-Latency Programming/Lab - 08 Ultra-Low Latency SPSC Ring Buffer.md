@@ -11,7 +11,7 @@ last_reviewed:
 sources: []
 ---
 
-# Lab 08 — Ultra-Low Latency SPSC Ring Buffer
+# Lab 08 - Ultra-Low Latency SPSC Ring Buffer
 
 > [!summary]
 > In this lab, you will build, compile, and benchmark an exchange-grade, wait-free Single-Producer Single-Consumer (SPSC) ring buffer in C++20. You will pin the producer and consumer to separate physical CPU cores, measure end-to-end transfer latency down to the nanosecond, and prove sustained throughput exceeding **50,000,000 messages/second**.

@@ -9,7 +9,7 @@ sources: []
 
 # Chapter 04: Advanced Functions & Callbacks
 
-> *The engines of your application — and the low-level data manipulation that powers them.*
+> *The engines of your application - and the low-level data manipulation that powers them.*
 
 A function is the smallest unit of reusable logic in C++, but the language wraps that simple idea in a surprising amount of machinery: parameter-passing semantics that decide whether you copy a megabyte or a pointer, overload resolution that picks one of many same-named functions, the call stack that makes recursion possible and stack overflow inevitable, and function pointers that let you treat code itself as data. This chapter takes you from the anatomy of a single function through the callback patterns that underpin every event-driven system, and closes with the bit-level and floating-point fundamentals that separate engineers who *use* the hardware from those who merely tolerate it.
 
@@ -39,14 +39,14 @@ A function is the smallest unit of reusable logic in C++, but the language wraps
 
 ## 4.1 Anatomy of a Function
 
-Consider writing a game where every time the player takes damage you must calculate armor reduction, deduct health, play a sound effect, and update the screen. Inlining those twenty lines at every call site produces a bloated, unmaintainable program. **Functions** solve this: a function is a named block of code that performs a specific task, written once and called as often as needed. This is the core of the **DRY Principle — Don't Repeat Yourself**.
+Consider writing a game where every time the player takes damage you must calculate armor reduction, deduct health, play a sound effect, and update the screen. Inlining those twenty lines at every call site produces a bloated, unmaintainable program. **Functions** solve this: a function is a named block of code that performs a specific task, written once and called as often as needed. This is the core of the **DRY Principle - Don't Repeat Yourself**.
 
 To define a function you specify four things:
 
-1. **Return type** — what kind of data the function gives back when it finishes. If it returns nothing, the type is `void`.
-2. **Name** — the identifier for the action, e.g. `calculateDamage`.
-3. **Parameters** — the data the function needs to do its job, e.g. `int damage_amount`.
-4. **Body** — the code to execute, wrapped in `{ }`.
+1. **Return type** - what kind of data the function gives back when it finishes. If it returns nothing, the type is `void`.
+2. **Name** - the identifier for the action, e.g. `calculateDamage`.
+3. **Parameters** - the data the function needs to do its job, e.g. `int damage_amount`.
+4. **Body** - the code to execute, wrapped in `{ }`.
 
 ```cpp
 // Listing 4.1: The four parts of a function definition
@@ -91,7 +91,7 @@ int main() {
 }
 ```
 
-**Pros:** Safe — the function cannot corrupt your original data. **Cons:** Slow for large objects — passing a 3D model copies millions of bytes just to hand it over.
+**Pros:** Safe - the function cannot corrupt your original data. **Cons:** Slow for large objects - passing a 3D model copies millions of bytes just to hand it over.
 
 ### 4.2.2 Pass by Reference (`&`) (The Original)
 
@@ -118,7 +118,7 @@ int main() {
 To combine the speed of a reference with a guarantee against accidental modification, make the reference `const`.
 
 ```cpp
-// Listing 4.5: const reference — fast and safe
+// Listing 4.5: const reference - fast and safe
 #include <iostream>
 #include <string>
 
@@ -129,7 +129,7 @@ void printScore(const std::string& player_name) {
 }
 ```
 
-> **Godhood Tip — When to use which:**
+> **Godhood Tip - When to use which:**
 > - **Fundamental types** (`int`, `double`, `bool`): pass by **value**. They are so small that copying is faster than dereferencing a hidden pointer.
 > - **Large objects** (`std::string`, `std::vector`, classes): pass by **`const` reference**.
 > - **When you must modify the caller's variable**: pass by **reference**.
@@ -184,7 +184,7 @@ int main() {
 }
 ```
 
-Note that the **return type alone cannot distinguish overloads** — overload resolution considers only the parameter list.
+Note that the **return type alone cannot distinguish overloads** - overload resolution considers only the parameter list.
 
 ---
 
@@ -233,7 +233,7 @@ int main() {
 
 ## 4.6 Recursion
 
-A **recursive function** calls itself. Recursion is the natural expression of problems with self-similar structure — tree traversal, sorting, and divide-and-conquer algorithms. Every recursive function *must* have a **base case**: a condition that stops the recursion. Without one, it calls itself forever.
+A **recursive function** calls itself. Recursion is the natural expression of problems with self-similar structure - tree traversal, sorting, and divide-and-conquer algorithms. Every recursive function *must* have a **base case**: a condition that stops the recursion. Without one, it calls itself forever.
 
 ```cpp
 // Listing 4.10: Factorial via recursion
@@ -245,7 +245,7 @@ int factorial(int n) {
 }
 ```
 
-The classic Fibonacci sequence is elegant recursively but exponentially slow, because it recomputes the same subproblems repeatedly. **Memoization** — caching already-computed results — collapses the exponential blowup to linear time.
+The classic Fibonacci sequence is elegant recursively but exponentially slow, because it recomputes the same subproblems repeatedly. **Memoization** - caching already-computed results - collapses the exponential blowup to linear time.
 
 ```cpp
 // Listing 4.11: Naive vs. memoized recursion
@@ -283,13 +283,13 @@ int main() {
 
 ## 4.7 The Call Stack and Stack Overflow
 
-To understand recursion — and to understand why programs crash — you must understand the **call stack**.
+To understand recursion - and to understand why programs crash - you must understand the **call stack**.
 
 Think of the stack as a physical stack of cafeteria trays. When your program starts, the OS places a tray for `main()` on the table. Inside `main()` you call `add()`; a new tray for `add()` goes on top. If `add()` calls `multiply()`, a `multiply()` tray goes on top of that.
 
 **The rule of the stack:** the CPU can only see and work on the tray at the very top. When `multiply()` finishes, its tray is popped off and destroyed, revealing the `add()` tray beneath it; the CPU resumes `add()`. Each tray (a **stack frame**) holds that invocation's local variables and bookkeeping.
 
-> **Stack Overflow.** What happens when a recursive function forgets its base case? It calls itself, adding a tray. It calls itself again, another tray. After tens of thousands of calls the stack of trays hits the ceiling. The operating system detects the exhaustion and instantly kills the program before it consumes all available memory. This is a **stack overflow** — the most famous crash in computer science.
+> **Stack Overflow.** What happens when a recursive function forgets its base case? It calls itself, adding a tray. It calls itself again, another tray. After tens of thousands of calls the stack of trays hits the ceiling. The operating system detects the exhaustion and instantly kills the program before it consumes all available memory. This is a **stack overflow** - the most famous crash in computer science.
 
 ---
 
@@ -330,7 +330,7 @@ This mechanism is type-unsafe: the compiler cannot verify that the arguments mat
 
 ## 4.9 Static Functions and Internal Linkage
 
-The `static` keyword at file scope gives a function **internal linkage** — it is visible only within its own translation unit, preventing name collisions across files. Applied to a *local variable*, `static` gives that variable **static storage duration**: it is initialized once and persists across calls.
+The `static` keyword at file scope gives a function **internal linkage** - it is visible only within its own translation unit, preventing name collisions across files. Applied to a *local variable*, `static` gives that variable **static storage duration**: it is initialized once and persists across calls.
 
 ```cpp
 // Listing 4.13: static for file scope and persistent state
@@ -362,7 +362,7 @@ int main() {
 
 ## 4.10 Function Pointers
 
-A **function pointer** stores the address of a function, letting you treat code as data — selecting and invoking behavior at runtime. The declaration syntax names the return type, a parenthesized `(*name)`, and the parameter list.
+A **function pointer** stores the address of a function, letting you treat code as data - selecting and invoking behavior at runtime. The declaration syntax names the return type, a parenthesized `(*name)`, and the parameter list.
 
 ```cpp
 // Listing 4.14: Declaring and reassigning a function pointer
@@ -396,7 +396,7 @@ int main() {
 
 ## 4.11 Arrays of Function Pointers
 
-Because a function pointer is an ordinary value, you can store many of them in an array and dispatch by index — a compact alternative to a `switch` for tabular dispatch (the foundation of jump tables and bytecode interpreters).
+Because a function pointer is an ordinary value, you can store many of them in an array and dispatch by index - a compact alternative to a `switch` for tabular dispatch (the foundation of jump tables and bytecode interpreters).
 
 ```cpp
 // Listing 4.15: An array of function pointers as a dispatch table
@@ -429,7 +429,7 @@ int main() {
 
 ## 4.12 Callbacks
 
-A **callback** is a function passed into another component so that the component can "call back" into your code when an event occurs. This inverts control: the library decides *when*, your code decides *what*. Callbacks are the backbone of event-driven systems — GUI buttons, network handlers, and signal dispatch.
+A **callback** is a function passed into another component so that the component can "call back" into your code when an event occurs. This inverts control: the library decides *when*, your code decides *what*. Callbacks are the backbone of event-driven systems - GUI buttons, network handlers, and signal dispatch.
 
 ```cpp
 // Listing 4.16: A callback-driven Button
@@ -490,10 +490,10 @@ TCO is permitted but not mandated by the C++ standard; treat it as an optimizati
 
 In C++, anything invocable with `()` is a **callable**:
 
-- **Function pointers** — `void (*ptr)(int)`.
-- **Functors** — classes that overload `operator()`, carrying state between calls.
-- **Lambdas** *(C++11)* — anonymous inline functions.
-- **`std::function`** *(C++11)* — a polymorphic wrapper that can hold any callable with a given signature.
+- **Function pointers** - `void (*ptr)(int)`.
+- **Functors** - classes that overload `operator()`, carrying state between calls.
+- **Lambdas** *(C++11)* - anonymous inline functions.
+- **`std::function`** *(C++11)* - a polymorphic wrapper that can hold any callable with a given signature.
 
 ### 4.13.3 Argument-Dependent Lookup (ADL)
 
@@ -541,8 +541,8 @@ For values far from 1.0, a fixed epsilon is too strict or too loose; production 
 
 ### 4.14.3 Special Values: NaN and Infinity
 
-- **`std::numeric_limits<double>::quiet_NaN()`** — Not a Number, produced by undefined operations such as `0.0/0.0`. A NaN compares unequal to everything, including itself.
-- **`std::numeric_limits<double>::infinity()`** — positive infinity, produced by operations such as `1.0/0.0`.
+- **`std::numeric_limits<double>::quiet_NaN()`** - Not a Number, produced by undefined operations such as `0.0/0.0`. A NaN compares unequal to everything, including itself.
+- **`std::numeric_limits<double>::infinity()`** - positive infinity, produced by operations such as `1.0/0.0`.
 
 ---
 
@@ -561,10 +561,10 @@ Bitwise operators manipulate individual bits and are essential for embedded syst
 
 ### 4.15.1 Essential Bit Tricks
 
-1. **Check odd/even:** `(x & 1) == 0` is even — faster than `% 2`.
+1. **Check odd/even:** `(x & 1) == 0` is even - faster than `% 2`.
 2. **Multiply by 2:** `x << 1`.
 3. **Divide by 2:** `x >> 1`.
-4. **Clear the lowest set bit:** `x & (x - 1)` — the basis of Kernighan's set-bit-counting algorithm.
+4. **Clear the lowest set bit:** `x & (x - 1)` - the basis of Kernighan's set-bit-counting algorithm.
 5. **Check power of two:** `(x > 0) && ((x & (x - 1)) == 0)`.
 6. **Toggle bit N:** `x ^= (1 << N)`.
 7. **Set bit N:** `x |= (1 << N)`.
@@ -581,7 +581,7 @@ bool isPowerOf2(int x) {
 
 ## 4.16 Bit Fields
 
-**Bit fields** let you specify exactly how many bits each member of a struct or class occupies — crucial for matching hardware register layouts or wire protocols and for packing flags densely.
+**Bit fields** let you specify exactly how many bits each member of a struct or class occupies - crucial for matching hardware register layouts or wire protocols and for packing flags densely.
 
 ```cpp
 // Listing 4.21: A bit-field struct mirroring a hardware register
@@ -592,7 +592,7 @@ struct HardwareRegister {
 };
 ```
 
-**Professional note:** the exact memory layout of bit fields — bit ordering, straddling of storage units, padding — is implementation-defined and depends on the platform's endianness and alignment rules. Never assume a portable on-the-wire layout from a bit-field struct.
+**Professional note:** the exact memory layout of bit fields - bit ordering, straddling of storage units, padding - is implementation-defined and depends on the platform's endianness and alignment rules. Never assume a portable on-the-wire layout from a bit-field struct.
 
 ---
 
@@ -605,5 +605,5 @@ struct HardwareRegister {
 
 ### 4.17.2 Floating-Point Models
 
-- **`fast-math`** — a compiler flag (e.g. `-ffast-math` in GCC) that permits the compiler to ignore some IEEE 754 guarantees for speed, potentially altering precision and breaking NaN/Inf semantics. Enable it only when you understand the numerical consequences.
-- **`long double`** — on many platforms this provides 80-bit or 128-bit precision for high-precision scientific computation, at the cost of performance and portability.
+- **`fast-math`** - a compiler flag (e.g. `-ffast-math` in GCC) that permits the compiler to ignore some IEEE 754 guarantees for speed, potentially altering precision and breaking NaN/Inf semantics. Enable it only when you understand the numerical consequences.
+- **`long double`** - on many platforms this provides 80-bit or 128-bit precision for high-precision scientific computation, at the cost of performance and portability.

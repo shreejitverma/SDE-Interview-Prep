@@ -12,7 +12,7 @@ sources: []
 ---
 
 > [!summary]
-> Exchange pricing models establish the economic incentives for liquidity provision. While standard Maker-Taker venues subsidize passive quotes via maker rebates and charge aggressive takers, Inverted (Taker-Maker) venues pay takers to remove liquidity and charge makers—offering faster queue execution at the cost of significantly higher adverse selection toxicity.
+> Exchange pricing models establish the economic incentives for liquidity provision. While standard Maker-Taker venues subsidize passive quotes via maker rebates and charge aggressive takers, Inverted (Taker-Maker) venues pay takers to remove liquidity and charge makers - offering faster queue execution at the cost of significantly higher adverse selection toxicity.
 
 ---
 

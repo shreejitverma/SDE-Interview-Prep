@@ -7,7 +7,7 @@ last_reviewed:
 sources: []
 ---
 
-# Chapter 19: Templates — The Cookie Cutter
+# Chapter 19: Templates - The Cookie Cutter
 
 > *Write once, compile for any type.*
 

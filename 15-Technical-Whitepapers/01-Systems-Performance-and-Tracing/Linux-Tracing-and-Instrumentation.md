@@ -46,7 +46,7 @@ flowchart TD
 ### Key Technical Mechanisms
 1. **Static Tracepoints (`TRACE_EVENT`)**:
    - Hardcoded in the Linux kernel source at critical execution paths (e.g., `sched_switch`, `netif_receive_skb`).
-   - When disabled, a static tracepoint incurs virtually zero overhead—implemented as a 5-byte NOP instruction that the kernel dynamically patches at runtime with a jump instruction when enabled.
+   - When disabled, a static tracepoint incurs virtually zero overhead - implemented as a 5-byte NOP instruction that the kernel dynamically patches at runtime with a jump instruction when enabled.
 2. **Kprobes (Kernel Dynamic Probes)**:
    - Allows attaching a probe to almost any arbitrary kernel instruction address.
    - Mechanism: Replaces the target instruction with a breakpoint instruction (`int3` on x86). When hit, the CPU saves register state, invokes the user-defined handler callback, executes the original instruction out-of-line, and resumes normal execution.

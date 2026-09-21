@@ -11,7 +11,7 @@ last_reviewed:
 sources: []
 ---
 
-# Master Index — Low-Latency Trading Systems & Exchange Architecture
+# Master Index - Low-Latency Trading Systems & Exchange Architecture
 
 Welcome to the vault. This repository is a production-grade, hardware-first knowledge base and operational curriculum for ultra-low-latency electronic trading infrastructure, exchange mechanics, and high-frequency execution pipelines.
 
@@ -41,8 +41,8 @@ Every note is grounded in the hardware-software boundary: nanosecond latency bud
 ---
 
 ## Master References & Roadmap
-- **[[Roadmap - 12-Week Production Calibration\|12-Week Production Calibration Roadmap]]** — Structured execution plan for senior/principal readiness.
-- **[[04 - Hardware Mechanical Sympathy/Latency Numbers Every Trading Engineer Knows\|Latency Numbers Every Trading Engineer Knows]]** — Physical limits from CPU registers to trans-oceanic glass.
+- **[[Roadmap - 12-Week Production Calibration\|12-Week Production Calibration Roadmap]]** - Structured execution plan for senior/principal readiness.
+- **[[04 - Hardware Mechanical Sympathy/Latency Numbers Every Trading Engineer Knows\|Latency Numbers Every Trading Engineer Knows]]** - Physical limits from CPU registers to trans-oceanic glass.
 
 ---
 

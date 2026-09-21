@@ -22,7 +22,7 @@ determine for each job which thread will process it and when will it start proce
 ******Input Format:****** 
 
 The first line of the input contains integers 𝑛 and 𝑚.
-The second line contains 𝑚 integers 𝑡𝑖 — the times in seconds it takes any thread to process 𝑖-th job.
+The second line contains 𝑚 integers 𝑡𝑖 - the times in seconds it takes any thread to process 𝑖-th job.
 The times are given in the same order as they are in the list from which threads take jobs.
 Threads are indexed starting from 0.
 Constraints. 1 ≤ 𝑛 ≤ 105
@@ -33,5 +33,5 @@ Constraints. 1 ≤ 𝑛 ≤ 105
 ******Output Format:******
 
 Output exactly 𝑚 lines. 𝑖-th line (0-based index is used) should contain two spaceseparated
-integers — the 0-based index of the thread which will process the 𝑖-th job and the time in
+integers - the 0-based index of the thread which will process the 𝑖-th job and the time in
 seconds when it will start processing that job.

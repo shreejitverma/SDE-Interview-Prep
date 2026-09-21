@@ -13,11 +13,11 @@ sources: []
 
 **Notes**
 
-- [🔄 SDE Common Patterns & Frameworks](Common-Patterns.md)
-- [🧩 SDE Question Bank](Question-Bank.md)
-- [📚 SDE Resources](Resources.md)
-- [📊 SDE Skill Matrix — Self-Assessment](Skill-Matrix.md)
-- [📋 SDE Study Plan — 8-Week Sprint](Study-Plan.md)
-- [💻 Software Engineer — Preparation Hub](_Hub.md)
+- [SDE Common Patterns & Frameworks](Common-Patterns.md)
+- [SDE Question Bank](Question-Bank.md)
+- [SDE Resources](Resources.md)
+- [SDE Skill Matrix - Self-Assessment](Skill-Matrix.md)
+- [SDE Study Plan - 8-Week Sprint](Study-Plan.md)
+- [Software Engineer - Preparation Hub](_Hub.md)
 
 <!-- moc:end -->

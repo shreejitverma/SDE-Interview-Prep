@@ -80,8 +80,8 @@ flowchart TD
 
 ## Direct Catalogs & Fast Indexes
 
-- **[[base/Index-Base-English-Whitepapers|Base Directory Index (English — 90 Papers)]]**: Complete searchable table of all English whitepapers with authors, years, domains, and reference notes.
-- **[[pl/Index-Polish-Whitepapers|Polish Directory Index (Polski — 31 Opracowań)]]**: Pełny katalog polskich opracowań technicznych z podziałem na inżynierię wsteczną, malware, web i systemy.
+- **[[base/Index-Base-English-Whitepapers|Base Directory Index (English - 90 Papers)]]**: Complete searchable table of all English whitepapers with authors, years, domains, and reference notes.
+- **[[pl/Index-Polish-Whitepapers|Polish Directory Index (Polski - 31 Opracowań)]]**: Pełny katalog polskich opracowań technicznych z podziałem na inżynierię wsteczną, malware, web i systemy.
 - **[[09-Seminal-Computer-Science-Papers/README|Seminal Computer Science Papers Index (20 Foundational Papers)]]**: Master curriculum of Turing, Shannon, Lamport, Gray, Mohan, Codd, Cerf-Kahn, and Dean/Ghemawat.
 - **[[10-Seminal-Low-Latency-Systems-Papers/README|Seminal Low-Latency Systems Papers Index (18 Systems & HFT Papers)]]**: Master curriculum of C++ memory models, wait-free algorithms, kernel bypass, and high-frequency market microstructure.
 
@@ -97,12 +97,12 @@ Mastering Linux kernel observability, hardware performance counters, and non-inv
 ### 2. [[02-Operating-Systems-and-Kernels/README|Operating Systems & Kernel Internals]]
 Understanding the internal mechanics of modern kernels:
 - [[02-Operating-Systems-and-Kernels/Unix-and-Linux-Kernel-Foundations|UNIX and Linux Kernel Foundations]]: Dennis Ritchie & Ken Thompson (*The UNIX Time-Sharing System*, 1974), Michael K. Johnson (*Linux Kernel Hackers' Guide*), Rusty Russell (*Unreliable Guide To Hacking The Linux Kernel*), and Lozi et al. (*The Linux Scheduler: a Decade of Wasted Cores*).
-- [[02-Operating-Systems-and-Kernels/OS-From-Scratch-and-Teaching-Kernels|Teaching Operating Systems]]: MIT's *xv6 Unix-like teaching OS* (Cox, Kaashoek, Morris) and Nick Blundell's *Writing a Simple Operating System — from Scratch*.
+- [[02-Operating-Systems-and-Kernels/OS-From-Scratch-and-Teaching-Kernels|Teaching Operating Systems]]: MIT's *xv6 Unix-like teaching OS* (Cox, Kaashoek, Morris) and Nick Blundell's *Writing a Simple Operating System - from Scratch*.
 - [[02-Operating-Systems-and-Kernels/Windows-NT-Internals-Architecture|Windows NT Internals & Architecture]]: David Cutler (*Windows NT Alerts Design Note*, 1989), Mark Lucovsky (*Windows Odyssey*), David B. Probert's 10-part *Windows Kernel Internals* curriculum (Traps, Virtual Memory, Cache Manager, I/O, LPC, NTFS, Registry, Object Manager, Synchronization), WinDbg guides, and Alex Ionescu (*The Linux Kernel Hidden Inside Windows 10*).
 
 ### 3. [[03-Memory-Architecture-and-Concurrency/README|Memory Architecture, CPU Microarchitecture & Concurrency]]
 Bridging software algorithms with CPU hardware memory hierarchies:
-- [[03-Memory-Architecture-and-Concurrency/Ulrich-Drepper-Memory-Architecture|Ulrich Drepper — What Every Programmer Should Know About Memory]]: Complete architectural analysis of L1/L2/L3 caches, line associativity, cache indexing, NUMA access penalties, TLBs, and MESI cache coherence.
+- [[03-Memory-Architecture-and-Concurrency/Ulrich-Drepper-Memory-Architecture|Ulrich Drepper - What Every Programmer Should Know About Memory]]: Complete architectural analysis of L1/L2/L3 caches, line associativity, cache indexing, NUMA access penalties, TLBs, and MESI cache coherence.
 - [[03-Memory-Architecture-and-Concurrency/Concurrency-and-Threading-Debates|Concurrency & Threading Debates]]: John Ousterhout (*Why Threads Are A Bad Idea*), Elaine Cheong & Fred Reiss (*Virtual Threads*).
 - [[03-Memory-Architecture-and-Concurrency/Data-Structures-and-Memory-Opt|Data Structures & Memory Optimization]]: Manegold et al. (*What Happens During a Join: CPU and Memory Effects*), Lee & Martel (*When to use splay trees*), Klaus Mueller (*Using CUDA in Practice*).
 
@@ -153,42 +153,42 @@ The 18 architectural, algorithmic, and financial microstructure papers every low
 ## Recommended Study Pathways
 
 ### Pathway A: High-Performance Systems & SRE Engineer
-1. **Ulrich Drepper** — [[03-Memory-Architecture-and-Concurrency/Ulrich-Drepper-Memory-Architecture|What Every Programmer Should Know About Memory]]
-2. **Brendan Gregg** — [[01-Systems-Performance-and-Tracing/Brendan-Gregg-Performance-Canon|The USE Method]] & [[01-Systems-Performance-and-Tracing/Brendan-Gregg-Performance-Canon|Performance Checklists for SREs]]
-3. **Brendan Gregg** — [[01-Systems-Performance-and-Tracing/Brendan-Gregg-Performance-Canon|BPF: Tracing and More]] & [[01-Systems-Performance-and-Tracing/Brendan-Gregg-Performance-Canon|Linux Systems Performance]]
-4. **Lozi et al.** — [[02-Operating-Systems-and-Kernels/Unix-and-Linux-Kernel-Foundations|The Linux Scheduler: a Decade of Wasted Cores]]
-5. **Radhakrishnan et al.** — [[04-Networking-and-Protocols/High-Performance-TCP-and-Networking|TCP Fast Open]]
+1. **Ulrich Drepper** - [[03-Memory-Architecture-and-Concurrency/Ulrich-Drepper-Memory-Architecture|What Every Programmer Should Know About Memory]]
+2. **Brendan Gregg** - [[01-Systems-Performance-and-Tracing/Brendan-Gregg-Performance-Canon|The USE Method]] & [[01-Systems-Performance-and-Tracing/Brendan-Gregg-Performance-Canon|Performance Checklists for SREs]]
+3. **Brendan Gregg** - [[01-Systems-Performance-and-Tracing/Brendan-Gregg-Performance-Canon|BPF: Tracing and More]] & [[01-Systems-Performance-and-Tracing/Brendan-Gregg-Performance-Canon|Linux Systems Performance]]
+4. **Lozi et al.** - [[02-Operating-Systems-and-Kernels/Unix-and-Linux-Kernel-Foundations|The Linux Scheduler: a Decade of Wasted Cores]]
+5. **Radhakrishnan et al.** - [[04-Networking-and-Protocols/High-Performance-TCP-and-Networking|TCP Fast Open]]
 
 ### Pathway B: Security Engineer & Penetration Tester
-1. **Dennis Yurichev** — [[05-Offensive-Security-and-Exploitation/Binary-Exploitation-and-Reverse-Eng|Reverse Engineering for Beginners]]
-2. **Terry Bruce Gillette** — [[05-Offensive-Security-and-Exploitation/Binary-Exploitation-and-Reverse-Eng|A Unique Examination of the Buffer Overflow Condition]]
-3. **Chris Anley & Kevin Spett** — [[05-Offensive-Security-and-Exploitation/Database-Exploitation-and-SQL-Injection|Advanced & Blind SQL Injection]]
-4. **OWASP Foundation** — [[06-Defensive-Security-and-Hardening/Application-and-Infrastructure-Sec|Application Security Verification Standard (ASVS 3.0.1)]]
-5. **Michael Boelen** — [[06-Defensive-Security-and-Hardening/Linux-Operating-System-Hardening|Linux Hardening & Systems Compromised]]
+1. **Dennis Yurichev** - [[05-Offensive-Security-and-Exploitation/Binary-Exploitation-and-Reverse-Eng|Reverse Engineering for Beginners]]
+2. **Terry Bruce Gillette** - [[05-Offensive-Security-and-Exploitation/Binary-Exploitation-and-Reverse-Eng|A Unique Examination of the Buffer Overflow Condition]]
+3. **Chris Anley & Kevin Spett** - [[05-Offensive-Security-and-Exploitation/Database-Exploitation-and-SQL-Injection|Advanced & Blind SQL Injection]]
+4. **OWASP Foundation** - [[06-Defensive-Security-and-Hardening/Application-and-Infrastructure-Sec|Application Security Verification Standard (ASVS 3.0.1)]]
+5. **Michael Boelen** - [[06-Defensive-Security-and-Hardening/Linux-Operating-System-Hardening|Linux Hardening & Systems Compromised]]
 
 ### Pathway C: Operating System & Kernel Developer
-1. **Ritchie & Thompson** — [[02-Operating-Systems-and-Kernels/Unix-and-Linux-Kernel-Foundations|The UNIX Time-Sharing System (1974)]]
-2. **Cox, Kaashoek, Morris** — [[02-Operating-Systems-and-Kernels/OS-From-Scratch-and-Teaching-Kernels|xv6: a simple, Unix-like teaching operating system]]
-3. **Nick Blundell** — [[02-Operating-Systems-and-Kernels/OS-From-Scratch-and-Teaching-Kernels|Writing a Simple Operating System — from Scratch]]
-4. **David B. Probert** — [[02-Operating-Systems-and-Kernels/Windows-NT-Internals-Architecture|Windows Kernel Internals (Traps, Memory, I/O, Cache)]]
-5. **Mariusz Burdach & Stefan Klaas** — [[07-Polish-Technical-Papers-pl/Malware-Rootkity-i-Zagrozenia|Kernel Rootkits & Ptrace Injection]]
+1. **Ritchie & Thompson** - [[02-Operating-Systems-and-Kernels/Unix-and-Linux-Kernel-Foundations|The UNIX Time-Sharing System (1974)]]
+2. **Cox, Kaashoek, Morris** - [[02-Operating-Systems-and-Kernels/OS-From-Scratch-and-Teaching-Kernels|xv6: a simple, Unix-like teaching operating system]]
+3. **Nick Blundell** - [[02-Operating-Systems-and-Kernels/OS-From-Scratch-and-Teaching-Kernels|Writing a Simple Operating System - from Scratch]]
+4. **David B. Probert** - [[02-Operating-Systems-and-Kernels/Windows-NT-Internals-Architecture|Windows Kernel Internals (Traps, Memory, I/O, Cache)]]
+5. **Mariusz Burdach & Stefan Klaas** - [[07-Polish-Technical-Papers-pl/Malware-Rootkity-i-Zagrozenia|Kernel Rootkits & Ptrace Injection]]
 
 ### Pathway D: Distributed Systems Architect & Cloud Infrastructure
-1. **Leslie Lamport** — [[09-Seminal-Computer-Science-Papers/02-Distributed-Systems-and-Consensus|Time, Clocks, and the Ordering of Events in a Distributed System (1978)]]
-2. **Fischer, Lynch, Paterson** — [[09-Seminal-Computer-Science-Papers/02-Distributed-Systems-and-Consensus|FLP Impossibility of Distributed Consensus (1985)]]
-3. **Ongaro & Ousterhout** — [[09-Seminal-Computer-Science-Papers/02-Distributed-Systems-and-Consensus|In Search of an Understandable Consensus Algorithm (Raft, 2014)]]
-4. **Sanjay Ghemawat & Jeff Dean** — [[09-Seminal-Computer-Science-Papers/03-Cloud-Infrastructure-and-Big-Data|The Google File System (2003)]] & [[09-Seminal-Computer-Science-Papers/03-Cloud-Infrastructure-and-Big-Data|MapReduce (2004)]]
-5. **Giuseppe DeCandia et al.** — [[09-Seminal-Computer-Science-Papers/03-Cloud-Infrastructure-and-Big-Data|Dynamo: Amazon's Highly Available Key-value Store (2007)]]
-6. **C. Mohan et al.** — [[09-Seminal-Computer-Science-Papers/04-Databases-and-Transaction-Processing|ARIES: A Transaction Recovery Method (1992)]]
+1. **Leslie Lamport** - [[09-Seminal-Computer-Science-Papers/02-Distributed-Systems-and-Consensus|Time, Clocks, and the Ordering of Events in a Distributed System (1978)]]
+2. **Fischer, Lynch, Paterson** - [[09-Seminal-Computer-Science-Papers/02-Distributed-Systems-and-Consensus|FLP Impossibility of Distributed Consensus (1985)]]
+3. **Ongaro & Ousterhout** - [[09-Seminal-Computer-Science-Papers/02-Distributed-Systems-and-Consensus|In Search of an Understandable Consensus Algorithm (Raft, 2014)]]
+4. **Sanjay Ghemawat & Jeff Dean** - [[09-Seminal-Computer-Science-Papers/03-Cloud-Infrastructure-and-Big-Data|The Google File System (2003)]] & [[09-Seminal-Computer-Science-Papers/03-Cloud-Infrastructure-and-Big-Data|MapReduce (2004)]]
+5. **Giuseppe DeCandia et al.** - [[09-Seminal-Computer-Science-Papers/03-Cloud-Infrastructure-and-Big-Data|Dynamo: Amazon's Highly Available Key-value Store (2007)]]
+6. **C. Mohan et al.** - [[09-Seminal-Computer-Science-Papers/04-Databases-and-Transaction-Processing|ARIES: A Transaction Recovery Method (1992)]]
 
 ### Pathway E: Ultra-Low-Latency & High-Frequency Trading Engineer
-1. **Hans Boehm & Sarita Adve** — [[10-Seminal-Low-Latency-Systems-Papers/01-Memory-Models-and-Hardware-Coherence|Foundations of the C++ Memory Model (2008)]]
-2. **Paul E. McKenney** — [[10-Seminal-Low-Latency-Systems-Papers/01-Memory-Models-and-Hardware-Coherence|Memory Barriers: a Hardware View for Software Hackers (2010)]]
-3. **Maurice Herlihy** — [[10-Seminal-Low-Latency-Systems-Papers/02-Lock-Free-and-Wait-Free-Algorithms|Wait-Free Synchronization (1991)]]
-4. **Martin Thompson et al.** — [[10-Seminal-Low-Latency-Systems-Papers/02-Lock-Free-and-Wait-Free-Algorithms|The LMAX Disruptor Architecture (2011)]]
-5. **Luigi Rizzo & Adam Belay** — [[10-Seminal-Low-Latency-Systems-Papers/03-Kernel-Bypass-and-Sub-Microsecond-IO|Netmap (2012)]] & [[10-Seminal-Low-Latency-Systems-Papers/03-Kernel-Bypass-and-Sub-Microsecond-IO|IX Protected Data-Plane OS (2014)]]
-6. **Eric Budish et al.** — [[10-Seminal-Low-Latency-Systems-Papers/04-Market-Microstructure-and-Order-Dynamics|The High-Frequency Trading Arms Race: Frequent Batch Auctions (2015)]]
-7. **Avellaneda & Stoikov** — [[10-Seminal-Low-Latency-Systems-Papers/04-Market-Microstructure-and-Order-Dynamics|High-Frequency Trading in a Limit Order Book (2008)]]
+1. **Hans Boehm & Sarita Adve** - [[10-Seminal-Low-Latency-Systems-Papers/01-Memory-Models-and-Hardware-Coherence|Foundations of the C++ Memory Model (2008)]]
+2. **Paul E. McKenney** - [[10-Seminal-Low-Latency-Systems-Papers/01-Memory-Models-and-Hardware-Coherence|Memory Barriers: a Hardware View for Software Hackers (2010)]]
+3. **Maurice Herlihy** - [[10-Seminal-Low-Latency-Systems-Papers/02-Lock-Free-and-Wait-Free-Algorithms|Wait-Free Synchronization (1991)]]
+4. **Martin Thompson et al.** - [[10-Seminal-Low-Latency-Systems-Papers/02-Lock-Free-and-Wait-Free-Algorithms|The LMAX Disruptor Architecture (2011)]]
+5. **Luigi Rizzo & Adam Belay** - [[10-Seminal-Low-Latency-Systems-Papers/03-Kernel-Bypass-and-Sub-Microsecond-IO|Netmap (2012)]] & [[10-Seminal-Low-Latency-Systems-Papers/03-Kernel-Bypass-and-Sub-Microsecond-IO|IX Protected Data-Plane OS (2014)]]
+6. **Eric Budish et al.** - [[10-Seminal-Low-Latency-Systems-Papers/04-Market-Microstructure-and-Order-Dynamics|The High-Frequency Trading Arms Race: Frequent Batch Auctions (2015)]]
+7. **Avellaneda & Stoikov** - [[10-Seminal-Low-Latency-Systems-Papers/04-Market-Microstructure-and-Order-Dynamics|High-Frequency Trading in a Limit Order Book (2008)]]
 
 ---
 

@@ -121,7 +121,7 @@ int main() {
 }
 ```
 
-## 10.4 🧠 Brain Power: The vTable (How it Actually Works)
+## 10.4 Brain Power: The vTable (How it Actually Works)
 
 How does `my_pet->speak()` know to print "Woof!" when `my_pet` is just an `Animal*` pointer? 
 
@@ -191,7 +191,7 @@ Notice what happened? The `Derived` destructor was **never called**! The integer
 Because the pointer `b` is of type `Base*`, and the `Base` destructor is NOT `virtual`, the compiler just statically destroys the `Base` part of the object and stops. 
 
 > [!CAUTION]
-> **⚠️ The Golden Rule of Inheritance**
+> **The Golden Rule of Inheritance**
 > If your class is designed to be inherited from (if it has even one `virtual` function), you **MUST** give it a `virtual` destructor. 
 
 ```cpp

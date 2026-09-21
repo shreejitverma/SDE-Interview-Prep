@@ -13,11 +13,11 @@ sources: []
 
 **Notes**
 
-- [🔄 AI Engineer Common Patterns](Common-Patterns.md)
-- [🧩 AI Engineer Question Bank](Question-Bank.md)
-- [📚 AI Engineer Resources](Resources.md)
-- [📊 AI Engineer Skill Matrix](Skill-Matrix.md)
-- [📋 AI Engineer Study Plan — 10-Week Sprint](Study-Plan.md)
-- [🤖 AI Engineer — Preparation Hub](_Hub.md)
+- [AI Engineer Common Patterns](Common-Patterns.md)
+- [AI Engineer Question Bank](Question-Bank.md)
+- [AI Engineer Resources](Resources.md)
+- [AI Engineer Skill Matrix](Skill-Matrix.md)
+- [AI Engineer Study Plan - 10-Week Sprint](Study-Plan.md)
+- [AI Engineer - Preparation Hub](_Hub.md)
 
 <!-- moc:end -->

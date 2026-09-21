@@ -11,7 +11,7 @@ last_reviewed:
 sources: []
 ---
 
-# Lab 01 — Continuous Double Auction & Discrete Cross Simulator
+# Lab 01 - Continuous Double Auction & Discrete Cross Simulator
 
 > [!summary]
 > In this lab, you will build, compile, and benchmark an exchange-grade Market Microstructure execution simulator in C++20. The simulator implements both a Continuous Double Auction (CDA) matching engine and a Discrete Call Auction Uncrossing engine (Nasdaq Opening/Closing Cross style) with multi-tier equilibrium price tie-breaking.

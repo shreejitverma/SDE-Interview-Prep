@@ -7,7 +7,7 @@ last_reviewed:
 sources: []
 ---
 
-# 📊 AI Engineer Skill Matrix
+# AI Engineer Skill Matrix
 
 | Skill | Level (1-5) | Last Assessed | Notes |
 |-------|-------------|---------------|-------|

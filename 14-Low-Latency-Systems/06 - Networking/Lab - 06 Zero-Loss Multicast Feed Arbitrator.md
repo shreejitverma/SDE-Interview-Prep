@@ -11,7 +11,7 @@ last_reviewed:
 sources: []
 ---
 
-# Lab 06 — Zero-Loss UDP Multicast A/B Feed Arbitrator
+# Lab 06 - Zero-Loss UDP Multicast A/B Feed Arbitrator
 
 > [!summary]
 > In this lab, you will build, compile, and benchmark an exchange-grade, lock-free UDP Multicast A/B Feed Arbitrator in C++20. You will simulate dual redundant market data streams (Feed A and Feed B) subjected to synthetic packet drops and network jitter, proving **100% zero-loss order stream reconstruction** with **sub-12ns arbitration latency**.

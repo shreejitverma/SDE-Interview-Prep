@@ -65,13 +65,13 @@ flowchart TD
 | *What Every Programmer Should Know About Memory* | Ulrich Drepper | 2007 | Physical microarchitecture of caches, lines, MESI coherence, TLBs, and HugePages for software developers. | [[Sources/What Every Programmer Should Know About Memory by Ulrich Drepper\|Source Summary]] • [[15-Technical-Whitepapers/03-Memory-Architecture-and-Concurrency/Ulrich-Drepper-Memory-Architecture\|Whitepaper Analysis]] |
 
 ### 3. Essential Industry Talks & Conference Presentations
-1. **Carl Cook (CppCon 2017)** — *When a Microsecond is an Eternity: High Performance C++ in Very Fast Trading*:
+1. **Carl Cook (CppCon 2017)** - *When a Microsecond is an Eternity: High Performance C++ in Very Fast Trading*:
    - Practical techniques for sub-microsecond C++: branch elimination, cache warming, avoiding runtime polymorphism, compiler optimization verification.
-2. **Martin Thompson & Todd Montgomery (QCon / Strange Loop)** — *Designing for Hardware Mechanical Sympathy*:
+2. **Martin Thompson & Todd Montgomery (QCon / Strange Loop)** - *Designing for Hardware Mechanical Sympathy*:
    - Cache line padding (`alignas(64)`), lock-free ring buffer design (LMAX Disruptor), and zero-copy IPC over shared memory.
-3. **Timur Doumler (CppCon 2020)** — *Type Punning and Undefined Behavior in Modern C++*:
+3. **Timur Doumler (CppCon 2020)** - *Type Punning and Undefined Behavior in Modern C++*:
    - Safe in-place network packet parsing, strict aliasing compliance, and `std::bit_cast` mechanics.
-4. **Jane Street Tech Talks (Signals & Threads Podcast)** — *Building an Exchange from Scratch*:
+4. **Jane Street Tech Talks (Signals & Threads Podcast)** - *Building an Exchange from Scratch*:
    - Architectural deep-dive into matching engines, deterministic replicated state machines, and sequence-stream ordering.
 
 ---
@@ -140,7 +140,7 @@ flowchart TD
 > 2. **Why is Ulrich Drepper's "What Every Programmer Should Know About Memory" considered mandatory reading for low-latency systems engineers?**
 >    *Answer*: Drepper's paper provides the definitive engineering breakdown of CPU cache hierarchies, L1/L2/L3 cache line associativity, cache indexing, NUMA memory access latencies, Translation Lookaside Buffers (TLBs), and the MESI cache coherence protocol, explaining how software memory access patterns directly dictate hardware execution latency.
 > 3. **What market structure problem does Eric Budish's "The High-Frequency Trading Arms Race" analyze?**
->    *Answer*: Budish demonstrates that the Continuous Double Auction (CDA) format creates a socially wasteful "arms race" where market participants spend millions of dollars competing for nanosecond latency advantages to snipe stale quotes across correlated markets. The paper proposes Frequent Batch Auctions (FBA)—discrete periodic uncrossings every 100 milliseconds—to eliminate latency arbitrage and promote price competition.
+>    *Answer*: Budish demonstrates that the Continuous Double Auction (CDA) format creates a socially wasteful "arms race" where market participants spend millions of dollars competing for nanosecond latency advantages to snipe stale quotes across correlated markets. The paper proposes Frequent Batch Auctions (FBA) - discrete periodic uncrossings every 100 milliseconds - to eliminate latency arbitrage and promote price competition.
 
 ---
 

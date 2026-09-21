@@ -19,7 +19,7 @@ sources: []
 
 ## Pillar Guides
 
-1. **[[Ulrich-Drepper-Memory-Architecture|Ulrich Drepper — What Every Programmer Should Know About Memory (2007)]]**
+1. **[[Ulrich-Drepper-Memory-Architecture|Ulrich Drepper - What Every Programmer Should Know About Memory (2007)]]**
    - The definitive treatise on physical RAM, L1/L2/L3 CPU cache line indexing, set associativity, NUMA memory interconnects (QPI/UPI), Translation Lookaside Buffers (TLBs), and the MESI/MOESI cache coherence protocols.
 2. **[[Concurrency-and-Threading-Debates|Concurrency & Threading Debates]]**
    - *Why Threads Are A Bad Idea (for most purposes) (John Ousterhout, 1995)*: Event-driven concurrency vs kernel threads, lock overhead, synchronization bugs.

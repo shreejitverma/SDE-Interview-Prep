@@ -9,7 +9,7 @@ sources: []
 
 # Chapter 13: Functional Programming
 
-> *Lambdas, `std::function`, `std::bind`, and reference wrappers — the tools that let C++ treat behavior as a first-class value.*
+> *Lambdas, `std::function`, `std::bind`, and reference wrappers - the tools that let C++ treat behavior as a first-class value.*
 
 C++11 brought functional-style programming into the mainstream of the language. **Lambda expressions** create function objects inline; **`std::function`** stores any callable behind a uniform type; **`std::bind`** performs partial application; and **`std::reference_wrapper`** lets references travel through these value-semantic facilities. This chapter covers all four, with the performance trade-offs that matter for systems code.
 
@@ -59,7 +59,7 @@ The capture list (`[]`), the parameter list (`()`), and the body (`{}`) are the 
 
 ## 13.2 Capture Lists
 
-By default a lambda cannot access variables from its enclosing scope. The **capture list** makes selected variables accessible, either by copy or by reference. Captured variables become part of the closure object — unlike parameters, they need not be passed at the call site.
+By default a lambda cannot access variables from its enclosing scope. The **capture list** makes selected variables accessible, either by copy or by reference. Captured variables become part of the closure object - unlike parameters, they need not be passed at the call site.
 
 | Capture | Meaning |
 | :------ | :------ |
@@ -79,7 +79,7 @@ auto f2 = [a]() { return a * 9; }; // OK: 'a' captured by value (a copy)
 auto f3 = [&a]() { return a++; };  // OK: 'a' captured by reference (modifies original)
 ```
 
-> **Dangling-capture warning:** a reference (or `this`) capture must not outlive the captured object. Storing a `[&]` lambda that escapes the current scope — in a `std::function` member, a thread, or a container — is a classic use-after-free. Prefer value capture for anything that may outlive the enclosing frame.
+> **Dangling-capture warning:** a reference (or `this`) capture must not outlive the captured object. Storing a `[&]` lambda that escapes the current scope - in a `std::function` member, a thread, or a container - is a classic use-after-free. Prefer value capture for anything that may outlive the enclosing frame.
 
 ---
 
@@ -103,7 +103,7 @@ A lambda can carry several optional specifiers between the parameter list and th
 
 | Part | Role |
 | :--- | :--- |
-| **default-capture** | `=` or `&` — how all non-listed variables are captured; must precede the list |
+| **default-capture** | `=` or `&` - how all non-listed variables are captured; must precede the list |
 | **capture-list** | Per-variable capture (value by default, `&` for reference; `this` for members) |
 | **argument-list** | The lambda's parameters |
 | **`mutable`** | (optional) Makes value-captured variables non-`const` |
@@ -119,7 +119,7 @@ auto divide = [](double a, double b) noexcept -> double {
 };
 ```
 
-Each lambda has a unique, compiler-generated, unnamable type — which is exactly why you store them in `auto` variables, templates, or `std::function`.
+Each lambda has a unique, compiler-generated, unnamable type - which is exactly why you store them in `auto` variables, templates, or `std::function`.
 
 ---
 
@@ -143,13 +143,13 @@ std::vector<fn_t> table = {a, b, c};   // store heterogeneous callables uniforml
 for (auto& f : table) f(1, 2, 3);      // all callable through the same type
 ```
 
-The power of `std::function` is that it decouples *who provides the behavior* from *who invokes it* — the foundation of callbacks, event systems, and command tables. The cost is discussed in §13.9.
+The power of `std::function` is that it decouples *who provides the behavior* from *who invokes it* - the foundation of callbacks, event systems, and command tables. The cost is discussed in §13.9.
 
 ---
 
 ## 13.6 `std::bind` and Partial Application
 
-`std::bind` produces a new callable by fixing (binding) some arguments of an existing one — **partial application**. Unbound positions are marked with placeholders `_1`, `_2`, … from `std::placeholders`.
+`std::bind` produces a new callable by fixing (binding) some arguments of an existing one - **partial application**. Unbound positions are marked with placeholders `_1`, `_2`, … from `std::placeholders`.
 
 ```cpp
 // Listing 13.7: partial application with std::bind
@@ -175,7 +175,7 @@ auto g = std::bind(&Calc::weighted, &c, _1, _3, _2);
 g(1, 2.0f, 3.0); // calls c.weighted(1, 3.0, 2.0f)
 ```
 
-> **Modern guidance:** lambdas largely *replace* `std::bind` in modern C++ — they are more readable, easier for the compiler to inline, and avoid `bind`'s subtle placeholder/nested-bind rules. Reach for `bind` only when a lambda would be clumsier.
+> **Modern guidance:** lambdas largely *replace* `std::bind` in modern C++ - they are more readable, easier for the compiler to inline, and avoid `bind`'s subtle placeholder/nested-bind rules. Reach for `bind` only when a lambda would be clumsier.
 
 ---
 
@@ -235,9 +235,9 @@ For storing arguments to be applied later, `std::tuple` pairs naturally with a c
 
 ## 13.9 Professional Insights
 
-**`std::function` is not free.** Because it has *value semantics*, it must copy or move the callable into itself, and since it accepts callables of arbitrary type it frequently **allocates on the heap** to do so. Many implementations have a *small-object optimization* (storing tiny callables like function pointers inline), but the standard does not require it, and it only applies to `noexcept`-move-constructible types. Worse, the call itself is **indirect** — roughly the cost of a virtual function call — because any `std::function` could hold any callable.
+**`std::function` is not free.** Because it has *value semantics*, it must copy or move the callable into itself, and since it accepts callables of arbitrary type it frequently **allocates on the heap** to do so. Many implementations have a *small-object optimization* (storing tiny callables like function pointers inline), but the standard does not require it, and it only applies to `noexcept`-move-constructible types. Worse, the call itself is **indirect** - roughly the cost of a virtual function call - because any `std::function` could hold any callable.
 
-**Prefer a template parameter in hot paths.** If a function merely *invokes* a callable and does not need to store it (e.g. a sort comparator), take it as a template parameter (`template<class Pred> void sort_my(Pred p)`) rather than `std::function`. The template version is monomorphized and inlined; the `std::function` version may allocate and will call indirectly. Reserve `std::function` for genuine type erasure — when you must store heterogeneous callables behind one type (callback slots, command tables, plugin hooks).
+**Prefer a template parameter in hot paths.** If a function merely *invokes* a callable and does not need to store it (e.g. a sort comparator), take it as a template parameter (`template<class Pred> void sort_my(Pred p)`) rather than `std::function`. The template version is monomorphized and inlined; the `std::function` version may allocate and will call indirectly. Reserve `std::function` for genuine type erasure - when you must store heterogeneous callables behind one type (callback slots, command tables, plugin hooks).
 
 **Lambdas inline; `bind`/`function` often do not.** A lambda passed directly to `std::sort` typically inlines to optimal code. The same logic routed through `std::function` defeats inlining. In latency-sensitive code, keep callables concrete (lambdas, functors, template parameters) right up to the boundary where erasure is genuinely required.
 

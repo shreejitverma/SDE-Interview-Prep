@@ -38,7 +38,7 @@ We could optimize this by implementing a **multi-tier cache**. A small local cou
 
 ---
 
-## 🔑 Key Takeaways
+## Key Takeaways
 
 1.  **Clarify Requirements First:** Don't just start coding. Ask about scale, strictness, and latency.
 2.  **Propose Options:** Discuss Token Bucket vs Leaky Bucket vs Sliding Window.

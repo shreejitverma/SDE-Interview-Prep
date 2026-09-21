@@ -52,7 +52,7 @@ auto sum(Args... args) {
 *   **Perfect Forwarding**: Use `std::forward<Args>(args)...` when passing packs to another function to preserve lvalue/rvalue properties.
 
 #### 3. SFINAE (Substitution Failure Is Not An Error)
-A core principle of C++ templates. If a template argument substitution results in an invalid type or expression, the compiler doesn't throw an error—it simply discards that overload.
+A core principle of C++ templates. If a template argument substitution results in an invalid type or expression, the compiler doesn't throw an error - it simply discards that overload.
 *   **`std::void_t` (C++17)**: A powerful helper for creating traits that check for the existence of members or types within a class.
 
 ***

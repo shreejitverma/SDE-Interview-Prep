@@ -11,7 +11,7 @@ last_reviewed:
 sources: []
 ---
 
-# Source Summary — Flash Boys: A Wall Street Revolt
+# Source Summary - Flash Boys: A Wall Street Revolt
 **Author**: Michael Lewis  
 **Publication**: W. W. Norton & Company (2014)  
 **Category**: Financial History, Market Structure & Latency Infrastructure

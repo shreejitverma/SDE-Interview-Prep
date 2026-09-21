@@ -10,11 +10,11 @@ tags:
   - weekly-review
 ---
 
-# 📊 Weekly Review — <% tp.date.now('YYYY [Week] ww') %>
+# Weekly Review - <% tp.date.now('YYYY [Week] ww') %>
 
 ---
 
-## 📈 This Week's Stats
+## This Week's Stats
 
 | Metric | Target | Actual | Delta |
 |--------|--------|--------|-------|
@@ -24,17 +24,17 @@ tags:
 | Mock Interviews | | | |
 | New Applications | | | |
 
-## 🏆 Top 3 Wins
+## Top 3 Wins
 1. 
 2. 
 3. 
 
-## 🔴 Top 3 Gaps Exposed
+## Top 3 Gaps Exposed
 1. **Gap:** → **Action:**
 2. **Gap:** → **Action:**
 3. **Gap:** → **Action:**
 
-## 📋 Pipeline Update
+## Pipeline Update
 
 ### Moved Forward
 - 
@@ -45,26 +45,26 @@ tags:
 ### New Applications
 - 
 
-## 🧠 Knowledge Consolidation
+## Knowledge Consolidation
 > What concepts solidified this week? What "aha" moments happened?
 
 
-## 🎯 Next Week's Priorities
+## Next Week's Priorities
 1. [ ] 
 2. [ ] 
 3. [ ] 
 4. [ ] 
 5. [ ] 
 
-## 📊 Confidence Trend
+## Confidence Trend
 | Role | Last Week | This Week | Trend |
 |------|-----------|-----------|-------|
-| SDE | /5 | /5 | ⬆️/⬇️/➡️ |
+| SDE | /5 | /5 |//|
 | Quant Dev | /5 | /5 | |
 | Quant Research | /5 | /5 | |
 | AI Engineer | /5 | /5 | |
 | Low Latency | /5 | /5 | |
 
-## 🔄 Strategy Adjustments
+## Strategy Adjustments
 > Based on this week, what should I change in my approach?
 

@@ -2513,7 +2513,7 @@ void loop() {
 
 ---
 
-**You are now ready to become the best C++ programmer in the universe!** 🚀
+**You are now ready to become the best C++ programmer in the universe!**
 
 ---
 

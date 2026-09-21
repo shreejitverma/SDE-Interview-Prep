@@ -7,7 +7,7 @@ last_reviewed:
 sources: []
 ---
 
-# 📊 Low Latency Skill Matrix
+# Low Latency Skill Matrix
 
 | Skill | Level (1-5) | Last Assessed | Notes |
 |-------|-------------|---------------|-------|

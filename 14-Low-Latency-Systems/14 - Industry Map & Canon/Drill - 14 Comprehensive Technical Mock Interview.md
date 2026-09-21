@@ -11,7 +11,7 @@ last_reviewed:
 sources: []
 ---
 
-# Drill 14 — Comprehensive Technical Mock Interview: Staff/Principal Low-Latency Engineer
+# Drill 14 - Comprehensive Technical Mock Interview: Staff/Principal Low-Latency Engineer
 
 > [!summary]
 > Comprehensive, full-scale 60-minute technical mock interview simulating an elite Tier-1 high-frequency trading firm interview (Citadel Securities, Jane Street, HRT, Jump, Optiver). Attempt each part under strict timed conditions before unfolding the principal-level solutions.

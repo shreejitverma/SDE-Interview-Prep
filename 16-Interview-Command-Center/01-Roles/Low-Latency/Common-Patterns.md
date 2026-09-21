@@ -7,16 +7,16 @@ last_reviewed:
 sources: []
 ---
 
-# 🔄 Low Latency Common Patterns
+# Low Latency Common Patterns
 
 ## The Low Latency Commandments
-1. **Zero allocations on hot path** — Pre-allocate everything. Use pools.
-2. **Zero syscalls on hot path** — No `malloc`, no `write`, no `read`. Kernel bypass.
-3. **Zero branches on hot path** — Branch-free code. Branchless min/max. Lookup tables.
-4. **Zero virtual dispatch** — CRTP, templates, `final` keyword.
-5. **Zero contention** — SPSC queues, per-thread data, no shared mutable state.
-6. **Cache is king** — Data locality. SOA vs AOS. Prefetching.
-7. **Measure everything** — rdtsc, hardware counters, flame graphs.
+1. **Zero allocations on hot path** - Pre-allocate everything. Use pools.
+2. **Zero syscalls on hot path** - No `malloc`, no `write`, no `read`. Kernel bypass.
+3. **Zero branches on hot path** - Branch-free code. Branchless min/max. Lookup tables.
+4. **Zero virtual dispatch** - CRTP, templates, `final` keyword.
+5. **Zero contention** - SPSC queues, per-thread data, no shared mutable state.
+6. **Cache is king** - Data locality. SOA vs AOS. Prefetching.
+7. **Measure everything** - rdtsc, hardware counters, flame graphs.
 
 ## Architecture: Tick-to-Trade Pipeline
 ```

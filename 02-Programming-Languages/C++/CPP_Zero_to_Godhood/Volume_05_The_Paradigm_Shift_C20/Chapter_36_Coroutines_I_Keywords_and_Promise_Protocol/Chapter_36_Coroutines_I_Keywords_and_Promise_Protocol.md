@@ -7,9 +7,9 @@ last_reviewed:
 sources: []
 ---
 
-# Chapter 36: Coroutines I — co_await, co_yield, co_return, and the Promise Protocol
+# Chapter 36: Coroutines I - co_await, co_yield, co_return, and the Promise Protocol
 
-> *Coroutines are the third pillar and the most unusual: C++20 ships the low-level language machinery — three keywords and a customization protocol — but almost none of the high-level types you would actually use (`std::generator` and a `task` type are C++23 and beyond). This chapter explains what a coroutine is, the three keywords that turn a function into one, the compiler-generated state machine and coroutine frame, and the promise-type protocol you must implement to make a coroutine return something useful.*
+> *Coroutines are the third pillar and the most unusual: C++20 ships the low-level language machinery - three keywords and a customization protocol - but almost none of the high-level types you would actually use (`std::generator` and a `task` type are C++23 and beyond). This chapter explains what a coroutine is, the three keywords that turn a function into one, the compiler-generated state machine and coroutine frame, and the promise-type protocol you must implement to make a coroutine return something useful.*
 
 A coroutine is a function that can **suspend** its execution, hand control back to its caller, and later be **resumed** from exactly where it left off, with all its locals intact. This makes asynchronous code read like synchronous code and makes generators read like simple loops. The price is that C++20 gives you the engine, not the car: to use coroutines you implement a **promise type** that tells the compiler how the coroutine behaves at each lifecycle point. Chapter 37 builds complete generator and task types on this foundation.
 
@@ -35,8 +35,8 @@ An ordinary function runs to completion (or throws) once called; its stack frame
 
 The two dominant uses:
 
-- **Generators** — a function that `co_yield`s a sequence of values one at a time, computing each only when the consumer asks. The Python `yield` model.
-- **Tasks / async** — a function that `co_await`s asynchronous operations (I/O, timers) and suspends without blocking a thread, resuming when the operation completes.
+- **Generators** - a function that `co_yield`s a sequence of values one at a time, computing each only when the consumer asks. The Python `yield` model.
+- **Tasks / async** - a function that `co_await`s asynchronous operations (I/O, timers) and suspends without blocking a thread, resuming when the operation completes.
 
 Both look like straight-line code, which is the entire point: the suspension/resumption bookkeeping that you would otherwise hand-write as a state machine is generated for you.
 
@@ -44,7 +44,7 @@ Both look like straight-line code, which is the entire point: the suspension/res
 
 ## 36.2 The Three Keywords
 
-A function becomes a coroutine if its body uses **any** of these three keywords. There is no separate "coroutine" declaration — the keywords are the trigger.
+A function becomes a coroutine if its body uses **any** of these three keywords. There is no separate "coroutine" declaration - the keywords are the trigger.
 
 | Keyword | Meaning |
 |---------|---------|
@@ -61,7 +61,7 @@ Task<int>      fetch();          // uses co_await/co_return -> coroutine
 Task<void>     fire_and_forget();// uses co_return; -> coroutine
 ```
 
-A crucial constraint: a coroutine **cannot** use a plain `return` statement, cannot be `constexpr`/`consteval`, cannot be `main`, and cannot be a variadic function. The return type is not deduced from the keywords — it is a type *you* provide, and it must wire up to a promise type (Section 36.4).
+A crucial constraint: a coroutine **cannot** use a plain `return` statement, cannot be `constexpr`/`consteval`, cannot be `main`, and cannot be a variadic function. The return type is not deduced from the keywords - it is a type *you* provide, and it must wire up to a promise type (Section 36.4).
 
 ---
 
@@ -69,8 +69,8 @@ A crucial constraint: a coroutine **cannot** use a plain `return` statement, can
 
 When you call a coroutine, the compiler:
 
-1. **Allocates the coroutine frame** (normally on the heap via `operator new`; the allocation may be elided if the compiler can prove the frame does not outlive the caller — the *Halo* optimization).
-2. **Copies the parameters** into the frame (by value — a common dangling pitfall with reference parameters, see Section 36.9).
+1. **Allocates the coroutine frame** (normally on the heap via `operator new`; the allocation may be elided if the compiler can prove the frame does not outlive the caller - the *Halo* optimization).
+2. **Copies the parameters** into the frame (by value - a common dangling pitfall with reference parameters, see Section 36.9).
 3. **Constructs the promise object** inside the frame.
 4. Calls `promise.get_return_object()` to produce the **return value handed to the caller**.
 5. Evaluates `co_await promise.initial_suspend()` to decide whether to start running or suspend immediately.
@@ -93,7 +93,7 @@ void drive(std::coroutine_handle<Promise> h) {
 
 ## 36.4 The Promise Type Protocol
 
-The compiler discovers the promise type via `std::coroutine_traits<ReturnType, Args...>::promise_type` — by default the nested `ReturnType::promise_type`. Your return type therefore must contain (or designate) a **promise type** implementing a fixed set of member functions the compiler calls at well-defined points. This is the customization seam: the promise *is* the coroutine's behavior.
+The compiler discovers the promise type via `std::coroutine_traits<ReturnType, Args...>::promise_type` - by default the nested `ReturnType::promise_type`. Your return type therefore must contain (or designate) a **promise type** implementing a fixed set of member functions the compiler calls at well-defined points. This is the customization seam: the promise *is* the coroutine's behavior.
 
 The required (and optional) members:
 
@@ -153,7 +153,7 @@ The choice at `initial_suspend` defines **lazy vs eager**: generators want `susp
 
 ## 36.7 A Complete Minimal Generator
 
-Here is a full, compilable C++20 generator implemented from the raw machinery — the canonical illustration of the protocol. (Recall `std::generator` is C++23; this is what you write in C++20.)
+Here is a full, compilable C++20 generator implemented from the raw machinery - the canonical illustration of the protocol. (Recall `std::generator` is C++23; this is what you write in C++20.)
 
 ```cpp
 // Listing 36.4: a complete hand-written generator coroutine in C++20
@@ -233,7 +233,7 @@ The minimal generator above used `std::terminate()` for brevity, but production 
 
 ## 36.9 Professional Insights
 
-**Understand that C++20 ships the engine, not the car.** There is no standard `generator`, `task`, `lazy`, or executor in C++20 — only the keywords, `coroutine_handle`, the trivial awaitables, and the promise protocol. Real projects either hand-roll the small set of types they need (as in Listing 36.4) or pull in a library (cppcoro, libcoro, Boost.Cobalt, Asio). Treat "use coroutines in C++20" as "implement or import the coroutine types," not "they're ready to go."
+**Understand that C++20 ships the engine, not the car.** There is no standard `generator`, `task`, `lazy`, or executor in C++20 - only the keywords, `coroutine_handle`, the trivial awaitables, and the promise protocol. Real projects either hand-roll the small set of types they need (as in Listing 36.4) or pull in a library (cppcoro, libcoro, Boost.Cobalt, Asio). Treat "use coroutines in C++20" as "implement or import the coroutine types," not "they're ready to go."
 
 **Never capture a reference parameter across a suspension.** Coroutine parameters are copied into the frame, but a *reference* parameter copies the reference, not the referent. If the referent is a temporary, it is gone after the first suspension and the coroutine reads a dangling reference on resume. Pass by value into coroutines, or guarantee the referent outlives the coroutine. This is the single most common coroutine bug.
 

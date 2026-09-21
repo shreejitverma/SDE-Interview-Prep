@@ -83,7 +83,7 @@ void printScore(const std::string& player_name) {
 ```
 
 > [!TIP]
-> **🔥 Godhood Tip: When to use which?**
+> **Godhood Tip: When to use which?**
 > *   **Fundamental types** (`int`, `double`, `bool`): Pass by **Value**. They are so small that copying them is actually faster than creating a reference pointer under the hood.
 > *   **Large objects** (`std::string`, `std::vector`, Classes): Pass by **`const` Reference**.
 > *   **When you need to modify the original**: Pass by **Reference**.
@@ -159,7 +159,7 @@ int factorial(int n) {
 }
 ```
 
-## 4.7 🛋️ Fireside Chat: How the Stack Actually Works
+## 4.7 Fireside Chat: How the Stack Actually Works
 
 To understand recursion, and to understand why programs crash, you must understand **The Call Stack**.
 
@@ -175,7 +175,7 @@ When `multiply()` finishes, its tray is popped off the stack and destroyed, reve
 Every time a tray is created, it allocates memory for the function's local variables. 
 
 > [!CAUTION]
-> **⚠️ Stack Overflow**
+> **Stack Overflow**
 > What happens if a recursive function forgets its Base Case?
 > It calls itself. A tray is added. It calls itself. Another tray. It calls itself 100,000 times. The stack of trays hits the ceiling of the cafeteria.
 > 

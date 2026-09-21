@@ -11,7 +11,7 @@ last_reviewed:
 sources: []
 ---
 
-# Lab 02 — Sequenced Event Log & Total-Order Broadcasting Engine
+# Lab 02 - Sequenced Event Log & Total-Order Broadcasting Engine
 
 > [!summary]
 > In this lab, you will build, compile, and benchmark an exchange-grade, lock-free Multi-Gateway Total-Order Sequencer and Memory-Mapped Binary Journal in C++20. You will simulate concurrent order streams from 4 independent gateway line handlers, funnel them into a single-writer sequencer, and achieve sub-25ns sequencing latency with zero sequence gaps across 10,000,000 orders.

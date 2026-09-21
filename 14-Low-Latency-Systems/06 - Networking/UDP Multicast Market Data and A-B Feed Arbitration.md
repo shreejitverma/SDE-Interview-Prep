@@ -12,7 +12,7 @@ sources: []
 ---
 
 > [!summary]
-> Electronic exchanges distribute market data over redundant UDP Multicast channels (Feed A and Feed B) across physically distinct network fabrics. A zero-loss Feed Arbitrator ingests both packet streams in user-space, immediately dispatching whichever packet arrives first on the wire and discarding duplicate frames in under 10 nanoseconds—eliminating packet loss without initiating slow TCP recovery requests.
+> Electronic exchanges distribute market data over redundant UDP Multicast channels (Feed A and Feed B) across physically distinct network fabrics. A zero-loss Feed Arbitrator ingests both packet streams in user-space, immediately dispatching whichever packet arrives first on the wire and discarding duplicate frames in under 10 nanoseconds - eliminating packet loss without initiating slow TCP recovery requests.
 
 ---
 

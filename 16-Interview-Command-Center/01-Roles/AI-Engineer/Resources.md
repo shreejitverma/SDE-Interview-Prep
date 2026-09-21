@@ -7,7 +7,7 @@ last_reviewed:
 sources: []
 ---
 
-# 📚 AI Engineer Resources
+# AI Engineer Resources
 
 ## Vault
 | Topic | Link |

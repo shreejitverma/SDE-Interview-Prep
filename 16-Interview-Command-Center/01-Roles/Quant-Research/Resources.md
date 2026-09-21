@@ -7,7 +7,7 @@ last_reviewed:
 sources: []
 ---
 
-# 📚 Quant Research Resources
+# Quant Research Resources
 
 ## Vault
 | Topic | Link |

@@ -13,7 +13,7 @@ sources: []
 
 *The year is 2026. We are sitting in a cozy library, the smell of old paper and fresh espresso in the air. Across from you sits the "Architect," a grizzled veteran who has seen every standard from the first '98 draft to the cutting-edge '26 modules.*
 
-**You:** "Architect, I see these version numbers—C++98, C++11, C++20. It feels like I'm looking at different languages sometimes. How did we get here?"
+**You:** "Architect, I see these version numbers - C++98, C++11, C++20. It feels like I'm looking at different languages sometimes. How did we get here?"
 
 **The Architect:** *Leans back, chuckling.* "Ah, the Great Evolution. You’re right. C++ isn't a museum piece; it’s a living organism. It’s had its dark ages, its renaissance, and now, its golden era. To understand the language today, you have to understand the scars it carries."
 
@@ -21,7 +21,7 @@ sources: []
 
 ### The Dark Ages: C++98 and C++03
 
-**The Architect:** "In the late 90s, C++ was the wild west. Bjarne Stroustrup had given us the core—classes, templates, exceptions. But it was heavy. We had the STL, but it felt like alien technology to most. Compilers were... let's just say 'creative' with how they interpreted the standard. If you wrote code for MSVC, it might not even compile on GCC."
+**The Architect:** "In the late 90s, C++ was the wild west. Bjarne Stroustrup had given us the core - classes, templates, exceptions. But it was heavy. We had the STL, but it felt like alien technology to most. Compilers were... let's just say 'creative' with how they interpreted the standard. If you wrote code for MSVC, it might not even compile on GCC."
 
 **You:** "So it was unstable?"
 
@@ -49,7 +49,7 @@ sources: []
 
 ### The Refinement: C++14 and C++17
 
-**The Architect:** "C++14 and '17 were about polishing the diamond. C++14 gave us generic lambdas and `make_unique`. C++17 was a bigger deal—it gave us `std::optional`, `std::variant`, and 'Structured Bindings.' Finally, we could return two values from a function and unpack them like we were in Python: `auto [status, value] = calculate();`. It made the language feel... friendly."
+**The Architect:** "C++14 and '17 were about polishing the diamond. C++14 gave us generic lambdas and `make_unique`. C++17 was a bigger deal - it gave us `std::optional`, `std::variant`, and 'Structured Bindings.' Finally, we could return two values from a function and unpack them like we were in Python: `auto [status, value] = calculate();`. It made the language feel... friendly."
 
 ***
 
@@ -63,7 +63,7 @@ sources: []
 
 **You:** "So, is C++ finished?"
 
-**The Architect:** *Smiles.* "C++23 is already here, giving us `std::print` and `std::expected`. C++26 is whispering about Reflection—where code can look at itself. The journey never ends. But remember: the new features don't replace the old ones; they just give you better tools to manage the same raw power of the machine."
+**The Architect:** *Smiles.* "C++23 is already here, giving us `std::print` and `std::expected`. C++26 is whispering about Reflection - where code can look at itself. The journey never ends. But remember: the new features don't replace the old ones; they just give you better tools to manage the same raw power of the machine."
 
 ***
 

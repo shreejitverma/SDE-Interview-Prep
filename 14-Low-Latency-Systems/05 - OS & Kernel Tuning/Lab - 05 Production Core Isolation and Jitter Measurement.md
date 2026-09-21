@@ -11,7 +11,7 @@ last_reviewed:
 sources: []
 ---
 
-# Lab 05 — Production Core Isolation and Jitter Measurement
+# Lab 05 - Production Core Isolation and Jitter Measurement
 
 > [!summary]
 > In this lab, you will construct a cycle-accurate C++20 jitter profiler that executes an uninterrupted 10-second polling loop to measure OS-induced latency spikes down to the nanosecond. You will experimentally quantify the tail-latency reduction from:

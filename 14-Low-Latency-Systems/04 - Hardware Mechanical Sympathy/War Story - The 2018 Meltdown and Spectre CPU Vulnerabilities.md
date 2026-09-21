@@ -11,10 +11,10 @@ last_reviewed:
 sources: []
 ---
 
-# War Story — The 2018 Meltdown & Spectre Vulnerabilities: Microarchitectural Side-Channels & Syscall Penalties
+# War Story - The 2018 Meltdown & Spectre Vulnerabilities: Microarchitectural Side-Channels & Syscall Penalties
 
 > [!summary]
-> In January 2018, security researchers disclosed Meltdown and Spectre—two catastrophic hardware vulnerabilities embedded in the out-of-order and speculative execution engines of modern superscalar CPUs. The resulting operating system mitigations (Kernel Page Table Isolation - KPTI, Retpolines, and IBRS microcode updates) injected **up to 800–2,500 nanoseconds of latency per system call**, revolutionizing low-latency systems engineering and cementing kernel bypass as a mandatory architecture.
+> In January 2018, security researchers disclosed Meltdown and Spectre - two catastrophic hardware vulnerabilities embedded in the out-of-order and speculative execution engines of modern superscalar CPUs. The resulting operating system mitigations (Kernel Page Table Isolation - KPTI, Retpolines, and IBRS microcode updates) injected **up to 800–2,500 nanoseconds of latency per system call**, revolutionizing low-latency systems engineering and cementing kernel bypass as a mandatory architecture.
 
 ---
 

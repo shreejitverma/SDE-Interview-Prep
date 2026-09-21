@@ -19,7 +19,7 @@ sources: []
 ## Why it matters
 In distributed electronic trading, you cannot compute one-way wire latency or verify exchange queue fairness without synchronized clocks. 
 
-- **NTP (Network Time Protocol)**: Synchronizes via software over UDP, providing **1–10 milliseconds** of accuracy—useless when tick-to-trade decisions occur in under 500 nanoseconds.
+- **NTP (Network Time Protocol)**: Synchronizes via software over UDP, providing **1–10 milliseconds** of accuracy - useless when tick-to-trade decisions occur in under 500 nanoseconds.
 - **PTP (IEEE 1588v2)**: Uses hardware timestamping at network PHYs to achieve **10–50 nanoseconds** accuracy across a local datacenter.
 - **White Rabbit (IEEE 1588-2019 HA)**: Achieves **<1 nanosecond (sub-nanosecond)** synchronization, enabling cycle-accurate distributed order sequencing and cross-venue latency arbitrage measurement.
 
@@ -162,7 +162,7 @@ sudo phc2sys -s eth0 -c CLOCK_REALTIME -w -m -O 0
 > 2. **What is a Transparent Clock (TC) in PTP and how does it prevent switch queueing jitter?**
 >    *Answer*: A Transparent Clock is a PTP-aware network switch that records the exact hardware ingress timestamp and egress timestamp of each passing PTP event packet. It calculates the switch's internal queueing and processing delay (Residence Time) and adds this duration directly into the packet's `correctionField`, allowing the receiving slave to subtract internal switch delays from its network path calculation.
 > 3. **How does White Rabbit achieve sub-nanosecond accuracy over standard optical fiber?**
->    *Answer*: White Rabbit combines Synchronous Ethernet (SyncE)—which derives the physical bit clock directly from the master's oscillator to eliminate frequency drift—with Digital Dual-Mixer Time Difference (DDMTD) phase detection, which measures sub-nanosecond phase alignment between optical transceivers at the physical layer.
+>    *Answer*: White Rabbit combines Synchronous Ethernet (SyncE) - which derives the physical bit clock directly from the master's oscillator to eliminate frequency drift - with Digital Dual-Mixer Time Difference (DDMTD) phase detection, which measures sub-nanosecond phase alignment between optical transceivers at the physical layer.
 
 ---
 

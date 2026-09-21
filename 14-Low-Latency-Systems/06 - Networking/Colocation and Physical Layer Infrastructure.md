@@ -21,9 +21,9 @@ Software optimizations (kernel bypass, lock-free rings, C++ assembly tuning) ope
 
 However:
 - Moving a server cabinet **20 meters** farther from the exchange matching engine room adds **100 nanoseconds of optical fiber propagation delay** ($20\text{ m} \times 4.89\text{ ns/m}$).
-- Running cross-market arbitrage between CME futures (Aurora, IL) and NASDAQ equities (Carteret, NJ) over fiber takes **14.5 milliseconds**, whereas an ultra-short-path microwave network takes **7.85 milliseconds**—a staggering **6,650,000-nanosecond advantage** that renders fiber completely obsolete for cross-market price signals.
+- Running cross-market arbitrage between CME futures (Aurora, IL) and NASDAQ equities (Carteret, NJ) over fiber takes **14.5 milliseconds**, whereas an ultra-short-path microwave network takes **7.85 milliseconds** - a staggering **6,650,000-nanosecond advantage** that renders fiber completely obsolete for cross-market price signals.
 
-Understanding the physical layer—colocation data centers, optical fiber refraction, hollow-core glass, and wireless RF—is mandatory for global trading architecture.
+Understanding the physical layer - colocation data centers, optical fiber refraction, hollow-core glass, and wireless RF - is mandatory for global trading architecture.
 
 ```mermaid
 flowchart LR

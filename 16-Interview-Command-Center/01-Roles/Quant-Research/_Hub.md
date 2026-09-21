@@ -10,14 +10,14 @@ last_reviewed:
 sources: []
 ---
 
-# 🧮 Quantitative Researcher — Preparation Hub
+# Quantitative Researcher - Preparation Hub
 
 > **Target Companies:** Jane Street, Citadel, Two Sigma, DE Shaw, Susquehanna (SIG), Akuna Capital
 > **Target Levels:** Junior to Senior Researcher
 
 ---
 
-## 🎯 What Quant Research Interviews Test
+## What Quant Research Interviews Test
 
 | Round | Weight | What They Want |
 |-------|--------|----------------|
@@ -29,29 +29,29 @@ sources: []
 
 ---
 
-## 📚 Study Plan
+## Study Plan
 
-→ [[Study-Plan|📋 Detailed Week-by-Week Study Plan]]
+→ [[Study-Plan|Detailed Week-by-Week Study Plan]]
 
 ### Quick Priority Matrix
 
 | Topic | Priority | Your Level | Target Level | Vault Resource |
 |-------|----------|-----------|-------------|----------------|
-| Probability Theory | 🔴 Critical | | 5/5 | [[05-Quantitative-Finance/01-Mathematics]] |
-| Combinatorics | 🔴 Critical | | 5/5 | |
-| Stochastic Processes | 🔴 Critical | | 4/5 | [[05-Quantitative-Finance/01-Mathematics]] |
-| Brain Teasers | 🔴 Critical | | 5/5 | |
-| Mental Math | 🔴 Critical | | 4/5 | |
-| Statistics & Estimation | 🟡 High | | 4/5 | |
-| Linear Algebra | 🟡 High | | 4/5 | |
-| Coding (Python) | 🟡 High | | 4/5 | [[02-Programming-Languages/Python]] |
-| Market Making Concepts | 🟡 High | | 4/5 | [[14-Low-Latency-Systems/01 - Market & Microstructure Fundamentals]] |
-| Machine Learning | 🟢 Medium | | 3/5 | |
-| Stochastic Calculus | 🟢 Medium | | 3/5 | |
+| Probability Theory | Critical | | 5/5 | [[05-Quantitative-Finance/01-Mathematics]] |
+| Combinatorics | Critical | | 5/5 | |
+| Stochastic Processes | Critical | | 4/5 | [[05-Quantitative-Finance/01-Mathematics]] |
+| Brain Teasers | Critical | | 5/5 | |
+| Mental Math | Critical | | 4/5 | |
+| Statistics & Estimation | High | | 4/5 | |
+| Linear Algebra | High | | 4/5 | |
+| Coding (Python) | High | | 4/5 | [[02-Programming-Languages/Python]] |
+| Market Making Concepts | High | | 4/5 | [[14-Low-Latency-Systems/01 - Market & Microstructure Fundamentals]] |
+| Machine Learning | Medium | | 3/5 | |
+| Stochastic Calculus | Medium | | 3/5 | |
 
 ---
 
-## 🏢 Target Companies
+## Target Companies
 
 ```dataview
 TABLE WITHOUT ID
@@ -61,7 +61,7 @@ WHERE contains(target_roles, "Quant-Research")
 SORT file.name ASC
 ```
 
-## 📊 Active Interviews
+## Active Interviews
 
 ```dataview
 TABLE WITHOUT ID
@@ -74,10 +74,10 @@ SORT next_deadline ASC
 
 ---
 
-## 🔗 Role Resources
+## Role Resources
 - → [[Skill-Matrix]] | → [[Question-Bank]] | → [[Common-Patterns]] | → [[Resources]]
 
-## 📖 Key Vault Links
+## Key Vault Links
 | Domain | Link |
 |--------|------|
 | Mathematics | [[05-Quantitative-Finance/01-Mathematics]] |

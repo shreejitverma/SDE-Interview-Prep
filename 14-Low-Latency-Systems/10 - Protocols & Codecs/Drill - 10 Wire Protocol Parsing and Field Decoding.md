@@ -11,7 +11,7 @@ last_reviewed:
 sources: []
 ---
 
-# Drill 10 — Wire Protocol Parsing & Hex Field Decoding
+# Drill 10 - Wire Protocol Parsing & Hex Field Decoding
 
 > [!summary]
 > Principal-level rapid-fire decoding drill testing your ability to manually parse and analyze raw network byte captures across NASDAQ ITCH 5.0, NASDAQ OUCH 4.2, CME MDP 3.0 SBE, and Tag-Value ASCII FIX under time pressure. Attempt each problem before unfolding the solution.

@@ -30,11 +30,11 @@ always had. Both are about precision: `:=` removes a redundant evaluation or a t
 no value) from *expressions* (which do). That cleanliness forced two common patterns to be clumsy:
 computing a value to *test* and then *reuse* required either a pre-loop assignment plus a `while
 True`/`break`, or computing the value twice. The walrus operator adds an **assignment
-expression** — it binds a name **and** evaluates to the bound value — without abolishing the
+expression** - it binds a name **and** evaluates to the bound value - without abolishing the
 statement/expression distinction (it is a separate operator, not a redefinition of `=`).
 
 At the AST level a normal assignment is an `Assign` *statement*; `x := 1` is a `NamedExpr`
-*expression*. The bytecode shows the one extra step that makes it an expression — the value is
+*expression*. The bytecode shows the one extra step that makes it an expression - the value is
 duplicated on the stack so the binding consumes one copy and the surrounding expression gets the
 other:
 
@@ -54,13 +54,13 @@ Verified output (CPython 3.13.5):
       RETURN_CONST  1 (None)
 ```
 
-`COPY 1` replaces the pre-3.11 `DUP_TOP`; the mechanism is identical — push, duplicate, store one
+`COPY 1` replaces the pre-3.11 `DUP_TOP`; the mechanism is identical - push, duplicate, store one
 copy, leave the other for the enclosing expression to consume.
 
 **The patterns it is for.** The walrus shines exactly where a value is both tested and used:
 
 ```python
-# Caption: the two canonical uses — loop-until-sentinel, and filter-and-reuse.
+# Caption: the two canonical uses - loop-until-sentinel, and filter-and-reuse.
 import io
 
 # (a) read-until-empty without a while True / break dance
@@ -84,15 +84,15 @@ walrus while: ['aaa', 'bbb', 'ccc']
 result, y: ([4, 6], 6)
 ```
 
-**Scoping — the subtle part.** Inside a comprehension, a walrus target **binds in the enclosing
+**Scoping - the subtle part.** Inside a comprehension, a walrus target **binds in the enclosing
 scope, not the comprehension's**. That is why `y` is still visible (and equals the last value, `6`)
-after `parent_func`'s comprehension finishes — the comprehension computes `x*2` once per item, uses
+after `parent_func`'s comprehension finishes - the comprehension computes `x*2` once per item, uses
 it in both the filter and the output, and leaks the final `y` outward by design. Note this hoisting
 survived **PEP 709** (3.12) comprehension inlining: the comprehension is now inlined (no nested code
 object), yet the walrus still targets the surrounding scope:
 
 ```python
-# Caption: PEP 709 — the comprehension is inlined; the walrus still binds outward.
+# Caption: PEP 709 - the comprehension is inlined; the walrus still binds outward.
 nested = [c.co_name for c in parent_func.__code__.co_consts if hasattr(c, "co_name")]
 print("nested code objects:", nested, "(empty => inlined)")
 ```
@@ -123,7 +123,7 @@ SyntaxError: assignment expression cannot rebind comprehension iteration variabl
 A walrus is also disallowed at the top level of an expression statement (`x := 1` must be
 parenthesized) and inside a class-body comprehension (class namespaces aren't function frames, so
 they can't carry the closure cell the hoisting needs). **When not to use it:** if `:=` makes a line
-harder to scan, use a plain assignment statement — it exists to remove redundancy, not to win
+harder to scan, use a plain assignment statement - it exists to remove redundancy, not to win
 golf.
 
 ---
@@ -132,9 +132,9 @@ golf.
 
 **Why this exists.** Before 3.8, pure-Python functions could not express what every C builtin
 already did: "these parameters may be passed *only positionally*." That mattered for two reasons.
-First, **API stability** — if a parameter can be passed by keyword, its *name* becomes part of your
+First, **API stability** - if a parameter can be passed by keyword, its *name* becomes part of your
 public contract and you can never rename it without breaking callers. Second, **`**kwargs`
-safety** — a function like `dict(**kwargs)` could not accept a key literally named `self` or the
+safety** - a function like `dict(**kwargs)` could not accept a key literally named `self` or the
 parameter name without collision. The `/` marker fixes both: every parameter *before* `/` is
 positional-only.
 
@@ -171,7 +171,7 @@ and `*` give an author full control over how each parameter may be supplied.
 3.8), arguments arrive as a flat C array. For positional-only parameters the interpreter can copy
 references straight into the frame's local slots **by index**, skipping the keyword-name
 hash-matching that positional-or-keyword parameters require. For small, hot functions this trims a
-measurable slice of call overhead — which is exactly why the CPython builtins use positional-only
+measurable slice of call overhead - which is exactly why the CPython builtins use positional-only
 parameters pervasively. (The full vectorcall calling convention is Vol VIII.)
 
 **When to use it.** Mark a parameter positional-only when its name is an implementation detail you
@@ -186,7 +186,7 @@ application code where keyword arguments aid readability.
 - **`:=` is for de-duplication, not density.** Use it to avoid evaluating something twice or to
   fold a sentinel-read loop; do not chain several walruses into one unreadable expression.
 - **Mind the comprehension hoist.** A walrus in a comprehension leaks its target to the enclosing
-  scope — useful for "keep the last/maximal value," surprising if you expected comprehension-local
+  scope - useful for "keep the last/maximal value," surprising if you expected comprehension-local
   scoping. Name such targets clearly.
 - **Positional-only for libraries and hot paths**, where name-stability and call speed matter; for
   ordinary code, keyword arguments are usually clearer.

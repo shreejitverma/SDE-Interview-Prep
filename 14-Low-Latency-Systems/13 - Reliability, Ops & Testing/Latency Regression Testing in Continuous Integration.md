@@ -18,7 +18,7 @@ sources: []
 
 ## Why it matters
 In high-frequency trading infrastructure:
-- A developer introduces an innocent refactoring—such as replacing a branchless integer assignment with a virtual function call or an unaligned struct field.
+- A developer introduces an innocent refactoring - such as replacing a branchless integer assignment with a virtual function call or an unaligned struct field.
 - The unit tests pass 100%, and the system functions correctly.
 - In production, this change adds **18 nanoseconds to the critical path**, causing the firm's queue fill rate to drop by **14% and losing \$50,000 daily**.
 

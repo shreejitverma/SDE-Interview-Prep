@@ -11,7 +11,7 @@ last_reviewed:
 sources: []
 ---
 
-# War Story — The July 8, 2015 NYSE 3.5-Hour Gateway Freeze: Protocol State Mismatches & Live Reconfiguration Cascades
+# War Story - The July 8, 2015 NYSE 3.5-Hour Gateway Freeze: Protocol State Mismatches & Live Reconfiguration Cascades
 
 > [!summary]
 > On July 8, 2015, between 11:32:00 and 15:10:00 EST, the New York Stock Exchange (NYSE) suffered a total, unprecedented 3.5-hour market-wide trading suspension across all listed equities. A pre-market software release on client gateway communication handlers triggered an internal protocol state and sequence verification desynchronization with the matching engine, demonstrating the fatal danger of live session reconfigurations during active market hours.

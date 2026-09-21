@@ -7,11 +7,11 @@ last_reviewed:
 sources: []
 ---
 
-# Chapter 17: Faster CPython — the Specializing Adaptive Interpreter (Python 3.11)
+# Chapter 17: Faster CPython - the Specializing Adaptive Interpreter (Python 3.11)
 
 Python 3.11 was the first release of the multi-year "Faster CPython" project, and it made typical
 programs **10–60% faster** without changing a line of your code. The engine behind that is **PEP
-659: the specializing adaptive interpreter** — the interpreter *rewrites its own bytecode at
+659: the specializing adaptive interpreter** - the interpreter *rewrites its own bytecode at
 runtime*, replacing generic opcodes with type-specialized ones backed by **inline caches**. This is
 not a JIT (that is PEP 744, Vol VII): no machine code is generated; the interpreter loop simply gets
 much smarter about the common case. This chapter explains the mechanism, demonstrates specialization
@@ -32,7 +32,7 @@ on the fast track.
 
 **Why this exists.** A generic opcode like `LOAD_ATTR` must handle *any* object: walk the type's
 MRO, consult `__getattribute__`, probe instance and class dictionaries. But real code is
-overwhelmingly **monomorphic** — a given `p.x` almost always sees the *same* type at that exact call
+overwhelmingly **monomorphic** - a given `p.x` almost always sees the *same* type at that exact call
 site, run after run. PEP 659 exploits this: observe what actually flows through each instruction, and
 once it is stable, **patch the bytecode in memory** with a specialized opcode that assumes that shape
 and falls back safely if the assumption breaks.
@@ -54,14 +54,14 @@ Each adaptive instruction moves through a lifecycle:
 
 The critical property: a specialized opcode is **always guarded**. It first checks a cheap
 invariant (a cached type version, §17.2); if the guard holds it takes the fast path, and if not it
-**deoptimizes** to the generic behavior. Correctness is never at risk — only speed.
+**deoptimizes** to the generic behavior. Correctness is never at risk - only speed.
 
 ---
 
 ## 17.2 Inline caches and type versioning
 
 **What the interpreter actually does.** The specialized opcode needs somewhere to store "what I
-learned" — the expected type and the attribute's offset. CPython stores this in an **inline cache**:
+learned" - the expected type and the attribute's offset. CPython stores this in an **inline cache**:
 extra `_Py_CODEUNIT` slots placed *directly after the instruction* in the code array, so the data is
 in the same cache line the interpreter is already reading. For `LOAD_ATTR` the cache is an
 `_PyAttrCache`:
@@ -75,10 +75,10 @@ typedef struct {
 } _PyAttrCache;
 ```
 
-The guard is the type's **`tp_version_tag`** — a per-type id that CPython **bumps whenever the class
+The guard is the type's **`tp_version_tag`** - a per-type id that CPython **bumps whenever the class
 is mutated** (a method added, a class attribute set, the MRO changed). A specialized `LOAD_ATTR`
 checks the live object's type version against the cached one; if they match, it reads
-`obj_values[index]` directly — no dict lookup, no MRO walk. If the class was mutated, the tag no
+`obj_values[index]` directly - no dict lookup, no MRO walk. If the class was mutated, the tag no
 longer matches and the opcode deoptimizes. (`LOAD_GLOBAL` works the same way against the module and
 builtins dictionaries' *keys version*.)
 
@@ -150,8 +150,8 @@ PEP 659 specializes the opcodes that dominate real workloads. The common familie
 | `STORE_ATTR`, `COMPARE_OP`, `FOR_ITER`, `TO_BOOL`, `CONTAINS_OP`, `SEND` | various | type-specific |
 
 **Deoptimization and thrashing.** Specialization is a bet on monomorphism. If a call site is
-**polymorphic** — `p.x` sees a `Dog` then a `Cat` whose `.x` lives at a different offset, or `a + b`
-sees ints then strings — the guard keeps failing. The opcode deoptimizes to the slow path, may
+**polymorphic** - `p.x` sees a `Dog` then a `Cat` whose `.x` lives at a different offset, or `a + b`
+sees ints then strings - the guard keeps failing. The opcode deoptimizes to the slow path, may
 re-warm, re-specialize for the new type, miss again, and **thrash**, paying the *combined* cost of
 guard checks, slow lookups, and repeated re-specialization. The worst case is *worse* than the
 pre-3.11 generic interpreter for that site.
@@ -159,10 +159,10 @@ pre-3.11 generic interpreter for that site.
 **Coding for the specializer** (the practical payoff):
 - **Keep hot call sites monomorphic.** Don't funnel objects of structurally different types through
   the same hot function or attribute access; split into separate functions if needed.
-- **Don't mutate classes at runtime** in steady state — adding a method or class attribute bumps
+- **Don't mutate classes at runtime** in steady state - adding a method or class attribute bumps
   `tp_version_tag` and **invalidates every inline cache** that depended on it. Configure behavior at
   class-definition time.
-- **`__slots__` specializes well** (`LOAD_ATTR_SLOT`) and removes the per-instance dict — a double
+- **`__slots__` specializes well** (`LOAD_ATTR_SLOT`) and removes the per-instance dict - a double
   win for hot, numerous objects (Chapter 13).
 
 These are guidelines for *hot* code only; for everything else, write clear code and let the
@@ -177,13 +177,13 @@ Specialization is the headline, but 3.11's speedup is the sum of several changes
 - **Zero-cost exceptions** (Chapter 6): the runtime block stack was replaced by a static exception
   table, so a `try` that doesn't raise costs **nothing** on the happy path.
 - **Cheaper, "lazy" frames.** Frame objects were slimmed and are created more cheaply (allocated
-  inline on a per-thread data stack), making Python-to-Python calls markedly faster — the foundation
+  inline on a per-thread data stack), making Python-to-Python calls markedly faster - the foundation
   `CALL_PY_EXACT_ARGS` builds on.
 - **Fine-grained error locations (PEP 657).** Tracebacks now point a caret at the *exact
   sub-expression* that failed, not just the line:
 
 ```python
-# Caption: PEP 657 — the traceback marks which sub-expression raised.
+# Caption: PEP 657 - the traceback marks which sub-expression raised.
 import traceback
 def f():
     a, b, c = 1, 2, 0
@@ -203,7 +203,7 @@ return a / b / c
 ~~~~~~^~~
 ```
 
-The carets isolate `(a / b) / c`'s failing division — invaluable for debugging compound expressions
+The carets isolate `(a / b) / c`'s failing division - invaluable for debugging compound expressions
 and long attribute chains. (This location data lives in the code object's line table; it costs a
 little memory, disable-able via `-X no_debug_ranges`.)
 
@@ -215,11 +215,11 @@ little memory, disable-able via `-X no_debug_ranges`.)
   measure steady-state (use `timeit`/`pyperf`, Vol IX), not the first call.
 - **Monomorphism is the lever, not micro-tweaks.** The biggest 3.11+ wins come from consistent types
   at hot sites; chasing opcode counts by hand is usually wasted effort.
-- **Runtime class mutation is a cache killer** — monkeypatching a class in a hot loop deoptimizes
+- **Runtime class mutation is a cache killer** - monkeypatching a class in a hot loop deoptimizes
   every dependent site globally.
 - **This is interpretation, not compilation.** Specialization removes interpreter overhead on the
   fast path but does not vectorize, inline across calls, or escape-analyze. For order-of-magnitude
-  numeric speed you still drop to NumPy/Cython/C (Vol IX) — or, in 3.13+, the experimental JIT
+  numeric speed you still drop to NumPy/Cython/C (Vol IX) - or, in 3.13+, the experimental JIT
   (Vol VII), which builds *on top of* these specialized opcodes.
 - **Don't fight `tp_version_tag`.** Stable class shapes keep caches valid; dynamic attribute schemas
   defeat the optimizer.
@@ -229,7 +229,7 @@ little memory, disable-able via `-X no_debug_ranges`.)
 ## 17.6 Summary and cross-references
 
 - **PEP 659** makes the interpreter **specialize its own bytecode at runtime**: generic → adaptive →
-  specialized, with a cheap **guard** and safe **deoptimization** — *not* a JIT, no machine code.
+  specialized, with a cheap **guard** and safe **deoptimization** - *not* a JIT, no machine code.
 - Specialized opcodes are backed by **inline caches** adjacent to the bytecode, guarded by the
   type's **`tp_version_tag`** (and dict keys versions); `dis(..., adaptive=True)` shows them
   (`LOAD_ATTR_INSTANCE_VALUE`, `BINARY_OP_ADD_INT`, …).

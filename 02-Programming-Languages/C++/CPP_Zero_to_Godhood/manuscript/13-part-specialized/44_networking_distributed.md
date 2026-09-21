@@ -43,7 +43,7 @@ send(client_socket, "Hello", 5, 0);
 
 When you send a `std::string` or a custom `User` class over a socket, you cannot just send the memory address. The address `0x1A42` on your computer means absolutely nothing to a server in Japan.
 
-You must **Serialize** the data. Serialization is like taking a LEGO castle, breaking it down into individual bricks, putting them in a numbered box with instructions, and shipping it. The receiver then **Deserializes** it—rebuilding the castle brick-by-brick.
+You must **Serialize** the data. Serialization is like taking a LEGO castle, breaking it down into individual bricks, putting them in a numbered box with instructions, and shipping it. The receiver then **Deserializes** it - rebuilding the castle brick-by-brick.
 
 ### A Simple Binary Serializer
 

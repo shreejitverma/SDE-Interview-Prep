@@ -11,7 +11,7 @@ last_reviewed:
 sources: []
 ---
 
-# Source Summary — The LMAX Disruptor: High Performance Alternative to Bounded Queues
+# Source Summary - The LMAX Disruptor: High Performance Alternative to Bounded Queues
 **Authors**: Martin Thompson, Dave Farley, Michael Barker, Patricia Gee, and Adrian Colyer  
 **Publication**: LMAX Technical Whitepaper (2011)  
 **Category**: Mechanical Sympathy, Lock-Free Concurrency, Inter-Thread Messaging
@@ -21,7 +21,7 @@ sources: []
 ## Executive Summary & Core Thesis
 The LMAX Disruptor whitepaper revolutionized high-performance message processing architecture. LMAX sought to build an institutional-grade financial exchange processing 6 million orders per second with deterministic sub-millisecond latencies. They discovered that traditional concurrent architectures based on multi-threaded actor models, queues (`java.util.concurrent.ArrayBlockingQueue`), and lock-based synchronization collapsed under high throughput due to **cache coherence ping-pong, kernel context switches, and false sharing**.
 
-Their breakthrough was **Mechanical Sympathy**—designing software to work in alignment with underlying CPU cache hardware. The result is the **Disruptor**: a pre-allocated circular ring buffer accessed via lock-free sequence barriers, single-writer invariants, and cache-line padding, eliminating locks, garbage collection pauses, and memory allocation from the critical path.
+Their breakthrough was **Mechanical Sympathy** - designing software to work in alignment with underlying CPU cache hardware. The result is the **Disruptor**: a pre-allocated circular ring buffer accessed via lock-free sequence barriers, single-writer invariants, and cache-line padding, eliminating locks, garbage collection pauses, and memory allocation from the critical path.
 
 ```mermaid
 flowchart LR

@@ -2,7 +2,7 @@
 
 # OBJECT-ORIENTED PROGRAMMING: ENCAPSULATION & DESIGN
 
-Welcome to the world of objects. In the previous chapters, we were writing "Procedural" code—essentially a long list of instructions for the computer to follow. Now, we’re going to start thinking about **things**.
+Welcome to the world of objects. In the previous chapters, we were writing "Procedural" code - essentially a long list of instructions for the computer to follow. Now, we’re going to start thinking about **things**.
 
 ### The Blueprint vs. The House
 

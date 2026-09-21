@@ -9,7 +9,7 @@ sources: []
 
 # Chapter 10: Advanced Streams and File I/O
 
-> *Talking to the outside world — files, formatted output, and the iostream hierarchy.*
+> *Talking to the outside world - files, formatted output, and the iostream hierarchy.*
 
 C++ streams are far more powerful than `printf`/`scanf`. They compose with the type system, support custom types via `operator<<` and `operator>>`, and share a uniform model for console, file, and in-memory string I/O. This chapter covers: C-strings and `std::string`, the iostream class hierarchy, file I/O with `<fstream>`, stream states and error recovery, format manipulators from `<iomanip>`, binary I/O, string streams, stream internals, and custom manipulators.
 
@@ -43,7 +43,7 @@ Before `std::string` existed, C++ (inherited from C) used **null-terminated char
 
 int main() {
     char name[6] = {'H', 'e', 'l', 'l', 'o', '\0'}; // '\0' is the sentinel
-    const char* greeting = "World"; // String literal — compiler adds '\0'
+    const char* greeting = "World"; // String literal - compiler adds '\0'
 
     std::cout << name << " " << greeting << "\n";
     std::cout << "Length: " << strlen(name) << "\n"; // 5, stops at '\0'
@@ -51,7 +51,7 @@ int main() {
 }
 ```
 
-**The null terminator (`'\0'`)** is the only way the C runtime knows where the string ends. Without it, functions like `strlen`, `printf`, and `strcpy` will read past the end of the array into adjacent memory — undefined behaviour and a security vulnerability.
+**The null terminator (`'\0'`)** is the only way the C runtime knows where the string ends. Without it, functions like `strlen`, `printf`, and `strcpy` will read past the end of the array into adjacent memory - undefined behaviour and a security vulnerability.
 
 **Common C-string functions:**
 
@@ -75,7 +75,7 @@ int main() {
 }
 ```
 
-**Warning:** `strcpy`, `strcat`, and `gets` are unsafe — they do not check buffer bounds. Buffer overflows are a leading cause of security exploits. Prefer `std::string` in C++ code and `strncpy`/`snprintf` when interoperating with C APIs.
+**Warning:** `strcpy`, `strcat`, and `gets` are unsafe - they do not check buffer bounds. Buffer overflows are a leading cause of security exploits. Prefer `std::string` in C++ code and `strncpy`/`snprintf` when interoperating with C APIs.
 
 ---
 
@@ -134,7 +134,7 @@ int main() {
 
     cout << "Welcome, " << name << ". You are " << age << ".\n";
 
-    // cerr writes immediately — use for errors and diagnostics
+    // cerr writes immediately - use for errors and diagnostics
     cerr << "Diagnostic: processed input\n";
     return 0;
 }
@@ -183,7 +183,7 @@ int main() {
     cout << "Enter age: ";
 
     if (!(cin >> age)) {
-        cout << "Invalid input — not an integer.\n";
+        cout << "Invalid input - not an integer.\n";
 
         cin.clear();                    // Reset failbit/badbit to goodbit
         cin.ignore(10000, '\n');        // Discard the bad input in the buffer
@@ -246,7 +246,7 @@ int main() {
 }
 ```
 
-`is_open()` returns true if the file was successfully opened. A stream object also converts to `bool` — you can write `if (in)` as shorthand for `if (!in.fail())`.
+`is_open()` returns true if the file was successfully opened. A stream object also converts to `bool` - you can write `if (in)` as shorthand for `if (!in.fail())`.
 
 ---
 
@@ -260,7 +260,7 @@ Open modes are bitmask flags combined with `|`:
 | `std::ios::out` | Open for writing (creates or truncates) |
 | `std::ios::app` | All writes go to end-of-file (append) |
 | `std::ios::ate` | Open, seek to end; may write anywhere |
-| `std::ios::binary` | Binary mode — disables CRLF translation |
+| `std::ios::binary` | Binary mode - disables CRLF translation |
 | `std::ios::trunc` | Truncate existing file to zero length |
 
 ```cpp
@@ -288,7 +288,7 @@ int main() {
 
 ## 10.7 Binary File I/O
 
-Binary mode writes raw bytes — no line-ending conversion, no formatting:
+Binary mode writes raw bytes - no line-ending conversion, no formatting:
 
 ```cpp
 // Listing 10.9: Binary write and read
@@ -687,7 +687,7 @@ int main() {
 
 ### 10.12.4 Performance: `sync_with_stdio` and `tie`
 
-By default, C++ streams are synchronised with C's `<stdio.h>` — `cout` and `printf` write in the correct order even when mixed. This synchronisation has overhead:
+By default, C++ streams are synchronised with C's `<stdio.h>` - `cout` and `printf` write in the correct order even when mixed. This synchronisation has overhead:
 
 ```cpp
 // Listing 10.23: Fast I/O setup
@@ -695,10 +695,10 @@ By default, C++ streams are synchronised with C's `<stdio.h>` — `cout` and `pr
 using namespace std;
 
 int main() {
-    ios::sync_with_stdio(false); // Decouple C++ and C streams — 2-10x faster
+    ios::sync_with_stdio(false); // Decouple C++ and C streams - 2-10x faster
     cin.tie(NULL);               // Decouple cin from cout (no auto-flush before read)
 
-    // After these calls, do NOT mix cout with printf — undefined order
+    // After these calls, do NOT mix cout with printf - undefined order
     int n;
     cin >> n;
     cout << n << "\n";
@@ -706,4 +706,4 @@ int main() {
 }
 ```
 
-**After calling `sync_with_stdio(false)`**, do not mix `printf`/`scanf` with `cout`/`cin` in the same program — the output ordering becomes undefined.
+**After calling `sync_with_stdio(false)`**, do not mix `printf`/`scanf` with `cout`/`cin` in the same program - the output ordering becomes undefined.

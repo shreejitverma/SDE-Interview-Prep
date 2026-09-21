@@ -7,7 +7,7 @@ last_reviewed:
 sources: []
 ---
 
-# 📊 Quant Research Skill Matrix
+# Quant Research Skill Matrix
 
 | Skill | Level (1-5) | Last Assessed | Notes |
 |-------|-------------|---------------|-------|

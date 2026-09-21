@@ -9,7 +9,7 @@ sources: []
 
 # Chapter 24: Template Metaprogramming
 
-> *If C++14 made metaprogramming legible, C++17 makes it concise and, in places, unnecessary. Fold expressions collapse hand-rolled variadic recursion to a single line; class template argument deduction lets you drop the angle brackets the compiler can infer; `auto` non-type parameters free templates from spelling the type of a value parameter; and a cluster of new `<functional>`/`<type_traits>` utilities — `invoke`, `apply`, `make_from_tuple`, `is_invocable`, `not_fn`, `void_t`, and the logical trait combinators — turn previously bespoke machinery into standard tools.*
+> *If C++14 made metaprogramming legible, C++17 makes it concise and, in places, unnecessary. Fold expressions collapse hand-rolled variadic recursion to a single line; class template argument deduction lets you drop the angle brackets the compiler can infer; `auto` non-type parameters free templates from spelling the type of a value parameter; and a cluster of new `<functional>`/`<type_traits>` utilities - `invoke`, `apply`, `make_from_tuple`, `is_invocable`, `not_fn`, `void_t`, and the logical trait combinators - turn previously bespoke machinery into standard tools.*
 
 The C++17 template features attack the two biggest sources of metaprogramming pain: **variadic recursion** and **redundant type spelling**. Before C++17, summing a parameter pack meant a two-overload recursive template; now it is `(args + ...)`. Before C++17, `std::pair<int, double> p{1, 3.14}` named types the compiler could already see in the initializers; now `std::pair p{1, 3.14}` deduces them. The library additions complete the picture by standardizing the "call anything callable" and "expand a tuple into a call" primitives that every generic library had been re-implementing.
 
@@ -42,7 +42,7 @@ A **fold expression** applies a binary operator across every element of a parame
 | Binary left fold | `(init op ... op args)` | `((init op a1) op ...) op aN` |
 
 ```cpp
-// Listing 24.1: summing a pack — the C++11 recursion vs the C++17 fold
+// Listing 24.1: summing a pack - the C++11 recursion vs the C++17 fold
 // C++11/14: two overloads, base case + recursive case
 // template <typename T> T sum(T v) { return v; }
 // template <typename T, typename... Rest>
@@ -73,7 +73,7 @@ void print(Args&&... args) {
 print("x = ", 42, ", y = ", 3.14);        // x = 42, y = 3.14
 ```
 
-A fold over the comma operator runs an arbitrary statement per pack element — the general "do something for each argument" loop:
+A fold over the comma operator runs an arbitrary statement per pack element - the general "do something for each argument" loop:
 
 ```cpp
 // Listing 24.3: a comma fold invokes a side effect per element
@@ -89,7 +89,7 @@ Folds are supported over the 32 binary operators (arithmetic, logical, bitwise, 
 
 ## 24.2 Class Template Argument Deduction (CTAD)
 
-**Class template argument deduction** lets the compiler deduce a class template's arguments from its constructor arguments, so you can omit the angle-bracket list entirely — the same convenience function templates have always had.
+**Class template argument deduction** lets the compiler deduce a class template's arguments from its constructor arguments, so you can omit the angle-bracket list entirely - the same convenience function templates have always had.
 
 ```cpp
 // Listing 24.4: CTAD removes redundant type arguments
@@ -114,7 +114,7 @@ This removes a class of `make_*` helper functions whose only job was to deduce: 
 
 ## 24.3 User-Defined Deduction Guides
 
-When the compiler cannot deduce the template arguments correctly from the constructors alone — typically because a constructor parameter's type differs from the desired template argument — you supply an explicit **deduction guide**: a trailing-return-style mapping from constructor argument types to the intended specialization.
+When the compiler cannot deduce the template arguments correctly from the constructors alone - typically because a constructor parameter's type differs from the desired template argument - you supply an explicit **deduction guide**: a trailing-return-style mapping from constructor argument types to the intended specialization.
 
 ```cpp
 // Listing 24.5: a deduction guide maps const char* to std::string
@@ -157,7 +157,7 @@ Constant<'A'>    cc;     // Value is char, type == char
 Constant<true>   cb;     // Value is bool, type == bool
 ```
 
-This is what makes heterogeneous compile-time constant lists and type-tag dispatch concise. Combined with a pack, `template <auto... Vs>` carries a list of values of possibly different types — the building block for compile-time value sequences:
+This is what makes heterogeneous compile-time constant lists and type-tag dispatch concise. Combined with a pack, `template <auto... Vs>` carries a list of values of possibly different types - the building block for compile-time value sequences:
 
 ```cpp
 // Listing 24.7: a heterogeneous compile-time value pack
@@ -190,13 +190,13 @@ struct NewStyle {
 NewStyle<std::vector> nv;   // Container = std::vector
 ```
 
-The change is purely about consistency — `typename` and `class` are interchangeable here — but it lets a codebase adopt a single keyword (`typename`) everywhere a type or type-template parameter is declared, removing a long-standing special case.
+The change is purely about consistency - `typename` and `class` are interchangeable here - but it lets a codebase adopt a single keyword (`typename`) everywhere a type or type-template parameter is declared, removing a long-standing special case.
 
 ---
 
 ## 24.6 `std::invoke` and the Uniform Call Mechanism
 
-`std::invoke(f, args...)` (in `<functional>`) calls *any* **Callable** with a single, uniform syntax: a free function, a function object or lambda, a pointer to member function, or a pointer to member data. It encapsulates the awkward `INVOKE` rules — where calling a member function needs `(obj.*pmf)(args)` and accessing a member needs `obj.*pmd` — behind one call.
+`std::invoke(f, args...)` (in `<functional>`) calls *any* **Callable** with a single, uniform syntax: a free function, a function object or lambda, a pointer to member function, or a pointer to member data. It encapsulates the awkward `INVOKE` rules - where calling a member function needs `(obj.*pmf)(args)` and accessing a member needs `obj.*pmd` - behind one call.
 
 ```cpp
 // Listing 24.9: one call form for every kind of callable
@@ -212,13 +212,13 @@ int free_fn(int x) { return x + 1; }
 int main() {
     Foo f;
 
-    // Pointer to member function — invoke supplies the (obj.*pmf)(args) form:
+    // Pointer to member function - invoke supplies the (obj.*pmf)(args) form:
     int a = std::invoke(&Foo::bar, f, 21);    // 42
 
-    // Pointer to member data — invoke yields obj.*pmd:
+    // Pointer to member data - invoke yields obj.*pmd:
     int b = std::invoke(&Foo::data, f);       // 7
 
-    // Free function and lambda — ordinary call:
+    // Free function and lambda - ordinary call:
     int c = std::invoke(free_fn, 10);         // 11
     int d = std::invoke([](int x){ return -x; }, 5);   // -5
 }
@@ -230,7 +230,7 @@ int main() {
 
 ## 24.7 `std::apply` and `std::make_from_tuple`
 
-**`std::apply(f, tuple)`** unpacks a tuple's elements and forwards them as the arguments to `f` — standardizing the C++14 "indices trick" (`integer_sequence` + an `_impl` helper) as a single library call.
+**`std::apply(f, tuple)`** unpacks a tuple's elements and forwards them as the arguments to `f` - standardizing the C++14 "indices trick" (`integer_sequence` + an `_impl` helper) as a single library call.
 
 ```cpp
 // Listing 24.10: std::apply replaces the hand-written index-sequence unpacker
@@ -251,7 +251,7 @@ int main() {
 }
 ```
 
-**`std::make_from_tuple<T>(tuple)`** constructs a `T` by unpacking the tuple as constructor arguments — the construction analogue of `apply`. It is the precise tool for building an object from a tuple of saved constructor parameters (deferred construction, factory replay, `emplace`-style forwarding).
+**`std::make_from_tuple<T>(tuple)`** constructs a `T` by unpacking the tuple as constructor arguments - the construction analogue of `apply`. It is the precise tool for building an object from a tuple of saved constructor parameters (deferred construction, factory replay, `emplace`-style forwarding).
 
 ```cpp
 // Listing 24.11: constructing an object from a tuple of arguments
@@ -285,7 +285,7 @@ static_assert(!std::is_invocable_v<decltype(f), std::string>);
 static_assert( std::is_invocable_r_v<long, decltype(f), int>); // result -> long ok
 ```
 
-**`std::invoke_result_t<F, Args...>`** gives the return type of that call — the correct, member-pointer-aware replacement for `std::result_of_t`:
+**`std::invoke_result_t<F, Args...>`** gives the return type of that call - the correct, member-pointer-aware replacement for `std::result_of_t`:
 
 ```cpp
 // Listing 24.13: deducing a callable's return type the modern way
@@ -296,7 +296,7 @@ auto call_and_log(F&& f, Args&&... args)
 }
 ```
 
-**`std::not_fn(callable)`** returns a callable that negates the result of the wrapped one — the general replacement for the deprecated `std::not1`/`std::not2` negators, with no fixed arity:
+**`std::not_fn(callable)`** returns a callable that negates the result of the wrapped one - the general replacement for the deprecated `std::not1`/`std::not2` negators, with no fixed arity:
 
 ```cpp
 // Listing 24.14: negating a predicate without not1/not2
@@ -319,7 +319,7 @@ C++17 standardizes the metaprogramming combinators that libraries had been re-de
 **`std::void_t<...>`** maps any list of well-formed types to `void`. It is the enabling trick for **detection idioms**: a partial specialization that mentions a possibly-ill-formed expression inside `void_t` is selected only when that expression is valid (SFINAE), otherwise the primary template is chosen.
 
 ```cpp
-// Listing 24.15: void_t detection idiom — does T have a ::value_type?
+// Listing 24.15: void_t detection idiom - does T have a ::value_type?
 #include <type_traits>
 
 template <typename T, typename = void>
@@ -335,7 +335,7 @@ static_assert(!has_value_type<int>::value);
 
 **`std::bool_constant<B>`** is shorthand for `std::integral_constant<bool, B>`, the base most boolean traits derive from.
 
-**`std::conjunction`, `std::disjunction`, `std::negation`** are the logical AND/OR/NOT over traits, and crucially they **short-circuit** during instantiation — `conjunction` stops at the first `false`, `disjunction` at the first `true` — which avoids instantiating (and erroring on) later traits.
+**`std::conjunction`, `std::disjunction`, `std::negation`** are the logical AND/OR/NOT over traits, and crucially they **short-circuit** during instantiation - `conjunction` stops at the first `false`, `disjunction` at the first `true` - which avoids instantiating (and erroring on) later traits.
 
 ```cpp
 // Listing 24.16: composing traits with short-circuiting combinators
@@ -359,13 +359,13 @@ template <typename T,
 T twice(T x) { return x + x; }
 ```
 
-Together these turn what were error-prone hand-written recursive traits into composable, short-circuiting one-liners — the same role fold expressions play for runtime variadics.
+Together these turn what were error-prone hand-written recursive traits into composable, short-circuiting one-liners - the same role fold expressions play for runtime variadics.
 
 ---
 
 ## 24.10 Professional Insights
 
-**Replace every variadic recursion you can with a fold expression.** A two-overload recursive template to sum, print, or AND-reduce a pack is now a single fold — less code, faster to compile, and clearer intent. Reserve recursion for genuinely position-dependent processing; for "combine all of them with an operator," fold.
+**Replace every variadic recursion you can with a fold expression.** A two-overload recursive template to sum, print, or AND-reduce a pack is now a single fold - less code, faster to compile, and clearer intent. Reserve recursion for genuinely position-dependent processing; for "combine all of them with an operator," fold.
 
 **Let CTAD delete your `make_*` helpers.** `std::pair(a, b)`, `std::lock_guard(m)`, and `std::vector{1, 2, 3}` are now self-deducing; the `make_pair`/`make_tuple` family exists mainly for backward compatibility and for the rare case where you want decay semantics that CTAD does not apply. Write a deduction guide when your own class type's constructors don't lead the compiler to the specialization you intend.
 

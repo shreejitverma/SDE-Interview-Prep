@@ -15,7 +15,7 @@ tags:
 
 # <% tp.file.title %>
 
-## 🏢 Company Overview
+## Company Overview
 **Industry:** `= this.industry`
 **HQ:** `= this.hq_location`
 **Remote:** `= this.remote_policy`
@@ -31,7 +31,7 @@ tags:
 
 ---
 
-## 💻 Tech Stack
+## Tech Stack
 | Layer | Technologies |
 |-------|-------------|
 | Languages | |
@@ -41,12 +41,12 @@ tags:
 
 ---
 
-## 📋 Interview Process
+## Interview Process
 
 ### Stages
 | # | Stage | Format | Duration | Notes |
 |---|-------|--------|----------|-------|
-| 1 | Application | Online | — | |
+| 1 | Application | Online | - | |
 | 2 | Recruiter Screen | Phone | 30min | |
 | 3 | Technical Screen | Video | 45-60min | |
 | 4 | Onsite | Video/In-person | 4-5hrs | |
@@ -64,7 +64,7 @@ tags:
 
 ---
 
-## 💰 Compensation
+## Compensation
 **Levels.fyi Link:** 
 | Level | Base | Stock | Bonus | Total |
 |-------|------|-------|-------|-------|
@@ -72,7 +72,7 @@ tags:
 
 ---
 
-## 📊 My Applications
+## My Applications
 ```dataview
 TABLE role, stage, confidence, next_deadline
 FROM "16-Interview-Command-Center/03-Pipeline"
@@ -80,7 +80,7 @@ WHERE company = this.file.name
 SORT next_deadline ASC
 ```
 
-## 📝 My Retrospectives
+## My Retrospectives
 ```dataview
 TABLE round, outcome, performance, date
 FROM "16-Interview-Command-Center/04-Retrospectives"
@@ -90,7 +90,7 @@ SORT date DESC
 
 ---
 
-## 🔗 Resources
+## Resources
 - **Engineering Blog:** `= this.engineering_blog`
 - **Careers:** `= this.careers_page`
 - **Glassdoor:** 
