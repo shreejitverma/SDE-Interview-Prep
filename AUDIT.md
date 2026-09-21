@@ -1,0 +1,3698 @@
+# Vault Audit
+
+Generated 2026-09-21 by `python3 tools/audit_vault.py` over git-tracked files.
+Re-run the script after every structural change; this file is its output and should not be hand-edited.
+0 files in private locations (`tools/private_paths.py`) are excluded; `tools/audit_pii.py` inventories them into a private path.
+
+## Summary
+
+| Check | Result |
+| :--- | ---: |
+| Tracked files | 15511 |
+| Markdown notes | 1322 |
+| Internal links checked | 8313 |
+| Broken links (links into private locations are not counted) | 684 |
+| Broken wikilinks fixable by unique basename | 195 |
+| Orphan notes (no inbound links) | 952 |
+| Notes without frontmatter | 1120 |
+| Note folders without README (depth <= 3) | 82 |
+| Notes with emojis / total emojis | 87 / 2123 |
+| Notes with em dashes / total em dashes | 315 / 3844 |
+| Identical-content groups / redundant MB | 420 / 236.7 |
+| Vendored or imported repos | 11 |
+| Tracked build junk | 64 |
+| Files >= 5 MB / total MB | 54 / 857.0 |
+
+## 1. File counts by top-level folder
+
+| Folder | Files | Notes | Code | Papers | Other | MB | Last touched |
+| :--- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| `(root)` | 10 | 6 | 0 | 0 | 4 | 0.5 | 2026-09-21 |
+| `.idea` | 6 | 0 | 0 | 0 | 6 | 0.0 | 2024-04-01 |
+| `.obsidian` | 100 | 0 | 30 | 0 | 70 | 46.2 | 2026-09-21 |
+| `.vscode` | 5 | 0 | 0 | 0 | 5 | 0.0 | 2024-04-01 |
+| `00-Start-Here` | 2 | 2 | 0 | 0 | 0 | 0.0 | 2026-01-26 |
+| `01-CS-Foundations` | 205 | 59 | 59 | 57 | 30 | 139.7 | 2026-07-24 |
+| `02-Programming-Languages` | 5832 | 764 | 2856 | 482 | 1730 | 422.6 | 2026-08-22 |
+| `03-Data-Structures-Algorithms` | 7733 | 66 | 7506 | 27 | 134 | 29.5 | 2026-01-26 |
+| `04-System-Design` | 1229 | 58 | 719 | 143 | 309 | 706.4 | 2026-07-24 |
+| `05-Quantitative-Finance` | 9 | 1 | 7 | 1 | 0 | 12.1 | 2026-01-26 |
+| `06-Interview-Prep` | 3 | 3 | 0 | 0 | 0 | 0.0 | 2026-01-26 |
+| `07-Project-Portfolio` | 1 | 1 | 0 | 0 | 0 | 0.0 | 2026-01-26 |
+| `08-Distinguished-Engineering` | 8 | 2 | 6 | 0 | 0 | 0.0 | 2026-01-26 |
+| `09-Engineering-Leadership` | 2 | 2 | 0 | 0 | 0 | 0.0 | 2026-01-26 |
+| `10-Development-Practices` | 3 | 1 | 0 | 0 | 2 | 0.0 | 2026-01-26 |
+| `11-Security-And-Cryptography` | 2 | 1 | 1 | 0 | 0 | 0.0 | 2026-09-18 |
+| `12-Performance-Engineering` | 3 | 1 | 2 | 0 | 0 | 0.0 | 2026-09-18 |
+| `13-Agentic-AI` | 121 | 121 | 0 | 0 | 0 | 2.2 | 2026-07-24 |
+| `14-Low-Latency-Systems` | 148 | 148 | 0 | 0 | 0 | 1.6 | 2026-09-18 |
+| `15-Technical-Whitepapers` | 44 | 44 | 0 | 0 | 0 | 0.3 | 2026-09-18 |
+| `16-Interview-Command-Center` | 40 | 40 | 0 | 0 | 0 | 0.1 | 2026-09-21 |
+| `CS-Subjects` | 1 | 1 | 0 | 0 | 0 | 0.0 | 2025-12-04 |
+| `tools` | 4 | 1 | 3 | 0 | 0 | 0.0 | 2026-09-21 |
+
+## 2. Duplicate and overlapping sections
+
+### Folders whose names normalize to the same topic
+
+- **design pattern**: `04-System-Design/03-Design-Patterns`, `04-System-Design/Design Patterns`, `04-System-Design/design-patterns-java`, `04-System-Design/design-patterns-python`, `04-System-Design/python-design-patterns`
+- **godhood to zero**: `02-Programming-Languages/C++/CPP_Zero_to_Godhood`, `02-Programming-Languages/Python/Python_Zero_to_Godhood`
+- **linked list**: `02-Programming-Languages/C++/Linked List`, `03-Data-Structures-Algorithms/01-Topics/Linked-Lists`
+- **recursion**: `02-Programming-Languages/C++/Recursion`, `03-Data-Structures-Algorithms/01-Topics/Recursion`
+- **sorting**: `02-Programming-Languages/C++/Sorting`, `03-Data-Structures-Algorithms/01-Topics/Sorting`
+- **advanced concurrency**: `02-Programming-Languages/Java/02-Advanced-Concurrency`, `08-Distinguished-Engineering/01-Advanced-Concurrency`
+- **dynamic programming**: `03-Data-Structures-Algorithms/01-Topics/Dynamic-Programming`, `03-Data-Structures-Algorithms/04-Gold-Standard-Cpp-Patterns/Dynamic-Programming`
+- **graph**: `03-Data-Structures-Algorithms/01-Topics/Graphs`, `03-Data-Structures-Algorithms/04-Gold-Standard-Cpp-Patterns/Graphs`
+- **mathematic**: `03-Data-Structures-Algorithms/01-Topics/Mathematics`, `05-Quantitative-Finance/01-Mathematics`
+- **limiter rate**: `04-System-Design/02-Case-Studies/02-Rate-Limiter`, `04-System-Design/Low Level Design/rate-limiter`
+- **behavioral**: `04-System-Design/03-Design-Patterns/Behavioral`, `06-Interview-Prep/01-Behavioral`
+- **dev quant**: `05-Quantitative-Finance/02-Quant-Dev`, `16-Interview-Command-Center/01-Roles/Quant-Dev`
+
+### Folder pairs sharing the most identical files
+
+| Folder A | Folder B | Identical files |
+| :--- | ---: | ---: |
+| `04-System-Design/Design Patterns` | `04-System-Design/python-design-patterns` | 92 |
+| `04-System-Design/InterviewReady` | `04-System-Design/Low Level Design` | 3 |
+| `01-CS-Foundations/Object-Oriented-Programming` | `04-System-Design/design-questions` | 1 |
+| `02-Programming-Languages/C++` | `04-System-Design/Design Patterns` | 1 |
+| `02-Programming-Languages/Python` | `04-System-Design/Design Patterns` | 1 |
+| `04-System-Design/InterviewReady` | `04-System-Design/design-questions` | 1 |
+| `04-System-Design/Low Level Design` | `04-System-Design/design-questions` | 1 |
+
+### Largest identical-content groups (redundant bytes)
+
+| First copy | Copies | Redundant MB |
+| :--- | ---: | ---: |
+| `04-System-Design/ByteByteGo/ByteByteGo_The_Big_Archive_1652841223 2022-05-18 02_33_51.pdf` | 2 | 39.5 |
+| `02-Programming-Languages/Python/python in depth/Django_Blog/09-Update-User-Profile/django_project/media/profile_pics/large.jpg` | 14 | 35.3 |
+| `02-Programming-Languages/Python/python in depth/Python/MultiProcessing/photo-1493976040374-85c8e12f0c0e.jpg` | 2 | 21.0 |
+| `02-Programming-Languages/Python/python in depth/Python/MultiProcessing/photo-1541698444083-023c97d3f4b6.jpg` | 2 | 17.1 |
+| `02-Programming-Languages/Python/python in depth/Python/MultiProcessing/photo-1532009324734-20a7a5813719.jpg` | 2 | 14.9 |
+| `02-Programming-Languages/Python/python in depth/Python/MultiProcessing/photo-1522364723953-452d3431c267.jpg` | 2 | 12.9 |
+| `02-Programming-Languages/Python/python in depth/Python/MultiProcessing/photo-1513938709626-033611b8cc03.jpg` | 2 | 12.1 |
+| `02-Programming-Languages/Python/python in depth/Python/MultiProcessing/photo-1524429656589-6633a470097c.jpg` | 2 | 11.5 |
+| `02-Programming-Languages/Python/python in depth/Python/MultiProcessing/photo-1550439062-609e1531270e.jpg` | 2 | 10.9 |
+| `02-Programming-Languages/Python/python in depth/Python/MultiProcessing/photo-1530122037265-a5f1f91d3b99.jpg` | 2 | 10.5 |
+| `02-Programming-Languages/Python/python in depth/Python/MultiProcessing/photo-1530224264768-7ff8c1789d79.jpg` | 2 | 10.0 |
+| `02-Programming-Languages/Python/python in depth/Python/MultiProcessing/photo-1504198453319-5ce911bafcde.jpg` | 2 | 8.8 |
+| `02-Programming-Languages/Python/python in depth/Python/MultiProcessing/photo-1516972810927-80185027ca84.jpg` | 2 | 7.9 |
+| `02-Programming-Languages/Python/python in depth/Python/MultiProcessing/photo-1549692520-acc6669e2f0c.jpg` | 2 | 4.0 |
+| `02-Programming-Languages/Python/python in depth/Python/MultiProcessing/photo-1564135624576-c5c88640f235.jpg` | 2 | 3.6 |
+
+### Folder pairs with overlapping note or code names (topical overlap)
+
+| Folder A | Folder B | Shared names | Overlap of smaller |
+| :--- | ---: | ---: | ---: |
+| `04-System-Design/Design Patterns` | `04-System-Design/python-design-patterns` | 57 | 100% |
+| `03-Data-Structures-Algorithms/02-Practice-Platforms` | `04-System-Design/Most Asked Design Questions` | 50 | 100% |
+| `04-System-Design/design-patterns-java` | `04-System-Design/design-questions` | 59 | 44% |
+| `03-Data-Structures-Algorithms/01-Topics` | `03-Data-Structures-Algorithms/02-Practice-Platforms` | 103 | 11% |
+| `02-Programming-Languages/Python` | `03-Data-Structures-Algorithms/01-Topics` | 82 | 9% |
+| `02-Programming-Languages/C++` | `03-Data-Structures-Algorithms/01-Topics` | 16 | 3% |
+| `02-Programming-Languages/C++` | `02-Programming-Languages/Python` | 11 | 2% |
+| `02-Programming-Languages/Python` | `03-Data-Structures-Algorithms/02-Practice-Platforms` | 16 | 1% |
+
+## 3. Broken links
+
+| Folder | Broken |
+| :--- | ---: |
+| `14-Low-Latency-Systems` | 432 |
+| `02-Programming-Languages` | 189 |
+| `16-Interview-Command-Center` | 28 |
+| `15-Technical-Whitepapers` | 11 |
+| `01-CS-Foundations` | 10 |
+| `03-Data-Structures-Algorithms` | 4 |
+| `04-System-Design` | 4 |
+| `CS-Subjects` | 4 |
+| `(root)` | 2 |
+
+195 broken wikilinks point at a path that no longer exists but name a note that exists exactly once elsewhere.
+These come from folder reorganizations that did not rewrite links and can be fixed mechanically.
+
+<details>
+<summary>All 684 broken links</summary>
+
+- `01-CS-Foundations/DBMS/README.md` (md) -> `mcqs/04-transactions-indexes.md`
+- `01-CS-Foundations/DBMS/README.md` (md) -> `mcqs/05-sql-primer.md`
+- `01-CS-Foundations/DBMS/README.md` (md) -> `mcqs/06-sql-joins-aggregation.md`
+- `01-CS-Foundations/DBMS/README.md` (md) -> `mcqs/07-subqueries-functions.md`
+- `01-CS-Foundations/Object-Oriented-Programming/code/README.md` (md) -> `oop/src/test/java/com/scaler/lld/basics/OopBankAccountTest.java`
+- `01-CS-Foundations/Object-Oriented-Programming/notes/01-oop-introduction.md` (md) -> `scaler.com/topics/java/oop-vs-functional-vs-procedural/`
+- `01-CS-Foundations/Operating-Systems/README.md` (md) -> `mcqs/03-thread-synchronisation.md`
+- `01-CS-Foundations/Operating-Systems/README.md` (md) -> `mcqs/04-memory-management.md`
+- `01-CS-Foundations/Operating-Systems/README.md` (md) -> `notes/01-os-primer-mcqs.pdf`
+- `01-CS-Foundations/Operating-Systems/README.md` (md) -> `notes/02-round-robin-threads-mcqs.pdf`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/README.md` (md) -> `Volume_01_Foundation_C98_03/Chapter_01_Foundations_and_Compilation.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/README.md` (md) -> `Volume_01_Foundation_C98_03/Chapter_02_Memory_Types_and_Pointers.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/README.md` (md) -> `Volume_01_Foundation_C98_03/Chapter_03_Control_Flow_and_Preprocessor.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/README.md` (md) -> `Volume_01_Foundation_C98_03/Chapter_04_Advanced_Functions_and_Callbacks.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/README.md` (md) -> `Volume_01_Foundation_C98_03/Chapter_05_OOP_and_Encapsulation.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/README.md` (md) -> `Volume_01_Foundation_C98_03/Chapter_06_Polymorphism_and_Virtualization.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/README.md` (md) -> `Volume_01_Foundation_C98_03/Chapter_07_Standard_Template_Library_Core.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/README.md` (md) -> `Volume_01_Foundation_C98_03/Chapter_08_STL_Under_the_Hood.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/README.md` (md) -> `Volume_01_Foundation_C98_03/Chapter_09_Error_Handling_and_Robustness.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/README.md` (md) -> `Volume_02_Modern_Revolution_C11/Chapter_10_The_Modern_C11_Core.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/README.md` (md) -> `Volume_02_Modern_Revolution_C11/Chapter_11_Move_Semantics_and_Smart_Pointers.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/README.md` (md) -> `Volume_02_Modern_Revolution_C11/Chapter_12_Functional_Programming.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/README.md` (md) -> `Volume_02_Modern_Revolution_C11/Chapter_13_Template_Metaprogramming.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/README.md` (md) -> `Volume_02_Modern_Revolution_C11/Chapter_14_Standard_Library_Expansion.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/README.md` (md) -> `Volume_02_Modern_Revolution_C11/Chapter_15_Concurrency.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/README.md` (md) -> `Volume_03_Refinement_Generics_C14/Chapter_16_C14_Core_Language_Upgrades.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/README.md` (md) -> `Volume_03_Refinement_Generics_C14/Chapter_17_C14_Functions_and_Lambdas.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/README.md` (md) -> `Volume_03_Refinement_Generics_C14/Chapter_18_C14_Templates_and_Metaprogramming.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/README.md` (md) -> `Volume_03_Refinement_Generics_C14/Chapter_19_C14_Standard_Library_Enhancements.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/README.md` (md) -> `Volume_04_Simplification_Modernization_C17/Chapter_20_C17_Core_Language_Features.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/README.md` (md) -> `Volume_04_Simplification_Modernization_C17/Chapter_21_C17_Template_Metaprogramming.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/README.md` (md) -> `Volume_04_Simplification_Modernization_C17/Chapter_22_C17_Vocabulary_Types.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/README.md` (md) -> `Volume_04_Simplification_Modernization_C17/Chapter_23_C17_Filesystem_and_IO.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/README.md` (md) -> `Volume_04_Simplification_Modernization_C17/Chapter_24_C17_Parallel_Algorithms_and_Concurrency.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/README.md` (md) -> `Volume_04_Simplification_Modernization_C17/Chapter_25_C17_Standard_Library_Additions.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/README.md` (md) -> `Volume_05_Gigantic_Leap_C20/Chapter_26_C20_Concepts.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/README.md` (md) -> `Volume_05_Gigantic_Leap_C20/Chapter_27_C20_Modules.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/README.md` (md) -> `Volume_05_Gigantic_Leap_C20/Chapter_28_C20_Coroutines.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/README.md` (md) -> `Volume_05_Gigantic_Leap_C20/Chapter_29_C20_Ranges.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/README.md` (md) -> `Volume_05_Gigantic_Leap_C20/Chapter_30_C20_Core_Language_Features.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/README.md` (md) -> `Volume_05_Gigantic_Leap_C20/Chapter_31_C20_Standard_Library_Additions.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/README.md` (md) -> `Volume_06_Future_C23_26/Chapter_32_C23_Core_Language.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/README.md` (md) -> `Volume_06_Future_C23_26/Chapter_33_C23_Std_Print.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/README.md` (md) -> `Volume_06_Future_C23_26/Chapter_34_C23_Monadic_Operations_And_Expected.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/README.md` (md) -> `Volume_06_Future_C23_26/Chapter_35_C23_Containers_And_Views.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/README.md` (md) -> `Volume_06_Future_C23_26/Chapter_36_C23_Coroutines_And_Stacktrace.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/README.md` (md) -> `Volume_06_Future_C23_26/Chapter_37_C23_Library_Utilities.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/README.md` (md) -> `Volume_06_Future_C23_26/Chapter_38_The_Future_C26_Preview.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/README.md` (md) -> `Volume_07_Advanced_Systems/Chapter_39_Advanced_Template_Metaprogramming.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/README.md` (md) -> `Volume_07_Advanced_Systems/Chapter_40_Compile_Time_Programming.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/README.md` (md) -> `Volume_07_Advanced_Systems/Chapter_41_The_CPP_Memory_Model.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/README.md` (md) -> `Volume_07_Advanced_Systems/Chapter_42_Lock_Free_Programming.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/README.md` (md) -> `Volume_07_Advanced_Systems/Chapter_43_Advanced_Concurrency_Patterns.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/README.md` (md) -> `Volume_07_Advanced_Systems/Chapter_44_Custom_Memory_Allocators.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/README.md` (md) -> `Volume_07_Advanced_Systems/Chapter_45_High_Performance_Optimization.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/README.md` (md) -> `Volume_07_Advanced_Systems/Chapter_46_WRITING_A_C_COMPILER_BASICS.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/README.md` (md) -> `Volume_07_Advanced_Systems/Chapter_47_WRITING_A_GARBAGE_COLLECTOR.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/README.md` (md) -> `Volume_07_Advanced_Systems/Chapter_48_THE_STANDARD_LIBRARY_FROM_SCRATCH.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/README.md` (md) -> `Volume_08_Specialized_Mastery/Chapter_49_DISTRIBUTED_C.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/README.md` (md) -> `Volume_08_Specialized_Mastery/Chapter_50_NETWORKING_FROM_SCRATCH.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/README.md` (md) -> `Volume_08_Specialized_Mastery/Chapter_51_C_IN_THE_CLOUD.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/README.md` (md) -> `Volume_08_Specialized_Mastery/Chapter_52_CROSS-PLATFORM_DEVELOPMENT.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/README.md` (md) -> `Volume_08_Specialized_Mastery/Chapter_53_GUI_DEVELOPMENT_WITH_C.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/README.md` (md) -> `Volume_08_Specialized_Mastery/Chapter_54_SCIENTIFIC_COMPUTING__GPU.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/README.md` (md) -> `Volume_08_Specialized_Mastery/Chapter_55_INTEROPERABILITY.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/README.md` (md) -> `Volume_08_Specialized_Mastery/Chapter_56_SECURITY_ENGINEERING.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/README.md` (md) -> `Volume_08_Specialized_Mastery/Chapter_57_SPECIALIZED_DOMAINS.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/README.md` (md) -> `Volume_08_Specialized_Mastery/Chapter_58_ABA_PROBLEM__MEMORY_RECLAMATION.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/README.md` (md) -> `Volume_08_Specialized_Mastery/Chapter_59_TEMPLATE_METAPROGRAMMING_PATTERNS.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/README.md` (md) -> `Volume_08_Specialized_Mastery/Chapter_60_HIGH-PERFORMANCE_DATA_STRUCTURES.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/README.md` (md) -> `Volume_08_Specialized_Mastery/Chapter_61_REAL-TIME_AUDIO__SIGNAL_PROCESSING.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/README.md` (md) -> `Volume_08_Specialized_Mastery/Chapter_62_ROBOTICS__ROS2_DEVELOPMENT.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/README.md` (md) -> `Volume_08_Specialized_Mastery/Chapter_63_MACHINE_LEARNING_INFRASTRUCTURE.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/README.md` (md) -> `Volume_08_Specialized_Mastery/Chapter_64_DATABASE_INTERNALS_LSM_TREES.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/README.md` (md) -> `Volume_08_Specialized_Mastery/Chapter_65_THE_ULTIMATE_ALGORITHM_REFERENCE.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/README.md` (md) -> `Volume_08_Specialized_Mastery/Chapter_66_CAPSTONE_PROJECT_-_HIGH-PERFORMANCE_ORDER_BOOK.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/SUMMARY.md` (md) -> `Volume_01_Foundation_CPP98_03/01_foundations_and_compilation.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/SUMMARY.md` (md) -> `Volume_01_Foundation_CPP98_03/02_memory_types_and_pointers.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/SUMMARY.md` (md) -> `Volume_01_Foundation_CPP98_03/03_control_flow_and_preprocessor.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/SUMMARY.md` (md) -> `Volume_01_Foundation_CPP98_03/04_advanced_functions_and_callbacks.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/SUMMARY.md` (md) -> `Volume_01_Foundation_CPP98_03/05_floating_point_and_bit_manipulation.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/SUMMARY.md` (md) -> `Volume_01_Foundation_CPP98_03/06_oop_and_encapsulation.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/SUMMARY.md` (md) -> `Volume_01_Foundation_CPP98_03/07_polymorphism_and_virtualization.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/SUMMARY.md` (md) -> `Volume_01_Foundation_CPP98_03/08_standard_template_library_core.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/SUMMARY.md` (md) -> `Volume_01_Foundation_CPP98_03/09_stl_under_the_hood.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/SUMMARY.md` (md) -> `Volume_01_Foundation_CPP98_03/10_error_handling_and_robustness.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/SUMMARY.md` (md) -> `Volume_01_Foundation_CPP98_03/11_advanced_streams_and_file_io.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/SUMMARY.md` (md) -> `Volume_02_Modern_Revolution_CPP11/12_the_modern_c11_core.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/SUMMARY.md` (md) -> `Volume_02_Modern_Revolution_CPP11/13_move_semantics_and_smart_pointers.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/SUMMARY.md` (md) -> `Volume_02_Modern_Revolution_CPP11/14_functional_programming.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/SUMMARY.md` (md) -> `Volume_02_Modern_Revolution_CPP11/15_template_metaprogramming.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/SUMMARY.md` (md) -> `Volume_02_Modern_Revolution_CPP11/16_standard_library_expansion.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/SUMMARY.md` (md) -> `Volume_02_Modern_Revolution_CPP11/17_concurrency.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/SUMMARY.md` (md) -> `Volume_02_Modern_Revolution_CPP11/18_concurrency_with_openmp.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/SUMMARY.md` (md) -> `Volume_03_Refinement_CPP14/19_c14_core_language_upgrades.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/SUMMARY.md` (md) -> `Volume_03_Refinement_CPP14/20_c14_functions_and_lambdas.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/SUMMARY.md` (md) -> `Volume_03_Refinement_CPP14/21_c14_templates_and_metaprogramming.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/SUMMARY.md` (md) -> `Volume_03_Refinement_CPP14/22_c14_standard_library_enhancements.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/SUMMARY.md` (md) -> `Volume_04_Modernization_CPP17/23_c17_core_language_features.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/SUMMARY.md` (md) -> `Volume_04_Modernization_CPP17/24_c17_template_metaprogramming.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/SUMMARY.md` (md) -> `Volume_04_Modernization_CPP17/25_c17_vocabulary_types.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/SUMMARY.md` (md) -> `Volume_04_Modernization_CPP17/26_c17_filesystem_and_io.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/SUMMARY.md` (md) -> `Volume_04_Modernization_CPP17/27_c17_parallel_algorithms_and_concurrency.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/SUMMARY.md` (md) -> `Volume_04_Modernization_CPP17/28_c17_standard_library_additions.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/SUMMARY.md` (md) -> `Volume_05_Gigantic_Leap_CPP20/29_c20_concepts.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/SUMMARY.md` (md) -> `Volume_05_Gigantic_Leap_CPP20/30_c20_modules.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/SUMMARY.md` (md) -> `Volume_05_Gigantic_Leap_CPP20/31_c20_coroutines.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/SUMMARY.md` (md) -> `Volume_05_Gigantic_Leap_CPP20/32_c20_ranges.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/SUMMARY.md` (md) -> `Volume_05_Gigantic_Leap_CPP20/33_c20_core_language_features.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/SUMMARY.md` (md) -> `Volume_05_Gigantic_Leap_CPP20/34_c20_standard_library_additions.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/SUMMARY.md` (md) -> `Volume_06_Latest_Evolution_CPP23/35_c23_core_language.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/SUMMARY.md` (md) -> `Volume_06_Latest_Evolution_CPP23/36_c23_std_print.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/SUMMARY.md` (md) -> `Volume_06_Latest_Evolution_CPP23/37_c23_monadic_operations_and_expected.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/SUMMARY.md` (md) -> `Volume_06_Latest_Evolution_CPP23/38_c23_containers_and_views.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/SUMMARY.md` (md) -> `Volume_06_Latest_Evolution_CPP23/39_c23_coroutines_and_stacktrace.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/SUMMARY.md` (md) -> `Volume_06_Latest_Evolution_CPP23/40_c23_library_utilities.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/SUMMARY.md` (md) -> `Volume_07_Next_Frontier_CPP26/41_the_future_c26_preview.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/SUMMARY.md` (md) -> `Volume_08_Advanced_Systems/42_advanced_template_metaprogramming.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/SUMMARY.md` (md) -> `Volume_08_Advanced_Systems/43_compile_time_programming.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/SUMMARY.md` (md) -> `Volume_08_Advanced_Systems/44_the_cpp_memory_model.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/SUMMARY.md` (md) -> `Volume_08_Advanced_Systems/45_lock_free_programming.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/SUMMARY.md` (md) -> `Volume_08_Advanced_Systems/46_advanced_concurrency_patterns.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/SUMMARY.md` (md) -> `Volume_08_Advanced_Systems/47_custom_memory_allocators.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/SUMMARY.md` (md) -> `Volume_08_Advanced_Systems/48_high_performance_optimization.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/SUMMARY.md` (md) -> `Volume_08_Advanced_Systems/49_writing_a_c_compiler_basics.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/SUMMARY.md` (md) -> `Volume_08_Advanced_Systems/50_writing_a_garbage_collector.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/SUMMARY.md` (md) -> `Volume_08_Advanced_Systems/51_the_standard_library_from_scratch.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/SUMMARY.md` (md) -> `Volume_08_Advanced_Systems/52_design_patterns.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/SUMMARY.md` (md) -> `Volume_08_Advanced_Systems/53_odr_adl_and_undefined_behavior.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/SUMMARY.md` (md) -> `Volume_08_Advanced_Systems/54_linkage_attributes_and_c_incompatibilities.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/SUMMARY.md` (md) -> `Volume_08_Advanced_Systems/55_build_systems_and_tooling.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/SUMMARY.md` (md) -> `Volume_09_Specialized_Mastery/56_distributed_c.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/SUMMARY.md` (md) -> `Volume_09_Specialized_Mastery/57_networking_from_scratch.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/SUMMARY.md` (md) -> `Volume_09_Specialized_Mastery/58_c_in_the_cloud.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/SUMMARY.md` (md) -> `Volume_09_Specialized_Mastery/59_cross_platform_development.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/SUMMARY.md` (md) -> `Volume_09_Specialized_Mastery/60_gui_development_with_c.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/SUMMARY.md` (md) -> `Volume_09_Specialized_Mastery/61_scientific_computing_gpu.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/SUMMARY.md` (md) -> `Volume_09_Specialized_Mastery/62_interoperability.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/SUMMARY.md` (md) -> `Volume_09_Specialized_Mastery/63_security_engineering.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/SUMMARY.md` (md) -> `Volume_09_Specialized_Mastery/64_specialized_domains.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/SUMMARY.md` (md) -> `Volume_09_Specialized_Mastery/65_aba_problem_memory_reclamation.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/SUMMARY.md` (md) -> `Volume_09_Specialized_Mastery/66_template_metaprogramming_patterns.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/SUMMARY.md` (md) -> `Volume_09_Specialized_Mastery/67_high_performance_data_structures.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/SUMMARY.md` (md) -> `Volume_09_Specialized_Mastery/68_real_time_audio_signal_processing.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/SUMMARY.md` (md) -> `Volume_09_Specialized_Mastery/69_robotics_ros2_development.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/SUMMARY.md` (md) -> `Volume_09_Specialized_Mastery/70_machine_learning_infrastructure.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/SUMMARY.md` (md) -> `Volume_09_Specialized_Mastery/71_database_internals_lsm_trees.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/SUMMARY.md` (md) -> `Volume_09_Specialized_Mastery/72_the_ultimate_algorithm_reference.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/SUMMARY.md` (md) -> `Volume_09_Specialized_Mastery/73_capstone_project_high_performance_order_book.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_2_MEMORY_TYPES_AND_POINTERS/Chapter_02_Memory_Types_and_Pointers.md` (md) -> `n`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_7_STANDARD_TEMPLATE_LIBRARY_CORE/_archive/Chapter_07_Standard_Template_Library_Core.md` (md) -> `n`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_7_STANDARD_TEMPLATE_LIBRARY_CORE/_archive/Chapter_7_CHAPTER_7_STANDARD_TEMPLATE_LIBRARY_CORE.md` (md) -> `n`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_7_STANDARD_TEMPLATE_LIBRARY_CORE/_archive/Chapter_7_STANDARD_TEMPLATE_LIBRARY_CORE.md` (md) -> `n`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_8_CHAPTER_8_STL_UNDER_THE_HOOD/_archive/08_standard_template_library_core.md` (wiki) -> `noreturn`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_02_The_Revolution_C11/Chapter_13_Functional_Programming/_archive/14_functional_programming.md` (wiki) -> `noreturn`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_02_The_Revolution_C11/Chapter_13_Functional_Programming/_archive/Chapter_12_CHAPTER_12_FUNCTIONAL_PROGRAMMING.md` (wiki) -> `noreturn`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_02_The_Revolution_C11/Chapter_13_Functional_Programming/_archive/Chapter_12_FUNCTIONAL_PROGRAMMING_.md` (wiki) -> `noreturn`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_02_The_Revolution_C11/Chapter_13_Functional_Programming/_archive/Chapter_12_Functional_Programming.md` (wiki) -> `noreturn`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_02_The_Revolution_C11/Chapter_16_Concurrency/_archive/18_concurrency_with_openmp.md` (wiki) -> `attributes`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_02_The_Revolution_C11/Chapter_16_Concurrency/_archive/Chapter_15_CHAPTER_15_CONCURRENCY.md` (wiki) -> `attributes`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_04_The_Modernizer_CPP17/Chapter_25_Vocabulary_Types/_archive/Chapter_22_C17_VOCABULARY_TYPES_.md` (md) -> `auto&&...args`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_04_The_Modernizer_CPP17/Chapter_25_Vocabulary_Types/_archive/Chapter_22_C17_Vocabulary_Types.md` (md) -> `auto&&...args`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_04_The_Modernizer_CPP17/Chapter_25_Vocabulary_Types/_archive/Chapter_22_CHAPTER_22_C17_VOCABULARY_TYPES.md` (md) -> `auto&&...args`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_39_Three_Way_Comparison_The_Spaceship_Operator/_archive/33_c20_core_language_features.md` (wiki) -> `likely`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_39_Three_Way_Comparison_The_Spaceship_Operator/_archive/33_c20_core_language_features.md` (wiki) -> `no_unique_address`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_39_Three_Way_Comparison_The_Spaceship_Operator/_archive/33_c20_core_language_features.md` (wiki) -> `nodiscard`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_39_Three_Way_Comparison_The_Spaceship_Operator/_archive/33_c20_core_language_features.md` (wiki) -> `unlikely`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_39_Three_Way_Comparison_The_Spaceship_Operator/_archive/Chapter_30_CHAPTER_30_C20_CORE_LANGUAGE_FEATURES.md` (wiki) -> `likely`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_39_Three_Way_Comparison_The_Spaceship_Operator/_archive/Chapter_30_CHAPTER_30_C20_CORE_LANGUAGE_FEATURES.md` (wiki) -> `no_unique_address`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_39_Three_Way_Comparison_The_Spaceship_Operator/_archive/Chapter_30_CHAPTER_30_C20_CORE_LANGUAGE_FEATURES.md` (wiki) -> `nodiscard`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_39_Three_Way_Comparison_The_Spaceship_Operator/_archive/Chapter_30_CHAPTER_30_C20_CORE_LANGUAGE_FEATURES.md` (wiki) -> `unlikely`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_44_Attributes_for_Performance_and_Safety/Chapter_44_Attributes_for_Performance_and_Safety.md` (wiki) -> `likely`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_44_Attributes_for_Performance_and_Safety/Chapter_44_Attributes_for_Performance_and_Safety.md` (wiki) -> `likely`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_44_Attributes_for_Performance_and_Safety/Chapter_44_Attributes_for_Performance_and_Safety.md` (wiki) -> `no_unique_address`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_44_Attributes_for_Performance_and_Safety/Chapter_44_Attributes_for_Performance_and_Safety.md` (wiki) -> `no_unique_address`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_44_Attributes_for_Performance_and_Safety/Chapter_44_Attributes_for_Performance_and_Safety.md` (wiki) -> `no_unique_address`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_44_Attributes_for_Performance_and_Safety/Chapter_44_Attributes_for_Performance_and_Safety.md` (wiki) -> `no_unique_address`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_44_Attributes_for_Performance_and_Safety/Chapter_44_Attributes_for_Performance_and_Safety.md` (wiki) -> `nodiscard`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_44_Attributes_for_Performance_and_Safety/Chapter_44_Attributes_for_Performance_and_Safety.md` (wiki) -> `nodiscard`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_44_Attributes_for_Performance_and_Safety/Chapter_44_Attributes_for_Performance_and_Safety.md` (wiki) -> `unlikely`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_44_Attributes_for_Performance_and_Safety/Chapter_44_Attributes_for_Performance_and_Safety.md` (wiki) -> `unlikely`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_06_The_Refinement_C23/Chapter_55_Deducing_this/_archive/35_c23_core_language.md` (wiki) -> `assume(expr)`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_06_The_Refinement_C23/Chapter_55_Deducing_this/_archive/Chapter_32_CHAPTER_32_C23_CORE_LANGUAGE.md` (wiki) -> `assume(expr)`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/_archive/_consolidated_into_Volume_08/42_advanced_template_metaprogramming.md` (wiki) -> `assume`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/_archive/_consolidated_into_Volume_08/42_advanced_template_metaprogramming.md` (wiki) -> `noreturn`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/_archive/_consolidated_into_Volume_08/42_advanced_template_metaprogramming.md` (wiki) -> `stdcall`
+- `02-Programming-Languages/C++/README.md` (md) -> `./01-Modern-Cpp-for-Quants/`
+- `02-Programming-Languages/C++/README.md` (md) -> `./Complete-CPP-Zero-to-Godhood.md`
+- `02-Programming-Languages/C++/README.md` (md) -> `./Complete-CPP-Zero-to-Godhood.md`
+- `02-Programming-Languages/C++/README.md` (md) -> `./Complete-CPP-Zero-to-Godhood.pdf`
+- `02-Programming-Languages/Python/LeetCode-Quant-Complete-Python-Full.md` (wiki) -> `"cd","f","kl"`
+- `02-Programming-Languages/Python/LeetCode-Quant-Complete-Python-Full.md` (wiki) -> `0,0,1,0,0`
+- `02-Programming-Languages/Python/LeetCode-Quant-Complete-Python-Full.md` (wiki) -> `1, 0`
+- `02-Programming-Languages/Python/LeetCode-Quant-Complete-Python-Full.md` (wiki) -> `1, 1, 2, 2, 1, 1`
+- `02-Programming-Languages/Python/LeetCode-Quant-Complete-Python-Full.md` (wiki) -> `1, 2`
+- `02-Programming-Languages/Python/LeetCode-Quant-Complete-Python-Full.md` (wiki) -> `1,0`
+- `02-Programming-Languages/Python/LeetCode-Quant-Complete-Python-Full.md` (wiki) -> `1,2`
+- `02-Programming-Languages/Python/LeetCode-Quant-Complete-Python-Full.md` (wiki) -> `12, 33, 4, 56, 22, 2, 34, 33, 22, 12, 34, 56`
+- `02-Programming-Languages/Python/python in depth/CONTRIBUTING.md` (md) -> `LICENSE.md`
+- `03-Data-Structures-Algorithms/02-Practice-Platforms/LeetCode/0001-1000.md` (md) -> `./C++/chalkboard-xor-game.cpp`
+- `03-Data-Structures-Algorithms/02-Practice-Platforms/LeetCode/0001-1000.md` (md) -> `./C++/reverse-pairscpp`
+- `03-Data-Structures-Algorithms/02-Practice-Platforms/LeetCode/0001-1000.md` (md) -> `./Python/decode-ways.cpp`
+- `03-Data-Structures-Algorithms/02-Practice-Platforms/LeetCode/0001-1000.md` (md) -> `./Python/new-21-game.py`
+- `04-System-Design/notes/01-design-a-pen.md` (md) -> `../src/main/java/com/scaler/lld/pen/abstractclasses/`
+- `04-System-Design/notes/01-design-a-pen.md` (md) -> `../src/main/java/com/scaler/lld/pen/multipleclasses/`
+- `04-System-Design/notes/01-design-a-pen.md` (md) -> `../src/main/java/com/scaler/lld/pen/withinterface/`
+- `04-System-Design/notes/01-design-a-pen.md` (md) -> `../src/main/java/com/scaler/lld/pen/withstrategy/Pen.java`
+- `14-Low-Latency-Systems/01 - Market & Microstructure Fundamentals/Continuous Trading vs Discrete Auctions.md` (wiki) -> `Sources/NASDAQ TotalView-ITCH 5.0 Specification`
+- `14-Low-Latency-Systems/01 - Market & Microstructure Fundamentals/Continuous Trading vs Discrete Auctions.md` (wiki) -> `Sources/The High-Frequency Trading Arms Race - Frequent Batch Auctions by Eric Budish et al`
+- `14-Low-Latency-Systems/01 - Market & Microstructure Fundamentals/European Market Structure and MiFID II.md` (wiki) -> `Sources/ESMA MiFID II - Regulatory Technical Standard 11 (RTS 11)`
+- `14-Low-Latency-Systems/01 - Market & Microstructure Fundamentals/European Market Structure and MiFID II.md` (wiki) -> `Sources/ESMA MiFID II - Regulatory Technical Standard 25 (RTS 25)`
+- `14-Low-Latency-Systems/01 - Market & Microstructure Fundamentals/Maker-Taker vs Inverted Fee Models.md` (wiki) -> `Sources/Empirical Market Microstructure by Joel Hasbrouck`
+- `14-Low-Latency-Systems/01 - Market & Microstructure Fundamentals/Maker-Taker vs Inverted Fee Models.md` (wiki) -> `Sources/SEC Regulation NMS Final Rules Release 34-51808`
+- `14-Low-Latency-Systems/01 - Market & Microstructure Fundamentals/Market Fragmentation and Reg NMS.md` (wiki) -> `Sources/Empirical Market Microstructure by Joel Hasbrouck`
+- `14-Low-Latency-Systems/01 - Market & Microstructure Fundamentals/Market Fragmentation and Reg NMS.md` (wiki) -> `Sources/SEC Regulation NMS Final Rules Release 34-51808`
+- `14-Low-Latency-Systems/01 - Market & Microstructure Fundamentals/Order Book Dynamics and Queue Position.md` (wiki) -> `Sources/Empirical Market Microstructure by Joel Hasbrouck`
+- `14-Low-Latency-Systems/01 - Market & Microstructure Fundamentals/Order Book Dynamics and Queue Position.md` (wiki) -> `Sources/Optimal Queue Position in High-Frequency Trading by Moallemi and Saglam`
+- `14-Low-Latency-Systems/01 - Market & Microstructure Fundamentals/Order Types and State Transitions.md` (wiki) -> `Sources/CME iLink 3 Binary Order Entry Specification`
+- `14-Low-Latency-Systems/01 - Market & Microstructure Fundamentals/Order Types and State Transitions.md` (wiki) -> `Sources/NASDAQ TotalView-ITCH 5.0 Specification`
+- `14-Low-Latency-Systems/01 - Market & Microstructure Fundamentals/Price Discovery and Microstructure Noise.md` (wiki) -> `Sources/A Simple Implicit Measure of the Effective Bid-Ask Spread in an Efficient Market by Richard Roll (1984)`
+- `14-Low-Latency-Systems/01 - Market & Microstructure Fundamentals/Price Discovery and Microstructure Noise.md` (wiki) -> `Sources/Continuous Auctions and Informed Trader by Albert S. Kyle (1985)`
+- `14-Low-Latency-Systems/01 - Market & Microstructure Fundamentals/Price Discovery and Microstructure Noise.md` (wiki) -> `Sources/Empirical Market Microstructure by Joel Hasbrouck`
+- `14-Low-Latency-Systems/01 - Market & Microstructure Fundamentals/War Story - The 2010 Flash Crash.md` (wiki) -> `Sources/CFTC-SEC Joint Report on the Findings of the May 6, 2010 Flash Crash`
+- `14-Low-Latency-Systems/02 - Exchange Architecture/Drop Copy and Clearing Feeds.md` (wiki) -> `10 - Protocols & Codecs/NASDAQ OUCH Protocol Architecture`
+- `14-Low-Latency-Systems/02 - Exchange Architecture/Drop Copy and Clearing Feeds.md` (wiki) -> `Sources/CME Drop Copy 2.0 Specification`
+- `14-Low-Latency-Systems/02 - Exchange Architecture/Drop Copy and Clearing Feeds.md` (wiki) -> `Sources/FIX Protocol Standards - FIX 4.4 Specification`
+- `14-Low-Latency-Systems/02 - Exchange Architecture/Exchange Gateway Architecture.md` (wiki) -> `10 - Protocols & Codecs/NASDAQ OUCH Protocol Architecture`
+- `14-Low-Latency-Systems/02 - Exchange Architecture/Exchange Gateway Architecture.md` (wiki) -> `Sources/CME iLink 3 Binary Order Entry Specification`
+- `14-Low-Latency-Systems/02 - Exchange Architecture/Exchange Gateway Architecture.md` (wiki) -> `Sources/NASDAQ OUCH 4.2 Specification`
+- `14-Low-Latency-Systems/02 - Exchange Architecture/Fairness and Determinism Metrics.md` (wiki) -> `07 - Time & Measurement/Latency Numbers Every Trading Engineer Knows`
+- `14-Low-Latency-Systems/02 - Exchange Architecture/Fairness and Determinism Metrics.md` (wiki) -> `Sources/CME Group Colocation and Equalized Connectivity Specification`
+- `14-Low-Latency-Systems/02 - Exchange Architecture/Market Data Publisher Architecture.md` (wiki) -> `10 - Protocols & Codecs/CME MDP 3.0 SBE Protocol Architecture`
+- `14-Low-Latency-Systems/02 - Exchange Architecture/Market Data Publisher Architecture.md` (wiki) -> `10 - Protocols & Codecs/NASDAQ ITCH 5.0 Protocol Architecture`
+- `14-Low-Latency-Systems/02 - Exchange Architecture/Market Data Publisher Architecture.md` (wiki) -> `Sources/CME MDP 3.0 Market Data Specification`
+- `14-Low-Latency-Systems/02 - Exchange Architecture/Market Data Publisher Architecture.md` (wiki) -> `Sources/NASDAQ TotalView-ITCH 5.0 Specification`
+- `14-Low-Latency-Systems/02 - Exchange Architecture/Pre-Trade Risk Checks at Wire Speed.md` (wiki) -> `12 - FPGAs & Hardware Acceleration/FPGA Pre-Trade Risk Filtering`
+- `14-Low-Latency-Systems/02 - Exchange Architecture/Pre-Trade Risk Checks at Wire Speed.md` (wiki) -> `Sources/CFTC Rule 1.73 - Pre-Trade Risk Controls for Direct Access`
+- `14-Low-Latency-Systems/02 - Exchange Architecture/Pre-Trade Risk Checks at Wire Speed.md` (wiki) -> `Sources/SEC Rule 15c3-5 - Risk Management Controls for Broker-Dealers with Market Access`
+- `14-Low-Latency-Systems/02 - Exchange Architecture/Replicated State Machine Pattern in Exchanges.md` (wiki) -> `Sources/Aeron Open-Source Repository and Wiki by Real Logic`
+- `14-Low-Latency-Systems/02 - Exchange Architecture/Replicated State Machine Pattern in Exchanges.md` (wiki) -> `Sources/The LMAX Architecture by Martin Fowler`
+- `14-Low-Latency-Systems/02 - Exchange Architecture/The Sequenced-Stream Architecture.md` (wiki) -> `Notes/Aeron Messaging Transport`
+- `14-Low-Latency-Systems/02 - Exchange Architecture/The Sequenced-Stream Architecture.md` (wiki) -> `Notes/Deterministic Matching Engine State Recovery`
+- `14-Low-Latency-Systems/02 - Exchange Architecture/The Sequenced-Stream Architecture.md` (wiki) -> `Notes/Exchange Gateway Architecture`
+- `14-Low-Latency-Systems/02 - Exchange Architecture/The Sequenced-Stream Architecture.md` (wiki) -> `Notes/Replicated State Machine Pattern in Exchanges`
+- `14-Low-Latency-Systems/02 - Exchange Architecture/The Sequenced-Stream Architecture.md` (wiki) -> `Notes/The LMAX Disruptor Architecture`
+- `14-Low-Latency-Systems/02 - Exchange Architecture/The Sequenced-Stream Architecture.md` (wiki) -> `Sources/CME iLink 3 Binary Order Entry Specification`
+- `14-Low-Latency-Systems/02 - Exchange Architecture/The Sequenced-Stream Architecture.md` (wiki) -> `Sources/The LMAX Architecture by Martin Fowler`
+- `14-Low-Latency-Systems/02 - Exchange Architecture/War Story - The 2012 Knight Capital Disaster.md` (wiki) -> `Sources/SEC Administrative Proceeding File No. 3-15570: In the Matter of Knight Capital Americas LLC`
+- `14-Low-Latency-Systems/03 - Matching Engine Internals/Deterministic Matching Engine State Recovery.md` (wiki) -> `Notes/Deterministic Replay and Packet Injection Testing`
+- `14-Low-Latency-Systems/03 - Matching Engine Internals/Deterministic Matching Engine State Recovery.md` (wiki) -> `Notes/Matching Algorithms`
+- `14-Low-Latency-Systems/03 - Matching Engine Internals/Deterministic Matching Engine State Recovery.md` (wiki) -> `Notes/Order Book Data Structures`
+- `14-Low-Latency-Systems/03 - Matching Engine Internals/Deterministic Matching Engine State Recovery.md` (wiki) -> `Notes/Replicated State Machine Pattern in Exchanges`
+- `14-Low-Latency-Systems/03 - Matching Engine Internals/Deterministic Matching Engine State Recovery.md` (wiki) -> `Notes/The Sequenced-Stream Architecture`
+- `14-Low-Latency-Systems/03 - Matching Engine Internals/Deterministic Matching Engine State Recovery.md` (wiki) -> `Sources/Aeron Cluster and Replicated State`
+- `14-Low-Latency-Systems/03 - Matching Engine Internals/Deterministic Matching Engine State Recovery.md` (wiki) -> `Sources/The LMAX Architecture by Martin Fowler`
+- `14-Low-Latency-Systems/03 - Matching Engine Internals/Lab - 03 High-Performance Intrusive LOB.md` (wiki) -> `Notes/Allocation-Free Steady State Patterns`
+- `14-Low-Latency-Systems/03 - Matching Engine Internals/Lab - 03 High-Performance Intrusive LOB.md` (wiki) -> `Notes/Deterministic Matching Engine State Recovery`
+- `14-Low-Latency-Systems/03 - Matching Engine Internals/Lab - 03 High-Performance Intrusive LOB.md` (wiki) -> `Notes/Matching Algorithms`
+- `14-Low-Latency-Systems/03 - Matching Engine Internals/Lab - 03 High-Performance Intrusive LOB.md` (wiki) -> `Notes/Order Book Data Structures`
+- `14-Low-Latency-Systems/03 - Matching Engine Internals/Lab - 03 High-Performance Intrusive LOB.md` (wiki) -> `Notes/Self-Match Prevention Mechanisms`
+- `14-Low-Latency-Systems/03 - Matching Engine Internals/Matching Algorithms.md` (wiki) -> `Notes/Allocation-Free Steady State Patterns`
+- `14-Low-Latency-Systems/03 - Matching Engine Internals/Matching Algorithms.md` (wiki) -> `Notes/Deterministic Matching Engine State Recovery`
+- `14-Low-Latency-Systems/03 - Matching Engine Internals/Matching Algorithms.md` (wiki) -> `Notes/Order Book Data Structures`
+- `14-Low-Latency-Systems/03 - Matching Engine Internals/Matching Algorithms.md` (wiki) -> `Notes/Self-Match Prevention Mechanisms`
+- `14-Low-Latency-Systems/03 - Matching Engine Internals/Matching Algorithms.md` (wiki) -> `Sources/CME Group Rulebook - Chapter 5 Matching Algorithms`
+- `14-Low-Latency-Systems/03 - Matching Engine Internals/Order Book Data Structures.md` (wiki) -> `Notes/Allocation-Free Steady State Patterns`
+- `14-Low-Latency-Systems/03 - Matching Engine Internals/Order Book Data Structures.md` (wiki) -> `Notes/Cache-Conscious Data Layout`
+- `14-Low-Latency-Systems/03 - Matching Engine Internals/Order Book Data Structures.md` (wiki) -> `Notes/Deterministic Matching Engine State Recovery`
+- `14-Low-Latency-Systems/03 - Matching Engine Internals/Order Book Data Structures.md` (wiki) -> `Notes/Matching Algorithms`
+- `14-Low-Latency-Systems/03 - Matching Engine Internals/Order Book Data Structures.md` (wiki) -> `Notes/Self-Match Prevention Mechanisms`
+- `14-Low-Latency-Systems/03 - Matching Engine Internals/Order Book Data Structures.md` (wiki) -> `Sources/Building a Matching Engine in C++`
+- `14-Low-Latency-Systems/03 - Matching Engine Internals/Order Book Data Structures.md` (wiki) -> `Sources/CppCon 2017 - When a Microsecond is an Eternity by Carl Cook`
+- `14-Low-Latency-Systems/03 - Matching Engine Internals/Self-Match Prevention Mechanisms.md` (wiki) -> `Notes/Deterministic Matching Engine State Recovery`
+- `14-Low-Latency-Systems/03 - Matching Engine Internals/Self-Match Prevention Mechanisms.md` (wiki) -> `Notes/Matching Algorithms`
+- `14-Low-Latency-Systems/03 - Matching Engine Internals/Self-Match Prevention Mechanisms.md` (wiki) -> `Notes/Order Book Data Structures`
+- `14-Low-Latency-Systems/03 - Matching Engine Internals/Self-Match Prevention Mechanisms.md` (wiki) -> `Notes/Order Types and State Transitions`
+- `14-Low-Latency-Systems/03 - Matching Engine Internals/Self-Match Prevention Mechanisms.md` (wiki) -> `Sources/CME Group Rulebook - Chapter 5 Matching Algorithms`
+- `14-Low-Latency-Systems/03 - Matching Engine Internals/Self-Match Prevention Mechanisms.md` (wiki) -> `Sources/NASDAQ TotalView-ITCH 5.0 Specification`
+- `14-Low-Latency-Systems/03 - Matching Engine Internals/War Story - The 2013 NASDAQ SIP Outage.md` (wiki) -> `03 - Matching Engine Internals/Matching Engine Architecture Overview`
+- `14-Low-Latency-Systems/03 - Matching Engine Internals/War Story - The 2013 NASDAQ SIP Outage.md` (wiki) -> `09 - Messaging & IPC/Lock-Free Ring Buffers and Disruptor Pattern`
+- `14-Low-Latency-Systems/03 - Matching Engine Internals/War Story - The 2013 NASDAQ SIP Outage.md` (wiki) -> `Sources/SEC Report on NASDAQ SIP Outage of August 22, 2013`
+- `14-Low-Latency-Systems/04 - Hardware Mechanical Sympathy/Branch Predictors and Pipeline Stalls.md` (wiki) -> `Notes/Branchless Programming Idioms`
+- `14-Low-Latency-Systems/04 - Hardware Mechanical Sympathy/Branch Predictors and Pipeline Stalls.md` (wiki) -> `Notes/CPU Cache Hierarchy and Line Alignment`
+- `14-Low-Latency-Systems/04 - Hardware Mechanical Sympathy/Branch Predictors and Pipeline Stalls.md` (wiki) -> `Notes/Latency Numbers Every Trading Engineer Knows`
+- `14-Low-Latency-Systems/04 - Hardware Mechanical Sympathy/Branch Predictors and Pipeline Stalls.md` (wiki) -> `Notes/Static vs Virtual Dispatch in Hot Paths`
+- `14-Low-Latency-Systems/04 - Hardware Mechanical Sympathy/Branch Predictors and Pipeline Stalls.md` (wiki) -> `Sources/Computer Architecture - A Quantitative Approach by Hennessy and Patterson`
+- `14-Low-Latency-Systems/04 - Hardware Mechanical Sympathy/Branch Predictors and Pipeline Stalls.md` (wiki) -> `Sources/CppCon 2017 - When a Microsecond is an Eternity by Carl Cook`
+- `14-Low-Latency-Systems/04 - Hardware Mechanical Sympathy/Branch Predictors and Pipeline Stalls.md` (wiki) -> `Sources/Intel 64 and IA-32 Architectures Optimization Reference Manual`
+- `14-Low-Latency-Systems/04 - Hardware Mechanical Sympathy/CPU Cache Hierarchy and Line Alignment.md` (wiki) -> `Notes/CPU Timestamp Counter RDTSC Mechanics`
+- `14-Low-Latency-Systems/04 - Hardware Mechanical Sympathy/CPU Cache Hierarchy and Line Alignment.md` (wiki) -> `Notes/Cache-Conscious Data Layout`
+- `14-Low-Latency-Systems/04 - Hardware Mechanical Sympathy/CPU Cache Hierarchy and Line Alignment.md` (wiki) -> `Notes/False Sharing and Cache Contention`
+- `14-Low-Latency-Systems/04 - Hardware Mechanical Sympathy/CPU Cache Hierarchy and Line Alignment.md` (wiki) -> `Notes/Latency Numbers Every Trading Engineer Knows`
+- `14-Low-Latency-Systems/04 - Hardware Mechanical Sympathy/CPU Cache Hierarchy and Line Alignment.md` (wiki) -> `Sources/Intel 64 and IA-32 Architectures Optimization Reference Manual`
+- `14-Low-Latency-Systems/04 - Hardware Mechanical Sympathy/CPU Cache Hierarchy and Line Alignment.md` (wiki) -> `Sources/Mechanical Sympathy by Martin Thompson`
+- `14-Low-Latency-Systems/04 - Hardware Mechanical Sympathy/CPU Power States and Jitter Sources.md` (wiki) -> `Notes/CPU Timestamp Counter RDTSC Mechanics`
+- `14-Low-Latency-Systems/04 - Hardware Mechanical Sympathy/CPU Power States and Jitter Sources.md` (wiki) -> `Notes/Kernel Boot Parameters for Core Isolation`
+- `14-Low-Latency-Systems/04 - Hardware Mechanical Sympathy/CPU Power States and Jitter Sources.md` (wiki) -> `Notes/Latency Numbers Every Trading Engineer Knows`
+- `14-Low-Latency-Systems/04 - Hardware Mechanical Sympathy/CPU Power States and Jitter Sources.md` (wiki) -> `Notes/Linux Thread Pinning and Core Affinity`
+- `14-Low-Latency-Systems/04 - Hardware Mechanical Sympathy/CPU Power States and Jitter Sources.md` (wiki) -> `Sources/Intel 64 and IA-32 Architectures Optimization Reference Manual`
+- `14-Low-Latency-Systems/04 - Hardware Mechanical Sympathy/CPU Power States and Jitter Sources.md` (wiki) -> `Sources/Red Hat Enterprise Linux for Real Time Tuning Guide`
+- `14-Low-Latency-Systems/04 - Hardware Mechanical Sympathy/False Sharing and Cache Contention.md` (wiki) -> `Notes/C++ Memory Model and Memory Orders`
+- `14-Low-Latency-Systems/04 - Hardware Mechanical Sympathy/False Sharing and Cache Contention.md` (wiki) -> `Notes/CPU Cache Hierarchy and Line Alignment`
+- `14-Low-Latency-Systems/04 - Hardware Mechanical Sympathy/False Sharing and Cache Contention.md` (wiki) -> `Notes/Latency Numbers Every Trading Engineer Knows`
+- `14-Low-Latency-Systems/04 - Hardware Mechanical Sympathy/False Sharing and Cache Contention.md` (wiki) -> `Notes/Lock-Free SPSC Ring Buffer Design`
+- `14-Low-Latency-Systems/04 - Hardware Mechanical Sympathy/False Sharing and Cache Contention.md` (wiki) -> `Notes/Lock-Free SPSC Ring Buffer Design|SPSC Ring Buffer`
+- `14-Low-Latency-Systems/04 - Hardware Mechanical Sympathy/False Sharing and Cache Contention.md` (wiki) -> `Sources/CppCon 2017 - When a Microsecond is an Eternity by Carl Cook`
+- `14-Low-Latency-Systems/04 - Hardware Mechanical Sympathy/False Sharing and Cache Contention.md` (wiki) -> `Sources/Mechanical Sympathy by Martin Thompson`
+- `14-Low-Latency-Systems/04 - Hardware Mechanical Sympathy/Lab - 04 Cache Line Contention and Latency Benchmark.md` (wiki) -> `Notes/CPU Cache Hierarchy and Line Alignment`
+- `14-Low-Latency-Systems/04 - Hardware Mechanical Sympathy/Lab - 04 Cache Line Contention and Latency Benchmark.md` (wiki) -> `Notes/CPU Timestamp Counter RDTSC Mechanics`
+- `14-Low-Latency-Systems/04 - Hardware Mechanical Sympathy/Lab - 04 Cache Line Contention and Latency Benchmark.md` (wiki) -> `Notes/False Sharing and Cache Contention`
+- `14-Low-Latency-Systems/04 - Hardware Mechanical Sympathy/Lab - 04 Cache Line Contention and Latency Benchmark.md` (wiki) -> `Notes/Latency Numbers Every Trading Engineer Knows`
+- `14-Low-Latency-Systems/04 - Hardware Mechanical Sympathy/Latency Numbers Every Trading Engineer Knows.md` (wiki) -> `Notes/CPU Cache Hierarchy and Line Alignment`
+- `14-Low-Latency-Systems/04 - Hardware Mechanical Sympathy/Latency Numbers Every Trading Engineer Knows.md` (wiki) -> `Notes/CPU Timestamp Counter RDTSC Mechanics`
+- `14-Low-Latency-Systems/04 - Hardware Mechanical Sympathy/Latency Numbers Every Trading Engineer Knows.md` (wiki) -> `Notes/False Sharing and Cache Contention`
+- `14-Low-Latency-Systems/04 - Hardware Mechanical Sympathy/Latency Numbers Every Trading Engineer Knows.md` (wiki) -> `Notes/Kernel Boot Parameters for Core Isolation`
+- `14-Low-Latency-Systems/04 - Hardware Mechanical Sympathy/Latency Numbers Every Trading Engineer Knows.md` (wiki) -> `Sources/Mechanical Sympathy by Martin Thompson`
+- `14-Low-Latency-Systems/04 - Hardware Mechanical Sympathy/MOC - 04 Hardware Mechanical Sympathy.md` (wiki) -> `Drills/Drill - 04 Dissecting Cache and Branch Assembly`
+- `14-Low-Latency-Systems/04 - Hardware Mechanical Sympathy/MOC - 04 Hardware Mechanical Sympathy.md` (wiki) -> `Labs/Lab - 04 Cache Line Contention and Latency Benchmark`
+- `14-Low-Latency-Systems/04 - Hardware Mechanical Sympathy/MOC - 04 Hardware Mechanical Sympathy.md` (wiki) -> `Notes/Branch Predictors and Pipeline Stalls`
+- `14-Low-Latency-Systems/04 - Hardware Mechanical Sympathy/MOC - 04 Hardware Mechanical Sympathy.md` (wiki) -> `Notes/CPU Cache Hierarchy and Line Alignment`
+- `14-Low-Latency-Systems/04 - Hardware Mechanical Sympathy/MOC - 04 Hardware Mechanical Sympathy.md` (wiki) -> `Notes/False Sharing and Cache Contention`
+- `14-Low-Latency-Systems/04 - Hardware Mechanical Sympathy/MOC - 04 Hardware Mechanical Sympathy.md` (wiki) -> `Notes/Hardware Prefetchers and Memory Streaming`
+- `14-Low-Latency-Systems/04 - Hardware Mechanical Sympathy/MOC - 04 Hardware Mechanical Sympathy.md` (wiki) -> `Notes/Instruction-Level Parallelism and SIMD`
+- `14-Low-Latency-Systems/04 - Hardware Mechanical Sympathy/MOC - 04 Hardware Mechanical Sympathy.md` (wiki) -> `Notes/Latency Numbers Every Trading Engineer Knows`
+- `14-Low-Latency-Systems/04 - Hardware Mechanical Sympathy/MOC - 04 Hardware Mechanical Sympathy.md` (wiki) -> `Notes/NUMA Topologies and Inter-Socket Jitter`
+- `14-Low-Latency-Systems/04 - Hardware Mechanical Sympathy/MOC - 04 Hardware Mechanical Sympathy.md` (wiki) -> `Notes/PCIe Architecture and DMA`
+- `14-Low-Latency-Systems/04 - Hardware Mechanical Sympathy/MOC - 04 Hardware Mechanical Sympathy.md` (wiki) -> `Notes/TLB Architecture and Huge Pages`
+- `14-Low-Latency-Systems/04 - Hardware Mechanical Sympathy/MOC - 04 Hardware Mechanical Sympathy.md` (wiki) -> `Notes/War Story - Skylake AVX-512 Frequency Throttling`
+- `14-Low-Latency-Systems/04 - Hardware Mechanical Sympathy/MOC - 04 Hardware Mechanical Sympathy.md` (wiki) -> `Sources/Mechanical Sympathy by Martin Thompson`
+- `14-Low-Latency-Systems/04 - Hardware Mechanical Sympathy/NUMA Topologies and Inter-Socket Jitter.md` (wiki) -> `Notes/CPU Cache Hierarchy and Line Alignment`
+- `14-Low-Latency-Systems/04 - Hardware Mechanical Sympathy/NUMA Topologies and Inter-Socket Jitter.md` (wiki) -> `Notes/False Sharing and Cache Contention`
+- `14-Low-Latency-Systems/04 - Hardware Mechanical Sympathy/NUMA Topologies and Inter-Socket Jitter.md` (wiki) -> `Notes/Kernel Boot Parameters for Core Isolation`
+- `14-Low-Latency-Systems/04 - Hardware Mechanical Sympathy/NUMA Topologies and Inter-Socket Jitter.md` (wiki) -> `Notes/Latency Numbers Every Trading Engineer Knows`
+- `14-Low-Latency-Systems/04 - Hardware Mechanical Sympathy/NUMA Topologies and Inter-Socket Jitter.md` (wiki) -> `Notes/Linux Thread Pinning and Core Affinity`
+- `14-Low-Latency-Systems/04 - Hardware Mechanical Sympathy/NUMA Topologies and Inter-Socket Jitter.md` (wiki) -> `Sources/Intel 64 and IA-32 Architectures Optimization Reference Manual`
+- `14-Low-Latency-Systems/04 - Hardware Mechanical Sympathy/TLB Architecture and Huge Pages.md` (wiki) -> `Notes/Kernel Boot Parameters for Core Isolation`
+- `14-Low-Latency-Systems/04 - Hardware Mechanical Sympathy/TLB Architecture and Huge Pages.md` (wiki) -> `Notes/Latency Numbers Every Trading Engineer Knows`
+- `14-Low-Latency-Systems/04 - Hardware Mechanical Sympathy/TLB Architecture and Huge Pages.md` (wiki) -> `Notes/Memory Locking and Zero Page Faults`
+- `14-Low-Latency-Systems/04 - Hardware Mechanical Sympathy/TLB Architecture and Huge Pages.md` (wiki) -> `Notes/Transparent Huge Pages vs Explicit HugeTLBFS`
+- `14-Low-Latency-Systems/04 - Hardware Mechanical Sympathy/TLB Architecture and Huge Pages.md` (wiki) -> `Sources/Red Hat Enterprise Linux for Real Time Tuning Guide`
+- `14-Low-Latency-Systems/04 - Hardware Mechanical Sympathy/War Story - The 2018 Meltdown and Spectre CPU Vulnerabilities.md` (wiki) -> `04 - Hardware Mechanical Sympathy/CPU Pipeline Branch Prediction and Speculative Execution`
+- `14-Low-Latency-Systems/04 - Hardware Mechanical Sympathy/War Story - The 2018 Meltdown and Spectre CPU Vulnerabilities.md` (wiki) -> `Sources/Google Project Zero: Reading privileged memory with a side-channel`
+- `14-Low-Latency-Systems/05 - OS & Kernel Tuning/Interrupt Routing and MSI-X Tuning.md` (wiki) -> `Notes/DPDK Architecture for Trading`
+- `14-Low-Latency-Systems/05 - OS & Kernel Tuning/Interrupt Routing and MSI-X Tuning.md` (wiki) -> `Notes/Kernel Boot Parameters for Core Isolation`
+- `14-Low-Latency-Systems/05 - OS & Kernel Tuning/Interrupt Routing and MSI-X Tuning.md` (wiki) -> `Notes/Linux Thread Pinning and Core Affinity`
+- `14-Low-Latency-Systems/05 - OS & Kernel Tuning/Interrupt Routing and MSI-X Tuning.md` (wiki) -> `Notes/Network Interface Card Architecture`
+- `14-Low-Latency-Systems/05 - OS & Kernel Tuning/Interrupt Routing and MSI-X Tuning.md` (wiki) -> `Notes/Solarflare ef_vi Zero-Copy API`
+- `14-Low-Latency-Systems/05 - OS & Kernel Tuning/Interrupt Routing and MSI-X Tuning.md` (wiki) -> `Sources/Red Hat Enterprise Linux for Real Time Tuning Guide`
+- `14-Low-Latency-Systems/05 - OS & Kernel Tuning/Interrupt Routing and MSI-X Tuning.md` (wiki) -> `Sources/Solarflare ef_vi User Guide`
+- `14-Low-Latency-Systems/05 - OS & Kernel Tuning/Kernel Boot Parameters for Core Isolation.md` (wiki) -> `Notes/CPU Power States and Jitter Sources`
+- `14-Low-Latency-Systems/05 - OS & Kernel Tuning/Kernel Boot Parameters for Core Isolation.md` (wiki) -> `Notes/Interrupt Routing and MSI-X Tuning`
+- `14-Low-Latency-Systems/05 - OS & Kernel Tuning/Kernel Boot Parameters for Core Isolation.md` (wiki) -> `Notes/Linux Thread Pinning and Core Affinity`
+- `14-Low-Latency-Systems/05 - OS & Kernel Tuning/Kernel Boot Parameters for Core Isolation.md` (wiki) -> `Notes/Memory Locking and Zero Page Faults`
+- `14-Low-Latency-Systems/05 - OS & Kernel Tuning/Kernel Boot Parameters for Core Isolation.md` (wiki) -> `Sources/Linux Kernel Documentation - kernel-parameters.txt`
+- `14-Low-Latency-Systems/05 - OS & Kernel Tuning/Kernel Boot Parameters for Core Isolation.md` (wiki) -> `Sources/Red Hat Enterprise Linux for Real Time Tuning Guide`
+- `14-Low-Latency-Systems/05 - OS & Kernel Tuning/Lab - 05 Production Core Isolation and Jitter Measurement.md` (wiki) -> `Notes/CPU Power States and Jitter Sources`
+- `14-Low-Latency-Systems/05 - OS & Kernel Tuning/Lab - 05 Production Core Isolation and Jitter Measurement.md` (wiki) -> `Notes/Interrupt Routing and MSI-X Tuning`
+- `14-Low-Latency-Systems/05 - OS & Kernel Tuning/Lab - 05 Production Core Isolation and Jitter Measurement.md` (wiki) -> `Notes/Kernel Boot Parameters for Core Isolation`
+- `14-Low-Latency-Systems/05 - OS & Kernel Tuning/Lab - 05 Production Core Isolation and Jitter Measurement.md` (wiki) -> `Notes/Latency Numbers Every Trading Engineer Knows`
+- `14-Low-Latency-Systems/05 - OS & Kernel Tuning/Lab - 05 Production Core Isolation and Jitter Measurement.md` (wiki) -> `Notes/Linux Thread Pinning and Core Affinity`
+- `14-Low-Latency-Systems/05 - OS & Kernel Tuning/Linux Thread Pinning and Core Affinity.md` (wiki) -> `Notes/CPU Cache Hierarchy and Line Alignment`
+- `14-Low-Latency-Systems/05 - OS & Kernel Tuning/Linux Thread Pinning and Core Affinity.md` (wiki) -> `Notes/Interrupt Routing and MSI-X Tuning`
+- `14-Low-Latency-Systems/05 - OS & Kernel Tuning/Linux Thread Pinning and Core Affinity.md` (wiki) -> `Notes/Kernel Boot Parameters for Core Isolation`
+- `14-Low-Latency-Systems/05 - OS & Kernel Tuning/Linux Thread Pinning and Core Affinity.md` (wiki) -> `Notes/NUMA Topologies and Inter-Socket Jitter`
+- `14-Low-Latency-Systems/05 - OS & Kernel Tuning/Linux Thread Pinning and Core Affinity.md` (wiki) -> `Sources/Intel 64 and IA-32 Architectures Optimization Reference Manual`
+- `14-Low-Latency-Systems/05 - OS & Kernel Tuning/Linux Thread Pinning and Core Affinity.md` (wiki) -> `Sources/Red Hat Enterprise Linux for Real Time Tuning Guide`
+- `14-Low-Latency-Systems/05 - OS & Kernel Tuning/MOC - 05 OS & Kernel Tuning.md` (wiki) -> `Drills/Drill - 05 Diagnosing Production OS Jitter`
+- `14-Low-Latency-Systems/05 - OS & Kernel Tuning/MOC - 05 OS & Kernel Tuning.md` (wiki) -> `Labs/Lab - 05 Production Core Isolation and Jitter Measurement`
+- `14-Low-Latency-Systems/05 - OS & Kernel Tuning/MOC - 05 OS & Kernel Tuning.md` (wiki) -> `Notes/CPU Power States and Jitter Sources`
+- `14-Low-Latency-Systems/05 - OS & Kernel Tuning/MOC - 05 OS & Kernel Tuning.md` (wiki) -> `Notes/Interrupt Routing and MSI-X Tuning`
+- `14-Low-Latency-Systems/05 - OS & Kernel Tuning/MOC - 05 OS & Kernel Tuning.md` (wiki) -> `Notes/Kernel Boot Parameters for Core Isolation`
+- `14-Low-Latency-Systems/05 - OS & Kernel Tuning/MOC - 05 OS & Kernel Tuning.md` (wiki) -> `Notes/Linux Thread Pinning and Core Affinity`
+- `14-Low-Latency-Systems/05 - OS & Kernel Tuning/MOC - 05 OS & Kernel Tuning.md` (wiki) -> `Notes/Memory Locking and Zero Page Faults`
+- `14-Low-Latency-Systems/05 - OS & Kernel Tuning/MOC - 05 OS & Kernel Tuning.md` (wiki) -> `Notes/Real-Time Scheduling Policies`
+- `14-Low-Latency-Systems/05 - OS & Kernel Tuning/MOC - 05 OS & Kernel Tuning.md` (wiki) -> `Notes/Transparent Huge Pages vs Explicit HugeTLBFS`
+- `14-Low-Latency-Systems/05 - OS & Kernel Tuning/MOC - 05 OS & Kernel Tuning.md` (wiki) -> `Notes/War Story - The 10ms Jitter Spike from khugepaged`
+- `14-Low-Latency-Systems/05 - OS & Kernel Tuning/MOC - 05 OS & Kernel Tuning.md` (wiki) -> `Sources/Red Hat Enterprise Linux for Real Time Tuning Guide`
+- `14-Low-Latency-Systems/05 - OS & Kernel Tuning/War Story - The 2012 Leap Second Linux Kernel Lockup.md` (wiki) -> `07 - Time & Measurement/PTP IEEE 1588 and White Rabbit Network Synchronization`
+- `14-Low-Latency-Systems/05 - OS & Kernel Tuning/War Story - The 2012 Leap Second Linux Kernel Lockup.md` (wiki) -> `Sources/Google Public NTP Leap Smearing Documentation`
+- `14-Low-Latency-Systems/05 - OS & Kernel Tuning/War Story - The 2012 Leap Second Linux Kernel Lockup.md` (wiki) -> `Sources/Linux Kernel Git Commit 6b43ae5: Fix Leap Second hrtimer Subsystem Bug`
+- `14-Low-Latency-Systems/06 - Networking/Colocation and Physical Layer Infrastructure.md` (wiki) -> `07 - Time & Measurement/Latency Numbers Every Trading Engineer Knows`
+- `14-Low-Latency-Systems/06 - Networking/Colocation and Physical Layer Infrastructure.md` (wiki) -> `Sources/Corning SMF-28 Ultra Optical Fiber Specification`
+- `14-Low-Latency-Systems/06 - Networking/Colocation and Physical Layer Infrastructure.md` (wiki) -> `Sources/Flash Boys by Michael Lewis (Spread Networks Fiber History)`
+- `14-Low-Latency-Systems/06 - Networking/DPDK Architecture for Trading.md` (wiki) -> `Sources/DPDK Programmer's Guide`
+- `14-Low-Latency-Systems/06 - Networking/DPDK Architecture for Trading.md` (wiki) -> `Sources/DPDK Sample Applications User Guide`
+- `14-Low-Latency-Systems/06 - Networking/Kernel Bypass Technologies Overview.md` (wiki) -> `Sources/DPDK Programmer's Guide`
+- `14-Low-Latency-Systems/06 - Networking/Kernel Bypass Technologies Overview.md` (wiki) -> `Sources/Linux Kernel Documentation - AF_XDP (eXpress Data Path)`
+- `14-Low-Latency-Systems/06 - Networking/Kernel Bypass Technologies Overview.md` (wiki) -> `Sources/Solarflare ef_vi User Guide`
+- `14-Low-Latency-Systems/06 - Networking/Lab - 06 Zero-Loss Multicast Feed Arbitrator.md` (wiki) -> `10 - Protocols & Codecs/NASDAQ ITCH 5.0 Protocol Architecture`
+- `14-Low-Latency-Systems/06 - Networking/Low-Latency TCP for Order Entry.md` (wiki) -> `10 - Protocols & Codecs/NASDAQ OUCH Protocol Architecture`
+- `14-Low-Latency-Systems/06 - Networking/Low-Latency TCP for Order Entry.md` (wiki) -> `Sources/Linux Programmer's Manual - tcp(7)`
+- `14-Low-Latency-Systems/06 - Networking/Low-Latency TCP for Order Entry.md` (wiki) -> `Sources/Solarflare OpenOnload User Guide`
+- `14-Low-Latency-Systems/06 - Networking/Network Interface Card Architecture.md` (wiki) -> `Sources/Intel 82599 10 GbE Controller Datasheet`
+- `14-Low-Latency-Systems/06 - Networking/Network Interface Card Architecture.md` (wiki) -> `Sources/Solarflare ef_vi User Guide`
+- `14-Low-Latency-Systems/06 - Networking/Solarflare ef_vi Zero-Copy API.md` (wiki) -> `Sources/Solarflare Low Latency Ethernet Architecture by David Riddoch`
+- `14-Low-Latency-Systems/06 - Networking/Solarflare ef_vi Zero-Copy API.md` (wiki) -> `Sources/Solarflare ef_vi User Guide`
+- `14-Low-Latency-Systems/06 - Networking/Switch Architectures in Trading.md` (wiki) -> `07 - Time & Measurement/Latency Numbers Every Trading Engineer Knows`
+- `14-Low-Latency-Systems/06 - Networking/Switch Architectures in Trading.md` (wiki) -> `Sources/Arista 7130 (Metamako) Layer 1 Architecture Specification`
+- `14-Low-Latency-Systems/06 - Networking/Switch Architectures in Trading.md` (wiki) -> `Sources/Arista 7150 Series Low Latency Switch Architecture`
+- `14-Low-Latency-Systems/06 - Networking/Switch Architectures in Trading.md` (wiki) -> `Sources/Cisco Nexus 3548 Switch Architecture Guide`
+- `14-Low-Latency-Systems/06 - Networking/UDP Multicast Market Data and A-B Feed Arbitration.md` (wiki) -> `10 - Protocols & Codecs/NASDAQ ITCH 5.0 Protocol Architecture`
+- `14-Low-Latency-Systems/06 - Networking/UDP Multicast Market Data and A-B Feed Arbitration.md` (wiki) -> `Sources/CME MDP 3.0 Market Data Specification`
+- `14-Low-Latency-Systems/06 - Networking/UDP Multicast Market Data and A-B Feed Arbitration.md` (wiki) -> `Sources/NASDAQ TotalView-ITCH 5.0 Specification`
+- `14-Low-Latency-Systems/06 - Networking/UDP Multicast Market Data and A-B Feed Arbitration.md` (wiki) -> `Sources/Solarflare ef_vi User Guide`
+- `14-Low-Latency-Systems/06 - Networking/War Story - The 2015 CME Globex Multicast Freeze.md` (wiki) -> `Sources/CME MDP 3.0 Market Data Protocol Specification`
+- `14-Low-Latency-Systems/07 - Time & Measurement/CPU Timestamp Counter RDTSC Mechanics.md` (wiki) -> `Notes/Clock Sources and Hardware Timestamping`
+- `14-Low-Latency-Systems/07 - Time & Measurement/CPU Timestamp Counter RDTSC Mechanics.md` (wiki) -> `Notes/Coordinated Omission in Low Latency Systems`
+- `14-Low-Latency-Systems/07 - Time & Measurement/CPU Timestamp Counter RDTSC Mechanics.md` (wiki) -> `Notes/Latency Numbers Every Trading Engineer Knows`
+- `14-Low-Latency-Systems/07 - Time & Measurement/CPU Timestamp Counter RDTSC Mechanics.md` (wiki) -> `Notes/One-Way Latency vs Round-Trip Time Measurement`
+- `14-Low-Latency-Systems/07 - Time & Measurement/CPU Timestamp Counter RDTSC Mechanics.md` (wiki) -> `Sources/CppCon 2017 - When a Microsecond is an Eternity by Carl Cook`
+- `14-Low-Latency-Systems/07 - Time & Measurement/CPU Timestamp Counter RDTSC Mechanics.md` (wiki) -> `Sources/How NOT to Measure Latency by Gil Tene`
+- `14-Low-Latency-Systems/07 - Time & Measurement/CPU Timestamp Counter RDTSC Mechanics.md` (wiki) -> `Sources/Intel 64 and IA-32 Architectures Software Developer's Manual - Volume 3B`
+- `14-Low-Latency-Systems/07 - Time & Measurement/Clock Sources and Hardware Timestamping.md` (wiki) -> `Notes/CPU Timestamp Counter RDTSC Mechanics`
+- `14-Low-Latency-Systems/07 - Time & Measurement/Clock Sources and Hardware Timestamping.md` (wiki) -> `Notes/Latency Numbers Every Trading Engineer Knows`
+- `14-Low-Latency-Systems/07 - Time & Measurement/Clock Sources and Hardware Timestamping.md` (wiki) -> `Notes/One-Way Latency vs Round-Trip Time Measurement`
+- `14-Low-Latency-Systems/07 - Time & Measurement/Clock Sources and Hardware Timestamping.md` (wiki) -> `Notes/Precision Time Protocol and White Rabbit`
+- `14-Low-Latency-Systems/07 - Time & Measurement/Clock Sources and Hardware Timestamping.md` (wiki) -> `Sources/IEEE 1588-2019 Standard for Precision Clock Synchronization`
+- `14-Low-Latency-Systems/07 - Time & Measurement/Clock Sources and Hardware Timestamping.md` (wiki) -> `Sources/Linux Kernel Documentation - networking/timestamping.rst`
+- `14-Low-Latency-Systems/07 - Time & Measurement/Clock Sources and Hardware Timestamping.md` (wiki) -> `Sources/Solarflare ef_vi User Guide`
+- `14-Low-Latency-Systems/07 - Time & Measurement/Coordinated Omission in Low Latency Systems.md` (wiki) -> `Notes/Clock Sources and Hardware Timestamping`
+- `14-Low-Latency-Systems/07 - Time & Measurement/Coordinated Omission in Low Latency Systems.md` (wiki) -> `Notes/Latency Numbers Every Trading Engineer Knows`
+- `14-Low-Latency-Systems/07 - Time & Measurement/Coordinated Omission in Low Latency Systems.md` (wiki) -> `Notes/One-Way Latency vs Round-Trip Time Measurement`
+- `14-Low-Latency-Systems/07 - Time & Measurement/Coordinated Omission in Low Latency Systems.md` (wiki) -> `Notes/Precision Time Protocol and White Rabbit`
+- `14-Low-Latency-Systems/07 - Time & Measurement/Coordinated Omission in Low Latency Systems.md` (wiki) -> `Sources/HdrHistogram Repository and Documentation`
+- `14-Low-Latency-Systems/07 - Time & Measurement/Coordinated Omission in Low Latency Systems.md` (wiki) -> `Sources/How NOT to Measure Latency by Gil Tene`
+- `14-Low-Latency-Systems/07 - Time & Measurement/Lab - 07 Cycle-Accurate RDTSC Profiler with HdrHistogram.md` (wiki) -> `Notes/CPU Timestamp Counter RDTSC Mechanics`
+- `14-Low-Latency-Systems/07 - Time & Measurement/Lab - 07 Cycle-Accurate RDTSC Profiler with HdrHistogram.md` (wiki) -> `Notes/Clock Sources and Hardware Timestamping`
+- `14-Low-Latency-Systems/07 - Time & Measurement/Lab - 07 Cycle-Accurate RDTSC Profiler with HdrHistogram.md` (wiki) -> `Notes/Coordinated Omission in Low Latency Systems`
+- `14-Low-Latency-Systems/07 - Time & Measurement/Lab - 07 Cycle-Accurate RDTSC Profiler with HdrHistogram.md` (wiki) -> `Notes/One-Way Latency vs Round-Trip Time Measurement`
+- `14-Low-Latency-Systems/07 - Time & Measurement/One-Way Latency vs Round-Trip Time Measurement.md` (wiki) -> `Notes/Clock Sources and Hardware Timestamping`
+- `14-Low-Latency-Systems/07 - Time & Measurement/One-Way Latency vs Round-Trip Time Measurement.md` (wiki) -> `Notes/Coordinated Omission in Low Latency Systems`
+- `14-Low-Latency-Systems/07 - Time & Measurement/One-Way Latency vs Round-Trip Time Measurement.md` (wiki) -> `Notes/Latency Numbers Every Trading Engineer Knows`
+- `14-Low-Latency-Systems/07 - Time & Measurement/One-Way Latency vs Round-Trip Time Measurement.md` (wiki) -> `Notes/Precision Time Protocol and White Rabbit`
+- `14-Low-Latency-Systems/07 - Time & Measurement/One-Way Latency vs Round-Trip Time Measurement.md` (wiki) -> `Notes/Tick-to-Trade Critical Path Optimization`
+- `14-Low-Latency-Systems/07 - Time & Measurement/One-Way Latency vs Round-Trip Time Measurement.md` (wiki) -> `Sources/How NOT to Measure Latency by Gil Tene`
+- `14-Low-Latency-Systems/07 - Time & Measurement/One-Way Latency vs Round-Trip Time Measurement.md` (wiki) -> `Sources/IEEE 1588-2019 Standard for Precision Clock Synchronization`
+- `14-Low-Latency-Systems/07 - Time & Measurement/Precision Time Protocol and White Rabbit.md` (wiki) -> `Notes/Clock Sources and Hardware Timestamping`
+- `14-Low-Latency-Systems/07 - Time & Measurement/Precision Time Protocol and White Rabbit.md` (wiki) -> `Notes/Coordinated Omission in Low Latency Systems`
+- `14-Low-Latency-Systems/07 - Time & Measurement/Precision Time Protocol and White Rabbit.md` (wiki) -> `Notes/Latency Numbers Every Trading Engineer Knows`
+- `14-Low-Latency-Systems/07 - Time & Measurement/Precision Time Protocol and White Rabbit.md` (wiki) -> `Notes/One-Way Latency vs Round-Trip Time Measurement`
+- `14-Low-Latency-Systems/07 - Time & Measurement/Precision Time Protocol and White Rabbit.md` (wiki) -> `Sources/IEEE 1588-2019 Standard for Precision Clock Synchronization`
+- `14-Low-Latency-Systems/07 - Time & Measurement/Precision Time Protocol and White Rabbit.md` (wiki) -> `Sources/Red Hat Enterprise Linux for Real Time Tuning Guide`
+- `14-Low-Latency-Systems/07 - Time & Measurement/Precision Time Protocol and White Rabbit.md` (wiki) -> `Sources/White Rabbit Project Technical Specification - CERN`
+- `14-Low-Latency-Systems/07 - Time & Measurement/War Story - The 2015 NYSE 3.5-Hour Gate Freeze.md` (wiki) -> `03 - Matching Engine Internals/Matching Engine Architecture Overview`
+- `14-Low-Latency-Systems/07 - Time & Measurement/War Story - The 2015 NYSE 3.5-Hour Gate Freeze.md` (wiki) -> `Sources/SEC Staff Summary of the July 8, 2015 NYSE Trading Halt`
+- `14-Low-Latency-Systems/08 - Low-Latency Programming/Advanced SIMD Vectorization with AVX-512 and BMI2.md` (wiki) -> `04 - Hardware Mechanical Sympathy/CPU Pipeline Branch Prediction and Speculative Execution`
+- `14-Low-Latency-Systems/08 - Low-Latency Programming/Advanced SIMD Vectorization with AVX-512 and BMI2.md` (wiki) -> `Sources/Fast Integer and Delimiter Parsing in C++ by Wojciech Mula`
+- `14-Low-Latency-Systems/08 - Low-Latency Programming/Allocation-Free Steady State Patterns.md` (wiki) -> `Notes/C++ Memory Model and Memory Orders`
+- `14-Low-Latency-Systems/08 - Low-Latency Programming/Allocation-Free Steady State Patterns.md` (wiki) -> `Notes/Cache-Conscious Data Layout`
+- `14-Low-Latency-Systems/08 - Low-Latency Programming/Allocation-Free Steady State Patterns.md` (wiki) -> `Notes/Lock-Free MPMC Queue Mechanics`
+- `14-Low-Latency-Systems/08 - Low-Latency Programming/Allocation-Free Steady State Patterns.md` (wiki) -> `Notes/Lock-Free SPSC Ring Buffer Design`
+- `14-Low-Latency-Systems/08 - Low-Latency Programming/Allocation-Free Steady State Patterns.md` (wiki) -> `Notes/Order Book Data Structures`
+- `14-Low-Latency-Systems/08 - Low-Latency Programming/Allocation-Free Steady State Patterns.md` (wiki) -> `Sources/CppCon 2017 - When a Microsecond is an Eternity by Carl Cook`
+- `14-Low-Latency-Systems/08 - Low-Latency Programming/C++ Memory Model and Memory Orders.md` (wiki) -> `Notes/Allocation-Free Steady State Patterns`
+- `14-Low-Latency-Systems/08 - Low-Latency Programming/C++ Memory Model and Memory Orders.md` (wiki) -> `Notes/False Sharing and Cache Contention`
+- `14-Low-Latency-Systems/08 - Low-Latency Programming/C++ Memory Model and Memory Orders.md` (wiki) -> `Notes/Lock-Free MPMC Queue Mechanics`
+- `14-Low-Latency-Systems/08 - Low-Latency Programming/C++ Memory Model and Memory Orders.md` (wiki) -> `Notes/Lock-Free SPSC Ring Buffer Design`
+- `14-Low-Latency-Systems/08 - Low-Latency Programming/C++ Memory Model and Memory Orders.md` (wiki) -> `Sources/CppCon 2017 - When a Microsecond is an Eternity by Carl Cook`
+- `14-Low-Latency-Systems/08 - Low-Latency Programming/C++ Memory Model and Memory Orders.md` (wiki) -> `Sources/Intel 64 and IA-32 Architectures Software Developer's Manual - Volume 3A`
+- `14-Low-Latency-Systems/08 - Low-Latency Programming/Lab - 08 Ultra-Low Latency SPSC Ring Buffer.md` (wiki) -> `Notes/Allocation-Free Steady State Patterns`
+- `14-Low-Latency-Systems/08 - Low-Latency Programming/Lab - 08 Ultra-Low Latency SPSC Ring Buffer.md` (wiki) -> `Notes/C++ Memory Model and Memory Orders`
+- `14-Low-Latency-Systems/08 - Low-Latency Programming/Lab - 08 Ultra-Low Latency SPSC Ring Buffer.md` (wiki) -> `Notes/False Sharing and Cache Contention`
+- `14-Low-Latency-Systems/08 - Low-Latency Programming/Lab - 08 Ultra-Low Latency SPSC Ring Buffer.md` (wiki) -> `Notes/Lock-Free SPSC Ring Buffer Design`
+- `14-Low-Latency-Systems/08 - Low-Latency Programming/Lab - 08 Ultra-Low Latency SPSC Ring Buffer.md` (wiki) -> `Notes/The LMAX Disruptor Architecture`
+- `14-Low-Latency-Systems/08 - Low-Latency Programming/Lock-Free MPMC Queue Mechanics.md` (wiki) -> `Notes/Allocation-Free Steady State Patterns`
+- `14-Low-Latency-Systems/08 - Low-Latency Programming/Lock-Free MPMC Queue Mechanics.md` (wiki) -> `Notes/C++ Memory Model and Memory Orders`
+- `14-Low-Latency-Systems/08 - Low-Latency Programming/Lock-Free MPMC Queue Mechanics.md` (wiki) -> `Notes/False Sharing and Cache Contention`
+- `14-Low-Latency-Systems/08 - Low-Latency Programming/Lock-Free MPMC Queue Mechanics.md` (wiki) -> `Notes/Lock-Free SPSC Ring Buffer Design`
+- `14-Low-Latency-Systems/08 - Low-Latency Programming/Lock-Free MPMC Queue Mechanics.md` (wiki) -> `Sources/The Art of Multiprocessor Programming by Herlihy and Shavit`
+- `14-Low-Latency-Systems/08 - Low-Latency Programming/Lock-Free MPMC Queue Mechanics.md` (wiki) -> `Sources/Writing Lock-Free Code by Dmitry Vyukov`
+- `14-Low-Latency-Systems/08 - Low-Latency Programming/Lock-Free SPSC Ring Buffer Design.md` (wiki) -> `Notes/Allocation-Free Steady State Patterns`
+- `14-Low-Latency-Systems/08 - Low-Latency Programming/Lock-Free SPSC Ring Buffer Design.md` (wiki) -> `Notes/C++ Memory Model and Memory Orders`
+- `14-Low-Latency-Systems/08 - Low-Latency Programming/Lock-Free SPSC Ring Buffer Design.md` (wiki) -> `Notes/False Sharing and Cache Contention`
+- `14-Low-Latency-Systems/08 - Low-Latency Programming/Lock-Free SPSC Ring Buffer Design.md` (wiki) -> `Notes/Lock-Free MPMC Queue Mechanics`
+- `14-Low-Latency-Systems/08 - Low-Latency Programming/Lock-Free SPSC Ring Buffer Design.md` (wiki) -> `Notes/The LMAX Disruptor Architecture`
+- `14-Low-Latency-Systems/08 - Low-Latency Programming/Lock-Free SPSC Ring Buffer Design.md` (wiki) -> `Sources/CppCon 2017 - When a Microsecond is an Eternity by Carl Cook`
+- `14-Low-Latency-Systems/08 - Low-Latency Programming/Lock-Free SPSC Ring Buffer Design.md` (wiki) -> `Sources/The LMAX Disruptor Technical Paper`
+- `14-Low-Latency-Systems/09 - Messaging & IPC/Aeron Messaging Transport.md` (wiki) -> `Notes/Lock-Free SPSC Ring Buffer Design`
+- `14-Low-Latency-Systems/09 - Messaging & IPC/Aeron Messaging Transport.md` (wiki) -> `Notes/Shared Memory IPC Topologies`
+- `14-Low-Latency-Systems/09 - Messaging & IPC/Aeron Messaging Transport.md` (wiki) -> `Notes/The LMAX Disruptor Architecture`
+- `14-Low-Latency-Systems/09 - Messaging & IPC/Aeron Messaging Transport.md` (wiki) -> `Notes/The Sequenced-Stream Architecture`
+- `14-Low-Latency-Systems/09 - Messaging & IPC/Aeron Messaging Transport.md` (wiki) -> `Sources/Aeron Open-Source Repository and Wiki by Real Logic`
+- `14-Low-Latency-Systems/09 - Messaging & IPC/Aeron Messaging Transport.md` (wiki) -> `Sources/Mechanical Sympathy by Martin Thompson`
+- `14-Low-Latency-Systems/09 - Messaging & IPC/Aeron Messaging Transport.md` (wiki) -> `Sources/Real-Time Systems and Aeron Architecture by Todd Montgomery`
+- `14-Low-Latency-Systems/09 - Messaging & IPC/Aeron Protocol Deep Dive and IPC Architecture.md` (wiki) -> `08 - Low-Latency Programming/Lock-Free SPSC and MPMC Queues`
+- `14-Low-Latency-Systems/09 - Messaging & IPC/Aeron Protocol Deep Dive and IPC Architecture.md` (wiki) -> `09 - Messaging & IPC/Lock-Free Ring Buffers and Disruptor Pattern`
+- `14-Low-Latency-Systems/09 - Messaging & IPC/Aeron Protocol Deep Dive and IPC Architecture.md` (wiki) -> `Sources/Aeron Open-Source High-Performance Messaging Specification`
+- `14-Low-Latency-Systems/09 - Messaging & IPC/Aeron Protocol Deep Dive and IPC Architecture.md` (wiki) -> `Sources/Designing for Hardware Mechanical Sympathy by Martin Thompson`
+- `14-Low-Latency-Systems/09 - Messaging & IPC/Lab - 09 Ultra-Fast Shared Memory IPC Channel.md` (wiki) -> `Notes/Aeron Messaging Transport`
+- `14-Low-Latency-Systems/09 - Messaging & IPC/Lab - 09 Ultra-Fast Shared Memory IPC Channel.md` (wiki) -> `Notes/Lock-Free SPSC Ring Buffer Design`
+- `14-Low-Latency-Systems/09 - Messaging & IPC/Lab - 09 Ultra-Fast Shared Memory IPC Channel.md` (wiki) -> `Notes/Shared Memory IPC Topologies`
+- `14-Low-Latency-Systems/09 - Messaging & IPC/Lab - 09 Ultra-Fast Shared Memory IPC Channel.md` (wiki) -> `Notes/The LMAX Disruptor Architecture`
+- `14-Low-Latency-Systems/09 - Messaging & IPC/Lab - 09 Ultra-Fast Shared Memory IPC Channel.md` (wiki) -> `Notes/The Sequenced-Stream Architecture`
+- `14-Low-Latency-Systems/09 - Messaging & IPC/Shared Memory IPC Topologies.md` (wiki) -> `Notes/Aeron Messaging Transport`
+- `14-Low-Latency-Systems/09 - Messaging & IPC/Shared Memory IPC Topologies.md` (wiki) -> `Notes/Lock-Free SPSC Ring Buffer Design`
+- `14-Low-Latency-Systems/09 - Messaging & IPC/Shared Memory IPC Topologies.md` (wiki) -> `Notes/NUMA Topologies and Inter-Socket Jitter`
+- `14-Low-Latency-Systems/09 - Messaging & IPC/Shared Memory IPC Topologies.md` (wiki) -> `Notes/The LMAX Disruptor Architecture`
+- `14-Low-Latency-Systems/09 - Messaging & IPC/Shared Memory IPC Topologies.md` (wiki) -> `Sources/Linux Programmer's Manual - shm_overview(7)`
+- `14-Low-Latency-Systems/09 - Messaging & IPC/Shared Memory IPC Topologies.md` (wiki) -> `Sources/The LMAX Architecture by Martin Fowler`
+- `14-Low-Latency-Systems/09 - Messaging & IPC/The LMAX Disruptor Architecture.md` (wiki) -> `Notes/Aeron Messaging Transport`
+- `14-Low-Latency-Systems/09 - Messaging & IPC/The LMAX Disruptor Architecture.md` (wiki) -> `Notes/False Sharing and Cache Contention`
+- `14-Low-Latency-Systems/09 - Messaging & IPC/The LMAX Disruptor Architecture.md` (wiki) -> `Notes/Lock-Free SPSC Ring Buffer Design`
+- `14-Low-Latency-Systems/09 - Messaging & IPC/The LMAX Disruptor Architecture.md` (wiki) -> `Notes/Shared Memory IPC Topologies`
+- `14-Low-Latency-Systems/09 - Messaging & IPC/The LMAX Disruptor Architecture.md` (wiki) -> `Sources/Mechanical Sympathy by Martin Thompson`
+- `14-Low-Latency-Systems/09 - Messaging & IPC/The LMAX Disruptor Architecture.md` (wiki) -> `Sources/The LMAX Architecture by Martin Fowler`
+- `14-Low-Latency-Systems/09 - Messaging & IPC/The LMAX Disruptor Architecture.md` (wiki) -> `Sources/The LMAX Disruptor Technical Paper`
+- `14-Low-Latency-Systems/10 - Protocols & Codecs/CME MDP 3.0 and Simple Binary Encoding SBE.md` (wiki) -> `Sources/CME MDP 3.0 Market Data Specification`
+- `14-Low-Latency-Systems/10 - Protocols & Codecs/CME MDP 3.0 and Simple Binary Encoding SBE.md` (wiki) -> `Sources/CME Simple Binary Encoding SBE Specification`
+- `14-Low-Latency-Systems/10 - Protocols & Codecs/CME MDP 3.0 and Simple Binary Encoding SBE.md` (wiki) -> `Sources/Simple Binary Encoding Specification by FIX Trading Community`
+- `14-Low-Latency-Systems/10 - Protocols & Codecs/CME iLink 3 Binary Order Entry.md` (wiki) -> `Sources/CME Simple Binary Encoding SBE Specification`
+- `14-Low-Latency-Systems/10 - Protocols & Codecs/CME iLink 3 Binary Order Entry.md` (wiki) -> `Sources/CME iLink 3 Binary Order Entry Specification`
+- `14-Low-Latency-Systems/10 - Protocols & Codecs/FIX Protocol and Fast Encoding FAST.md` (wiki) -> `Sources/FIX Protocol Standards - FIX 4.4 Specification`
+- `14-Low-Latency-Systems/10 - Protocols & Codecs/FIX Protocol and Fast Encoding FAST.md` (wiki) -> `Sources/ITU-T Recommendation V.761 - FAST Protocol Specification`
+- `14-Low-Latency-Systems/10 - Protocols & Codecs/MOC - 10 Protocols & Codecs.md` (wiki) -> `Sources/CME Simple Binary Encoding SBE Specification`
+- `14-Low-Latency-Systems/10 - Protocols & Codecs/MOC - 10 Protocols & Codecs.md` (wiki) -> `Sources/CME iLink 3 Binary Order Entry Specification`
+- `14-Low-Latency-Systems/10 - Protocols & Codecs/MOC - 10 Protocols & Codecs.md` (wiki) -> `Sources/NASDAQ OUCH 4.2 Specification`
+- `14-Low-Latency-Systems/10 - Protocols & Codecs/MOC - 10 Protocols & Codecs.md` (wiki) -> `Sources/NASDAQ TotalView-ITCH 5.0 Specification`
+- `14-Low-Latency-Systems/10 - Protocols & Codecs/NASDAQ ITCH 5.0 Protocol Specification.md` (wiki) -> `Sources/MoldUDP64 Protocol Specification`
+- `14-Low-Latency-Systems/10 - Protocols & Codecs/NASDAQ ITCH 5.0 Protocol Specification.md` (wiki) -> `Sources/NASDAQ TotalView-ITCH 5.0 Specification`
+- `14-Low-Latency-Systems/10 - Protocols & Codecs/NASDAQ OUCH 4.2 Protocol Specification.md` (wiki) -> `Sources/NASDAQ OUCH 4.2 Specification`
+- `14-Low-Latency-Systems/10 - Protocols & Codecs/SIMD-Accelerated Text Parsing.md` (wiki) -> `Sources/Fast Integer and Delimiter Parsing in C++ by Wojciech Mula`
+- `14-Low-Latency-Systems/10 - Protocols & Codecs/SIMD-Accelerated Text Parsing.md` (wiki) -> `Sources/Parsing Integers Quickly by Daniel Lemire`
+- `14-Low-Latency-Systems/11 - Participant-Side Systems/Low-Latency Signal Generation and Feature Calculators.md` (wiki) -> `Sources/Order Flow Imbalance in High Frequency Trading by Cont, Kukanov, and Stoikov`
+- `14-Low-Latency-Systems/11 - Participant-Side Systems/Market Data Feed Handlers and Book Reconstructors.md` (wiki) -> `Sources/Empirical Market Microstructure by Joel Hasbrouck`
+- `14-Low-Latency-Systems/11 - Participant-Side Systems/Order Queue Position Tracking and Fill Probability.md` (wiki) -> `Sources/Empirical Market Microstructure by Joel Hasbrouck`
+- `14-Low-Latency-Systems/11 - Participant-Side Systems/Order State Management and Position Tracking.md` (wiki) -> `Sources/Empirical Market Microstructure by Joel Hasbrouck`
+- `14-Low-Latency-Systems/11 - Participant-Side Systems/Participant-Side Pre-Trade Risk Gates.md` (wiki) -> `Sources/CFTC Rule 1.73 Pre-Trade Risk Checks`
+- `14-Low-Latency-Systems/11 - Participant-Side Systems/Participant-Side Pre-Trade Risk Gates.md` (wiki) -> `Sources/SEC Rule 15c3-5 Market Access Rule Documentation`
+- `14-Low-Latency-Systems/11 - Participant-Side Systems/Smart Order Routing and Execution Algorithms.md` (wiki) -> `Sources/Empirical Market Microstructure by Joel Hasbrouck`
+- `14-Low-Latency-Systems/11 - Participant-Side Systems/Smart Order Routing and Execution Algorithms.md` (wiki) -> `Sources/Flash Boys by Michael Lewis (IEX Speed Bump Mechanics)`
+- `14-Low-Latency-Systems/11 - Participant-Side Systems/Tick-to-Trade Critical Path Optimization.md` (wiki) -> `Sources/High Frequency Trading by Irene Aldridge`
+- `14-Low-Latency-Systems/12 - FPGAs & Hardware Acceleration/FPGA Architecture Fundamentals for Trading.md` (wiki) -> `Sources/AMD Xilinx UltraScale+ Architecture Manual`
+- `14-Low-Latency-Systems/12 - FPGAs & Hardware Acceleration/FPGA Architecture Fundamentals for Trading.md` (wiki) -> `Sources/Designing with UltraScale and UltraScale+ Architecture`
+- `14-Low-Latency-Systems/12 - FPGAs & Hardware Acceleration/FPGA Architecture Fundamentals for Trading.md` (wiki) -> `Sources/FPGA-Based Trading Systems Architecture`
+- `14-Low-Latency-Systems/12 - FPGAs & Hardware Acceleration/FPGA Feed Handlers and Parsing Pipelines.md` (wiki) -> `Sources/Designing with UltraScale and UltraScale+ Architecture`
+- `14-Low-Latency-Systems/12 - FPGAs & Hardware Acceleration/FPGA Feed Handlers and Parsing Pipelines.md` (wiki) -> `Sources/FPGA-Based Trading Systems Architecture`
+- `14-Low-Latency-Systems/12 - FPGAs & Hardware Acceleration/FPGA Feed Handlers and Parsing Pipelines.md` (wiki) -> `Sources/NASDAQ TotalView-ITCH 5.0 Specification`
+- `14-Low-Latency-Systems/12 - FPGAs & Hardware Acceleration/FPGA Network Clock Domain Crossing and Timing Closure.md` (wiki) -> `Sources/AMD Xilinx UltraScale+ Architecture Manual`
+- `14-Low-Latency-Systems/12 - FPGAs & Hardware Acceleration/FPGA Network Clock Domain Crossing and Timing Closure.md` (wiki) -> `Sources/Synthesis and Scripting Techniques for Designing Multi-Asynchronous Clock Designs by Clifford Cummings`
+- `14-Low-Latency-Systems/12 - FPGAs & Hardware Acceleration/FPGA vs CPU in Low-Latency Trading.md` (wiki) -> `Sources/AMD Xilinx UltraScale+ Architecture Manual`
+- `14-Low-Latency-Systems/12 - FPGAs & Hardware Acceleration/FPGA vs CPU in Low-Latency Trading.md` (wiki) -> `Sources/FPGA-Based Trading Systems Architecture`
+- `14-Low-Latency-Systems/12 - FPGAs & Hardware Acceleration/Hardware Pre-Trade Risk Checks on SmartNICs.md` (wiki) -> `Sources/FPGA-Based Trading Systems Architecture`
+- `14-Low-Latency-Systems/12 - FPGAs & Hardware Acceleration/Hardware Pre-Trade Risk Checks on SmartNICs.md` (wiki) -> `Sources/SEC Rule 15c3-5 Market Access Rule Documentation`
+- `14-Low-Latency-Systems/12 - FPGAs & Hardware Acceleration/MOC - 12 FPGAs & Hardware Acceleration.md` (wiki) -> `Sources/AMD Xilinx UltraScale+ Architecture Manual`
+- `14-Low-Latency-Systems/12 - FPGAs & Hardware Acceleration/Network MAC-PHY and Transceiver Pipeline.md` (wiki) -> `Sources/AMD Xilinx UltraScale+ GTY Transceiver User Guide`
+- `14-Low-Latency-Systems/12 - FPGAs & Hardware Acceleration/Network MAC-PHY and Transceiver Pipeline.md` (wiki) -> `Sources/Enyx Low-Latency 25G Ethernet MAC Architecture`
+- `14-Low-Latency-Systems/12 - FPGAs & Hardware Acceleration/Network MAC-PHY and Transceiver Pipeline.md` (wiki) -> `Sources/FPGA-Based Trading Systems Architecture`
+- `14-Low-Latency-Systems/12 - FPGAs & Hardware Acceleration/PCIe DMA Engine Design for SmartNICs.md` (wiki) -> `Sources/FPGA-Based Trading Systems Architecture`
+- `14-Low-Latency-Systems/12 - FPGAs & Hardware Acceleration/PCIe DMA Engine Design for SmartNICs.md` (wiki) -> `Sources/Intel Data Direct I/O Technology (Intel DDIO) Architecture Guide`
+- `14-Low-Latency-Systems/12 - FPGAs & Hardware Acceleration/PCIe DMA Engine Design for SmartNICs.md` (wiki) -> `Sources/PCI Express Base Specification Revision 5.0`
+- `14-Low-Latency-Systems/12 - FPGAs & Hardware Acceleration/RTL Verilog-VHDL vs High-Level Synthesis HLS.md` (wiki) -> `Sources/AMD Xilinx Vitis HLS User Guide`
+- `14-Low-Latency-Systems/12 - FPGAs & Hardware Acceleration/RTL Verilog-VHDL vs High-Level Synthesis HLS.md` (wiki) -> `Sources/FPGA-Based Trading Systems Architecture`
+- `14-Low-Latency-Systems/12 - FPGAs & Hardware Acceleration/RTL Verilog-VHDL vs High-Level Synthesis HLS.md` (wiki) -> `Sources/Parallel Programming for FPGAs by Kastner, Matai, and Neuendorffer`
+- `14-Low-Latency-Systems/13 - Reliability, Ops & Testing/Automated Kill Switches and Risk Circuit Breakers.md` (wiki) -> `Sources/MiFID II RTS 6 Regulatory Technical Standards`
+- `14-Low-Latency-Systems/13 - Reliability, Ops & Testing/Automated Kill Switches and Risk Circuit Breakers.md` (wiki) -> `Sources/SEC Rule 15c3-5 Market Access Rule Documentation`
+- `14-Low-Latency-Systems/13 - Reliability, Ops & Testing/Disaster Recovery and High Availability Topologies.md` (wiki) -> `Sources/The Replicated State Machine Pattern in Fault-Tolerant Systems`
+- `14-Low-Latency-Systems/13 - Reliability, Ops & Testing/Exchange Simulators and Conformance Harnesses.md` (wiki) -> `Sources/CME AutoCert+ Conformance Testing Documentation`
+- `14-Low-Latency-Systems/13 - Reliability, Ops & Testing/Exchange Simulators and Conformance Harnesses.md` (wiki) -> `Sources/NASDAQ Gateway Certification Guidelines`
+- `14-Low-Latency-Systems/14 - Industry Map & Canon/Core Engineering Roles in Low-Latency Trading.md` (wiki) -> `Sources/High Frequency Trading by Irene Aldridge`
+- `14-Low-Latency-Systems/14 - Industry Map & Canon/Proprietary Secrecy vs Public Knowledge Boundary.md` (wiki) -> `Sources/Defend Trade Secrets Act of 2016 (DTSA)`
+- `14-Low-Latency-Systems/14 - Industry Map & Canon/Proprietary Secrecy vs Public Knowledge Boundary.md` (wiki) -> `Sources/Flash Boys by Michael Lewis (Aleynikov Legal Background)`
+- `14-Low-Latency-Systems/14 - Industry Map & Canon/The Quantitative Trading Firm Landscape.md` (wiki) -> `Sources/High Frequency Trading by Irene Aldridge`
+- `14-Low-Latency-Systems/Roadmap - 12-Week Production Calibration.md` (wiki) -> `Notes/Aeron Messaging Transport`
+- `14-Low-Latency-Systems/Roadmap - 12-Week Production Calibration.md` (wiki) -> `Notes/Allocation-Free Steady State Patterns`
+- `14-Low-Latency-Systems/Roadmap - 12-Week Production Calibration.md` (wiki) -> `Notes/Automated Kill Switches and Risk Circuit Breakers`
+- `14-Low-Latency-Systems/Roadmap - 12-Week Production Calibration.md` (wiki) -> `Notes/Branchless Programming Idioms`
+- `14-Low-Latency-Systems/Roadmap - 12-Week Production Calibration.md` (wiki) -> `Notes/C++ Memory Model and Memory Orders`
+- `14-Low-Latency-Systems/Roadmap - 12-Week Production Calibration.md` (wiki) -> `Notes/CME MDP 3.0 and Simple Binary Encoding SBE`
+- `14-Low-Latency-Systems/Roadmap - 12-Week Production Calibration.md` (wiki) -> `Notes/CPU Cache Hierarchy and Line Alignment`
+- `14-Low-Latency-Systems/Roadmap - 12-Week Production Calibration.md` (wiki) -> `Notes/CPU Power States and Jitter Sources`
+- `14-Low-Latency-Systems/Roadmap - 12-Week Production Calibration.md` (wiki) -> `Notes/CPU Timestamp Counter RDTSC Mechanics`
+- `14-Low-Latency-Systems/Roadmap - 12-Week Production Calibration.md` (wiki) -> `Notes/Clock Sources and Hardware Timestamping`
+- `14-Low-Latency-Systems/Roadmap - 12-Week Production Calibration.md` (wiki) -> `Notes/Coordinated Omission in Low Latency Systems`
+- `14-Low-Latency-Systems/Roadmap - 12-Week Production Calibration.md` (wiki) -> `Notes/DPDK Architecture for Trading`
+- `14-Low-Latency-Systems/Roadmap - 12-Week Production Calibration.md` (wiki) -> `Notes/Deterministic Matching Engine State Recovery`
+- `14-Low-Latency-Systems/Roadmap - 12-Week Production Calibration.md` (wiki) -> `Notes/Deterministic Replay and Packet Injection Testing`
+- `14-Low-Latency-Systems/Roadmap - 12-Week Production Calibration.md` (wiki) -> `Notes/Drop Copy and Clearing Feeds`
+- `14-Low-Latency-Systems/Roadmap - 12-Week Production Calibration.md` (wiki) -> `Notes/Exchange Gateway Architecture`
+- `14-Low-Latency-Systems/Roadmap - 12-Week Production Calibration.md` (wiki) -> `Notes/FPGA Architecture Fundamentals for Trading`
+- `14-Low-Latency-Systems/Roadmap - 12-Week Production Calibration.md` (wiki) -> `Notes/FPGA vs CPU in Low-Latency Trading`
+- `14-Low-Latency-Systems/Roadmap - 12-Week Production Calibration.md` (wiki) -> `Notes/FPGA-Based Feed Handlers`
+- `14-Low-Latency-Systems/Roadmap - 12-Week Production Calibration.md` (wiki) -> `Notes/False Sharing and Cache Contention`
+- `14-Low-Latency-Systems/Roadmap - 12-Week Production Calibration.md` (wiki) -> `Notes/Hardware Pre-Trade Risk Checks on SmartNICs`
+- `14-Low-Latency-Systems/Roadmap - 12-Week Production Calibration.md` (wiki) -> `Notes/Interrupt Routing and MSI-X Tuning`
+- `14-Low-Latency-Systems/Roadmap - 12-Week Production Calibration.md` (wiki) -> `Notes/Kernel Boot Parameters for Core Isolation`
+- `14-Low-Latency-Systems/Roadmap - 12-Week Production Calibration.md` (wiki) -> `Notes/Latency Numbers Every Trading Engineer Knows`
+- `14-Low-Latency-Systems/Roadmap - 12-Week Production Calibration.md` (wiki) -> `Notes/Latency Regression Testing in CI-CD`
+- `14-Low-Latency-Systems/Roadmap - 12-Week Production Calibration.md` (wiki) -> `Notes/Linux Thread Pinning and Core Affinity`
+- `14-Low-Latency-Systems/Roadmap - 12-Week Production Calibration.md` (wiki) -> `Notes/Lock-Free SPSC Ring Buffer Design`
+- `14-Low-Latency-Systems/Roadmap - 12-Week Production Calibration.md` (wiki) -> `Notes/Low-Latency TCP for Order Entry`
+- `14-Low-Latency-Systems/Roadmap - 12-Week Production Calibration.md` (wiki) -> `Notes/Matching Algorithms`
+- `14-Low-Latency-Systems/Roadmap - 12-Week Production Calibration.md` (wiki) -> `Notes/NASDAQ ITCH 5.0 Protocol Specification`
+- `14-Low-Latency-Systems/Roadmap - 12-Week Production Calibration.md` (wiki) -> `Notes/NASDAQ OUCH 4.2 Protocol Specification`
+- `14-Low-Latency-Systems/Roadmap - 12-Week Production Calibration.md` (wiki) -> `Notes/Network Interface Card Architecture`
+- `14-Low-Latency-Systems/Roadmap - 12-Week Production Calibration.md` (wiki) -> `Notes/One-Way Latency vs Round-Trip Time Measurement`
+- `14-Low-Latency-Systems/Roadmap - 12-Week Production Calibration.md` (wiki) -> `Notes/Order Book Data Structures`
+- `14-Low-Latency-Systems/Roadmap - 12-Week Production Calibration.md` (wiki) -> `Notes/Order State Management and Position Tracking`
+- `14-Low-Latency-Systems/Roadmap - 12-Week Production Calibration.md` (wiki) -> `Notes/Participant-Side Order Book Reconstructors`
+- `14-Low-Latency-Systems/Roadmap - 12-Week Production Calibration.md` (wiki) -> `Notes/Pre-Trade Risk Checks at Wire Speed`
+- `14-Low-Latency-Systems/Roadmap - 12-Week Production Calibration.md` (wiki) -> `Notes/Precision Time Protocol and White Rabbit`
+- `14-Low-Latency-Systems/Roadmap - 12-Week Production Calibration.md` (wiki) -> `Notes/SIMD-Accelerated Text Parsing`
+- `14-Low-Latency-Systems/Roadmap - 12-Week Production Calibration.md` (wiki) -> `Notes/Self-Match Prevention Mechanisms`
+- `14-Low-Latency-Systems/Roadmap - 12-Week Production Calibration.md` (wiki) -> `Notes/Shared Memory IPC Topologies`
+- `14-Low-Latency-Systems/Roadmap - 12-Week Production Calibration.md` (wiki) -> `Notes/Signal Generation and Low-Latency Pricing`
+- `14-Low-Latency-Systems/Roadmap - 12-Week Production Calibration.md` (wiki) -> `Notes/Solarflare ef_vi Zero-Copy API`
+- `14-Low-Latency-Systems/Roadmap - 12-Week Production Calibration.md` (wiki) -> `Notes/The LMAX Disruptor Architecture`
+- `14-Low-Latency-Systems/Roadmap - 12-Week Production Calibration.md` (wiki) -> `Notes/The Low-Latency C++ Technical Interview Bar`
+- `14-Low-Latency-Systems/Roadmap - 12-Week Production Calibration.md` (wiki) -> `Notes/The Sequenced-Stream Architecture`
+- `14-Low-Latency-Systems/Roadmap - 12-Week Production Calibration.md` (wiki) -> `Notes/Tick-to-Trade Critical Path Optimization`
+- `14-Low-Latency-Systems/Roadmap - 12-Week Production Calibration.md` (wiki) -> `Notes/UDP Multicast Market Data and A-B Feed Arbitration`
+- `14-Low-Latency-Systems/Sources/C++ Concurrency in Action by Anthony Williams.md` (wiki) -> `04 - Hardware Mechanical Sympathy/False Sharing and Cache Line Alignment`
+- `14-Low-Latency-Systems/Sources/C++ Concurrency in Action by Anthony Williams.md` (wiki) -> `08 - Low-Latency Programming/Atomic Operations and Lock-Free Primitives`
+- `14-Low-Latency-Systems/Sources/C++ Concurrency in Action by Anthony Williams.md` (wiki) -> `08 - Low-Latency Programming/Lock-Free SPSC and MPMC Queues`
+- `14-Low-Latency-Systems/Sources/Flash Boys by Michael Lewis.md` (wiki) -> `01 - Market & Microstructure Fundamentals/SIP vs Direct Market Data Feeds`
+- `14-Low-Latency-Systems/Sources/How to Build an Exchange by Jane Street.md` (wiki) -> `03 - Matching Engine Internals/Matching Engine Architecture Overview`
+- `14-Low-Latency-Systems/Sources/Intel 64 and IA-32 Architectures Software Developer's Manual.md` (wiki) -> `04 - Hardware Mechanical Sympathy/CPU Pipeline Branch Prediction and Speculative Execution`
+- `14-Low-Latency-Systems/Sources/Intel 64 and IA-32 Architectures Software Developer's Manual.md` (wiki) -> `04 - Hardware Mechanical Sympathy/False Sharing and Cache Line Alignment`
+- `14-Low-Latency-Systems/Sources/Memory Barriers - a Hardware View for Software Hackers by Paul E McKenney.md` (wiki) -> `04 - Hardware Mechanical Sympathy/CPU Cache Hierarchy L1 L2 L3`
+- `14-Low-Latency-Systems/Sources/Memory Barriers - a Hardware View for Software Hackers by Paul E McKenney.md` (wiki) -> `04 - Hardware Mechanical Sympathy/Cache Coherence Protocols MESI MOESI`
+- `14-Low-Latency-Systems/Sources/Memory Barriers - a Hardware View for Software Hackers by Paul E McKenney.md` (wiki) -> `05 - Concurrency & Multithreading/C++11 Memory Model and Atomic Operations`
+- `14-Low-Latency-Systems/Sources/Memory Barriers - a Hardware View for Software Hackers by Paul E McKenney.md` (wiki) -> `05 - Concurrency & Multithreading/Memory Fences and Compiler Barriers`
+- `14-Low-Latency-Systems/Sources/Optimal High-Frequency Market Making by Avellaneda and Stoikov.md` (wiki) -> `08 - Order Book & Matching Engine/Order Book Data Structures and Algorithms`
+- `14-Low-Latency-Systems/Sources/Optimal High-Frequency Market Making by Avellaneda and Stoikov.md` (wiki) -> `10 - Quantitative Strategies/Market Making Models and Inventory Management`
+- `14-Low-Latency-Systems/Sources/The High-Frequency Trading Arms Race by Eric Budish et al.md` (wiki) -> `08 - Order Book & Matching Engine/Matching Engine Core Logic and Execution`
+- `14-Low-Latency-Systems/Sources/The High-Frequency Trading Arms Race by Eric Budish et al.md` (wiki) -> `08 - Order Book & Matching Engine/Order Book Data Structures and Algorithms`
+- `14-Low-Latency-Systems/Sources/The High-Frequency Trading Arms Race by Eric Budish et al.md` (wiki) -> `10 - Quantitative Strategies/Statistical Arbitrage and Pairs Trading`
+- `14-Low-Latency-Systems/Sources/The LMAX Disruptor Architecture by Martin Thompson et al.md` (wiki) -> `04 - Hardware Mechanical Sympathy/CPU Cache Hierarchy L1 L2 L3`
+- `14-Low-Latency-Systems/Sources/The LMAX Disruptor Architecture by Martin Thompson et al.md` (wiki) -> `04 - Hardware Mechanical Sympathy/False Sharing and Cache Line Alignment`
+- `14-Low-Latency-Systems/Sources/The LMAX Disruptor Architecture by Martin Thompson et al.md` (wiki) -> `05 - Concurrency & Multithreading/Lock-Free Ring Buffers SPSC and MPMC`
+- `14-Low-Latency-Systems/Sources/The LMAX Disruptor Architecture by Martin Thompson et al.md` (wiki) -> `08 - Order Book & Matching Engine/Deterministic Matching Engine Architecture`
+- `14-Low-Latency-Systems/Sources/Trading and Exchanges by Larry Harris.md` (wiki) -> `01 - Market & Microstructure Fundamentals/Limit Order Book Mechanics`
+- `14-Low-Latency-Systems/Sources/Trading and Exchanges by Larry Harris.md` (wiki) -> `01 - Market & Microstructure Fundamentals/Order Types and Execution Semantics`
+- `14-Low-Latency-Systems/Sources/Wait-Free Synchronization by Maurice Herlihy.md` (wiki) -> `05 - Concurrency & Multithreading/Atomic Operations and Lock-Free Programming`
+- `14-Low-Latency-Systems/Sources/Wait-Free Synchronization by Maurice Herlihy.md` (wiki) -> `05 - Concurrency & Multithreading/Lock-Free Ring Buffers SPSC and MPMC`
+- `14-Low-Latency-Systems/Sources/Wait-Free Synchronization by Maurice Herlihy.md` (wiki) -> `08 - Order Book & Matching Engine/Deterministic Matching Engine Architecture`
+- `14-Low-Latency-Systems/Sources/What Every Programmer Should Know About Memory by Ulrich Drepper.md` (wiki) -> `04 - Hardware Mechanical Sympathy/CPU Cache Hierarchy L1 L2 L3`
+- `14-Low-Latency-Systems/Sources/What Every Programmer Should Know About Memory by Ulrich Drepper.md` (wiki) -> `04 - Hardware Mechanical Sympathy/Cache Coherence Protocols MESI MOESI`
+- `14-Low-Latency-Systems/Sources/What Every Programmer Should Know About Memory by Ulrich Drepper.md` (wiki) -> `04 - Hardware Mechanical Sympathy/False Sharing and Cache Line Alignment`
+- `14-Low-Latency-Systems/Sources/What Every Programmer Should Know About Memory by Ulrich Drepper.md` (wiki) -> `04 - Hardware Mechanical Sympathy/TLB Mechanics and HugePages`
+- `15-Technical-Whitepapers/03-Memory-Architecture-and-Concurrency/README.md` (wiki) -> `../../12-Performance-Engineering/01-Cpu-Architecture/false_sharing|12-Performance-Engineering: False Sharing Demo`
+- `15-Technical-Whitepapers/03-Memory-Architecture-and-Concurrency/Ulrich-Drepper-Memory-Architecture.md` (wiki) -> `../../12-Performance-Engineering/01-Cpu-Architecture/false_sharing|12-Performance-Engineering: False Sharing Demo`
+- `15-Technical-Whitepapers/09-Seminal-Computer-Science-Papers/02-Distributed-Systems-and-Consensus.md` (wiki) -> `../../08-Distinguished-Engineering/02-Distributed-Systems-Internals/raft_consensus|08-Distinguished-Engineering: Raft Consensus`
+- `15-Technical-Whitepapers/09-Seminal-Computer-Science-Papers/03-Cloud-Infrastructure-and-Big-Data.md` (wiki) -> `../../08-Distinguished-Engineering/02-Distributed-Systems-Internals/consistent_hashing|08-Distinguished-Engineering: Consistent Hashing`
+- `15-Technical-Whitepapers/09-Seminal-Computer-Science-Papers/03-Cloud-Infrastructure-and-Big-Data.md` (wiki) -> `../../08-Distinguished-Engineering/03-Database-Internals/lsm_tree|08-Distinguished-Engineering: LSM Tree`
+- `15-Technical-Whitepapers/09-Seminal-Computer-Science-Papers/04-Databases-and-Transaction-Processing.md` (wiki) -> `../../08-Distinguished-Engineering/03-Database-Internals/wal|08-Distinguished-Engineering: Write-Ahead Log (WAL)`
+- `15-Technical-Whitepapers/09-Seminal-Computer-Science-Papers/README.md` (wiki) -> `../../08-Distinguished-Engineering/02-Distributed-Systems-Internals/consistent_hashing|08-Distinguished-Engineering: Consistent Hashing`
+- `15-Technical-Whitepapers/09-Seminal-Computer-Science-Papers/README.md` (wiki) -> `../../08-Distinguished-Engineering/02-Distributed-Systems-Internals/raft_consensus|08-Distinguished-Engineering: Raft Consensus`
+- `15-Technical-Whitepapers/README.md` (wiki) -> `../11-Security-And-Cryptography/README|11-Security-And-Cryptography`
+- `15-Technical-Whitepapers/README.md` (wiki) -> `../12-Performance-Engineering/README|12-Performance-Engineering`
+- `15-Technical-Whitepapers/README.md` (wiki) -> `../14-Low-Latency-Systems/README|14-Low-Latency-Systems`
+- `16-Interview-Command-Center/00-Dashboard.md` (wiki) -> `01-CS-Foundations`
+- `16-Interview-Command-Center/00-Dashboard.md` (wiki) -> `03-Data-Structures-Algorithms`
+- `16-Interview-Command-Center/00-Dashboard.md` (wiki) -> `04-System-Design`
+- `16-Interview-Command-Center/00-Dashboard.md` (wiki) -> `05-Quantitative-Finance`
+- `16-Interview-Command-Center/00-Dashboard.md` (wiki) -> `06-Interview-Prep`
+- `16-Interview-Command-Center/00-Dashboard.md` (wiki) -> `12-Performance-Engineering`
+- `16-Interview-Command-Center/00-Dashboard.md` (wiki) -> `13-Agentic-AI`
+- `16-Interview-Command-Center/00-Dashboard.md` (wiki) -> `14-Low-Latency-Systems`
+- `16-Interview-Command-Center/00-Dashboard.md` (wiki) -> `15-Technical-Whitepapers`
+- `16-Interview-Command-Center/01-Roles/AI-Engineer/Common-Patterns.md` (wiki) -> `04-System-Design`
+- `16-Interview-Command-Center/01-Roles/AI-Engineer/Resources.md` (wiki) -> `03-Data-Structures-Algorithms`
+- `16-Interview-Command-Center/01-Roles/AI-Engineer/Resources.md` (wiki) -> `04-System-Design`
+- `16-Interview-Command-Center/01-Roles/AI-Engineer/_Hub.md` (wiki) -> `03-Data-Structures-Algorithms`
+- `16-Interview-Command-Center/01-Roles/AI-Engineer/_Hub.md` (wiki) -> `03-Data-Structures-Algorithms`
+- `16-Interview-Command-Center/01-Roles/AI-Engineer/_Hub.md` (wiki) -> `04-System-Design`
+- `16-Interview-Command-Center/01-Roles/Low-Latency/Resources.md` (wiki) -> `12-Performance-Engineering`
+- `16-Interview-Command-Center/01-Roles/Quant-Dev/Resources.md` (wiki) -> `05-Quantitative-Finance`
+- `16-Interview-Command-Center/01-Roles/Quant-Dev/Resources.md` (wiki) -> `12-Performance-Engineering`
+- `16-Interview-Command-Center/01-Roles/Quant-Dev/Resources.md` (wiki) -> `14-Low-Latency-Systems`
+- `16-Interview-Command-Center/01-Roles/Quant-Dev/Resources.md` (wiki) -> `15-Technical-Whitepapers`
+- `16-Interview-Command-Center/01-Roles/Quant-Dev/_Hub.md` (wiki) -> `05-Quantitative-Finance`
+- `16-Interview-Command-Center/01-Roles/Quant-Dev/_Hub.md` (wiki) -> `12-Performance-Engineering`
+- `16-Interview-Command-Center/01-Roles/Quant-Dev/_Hub.md` (wiki) -> `14-Low-Latency-Systems`
+- `16-Interview-Command-Center/01-Roles/SDE/Resources.md` (wiki) -> `01-CS-Foundations`
+- `16-Interview-Command-Center/01-Roles/SDE/Resources.md` (wiki) -> `10-Development-Practices`
+- `16-Interview-Command-Center/01-Roles/SDE/_Hub.md` (wiki) -> `01-CS-Foundations`
+- `16-Interview-Command-Center/01-Roles/SDE/_Hub.md` (wiki) -> `01-CS-Foundations`
+- `16-Interview-Command-Center/01-Roles/SDE/_Hub.md` (wiki) -> `02-Programming-Languages`
+- `CS-Subjects/README.md` (md) -> `database/`
+- `CS-Subjects/README.md` (md) -> `networks/`
+- `CS-Subjects/README.md` (md) -> `oop/`
+- `CS-Subjects/README.md` (md) -> `os/`
+- `README.md` (md) -> `./02-Programming-Languages/Go`
+- `README.md` (md) -> `./02-Programming-Languages/Rust`
+
+</details>
+
+## 4. Orphan notes
+
+Notes that no other note links to. Most become reachable once each folder has a Map of Content.
+
+| Folder | Orphans |
+| :--- | ---: |
+| `02-Programming-Languages` | 734 |
+| `03-Data-Structures-Algorithms` | 61 |
+| `04-System-Design` | 56 |
+| `01-CS-Foundations` | 33 |
+| `16-Interview-Command-Center` | 28 |
+| `13-Agentic-AI` | 16 |
+| `14-Low-Latency-Systems` | 9 |
+| `(root)` | 4 |
+| `06-Interview-Prep` | 2 |
+| `08-Distinguished-Engineering` | 2 |
+| `09-Engineering-Leadership` | 2 |
+| `05-Quantitative-Finance` | 1 |
+| `07-Project-Portfolio` | 1 |
+| `10-Development-Practices` | 1 |
+| `CS-Subjects` | 1 |
+| `tools` | 1 |
+
+<details>
+<summary>All 952 orphans</summary>
+
+- `01-CS-Foundations/Computer-Networks/CS6250-Study-Answers.md`
+- `01-CS-Foundations/Computer-Networks/networking_complete_reference.md`
+- `01-CS-Foundations/Computer-Networks/networking_complete_reference_new.md`
+- `01-CS-Foundations/Computer-Networks/networking_keywords_235.md`
+- `01-CS-Foundations/Computer-Networks/networking_protocols_extensive.md`
+- `01-CS-Foundations/Computer-Networks/networking_table.md`
+- `01-CS-Foundations/Computer-Networks/networking_table_new.md`
+- `01-CS-Foundations/DBMS/README.md`
+- `01-CS-Foundations/DBMS/database_systems_199.md`
+- `01-CS-Foundations/DBMS/dbms_complete_reference.md`
+- `01-CS-Foundations/DBMS/notes/02-schema-design.md`
+- `01-CS-Foundations/DBMS/notes/03-normalisation-sql.md`
+- `01-CS-Foundations/DBMS/notes/07-groupby-functions-worksheet-answers.md`
+- `01-CS-Foundations/DBMS/notes/07-groupby-functions-worksheet.md`
+- `01-CS-Foundations/DBMS/notes/07-groupby-functions.md`
+- `01-CS-Foundations/DBMS/notes/08-window-fuctions-indexes.md`
+- `01-CS-Foundations/DBMS/notes/08-window-function-query-optimisation.md`
+- `01-CS-Foundations/DBMS/notes/08-window-functions-worksheet-answers.md`
+- `01-CS-Foundations/DBMS/notes/08-window-functions-worksheet.md`
+- `01-CS-Foundations/DBMS/notes/09-subqueries-views-worksheet-answers.md`
+- `01-CS-Foundations/DBMS/notes/09-subqueries-views-worksheet.md`
+- `01-CS-Foundations/DBMS/notes/09-subqueries-views.md`
+- `01-CS-Foundations/Object-Oriented-Programming/README.md`
+- `01-CS-Foundations/Object-Oriented-Programming/code/README.md`
+- `01-CS-Foundations/Object-Oriented-Programming/notes/01-oop-introduction.md`
+- `01-CS-Foundations/Object-Oriented-Programming/notes/02-constructors-inheritance.md`
+- `01-CS-Foundations/Object-Oriented-Programming/notes/03-polymorphism.md`
+- `01-CS-Foundations/Object-Oriented-Programming/notes/04-solid-01.md`
+- `01-CS-Foundations/Object-Oriented-Programming/notes/05-solid-02.md`
+- `01-CS-Foundations/Operating-Systems/IPC-Complete-Guide.md`
+- `01-CS-Foundations/Operating-Systems/notes/03-threads-synchronisation.md`
+- `01-CS-Foundations/Operating-Systems/operating_systems_192.md`
+- `01-CS-Foundations/Operating-Systems/operating_systems_extended.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Appendices/Appendix_A_Appendix_A_C_Keywords__Operators_Reference.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Appendices/Appendix_A_Appendix_A_C_Keywords__Operators_Reference_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Appendices/Appendix_B_Appendix_B_Common_Acronyms.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Appendices/Appendix_B_Appendix_B_Common_Acronyms_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Appendices/Appendix_C_Appendix_C_Recommended_Tooling.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Appendices/Appendix_C_Appendix_C_Recommended_Tooling_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Appendices/Appendix_D_Appendix_D_Common_C_Traps__Pitfalls.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Appendices/Appendix_D_Appendix_D_Common_C_Traps__Pitfalls_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Appendices/Appendix_E_Appendix_E_C_Interview_Cheat_Sheet.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Appendices/Appendix_E_Appendix_E_C_Interview_Cheat_Sheet_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Appendices/Appendix_F_Appendix_F_The_C_Standard_Evolution_Matrix.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Appendices/Appendix_F_Appendix_F_The_C_Standard_Evolution_Matrix_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Appendices/Appendix_G_Appendix_G_C_Standard_Library_Headers_Reference.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Appendices/Appendix_G_Appendix_G_C_Standard_Library_Headers_Reference_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Appendices/Appendix_H_Appendix_H_Professional_C_Idioms.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Appendices/Appendix_H_Appendix_H_Professional_C_Idioms_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Appendices/Appendix_I_Appendix_I_Fireside_Chat_The_History_of_C_Standard.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Appendices/Appendix_J_Appendix_J_The_Quantitative_Developers_Toolkit.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Appendices/Appendix_K_Appendix_K_Deep_Dive_The_Memory_Layout_of_a_C_Clas.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Appendices/Appendix_L_Appendix_L_100_More_Interview_Questions_Part_5-8.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Appendices/Appendix_M_Appendix_M_THE_ALGORITHM_COMPENDIUM_The_Masters_To.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Appendices/Appendix_N_Appendix_N_MODERN_DESIGN_PATTERNS_C202326_Edition.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Appendices/Appendix_O_Appendix_O_THE_C_CORE_GUIDELINES_Head_First_Summar.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Appendices/Appendix_T_Appendix_T_THE_MASTERS_GUIDE_TO_CMAKE.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Appendices/Appendix_U_Appendix_U_THE_STANDARD_LIBRARY_CONCURRENCY_TOOLKI.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Appendices/Appendix_V_Appendix_V_THE_STANDARD_LIBRARY_MEMORY_TOOLKIT.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Appendices/Appendix_W_Appendix_W_THE_COMPLETE_C_HEADER_REFERENCE_Head_Fi.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Appendices/Appendix_X_Appendix_X_C_OBJECT-ORIENTED_DESIGN_SOLID_Principl.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Appendices/Appendix_Y_Appendix_Y_THE_COMPLETE_GUIDE_TO_METAPROGRAMMING.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Appendices/Appendix_Z_Appendix_Z_THE_ENCYCLOPEDIA_OF_MODERN_C_IDIOMS_The.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Complete-CPP-Zero-to-Godhood.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/FrontMatter/00_Preface.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/README.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/SUMMARY.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/00_Preface/00_Preface.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_03_Control_Flow_and_Preprocessor/Chapter_03_Control_Flow_and_Preprocessor.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_03_Control_Flow_and_Preprocessor/Chapter_3_CHAPTER_3_CONTROL_FLOW_AND_PREPROCESSOR.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_03_Control_Flow_and_Preprocessor/Chapter_3_CONTROL_FLOW_AND_PREPROCESSOR.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_03_Control_Flow_and_Preprocessor/_archive/03_control_flow.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_03_Control_Flow_and_Preprocessor/_archive/03_control_flow_and_preprocessor.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_04_Advanced_Functions_and_Callbacks/Chapter_04_Advanced_Functions_and_Callbacks.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_04_Advanced_Functions_and_Callbacks/_archive/04_advanced_functions_and_callbacks.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_04_Advanced_Functions_and_Callbacks/_archive/04_functions.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_04_Advanced_Functions_and_Callbacks/_archive/Chapter_04_Floating_Point_and_Bit_Manipulation.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_04_Advanced_Functions_and_Callbacks/_archive/Chapter_4_ADVANCED_FUNCTIONS_AND_CALLBACKS.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_04_Advanced_Functions_and_Callbacks/_archive/Chapter_4_CHAPTER_4_ADVANCED_FUNCTIONS_AND_CALLBACKS.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_10_Advanced_Streams_and_File_IO/Chapter_10_Advanced_Streams_and_File_IO_Combined.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_10_Advanced_Streams_and_File_IO/_archive/06_strings_and_io.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_10_Advanced_Streams_and_File_IO/_archive/11_advanced_streams_and_file_io.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_10_Advanced_Streams_and_File_IO/_archive/Chapter_11_Advanced_Streams_and_File_IO.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_1_FOUNDATIONS_AND_COMPILATION/Chapter_01_Foundations_and_Compilation.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_2_MEMORY_TYPES_AND_POINTERS/Chapter_02_Memory_Types_and_Pointers.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_5_CHAPTER_5_OOP_AND_ENCAPSULATION/Chapter_05_OOP_and_Encapsulation.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_5_CHAPTER_5_OOP_AND_ENCAPSULATION/_archive/05_floating_point_and_bit_manipulation.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_5_CHAPTER_5_OOP_AND_ENCAPSULATION/_archive/07_enums_unions_namespaces.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_5_CHAPTER_5_OOP_AND_ENCAPSULATION/_archive/08_classes_and_oop.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_5_CHAPTER_5_OOP_AND_ENCAPSULATION/_archive/09_operator_overloading.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_5_CHAPTER_5_OOP_AND_ENCAPSULATION/_archive/11_type_conversions_casting.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_5_CHAPTER_5_OOP_AND_ENCAPSULATION/_archive/Chapter_5_CHAPTER_5_OOP_AND_ENCAPSULATION.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_5_CHAPTER_5_OOP_AND_ENCAPSULATION/_archive/Chapter_5_OOP_AND_ENCAPSULATION.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_6_CHAPTER_6_POLYMORPHISM_AND_VIRTUALIZATION/Chapter_06_Polymorphism_and_Virtualization.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_6_CHAPTER_6_POLYMORPHISM_AND_VIRTUALIZATION/_archive/06_oop_and_encapsulation.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_6_CHAPTER_6_POLYMORPHISM_AND_VIRTUALIZATION/_archive/10_inheritance_polymorphism.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_6_CHAPTER_6_POLYMORPHISM_AND_VIRTUALIZATION/_archive/Chapter_6_CHAPTER_6_POLYMORPHISM_AND_VIRTUALIZATION.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_6_CHAPTER_6_POLYMORPHISM_AND_VIRTUALIZATION/_archive/Chapter_6_POLYMORPHISM_AND_VIRTUALIZATION.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_7_STANDARD_TEMPLATE_LIBRARY_CORE/Chapter_07_Standard_Template_Library_Core_Combined.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_7_STANDARD_TEMPLATE_LIBRARY_CORE/_archive/07_polymorphism_and_virtualization.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_7_STANDARD_TEMPLATE_LIBRARY_CORE/_archive/Chapter_07_Standard_Template_Library_Core.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_7_STANDARD_TEMPLATE_LIBRARY_CORE/_archive/Chapter_7_CHAPTER_7_STANDARD_TEMPLATE_LIBRARY_CORE.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_7_STANDARD_TEMPLATE_LIBRARY_CORE/_archive/Chapter_7_STANDARD_TEMPLATE_LIBRARY_CORE.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_8_CHAPTER_8_STL_UNDER_THE_HOOD/Chapter_08_STL_Under_the_Hood_Combined.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_8_CHAPTER_8_STL_UNDER_THE_HOOD/_archive/08_standard_template_library_core.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_8_CHAPTER_8_STL_UNDER_THE_HOOD/_archive/09_stl_under_the_hood.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_8_CHAPTER_8_STL_UNDER_THE_HOOD/_archive/15_containers_and_iterators.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_8_CHAPTER_8_STL_UNDER_THE_HOOD/_archive/16_algorithms.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_8_CHAPTER_8_STL_UNDER_THE_HOOD/_archive/17_lambdas.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_8_CHAPTER_8_STL_UNDER_THE_HOOD/_archive/Chapter_08_STL_Under_the_Hood.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_8_CHAPTER_8_STL_UNDER_THE_HOOD/_archive/Chapter_8_CHAPTER_8_STL_UNDER_THE_HOOD.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_8_CHAPTER_8_STL_UNDER_THE_HOOD/_archive/Chapter_8_STL_UNDER_THE_HOOD.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_9_ERROR_HANDLING_AND_ROBUSTNESS/Chapter_09_Error_Handling_and_Robustness_Combined.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_9_ERROR_HANDLING_AND_ROBUSTNESS/_archive/10_error_handling_and_robustness.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_9_ERROR_HANDLING_AND_ROBUSTNESS/_archive/18_error_handling.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_9_ERROR_HANDLING_AND_ROBUSTNESS/_archive/Chapter_09_Error_Handling_and_Robustness.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_9_ERROR_HANDLING_AND_ROBUSTNESS/_archive/Chapter_9_CHAPTER_9_ERROR_HANDLING_AND_ROBUSTNESS.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_9_ERROR_HANDLING_AND_ROBUSTNESS/_archive/Chapter_9_ERROR_HANDLING_AND_ROBUSTNESS.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_02_The_Revolution_C11/Chapter_11_The_Modern_C11_Core/Chapter_11_The_Modern_C11_Core.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_02_The_Revolution_C11/Chapter_11_The_Modern_C11_Core/_archive/12_the_modern_c11_core.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_02_The_Revolution_C11/Chapter_11_The_Modern_C11_Core/_archive/Chapter_10_CHAPTER_10_THE_MODERN_C11_CORE.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_02_The_Revolution_C11/Chapter_11_The_Modern_C11_Core/_archive/Chapter_10_THE_MODERN_C11_CORE_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_02_The_Revolution_C11/Chapter_11_The_Modern_C11_Core/_archive/Chapter_10_The_Modern_C11_Core.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_02_The_Revolution_C11/Chapter_12_Move_Semantics_and_Smart_Pointers/Chapter_12_Move_Semantics_and_Smart_Pointers.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_02_The_Revolution_C11/Chapter_12_Move_Semantics_and_Smart_Pointers/_archive/13_move_semantics_and_smart_pointers.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_02_The_Revolution_C11/Chapter_12_Move_Semantics_and_Smart_Pointers/_archive/Chapter_11_CHAPTER_11_MOVE_SEMANTICS_AND_SMART_POINTERS.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_02_The_Revolution_C11/Chapter_12_Move_Semantics_and_Smart_Pointers/_archive/Chapter_11_MOVE_SEMANTICS_AND_SMART_POINTERS_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_02_The_Revolution_C11/Chapter_12_Move_Semantics_and_Smart_Pointers/_archive/Chapter_11_Move_Semantics_and_Smart_Pointers.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_02_The_Revolution_C11/Chapter_13_Functional_Programming/Chapter_13_Functional_Programming.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_02_The_Revolution_C11/Chapter_13_Functional_Programming/_archive/14_functional_programming.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_02_The_Revolution_C11/Chapter_13_Functional_Programming/_archive/Chapter_12_CHAPTER_12_FUNCTIONAL_PROGRAMMING.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_02_The_Revolution_C11/Chapter_13_Functional_Programming/_archive/Chapter_12_FUNCTIONAL_PROGRAMMING_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_02_The_Revolution_C11/Chapter_13_Functional_Programming/_archive/Chapter_12_Functional_Programming.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_02_The_Revolution_C11/Chapter_14_Template_Metaprogramming/Chapter_14_Template_Metaprogramming.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_02_The_Revolution_C11/Chapter_14_Template_Metaprogramming/_archive/15_template_metaprogramming.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_02_The_Revolution_C11/Chapter_14_Template_Metaprogramming/_archive/Chapter_13_CHAPTER_13_TEMPLATE_METAPROGRAMMING.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_02_The_Revolution_C11/Chapter_14_Template_Metaprogramming/_archive/Chapter_13_TEMPLATE_METAPROGRAMMING_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_02_The_Revolution_C11/Chapter_14_Template_Metaprogramming/_archive/Chapter_13_Template_Metaprogramming.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_02_The_Revolution_C11/Chapter_15_Standard_Library_Expansion/Chapter_15_Standard_Library_Expansion.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_02_The_Revolution_C11/Chapter_15_Standard_Library_Expansion/_archive/16_standard_library_expansion.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_02_The_Revolution_C11/Chapter_15_Standard_Library_Expansion/_archive/Chapter_14_CHAPTER_14_STANDARD_LIBRARY_EXPANSION.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_02_The_Revolution_C11/Chapter_15_Standard_Library_Expansion/_archive/Chapter_14_STANDARD_LIBRARY_EXPANSION_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_02_The_Revolution_C11/Chapter_15_Standard_Library_Expansion/_archive/Chapter_14_Standard_Library_Expansion.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_02_The_Revolution_C11/Chapter_16_Concurrency/Chapter_16_Concurrency.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_02_The_Revolution_C11/Chapter_16_Concurrency/_archive/17_concurrency.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_02_The_Revolution_C11/Chapter_16_Concurrency/_archive/18_concurrency_with_openmp.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_02_The_Revolution_C11/Chapter_16_Concurrency/_archive/Chapter_15_CHAPTER_15_CONCURRENCY.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_02_The_Revolution_C11/Chapter_16_Concurrency/_archive/Chapter_15_CONCURRENCY_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_02_The_Revolution_C11/Chapter_16_Concurrency/_archive/Chapter_15_Concurrency.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_02_The_Revolution_C11/Chapter_16_Concurrency/_archive/Chapter_16_Concurrency_with_OpenMP.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_02_The_Revolution_C11/Chapter_17_Advanced_Core_Language_and_Literals/Chapter_17_Advanced_Core_Language_and_Literals.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_03_The_Polish_CPP14/Chapter_18_C14_Core_Language_Upgrades/Chapter_18_Core_Language_Upgrades.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_03_The_Polish_CPP14/Chapter_18_C14_Core_Language_Upgrades/_archive/19_c14_core_language_upgrades.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_03_The_Polish_CPP14/Chapter_18_C14_Core_Language_Upgrades/_archive/Chapter_16_C14_CORE_LANGUAGE_UPGRADES_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_03_The_Polish_CPP14/Chapter_18_C14_Core_Language_Upgrades/_archive/Chapter_16_C14_Core_Language_Upgrades.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_03_The_Polish_CPP14/Chapter_18_C14_Core_Language_Upgrades/_archive/Chapter_16_CHAPTER_16_C14_CORE_LANGUAGE_UPGRADES.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_03_The_Polish_CPP14/Chapter_19_C14_Functions_and_Lambdas/Chapter_19_Functions_and_Lambdas.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_03_The_Polish_CPP14/Chapter_19_C14_Functions_and_Lambdas/_archive/20_c14_functions_and_lambdas.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_03_The_Polish_CPP14/Chapter_19_C14_Functions_and_Lambdas/_archive/Chapter_17_C14_FUNCTIONS_AND_LAMBDAS_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_03_The_Polish_CPP14/Chapter_19_C14_Functions_and_Lambdas/_archive/Chapter_17_C14_Functions_and_Lambdas.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_03_The_Polish_CPP14/Chapter_19_C14_Functions_and_Lambdas/_archive/Chapter_17_CHAPTER_17_C14_FUNCTIONS_AND_LAMBDAS.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_03_The_Polish_CPP14/Chapter_20_C14_Standard_Library_Enhancements/Chapter_20_Standard_Library_Enhancements.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_03_The_Polish_CPP14/Chapter_20_C14_Standard_Library_Enhancements/_archive/22_c14_standard_library_enhancements.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_03_The_Polish_CPP14/Chapter_20_C14_Standard_Library_Enhancements/_archive/Chapter_19_C14_STANDARD_LIBRARY_ENHANCEMENTS_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_03_The_Polish_CPP14/Chapter_20_C14_Standard_Library_Enhancements/_archive/Chapter_19_C14_Standard_Library_Enhancements.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_03_The_Polish_CPP14/Chapter_20_C14_Standard_Library_Enhancements/_archive/Chapter_19_CHAPTER_19_C14_STANDARD_LIBRARY_ENHANCEMENTS.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_03_The_Polish_CPP14/Chapter_21_C14_Templates_and_Metaprogramming/Chapter_21_Templates_and_Metaprogramming.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_03_The_Polish_CPP14/Chapter_21_C14_Templates_and_Metaprogramming/_archive/21_c14_templates_and_metaprogramming.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_03_The_Polish_CPP14/Chapter_21_C14_Templates_and_Metaprogramming/_archive/Chapter_18_C14_TEMPLATES_AND_METAPROGRAMMING_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_03_The_Polish_CPP14/Chapter_21_C14_Templates_and_Metaprogramming/_archive/Chapter_18_C14_Templates_and_Metaprogramming.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_03_The_Polish_CPP14/Chapter_21_C14_Templates_and_Metaprogramming/_archive/Chapter_18_CHAPTER_18_C14_TEMPLATES_AND_METAPROGRAMMING.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_03_The_Polish_CPP14/Chapter_22_New_Iterator_and_Algorithm_Facilities/Chapter_22_New_Iterator_and_Algorithm_Facilities.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_04_The_Modernizer_CPP17/Chapter_23_Core_Language_Features/Chapter_23_Core_Language_Features.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_04_The_Modernizer_CPP17/Chapter_23_Core_Language_Features/_archive/23_c17_core_language_features.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_04_The_Modernizer_CPP17/Chapter_23_Core_Language_Features/_archive/Chapter_20_C17_CORE_LANGUAGE_FEATURES_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_04_The_Modernizer_CPP17/Chapter_23_Core_Language_Features/_archive/Chapter_20_C17_Core_Language_Features.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_04_The_Modernizer_CPP17/Chapter_23_Core_Language_Features/_archive/Chapter_20_CHAPTER_20_C17_CORE_LANGUAGE_FEATURES.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_04_The_Modernizer_CPP17/Chapter_24_Template_Metaprogramming/Chapter_24_Template_Metaprogramming.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_04_The_Modernizer_CPP17/Chapter_24_Template_Metaprogramming/_archive/24_c17_template_metaprogramming.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_04_The_Modernizer_CPP17/Chapter_24_Template_Metaprogramming/_archive/Chapter_21_C17_TEMPLATE_METAPROGRAMMING_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_04_The_Modernizer_CPP17/Chapter_24_Template_Metaprogramming/_archive/Chapter_21_C17_Template_Metaprogramming.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_04_The_Modernizer_CPP17/Chapter_24_Template_Metaprogramming/_archive/Chapter_21_CHAPTER_21_C17_TEMPLATE_METAPROGRAMMING.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_04_The_Modernizer_CPP17/Chapter_25_Vocabulary_Types/Chapter_25_Vocabulary_Types.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_04_The_Modernizer_CPP17/Chapter_25_Vocabulary_Types/_archive/25_c17_vocabulary_types.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_04_The_Modernizer_CPP17/Chapter_25_Vocabulary_Types/_archive/Chapter_22_C17_VOCABULARY_TYPES_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_04_The_Modernizer_CPP17/Chapter_25_Vocabulary_Types/_archive/Chapter_22_C17_Vocabulary_Types.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_04_The_Modernizer_CPP17/Chapter_25_Vocabulary_Types/_archive/Chapter_22_CHAPTER_22_C17_VOCABULARY_TYPES.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_04_The_Modernizer_CPP17/Chapter_26_Filesystem_and_Polymorphic_Memory/Chapter_26_Filesystem_and_Polymorphic_Memory.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_04_The_Modernizer_CPP17/Chapter_26_Filesystem_and_Polymorphic_Memory/_archive/26_c17_filesystem_and_io.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_04_The_Modernizer_CPP17/Chapter_26_Filesystem_and_Polymorphic_Memory/_archive/Chapter_23_C17_FILESYSTEM_AND_IO_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_04_The_Modernizer_CPP17/Chapter_26_Filesystem_and_Polymorphic_Memory/_archive/Chapter_23_C17_Filesystem_and_IO.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_04_The_Modernizer_CPP17/Chapter_26_Filesystem_and_Polymorphic_Memory/_archive/Chapter_23_CHAPTER_23_C17_FILESYSTEM_AND_IO.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_04_The_Modernizer_CPP17/Chapter_27_Parallel_Algorithms_and_Concurrency/Chapter_27_Parallel_Algorithms_and_Concurrency.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_04_The_Modernizer_CPP17/Chapter_27_Parallel_Algorithms_and_Concurrency/_archive/27_c17_parallel_algorithms_and_concurrency.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_04_The_Modernizer_CPP17/Chapter_27_Parallel_Algorithms_and_Concurrency/_archive/Chapter_24_C17_PARALLEL_ALGORITHMS_AND_CONCURRENCY_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_04_The_Modernizer_CPP17/Chapter_27_Parallel_Algorithms_and_Concurrency/_archive/Chapter_24_C17_Parallel_Algorithms_and_Concurrency.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_04_The_Modernizer_CPP17/Chapter_27_Parallel_Algorithms_and_Concurrency/_archive/Chapter_24_CHAPTER_24_C17_PARALLEL_ALGORITHMS_AND_CONCURRENCY.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_04_The_Modernizer_CPP17/Chapter_28_Standard_Library_Additions/Chapter_28_Standard_Library_Additions.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_04_The_Modernizer_CPP17/Chapter_28_Standard_Library_Additions/_archive/28_c17_standard_library_additions.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_04_The_Modernizer_CPP17/Chapter_28_Standard_Library_Additions/_archive/Chapter_25_C17_STANDARD_LIBRARY_ADDITIONS_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_04_The_Modernizer_CPP17/Chapter_28_Standard_Library_Additions/_archive/Chapter_25_C17_Standard_Library_Additions.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_04_The_Modernizer_CPP17/Chapter_28_Standard_Library_Additions/_archive/Chapter_25_CHAPTER_25_C17_STANDARD_LIBRARY_ADDITIONS.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_04_The_Modernizer_CPP17/Chapter_29_Associative_Container_Advances/Chapter_29_Associative_Container_Advances.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_04_The_Modernizer_CPP17/Chapter_30_Low_Latency_Facilities/Chapter_30_Low_Latency_Facilities.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_31_The_Gigantic_Leap/Chapter_31_The_Gigantic_Leap.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_32_Concepts_I_Constraints/Chapter_32_Concepts_I_Constraints.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_32_Concepts_I_Constraints/_archive/29_c20_concepts.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_32_Concepts_I_Constraints/_archive/Chapter_26_C20_CONCEPTS_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_32_Concepts_I_Constraints/_archive/Chapter_26_C20_Concepts.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_32_Concepts_I_Constraints/_archive/Chapter_26_CHAPTER_26_C20_CONCEPTS.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_33_Concepts_II_Standard_Library_and_Subsumption/Chapter_33_Concepts_II_Standard_Library_and_Subsumption.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_34_Ranges_I_Views_and_Lazy_Pipelines/Chapter_34_Ranges_I_Views_and_Lazy_Pipelines.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_34_Ranges_I_Views_and_Lazy_Pipelines/_archive/32_c20_ranges.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_34_Ranges_I_Views_and_Lazy_Pipelines/_archive/Chapter_29_C20_RANGES_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_34_Ranges_I_Views_and_Lazy_Pipelines/_archive/Chapter_29_C20_Ranges.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_34_Ranges_I_Views_and_Lazy_Pipelines/_archive/Chapter_29_CHAPTER_29_C20_RANGES.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_35_Ranges_II_Algorithms_Projections_Borrowed/Chapter_35_Ranges_II_Algorithms_Projections_Borrowed.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_36_Coroutines_I_Keywords_and_Promise_Protocol/Chapter_36_Coroutines_I_Keywords_and_Promise_Protocol.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_36_Coroutines_I_Keywords_and_Promise_Protocol/_archive/31_c20_coroutines.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_36_Coroutines_I_Keywords_and_Promise_Protocol/_archive/Chapter_28_C20_COROUTINES_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_36_Coroutines_I_Keywords_and_Promise_Protocol/_archive/Chapter_28_C20_Coroutines.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_36_Coroutines_I_Keywords_and_Promise_Protocol/_archive/Chapter_28_CHAPTER_28_C20_COROUTINES.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_37_Coroutines_II_Awaitables_Tasks_and_Symmetric_Transfer/Chapter_37_Coroutines_II_Awaitables_Tasks_and_Symmetric_Transfer.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_38_Modules_The_Death_of_Headers/Chapter_38_Modules_The_Death_of_Headers.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_38_Modules_The_Death_of_Headers/_archive/30_c20_modules.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_38_Modules_The_Death_of_Headers/_archive/Chapter_27_C20_MODULES_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_38_Modules_The_Death_of_Headers/_archive/Chapter_27_C20_Modules.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_38_Modules_The_Death_of_Headers/_archive/Chapter_27_CHAPTER_27_C20_MODULES.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_39_Three_Way_Comparison_The_Spaceship_Operator/Chapter_39_Three_Way_Comparison_The_Spaceship_Operator.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_39_Three_Way_Comparison_The_Spaceship_Operator/_archive/33_c20_core_language_features.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_39_Three_Way_Comparison_The_Spaceship_Operator/_archive/Chapter_30_C20_CORE_LANGUAGE_FEATURES_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_39_Three_Way_Comparison_The_Spaceship_Operator/_archive/Chapter_30_C20_Core_Language_Features.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_39_Three_Way_Comparison_The_Spaceship_Operator/_archive/Chapter_30_CHAPTER_30_C20_CORE_LANGUAGE_FEATURES.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_40_Designated_Initializers_and_Aggregates/Chapter_40_Designated_Initializers_and_Aggregates.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_41_consteval_constinit_and_constexpr_Expansion/Chapter_41_consteval_constinit_and_constexpr_Expansion.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_42_Abbreviated_Templates_explicit_bool_and_Lambda_Enhancements/Chapter_42_Abbreviated_Templates_explicit_bool_and_Lambda_Enhancements.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_43_using_enum_VA_OPT_NTTP_and_Language_Cleanups/Chapter_43_using_enum_VA_OPT_NTTP_and_Language_Cleanups.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_44_Attributes_for_Performance_and_Safety/Chapter_44_Attributes_for_Performance_and_Safety.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_45_std_span_Non_Owning_Views_over_Contiguous_Memory/Chapter_45_std_span_Non_Owning_Views_over_Contiguous_Memory.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_45_std_span_Non_Owning_Views_over_Contiguous_Memory/_archive/34_c20_standard_library_additions.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_45_std_span_Non_Owning_Views_over_Contiguous_Memory/_archive/Chapter_31_C20_STANDARD_LIBRARY_ADDITIONS_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_45_std_span_Non_Owning_Views_over_Contiguous_Memory/_archive/Chapter_31_C20_Standard_Library_Additions.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_45_std_span_Non_Owning_Views_over_Contiguous_Memory/_archive/Chapter_31_CHAPTER_31_C20_STANDARD_LIBRARY_ADDITIONS.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_46_std_format_Type_Safe_Text_Formatting/Chapter_46_std_format_Type_Safe_Text_Formatting.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_47_Calendars_and_Time_Zones_in_chrono/Chapter_47_Calendars_and_Time_Zones_in_chrono.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_48_Bit_Manipulation_and_bit_cast/Chapter_48_bit_Manipulation_and_bit_cast.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_49_Concurrency_I_jthread_and_Cooperative_Cancellation/Chapter_49_Concurrency_I_jthread_and_Cooperative_Cancellation.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_50_Concurrency_II_Latches_Barriers_Semaphores_and_Atomic_Enhancements/Chapter_50_Concurrency_II_Latches_Barriers_Semaphores_and_Atomic_Enhancements.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_51_Diagnostics_and_Utility_Additions/Chapter_51_Diagnostics_and_Utility_Additions.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_52_Container_and_Algorithm_Additions/Chapter_52_Container_and_Algorithm_Additions.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_53_Numbers_Alignment_and_Type_Trait_Additions/Chapter_53_Numbers_Alignment_and_Type_Trait_Additions.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_06_The_Refinement_C23/Chapter_54_The_Completion_Release/Chapter_54_The_Completion_Release.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_06_The_Refinement_C23/Chapter_55_Deducing_this/Chapter_55_Deducing_this.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_06_The_Refinement_C23/Chapter_55_Deducing_this/_archive/35_c23_core_language.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_06_The_Refinement_C23/Chapter_55_Deducing_this/_archive/Chapter_32_C23_CORE_LANGUAGE_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_06_The_Refinement_C23/Chapter_55_Deducing_this/_archive/Chapter_32_C23_Core_Language.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_06_The_Refinement_C23/Chapter_55_Deducing_this/_archive/Chapter_32_CHAPTER_32_C23_CORE_LANGUAGE.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_06_The_Refinement_C23/Chapter_56_Expected_and_Monadic_Error_Handling/Chapter_56_Expected_and_Monadic_Error_Handling.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_06_The_Refinement_C23/Chapter_56_Expected_and_Monadic_Error_Handling/_archive/37_c23_monadic_operations_and_expected.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_06_The_Refinement_C23/Chapter_56_Expected_and_Monadic_Error_Handling/_archive/Chapter_34_C23_MONADIC_OPERATIONS_AND_EXPECTED_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_06_The_Refinement_C23/Chapter_56_Expected_and_Monadic_Error_Handling/_archive/Chapter_34_C23_Monadic_Operations_And_Expected.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_06_The_Refinement_C23/Chapter_56_Expected_and_Monadic_Error_Handling/_archive/Chapter_34_CHAPTER_34_C23_MONADIC_OPERATIONS_AND_EXPECTED.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_06_The_Refinement_C23/Chapter_57_mdspan/Chapter_57_mdspan.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_06_The_Refinement_C23/Chapter_57_mdspan/_archive/38_c23_containers_and_views.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_06_The_Refinement_C23/Chapter_57_mdspan/_archive/Chapter_35_C23_CONTAINERS_AND_VIEWS_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_06_The_Refinement_C23/Chapter_57_mdspan/_archive/Chapter_35_C23_Containers_And_Views.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_06_The_Refinement_C23/Chapter_57_mdspan/_archive/Chapter_35_CHAPTER_35_C23_CONTAINERS_AND_VIEWS.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_06_The_Refinement_C23/Chapter_58_std_generator/Chapter_58_std_generator.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_06_The_Refinement_C23/Chapter_58_std_generator/_archive/39_c23_coroutines_and_stacktrace.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_06_The_Refinement_C23/Chapter_58_std_generator/_archive/Chapter_36_C23_COROUTINES_AND_STACKTRACE_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_06_The_Refinement_C23/Chapter_58_std_generator/_archive/Chapter_36_C23_Coroutines_And_Stacktrace.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_06_The_Refinement_C23/Chapter_58_std_generator/_archive/Chapter_36_CHAPTER_36_C23_COROUTINES_AND_STACKTRACE.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_06_The_Refinement_C23/Chapter_59_Completing_Ranges_I_New_Views/Chapter_59_Completing_Ranges_I_New_Views.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_06_The_Refinement_C23/Chapter_60_Completing_Ranges_II_Folds_To_Search/Chapter_60_Completing_Ranges_II_Folds_To_Search.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_06_The_Refinement_C23/Chapter_61_Modern_Output_print_and_range_formatting/Chapter_61_Modern_Output_print_and_range_formatting.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_06_The_Refinement_C23/Chapter_61_Modern_Output_print_and_range_formatting/_archive/36_c23_std_print.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_06_The_Refinement_C23/Chapter_61_Modern_Output_print_and_range_formatting/_archive/Chapter_33_C23_STD_PRINT_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_06_The_Refinement_C23/Chapter_61_Modern_Output_print_and_range_formatting/_archive/Chapter_33_C23_Std_Print.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_06_The_Refinement_C23/Chapter_61_Modern_Output_print_and_range_formatting/_archive/Chapter_33_CHAPTER_33_C23_STD_PRINT.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_06_The_Refinement_C23/Chapter_62_Flat_Containers/Chapter_62_Flat_Containers.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_06_The_Refinement_C23/Chapter_63_Diagnostics_and_Lifetime_Utilities/Chapter_63_Diagnostics_and_Lifetime_Utilities.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_06_The_Refinement_C23/Chapter_64_Functional_and_Type_Utilities/Chapter_64_Functional_and_Type_Utilities.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_06_The_Refinement_C23/Chapter_64_Functional_and_Type_Utilities/_archive/40_c23_library_utilities.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_06_The_Refinement_C23/Chapter_64_Functional_and_Type_Utilities/_archive/Chapter_37_C23_LIBRARY_UTILITIES_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_06_The_Refinement_C23/Chapter_64_Functional_and_Type_Utilities/_archive/Chapter_37_C23_Library_Utilities.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_06_The_Refinement_C23/Chapter_64_Functional_and_Type_Utilities/_archive/Chapter_37_CHAPTER_37_C23_LIBRARY_UTILITIES.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_06_The_Refinement_C23/Chapter_65_Compile_Time_Refinements/Chapter_65_Compile_Time_Refinements.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_06_The_Refinement_C23/Chapter_66_Core_Language_Conveniences/Chapter_66_Core_Language_Conveniences.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_06_The_Refinement_C23/Chapter_67_Extended_Floating_Point_Types/Chapter_67_Extended_Floating_Point_Types.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_06_The_Refinement_C23/Chapter_68_Standard_Library_Modules/Chapter_68_Standard_Library_Modules.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_07_The_Future_C26/Chapter_69_Static_Reflection_and_Metaprogramming/Chapter_69_Static_Reflection_and_Metaprogramming.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_07_The_Future_C26/Chapter_70_Contracts_Memory_Safety_and_Diagnostics/Chapter_70_Contracts_Memory_Safety_and_Diagnostics.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_07_The_Future_C26/Chapter_71_Concurrency_Execution_and_Lock_Free/Chapter_71_Concurrency_Execution_and_Lock_Free_Constructs.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_07_The_Future_C26/Chapter_72_High_Performance_Data_Structures_and_Numerics/Chapter_72_High_Performance_Data_Structures_and_Numerics.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_07_The_Future_C26/Chapter_73_Advanced_Library_Additions_and_Ergonomics/Chapter_73_Advanced_Library_Additions_and_Ergonomics.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_07_The_Future_C26/_archive/41_the_future_c26_preview.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_07_The_Future_C26/_archive/Chapter_38_C26_-_THE_NEXT_FRONTIER_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_07_The_Future_C26/_archive/Chapter_38_CHAPTER_38_C26_-_THE_NEXT_FRONTIER.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_07_The_Future_C26/_archive/Chapter_38_THE_FUTURE_C26_PREVIEW_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_07_The_Future_C26/_archive/Chapter_38_The_Future_C26_Preview.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_100_Kernel_Bypass_Networking/Chapter_100_Kernel_Bypass_Networking_DPDK_RDMA.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_101_Clocks_and_Timekeeping/Chapter_101_Clocks_Timekeeping_and_Measuring_Latency.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_102_Linking_Loading_ABI/Chapter_102_Linking_Loading_ABI_and_WPO.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_103_Microbenchmarking_and_Tail_Latency/Chapter_103_Microbenchmarking_and_Tail_Latency.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_104_Undefined_Behaviour_and_the_Optimiser/Chapter_104_Undefined_Behaviour_and_the_Optimiser.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_105_Sanitizers_Fuzzing_Testing_Concurrency/Chapter_105_Sanitizers_Fuzzing_and_Testing_Concurrent_Code.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_106_Determinism_and_the_Hot_Path_Mindset/Chapter_106_Determinism_Jitter_Elimination_and_the_Hot_Path_Mindset.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_74_Advanced_Template_Metaprogramming/Chapter_74_Advanced_Template_Metaprogramming.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_74_Advanced_Template_Metaprogramming/_archive/Chapter_39_ADVANCED_TEMPLATE_METAPROGRAMMING_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_74_Advanced_Template_Metaprogramming/_archive/Chapter_39_Advanced_Template_Metaprogramming.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_74_Advanced_Template_Metaprogramming/_archive/Chapter_39_CHAPTER_39_ADVANCED_TEMPLATE_METAPROGRAMMING.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_75_Compile_Time_Programming/Chapter_75_Compile_Time_Programming.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_75_Compile_Time_Programming/_archive/Chapter_40_CHAPTER_40_COMPILE_TIME_PROGRAMMING.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_75_Compile_Time_Programming/_archive/Chapter_40_COMPILE_TIME_PROGRAMMING_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_75_Compile_Time_Programming/_archive/Chapter_40_Compile_Time_Programming.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_76_The_CPP_Memory_Model/Chapter_76_The_CPP_Memory_Model.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_76_The_CPP_Memory_Model/_archive/Chapter_41_CHAPTER_41_THE_CPP_MEMORY_MODEL.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_76_The_CPP_Memory_Model/_archive/Chapter_41_THE_CPP_MEMORY_MODEL_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_76_The_CPP_Memory_Model/_archive/Chapter_41_The_CPP_Memory_Model.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_77_Lock_Free_Programming/Chapter_77_Lock_Free_Programming.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_77_Lock_Free_Programming/_archive/Chapter_42_CHAPTER_42_LOCK_FREE_PROGRAMMING.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_77_Lock_Free_Programming/_archive/Chapter_42_LOCK_FREE_PROGRAMMING_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_77_Lock_Free_Programming/_archive/Chapter_42_Lock_Free_Programming.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_78_Advanced_Concurrency_Patterns/Chapter_78_Advanced_Concurrency_Patterns.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_78_Advanced_Concurrency_Patterns/_archive/Chapter_43_ADVANCED_CONCURRENCY_PATTERNS_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_78_Advanced_Concurrency_Patterns/_archive/Chapter_43_Advanced_Concurrency_Patterns.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_78_Advanced_Concurrency_Patterns/_archive/Chapter_43_CHAPTER_43_ADVANCED_CONCURRENCY_PATTERNS.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_79_Custom_Memory_Allocators/Chapter_79_Custom_Memory_Allocators.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_79_Custom_Memory_Allocators/_archive/Chapter_44_CHAPTER_44_CUSTOM_MEMORY_ALLOCATORS.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_79_Custom_Memory_Allocators/_archive/Chapter_44_CUSTOM_MEMORY_ALLOCATORS_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_79_Custom_Memory_Allocators/_archive/Chapter_44_Custom_Memory_Allocators.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_80_High_Performance_Optimization/Chapter_80_High_Performance_Optimization.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_80_High_Performance_Optimization/_archive/Chapter_45_CHAPTER_45_HIGH_PERFORMANCE_OPTIMIZATION.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_80_High_Performance_Optimization/_archive/Chapter_45_HIGH_PERFORMANCE_OPTIMIZATION_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_80_High_Performance_Optimization/_archive/Chapter_45_High_Performance_Optimization.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_81_WRITING_A_C_COMPILER_BASICS/Chapter_81_Writing_A_Compiler_Basics.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_81_WRITING_A_C_COMPILER_BASICS/_archive/Chapter_46_CHAPTER_46_WRITING_A_C_COMPILER_BASICS.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_81_WRITING_A_C_COMPILER_BASICS/_archive/Chapter_46_WRITING_A_C_COMPILER_BASICS.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_81_WRITING_A_C_COMPILER_BASICS/_archive/Chapter_46_WRITING_A_C_COMPILER_BASICS_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_82_WRITING_A_GARBAGE_COLLECTOR/Chapter_82_Writing_A_Garbage_Collector.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_82_WRITING_A_GARBAGE_COLLECTOR/_archive/Chapter_47_CHAPTER_47_WRITING_A_GARBAGE_COLLECTOR.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_82_WRITING_A_GARBAGE_COLLECTOR/_archive/Chapter_47_WRITING_A_GARBAGE_COLLECTOR.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_82_WRITING_A_GARBAGE_COLLECTOR/_archive/Chapter_47_WRITING_A_GARBAGE_COLLECTOR_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_83_THE_STANDARD_LIBRARY_FROM_SCRATCH/Chapter_83_The_Standard_Library_From_Scratch.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_83_THE_STANDARD_LIBRARY_FROM_SCRATCH/_archive/Chapter_48_CHAPTER_48_THE_STANDARD_LIBRARY_FROM_SCRATCH.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_83_THE_STANDARD_LIBRARY_FROM_SCRATCH/_archive/Chapter_48_THE_STANDARD_LIBRARY_FROM_SCRATCH.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_83_THE_STANDARD_LIBRARY_FROM_SCRATCH/_archive/Chapter_48_THE_STANDARD_LIBRARY_FROM_SCRATCH_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_84_DISTRIBUTED_C/Chapter_84_Distributed_CPP.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_84_DISTRIBUTED_C/_archive/Chapter_49_CHAPTER_49_DISTRIBUTED_C_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_84_DISTRIBUTED_C/_archive/Chapter_49_DISTRIBUTED_C_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_85_The_Engineers_Model_of_the_Machine/Chapter_85_The_Engineers_Model_of_the_Machine.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_86_CPU_Microarchitecture/Chapter_86_CPU_Microarchitecture.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_87_The_Cache_Hierarchy/Chapter_87_The_Cache_Hierarchy.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_88_Virtual_Memory_TLB_NUMA/Chapter_88_Virtual_Memory_TLB_Huge_Pages_NUMA.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_89_Reading_the_Compilers_Output/Chapter_89_Reading_the_Compilers_Output.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_90_Data_Oriented_Design/Chapter_90_Data_Oriented_Design.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_91_Branchless_Programming/Chapter_91_Branchless_Programming.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_92_SIMD_in_Practice/Chapter_92_SIMD_in_Practice.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_93_Atomics_CAS_ABA/Chapter_93_Atomics_CAS_and_ABA.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_94_Safe_Reclamation/Chapter_94_Safe_Reclamation_Hazard_Pointers_and_RCU.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_95_Lock_Design/Chapter_95_Lock_Design.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_96_Threading_Discipline/Chapter_96_Threading_Discipline.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_97_Object_Lifetime_and_Allocation_Free/Chapter_97_Object_Lifetime_Placement_and_Allocation_Free.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_98_System_Calls_and_vDSO/Chapter_98_System_Calls_the_vDSO_and_Syscall_Overhead.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_99_High_Performance_IO/Chapter_99_High_Performance_IO_io_uring_mmap_Zero_Copy.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/_archive/Chapter_49_Design_Patterns.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/_archive/Chapter_50_ODR_ADL_and_Undefined_Behavior.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/_archive/Chapter_51_Linkage_Attributes_and_C_Incompatibilities.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/_archive/Chapter_52_Build_Systems_and_Tooling.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_107_Design_Patterns/Chapter_107_Design_Patterns_in_Modern_CPP.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_107_Design_Patterns/_archive/52_design_patterns.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_108_TMP_Patterns/Chapter_108_Template_Metaprogramming_Patterns.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_108_TMP_Patterns/_archive/66_template_metaprogramming_patterns.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_108_TMP_Patterns/_archive/Chapter_59_CHAPTER_59_TEMPLATE_METAPROGRAMMING_PATTERNS.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_108_TMP_Patterns/_archive/Chapter_59_TEMPLATE_METAPROGRAMMING_PATTERNS.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_109_High_Performance_Data_Structures/Chapter_109_High_Performance_Data_Structures.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_109_High_Performance_Data_Structures/_archive/67_high_performance_data_structures.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_109_High_Performance_Data_Structures/_archive/Chapter_60_CHAPTER_60_HIGH-PERFORMANCE_DATA_STRUCTURES.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_109_High_Performance_Data_Structures/_archive/Chapter_60_HIGH-PERFORMANCE_DATA_STRUCTURES.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_110_Build_Systems_and_Tooling/Chapter_110_Build_Systems_Dependency_Management_and_Tooling.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_110_Build_Systems_and_Tooling/_archive/55_build_systems_and_tooling.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_111_Interoperability/Chapter_111_Interoperability_and_the_Stable_C_ABI.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_111_Interoperability/_archive/54_linkage_attributes_and_c_incompatibilities.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_111_Interoperability/_archive/62_interoperability.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_111_Interoperability/_archive/Chapter_55_CHAPTER_55_INTEROPERABILITY_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_111_Interoperability/_archive/Chapter_55_INTEROPERABILITY.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_111_Interoperability/_archive/Chapter_55_INTEROPERABILITY_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_112_Networking_from_Scratch/Chapter_112_Networking_from_Scratch.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_112_Networking_from_Scratch/_archive/57_networking_from_scratch.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_112_Networking_from_Scratch/_archive/Chapter_50_CHAPTER_50_NETWORKING_FROM_SCRATCH_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_112_Networking_from_Scratch/_archive/Chapter_50_NETWORKING_FROM_SCRATCH.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_112_Networking_from_Scratch/_archive/Chapter_50_NETWORKING_FROM_SCRATCH_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_113_CPP_in_the_Cloud/Chapter_113_CPP_in_the_Cloud.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_113_CPP_in_the_Cloud/_archive/58_c_in_the_cloud.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_113_CPP_in_the_Cloud/_archive/Chapter_51_CHAPTER_51_C_IN_THE_CLOUD_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_113_CPP_in_the_Cloud/_archive/Chapter_51_C_IN_THE_CLOUD.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_113_CPP_in_the_Cloud/_archive/Chapter_51_C_IN_THE_CLOUD_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_114_Cross_Platform_Development/Chapter_114_Cross_Platform_Development.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_114_Cross_Platform_Development/_archive/59_cross_platform_development.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_114_Cross_Platform_Development/_archive/Chapter_52_CHAPTER_52_CROSS-PLATFORM_DEVELOPMENT_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_114_Cross_Platform_Development/_archive/Chapter_52_CROSS-PLATFORM_DEVELOPMENT.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_114_Cross_Platform_Development/_archive/Chapter_52_CROSS-PLATFORM_DEVELOPMENT_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_115_GUI_Development/Chapter_115_GUI_Development_with_CPP.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_115_GUI_Development/_archive/60_gui_development_with_c.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_115_GUI_Development/_archive/Chapter_53_CHAPTER_53_GUI_DEVELOPMENT_WITH_C.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_115_GUI_Development/_archive/Chapter_53_GUI_DEVELOPMENT_WITH_C.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_115_GUI_Development/_archive/Chapter_53_GUI_DEVELOPMENT_WITH_C_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_116_Scientific_Computing_and_GPU/Chapter_116_Scientific_Computing_and_GPU.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_116_Scientific_Computing_and_GPU/_archive/61_scientific_computing_gpu.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_116_Scientific_Computing_and_GPU/_archive/Chapter_54_CHAPTER_54_SCIENTIFIC_COMPUTING__GPU_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_116_Scientific_Computing_and_GPU/_archive/Chapter_54_SCIENTIFIC_COMPUTING__GPU.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_116_Scientific_Computing_and_GPU/_archive/Chapter_54_SCIENTIFIC_COMPUTING__GPU_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_117_ML_Infrastructure/Chapter_117_Machine_Learning_Infrastructure.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_117_ML_Infrastructure/_archive/70_machine_learning_infrastructure.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_117_ML_Infrastructure/_archive/Chapter_63_CHAPTER_63_MACHINE_LEARNING_INFRASTRUCTURE.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_117_ML_Infrastructure/_archive/Chapter_63_MACHINE_LEARNING_INFRASTRUCTURE.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_118_Real_Time_Audio/Chapter_118_Real_Time_Audio_and_Signal_Processing.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_118_Real_Time_Audio/_archive/68_real_time_audio_signal_processing.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_118_Real_Time_Audio/_archive/Chapter_61_CHAPTER_61_REAL-TIME_AUDIO__SIGNAL_PROCESSING.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_118_Real_Time_Audio/_archive/Chapter_61_REAL-TIME_AUDIO__SIGNAL_PROCESSING.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_119_Robotics_ROS2/Chapter_119_Robotics_and_ROS2_Development.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_119_Robotics_ROS2/_archive/69_robotics_ros2_development.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_119_Robotics_ROS2/_archive/Chapter_62_CHAPTER_62_ROBOTICS__ROS2_DEVELOPMENT.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_119_Robotics_ROS2/_archive/Chapter_62_ROBOTICS__ROS2_DEVELOPMENT.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_120_Database_Internals/Chapter_120_Database_Internals_and_LSM_Trees.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_120_Database_Internals/_archive/71_database_internals_lsm_trees.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_120_Database_Internals/_archive/Chapter_64_CHAPTER_64_DATABASE_INTERNALS_LSM_TREES.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_120_Database_Internals/_archive/Chapter_64_DATABASE_INTERNALS_LSM_TREES.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_121_Security_Engineering/Chapter_121_Security_Engineering.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_121_Security_Engineering/_archive/63_security_engineering.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_121_Security_Engineering/_archive/Chapter_56_CHAPTER_56_SECURITY_ENGINEERING_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_121_Security_Engineering/_archive/Chapter_56_SECURITY_ENGINEERING.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_121_Security_Engineering/_archive/Chapter_56_SECURITY_ENGINEERING_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_122_Specialized_Domains/Chapter_122_Specialized_Domains.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_122_Specialized_Domains/_archive/64_specialized_domains.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_122_Specialized_Domains/_archive/Chapter_57_CHAPTER_57_SPECIALIZED_DOMAINS_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_122_Specialized_Domains/_archive/Chapter_57_SPECIALIZED_DOMAINS.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_122_Specialized_Domains/_archive/Chapter_57_SPECIALIZED_DOMAINS_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_123_Algorithm_Reference/Chapter_123_The_Ultimate_Algorithm_Reference.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_123_Algorithm_Reference/_archive/72_the_ultimate_algorithm_reference.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_123_Algorithm_Reference/_archive/Chapter_65_CHAPTER_65_THE_ULTIMATE_ALGORITHM_REFERENCE.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_123_Algorithm_Reference/_archive/Chapter_65_THE_ULTIMATE_ALGORITHM_REFERENCE.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_124_Capstone_Order_Book/Chapter_124_Capstone_High_Performance_Order_Book.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_124_Capstone_Order_Book/_archive/73_capstone_project_high_performance_order_book.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_124_Capstone_Order_Book/_archive/Chapter_66_CAPSTONE_PROJECT_-_HIGH-PERFORMANCE_ORDER_BOOK.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_124_Capstone_Order_Book/_archive/Chapter_66_CHAPTER_66_CAPSTONE_PROJECT_-_HIGH-PERFORMANCE_ORD.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/_archive/_consolidated_into_Volume_08/42_advanced_template_metaprogramming.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/_archive/_consolidated_into_Volume_08/43_compile_time_programming.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/_archive/_consolidated_into_Volume_08/44_the_cpp_memory_model.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/_archive/_consolidated_into_Volume_08/45_lock_free_programming.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/_archive/_consolidated_into_Volume_08/46_advanced_concurrency_patterns.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/_archive/_consolidated_into_Volume_08/47_custom_memory_allocators.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/_archive/_consolidated_into_Volume_08/48_high_performance_optimization.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/_archive/_consolidated_into_Volume_08/49_writing_a_c_compiler_basics.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/_archive/_consolidated_into_Volume_08/50_writing_a_garbage_collector.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/_archive/_consolidated_into_Volume_08/51_the_standard_library_from_scratch.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/_archive/_consolidated_into_Volume_08/53_odr_adl_and_undefined_behavior.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/_archive/_consolidated_into_Volume_08/56_distributed_c.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/_archive/_consolidated_into_Volume_08/65_aba_problem_memory_reclamation.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/_archive/_consolidated_into_Volume_08/Chapter_49_DISTRIBUTED_C.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/_archive/_consolidated_into_Volume_08/Chapter_58_ABA_PROBLEM__MEMORY_RECLAMATION.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/_archive/_consolidated_into_Volume_08/Chapter_58_CHAPTER_58_ABA_PROBLEM__MEMORY_RECLAMATION.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/_archive/_consolidated_into_Volume_08/README.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/manuscript/03-part-resource-management/12_raii_and_rule_of_five.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/manuscript/03-part-resource-management/13_move_semantics.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/manuscript/03-part-resource-management/14_smart_pointers.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/manuscript/05-part-templates/19_templates.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/manuscript/05-part-templates/20_concepts.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/manuscript/05-part-templates/21_variadic_templates.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/manuscript/05-part-templates/22_type_traits.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/manuscript/06-part-modern-features/23_cpp11_14_revolution.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/manuscript/06-part-modern-features/24_cpp17.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/manuscript/06-part-modern-features/25_cpp20.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/manuscript/06-part-modern-features/26_cpp23_and_cpp26.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/manuscript/07-part-concurrency/27_threads_and_synchronization.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/manuscript/07-part-concurrency/28_memory_model_and_atomics.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/manuscript/07-part-concurrency/29_lock_free_programming.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/manuscript/07-part-concurrency/30_openmp.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/manuscript/08-part-performance/31_performance_fundamentals.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/manuscript/08-part-performance/32_memory_allocators.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/manuscript/08-part-performance/33_compile_time_programming.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/manuscript/09-part-design/34_design_patterns.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/manuscript/09-part-design/35_cpp_core_guidelines.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/manuscript/09-part-design/36_advanced_debugging.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/manuscript/10-part-compilation/37_preprocessor.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/manuscript/10-part-compilation/38_compilation_model.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/manuscript/10-part-compilation/39_build_systems_and_modules.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/manuscript/11-part-utilities/40_utilities_chrono_random.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/manuscript/12-part-systems/41_advanced_tmp_patterns.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/manuscript/12-part-systems/42_standard_library_from_scratch.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/manuscript/12-part-systems/43_writing_a_compiler_and_gc.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/manuscript/13-part-specialized/44_networking_distributed.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/manuscript/13-part-specialized/45_embedded_real_time.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/manuscript/13-part-specialized/46_cross_platform_and_cloud.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/manuscript/13-part-specialized/47_gui_and_graphics.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/manuscript/13-part-specialized/48_hpc_and_gpus.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/manuscript/14-part-mastery/49_ultimate_algorithm_reference.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/manuscript/14-part-mastery/50_capstone_project.md`
+- `02-Programming-Languages/C++/NeetCode-150-CPP.md`
+- `02-Programming-Languages/C++/README.md`
+- `02-Programming-Languages/C++/stl_ref_table.md`
+- `02-Programming-Languages/Python/CodingBestPractices/coding_best_practices.md`
+- `02-Programming-Languages/Python/LeetCode-Quant-Complete-Python-Full.md`
+- `02-Programming-Languages/Python/NeetCode-150-Python.md`
+- `02-Programming-Languages/Python/Python-Advanced-Guide.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/00_Preface.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Appendix_A_Appendix_A_The_Comprehensive_Standard_Library_Inde.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Appendix_A_STANDARD_LIBRARY_INDEX.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Appendix_B_Appendix_B_Glossary_of_CPython_Internals.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Appendix_C_Appendix_C_The_PEP_Hall_of_Fame.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Appendix_D_Appendix_D_The_Complete_Python_Grammar_EBNF.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Appendix_D_PYTHON_GRAMMAR.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Appendix_E_Appendix_E_Design_Patterns_in_Python.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Appendix_E_F_PATTERNS_AND_OPCODES.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Appendix_F_Appendix_F_The_Complete_Opcodes_Reference.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Appendix_G_Appendix_G_The_Godhood_Reading_List.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Appendix_H_Appendix_H_CPython_Source_Code_Walkthrough_Core_Ob.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Appendix_H_SOURCE_WALKTHROUGH.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Appendix_J_Appendix_J_Standard_Library_Source_Code_Map.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Appendix_J_SOURCE_MAP.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Appendix_K_Appendix_K_The_Complete_Python_Standard_Library_Re.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Appendix_K_SOVEREIGN_MAP.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Appendix_L_Appendix_L_Exhaustive_Python_Built-in_Functions_Re.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Appendix_L_BUILTINS_AND_GLOSSARY.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Appendix_M_Appendix_M_The_Godhood_Senior_Python_Glossary.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Appendix_M_C_API_REFERENCE.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Appendix_N_Appendix_N_The_Python_Bytecode_Encyclopedia.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Appendix_N_BYTECODE_ENCYCLOPEDIA.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Appendix_O_Appendix_O_The_Evolutionary_Roadmap_PEPs_1_to_750.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Appendix_O_P_ROADMAP_AND_MEMORY.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Appendix_P_Appendix_P_CPython_Memory_Allocator_Diagrams.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Appendix_Q_Appendix_Q_Master_Index_of_All_Code_Snippets.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Appendix_S_Appendix_S_The_Ultimate_Standard_Library_Compendiu.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Appendix_S_ULTIMATE_COMPENDIUM.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Appendix_T_Appendix_T_Exhaustive_Python_Built-in_Exceptions.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Appendix_T_U_EXCEPTIONS_WARNINGS.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Appendix_U_Appendix_U_Exhaustive_Python_Built-in_Warnings.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Appendix_V_Appendix_V_The_Python_History_and_PEP_Timeline_198.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Appendix_V_W_HISTORY_AND_MOBILE.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Appendix_W_Appendix_W_Python_in_Mobile_and_Embedded_Systems.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_05_UNDER_THE_HOOD_BUILT-IN_DATA_STRUCTURES.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_104_FORMAL_AND_QUANTUM.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_106_FRONTIER_PYTHON.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_10_CONCURRENCY_MECHANICS__THE_GLOBAL_INTERPRETER_LOCK.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_16_Python_311_Faster_CPython_Specializing_Interpreter.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_17_FASTER_CPYTHON_THE_SPECIALIZING_INTERPRETER.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_17_Python_311_Faster_CPython_Specializing_Interpreter.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_17_Python_312_Native_Generics_PEP_695_Type_statement_.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_18_MODERN_TYPING_COMPILER_ALIASES__PEP_695.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_18_Python_311_to_312_Exception_Groups_except_and_Trac.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_18_Python_312_Native_Generics_PEP_695_Type_statement_.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_19_EXCEPTION_GROUPS_AND_TRACEBACK_ENHANCEMENTS.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_19_Python_311_to_312_Exception_Groups_except_and_Trac.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_19_Python_313_Free-Threaded_Build__GIL_Removal_Intern.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_20_FREE-THREADED_PYTHON_GIL_REMOVAL_INTERNALS.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_20_Python_313_Copy-and-Patch_JIT_Compiler_Architectur.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_20_Python_313_Free-Threaded_Build__GIL_Removal_Intern.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_21_COPY-AND-PATCH_JIT_COMPILER_ARCHITECTURE.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_21_Python_312_to_313_Subinterpreters__Per-Interpreter.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_21_Python_313_Copy-and-Patch_JIT_Compiler_Architectur.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_22_CPython_Memory_Allocator_PyMalloc__Generational_Ga.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_22_Python_312_to_313_Subinterpreters__Per-Interpreter.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_22_SUBINTERPRETERS__MULTI-CORE_PARALLELISM.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_23_CPython_Memory_Allocator_PyMalloc__Generational_Ga.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_23_C_Extensions__Python_C-API_Interoperability.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_23_MEMALLOC_UNDER_THE_HOOD_ARENAS_POOLS_AND_THE_GC.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_24_C_EXTENSIONS_AND_INTEROPERABILITY_LAYERS.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_24_C_Extensions__Python_C-API_Interoperability.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_24_Metaclasses_Descriptor_Protocol_and_type_Slots.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_25_LOW-LEVEL_MEMORY_OPTIMIZATION_TECHNIQUES.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_25_METACLASSES_AND_DESCRIPTOR_PROTOCOL_ARCHITECTURE.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_25_Metaclasses_Descriptor_Protocol_and_type_Slots.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_26_CPU__IO_BOUND_SYSTEM_CONCURRENCY.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_26_LOW-LEVEL_MEMORY_OPTIMIZATION_TECHNIQUES.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_27_CPU__IO_BOUND_SYSTEM_CONCURRENCY.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_27_NUMERICAL_HIGH-PERFORMANCE_DATA_STRUCTURES.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_28_NUMERICAL_HIGH-PERFORMANCE_DATA_STRUCTURES.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_28_PROFILING_BENCHMARKING_AND_DIAGNOSTICS.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_29_CAPSTONE_PROJECT_HIGH-FREQUENCY_ORDER_BOOK__TRADIN.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_29_PROFILING_BENCHMARKING_AND_DIAGNOSTICS.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_30_CAPSTONE_PROJECT_HIGH-FREQUENCY_ORDER_BOOK__TRADIN.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_31_Lexical_Analysis_and_the_Execution_Model.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_31_Regular_Expressions_Engine_Internals_re_sre_compil.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_32_Advanced_Text_Processing_string_textwrap.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_32_The_Python_Data_Model__Comprehensive_Dunder_Method.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_33_Advanced_Data_Structures_Internals.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_33_Binary_Data_Packing_struct_binascii.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_34_Cryptography_and_Hashing_hashlib_hmac.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_34_Functional_Programming_Modules.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_35_Numeric_Mathematical_and_Cryptographic_Randomness.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_35_The_Anatomy_of_Time_datetime_zoneinfo.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_36_Data_Persistence__Object_Serialization.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_36_Enums_and_Topological_Sorts_enum_graphlib.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_37_OS_Services_Signal_Handling_and_Subprocesses.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_37_The_DEFLATE_Algorithm_and_Zlib_zlib_gzip.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_38_Advanced_Compression_bz2_lzma.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_38_Low-Level_Networking_and_Sockets.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_39_Archive_Formats_zipfile_tarfile.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_39_The_Import_Machinery_and_importlib.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_40_Delimited_and_Configuration_Files_csv_configparser.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_40_Runtime_Services_and_Introspection.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_41_Testing_Debugging_and_Quality_Assurance.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_41_XML_Processing_and_Expat_xmletree_xmlsax.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_42_HTML_Parsing_and_Internet_Data_html_email.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_42_RE_ENGINE_STRING_BINARY_AND_CRYPTO.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_43_High-Level_URL_and_HTTP_Handling_urllib_http.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_44_Legacy_and_Specialized_Protocols_ftplib_smtplib_im.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_45_IP_Address_Manipulation_and_RPC_ipaddress_xmlrpc.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_46_Internationalization_gettext_locale.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_46_TIME_ENUMS_AND_GRAPHS.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_47_Command_Line_Interfaces_argparse_cmd_shlex.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_48_COMPRESSION_AND_ARCHIVING.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_48_TclTk_and_GUI_Foundations_tkinter.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_49_Virtual_Environments_venv.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_50_Python_Execution_Archives_zipapp.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_51_FORMATS_XML_AND_HTML.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_51_The_Disassembler_dis.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_52_Writing_a_C_Extension_from_Scratch.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_53_Abstract_Base_Classes_abc.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_54_Context_Managers_contextlib.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_54_NETWORKING_AND_PROTOCOLS.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_55_Advanced_Concurrency_Shared_Memory_and_Proxies.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_56_The_Typing_System_Static_Analysis_vs_Runtime_Enfor.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_57_I18N_CLI_AND_GUI.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_57_The_Python_Packaging_Ecosystem_PEP_517_to_Wheels.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_58_The_Heart_of_the_Machine_cevalc_and_the_Interprete.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_59_SIMD_Vectorization_with_Python.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_60_GPU_Acceleration_with_CUDA_and_Python.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_60_TOOLING_AND_BYTECODE.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_61_PyPy_The_JIT_and_Meta-Tracing.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_61_The_Future_of_Python_314_and_Beyond.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_62_Cluster_Computing_with_PySpark_and_Dask.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_63_EXTENDING_AND_EMBEDDING.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_63_Microservices_and_gRPC_in_Python.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_64_Large_Language_Models_LLMs_and_Python.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_64_SciPy_Optimization_and_Linear_Algebra_Backends.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_65_Matplotlib_The_Artist_Layer_and_Backend_Architectu.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_65_Productionizing_Python_Docker_and_Kubernetes.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_66_ADVANCED_TYPING_SHM_AND_PACKAGING.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_66_Django_Internals_The_ORM_and_Migration_Engine.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_66_Network_Protocol_Fuzzing.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_67_FastAPI_and_Pydantic_Type-Safe_Web_Development.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_67_Secure_Coding_and_Cryptography_Advanced.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_68_Derivatives_Pricing_Monte_Carlo_and_Finite_Differe.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_69_CEVAL_AND_GLOSSARY.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_69_Risk_Management_VaR_and_Expected_Shortfall.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_70_HARDWARE_SYMPATHETIC_PYTHON.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_70_Python_Anti-Patterns_and_Common_Pitfalls.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_71_Functional_Breadth_map_filter_and_reduce.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_72_Web_Browser_and_URL_Automation.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_73_CYTHON_AND_PYPY.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_73_Mastering_argparse_and_sysargv.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_74_Distributed_Databases_Python_and_the_CAP_Theorem.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_75_COMPARATIVE_AND_FUTURE.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_75_Search_and_Information_Retrieval_Elasticsearch.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_76_Message_Brokers_Kafka_and_RabbitMQ.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_77_DISTRIBUTED_SYSTEMS.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_77_Formal_Verification_and_TLA_with_Python.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_78_Quantum_Computing_Internals_with_Python.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_79_Python_at_the_Frontier_Space_Exploration_and_NASA.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_80_Python_in_Quantum_Biology_and_Genetics.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_80_QUANTS_AND_ML.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_83_CYBERSECURITY.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_86_QUANT_FINANCE.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_86_SCIENTIFIC_AND_WEB.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_92_STRING_AND_PITFALLS.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_95_VISUALIZATION_AND_TOOLING.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_99_CLOUD_AND_DISTRIBUTED.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/MASTER_COVERAGE_MATRIX.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/STYLE.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Volume_01_Classic_Python_and_Core_Engine/Chapter_01_Inception_and_the_Executable_Pipeline/Chapter_01_Inception_and_the_Executable_Pipeline.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Volume_01_Classic_Python_and_Core_Engine/Chapter_01_Inception_and_the_Executable_Pipeline/_archive/Chapter_01_INCEPTION_AND_THE_EXECUTABLE_PIPELINE.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Volume_01_Classic_Python_and_Core_Engine/Chapter_01_Inception_and_the_Executable_Pipeline/_archive/Chapter_01_Python_10_to_16_Inception__the_LL1_Executable_Pipe.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Volume_01_Classic_Python_and_Core_Engine/Chapter_02_The_PyObject_Model_and_Reference_Counting/Chapter_02_The_PyObject_Model_and_Reference_Counting.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Volume_01_Classic_Python_and_Core_Engine/Chapter_02_The_PyObject_Model_and_Reference_Counting/_archive/Chapter_02_Python_1x_The_PyObject_Model__Reference_Counting_C.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Volume_01_Classic_Python_and_Core_Engine/Chapter_02_The_PyObject_Model_and_Reference_Counting/_archive/Chapter_02_THE_PYOBJECT_CORE_OBJECT_MODEL.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Volume_01_Classic_Python_and_Core_Engine/Chapter_03_Comprehensions_Nested_Scopes_and_Cyclic_GC/Chapter_03_Comprehensions_Nested_Scopes_and_Cyclic_GC.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Volume_01_Classic_Python_and_Core_Engine/Chapter_03_Comprehensions_Nested_Scopes_and_Cyclic_GC/_archive/Chapter_03_Python_20_to_21_Comprehensions_Nested_Scopes__Cycl.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Volume_01_Classic_Python_and_Core_Engine/Chapter_03_Comprehensions_Nested_Scopes_and_Cyclic_GC/_archive/Chapter_03_SCOPES_NAMESPACES_AND_CLOSURES.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Volume_01_Classic_Python_and_Core_Engine/Chapter_04_Type_Class_Unification_Descriptors_and_C3_MRO/Chapter_04_Type_Class_Unification_Descriptors_and_C3_MRO.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Volume_01_Classic_Python_and_Core_Engine/Chapter_04_Type_Class_Unification_Descriptors_and_C3_MRO/_archive/Chapter_04_OBJECT-ORIENTED_PROGRAMMING_MECHANICS__MRO.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Volume_01_Classic_Python_and_Core_Engine/Chapter_04_Type_Class_Unification_Descriptors_and_C3_MRO/_archive/Chapter_04_Python_22_to_23_Type-Class_Unification_Descriptors.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Volume_01_Classic_Python_and_Core_Engine/Chapter_05_Decorators_Context_Managers_and_the_2x_Twilight/Chapter_05_Decorators_Context_Managers_and_the_2x_Twilight.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Volume_01_Classic_Python_and_Core_Engine/Chapter_05_Decorators_Context_Managers_and_the_2x_Twilight/_archive/Chapter_05_Python_24_to_27_Decorators_Context_Managers__the_2.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Volume_01_Classic_Python_and_Core_Engine/Chapter_06_Low_Level_File_IO_and_Exception_Unwinding/Chapter_06_Low_Level_File_IO_and_Exception_Unwinding.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Volume_01_Classic_Python_and_Core_Engine/Chapter_06_Low_Level_File_IO_and_Exception_Unwinding/_archive/Chapter_06_FILE_IO_AND_EXCEPTION_FLOWS.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Volume_01_Classic_Python_and_Core_Engine/Chapter_06_Low_Level_File_IO_and_Exception_Unwinding/_archive/Chapter_06_Python_2x_Low-Level_File_IO__Exceptions_Unwinding_.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Volume_02_The_Python_3_Schism/Chapter_07_The_Unicode_Paradigm_Shift/Chapter_07_The_Unicode_Paradigm_Shift.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Volume_02_The_Python_3_Schism/Chapter_07_The_Unicode_Paradigm_Shift/_archive/Chapter_07_Python_30_The_Unicode_Paradigm_Shift_and_Text_vs_B.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Volume_02_The_Python_3_Schism/Chapter_07_The_Unicode_Paradigm_Shift/_archive/Chapter_07_THE_PYTHON_30_PARADIGM_SHIFT.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Volume_02_The_Python_3_Schism/Chapter_07_The_Unicode_Paradigm_Shift/_archive/Chapter_08_ADVANCED_TEXT_VS_BYTES__UNICODE_INTERNALS.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Volume_02_The_Python_3_Schism/Chapter_08_Stdlib_Consolidation_and_the_New_GIL/Chapter_08_Stdlib_Consolidation_and_the_New_GIL.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Volume_02_The_Python_3_Schism/Chapter_08_Stdlib_Consolidation_and_the_New_GIL/_archive/Chapter_08_Python_31_to_32_Standard_Library_Consolidation_and.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Volume_03_Generators_Iterators_and_Async_Inception/Chapter_09_Iterators_Generators_and_yield_from/Chapter_09_Iterators_Generators_and_yield_from.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Volume_03_Generators_Iterators_and_Async_Inception/Chapter_09_Iterators_Generators_and_yield_from/_archive/Chapter_09_ITERATORS_GENERATORS_AND_CO-ROUTINES.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Volume_03_Generators_Iterators_and_Async_Inception/Chapter_09_Iterators_Generators_and_yield_from/_archive/Chapter_09_Python_33_Yield_From_Generators_and_Implicit_Names.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Volume_03_Generators_Iterators_and_Async_Inception/Chapter_10_Asyncio_Inception_Pathlib_and_Enum/Chapter_10_Asyncio_Inception_Pathlib_and_Enum.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Volume_03_Generators_Iterators_and_Async_Inception/Chapter_10_Asyncio_Inception_Pathlib_and_Enum/_archive/Chapter_10_Python_34_Asyncio_Inception_Pathlib_and_Enum_Archi.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Volume_03_Generators_Iterators_and_Async_Inception/Chapter_11_Native_Async_Await_and_New_Operators/Chapter_11_Native_Async_Await_and_New_Operators.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Volume_03_Generators_Iterators_and_Async_Inception/Chapter_11_Native_Async_Await_and_New_Operators/_archive/Chapter_10_Python_35_Native_AsyncAwait_Coroutines_and_Matrix_.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Volume_03_Generators_Iterators_and_Async_Inception/Chapter_11_Native_Async_Await_and_New_Operators/_archive/Chapter_11_NATIVE_ASYNCAWAIT_RUNTIME_ENGINE.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Volume_03_Generators_Iterators_and_Async_Inception/Chapter_11_Native_Async_Await_and_New_Operators/_archive/Chapter_11_Python_35_Native_AsyncAwait_Coroutines_and_Matrix_.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Volume_04_Expressive_Modern_Python/Chapter_12_FStrings_Annotations_and_the_Compact_Dict/Chapter_12_FStrings_Annotations_and_the_Compact_Dict.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Volume_04_Expressive_Modern_Python/Chapter_12_FStrings_Annotations_and_the_Compact_Dict/_archive/Chapter_11_Python_36_F-Strings_Formatting_Variable_Annotation.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Volume_04_Expressive_Modern_Python/Chapter_12_FStrings_Annotations_and_the_Compact_Dict/_archive/Chapter_12_Python_36_F-Strings_Formatting_Variable_Annotation.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Volume_04_Expressive_Modern_Python/Chapter_12_FStrings_Annotations_and_the_Compact_Dict/_archive/Chapter_12_SYNTAX_ERGONOMICS_F-STRINGS__TYPE_ANNOTATIONS.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Volume_04_Expressive_Modern_Python/Chapter_13_Dataclasses_ContextVars_and_Dict_Ordering/Chapter_13_Dataclasses_ContextVars_and_Dict_Ordering.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Volume_04_Expressive_Modern_Python/Chapter_13_Dataclasses_ContextVars_and_Dict_Ordering/_archive/Chapter_12_Python_37_Dataclasses_Context_Variables_and_Dict_O.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Volume_04_Expressive_Modern_Python/Chapter_13_Dataclasses_ContextVars_and_Dict_Ordering/_archive/Chapter_13_DATACLASSES_AND_DECLARATIVE_PATTERNS.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Volume_04_Expressive_Modern_Python/Chapter_13_Dataclasses_ContextVars_and_Dict_Ordering/_archive/Chapter_13_Python_37_Dataclasses_Context_Variables_and_Dict_O.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Volume_05_Structural_Shifts_and_Pattern_Matching/Chapter_14_Walrus_and_Positional_Only_Parameters/Chapter_14_Walrus_and_Positional_Only_Parameters.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Volume_05_Structural_Shifts_and_Pattern_Matching/Chapter_14_Walrus_and_Positional_Only_Parameters/_archive/Chapter_13_Python_38_Walrus_Operator__and_Positional-Only_Par.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Volume_05_Structural_Shifts_and_Pattern_Matching/Chapter_14_Walrus_and_Positional_Only_Parameters/_archive/Chapter_14_Python_38_Walrus_Operator__and_Positional-Only_Par.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Volume_05_Structural_Shifts_and_Pattern_Matching/Chapter_14_Walrus_and_Positional_Only_Parameters/_archive/Chapter_14_WALRUS_OPERATOR__PARAMETER_BINDING.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Volume_05_Structural_Shifts_and_Pattern_Matching/Chapter_15_PEG_Parser_Dict_Union_and_Pattern_Matching/Chapter_15_PEG_Parser_Dict_Union_and_Pattern_Matching.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Volume_05_Structural_Shifts_and_Pattern_Matching/Chapter_15_PEG_Parser_Dict_Union_and_Pattern_Matching/_archive/Chapter_14_Python_39_to_310_PEG_Parser_Dict_Merge__and_Patter.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Volume_05_Structural_Shifts_and_Pattern_Matching/Chapter_15_PEG_Parser_Dict_Union_and_Pattern_Matching/_archive/Chapter_15_Python_39_to_310_PEG_Parser_Dict_Merge__and_Patter.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Volume_05_Structural_Shifts_and_Pattern_Matching/Chapter_15_PEG_Parser_Dict_Union_and_Pattern_Matching/_archive/Chapter_15_STRUCTURAL_PATTERN_MATCHING_ENGINE.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Volume_05_Structural_Shifts_and_Pattern_Matching/Chapter_16_Typing_Protocols_and_Structural_Subtyping/Chapter_16_Typing_Protocols_and_Structural_Subtyping.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Volume_05_Structural_Shifts_and_Pattern_Matching/Chapter_16_Typing_Protocols_and_Structural_Subtyping/_archive/Chapter_15_Python_38_to_310_Type_Hinting_Protocols_and_Struct.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Volume_05_Structural_Shifts_and_Pattern_Matching/Chapter_16_Typing_Protocols_and_Structural_Subtyping/_archive/Chapter_16_Python_38_to_310_Type_Hinting_Protocols_and_Struct.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Volume_05_Structural_Shifts_and_Pattern_Matching/Chapter_16_Typing_Protocols_and_Structural_Subtyping/_archive/Chapter_16_STATIC_TYPING__ADVANCED_METAPROGRAMMING_WITH_PROTO.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Volume_06_Performance_Leap_and_Runtime_Mechanics/Chapter_17_Faster_CPython_the_Specializing_Adaptive_Interpreter/Chapter_17_Faster_CPython_the_Specializing_Adaptive_Interpreter.md`
+- `02-Programming-Languages/Python/Ultimate-Python-Advanced-Guide.md`
+- `02-Programming-Languages/Python/Ultimate-Python-Design-Patterns.md`
+- `02-Programming-Languages/Python/general/Exercise/10_functions/10_functions_exercise.md`
+- `02-Programming-Languages/Python/general/Exercise/11_dict_tuples/11_dict_tuple_exercise.md`
+- `02-Programming-Languages/Python/general/Exercise/13_read_write_files/read_write_file_exercise.md`
+- `02-Programming-Languages/Python/general/Exercise/15_exception_handling/exception_handing_exercise.md`
+- `02-Programming-Languages/Python/general/Exercise/16_class_and_objects/16_class_and_object_exercise.md`
+- `02-Programming-Languages/Python/general/Exercise/17_inheritance/17_inheritance.md`
+- `02-Programming-Languages/Python/general/Exercise/18_multiple_inheritance/18_multiple_inheritance.md`
+- `02-Programming-Languages/Python/general/Exercise/19_raise_exception_finally/19_raise_exception_finally.md`
+- `02-Programming-Languages/Python/general/Exercise/20_Iterators/20_Iterators.md`
+- `02-Programming-Languages/Python/general/Exercise/21_generators/21_generators.md`
+- `02-Programming-Languages/Python/general/Exercise/22_list_set_dict_comprehension/22_list_set_dict_comprehension.md`
+- `02-Programming-Languages/Python/general/Exercise/23_sets_frozensets/23_sets_frozensets.md`
+- `02-Programming-Languages/Python/general/Exercise/24_argparse/24_argparse.md`
+- `02-Programming-Languages/Python/general/Exercise/25_decorators/25_decorators.md`
+- `02-Programming-Languages/Python/general/Exercise/26_multithreading/26_multithreading.md`
+- `02-Programming-Languages/Python/general/Exercise/2_variables/2_variables_exercise.md`
+- `02-Programming-Languages/Python/general/Exercise/3_numbers/3_numbers_exercise_description.md`
+- `02-Programming-Languages/Python/general/Exercise/4_strings/4_strings_exercise.md`
+- `02-Programming-Languages/Python/general/Exercise/5_lists/5_lists_exercise.md`
+- `02-Programming-Languages/Python/general/Exercise/8_if/8_exercise_description.md`
+- `02-Programming-Languages/Python/general/Exercise/9_for/9_for_exercise.md`
+- `02-Programming-Languages/Python/general/Hindi/4_user_input/4_user_input_exercise.md`
+- `02-Programming-Languages/Python/python in depth/CONTRIBUTING.md`
+- `02-Programming-Languages/Python/python in depth/DIRECTORY.md`
+- `02-Programming-Languages/Python/python in depth/README.md`
+- `02-Programming-Languages/Python/python in depth/arithmetic_analysis/README.md`
+- `02-Programming-Languages/Python/python in depth/audio_filters/README.md`
+- `02-Programming-Languages/Python/python in depth/backtracking/README.md`
+- `02-Programming-Languages/Python/python in depth/bit_manipulation/README.md`
+- `02-Programming-Languages/Python/python in depth/boolean_algebra/README.md`
+- `02-Programming-Languages/Python/python in depth/cellular_automata/README.md`
+- `02-Programming-Languages/Python/python in depth/ciphers/README.md`
+- `02-Programming-Languages/Python/python in depth/compression/README.md`
+- `02-Programming-Languages/Python/python in depth/computer_vision/README.md`
+- `02-Programming-Languages/Python/python in depth/conversions/README.md`
+- `02-Programming-Languages/Python/python in depth/financial/ABOUT.md`
+- `02-Programming-Languages/Python/python in depth/knapsack/README.md`
+- `02-Programming-Languages/Python/python in depth/linear_algebra/README.md`
+- `02-Programming-Languages/Python/python in depth/machine_learning/local_weighted_learning/local_weighted_learning.md`
+- `02-Programming-Languages/Python/python in depth/project_euler/README.md`
+- `02-Programming-Languages/Python/python in depth/quantum/README.md`
+- `02-Programming-Languages/Python/python in depth/sorts/normal_distribution_quick_sort.md`
+- `03-Data-Structures-Algorithms/01-Topics/Bit-Manipulation/Nth_magic_number/README.md`
+- `03-Data-Structures-Algorithms/01-Topics/Branch-and-Bound/0_1 Knapsack/README.md`
+- `03-Data-Structures-Algorithms/01-Topics/Branch-and-Bound/README.md`
+- `03-Data-Structures-Algorithms/01-Topics/Dynamic-Programming/Coin Change Problem/README.md`
+- `03-Data-Structures-Algorithms/01-Topics/Dynamic-Programming/Collect_Max_Points/README.md`
+- `03-Data-Structures-Algorithms/01-Topics/Dynamic-Programming/Egg Dropping Puzzle/README.md`
+- `03-Data-Structures-Algorithms/01-Topics/Dynamic-Programming/Fibonacci/Readme.md`
+- `03-Data-Structures-Algorithms/01-Topics/Dynamic-Programming/Recursive_Staircase_Problem/README.md`
+- `03-Data-Structures-Algorithms/01-Topics/Dynamic-Programming/Tiling Problem/README.md`
+- `03-Data-Structures-Algorithms/01-Topics/Dynamic-Programming/WeightedJobScheduling/README.md`
+- `03-Data-Structures-Algorithms/01-Topics/Dynamic-Programming/minimized cost of binnary search tree/Readme.md`
+- `03-Data-Structures-Algorithms/01-Topics/General-Algorithms/Sorting/README.md`
+- `03-Data-Structures-Algorithms/01-Topics/General-DSA/README.md`
+- `03-Data-Structures-Algorithms/01-Topics/General-Data-Structures/Heap/Readme.md`
+- `03-Data-Structures-Algorithms/01-Topics/General-Data-Structures/Priority Queue/Readme.md`
+- `03-Data-Structures-Algorithms/01-Topics/Graphs/BFS/README.md`
+- `03-Data-Structures-Algorithms/01-Topics/Graphs/Centroid Decomposition/README.md`
+- `03-Data-Structures-Algorithms/01-Topics/Graphs/DFS/README.md`
+- `03-Data-Structures-Algorithms/01-Topics/Graphs/Network-Flow/EdmundKarp/README.md`
+- `03-Data-Structures-Algorithms/01-Topics/Graphs/README.md`
+- `03-Data-Structures-Algorithms/01-Topics/Graphs/Sack/README.md`
+- `03-Data-Structures-Algorithms/01-Topics/Greedy-Algorithms/ActivitySelection/README.md`
+- `03-Data-Structures-Algorithms/01-Topics/Greedy-Algorithms/ContainerShip/README.md`
+- `03-Data-Structures-Algorithms/01-Topics/Greedy-Algorithms/EqualizingBitStrings/README.md`
+- `03-Data-Structures-Algorithms/01-Topics/Greedy-Algorithms/Gas Station/README.md`
+- `03-Data-Structures-Algorithms/01-Topics/Greedy-Algorithms/MaximumIncreasingSubarray/ProblemStatement.md`
+- `03-Data-Structures-Algorithms/01-Topics/Greedy-Algorithms/OddSumSubsequence/ProblemStatement.md`
+- `03-Data-Structures-Algorithms/01-Topics/Machine-Learning-Basics/Perceptron/README.md`
+- `03-Data-Structures-Algorithms/01-Topics/Mathematics/Diophantine Eqautions/README.md`
+- `03-Data-Structures-Algorithms/01-Topics/Mathematics/TowerofHanoi/README.md`
+- `03-Data-Structures-Algorithms/01-Topics/Mathematics/collatz_conjecture/README.md`
+- `03-Data-Structures-Algorithms/01-Topics/Mathematics/eulers_totient_function/readme.md`
+- `03-Data-Structures-Algorithms/01-Topics/Mathematics/largest_number_divisible_by_three/README.md`
+- `03-Data-Structures-Algorithms/01-Topics/Mathematics/last_digit_exp/README.md`
+- `03-Data-Structures-Algorithms/01-Topics/Searching/BinarySearch/README.md`
+- `03-Data-Structures-Algorithms/01-Topics/Searching/JumpSearch/README.md`
+- `03-Data-Structures-Algorithms/01-Topics/Searching/LinearSearch/README.md`
+- `03-Data-Structures-Algorithms/01-Topics/Sorting/BogoSort/README.md`
+- `03-Data-Structures-Algorithms/01-Topics/Sorting/Bubble Sort/README.md`
+- `03-Data-Structures-Algorithms/01-Topics/Sorting/Bucket Sort/README.md`
+- `03-Data-Structures-Algorithms/01-Topics/Sorting/Cocktail Shaker Sort/README.md`
+- `03-Data-Structures-Algorithms/01-Topics/Sorting/Comb Sort/README.md`
+- `03-Data-Structures-Algorithms/01-Topics/Sorting/Counting Sort/README.md`
+- `03-Data-Structures-Algorithms/01-Topics/Sorting/HeapSort/README.md`
+- `03-Data-Structures-Algorithms/01-Topics/Sorting/Insertion Sort/README.md`
+- `03-Data-Structures-Algorithms/01-Topics/Sorting/Merge Sort/README.md`
+- `03-Data-Structures-Algorithms/01-Topics/Sorting/Pancake Sorting/README.md`
+- `03-Data-Structures-Algorithms/01-Topics/Sorting/Patience Sorting/README.md`
+- `03-Data-Structures-Algorithms/01-Topics/Sorting/Pigeonhole Sort/Python/README.md`
+- `03-Data-Structures-Algorithms/01-Topics/Sorting/QuickSort/README.md`
+- `03-Data-Structures-Algorithms/01-Topics/Sorting/Radix Sort/README.md`
+- `03-Data-Structures-Algorithms/01-Topics/Sorting/Selection Sort/README.md`
+- `03-Data-Structures-Algorithms/01-Topics/Sorting/ShellSort/README.md`
+- `03-Data-Structures-Algorithms/01-Topics/Sorting/StoogeSort/readme.md`
+- `03-Data-Structures-Algorithms/01-Topics/Sorting/TimSort/README.md`
+- `03-Data-Structures-Algorithms/01-Topics/Sorting/Topological Sorting/README.md`
+- `03-Data-Structures-Algorithms/01-Topics/Sorting/strandsort/README.md`
+- `03-Data-Structures-Algorithms/01-Topics/Strings/Balanced Parentheses/README.md`
+- `03-Data-Structures-Algorithms/01-Topics/Strings/Top_K_Frequent_Words/README.md`
+- `03-Data-Structures-Algorithms/01-Topics/Strings/Uncompressing_Strings/README.md`
+- `03-Data-Structures-Algorithms/01-Topics/Trees/BST/README.md`
+- `04-System-Design/00-Concepts/system_design_basics.md`
+- `04-System-Design/02-Case-Studies/01-URL-Shortener/design.md`
+- `04-System-Design/02-Case-Studies/02-Rate-Limiter/design.md`
+- `04-System-Design/02-Case-Studies/03-Real-Time-Chat/design.md`
+- `04-System-Design/03-Design-Patterns/Creational/Abstract-Factory/cross_language_comparison.md`
+- `04-System-Design/Design Patterns/BehaviroalPatterns/chain-of-responsibility/README.md`
+- `04-System-Design/Design Patterns/BehaviroalPatterns/command/README.md`
+- `04-System-Design/Design Patterns/BehaviroalPatterns/interpreter/README.md`
+- `04-System-Design/Design Patterns/BehaviroalPatterns/iterator/README.md`
+- `04-System-Design/Design Patterns/BehaviroalPatterns/mediator/README.md`
+- `04-System-Design/Design Patterns/BehaviroalPatterns/memento/README.md`
+- `04-System-Design/Design Patterns/BehaviroalPatterns/observer/README.md`
+- `04-System-Design/Design Patterns/BehaviroalPatterns/state/README.md`
+- `04-System-Design/Design Patterns/BehaviroalPatterns/strategy/README.md`
+- `04-System-Design/Design Patterns/BehaviroalPatterns/template-method/README.md`
+- `04-System-Design/Design Patterns/BehaviroalPatterns/visitor/README.md`
+- `04-System-Design/Design Patterns/CreationalPatterns/abstract-factory/README.md`
+- `04-System-Design/Design Patterns/CreationalPatterns/builder/README.md`
+- `04-System-Design/Design Patterns/CreationalPatterns/factory-method/README.md`
+- `04-System-Design/Design Patterns/CreationalPatterns/prototype/README.md`
+- `04-System-Design/Design Patterns/CreationalPatterns/singleton/README.md`
+- `04-System-Design/Design Patterns/In JavaScript/Builder Pattern/README.md`
+- `04-System-Design/Design Patterns/In JavaScript/Command Pattern/README.md`
+- `04-System-Design/Design Patterns/In JavaScript/Facade Pattern/README.md`
+- `04-System-Design/Design Patterns/In JavaScript/Null Object Pattern/README.md`
+- `04-System-Design/Design Patterns/In JavaScript/Singleton Pattern/README.md`
+- `04-System-Design/Design Patterns/README.md`
+- `04-System-Design/Design Patterns/StructuralPatterns/adapter/README.md`
+- `04-System-Design/Design Patterns/StructuralPatterns/bridge/README.md`
+- `04-System-Design/Design Patterns/StructuralPatterns/composite/README.md`
+- `04-System-Design/Design Patterns/StructuralPatterns/decorator/README.md`
+- `04-System-Design/Design Patterns/StructuralPatterns/facade/README.md`
+- `04-System-Design/Design Patterns/StructuralPatterns/flyweight/README.md`
+- `04-System-Design/Design Patterns/StructuralPatterns/proxy/README.md`
+- `04-System-Design/Design Patterns/Ultimate-CPP-Design-Patterns.md`
+- `04-System-Design/Design Patterns/Ultimate-Python-Design-Patterns.md`
+- `04-System-Design/Design Patterns/python-patterns/README.md`
+- `04-System-Design/Low Level Design/CONTRIBUTING.md`
+- `04-System-Design/Low Level Design/README.md`
+- `04-System-Design/README.md`
+- `04-System-Design/design-patterns-java/README.md`
+- `04-System-Design/design-patterns-java/notes/03-factory.md`
+- `04-System-Design/design-patterns-java/notes/04-abstract-factory-adapter.md`
+- `04-System-Design/design-patterns-java/notes/05-adapter-flyweight.md`
+- `04-System-Design/design-patterns-java/notes/06-decorator-facade.md`
+- `04-System-Design/design-patterns-java/notes/07-facade-observer.md`
+- `04-System-Design/design-patterns-java/notes/08-strategy-uml.md`
+- `04-System-Design/design-patterns-java/notes/09-class-diagram-schema-design.md`
+- `04-System-Design/design-patterns-java/src/README.md`
+- `04-System-Design/design-patterns-python/README.md`
+- `04-System-Design/design-questions/README.md`
+- `04-System-Design/notes/01-design-a-pen.md`
+- `04-System-Design/notes/02-design-tic-tac-toe-in-class.md`
+- `04-System-Design/notes/02-design-tic-tac-toe.md`
+- `04-System-Design/python-design-patterns/README.md`
+- `04-System-Design/top-20-questions.md`
+- `05-Quantitative-Finance/README.md`
+- `06-Interview-Prep/02-Resume/resume_guide.md`
+- `06-Interview-Prep/03-Mock-Interviews/transcript.md`
+- `07-Project-Portfolio/README.md`
+- `08-Distinguished-Engineering/04-Architecture-Patterns/microservices_vs_monolith.md`
+- `08-Distinguished-Engineering/05-Distributed-Transactions/saga_pattern.md`
+- `09-Engineering-Leadership/01-Technical-Writing/rfc_template.md`
+- `09-Engineering-Leadership/03-Code-Review/checklist.md`
+- `10-Development-Practices/01-Testing/unit_testing_comparison.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Appendices/README.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/SUMMARY.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_01_LLM_Foundations/README.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_02_Working_With_LLMs/README.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_03_Tool_Use_and_the_Agent_Loop/README.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_04_Agent_Architectures/README.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_05_RAG_and_Knowledge_Systems/README.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_06_Memory_and_Context_Engineering/README.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_07_Multi_Agent_Systems/README.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_08_Frameworks_and_SDKs/README.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_09_Model_Context_Protocol/README.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_10_Evaluation_and_Observability/README.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_11_Safety_Security_Alignment/README.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_12_Production_Engineering/README.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_13_Coding_Agents_and_Computer_Use/README.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_14_Frontier_and_Capstones/README.md`
+- `14-Low-Latency-Systems/04 - Hardware Mechanical Sympathy/CPU Power States and Jitter Sources.md`
+- `14-Low-Latency-Systems/04 - Hardware Mechanical Sympathy/Lab - 04 Cache Line Contention and Latency Benchmark.md`
+- `14-Low-Latency-Systems/04 - Hardware Mechanical Sympathy/NUMA Topologies and Inter-Socket Jitter.md`
+- `14-Low-Latency-Systems/04 - Hardware Mechanical Sympathy/War Story - The 2018 Meltdown and Spectre CPU Vulnerabilities.md`
+- `14-Low-Latency-Systems/05 - OS & Kernel Tuning/Interrupt Routing and MSI-X Tuning.md`
+- `14-Low-Latency-Systems/05 - OS & Kernel Tuning/Lab - 05 Production Core Isolation and Jitter Measurement.md`
+- `14-Low-Latency-Systems/05 - OS & Kernel Tuning/Linux Thread Pinning and Core Affinity.md`
+- `14-Low-Latency-Systems/05 - OS & Kernel Tuning/War Story - The 2012 Leap Second Linux Kernel Lockup.md`
+- `14-Low-Latency-Systems/Sources/Curated Bibliography of High-Frequency Trading Systems.md`
+- `16-Interview-Command-Center/01-Roles/Low-Latency/Common-Patterns.md`
+- `16-Interview-Command-Center/01-Roles/Low-Latency/Question-Bank.md`
+- `16-Interview-Command-Center/01-Roles/Low-Latency/Resources.md`
+- `16-Interview-Command-Center/01-Roles/Low-Latency/Skill-Matrix.md`
+- `16-Interview-Command-Center/01-Roles/Low-Latency/Study-Plan.md`
+- `16-Interview-Command-Center/01-Roles/Quant-Dev/Common-Patterns.md`
+- `16-Interview-Command-Center/01-Roles/Quant-Dev/Question-Bank.md`
+- `16-Interview-Command-Center/01-Roles/Quant-Dev/Resources.md`
+- `16-Interview-Command-Center/01-Roles/Quant-Dev/Skill-Matrix.md`
+- `16-Interview-Command-Center/01-Roles/Quant-Dev/Study-Plan.md`
+- `16-Interview-Command-Center/01-Roles/Quant-Research/Common-Patterns.md`
+- `16-Interview-Command-Center/01-Roles/Quant-Research/Question-Bank.md`
+- `16-Interview-Command-Center/01-Roles/Quant-Research/Resources.md`
+- `16-Interview-Command-Center/01-Roles/Quant-Research/Skill-Matrix.md`
+- `16-Interview-Command-Center/01-Roles/Quant-Research/Study-Plan.md`
+- `16-Interview-Command-Center/01-Roles/SDE/Common-Patterns.md`
+- `16-Interview-Command-Center/01-Roles/SDE/Question-Bank.md`
+- `16-Interview-Command-Center/01-Roles/SDE/Resources.md`
+- `16-Interview-Command-Center/01-Roles/SDE/Skill-Matrix.md`
+- `16-Interview-Command-Center/01-Roles/SDE/Study-Plan.md`
+- `16-Interview-Command-Center/_Templates/Behavioral-Story.md`
+- `16-Interview-Command-Center/_Templates/Company-Profile.md`
+- `16-Interview-Command-Center/_Templates/Daily-Log.md`
+- `16-Interview-Command-Center/_Templates/Interview-Note.md`
+- `16-Interview-Command-Center/_Templates/Mock-Interview.md`
+- `16-Interview-Command-Center/_Templates/Retrospective.md`
+- `16-Interview-Command-Center/_Templates/Study-Session.md`
+- `16-Interview-Command-Center/_Templates/Weekly-Review.md`
+- `AUDIT.md`
+- `CS-Subjects/README.md`
+- `README.md`
+- `backlog.md`
+- `process.md`
+- `tools/README.md`
+
+</details>
+
+## 5. Notes without frontmatter
+
+| Folder | Notes |
+| :--- | ---: |
+| `02-Programming-Languages` | 764 |
+| `13-Agentic-AI` | 121 |
+| `03-Data-Structures-Algorithms` | 66 |
+| `01-CS-Foundations` | 59 |
+| `04-System-Design` | 58 |
+| `16-Interview-Command-Center` | 27 |
+| `(root)` | 6 |
+| `06-Interview-Prep` | 3 |
+| `14-Low-Latency-Systems` | 3 |
+| `00-Start-Here` | 2 |
+| `08-Distinguished-Engineering` | 2 |
+| `09-Engineering-Leadership` | 2 |
+| `05-Quantitative-Finance` | 1 |
+| `07-Project-Portfolio` | 1 |
+| `10-Development-Practices` | 1 |
+| `11-Security-And-Cryptography` | 1 |
+| `12-Performance-Engineering` | 1 |
+| `CS-Subjects` | 1 |
+| `tools` | 1 |
+
+<details>
+<summary>All 1120 notes</summary>
+
+- `00-Start-Here/Checklist.md`
+- `00-Start-Here/Roadmap.md`
+- `01-CS-Foundations/Computer-Networks/CS6250-Study-Answers.md`
+- `01-CS-Foundations/Computer-Networks/README.md`
+- `01-CS-Foundations/Computer-Networks/networking_complete_reference.md`
+- `01-CS-Foundations/Computer-Networks/networking_complete_reference_new.md`
+- `01-CS-Foundations/Computer-Networks/networking_keywords_235.md`
+- `01-CS-Foundations/Computer-Networks/networking_protocols_extensive.md`
+- `01-CS-Foundations/Computer-Networks/networking_table.md`
+- `01-CS-Foundations/Computer-Networks/networking_table_new.md`
+- `01-CS-Foundations/Computer-Networks/notes/01-introduction-OSI-model.md`
+- `01-CS-Foundations/Computer-Networks/notes/02-application-layer.md`
+- `01-CS-Foundations/Computer-Networks/notes/03-cookies-dns-tcp.md`
+- `01-CS-Foundations/Computer-Networks/notes/04-sockets-primer.md`
+- `01-CS-Foundations/DBMS/README.md`
+- `01-CS-Foundations/DBMS/database_systems_199.md`
+- `01-CS-Foundations/DBMS/dbms_complete_reference.md`
+- `01-CS-Foundations/DBMS/mcqs/01-database-fundamentals.md`
+- `01-CS-Foundations/DBMS/mcqs/02-integrity-er-diagram.md`
+- `01-CS-Foundations/DBMS/mcqs/03-normalisation-acid.md`
+- `01-CS-Foundations/DBMS/notes/01-database-fundamentals.md`
+- `01-CS-Foundations/DBMS/notes/02-integrity-er-diagram.md`
+- `01-CS-Foundations/DBMS/notes/02-schema-design.md`
+- `01-CS-Foundations/DBMS/notes/03-normalisation-acid.md`
+- `01-CS-Foundations/DBMS/notes/03-normalisation-sql.md`
+- `01-CS-Foundations/DBMS/notes/04-transactions-indexes.md`
+- `01-CS-Foundations/DBMS/notes/05-sql-primer-worksheet-answers.md`
+- `01-CS-Foundations/DBMS/notes/05-sql-primer-worksheet.md`
+- `01-CS-Foundations/DBMS/notes/05-sql-primer.md`
+- `01-CS-Foundations/DBMS/notes/06-sql-joins-aggregation-worksheet-answers.md`
+- `01-CS-Foundations/DBMS/notes/06-sql-joins-aggregation-worksheet.md`
+- `01-CS-Foundations/DBMS/notes/06-sql-joins-aggregation.md`
+- `01-CS-Foundations/DBMS/notes/07-groupby-functions-worksheet-answers.md`
+- `01-CS-Foundations/DBMS/notes/07-groupby-functions-worksheet.md`
+- `01-CS-Foundations/DBMS/notes/07-groupby-functions.md`
+- `01-CS-Foundations/DBMS/notes/07-subqueries-functions-worksheet-answers.md`
+- `01-CS-Foundations/DBMS/notes/07-subqueries-functions-worksheet.md`
+- `01-CS-Foundations/DBMS/notes/07-subqueries-functions.md`
+- `01-CS-Foundations/DBMS/notes/08-window-fuctions-indexes.md`
+- `01-CS-Foundations/DBMS/notes/08-window-function-query-optimisation.md`
+- `01-CS-Foundations/DBMS/notes/08-window-functions-worksheet-answers.md`
+- `01-CS-Foundations/DBMS/notes/08-window-functions-worksheet.md`
+- `01-CS-Foundations/DBMS/notes/09-subqueries-views-worksheet-answers.md`
+- `01-CS-Foundations/DBMS/notes/09-subqueries-views-worksheet.md`
+- `01-CS-Foundations/DBMS/notes/09-subqueries-views.md`
+- `01-CS-Foundations/Object-Oriented-Programming/README.md`
+- `01-CS-Foundations/Object-Oriented-Programming/code/README.md`
+- `01-CS-Foundations/Object-Oriented-Programming/notes/01-oop-introduction.md`
+- `01-CS-Foundations/Object-Oriented-Programming/notes/02-constructors-inheritance.md`
+- `01-CS-Foundations/Object-Oriented-Programming/notes/03-polymorphism.md`
+- `01-CS-Foundations/Object-Oriented-Programming/notes/04-solid-01.md`
+- `01-CS-Foundations/Object-Oriented-Programming/notes/05-solid-02.md`
+- `01-CS-Foundations/Operating-Systems/IPC-Complete-Guide.md`
+- `01-CS-Foundations/Operating-Systems/README.md`
+- `01-CS-Foundations/Operating-Systems/notes/01-os-primer.md`
+- `01-CS-Foundations/Operating-Systems/notes/02-round-robin-threads.md`
+- `01-CS-Foundations/Operating-Systems/notes/03-thread-synchronisation.md`
+- `01-CS-Foundations/Operating-Systems/notes/03-threads-synchronisation.md`
+- `01-CS-Foundations/Operating-Systems/notes/04-memory-management.md`
+- `01-CS-Foundations/Operating-Systems/operating_systems_192.md`
+- `01-CS-Foundations/Operating-Systems/operating_systems_extended.md`
+- `02-Programming-Languages/C++/Blind-75-LeetCode-CPP.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Appendices/Appendix_A_Appendix_A_C_Keywords__Operators_Reference.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Appendices/Appendix_A_Appendix_A_C_Keywords__Operators_Reference_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Appendices/Appendix_B_Appendix_B_Common_Acronyms.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Appendices/Appendix_B_Appendix_B_Common_Acronyms_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Appendices/Appendix_C_Appendix_C_Recommended_Tooling.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Appendices/Appendix_C_Appendix_C_Recommended_Tooling_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Appendices/Appendix_D_Appendix_D_Common_C_Traps__Pitfalls.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Appendices/Appendix_D_Appendix_D_Common_C_Traps__Pitfalls_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Appendices/Appendix_E_Appendix_E_C_Interview_Cheat_Sheet.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Appendices/Appendix_E_Appendix_E_C_Interview_Cheat_Sheet_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Appendices/Appendix_F_Appendix_F_The_C_Standard_Evolution_Matrix.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Appendices/Appendix_F_Appendix_F_The_C_Standard_Evolution_Matrix_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Appendices/Appendix_G_Appendix_G_C_Standard_Library_Headers_Reference.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Appendices/Appendix_G_Appendix_G_C_Standard_Library_Headers_Reference_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Appendices/Appendix_H_Appendix_H_Professional_C_Idioms.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Appendices/Appendix_H_Appendix_H_Professional_C_Idioms_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Appendices/Appendix_I_Appendix_I_Fireside_Chat_The_History_of_C_Standard.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Appendices/Appendix_J_Appendix_J_The_Quantitative_Developers_Toolkit.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Appendices/Appendix_K_Appendix_K_Deep_Dive_The_Memory_Layout_of_a_C_Clas.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Appendices/Appendix_L_Appendix_L_100_More_Interview_Questions_Part_5-8.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Appendices/Appendix_M_Appendix_M_THE_ALGORITHM_COMPENDIUM_The_Masters_To.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Appendices/Appendix_N_Appendix_N_MODERN_DESIGN_PATTERNS_C202326_Edition.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Appendices/Appendix_O_Appendix_O_THE_C_CORE_GUIDELINES_Head_First_Summar.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Appendices/Appendix_T_Appendix_T_THE_MASTERS_GUIDE_TO_CMAKE.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Appendices/Appendix_U_Appendix_U_THE_STANDARD_LIBRARY_CONCURRENCY_TOOLKI.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Appendices/Appendix_V_Appendix_V_THE_STANDARD_LIBRARY_MEMORY_TOOLKIT.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Appendices/Appendix_W_Appendix_W_THE_COMPLETE_C_HEADER_REFERENCE_Head_Fi.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Appendices/Appendix_X_Appendix_X_C_OBJECT-ORIENTED_DESIGN_SOLID_Principl.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Appendices/Appendix_Y_Appendix_Y_THE_COMPLETE_GUIDE_TO_METAPROGRAMMING.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Appendices/Appendix_Z_Appendix_Z_THE_ENCYCLOPEDIA_OF_MODERN_C_IDIOMS_The.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Appendices/appendix_A_keywords_operators_reference.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Appendices/appendix_B_common_acronyms.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Appendices/appendix_C_recommended_tooling.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Appendices/appendix_D_common_cpp_traps_pitfalls.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Appendices/appendix_E_cpp_interview_cheat_sheet.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Appendices/appendix_F_cpp_standard_evolution_matrix.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Appendices/appendix_G_cpp_standard_library_headers_reference.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Appendices/appendix_H_professional_cpp_idioms.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Appendices/appendix_I_history_of_cpp_standards.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Appendices/appendix_J_quantitative_developers_toolkit.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Appendices/appendix_K_memory_layout_of_cpp_class.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Appendices/appendix_L_100_more_interview_questions.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Appendices/appendix_M_algorithm_compendium.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Appendices/appendix_N_modern_design_patterns.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Appendices/appendix_O_cpp_core_guidelines_summary.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Appendices/appendix_T_masters_guide_to_cmake.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Appendices/appendix_U_std_library_concurrency_toolkit.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Appendices/appendix_V_std_library_memory_toolkit.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Appendices/appendix_W_complete_cpp_header_reference.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Appendices/appendix_X_solid_principles.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Appendices/appendix_Y_complete_guide_to_metaprogramming.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Appendices/appendix_Z_encyclopedia_of_modern_cpp_idioms.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Complete-CPP-Zero-to-Godhood.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/FrontMatter/00_Preface.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Front_Matter/00_preface.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/README.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/SUMMARY.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/00_Preface/00_Preface.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_03_Control_Flow_and_Preprocessor/Chapter_03_Control_Flow_and_Preprocessor.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_03_Control_Flow_and_Preprocessor/Chapter_3_CHAPTER_3_CONTROL_FLOW_AND_PREPROCESSOR.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_03_Control_Flow_and_Preprocessor/Chapter_3_CONTROL_FLOW_AND_PREPROCESSOR.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_03_Control_Flow_and_Preprocessor/_archive/03_control_flow.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_03_Control_Flow_and_Preprocessor/_archive/03_control_flow_and_preprocessor.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_04_Advanced_Functions_and_Callbacks/Chapter_04_Advanced_Functions_and_Callbacks.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_04_Advanced_Functions_and_Callbacks/_archive/04_advanced_functions_and_callbacks.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_04_Advanced_Functions_and_Callbacks/_archive/04_functions.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_04_Advanced_Functions_and_Callbacks/_archive/Chapter_04_Floating_Point_and_Bit_Manipulation.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_04_Advanced_Functions_and_Callbacks/_archive/Chapter_4_ADVANCED_FUNCTIONS_AND_CALLBACKS.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_04_Advanced_Functions_and_Callbacks/_archive/Chapter_4_CHAPTER_4_ADVANCED_FUNCTIONS_AND_CALLBACKS.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_10_Advanced_Streams_and_File_IO/Chapter_10_Advanced_Streams_and_File_IO_Combined.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_10_Advanced_Streams_and_File_IO/_archive/06_strings_and_io.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_10_Advanced_Streams_and_File_IO/_archive/11_advanced_streams_and_file_io.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_10_Advanced_Streams_and_File_IO/_archive/Chapter_11_Advanced_Streams_and_File_IO.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_1_FOUNDATIONS_AND_COMPILATION/Chapter_01_Foundations_and_Compilation.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_2_MEMORY_TYPES_AND_POINTERS/Chapter_02_Memory_Types_and_Pointers.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_5_CHAPTER_5_OOP_AND_ENCAPSULATION/Chapter_05_OOP_and_Encapsulation.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_5_CHAPTER_5_OOP_AND_ENCAPSULATION/_archive/05_floating_point_and_bit_manipulation.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_5_CHAPTER_5_OOP_AND_ENCAPSULATION/_archive/07_enums_unions_namespaces.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_5_CHAPTER_5_OOP_AND_ENCAPSULATION/_archive/08_classes_and_oop.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_5_CHAPTER_5_OOP_AND_ENCAPSULATION/_archive/09_operator_overloading.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_5_CHAPTER_5_OOP_AND_ENCAPSULATION/_archive/11_type_conversions_casting.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_5_CHAPTER_5_OOP_AND_ENCAPSULATION/_archive/Chapter_5_CHAPTER_5_OOP_AND_ENCAPSULATION.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_5_CHAPTER_5_OOP_AND_ENCAPSULATION/_archive/Chapter_5_OOP_AND_ENCAPSULATION.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_6_CHAPTER_6_POLYMORPHISM_AND_VIRTUALIZATION/Chapter_06_Polymorphism_and_Virtualization.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_6_CHAPTER_6_POLYMORPHISM_AND_VIRTUALIZATION/_archive/06_oop_and_encapsulation.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_6_CHAPTER_6_POLYMORPHISM_AND_VIRTUALIZATION/_archive/10_inheritance_polymorphism.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_6_CHAPTER_6_POLYMORPHISM_AND_VIRTUALIZATION/_archive/Chapter_6_CHAPTER_6_POLYMORPHISM_AND_VIRTUALIZATION.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_6_CHAPTER_6_POLYMORPHISM_AND_VIRTUALIZATION/_archive/Chapter_6_POLYMORPHISM_AND_VIRTUALIZATION.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_7_STANDARD_TEMPLATE_LIBRARY_CORE/Chapter_07_Standard_Template_Library_Core_Combined.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_7_STANDARD_TEMPLATE_LIBRARY_CORE/_archive/07_polymorphism_and_virtualization.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_7_STANDARD_TEMPLATE_LIBRARY_CORE/_archive/Chapter_07_Standard_Template_Library_Core.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_7_STANDARD_TEMPLATE_LIBRARY_CORE/_archive/Chapter_7_CHAPTER_7_STANDARD_TEMPLATE_LIBRARY_CORE.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_7_STANDARD_TEMPLATE_LIBRARY_CORE/_archive/Chapter_7_STANDARD_TEMPLATE_LIBRARY_CORE.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_8_CHAPTER_8_STL_UNDER_THE_HOOD/Chapter_08_STL_Under_the_Hood_Combined.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_8_CHAPTER_8_STL_UNDER_THE_HOOD/_archive/08_standard_template_library_core.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_8_CHAPTER_8_STL_UNDER_THE_HOOD/_archive/09_stl_under_the_hood.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_8_CHAPTER_8_STL_UNDER_THE_HOOD/_archive/15_containers_and_iterators.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_8_CHAPTER_8_STL_UNDER_THE_HOOD/_archive/16_algorithms.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_8_CHAPTER_8_STL_UNDER_THE_HOOD/_archive/17_lambdas.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_8_CHAPTER_8_STL_UNDER_THE_HOOD/_archive/Chapter_08_STL_Under_the_Hood.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_8_CHAPTER_8_STL_UNDER_THE_HOOD/_archive/Chapter_8_CHAPTER_8_STL_UNDER_THE_HOOD.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_8_CHAPTER_8_STL_UNDER_THE_HOOD/_archive/Chapter_8_STL_UNDER_THE_HOOD.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_9_ERROR_HANDLING_AND_ROBUSTNESS/Chapter_09_Error_Handling_and_Robustness_Combined.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_9_ERROR_HANDLING_AND_ROBUSTNESS/_archive/10_error_handling_and_robustness.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_9_ERROR_HANDLING_AND_ROBUSTNESS/_archive/18_error_handling.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_9_ERROR_HANDLING_AND_ROBUSTNESS/_archive/Chapter_09_Error_Handling_and_Robustness.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_9_ERROR_HANDLING_AND_ROBUSTNESS/_archive/Chapter_9_CHAPTER_9_ERROR_HANDLING_AND_ROBUSTNESS.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_9_ERROR_HANDLING_AND_ROBUSTNESS/_archive/Chapter_9_ERROR_HANDLING_AND_ROBUSTNESS.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_02_The_Revolution_C11/Chapter_11_The_Modern_C11_Core/Chapter_11_The_Modern_C11_Core.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_02_The_Revolution_C11/Chapter_11_The_Modern_C11_Core/_archive/12_the_modern_c11_core.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_02_The_Revolution_C11/Chapter_11_The_Modern_C11_Core/_archive/Chapter_10_CHAPTER_10_THE_MODERN_C11_CORE.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_02_The_Revolution_C11/Chapter_11_The_Modern_C11_Core/_archive/Chapter_10_THE_MODERN_C11_CORE_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_02_The_Revolution_C11/Chapter_11_The_Modern_C11_Core/_archive/Chapter_10_The_Modern_C11_Core.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_02_The_Revolution_C11/Chapter_12_Move_Semantics_and_Smart_Pointers/Chapter_12_Move_Semantics_and_Smart_Pointers.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_02_The_Revolution_C11/Chapter_12_Move_Semantics_and_Smart_Pointers/_archive/13_move_semantics_and_smart_pointers.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_02_The_Revolution_C11/Chapter_12_Move_Semantics_and_Smart_Pointers/_archive/Chapter_11_CHAPTER_11_MOVE_SEMANTICS_AND_SMART_POINTERS.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_02_The_Revolution_C11/Chapter_12_Move_Semantics_and_Smart_Pointers/_archive/Chapter_11_MOVE_SEMANTICS_AND_SMART_POINTERS_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_02_The_Revolution_C11/Chapter_12_Move_Semantics_and_Smart_Pointers/_archive/Chapter_11_Move_Semantics_and_Smart_Pointers.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_02_The_Revolution_C11/Chapter_13_Functional_Programming/Chapter_13_Functional_Programming.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_02_The_Revolution_C11/Chapter_13_Functional_Programming/_archive/14_functional_programming.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_02_The_Revolution_C11/Chapter_13_Functional_Programming/_archive/Chapter_12_CHAPTER_12_FUNCTIONAL_PROGRAMMING.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_02_The_Revolution_C11/Chapter_13_Functional_Programming/_archive/Chapter_12_FUNCTIONAL_PROGRAMMING_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_02_The_Revolution_C11/Chapter_13_Functional_Programming/_archive/Chapter_12_Functional_Programming.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_02_The_Revolution_C11/Chapter_14_Template_Metaprogramming/Chapter_14_Template_Metaprogramming.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_02_The_Revolution_C11/Chapter_14_Template_Metaprogramming/_archive/15_template_metaprogramming.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_02_The_Revolution_C11/Chapter_14_Template_Metaprogramming/_archive/Chapter_13_CHAPTER_13_TEMPLATE_METAPROGRAMMING.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_02_The_Revolution_C11/Chapter_14_Template_Metaprogramming/_archive/Chapter_13_TEMPLATE_METAPROGRAMMING_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_02_The_Revolution_C11/Chapter_14_Template_Metaprogramming/_archive/Chapter_13_Template_Metaprogramming.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_02_The_Revolution_C11/Chapter_15_Standard_Library_Expansion/Chapter_15_Standard_Library_Expansion.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_02_The_Revolution_C11/Chapter_15_Standard_Library_Expansion/_archive/16_standard_library_expansion.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_02_The_Revolution_C11/Chapter_15_Standard_Library_Expansion/_archive/Chapter_14_CHAPTER_14_STANDARD_LIBRARY_EXPANSION.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_02_The_Revolution_C11/Chapter_15_Standard_Library_Expansion/_archive/Chapter_14_STANDARD_LIBRARY_EXPANSION_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_02_The_Revolution_C11/Chapter_15_Standard_Library_Expansion/_archive/Chapter_14_Standard_Library_Expansion.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_02_The_Revolution_C11/Chapter_16_Concurrency/Chapter_16_Concurrency.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_02_The_Revolution_C11/Chapter_16_Concurrency/_archive/17_concurrency.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_02_The_Revolution_C11/Chapter_16_Concurrency/_archive/18_concurrency_with_openmp.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_02_The_Revolution_C11/Chapter_16_Concurrency/_archive/Chapter_15_CHAPTER_15_CONCURRENCY.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_02_The_Revolution_C11/Chapter_16_Concurrency/_archive/Chapter_15_CONCURRENCY_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_02_The_Revolution_C11/Chapter_16_Concurrency/_archive/Chapter_15_Concurrency.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_02_The_Revolution_C11/Chapter_16_Concurrency/_archive/Chapter_16_Concurrency_with_OpenMP.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_02_The_Revolution_C11/Chapter_17_Advanced_Core_Language_and_Literals/Chapter_17_Advanced_Core_Language_and_Literals.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_03_The_Polish_CPP14/Chapter_18_C14_Core_Language_Upgrades/Chapter_18_Core_Language_Upgrades.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_03_The_Polish_CPP14/Chapter_18_C14_Core_Language_Upgrades/_archive/19_c14_core_language_upgrades.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_03_The_Polish_CPP14/Chapter_18_C14_Core_Language_Upgrades/_archive/Chapter_16_C14_CORE_LANGUAGE_UPGRADES_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_03_The_Polish_CPP14/Chapter_18_C14_Core_Language_Upgrades/_archive/Chapter_16_C14_Core_Language_Upgrades.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_03_The_Polish_CPP14/Chapter_18_C14_Core_Language_Upgrades/_archive/Chapter_16_CHAPTER_16_C14_CORE_LANGUAGE_UPGRADES.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_03_The_Polish_CPP14/Chapter_19_C14_Functions_and_Lambdas/Chapter_19_Functions_and_Lambdas.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_03_The_Polish_CPP14/Chapter_19_C14_Functions_and_Lambdas/_archive/20_c14_functions_and_lambdas.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_03_The_Polish_CPP14/Chapter_19_C14_Functions_and_Lambdas/_archive/Chapter_17_C14_FUNCTIONS_AND_LAMBDAS_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_03_The_Polish_CPP14/Chapter_19_C14_Functions_and_Lambdas/_archive/Chapter_17_C14_Functions_and_Lambdas.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_03_The_Polish_CPP14/Chapter_19_C14_Functions_and_Lambdas/_archive/Chapter_17_CHAPTER_17_C14_FUNCTIONS_AND_LAMBDAS.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_03_The_Polish_CPP14/Chapter_20_C14_Standard_Library_Enhancements/Chapter_20_Standard_Library_Enhancements.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_03_The_Polish_CPP14/Chapter_20_C14_Standard_Library_Enhancements/_archive/22_c14_standard_library_enhancements.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_03_The_Polish_CPP14/Chapter_20_C14_Standard_Library_Enhancements/_archive/Chapter_19_C14_STANDARD_LIBRARY_ENHANCEMENTS_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_03_The_Polish_CPP14/Chapter_20_C14_Standard_Library_Enhancements/_archive/Chapter_19_C14_Standard_Library_Enhancements.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_03_The_Polish_CPP14/Chapter_20_C14_Standard_Library_Enhancements/_archive/Chapter_19_CHAPTER_19_C14_STANDARD_LIBRARY_ENHANCEMENTS.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_03_The_Polish_CPP14/Chapter_21_C14_Templates_and_Metaprogramming/Chapter_21_Templates_and_Metaprogramming.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_03_The_Polish_CPP14/Chapter_21_C14_Templates_and_Metaprogramming/_archive/21_c14_templates_and_metaprogramming.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_03_The_Polish_CPP14/Chapter_21_C14_Templates_and_Metaprogramming/_archive/Chapter_18_C14_TEMPLATES_AND_METAPROGRAMMING_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_03_The_Polish_CPP14/Chapter_21_C14_Templates_and_Metaprogramming/_archive/Chapter_18_C14_Templates_and_Metaprogramming.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_03_The_Polish_CPP14/Chapter_21_C14_Templates_and_Metaprogramming/_archive/Chapter_18_CHAPTER_18_C14_TEMPLATES_AND_METAPROGRAMMING.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_03_The_Polish_CPP14/Chapter_22_New_Iterator_and_Algorithm_Facilities/Chapter_22_New_Iterator_and_Algorithm_Facilities.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_04_The_Modernizer_CPP17/Chapter_23_Core_Language_Features/Chapter_23_Core_Language_Features.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_04_The_Modernizer_CPP17/Chapter_23_Core_Language_Features/_archive/23_c17_core_language_features.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_04_The_Modernizer_CPP17/Chapter_23_Core_Language_Features/_archive/Chapter_20_C17_CORE_LANGUAGE_FEATURES_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_04_The_Modernizer_CPP17/Chapter_23_Core_Language_Features/_archive/Chapter_20_C17_Core_Language_Features.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_04_The_Modernizer_CPP17/Chapter_23_Core_Language_Features/_archive/Chapter_20_CHAPTER_20_C17_CORE_LANGUAGE_FEATURES.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_04_The_Modernizer_CPP17/Chapter_24_Template_Metaprogramming/Chapter_24_Template_Metaprogramming.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_04_The_Modernizer_CPP17/Chapter_24_Template_Metaprogramming/_archive/24_c17_template_metaprogramming.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_04_The_Modernizer_CPP17/Chapter_24_Template_Metaprogramming/_archive/Chapter_21_C17_TEMPLATE_METAPROGRAMMING_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_04_The_Modernizer_CPP17/Chapter_24_Template_Metaprogramming/_archive/Chapter_21_C17_Template_Metaprogramming.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_04_The_Modernizer_CPP17/Chapter_24_Template_Metaprogramming/_archive/Chapter_21_CHAPTER_21_C17_TEMPLATE_METAPROGRAMMING.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_04_The_Modernizer_CPP17/Chapter_25_Vocabulary_Types/Chapter_25_Vocabulary_Types.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_04_The_Modernizer_CPP17/Chapter_25_Vocabulary_Types/_archive/25_c17_vocabulary_types.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_04_The_Modernizer_CPP17/Chapter_25_Vocabulary_Types/_archive/Chapter_22_C17_VOCABULARY_TYPES_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_04_The_Modernizer_CPP17/Chapter_25_Vocabulary_Types/_archive/Chapter_22_C17_Vocabulary_Types.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_04_The_Modernizer_CPP17/Chapter_25_Vocabulary_Types/_archive/Chapter_22_CHAPTER_22_C17_VOCABULARY_TYPES.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_04_The_Modernizer_CPP17/Chapter_26_Filesystem_and_Polymorphic_Memory/Chapter_26_Filesystem_and_Polymorphic_Memory.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_04_The_Modernizer_CPP17/Chapter_26_Filesystem_and_Polymorphic_Memory/_archive/26_c17_filesystem_and_io.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_04_The_Modernizer_CPP17/Chapter_26_Filesystem_and_Polymorphic_Memory/_archive/Chapter_23_C17_FILESYSTEM_AND_IO_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_04_The_Modernizer_CPP17/Chapter_26_Filesystem_and_Polymorphic_Memory/_archive/Chapter_23_C17_Filesystem_and_IO.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_04_The_Modernizer_CPP17/Chapter_26_Filesystem_and_Polymorphic_Memory/_archive/Chapter_23_CHAPTER_23_C17_FILESYSTEM_AND_IO.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_04_The_Modernizer_CPP17/Chapter_27_Parallel_Algorithms_and_Concurrency/Chapter_27_Parallel_Algorithms_and_Concurrency.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_04_The_Modernizer_CPP17/Chapter_27_Parallel_Algorithms_and_Concurrency/_archive/27_c17_parallel_algorithms_and_concurrency.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_04_The_Modernizer_CPP17/Chapter_27_Parallel_Algorithms_and_Concurrency/_archive/Chapter_24_C17_PARALLEL_ALGORITHMS_AND_CONCURRENCY_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_04_The_Modernizer_CPP17/Chapter_27_Parallel_Algorithms_and_Concurrency/_archive/Chapter_24_C17_Parallel_Algorithms_and_Concurrency.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_04_The_Modernizer_CPP17/Chapter_27_Parallel_Algorithms_and_Concurrency/_archive/Chapter_24_CHAPTER_24_C17_PARALLEL_ALGORITHMS_AND_CONCURRENCY.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_04_The_Modernizer_CPP17/Chapter_28_Standard_Library_Additions/Chapter_28_Standard_Library_Additions.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_04_The_Modernizer_CPP17/Chapter_28_Standard_Library_Additions/_archive/28_c17_standard_library_additions.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_04_The_Modernizer_CPP17/Chapter_28_Standard_Library_Additions/_archive/Chapter_25_C17_STANDARD_LIBRARY_ADDITIONS_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_04_The_Modernizer_CPP17/Chapter_28_Standard_Library_Additions/_archive/Chapter_25_C17_Standard_Library_Additions.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_04_The_Modernizer_CPP17/Chapter_28_Standard_Library_Additions/_archive/Chapter_25_CHAPTER_25_C17_STANDARD_LIBRARY_ADDITIONS.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_04_The_Modernizer_CPP17/Chapter_29_Associative_Container_Advances/Chapter_29_Associative_Container_Advances.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_04_The_Modernizer_CPP17/Chapter_30_Low_Latency_Facilities/Chapter_30_Low_Latency_Facilities.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_31_The_Gigantic_Leap/Chapter_31_The_Gigantic_Leap.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_32_Concepts_I_Constraints/Chapter_32_Concepts_I_Constraints.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_32_Concepts_I_Constraints/_archive/29_c20_concepts.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_32_Concepts_I_Constraints/_archive/Chapter_26_C20_CONCEPTS_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_32_Concepts_I_Constraints/_archive/Chapter_26_C20_Concepts.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_32_Concepts_I_Constraints/_archive/Chapter_26_CHAPTER_26_C20_CONCEPTS.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_33_Concepts_II_Standard_Library_and_Subsumption/Chapter_33_Concepts_II_Standard_Library_and_Subsumption.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_34_Ranges_I_Views_and_Lazy_Pipelines/Chapter_34_Ranges_I_Views_and_Lazy_Pipelines.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_34_Ranges_I_Views_and_Lazy_Pipelines/_archive/32_c20_ranges.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_34_Ranges_I_Views_and_Lazy_Pipelines/_archive/Chapter_29_C20_RANGES_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_34_Ranges_I_Views_and_Lazy_Pipelines/_archive/Chapter_29_C20_Ranges.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_34_Ranges_I_Views_and_Lazy_Pipelines/_archive/Chapter_29_CHAPTER_29_C20_RANGES.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_35_Ranges_II_Algorithms_Projections_Borrowed/Chapter_35_Ranges_II_Algorithms_Projections_Borrowed.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_36_Coroutines_I_Keywords_and_Promise_Protocol/Chapter_36_Coroutines_I_Keywords_and_Promise_Protocol.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_36_Coroutines_I_Keywords_and_Promise_Protocol/_archive/31_c20_coroutines.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_36_Coroutines_I_Keywords_and_Promise_Protocol/_archive/Chapter_28_C20_COROUTINES_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_36_Coroutines_I_Keywords_and_Promise_Protocol/_archive/Chapter_28_C20_Coroutines.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_36_Coroutines_I_Keywords_and_Promise_Protocol/_archive/Chapter_28_CHAPTER_28_C20_COROUTINES.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_37_Coroutines_II_Awaitables_Tasks_and_Symmetric_Transfer/Chapter_37_Coroutines_II_Awaitables_Tasks_and_Symmetric_Transfer.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_38_Modules_The_Death_of_Headers/Chapter_38_Modules_The_Death_of_Headers.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_38_Modules_The_Death_of_Headers/_archive/30_c20_modules.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_38_Modules_The_Death_of_Headers/_archive/Chapter_27_C20_MODULES_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_38_Modules_The_Death_of_Headers/_archive/Chapter_27_C20_Modules.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_38_Modules_The_Death_of_Headers/_archive/Chapter_27_CHAPTER_27_C20_MODULES.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_39_Three_Way_Comparison_The_Spaceship_Operator/Chapter_39_Three_Way_Comparison_The_Spaceship_Operator.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_39_Three_Way_Comparison_The_Spaceship_Operator/_archive/33_c20_core_language_features.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_39_Three_Way_Comparison_The_Spaceship_Operator/_archive/Chapter_30_C20_CORE_LANGUAGE_FEATURES_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_39_Three_Way_Comparison_The_Spaceship_Operator/_archive/Chapter_30_C20_Core_Language_Features.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_39_Three_Way_Comparison_The_Spaceship_Operator/_archive/Chapter_30_CHAPTER_30_C20_CORE_LANGUAGE_FEATURES.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_40_Designated_Initializers_and_Aggregates/Chapter_40_Designated_Initializers_and_Aggregates.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_41_consteval_constinit_and_constexpr_Expansion/Chapter_41_consteval_constinit_and_constexpr_Expansion.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_42_Abbreviated_Templates_explicit_bool_and_Lambda_Enhancements/Chapter_42_Abbreviated_Templates_explicit_bool_and_Lambda_Enhancements.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_43_using_enum_VA_OPT_NTTP_and_Language_Cleanups/Chapter_43_using_enum_VA_OPT_NTTP_and_Language_Cleanups.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_44_Attributes_for_Performance_and_Safety/Chapter_44_Attributes_for_Performance_and_Safety.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_45_std_span_Non_Owning_Views_over_Contiguous_Memory/Chapter_45_std_span_Non_Owning_Views_over_Contiguous_Memory.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_45_std_span_Non_Owning_Views_over_Contiguous_Memory/_archive/34_c20_standard_library_additions.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_45_std_span_Non_Owning_Views_over_Contiguous_Memory/_archive/Chapter_31_C20_STANDARD_LIBRARY_ADDITIONS_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_45_std_span_Non_Owning_Views_over_Contiguous_Memory/_archive/Chapter_31_C20_Standard_Library_Additions.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_45_std_span_Non_Owning_Views_over_Contiguous_Memory/_archive/Chapter_31_CHAPTER_31_C20_STANDARD_LIBRARY_ADDITIONS.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_46_std_format_Type_Safe_Text_Formatting/Chapter_46_std_format_Type_Safe_Text_Formatting.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_47_Calendars_and_Time_Zones_in_chrono/Chapter_47_Calendars_and_Time_Zones_in_chrono.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_48_Bit_Manipulation_and_bit_cast/Chapter_48_bit_Manipulation_and_bit_cast.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_49_Concurrency_I_jthread_and_Cooperative_Cancellation/Chapter_49_Concurrency_I_jthread_and_Cooperative_Cancellation.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_50_Concurrency_II_Latches_Barriers_Semaphores_and_Atomic_Enhancements/Chapter_50_Concurrency_II_Latches_Barriers_Semaphores_and_Atomic_Enhancements.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_51_Diagnostics_and_Utility_Additions/Chapter_51_Diagnostics_and_Utility_Additions.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_52_Container_and_Algorithm_Additions/Chapter_52_Container_and_Algorithm_Additions.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_53_Numbers_Alignment_and_Type_Trait_Additions/Chapter_53_Numbers_Alignment_and_Type_Trait_Additions.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_06_The_Refinement_C23/Chapter_54_The_Completion_Release/Chapter_54_The_Completion_Release.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_06_The_Refinement_C23/Chapter_55_Deducing_this/Chapter_55_Deducing_this.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_06_The_Refinement_C23/Chapter_55_Deducing_this/_archive/35_c23_core_language.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_06_The_Refinement_C23/Chapter_55_Deducing_this/_archive/Chapter_32_C23_CORE_LANGUAGE_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_06_The_Refinement_C23/Chapter_55_Deducing_this/_archive/Chapter_32_C23_Core_Language.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_06_The_Refinement_C23/Chapter_55_Deducing_this/_archive/Chapter_32_CHAPTER_32_C23_CORE_LANGUAGE.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_06_The_Refinement_C23/Chapter_56_Expected_and_Monadic_Error_Handling/Chapter_56_Expected_and_Monadic_Error_Handling.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_06_The_Refinement_C23/Chapter_56_Expected_and_Monadic_Error_Handling/_archive/37_c23_monadic_operations_and_expected.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_06_The_Refinement_C23/Chapter_56_Expected_and_Monadic_Error_Handling/_archive/Chapter_34_C23_MONADIC_OPERATIONS_AND_EXPECTED_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_06_The_Refinement_C23/Chapter_56_Expected_and_Monadic_Error_Handling/_archive/Chapter_34_C23_Monadic_Operations_And_Expected.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_06_The_Refinement_C23/Chapter_56_Expected_and_Monadic_Error_Handling/_archive/Chapter_34_CHAPTER_34_C23_MONADIC_OPERATIONS_AND_EXPECTED.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_06_The_Refinement_C23/Chapter_57_mdspan/Chapter_57_mdspan.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_06_The_Refinement_C23/Chapter_57_mdspan/_archive/38_c23_containers_and_views.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_06_The_Refinement_C23/Chapter_57_mdspan/_archive/Chapter_35_C23_CONTAINERS_AND_VIEWS_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_06_The_Refinement_C23/Chapter_57_mdspan/_archive/Chapter_35_C23_Containers_And_Views.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_06_The_Refinement_C23/Chapter_57_mdspan/_archive/Chapter_35_CHAPTER_35_C23_CONTAINERS_AND_VIEWS.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_06_The_Refinement_C23/Chapter_58_std_generator/Chapter_58_std_generator.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_06_The_Refinement_C23/Chapter_58_std_generator/_archive/39_c23_coroutines_and_stacktrace.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_06_The_Refinement_C23/Chapter_58_std_generator/_archive/Chapter_36_C23_COROUTINES_AND_STACKTRACE_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_06_The_Refinement_C23/Chapter_58_std_generator/_archive/Chapter_36_C23_Coroutines_And_Stacktrace.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_06_The_Refinement_C23/Chapter_58_std_generator/_archive/Chapter_36_CHAPTER_36_C23_COROUTINES_AND_STACKTRACE.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_06_The_Refinement_C23/Chapter_59_Completing_Ranges_I_New_Views/Chapter_59_Completing_Ranges_I_New_Views.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_06_The_Refinement_C23/Chapter_60_Completing_Ranges_II_Folds_To_Search/Chapter_60_Completing_Ranges_II_Folds_To_Search.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_06_The_Refinement_C23/Chapter_61_Modern_Output_print_and_range_formatting/Chapter_61_Modern_Output_print_and_range_formatting.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_06_The_Refinement_C23/Chapter_61_Modern_Output_print_and_range_formatting/_archive/36_c23_std_print.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_06_The_Refinement_C23/Chapter_61_Modern_Output_print_and_range_formatting/_archive/Chapter_33_C23_STD_PRINT_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_06_The_Refinement_C23/Chapter_61_Modern_Output_print_and_range_formatting/_archive/Chapter_33_C23_Std_Print.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_06_The_Refinement_C23/Chapter_61_Modern_Output_print_and_range_formatting/_archive/Chapter_33_CHAPTER_33_C23_STD_PRINT.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_06_The_Refinement_C23/Chapter_62_Flat_Containers/Chapter_62_Flat_Containers.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_06_The_Refinement_C23/Chapter_63_Diagnostics_and_Lifetime_Utilities/Chapter_63_Diagnostics_and_Lifetime_Utilities.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_06_The_Refinement_C23/Chapter_64_Functional_and_Type_Utilities/Chapter_64_Functional_and_Type_Utilities.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_06_The_Refinement_C23/Chapter_64_Functional_and_Type_Utilities/_archive/40_c23_library_utilities.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_06_The_Refinement_C23/Chapter_64_Functional_and_Type_Utilities/_archive/Chapter_37_C23_LIBRARY_UTILITIES_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_06_The_Refinement_C23/Chapter_64_Functional_and_Type_Utilities/_archive/Chapter_37_C23_Library_Utilities.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_06_The_Refinement_C23/Chapter_64_Functional_and_Type_Utilities/_archive/Chapter_37_CHAPTER_37_C23_LIBRARY_UTILITIES.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_06_The_Refinement_C23/Chapter_65_Compile_Time_Refinements/Chapter_65_Compile_Time_Refinements.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_06_The_Refinement_C23/Chapter_66_Core_Language_Conveniences/Chapter_66_Core_Language_Conveniences.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_06_The_Refinement_C23/Chapter_67_Extended_Floating_Point_Types/Chapter_67_Extended_Floating_Point_Types.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_06_The_Refinement_C23/Chapter_68_Standard_Library_Modules/Chapter_68_Standard_Library_Modules.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_07_The_Future_C26/Chapter_69_Static_Reflection_and_Metaprogramming/Chapter_69_Static_Reflection_and_Metaprogramming.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_07_The_Future_C26/Chapter_70_Contracts_Memory_Safety_and_Diagnostics/Chapter_70_Contracts_Memory_Safety_and_Diagnostics.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_07_The_Future_C26/Chapter_71_Concurrency_Execution_and_Lock_Free/Chapter_71_Concurrency_Execution_and_Lock_Free_Constructs.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_07_The_Future_C26/Chapter_72_High_Performance_Data_Structures_and_Numerics/Chapter_72_High_Performance_Data_Structures_and_Numerics.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_07_The_Future_C26/Chapter_73_Advanced_Library_Additions_and_Ergonomics/Chapter_73_Advanced_Library_Additions_and_Ergonomics.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_07_The_Future_C26/_archive/41_the_future_c26_preview.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_07_The_Future_C26/_archive/Chapter_38_C26_-_THE_NEXT_FRONTIER_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_07_The_Future_C26/_archive/Chapter_38_CHAPTER_38_C26_-_THE_NEXT_FRONTIER.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_07_The_Future_C26/_archive/Chapter_38_THE_FUTURE_C26_PREVIEW_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_07_The_Future_C26/_archive/Chapter_38_The_Future_C26_Preview.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_100_Kernel_Bypass_Networking/Chapter_100_Kernel_Bypass_Networking_DPDK_RDMA.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_101_Clocks_and_Timekeeping/Chapter_101_Clocks_Timekeeping_and_Measuring_Latency.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_102_Linking_Loading_ABI/Chapter_102_Linking_Loading_ABI_and_WPO.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_103_Microbenchmarking_and_Tail_Latency/Chapter_103_Microbenchmarking_and_Tail_Latency.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_104_Undefined_Behaviour_and_the_Optimiser/Chapter_104_Undefined_Behaviour_and_the_Optimiser.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_105_Sanitizers_Fuzzing_Testing_Concurrency/Chapter_105_Sanitizers_Fuzzing_and_Testing_Concurrent_Code.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_106_Determinism_and_the_Hot_Path_Mindset/Chapter_106_Determinism_Jitter_Elimination_and_the_Hot_Path_Mindset.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_74_Advanced_Template_Metaprogramming/Chapter_74_Advanced_Template_Metaprogramming.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_74_Advanced_Template_Metaprogramming/_archive/Chapter_39_ADVANCED_TEMPLATE_METAPROGRAMMING_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_74_Advanced_Template_Metaprogramming/_archive/Chapter_39_Advanced_Template_Metaprogramming.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_74_Advanced_Template_Metaprogramming/_archive/Chapter_39_CHAPTER_39_ADVANCED_TEMPLATE_METAPROGRAMMING.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_75_Compile_Time_Programming/Chapter_75_Compile_Time_Programming.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_75_Compile_Time_Programming/_archive/Chapter_40_CHAPTER_40_COMPILE_TIME_PROGRAMMING.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_75_Compile_Time_Programming/_archive/Chapter_40_COMPILE_TIME_PROGRAMMING_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_75_Compile_Time_Programming/_archive/Chapter_40_Compile_Time_Programming.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_76_The_CPP_Memory_Model/Chapter_76_The_CPP_Memory_Model.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_76_The_CPP_Memory_Model/_archive/Chapter_41_CHAPTER_41_THE_CPP_MEMORY_MODEL.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_76_The_CPP_Memory_Model/_archive/Chapter_41_THE_CPP_MEMORY_MODEL_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_76_The_CPP_Memory_Model/_archive/Chapter_41_The_CPP_Memory_Model.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_77_Lock_Free_Programming/Chapter_77_Lock_Free_Programming.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_77_Lock_Free_Programming/_archive/Chapter_42_CHAPTER_42_LOCK_FREE_PROGRAMMING.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_77_Lock_Free_Programming/_archive/Chapter_42_LOCK_FREE_PROGRAMMING_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_77_Lock_Free_Programming/_archive/Chapter_42_Lock_Free_Programming.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_78_Advanced_Concurrency_Patterns/Chapter_78_Advanced_Concurrency_Patterns.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_78_Advanced_Concurrency_Patterns/_archive/Chapter_43_ADVANCED_CONCURRENCY_PATTERNS_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_78_Advanced_Concurrency_Patterns/_archive/Chapter_43_Advanced_Concurrency_Patterns.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_78_Advanced_Concurrency_Patterns/_archive/Chapter_43_CHAPTER_43_ADVANCED_CONCURRENCY_PATTERNS.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_79_Custom_Memory_Allocators/Chapter_79_Custom_Memory_Allocators.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_79_Custom_Memory_Allocators/_archive/Chapter_44_CHAPTER_44_CUSTOM_MEMORY_ALLOCATORS.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_79_Custom_Memory_Allocators/_archive/Chapter_44_CUSTOM_MEMORY_ALLOCATORS_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_79_Custom_Memory_Allocators/_archive/Chapter_44_Custom_Memory_Allocators.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_80_High_Performance_Optimization/Chapter_80_High_Performance_Optimization.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_80_High_Performance_Optimization/_archive/Chapter_45_CHAPTER_45_HIGH_PERFORMANCE_OPTIMIZATION.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_80_High_Performance_Optimization/_archive/Chapter_45_HIGH_PERFORMANCE_OPTIMIZATION_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_80_High_Performance_Optimization/_archive/Chapter_45_High_Performance_Optimization.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_81_WRITING_A_C_COMPILER_BASICS/Chapter_81_Writing_A_Compiler_Basics.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_81_WRITING_A_C_COMPILER_BASICS/_archive/Chapter_46_CHAPTER_46_WRITING_A_C_COMPILER_BASICS.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_81_WRITING_A_C_COMPILER_BASICS/_archive/Chapter_46_WRITING_A_C_COMPILER_BASICS.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_81_WRITING_A_C_COMPILER_BASICS/_archive/Chapter_46_WRITING_A_C_COMPILER_BASICS_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_82_WRITING_A_GARBAGE_COLLECTOR/Chapter_82_Writing_A_Garbage_Collector.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_82_WRITING_A_GARBAGE_COLLECTOR/_archive/Chapter_47_CHAPTER_47_WRITING_A_GARBAGE_COLLECTOR.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_82_WRITING_A_GARBAGE_COLLECTOR/_archive/Chapter_47_WRITING_A_GARBAGE_COLLECTOR.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_82_WRITING_A_GARBAGE_COLLECTOR/_archive/Chapter_47_WRITING_A_GARBAGE_COLLECTOR_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_83_THE_STANDARD_LIBRARY_FROM_SCRATCH/Chapter_83_The_Standard_Library_From_Scratch.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_83_THE_STANDARD_LIBRARY_FROM_SCRATCH/_archive/Chapter_48_CHAPTER_48_THE_STANDARD_LIBRARY_FROM_SCRATCH.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_83_THE_STANDARD_LIBRARY_FROM_SCRATCH/_archive/Chapter_48_THE_STANDARD_LIBRARY_FROM_SCRATCH.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_83_THE_STANDARD_LIBRARY_FROM_SCRATCH/_archive/Chapter_48_THE_STANDARD_LIBRARY_FROM_SCRATCH_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_84_DISTRIBUTED_C/Chapter_84_Distributed_CPP.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_84_DISTRIBUTED_C/_archive/Chapter_49_CHAPTER_49_DISTRIBUTED_C_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_84_DISTRIBUTED_C/_archive/Chapter_49_DISTRIBUTED_C_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_85_The_Engineers_Model_of_the_Machine/Chapter_85_The_Engineers_Model_of_the_Machine.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_86_CPU_Microarchitecture/Chapter_86_CPU_Microarchitecture.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_87_The_Cache_Hierarchy/Chapter_87_The_Cache_Hierarchy.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_88_Virtual_Memory_TLB_NUMA/Chapter_88_Virtual_Memory_TLB_Huge_Pages_NUMA.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_89_Reading_the_Compilers_Output/Chapter_89_Reading_the_Compilers_Output.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_90_Data_Oriented_Design/Chapter_90_Data_Oriented_Design.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_91_Branchless_Programming/Chapter_91_Branchless_Programming.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_92_SIMD_in_Practice/Chapter_92_SIMD_in_Practice.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_93_Atomics_CAS_ABA/Chapter_93_Atomics_CAS_and_ABA.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_94_Safe_Reclamation/Chapter_94_Safe_Reclamation_Hazard_Pointers_and_RCU.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_95_Lock_Design/Chapter_95_Lock_Design.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_96_Threading_Discipline/Chapter_96_Threading_Discipline.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_97_Object_Lifetime_and_Allocation_Free/Chapter_97_Object_Lifetime_Placement_and_Allocation_Free.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_98_System_Calls_and_vDSO/Chapter_98_System_Calls_the_vDSO_and_Syscall_Overhead.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_99_High_Performance_IO/Chapter_99_High_Performance_IO_io_uring_mmap_Zero_Copy.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/_archive/Chapter_49_Design_Patterns.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/_archive/Chapter_50_ODR_ADL_and_Undefined_Behavior.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/_archive/Chapter_51_Linkage_Attributes_and_C_Incompatibilities.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/_archive/Chapter_52_Build_Systems_and_Tooling.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_107_Design_Patterns/Chapter_107_Design_Patterns_in_Modern_CPP.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_107_Design_Patterns/_archive/52_design_patterns.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_108_TMP_Patterns/Chapter_108_Template_Metaprogramming_Patterns.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_108_TMP_Patterns/_archive/66_template_metaprogramming_patterns.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_108_TMP_Patterns/_archive/Chapter_59_CHAPTER_59_TEMPLATE_METAPROGRAMMING_PATTERNS.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_108_TMP_Patterns/_archive/Chapter_59_TEMPLATE_METAPROGRAMMING_PATTERNS.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_109_High_Performance_Data_Structures/Chapter_109_High_Performance_Data_Structures.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_109_High_Performance_Data_Structures/_archive/67_high_performance_data_structures.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_109_High_Performance_Data_Structures/_archive/Chapter_60_CHAPTER_60_HIGH-PERFORMANCE_DATA_STRUCTURES.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_109_High_Performance_Data_Structures/_archive/Chapter_60_HIGH-PERFORMANCE_DATA_STRUCTURES.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_110_Build_Systems_and_Tooling/Chapter_110_Build_Systems_Dependency_Management_and_Tooling.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_110_Build_Systems_and_Tooling/_archive/55_build_systems_and_tooling.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_111_Interoperability/Chapter_111_Interoperability_and_the_Stable_C_ABI.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_111_Interoperability/_archive/54_linkage_attributes_and_c_incompatibilities.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_111_Interoperability/_archive/62_interoperability.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_111_Interoperability/_archive/Chapter_55_CHAPTER_55_INTEROPERABILITY_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_111_Interoperability/_archive/Chapter_55_INTEROPERABILITY.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_111_Interoperability/_archive/Chapter_55_INTEROPERABILITY_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_112_Networking_from_Scratch/Chapter_112_Networking_from_Scratch.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_112_Networking_from_Scratch/_archive/57_networking_from_scratch.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_112_Networking_from_Scratch/_archive/Chapter_50_CHAPTER_50_NETWORKING_FROM_SCRATCH_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_112_Networking_from_Scratch/_archive/Chapter_50_NETWORKING_FROM_SCRATCH.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_112_Networking_from_Scratch/_archive/Chapter_50_NETWORKING_FROM_SCRATCH_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_113_CPP_in_the_Cloud/Chapter_113_CPP_in_the_Cloud.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_113_CPP_in_the_Cloud/_archive/58_c_in_the_cloud.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_113_CPP_in_the_Cloud/_archive/Chapter_51_CHAPTER_51_C_IN_THE_CLOUD_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_113_CPP_in_the_Cloud/_archive/Chapter_51_C_IN_THE_CLOUD.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_113_CPP_in_the_Cloud/_archive/Chapter_51_C_IN_THE_CLOUD_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_114_Cross_Platform_Development/Chapter_114_Cross_Platform_Development.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_114_Cross_Platform_Development/_archive/59_cross_platform_development.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_114_Cross_Platform_Development/_archive/Chapter_52_CHAPTER_52_CROSS-PLATFORM_DEVELOPMENT_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_114_Cross_Platform_Development/_archive/Chapter_52_CROSS-PLATFORM_DEVELOPMENT.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_114_Cross_Platform_Development/_archive/Chapter_52_CROSS-PLATFORM_DEVELOPMENT_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_115_GUI_Development/Chapter_115_GUI_Development_with_CPP.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_115_GUI_Development/_archive/60_gui_development_with_c.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_115_GUI_Development/_archive/Chapter_53_CHAPTER_53_GUI_DEVELOPMENT_WITH_C.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_115_GUI_Development/_archive/Chapter_53_GUI_DEVELOPMENT_WITH_C.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_115_GUI_Development/_archive/Chapter_53_GUI_DEVELOPMENT_WITH_C_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_116_Scientific_Computing_and_GPU/Chapter_116_Scientific_Computing_and_GPU.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_116_Scientific_Computing_and_GPU/_archive/61_scientific_computing_gpu.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_116_Scientific_Computing_and_GPU/_archive/Chapter_54_CHAPTER_54_SCIENTIFIC_COMPUTING__GPU_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_116_Scientific_Computing_and_GPU/_archive/Chapter_54_SCIENTIFIC_COMPUTING__GPU.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_116_Scientific_Computing_and_GPU/_archive/Chapter_54_SCIENTIFIC_COMPUTING__GPU_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_117_ML_Infrastructure/Chapter_117_Machine_Learning_Infrastructure.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_117_ML_Infrastructure/_archive/70_machine_learning_infrastructure.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_117_ML_Infrastructure/_archive/Chapter_63_CHAPTER_63_MACHINE_LEARNING_INFRASTRUCTURE.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_117_ML_Infrastructure/_archive/Chapter_63_MACHINE_LEARNING_INFRASTRUCTURE.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_118_Real_Time_Audio/Chapter_118_Real_Time_Audio_and_Signal_Processing.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_118_Real_Time_Audio/_archive/68_real_time_audio_signal_processing.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_118_Real_Time_Audio/_archive/Chapter_61_CHAPTER_61_REAL-TIME_AUDIO__SIGNAL_PROCESSING.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_118_Real_Time_Audio/_archive/Chapter_61_REAL-TIME_AUDIO__SIGNAL_PROCESSING.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_119_Robotics_ROS2/Chapter_119_Robotics_and_ROS2_Development.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_119_Robotics_ROS2/_archive/69_robotics_ros2_development.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_119_Robotics_ROS2/_archive/Chapter_62_CHAPTER_62_ROBOTICS__ROS2_DEVELOPMENT.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_119_Robotics_ROS2/_archive/Chapter_62_ROBOTICS__ROS2_DEVELOPMENT.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_120_Database_Internals/Chapter_120_Database_Internals_and_LSM_Trees.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_120_Database_Internals/_archive/71_database_internals_lsm_trees.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_120_Database_Internals/_archive/Chapter_64_CHAPTER_64_DATABASE_INTERNALS_LSM_TREES.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_120_Database_Internals/_archive/Chapter_64_DATABASE_INTERNALS_LSM_TREES.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_121_Security_Engineering/Chapter_121_Security_Engineering.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_121_Security_Engineering/_archive/63_security_engineering.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_121_Security_Engineering/_archive/Chapter_56_CHAPTER_56_SECURITY_ENGINEERING_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_121_Security_Engineering/_archive/Chapter_56_SECURITY_ENGINEERING.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_121_Security_Engineering/_archive/Chapter_56_SECURITY_ENGINEERING_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_122_Specialized_Domains/Chapter_122_Specialized_Domains.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_122_Specialized_Domains/_archive/64_specialized_domains.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_122_Specialized_Domains/_archive/Chapter_57_CHAPTER_57_SPECIALIZED_DOMAINS_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_122_Specialized_Domains/_archive/Chapter_57_SPECIALIZED_DOMAINS.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_122_Specialized_Domains/_archive/Chapter_57_SPECIALIZED_DOMAINS_.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_123_Algorithm_Reference/Chapter_123_The_Ultimate_Algorithm_Reference.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_123_Algorithm_Reference/_archive/72_the_ultimate_algorithm_reference.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_123_Algorithm_Reference/_archive/Chapter_65_CHAPTER_65_THE_ULTIMATE_ALGORITHM_REFERENCE.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_123_Algorithm_Reference/_archive/Chapter_65_THE_ULTIMATE_ALGORITHM_REFERENCE.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_124_Capstone_Order_Book/Chapter_124_Capstone_High_Performance_Order_Book.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_124_Capstone_Order_Book/_archive/73_capstone_project_high_performance_order_book.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_124_Capstone_Order_Book/_archive/Chapter_66_CAPSTONE_PROJECT_-_HIGH-PERFORMANCE_ORDER_BOOK.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_124_Capstone_Order_Book/_archive/Chapter_66_CHAPTER_66_CAPSTONE_PROJECT_-_HIGH-PERFORMANCE_ORD.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/_archive/_consolidated_into_Volume_08/42_advanced_template_metaprogramming.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/_archive/_consolidated_into_Volume_08/43_compile_time_programming.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/_archive/_consolidated_into_Volume_08/44_the_cpp_memory_model.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/_archive/_consolidated_into_Volume_08/45_lock_free_programming.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/_archive/_consolidated_into_Volume_08/46_advanced_concurrency_patterns.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/_archive/_consolidated_into_Volume_08/47_custom_memory_allocators.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/_archive/_consolidated_into_Volume_08/48_high_performance_optimization.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/_archive/_consolidated_into_Volume_08/49_writing_a_c_compiler_basics.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/_archive/_consolidated_into_Volume_08/50_writing_a_garbage_collector.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/_archive/_consolidated_into_Volume_08/51_the_standard_library_from_scratch.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/_archive/_consolidated_into_Volume_08/53_odr_adl_and_undefined_behavior.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/_archive/_consolidated_into_Volume_08/56_distributed_c.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/_archive/_consolidated_into_Volume_08/65_aba_problem_memory_reclamation.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/_archive/_consolidated_into_Volume_08/Chapter_49_DISTRIBUTED_C.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/_archive/_consolidated_into_Volume_08/Chapter_58_ABA_PROBLEM__MEMORY_RECLAMATION.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/_archive/_consolidated_into_Volume_08/Chapter_58_CHAPTER_58_ABA_PROBLEM__MEMORY_RECLAMATION.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/_archive/_consolidated_into_Volume_08/README.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/manuscript/03-part-resource-management/12_raii_and_rule_of_five.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/manuscript/03-part-resource-management/13_move_semantics.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/manuscript/03-part-resource-management/14_smart_pointers.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/manuscript/05-part-templates/19_templates.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/manuscript/05-part-templates/20_concepts.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/manuscript/05-part-templates/21_variadic_templates.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/manuscript/05-part-templates/22_type_traits.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/manuscript/06-part-modern-features/23_cpp11_14_revolution.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/manuscript/06-part-modern-features/24_cpp17.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/manuscript/06-part-modern-features/25_cpp20.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/manuscript/06-part-modern-features/26_cpp23_and_cpp26.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/manuscript/07-part-concurrency/27_threads_and_synchronization.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/manuscript/07-part-concurrency/28_memory_model_and_atomics.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/manuscript/07-part-concurrency/29_lock_free_programming.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/manuscript/07-part-concurrency/30_openmp.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/manuscript/08-part-performance/31_performance_fundamentals.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/manuscript/08-part-performance/32_memory_allocators.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/manuscript/08-part-performance/33_compile_time_programming.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/manuscript/09-part-design/34_design_patterns.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/manuscript/09-part-design/35_cpp_core_guidelines.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/manuscript/09-part-design/36_advanced_debugging.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/manuscript/10-part-compilation/37_preprocessor.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/manuscript/10-part-compilation/38_compilation_model.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/manuscript/10-part-compilation/39_build_systems_and_modules.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/manuscript/11-part-utilities/40_utilities_chrono_random.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/manuscript/12-part-systems/41_advanced_tmp_patterns.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/manuscript/12-part-systems/42_standard_library_from_scratch.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/manuscript/12-part-systems/43_writing_a_compiler_and_gc.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/manuscript/13-part-specialized/44_networking_distributed.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/manuscript/13-part-specialized/45_embedded_real_time.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/manuscript/13-part-specialized/46_cross_platform_and_cloud.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/manuscript/13-part-specialized/47_gui_and_graphics.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/manuscript/13-part-specialized/48_hpc_and_gpus.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/manuscript/14-part-mastery/49_ultimate_algorithm_reference.md`
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/manuscript/14-part-mastery/50_capstone_project.md`
+- `02-Programming-Languages/C++/LeetCode-Quant-Complete-CPP-Full.md`
+- `02-Programming-Languages/C++/NeetCode-150-CPP.md`
+- `02-Programming-Languages/C++/README.md`
+- `02-Programming-Languages/C++/Ultimate-CPP-Advanced-Guide.md`
+- `02-Programming-Languages/C++/Ultimate-CPP-Design-Patterns.md`
+- `02-Programming-Languages/C++/stl_complete_reference.md`
+- `02-Programming-Languages/C++/stl_ref_table.md`
+- `02-Programming-Languages/Python/Blind-75-LeetCode-Python.md`
+- `02-Programming-Languages/Python/CodingBestPractices/coding_best_practices.md`
+- `02-Programming-Languages/Python/Complete-Python-Zero-to-Godhood.md`
+- `02-Programming-Languages/Python/LeetCode-Quant-Complete-Python-Full.md`
+- `02-Programming-Languages/Python/NeetCode-150-Python.md`
+- `02-Programming-Languages/Python/Python-Advanced-Guide.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/00_Preface.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Appendix_A_Appendix_A_The_Comprehensive_Standard_Library_Inde.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Appendix_A_STANDARD_LIBRARY_INDEX.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Appendix_B_Appendix_B_Glossary_of_CPython_Internals.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Appendix_C_Appendix_C_The_PEP_Hall_of_Fame.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Appendix_D_Appendix_D_The_Complete_Python_Grammar_EBNF.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Appendix_D_PYTHON_GRAMMAR.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Appendix_E_Appendix_E_Design_Patterns_in_Python.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Appendix_E_F_PATTERNS_AND_OPCODES.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Appendix_F_Appendix_F_The_Complete_Opcodes_Reference.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Appendix_G_Appendix_G_The_Godhood_Reading_List.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Appendix_H_Appendix_H_CPython_Source_Code_Walkthrough_Core_Ob.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Appendix_H_SOURCE_WALKTHROUGH.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Appendix_J_Appendix_J_Standard_Library_Source_Code_Map.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Appendix_J_SOURCE_MAP.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Appendix_K_Appendix_K_The_Complete_Python_Standard_Library_Re.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Appendix_K_SOVEREIGN_MAP.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Appendix_L_Appendix_L_Exhaustive_Python_Built-in_Functions_Re.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Appendix_L_BUILTINS_AND_GLOSSARY.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Appendix_M_Appendix_M_The_Godhood_Senior_Python_Glossary.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Appendix_M_C_API_REFERENCE.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Appendix_N_Appendix_N_The_Python_Bytecode_Encyclopedia.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Appendix_N_BYTECODE_ENCYCLOPEDIA.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Appendix_O_Appendix_O_The_Evolutionary_Roadmap_PEPs_1_to_750.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Appendix_O_P_ROADMAP_AND_MEMORY.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Appendix_P_Appendix_P_CPython_Memory_Allocator_Diagrams.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Appendix_Q_Appendix_Q_Master_Index_of_All_Code_Snippets.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Appendix_S_Appendix_S_The_Ultimate_Standard_Library_Compendiu.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Appendix_S_ULTIMATE_COMPENDIUM.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Appendix_T_Appendix_T_Exhaustive_Python_Built-in_Exceptions.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Appendix_T_U_EXCEPTIONS_WARNINGS.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Appendix_U_Appendix_U_Exhaustive_Python_Built-in_Warnings.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Appendix_V_Appendix_V_The_Python_History_and_PEP_Timeline_198.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Appendix_V_W_HISTORY_AND_MOBILE.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Appendix_W_Appendix_W_Python_in_Mobile_and_Embedded_Systems.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_05_UNDER_THE_HOOD_BUILT-IN_DATA_STRUCTURES.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_104_FORMAL_AND_QUANTUM.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_106_FRONTIER_PYTHON.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_10_CONCURRENCY_MECHANICS__THE_GLOBAL_INTERPRETER_LOCK.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_16_Python_311_Faster_CPython_Specializing_Interpreter.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_17_FASTER_CPYTHON_THE_SPECIALIZING_INTERPRETER.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_17_Python_311_Faster_CPython_Specializing_Interpreter.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_17_Python_312_Native_Generics_PEP_695_Type_statement_.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_18_MODERN_TYPING_COMPILER_ALIASES__PEP_695.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_18_Python_311_to_312_Exception_Groups_except_and_Trac.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_18_Python_312_Native_Generics_PEP_695_Type_statement_.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_19_EXCEPTION_GROUPS_AND_TRACEBACK_ENHANCEMENTS.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_19_Python_311_to_312_Exception_Groups_except_and_Trac.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_19_Python_313_Free-Threaded_Build__GIL_Removal_Intern.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_20_FREE-THREADED_PYTHON_GIL_REMOVAL_INTERNALS.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_20_Python_313_Copy-and-Patch_JIT_Compiler_Architectur.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_20_Python_313_Free-Threaded_Build__GIL_Removal_Intern.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_21_COPY-AND-PATCH_JIT_COMPILER_ARCHITECTURE.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_21_Python_312_to_313_Subinterpreters__Per-Interpreter.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_21_Python_313_Copy-and-Patch_JIT_Compiler_Architectur.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_22_CPython_Memory_Allocator_PyMalloc__Generational_Ga.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_22_Python_312_to_313_Subinterpreters__Per-Interpreter.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_22_SUBINTERPRETERS__MULTI-CORE_PARALLELISM.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_23_CPython_Memory_Allocator_PyMalloc__Generational_Ga.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_23_C_Extensions__Python_C-API_Interoperability.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_23_MEMALLOC_UNDER_THE_HOOD_ARENAS_POOLS_AND_THE_GC.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_24_C_EXTENSIONS_AND_INTEROPERABILITY_LAYERS.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_24_C_Extensions__Python_C-API_Interoperability.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_24_Metaclasses_Descriptor_Protocol_and_type_Slots.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_25_LOW-LEVEL_MEMORY_OPTIMIZATION_TECHNIQUES.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_25_METACLASSES_AND_DESCRIPTOR_PROTOCOL_ARCHITECTURE.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_25_Metaclasses_Descriptor_Protocol_and_type_Slots.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_26_CPU__IO_BOUND_SYSTEM_CONCURRENCY.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_26_LOW-LEVEL_MEMORY_OPTIMIZATION_TECHNIQUES.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_27_CPU__IO_BOUND_SYSTEM_CONCURRENCY.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_27_NUMERICAL_HIGH-PERFORMANCE_DATA_STRUCTURES.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_28_NUMERICAL_HIGH-PERFORMANCE_DATA_STRUCTURES.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_28_PROFILING_BENCHMARKING_AND_DIAGNOSTICS.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_29_CAPSTONE_PROJECT_HIGH-FREQUENCY_ORDER_BOOK__TRADIN.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_29_PROFILING_BENCHMARKING_AND_DIAGNOSTICS.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_30_CAPSTONE_PROJECT_HIGH-FREQUENCY_ORDER_BOOK__TRADIN.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_31_Lexical_Analysis_and_the_Execution_Model.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_31_Regular_Expressions_Engine_Internals_re_sre_compil.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_32_Advanced_Text_Processing_string_textwrap.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_32_The_Python_Data_Model__Comprehensive_Dunder_Method.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_33_Advanced_Data_Structures_Internals.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_33_Binary_Data_Packing_struct_binascii.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_34_Cryptography_and_Hashing_hashlib_hmac.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_34_Functional_Programming_Modules.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_35_Numeric_Mathematical_and_Cryptographic_Randomness.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_35_The_Anatomy_of_Time_datetime_zoneinfo.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_36_Data_Persistence__Object_Serialization.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_36_Enums_and_Topological_Sorts_enum_graphlib.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_37_OS_Services_Signal_Handling_and_Subprocesses.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_37_The_DEFLATE_Algorithm_and_Zlib_zlib_gzip.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_38_Advanced_Compression_bz2_lzma.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_38_Low-Level_Networking_and_Sockets.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_39_Archive_Formats_zipfile_tarfile.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_39_The_Import_Machinery_and_importlib.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_40_Delimited_and_Configuration_Files_csv_configparser.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_40_Runtime_Services_and_Introspection.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_41_Testing_Debugging_and_Quality_Assurance.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_41_XML_Processing_and_Expat_xmletree_xmlsax.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_42_HTML_Parsing_and_Internet_Data_html_email.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_42_RE_ENGINE_STRING_BINARY_AND_CRYPTO.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_43_High-Level_URL_and_HTTP_Handling_urllib_http.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_44_Legacy_and_Specialized_Protocols_ftplib_smtplib_im.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_45_IP_Address_Manipulation_and_RPC_ipaddress_xmlrpc.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_46_Internationalization_gettext_locale.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_46_TIME_ENUMS_AND_GRAPHS.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_47_Command_Line_Interfaces_argparse_cmd_shlex.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_48_COMPRESSION_AND_ARCHIVING.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_48_TclTk_and_GUI_Foundations_tkinter.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_49_Virtual_Environments_venv.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_50_Python_Execution_Archives_zipapp.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_51_FORMATS_XML_AND_HTML.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_51_The_Disassembler_dis.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_52_Writing_a_C_Extension_from_Scratch.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_53_Abstract_Base_Classes_abc.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_54_Context_Managers_contextlib.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_54_NETWORKING_AND_PROTOCOLS.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_55_Advanced_Concurrency_Shared_Memory_and_Proxies.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_56_The_Typing_System_Static_Analysis_vs_Runtime_Enfor.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_57_I18N_CLI_AND_GUI.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_57_The_Python_Packaging_Ecosystem_PEP_517_to_Wheels.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_58_The_Heart_of_the_Machine_cevalc_and_the_Interprete.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_59_SIMD_Vectorization_with_Python.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_60_GPU_Acceleration_with_CUDA_and_Python.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_60_TOOLING_AND_BYTECODE.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_61_PyPy_The_JIT_and_Meta-Tracing.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_61_The_Future_of_Python_314_and_Beyond.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_62_Cluster_Computing_with_PySpark_and_Dask.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_63_EXTENDING_AND_EMBEDDING.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_63_Microservices_and_gRPC_in_Python.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_64_Large_Language_Models_LLMs_and_Python.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_64_SciPy_Optimization_and_Linear_Algebra_Backends.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_65_Matplotlib_The_Artist_Layer_and_Backend_Architectu.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_65_Productionizing_Python_Docker_and_Kubernetes.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_66_ADVANCED_TYPING_SHM_AND_PACKAGING.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_66_Django_Internals_The_ORM_and_Migration_Engine.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_66_Network_Protocol_Fuzzing.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_67_FastAPI_and_Pydantic_Type-Safe_Web_Development.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_67_Secure_Coding_and_Cryptography_Advanced.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_68_Derivatives_Pricing_Monte_Carlo_and_Finite_Differe.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_69_CEVAL_AND_GLOSSARY.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_69_Risk_Management_VaR_and_Expected_Shortfall.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_70_HARDWARE_SYMPATHETIC_PYTHON.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_70_Python_Anti-Patterns_and_Common_Pitfalls.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_71_Functional_Breadth_map_filter_and_reduce.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_72_Web_Browser_and_URL_Automation.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_73_CYTHON_AND_PYPY.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_73_Mastering_argparse_and_sysargv.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_74_Distributed_Databases_Python_and_the_CAP_Theorem.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_75_COMPARATIVE_AND_FUTURE.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_75_Search_and_Information_Retrieval_Elasticsearch.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_76_Message_Brokers_Kafka_and_RabbitMQ.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_77_DISTRIBUTED_SYSTEMS.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_77_Formal_Verification_and_TLA_with_Python.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_78_Quantum_Computing_Internals_with_Python.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_79_Python_at_the_Frontier_Space_Exploration_and_NASA.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_80_Python_in_Quantum_Biology_and_Genetics.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_80_QUANTS_AND_ML.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_83_CYBERSECURITY.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_86_QUANT_FINANCE.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_86_SCIENTIFIC_AND_WEB.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_92_STRING_AND_PITFALLS.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_95_VISUALIZATION_AND_TOOLING.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_99_CLOUD_AND_DISTRIBUTED.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/MASTER_COVERAGE_MATRIX.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/STYLE.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Volume_01_Classic_Python_and_Core_Engine/Chapter_01_Inception_and_the_Executable_Pipeline/Chapter_01_Inception_and_the_Executable_Pipeline.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Volume_01_Classic_Python_and_Core_Engine/Chapter_01_Inception_and_the_Executable_Pipeline/_archive/Chapter_01_INCEPTION_AND_THE_EXECUTABLE_PIPELINE.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Volume_01_Classic_Python_and_Core_Engine/Chapter_01_Inception_and_the_Executable_Pipeline/_archive/Chapter_01_Python_10_to_16_Inception__the_LL1_Executable_Pipe.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Volume_01_Classic_Python_and_Core_Engine/Chapter_02_The_PyObject_Model_and_Reference_Counting/Chapter_02_The_PyObject_Model_and_Reference_Counting.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Volume_01_Classic_Python_and_Core_Engine/Chapter_02_The_PyObject_Model_and_Reference_Counting/_archive/Chapter_02_Python_1x_The_PyObject_Model__Reference_Counting_C.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Volume_01_Classic_Python_and_Core_Engine/Chapter_02_The_PyObject_Model_and_Reference_Counting/_archive/Chapter_02_THE_PYOBJECT_CORE_OBJECT_MODEL.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Volume_01_Classic_Python_and_Core_Engine/Chapter_03_Comprehensions_Nested_Scopes_and_Cyclic_GC/Chapter_03_Comprehensions_Nested_Scopes_and_Cyclic_GC.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Volume_01_Classic_Python_and_Core_Engine/Chapter_03_Comprehensions_Nested_Scopes_and_Cyclic_GC/_archive/Chapter_03_Python_20_to_21_Comprehensions_Nested_Scopes__Cycl.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Volume_01_Classic_Python_and_Core_Engine/Chapter_03_Comprehensions_Nested_Scopes_and_Cyclic_GC/_archive/Chapter_03_SCOPES_NAMESPACES_AND_CLOSURES.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Volume_01_Classic_Python_and_Core_Engine/Chapter_04_Type_Class_Unification_Descriptors_and_C3_MRO/Chapter_04_Type_Class_Unification_Descriptors_and_C3_MRO.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Volume_01_Classic_Python_and_Core_Engine/Chapter_04_Type_Class_Unification_Descriptors_and_C3_MRO/_archive/Chapter_04_OBJECT-ORIENTED_PROGRAMMING_MECHANICS__MRO.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Volume_01_Classic_Python_and_Core_Engine/Chapter_04_Type_Class_Unification_Descriptors_and_C3_MRO/_archive/Chapter_04_Python_22_to_23_Type-Class_Unification_Descriptors.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Volume_01_Classic_Python_and_Core_Engine/Chapter_05_Decorators_Context_Managers_and_the_2x_Twilight/Chapter_05_Decorators_Context_Managers_and_the_2x_Twilight.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Volume_01_Classic_Python_and_Core_Engine/Chapter_05_Decorators_Context_Managers_and_the_2x_Twilight/_archive/Chapter_05_Python_24_to_27_Decorators_Context_Managers__the_2.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Volume_01_Classic_Python_and_Core_Engine/Chapter_06_Low_Level_File_IO_and_Exception_Unwinding/Chapter_06_Low_Level_File_IO_and_Exception_Unwinding.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Volume_01_Classic_Python_and_Core_Engine/Chapter_06_Low_Level_File_IO_and_Exception_Unwinding/_archive/Chapter_06_FILE_IO_AND_EXCEPTION_FLOWS.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Volume_01_Classic_Python_and_Core_Engine/Chapter_06_Low_Level_File_IO_and_Exception_Unwinding/_archive/Chapter_06_Python_2x_Low-Level_File_IO__Exceptions_Unwinding_.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Volume_02_The_Python_3_Schism/Chapter_07_The_Unicode_Paradigm_Shift/Chapter_07_The_Unicode_Paradigm_Shift.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Volume_02_The_Python_3_Schism/Chapter_07_The_Unicode_Paradigm_Shift/_archive/Chapter_07_Python_30_The_Unicode_Paradigm_Shift_and_Text_vs_B.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Volume_02_The_Python_3_Schism/Chapter_07_The_Unicode_Paradigm_Shift/_archive/Chapter_07_THE_PYTHON_30_PARADIGM_SHIFT.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Volume_02_The_Python_3_Schism/Chapter_07_The_Unicode_Paradigm_Shift/_archive/Chapter_08_ADVANCED_TEXT_VS_BYTES__UNICODE_INTERNALS.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Volume_02_The_Python_3_Schism/Chapter_08_Stdlib_Consolidation_and_the_New_GIL/Chapter_08_Stdlib_Consolidation_and_the_New_GIL.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Volume_02_The_Python_3_Schism/Chapter_08_Stdlib_Consolidation_and_the_New_GIL/_archive/Chapter_08_Python_31_to_32_Standard_Library_Consolidation_and.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Volume_03_Generators_Iterators_and_Async_Inception/Chapter_09_Iterators_Generators_and_yield_from/Chapter_09_Iterators_Generators_and_yield_from.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Volume_03_Generators_Iterators_and_Async_Inception/Chapter_09_Iterators_Generators_and_yield_from/_archive/Chapter_09_ITERATORS_GENERATORS_AND_CO-ROUTINES.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Volume_03_Generators_Iterators_and_Async_Inception/Chapter_09_Iterators_Generators_and_yield_from/_archive/Chapter_09_Python_33_Yield_From_Generators_and_Implicit_Names.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Volume_03_Generators_Iterators_and_Async_Inception/Chapter_10_Asyncio_Inception_Pathlib_and_Enum/Chapter_10_Asyncio_Inception_Pathlib_and_Enum.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Volume_03_Generators_Iterators_and_Async_Inception/Chapter_10_Asyncio_Inception_Pathlib_and_Enum/_archive/Chapter_10_Python_34_Asyncio_Inception_Pathlib_and_Enum_Archi.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Volume_03_Generators_Iterators_and_Async_Inception/Chapter_11_Native_Async_Await_and_New_Operators/Chapter_11_Native_Async_Await_and_New_Operators.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Volume_03_Generators_Iterators_and_Async_Inception/Chapter_11_Native_Async_Await_and_New_Operators/_archive/Chapter_10_Python_35_Native_AsyncAwait_Coroutines_and_Matrix_.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Volume_03_Generators_Iterators_and_Async_Inception/Chapter_11_Native_Async_Await_and_New_Operators/_archive/Chapter_11_NATIVE_ASYNCAWAIT_RUNTIME_ENGINE.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Volume_03_Generators_Iterators_and_Async_Inception/Chapter_11_Native_Async_Await_and_New_Operators/_archive/Chapter_11_Python_35_Native_AsyncAwait_Coroutines_and_Matrix_.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Volume_04_Expressive_Modern_Python/Chapter_12_FStrings_Annotations_and_the_Compact_Dict/Chapter_12_FStrings_Annotations_and_the_Compact_Dict.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Volume_04_Expressive_Modern_Python/Chapter_12_FStrings_Annotations_and_the_Compact_Dict/_archive/Chapter_11_Python_36_F-Strings_Formatting_Variable_Annotation.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Volume_04_Expressive_Modern_Python/Chapter_12_FStrings_Annotations_and_the_Compact_Dict/_archive/Chapter_12_Python_36_F-Strings_Formatting_Variable_Annotation.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Volume_04_Expressive_Modern_Python/Chapter_12_FStrings_Annotations_and_the_Compact_Dict/_archive/Chapter_12_SYNTAX_ERGONOMICS_F-STRINGS__TYPE_ANNOTATIONS.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Volume_04_Expressive_Modern_Python/Chapter_13_Dataclasses_ContextVars_and_Dict_Ordering/Chapter_13_Dataclasses_ContextVars_and_Dict_Ordering.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Volume_04_Expressive_Modern_Python/Chapter_13_Dataclasses_ContextVars_and_Dict_Ordering/_archive/Chapter_12_Python_37_Dataclasses_Context_Variables_and_Dict_O.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Volume_04_Expressive_Modern_Python/Chapter_13_Dataclasses_ContextVars_and_Dict_Ordering/_archive/Chapter_13_DATACLASSES_AND_DECLARATIVE_PATTERNS.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Volume_04_Expressive_Modern_Python/Chapter_13_Dataclasses_ContextVars_and_Dict_Ordering/_archive/Chapter_13_Python_37_Dataclasses_Context_Variables_and_Dict_O.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Volume_05_Structural_Shifts_and_Pattern_Matching/Chapter_14_Walrus_and_Positional_Only_Parameters/Chapter_14_Walrus_and_Positional_Only_Parameters.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Volume_05_Structural_Shifts_and_Pattern_Matching/Chapter_14_Walrus_and_Positional_Only_Parameters/_archive/Chapter_13_Python_38_Walrus_Operator__and_Positional-Only_Par.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Volume_05_Structural_Shifts_and_Pattern_Matching/Chapter_14_Walrus_and_Positional_Only_Parameters/_archive/Chapter_14_Python_38_Walrus_Operator__and_Positional-Only_Par.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Volume_05_Structural_Shifts_and_Pattern_Matching/Chapter_14_Walrus_and_Positional_Only_Parameters/_archive/Chapter_14_WALRUS_OPERATOR__PARAMETER_BINDING.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Volume_05_Structural_Shifts_and_Pattern_Matching/Chapter_15_PEG_Parser_Dict_Union_and_Pattern_Matching/Chapter_15_PEG_Parser_Dict_Union_and_Pattern_Matching.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Volume_05_Structural_Shifts_and_Pattern_Matching/Chapter_15_PEG_Parser_Dict_Union_and_Pattern_Matching/_archive/Chapter_14_Python_39_to_310_PEG_Parser_Dict_Merge__and_Patter.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Volume_05_Structural_Shifts_and_Pattern_Matching/Chapter_15_PEG_Parser_Dict_Union_and_Pattern_Matching/_archive/Chapter_15_Python_39_to_310_PEG_Parser_Dict_Merge__and_Patter.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Volume_05_Structural_Shifts_and_Pattern_Matching/Chapter_15_PEG_Parser_Dict_Union_and_Pattern_Matching/_archive/Chapter_15_STRUCTURAL_PATTERN_MATCHING_ENGINE.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Volume_05_Structural_Shifts_and_Pattern_Matching/Chapter_16_Typing_Protocols_and_Structural_Subtyping/Chapter_16_Typing_Protocols_and_Structural_Subtyping.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Volume_05_Structural_Shifts_and_Pattern_Matching/Chapter_16_Typing_Protocols_and_Structural_Subtyping/_archive/Chapter_15_Python_38_to_310_Type_Hinting_Protocols_and_Struct.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Volume_05_Structural_Shifts_and_Pattern_Matching/Chapter_16_Typing_Protocols_and_Structural_Subtyping/_archive/Chapter_16_Python_38_to_310_Type_Hinting_Protocols_and_Struct.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Volume_05_Structural_Shifts_and_Pattern_Matching/Chapter_16_Typing_Protocols_and_Structural_Subtyping/_archive/Chapter_16_STATIC_TYPING__ADVANCED_METAPROGRAMMING_WITH_PROTO.md`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Volume_06_Performance_Leap_and_Runtime_Mechanics/Chapter_17_Faster_CPython_the_Specializing_Adaptive_Interpreter/Chapter_17_Faster_CPython_the_Specializing_Adaptive_Interpreter.md`
+- `02-Programming-Languages/Python/Ultimate-Python-Advanced-Guide.md`
+- `02-Programming-Languages/Python/Ultimate-Python-Design-Patterns.md`
+- `02-Programming-Languages/Python/general/Exercise/10_functions/10_functions_exercise.md`
+- `02-Programming-Languages/Python/general/Exercise/11_dict_tuples/11_dict_tuple_exercise.md`
+- `02-Programming-Languages/Python/general/Exercise/13_read_write_files/read_write_file_exercise.md`
+- `02-Programming-Languages/Python/general/Exercise/15_exception_handling/exception_handing_exercise.md`
+- `02-Programming-Languages/Python/general/Exercise/16_class_and_objects/16_class_and_object_exercise.md`
+- `02-Programming-Languages/Python/general/Exercise/17_inheritance/17_inheritance.md`
+- `02-Programming-Languages/Python/general/Exercise/18_multiple_inheritance/18_multiple_inheritance.md`
+- `02-Programming-Languages/Python/general/Exercise/19_raise_exception_finally/19_raise_exception_finally.md`
+- `02-Programming-Languages/Python/general/Exercise/20_Iterators/20_Iterators.md`
+- `02-Programming-Languages/Python/general/Exercise/21_generators/21_generators.md`
+- `02-Programming-Languages/Python/general/Exercise/22_list_set_dict_comprehension/22_list_set_dict_comprehension.md`
+- `02-Programming-Languages/Python/general/Exercise/23_sets_frozensets/23_sets_frozensets.md`
+- `02-Programming-Languages/Python/general/Exercise/24_argparse/24_argparse.md`
+- `02-Programming-Languages/Python/general/Exercise/25_decorators/25_decorators.md`
+- `02-Programming-Languages/Python/general/Exercise/26_multithreading/26_multithreading.md`
+- `02-Programming-Languages/Python/general/Exercise/2_variables/2_variables_exercise.md`
+- `02-Programming-Languages/Python/general/Exercise/3_numbers/3_numbers_exercise_description.md`
+- `02-Programming-Languages/Python/general/Exercise/4_strings/4_strings_exercise.md`
+- `02-Programming-Languages/Python/general/Exercise/5_lists/5_lists_exercise.md`
+- `02-Programming-Languages/Python/general/Exercise/8_if/8_exercise_description.md`
+- `02-Programming-Languages/Python/general/Exercise/9_for/9_for_exercise.md`
+- `02-Programming-Languages/Python/general/Hindi/4_user_input/4_user_input_exercise.md`
+- `02-Programming-Languages/Python/python in depth/CONTRIBUTING.md`
+- `02-Programming-Languages/Python/python in depth/DIRECTORY.md`
+- `02-Programming-Languages/Python/python in depth/README.md`
+- `02-Programming-Languages/Python/python in depth/arithmetic_analysis/README.md`
+- `02-Programming-Languages/Python/python in depth/audio_filters/README.md`
+- `02-Programming-Languages/Python/python in depth/backtracking/README.md`
+- `02-Programming-Languages/Python/python in depth/bit_manipulation/README.md`
+- `02-Programming-Languages/Python/python in depth/boolean_algebra/README.md`
+- `02-Programming-Languages/Python/python in depth/cellular_automata/README.md`
+- `02-Programming-Languages/Python/python in depth/ciphers/README.md`
+- `02-Programming-Languages/Python/python in depth/compression/README.md`
+- `02-Programming-Languages/Python/python in depth/computer_vision/README.md`
+- `02-Programming-Languages/Python/python in depth/conversions/README.md`
+- `02-Programming-Languages/Python/python in depth/financial/ABOUT.md`
+- `02-Programming-Languages/Python/python in depth/knapsack/README.md`
+- `02-Programming-Languages/Python/python in depth/linear_algebra/README.md`
+- `02-Programming-Languages/Python/python in depth/machine_learning/local_weighted_learning/local_weighted_learning.md`
+- `02-Programming-Languages/Python/python in depth/project_euler/README.md`
+- `02-Programming-Languages/Python/python in depth/quantum/README.md`
+- `02-Programming-Languages/Python/python in depth/sorts/normal_distribution_quick_sort.md`
+- `03-Data-Structures-Algorithms/01-Topics/Bit-Manipulation/Nth_magic_number/README.md`
+- `03-Data-Structures-Algorithms/01-Topics/Branch-and-Bound/0_1 Knapsack/README.md`
+- `03-Data-Structures-Algorithms/01-Topics/Branch-and-Bound/README.md`
+- `03-Data-Structures-Algorithms/01-Topics/Dynamic-Programming/Coin Change Problem/README.md`
+- `03-Data-Structures-Algorithms/01-Topics/Dynamic-Programming/Collect_Max_Points/README.md`
+- `03-Data-Structures-Algorithms/01-Topics/Dynamic-Programming/Egg Dropping Puzzle/README.md`
+- `03-Data-Structures-Algorithms/01-Topics/Dynamic-Programming/Fibonacci/Readme.md`
+- `03-Data-Structures-Algorithms/01-Topics/Dynamic-Programming/Recursive_Staircase_Problem/README.md`
+- `03-Data-Structures-Algorithms/01-Topics/Dynamic-Programming/Tiling Problem/README.md`
+- `03-Data-Structures-Algorithms/01-Topics/Dynamic-Programming/WeightedJobScheduling/README.md`
+- `03-Data-Structures-Algorithms/01-Topics/Dynamic-Programming/minimized cost of binnary search tree/Readme.md`
+- `03-Data-Structures-Algorithms/01-Topics/General-Algorithms/Sorting/README.md`
+- `03-Data-Structures-Algorithms/01-Topics/General-DSA/README.md`
+- `03-Data-Structures-Algorithms/01-Topics/General-Data-Structures/Heap/Readme.md`
+- `03-Data-Structures-Algorithms/01-Topics/General-Data-Structures/Priority Queue/Readme.md`
+- `03-Data-Structures-Algorithms/01-Topics/Graphs/BFS/README.md`
+- `03-Data-Structures-Algorithms/01-Topics/Graphs/Centroid Decomposition/README.md`
+- `03-Data-Structures-Algorithms/01-Topics/Graphs/DFS/README.md`
+- `03-Data-Structures-Algorithms/01-Topics/Graphs/Network-Flow/EdmundKarp/README.md`
+- `03-Data-Structures-Algorithms/01-Topics/Graphs/README.md`
+- `03-Data-Structures-Algorithms/01-Topics/Graphs/Sack/README.md`
+- `03-Data-Structures-Algorithms/01-Topics/Greedy-Algorithms/ActivitySelection/README.md`
+- `03-Data-Structures-Algorithms/01-Topics/Greedy-Algorithms/ContainerShip/README.md`
+- `03-Data-Structures-Algorithms/01-Topics/Greedy-Algorithms/EqualizingBitStrings/README.md`
+- `03-Data-Structures-Algorithms/01-Topics/Greedy-Algorithms/Gas Station/README.md`
+- `03-Data-Structures-Algorithms/01-Topics/Greedy-Algorithms/MaximumIncreasingSubarray/ProblemStatement.md`
+- `03-Data-Structures-Algorithms/01-Topics/Greedy-Algorithms/OddSumSubsequence/ProblemStatement.md`
+- `03-Data-Structures-Algorithms/01-Topics/Machine-Learning-Basics/Perceptron/README.md`
+- `03-Data-Structures-Algorithms/01-Topics/Mathematics/Diophantine Eqautions/README.md`
+- `03-Data-Structures-Algorithms/01-Topics/Mathematics/TowerofHanoi/README.md`
+- `03-Data-Structures-Algorithms/01-Topics/Mathematics/collatz_conjecture/README.md`
+- `03-Data-Structures-Algorithms/01-Topics/Mathematics/eulers_totient_function/readme.md`
+- `03-Data-Structures-Algorithms/01-Topics/Mathematics/largest_number_divisible_by_three/README.md`
+- `03-Data-Structures-Algorithms/01-Topics/Mathematics/last_digit_exp/README.md`
+- `03-Data-Structures-Algorithms/01-Topics/Searching/BinarySearch/README.md`
+- `03-Data-Structures-Algorithms/01-Topics/Searching/JumpSearch/README.md`
+- `03-Data-Structures-Algorithms/01-Topics/Searching/LinearSearch/README.md`
+- `03-Data-Structures-Algorithms/01-Topics/Sorting/BogoSort/README.md`
+- `03-Data-Structures-Algorithms/01-Topics/Sorting/Bubble Sort/README.md`
+- `03-Data-Structures-Algorithms/01-Topics/Sorting/Bucket Sort/README.md`
+- `03-Data-Structures-Algorithms/01-Topics/Sorting/Cocktail Shaker Sort/README.md`
+- `03-Data-Structures-Algorithms/01-Topics/Sorting/Comb Sort/README.md`
+- `03-Data-Structures-Algorithms/01-Topics/Sorting/Counting Sort/README.md`
+- `03-Data-Structures-Algorithms/01-Topics/Sorting/HeapSort/README.md`
+- `03-Data-Structures-Algorithms/01-Topics/Sorting/Insertion Sort/README.md`
+- `03-Data-Structures-Algorithms/01-Topics/Sorting/Merge Sort/README.md`
+- `03-Data-Structures-Algorithms/01-Topics/Sorting/Pancake Sorting/README.md`
+- `03-Data-Structures-Algorithms/01-Topics/Sorting/Patience Sorting/README.md`
+- `03-Data-Structures-Algorithms/01-Topics/Sorting/Pigeonhole Sort/Python/README.md`
+- `03-Data-Structures-Algorithms/01-Topics/Sorting/QuickSort/README.md`
+- `03-Data-Structures-Algorithms/01-Topics/Sorting/Radix Sort/README.md`
+- `03-Data-Structures-Algorithms/01-Topics/Sorting/Selection Sort/README.md`
+- `03-Data-Structures-Algorithms/01-Topics/Sorting/ShellSort/README.md`
+- `03-Data-Structures-Algorithms/01-Topics/Sorting/StoogeSort/readme.md`
+- `03-Data-Structures-Algorithms/01-Topics/Sorting/TimSort/README.md`
+- `03-Data-Structures-Algorithms/01-Topics/Sorting/Topological Sorting/README.md`
+- `03-Data-Structures-Algorithms/01-Topics/Sorting/strandsort/README.md`
+- `03-Data-Structures-Algorithms/01-Topics/Strings/Balanced Parentheses/README.md`
+- `03-Data-Structures-Algorithms/01-Topics/Strings/Top_K_Frequent_Words/README.md`
+- `03-Data-Structures-Algorithms/01-Topics/Strings/Uncompressing_Strings/README.md`
+- `03-Data-Structures-Algorithms/01-Topics/Trees/BST/README.md`
+- `03-Data-Structures-Algorithms/02-Practice-Platforms/LeetCode/0001-1000.md`
+- `03-Data-Structures-Algorithms/02-Practice-Platforms/LeetCode/1001-2000.md`
+- `03-Data-Structures-Algorithms/02-Practice-Platforms/LeetCode/LICENSE.md`
+- `03-Data-Structures-Algorithms/02-Practice-Platforms/LeetCode/README.md`
+- `03-Data-Structures-Algorithms/02-Practice-Platforms/LeetCode/REFERENCE.md`
+- `04-System-Design/00-Concepts/system_design_basics.md`
+- `04-System-Design/02-Case-Studies/01-URL-Shortener/design.md`
+- `04-System-Design/02-Case-Studies/02-Rate-Limiter/design.md`
+- `04-System-Design/02-Case-Studies/03-Real-Time-Chat/design.md`
+- `04-System-Design/03-Design-Patterns/Creational/Abstract-Factory/cross_language_comparison.md`
+- `04-System-Design/Design Patterns/BehaviroalPatterns/chain-of-responsibility/README.md`
+- `04-System-Design/Design Patterns/BehaviroalPatterns/command/README.md`
+- `04-System-Design/Design Patterns/BehaviroalPatterns/interpreter/README.md`
+- `04-System-Design/Design Patterns/BehaviroalPatterns/iterator/README.md`
+- `04-System-Design/Design Patterns/BehaviroalPatterns/mediator/README.md`
+- `04-System-Design/Design Patterns/BehaviroalPatterns/memento/README.md`
+- `04-System-Design/Design Patterns/BehaviroalPatterns/observer/README.md`
+- `04-System-Design/Design Patterns/BehaviroalPatterns/state/README.md`
+- `04-System-Design/Design Patterns/BehaviroalPatterns/strategy/README.md`
+- `04-System-Design/Design Patterns/BehaviroalPatterns/template-method/README.md`
+- `04-System-Design/Design Patterns/BehaviroalPatterns/visitor/README.md`
+- `04-System-Design/Design Patterns/CreationalPatterns/abstract-factory/README.md`
+- `04-System-Design/Design Patterns/CreationalPatterns/builder/README.md`
+- `04-System-Design/Design Patterns/CreationalPatterns/factory-method/README.md`
+- `04-System-Design/Design Patterns/CreationalPatterns/prototype/README.md`
+- `04-System-Design/Design Patterns/CreationalPatterns/singleton/README.md`
+- `04-System-Design/Design Patterns/In JavaScript/Builder Pattern/README.md`
+- `04-System-Design/Design Patterns/In JavaScript/Command Pattern/README.md`
+- `04-System-Design/Design Patterns/In JavaScript/Facade Pattern/README.md`
+- `04-System-Design/Design Patterns/In JavaScript/Null Object Pattern/README.md`
+- `04-System-Design/Design Patterns/In JavaScript/Singleton Pattern/README.md`
+- `04-System-Design/Design Patterns/README.md`
+- `04-System-Design/Design Patterns/StructuralPatterns/adapter/README.md`
+- `04-System-Design/Design Patterns/StructuralPatterns/bridge/README.md`
+- `04-System-Design/Design Patterns/StructuralPatterns/composite/README.md`
+- `04-System-Design/Design Patterns/StructuralPatterns/decorator/README.md`
+- `04-System-Design/Design Patterns/StructuralPatterns/facade/README.md`
+- `04-System-Design/Design Patterns/StructuralPatterns/flyweight/README.md`
+- `04-System-Design/Design Patterns/StructuralPatterns/proxy/README.md`
+- `04-System-Design/Design Patterns/Ultimate-CPP-Design-Patterns.md`
+- `04-System-Design/Design Patterns/Ultimate-Python-Design-Patterns.md`
+- `04-System-Design/Design Patterns/python-patterns/README.md`
+- `04-System-Design/Low Level Design/CONTRIBUTING.md`
+- `04-System-Design/Low Level Design/README.md`
+- `04-System-Design/README.md`
+- `04-System-Design/design-patterns-java/README.md`
+- `04-System-Design/design-patterns-java/notes/01-singleton-builder.md`
+- `04-System-Design/design-patterns-java/notes/02-prototype-factory.md`
+- `04-System-Design/design-patterns-java/notes/03-factory.md`
+- `04-System-Design/design-patterns-java/notes/04-abstract-factory-adapter.md`
+- `04-System-Design/design-patterns-java/notes/05-adapter-flyweight.md`
+- `04-System-Design/design-patterns-java/notes/06-decorator-facade.md`
+- `04-System-Design/design-patterns-java/notes/07-facade-observer.md`
+- `04-System-Design/design-patterns-java/notes/08-strategy-uml.md`
+- `04-System-Design/design-patterns-java/notes/09-class-diagram-schema-design.md`
+- `04-System-Design/design-patterns-java/src/README.md`
+- `04-System-Design/design-patterns-python/README.md`
+- `04-System-Design/design-questions/README.md`
+- `04-System-Design/notes/01-design-a-pen.md`
+- `04-System-Design/notes/02-design-tic-tac-toe-in-class.md`
+- `04-System-Design/notes/02-design-tic-tac-toe.md`
+- `04-System-Design/python-design-patterns/README.md`
+- `04-System-Design/top-20-questions.md`
+- `05-Quantitative-Finance/README.md`
+- `06-Interview-Prep/01-Behavioral/star_method.md`
+- `06-Interview-Prep/02-Resume/resume_guide.md`
+- `06-Interview-Prep/03-Mock-Interviews/transcript.md`
+- `07-Project-Portfolio/README.md`
+- `08-Distinguished-Engineering/04-Architecture-Patterns/microservices_vs_monolith.md`
+- `08-Distinguished-Engineering/05-Distributed-Transactions/saga_pattern.md`
+- `09-Engineering-Leadership/01-Technical-Writing/rfc_template.md`
+- `09-Engineering-Leadership/03-Code-Review/checklist.md`
+- `10-Development-Practices/01-Testing/unit_testing_comparison.md`
+- `11-Security-And-Cryptography/01-Common-Vulnerabilities/owasp_top_10.md`
+- `12-Performance-Engineering/02-Profiling/profiling_guide.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Appendices/Appendix_A_Glossary.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Appendices/Appendix_B_The_Canon.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Appendices/Appendix_C_Benchmark_Index.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Appendices/Appendix_D_Interview_Drills.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Appendices/Appendix_E_Pattern_Library.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Appendices/README.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/README.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/STYLE.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/SUMMARY.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_01_LLM_Foundations/Chapter_01_From_N_Grams_to_Neural_Language_Models.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_01_LLM_Foundations/Chapter_02_The_Transformer_From_Scratch.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_01_LLM_Foundations/Chapter_03_Tokenization.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_01_LLM_Foundations/Chapter_04_Pretraining_and_Scaling_Laws.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_01_LLM_Foundations/Chapter_05_Post_Training.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_01_LLM_Foundations/Chapter_06_Reasoning_Models.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_01_LLM_Foundations/Chapter_07_Inference_Mechanics.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_01_LLM_Foundations/README.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_02_Working_With_LLMs/Chapter_01_The_API_Layer.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_02_Working_With_LLMs/Chapter_02_Sampling_and_Decoding.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_02_Working_With_LLMs/Chapter_03_Prompt_Engineering.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_02_Working_With_LLMs/Chapter_04_Structured_Output.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_02_Working_With_LLMs/Chapter_05_Embeddings.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_02_Working_With_LLMs/Chapter_06_Context_Windows.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_02_Working_With_LLMs/Chapter_07_Multimodality.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_02_Working_With_LLMs/README.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_03_Tool_Use_and_the_Agent_Loop/Chapter_01_What_Is_An_Agent.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_03_Tool_Use_and_the_Agent_Loop/Chapter_02_Function_Calling_Mechanics.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_03_Tool_Use_and_the_Agent_Loop/Chapter_03_The_Agent_Loop_From_Scratch.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_03_Tool_Use_and_the_Agent_Loop/Chapter_04_Tool_Design.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_03_Tool_Use_and_the_Agent_Loop/Chapter_05_Error_Handling_and_Recovery.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_03_Tool_Use_and_the_Agent_Loop/Chapter_06_Agentic_Control_Flow.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_03_Tool_Use_and_the_Agent_Loop/Chapter_07_Code_Execution_As_A_Tool.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_03_Tool_Use_and_the_Agent_Loop/README.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_04_Agent_Architectures/Chapter_01_Workflows_Versus_Agents.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_04_Agent_Architectures/Chapter_02_ReAct_and_Its_Descendants.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_04_Agent_Architectures/Chapter_03_Planning.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_04_Agent_Architectures/Chapter_04_Reflection_and_Self_Critique.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_04_Agent_Architectures/Chapter_05_State_Machines_and_Graphs.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_04_Agent_Architectures/Chapter_06_Harness_Design.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_04_Agent_Architectures/Chapter_07_Choosing_An_Architecture.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_04_Agent_Architectures/README.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_05_RAG_and_Knowledge_Systems/Chapter_01_Why_Retrieval.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_05_RAG_and_Knowledge_Systems/Chapter_02_Chunking_and_Indexing.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_05_RAG_and_Knowledge_Systems/Chapter_03_Vector_Search_Internals.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_05_RAG_and_Knowledge_Systems/Chapter_04_The_Vector_Database_Landscape.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_05_RAG_and_Knowledge_Systems/Chapter_05_Hybrid_Retrieval_and_Reranking.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_05_RAG_and_Knowledge_Systems/Chapter_06_RAG_Evaluation.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_05_RAG_and_Knowledge_Systems/Chapter_07_Agentic_RAG_and_Beyond.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_05_RAG_and_Knowledge_Systems/README.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_06_Memory_and_Context_Engineering/Chapter_01_Context_Engineering_As_A_Discipline.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_06_Memory_and_Context_Engineering/Chapter_02_Anatomy_Of_A_Context.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_06_Memory_and_Context_Engineering/Chapter_03_Compaction_and_Summarization.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_06_Memory_and_Context_Engineering/Chapter_04_Scratchpads_and_External_Memory.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_06_Memory_and_Context_Engineering/Chapter_05_Long_Term_Memory.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_06_Memory_and_Context_Engineering/Chapter_06_State_and_Persistence.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_06_Memory_and_Context_Engineering/Chapter_07_Caching_and_Context_Economics.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_06_Memory_and_Context_Engineering/README.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_07_Multi_Agent_Systems/Chapter_01_Why_And_When_Multi_Agent.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_07_Multi_Agent_Systems/Chapter_02_Topologies.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_07_Multi_Agent_Systems/Chapter_03_Communication_and_Shared_State.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_07_Multi_Agent_Systems/Chapter_04_Subagents_In_Practice.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_07_Multi_Agent_Systems/Chapter_05_Interoperability_Protocols.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_07_Multi_Agent_Systems/Chapter_06_Failure_Modes.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_07_Multi_Agent_Systems/Chapter_07_Case_Studies.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_07_Multi_Agent_Systems/README.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_08_Frameworks_and_SDKs/Chapter_01_The_Landscape_and_How_To_Choose.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_08_Frameworks_and_SDKs/Chapter_02_Claude_Agent_SDK.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_08_Frameworks_and_SDKs/Chapter_03_OpenAI_Agents_SDK.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_08_Frameworks_and_SDKs/Chapter_04_LangChain_and_LangGraph.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_08_Frameworks_and_SDKs/Chapter_05_The_Rest_Of_The_Field.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_08_Frameworks_and_SDKs/Chapter_06_The_Plumbing_Layer.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_08_Frameworks_and_SDKs/Chapter_07_Build_Your_Own_Framework.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_08_Frameworks_and_SDKs/README.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_09_Model_Context_Protocol/Chapter_01_Why_MCP_Exists.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_09_Model_Context_Protocol/Chapter_02_Architecture.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_09_Model_Context_Protocol/Chapter_03_Server_Primitives.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_09_Model_Context_Protocol/Chapter_04_Client_Primitives_and_Advanced_Features.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_09_Model_Context_Protocol/Chapter_05_Transports_and_Auth.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_09_Model_Context_Protocol/Chapter_06_Building_and_Testing_Servers.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_09_Model_Context_Protocol/Chapter_07_Security_and_Ecosystem_Patterns.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_09_Model_Context_Protocol/README.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_10_Evaluation_and_Observability/Chapter_01_Evals_Are_The_Bottleneck.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_10_Evaluation_and_Observability/Chapter_02_Eval_Types_and_Graders.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_10_Evaluation_and_Observability/Chapter_03_Building_Agent_Evals.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_10_Evaluation_and_Observability/Chapter_04_The_Benchmark_Landscape.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_10_Evaluation_and_Observability/Chapter_05_LLM_As_Judge.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_10_Evaluation_and_Observability/Chapter_06_Tracing_and_Observability.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_10_Evaluation_and_Observability/Chapter_07_Production_Evaluation.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_10_Evaluation_and_Observability/README.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_11_Safety_Security_Alignment/Chapter_01_The_Agent_Threat_Model.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_11_Safety_Security_Alignment/Chapter_02_Prompt_Injection.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_11_Safety_Security_Alignment/Chapter_03_Sandboxing_and_Least_Privilege.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_11_Safety_Security_Alignment/Chapter_04_Guardrails_and_Moderation.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_11_Safety_Security_Alignment/Chapter_05_Alignment_For_Engineers.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_11_Safety_Security_Alignment/Chapter_06_Human_Oversight_and_Reversibility.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_11_Safety_Security_Alignment/Chapter_07_Governance_and_Standards.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_11_Safety_Security_Alignment/README.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_12_Production_Engineering/Chapter_01_From_Demo_To_Production.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_12_Production_Engineering/Chapter_02_Latency_Engineering.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_12_Production_Engineering/Chapter_03_Cost_Engineering.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_12_Production_Engineering/Chapter_04_Reliability_Patterns.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_12_Production_Engineering/Chapter_05_Deployment_Architectures.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_12_Production_Engineering/Chapter_06_Capacity_and_Quotas.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_12_Production_Engineering/Chapter_07_Operations.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_12_Production_Engineering/README.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_13_Coding_Agents_and_Computer_Use/Chapter_01_Why_Coding_Agents_Lead.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_13_Coding_Agents_and_Computer_Use/Chapter_02_Anatomy_Of_A_Coding_Agent.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_13_Coding_Agents_and_Computer_Use/Chapter_03_SWE_Agents_and_Scaffolds.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_13_Coding_Agents_and_Computer_Use/Chapter_04_Browser_Agents.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_13_Coding_Agents_and_Computer_Use/Chapter_05_Computer_Use.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_13_Coding_Agents_and_Computer_Use/Chapter_06_Async_Agents_and_Fleets.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_13_Coding_Agents_and_Computer_Use/Chapter_07_Build_Your_Own_Coding_Agent.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_13_Coding_Agents_and_Computer_Use/README.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_14_Frontier_and_Capstones/Chapter_01_RL_For_Agents.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_14_Frontier_and_Capstones/Chapter_02_Test_Time_Compute.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_14_Frontier_and_Capstones/Chapter_03_Self_Improvement.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_14_Frontier_and_Capstones/Chapter_04_Beyond_Text.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_14_Frontier_and_Capstones/Chapter_05_Continual_Learning_and_Personalization.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_14_Frontier_and_Capstones/Chapter_06_Keeping_Up.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_14_Frontier_and_Capstones/Chapter_07_Capstone_Projects.md`
+- `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_14_Frontier_and_Capstones/README.md`
+- `14-Low-Latency-Systems/Interview/interview.md`
+- `14-Low-Latency-Systems/Interview/question-bank-answers.md`
+- `14-Low-Latency-Systems/Interview/thesis-deep-dive.md`
+- `16-Interview-Command-Center/00-Dashboard.md`
+- `16-Interview-Command-Center/01-Roles/AI-Engineer/Common-Patterns.md`
+- `16-Interview-Command-Center/01-Roles/AI-Engineer/Question-Bank.md`
+- `16-Interview-Command-Center/01-Roles/AI-Engineer/Resources.md`
+- `16-Interview-Command-Center/01-Roles/AI-Engineer/Skill-Matrix.md`
+- `16-Interview-Command-Center/01-Roles/AI-Engineer/Study-Plan.md`
+- `16-Interview-Command-Center/01-Roles/Low-Latency/Common-Patterns.md`
+- `16-Interview-Command-Center/01-Roles/Low-Latency/Question-Bank.md`
+- `16-Interview-Command-Center/01-Roles/Low-Latency/Resources.md`
+- `16-Interview-Command-Center/01-Roles/Low-Latency/Skill-Matrix.md`
+- `16-Interview-Command-Center/01-Roles/Low-Latency/Study-Plan.md`
+- `16-Interview-Command-Center/01-Roles/Quant-Dev/Common-Patterns.md`
+- `16-Interview-Command-Center/01-Roles/Quant-Dev/Question-Bank.md`
+- `16-Interview-Command-Center/01-Roles/Quant-Dev/Resources.md`
+- `16-Interview-Command-Center/01-Roles/Quant-Dev/Skill-Matrix.md`
+- `16-Interview-Command-Center/01-Roles/Quant-Dev/Study-Plan.md`
+- `16-Interview-Command-Center/01-Roles/Quant-Research/Common-Patterns.md`
+- `16-Interview-Command-Center/01-Roles/Quant-Research/Question-Bank.md`
+- `16-Interview-Command-Center/01-Roles/Quant-Research/Resources.md`
+- `16-Interview-Command-Center/01-Roles/Quant-Research/Skill-Matrix.md`
+- `16-Interview-Command-Center/01-Roles/Quant-Research/Study-Plan.md`
+- `16-Interview-Command-Center/01-Roles/SDE/Common-Patterns.md`
+- `16-Interview-Command-Center/01-Roles/SDE/Question-Bank.md`
+- `16-Interview-Command-Center/01-Roles/SDE/Resources.md`
+- `16-Interview-Command-Center/01-Roles/SDE/Skill-Matrix.md`
+- `16-Interview-Command-Center/01-Roles/SDE/Study-Plan.md`
+- `16-Interview-Command-Center/Coaching-Prompt.md`
+- `AUDIT.md`
+- `CODE_OF_CONDUCT.md`
+- `CS-Subjects/README.md`
+- `INDEX.md`
+- `README.md`
+- `backlog.md`
+- `process.md`
+- `tools/README.md`
+
+</details>
+
+## 6. Note folders without a README
+
+A folder counts as covered by `README.md`, `_README.md`, `index.md`, or a folder note named after it.
+
+<details>
+<summary>All 82 folders</summary>
+
+- `00-Start-Here`
+- `01-CS-Foundations`
+- `01-CS-Foundations/Computer-Networks/notes`
+- `01-CS-Foundations/DBMS/mcqs`
+- `01-CS-Foundations/DBMS/notes`
+- `01-CS-Foundations/Object-Oriented-Programming/notes`
+- `01-CS-Foundations/Operating-Systems/notes`
+- `02-Programming-Languages`
+- `02-Programming-Languages/Python`
+- `02-Programming-Languages/Python/CodingBestPractices`
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood`
+- `02-Programming-Languages/Python/general`
+- `03-Data-Structures-Algorithms`
+- `03-Data-Structures-Algorithms/01-Topics`
+- `03-Data-Structures-Algorithms/01-Topics/Bit-Manipulation`
+- `03-Data-Structures-Algorithms/01-Topics/Dynamic-Programming`
+- `03-Data-Structures-Algorithms/01-Topics/General-Algorithms`
+- `03-Data-Structures-Algorithms/01-Topics/General-Data-Structures`
+- `03-Data-Structures-Algorithms/01-Topics/Greedy-Algorithms`
+- `03-Data-Structures-Algorithms/01-Topics/Machine-Learning-Basics`
+- `03-Data-Structures-Algorithms/01-Topics/Mathematics`
+- `03-Data-Structures-Algorithms/01-Topics/Searching`
+- `03-Data-Structures-Algorithms/01-Topics/Sorting`
+- `03-Data-Structures-Algorithms/01-Topics/Strings`
+- `03-Data-Structures-Algorithms/01-Topics/Trees`
+- `03-Data-Structures-Algorithms/02-Practice-Platforms`
+- `04-System-Design/00-Concepts`
+- `04-System-Design/02-Case-Studies`
+- `04-System-Design/02-Case-Studies/01-URL-Shortener`
+- `04-System-Design/02-Case-Studies/02-Rate-Limiter`
+- `04-System-Design/02-Case-Studies/03-Real-Time-Chat`
+- `04-System-Design/03-Design-Patterns`
+- `04-System-Design/03-Design-Patterns/Creational`
+- `04-System-Design/Design Patterns/BehaviroalPatterns`
+- `04-System-Design/Design Patterns/CreationalPatterns`
+- `04-System-Design/Design Patterns/In JavaScript`
+- `04-System-Design/Design Patterns/StructuralPatterns`
+- `04-System-Design/design-patterns-java/notes`
+- `04-System-Design/notes`
+- `06-Interview-Prep`
+- `06-Interview-Prep/01-Behavioral`
+- `06-Interview-Prep/02-Resume`
+- `06-Interview-Prep/03-Mock-Interviews`
+- `08-Distinguished-Engineering`
+- `08-Distinguished-Engineering/04-Architecture-Patterns`
+- `08-Distinguished-Engineering/05-Distributed-Transactions`
+- `09-Engineering-Leadership`
+- `09-Engineering-Leadership/01-Technical-Writing`
+- `09-Engineering-Leadership/03-Code-Review`
+- `10-Development-Practices`
+- `10-Development-Practices/01-Testing`
+- `11-Security-And-Cryptography`
+- `11-Security-And-Cryptography/01-Common-Vulnerabilities`
+- `12-Performance-Engineering`
+- `12-Performance-Engineering/02-Profiling`
+- `13-Agentic-AI`
+- `14-Low-Latency-Systems`
+- `14-Low-Latency-Systems/01 - Market & Microstructure Fundamentals`
+- `14-Low-Latency-Systems/02 - Exchange Architecture`
+- `14-Low-Latency-Systems/03 - Matching Engine Internals`
+- `14-Low-Latency-Systems/04 - Hardware Mechanical Sympathy`
+- `14-Low-Latency-Systems/05 - OS & Kernel Tuning`
+- `14-Low-Latency-Systems/06 - Networking`
+- `14-Low-Latency-Systems/07 - Time & Measurement`
+- `14-Low-Latency-Systems/08 - Low-Latency Programming`
+- `14-Low-Latency-Systems/09 - Messaging & IPC`
+- `14-Low-Latency-Systems/10 - Protocols & Codecs`
+- `14-Low-Latency-Systems/11 - Participant-Side Systems`
+- `14-Low-Latency-Systems/12 - FPGAs & Hardware Acceleration`
+- `14-Low-Latency-Systems/13 - Reliability, Ops & Testing`
+- `14-Low-Latency-Systems/14 - Industry Map & Canon`
+- `14-Low-Latency-Systems/Sources`
+- `15-Technical-Whitepapers/base`
+- `15-Technical-Whitepapers/pl`
+- `16-Interview-Command-Center`
+- `16-Interview-Command-Center/01-Roles`
+- `16-Interview-Command-Center/01-Roles/AI-Engineer`
+- `16-Interview-Command-Center/01-Roles/Low-Latency`
+- `16-Interview-Command-Center/01-Roles/Quant-Dev`
+- `16-Interview-Command-Center/01-Roles/Quant-Research`
+- `16-Interview-Command-Center/01-Roles/SDE`
+- `16-Interview-Command-Center/_Templates`
+
+</details>
+
+## 7. Emoji and em-dash violations
+
+| Note | Emojis |
+| :--- | ---: |
+| `03-Data-Structures-Algorithms/02-Practice-Platforms/LeetCode/README.md` | 324 |
+| `03-Data-Structures-Algorithms/02-Practice-Platforms/LeetCode/1001-2000.md` | 308 |
+| `03-Data-Structures-Algorithms/02-Practice-Platforms/LeetCode/0001-1000.md` | 205 |
+| `16-Interview-Command-Center/01-Roles/SDE/Question-Bank.md` | 149 |
+| `16-Interview-Command-Center/01-Roles/Quant-Dev/Question-Bank.md` | 108 |
+| `01-CS-Foundations/Operating-Systems/IPC-Complete-Guide.md` | 85 |
+| `02-Programming-Languages/C++/Ultimate-CPP-Advanced-Guide.md` | 62 |
+| `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Complete-CPP-Zero-to-Godhood.md` | 52 |
+| `02-Programming-Languages/C++/Ultimate-CPP-Design-Patterns.md` | 50 |
+| `02-Programming-Languages/Python/LeetCode-Quant-Complete-Python-Full.md` | 50 |
+| `04-System-Design/Design Patterns/Ultimate-CPP-Design-Patterns.md` | 50 |
+| `02-Programming-Languages/Python/Ultimate-Python-Advanced-Guide.md` | 45 |
+| `02-Programming-Languages/Python/Ultimate-Python-Design-Patterns.md` | 42 |
+| `04-System-Design/Design Patterns/Ultimate-Python-Design-Patterns.md` | 42 |
+| `01-CS-Foundations/Computer-Networks/networking_table_new.md` | 35 |
+| `02-Programming-Languages/Python/Python-Advanced-Guide.md` | 29 |
+| `16-Interview-Command-Center/01-Roles/Low-Latency/Question-Bank.md` | 26 |
+| `16-Interview-Command-Center/01-Roles/Quant-Research/Question-Bank.md` | 26 |
+| `02-Programming-Languages/C++/LeetCode-Quant-Complete-CPP-Full.md` | 24 |
+| `16-Interview-Command-Center/00-Dashboard.md` | 24 |
+
+<details>
+<summary>All 87 notes with emojis</summary>
+
+- `01-CS-Foundations/Computer-Networks/CS6250-Study-Answers.md`: 7
+- `01-CS-Foundations/Computer-Networks/networking_table_new.md`: 35
+- `01-CS-Foundations/Operating-Systems/IPC-Complete-Guide.md`: 85
+- `02-Programming-Languages/C++/Blind-75-LeetCode-CPP.md`: 1
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Appendices/appendix_K_memory_layout_of_cpp_class.md`: 2
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Complete-CPP-Zero-to-Godhood.md`: 52
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/00_Preface/00_Preface.md`: 8
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_03_Control_Flow_and_Preprocessor/Chapter_03_Control_Flow_and_Preprocessor.md`: 6
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_03_Control_Flow_and_Preprocessor/_archive/03_control_flow.md`: 4
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_04_Advanced_Functions_and_Callbacks/_archive/04_functions.md`: 5
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_10_Advanced_Streams_and_File_IO/_archive/06_strings_and_io.md`: 4
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_1_FOUNDATIONS_AND_COMPILATION/Chapter_01_Foundations_and_Compilation.md`: 6
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_2_MEMORY_TYPES_AND_POINTERS/Chapter_02_Memory_Types_and_Pointers.md`: 11
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_5_CHAPTER_5_OOP_AND_ENCAPSULATION/_archive/07_enums_unions_namespaces.md`: 4
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_5_CHAPTER_5_OOP_AND_ENCAPSULATION/_archive/08_classes_and_oop.md`: 2
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_5_CHAPTER_5_OOP_AND_ENCAPSULATION/_archive/09_operator_overloading.md`: 2
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_6_CHAPTER_6_POLYMORPHISM_AND_VIRTUALIZATION/_archive/10_inheritance_polymorphism.md`: 3
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_8_CHAPTER_8_STL_UNDER_THE_HOOD/_archive/08_standard_template_library_core.md`: 21
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_35_Ranges_II_Algorithms_Projections_Borrowed/Chapter_35_Ranges_II_Algorithms_Projections_Borrowed.md`: 5
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_40_Designated_Initializers_and_Aggregates/Chapter_40_Designated_Initializers_and_Aggregates.md`: 10
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_41_consteval_constinit_and_constexpr_Expansion/Chapter_41_consteval_constinit_and_constexpr_Expansion.md`: 14
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_06_The_Refinement_C23/Chapter_66_Core_Language_Conveniences/Chapter_66_Core_Language_Conveniences.md`: 1
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/_archive/_consolidated_into_Volume_08/42_advanced_template_metaprogramming.md`: 8
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/_archive/_consolidated_into_Volume_08/46_advanced_concurrency_patterns.md`: 1
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/_archive/_consolidated_into_Volume_08/50_writing_a_garbage_collector.md`: 2
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/manuscript/03-part-resource-management/13_move_semantics.md`: 2
+- `02-Programming-Languages/C++/LeetCode-Quant-Complete-CPP-Full.md`: 24
+- `02-Programming-Languages/C++/NeetCode-150-CPP.md`: 7
+- `02-Programming-Languages/C++/README.md`: 5
+- `02-Programming-Languages/C++/Ultimate-CPP-Advanced-Guide.md`: 62
+- `02-Programming-Languages/C++/Ultimate-CPP-Design-Patterns.md`: 50
+- `02-Programming-Languages/Python/Blind-75-LeetCode-Python.md`: 1
+- `02-Programming-Languages/Python/Complete-Python-Zero-to-Godhood.md`: 1
+- `02-Programming-Languages/Python/LeetCode-Quant-Complete-Python-Full.md`: 50
+- `02-Programming-Languages/Python/NeetCode-150-Python.md`: 1
+- `02-Programming-Languages/Python/Python-Advanced-Guide.md`: 29
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Volume_02_The_Python_3_Schism/Chapter_07_The_Unicode_Paradigm_Shift/Chapter_07_The_Unicode_Paradigm_Shift.md`: 5
+- `02-Programming-Languages/Python/Ultimate-Python-Advanced-Guide.md`: 45
+- `02-Programming-Languages/Python/Ultimate-Python-Design-Patterns.md`: 42
+- `03-Data-Structures-Algorithms/02-Practice-Platforms/LeetCode/0001-1000.md`: 205
+- `03-Data-Structures-Algorithms/02-Practice-Platforms/LeetCode/1001-2000.md`: 308
+- `03-Data-Structures-Algorithms/02-Practice-Platforms/LeetCode/README.md`: 324
+- `04-System-Design/Design Patterns/Ultimate-CPP-Design-Patterns.md`: 50
+- `04-System-Design/Design Patterns/Ultimate-Python-Design-Patterns.md`: 42
+- `04-System-Design/Low Level Design/CONTRIBUTING.md`: 2
+- `05-Quantitative-Finance/README.md`: 3
+- `06-Interview-Prep/03-Mock-Interviews/transcript.md`: 1
+- `16-Interview-Command-Center/00-Dashboard.md`: 24
+- `16-Interview-Command-Center/01-Roles/AI-Engineer/Common-Patterns.md`: 1
+- `16-Interview-Command-Center/01-Roles/AI-Engineer/Question-Bank.md`: 23
+- `16-Interview-Command-Center/01-Roles/AI-Engineer/Resources.md`: 1
+- `16-Interview-Command-Center/01-Roles/AI-Engineer/Skill-Matrix.md`: 1
+- `16-Interview-Command-Center/01-Roles/AI-Engineer/Study-Plan.md`: 1
+- `16-Interview-Command-Center/01-Roles/AI-Engineer/_Hub.md`: 19
+- `16-Interview-Command-Center/01-Roles/Low-Latency/Common-Patterns.md`: 1
+- `16-Interview-Command-Center/01-Roles/Low-Latency/Question-Bank.md`: 26
+- `16-Interview-Command-Center/01-Roles/Low-Latency/Resources.md`: 1
+- `16-Interview-Command-Center/01-Roles/Low-Latency/Skill-Matrix.md`: 1
+- `16-Interview-Command-Center/01-Roles/Low-Latency/Study-Plan.md`: 1
+- `16-Interview-Command-Center/01-Roles/Low-Latency/_Hub.md`: 18
+- `16-Interview-Command-Center/01-Roles/Quant-Dev/Common-Patterns.md`: 1
+- `16-Interview-Command-Center/01-Roles/Quant-Dev/Question-Bank.md`: 108
+- `16-Interview-Command-Center/01-Roles/Quant-Dev/Resources.md`: 1
+- `16-Interview-Command-Center/01-Roles/Quant-Dev/Skill-Matrix.md`: 1
+- `16-Interview-Command-Center/01-Roles/Quant-Dev/Study-Plan.md`: 2
+- `16-Interview-Command-Center/01-Roles/Quant-Dev/_Hub.md`: 22
+- `16-Interview-Command-Center/01-Roles/Quant-Research/Common-Patterns.md`: 1
+- `16-Interview-Command-Center/01-Roles/Quant-Research/Question-Bank.md`: 26
+- `16-Interview-Command-Center/01-Roles/Quant-Research/Resources.md`: 1
+- `16-Interview-Command-Center/01-Roles/Quant-Research/Skill-Matrix.md`: 1
+- `16-Interview-Command-Center/01-Roles/Quant-Research/Study-Plan.md`: 1
+- `16-Interview-Command-Center/01-Roles/Quant-Research/_Hub.md`: 19
+- `16-Interview-Command-Center/01-Roles/SDE/Common-Patterns.md`: 1
+- `16-Interview-Command-Center/01-Roles/SDE/Question-Bank.md`: 149
+- `16-Interview-Command-Center/01-Roles/SDE/Resources.md`: 1
+- `16-Interview-Command-Center/01-Roles/SDE/Skill-Matrix.md`: 1
+- `16-Interview-Command-Center/01-Roles/SDE/Study-Plan.md`: 2
+- `16-Interview-Command-Center/01-Roles/SDE/_Hub.md`: 22
+- `16-Interview-Command-Center/Coaching-Prompt.md`: 13
+- `16-Interview-Command-Center/_Templates/Behavioral-Story.md`: 5
+- `16-Interview-Command-Center/_Templates/Company-Profile.md`: 7
+- `16-Interview-Command-Center/_Templates/Daily-Log.md`: 12
+- `16-Interview-Command-Center/_Templates/Interview-Note.md`: 8
+- `16-Interview-Command-Center/_Templates/Mock-Interview.md`: 6
+- `16-Interview-Command-Center/_Templates/Retrospective.md`: 13
+- `16-Interview-Command-Center/_Templates/Study-Session.md`: 8
+- `16-Interview-Command-Center/_Templates/Weekly-Review.md`: 15
+
+</details>
+
+| Note | Em dashes |
+| :--- | ---: |
+| `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Complete-CPP-Zero-to-Godhood.md` | 56 |
+| `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_111_Interoperability/Chapter_111_Interoperability_and_the_Stable_C_ABI.md` | 45 |
+| `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_04_The_Modernizer_CPP17/Chapter_25_Vocabulary_Types/Chapter_25_Vocabulary_Types.md` | 42 |
+| `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_80_High_Performance_Optimization/Chapter_80_High_Performance_Optimization.md` | 41 |
+| `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_7_STANDARD_TEMPLATE_LIBRARY_CORE/Chapter_07_Standard_Template_Library_Core_Combined.md` | 38 |
+| `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_02_The_Revolution_C11/Chapter_12_Move_Semantics_and_Smart_Pointers/Chapter_12_Move_Semantics_and_Smart_Pointers.md` | 38 |
+| `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_106_Determinism_and_the_Hot_Path_Mindset/Chapter_106_Determinism_Jitter_Elimination_and_the_Hot_Path_Mindset.md` | 35 |
+| `02-Programming-Languages/Python/Python_Zero_to_Godhood/Volume_01_Classic_Python_and_Core_Engine/Chapter_01_Inception_and_the_Executable_Pipeline/Chapter_01_Inception_and_the_Executable_Pipeline.md` | 35 |
+| `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_04_Advanced_Functions_and_Callbacks/Chapter_04_Advanced_Functions_and_Callbacks.md` | 34 |
+| `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_04_The_Modernizer_CPP17/Chapter_23_Core_Language_Features/Chapter_23_Core_Language_Features.md` | 34 |
+| `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_02_The_Revolution_C11/Chapter_16_Concurrency/Chapter_16_Concurrency.md` | 33 |
+| `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_48_Bit_Manipulation_and_bit_cast/Chapter_48_bit_Manipulation_and_bit_cast.md` | 33 |
+| `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_77_Lock_Free_Programming/Chapter_77_Lock_Free_Programming.md` | 33 |
+| `02-Programming-Languages/Python/Python_Zero_to_Godhood/Volume_05_Structural_Shifts_and_Pattern_Matching/Chapter_16_Typing_Protocols_and_Structural_Subtyping/Chapter_16_Typing_Protocols_and_Structural_Subtyping.md` | 33 |
+| `15-Technical-Whitepapers/README.md` | 33 |
+| `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_5_CHAPTER_5_OOP_AND_ENCAPSULATION/Chapter_05_OOP_and_Encapsulation.md` | 32 |
+| `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_74_Advanced_Template_Metaprogramming/Chapter_74_Advanced_Template_Metaprogramming.md` | 32 |
+| `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_122_Specialized_Domains/Chapter_122_Specialized_Domains.md` | 32 |
+| `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_104_Undefined_Behaviour_and_the_Optimiser/Chapter_104_Undefined_Behaviour_and_the_Optimiser.md` | 31 |
+| `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_93_Atomics_CAS_ABA/Chapter_93_Atomics_CAS_and_ABA.md` | 31 |
+
+<details>
+<summary>All 315 notes with em dashes</summary>
+
+- `01-CS-Foundations/Operating-Systems/IPC-Complete-Guide.md`: 2
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Appendices/appendix_I_history_of_cpp_standards.md`: 4
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Appendices/appendix_K_memory_layout_of_cpp_class.md`: 1
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Appendices/appendix_L_100_more_interview_questions.md`: 2
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Appendices/appendix_Z_encyclopedia_of_modern_cpp_idioms.md`: 1
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Complete-CPP-Zero-to-Godhood.md`: 56
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/00_Preface/00_Preface.md`: 6
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_03_Control_Flow_and_Preprocessor/Chapter_03_Control_Flow_and_Preprocessor.md`: 20
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_03_Control_Flow_and_Preprocessor/_archive/03_control_flow.md`: 2
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_04_Advanced_Functions_and_Callbacks/Chapter_04_Advanced_Functions_and_Callbacks.md`: 34
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_10_Advanced_Streams_and_File_IO/Chapter_10_Advanced_Streams_and_File_IO_Combined.md`: 13
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_10_Advanced_Streams_and_File_IO/_archive/06_strings_and_io.md`: 2
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_1_FOUNDATIONS_AND_COMPILATION/Chapter_01_Foundations_and_Compilation.md`: 10
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_2_MEMORY_TYPES_AND_POINTERS/Chapter_02_Memory_Types_and_Pointers.md`: 8
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_5_CHAPTER_5_OOP_AND_ENCAPSULATION/Chapter_05_OOP_and_Encapsulation.md`: 32
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_5_CHAPTER_5_OOP_AND_ENCAPSULATION/_archive/07_enums_unions_namespaces.md`: 2
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_5_CHAPTER_5_OOP_AND_ENCAPSULATION/_archive/08_classes_and_oop.md`: 3
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_5_CHAPTER_5_OOP_AND_ENCAPSULATION/_archive/09_operator_overloading.md`: 2
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_6_CHAPTER_6_POLYMORPHISM_AND_VIRTUALIZATION/Chapter_06_Polymorphism_and_Virtualization.md`: 26
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_6_CHAPTER_6_POLYMORPHISM_AND_VIRTUALIZATION/_archive/06_oop_and_encapsulation.md`: 1
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_7_STANDARD_TEMPLATE_LIBRARY_CORE/Chapter_07_Standard_Template_Library_Core_Combined.md`: 38
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_8_CHAPTER_8_STL_UNDER_THE_HOOD/Chapter_08_STL_Under_the_Hood_Combined.md`: 23
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_8_CHAPTER_8_STL_UNDER_THE_HOOD/_archive/17_lambdas.md`: 1
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_01_Foundation_C98_03/Chapter_9_ERROR_HANDLING_AND_ROBUSTNESS/Chapter_09_Error_Handling_and_Robustness_Combined.md`: 21
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_02_The_Revolution_C11/Chapter_11_The_Modern_C11_Core/Chapter_11_The_Modern_C11_Core.md`: 29
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_02_The_Revolution_C11/Chapter_12_Move_Semantics_and_Smart_Pointers/Chapter_12_Move_Semantics_and_Smart_Pointers.md`: 38
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_02_The_Revolution_C11/Chapter_13_Functional_Programming/Chapter_13_Functional_Programming.md`: 12
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_02_The_Revolution_C11/Chapter_14_Template_Metaprogramming/Chapter_14_Template_Metaprogramming.md`: 21
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_02_The_Revolution_C11/Chapter_14_Template_Metaprogramming/_archive/15_template_metaprogramming.md`: 1
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_02_The_Revolution_C11/Chapter_14_Template_Metaprogramming/_archive/Chapter_13_Template_Metaprogramming.md`: 1
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_02_The_Revolution_C11/Chapter_15_Standard_Library_Expansion/Chapter_15_Standard_Library_Expansion.md`: 24
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_02_The_Revolution_C11/Chapter_16_Concurrency/Chapter_16_Concurrency.md`: 33
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_02_The_Revolution_C11/Chapter_17_Advanced_Core_Language_and_Literals/Chapter_17_Advanced_Core_Language_and_Literals.md`: 26
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_03_The_Polish_CPP14/Chapter_18_C14_Core_Language_Upgrades/Chapter_18_Core_Language_Upgrades.md`: 26
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_03_The_Polish_CPP14/Chapter_18_C14_Core_Language_Upgrades/_archive/19_c14_core_language_upgrades.md`: 1
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_03_The_Polish_CPP14/Chapter_19_C14_Functions_and_Lambdas/Chapter_19_Functions_and_Lambdas.md`: 13
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_03_The_Polish_CPP14/Chapter_20_C14_Standard_Library_Enhancements/Chapter_20_Standard_Library_Enhancements.md`: 23
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_03_The_Polish_CPP14/Chapter_21_C14_Templates_and_Metaprogramming/Chapter_21_Templates_and_Metaprogramming.md`: 11
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_03_The_Polish_CPP14/Chapter_22_New_Iterator_and_Algorithm_Facilities/Chapter_22_New_Iterator_and_Algorithm_Facilities.md`: 19
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_04_The_Modernizer_CPP17/Chapter_23_Core_Language_Features/Chapter_23_Core_Language_Features.md`: 34
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_04_The_Modernizer_CPP17/Chapter_24_Template_Metaprogramming/Chapter_24_Template_Metaprogramming.md`: 24
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_04_The_Modernizer_CPP17/Chapter_25_Vocabulary_Types/Chapter_25_Vocabulary_Types.md`: 42
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_04_The_Modernizer_CPP17/Chapter_26_Filesystem_and_Polymorphic_Memory/Chapter_26_Filesystem_and_Polymorphic_Memory.md`: 22
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_04_The_Modernizer_CPP17/Chapter_27_Parallel_Algorithms_and_Concurrency/Chapter_27_Parallel_Algorithms_and_Concurrency.md`: 30
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_04_The_Modernizer_CPP17/Chapter_28_Standard_Library_Additions/Chapter_28_Standard_Library_Additions.md`: 28
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_04_The_Modernizer_CPP17/Chapter_29_Associative_Container_Advances/Chapter_29_Associative_Container_Advances.md`: 28
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_04_The_Modernizer_CPP17/Chapter_30_Low_Latency_Facilities/Chapter_30_Low_Latency_Facilities.md`: 26
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_31_The_Gigantic_Leap/Chapter_31_The_Gigantic_Leap.md`: 23
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_32_Concepts_I_Constraints/Chapter_32_Concepts_I_Constraints.md`: 12
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_33_Concepts_II_Standard_Library_and_Subsumption/Chapter_33_Concepts_II_Standard_Library_and_Subsumption.md`: 12
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_34_Ranges_I_Views_and_Lazy_Pipelines/Chapter_34_Ranges_I_Views_and_Lazy_Pipelines.md`: 17
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_35_Ranges_II_Algorithms_Projections_Borrowed/Chapter_35_Ranges_II_Algorithms_Projections_Borrowed.md`: 15
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_36_Coroutines_I_Keywords_and_Promise_Protocol/Chapter_36_Coroutines_I_Keywords_and_Promise_Protocol.md`: 12
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_37_Coroutines_II_Awaitables_Tasks_and_Symmetric_Transfer/Chapter_37_Coroutines_II_Awaitables_Tasks_and_Symmetric_Transfer.md`: 14
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_38_Modules_The_Death_of_Headers/Chapter_38_Modules_The_Death_of_Headers.md`: 28
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_39_Three_Way_Comparison_The_Spaceship_Operator/Chapter_39_Three_Way_Comparison_The_Spaceship_Operator.md`: 18
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_40_Designated_Initializers_and_Aggregates/Chapter_40_Designated_Initializers_and_Aggregates.md`: 15
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_41_consteval_constinit_and_constexpr_Expansion/Chapter_41_consteval_constinit_and_constexpr_Expansion.md`: 26
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_42_Abbreviated_Templates_explicit_bool_and_Lambda_Enhancements/Chapter_42_Abbreviated_Templates_explicit_bool_and_Lambda_Enhancements.md`: 16
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_43_using_enum_VA_OPT_NTTP_and_Language_Cleanups/Chapter_43_using_enum_VA_OPT_NTTP_and_Language_Cleanups.md`: 12
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_44_Attributes_for_Performance_and_Safety/Chapter_44_Attributes_for_Performance_and_Safety.md`: 21
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_45_std_span_Non_Owning_Views_over_Contiguous_Memory/Chapter_45_std_span_Non_Owning_Views_over_Contiguous_Memory.md`: 24
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_46_std_format_Type_Safe_Text_Formatting/Chapter_46_std_format_Type_Safe_Text_Formatting.md`: 17
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_47_Calendars_and_Time_Zones_in_chrono/Chapter_47_Calendars_and_Time_Zones_in_chrono.md`: 19
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_48_Bit_Manipulation_and_bit_cast/Chapter_48_bit_Manipulation_and_bit_cast.md`: 33
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_49_Concurrency_I_jthread_and_Cooperative_Cancellation/Chapter_49_Concurrency_I_jthread_and_Cooperative_Cancellation.md`: 19
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_50_Concurrency_II_Latches_Barriers_Semaphores_and_Atomic_Enhancements/Chapter_50_Concurrency_II_Latches_Barriers_Semaphores_and_Atomic_Enhancements.md`: 17
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_51_Diagnostics_and_Utility_Additions/Chapter_51_Diagnostics_and_Utility_Additions.md`: 13
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_52_Container_and_Algorithm_Additions/Chapter_52_Container_and_Algorithm_Additions.md`: 18
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_05_The_Paradigm_Shift_C20/Chapter_53_Numbers_Alignment_and_Type_Trait_Additions/Chapter_53_Numbers_Alignment_and_Type_Trait_Additions.md`: 25
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_06_The_Refinement_C23/Chapter_54_The_Completion_Release/Chapter_54_The_Completion_Release.md`: 19
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_06_The_Refinement_C23/Chapter_55_Deducing_this/Chapter_55_Deducing_this.md`: 18
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_06_The_Refinement_C23/Chapter_56_Expected_and_Monadic_Error_Handling/Chapter_56_Expected_and_Monadic_Error_Handling.md`: 19
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_06_The_Refinement_C23/Chapter_57_mdspan/Chapter_57_mdspan.md`: 26
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_06_The_Refinement_C23/Chapter_58_std_generator/Chapter_58_std_generator.md`: 22
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_06_The_Refinement_C23/Chapter_59_Completing_Ranges_I_New_Views/Chapter_59_Completing_Ranges_I_New_Views.md`: 21
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_06_The_Refinement_C23/Chapter_60_Completing_Ranges_II_Folds_To_Search/Chapter_60_Completing_Ranges_II_Folds_To_Search.md`: 24
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_06_The_Refinement_C23/Chapter_61_Modern_Output_print_and_range_formatting/Chapter_61_Modern_Output_print_and_range_formatting.md`: 21
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_06_The_Refinement_C23/Chapter_62_Flat_Containers/Chapter_62_Flat_Containers.md`: 22
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_06_The_Refinement_C23/Chapter_63_Diagnostics_and_Lifetime_Utilities/Chapter_63_Diagnostics_and_Lifetime_Utilities.md`: 29
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_06_The_Refinement_C23/Chapter_64_Functional_and_Type_Utilities/Chapter_64_Functional_and_Type_Utilities.md`: 23
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_06_The_Refinement_C23/Chapter_65_Compile_Time_Refinements/Chapter_65_Compile_Time_Refinements.md`: 20
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_06_The_Refinement_C23/Chapter_66_Core_Language_Conveniences/Chapter_66_Core_Language_Conveniences.md`: 19
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_06_The_Refinement_C23/Chapter_67_Extended_Floating_Point_Types/Chapter_67_Extended_Floating_Point_Types.md`: 20
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_06_The_Refinement_C23/Chapter_68_Standard_Library_Modules/Chapter_68_Standard_Library_Modules.md`: 25
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_07_The_Future_C26/Chapter_69_Static_Reflection_and_Metaprogramming/Chapter_69_Static_Reflection_and_Metaprogramming.md`: 1
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_07_The_Future_C26/Chapter_70_Contracts_Memory_Safety_and_Diagnostics/Chapter_70_Contracts_Memory_Safety_and_Diagnostics.md`: 8
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_07_The_Future_C26/Chapter_71_Concurrency_Execution_and_Lock_Free/Chapter_71_Concurrency_Execution_and_Lock_Free_Constructs.md`: 2
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_100_Kernel_Bypass_Networking/Chapter_100_Kernel_Bypass_Networking_DPDK_RDMA.md`: 25
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_101_Clocks_and_Timekeeping/Chapter_101_Clocks_Timekeeping_and_Measuring_Latency.md`: 24
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_102_Linking_Loading_ABI/Chapter_102_Linking_Loading_ABI_and_WPO.md`: 25
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_103_Microbenchmarking_and_Tail_Latency/Chapter_103_Microbenchmarking_and_Tail_Latency.md`: 28
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_104_Undefined_Behaviour_and_the_Optimiser/Chapter_104_Undefined_Behaviour_and_the_Optimiser.md`: 31
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_105_Sanitizers_Fuzzing_Testing_Concurrency/Chapter_105_Sanitizers_Fuzzing_and_Testing_Concurrent_Code.md`: 27
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_106_Determinism_and_the_Hot_Path_Mindset/Chapter_106_Determinism_Jitter_Elimination_and_the_Hot_Path_Mindset.md`: 35
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_74_Advanced_Template_Metaprogramming/Chapter_74_Advanced_Template_Metaprogramming.md`: 32
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_75_Compile_Time_Programming/Chapter_75_Compile_Time_Programming.md`: 17
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_76_The_CPP_Memory_Model/Chapter_76_The_CPP_Memory_Model.md`: 30
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_77_Lock_Free_Programming/Chapter_77_Lock_Free_Programming.md`: 33
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_78_Advanced_Concurrency_Patterns/Chapter_78_Advanced_Concurrency_Patterns.md`: 25
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_79_Custom_Memory_Allocators/Chapter_79_Custom_Memory_Allocators.md`: 22
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_80_High_Performance_Optimization/Chapter_80_High_Performance_Optimization.md`: 41
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_81_WRITING_A_C_COMPILER_BASICS/Chapter_81_Writing_A_Compiler_Basics.md`: 23
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_82_WRITING_A_GARBAGE_COLLECTOR/Chapter_82_Writing_A_Garbage_Collector.md`: 23
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_83_THE_STANDARD_LIBRARY_FROM_SCRATCH/Chapter_83_The_Standard_Library_From_Scratch.md`: 19
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_84_DISTRIBUTED_C/Chapter_84_Distributed_CPP.md`: 24
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_85_The_Engineers_Model_of_the_Machine/Chapter_85_The_Engineers_Model_of_the_Machine.md`: 18
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_86_CPU_Microarchitecture/Chapter_86_CPU_Microarchitecture.md`: 20
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_87_The_Cache_Hierarchy/Chapter_87_The_Cache_Hierarchy.md`: 23
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_88_Virtual_Memory_TLB_NUMA/Chapter_88_Virtual_Memory_TLB_Huge_Pages_NUMA.md`: 26
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_89_Reading_the_Compilers_Output/Chapter_89_Reading_the_Compilers_Output.md`: 21
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_90_Data_Oriented_Design/Chapter_90_Data_Oriented_Design.md`: 21
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_91_Branchless_Programming/Chapter_91_Branchless_Programming.md`: 27
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_92_SIMD_in_Practice/Chapter_92_SIMD_in_Practice.md`: 25
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_93_Atomics_CAS_ABA/Chapter_93_Atomics_CAS_and_ABA.md`: 31
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_94_Safe_Reclamation/Chapter_94_Safe_Reclamation_Hazard_Pointers_and_RCU.md`: 20
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_95_Lock_Design/Chapter_95_Lock_Design.md`: 26
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_96_Threading_Discipline/Chapter_96_Threading_Discipline.md`: 18
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_97_Object_Lifetime_and_Allocation_Free/Chapter_97_Object_Lifetime_Placement_and_Allocation_Free.md`: 24
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_98_System_Calls_and_vDSO/Chapter_98_System_Calls_the_vDSO_and_Syscall_Overhead.md`: 17
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_99_High_Performance_IO/Chapter_99_High_Performance_IO_io_uring_mmap_Zero_Copy.md`: 25
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_107_Design_Patterns/Chapter_107_Design_Patterns_in_Modern_CPP.md`: 25
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_108_TMP_Patterns/Chapter_108_Template_Metaprogramming_Patterns.md`: 20
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_109_High_Performance_Data_Structures/Chapter_109_High_Performance_Data_Structures.md`: 27
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_110_Build_Systems_and_Tooling/Chapter_110_Build_Systems_Dependency_Management_and_Tooling.md`: 29
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_111_Interoperability/Chapter_111_Interoperability_and_the_Stable_C_ABI.md`: 45
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_112_Networking_from_Scratch/Chapter_112_Networking_from_Scratch.md`: 19
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_113_CPP_in_the_Cloud/Chapter_113_CPP_in_the_Cloud.md`: 23
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_114_Cross_Platform_Development/Chapter_114_Cross_Platform_Development.md`: 22
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_115_GUI_Development/Chapter_115_GUI_Development_with_CPP.md`: 22
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_116_Scientific_Computing_and_GPU/Chapter_116_Scientific_Computing_and_GPU.md`: 24
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_117_ML_Infrastructure/Chapter_117_Machine_Learning_Infrastructure.md`: 25
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_118_Real_Time_Audio/Chapter_118_Real_Time_Audio_and_Signal_Processing.md`: 31
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_119_Robotics_ROS2/Chapter_119_Robotics_and_ROS2_Development.md`: 24
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_120_Database_Internals/Chapter_120_Database_Internals_and_LSM_Trees.md`: 30
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_121_Security_Engineering/Chapter_121_Security_Engineering.md`: 22
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_122_Specialized_Domains/Chapter_122_Specialized_Domains.md`: 32
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_123_Algorithm_Reference/Chapter_123_The_Ultimate_Algorithm_Reference.md`: 27
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_124_Capstone_Order_Book/Chapter_124_Capstone_High_Performance_Order_Book.md`: 21
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/_archive/_consolidated_into_Volume_08/56_distributed_c.md`: 1
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/_archive/_consolidated_into_Volume_08/README.md`: 15
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/manuscript/03-part-resource-management/12_raii_and_rule_of_five.md`: 1
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/manuscript/03-part-resource-management/14_smart_pointers.md`: 1
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/manuscript/05-part-templates/19_templates.md`: 1
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/manuscript/05-part-templates/21_variadic_templates.md`: 1
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/manuscript/06-part-modern-features/24_cpp17.md`: 3
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/manuscript/06-part-modern-features/25_cpp20.md`: 1
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/manuscript/06-part-modern-features/26_cpp23_and_cpp26.md`: 1
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/manuscript/07-part-concurrency/27_threads_and_synchronization.md`: 1
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/manuscript/07-part-concurrency/28_memory_model_and_atomics.md`: 1
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/manuscript/07-part-concurrency/29_lock_free_programming.md`: 1
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/manuscript/08-part-performance/32_memory_allocators.md`: 2
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/manuscript/10-part-compilation/38_compilation_model.md`: 1
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/manuscript/12-part-systems/42_standard_library_from_scratch.md`: 1
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/manuscript/12-part-systems/43_writing_a_compiler_and_gc.md`: 3
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/manuscript/13-part-specialized/44_networking_distributed.md`: 1
+- `02-Programming-Languages/C++/CPP_Zero_to_Godhood/manuscript/13-part-specialized/46_cross_platform_and_cloud.md`: 1
+- `02-Programming-Languages/Python/Complete-Python-Zero-to-Godhood.md`: 6
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Chapter_51_FORMATS_XML_AND_HTML.md`: 1
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/MASTER_COVERAGE_MATRIX.md`: 16
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/STYLE.md`: 15
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Volume_01_Classic_Python_and_Core_Engine/Chapter_01_Inception_and_the_Executable_Pipeline/Chapter_01_Inception_and_the_Executable_Pipeline.md`: 35
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Volume_01_Classic_Python_and_Core_Engine/Chapter_02_The_PyObject_Model_and_Reference_Counting/Chapter_02_The_PyObject_Model_and_Reference_Counting.md`: 24
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Volume_01_Classic_Python_and_Core_Engine/Chapter_03_Comprehensions_Nested_Scopes_and_Cyclic_GC/Chapter_03_Comprehensions_Nested_Scopes_and_Cyclic_GC.md`: 18
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Volume_01_Classic_Python_and_Core_Engine/Chapter_04_Type_Class_Unification_Descriptors_and_C3_MRO/Chapter_04_Type_Class_Unification_Descriptors_and_C3_MRO.md`: 28
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Volume_01_Classic_Python_and_Core_Engine/Chapter_05_Decorators_Context_Managers_and_the_2x_Twilight/Chapter_05_Decorators_Context_Managers_and_the_2x_Twilight.md`: 20
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Volume_01_Classic_Python_and_Core_Engine/Chapter_06_Low_Level_File_IO_and_Exception_Unwinding/Chapter_06_Low_Level_File_IO_and_Exception_Unwinding.md`: 24
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Volume_02_The_Python_3_Schism/Chapter_07_The_Unicode_Paradigm_Shift/Chapter_07_The_Unicode_Paradigm_Shift.md`: 26
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Volume_02_The_Python_3_Schism/Chapter_08_Stdlib_Consolidation_and_the_New_GIL/Chapter_08_Stdlib_Consolidation_and_the_New_GIL.md`: 20
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Volume_03_Generators_Iterators_and_Async_Inception/Chapter_09_Iterators_Generators_and_yield_from/Chapter_09_Iterators_Generators_and_yield_from.md`: 20
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Volume_03_Generators_Iterators_and_Async_Inception/Chapter_10_Asyncio_Inception_Pathlib_and_Enum/Chapter_10_Asyncio_Inception_Pathlib_and_Enum.md`: 18
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Volume_03_Generators_Iterators_and_Async_Inception/Chapter_11_Native_Async_Await_and_New_Operators/Chapter_11_Native_Async_Await_and_New_Operators.md`: 18
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Volume_04_Expressive_Modern_Python/Chapter_12_FStrings_Annotations_and_the_Compact_Dict/Chapter_12_FStrings_Annotations_and_the_Compact_Dict.md`: 22
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Volume_04_Expressive_Modern_Python/Chapter_13_Dataclasses_ContextVars_and_Dict_Ordering/Chapter_13_Dataclasses_ContextVars_and_Dict_Ordering.md`: 17
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Volume_05_Structural_Shifts_and_Pattern_Matching/Chapter_14_Walrus_and_Positional_Only_Parameters/Chapter_14_Walrus_and_Positional_Only_Parameters.md`: 13
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Volume_05_Structural_Shifts_and_Pattern_Matching/Chapter_15_PEG_Parser_Dict_Union_and_Pattern_Matching/Chapter_15_PEG_Parser_Dict_Union_and_Pattern_Matching.md`: 17
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Volume_05_Structural_Shifts_and_Pattern_Matching/Chapter_16_Typing_Protocols_and_Structural_Subtyping/Chapter_16_Typing_Protocols_and_Structural_Subtyping.md`: 33
+- `02-Programming-Languages/Python/Python_Zero_to_Godhood/Volume_06_Performance_Leap_and_Runtime_Mechanics/Chapter_17_Faster_CPython_the_Specializing_Adaptive_Interpreter/Chapter_17_Faster_CPython_the_Specializing_Adaptive_Interpreter.md`: 17
+- `02-Programming-Languages/Python/Ultimate-Python-Design-Patterns.md`: 1
+- `03-Data-Structures-Algorithms/01-Topics/General-Data-Structures/Heap/Readme.md`: 2
+- `03-Data-Structures-Algorithms/01-Topics/General-Data-Structures/Priority Queue/Readme.md`: 2
+- `04-System-Design/Design Patterns/Ultimate-Python-Design-Patterns.md`: 1
+- `04-System-Design/design-patterns-java/notes/02-prototype-factory.md`: 2
+- `04-System-Design/design-patterns-java/notes/03-factory.md`: 2
+- `12-Performance-Engineering/02-Profiling/profiling_guide.md`: 1
+- `14-Low-Latency-Systems/00 Home.md`: 3
+- `14-Low-Latency-Systems/01 - Market & Microstructure Fundamentals/Drill - 01 Microstructure and Order Matching Mechanics.md`: 1
+- `14-Low-Latency-Systems/01 - Market & Microstructure Fundamentals/Lab - 01 Continuous Double Auction Simulator.md`: 1
+- `14-Low-Latency-Systems/01 - Market & Microstructure Fundamentals/MOC - 01 Market & Microstructure Fundamentals.md`: 14
+- `14-Low-Latency-Systems/01 - Market & Microstructure Fundamentals/Maker-Taker vs Inverted Fee Models.md`: 1
+- `14-Low-Latency-Systems/01 - Market & Microstructure Fundamentals/Order Book Dynamics and Queue Position.md`: 1
+- `14-Low-Latency-Systems/01 - Market & Microstructure Fundamentals/War Story - The 2010 Flash Crash.md`: 1
+- `14-Low-Latency-Systems/02 - Exchange Architecture/Drill - 02 Exchange System Topologies.md`: 7
+- `14-Low-Latency-Systems/02 - Exchange Architecture/Lab - 02 Sequenced Event Log Engine.md`: 1
+- `14-Low-Latency-Systems/02 - Exchange Architecture/MOC - 02 Exchange Architecture.md`: 14
+- `14-Low-Latency-Systems/02 - Exchange Architecture/Pre-Trade Risk Checks at Wire Speed.md`: 2
+- `14-Low-Latency-Systems/02 - Exchange Architecture/War Story - The 2012 Knight Capital Disaster.md`: 2
+- `14-Low-Latency-Systems/03 - Matching Engine Internals/Lab - 03 High-Performance Intrusive LOB.md`: 1
+- `14-Low-Latency-Systems/03 - Matching Engine Internals/MOC - 03 Matching Engine Internals.md`: 10
+- `14-Low-Latency-Systems/03 - Matching Engine Internals/War Story - The 2013 NASDAQ SIP Outage.md`: 2
+- `14-Low-Latency-Systems/04 - Hardware Mechanical Sympathy/CPU Cache Hierarchy and Line Alignment.md`: 1
+- `14-Low-Latency-Systems/04 - Hardware Mechanical Sympathy/False Sharing and Cache Contention.md`: 1
+- `14-Low-Latency-Systems/04 - Hardware Mechanical Sympathy/Lab - 04 Cache Line Contention and Latency Benchmark.md`: 1
+- `14-Low-Latency-Systems/04 - Hardware Mechanical Sympathy/Latency Numbers Every Trading Engineer Knows.md`: 5
+- `14-Low-Latency-Systems/04 - Hardware Mechanical Sympathy/MOC - 04 Hardware Mechanical Sympathy.md`: 15
+- `14-Low-Latency-Systems/04 - Hardware Mechanical Sympathy/NUMA Topologies and Inter-Socket Jitter.md`: 3
+- `14-Low-Latency-Systems/04 - Hardware Mechanical Sympathy/War Story - The 2018 Meltdown and Spectre CPU Vulnerabilities.md`: 2
+- `14-Low-Latency-Systems/05 - OS & Kernel Tuning/Lab - 05 Production Core Isolation and Jitter Measurement.md`: 1
+- `14-Low-Latency-Systems/05 - OS & Kernel Tuning/MOC - 05 OS & Kernel Tuning.md`: 13
+- `14-Low-Latency-Systems/05 - OS & Kernel Tuning/War Story - The 2012 Leap Second Linux Kernel Lockup.md`: 3
+- `14-Low-Latency-Systems/06 - Networking/Colocation and Physical Layer Infrastructure.md`: 3
+- `14-Low-Latency-Systems/06 - Networking/Drill - 06 Multicast Packet Drop Diagnostics.md`: 1
+- `14-Low-Latency-Systems/06 - Networking/Lab - 06 Zero-Loss Multicast Feed Arbitrator.md`: 1
+- `14-Low-Latency-Systems/06 - Networking/MOC - 06 Networking.md`: 15
+- `14-Low-Latency-Systems/06 - Networking/UDP Multicast Market Data and A-B Feed Arbitration.md`: 1
+- `14-Low-Latency-Systems/06 - Networking/War Story - The 2015 CME Globex Multicast Freeze.md`: 2
+- `14-Low-Latency-Systems/07 - Time & Measurement/CPU Timestamp Counter RDTSC Mechanics.md`: 3
+- `14-Low-Latency-Systems/07 - Time & Measurement/Coordinated Omission in Low Latency Systems.md`: 1
+- `14-Low-Latency-Systems/07 - Time & Measurement/Lab - 07 Cycle-Accurate RDTSC Profiler with HdrHistogram.md`: 1
+- `14-Low-Latency-Systems/07 - Time & Measurement/MOC - 07 Time & Measurement.md`: 11
+- `14-Low-Latency-Systems/07 - Time & Measurement/One-Way Latency vs Round-Trip Time Measurement.md`: 1
+- `14-Low-Latency-Systems/07 - Time & Measurement/Precision Time Protocol and White Rabbit.md`: 3
+- `14-Low-Latency-Systems/07 - Time & Measurement/War Story - The 2015 NYSE 3.5-Hour Gate Freeze.md`: 1
+- `14-Low-Latency-Systems/08 - Low-Latency Programming/Allocation-Free Steady State Patterns.md`: 1
+- `14-Low-Latency-Systems/08 - Low-Latency Programming/Lab - 08 Ultra-Low Latency SPSC Ring Buffer.md`: 1
+- `14-Low-Latency-Systems/08 - Low-Latency Programming/Lock-Free MPMC Queue Mechanics.md`: 1
+- `14-Low-Latency-Systems/08 - Low-Latency Programming/Lock-Free SPSC Ring Buffer Design.md`: 1
+- `14-Low-Latency-Systems/08 - Low-Latency Programming/MOC - 08 Low-Latency Programming.md`: 10
+- `14-Low-Latency-Systems/09 - Messaging & IPC/Aeron Protocol Deep Dive and IPC Architecture.md`: 1
+- `14-Low-Latency-Systems/09 - Messaging & IPC/Lab - 09 Ultra-Fast Shared Memory IPC Channel.md`: 1
+- `14-Low-Latency-Systems/09 - Messaging & IPC/MOC - 09 Messaging & IPC.md`: 9
+- `14-Low-Latency-Systems/10 - Protocols & Codecs/Drill - 10 Wire Protocol Parsing and Field Decoding.md`: 1
+- `14-Low-Latency-Systems/10 - Protocols & Codecs/Lab - 10 Zero-Copy NASDAQ ITCH 5.0 Parser.md`: 1
+- `14-Low-Latency-Systems/10 - Protocols & Codecs/MOC - 10 Protocols & Codecs.md`: 14
+- `14-Low-Latency-Systems/11 - Participant-Side Systems/Drill - 11 Tick-to-Trade Pipeline Bottleneck Hunting.md`: 1
+- `14-Low-Latency-Systems/11 - Participant-Side Systems/Lab - 11 End-to-End Sub-Microsecond Tick-to-Trade Engine.md`: 1
+- `14-Low-Latency-Systems/11 - Participant-Side Systems/MOC - 11 Participant-Side Systems.md`: 13
+- `14-Low-Latency-Systems/11 - Participant-Side Systems/Order Queue Position Tracking and Fill Probability.md`: 1
+- `14-Low-Latency-Systems/12 - FPGAs & Hardware Acceleration/Drill - 12 Hybrid CPU-FPGA Architecture Design.md`: 1
+- `14-Low-Latency-Systems/12 - FPGAs & Hardware Acceleration/FPGA Architecture Fundamentals for Trading.md`: 1
+- `14-Low-Latency-Systems/12 - FPGAs & Hardware Acceleration/Lab - 12 Synthesizable FPGA Parser and Pre-Trade Risk Filter.md`: 1
+- `14-Low-Latency-Systems/12 - FPGAs & Hardware Acceleration/MOC - 12 FPGAs & Hardware Acceleration.md`: 14
+- `14-Low-Latency-Systems/13 - Reliability, Ops & Testing/Drill - 13 Post-Mortem of a Production Outage.md`: 1
+- `14-Low-Latency-Systems/13 - Reliability, Ops & Testing/Exchange Simulators and Conformance Harnesses.md`: 2
+- `14-Low-Latency-Systems/13 - Reliability, Ops & Testing/Lab - 13 Deterministic PCAP Replay and Verification Engine.md`: 1
+- `14-Low-Latency-Systems/13 - Reliability, Ops & Testing/Latency Regression Testing in Continuous Integration.md`: 1
+- `14-Low-Latency-Systems/13 - Reliability, Ops & Testing/MOC - 13 Reliability, Ops & Testing.md`: 12
+- `14-Low-Latency-Systems/14 - Industry Map & Canon/Canonical Books, Papers, and Talks Index.md`: 6
+- `14-Low-Latency-Systems/14 - Industry Map & Canon/Drill - 14 Comprehensive Technical Mock Interview.md`: 1
+- `14-Low-Latency-Systems/14 - Industry Map & Canon/MOC - 14 Industry Map & Canon.md`: 10
+- `14-Low-Latency-Systems/14 - Industry Map & Canon/Proprietary Secrecy vs Public Knowledge Boundary.md`: 2
+- `14-Low-Latency-Systems/14 - Industry Map & Canon/The Quantitative Trading Firm Landscape.md`: 2
+- `14-Low-Latency-Systems/Sources/C++ Concurrency in Action by Anthony Williams.md`: 1
+- `14-Low-Latency-Systems/Sources/Curated Bibliography of High-Frequency Trading Systems.md`: 1
+- `14-Low-Latency-Systems/Sources/Flash Boys by Michael Lewis.md`: 1
+- `14-Low-Latency-Systems/Sources/How to Build an Exchange by Jane Street.md`: 2
+- `14-Low-Latency-Systems/Sources/Intel 64 and IA-32 Architectures Software Developer's Manual.md`: 2
+- `14-Low-Latency-Systems/Sources/Memory Barriers - a Hardware View for Software Hackers by Paul E McKenney.md`: 1
+- `14-Low-Latency-Systems/Sources/Optimal High-Frequency Market Making by Avellaneda and Stoikov.md`: 1
+- `14-Low-Latency-Systems/Sources/Site Reliability Engineering at Scale for Financial Systems.md`: 5
+- `14-Low-Latency-Systems/Sources/Systems Performance by Brendan Gregg.md`: 3
+- `14-Low-Latency-Systems/Sources/The High-Frequency Trading Arms Race by Eric Budish et al.md`: 3
+- `14-Low-Latency-Systems/Sources/The LMAX Disruptor Architecture by Martin Thompson et al.md`: 2
+- `14-Low-Latency-Systems/Sources/The Microstructure of Financial Markets by Rama Cont and Sasha Stoikov.md`: 1
+- `14-Low-Latency-Systems/Sources/Trading and Exchanges by Larry Harris.md`: 1
+- `14-Low-Latency-Systems/Sources/Wait-Free Synchronization by Maurice Herlihy.md`: 1
+- `14-Low-Latency-Systems/Sources/What Every Programmer Should Know About Memory by Ulrich Drepper.md`: 2
+- `15-Technical-Whitepapers/01-Systems-Performance-and-Tracing/Brendan-Gregg-Performance-Canon.md`: 2
+- `15-Technical-Whitepapers/01-Systems-Performance-and-Tracing/Linux-Tracing-and-Instrumentation.md`: 1
+- `15-Technical-Whitepapers/02-Operating-Systems-and-Kernels/OS-From-Scratch-and-Teaching-Kernels.md`: 1
+- `15-Technical-Whitepapers/02-Operating-Systems-and-Kernels/README.md`: 1
+- `15-Technical-Whitepapers/02-Operating-Systems-and-Kernels/Unix-and-Linux-Kernel-Foundations.md`: 2
+- `15-Technical-Whitepapers/02-Operating-Systems-and-Kernels/Windows-NT-Internals-Architecture.md`: 2
+- `15-Technical-Whitepapers/03-Memory-Architecture-and-Concurrency/README.md`: 1
+- `15-Technical-Whitepapers/03-Memory-Architecture-and-Concurrency/Ulrich-Drepper-Memory-Architecture.md`: 1
+- `15-Technical-Whitepapers/05-Offensive-Security-and-Exploitation/Database-Exploitation-and-SQL-Injection.md`: 1
+- `15-Technical-Whitepapers/05-Offensive-Security-and-Exploitation/Vulnerability-Research-and-Web-Exploits.md`: 2
+- `15-Technical-Whitepapers/07-Polish-Technical-Papers-pl/Bezpieczenstwo-Systemow-i-Sieci.md`: 1
+- `15-Technical-Whitepapers/07-Polish-Technical-Papers-pl/Bezpieczenstwo-Web-i-Baz-Danych.md`: 1
+- `15-Technical-Whitepapers/07-Polish-Technical-Papers-pl/Inzynieria-Wsteczna-i-Analiza-Kodu.md`: 3
+- `15-Technical-Whitepapers/07-Polish-Technical-Papers-pl/Malware-Rootkity-i-Zagrozenia.md`: 1
+- `15-Technical-Whitepapers/07-Polish-Technical-Papers-pl/README.md`: 3
+- `15-Technical-Whitepapers/08-Developer-Tooling-and-Foundations/Developer-Tooling-and-SysAdmin.md`: 1
+- `15-Technical-Whitepapers/09-Seminal-Computer-Science-Papers/01-Foundations-and-Information-Theory.md`: 3
+- `15-Technical-Whitepapers/09-Seminal-Computer-Science-Papers/04-Databases-and-Transaction-Processing.md`: 1
+- `15-Technical-Whitepapers/09-Seminal-Computer-Science-Papers/README.md`: 22
+- `15-Technical-Whitepapers/10-Seminal-Low-Latency-Systems-Papers/03-Kernel-Bypass-and-Sub-Microsecond-IO.md`: 1
+- `15-Technical-Whitepapers/10-Seminal-Low-Latency-Systems-Papers/04-Market-Microstructure-and-Order-Dynamics.md`: 2
+- `15-Technical-Whitepapers/10-Seminal-Low-Latency-Systems-Papers/README.md`: 20
+- `15-Technical-Whitepapers/ClamAV-Audit-Report.md`: 1
+- `15-Technical-Whitepapers/README.md`: 33
+- `15-Technical-Whitepapers/base/Index-Base-English-Whitepapers.md`: 31
+- `15-Technical-Whitepapers/pl/Index-Polish-Whitepapers.md`: 23
+- `16-Interview-Command-Center/00-Dashboard.md`: 1
+- `16-Interview-Command-Center/01-Roles/AI-Engineer/Study-Plan.md`: 1
+- `16-Interview-Command-Center/01-Roles/AI-Engineer/_Hub.md`: 1
+- `16-Interview-Command-Center/01-Roles/Low-Latency/Common-Patterns.md`: 7
+- `16-Interview-Command-Center/01-Roles/Low-Latency/Question-Bank.md`: 1
+- `16-Interview-Command-Center/01-Roles/Low-Latency/Study-Plan.md`: 1
+- `16-Interview-Command-Center/01-Roles/Low-Latency/_Hub.md`: 4
+- `16-Interview-Command-Center/01-Roles/Quant-Dev/Common-Patterns.md`: 3
+- `16-Interview-Command-Center/01-Roles/Quant-Dev/Question-Bank.md`: 3
+- `16-Interview-Command-Center/01-Roles/Quant-Dev/Study-Plan.md`: 2
+- `16-Interview-Command-Center/01-Roles/Quant-Dev/_Hub.md`: 1
+- `16-Interview-Command-Center/01-Roles/Quant-Research/Question-Bank.md`: 9
+- `16-Interview-Command-Center/01-Roles/Quant-Research/Study-Plan.md`: 1
+- `16-Interview-Command-Center/01-Roles/Quant-Research/_Hub.md`: 1
+- `16-Interview-Command-Center/01-Roles/SDE/Question-Bank.md`: 4
+- `16-Interview-Command-Center/01-Roles/SDE/Skill-Matrix.md`: 1
+- `16-Interview-Command-Center/01-Roles/SDE/Study-Plan.md`: 1
+- `16-Interview-Command-Center/01-Roles/SDE/_Hub.md`: 1
+- `16-Interview-Command-Center/Coaching-Prompt.md`: 8
+- `16-Interview-Command-Center/_Templates/Behavioral-Story.md`: 4
+- `16-Interview-Command-Center/_Templates/Company-Profile.md`: 1
+- `16-Interview-Command-Center/_Templates/Weekly-Review.md`: 1
+
+</details>
+
+## 8. Stale and scraped content
+
+### Vendored or imported repos
+
+Folders carrying their own LICENSE, `.gitignore`, `package.json`, or similar; outermost only.
+
+| Folder | Files | Last touched |
+| :--- | ---: | ---: |
+| `03-Data-Structures-Algorithms/02-Practice-Platforms/LeetCode` | 5953 | 2026-01-26 |
+| `02-Programming-Languages/Python/python in depth` | 2074 | 2026-08-22 |
+| `04-System-Design/design-patterns-java` | 192 | 2026-07-24 |
+| `04-System-Design/design-questions` | 179 | 2026-07-24 |
+| `04-System-Design/Low Level Design` | 137 | 2026-07-24 |
+| `04-System-Design/Design Patterns/python-patterns` | 106 | 2026-01-26 |
+| `04-System-Design/python-design-patterns` | 106 | 2026-01-26 |
+| `03-Data-Structures-Algorithms/01-Topics/General-DSA` | 94 | 2026-01-26 |
+| `04-System-Design/InterviewReady/splitwise` | 31 | 2026-07-24 |
+| `01-CS-Foundations/Operating-Systems/code/os` | 20 | 2026-07-24 |
+| `01-CS-Foundations/Object-Oriented-Programming/code/oop` | 16 | 2026-07-24 |
+
+### Large files
+
+Files of 5 MB or more; candidates for Git LFS, external links, or removal.
+
+| File | MB |
+| :--- | ---: |
+| `04-System-Design/OOPs_Object_Oriented_Programming_by_Kapil_Yadav.pdf` | 90.8 |
+| `04-System-Design/Microsoft_Design_Challenge.pdf` | 56.9 |
+| `04-System-Design/System_Design_Handwritten_Notes_by_Aman_Barnwal.pdf` | 49.0 |
+| `04-System-Design/ByteByteGo/System_Design_1659383261 2022-08-01 19_47_52.pdf` | 45.2 |
+| `04-System-Design/ByteByteGo/System_Design_Interview_Prep_Notes_Revanth_Murigipudi_1651502215 2022-05-02 14_37_07.pdf` | 41.8 |
+| `04-System-Design/ByteByteGo/System_Design_The_Big_Archive_1655113375 2022-06-13 10_27_48.pdf` | 39.5 |
+| `04-System-Design/ByteByteGo/ByteByteGo_The_Big_Archive_1652841223 2022-05-18 02_33_51.pdf` | 39.5 |
+| `04-System-Design/dive-into-design-patterns.pdf` | 34.0 |
+| `02-Programming-Languages/Python/python in depth/Python/Threading/photo-1493976040374-85c8e12f0c0e.jpg` | 21.0 |
+| `02-Programming-Languages/Python/python in depth/Python/MultiProcessing/photo-1493976040374-85c8e12f0c0e.jpg` | 21.0 |
+| `04-System-Design/Advanced.Programming.in.the.UNIX.Environment.3rd.Edition.pdf` | 20.6 |
+| `04-System-Design/InterviewReady/Prototyping/The-Beginners-Guide-to-Rapid-Prototyping.pdf` | 19.2 |
+| `02-Programming-Languages/Python/python in depth/Python/Threading/photo-1541698444083-023c97d3f4b6.jpg` | 17.1 |
+| `02-Programming-Languages/Python/python in depth/Python/MultiProcessing/photo-1541698444083-023c97d3f4b6.jpg` | 17.1 |
+| `02-Programming-Languages/Python/python in depth/Python/Threading/photo-1532009324734-20a7a5813719.jpg` | 14.9 |
+| `02-Programming-Languages/Python/python in depth/Python/MultiProcessing/photo-1532009324734-20a7a5813719.jpg` | 14.9 |
+| `02-Programming-Languages/Python/python in depth/Python/Threading/photo-1522364723953-452d3431c267.jpg` | 12.9 |
+| `02-Programming-Languages/Python/python in depth/Python/MultiProcessing/photo-1522364723953-452d3431c267.jpg` | 12.9 |
+| `04-System-Design/System_Design.pdf` | 12.2 |
+| `05-Quantitative-Finance/01-Mathematics/A Practical Guide To Quantitative Finance Interviews by Xinfeng Zhou (z-lib.org).pdf` | 12.1 |
+| `02-Programming-Languages/Python/python in depth/Python/Threading/photo-1513938709626-033611b8cc03.jpg` | 12.1 |
+| `02-Programming-Languages/Python/python in depth/Python/MultiProcessing/photo-1513938709626-033611b8cc03.jpg` | 12.1 |
+| `04-System-Design/System_Design_Handbook_Aman_Barnwal.pdf` | 11.8 |
+| `02-Programming-Languages/Python/python in depth/Python/Threading/photo-1524429656589-6633a470097c.jpg` | 11.5 |
+| `02-Programming-Languages/Python/python in depth/Python/MultiProcessing/photo-1524429656589-6633a470097c.jpg` | 11.5 |
+
+<details>
+<summary>All 54 large files</summary>
+
+- `04-System-Design/OOPs_Object_Oriented_Programming_by_Kapil_Yadav.pdf`: 90.8 MB
+- `04-System-Design/Microsoft_Design_Challenge.pdf`: 56.9 MB
+- `04-System-Design/System_Design_Handwritten_Notes_by_Aman_Barnwal.pdf`: 49.0 MB
+- `04-System-Design/ByteByteGo/System_Design_1659383261 2022-08-01 19_47_52.pdf`: 45.2 MB
+- `04-System-Design/ByteByteGo/System_Design_Interview_Prep_Notes_Revanth_Murigipudi_1651502215 2022-05-02 14_37_07.pdf`: 41.8 MB
+- `04-System-Design/ByteByteGo/System_Design_The_Big_Archive_1655113375 2022-06-13 10_27_48.pdf`: 39.5 MB
+- `04-System-Design/ByteByteGo/ByteByteGo_The_Big_Archive_1652841223 2022-05-18 02_33_51.pdf`: 39.5 MB
+- `04-System-Design/dive-into-design-patterns.pdf`: 34.0 MB
+- `02-Programming-Languages/Python/python in depth/Python/Threading/photo-1493976040374-85c8e12f0c0e.jpg`: 21.0 MB
+- `02-Programming-Languages/Python/python in depth/Python/MultiProcessing/photo-1493976040374-85c8e12f0c0e.jpg`: 21.0 MB
+- `04-System-Design/Advanced.Programming.in.the.UNIX.Environment.3rd.Edition.pdf`: 20.6 MB
+- `04-System-Design/InterviewReady/Prototyping/The-Beginners-Guide-to-Rapid-Prototyping.pdf`: 19.2 MB
+- `02-Programming-Languages/Python/python in depth/Python/Threading/photo-1541698444083-023c97d3f4b6.jpg`: 17.1 MB
+- `02-Programming-Languages/Python/python in depth/Python/MultiProcessing/photo-1541698444083-023c97d3f4b6.jpg`: 17.1 MB
+- `02-Programming-Languages/Python/python in depth/Python/Threading/photo-1532009324734-20a7a5813719.jpg`: 14.9 MB
+- `02-Programming-Languages/Python/python in depth/Python/MultiProcessing/photo-1532009324734-20a7a5813719.jpg`: 14.9 MB
+- `02-Programming-Languages/Python/python in depth/Python/Threading/photo-1522364723953-452d3431c267.jpg`: 12.9 MB
+- `02-Programming-Languages/Python/python in depth/Python/MultiProcessing/photo-1522364723953-452d3431c267.jpg`: 12.9 MB
+- `04-System-Design/System_Design.pdf`: 12.2 MB
+- `05-Quantitative-Finance/01-Mathematics/A Practical Guide To Quantitative Finance Interviews by Xinfeng Zhou (z-lib.org).pdf`: 12.1 MB
+- `02-Programming-Languages/Python/python in depth/Python/Threading/photo-1513938709626-033611b8cc03.jpg`: 12.1 MB
+- `02-Programming-Languages/Python/python in depth/Python/MultiProcessing/photo-1513938709626-033611b8cc03.jpg`: 12.1 MB
+- `04-System-Design/System_Design_Handbook_Aman_Barnwal.pdf`: 11.8 MB
+- `02-Programming-Languages/Python/python in depth/Python/Threading/photo-1524429656589-6633a470097c.jpg`: 11.5 MB
+- `02-Programming-Languages/Python/python in depth/Python/MultiProcessing/photo-1524429656589-6633a470097c.jpg`: 11.5 MB
+- `02-Programming-Languages/Python/python in depth/Python/Threading/photo-1550439062-609e1531270e.jpg`: 10.9 MB
+- `02-Programming-Languages/Python/python in depth/Python/MultiProcessing/photo-1550439062-609e1531270e.jpg`: 10.9 MB
+- `02-Programming-Languages/Python/python in depth/Python/Threading/photo-1530122037265-a5f1f91d3b99.jpg`: 10.5 MB
+- `02-Programming-Languages/Python/python in depth/Python/MultiProcessing/photo-1530122037265-a5f1f91d3b99.jpg`: 10.5 MB
+- `02-Programming-Languages/Python/python in depth/Python/Threading/photo-1530224264768-7ff8c1789d79.jpg`: 10.0 MB
+- `02-Programming-Languages/Python/python in depth/Python/MultiProcessing/photo-1530224264768-7ff8c1789d79.jpg`: 10.0 MB
+- `02-Programming-Languages/Python/python in depth/Python/Threading/photo-1504198453319-5ce911bafcde.jpg`: 8.8 MB
+- `02-Programming-Languages/Python/python in depth/Python/MultiProcessing/photo-1504198453319-5ce911bafcde.jpg`: 8.8 MB
+- `02-Programming-Languages/Python/python in depth/Python/Threading/photo-1516972810927-80185027ca84.jpg`: 7.9 MB
+- `02-Programming-Languages/Python/python in depth/Python/MultiProcessing/photo-1516972810927-80185027ca84.jpg`: 7.9 MB
+- `04-System-Design/design-patterns-java/notes/04-abstract-factory-adapter-hw.pdf`: 7.2 MB
+- `01-CS-Foundations/Operating-Systems/notes/04-memory-management-hw.pdf`: 7.1 MB
+- `01-CS-Foundations/Computer-Networks/notes/03-cookies-dns-tcp-hw.pdf`: 6.5 MB
+- `01-CS-Foundations/Object-Oriented-Programming/notes/03-polymorphism-hw.pdf`: 6.3 MB
+- `04-System-Design/design-patterns-java/notes/07-facade-observer-hw.pdf`: 6.1 MB
+- `04-System-Design/SysDesign-GauravSen.pdf`: 6.1 MB
+- `04-System-Design/System_Design_Introduction_and_Roadmap.pdf`: 6.0 MB
+- `04-System-Design/design-patterns-java/notes/08-strategy-uml-hw.pdf`: 5.9 MB
+- `04-System-Design/design-patterns-java/notes/01-singleton-builder-hw.pdf`: 5.7 MB
+- `01-CS-Foundations/DBMS/notes/02-integrity-er-diagram-hw.pdf`: 5.6 MB
+- `01-CS-Foundations/DBMS/notes/02-schema-design-hw.pdf`: 5.6 MB
+- `01-CS-Foundations/DBMS/notes/04-transactions-indexes-hw-03.pdf`: 5.4 MB
+- `.obsidian/plugins/copilot/main.js`: 5.3 MB
+- `.obsidian/plugins/tasknotes/main.js`: 5.2 MB
+- `01-CS-Foundations/DBMS/notes/02-integrity-er-diagram-hw-02.pdf`: 5.2 MB
+- `02-Programming-Languages/C++/CPlusPlusNotesForProfessionals.pdf`: 5.1 MB
+- `.obsidian/plugins/obsidian-excalidraw-plugin/main.js`: 5.1 MB
+- `.obsidian/plugins/realclaudian/main.js`: 5.1 MB
+- `01-CS-Foundations/DBMS/notes/03-normalisation-acid-hw.pdf`: 5.0 MB
+
+</details>
+
+### Tracked build junk
+
+`.DS_Store`, CMake build trees, object files, and similar that should be gitignored.
+
+| Folder | Files |
+| :--- | ---: |
+| `04-System-Design` | 61 |
+| `01-CS-Foundations` | 3 |
+
+<details>
+<summary>All 64 junk files</summary>
+
+- `01-CS-Foundations/Operating-Systems/code/os/target/classes/com/scaler/App.class`
+- `01-CS-Foundations/Operating-Systems/code/os/target/classes/com/scaler/producerconsumer/UnitOfWork.class`
+- `01-CS-Foundations/Operating-Systems/code/os/target/test-classes/com/scaler/AppTest.class`
+- `04-System-Design/Design Patterns/BehaviroalPatterns/observer/observer_example.o`
+- `04-System-Design/Design Patterns/CreationalPatterns/factory-method/bike.o`
+- `04-System-Design/Design Patterns/CreationalPatterns/factory-method/car.o`
+- `04-System-Design/Design Patterns/CreationalPatterns/factory-method/client.o`
+- `04-System-Design/Design Patterns/CreationalPatterns/factory-method/smart_client.o`
+- `04-System-Design/Design Patterns/CreationalPatterns/factory-method/vehicle_factory.o`
+- `04-System-Design/InterviewReady/splitwise/target/classes/Splitwise.class`
+- `04-System-Design/InterviewReady/splitwise/target/classes/models/Amount.class`
+- `04-System-Design/InterviewReady/splitwise/target/classes/models/BalanceMap.class`
+- `04-System-Design/InterviewReady/splitwise/target/classes/models/Currency.class`
+- `04-System-Design/InterviewReady/splitwise/target/classes/models/Expense.class`
+- `04-System-Design/InterviewReady/splitwise/target/classes/models/Group.class`
+- `04-System-Design/InterviewReady/splitwise/target/classes/models/PaymentGraph.class`
+- `04-System-Design/InterviewReady/splitwise/target/classes/models/User.class`
+- `04-System-Design/InterviewReady/splitwise/target/classes/services/ExpenseService.class`
+- `04-System-Design/InterviewReady/splitwise/target/classes/services/GroupService.class`
+- `04-System-Design/InterviewReady/splitwise/target/test-classes/GroupPaymentGraphTest.class`
+- `04-System-Design/Low Level Design/distributed-cache/target/classes/Cache.class`
+- `04-System-Design/Low Level Design/distributed-cache/target/classes/CacheBuilder.class`
+- `04-System-Design/Low Level Design/distributed-cache/target/classes/DataSource.class`
+- `04-System-Design/Low Level Design/distributed-cache/target/classes/events/Event.class`
+- `04-System-Design/Low Level Design/distributed-cache/target/classes/events/Eviction$Type.class`
+- `04-System-Design/Low Level Design/distributed-cache/target/classes/events/Eviction.class`
+- `04-System-Design/Low Level Design/distributed-cache/target/classes/events/Load.class`
+- `04-System-Design/Low Level Design/distributed-cache/target/classes/events/Update.class`
+- `04-System-Design/Low Level Design/distributed-cache/target/classes/events/Write.class`
+- `04-System-Design/Low Level Design/distributed-cache/target/classes/models/AccessDetails.class`
+- `04-System-Design/Low Level Design/distributed-cache/target/classes/models/EvictionAlgorithm.class`
+- `04-System-Design/Low Level Design/distributed-cache/target/classes/models/FetchAlgorithm.class`
+- `04-System-Design/Low Level Design/distributed-cache/target/classes/models/Record.class`
+- `04-System-Design/Low Level Design/distributed-cache/target/classes/models/Timer.class`
+- `04-System-Design/Low Level Design/distributed-cache/target/test-classes/TestCache$1.class`
+- `04-System-Design/Low Level Design/distributed-cache/target/test-classes/TestCache$2.class`
+- `04-System-Design/Low Level Design/distributed-cache/target/test-classes/TestCache.class`
+- `04-System-Design/Low Level Design/distributed-cache/target/test-classes/models/SettableTimer.class`
+- `04-System-Design/Low Level Design/distributed-event-bus/target/classes/EventBus.class`
+- `04-System-Design/Low Level Design/distributed-event-bus/target/classes/exceptions/RetryLimitExceededException.class`
+- `04-System-Design/Low Level Design/distributed-event-bus/target/classes/exceptions/UnsubscribedPollException.class`
+- `04-System-Design/Low Level Design/distributed-event-bus/target/classes/lib/KeyedExecutor.class`
+- `04-System-Design/Low Level Design/distributed-event-bus/target/classes/models/Event.class`
+- `04-System-Design/Low Level Design/distributed-event-bus/target/classes/models/EventType.class`
+- `04-System-Design/Low Level Design/distributed-event-bus/target/classes/models/FailureEvent.class`
+- `04-System-Design/Low Level Design/distributed-event-bus/target/classes/models/Subscription.class`
+- `04-System-Design/Low Level Design/distributed-event-bus/target/classes/util/Timer.class`
+- `04-System-Design/Low Level Design/distributed-event-bus/target/test-classes/EventBusTest.class`
+- `04-System-Design/Low Level Design/distributed-event-bus/target/test-classes/TestTimer.class`
+- `04-System-Design/Low Level Design/rate-limiter/target/classes/TimerWheel.class`
+- `04-System-Design/Low Level Design/rate-limiter/target/classes/exceptions/RateLimitExceededException.class`
+- `04-System-Design/Low Level Design/rate-limiter/target/classes/models/Request.class`
+- `04-System-Design/Low Level Design/rate-limiter/target/classes/utils/Timer.class`
+- `04-System-Design/Low Level Design/rate-limiter/target/test-classes/RateLimitTest.class`
+- `04-System-Design/Low Level Design/rate-limiter/target/test-classes/TestTimer.class`
+- `04-System-Design/Low Level Design/service-orchestrator/target/classes/LoadBalancer.class`
+- `04-System-Design/Low Level Design/service-orchestrator/target/classes/algorithms/ConsistentHashing.class`
+- `04-System-Design/Low Level Design/service-orchestrator/target/classes/algorithms/Router.class`
+- `04-System-Design/Low Level Design/service-orchestrator/target/classes/algorithms/WeightedRoundRobin.class`
+- `04-System-Design/Low Level Design/service-orchestrator/target/classes/models/Node.class`
+- `04-System-Design/Low Level Design/service-orchestrator/target/classes/models/Request.class`
+- `04-System-Design/Low Level Design/service-orchestrator/target/classes/models/Service.class`
+- `04-System-Design/Low Level Design/service-orchestrator/target/test-classes/LBTester.class`
+- `04-System-Design/Low Level Design/service-orchestrator/target/test-classes/RouterTester.class`
+
+</details>
+
