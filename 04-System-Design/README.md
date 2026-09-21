@@ -193,7 +193,6 @@ Best of luck :+1:, feel free to send pull requests to add more content to this g
 - [design patterns python](design-patterns-python/README.md)
 - [design questions](design-questions/README.md)
 - [notes](notes/README.md)
-- [python design patterns](python-design-patterns/README.md)
 
 **Notes**
 

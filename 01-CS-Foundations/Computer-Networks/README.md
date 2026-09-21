@@ -8,13 +8,15 @@ sources: []
 ---
 
 ## Notes
-<!-- Table with .md and .pdf links -->
-| Name                         | .md                                    | .pdf                                    | Handwritten                                | MCQs                                  | Worksheet | Worksheet with Answers |
-| ---------------------------- | -------------------------------------- | --------------------------------------- | ------------------------------------------ | ------------------------------------- | --------- | ---------------------- |
-| Network Fundamentals and the OSI model       | [1](notes/01-introduction-OSI-model.md) | [2](notes/01-introduction-OSI-model.pdf) | [3](notes/01-introduction-OSI-model-hw.pdf) | _ | _ | _ |
-| Application architecture and HTTP | [1](notes/02-application-layer.md) | [2](notes/02-application-layer.pdf) | [3](notes/02-application-layer-hw.pdf) | _ | _ | _ |
-| Cookies, DNS and TCP | [1](notes/03-cookies-dns-tcp.md) | [2](notes/03-cookies-dns-tcp.pdf) | [3](notes/03-cookies-dns-tcp-hw.pdf) | _ | _ | _ |
-| Socket programming with Python | [1](notes/04-sockets-primer.md) | [2](notes/04-sockets-primer.pdf) | [3](notes/04-sockets-primer-hw.pdf) | _ | _ | _ |
+<!-- Table with .md links -->
+| Name                         | .md                                    | MCQs                                  | Worksheet | Worksheet with Answers |
+| ---------------------------- | -------------------------------------- | ------------------------------------- | --------- | ---------------------- |
+| Network Fundamentals and the OSI model       | [1](notes/01-introduction-OSI-model.md) | _ | _ | _ |
+| Application architecture and HTTP | [1](notes/02-application-layer.md) | _ | _ | _ |
+| Cookies, DNS and TCP | [1](notes/03-cookies-dns-tcp.md) | _ | _ | _ |
+| Socket programming with Python | [1](notes/04-sockets-primer.md) | _ | _ | _ |
+
+Lecture PDFs and handwritten notes from the original course are not redistributed here; the Markdown notes cover the same material.
 
 
 ## Must read

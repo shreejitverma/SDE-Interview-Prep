@@ -8,9 +8,9 @@ Re-run the script after every structural change; this file is its output and sho
 
 | Check | Result |
 | :--- | ---: |
-| Tracked files | 15717 |
-| Markdown notes | 1516 |
-| Internal links checked | 9389 |
+| Tracked files | 15128 |
+| Markdown notes | 1515 |
+| Internal links checked | 9319 |
 | Broken links (links into private locations are not counted) | 0 |
 | Wikilink aliases that split a table cell | 0 |
 | Broken wikilinks fixable by unique basename | 0 |
@@ -20,10 +20,10 @@ Re-run the script after every structural change; this file is its output and sho
 | Note folders without README (depth <= 3) | 0 |
 | Notes with emojis / total emojis | 0 / 0 |
 | Notes with em dashes / total em dashes | 0 / 0 |
-| Identical-content groups / redundant MB | 418 / 236.5 |
-| Vendored or imported repos | 11 |
-| Tracked build junk | 64 |
-| Files >= 5 MB / total MB | 54 / 857.0 |
+| Identical-content groups / redundant MB | 304 / 41.9 |
+| Vendored or imported repos | 10 |
+| Tracked build junk | 0 |
+| Files >= 5 MB / total MB | 1 / 5.1 |
 
 ## 1. File counts by top-level folder
 
@@ -31,15 +31,13 @@ Re-run the script after every structural change; this file is its output and sho
 | :--- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
 | `(root)` | 11 | 6 | 0 | 0 | 5 | 0.1 | 2026-09-21 |
 | `.github` | 1 | 0 | 0 | 0 | 1 | 0.0 | 2026-09-21 |
-| `.idea` | 6 | 0 | 0 | 0 | 6 | 0.0 | 2024-04-01 |
-| `.obsidian` | 100 | 0 | 30 | 0 | 70 | 46.2 | 2026-09-21 |
-| `.vscode` | 5 | 0 | 0 | 0 | 5 | 0.0 | 2024-04-01 |
+| `.obsidian` | 43 | 0 | 0 | 0 | 43 | 0.0 | 2026-09-21 |
 | `00-Start-Here` | 3 | 3 | 0 | 0 | 0 | 0.0 | 2026-09-21 |
-| `01-CS-Foundations` | 211 | 65 | 59 | 57 | 30 | 139.7 | 2026-09-21 |
-| `02-Programming-Languages` | 5866 | 798 | 2856 | 482 | 1730 | 422.7 | 2026-09-21 |
-| `03-Data-Structures-Algorithms` | 7749 | 82 | 7506 | 27 | 134 | 29.5 | 2026-09-21 |
-| `04-System-Design` | 1237 | 67 | 719 | 142 | 309 | 706.2 | 2026-09-21 |
-| `05-Quantitative-Finance` | 9 | 1 | 7 | 1 | 0 | 12.1 | 2026-09-21 |
+| `01-CS-Foundations` | 151 | 65 | 59 | 0 | 27 | 1.5 | 2026-09-21 |
+| `02-Programming-Languages` | 5804 | 798 | 2856 | 466 | 1684 | 111.1 | 2026-09-21 |
+| `03-Data-Structures-Algorithms` | 7708 | 82 | 7506 | 0 | 120 | 15.2 | 2026-09-21 |
+| `04-System-Design` | 880 | 66 | 657 | 0 | 157 | 7.5 | 2026-09-21 |
+| `05-Quantitative-Finance` | 8 | 1 | 7 | 0 | 0 | 0.0 | 2026-09-21 |
 | `06-Interview-Prep` | 4 | 4 | 0 | 0 | 0 | 0.0 | 2026-09-21 |
 | `07-Project-Portfolio` | 1 | 1 | 0 | 0 | 0 | 0.0 | 2026-09-21 |
 | `08-Distinguished-Engineering` | 9 | 3 | 6 | 0 | 0 | 0.0 | 2026-09-21 |
@@ -58,7 +56,7 @@ Re-run the script after every structural change; this file is its output and sho
 
 ### Folders whose names normalize to the same topic
 
-- **design pattern**: `04-System-Design/03-Design-Patterns`, `04-System-Design/Design Patterns`, `04-System-Design/design-patterns-java`, `04-System-Design/design-patterns-python`, `04-System-Design/python-design-patterns`
+- **design pattern**: `04-System-Design/03-Design-Patterns`, `04-System-Design/Design Patterns`, `04-System-Design/design-patterns-java`, `04-System-Design/design-patterns-python`
 - **godhood to zero**: `02-Programming-Languages/C++/CPP_Zero_to_Godhood`, `02-Programming-Languages/Python/Python_Zero_to_Godhood`
 - **linked list**: `02-Programming-Languages/C++/Linked List`, `03-Data-Structures-Algorithms/01-Topics/Linked-Lists`
 - **recursion**: `02-Programming-Languages/C++/Recursion`, `03-Data-Structures-Algorithms/01-Topics/Recursion`
@@ -75,37 +73,32 @@ Re-run the script after every structural change; this file is its output and sho
 
 | Folder A | Folder B | Identical files |
 | :--- | ---: | ---: |
-| `04-System-Design/Design Patterns` | `04-System-Design/python-design-patterns` | 92 |
-| `04-System-Design/InterviewReady` | `04-System-Design/Low Level Design` | 3 |
 | `01-CS-Foundations/Object-Oriented-Programming` | `04-System-Design/design-questions` | 1 |
-| `04-System-Design/InterviewReady` | `04-System-Design/design-questions` | 1 |
-| `04-System-Design/Low Level Design` | `04-System-Design/design-questions` | 1 |
 
 ### Largest identical-content groups (redundant bytes)
 
 | First copy | Copies | Redundant MB |
 | :--- | ---: | ---: |
-| `04-System-Design/ByteByteGo/ByteByteGo_The_Big_Archive_1652841223 2022-05-18 02_33_51.pdf` | 2 | 39.5 |
 | `02-Programming-Languages/Python/python in depth/Django_Blog/09-Update-User-Profile/django_project/media/profile_pics/large.jpg` | 14 | 35.3 |
-| `02-Programming-Languages/Python/python in depth/Python/MultiProcessing/photo-1493976040374-85c8e12f0c0e.jpg` | 2 | 21.0 |
-| `02-Programming-Languages/Python/python in depth/Python/MultiProcessing/photo-1541698444083-023c97d3f4b6.jpg` | 2 | 17.1 |
-| `02-Programming-Languages/Python/python in depth/Python/MultiProcessing/photo-1532009324734-20a7a5813719.jpg` | 2 | 14.9 |
-| `02-Programming-Languages/Python/python in depth/Python/MultiProcessing/photo-1522364723953-452d3431c267.jpg` | 2 | 12.9 |
-| `02-Programming-Languages/Python/python in depth/Python/MultiProcessing/photo-1513938709626-033611b8cc03.jpg` | 2 | 12.1 |
-| `02-Programming-Languages/Python/python in depth/Python/MultiProcessing/photo-1524429656589-6633a470097c.jpg` | 2 | 11.5 |
-| `02-Programming-Languages/Python/python in depth/Python/MultiProcessing/photo-1550439062-609e1531270e.jpg` | 2 | 10.9 |
-| `02-Programming-Languages/Python/python in depth/Python/MultiProcessing/photo-1530122037265-a5f1f91d3b99.jpg` | 2 | 10.5 |
-| `02-Programming-Languages/Python/python in depth/Python/MultiProcessing/photo-1530224264768-7ff8c1789d79.jpg` | 2 | 10.0 |
-| `02-Programming-Languages/Python/python in depth/Python/MultiProcessing/photo-1504198453319-5ce911bafcde.jpg` | 2 | 8.8 |
-| `02-Programming-Languages/Python/python in depth/Python/MultiProcessing/photo-1516972810927-80185027ca84.jpg` | 2 | 7.9 |
-| `02-Programming-Languages/Python/python in depth/Python/MultiProcessing/photo-1549692520-acc6669e2f0c.jpg` | 2 | 4.0 |
-| `02-Programming-Languages/Python/python in depth/Python/MultiProcessing/photo-1564135624576-c5c88640f235.jpg` | 2 | 3.6 |
+| `02-Programming-Languages/Python/python in depth/Django_Blog/07-Login-Logout-Authentication/django_project/media/profile_pics/pic.jpg` | 9 | 2.4 |
+| `02-Programming-Languages/JavaScript/All in One/dom-tutorial/bg-image.jpg` | 2 | 1.6 |
+| `02-Programming-Languages/Python/python in depth/Python/Flask_Blog/07-User-Account-Profile-Pic/flaskblog/static/profile_pics/85ed1b444539873d.png` | 7 | 0.5 |
+| `02-Programming-Languages/C++/Coding/03.FirstSteps/3.2FirstCppProgram/.gitignore` | 461 | 0.4 |
+| `02-Programming-Languages/Python/python in depth/Django_Blog/09-Update-User-Profile/django_project/media/profile_pics/large_rbSbk8j.jpg` | 7 | 0.2 |
+| `02-Programming-Languages/Python/python in depth/Django_Blog/07-Login-Logout-Authentication/django_project/media/default.jpg` | 16 | 0.2 |
+| `02-Programming-Languages/Python/python in depth/Django_Blog/07-Login-Logout-Authentication/django_project/db.sqlite3` | 2 | 0.1 |
+| `02-Programming-Languages/C++/Coding/03.FirstSteps/3.2FirstCppProgram/CMakeLists.txt` | 321 | 0.1 |
+| `02-Programming-Languages/Python/python in depth/Python/Flask_Blog/07-User-Account-Profile-Pic/flaskblog/static/profile_pics/b6e1c53325f88b74.png` | 10 | 0.1 |
+| `02-Programming-Languages/Python/python in depth/Python/Flask_Blog/11-Blueprints/flaskblog/site.db` | 3 | 0.1 |
+| `02-Programming-Languages/Python/python in depth/Django_Blog/11-Pagination/django_project/posts.json` | 5 | 0.1 |
+| `02-Programming-Languages/Python/python in depth/Python/Flask_Blog/07-User-Account-Profile-Pic/flaskblog/static/profile_pics/7798432669b8b3ac.jpg` | 10 | 0.1 |
+| `02-Programming-Languages/C++/Coding/42.FunctionLikeEntities/42.10LambdaFunctionsAsCallbacks/boxcontainer.h` | 7 | 0.0 |
+| `02-Programming-Languages/Python/python in depth/Python/Flask_Blog/03-Forms-and-Validation/templates/register.html` | 8 | 0.0 |
 
 ### Folder pairs with overlapping note or code names (topical overlap)
 
 | Folder A | Folder B | Shared names | Overlap of smaller |
 | :--- | ---: | ---: | ---: |
-| `04-System-Design/Design Patterns` | `04-System-Design/python-design-patterns` | 57 | 100% |
 | `03-Data-Structures-Algorithms/02-Practice-Platforms` | `04-System-Design/Most Asked Design Questions` | 50 | 100% |
 | `04-System-Design/design-patterns-java` | `04-System-Design/design-questions` | 59 | 44% |
 | `03-Data-Structures-Algorithms/01-Topics` | `03-Data-Structures-Algorithms/02-Practice-Platforms` | 103 | 11% |
@@ -197,16 +190,15 @@ Folders carrying their own LICENSE, `.gitignore`, `package.json`, or similar; ou
 | Folder | Files | Last touched |
 | :--- | ---: | ---: |
 | `03-Data-Structures-Algorithms/02-Practice-Platforms/LeetCode` | 5953 | 2026-09-21 |
-| `02-Programming-Languages/Python/python in depth` | 2075 | 2026-09-21 |
-| `04-System-Design/design-patterns-java` | 193 | 2026-09-21 |
-| `04-System-Design/design-questions` | 179 | 2026-09-21 |
-| `04-System-Design/Low Level Design` | 137 | 2026-09-21 |
+| `02-Programming-Languages/Python/python in depth` | 2030 | 2026-09-21 |
+| `04-System-Design/design-patterns-java` | 177 | 2026-09-21 |
+| `04-System-Design/design-questions` | 172 | 2026-09-21 |
 | `04-System-Design/Design Patterns/python-patterns` | 106 | 2026-09-21 |
-| `04-System-Design/python-design-patterns` | 106 | 2026-09-21 |
 | `03-Data-Structures-Algorithms/01-Topics/General-DSA` | 94 | 2026-09-21 |
-| `04-System-Design/InterviewReady/splitwise` | 31 | 2026-07-24 |
-| `01-CS-Foundations/Operating-Systems/code/os` | 20 | 2026-07-24 |
+| `04-System-Design/Low Level Design` | 58 | 2026-09-21 |
+| `01-CS-Foundations/Operating-Systems/code/os` | 17 | 2026-07-24 |
 | `01-CS-Foundations/Object-Oriented-Programming/code/oop` | 16 | 2026-07-24 |
+| `04-System-Design/InterviewReady/splitwise` | 14 | 2026-07-24 |
 
 ### Large files
 
@@ -214,91 +206,7 @@ Files of 5 MB or more; candidates for Git LFS, external links, or removal.
 
 | File | MB |
 | :--- | ---: |
-| `04-System-Design/OOPs_Object_Oriented_Programming_by_Kapil_Yadav.pdf` | 90.8 |
-| `04-System-Design/Microsoft_Design_Challenge.pdf` | 56.9 |
-| `04-System-Design/System_Design_Handwritten_Notes_by_Aman_Barnwal.pdf` | 49.0 |
-| `04-System-Design/ByteByteGo/System_Design_1659383261 2022-08-01 19_47_52.pdf` | 45.2 |
-| `04-System-Design/ByteByteGo/System_Design_Interview_Prep_Notes_Revanth_Murigipudi_1651502215 2022-05-02 14_37_07.pdf` | 41.8 |
-| `04-System-Design/ByteByteGo/System_Design_The_Big_Archive_1655113375 2022-06-13 10_27_48.pdf` | 39.5 |
-| `04-System-Design/ByteByteGo/ByteByteGo_The_Big_Archive_1652841223 2022-05-18 02_33_51.pdf` | 39.5 |
-| `04-System-Design/dive-into-design-patterns.pdf` | 34.0 |
-| `02-Programming-Languages/Python/python in depth/Python/Threading/photo-1493976040374-85c8e12f0c0e.jpg` | 21.0 |
-| `02-Programming-Languages/Python/python in depth/Python/MultiProcessing/photo-1493976040374-85c8e12f0c0e.jpg` | 21.0 |
-| `04-System-Design/Advanced.Programming.in.the.UNIX.Environment.3rd.Edition.pdf` | 20.6 |
-| `04-System-Design/InterviewReady/Prototyping/The-Beginners-Guide-to-Rapid-Prototyping.pdf` | 19.2 |
-| `02-Programming-Languages/Python/python in depth/Python/Threading/photo-1541698444083-023c97d3f4b6.jpg` | 17.1 |
-| `02-Programming-Languages/Python/python in depth/Python/MultiProcessing/photo-1541698444083-023c97d3f4b6.jpg` | 17.1 |
-| `02-Programming-Languages/Python/python in depth/Python/Threading/photo-1532009324734-20a7a5813719.jpg` | 14.9 |
-| `02-Programming-Languages/Python/python in depth/Python/MultiProcessing/photo-1532009324734-20a7a5813719.jpg` | 14.9 |
-| `02-Programming-Languages/Python/python in depth/Python/Threading/photo-1522364723953-452d3431c267.jpg` | 12.9 |
-| `02-Programming-Languages/Python/python in depth/Python/MultiProcessing/photo-1522364723953-452d3431c267.jpg` | 12.9 |
-| `04-System-Design/System_Design.pdf` | 12.2 |
-| `05-Quantitative-Finance/01-Mathematics/A Practical Guide To Quantitative Finance Interviews by Xinfeng Zhou (z-lib.org).pdf` | 12.1 |
-| `02-Programming-Languages/Python/python in depth/Python/Threading/photo-1513938709626-033611b8cc03.jpg` | 12.1 |
-| `02-Programming-Languages/Python/python in depth/Python/MultiProcessing/photo-1513938709626-033611b8cc03.jpg` | 12.1 |
-| `04-System-Design/System_Design_Handbook_Aman_Barnwal.pdf` | 11.8 |
-| `02-Programming-Languages/Python/python in depth/Python/Threading/photo-1524429656589-6633a470097c.jpg` | 11.5 |
-| `02-Programming-Languages/Python/python in depth/Python/MultiProcessing/photo-1524429656589-6633a470097c.jpg` | 11.5 |
-
-<details>
-<summary>All 54 large files</summary>
-
-- `04-System-Design/OOPs_Object_Oriented_Programming_by_Kapil_Yadav.pdf`: 90.8 MB
-- `04-System-Design/Microsoft_Design_Challenge.pdf`: 56.9 MB
-- `04-System-Design/System_Design_Handwritten_Notes_by_Aman_Barnwal.pdf`: 49.0 MB
-- `04-System-Design/ByteByteGo/System_Design_1659383261 2022-08-01 19_47_52.pdf`: 45.2 MB
-- `04-System-Design/ByteByteGo/System_Design_Interview_Prep_Notes_Revanth_Murigipudi_1651502215 2022-05-02 14_37_07.pdf`: 41.8 MB
-- `04-System-Design/ByteByteGo/System_Design_The_Big_Archive_1655113375 2022-06-13 10_27_48.pdf`: 39.5 MB
-- `04-System-Design/ByteByteGo/ByteByteGo_The_Big_Archive_1652841223 2022-05-18 02_33_51.pdf`: 39.5 MB
-- `04-System-Design/dive-into-design-patterns.pdf`: 34.0 MB
-- `02-Programming-Languages/Python/python in depth/Python/Threading/photo-1493976040374-85c8e12f0c0e.jpg`: 21.0 MB
-- `02-Programming-Languages/Python/python in depth/Python/MultiProcessing/photo-1493976040374-85c8e12f0c0e.jpg`: 21.0 MB
-- `04-System-Design/Advanced.Programming.in.the.UNIX.Environment.3rd.Edition.pdf`: 20.6 MB
-- `04-System-Design/InterviewReady/Prototyping/The-Beginners-Guide-to-Rapid-Prototyping.pdf`: 19.2 MB
-- `02-Programming-Languages/Python/python in depth/Python/Threading/photo-1541698444083-023c97d3f4b6.jpg`: 17.1 MB
-- `02-Programming-Languages/Python/python in depth/Python/MultiProcessing/photo-1541698444083-023c97d3f4b6.jpg`: 17.1 MB
-- `02-Programming-Languages/Python/python in depth/Python/Threading/photo-1532009324734-20a7a5813719.jpg`: 14.9 MB
-- `02-Programming-Languages/Python/python in depth/Python/MultiProcessing/photo-1532009324734-20a7a5813719.jpg`: 14.9 MB
-- `02-Programming-Languages/Python/python in depth/Python/Threading/photo-1522364723953-452d3431c267.jpg`: 12.9 MB
-- `02-Programming-Languages/Python/python in depth/Python/MultiProcessing/photo-1522364723953-452d3431c267.jpg`: 12.9 MB
-- `04-System-Design/System_Design.pdf`: 12.2 MB
-- `05-Quantitative-Finance/01-Mathematics/A Practical Guide To Quantitative Finance Interviews by Xinfeng Zhou (z-lib.org).pdf`: 12.1 MB
-- `02-Programming-Languages/Python/python in depth/Python/Threading/photo-1513938709626-033611b8cc03.jpg`: 12.1 MB
-- `02-Programming-Languages/Python/python in depth/Python/MultiProcessing/photo-1513938709626-033611b8cc03.jpg`: 12.1 MB
-- `04-System-Design/System_Design_Handbook_Aman_Barnwal.pdf`: 11.8 MB
-- `02-Programming-Languages/Python/python in depth/Python/Threading/photo-1524429656589-6633a470097c.jpg`: 11.5 MB
-- `02-Programming-Languages/Python/python in depth/Python/MultiProcessing/photo-1524429656589-6633a470097c.jpg`: 11.5 MB
-- `02-Programming-Languages/Python/python in depth/Python/Threading/photo-1550439062-609e1531270e.jpg`: 10.9 MB
-- `02-Programming-Languages/Python/python in depth/Python/MultiProcessing/photo-1550439062-609e1531270e.jpg`: 10.9 MB
-- `02-Programming-Languages/Python/python in depth/Python/Threading/photo-1530122037265-a5f1f91d3b99.jpg`: 10.5 MB
-- `02-Programming-Languages/Python/python in depth/Python/MultiProcessing/photo-1530122037265-a5f1f91d3b99.jpg`: 10.5 MB
-- `02-Programming-Languages/Python/python in depth/Python/Threading/photo-1530224264768-7ff8c1789d79.jpg`: 10.0 MB
-- `02-Programming-Languages/Python/python in depth/Python/MultiProcessing/photo-1530224264768-7ff8c1789d79.jpg`: 10.0 MB
-- `02-Programming-Languages/Python/python in depth/Python/Threading/photo-1504198453319-5ce911bafcde.jpg`: 8.8 MB
-- `02-Programming-Languages/Python/python in depth/Python/MultiProcessing/photo-1504198453319-5ce911bafcde.jpg`: 8.8 MB
-- `02-Programming-Languages/Python/python in depth/Python/Threading/photo-1516972810927-80185027ca84.jpg`: 7.9 MB
-- `02-Programming-Languages/Python/python in depth/Python/MultiProcessing/photo-1516972810927-80185027ca84.jpg`: 7.9 MB
-- `04-System-Design/design-patterns-java/notes/04-abstract-factory-adapter-hw.pdf`: 7.2 MB
-- `01-CS-Foundations/Operating-Systems/notes/04-memory-management-hw.pdf`: 7.1 MB
-- `01-CS-Foundations/Computer-Networks/notes/03-cookies-dns-tcp-hw.pdf`: 6.5 MB
-- `01-CS-Foundations/Object-Oriented-Programming/notes/03-polymorphism-hw.pdf`: 6.3 MB
-- `04-System-Design/design-patterns-java/notes/07-facade-observer-hw.pdf`: 6.1 MB
-- `04-System-Design/SysDesign-GauravSen.pdf`: 6.1 MB
-- `04-System-Design/System_Design_Introduction_and_Roadmap.pdf`: 6.0 MB
-- `04-System-Design/design-patterns-java/notes/08-strategy-uml-hw.pdf`: 5.9 MB
-- `04-System-Design/design-patterns-java/notes/01-singleton-builder-hw.pdf`: 5.7 MB
-- `01-CS-Foundations/DBMS/notes/02-integrity-er-diagram-hw.pdf`: 5.6 MB
-- `01-CS-Foundations/DBMS/notes/02-schema-design-hw.pdf`: 5.6 MB
-- `01-CS-Foundations/DBMS/notes/04-transactions-indexes-hw-03.pdf`: 5.4 MB
-- `.obsidian/plugins/copilot/main.js`: 5.3 MB
-- `.obsidian/plugins/tasknotes/main.js`: 5.2 MB
-- `01-CS-Foundations/DBMS/notes/02-integrity-er-diagram-hw-02.pdf`: 5.2 MB
-- `02-Programming-Languages/C++/CPlusPlusNotesForProfessionals.pdf`: 5.1 MB
-- `.obsidian/plugins/obsidian-excalidraw-plugin/main.js`: 5.1 MB
-- `.obsidian/plugins/realclaudian/main.js`: 5.1 MB
-- `01-CS-Foundations/DBMS/notes/03-normalisation-acid-hw.pdf`: 5.0 MB
-
-</details>
+| `02-Programming-Languages/C++/CPlusPlusNotesForProfessionals.pdf` | 5.1 |
 
 ### Tracked build junk
 
@@ -306,76 +214,10 @@ Files of 5 MB or more; candidates for Git LFS, external links, or removal.
 
 | Folder | Files |
 | :--- | ---: |
-| `04-System-Design` | 61 |
-| `01-CS-Foundations` | 3 |
 
 <details>
-<summary>All 64 junk files</summary>
+<summary>All 0 junk files</summary>
 
-- `01-CS-Foundations/Operating-Systems/code/os/target/classes/com/scaler/App.class`
-- `01-CS-Foundations/Operating-Systems/code/os/target/classes/com/scaler/producerconsumer/UnitOfWork.class`
-- `01-CS-Foundations/Operating-Systems/code/os/target/test-classes/com/scaler/AppTest.class`
-- `04-System-Design/Design Patterns/BehaviroalPatterns/observer/observer_example.o`
-- `04-System-Design/Design Patterns/CreationalPatterns/factory-method/bike.o`
-- `04-System-Design/Design Patterns/CreationalPatterns/factory-method/car.o`
-- `04-System-Design/Design Patterns/CreationalPatterns/factory-method/client.o`
-- `04-System-Design/Design Patterns/CreationalPatterns/factory-method/smart_client.o`
-- `04-System-Design/Design Patterns/CreationalPatterns/factory-method/vehicle_factory.o`
-- `04-System-Design/InterviewReady/splitwise/target/classes/Splitwise.class`
-- `04-System-Design/InterviewReady/splitwise/target/classes/models/Amount.class`
-- `04-System-Design/InterviewReady/splitwise/target/classes/models/BalanceMap.class`
-- `04-System-Design/InterviewReady/splitwise/target/classes/models/Currency.class`
-- `04-System-Design/InterviewReady/splitwise/target/classes/models/Expense.class`
-- `04-System-Design/InterviewReady/splitwise/target/classes/models/Group.class`
-- `04-System-Design/InterviewReady/splitwise/target/classes/models/PaymentGraph.class`
-- `04-System-Design/InterviewReady/splitwise/target/classes/models/User.class`
-- `04-System-Design/InterviewReady/splitwise/target/classes/services/ExpenseService.class`
-- `04-System-Design/InterviewReady/splitwise/target/classes/services/GroupService.class`
-- `04-System-Design/InterviewReady/splitwise/target/test-classes/GroupPaymentGraphTest.class`
-- `04-System-Design/Low Level Design/distributed-cache/target/classes/Cache.class`
-- `04-System-Design/Low Level Design/distributed-cache/target/classes/CacheBuilder.class`
-- `04-System-Design/Low Level Design/distributed-cache/target/classes/DataSource.class`
-- `04-System-Design/Low Level Design/distributed-cache/target/classes/events/Event.class`
-- `04-System-Design/Low Level Design/distributed-cache/target/classes/events/Eviction$Type.class`
-- `04-System-Design/Low Level Design/distributed-cache/target/classes/events/Eviction.class`
-- `04-System-Design/Low Level Design/distributed-cache/target/classes/events/Load.class`
-- `04-System-Design/Low Level Design/distributed-cache/target/classes/events/Update.class`
-- `04-System-Design/Low Level Design/distributed-cache/target/classes/events/Write.class`
-- `04-System-Design/Low Level Design/distributed-cache/target/classes/models/AccessDetails.class`
-- `04-System-Design/Low Level Design/distributed-cache/target/classes/models/EvictionAlgorithm.class`
-- `04-System-Design/Low Level Design/distributed-cache/target/classes/models/FetchAlgorithm.class`
-- `04-System-Design/Low Level Design/distributed-cache/target/classes/models/Record.class`
-- `04-System-Design/Low Level Design/distributed-cache/target/classes/models/Timer.class`
-- `04-System-Design/Low Level Design/distributed-cache/target/test-classes/TestCache$1.class`
-- `04-System-Design/Low Level Design/distributed-cache/target/test-classes/TestCache$2.class`
-- `04-System-Design/Low Level Design/distributed-cache/target/test-classes/TestCache.class`
-- `04-System-Design/Low Level Design/distributed-cache/target/test-classes/models/SettableTimer.class`
-- `04-System-Design/Low Level Design/distributed-event-bus/target/classes/EventBus.class`
-- `04-System-Design/Low Level Design/distributed-event-bus/target/classes/exceptions/RetryLimitExceededException.class`
-- `04-System-Design/Low Level Design/distributed-event-bus/target/classes/exceptions/UnsubscribedPollException.class`
-- `04-System-Design/Low Level Design/distributed-event-bus/target/classes/lib/KeyedExecutor.class`
-- `04-System-Design/Low Level Design/distributed-event-bus/target/classes/models/Event.class`
-- `04-System-Design/Low Level Design/distributed-event-bus/target/classes/models/EventType.class`
-- `04-System-Design/Low Level Design/distributed-event-bus/target/classes/models/FailureEvent.class`
-- `04-System-Design/Low Level Design/distributed-event-bus/target/classes/models/Subscription.class`
-- `04-System-Design/Low Level Design/distributed-event-bus/target/classes/util/Timer.class`
-- `04-System-Design/Low Level Design/distributed-event-bus/target/test-classes/EventBusTest.class`
-- `04-System-Design/Low Level Design/distributed-event-bus/target/test-classes/TestTimer.class`
-- `04-System-Design/Low Level Design/rate-limiter/target/classes/TimerWheel.class`
-- `04-System-Design/Low Level Design/rate-limiter/target/classes/exceptions/RateLimitExceededException.class`
-- `04-System-Design/Low Level Design/rate-limiter/target/classes/models/Request.class`
-- `04-System-Design/Low Level Design/rate-limiter/target/classes/utils/Timer.class`
-- `04-System-Design/Low Level Design/rate-limiter/target/test-classes/RateLimitTest.class`
-- `04-System-Design/Low Level Design/rate-limiter/target/test-classes/TestTimer.class`
-- `04-System-Design/Low Level Design/service-orchestrator/target/classes/LoadBalancer.class`
-- `04-System-Design/Low Level Design/service-orchestrator/target/classes/algorithms/ConsistentHashing.class`
-- `04-System-Design/Low Level Design/service-orchestrator/target/classes/algorithms/Router.class`
-- `04-System-Design/Low Level Design/service-orchestrator/target/classes/algorithms/WeightedRoundRobin.class`
-- `04-System-Design/Low Level Design/service-orchestrator/target/classes/models/Node.class`
-- `04-System-Design/Low Level Design/service-orchestrator/target/classes/models/Request.class`
-- `04-System-Design/Low Level Design/service-orchestrator/target/classes/models/Service.class`
-- `04-System-Design/Low Level Design/service-orchestrator/target/test-classes/LBTester.class`
-- `04-System-Design/Low Level Design/service-orchestrator/target/test-classes/RouterTester.class`
 
 </details>
 

@@ -34,7 +34,6 @@ Deep dive into language internals.
 The core of problem-solving.
 - **01-Topics:** Comprehensive study materials organized by pattern (Arrays, Graphs, DP).
 - **02-Practice-Platforms:** Solutions and guides for LeetCode.
-- **03-Resources:** E-books and cheat sheets.
 
 ### 04-System-Design
 Scalable architecture for senior roles.

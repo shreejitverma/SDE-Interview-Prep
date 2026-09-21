@@ -8,13 +8,15 @@ sources: []
 ---
 
 ## Notes
-<!-- Table with .md and .pdf links -->
-| Name                       | .md                                     | .pdf                                     | Handwritten                                 | MCQs                                       | Worksheet | Worksheet with Answers |
-| -------------------------- | --------------------------------------- | ---------------------------------------- | ------------------------------------------- | ------------------------------------------ | --------- | ---------------------- |
-| Operating Systems - Primer | [1](notes/01-os-primer.md)              | [2](notes/01-os-primer.pdf)              | [3](notes/01-os-primer-hw.pdf)              | _           | -         | -                      |
-| Round Robin and Threads    | [1](notes/02-round-robin-threads.md)    | [2](notes/02-round-robin-threads.pdf)    | [3](notes/02-round-robin-threads-hw.pdf)    | _ | -         | -                      |
-| Thread Synchronisation     | [1](notes/03-thread-synchronisation.md) | [2](notes/03-thread-synchronisation.pdf) | [3](notes/03-thread-synchronisation-hw.pdf) | _     | _         | _                      |
-| Memory management          | [1](notes/04-memory-management.md)      | [2](notes/04-memory-management.pdf)      | [3](notes/04-memory-management-hw.pdf)      | _          | _         | _                      |
+<!-- Table with .md links -->
+| Name                       | .md                                     | MCQs                                       | Worksheet | Worksheet with Answers |
+| -------------------------- | --------------------------------------- | ------------------------------------------ | --------- | ---------------------- |
+| Operating Systems - Primer | [1](notes/01-os-primer.md)              | _           | -         | -                      |
+| Round Robin and Threads    | [1](notes/02-round-robin-threads.md)    | _ | -         | -                      |
+| Thread Synchronisation     | [1](notes/03-thread-synchronisation.md) | _     | _         | _                      |
+| Memory management          | [1](notes/04-memory-management.md)      | _          | _         | _                      |
+
+Lecture PDFs and handwritten notes from the original course are not redistributed here; the Markdown notes cover the same material.
 
 ## Problem sets
 1. [**Print in order**](https://leetcode.com/problems/print-in-order/submissions/)
