@@ -3,6 +3,11 @@ tags: [systems/performance, ebpf, tracing, brendan-gregg, profiling, flamegraphs
 aliases: [Brendan Gregg Performance Canon, Gregg Systems Performance, eBPF Superpowers]
 status: evergreen
 created: 2026-09-17
+type: paper
+track: [distinguished, sde]
+level:
+last_reviewed:
+sources: []
 ---
 
 # Brendan Gregg Performance Canon

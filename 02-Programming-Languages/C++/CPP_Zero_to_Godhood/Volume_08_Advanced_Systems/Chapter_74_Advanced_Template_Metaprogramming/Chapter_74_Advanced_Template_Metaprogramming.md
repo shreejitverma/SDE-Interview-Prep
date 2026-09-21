@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 74: Advanced Template Metaprogramming
 
 Template metaprogramming (TMP) turns the C++ type system into a compile-time programming language: the compiler becomes an interpreter that runs your meta-program during translation and emits specialised machine code as its output. The central problem this chapter addresses is *abstraction without cost* — how to express generic, policy-driven, statically-dispatched designs that the optimiser can collapse to the same instructions a hand-written specialisation would produce. We cover the techniques, but more importantly the cost model (compile time, binary size, diagnostic quality) and the failure modes (instantiation blowup, ODR hazards, unreadable errors) that decide whether TMP is the right tool.

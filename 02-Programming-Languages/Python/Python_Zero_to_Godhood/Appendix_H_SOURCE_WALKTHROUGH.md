@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Appendix H: CPython Source Code Walkthrough (Core Objects)
 
 This appendix provides a line-by-line analysis of the most critical C functions in the CPython source code, allowing for an absolute understanding of how the core data structures operate.

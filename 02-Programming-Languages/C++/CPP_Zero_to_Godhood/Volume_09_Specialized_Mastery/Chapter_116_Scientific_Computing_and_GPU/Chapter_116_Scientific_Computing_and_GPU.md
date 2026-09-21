@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 116: Scientific Computing and GPU
 
 C++ is the language beneath nearly all high-performance numerical computing — the linear-algebra libraries, the physics simulations, the deep-learning kernels — because scientific computing is dominated by the two things C++ exposes and manages best: arithmetic throughput and memory layout. This chapter covers the CPU side (template-based linear algebra via Eigen, exploiting expression templates and SIMD) and the GPU side (CUDA's massively-parallel model), unified by one principle: numerical performance is about *keeping the arithmetic units fed* — on the CPU through cache-friendly layout and vectorisation, on the GPU through massive parallelism and memory coalescing.

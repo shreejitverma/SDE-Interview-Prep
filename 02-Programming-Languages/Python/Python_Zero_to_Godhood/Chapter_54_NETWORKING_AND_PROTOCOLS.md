@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 54: High-Level URL and HTTP Handling (`urllib`, `http`)
 
 While low-level sockets (Chapter 38) are for systems plumbing, most application-level networking uses HTTP. Python provides a layered suite of modules to handle URLs and the HTTP protocol state machine.

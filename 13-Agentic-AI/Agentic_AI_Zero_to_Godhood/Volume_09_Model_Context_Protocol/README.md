@@ -1,3 +1,12 @@
+---
+type: moc
+track: [ai-eng]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Volume 09 - Model Context Protocol
 
 MCP as of early 2026: the protocol that turned the NxM integration problem into N+M, read at spec level rather than tutorial level.

@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 09: Error Handling and Robustness
 
 > *Expecting the unexpected without crashing the system.*

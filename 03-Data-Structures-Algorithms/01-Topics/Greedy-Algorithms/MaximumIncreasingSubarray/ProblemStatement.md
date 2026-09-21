@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 ### Maximum Increasing Subarray
 
 You are given array consisting of *n* integers. Your task is to find the maximum length of an increasing subarray of the given array.

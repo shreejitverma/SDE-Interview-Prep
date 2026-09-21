@@ -4,6 +4,11 @@ aliases: [Lab 05, Core Isolation Lab, Jitter Measurement Lab, OS Jitter Lab]
 status: evergreen
 module: 05
 created: 2026-08-22
+type: playbook
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
 # Lab 05 — Production Core Isolation and Jitter Measurement

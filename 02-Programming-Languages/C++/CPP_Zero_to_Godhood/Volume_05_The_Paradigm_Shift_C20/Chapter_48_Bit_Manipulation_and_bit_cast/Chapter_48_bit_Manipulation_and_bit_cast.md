@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 48: Bit Manipulation and `bit_cast`
 
 > *C++20's `<bit>` header standardizes the bit-twiddling that systems programmers previously wrote with compiler intrinsics, `reinterpret_cast`, or undefined-behavior `union` punning. `std::bit_cast` reinterprets an object's bits as another type **safely and at compile time**; the power-of-two and bit-counting functions (`popcount`, `bit_width`, `countl_zero`, `rotl`, …) expose the CPU instructions that hot code depends on; and `std::endian` finally makes byte order a first-class, queryable property. This chapter covers type punning done right, the bit-counting catalogue, and the endianness facility.*

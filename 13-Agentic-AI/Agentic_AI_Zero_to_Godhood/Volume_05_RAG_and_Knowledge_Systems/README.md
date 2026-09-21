@@ -1,3 +1,12 @@
+---
+type: moc
+track: [ai-eng]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Volume 05 - RAG and Knowledge Systems
 
 How to connect language models to knowledge they were not trained on: the theory, the pipeline, the infrastructure, the evaluation discipline, and the agentic evolution beyond the classic pipeline.

@@ -2,6 +2,12 @@
 role: Quant-Dev
 aliases: [Quantitative Developer, Quant Software Engineer]
 tags: [role-hub, quant-dev]
+type: playbook
+track: [sde, quant-dev, quant-research, low-latency, ai-eng, distinguished]
+level:
+status: draft
+last_reviewed:
+sources: []
 ---
 
 # 📊 Quantitative Developer — Preparation Hub

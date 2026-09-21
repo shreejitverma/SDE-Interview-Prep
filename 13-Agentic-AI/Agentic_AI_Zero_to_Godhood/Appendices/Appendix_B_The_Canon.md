@@ -1,3 +1,12 @@
+---
+type: concept
+track: [ai-eng]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Appendix B: The Canon
 
 The reading list for agentic AI engineering: canonical papers and engineering blog posts, organized by topic.

@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 46: The Anatomy of Time (`datetime`, `zoneinfo`)
 
 Managing time in software is deceptively complex due to leap years, leap seconds, and the ever-shifting landscape of political timezones. Python's `datetime` and `zoneinfo` modules provide a robust framework for handling these complexities, backed by highly optimized C implementations.

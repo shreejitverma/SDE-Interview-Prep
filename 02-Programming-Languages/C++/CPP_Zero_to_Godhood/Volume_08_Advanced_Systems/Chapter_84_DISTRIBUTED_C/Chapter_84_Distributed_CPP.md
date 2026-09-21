@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 84: Distributed C++
 
 A distributed system is one where a message between two components can be lost, delayed, duplicated, or reordered, and where any participant can fail independently while the others keep running. Moving C++ from a single process into this world changes the cost model by orders of magnitude — a function call is nanoseconds, a network round trip is tens of microseconds to milliseconds — and introduces failure modes (partial failure, split brain, inconsistency) that have no analogue in single-process code. This chapter covers the three pillars every distributed C++ system needs: efficient serialization, remote procedure calls, and consensus, each with the cost model and correctness hazards that govern its use.

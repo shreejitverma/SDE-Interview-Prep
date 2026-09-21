@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 ## Exercise: Decorators
 
 1. Create a decorator function to check that the argument passed to the function factorial is a non-negative integer:

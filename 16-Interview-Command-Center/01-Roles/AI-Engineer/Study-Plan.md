@@ -1,3 +1,12 @@
+---
+type: playbook
+track: [sde, quant-dev, quant-research, low-latency, ai-eng, distinguished]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # 📋 AI Engineer Study Plan — 10-Week Sprint
 
 ## Week 1-2: ML Fundamentals Refresh

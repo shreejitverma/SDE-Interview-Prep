@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 28: Standard Library Additions
 
 > *Beyond the headline vocabulary types and parallel algorithms, C++17 scattered a set of smaller but high-value utilities across the standard library: a real byte type, new clamping and number-theory algorithms, an enormous catalogue of special mathematical functions, the blazingly fast `<charconv>` conversions, free-function container accessors, and the subtle correctness tools `launder`, `as_const`, and `uncaught_exceptions`. Individually modest, together they remove a long list of "why isn't this in the standard?" gaps.*

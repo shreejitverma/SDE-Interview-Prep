@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 22: New Iterator and Algorithm Facilities
 
 > *C++11 made generic, range-based iteration the default style; C++14 patched the rough edges that style exposed. The non-member `c`/`r` range accessors complete the free-function family, `make_reverse_iterator` removes a type-spelling chore, value-initialized forward iterators gain defined comparison so they can serve as sentinels, and the two-range `<algorithm>` overloads close a long-standing buffer-overrun hole.*

@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 48: The DEFLATE Algorithm and Zlib (`zlib`, `gzip`)
 
 Data compression is a cornerstone of modern systems engineering, reducing storage costs and network latency. Python's `zlib` and `gzip` modules provide the foundational tools for the DEFLATE algorithm.

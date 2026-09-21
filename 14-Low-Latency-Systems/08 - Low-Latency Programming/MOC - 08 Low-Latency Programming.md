@@ -4,6 +4,11 @@ aliases: [Low-Latency C++ MOC, Lock-Free C++ MOC]
 status: evergreen
 module: 08
 created: 2026-08-22
+type: moc
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
 # MOC — 08 Low-Latency Programming (C++/Rust)

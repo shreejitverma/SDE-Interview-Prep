@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 20: Standard Library Enhancements
 
 > *The C++11 library shipped `make_shared` but not `make_unique`, a `shared_mutex` proposal that didn't make it, and associative containers that forced a temporary on every heterogeneous lookup. C++14 closed these gaps: `make_unique` completes the factory pair, `shared_timed_mutex` brings reader-writer locking, transparent functors enable allocation-free lookup, and a wave of small utilities (`exchange`, `quoted`, `get<T>`) remove daily friction.*

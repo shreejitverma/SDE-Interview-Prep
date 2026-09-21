@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 82: Writing a Garbage Collector
 
 C++ deliberately has no garbage collector — it gives you RAII and deterministic destruction instead — yet building one teaches exactly why that choice was made, and equips you to implement GC where it genuinely belongs (a scripting engine embedded in a C++ host, a managed runtime, a graph with cycles RAII cannot break). This chapter implements mark-and-sweep collection, surveys reference counting and tri-colour concurrent collection, and quantifies the cost model — pause times, throughput, memory overhead — that makes GC the wrong default for the latency-critical systems the rest of this volume targets.

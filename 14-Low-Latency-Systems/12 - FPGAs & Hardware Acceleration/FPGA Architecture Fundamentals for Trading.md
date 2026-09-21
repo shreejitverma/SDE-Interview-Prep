@@ -4,6 +4,11 @@ aliases: [FPGA Architecture, LUTs, Flip-Flops, BRAM, UltraRAM, DSP48E2, GTY SerD
 status: evergreen
 module: 12
 created: 2026-08-22
+type: concept
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
 > [!summary]

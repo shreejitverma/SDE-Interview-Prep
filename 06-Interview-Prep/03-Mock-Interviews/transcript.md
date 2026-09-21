@@ -1,3 +1,12 @@
+---
+type: playbook
+track: [sde, quant-dev, quant-research, low-latency, ai-eng]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Mock Interview: System Design (Rate Limiter)
 
 **Interviewer (I):** "Hello! Today I'd like you to design a Rate Limiter for our API Gateway."

@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 21: Variadic Templates and Fold Expressions
 
 > *Templates that accept an infinite number of arguments.*

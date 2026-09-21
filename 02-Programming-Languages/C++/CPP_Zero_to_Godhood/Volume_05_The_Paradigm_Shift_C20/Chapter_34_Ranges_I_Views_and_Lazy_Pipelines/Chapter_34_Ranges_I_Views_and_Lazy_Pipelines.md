@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 34: Ranges I — Views, Range Adaptors, and Lazy Pipelines
 
 > *The ranges library is the second pillar and the one that most changes how you express data transformations. It replaces the iterator-pair calling convention of the classic `<algorithm>` with composable, lazy pipelines built from the pipe operator. This chapter covers the range abstraction, what a view is and why it is cheap, the standard adaptors, and the lazy-evaluation model that makes a chain of `filter | transform | take` compile down to a single pass with no intermediate containers.*

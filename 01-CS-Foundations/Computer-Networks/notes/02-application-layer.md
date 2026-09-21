@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Application layer and HTTP
 ## Agenda
 * Application layer architectures

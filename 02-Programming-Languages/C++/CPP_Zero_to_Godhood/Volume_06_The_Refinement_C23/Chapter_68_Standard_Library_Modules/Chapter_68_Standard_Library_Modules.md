@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 68: Standard Library Modules — `import std;`
 
 > C++20 gave the language *modules* — a real compilation-unit boundary to replace textual `#include`. But it did not modularize the standard library itself, so the headline benefit (importing the whole standard library as a precompiled unit instead of re-parsing tens of thousands of lines per translation unit) was unavailable. C++23 closes that gap with two named modules: **`import std;`** brings in the entire C++ standard library, and **`import std.compat;`** adds the C library names in the global namespace as well. This is the single line that lets a C++23 program replace its forest of `#include`s with one import — and, where the toolchain cooperates, compile dramatically faster.

@@ -1,3 +1,12 @@
+---
+type: moc
+track: [sde, distinguished]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 ## Memento
 
 Memento without violating encapsulation, captures and externalizes an object's internal

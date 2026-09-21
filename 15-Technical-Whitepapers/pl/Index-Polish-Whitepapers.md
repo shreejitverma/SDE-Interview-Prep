@@ -3,6 +3,11 @@ tags: [security/offensive, security/defensive, reverse-engineering, malware, roo
 aliases: [Polish Whitepapers Index, Polskie Whitepapery Techniczne, Polish Papers Catalog]
 status: evergreen
 created: 2026-09-17
+type: paper
+track: [distinguished, sde]
+level:
+last_reviewed:
+sources: []
 ---
 
 # Polish Directory (pl) — Polskie Whitepapery Techniczne

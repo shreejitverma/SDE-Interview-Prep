@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 112: Networking from Scratch
 
 Every C++ networking library — Asio, gRPC, Seastar — is ultimately a wrapper over the operating system's **Berkeley sockets** API, and you cannot reason about a network library's performance or debug its failures without understanding the syscalls underneath. This chapter builds networking from the sockets API up: the blocking server, the readiness model (`epoll`) that lets one thread serve tens of thousands of connections, and the path from there to the kernel-bypass techniques of Volume 8. The throughline is the cost model: networking performance is dominated by syscall crossings and copies, exactly as Chapter 98–99 established.

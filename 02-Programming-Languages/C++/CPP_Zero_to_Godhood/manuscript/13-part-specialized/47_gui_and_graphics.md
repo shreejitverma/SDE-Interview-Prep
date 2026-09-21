@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 47: GUI and Graphics
 
 > *Pixels are just arrays of integers moving very, very fast.*

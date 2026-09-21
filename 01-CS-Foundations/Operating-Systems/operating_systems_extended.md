@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Complete Operating Systems Reference - Comprehensive Guide
 
 ## Summary

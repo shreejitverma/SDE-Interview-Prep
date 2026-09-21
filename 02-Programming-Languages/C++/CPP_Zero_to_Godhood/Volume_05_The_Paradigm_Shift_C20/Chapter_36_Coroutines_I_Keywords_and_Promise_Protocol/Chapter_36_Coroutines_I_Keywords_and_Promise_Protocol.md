@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 36: Coroutines I — co_await, co_yield, co_return, and the Promise Protocol
 
 > *Coroutines are the third pillar and the most unusual: C++20 ships the low-level language machinery — three keywords and a customization protocol — but almost none of the high-level types you would actually use (`std::generator` and a `task` type are C++23 and beyond). This chapter explains what a coroutine is, the three keywords that turn a function into one, the compiler-generated state machine and coroutine frame, and the promise-type protocol you must implement to make a coroutine return something useful.*

@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 39: Three-Way Comparison — The Spaceship Operator
 
 > *C++20's three-way comparison operator `<=>` — the "spaceship" — replaces the six hand-written comparison operators most types needed with a single defaulted declaration, and gives the language a principled vocabulary for the three kinds of ordering a type can have. This chapter covers the spaceship operator, the ordering category types it returns, defaulted versus custom comparisons, the operator-rewriting rules that make `a < b` work from a lone `<=>`, and the performance subtleties that matter when you write comparisons by hand.*

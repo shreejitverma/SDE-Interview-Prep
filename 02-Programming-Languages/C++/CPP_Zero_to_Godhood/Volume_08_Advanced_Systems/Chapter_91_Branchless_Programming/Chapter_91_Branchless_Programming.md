@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 91: Branchless Programming and Predication
 
 A branch the CPU predicts correctly is nearly free; a branch it predicts wrong costs a ~15–20 cycle pipeline flush (Chapter 86). **Branchless programming** replaces an unpredictable branch with straight-line arithmetic or a conditional-move instruction, trading a *possible* misprediction for the *guaranteed* small cost of computing both outcomes. The technique is powerful and frequently misapplied: on a predictable branch it is a pessimisation. This chapter develops predication, the bit-trick toolkit, and — most importantly — the cost model that decides when removing a branch actually helps.

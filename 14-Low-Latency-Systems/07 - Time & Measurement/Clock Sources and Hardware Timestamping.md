@@ -4,6 +4,11 @@ aliases: [Hardware Timestamping, PHY Timestamping, MAC Timestamping, SO_TIMESTAM
 status: evergreen
 module: 07
 created: 2026-08-22
+type: concept
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
 > [!summary]

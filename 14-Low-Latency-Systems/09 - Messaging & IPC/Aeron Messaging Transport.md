@@ -4,6 +4,11 @@ aliases: [Aeron, Aeron Transport, Media Driver, Aeron IPC, Aeron Cluster, Reliab
 status: evergreen
 module: 09
 created: 2026-08-22
+type: concept
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
 > [!summary]

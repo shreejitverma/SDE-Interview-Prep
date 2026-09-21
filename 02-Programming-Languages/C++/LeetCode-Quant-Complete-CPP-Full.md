@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # LeetCode for Quant Trading & HFT Firms - C++ Complete Masterclass
 
 **Objective:** Master C++ coding skills with a focus on quantitative trading and high-frequency trading (HFT) interview problems. This comprehensive guide covers 300+ problems categorized by patterns and difficulty levels, tailored for top quant firms.

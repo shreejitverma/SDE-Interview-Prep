@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 24: C Extensions and Interoperability Layers
 
 True Python mastery requires the ability to bridge the gap between high-level ease-of-use and low-level C performance. This chapter deconstructs the C-API and its modern abstraction layers.

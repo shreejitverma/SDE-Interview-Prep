@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # OWASP Top 10 (Security Checklist)
 
 Every SDE must know these.

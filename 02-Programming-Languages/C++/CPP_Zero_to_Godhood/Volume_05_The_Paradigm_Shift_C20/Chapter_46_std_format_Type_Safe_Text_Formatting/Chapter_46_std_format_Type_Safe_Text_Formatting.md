@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 46: std::format — Type-Safe Text Formatting
 
 > *`std::format` brings Python-style, type-safe, compile-time-checked string formatting to C++, ending the long-standing choice between `printf` (fast, terse, but type-unsafe and crash-prone) and iostreams (type-safe but verbose, stateful, and slow). A format string with `{}` placeholders is checked against its arguments at compile time, the arguments carry their own types, and user-defined types can opt in by specializing one trait. This chapter covers the syntax, the format specification mini-language, custom formatters, and the performance and version landscape.*

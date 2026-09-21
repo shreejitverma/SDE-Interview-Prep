@@ -4,6 +4,11 @@ aliases: [LMAX Disruptor Architecture, Martin Thompson, Mechanical Sympathy Ring
 status: evergreen
 module: 14
 created: 2026-09-17
+type: paper
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
 # Source Summary — The LMAX Disruptor: High Performance Alternative to Bounded Queues

@@ -3,6 +3,11 @@ tags: [market-microstructure, order-book, hft, kyle-lambda, stoikov, micro-price
 aliases: [Market Microstructure and Order Dynamics, Kyle Lambda Paper, Micro-Price Stoikov, OFI Rama Cont, Avellaneda-Stoikov]
 status: evergreen
 created: 2026-09-17
+type: paper
+track: [distinguished, sde]
+level:
+last_reviewed:
+sources: []
 ---
 
 # Market Microstructure & Order Dynamics

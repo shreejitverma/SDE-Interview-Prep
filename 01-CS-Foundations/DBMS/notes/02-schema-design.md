@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Schema Design: A case study
 
 - [Schema Design: A case study](#schema-design-a-case-study)

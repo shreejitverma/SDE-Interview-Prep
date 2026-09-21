@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 76: The C++ Memory Model in Depth
 
 The C++ memory model is the contract that makes multithreaded code *meaningful*: it defines, for a program with concurrent access to shared memory, which writes a read is permitted to observe. Without it, the compiler, the CPU, and the cache coherence protocol are each free to reorder memory operations for performance, and "the value of `x`" stops being a well-defined question. This chapter develops the model from the ground up — the abstract machine, the happens-before relation, the six memory orderings and what each actually costs on real hardware — because every lock-free structure, every atomic flag, and every correctness argument in the chapters that follow rests on it.

@@ -3,6 +3,11 @@ tags: [computer-science, seminal-papers, distributed-systems, databases, network
 aliases: [Seminal Computer Science Papers MOC, Computer Science Canon, 20 Essential CS Papers]
 status: evergreen
 created: 2026-09-17
+type: moc
+track: [distinguished, sde]
+level:
+last_reviewed:
+sources: []
 ---
 
 # Seminal Computer Science Papers Canon

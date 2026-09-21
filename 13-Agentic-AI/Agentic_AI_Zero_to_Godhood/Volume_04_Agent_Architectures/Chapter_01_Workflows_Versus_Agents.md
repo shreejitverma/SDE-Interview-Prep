@@ -1,3 +1,12 @@
+---
+type: concept
+track: [ai-eng]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 01 - Workflows Versus Agents
 
 ## What you will master

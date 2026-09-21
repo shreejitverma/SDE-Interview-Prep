@@ -1,3 +1,12 @@
+---
+type: concept
+track: [ai-eng]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 03 - OpenAI Agents SDK
 
 Knowledge in this chapter is current as of early 2026.

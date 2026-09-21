@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 120: Database Internals and LSM-Trees
 
 A storage engine is one of the most demanding things you can build in C++: it must be durable (survive crashes), concurrent (serve many readers and writers), and fast against storage that is orders of magnitude slower than RAM. The central insight of modern write-optimised databases — RocksDB, LevelDB, Cassandra — is to turn slow *random* writes into fast *sequential* ones, via the **Log-Structured Merge-tree (LSM-tree)**. This chapter builds the LSM-tree from that insight: the in-memory and on-disk structures, the compaction that maintains them, and the Bloom filters and memory-mapping that make reads fast.

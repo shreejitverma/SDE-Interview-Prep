@@ -4,6 +4,11 @@ aliases: [Intel SDM, Intel Manual, IA-32 Architecture Manual, x86-64 Hardware Ma
 status: evergreen
 module: 14
 created: 2026-08-22
+type: paper
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
 # Source Summary — Intel 64 and IA-32 Architectures Software Developer's Manual

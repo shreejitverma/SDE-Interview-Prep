@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 37: Coroutines II — Awaitables, Tasks, coroutine_handle, and Symmetric Transfer
 
 > *Chapter 36 built the generator: the `co_yield` side of coroutines, driven synchronously by a consumer pulling values. This chapter completes the picture with the `co_await` side: the awaitable protocol that `co_await` actually invokes, how to build a `Task<T>` that represents an asynchronous result, how coroutines resume one another without growing the stack via symmetric transfer, and the lifetime and ownership rules that keep `coroutine_handle` from becoming a use-after-free machine.*

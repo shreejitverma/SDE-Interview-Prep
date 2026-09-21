@@ -4,6 +4,11 @@ aliases: [Coordinated Omission, Gil Tene Latency, HDR Histogram, Service Time vs
 status: evergreen
 module: 07
 created: 2026-08-22
+type: concept
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
 > [!summary]

@@ -1,3 +1,12 @@
+---
+type: moc
+track: [sde, distinguished]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 ## C++ Design Patterns
 
 C++ Implementation for 23 Design Patterns

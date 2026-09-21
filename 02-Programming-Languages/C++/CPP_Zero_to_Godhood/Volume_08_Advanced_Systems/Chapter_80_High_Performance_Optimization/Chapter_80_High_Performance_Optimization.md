@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 80: High-Performance Optimization
 
 Optimization is the discipline of spending effort where the machine actually spends time — which is almost never where intuition says. This chapter is the synthesis hub of the volume: it surveys the full optimization toolbox (cache behaviour, branch prediction, SIMD, LTO/PGO, and the library-level optimizations of copy elision, small-object optimization, and the empty base) and, crucially, the *methodology* — measure first, optimize the hot path, and respect the cost model — that prevents the classic failure of making correct code slower and uglier. Several topics here open into dedicated chapters (87 caches, 91 branchless, 92 SIMD, 102 LTO/PGO, 103 benchmarking); this chapter ties them together and covers the optimizations that have no other home.

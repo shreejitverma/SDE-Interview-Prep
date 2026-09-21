@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 103: Microbenchmarking and Tail-Latency Measurement
 
 A benchmark is an experiment, and like any experiment it can be designed so badly that its result is worse than no data — a confidently wrong number that sends a team optimising the wrong thing. The optimizer deletes work you meant to time, the mean hides the tail that actually matters, and the measurement loop itself perturbs what it measures. This chapter is the rigorous practice of microbenchmarking and latency measurement: defeating the optimizer's elision, measuring steady state, and — most importantly for the systems this volume targets — characterising the *full latency distribution* and its tail rather than a meaningless average.

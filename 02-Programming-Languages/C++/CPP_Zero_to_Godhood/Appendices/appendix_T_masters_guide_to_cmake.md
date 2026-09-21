@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Appendix T: THE MASTER'S GUIDE TO CMAKE
 
 C++ does not have a standard package manager or build system. CMake won the build system war. If you do not understand CMake, you do not understand C++.

@@ -1,3 +1,12 @@
+---
+type: concept
+track: [ai-eng]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 03 - The Agent Loop From Scratch
 
 ## What you will master

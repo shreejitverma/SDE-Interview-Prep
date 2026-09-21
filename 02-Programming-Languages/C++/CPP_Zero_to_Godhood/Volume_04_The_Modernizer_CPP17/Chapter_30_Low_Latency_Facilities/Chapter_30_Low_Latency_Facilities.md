@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 30: Low-Latency Facilities
 
 > *Three C++17 features matter disproportionately to high-frequency trading, kernel, and lock-free systems code, yet sit far enough apart in the standard that they are easy to overlook: the `hardware_*_interference_size` constants that let you align away false sharing portably, the language-level support for over-aligned (extended-alignment) dynamic allocation so `new` finally respects `alignas`, and the `shared_ptr` refinements — array support, `weak_type`, and `reinterpret_pointer_cast` — that close gaps in the smart-pointer toolkit. This chapter gathers them into one focused treatment of the C++17 facilities you reach for when cache lines and alignment are first-class concerns.*

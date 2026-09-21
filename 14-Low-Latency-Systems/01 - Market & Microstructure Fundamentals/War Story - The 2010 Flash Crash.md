@@ -4,6 +4,11 @@ aliases: [The 2010 Flash Crash, May 6 2010 Crash, E-mini Liquidity Evaporation, 
 status: evergreen
 module: 01
 created: 2026-08-22
+type: case-study
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
 # War Story — The May 6, 2010 Flash Crash: Cross-Market Cascades & Liquidity Evaporation

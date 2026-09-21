@@ -1,3 +1,12 @@
+---
+type: moc
+track: [sde, quant-dev]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Find Last Digit Of a^b for Large Numbers
 
 - You are given two integer numbers , the base a (number of digits d, such that 1 <= d <= 1000) and the index b (0 <= b <= 922*10^15). You have to find the last digit of a^b.

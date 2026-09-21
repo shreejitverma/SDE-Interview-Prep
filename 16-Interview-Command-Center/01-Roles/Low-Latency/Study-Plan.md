@@ -1,3 +1,12 @@
+---
+type: playbook
+track: [sde, quant-dev, quant-research, low-latency, ai-eng, distinguished]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # 📋 Low Latency Study Plan — 12-Week Deep Dive
 
 > This aligns with your existing [[14-Low-Latency-Systems/Roadmap - 12-Week Production Calibration|12-Week Production Calibration Roadmap]].

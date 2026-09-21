@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 100: Kernel-Bypass Networking — DPDK, User-Space Stacks, and RDMA
 
 At the highest packet rates and lowest latencies, even an optimised kernel network stack is too slow: every packet traverses interrupts, the socket layer, protocol processing, copies, and a syscall, costing microseconds the application cannot afford. **Kernel-bypass** networking removes the kernel from the data path entirely — the NIC DMAs packets directly into user-space memory, and the application polls for them. This chapter covers the three pillars (DPDK, user-space stacks, RDMA), the radical cost model that makes them worth their enormous complexity, and the clear-eyed view of when *not* to use them.

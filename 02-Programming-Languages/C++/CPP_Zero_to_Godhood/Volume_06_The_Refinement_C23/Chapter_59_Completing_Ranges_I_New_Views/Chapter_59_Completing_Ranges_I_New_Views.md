@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 59: Completing Ranges I — The New Views
 
 > C++20's `<ranges>` shipped with a deliberately minimal set of views because the library was enormous and time was short. The everyday adaptors that programmers reach for constantly — pairing a range with its indices, walking two ranges in lockstep, sliding a window across a sequence, breaking a range into fixed-size chunks — were all cut. C++23 restores them. This chapter covers the new *views*: lazy, composable, non-owning range adaptors that compute their elements on demand. Together with the new algorithms of Chapter 60, they make the C++ ranges library finally feel complete.

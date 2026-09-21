@@ -3,6 +3,11 @@ tags: [systems/performance, ebpf, tracing, linux/kernel, type/moc]
 aliases: [Systems Performance and Tracing MOC, Linux Performance Canon]
 status: evergreen
 created: 2026-09-17
+type: moc
+track: [distinguished, sde]
+level:
+last_reviewed:
+sources: []
 ---
 
 # Systems Performance, eBPF & Tracing

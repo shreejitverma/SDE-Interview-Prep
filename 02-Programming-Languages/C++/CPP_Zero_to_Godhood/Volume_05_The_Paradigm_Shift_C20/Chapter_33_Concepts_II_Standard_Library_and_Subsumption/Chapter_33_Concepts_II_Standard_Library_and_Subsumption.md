@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 33: Concepts II — The Standard Concepts Library and Constraint Subsumption
 
 > *Chapter 32 covered how to write and apply constraints. This chapter covers the two things that make concepts a system rather than a syntax: the rich library of predefined concepts in `<concepts>` (and across `<iterator>`, `<ranges>`), and the subsumption rules that let the compiler order overloads by specificity. Together they are why you rarely need to write a concept from scratch and why constrained overloading "just picks the right one."*

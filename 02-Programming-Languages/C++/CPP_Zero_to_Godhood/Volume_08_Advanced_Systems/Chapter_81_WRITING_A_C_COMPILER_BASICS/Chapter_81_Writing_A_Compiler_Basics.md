@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 81: Writing a Compiler — The Basics
 
 Nothing demystifies C++ like building a compiler for a slice of it. The translation pipeline — lexing, parsing, semantic analysis, code generation — is exactly what runs every time you build, and understanding it changes how you read error messages, why undefined behaviour is exploitable, and what the optimizer can and cannot prove. This chapter builds a toy compiler front-end for a small expression/statement language, then connects each stage to the real cost model and to the language-lawyer concepts (ODR, type systems, UB) that the rest of the volume depends on.

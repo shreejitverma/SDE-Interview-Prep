@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 83: The Standard Library From Scratch
 
 The standard library looks like magic until you implement it — then it becomes a set of precise engineering decisions about memory, lifetime, exception safety, and atomic synchronisation, every one of which has a cost you can name. This chapter reconstructs the two most instructive components, `vector` and `shared_ptr`, from raw memory up. The goal is not to replace the standard library (it is faster and more correct than yours will be) but to understand *what every line of it is buying you*, so you can read its performance, predict its allocations, and know when its guarantees cost more than your hot path can afford.

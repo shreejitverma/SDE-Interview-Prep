@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 105: Sanitizers, Fuzzing, and Testing Concurrent Code
 
 Undefined behaviour and data races are bugs that *pass tests* — they corrupt silently, manifest only under specific inputs or interleavings, and may not surface until a compiler upgrade or a production load spike. Ordinary unit tests cannot find them, because the bug is the *absence* of a crash that should have happened. This chapter covers the tools built specifically to expose these latent defects: the sanitizers (ASan, TSan, UBSan, MSan) that instrument the program to catch UB and races at the moment they occur, fuzzing that generates the inputs to trigger them, and the special, genuinely-hard discipline of testing concurrent code.

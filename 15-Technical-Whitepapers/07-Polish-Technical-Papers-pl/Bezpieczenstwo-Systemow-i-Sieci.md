@@ -3,6 +3,11 @@ tags: [security/defensive, selinux, rhel6, dos, pki, postgresql, linux/administr
 aliases: [Bezpieczeństwo Systemów i Sieci, SELinux Obowiązkowa Kontrola Dostępu, RHEL6 Bezpieczeństwo, Administracja PostgreSQL]
 status: evergreen
 created: 2026-09-17
+type: paper
+track: [distinguished, sde]
+level:
+last_reviewed:
+sources: []
 ---
 
 # Bezpieczeństwo Systemów, Sieci i Administracja

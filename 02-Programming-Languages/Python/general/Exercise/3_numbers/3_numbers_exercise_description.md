@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 ## Exercise: Numbers in python
 1. You have a football field that is 92 meter long and 48.8 meter wide. Find out total
 area using python and print it.

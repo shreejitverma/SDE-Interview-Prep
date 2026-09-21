@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 99: High-Performance I/O — io_uring, mmap, and Zero-Copy
 
 I/O performance is dominated by two costs that have nothing to do with the device: the **syscall crossings** to initiate each operation (Chapter 98) and the **memory copies** between kernel and user buffers. This chapter develops the I/O models that attack both — the evolution from blocking to readiness (`epoll`) to completion (`io_uring`), memory-mapped I/O, and the zero-copy techniques (`sendfile`, `splice`, `MSG_ZEROCOPY`) that move data without copying it through user space. The throughline is the same as the previous chapter: amortise the crossings, and eliminate the copies.

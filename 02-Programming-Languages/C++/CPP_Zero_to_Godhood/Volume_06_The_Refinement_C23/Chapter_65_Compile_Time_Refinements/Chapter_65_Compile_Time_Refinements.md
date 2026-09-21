@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 65: Compile-Time Refinements — `if consteval` and Expanded `constexpr`
 
 > Each C++ release since C++11 has pushed more computation into the compiler, and C++23 continues the march on two fronts. First, **`if consteval`** gives a clean, safe way for a function to behave differently when it is being evaluated at compile time versus run time — fixing the subtle footguns of the old `std::is_constant_evaluated()` idiom. Second, C++23 **relaxes the rules of `constexpr`** substantially: more of the language is legal inside `constexpr` functions (non-literal variables, `goto`, labels, `static`/`thread_local` locals), and far more of the standard library is now usable at compile time, including `constexpr` `std::unique_ptr`, much of `<cmath>`, and `std::bitset`. Together they widen the range of code you can run before `main` even starts.

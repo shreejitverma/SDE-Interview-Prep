@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 45: Embedded and Real-Time Systems
 
 > *Where every microsecond counts, and a crash can cost millions.*

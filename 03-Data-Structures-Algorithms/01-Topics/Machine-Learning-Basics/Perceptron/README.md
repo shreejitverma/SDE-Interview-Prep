@@ -1,3 +1,12 @@
+---
+type: moc
+track: [sde, quant-dev]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 A perceptron is an algorithm that acts as a simple model of our brain to recognise and discriminate against data to obtain a single identifying function for a set of data.
 
 In other words, it is a function that takes in a set of sample data with valid output values (eg: various features of houses and the price the house sold for) and then outputs a function that returns an accurate prediction for other data (eg: estimate a houses cost based on its features.)

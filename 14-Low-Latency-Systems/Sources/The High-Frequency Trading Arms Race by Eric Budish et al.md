@@ -4,6 +4,11 @@ aliases: [The High-Frequency Trading Arms Race, Eric Budish, Frequent Batch Auct
 status: evergreen
 module: 14
 created: 2026-09-17
+type: paper
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
 # Source Summary — The High-Frequency Trading Arms Race: Frequent Batch Auctions as a Market Design Response

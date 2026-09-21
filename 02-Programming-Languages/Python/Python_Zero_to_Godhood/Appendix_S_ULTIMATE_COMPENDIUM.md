@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Appendix S: The Ultimate Standard Library Compendium (A-Z)
 
 This appendix provides a comprehensive technical overview of every module in the Python 3.13 Standard Library, serving as the final "Sovereign Reference" for the language.

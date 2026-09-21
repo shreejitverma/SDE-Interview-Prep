@@ -2,6 +2,12 @@
 role: Low-Latency
 aliases: [Low Latency Systems Engineer, HFT Developer, Infrastructure Engineer]
 tags: [role-hub, low-latency]
+type: playbook
+track: [sde, quant-dev, quant-research, low-latency, ai-eng, distinguished]
+level:
+status: draft
+last_reviewed:
+sources: []
 ---
 
 # ⚡ Low Latency Systems Engineer — Preparation Hub

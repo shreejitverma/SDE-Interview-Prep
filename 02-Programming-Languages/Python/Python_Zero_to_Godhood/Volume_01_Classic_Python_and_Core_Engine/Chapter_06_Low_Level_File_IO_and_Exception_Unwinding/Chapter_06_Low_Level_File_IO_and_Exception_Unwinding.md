@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 6: Low-Level File I/O and Exception Unwinding (Python 2.x → modern)
 
 This chapter closes Volume I with the two runtime subsystems an engineer touches on every

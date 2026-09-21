@@ -1,3 +1,12 @@
+---
+type: moc
+track: [ai-eng]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Volume 06 - Memory and Context Engineering
 
 This volume treats the context window as a scarce, rotting, billable resource and builds the full engineering stack around it: what goes in the window, what gets evicted, what lives outside it, and what it all costs.

@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 ## Exercise: Inheritance
 
 1. create inheritance using animal Dog relation.

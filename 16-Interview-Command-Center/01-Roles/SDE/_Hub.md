@@ -2,6 +2,12 @@
 role: SDE
 aliases: [Software Engineer, SWE]
 tags: [role-hub, sde]
+type: playbook
+track: [sde, quant-dev, quant-research, low-latency, ai-eng, distinguished]
+level:
+status: draft
+last_reviewed:
+sources: []
 ---
 
 # 💻 Software Engineer — Preparation Hub

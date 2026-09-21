@@ -37,6 +37,12 @@ PAPER_EXTS = {".pdf", ".tex"}
 README_NAMES = {"readme.md", "_readme.md", "index.md", "_index.md"}
 ENTRY_PREFIXES = ("00 home", "00-dashboard", "moc - ")
 ARCHIVED_RE = re.compile(r"(^|/)(_archive|_consolidated[^/]*)/")
+NON_KNOWLEDGE_RE = re.compile(r"^(tools|\.github)/|/_Templates/|(^|/)SUMMARY\.md$|^[^/]+$")
+
+
+def is_knowledge_note(path: str) -> bool:
+    """Notes that carry the vault frontmatter schema: not archived, templates, generated, or repo metadata."""
+    return path.endswith(".md") and not ARCHIVED_RE.search(path) and not NON_KNOWLEDGE_RE.search(path)
 
 FENCE_RE = re.compile(r"^(\s*)(`{3,}|~{3,})")
 INLINE_CODE_RE = re.compile(r"`[^`\n]*`")
@@ -298,7 +304,7 @@ def main() -> int:
                 fixable.append((f, t))
 
     # 3. Frontmatter.
-    no_fm = [f for f in md_files if not has_frontmatter(texts[f])]
+    no_fm = [f for f in md_files if is_knowledge_note(f) and not has_frontmatter(texts[f])]
 
     # 4. Folders without a README-like entry note (folders that hold notes, depth <= 3).
     note_dirs: set[str] = set()
@@ -429,7 +435,7 @@ def write_report(path, s, counts, top_last, broken, orphans, no_fm, no_readme, e
             ["Wikilink aliases that split a table cell", s["table_breaking_links"]],
             ["Broken wikilinks fixable by unique basename", s["broken_fixable_by_basename"]],
             ["Orphan notes (no inbound links; archived drafts excluded)", s["orphans"]],
-            ["Archived drafts (`_archive/`, `_consolidated*/`)", s["archived_notes"]], ["Notes without frontmatter", s["no_frontmatter"]],
+            ["Archived drafts (`_archive/`, `_consolidated*/`)", s["archived_notes"]], ["Knowledge notes without frontmatter", s["no_frontmatter"]],
             ["Note folders without README (depth <= 3)", s["folders_without_readme"]],
             ["Notes with emojis / total emojis", f"{s['emoji_files']} / {s['emoji_count']}"],
             ["Notes with em dashes / total em dashes", f"{s['emdash_files']} / {s['emdash_count']}"],

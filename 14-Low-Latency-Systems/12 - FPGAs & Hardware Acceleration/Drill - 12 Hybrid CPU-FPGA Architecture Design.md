@@ -4,6 +4,11 @@ aliases: [Drill 12, Hybrid Architecture Drill, System Design Drill, FPGA Partiti
 status: evergreen
 module: 12
 created: 2026-08-22
+type: playbook
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
 # Drill 12 — Hybrid CPU-FPGA Architecture Design & Nanosecond Budgeting

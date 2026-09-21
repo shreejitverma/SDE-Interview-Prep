@@ -1,3 +1,12 @@
+---
+type: moc
+track: [sde]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # fundamentals
 A collection of tutorials on Computer Science fundamentals
 

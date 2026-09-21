@@ -4,6 +4,11 @@ aliases: [PCIe DMA, SmartNIC DMA, XDMA, QDMA, MMIO Latency, Intel DDIO, TLP Proc
 status: evergreen
 module: 12
 created: 2026-08-22
+type: concept
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
 > [!summary]

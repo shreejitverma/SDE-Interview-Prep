@@ -1,3 +1,12 @@
+---
+type: moc
+track: [sde, distinguished]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Design patterns in Java
 Implementation of Gang of Four design patterns.
 

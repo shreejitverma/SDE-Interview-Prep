@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 110: Build Systems, Dependency Management, and Tooling
 
 C++ has no built-in package manager and no canonical build system, so for decades "how do I build and depend on other code" was the language's most painful problem — and getting it wrong costs hours of every engineer's day in slow, non-reproducible, or broken builds. This chapter covers the modern answer: target-based CMake, reproducible builds with Bazel, dependency management with vcpkg and Conan, and the tooling (sanitizers, static analysis, compilation databases) that turns a C++ codebase from a fragile pile of source files into an engineered system.

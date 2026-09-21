@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 71: Concurrency, Execution, and Lock-Free Constructs
 
 For over a decade, the C++ concurrency story has been a tale of two extremes: either you use high-level, heavy abstractions like `std::async` and `std::thread`, which incur massive OS overhead and lack composability, or you drop down to the hyper-complex world of `std::atomic` and memory orders, fighting cache-coherence protocols and ABA problems manually.

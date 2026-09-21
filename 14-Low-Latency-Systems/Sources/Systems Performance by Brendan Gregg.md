@@ -4,6 +4,11 @@ aliases: [Systems Performance, Brendan Gregg, Systems Performance Engineering, U
 status: evergreen
 module: 14
 created: 2026-08-22
+type: paper
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
 # Source Summary — Systems Performance: Enterprise and the Cloud (2nd Edition)

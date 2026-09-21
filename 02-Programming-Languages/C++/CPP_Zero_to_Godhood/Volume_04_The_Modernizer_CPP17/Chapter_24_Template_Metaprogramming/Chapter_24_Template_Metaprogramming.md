@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 24: Template Metaprogramming
 
 > *If C++14 made metaprogramming legible, C++17 makes it concise and, in places, unnecessary. Fold expressions collapse hand-rolled variadic recursion to a single line; class template argument deduction lets you drop the angle brackets the compiler can infer; `auto` non-type parameters free templates from spelling the type of a value parameter; and a cluster of new `<functional>`/`<type_traits>` utilities — `invoke`, `apply`, `make_from_tuple`, `is_invocable`, `not_fn`, `void_t`, and the logical trait combinators — turn previously bespoke machinery into standard tools.*

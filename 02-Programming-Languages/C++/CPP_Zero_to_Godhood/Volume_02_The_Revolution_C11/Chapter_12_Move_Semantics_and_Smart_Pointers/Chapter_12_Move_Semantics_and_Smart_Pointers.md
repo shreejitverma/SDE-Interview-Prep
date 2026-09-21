@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 12: Move Semantics and Smart Pointers
 
 > *The two features that, together, abolished the "performance tax" of C++ and replaced manual memory management with a formal model of ownership.*

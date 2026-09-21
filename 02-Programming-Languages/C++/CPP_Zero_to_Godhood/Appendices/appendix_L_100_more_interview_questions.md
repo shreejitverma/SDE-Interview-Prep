@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Appendix L: 100 More Interview Questions (Part 5-8)
 
 These questions are designed to separate the "Senior Engineers" from the "Gods." If you can answer these without looking at the notes, you are ready for any HFT or Systems Architecture interview on the planet.

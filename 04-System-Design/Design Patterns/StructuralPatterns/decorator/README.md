@@ -1,3 +1,12 @@
+---
+type: moc
+track: [sde, distinguished]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 ## Decorator
 
 Attach additional responsibilities to an object dynamically. Decorators

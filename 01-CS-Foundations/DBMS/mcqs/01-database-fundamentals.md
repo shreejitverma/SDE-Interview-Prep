@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Questions
 1. Joe Bloggs wants to create a website which returns the factorial of a number given by the user.
 Should Joe store this result in a database?

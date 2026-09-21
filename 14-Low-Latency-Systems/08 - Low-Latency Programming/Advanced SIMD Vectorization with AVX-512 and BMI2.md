@@ -4,6 +4,11 @@ aliases: [AVX-512, BMI2, Vectorization, PEXT, PDEP, Mask Registers, Fast Hashing
 status: evergreen
 module: 08
 created: 2026-08-22
+type: concept
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
 > [!summary]

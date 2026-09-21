@@ -1,3 +1,12 @@
+---
+type: moc
+track: [ai-eng]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Volume 02: Working With LLMs
 
 How to actually drive a large language model over an API: the request layer, the sampler, the prompt, the output contract, the vector space, the window, and the modalities.

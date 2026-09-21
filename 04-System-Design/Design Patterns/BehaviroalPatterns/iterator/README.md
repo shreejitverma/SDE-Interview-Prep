@@ -1,3 +1,12 @@
+---
+type: moc
+track: [sde, distinguished]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 ## Iterator
 
 Iterator pattern has behavioral purpose and applies to objects. The pattern provides 

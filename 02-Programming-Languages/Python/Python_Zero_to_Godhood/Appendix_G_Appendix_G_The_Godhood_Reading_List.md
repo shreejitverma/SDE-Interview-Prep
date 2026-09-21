@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Appendix G: The "Godhood" Reading List
 
 Recommended resources for further deep-dives into systems engineering.

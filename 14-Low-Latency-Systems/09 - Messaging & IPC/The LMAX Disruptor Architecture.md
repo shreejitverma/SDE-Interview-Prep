@@ -4,6 +4,11 @@ aliases: [LMAX Disruptor, Disruptor Pattern, SequenceBarrier, RingBuffer, Mechan
 status: evergreen
 module: 09
 created: 2026-08-22
+type: concept
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
 > [!summary]

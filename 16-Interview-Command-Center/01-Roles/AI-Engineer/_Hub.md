@@ -2,6 +2,12 @@
 role: AI-Engineer
 aliases: [AI/ML Engineer, ML Engineer, Machine Learning Engineer]
 tags: [role-hub, ai-engineer]
+type: playbook
+track: [sde, quant-dev, quant-research, low-latency, ai-eng, distinguished]
+level:
+status: draft
+last_reviewed:
+sources: []
 ---
 
 # 🤖 AI Engineer — Preparation Hub

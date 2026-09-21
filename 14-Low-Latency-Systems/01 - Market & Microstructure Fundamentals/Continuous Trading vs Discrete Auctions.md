@@ -4,6 +4,11 @@ aliases: [Continuous Double Auction, Discrete Auctions, Call Auction, Opening Cr
 status: evergreen
 module: 01
 created: 2026-08-22
+type: concept
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
 > [!summary]

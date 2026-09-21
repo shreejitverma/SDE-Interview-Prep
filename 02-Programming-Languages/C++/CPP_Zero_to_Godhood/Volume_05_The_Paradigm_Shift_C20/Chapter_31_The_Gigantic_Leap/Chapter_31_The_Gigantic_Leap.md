@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 31: C++20 — The Gigantic Leap
 
 > *C++20 is the largest single release of the language since C++11, and arguably larger. It does not merely add features; it changes how idiomatic C++ is written, compiled, and reasoned about. This chapter is the map for the volume — it names the four pillars, situates the dozens of core-language and library additions around them, and sets the conventions and version-discipline used throughout the chapters that follow.*

@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 4: Type–Class Unification, Descriptors, and C3 MRO (Python 2.2–2.3)
 
 Python 2.2 made the single most important change to the object model after its inception: it

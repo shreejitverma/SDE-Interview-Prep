@@ -4,6 +4,11 @@ aliases: [Aeron Protocol, Aeron IPC, Martin Thompson Aeron, Log Buffers, Term Bu
 status: evergreen
 module: 09
 created: 2026-08-22
+type: concept
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
 > [!summary]

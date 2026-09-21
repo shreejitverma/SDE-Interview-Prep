@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 21: Templates and Metaprogramming
 
 > *C++14's template additions are small in number but large in leverage. Variable templates give constants a first-class parameterized form; `std::integer_sequence` makes the compile-time "indices trick" a standard tool for unpacking tuples and parameter packs; the `_t` trait aliases erase the `typename ...::type` noise that made C++11 metaprogramming unreadable; and `std::is_final` closes a hole in the type-traits set.*

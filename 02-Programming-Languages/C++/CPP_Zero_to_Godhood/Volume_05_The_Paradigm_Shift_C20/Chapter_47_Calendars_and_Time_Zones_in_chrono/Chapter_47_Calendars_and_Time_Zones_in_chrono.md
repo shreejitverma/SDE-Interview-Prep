@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 47: Calendars and Time Zones in `<chrono>`
 
 > *C++20 extends `<chrono>` from a duration-and-clock library into a full date, calendar, and time-zone library — the standardized successor to Howard Hinnant's widely used `date` library. You can now construct calendar dates with natural syntax, convert between `system_clock` time points and year/month/day, query the IANA time-zone database, and format the results with `std::format`, all type-safely and mostly at compile time. This chapter covers the calendar types, the system/local clock distinction, `zoned_time`, and the formatting and parsing facilities.*

@@ -4,6 +4,11 @@ aliases: [The 2012 Knight Capital Disaster, Knight Capital Outage, Power Peg Bug
 status: evergreen
 module: 02
 created: 2026-08-22
+type: case-study
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
 # War Story — The 2012 Knight Capital \$440M Disaster: Dead Code Reuse & Rogue Execution

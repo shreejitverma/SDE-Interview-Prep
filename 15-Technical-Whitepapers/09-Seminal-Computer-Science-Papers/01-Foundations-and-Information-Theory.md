@@ -3,6 +3,11 @@ tags: [computer-science, turing, shannon, information-theory, von-neumann, dijks
 aliases: [Foundations and Information Theory, Turing 1936, Shannon 1948, Von Neumann Architecture, Dijkstra Multiprogramming]
 status: evergreen
 created: 2026-09-17
+type: paper
+track: [distinguished, sde]
+level:
+last_reviewed:
+sources: []
 ---
 
 # Foundations of Computation & Information Theory

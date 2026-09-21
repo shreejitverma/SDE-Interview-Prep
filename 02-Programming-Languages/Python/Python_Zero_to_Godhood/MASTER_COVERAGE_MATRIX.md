@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Master Coverage Matrix — *Python Zero to Godhood*
 
 Auditable map of the whole book. Updated as each volume completes. Status legend:

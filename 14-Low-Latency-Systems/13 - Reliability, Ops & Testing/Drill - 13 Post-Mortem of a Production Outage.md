@@ -4,6 +4,11 @@ aliases: [Drill 13, Production Outage Post-Mortem, 2012 BATS IPO Bug, Split-Brai
 status: evergreen
 module: 13
 created: 2026-08-22
+type: playbook
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
 # Drill 13 — Production Outage Post-Mortem & Root-Cause Engineering

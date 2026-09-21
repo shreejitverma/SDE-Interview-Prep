@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 26: C++23 and C++26 — The Cutting Edge
 
 > *Deducing this, reflection, contracts, and the future.*

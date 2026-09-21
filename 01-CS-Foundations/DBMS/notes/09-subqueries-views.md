@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Sub-queries, views and query optimization
 
 - [Sub-queries, views and query optimization](#sub-queries-views-and-query-optimization)

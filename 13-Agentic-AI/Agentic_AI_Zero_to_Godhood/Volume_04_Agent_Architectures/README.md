@@ -1,3 +1,12 @@
+---
+type: moc
+track: [ai-eng]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Volume 04 - Agent Architectures
 
 This volume covers the design space between a single model call and a fully autonomous agent: the composable patterns, the historical lineage, the deliberation and self-correction mechanisms, the runtime formalisms, the harness that carries it all, and a decision framework for choosing among them.

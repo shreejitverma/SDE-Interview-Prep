@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 41: consteval, constinit, and the constexpr Expansion
 
 > *C++20 turns compile-time computation from a constrained niche into a first-class programming model. It adds two new keywords — `consteval` for functions that must run at compile time and `constinit` for variables that must be constant-initialized — and it massively widens what `constexpr` can do: virtual calls, `try`/`catch`, `dynamic_cast`, `typeid`, and even dynamic allocation are now legal in constant evaluation, which is what makes `constexpr std::vector` and `constexpr std::string` possible. This chapter covers all three and the boundary rules that govern when code runs at compile time versus runtime.*

@@ -4,6 +4,11 @@ aliases: [C++ Concurrency in Action, Anthony Williams, C++ Memory Model Bible, L
 status: evergreen
 module: 14
 created: 2026-08-22
+type: paper
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
 # Source Summary — C++ Concurrency in Action (2nd Edition)

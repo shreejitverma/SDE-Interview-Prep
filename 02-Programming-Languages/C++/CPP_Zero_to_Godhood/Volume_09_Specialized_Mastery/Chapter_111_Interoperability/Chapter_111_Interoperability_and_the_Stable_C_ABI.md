@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 111: Interoperability and the Stable C ABI
 
 C++ is the dark matter of software: it sits beneath Python data-science stacks, Java enterprise systems, game engines scripted in Lua, and services written in Rust, Go, and C#, binding them to the hardware. But every language boundary is a *contract* — about memory ownership, name mangling, object layout, and threading — and getting it wrong produces crashes, leaks, and corruption at the seam. This chapter covers crossing those boundaries safely: the linkage rules that underlie them, the stable C ABI as the universal lingua franca, and the specific hazards of Python (pybind11) and Java (JNI) interop.

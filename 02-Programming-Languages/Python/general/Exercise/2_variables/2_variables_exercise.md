@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 ### Exercise: Python Variables
 1. Create a variable called break and assign it a value 5. See what happens and find out the reason behind the behavior that you see.
 2. Create two variables. One to store your birth year and another one to store current year. Now calculate your age using these two variables

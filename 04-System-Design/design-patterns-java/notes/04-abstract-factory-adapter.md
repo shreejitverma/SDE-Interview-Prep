@@ -1,3 +1,12 @@
+---
+type: pattern
+track: [sde, distinguished]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Abstract Factory and adapter design patterns
 
 - [Abstract Factory and adapter design patterns](#abstract-factory-and-adapter-design-patterns)

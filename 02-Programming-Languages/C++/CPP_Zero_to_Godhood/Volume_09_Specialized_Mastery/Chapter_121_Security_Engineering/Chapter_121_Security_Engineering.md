@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 121: Security Engineering
 
 C++'s power — direct memory access, no runtime safety net — is also its security liability: the majority of critical vulnerabilities in C and C++ software are *memory-safety* bugs (buffer overflows, use-after-free), and the language's performance features (speculative execution, data-dependent timing) open whole categories of side-channel attacks. Writing secure C++ means treating every input as hostile, every allocation as a potential overflow, and every timing difference as a leak. This chapter covers the three pillars: finding bugs before attackers do (fuzzing), the cryptographic pitfalls unique to C++, and the hardware side-channels that defeat naive code.

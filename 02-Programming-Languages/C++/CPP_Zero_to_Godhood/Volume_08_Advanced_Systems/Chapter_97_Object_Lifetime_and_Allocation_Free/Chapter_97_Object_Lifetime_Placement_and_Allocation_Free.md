@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 97: Object Lifetime, Placement, and Allocation-Free Hot Paths
 
 A latency-critical hot path must not call `malloc` — not because allocation is always slow, but because it is *unpredictable*: most allocations are fast, but one in a million falls through to a locked central heap, an `mmap`, or a page fault, and that one blows the tail-latency budget. Achieving an allocation-free steady state requires mastering the C++ object lifetime model — placement new, explicit destruction, `std::launder`, trivial relocatability — and the preallocation patterns (object pools, fixed buffers) built on it. This chapter develops the lifetime machinery beneath the allocators of Chapter 79 and turns it into the discipline of a zero-allocation hot path.

@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 64: Functional and Type Utilities
 
 > C++23 sprinkles a generous handful of small, sharp library utilities across `<functional>`, `<utility>`, `<bit>`, `<type_traits>`, and `<string>`. None is a headline feature, but collectively they retire a long list of hand-written helpers: a move-aware `std::function` (`move_only_function`), value-category-correct member forwarding (`forward_like`), a clean enum-to-integer cast (`to_underlying`), an optimization-enabling "this is impossible" marker (`unreachable`), endianness swapping (`byteswap`), substring membership on strings (`contains`), in-place buffer filling (`resize_and_overwrite`), and several more. This chapter is the catalog, organized by what each tool replaces.

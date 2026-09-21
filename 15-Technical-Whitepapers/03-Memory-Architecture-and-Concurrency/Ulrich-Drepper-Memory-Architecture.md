@@ -3,6 +3,11 @@ tags: [memory/architecture, cpu/cache, numa, tlb, mesi, drepper, false-sharing]
 aliases: [Ulrich Drepper Memory Architecture, What Every Programmer Should Know About Memory, Drepper Memory Paper]
 status: evergreen
 created: 2026-09-17
+type: paper
+track: [distinguished, sde]
+level:
+last_reviewed:
+sources: []
 ---
 
 # Ulrich Drepper — What Every Programmer Should Know About Memory

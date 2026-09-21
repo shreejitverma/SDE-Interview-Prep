@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Appendix N: The Python Bytecode Encyclopedia
 
 This appendix provides an exhaustive reference for the CPython 3.13 instruction set. For each opcode, we provide its numerical value, its stack transition, and a technical description of its C-level implementation.

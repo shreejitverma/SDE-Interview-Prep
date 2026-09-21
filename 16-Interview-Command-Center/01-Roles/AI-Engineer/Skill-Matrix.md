@@ -1,3 +1,12 @@
+---
+type: playbook
+track: [sde, quant-dev, quant-research, low-latency, ai-eng, distinguished]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # 📊 AI Engineer Skill Matrix
 
 | Skill | Level (1-5) | Last Assessed | Notes |

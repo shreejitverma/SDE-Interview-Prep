@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # NeetCode 150 - Complete Python Solutions Guide
 
 The ultimate curated list of 150 LeetCode problems covering all major algorithmic concepts. Each problem includes optimal time/space complexity and production-grade Python solutions.

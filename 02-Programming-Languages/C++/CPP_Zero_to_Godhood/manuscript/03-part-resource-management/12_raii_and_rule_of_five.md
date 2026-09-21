@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 12: RAII and the Rule of Five
 
 > *Tying the lifetime of a resource to the lifetime of an object.*

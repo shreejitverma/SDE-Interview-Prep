@@ -4,6 +4,11 @@ aliases: [Lab 07, HdrHistogram Lab, RDTSC Profiler Lab, Coordinated Omission Lab
 status: evergreen
 module: 07
 created: 2026-08-22
+type: playbook
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
 # Lab 07 — Cycle-Accurate RDTSC Profiler with HdrHistogram

@@ -3,6 +3,11 @@ tags: [distributed-systems, consensus, lamport-clocks, paxos, raft, flp-impossib
 aliases: [Distributed Systems and Consensus, Lamport 1978, Paxos Made Simple, Raft Consensus Paper, FLP Impossibility]
 status: evergreen
 created: 2026-09-17
+type: paper
+track: [distinguished, sde]
+level:
+last_reviewed:
+sources: []
 ---
 
 # Distributed Systems & Consensus Mechanics

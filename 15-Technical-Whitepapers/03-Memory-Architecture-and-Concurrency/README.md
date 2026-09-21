@@ -3,6 +3,11 @@ tags: [memory/architecture, concurrency, cpu/cache, numa, drepper, threading, ty
 aliases: [Memory Architecture and Concurrency MOC, Memory Mechanics Canon]
 status: evergreen
 created: 2026-09-17
+type: moc
+track: [distinguished, sde]
+level:
+last_reviewed:
+sources: []
 ---
 
 # Memory Architecture, CPU Microarchitecture & Concurrency

@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 42: Abbreviated Templates, explicit(bool), and Lambda Enhancements
 
 > *C++20 polishes the everyday ergonomics of generic code. Abbreviated function templates let `auto` parameters stand in for template parameters so an ordinary-looking function is silently a template; `explicit(bool)` makes a constructor's explicitness a compile-time condition rather than an all-or-nothing decision; and lambdas gain a real template-parameter list, pack capture, default-constructibility, and the ability to appear in unevaluated contexts. This chapter covers all three clusters and the subtle rules that make them safe.*

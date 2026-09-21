@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 29: Associative Container Advances
 
 > *C++17 quietly reworked the associative containers — `map`, `set`, `unordered_map`, `unordered_set`, and their `multi` variants — to fix two long-standing inefficiencies: moving an element between containers used to require a copy-out/erase/insert-in cycle that reallocated the node, and inserting "if not already present" forced you to construct the value even when it would be thrown away. Node handles, `try_emplace`, and `insert_or_assign` close both gaps, and the `emplace`/`emplace_back` family now returns a reference to the element it created.*

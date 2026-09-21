@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Complete Computer Networking Reference
 
 This is an exhaustive list of all essential computer networking keywords, concepts, and terms organized by category.

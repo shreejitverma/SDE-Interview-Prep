@@ -4,6 +4,11 @@ aliases: [Hardware Risk, Bump-in-the-Wire, SmartNIC Risk, Packet Poisoning, CRC 
 status: evergreen
 module: 12
 created: 2026-08-22
+type: concept
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
 > [!summary]

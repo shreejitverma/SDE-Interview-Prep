@@ -1,3 +1,12 @@
+---
+type: moc
+track: [sde, distinguished]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 ## Interpreter
 
 Given a language, the pattern defines a represention for its grammar along with an

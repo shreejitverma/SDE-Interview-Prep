@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 58: `std::generator` — The First Standard Coroutine
 
 > C++20 shipped coroutines as a *language* feature — `co_await`, `co_yield`, `co_return` — but provided no library types to use them with. To write even a trivial lazy sequence you had to hand-author a promise type, an iterator, and the suspension plumbing: dozens of lines of subtle boilerplate before you could `co_yield` a single value. C++23 fixes the most common case by shipping **`std::generator<T>`**, a ready-made coroutine return type for synchronous, lazy sequences. It is the first concrete coroutine type in the standard library, it models a `view`, and it plugs directly into ranges. For anyone who tried coroutines in C++20 and recoiled at the boilerplate, this chapter is the payoff.

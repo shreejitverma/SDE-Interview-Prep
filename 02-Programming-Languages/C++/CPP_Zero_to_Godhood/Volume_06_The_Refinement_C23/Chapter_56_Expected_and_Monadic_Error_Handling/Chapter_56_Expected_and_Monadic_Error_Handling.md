@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 56: `std::expected` and Monadic Error Handling
 
 > C++ has long forced a false choice between exceptions — powerful but with control flow many domains forbid — and sentinel returns like `std::optional`, which tell you that something failed but throw away *why*. `std::expected<T, E>` is the resolution: a value-based result type that holds either a success value of type `T` **or** an error of type `E`, with the error reason preserved and zero hidden allocation. Paired with the monadic operations added to both `expected` and `optional`, it lets you compose fallible operations into flat pipelines instead of nested `if` checks. For the exception-averse worlds of trading and kernel code, this is the most consequential library addition in C++23.

@@ -1,3 +1,12 @@
+---
+type: playbook
+track: [sde, quant-dev, quant-research, low-latency, ai-eng, distinguished]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # 📊 SDE Skill Matrix — Self-Assessment
 
 > Rate yourself 1-5 for each skill. Update after each study session or interview.

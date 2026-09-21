@@ -1,3 +1,12 @@
+---
+type: pattern
+track: [sde, distinguished]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Prototype and Factory design patterns
 
 - [Prototype and Factory design patterns](#prototype-and-factory-design-patterns)

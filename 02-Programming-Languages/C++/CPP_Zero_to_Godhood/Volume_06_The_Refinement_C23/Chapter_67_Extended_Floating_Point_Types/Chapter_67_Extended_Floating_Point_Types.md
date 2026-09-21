@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 67: Extended Floating-Point Types
 
 > For decades C++ offered exactly three floating-point types — `float`, `double`, and `long double` — whose bit widths were implementation-defined. That was fine until machine learning, graphics, and signal-processing hardware standardized on *specific* formats: IEEE half precision, the brain-float format, and explicit 32/64/128-bit floats. C++23's new header **`<stdfloat>`** finally gives portable, fixed-width names for these: `std::float16_t`, `std::float32_t`, `std::float64_t`, `std::float128_t`, and `std::bfloat16_t`. This chapter covers what each type is, when to reach for the narrow ones, and the conversion and performance rules that govern mixing them with the classic types.

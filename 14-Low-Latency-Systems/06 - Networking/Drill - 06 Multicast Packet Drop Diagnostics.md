@@ -4,6 +4,11 @@ aliases: [Drill 06, Packet Drop Diagnostics, Multicast Troubleshooting, Microbur
 status: evergreen
 module: 06
 created: 2026-08-22
+type: playbook
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
 # Drill 06 — Multicast Packet Drop Diagnostics & Microburst Triage

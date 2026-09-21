@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Appendix M: THE ALGORITHM COMPENDIUM (The Master's Toolkit)
 
 

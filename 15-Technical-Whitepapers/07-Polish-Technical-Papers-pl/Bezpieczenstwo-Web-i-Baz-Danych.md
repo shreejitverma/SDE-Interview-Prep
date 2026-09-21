@@ -3,6 +3,11 @@ tags: [security/offensive, security/defensive, web-security, sajdak, sqli, file-
 aliases: [Bezpieczeństwo Web i Baz Danych, Michał Sajdak Web Security, Podatności Uploadu, Defensywne Kodowanie]
 status: evergreen
 created: 2026-09-17
+type: paper
+track: [distinguished, sde]
+level:
+last_reviewed:
+sources: []
 ---
 
 # Bezpieczeństwo Aplikacji WWW i Baz Danych

@@ -1,3 +1,12 @@
+---
+type: pattern
+track: [sde, distinguished]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Abstract Factory Pattern: Cross-Language Comparison
 
 **Goal:** Create families of related objects (e.g., UI Buttons for Mac vs Windows) without specifying their concrete classes.

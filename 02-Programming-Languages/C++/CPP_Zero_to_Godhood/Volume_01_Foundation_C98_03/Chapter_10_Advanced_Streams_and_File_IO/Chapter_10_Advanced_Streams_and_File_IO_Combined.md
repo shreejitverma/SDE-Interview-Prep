@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 10: Advanced Streams and File I/O
 
 > *Talking to the outside world — files, formatted output, and the iostream hierarchy.*

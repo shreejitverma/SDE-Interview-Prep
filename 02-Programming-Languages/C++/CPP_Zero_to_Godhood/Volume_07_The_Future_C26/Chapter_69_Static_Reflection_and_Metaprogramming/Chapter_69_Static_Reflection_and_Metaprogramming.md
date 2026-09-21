@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 69: Static Reflection and Metaprogramming
 
 Welcome to the most transformative addition to the C++ language since the introduction of templates in C++98, and perhaps the largest syntactic and architectural shift since C++11 introduced move semantics. C++26 brings **Static Reflection**, a formal, value-based mechanism for querying and manipulating the Abstract Syntax Tree (AST) of a program during compilation. 

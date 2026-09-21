@@ -4,6 +4,11 @@ aliases: [The 2015 NYSE Outage, July 8 2015 Shutdown, NYSE Gateway Desync, Proto
 status: evergreen
 module: 07
 created: 2026-08-22
+type: case-study
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
 # War Story — The July 8, 2015 NYSE 3.5-Hour Gateway Freeze: Protocol State Mismatches & Live Reconfiguration Cascades

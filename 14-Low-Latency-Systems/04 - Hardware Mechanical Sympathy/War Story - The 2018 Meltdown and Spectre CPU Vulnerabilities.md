@@ -4,6 +4,11 @@ aliases: [Meltdown and Spectre, Speculative Execution Attacks, KPTI Overhead, Re
 status: evergreen
 module: 04
 created: 2026-08-22
+type: case-study
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
 # War Story — The 2018 Meltdown & Spectre Vulnerabilities: Microarchitectural Side-Channels & Syscall Penalties

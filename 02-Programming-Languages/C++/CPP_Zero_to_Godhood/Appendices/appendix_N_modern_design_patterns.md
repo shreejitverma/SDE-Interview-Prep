@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Appendix N: MODERN DESIGN PATTERNS (C++20/23/26 Edition)
 
 In this appendix, we revisit the classic Gang of Four (GoF) design patterns and see how modern C++ features like **Concepts, Lambdas, Variants, and Coroutines** allow us to implement them with more safety and far less boilerplate.

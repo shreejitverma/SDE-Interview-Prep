@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 51: Delimited and Configuration Files (`csv`, `configparser`)
 
 Handling structured data from diverse sources is a primary use case for Python. The `csv` and `configparser` modules offer standardized ways to interact with these common formats, with the former being highly optimized for performance.

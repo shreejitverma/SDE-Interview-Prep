@@ -4,6 +4,11 @@ aliases: [C-States, P-States, CPU Power Management, Turbo Boost Jitter, PM-QoS, 
 status: evergreen
 module: 04
 created: 2026-08-22
+type: concept
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
 > [!summary]

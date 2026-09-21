@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 50: Concurrency II — Latches, Barriers, Semaphores, and Atomic Enhancements
 
 > *C++20 rounds out the concurrency toolkit with the synchronization primitives that previously had to be built by hand from mutexes and condition variables: `std::latch` (a one-shot countdown gate), `std::barrier` (a reusable rendezvous with a completion phase), and `std::counting_semaphore` / `std::binary_semaphore` (classic counting permits). It also upgrades atomics with `std::atomic_ref` (atomic operations on non-atomic objects), `std::atomic<std::shared_ptr<T>>`, and `wait`/`notify` on atomics. This chapter covers each primitive and when to reach for it.*

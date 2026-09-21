@@ -4,6 +4,11 @@ aliases: [Lab 04, Cache Benchmark Lab, False Sharing Lab]
 status: evergreen
 module: 04
 created: 2026-08-22
+type: playbook
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
 # Lab 04 — Cache Line Contention and Latency Benchmark

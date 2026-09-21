@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 26: Filesystem and Polymorphic Memory
 
 > *C++17 brought two long-missing capabilities into the standard library: a portable filesystem API — paths, directory traversal, and file operations, distilled from `boost::filesystem` — and a polymorphic memory model (`std::pmr`) that decouples a container's type from where it allocates. The first lets you write file-manipulating code once and run it on any platform; the second lets you redirect a `std::pmr::vector`'s allocations to a stack buffer, an arena, or a pool without changing its type.*

@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Window functions, query optimisation and stored procedures
 ## Agenda
 - [Window functions, query optimisation and stored procedures](#window-functions-query-optimisation-and-stored-procedures)

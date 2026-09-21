@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 32: Concepts I — Constraints, requires-Clauses, and requires-Expressions
 
 > *Concepts are the first of C++20's four pillars and the one that most directly changes day-to-day template code. They turn template parameters from unchecked "duck typing resolved deep inside instantiation" into named, compile-time-verified contracts. This chapter covers the mechanics: how to define a concept, how to attach constraints with a requires-clause, how to express ad-hoc requirements with a requires-expression, and the four ways to spell a constrained template.*

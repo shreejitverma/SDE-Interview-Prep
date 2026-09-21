@@ -4,6 +4,11 @@ aliases: [Drill 14, Mock Interview, Principal Engineer Interview, Comprehensive 
 status: evergreen
 module: 14
 created: 2026-08-22
+type: playbook
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
 # Drill 14 — Comprehensive Technical Mock Interview: Staff/Principal Low-Latency Engineer

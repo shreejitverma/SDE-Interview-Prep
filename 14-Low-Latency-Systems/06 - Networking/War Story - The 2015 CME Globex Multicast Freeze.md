@@ -4,6 +4,11 @@ aliases: [The CME Globex Multicast Freeze, Microburst Packet Drops, TCP Gap Fill
 status: evergreen
 module: 06
 created: 2026-08-22
+type: case-study
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
 # War Story — The CME Globex Multicast Microburst Freeze: Switch Buffer Exhaustion & TCP Gap-Fill Storms

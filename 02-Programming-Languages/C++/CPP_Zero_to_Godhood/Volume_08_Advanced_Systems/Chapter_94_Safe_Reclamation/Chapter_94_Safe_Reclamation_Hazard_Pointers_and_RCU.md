@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 94: Safe Reclamation — Hazard Pointers and RCU
 
 The data-structure logic of a lock-free stack or queue is the easy part; the hard part — the 80% — is answering *when is it safe to free a node another thread might still be reading?* A thread can load a pointer to a node a microsecond before another thread unlinks and frees it, then dereference freed memory. This chapter develops the two production answers to the reclamation problem, **hazard pointers** and **RCU**, plus epoch-based reclamation, with the cost model that decides between them. Get this wrong and your lock-free structure has a use-after-free; this is the chapter that makes Chapter 77's structures actually safe.

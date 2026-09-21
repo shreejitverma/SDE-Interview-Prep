@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 42: The Standard Library from Scratch
 
 > *To achieve Godhood, you must build the world yourself.*

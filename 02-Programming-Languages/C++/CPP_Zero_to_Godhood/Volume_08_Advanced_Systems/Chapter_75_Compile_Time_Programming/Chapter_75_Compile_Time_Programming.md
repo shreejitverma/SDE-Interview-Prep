@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 75: Compile-Time Programming
 
 Compile-time programming moves computation from the running process into the translation pipeline: tables are precomputed, invariants are proven, and code paths are eliminated before a single instruction executes. The problem it solves is twofold — *zero runtime cost* for work whose inputs are known at build time, and *correctness by construction* via checks the program cannot even link without satisfying. This chapter develops `constexpr`/`consteval`, the type-traits machinery they build on, and the cost model that decides when shifting work to the compiler pays and when it merely inflates build time.

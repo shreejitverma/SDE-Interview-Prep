@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 13: Move Semantics and Perfect Forwarding
 
 > *Why copy a house when you can just steal the keys?*

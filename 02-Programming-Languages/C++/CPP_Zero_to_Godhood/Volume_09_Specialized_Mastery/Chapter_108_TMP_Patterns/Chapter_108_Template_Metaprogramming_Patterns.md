@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 108: Template Metaprogramming Patterns
 
 Where Chapter 74 covered the *mechanics* of template metaprogramming, this chapter covers the *patterns* — the reusable, named designs that experienced C++ engineers build from those mechanics to move computation from runtime to compile time and erase abstraction cost. Expression templates eliminate temporaries from math libraries; type erasure provides polymorphism without inheritance; the detection idiom adapts to a type's capabilities; policy-based design composes behaviour at zero cost. Each is a tool for achieving a runtime goal entirely within the compiler.

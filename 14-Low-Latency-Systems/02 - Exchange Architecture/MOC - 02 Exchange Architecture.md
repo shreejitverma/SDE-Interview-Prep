@@ -4,6 +4,11 @@ aliases: [Exchange Architecture MOC]
 status: evergreen
 module: 02
 created: 2026-08-22
+type: moc
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
 # MOC — 02 Exchange Architecture

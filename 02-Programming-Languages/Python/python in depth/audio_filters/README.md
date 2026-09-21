@@ -1,3 +1,12 @@
+---
+type: moc
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Audio Filter
 
 Audio filters work on the frequency of an audio signal to attenuate unwanted frequency and amplify wanted ones.

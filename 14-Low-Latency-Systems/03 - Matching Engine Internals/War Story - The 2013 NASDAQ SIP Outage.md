@@ -4,6 +4,11 @@ aliases: [The 2013 NASDAQ SIP Outage, August 22 2013 Halt, UTP SIP Freeze, NYSE 
 status: evergreen
 module: 03
 created: 2026-08-22
+type: case-study
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
 # War Story — The August 22, 2013 NASDAQ 3-Hour SIP Freeze: Buffer Exhaustion & Failover Cascades

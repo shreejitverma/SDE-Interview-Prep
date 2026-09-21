@@ -1,3 +1,12 @@
+---
+type: moc
+track: [ai-eng]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Agentic AI: Zero to Godhood
 
 A complete, first-principles-to-frontier curriculum for agentic AI engineering.

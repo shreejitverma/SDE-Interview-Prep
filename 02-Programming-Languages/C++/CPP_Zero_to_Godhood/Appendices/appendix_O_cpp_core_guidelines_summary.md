@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Appendix O: THE C++ CORE GUIDELINES (Head First Summary)
 
 The C++ Core Guidelines are a set of rules maintained by Bjarne Stroustrup and Herb Sutter. They are the "Ten Commandments" of writing safe, high-performance C++.

@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 89: Reading the Compiler's Output — Assembly, Inlining, and the Optimiser
 
 The only ground truth about what your code costs is the machine code the compiler emitted — not the source, not your intuition, not a microbenchmark that may have been optimised away. Learning to read disassembly converts performance work from speculation into observation: you can *see* whether a function inlined, whether a loop vectorised, whether a bounds check was elided, whether your "optimisation" changed a single instruction. This chapter teaches the Godbolt workflow, enough x86-64 to read a hot loop, and the optimiser behaviours — inlining, vectorisation, the as-if rule — that determine whether your abstractions are free.

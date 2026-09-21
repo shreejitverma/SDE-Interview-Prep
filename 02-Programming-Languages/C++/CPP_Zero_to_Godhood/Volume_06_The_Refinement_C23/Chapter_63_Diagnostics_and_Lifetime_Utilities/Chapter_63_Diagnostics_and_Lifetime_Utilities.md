@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 63: Diagnostics and Lifetime Utilities
 
 > This chapter collects the C++23 additions that operate at the boundary between your program and the machine: capturing a call stack for diagnostics with **`std::stacktrace`**, bridging modern smart pointers to legacy `T**` C APIs with **`std::out_ptr`** and **`std::inout_ptr`**, formally blessing the "I have bytes, treat them as an object" pattern with **`std::start_lifetime_as`**, and doing allocation-free stream I/O over a fixed buffer with **`std::spanstream`**. Individually small, together they remove a cluster of long-standing workarounds in systems and interop code.

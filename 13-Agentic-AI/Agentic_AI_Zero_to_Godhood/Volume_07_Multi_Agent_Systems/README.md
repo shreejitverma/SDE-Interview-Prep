@@ -1,3 +1,12 @@
+---
+type: moc
+track: [ai-eng]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Volume 07 - Multi-Agent Systems
 
 Multi-agent architectures stripped of the team metaphor: when multiple agent loops genuinely beat one, how to wire them, how they fail, and what the production record actually shows.

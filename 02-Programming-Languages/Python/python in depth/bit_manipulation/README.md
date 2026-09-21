@@ -1,3 +1,12 @@
+---
+type: moc
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Bit manipulation
 
 Bit manipulation is the act of manipulating bits to detect errors (hamming code), encrypts and decrypts messages (more on that in the 'ciphers' folder) or just do anything at the lowest level of your computer.

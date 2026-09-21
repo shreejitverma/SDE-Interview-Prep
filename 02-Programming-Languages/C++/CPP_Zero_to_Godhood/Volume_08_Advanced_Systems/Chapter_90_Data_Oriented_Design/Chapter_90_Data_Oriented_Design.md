@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 90: Data-Oriented Design — AoS vs SoA and Hot/Cold Splitting
 
 Object-oriented design organises code around *objects* that bundle data with behaviour; **data-oriented design (DOD)** organises it around the *transformations* the program actually performs on bulk data, laying memory out to match. The shift matters because, as Chapter 87 established, memory-bound performance is governed by what the cache fetches — and the natural OO layout (an array of fat objects) routinely drags unused bytes through cache, defeats prefetching, and blocks vectorisation. This chapter develops the two central DOD techniques, struct-of-arrays and hot/cold splitting, with the cost model that says exactly when each pays.

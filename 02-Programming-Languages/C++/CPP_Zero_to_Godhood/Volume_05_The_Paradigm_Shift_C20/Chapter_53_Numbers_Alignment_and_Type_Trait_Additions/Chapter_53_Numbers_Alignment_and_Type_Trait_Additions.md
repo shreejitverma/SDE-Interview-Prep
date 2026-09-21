@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 53: Numbers, Alignment, and Type-Trait Additions
 
 > *The final cluster of C++20 standard-library additions serves numeric and generic code: the `<numbers>` header provides correctly-typed mathematical constants (`std::numbers::pi`, `e`, `sqrt2`) to end the `#define M_PI` and hand-typed-digits era; `std::midpoint` and `std::lerp` give overflow-safe averaging and interpolation; `std::assume_aligned` lets you promise the optimizer a pointer's alignment; and a batch of new type traits (`remove_cvref`, `type_identity`, `is_bounded_array`, `common_reference`) refine template metaprogramming. This chapter closes the library tour.*

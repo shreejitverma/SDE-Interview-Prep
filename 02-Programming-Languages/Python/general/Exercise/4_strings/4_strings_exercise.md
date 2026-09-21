@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 ## Exercise: String in Python
 
 1. Create 3 variables to store street, city and country, now create address variable to

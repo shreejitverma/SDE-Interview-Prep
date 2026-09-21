@@ -2,6 +2,12 @@
 role: Quant-Research
 aliases: [Quantitative Researcher, Quant Trader, Quant Analyst]
 tags: [role-hub, quant-research]
+type: playbook
+track: [sde, quant-dev, quant-research, low-latency, ai-eng, distinguished]
+level:
+status: draft
+last_reviewed:
+sources: []
 ---
 
 # 🧮 Quantitative Researcher — Preparation Hub

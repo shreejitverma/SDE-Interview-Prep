@@ -1,3 +1,12 @@
+---
+type: moc
+track: [ai-eng]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Volume 01 - LLM Foundations
 
 Everything in agent engineering bottoms out in how the underlying model works; this volume builds that foundation from the language modeling objective to serving physics.

@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 9: Iterators, Generators, and `yield from` (Python 3.3)
 
 This chapter is the canonical home for the **iteration model** that pervades Python — `for`

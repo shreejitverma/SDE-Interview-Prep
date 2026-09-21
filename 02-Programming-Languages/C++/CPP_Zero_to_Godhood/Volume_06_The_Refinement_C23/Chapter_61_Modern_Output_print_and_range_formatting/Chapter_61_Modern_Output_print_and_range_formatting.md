@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 61: Modern Output — `std::print`, `std::println`, and Range Formatting
 
 > C++20 gave us `std::format`, a fast, type-safe formatting engine — and then made us write `std::cout << std::format(...)` to actually get the text onto the screen, defeating much of the point. C++23 finishes the job with **`std::print`** and **`std::println`**, which format *and* write in one call, directly to the output's underlying file descriptor, with no intermediate `std::string` allocation. They are type-safe like `printf` never was, fast like `iostream` never was, and Unicode-correct on the console. This chapter also covers the C++23 addition that makes them shine on containers: native **range and tuple formatting**.

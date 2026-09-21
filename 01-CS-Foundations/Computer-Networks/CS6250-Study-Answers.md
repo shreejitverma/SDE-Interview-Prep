@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # CS 6250 Computer Networks - Study Guide with Detailed Answers
 
 ## Lesson 1: Introduction, History, and Internet Architecture

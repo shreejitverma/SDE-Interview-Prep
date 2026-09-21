@@ -4,6 +4,11 @@ aliases: [12-Week Roadmap, Calibration Roadmap]
 status: evergreen
 module: 00
 created: 2026-08-22
+type: concept
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
 # 12-Week Production Calibration Roadmap

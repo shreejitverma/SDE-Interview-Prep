@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 40: Designated Initializers and Aggregate Refinements
 
 > *C++20 finally brings designated initializers — the `{.x = 1, .y = 2}` syntax C programmers have had since C99 — to C++, along with quieter but consequential refinements to what counts as an aggregate and how aggregates may be initialized. This chapter covers the designated-initializer syntax and its deliberately strict rules, the new ability to range-`for` with an init-statement, array-size deduction in `new`-expressions, and the aggregate model that underpins all of it.*

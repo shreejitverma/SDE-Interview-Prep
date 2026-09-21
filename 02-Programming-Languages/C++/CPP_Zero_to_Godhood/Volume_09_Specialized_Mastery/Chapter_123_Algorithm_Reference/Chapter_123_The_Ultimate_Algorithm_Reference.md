@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 123: The Ultimate Algorithm Reference
 
 The single highest-leverage habit in everyday C++ is also the simplest: **stop writing raw loops, and use the standard algorithms.** The `<algorithm>` and `<numeric>` headers encode decades of correct, optimised, well-named implementations of the operations you reach for constantly — and using them produces code that is shorter, less bug-prone, often faster, and instantly recognisable to any C++ engineer. This chapter is a structured reference to the standard algorithms, organised by what they do, with the cost model and the C++20 Ranges evolution that makes them composable.

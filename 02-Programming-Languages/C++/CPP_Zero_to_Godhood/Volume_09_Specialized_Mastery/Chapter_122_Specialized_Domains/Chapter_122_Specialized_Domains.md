@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 122: Specialized Domains — Embedded, Games, HFT, and Automotive
 
 C++ is unique in spanning from an 8-kilobyte microcontroller with no operating system to a multi-socket trading server processing millions of messages per second — and each extreme imposes its *own* dialect of constraints that reshape how you write C++. This chapter surveys four demanding domains — game development, embedded systems, high-frequency trading, and safety-critical automotive — each of which forbids or mandates specific language features for hard engineering reasons. Understanding these constraints is understanding the *full range* of C++ as an engineering tool.

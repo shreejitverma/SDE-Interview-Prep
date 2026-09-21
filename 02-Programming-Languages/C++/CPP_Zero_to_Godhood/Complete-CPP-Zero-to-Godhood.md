@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # How to Read This Book
 
 C++ Zero to Godhood is massive by design. It is built to be the single, definitive resource you need for your entire C++ career. Because of its size, we don't expect everyone to read it front-to-back in one sitting.

@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 43: using enum, __VA_OPT__, Class-Type NTTPs, and Language Cleanups
 
 > *This chapter collects the remaining smaller C++20 core-language changes that do not belong to one of the big pillars but each remove a long-standing irritation: `using enum` to pull scoped-enum names into scope, `__VA_OPT__` to write variadic macros that behave correctly with zero arguments, class types as non-type template parameters (which is what lets string literals parameterize templates), the mandate that signed integers are two's complement, the new `char8_t` type for UTF-8, and the deprecation of several `volatile` uses. Individually minor; collectively they sand down the rough edges of daily C++.*

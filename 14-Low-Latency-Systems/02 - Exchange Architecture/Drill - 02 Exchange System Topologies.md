@@ -4,6 +4,11 @@ aliases: [Drill 02, Exchange System Design Drill, Architecture Drill]
 status: evergreen
 module: 02
 created: 2026-08-22
+type: playbook
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
 # Drill 02 — Exchange System Design & Infrastructure Topologies

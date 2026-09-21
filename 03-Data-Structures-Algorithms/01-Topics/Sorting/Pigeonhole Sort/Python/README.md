@@ -1,3 +1,12 @@
+---
+type: moc
+track: [sde, quant-dev]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Pigeonhole sorting 
 It is a sorting algorithm that is suitable for sorting lists of elements where the number of elements and 
 the number of possible key values are approximately the same.

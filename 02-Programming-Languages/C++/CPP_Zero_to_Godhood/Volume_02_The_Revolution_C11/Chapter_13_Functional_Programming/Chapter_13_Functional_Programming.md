@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 13: Functional Programming
 
 > *Lambdas, `std::function`, `std::bind`, and reference wrappers — the tools that let C++ treat behavior as a first-class value.*

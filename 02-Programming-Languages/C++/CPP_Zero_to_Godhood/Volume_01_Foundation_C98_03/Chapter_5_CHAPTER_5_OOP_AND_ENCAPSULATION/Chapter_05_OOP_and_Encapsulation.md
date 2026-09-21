@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 05: OOP and Encapsulation
 
 > *Organising state, binding behaviour, and building types that feel like the language itself.*

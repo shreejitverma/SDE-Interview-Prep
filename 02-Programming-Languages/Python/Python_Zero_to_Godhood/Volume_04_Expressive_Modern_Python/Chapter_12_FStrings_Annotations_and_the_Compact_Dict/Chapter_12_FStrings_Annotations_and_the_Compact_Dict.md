@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 12: F-Strings, Variable Annotations, and the Compact Dict (Python 3.6)
 
 Python 3.6 is the release that made modern Python *feel* modern. Three changes did it:

@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 11: The Modern C++11 Core
 
 > *The "Modern Revolution" begins here. C++11 redefined the language — this chapter covers the everyday syntax and type-system features you will reach for in every modern translation unit.*

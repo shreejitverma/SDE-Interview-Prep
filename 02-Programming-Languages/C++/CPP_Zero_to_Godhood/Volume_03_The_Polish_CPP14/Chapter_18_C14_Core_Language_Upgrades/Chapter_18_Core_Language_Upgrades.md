@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 18: Core Language Upgrades
 
 > *C++11 was the revolution; C++14 is the refinement. This chapter covers the core-language polish — a `constexpr` that finally behaves like a programming language, readable numeric literals, aggregate initialization that respects default members, faster deallocation, and a standard way to retire old APIs.*

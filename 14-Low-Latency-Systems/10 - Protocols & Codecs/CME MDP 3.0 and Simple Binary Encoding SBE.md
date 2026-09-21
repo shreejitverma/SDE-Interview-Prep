@@ -4,6 +4,11 @@ aliases: [SBE, Simple Binary Encoding, CME MDP 3.0, MDP3, FIX SBE, Binary Codecs
 status: evergreen
 module: 10
 created: 2026-08-22
+type: concept
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
 > [!summary]

@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 70: Contracts, Memory Safety, and Diagnostics
 
 The C++ language is built on a foundation of trust: trust that the programmer knows what they are doing. This core philosophy—"you don't pay for what you don't use"—enabled C++ to dominate high-performance computing, kernel development, and embedded systems. However, this same philosophy led to the proliferation of Undefined Behavior (UB), security vulnerabilities, and logic bugs that are notoriously difficult to track down.

@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 78: Advanced Concurrency Patterns
 
 Primitives — atomics, locks, lock-free queues — are necessary but not sufficient; at scale you need *architectures* that arrange work so that contention is rare, allocation is absent from the hot path, and the design itself prevents data races. This chapter surveys the patterns senior engineers actually compose systems from: thread pools, the actor model, the Disruptor, coroutine pipelines, and C++26 structured concurrency (`std::execution`). Each is examined for what it costs, what hazard it eliminates by construction, and when its overhead is not worth paying.

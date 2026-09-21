@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 16: Typing Protocols and Structural Subtyping (Python 3.8–3.10)
 
 The 3.8–3.10 releases turned Python's type hints from a thin annotation layer into a real gradual

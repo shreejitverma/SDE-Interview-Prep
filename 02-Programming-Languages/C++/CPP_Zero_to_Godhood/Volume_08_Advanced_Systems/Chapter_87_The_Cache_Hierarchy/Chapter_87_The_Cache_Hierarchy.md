@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 87: The Cache Hierarchy, False Sharing, and Cache-Conscious Layout
 
 For most real workloads the bottleneck is not the CPU's ability to compute but its ability to *feed* the computation with data, and the cache hierarchy is the entire apparatus for doing so. A single miss to main memory costs as much as ~300 instructions; whether your data is laid out so the hardware can predict and prefetch it is, for memory-bound code, the difference between fast and unusably slow. This chapter explains what the cache actually does — lines, levels, associativity, prefetching, coherence — and turns it into concrete layout disciplines: locality, hot/cold splitting, and the elimination of false sharing.

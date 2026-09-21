@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 55: Deducing `this` — The Explicit Object Parameter
 
 > For its entire history, C++ passed the object a member function operates on through a hidden, untyped `this` pointer. You could not name it, deduce its value category, or write one function that adapts to being called on an lvalue versus an rvalue versus a `const` object — so the language forced you into overload sets, CRTP scaffolding, and `std::function`-wrapped recursion. C++23's *explicit object parameter*, universally called **deducing `this`**, makes the object a normal, named, deducible template parameter. This single change collapses four idioms into one and is the most far-reaching core-language feature in the release.

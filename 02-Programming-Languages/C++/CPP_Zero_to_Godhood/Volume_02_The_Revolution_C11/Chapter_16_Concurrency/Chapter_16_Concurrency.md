@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 16: Concurrency
 
 > *Before C++11 the language had no idea threads existed. C++11 standardized a memory model, threads, mutexes, condition variables, futures, and atomics — turning portable, well-defined concurrency into a first-class part of the language.*

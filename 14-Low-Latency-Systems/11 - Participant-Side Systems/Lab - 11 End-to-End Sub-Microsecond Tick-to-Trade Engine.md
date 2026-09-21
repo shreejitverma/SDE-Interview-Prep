@@ -4,6 +4,11 @@ aliases: [Lab 11, Tick-to-Trade Lab, End-to-End HFT Pipeline Lab, Sub-Microsecon
 status: evergreen
 module: 11
 created: 2026-08-22
+type: playbook
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
 # Lab 11 — End-to-End Sub-Microsecond Tick-to-Trade Engine

@@ -1,3 +1,12 @@
+---
+type: moc
+track: [sde, distinguished]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 ## Proxy
 
 Proxy pattern provides a surrogate or placeholder for another object to control access to it.

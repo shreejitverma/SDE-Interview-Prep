@@ -1,3 +1,12 @@
+---
+type: pattern
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # The Ultimate Python Design Patterns Guide: From Basics to Advanced Mastery
 
 ## Table of Contents

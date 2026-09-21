@@ -1,3 +1,11 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
 
 ## Arithmetic Analysis
   * [Bisection](https://github.com/TheAlgorithms/Python/blob/master/arithmetic_analysis/bisection.py)

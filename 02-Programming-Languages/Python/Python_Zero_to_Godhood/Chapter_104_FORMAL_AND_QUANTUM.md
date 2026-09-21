@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 104: Formal Verification and TLA+ with Python
 
 For systems where failure is not an option (e.g., flight control, financial settlement), standard testing is insufficient. Senior engineers use formal methods to prove correctness.

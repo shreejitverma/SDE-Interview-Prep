@@ -4,6 +4,11 @@ aliases: [Canonical Literature, Trading Books, Seminal Papers, HFT Talks, Essent
 status: evergreen
 module: 14
 created: 2026-08-22
+type: concept
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
 > [!summary]

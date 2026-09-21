@@ -3,6 +3,11 @@ tags: [databases, relational-model, codd, jim-gray, acid, 2pl, aries, transactio
 aliases: [Databases and Transaction Processing, Codd Relational Model 1970, Jim Gray ACID Paper, ARIES Recovery Algorithm]
 status: evergreen
 created: 2026-09-17
+type: paper
+track: [distinguished, sde]
+level:
+last_reviewed:
+sources: []
 ---
 
 # Databases & Transaction Processing

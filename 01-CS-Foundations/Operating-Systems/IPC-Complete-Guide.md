@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Inter-Process Communication (IPC): Complete In-Depth Learning Guide
 
 ## Table of Contents

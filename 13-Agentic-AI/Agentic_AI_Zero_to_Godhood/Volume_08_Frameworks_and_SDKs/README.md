@@ -1,3 +1,12 @@
+---
+type: moc
+track: [ai-eng]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Volume 08 - Frameworks and SDKs
 
 The framework landscape as of early 2026: what each major agent framework actually is, what it costs, when to adopt one, and how to build your own thin layer instead.

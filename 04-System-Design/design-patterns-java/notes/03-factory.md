@@ -1,3 +1,12 @@
+---
+type: pattern
+track: [sde, distinguished]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Factory design pattern
 
 ## Key terms

@@ -1,3 +1,12 @@
+---
+type: moc
+track: [sde, quant-dev, quant-research, low-latency, ai-eng, distinguished]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # 🎯 Interview Command Center
 
 > *Last updated: `= date(today)`*

@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 77: Lock-Free Programming
 
 Lock-free programming removes the mutex from the critical path so that the *system as a whole* always makes progress, even when a thread is preempted mid-operation. The problem it solves is tail latency and convoying: a thread that holds a lock and is then descheduled stalls every other thread waiting on it, producing latency spikes that are fatal in trading, audio, and kernel paths. This chapter builds lock-free reasoning from the compare-and-swap primitive up through real stacks, queues, and ring buffers — and is candid about the steep correctness cost, deferring the deepest treatment of CAS/ABA to Chapter 93 and of safe reclamation to Chapter 94.

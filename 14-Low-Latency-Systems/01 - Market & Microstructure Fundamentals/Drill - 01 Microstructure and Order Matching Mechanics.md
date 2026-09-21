@@ -4,6 +4,11 @@ aliases: [Drill 01, Microstructure Drill, Order Mechanics Drill]
 status: evergreen
 module: 01
 created: 2026-08-22
+type: playbook
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
 # Drill 01 — Microstructure & Order Matching Mechanics

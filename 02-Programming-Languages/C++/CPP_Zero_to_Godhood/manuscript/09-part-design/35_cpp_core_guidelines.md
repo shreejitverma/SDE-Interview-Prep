@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 35: The C++ Core Guidelines
 
 > *Writing Modern C++ as its creators intended.*

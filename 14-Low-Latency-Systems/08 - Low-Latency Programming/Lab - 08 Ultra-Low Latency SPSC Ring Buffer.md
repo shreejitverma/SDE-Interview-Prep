@@ -4,6 +4,11 @@ aliases: [Lab 08, SPSC Ring Buffer Lab, Lock-Free Lab, Wait-Free Ring Buffer Lab
 status: evergreen
 module: 08
 created: 2026-08-22
+type: playbook
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
 # Lab 08 — Ultra-Low Latency SPSC Ring Buffer

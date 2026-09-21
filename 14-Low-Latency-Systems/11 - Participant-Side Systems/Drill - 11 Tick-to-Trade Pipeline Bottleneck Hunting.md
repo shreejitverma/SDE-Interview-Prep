@@ -4,6 +4,11 @@ aliases: [Drill 11, Bottleneck Hunting Drill, Latency Profiling Drill, Perf Prof
 status: evergreen
 module: 11
 created: 2026-08-22
+type: playbook
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
 # Drill 11 — Tick-to-Trade Pipeline Bottleneck Hunting & Tail Spike Triage

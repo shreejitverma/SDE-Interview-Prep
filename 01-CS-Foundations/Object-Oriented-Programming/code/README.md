@@ -1,3 +1,12 @@
+---
+type: moc
+track: [sde]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Code snippets across topics
 
 ## Bank transfers in procedural and object-oriented programming

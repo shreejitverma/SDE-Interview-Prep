@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 106: Determinism, Jitter Elimination, and the Hot-Path Mindset
 
 This is the capstone of the volume, and it unifies every preceding chapter under one objective: not raw speed, but **determinism** — a hot path whose worst case is close to its average, because for trading, real-time, and infrastructure systems the tail is the product. Average latency is easy and almost irrelevant; eliminating the rare multi-microsecond spike — the page fault, the cache miss, the lock convoy, the GC pause, the syscall — is the hard, valuable work. This chapter assembles the volume's techniques into the hot-path discipline: the systematic removal of every source of jitter from the critical path.

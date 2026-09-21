@@ -1,3 +1,12 @@
+---
+type: moc
+track: [sde, distinguished]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 ## Strategy
 
 Strategy defines a family of algorithms, encapsulates each one, and makes them 

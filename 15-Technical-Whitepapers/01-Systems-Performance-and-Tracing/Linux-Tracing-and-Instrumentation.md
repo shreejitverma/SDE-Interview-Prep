@@ -3,6 +3,11 @@ tags: [systems/performance, tracing, strace, ptrace, instrumentation, syscalls]
 aliases: [Linux Tracing and Instrumentation, Syscall Tracing Overhead, strace Shell Guide]
 status: evergreen
 created: 2026-09-17
+type: paper
+track: [distinguished, sde]
+level:
+last_reviewed:
+sources: []
 ---
 
 # Linux Tracing & Instrumentation Guide

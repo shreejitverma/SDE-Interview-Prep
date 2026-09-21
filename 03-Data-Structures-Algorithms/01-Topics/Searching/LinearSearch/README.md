@@ -1,3 +1,12 @@
+---
+type: moc
+track: [sde, quant-dev]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 ## Linear Search
 
 Given an array arr[] of n elements, write a function to search a given element x in arr[].

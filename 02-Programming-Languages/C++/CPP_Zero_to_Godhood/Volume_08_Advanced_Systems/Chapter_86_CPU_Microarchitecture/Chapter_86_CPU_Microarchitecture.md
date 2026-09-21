@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 86: CPU Microarchitecture for Performance Engineers
 
 The instruction set architecture (x86-64, AArch64) is a contract that says *what* instructions do; the **microarchitecture** is the wildly more complex machine that says *how fast* they do it — and the two are almost unrelated for performance purposes. A modern core decodes your instructions into micro-ops, executes dozens at once out of order across multiple execution ports, speculates past branches it has not resolved, and stalls for a hundred cycles on a single cache miss. This chapter builds the working model of that machine a performance engineer needs: pipelines, superscalar out-of-order execution, speculation, branch prediction, and the dependency chains that actually determine throughput.

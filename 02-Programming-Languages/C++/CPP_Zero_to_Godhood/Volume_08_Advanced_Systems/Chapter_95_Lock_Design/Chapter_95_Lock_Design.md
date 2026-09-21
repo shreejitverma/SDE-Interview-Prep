@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 95: Lock Design — Spinlocks, MCS Locks, Futexes, and Contention
 
 "Use a mutex" is the right default and a non-answer at the systems level, because a *mutex* hides a design space of radically different cost and fairness characteristics. A spinlock burns CPU but never sleeps; a futex sleeps but pays a syscall; a ticket lock is fair but bounces cache lines; an MCS lock scales but needs a per-thread node. This chapter builds locks from the atomic up, exposes the cache-coherence cost that makes naive locks collapse under contention, and gives the cost model for choosing — including the recurring conclusion that the best lock is often *less sharing*.

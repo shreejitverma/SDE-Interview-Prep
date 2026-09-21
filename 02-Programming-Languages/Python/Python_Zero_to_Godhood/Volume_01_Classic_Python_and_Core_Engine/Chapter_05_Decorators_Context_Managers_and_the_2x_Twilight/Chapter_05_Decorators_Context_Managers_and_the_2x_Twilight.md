@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 5: Decorators, Context Managers, and the 2.x Twilight (Python 2.4–2.7)
 
 The late 2.x line added three features that turned Python's first-class functions and frames

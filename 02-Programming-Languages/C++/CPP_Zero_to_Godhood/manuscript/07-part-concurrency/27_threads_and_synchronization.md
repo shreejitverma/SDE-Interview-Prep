@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Part VII: Concurrency and Parallelism
 
 *Threading, atomics, lock-free programming, and the memory model.*

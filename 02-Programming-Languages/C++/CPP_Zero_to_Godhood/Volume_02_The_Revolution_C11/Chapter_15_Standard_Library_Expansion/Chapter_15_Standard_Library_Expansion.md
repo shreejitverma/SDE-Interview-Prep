@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 15: Standard Library Expansion
 
 > *C++11 doubled the standard library's surface area: hashed containers, fixed and singly-linked sequences, type-safe time, a real random-number framework, regular expressions, and the small conveniences — numeric conversions, compile-time ratios — that remove a decade of hand-rolled code.*

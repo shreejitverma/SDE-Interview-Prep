@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 8: Standard Library Consolidation and the New GIL (Python 3.1–3.2)
 
 The 3.1–3.2 releases were consolidation, not revolution — but two of their additions shaped how

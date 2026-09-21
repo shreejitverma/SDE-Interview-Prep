@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 66: Core Language Conveniences
 
 > Beyond deducing `this` (Chapter 55) and `if consteval` (Chapter 65), C++23 makes a dozen smaller core-language changes, each removing a specific papercut. Multidimensional `operator[]` enables `m[i, j]`; static `operator()`/`operator[]` shrink stateless functors; `auto(x)` gives a clean decay-copy; `z`/`uz` literals end the signed/unsigned loop-counter warning; the preprocessor gains `#elifdef`/`#elifndef`/`#warning`; string literals gain named and delimited escapes; the range-`for` temporary-lifetime footgun is fixed; `[[assume]]` standardizes optimization hints; and several quieter cleanups land. This chapter is the catalog of those conveniences.

@@ -3,6 +3,11 @@ tags: [developer-tooling, sysadmin, awk, vim, devops, productivity, type/moc]
 aliases: [Developer Tooling and Foundations MOC, SysAdmin Tooling Canon]
 status: evergreen
 created: 2026-09-17
+type: moc
+track: [distinguished, sde]
+level:
+last_reviewed:
+sources: []
 ---
 
 # Developer Tooling & SysAdmin Foundations

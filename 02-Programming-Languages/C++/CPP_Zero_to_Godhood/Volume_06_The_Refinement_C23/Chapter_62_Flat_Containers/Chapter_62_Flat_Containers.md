@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 62: Flat Containers — `flat_map`, `flat_set`, and Their Multi Variants
 
 > Every performance-conscious C++ programmer has, at some point, replaced a `std::map` with a *sorted `std::vector`* — trading the map's pointer-chasing red-black tree for contiguous storage that the cache loves. It is a well-worn idiom, and it is also a pile of hand-written, easy-to-break code. C++23 standardizes it as the **flat container adaptors**: `flat_map`, `flat_multimap`, `flat_set`, and `flat_multiset` — associative containers with the familiar map/set interface, backed by sorted contiguous sequences. They are the right default for read-heavy, lookup-dominated workloads where cache locality beats asymptotic insertion cost.

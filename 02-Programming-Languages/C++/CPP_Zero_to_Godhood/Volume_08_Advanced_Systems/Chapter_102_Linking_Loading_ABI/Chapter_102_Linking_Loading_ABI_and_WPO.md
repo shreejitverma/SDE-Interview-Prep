@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 102: Linking, Loading, ABI, and Whole-Program Optimisation
 
 The compiler sees one translation unit at a time; the **linker** assembles them into a program, the **loader** maps that program into memory at run time, and the **ABI** is the binary contract that lets independently-compiled pieces interoperate. This layer is invisible until it isn't — an undefined-reference error, a silent ODR violation, a slow startup from relocations, or a failed cross-TU inline that left an abstraction non-free. This chapter explains the linking and loading model, symbol visibility and ABI stability, and the whole-program optimisations (LTO, PGO) that recover the cross-TU performance the separate-compilation model otherwise forfeits.

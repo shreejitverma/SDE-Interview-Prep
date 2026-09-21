@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 38: Modules — The Death of Headers
 
 > *Modules are the fourth pillar and the most disruptive to the build pipeline. For forty years C++ has shipped code as headers — raw text spliced into every translation unit by the preprocessor. Modules replace that text-substitution model with compiled, importable components that parse once, leak nothing, and let the compiler skip the redundant work that dominates large-project build times. This chapter covers what is wrong with headers, the full module syntax (interface units, partitions, the global module fragment), and the build-system and ABI consequences that make modules an operational change, not just a syntactic one.*

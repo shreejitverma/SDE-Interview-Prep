@@ -4,6 +4,11 @@ aliases: [Networking MOC, Kernel Bypass MOC]
 status: evergreen
 module: 06
 created: 2026-08-22
+type: moc
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
 # MOC — 06 Networking

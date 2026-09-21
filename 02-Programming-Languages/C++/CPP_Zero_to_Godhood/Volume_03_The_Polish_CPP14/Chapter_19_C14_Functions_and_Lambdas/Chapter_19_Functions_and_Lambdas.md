@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 19: Functions and Lambdas
 
 > *C++14's lambda and function-deduction changes are where the "Refinement" release pays off daily. Generic lambdas turn a closure into a template; init-capture lets a closure own a moved-in resource; return-type deduction removes the trailing-return-type ceremony; and `decltype(auto)` finally lets a forwarding wrapper preserve references exactly.*

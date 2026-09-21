@@ -1,3 +1,12 @@
+---
+type: moc
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # C++ for Software Engineering & Quantitative Finance
 
 **Author:** Shreejit Verma

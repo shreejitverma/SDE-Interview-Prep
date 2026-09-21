@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 118: Real-Time Audio and Signal Processing
 
 Real-time audio is hard real-time with an unforgiving deadline: the audio hardware demands a buffer of samples every few milliseconds, and if your callback is even *once* late — by a single missed deadline — the user hears a click, pop, or dropout. There is no retry. This makes the audio callback the strictest application of the determinism discipline in this entire book: it codifies, as inviolable rules, exactly what Volume 8 argued for the hot path. This chapter covers those rules, the lock-free communication that enforces them, and the SIMD and buffering techniques that make DSP fast.

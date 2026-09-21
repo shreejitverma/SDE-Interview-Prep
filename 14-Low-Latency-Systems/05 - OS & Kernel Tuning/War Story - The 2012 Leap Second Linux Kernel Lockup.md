@@ -4,6 +4,11 @@ aliases: [The 2012 Leap Second Bug, Leap Second Linux Lockup, Futex Spinlock Fre
 status: evergreen
 module: 05
 created: 2026-08-22
+type: case-study
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
 # War Story — The June 30, 2012 Leap Second Bug: Linux Futex Spinlock Cascades & 100% CPU Freezes

@@ -4,6 +4,11 @@ aliases: [Memory Barriers Hardware View for Software Hackers, Paul McKenney, Mem
 status: evergreen
 module: 14
 created: 2026-09-17
+type: paper
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
 # Source Summary — Memory Barriers: A Hardware View for Software Hackers

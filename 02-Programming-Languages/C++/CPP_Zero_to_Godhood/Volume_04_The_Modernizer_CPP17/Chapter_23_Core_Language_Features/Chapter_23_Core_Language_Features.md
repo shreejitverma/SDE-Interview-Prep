@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 23: Core Language Features
 
 > *C++17 is the "Modernization" release. Its core-language changes are not a new paradigm but a systematic removal of ceremony: decompose aggregates in one line, branch at compile time without SFINAE, scope variables to the condition that uses them, and stop paying for copies the standard now forbids. This chapter covers every core-language change C++17 made — from the headline ergonomic features down to the literal syntax, evaluation-order guarantees, and the dead syntax the committee finally deleted.*

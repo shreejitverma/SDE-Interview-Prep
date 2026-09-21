@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 93: Atomics, CAS, and the ABA Problem
 
 Atomics are the bricks of every lock and every lock-free structure: indivisible operations on shared memory that the hardware guarantees no thread can observe half-completed. This chapter goes beneath the lock-free overview of Chapter 77 to the atomic toolkit itself — the full `compare_exchange` semantics, the weak/strong distinction, read-modify-write operations, `atomic_ref` and `atomic<shared_ptr>`, double-width CAS — and treats the ABA problem in the depth it demands, because ABA is the silent corrupter of naive atomic code and the reason safe reclamation (Chapter 94) exists.

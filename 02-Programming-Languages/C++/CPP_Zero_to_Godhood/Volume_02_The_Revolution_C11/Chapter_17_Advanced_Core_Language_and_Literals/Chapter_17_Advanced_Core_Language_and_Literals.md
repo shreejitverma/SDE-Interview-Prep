@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 17: Advanced Core Language & Literals
 
 > *The headline features get the attention, but C++11 also shipped a dozen smaller core-language refinements — inheriting constructors, member initializers, explicit conversions, user-defined literals, Unicode, alignment control, and `noexcept` — that together close the gaps a systems programmer hits every day.*

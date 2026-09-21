@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 96: Threading Discipline — Affinity, Core Isolation, and Thread-Per-Core
 
 The operating system scheduler is optimised for *fairness and throughput across many processes* — which is exactly the wrong objective for a latency-critical thread that wants a core to itself, its caches warm, and no involuntary interruptions. This chapter is about taking control away from the scheduler: pinning threads to cores, isolating those cores from the kernel and other work, deciding when to busy-spin instead of block, and adopting the thread-per-core architecture that eliminates shared-state contention by construction. These are the disciplines that turn the techniques of the preceding chapters into deterministic, low-tail-latency systems.

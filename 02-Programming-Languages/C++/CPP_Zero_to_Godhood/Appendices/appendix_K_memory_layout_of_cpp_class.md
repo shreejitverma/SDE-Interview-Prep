@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Appendix K: Deep Dive: The Memory Layout of a C++ Class
 
 To become a C++ God, you must be able to "see" the memory. You should be able to look at a class definition and sketch out its byte-by-byte layout in your head.

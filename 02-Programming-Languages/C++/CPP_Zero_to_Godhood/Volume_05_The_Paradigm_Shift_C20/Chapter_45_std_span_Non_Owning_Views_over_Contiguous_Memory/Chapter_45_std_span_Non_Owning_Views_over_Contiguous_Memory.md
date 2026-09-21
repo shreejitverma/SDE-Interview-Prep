@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 45: std::span — Non-Owning Views over Contiguous Memory
 
 > *`std::span` is C++20's answer to the oldest interface-design problem in C and C++: how to pass a contiguous block of elements to a function without committing to a specific container, without copying, and without decaying to a bare pointer that has lost its length. A span is a fat pointer — a pointer plus a size — that views any contiguous sequence: a C array, a `std::array`, a `std::vector`, or a raw buffer. This chapter covers span's construction, its fixed- and dynamic-extent forms, the subview operations, and the lifetime rules that make it safe.*

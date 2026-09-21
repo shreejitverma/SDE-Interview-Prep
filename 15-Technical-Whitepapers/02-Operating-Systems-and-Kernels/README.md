@@ -3,6 +3,11 @@ tags: [operating-systems, kernel/internals, unix, linux, windows-nt, xv6, type/m
 aliases: [Operating Systems and Kernels MOC, Kernel Architecture Canon]
 status: evergreen
 created: 2026-09-17
+type: moc
+track: [distinguished, sde]
+level:
+last_reviewed:
+sources: []
 ---
 
 # Operating Systems & Kernel Internals

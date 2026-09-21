@@ -4,6 +4,11 @@ aliases: [Industry Landscape, Trading Firms, Market Makers, Prop Trading, Hedge 
 status: evergreen
 module: 14
 created: 2026-08-22
+type: concept
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
 > [!summary]

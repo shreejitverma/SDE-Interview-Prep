@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 79: Custom Memory Allocators
 
 The general-purpose allocator (`malloc`/`new`) is a marvel of engineering and the wrong tool for a latency-critical hot path: it is thread-safe (so it locks or uses per-thread arenas with their own costs), general (so it searches free lists and splits blocks), and unpredictable (so a single allocation can fault in a page, contend a lock, or take a microsecond). Custom allocators trade generality for control — O(1) allocation, perfect locality, zero fragmentation, and bounded latency — by exploiting what you know about *your* allocation pattern. This chapter builds the major allocator designs and the `std::pmr` framework that deploys them in production, with the cost model and lifetime hazards that govern their use.

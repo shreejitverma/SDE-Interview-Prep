@@ -1,3 +1,12 @@
+---
+type: playbook
+track: [sde, quant-dev, quant-research, low-latency, ai-eng, distinguished]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # 🏆 The Ultimate Interview Coaching Prompt
 
 > **How to use:** Copy the entire prompt below and paste it into any AI assistant (Claude, ChatGPT, Gemini, etc.) to activate a world-class interview coaching session. Customize the `[VARIABLES]` at the top before pasting.

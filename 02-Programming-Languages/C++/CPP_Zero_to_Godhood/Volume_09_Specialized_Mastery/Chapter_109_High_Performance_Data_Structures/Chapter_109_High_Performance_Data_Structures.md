@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 109: High-Performance Data Structures
 
 When `std::unordered_map` or `std::map` is the bottleneck, the answer is rarely a cleverer algorithm with the same big-O — it is a data structure designed around the *hardware*: one that minimises cache misses, exploits SIMD, avoids pointer chasing, and reuses memory without reallocation. This chapter presents the structures that production low-latency systems actually use — the Disruptor, the Swiss table, cache-conscious tries, and the slot map — each justified by the cache and concurrency cost models of Volume 8, not by asymptotic complexity alone.

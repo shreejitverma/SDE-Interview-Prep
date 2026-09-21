@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Preface
 
 ## The Complete C++ Programmer's Guide: From Zero to Godhood (C++98 to C++26)

@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 117: Machine Learning Infrastructure
 
 Deep-learning frameworks present a Python face, but PyTorch, TensorFlow, and JAX are C++ engines — the tensors, the automatic differentiation, the operator kernels, and the GPU dispatch are all native code, with Python merely orchestrating. Understanding that C++ core is what separates an engineer who *uses* a framework from one who can *optimise, extend, or build* one. This chapter covers the four pillars of an ML engine — tensor memory layout, broadcasting, automatic differentiation, and operator fusion — each an application of the layout and compute disciplines this book has built.

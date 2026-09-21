@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 115: GUI Development with C++
 
 Graphical user interfaces sit at the opposite end of C++'s spectrum from lock-free queues — they are event-driven, stateful, and human-facing — but they are still where much of the world's professional C++ lives: CAD tools, DAWs, IDEs, game editors, and trading terminals. The central design question of any GUI is *how UI state relates to the rendered pixels*, and the two answers — retained mode and immediate mode — lead to fundamentally different architectures. This chapter covers both through their flagship C++ frameworks, Qt and Dear ImGui, and the threading discipline GUIs demand.

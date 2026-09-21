@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 7: The Unicode Paradigm Shift and Text vs. Bytes (Python 3.0)
 
 Python 3.0 was a deliberate, compatibility-breaking reset, and its defining change was the

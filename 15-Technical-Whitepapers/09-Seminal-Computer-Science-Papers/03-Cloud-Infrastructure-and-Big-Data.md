@@ -3,6 +3,11 @@ tags: [cloud-infrastructure, big-data, gfs, mapreduce, bigtable, dynamo, spark, 
 aliases: [Cloud Infrastructure and Big Data, Google File System Paper, MapReduce Paper, Dynamo Paper, Apache Spark RDD]
 status: evergreen
 created: 2026-09-17
+type: paper
+track: [distinguished, sde]
+level:
+last_reviewed:
+sources: []
 ---
 
 # Cloud Infrastructure & Big Data Foundations

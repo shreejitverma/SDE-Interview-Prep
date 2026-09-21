@@ -4,6 +4,11 @@ aliases: [Lab 03, Intrusive LOB Lab, Order Book Lab, Matching Engine Lab]
 status: evergreen
 module: 03
 created: 2026-08-22
+type: playbook
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
 # Lab 03 — High-Performance Intrusive Limit Order Book

@@ -4,6 +4,11 @@ aliases: [False Sharing, Cache Line Contention, Cache Line Bouncing, MESI Cohere
 status: evergreen
 module: 04
 created: 2026-08-22
+type: concept
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
 > [!summary]

@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 1: Inception and the Executable Pipeline (Python 1.0–1.6)
 
 Python's surface is famously simple; its execution model is not. To master the language

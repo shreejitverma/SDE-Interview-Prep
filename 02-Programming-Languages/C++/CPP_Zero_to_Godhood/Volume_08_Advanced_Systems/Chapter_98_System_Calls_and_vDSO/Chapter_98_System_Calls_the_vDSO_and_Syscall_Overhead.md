@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 98: System Calls, the vDSO, and Syscall Overhead
 
 A system call is the only way a program can do anything the hardware protects — read a file, send a packet, get the time, allocate a page — and it is one of the most expensive routine operations in a program's life, because it is a controlled transition into the kernel with a full privilege-level change. This chapter quantifies that cost, explains the mechanism and why modern security mitigations made it worse, introduces the **vDSO** that eliminates it for a few hot calls, and establishes the discipline of *minimising kernel crossings* that underlies the high-performance I/O and clock chapters that follow.

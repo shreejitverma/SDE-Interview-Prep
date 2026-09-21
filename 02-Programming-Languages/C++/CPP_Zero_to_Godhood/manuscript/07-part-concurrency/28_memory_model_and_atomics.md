@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 28: The C++ Memory Model and Atomics
 
 > *The rules that govern multi-threaded memory access.*

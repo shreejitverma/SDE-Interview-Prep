@@ -4,6 +4,11 @@ aliases: [How to Build an Exchange, Jane Street Tech, Exchange Engineering Canon
 status: evergreen
 module: 14
 created: 2026-08-22
+type: paper
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
 # Source Summary — How to Build an Exchange: Systems Architecture

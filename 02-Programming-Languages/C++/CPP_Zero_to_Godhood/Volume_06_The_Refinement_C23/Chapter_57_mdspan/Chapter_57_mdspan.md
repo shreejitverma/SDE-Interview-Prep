@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 57: `std::mdspan` — Multidimensional Views
 
 > A C++ programmer who needed a matrix or a tensor has always faced an awkward gap: the language gives you a flat, contiguous `std::vector<double>` and the math gives you `A[i][j]`, but nothing standard bridges the two without either nested `vector`s (pointer-chasing, cache-hostile) or hand-rolled index arithmetic scattered across the code. `std::mdspan` closes that gap. It is a **non-owning, multidimensional view** over a contiguous block of memory, parameterized by its extents, its memory layout, and its access policy — and it has *zero* runtime overhead beyond the index arithmetic you would have written anyway. It is the missing primitive for numerical kernels, and it leans directly on the C++23 multidimensional `operator[]`.

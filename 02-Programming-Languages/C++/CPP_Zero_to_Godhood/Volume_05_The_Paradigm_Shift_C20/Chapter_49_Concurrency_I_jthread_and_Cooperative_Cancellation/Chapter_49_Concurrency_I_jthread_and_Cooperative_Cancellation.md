@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 49: Concurrency I — `jthread` and Cooperative Cancellation
 
 > *`std::jthread` fixes the two most dangerous defaults of `std::thread`: it joins automatically in its destructor (no more `std::terminate` from a forgotten `join`), and it carries a built-in cooperative cancellation mechanism via `std::stop_token`. Together with `std::stop_source` and `std::stop_callback`, C++20 finally gives the standard library a structured, RAII-clean way to start, stop, and wait for threads. This chapter covers automatic joining, the stop-token cancellation protocol, and the callback mechanism.*

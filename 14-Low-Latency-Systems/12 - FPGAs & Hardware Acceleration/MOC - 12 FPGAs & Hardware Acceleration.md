@@ -4,6 +4,11 @@ aliases: [FPGA Acceleration MOC, Hardware Acceleration MOC]
 status: evergreen
 module: 12
 created: 2026-08-22
+type: moc
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
 # MOC — 12 FPGAs & Hardware Acceleration

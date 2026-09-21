@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 73: Advanced Library Additions and Ergonomics
 
 The final piece of the C++26 puzzle lies in its library ergonomics. While metaprogramming, safety, and concurrency dominate the architectural discussions, day-to-day coding relies on the expressiveness of the standard library.

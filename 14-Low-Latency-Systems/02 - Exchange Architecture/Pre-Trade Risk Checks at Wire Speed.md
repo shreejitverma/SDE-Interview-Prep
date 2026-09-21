@@ -4,6 +4,11 @@ aliases: [Pre-Trade Risk, SEC Rule 15c3-5, Market Access Rule, Credit Controls, 
 status: evergreen
 module: 02
 created: 2026-08-22
+type: concept
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
 > [!summary]

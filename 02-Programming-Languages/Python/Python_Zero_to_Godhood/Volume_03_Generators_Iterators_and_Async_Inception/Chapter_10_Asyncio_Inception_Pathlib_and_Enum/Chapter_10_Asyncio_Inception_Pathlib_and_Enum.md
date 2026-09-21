@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 10: Asyncio Inception, Pathlib, and Enum (Python 3.4)
 
 Python 3.4 shipped three additions that each replaced a pile of ad-hoc idioms with a designed

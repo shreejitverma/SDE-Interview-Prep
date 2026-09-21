@@ -4,6 +4,11 @@ aliases: [Lab 06, Feed Arbitrator Lab, Multicast Arbitration Lab, Zero-Loss Feed
 status: evergreen
 module: 06
 created: 2026-08-22
+type: playbook
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
 # Lab 06 — Zero-Loss UDP Multicast A/B Feed Arbitrator

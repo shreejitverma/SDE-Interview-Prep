@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 14: Template Metaprogramming
 
 > *Templates are a Turing-complete functional language that runs inside the compiler. C++11 gave it variadics, type traits, and `constexpr` — turning a clever trick into an engineering discipline.*

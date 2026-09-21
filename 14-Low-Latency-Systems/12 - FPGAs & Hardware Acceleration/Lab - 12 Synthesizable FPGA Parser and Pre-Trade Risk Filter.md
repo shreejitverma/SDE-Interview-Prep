@@ -4,6 +4,11 @@ aliases: [Lab 12, FPGA Parser Lab, HLS Parser Lab, Verilog Risk Filter Lab]
 status: evergreen
 module: 12
 created: 2026-08-22
+type: playbook
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
 # Lab 12 — Synthesizable FPGA Parser & Pre-Trade Risk Filter

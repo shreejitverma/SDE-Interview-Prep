@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 35: Ranges II — Range Algorithms, Projections, and Borrowed Ranges
 
 > *Chapter 34 covered views and lazy pipelines. This chapter covers the other half of the ranges library: the `std::ranges::*` algorithms that take a whole range instead of an iterator pair, the projection parameter that lets one algorithm sort or search by a member without a custom comparator, and the borrowed-range model that makes returning an iterator into a temporary a compile error instead of a dangling-pointer bug.*

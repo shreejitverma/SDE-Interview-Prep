@@ -1,3 +1,12 @@
+---
+type: concept
+track: [ai-eng]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Appendix E: Pattern Library
 
 A cookbook of reusable agent patterns: prompt skeletons, pseudocode, and templates meant to be copied and adapted.

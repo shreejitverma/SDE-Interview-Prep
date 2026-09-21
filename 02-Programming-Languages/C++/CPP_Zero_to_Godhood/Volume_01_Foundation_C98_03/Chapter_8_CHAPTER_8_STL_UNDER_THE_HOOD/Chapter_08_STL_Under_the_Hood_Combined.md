@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 08: STL Under the Hood
 
 > *Knowing what happens inside the containers is the difference between writing correct code and writing fast code.*

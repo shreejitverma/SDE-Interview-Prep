@@ -3,6 +3,11 @@ tags: [systems/performance, security/offensive, security/defensive, kernel/inter
 aliases: [Base English Whitepapers, Technical Whitepapers English, Base Papers Catalog]
 status: evergreen
 created: 2026-09-17
+type: paper
+track: [distinguished, sde]
+level:
+last_reviewed:
+sources: []
 ---
 
 # Base Directory — English Technical Whitepapers Catalog

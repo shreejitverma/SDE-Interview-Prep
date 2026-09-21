@@ -4,6 +4,11 @@ aliases: [Lab 10, ITCH Parser Lab, Zero-Copy Parser Lab, MoldUDP64 Lab]
 status: evergreen
 module: 10
 created: 2026-08-22
+type: playbook
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
 # Lab 10 — Zero-Copy NASDAQ ITCH 5.0 & MoldUDP64 Parser

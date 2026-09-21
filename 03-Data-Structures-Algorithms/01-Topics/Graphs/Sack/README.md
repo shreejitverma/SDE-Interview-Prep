@@ -1,3 +1,12 @@
+---
+type: moc
+track: [sde, quant-dev]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Sack' Algorihm
 The Sack algorithm allows responding offline queries related to node subtree information in a tree.
 A concept introduced in the algorithm is that of heavy son, in which the heavier nodes inherit their information to the parent (causing the heavy part of the processing to be discarded) and the lighter ones are processed normally.

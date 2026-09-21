@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 124: Capstone — A High-Performance Order Book
 
 This final chapter synthesises the entire book into one artefact: a low-latency limit order book (LOB), the matching engine at the heart of every electronic exchange and trading system. The order book is the perfect capstone because it demands *everything* — zero-allocation hot paths, cache-conscious data structures, lock-free communication, mechanical sympathy, and the determinism discipline — applied together to a real, hard problem. We build it from a clear, correct foundation and then layer on the optimizations that take it from "works" to "Godhood."

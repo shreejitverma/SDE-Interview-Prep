@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 44: Attributes for Performance and Safety
 
 > *C++20 adds three attributes that matter to performance-critical and correctness-critical code: `[[likely]]` and `[[unlikely]]` give the optimizer branch-probability hints it can use for code layout, `[[no_unique_address]]` lets empty members occupy zero bytes so wrappers and allocators stop paying for nothing, and `[[nodiscard("reason")]]` attaches an explanatory message to the existing discard warning. This chapter covers what each attribute actually does at the machine level, when it helps, and the traps that make `[[likely]]` in particular easy to misuse.*

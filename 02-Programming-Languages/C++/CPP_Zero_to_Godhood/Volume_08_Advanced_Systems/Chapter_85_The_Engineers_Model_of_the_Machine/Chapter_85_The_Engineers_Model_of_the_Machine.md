@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 85: Advanced Systems — The Engineer's Model of the Machine
 
 Every chapter that follows rests on one shift in perspective: the C++ abstract machine is a *fiction* the compiler maintains for your convenience, and the real machine underneath — pipelined, cached, virtually addressed, multi-core, talking to an operating system across an expensive boundary — behaves nothing like the simple sequential model in your head. This opening chapter establishes the mental model the rest of the volume sharpens: the layers between your source and the silicon, the latency numbers every systems engineer must know cold, and the disciplines (measure, model the cost, respect the hardware) that separate code that *works* from code that hits a latency budget.

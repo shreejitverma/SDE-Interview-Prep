@@ -3,6 +3,11 @@ tags: [operating-systems, linux/kernel, unix, scheduler, cfs, concurrency, locki
 aliases: [UNIX and Linux Kernel Foundations, Ritchie Thompson UNIX 1974, Decade of Wasted Cores, Rusty Russell Kernel Guide]
 status: evergreen
 created: 2026-09-17
+type: paper
+track: [distinguished, sde]
+level:
+last_reviewed:
+sources: []
 ---
 
 # UNIX & Linux Kernel Foundations

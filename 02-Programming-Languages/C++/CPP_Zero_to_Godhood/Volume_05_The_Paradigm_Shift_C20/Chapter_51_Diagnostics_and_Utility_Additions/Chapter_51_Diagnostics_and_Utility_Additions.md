@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 51: Diagnostics and Utility Additions
 
 > *C++20 adds a cluster of small but high-leverage utilities that together close long-standing gaps in diagnostics and everyday code. `std::source_location` captures file/line/function at the call site without macros — the type-safe successor to `__FILE__`/`__LINE__`. `std::ssize` returns a signed size to end the unsigned-comparison warning plague. And `std::is_constant_evaluated` lets one function take different paths at compile time versus run time. This chapter covers these and the related convenience helpers.*

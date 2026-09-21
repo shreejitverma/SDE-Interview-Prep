@@ -4,6 +4,11 @@ aliases: [Lab 13, PCAP Replay Lab, Deterministic Testing Lab, Bitwise Verificati
 status: evergreen
 module: 13
 created: 2026-08-22
+type: playbook
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
 # Lab 13 — Deterministic PCAP Replay & Bitwise Verification Engine

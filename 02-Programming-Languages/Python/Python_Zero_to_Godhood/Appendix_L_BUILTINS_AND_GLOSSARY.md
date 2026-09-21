@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Appendix L: Exhaustive Python Built-in Functions Reference
 
 This appendix provides a complete list of Python 3.13 built-in functions, categorized by their primary use case.

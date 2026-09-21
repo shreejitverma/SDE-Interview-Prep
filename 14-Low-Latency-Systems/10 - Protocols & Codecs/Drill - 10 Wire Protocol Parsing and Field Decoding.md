@@ -4,6 +4,11 @@ aliases: [Drill 10, Protocol Decoding Drill, Hex Decoding Drill, Wire Protocol D
 status: evergreen
 module: 10
 created: 2026-08-22
+type: playbook
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
 # Drill 10 — Wire Protocol Parsing & Hex Field Decoding

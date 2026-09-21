@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 119: Robotics and ROS2 Development
 
 Robotics is where multiple timescales of real-time meet in one system: a navigation planner that may take hundreds of milliseconds runs alongside a motor-control loop that must execute at a kilohertz with hard deadlines, and a perception pipeline moving gigabytes of sensor data per second sits between them. C++ is the language of serious robotics — and **ROS2** (Robot Operating System 2) is its dominant framework. This chapter covers the ROS2 architecture, the zero-copy transport that makes high-bandwidth sensor data feasible, and the real-time disciplines (executors, allocators) that protect the control loop.

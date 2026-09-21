@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 14: The Walrus Operator and Positional-Only Parameters (Python 3.8)
 
 Python 3.8 added two syntax features that look small and are quietly significant. The **walrus

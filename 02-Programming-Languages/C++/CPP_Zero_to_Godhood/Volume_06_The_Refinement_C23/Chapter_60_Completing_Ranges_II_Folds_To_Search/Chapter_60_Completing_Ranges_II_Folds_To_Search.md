@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 60: Completing Ranges II — Folds, `ranges::to`, and Search
 
 > If the new *views* of Chapter 59 are how you build a lazy pipeline, the additions in this chapter are how you *finish* one: collapse it to a single value with the new **fold algorithms**, materialize it into a concrete container with **`ranges::to`**, or interrogate it with the new **search algorithms** that C++20 forgot. Together they close the last large gaps in the ranges library — the eager, range-based reductions and conversions that every real program needs at the end of a pipeline.

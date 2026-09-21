@@ -4,6 +4,11 @@ aliases: [Proprietary Secrecy, Trade Secrets, Public Knowledge Boundary, Clean-R
 status: evergreen
 module: 14
 created: 2026-08-22
+type: concept
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
 > [!summary]

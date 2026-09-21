@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 25: Vocabulary Types
 
 > *C++17 standardizes four "vocabulary types" — `optional`, `variant`, `any`, and `string_view` — that give the language a shared, type-safe way to express ideas every codebase had previously hand-rolled: a value that may be absent, a value that is one of several types, a value of any type, and a non-owning view of a string. Because they are standard, they become a common interface across libraries; because they are value types, they integrate with the type system instead of subverting it the way `void*`, sentinel values, and naked pointers do.*

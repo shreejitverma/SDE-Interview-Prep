@@ -1,3 +1,12 @@
+---
+type: moc
+track: [sde, distinguished]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 ## Template Method
 
 Template method defines the skeleton of an algorithm in an operation, deferring some

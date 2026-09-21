@@ -1,3 +1,12 @@
+---
+type: moc
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Linear algebra library for Python
 
 This module contains classes and functions for doing linear algebra.

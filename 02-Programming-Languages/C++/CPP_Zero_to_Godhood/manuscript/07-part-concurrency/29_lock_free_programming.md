@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 29: Lock-Free Programming
 
 > *Programming without mutexes — the ultimate performance unlock.*

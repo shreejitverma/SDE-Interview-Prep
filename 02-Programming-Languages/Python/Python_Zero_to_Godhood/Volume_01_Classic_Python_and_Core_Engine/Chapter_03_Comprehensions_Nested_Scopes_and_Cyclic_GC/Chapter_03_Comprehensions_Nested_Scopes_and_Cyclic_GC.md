@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 3: Comprehensions, Nested Scopes, and Cyclic GC (Python 2.0–2.1)
 
 Python 2.0–2.1 added three features whose interactions define how names live and die in

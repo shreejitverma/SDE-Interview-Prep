@@ -3,6 +3,11 @@ tags: [security/offensive, reverse-engineering, elf, shellcode, polymorphic, x86
 aliases: [Inżynieria Wsteczna i Analiza Kodu, Szperając w nagłówkach, Analiza dynamiczna ELF, Polimorficzny szelkod]
 status: evergreen
 created: 2026-09-17
+type: paper
+track: [distinguished, sde]
+level:
+last_reviewed:
+sources: []
 ---
 
 # Inżynieria Wsteczna i Analiza Kodu Wykonywalnego

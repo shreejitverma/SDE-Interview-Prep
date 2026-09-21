@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 2: The PyObject Model and Reference Counting (Python 1.x)
 
 Chapter 1 established that a Python program is a graph of heap objects and that names are

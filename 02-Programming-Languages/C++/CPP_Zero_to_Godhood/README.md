@@ -1,3 +1,12 @@
+---
+type: moc
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Complete C++: Zero to Godhood
 
 A multi-volume C++ guide that runs from C++98/03 foundations through C++26, then into advanced systems programming and specialized mastery topics.

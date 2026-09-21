@@ -1,3 +1,12 @@
+---
+type: moc
+track: [sde, distinguished]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Low Level System Design
 
 This project contains multiple LLD codes for system design interviews. <br/>

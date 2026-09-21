@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 04: Advanced Functions & Callbacks
 
 > *The engines of your application — and the low-level data manipulation that powers them.*

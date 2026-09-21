@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 107: Design Patterns in Modern C++
 
 Design patterns are named, reusable solutions to recurring design problems — but in C++ the classic Gang-of-Four catalogue is only half the story, because the language's templates, value semantics, and zero-overhead abstractions let you implement many patterns *without* the runtime indirection (virtual calls, heap allocation) that the original object-oriented formulations assume. This chapter covers the patterns that matter in modern C++, and for each asks the question the rest of this book insists on: what does it cost, and is the C++ idiom that achieves the same intent *cheaper*?

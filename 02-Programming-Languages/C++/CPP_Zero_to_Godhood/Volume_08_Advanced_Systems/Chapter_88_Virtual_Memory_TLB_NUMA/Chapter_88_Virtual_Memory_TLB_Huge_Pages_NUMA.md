@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 88: Virtual Memory, TLB, Huge Pages, and NUMA
 
 Every pointer your program dereferences is a *virtual* address that hardware must translate to a physical one before any byte is read — and that translation, the page faults it can trigger, and the non-uniform cost of reaching physical memory on a multi-socket machine are invisible in your source yet decisive for tail latency. This chapter exposes the machinery beneath the pointer: page tables and the TLB, demand paging and page faults, huge pages, and NUMA topology — and the disciplines (pre-faulting, page locking, huge pages, first-touch placement) that keep this machinery from injecting jitter into a latency-critical path.

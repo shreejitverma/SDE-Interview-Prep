@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 52: Container and Algorithm Additions
 
 > *C++20 sands down the rough edges of the standard containers and algorithms with a set of additions that replace verbose, error-prone idioms with single, intention-revealing calls. `.contains()` ends the `find() != end()` dance; `starts_with`/`ends_with` give strings the prefix/suffix tests they always lacked; the uniform `std::erase`/`std::erase_if` free functions fix the notorious erase-remove idiom; and `make_shared` finally supports arrays. This chapter catalogues these container and algorithm improvements and the idioms they retire.*

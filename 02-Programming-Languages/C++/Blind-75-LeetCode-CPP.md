@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # The Blind 75 LeetCode Problems - Complete C++ Solutions Guide
 
 A curated list of 75 essential LeetCode problems that cover all major algorithmic concepts. Each problem includes optimal time/space complexity and production-grade C++ solutions.

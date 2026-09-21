@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 104: Undefined Behaviour and the Optimiser
 
 Undefined behaviour is the bargain at the heart of C++'s performance: the standard declares certain operations to have *no defined meaning*, and in exchange the optimizer is permitted to assume they never happen — which is exactly what lets it generate fast code. But the same bargain means a single UB anywhere licenses the optimizer to do *anything*, including deleting your safety checks and miscompiling code that "looks fine." This chapter explains what UB is, how the optimizer exploits it, the common sources (signed overflow, out-of-bounds, strict aliasing, the ODR, data races), and the distinction from merely *unspecified* or *implementation-defined* behaviour — because mistaking these three is itself a source of bugs.

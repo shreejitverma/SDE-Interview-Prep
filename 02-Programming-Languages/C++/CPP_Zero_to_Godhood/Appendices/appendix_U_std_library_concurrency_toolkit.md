@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Appendix U: THE STANDARD LIBRARY CONCURRENCY TOOLKIT (A Cppreference Breakdown)
 
 If you look at the `<thread>` or `<atomic>` pages on cppreference, they are written in "Standardese" (the language of the ISO C++ committee). This appendix translates the most critical concurrency tools into "Head First" English.

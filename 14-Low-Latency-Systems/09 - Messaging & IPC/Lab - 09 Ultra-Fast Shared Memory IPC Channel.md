@@ -4,6 +4,11 @@ aliases: [Lab 09, Shared Memory IPC Lab, POSIX SHM Lab, Cross-Process Latency La
 status: evergreen
 module: 09
 created: 2026-08-22
+type: playbook
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
 # Lab 09 — Ultra-Fast Shared Memory IPC Channel

@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 27: Parallel Algorithms and Concurrency
 
 > *C++17 made the standard algorithms parallel. Most of `<algorithm>` and a set of new numeric algorithms now accept an execution policy as their first argument, letting `std::sort`, `std::for_each`, and `std::reduce` run across threads or SIMD lanes without you writing a single thread. Alongside, the concurrency primitives gained `std::scoped_lock` for deadlock-free multi-mutex locking and the untimed `std::shared_mutex` reader-writer lock.*

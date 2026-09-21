@@ -4,6 +4,11 @@ aliases: [Microstructure MOC, Market Fundamentals MOC]
 status: evergreen
 module: 01
 created: 2026-08-22
+type: moc
+track: [low-latency, quant-dev]
+level:
+last_reviewed:
+sources: []
 ---
 
 # MOC — 01 Market & Microstructure Fundamentals

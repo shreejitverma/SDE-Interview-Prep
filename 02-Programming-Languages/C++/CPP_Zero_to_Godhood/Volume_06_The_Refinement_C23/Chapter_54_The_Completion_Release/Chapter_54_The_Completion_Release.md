@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 54: C++23 — The Completion Release
 
 > C++20 was a revolution: concepts, ranges, coroutines, and modules arrived together and changed the shape of the language. But a revolution leaves loose ends. C++23 is the release that ties them off. It is not defined by one headline feature; it is defined by *closure* — finishing the standard library's coroutine story with `std::generator`, completing the ranges library that shipped half-built, giving error handling a first-class vocabulary with `std::expected`, and making the day-one ergonomics (`std::print`, `import std;`, deducing `this`) finally usable. This chapter frames the volume: what kind of release C++23 is, why "ergonomics and completion" is the right lens, and how the chapters ahead are organized.

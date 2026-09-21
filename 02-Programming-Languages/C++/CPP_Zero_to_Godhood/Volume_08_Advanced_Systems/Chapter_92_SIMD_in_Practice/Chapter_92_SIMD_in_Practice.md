@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 92: SIMD in Practice — Intrinsics, Auto-Vectorisation, and std::simd
 
 A modern core can add eight `float`s, or sixteen with AVX-512, in a single instruction — a potential 8–16× speedup that is left entirely on the table by scalar code. **SIMD** (Single Instruction, Multiple Data) exploits the wide vector registers and execution units that every server and most client CPUs have carried for over a decade. But the speedup is conditional: it materialises only when the data is laid out for it, the loop has no cross-lane dependencies, and the operation is genuinely arithmetic-bound. This chapter covers the three routes to SIMD (auto-vectorisation, intrinsics, `std::simd`), the alignment and layout prerequisites, and the cost model that says when vectorisation pays.

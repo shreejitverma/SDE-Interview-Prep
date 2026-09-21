@@ -3,6 +3,11 @@ tags: [operating-systems, windows-nt, kernel/internals, windbg, cutler, probert,
 aliases: [Windows NT Internals Architecture, David Probert Windows Kernel, WinDbg Guide, WSL1 Architecture]
 status: evergreen
 created: 2026-09-17
+type: paper
+track: [distinguished, sde]
+level:
+last_reviewed:
+sources: []
 ---
 
 # Windows NT Internals & Architecture

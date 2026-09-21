@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 101: Clocks, Timekeeping, and Measuring Latency Correctly
 
 You cannot optimise what you cannot measure, and measuring nanosecond-scale latency correctly is itself a hard systems problem: the clock you pick has its own cost and resolution, the timestamp instruction can be reordered by the CPU, and the measurement overhead can exceed the thing measured. This chapter covers the clock sources C++ exposes, the `rdtsc`/TSC hardware counter that low-latency code times with, and the methodology for measuring latency without lying to yourself — the foundation for the benchmarking and jitter chapters that close the volume.

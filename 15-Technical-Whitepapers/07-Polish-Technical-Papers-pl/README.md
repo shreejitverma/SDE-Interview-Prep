@@ -3,6 +3,11 @@ tags: [security/offensive, security/defensive, reverse-engineering, malware, roo
 aliases: [Polskie Whitepapery Techniczne MOC, Polish Technical Papers MOC]
 status: evergreen
 created: 2026-09-17
+type: moc
+track: [distinguished, sde]
+level:
+last_reviewed:
+sources: []
 ---
 
 # Polskie Whitepapery Techniczne (Katalog pl)

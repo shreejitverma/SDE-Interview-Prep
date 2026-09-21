@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 114: Cross-Platform Development
 
 C++'s reach is unmatched: the *same* C++ core can run on a server, compile to run in a browser via WebAssembly, link into an Android app through the NDK, and ship inside an iOS app — which is why C++ is the natural choice for the performance-critical *engine* shared across every platform a product targets. This chapter covers the portability disciplines and the major targets — WebAssembly, mobile (NDK/JNI) — along with the architecture pattern that makes it work: a portable C++ core behind thin platform-specific shells.

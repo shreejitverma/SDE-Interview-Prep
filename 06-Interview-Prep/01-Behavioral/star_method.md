@@ -1,3 +1,12 @@
+---
+type: playbook
+track: [sde, quant-dev, quant-research, low-latency, ai-eng]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Behavioral Interview Guide
 
 ## The STAR Method

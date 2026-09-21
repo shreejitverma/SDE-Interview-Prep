@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 113: C++ in the Cloud
 
 C++ is often dismissed as a "systems language," not a cloud language — but that intuition is wrong: in cloud-native architectures where you pay per millisecond of compute and per gigabyte of memory, C++'s speed and tiny footprint translate *directly* into lower bills and better latency. This chapter covers C++ as a first-class cloud citizen: high-throughput microservices, serverless functions where its fast cold start is a decisive advantage, and the deployment realities (containers, observability) that make native services practical. The recurring theme is that the performance disciplines of this book become *cost* disciplines in the cloud.

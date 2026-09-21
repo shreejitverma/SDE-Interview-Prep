@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # Chapter 15: The PEG Parser, Dict Union, and Pattern Matching (Python 3.9–3.10)
 
 The 3.9–3.10 cycle delivered the most visible syntax addition since Python 3.0: **structural

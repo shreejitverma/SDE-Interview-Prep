@@ -1,3 +1,12 @@
+---
+type: concept
+track: [sde, quant-dev, low-latency]
+level:
+status: draft
+last_reviewed:
+sources: []
+---
+
 # STYLE.md — The Canonical Style Guide for *Python Zero to Godhood*
 
 This file is the single source of truth for voice, terminology, notation, and code
