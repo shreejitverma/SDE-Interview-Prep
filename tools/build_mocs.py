@@ -8,9 +8,9 @@ For each folder holding live notes (archived drafts and private paths excluded):
 - a hand-written entry note: add a generated "Also in this folder" section that
   lists only the notes and sub-sections the note does not already link.
 
-Generated text sits between the markers below, so re-running replaces it and
-never touches hand-written text. Links are relative Markdown links, which work
-in both Obsidian and GitHub.
+Generated text sits between the markers below, so re-running replaces it in
+place and never touches hand-written text. Links are relative Markdown links,
+which work in both Obsidian and GitHub.
 
 Usage:
     python3 tools/build_mocs.py            # dry run
@@ -95,6 +95,7 @@ def main() -> int:
         path = repo / entry
         existing = path.read_text(errors="ignore") if path.exists() else None
         body = BLOCK_RE.sub("", existing) if existing else ""
+        old = BLOCK_RE.search(existing) if existing else None
 
         subs = sorted(c for c in folders if str(PurePosixPath(c).parent) == d)
         notes = sorted(f for f in live if str(PurePosixPath(f).parent) == d and f != entry)
@@ -113,7 +114,9 @@ def main() -> int:
                 continue
 
         lines = [START]
-        heading = "## Also in this folder" if existing is not None else "## Contents"
+        # A note this tool created keeps its "Contents" heading on later runs.
+        own = existing is None or (old is not None and "\n## Contents\n" in old.group(0))
+        heading = "## Contents" if own else "## Also in this folder"
         lines += [heading, ""]
         if subs:
             lines += ["**Sections**", ""] + [f"- {link(d, entries[c], pretty(PurePosixPath(c).name))}" for c in subs] + [""]
@@ -133,6 +136,9 @@ def main() -> int:
                 head += [scope, ""]
             text = "\n".join(head) + block
             created += 1
+        elif old is not None:  # replace the generated block in place
+            text = existing[:old.start()] + block + BLOCK_RE.sub("", existing[old.end():])
+            updated += 1
         else:
             text = body.rstrip("\n") + "\n\n" + block
             updated += 1
