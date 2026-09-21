@@ -7,6 +7,11 @@ written outside this public repo (--out is required and refused inside it).
 
 Usage:
     python3 tools/audit_pii.py --out ~/github/career-ops/command-center/PII-INVENTORY.md
+    python3 tools/audit_pii.py --check     # CI and pre-commit guard; prints paths only, exit 1 on a violation
+
+--check fails when a tracked file sits in a private location, when a public
+Interview Command Center note contains an email address or phone number, or
+when the personal task backlog is tracked. It never prints matched values.
 """
 
 from __future__ import annotations
@@ -73,13 +78,48 @@ def is_inside(path: Path, repo: Path) -> bool:
     return any(p.exists() and os.path.samefile(p, repo) for p in (path, *path.parents))
 
 
+PUBLIC_CAREER_PREFIX = "16-Interview-Command-Center/"
+NEVER_TRACKED = {"backlog.md"}
+
+
+def check(repo: Path, paths: list[str]) -> int:
+    """Guard mode: report violations by path and category, never by value."""
+    problems = []
+    for rel in paths:
+        if any(rel.startswith(prefix) for prefix, _ in PRIVATE_LOCATIONS):
+            problems.append(f"{rel}: private location, belongs in career-ops/command-center")
+        elif rel in NEVER_TRACKED:
+            problems.append(f"{rel}: personal file, must stay untracked")
+        elif rel.startswith(PUBLIC_CAREER_PREFIX) and Path(rel).suffix.lower() in TEXT_EXTS and (repo / rel).is_file():
+            counts = scan_text((repo / rel).read_text(errors="ignore"))
+            hits = [k for k in ("email:personal", "email:other", "phone") if counts.get(k)]
+            if hits:
+                problems.append(f"{rel}: contains {', '.join(hits)}")
+    for line in problems:
+        print(f"private-data guard: {line}")
+    print(f"private_data_violations: {len(problems)}")
+    return 1 if problems else 0
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--out", required=True, type=Path, help="report path; must be outside the repo")
+    ap.add_argument("--out", type=Path, help="report path; must be outside the repo")
+    ap.add_argument("--check", action="store_true", help="guard mode for CI and pre-commit")
+    ap.add_argument("--staged", action="store_true", help="with --check, only inspect staged files")
     ap.add_argument("--repo", type=Path, default=Path(__file__).resolve().parent.parent)
     args = ap.parse_args()
 
     repo = args.repo.resolve()
+    if args.check:
+        if args.staged:
+            out = subprocess.run(["git", "diff", "--cached", "--name-only", "-z", "--diff-filter=ACMR"],
+                                 cwd=repo, check=True, capture_output=True).stdout
+            paths = [p for p in out.decode().split("\0") if p]
+        else:
+            paths = git_ls_files(repo)
+        return check(repo, paths)
+    if args.out is None:
+        ap.error("--out is required unless --check is given")
     out = args.out.expanduser().resolve()
     if is_inside(out, repo):
         print(f"error: refusing to write PII report inside the public repo: {out}", file=sys.stderr)
