@@ -105,7 +105,7 @@ About 3,500 C++ and 3,300 Python files, organized by pattern under [01-Topics](.
 - [Most Asked Design Questions](./04-System-Design/Most%20Asked%20Design%20Questions): 80+ "Design X" problems (LRU cache, Twitter, skiplist, file system, underground system, web crawler) in both C++ and Python.
 - [Low Level Design](./04-System-Design/Low%20Level%20Design): distributed cache, distributed event bus, rate limiter, service orchestrator.
 - Design pattern catalogs: [C++](./04-System-Design/Design%20Patterns), [Python](./04-System-Design/Design%20Patterns/python-patterns), [Java](./04-System-Design/design-patterns-java).
-- Reference material from ByteByteGo, InterviewReady, and Arpit Bhayani, plus the top-20 questions list.
+- [InterviewReady](./04-System-Design/InterviewReady) reference material and the [top-20 questions list](./04-System-Design/top-20-questions.md).
 
 ### 05 - Quantitative Finance
 

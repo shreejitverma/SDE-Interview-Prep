@@ -16,7 +16,7 @@ sources: []
 | Cookies, DNS and TCP | [1](notes/03-cookies-dns-tcp.md) | _ | _ | _ |
 | Socket programming with Python | [1](notes/04-sockets-primer.md) | _ | _ | _ |
 
-Lecture PDFs and handwritten notes from the original course are not redistributed here; the Markdown notes and MCQs cover the same material.
+Lecture PDFs and handwritten notes from the original course are not redistributed here; the Markdown notes cover the same material.
 
 
 ## Must read

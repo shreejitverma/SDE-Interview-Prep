@@ -8,9 +8,9 @@ Re-run the script after every structural change; this file is its output and sho
 
 | Check | Result |
 | :--- | ---: |
-| Tracked files | 15145 |
-| Markdown notes | 1517 |
-| Internal links checked | 9317 |
+| Tracked files | 15128 |
+| Markdown notes | 1515 |
+| Internal links checked | 9319 |
 | Broken links (links into private locations are not counted) | 0 |
 | Wikilink aliases that split a table cell | 0 |
 | Broken wikilinks fixable by unique basename | 0 |
@@ -20,7 +20,7 @@ Re-run the script after every structural change; this file is its output and sho
 | Note folders without README (depth <= 3) | 0 |
 | Notes with emojis / total emojis | 0 / 0 |
 | Notes with em dashes / total em dashes | 0 / 0 |
-| Identical-content groups / redundant MB | 305 / 41.9 |
+| Identical-content groups / redundant MB | 304 / 41.9 |
 | Vendored or imported repos | 10 |
 | Tracked build junk | 0 |
 | Files >= 5 MB / total MB | 1 / 5.1 |
@@ -29,12 +29,12 @@ Re-run the script after every structural change; this file is its output and sho
 
 | Folder | Files | Notes | Code | Papers | Other | MB | Last touched |
 | :--- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| `(root)` | 13 | 8 | 0 | 0 | 5 | 0.1 | 2026-09-21 |
+| `(root)` | 11 | 6 | 0 | 0 | 5 | 0.1 | 2026-09-21 |
 | `.github` | 1 | 0 | 0 | 0 | 1 | 0.0 | 2026-09-21 |
 | `.obsidian` | 43 | 0 | 0 | 0 | 43 | 0.0 | 2026-09-21 |
 | `00-Start-Here` | 3 | 3 | 0 | 0 | 0 | 0.0 | 2026-09-21 |
 | `01-CS-Foundations` | 151 | 65 | 59 | 0 | 27 | 1.5 | 2026-09-21 |
-| `02-Programming-Languages` | 5819 | 798 | 2856 | 466 | 1699 | 112.0 | 2026-09-21 |
+| `02-Programming-Languages` | 5804 | 798 | 2856 | 466 | 1684 | 111.1 | 2026-09-21 |
 | `03-Data-Structures-Algorithms` | 7708 | 82 | 7506 | 0 | 120 | 15.2 | 2026-09-21 |
 | `04-System-Design` | 880 | 66 | 657 | 0 | 157 | 7.5 | 2026-09-21 |
 | `05-Quantitative-Finance` | 8 | 1 | 7 | 0 | 0 | 0.0 | 2026-09-21 |
@@ -190,7 +190,7 @@ Folders carrying their own LICENSE, `.gitignore`, `package.json`, or similar; ou
 | Folder | Files | Last touched |
 | :--- | ---: | ---: |
 | `03-Data-Structures-Algorithms/02-Practice-Platforms/LeetCode` | 5953 | 2026-09-21 |
-| `02-Programming-Languages/Python/python in depth` | 2045 | 2026-09-21 |
+| `02-Programming-Languages/Python/python in depth` | 2030 | 2026-09-21 |
 | `04-System-Design/design-patterns-java` | 177 | 2026-09-21 |
 | `04-System-Design/design-questions` | 172 | 2026-09-21 |
 | `04-System-Design/Design Patterns/python-patterns` | 106 | 2026-09-21 |

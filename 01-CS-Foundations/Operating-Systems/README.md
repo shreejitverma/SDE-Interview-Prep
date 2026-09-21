@@ -16,7 +16,7 @@ sources: []
 | Thread Synchronisation     | [1](notes/03-thread-synchronisation.md) | _     | _         | _                      |
 | Memory management          | [1](notes/04-memory-management.md)      | _          | _         | _                      |
 
-Lecture PDFs and handwritten notes from the original course are not redistributed here; the Markdown notes and MCQs cover the same material.
+Lecture PDFs and handwritten notes from the original course are not redistributed here; the Markdown notes cover the same material.
 
 ## Problem sets
 1. [**Print in order**](https://leetcode.com/problems/print-in-order/submissions/)

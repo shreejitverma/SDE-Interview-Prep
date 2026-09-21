@@ -2,6 +2,7 @@
  # GitHub: https://github.com/shreejitverma
 
 
+import os
 import time
 import concurrent.futures
 from PIL import Image, ImageFilter
@@ -27,6 +28,8 @@ img_names = [
 t1 = time.perf_counter()
 
 size = (1200, 1200)
+
+os.makedirs('processed', exist_ok=True)
 
 
 def process_image(img_name):
