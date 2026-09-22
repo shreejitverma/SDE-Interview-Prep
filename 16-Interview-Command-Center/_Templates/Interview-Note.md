@@ -29,7 +29,7 @@ type: round
 application: "[[<% appFile ? appFile.basename : "" %>]]"
 company: "<% fm.company ?? "" %>"
 role: "<% fm.role ?? "" %>"
-track: [<% (fm.track ?? []).join(", ") %>]
+track: [<% [].concat(fm.track ?? []).join(", ") %>]
 round: "<% round %>"
 date: <% date %>
 interviewer: ""
