@@ -76,7 +76,7 @@ tags:
 ```dataview
 TABLE role, stage, confidence, next_action_date
 FROM "16-Interview-Command-Center/03-Pipeline"
-WHERE company = this.file.name
+WHERE company = this.file.name AND stage AND type != "round"
 SORT next_action_date ASC
 ```
 

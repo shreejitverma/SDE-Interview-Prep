@@ -29,7 +29,7 @@ TABLE WITHOUT ID
   next_action_date AS "Due",
   priority AS "Priority"
 FROM "16-Interview-Command-Center/03-Pipeline/Active"
-WHERE stage AND !contains(list("rejected", "withdrawn", "ghosted"), stage)
+WHERE stage AND type != "round" AND !contains(list("rejected", "withdrawn", "ghosted"), stage)
 SORT choice(priority = "high", 1, choice(priority = "medium", 2, 3)) ASC, next_action_date ASC
 ```
 
@@ -38,7 +38,7 @@ SORT choice(priority = "high", 1, choice(priority = "medium", 2, 3)) ASC, next_a
 ```dataview
 TABLE WITHOUT ID file.link AS "Application", next_action AS "Next action", next_action_date AS "Was due"
 FROM "16-Interview-Command-Center/03-Pipeline/Active"
-WHERE next_action_date AND date(next_action_date) < date(today)
+WHERE stage AND type != "round" AND next_action_date AND date(next_action_date) < date(today)
   AND !contains(list("offer", "rejected", "withdrawn", "ghosted"), stage)
 SORT next_action_date ASC
 ```
@@ -168,7 +168,7 @@ TABLE WITHOUT ID
   next_action AS "Action",
   next_action_date AS "Deadline"
 FROM "16-Interview-Command-Center/03-Pipeline/Active"
-WHERE next_action_date != null AND next_action_date <= date(today) + dur(7 days)
+WHERE stage AND type != "round" AND next_action_date != null AND next_action_date <= date(today) + dur(7 days)
 SORT next_action_date ASC
 ```
 

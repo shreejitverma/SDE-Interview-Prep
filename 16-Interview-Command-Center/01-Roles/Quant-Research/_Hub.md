@@ -68,7 +68,7 @@ TABLE WITHOUT ID
   company AS "Company", level AS "Level", stage AS "Stage",
   confidence + "/5" AS "Conf", next_action_date AS "Deadline"
 FROM "16-Interview-Command-Center/03-Pipeline"
-WHERE role = "Quant-Research" AND stage != "rejected" AND stage != "withdrawn"
+WHERE contains(track, "quant-research") AND stage AND type != "round" AND stage != "rejected" AND stage != "withdrawn"
 SORT next_action_date ASC
 ```
 

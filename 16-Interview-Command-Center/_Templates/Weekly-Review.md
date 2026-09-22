@@ -44,7 +44,7 @@ Generated from tracker and round notes for the 7 days ending this review.
 ```dataview
 TABLE WITHOUT ID file.link AS "Application", company AS "Company", source AS "Source"
 FROM "16-Interview-Command-Center/03-Pipeline"
-WHERE applied AND date(applied) >= this.file.day - dur(7 days) AND date(applied) <= this.file.day
+WHERE stage AND type != "round" AND applied AND date(applied) >= this.file.day - dur(7 days) AND date(applied) <= this.file.day
 SORT applied ASC
 ```
 
@@ -62,7 +62,7 @@ SORT date ASC
 ```dataview
 TABLE WITHOUT ID file.link AS "Application", next_action AS "Next action", next_action_date AS "Was due"
 FROM "16-Interview-Command-Center/03-Pipeline/Active"
-WHERE next_action_date AND date(next_action_date) < this.file.day
+WHERE stage AND type != "round" AND next_action_date AND date(next_action_date) < this.file.day
   AND !contains(list("offer", "rejected", "withdrawn", "ghosted"), stage)
 SORT next_action_date ASC
 ```
