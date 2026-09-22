@@ -310,7 +310,7 @@ def main() -> int:
     args = ap.parse_args()
 
     fixer = Fixer(args.repo.resolve(), args.stubs)
-    notes = [f for f in fixer.files if f.lower().endswith(".md") and not av.is_private(f)]
+    notes = [f for f in fixer.files if f.lower().endswith(".md") and not av.is_private(f) and not av.TEMPLATE_RE.search(f)]
 
     if args.stubs:  # first pass only discovers stubs so the rewrite pass can link to them by name
         discover = Plan()

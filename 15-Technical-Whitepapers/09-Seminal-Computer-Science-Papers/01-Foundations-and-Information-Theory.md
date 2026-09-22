@@ -19,6 +19,8 @@ sources: []
 
 ## 1. On Computable Numbers (Alan Turing, 1936)
 
+**Source:** [open copy](https://www.cs.virginia.edu/~robins/Turing_Paper_1936.pdf)
+
 ### Historical & Mathematical Significance
 Published in 1936 in the *Proceedings of the London Mathematical Society*, Alan Turing sought to answer David Hilbert's *Entscheidungsproblem* (the Decision Problem): Is there a mechanical procedure by which the truth or falsity of any mathematical proposition can be decided?
 
@@ -56,6 +58,8 @@ Turing proved that computation has fundamental limits:
 
 ## 2. A Mathematical Theory of Communication (Claude Shannon, 1948)
 
+**Source:** [open copy](https://people.math.harvard.edu/~ctm/home/text/others/shannon/entropy/entropy.pdf)
+
 ### Founding Information Theory
 Published in the *Bell System Technical Journal*, Claude Shannon created the mathematics of modern digital communication. Before Shannon, communications engineering was an analog discipline concerned with signal voltages and vacuum tubes. Shannon showed that all information - voice, text, images, video - can be represented as **discrete binary digits (Bits)**.
 
@@ -91,6 +95,8 @@ $$C = B \log_2 \left(1 + \frac{S}{N}\right) \quad \text{(Bits per second)}$$
 
 ## 3. First Draft of a Report on the EDVAC (John von Neumann, 1945)
 
+**Source:** [open copy](https://web.mit.edu/sts.035/www/PDFs/edvac.pdf)
+
 ### The Stored-Program Architecture
 Prior to 1945, computers like ENIAC were reprogrammed manually by rewiring physical patch cords and switches. John von Neumann proposed storing **both program instructions and data in the same physical memory unit**.
 
@@ -117,6 +123,8 @@ flowchart TD
 ---
 
 ## 4. The Structure of the "THE"-Multiprogramming System (Edsger Dijkstra, 1968)
+
+**Source:** [open copy](https://www.cs.utexas.edu/~EWD/ewd01xx/EWD196.PDF)
 
 ### Invention of Modern Synchronization & Layered Systems
 Edsger W. Dijkstra built the "THE" multiprogramming operating system at the Technische Hogeschool Eindhoven, establishing two revolutionary concepts:

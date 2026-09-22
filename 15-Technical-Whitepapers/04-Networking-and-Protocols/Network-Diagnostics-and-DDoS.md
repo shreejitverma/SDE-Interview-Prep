@@ -19,6 +19,8 @@ sources: []
 
 ## 1. Using TCPDump, TCPTrace, & XPlot to Debug Network Problems (Jason Zurawski, 2013)
 
+**Source:** [open copy](https://fasterdata.es.net/assets/Uploads/20131016-TCPDumpTracePlot.pdf)
+
 ### Packet-Level Diagnostics
 When distributed applications experience mysterious throughput degradation on high-bandwidth links, application-level logs are insufficient. Zurawski demonstrates how to capture raw PCAP traffic and convert packet traces into visual time-sequence graphs.
 
@@ -45,6 +47,8 @@ xplot a2b_tsg.xpl
 ---
 
 ## 2. Open Source Firewall Tools: Iptables vs PF (Elvir Kuric)
+
+**Source:** [open copy](https://ekuric.wordpress.com/wp-content/uploads/2011/07/pf_iptables.pdf)
 
 ### Architectural Comparison: Netfilter (Linux) vs Packet Filter (BSD)
 
@@ -76,6 +80,8 @@ flowchart TD
 
 ## 3. DDoS Handbook & Tutorial (Krassimir Tzvetanov, 2015)
 
+**Source:** [open copy](http://web.archive.org/web/20250109135717/https://archive.nanog.org/sites/default/files/tzvetanov_ddos.pdf)
+
 ### Taxonomy of Distributed Denial of Service Attacks
 
 ```text
@@ -103,6 +109,8 @@ flowchart TD
 ---
 
 ## 4. Network Security Hardening Guide v1.2 (2017)
+
+**Source:** [publisher page](https://www.hikvision.com/us-en/support/cybersecurity/cybersecurity-white-paper/network-security-hardening-guide/)
 
 ### Production Linux Kernel Network Hardening (`/etc/sysctl.d/99-network.conf`)
 

@@ -1,6 +1,7 @@
 ---
 week: "<% tp.date.now('YYYY-[W]ww') %>"
-week_start: <% tp.date.now("YYYY-MM-DD", 0, tp.date.now("YYYY-MM-DD"), "YYYY-MM-DD") %>
+week_start: <% tp.date.now("YYYY-MM-DD", -6) %>
+date: <% tp.date.now("YYYY-MM-DD") %>
 total_problems_solved: 0
 total_study_hours: 0
 interviews_done: 0
@@ -34,16 +35,39 @@ tags:
 2. **Gap:** → **Action:**
 3. **Gap:** → **Action:**
 
-## Pipeline Update
+## Pipeline update
 
-### Moved Forward
-- 
+Generated from tracker and round notes for the 7 days ending this review.
 
-### Stalled
-- 
+### New applications
 
-### New Applications
-- 
+```dataview
+TABLE WITHOUT ID file.link AS "Application", company AS "Company", source AS "Source"
+FROM "16-Interview-Command-Center/03-Pipeline"
+WHERE stage AND type != "round" AND applied AND date(applied) >= this.file.day - dur(7 days) AND date(applied) <= this.file.day
+SORT applied ASC
+```
+
+### Rounds this week
+
+```dataview
+TABLE WITHOUT ID file.link AS "Round", company AS "Company", outcome AS "Outcome"
+FROM "16-Interview-Command-Center/03-Pipeline"
+WHERE type = "round" AND date(date) >= this.file.day - dur(7 days) AND date(date) <= this.file.day
+SORT date ASC
+```
+
+### Stalled (next action overdue)
+
+```dataview
+TABLE WITHOUT ID file.link AS "Application", next_action AS "Next action", next_action_date AS "Was due"
+FROM "16-Interview-Command-Center/03-Pipeline/Active"
+WHERE stage AND type != "round" AND next_action_date AND date(next_action_date) < this.file.day
+  AND !contains(list("offer", "rejected", "withdrawn", "ghosted"), stage)
+SORT next_action_date ASC
+```
+
+Full numbers: [[_Pipeline-Stats]].
 
 ## Knowledge Consolidation
 > What concepts solidified this week? What "aha" moments happened?

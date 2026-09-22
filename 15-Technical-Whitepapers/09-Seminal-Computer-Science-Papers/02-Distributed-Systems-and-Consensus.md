@@ -19,6 +19,8 @@ sources: []
 
 ## 1. Time, Clocks, and the Ordering of Events in a Distributed System (Leslie Lamport, 1978)
 
+**Source:** [open copy](https://lamport.azurewebsites.net/pubs/time-clocks.pdf)
+
 ### Core Thesis
 Published in *Communications of the ACM*, this is the single most cited paper in computer science. Lamport demonstrates that in a distributed system, **physical time cannot be relied upon to order events** due to relativity and clock drift. Instead, time must be modeled as a **partial order** based on causality.
 
@@ -55,6 +57,8 @@ Each process $P_i$ maintains a scalar integer clock $C_i$:
 
 ## 2. The Byzantine Generals Problem (Lamport, Shostak, Pease, 1982)
 
+**Source:** [open copy](https://lamport.azurewebsites.net/pubs/byz.pdf)
+
 ### The Problem: Arbitrary & Malicious Faults
 Divisions of the Byzantine army surround an enemy city. Generals must agree on a common battle plan: **Attack** or **Retreat**. However, some generals may be traitors trying to prevent consensus by sending conflicting messages to different generals.
 
@@ -73,6 +77,8 @@ Example: To tolerate 1 traitor, you need at least 4 nodes (3 * 1 + 1 = 4).
 ---
 
 ## 3. FLP Impossibility Theorem (Fischer, Lynch, Paterson, 1985)
+
+**Source:** [open copy](https://groups.csail.mit.edu/tds/papers/Lynch/jacm85.pdf)
 
 ### The Theorem
 Published in the *Journal of the ACM* and awarded the Dijkstra Prize, the FLP theorem proves a profound mathematical truth:
@@ -99,6 +105,8 @@ Practical consensus protocols (Paxos, Raft) **guarantee Safety unconditionally**
 
 ## 4. Paxos & Raft Consensus Compared
 
+**Sources:** [open copy 1](https://lamport.azurewebsites.net/pubs/paxos-simple.pdf), [open copy 2](https://www.usenix.org/system/files/conference/atc14/atc14-paper-ongaro.pdf)
+
 | Dimension | Paxos (Lamport, 1998/2001) | Raft (Ongaro & Ousterhout, 2014) |
 | :--- | :--- | :--- |
 | **Primary Design Goal** | Minimal mathematical formulation | Understandability & operational simplicity |
@@ -110,6 +118,8 @@ Practical consensus protocols (Paxos, Raft) **guarantee Safety unconditionally**
 ---
 
 ## 5. The CAP Theorem (Eric Brewer, 2000; Gilbert & Lynch, 2002)
+
+**Sources:** [open copy 1](https://people.eecs.berkeley.edu/~brewer/cs262b-2004/PODC-keynote.pdf), [open copy 2](https://groups.csail.mit.edu/tds/papers/Gilbert/Brewer2.pdf)
 
 ### The Formal Proof
 In any distributed data store, three properties are in tension:

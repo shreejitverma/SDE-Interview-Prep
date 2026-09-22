@@ -19,6 +19,8 @@ sources: []
 
 ## 1. Linux Instrumentation (Ian Munsie, 2010)
 
+**Source:** [author page](https://www.slideshare.net/DarkStarSword/instrumentation)
+
 ### Architectural Context
 Ian Munsie examines the evolution of Linux kernel tracing mechanisms from ad-hoc `printk` debugging to standardized, low-overhead kernel subsystems.
 
@@ -57,6 +59,8 @@ flowchart TD
 
 ## 2. System Call Tracing Overhead (Jörg Zinke, 2009)
 
+**Source:** [open copy](http://web.archive.org/web/2016/http://www.linux-kongress.org/2009/slides/system_call_tracing_overhead_joerg_zinke.pdf)
+
 ### The Problem: Diagnostic Perturbation (Heisenbugs)
 When an engineer attaches a tracer to diagnose latency in a production system, the tracer itself modifies the timing and latency characteristics of the workload. Zinke provides rigorous empirical benchmarks quantifying the overhead of different tracing primitives.
 
@@ -76,6 +80,8 @@ When an engineer attaches a tracer to diagnose latency in a production system, t
 ---
 
 ## 3. Use "strace" to Understand Your Shell (Harald König, 2015)
+
+**Source:** [open copy](https://events.static.linuxfound.org/sites/events/files/slides/lce-2015-strace-bash-en.pdf)
 
 ### Core Thesis
 The shell (Bash, Zsh) appears simple on the surface, but a single command execution invokes complex orchestration: fork-exec pipelines, subshell spawning, environment variable cloning, file descriptor redirections, and signal handling. König uses `strace` to reveal the exact system calls executed by common shell constructs.

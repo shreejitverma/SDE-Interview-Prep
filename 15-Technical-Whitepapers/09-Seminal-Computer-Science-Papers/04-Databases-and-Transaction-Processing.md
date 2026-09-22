@@ -19,6 +19,8 @@ sources: []
 
 ## 1. A Relational Model of Data for Large Shared Data Banks (Edgar F. Codd, 1970)
 
+**Source:** [open copy](https://www.seas.upenn.edu/~zives/03f/cis550/codd.pdf)
+
 ### Historical Paradigm Shift
 Before Codd's 1970 paper in *Communications of the ACM*, databases were hierarchical (IMS) or network-based (CODASYL). Developers wrote programs that navigated hardcoded physical memory pointers (e.g., "get child of record 42"). If an index was modified or a record was reshuffled on disk, every application program in the company broke.
 
@@ -42,6 +44,8 @@ flowchart TD
 ---
 
 ## 2. Granularity of Locks & Degrees of Consistency (Jim Gray et al., 1976)
+
+**Source:** [open copy](http://jimgray.azurewebsites.net/papers/granularity%20of%20locks%20and%20degrees%20of%20consistency%20RJ%201654.pdf)
 
 ### Defining ACID & Multi-Granularity Locking
 Jim Gray (Turing Award laureate) defined how to coordinate concurrent transactions across shared database records without data corruption.
@@ -79,6 +83,8 @@ flowchart TD
 ---
 
 ## 3. ARIES: A Transaction Recovery Method (C. Mohan et al., IBM, 1992)
+
+**Source:** [open copy](https://cs.stanford.edu/people/chrismre/cs345/rl/aries.pdf)
 
 ### The Recovery Problem
 If a database crashes mid-transaction (e.g., power loss), some committed transactions may still reside only in volatile memory buffers, while uncommitted active transactions may have already modified disk blocks.

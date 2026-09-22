@@ -19,6 +19,8 @@ sources: []
 
 ## 1. Foundations of the C++ Concurrency Memory Model (Boehm & Adve, 2008)
 
+**Source:** [open copy](http://rsim.cs.illinois.edu/Pubs/08PLDI.pdf)
+
 ### Why C++ Needed a Memory Model
 Prior to C++11, C and C++ were single-threaded languages in the eyes of the ISO standard. Compilers assumed threads did not exist and performed optimizations that broke multi-threaded execution (e.g., hoisting stores out of loops, register caching across thread boundaries, introducing speculative stores).
 
@@ -53,6 +55,8 @@ if (tail.load(std::memory_order_acquire) != head) { // Prevents compiler/hardwar
 
 ## 2. Memory Barriers: A Hardware View for Software Hackers (Paul E. McKenney, 2010)
 
+**Source:** [open copy](http://www.rdrop.com/users/paulmck/scalability/paper/whymb.2010.07.23a.pdf)
+
 ### Why CPUs Reorder Memory Operations
 Modern superscalar out-of-order CPUs (x86, ARM, POWER) include hardware performance buffers that cause apparent reordering:
 
@@ -85,6 +89,8 @@ flowchart TD
 ---
 
 ## 3. Hitting the Memory Wall (Wm. A. Wulf & Sally A. McKee, 1995)
+
+**Source:** [DOI](https://doi.org/10.1145/216585.216588)
 
 ### The Exponential Divergence
 Wulf and McKee formulated the mathematical relationship between processor speed improvements ($\approx 60–80\%$ annual growth in the 1990s) and DRAM access latency improvements ($\approx 7\%$ annual growth):

@@ -17,18 +17,18 @@ sources: []
 
 ---
 
-## Executive Overview & Archive Provenance
+## What this folder contains
 
-This archive integrates the high-value technical whitepaper collection across two primary editions:
-- **`base` (English Edition)**: 90 foundational whitepapers (~223 MB) covering Linux performance superpowers (Brendan Gregg), OS kernel internals (Linux, Windows NT, xv6), x86 memory hierarchy (Ulrich Drepper), high-speed TCP/IP networking, binary exploitation, and production system hardening.
-- **`pl` (Polish Edition)**: 31 specialized technical guides and research papers (~112 MB) covering reverse engineering, shellcode evolution, Linux rootkits and ptrace exploitation, web application security (Michał Sajdak), and SELinux mandatory access control.
-- **`09-Seminal-Computer-Science-Papers`**: 20 foundational academic papers spanning computability, information theory, distributed consensus, big data, relational databases, and internet architecture.
-- **`10-Seminal-Low-Latency-Systems-Papers`**: 18 critical papers for low-latency and HFT systems engineering covering C++ memory models, lock-free/wait-free algorithms, kernel-bypass I/O, and market microstructure dynamics.
+This folder holds reading notes and indexes for a collection of about 159 technical papers.
+The paper files themselves are not stored in this repository.
+Each note summarizes a paper and, where a legitimate public copy exists, links to it with a **Source:** line under the paper's heading (82 papers are linked; the rest are indexed only).
 
-### Integrity & Antivirus Verification
-The complete archive has been audited and verified via ClamAV with **zero infected files** across all directories and payloads:
-- **Full Report**: [[ClamAV-Audit-Report|ClamAV Security Audit & Verification Report]]
-- **Scan Stats**: 6,784,116 signatures, 201 directories, 508 scanned files, 1.24 GB payload inspected, **0 infected files**.
+- **`base` (English index)**: 90 papers covering Linux performance (Brendan Gregg), OS kernel internals (Linux, Windows NT, xv6), the x86 memory hierarchy (Ulrich Drepper), high-speed TCP/IP networking, binary exploitation, and hardening.
+- **`pl` (Polish index)**: 31 guides and research papers on reverse engineering, shellcode, Linux rootkits and ptrace, web application security (Michał Sajdak), and SELinux.
+- **`09-Seminal-Computer-Science-Papers`**: 20 foundational papers on computability, information theory, distributed consensus, big data, relational databases, and internet architecture.
+- **`10-Seminal-Low-Latency-Systems-Papers`**: 18 papers for low-latency and HFT engineering: C++ memory models, lock-free and wait-free algorithms, kernel-bypass I/O, and market microstructure.
+
+The [[ClamAV-Audit-Report|ClamAV report]] records a malware scan of the original local paper collection (1.24 GB, 0 infected files) before it was indexed; it does not describe files in this repository.
 
 ```mermaid
 flowchart TD

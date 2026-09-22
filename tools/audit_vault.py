@@ -37,6 +37,7 @@ PAPER_EXTS = {".pdf", ".tex"}
 README_NAMES = {"readme.md", "_readme.md", "index.md", "_index.md"}
 ENTRY_PREFIXES = ("00 home", "00-dashboard", "moc - ")
 ARCHIVED_RE = re.compile(r"(^|/)(_archive|_consolidated[^/]*)/")
+TEMPLATE_RE = re.compile(r"(^|/)_Templates/")
 NON_KNOWLEDGE_RE = re.compile(r"^(tools|\.github)/|/_Templates/|(^|/)SUMMARY\.md$|^[^/]+$")
 
 
@@ -289,6 +290,8 @@ def main() -> int:
     inbound: Counter = Counter()
     total_links = 0
     for f, text in texts.items():
+        if TEMPLATE_RE.search(f):
+            continue  # Templater placeholders resolve in the note a template creates, not here
         for link in extract_links(f, text):
             res = resolver.wiki(f, link.target) if link.kind == "wiki" else resolver.md(f, link.target)
             if res is True:

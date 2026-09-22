@@ -19,6 +19,8 @@ sources: []
 
 ## 1. The AWK Programming Language (Aho, Kernighan, Weinberg, 1988)
 
+**Source:** [author page](https://www.awk.dev/)
+
 ### Authors & Origin
 Written by the creators of AWK - **Alfred Aho** (Aho-Corasick, Dragon Book), **Brian Kernighan** (K&R C, Unix programming environment), and **Peter Weinberg**. AWK was designed at Bell Labs as a data-driven pattern-action language tailored for high-speed textual stream processing.
 
@@ -55,6 +57,8 @@ flowchart LR
 
 ## 2. Vim for Humans (Vincent Jousse, 2015)
 
+**Source:** [author page](https://vimebook.com/en)
+
 ### The Philosophy of Modal Text Editing
 Vincent Jousse argues that software engineers spend **$80\%$ of their time reading and navigating code, and only $20\%$ typing new text**. Traditional modeless editors treat every keystroke as an insertion, requiring awkward multi-key finger contortions (`Ctrl+Alt+Shift+...`).
 
@@ -76,6 +80,8 @@ Examples:
 
 ## 3. The DevOps Toolchain (UpGuard Engineering)
 
+**Source:** [publisher page](https://www.upguard.com/ebooks/devops-toolchain)
+
 ### Moving from Manual Administration to Infrastructure as Code
 The UpGuard paper outlines the structural transition of IT infrastructure from artisanal server administration to automated, immutable pipelines:
 1. **Source Control as Single Source of Truth**: All infrastructure configurations (Terraform, Ansible, Kubernetes manifests) reside in Git.
@@ -85,6 +91,8 @@ The UpGuard paper outlines the structural transition of IT infrastructure from a
 ---
 
 ## 4. SysAdmin Magazine: Production Automation Patterns (2016)
+
+**Source:** [publisher page](https://www.netwrix.com/sysadmin_magazine_october_2016.html)
 
 ### Essential Production Triage Scripts
 Key patterns documented in the 2016 SysAdmin compilation:

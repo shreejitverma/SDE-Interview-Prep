@@ -1,5 +1,14 @@
+<%*
+const ACTIVE = "16-Interview-Command-Center/03-Pipeline/";
+const apps = app.vault.getMarkdownFiles()
+  .filter(f => f.path.startsWith(ACTIVE) && app.metadataCache.getFileCache(f)?.frontmatter?.stage)
+  .sort((a, b) => a.basename.localeCompare(b.basename));
+const appFile = await tp.system.suggester(["(no application)", ...apps.map(f => f.basename)], [null, ...apps], false, "Which application?");
+const afm = appFile ? (app.metadataCache.getFileCache(appFile)?.frontmatter ?? {}) : {};
+-%>
 ---
-company: "<% tp.system.prompt('Company name?') %>"
+application: "[[<% appFile ? appFile.basename : "" %>]]"
+company: "<% afm.company ?? tp.system.prompt('Company name?') %>"
 role: "<% tp.system.suggester(['SDE', 'Quant-Dev', 'Quant-Research', 'AI-Engineer', 'Low-Latency'], ['SDE', 'Quant-Dev', 'Quant-Research', 'AI-Engineer', 'Low-Latency']) %>"
 round: "<% tp.system.prompt('Round (e.g., Phone Screen, Onsite R1, System Design)?') %>"
 date: <% tp.date.now("YYYY-MM-DD") %>
@@ -9,6 +18,7 @@ difficulty: 3
 performance: 3
 topics_tested:
   - 
+weak_topics: []
 categories:
   - "<% tp.system.suggester(['coding', 'system-design', 'behavioral', 'math', 'brain-teaser', 'low-latency', 'ml-theory', 'quant-finance', 'culture-fit'], ['coding', 'system-design', 'behavioral', 'math', 'brain-teaser', 'low-latency', 'ml-theory', 'quant-finance', 'culture-fit']) %>"
 tags:

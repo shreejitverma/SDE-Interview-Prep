@@ -19,6 +19,8 @@ sources: []
 
 ## 1. What Happens During a Join: Dissecting CPU and Memory Optimization Effects (Manegold, Boncz, Kersten)
 
+**Source:** [open copy](https://www.vldb.org/conf/2000/P339.pdf)
+
 ### The Database Problem
 In classic database theory, join algorithms (Nested Loops, Sort-Merge, Hash Join) are analyzed purely by I/O cost (number of disk block reads). However, with multi-gigabyte main memory databases, queries execute entirely in RAM. The authors demonstrate that **main-memory database performance is bottlenecked by CPU cache misses and TLB thrashing rather than CPU cycles**.
 
@@ -43,6 +45,8 @@ To eliminate random DRAM access, the authors propose **Radix-Cluster Hash Joins*
 
 ## 2. When to Use Splay Trees (Eric K. Lee & Charles U. Martel, 2007)
 
+**Source:** [DOI](https://doi.org/10.1002/spe.813)
+
 ### Splay Trees vs Traditional Balanced Trees
 A **Splay Tree** (invented by Sleator and Tarjan) is a self-adjusting binary search tree with no explicit balance information (unlike AVL or Red-Black trees). Every search, insertion, or deletion automatically moves the accessed node to the root via a series of tree rotations (**splay steps**: zig-zig, zig-zag).
 
@@ -65,6 +69,8 @@ Worst-Case Single Operation: O(N) (Can degenerate into a linear chain temporaril
 ---
 
 ## 3. Using CUDA in Practice (Klaus Mueller)
+
+**Source:** [open copy](https://www3.cs.stonybrook.edu/~mueller/teaching/cse591_GPU/CUDA_practice.pdf)
 
 ### GPU Architecture: SIMT Parallelism
 CPUs are optimized for ultra-low latency on single threads (large caches, branch predictors, out-of-order execution). GPUs are optimized for massive data parallelism, deploying thousands of smaller arithmetic logic units (ALUs) executing in lockstep via **Single Instruction, Multiple Threads (SIMT)**.

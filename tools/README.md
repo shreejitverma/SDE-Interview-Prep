@@ -37,3 +37,4 @@ git config core.hooksPath tools/hooks                      # once per clone: pre
 CI runs the same `lint` and `test` commands from `.no-mistakes.yaml` (`.github/workflows/ci.yml`).
 `AUDIT.md` is generated, so never edit it by hand; re-run the script after structural changes.
 Links resolve the way Obsidian resolves them: wikilinks by vault path or unique basename, Markdown links relative to the note and then to the vault root, and links inside code are ignored.
+Links in `_Templates/` folders are neither checked nor repaired, because Templater placeholders only resolve in the notes a template creates.

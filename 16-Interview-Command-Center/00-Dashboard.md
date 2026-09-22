@@ -14,48 +14,82 @@ sources: []
 
 ---
 
-## Active Pipeline Overview
+## Pipeline
 
-### By Stage
+[[03-Pipeline/_Pipeline-Dashboard|Full dashboard]] - [[03-Pipeline/Pipeline-Board|Board]] - [[03-Pipeline/_Inbox-Review|Inbox review]] - [[03-Pipeline/_Pipeline-Stats|Statistics]]
+
+### Active
+
 ```dataview
 TABLE WITHOUT ID
-  file.link AS "Interview / Track",
+  file.link AS "Application",
   company AS "Company",
-  role AS "Role",
-  manager AS "Manager",
   stage AS "Stage",
-  salary_range AS "Rate",
-  confidence + "/5" AS "Confidence",
+  next_action AS "Next action",
+  next_action_date AS "Due",
   priority AS "Priority"
 FROM "16-Interview-Command-Center/03-Pipeline/Active"
-WHERE stage != null AND stage != "rejected" AND stage != "withdrawn"
-SORT choice(priority, "high", 1, "medium", 2, "low", 3) ASC, next_deadline ASC
+WHERE stage AND type != "round" AND !contains(list("rejected", "withdrawn", "ghosted"), stage)
+SORT choice(priority = "high", 1, choice(priority = "medium", 2, 3)) ASC, next_action_date ASC
 ```
 
+### Overdue follow-ups
 
-### Pipeline Stats
 ```dataview
-TABLE WITHOUT ID
-  length(rows) AS "Count",
-  key AS "Stage"
+TABLE WITHOUT ID file.link AS "Application", next_action AS "Next action", next_action_date AS "Was due"
 FROM "16-Interview-Command-Center/03-Pipeline/Active"
-GROUP BY stage AS key
+WHERE stage AND type != "round" AND next_action_date AND date(next_action_date) < date(today)
+  AND !contains(list("offer", "rejected", "withdrawn", "ghosted"), stage)
+SORT next_action_date ASC
 ```
 
 ---
 
-## Quick Actions
+## Quick actions
 
-| Action | Link |
-|--------|------|
-| New Interview | Use Templater → `_Templates/Interview-Note` |
-| Ingest Gmail Emails | [[03-Pipeline/Gmail-Sync-Guide\|Gmail Job Sync & Prompts]] |
-| New Retrospective | Use Templater → `_Templates/Retrospective` |
-| New Company | Use Templater → `_Templates/Company-Profile` |
-| New Story | Use Templater → `_Templates/Behavioral-Story` |
-| Today's Log | Use Templater → `_Templates/Daily-Log` |
-| Weekly Review | Use Templater → `_Templates/Weekly-Review` |
+Run these from the command palette (QuickAdd) or the QuickAdd ribbon icon.
 
+| Macro | What it does |
+| :--- | :--- |
+| New application | Creates a tracker from `_Templates/Application` in `03-Pipeline/Active/<Company>/`. |
+| Log interview round | Picks an application, files a round note next to it, optionally moves its stage, and adds a Timeline line. |
+| Post-interview retro | Creates a retrospective linked to the application; fill `weak_topics`. |
+| New STAR story | Creates a behavioral story in `05-Behavioral/Stories/`. |
+| Weekly review | Creates this week's review with live pipeline tables. |
+
+Email ingestion runs daily at 09:00; see [[03-Pipeline/Gmail-Sync-Guide|Gmail sync]].
+
+---
+
+## Weak topics from retrospectives
+
+The topics you listed under `weak_topics` in retrospectives, most frequent first; review these before the next onsite.
+
+```dataview
+TABLE WITHOUT ID topic AS "Topic", length(rows) AS "Times", min(rows.date) AS "First seen", max(rows.date) AS "Last seen"
+FROM "16-Interview-Command-Center/04-Retrospectives"
+FLATTEN weak_topics AS topic
+WHERE topic
+GROUP BY topic
+SORT length(rows) DESC
+```
+
+## Questions asked in interviews
+
+Every list item tagged `#question/<topic>` in a round note.
+
+```dataview
+TABLE WITHOUT ID item.text AS "Question", file.link AS "Round"
+FROM "16-Interview-Command-Center/03-Pipeline"
+FLATTEN file.lists AS item
+WHERE type = "round" AND any(item.tags, (t) => startswith(t, "#question"))
+SORT file.name DESC
+LIMIT 50
+```
+
+## Review queue
+
+Knowledge notes due for review by status and last review date: [[00-Start-Here/Review-Queue|Review queue]].
 
 ---
 
@@ -132,10 +166,10 @@ TABLE WITHOUT ID
   company AS "Company",
   role AS "Role",
   next_action AS "Action",
-  next_deadline AS "Deadline"
+  next_action_date AS "Deadline"
 FROM "16-Interview-Command-Center/03-Pipeline/Active"
-WHERE next_deadline != null AND next_deadline <= date(today) + dur(7 days)
-SORT next_deadline ASC
+WHERE stage AND type != "round" AND next_action_date != null AND next_action_date <= date(today) + dur(7 days)
+SORT next_action_date ASC
 ```
 
 ---

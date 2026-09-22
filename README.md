@@ -21,12 +21,13 @@ It has been built and maintained continuously since 2021.
 | Low-latency systems | 129-note Obsidian vault on exchange architecture, matching engines, kernel bypass, FPGAs, lock-free C++ |
 | Agentic AI | 14-volume curriculum from LLM foundations to multi-agent systems, MCP, evals, and coding agents |
 | Distinguished engineering | Lock-free stack, Raft, consistent hashing, LSM tree, WAL, circuit breaker |
-| Technical whitepapers | ~159 papers: Linux eBPF, memory hierarchies, Windows NT, exploitation, hardening, plus seminal CS and low-latency/HFT canon |
+| Technical whitepapers | Reading notes on ~159 papers (Linux eBPF, memory hierarchies, Windows NT, exploitation, hardening, seminal CS and low-latency/HFT canon), linked to public copies |
 | Interview prep | Behavioral, resume, mock interview checklists, and a phased roadmap |
-| Interview Command Center | Obsidian mission control: 5 role hubs, 25+ company profiles, active pipeline tracking, Gmail sync, STAR story bank, retrospectives |
+| Interview Command Center | Obsidian mission control: 5 role hubs with skill matrices and question banks, templates, QuickAdd macros, and dashboards; the private application pipeline is kept outside this repo |
 
 
 Roughly 15,000 tracked files. Most of the value is in the code and the long-form notes, not in this README.
+Every knowledge note carries typed frontmatter (type, track, level, status), and every folder has an entry note, so the vault can be browsed from any folder or queried with Dataview.
 
 ---
 
@@ -36,6 +37,7 @@ Roughly 15,000 tracked files. Most of the value is in the code and the long-form
 2. Copy [00-Start-Here/Checklist.md](./00-Start-Here/Checklist.md) and track your progress against it.
 3. Use [INDEX.md](./INDEX.md) as the phased table of contents.
 4. Pick a track below based on your target role.
+5. Work the [Review queue](./00-Start-Here/Review-Queue.md): notes come due by status and last review date.
 
 ### If you are targeting...
 
@@ -53,10 +55,10 @@ Roughly 15,000 tracked files. Most of the value is in the code and the long-form
 01-CS-Foundations/             OS, Networks, DBMS, OOP (with C++ concurrency and socket code)
 02-Programming-Languages/      C++, Python, Java, JavaScript
 03-Data-Structures-Algorithms/ Topic-wise solutions, LeetCode, gold-standard C++ patterns
-04-System-Design/              Concepts, LLD, HLD case studies, design patterns, reference PDFs
+04-System-Design/              Concepts, LLD, HLD case studies, design patterns
 05-Quantitative-Finance/       Mathematics, quant dev (C++), algo trading (Python)
 06-Interview-Prep/             Behavioral, resume, mock interviews
-07-Project-Portfolio/          Portfolio guidance
+07-Project-Portfolio/          Portfolio project ideas (README.md)
 08-Distinguished-Engineering/  Concurrency, distributed systems, DB internals, architecture
 09-Engineering-Leadership/     Technical writing, mentorship, code review
 10-Development-Practices/      Testing, CI/CD, cloud-native
@@ -65,8 +67,10 @@ Roughly 15,000 tracked files. Most of the value is in the code and the long-form
 13-Agentic-AI/                 Agentic AI: Zero to Godhood (14 volumes)
 14-Low-Latency-Systems/        Low-latency trading systems vault (Obsidian)
 15-Technical-Whitepapers/      Technical whitepapers archive (eBPF, Memory, Kernels, Exploitation, Hardening)
-16-Interview-Command-Center/   Obsidian mission control: 5 role hubs, 25+ companies, pipeline tracker, retro system
+16-Interview-Command-Center/   Obsidian mission control: role hubs, templates, macros, dashboards (private data symlinked in)
 INDEX.md                       Phased table of contents with direct links
+CS-Subjects/                   Legacy index that now points into 01-CS-Foundations
+tools/                         Vault audit, link repair, and guard scripts (see tools/README.md)
 
 ```
 
@@ -116,7 +120,7 @@ About 3,500 C++ and 3,300 Python files, organized by pattern under [01-Topics](.
 
 ### 08 - Distinguished Engineering
 
-Small, complete implementations of the things senior interviews go deep on.
+Small, complete implementations of the things senior interviews go deep on ([section index](./08-Distinguished-Engineering/README.md)).
 
 | Topic | File |
 | :--- | :--- |
@@ -144,7 +148,8 @@ Includes a [12-week production calibration roadmap](./14-Low-Latency-Systems/Roa
 
 ### 15 - Technical Whitepapers
 
-A curated library of [~159 technical whitepapers](./15-Technical-Whitepapers) for hackers, pentesters, system administrators, programmers, and security researchers, audited and verified clean via [ClamAV](./15-Technical-Whitepapers/ClamAV-Audit-Report.md).
+Reading notes and an index for [~159 technical papers](./15-Technical-Whitepapers) for systems programmers, performance engineers, and security researchers.
+The papers themselves are not stored here; 82 of them link to a legitimate public copy under their heading.
 
 - [Systems Performance & eBPF](./15-Technical-Whitepapers/01-Systems-Performance-and-Tracing): the 14-paper Brendan Gregg canon (BPF superpowers, the USE method, flamegraphs, off-CPU analysis), plus syscall tracing overhead benchmarks.
 - [Operating Systems & Kernels](./15-Technical-Whitepapers/02-Operating-Systems-and-Kernels): Dennis Ritchie's 1974 UNIX treatise, MIT's xv6 teaching OS, Nick Blundell's OS from scratch, the Linux scheduler wasted cores analysis, and the Windows NT Executive architecture.
@@ -156,6 +161,14 @@ A curated library of [~159 technical whitepapers](./15-Technical-Whitepapers) fo
 - [Developer Tooling](./15-Technical-Whitepapers/08-Developer-Tooling-and-Foundations): The AWK Programming Language (Aho, Kernighan, Weinberg) and Vim for humans.
 - [Seminal Computer Science Papers](./15-Technical-Whitepapers/09-Seminal-Computer-Science-Papers): 20 foundational papers spanning computability (Turing), information theory (Shannon), distributed consensus (Lamport, Paxos, Raft, FLP), cloud & big data (GFS, MapReduce, Bigtable, Dynamo, Spark), relational databases (Codd, Gray, Mohan ARIES), and Internet architecture (Cerf-Kahn, Saltzer, Van Jacobson).
 - [Seminal Low-Latency Systems Papers](./15-Technical-Whitepapers/10-Seminal-Low-Latency-Systems-Papers): 18 seminal papers for low-latency & HFT engineers covering C++ memory models (Boehm-Adve, McKenney), lock-free/wait-free algorithms (Herlihy, LMAX Disruptor, RCU), kernel bypass (Netmap, Stanford IX, RAMCloud), and market microstructure dynamics (Kyle, Glosten-Milgrom, Cont OFI, Stoikov Micro-Price, Budish, Avellaneda-Stoikov).
+
+### Other sections
+
+- [06 - Interview Prep](./06-Interview-Prep/README.md): behavioral answers, resume guidance, mock interview checklists.
+- [07 - Project Portfolio](./07-Project-Portfolio/README.md): portfolio project ideas by track.
+- [09 - Engineering Leadership](./09-Engineering-Leadership/README.md), [10 - Development Practices](./10-Development-Practices/README.md), [11 - Security and Cryptography](./11-Security-And-Cryptography/README.md), [12 - Performance Engineering](./12-Performance-Engineering/README.md).
+- [16 - Interview Command Center](./16-Interview-Command-Center/00-Dashboard.md): the Obsidian homepage; role hubs, macros, dashboards, and the review loop.
+- [CS-Subjects](./CS-Subjects/README.md): a legacy index kept for old links; everything it lists lives in `01-CS-Foundations`.
 
 ---
 
@@ -193,12 +206,20 @@ The `14-Low-Latency-Systems` and `13-Agentic-AI` tracks are notes, not code, and
 
 ---
 
+## Maintaining the vault
+
+- [tools/README.md](./tools/README.md) lists the audit, link-repair, index, frontmatter, and style scripts; every editing script is a dry run unless given `--apply`.
+- [AUDIT.md](./AUDIT.md) is the generated health report (links, orphans, frontmatter, style, large files); regenerate it with `python3 tools/audit_vault.py`.
+- CI runs the same checks on every pull request (`.no-mistakes.yaml`, `.github/workflows/ci.yml`): no broken links, no emojis or em dashes, no private data, and the tool tests.
+- [CLAUDE.md](./CLAUDE.md) records the conventions: frontmatter schema, note standard, entry notes, archive folders, and the private-data rules.
+
 ## Contributing
 
 Issues and pull requests are welcome, especially corrections to solutions, additional language ports, and new case studies.
 Keep the existing numbered directory layout, keep code self-contained and compilable, and see [CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md).
 
-Large binary references (PDFs) are kept for convenience; please do not add more without a strong reason.
+Third-party books, course notes, and paid course material are never committed; link to the publisher or author instead.
+`.gitignore` blocks `*.pdf` except the vault's own Zero to Godhood books and openly licensed files.
 
 ## License
 

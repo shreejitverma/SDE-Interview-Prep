@@ -19,6 +19,8 @@ sources: []
 
 ## 1. The Google File System (GFS) (Ghemawat et al., 2003)
 
+**Source:** [open copy](https://static.googleusercontent.com/media/research.google.com/en//archive/gfs-sosp2003.pdf)
+
 ### Core Architectural Shift
 Traditional file systems (POSIX, NFS) were built under the assumption that hardware components are highly reliable. Google flipped this assumption: **Component failures are the norm rather than the exception**. GFS was designed to run across thousands of cheap commodity machines that fail daily.
 
@@ -53,6 +55,8 @@ flowchart TD
 
 ## 2. MapReduce: Simplified Data Processing (Dean & Ghemawat, 2004)
 
+**Source:** [open copy](https://static.googleusercontent.com/media/research.google.com/en//archive/mapreduce-osdi04.pdf)
+
 ### The Abstraction
 Jeffrey Dean and Sanjay Ghemawat extracted the functional programming primitives `map` and `reduce` to hide the brutal complexity of distributed execution (parallelization, fault tolerance, data distribution, and load balancing):
 
@@ -76,6 +80,8 @@ flowchart LR
 
 ## 3. Bigtable: Distributed Structured Storage (Chang et al., 2006)
 
+**Source:** [open copy](https://static.googleusercontent.com/media/research.google.com/en//archive/bigtable-osdi06.pdf)
+
 ### Data Model
 Bigtable defined the NoSQL wide-column database model. It is a **sparse, distributed, persistent, multidimensional sorted map**:
 
@@ -92,6 +98,8 @@ $$\text{(row:string, column:string, time:int64)} \implies \text{string}$$
 ---
 
 ## 4. Dynamo: Amazon's Highly Available Key-Value Store (DeCandia et al., 2007)
+
+**Source:** [open copy](https://www.allthingsdistributed.com/files/amazon-dynamo-sosp2007.pdf)
 
 ### Design Philosophy: High Availability Above All
 Amazon designed Dynamo to power the shopping cart service. If a node fails, dropping an item from a shopping cart causes lost revenue. Therefore, Dynamo sacrificed strong consistency in favor of **$99.9\%$ SLA availability and sub-10ms response times**.
@@ -118,6 +126,8 @@ Amazon designed Dynamo to power the shopping cart service. If a node fails, drop
 ---
 
 ## 5. Resilient Distributed Datasets (Apache Spark) (Zaharia et al., 2012)
+
+**Source:** [open copy](https://www.usenix.org/system/files/conference/nsdi12/nsdi12-final138.pdf)
 
 ### Overcoming MapReduce's I/O Bottleneck
 MapReduce was slow for iterative algorithms (machine learning gradient descent, PageRank) because every iteration had to read from and write back to disk (GFS/HDFS).

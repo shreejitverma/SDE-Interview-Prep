@@ -12,6 +12,8 @@ sources: []
 
 # Ulrich Drepper - What Every Programmer Should Know About Memory
 
+**Source:** [open copy](https://www.akkadia.org/drepper/cpumemory.pdf)
+
 > **Author**: Ulrich Drepper (Former Lead Maintainer of the GNU C Library `glibc`, Red Hat Engineer)  
 > **Publication**: Red Hat Technical Whitepaper (114 Pages, 2007)  
 > **Category**: Computer Architecture & Hardware Mechanical Sympathy

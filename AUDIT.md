@@ -8,13 +8,13 @@ Re-run the script after every structural change; this file is its output and sho
 
 | Check | Result |
 | :--- | ---: |
-| Tracked files | 15128 |
-| Markdown notes | 1515 |
-| Internal links checked | 9319 |
+| Tracked files | 15132 |
+| Markdown notes | 1517 |
+| Internal links checked | 9325 |
 | Broken links (links into private locations are not counted) | 0 |
 | Wikilink aliases that split a table cell | 0 |
 | Broken wikilinks fixable by unique basename | 0 |
-| Orphan knowledge notes (no inbound links) | 3 |
+| Orphan knowledge notes (no inbound links) | 0 |
 | Archived drafts (`_archive/`, `_consolidated*/`) | 305 |
 | Knowledge notes without frontmatter | 0 |
 | Note folders without README (depth <= 3) | 0 |
@@ -31,8 +31,8 @@ Re-run the script after every structural change; this file is its output and sho
 | :--- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
 | `(root)` | 11 | 6 | 0 | 0 | 5 | 0.1 | 2026-09-21 |
 | `.github` | 1 | 0 | 0 | 0 | 1 | 0.0 | 2026-09-21 |
-| `.obsidian` | 43 | 0 | 0 | 0 | 43 | 0.0 | 2026-09-21 |
-| `00-Start-Here` | 3 | 3 | 0 | 0 | 0 | 0.0 | 2026-09-21 |
+| `.obsidian` | 45 | 0 | 0 | 0 | 45 | 0.0 | 2026-09-21 |
+| `00-Start-Here` | 4 | 4 | 0 | 0 | 0 | 0.0 | 2026-09-21 |
 | `01-CS-Foundations` | 151 | 65 | 59 | 0 | 27 | 1.5 | 2026-09-21 |
 | `02-Programming-Languages` | 5804 | 798 | 2856 | 466 | 1684 | 111.1 | 2026-09-21 |
 | `03-Data-Structures-Algorithms` | 7708 | 82 | 7506 | 0 | 120 | 15.2 | 2026-09-21 |
@@ -48,7 +48,7 @@ Re-run the script after every structural change; this file is its output and sho
 | `13-Agentic-AI` | 122 | 122 | 0 | 0 | 0 | 2.3 | 2026-09-21 |
 | `14-Low-Latency-Systems` | 262 | 262 | 0 | 0 | 0 | 1.7 | 2026-09-21 |
 | `15-Technical-Whitepapers` | 44 | 44 | 0 | 0 | 0 | 0.3 | 2026-09-21 |
-| `16-Interview-Command-Center` | 47 | 47 | 0 | 0 | 0 | 0.1 | 2026-09-21 |
+| `16-Interview-Command-Center` | 48 | 48 | 0 | 0 | 0 | 0.1 | 2026-09-21 |
 | `CS-Subjects` | 1 | 1 | 0 | 0 | 0 | 0.0 | 2026-09-21 |
 | `tools` | 15 | 1 | 12 | 0 | 2 | 0.1 | 2026-09-21 |
 
@@ -127,16 +127,10 @@ Notes that no other note links to. Most become reachable once each folder has a 
 
 | Folder | Orphans |
 | :--- | ---: |
-| `07-Project-Portfolio` | 1 |
-| `08-Distinguished-Engineering` | 1 |
-| `CS-Subjects` | 1 |
 
 <details>
-<summary>All 3 orphans</summary>
+<summary>All 0 orphans</summary>
 
-- `07-Project-Portfolio/README.md`
-- `08-Distinguished-Engineering/README.md`
-- `CS-Subjects/README.md`
 
 </details>
 

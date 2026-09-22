@@ -29,6 +29,8 @@ Designed in the late 1980s by **David N. Cutler** (creator of VMS at DEC) and **
 
 ## 2. The 10 Subsystems of the NT Kernel (David B. Probert, Ph.D.)
 
+**Source:** [open copy](https://www.i.u-tokyo.ac.jp/edu/training/ss/lecture/new-documents/Lectures/00-WindowsKernelOverview/WindowsKernelOverview.pdf)
+
 ```mermaid
 flowchart TD
     subgraph UserSpace ["User Mode (Ring 3)"]
@@ -120,6 +122,8 @@ flowchart TD
 
 ## 3. Kernel Debugging with WinDbg (Robert Kuster & MS Guide)
 
+**Source:** [open copy](http://windbg.info/download/doc/pdf/WinDbg_A_to_Z_bw2.pdf)
+
 ### Essential WinDbg Commands Cheatsheet
 
 ```text
@@ -139,6 +143,8 @@ k, kp, kn              # Display call stack with frame numbers, parameters, and 
 ---
 
 ## 4. The Linux Kernel Hidden Inside Windows 10 (Alex Ionescu, 2016)
+
+**Source:** [author page](https://github.com/ionescu007/lxss/blob/master/The%20Linux%20kernel%20hidden%20inside%20windows%2010.pdf)
 
 ### Reverse Engineering WSL1 Architecture
 Alex Ionescu's seminal research revealed how Microsoft built Windows Subsystem for Linux (WSL1) without running a Linux virtual machine:
