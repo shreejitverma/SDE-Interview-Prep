@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_03_Tool_Use_and_the_Agent_Loop/Chapter_01_What_Is_An_Agent.md",
+                "file": "16-Interview-Command-Center/00-Dashboard.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "Chapter_01_What_Is_An_Agent"
+              "title": "00-Dashboard"
             }
           }
         ]
@@ -214,8 +214,9 @@
       "obsidian-git:Open Git source control": false
     }
   },
-  "active": "25e9a2f618275701",
+  "active": "e7a7b303c61786dc",
   "lastOpenFiles": [
+    "13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_03_Tool_Use_and_the_Agent_Loop/Chapter_01_What_Is_An_Agent.md",
     "backlog.md",
     "16-Interview-Command-Center/03-Pipeline/__pycache__/sync_job_emails.cpython-314.pyc",
     "16-Interview-Command-Center/03-Pipeline/__pycache__/generate_vault_trackers.cpython-314.pyc",
@@ -248,7 +249,6 @@
     "14-Low-Latency-Systems/Sources/Intel 64 and IA-32 Architectures Software Developer's Manual.md",
     "14-Low-Latency-Systems/Sources/C++ Concurrency in Action by Anthony Williams.md",
     "14-Low-Latency-Systems/Sources/How to Build an Exchange by Jane Street.md",
-    "14-Low-Latency-Systems/Sources/What Every Programmer Should Know About Memory by Ulrich Drepper.md",
     "14-Low-Latency-Systems/Sources",
     "14-Low-Latency-Systems/14 - Industry Map & Canon",
     "14-Low-Latency-Systems/13 - Reliability, Ops & Testing",
