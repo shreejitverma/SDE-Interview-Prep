@@ -408,12 +408,17 @@ def trim_history(messages: list[dict], budget: int,
     kept.reverse()
     dropped = rest[:len(rest) - len(kept)]
     if dropped and summarize is not None:
-        note = {"role": "user", "content": "Summary of earlier conversation: " + summarize(dropped)}
         # make room for the summary by evicting the oldest kept turns if needed
-        while kept and used + count_tokens(note["content"]) > budget:
-            used -= count_tokens(kept.pop(0)["content"])
-        if used + count_tokens(note["content"]) <= budget:
-            kept.insert(0, note)
+        while True:
+            note = {"role": "user", "content": "Summary of earlier conversation: " + summarize(dropped)}
+            if used + count_tokens(note["content"]) <= budget:
+                kept.insert(0, note)
+                break
+            if not kept:
+                break
+            evicted = kept.pop(0)
+            used -= count_tokens(evicted["content"])
+            dropped.append(evicted)
     return system + kept
 ```
 
@@ -422,7 +427,7 @@ Use the provider's token counter in production; the character heuristic is only 
 
 ---
 
-## Expansion problems (K1-K4)
+## Expansion problems (K1-K11)
 
 ### K1. Implement BM25.
 
@@ -672,6 +677,8 @@ At scale, replace the linear scan with an ANN index.
 ### K8. Implement a small vector store with upsert, delete, and a metadata filter.
 
 ```python
+from typing import Callable
+
 import numpy as np
 
 
