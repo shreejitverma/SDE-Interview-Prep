@@ -19,7 +19,7 @@ It has been built and maintained continuously since 2021.
 | System design | HLD case studies, LLD problems, 80+ "design a ..." implementations, design pattern catalogs in C++, Python, Java |
 | Quant finance | Black-Scholes, Greeks, Monte Carlo, order book in C++, memory pools, event-driven backtester |
 | Low-latency systems | 129-note Obsidian vault on exchange architecture, matching engines, kernel bypass, FPGAs, lock-free C++ |
-| Agentic AI | 14-volume curriculum from LLM foundations to multi-agent systems, MCP, evals, and coding agents |
+| Agentic AI | 14-volume curriculum from LLM foundations to multi-agent systems, MCP, evals, and coding agents, plus agentic harness docs and an interview prep pack |
 | Distinguished engineering | Lock-free stack, Raft, consistent hashing, LSM tree, WAL, circuit breaker |
 | Technical whitepapers | Reading notes on ~159 papers (Linux eBPF, memory hierarchies, Windows NT, exploitation, hardening, seminal CS and low-latency/HFT canon), linked to public copies |
 | Interview prep | Behavioral, resume, mock interview checklists, and a phased roadmap |
@@ -64,7 +64,7 @@ Every knowledge note carries typed frontmatter (type, track, level, status), and
 10-Development-Practices/      Testing, CI/CD, cloud-native
 11-Security-And-Cryptography/  Secure coding, common vulnerabilities
 12-Performance-Engineering/    CPU architecture, profiling
-13-Agentic-AI/                 Agentic AI: Zero to Godhood (14 volumes)
+13-Agentic-AI/                 Agentic AI: Zero to Godhood (14 volumes), harness docs, interview prep
 14-Low-Latency-Systems/        Low-latency trading systems vault (Obsidian)
 15-Technical-Whitepapers/      Technical whitepapers archive (eBPF, Memory, Kernels, Exploitation, Hardening)
 16-Interview-Command-Center/   Obsidian mission control: role hubs, templates, macros, dashboards (private data symlinked in)
@@ -133,10 +133,12 @@ Small, complete implementations of the things senior interviews go deep on ([sec
 
 Related: [false sharing](./12-Performance-Engineering/01-Cpu-Architecture/false_sharing.cpp) and a [memory leak demo](./12-Performance-Engineering/02-Profiling/memory_leak_demo.cpp) for profiling practice in `12`.
 
-### 13 - Agentic AI: Zero to Godhood
+### 13 - Agentic AI
 
 A [14-volume curriculum](./13-Agentic-AI/Agentic_AI_Zero_to_Godhood) ordered as a dependency graph: LLM foundations, working with LLMs, tool use and the agent loop, agent architectures, RAG, memory and context engineering, multi-agent systems, frameworks and SDKs, Model Context Protocol, evaluation and observability, safety and security, production engineering, coding agents and computer use, and frontier capstones.
 Appendices include a glossary, paper list, benchmark index, interview drills, and a pattern library.
+[Agentic Harness](./13-Agentic-AI/Agentic-Harness/README.md) documents a personal multi-agent engineering harness (architecture, lifecycle, model routing, safety gates) with an interview kit.
+[Agentic AI Interview Prep](./13-Agentic-AI/Agentic-AI-Interview-Prep/README.md) is a 12-part question bank with model answers, tested code, and system-design walkthroughs.
 
 ### 14 - Low-Latency Systems
 
