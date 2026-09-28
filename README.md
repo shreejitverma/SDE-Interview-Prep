@@ -43,6 +43,7 @@ Every knowledge note carries typed frontmatter (type, track, level, status), and
 
 - **General SDE (FAANG-style):** `01` -> `03` -> `04` -> `06`.
 - **Quant developer / HFT C++:** `02/C++` -> `03/04-Gold-Standard-Cpp-Patterns` -> `05` -> `14` -> `12`.
+- **Quant trader or researcher, or the finance side of quant dev:** [The-Quant-Prep](https://github.com/shreejitverma/The-Quant-Prep), the companion repo for probability, pricing, market making, alpha research and firm preparation.
 - **Senior / staff / distinguished:** `04` -> `08` -> `09` -> `10` -> `11`.
 - **AI / agent engineering:** `13`, then `04` for the production side.
 

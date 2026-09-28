@@ -41,7 +41,7 @@ Scalable architecture for senior roles.
 - **HLD (High-Level Design):** Distributed systems, Scalability.
 
 ### 05-Quantitative-Finance
-The specialized pathway for Quant roles.
+Runnable quant code; the quant curriculum itself lives in The-Quant-Prep (see the [section README](../05-Quantitative-Finance/README.md)).
 - **Mathematics:** Stochastic Calculus, Linear Algebra, Probability.
 - **Quant Dev:** Low-latency C++, Market Data protocols.
 - **Algo Trading:** Strategies, Backtesting.
