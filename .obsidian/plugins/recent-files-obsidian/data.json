@@ -5,6 +5,14 @@
       "path": "16-Interview-Command-Center/00-Dashboard.md"
     },
     {
+      "basename": "P2L1-Processes-and-Process-Management",
+      "path": "01-CS-Foundations/Operating-Systems/GIOS/Part-2-Process-Thread-Management/P2L1-Processes-and-Process-Management.md"
+    },
+    {
+      "basename": "_GIOS-Dashboard",
+      "path": "01-CS-Foundations/Operating-Systems/GIOS/_GIOS-Dashboard.md"
+    },
+    {
       "basename": "Chapter_01_What_Is_An_Agent",
       "path": "13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_03_Tool_Use_and_the_Agent_Loop/Chapter_01_What_Is_An_Agent.md"
     },
