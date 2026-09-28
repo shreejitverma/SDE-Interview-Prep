@@ -15,6 +15,11 @@ sources: []
 > **Target Companies:** Jane Street, Citadel, Two Sigma, DE Shaw, Susquehanna (SIG), Akuna Capital
 > **Target Levels:** Junior to Senior Researcher
 
+
+> [!tip] Quant curriculum
+> Finance, probability and trading preparation for this role lives in [The-Quant-Prep](https://github.com/shreejitverma/The-Quant-Prep): [Probability](https://github.com/shreejitverma/The-Quant-Prep/blob/main/01-Probability/README.md), [Statistics and econometrics](https://github.com/shreejitverma/The-Quant-Prep/blob/main/02-Statistics-and-Econometrics/README.md), [Alpha research and portfolio construction](https://github.com/shreejitverma/The-Quant-Prep/blob/main/09-Alpha-Research-and-Portfolio/README.md), and the [firm guides](https://github.com/shreejitverma/The-Quant-Prep/blob/main/14-Firms/README.md).
+> Its `./qp` CLI tracks readiness per firm and schedules card review.
+
 ---
 
 ## What Quant Research Interviews Test
