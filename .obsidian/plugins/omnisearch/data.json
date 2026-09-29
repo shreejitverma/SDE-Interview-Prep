@@ -1,5 +1,5 @@
 {
-  "useCache": false,
+  "useCache": true,
   "hideExcluded": false,
   "recencyBoost": "0",
   "downrankedFoldersFilters": [],

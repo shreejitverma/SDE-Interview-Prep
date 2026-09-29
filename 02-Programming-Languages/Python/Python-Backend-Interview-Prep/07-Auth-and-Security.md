@@ -1,0 +1,1041 @@
+---
+type: playbook
+track: [sde]
+level:
+status: draft
+last_reviewed:
+sources: [https://www.rfc-editor.org/rfc/rfc7519, https://www.rfc-editor.org/rfc/rfc7515, https://www.rfc-editor.org/rfc/rfc7517, https://www.rfc-editor.org/rfc/rfc8725, https://www.rfc-editor.org/rfc/rfc6749, https://www.rfc-editor.org/rfc/rfc6750, https://www.rfc-editor.org/rfc/rfc7636, https://www.rfc-editor.org/rfc/rfc8628, https://www.rfc-editor.org/rfc/rfc9068, https://www.rfc-editor.org/rfc/rfc9700, https://datatracker.ietf.org/doc/draft-ietf-oauth-v2-1/, https://openid.net/specs/openid-connect-core-1_0.html, https://api-security.owasp.org/editions/2023/en/0x11-t10/, https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html, https://pyjwt.readthedocs.io/en/stable/, https://fastapi.tiangolo.com/advanced/security/oauth2-scopes/, https://learn.microsoft.com/en-us/entra/identity-platform/access-tokens]
+---
+
+# Auth and security
+
+Authentication and API security for a Flask and FastAPI role that lists JWT and OAuth2 as required skills: JWT internals and validation, OAuth2 and OIDC flows, enterprise SSO, and the OWASP API risks.
+U1 through U9 are near-certain; U3 (validating a JWT correctly) and U12 (integrating with the corporate IdP) are where a financial-services interviewer probes hardest.
+Every code sample here was run on 2026-09-29 under Python 3.14.7 with PyJWT 2.15.1, cryptography 50.0.1, argon2-cffi 25.1.0, FastAPI 0.142.0, Flask 3.1.3, and SQLAlchemy 2.1.1: 51 pytest tests passed.
+
+---
+
+## U1. What is the difference between authentication and authorization? (must know)
+
+- **Authentication (authn)**: who are you?
+  Verifying identity: a password plus MFA, an SSO login, a client certificate, a signed token.
+- **Authorization (authz)**: what may you do?
+  Checking the verified identity's permissions against the action and the specific object.
+- In HTTP terms: authentication failure is **401** (with a `WWW-Authenticate` challenge), authorization failure is **403**.
+- In an API that trusts an identity provider, authentication is mostly *token validation* (U3), and authorization is scopes, roles, and object ownership checks (U13).
+- The most common real-world API breach is not broken authentication but broken **object-level authorization**: a valid user reading someone else's record (OWASP API1, U18).
+
+---
+
+## U2. Explain the structure of a JWT. Is it encrypted? (must know)
+
+> "A JWT is three base64url-encoded parts joined by dots: a header naming the algorithm and key id, a payload of claims, and a signature over the first two parts.
+> It is signed, not encrypted: anyone holding the token can decode and read the claims, so never put secrets or sensitive PII in it.
+> The signature only guarantees the claims were issued by the key holder and not modified."
+
+```text
+eyJhbGciOiJSUzI1NiIsImtpZCI6ImsxIiwidHlwIjoiSldUIn0   header   {"alg":"RS256","kid":"k1","typ":"JWT"}
+.eyJpc3MiOiJodHRwczovL2F1dGguZXhhbXBsZS5pbnRlcm5h...   payload  {"iss":...,"sub":"alice","aud":...,"exp":...}
+.Qm9ndXMtc2lnbmF0dXJlLWZvci1pbGx1c3RyYXRpb24tb25seQ   signature  RS256(header + "." + payload)
+```
+
+- **base64url** (RFC 4648 URL-safe alphabet, padding stripped) makes it safe in headers and URLs; it is encoding, not encryption.
+  One of the tests decodes the payload with nothing but `base64` to prove it.
+- This is a **JWS** (RFC 7515).
+  An encrypted JWT is a **JWE** with five parts; rarely needed for access tokens, and TLS already protects them in transit.
+
+Registered claims (RFC 7519 section 4.1):
+
+| Claim | Meaning | Validate? |
+| --- | --- | --- |
+| `iss` | Issuer (the IdP URL) | Exact match against the expected issuer |
+| `sub` | Subject: stable user or client id | Required; the identity you authorize |
+| `aud` | Audience: which API the token is for | Must contain your API's identifier |
+| `exp` | Expiry (Unix seconds) | Reject if past, with small leeway |
+| `nbf` | Not before | Reject if in the future, with leeway |
+| `iat` | Issued at | Sanity check; used for max-age policies |
+| `jti` | Unique token id | Enables denylisting and replay detection |
+
+Common non-registered claims: `scope` (space-separated string, RFC 9068 and RFC 8693), `scp` and `roles` (Microsoft Entra ID), `azp` and `nonce` (OIDC), `tid` (Entra tenant id).
+RFC 9068 also defines the `typ` header `at+jwt` for access tokens, so an ID token cannot be replayed as an access token.
+
+---
+
+## U3. How do you validate a JWT correctly, and what attacks does that stop? (must know)
+
+> "Look up the verification key by the `kid` from a trusted key set, never from the token itself.
+> Decode with an explicit algorithm allowlist, verify the signature, then validate `exp` and `nbf` with a small leeway, `iss` exactly, and `aud` against my API, and require that those claims exist.
+> Only after that do I read scopes and roles.
+> Pinning the algorithm stops the `alg: none` attack and the RS256-to-HS256 confusion attack."
+
+Tested issue and verify with RS256 and a key generated by `cryptography`:
+
+```python
+import time
+import uuid
+
+import jwt
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import rsa
+
+ISSUER = "https://auth.example.internal"
+AUDIENCE = "api://trade-service"
+
+
+def generate_rsa_keypair() -> tuple[bytes, bytes]:
+    key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    private_pem = key.private_bytes(
+        serialization.Encoding.PEM,
+        serialization.PrivateFormat.PKCS8,
+        serialization.NoEncryption(),
+    )
+    public_pem = key.public_key().public_bytes(
+        serialization.Encoding.PEM, serialization.PublicFormat.SubjectPublicKeyInfo
+    )
+    return private_pem, public_pem
+
+
+def issue_token(
+    private_pem: bytes,
+    kid: str,
+    sub: str,
+    scopes: list[str],
+    ttl_s: int = 900,
+    audience: str = AUDIENCE,
+    now: int | None = None,
+) -> str:
+    now = int(time.time()) if now is None else now
+    claims = {
+        "iss": ISSUER,
+        "sub": sub,
+        "aud": audience,
+        "iat": now,
+        "nbf": now,
+        "exp": now + ttl_s,
+        "jti": str(uuid.uuid4()),
+        "scope": " ".join(scopes),  # RFC 9068 style; Entra ID uses "scp" and "roles"
+    }
+    return jwt.encode(claims, private_pem, algorithm="RS256", headers={"kid": kid})
+
+
+def verify_token(token: str, public_keys: dict[str, bytes], audience: str = AUDIENCE) -> dict:
+    """Raises jwt.PyJWTError subclasses on any failure; callers map that to 401."""
+    kid = jwt.get_unverified_header(token).get("kid")  # routing only; not trusted until verified
+    if kid not in public_keys:
+        raise jwt.InvalidTokenError("unknown kid")
+    return jwt.decode(
+        token,
+        public_keys[kid],
+        algorithms=["RS256"],  # pin: never read the algorithm from the token
+        audience=audience,
+        issuer=ISSUER,
+        leeway=30,  # seconds of clock skew tolerated on exp, nbf, iat
+        options={"require": ["exp", "iat", "iss", "aud", "sub"]},
+    )
+```
+
+The attack tests, which all pass against `verify_token`:
+
+```python
+def test_expired(keys):
+    t = tokens.issue_token(keys["priv"], "k1", "alice", [], ttl_s=60, now=int(time.time()) - 3600)
+    with pytest.raises(jwt.ExpiredSignatureError):
+        tokens.verify_token(t, {"k1": keys["pub"]})
+
+
+def test_leeway_tolerates_small_skew(keys):
+    t = tokens.issue_token(keys["priv"], "k1", "alice", [], ttl_s=60, now=int(time.time()) - 75)
+    assert tokens.verify_token(t, {"k1": keys["pub"]})["sub"] == "alice"  # expired 15s ago, leeway 30s
+
+
+def test_wrong_audience(keys):
+    t = tokens.issue_token(keys["priv"], "k1", "alice", [], audience="api://other-service")
+    with pytest.raises(jwt.InvalidAudienceError):
+        tokens.verify_token(t, {"k1": keys["pub"]})
+
+
+def test_alg_none_rejected(keys):
+    header = b64url(json.dumps({"alg": "none", "typ": "JWT", "kid": "k1"}).encode())
+    now = int(time.time())
+    body = b64url(json.dumps({"iss": tokens.ISSUER, "aud": tokens.AUDIENCE, "sub": "admin",
+                              "iat": now, "exp": now + 600}).encode())
+    with pytest.raises(jwt.InvalidAlgorithmError):
+        tokens.verify_token(f"{header}.{body}.", {"k1": keys["pub"]})
+
+
+def test_algorithm_confusion_rejected(keys):
+    # Attacker signs HS256 using the public key PEM as the HMAC secret.
+    header = b64url(json.dumps({"alg": "HS256", "typ": "JWT", "kid": "k1"}).encode())
+    now = int(time.time())
+    body = b64url(json.dumps({"iss": tokens.ISSUER, "aud": tokens.AUDIENCE, "sub": "admin",
+                              "iat": now, "exp": now + 600}).encode())
+    sig = b64url(hmac.new(keys["pub"], f"{header}.{body}".encode(), hashlib.sha256).digest())
+    with pytest.raises(jwt.InvalidAlgorithmError):
+        tokens.verify_token(f"{header}.{body}.{sig}", {"k1": keys["pub"]})
+    # Even if a careless caller allowed HS256, PyJWT refuses a PEM public key as an HMAC secret.
+    with pytest.raises(jwt.InvalidKeyError):
+        jwt.decode(f"{header}.{body}.{sig}", keys["pub"], algorithms=["HS256"], audience=tokens.AUDIENCE)
+
+
+def test_tampered_payload(keys):
+    t = tokens.issue_token(keys["priv"], "k1", "alice", ["trades:read"])
+    h, p, s = t.split(".")
+    claims = json.loads(base64.urlsafe_b64decode(p + "=" * (-len(p) % 4)))
+    claims["scope"] = "trades:read trades:write"
+    forged = f"{h}.{b64url(json.dumps(claims).encode())}.{s}"
+    with pytest.raises(jwt.InvalidSignatureError):
+        tokens.verify_token(forged, {"k1": keys["pub"]})
+
+```
+
+Further tests cover a token signed by the wrong private key, an unknown `kid`, a missing `sub` (`MissingRequiredClaimError`), and verifying old and new tokens during a key rotation.
+
+The checklist and the attack each item stops:
+
+| Step | Attack or bug it stops |
+| --- | --- |
+| Pin `algorithms=["RS256"]` | `alg: none` (unsigned token accepted) and algorithm confusion (RS256 public key used as an HS256 secret) |
+| Key from your own trusted set by `kid` | Attacker-supplied keys via `jwk`, `jku`, or `x5u` headers; `kid` path-traversal or SQL injection if you look keys up naively |
+| Verify signature before reading claims | Forged or tampered claims (a user adding `trades:write` to their own token) |
+| `exp`, `nbf` with 30 to 60 s leeway | Replay of expired tokens; spurious failures from clock skew |
+| `iss` exact match | Tokens from another tenant or a test IdP |
+| `aud` contains your API | A token minted for service A replayed against service B |
+| `require` the claims | PyJWT validates `exp`, `aud`, and friends only when present unless you list them in `options={"require": [...]}` |
+| Check `typ` or token use | An ID token presented as an access token |
+
+PyJWT specifics worth saying out loud:
+
+- `jwt.decode` refuses to run without `algorithms=`; passing `options={"verify_signature": False}` is for debugging only.
+- `jwt.get_unverified_header` is exactly that: use `kid` from it for key lookup, trust nothing else in it.
+- Catch `jwt.PyJWTError`, not only `jwt.InvalidTokenError`: `InvalidKeyError` (raised when a PEM public key is fed to HS256) is not a subclass of `InvalidTokenError` in PyJWT 2.15.
+- If you do not pass `audience=` but the token has an `aud`, PyJWT raises `InvalidAudienceError`; the fix is to pass your audience, not to disable the check.
+- For HS256, PyJWT 2.15 warns (`InsecureKeyLengthWarning`) when the secret is shorter than the hash output (32 bytes); short secrets can be brute-forced offline from a single token.
+
+---
+
+## U4. HS256 versus RS256 or ES256: when do you use which? How do JWKS and key rotation work? (must know)
+
+| | HS256 (HMAC-SHA256) | RS256 (RSA PKCS#1 v1.5, SHA-256) | ES256 (ECDSA P-256) |
+| --- | --- | --- | --- |
+| Key type | One shared secret | Private key signs, public key verifies | Private key signs, public key verifies |
+| Who can mint tokens | Everyone who can verify | Only the issuer | Only the issuer |
+| Distribution | Secret must reach every verifier | Public keys via JWKS | Public keys via JWKS |
+| Signature size | 32 bytes | 256 bytes (2048-bit key) | 64 bytes |
+| Typical use | One service issuing and verifying its own tokens | IdPs (Entra ID, Okta, Ping), widest support | Same, when smaller tokens and faster signing matter |
+
+> "Symmetric HS256 is fine when the issuer and the verifier are the same service.
+> As soon as several services verify tokens, use asymmetric keys: a leaked verifier then cannot mint tokens, and public keys are distributed through a JWKS endpoint."
+
+**JWKS** (RFC 7517) is a JSON document of public keys, each with a `kid`, published by the issuer (found through OIDC discovery as `jwks_uri`).
+The verifier picks the key whose `kid` matches the token header.
+
+**Rotation without downtime:**
+
+1. Publish the new public key in the JWKS alongside the old one.
+2. Wait at least the verifiers' JWKS cache lifetime, then start signing with the new key (new `kid`).
+3. Keep the old public key published until every token it signed has expired (the maximum token TTL).
+4. Remove the old key.
+
+Emergency rotation after a key leak skips the waiting: remove the key immediately and accept that outstanding tokens fail.
+
+Verifying against a JWKS with PyJWT's `PyJWKClient` (tested against a local HTTP server serving a real JWKS):
+
+```python
+import jwt
+
+
+class IdpTokenVerifier:
+    """Validate access tokens minted by an external IdP (Entra ID, Okta, Ping) via its JWKS."""
+
+    def __init__(self, jwks_uri: str, issuer: str, audience: str) -> None:
+        # One client per process: it caches the key set (lifespan) and refetches on an unknown kid.
+        self.jwks = jwt.PyJWKClient(jwks_uri, lifespan=3600, timeout=5)
+        self.issuer, self.audience = issuer, audience
+
+    def verify(self, token: str) -> dict:
+        signing_key = self.jwks.get_signing_key_from_jwt(token)  # picks the key by the token's kid
+        return jwt.decode(
+            token,
+            signing_key.key,
+            algorithms=["RS256"],
+            audience=self.audience,
+            issuer=self.issuer,
+            leeway=30,
+            options={"require": ["exp", "iat", "iss", "aud", "sub"]},
+        )
+
+
+def scopes_from_claims(claims: dict) -> set[str]:
+    """Normalize IdP differences: `scope` (space string), `scp` (string or list), `roles` (list)."""
+    out: set[str] = set()
+    for name in ("scope", "scp"):
+        value = claims.get(name)
+        if isinstance(value, str):
+            out.update(value.split())
+        elif isinstance(value, list):
+            out.update(value)
+    out.update(claims.get("roles", []))  # app roles for client-credentials (daemon) callers
+    return out
+```
+
+Tested behavior worth knowing: the key set is fetched once and cached (three verifications, one HTTP request); an unknown `kid` triggers a refetch, but by default only after `cooldown_duration` (30 seconds in PyJWT 2.15) since the last fetch, so a token signed with a freshly published key can fail briefly.
+That is why step 2 above says to publish before signing.
+`PyJWKClient` uses blocking `urllib`, so call it from a sync dependency (FastAPI runs those in its threadpool) or warm the cache in the `lifespan` handler; never call it inside an `async def` on the event loop.
+
+---
+
+## U5. Server-side sessions versus tokens: what are the trade-offs?
+
+| | Server-side session (opaque id in a cookie) | Self-contained token (JWT bearer) |
+| --- | --- | --- |
+| State | Session store (Redis, database) | In the token; verifier needs only the public key |
+| Revocation | Instant: delete the session | Hard: valid until `exp` unless you add a denylist (U8) |
+| Per-request cost | A store lookup | Signature check (CPU only) |
+| Cross-service | Every service needs the store | Any service with the JWKS can verify |
+| Size | Small cookie | Hundreds of bytes to kilobytes, sent on every request |
+| Browser risks | CSRF (cookie sent automatically) | XSS if stored where JavaScript can read it |
+| Best for | Browser apps, first-party web | APIs, mobile, service-to-service |
+
+> "For a browser front end I prefer a cookie session or a backend-for-frontend that keeps the OAuth tokens server-side; for APIs called by other services, short-lived JWT access tokens validated locally."
+
+"Stateless JWTs" are rarely fully stateless in practice: revocation, refresh tokens, and logout all reintroduce server state.
+Say that before the interviewer does.
+
+---
+
+## U6. Explain OAuth 2.0 roles and grant types. Which are deprecated? (must know)
+
+Roles:
+
+- **Resource owner**: the user who owns the data.
+- **Client**: the application requesting access (SPA, mobile app, backend, CLI).
+- **Authorization server**: issues tokens (Entra ID, Okta, Ping, Keycloak).
+- **Resource server**: your API, which validates access tokens.
+
+| Grant | Use it for | Notes |
+| --- | --- | --- |
+| Authorization code + PKCE (RFC 7636) | Any user-facing app: web, SPA, mobile | Code exchanged at the token endpoint; PKCE binds the exchange to the client that started it |
+| Client credentials | Service-to-service, no user | Client authenticates with a secret, a certificate, or a signed assertion; token carries app roles |
+| Device authorization (RFC 8628) | CLIs, TVs, devices without a browser | User approves on another device with a short code |
+| Refresh token | Getting new access tokens without re-login | Rotate them (U8) |
+| Token exchange (RFC 8693) / on-behalf-of | An API calling a downstream API as the user | Entra ID's on-behalf-of flow serves the same purpose |
+| Implicit | Nothing new | RFC 9700 (OAuth 2.0 Security BCP, January 2025): clients SHOULD NOT use it; tokens leak via URLs and history |
+| Resource owner password credentials | Nothing new | RFC 9700: MUST NOT be used; it trains users to type passwords into clients |
+
+Status to cite accurately:
+
+- **RFC 9700** (BCP 240, January 2025) is the current OAuth 2.0 Security Best Current Practice: public clients MUST use PKCE and confidential clients are RECOMMENDED to; access tokens SHOULD be audience-restricted; refresh tokens for public clients MUST be sender-constrained or rotated.
+- **OAuth 2.1** is still an Internet-Draft (draft-ietf-oauth-v2-1-16, September 2026), not an RFC.
+  It consolidates OAuth 2.0 plus the BCP: it drops the implicit and password grants and makes PKCE the norm for the authorization code grant.
+
+Pitfall: FastAPI's tutorial uses the password flow with `OAuth2PasswordBearer`.
+That class only reads the `Authorization: Bearer` header; in an enterprise setup the tokens come from the IdP through the authorization code flow, and your API never sees a password.
+
+---
+
+## U7. OAuth 2.0 versus OpenID Connect: what is an ID token versus an access token? (must know)
+
+> "OAuth 2.0 is delegated authorization: it lets a client get an access token to call an API.
+> It says nothing standard about who the user is.
+> OpenID Connect is an identity layer on top: requesting the `openid` scope also returns an ID token, a signed JWT that tells the client who logged in."
+
+| | ID token (OIDC) | Access token (OAuth 2.0) |
+| --- | --- | --- |
+| Audience | The client application (`aud` = client id) | The API (resource server) |
+| Purpose | Tell the client who authenticated, and how and when | Authorize calls to an API |
+| Format | Always a JWT | JWT or opaque (introspect via RFC 7662) |
+| Who validates it | The client | The API |
+| Key claims | `sub`, `iss`, `aud`, `nonce`, `auth_time`, `email`, `name` | `sub`, `aud`, `scope` or `scp`, `roles`, `exp` |
+| Send to your API? | Never | Yes, as `Authorization: Bearer` |
+
+- APIs must reject ID tokens: check `aud` (it will be the client id, not your API) and `typ` when present.
+- OIDC also standardizes discovery (`/.well-known/openid-configuration`, which gives `issuer`, `jwks_uri`, endpoints), the UserInfo endpoint, and the `nonce` that binds an ID token to one login and prevents replay.
+- "Login with OAuth" without OIDC (using an access token as proof of identity) is a classic vulnerability: a token issued to another app for the same user would log the attacker in.
+
+---
+
+## U8. How do access and refresh tokens work together? How do you revoke a JWT? (must know)
+
+- **Access token**: short-lived (5 to 15 minutes), sent on every API call, validated locally.
+- **Refresh token**: long-lived, sent only to the token endpoint, stored securely, exchanged for a new access token.
+- **Rotation**: every refresh returns a new refresh token and invalidates the old one.
+- **Reuse detection**: if an already-used refresh token comes back, someone stole it; revoke the whole token family (every token descended from that login), forcing both the thief and the real user to log in again.
+
+A tested implementation of rotation with family revocation:
+
+```python
+import hashlib
+import secrets
+import time
+from dataclasses import dataclass
+
+
+class RefreshError(Exception):
+    pass
+
+
+@dataclass
+class RefreshRecord:
+    user_id: str
+    family_id: str  # every token descended from one login shares a family
+    expires_at: float
+    used: bool = False
+
+
+class RefreshTokenStore:
+    """Opaque refresh tokens with rotation and reuse detection (a DB table in production)."""
+
+    def __init__(self, ttl_s: float = 14 * 86400, clock=time.time) -> None:
+        self.ttl_s, self.clock = ttl_s, clock
+        self._by_hash: dict[str, RefreshRecord] = {}
+        self._revoked_families: set[str] = set()
+
+    @staticmethod
+    def _h(token: str) -> str:
+        return hashlib.sha256(token.encode()).hexdigest()  # store only a hash, like a password
+
+    def issue(self, user_id: str, family_id: str | None = None) -> str:
+        token = secrets.token_urlsafe(32)
+        family = family_id or secrets.token_hex(8)
+        self._by_hash[self._h(token)] = RefreshRecord(user_id, family, self.clock() + self.ttl_s)
+        return token
+
+    def rotate(self, token: str) -> tuple[str, str]:
+        """Exchange a refresh token for (user_id, new_refresh_token); the old one dies."""
+        rec = self._by_hash.get(self._h(token))
+        if rec is None or rec.family_id in self._revoked_families:
+            raise RefreshError("invalid refresh token")
+        if rec.used:
+            # A rotated-out token came back: it was stolen or replayed. Kill the whole family.
+            self._revoked_families.add(rec.family_id)
+            raise RefreshError("refresh token reuse detected; session revoked")
+        if rec.expires_at < self.clock():
+            raise RefreshError("refresh token expired")
+        rec.used = True
+        return rec.user_id, self.issue(rec.user_id, rec.family_id)
+
+    def revoke_user(self, user_id: str) -> None:
+        """Logout everywhere / password change."""
+        for rec in self._by_hash.values():
+            if rec.user_id == user_id:
+                self._revoked_families.add(rec.family_id)
+```
+
+The tests prove: rotation returns a new token and the old one stops working; replaying a rotated-out token revokes the family, so the legitimate client's current token dies too; a second device's session (a different family) survives; expired tokens and "logout everywhere" are rejected.
+
+Revoking access tokens, from cheapest to strongest:
+
+| Strategy | How | Cost |
+| --- | --- | --- |
+| Short TTL | 5 to 15 minute access tokens; revoke the refresh token | Up to one TTL of exposure |
+| Denylist by `jti` | Store revoked `jti` in Redis with expiry = token `exp` | One cache lookup per request |
+| Token version | `ver` claim compared with a per-user counter bumped on logout or password change | One lookup per request (cacheable) |
+| Introspection (RFC 7662) | Opaque tokens checked at the authorization server | A network call per request, or cached |
+| Sender-constrained tokens | DPoP (RFC 9449) or mTLS-bound (RFC 8705) | Stolen tokens are useless without the key |
+
+[fill in: how sessions or tokens were revoked in a system you worked on, and the trade-off you accepted]
+
+---
+
+## U9. How do you implement token auth with scopes in FastAPI? (must know)
+
+> "An `OAuth2PasswordBearer` (or `HTTPBearer`) dependency extracts the bearer token, a second dependency validates it with PyJWT and returns the principal, and routes declare the scopes they need with `Security(dependency, scopes=[...])`.
+> `SecurityScopes` collects the required scopes for the whole dependency chain.
+> A missing or invalid token is 401 with a `WWW-Authenticate` challenge; a valid token without the scope is 403 with an `insufficient_scope` error in the challenge, as RFC 6750 specifies."
+
+```python
+from typing import Annotated
+
+import jwt
+from fastapi import Depends, FastAPI, HTTPException, Security, status
+from fastapi.security import OAuth2PasswordBearer, SecurityScopes
+
+from jwks_verify import scopes_from_claims
+from tokens import verify_token
+
+PUBLIC_KEYS: dict[str, bytes] = {}  # kid -> PEM; loaded from config or a JWKS at startup
+
+oauth2_scheme = OAuth2PasswordBearer(
+    tokenUrl="token",  # only used for the OpenAPI docs "Authorize" button
+    scopes={"trades:read": "Read trades", "trades:write": "Book trades"},
+)
+
+
+def get_principal(
+    security_scopes: SecurityScopes,
+    token: Annotated[str, Depends(oauth2_scheme)],  # missing/non-Bearer header -> 401 here
+) -> dict:
+    challenge = "Bearer"
+    if security_scopes.scopes:
+        challenge = f'Bearer scope="{security_scopes.scope_str}"'
+    try:
+        claims = verify_token(token, PUBLIC_KEYS)
+    except jwt.PyJWTError:  # base class: covers InvalidTokenError and InvalidKeyError
+        raise HTTPException(
+            status.HTTP_401_UNAUTHORIZED,
+            "Invalid or expired token",
+            headers={"WWW-Authenticate": challenge},
+        )
+    granted = scopes_from_claims(claims)
+    missing = [s for s in security_scopes.scopes if s not in granted]
+    if missing:
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            f"Missing scope: {' '.join(missing)}",
+            headers={"WWW-Authenticate": f'{challenge}, error="insufficient_scope"'},
+        )
+    return claims
+
+
+app = FastAPI()
+
+
+@app.get("/trades")
+def list_trades(principal: Annotated[dict, Security(get_principal, scopes=["trades:read"])]):
+    return {"owner": principal["sub"], "trades": []}
+
+
+@app.post("/trades", status_code=201)
+def book_trade(principal: Annotated[dict, Security(get_principal, scopes=["trades:write"])]):
+    return {"booked_by": principal["sub"]}
+```
+
+The 401 versus 403 tests:
+
+```python
+# ---------------- FastAPI 401 vs 403 ----------------
+@pytest.fixture
+def api(keys):
+    fastapi_auth.PUBLIC_KEYS.clear()
+    fastapi_auth.PUBLIC_KEYS["k1"] = keys["pub"]
+    return TestClient(fastapi_auth.app)
+
+
+def bearer(keys, scopes, **kw):
+    return {"Authorization": f"Bearer {tokens.issue_token(keys['priv'], 'k1', 'alice', scopes, **kw)}"}
+
+
+def test_fastapi_no_token_401(api):
+    r = api.get("/trades")
+    assert r.status_code == 401 and r.headers["www-authenticate"] == "Bearer"
+
+
+def test_fastapi_basic_scheme_401(api):
+    assert api.get("/trades", headers={"Authorization": "Basic dTpw"}).status_code == 401
+
+
+def test_fastapi_garbage_token_401(api):
+    r = api.get("/trades", headers={"Authorization": "Bearer not.a.jwt"})
+    assert r.status_code == 401
+    assert r.headers["www-authenticate"] == 'Bearer scope="trades:read"'
+
+
+def test_fastapi_expired_401(api, keys):
+    h = bearer(keys, ["trades:read"], ttl_s=1, now=int(time.time()) - 3600)
+    assert api.get("/trades", headers=h).status_code == 401
+
+
+def test_fastapi_read_scope_allows_get(api, keys):
+    r = api.get("/trades", headers=bearer(keys, ["trades:read"]))
+    assert r.status_code == 200 and r.json()["owner"] == "alice"
+
+
+def test_fastapi_read_scope_forbidden_on_post(api, keys):
+    r = api.post("/trades", headers=bearer(keys, ["trades:read"]))
+    assert r.status_code == 403
+    assert 'error="insufficient_scope"' in r.headers["www-authenticate"]
+
+
+def test_fastapi_write_scope_allows_post(api, keys):
+    assert api.post("/trades", headers=bearer(keys, ["trades:write"])).status_code == 201
+```
+
+Points interviewers probe:
+
+- **Sync dependency on purpose**: `get_principal` is a plain `def`, so FastAPI runs it in the threadpool; JWT verification is CPU-bound and a JWKS fetch is blocking I/O.
+  Inside `async def` it would block the event loop.
+- **Router-wide protection**: `APIRouter(dependencies=[Security(get_principal, scopes=["trades:read"])])` protects every route in the router, so a new endpoint cannot forget auth.
+- **Testing without tokens**: `app.dependency_overrides[get_principal] = lambda: {"sub": "test"}` for unit tests, plus a few real-token tests like these for the auth path itself.
+- In FastAPI 0.142, `OAuth2PasswordBearer`, `HTTPBearer`, and `APIKeyHeader` all return 401 when the credential is missing (checked against the installed version); older FastAPI releases returned 403 from `HTTPBearer` and `APIKeyHeader`.
+- Object-level checks still belong in the handler or service: the scope says "may read trades", the query must add `WHERE owner_id = :sub` or equivalent (U13).
+- FastAPI mechanics (`Depends`, `Annotated`, `lifespan`) are in [FastAPI](04-FastAPI.md).
+
+---
+
+## U10. How do you protect Flask endpoints?
+
+A tested decorator doing the same validation (shares `verify_token` and `scopes_from_claims` with the FastAPI version):
+
+```python
+from functools import wraps
+
+import jwt
+from flask import Flask, current_app, g, jsonify, request
+
+from jwks_verify import scopes_from_claims
+from tokens import verify_token
+
+
+def require_scopes(*required: str):
+    def decorator(view):
+        @wraps(view)  # keeps the endpoint name unique per view
+        def wrapper(*args, **kwargs):
+            header = request.headers.get("Authorization", "")
+            scheme, _, token = header.partition(" ")
+            if scheme.lower() != "bearer" or not token:
+                return jsonify(error="missing bearer token"), 401, {"WWW-Authenticate": "Bearer"}
+            try:
+                claims = verify_token(token, current_app.config["JWT_PUBLIC_KEYS"])
+            except jwt.PyJWTError:
+                return jsonify(error="invalid token"), 401, {"WWW-Authenticate": "Bearer"}
+            if not set(required) <= scopes_from_claims(claims):
+                return jsonify(error="insufficient scope"), 403
+            g.principal = claims
+            return view(*args, **kwargs)
+
+        return wrapper
+
+    return decorator
+
+
+def create_app(public_keys: dict[str, bytes]) -> Flask:
+    app = Flask(__name__)
+    app.config["JWT_PUBLIC_KEYS"] = public_keys
+
+    @app.get("/trades")
+    @require_scopes("trades:read")
+    def list_trades():
+        return {"owner": g.principal["sub"], "trades": []}
+
+    @app.post("/trades")
+    @require_scopes("trades:write")
+    def book_trade():
+        return {"booked_by": g.principal["sub"]}, 201
+
+    return app
+```
+
+- `functools.wraps` matters: without it every decorated view is named `wrapper`, and Flask raises an `AssertionError` about overwriting an endpoint function when the second route registers (a test reproduces this).
+- Decorator order matters: `@app.get` must be outermost, or Flask registers the undecorated function and the route is unprotected.
+- `g.principal` holds the identity for the rest of the request; it is request-scoped, not global.
+- **Flask-JWT-Extended** is the common library: `JWTManager(app)`, `@jwt_required()`, `get_jwt_identity()`, `create_access_token()`, and a cookie mode with built-in CSRF protection (double-submit token).
+  It shines when the Flask app *issues* its own tokens; when an enterprise IdP issues them, a small decorator over PyJWT plus a JWKS client like this one is simpler and easier to audit.
+- For a blueprint-wide rule, use `@bp.before_request` to reject unauthenticated requests before any view runs.
+
+---
+
+## U11. Where should a browser app store tokens? localStorage or cookies?
+
+> "Anything in localStorage or sessionStorage is readable by any JavaScript on the page, so one XSS bug exfiltrates the token for use anywhere.
+> An httpOnly, Secure, SameSite cookie is not readable by JavaScript, but the browser sends it automatically, which reintroduces CSRF, mitigated by SameSite plus a CSRF token for state-changing requests.
+> The strongest pattern for a SPA is a backend-for-frontend: the browser only holds a session cookie, and the BFF keeps the OAuth tokens server-side."
+
+| Storage | XSS | CSRF | Notes |
+| --- | --- | --- | --- |
+| localStorage / sessionStorage | Token stolen and reusable elsewhere | Not applicable (sent manually) | Simple; worst XSS outcome |
+| JavaScript memory only | Stolen only while the page is open | Not applicable | Lost on reload; pair with a refresh cookie |
+| httpOnly Secure SameSite cookie | Not readable (attacker can still act inside the page) | Needs SameSite and CSRF tokens | Use the `__Host-` prefix to lock to the host |
+| BFF session cookie, tokens server-side | Tokens never reach the browser | Same as any session | Recommended pattern for browser apps |
+
+Cookie attributes: `HttpOnly` (no JS access), `Secure` (HTTPS only), `SameSite=Lax` or `Strict` (not sent on cross-site subrequests), `Path=/`, and the `__Host-` name prefix (requires Secure, no Domain, Path=/).
+XSS defeats every storage choice for the duration of the attack; httpOnly only prevents token theft for later use, so CSP and output encoding still matter.
+
+---
+
+## U12. How would an internal bank API integrate with enterprise SSO (Entra ID, Okta, Ping)?
+
+> "The IdP is the only token issuer; my API is a resource server that never mints its own tokens and never sees passwords.
+> The front end signs users in with OIDC authorization code plus PKCE and requests an access token for my API's audience.
+> My API validates that token locally: keys from the IdP's JWKS found through discovery, pinned algorithm, exact issuer including the tenant, audience equal to my app registration, expiry, and then scopes for delegated calls or app roles for daemon callers.
+> Service-to-service callers use the client credentials grant with app roles, ideally through managed or workload identity so there is no secret to leak."
+
+Flow:
+
+```text
+User -> Web UI --(OIDC auth code + PKCE)--> IdP (Entra ID / Okta / Ping)
+Web UI <-- ID token (for the UI) + access token (aud = trade API)
+Web UI --(Authorization: Bearer <access token>)--> Trade API
+Trade API: validate via JWKS (cached), iss, aud, exp, scp/roles -> authorize -> respond
+Batch job --(client credentials, app role)--> IdP --> token (roles=["Trades.Read.All"]) --> Trade API
+Trade API --(on-behalf-of / token exchange)--> Downstream API   (never forward the user's token)
+```
+
+Concrete validation settings (the `IdpTokenVerifier` from U4 plus `scopes_from_claims`, which normalizes `scope`, `scp`, and `roles`):
+
+- **Entra ID**: discovery at `https://login.microsoftonline.com/{tenant-id}/v2.0/.well-known/openid-configuration`; v2.0 tokens have issuer `https://login.microsoftonline.com/{tenant-id}/v2.0`, v1.0 tokens `https://sts.windows.net/{tenant-id}/`.
+  Which version your API receives is set by the API's app registration, so accept exactly that issuer.
+  Delegated permissions arrive in `scp` (a space-separated string), application permissions in `roles` (a list); check `tid` if the app is multi-tenant.
+- **Okta**: custom authorization servers issue tokens with issuer `https://{your-domain}/oauth2/{authServerId}` and scopes in `scp`; check `cid` or `sub` for client identity.
+- **Ping**: same OIDC pattern; read the issuer and `jwks_uri` from its discovery document rather than hard-coding them.
+
+What goes wrong in production:
+
+- **Wrong audience**: tokens for Microsoft Graph are not for your API and are not meant to be validated by you; request a token for your API's scope (`api://<app-id>/Trades.Read`).
+- **Groups overage**: users in many groups get a pointer instead of a group list in the token; prefer app roles assigned to groups over raw group claims.
+- **JWKS fetch on the hot path** with no cache, or behind a corporate proxy without egress: warm and cache keys at startup, and alert on refresh failures.
+- **Clock skew** on on-premises hosts: keep NTP healthy and allow 30 to 60 seconds of leeway.
+- **Forwarding user tokens downstream**: the downstream API would accept a token whose audience is your API only if it validates badly; use on-behalf-of or token exchange.
+
+[fill in: the SSO or entitlement system used by internal services you built, and how your service validated callers]
+
+---
+
+## U13. Scopes versus roles; RBAC versus ABAC. Where does authorization live?
+
+- **Scopes** limit what a *client application* may do on the user's behalf (consented delegation): `trades:read`.
+- **Roles** describe what the *user or service* is allowed to do in the organization: `Trader`, `RiskViewer`.
+- The effective permission of a delegated call is the intersection: the app must hold the scope and the user must hold the role.
+
+| Model | Decision based on | Example | Fits |
+| --- | --- | --- | --- |
+| RBAC | Role membership | Traders can book trades | Coarse, stable permissions |
+| ABAC | Attributes of user, resource, action, context | A trader may amend trades in their own desk's books, under their limit, during market hours | Fine-grained, regulatory rules |
+| ReBAC | Relationships between entities | Viewer of a book because they belong to the desk that owns it | Sharing and hierarchies |
+
+- Enforce in one place (a dependency, decorator, or service-layer policy function), deny by default, and test every endpoint for both allowed and denied cases.
+- **Object-level** checks are separate from role checks: filter by ownership in the query (`select(Trade).where(Trade.book_id.in_(user_books))`), so a missing check returns nothing instead of leaking.
+- Policy engines (Open Policy Agent, AWS Cedar) externalize ABAC rules when they grow beyond a few `if` statements.
+
+---
+
+## U14. How do services authenticate to each other? API keys versus mTLS versus OAuth client credentials.
+
+| | API keys | mTLS | OAuth 2.0 client credentials |
+| --- | --- | --- | --- |
+| Identity | A shared random string | X.509 certificate on both sides | A signed, short-lived JWT with app roles |
+| Lifetime | Long; manual rotation | Certificate lifetime; automated in a mesh | Minutes; renewed automatically |
+| Revocation | Delete the key | CRL or OCSP, or short-lived certs | Disable the client at the IdP; tokens expire soon |
+| Authorization detail | Whatever you attach to the key | Usually identity only | Scopes and roles in the token |
+| Operational cost | Lowest | PKI or a service mesh (Istio, Linkerd with SPIFFE ids) | An IdP, which a bank already runs |
+| Good for | Third-party partners, simple integrations | Zero-trust transport between internal services | Internal APIs needing auditable, fine-grained authz |
+
+- API keys: generate with `secrets.token_urlsafe(32)`, show once, store only a hash (a fast SHA-256 is fine here because the key is high-entropy random, unlike a password), add a visible prefix to identify the key type, scope and rate-limit per key, send in a header, never a query string.
+- The strongest internal setup combines them: mesh mTLS for transport identity and encryption, plus OAuth tokens for application-level authorization.
+- Prefer workload identity (Kubernetes service account federation, IRSA on EKS, Azure managed identity, GCP workload identity) over client secrets, so there is no long-lived secret at all.
+
+---
+
+## U15. How do you store passwords?
+
+> "Never store passwords or fast hashes of them.
+> Use a slow, memory-hard password hash with a per-password salt: argon2id first, then scrypt or bcrypt, PBKDF2 only when FIPS compliance requires it.
+> Optionally add a pepper kept in a secrets manager, rehash on login when parameters are raised, and compare in constant time."
+
+```python
+import hashlib
+import hmac
+import os
+
+from argon2 import PasswordHasher
+from argon2.exceptions import VerifyMismatchError
+
+ph = PasswordHasher()  # argon2id with the library's current recommended parameters
+
+
+def _peppered(password: str, pepper: bytes) -> str:
+    # The pepper lives in a secrets manager, not the database, so a DB dump alone is not enough.
+    return hmac.new(pepper, password.encode(), hashlib.sha256).hexdigest()
+
+
+def hash_password(password: str, pepper: bytes) -> str:
+    return ph.hash(_peppered(password, pepper))  # salt is generated and embedded in the result
+
+
+def verify_password(stored: str, password: str, pepper: bytes) -> tuple[bool, str | None]:
+    """Returns (ok, new_hash_if_parameters_changed)."""
+    try:
+        ph.verify(stored, _peppered(password, pepper))
+    except VerifyMismatchError:
+        return False, None
+    if ph.check_needs_rehash(stored):  # parameters were raised since this hash was made
+        return True, hash_password(password, pepper)
+    return True, None
+
+
+def scrypt_hash(password: str, salt: bytes | None = None) -> tuple[bytes, bytes]:
+    """Stdlib-only fallback when argon2/bcrypt are unavailable."""
+    salt = os.urandom(16) if salt is None else salt
+    # OWASP minimum for scrypt: N=2**17, r=8, p=1 (needs ~128 MiB, so raise maxmem)
+    digest = hashlib.scrypt(password.encode(), salt=salt, n=2**17, r=8, p=1, maxmem=2**28, dklen=32)
+    return salt, digest
+
+
+def scrypt_verify(password: str, salt: bytes, expected: bytes) -> bool:
+    return hmac.compare_digest(scrypt_hash(password, salt)[1], expected)
+```
+
+Tested: the hash starts with `$argon2id$`, verifies the right password, rejects a wrong password or a wrong pepper, salts randomly (two hashes of one password differ), upgrades a hash made with weaker parameters on the next login, and the scrypt fallback round-trips.
+
+- **Why not SHA-256**: it is designed to be fast; GPUs compute billions per second, so a leaked table of salted SHA-256 hashes falls to dictionary attacks.
+  Password hashes are deliberately slow and memory-hard.
+- OWASP Password Storage Cheat Sheet minimums: argon2id with 19 MiB memory, 2 iterations, parallelism 1; scrypt N=2^17, r=8, p=1; bcrypt work factor 10 or more (and its 72-byte input limit); PBKDF2-HMAC-SHA256 with 600,000 iterations.
+- argon2-cffi's `PasswordHasher()` defaults to the RFC 9106 low-memory profile, which exceeds the OWASP minimum.
+- **Pepper**: a secret shared by all hashes, stored outside the database; it helps only if the database leaks without the app secrets.
+  HMAC-ing with it first also sidesteps bcrypt's 72-byte truncation.
+  Rotating a pepper requires rehashing at next login, so store a pepper version alongside the hash.
+- Most teams should not store passwords at all: delegate login to the IdP (U12).
+
+---
+
+## U16. What is CORS, and what is it not?
+
+> "CORS is a browser mechanism that lets a server relax the same-origin policy, telling the browser which other origins may read its responses.
+> It is not an authentication or authorization control: curl, scripts, and other servers ignore it, and it does not stop the request from reaching the server.
+> It does not prevent CSRF either, because simple cross-site requests are still sent; the browser only hides the response."
+
+```python
+from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
+
+SECURITY_HEADERS = {
+    "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
+    "X-Content-Type-Options": "nosniff",
+    "Content-Security-Policy": "default-src 'none'; frame-ancestors 'none'",  # JSON API: load nothing
+    "Referrer-Policy": "no-referrer",
+    "Cache-Control": "no-store",  # override per route for cacheable, non-sensitive data
+}
+
+app = FastAPI()
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["https://trading-ui.example.com"],  # exact origins, never "*" with credentials
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PATCH", "DELETE"],
+    allow_headers=["Authorization", "Content-Type", "Idempotency-Key"],
+    max_age=600,  # cache preflight results for 10 minutes
+)
+
+
+@app.middleware("http")
+async def security_headers(request: Request, call_next):
+    response = await call_next(request)
+    for name, value in SECURITY_HEADERS.items():
+        response.headers.setdefault(name, value)
+    return response
+
+
+@app.get("/positions")
+def positions():
+    return {"positions": []}
+```
+
+Tested: a preflight from the allowed origin gets `Access-Control-Allow-Origin` echoing that origin with credentials allowed; a preflight from another origin gets 400 and no CORS headers; and a plain GET from a disallowed origin still returns 200 from the server (just without CORS headers), which is the "CORS does not protect the server" point in one test.
+
+- **Preflight**: for non-simple requests (JSON bodies, `Authorization` or custom headers, PUT, PATCH, DELETE) the browser first sends `OPTIONS` with `Access-Control-Request-Method` and `-Headers`.
+- `Access-Control-Allow-Origin: *` cannot be combined with credentials; never reflect the request's `Origin` blindly with `Allow-Credentials: true`, which lets any site read authenticated responses.
+- Server-to-server APIs need no CORS configuration at all.
+- Flask uses the Flask-CORS extension with the same concepts.
+
+---
+
+## U17. What is CSRF, and when do you need to worry about it?
+
+- **Cross-site request forgery**: a malicious site makes the victim's browser send a state-changing request to your site, and the browser attaches the victim's cookies automatically.
+- It matters only when authentication rides on something the browser sends automatically: cookies, HTTP Basic auth, client certificates.
+  An API that requires `Authorization: Bearer` set by JavaScript is not CSRF-prone, because another origin cannot set that header on your behalf.
+- Mitigations, layered:
+  - `SameSite=Lax` or `Strict` set explicitly on session cookies; Chrome treats a cookie without the attribute as Lax, but not every browser does, so never rely on the default.
+  - A CSRF token (synchronizer token in the session, or double-submit cookie) on every state-changing request; Flask-WTF's `CSRFProtect` and Flask-JWT-Extended's cookie mode implement these.
+  - Verify `Origin` or `Sec-Fetch-Site` on state-changing requests.
+  - Never change state on GET.
+
+---
+
+## U18. Walk through the OWASP API Security Top 10 (2023).
+
+| ID | Risk | One-line mitigation |
+| --- | --- | --- |
+| API1 | Broken Object Level Authorization (BOLA) | Check ownership of every object id on every request; scope queries by the caller |
+| API2 | Broken Authentication | Use the IdP, validate tokens fully (U3), rate-limit login and token endpoints, MFA |
+| API3 | Broken Object Property Level Authorization | Explicit request and response models: no mass assignment, no over-exposed fields (separate Pydantic input and output models) |
+| API4 | Unrestricted Resource Consumption | Rate limits, page-size caps, payload size limits, timeouts, query cost limits |
+| API5 | Broken Function Level Authorization | Deny by default; role or scope checks on every admin and write endpoint |
+| API6 | Unrestricted Access to Sensitive Business Flows | Detect and throttle automation of flows like sign-up, booking, or quote requests (per-account limits, anomaly detection) |
+| API7 | Server Side Request Forgery | Allowlist outbound destinations, block private ranges, disable redirects (U20) |
+| API8 | Security Misconfiguration | Hardened defaults, no debug mode or stack traces in production, tight CORS, security headers, patched dependencies |
+| API9 | Improper Inventory Management | Catalog every API and version, retire old versions, no forgotten test or shadow endpoints |
+| API10 | Unsafe Consumption of APIs | Treat third-party responses as untrusted: validate them, use TLS, set timeouts, limit redirects |
+
+API1 and API3 in FastAPI terms: never `db.get(Trade, trade_id)` without checking `trade.owner_id`, and never accept `**payload` into an ORM model; use a Pydantic input model that simply has no `is_admin` field.
+
+---
+
+## U19. How do you prevent SQL injection in a Python service?
+
+> "Never build SQL with string formatting.
+> Bind values as parameters, which the driver sends separately from the SQL text, and use the ORM's query builder.
+> For the parts that cannot be parameters, like column names in ORDER BY, map user input through an allowlist."
+
+```python
+from sqlalchemy import Engine, text
+
+SORTABLE = {"created_at": "created_at", "symbol": "symbol", "qty": "qty"}  # API name -> column
+
+
+def find_trades_unsafe(engine: Engine, trader: str) -> list:
+    with engine.connect() as conn:  # DO NOT DO THIS: user input formatted into SQL
+        return conn.execute(text(f"SELECT id FROM trades WHERE trader = '{trader}'")).all()
+
+
+def find_trades(engine: Engine, trader: str, sort: str = "created_at") -> list:
+    column = SORTABLE.get(sort.removeprefix("-"))
+    if column is None:  # identifiers cannot be bound parameters, so allowlist them
+        raise ValueError(f"cannot sort by {sort!r}")
+    direction = "DESC" if sort.startswith("-") else "ASC"
+    sql = text(f"SELECT id FROM trades WHERE trader = :trader ORDER BY {column} {direction}, id")
+    with engine.connect() as conn:
+        return conn.execute(sql, {"trader": trader}).all()  # value is bound, never interpolated
+```
+
+Tested with SQLAlchemy 2.1 on SQLite: the unsafe version returns every trader's rows for the input `nobody' OR '1'='1`; the bound version returns none; the sort allowlist rejects `id; DROP TABLE trades` and unknown columns.
+
+- Placeholders differ by driver: `%s` in psycopg, `?` in sqlite3, `:name` in SQLAlchemy `text()`; all bind safely.
+- SQLAlchemy ORM and Core expressions (`select(Trade).where(Trade.trader == name)`) bind automatically; `text(f"...")`, `literal_column(user_input)`, and raw `.execute(f"...")` do not.
+- Escape `%` and `_` in values used with `LIKE` if users should not supply wildcards.
+- Least-privilege database users limit the blast radius: the API's user should not own the schema or be able to drop tables.
+- More on SQLAlchemy in [SQL and SQLAlchemy](06-SQL-and-SQLAlchemy.md).
+
+---
+
+## U20. How do you prevent SSRF when your service fetches user-supplied URLs?
+
+> "Server-side request forgery is making my server call somewhere the attacker cannot reach directly, classically the cloud metadata endpoint at 169.254.169.254 or internal admin services.
+> The best defense is an allowlist of destinations; when URLs are truly arbitrary (webhook targets, image fetches), require https, resolve the hostname, reject private, loopback, and link-local addresses, connect to the IP I validated, and disable redirects."
+
+```python
+import ipaddress
+import socket
+from urllib.parse import urlsplit
+
+
+class UnsafeURL(ValueError):
+    pass
+
+
+def resolve_public_url(url: str, allowed_hosts: set[str] | None = None) -> tuple[str, list[str]]:
+    """Validate an outbound URL; return (host, resolved IPs) to connect to (pin them)."""
+    parts = urlsplit(url)
+    if parts.scheme != "https":
+        raise UnsafeURL("only https is allowed")
+    host = parts.hostname
+    if not host:
+        raise UnsafeURL("missing host")
+    if allowed_hosts is not None and host not in allowed_hosts:  # allowlist beats any denylist
+        raise UnsafeURL(f"host not allowed: {host}")
+    try:
+        infos = socket.getaddrinfo(host, parts.port or 443, proto=socket.IPPROTO_TCP)
+    except socket.gaierror as exc:
+        raise UnsafeURL("cannot resolve host") from exc
+    ips = sorted({info[4][0] for info in infos})
+    for ip in ips:
+        if not ipaddress.ip_address(ip).is_global:  # loopback, RFC 1918, link-local (169.254.x), etc.
+            raise UnsafeURL(f"non-public address: {ip}")
+    return host, ips
+```
+
+Tested: http URLs, loopback (IPv4 and IPv6), the metadata address, RFC 1918, and `0.0.0.0` are all rejected; a public IP passes; the allowlist blocks any host not on it.
+
+- **DNS rebinding**: the name can resolve to a public IP during validation and a private one at connect time.
+  Connect to the validated IP (with the original `Host` header and SNI), or route all egress through a proxy that enforces the policy.
+- **Redirects**: `httpx` does not follow redirects by default (`follow_redirects=False`); `requests` does, so pass `allow_redirects=False` or validate each hop.
+- Network controls beat code: egress firewall rules, IMDSv2 on AWS (session token required), and no route from the API tier to admin networks.
+
+---
+
+## U21. How do you manage secrets?
+
+- **Never in git**: add pre-commit scanning (gitleaks, detect-secrets); if a secret is committed, rotate it immediately, because rewriting history does not un-leak clones and forks.
+- **Never in images**: every Dockerfile layer is retained, so `COPY .env` then `RUN rm .env` still ships the secret; use BuildKit secret mounts (`RUN --mount=type=secret,id=...`) for build-time secrets.
+- **Environment variables** are acceptable for injection at runtime (twelve-factor), but they leak through `docker inspect`, `/proc/<pid>/environ`, crash reports, and child processes.
+- **Secrets managers** are the production answer: AWS Secrets Manager or SSM Parameter Store, Azure Key Vault, GCP Secret Manager, HashiCorp Vault.
+  They add IAM-scoped access, audit logs, rotation, and (with Vault) short-lived dynamic database credentials.
+- **Kubernetes Secrets** are base64-encoded, not encrypted, by default; enable encryption at rest for etcd, restrict RBAC, and sync from the secrets manager with External Secrets Operator or the Secrets Store CSI driver.
+- In Python, load secrets once at startup into `pydantic-settings` fields typed `SecretStr`, which prints as `**********` (`repr` gives `SecretStr('**********')`), so a stray `print(settings)` does not leak them.
+- Prefer identity over secrets: workload identity for cloud APIs (U14), IAM database authentication where supported.
+
+---
+
+## U22. Where do you terminate TLS, and which security headers does an API need?
+
+- **TLS termination** usually happens at the load balancer or ingress (ALB, Azure Application Gateway, NGINX ingress).
+  In regulated environments, re-encrypt from the load balancer to the pods or use mesh mTLS, so traffic is encrypted inside the cluster too.
+- Require TLS 1.2 or later (prefer 1.3), redirect HTTP to HTTPS, and send HSTS.
+- **Behind a proxy**, the app sees the proxy's IP and scheme; trust `X-Forwarded-For` and `X-Forwarded-Proto` only from known proxies: `uvicorn --proxy-headers --forwarded-allow-ips=<proxy ips>`, or Werkzeug's `ProxyFix(app.wsgi_app, x_for=1, x_proto=1)` for Flask.
+  Trusting them from anyone lets clients spoof their IP and defeat IP rate limits.
+- **Security headers** for a JSON API (the middleware in U16 sets these and a test checks them):
+
+| Header | Value | Why |
+| --- | --- | --- |
+| `Strict-Transport-Security` | `max-age=31536000; includeSubDomains` | Browsers refuse plain HTTP to this host |
+| `X-Content-Type-Options` | `nosniff` | No MIME sniffing of JSON into HTML |
+| `Content-Security-Policy` | `default-src 'none'; frame-ancestors 'none'` | A JSON response should load nothing and never be framed |
+| `Cache-Control` | `no-store` on sensitive responses | No copies in shared or browser caches |
+| `Referrer-Policy` | `no-referrer` | No URL leakage to third parties |
+
+- Remove version banners (`Server`, framework headers) and disable interactive docs in production if the API is not public (`FastAPI(docs_url=None, redoc_url=None, openapi_url=None)`).
+
+---
+
+## U23. How do you log without leaking tokens or PII?
+
+> "Log identifiers, not secrets: the subject id, client id, request id, and outcome, never the token, password, or full account details.
+> Redact at the source with explicit log fields and `SecretStr`, and add a redaction filter as a safety net for what slips through."
+
+```python
+import logging
+import re
+
+PATTERNS = [
+    (re.compile(r"(?i)(authorization:\s*bearer\s+)\S+"), r"\1[REDACTED]"),
+    (re.compile(r"eyJ[\w-]+\.[\w-]+\.[\w-]*"), "[JWT]"),  # any JWT-shaped string
+    (re.compile(r"(?i)((?:password|secret|api_key|token)=)[^&\s]+"), r"\1[REDACTED]"),
+]
+
+
+class RedactingFilter(logging.Filter):
+    def filter(self, record: logging.LogRecord) -> bool:
+        message = record.getMessage()  # merge args first so secrets in args are caught too
+        for pattern, repl in PATTERNS:
+            message = pattern.sub(repl, message)
+        record.msg, record.args = message, None
+        return True
+```
+
+Tested: a log line containing a bearer header and a JWT, and a URL with `api_key=` in the query string, come out with the secrets replaced and the harmless parts (`user=7`) intact.
+
+- Where secrets actually leak: request and response body logging middleware, exception tracebacks with local variables (error trackers such as Sentry need scrubbing rules), `SQLAlchemy echo=True` logging bound parameters (use `hide_parameters=True` on `create_engine` in production), access logs recording query strings, and debug `print(request.headers)`.
+- Structured JSON logs with an allowlist of fields are easier to keep clean than free text.
+- Keep audit logs (who did what, when, from where) separate from debug logs, append-only, and retained per policy.
+- Hash or tokenize identifiers when analytics need joins but not the raw value.
+
+---
+
+## U24. How do you protect login and token endpoints from brute force and credential stuffing?
+
+- Rate-limit per account and per source IP, separately: per-account limits stop targeted guessing; per-IP limits stop spraying one password across many accounts.
+- Progressive delays or temporary lockouts rather than permanent lockout, which turns into a denial-of-service against real users.
+- MFA, and a CAPTCHA or proof of work after repeated failures.
+- Uniform responses: "invalid username or password" for both cases, and similar timing (hash a dummy password when the user does not exist) to prevent user enumeration.
+- Check new passwords against breached-password lists (the k-anonymity range API of Have I Been Pwned).
+- 429 with `Retry-After` for throttled calls, and alerts on spikes of failed logins; rate-limiting mechanics are in [REST API Design R11](05-REST-API-Design.md).
+- Better still, delegate interactive login to the IdP (U12), which already has these controls; then protect your API's own expensive endpoints.
+
+---
+
+## Go deeper
+
+Vault notes:
+
+- [REST API Design](05-REST-API-Design.md), [FastAPI](04-FastAPI.md), [Flask](03-Flask.md), [SQL and SQLAlchemy](06-SQL-and-SQLAlchemy.md), [Microservices and Messaging](08-Microservices-and-Messaging.md), [Docker, Kubernetes, CI/CD, Cloud](09-Docker-Kubernetes-CICD-Cloud.md).
+- [Security and Cryptography section](../../../11-Security-And-Cryptography/README.md) and its [OWASP Top 10 checklist](../../../11-Security-And-Cryptography/01-Common-Vulnerabilities/owasp_top_10.md) (the web application list, distinct from the API list in U18).
+- [Secure Coding and Cryptography (Advanced)](../Python_Zero_to_Godhood/Chapter_67_Secure_Coding_and_Cryptography_Advanced.md).
+- [Rate Limiter design](../../../04-System-Design/02-Case-Studies/02-Rate-Limiter/design.md) for U24.
+- [MCP transports and auth](../../../13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_09_Model_Context_Protocol/Chapter_05_Transports_and_Auth.md) for OAuth applied to agent tool servers.
+
+Official references:
+
+- [RFC 7519 JWT](https://www.rfc-editor.org/rfc/rfc7519), [RFC 7515 JWS](https://www.rfc-editor.org/rfc/rfc7515), [RFC 7517 JWK](https://www.rfc-editor.org/rfc/rfc7517), [RFC 8725 JWT Best Current Practices](https://www.rfc-editor.org/rfc/rfc8725), [RFC 9068 JWT access tokens](https://www.rfc-editor.org/rfc/rfc9068).
+- [RFC 6749 OAuth 2.0](https://www.rfc-editor.org/rfc/rfc6749), [RFC 6750 Bearer tokens](https://www.rfc-editor.org/rfc/rfc6750), [RFC 7636 PKCE](https://www.rfc-editor.org/rfc/rfc7636), [RFC 8628 Device grant](https://www.rfc-editor.org/rfc/rfc8628), [RFC 9700 OAuth 2.0 Security BCP](https://www.rfc-editor.org/rfc/rfc9700), [OAuth 2.1 draft](https://datatracker.ietf.org/doc/draft-ietf-oauth-v2-1/).
+- [OpenID Connect Core 1.0](https://openid.net/specs/openid-connect-core-1_0.html).
+- [OWASP API Security Top 10 2023](https://api-security.owasp.org/editions/2023/en/0x11-t10/), [OWASP Password Storage Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html).
+- [PyJWT documentation](https://pyjwt.readthedocs.io/en/stable/), [FastAPI OAuth2 scopes](https://fastapi.tiangolo.com/advanced/security/oauth2-scopes/), [Microsoft identity platform access tokens](https://learn.microsoft.com/en-us/entra/identity-platform/access-tokens).
