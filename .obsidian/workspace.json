@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "16-Interview-Command-Center/00-Dashboard.md",
+                "file": "02-Programming-Languages/Python/Python-Backend-Interview-Prep/04-FastAPI.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "00-Dashboard"
+              "title": "04-FastAPI"
             }
           }
         ]
@@ -216,6 +216,17 @@
   },
   "active": "e7a7b303c61786dc",
   "lastOpenFiles": [
+    "02-Programming-Languages/Python/Python-Backend-Interview-Prep/code/flask_app/__pycache__/flask_items.cpython-314.pyc",
+    "02-Programming-Languages/Python/Python-Backend-Interview-Prep/code/flask_app/__pycache__/test_flask_items.cpython-314-pytest-9.1.1.pyc",
+    "02-Programming-Languages/Python/Python-Backend-Interview-Prep/code/flask_app/__pycache__",
+    "02-Programming-Languages/Python/Python-Backend-Interview-Prep/code/fastapi_app/__pycache__/fastapi_items.cpython-314.pyc",
+    "02-Programming-Languages/Python/Python-Backend-Interview-Prep/code/fastapi_app/__pycache__/test_fastapi_items.cpython-314-pytest-9.1.1.pyc",
+    "02-Programming-Languages/Python/Python-Backend-Interview-Prep/code/fastapi_app/__pycache__",
+    "02-Programming-Languages/Python/Python-Backend-Interview-Prep/12-System-Design.md",
+    "02-Programming-Languages/Python/Python-Backend-Interview-Prep/03-Flask.md",
+    "02-Programming-Languages/Python/Python-Backend-Interview-Prep/09-Docker-Kubernetes-CICD-Cloud.md",
+    "16-Interview-Command-Center/03-Pipeline/Active/Barclays/Barclays-Quant-Technology-Tracker.md",
+    "16-Interview-Command-Center/02-Companies/Banking/Barclays.md",
     "16-Interview-Command-Center/00-Dashboard.md",
     "01-CS-Foundations/Operating-Systems/GIOS/Part-2-Process-Thread-Management/P2L1-Processes-and-Process-Management.md",
     "01-CS-Foundations/Operating-Systems/GIOS/_GIOS-Dashboard.md",
@@ -226,8 +237,6 @@
     "16-Interview-Command-Center/03-Pipeline/__pycache__/extract_mail_history.cpython-314.pyc",
     "16-Interview-Command-Center/03-Pipeline/__pycache__/deep_scan_job_folder.cpython-314.pyc",
     "16-Interview-Command-Center/03-Pipeline/__pycache__/deep_grep_job_emails.cpython-314.pyc",
-    "16-Interview-Command-Center/03-Pipeline/__pycache__/build_complete_vault_dataset.cpython-314.pyc",
-    "16-Interview-Command-Center/03-Pipeline/__pycache__",
     "13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_02_Working_With_LLMs/Chapter_01_The_API_Layer.md",
     "13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_01_LLM_Foundations/Chapter_01_From_N_Grams_to_Neural_Language_Models.md",
     "14-Low-Latency-Systems/01 - Market & Microstructure Fundamentals/Market Fragmentation and Reg NMS.md",
@@ -243,15 +252,6 @@
     "14-Low-Latency-Systems/Interview/Staff-Principal-System-Design-Blueprint.md",
     "14-Low-Latency-Systems/06 - Networking/War Story - The 2015 CME Globex Multicast Freeze.md",
     "14-Low-Latency-Systems/03 - Matching Engine Internals/War Story - The 2013 NASDAQ SIP Outage.md",
-    "14-Low-Latency-Systems/02 - Exchange Architecture/War Story - The 2012 Knight Capital Disaster.md",
-    "14-Low-Latency-Systems/01 - Market & Microstructure Fundamentals/War Story - The 2010 Flash Crash.md",
-    "14-Low-Latency-Systems/Sources/Curated Bibliography of High-Frequency Trading Systems.md",
-    "14-Low-Latency-Systems/Sources/Flash Boys by Michael Lewis.md",
-    "14-Low-Latency-Systems/Sources/Site Reliability Engineering at Scale for Financial Systems.md",
-    "14-Low-Latency-Systems/Sources/The Microstructure of Financial Markets by Rama Cont and Sasha Stoikov.md",
-    "14-Low-Latency-Systems/Sources",
-    "14-Low-Latency-Systems/14 - Industry Map & Canon",
-    "14-Low-Latency-Systems/13 - Reliability, Ops & Testing",
     "02-Programming-Languages/C++/CPP_Zero_to_Godhood/C++ Zero to Godhood: Complete Evolution and Comprehensive Feature Guide.mindnode/QuickLook/Preview.jpg"
   ]
 }

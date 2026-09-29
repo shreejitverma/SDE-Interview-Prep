@@ -4,7 +4,7 @@ track: [sde]
 level:
 status: draft
 last_reviewed:
-sources: [https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md, https://kafka.apache.org/documentation/, https://kafka.apache.org/blog/2026/02/17/apache-kafka-4.2.0-release-announcement/, https://www.rabbitmq.com/docs/quorum-queues, https://www.rabbitmq.com/docs/consumers, https://docs.celeryq.dev/en/stable/userguide/configuration.html, https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/quotas-messages.html, https://aws.amazon.com/builders-library/timeouts-retries-and-backoff-with-jitter/, https://debezium.io/documentation/reference/stable/transformations/outbox-event-router.html]
+sources: [https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md, https://kafka.apache.org/documentation/, https://kafka.apache.org/blog/2026/02/17/apache-kafka-4.2.0-release-announcement/, https://www.rabbitmq.com/docs/quorum-queues, https://www.rabbitmq.com/docs/consumers, https://docs.celeryq.dev/en/stable/userguide/configuration.html, https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/quotas-messages.html, https://aws.amazon.com/builders-library/timeouts-retries-and-backoff-with-jitter/, https://debezium.io/documentation/reference/transformations/outbox-event-router.html]
 ---
 
 # Microservices and messaging
@@ -880,6 +880,6 @@ Official docs:
 - [confluent-kafka-python](https://docs.confluent.io/platform/current/clients/confluent-kafka-python/html/index.html)
 - [RabbitMQ quorum queues](https://www.rabbitmq.com/docs/quorum-queues), [consumers and acknowledgements](https://www.rabbitmq.com/docs/consumers)
 - [Celery configuration](https://docs.celeryq.dev/en/stable/userguide/configuration.html)
-- [Debezium outbox event router](https://debezium.io/documentation/reference/stable/transformations/outbox-event-router.html)
+- [Debezium outbox event router](https://debezium.io/documentation/reference/transformations/outbox-event-router.html)
 - [Timeouts, retries, and backoff with jitter (AWS Builders' Library)](https://aws.amazon.com/builders-library/timeouts-retries-and-backoff-with-jitter/)
 - [OpenTelemetry Python](https://opentelemetry.io/docs/languages/python/)
