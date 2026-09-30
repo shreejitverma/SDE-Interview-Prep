@@ -601,6 +601,8 @@ The same four-thread CPU loop run under the free-threaded 3.14.6t build on that 
 - "Gunicorn or Uvicorn workers?"
   Web servers scale CPU across **processes** (workers) and handle I/O concurrency inside each process with threads or an event loop.
 
+Deep dive: [Concurrency Fundamentals and Threading](14-Concurrency-Fundamentals-and-Threading.md) and [Multiprocessing and Parallelism](15-Multiprocessing-and-Parallelism.md).
+
 ---
 
 ## Y10. How does asyncio work? Explain the event loop, `await`, `gather` versus `TaskGroup`, and what happens with a blocking call. (must know)
@@ -677,6 +679,8 @@ asyncio.run(main())
 - Unbounded `gather` over 10,000 URLs opens 10,000 sockets; bound it with a `Semaphore` (tested in the [Coding round](11-Coding-Round.md)).
 - Swallowing `asyncio.CancelledError` (it is a `BaseException` since 3.8) breaks timeouts and shutdown; re-raise it.
 - Debugging: `asyncio.run(main(), debug=True)` or `PYTHONASYNCIODEBUG=1` logs callbacks slower than 100 ms, which finds blocking calls; 3.14 adds `python -m asyncio ps PID` and `pstree PID` to inspect a running process.
+
+Deep dive: [Asyncio Deep Dive](16-Asyncio-Deep-Dive.md).
 
 ---
 

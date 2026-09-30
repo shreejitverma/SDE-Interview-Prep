@@ -103,6 +103,8 @@ async def test_blocking_call_in_async_def_serializes_requests():
   No; it lets one process serve many waiting requests.
   Use `asyncio.gather` inside a request to make independent calls concurrent.
 
+Deep dive: [Asyncio Deep Dive](16-Asyncio-Deep-Dive.md) and [Concurrency in Web Services and Coding](17-Concurrency-in-Web-Services-and-Coding.md), which measures the threadpool limit.
+
 ---
 
 ## A3. Flask vs FastAPI: compare them. (must know)

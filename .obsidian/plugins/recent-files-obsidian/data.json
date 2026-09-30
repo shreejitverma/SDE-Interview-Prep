@@ -1,12 +1,44 @@
 {
   "recentFiles": [
     {
-      "basename": "04-FastAPI",
-      "path": "02-Programming-Languages/Python/Python-Backend-Interview-Prep/04-FastAPI.md"
+      "basename": "02-Python-Core",
+      "path": "02-Programming-Languages/Python/Python-Backend-Interview-Prep/02-Python-Core.md"
+    },
+    {
+      "basename": "01-Pitch-and-Resume",
+      "path": "02-Programming-Languages/Python/Python-Backend-Interview-Prep/01-Pitch-and-Resume.md"
+    },
+    {
+      "basename": "10-Testing-Debugging-Production",
+      "path": "02-Programming-Languages/Python/Python-Backend-Interview-Prep/10-Testing-Debugging-Production.md"
+    },
+    {
+      "basename": "09-Docker-Kubernetes-CICD-Cloud",
+      "path": "02-Programming-Languages/Python/Python-Backend-Interview-Prep/09-Docker-Kubernetes-CICD-Cloud.md"
+    },
+    {
+      "basename": "07-Auth-and-Security",
+      "path": "02-Programming-Languages/Python/Python-Backend-Interview-Prep/07-Auth-and-Security.md"
     },
     {
       "basename": "03-Flask",
       "path": "02-Programming-Languages/Python/Python-Backend-Interview-Prep/03-Flask.md"
+    },
+    {
+      "basename": "04-FastAPI",
+      "path": "02-Programming-Languages/Python/Python-Backend-Interview-Prep/04-FastAPI.md"
+    },
+    {
+      "basename": "11-Coding-Round",
+      "path": "02-Programming-Languages/Python/Python-Backend-Interview-Prep/11-Coding-Round.md"
+    },
+    {
+      "basename": "06-SQL-and-SQLAlchemy",
+      "path": "02-Programming-Languages/Python/Python-Backend-Interview-Prep/06-SQL-and-SQLAlchemy.md"
+    },
+    {
+      "basename": "05-REST-API-Design",
+      "path": "02-Programming-Languages/Python/Python-Backend-Interview-Prep/05-REST-API-Design.md"
     },
     {
       "basename": "Barclays-Quant-Technology-Tracker",
