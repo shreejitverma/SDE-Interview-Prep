@@ -1,0 +1,21 @@
+# captured 2026-10-01T11:31Z on Linux 6.8.0-134-generic aarch64, 8 vCPUs, Apple M3 Pro host via Lima vz
+--- Running userfaultfd_demo (Exokernel analogy) ---
+Mapped 16384 bytes at 0xf6b1e29c2000
+[uffd] Thread started
+Accessing memory at 0xf6b1e29c2000...
+[uffd] poll returned 1, revents=0x1
+[uffd] Page fault at address: 0xf6b1e29c2000
+[uffd] Page mapped successfully.
+Read value: 'Xello from Exokernel userfaultfd handler! (Address: 0xf6b1e29c2000)'
+Accessing memory at 0xf6b1e29c3000...
+[uffd] poll returned 1, revents=0x1
+[uffd] Page fault at address: 0xf6b1e29c3000
+[uffd] Page mapped successfully.
+Read value: 'Yello from Exokernel userfaultfd handler! (Address: 0xf6b1e29c3000)'
+
+--- Running bpftrace exec trace (SPIN analogy) ---
+Tracing execve() to demonstrate safe extensibility...
+Attaching 1 probe...
+Process bpftrace (PID 3943) is executing /usr/bin/sleep
+
+
