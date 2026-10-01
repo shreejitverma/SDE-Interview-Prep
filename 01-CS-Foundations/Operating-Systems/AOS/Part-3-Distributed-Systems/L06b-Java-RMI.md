@@ -243,7 +243,7 @@ While Java RMI pioneered seamless distributed objects in the Java ecosystem, mod
 - **gRPC**: Uses Protocol Buffers and HTTP/2 to provide a high-performance, language-agnostic RPC framework, bypassing Java's slow native serialization.
 - **RESTful microservices**: Stateless, HTTP-based JSON endpoints have replaced stateful RMI objects in modern web services.
 - **Apache Thrift**: A cross-language RPC framework that provides similar stub/skeleton generation but supports multiple languages.
-Despite this shift, RMI's core abstractions—specifically the separation of interfaces from implementations and the use of proxies (stubs)—remain foundational concepts in modern dependency injection frameworks and distributed systems.
+Despite this shift, RMI's core abstractions - specifically the separation of interfaces from implementations and the use of proxies (stubs) - remain foundational concepts in modern dependency injection frameworks and distributed systems.
 
 ## Pitfalls and exam traps
 
