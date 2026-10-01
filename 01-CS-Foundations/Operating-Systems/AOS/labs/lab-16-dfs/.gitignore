@@ -1,0 +1,9 @@
+disk_*.dat
+raid_input.txt
+raid_output.txt
+store.log
+store.log.tmp
+fuse.log
+fuse_cache
+backing_test.txt
+mnt/
