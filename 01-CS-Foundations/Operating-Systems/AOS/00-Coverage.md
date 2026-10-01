@@ -16,9 +16,9 @@ its lab has a README and Makefile, and its practice file cites the row id.
 
 | Group | Rows | Covered | Missing |
 | --- | ---: | ---: | ---: |
-| R01 | 14 | 0 | 14 |
-| R02 | 5 | 0 | 5 |
-| R03 | 12 | 0 | 12 |
+| R01 | 14 | 14 | 0 |
+| R02 | 5 | 5 | 0 |
+| R03 | 12 | 12 | 0 |
 | L01 | 6 | 0 | 6 |
 | L02a | 6 | 0 | 6 |
 | L02b | 10 | 0 | 10 |
@@ -65,4 +65,4 @@ its lab has a README and Makefile, and its practice file cites the row id.
 | papers L10 | 4 | 0 | 4 |
 | papers L11 | 2 | 0 | 2 |
 | papers optional | 11 | 0 | 11 |
-| **All** | **418** | **0** | **418** |
+| **All** | **418** | **31** | **387** |
