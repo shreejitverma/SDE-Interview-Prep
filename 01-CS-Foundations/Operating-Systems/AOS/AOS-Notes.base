@@ -1,0 +1,36 @@
+filters:
+  and:
+    - file.inFolder("01-CS-Foundations/Operating-Systems/AOS")
+    - file.hasTag("cs6210")
+views:
+  - type: table
+    name: Lessons
+    filters:
+      and:
+        - file.hasTag("cs6210/lesson")
+    order:
+      - file.name
+      - sub_lesson
+      - status
+      - last_reviewed
+  - type: table
+    name: Papers
+    filters:
+      and:
+        - file.hasTag("cs6210/paper")
+    order:
+      - file.name
+      - lesson
+      - reading
+      - venue
+      - status
+  - type: table
+    name: Labs
+    filters:
+      and:
+        - file.hasTag("cs6210/lab")
+    order:
+      - file.name
+      - lessons
+      - environment
+      - status

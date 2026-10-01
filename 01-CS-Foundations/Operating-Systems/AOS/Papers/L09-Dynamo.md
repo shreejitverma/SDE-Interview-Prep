@@ -1,0 +1,61 @@
+---
+type: paper
+track: [sde, distinguished]
+level:
+status: seed
+last_reviewed:
+sources: ["https://doi.org/10.1145/1294261.1294281"]
+course: cs6210
+lesson: L09
+reading: required
+venue: "SOSP 2007"
+authors: []
+tags: [cs6210, cs6210/paper]
+aliases: ["Dynamo: Amazon's Highly Available Key-value Store"]
+---
+
+# Dynamo: Amazon's Highly Available Key-value Store
+
+SOSP 2007. Reading status: required. [Link](https://doi.org/10.1145/1294261.1294281).
+
+> [!abstract] One-line summary
+> To be written.
+
+## Problem
+
+> [!todo] Seed
+> To be written; see the coverage matrix row for sources.
+
+## Key idea
+
+> [!todo] Seed
+> To be written; see the coverage matrix row for sources.
+
+## Design
+
+> [!todo] Seed
+> To be written; see the coverage matrix row for sources.
+
+## Evaluation
+
+> [!todo] Seed
+> To be written; see the coverage matrix row for sources.
+
+## Limitations and critiques
+
+> [!todo] Seed
+> To be written; see the coverage matrix row for sources.
+
+## What it led to
+
+> [!todo] Seed
+> To be written; see the coverage matrix row for sources.
+
+## Exam angles
+
+> [!todo] Seed
+> To be written; see the coverage matrix row for sources.
+
+## Related
+
+- Lessons: [L09a](../Part-5-Internet-Scale-Real-Time-and-Security/L09a-Giant-Scale-Services.md), [L09b](../Part-5-Internet-Scale-Real-Time-and-Security/L09b-MapReduce.md), [L09c](../Part-5-Internet-Scale-Real-Time-and-Security/L09c-Content-Delivery-Networks.md)
