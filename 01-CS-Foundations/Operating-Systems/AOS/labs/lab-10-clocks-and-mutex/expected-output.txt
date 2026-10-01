@@ -1,0 +1,31 @@
+# captured 2026-10-01T18:41Z on Linux 6.8.0-134-generic aarch64, 8 vCPUs, Apple M3 Pro host via Lima vz
+--- Running Clocks ---
+--- Initial State ---
+Node 0 INIT       | Lamport:  0 | Vector: [0, 0, 0] | Physical (drifted):  0.00
+Node 1 INIT       | Lamport:  0 | Vector: [0, 0, 0] | Physical (drifted):  0.00
+Node 2 INIT       | Lamport:  0 | Vector: [0, 0, 0] | Physical (drifted):  0.00
+
+--- Simulation Trace ---
+Node 0 LOCAL      | Lamport:  1 | Vector: [1, 0, 0] | Physical (drifted):  1.00
+Node 0 SEND       | Lamport:  2 | Vector: [2, 0, 0] | Physical (drifted):  2.00
+Node 1 RECV       | Lamport:  3 | Vector: [2, 1, 0] | Physical (drifted):  3.15
+Node 1 SEND       | Lamport:  4 | Vector: [2, 2, 0] | Physical (drifted):  4.20
+Node 2 RECV       | Lamport:  5 | Vector: [2, 2, 1] | Physical (drifted):  5.50
+Node 2 LOCAL      | Lamport:  6 | Vector: [2, 2, 2] | Physical (drifted):  6.60
+Node 0 SEND       | Lamport:  3 | Vector: [3, 0, 0] | Physical (drifted):  7.00
+Node 2 RECV       | Lamport:  7 | Vector: [3, 2, 3] | Physical (drifted):  8.80
+--- Running Mutex ---
+Node 0 ENTERING CS (Iter 0) with Lamport 6
+Node 0 LEAVING CS (Iter 0)
+Node 1 ENTERING CS (Iter 0) with Lamport 8
+Node 1 LEAVING CS (Iter 0)
+Node 2 ENTERING CS (Iter 0) with Lamport 10
+Node 2 LEAVING CS (Iter 0)
+Node 0 ENTERING CS (Iter 1) with Lamport 16
+Node 0 LEAVING CS (Iter 1)
+Node 1 ENTERING CS (Iter 1) with Lamport 18
+Node 1 LEAVING CS (Iter 1)
+Node 2 ENTERING CS (Iter 1) with Lamport 20
+Node 2 LEAVING CS (Iter 1)
+Total Messages EXCHANGED: 36
+Expected Messages (3*(N-1) per CS): 36
