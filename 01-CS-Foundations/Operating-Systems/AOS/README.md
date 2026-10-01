@@ -22,6 +22,7 @@ The course traces the ideas inside today's systems back to the research papers t
 > - **[Labs](labs/README.md)**: real commands, C and Python programs, and measurements in a Linux VM ([setup](labs/setup/README.md)).
 > - **[Practice](Practice/README.md)**: original exam-style questions with folded answers.
 > - **[Study plan](00-Study-Plan.md)** (semester and two-week crash plans), **[resources](00-Resources.md)**, and the **[coverage report](00-Coverage.md)**.
+> - [Cheat sheets](Cheatsheets/README.md) per Part.
 > - Views: the [study board](AOS-Study-Board.md) (Kanban), the [concept map](AOS-Concept-Map.canvas) (Canvas), and the [notes base](AOS-Notes.base) (Bases).
 
 > [!warning] Honor code
