@@ -1,0 +1,5 @@
+# captured 2026-10-01T18:49Z on Linux 6.8.0-134-generic aarch64, 8 vCPUs, Apple M3 Pro host via Lima vz
+--- Ensemble Micro-Protocol Bypass Benchmark ---
+Unoptimized layered stack: 1.89 us / msg
+Optimized CCP fast-path:   1.13 us / msg
+Savings:                   0.75 us (40.0%)
