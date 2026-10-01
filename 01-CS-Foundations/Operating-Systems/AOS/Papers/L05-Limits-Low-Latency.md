@@ -2,7 +2,7 @@
 type: paper
 track: [sde, distinguished]
 level:
-status: seed
+status: solid
 last_reviewed:
 sources: ["https://doi.org/10.1145/151244.151247"]
 course: cs6210
