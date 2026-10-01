@@ -1,0 +1,7 @@
+syntax = "proto3";
+
+message CapsuleMessage {
+    string type_hash = 1;
+    string previous_node = 2;
+    bytes payload = 3;
+}
