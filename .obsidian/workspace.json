@@ -216,6 +216,10 @@
   },
   "active": "e7a7b303c61786dc",
   "lastOpenFiles": [
+    "01-CS-Foundations/Operating-Systems/AOS/Cheatsheets/Part-1-Cheatsheet.md",
+    "Library/01-CS-Foundations/Operating-Systems/CS6210-AOS/crew/runner/reports/cheatsheet-1.md",
+    "Library/01-CS-Foundations/Operating-Systems/CS6210-AOS/crew/runner/logs/cheatsheet-1.gemini.1.log",
+    "Library/01-CS-Foundations/Operating-Systems/CS6210-AOS/crew/runner/logs/cheatsheet-1.prompt.md",
     "Library/01-CS-Foundations/Operating-Systems/CS6210-AOS/crew/runner/reports/practice-L02.md",
     "Library/01-CS-Foundations/Operating-Systems/CS6210-AOS/crew/runner/reports/practice-L03.md",
     "Library/01-CS-Foundations/Operating-Systems/CS6210-AOS/crew/runner/logs/practice-L03.gemini.1.log",
@@ -232,7 +236,6 @@
     "Library/01-CS-Foundations/Operating-Systems/CS6210-AOS/crew/runner/logs/practice-L01.prompt.md",
     "01-CS-Foundations/Operating-Systems/AOS/labs/lab-01-syscall-and-context-switch/syscall_cost.c",
     "01-CS-Foundations/Operating-Systems/AOS/labs/lab-01-syscall-and-context-switch/expected-output.txt",
-    "01-CS-Foundations/Operating-Systems/AOS/labs/lab-01-syscall-and-context-switch/context_switch.c",
     "Library/01-CS-Foundations/Operating-Systems/CS6210-AOS/crew/runner/reports/lab-01-syscall-and-context-switch.md",
     "Library/01-CS-Foundations/Operating-Systems/CS6210-AOS/crew/runner/logs/lab-03-virtualization.prompt.md",
     "Library/01-CS-Foundations/Operating-Systems/CS6210-AOS/crew/runner/reports/lab-02-extensibility.md",
@@ -249,9 +252,6 @@
     "Library/01-CS-Foundations/Operating-Systems/CS6210-AOS/crew/runner/logs/note-L03c.prompt.md",
     "Library/01-CS-Foundations/Operating-Systems/CS6210-AOS/crew/runner/reports/note-L03a.md",
     "Library/01-CS-Foundations/Operating-Systems/CS6210-AOS/crew/runner/logs/note-L03b.prompt.md",
-    "Library/01-CS-Foundations/Operating-Systems/CS6210-AOS/crew/runner/reports/note-L02d.md",
-    "Library/01-CS-Foundations/Operating-Systems/CS6210-AOS/crew/runner/logs/note-L03a.prompt.md",
-    "Library/01-CS-Foundations/Operating-Systems/CS6210-AOS/crew/runner/reports/note-L02c.md",
     "01-CS-Foundations/Operating-Systems/AOS/AOS-Concept-Map.canvas",
     "06-Interview-Prep/04-Market-Risk-Quartz-Python/Market-Risk-Prep-Canvas.canvas",
     "02-Programming-Languages/C++/CPP_Zero_to_Godhood/C++ Zero to Godhood: Complete Evolution and Comprehensive Feature Guide.mindnode/QuickLook/Preview.jpg"
