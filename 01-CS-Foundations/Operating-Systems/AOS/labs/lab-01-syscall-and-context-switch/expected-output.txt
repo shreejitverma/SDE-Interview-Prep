@@ -1,0 +1,17 @@
+# captured 2026-10-01T11:31Z on Linux 6.8.0-134-generic aarch64, 8 vCPUs, Apple M3 Pro host via Lima vz
+--- Syscall Cost ---
+Syscall (SYS_getpid) cost: 122 ns/call
+Syscall (libc getpid) cost: 123 ns/call
+
+--- Context Switch Cost ---
+Thread context switch (same-address-space): 46667 ns/switch
+Process context switch (cross-address-space): 41530 ns/switch
+
+--- perf bench sched pipe ---
+# Running 'sched/pipe' benchmark:
+# Executed 1000000 pipe operations between two processes
+
+     Total time: 131.156 [sec]
+
+     131.156802 usecs/op
+           7624 ops/sec
