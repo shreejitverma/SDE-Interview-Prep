@@ -30,6 +30,12 @@ make shell       # a shell in the VM at the labs folder
 
 The VM mounts the vault checkout and the treehouse worktree pool writable, so you edit on macOS and build in the VM.
 Every lab folder has `make`, `make run`, and `make test`; run them inside the VM.
+From any checkout path (mounted or not), `run-in-vm.sh` copies a lab into the VM and runs a target there:
+
+```sh
+labs/setup/run-in-vm.sh labs/lab-05-spinlocks test      # make test inside the VM
+labs/setup/run-in-vm.sh labs/lab-05-spinlocks capture   # make run, saved as expected-output.txt with a machine header
+```
 
 ## What was verified (2026-10-01)
 
@@ -57,4 +63,5 @@ Guest: Ubuntu 24.04.4 LTS, kernel 6.8.0-134-generic, 8 vCPUs, 12 GiB; gcc 13, cl
 - `aos-lab.yaml`: the Lima VM definition.
 - `install-packages.sh`: the package list and the sysctl and limits changes; idempotent.
 - `check-env.sh`: the capability report above.
+- `run-in-vm.sh`: run a lab target in the VM from any path, or capture its expected output.
 - `Makefile`: `vm`, `install`, `check-env`, and `shell` targets.
