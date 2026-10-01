@@ -1,0 +1,99 @@
+# captured 2026-10-01T11:03Z on Linux 6.8.0-134-generic aarch64, 8 vCPUs, Apple M3 Pro host via Lima vz
+--- Minor Faults Demonstration ---
+After mmap anonymous:
+  Minor page faults: 0
+  Major page faults: 0
+After touching anonymous pages:
+  Minor page faults: 2560
+  Major page faults: 0
+
+--- Major Faults Demonstration ---
+  Dropping caches via sudo...
+After reading dropped file pages:
+  Minor page faults: 160
+  Major page faults: 0
+Page size: 4096 bytes
+Before touch:
+  Virtual Address: 0xf94d4aca4000
+  Present: 0
+  Swapped: 0
+  PFN: 0x0
+After touch:
+  Present: 1
+  Swapped: 0
+  PFN: 0x100000000000000
+Size(KB)	Stride(B)	Time(ns/access)
+1		64		1.17
+2		64		1.17
+4		64		1.17
+8		64		1.16
+16		64		1.17
+32		64		1.16
+64		64		1.16
+128		64		1.17
+256		64		1.47
+512		64		1.37
+1024		64		1.89
+2048		64		1.91
+4096		64		1.91
+8192		64		1.93
+16384		64		1.93
+32768		64		1.93
+65536		64		1.96
+1		4096		0.29
+2		4096		0.29
+4		4096		0.29
+8		4096		1.15
+16		4096		1.15
+32		4096		1.15
+64		4096		1.17
+128		4096		1.18
+256		4096		4.81
+512		4096		5.32
+1024		4096		9.90
+2048		4096		9.93
+4096		4096		9.89
+8192		4096		10.20
+16384		4096		36.75
+32768		4096		41.02
+65536		4096		36.22
+Produced: 1
+Produced: 2
+Produced: 3
+Produced: 4
+Produced: 5
+Consumed: 1
+Consumed: 2
+Consumed: 3
+Consumed: 4
+Consumed: 5
+Produced: 6
+Produced: 7
+Produced: 8
+Produced: 9
+Produced: 10
+Consumed: 6
+Consumed: 7
+Consumed: 8
+Consumed: 9
+Consumed: 10
+Produced: 11
+Produced: 12
+Produced: 13
+Produced: 14
+Produced: 15
+Consumed: 11
+Consumed: 12
+Consumed: 13
+Consumed: 14
+Consumed: 15
+Produced: 16
+Produced: 17
+Produced: 18
+Produced: 19
+Produced: 20
+Consumed: 16
+Consumed: 17
+Consumed: 18
+Consumed: 19
+Consumed: 20
