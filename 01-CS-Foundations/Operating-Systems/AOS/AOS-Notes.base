@@ -5,14 +5,17 @@ filters:
 views:
   - type: table
     name: Lessons
+    groupBy:
+      property: note.part
+      direction: ASC
     filters:
       and:
         - file.hasTag("cs6210/lesson")
     order:
       - file.name
-      - sub_lesson
-      - status
-      - last_reviewed
+      - note.sub_lesson
+      - note.status
+      - note.last_reviewed
   - type: table
     name: Papers
     filters:
@@ -20,10 +23,10 @@ views:
         - file.hasTag("cs6210/paper")
     order:
       - file.name
-      - lesson
-      - reading
-      - venue
-      - status
+      - note.lesson
+      - note.reading
+      - note.venue
+      - note.status
   - type: table
     name: Labs
     filters:
@@ -31,6 +34,6 @@ views:
         - file.hasTag("cs6210/lab")
     order:
       - file.name
-      - lessons
-      - environment
-      - status
+      - note.lessons
+      - note.environment
+      - note.status
