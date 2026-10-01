@@ -32,7 +32,8 @@ class CoverageTest(unittest.TestCase):
             w.writerow(row)
 
     def complete(self):
-        (self.aos / "Part-2" / "L04b.md").write_text("# L04b\n\n### Ticket Lock!\n\nbody\n")
+        body = "A ticket lock hands out increasing tickets with fetch-and-increment. " * 5
+        (self.aos / "Part-2" / "L04b.md").write_text(f"---\nstatus: draft\n---\n# L04b\n\n### Ticket Lock!\n\n{body}\n\n### Next\n")
         (self.aos / "labs" / "lab-05" / "README.md").write_text("lab\n")
         (self.aos / "labs" / "lab-05" / "Makefile").write_text("all:\n")
         (self.aos / "Practice" / "Practice-L04.md").write_text("Q1 (concepts: L04b-08)\n")
@@ -46,10 +47,26 @@ class CoverageTest(unittest.TestCase):
         self.complete()
         self.assertEqual(cov.main(["--repo", str(self.repo)]), 0)
 
-    def test_status_must_be_done(self):
+    def test_seed_note_or_seed_section_fails(self):
+        self.write_matrix()
+        self.complete()
+        note = self.aos / "Part-2" / "L04b.md"
+        note.write_text(note.read_text().replace("status: draft", "status: seed"))
+        self.assertIn("Part-2/L04b.md is still status: seed", cov.run(self.repo)["L04b"][0][1])
+        note.write_text("---\nstatus: draft\n---\n### Ticket lock\n> [!todo] Seed\n> later\n")
+        self.assertEqual(cov.run(self.repo)["L04b"][0][1], ["'Ticket lock' is still a seed"])
+
+    def test_short_section_fails(self):
+        self.write_matrix()
+        self.complete()
+        (self.aos / "Part-2" / "L04b.md").write_text("---\nstatus: draft\n---\n### Ticket lock\ntoo short\n")
+        self.assertEqual(cov.run(self.repo)["L04b"][0][1], [f"'Ticket lock' has under {cov.MIN_CHARS} characters"])
+
+    def test_sync_status_marks_done(self):
         self.write_matrix(status="todo")
         self.complete()
-        self.assertEqual(cov.main(["--repo", str(self.repo)]), 1)
+        self.assertEqual(cov.main(["--repo", str(self.repo), "--sync-status"]), 0)
+        self.assertIn(",done", (self.aos / "_coverage.csv").read_text())
 
     def test_practice_must_cite_row_id(self):
         self.write_matrix()
