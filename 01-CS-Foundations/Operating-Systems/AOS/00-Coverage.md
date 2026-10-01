@@ -41,9 +41,9 @@ its lab has a README and Makefile, and its practice file cites the row id.
 | L06a | 10 | 10 | 0 |
 | L06b | 8 | 8 | 0 |
 | L06c | 7 | 7 | 0 |
-| L07a | 13 | 0 | 13 |
-| L07b | 12 | 0 | 12 |
-| L07c | 13 | 0 | 13 |
+| L07a | 13 | 13 | 0 |
+| L07b | 12 | 12 | 0 |
+| L07c | 13 | 13 | 0 |
 | L08a | 9 | 0 | 9 |
 | L08b | 6 | 0 | 6 |
 | L08c | 10 | 0 | 10 |
@@ -59,10 +59,10 @@ its lab has a README and Makefile, and its practice file cites the row id.
 | papers L04 | 7 | 7 | 0 |
 | papers L05 | 6 | 6 | 0 |
 | papers L06 | 4 | 4 | 0 |
-| papers L07 | 4 | 0 | 4 |
+| papers L07 | 4 | 4 | 0 |
 | papers L08 | 6 | 0 | 6 |
 | papers L09 | 7 | 0 | 7 |
 | papers L10 | 4 | 0 | 4 |
 | papers L11 | 2 | 0 | 2 |
 | papers optional | 11 | 0 | 11 |
-| **All** | **418** | **252** | **166** |
+| **All** | **418** | **294** | **124** |
