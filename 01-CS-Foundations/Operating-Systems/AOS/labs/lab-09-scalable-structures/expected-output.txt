@@ -1,0 +1,16 @@
+# captured 2026-10-01T14:18Z on Linux 6.8.0-134-generic aarch64, 8 vCPUs, Apple M3 Pro host via Lima vz
+Running Scalable Counters Test (4 threads, 10000000 iterations)...
+Locked Counter      : 1.1728 seconds
+Atomic Counter      : 0.1952 seconds
+Per-Thread Counter  : 0.0040 seconds
+
+Final counts (should be 40000000):
+Locked : 40000000
+Atomic : 40000000
+Per-Thr: 40000000
+Running False Sharing Test (4 threads, 100000000 iterations)...
+Unpadded (False Sh.): 2.2079 seconds
+Padded (No False S.): 1.6082 seconds
+Running Read-Mostly Test (4 readers, 1 writers)...
+RWLock              : 0.3359 seconds
+RCU-like            : 0.1458 seconds
