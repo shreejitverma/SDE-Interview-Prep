@@ -1,6 +1,10 @@
 {
   "recentFiles": [
     {
+      "basename": "05-REST-API-Design",
+      "path": "02-Programming-Languages/Python/Python-Backend-Interview-Prep/05-REST-API-Design.md"
+    },
+    {
       "basename": "03-Flask",
       "path": "02-Programming-Languages/Python/Python-Backend-Interview-Prep/03-Flask.md"
     },
@@ -31,10 +35,6 @@
     {
       "basename": "06-SQL-and-SQLAlchemy",
       "path": "02-Programming-Languages/Python/Python-Backend-Interview-Prep/06-SQL-and-SQLAlchemy.md"
-    },
-    {
-      "basename": "05-REST-API-Design",
-      "path": "02-Programming-Languages/Python/Python-Backend-Interview-Prep/05-REST-API-Design.md"
     },
     {
       "basename": "02-Python-Core",
