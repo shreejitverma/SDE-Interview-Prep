@@ -1,0 +1,148 @@
+{
+  "nodes": [
+    {
+      "id": "hub",
+      "x": 0,
+      "y": 0,
+      "width": 380,
+      "height": 260,
+      "type": "text",
+      "text": "## Market Risk Technology Hub\n\n**Platform**: Bank of America Quartz\n**Role**: Python Developer (Market Risk Tech)\n**Core Pillars**:\n- Reactive Dependency Graph (DAG)\n- Python Internals & OOP Patterns\n- DB2 / Sybase (ASE/IQ) / Oracle\n- Greeks, VaR, FRTB, PnL Attribution\n- Agile Global Follow-the-Sun Delivery"
+    },
+    {
+      "id": "pitch",
+      "x": -500,
+      "y": -350,
+      "width": 360,
+      "height": 240,
+      "type": "file",
+      "file": "06-Interview-Prep/04-Market-Risk-Quartz-Python/01-Role-Overview-and-Pitch.md"
+    },
+    {
+      "id": "quartz",
+      "x": 0,
+      "y": -400,
+      "width": 380,
+      "height": 260,
+      "type": "file",
+      "file": "06-Interview-Prep/04-Market-Risk-Quartz-Python/02-Quartz-Architecture-and-Ecosystem.md"
+    },
+    {
+      "id": "python",
+      "x": 500,
+      "y": -350,
+      "width": 360,
+      "height": 240,
+      "type": "file",
+      "file": "06-Interview-Prep/04-Market-Risk-Quartz-Python/03-Python-Advanced-and-OOP-Design-Patterns.md"
+    },
+    {
+      "id": "db",
+      "x": 500,
+      "y": 150,
+      "width": 360,
+      "height": 240,
+      "type": "file",
+      "file": "06-Interview-Prep/04-Market-Risk-Quartz-Python/04-Enterprise-Databases-DB2-Sybase-Oracle.md"
+    },
+    {
+      "id": "risk",
+      "x": 0,
+      "y": 380,
+      "width": 380,
+      "height": 260,
+      "type": "file",
+      "file": "06-Interview-Prep/04-Market-Risk-Quartz-Python/05-Market-Risk-and-Financial-Domain-Mastery.md"
+    },
+    {
+      "id": "agile",
+      "x": -500,
+      "y": 150,
+      "width": 360,
+      "height": 240,
+      "type": "file",
+      "file": "06-Interview-Prep/04-Market-Risk-Quartz-Python/06-Agile-Global-Collaboration-and-High-Pressure.md"
+    },
+    {
+      "id": "questions",
+      "x": -250,
+      "y": 700,
+      "width": 500,
+      "height": 220,
+      "type": "file",
+      "file": "06-Interview-Prep/04-Market-Risk-Quartz-Python/07-Interview-Question-Bank-and-Mock-Rounds.md"
+    }
+  ],
+  "edges": [
+    {
+      "id": "e_hub_pitch",
+      "fromNode": "hub",
+      "fromSide": "left",
+      "toNode": "pitch",
+      "toSide": "bottom"
+    },
+    {
+      "id": "e_hub_quartz",
+      "fromNode": "hub",
+      "fromSide": "top",
+      "toNode": "quartz",
+      "toSide": "bottom"
+    },
+    {
+      "id": "e_hub_python",
+      "fromNode": "hub",
+      "fromSide": "right",
+      "toNode": "python",
+      "toSide": "bottom"
+    },
+    {
+      "id": "e_hub_db",
+      "fromNode": "hub",
+      "fromSide": "right",
+      "toNode": "db",
+      "toSide": "top"
+    },
+    {
+      "id": "e_hub_risk",
+      "fromNode": "hub",
+      "fromSide": "bottom",
+      "toNode": "risk",
+      "toSide": "top"
+    },
+    {
+      "id": "e_hub_agile",
+      "fromNode": "hub",
+      "fromSide": "left",
+      "toNode": "agile",
+      "toSide": "top"
+    },
+    {
+      "id": "e_quartz_python",
+      "fromNode": "quartz",
+      "fromSide": "right",
+      "toNode": "python",
+      "toSide": "left"
+    },
+    {
+      "id": "e_quartz_risk",
+      "fromNode": "quartz",
+      "fromSide": "bottom",
+      "toNode": "risk",
+      "toSide": "top"
+    },
+    {
+      "id": "e_risk_db",
+      "fromNode": "risk",
+      "fromSide": "right",
+      "toNode": "db",
+      "toSide": "bottom"
+    },
+    {
+      "id": "e_risk_questions",
+      "fromNode": "risk",
+      "fromSide": "bottom",
+      "toNode": "questions",
+      "toSide": "top"
+    }
+  ]
+}

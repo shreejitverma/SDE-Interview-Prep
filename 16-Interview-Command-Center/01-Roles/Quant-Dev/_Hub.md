@@ -91,3 +91,4 @@ SORT next_action_date ASC
 | Matching Engine | [[14-Low-Latency-Systems/03 - Matching Engine Internals]] |
 | C++ Gold Standard | [[03-Data-Structures-Algorithms/04-Gold-Standard-Cpp-Patterns]] |
 | Performance Engineering | [[12-Performance-Engineering/README\|12-Performance-Engineering]] |
+| Market Risk (Quartz & Python) | [[06-Interview-Prep/04-Market-Risk-Quartz-Python/README\|04-Market-Risk-Quartz-Python]] |

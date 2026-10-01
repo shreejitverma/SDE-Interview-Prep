@@ -31,5 +31,9 @@ Bridge the gap between Software Engineering and Financial Mathematics.
 - **Strategies:** Arbitrage, Mean Reversion, Momentum.
 - **Backtesting:** Event-driven vs Vectorized.
 
+### 4. Market Risk & Enterprise Risk Systems
+- **Market Risk Technology:** [[06-Interview-Prep/04-Market-Risk-Quartz-Python/README|Market Risk Technology (Quartz & Python)]]: Greeks, VaR, FRTB, reactive dependency graphs, and enterprise databases.
+
 ## Recommended Resources
 *Check the '01-Mathematics' folder for the 'Practical Guide to Quantitative Finance Interviews'.*
+

@@ -18,5 +18,6 @@ Interview process preparation: behavioral answers, resume guidance, and mock int
 - [Behavioral](01-Behavioral/star_method.md)
 - [Resume](02-Resume/resume_guide.md)
 - [Mock Interviews](03-Mock-Interviews/transcript.md)
+- [Market Risk Technology (Quartz & Python)](04-Market-Risk-Quartz-Python/README.md)
 
 <!-- moc:end -->

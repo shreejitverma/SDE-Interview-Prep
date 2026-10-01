@@ -28,6 +28,7 @@ This repository is a structured knowledge base designed to take you from a Junio
 *   **[Mathematics](./05-Quantitative-Finance/01-Mathematics):** Black-Scholes, Monte Carlo, Greeks.
 *   **[Algo Trading](./05-Quantitative-Finance/03-Algo-Trading):** Mean Reversion, Bollinger Bands.
 *   **[Quant Dev](./05-Quantitative-Finance/02-Quant-Dev):** Order Book (C++), Memory Pools.
+*   **[Market Risk Technology (Quartz & Python)](./06-Interview-Prep/04-Market-Risk-Quartz-Python/README.md):** Reactive DAG Engine, Greeks, VaR, FRTB, DB2/Sybase/Oracle.
 
 ### Phase 4: Production Engineering
 *   **[Dev Practices](./10-Development-Practices):** CI/CD (GitHub Actions), Docker, Unit Testing.

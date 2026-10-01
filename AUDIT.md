@@ -1,6 +1,6 @@
 # Vault Audit
 
-Generated 2026-09-21 by `python3 tools/audit_vault.py` over git-tracked files.
+Generated 2026-10-01 by `python3 tools/audit_vault.py` over git-tracked files.
 Re-run the script after every structural change; this file is its output and should not be hand-edited.
 0 files in private locations (`tools/private_paths.py`) are excluded; `tools/audit_pii.py` inventories them into a private path.
 
@@ -8,16 +8,16 @@ Re-run the script after every structural change; this file is its output and sho
 
 | Check | Result |
 | :--- | ---: |
-| Tracked files | 15132 |
-| Markdown notes | 1517 |
-| Internal links checked | 9325 |
+| Tracked files | 15262 |
+| Markdown notes | 1625 |
+| Internal links checked | 10702 |
 | Broken links (links into private locations are not counted) | 0 |
 | Wikilink aliases that split a table cell | 0 |
 | Broken wikilinks fixable by unique basename | 0 |
 | Orphan knowledge notes (no inbound links) | 0 |
 | Archived drafts (`_archive/`, `_consolidated*/`) | 305 |
 | Knowledge notes without frontmatter | 0 |
-| Note folders without README (depth <= 3) | 0 |
+| Note folders without README (depth <= 3) | 1 |
 | Notes with emojis / total emojis | 0 / 0 |
 | Notes with em dashes / total em dashes | 0 / 0 |
 | Identical-content groups / redundant MB | 304 / 41.9 |
@@ -31,21 +31,21 @@ Re-run the script after every structural change; this file is its output and sho
 | :--- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
 | `(root)` | 11 | 6 | 0 | 0 | 5 | 0.1 | 2026-09-21 |
 | `.github` | 1 | 0 | 0 | 0 | 1 | 0.0 | 2026-09-21 |
-| `.obsidian` | 45 | 0 | 0 | 0 | 45 | 0.0 | 2026-09-21 |
+| `.obsidian` | 45 | 0 | 0 | 0 | 45 | 0.0 | 2026-10-01 |
 | `00-Start-Here` | 4 | 4 | 0 | 0 | 0 | 0.0 | 2026-09-21 |
-| `01-CS-Foundations` | 151 | 65 | 59 | 0 | 27 | 1.5 | 2026-09-21 |
-| `02-Programming-Languages` | 5804 | 798 | 2856 | 466 | 1684 | 111.1 | 2026-09-21 |
+| `01-CS-Foundations` | 185 | 82 | 68 | 0 | 35 | 2.6 | 2026-09-27 |
+| `02-Programming-Languages` | 5827 | 817 | 2860 | 466 | 1684 | 112.3 | 2026-09-30 |
 | `03-Data-Structures-Algorithms` | 7708 | 82 | 7506 | 0 | 120 | 15.2 | 2026-09-21 |
 | `04-System-Design` | 880 | 66 | 657 | 0 | 157 | 7.5 | 2026-09-21 |
-| `05-Quantitative-Finance` | 8 | 1 | 7 | 0 | 0 | 0.0 | 2026-09-21 |
-| `06-Interview-Prep` | 4 | 4 | 0 | 0 | 0 | 0.0 | 2026-09-21 |
+| `05-Quantitative-Finance` | 9 | 2 | 7 | 0 | 0 | 0.0 | 2026-09-21 |
+| `06-Interview-Prep` | 13 | 12 | 0 | 0 | 1 | 0.2 | 2026-09-21 |
 | `07-Project-Portfolio` | 1 | 1 | 0 | 0 | 0 | 0.0 | 2026-09-21 |
 | `08-Distinguished-Engineering` | 9 | 3 | 6 | 0 | 0 | 0.0 | 2026-09-21 |
 | `09-Engineering-Leadership` | 3 | 3 | 0 | 0 | 0 | 0.0 | 2026-09-21 |
 | `10-Development-Practices` | 4 | 2 | 0 | 0 | 2 | 0.0 | 2026-09-21 |
 | `11-Security-And-Cryptography` | 3 | 2 | 1 | 0 | 0 | 0.0 | 2026-09-21 |
 | `12-Performance-Engineering` | 4 | 2 | 2 | 0 | 0 | 0.0 | 2026-09-21 |
-| `13-Agentic-AI` | 122 | 122 | 0 | 0 | 0 | 2.3 | 2026-09-21 |
+| `13-Agentic-AI` | 185 | 185 | 0 | 0 | 0 | 3.4 | 2026-09-24 |
 | `14-Low-Latency-Systems` | 262 | 262 | 0 | 0 | 0 | 1.7 | 2026-09-21 |
 | `15-Technical-Whitepapers` | 44 | 44 | 0 | 0 | 0 | 0.3 | 2026-09-21 |
 | `16-Interview-Command-Center` | 48 | 48 | 0 | 0 | 0 | 0.1 | 2026-09-21 |
@@ -68,6 +68,7 @@ Re-run the script after every structural change; this file is its output and sho
 - **limiter rate**: `04-System-Design/02-Case-Studies/02-Rate-Limiter`, `04-System-Design/Low Level Design/rate-limiter`
 - **behavioral**: `04-System-Design/03-Design-Patterns/Behavioral`, `06-Interview-Prep/01-Behavioral`
 - **dev quant**: `05-Quantitative-Finance/02-Quant-Dev`, `16-Interview-Command-Center/01-Roles/Quant-Dev`
+- **interview**: `13-Agentic-AI/Agentic-Harness/interview`, `14-Low-Latency-Systems/Interview`
 
 ### Folder pairs sharing the most identical files
 
@@ -150,8 +151,9 @@ Notes that no other note links to. Most become reachable once each folder has a 
 A folder counts as covered by `README.md`, `_README.md`, `index.md`, a folder note named after it, `00 Home`, `00-Dashboard`, or a `MOC - ` note.
 
 <details>
-<summary>All 0 folders</summary>
+<summary>All 1 folders</summary>
 
+- `01-CS-Foundations/Operating-Systems/GIOS`
 
 </details>
 

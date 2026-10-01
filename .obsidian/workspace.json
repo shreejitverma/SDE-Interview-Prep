@@ -214,8 +214,19 @@
       "obsidian-git:Open Git source control": false
     }
   },
-  "active": "e7a7b303c61786dc",
+  "active": "02294fe3d8e57257",
   "lastOpenFiles": [
+    "05-Quantitative-Finance/01-Mathematics/README.md",
+    "06-Interview-Prep/04-Market-Risk-Quartz-Python/Market-Risk-Prep-Canvas.canvas",
+    "06-Interview-Prep/04-Market-Risk-Quartz-Python/07-Interview-Question-Bank-and-Mock-Rounds.md",
+    "06-Interview-Prep/04-Market-Risk-Quartz-Python/06-Agile-Global-Collaboration-and-High-Pressure.md",
+    "06-Interview-Prep/04-Market-Risk-Quartz-Python/05-Market-Risk-and-Financial-Domain-Mastery.md",
+    "06-Interview-Prep/04-Market-Risk-Quartz-Python/04-Enterprise-Databases-DB2-Sybase-Oracle.md",
+    "06-Interview-Prep/04-Market-Risk-Quartz-Python/03-Python-Advanced-and-OOP-Design-Patterns.md",
+    "06-Interview-Prep/04-Market-Risk-Quartz-Python/02-Quartz-Architecture-and-Ecosystem.md",
+    "06-Interview-Prep/04-Market-Risk-Quartz-Python/01-Role-Overview-and-Pitch.md",
+    "06-Interview-Prep/04-Market-Risk-Quartz-Python/README.md",
+    "06-Interview-Prep/04-Market-Risk-Quartz-Python",
     "02-Programming-Languages/Python/Python-Backend-Interview-Prep/09-Docker-Kubernetes-CICD-Cloud.md",
     "02-Programming-Languages/Python/Python-Backend-Interview-Prep/08-Microservices-and-Messaging.md",
     "02-Programming-Languages/Python/Python-Backend-Interview-Prep/16-Asyncio-Deep-Dive.md",
@@ -239,19 +250,9 @@
     "02-Programming-Languages/Python/Python-Backend-Interview-Prep/code/fastapi_app/__pycache__",
     "02-Programming-Languages/Python/Python-Backend-Interview-Prep/12-System-Design.md",
     "16-Interview-Command-Center/03-Pipeline/Active/Barclays/Barclays-Quant-Technology-Tracker.md",
-    "16-Interview-Command-Center/02-Companies/Banking/Barclays.md",
-    "16-Interview-Command-Center/00-Dashboard.md",
-    "01-CS-Foundations/Operating-Systems/GIOS/Part-2-Process-Thread-Management/P2L1-Processes-and-Process-Management.md",
-    "01-CS-Foundations/Operating-Systems/GIOS/_GIOS-Dashboard.md",
-    "13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_03_Tool_Use_and_the_Agent_Loop/Chapter_01_What_Is_An_Agent.md",
-    "backlog.md",
     "16-Interview-Command-Center/03-Pipeline/__pycache__/sync_job_emails.cpython-314.pyc",
     "16-Interview-Command-Center/03-Pipeline/__pycache__/generate_vault_trackers.cpython-314.pyc",
     "16-Interview-Command-Center/03-Pipeline/__pycache__/extract_mail_history.cpython-314.pyc",
-    "16-Interview-Command-Center/03-Pipeline/__pycache__/deep_scan_job_folder.cpython-314.pyc",
-    "13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_02_Working_With_LLMs/Chapter_01_The_API_Layer.md",
-    "13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_01_LLM_Foundations/Chapter_01_From_N_Grams_to_Neural_Language_Models.md",
-    "14-Low-Latency-Systems/01 - Market & Microstructure Fundamentals/Market Fragmentation and Reg NMS.md",
     "02-Programming-Languages/C++/CPP_Zero_to_Godhood/C++ Zero to Godhood: Complete Evolution and Comprehensive Feature Guide.mindnode/QuickLook/Preview.jpg"
   ]
 }
