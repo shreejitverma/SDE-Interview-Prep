@@ -1,0 +1,15 @@
+# captured 2026-10-01T19:38Z on Linux 6.8.0-134-generic aarch64, 8 vCPUs, Apple M3 Pro host via Lima vz
+--- Global Memory Simulator ---
+[Epoch] Time: 2000, MinAge: 2495
+  Node 0 weight (pages older than MinAge): 0
+  Node 1 weight (pages older than MinAge): 1
+  Node 2 weight (pages older than MinAge): 0
+  Node 3 weight (pages older than MinAge): 50
+
+Node selected to receive global page (largest weight): Node 3
+PASS: Found target node with non-zero weight.
+
+[Costs] Local memory copy (4KB): 83 ns
+[Costs] Remote socket fetch (4KB): 750 ns
+[Costs] Remote is ~9x slower than local
+PASS: Cost measurement completed.
