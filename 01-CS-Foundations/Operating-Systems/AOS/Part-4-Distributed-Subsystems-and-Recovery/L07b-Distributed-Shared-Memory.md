@@ -11,7 +11,7 @@ sub_lesson: L07b
 lab: "[[labs/lab-15-dsm/README|lab-15-dsm]]"
 papers: ["[[L07-GMS]]", "[[L07-TreadMarks]]", "[[L07-xFS-Serverless-NFS]]", "[[L07-Coda]]"]
 tags: [cs6210, cs6210/lesson]
-aliases: ["Distributed Shared Memory"]
+aliases: ["Distributed Shared Memory", "Lazy Release Consistency", "Multiple-Writer Protocol"]
 ---
 
 # L07b Distributed Shared Memory
@@ -33,7 +33,7 @@ aliases: ["Distributed Shared Memory"]
 
 Clusters offer massive compute and memory resources, but programming them requires distributing state across discrete machines.
 Explicit message passing forces the programmer to manually coordinate data movement, creating a steep learning curve and necessitating the restructuring of existing code.
-DSM abstracts this away, allowing developers to write parallel code using familiar threads and [locks](L04b-Synchronization.md#spinlocks), while the operating system and runtime transparently manage the movement of data across the network.
+DSM abstracts this away, allowing developers to write parallel code using familiar threads and [locks](../Part-2-Parallel-Systems/L04b-Synchronization.md#spinlocks), while the operating system and runtime transparently manage the movement of data across the network.
 The central problem is performance: network latency is orders of magnitude slower than a hardware memory bus, so DSM systems must minimize communication to scale.
 
 ## Core concepts
@@ -270,16 +270,21 @@ The system can endure roughly 32,768 critical sections before the space metric f
 
 ## Paper deep dives
 
-- [Implementing Global Memory Management in a Workstation Cluster](../Papers/L07-GMS.md): GMS introduces a decentralized global memory system that treats the RAM of all cluster nodes as a unified paging cache. It tracks page ages across nodes using an epoch-based algorithm, allowing a node under memory pressure to page out to the idle RAM of another node rather than hitting the slow local disk.
-- [TreadMarks: Shared Memory Computing on Networks of Workstations](../Papers/L07-TreadMarks.md): TreadMarks is the definitive implementation of Lazy Release Consistency paired with a multiple-writer protocol. It proved that by using twins and diffs to combat false sharing at the page level, a software DSM could achieve acceptable performance on commodity networks without requiring special compilers.
-- [Serverless Network File Systems](../Papers/L07-xFS-Serverless-NFS.md): xFS eliminates the central file server bottleneck by distributing data, metadata, and control across all cooperating workstations in a cluster. It utilizes software RAID-like striping across local disks to provide high bandwidth and fault tolerance in a truly decentralized file system.
-- [Coda: A Highly Available File System for a Distributed Workstation Environment](../Papers/L07-Coda.md): Coda focuses on high availability and disconnected operation for mobile clients. It uses optimistic replication and a local modification log (CML) to allow users to continue working during network partitions, resolving conflicts when connectivity is restored.
+- [Implementing Global Memory Management in a Workstation Cluster](../Papers/L07-GMS.md): GMS introduces a decentralized global memory system that treats the RAM of all cluster nodes as a unified paging cache.
+  It tracks page ages across nodes using an epoch-based algorithm, allowing a node under memory pressure to page out to the idle RAM of another node rather than hitting the slow local disk.
+- [TreadMarks: Shared Memory Computing on Networks of Workstations](../Papers/L07-TreadMarks.md): TreadMarks is the definitive implementation of Lazy Release Consistency paired with a multiple-writer protocol.
+  It proved that by using twins and diffs to combat false sharing at the page level, a software DSM could achieve acceptable performance on commodity networks without requiring special compilers.
+- [Serverless Network File Systems](../Papers/L07-xFS-Serverless-NFS.md): xFS eliminates the central file server bottleneck by distributing data, metadata, and control across all cooperating workstations in a cluster.
+  It utilizes software RAID-like striping across local disks to provide high bandwidth and fault tolerance in a truly decentralized file system.
+- [Coda: A Highly Available File System for a Distributed Workstation Environment](../Papers/L07-Coda.md): Coda focuses on high availability and disconnected operation for mobile clients.
+  It uses optimistic replication and a local modification log (CML) to allow users to continue working during network partitions, resolving conflicts when connectivity is restored.
 
 ## Modern descendants
 
 While page-level Software DSMs like TreadMarks largely died out as a general-purpose programming model, the underlying mechanisms survive in modern infrastructure.
 - **KVM's Kernel Samepage Merging (KSM):** KSM uses background scanning to find identical memory pages across different virtual machines, merging them into a single read-only shared page and using Copy-on-Write (CoW) to handle modifications, a direct descendant of DSM page tracking.
-- **Distributed Key-Value Stores (Dynamo, Cassandra):** Modern NoSQL stores use relaxed consistency models (eventual consistency) heavily inspired by the transition from SC to LRC. They trade immediate global coherence for availability and partition tolerance.
+- **Distributed Key-Value Stores (Dynamo, Cassandra):** Modern NoSQL stores use relaxed consistency models (eventual consistency) heavily inspired by the transition from SC to LRC.
+  They trade immediate global coherence for availability and partition tolerance.
 - **Virtual Machine Migration:** Live VM migration relies on OS page fault tracking (dirty bit tracking) to iteratively copy modified memory pages to a destination host, similar to how DSM diffs track page modifications.
 
 ## Pitfalls and exam traps
