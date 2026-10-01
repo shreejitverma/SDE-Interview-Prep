@@ -1,0 +1,13 @@
+# captured 2026-10-01T19:41Z on Linux 6.8.0-134-generic aarch64, 8 vCPUs, Apple M3 Pro host via Lima vz
+[Node B] Initial state: offset 10 = 0, offset 500 = 0
+[Node B] Writing 42 to offset 500...
+[Node B] SIGSEGV trapped at offset 500. Creating twin and unprotecting page.
+[Node B] Computed diff in 2125 ns. 1 modifications found.
+[Node B] LRC pull: Received diff with 1 modifications. Applying to local page.
+[Node B] Final state: offset 10 = 99, offset 500 = 42
+[Node A] Initial state: offset 10 = 0, offset 500 = 0
+[Node A] Writing 99 to offset 10...
+[Node A] SIGSEGV trapped at offset 10. Creating twin and unprotecting page.
+[Node A] Computed diff in 2417 ns. 1 modifications found.
+[Node A] LRC pull: Received diff with 1 modifications. Applying to local page.
+[Node A] Final state: offset 10 = 99, offset 500 = 42
