@@ -1,0 +1,19 @@
+# Lima VM for the CS 6210 AOS labs: Ubuntu 24.04 arm64 on Apple Silicon.
+# Create:  limactl create --name=aos labs/setup/aos-lab.yaml && limactl start aos
+# Enter:   limactl shell aos
+minimumLimaVersion: 2.0.0
+base:
+- template:_images/ubuntu-24.04
+vmType: vz
+# Nested KVM inside the guest (needed for the libvirt and KVM labs).
+# Supported only on Apple M3 or later with vmType vz; check /dev/kvm in the guest.
+nestedVirtualization: true
+cpus: 8
+memory: 12GiB
+disk: 60GiB
+mounts:
+# The vault checkout and the treehouse worktree pool, writable, so labs build in place.
+- location: "~/github/SDE-Interview-Prep"
+  writable: true
+- location: "~/.treehouse"
+  writable: true

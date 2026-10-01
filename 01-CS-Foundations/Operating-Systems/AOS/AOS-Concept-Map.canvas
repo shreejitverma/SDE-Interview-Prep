@@ -1,0 +1,618 @@
+{
+ "nodes": [
+  {
+   "id": "g0",
+   "type": "group",
+   "label": "Part 0 - Refresher (optional)",
+   "x": 0,
+   "y": 0,
+   "width": 420,
+   "height": 540
+  },
+  {
+   "id": "R01",
+   "type": "file",
+   "file": "01-CS-Foundations/Operating-Systems/AOS/Part-0-Refresher/R01-Virtual-Memory-and-Caches.md",
+   "x": 20,
+   "y": 60,
+   "width": 380,
+   "height": 110
+  },
+  {
+   "id": "R02",
+   "type": "file",
+   "file": "01-CS-Foundations/Operating-Systems/AOS/Part-0-Refresher/R02-Architecture-Storage-and-Networking.md",
+   "x": 20,
+   "y": 200,
+   "width": 380,
+   "height": 110
+  },
+  {
+   "id": "R03",
+   "type": "file",
+   "file": "01-CS-Foundations/Operating-Systems/AOS/Part-0-Refresher/R03-Concurrency-and-the-Kernel.md",
+   "x": 20,
+   "y": 340,
+   "width": 380,
+   "height": 110
+  },
+  {
+   "id": "g1",
+   "type": "group",
+   "label": "Part 1 - OS Structure and Virtualization",
+   "x": 480,
+   "y": 0,
+   "width": 420,
+   "height": 1240
+  },
+  {
+   "id": "L01",
+   "type": "file",
+   "file": "01-CS-Foundations/Operating-Systems/AOS/Part-1-OS-Structure-and-Virtualization/L01-Introduction-to-AOS.md",
+   "x": 500,
+   "y": 60,
+   "width": 380,
+   "height": 110
+  },
+  {
+   "id": "L02a",
+   "type": "file",
+   "file": "01-CS-Foundations/Operating-Systems/AOS/Part-1-OS-Structure-and-Virtualization/L02a-OS-Structure-Overview.md",
+   "x": 500,
+   "y": 200,
+   "width": 380,
+   "height": 110
+  },
+  {
+   "id": "L02b",
+   "type": "file",
+   "file": "01-CS-Foundations/Operating-Systems/AOS/Part-1-OS-Structure-and-Virtualization/L02b-SPIN-Approach.md",
+   "x": 500,
+   "y": 340,
+   "width": 380,
+   "height": 110
+  },
+  {
+   "id": "L02c",
+   "type": "file",
+   "file": "01-CS-Foundations/Operating-Systems/AOS/Part-1-OS-Structure-and-Virtualization/L02c-Exokernel-Approach.md",
+   "x": 500,
+   "y": 480,
+   "width": 380,
+   "height": 110
+  },
+  {
+   "id": "L02d",
+   "type": "file",
+   "file": "01-CS-Foundations/Operating-Systems/AOS/Part-1-OS-Structure-and-Virtualization/L02d-L3-Microkernel-Approach.md",
+   "x": 500,
+   "y": 620,
+   "width": 380,
+   "height": 110
+  },
+  {
+   "id": "L03a",
+   "type": "file",
+   "file": "01-CS-Foundations/Operating-Systems/AOS/Part-1-OS-Structure-and-Virtualization/L03a-Introduction-to-Virtualization.md",
+   "x": 500,
+   "y": 760,
+   "width": 380,
+   "height": 110
+  },
+  {
+   "id": "L03b",
+   "type": "file",
+   "file": "01-CS-Foundations/Operating-Systems/AOS/Part-1-OS-Structure-and-Virtualization/L03b-Memory-Virtualization.md",
+   "x": 500,
+   "y": 900,
+   "width": 380,
+   "height": 110
+  },
+  {
+   "id": "L03c",
+   "type": "file",
+   "file": "01-CS-Foundations/Operating-Systems/AOS/Part-1-OS-Structure-and-Virtualization/L03c-CPU-and-Device-Virtualization.md",
+   "x": 500,
+   "y": 1040,
+   "width": 380,
+   "height": 110
+  },
+  {
+   "id": "g2",
+   "type": "group",
+   "label": "Part 2 - Parallel Systems",
+   "x": 960,
+   "y": 0,
+   "width": 420,
+   "height": 960
+  },
+  {
+   "id": "L04a",
+   "type": "file",
+   "file": "01-CS-Foundations/Operating-Systems/AOS/Part-2-Parallel-Systems/L04a-Shared-Memory-Machines.md",
+   "x": 980,
+   "y": 60,
+   "width": 380,
+   "height": 110
+  },
+  {
+   "id": "L04b",
+   "type": "file",
+   "file": "01-CS-Foundations/Operating-Systems/AOS/Part-2-Parallel-Systems/L04b-Synchronization.md",
+   "x": 980,
+   "y": 200,
+   "width": 380,
+   "height": 110
+  },
+  {
+   "id": "L04c",
+   "type": "file",
+   "file": "01-CS-Foundations/Operating-Systems/AOS/Part-2-Parallel-Systems/L04c-Barrier-Synchronization.md",
+   "x": 980,
+   "y": 340,
+   "width": 380,
+   "height": 110
+  },
+  {
+   "id": "L04d",
+   "type": "file",
+   "file": "01-CS-Foundations/Operating-Systems/AOS/Part-2-Parallel-Systems/L04d-Lightweight-RPC.md",
+   "x": 980,
+   "y": 480,
+   "width": 380,
+   "height": 110
+  },
+  {
+   "id": "L04e",
+   "type": "file",
+   "file": "01-CS-Foundations/Operating-Systems/AOS/Part-2-Parallel-Systems/L04e-Scheduling.md",
+   "x": 980,
+   "y": 620,
+   "width": 380,
+   "height": 110
+  },
+  {
+   "id": "L04f",
+   "type": "file",
+   "file": "01-CS-Foundations/Operating-Systems/AOS/Part-2-Parallel-Systems/L04f-Shared-Memory-Multiprocessor-OS.md",
+   "x": 980,
+   "y": 760,
+   "width": 380,
+   "height": 110
+  },
+  {
+   "id": "g3",
+   "type": "group",
+   "label": "Part 3 - Distributed Systems, Objects, and Middleware",
+   "x": 1440,
+   "y": 0,
+   "width": 420,
+   "height": 1240
+  },
+  {
+   "id": "L05a",
+   "type": "file",
+   "file": "01-CS-Foundations/Operating-Systems/AOS/Part-3-Distributed-Systems/L05a-Distributed-Systems-Definitions.md",
+   "x": 1460,
+   "y": 60,
+   "width": 380,
+   "height": 110
+  },
+  {
+   "id": "L05b",
+   "type": "file",
+   "file": "01-CS-Foundations/Operating-Systems/AOS/Part-3-Distributed-Systems/L05b-Lamport-Clocks.md",
+   "x": 1460,
+   "y": 200,
+   "width": 380,
+   "height": 110
+  },
+  {
+   "id": "L05c",
+   "type": "file",
+   "file": "01-CS-Foundations/Operating-Systems/AOS/Part-3-Distributed-Systems/L05c-Latency-Limits.md",
+   "x": 1460,
+   "y": 340,
+   "width": 380,
+   "height": 110
+  },
+  {
+   "id": "L05d",
+   "type": "file",
+   "file": "01-CS-Foundations/Operating-Systems/AOS/Part-3-Distributed-Systems/L05d-Active-Networks.md",
+   "x": 1460,
+   "y": 480,
+   "width": 380,
+   "height": 110
+  },
+  {
+   "id": "L05e",
+   "type": "file",
+   "file": "01-CS-Foundations/Operating-Systems/AOS/Part-3-Distributed-Systems/L05e-Systems-from-Components.md",
+   "x": 1460,
+   "y": 620,
+   "width": 380,
+   "height": 110
+  },
+  {
+   "id": "L06a",
+   "type": "file",
+   "file": "01-CS-Foundations/Operating-Systems/AOS/Part-3-Distributed-Systems/L06a-Spring-Operating-System.md",
+   "x": 1460,
+   "y": 760,
+   "width": 380,
+   "height": 110
+  },
+  {
+   "id": "L06b",
+   "type": "file",
+   "file": "01-CS-Foundations/Operating-Systems/AOS/Part-3-Distributed-Systems/L06b-Java-RMI.md",
+   "x": 1460,
+   "y": 900,
+   "width": 380,
+   "height": 110
+  },
+  {
+   "id": "L06c",
+   "type": "file",
+   "file": "01-CS-Foundations/Operating-Systems/AOS/Part-3-Distributed-Systems/L06c-Enterprise-Java-Beans.md",
+   "x": 1460,
+   "y": 1040,
+   "width": 380,
+   "height": 110
+  },
+  {
+   "id": "g4",
+   "type": "group",
+   "label": "Part 4 - Distributed Subsystems, Failures, and Recovery",
+   "x": 1920,
+   "y": 0,
+   "width": 420,
+   "height": 960
+  },
+  {
+   "id": "L07a",
+   "type": "file",
+   "file": "01-CS-Foundations/Operating-Systems/AOS/Part-4-Distributed-Subsystems-and-Recovery/L07a-Global-Memory-Systems.md",
+   "x": 1940,
+   "y": 60,
+   "width": 380,
+   "height": 110
+  },
+  {
+   "id": "L07b",
+   "type": "file",
+   "file": "01-CS-Foundations/Operating-Systems/AOS/Part-4-Distributed-Subsystems-and-Recovery/L07b-Distributed-Shared-Memory.md",
+   "x": 1940,
+   "y": 200,
+   "width": 380,
+   "height": 110
+  },
+  {
+   "id": "L07c",
+   "type": "file",
+   "file": "01-CS-Foundations/Operating-Systems/AOS/Part-4-Distributed-Subsystems-and-Recovery/L07c-Distributed-File-Systems.md",
+   "x": 1940,
+   "y": 340,
+   "width": 380,
+   "height": 110
+  },
+  {
+   "id": "L08a",
+   "type": "file",
+   "file": "01-CS-Foundations/Operating-Systems/AOS/Part-4-Distributed-Subsystems-and-Recovery/L08a-Lightweight-Recoverable-Virtual-Memory.md",
+   "x": 1940,
+   "y": 480,
+   "width": 380,
+   "height": 110
+  },
+  {
+   "id": "L08b",
+   "type": "file",
+   "file": "01-CS-Foundations/Operating-Systems/AOS/Part-4-Distributed-Subsystems-and-Recovery/L08b-RioVista.md",
+   "x": 1940,
+   "y": 620,
+   "width": 380,
+   "height": 110
+  },
+  {
+   "id": "L08c",
+   "type": "file",
+   "file": "01-CS-Foundations/Operating-Systems/AOS/Part-4-Distributed-Subsystems-and-Recovery/L08c-Quicksilver.md",
+   "x": 1940,
+   "y": 760,
+   "width": 380,
+   "height": 110
+  },
+  {
+   "id": "g5",
+   "type": "group",
+   "label": "Part 5 - Internet Scale, Real Time, and Security",
+   "x": 2400,
+   "y": 0,
+   "width": 420,
+   "height": 1100
+  },
+  {
+   "id": "L09a",
+   "type": "file",
+   "file": "01-CS-Foundations/Operating-Systems/AOS/Part-5-Internet-Scale-Real-Time-and-Security/L09a-Giant-Scale-Services.md",
+   "x": 2420,
+   "y": 60,
+   "width": 380,
+   "height": 110
+  },
+  {
+   "id": "L09b",
+   "type": "file",
+   "file": "01-CS-Foundations/Operating-Systems/AOS/Part-5-Internet-Scale-Real-Time-and-Security/L09b-MapReduce.md",
+   "x": 2420,
+   "y": 200,
+   "width": 380,
+   "height": 110
+  },
+  {
+   "id": "L09c",
+   "type": "file",
+   "file": "01-CS-Foundations/Operating-Systems/AOS/Part-5-Internet-Scale-Real-Time-and-Security/L09c-Content-Delivery-Networks.md",
+   "x": 2420,
+   "y": 340,
+   "width": 380,
+   "height": 110
+  },
+  {
+   "id": "L10a",
+   "type": "file",
+   "file": "01-CS-Foundations/Operating-Systems/AOS/Part-5-Internet-Scale-Real-Time-and-Security/L10a-TS-Linux.md",
+   "x": 2420,
+   "y": 480,
+   "width": 380,
+   "height": 110
+  },
+  {
+   "id": "L10b",
+   "type": "file",
+   "file": "01-CS-Foundations/Operating-Systems/AOS/Part-5-Internet-Scale-Real-Time-and-Security/L10b-Persistent-Temporal-Streams.md",
+   "x": 2420,
+   "y": 620,
+   "width": 380,
+   "height": 110
+  },
+  {
+   "id": "L11a",
+   "type": "file",
+   "file": "01-CS-Foundations/Operating-Systems/AOS/Part-5-Internet-Scale-Real-Time-and-Security/L11a-Principles-of-Information-Security.md",
+   "x": 2420,
+   "y": 760,
+   "width": 380,
+   "height": 110
+  },
+  {
+   "id": "L11b",
+   "type": "file",
+   "file": "01-CS-Foundations/Operating-Systems/AOS/Part-5-Internet-Scale-Real-Time-and-Security/L11b-Security-in-the-Andrew-System.md",
+   "x": 2420,
+   "y": 900,
+   "width": 380,
+   "height": 110
+  }
+ ],
+ "edges": [
+  {
+   "id": "e-L02a-L02b",
+   "fromNode": "L02a",
+   "fromSide": "right",
+   "toNode": "L02b",
+   "toSide": "left",
+   "label": "extensibility"
+  },
+  {
+   "id": "e-L02b-L02c",
+   "fromNode": "L02b",
+   "fromSide": "right",
+   "toNode": "L02c",
+   "toSide": "left",
+   "label": "safety via language vs secure bindings"
+  },
+  {
+   "id": "e-L02c-L02d",
+   "fromNode": "L02c",
+   "fromSide": "right",
+   "toNode": "L02d",
+   "toSide": "left",
+   "label": "microkernel rebuttal"
+  },
+  {
+   "id": "e-L02d-L03a",
+   "fromNode": "L02d",
+   "fromSide": "right",
+   "toNode": "L03a",
+   "toSide": "left",
+   "label": "protection domains to VMs"
+  },
+  {
+   "id": "e-L03a-L03b",
+   "fromNode": "L03a",
+   "fromSide": "right",
+   "toNode": "L03b",
+   "toSide": "left",
+   "label": "memory"
+  },
+  {
+   "id": "e-L03a-L03c",
+   "fromNode": "L03a",
+   "fromSide": "right",
+   "toNode": "L03c",
+   "toSide": "left",
+   "label": "CPU and devices"
+  },
+  {
+   "id": "e-L04a-L04b",
+   "fromNode": "L04a",
+   "fromSide": "right",
+   "toNode": "L04b",
+   "toSide": "left",
+   "label": "coherence drives lock design"
+  },
+  {
+   "id": "e-L04b-L04c",
+   "fromNode": "L04b",
+   "fromSide": "right",
+   "toNode": "L04c",
+   "toSide": "left",
+   "label": "same paper"
+  },
+  {
+   "id": "e-L04d-L05c",
+   "fromNode": "L04d",
+   "fromSide": "right",
+   "toNode": "L05c",
+   "toSide": "left",
+   "label": "RPC latency"
+  },
+  {
+   "id": "e-L04e-L04f",
+   "fromNode": "L04e",
+   "fromSide": "right",
+   "toNode": "L04f",
+   "toSide": "left",
+   "label": "scalable OS"
+  },
+  {
+   "id": "e-L03b-L04f",
+   "fromNode": "L03b",
+   "fromSide": "right",
+   "toNode": "L04f",
+   "toSide": "left",
+   "label": "Cellular Disco"
+  },
+  {
+   "id": "e-L05a-L05b",
+   "fromNode": "L05a",
+   "fromSide": "right",
+   "toNode": "L05b",
+   "toSide": "left",
+   "label": "ordering"
+  },
+  {
+   "id": "e-L05b-L07b",
+   "fromNode": "L05b",
+   "fromSide": "right",
+   "toNode": "L07b",
+   "toSide": "left",
+   "label": "consistency"
+  },
+  {
+   "id": "e-L05c-L05d",
+   "fromNode": "L05c",
+   "fromSide": "right",
+   "toNode": "L05d",
+   "toSide": "left",
+   "label": "network path"
+  },
+  {
+   "id": "e-L05d-L05e",
+   "fromNode": "L05d",
+   "fromSide": "right",
+   "toNode": "L05e",
+   "toSide": "left",
+   "label": "protocol structure"
+  },
+  {
+   "id": "e-L06a-L06b",
+   "fromNode": "L06a",
+   "fromSide": "right",
+   "toNode": "L06b",
+   "toSide": "left",
+   "label": "subcontract to RMI"
+  },
+  {
+   "id": "e-L06b-L06c",
+   "fromNode": "L06b",
+   "fromSide": "right",
+   "toNode": "L06c",
+   "toSide": "left",
+   "label": "N-tier"
+  },
+  {
+   "id": "e-L07a-L07b",
+   "fromNode": "L07a",
+   "fromSide": "right",
+   "toNode": "L07b",
+   "toSide": "left",
+   "label": "cluster memory"
+  },
+  {
+   "id": "e-L07b-L07c",
+   "fromNode": "L07b",
+   "fromSide": "right",
+   "toNode": "L07c",
+   "toSide": "left",
+   "label": "cluster storage"
+  },
+  {
+   "id": "e-L07c-L08a",
+   "fromNode": "L07c",
+   "fromSide": "right",
+   "toNode": "L08a",
+   "toSide": "left",
+   "label": "persistence"
+  },
+  {
+   "id": "e-L08a-L08b",
+   "fromNode": "L08a",
+   "fromSide": "right",
+   "toNode": "L08b",
+   "toSide": "left",
+   "label": "remove disk writes"
+  },
+  {
+   "id": "e-L08b-L08c",
+   "fromNode": "L08b",
+   "fromSide": "right",
+   "toNode": "L08c",
+   "toSide": "left",
+   "label": "recovery in the OS"
+  },
+  {
+   "id": "e-L09a-L09b",
+   "fromNode": "L09a",
+   "fromSide": "right",
+   "toNode": "L09b",
+   "toSide": "left",
+   "label": "programming model"
+  },
+  {
+   "id": "e-L09a-L09c",
+   "fromNode": "L09a",
+   "fromSide": "right",
+   "toNode": "L09c",
+   "toSide": "left",
+   "label": "content distribution"
+  },
+  {
+   "id": "e-L10a-L10b",
+   "fromNode": "L10a",
+   "fromSide": "right",
+   "toNode": "L10b",
+   "toSide": "left",
+   "label": "time in systems"
+  },
+  {
+   "id": "e-L11a-L11b",
+   "fromNode": "L11a",
+   "fromSide": "right",
+   "toNode": "L11b",
+   "toSide": "left",
+   "label": "principles applied"
+  },
+  {
+   "id": "e-R01-L03b",
+   "fromNode": "R01",
+   "fromSide": "right",
+   "toNode": "L03b",
+   "toSide": "left",
+   "label": "paging background"
+  }
+ ]
+}
