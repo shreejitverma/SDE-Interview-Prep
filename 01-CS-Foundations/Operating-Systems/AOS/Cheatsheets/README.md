@@ -15,7 +15,7 @@ One dense page per Part with the tables, formulas, and diagrams to rebuild from 
 Build each one yourself first, then compare with the page.
 
 - [Part 0 - Refresher](Part-0-Cheatsheet.md)
-- Part 1 - OS Structure and Virtualization (planned)
+- [Part 1 - OS Structure and Virtualization](Part-1-Cheatsheet.md)
 - Part 2 - Parallel Systems (planned), plus the locks and barriers comparison (planned)
 - Part 3 - Distributed Systems (planned)
 - Part 4 - Distributed Subsystems and Recovery (planned)
