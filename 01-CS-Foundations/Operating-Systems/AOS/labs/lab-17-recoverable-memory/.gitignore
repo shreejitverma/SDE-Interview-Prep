@@ -1,0 +1,4 @@
+test_rvm
+*.log
+*.data
+expected-output.txt
