@@ -1,0 +1,111 @@
+# captured 2026-10-01T11:36Z on Linux 6.8.0-134-generic aarch64, 8 vCPUs, Apple M3 Pro host via Lima vz
+=== Lab 03 Virtualization ===
+--- KSM Page Sharing ---
+KSM pages_shared before: 0
+KSM pages_shared after: 79
+--- KVM and libvirt ---
+Domain 'aos-lab-03-guest' defined from domain.xml
+
+Domain 'aos-lab-03-guest' started
+
+- vCPU Pinning
+ VCPU   CPU Affinity
+----------------------
+ 0      0-7
+ 1      0-7
+
+
+
+ VCPU   CPU Affinity
+----------------------
+ 0      1
+ 1      2
+
+- Memory Ballooning
+Max memory:     524288 KiB
+Used memory:    524288 KiB
+
+Max memory:     524288 KiB
+Used memory:    524288 KiB
+- Domstats
+Domain: 'aos-lab-03-guest'
+  state.state=1
+  state.reason=1
+  cpu.time=20918956000
+  cpu.user=12609663000
+  cpu.system=8309293000
+  cpu.cache.monitor.count=0
+  cpu.haltpoll.success.time=0
+  cpu.haltpoll.fail.time=0
+  balloon.current=524288
+  balloon.maximum=524288
+  balloon.last-update=0
+  balloon.rss=342752
+  vcpu.current=2
+  vcpu.maximum=2
+  vcpu.0.state=1
+  vcpu.0.time=20210000000
+  vcpu.0.wait=0
+  vcpu.0.delay=54696304
+  vcpu.0.blocking.cur=no
+  vcpu.0.halt_wait_ns.sum=4850882393
+  vcpu.0.halt_wakeup.sum=500
+  vcpu.0.mmio_exit_user.sum=21973
+  vcpu.0.hvc_exit_stat.sum=280
+  vcpu.0.halt_poll_fail_ns.sum=0
+  vcpu.0.halt_successful_poll.sum=0
+  vcpu.0.mmio_exit_kernel.sum=2323
+  vcpu.0.signal_exits.sum=0
+  vcpu.0.halt_attempted_poll.sum=0
+  vcpu.0.wfe_exit_stat.sum=0
+  vcpu.0.halt_poll_invalid.sum=0
+  vcpu.0.exits.sum=182001
+  vcpu.0.halt_poll_success_ns.sum=0
+  vcpu.0.wfi_exit_stat.sum=500
+  vcpu.1.state=1
+  vcpu.1.time=40000000
+  vcpu.1.wait=0
+  vcpu.1.delay=341792
+  vcpu.1.blocking.cur=no
+  vcpu.1.halt_wait_ns.sum=0
+  vcpu.1.halt_wakeup.sum=0
+  vcpu.1.mmio_exit_user.sum=0
+  vcpu.1.hvc_exit_stat.sum=0
+  vcpu.1.halt_poll_fail_ns.sum=0
+  vcpu.1.halt_successful_poll.sum=0
+  vcpu.1.mmio_exit_kernel.sum=0
+  vcpu.1.signal_exits.sum=227
+  vcpu.1.halt_attempted_poll.sum=0
+  vcpu.1.wfe_exit_stat.sum=0
+  vcpu.1.halt_poll_invalid.sum=0
+  vcpu.1.exits.sum=0
+  vcpu.1.halt_poll_success_ns.sum=0
+  vcpu.1.wfi_exit_stat.sum=0
+  net.count=0
+  block.count=1
+  block.0.name=vda
+  block.0.path=/tmp/aoslab/lab-03-virtualization/cirros.img
+  block.0.backingIndex=1
+  block.0.rd.reqs=788
+  block.0.rd.bytes=26130432
+  block.0.rd.times=580367224
+  block.0.wr.reqs=0
+  block.0.wr.bytes=0
+  block.0.wr.times=0
+  block.0.fl.reqs=6
+  block.0.fl.times=74248
+  block.0.allocation=0
+  block.0.capacity=117440512
+  block.0.physical=25174016
+  dirtyrate.calc_status=0
+  dirtyrate.calc_start_time=0
+  dirtyrate.calc_period=0
+  dirtyrate.calc_mode=page-sampling
+  vm.remote_tlb_flush.sum=0
+  vm.remote_tlb_flush_requests.sum=0
+
+--- Cleanup ---
+Domain 'aos-lab-03-guest' destroyed
+
+Domain 'aos-lab-03-guest' has been undefined
+
