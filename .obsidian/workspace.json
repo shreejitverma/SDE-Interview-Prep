@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "02-Programming-Languages/Python/Python-Backend-Interview-Prep/02-Python-Core.md",
+                "file": "02-Programming-Languages/Python/Python-Backend-Interview-Prep/03-Flask.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "02-Python-Core"
+              "title": "03-Flask"
             }
           }
         ]
@@ -216,20 +216,21 @@
   },
   "active": "e7a7b303c61786dc",
   "lastOpenFiles": [
-    "02-Programming-Languages/Python/Python-Backend-Interview-Prep/15-Multiprocessing-and-Parallelism.md",
-    "02-Programming-Languages/Python/Python-Backend-Interview-Prep/17-Concurrency-in-Web-Services-and-Coding.md",
-    "02-Programming-Languages/Python/Python-Backend-Interview-Prep/14-Concurrency-Fundamentals-and-Threading.md",
-    "02-Programming-Languages/Python/Python-Backend-Interview-Prep/16-Asyncio-Deep-Dive.md",
-    "02-Programming-Languages/Python/Python-Backend-Interview-Prep/01-Pitch-and-Resume.md",
-    "02-Programming-Languages/Python/Python-Backend-Interview-Prep/10-Testing-Debugging-Production.md",
     "02-Programming-Languages/Python/Python-Backend-Interview-Prep/09-Docker-Kubernetes-CICD-Cloud.md",
-    "02-Programming-Languages/Python/Python-Backend-Interview-Prep/07-Auth-and-Security.md",
-    "02-Programming-Languages/Python/Python-Backend-Interview-Prep/03-Flask.md",
+    "02-Programming-Languages/Python/Python-Backend-Interview-Prep/08-Microservices-and-Messaging.md",
+    "02-Programming-Languages/Python/Python-Backend-Interview-Prep/16-Asyncio-Deep-Dive.md",
+    "02-Programming-Languages/Python/Python-Backend-Interview-Prep/14-Concurrency-Fundamentals-and-Threading.md",
+    "02-Programming-Languages/Python/Python-Backend-Interview-Prep/15-Multiprocessing-and-Parallelism.md",
     "02-Programming-Languages/Python/Python-Backend-Interview-Prep/04-FastAPI.md",
-    "02-Programming-Languages/Python/Python-Backend-Interview-Prep/02-Python-Core.md",
-    "02-Programming-Languages/Python/Python-Backend-Interview-Prep/11-Coding-Round.md",
+    "02-Programming-Languages/Python/Python-Backend-Interview-Prep/03-Flask.md",
     "02-Programming-Languages/Python/Python-Backend-Interview-Prep/06-SQL-and-SQLAlchemy.md",
     "02-Programming-Languages/Python/Python-Backend-Interview-Prep/05-REST-API-Design.md",
+    "02-Programming-Languages/Python/Python-Backend-Interview-Prep/02-Python-Core.md",
+    "02-Programming-Languages/Python/Python-Backend-Interview-Prep/17-Concurrency-in-Web-Services-and-Coding.md",
+    "02-Programming-Languages/Python/Python-Backend-Interview-Prep/01-Pitch-and-Resume.md",
+    "02-Programming-Languages/Python/Python-Backend-Interview-Prep/10-Testing-Debugging-Production.md",
+    "02-Programming-Languages/Python/Python-Backend-Interview-Prep/07-Auth-and-Security.md",
+    "02-Programming-Languages/Python/Python-Backend-Interview-Prep/11-Coding-Round.md",
     "02-Programming-Languages/Python/Python-Backend-Interview-Prep/code/flask_app/__pycache__/flask_items.cpython-314.pyc",
     "02-Programming-Languages/Python/Python-Backend-Interview-Prep/code/flask_app/__pycache__/test_flask_items.cpython-314-pytest-9.1.1.pyc",
     "02-Programming-Languages/Python/Python-Backend-Interview-Prep/code/flask_app/__pycache__",
@@ -251,7 +252,6 @@
     "13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_02_Working_With_LLMs/Chapter_01_The_API_Layer.md",
     "13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Volume_01_LLM_Foundations/Chapter_01_From_N_Grams_to_Neural_Language_Models.md",
     "14-Low-Latency-Systems/01 - Market & Microstructure Fundamentals/Market Fragmentation and Reg NMS.md",
-    "14-Low-Latency-Systems/07 - Time & Measurement/War Story - The 2015 NYSE 3.5-Hour Gate Freeze.md",
     "02-Programming-Languages/C++/CPP_Zero_to_Godhood/C++ Zero to Godhood: Complete Evolution and Comprehensive Feature Guide.mindnode/QuickLook/Preview.jpg"
   ]
 }
