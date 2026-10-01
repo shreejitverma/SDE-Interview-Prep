@@ -1,0 +1,7 @@
+*.class
+*.pyc
+__pycache__/
+greeter_pb2.py
+greeter_pb2_grpc.py
+expected-output.txt
+.pytest_cache/
