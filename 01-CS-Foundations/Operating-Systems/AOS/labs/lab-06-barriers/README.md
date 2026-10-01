@@ -2,7 +2,7 @@
 type: playbook
 track: [sde, distinguished]
 level:
-status: seed
+status: solid
 last_reviewed:
 sources: []
 course: cs6210
@@ -14,12 +14,91 @@ tags: [cs6210, cs6210/lab]
 # lab-06-barriers: Barrier algorithms: library barrier costs and a round and message simulator
 
 > [!info] Goal
-> Make L04c concrete with real commands and measurements.
+> Make L04c concrete with real commands and measurements by timing standard library barriers and simulating the theoretical bounds of advanced barrier algorithms.
 
 > [!warning] Honor code guard
-> This lab deliberately does not implement a course project: no C, OpenMP, or MPI implementation of any barrier algorithm (Project 2).
+> This lab deliberately does not implement a course project. There is no C, OpenMP, or MPI implementation of any barrier algorithm (Project 2). It only measures black-box library calls and runs a Python simulator to calculate theoretical messages and rounds.
 
-See [setup](../setup/README.md) for the VM.
+## Prerequisites
 
-> [!todo] Seed
-> To be written; see the coverage matrix row for sources.
+- Lima VM `aos` configured and running (see [setup](../setup/README.md)).
+- Understanding of centralized, combining tree, MCS tree, tournament, and dissemination barriers from lesson L04c.
+
+## Run commands
+
+To run the full suite inside the VM, use the provided `run-in-vm.sh` script:
+```bash
+# Run tests and simulator
+../setup/run-in-vm.sh 01-CS-Foundations/Operating-Systems/AOS/labs/lab-06-barriers test
+
+# Re-capture the expected output
+../setup/run-in-vm.sh 01-CS-Foundations/Operating-Systems/AOS/labs/lab-06-barriers capture
+```
+
+To run manually inside the VM (after `lima shell aos`):
+```bash
+cd /mnt/labs/lab-06-barriers
+make clean all
+make run
+```
+
+## What you should see
+
+The `simulator.py` script computes the total network messages and critical path length (in rounds) for each barrier type from $N=2$ to $N=64$. In the expected output, you will see a CSV table of the simulated metrics. For example, with $N=8$:
+- **Counting**: 16 messages, 8 critical path.
+- **Combining Tree (K=2)**: 28 messages, 6 critical path.
+- **MCS Tree**: 14 messages, 5 critical path.
+- **Tournament**: 14 messages, 6 critical path.
+- **Dissemination**: 24 messages, 3 critical path.
+
+The C programs measure the median latency of 1000 barrier invocations. A sample run on an Apple M3 Pro host (via Lima vz) produces:
+```text
+--- Pthread and OpenMP Barriers ---
+Measuring barriers with 4 threads, 1000 iterations
+Pthread Barrier Median Latency: 18771 ns
+OpenMP Barrier Median Latency: 357209 ns
+--- MPI Barrier ---
+Measuring MPI_Barrier with 4 processes, 1000 iterations
+MPI Barrier Median Latency: 572 ns
+```
+*Note: Due to scheduling noise in a virtualized environment with a single NUMA node, these times may fluctuate significantly.*
+
+## How it works
+
+The lab consists of two parts. First, the Python `simulator.py` calculates the theoretical bounds for each barrier based on the number of threads $N$. It implements the formulas from the literature:
+- **Centralized**: $O(N)$ messages due to the hot spot, with a critical path length proportional to $N$.
+- **Combining Tree**: Calculates rounds based on a K-ary tree height ($2 \lceil \log_K N \rceil$).
+- **MCS Tree**: Uses a 4-ary arrival tree and a binary wakeup tree to minimize messages to exactly $2(N-1)$.
+- **Tournament**: A binary tree with exactly $2(N-1)$ messages and $2 \lceil \log_2 N \rceil$ rounds.
+- **Dissemination**: Requires $\lceil \log_2 N \rceil$ rounds and exactly $N \lceil \log_2 N \rceil$ messages, achieving the shortest critical path but higher total messages.
+
+Second, the `measure_threads.c` and `measure_mpi.c` programs run 1000 iterations of `pthread_barrier_wait`, `#pragma omp barrier`, and `MPI_Barrier`, respectively. They record the latency of each call using `clock_gettime(CLOCK_MONOTONIC)`, sort the array, and print the median to discard extreme outliers.
+
+## Experiments to try
+
+1. **Vary thread count**: Run the test with 2, 4, 8, and 16 threads/processes.
+   *Prediction*: How will the median latency scale for `pthread_barrier` versus `MPI_Barrier`? Which one degrades faster as contention increases on a single node?
+2. **Review the simulator CSV**: Open the generated CSV data or generate the plot by passing `--plot` to `simulator.py` if `matplotlib` is installed.
+   *Prediction*: At what value of $N$ does the Dissemination barrier's total message count cross the Tournament barrier's message count?
+3. **Change OpenMP scheduling**: Set `OMP_WAIT_POLICY=active` versus `OMP_WAIT_POLICY=passive` and rerun the tests.
+   *Prediction*: Will active spinning reduce the median latency for the OpenMP barrier, or will it cause destructive interference with other tasks on the 8 vCPUs?
+
+## Questions
+
+<details>
+<summary>Why does the MCS tree use a 4-ary arrival tree and a binary wakeup tree instead of a symmetric structure?</summary>
+
+Empirical evidence shows that a 4-ary arrival tree strikes the best balance between tree depth (critical path length) and the contention generated by multiple children writing to the parent's `ChildNotReady` array. For wakeup, since a parent must explicitly signal each child, a binary tree minimizes the serial signaling work done by any single node.
+</details>
+
+<details>
+<summary>If the VM only has one NUMA node, how does this affect the observed performance of different barrier algorithms compared to real hardware?</summary>
+
+On a single NUMA node, all threads share the same memory controller and last-level cache. True NUMA effects - where remote memory access is significantly slower than local memory access - do not exist here. Therefore, algorithms like MCS and Tournament, which were specifically designed to ensure threads spin only on locally allocated variables, will not show their typical extreme advantage over centralized or combining tree algorithms, since "local" and "remote" spin locations have the same hardware cost in this VM.
+</details>
+
+<details>
+<summary>Why might `MPI_Barrier` sometimes outperform `#pragma omp barrier` in a single-node test?</summary>
+
+MPI implementations heavily optimize their barrier algorithms (often dynamically selecting tree or dissemination algorithms based on $N$) and primarily use fast user-space spin-polling when running on the same node via shared memory. OpenMP barriers often fall back to operating system primitives (like futexes) which involve context switches if the wait policy is passive, leading to higher latency.
+</details>
