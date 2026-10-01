@@ -1,0 +1,77 @@
+# captured 2026-10-01T14:14Z on Linux 6.8.0-134-generic aarch64, 8 vCPUs, Apple M3 Pro host via Lima vz
+=== Compiling ===
+=== Cache Affinity (taskset) ===
+Unpinned execution:
+Thread 1 finished in 0.0616 seconds
+Thread 0 finished in 0.0894 seconds
+Thread 2 finished in 0.1092 seconds
+Thread 3 finished in 0.1144 seconds
+
+Pinned execution (taskset -c 0,1,2,3):
+Thread 0 finished in 0.0428 seconds
+Thread 1 finished in 0.0495 seconds
+Thread 3 finished in 0.0456 seconds
+Thread 2 finished in 0.0691 seconds
+
+=== Perf Sched ===
+Recording scheduler events...
+
+ -------------------------------------------------------------------------------------------------------------------------------------------
+  Task                  |   Runtime ms  | Switches | Avg delay ms    | Max delay ms    | Max delay start           | Max delay end          |
+ -------------------------------------------------------------------------------------------------------------------------------------------
+  affinity_worklo:(5)   |     75.023 ms |       29 | avg:   9.694 ms | max:  18.963 ms | max start: 13981.054436 s | max end: 13981.073400 s
+  spinlocks:(30)        |    964.197 ms |      309 | avg:   8.733 ms | max:  46.792 ms | max start: 13981.064373 s | max end: 13981.111164 s
+  rcu_preempt:17        |      3.856 ms |       15 | avg:   0.293 ms | max:   2.847 ms | max start: 13981.119419 s | max end: 13981.122266 s
+  kworker/6:3-eve:580   |      0.169 ms |        1 | avg:   0.160 ms | max:   0.160 ms | max start: 13981.131425 s | max end: 13981.131585 s
+  kworker/2:0-mm_:2217  |      0.041 ms |        1 | avg:   0.025 ms | max:   0.025 ms | max start: 13981.123269 s | max end: 13981.123294 s
+  perf:7312             |      1.307 ms |        1 | avg:   0.019 ms | max:   0.019 ms | max start: 13981.138995 s | max end: 13981.139013 s
+  ksoftirqd/7:60        |      0.018 ms |        1 | avg:   0.017 ms | max:   0.017 ms | max start: 13981.142214 s | max end: 13981.142231 s
+  ksoftirqd/6:54        |      0.018 ms |        1 | avg:   0.016 ms | max:   0.016 ms | max start: 13981.140081 s | max end: 13981.140097 s
+  kworker/4:3-eve:875   |      0.026 ms |        1 | avg:   0.015 ms | max:   0.015 ms | max start: 13981.147442 s | max end: 13981.147457 s
+  migration/0:18        |      0.102 ms |        2 | avg:   0.015 ms | max:   0.016 ms | max start: 13981.038420 s | max end: 13981.038436 s
+  migration/2:29        |      0.077 ms |        1 | avg:   0.014 ms | max:   0.014 ms | max start: 13981.016123 s | max end: 13981.016137 s
+  containerd:(2)        |      4.271 ms |        2 | avg:   0.013 ms | max:   0.027 ms | max start: 13981.035263 s | max end: 13981.035290 s
+  migration/3:35        |      0.043 ms |        1 | avg:   0.012 ms | max:   0.012 ms | max start: 13981.016315 s | max end: 13981.016327 s
+  migration/4:41        |      0.039 ms |        1 | avg:   0.012 ms | max:   0.012 ms | max start: 13981.016682 s | max end: 13981.016693 s
+  ksoftirqd/3:36        |      0.011 ms |        1 | avg:   0.010 ms | max:   0.010 ms | max start: 13981.125558 s | max end: 13981.125569 s
+  ksoftirqd/5:48        |      0.011 ms |        1 | avg:   0.010 ms | max:   0.010 ms | max start: 13981.133433 s | max end: 13981.133443 s
+  migration/1:23        |      0.035 ms |        1 | avg:   0.009 ms | max:   0.009 ms | max start: 13981.007374 s | max end: 13981.007383 s
+  migration/5:47        |      0.030 ms |        1 | avg:   0.008 ms | max:   0.008 ms | max start: 13981.019492 s | max end: 13981.019501 s
+  migration/7:59        |      0.029 ms |        1 | avg:   0.008 ms | max:   0.008 ms | max start: 13981.139063 s | max end: 13981.139071 s
+  migration/6:53        |      0.023 ms |        1 | avg:   0.007 ms | max:   0.007 ms | max start: 13981.020267 s | max end: 13981.020274 s
+ -----------------------------------------------------------------------------------------------------------------
+  TOTAL:                |   1049.328 ms |      372 |
+ ---------------------------------------------------
+
+
+=== Chrt Policies ===
+Running with SCHED_OTHER (default):
+Thread 0 finished in 0.0763 seconds
+Running with SCHED_FIFO (rt):
+Thread 0 finished in 0.0303 seconds
+Running with SCHED_RR (rt):
+Thread 0 finished in 0.0205 seconds
+
+=== Cgroups v2 cpu.weight ===
+Setting up cgroups...
+Running 2 workloads pinned to CPU 0 in different cgroups (weight 100 vs 400)...
+Weight 100 (test1):
+Thread 0 finished in 0.0563 seconds
+Weight 400 (test2):
+Thread 0 finished in 0.0597 seconds
+
+=== Sched Simulator ===
+Policy: fcfs
+  Total time: 238
+  Migrations: 60
+Policy: fixed
+  Total time: 330
+  Migrations: 0
+Policy: last_processor
+  Total time: 271
+  Migrations: 2
+Policy: minimum_intervening
+  Total time: 271
+  Migrations: 2
+
+PASS

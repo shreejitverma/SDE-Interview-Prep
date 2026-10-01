@@ -1,0 +1,5 @@
+affinity_workload
+perf.data
+perf.data.old
+__pycache__/
+*.pyc
