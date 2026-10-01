@@ -1,0 +1,5 @@
+wal_shadow
+*.bin
+expected-output.txt
+__pycache__/
+*.pyc
