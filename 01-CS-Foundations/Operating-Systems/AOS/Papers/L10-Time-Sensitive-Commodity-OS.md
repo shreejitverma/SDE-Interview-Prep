@@ -9,7 +9,7 @@ course: cs6210
 lesson: L10
 reading: required
 venue: "OSDI 2002"
-authors: []
+authors: ["Ashvin Goel", "Luca Abeni", "Charles Krasic", "Jim Snow", "Jonathan Walpole"]
 tags: [cs6210, cs6210/paper]
 aliases: ["Supporting Time-Sensitive Applications on a Commodity OS"]
 ---
@@ -19,42 +19,65 @@ aliases: ["Supporting Time-Sensitive Applications on a Commodity OS"]
 OSDI 2002. Reading status: required. [Link](https://www.usenix.org/conference/osdi-02/supporting-time-sensitive-applications-commodity-os).
 
 > [!abstract] One-line summary
-> To be written.
+> Commodity operating systems like Linux allocate resources coarsely to maximize overall system throughput, which causes unpredictable latencies and poor performance for time-sensitive multimedia and soft real-time applications.
+A commodity operating system can provide precise resource allocation and low-latency response to time-sensitive applications without compromising throughput by integrating three specific mechanisms: an efficient high-resolution timing facility using firm timers, a highly responsive preemptible kernel using fine-grained lock breaking, and appropriate proportion-period and priority-based CPU scheduling techniques.
 
 ## Problem
 
-> [!todo] Seed
-> To be written; see the coverage matrix row for sources.
+Commodity operating systems like Linux allocate resources coarsely to maximize overall system throughput, which causes unpredictable latencies and poor performance for time-sensitive multimedia and soft real-time applications.
 
 ## Key idea
 
-> [!todo] Seed
-> To be written; see the coverage matrix row for sources.
+A commodity operating system can provide precise resource allocation and low-latency response to time-sensitive applications without compromising throughput by integrating three specific mechanisms: an efficient high-resolution timing facility using firm timers, a highly responsive preemptible kernel using fine-grained lock breaking, and appropriate proportion-period and priority-based CPU scheduling techniques.
 
 ## Design
 
-> [!todo] Seed
-> To be written; see the coverage matrix row for sources.
+The researchers modified the Linux 2.4.16 kernel to create Time-Sensitive Linux (TSL).
+TSL introduces firm timers that combine the high accuracy of one-shot hardware timers with the low overhead of soft timers.
+Firm timers use a timer overshoot parameter and poll for expired timers at strategic kernel exit points to minimize costly hardware interrupts.
+The system implements a lock-breaking preemptible kernel that explicitly releases and reacquires spinlocks during long operations to reduce the length of non-preemptible sections.
+The CPU scheduler uses a proportion-period model to provide temporal protection by allocating a fixed percentage of CPU time to each task every period.
+A priority-based scheduler implements the Highest Locking Priority (HLP) protocol to prevent priority inversion when multiple applications access shared system services like the X display server.
 
 ## Evaluation
 
-> [!todo] Seed
-> To be written; see the coverage matrix row for sources.
+The experimental setup used a 1.5 GHz Pentium-4 processor with heavy competing background loads including CPU stress, kernel memory copying, and recursive file system operations.
+The researchers measured timer latency, preemption latency, and the audio-video synchronization skew of the mplayer multimedia application.
+Standard Linux timer latency is 10 ms, while TSL firm timers reduce this latency to a few microseconds.
+Maximum kernel preemption latency dropped from over 100 ms in standard Linux to under 1 ms in TSL.
+Under heavy file system load, audio-video synchronization skew was roughly 12000 microseconds in standard Linux but dropped to less than 500 microseconds in TSL.
 
 ## Limitations and critiques
 
-> [!todo] Seed
-> To be written; see the coverage matrix row for sources.
+Heavy file system loads still cause small scheduling deviations because hardware interrupt handling steals CPU time and runs at a higher priority than user processes.
+Soft timer efficiency strictly depends on specific workload patterns causing system calls or page faults to naturally align with timer deadlines.
+The system relies on a single global timer overshoot parameter rather than allowing per-application timing precision tuning.
+The accuracy of the proportion-period scheduler remains bounded by the timer resolution used for proportion policing and period boundary quantization.
 
 ## What it led to
 
-> [!todo] Seed
-> To be written; see the coverage matrix row for sources.
+This work proved that commodity operating systems can be successfully adapted for soft real-time workloads without resorting to a separate real-time executive microkernel.
+The research highlighted the need for future operating system designs to explicitly schedule and account for hardware interrupt processing.
+The concepts behind firm timers and preemptible kernel structures strongly influenced the subsequent integration of high-resolution timers and fine-grained kernel preemption into the mainline Linux kernel.
 
 ## Exam angles
 
-> [!todo] Seed
-> To be written; see the coverage matrix row for sources.
+<details>
+<summary>What are the three components of kernel latency that affect time-sensitive applications?</summary>
+The three components are timer latency, preemption latency, and scheduling latency.
+</details>
+<details>
+<summary>How do firm timers reduce the overhead associated with pure one-shot hardware timers?</summary>
+Firm timers use soft timers to check for expirations at natural kernel exit points like system calls and page faults, which allows them to clear expired timers voluntarily and avoid triggering expensive asynchronous hardware interrupts.
+</details>
+<details>
+<summary>Why does TSL use the Highest Locking Priority (HLP) protocol?</summary>
+TSL uses the HLP protocol to prevent priority inversion by dynamically elevating a shared server's priority to the highest priority of any time-sensitive client waiting for it.
+</details>
+<details>
+<summary>Why did the proportion-period scheduler in TSL still experience scheduling deviations under heavy file system load?</summary>
+Linux executes hardware interrupt handling code at a higher priority than user-level processes, which steals execution time from the guaranteed proportion-period tasks during heavy disk activity.
+</details>
 
 ## Related
 
