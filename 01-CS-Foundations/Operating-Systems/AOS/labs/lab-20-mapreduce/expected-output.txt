@@ -1,0 +1,95 @@
+# captured 2026-10-02T00:26Z on Linux 6.8.0-134-generic aarch64, 8 vCPUs, Apple M3 Pro host via Lima vz
+--- Unix Pipeline ---
+      3 mapreduce
+      3 lab
+      3 cs
+      3 a
+      2 with
+
+--- Python MapReduce ---
+      3 a
+      3 cs
+      3 lab
+      3 mapreduce
+      2 and
+
+--- Scheduler Simulator ---
+Simulation 1: NO backup tasks
+--- Starting Map Phase (M=10) ---
+[ 0] map-0 scheduled on worker 0
+[ 0] map-1 scheduled on worker 1 (STRAGGLER)
+[ 0] map-2 scheduled on worker 2
+[ 0] map-3 scheduled on worker 3
+[ 1] map-0 completed on worker 0
+[ 1] map-2 completed on worker 2
+[ 1] map-3 completed on worker 3
+[ 1] map-4 scheduled on worker 0
+[ 1] map-5 scheduled on worker 2
+[ 1] map-6 scheduled on worker 3
+[ 2] map-4 completed on worker 0
+[ 2] map-5 completed on worker 2
+[ 2] map-6 completed on worker 3
+[ 2] map-7 scheduled on worker 0 (STRAGGLER)
+[ 2] map-8 scheduled on worker 2
+[ 2] map-9 scheduled on worker 3 (STRAGGLER)
+[ 3] map-8 completed on worker 2
+[10] map-1 completed on worker 1
+[12] map-7 completed on worker 0
+[12] map-9 completed on worker 3
+--- Starting Reduce Phase (R=5) ---
+[12] reduce-0 scheduled on worker 2
+[12] reduce-1 scheduled on worker 1
+[12] reduce-2 scheduled on worker 0 (STRAGGLER)
+[12] reduce-3 scheduled on worker 3 (STRAGGLER)
+[13] reduce-0 completed on worker 2
+[13] reduce-1 completed on worker 1
+[13] reduce-4 scheduled on worker 2
+[14] reduce-4 completed on worker 2
+[22] reduce-2 completed on worker 0
+[22] reduce-3 completed on worker 3
+Job finished at time 22
+
+Simulation 2: WITH backup tasks
+--- Starting Map Phase (M=10) ---
+[ 0] map-0 scheduled on worker 0
+[ 0] map-1 scheduled on worker 1 (STRAGGLER)
+[ 0] map-2 scheduled on worker 2
+[ 0] map-3 scheduled on worker 3
+[ 1] map-0 completed on worker 0
+[ 1] map-2 completed on worker 2
+[ 1] map-3 completed on worker 3
+[ 1] map-4 scheduled on worker 0
+[ 1] map-5 scheduled on worker 2
+[ 1] map-6 scheduled on worker 3
+[ 2] map-4 completed on worker 0
+[ 2] map-5 completed on worker 2
+[ 2] map-6 completed on worker 3
+[ 2] map-7 scheduled on worker 0 (STRAGGLER)
+[ 2] map-8 scheduled on worker 2
+[ 2] map-9 scheduled on worker 3 (STRAGGLER)
+[ 3] map-8 completed on worker 2
+[ 3] map-1 BACKUP scheduled on worker 2
+[ 4] map-1 BACKUP completed on worker 2
+[ 4] map-1 killing other instance on worker 1
+[ 4] map-9 BACKUP scheduled on worker 2
+[ 4] map-7 BACKUP scheduled on worker 1
+[ 5] map-9 BACKUP completed on worker 2
+[ 5] map-9 killing other instance on worker 3
+[ 5] map-7 BACKUP completed on worker 1
+[ 5] map-7 killing other instance on worker 0
+--- Starting Reduce Phase (R=5) ---
+[ 5] reduce-0 scheduled on worker 2
+[ 5] reduce-1 scheduled on worker 3
+[ 5] reduce-2 scheduled on worker 1 (STRAGGLER)
+[ 5] reduce-3 scheduled on worker 0 (STRAGGLER)
+[ 6] reduce-0 completed on worker 2
+[ 6] reduce-1 completed on worker 3
+[ 6] reduce-4 scheduled on worker 2
+[ 6] reduce-2 BACKUP scheduled on worker 3
+[ 7] reduce-4 completed on worker 2
+[ 7] reduce-2 BACKUP completed on worker 3
+[ 7] reduce-2 killing other instance on worker 1
+[ 7] reduce-3 BACKUP scheduled on worker 2
+[ 8] reduce-3 BACKUP completed on worker 2
+[ 8] reduce-3 killing other instance on worker 0
+Job finished at time 8
