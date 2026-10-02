@@ -1,0 +1,3 @@
+seccomp_filter
+__pycache__/
+*.o
