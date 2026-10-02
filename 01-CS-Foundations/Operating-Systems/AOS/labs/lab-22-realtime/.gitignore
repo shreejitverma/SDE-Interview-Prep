@@ -1,0 +1,7 @@
+timers
+expected-output.txt
+*.o
+*.log
+*.out
+*.json
+*.png
