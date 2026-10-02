@@ -1,0 +1,39 @@
+# captured 2026-10-02T00:39Z on Linux 6.8.0-134-generic aarch64, 8 vCPUs, Apple M3 Pro host via Lima vz
+--- Testing Namespaces & Capabilities ---
+--- Capabilities ---
+Current capabilities of this process:
+Current: =
+Current IAB: 
+
+--- Namespaces (User and Mount) ---
+Inside current namespace:
+uid=501(shreejitverma) gid=1000(shreejitverma) groups=1000(shreejitverma),112(libvirt),993(kvm),999(systemd-journal)
+
+Entering new user and mount namespace (sudo unshare -U -m -r)...
+Inside namespace:
+uid=0(root) gid=0(root) groups=0(root)
+Mounting tmpfs to /mnt...
+-rw-r--r-- 1 root root 14 Oct  1 20:39 /mnt/secret.txt
+
+Back in original namespace:
+Checking for /mnt/secret.txt (should not exist):
+File not found. Mount isolation successful.
+
+--- Testing Seccomp Filter ---
+Setting up seccomp filter to deny getuid...
+Calling getpid()...
+PID: 13372
+Calling getuid()... this should kill the process.
+seccomp_filter successfully killed by SIGSYS (exit 159)
+
+--- Testing Andrew Handshake ---
+--- Andrew Secure RPC Handshake ---
+Msg 1 (A->B): {'A': 'Client', 'Na': '44ead149b7fefc79'}
+Msg 2 (B->A): Encrypted {'Na_plus_1': '0x44ead149b7fefc7a', 'Nb': '0x2fe690b2f48811b1'}
+Msg 3 (A->B): Encrypted {'Nb_plus_1': '0x2fe690b2f48811b2'}
+Msg 4 (B->A): Encrypted session key sent.
+Session established successfully.
+
+--- Replay Attack Test ---
+Attacker captures Msg 3 and replays it to Server...
+Server rejects replayed message: Nonce mismatch. Replay attack blocked.
