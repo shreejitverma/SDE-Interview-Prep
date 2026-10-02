@@ -19,4 +19,4 @@ Build each one yourself first, then compare with the page.
 - [Part 2 - Parallel Systems](Part-2-Cheatsheet.md), plus the [locks and barriers comparison](Comparison-Locks-and-Barriers.md)
 - [Part 3 - Distributed Systems](Part-3-Cheatsheet.md)
 - [Part 4 - Distributed Subsystems and Recovery](Part-4-Cheatsheet.md)
-- Part 5 - Internet Scale, Real Time, and Security (planned)
+- [Part 5 - Internet Scale, Real Time, and Security](Part-5-Cheatsheet.md)
