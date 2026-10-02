@@ -15,6 +15,11 @@ sources: []
 > **Target Companies:** Citadel, Two Sigma, Jane Street, DE Shaw, Jump Trading, Tower Research, HRT, Optiver, IMC
 > **Target Levels:** Mid to Senior Quant Dev / VP
 
+
+> [!tip] Quant curriculum
+> Finance, probability and trading preparation for this role lives in [The-Quant-Prep](https://github.com/shreejitverma/The-Quant-Prep): [Quant development bridge notes](https://github.com/shreejitverma/The-Quant-Prep/blob/main/12-Quant-Development/README.md), [Market making](https://github.com/shreejitverma/The-Quant-Prep/blob/main/08-Market-Making/README.md), [Market microstructure](https://github.com/shreejitverma/The-Quant-Prep/blob/main/07-Market-Microstructure/README.md), and the [firm guides](https://github.com/shreejitverma/The-Quant-Prep/blob/main/14-Firms/README.md).
+> Its `./qp` CLI tracks readiness per firm and schedules card review.
+
 ---
 
 ## What Quant Dev Interviews Test

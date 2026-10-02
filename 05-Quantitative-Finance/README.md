@@ -9,6 +9,11 @@ sources: []
 
 # Quantitative Finance Roadmap
 
+> [!info] Quant finance now lives in The-Quant-Prep
+> The full quant trader, researcher and developer curriculum (162 topics with question cards, firm guides, and a progress-tracking CLI and dashboard) is maintained in [The-Quant-Prep](https://github.com/shreejitverma/The-Quant-Prep).
+> This folder keeps its runnable code; new quant material goes there, and software engineering stays here.
+> Start with its [tracks](https://github.com/shreejitverma/The-Quant-Prep/blob/main/00-Start-Here/Tracks.md) and [roadmap](https://github.com/shreejitverma/The-Quant-Prep/blob/main/00-Start-Here/Roadmap.md).
+
 Author: Shreejit Verma
 
 ## Objective
