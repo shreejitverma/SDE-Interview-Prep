@@ -52,8 +52,18 @@ run: all
 	 echo; \
 	 cat fuse.log
 
-test: run
-	@echo "PASS: lab-16-dfs"
+test: all
+	@set -e; for n in 0 1 15 16 17 1000; do \
+	  head -c $$n /dev/urandom > t_in.bin; \
+	  ./raid5.py write t_in.bin t >/dev/null; \
+	  ./raid5.py read t_out.bin t >/dev/null; cmp -s t_in.bin t_out.bin; \
+	  for d in 0 1 2 3 4; do \
+	    cp t_$$d.dat t_keep.dat; rm t_$$d.dat; \
+	    ./raid5.py reconstruct $$d t >/dev/null; cmp -s t_$$d.dat t_keep.dat; \
+	    ./raid5.py read t_out.bin t >/dev/null; cmp -s t_in.bin t_out.bin; \
+	  done; \
+	done; rm -f t_in.bin t_out.bin t_keep.dat t_*.dat; echo "PASS: RAID-5 round trip and single-disk rebuild (sizes 0-1000, every disk)"
+	@$(MAKE) -s run >/dev/null && echo "PASS: lab-16-dfs demo runs"
 
 clean:
 	rm -f raid_input.txt raid_output.txt disk_*.dat store.log store.log.tmp fuse.log fuse_cache backing_test.txt

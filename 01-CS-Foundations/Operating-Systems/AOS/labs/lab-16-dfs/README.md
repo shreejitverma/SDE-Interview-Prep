@@ -35,12 +35,14 @@ make test
 
 The output demonstrates three major concepts from distributed file systems: RAID-5 parity, a log-structured store, and a FUSE write-back cache.
 
-For RAID-5, you should see 20 bytes written across 4 data disks and 1 parity disk, taking less than 1 ms for computation:
+For RAID-5, you should see the input written as stripes over 5 disks with rotating parity, taking well under 1 ms:
 ```
-[RAID] Wrote 20 bytes across 4 data + 1 parity disks.
-[RAID] Parity computation took 0.00 ms
+[RAID] Wrote 19 bytes as 2 stripes over 5 disks, parity rotating.
+[RAID] Parity computation took 0.01 ms
 ...
-[RAID] Reconstructed disk 1 from remaining disks.
+[RAID] Reconstructed disk 1 from the other 4 disks.
+[RAID] Read 19 bytes from 4 data blocks per stripe into raid_output.txt.
+Hello RAID-5 World
 ```
 
 For the log-structured store (LFS), notice how overwriting an object merely appends a new entry, updating the index but leaving garbage behind until `clean` runs:
@@ -59,7 +61,9 @@ AAAAAAAAAA
 
 ## How it works
 
-1. **RAID-5 Simulator (`raid5.py`)**: Data is chunked into 4 segments and XOR'd together to produce a parity segment. If a data segment is lost, it can be mathematically reconstructed by XORing the remaining data segments and the parity segment together.
+1. **RAID-5 Simulator (`raid5.py`)**: Data is split into stripes of 4 data blocks plus 1 parity block (the XOR of the 4).
+   The parity block rotates across the 5 disks from stripe to stripe, which is what distinguishes RAID-5 from RAID-4's dedicated parity disk and spreads small-write parity updates over all disks.
+   Any one lost disk is rebuilt by XORing the same stripe on the other four; an 8-byte length header on every disk lets reads drop the stripe padding.
 2. **Log-Structured Store (`lfs.py`)**: Instead of updating files in place (which incurs seek penalties), all writes are appended continuously to a log. An in-memory index maps object IDs to their current byte offset and length in the log file. Old versions become stale space. The `clean` process acts as a garbage collector, copying only the live data (referenced by the index) into a new, compacted log.
 3. **FUSE Write-Back Cache (`fuse_cache.c`)**: Filesystem operations are intercepted by `libfuse3`. The write operation buffers data in an internal memory array and returns success immediately without touching the backing disk. The data is only flushed to the backing storage file when `flush` or `release` is called, simulating how a client in a distributed system might batch operations before communicating with the central server.
 
