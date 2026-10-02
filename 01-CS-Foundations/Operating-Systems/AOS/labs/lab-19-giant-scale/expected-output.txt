@@ -1,0 +1,20 @@
+# captured 2026-10-02T00:23Z on Linux 6.8.0-134-generic aarch64, 8 vCPUs, Apple M3 Pro host via Lima vz
+--- Starting 2 nodes (capacity 5000 items/sec each) ---
+--- Baseline: 10 QPS * 1000 items/query = 10,000 items/sec load ---
+Mode: replicated
+Yield: 100.0% (20/20 queries)
+Harvest: 100.0% (20000/20000 items)
+Mode: partitioned
+Yield: 100.0% (20/20 queries)
+Harvest: 100.0% (20000/20000 items)
+--- Node 1 failed! ---
+--- Degraded Replicated: Load balancer sends all 10 QPS to remaining node ---
+Mode: replicated
+Yield: 80.0% (16/20 queries)
+Harvest: 80.0% (16000/20000 items)
+--- Degraded Partitioned: Scatter-gather to both, Node 1 times out ---
+Mode: partitioned
+Yield: 100.0% (20/20 queries)
+Harvest: 50.0% (10000/20000 items)
+--- Checking results ---
+PASS: All tests passed.
