@@ -1,0 +1,4 @@
+*.json
+__pycache__/
+*.pyc
+measure_clock

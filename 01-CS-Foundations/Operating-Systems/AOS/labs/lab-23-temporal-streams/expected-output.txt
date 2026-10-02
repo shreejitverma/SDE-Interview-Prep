@@ -1,0 +1,41 @@
+# captured 2026-10-02T00:36Z on Linux 6.8.0-134-generic aarch64, 8 vCPUs, Apple M3 Pro host via Lima vz
+Running Temporal Stream Demo
+--- Temporal Stream Demo ---
+Putting items at timestamps 10, 20, 30...
+Get at T=15: Event A
+Get at T=25: Event B
+Get range T=15 to T=35: [(20, 'Event B'), (30, 'Event C')]
+Running GC at T=65 (window 50)...
+Get at T=15: None
+Get at T=25: Event B
+Demo complete.
+
+
+Running Clock Sync Simulation
+--- Clock Sync Simulation ---
+Step |     True | Hardware | Feedback | Feedforward
+----------------------------------------------------
+   1 |     1.00 |     0.90 |     0.90 |        0.90
+   2 |     2.00 |     1.80 |     1.80 |        1.80
+   3 |     3.00 |     2.70 |     2.70 |        2.70
+   4 |     4.00 |     3.60 |     3.60 |        3.60
+   5 |     5.00 |     4.50 |     4.50 |        4.50
+       *** SYNC ***
+   6 |     6.00 |     5.40 |     5.54 |        6.00
+   7 |     7.00 |     6.30 |     6.46 |        7.00
+   8 |     8.00 |     7.20 |     7.38 |        8.00
+   9 |     9.00 |     8.10 |     8.30 |        9.00
+  10 |    10.00 |     9.00 |     9.23 |       10.00
+       *** SYNC ***
+  11 |    11.00 |     9.90 |    10.53 |       11.00
+  12 |    12.00 |    10.80 |    11.49 |       12.00
+  13 |    13.00 |    11.70 |    12.45 |       13.00
+  14 |    14.00 |    12.60 |    13.40 |       14.00
+  15 |    15.00 |    13.50 |    14.36 |       15.00
+       *** SYNC ***
+
+Running Clock Overhead Measurement
+--- clock_gettime(CLOCK_MONOTONIC) overhead ---
+Iterations: 10000000
+Total time: 140239328 ns
+Average overhead: 14 ns per call
