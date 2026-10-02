@@ -1,0 +1,57 @@
+# captured 2026-10-02T00:29Z on Linux 6.8.0-134-generic aarch64, 8 vCPUs, Apple M3 Pro host via Lima vz
+
+--- Running Consistent Hashing ---
+=== Consistent Hashing Load Balance ===
+Nodes: 10, VNodes/Node: 1, Keys: 100000
+Mean keys/node: 10000.0, StdDev: 10008.5 (CV: 100.1%)
+Nodes: 10, VNodes/Node: 5, Keys: 100000
+Mean keys/node: 10000.0, StdDev: 4207.6 (CV: 42.1%)
+Nodes: 10, VNodes/Node: 100, Keys: 100000
+Mean keys/node: 10000.0, StdDev: 786.9 (CV: 7.9%)
+
+--- Running Chord Routing ---
+=== Chord Routing Simulation (m=16) ===
+Nodes: 100, Lookups: 1000
+Average hops per lookup: 4.23
+Expected hops ~ O(log N): ~ variable, < 16
+
+--- Running Coral Sloppy DHT ---
+=== Coral Sloppy DHT Spill Simulation ===
+Insert  0 from leaf  8 -> stored at node  1
+Insert  1 from leaf 11 -> stored at node  1
+Insert  2 from leaf 14 -> stored at node  3
+Insert  3 from leaf 10 -> stored at node  2
+Insert  4 from leaf 13 -> stored at node  3
+Insert  5 from leaf 10 -> stored at node  2
+Insert  6 from leaf 15 -> stored at node  7
+Insert  7 from leaf  9 -> stored at node  4
+Insert  8 from leaf 15 -> stored at node  7
+Insert  9 from leaf 14 -> stored at node 14
+
+Storage state (key='hot-key'):
+Node  1: ['val-0', 'val-1']
+Node  2: ['val-3', 'val-5']
+Node  3: ['val-2', 'val-4']
+Node  4: ['val-7']
+Node  7: ['val-6', 'val-8']
+Node 14: ['val-9']
+
+--- Running Dynamo Quorums ---
+=== Dynamo Quorums and Vector Clocks ===
+
+[Client] Initial write:
+Write 'item1' handled by Node 0, replicated to 2 nodes. VClock: {0: 1}
+
+[Client] Read:
+  -> Returned: item1 (Clock: {0: 1})
+
+[Client] Update write:
+Write 'item1,item2' handled by Node 0, replicated to 2 nodes. VClock: {0: 2}
+
+[Client] Concurrent writes (Partition):
+Write 'item1,item2,item3A' handled by Node 0, replicated to 2 nodes. VClock: {0: 3}
+Write 'item1,item2,item3B' handled by Node 2, replicated to 2 nodes. VClock: {0: 2, 2: 1}
+
+[Client] Read with conflict:
+  -> Returned: item1,item2,item3A (Clock: {0: 3})
+  -> Returned: item1,item2,item3B (Clock: {0: 2, 2: 1})
