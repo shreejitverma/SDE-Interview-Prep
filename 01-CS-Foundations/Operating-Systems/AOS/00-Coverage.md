@@ -64,5 +64,5 @@ its lab has a README and Makefile, and its practice file cites the row id.
 | papers L09 | 7 | 0 | 7 |
 | papers L10 | 4 | 0 | 4 |
 | papers L11 | 2 | 0 | 2 |
-| papers optional | 11 | 9 | 2 |
-| **All** | **418** | **334** | **84** |
+| papers optional | 11 | 11 | 0 |
+| **All** | **418** | **336** | **82** |
