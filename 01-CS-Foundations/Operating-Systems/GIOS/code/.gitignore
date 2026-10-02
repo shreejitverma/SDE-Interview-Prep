@@ -1,0 +1,13 @@
+# Compiled programs (built by make, never committed)
+fork_exec_demo
+mmap_shmem
+mmap_shared_memory
+mutex_condvar
+prod_cons
+producer_consumer_posix
+pthreads_lifecycle
+reader_writer
+spinlocks
+spinlock_implementations
+*.o
+*.dSYM/
