@@ -1,8 +1,8 @@
 ---
 type: playbook
 track: [sde]
-level:
-status: draft
+level: advanced
+status: complete
 last_reviewed:
 tags: [gios, cs6200, midterm, exam-prep, operating-systems]
 sources:
@@ -10,6 +10,8 @@ sources:
   - "Eykholt et al., Beyond Multiprocessing: Multithreading the SunOS Kernel (1992)"
   - "Birrell, An Introduction to Programming with Threads (1989)"
   - "Pai, Druschel, Zwaenepoel, Flash: An Efficient and Portable Web Server (USENIX 1999)"
+  - "Fedorova et al., Performance of Multithreaded Chip Multiprocessors and Its Implications for Operating System Design (2007)"
+  - "Stein & Shah, Implementing Lightweight Threads (USENIX 1992)"
 ---
 
 # CS 6200 GIOS - Midterm Practice Questions
@@ -33,6 +35,10 @@ Back to [GIOS Dashboard](../_GIOS-Dashboard.md).
 | [6](#6-solaris-papers) | Solaris Thread Data Structures | [P2L4](../Part-2-Process-Thread-Management/P2L4-Thread-Design-Considerations.md#6-thread-management-data-structures), Eykholt paper | Recall |
 | [7](#7-pipeline-model) | Pipeline Model Math | [P2L2](../Part-2-Process-Thread-Management/P2L2-Threads-and-Concurrency.md), [P2L5](../Part-2-Process-Thread-Management/P2L5-Thread-Performance-Considerations.md) | Calculation |
 | [8](#8-performance-observations) | Flash vs SPED vs MP | [P2L5](../Part-2-Process-Thread-Management/P2L5-Thread-Performance-Considerations.md#10-event-driven-vs-multithreaded-architectures), Pai et al. paper | Graph analysis |
+| [9](#9-cmp-and-hardware-multithreading-cpi-math) | Hardware Multithreading & CPI | [P3L1](../Part-3-Resource-Management/P3L1-Scheduling.md#7-cpi-and-cache-affinity), Fedorova et al. paper | Quantitative derivation |
+| [10](#10-two-level-thread-multiplexing) | Two-Level Thread Multiplexing | [P2L4](../Part-2-Process-Thread-Management/P2L4-Thread-Design-Considerations.md#2-user-level-vs-kernel-level-threads), Stein & Shah paper | Architectural analysis |
+| [11](#11-birrells-thread-synchronization-pitfalls) | Birrell Synchronization Pitfalls | [P2L2](../Part-2-Process-Thread-Management/P2L2-Threads-and-Concurrency.md#11-condition-variables), Birrell paper | Conceptual & diagnostic |
+| [12](#12-cpu-scheduling-algorithms-and-quantum-selection) | CPU Scheduling & Timeslice Tuning | [P3L1](../Part-3-Resource-Management/P3L1-Scheduling.md#4-scheduling-algorithms-deep-dive) | Scheduling math |
 
 ---
 
@@ -454,6 +460,259 @@ Back to [GIOS Dashboard](../_GIOS-Dashboard.md).
 
 ---
 
+## 9. CMP and Hardware Multithreading CPI Math
+
+> [!question] Question
+> In the paper *"Performance of Multithreaded Chip Multiprocessors and Its Implications for Operating System Design"* (Fedorova et al.), the authors examine how memory stalls dominate execution time on Chip Multiprocessors (CMPs) and how hardware multithreading affects OS scheduling.
+> 
+> Consider a processor core with a base execution time $CPI_{base} = 1.0$ cycle per instruction (the instruction pipeline latency assuming all memory references hit in the cache).
+> A software workload has the following memory characteristics:
+> - 20% of all instructions executed are memory instructions (loads or stores).
+> - 5% of all memory instructions miss the on-chip cache and must be fetched from main DRAM.
+> - The memory access stall latency ($t_{mem\_stall}$) for an off-chip DRAM fetch is 200 cycles.
+> 
+> Answer the following questions:
+> 1. Calculate the total Cycles Per Instruction ($CPI_{total}$) and the Instructions Per Cycle ($IPC$) for this thread executing alone on a single-threaded core.
+> 2. What percentage of the processor core's total execution time is spent stalled waiting for memory?
+> 3. If the core supports hardware multithreading with 4 hardware thread contexts (such as UltraSPARC T1 Niagara), why does co-scheduling 4 memory-intensive threads ("memory-bound mix") result in sub-linear speedup and memory bus contention, and what OS scheduling strategy does Fedorova et al. propose?
+
+> [!success]- Answer
+> **1. Quantitative CPI and IPC Derivation:**
+> The total CPI equation from Fedorova et al. decomposes execution time into base computation cycles and memory stall cycles:
+> 
+> $$CPI_{total} = CPI_{base} + (\text{Memory Instructions per Instruction}) \times (\text{LLC Miss Rate}) \times (\text{Memory Stall Latency})$$
+> 
+> Substitute the given parameters:
+> - $CPI_{base} = 1.0$
+> - $\text{Memory Instructions per Instruction} = 0.20$
+> - $\text{LLC Miss Rate} = 0.05$ (5%)
+> - $\text{Memory Stall Latency} = 200$ cycles
+> 
+> Calculate memory stall penalty per instruction:
+> $$\text{Stall cycles per instruction} = 0.20 \times 0.05 \times 200 = 0.01 \times 200 = 2.0\text{ cycles}$$
+> 
+> Calculate $CPI_{total}$:
+> $$CPI_{total} = 1.0 + 2.0 = 3.0\text{ cycles per instruction}$$
+> 
+> Calculate $IPC$:
+> $$IPC = \frac{1}{CPI_{total}} = \frac{1}{3.0} \approx 0.333\text{ instructions per cycle}$$
+> 
+> ---
+> 
+> **2. Percentage of Time Spent Stalled:**
+> $$\text{Memory Stall Percentage} = \frac{\text{Memory Stall Cycles}}{CPI_{total}} = \frac{2.0}{3.0} = 66.67\%$$
+> 
+> The processor core spends two-thirds ($66.7\%$) of its total operational cycles completely stalled waiting for data to travel across the memory bus from DRAM, while actual instruction retirement occurs during only $33.3\%$ of cycles.
+> 
+> ---
+> 
+> **3. Multithreading Co-Scheduling and OS Strategy:**
+> - **Why 4 Memory-Bound Threads Result in Sub-Linear Speedup:**
+> Hardware multithreading (SMT or fine-grained multithreading) masks memory latency by interleaving instructions from other ready thread contexts when one thread stalls on a cache miss.
+> However, if *all 4 threads* are memory-intensive, all 4 threads quickly miss the cache and stall on DRAM requests simultaneously.
+> Once all 4 hardware contexts are stalled waiting on memory, the execution pipeline goes completely idle.
+> Furthermore, co-scheduling 4 memory-bound threads saturates the shared Last-Level Cache (LLC) and memory controller bus, causing severe cache line evictions and increasing memory latency for all threads.
+> - **Fedorova's Proposed OS Scheduling Solution:**
+> The Operating System scheduler must be **cache-conscious** and **CPI-aware**.
+> Rather than treating all threads uniformly, the scheduler inspects hardware performance counters (measuring hardware CPI or LLC miss rates).
+> The OS scheduler pairs a high-CPI (memory-bound) thread with a low-CPI (compute-bound) thread on the same physical core.
+> While the memory-bound thread stalls on an off-chip memory fetch, the compute-bound thread utilizes the execution pipeline without competing for memory bus bandwidth, maximizing aggregate CMP core utilization and avoiding memory saturation.
+
+---
+
+## 10. Two-Level Thread Multiplexing
+
+> [!question] Question
+> In the paper *"Implementing Lightweight Threads"* (Stein and Shah, USENIX 1992), the authors analyze the architecture of the two-level (many-to-many) threading model in SunOS / Solaris.
+> 
+> 1. What is the fundamental operational difference between an **unbound thread** and a **bound thread** in this architecture?
+> 2. When an unbound user-level thread (ULT) executes a blocking system call (such as a synchronous `read()` from a disk file), what happens to the underlying Lightweight Process (LWP)?
+> 3. How does the user-level thread library detect when an LWP has blocked, and how does it prevent runnable ULTs from starving?
+
+> [!success]- Answer
+> **1. Unbound vs. Bound Threads:**
+> - **Unbound User-Level Thread:** The thread is multiplexed dynamically onto a pool of LWPs (kernel threads).
+> The user-level thread library scheduler can switch an unbound thread from LWP 1 to LWP 2 across scheduling quanta.
+> Unbound threads have negligible creation and context-switch costs because context switches happen entirely in user space without entering the kernel.
+> - **Bound Thread:** The user-level thread is permanently bound to a dedicated LWP ($1:1$ mapping) for its entire lifetime.
+> It never moves to another LWP.
+> Bound threads are used for real-time threads, high-priority workloads, or threads that frequently execute blocking system calls where dedicated kernel execution context is required.
+> 
+> ---
+> 
+> **2. Behavior When an Unbound Thread Blocks in the Kernel:**
+> When an unbound ULT invokes a blocking system call (such as `read()` on a block device or a socket with no data):
+> - The calling thread transitions into kernel space via a trap.
+> - The underlying **LWP blocks inside the kernel scheduler** waiting on the I/O event.
+> - Because the LWP is sleeping in the kernel, the user-level thread library scheduler (which runs in user space on top of active LWPs) cannot run on that LWP.
+> - The blocked LWP remains tied to the sleeping ULT until the I/O completes.
+> 
+> ---
+> 
+> **3. Preventing Starvation (LWP Pool Management):**
+> If all LWPs in the pool block in the kernel on I/O, other runnable user-level threads in the application would starve even though the application has useful work to do and the physical CPU is idle.
+> To prevent this, Stein & Shah implemented dynamic LWP pool adjustment:
+> 1. **Signal Coordination (SIGWAITING):**
+> When all LWPs belonging to a process block in the kernel, the Solaris kernel detects that the process has no active threads on CPU.
+> The kernel sends a special signal, `SIGWAITING`, to the process.
+> 2. **LWP Allocation:**
+> The user-level thread library's `SIGWAITING` signal handler intercepts the signal.
+> The library inspects its user-level runqueue.
+> If there are runnable ULTs waiting to execute, the library issues a system call (`_lwp_create()`) to spawn a new LWP.
+> 3. **Resuming Execution:**
+> The newly created LWP enters the user-level scheduler, dequeues the waiting runnable ULTs, and executes them immediately on the CPU.
+> When the original I/O completes and the blocked LWP wakes up, the system temporarily has an extra LWP; if the extra LWP remains idle past a timeout, the library reaps it to conserve kernel resources.
+
+---
+
+## 11. Birrell's Thread Synchronization Pitfalls
+
+> [!question] Question
+> In Andrew D. Birrell's landmark paper *"An Introduction to Programming with Threads"* (1989), several subtle concurrency hazards and design principles are highlighted.
+> 
+> 1. Explain the **Nested Monitor Lockout** problem.
+> How does it differ from a classical circular deadlock?
+> 2. Why do Mesa-style condition variables require checking the state condition in a `while` loop rather than an `if` statement?
+> List the three distinct real-world causes of spurious or unexpected wakeups identified by Birrell.
+> 3. What is the fundamental design difference between Birrell's thread **Alerts** (`AlertWait`) and standard UNIX asynchronous signals?
+
+> [!success]- Answer
+> **1. Nested Monitor Lockout:**
+> - **The Problem:** A thread acquires outer Lock A (the outer monitor) and then calls an inner function that acquires inner Lock B.
+> Inside the inner function, the thread evaluates a condition variable associated with Lock B and calls `wait(cv_B, lock_B)`.
+> - **The Failure Mode:** The `wait` call atomically releases inner Lock B and puts the thread to sleep.
+> However, **it does not release outer Lock A**.
+> Another thread that needs to update the shared data and signal `cv_B` must first acquire Lock A to enter the outer subsystem.
+> Because the sleeping thread retains Lock A, the signalling thread blocks forever on Lock A.
+> Neither thread can proceed.
+> - **Difference from Circular Deadlock:**
+> In circular deadlock (Coffman conditions), Thread 1 holds A and waits for B, while Thread 2 holds B and waits for A.
+> In nested monitor lockout, there is no circular dependency across two active lock holders; Thread 1 is sleeping on a condition variable while retaining an outer lock that prevents the signaller from ever entering to change the condition.
+> 
+> ---
+> 
+> **2. While Loop vs. If Statement (Three Causes of Spurious Wakeups):**
+> In Mesa-style condition variables (used in POSIX PThreads, Java, and modern OSes), signalling a condition variable is merely a **hint** that the condition *might* be satisfied.
+> The waiting thread is moved from the condition variable queue to the mutex ready queue, but it does not execute immediately with guaranteed exclusive access.
+> A `while (!predicate)` loop is mandatory because of three distinct phenomena:
+> 1. **Intervening Thread (Stolen Wakeup):** Between the moment Thread A is signalled and the moment Thread A actually wakes up and re-acquires the mutex, another thread (Thread C) can acquire the mutex, observe that the predicate is true, consume the resource, and release the mutex.
+> When Thread A finally runs, the predicate is false again.
+> 2. **Spurious Kernel Wakeup:** The operating system kernel may wake a sleeping thread due to internal signal interruptions, multiprocessor race conditions, or memory pressure without any thread having called `signal()`.
+> 3. **Broadcast Imprecision (Thundering Herd):** When `broadcast()` is used, all waiting threads wake up.
+> Only the first thread to acquire the lock will find the condition true; for all subsequent waking threads, the condition is false.
+> 
+> ---
+> 
+> **3. Birrell Alerts vs. UNIX Signals:**
+> - **UNIX Asynchronous Signals:**
+> Handled asynchronously.
+> When a signal (`SIGINT`, `SIGTERM`) arrives, the OS kernel forcibly interrupts the thread at an arbitrary instruction pointer and executes the signal handler.
+> This makes signal handlers notoriously dangerous (non-reentrant functions like `malloc()` or `printf()` cause deadlocks or heap corruption if interrupted).
+> - **Birrell's Thread Alerts (`AlertWait`):**
+> Handled **synchronously and cooperatively**.
+> An alert does not interrupt a thread executing arbitrary code.
+> Instead, calling `Alert(thread)` sets a boolean flag in the thread's TCB.
+> The target thread only checks for alerts at explicit, well-defined cancellation points (such as `AlertWait()`, `TestAlert()`, or blocking I/O).
+> If an alert is pending when the thread calls `AlertWait()`, the function returns immediately with an error/exception (`Alerted`), allowing the thread to clean up locks and invariants safely.
+
+---
+
+## 12. CPU Scheduling Algorithms and Quantum Selection
+
+> [!question] Question
+> Consider four processes arriving at time $t = 0$ with the following single CPU burst times:
+> 
+> | Process | Burst Time ($t_{burst}$) |
+> | :--- | :--- |
+> | $P_1$ | 8 ms |
+> | $P_2$ | 4 ms |
+> | $P_3$ | 9 ms |
+> | $P_4$ | 5 ms |
+> 
+> 1. Draw the execution timeline and calculate the turnaround time ($T_{turnaround} = T_{completion} - T_{arrival}$) and waiting time ($T_{wait} = T_{turnaround} - t_{burst}$) for each process under:
+>    - First-Come, First-Served (FCFS) in process ID order ($P_1, P_2, P_3, P_4$).
+>    - Shortest Job First (SJF, non-preemptive).
+>    - Round Robin (RR) with a timeslice quantum $q = 3\text{ ms}$.
+> 2. Calculate the Average Waiting Time ($\overline{T}_{wait}$) for each algorithm.
+> 3. In Round Robin scheduling, what are the architectural consequences of setting the quantum $q$ too small versus too large?
+> State the general rule of thumb for quantum sizing in relation to CPU burst times.
+
+> [!success]- Answer
+> **1. Timelines and Metrics Calculation:**
+> 
+> #### Algorithm A: FCFS ($P_1 \rightarrow P_2 \rightarrow P_3 \rightarrow P_4$)
+> - Timeline: $P_1$ runs [0, 8], $P_2$ runs [8, 12], $P_3$ runs [12, 21], $P_4$ runs [21, 26].
+> - Completion times: $P_1 = 8$, $P_2 = 12$, $P_3 = 21$, $P_4 = 26$.
+> - Waiting times ($T_{wait} = T_{completion} - t_{burst}$):
+>   - $P_1 = 8 - 8 = 0\text{ ms}$
+>   - $P_2 = 12 - 4 = 8\text{ ms}$
+>   - $P_3 = 21 - 9 = 12\text{ ms}$
+>   - $P_4 = 26 - 5 = 21\text{ ms}$
+> - Turnaround times: $P_1 = 8$, $P_2 = 12$, $P_3 = 21$, $P_4 = 26\text{ ms}$.
+> 
+> #### Algorithm B: SJF (Shortest Job First: $P_2 [4] \rightarrow P_4 [5] \rightarrow P_1 [8] \rightarrow P_3 [9]$)
+> - Timeline: $P_2$ runs [0, 4], $P_4$ runs [4, 9], $P_1$ runs [9, 17], $P_3$ runs [17, 26].
+> - Completion times: $P_2 = 4$, $P_4 = 9$, $P_1 = 17$, $P_3 = 26$.
+> - Waiting times:
+>   - $P_2 = 4 - 4 = 0\text{ ms}$
+>   - $P_4 = 9 - 5 = 4\text{ ms}$
+>   - $P_1 = 17 - 8 = 9\text{ ms}$
+>   - $P_3 = 26 - 9 = 17\text{ ms}$
+> - Turnaround times: $P_2 = 4$, $P_4 = 9$, $P_1 = 17$, $P_3 = 26\text{ ms}$.
+> 
+> #### Algorithm C: Round Robin ($q = 3\text{ ms}$)
+> Execution sequence across quanta:
+> - Round 1:
+>   - $P_1$ runs [0, 3] (remaining: 5)
+>   - $P_2$ runs [3, 6] (remaining: 1)
+>   - $P_3$ runs [6, 9] (remaining: 6)
+>   - $P_4$ runs [9, 12] (remaining: 2)
+> - Round 2:
+>   - $P_1$ runs [12, 15] (remaining: 2)
+>   - $P_2$ runs [15, 16] (remaining: 0, **$P_2$ completes at $t = 16$**)
+>   - $P_3$ runs [16, 19] (remaining: 3)
+>   - $P_4$ runs [19, 21] (remaining: 0, **$P_4$ completes at $t = 21$**)
+> - Round 3:
+>   - $P_1$ runs [21, 23] (remaining: 0, **$P_1$ completes at $t = 23$**)
+>   - $P_3$ runs [23, 26] (remaining: 0, **$P_3$ completes at $t = 26$**)
+> - Completion times: $P_1 = 23$, $P_2 = 16$, $P_3 = 26$, $P_4 = 21$.
+> - Waiting times:
+>   - $P_1 = 23 - 8 = 15\text{ ms}$
+>   - $P_2 = 16 - 4 = 12\text{ ms}$
+>   - $P_3 = 26 - 9 = 17\text{ ms}$
+>   - $P_4 = 21 - 5 = 16\text{ ms}$
+> - Turnaround times: $P_1 = 23$, $P_2 = 16$, $P_3 = 26$, $P_4 = 21\text{ ms}$.
+> 
+> ---
+> 
+> **2. Average Waiting Time Comparison:**
+> 
+> | Scheduling Algorithm | Individual Waiting Times ($P_1, P_2, P_3, P_4$) | Average Waiting Time ($\overline{T}_{wait}$) |
+> | :--- | :--- | :--- |
+> | **FCFS** | $0, 8, 12, 21$ | $\frac{0 + 8 + 12 + 21}{4} = \frac{41}{4} = \mathbf{10.25\text{ ms}}$ |
+> | **SJF** | $9, 0, 17, 4$ | $\frac{9 + 0 + 17 + 4}{4} = \frac{30}{4} = \mathbf{7.50\text{ ms}}$ |
+> | **Round Robin ($q=3$)** | $15, 12, 17, 16$ | $\frac{15 + 12 + 17 + 16}{4} = \frac{60}{4} = \mathbf{15.00\text{ ms}}$ |
+> 
+> *Insight:* SJF is provably optimal for minimizing average waiting time.
+> Round Robin provides fair CPU sharing and low response time for interactive jobs, but incurs higher average waiting time for batch workloads.
+> 
+> ---
+> 
+> **3. Quantum Selection Tradeoffs and Rule of Thumb:**
+> - **Quantum Too Small ($q \to 0$):**
+> Context switch overhead ($t_{ctx\_switch}$) becomes a dominant fraction of CPU time.
+> The CPU spends more time saving and restoring registers, invalidating TLBs, and thrashing processor caches than executing application logic.
+> Processor throughput collapses.
+> - **Quantum Too Large ($q \to \infty$):**
+> Round Robin degenerates into FCFS.
+> Short interactive processes get stuck behind long compute-bound batch jobs (the convoy effect), destroying system responsiveness.
+> - **Rule of Thumb:**
+> The quantum $q$ should be large relative to the context switch cost ($q \gg t_{ctx\_switch}$, typically $100\times$ larger, e.g., $10-100\text{ ms}$ vs $1-10\ \mu\text{s}$ context switch latency).
+> Approximately **$80\%$ of CPU bursts** in the workload should be shorter than the timeslice $q$.
+> This ensures that I/O-bound interactive processes finish their burst and yield the CPU before their quantum expires, while compute-bound processes are preempted to guarantee fairness.
+
+---
+
 ## Revision Checklist
 
 - [ ] Q1 - can explain why `exec` never creates a process
@@ -464,3 +723,8 @@ Back to [GIOS Dashboard](../_GIOS-Dashboard.md).
 - [ ] Q6 - can name 2 fields for each Solaris structure and explain swappable vs non-swappable
 - [ ] Q7 - can derive 1/3/2 threads, 1.05 s, 95.2 req/s
 - [ ] Q8 - can explain the `mincore` overhead (Flash < SPED) and the MP costs (Flash > MP), plus the >100 MB crossover
+- [ ] Q9 - can calculate CPI and IPC with memory stall cycles ($CPI = CPI_{base} + \text{misses} \times \text{latency}$)
+- [ ] Q10 - can explain Stein & Shah two-level thread multiplexing and `SIGWAITING` dynamic LWP allocation
+- [ ] Q11 - can explain Birrell nested monitor lockout, the 3 causes of spurious wakeups, and AlertWait vs UNIX signals
+- [ ] Q12 - can solve FCFS vs SJF vs Round Robin scheduling math and state the 80% burst rule of thumb
+

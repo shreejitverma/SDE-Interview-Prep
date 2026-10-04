@@ -13,7 +13,7 @@ sources:
 
 # Georgia Tech CS 6200 - Introduction to Operating Systems
 
-> Complete course notes covering all 16 modules with Linux and Windows examples, code walkthroughs, and quiz-style exercises.
+> Complete course notes covering all 17 modules with Linux, macOS, and Windows examples, code walkthroughs, and active-recall quizzes.
 
 ---
 
@@ -153,7 +153,8 @@ CS 6200 GIOS
 
 | Set | Scope | Questions | Status |
 |-----|-------|-----------|--------|
-| [Midterm Practice Questions](Exam-Prep/Midterm-Practice-Questions.md) | P1-P2, Solaris + Flash papers | 8 | `active` |
+| [Midterm Practice Questions](Exam-Prep/Midterm-Practice-Questions.md) | P1-P3L1, 5 Assigned Midterm Papers | 12 | `complete` |
+| [Final Practice Questions](Exam-Prep/Final-Practice-Questions.md) | P3L2-P4L4, Distributed Systems & Virtualization | 11 | `complete` |
 
 Answers are in collapsed Obsidian callouts - attempt each question before expanding.
 

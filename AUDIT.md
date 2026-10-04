@@ -8,9 +8,9 @@ Re-run the script after every structural change; this file is its output and sho
 
 | Check | Result |
 | :--- | ---: |
-| Tracked files | 15567 |
-| Markdown notes | 1786 |
-| Internal links checked | 11970 |
+| Tracked files | 15568 |
+| Markdown notes | 1787 |
+| Internal links checked | 11987 |
 | Broken links (links into private locations are not counted) | 0 |
 | Wikilink aliases that split a table cell | 0 |
 | Broken wikilinks fixable by unique basename | 0 |
@@ -33,7 +33,7 @@ Re-run the script after every structural change; this file is its output and sho
 | `.github` | 1 | 0 | 0 | 0 | 1 | 0.0 | 2026-09-21 |
 | `.obsidian` | 45 | 0 | 0 | 0 | 45 | 0.0 | 2026-10-04 |
 | `00-Start-Here` | 4 | 4 | 0 | 0 | 0 | 0.0 | 2026-09-28 |
-| `01-CS-Foundations` | 485 | 240 | 141 | 0 | 104 | 4.5 | 2026-10-04 |
+| `01-CS-Foundations` | 486 | 241 | 141 | 0 | 104 | 4.6 | 2026-10-04 |
 | `02-Programming-Languages` | 5827 | 817 | 2860 | 466 | 1684 | 112.3 | 2026-09-30 |
 | `03-Data-Structures-Algorithms` | 7708 | 82 | 7506 | 0 | 120 | 15.2 | 2026-09-21 |
 | `04-System-Design` | 880 | 66 | 657 | 0 | 157 | 7.5 | 2026-09-21 |
