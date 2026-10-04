@@ -28,6 +28,15 @@ sources:
 - [10. Windows I/O Architecture](#10-windows-io-architecture)
 - [11. Quizzes and Exercises](#11-quizzes-and-exercises)
 - [12. Key Takeaways](#12-key-takeaways)
+- [13. Linux Block Layer Internals](#13-linux-block-layer-internals)
+- [14. Zero-Copy I/O Techniques](#14-zero-copy-io-techniques)
+- [15. The Linux Page Cache Deep Dive](#15-the-linux-page-cache-deep-dive)
+- [16. Production I/O Tuning Reference](#16-production-io-tuning-reference)
+- [17. NVMe Protocol Internals](#17-nvme-protocol-internals)
+- [18. Advanced io_uring Patterns](#18-advanced-io_uring-patterns)
+- [19. Storage Performance Benchmarking](#19-storage-performance-benchmarking)
+- [20. Windows I/O Completion Ports (IOCP)](#20-windows-io-completion-ports-iocp)
+- [21. macOS Storage Architecture and Darwin I/O Internals](#21-macos-storage-architecture-and-darwin-io-internals)
 
 ---
 
@@ -578,11 +587,141 @@ while (GetQueuedCompletionStatus(hIOCP, &bytes, &key, &ov, INFINITE)) {
 
 ## 11. Quizzes and Exercises
 
-> **Quiz: I/O Schedulers**
->
-> *Which I/O scheduler should you use for an NVMe SSD?*
->
-> **Answer:** **mq-deadline** or **none**. SSDs have no seek time, so elevator-style reordering provides no benefit. mq-deadline provides request merging and deadline-based starvation prevention.
+### Quiz 1: I/O Device Classification (Clips 360-361)
+
+> [!question]
+> For each of the following hardware devices, classify whether it is typically used for **Input**, for **Output**, or for **Both**:
+> 1. Keyboard
+> 2. Speaker
+> 3. Display monitor
+> 4. Hard disk drive (HDD)
+> 5. Microphone
+> 6. Network Interface Card (NIC)
+> 7. Flash memory card
+
+> [!success]- Answer
+> 1. **Keyboard:** Input
+> 2. **Speaker:** Output
+> 3. **Display monitor:** Output
+> 4. **Hard disk drive (HDD):** Both (Read / Write)
+> 5. **Microphone:** Input
+> 6. **Network Interface Card (NIC):** Both (Receive / Transmit packets)
+> 7. **Flash memory card:** Both (Read / Write)
+
+---
+
+### Quiz 2: I/O Devices as Special Files (Clips 366-367)
+
+> [!question]
+> Consider the following three Unix commands:
+> 
+> ```bash
+> cat doc.txt > /dev/lp0
+> echo "Hello, world" > /dev/lp0
+> cp report.pdf /dev/lp0
+> ```
+> 
+> What physical operation do all three commands perform?
+> What does `lp0` represent?
+
+> [!success]- Answer
+> All three commands **print content to the system's first line printer**.
+> In the Unix device abstraction, `/dev/lp0` represents the first parallel/USB line printer (`lp` = Line Printer, `0` = device index 0).
+> Writing raw bytes to the special device file streams data directly to the printer controller via its device driver.
+
+---
+
+### Quiz 3: Pseudo and Virtual Devices (Clips 368-369)
+
+> [!question]
+> Name the full Unix path for the special pseudo-devices that provide the following kernel functions:
+> 1. A device that accepts and discards all written data immediately without producing any output.
+> 2. A device that produces an infinite, non-blocking stream of cryptographically secure pseudo-random bytes.
+
+> [!success]- Answer
+> 1. `/dev/null` (commonly used to suppress unwanted stdout or stderr streams).
+> 2. `/dev/urandom` (produces pseudo-random bytes seeded by environmental kernel entropy; `/dev/random` historically blocked when entropy was depleted).
+
+---
+
+### Quiz 4: Exploring Device Nodes in `/dev` (Clips 370-371)
+
+> [!question]
+> When executing `ls -l /dev` on a POSIX system, what do the leading `b` and `c` file type characters signify?
+> Give two examples of each.
+
+> [!success]- Answer
+> - `b` signifies a **Block Device**: Transmits data in fixed-size blocks (e.g., 512B or 4KB), supports random-access seeking, and leverages the kernel page cache (e.g., `/dev/sda`, `/dev/nvme0n1`).
+> - `c` signifies a **Character Device**: Transmits data as an unbuffered, sequential stream of individual bytes without seeking (e.g., `/dev/tty`, `/dev/null`, `/dev/random`).
+
+---
+
+### Quiz 5: Programmed I/O (PIO) vs. Direct Memory Access (DMA) (Clips 375-376)
+
+> [!question]
+> Consider a hypothetical system where:
+> - A CPU store instruction to a device register costs **1 cycle**.
+> - Configuring the DMA controller requires **5 cycles**.
+> - The PCI bus transfer width is 8 bytes.
+> 
+> Which device access method (PIO, DMA, or It Depends) is optimal for:
+> 1. A keyboard?
+> 2. A network interface card (NIC)?
+
+> [!success]- Answer
+> 1. **Keyboard: Programmed I/O (PIO).**
+> Keyboards produce keystroke events consisting of only 1 or 2 bytes.
+> Storing the bytes directly into the CPU registers requires 1 or 2 cycles, whereas configuring the DMA controller would consume 5 cycles of configuration overhead.
+> 
+> 2. **Network Interface Card (NIC): It depends.**
+> For very small network packets (e.g., single-byte TCP acknowledgments requiring fewer than 5 register stores), PIO is faster than configuring the DMA controller.
+> For standard payloads (such as 1500-byte MTU frames or 9000-byte jumbo frames), DMA is overwhelmingly superior: configuring the controller takes 5 cycles, after which the hardware transfers the entire buffer into RAM without burning CPU execution cycles.
+
+---
+
+### Quiz 6: Inode File Size Limits and Indirect Pointers (Clips 389-390)
+
+> [!question]
+> A Unix inode contains:
+> - 12 direct block pointers
+> - 1 single indirect pointer
+> - 1 double indirect pointer
+> - 1 triple indirect pointer
+> 
+> Each block pointer is 4 bytes wide.
+> 1. If the disk block size is **1 KB**, what is the maximum supported file size (rounded to the nearest GB)?
+> 2. If the disk block size is increased to **8 KB**, what is the maximum supported file size (rounded to the nearest TB)?
+
+> [!success]- Answer
+> **1. Disk block size = 1 KB ($1024$ bytes):**
+> - Pointers per indirect block: $\frac{1024}{4} = 256 = 2^8$ pointers.
+> - Direct blocks: 12 blocks.
+> - Single indirect: $256$ blocks.
+> - Double indirect: $256^2 = 65,536$ blocks.
+> - Triple indirect: $256^3 = 16,777,216 = 2^{24}$ blocks.
+> - Total blocks $\approx 2^{24}$ blocks.
+> - Maximum file size: $2^{24} \times 1 \text{ KB} = 2^{34} \text{ bytes} =$ **16 GB**.
+> 
+> **2. Disk block size = 8 KB ($8192$ bytes):**
+> - Pointers per indirect block: $\frac{8192}{4} = 2048 = 2^{11}$ pointers.
+> - Triple indirect: $2048^3 = 2^{33}$ blocks.
+> - Maximum file size: $2^{33} \times 8 \text{ KB} = 2^{33} \times 2^{13} \text{ bytes} = 2^{46} \text{ bytes} =$ **64 TB**.
+> 
+> Increasing the block size by an 8x factor yields a 4096x increase in addressable file capacity due to the cubic expansion of triple indirect blocks.
+
+---
+
+### Quiz 7: Modern NVMe I/O Schedulers
+
+> [!question]
+> Which I/O scheduler should be selected for high-performance NVMe Solid State Drives, and why are traditional elevator algorithms like CFQ obsolete for these devices?
+
+> [!success]- Answer
+> Use **`none`** or **`mq-deadline`**.
+> Traditional disk schedulers (e.g., CFQ, Deadline, Anticipatory) were designed for spinning magnetic platters where rotational latency and mechanical seek times made sorting requests by sector number critical.
+> NVMe SSDs have zero seek latency, support internal hardware parallelism across hundreds of flash channels, and expose up to 64,000 independent hardware queues.
+> Running an elevator algorithm on NVMe adds CPU serialization overhead with zero mechanical benefit.
+> Using `none` bypasses OS queuing and dispatches requests directly to hardware queues.
 
 ---
 
@@ -1400,7 +1539,114 @@ Get-Process -Name myapp | Select-Object IO*
 
 ---
 
+## 21. macOS Storage Architecture and Darwin I/O Internals
+
+### 21.1 The I/O Kit and DriverKit Architecture
+
+The hardware abstraction and driver framework in macOS (Darwin / XNU) is the **I/O Kit**:
+- Unlike the monolithic procedural C driver model of Linux, the I/O Kit is an object-oriented C++ framework embedded directly within the XNU kernel.
+- The I/O Kit organizes all hardware controllers, buses, and logical partitions into a dynamic hierarchical graph called the **I/O Registry** (`IORegistry`).
+- Core abstractions include:
+  1. `IOService`: The base class representing any device, controller, or logical service.
+  2. `IOMedia`: Represents an accessible storage medium (e.g., raw NVMe namespace or partition slice).
+  3. `IOBlockStorageDriver`: Manages block request queues and translates generic block I/O requests into hardware bus commands.
+
+To eliminate kernel panics caused by third-party drivers, modern Darwin replaces legacy Kernel Extensions (KEXTs) with **DriverKit**:
+- Drivers run as sandboxed user-space processes called System Extensions.
+- When an I/O interrupt occurs, the kernel routes events to the user-space DriverKit daemon via Mach messaging.
+- If a DriverKit extension crashes, macOS restarts the driver without crashing the operating system.
+
+```bash
+# Inspect the live I/O Registry tree on Darwin
+ioreg -l -w0 -p IOService | head -40
+
+# Inspect active user-space DriverKit system extensions
+systemextensionsctl list
+```
+
+### 21.2 Apple File System (APFS) Architecture
+
+Since macOS 10.13 (High Sierra), the default storage layer is the **Apple File System (APFS)**, designed specifically for solid-state storage.
+Key architectural features of APFS include:
+
+1. **Space Sharing across Containers:**
+Instead of partitioning physical disks into fixed-size block allocations, APFS creates an **APFS Container**.
+Multiple independent volumes (e.g., System, Data, Recovery, Preboot) share the same underlying pool of free storage dynamically without repartitioning.
+
+2. **Zero-Copy File Cloning (`clonefile`):**
+APFS supports instantaneous Copy-on-Write cloning at the file system level:
+- When a user duplicates a 50 GB virtual machine disk image, APFS does not copy data blocks.
+- It creates a new directory entry referencing the existing block extents.
+- Only when subsequent writes modify specific blocks does APFS allocate new blocks (Copy-on-Write).
+- Programmers invoke this capability using the Darwin `clonefile()` system call:
+
+```c
+/* clonefile_demo.c - Zero-copy file cloning on APFS */
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <sys/attr.h>
+#include <sys/clonefile.h>
+
+int main(int argc, char *argv[]) {
+    if (argc < 3) {
+        fprintf(stderr, "Usage: %s <source_file> <clone_file>\n", argv[0]);
+        return 1;
+    }
+
+    /* Perform instantaneous APFS extent cloning */
+    if (clonefile(argv[1], argv[2], 0) != 0) {
+        perror("clonefile failed");
+        return 1;
+    }
+
+    printf("Successfully created zero-copy APFS clone: %s -> %s\n", argv[1], argv[2]);
+    return 0;
+}
+```
+
+```bash
+# Compile and run clonefile on macOS
+clang -Wall -Wextra clonefile_demo.c -o clonefile_demo
+./clonefile_demo large_dataset.bin clone_dataset.bin
+```
+
+3. **Snapshots and Sealed System Volume (SSV):**
+APFS supports instant, read-only point-in-time container snapshots.
+macOS mounts the operating system from a cryptographically signed and sealed snapshot (`com.apple.os.update-...`), ensuring kernel binaries and system libraries cannot be modified by root malware.
+
+### 21.3 macOS Storage and I/O Diagnostic CLI Tooling
+
+Darwin provides specialized utilities to monitor disk performance, file system traps, and block latency:
+
+```bash
+# 1. diskutil: Comprehensive disk, partition, and APFS container management
+diskutil list
+diskutil apfs list
+
+# 2. fs_usage: High-fidelity real-time file system call tracer
+# Traces open, read, write, close, lookup, stat across all processes
+sudo fs_usage -w -f filesys | grep -i "myapp"
+
+# Filter only disk write operations
+sudo fs_usage -w -f filesys | grep "WrData"
+
+# 3. iostat: Disk transfer metrics per second
+# Displays KB/transfer, transfers/sec (IOPS), and MB/s per disk slice
+iostat -d -c 5 1
+
+# 4. iosnoop: DTrace-based block I/O latency tracer
+# Measures exact block request completion latency in microseconds
+sudo iosnoop -d disk0
+
+# 5. purge: Force disk cache flush and purge inactive disk cache frames
+sudo purge
+```
+
+---
+
 **Previous:** [P3L4: Synchronization Constructs](P3L4-Synchronization-Constructs.md)
 **Next:** [P3L6: Virtualization](P3L6-Virtualization.md)
+
 
 

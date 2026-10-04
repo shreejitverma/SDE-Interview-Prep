@@ -91,6 +91,7 @@ CS 6200 GIOS
         +-- P4L1: Remote Procedure Calls (RPC)
         +-- P4L2: Distributed File Systems (DFS)
         +-- P4L3: Distributed Shared Memory (DSM)
+        +-- P4L4: Datacenter Technologies
 ```
 
 ---
@@ -139,11 +140,12 @@ CS 6200 GIOS
 
 | Module | Topic | Status | Size |
 |--------|-------|--------|------|
-| [P4L1](Part-4-Distributed-Systems/P4L1-Remote-Procedure-Calls.md) | Remote Procedure Calls (RPC) | `complete` | ~28 KB |
-| [P4L2](Part-4-Distributed-Systems/P4L2-Distributed-File-Systems.md) | Distributed File Systems (DFS) | `complete` | ~31 KB |
-| [P4L3](Part-4-Distributed-Systems/P4L3-Distributed-Shared-Memory.md) | Distributed Shared Memory (DSM) | `complete` | ~27 KB |
+| [P4L1](Part-4-Distributed-Systems/P4L1-Remote-Procedure-Calls.md) | Remote Procedure Calls (RPC) | `complete` | ~47 KB |
+| [P4L2](Part-4-Distributed-Systems/P4L2-Distributed-File-Systems.md) | Distributed File Systems (DFS) | `complete` | ~50 KB |
+| [P4L3](Part-4-Distributed-Systems/P4L3-Distributed-Shared-Memory.md) | Distributed Shared Memory (DSM) | `complete` | ~42 KB |
+| [P4L4](Part-4-Distributed-Systems/P4L4-Datacenter-Technologies.md) | Datacenter Technologies | `complete` | ~26 KB |
 
-**Key themes:** RPC stubs, IDL (XDR/protobuf/MIDL), XDR/protobuf marshaling, Sun RPC, gRPC (unary/streaming/bidirectional), MSRPC/Windows RPC, NFS v3/v4/v4.1, AFS callbacks, GFS, HDFS, Ceph, Windows DFS Namespace/Replication, DSM consistency models (SC/RC/LRC), IVY protocol, TreadMarks, RDMA, MPI, OpenSHMEM, false sharing.
+**Key themes:** RPC stubs, IDL (XDR/protobuf/MIDL), XDR/protobuf marshaling, Sun RPC, gRPC (unary/streaming/bidirectional), MSRPC/Windows RPC, NFS v3/v4/v4.1, AFS callbacks, GFS, HDFS, Ceph, Windows DFS Namespace/Replication, DSM consistency models (SC/RC/LRC), IVY protocol, TreadMarks, RDMA, MPI, OpenSHMEM, false sharing, multi-tier homogeneous vs. heterogeneous architectures, cloud computing elasticity (Animoto case study), Law of Large Numbers, utility computing, NIST cloud definitions (IaaS/PaaS/SaaS), cluster failure probability $1-(1-p)^N$, big data stacks (Hadoop, MapReduce, Spark).
 
 ---
 

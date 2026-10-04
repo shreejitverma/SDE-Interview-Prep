@@ -32,6 +32,13 @@ sources:
 - [14. Windows Threading API Comparison](#14-windows-threading-api-comparison)
 - [15. Quizzes and Exercises](#15-quizzes-and-exercises)
 - [16. Key Takeaways](#16-key-takeaways)
+- [17. Thread-Local Storage (TLS)](#17-thread-local-storage-tls)
+- [18. Pthread Cleanup Handlers and Cancellation](#18-pthread-cleanup-handlers-and-cancellation)
+- [19. Robust Mutexes: Surviving Owner Death](#19-robust-mutexes-surviving-owner-death)
+- [20. POSIX Named Semaphores: Cross-Process Synchronization](#20-posix-named-semaphores-cross-process-synchronization)
+- [21. Thread-Safe Data Structures: Concurrent Hash Map](#21-thread-safe-data-structures-concurrent-hash-map)
+- [22. Windows Threading: CreateThread and Synchronization](#22-windows-threading-createthread-and-synchronization)
+- [23. macOS POSIX Threads and Synchronization Nuances](#23-macos-posix-threads-and-synchronization-nuances)
 
 ---
 
@@ -954,6 +961,83 @@ int main(void) {
 
 ## 15. Quizzes and Exercises
 
+> [!question] Quiz 1: PThread Argument Passing Mechanics (Clips 125-126)
+> The `pthread_create` function signature specifies that the worker routine accepts a single argument of type `void *`:
+> ```c
+> int pthread_create(pthread_t *thread, const pthread_attr_t *attr,
+>                    void *(*start_routine)(void *), void *arg);
+> ```
+> 1. How can a programmer pass multiple distinct arguments (e.g., an integer ID, a socket descriptor, and a pointer to a shared buffer) to a thread?
+> 2. How should return values from the worker thread be safely retrieved by the thread calling `pthread_join`?
+
+> [!success]- Answer
+> 1. **Encapsulate in a Heap or Dedicated Struct:** Define a struct containing all required parameters and pass a pointer to that struct:
+>    ```c
+>    typedef struct {
+>        int id;
+>        int socket_fd;
+>        shared_buffer_t *buf;
+>    } thread_args_t;
+> 
+>    thread_args_t *args = malloc(sizeof(thread_args_t));
+>    args->id = 1; args->socket_fd = fd; args->buf = shared_buf;
+>    pthread_create(&tid, NULL, worker, (void *)args);
+>    ```
+> 2. **Returning Values:** The worker routine returns a `void *` pointer (or calls `pthread_exit(void *retval)`). The joiner retrieves it via the second argument of `pthread_join(tid, void **retval)`.
+>    *Critical Invariant:* The return pointer must point to dynamically allocated memory (`malloc`) or a global/static variable; it must **never** point to local stack memory of the terminating worker thread, as that stack frame is invalidated upon thread exit.
+
+> [!question] Quiz 2: Loop Variable Pointer Passing Pitfall (Clips 128-129)
+> Consider the following thread creation loop:
+> ```c
+> pthread_t threads[N];
+> for (int i = 0; i < N; i++) {
+>     pthread_create(&threads[i], NULL, worker_func, (void *)&i); // Buggy!
+> }
+> ```
+> 1. What severe concurrency defect is present in this code?
+> 2. What output will the worker threads observe when reading `*(int *)arg`?
+> 3. Provide two distinct methods to fix this code.
+
+> [!success]- Answer
+> 1. **Data Race on Local Stack Variable:** Every thread is passed the address of the exact same local loop variable `&i`. Because the parent thread increments `i` concurrently as worker threads start up, threads read `i` while it is being actively modified.
+> 2. **Observed Output:** Workers will observe inconsistent, non-sequential values (e.g., multiple threads reading `i = 2` or `i = N`), and if the parent function returns before threads read `&i`, threads will dereference an invalidated stack frame (undefined behavior).
+> 3. **Fixes:**
+>    - *Fix A: Pass by Value (Cast integer to pointer on 64-bit platforms):*
+>      ```c
+>      pthread_create(&threads[i], NULL, worker_func, (void *)(intptr_t)i);
+>      // In worker: int my_id = (int)(intptr_t)arg;
+>      ```
+>    - *Fix B: Dedicated Array or Per-Thread Allocation:*
+>      ```c
+>      int thread_ids[N];
+>      for (int i = 0; i < N; i++) {
+>          thread_ids[i] = i;
+>          pthread_create(&threads[i], NULL, worker_func, (void *)&thread_ids[i]);
+>      }
+>      ```
+
+> [!question] Quiz 3: Detached Threads versus Joinable Threads (Clips 131-132)
+> In PThreads, threads are created in the joinable state by default.
+> 1. What happens if a joinable thread terminates, but the main thread never calls `pthread_join` on it?
+> 2. When should `pthread_detach` be used, and what does it prevent?
+
+> [!success]- Answer
+> 1. **Resource Leak (Thread Zombie):** When a joinable thread exits without being joined, its thread ID, exit status, and internal kernel/runtime data structures remain allocated in memory indefinitely. If an application repeatedly creates joinable threads without joining them, it eventually exhausts memory and system thread capacity.
+> 2. **`pthread_detach`:** Decouples the thread from the creator. Once detached, the OS and PThreads runtime automatically reclaim all thread resources (stack, TCB) immediately upon thread termination. Use `pthread_detach` for independent background tasks (daemon threads, fire-and-forget socket handlers) whose exit status does not need to be harvested.
+
+> [!question] Quiz 4: Condition Variable Invariants & Spurious Wakeups (Clip 139)
+> State the three mandatory invariants that must always be maintained when using POSIX condition variables (`pthread_cond_t`).
+
+> [!success]- Answer
+> 1. **Condition Variable Must Be Protected by a Mutex:** A thread must hold the mutex *before* calling `pthread_cond_wait(&cv, &mutex)`. `pthread_cond_wait` atomically releases the mutex and places the calling thread on the condition wait queue. Upon waking, it re-acquires the mutex before returning.
+> 2. **Predicate Verification Inside a While Loop:** Because spurious wakeups and race conditions can occur between signal and mutex acquisition under Mesa semantics, the predicate must always be checked inside a `while` loop:
+>    ```c
+>    while (!predicate) { pthread_cond_wait(&cv, &mutex); }
+>    ```
+> 3. **Modifications to the Predicate State Must Be Mutex-Protected:** Any thread modifying the state variables that form the predicate must acquire the mutex before modifying state and signaling the condition variable.
+
+---
+
 ### Exercise 1: Thread-Safe Stack
 
 Implement a thread-safe stack using PThreads with `push()`, `pop()`, and `is_empty()`.
@@ -1537,6 +1621,102 @@ Get-Process | Where-Object { $_.Threads.Count -gt 10 } |
 
 ---
 
+## 23. macOS POSIX Threads and Synchronization Nuances
+
+While macOS implements standard POSIX threads, several critical architectural idiosyncrasies affect systems code ported between Linux and macOS:
+
+### 1. Unnamed POSIX Semaphores (`sem_init`) Return `ENOSYS`
+
+A common source of bugs in CS 6200 projects on macOS is the POSIX semaphore implementation:
+- On Linux, `sem_init(&sem, 0, initial_value)` initializes an unnamed semaphore in memory.
+- On macOS (Darwin), `sem_init()` returns `-1` and sets `errno = ENOSYS` ("Function not implemented").
+- To achieve thread synchronization on macOS, developers must either use **named semaphores** (`sem_open()`) or Apple's native **Grand Central Dispatch semaphores** (`dispatch_semaphore_t`).
+
+```c
+// Portable Cross-Platform Counting Semaphore (Linux, macOS, Windows)
+#include <stdio.h>
+#include <stdlib.h>
+
+#if defined(__APPLE__)
+    #include <dispatch/dispatch.h>
+    typedef dispatch_semaphore_t portable_sem_t;
+
+    static inline void port_sem_init(portable_sem_t *sem, int value) {
+        *sem = dispatch_semaphore_create(value);
+    }
+    static inline void port_sem_wait(portable_sem_t *sem) {
+        dispatch_semaphore_wait(*sem, DISPATCH_TIME_FOREVER);
+    }
+    static inline void port_sem_post(portable_sem_t *sem) {
+        dispatch_semaphore_signal(*sem);
+    }
+    static inline void port_sem_destroy(portable_sem_t *sem) {
+        // Automatically ARC/dispatch released
+    }
+#elif defined(_WIN32)
+    #include <windows.h>
+    typedef HANDLE portable_sem_t;
+
+    static inline void port_sem_init(portable_sem_t *sem, int value) {
+        *sem = CreateSemaphore(NULL, value, 0x7FFFFFFF, NULL);
+    }
+    static inline void port_sem_wait(portable_sem_t *sem) {
+        WaitForSingleObject(*sem, INFINITE);
+    }
+    static inline void port_sem_post(portable_sem_t *sem) {
+        ReleaseSemaphore(*sem, 1, NULL);
+    }
+    static inline void port_sem_destroy(portable_sem_t *sem) {
+        CloseHandle(*sem);
+    }
+#else // Linux / POSIX
+    #include <semaphore.h>
+    typedef sem_t portable_sem_t;
+
+    static inline void port_sem_init(portable_sem_t *sem, int value) {
+        sem_init(sem, 0, value);
+    }
+    static inline void port_sem_wait(portable_sem_t *sem) {
+        sem_wait(sem);
+    }
+    static inline void port_sem_post(portable_sem_t *sem) {
+        sem_post(sem);
+    }
+    static inline void port_sem_destroy(portable_sem_t *sem) {
+        sem_destroy(sem);
+    }
+#endif
+```
+
+### 2. Thread Naming API Differences
+
+```c
+// Setting thread name across operating systems:
+#if defined(__linux__)
+    // Linux glibc takes target thread and name
+    pthread_setname_np(pthread_self(), "worker-0");
+#elif defined(__APPLE__)
+    // macOS Darwin takes only the name and operates strictly on the calling thread
+    pthread_setname_np("worker-0");
+#elif defined(_WIN32)
+    // Windows 10+ SetThreadDescription API
+    SetThreadDescription(GetCurrentThread(), L"worker-0");
+#endif
+```
+
+### 3. macOS PThreads Inspection Tooling
+
+```bash
+# macOS: Inspect thread synchronization locks and contention with DTrace
+sudo dtrace -n 'plockstat$target:::mutex-acquire { @[probefunc] = count(); }' -p <PID>
+
+# macOS: Trace all thread creation events in real time
+sudo dtrace -n 'proc:::create { printf("Parent PID %d spawned child thread/process", pid); }'
+```
+
+---
+
 **Previous:** [P2L2: Threads and Concurrency](P2L2-Threads-and-Concurrency.md)
 **Next:** [P2L4: Thread Design Considerations](P2L4-Thread-Design-Considerations.md)
+
 

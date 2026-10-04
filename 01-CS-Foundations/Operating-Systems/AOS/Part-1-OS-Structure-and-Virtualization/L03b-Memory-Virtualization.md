@@ -250,28 +250,31 @@ sequenceDiagram
 ### Calculating Idle Memory Tax
 
 Assume a system has two virtual machines, VM A and VM B.
-VM A is assigned 2000 shares and has allocated 1000 pages.
-VM B is assigned 1000 shares and has allocated 1000 pages.
-VM A has 800 active pages and 200 idle pages.
-VM B has 900 active pages and 100 idle pages.
-The idle memory tax rate is set to 50 percent.
+VM A is assigned 2000 shares and has allocated 1000 pages ($P_A = 1000$).
+VM B is assigned 1000 shares and has allocated 1000 pages ($P_B = 1000$).
+VM A has 800 active pages ($f_A = 0.8$) and 200 idle pages.
+VM B has 900 active pages ($f_B = 0.9$) and 100 idle pages.
+The idle memory tax rate is set to $\tau = 0.50$ (50 percent).
 
-The base share price is Shares / Total Pages.
-For VM A, the base price is 2000 / 1000 = 2.0.
-For VM B, the base price is 1000 / 1000 = 1.0.
+In ESX Server, the tax penalizes idle pages using a multiplier $k = \frac{1}{1 - \tau}$.
+Here, $k = \frac{1}{1 - 0.50} = 2.0$.
+The effective adjusted page allocation is:
+$$\text{Adjusted Pages} = P \cdot (f + k \cdot (1 - f)) = \text{Active Pages} + k \cdot \text{Idle Pages}$$
 
-The hypervisor calculates the adjusted pages based on the tax rate:
-Adjusted Pages = Active Pages + (Idle Pages * (1 - Tax Rate)).
-For VM A: Adjusted Pages = 800 + (200 * (1 - 0.50)) = 800 + 100 = 900.
-For VM B: Adjusted Pages = 900 + (100 * (1 - 0.50)) = 900 + 50 = 950.
+For VM A:
+$$\text{Adjusted Pages}_A = 800 + 2.0 \times 200 = 800 + 400 = 1200$$
+$$\text{Effective Share Price}_A = \frac{S_A}{\text{Adjusted Pages}_A} = \frac{2000}{1200} \approx 1.67$$
+(Without tax, VM A's base share price would have been $2000 / 1000 = 2.00$.)
 
-The effective share price is Shares / Adjusted Pages.
-For VM A, the effective price is 2000 / 900 = 2.22.
-For VM B, the effective price is 1000 / 950 = 1.05.
+For VM B:
+$$\text{Adjusted Pages}_B = 900 + 2.0 \times 100 = 900 + 200 = 1100$$
+$$\text{Effective Share Price}_B = \frac{S_B}{\text{Adjusted Pages}_B} = \frac{1000}{1100} \approx 0.91$$
+(Without tax, VM B's base share price would have been $1000 / 1000 = 1.00$.)
 
-When the hypervisor needs to reclaim memory, it revokes pages from the VM with the lowest effective share price.
-Since 1.05 is less than 2.22, the hypervisor will target VM B for reclamation first, even though VM A has more idle pages.
-This demonstrates how the shares protect VM A's allocation, but the tax forces the price calculation to account for idleness.
+When memory reclamation occurs, the hypervisor revokes pages from the VM with the lowest effective share price.
+Since $0.91 < 1.67$, VM B is targeted first because its lower total share allocation outweighs its slightly lower idleness.
+However, observe the impact of the tax: if VM A had 800 idle pages ($f_A = 0.2$), its adjusted pages would swell to $200 + 2.0 \times 800 = 1800$, dropping its price to $2000 / 1800 \approx 1.11$, bringing it much closer to revocation despite having twice VM B's shares.
+The idle tax ensures idle pages artificially inflate the divisor, depressing the effective share price and preventing idle memory hoarding.
 
 ## Comparison
 

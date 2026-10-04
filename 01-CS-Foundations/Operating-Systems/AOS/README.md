@@ -20,7 +20,7 @@ The course traces the ideas inside today's systems back to the research papers t
 > - **Lesson notes** in five Parts plus an optional refresher, one note per sub-lesson, one `###` heading per concept.
 > - **[Papers](Papers/README.md)**: one note per paper on the reading list, with reading status from the syllabus.
 > - **[Labs](labs/README.md)**: real commands, C and Python programs, and measurements in a Linux VM ([setup](labs/setup/README.md)).
-> - **[Practice](Practice/README.md)**: original exam-style questions with folded answers.
+> - **[Practice](Practice/README.md)**: original exam-style questions with folded answers, and the master **[Exam Practice Set](Exam-Prep/Exam-Practice-Questions.md)**.
 > - **[Study plan](00-Study-Plan.md)** (semester and two-week crash plans), **[resources](00-Resources.md)**, and the **[coverage report](00-Coverage.md)**.
 > - [Cheat sheets](Cheatsheets/README.md) per Part.
 > - Views: the [study board](AOS-Study-Board.md) (Kanban), the [concept map](AOS-Concept-Map.canvas) (Canvas), and the [notes base](AOS-Notes.base) (Bases).

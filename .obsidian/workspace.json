@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "16-Interview-Command-Center/00-Dashboard.md",
+                "file": "01-CS-Foundations/Operating-Systems/GIOS/Part-2-Process-Thread-Management/P2L1-Processes-and-Process-Management.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "00-Dashboard"
+              "title": "P2L1-Processes-and-Process-Management"
             }
           }
         ]
@@ -216,6 +216,13 @@
   },
   "active": "e7a7b303c61786dc",
   "lastOpenFiles": [
+    "01-CS-Foundations/Operating-Systems/GIOS/Part-4-Distributed-Systems/P4L4-Datacenter-Technologies.md",
+    "tools/__pycache__/check_aos_coverage.cpython-314.pyc",
+    "tools/tests/__pycache__/test_check_aos_coverage.cpython-314.pyc",
+    "01-CS-Foundations/Operating-Systems/AOS/Exam-Prep/Exam-Practice-Questions.md",
+    "01-CS-Foundations/Operating-Systems/AOS/Exam-Prep",
+    "01-CS-Foundations/Operating-Systems/GIOS/Exam-Prep/Midterm-Practice-Questions.md",
+    "16-Interview-Command-Center/00-Dashboard.md",
     "02-Programming-Languages/Python/Python-Backend-Interview-Prep/04-FastAPI.md",
     "02-Programming-Languages/Python/Python-Backend-Interview-Prep/17-Concurrency-in-Web-Services-and-Coding.md",
     "02-Programming-Languages/Python/Python-Backend-Interview-Prep/05-REST-API-Design.md",
@@ -235,10 +242,7 @@
     "01-CS-Foundations/Operating-Systems/AOS/labs/lab-24-security/seccomp_filter.c",
     "01-CS-Foundations/Operating-Systems/AOS/labs/lab-24-security/expected-output.txt",
     "01-CS-Foundations/Operating-Systems/AOS/labs/lab-24-security/caps_namespaces.sh",
-    "01-CS-Foundations/Operating-Systems/AOS/labs/lab-24-security/andrew_handshake.py",
-    "01-CS-Foundations/Operating-Systems/AOS/labs/lab-24-security/Makefile",
     "Library/01-CS-Foundations/Operating-Systems/CS6210-AOS/crew/runner/reports/lab-24-security.md",
-    "Library/01-CS-Foundations/Operating-Systems/CS6210-AOS/crew/runner/logs/lab-24-security.gemini.1.log",
     "Library/01-CS-Foundations/Operating-Systems/CS6210-AOS/crew/runner/logs/lab-24-security.prompt.md",
     "Library/01-CS-Foundations/Operating-Systems/CS6210-AOS/crew/runner/reports/lab-23-temporal-streams.md",
     "Library/01-CS-Foundations/Operating-Systems/CS6210-AOS/crew/runner/logs/lab-23-temporal-streams.prompt.md",
@@ -248,10 +252,6 @@
     "Library/01-CS-Foundations/Operating-Systems/CS6210-AOS/crew/runner/logs/lab-21-dht.prompt.md",
     "Library/01-CS-Foundations/Operating-Systems/CS6210-AOS/crew/runner/reports/lab-20-mapreduce.md",
     "Library/01-CS-Foundations/Operating-Systems/CS6210-AOS/crew/runner/logs/lab-20-mapreduce.prompt.md",
-    "Library/01-CS-Foundations/Operating-Systems/CS6210-AOS/crew/runner/reports/lab-19-giant-scale.md",
-    "Library/01-CS-Foundations/Operating-Systems/CS6210-AOS/crew/runner/logs/lab-19-giant-scale.prompt.md",
-    "Library/01-CS-Foundations/Operating-Systems/CS6210-AOS/crew/runner/reports/papers-optional-4.md",
-    "Library/01-CS-Foundations/Operating-Systems/CS6210-AOS/crew/runner/logs/papers-optional-4.prompt.md",
     "01-CS-Foundations/Operating-Systems/AOS/AOS-Concept-Map.canvas",
     "06-Interview-Prep/04-Market-Risk-Quartz-Python/Market-Risk-Prep-Canvas.canvas",
     "02-Programming-Languages/C++/CPP_Zero_to_Godhood/C++ Zero to Godhood: Complete Evolution and Comprehensive Feature Guide.mindnode/QuickLook/Preview.jpg"

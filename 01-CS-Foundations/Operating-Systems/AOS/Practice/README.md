@@ -14,6 +14,12 @@ tags: [cs6210]
 Original exam-style practice per lesson, written for this vault.
 Each question lists the coverage ids it exercises, and every answer is folded so the page works as a self-test.
 
+## Master Exam Prep
+
+- [Exam Practice Questions](../Exam-Prep/Exam-Practice-Questions.md): High-yield, multi-step exam questions spanning Test 1, Test 2, and Test 3 scope with step-by-step derivations and folded active-recall answers.
+
+## Lesson Practice Sets
+
 - [Practice L01](Practice-L01.md)
 - [Practice L02](Practice-L02.md)
 - [Practice L03](Practice-L03.md)

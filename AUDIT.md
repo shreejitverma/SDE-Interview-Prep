@@ -8,10 +8,10 @@ Re-run the script after every structural change; this file is its output and sho
 
 | Check | Result |
 | :--- | ---: |
-| Tracked files | 15564 |
-| Markdown notes | 1783 |
-| Internal links checked | 11937 |
-| Broken links (links into private locations are not counted) | 1 |
+| Tracked files | 15567 |
+| Markdown notes | 1786 |
+| Internal links checked | 11970 |
+| Broken links (links into private locations are not counted) | 0 |
 | Wikilink aliases that split a table cell | 0 |
 | Broken wikilinks fixable by unique basename | 0 |
 | Orphan knowledge notes (no inbound links) | 0 |
@@ -29,11 +29,11 @@ Re-run the script after every structural change; this file is its output and sho
 
 | Folder | Files | Notes | Code | Papers | Other | MB | Last touched |
 | :--- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| `(root)` | 11 | 6 | 0 | 0 | 5 | 0.1 | 2026-10-01 |
+| `(root)` | 11 | 6 | 0 | 0 | 5 | 0.1 | 2026-10-04 |
 | `.github` | 1 | 0 | 0 | 0 | 1 | 0.0 | 2026-09-21 |
-| `.obsidian` | 45 | 0 | 0 | 0 | 45 | 0.0 | 2026-10-02 |
+| `.obsidian` | 45 | 0 | 0 | 0 | 45 | 0.0 | 2026-10-04 |
 | `00-Start-Here` | 4 | 4 | 0 | 0 | 0 | 0.0 | 2026-09-28 |
-| `01-CS-Foundations` | 482 | 237 | 141 | 0 | 104 | 4.2 | 2026-10-02 |
+| `01-CS-Foundations` | 485 | 240 | 141 | 0 | 104 | 4.5 | 2026-10-04 |
 | `02-Programming-Languages` | 5827 | 817 | 2860 | 466 | 1684 | 112.3 | 2026-09-30 |
 | `03-Data-Structures-Algorithms` | 7708 | 82 | 7506 | 0 | 120 | 15.2 | 2026-09-21 |
 | `04-System-Design` | 880 | 66 | 657 | 0 | 157 | 7.5 | 2026-09-21 |
@@ -112,15 +112,13 @@ Re-run the script after every structural change; this file is its output and sho
 
 | Folder | Broken |
 | :--- | ---: |
-| `01-CS-Foundations` | 1 |
 
 0 broken wikilinks point at a path that no longer exists but name a note that exists exactly once elsewhere.
 These come from folder reorganizations that did not rewrite links and can be fixed mechanically.
 
 <details>
-<summary>All 1 broken links</summary>
+<summary>All 0 broken links</summary>
 
-- `01-CS-Foundations/Operating-Systems/GIOS/_GIOS-Dashboard.md` (md) -> `Exam-Prep/Midterm-Practice-Questions.md`
 
 </details>
 

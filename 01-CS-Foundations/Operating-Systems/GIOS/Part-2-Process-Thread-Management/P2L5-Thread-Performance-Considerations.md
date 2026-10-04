@@ -25,10 +25,15 @@ sources:
 - [7. Synchronization Overhead: Spinlocks vs. Sleep Locks](#7-synchronization-overhead-spinlocks-vs-sleep-locks)
 - [8. Context Switch Overhead](#8-context-switch-overhead)
 - [9. Thread Pool Design Pattern](#9-thread-pool-design-pattern)
-- [10. Event-Driven vs. Multithreaded Architectures](#10-event-driven-vs-multithreaded-architectures)
+- [10. Web Server Architectures & The Flash Paper Case Study (SPED, MP, MT, AMPED)](#10-web-server-architectures--the-flash-paper-case-study-sped-mp-mt-amped)
 - [11. Pipeline and Leader-Follower Patterns](#11-pipeline-and-leader-follower-patterns)
 - [12. Quizzes and Exercises](#12-quizzes-and-exercises)
 - [13. Key Takeaways](#13-key-takeaways)
+- [14. Perf Flamegraph Analysis for Multithreaded Programs](#14-perf-flamegraph-analysis-for-multithreaded-programs)
+- [15. The C10K Problem and Modern Solutions](#15-the-c10k-problem-and-modern-solutions)
+- [16. NUMA Effects on Thread Performance](#16-numa-effects-on-thread-performance)
+- [17. Thread Sanitizer (TSan): Catching Race Conditions](#17-thread-sanitizer-tsan-catching-race-conditions)
+- [18. Cross-Platform Performance Profiling: Linux (perf/wrk), macOS (xctrace/powermetrics), Windows (xperf/WPR)](#18-cross-platform-performance-profiling-linux-perfwrk-macos-xctracepowermetrics-windows-xperfwpr)
 
 ---
 
@@ -583,68 +588,105 @@ gcc -pthread -o threadpool threadpool.c && ./threadpool
 
 ---
 
-## 10. Event-Driven vs. Multithreaded Architectures
+## 10. Web Server Architectures & The Flash Paper Case Study (SPED, MP, MT, AMPED)
 
-### Thread-per-Connection (Multithreaded)
+The landmark paper *"Flash: An Efficient and Portable Web Server"* (Vivek S. Pai, Peter Druschel, and Willy Zwaenepoel, USENIX 1999) provides the foundational systems framework for analyzing concurrent server architectures.
 
-```
-Client 1 -----> [Thread 1] -----> Handle request
-Client 2 -----> [Thread 2] -----> Handle request
-Client 3 -----> [Thread 3] -----> Handle request
-  ...             ...
-Client N -----> [Thread N] -----> Handle request
-
-Problem: 10,000 clients = 10,000 threads
-  Each thread: ~8 KB kernel stack + ~64 KB user stack
-  10,000 threads: ~700 MB just for stacks + context switch overhead
-```
-
-### Event-Driven (Single-Threaded with I/O Multiplexing)
+### The Four Server Architectures
 
 ```
-                     Event Loop (single thread)
-                    +---------------------------+
-Client 1 --------->|                           |
-Client 2 --------->| epoll_wait() / kqueue()   |
-Client 3 --------->|   |                       |
-  ...               |   v                       |
-Client N --------->| Which socket is ready?     |
-                    |   |                       |
-                    |   +-> handle_read(fd)     |
-                    |   +-> handle_write(fd)    |
-                    |   +-> handle_accept(fd)   |
-                    +---------------------------+
-
-Advantage: One thread handles thousands of connections
-Disadvantage: Cannot use multiple CPU cores (single thread)
++-----------------------------------------------------------------------------------------+
+| Architecture           | Concurrency Mechanism        | Disk I/O Handling               |
++------------------------+------------------------------+---------------------------------+
+| SPED (Single Process   | Single event-driven process  | Synchronous blocking disk reads |
+| Event Driven)          | (select / poll / epoll)      | (Blocks entire server on miss!) |
++------------------------+------------------------------+---------------------------------+
+| MP (Multi-Process)     | Multiple independent OS      | Blocking read in worker process |
+|                        | processes (e.g., Apache 1.3) | (Only calling process blocks)   |
++------------------------+------------------------------+---------------------------------+
+| MT (Multi-Threaded)    | Single process, multiple     | Blocking read in worker thread  |
+|                        | kernel threads (thread pool) | (Only calling thread blocks)    |
++------------------------+------------------------------+---------------------------------+
+| AMPED (Asymmetric      | Main event loop process +    | Main loop checks cache via      |
+| Multi-Process Event    | auxiliary helper processes   | mincore(); helper reads disk    |
+| Driven - Flash)        | for disk I/O                 | asynchronously                  |
++------------------------+------------------------------+---------------------------------+
 ```
 
-### Hybrid: Event-Driven + Thread Pool
+### The Blocking Disk I/O Dilemma in SPED
+
+In an event-driven server, non-blocking network socket I/O is achieved cleanly using `select()`, `poll()`, or `epoll()`.
+However, standard UNIX file system operations (`read()`, `write()`) do **not** support non-blocking execution on local disk files:
+- When a requested file is already resident in the operating system's buffer cache (page cache), calling `read()` copies data in sub-microsecond time without blocking.
+- When a requested file is **not** in the buffer cache (cold cache miss), the calling thread is put to sleep in the kernel while the disk controller seeks and reads physical sectors (taking 5 to 10 ms).
+- In a pure **SPED** server, this blocking read freezes the single execution thread, halting the entire server and leaving thousands of ready network clients unserviced.
+
+### AMPED Mechanics: The Flash Solution
+
+Flash resolves the disk blocking dilemma by combining the zero-overhead event-driven paradigm with an asymmetric pool of lightweight helper processes:
 
 ```
-                    Event Loop Thread (I/O dispatch)
-                   +-------------------------------+
-Clients ---------> | epoll_wait()                  |
-                   |   |                           |
-                   |   +-> dispatch to thread pool |
-                   +---------|---------------------+
-                             |
-                   +---------v-----------+
-                   |    Thread Pool       |
-                   | [W1] [W2] [W3] [W4] |
-                   | CPU-bound processing |
-                   +---------------------+
-
-This is the architecture of nginx, Node.js cluster, and most
-modern high-performance servers.
+[ Incoming Network Clients ]
+            |
+            v
++========================================================================+
+| Flash Main Process (Single-Threaded Event Loop)                        |
+| - Handles non-blocking network I/O (epoll / select)                    |
+| - Inspects OS Buffer Cache via mincore() system call                   |
++========================================================================+
+            |                                           |
+    [ Cache Hit: In RAM ]                      [ Cache Miss: On Disk ]
+            |                                           |
+            v                                           v
+    Stream directly to socket              Delegate to Helper Process via IPC
+    (Zero context switch)                               |
+                                                        v
+                                           +=============================+
+                                           | Auxiliary Helper Process    |
+                                           | - Executes blocking read()  |
+                                           | - Pulls file into OS Cache  |
+                                           +=============================+
+                                                        |
+                                            [ Page now in OS Cache ]
+                                                        |
+                                                        v
+                                           Notify Main Event Loop (pipe/socket)
 ```
 
-| Aspect | Thread-per-connection | Event-driven | Hybrid |
-|--------|----------------------|-------------|--------|
-| Scalability | Poor (threads expensive) | Good (one thread, many conns) | Best |
-| CPU utilization | Good (multi-core) | Poor (single core) | Good |
-| Programming model | Simple (sequential) | Complex (callbacks/state machines) | Moderate |
-| Example | Apache prefork | Node.js (single) | nginx, Go net/http |
+1. **`mincore()` Cache Residency Check:** When a client requests a file, the main event loop uses `mmap()` and queries `mincore()` to verify whether the target memory pages are currently present in physical RAM.
+2. **Fast Path (RAM Hit):** If `mincore()` confirms the pages are in memory, the main process writes the data directly to the client socket without blocking.
+3. **Slow Path (Disk Miss):** If `mincore()` indicates a cache miss, the main process delegates the file read to an auxiliary helper process over an IPC socket and immediately resumes servicing other network clients. The helper process executes the blocking disk `read()`, bringing the pages into the kernel buffer cache. When the read completes, the helper sends a short completion notification to the main process, which can now stream the cached pages with zero disk delay.
+
+### Performance Observations: Analysis of the Flash Benchmark
+
+```
+Throughput (req/s)
+   ^
+   |        /---- SPED (Highest when in-memory)
+   |       /--- Flash (AMPED: 2-5% lower than SPED due to mincore overhead)
+   |      /-- MT (Context switches & lock contention degrade in-memory throughput)
+   |     /- MP (Lowest in-memory throughput due to heavy process context switches)
+   |
+   +---------------------------------------------------------------> Dataset Size
+                |                                      |
+         < 100 MB (In-Memory)                   > 100 MB (Disk-Bound)
+         - SPED > Flash > MT > MP               - Flash >= MT > MP >> SPED (SPED collapses!)
+```
+
+#### Why Flash Performs Slightly Worse than SPED for Small Datasets (< 100 MB)
+When the working set fits entirely in physical RAM (< 100 MB), every request is a buffer cache hit:
+- **SPED** achieves peak throughput because it has zero disk faults, zero context switches, zero inter-process communication, and zero lock synchronization.
+- **Flash (AMPED)** performs approximately 2% to 5% worse than SPED because Flash must execute the `mincore()` system call to verify cache residency before every transfer, incurring minor syscall overhead that SPED avoids.
+
+#### Why Flash Performs Significantly Better than MP for Small Datasets (< 100 MB)
+Even when data fits entirely in memory:
+- **Multi-Process (MP)** servers (e.g., Apache prefork) assign each connection to a separate OS process. Context-switching between hundreds of processes pollutes CPU L1/L2 caches and the TLB, consumes massive process memory tables, and incurs scheduling latency.
+- **Flash** services all connections inside a single thread with hot instruction and data caches, completely eliminating process context switching and inter-thread contention.
+
+#### Why SPED Collapses for Large Datasets (> 100 MB)
+When the dataset exceeds available RAM:
+- **SPED** throughput plummets because every cache miss causes the entire server to block on synchronous disk I/O.
+- **Flash** maintains high throughput because its helper processes absorb the blocking disk I/O while the main event loop continues delivering network data.
 
 ---
 
@@ -697,12 +739,60 @@ Disadvantage: more complex state management
 
 ## 12. Quizzes and Exercises
 
-### Quiz: Amdahl's Law Application
+> [!question] Quiz 1: Flash Web Server Performance Observations (Pai et al. Paper - Midterm Question 8)
+> In the landmark paper *"Flash: An Efficient and Portable Web Server"* (Pai et al., 1999), the authors evaluate web server throughput across varying dataset sizes.
+> For datasets where the total dataset size is **less than 100 MB** (fits entirely in the OS buffer cache in RAM):
+> 1. Why does Flash perform slightly worse than SPED?
+> 2. Why does Flash perform significantly better than MP (Multi-Process)?
 
-> *A program takes 100 seconds. 5% is serial, 95% is parallelizable. With 32 CPUs, what is the speedup and execution time?*
->
-> Speedup = 1 / (0.05 + 0.95/32) = 1 / (0.05 + 0.0297) = 1 / 0.0797 = **12.55x**
-> Time = 100 / 12.55 = **7.97 seconds**
+> [!success]- Answer
+> 1. **Why Flash performs worse than SPED (< 100 MB):**
+>    - When the dataset is < 100 MB, the entire working set resides in RAM; every file access is a buffer cache hit.
+>    - **SPED** operates as a single-threaded event loop and performs direct reads without disk blocking. It incurs zero context switches, zero IPC overhead, and zero synchronization overhead.
+>    - **Flash (AMPED)** attempts to detect cold disk misses by querying the kernel via the `mincore()` system call before serving every file. For in-memory datasets where no disk misses actually occur, this `mincore()` check represents redundant system call overhead (~2-5% latency penalty) that SPED completely avoids.
+> 2. **Why Flash performs better than MP (< 100 MB):**
+>    - **Multi-Process (MP)** servers (e.g., Apache prefork) assign each connection to an independent operating system process.
+>    - Even when data is in RAM, MP incurs substantial context-switching overhead across hundreds of processes, severe cache and TLB pollution (evicting cache lines on each switch), high memory footprint for per-process page tables, and inter-process synchronization contention.
+>    - **Flash** handles all connections in a single address space with zero context switching, maintaining hot instruction and data caches across all active client requests.
+
+> [!question] Quiz 2: Amdahl's Law and Scaling Limits
+> A computational pipeline executes in 100 seconds on a single CPU core.
+> Profiling indicates that 10% of the execution time is strictly sequential (data loading and lock synchronization), while 90% can be parallelized.
+> 1. What is the theoretical maximum speedup achievable with an infinite number of CPU cores?
+> 2. What is the speedup achieved with 16 CPU cores?
+> 3. What is the parallel efficiency achieved with 16 CPU cores?
+
+> [!success]- Answer
+> 1. **Maximum Speedup ($N \to \infty$):**
+>    $$S_{\text{max}} = \frac{1}{S} = \frac{1}{0.10} = 10\times$$
+>    No matter how many CPU cores are added, execution time cannot fall below 10 seconds.
+> 2. **Speedup with $N = 16$ cores:**
+>    $$S(16) = \frac{1}{S + \frac{1 - S}{N}} = \frac{1}{0.10 + \frac{0.90}{16}} = \frac{1}{0.10 + 0.05625} = \frac{1}{0.15625} = 6.4\times$$
+>    Execution time on 16 cores: $\frac{100\text{ s}}{6.4} = 15.625\text{ seconds}$.
+> 3. **Parallel Efficiency:**
+>    $$E(16) = \frac{S(16)}{N} = \frac{6.4}{16} = 0.40 = 40\%$$
+>    Only 40% of the available 16-core compute capacity is converted into productive speedup; the remaining 60% is lost to sequential bottlenecks.
+
+> [!question] Quiz 3: Models and Memory Footprint (Clips 203-204)
+> Compare the memory consumption and kernel overhead of servicing 10,000 concurrent client connections using:
+> 1. Multi-Process Architecture (1 connection per process).
+> 2. Multi-Threaded Architecture (1 connection per kernel thread).
+> 3. Event-Driven Architecture (Single process event loop with non-blocking sockets).
+
+> [!success]- Answer
+> 1. **Multi-Process:** Highest memory overhead. Each process requires private page tables, file descriptor tables, memory-mapped shared libraries, and PCB entries in kernel space. At ~1-4 MB per process, 10,000 processes consume 10-40 GB of RAM, causing memory exhaustion and thrashing.
+> 2. **Multi-Threaded:** Moderate memory overhead. Threads share page tables and global heap, but each thread requires a private stack (typically 2-8 MB virtual stack, with ~64 KB resident memory) and kernel `task_struct` / thread control block (~8 KB). 10,000 threads consume ~1 GB of resident RAM plus high scheduler queue overhead.
+> 3. **Event-Driven:** Lowest memory overhead. A single process handles all 10,000 connections using non-blocking socket file descriptors and an `epoll`/`kqueue` state machine. Each connection requires only a socket buffer and a small user-space connection state struct (~1-4 KB), consuming less than 50 MB total RAM for 10,000 clients.
+
+> [!question] Quiz 4: Systems Experimental Design & Benchmarking Invariants (Clips 214-215)
+> When measuring the throughput and latency of a concurrent network server, what three experimental precautions must an engineer take to ensure scientifically valid and reproducible results?
+
+> [!success]- Answer
+> 1. **Buffer Cache Warmup Runs:** Systems benchmarks must discard initial cold runs to ensure that OS file buffer caches and CPU instruction/data caches are adequately warmed up before timing commences, preventing disk seek latency from contaminating in-memory compute benchmarks.
+> 2. **Client-Server Isolation:** The benchmarking client tool (e.g., `wrk`, `ab`) must execute on a physically separate machine from the server under test. Running load generators on the same machine causes client threads to compete with server worker threads for CPU time slices, L1/L2 caches, and memory bus bandwidth.
+> 3. **Statistical Significance and Confidence Intervals:** Experiments must be repeated multiple times (typically 10-30 iterations). Engineers must report mean, standard deviation, and 99th percentile tail latency rather than isolated minimum or maximum outliers.
+
+---
 
 ### Exercise: Benchmark False Sharing
 
@@ -1014,6 +1104,64 @@ valgrind --tool=drd --read-var-info=yes ./program
 
 ---
 
+## 18. Cross-Platform Performance Profiling: Linux (perf/wrk), macOS (xctrace/powermetrics), Windows (xperf/WPR)
+
+Profiling concurrent multithreaded systems requires tracking hardware performance counters (cache misses, branch mispredictions, context switches) across operating systems.
+
+### 1. Linux Performance Profiling
+
+```bash
+# High-concurrency HTTP benchmarking tool (wrk)
+wrk -t4 -c100 -d30s --latency http://127.0.0.1:8080/index.html
+
+# Hardware performance counter monitoring with perf
+perf stat -e cycles,instructions,cache-references,cache-misses,context-switches,cpu-migrations ./my_program
+
+# Pin threads/processes to specific CPU cores to evaluate cache affinity
+taskset -c 0,2,4,6 ./my_server
+
+# Analyze CPU cache-to-cache false sharing with perf c2c
+sudo perf c2c record -F 60000 -- ./my_program
+sudo perf c2c report --stdio
+```
+
+### 2. macOS Performance Profiling
+
+```bash
+# Profile CPU execution stacks using Apple Instruments CLI
+xcrun xctrace record --template 'Time Profiler' --launch -- ./my_program
+
+# Monitor CPU core energy, frequency residency, and memory bandwidth on Apple Silicon
+sudo powermetrics --samplers cpu_power,gpu_power,thermal -i 1000 -n 5
+
+# Trace mutex lock contention in real time using DTrace on macOS
+sudo dtrace -n 'lockstat:::adaptive-block { @[execname, probename] = count(); }'
+
+# Set macOS thread Quality-of-Service (QoS) classes in C:
+# pthread_set_qos_class_self_np(QOS_CLASS_USER_INTERACTIVE, 0);
+```
+
+### 3. Windows Performance Profiling
+
+```powershell
+# Record kernel execution trace with Windows Performance Recorder (WPR)
+wpr.exe -start GeneralProfile -start CPU
+
+# ... execute concurrent workload ...
+
+# Save and analyze trace in Windows Performance Analyzer (WPA)
+wpr.exe -stop C:\temp\perf_trace.etl
+
+# Benchmark execution wall time via PowerShell
+Measure-Command { .\my_program.exe }
+
+# Monitor thread context switch rates and processor queue length in real time
+Get-Counter -Counter "\System\Context Switches/sec", "\Processor(_Total)\% Processor Time" -Continuous
+```
+
+---
+
 **Previous:** [P2L4: Thread Design Considerations](P2L4-Thread-Design-Considerations.md)
 **Next:** [P3L1: Scheduling](../Part-3-Resource-Management/P3L1-Scheduling.md)
+
 

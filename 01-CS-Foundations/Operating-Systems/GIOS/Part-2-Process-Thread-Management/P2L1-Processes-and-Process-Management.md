@@ -33,6 +33,14 @@ sources:
 - [14. Inter-Process Communication (IPC)](#14-inter-process-communication-ipc)
 - [15. Quizzes and Exercises](#15-quizzes-and-exercises)
 - [16. Key Takeaways](#16-key-takeaways)
+- [17. The /proc Filesystem: Process Introspection Deep Dive](#17-the-proc-filesystem-process-introspection-deep-dive)
+- [18. Process Tracing with strace, ltrace, and perf](#18-process-tracing-with-strace-ltrace-and-perf)
+- [19. Copy-on-Write (COW) Mechanics](#19-copy-on-write-cow-mechanics)
+- [20. Process Namespaces: Isolation Without VMs](#20-process-namespaces-isolation-without-vms)
+- [21. Windows Process Internals: CreateProcess and EPROCESS](#21-windows-process-internals-createprocess-and-eprocess)
+- [22. cgroup Process Resource Control](#22-cgroup-process-resource-control)
+- [23. Process Accounting and Audit](#23-process-accounting-and-audit)
+- [24. macOS Process Architecture: Mach Tasks, BSD Processes, and posix_spawn](#24-macos-process-architecture-mach-tasks-bsd-processes-and-posix_spawn)
 
 ---
 
@@ -1159,6 +1167,85 @@ int main(void) {
 
 ## 15. Quizzes and Exercises
 
+> [!question] Quiz 1: Virtual Addresses and Physical Mapping (Clips 48-49)
+> Consider two distinct processes, Process A and Process B, running concurrently on the same physical machine.
+> Both processes examine the address of their local variable `int x` and observe that `&x == 0x7ffd5a00`.
+> 1. Does variable `x` in Process A point to the exact same physical memory cell as `x` in Process B?
+> 2. How does the operating system and hardware MMU prevent Process A from reading or modifying Process B's variable?
+
+> [!success]- Answer
+> 1. **No.** Both processes share the same numerical **virtual address**, but each process has its own private, isolated **page table**. The CPU's Memory Management Unit (MMU) uses Process A's page table to translate `0x7ffd5a00` to physical frame $F_A$, and uses Process B's page table to translate `0x7ffd5a00` to physical frame $F_B$ ($F_A \ne F_B$).
+> 2. **Memory Protection Enforcement:** The kernel configures the CPU page table base register (CR3 on x86_64, TTBR0 on ARM64) during each context switch. When Process A executes, the CPU can only reference physical frames mapped in Process A's page table. Accessing an unmapped frame or a frame marked read-only triggers a hardware page fault exception (Ring 0 trap), causing the OS to terminate the offending process with a Segmentation Fault (`SIGSEGV`).
+
+> [!question] Quiz 2: Hot Cache versus Cold Cache Context Switches (Clips 54-55)
+> During a context switch from Process $P_1$ to Process $P_2$, the kernel saves $P_1$'s CPU registers into its PCB and restores $P_2$'s registers.
+> 1. Distinguish between the **direct cost** and the **indirect cost** of a context switch.
+> 2. What distinguishes a **hot cache** from a **cold cache**, and why does context switching frequency degrade computational throughput?
+
+> [!success]- Answer
+> 1. **Direct vs. Indirect Cost:**
+>    - **Direct Cost:** The deterministic CPU cycles required to execute the kernel context switch routine (saving CPU registers, switching kernel stack pointers, swapping the page table base pointer in CR3, and updating the task state segment). Typically $1 \text{ to } 5 \ \mu\text{s}$ (~1,000-5,000 cycles).
+>    - **Indirect Cost (Cache Pollution):** When $P_2$ begins executing, the L1/L2/L3 data and instruction caches still contain lines belonging to $P_1$. $P_2$ suffers a barrage of cache misses and TLB misses, forcing memory accesses to fetch from high-latency main RAM (~50-100 ns per miss) until $P_2$'s working set warms up the cache.
+> 2. **Hot vs. Cold Cache:**
+>    - A **hot cache** contains the actively referenced instructions and data of the currently running process, resulting in near-zero cache miss penalties.
+>    - A **cold cache** has had its lines evicted or invalidated (due to intervening workloads or TLB flushes).
+>    - Frequent context switches prevent processes from maintaining a hot cache, drastically reducing CPU IPC (Instructions Per Cycle) and wasting memory bus bandwidth.
+
+> [!question] Quiz 3: Process State Transitions (Clips 57-58)
+> In the 5-state process lifecycle (NEW, READY, RUNNING, WAITING/BLOCKED, TERMINATED):
+> 1. Can a process transition directly from WAITING/BLOCKED to RUNNING? Explain why or why not.
+> 2. What event triggers the transition from RUNNING to READY?
+
+> [!success]- Answer
+> 1. **No.** A waiting process that completes its I/O or receives a signal transitions from **WAITING to READY**, never directly to RUNNING. The CPU may already be occupied executing another process. The newly unblocked process must enter the scheduler's ready queue (or runqueue) and wait for the CPU scheduler to dispatch it.
+> 2. **RUNNING to READY** is triggered by an **interrupt**:
+>    - An architectural timer interrupt indicating the process has exhausted its time slice (quantum).
+>    - A preemption event because a higher-priority process has entered the READY queue.
+
+> [!question] Quiz 4: Process Creation Mechanics (Clips 60-61)
+> In UNIX-like operating systems, process creation is decoupled into `fork()` and `exec()`.
+> 1. Why does `fork()` return different values to the parent and child processes?
+> 2. If a parent process terminates before its child process exits, what happens to the child process? Who reaps its exit status?
+
+> [!success]- Answer
+> 1. `fork()` returns **0 to the newly created child process** and returns the **child's PID (positive integer) to the parent process** (or -1 on failure). This allows the exact same code image to distinguish its role via conditional branching:
+>    ```c
+>    pid_t pid = fork();
+>    if (pid == 0) { /* child executes here */ }
+>    else if (pid > 0) { /* parent executes here */ }
+>    ```
+> 2. An orphaned process is immediately **reparented to the init process (PID 1)** on Linux (or `launchd` on macOS). Init periodically executes `wait()` / `waitpid()` in a background loop to reap terminating orphan processes and prevent them from remaining permanent zombies in the system process table.
+
+> [!question] Quiz 5: CPU Bursts and Scheduling Responsibilities (Clips 65-66)
+> Processes alternate between CPU execution bursts and I/O wait bursts.
+> 1. How does the CPU scheduler distinguish between a CPU-bound process and an I/O-bound process?
+> 2. Why do general-purpose interactive operating systems favor I/O-bound processes over CPU-bound processes?
+
+> [!success]- Answer
+> 1. **Observation of Quantum Expiration:**
+>    - An **I/O-bound process** frequently yields the CPU voluntarily (via `read`, `write`, `poll`, or `sleep`) before its assigned scheduling time slice expires.
+>    - A **CPU-bound process** consistently consumes its entire time slice until preempted by the hardware timer interrupt.
+> 2. **Interactive Responsiveness:** I/O-bound tasks typically drive user interfaces, audio playback, or network communication. Scheduling them immediately when their I/O completes keeps interactive latency minimal. Because their CPU bursts are short, they quickly yield the CPU back to long-running throughput-oriented CPU-bound tasks with negligible degradation to overall compute throughput.
+
+> [!question] Quiz 6: Shared Memory versus Message-Passing IPC (Clips 68-69)
+> Compare Shared Memory IPC with Message-Passing IPC across:
+> 1. Operating system involvement during ongoing data transfer.
+> 2. Data copy overhead.
+> 3. Synchronization requirements.
+
+> [!success]- Answer
+> 1. **OS Involvement:**
+>    - **Message Passing (Pipes, Sockets, MQ):** Every message transfer requires kernel boundary crossings via system calls (`write()`, `send()`, `read()`, `recv()`). The kernel arbitrates every byte.
+>    - **Shared Memory:** The OS is involved only during channel setup (`shm_open()`, `mmap()`). Subsequent data transfers occur via direct memory load and store CPU instructions without kernel intervention.
+> 2. **Copy Overhead:**
+>    - **Message Passing:** Incurs at least two data copies (User space of sender $\to$ Kernel buffer $\to$ User space of receiver).
+>    - **Shared Memory:** Zero copy overhead between sender and receiver address spaces.
+> 3. **Synchronization Requirements:**
+>    - **Message Passing:** Implicitly synchronized by the kernel. If a reader attempts to read from an empty pipe, the kernel automatically blocks the reader.
+>    - **Shared Memory:** Explicit application-level synchronization is mandatory. Cooperating processes must use shared mutexes, POSIX semaphores, or atomic flags to prevent race conditions and data corruption.
+
+---
+
 ### Exercise 1: Process Tree
 
 ```bash
@@ -1965,6 +2052,106 @@ systemd-cgtop
 
 ---
 
+## 24. macOS Process Architecture: Mach Tasks, BSD Processes, and posix_spawn
+
+### Mach Task versus BSD Process
+
+macOS (built on the XNU hybrid kernel) implements a dual-layer abstraction for executing programs:
+
+```
++=============================================================================+
+| macOS USER PROCESS                                                          |
++=============================================================================+
+                                      |
+              +-----------------------+-----------------------+
+              |                                               |
+              v                                               v
++-------------------------------+             +-------------------------------+
+| BSD Layer (proc_t)            |             | Mach Layer (task_t)           |
+| - POSIX Process ID (PID)      |             | - Mach Task Port (task_self)  |
+| - Parent PID (PPID)           |             | - Virtual Address Space (VM)  |
+| - User / Group Credentials    |             | - Mach Port Rights & IPC      |
+| - File Descriptor Table       |             | - Thread Containers (threads) |
+| - POSIX Signal Handlers       |             | - Exception Ports             |
++-------------------------------+             +-------------------------------+
+              |                                               |
+              +-----------------------+-----------------------+
+                                      v
++=============================================================================+
+| XNU Kernel Core (Address Space, Scheduling, Memory, Hardware Access)        |
++=============================================================================+
+```
+
+1. **Mach Task (`task_t`):** The low-level resource allocation unit. A task possesses no execution state of its own; it is purely a passive container holding a virtual memory map, a set of Mach port capabilities (rights to send/receive messages), and an array of Mach threads.
+2. **BSD Process (`proc_t`):** Wraps the Mach task to provide standard POSIX compliance. The BSD layer manages the integer PID, parent-child process tree, process group, user credentials (UID/GID), file descriptor table, and POSIX signal masks.
+
+### Why `posix_spawn()` is Preferred Over `fork()` on macOS
+
+On macOS, calling `fork()` in multi-threaded processes that link against system frameworks (CoreFoundation, Cocoa, GCD) is dangerous:
+- `fork()` duplicates only the calling thread into the child process. Any lock, mutex, or runtime queue held by another thread in the parent remains permanently locked in the child, causing immediate deadlock.
+- In macOS 12+ (Monterey and later), calling `fork()` without an immediate `exec()` in GUI applications or applications initializing Objective-C runtime classes throws a fatal warning or aborts execution.
+- `posix_spawn()` resolves this by combining process creation and binary execution into a single atomic kernel operation. The kernel initializes a clean Mach task and loads the target Mach-O binary directly, avoiding unnecessary page table duplication.
+
+```c
+// Compiling on macOS: clang -Wall -O2 spawn_demo.c -o spawn_demo
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <spawn.h>
+#include <sys/wait.h>
+
+extern char **environ;
+
+int main(void) {
+    pid_t pid;
+    char *argv[] = {"/bin/ls", "-lh", "/tmp", NULL};
+    posix_spawn_file_actions_t actions;
+    posix_spawnattr_t attr;
+
+    posix_spawn_file_actions_init(&actions);
+    posix_spawnattr_init(&attr);
+
+    // Spawn child process atomically
+    int status = posix_spawn(&pid, "/bin/ls", &actions, &attr, argv, environ);
+    if (status != 0) {
+        perror("posix_spawn failed");
+        return 1;
+    }
+
+    printf("Spawned child PID: %d on macOS\n", pid);
+
+    // Wait for child termination
+    waitpid(pid, &status, 0);
+    printf("Child process %d exited with status %d\n", pid, WEXITSTATUS(status));
+
+    posix_spawn_file_actions_destroy(&actions);
+    posix_spawnattr_destroy(&attr);
+    return 0;
+}
+```
+
+### macOS Process Introspection Commands
+
+```bash
+# macOS: Inspect virtual memory map of a process (resident, dirty, purgeable pages)
+vmmap -summary <PID>
+
+# macOS: Sample call stacks across all threads in a running process for 5 seconds
+sample <PID> 5 -file /tmp/process_sample.txt
+
+# macOS: Detect dynamic memory leaks in a running process
+leaks <PID>
+
+# macOS: Inspect process launch supervision and services managed by launchd (PID 1)
+launchctl list | head -n 20
+
+# macOS: Inspect Mach task port and thread counts via proc_pidinfo
+sudo dtrace -n 'syscall::proc_info:entry { printf("PID %d queried proc_info", pid); }'
+```
+
+---
+
 **Previous:** [P1L2: Introduction to Operating Systems](../Part-1-Architecture/P1L2-Introduction-to-Operating-Systems.md)
 **Next:** [P2L2: Threads and Concurrency](P2L2-Threads-and-Concurrency.md)
+
 

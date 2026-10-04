@@ -27,7 +27,8 @@ sources:
 10. [Case Study: OpenSHMEM](#10-case-study-openshmem)
 11. [Case Study: PGAS Languages](#11-case-study-pgas-languages)
 12. [Performance and False Sharing](#12-performance-and-false-sharing)
-13. [Quiz Callouts](#13-quiz-callouts)
+13. [Quizzes and Exercises](#13-quizzes-and-exercises)
+14. [Cross-Platform Distributed and Hardware Shared Memory: Linux, Windows, and Apple Silicon](#14-cross-platform-distributed-and-hardware-shared-memory-linux-windows-and-apple-silicon)
 
 ---
 
@@ -1283,37 +1284,410 @@ perf stat -e cache-misses,cache-references,LLC-load-misses ./false_sharing
 
 ---
 
-## 13. Quiz Callouts
+## 13. Quizzes and Exercises
 
-> [!NOTE]
-> **Quiz: What is DSM?**
-> DSM = illusion of shared memory across physically distributed machines. Implemented in software (via page faults), or hardware (NUMA). Allows shared-memory programming models (OpenMP, pthreads) on a cluster of machines connected only by network.
+> [!question]
+> **Quiz 1: Software vs. Hardware Responsibilities in Hybrid DSM (Clips 507-508)**
+> In the classic survey paper *Distributed Shared Memory: Concepts and Systems* (Nitzberg and Lo), implementations are categorized as hardware-only, software-only, or hybrid hardware-software.
+> In hybrid DSM systems, which of the following operations is predominantly implemented in software rather than specialized hardware?
+> 1. Prefetching pages
+> 2. Virtual-to-physical address translation
+> 3. Triggering page/cache invalidations
 
-> [!NOTE]
-> **Quiz: Sequential vs Release Consistency**
-> - **Sequential**: All processes see all writes in same global order. Very restrictive, expensive.
-> - **Release**: Writes before `release(L)` are visible to anyone who later does `acquire(L)`. Weaker but much cheaper - only synchronize at explicit sync points.
-> - **Lazy Release**: Same as Release but propagate updates lazily (only at the moment of `acquire`, pull changes from processes you depend on).
+> [!success]- Answer
+> **Predominantly implemented in software: Option 1 (Prefetching pages).**
+> 
+> **Architectural Rationale:**
+> - **Address Translation (Option 2):** Handled directly by the hardware Memory Management Unit (MMU) and Translation Lookaside Buffer (TLB).
+> Incurring software traps on every address lookup would impose unacceptable execution overhead.
+> - **Triggering Invalidations (Option 3):** Hardware directory controllers and snooping buses have well-defined, rigid states that can execute cache line invalidations at wire speed.
+> - **Prefetching Pages (Option 1):** Determining *whether* and *what* to prefetch depends intimately on application-level access patterns, data structures, and algorithmic strides.
+> Software runtimes and compilers have semantic awareness of application behavior that rigid hardware state machines lack.
+> Therefore, hybrid DSM designs delegate heuristic page prefetching to software while relying on hardware for low-level memory protection and fast invalidation broadcasts.
 
-> [!NOTE]
-> **Quiz: IVY read fault vs write fault**
-> - **Read fault**: Contact owner, get read-only copy of page, join copy set.
-> - **Write fault**: Contact manager, manager invalidates all copies in copy set, new writer becomes owner with exclusive write access.
-> - Both faults require **network round trips**, which is why false sharing (unrelated vars on same page) destroys performance.
+---
 
-> [!NOTE]
-> **Quiz: False sharing in DSM**
-> False sharing = Two processes write to different variables that happen to be on the same page. Even though they never logically share data, the DSM system sees writes to the same page and must constantly transfer/invalidate it. Solution: pad data structures so logically independent variables are on separate pages.
+> [!question]
+> **Quiz 2: DSM Performance Metrics and Data Management Techniques (Clips 512-513)**
+> If memory access latency is the primary performance optimization metric in a Distributed Shared Memory architecture, which of the following data management techniques are well-suited for your design?
+> Select all that apply:
+> 1. Migration
+> 2. Caching
+> 3. Replication
 
-> [!IMPORTANT]
-> **Exam Key Concepts:**
-> 1. DSM = transparency of shared memory + distribution of cluster
-> 2. Consistency models trade correctness for performance (SC > RC > LRC)
-> 3. Page-based DSM uses OS page faults - simple but coarse granularity
-> 4. False sharing is the main performance killer in DSM
-> 5. Modern trend: RDMA removes CPU from remote memory accesses (~1µs)
-> 6. MPI (explicit message passing) often outperforms DSM for irregular access patterns
+> [!success]- Answer
+> **Well-suited techniques: Options 2 (Caching) and 3 (Replication).**
+> 
+> **Detailed Analysis:**
+> - **Migration (Option 1):** In migration, when a node accesses a page residing on another node, the entire page is moved exclusively to the requesting node.
+> While acceptable for strictly sequential single-reader/single-writer workloads, migration causes severe **ping-pong thrashing** in general multi-reader/multi-writer programs.
+> Pages are repeatedly shuttled across the interconnect, drastically increasing latency.
+> - **Caching (Option 2):** Caching retains copies of recently accessed pages in local RAM.
+> Subsequent reads hit local physical memory at sub-microsecond speeds rather than incurring millisecond network round trips.
+> - **Replication (Option 3):** Replication creates multiple concurrent read-only copies across different nodes.
+> Any node possessing a replica reads locally without network delay, scaling aggregate read throughput across the cluster.
+> 
+> *Caveat:* When concurrent writes occur, caching and replication incur invalidation overhead.
+> Just as Sprite DFS disabled caching during concurrent write-sharing, DSM protocols must trade off write-invalidation cost against read-caching benefits.
+
+---
+
+> [!question]
+> **Quiz 3: Sequential Consistency Execution Analysis (Clips 524-525)**
+> Consider an execution trace across two processors, $P_1$ and $P_2$, accessing shared memory locations $m_1$ and $m_3$ (initially all 0):
+> 
+> ```
+> P1:  W(m1)x  ────────►  W(m3)y
+> P2:               R(m1)x  ────────►  R(m3)y
+> ```
+> 
+> Is this execution sequentially consistent? (Yes / No)
+> Explain the formal condition.
+
+> [!success]- Answer
+> **Answer: Yes.**
+> 
+> **Formal Justification:**
+> Lamport defined Sequential Consistency: the result of any execution is the same as if the operations of all processors were executed in some sequential order, and the operations of each individual processor appear in this sequence in the order specified by its program.
+> In this trace:
+> - $P_1$ program order: $W(m_1)x \rightarrow W(m_3)y$.
+> - $P_2$ program order: $R(m_1)x \rightarrow R(m_3)y$.
+> - Interleaved global sequence: $W(m_1)x \rightarrow R(m_1)x \rightarrow W(m_3)y \rightarrow R(m_3)y$.
+> 
+> Because all operations respect each processor's program order and $P_2$ observes the write to $m_3$ only after observing the write to $m_1$, the execution satisfies sequential consistency.
+> If $P_2$ had read $R(m_3)y$ while earlier or concurrent reads to $m_1$ returned 0, sequential consistency would have been violated.
+
+---
+
+> [!question]
+> **Quiz 4: Sequential vs. Causal Consistency Execution Analysis (Clips 526-527)**
+> Consider an execution across four processors ($P_1, P_2, P_3, P_4$) accessing locations $m_1$ and $m_2$ (initially 0):
+> 
+> ```
+> P1:  W(m1)x
+> P2:  W(m2)y
+> P3:               R(m1)x  ───────►  R(m2)y
+> P4:               R(m2)y  ───────►  R(m1)x
+> ```
+> 
+> 1. Is this execution sequentially consistent?
+> 2. Is this execution causally consistent?
+
+> [!success]- Answer
+> **1. Sequentially Consistent: NO.**
+> **2. Causally Consistent: YES.**
+> 
+> **Detailed Architectural Explanation:**
+> - **Why it fails Sequential Consistency:**
+> Sequential consistency mandates a single, globally agreed-upon total order of all writes visible to every processor.
+> $P_3$ observes that $W(m_1)x$ occurred before $W(m_2)y$.
+> However, $P_4$ observes that $W(m_2)y$ occurred before $W(m_1)x$.
+> Because $P_3$ and $P_4$ observe mutually contradictory write orders, no valid single sequential interleaving exists.
+> - **Why it satisfies Causal Consistency:**
+> Causal consistency requires only that writes that are *causally related* must be seen in the same order by all processors.
+> Writes that are concurrent (not causally related) may be observed in different orders by different processors.
+> Here, $P_1$'s write to $m_1$ and $P_2$'s write to $m_2$ are independent and concurrent ($P_2$ did not read $m_1$ before writing to $m_2$).
+> Because there is no causal relationship between $W(m_1)x$ and $W(m_2)y$, it is completely legal under causal consistency for $P_3$ and $P_4$ to observe them in opposite orders.
+
+---
+
+> [!question]
+> **Quiz 5: Causally Dependent Writes Across Multiple Processors (Clips 528-529)**
+> Consider the following sequence of operations across four processors:
+> 
+> ```
+> P2:  W(m2)y
+> P1:               R(m2)y  ───────►  W(m3)z
+> P3:                                             R(m2)y  ───────►  R(m3)z
+> P4:                                             R(m3)z  ───────►  R(m2)0
+> ```
+> 
+> 1. Is this execution sequentially consistent?
+> 2. Is this execution causally consistent?
+
+> [!success]- Answer
+> **1. Sequentially Consistent: NO.**
+> **2. Causally Consistent: NO.**
+> 
+> **Detailed Architectural Explanation:**
+> - **Causal Chain Formation:**
+> $P_2$ writes $y$ to $m_2$.
+> Next, $P_1$ reads $m_2$ and observes $y$.
+> Subsequently, $P_1$ writes $z$ to $m_3$.
+> Because $P_1$ observed $P_2$'s write before issuing its own write, $W(m_3)z$ is **causally dependent** on $W(m_2)y$ via Lamport's happens-before relation:
+> $$W(m_2)y \longrightarrow R(m_2)y \longrightarrow W(m_3)z \implies W(m_2)y \longrightarrow W(m_3)z$$
+> - **Evaluation on $P_3$:** $P_3$ reads $m_2=y$ and then $m_3=z$, which matches the causal ordering.
+> - **Evaluation on $P_4$:** $P_4$ reads $m_3=z$ (observing the effect), but its subsequent read of $m_2$ returns 0 (it has not yet observed the cause).
+> $P_4$ observes the consequence of an action without observing the action that caused it.
+> This violates the fundamental definition of causal consistency.
+> Because it violates causal consistency, it also automatically violates sequential consistency.
+
+---
+
+> [!question]
+> **Quiz 6: Weak Consistency and Explicit Synchronization (Clips 530-533)**
+> In a weak consistency model, memory accesses are categorized into ordinary read/write operations and synchronization operations (`Sync` / `Barrier` / `Lock`).
+> 
+> Scenario A: Process $P_1$ executes writes $W(m_1)x$ and $W(m_2)y$.
+> Processes $P_2$ and $P_3$ read $m_1$ and $m_2$ in arbitrary, conflicting orders.
+> Neither $P_1$, $P_2$, nor $P_3$ executes any synchronization operations.
+> Is Scenario A weakly consistent?
+> 
+> Scenario B: If we remove the synchronization primitives entirely and evaluate Scenario A against causal consistency, is it causally consistent?
+
+> [!success]- Answer
+> **Scenario A (Weak Consistency): YES.**
+> Weak consistency makes zero guarantees about the ordering or visibility of regular data reads and writes until an explicit synchronization operation is executed.
+> Because no processor invoked `Sync`, the memory system is permitted to reorder, delay, or interleave reads and writes arbitrarily.
+> 
+> **Scenario B (Causal Consistency): NO.**
+> Under causal consistency, all writes executed by the *same processor* are causally ordered by program order:
+> $$W(m_1)x \longrightarrow W(m_2)y$$
+> If $P_3$ observes $W(m_2)y$ while reading old data for $m_1$, it violates causal consistency because it observed the later write before the earlier causally ordered write from that same thread.
+
+---
+
+> [!question]
+> **Quiz 7: IVY Page Fault Handling and Invalidation Protocol (Li and Hudak)**
+> Describe how the IVY distributed shared memory system handles a **Write Fault** under the Dynamic Distributed Manager with Broadcast scheme.
+> What happens to the page copy set, page ownership, and page access permissions across nodes?
+
+> [!success]- Answer
+> **IVY Write Fault Sequence:**
+> 1. **Fault Interception:** Node $k$ attempts to write to a page currently marked read-only or invalid in its local page table.
+> The CPU hardware MMU triggers a page protection fault, which is trapped by the IVY kernel signal handler (`SIGSEGV`).
+> 2. **Manager Inquiry:** Node $k$ sends a message to the page manager querying the current page owner.
+> 3. **Ownership Transfer and Invalidation:**
+> - The manager sends an invalidation message to all nodes in the page's **copy set** (the list of all nodes holding read-only copies).
+> - Every node in the copy set marks its local page table entry as invalid (`PROT_NONE`) and acknowledges invalidation.
+> - The current owner transfers the latest page contents to Node $k$.
+> 4. **New Owner Established:** Node $k$ becomes the exclusive owner of the page.
+> The copy set is cleared to contain only Node $k$.
+> 5. **Protection Upgrade:** Node $k$ updates its local page table permissions to read-write (`PROT_READ | PROT_WRITE`) and resumes the faulting instruction.
+
+---
+
+> [!question]
+> **Quiz 8: False Sharing Mitigation in Page-Based DSM**
+> Why is false sharing orders of magnitude more damaging in page-based DSM systems than in single-node symmetric multiprocessing (SMP) cache coherence?
+> What programming technique eliminates false sharing in DSM data structures?
+
+> [!success]- Answer
+> **Damage Disparity:**
+> - **In SMP Hardware:** Cache lines are small (typically 64 bytes).
+> When false sharing occurs, cache line invalidations bounce across high-speed on-die interconnects or UPI/QPI links with latencies measured in nanoseconds ($~30-80\text{ ns}$).
+> - **In Page-Based DSM:** Granularity is governed by the OS page size ($4\text{ KB}$ or $64\text{ KB}$).
+> Two threads modifying independent variables that happen to reside within the same 4 KB virtual page cause the DSM subsystem to interpret the access as a write collision.
+> The entire 4 KB page must be serialized, copied, transmitted across an IP network, and marked invalid via OS kernel page table modifications.
+> Network latency ($100\ \mu\text{s} - 10\text{ ms}$) is $10^4$ to $10^5$ times slower than an SMP cache bus, causing catastrophic throughput collapse.
+> 
+> **Mitigation Technique:**
+> - **Structure Padding:** Align and pad data structures so that variables modified by distinct nodes reside on separate virtual memory pages.
+> - **Fine-Grained DSM / Diffing:** Transition from strict page invalidation (IVY) to twin-and-diff lazy release consistency (TreadMarks), where multiple nodes write to the same page concurrently, and diffs are merged at synchronization points.
+
+---
+
+## 14. Cross-Platform Distributed and Hardware Shared Memory: Linux, Windows, and Apple Silicon
+
+### Linux: Kernel RDMA Subsystem and NUMA Memory Architecture
+
+#### 1. Remote Direct Memory Access (RDMA) over Converged Ethernet (RoCE) and InfiniBand
+Modern enterprise distributed shared memory relies on RDMA to bypass the OS kernel and remote CPU entirely.
+Network Interface Cards (NICs) read and write host RAM directly using DMA over the network in under 1 microsecond.
+
+```bash
+# Verify RDMA hardware devices and active InfiniBand / RoCE ports
+ibstat
+ibv_devinfo -v
+
+# Query registered RDMA link layers (InfiniBand vs Ethernet/RoCE)
+rdma link show
+
+# Check max locked memory limit (essential for RDMA memory registration ibv_reg_mr)
+ulimit -l
+# Production requirement in /etc/security/limits.conf:
+# * soft memlock unlimited
+# * hard memlock unlimited
+```
+
+#### 2. Linux NUMA (Non-Uniform Memory Access) Control and Diagnostics
+On multi-socket Linux servers, physical memory is partitioned into NUMA nodes attached directly to specific CPU sockets.
+Accessing remote socket memory incurs higher latency and lower bandwidth.
+
+```bash
+# Display hardware NUMA topology, socket assignments, and node distances
+numactl --hardware
+
+# Inspect per-node memory allocation hit/miss ratios
+# numa_miss: allocated on another node because preferred node was full
+# numa_foreign: intended for another node but allocated here
+numastat
+
+# Run an application bound strictly to NUMA Node 0 (CPUs and memory)
+numactl --cpunodebind=0 --membind=0 ./memory_intensive_app
+
+# Run application with interleaved memory allocation across all NUMA nodes
+# (Evenly distributes memory bandwidth across all memory controllers)
+numactl --interleave=all ./high_bandwidth_app
+```
+
+#### 3. Linux Kernel C NUMA Allocation (`mbind` and `set_mempolicy`)
+```c
+#define _GNU_SOURCE
+#include <stdio.h>
+#include <stdlib.h>
+#include <numa.h>
+#include <numaif.h>
+#include <sys/mman.h>
+
+int main(void) {
+    if (numa_available() < 0) {
+        fprintf(stderr, "NUMA not available on this platform\n");
+        return 1;
+    }
+
+    size_t size = 64 * 1024 * 1024; // 64 MB
+    void *ptr = mmap(NULL, size, PROT_READ | PROT_WRITE, 
+                     MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+
+    // Bind memory region explicitly to NUMA Node 1
+    unsigned long nodemask = (1UL << 1);
+    if (mbind(ptr, size, MPOL_BIND, &nodemask, sizeof(nodemask) * 8, MPOL_MF_MOVE) < 0) {
+        perror("mbind failed");
+        return 1;
+    }
+
+    printf("Successfully bound 64MB buffer to NUMA Node 1\n");
+    munmap(ptr, size);
+    return 0;
+}
+```
+
+---
+
+### Windows: Windows RDMA (SMB Direct) and Win32 NUMA Architecture
+
+#### 1. Windows RDMA Verification via PowerShell
+Windows Server and Windows 11 Enterprise support SMB Direct over RDMA (iWARP and RoCE).
+
+```powershell
+# Query RDMA capability and operational status on all physical network adapters
+Get-NetAdapterRdma
+
+# Inspect SMB Direct network interfaces connected to storage fabric
+Get-SmbServerNetworkInterface
+
+# Monitor real-time RDMA performance counters
+Get-Counter -Counter "\RDMA Activity(*)\*" -Continuous
+```
+
+#### 2. Win32 NUMA Node Memory Allocation (`VirtualAllocExNuma`)
+Windows exposes explicit NUMA node scheduling and memory allocation APIs.
+
+```c
+#include <windows.h>
+#include <stdio.h>
+
+int main(void) {
+    ULONG highestNodeNumber;
+    if (!GetNumaHighestNodeNumber(&highestNodeNumber)) {
+        printf("GetNumaHighestNodeNumber failed (%lu)\n", GetLastError());
+        return 1;
+    }
+    printf("Highest NUMA Node Number: %lu\n", highestNodeNumber);
+
+    // Allocate 16MB of physical RAM directly on NUMA Node 0
+    SIZE_T allocationSize = 16 * 1024 * 1024;
+    LPVOID pMemory = VirtualAllocExNuma(
+        GetCurrentProcess(),
+        NULL,
+        allocationSize,
+        MEM_COMMIT | MEM_RESERVE,
+        PAGE_READWRITE,
+        0 // Target NUMA Node 0
+    );
+
+    if (pMemory == NULL) {
+        printf("VirtualAllocExNuma failed (%lu)\n", GetLastError());
+        return 1;
+    }
+
+    printf("Allocated 16MB on NUMA Node 0 at address %p\n", pMemory);
+    VirtualFree(pMemory, 0, MEM_RELEASE);
+    return 0;
+}
+```
+
+---
+
+### macOS and Apple Silicon: Unified Memory Architecture (UMA)
+
+#### 1. UMA Architectural Distinction vs. Distributed / NUMA Systems
+Traditional high-performance systems use distributed memory or NUMA topologies:
+- CPUs have local DDR memory.
+- GPUs have discrete VRAM connected via PCIe buses.
+- Moving data between CPU and GPU requires explicit DMA transfers over PCIe (bandwidth limited to $32-64\text{ GB/s}$).
+
+Apple Silicon (M1/M2/M3/M4 series) rejects both NUMA and discrete GPU memory in favor of a **Unified Memory Architecture (UMA)**:
+- A single physical pool of wide, high-frequency LPDDR5/LPDDR5X memory (up to $800+\text{ GB/s}$ bandwidth on M-series Ultra chips).
+- The CPU Performance cores, CPU Efficiency cores, GPU execution cores, and the Apple Neural Engine (ANE) share direct physical access to the same memory addresses.
+- Hardware cache coherency is maintained across CPU and GPU cores by the Apple Silicon system-level cache (SLC) and fabric arbiter.
+
+#### 2. Zero-Copy Shared Memory in macOS Metal
+In Apple Silicon, applications achieve true zero-copy processing between CPU threads and GPU shaders.
+Data written by a CPU thread is immediately accessible by GPU kernels without memory copies or PCIe bus transit.
+
+```metal
+// Metal Shading Language (MSL) Kernel
+#include <metal_stdlib>
+using namespace metal;
+
+kernel void process_shared_buffer(device float* data [[buffer(0)]],
+                                  uint id [[thread_position_in_grid]]) {
+    data[id] = data[id] * 2.0f;
+}
+```
+
+```objc
+// Objective-C / Darwin CPU Setup for Zero-Copy UMA
+#import <Metal/Metal.h>
+#include <stdio.h>
+
+void execute_uma_pipeline() {
+    id<MTLDevice> device = MTLCreateSystemDefaultDevice();
+    
+    size_t count = 1000000;
+    size_t size = count * sizeof(float);
+    
+    // MTLResourceStorageModeShared: Buffer is shared between CPU and GPU with no copies!
+    id<MTLBuffer> sharedBuffer = [device newBufferWithLength:size 
+                                                     options:MTLResourceStorageModeShared];
+    
+    // Direct CPU pointer access to the shared buffer
+    float* cpuPtr = (float*)[sharedBuffer contents];
+    for (size_t i = 0; i < count; i++) {
+        cpuPtr[i] = (float)i;
+    }
+    
+    printf("CPU initialized %zu elements directly in unified physical RAM.\n", count);
+    // When GPU executes kernel, it reads the identical physical RAM addresses!
+}
+```
+
+#### 3. macOS Memory and Hardware Topology Inspection
+```zsh
+# Inspect CPU core topology and cache levels on Apple Silicon
+sysctl -a | grep -E "hw.perflevel|hw.l[1-3]|hw.memsize"
+
+# Monitor real-time unified memory bandwidth and SoC power consumption
+# Displays DRAM bandwidth consumption split between CPU, GPU, and Neural Engine
+sudo powermetrics --samplers cpu_power,gpu_power,bandwidth -n 1
+
+# Display macOS virtual memory page statistics and compression metrics
+vm_stat
+```
 
 ---
 
 *Cross-links: [[P3L3-Inter-Process-Communication]] (shared memory on single node) | [[P3L2-Memory-Management]] (virtual memory, page faults) | [[P4L2-Distributed-File-Systems]] (distributed storage) | [[P2L2-Threads-and-Concurrency]] (synchronization)*
+

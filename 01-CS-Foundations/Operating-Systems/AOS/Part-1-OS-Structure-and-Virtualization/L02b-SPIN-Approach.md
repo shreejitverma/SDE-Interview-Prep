@@ -182,16 +182,16 @@ Because both the dispatcher and the extension reside in the kernel address space
 > - Context switch from kernel to user-level network service: ~2000 cycles
 > - Execute filter logic: ~50 cycles
 > - Context switch from user service back to kernel: ~2000 cycles
-> - **Total cost:** $pprox 4150$ cycles per packet.
+> - **Total cost:** $\approx 4150$ cycles per packet.
 >
 > **SPIN approach:**
 > - Hardware trap to kernel (NIC interrupt): ~100 cycles
 > - Event dispatch (Procedure call via dynamic linking): ~10 cycles
 > - Execute filter logic (Extension): ~50 cycles
 > - Return from procedure: ~10 cycles
-> - **Total cost:** $pprox 170$ cycles per packet.
+> - **Total cost:** $\approx 170$ cycles per packet.
 >
-> **Result:** By replacing two expensive context switches (border crossings) with two inexpensive procedure calls, SPIN reduces the overhead by a factor of over 24x ($4150 / 170 pprox 24.4$).
+> **Result:** By replacing two expensive context switches (border crossings) with two inexpensive procedure calls, SPIN reduces the overhead by a factor of over 24x ($4150 / 170 \approx 24.4$).
 > The in-kernel dynamic linking makes the extension execution practically free relative to the trap overhead.
 
 ## Comparison

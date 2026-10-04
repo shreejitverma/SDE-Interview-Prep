@@ -215,11 +215,12 @@ Tasks are plain checkboxes with Dataview inline fields (`[week:: n]`, `[due:: da
 
 ## Exam-prep block (repeat before each test)
 
-1. Rebuild each Part cheat sheet from memory on one page, then diff it against the notes.
-2. Redo every practice question of the tested lessons closed-book, timed at about 2 minutes per point.
-3. For every paper in scope, say the problem, key idea, and one number from the evaluation out loud in 60 seconds.
-4. Draw the classic diagrams from memory: MCS lock queue, tournament and dissemination barriers, LRPC A-stack, GMS page-fault cases, TreadMarks twins and diffs, LRVM log, DQ curve, Coral routing.
-5. Work released exam questions with your study group only as the syllabus allows; keep any notes from that private.
+1. Solve the comprehensive [Exam Practice Questions](Exam-Prep/Exam-Practice-Questions.md) for the active test scope closed-book, using folded callouts for immediate feedback.
+2. Rebuild each Part cheat sheet from memory on one page, then diff it against the notes.
+3. Redo every practice question of the tested lessons closed-book, timed at about 2 minutes per point.
+4. For every paper in scope, say the problem, key idea, and one number from the evaluation out loud in 60 seconds.
+5. Draw the classic diagrams from memory: MCS lock queue, tournament and dissemination barriers, LRPC A-stack, GMS page-fault cases, TreadMarks twins and diffs, LRVM log, DQ curve, Coral routing.
+6. Work released exam questions with your study group only as the syllabus allows; keep any notes from that private.
 
 ## Two-week crash plan
 

@@ -26,7 +26,8 @@ sources:
 9. [Windows Distributed File Systems](#9-windows-distributed-file-systems)
 10. [Replication and Fault Tolerance](#10-replication-and-fault-tolerance)
 11. [Performance Analysis](#11-performance-analysis)
-12. [Quiz Callouts](#12-quiz-callouts)
+12. [Quizzes and Exercises](#12-quizzes-and-exercises)
+13. [Cross-Platform Distributed File Systems: Linux, macOS, and Windows](#13-cross-platform-distributed-file-systems-linux-macos-and-windows)
 
 ---
 
@@ -1335,41 +1336,335 @@ EOF
 
 ---
 
-## 12. Quiz Callouts
+## 12. Quizzes and Exercises
 
-> [!NOTE]
-> **Quiz: NFS vs AFS caching**
-> - **NFS**: Client polls server periodically (every 3-30s) to check if cached file is still valid. Simple, but O(clients) load on server.
-> - **AFS**: Server sends callbacks to invalidate client caches when files change. Server load proportional to file modification rate, not number of clients. Scales much better.
+> [!question]
+> **Quiz 1: File Caching Locations in Distributed File Systems (Clips 479-480)**
+> In a distributed file system architecture connecting multiple client nodes across a network to storage servers, at which physical and logical layers can file data and metadata be cached?
+> Select all valid caching locations in the DFS storage hierarchy:
+> 1. Client buffer cache in host RAM
+> 2. Client local persistent disk / solid state drive
+> 3. Server buffer cache in server RAM
+> 4. Network switch packet buffers
 
-> [!NOTE]
-> **Quiz: Stateful vs Stateless servers**
-> - **Stateless (NFS v3)**: Server doesn't track client state. Recovery is trivial - clients just retry. Trade-off: every operation must be self-describing (hence filehandles, not descriptors).
-> - **Stateful (NFS v4, AFS)**: Server tracks open files, locks, leases. Recovery is complex - server must re-establish state after crash. Benefit: locks, better consistency, session semantics.
+> [!success]- Answer
+> **Valid caching locations:** Options 1, 2, and 3.
+> 
+> **Architectural Breakdown:**
+> - **Client Host RAM (Option 1):** The primary and lowest-latency cache.
+> File read and write operations hit the client Operating System buffer cache / page cache, avoiding all network round-trip latency.
+> - **Client Persistent Disk (Option 2):** Used in architectures such as the Andrew File System (AFS).
+> AFS downloads entire files or large chunks to local client disk partitions (the client local cache).
+> This allows files to remain cached across client reboots and frees client volatile RAM for application processes.
+> - **Server RAM Buffer Cache (Option 3):** When a client cache miss occurs, an RPC is sent over the network to the file server.
+> The server inspects its own memory page cache before initiating costly block device reads from physical disk spindles or NVMe drives.
+> - **Network Switch Packet Buffers (Option 4):** Switches buffer transit Ethernet or IP frames during network congestion.
+> They do not cache application-level filesystem blocks, file inodes, or directory trees.
 
-> [!NOTE]
-> **Quiz: GFS consistency model**
-> GFS provides **relaxed consistency** for record appends: a successful append is guaranteed to appear *at least once* in the file at a defined offset, but duplicates are possible. Readers must handle duplicates (typically via checksums and unique IDs embedded in records).
+---
 
-> [!NOTE]
-> **Quiz: Why large chunk sizes in GFS/HDFS?**
-> 1. Reduces master metadata load (fewer entries)
-> 2. Reduces number of master→client→chunkserver interactions
-> 3. Keeps persistent TCP connection to chunkserver longer → less overhead
-> Downside: Small files use a full 64MB chunk (wasted space), and "hot spots" can occur if many clients access the same small file (only one chunk → one set of servers).
+> [!question]
+> **Quiz 2: Server-Driven DFS with Session Semantics (Clips 482-483)**
+> Consider a distributed file system implementing server-driven session semantics (changes are flushed to the server on `close()` and validated on `open()`).
+> What state must the server maintain in its per-file data structure to coordinate client access correctly?
+> 1. Current list of active readers
+> 2. Current list of concurrent active writers
+> 3. Current file version number / modification generation counter
+> 4. Complete client stack traces of all open file descriptors
 
-> [!IMPORTANT]
-> **Key Comparison - NFS vs AFS vs GFS**
->
-> | Property | NFS v3 | AFS | GFS/HDFS |
-> |----------|--------|-----|----------|
-> | Server state | Stateless | Stateful | Stateful |
-> | Cache validation | Polling | Callbacks | N/A (streaming) |
-> | Consistency | Session (close-open) | AFS consistency | Relaxed (append) |
-> | Write model | Any client writes | Any client writes | Single writer/appender |
-> | Scale target | ~100s clients | ~5,000 clients | Millions of clients |
-> | File size | Any | Any | Very large (GB+) |
+> [!success]- Answer
+> **Required state items:** Options 1, 2, and 3.
+> 
+> **Mechanism Explanation:**
+> Under session semantics, a file's contents are frozen into a local session snapshot upon `open()`.
+> All reads and writes target the local cache during the session.
+> Upon `close()`, the client flushes modified blocks to the server, creating a new authoritative file version.
+> To prevent lost updates and coordinate invalidations, the server per-file table must record:
+> - **Active Readers:** To determine which clients must be notified of invalidations or to track active read leases.
+> - **Active Writers:** To detect concurrent write sessions.
+> If multiple clients open the file for writing simultaneously, the server must determine conflict resolution (for example, last-close-wins, branching, or cache disablement).
+> - **Version Number:** Incremented whenever a writer closes the file and commits changes.
+> When another client invokes `open()`, the client passes its cached version number; if the server version is newer, the client invalidates its local cache and fetches the new file state.
+> Client internal stack traces (Option 4) are private process state inside the client OS kernel and have no meaning to the storage server.
+
+---
+
+> [!question]
+> **Quiz 3: Replication vs. Partitioning: Capacity and Fault Tolerance (Clips 486-487)**
+> A distributed storage cluster consists of 3 identical server nodes.
+> Each individual server has the physical storage capacity to hold exactly 100 unique files (providing 300 total physical file storage slots across the entire cluster).
+> Calculate the total unique file storage capacity of the cluster and the percentage of unique files lost/unavailable if exactly 1 server crashes under two architectures:
+> - **Architecture A (3-way Full Replication):** Every file stored in the cluster is mirrored across all 3 nodes.
+> - **Architecture B (Pure Partitioning / Sharding):** Files are partitioned uniformly across the 3 nodes with zero replication (each file exists on exactly one node).
+
+> [!success]- Answer
+> **Quantitative Comparison:**
+> 
+> | Metric | Architecture A (3-Way Replication) | Architecture B (Partitioning / Sharding) |
+> | :--- | :--- | :--- |
+> | **Total Unique Capacity** | **100 files** | **300 files** |
+> | **Capacity Calculation** | $\min(C_1, C_2, C_3) = 100$ files | $C_1 + C_2 + C_3 = 100 + 100 + 100 = 300$ files |
+> | **Lost Files on 1 Node Crash** | **0 files (0% data lost)** | **100 files (33.3% data lost)** |
+> | **Availability Calculation** | 2 replica nodes remain online ($100\%$ available) | $1 / 3$ of the partition space is unreachable ($33.3\%$ unavailable) |
+> 
+> **Key Takeaway:**
+> Replication maximizes fault tolerance and read throughput at the expense of usable storage efficiency ($33.3\%$ storage efficiency for 3-way replication).
+> Partitioning maximizes usable storage capacity and aggregate write bandwidth across separate disks, but any single node failure immediately causes permanent or temporary data loss for its assigned partition.
+
+---
+
+> [!question]
+> **Quiz 4: Stale NFS File Handle ESTALE (Clips 489-490)**
+> A software engineer runs a distributed build job on an NFS client mount point.
+> Suddenly, a system call targeting a file returns an error with errno 116 (`ESTALE`: Stale file handle).
+> What is the architectural root cause of `ESTALE` in the Network File System protocol?
+
+> [!success]- Answer
+> **Root Cause:**
+> In NFS (particularly NFS v2 and v3), the server is stateless.
+> The server does not maintain client open file tables.
+> Instead, files are identified across RPC calls using an opaque **file handle** generated by the server.
+> The file handle contains three essential fields:
+> 1. The filesystem identifier (`fsid`).
+> 2. The internal inode number of the target file (`fileid`).
+> 3. An inode generation count (`generation`).
+> 
+> If Client A opens a file and receives a file handle, but another client (or a local administrative process on the server) deletes or unlinks the file, the server frees the inode.
+> When the underlying filesystem reallocates that inode to a completely new file, the server increments the inode generation count.
+> When Client A subsequently submits an RPC request containing the old file handle, the server inspects the inode on disk.
+> The server detects that the stored generation count on disk does not match the generation count inside the client's file handle, or that the inode is completely unallocated.
+> Because the file referenced by the handle no longer exists in that exact identity, the server returns the error `ESTALE`.
+> The client OS cannot transparently recover and raises `ESTALE` to the calling application.
+
+---
+
+> [!question]
+> **Quiz 5: NFS Cache Consistency Semantics (Clips 492-493)**
+> Does the standard Network File System (NFS) protocol provide strict session semantics, strict POSIX consistency, or periodic consistency?
+> Explain how NFS handles file modifications across multiple clients in practice.
+
+> [!success]- Answer
+> **Answer: Neither strict session semantics nor strict POSIX semantics.**
+> NFS implements a pragmatic, opportunistic consistency model often described as **close-to-open consistency** coupled with **periodic attribute polling**.
+> 
+> **How It Operates:**
+> 1. **Flush on Close:** When a client application closes a file (`close()`), the client kernel synchronously flushes all modified and dirty buffer cache pages back to the NFS server before returning from the `close()` system call.
+> 2. **Check on Open:** When another client opens the same file (`open()`), the client kernel issues an RPC (`GETATTR`) to query the server's last modification timestamp (`mtime`).
+> If the server timestamp is newer than the client cached copy, the client purges its local buffer cache and refetches data from the server.
+> 3. **The Periodic Polling Gap:** While a file remains continuously open across multiple clients, the clients do not query the server on every read or write.
+> Instead, each client caches file attributes for a configurable time window governed by mount options:
+> - `acregmin` (minimum attribute cache timeout for regular files, default 3 seconds).
+> - `acregmax` (maximum attribute cache timeout for regular files, default 60 seconds).
+> 
+> If Client 1 and Client 2 both have the file open simultaneously, writes performed by Client 1 will not be observed by Client 2 until Client 1 closes the file or flushes blocks, and Client 2's attribute timer expires.
+> This violates POSIX consistency (which requires that a write be immediately visible to all concurrent readers).
+
+---
+
+> [!question]
+> **Quiz 6: Sprite DFS Empirical Findings and Cache-Disable Policy (Clips 494-497)**
+> In the classic empirical study of the Sprite distributed file system (Ousterhout et al.):
+> 1. What key behavioral characteristics of file system access patterns were uncovered?
+> 2. How did Sprite handle cache consistency when concurrent write-sharing actually occurred?
+
+> [!success]- Answer
+> **Empirical Findings:**
+> The researchers instrumented unix workstations in an academic and research environment and discovered:
+> - **Write Frequency:** Approximately $33\%$ of all file opens were for writing, while $67\%$ were read-only.
+> - **Short Lifespans:** Roughly $75\%$ of files were open for less than $0.5$ seconds, and most temporary files were deleted within minutes of creation.
+> - **Small File Sizes:** Over $90\%$ of all accessed files were smaller than 10 KB.
+> - **Rare Concurrent Write-Sharing:** True concurrent write-sharing (where one process writes to a file while another process simultaneously reads or writes the same file) accounted for less than $1\%$ of all file accesses.
+> 
+> **Sprite's Cache-Disable-on-Write-Sharing Policy:**
+> Because concurrent write sharing was so rare, Sprite allowed clients to cache file blocks in local RAM without executing continuous validation checks.
+> However, the central Sprite file server tracked all active opens for every file.
+> When a client opened a file that was already opened by another client on a different machine, and at least one of the clients requested write access:
+> 1. The server recognized the onset of concurrent write-sharing.
+> 2. The server contacted the writing client and ordered it to flush its dirty blocks to the server.
+> 3. The server signaled all participating clients to **disable local caching** for that specific file.
+> 4. For the entire duration of the concurrent access session, all reads and writes bypassed the client local buffer caches and traveled synchronously over the network to the server buffer cache.
+> 5. Once the file was closed and only a single client remained, caching was re-enabled.
+
+---
+
+> [!question]
+> **Quiz 7: Stateless vs. Stateful Distributed File Servers**
+> Contrast stateless servers (e.g., NFS v3) with stateful servers (e.g., AFS, NFS v4) across crash recovery, file locking, and cache invalidation.
+
+> [!success]- Answer
+> **Comprehensive Architectural Comparison:**
+> 
+> | Dimension | Stateless Server (NFS v3) | Stateful Server (AFS, NFS v4) |
+> | :--- | :--- | :--- |
+> | **Server State Kept** | None in kernel memory regarding client sessions. Requests contain complete authorization and position context. | Maintains client identifiers, open file instances, byte-range locks, and cache delegations/callbacks. |
+> | **Crash Recovery** | Trivial and immediate. The server reboots and immediately processes incoming client RPCs; clients simply retry timed-out requests. | Complex. Requires a **grace period** upon reboot during which clients reclaim existing locks and open state before new requests are accepted. |
+> | **File Locking** | Impossible natively within the base protocol. Requires an out-of-band auxiliary daemon (Network Lock Manager - NLM), introducing fragile pseudo-state. | Native and robust. Byte-range locks are integrated directly into the protocol state machine. |
+> | **Cache Invalidation** | Client-driven. Clients must periodically poll the server (`GETATTR`) to verify file freshness, creating server scalability bottlenecks. | Server-driven. The server grants **callbacks** (AFS) or **delegations** (NFS v4). When a file changes, the server pushes invalidation messages to clients. |
+
+---
+
+## 13. Cross-Platform Distributed File Systems: Linux, macOS, and Windows
+
+### Linux: Kernel NFS Server and Client Operations
+
+#### 1. Configuring and Exporting NFS Shares on Linux
+The Linux kernel implements high-performance in-kernel NFS servicing (`nfsd`).
+Exports are defined in `/etc/exports`.
+
+```bash
+# Install kernel NFS server package (Debian/Ubuntu)
+sudo apt-get update && sudo apt-get install -y nfs-kernel-server
+
+# Create export directory with shared permissions
+sudo mkdir -p /srv/nfs/shared_data
+sudo chown -R nobody:nogroup /srv/nfs/shared_data
+sudo chmod 777 /srv/nfs/shared_data
+
+# Configure /etc/exports
+# rw: read-write access
+# sync: commit changes to disk before replying to RPCs (prevents data loss on crash)
+# no_subtree_check: disables subtree checking for improved transfer speed and reliability
+# insecure: allows clients using source ports > 1024 (essential for macOS clients)
+cat << 'EOF' | sudo tee -a /etc/exports
+/srv/nfs/shared_data  192.168.1.0/24(rw,sync,no_subtree_check,insecure)
+EOF
+
+# Export all declared file systems and verify active exports
+sudo exportfs -arv
+sudo exportfs -s
+
+# Enable and start NFS server systemd service
+sudo systemctl enable --now nfs-server
+```
+
+#### 2. Mounting NFS on Linux Clients
+Modern Linux distributions default to NFS v4.2.
+
+```bash
+# Install client utilities
+sudo apt-get install -y nfs-common
+
+# Create mount target
+sudo mkdir -p /mnt/nfs_client
+
+# Mount NFS share with production performance options:
+# hard: client retries indefinitely if server crashes, avoiding application IO errors
+# intr: allows user to interrupt hung operations via SIGINT/SIGQUIT
+# rsize/wsize: max block transfer size (1048576 = 1MB)
+# timeo: RPC timeout in tenths of a second (600 = 60s)
+# retrans: number of minor timeouts before a major timeout
+sudo mount -t nfs -o vers=4.2,hard,intr,rsize=1048576,wsize=1048576,timeo=600,retrans=2 192.168.1.50:/srv/nfs/shared_data /mnt/nfs_client
+
+# Inspect mounted NFS details and active RPC parameters
+cat /proc/mounts | grep nfs
+```
+
+#### 3. Linux NFS Performance and Diagnostic Tooling
+```bash
+# Display client-side NFS RPC statistics and cache hit rates
+nfsstat -c
+
+# Display server-side NFS statistics (v3 vs v4 operations, read/write distributions)
+nfsstat -s
+
+# Monitor continuous per-mount I/O throughput and latency (1 second intervals)
+nfsiostat 1
+
+# Inspect raw network RPC socket buffers
+cat /proc/net/rpc/nfs
+```
+
+---
+
+### macOS: Darwin NFS Client, Built-in nfsd, and SMB
+
+#### 1. Mounting NFS on macOS (The `resvport` Requirement)
+By default, the macOS Darwin kernel uses unprivileged ephemeral network ports ($>1024$) for outbound NFS client connections.
+Standard UNIX/Linux NFS servers reject requests from unprivileged ports with `Permission denied` unless the server explicitly specifies `insecure` in `/etc/exports` or the client uses the `resvport` mount option.
+
+```zsh
+# Create local mount point on macOS
+sudo mkdir -p /System/Volumes/Data/mnt/nfs_share
+
+# Mount remote NFS export using resvport (forces port < 1024)
+sudo mount -t nfs -o resvport,vers=4,hard,intr,rsize=1048576,wsize=1048576 192.168.1.50:/srv/nfs/shared_data /System/Volumes/Data/mnt/nfs_share
+
+# Verify active mount details using mount command
+mount -v | grep nfs
+```
+
+#### 2. Running the Native Darwin NFS Server on macOS
+macOS includes a native BSD-derived NFS daemon (`nfsd`).
+
+```zsh
+# Configure /etc/exports on macOS
+# -ro: read only, or -maproot=root for administrative access
+cat << 'EOF' | sudo tee -a /etc/exports
+/Users/Shared/Public -network 192.168.1.0 -mask 255.255.255.0 -alldirs
+EOF
+
+# Verify syntax of /etc/exports without starting daemon
+sudo nfsd checkexports
+
+# Enable and start the macOS nfsd daemon
+sudo nfsd enable
+sudo nfsd restart
+
+# Query operational status of macOS nfsd
+sudo nfsd status
+```
+
+#### 3. macOS Native SMB Client and Real-Time Filesystem Tracing
+```zsh
+# Mount an SMB share via Darwin command line
+mkdir -p /Volumes/RemoteShare
+mount -t smbfs //username:password@192.168.1.50/shared_data /Volumes/RemoteShare
+
+# Trace all active filesystem calls (VFS layer) in real time
+# Filters specifically for filesystem system calls and displays file paths
+sudo fs_usage -w -f filesys
+```
+
+---
+
+### Windows: Services for NFS and PowerShell SMB Architecture
+
+#### 1. Enabling and Mounting NFS on Windows
+Windows provides the "Client for NFS" feature on Pro and Enterprise editions.
+
+```powershell
+# Enable NFS Client Feature in Windows via Administrator PowerShell
+Enable-WindowsOptionalFeature -Online -FeatureName ServicesForNFS-ClientOnly,ClientForNFS-Infrastructure -NoRestart
+
+# Mount NFS share to drive letter Z:
+# anon: use anonymous user mapping
+# casesensitive=yes: force UNIX case-sensitivity compliance
+# fileaccess=777: set default permissions
+mount.exe -o anon,fileaccess=777,casesensitive=yes \\192.168.1.50\srv\nfs\shared_data Z:
+
+# Verify active NFS network mounts
+net use
+nfsstat.exe
+```
+
+#### 2. Native Windows SMB 3.1.1 and DFS-N Operations
+In Windows enterprise networks, the Distributed File System Namespace (DFS-N) provides a logical tree aggregating distinct SMB shares across multiple physical file servers.
+
+```powershell
+# Inspect all active SMB client connections and negotiated dialect (e.g., 3.1.1)
+Get-SmbConnection
+
+# Verify SMB Multichannel network adapter bindings for high throughput
+Get-SmbMultichannelConnection
+
+# Create an enterprise SMB share on Windows Server
+New-SmbShare -Name "CompanyData" -Path "C:\Data\Company" -FullAccess "Domain Admins" -ReadAccess "Everyone"
+
+# Query SMB server configuration parameters
+Get-SmbServerConfiguration | Select-Object -Property EnableSMB1Protocol, EnableSMB2Protocol, EncryptData
+```
 
 ---
 
 *Cross-links: [[P4L1-Remote-Procedure-Calls]] (NFS uses Sun RPC) | [[P3L3-Inter-Process-Communication]] (local file sharing) | [[P3L5-IO-Management]] (VFS layer)*
+
