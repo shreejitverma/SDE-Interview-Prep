@@ -1,6 +1,6 @@
 # Vault Audit
 
-Generated 2026-10-01 by `python3 tools/audit_vault.py` over git-tracked files.
+Generated 2026-10-04 by `python3 tools/audit_vault.py` over git-tracked files.
 Re-run the script after every structural change; this file is its output and should not be hand-edited.
 0 files in private locations (`tools/private_paths.py`) are excluded; `tools/audit_pii.py` inventories them into a private path.
 
@@ -8,10 +8,10 @@ Re-run the script after every structural change; this file is its output and sho
 
 | Check | Result |
 | :--- | ---: |
-| Tracked files | 15262 |
-| Markdown notes | 1625 |
-| Internal links checked | 10702 |
-| Broken links (links into private locations are not counted) | 0 |
+| Tracked files | 15564 |
+| Markdown notes | 1783 |
+| Internal links checked | 11937 |
+| Broken links (links into private locations are not counted) | 1 |
 | Wikilink aliases that split a table cell | 0 |
 | Broken wikilinks fixable by unique basename | 0 |
 | Orphan knowledge notes (no inbound links) | 0 |
@@ -29,16 +29,16 @@ Re-run the script after every structural change; this file is its output and sho
 
 | Folder | Files | Notes | Code | Papers | Other | MB | Last touched |
 | :--- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| `(root)` | 11 | 6 | 0 | 0 | 5 | 0.1 | 2026-09-21 |
+| `(root)` | 11 | 6 | 0 | 0 | 5 | 0.1 | 2026-10-01 |
 | `.github` | 1 | 0 | 0 | 0 | 1 | 0.0 | 2026-09-21 |
-| `.obsidian` | 45 | 0 | 0 | 0 | 45 | 0.0 | 2026-10-01 |
-| `00-Start-Here` | 4 | 4 | 0 | 0 | 0 | 0.0 | 2026-09-21 |
-| `01-CS-Foundations` | 185 | 82 | 68 | 0 | 35 | 2.6 | 2026-09-27 |
+| `.obsidian` | 45 | 0 | 0 | 0 | 45 | 0.0 | 2026-10-02 |
+| `00-Start-Here` | 4 | 4 | 0 | 0 | 0 | 0.0 | 2026-09-28 |
+| `01-CS-Foundations` | 482 | 237 | 141 | 0 | 104 | 4.2 | 2026-10-02 |
 | `02-Programming-Languages` | 5827 | 817 | 2860 | 466 | 1684 | 112.3 | 2026-09-30 |
 | `03-Data-Structures-Algorithms` | 7708 | 82 | 7506 | 0 | 120 | 15.2 | 2026-09-21 |
 | `04-System-Design` | 880 | 66 | 657 | 0 | 157 | 7.5 | 2026-09-21 |
-| `05-Quantitative-Finance` | 9 | 2 | 7 | 0 | 0 | 0.0 | 2026-09-21 |
-| `06-Interview-Prep` | 13 | 12 | 0 | 0 | 1 | 0.2 | 2026-09-21 |
+| `05-Quantitative-Finance` | 9 | 2 | 7 | 0 | 0 | 0.0 | 2026-10-01 |
+| `06-Interview-Prep` | 13 | 12 | 0 | 0 | 1 | 0.2 | 2026-10-01 |
 | `07-Project-Portfolio` | 1 | 1 | 0 | 0 | 0 | 0.0 | 2026-09-21 |
 | `08-Distinguished-Engineering` | 9 | 3 | 6 | 0 | 0 | 0.0 | 2026-09-21 |
 | `09-Engineering-Leadership` | 3 | 3 | 0 | 0 | 0 | 0.0 | 2026-09-21 |
@@ -48,9 +48,9 @@ Re-run the script after every structural change; this file is its output and sho
 | `13-Agentic-AI` | 185 | 185 | 0 | 0 | 0 | 3.4 | 2026-09-24 |
 | `14-Low-Latency-Systems` | 262 | 262 | 0 | 0 | 0 | 1.7 | 2026-09-21 |
 | `15-Technical-Whitepapers` | 44 | 44 | 0 | 0 | 0 | 0.3 | 2026-09-21 |
-| `16-Interview-Command-Center` | 48 | 48 | 0 | 0 | 0 | 0.1 | 2026-09-21 |
+| `16-Interview-Command-Center` | 51 | 51 | 0 | 0 | 0 | 0.1 | 2026-10-01 |
 | `CS-Subjects` | 1 | 1 | 0 | 0 | 0 | 0.0 | 2026-09-21 |
-| `tools` | 15 | 1 | 12 | 0 | 2 | 0.1 | 2026-09-21 |
+| `tools` | 17 | 1 | 14 | 0 | 2 | 0.1 | 2026-10-01 |
 
 ## 2. Duplicate and overlapping sections
 
@@ -112,13 +112,15 @@ Re-run the script after every structural change; this file is its output and sho
 
 | Folder | Broken |
 | :--- | ---: |
+| `01-CS-Foundations` | 1 |
 
 0 broken wikilinks point at a path that no longer exists but name a note that exists exactly once elsewhere.
 These come from folder reorganizations that did not rewrite links and can be fixed mechanically.
 
 <details>
-<summary>All 0 broken links</summary>
+<summary>All 1 broken links</summary>
 
+- `01-CS-Foundations/Operating-Systems/GIOS/_GIOS-Dashboard.md` (md) -> `Exam-Prep/Midterm-Practice-Questions.md`
 
 </details>
 

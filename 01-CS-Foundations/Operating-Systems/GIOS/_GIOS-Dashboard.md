@@ -147,6 +147,16 @@ CS 6200 GIOS
 
 ---
 
+## Exam Prep
+
+| Set | Scope | Questions | Status |
+|-----|-------|-----------|--------|
+| [Midterm Practice Questions](Exam-Prep/Midterm-Practice-Questions.md) | P1-P2, Solaris + Flash papers | 8 | `active` |
+
+Answers are in collapsed Obsidian callouts - attempt each question before expanding.
+
+---
+
 ## Code Examples
 
 All runnable code is in the [code/](code/) directory:
