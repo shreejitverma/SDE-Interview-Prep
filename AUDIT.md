@@ -10,7 +10,7 @@ Re-run the script after every structural change; this file is its output and sho
 | :--- | ---: |
 | Tracked files | 15568 |
 | Markdown notes | 1787 |
-| Internal links checked | 11987 |
+| Internal links checked | 11988 |
 | Broken links (links into private locations are not counted) | 0 |
 | Wikilink aliases that split a table cell | 0 |
 | Broken wikilinks fixable by unique basename | 0 |

@@ -181,6 +181,28 @@ Multi-threaded:
   Total: ~3 time units (I/O overlapped with computation)
 ```
 
+#### CS 6200 Throughput and Latency Formulas for Thread Execution
+
+When evaluating multithreaded task execution and scheduling efficiency, the CS 6200 curriculum formally measures performance using these formulas:
+
+- **Throughput Formula:**
+  $$\text{Throughput} = \frac{\text{jobs\_completed}}{\text{time\_to\_complete\_all\_jobs}}$$
+
+- **Avg. Completion Time Formula:**
+  $$\text{Avg. Completion Time} = \frac{\sum \text{times\_to\_complete\_each\_job}}{\text{jobs\_completed}}$$
+
+- **Avg. Wait Time Formula:**
+  $$\text{Avg. Wait Time} = \frac{\sum_{i=1}^{n} t_i\text{\_wait\_time}}{\text{jobs\_completed}} = \frac{t_1\text{\_wait\_time} + t_2\text{\_wait\_time} + \dots + t_n\text{\_wait\_time}}{\text{jobs\_completed}}$$
+
+- **Time to Complete All Jobs per Job (Average Makespan):**
+  $$\text{Makespan per Job} = \frac{\text{time\_to\_complete\_all\_jobs}}{\text{jobs\_completed}}$$
+
+> [!NOTE]
+> **CS 6200 Exam & Quiz Conventions:**
+> - You do not have to include units in your numerical answers.
+> - For decimal answers, always round to the hundredths place (e.g., `0.25`, `1.67`, `5.00`).
+> - For scheduling proofs and algorithm comparisons (FCFS, SJF, RR), see [[P3L1-Scheduling#official-cs-6200-scheduling-metric-formulas|P3L1: Scheduling Metrics]].
+
 ### 3. Resource Sharing
 
 Threads in the same process share memory without any IPC overhead:

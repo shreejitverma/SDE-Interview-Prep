@@ -83,6 +83,28 @@ Arrival                                      Completion
   |<- Waiting time ->|      (total time in ready queue)
 ```
 
+### Official CS 6200 Scheduling Metric Formulas
+
+The Georgia Tech CS 6200 curriculum formally defines scheduling performance evaluation using the following formulas:
+
+- **Throughput Formula:**
+  $$\text{Throughput} = \frac{\text{jobs\_completed}}{\text{time\_to\_complete\_all\_jobs}}$$
+
+- **Average Completion Time Formula:**
+  $$\text{Avg. Completion Time} = \frac{\sum \text{times\_to\_complete\_each\_job}}{\text{jobs\_completed}}$$
+
+- **Average Wait Time Formula:**
+  $$\text{Avg. Wait Time} = \frac{\sum_{i=1}^{n} t_i\text{\_wait\_time}}{\text{jobs\_completed}} = \frac{t_1\text{\_wait\_time} + t_2\text{\_wait\_time} + \dots + t_n\text{\_wait\_time}}{\text{jobs\_completed}}$$
+
+- **Time to Complete All Jobs per Job (Average Makespan):**
+  $$\text{Makespan per Job} = \frac{\text{time\_to\_complete\_all\_jobs}}{\text{jobs\_completed}}$$
+
+> [!NOTE]
+> **CS 6200 Exam & Quiz Conventions:**
+> - You do not have to include units in your numerical answers on quizzes and exams.
+> - For decimal answers, please round to the hundredths place (two decimal digits, e.g., `0.25`, `1.67`, `5.00`).
+
+
 ---
 
 ## 3. First-Come, First-Served (FCFS)
@@ -643,18 +665,70 @@ cat /sys/devices/system/cpu/cpu0/topology/thread_siblings_list
 ## 14. Quizzes and Exercises
 
 > [!question] Quiz 1: Shortest Job First (SJF) and Turnaround Time Optimality (Clips 233-234)
-> 1. Mathematically prove why Shortest Job First (SJF) minimizes average waiting time and turnaround time compared to First-Come First-Served (FCFS).
-> 2. Why is pure SJF rarely implemented in real-world general-purpose operating systems?
+> Consider a single-CPU system running non-preemptive run-to-completion scheduling.
+> Three tasks arrive simultaneously at time $T_0$:
+> - Task $T_1$: execution time = $1\text{ second}$
+> - Task $T_2$: execution time = $10\text{ seconds}$
+> - Task $T_3$: execution time = $1\text{ second}$
+> 
+> Using the official CS 6200 formulas:
+> - $\text{Throughput} = \frac{\text{jobs\_completed}}{\text{time\_to\_complete\_all\_jobs}}$
+> - $\text{Avg. Completion Time} = \frac{\sum \text{times\_to\_complete\_each\_job}}{\text{jobs\_completed}}$
+> - $\text{Avg. Wait Time} = \frac{t_1\text{\_wait\_time} + t_2\text{\_wait\_time} + t_3\text{\_wait\_time}}{\text{jobs\_completed}}$
+> 
+> *(Note: Do not include units in answers; round decimals to the hundredths place).*
+> 
+> 1. What is the execution order under Shortest Job First (SJF)?
+> 2. Calculate the Throughput, Average Completion Time, and Average Wait Time under SJF.
+> 3. Compare these metrics against First-Come First-Served (FCFS) in arrival order $T_1 \to T_2 \to T_3$.
+> 4. State the mathematical proof of why SJF minimizes total and average waiting time.
 
 > [!success]- Answer
-> 1. **Proof of Optimality:**
->    - Consider $n$ jobs arriving simultaneously with execution durations $t_1, t_2, \dots, t_n$.
->    - Under an arbitrary execution schedule $\pi$, the waiting time of the $k$-th scheduled job is:
->      $$W_k = \sum_{j=1}^{k-1} t_{\pi(j)}$$
->    - The total waiting time summed across all $n$ jobs is:
->      $$W_{\text{total}} = (n-1)t_{\pi(1)} + (n-2)t_{\pi(2)} + \dots + 1 \cdot t_{\pi(n-1)} + 0 \cdot t_{\pi(n)} = \sum_{k=1}^{n} (n-k)t_{\pi(k)}$$
->    - To minimize this sum of products, the largest multipliers $(n-1, n-2, \dots)$ must be paired with the smallest values of $t$. Hence, sorting jobs in strictly non-decreasing order of burst duration ($t_1 \le t_2 \le \dots \le t_n$) achieves the global mathematical minimum for total and average waiting time.
-> 2. **Practical Obstacle:** The exact CPU burst duration $t_k$ of a future process cannot be known in advance (analogous to the halting problem). General-purpose systems can only approximate $t_k$ using exponential moving averages ($\tau_{n+1} = \alpha t_n + (1-\alpha)\tau_n$).
+> **1. Execution Order under SJF:**
+> Since $T_1 = 1\text{s}$, $T_3 = 1\text{s}$, and $T_2 = 10\text{s}$, the shortest jobs execute first:
+> $$\text{Order: } T_1 \longrightarrow T_3 \longrightarrow T_2 \quad (\text{or } T_3 \longrightarrow T_1 \longrightarrow T_2)$$
+> 
+> ---
+> 
+> **2. Quantitative Metrics under SJF:**
+> - **Timeline:**
+>   - $T_1$ runs from $t = 0$ to $t = 1$ (completes at $1\text{s}$, waited $0\text{s}$)
+>   - $T_3$ runs from $t = 1$ to $t = 2$ (completes at $2\text{s}$, waited $1\text{s}$)
+>   - $T_2$ runs from $t = 2$ to $t = 12$ (completes at $12\text{s}$, waited $2\text{s}$)
+> - **Throughput:**
+>   $$\text{Throughput} = \frac{\text{jobs\_completed}}{\text{time\_to\_complete\_all\_jobs}} = \frac{3}{12} = \mathbf{0.25}$$
+> - **Average Completion Time:**
+>   $$\text{Avg. Completion Time} = \frac{1 + 2 + 12}{3} = \frac{15}{3} = \mathbf{5.00}$$
+> - **Average Wait Time:**
+>   $$\text{Avg. Wait Time} = \frac{0 + 1 + 2}{3} = \frac{3}{3} = \mathbf{1.00}$$
+> - **Time to Complete All Jobs per Job:**
+>   $$\text{Makespan per Job} = \frac{12}{3} = \mathbf{4.00}$$
+> 
+> ---
+> 
+> **3. Comparison Against FCFS ($T_1 \to T_2 \to T_3$):**
+> - **FCFS Timeline:**
+>   - $T_1$ runs $[0, 1]$ (completes at $1\text{s}$, waited $0\text{s}$)
+>   - $T_2$ runs $[1, 11]$ (completes at $11\text{s}$, waited $1\text{s}$)
+>   - $T_3$ runs $[11, 12]$ (completes at $12\text{s}$, waited $11\text{s}$)
+> - **FCFS Metrics:**
+>   - $\text{Throughput} = \frac{3}{12} = \mathbf{0.25}$ (identical to SJF)
+>   - $\text{Avg. Completion Time} = \frac{1 + 11 + 12}{3} = \frac{24}{3} = \mathbf{8.00}$ (vs $5.00$ in SJF)
+>   - $\text{Avg. Wait Time} = \frac{0 + 1 + 11}{3} = \frac{12}{3} = \mathbf{4.00}$ (vs $1.00$ in SJF)
+> 
+> *Key takeaway:* While throughput is identical ($0.25$), SJF slashes average wait time from $4.00\text{s}$ to $1.00\text{s}$ ($4\times$ improvement) and reduces average completion time from $8.00\text{s}$ to $5.00\text{s}$.
+> 
+> ---
+> 
+> **4. Mathematical Proof of Optimality:**
+> - Consider $n$ jobs arriving simultaneously with durations $t_1, t_2, \dots, t_n$.
+> - Under schedule $\pi$, the waiting time of the $k$-th job is $W_k = \sum_{j=1}^{k-1} t_{\pi(j)}$.
+> - Total waiting time is:
+>   $$W_{\text{total}} = \sum_{k=1}^{n} (n-k)t_{\pi(k)} = (n-1)t_{\pi(1)} + (n-2)t_{\pi(2)} + \dots + 1 \cdot t_{\pi(n-1)} + 0 \cdot t_{\pi(n)}$$
+> - By the rearrangement inequality, this sum of products is strictly minimized when larger multipliers $(n-1, n-2, \dots)$ are paired with smaller job lengths $t$.
+> Hence, sorting jobs such that $t_1 \le t_2 \le \dots \le t_n$ produces the minimum possible average wait time.
+> - *Practical Limit:* Future CPU burst lengths cannot be known with certainty; general-purpose kernels must approximate them using exponential smoothing ($\tau_{n+1} = \alpha t_n + (1-\alpha)\tau_n$).
+
 
 > [!question] Quiz 2: Preemptive Scheduling and Priority Inversion (Clips 237-238)
 > 1. Differentiate between **preemptive** and **non-preemptive** CPU scheduling.

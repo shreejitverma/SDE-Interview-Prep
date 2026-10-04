@@ -629,11 +629,19 @@ Back to [GIOS Dashboard](../_GIOS-Dashboard.md).
 > | $P_3$ | 9 ms |
 > | $P_4$ | 5 ms |
 > 
+> Use the official CS 6200 performance evaluation formulas:
+> - **Throughput Formula:** $\frac{\text{jobs\_completed}}{\text{time\_to\_complete\_all\_jobs}}$
+> - **Avg. Completion Time Formula:** $\frac{\sum \text{times\_to\_complete\_each\_job}}{\text{jobs\_completed}}$
+> - **Avg. Wait Time Formula:** $\frac{\sum t_i\text{\_wait\_time}}{\text{jobs\_completed}} = \frac{t_1\text{\_wait\_time} + t_2\text{\_wait\_time} + t_3\text{\_wait\_time} + t_4\text{\_wait\_time}}{\text{jobs\_completed}}$
+> - **Makespan per Job:** $\frac{\text{time\_to\_complete\_all\_jobs}}{\text{jobs\_completed}}$
+> 
+> *(CS 6200 Rule: You do not have to include units in your answers. Also, for decimal answers, please round to the hundredths place).*
+> 
 > 1. Draw the execution timeline and calculate the turnaround time ($T_{turnaround} = T_{completion} - T_{arrival}$) and waiting time ($T_{wait} = T_{turnaround} - t_{burst}$) for each process under:
 >    - First-Come, First-Served (FCFS) in process ID order ($P_1, P_2, P_3, P_4$).
 >    - Shortest Job First (SJF, non-preemptive).
 >    - Round Robin (RR) with a timeslice quantum $q = 3\text{ ms}$.
-> 2. Calculate the Average Waiting Time ($\overline{T}_{wait}$) for each algorithm.
+> 2. Calculate the Throughput, Average Completion Time, and Average Waiting Time for each algorithm.
 > 3. In Round Robin scheduling, what are the architectural consequences of setting the quantum $q$ too small versus too large?
 > State the general rule of thumb for quantum sizing in relation to CPU burst times.
 
@@ -685,16 +693,18 @@ Back to [GIOS Dashboard](../_GIOS-Dashboard.md).
 > 
 > ---
 > 
-> **2. Average Waiting Time Comparison:**
+> **2. Quantitative Metrics Comparison Table (Rounded to Hundredths):**
 > 
-> | Scheduling Algorithm | Individual Waiting Times ($P_1, P_2, P_3, P_4$) | Average Waiting Time ($\overline{T}_{wait}$) |
-> | :--- | :--- | :--- |
-> | **FCFS** | $0, 8, 12, 21$ | $\frac{0 + 8 + 12 + 21}{4} = \frac{41}{4} = \mathbf{10.25\text{ ms}}$ |
-> | **SJF** | $9, 0, 17, 4$ | $\frac{9 + 0 + 17 + 4}{4} = \frac{30}{4} = \mathbf{7.50\text{ ms}}$ |
-> | **Round Robin ($q=3$)** | $15, 12, 17, 16$ | $\frac{15 + 12 + 17 + 16}{4} = \frac{60}{4} = \mathbf{15.00\text{ ms}}$ |
+> | Scheduling Algorithm | Throughput ($\frac{\text{jobs}}{\text{total\_time}}$) | Avg. Completion Time ($\frac{\sum \text{completion}}{\text{jobs}}$) | Avg. Wait Time ($\frac{\sum \text{wait}}{\text{jobs}}$) | Makespan per Job ($\frac{\text{total\_time}}{\text{jobs}}$) |
+> | :--- | :--- | :--- | :--- | :--- |
+> | **FCFS** | $\frac{4}{26} = \mathbf{0.15}$ | $\frac{8 + 12 + 21 + 26}{4} = \frac{67}{4} = \mathbf{16.75}$ | $\frac{0 + 8 + 12 + 21}{4} = \frac{41}{4} = \mathbf{10.25}$ | $\frac{26}{4} = \mathbf{6.50}$ |
+> | **SJF** | $\frac{4}{26} = \mathbf{0.15}$ | $\frac{4 + 9 + 17 + 26}{4} = \frac{56}{4} = \mathbf{14.00}$ | $\frac{0 + 4 + 9 + 17}{4} = \frac{30}{4} = \mathbf{7.50}$ | $\frac{26}{4} = \mathbf{6.50}$ |
+> | **Round Robin ($q=3$)** | $\frac{4}{26} = \mathbf{0.15}$ | $\frac{16 + 21 + 23 + 26}{4} = \frac{86}{4} = \mathbf{21.50}$ | $\frac{12 + 16 + 15 + 17}{4} = \frac{60}{4} = \mathbf{15.00}$ | $\frac{26}{4} = \mathbf{6.50}$ |
 > 
-> *Insight:* SJF is provably optimal for minimizing average waiting time.
-> Round Robin provides fair CPU sharing and low response time for interactive jobs, but incurs higher average waiting time for batch workloads.
+> *Key Observations:*
+> - **Throughput:** Identical across all non-idle algorithms ($0.15$), because total processing time ($26\text{ ms}$) without idle gaps depends only on the aggregate workload bursts.
+> - **Average Completion & Wait Times:** SJF achieves the minimum completion time ($14.00$) and minimum wait time ($7.50$).
+> Round Robin trades average completion latency ($21.50$) for interactive fairness and responsiveness.
 > 
 > ---
 > 
