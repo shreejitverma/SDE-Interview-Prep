@@ -17,5 +17,6 @@ Data structures and algorithms: topic notes, practice-platform solutions, resour
 
 - [Topics](01-Topics/README.md)
 - [Practice Platforms](02-Practice-Platforms/README.md)
+- [Gold Standard Cpp Patterns](04-Gold-Standard-Cpp-Patterns/README.md)
 
 <!-- moc:end -->
