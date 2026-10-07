@@ -28,6 +28,14 @@ Each case study follows a standardized 12-section blueprint: TL;DR, Mental Model
 | 08 | [[08-Video-Streaming-Platform/design\|Video Streaming Platform (YouTube / Netflix)]] | Resumable multipart upload, parallel DAG transcoding (GOP splitting), Adaptive Bitrate Streaming (HLS/DASH), multi-tier CDN | HLS, MPEG-DASH, FFmpeg, CDN Edge, Kafka/Flink |
 | 09 | [[09-Ticket-Booking-System/design\|Ticket Booking System (Ticketmaster / BookMyShow)]] | Zero double-booking, 10-minute temporary seat hold leases via Redis Lua, Virtual Waiting Room traffic leveling, Saga transactions | Redis Lua, Saga Pattern, PostgreSQL, Cloudflare Queue |
 | 10 | [[10-E-Commerce-Flash-Sale/design\|E-Commerce Flash Sale (Amazon Prime Day / Alibaba 11.11)]] | Zero overselling under 200k QPS, stock pre-warming, stock sharding across Redis nodes, Kafka rate leveling to database | Stock Sharding, Redis Lua, Kafka, AliSQL / InnoDB |
+| 11 | [[11-Distributed-Key-Value-Store/design\|Distributed Key-Value Store (Dynamo)]] | Consistent-hash placement, N/R/W quorums, sloppy quorum, vector-clock siblings, Merkle repair | Consistent hashing, quorum, hinted handoff |
+| 12 | [[12-Typeahead-Search/design\|Typeahead and Search Suggestions]] | Precomputed top-K per prefix, separate from the BM25 inverted index, snapshot publish | In-memory trie, heavy hitters, edge cache |
+| 13 | [[13-Notification-System/design\|Notification System]] | Transactional path isolated from marketing, inbox as source of truth, per-device idempotency | Outbox, provider senders, preferences |
+| 14 | [[14-Collaborative-Editor/design\|Collaborative Document]] | OT against a server sequence, or a CRDT for offline editors, tombstones and presence | Op log, CRDT, session fan-out |
+| 15 | [[15-Payment-Ledger/design\|Payment Ledger]] | Append-only double-entry, integer minor units, one writer per account, reconciler | Idempotency key, saga hold, outbox |
+| 16 | [[16-Metrics-Platform/design\|Metrics Platform]] | Series cardinality, histogram buckets, Gorilla-style chunks, burn-rate queries | Pull and push, Kafka buffer, recording rules |
+| 17 | [[17-File-Sync/design\|File Sync]] | Content-defined chunks, metadata compare-and-swap, block store, conflict copies | Rabin or FastCDC, content addressing |
+| 18 | [[18-Distributed-Lock/design\|Distributed Lock and Leader Election]] | Lease plus fencing token, consensus lock service, row versions for data | ZooKeeper or etcd, reject stale tokens |
 
 ---
 

@@ -40,9 +40,11 @@ graph TD
 ### 1. Foundational Concepts
 Comprehensive theoretical foundations of distributed computing, concurrency, scaling, and consistency models.
 - [[04-System-Design/00-Concepts/README|00-Concepts MOC]]
+- [[Distinguished-Design-Path]] - The reading order, from the invariant down to the product diagram.
 - [[System-Design-Concept-Map]] - Interactive Mermaid relationship map connecting concepts to concrete technologies.
 - [[Technology-Comparison-Matrix]] - Master reference matrix comparing 20 primary technologies across consistency, partitioning, and storage models.
 - [[system_design_basics]] - Executive summary and rapid-reference cheatsheet.
+- Staff foundations: [[Capacity-Estimation]], [[Replication-and-Quorums]], [[Time-Clocks-and-Ordering]], [[Consensus-and-Failure-Detection]], [[Indexing-and-Access-Paths]], [[Caching-and-Invalidation]], [[DNS-and-CDN]], [[Probabilistic-Structures]], [[Idempotency-and-Delivery]], [[Outbox-CDC-and-Event-Sourcing]], [[Backpressure-and-Tail-Latency]], [[Multi-Region-Active-Active]], [[Schema-Evolution-and-Migration]], [[SLOs-and-Observability]].
 
 ### 2. APIs and Communication Protocols
 Network framing protocols, serialization formats, API styles, security boundaries, and pagination patterns.
@@ -69,7 +71,14 @@ Distributed filesystems, resource negotiators, in-memory execution DAGs, query o
 - [[04-System-Design/08-Big-Data/README|08-Big-Data MOC]]
 - Deep Dives: [[Hadoop-and-HDFS]], [[Apache-Spark]].
 
-### 7. End-to-End Case Studies (Staff+ Blueprint)
+### 7. Low-Level Design (LLD)
+Single-process software architecture: type safety, memory layout, invariants, GoF design patterns, thread-safe concurrency models, domain-driven design, and canonical enterprise interview problems.
+- [[04-System-Design/01-LLD/README|01-LLD Master Curriculum MOC]]
+- Foundations: [[SOLID-Principles-Staff-Deep-Dive]], [[Object-Oriented-Analysis-and-Design]], [[Design-Patterns-Catalog-Staff-Reference]].
+- Patterns & Architecture: [[01-Creational-Patterns/README|Creational]], [[02-Structural-Patterns/README|Structural]], [[03-Behavioral-Patterns/README|Behavioral]], [[Concurrency-Patterns-and-Thread-Safety]], [[Clean-Architecture-and-Domain-Driven-Design]].
+- Canonical Problems: [[Design-In-Memory-Cache]], [[Design-Rate-Limiter]], [[Design-Event-Bus-Pub-Sub]], [[Design-Logging-Framework]], [[Design-Task-Scheduler]], [[Design-Elevator-System]], [[Design-Smart-Parking-Lot]], [[Design-Movie-Ticket-Booking-System]], [[Design-Ride-Sharing-Dispatch-Engine]], [[Design-Splitwise-Expense-Sharing]].
+
+### 8. End-to-End Case Studies (Staff+ Blueprint)
 Comprehensive architectural breakdowns combining storage, messaging, networking, compute, and failure recovery.
 - [[04-System-Design/02-Case-Studies/README|02-Case-Studies MOC]]
 - Deep Dives:
@@ -83,6 +92,14 @@ Comprehensive architectural breakdowns combining storage, messaging, networking,
   - [[08-Video-Streaming-Platform/design|08. Video Streaming Platform (YouTube / Netflix)]]
   - [[09-Ticket-Booking-System/design|09. Ticket Booking System (Ticketmaster / BookMyShow)]]
   - [[10-E-Commerce-Flash-Sale/design|10. E-Commerce Flash Sale (Amazon Prime Day / Alibaba 11.11)]]
+  - [[11-Distributed-Key-Value-Store/design|11. Distributed Key-Value Store (Dynamo)]]
+  - [[12-Typeahead-Search/design|12. Typeahead and Search Suggestions]]
+  - [[13-Notification-System/design|13. Notification System]]
+  - [[14-Collaborative-Editor/design|14. Collaborative Document]]
+  - [[15-Payment-Ledger/design|15. Payment Ledger]]
+  - [[16-Metrics-Platform/design|16. Metrics Platform]]
+  - [[17-File-Sync/design|17. File Sync]]
+  - [[18-Distributed-Lock/design|18. Distributed Lock and Leader Election]]
 
 ---
 
@@ -106,7 +123,7 @@ Comprehensive architectural breakdowns combining storage, messaging, networking,
 
 ## Additional Resources and Question Indices
 
-- [[02-Case-Studies/README|Case Studies Master Hub]] - Full catalog of 10 end-to-end distributed system blueprints.
+- [[02-Case-Studies/README|Case Studies Master Hub]] - Full catalog of 18 end-to-end distributed system blueprints.
 - [[03-Design-Patterns/README|Design Patterns]] - Architectural and structural design patterns.
 - [[04-System-Design/design-patterns-cpp/README|C++ Design Patterns Catalog]] - Complete GoF and modern C++ design patterns reference.
 - [[04-System-Design/design-patterns-python/Ultimate-Python-Design-Patterns|Python Design Patterns Guide]] - Complete Python design patterns and idioms guide.

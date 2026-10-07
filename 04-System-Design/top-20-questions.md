@@ -130,3 +130,56 @@ Each problem explores distinct engineering challenges: read-to-write ratios, hot
 - **Core Challenges**: Protocol Buffers binary framing, HTTP/2 multiplexing, bidirectional streaming, client-side load balancing.
 - **Deep Dive**: [[gRPC-and-Protocol-Buffers]] and [[HTTP-Evolution-HTTP1-HTTP2-HTTP3]].
 - **Related Concepts**: [[REST-APIs]], [[GraphQL]], [[API-Fundamentals]].
+
+## Further Canonical Designs
+
+The twenty questions above are the usual interview set.
+The designs below are the ones a distinguished engineer is expected to reason about when the question leaves the product diagram.
+
+## 21. Dynamo-Style Key-Value Store
+- **Problem**: Design an available key-value store that survives a minority of unreachable replicas.
+- **Core Challenges**: Consistent hashing, N/R/W, sloppy quorum, sibling merge, Merkle anti-entropy.
+- **Deep Dive**: [[11-Distributed-Key-Value-Store/design|Design a Distributed Key-Value Store]].
+- **Related Concepts**: [[Replication-and-Quorums]], [[Consistent-Hashing]], [[Time-Clocks-and-Ordering]].
+
+## 22. Typeahead
+- **Problem**: Design search suggestions that answer while the user is typing.
+- **Core Challenges**: Precomputed top-K per prefix, snapshot publish, a separate inverted index for the results page.
+- **Deep Dive**: [[12-Typeahead-Search/design|Design Typeahead and Search Suggestions]].
+- **Related Concepts**: [[Indexing-and-Access-Paths]], [[Probabilistic-Structures]], [[Caching-and-Invalidation]].
+
+## 23. Notifications
+- **Problem**: Design fan-out to push, email, and SMS without blocking the product API.
+- **Core Challenges**: Outbox, per-device idempotency, priority queues, inbox as the source of truth.
+- **Deep Dive**: [[13-Notification-System/design|Design a Notification System]].
+- **Related Concepts**: [[Idempotency-and-Delivery]], [[Outbox-CDC-and-Event-Sourcing]], [[Backpressure-and-Tail-Latency]].
+
+## 24. Collaborative Editing
+- **Problem**: Design a document several people can edit without a lock per keystroke.
+- **Core Challenges**: OT versus CRDT, tombstones, offline merge, presence as a side channel.
+- **Deep Dive**: [[14-Collaborative-Editor/design|Design a Collaborative Document]].
+- **Related Concepts**: [[Time-Clocks-and-Ordering]], [[Multi-Region-Active-Active]], [[Consensus-and-Failure-Detection]].
+
+## 25. Payments Ledger
+- **Problem**: Design a ledger that moves value once, in integer minor units.
+- **Core Challenges**: Balanced postings, idempotency across a card network, reconciliation, one writer per account.
+- **Deep Dive**: [[15-Payment-Ledger/design|Design a Payment Ledger]].
+- **Related Concepts**: [[Idempotency-and-Delivery]], [[saga_pattern]], [[ACID-vs-BASE]].
+
+## 26. Metrics and Alerting
+- **Problem**: Design the store behind error rates and latency tails.
+- **Core Challenges**: Label cardinality, histogram buckets, compressed chunks, burn-rate queries.
+- **Deep Dive**: [[16-Metrics-Platform/design|Design a Metrics Platform]].
+- **Related Concepts**: [[SLOs-and-Observability]], [[Backpressure-and-Tail-Latency]], [[Apache-Kafka]].
+
+## 27. File Sync
+- **Problem**: Design a folder that stays equal across devices without reuploading unchanged bytes.
+- **Core Challenges**: Content-defined chunking, metadata compare-and-swap, garbage collection, conflict copies.
+- **Deep Dive**: [[17-File-Sync/design|Design File Sync]].
+- **Related Concepts**: [[Amazon-S3-and-Object-Storage]], [[Time-Clocks-and-Ordering]], [[14-Collaborative-Editor/design|Collaborative merge]].
+
+## 28. Distributed Lock
+- **Problem**: Design leader election that stays safe when a holder pauses.
+- **Core Challenges**: Lease, fencing token, consensus service versus a cache key, row versions for data.
+- **Deep Dive**: [[18-Distributed-Lock/design|Design a Distributed Lock and Leader Election]].
+- **Related Concepts**: [[Consensus-and-Failure-Detection]], [[Apache-ZooKeeper]], [[Optimistic-vs-Pessimistic-Locking]].

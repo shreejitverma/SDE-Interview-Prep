@@ -8,9 +8,9 @@ Re-run the script after every structural change; this file is its output and sho
 
 | Check | Result |
 | :--- | ---: |
-| Tracked files | 15642 |
-| Markdown notes | 1860 |
-| Internal links checked | 12773 |
+| Tracked files | 15696 |
+| Markdown notes | 1914 |
+| Internal links checked | 13163 |
 | Broken links (links into private locations are not counted) | 0 |
 | Wikilink aliases that split a table cell | 0 |
 | Broken wikilinks fixable by unique basename | 0 |
@@ -36,7 +36,7 @@ Re-run the script after every structural change; this file is its output and sho
 | `01-CS-Foundations` | 492 | 247 | 141 | 0 | 104 | 4.6 | 2026-10-07 |
 | `02-Programming-Languages` | 5827 | 817 | 2860 | 466 | 1684 | 112.3 | 2026-10-07 |
 | `03-Data-Structures-Algorithms` | 7708 | 82 | 7506 | 0 | 120 | 15.2 | 2026-09-21 |
-| `04-System-Design` | 937 | 123 | 657 | 0 | 157 | 9.2 | 2026-10-07 |
+| `04-System-Design` | 991 | 177 | 657 | 0 | 157 | 9.7 | 2026-10-07 |
 | `05-Quantitative-Finance` | 9 | 2 | 7 | 0 | 0 | 0.0 | 2026-10-07 |
 | `06-Interview-Prep` | 13 | 12 | 0 | 0 | 1 | 0.2 | 2026-10-07 |
 | `07-Project-Portfolio` | 1 | 1 | 0 | 0 | 0 | 0.0 | 2026-09-21 |

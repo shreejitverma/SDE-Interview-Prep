@@ -148,3 +148,32 @@ How foundational theories and technology blocks combine into end-to-end architec
 - **[[08-Video-Streaming-Platform/design|Video Streaming (YouTube/Netflix)]]**: Resumable multipart upload, parallel DAG transcoding, Adaptive Bitrate (HLS/DASH), multi-tier CDN.
 - **[[09-Ticket-Booking-System/design|Ticket Booking (Ticketmaster)]]**: Zero double-booking, 10-minute temporary seat hold leases via Redis Lua, Saga transactions.
 - **[[10-E-Commerce-Flash-Sale/design|E-Commerce Flash Sale (Amazon/Alibaba)]]**: Zero overselling under 200k QPS, stock pre-warming, stock sharding, Kafka queue leveling.
+- **[[11-Distributed-Key-Value-Store/design|Distributed Key-Value Store]]**: N/R/W, sloppy quorum, vector clocks, Merkle repair.
+- **[[12-Typeahead-Search/design|Typeahead]]**: Precomputed prefix top-K, separate from the inverted index.
+- **[[13-Notification-System/design|Notifications]]**: Outbox fan-out, per-device idempotency, inbox as the record.
+- **[[14-Collaborative-Editor/design|Collaborative Document]]**: OT or CRDT, op log, presence off to the side.
+- **[[15-Payment-Ledger/design|Payment Ledger]]**: Balanced postings, one writer per account, reconciler.
+- **[[16-Metrics-Platform/design|Metrics]]**: Cardinality budget, histogram buckets, burn-rate reads.
+- **[[17-File-Sync/design|File Sync]]**: Content-defined chunks, metadata compare-and-swap.
+- **[[18-Distributed-Lock/design|Distributed Lock]]**: Lease, fencing token, consensus service.
+
+## Staff Foundations
+
+```mermaid
+flowchart TD
+    Math["[[Capacity-Estimation]]"] --> Place["[[Replication-and-Quorums]]"]
+    Place --> Clocks["[[Time-Clocks-and-Ordering]]"]
+    Clocks --> Agree["[[Consensus-and-Failure-Detection]]"]
+    Place --> Index["[[Indexing-and-Access-Paths]]"]
+    Index --> Cache["[[Caching-and-Invalidation]]"]
+    Cache --> Edge["[[DNS-and-CDN]]"]
+    Place --> Once["[[Idempotency-and-Delivery]]"]
+    Once --> Outbox["[[Outbox-CDC-and-Event-Sourcing]]"]
+    Once --> Tail["[[Backpressure-and-Tail-Latency]]"]
+    Agree --> Region["[[Multi-Region-Active-Active]]"]
+    Outbox --> Migrate["[[Schema-Evolution-and-Migration]]"]
+    Tail --> SLO["[[SLOs-and-Observability]]"]
+    Edge --> Prob["[[Probabilistic-Structures]]"]
+```
+
+[[Distinguished-Design-Path]] is the reading order for this graph.
