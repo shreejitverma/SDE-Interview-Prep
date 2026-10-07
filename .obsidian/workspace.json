@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "README.md",
+                "file": "00-Start-Here/Roadmap.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "README"
+              "title": "Roadmap"
             }
           }
         ]
@@ -214,8 +214,12 @@
       "obsidian-git:Open Git source control": false
     }
   },
-  "active": "e7a7b303c61786dc",
+  "active": "25e9a2f618275701",
   "lastOpenFiles": [
+    "03-Data-Structures-Algorithms/02-Practice-Platforms/LeetCode/Java/word-search.java",
+    "03-Data-Structures-Algorithms/02-Practice-Platforms/LeetCode/C++/clone-graph.cpp",
+    "00-Start-Here/Vault-Map.canvas",
+    "README.md",
     "03-Data-Structures-Algorithms/02-Practice-Platforms/LeetCode/Problems/README.md",
     "03-Data-Structures-Algorithms/02-Practice-Platforms/LeetCode/Problems/0076-Minimum-Window-Substring.md",
     "03-Data-Structures-Algorithms/02-Practice-Platforms/LeetCode/Rust/minimum-window-substring.rs",
@@ -229,7 +233,6 @@
     "03-Data-Structures-Algorithms/02-Practice-Platforms/LeetCode/Java/merge-intervals.java",
     "03-Data-Structures-Algorithms/02-Practice-Platforms/LeetCode/Problems/0054-Spiral-Matrix.md",
     "03-Data-Structures-Algorithms/02-Practice-Platforms/LeetCode/Rust/spiral-matrix.rs",
-    "03-Data-Structures-Algorithms/02-Practice-Platforms/LeetCode/Golang/spiral-matrix.go",
     "03-Data-Structures-Algorithms/02-Practice-Platforms/LeetCode/Problems/0049-Group-Anagrams.md",
     "03-Data-Structures-Algorithms/02-Practice-Platforms/LeetCode/Problems/0019-Remove-Nth-Node-From-End-of-List.md",
     "03-Data-Structures-Algorithms/02-Practice-Platforms/LeetCode/Problems/0005-Longest-Palindromic-Substring.md",
@@ -250,10 +253,7 @@
     "03-Data-Structures-Algorithms/02-Practice-Platforms/LeetCode/Problems/0153-Find-Minimum-in-Rotated-Sorted-Array.md",
     "03-Data-Structures-Algorithms/02-Practice-Platforms/LeetCode/Problems/0152-Maximum-Product-Subarray.md",
     "03-Data-Structures-Algorithms/02-Practice-Platforms/LeetCode/Problems/0053-Maximum-Subarray.md",
-    "03-Data-Structures-Algorithms/02-Practice-Platforms/LeetCode/Problems/0238-Product-of-Array-Except-Self.md",
-    "03-Data-Structures-Algorithms/02-Practice-Platforms/LeetCode/Problems/0217-Contains-Duplicate.md",
     "01-CS-Foundations/Operating-Systems/AOS/AOS-Concept-Map.canvas",
-    "00-Start-Here/Vault-Map.canvas",
     "04-System-Design/Design Patterns/python-patterns/patterns/structural/viz/mvc.py.png",
     "04-System-Design/Design Patterns/python-patterns/patterns/structural/viz/proxy.py.png",
     "04-System-Design/Design Patterns/python-patterns/patterns/structural/viz/flyweight.py.png",

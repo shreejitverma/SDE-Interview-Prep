@@ -1,273 +1,50 @@
 {
-  "nodes": [
-    {
-      "id": "intro",
-      "type": "text",
-      "text": "## Vault map\n\nClick a card to open that section.\nThe same order is written in the roadmap.\nArrows are the learning order.",
-      "x": 0,
-      "y": -280,
-      "width": 520,
-      "height": 180,
-      "color": "5"
-    },
-    {
-      "id": "g-start",
-      "type": "group",
-      "x": 0,
-      "y": 0,
-      "width": 1240,
-      "height": 320,
-      "label": "Start",
-      "color": "5"
-    },
-    {
-      "id": "start-roadmap",
-      "type": "file",
-      "file": "00-Start-Here/Roadmap.md",
-      "x": 40,
-      "y": 80,
-      "width": 360,
-      "height": 200
-    },
-    {
-      "id": "start-how",
-      "type": "file",
-      "file": "00-Start-Here/How-This-Vault-Works.md",
-      "x": 440,
-      "y": 80,
-      "width": 360,
-      "height": 200
-    },
-    {
-      "id": "start-review",
-      "type": "file",
-      "file": "00-Start-Here/Review-Queue.md",
-      "x": 840,
-      "y": 80,
-      "width": 360,
-      "height": 200
-    },
-    {
-      "id": "g-foundations",
-      "type": "group",
-      "x": 0,
-      "y": 400,
-      "width": 1680,
-      "height": 320,
-      "label": "Foundations",
-      "color": "4"
-    },
-    {
-      "id": "f-cs",
-      "type": "file",
-      "file": "01-CS-Foundations/README.md",
-      "x": 40,
-      "y": 480,
-      "width": 360,
-      "height": 200
-    },
-    {
-      "id": "f-lang",
-      "type": "file",
-      "file": "02-Programming-Languages/README.md",
-      "x": 440,
-      "y": 480,
-      "width": 360,
-      "height": 200
-    },
-    {
-      "id": "f-dsa",
-      "type": "file",
-      "file": "03-Data-Structures-Algorithms/README.md",
-      "x": 840,
-      "y": 480,
-      "width": 360,
-      "height": 200
-    },
-    {
-      "id": "f-canon",
-      "type": "file",
-      "file": "01-CS-Foundations/Computer-Science-Canon/README.md",
-      "x": 1240,
-      "y": 480,
-      "width": 360,
-      "height": 200
-    },
-    {
-      "id": "g-core",
-      "type": "group",
-      "x": 0,
-      "y": 800,
-      "width": 1660,
-      "height": 320,
-      "label": "Core engineering",
-      "color": "2"
-    },
-    {
-      "id": "c-design",
-      "type": "file",
-      "file": "04-System-Design/README.md",
-      "x": 40,
-      "y": 880,
-      "width": 360,
-      "height": 200
-    },
-    {
-      "id": "c-practices",
-      "type": "file",
-      "file": "10-Development-Practices/README.md",
-      "x": 440,
-      "y": 880,
-      "width": 360,
-      "height": 200
-    },
-    {
-      "id": "c-security",
-      "type": "file",
-      "file": "11-Security-And-Cryptography/README.md",
-      "x": 840,
-      "y": 880,
-      "width": 360,
-      "height": 200
-    },
-    {
-      "id": "c-perf",
-      "type": "file",
-      "file": "12-Performance-Engineering/README.md",
-      "x": 1240,
-      "y": 880,
-      "width": 360,
-      "height": 200
-    },
-    {
-      "id": "g-staff",
-      "type": "group",
-      "x": 0,
-      "y": 1200,
-      "width": 1240,
-      "height": 320,
-      "label": "Staff and distinguished",
-      "color": "6"
-    },
-    {
-      "id": "s-dist",
-      "type": "file",
-      "file": "08-Distinguished-Engineering/README.md",
-      "x": 40,
-      "y": 1280,
-      "width": 360,
-      "height": 200
-    },
-    {
-      "id": "s-lead",
-      "type": "file",
-      "file": "09-Engineering-Leadership/README.md",
-      "x": 440,
-      "y": 1280,
-      "width": 360,
-      "height": 200
-    },
-    {
-      "id": "s-papers",
-      "type": "file",
-      "file": "15-Technical-Whitepapers/README.md",
-      "x": 840,
-      "y": 1280,
-      "width": 360,
-      "height": 200
-    },
-    {
-      "id": "g-tracks",
-      "type": "group",
-      "x": 0,
-      "y": 1600,
-      "width": 1240,
-      "height": 320,
-      "label": "Role tracks",
-      "color": "3"
-    },
-    {
-      "id": "t-quant",
-      "type": "file",
-      "file": "05-Quantitative-Finance/README.md",
-      "x": 40,
-      "y": 1680,
-      "width": 360,
-      "height": 200
-    },
-    {
-      "id": "t-ll",
-      "type": "file",
-      "file": "14-Low-Latency-Systems/00 Home.md",
-      "x": 440,
-      "y": 1680,
-      "width": 360,
-      "height": 200
-    },
-    {
-      "id": "t-ai",
-      "type": "file",
-      "file": "13-Agentic-AI/README.md",
-      "x": 840,
-      "y": 1680,
-      "width": 360,
-      "height": 200
-    },
-    {
-      "id": "g-interview",
-      "type": "group",
-      "x": 0,
-      "y": 2000,
-      "width": 1240,
-      "height": 320,
-      "label": "Interview loop",
-      "color": "1"
-    },
-    {
-      "id": "i-prep",
-      "type": "file",
-      "file": "06-Interview-Prep/README.md",
-      "x": 40,
-      "y": 2080,
-      "width": 360,
-      "height": 200
-    },
-    {
-      "id": "i-cc",
-      "type": "file",
-      "file": "16-Interview-Command-Center/00-Dashboard.md",
-      "x": 440,
-      "y": 2080,
-      "width": 360,
-      "height": 200
-    },
-    {
-      "id": "i-port",
-      "type": "file",
-      "file": "07-Project-Portfolio/README.md",
-      "x": 840,
-      "y": 2080,
-      "width": 360,
-      "height": 200
-    }
-  ],
-  "edges": [
-    {"id": "e1", "fromNode": "f-cs", "fromSide": "right", "toNode": "f-lang", "toSide": "left"},
-    {"id": "e2", "fromNode": "f-lang", "fromSide": "right", "toNode": "f-dsa", "toSide": "left"},
-    {"id": "e3", "fromNode": "f-dsa", "fromSide": "bottom", "toNode": "c-design", "toSide": "top"},
-    {"id": "e4", "fromNode": "c-design", "fromSide": "bottom", "toNode": "s-dist", "toSide": "top"},
-    {"id": "e5", "fromNode": "c-design", "fromSide": "right", "toNode": "c-practices", "toSide": "left"},
-    {"id": "e6", "fromNode": "c-practices", "fromSide": "right", "toNode": "c-security", "toSide": "left"},
-    {"id": "e7", "fromNode": "f-cs", "fromSide": "bottom", "toNode": "c-perf", "toSide": "top"},
-    {"id": "e8", "fromNode": "s-dist", "fromSide": "right", "toNode": "s-lead", "toSide": "left"},
-    {"id": "e9", "fromNode": "s-dist", "fromSide": "right", "toNode": "s-papers", "toSide": "left"},
-    {"id": "e10", "fromNode": "f-lang", "fromSide": "bottom", "toNode": "t-quant", "toSide": "top"},
-    {"id": "e11", "fromNode": "t-quant", "fromSide": "right", "toNode": "t-ll", "toSide": "left"},
-    {"id": "e12", "fromNode": "c-design", "fromSide": "bottom", "toNode": "t-ai", "toSide": "top"},
-    {"id": "e13", "fromNode": "f-dsa", "fromSide": "bottom", "toNode": "i-prep", "toSide": "top"},
-    {"id": "e14", "fromNode": "i-prep", "fromSide": "right", "toNode": "i-cc", "toSide": "left"},
-    {"id": "e15", "fromNode": "i-prep", "fromSide": "right", "toNode": "i-port", "toSide": "left"},
-    {"id": "e16", "fromNode": "start-roadmap", "fromSide": "bottom", "toNode": "f-cs", "toSide": "top"},
-    {"id": "e17", "fromNode": "f-dsa", "fromSide": "right", "toNode": "f-canon", "toSide": "left"}
-  ]
+	"nodes":[
+		{"id":"intro","type":"text","text":"## Vault map\n\nClick a card to open that section.\nThe same order is written in the roadmap.\nArrows are the learning order.","x":0,"y":-280,"width":520,"height":180,"color":"5"},
+		{"id":"g-start","type":"group","x":0,"y":0,"width":1240,"height":320,"label":"Start","color":"5"},
+		{"id":"start-roadmap","type":"file","file":"00-Start-Here/Roadmap.md","x":40,"y":80,"width":360,"height":200},
+		{"id":"start-how","type":"file","file":"00-Start-Here/How-This-Vault-Works.md","x":440,"y":80,"width":360,"height":200},
+		{"id":"start-review","type":"file","file":"00-Start-Here/Review-Queue.md","x":840,"y":80,"width":360,"height":200},
+		{"id":"g-foundations","type":"group","x":0,"y":400,"width":1680,"height":320,"label":"Foundations","color":"4"},
+		{"id":"f-cs","type":"file","file":"01-CS-Foundations/README.md","x":40,"y":480,"width":360,"height":200},
+		{"id":"f-lang","type":"file","file":"02-Programming-Languages/README.md","x":440,"y":480,"width":360,"height":200},
+		{"id":"f-dsa","type":"file","file":"03-Data-Structures-Algorithms/README.md","x":840,"y":480,"width":360,"height":200},
+		{"id":"f-canon","type":"file","file":"01-CS-Foundations/Computer-Science-Canon/README.md","x":1240,"y":480,"width":360,"height":200},
+		{"id":"g-core","type":"group","x":0,"y":800,"width":1660,"height":320,"label":"Core engineering","color":"2"},
+		{"id":"c-design","type":"file","file":"04-System-Design/README.md","x":40,"y":880,"width":360,"height":200},
+		{"id":"c-practices","type":"file","file":"10-Development-Practices/README.md","x":440,"y":880,"width":360,"height":200},
+		{"id":"c-security","type":"file","file":"11-Security-And-Cryptography/README.md","x":840,"y":880,"width":360,"height":200},
+		{"id":"c-perf","type":"file","file":"12-Performance-Engineering/README.md","x":1240,"y":880,"width":360,"height":200},
+		{"id":"g-staff","type":"group","x":0,"y":1200,"width":1240,"height":320,"label":"Staff and distinguished","color":"6"},
+		{"id":"s-dist","type":"file","file":"08-Distinguished-Engineering/README.md","x":40,"y":1280,"width":360,"height":200},
+		{"id":"s-lead","type":"file","file":"09-Engineering-Leadership/README.md","x":440,"y":1280,"width":360,"height":200},
+		{"id":"s-papers","type":"file","file":"15-Technical-Whitepapers/README.md","x":840,"y":1280,"width":360,"height":200},
+		{"id":"g-tracks","type":"group","x":0,"y":1600,"width":1240,"height":320,"label":"Role tracks","color":"3"},
+		{"id":"t-quant","type":"file","file":"05-Quantitative-Finance/README.md","x":40,"y":1680,"width":360,"height":200},
+		{"id":"t-ll","type":"file","file":"14-Low-Latency-Systems/00 Home.md","x":440,"y":1680,"width":360,"height":200},
+		{"id":"t-ai","type":"file","file":"13-Agentic-AI/README.md","x":840,"y":1680,"width":360,"height":200},
+		{"id":"g-interview","type":"group","x":0,"y":2000,"width":1240,"height":320,"label":"Interview loop","color":"1"},
+		{"id":"i-prep","type":"file","file":"06-Interview-Prep/README.md","x":40,"y":2080,"width":360,"height":200},
+		{"id":"i-cc","type":"file","file":"16-Interview-Command-Center/00-Dashboard.md","x":440,"y":2080,"width":360,"height":200},
+		{"id":"i-port","type":"file","file":"07-Project-Portfolio/README.md","x":840,"y":2080,"width":360,"height":200}
+	],
+	"edges":[
+		{"id":"e1","fromNode":"f-cs","fromSide":"right","toNode":"f-lang","toSide":"left"},
+		{"id":"e2","fromNode":"f-lang","fromSide":"right","toNode":"f-dsa","toSide":"left"},
+		{"id":"e3","fromNode":"f-dsa","fromSide":"bottom","toNode":"c-design","toSide":"top"},
+		{"id":"e4","fromNode":"c-design","fromSide":"bottom","toNode":"s-dist","toSide":"top"},
+		{"id":"e5","fromNode":"c-design","fromSide":"right","toNode":"c-practices","toSide":"left"},
+		{"id":"e6","fromNode":"c-practices","fromSide":"right","toNode":"c-security","toSide":"left"},
+		{"id":"e7","fromNode":"f-cs","fromSide":"bottom","toNode":"c-perf","toSide":"top"},
+		{"id":"e8","fromNode":"s-dist","fromSide":"right","toNode":"s-lead","toSide":"left"},
+		{"id":"e9","fromNode":"s-dist","fromSide":"right","toNode":"s-papers","toSide":"left"},
+		{"id":"e10","fromNode":"f-lang","fromSide":"bottom","toNode":"t-quant","toSide":"top"},
+		{"id":"e11","fromNode":"t-quant","fromSide":"right","toNode":"t-ll","toSide":"left"},
+		{"id":"e12","fromNode":"c-design","fromSide":"bottom","toNode":"t-ai","toSide":"top"},
+		{"id":"e13","fromNode":"f-dsa","fromSide":"bottom","toNode":"i-prep","toSide":"top"},
+		{"id":"e14","fromNode":"i-prep","fromSide":"right","toNode":"i-cc","toSide":"left"},
+		{"id":"e15","fromNode":"i-prep","fromSide":"right","toNode":"i-port","toSide":"left"},
+		{"id":"e16","fromNode":"start-roadmap","fromSide":"bottom","toNode":"f-cs","toSide":"top"},
+		{"id":"e17","fromNode":"f-dsa","fromSide":"right","toNode":"f-canon","toSide":"left"}
+	]
 }
