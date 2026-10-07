@@ -1,8 +1,8 @@
 ---
 type: moc
 track: [sde]
-level: advanced
-status: active
+level:
+status: solid
 last_reviewed:
 sources:
   - "Georgia Tech CS 6200: Introduction to Operating Systems (GIOS)"

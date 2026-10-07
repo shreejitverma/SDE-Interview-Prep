@@ -194,3 +194,9 @@ Some common response headers are:
 * Content-Length - The Content-Length header specifies the length of the body of the response.
 * Content-Encoding - The Content-Encoding header specifies the encoding used for the response body.
 * Keep-Alive - The Keep-Alive header specifies the period of time that the connection should be kept alive.
+
+## Related Concepts
+
+* [[HTTP-Evolution-HTTP1-HTTP2-HTTP3]]: Deep dive into HTTP framing, HOL blocking, multiplexing, binary framing, and QUIC UDP transport.
+* [[Load-Balancing]]: Layer 4 vs Layer 7 traffic routing, reverse proxies, and health checking.
+* [[REST-APIs]]: Principles of RESTful architecture, idempotency, and resource modelling.

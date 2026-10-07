@@ -1,8 +1,8 @@
 ---
 type: concept
 track: [sde]
-level: advanced
-status: complete
+level:
+status: solid
 last_reviewed:
 sources:
   - "Georgia Tech CS 6200 P2L2"
@@ -1554,6 +1554,11 @@ gcc -pthread -O2 -o atomic_counter atomic_counter.c && ./atomic_counter
 8. **Lock ordering** is the simplest and most reliable deadlock prevention strategy.
 9. In **Mesa condition variable semantics**, signal is only an advisory hint; predicate verification in a while loop is mandatory.
 10. The three classical multithreading patterns are **Boss-Worker**, **Pipeline**, and **Layered**, each optimizing different throughput, latency, and cache profiles.
+
+### Related Concepts
+
+- [[Concurrency-Synchronization-and-CAS]]: Staff-level architectural deep dive into hardware atomics, cache coherency protocols (MESI/MOESI), false sharing, lock-free queues, and memory orderings.
+- [[Optimistic-vs-Pessimistic-Locking]]: Comparison of optimistic versus pessimistic locking schemes across application runtimes and storage engines.
 
 ---
 

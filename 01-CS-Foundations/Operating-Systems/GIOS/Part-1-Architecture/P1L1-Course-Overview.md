@@ -1,8 +1,8 @@
 ---
 type: concept
 track: [sde]
-level: advanced
-status: active
+level:
+status: solid
 last_reviewed: 2026-09-27
 sources:
   - "Georgia Tech CS 6200: Introduction to Operating Systems (GIOS)"

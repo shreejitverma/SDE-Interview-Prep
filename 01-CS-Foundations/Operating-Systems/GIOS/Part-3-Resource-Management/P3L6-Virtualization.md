@@ -1,8 +1,8 @@
 ---
 type: concept
 track: [sde]
-level: advanced
-status: complete
+level:
+status: solid
 last_reviewed:
 sources:
   - "Georgia Tech CS 6200 P3L6"
@@ -1357,6 +1357,11 @@ colima list
 # Inspect network bridge interfaces managed by vmnet
 ifconfig bridge0
 ```
+
+### Related Concepts
+
+- [[Virtual-Machines-vs-Containers]]: Detailed comparison of hypervisors (Type 1 and Type 2) versus Linux namespaces and cgroups.
+- [[Docker-and-Container-Runtimes]]: Container standards (OCI runtime-spec, image-spec), containerd, runc, and storage drivers.
 
 ---
 

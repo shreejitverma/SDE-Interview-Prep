@@ -165,4 +165,9 @@ The Open Systems Interconnection (OSI) model describes seven layers that compute
 3. `ifconfig`
 4. Follow a network packet `traceroute <domain>`
 
+## Related Concepts
+
+* [[API-Fundamentals]]: Comprehensive overview of modern application programming interfaces, abstraction boundaries, and interface definitions across the networking stack.
+
+
 

@@ -1,8 +1,8 @@
 ---
 type: concept
 track: [sde]
-level: advanced
-status: complete
+level:
+status: solid
 last_reviewed:
 sources:
   - "Georgia Tech CS 6200 P3L4"
@@ -1342,6 +1342,11 @@ interval:s:5 {
 # 3. Trace kernel ulock (os_unfair_lock) sleep traps
 sudo dtruss -f -t ulock_wait -p <pid>
 ```
+
+### Related Concepts
+
+- [[Concurrency-Synchronization-and-CAS]]: Hardware atomic instructions (CMPXCHG, LL/SC), cache line bouncing, memory orderings, and wait-free algorithm implementations.
+- [[Optimistic-vs-Pessimistic-Locking]]: Comparison of lock-based pessimistic concurrency control against optimistic validation mechanisms.
 
 ---
 

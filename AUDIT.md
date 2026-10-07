@@ -1,6 +1,6 @@
 # Vault Audit
 
-Generated 2026-10-04 by `python3 tools/audit_vault.py` over git-tracked files.
+Generated 2026-10-06 by `python3 tools/audit_vault.py` over git-tracked files.
 Re-run the script after every structural change; this file is its output and should not be hand-edited.
 0 files in private locations (`tools/private_paths.py`) are excluded; `tools/audit_pii.py` inventories them into a private path.
 
@@ -8,19 +8,19 @@ Re-run the script after every structural change; this file is its output and sho
 
 | Check | Result |
 | :--- | ---: |
-| Tracked files | 15568 |
-| Markdown notes | 1787 |
-| Internal links checked | 11988 |
-| Broken links (links into private locations are not counted) | 0 |
+| Tracked files | 15626 |
+| Markdown notes | 1845 |
+| Internal links checked | 12631 |
+| Broken links (links into private locations are not counted) | 5 |
 | Wikilink aliases that split a table cell | 0 |
 | Broken wikilinks fixable by unique basename | 0 |
-| Orphan knowledge notes (no inbound links) | 0 |
+| Orphan knowledge notes (no inbound links) | 3 |
 | Archived drafts (`_archive/`, `_consolidated*/`) | 305 |
 | Knowledge notes without frontmatter | 0 |
 | Note folders without README (depth <= 3) | 1 |
 | Notes with emojis / total emojis | 0 / 0 |
-| Notes with em dashes / total em dashes | 0 / 0 |
-| Identical-content groups / redundant MB | 304 / 41.9 |
+| Notes with em dashes / total em dashes | 3 / 3 |
+| Identical-content groups / redundant MB | 305 / 41.9 |
 | Vendored or imported repos | 10 |
 | Tracked build junk | 0 |
 | Files >= 5 MB / total MB | 1 / 5.1 |
@@ -31,12 +31,12 @@ Re-run the script after every structural change; this file is its output and sho
 | :--- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
 | `(root)` | 11 | 6 | 0 | 0 | 5 | 0.1 | 2026-10-04 |
 | `.github` | 1 | 0 | 0 | 0 | 1 | 0.0 | 2026-09-21 |
-| `.obsidian` | 45 | 0 | 0 | 0 | 45 | 0.0 | 2026-10-04 |
+| `.obsidian` | 45 | 0 | 0 | 0 | 45 | 0.0 | 2026-10-05 |
 | `00-Start-Here` | 4 | 4 | 0 | 0 | 0 | 0.0 | 2026-09-28 |
 | `01-CS-Foundations` | 486 | 241 | 141 | 0 | 104 | 4.6 | 2026-10-04 |
 | `02-Programming-Languages` | 5827 | 817 | 2860 | 466 | 1684 | 112.3 | 2026-09-30 |
 | `03-Data-Structures-Algorithms` | 7708 | 82 | 7506 | 0 | 120 | 15.2 | 2026-09-21 |
-| `04-System-Design` | 880 | 66 | 657 | 0 | 157 | 7.5 | 2026-09-21 |
+| `04-System-Design` | 938 | 124 | 657 | 0 | 157 | 9.0 | 2026-09-21 |
 | `05-Quantitative-Finance` | 9 | 2 | 7 | 0 | 0 | 0.0 | 2026-10-01 |
 | `06-Interview-Prep` | 13 | 12 | 0 | 0 | 1 | 0.2 | 2026-10-01 |
 | `07-Project-Portfolio` | 1 | 1 | 0 | 0 | 0 | 0.0 | 2026-09-21 |
@@ -56,7 +56,7 @@ Re-run the script after every structural change; this file is its output and sho
 
 ### Folders whose names normalize to the same topic
 
-- **design pattern**: `04-System-Design/03-Design-Patterns`, `04-System-Design/Design Patterns`, `04-System-Design/design-patterns-java`, `04-System-Design/design-patterns-python`
+- **design pattern**: `04-System-Design/03-Design-Patterns`, `04-System-Design/design-patterns-cpp`, `04-System-Design/design-patterns-java`, `04-System-Design/design-patterns-python`
 - **godhood to zero**: `02-Programming-Languages/C++/CPP_Zero_to_Godhood`, `02-Programming-Languages/Python/Python_Zero_to_Godhood`
 - **linked list**: `02-Programming-Languages/C++/Linked List`, `03-Data-Structures-Algorithms/01-Topics/Linked-Lists`
 - **recursion**: `02-Programming-Languages/C++/Recursion`, `03-Data-Structures-Algorithms/01-Topics/Recursion`
@@ -75,6 +75,7 @@ Re-run the script after every structural change; this file is its output and sho
 | Folder A | Folder B | Identical files |
 | :--- | ---: | ---: |
 | `01-CS-Foundations/Object-Oriented-Programming` | `04-System-Design/design-questions` | 1 |
+| `04-System-Design/design-patterns-cpp` | `04-System-Design/design-patterns-python` | 1 |
 
 ### Largest identical-content groups (redundant bytes)
 
@@ -91,10 +92,10 @@ Re-run the script after every structural change; this file is its output and sho
 | `02-Programming-Languages/C++/Coding/03.FirstSteps/3.2FirstCppProgram/CMakeLists.txt` | 321 | 0.1 |
 | `02-Programming-Languages/Python/python in depth/Python/Flask_Blog/07-User-Account-Profile-Pic/flaskblog/static/profile_pics/b6e1c53325f88b74.png` | 10 | 0.1 |
 | `02-Programming-Languages/Python/python in depth/Python/Flask_Blog/11-Blueprints/flaskblog/site.db` | 3 | 0.1 |
+| `04-System-Design/design-patterns-cpp/python-patterns/Ultimate-Python-Design-Patterns.md` | 2 | 0.1 |
 | `02-Programming-Languages/Python/python in depth/Django_Blog/11-Pagination/django_project/posts.json` | 5 | 0.1 |
 | `02-Programming-Languages/Python/python in depth/Python/Flask_Blog/07-User-Account-Profile-Pic/flaskblog/static/profile_pics/7798432669b8b3ac.jpg` | 10 | 0.1 |
 | `02-Programming-Languages/C++/Coding/42.FunctionLikeEntities/42.10LambdaFunctionsAsCallbacks/boxcontainer.h` | 7 | 0.0 |
-| `02-Programming-Languages/Python/python in depth/Python/Flask_Blog/03-Forms-and-Validation/templates/register.html` | 8 | 0.0 |
 
 ### Folder pairs with overlapping note or code names (topical overlap)
 
@@ -112,13 +113,21 @@ Re-run the script after every structural change; this file is its output and sho
 
 | Folder | Broken |
 | :--- | ---: |
+| `04-System-Design` | 2 |
+| `(root)` | 2 |
+| `01-CS-Foundations` | 1 |
 
 0 broken wikilinks point at a path that no longer exists but name a note that exists exactly once elsewhere.
 These come from folder reorganizations that did not rewrite links and can be fixed mechanically.
 
 <details>
-<summary>All 0 broken links</summary>
+<summary>All 5 broken links</summary>
 
+- `01-CS-Foundations/Operating-Systems/README.md` (md) -> `GIOS/README.md`
+- `04-System-Design/02-Case-Studies/05-Social-Media-Feed/design.md` (wiki) -> `SnowflakeIdGenerator`
+- `04-System-Design/design-patterns-cpp/README.md` (md) -> `Ultimate-Python-Design-Patterns.md`
+- `README.md` (md) -> `./04-System-Design/Design%20Patterns`
+- `README.md` (md) -> `./04-System-Design/Design%20Patterns/python-patterns`
 
 </details>
 
@@ -128,10 +137,14 @@ Notes that no other note links to. Most become reachable once each folder has a 
 
 | Folder | Orphans |
 | :--- | ---: |
+| `04-System-Design` | 3 |
 
 <details>
-<summary>All 0 orphans</summary>
+<summary>All 3 orphans</summary>
 
+- `04-System-Design/design-patterns-cpp/README.md`
+- `04-System-Design/design-patterns-cpp/python-patterns/Ultimate-Python-Design-Patterns.md`
+- `04-System-Design/design-patterns-python/Ultimate-Python-Design-Patterns.md`
 
 </details>
 
@@ -170,10 +183,16 @@ A folder counts as covered by `README.md`, `_README.md`, `index.md`, a folder no
 
 | Note | Em dashes |
 | :--- | ---: |
+| `04-System-Design/00-Concepts/Concurrency-Synchronization-and-CAS.md` | 1 |
+| `04-System-Design/00-Concepts/Synchronous-vs-Asynchronous-Communication.md` | 1 |
+| `04-System-Design/00-Concepts/Virtual-Machines-vs-Containers.md` | 1 |
 
 <details>
-<summary>All 0 notes with em dashes</summary>
+<summary>All 3 notes with em dashes</summary>
 
+- `04-System-Design/00-Concepts/Concurrency-Synchronization-and-CAS.md`: 1
+- `04-System-Design/00-Concepts/Synchronous-vs-Asynchronous-Communication.md`: 1
+- `04-System-Design/00-Concepts/Virtual-Machines-vs-Containers.md`: 1
 
 </details>
 
@@ -189,7 +208,7 @@ Folders carrying their own LICENSE, `.gitignore`, `package.json`, or similar; ou
 | `02-Programming-Languages/Python/python in depth` | 2030 | 2026-09-21 |
 | `04-System-Design/design-patterns-java` | 177 | 2026-09-21 |
 | `04-System-Design/design-questions` | 172 | 2026-09-21 |
-| `04-System-Design/Design Patterns/python-patterns` | 106 | 2026-09-21 |
+| `04-System-Design/design-patterns-cpp/python-patterns` | 107 |  |
 | `03-Data-Structures-Algorithms/01-Topics/General-DSA` | 94 | 2026-09-21 |
 | `04-System-Design/Low Level Design` | 58 | 2026-09-21 |
 | `01-CS-Foundations/Operating-Systems/code/os` | 17 | 2026-07-24 |

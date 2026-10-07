@@ -1,8 +1,8 @@
 ---
 type: playbook
 track: [sde]
-level: advanced
-status: complete
+level:
+status: solid
 last_reviewed:
 tags: [gios, cs6200, midterm, exam-prep, operating-systems]
 sources:

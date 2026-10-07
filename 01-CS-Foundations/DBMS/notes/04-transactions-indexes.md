@@ -434,3 +434,10 @@ ALTER TABLE `students` ADD INDEX `phone` (`phone`)
 * [Indexes](https://vertabelo.com/blog/what-is-database-index/)
 * [Indexes Data Structure](https://www.vertabelo.com/blog/all-about-indexes-part-2-mysql-index-structure-and-performance/)
 * [Write-ahead logging and MySQL](https://dev.mysql.com/blog-archive/mysql-8-0-new-lock-free-scalable-wal-design/)
+
+## Related Concepts
+
+* [[MySQL-and-InnoDB]]: Architecture of InnoDB storage engine, B+ tree clustered indexes, buffer pool, and redo/undo logs.
+* [[PostgreSQL-Architecture]]: PostgreSQL multi-process architecture, SSI (Serializable Snapshot Isolation), and table vacuuming.
+* [[Optimistic-vs-Pessimistic-Locking]]: In-depth analysis of two-phase locking (2PL) versus optimistic concurrency control (OCC).
+* [[CockroachDB-Distributed-SQL]]: Next-generation distributed SQL transactions using Raft consensus and hybrid logical clocks.
