@@ -1,30 +1,31 @@
-# Author: Shreejit Verma
- # GitHub: https://github.com/shreejitverma
+"""
+Problem: LeetCode 494 - Target Sum
+Difficulty: Medium
+Concepts: Dynamic Programming, 0/1 Knapsack, Subset Sum
 
-# Time:  O(n * S)
-# Space: O(S)
+Time Complexity: O(n * S) where S = (total_sum + target) // 2
+Space Complexity: O(S)
+"""
 
-import collections
+from typing import List
 
 
-class Solution(object):
-    def findTargetSumWays(self, nums, S):
-        """
-        :type nums: List[int]
-        :type S: int
-        :rtype: int
-        """
-        def subsetSum(nums, S):
-            dp = collections.defaultdict(int)
-            dp[0] = 1
-            for n in nums:
-                for i in reversed(xrange(n, S+1)):
-                    if i-n in dp:
-                        dp[i] += dp[i-n]
-            return dp[S]
+class Solution:
+    def findTargetSumWays(self, nums: List[int], target: int) -> int:
+        total_sum = sum(nums)
 
-        total = sum(nums)
-        if total < S or (S + total) % 2: return 0
-        P = (S + total) // 2
-        return subsetSum(nums, P)
+        # sum(P) - sum(N) = target
+        # sum(P) + sum(N) = total_sum
+        # 2 * sum(P) = total_sum + target
+        if total_sum < abs(target) or (total_sum + target) % 2 != 0:
+            return 0
 
+        subset_sum = (total_sum + target) // 2
+        dp = [0] * (subset_sum + 1)
+        dp[0] = 1
+
+        for num in nums:
+            for s in range(subset_sum, num - 1, -1):
+                dp[s] += dp[s - num]
+
+        return dp[subset_sum]

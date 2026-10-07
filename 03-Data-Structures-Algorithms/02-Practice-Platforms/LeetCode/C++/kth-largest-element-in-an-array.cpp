@@ -1,97 +1,78 @@
+#include <vector>
+#include <random>
+#include <utility>
+#include <algorithm>
+#include <queue>
+
+using namespace std;
+
 /*
- * Author: Shreejit Verma
- * GitHub: https://github.com/shreejitverma
+ * Problem: LeetCode 215 - Kth Largest Element in an Array
+ * Difficulty: Medium
+ * Concepts: QuickSelect, Min-Heap, Divide and Conquer
+ *
+ * Approach 1 (QuickSelect with 3-way partition):
+ * Time Complexity: O(n) average, O(n^2) worst-case (mitigated by randomized pivot)
+ * Space Complexity: O(1) iterative auxiliary
+ *
+ * Approach 2 (Min-Heap):
+ * Time Complexity: O(n log k)
+ * Space Complexity: O(k)
  */
 
-// Time:  O(n) on average, using Median of Medians could achieve O(n) (Intro Select)
-// Space: O(1)
-
-// optimized for duplicated nums
 class Solution {
 public:
     int findKthLargest(vector<int>& nums, int k) {
-        nth_element(nums, k - 1);
-        return nums[k - 1];
-    }
-    
-private:
-    void nth_element(vector<int>& nums, int n) {
-        int left = 0, right = size(nums) - 1;
-        default_random_engine gen((random_device())());
+        // Target index in 0-indexed ascending order
+        int target_idx = static_cast<int>(nums.size()) - k;
+        int left = 0;
+        int right = static_cast<int>(nums.size()) - 1;
+
+        default_random_engine gen(random_device{}());
+
         while (left <= right) {
-            // Generates a random int in [left, right].
             uniform_int_distribution<int> dis(left, right);
             int pivot_idx = dis(gen);
-            const auto& [pivot_left, pivot_right] = TriPartition(left, right, nums[pivot_idx], &nums);
-            if (pivot_left <= n && n <= pivot_right) {
-                return;
-            } else if (pivot_left > n) {
-                right = pivot_left - 1;
-            } else {  // pivot_right < n.
-                left = pivot_right + 1;
+            int pivot_val = nums[pivot_idx];
+
+            // 3-way Dutch National Flag partition
+            int lt = left;
+            int gt = right;
+            int i = left;
+
+            while (i <= gt) {
+                if (nums[i] < pivot_val) {
+                    swap(nums[i++], nums[lt++]);
+                } else if (nums[i] > pivot_val) {
+                    swap(nums[i], nums[gt--]);
+                } else {
+                    ++i;
+                }
             }
-        }
-    }
-    
-    pair<int, int> TriPartition(int left, int right, int target, vector<int> *nums) {
-        for (int mid = left; mid <= right;) {
-            if ((*nums)[mid] == target) {
-                ++mid;
-            } else if ((*nums)[mid] > target) {
-                swap((*nums)[left++], (*nums)[mid]);
-                ++mid;
+
+            if (target_idx >= lt && target_idx <= gt) {
+                return nums[target_idx];
+            } else if (target_idx < lt) {
+                right = lt - 1;
             } else {
-                swap((*nums)[mid], (*nums)[right--]);
+                left = gt + 1;
             }
         }
-        return {left, right};
+
+        return nums[target_idx];
     }
 };
 
-// Time:  O(n) on average, using Median of Medians could achieve O(n) (Intro Select)
-// Space: O(1)
-class Solution2 {
+class SolutionMinHeap {
 public:
     int findKthLargest(vector<int>& nums, int k) {
-        int left = 0, right = nums.size() - 1;
-        default_random_engine gen((random_device())());
-        while (left <= right) {
-            // Generates a random int in [left, right].
-            uniform_int_distribution<int> dis(left, right);
-            int pivot_idx = dis(gen);
-            int new_pivot_idx = PartitionAroundPivot(left, right, pivot_idx, &nums);
-            if (new_pivot_idx == k - 1) {
-                break;
-            } else if (new_pivot_idx > k - 1) {
-                right = new_pivot_idx - 1;
-            } else {  // new_pivot_idx < k - 1.
-                left = new_pivot_idx + 1;
+        priority_queue<int, vector<int>, greater<int>> min_heap;
+        for (int num : nums) {
+            min_heap.push(num);
+            if (static_cast<int>(min_heap.size()) > k) {
+                min_heap.pop();
             }
         }
-        return nums[k - 1];
-    }
-    
-    int PartitionAroundPivot(int left, int right, int pivot_idx, vector<int>* nums) {
-        auto& nums_ref = *nums;
-        int pivot_value = nums_ref[pivot_idx];
-        int new_pivot_idx = left;
-        swap(nums_ref[pivot_idx], nums_ref[right]);
-        for (int i = left; i < right; ++i) {
-            if (nums_ref[i] > pivot_value) {
-                swap(nums_ref[i], nums_ref[new_pivot_idx++]);
-            }
-        }
-        swap(nums_ref[right], nums_ref[new_pivot_idx]);
-        return new_pivot_idx;
-    }
-};
-
-// Time:  O(n) ~ O(n^2)
-// Space: O(1)
-class Solution3 {
-public:
-    int findKthLargest(vector<int>& nums, int k) {
-        nth_element(nums.begin(), next(nums.begin(), k - 1), nums.end(), greater<int>());
-        return *next(nums.begin(), k - 1);
+        return min_heap.top();
     }
 };

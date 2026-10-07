@@ -1,24 +1,28 @@
-# Author: Shreejit Verma
- # GitHub: https://github.com/shreejitverma
+"""
+Problem: LeetCode 134 - Gas Station
+Difficulty: Medium
+Concepts: Greedy, Array
 
-# Time:  O(n)
-# Space: O(1)
+Time Complexity: O(n)
+Space Complexity: O(1)
+"""
 
-class Solution(object):
-    # @param gas, a list of integers
-    # @param cost, a list of integers
-    # @return an integer
-    def canCompleteCircuit(self, gas, cost):
-        start, total_sum, current_sum = 0, 0, 0
-        for i in xrange(len(gas)):
-            diff = gas[i] - cost[i]
-            current_sum += diff
-            total_sum += diff
-            if current_sum < 0:
-                start = i + 1
-                current_sum = 0
-        if total_sum >= 0:
-            return start
+from typing import List
 
-        return -1
 
+class Solution:
+    def canCompleteCircuit(self, gas: List[int], cost: List[int]) -> int:
+        total_tank = 0
+        current_tank = 0
+        start_index = 0
+
+        for i in range(len(gas)):
+            balance = gas[i] - cost[i]
+            total_tank += balance
+            current_tank += balance
+
+            if current_tank < 0:
+                start_index = i + 1
+                current_tank = 0
+
+        return start_index if total_tank >= 0 else -1

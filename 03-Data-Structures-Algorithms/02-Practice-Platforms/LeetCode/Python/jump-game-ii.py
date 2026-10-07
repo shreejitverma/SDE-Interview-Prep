@@ -1,23 +1,31 @@
-# Author: Shreejit Verma
- # GitHub: https://github.com/shreejitverma
+"""
+Problem: LeetCode 45 - Jump Game II
+Difficulty: Medium
+Concepts: Greedy, BFS, Array
 
-# Time:  O(n)
-# Space: O(1)
+Time Complexity: O(n)
+Space Complexity: O(1)
+"""
 
-class Solution(object):
-    # @param A, a list of integers
-    # @return an integer
-    def jump(self, A):
-        jump_count = 0
-        reachable = 0
-        curr_reachable = 0
-        for i, length in enumerate(A):
-            if i > reachable:
-                return -1
-            if i > curr_reachable:
-                curr_reachable = reachable
-                jump_count += 1
-            reachable = max(reachable, i + length)
-        return jump_count
+from typing import List
 
 
+class Solution:
+    def jump(self, nums: List[int]) -> int:
+        n = len(nums)
+        if n <= 1:
+            return 0
+
+        jumps = 0
+        current_end = 0
+        farthest = 0
+
+        for i in range(n - 1):
+            farthest = max(farthest, i + nums[i])
+            if i == current_end:
+                jumps += 1
+                current_end = farthest
+                if current_end >= n - 1:
+                    break
+
+        return jumps

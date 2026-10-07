@@ -1,27 +1,36 @@
-/*
- * Author: Shreejit Verma
- * GitHub: https://github.com/shreejitverma
- */
+#include <vector>
+#include <algorithm>
 
-// Time:  O(n)
-// Space: O(26) = O(1)
+using namespace std;
+
+/*
+ * Problem: LeetCode 621 - Task Scheduler
+ * Difficulty: Medium
+ * Concepts: Greedy, Counting, Math
+ *
+ * Time Complexity: O(n)
+ * Space Complexity: O(1) (fixed 26-element array)
+ */
 
 class Solution {
 public:
     int leastInterval(vector<char>& tasks, int n) {
-        unordered_map<char,int> count;
-        int max_count = 0;
-        for (const auto& task : tasks) {
-            ++count[task];
-            max_count = max(max_count, count[task]);
+        int freq[26] = {0};
+        int max_freq = 0;
+
+        for (char task : tasks) {
+            int count = ++freq[task - 'A'];
+            max_freq = max(max_freq, count);
         }
-        
-        auto result = (max_count - 1) * (n + 1);
-        for (const auto& kvp : count) {
-            if (kvp.second == max_count) {
-                ++result;
+
+        int max_count = 0;
+        for (int count : freq) {
+            if (count == max_freq) {
+                ++max_count;
             }
         }
-        return max(result, static_cast<int>(tasks.size()));
+
+        int calculated_intervals = (max_freq - 1) * (n + 1) + max_count;
+        return max(static_cast<int>(tasks.size()), calculated_intervals);
     }
 };
