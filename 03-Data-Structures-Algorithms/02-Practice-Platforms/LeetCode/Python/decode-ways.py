@@ -1,25 +1,29 @@
 # Author: Shreejit Verma
- # GitHub: https://github.com/shreejitverma
+# GitHub: https://github.com/shreejitverma
 
-# Time:  O(n)
+# Time:  O(N)
 # Space: O(1)
 
-class Solution(object):
-    def numDecodings(self, s):
-        """
-        :type s: str
-        :rtype: int
-        """
-        if len(s) == 0 or s[0] == '0':
+
+class Solution:
+    def numDecodings(self, s: str) -> int:
+        if not s or s[0] == "0":
             return 0
-        prev, prev_prev = 1, 0
-        for i in xrange(len(s)):
-            cur = 0
-            if s[i] != '0':
-                cur = prev
-            if i > 0 and (s[i - 1] == '1' or (s[i - 1] == '2' and s[i] <= '6')):
-                cur += prev_prev
-            prev, prev_prev = cur, prev
-        return prev
 
+        prev2, prev1 = 1, 1
 
+        for i in range(1, len(s)):
+            current = 0
+
+            # Single digit decode
+            if s[i] != "0":
+                current += prev1
+
+            # Two digit decode
+            two_digit = int(s[i - 1 : i + 1])
+            if 10 <= two_digit <= 26:
+                current += prev2
+
+            prev2, prev1 = prev1, current
+
+        return prev1

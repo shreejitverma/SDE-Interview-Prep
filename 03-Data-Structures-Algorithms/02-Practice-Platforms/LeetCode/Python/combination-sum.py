@@ -1,24 +1,29 @@
 # Author: Shreejit Verma
- # GitHub: https://github.com/shreejitverma
+# GitHub: https://github.com/shreejitverma
 
-# Time:  O(k * n^k)
-# Space: O(k)
+# Time:  O(N^(T/M + 1)) where N = candidates count, T = target, M = min(candidates)
+# Space: O(T/M) auxiliary (recursion stack depth)
 
-class Solution(object):
-    # @param candidates, a list of integers
-    # @param target, integer
-    # @return a list of lists of integers
-    def combinationSum(self, candidates, target):
-        result = []
-        self.combinationSumRecu(sorted(candidates), result, 0, [], target)
+from typing import List
+
+
+class Solution:
+    def combinationSum(self, candidates: List[int], target: int) -> List[List[int]]:
+        candidates.sort()
+        result: List[List[int]] = []
+        path: List[int] = []
+
+        def backtrack(remain: int, start: int) -> None:
+            if remain == 0:
+                result.append(list(path))
+                return
+
+            for i in range(start, len(candidates)):
+                if candidates[i] > remain:
+                    break
+                path.append(candidates[i])
+                backtrack(remain - candidates[i], i)
+                path.pop()
+
+        backtrack(target, 0)
         return result
-
-    def combinationSumRecu(self, candidates, result, start, intermediate, target):
-        if target == 0:
-            result.append(list(intermediate))
-        while start < len(candidates) and candidates[start] <= target:
-            intermediate.append(candidates[start])
-            self.combinationSumRecu(candidates, result, start, intermediate, target - candidates[start])
-            intermediate.pop()
-            start += 1
-

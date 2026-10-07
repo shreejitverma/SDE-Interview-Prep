@@ -1,20 +1,17 @@
 # Author: Shreejit Verma
- # GitHub: https://github.com/shreejitverma
+# GitHub: https://github.com/shreejitverma
 
-# Time:  O(n)
+# Time:  O(N)
 # Space: O(1)
 
-class Solution(object):
-    # @param num, a list of integer
-    # @return an integer
-    def rob(self, nums):
-        """
-        :type nums: List[int]
-        :rtype: int
-        """
-        last, now = 0, 0
-        for i in nums:
-            last, now = now, max(last + i, now)
-        return now
+from typing import List
 
 
+class Solution:
+    def rob(self, nums: List[int]) -> int:
+        prev2, prev1 = 0, 0
+
+        for num in nums:
+            prev2, prev1 = prev1, max(prev1, prev2 + num)
+
+        return prev1

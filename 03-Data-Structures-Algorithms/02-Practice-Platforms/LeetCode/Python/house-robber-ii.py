@@ -1,27 +1,24 @@
 # Author: Shreejit Verma
- # GitHub: https://github.com/shreejitverma
+# GitHub: https://github.com/shreejitverma
 
-# Time:  O(n)
+# Time:  O(N)
 # Space: O(1)
 
-class Solution(object):
-    # @param {integer[]} nums
-    # @return {integer}
-    def rob(self, nums):
-        if len(nums) == 0:
-            return 0
+from typing import List
 
+
+class Solution:
+    def rob(self, nums: List[int]) -> int:
+        if not nums:
+            return 0
         if len(nums) == 1:
             return nums[0]
 
-        return max(self.robRange(nums, 0, len(nums) - 1),\
-                   self.robRange(nums, 1, len(nums)))
+        return max(self._rob_range(nums, 0, len(nums) - 1),
+                   self._rob_range(nums, 1, len(nums)))
 
-    def robRange(self, nums, start, end):
-        num_i, num_i_1 = nums[start], 0
-        for i in xrange(start + 1, end):
-            num_i_1, num_i_2 = num_i, num_i_1
-            num_i = max(nums[i] + num_i_2, num_i_1)
-
-        return num_i
-
+    def _rob_range(self, nums: List[int], start: int, end: int) -> int:
+        prev2, prev1 = 0, 0
+        for i in range(start, end):
+            prev2, prev1 = prev1, max(prev1, prev2 + nums[i])
+        return prev1

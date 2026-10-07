@@ -6,29 +6,26 @@
 // Time:  O(N)
 // Space: O(1)
 
-#include <string>
-
 class Solution {
-public:
-    int numDecodings(std::string s) {
-        if (s.empty() || s[0] == '0') {
+    public int numDecodings(String s) {
+        if (s == null || s.isEmpty() || s.charAt(0) == '0') {
             return 0;
         }
 
-        int prev2 = 1; // dp[i-2]
-        int prev1 = 1; // dp[i-1]
+        int prev2 = 1;
+        int prev1 = 1;
 
-        for (size_t i = 1; i < s.length(); ++i) {
+        for (int i = 1; i < s.length(); i++) {
             int current = 0;
 
             // Single digit decode
-            if (s[i] != '0') {
+            if (s.charAt(i) != '0') {
                 current += prev1;
             }
 
             // Two digit decode
-            int two_digit = (s[i - 1] - '0') * 10 + (s[i] - '0');
-            if (two_digit >= 10 && two_digit <= 26) {
+            int twoDigit = (s.charAt(i - 1) - '0') * 10 + (s.charAt(i) - '0');
+            if (twoDigit >= 10 && twoDigit <= 26) {
                 current += prev2;
             }
 
@@ -38,4 +35,4 @@ public:
 
         return prev1;
     }
-};
+}
