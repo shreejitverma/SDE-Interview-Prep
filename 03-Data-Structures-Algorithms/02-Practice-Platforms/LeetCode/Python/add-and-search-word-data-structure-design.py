@@ -1,48 +1,40 @@
 # Author: Shreejit Verma
- # GitHub: https://github.com/shreejitverma
+# GitHub: https://github.com/shreejitverma
 
-# Time:  O(min(n, h)), per operation
-# Space: O(min(n, h))
+# Time:  addWord: O(L), search: O(26^D * L) where D is dot count, L is length
+# Space: O(N * L) total heap memory across all nodes
 
-class TrieNode(object):
-    # Initialize your data structure here.
+class TrieNode:
     def __init__(self):
-        self.is_string = False
-        self.leaves = {}
+        self.children = {}
+        self.is_end = False
 
-
-class WordDictionary(object):
+class WordDictionary:
     def __init__(self):
         self.root = TrieNode()
 
-    # @param {string} word
-    # @return {void}
-    # Adds a word into the data structure.
-    def addWord(self, word):
+    def addWord(self, word: str) -> None:
         curr = self.root
-        for c in word:
-            if c not in curr.leaves:
-                curr.leaves[c] = TrieNode()
-            curr = curr.leaves[c]
-        curr.is_string = True
+        for ch in word:
+            if ch not in curr.children:
+                curr.children[ch] = TrieNode()
+            curr = curr.children[ch]
+        curr.is_end = True
 
-    # @param {string} word
-    # @return {boolean}
-    # Returns if the word is in the data structure. A word could
-    # contain the dot character '.' to represent any one letter.
-    def search(self, word):
-        return self.searchHelper(word, 0, self.root)
+    def search(self, word: str) -> bool:
+        def dfs(index: int, curr: TrieNode) -> bool:
+            if index == len(word):
+                return curr.is_end
 
-    def searchHelper(self, word, start, curr):
-        if start == len(word):
-            return curr.is_string
-        if word[start] in curr.leaves:
-            return self.searchHelper(word, start+1, curr.leaves[word[start]])
-        elif word[start] == '.':
-            for c in curr.leaves:
-                if self.searchHelper(word, start+1, curr.leaves[c]):
-                    return True
+            ch = word[index]
+            if ch == '.':
+                for child in curr.children.values():
+                    if dfs(index + 1, child):
+                        return True
+                return False
+            else:
+                if ch not in curr.children:
+                    return False
+                return dfs(index + 1, curr.children[ch])
 
-        return False
-
-
+        return dfs(0, self.root)

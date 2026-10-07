@@ -1,44 +1,44 @@
 # Author: Shreejit Verma
- # GitHub: https://github.com/shreejitverma
+# GitHub: https://github.com/shreejitverma
 
-# Time:  O(m * n)
-# Space: O(m * n)
+# Time:  O(M * N)
+# Space: O(M * N)
 
-class Solution(object):
-    def pacificAtlantic(self, matrix):
-        """
-        :type matrix: List[List[int]]
-        :rtype: List[List[int]]
-        """
-        PACIFIC, ATLANTIC = 1, 2
+from typing import List
 
-        def pacificAtlanticHelper(matrix, x, y, prev_height, prev_val, visited, res):
-            if (not 0 <= x < len(matrix)) or \
-               (not 0 <= y < len(matrix[0])) or \
-               matrix[x][y] < prev_height or \
-               (visited[x][y] | prev_val) == visited[x][y]:
-                return
-
-            visited[x][y] |= prev_val
-            if visited[x][y] == (PACIFIC | ATLANTIC):
-                res.append((x, y))
-
-            for d in [(0, -1), (0, 1), (-1, 0), (1, 0)]:
-                pacificAtlanticHelper(matrix, x + d[0], y + d[1], matrix[x][y], visited[x][y], visited, res)
-
-        if not matrix:
+class Solution:
+    def pacificAtlantic(self, heights: List[List[int]]) -> List[List[int]]:
+        if not heights or not heights[0]:
             return []
 
-        res = []
-        m, n = len(matrix),len(matrix[0])
-        visited = [[0 for _ in xrange(n)] for _ in xrange(m)]
+        m, n = len(heights), len(heights[0])
+        pacific = [[False] * n for _ in range(m)]
+        atlantic = [[False] * n for _ in range(m)]
 
-        for i in xrange(m):
-            pacificAtlanticHelper(matrix, i, 0, float("-inf"), PACIFIC, visited, res)
-            pacificAtlanticHelper(matrix, i, n - 1, float("-inf"), ATLANTIC, visited, res)
-        for j in xrange(n):
-            pacificAtlanticHelper(matrix, 0, j, float("-inf"), PACIFIC, visited, res)
-            pacificAtlanticHelper(matrix, m - 1, j, float("-inf"), ATLANTIC, visited, res)
+        def dfs(r: int, c: int, reachable: List[List[bool]], prev_val: int) -> None:
+            if (
+                r < 0 or r >= m or
+                c < 0 or c >= n or
+                reachable[r][c] or
+                heights[r][c] < prev_val
+            ):
+                return
 
-        return res
+            reachable[r][c] = True
+            for dr, dc in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
+                dfs(r + dr, c + dc, reachable, heights[r][c])
 
+        for i in range(m):
+            dfs(i, 0, pacific, heights[i][0])
+            dfs(i, n - 1, atlantic, heights[i][n - 1])
+        for j in range(n):
+            dfs(0, j, pacific, heights[0][j])
+            dfs(m - 1, j, atlantic, heights[m - 1][j])
+
+        result = []
+        for i in range(m):
+            for j in range(n):
+                if pacific[i][j] and atlantic[i][j]:
+                    result.append([i, j])
+
+        return result

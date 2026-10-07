@@ -3,61 +3,61 @@
  * GitHub: https://github.com/shreejitverma
  */
 
-// Time:  O(min(n, h)), per operation
-// Space: O(min(n, h))
+// Time:  addWord: O(L), search: O(26^D * L) where D is dot count, L is length
+// Space: O(N * L) total heap memory across all nodes
+
+#include <string>
+#include <vector>
+#include <memory>
+#include <array>
+
+using namespace std;
 
 class WordDictionary {
 public:
     struct TrieNode {
-        bool isString = false;
-        unordered_map<char, TrieNode *> leaves;
+        bool isEnd = false;
+        array<unique_ptr<TrieNode>, 26> children{};
     };
 
-    WordDictionary() {
-        root_ = new TrieNode();
-        root_->isString = true;
-    }
+    WordDictionary() : root_(make_unique<TrieNode>()) {}
 
-    // Adds a word into the data structure.
-    void addWord(string word) {
-            auto* p = root_;
-            for (const auto& c : word) {
-                if (p->leaves.find(c) == p->leaves.cend()) {
-                    p->leaves[c] = new TrieNode;
-                }
-                p = p->leaves[c];
+    void addWord(const string& word) {
+        auto* curr = root_.get();
+        for (char ch : word) {
+            int idx = ch - 'a';
+            if (!curr->children[idx]) {
+                curr->children[idx] = make_unique<TrieNode>();
             }
-            p->isString = true;
+            curr = curr->children[idx].get();
+        }
+        curr->isEnd = true;
     }
 
-    // Returns if the word is in the data structure. A word could
-    // contain the dot character '.' to represent any one letter.
-    bool search(string word) {
-        return searchWord(word, root_, 0);
-    }
-
-    bool searchWord(string word, TrieNode *node, int s) {
-        if (s == word.length()) {
-            return node->isString;
-        }
-        // Match the char.
-        if (node->leaves.find(word[s]) != node->leaves.end()) {
-            return searchWord(word, node->leaves[word[s]], s + 1);
-        } else if (word[s] == '.') {  // Skip the char.
-            for (const auto& i : node->leaves) {
-                if (searchWord(word, i.second, s + 1)) {
-                    return true;
-                }
-            }
-        }
-        return false;
+    bool search(const string& word) const {
+        return searchHelper(word, 0, root_.get());
     }
 
 private:
-    TrieNode *root_;
-};
+    bool searchHelper(const string& word, int index, const TrieNode* curr) const {
+        if (!curr) return false;
+        if (index == static_cast<int>(word.length())) {
+            return curr->isEnd;
+        }
 
-// Your WordDictionary object will be instantiated and called as such:
-// WordDictionary wordDictionary;
-// wordDictionary.addWord("word");
-// wordDictionary.search("pattern");
+        char ch = word[index];
+        if (ch == '.') {
+            for (const auto& child : curr->children) {
+                if (child && searchHelper(word, index + 1, child.get())) {
+                    return true;
+                }
+            }
+            return false;
+        } else {
+            int idx = ch - 'a';
+            return curr->children[idx] && searchHelper(word, index + 1, curr->children[idx].get());
+        }
+    }
+
+    unique_ptr<TrieNode> root_;
+};

@@ -1,23 +1,26 @@
 # Author: Shreejit Verma
- # GitHub: https://github.com/shreejitverma
+# GitHub: https://github.com/shreejitverma
 
-# Time:  O(nlogn)
-# Space: O(1)
+# Time:  O(N log N)
+# Space: O(1) or O(N) depending on Timsort
 
-class Solution(object):
-    def eraseOverlapIntervals(self, intervals):
-        """
-        :type intervals: List[Interval]
-        :rtype: int
-        """
-        intervals.sort(key=lambda interval: interval.start)
-        result, prev = 0, 0
-        for i in xrange(1, len(intervals)):
-            if intervals[i].start < intervals[prev].end:
-                if intervals[i].end < intervals[prev].end:
-                    prev = i
-                result += 1
+from typing import List
+
+class Solution:
+    def eraseOverlapIntervals(self, intervals: List[List[int]]) -> int:
+        if not intervals:
+            return 0
+
+        # Sort intervals by end time ascending
+        intervals.sort(key=lambda x: x[1])
+
+        removals = 0
+        prev_end = intervals[0][1]
+
+        for i in range(1, len(intervals)):
+            if intervals[i][0] < prev_end:
+                removals += 1
             else:
-                prev = i
-        return result
+                prev_end = intervals[i][1]
 
+        return removals
