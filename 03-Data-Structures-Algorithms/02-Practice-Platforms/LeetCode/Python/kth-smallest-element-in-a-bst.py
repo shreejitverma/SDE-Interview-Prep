@@ -1,51 +1,39 @@
 # Author: Shreejit Verma
- # GitHub: https://github.com/shreejitverma
+# GitHub: https://github.com/shreejitverma
 
-# Time:  O(max(h, k))
-# Space: O(h)
+# Time:  O(H + k) where H is tree height
+# Space: O(H) auxiliary (stack depth)
 
-class Solution(object):
-    # @param {TreeNode} root
-    # @param {integer} k
-    # @return {integer}
-    def kthSmallest(self, root, k):
-        s, cur, rank = [], root, 0
-
-        while s or cur:
-            if cur:
-                s.append(cur)
-                cur = cur.left
-            else:
-                cur = s.pop()
-                rank += 1
-                if rank == k:
-                    return cur.val
-                cur = cur.right
-
-        return float("-inf")
+from typing import Optional
 
 
-# time: O(max(h, k))
-# space: O(h)
+class TreeNode:
+    def __init__(
+        self,
+        val: int = 0,
+        left: Optional["TreeNode"] = None,
+        right: Optional["TreeNode"] = None,
+    ):
+        self.val = val
+        self.left = left
+        self.right = right
 
-from itertools import islice
 
+class Solution:
+    def kthSmallest(self, root: Optional[TreeNode], k: int) -> int:
+        stack: list[TreeNode] = []
+        curr = root
 
-class Solution2(object):
-    def kthSmallest(self, root, k):
-        """
-        :type root: TreeNode
-        :type k: int
-        :rtype: int
-        """
-        def gen_inorder(root):
-            if root:
-                for n in gen_inorder(root.left):
-                    yield n
+        while curr or stack:
+            while curr:
+                stack.append(curr)
+                curr = curr.left
 
-                yield root.val
+            curr = stack.pop()
+            k -= 1
+            if k == 0:
+                return curr.val
 
-                for n in gen_inorder(root.right):
-                    yield n
+            curr = curr.right
 
-        return next(islice(gen_inorder(root), k-1, k))
+        return -1

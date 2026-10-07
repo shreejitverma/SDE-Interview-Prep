@@ -1,19 +1,27 @@
 # Author: Shreejit Verma
- # GitHub: https://github.com/shreejitverma
+# GitHub: https://github.com/shreejitverma
 
-# Time:  O(n)
-# Space: O(n)
+# Time:  O(N)
+# Space: O(N)
 
-class Solution(object):
-    # @param num, a list of integer
-    # @return an integer
-    def longestConsecutive(self, num):
-        result, lengths = 1, {key: 0 for key in num}
-        for i in num:
-            if lengths[i] == 0:
-                lengths[i] = 1
-                left, right = lengths.get(i - 1, 0), lengths.get(i + 1, 0)
-                length = 1 + left + right
-                result, lengths[i - left], lengths[i + right] = max(result, length), length, length
-        return result
+from typing import List
 
+
+class Solution:
+    def longestConsecutive(self, nums: List[int]) -> int:
+        num_set = set(nums)
+        longest_streak = 0
+
+        for num in num_set:
+            # Only start counting if num is the beginning of a sequence
+            if num - 1 not in num_set:
+                current_num = num
+                current_streak = 1
+
+                while current_num + 1 in num_set:
+                    current_num += 1
+                    current_streak += 1
+
+                longest_streak = max(longest_streak, current_streak)
+
+        return longest_streak

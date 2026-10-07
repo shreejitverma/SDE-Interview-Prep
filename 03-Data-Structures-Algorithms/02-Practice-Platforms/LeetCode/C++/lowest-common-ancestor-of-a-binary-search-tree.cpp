@@ -3,30 +3,34 @@
  * GitHub: https://github.com/shreejitverma
  */
 
-// Time:  O(h)
-// Space: O(1)
+// Time:  O(H) where H is tree height
+// Space: O(1) auxiliary
 
-/**
- * Definition for a binary tree node.
- * struct TreeNode {
- *     int val;
- *     TreeNode *left;
- *     TreeNode *right;
- *     TreeNode(int x) : val(x), left(NULL), right(NULL) {}
- * };
- */
+#include <algorithm>
+
+struct TreeNode {
+    int val;
+    TreeNode *left;
+    TreeNode *right;
+    TreeNode(int x) : val(x), left(nullptr), right(nullptr) {}
+};
+
 class Solution {
 public:
     TreeNode* lowestCommonAncestor(TreeNode* root, TreeNode* p, TreeNode* q) {
-        auto s = min(p->val, q->val);
-        auto b = max(p->val, q->val);
+        int small = std::min(p->val, q->val);
+        int large = std::max(p->val, q->val);
 
-        while (root->val < s || root->val > b) {
-            // Keep searching since root is outside of [s, b].
-            root = s <= root->val ? root->left : root->right;
+        while (root != nullptr) {
+            if (root->val > large) {
+                root = root->left;
+            } else if (root->val < small) {
+                root = root->right;
+            } else {
+                return root;
+            }
         }
 
-        // s <= root->val && root->val <= b.
-        return root;   
+        return nullptr;
     }
 };

@@ -3,67 +3,45 @@
  * GitHub: https://github.com/shreejitverma
  */
 
-// Time:  O(|V| + |E|)
-// Space: O(|E|)
+// Time:  O(V + E)
+// Space: O(V + E)
 
-// Kahn’s algorithm (bfs solution)
+#include <vector>
+#include <queue>
+
 class Solution {
 public:
-    bool canFinish(int numCourses, vector<vector<int>>& prerequisites) {
-        unordered_map<int, vector<int>> adj;
-        unordered_map<int, int> in_degree;
-        for (const auto& p : prerequisites) {
-            ++in_degree[p[0]];
-            adj[p[1]].emplace_back(p[0]);
-        }
-        queue<int> q;
-        for (int i = 0; i < numCourses; ++i) {
-            if (!in_degree.count(i)) {
-                q.emplace(i);
-            }
-        }
-        vector<int> result;
-        while (!q.empty()) {
-            const auto node = q.front(); q.pop();
-            result.emplace_back(node);
-            for (const auto& i : adj[node]) {
-                if (!--in_degree[i]) {
-                    q.emplace(i);
-                }
-            }
-        }
-        return size(result) == numCourses;
-    }
-};
+    bool canFinish(int numCourses, std::vector<std::vector<int>>& prerequisites) {
+        std::vector<std::vector<int>> adj(numCourses);
+        std::vector<int> in_degree(numCourses, 0);
 
-// Time:  O(|V| + |E|)
-// Space: O(|E|)
-// dfs solution
-class Solution2 {
-public:
-    bool canFinish(int numCourses, vector<vector<int>>& prerequisites) {
-        unordered_map<int, vector<int>> adj;
-        unordered_map<int, int> in_degree;
-        for (const auto& p : prerequisites) {
-            ++in_degree[p[0]];
-            adj[p[1]].emplace_back(p[0]);
+        for (const auto& pre : prerequisites) {
+            int course = pre[0];
+            int prerequisite = pre[1];
+            adj[prerequisite].push_back(course);
+            in_degree[course]++;
         }
-        vector<int> stk;
+
+        std::queue<int> q;
         for (int i = 0; i < numCourses; ++i) {
-            if (!in_degree.count(i)) {
-                stk.emplace_back(i);
+            if (in_degree[i] == 0) {
+                q.push(i);
             }
         }
-        vector<int> result;
-        while (!stk.empty()) {
-            const auto node = stk.back(); stk.pop_back();
-            result.emplace_back(node);
-            for (const auto& i : adj[node]) {
-                if (!--in_degree[i]) {
-                    stk.emplace_back(i);
+
+        int visited_count = 0;
+        while (!q.empty()) {
+            int curr = q.front();
+            q.pop();
+            visited_count++;
+
+            for (int neighbor : adj[curr]) {
+                if (--in_degree[neighbor] == 0) {
+                    q.push(neighbor);
                 }
             }
         }
-        return size(result) == numCourses;
+
+        return visited_count == numCourses;
     }
 };

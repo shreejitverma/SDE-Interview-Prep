@@ -1,19 +1,31 @@
 # Author: Shreejit Verma
- # GitHub: https://github.com/shreejitverma
+# GitHub: https://github.com/shreejitverma
 
-# Time:  O(n)
-# Space: O(1)
+# Time:  O(H) where H is tree height
+# Space: O(1) auxiliary
 
-class Solution(object):
-    # @param {TreeNode} root
-    # @param {TreeNode} p
-    # @param {TreeNode} q
-    # @return {TreeNode}
-    def lowestCommonAncestor(self, root, p, q):
-        s, b = sorted([p.val, q.val])
-        while not s <= root.val <= b:
-            # Keep searching since root is outside of [s, b].
-            root = root.left if s <= root.val else root.right
-        # s <= root.val <= b.
+
+class TreeNode:
+    def __init__(self, x: int):
+        self.val = x
+        self.left: TreeNode | None = None
+        self.right: TreeNode | None = None
+
+
+class Solution:
+    def lowestCommonAncestor(
+        self, root: TreeNode, p: TreeNode, q: TreeNode
+    ) -> TreeNode:
+        small = min(p.val, q.val)
+        large = max(p.val, q.val)
+
+        curr: TreeNode | None = root
+        while curr:
+            if curr.val > large:
+                curr = curr.left
+            elif curr.val < small:
+                curr = curr.right
+            else:
+                return curr
+
         return root
-

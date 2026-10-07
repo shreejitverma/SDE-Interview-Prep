@@ -1,55 +1,39 @@
 # Author: Shreejit Verma
- # GitHub: https://github.com/shreejitverma
+# GitHub: https://github.com/shreejitverma
 
-# Time:  O(n), per operation
-# Space: O(1)
-
-class TrieNode(object):
-    # Initialize your data structure here.
-    def __init__(self):
-        self.is_string = False
-        self.leaves = {}
+# Time:  O(L) per insert / search / startsWith operation where L is string length
+# Space: O(N * L) where N is number of words inserted
 
 
-class Trie(object):
+class TrieNode:
+    def __init__(self) -> None:
+        self.children: dict[str, TrieNode] = {}
+        self.is_end: bool = False
 
-    def __init__(self):
+
+class Trie:
+    def __init__(self) -> None:
         self.root = TrieNode()
 
-    # @param {string} word
-    # @return {void}
-    # Inserts a word into the trie.
-    def insert(self, word):
-        cur = self.root
-        for c in word:
-            if not c in cur.leaves:
-                cur.leaves[c] = TrieNode()
-            cur = cur.leaves[c]
-        cur.is_string = True
+    def insert(self, word: str) -> None:
+        curr = self.root
+        for ch in word:
+            if ch not in curr.children:
+                curr.children[ch] = TrieNode()
+            curr = curr.children[ch]
+        curr.is_end = True
 
-    # @param {string} word
-    # @return {boolean}
-    # Returns if the word is in the trie.
-    def search(self, word):
-        node = self.childSearch(word)
-        if node:
-            return node.is_string
-        return False
-
-    # @param {string} prefix
-    # @return {boolean}
-    # Returns if there is any word in the trie
-    # that starts with the given prefix.
-    def startsWith(self, prefix):
-        return self.childSearch(prefix) is not None
-
-    def childSearch(self, word):
-        cur = self.root
-        for c in word:
-            if c in cur.leaves:
-                cur = cur.leaves[c]
-            else:
+    def _find_prefix(self, prefix: str) -> TrieNode | None:
+        curr = self.root
+        for ch in prefix:
+            if ch not in curr.children:
                 return None
-        return cur
+            curr = curr.children[ch]
+        return curr
 
+    def search(self, word: str) -> bool:
+        node = self._find_prefix(word)
+        return node is not None and node.is_end
 
+    def startsWith(self, prefix: str) -> bool:
+        return self._find_prefix(prefix) is not None

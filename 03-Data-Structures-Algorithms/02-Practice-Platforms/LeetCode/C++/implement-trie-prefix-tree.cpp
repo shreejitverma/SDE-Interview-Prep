@@ -3,69 +3,55 @@
  * GitHub: https://github.com/shreejitverma
  */
 
-// Time:  O(n), per operation
-// Space: O(1)
+// Time:  O(L) per insert / search / startsWith operation where L is string length
+// Space: O(N * L) where N is number of words inserted
 
-class TrieNode {
-public:
-    // Initialize your data structure here.
-    TrieNode() : is_string(false) {
-        
-    }
-    bool is_string;
-    unordered_map<char, TrieNode *> leaves;
-};
+#include <string>
+#include <array>
+#include <memory>
 
 class Trie {
-public:
-    Trie() {
-        root_ = new TrieNode();
-    }
+private:
+    struct TrieNode {
+        std::array<std::unique_ptr<TrieNode>, 26> children{};
+        bool is_end = false;
+    };
 
-    // Inserts a word into the trie.
-    void insert(string word) {
-        auto *cur = root_;
-        for (const auto& c : word) {
-            if (!cur->leaves.count(c)) {
-                cur->leaves[c] = new TrieNode();
-            }
-            cur = cur->leaves[c];
-        }
-        cur->is_string = true;
-    }
+    std::unique_ptr<TrieNode> root;
 
-    // Returns if the word is in the trie.
-    bool search(string word) {
-        auto *node = childSearch(word);
-        if (node) {
-            return node->is_string;
-        }
-        return false;   
-    }
-
-    // Returns if there is any word in the trie
-    // that starts with the given prefix.
-    bool startsWith(string prefix) {
-        return childSearch(prefix);
-    }
-
-    TrieNode *childSearch(const string& word) {
-        auto *cur = root_;
-        for (const auto& c : word) {
-            if (cur->leaves.count(c)) {
-                cur = cur->leaves[c];
-            } else {
+    const TrieNode* findPrefix(const std::string& prefix) const {
+        const TrieNode* curr = root.get();
+        for (char ch : prefix) {
+            int idx = ch - 'a';
+            if (!curr->children[idx]) {
                 return nullptr;
             }
+            curr = curr->children[idx].get();
         }
-        return cur;
+        return curr;
     }
 
-private:
-    TrieNode *root_;
-};
+public:
+    Trie() : root(std::make_unique<TrieNode>()) {}
 
-// Your Trie object will be instantiated and called as such:
-// Trie trie;
-// trie.insert("somestring");
-// trie.search("key");
+    void insert(const std::string& word) {
+        TrieNode* curr = root.get();
+        for (char ch : word) {
+            int idx = ch - 'a';
+            if (!curr->children[idx]) {
+                curr->children[idx] = std::make_unique<TrieNode>();
+            }
+            curr = curr->children[idx].get();
+        }
+        curr->is_end = true;
+    }
+
+    bool search(const std::string& word) const {
+        const TrieNode* node = findPrefix(word);
+        return node != nullptr && node->is_end;
+    }
+
+    bool startsWith(const std::string& prefix) const {
+        return findPrefix(prefix) != nullptr;
+    }
+};
