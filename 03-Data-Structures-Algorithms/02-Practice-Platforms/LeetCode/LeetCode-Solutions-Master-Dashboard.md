@@ -1,0 +1,66 @@
+---
+id: leetcode-solutions-master-dashboard
+title: "LeetCode Solutions Master Dashboard: Multi-Language Progression Matrix"
+tags:
+  - dsa
+  - leetcode
+  - dashboard
+  - algorithms
+  - data-structures
+level: advanced
+type: moc
+status: solid
+created_date: 2026-10-07
+updated_date: 2026-10-07
+sources:
+  - "https://leetcode.com/problemset/all/"
+---
+
+# LeetCode Solutions Master Dashboard: Multi-Language Progression Matrix
+
+## 1. Architectural Overview and Pedagogical Structure
+
+This dashboard serves as the central command center for competitive programming and data structure mastery.
+Every curated problem in this catalog is designed with an uncompromising four-tier solution progression:
+1. **Tier 1: Most Optimal Solution (Primary)**: The state-of-the-art algorithmic approach with mathematical invariant proof, tightest time/space bounds, and cache friendliness.
+2. **Tier 2: Space-Complexity Optimized Solution**: Exploring in-place transformations, pointer manipulations, bitwise compression, or register-level tracking to minimize auxiliary heap and stack allocations.
+3. **Tier 3: Time-Complexity Optimized Solution**: Trading space for speed via hash tables, memoization arrays, prefix accumulators, or precomputed lookup tables.
+4. **Tier 4: Brute-Force Solution (Baseline)**: The naive, exhaustive combinatorial baseline demonstrating the unoptimized search space before applying pruning or invariant reductions.
+
+Each problem is implemented across **six modern systems and application programming languages**:
+- **C++ (Modern C++20)**: Fast I/O, RAII, STL algorithms, custom allocators, bitwise intrinsics.
+- **Python (Python 3.12)**: Idiomatic list comprehensions, `collections`, `heapq`, generators, and type annotations.
+- **Java (Java 21)**: Object-oriented contracts, collections framework, primitive arrays for zero GC overhead.
+- **TypeScript (Node / V8)**: Strict typing, modern ES2023 constructs, TypedArrays, efficient Map/Set operations.
+- **Go (Golang 1.22)**: Zero-allocation slices, concurrent patterns, pointer arithmetic avoidance, idiomatic error handling.
+- **Rust (Rust 2021)**: Ownership and borrow-checker semantics, zero-cost iterators, pattern matching, memory safety without GC.
+
+---
+
+## 2. Multi-Language Progression Dashboard
+
+The table below catalogs every curated LeetCode problem, linking directly to the comprehensive four-tier problem note and the dedicated standalone implementation in all six languages.
+
+| # | Problem Title | Difficulty | Category & Pattern | Optimal Time | Optimal Space | Problem Deep Dive | C++ | Python | Java | TypeScript | Go | Rust |
+|:---|:---|:---:|:---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| 0001 | Two Sum | Easy | Array / Hash Table | $O(N)$ | $O(N)$ | [[0001-Two-Sum\|0001 Note]] | [C++](./C++/two-sum.cpp) | [Python](./Python/two-sum.py) | [Java](./Java/two-sum.java) | [TypeScript](./TypeScript/two-sum.ts) | [Go](./Golang/two-sum.go) | [Rust](./Rust/two-sum.rs) |
+| 0003 | Longest Substring Without Repeating Characters | Medium | Sliding Window / Hash Set | $O(N)$ | $O(\min(N, \Sigma))$ | [[0003-Longest-Substring-Without-Repeating-Characters\|0003 Note]] | [C++](./C++/longest-substring-without-repeating-characters.cpp) | [Python](./Python/longest-substring-without-repeating-characters.py) | [Java](./Java/longest-substring-without-repeating-characters.java) | [TypeScript](./TypeScript/longest-substring-without-repeating-characters.ts) | [Go](./Golang/longest-substring-without-repeating-characters.go) | [Rust](./Rust/longest-substring-without-repeating-characters.rs) |
+| 0011 | Container With Most Water | Medium | Two Pointers / Greedy | $O(N)$ | $O(1)$ | [[0011-Container-With-Most-Water\|0011 Note]] | [C++](./C++/container-with-most-water.cpp) | [Python](./Python/container-with-most-water.py) | [Java](./Java/container-with-most-water.java) | [TypeScript](./TypeScript/container-with-most-water.ts) | [Go](./Golang/container-with-most-water.go) | [Rust](./Rust/container-with-most-water.rs) |
+| 0015 | 3Sum | Medium | Two Pointers / Sorting | $O(N^2)$ | $O(1)$ | [[0015-3Sum\|0015 Note]] | [C++](./C++/3sum.cpp) | [Python](./Python/3sum.py) | [Java](./Java/3sum.java) | [TypeScript](./TypeScript/3sum.ts) | [Go](./Golang/3sum.go) | [Rust](./Rust/3sum.rs) |
+| 0020 | Valid Parentheses | Easy | Stack / String | $O(N)$ | $O(N)$ | [[0020-Valid-Parentheses\|0020 Note]] | [C++](./C++/valid-parentheses.cpp) | [Python](./Python/valid-parentheses.py) | [Java](./Java/valid-parentheses.java) | [TypeScript](./TypeScript/valid-parentheses.ts) | [Go](./Golang/valid-parentheses.go) | [Rust](./Rust/valid-parentheses.rs) |
+| 0021 | Merge Two Sorted Lists | Easy | Linked List / Two Pointers | $O(N + M)$ | $O(1)$ | [[0021-Merge-Two-Sorted-Lists\|0021 Note]] | [C++](./C++/merge-two-sorted-lists.cpp) | [Python](./Python/merge-two-sorted-lists.py) | [Java](./Java/merge-two-sorted-lists.java) | [TypeScript](./TypeScript/merge-two-sorted-lists.ts) | [Go](./Golang/merge-two-sorted-lists.go) | [Rust](./Rust/merge-two-sorted-lists.rs) |
+| 0033 | Search in Rotated Sorted Array | Medium | Binary Search | $O(\log N)$ | $O(1)$ | [[0033-Search-in-Rotated-Sorted-Array\|0033 Note]] | [C++](./C++/search-in-rotated-sorted-array.cpp) | [Python](./Python/search-in-rotated-sorted-array.py) | [Java](./Java/search-in-rotated-sorted-array.java) | [TypeScript](./TypeScript/search-in-rotated-sorted-array.ts) | [Go](./Golang/search-in-rotated-sorted-array.go) | [Rust](./Rust/search-in-rotated-sorted-array.rs) |
+| 0053 | Maximum Subarray | Medium | Dynamic Programming / Kadane | $O(N)$ | $O(1)$ | [[0053-Maximum-Subarray\|0053 Note]] | [C++](./C++/maximum-subarray.cpp) | [Python](./Python/maximum-subarray.py) | [Java](./Java/maximum-subarray.java) | [TypeScript](./TypeScript/maximum-subarray.ts) | [Go](./Golang/maximum-subarray.go) | [Rust](./Rust/maximum-subarray.rs) |
+| 0070 | Climbing Stairs | Easy | Dynamic Programming | $O(N)$ | $O(1)$ | [[0070-Climbing-Stairs\|0070 Note]] | [C++](./C++/climbing-stairs.cpp) | [Python](./Python/climbing-stairs.py) | [Java](./Java/climbing-stairs.java) | [TypeScript](./TypeScript/climbing-stairs.ts) | [Go](./Golang/climbing-stairs.go) | [Rust](./Rust/climbing-stairs.rs) |
+| 0121 | Best Time to Buy and Sell Stock | Easy | Greedy / One Pass | $O(N)$ | $O(1)$ | [[0121-Best-Time-to-Buy-and-Sell-Stock\|0121 Note]] | [C++](./C++/best-time-to-buy-and-sell-stock.cpp) | [Python](./Python/best-time-to-buy-and-sell-stock.py) | [Java](./Java/best-time-to-buy-and-sell-stock.java) | [TypeScript](./TypeScript/best-time-to-buy-and-sell-stock.ts) | [Go](./Golang/best-time-to-buy-and-sell-stock.go) | [Rust](./Rust/best-time-to-buy-and-sell-stock.rs) |
+| 0152 | Maximum Product Subarray | Medium | Dynamic Programming / Kadane | $O(N)$ | $O(1)$ | [[0152-Maximum-Product-Subarray\|0152 Note]] | [C++](./C++/maximum-product-subarray.cpp) | [Python](./Python/maximum-product-subarray.py) | [Java](./Java/maximum-product-subarray.java) | [TypeScript](./TypeScript/maximum-product-subarray.ts) | [Go](./Golang/maximum-product-subarray.go) | [Rust](./Rust/maximum-product-subarray.rs) |
+| 0153 | Find Minimum in Rotated Sorted Array | Medium | Binary Search | $O(\log N)$ | $O(1)$ | [[0153-Find-Minimum-in-Rotated-Sorted-Array\|0153 Note]] | [C++](./C++/find-minimum-in-rotated-sorted-array.cpp) | [Python](./Python/find-minimum-in-rotated-sorted-array.py) | [Java](./Java/find-minimum-in-rotated-sorted-array.java) | [TypeScript](./TypeScript/find-minimum-in-rotated-sorted-array.ts) | [Go](./Golang/find-minimum-in-rotated-sorted-array.go) | [Rust](./Rust/find-minimum-in-rotated-sorted-array.rs) |
+| 0200 | Number of Islands | Medium | Graph / BFS / DFS / Disjoint Set | $O(M \times N)$ | $O(M \times N)$ | [[0200-Number-of-Islands\|0200 Note]] | [C++](./C++/number-of-islands.cpp) | [Python](./Python/number-of-islands.py) | [Java](./Java/number-of-islands.java) | [TypeScript](./TypeScript/number-of-islands.ts) | [Go](./Golang/number-of-islands.go) | [Rust](./Rust/number-of-islands.rs) |
+| 0206 | Reverse Linked List | Easy | Linked List / Pointers | $O(N)$ | $O(1)$ | [[0206-Reverse-Linked-List\|0206 Note]] | [C++](./C++/reverse-linked-list.cpp) | [Python](./Python/reverse-linked-list.py) | [Java](./Java/reverse-linked-list.java) | [TypeScript](./TypeScript/reverse-linked-list.ts) | [Go](./Golang/reverse-linked-list.go) | [Rust](./Rust/reverse-linked-list.rs) |
+| 0217 | Contains Duplicate | Easy | Array / Hash Table | $O(N)$ | $O(N)$ | [[0217-Contains-Duplicate\|0217 Note]] | [C++](./C++/contains-duplicate.cpp) | [Python](./Python/contains-duplicate.py) | [Java](./Java/contains-duplicate.java) | [TypeScript](./TypeScript/contains-duplicate.ts) | [Go](./Golang/contains-duplicate.go) | [Rust](./Rust/contains-duplicate.rs) |
+| 0226 | Invert Binary Tree | Easy | Binary Tree / DFS / BFS | $O(N)$ | $O(H)$ | [[0226-Invert-Binary-Tree\|0226 Note]] | [C++](./C++/invert-binary-tree.cpp) | [Python](./Python/invert-binary-tree.py) | [Java](./Java/invert-binary-tree.java) | [TypeScript](./TypeScript/invert-binary-tree.ts) | [Go](./Golang/invert-binary-tree.go) | [Rust](./Rust/invert-binary-tree.rs) |
+| 0238 | Product of Array Except Self | Medium | Array / Prefix Sum | $O(N)$ | $O(1)$ | [[0238-Product-of-Array-Except-Self\|0238 Note]] | [C++](./C++/product-of-array-except-self.cpp) | [Python](./Python/product-of-array-except-self.py) | [Java](./Java/product-of-array-except-self.java) | [TypeScript](./TypeScript/product-of-array-except-self.ts) | [Go](./Golang/product-of-array-except-self.go) | [Rust](./Rust/product-of-array-except-self.rs) |
+| 0242 | Valid Anagram | Easy | Hash Table / String | $O(N)$ | $O(1)$ | [[0242-Valid-Anagram\|0242 Note]] | [C++](./C++/valid-anagram.cpp) | [Python](./Python/valid-anagram.py) | [Java](./Java/valid-anagram.java) | [TypeScript](./TypeScript/valid-anagram.ts) | [Go](./Golang/valid-anagram.go) | [Rust](./Rust/valid-anagram.rs) |
+| 0300 | Longest Increasing Subsequence | Medium | DP / Patience Sorting | $O(N \log N)$ | $O(N)$ | [[0300-Longest-Increasing-Subsequence\|0300 Note]] | [C++](./C++/longest-increasing-subsequence.cpp) | [Python](./Python/longest-increasing-subsequence.py) | [Java](./Java/longest-increasing-subsequence.java) | [TypeScript](./TypeScript/longest-increasing-subsequence.ts) | [Go](./Golang/longest-increasing-subsequence.go) | [Rust](./Rust/longest-increasing-subsequence.rs) |
+| 0322 | Coin Change | Medium | Dynamic Programming / BFS | $O(A \times C)$ | $O(A)$ | [[0322-Coin-Change\|0322 Note]] | [C++](./C++/coin-change.cpp) | [Python](./Python/coin-change.py) | [Java](./Java/coin-change.java) | [TypeScript](./TypeScript/coin-change.ts) | [Go](./Golang/coin-change.go) | [Rust](./Rust/coin-change.rs) |
+| 0424 | Longest Repeating Character Replacement | Medium | Sliding Window | $O(N)$ | $O(1)$ | [[0424-Longest-Repeating-Character-Replacement\|0424 Note]] | [C++](./C++/longest-repeating-character-replacement.cpp) | [Python](./Python/longest-repeating-character-replacement.py) | [Java](./Java/longest-repeating-character-replacement.java) | [TypeScript](./TypeScript/longest-repeating-character-replacement.ts) | [Go](./Golang/longest-repeating-character-replacement.go) | [Rust](./Rust/longest-repeating-character-replacement.rs) |
