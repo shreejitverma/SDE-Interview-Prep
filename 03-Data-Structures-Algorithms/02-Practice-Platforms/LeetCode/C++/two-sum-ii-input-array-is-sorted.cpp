@@ -6,22 +6,24 @@
 // Time:  O(n)
 // Space: O(1)
 
+#include <vector>
+
 class Solution {
 public:
-    vector<int> twoSum(vector<int>& numbers, int target) {
-        int left = 0, right = numbers.size() - 1;
+    std::vector<int> twoSum(std::vector<int>& numbers, int target) {
+        int left = 0, right = static_cast<int>(numbers.size()) - 1;
         
-        while (left != right) {
-            const auto sum = numbers[left] + numbers[right];
-            if (sum > target) {
-                --right;
+        while (left < right) {
+            const int sum = numbers[left] + numbers[right];
+            if (sum == target) {
+                return {left + 1, right + 1};
             } else if (sum < target) {
                 ++left;
             } else {
-                return {left + 1, right + 1};
+                --right;
             }
         }
 
-        return {0, 0};
+        return {-1, -1};
     }
 };

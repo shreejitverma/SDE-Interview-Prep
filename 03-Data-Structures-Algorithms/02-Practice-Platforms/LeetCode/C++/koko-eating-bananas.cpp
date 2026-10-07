@@ -3,16 +3,21 @@
  * GitHub: https://github.com/shreejitverma
  */
 
-// Time:  O(nlogr)
+// Time:  O(n log(max_pile))
 // Space: O(1)
+
+#include <vector>
+#include <algorithm>
 
 class Solution {
 public:
-    int minEatingSpeed(vector<int>& piles, int H) {
-        int left = 1, right = *max_element(piles.cbegin(), piles.cend());
+    int minEatingSpeed(const std::vector<int>& piles, int h) {
+        int left = 1;
+        int right = *std::max_element(piles.begin(), piles.end());
+
         while (left <= right) {
-            const auto mid = left + (right - left) / 2;
-            if (possible(piles, H, mid)) {
+            const int mid = left + (right - left) / 2;
+            if (canFinish(piles, h, mid)) {
                 right = mid - 1;
             } else {
                 left = mid + 1;
@@ -22,11 +27,11 @@ public:
     }
 
 private:
-    bool possible(const vector<int>& piles, int H, int K) {
-        int time = 0;
-        for (const auto& pile : piles) {
-            time += (pile - 1) / K + 1;
+    bool canFinish(const std::vector<int>& piles, int h, int k) {
+        long long hours = 0;
+        for (const int pile : piles) {
+            hours += (static_cast<long long>(pile) + k - 1) / k;
         }
-        return time <= H;
+        return hours <= h;
     }
 };

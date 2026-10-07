@@ -3,35 +3,33 @@
  * GitHub: https://github.com/shreejitverma
  */
 
-// Time:  O(logm + logn)
+// Time:  O(log(m * n))
 // Space: O(1)
+
+#include <vector>
 
 class Solution {
 public:
-    bool searchMatrix(vector<vector<int>>& matrix, int target) {
-        if (matrix.empty()) {
+    bool searchMatrix(const std::vector<std::vector<int>>& matrix, int target) {
+        if (matrix.empty() || matrix[0].empty()) {
             return false;
         }
 
-        // Treat matrix as 1D array.
-        const int m = matrix.size();
-        const int n = matrix[0].size();
+        const int m = static_cast<int>(matrix.size());
+        const int n = static_cast<int>(matrix[0].size());
         int left = 0;
         int right = m * n - 1;
 
-        // Find min of left s.t.  matrix[left / n][left % n] >= target
         while (left <= right) {
-            int mid = left + (right - left) / 2;
-            if (matrix[mid / n][mid % n] >= target) {
-                right = mid - 1;
-            } else {
+            const int mid = left + (right - left) / 2;
+            const int val = matrix[mid / n][mid % n];
+            if (val == target) {
+                return true;
+            } else if (val < target) {
                 left = mid + 1;
+            } else {
+                right = mid - 1;
             }
-        }
-
-        // Check if matrix[left / n][left % n] equals to target.
-        if (left != m * n && matrix[left / n][left % n] == target) {
-            return true;
         }
 
         return false;

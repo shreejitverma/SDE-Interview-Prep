@@ -40,6 +40,7 @@ sources: []
 - [LeetCode 0062: Unique Paths](0062-Unique-Paths.md)
 - [LeetCode 0070: Climbing Stairs](0070-Climbing-Stairs.md)
 - [LeetCode 0073: Set Matrix Zeroes](0073-Set-Matrix-Zeroes.md)
+- [LeetCode 0074: Search a 2D Matrix](0074-Search-a-2D-Matrix.md)
 - [LeetCode 0076: Minimum Window Substring](0076-Minimum-Window-Substring.md)
 - [LeetCode 0078: Subsets](0078-Subsets.md)
 - [LeetCode 0079: Word Search](0079-Word-Search.md)
@@ -60,6 +61,7 @@ sources: []
 - [LeetCode 0143: Reorder List](0143-Reorder-List.md)
 - [LeetCode 0152: Maximum Product Subarray](0152-Maximum-Product-Subarray.md)
 - [LeetCode 0153: Find Minimum in Rotated Sorted Array](0153-Find-Minimum-in-Rotated-Sorted-Array.md)
+- [LeetCode 0167: Two Sum II - Input Array Is Sorted](0167-Two-Sum-II-Input-Array-Is-Sorted.md)
 - [LeetCode 0190: Reverse Bits](0190-Reverse-Bits.md)
 - [LeetCode 0191: Number of 1 Bits](0191-Number-of-1-Bits.md)
 - [LeetCode 0198: House Robber](0198-House-Robber.md)
@@ -87,6 +89,9 @@ sources: []
 - [LeetCode 0417: Pacific Atlantic Water Flow](0417-Pacific-Atlantic-Water-Flow.md)
 - [LeetCode 0424: Longest Repeating Character Replacement](0424-Longest-Repeating-Character-Replacement.md)
 - [LeetCode 0435: Non-overlapping Intervals](0435-Non-overlapping-Intervals.md)
+- [LeetCode 0543: Diameter of Binary Tree](0543-Diameter-of-Binary-Tree.md)
 - [LeetCode 647: Palindromic Substrings (Manacher's Algorithm & Center Expansion Deep Dive)](0647-Palindromic-Substrings.md)
+- [LeetCode 0739: Daily Temperatures](0739-Daily-Temperatures.md)
+- [LeetCode 0875: Koko Eating Bananas](0875-Koko-Eating-Bananas.md)
 
 <!-- moc:end -->

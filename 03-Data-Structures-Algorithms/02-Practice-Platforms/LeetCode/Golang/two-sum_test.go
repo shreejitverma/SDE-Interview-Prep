@@ -3,7 +3,7 @@
  * GitHub: https://github.com/shreejitverma
  */
 
-package leetcode
+package main
 
 import "testing"
 

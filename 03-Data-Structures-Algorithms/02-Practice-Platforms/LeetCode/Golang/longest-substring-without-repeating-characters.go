@@ -3,7 +3,7 @@
  * GitHub: https://github.com/shreejitverma
  */
 
-package leetcode
+package main
 
 // Given a string, find the length of the longest substring without repeating characters.
 //

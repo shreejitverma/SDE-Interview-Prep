@@ -6,18 +6,23 @@
 // Time:  O(n)
 // Space: O(n)
 
+#include <vector>
+#include <stack>
+
 class Solution {
 public:
-    vector<int> dailyTemperatures(vector<int>& temperatures) {
-        vector<int> result(temperatures.size());
-        stack<int> stk;
-        for (int i = 0; i < temperatures.size(); ++i) {
-            while (!stk.empty() &&
-                   temperatures[stk.top()] < temperatures[i]) {
-                const auto idx = stk.top(); stk.pop();
-                result[idx] = i - idx;
+    std::vector<int> dailyTemperatures(const std::vector<int>& temperatures) {
+        const size_t n = temperatures.size();
+        std::vector<int> result(n, 0);
+        std::stack<int> stk;
+
+        for (size_t i = 0; i < n; ++i) {
+            while (!stk.empty() && temperatures[stk.top()] < temperatures[i]) {
+                const int prev = stk.top();
+                stk.pop();
+                result[prev] = static_cast<int>(i) - prev;
             }
-            stk.emplace(i);
+            stk.push(static_cast<int>(i));
         }
         return result; 
     }
