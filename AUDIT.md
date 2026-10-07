@@ -8,7 +8,7 @@ Re-run the script after every structural change; this file is its output and sho
 
 | Check | Result |
 | :--- | ---: |
-| Tracked files | 15915 |
+| Tracked files | 15943 |
 | Markdown notes | 1966 |
 | Internal links checked | 13737 |
 | Broken links (links into private locations are not counted) | 0 |
@@ -35,7 +35,7 @@ Re-run the script after every structural change; this file is its output and sho
 | `00-Start-Here` | 6 | 5 | 0 | 0 | 1 | 0.0 | 2026-10-07 |
 | `01-CS-Foundations` | 507 | 262 | 141 | 0 | 104 | 4.7 | 2026-10-07 |
 | `02-Programming-Languages` | 5827 | 817 | 2860 | 466 | 1684 | 112.3 | 2026-10-07 |
-| `03-Data-Structures-Algorithms` | 7912 | 119 | 7673 | 0 | 120 | 16.2 | 2026-10-07 |
+| `03-Data-Structures-Algorithms` | 7940 | 119 | 7701 | 0 | 120 | 16.2 | 2026-10-07 |
 | `04-System-Design` | 991 | 177 | 657 | 0 | 157 | 9.7 | 2026-10-07 |
 | `05-Quantitative-Finance` | 9 | 2 | 7 | 0 | 0 | 0.0 | 2026-10-07 |
 | `06-Interview-Prep` | 13 | 12 | 0 | 0 | 1 | 0.2 | 2026-10-07 |
