@@ -224,7 +224,7 @@ Demonstrates:
 
 import random
 from collections import deque
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import List, Optional, Tuple
 
 
 class HTTP11Connection:
@@ -260,29 +260,21 @@ class HTTP2TCPSimulator:
         self.loss_rate = loss_rate
 
     def run(self) -> Tuple[int, int]:
-        frames = []
-        for s in range(self.num_streams):
-            for p in range(self.packets_per_stream):
-                frames.append((s, p))
+        frames = [s for s in range(self.num_streams) for _ in range(self.packets_per_stream)]
         random.shuffle(frames)
 
-        tcp_in_order_seq = 0
-        stalled_frames = 0
         lost_packets = 0
-        retransmitting = False
-
-        for stream_id, seq in frames:
-            drop = random.random() < self.loss_rate
-            if drop or retransmitting:
+        first_loss: Optional[int] = None
+        for pos in range(len(frames)):
+            if random.random() < self.loss_rate:
                 lost_packets += 1
-                stalled_frames += 1
-                retransmitting = True
-                if random.random() < 0.35:
-                    retransmitting = False
-            else:
-                tcp_in_order_seq += 1
+                if first_loss is None:
+                    first_loss = pos
 
-        return lost_packets, stalled_frames
+        if first_loss is None:
+            return lost_packets, 0
+        delayed_streams = set(frames[first_loss:])
+        return lost_packets, len(delayed_streams)
 
 
 class HTTP3QUICSimulator:
@@ -292,19 +284,19 @@ class HTTP3QUICSimulator:
         self.loss_rate = loss_rate
 
     def run(self) -> Tuple[int, int]:
-        total_drops = 0
-        stream_stalls = 0
+        lost_packets = 0
+        delayed_streams = 0
 
-        for s in range(self.num_streams):
+        for _ in range(self.num_streams):
             stream_loss = False
-            for p in range(self.packets_per_stream):
+            for _ in range(self.packets_per_stream):
                 if random.random() < self.loss_rate:
-                    total_drops += 1
+                    lost_packets += 1
                     stream_loss = True
             if stream_loss:
-                stream_stalls += 1
+                delayed_streams += 1
 
-        return total_drops, stream_stalls
+        return lost_packets, delayed_streams
 
 
 class QPACKCodec:
@@ -373,9 +365,12 @@ def run_simulation():
         h3_drops_total += d3
         h3_stalls_total += s3
 
-    print(f"HTTP/2 (Shared TCP): Avg {h2_stalls_total / trials:.1f} pipeline stalls per run (Transport HoL Blocking)")
-    print(f"HTTP/3 (QUIC/UDP):   Avg {h3_stalls_total / trials:.1f} streams experiencing isolated recovery (0 Collateral HoL)")
-    print(f"Multiplexing Isolation: HTTP/3 isolates packet drops, eliminating cross-stream head-of-line freezes.")
+    print(f"HTTP/2 (Shared TCP): Avg {h2_drops_total / trials:.1f} lost packets, "
+          f"{h2_stalls_total / trials:.1f} of 10 streams delayed (every stream behind the first loss in TCP order)")
+    print(f"HTTP/3 (QUIC/UDP):   Avg {h3_drops_total / trials:.1f} lost packets, "
+          f"{h3_stalls_total / trials:.1f} of 10 streams delayed (only streams that own a lost packet)")
+    assert h3_stalls_total < h2_stalls_total, "QUIC should delay fewer streams than shared TCP"
+    print("Multiplexing Isolation: HTTP/3 confines each loss to its own stream, eliminating cross-stream head-of-line freezes.")
 
     print("\n--- 3. QPACK Dynamic Table Compression Simulation ---")
     codec = QPACKCodec(max_entries=5)

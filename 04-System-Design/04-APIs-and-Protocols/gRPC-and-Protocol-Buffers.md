@@ -420,7 +420,10 @@ if __name__ == "__main__":
     run_grpc_simulation()
 ```
 
-### 3. Production Python gRPC Client Example with Deadlines and Status Handling
+### 3. Production Python gRPC Client Example with Deadlines and Status Handling (Reference)
+This block is a reference, not a standalone simulation.
+It needs `pip install grpcio grpcio-tools` and stubs generated from `order_service.proto` with `python -m grpc_tools.protoc -I. --python_out=. --grpc_python_out=. order_service.proto`.
+
 ```python
 """
 Educational gRPC client example demonstrating deadlines and error handling.

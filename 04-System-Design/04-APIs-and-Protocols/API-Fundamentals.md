@@ -189,7 +189,7 @@ Run this self-contained script demonstrating sliding window rate limiting, idemp
 """
 Standalone API Fundamentals Simulation: Rate Limiting, Idempotency, Versioning, and Error Contracts.
 Demonstrates:
-1. Token Bucket & Sliding Window Counter rate limiters with burst control.
+1. Sliding Window Counter rate limiter (the Token Bucket variant is the Redis Lua reference below).
 2. Idempotency key tracking with SHA-256 payload fingerprinting and collision detection.
 3. In-flight locking preventing concurrent duplicate executions.
 4. Backward-compatible schema transformation pipeline (Stripe model).
@@ -215,10 +215,11 @@ class SlidingWindowRateLimiter:
         elapsed = now - self.curr_window_start
 
         if elapsed >= self.window:
-            self.prev_count = self.curr_count
+            windows_passed = int(elapsed // self.window)
+            self.prev_count = self.curr_count if windows_passed == 1 else 0
             self.curr_count = 0
-            self.curr_window_start = now
-            elapsed = 0.0
+            self.curr_window_start += windows_passed * self.window
+            elapsed = now - self.curr_window_start
 
         weight = max(0.0, 1.0 - (elapsed / self.window))
         estimated = self.curr_count + (self.prev_count * weight)
@@ -227,7 +228,7 @@ class SlidingWindowRateLimiter:
             self.curr_count += 1
             return True, {
                 "X-RateLimit-Limit": self.limit,
-                "X-RateLimit-Remaining": int(self.limit - estimated)
+                "X-RateLimit-Remaining": max(0, int(self.limit - estimated - 1))
             }
         return False, {
             "Retry-After": max(1, int(self.window - elapsed)),

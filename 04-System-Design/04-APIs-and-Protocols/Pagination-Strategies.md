@@ -198,7 +198,6 @@ Demonstrates:
 1. Algorithmic scan cost comparison: Offset O(N) scan & discard vs Keyset O(log N) binary search seek.
 2. Window Drift demonstration: Concurrent inserts causing duplicate records in Offset vs immunity in Keyset.
 3. Cryptographically signed opaque cursors (HMAC-SHA256) preventing tampering and schema leakage.
-4. Bidirectional pagination (Forward 'after' and Backward 'before' with result list inversion).
 """
 
 import base64
