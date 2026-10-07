@@ -3,37 +3,35 @@
  * GitHub: https://github.com/shreejitverma
  */
 
-// Time:  O(n)
-// Space: O(1)
+// Time:  O(max(N, M))
+// Space: O(1) auxiliary (excluding output list)
 
-/**
- * Definition for singly-linked list.
- * type ListNode struct {
- *     Val int
- *     Next *ListNode
- * }
- */
+package main
+
+type ListNode struct {
+	Val  int
+	Next *ListNode
+}
+
 func addTwoNumbers(l1 *ListNode, l2 *ListNode) *ListNode {
-	dummy := &ListNode{}
-	current, carry := dummy, 0
+	dummy := &ListNode{Val: 0}
+	curr := dummy
+	carry := 0
 
-	for l1 != nil || l2 != nil {
-		val := carry
+	for l1 != nil || l2 != nil || carry != 0 {
+		sum := carry
 		if l1 != nil {
-			val += l1.Val
+			sum += l1.Val
 			l1 = l1.Next
 		}
 		if l2 != nil {
-			val += l2.Val
+			sum += l2.Val
 			l2 = l2.Next
 		}
-		carry, val = val / 10, val % 10
-		current.Next = &ListNode{Val: val}
-		current = current.Next
-	}
 
-	if carry == 1 {
-		current.Next = &ListNode{Val: 1}
+		carry = sum / 10
+		curr.Next = &ListNode{Val: sum % 10}
+		curr = curr.Next
 	}
 
 	return dummy.Next

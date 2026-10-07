@@ -500,7 +500,19 @@ With `-O3`, modern C++ compilers inline small helper functions and optimize regi
 ## 10. Related Problems and Systematic Progression Links
 
 - [[0104-Maximum-Depth-of-Binary-Tree]]: Foundational post-order tree height traversal.
-- [[0112-Path-Sum]]: Target path sum verification from root to leaf.
-- [[0113-Path-Sum-II]]: Path enumeration and backtracking across tree branches.
-- [[0129-Sum-Root-to-Leaf-Numbers]]: Downward root-to-leaf path number accumulation.
-- [[0543-Diameter-of-Binary-Tree]]: Maximum distance between any two nodes in a tree (analogous apex structure).
+- [[0105-Construct-Binary-Tree-from-Preorder-and-Inorder-Traversal]]: Tree reconstruction and recursive structural analysis.
+- [[0226-Invert-Binary-Tree]]: Recursive structural tree transformation.
+- LeetCode 112 (Path Sum): Target path sum verification from root to leaf.
+- LeetCode 543 (Diameter of Binary Tree): Maximum distance between any two nodes in a binary tree.
+
+---
+
+## 11. Standalone Implementation Links
+
+Access the standalone compilable and runnable source files:
+- [C++ Implementation](../C++/binary-tree-maximum-path-sum.cpp)
+- [Python Implementation](../Python/binary-tree-maximum-path-sum.py)
+- [Java Implementation](../Java/binary-tree-maximum-path-sum.java)
+- [TypeScript Implementation](../TypeScript/binary-tree-maximum-path-sum.ts)
+- [Go Implementation](../Golang/binary-tree-maximum-path-sum.go)
+- [Rust Implementation](../Rust/binary-tree-maximum-path-sum.rs)
