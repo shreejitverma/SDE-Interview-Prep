@@ -8,10 +8,10 @@ Re-run the script after every structural change; this file is its output and sho
 
 | Check | Result |
 | :--- | ---: |
-| Tracked files | 15943 |
-| Markdown notes | 1966 |
-| Internal links checked | 13737 |
-| Broken links (links into private locations are not counted) | 0 |
+| Tracked files | 15973 |
+| Markdown notes | 1972 |
+| Internal links checked | 13818 |
+| Broken links (links into private locations are not counted) | 11 |
 | Wikilink aliases that split a table cell | 0 |
 | Broken wikilinks fixable by unique basename | 0 |
 | Orphan knowledge notes (no inbound links) | 0 |
@@ -35,7 +35,7 @@ Re-run the script after every structural change; this file is its output and sho
 | `00-Start-Here` | 6 | 5 | 0 | 0 | 1 | 0.0 | 2026-10-07 |
 | `01-CS-Foundations` | 507 | 262 | 141 | 0 | 104 | 4.7 | 2026-10-07 |
 | `02-Programming-Languages` | 5827 | 817 | 2860 | 466 | 1684 | 112.3 | 2026-10-07 |
-| `03-Data-Structures-Algorithms` | 7940 | 119 | 7701 | 0 | 120 | 16.2 | 2026-10-07 |
+| `03-Data-Structures-Algorithms` | 7970 | 125 | 7725 | 0 | 120 | 16.4 | 2026-10-07 |
 | `04-System-Design` | 991 | 177 | 657 | 0 | 157 | 9.7 | 2026-10-07 |
 | `05-Quantitative-Finance` | 9 | 2 | 7 | 0 | 0 | 0.0 | 2026-10-07 |
 | `06-Interview-Prep` | 13 | 12 | 0 | 0 | 1 | 0.2 | 2026-10-07 |
@@ -112,13 +112,25 @@ Re-run the script after every structural change; this file is its output and sho
 
 | Folder | Broken |
 | :--- | ---: |
+| `03-Data-Structures-Algorithms` | 11 |
 
 0 broken wikilinks point at a path that no longer exists but name a note that exists exactly once elsewhere.
 These come from folder reorganizations that did not rewrite links and can be fixed mechanically.
 
 <details>
-<summary>All 0 broken links</summary>
+<summary>All 11 broken links</summary>
 
+- `03-Data-Structures-Algorithms/02-Practice-Platforms/LeetCode/Problems/0124-Binary-Tree-Maximum-Path-Sum.md` (wiki) -> `0112-Path-Sum`
+- `03-Data-Structures-Algorithms/02-Practice-Platforms/LeetCode/Problems/0124-Binary-Tree-Maximum-Path-Sum.md` (wiki) -> `0113-Path-Sum-II`
+- `03-Data-Structures-Algorithms/02-Practice-Platforms/LeetCode/Problems/0124-Binary-Tree-Maximum-Path-Sum.md` (wiki) -> `0129-Sum-Root-to-Leaf-Numbers`
+- `03-Data-Structures-Algorithms/02-Practice-Platforms/LeetCode/Problems/0124-Binary-Tree-Maximum-Path-Sum.md` (wiki) -> `0543-Diameter-of-Binary-Tree`
+- `03-Data-Structures-Algorithms/02-Practice-Platforms/LeetCode/Problems/0125-Valid-Palindrome.md` (wiki) -> `0009-Palindrome-Number`
+- `03-Data-Structures-Algorithms/02-Practice-Platforms/LeetCode/Problems/0125-Valid-Palindrome.md` (wiki) -> `0234-Palindrome-Linked-List`
+- `03-Data-Structures-Algorithms/02-Practice-Platforms/LeetCode/Problems/0125-Valid-Palindrome.md` (wiki) -> `0647-Palindromic-Substrings`
+- `03-Data-Structures-Algorithms/02-Practice-Platforms/LeetCode/Problems/0125-Valid-Palindrome.md` (wiki) -> `0680-Valid-Palindrome-II`
+- `03-Data-Structures-Algorithms/02-Practice-Platforms/LeetCode/Problems/0143-Reorder-List.md` (wiki) -> `0025-Reverse-Nodes-in-k-Group`
+- `03-Data-Structures-Algorithms/02-Practice-Platforms/LeetCode/Problems/0143-Reorder-List.md` (wiki) -> `0234-Palindrome-Linked-List`
+- `03-Data-Structures-Algorithms/02-Practice-Platforms/LeetCode/Problems/0143-Reorder-List.md` (wiki) -> `0876-Middle-of-the-Linked-List`
 
 </details>
 
@@ -184,7 +196,7 @@ Folders carrying their own LICENSE, `.gitignore`, `package.json`, or similar; ou
 
 | Folder | Files | Last touched |
 | :--- | ---: | ---: |
-| `03-Data-Structures-Algorithms/02-Practice-Platforms/LeetCode` | 6126 | 2026-10-07 |
+| `03-Data-Structures-Algorithms/02-Practice-Platforms/LeetCode` | 6156 | 2026-10-07 |
 | `02-Programming-Languages/Python/python in depth` | 2030 | 2026-10-07 |
 | `04-System-Design/design-patterns-java` | 177 | 2026-09-21 |
 | `04-System-Design/design-questions` | 172 | 2026-09-21 |
