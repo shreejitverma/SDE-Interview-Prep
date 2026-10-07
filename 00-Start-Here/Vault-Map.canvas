@@ -52,7 +52,7 @@
       "type": "group",
       "x": 0,
       "y": 400,
-      "width": 1240,
+      "width": 1680,
       "height": 320,
       "label": "Foundations",
       "color": "4"
@@ -80,6 +80,15 @@
       "type": "file",
       "file": "03-Data-Structures-Algorithms/README.md",
       "x": 840,
+      "y": 480,
+      "width": 360,
+      "height": 200
+    },
+    {
+      "id": "f-canon",
+      "type": "file",
+      "file": "01-CS-Foundations/Computer-Science-Canon/README.md",
+      "x": 1240,
       "y": 480,
       "width": 360,
       "height": 200
@@ -258,6 +267,7 @@
     {"id": "e13", "fromNode": "f-dsa", "fromSide": "bottom", "toNode": "i-prep", "toSide": "top"},
     {"id": "e14", "fromNode": "i-prep", "fromSide": "right", "toNode": "i-cc", "toSide": "left"},
     {"id": "e15", "fromNode": "i-prep", "fromSide": "right", "toNode": "i-port", "toSide": "left"},
-    {"id": "e16", "fromNode": "start-roadmap", "fromSide": "bottom", "toNode": "f-cs", "toSide": "top"}
+    {"id": "e16", "fromNode": "start-roadmap", "fromSide": "bottom", "toNode": "f-cs", "toSide": "top"},
+    {"id": "e17", "fromNode": "f-dsa", "fromSide": "right", "toNode": "f-canon", "toSide": "left"}
   ]
 }

@@ -36,7 +36,7 @@ TRACKS: dict[str, list[str]] = {
 # One-line scope for generated top-level entry notes.
 SCOPES: dict[str, str] = {
     "00-Start-Here": "Where to begin: the phased roadmap and the progress checklist.",
-    "01-CS-Foundations": "Core computer science: operating systems, computer networks, databases, and object-oriented programming, with notes, quizzes, and runnable code.",
+    "01-CS-Foundations": "Core computer science: the theory canon, operating systems, computer networks, databases, and object-oriented programming, with notes, quizzes, and runnable code.",
     "02-Programming-Languages": 'Language deep dives: the C++ and Python "Zero to Godhood" books, plus Java and JavaScript material.',
     "03-Data-Structures-Algorithms": "Data structures and algorithms: topic notes, practice-platform solutions, resources, and gold-standard C++ reference patterns.",
     "06-Interview-Prep": "Interview process preparation: behavioral answers, resume guidance, and mock interview checklists.",

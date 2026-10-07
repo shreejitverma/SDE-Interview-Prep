@@ -8,9 +8,9 @@ Re-run the script after every structural change; this file is its output and sho
 
 | Check | Result |
 | :--- | ---: |
-| Tracked files | 15696 |
-| Markdown notes | 1914 |
-| Internal links checked | 13163 |
+| Tracked files | 15711 |
+| Markdown notes | 1929 |
+| Internal links checked | 13245 |
 | Broken links (links into private locations are not counted) | 0 |
 | Wikilink aliases that split a table cell | 0 |
 | Broken wikilinks fixable by unique basename | 0 |
@@ -33,7 +33,7 @@ Re-run the script after every structural change; this file is its output and sho
 | `.github` | 1 | 0 | 0 | 0 | 1 | 0.0 | 2026-09-21 |
 | `.obsidian` | 45 | 0 | 0 | 0 | 45 | 0.0 | 2026-10-07 |
 | `00-Start-Here` | 6 | 5 | 0 | 0 | 1 | 0.0 | 2026-10-07 |
-| `01-CS-Foundations` | 492 | 247 | 141 | 0 | 104 | 4.6 | 2026-10-07 |
+| `01-CS-Foundations` | 507 | 262 | 141 | 0 | 104 | 4.7 | 2026-10-07 |
 | `02-Programming-Languages` | 5827 | 817 | 2860 | 466 | 1684 | 112.3 | 2026-10-07 |
 | `03-Data-Structures-Algorithms` | 7708 | 82 | 7506 | 0 | 120 | 15.2 | 2026-09-21 |
 | `04-System-Design` | 991 | 177 | 657 | 0 | 157 | 9.7 | 2026-10-07 |
@@ -190,7 +190,7 @@ Folders carrying their own LICENSE, `.gitignore`, `package.json`, or similar; ou
 | `04-System-Design/design-questions` | 172 | 2026-09-21 |
 | `04-System-Design/design-patterns-cpp/python-patterns` | 106 | 2026-10-07 |
 | `03-Data-Structures-Algorithms/01-Topics/General-DSA` | 94 | 2026-09-21 |
-| `04-System-Design/Low Level Design` | 58 | 2026-09-21 |
+| `04-System-Design/Low Level Design` | 58 | 2026-10-07 |
 | `01-CS-Foundations/Operating-Systems/code/os` | 17 | 2026-07-24 |
 | `01-CS-Foundations/Object-Oriented-Programming/code/oop` | 16 | 2026-07-24 |
 | `04-System-Design/InterviewReady/splitwise` | 14 | 2026-07-24 |

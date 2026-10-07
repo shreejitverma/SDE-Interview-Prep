@@ -74,7 +74,8 @@ The section note in [05-Quantitative-Finance](../05-Quantitative-Finance/README.
 
 ```mermaid
 flowchart LR
-    S["04 System design"] --> E["08 Distinguished engineering"]
+    Canon["01 Computer science canon"] --> S["04 System design"]
+    S --> E["08 Distinguished engineering"]
     E --> P["15 Whitepapers"]
     E --> Lead["09 Leadership"]
     S --> Ops["10 Practices and 11 Security"]
@@ -104,7 +105,7 @@ The [review queue](Review-Queue.md) brings a note back after 7, 21, or 60 days, 
 | Folder | What it is for | Open |
 | :--- | :--- | :--- |
 | 00 | Order, map, and review | [Start here](README.md) |
-| 01 | OS, networks, DBMS, OOP, with code | [CS foundations](../01-CS-Foundations/README.md) |
+| 01 | Canon, OS, networks, DBMS, OOP, with code | [CS foundations](../01-CS-Foundations/README.md) |
 | 02 | C++ and Python Zero to Godhood, plus Java and JavaScript | [Languages](../02-Programming-Languages/README.md) |
 | 03 | Patterns, practice problems, gold-standard C++ | [DSA](../03-Data-Structures-Algorithms/README.md) |
 | 04 | Concepts, case studies, APIs, stores, messaging, orchestration | [System design](../04-System-Design/README.md) |
