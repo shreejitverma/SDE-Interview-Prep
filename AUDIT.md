@@ -8,9 +8,9 @@ Re-run the script after every structural change; this file is its output and sho
 
 | Check | Result |
 | :--- | ---: |
-| Tracked files | 15643 |
-| Markdown notes | 1861 |
-| Internal links checked | 12774 |
+| Tracked files | 15642 |
+| Markdown notes | 1860 |
+| Internal links checked | 12773 |
 | Broken links (links into private locations are not counted) | 0 |
 | Wikilink aliases that split a table cell | 0 |
 | Broken wikilinks fixable by unique basename | 0 |
@@ -20,7 +20,7 @@ Re-run the script after every structural change; this file is its output and sho
 | Note folders without README (depth <= 3) | 0 |
 | Notes with emojis / total emojis | 0 / 0 |
 | Notes with em dashes / total em dashes | 0 / 0 |
-| Identical-content groups / redundant MB | 305 / 41.9 |
+| Identical-content groups / redundant MB | 304 / 41.9 |
 | Vendored or imported repos | 10 |
 | Tracked build junk | 0 |
 | Files >= 5 MB / total MB | 1 / 5.1 |
@@ -34,9 +34,9 @@ Re-run the script after every structural change; this file is its output and sho
 | `.obsidian` | 45 | 0 | 0 | 0 | 45 | 0.0 | 2026-10-07 |
 | `00-Start-Here` | 6 | 5 | 0 | 0 | 1 | 0.0 | 2026-10-07 |
 | `01-CS-Foundations` | 492 | 247 | 141 | 0 | 104 | 4.6 | 2026-10-07 |
-| `02-Programming-Languages` | 5827 | 817 | 2860 | 466 | 1684 | 112.3 | 2026-09-30 |
+| `02-Programming-Languages` | 5827 | 817 | 2860 | 466 | 1684 | 112.3 | 2026-10-07 |
 | `03-Data-Structures-Algorithms` | 7708 | 82 | 7506 | 0 | 120 | 15.2 | 2026-09-21 |
-| `04-System-Design` | 938 | 124 | 657 | 0 | 157 | 9.2 | 2026-10-07 |
+| `04-System-Design` | 937 | 123 | 657 | 0 | 157 | 9.2 | 2026-10-07 |
 | `05-Quantitative-Finance` | 9 | 2 | 7 | 0 | 0 | 0.0 | 2026-10-07 |
 | `06-Interview-Prep` | 13 | 12 | 0 | 0 | 1 | 0.2 | 2026-10-07 |
 | `07-Project-Portfolio` | 1 | 1 | 0 | 0 | 0 | 0.0 | 2026-09-21 |
@@ -75,7 +75,6 @@ Re-run the script after every structural change; this file is its output and sho
 | Folder A | Folder B | Identical files |
 | :--- | ---: | ---: |
 | `01-CS-Foundations/Object-Oriented-Programming` | `04-System-Design/design-questions` | 1 |
-| `04-System-Design/design-patterns-cpp` | `04-System-Design/design-patterns-python` | 1 |
 
 ### Largest identical-content groups (redundant bytes)
 
@@ -92,10 +91,10 @@ Re-run the script after every structural change; this file is its output and sho
 | `02-Programming-Languages/C++/Coding/03.FirstSteps/3.2FirstCppProgram/CMakeLists.txt` | 321 | 0.1 |
 | `02-Programming-Languages/Python/python in depth/Python/Flask_Blog/07-User-Account-Profile-Pic/flaskblog/static/profile_pics/b6e1c53325f88b74.png` | 10 | 0.1 |
 | `02-Programming-Languages/Python/python in depth/Python/Flask_Blog/11-Blueprints/flaskblog/site.db` | 3 | 0.1 |
-| `04-System-Design/design-patterns-cpp/python-patterns/Ultimate-Python-Design-Patterns.md` | 2 | 0.1 |
 | `02-Programming-Languages/Python/python in depth/Django_Blog/11-Pagination/django_project/posts.json` | 5 | 0.1 |
 | `02-Programming-Languages/Python/python in depth/Python/Flask_Blog/07-User-Account-Profile-Pic/flaskblog/static/profile_pics/7798432669b8b3ac.jpg` | 10 | 0.1 |
 | `02-Programming-Languages/C++/Coding/42.FunctionLikeEntities/42.10LambdaFunctionsAsCallbacks/boxcontainer.h` | 7 | 0.0 |
+| `02-Programming-Languages/Python/python in depth/Python/Flask_Blog/03-Forms-and-Validation/templates/register.html` | 8 | 0.0 |
 
 ### Folder pairs with overlapping note or code names (topical overlap)
 
@@ -186,10 +185,10 @@ Folders carrying their own LICENSE, `.gitignore`, `package.json`, or similar; ou
 | Folder | Files | Last touched |
 | :--- | ---: | ---: |
 | `03-Data-Structures-Algorithms/02-Practice-Platforms/LeetCode` | 5953 | 2026-09-21 |
-| `02-Programming-Languages/Python/python in depth` | 2030 | 2026-09-21 |
+| `02-Programming-Languages/Python/python in depth` | 2030 | 2026-10-07 |
 | `04-System-Design/design-patterns-java` | 177 | 2026-09-21 |
 | `04-System-Design/design-questions` | 172 | 2026-09-21 |
-| `04-System-Design/design-patterns-cpp/python-patterns` | 107 | 2026-10-07 |
+| `04-System-Design/design-patterns-cpp/python-patterns` | 106 | 2026-10-07 |
 | `03-Data-Structures-Algorithms/01-Topics/General-DSA` | 94 | 2026-09-21 |
 | `04-System-Design/Low Level Design` | 58 | 2026-09-21 |
 | `01-CS-Foundations/Operating-Systems/code/os` | 17 | 2026-07-24 |
