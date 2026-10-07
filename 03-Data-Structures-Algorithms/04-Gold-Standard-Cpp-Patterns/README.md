@@ -44,9 +44,11 @@ Every implementation adheres to strict systems engineering principles:
 - **[Floyd-Warshall Algorithm](./Graphs/floyd_warshall.cpp)**: All-Pairs Shortest Path in $O(V^3)$ with negative cycle detection and intermediate path reconstruction.
 - **[Kruskal's MST Algorithm](./Graphs/kruskal_mst.cpp)**: Minimum Spanning Tree using DSU and edge sorting in $O(E \log E)$ time.
 - **[Tarjan's SCC Algorithm](./Graphs/tarjan_scc.cpp)**: Linear-time $O(V + E)$ Strongly Connected Components using discovery time and low-link values.
+- **[Binary Lifting & LCA](./Graphs/binary_lifting_lca.cpp)**: Tree ancestor queries, Lowest Common Ancestor, $K$-th ancestor, and tree distance queries in $O(\log N)$ time with $O(1)$ ancestor check.
 
 ### Advanced Data Structures
 - **[LRU Cache (Least Recently Used)](./Data-Structures/lru_cache.cpp)**: Template-specialized $O(1)$ cache using `std::list` node splicing and `std::unordered_map` iterators with zero reallocations.
+- **[Sparse Table (RMQ / Idempotent Queries)](./Data-Structures/sparse_table.cpp)**: Static range minimum/maximum/GCD queries in strictly $O(1)$ query time after $O(N \log N)$ preprocessing.
 - **[Fenwick Tree (Binary Indexed Tree)](./Data-Structures/fenwick_tree.cpp)**: $O(\log N)$ point updates, prefix sums, and range queries with $O(\log N)$ binary lifting lower bound.
 - **[Iterative Segment Tree](./Data-Structures/segment_tree.cpp)**: Flat $2N$ array non-recursive Segment Tree for arbitrary associative monoid range queries.
 - **[Trie (Prefix Trie & 0-1 Bitwise XOR Trie)](./Data-Structures/trie.cpp)**: High-performance string prefix trie with prefix counts, and 0-1 bitwise Trie for maximum XOR pair queries.
@@ -54,10 +56,12 @@ Every implementation adheres to strict systems engineering principles:
 
 ### String Processing & Pattern Matching
 - **[Knuth-Morris-Pratt (KMP) Search](./String-Algorithms/kmp_search.cpp)**: Linear-time $O(N + M)$ exact string pattern matching via Longest Prefix Suffix (LPS) table.
+- **[Z-Algorithm](./String-Algorithms/z_algorithm.cpp)**: Linear-time $O(N)$ Z-array construction and $O(N + M)$ exact string pattern matching with cache-efficient single-pass scan.
 
 ### Mathematics & Bit Manipulation
 - **[Modular Arithmetic & Combinatorics](./Math-and-Bit-Manipulation/modular_arithmetic.cpp)**: Binary exponentiation, modular inverse, and $O(1)$ query combinatorics $nCr \pmod p$.
 - **[Euler's Linear Sieve & Prime Factorization](./Math-and-Bit-Manipulation/linear_sieve.cpp)**: Strictly $O(N)$ linear prime sieve with Smallest Prime Factor (SPF) table for $O(\log N)$ prime factorization.
+- **[Matrix Exponentiation & Linear Recurrences](./Math-and-Bit-Manipulation/matrix_exponentiation.cpp)**: Cache-friendly modular matrix multiplication and $O(K^3 \log N)$ binary exponentiation for solving general linear recurrences and graph path counts.
 
 ---
 
@@ -74,14 +78,18 @@ Every implementation adheres to strict systems engineering principles:
 | Graph | Floyd-Warshall | $O(V^3)$ | $O(V^2)$ | All-pairs shortest paths on dense graphs |
 | Graph | Kruskal MST | $O(E \log E)$ | $O(V + E)$ | Minimum cost network design, clustering |
 | Graph | Tarjan SCC | $O(V + E)$ | $O(V)$ | Dependency cycle compression, 2-SAT solvers |
+| Graph | Binary Lifting & LCA | $O(\log N)$ | $O(N \log N)$ | Tree ancestor queries, lowest common ancestor, path distance |
 | Structures | LRU Cache | $O(1)$ | $O(\text{Capacity})$ | Memory caching, buffer pools, page replacement |
+| Structures | Sparse Table | $O(1)$ | $O(N \log N)$ | Static Range Minimum / Idempotent Queries |
 | Structures | Fenwick Tree | $O(\log N)$ | $O(N)$ | Dynamic frequency tables, inversion counting |
 | Structures | Segment Tree | $O(\log N)$ | $O(2N)$ | Range min/max/sum queries with dynamic point updates |
 | Structures | Prefix & Bitwise Trie | $O(L)$ / $O(32)$ | $O(\Sigma \cdot N)$ | Autocomplete dictionary, maximum XOR subarray |
 | Structures | Monotonic Deque | $O(N)$ | $O(K)$ | Sliding window extremum, real-time signal processing |
 | Strings | KMP Search | $O(N + M)$ | $O(M)$ | Text editors, gene sequence search |
+| Strings | Z-Algorithm | $O(N + M)$ | $O(N)$ | Linear pattern matching, prefix periodicity analysis |
 | Math | Modular Arithmetic | $O(\log \text{MOD})$ | $O(N)$ | Cryptography, competitive programming combinatorics |
 | Math | Euler Linear Sieve | $O(N)$ | $O(N)$ | Number theory, fast integer factorization |
+| Math | Matrix Exponentiation | $O(K^3 \log N)$ | $O(K^2)$ | Fast linear recurrence evaluation, graph path counts |
 
 ---
 
@@ -99,6 +107,7 @@ This guarantees that iterators stored in the hash map remain permanently valid.
 ## 5. Standalone Implementation Links
 
 - [LRU Cache C++ Implementation](./Data-Structures/lru_cache.cpp)
+- [Sparse Table C++ Implementation](./Data-Structures/sparse_table.cpp)
 - [Fenwick Tree C++ Implementation](./Data-Structures/fenwick_tree.cpp)
 - [Segment Tree C++ Implementation](./Data-Structures/segment_tree.cpp)
 - [Trie C++ Implementation](./Data-Structures/trie.cpp)
@@ -110,9 +119,12 @@ This guarantees that iterators stored in the hash map remain permanently valid.
 - [Floyd-Warshall C++ Implementation](./Graphs/floyd_warshall.cpp)
 - [Kruskal MST C++ Implementation](./Graphs/kruskal_mst.cpp)
 - [Tarjan SCC C++ Implementation](./Graphs/tarjan_scc.cpp)
+- [Binary Lifting & LCA C++ Implementation](./Graphs/binary_lifting_lca.cpp)
 - [KMP Search C++ Implementation](./String-Algorithms/kmp_search.cpp)
+- [Z-Algorithm C++ Implementation](./String-Algorithms/z_algorithm.cpp)
 - [Modular Arithmetic C++ Implementation](./Math-and-Bit-Manipulation/modular_arithmetic.cpp)
 - [Euler Linear Sieve C++ Implementation](./Math-and-Bit-Manipulation/linear_sieve.cpp)
+- [Matrix Exponentiation C++ Implementation](./Math-and-Bit-Manipulation/matrix_exponentiation.cpp)
 - [0/1 Knapsack Classic C++ Implementation](./Dynamic-Programming/0_1_knapsack.cpp)
 - [0/1 Knapsack Space-Optimized C++ Implementation](./Dynamic-Programming/space_optimized_knapsack.cpp)
 - [LCS C++ Implementation](./Dynamic-Programming/longest_common_subsequence.cpp)

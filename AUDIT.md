@@ -8,9 +8,9 @@ Re-run the script after every structural change; this file is its output and sho
 
 | Check | Result |
 | :--- | ---: |
-| Tracked files | 16161 |
+| Tracked files | 16165 |
 | Markdown notes | 2007 |
-| Internal links checked | 14444 |
+| Internal links checked | 14454 |
 | Broken links (links into private locations are not counted) | 0 |
 | Wikilink aliases that split a table cell | 0 |
 | Broken wikilinks fixable by unique basename | 0 |
@@ -35,7 +35,7 @@ Re-run the script after every structural change; this file is its output and sho
 | `00-Start-Here` | 6 | 5 | 0 | 0 | 1 | 0.0 | 2026-10-07 |
 | `01-CS-Foundations` | 507 | 262 | 141 | 0 | 104 | 4.7 | 2026-10-07 |
 | `02-Programming-Languages` | 5827 | 817 | 2860 | 466 | 1684 | 112.3 | 2026-10-07 |
-| `03-Data-Structures-Algorithms` | 8158 | 160 | 7878 | 0 | 120 | 17.1 | 2026-10-07 |
+| `03-Data-Structures-Algorithms` | 8162 | 160 | 7882 | 0 | 120 | 17.1 | 2026-10-07 |
 | `04-System-Design` | 991 | 177 | 657 | 0 | 157 | 9.7 | 2026-10-07 |
 | `05-Quantitative-Finance` | 9 | 2 | 7 | 0 | 0 | 0.0 | 2026-10-07 |
 | `06-Interview-Prep` | 13 | 12 | 0 | 0 | 1 | 0.2 | 2026-10-07 |
@@ -101,8 +101,8 @@ Re-run the script after every structural change; this file is its output and sho
 | Folder A | Folder B | Shared names | Overlap of smaller |
 | :--- | ---: | ---: | ---: |
 | `03-Data-Structures-Algorithms/02-Practice-Platforms` | `04-System-Design/Most Asked Design Questions` | 50 | 100% |
-| `03-Data-Structures-Algorithms/01-Topics` | `03-Data-Structures-Algorithms/04-Gold-Standard-Cpp-Patterns` | 11 | 58% |
-| `02-Programming-Languages/Python` | `03-Data-Structures-Algorithms/04-Gold-Standard-Cpp-Patterns` | 10 | 53% |
+| `03-Data-Structures-Algorithms/01-Topics` | `03-Data-Structures-Algorithms/04-Gold-Standard-Cpp-Patterns` | 11 | 48% |
+| `02-Programming-Languages/Python` | `03-Data-Structures-Algorithms/04-Gold-Standard-Cpp-Patterns` | 11 | 48% |
 | `04-System-Design/design-patterns-java` | `04-System-Design/design-questions` | 59 | 44% |
 | `03-Data-Structures-Algorithms/01-Topics` | `03-Data-Structures-Algorithms/02-Practice-Platforms` | 103 | 11% |
 | `02-Programming-Languages/Python` | `03-Data-Structures-Algorithms/01-Topics` | 84 | 9% |

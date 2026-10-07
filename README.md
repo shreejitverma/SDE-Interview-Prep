@@ -15,7 +15,7 @@ It has been built and maintained continuously since 2021.
 | :--- | :--- |
 | Foundations | OS, networks, DBMS, OOP, with runnable C++ and Python |
 | Languages | Deep "Zero to Godhood" guides for C++ and Python, plus Java and JavaScript |
-| DSA | ~6,800 solved problems in C++ and Python, organized by pattern, plus Blind 75 and NeetCode 150 |
+| DSA | ~6,800 solved problems in C++ and Python, organized by pattern, plus Blind 75 complete across 6 languages and NeetCode 150 |
 | System design | HLD case studies, LLD problems, 80+ "design a ..." implementations, design pattern catalogs in C++, Python, Java |
 | Quant finance | Black-Scholes, Greeks, Monte Carlo, order book in C++, memory pools, event-driven backtester |
 | Low-latency systems | 129-note Obsidian vault on exchange architecture, matching engines, kernel bypass, FPGAs, lock-free C++ |
@@ -99,7 +99,8 @@ The two flagship guides are written as full books, with LaTeX and PDF builds che
 
 About 3,500 C++ and 3,300 Python files, organized by pattern under [01-Topics](./03-Data-Structures-Algorithms/01-Topics): arrays, strings, linked lists, stacks and queues, trees, tries, graphs, heaps, hashing, DP, backtracking, greedy, divide and conquer, branch and bound, bit manipulation, geometry, mathematics.
 
-- [Gold-standard C++ patterns](./03-Data-Structures-Algorithms/04-Gold-Standard-Cpp-Patterns): the reference implementations to memorize (Dijkstra, union-find, 0/1 knapsack).
+- [Gold-standard C++ patterns](./03-Data-Structures-Algorithms/04-Gold-Standard-Cpp-Patterns): modern C++20 reference implementations across fundamental data structures, graph algorithms, DP paradigms, string matching, and number theory.
+- [LeetCode Solutions Master Dashboard](./03-Data-Structures-Algorithms/02-Practice-Platforms/LeetCode/LeetCode-Solutions-Master-Dashboard.md): complete Blind 75 progression matrix with standalone runnable implementations across 6 languages (C++, Python, Java, TypeScript, Go, Rust) and 4-tier deep dive notes.
 - [Blind 75 must-do LeetCode](./03-Data-Structures-Algorithms/01-Topics/Blind%2075%20Must%20Do%20Leetcode).
 - [LeetCode](./03-Data-Structures-Algorithms/02-Practice-Platforms/LeetCode) solutions and guides.
 

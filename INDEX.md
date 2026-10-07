@@ -20,7 +20,8 @@ This repository is a structured knowledge base designed to take you from a Junio
 
 ### Phase 2: Core Engineering
 *   **DSA:**
-    *   [Gold Standard Patterns](./03-Data-Structures-Algorithms/04-Gold-Standard-Cpp-Patterns): Dijkstra, Union-Find, Knapsack.
+    *   [Gold Standard Patterns](./03-Data-Structures-Algorithms/04-Gold-Standard-Cpp-Patterns): Dijkstra, Union-Find, Knapsack, and modern C++20 algorithmic foundations.
+    *   [LeetCode Solutions Master Dashboard](./03-Data-Structures-Algorithms/02-Practice-Platforms/LeetCode/LeetCode-Solutions-Master-Dashboard.md): Complete Blind 75 across 6 languages (C++, Python, Java, TypeScript, Go, Rust) with 4-tier deep dive notes.
 *   **System Design:**
     *   [Concepts](./04-System-Design/00-Concepts): CAP, Sharding.
     *   [Case Studies](./04-System-Design/02-Case-Studies): URL Shortener, Rate Limiter, Chat App.
