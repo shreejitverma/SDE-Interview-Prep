@@ -1,8 +1,8 @@
 ---
 type: concept
 track: [sde]
-level: advanced
-status: complete
+level:
+status: solid
 last_reviewed:
 sources:
   - "Georgia Tech CS 6200 P3L2"
@@ -34,6 +34,11 @@ sources:
 - [15. Memory Allocation: Slab Allocator](#15-memory-allocation-slab-allocator)
 - [16. Quizzes and Exercises](#16-quizzes-and-exercises)
 - [17. Key Takeaways](#17-key-takeaways)
+- [18. Huge Pages: Reducing TLB Pressure](#18-huge-pages-reducing-tlb-pressure)
+- [19. Memory Compaction, Swapping, and ZRAM](#19-memory-compaction-swapping-and-zram)
+- [20. eBPF Memory Tracing](#20-ebpf-memory-tracing)
+- [21. Windows Virtual Memory Internals](#21-windows-virtual-memory-internals)
+- [22. macOS Memory Architecture and Darwin Internals](#22-macos-memory-architecture-and-darwin-internals)
 
 ---
 
@@ -735,14 +740,125 @@ slabtop
 
 ## 16. Quizzes and Exercises
 
-### Quiz: Address Translation
+### Quiz 1: Multi-Level Page Table Allocation Savings (Clips 272-273)
 
-> *Given: 32-bit virtual address, 4 KB pages, 2-level page table with 10-bit L1 and 10-bit L2 indices.*
->
-> *For virtual address 0x007A3C18:*
-> - L1 index = bits 31-22 = 0x007A3C18 >> 22 = 0x1E = **30**
-> - L2 index = bits 21-12 = (0x007A3C18 >> 12) & 0x3FF = 0xA3C & 0x3FF = 0x3C = **60**
-> - Offset = bits 11-0 = 0x007A3C18 & 0xFFF = 0xC18 = **3096**
+> [!question]
+> Consider a process on a system with 12-bit virtual addresses.
+> The address space is configured such that only the first 2 KB and the last 1 KB are allocated and in active use.
+> 
+> 1. Address Format 1 (Single-Level): Virtual address has 6 bits for Virtual Page Number (VPN) and 6 bits for offset.
+> How many total page table entries (PTEs) are required in a single-level page table?
+> 
+> 2. Address Format 2 (Two-Level): Virtual address has 2 bits for Outer Page Table (L1 directory index), 4 bits for Inner Page Table (L2 index), and 6 bits for offset.
+> How many total entries are needed across all active inner page tables?
+
+> [!success]- Answer
+> 1. **Single-level page table:**
+> With 6 bits for the VPN, the address space has $2^6 = 64$ virtual pages.
+> A single-level page table must allocate an entry for every virtual page regardless of whether it is mapped.
+> Therefore, it requires **64 entries**.
+> 
+> 2. **Two-level page table:**
+> The offset is 6 bits, so each page is $2^6 = 64$ bytes.
+> The outer page table index is 2 bits, so the outer directory has $2^2 = 4$ entries.
+> Each outer entry points to an inner page table covering 4 bits of index plus 6 bits of offset ($2^{10} = 1024$ bytes = 1 KB of address space).
+> The process allocates only the first 2 KB (outer entries 0 and 1) and the last 1 KB (outer entry 3).
+> Outer entry 2 is unallocated, so its inner page table is never allocated.
+> Each inner page table indexed by 4 bits contains $2^4 = 16$ entries.
+> For the 3 active inner page tables, the total number of inner entries required is $3 \times 16 =$ **48 entries**.
+> This yields a **25% reduction** in page table memory overhead compared to the flat 64-entry table.
+
+---
+
+### Quiz 2: Page Table Size vs Page Size (Clips 278-279)
+
+> [!question]
+> On a 12-bit architecture with a single-level page table:
+> 
+> 1. What is the number of page table entries required if the page size is 32 bytes?
+> 2. What is the number of page table entries required if the page size is 512 bytes?
+
+> [!success]- Answer
+> 1. **Page size = 32 bytes:**
+> An offset into a 32-byte page requires $\log_2(32) = 5$ bits.
+> The virtual page number takes the remaining $12 - 5 = 7$ bits.
+> The single-level page table must hold $2^7 =$ **128 entries**.
+> 
+> 2. **Page size = 512 bytes:**
+> An offset into a 512-byte page requires $\log_2(512) = 9$ bits.
+> The virtual page number takes the remaining $12 - 9 = 3$ bits.
+> The single-level page table must hold $2^3 =$ **8 entries**.
+> 
+> Increasing page size directly shrinks the number of page table entries, reducing memory management overhead at the cost of potential internal fragmentation.
+
+---
+
+### Quiz 3: LRU Pathological Loop Thrashing (Clips 285-286)
+
+> [!question]
+> Suppose you have an array with 11 page-sized entries.
+> All 11 entries are accessed continuously in a sequential loop (pages 1, 2, 3, ..., 11, 1, 2, ...).
+> The physical system has exactly 10 frames of physical memory.
+> What is the percentage of page accesses that will cause a page fault (demand paged) under the Least Recently Used (LRU) policy?
+> Round your answer to the nearest integer percent.
+
+> [!success]- Answer
+> The correct answer is **100%**.
+> 
+> **Step-by-step trace:**
+> 1. Pages 1 through 10 are loaded into the 10 physical frames on initial access.
+> 2. Page 11 is accessed: physical memory is full.
+> 3. The LRU policy evicts the page accessed least recently, which is Page 1.
+> Frame slots now contain pages 2 through 11.
+> 4. In the next iteration of the loop, the program accesses Page 1.
+> Page 1 is missing, causing a page fault.
+> 5. The LRU page in memory is now Page 2, so Page 2 is evicted to load Page 1.
+> 6. Next, the program accesses Page 2, which was just evicted, causing another fault.
+> Every single memory reference in the loop misses and triggers demand paging.
+> 
+> This pathological loop highlights that LRU can degrade to 0% hit rate when the working set exceeds physical capacity by even a single page.
+
+---
+
+### Quiz 4: Checkpointing Trade-offs (Clips 289-290)
+
+> [!question]
+> Which of the following statements correctly complete the sentence?
+> "The more frequently you checkpoint..."
+> 
+> 1. The faster you will be able to recover from a fault
+> 2. The higher the execution overhead of the checkpointing process
+> 3. The more cumulative state you will end up transmitting/saving
+> 4. All of the above
+
+> [!success]- Answer
+> The correct answer is **4. All of the above**.
+> 
+> **Rationale:**
+> - **Faster recovery:** A more recent checkpoint means less computation must be replayed or re-executed from the last saved state when a failure occurs.
+> - **Higher runtime overhead:** Checkpointing consumes CPU, memory bandwidth, and I/O.
+> Frequent checkpoints interrupt execution more often.
+> - **More total state saved:** If checkpoints are spaced out, multiple writes to the same page collapse into a single dirty page write (amortization).
+> With frequent checkpoints, intermediate updates to dirty pages are captured and saved repeatedly, increasing total bytes written.
+
+---
+
+### Quiz 5: Address Translation Bit Arithmetic
+
+> [!question]
+> Given a 32-bit virtual address on a system with 4 KB pages and a 2-level page table:
+> - Outer table (L1 directory): 10 bits
+> - Inner table (L2): 10 bits
+> - Offset: 12 bits
+> 
+> For virtual address `0x007A3C18`, calculate the L1 index, L2 index, and byte offset in decimal.
+
+> [!success]- Answer
+> - **L1 index:** bits 31-22 = `0x007A3C18 >> 22` = `0x1E` = **30**
+> - **L2 index:** bits 21-12 = `(0x007A3C18 >> 12) & 0x3FF` = `0x3C` = **60**
+> - **Offset:** bits 11-0 = `0x007A3C18 & 0xFFF` = `0xC18` = **3096**
+
+---
 
 ### Exercise: Page Replacement Simulator
 
@@ -1062,6 +1178,194 @@ Get-Counter '\Memory\Pool Nonpaged Bytes'  # Kernel non-paged pool
 
 ---
 
+## 22. macOS Memory Architecture and Darwin Internals
+
+### 22.1 The Mach Virtual Memory Subsystem
+
+The virtual memory architecture of macOS (Darwin / XNU) is rooted directly in the Mach 3.0 virtual memory design created at Carnegie Mellon University.
+While user applications frequently invoke standard POSIX functions such as `mmap()`, `mprotect()`, and `brk()`, these routines act as BSD compatibility wrappers around low-level Mach VM primitives.
+
+The XNU kernel structures virtual memory around three core abstractions:
+1. **VM Map (`vm_map_t`):** Represents the complete address space of a Mach task. It contains an ordered doubly-linked list or red-black tree of `vm_map_entry` structures describing contiguous virtual address ranges.
+2. **VM Object (`vm_object_t`):** Represents the memory backing for a region. It manages an array of resident physical pages (`vm_page_t`) and points to a pager (such as the default pager, vnode pager for memory-mapped files, or compressor pager).
+3. **VM Map Entry (`vm_map_entry_t`):** Maps a virtual address sub-range in a `vm_map_t` to an offset inside a `vm_object_t`. This allows multiple tasks to map distinct virtual ranges to overlapping offsets within the same underlying object, enabling zero-copy shared memory and Copy-on-Write (COW) semantics.
+
+Direct interaction with the Mach virtual memory subsystem is accomplished using Mach system traps:
+
+```c
+/* mach_vm_demo.c - Low-level Mach Virtual Memory allocation on Darwin */
+#include <stdio.h>
+#include <stdlib.h>
+#include <mach/mach.h>
+#include <mach/mach_vm.h>
+
+int main(void) {
+    mach_port_t task = mach_task_self();
+    mach_vm_address_t address = 0; /* Let kernel pick base virtual address */
+    mach_vm_size_t size = 16 * 1024; /* 16 KB (one Apple Silicon page) */
+
+    /* 1. Allocate virtual pages inside the task address space */
+    kern_return_t kr = mach_vm_allocate(task, &address, size, VM_FLAGS_ANYWHERE);
+    if (kr != KERN_SUCCESS) {
+        fprintf(stderr, "mach_vm_allocate failed: %d\n", kr);
+        return 1;
+    }
+    printf("Allocated 16 KB virtual range at address: 0x%llx\n", (unsigned long long)address);
+
+    /* 2. Write data to the allocated page (triggers demand fault) */
+    int *data = (int *)address;
+    data[0] = 0xDEADBEEF;
+    printf("Wrote value: 0x%X\n", data[0]);
+
+    /* 3. Protect memory: downgrade permissions to read-only */
+    kr = mach_vm_protect(task, address, size, FALSE, VM_PROT_READ);
+    if (kr != KERN_SUCCESS) {
+        fprintf(stderr, "mach_vm_protect failed: %d\n", kr);
+    } else {
+        printf("Permissions successfully set to VM_PROT_READ\n");
+    }
+
+    /* 4. Deallocate virtual address range */
+    kr = mach_vm_deallocate(task, address, size);
+    if (kr != KERN_SUCCESS) {
+        fprintf(stderr, "mach_vm_deallocate failed: %d\n", kr);
+        return 1;
+    }
+    printf("Successfully deallocated memory\n");
+
+    return 0;
+}
+```
+
+```bash
+# Compile and run the Mach VM demo on macOS
+clang -Wall -Wextra mach_vm_demo.c -o mach_vm_demo
+./mach_vm_demo
+```
+
+### 22.2 The Mach Zone Allocator
+
+Within the XNU kernel, dynamic memory allocation cannot rely on user-space `malloc()`.
+Instead, Darwin employs the **Mach Zone Allocator** (`zalloc`), which serves an architectural role equivalent to the Linux SLAB/SLUB allocator.
+
+Key properties of the zone allocator include:
+- **Dedicated caches for fixed-size objects:** Zones exist for structures like `tasks`, `threads`, `vnodes`, `vm_maps`, and IPC ports.
+- **Zero internal fragmentation:** Because each zone contains elements of identical size, allocations require no header tags per element.
+- **Garbage collection and page stealing:** When physical RAM is low, zones can be scanned and empty pages reclaimed.
+
+You can inspect the live status of all kernel memory zones using the macOS diagnostic utility `zprint`:
+
+```bash
+# Display the top 20 Mach zones sorted by size (requires root)
+sudo zprint | head -25
+
+# Output columns:
+# ZONE NAME         ELEM SIZE  ALLOC  MAX ELEM  CUR ELEM  ALLOC SIZE  MAX SIZE
+# ipc ports               168   2.1M     4.0M      2.2M      365.2M    672.0M
+# threads                2048   4120     8192      4120        8.0M     16.0M
+# vm.objects              240   340K     1.0M      350K       81.6M    240.0M
+```
+
+### 22.3 Compressed Memory Architecture (WKdm)
+
+Traditional Unix systems swap unreferenced dirty pages directly to an external block device (disk partition or swap file).
+Because disk operations incur millisecond-level latencies, macOS utilizes an in-memory **Compressed Memory Subsystem**.
+
+Instead of writing cold pages to disk, the Darwin kernel runs an asynchronous compressor thread:
+1. When memory pressure reaches a threshold, the kernel identifies inactive, dirty anonymous pages.
+2. The page is compressed using the **WKdm algorithm** (Wilson-Kaplan-Direct-Match).
+WKdm is a specialized integer-dictionary compression algorithm tuned specifically for 4 KB and 16 KB memory pages, running in tens of nanoseconds.
+3. The compressed data is packed into a compact chunk in RAM, achieving typical compression ratios between 2.5:1 and 4:1.
+4. The original physical frame is immediately returned to the free list.
+5. If the application subsequently reads the page, a soft page fault occurs; the compressor uncompresses the chunk back into a physical frame in microseconds.
+6. Only when physical RAM is critically exhausted and the in-memory compressor pool itself cannot shrink further does the system page compressed segments out to `/private/var/vm/swapfile*`.
+
+```bash
+# Inspect XNU memory compressor mode
+sysctl vm.compressor_mode
+# vm.compressor_mode: 4
+# Mode 1: No compression (direct disk paging)
+# Mode 2: Compression without disk paging
+# Mode 4: Compression with disk paging fallback (default macOS production setting)
+
+# Inspect total compressed bytes and compressor page metrics
+vm_stat | grep -i "compress"
+```
+
+### 22.4 Purgeable and Volatile Memory
+
+Darwin provides a dedicated memory optimization called **Purgeable Memory** (`VM_FLAGS_PURGEABLE`).
+Purgeable memory allows an application to allocate buffers (such as rendered image caches, audio decodes, or parsed ASTs) that the kernel is permitted to reclaim silently under severe memory pressure without terminating the application.
+
+- **Non-volatile state:** The buffer is pinned and protected against eviction.
+- **Volatile state:** The application informs the OS that the buffer can be discarded if memory is needed elsewhere.
+- **Empty state:** The kernel has reclaimed the physical pages backing the buffer.
+Before reading the cache, the application checks whether the region remains valid using `vm_purgable_control()`.
+If the kernel reclaimed the buffer, the application recalculates or re-reads the underlying asset.
+
+```c
+/* Using purgeable memory on Darwin */
+#include <mach/mach.h>
+#include <mach/mach_vm.h>
+
+void purgeable_example(void) {
+    mach_vm_address_t addr = 0;
+    mach_vm_size_t size = 64 * 1024 * 1024; /* 64 MB cache */
+
+    /* Allocate as purgeable */
+    mach_vm_allocate(mach_task_self(), &addr, size, VM_FLAGS_ANYWHERE | VM_FLAGS_PURGEABLE);
+
+    /* Mark as volatile (kernel may discard under memory pressure) */
+    int state = VM_PURGABLE_VOLATILE;
+    vm_purgable_control(mach_task_self(), (vm_address_t)addr, VM_PURGABLE_SET_STATE, &state);
+
+    /* Later: re-access cache and verify whether data was preserved */
+    state = VM_PURGABLE_NONVOLATILE;
+    vm_purgable_control(mach_task_self(), (vm_address_t)addr, VM_PURGABLE_SET_STATE, &state);
+
+    if (state == VM_PURGABLE_EMPTY) {
+        /* Pages were purged by kernel; regenerate cached data */
+    } else {
+        /* Data is intact; read directly */
+    }
+}
+```
+
+### 22.5 macOS Memory Diagnostics and Tooling
+
+Darwin includes deep command-line tools to monitor physical frame states, virtual mappings, and process memory footprints:
+
+```bash
+# 1. vm_stat: Display system-wide physical memory page counts
+vm_stat
+
+# Note: On Apple Silicon, standard hardware page size is 16384 bytes (16 KB)
+# Calculate actual RAM usage by multiplying page counts by page size (vm_stat 1 prints per second)
+pagesize
+# 16384
+
+# 2. footprint: The gold-standard Darwin memory accounting tool
+# Measures real physical footprint (dirty anonymous pages + compressed pages + wired memory)
+# Excludes clean mapped file pages and shared read-only system dylibs
+footprint <pid>
+
+# 3. vmmap: Output complete virtual memory map of a process
+# Displays Mach zones, mapped frameworks, stack frames, and protection bits
+vmmap -summary <pid>
+vmmap -wide <pid>
+
+# 4. heap: Inspect all live objects allocated in libmalloc zones
+heap <pid>
+heap <pid> -addresses all
+
+# 5. memory_pressure: Monitor or simulate system-wide memory pressure levels
+# Normal, Warn, or Critical pressure events
+memory_pressure
+```
+
+---
+
 **Previous:** [P3L1: Scheduling](P3L1-Scheduling.md)
 **Next:** [P3L3: Inter-Process Communication](P3L3-Inter-Process-Communication.md)
+
 

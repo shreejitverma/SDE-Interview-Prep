@@ -1,8 +1,8 @@
 ---
 type: concept
 track: [sde]
-level: advanced
-status: complete
+level:
+status: solid
 last_reviewed:
 sources:
   - "Georgia Tech CS 6200 P1L2"
@@ -1121,14 +1121,38 @@ systeminfo | Select-String "Total Physical Memory","Available Physical Memory"
 Get-CimInstance Win32_IRQResource | Select-Object IRQNumber, Name
 ```
 
+### macOS (Darwin / XNU) Systems Inspection
+
+macOS provides a rich set of command-line tools to inspect its hybrid Mach/BSD kernel, dynamic system calls, and device extensions:
+
+```bash
+# macOS: Inspect XNU kernel version and hardware architecture
+sysctl kern.version kern.osrelease hw.model hw.ncpu
+
+# macOS: Trace system calls made by a specific command using DTrace (requires disabling SIP or running on development binaries)
+sudo dtruss -c ls /tmp
+
+# macOS: Inspect currently loaded kernel extensions (KEXTs)
+kextstat | head -n 20
+
+# macOS: Inspect DriverKit System Extensions running in user space (modern DriverKit framework)
+systemextensionsctl list
+
+# macOS: Monitor system call activity in real time across the entire system
+sudo sc_usage -c 5
+
+# macOS: Inspect virtual memory statistics and Mach page allocation
+vm_stat
+```
+
 ### Comparison Summary
 
 | Feature | Linux | Windows NT | macOS (XNU) |
 |---------|-------|-----------|-------------|
-| Kernel type | Monolithic (modular) | Hybrid | Hybrid (Mach+BSD) |
+| Kernel type | Monolithic (modular) | Hybrid | Hybrid (Mach + BSD) |
 | Kernel language | C (some Rust) | C | C, C++ |
 | Syscall stability | Stable ABI | Unstable (version-dependent) | Semi-stable (libsystem) |
-| Driver model | LKMs | WDM/WDF/KMDF | I/O Kit (C++ based) |
+| Driver model | LKMs | WDM / WDF / KMDF | DriverKit (User Space) / I/O Kit |
 | Source | Open source (GPL) | Closed (partial source available) | Partially open (Darwin) |
 | Preemption | Fully preemptible | Fully preemptible | Fully preemptible |
 
@@ -1136,58 +1160,104 @@ Get-CimInstance Win32_IRQResource | Select-Object IRQNumber, Name
 
 ## 14. Quizzes and Exercises
 
-### Quiz 1: OS Fundamentals
+> [!question] Quiz 1: Operating System Components (Clips 21-22)
+> Which of the following components are strictly part of an operating system kernel?
+> Select all that apply:
+> 1. File system driver
+> 2. L1 / L2 Cache memory
+> 3. Network interface device driver
+> 4. Web browser
+> 5. Process and CPU scheduler
+> 6. Network Interface Card (NIC)
 
-> **Q:** An application wants to read data from a file.
-> Which OS role is primarily being exercised - abstraction or arbitration?
->
-> **A:** **Abstraction** - the OS is hiding the complexity of the disk hardware behind the `read()` interface.
-> If multiple applications are reading simultaneously, then arbitration is also involved (disk scheduling).
+> [!success]- Answer
+> **Correct answers: 1, 3, and 5.**
+> - **1 (File system driver):** Part of the OS storage abstraction layer.
+> - **3 (Network interface device driver):** Software component of the OS kernel managing hardware NIC communication.
+> - **5 (Process and CPU scheduler):** Core kernel subsystem arbitrating CPU core execution.
+> 
+> Incorrect options:
+> - **2 (L1 / L2 Cache memory):** Physical hardware component managed transparently by the CPU cache controller, not software.
+> - **4 (Web browser):** User-space application software executing in Ring 3.
+> - **6 (Network Interface Card):** Physical peripheral hardware managed by device drivers.
 
-### Quiz 2: Mode Transitions
+> [!question] Quiz 2: Abstraction versus Arbitration (Clips 23-24)
+> For each of the following operating system responsibilities, determine whether it primarily represents an **Abstraction** or an **Arbitration** mechanism:
+> 1. Distributing physical RAM between multiple competing user processes.
+> 2. Translating a file path and read offset (`/var/data/log.txt`, offset 4096) into physical disk block sectors.
+> 3. Ordering and prioritizing outbound network packets queued for transmission over a single physical NIC.
+> 4. Exposing a BSD stream socket (`SOCK_STREAM`) that presents an ordered, reliable byte stream over raw network frames.
 
-> **Q:** Rank these operations by the number of user/kernel transitions required (fewest to most):
-> 1. Adding two integers in a register
-> 2. Calling `printf("hello")`
-> 3. Reading from a file and writing to another file
->
-> **A:**
-> 1. **Zero transitions** - purely user-mode computation
-> 2. **One transition** - printf eventually calls write() which is one syscall
-> 3. **Two transitions** (minimum) - one for read(), one for write()
+> [!success]- Answer
+> 1. **Arbitration:** Distributing a finite physical resource (RAM) among competing, mutually untrusted workloads.
+> 2. **Abstraction:** Hiding disk geometry, sector numbers, and cylinder heads behind a logical file interface.
+> 3. **Arbitration:** Resolving resource contention across network traffic flows using queueing and QoS policies.
+> 4. **Abstraction:** Masking packet loss, retransmission, windowing, and frame headers behind a simple file descriptor byte stream.
 
-### Quiz 3: Architecture Identification
+> [!question] Quiz 3: System Call Invocations (Clips 33-34)
+> Which of the following operations require transitioning across the user-to-kernel protection boundary via a system call or hardware trap?
+> Select all that apply:
+> 1. Multiplying two floating-point values in user CPU registers.
+> 2. Calling `malloc(1024)` when heap free lists have adequate pre-allocated space.
+> 3. Calling `fork()` to spawn an identical child process.
+> 4. Writing 64 bytes to a TCP network socket using `send()`.
+> 5. Accessing a local function variable on the user call stack.
 
-> **Q:** For each OS, identify its kernel architecture:
->
-> | OS | Architecture |
-> |----|-------------|
-> | Linux 6.x | Monolithic with loadable modules |
-> | Windows 11 | Hybrid (microkernel-inspired but monolithic in practice) |
-> | QNX | Microkernel |
-> | MINIX 3 | Microkernel |
-> | macOS Sonoma | Hybrid (Mach + BSD in same address space) |
-> | seL4 | Microkernel (formally verified) |
+> [!success]- Answer
+> **Correct answers: 3 and 4.**
+> - **3 (`fork()`):** Creating a new process requires the kernel to allocate a new PID, duplicate page tables, and construct a new `task_struct`.
+> - **4 (`send()`):** Network controllers are privileged physical hardware. Transmitting frames requires kernel network stack processing and DMA programming.
+> 
+> Incorrect options:
+> - **1 (Register arithmetic):** Fully executed in user mode (Ring 3) via CPU ALU/FPU instructions without invoking the kernel.
+> - **2 (`malloc()` with existing heap space):** The C standard library runtime manages heap memory internally using user-space arenas. A system call (`brk()` or `mmap()`) is only triggered when the user-space arena is exhausted.
+> - **5 (Local stack access):** Local stack variables reside in user virtual memory and are addressed via relative offsets from the stack pointer (`%rsp`) in user mode.
 
-### Exercise: Syscall Counting
+> [!question] Quiz 4: Architectural Trade-Offs: Microkernel vs. Monolithic (Clip 40)
+> Consider an operating system deployed in a safety-critical avionics control system versus an ultra-low-latency financial trading exchange.
+> Which architecture (Microkernel vs. Monolithic) is better suited for each deployment, and what specific architectural trade-off governs that choice?
+
+> [!success]- Answer
+> 1. **Safety-Critical Avionics: Microkernel (e.g., seL4, QNX)**
+>    - *Rationale:* Fault isolation and reliability are paramount. If a file system or device driver crashes in a microkernel, it runs in user mode and can be restarted without crashing the kernel. The minimal Ring 0 footprint drastically reduces the attack surface and enables formal mathematical verification.
+> 2. **Low-Latency Trading Exchange: Monolithic Kernel (e.g., Linux)**
+>    - *Rationale:* Maximum raw throughput and minimum latency are paramount. In a microkernel, every interaction between subsystems (e.g., networking stack to filesystem to application) incurs multiple IPC messages, context switches, and TLB invalidations. A monolithic kernel executes all subsystem interactions via direct C function calls within Ring 0 without crossing address space boundaries.
+
+---
+
+### Exercise: Multi-OS System Call Tracing and Inspection
+
+#### Linux Syscall Tracing
 
 ```bash
-# Linux: Count syscalls made by different programs
+# Count system calls and execution time per syscall
 strace -c ls /tmp 2>&1 | tail -15
-strace -c cat /etc/hostname 2>&1 | tail -15
-strace -c python3 -c "print('hello')" 2>&1 | tail -15
 
-# Compare the number of syscalls and time spent in kernel mode.
-# Python makes far more syscalls due to interpreter initialization.
+# Trace only file-related and process-related system calls
+strace -e trace=openat,read,write,close,clone -f ls /tmp
 ```
 
-```powershell
-# Windows: Use Process Monitor (procmon) from Sysinternals
-# Download: https://learn.microsoft.com/en-us/sysinternals/downloads/procmon
-# Filter by process name, observe ReadFile, WriteFile, etc.
+#### macOS Syscall Tracing
 
-# Or use ETW (Event Tracing for Windows) from command line:
-# xperf -on DiagEasy   (requires admin + Windows Performance Toolkit)
+```bash
+# Trace system call execution on macOS using dtruss
+sudo dtruss -c ls /tmp
+
+# Inspect file-related system calls in real time on macOS
+sudo fs_usage -w -f filesys ls
+```
+
+#### Windows Syscall and Event Tracing
+
+```powershell
+# Windows: Trace process activity using Sysinternals Process Monitor (ProcMon)
+# Command-line configuration to log file and process activity to a backing file
+procmon.exe /BackingFile C:\temp\trace.pml /Quiet /AcceptEula
+# ... execute workload ...
+procmon.exe /Terminate
+
+# Convert PML trace to CSV for programmatic analysis
+procmon.exe /OpenLog C:\temp\trace.pml /SaveAs C:\temp\trace.csv
 ```
 
 ---

@@ -1,8 +1,8 @@
 ---
 type: concept
 track: [sde]
-level: advanced
-status: complete
+level:
+status: solid
 last_reviewed:
 sources:
   - "Georgia Tech CS 6200 P2L2"
@@ -35,8 +35,11 @@ sources:
 - [16. Reader/Writer Problem](#16-readerwriter-problem)
 - [17. Common Concurrency Pitfalls: Deadlocks](#17-common-concurrency-pitfalls-deadlocks)
 - [18. Deadlock Conditions and Prevention](#18-deadlock-conditions-and-prevention)
-- [19. Quizzes and Exercises](#19-quizzes-and-exercises)
-- [20. Key Takeaways](#20-key-takeaways)
+- [19. Multithreading Models & Contention Scopes](#19-multithreading-models--contention-scopes)
+- [20. Multithreading Patterns (Boss-Worker, Pipeline, Layered)](#20-multithreading-patterns-boss-worker-pipeline-layered)
+- [21. macOS Concurrency Architecture: Mach Threads, GCD, and os_unfair_lock](#21-macos-concurrency-architecture-mach-threads-gcd-and-os_unfair_lock)
+- [22. Quizzes and Exercises](#22-quizzes-and-exercises)
+- [23. Key Takeaways](#23-key-takeaways)
 
 ---
 
@@ -177,6 +180,28 @@ Multi-threaded:
   Thread 2:          [Process A]      [Process B]
   Total: ~3 time units (I/O overlapped with computation)
 ```
+
+#### CS 6200 Throughput and Latency Formulas for Thread Execution
+
+When evaluating multithreaded task execution and scheduling efficiency, the CS 6200 curriculum formally measures performance using these formulas:
+
+- **Throughput Formula:**
+  $$\text{Throughput} = \frac{\text{jobs\_completed}}{\text{time\_to\_complete\_all\_jobs}}$$
+
+- **Avg. Completion Time Formula:**
+  $$\text{Avg. Completion Time} = \frac{\sum \text{times\_to\_complete\_each\_job}}{\text{jobs\_completed}}$$
+
+- **Avg. Wait Time Formula:**
+  $$\text{Avg. Wait Time} = \frac{\sum_{i=1}^{n} t_i\text{\_wait\_time}}{\text{jobs\_completed}} = \frac{t_1\text{\_wait\_time} + t_2\text{\_wait\_time} + \dots + t_n\text{\_wait\_time}}{\text{jobs\_completed}}$$
+
+- **Time to Complete All Jobs per Job (Average Makespan):**
+  $$\text{Makespan per Job} = \frac{\text{time\_to\_complete\_all\_jobs}}{\text{jobs\_completed}}$$
+
+> [!NOTE]
+> **CS 6200 Exam & Quiz Conventions:**
+> - You do not have to include units in your numerical answers.
+> - For decimal answers, always round to the hundredths place (e.g., `0.25`, `1.67`, `5.00`).
+> - For scheduling proofs and algorithm comparisons (FCFS, SJF, RR), see [[P3L1-Scheduling#official-cs-6200-scheduling-metric-formulas|P3L1: Scheduling Metrics]].
 
 ### 3. Resource Sharing
 
@@ -1221,27 +1246,271 @@ gcc -fsanitize=thread -g -o my_program my_program.c -lpthread
 
 ---
 
-## 19. Quizzes and Exercises
+---
 
-### Quiz 1: Thread Data Sharing
+## 19. Multithreading Models & Contention Scopes
 
-> *Which of these are shared between threads in the same process?*
-> - (a) Heap memory - **Shared**
-> - (b) Stack variables - **NOT shared** (each thread has its own stack)
-> - (c) Global variables - **Shared**
-> - (d) File descriptors - **Shared**
-> - (e) Program counter - **NOT shared** (each thread has its own PC)
+Operating systems support multithreading across two distinct levels: **User-Level Threads (ULT)** managed entirely in user space by a runtime library, and **Kernel-Level Threads (KLT)** managed directly by the operating system kernel scheduler.
 
-### Quiz 2: Deadlock Identification
+```
++-------------------------------------------------------------------------------+
+| User Space          [ ULT 1 ]  [ ULT 2 ]  [ ULT 3 ]  [ ULT 4 ]  [ ULT 5 ]    |
+|                     \_______/  \_______/  \_______/  \_______/  \_______/    |
+| Thread Library           \         |         /           \         /          |
+|                           +--------+--------+             +-------+           |
++====================================|==========================|===============+
+| Kernel Space                       v                          v               |
+|                              [ KLT / LWP 1 ]            [ KLT / LWP 2 ]       |
+|                                    |                          |               |
+| CPU Schedulers                     v                          v               |
+|                              +------------+             +------------+        |
+| Physical Hardware            | CPU Core 0 |             | CPU Core 1 |        |
+|                              +------------+             +------------+        |
++-------------------------------------------------------------------------------+
+```
 
-> *Can a single-threaded program deadlock?*
->
-> **Answer:** Yes, if it attempts to lock the same non-recursive mutex twice (self-deadlock). Use `PTHREAD_MUTEX_RECURSIVE` to allow re-locking by the same thread.
+### The Three Multithreading Models
 
-### Exercise: Thread-Safe Counter with Atomics
+| Model | Mapping (ULT:KLT) | Advantages | Disadvantages | Historical & Modern Examples |
+|-------|-------------------|------------|---------------|------------------------------|
+| **Many-to-One (N:1)** | Many ULTs map to 1 KLT | Ultra-fast context switches (no syscalls); minimal memory footprint; portable. | One blocking system call blocks all ULTs; cannot utilize multiple CPU cores concurrently. | GNU Portable Threads (Pth), Java Green Threads, early Ruby runtimes. |
+| **One-to-One (1:1)** | 1 ULT maps to 1 KLT | True multi-core parallelism; blocking syscall on one thread does not stall other threads. | Heavyweight creation overhead; kernel resource limits; expensive context switches. | Modern Linux (NPTL), Windows Win32 Threads, macOS Darwin POSIX threads. |
+| **Many-to-Many (M:N)** | M ULTs multiplexed over N KLTs | Best of both worlds: light context switching with multi-core scalability; non-blocking. | Complex two-level scheduling; scheduler activations required; high implementation complexity. | Solaris 2-9 (Lightweight Processes - LWPs), Go Runtime (Goroutines over OS threads). |
+
+### Contention Scope: PCS versus SCS
+
+POSIX threads define two scheduling contention scopes:
+
+1. **Process Contention Scope (PCS - `PTHREAD_SCOPE_PROCESS`):**
+   - User-level threads compete for execution time slices strictly against other user-level threads belonging to the *same process*.
+   - Scheduling decisions are made entirely in user space by the threading library runtime without kernel intervention.
+2. **System Contention Scope (SCS - `PTHREAD_SCOPE_SYSTEM`):**
+   - Each thread competes directly against all other threads across the *entire operating system*.
+   - Scheduling decisions are made by the kernel scheduler.
+   - On Linux, Windows, and macOS, all threads default strictly to `PTHREAD_SCOPE_SYSTEM`.
+
+---
+
+## 20. Multithreading Patterns (Boss-Worker, Pipeline, Layered)
+
+Structuring concurrent applications requires architectural design patterns that balance throughput, latency, and synchronization overhead.
+
+### 1. Boss-Worker Pattern
+
+In the Boss-Worker pattern, a single **Boss thread** is responsible for receiving inbound work requests (e.g., listening on network sockets) and distributing them to a pool of **Worker threads**.
+
+```
+                           +--------------+
+                           |  Inbound     |
+                           |  Requests    |
+                           +------+-------+
+                                  |
+                                  v
+                           +--------------+
+                           |  Boss Thread |
+                           +------+-------+
+                                  |
+              +-------------------+-------------------+
+              |                   |                   |
+              v                   v                   v
+       +--------------+    +--------------+    +--------------+
+       | Worker 1     |    | Worker 2     |    | Worker 3     |
+       +--------------+    +--------------+    +--------------+
+```
+
+Key Trade-Offs and Variants:
+- **Throughput Bottleneck:** Overall system throughput is strictly bounded by the rate at which the Boss can accept and assign tasks:
+  $$\text{Throughput}_{\text{max}} = \frac{1}{T_{\text{boss}}}$$
+  If the Boss spends significant time parsing requests, the Boss becomes saturated while Workers sit idle.
+- **Worker Assignment Schemes:**
+  - *Direct Assignment:* Boss tracks idle workers and signals a specific worker directly. Incurs high tracking overhead in the Boss.
+  - *Shared Work Queue:* Boss places requests into a synchronized thread-safe queue. Workers dequeue tasks as they become free.
+- **Worker Pool Sizing:**
+  To optimize hardware utilization, the number of worker threads must account for the ratio of I/O wait time to CPU processing time:
+  $$N_{\text{threads}} = N_{\text{cores}} \times \left(1 + \frac{\text{Wait Time}}{\text{Compute Time}}\right)$$
+  If tasks are purely CPU-bound ($\text{Wait Time} = 0$), $N_{\text{threads}} = N_{\text{cores}}$. If tasks spend 80% of their time waiting on disk or network, $N_{\text{threads}} = N_{\text{cores}} \times 5$.
+
+### 2. Pipeline Pattern
+
+In the Pipeline pattern, task execution is divided into a sequence of discrete processing stages, analogous to an industrial assembly line:
+
+```
+[ Request In ] ---> [ Stage 1: Decode ] ---> [ Stage 2: Process ] ---> [ Stage 3: Output ] ---> [ Response Out ]
+                          |                          |                         |
+                    Thread Pool A              Thread Pool B             Thread Pool C
+```
+
+- Each stage is executed by one or more dedicated threads connected by bounded FIFO queues.
+- **Throughput:** Governed entirely by the slowest stage in the pipeline (the pipeline bottleneck):
+  $$\text{Throughput} = \min_{i} \left(\frac{1}{T_i}\right)$$
+- **Benefits:** Keeps instruction and data caches hot because each thread repeatedly executes the same localized stage logic.
+
+### 3. Layered Pattern
+
+In the Layered pattern, related subtasks are grouped into hierarchical functional layers (e.g., Application Layer $\to$ Transaction Layer $\to$ Storage Layer $\to$ Hardware Driver Layer).
+- Higher layers issue requests to lower layers; lower layers return results or fire asynchronous callbacks.
+- Facilitates modular software architecture and clear synchronization boundaries.
+
+---
+
+## 21. macOS Concurrency Architecture: Mach Threads, GCD, and os_unfair_lock
+
+macOS implements high-performance concurrency via a layered architecture spanning Mach threads, POSIX threads, and Grand Central Dispatch (GCD).
+
+### Mach Threads and Grand Central Dispatch
+
+1. **Mach Threads (`thread_act_t`):** The fundamental unit of execution scheduled by the XNU kernel. Mach threads have native support for thread affinity policy tags and Quality-of-Service (QoS) classes.
+2. **Grand Central Dispatch (libdispatch):** Apple's preferred task-based concurrency engine. Instead of creating and managing raw threads manually, applications submit closures/blocks to FIFO dispatch queues:
 
 ```c
-// Alternative to mutex: use atomic operations (no lock needed)
+// Compiling on macOS: clang -Wall -O2 gcd_demo.c -o gcd_demo
+#include <stdio.h>
+#include <dispatch/dispatch.h>
+#include <unistd.h>
+
+int main(void) {
+    // Create concurrent queue with user-initiated QoS
+    dispatch_queue_t queue = dispatch_queue_create("com.gios.concurrent", DISPATCH_QUEUE_CONCURRENT);
+    dispatch_group_t group = dispatch_group_create();
+
+    for (int i = 0; i < 4; i++) {
+        dispatch_group_async(group, queue, ^{
+            printf("Worker task %d executing on thread %p\n", i, (void *)pthread_self());
+            usleep(100000);
+        });
+    }
+
+    // Wait for all group tasks to complete
+    dispatch_group_wait(group, DISPATCH_TIME_FOREVER);
+    printf("All concurrent tasks completed.\n");
+    return 0;
+}
+```
+
+### Low-Level Synchronization: `os_unfair_lock`
+
+Historically, Darwin provided `OSSpinLock`.
+However, Apple deprecated `OSSpinLock` because it causes catastrophic **priority inversion** under QoS-aware scheduling: if a low-priority thread holds the spinlock and a high-priority thread attempts to acquire it, the high-priority thread spins at 100% CPU, starving the low-priority thread and preventing it from ever releasing the lock.
+Apple replaced it with `os_unfair_lock`, which tracks the owner thread and enforces kernel priority inheritance:
+
+```c
+#include <os/lock.h>
+
+os_unfair_lock lock = OS_UNFAIR_LOCK_INIT;
+
+void critical_section(void) {
+    os_unfair_lock_lock(&lock);
+    // Protected shared state access
+    os_unfair_lock_unlock(&lock);
+}
+```
+
+### macOS Thread Inspection Tools
+
+```bash
+# macOS: Inspect thread backtraces in real time using lldb
+lldb -p <PID> -o "thread list" -o "thread apply all bt" -o "detach" -o "quit"
+
+# macOS: Profile thread scheduling and CPU time using Instruments CLI
+xcrun xctrace record --template 'Thread States' --launch -- ./my_program
+
+# macOS: Trace thread synchronization blocks using dtrace
+sudo dtrace -n 'lockstat:::adaptive-block { @[execname, probename] = count(); }'
+```
+
+---
+
+## 22. Quizzes and Exercises
+
+> [!question] Quiz 1: Multi-Threading on a Single CPU Core
+> Is there any performance benefit to running a multi-threaded application on a computer with only 1 physical CPU core?
+> Provide a concrete technical explanation to support your answer.
+
+> [!success]- Answer
+> **Yes.**
+> While a single CPU core cannot provide **parallelism** (simultaneous execution of instructions), multithreading provides substantial **concurrency** by overlapping CPU computation with high-latency I/O operations.
+> When Thread 1 initiates a blocking I/O operation (e.g., reading a disk file or awaiting an incoming network socket packet), the OS transitions Thread 1 to the `WAITING/BLOCKED` state and context-switches the CPU core to execute Thread 2. This hides I/O latency and maintains high CPU utilization rather than allowing the CPU to sit idle.
+
+> [!question] Quiz 2: Critical Section Errors in Producer-Consumer (Clips 105-106)
+> Examine the following producer and consumer pseudo-code implementations utilizing shared buffer, mutex, and condition variables:
+> 
+> ```c
+> // Global Shared State
+> int in = 0, out = 0, buffer[BUFFERSIZE];
+> mutex_t m;
+> cond_var_t not_empty, not_full;
+> 
+> // Producer Code
+> while (more_to_produce) {
+>     mutex_lock(&m);
+>     if (out == (in + 1) % BUFFERSIZE) {   // Line P1
+>         cond_wait(&not_full, &m);          // Line P2
+>     }
+>     buffer[in] = item;
+>     in = (in + 1) % BUFFERSIZE;
+>     cond_signal(&not_empty);               // Line P3
+>     mutex_unlock(&m);                      // Line P4
+> }
+> 
+> // Consumer Code
+> while (more_to_consume) {
+>     mutex_lock(&m);
+>     if (in == out) {                       // Line C1
+>         cond_wait(&not_empty, &m);         // Line C2
+>     }
+>     item = buffer[out];
+>     out = (out + 1) % BUFFERSIZE;
+>     cond_signal(&not_full);                // Line C3
+>     mutex_unlock(&m);                      // Line C4
+> }
+> ```
+> Identify the critical bugs in Lines P1 and C1, and explain what system failure occurs under Mesa condition variable semantics.
+
+> [!success]- Answer
+> **Critical Bug:** Lines P1 and C1 use `if` statements instead of `while` loops to evaluate the buffer condition before waiting.
+> 
+> **Failure Mechanics under Mesa Semantics:**
+> 1. In Mesa semantics (standard in POSIX, Linux, Windows, macOS), `cond_signal()` moves a waiting thread from the condition variable wait queue to the mutex ready queue; it does **not** immediately yield the CPU or guarantee execution.
+> 2. Suppose Consumer 1 finds the buffer empty (`in == out`) and waits in Line C2.
+> 3. Producer creates an item, signals `not_empty` in Line P3, and releases the mutex.
+> 4. Consumer 1 is awakened, but before Consumer 1 re-acquires the mutex, another thread (Consumer 2) executes, acquires the mutex, and consumes the newly produced item.
+> 5. When Consumer 1 finally re-acquires the mutex, the buffer is empty again. Because Line C1 used an `if` statement, Consumer 1 proceeds to read from `buffer[out]`, causing an underflow error and reading garbage memory.
+> 
+> **Remedy:** Always wrap condition variable waits inside a predicate verification loop:
+> ```c
+> while (out == (in + 1) % BUFFERSIZE) { cond_wait(&not_full, &m); }
+> while (in == out) { cond_wait(&not_empty, &m); }
+> ```
+
+> [!question] Quiz 3: Multithreading Models & Contention Scope (Clips 108-109)
+> An operating system implements an M:N multithreading model where 100 user-level threads are multiplexed across 4 kernel-level threads on a 4-core machine.
+> 1. What happens if one user-level thread executes an infinite CPU-bound loop?
+> 2. What happens if one user-level thread executes a blocking `read()` system call?
+
+> [!success]- Answer
+> 1. **CPU-bound loop:** The user-level thread occupies one of the 4 kernel threads. The remaining 99 user-level threads can still be scheduled across the remaining 3 kernel-level threads on the other 3 CPU cores.
+> 2. **Blocking `read()`:** The kernel thread executing the `read()` enters the kernel `WAITING` state. If the runtime library does not use **scheduler activations**, that underlying kernel thread is blocked, temporarily reducing the active execution capacity to 3 kernel threads for the remaining 99 user threads.
+
+> [!question] Quiz 4: Multithreading Patterns Comparison (Clips 116-117)
+> Consider a web service where requests involve three sequential steps: (1) TLS decryption and request validation, (2) database query execution, and (3) JSON serialization and network response.
+> Contrast how this service would be architected under the **Boss-Worker pattern** versus the **Pipeline pattern**, highlighting cache behavior and throughput bottlenecks.
+
+> [!success]- Answer
+> 1. **Boss-Worker Pattern:**
+>    - *Architecture:* The Boss thread accepts connections and assigns the entire request (Steps 1, 2, and 3) to an available worker thread. Each worker executes all three steps from beginning to end.
+>    - *Cache Behavior:* Workers experience poor instruction cache locality because each thread alternates between cryptography code, database driver logic, and JSON serialization libraries.
+>    - *Bottleneck:* Throughput scales with worker count until CPU or database contention is reached, bounded by Boss dispatch overhead.
+> 2. **Pipeline Pattern:**
+>    - *Architecture:* Request processing is split into 3 distinct stages connected by bounded queues. Thread Pool 1 executes TLS, Thread Pool 2 executes Database queries, and Thread Pool 3 executes JSON serialization.
+>    - *Cache Behavior:* Outstanding cache locality. Threads in Pool 1 only execute crypto instructions; their CPU core instruction caches remain hot with crypto routines.
+>    - *Bottleneck:* Throughput is strictly determined by the slowest stage (e.g., database query execution). If Stage 2 takes 50 ms while Stages 1 and 3 take 5 ms, Stages 1 and 3 will continuously block on full/empty queues unless Stage 2 is allocated more worker threads.
+
+---
+
+### Exercise: Lock-Free Counter with C11 Atomics
+
+```c
+// Lock-free atomic increment across threads without mutex locks
 #include <stdio.h>
 #include <pthread.h>
 #include <stdatomic.h>
@@ -1250,7 +1519,7 @@ atomic_int counter = 0;
 
 void *increment(void *arg) {
     for (int i = 0; i < 1000000; i++) {
-        atomic_fetch_add(&counter, 1);  // Lock-free, atomic increment
+        atomic_fetch_add_explicit(&counter, 1, memory_order_relaxed);
     }
     return NULL;
 }
@@ -1262,20 +1531,20 @@ int main(void) {
     pthread_join(t1, NULL);
     pthread_join(t2, NULL);
     printf("Expected: 2000000, Got: %d\n", counter);
-    // Always correct, and faster than mutex for simple operations
     return 0;
 }
 ```
 
 ```bash
-gcc -pthread -o atomic_counter atomic_counter.c && ./atomic_counter
+# Linux / macOS compilation
+gcc -pthread -O2 -o atomic_counter atomic_counter.c && ./atomic_counter
 ```
 
 ---
 
-## 20. Key Takeaways
+## 23. Key Takeaways
 
-1. A **thread** is the unit of execution; threads share the process address space but have their own stack and registers.
+1. A **thread** is the unit of execution; threads share the process address space but have their own stack, registers, and program counter.
 2. Threads are ~5-10x cheaper to create than processes and share memory directly without IPC.
 3. **Concurrency** is about managing multiple tasks (possible on one core); **parallelism** is about running them simultaneously (needs multiple cores).
 4. **Race conditions** occur when threads access shared data without synchronization; the outcome depends on scheduling order.
@@ -1283,8 +1552,16 @@ gcc -pthread -o atomic_counter atomic_counter.c && ./atomic_counter
 6. **Condition variables** let threads wait for a condition and be notified; always use `while` loops (not `if`) around `wait()`.
 7. **Deadlocks** require four conditions (mutual exclusion, hold-and-wait, no preemption, circular wait); break any one to prevent them.
 8. **Lock ordering** is the simplest and most reliable deadlock prevention strategy.
+9. In **Mesa condition variable semantics**, signal is only an advisory hint; predicate verification in a while loop is mandatory.
+10. The three classical multithreading patterns are **Boss-Worker**, **Pipeline**, and **Layered**, each optimizing different throughput, latency, and cache profiles.
+
+### Related Concepts
+
+- [[Concurrency-Synchronization-and-CAS]]: Staff-level architectural deep dive into hardware atomics, cache coherency protocols (MESI/MOESI), false sharing, lock-free queues, and memory orderings.
+- [[Optimistic-vs-Pessimistic-Locking]]: Comparison of optimistic versus pessimistic locking schemes across application runtimes and storage engines.
 
 ---
 
 **Previous:** [P2L1: Processes and Process Management](P2L1-Processes-and-Process-Management.md)
 **Next:** [P2L3: Threads Case Study - PThreads](P2L3-PThreads-Case-Study.md)
+

@@ -1,6 +1,22 @@
 {
   "recentFiles": [
     {
+      "basename": "00-Dashboard",
+      "path": "16-Interview-Command-Center/00-Dashboard.md"
+    },
+    {
+      "basename": "P2L1-Processes-and-Process-Management",
+      "path": "01-CS-Foundations/Operating-Systems/GIOS/Part-2-Process-Thread-Management/P2L1-Processes-and-Process-Management.md"
+    },
+    {
+      "basename": "Midterm-Practice-Questions",
+      "path": "01-CS-Foundations/Operating-Systems/GIOS/Exam-Prep/Midterm-Practice-Questions.md"
+    },
+    {
+      "basename": "04-FastAPI",
+      "path": "02-Programming-Languages/Python/Python-Backend-Interview-Prep/04-FastAPI.md"
+    },
+    {
       "basename": "17-Concurrency-in-Web-Services-and-Coding",
       "path": "02-Programming-Languages/Python/Python-Backend-Interview-Prep/17-Concurrency-in-Web-Services-and-Coding.md"
     },
@@ -33,10 +49,6 @@
       "path": "02-Programming-Languages/Python/Python-Backend-Interview-Prep/15-Multiprocessing-and-Parallelism.md"
     },
     {
-      "basename": "04-FastAPI",
-      "path": "02-Programming-Languages/Python/Python-Backend-Interview-Prep/04-FastAPI.md"
-    },
-    {
       "basename": "06-SQL-and-SQLAlchemy",
       "path": "02-Programming-Languages/Python/Python-Backend-Interview-Prep/06-SQL-and-SQLAlchemy.md"
     },
@@ -67,14 +79,6 @@
     {
       "basename": "Barclays",
       "path": "16-Interview-Command-Center/02-Companies/Banking/Barclays.md"
-    },
-    {
-      "basename": "00-Dashboard",
-      "path": "16-Interview-Command-Center/00-Dashboard.md"
-    },
-    {
-      "basename": "P2L1-Processes-and-Process-Management",
-      "path": "01-CS-Foundations/Operating-Systems/GIOS/Part-2-Process-Thread-Management/P2L1-Processes-and-Process-Management.md"
     },
     {
       "basename": "_GIOS-Dashboard",

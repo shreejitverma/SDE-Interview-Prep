@@ -382,3 +382,9 @@ But in case of credit failure, the total value will now be 1500 and hence the sy
 
 ## Further Reading
 * [Isolation](https://en.wikipedia.org/wiki/Isolation_(database_systems))
+
+## Related Concepts
+
+* [[ACID-vs-BASE]]: Detailed comparison of strict ACID transaction semantics versus BASE distributed eventual consistency.
+* [[Optimistic-vs-Pessimistic-Locking]]: Concurrency control primitives for enforcing isolation levels.
+* [[CockroachDB-Distributed-SQL]]: Distributed ACID transactions via Raft and Multi-Version Concurrency Control (MVCC).

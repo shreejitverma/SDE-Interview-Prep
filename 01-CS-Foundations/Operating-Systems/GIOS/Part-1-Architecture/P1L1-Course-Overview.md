@@ -1,8 +1,8 @@
 ---
 type: concept
 track: [sde]
-level: advanced
-status: active
+level:
+status: solid
 last_reviewed: 2026-09-27
 sources:
   - "Georgia Tech CS 6200: Introduction to Operating Systems (GIOS)"
@@ -28,22 +28,26 @@ sources:
    - [Core Systems Competencies](#core-systems-competencies)
    - [Required C Programming Skills](#required-c-programming-skills)
    - [Debugging and Profiling Tooling](#debugging-and-profiling-tooling)
-5. [Course Structure and 16-Module Curriculum](#5-course-structure-and-16-module-curriculum)
+5. [Course Structure and 17-Module Curriculum](#5-course-structure-and-17-module-curriculum)
    - [Part 1: Architecture and OS Basics](#part-1-architecture-and-os-basics)
    - [Part 2: Process and Thread Management](#part-2-process-and-thread-management)
    - [Part 3: Resource Management and Communication](#part-3-resource-management-and-communication)
    - [Part 4: Distributed Systems](#part-4-distributed-systems)
-6. [Projects and Assessments](#6-projects-and-assessments)
+6. [The Toy Shop Visual Metaphor](#6-the-toy-shop-visual-metaphor)
+7. [Recommended Textbooks and Course Literature](#7-recommended-textbooks-and-course-literature)
+8. [Projects and Assessments](#8-projects-and-assessments)
    - [Project 1: Multithreaded Web Server (Getfile Protocol)](#project-1-multithreaded-web-server-getfile-protocol)
    - [Project 2: Inter-Process Communication (Shared Memory Proxy)](#project-2-inter-process-communication-shared-memory-proxy)
    - [Project 3: Shared Memory Cache Proxy](#project-3-shared-memory-cache-proxy)
    - [Project 4: Distributed File System (gRPC / Sun RPC)](#project-4-distributed-file-system-grpc--sun-rpc)
    - [Exams and Quizzes](#exams-and-quizzes)
-7. [Development Environments and Build Infrastructure](#7-development-environments-and-build-infrastructure)
+9. [Cross-Platform Development & Systems Tooling (Linux, macOS, Windows)](#9-cross-platform-development--systems-tooling-linux-macos-windows)
    - [Linux Development (Canonical Environment)](#linux-development-canonical-environment)
-   - [Windows Subsystem for Linux (WSL2) Setup](#windows-subsystem-for-linux-wsl2-setup)
-   - [Sanitizers and Memory Safety Checks](#sanitizers-and-memory-safety-checks)
-8. [Course Summary and Success Strategies](#8-course-summary-and-success-strategies)
+   - [macOS Development (Apple Silicon & Intel Darwin)](#macos-development-apple-silicon--intel-darwin)
+   - [Windows Development (WSL2 & Native Win32/MSVC)](#windows-development-wsl2--native-win32msvc)
+   - [LLVM Sanitizers and Memory Safety Checks](#llvm-sanitizers-and-memory-safety-checks)
+10. [Quizzes and Self-Assessments](#10-quizzes-and-self-assessments)
+11. [Course Summary and Success Strategies](#11-course-summary-and-success-strategies)
 
 ---
 
@@ -298,10 +302,55 @@ CS 6200 GIOS Architecture
 - **P4L1: Remote Procedure Calls (RPC):** Client/server stubs, Interface Definition Languages (IDL), serialization, XDR, Protocol Buffers, and gRPC streaming.
 - **P4L2: Distributed File Systems (DFS):** Stateless versus stateful file servers, NFS caching and consistency semantics, AFS tokenized callbacks, and scale-out cluster architectures (GFS, HDFS, Ceph).
 - **P4L3: Distributed Shared Memory (DSM):** Page-based DSM, strict and sequential consistency, release consistency, lazy release consistency (TreadMarks), directory coherence protocols, and false sharing mitigation.
+- **P4L4: Datacenter Technologies:** Multi-tier enterprise architectures, homogeneous versus heterogeneous infrastructure, cloud computing elasticity, NIST cloud definitions (IaaS, PaaS, SaaS), failure probability scaling, and Big Data processing engines.
 
 ---
 
-## 6. Projects and Assessments
+## 6. The Toy Shop Visual Metaphor
+
+Throughout CS 6200, Professor Ada Gavrilovska uses a physical visual metaphor - a collection of wooden toy blocks and a toy manufacturing shop - to demystify complex systems concepts.
+The physical artifacts on the workbench correspond directly to core operating system primitives:
+
+```
++-------------------------------------------------------------------------------+
+|                        The Toy Shop Operating System Metaphor                 |
++-------------------------------------------------------------------------------+
+| Toy Shop Entity                | Operating System Architecture Counterpart     |
++--------------------------------+----------------------------------------------+
+| Toy Workers / Craftsmen        | Threads of execution (ULTs and KLTs)         |
+| Finished Toys & Subassemblies  | Applications, Processes, and Data Structures |
+| Workbenches                    | CPU Cores and Hardware Processing Units      |
+| Parts Storage & Tool Shelves   | Physical Memory (RAM) and Cache Hierarchies  |
+| Distant Warehouse / Suppliers  | Secondary Storage (Disks, SSDs, Remote DFS)  |
+| Customer Order Slips           | Network Packets, Client Requests, I/O Events |
+| Shop Manager / Foreman         | Operating System Kernel and Scheduler        |
+| Assembly Instructions (Blueprints)| Code / Binary Text Segment in Memory      |
+| Shared Paint / Glue Vats       | Shared Memory and Synchronized Shared State  |
+| Lock on the Tool Chest         | Mutex, Semaphore, and Lock Primitives        |
++-------------------------------------------------------------------------------+
+```
+
+The power of this visual metaphor is reinforced across every lesson:
+- **Process vs. Thread:** A worker building a toy from scratch in a private cubicle represents a distinct process with private address space. Multiple workers sharing the same workbench, glue, and paint represent threads sharing an address space.
+- **Synchronization:** When two workers reach for the same paint bucket, they must coordinate using a physical lock to avoid spilling the paint (race condition).
+- **Scheduling:** The shop manager decides which craftsman gets workbench time based on priority, order deadlines (EDF), or fair rotation (Round Robin).
+- **Caching & Memory:** Parts kept directly on the workbench provide instant access (L1/L2 cache), parts on the shop wall require walking a few paces (RAM), and ordering parts from an external supplier incurs high latency (Disk / Network I/O).
+
+---
+
+## 7. Recommended Textbooks and Course Literature
+
+While the lecture modules and official papers provide complete conceptual coverage, the following authoritative textbooks serve as reference materials:
+
+1. **Operating Systems: Three Easy Pieces (OSTEP)** by Remzi H. Arpaci-Dusseau and Andrea C. Arpaci-Dusseau (Freely available online). Covers Virtualization, Concurrency, and Persistence with outstanding systems clarity.
+2. **Operating System Concepts (The Dinosaur Book)** by Abraham Silberschatz, Peter B. Galvin, and Greg Gagne. Standard academic reference covering classical OS design.
+3. **The Linux Programming Interface (TLPI)** by Michael Kerrisk. The definitive, encyclopedic reference on Linux system calls, POSIX APIs, sockets, signals, and IPC.
+4. **Modern Operating Systems** by Andrew S. Tanenbaum and Herbert Bos. Deep dive into minicomputer and modern microkernel/monolithic architectures.
+5. **Classic Research Papers:** The course directly assigns landmark papers including Birrell's *Introduction to Programming with Threads*, Pai et al.'s *Flash: An Efficient and Portable Web Server*, Nelson et al.'s *Sprite DFS*, and Li & Hudak's *Memory Coherence in Shared Virtual Systems (IVY)*.
+
+---
+
+## 8. Projects and Assessments
 
 The course requires completing four major systems programming projects.
 Each project implements a real-world systems architecture from scratch in C or C++.
@@ -360,10 +409,11 @@ Project Pipeline Timeline
 
 ---
 
-## 7. Development Environments and Build Infrastructure
+## 9. Cross-Platform Development & Systems Tooling (Linux, macOS, Windows)
 
 Reproducibility is essential in systems programming.
 Code that appears to function on one platform may fail under high load due to memory layout differences, cache line sizes, or scheduling jitter.
+Below is the definitive reference for configuring systems development across Linux, macOS, and Windows.
 
 ### Linux Development (Canonical Environment)
 
@@ -383,42 +433,145 @@ Explanation of required flags:
 - `-g`: Includes DWARF debugging symbols for GDB stack inspection.
 - `-pthread`: Configures preprocessor macros and links the POSIX threads library.
 
-### Windows Subsystem for Linux (WSL2) Setup
+Essential Linux runtime inspection tools:
 
-Students developing on Windows machines should use WSL2 running Ubuntu.
-WSL2 runs a genuine Linux kernel inside a lightweight virtual machine, ensuring complete POSIX system call compatibility:
+```bash
+# Inspect system calls made by a running program
+strace -f -e trace=memory,desc,process ./program
+
+# Inspect dynamic library symbol resolution
+ltrace -C ./program
+
+# Detailed CPU performance profiling (cache misses, context switches, instructions)
+perf stat -e cycles,instructions,cache-misses,context-switches,cpu-migrations ./program
+
+# Full memory leak and invalid memory access analysis
+valgrind --tool=memcheck --leak-check=full --show-leak-kinds=all --track-origins=yes ./program
+```
+
+### macOS Development (Apple Silicon & Intel Darwin)
+
+macOS is built on Darwin (an XNU hybrid kernel combining a Mach microkernel core with a BSD POSIX layer).
+While macOS provides a POSIX-compliant environment, several critical differences exist compared to Linux:
+
+1. **Unnamed POSIX Semaphores are Unsupported:** On Darwin, calling `sem_init()` returns `-1` with `errno = ENOSYS`. Developers must use named semaphores (`sem_open()`) or Apple's Grand Central Dispatch semaphores (`dispatch_semaphore_create()`).
+2. **Thread Affinity APIs Differ:** Linux provides `pthread_setaffinity_np()`, whereas macOS uses thread affinity policy tags via `thread_policy_set()`.
+3. **Executable Format:** macOS uses Mach-O binaries rather than Linux ELF.
+
+Configuring the macOS systems toolchain:
+
+```bash
+# Install Xcode Command Line Tools (provides Apple Clang, lldb, make, git)
+xcode-select --install
+
+# Install Homebrew package manager for GNU utilities and Valgrind alternatives
+brew install llvm cmake ninja libuv grpc protobuf
+
+# Compile using Apple Clang with strict flags
+clang -Wall -Wextra -Werror -std=gnu11 -g -O2 -pthread source.c -o program
+
+# Dynamic system call tracing using DTrace on macOS
+sudo dtruss -p <PID>
+
+# Real-time memory leak detection using macOS native tools
+leaks --atExit -- ./program
+
+# Record performance profiles using Apple Instruments CLI
+xcrun xctrace record --template 'Time Profiler' --launch -- ./program
+```
+
+### Windows Development (WSL2 & Native Win32/MSVC)
+
+Windows developers have two primary paths: running the canonical Linux environment inside WSL2, or building native Win32 systems applications.
+
+#### WSL2 Ubuntu Setup (Recommended for Course Projects)
+
+WSL2 runs a genuine Linux kernel inside a lightweight Hyper-V utility VM, delivering full POSIX system call compatibility and direct access to `/proc` and `/sys`:
 
 ```powershell
-# Windows PowerShell (Admin) - Install WSL2 with Ubuntu
+# Windows PowerShell (Run as Administrator) - Install WSL2 with Ubuntu
 wsl --install -d Ubuntu
 
-# Verify running kernel version
+# Verify running kernel version and WSL architecture
 wsl --status
+
+# Launch Ubuntu bash shell
+wsl -d Ubuntu
 ```
 
 Within the WSL2 environment, install the standard GNU compilation toolchain:
 
 ```bash
-# Ubuntu package installation
+# Ubuntu package installation inside WSL2
 sudo apt-get update
 sudo apt-get install -y build-essential gdb valgrind cmake clang clang-format git
 ```
 
-### Sanitizers and Memory Safety Checks
+#### Native Windows Systems Tooling
 
-Always test solutions under LLVM sanitizers before running benchmarks or submitting code:
+For native Windows systems programming and Win32 kernel analysis:
+
+```powershell
+# Compile Win32 C applications using Microsoft Visual C++ (MSVC)
+cl.exe /W4 /WX /Zi /fsanitize=address source.c /link /out:program.exe
+
+# Inspect active system processes and thread counts via PowerShell
+Get-Process | Select-Object -Property Id, ProcessName, CPU, Handles, Threads | Sort-Object -Property CPU -Descending | Select-Object -First 10
+
+# Inspect real-time handle counts and loaded DLLs using Sysinternals Handle
+handle.exe -p <PID>
+
+# Trace system-wide kernel events using Event Tracing for Windows (ETW)
+xperf -on PROC_THREAD+LOADER+CSWITCH -stackwalk CSwitch
+# ... run workload ...
+xperf -d trace.etl
+```
+
+### LLVM Sanitizers and Memory Safety Checks
+
+Always test solutions under LLVM sanitizers before running benchmarks or submitting code.
+Sanitizers inject compiler instrumentation to catch memory corruption and race conditions at runtime:
 
 ```bash
-# AddressSanitizer (ASan) for memory safety and leak checking
+# AddressSanitizer (ASan) for buffer overflows, use-after-free, and memory leaks
 gcc -fsanitize=address -fno-omit-frame-pointer -g -O1 source.c -o program_asan
 
-# ThreadSanitizer (TSan) for detecting data races
+# ThreadSanitizer (TSan) for detecting concurrent data races in multi-threaded code
 gcc -fsanitize=thread -g -O1 -pthread source.c -o program_tsan
+
+# UndefinedBehaviorSanitizer (UBSan) for catching integer overflows and invalid shifts
+gcc -fsanitize=undefined -g -O1 source.c -o program_ubsan
 ```
 
 ---
 
-## 8. Course Summary and Success Strategies
+## 10. Quizzes and Self-Assessments
+
+> [!question] Learning Expectations Diagnostic
+> What are the primary learning expectations for a student entering CS 6200?
+> Identify the three core pillars of operating system design that every systems engineer must master by the end of the course.
+
+> [!success]- Answer
+> The three core pillars of operating systems mastery in CS 6200 are:
+> 1. **Resource Abstraction:** Understanding how the OS transforms raw, heterogeneous physical hardware (CPUs, volatile memory, disk blocks, network controllers) into clean, predictable software interfaces (threads, virtual address spaces, files, sockets).
+> 2. **Hardware Multiplexing and Arbitration:** Mastering how the kernel shares hardware resources among competing, mutually untrusted workloads both spatially (memory partitions, page tables) and temporally (CPU scheduling time slices, I/O queues) while enforcing isolation and security.
+> 3. **Concurrency and Synchronization:** Designing bug-free, race-free concurrent systems using mutual exclusion, condition variables, atomic instructions, lock-free patterns, and multi-process communication channels.
+
+> [!question] Prerequisite Systems Readiness Check
+> A student is given a multi-threaded C program that exhibits sporadic segmentation faults when run under high load, but passes all unit tests when executed under a single thread.
+> What diagnostic procedure should the student follow, and which tools should be deployed across Linux and macOS?
+
+> [!success]- Answer
+> Intermittent segmentation faults that appear exclusively under multi-threaded load almost always indicate **memory corruption due to concurrent data races**, **use-after-free conditions**, or **stack overflow in worker threads**.
+> Recommended diagnostic procedure:
+> 1. **Compile with ThreadSanitizer (`-fsanitize=thread -g`):** Identifies exact source lines where concurrent memory accesses occur without synchronization.
+> 2. **Compile with AddressSanitizer (`-fsanitize=address -fno-omit-frame-pointer -g`):** Pinpoints use-after-free, double-free, or out-of-bounds array access at the exact moment of illegal access.
+> 3. **Inspect Thread Stack Sizes:** In POSIX threads, worker thread default stack size may be constrained (e.g., 2 MB on Linux, 512 KB on macOS). Allocating large local buffers on the thread stack causes stack overflow. Use `pthread_attr_setstacksize()` to configure adequate space.
+> 4. **Runtime Tracing:** Run the binary under `gdb` on Linux or `lldb` on macOS to inspect the crashed thread call stack (`bt full` / `thread apply all bt`).
+
+---
+
+## 11. Course Summary and Success Strategies
 
 Success in CS 6200 requires disciplined systems development practices:
 
@@ -426,7 +579,7 @@ Success in CS 6200 requires disciplined systems development practices:
 2. **Design Before Writing Code:** Sketch process layouts, thread interactions, shared memory layouts, and state machines on paper before writing C code.
 3. **Check Every Return Value:** Every system call (`malloc`, `pthread_create`, `sem_wait`, `read`, `write`, `socket`) can fail. Never ignore return codes.
 4. **Use Sanitizers Continuously:** Run AddressSanitizer and ThreadSanitizer from day one. Do not defer memory leak and race detection until the final submission.
-5. **Master GDB:** Learn to inspect core dumps, set conditional breakpoints, and navigate multi-threaded call stacks rather than relying solely on `printf` logging.
+5. **Master GDB and LLDB:** Learn to inspect core dumps, set conditional breakpoints, and navigate multi-threaded call stacks rather than relying solely on `printf` logging.
 6. **Participate in Discussion Forums:** Actively engage with peers and the instructional staff on Ed Discussion.
 
 ---
@@ -434,4 +587,5 @@ Success in CS 6200 requires disciplined systems development practices:
 **Navigation:**
 - Back to Dashboard: [GIOS Dashboard](../_GIOS-Dashboard.md)
 - Next Module: [P1L2: Introduction to Operating Systems](P1L2-Introduction-to-Operating-Systems.md)
+
 

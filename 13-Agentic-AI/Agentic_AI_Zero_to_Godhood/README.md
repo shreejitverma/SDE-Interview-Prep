@@ -16,6 +16,27 @@ By the end you should be able to design, build, evaluate, secure, and operate pr
 ## How this track is organized
 
 Fourteen volumes, ordered as a dependency graph.
+
+```mermaid
+flowchart LR
+    P1["01-02 Foundations"] --> P2["03-06 Core craft"]
+    P2 --> P3["07-09 Systems"]
+    P3 --> P4["10-12 Rigor"]
+    P4 --> P5["13-14 Frontier"]
+```
+
+```mermaid
+flowchart TD
+    Task["Task and context"] --> Model["Model"]
+    Model --> Choice{"Tool call or final answer?"}
+    Choice -->|tool call| Tool["Tool"]
+    Tool --> Obs["Observation"]
+    Obs --> Model
+    Choice -->|final answer| Done["Answer"]
+```
+
+The first diagram is the order of the volumes.
+The second is the agent loop that Volume 03 builds and every later volume complicates.
 Each volume is a directory of chapter files.
 Each chapter is written to be self-contained but assumes the volumes before it.
 Appendices hold reference material: glossary, paper list, benchmark index, interview drills, and a pattern library.

@@ -15,6 +15,9 @@ sources: []
 
 - [<% company %>: <% role %>](Application.md)
 - [<% tp.file.title %>](Behavioral-Story.md)
+- [<% tp.file.title %>](CS6210-Lab.md)
+- [<% tp.file.title.replace(/-/g, " ") %>](CS6210-Lesson.md)
+- [<% tp.file.title.replace(/-/g, " ") %>](CS6210-Paper.md)
 - [<% tp.file.title %>](Company-Profile.md)
 - [<% tp.date.now("dddd, MMMM Do YYYY") %>](Daily-Log.md)
 - [Interview Note](Interview-Note.md)

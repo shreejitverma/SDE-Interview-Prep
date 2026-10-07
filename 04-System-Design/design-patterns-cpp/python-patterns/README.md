@@ -116,4 +116,3 @@ Please run `tox` or `tox -e ci37` before submitting a patch to be sure your chan
 
 You can also run `flake8` or `pytest` commands manually. Examples can be found in `tox.ini`.
 
-

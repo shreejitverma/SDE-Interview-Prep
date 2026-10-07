@@ -1,8 +1,8 @@
 ---
 type: concept
 track: [sde]
-level: advanced
-status: complete
+level:
+status: solid
 last_reviewed:
 sources:
   - "Georgia Tech CS 6200 P3L3"
@@ -28,6 +28,11 @@ sources:
 - [10. IPC Comparison and Selection Guide](#10-ipc-comparison-and-selection-guide)
 - [11. Quizzes and Exercises](#11-quizzes-and-exercises)
 - [12. Key Takeaways](#12-key-takeaways)
+- [13. Advanced IPC: eventfd, signalfd, io_uring](#13-advanced-ipc-eventfd-signalfd-io_uring)
+- [14. Cross-Process Synchronization via Shared Memory](#14-cross-process-synchronization-via-shared-memory)
+- [15. IPC Performance Deep Dive](#15-ipc-performance-deep-dive)
+- [16. Inter-Host Communication: Socket Programming Patterns](#16-inter-host-communication-socket-programming-patterns)
+- [17. macOS Mach Messaging and Darwin IPC Internals](#17-macos-mach-messaging-and-darwin-ipc-internals)
 
 ---
 
@@ -595,15 +600,135 @@ CloseHandle(hPipe);
 
 ## 11. Quizzes and Exercises
 
-> **Quiz: IPC Selection**
->
-> *Two unrelated processes need to share a 1 GB dataset with low-latency random access reads. Which IPC mechanism is best?*
->
-> **Answer:** **Shared memory** (POSIX `shm_open` + `mmap` or `mmap` on a file). No data copying, direct memory access. Synchronization via mutexes/semaphores placed in the shared region.
+### Quiz 1: IPC Mechanism Comparison (Clips 300-301)
 
-### Exercise: Build a Simple Shell Pipeline
+> [!question]
+> We saw two major paradigms for implementing IPC: message passing (e.g., pipes, message queues, sockets) and shared memory (e.g., POSIX `shm_open`, System V `shmget`).
+> Which one of the two performs better?
+> 
+> 1. Message passing
+> 2. Shared memory
+> 3. It depends
 
-Implement `cmd1 | cmd2` using `pipe()`, `fork()`, `dup2()`, and `exec()`.
+> [!success]- Answer
+> The correct answer is **3. It depends**.
+> 
+> **Rationale:**
+> - **Message passing:** Requires multiple data copies between process user space and kernel space buffers (`user -> kernel -> user`), causing CPU and cache overhead.
+> However, for small payloads, the setup cost is near zero, and synchronization is automatically handled by the kernel via blocking read/write calls.
+> - **Shared memory:** Avoids all subsequent data copies because processes read and write directly to physical frames mapped into their virtual address spaces.
+> However, establishing the mapping incurs significant initial overhead (allocating physical frames, modifying page tables, configuring TLB entries).
+> Furthermore, processes must explicitly coordinate synchronization using semaphores or mutexes.
+> - **Conclusion:** For small messages or single transfers, message passing is faster because the mapping overhead exceeds the copy cost.
+> For large data transfers or continuous high-bandwidth communication, shared memory dominates because the one-time mapping cost is amortized over many zero-copy accesses.
+
+---
+
+### Quiz 2: Message Queue System Calls Treasure Hunt (Clips 309-310)
+
+> [!question]
+> What are the exact System V Linux system call names used for the following operations?
+> 1. Send a message to a message queue
+> 2. Receive a message from a message queue
+> 3. Perform a control operation on a message queue
+> 4. Obtain or create a message queue identifier
+
+> [!success]- Answer
+> 1. Send: `msgsnd`
+> 2. Receive: `msgrcv`
+> 3. Control: `msgctl`
+> 4. Obtain identifier: `msgget`
+
+---
+
+### Quiz 3: Copy vs. Map Threshold (Lecture 302)
+
+> [!question]
+> Suppose a message-based IPC channel copies data twice ($2 \times \text{size}$ bytes) at a memory bandwidth of 10 GB/s.
+> Establishing a shared memory mapping requires a round of page table modifications and TLB invalidations costing approximately 2.5 microseconds.
+> Below what payload size does message copying outperform establishing shared memory?
+
+> [!success]- Answer
+> Let $S$ be the payload size in bytes.
+> The copying time is:
+> $$T_{\text{copy}} = \frac{2 \times S}{10 \times 10^9 \text{ bytes/sec}}$$
+> Setting $T_{\text{copy}} < 2.5 \times 10^{-6} \text{ seconds}$:
+> $$2 \times S < 2.5 \times 10^{-6} \times 10 \times 10^9 = 25,000 \text{ bytes}$$
+> $$S < 12,500 \text{ bytes} \approx 12.2 \text{ KB}$$
+> 
+> For data sizes below approximately 12 KB, the CPU time required to copy data twice is less than the kernel overhead of modifying page tables and mapping virtual pages.
+> This mathematical threshold is why production microkernels and IPC frameworks use message copying for small control payloads and switch to page remapping/shared memory for bulk transfers.
+
+---
+
+### Quiz 4: Cross-Process Pthreads Synchronization
+
+> [!question]
+> When two independent processes coordinate access to a shared memory region, can standard `pthread_mutex_t` and `pthread_cond_t` variables be used?
+> If so, what special initialization steps are mandatory?
+
+> [!success]- Answer
+> **Yes**, standard Pthreads mutexes and condition variables can be placed inside a shared memory segment, provided:
+> 1. The mutex/condvar is allocated directly inside the shared memory region so both processes access the same physical bytes.
+> 2. The mutex attributes are initialized with `pthread_mutexattr_setpshared(&attr, PTHREAD_PROCESS_SHARED)`.
+> 3. The condition variable attributes are initialized with `pthread_condattr_setpshared(&cattr, PTHREAD_PROCESS_SHARED)`.
+> 
+> By default, mutex attributes are set to `PTHREAD_PROCESS_PRIVATE`, which allows the pthread library to optimize under the assumption that only threads within the calling process will access the lock.
+> Specifying `PTHREAD_PROCESS_SHARED` instructs the kernel and runtime to coordinate lock state across address space boundaries.
+
+---
+
+### Exercise: Runnable Shell Pipeline (`cmd1 | cmd2`)
+
+```c
+/* pipeline_demo.c - Implements a UNIX shell pipeline: "ls -l | wc -l" */
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <sys/wait.h>
+
+int main(void) {
+    int pipefd[2];
+    if (pipe(pipefd) == -1) {
+        perror("pipe");
+        exit(EXIT_FAILURE);
+    }
+
+    pid_t pid1 = fork();
+    if (pid1 == 0) {
+        /* Child 1: executes "ls -l", writes stdout into pipe */
+        close(pipefd[0]); /* Close unused read end */
+        dup2(pipefd[1], STDOUT_FILENO); /* Redirect stdout to write end */
+        close(pipefd[1]);
+
+        char *argv[] = {"ls", "-l", NULL};
+        execvp(argv[0], argv);
+        perror("execvp ls");
+        exit(EXIT_FAILURE);
+    }
+
+    pid_t pid2 = fork();
+    if (pid2 == 0) {
+        /* Child 2: executes "wc -l", reads stdin from pipe */
+        close(pipefd[1]); /* Close unused write end */
+        dup2(pipefd[0], STDIN_FILENO); /* Redirect stdin to read end */
+        close(pipefd[0]);
+
+        char *argv[] = {"wc", "-l", NULL};
+        execvp(argv[0], argv);
+        perror("execvp wc");
+        exit(EXIT_FAILURE);
+    }
+
+    /* Parent closes both pipe ends and waits for both children */
+    close(pipefd[0]);
+    close(pipefd[1]);
+    waitpid(pid1, NULL, 0);
+    waitpid(pid2, NULL, 0);
+
+    return 0;
+}
+```
 
 ---
 
@@ -1024,6 +1149,195 @@ Edge-triggered (EPOLLET):
 
 ---
 
+## 17. macOS Mach Messaging and Darwin IPC Internals
+
+### 17.1 Mach Ports and Port Rights Architecture
+
+While Linux relies primarily on pipes, POSIX queues, and Unix domain sockets, the foundation of inter-process communication on macOS (Darwin / XNU) is the **Mach Messaging Subsystem**.
+Almost all system services, GUI frameworks, window servers (`WindowServer`), and system daemons (`launchd`) communicate via Mach messages.
+
+The fundamental communication endpoint in Darwin is a **Mach Port** (`mach_port_t`):
+- A Mach port is a kernel-protected message queue referenced by an integer capability handle within each task port table.
+- Tasks do not hold the port itself; rather, they hold specific **Port Rights**:
+  1. **Receive Right (`MACH_PORT_RIGHT_RECEIVE`):** Exactly one task in the entire operating system holds the receive right for a given port. This task owns the message queue and dequeues incoming messages.
+  2. **Send Right (`MACH_PORT_RIGHT_SEND`):** One or more tasks hold send rights to transmit messages into the port queue.
+  3. **Send-Once Right (`MACH_PORT_RIGHT_SEND_ONCE`):** A transient right granted to allow a recipient to send exactly one reply message back to the sender. Once the reply is sent or the right destroyed, the kernel invalidates the capability.
+  4. **Port Set (`MACH_PORT_RIGHT_PORT_SET`):** A collection of receive rights aggregated into a single entity, allowing a server thread to wait on messages across hundreds of distinct ports simultaneously with a single system trap.
+
+### 17.2 The `mach_msg()` System Trap and In-Line vs. Out-of-Line Memory
+
+All Mach communication converges on a single system trap: `mach_msg_trap()`, invoked through the user-space wrapper `mach_msg()`:
+
+```c
+/* mach_ipc_demo.c - Mach Message IPC between threads on Darwin */
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <mach/mach.h>
+#include <pthread.h>
+
+#define MSG_ID_GREETING 1001
+
+/* Custom Mach message definition */
+typedef struct {
+    mach_msg_header_t header;
+    char text[64];
+} TextMessage;
+
+static mach_port_t server_port;
+
+void *server_thread(void *arg) {
+    (void)arg;
+    TextMessage msg;
+    memset(&msg, 0, sizeof(msg));
+
+    printf("[Server] Waiting for Mach message on port %u...\n", server_port);
+
+    /* Block until a message arrives */
+    kern_return_t kr = mach_msg(
+        &msg.header,
+        MACH_RCV_MSG,
+        0,
+        sizeof(msg),
+        server_port,
+        MACH_MSG_TIMEOUT_NONE,
+        MACH_PORT_NULL
+    );
+
+    if (kr == MACH_MSG_SUCCESS) {
+        printf("[Server] Received message ID %d: '%s'\n", msg.header.msgh_id, msg.text);
+    } else {
+        fprintf(stderr, "[Server] mach_msg receive failed: %d\n", kr);
+    }
+
+    return NULL;
+}
+
+int main(void) {
+    mach_port_t task = mach_task_self();
+
+    /* 1. Allocate a port with a receive right */
+    kern_return_t kr = mach_port_allocate(task, MACH_PORT_RIGHT_RECEIVE, &server_port);
+    if (kr != KERN_SUCCESS) {
+        fprintf(stderr, "Failed to allocate Mach port: %d\n", kr);
+        return 1;
+    }
+
+    /* 2. Insert a send right for the allocated port */
+    kr = mach_port_insert_right(task, server_port, server_port, MACH_MSG_TYPE_MAKE_SEND);
+    if (kr != KERN_SUCCESS) {
+        fprintf(stderr, "Failed to insert send right: %d\n", kr);
+        return 1;
+    }
+
+    /* 3. Launch server listener thread */
+    pthread_t thread;
+    pthread_create(&thread, NULL, server_thread, NULL);
+
+    /* Let the server thread enter receive state */
+    usleep(100000);
+
+    /* 4. Construct and send message */
+    TextMessage send_msg;
+    memset(&send_msg, 0, sizeof(send_msg));
+    send_msg.header.msgh_bits = MACH_MSGH_BITS(MACH_MSG_TYPE_COPY_SEND, 0);
+    send_msg.header.msgh_size = sizeof(send_msg);
+    send_msg.header.msgh_remote_port = server_port;
+    send_msg.header.msgh_local_port = MACH_PORT_NULL;
+    send_msg.header.msgh_id = MSG_ID_GREETING;
+    strncpy(send_msg.text, "Hello from Mach messaging on macOS!", sizeof(send_msg.text) - 1);
+
+    printf("[Client] Sending message to server port %u...\n", server_port);
+    kr = mach_msg(
+        &send_msg.header,
+        MACH_SEND_MSG,
+        sizeof(send_msg),
+        0,
+        MACH_PORT_NULL,
+        MACH_MSG_TIMEOUT_NONE,
+        MACH_PORT_NULL
+    );
+
+    if (kr != MACH_MSG_SUCCESS) {
+        fprintf(stderr, "mach_msg send failed: %d\n", kr);
+    }
+
+    pthread_join(thread, NULL);
+
+    /* Clean up Mach port */
+    mach_port_destroy(task, server_port);
+    printf("Mach IPC demo completed successfully\n");
+
+    return 0;
+}
+```
+
+```bash
+# Compile and run Mach IPC demo on Darwin
+clang -Wall -Wextra mach_ipc_demo.c -o mach_ipc_demo
+./mach_ipc_demo
+```
+
+### 17.3 Out-of-Line (OOL) Data and Virtual Memory Remapping
+
+For payloads larger than a single page (16 KB on Apple Silicon, 4 KB on Intel), copying bytes through the kernel message buffer degrades cache locality and memory throughput.
+Mach provides **Out-of-Line (OOL) descriptors** (`mach_msg_ool_descriptor_t`):
+- The sender specifies a pointer and length in its address space.
+- The kernel handles the transfer by updating virtual memory mappings.
+- The recipient receives a newly allocated virtual address range backed by the same physical pages with **Copy-On-Write (COW)** protection.
+- If neither sender nor receiver modifies the buffer, zero physical copies occur, allowing gigabytes of IPC data to be transferred in constant time $O(1)$.
+
+### 17.4 File Descriptor Passing via Unix Domain Sockets on Darwin
+
+In addition to Mach ports, Darwin supports standard BSD Unix domain sockets (`AF_UNIX`).
+Using ancillary control messages (`struct cmsghdr`) with type `SCM_RIGHTS`, one process can duplicate an open file descriptor into another process's file descriptor table:
+
+```c
+/* Passing an open file descriptor over a UNIX domain socket */
+#include <sys/socket.h>
+#include <sys/uio.h>
+
+int send_fd(int socket, int fd_to_send) {
+    struct msghdr msg = {0};
+    char buf[CMSG_SPACE(sizeof(int))];
+    memset(buf, 0, sizeof(buf));
+
+    struct iovec io = { .iov_base = "FD", .iov_len = 2 };
+    msg.msg_iov = &io;
+    msg.msg_iovlen = 1;
+    msg.msg_control = buf;
+    msg.msg_controllen = sizeof(buf);
+
+    struct cmsghdr *cmsg = CMSG_FIRSTHDR(&msg);
+    cmsg->cmsg_level = SOL_SOCKET;
+    cmsg->cmsg_type = SCM_RIGHTS;
+    cmsg->cmsg_len = CMSG_LEN(sizeof(int));
+    *((int *)CMSG_DATA(cmsg)) = fd_to_send;
+
+    return sendmsg(socket, &msg, 0);
+}
+```
+
+### 17.5 macOS XPC Services and IPC Diagnostics
+
+Apple layered **XPC Services** (`libxpc`) above Mach messaging to provide a modern, secure RPC and serialization mechanism:
+- **Sandbox integration:** Applications split privileged operations into unprivileged child XPC services managed directly by `launchd`.
+- **Structured messages:** XPC passes dictionaries (`xpc_object_t`) supporting integers, strings, arrays, UUIDs, shared memory regions (`xpc_shmem`), and file descriptors.
+
+```bash
+# Inspect registered XPC services on Darwin
+launchctl list | head -25
+
+# Trace Mach messaging activity in real time on macOS
+sudo sc_usage -c | grep -i mach
+
+# Trace specific process Mach traps using DTrace
+sudo dtruss -f -t mach_msg_trap -p <pid>
+```
+
+---
+
 **Previous:** [P3L2: Memory Management](P3L2-Memory-Management.md)
 **Next:** [P3L4: Synchronization Constructs](P3L4-Synchronization-Constructs.md)
+
 

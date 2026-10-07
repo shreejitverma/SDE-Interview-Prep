@@ -280,6 +280,8 @@ That hash is a placement decision, in the same spirit as NUMA first touch: the r
 
 ## Mechanisms step by step
 
+The core storage and networking paths rely on explicit step-by-step state transitions through the kernel layers.
+
 ### Path walk to an inode
 
 1. Start at the root inode, or at the current directory if the path is relative.

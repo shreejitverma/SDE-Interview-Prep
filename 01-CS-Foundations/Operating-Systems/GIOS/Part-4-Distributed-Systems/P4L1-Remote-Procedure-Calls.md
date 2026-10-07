@@ -1,8 +1,8 @@
 ---
 type: concept
 track: [sde]
-level: advanced
-status: complete
+level:
+status: solid
 last_reviewed:
 sources:
   - "Georgia Tech CS 6200 P4L1"
@@ -27,7 +27,8 @@ sources:
 11. [Windows RPC (MSRPC)](#11-windows-rpc-msrpc)
 12. [Performance and Optimization](#12-performance-and-optimization)
 13. [Security in RPC](#13-security-in-rpc)
-14. [Quiz Callouts](#14-quiz-callouts)
+14. [Quizzes and Exercises](#14-quizzes-and-exercises)
+15. [Cross-Platform RPC Tooling: Linux, macOS, and Windows](#15-cross-platform-rpc-tooling-linux-macos-and-windows)
 
 ---
 
@@ -1505,35 +1506,200 @@ channel = make_authenticated_channel("api.example.com:443", token)
 
 ---
 
-## 14. Quiz Callouts
+## 14. Quizzes and Exercises
 
-> [!NOTE]
-> **Quiz: Why is RPC hard?**
-> 1. **Partial failure** - server may crash after executing but before responding
-> 2. **Heterogeneous data** - different endianness, alignment, type sizes
-> 3. **Pointer semantics** - can't send pointers; must copy data
-> 4. **Latency** - network adds milliseconds; local calls take nanoseconds
-> 5. **No shared state** - client and server have separate address spaces
+### Quiz 1: RPC Timeout Failure Ambiguity (Clips 447-448)
 
-> [!NOTE]
-> **Quiz: At-least-once vs. at-most-once**
-> - **At-least-once**: Simple retry on timeout. Safe only for **idempotent** operations (read, set-to-value, delete-if-exists)
-> - **At-most-once**: Server deduplicates by (client_id, request_id). Required for **non-idempotent** ops (transfer $100, append to log)
-> - At-most-once is **much harder** but needed for correctness in payment/banking systems
+> [!question]
+> An RPC invocation from a client times out without receiving a response from the server.
+> Based solely on this timeout notification, which of the following reasons can the client-side RPC runtime definitively determine caused the failure?
+> 1. The client request packet was dropped by the network
+> 2. The server response packet was dropped by the network
+> 3. The intermediate physical network link went down
+> 4. The server physical machine crashed or suffered power failure
+> 5. The server application process crashed or Segfaulted
+> 6. The server process was overloaded and did not finish in time
+> 7. All of the above
+> 8. Any of the above
 
-> [!NOTE]
-> **Quiz: What does the stub do?**
-> Client stub: (1) pack args into network message, (2) find server, (3) send request, (4) wait for reply, (5) unpack return value, (6) return to caller.
-> Server stub: (1) wait for request, (2) unpack args, (3) call local function, (4) pack result, (5) send reply.
+> [!success]- Answer
+> The correct answer is **8. Any of the above**.
+> 
+> **Rationale:**
+> From the perspective of the client RPC runtime, the only observable event is that the timer expired before an acknowledgment packet arrived.
+> Because the network is an unreliable asynchronous medium, a timeout cannot distinguish between:
+> - Packet loss in the forward direction (request never reached server).
+> - Server execution crash (request reached server, but process crashed mid-execution).
+> - Packet loss in the return direction (server executed procedure successfully, but reply was lost).
+> - Extreme queuing delay (server is still executing, reply will arrive late).
+> 
+> This fundamental ambiguity makes full failure transparency impossible and mandates choosing between **at-least-once** and **at-most-once** semantics.
 
-> [!NOTE]
-> **Quiz: XDR vs Protobuf**
-> - XDR: Fixed 4-byte aligned big-endian, simple, used by NFS/NIS
-> - Protobuf: Variable-length varint encoding, schema evolution via field numbers, ~2-3x smaller, ~3-5x faster parse than JSON
+---
 
-> [!IMPORTANT]
-> **Key Exam Concept**: In Birrell & Nelson's RPC design, there are **5 pieces**: client, client stub, RPCRuntime, server stub, server. The RPC runtime handles transport, binding, and reliability. Stubs handle marshaling. Application code handles only business logic.
+### Quiz 2: `rpcgen` Compilation & Return Types (Clips 455-456)
+
+> [!question]
+> In SunRPC / ONC RPC, an interface is defined in `square.x`:
+> 
+> ```c
+> struct square_in { long val; };
+> struct square_out { long res; };
+> 
+> program SQUARE_PROG {
+>     version SQUARE_VERS {
+>         square_out SQUARE_PROC(square_in) = 1;
+>     } = 1;
+> } = 0x31230000;
+> ```
+> 
+> What is the C return type of the generated server dispatch routine `square_proc_1_svc()` when compiled with:
+> 1. Standard ANSI C: `rpcgen -C square.x`
+> 2. Thread-safe reentrant C: `rpcgen -C -N square.x`
+
+> [!success]- Answer
+> 1. **`rpcgen -C` (Non-thread-safe):** Returns **`square_out *`** (a pointer to a statically allocated `square_out` buffer within the server stub).
+> This implementation is not thread-safe because concurrent calls overwrite the same static memory.
+> 
+> 2. **`rpcgen -C -N` (Thread-safe / Newstyle):** Returns **`bool_t`** (or `enum clnt_stat`).
+> In this reentrant mode, the signature becomes:
+> ```c
+> bool_t square_proc_1_svc(square_in *inp, square_out *outp, struct svc_req *rqstp);
+> ```
+> The output result is written into caller-provided memory pointed to by `outp`, returning `TRUE` (1) on success or `FALSE` (0) on failure.
+
+---
+
+### Quiz 3: XDR In-Memory Representation vs. Wire Size (Clips 460-466)
+
+> [!question]
+> Suppose an XDR definition specifies a variable-length integer array with a maximum capacity of 5 elements:
+> 
+> ```c
+> int data<5>;
+> ```
+> 
+> When the array is completely full (5 elements):
+> 1. How many bytes are required to represent this data structure in RAM on a 32-bit client machine in C?
+> 2. How many bytes are transmitted across the network over the wire (excluding RPC headers and IP/TCP framing)?
+
+> [!success]- Answer
+> 1. **In-Memory Representation (Client RAM): 28 bytes.**
+> `rpcgen` translates `int data<5>` into a C struct containing an unsigned integer length and a pointer to the buffer:
+> ```c
+> struct {
+>     u_int data_len; /* 4 bytes */
+>     int *data_val;  /* 4 bytes (pointer on 32-bit machine) */
+> };
+> ```
+> Memory consumed:
+> - Struct metadata: $4 \text{ bytes (len)} + 4 \text{ bytes (pointer)} = 8 \text{ bytes}$.
+> - Heap buffer: $5 \text{ integers} \times 4 \text{ bytes} = 20 \text{ bytes}$.
+> - Total memory footprint: $8 + 20 =$ **28 bytes**.
+> 
+> 2. **On-the-Wire Network Encoding: 24 bytes.**
+> XDR serializes variable-length arrays by transmitting:
+> - An unsigned 4-byte big-endian integer indicating array count ($n = 5$).
+> - The $n$ array elements consecutively ($5 \times 4 \text{ bytes} = 20 \text{ bytes}$).
+> - Memory pointers (`data_val`) have no meaning on a remote machine and are omitted.
+> - Total wire bytes: $4 + 20 =$ **24 bytes**.
+
+---
+
+### Quiz 4: At-Least-Once vs. At-Most-Once Semantics
+
+> [!question]
+> Which execution semantics (at-least-once or at-most-once) are required for the following distributed operations?
+> 1. Reading an account balance (`getBalance(acc_id)`)
+> 2. Transferring $500 between accounts (`transfer(from_id, to_id, 500)`)
+> 3. Setting a user's phone number (`setPhone(user_id, "555-1234")`)
+> 4. Appending a log record to an audit ledger (`appendLog(entry)`)
+
+> [!success]- Answer
+> 1. `getBalance`: **At-least-once** (Operation is idempotent; retrying reads causes no side effects).
+> 2. `transfer`: **At-most-once** (Operation is non-idempotent; replaying a transfer deducts money multiple times).
+> 3. `setPhone`: **At-least-once** (Operation is idempotent; overwriting with the same value produces the identical end state).
+> 4. `appendLog`: **At-most-once** (Operation is non-idempotent; replaying an append duplicates log entries).
+
+---
+
+### Quiz 5: Birrell & Nelson 5-Piece Architectural Model
+
+> [!question]
+> In Birrell and Nelson's seminal 1984 RPC paper, what are the five architectural components and their distinct responsibilities?
+
+> [!success]- Answer
+> 1. **Client Program:** Calls the remote procedure as if it were a local subroutine.
+> 2. **Client Stub:** Marshals procedure arguments into a network packet, invokes the RPC runtime, and unmarshals reply values.
+> 3. **RPC Runtime:** Manages network transport (UDP/TCP), server binding, timeouts, acknowledgments, and retransmissions.
+> 4. **Server Stub:** Unmarshals parameters from incoming packets, invokes the real server routine, and marshals return values.
+> 5. **Server Program:** Executes the application logic and returns values to the server stub.
+
+---
+
+## 15. Cross-Platform RPC Tooling: Linux, macOS, and Windows
+
+### 15.1 Linux RPC Development and Diagnostics
+
+```bash
+# 1. Query the local SunRPC / ONC RPC portmapper / rpcbind registry
+rpcinfo -p localhost
+# Shows program number, version, protocol (tcp/udp), port, and service name (e.g., nfs, mountd, portmapper)
+
+# 2. Modern gRPC: Compile protocol buffers schema into C++ stubs
+protoc -I=. --cpp_out=. --grpc_out=. --plugin=protoc-gen-grpc=$(which grpc_cpp_plugin) service.proto
+
+# 3. Dynamic gRPC inspection via grpcurl (curl for gRPC)
+# List exposed services via gRPC Server Reflection Protocol
+grpcurl -plaintext localhost:50051 list
+
+# Describe a specific service method and message schema
+grpcurl -plaintext localhost:50051 describe myservice.ComputeService.CalculateSquare
+
+# Invoke remote procedure directly from the CLI
+grpcurl -plaintext -d '{"val": 42}' localhost:50051 myservice.ComputeService.CalculateSquare
+```
+
+### 15.2 macOS Darwin RPC and XPC Architecture
+
+On Darwin, SunRPC commands (`rpcinfo`, `rpcgen`) remain part of BSD base utilities for managing legacy NFS mounts.
+For modern distributed services, macOS developers use native Homebrew toolchains for Protobuf/gRPC:
+
+```bash
+# 1. Install Protobuf compiler and gRPC libraries on macOS
+brew install protobuf grpc
+
+# 2. Compile .proto files using Apple Clang
+protoc -I=. --cpp_out=. --grpc_out=. --plugin=protoc-gen-grpc=$(which grpc_cpp_plugin) service.proto
+clang++ -std=c++17 -Wall service.pb.cc service.grpc.pb.cc client.cpp -lprotobuf -lgrpc++ -o grpc_client
+
+# 3. Darwin XPC vs Network RPC
+# While gRPC connects distributed nodes across IP networks, Darwin XPC connects local sandboxed processes
+# Inspect registered system daemons communicating via XPC / Mach traps
+launchctl list | grep -i apple
+```
+
+### 15.3 Windows MSRPC and PowerShell Diagnostics
+
+Windows uses MSRPC (Microsoft Remote Procedure Call, derived from DCE/RPC) throughout all internal OS subsystems (Active Directory, Task Scheduler, Print Spooler, DCOM):
+
+```powershell
+# 1. Inspect Windows RPC Endpoint Mapper and core services
+Get-Service -Name RpcSs, RpcEptMapper | Select-Object Name, Status, StartType
+
+# 2. Query open RPC endpoints using SysInternals or PowerShell
+# Port 135 is the standard DCE/RPC Endpoint Mapper port
+Get-NetTCPConnection -LocalPort 135
+
+# 3. Test connectivity to remote RPC endpoint mapper
+Test-NetConnection -ComputerName server01.corp.local -Port 135
+
+# 4. Modern gRPC on Windows via vcpkg
+# vcpkg install grpc:x64-windows protobuf:x64-windows
+# cmake -B build -S . -DCMAKE_TOOLCHAIN_FILE=C:\vcpkg\scripts\buildsystems\vcpkg.cmake
+```
 
 ---
 
 *Cross-links: [[P4L2-Distributed-File-Systems]] (NFS uses Sun RPC) | [[P3L3-Inter-Process-Communication]] (local IPC vs. RPC) | [[P2L1-Processes-and-Process-Management]] (process isolation)*
+

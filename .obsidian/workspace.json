@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "02-Programming-Languages/Python/Python-Backend-Interview-Prep/17-Concurrency-in-Web-Services-and-Coding.md",
+                "file": "16-Interview-Command-Center/00-Dashboard.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "17-Concurrency-in-Web-Services-and-Coding"
+              "title": "00-Dashboard"
             }
           }
         ]
@@ -83,7 +83,7 @@
       }
     ],
     "direction": "horizontal",
-    "width": 362.421875
+    "width": 234.296875
   },
   "right": {
     "id": "98efdf8a7344e8c8",
@@ -195,7 +195,8 @@
       }
     ],
     "direction": "horizontal",
-    "width": 300
+    "width": 300,
+    "collapsed": true
   },
   "left-ribbon": {
     "hiddenItems": {
@@ -216,44 +217,53 @@
   },
   "active": "e7a7b303c61786dc",
   "lastOpenFiles": [
-    "02-Programming-Languages/Python/Python-Backend-Interview-Prep/05-REST-API-Design.md",
-    "01-CS-Foundations/Operating-Systems/AOS/Cheatsheets/Part-5-Cheatsheet.md",
-    "Library/01-CS-Foundations/Operating-Systems/CS6210-AOS/crew/runner/reports/cheatsheet-5.md",
-    "Library/01-CS-Foundations/Operating-Systems/CS6210-AOS/crew/runner/logs/cheatsheet-5.gemini.1.log",
-    "Library/01-CS-Foundations/Operating-Systems/CS6210-AOS/crew/runner/logs/cheatsheet-5.prompt.md",
-    "Library/01-CS-Foundations/Operating-Systems/CS6210-AOS/crew/runner/reports/practice-L11.md",
-    "Library/01-CS-Foundations/Operating-Systems/CS6210-AOS/crew/runner/logs/practice-L11.gemini.1.log",
-    "Library/01-CS-Foundations/Operating-Systems/CS6210-AOS/crew/runner/logs/practice-L11.prompt.md",
-    "Library/01-CS-Foundations/Operating-Systems/CS6210-AOS/crew/runner/reports/practice-L10.md",
-    "Library/01-CS-Foundations/Operating-Systems/CS6210-AOS/crew/runner/logs/practice-L10.gemini.1.log",
-    "Library/01-CS-Foundations/Operating-Systems/CS6210-AOS/crew/runner/logs/practice-L10.prompt.md",
-    "Library/01-CS-Foundations/Operating-Systems/CS6210-AOS/crew/runner/reports/practice-L09.md",
-    "Library/01-CS-Foundations/Operating-Systems/CS6210-AOS/crew/runner/logs/practice-L09.gemini.1.log",
-    "Library/01-CS-Foundations/Operating-Systems/CS6210-AOS/crew/runner/logs/practice-L09.prompt.md",
-    "01-CS-Foundations/Operating-Systems/AOS/labs/lab-24-security/seccomp_filter.c",
-    "01-CS-Foundations/Operating-Systems/AOS/labs/lab-24-security/expected-output.txt",
-    "01-CS-Foundations/Operating-Systems/AOS/labs/lab-24-security/caps_namespaces.sh",
-    "01-CS-Foundations/Operating-Systems/AOS/labs/lab-24-security/andrew_handshake.py",
-    "01-CS-Foundations/Operating-Systems/AOS/labs/lab-24-security/Makefile",
-    "Library/01-CS-Foundations/Operating-Systems/CS6210-AOS/crew/runner/reports/lab-24-security.md",
-    "Library/01-CS-Foundations/Operating-Systems/CS6210-AOS/crew/runner/logs/lab-24-security.gemini.1.log",
-    "Library/01-CS-Foundations/Operating-Systems/CS6210-AOS/crew/runner/logs/lab-24-security.prompt.md",
-    "Library/01-CS-Foundations/Operating-Systems/CS6210-AOS/crew/runner/reports/lab-23-temporal-streams.md",
-    "Library/01-CS-Foundations/Operating-Systems/CS6210-AOS/crew/runner/logs/lab-23-temporal-streams.prompt.md",
-    "Library/01-CS-Foundations/Operating-Systems/CS6210-AOS/crew/runner/reports/lab-22-realtime.md",
-    "Library/01-CS-Foundations/Operating-Systems/CS6210-AOS/crew/runner/logs/lab-22-realtime.prompt.md",
-    "Library/01-CS-Foundations/Operating-Systems/CS6210-AOS/crew/runner/reports/lab-21-dht.md",
-    "Library/01-CS-Foundations/Operating-Systems/CS6210-AOS/crew/runner/logs/lab-21-dht.prompt.md",
-    "Library/01-CS-Foundations/Operating-Systems/CS6210-AOS/crew/runner/reports/lab-20-mapreduce.md",
-    "Library/01-CS-Foundations/Operating-Systems/CS6210-AOS/crew/runner/logs/lab-20-mapreduce.prompt.md",
-    "Library/01-CS-Foundations/Operating-Systems/CS6210-AOS/crew/runner/reports/lab-19-giant-scale.md",
-    "Library/01-CS-Foundations/Operating-Systems/CS6210-AOS/crew/runner/logs/lab-19-giant-scale.prompt.md",
-    "Library/01-CS-Foundations/Operating-Systems/CS6210-AOS/crew/runner/reports/papers-optional-4.md",
-    "Library/01-CS-Foundations/Operating-Systems/CS6210-AOS/crew/runner/logs/papers-optional-4.prompt.md",
-    "Library/01-CS-Foundations/Operating-Systems/CS6210-AOS/crew/runner/reports/papers-optional-3.md",
-    "Library/01-CS-Foundations/Operating-Systems/CS6210-AOS/crew/runner/logs/papers-optional-3.prompt.md",
+    "01-CS-Foundations/Operating-Systems/GIOS/Part-2-Process-Thread-Management/P2L1-Processes-and-Process-Management.md",
+    "04-System-Design/05-Data-Stores/Redis-Architecture.md",
+    "04-System-Design/05-Data-Stores/MongoDB-and-Couchbase.md",
+    "04-System-Design/05-Data-Stores/Apache-Cassandra.md",
+    "04-System-Design/05-Data-Stores/CockroachDB-Distributed-SQL.md",
+    "04-System-Design/05-Data-Stores/PostgreSQL-Architecture.md",
+    "04-System-Design/05-Data-Stores/MySQL-and-InnoDB.md",
+    "04-System-Design/04-APIs-and-Protocols/README.md",
+    "04-System-Design/08-Big-Data",
+    "04-System-Design/07-Infrastructure-and-Orchestration",
+    "04-System-Design/06-Messaging-and-Streaming",
+    "04-System-Design/05-Data-Stores",
+    "04-System-Design/04-APIs-and-Protocols/API-Authentication-and-Authorization.md",
+    "04-System-Design/04-APIs-and-Protocols/Pagination-Strategies.md",
+    "04-System-Design/04-APIs-and-Protocols/HTTP-Evolution-HTTP1-HTTP2-HTTP3.md",
+    "04-System-Design/04-APIs-and-Protocols/gRPC-and-Protocol-Buffers.md",
+    "04-System-Design/04-APIs-and-Protocols/GraphQL.md",
+    "04-System-Design/04-APIs-and-Protocols/REST-APIs.md",
+    "04-System-Design/04-APIs-and-Protocols/API-Fundamentals.md",
+    "04-System-Design/04-APIs-and-Protocols",
+    "04-System-Design/00-Concepts/Virtual-Machines-vs-Containers.md",
+    "04-System-Design/00-Concepts/RDBMS-vs-NoSQL.md",
+    "04-System-Design/00-Concepts/Concurrency-Synchronization-and-CAS.md",
+    "04-System-Design/00-Concepts/MapReduce-Architecture.md",
+    "04-System-Design/00-Concepts/Pub-Sub-Architecture.md",
+    "04-System-Design/00-Concepts/Synchronous-vs-Asynchronous-Communication.md",
+    "04-System-Design/00-Concepts/Load-Balancing.md",
+    "04-System-Design/00-Concepts/Consistency-Models.md",
+    "04-System-Design/00-Concepts/Optimistic-vs-Pessimistic-Locking.md",
+    "04-System-Design/00-Concepts/Consistent-Hashing.md",
+    "04-System-Design/00-Concepts/Partitioning-and-Sharding.md",
+    "04-System-Design/design-patterns-cpp/python-patterns/patterns/structural/viz/proxy.py.png",
+    "04-System-Design/design-patterns-cpp/python-patterns/patterns/structural/viz/mvc.py.png",
+    "04-System-Design/design-patterns-cpp/python-patterns/patterns/structural/viz/front_controller.py.png",
+    "04-System-Design/design-patterns-cpp/python-patterns/patterns/structural/viz/flyweight.py.png",
+    "04-System-Design/design-patterns-cpp/python-patterns/patterns/structural/viz/facade.py.png",
+    "04-System-Design/design-patterns-cpp/python-patterns/patterns/structural/viz/decorator.py.png",
+    "04-System-Design/design-patterns-cpp/python-patterns/patterns/structural/viz/composite.py.png",
+    "04-System-Design/design-patterns-cpp/python-patterns/patterns/structural/viz/bridge.py.png",
+    "04-System-Design/design-patterns-cpp/python-patterns/patterns/structural/viz/3-tier.py.png",
+    "04-System-Design/design-patterns-cpp/python-patterns/patterns/structural/viz/adapter.py.png",
+    "04-System-Design/design-patterns-cpp/python-patterns/patterns/other/hsm/hsm.py",
+    "04-System-Design/design-patterns-cpp/python-patterns/patterns/other/hsm/__init__.py",
+    "04-System-Design/design-patterns-cpp/python-patterns/tests/structural/test_proxy.py",
+    "04-System-Design/design-patterns-cpp/python-patterns/tests/structural/test_bridge.py",
+    "04-System-Design/design-patterns-cpp/python-patterns/tests/structural/test_decorator.py",
     "01-CS-Foundations/Operating-Systems/AOS/AOS-Concept-Map.canvas",
-    "06-Interview-Prep/04-Market-Risk-Quartz-Python/Market-Risk-Prep-Canvas.canvas",
-    "02-Programming-Languages/C++/CPP_Zero_to_Godhood/C++ Zero to Godhood: Complete Evolution and Comprehensive Feature Guide.mindnode/QuickLook/Preview.jpg"
+    "06-Interview-Prep/04-Market-Risk-Quartz-Python/Market-Risk-Prep-Canvas.canvas"
   ]
 }

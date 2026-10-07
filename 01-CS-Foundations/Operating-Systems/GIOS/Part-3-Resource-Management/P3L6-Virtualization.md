@@ -1,8 +1,8 @@
 ---
 type: concept
 track: [sde]
-level: advanced
-status: complete
+level:
+status: solid
 last_reviewed:
 sources:
   - "Georgia Tech CS 6200 P3L6"
@@ -28,6 +28,15 @@ sources:
 - [10. Containers vs. Virtual Machines](#10-containers-vs-virtual-machines)
 - [11. Quizzes and Exercises](#11-quizzes-and-exercises)
 - [12. Key Takeaways](#12-key-takeaways)
+- [13. KVM Internals and QEMU Integration](#13-kvm-internals-and-qemu-integration)
+- [14. VM Live Migration Deep Dive](#14-vm-live-migration-deep-dive)
+- [15. Container Internals: Namespaces and Cgroups v2](#15-container-internals-namespaces-and-cgroups-v2)
+- [16. eBPF: Observability for Virtualization](#16-ebpf-observability-for-virtualization)
+- [17. Hyper-V Internals and Windows Virtualization](#17-hyper-v-internals-and-windows-virtualization)
+- [18. SR-IOV: Single Root I/O Virtualization](#18-sr-iov-single-root-io-virtualization)
+- [19. Live Migration: Deep Dive](#19-live-migration-deep-dive)
+- [20. OCI Container Runtime and Kubernetes Internals](#20-oci-container-runtime-and-kubernetes-internals)
+- [21. macOS Virtualization Framework and Darwin Hypervisors](#21-macos-virtualization-framework-and-darwin-hypervisors)
 
 ---
 
@@ -455,20 +464,141 @@ cat /sys/fs/cgroup/system.slice/docker-$CONTAINER_ID.scope/cpu.max
 
 ## 11. Quizzes and Exercises
 
-> **Quiz: Virtualization Approaches**
->
-> *Match each approach to its key mechanism:*
-> | Approach | Mechanism |
-> |----------|-----------|
-> | Full virtualization (VMware) | Binary translation of sensitive instructions |
-> | Paravirtualization (Xen) | Hypercalls replacing privileged instructions |
-> | Hardware-assisted (KVM) | VT-x/AMD-V VMX non-root mode |
+### Quiz 1: Defining Virtualization Technologies (Clips 398-399)
 
-> **Quiz: EPT vs. Shadow Page Tables**
->
-> *EPT/NPT has higher TLB miss cost but lower overall overhead. Why?*
->
-> **Answer:** Shadow page tables require a **VM exit on every guest page table modification** (expensive: ~1-5 us each). EPT eliminates these exits entirely. Although an EPT TLB miss requires up to 24 memory accesses (nested 4-level walk), TLB hit rates are >99%, so this penalty is rarely paid. The savings from avoiding VM exits far outweigh the occasional longer TLB miss.
+> [!question]
+> Based on the classical definition of platform virtualization provided by Popek and Goldberg ("an efficient, isolated duplicate of a real computer machine"), which of the following qualify as virtualization technologies?
+> 1. VirtualBox
+> 2. Java Virtual Machine (JVM)
+> 3. Virtual GameBoy (Nintendo GameBoy emulator)
+
+> [!success]- Answer
+> The only correct answer is **1. VirtualBox**.
+> 
+> **Rationale:**
+> - **VirtualBox:** True platform/system virtualization.
+> The guest OS executes directly on the physical CPU architecture (or identical virtual hardware interface) with direct instruction execution.
+> - **Java Virtual Machine (JVM):** A language runtime process environment providing an abstract bytecode execution engine, not an isolated duplicate of physical hardware.
+> - **Virtual GameBoy:** A hardware emulator that interprets GameBoy Z80-derived CPU instructions entirely in software on a foreign CPU (x86/ARM), rather than direct duplicate virtualization.
+
+---
+
+### Quiz 2: History and Economic Drivers of Virtualization (Clips 401-404)
+
+> [!question]
+> 1. Although IBM mainframe virtualization existed since the 1960s (CP-40/CP-67), why was virtualization not ubiquitously adopted in commodity enterprise IT during the 1980s and 1990s?
+> 2. What macroeconomic and operational crisis in enterprise datacenters during the late 1990s forced the resurgence of virtualization?
+
+> [!success]- Answer
+> 1. **Why not adopted earlier:**
+> Mainframes were expensive and rare; commodity enterprise IT ran on cheap, mass-produced x86 servers.
+> When an enterprise required a new service or different OS, it was simpler and cheaper to purchase another physical x86 server ("one application per server") than to engineer multi-tenant software coexistence.
+> 
+> 2. **What forced the resurgence:**
+> - **Server underutilization:** Average enterprise server CPU utilization plummeted to 10% to 20%.
+> - **Datacenter sprawl:** Datacenters ran out of physical rack space, power capacity, and cooling.
+> - **Operational expense explosion:** Cooling, electricity, and systems administration salaries consumed over 70% of total IT budgets (operating expenses overwhelmed capital expenses).
+> Workload consolidation via virtualization became an economic necessity.
+
+---
+
+### Quiz 3: Bare-Metal (Type 1) vs. Hosted (Type 2) Hypervisors (Clips 407-408)
+
+> [!question]
+> Classify each of the following virtualization platforms as either **Bare-Metal (Type 1)** or **Hosted (Type 2)**:
+> 1. VMware ESXi
+> 2. VMware Fusion / Workstation
+> 3. Oracle VirtualBox
+> 4. Citrix XenServer
+> 5. Microsoft Hyper-V
+> 6. Kernel-based Virtual Machine (KVM)
+
+> [!success]- Answer
+> 1. **VMware ESXi:** Bare-Metal (Type 1)
+> 2. **VMware Fusion / Workstation:** Hosted (Type 2)
+> 3. **Oracle VirtualBox:** Hosted (Type 2)
+> 4. **Citrix XenServer:** Bare-Metal (Type 1)
+> 5. **Microsoft Hyper-V:** Bare-Metal (Type 1)
+> 6. **KVM:** Hybrid / Type 1 (The KVM kernel module loads into the Linux kernel and transitions the CPU into VMX root mode, effectively converting the Linux host into a Type 1 hypervisor where user space QEMU acts as a privileged management helper).
+
+---
+
+### Quiz 4: Fundamental Virtualization Requirements (Clips 409-410)
+
+> [!question]
+> Which of the following are essential requirements for a Virtual Machine Monitor according to Popek and Goldberg?
+> 1. Present a virtual platform interface identical to the underlying hardware
+> 2. Provide strict isolation across guest VMs
+> 3. Protect the guest operating system from guest user applications
+> 4. Protect the hypervisor from the guest operating system
+
+> [!success]- Answer
+> **All four (1, 2, 3, and 4) are mandatory requirements.**
+> 
+> **Rationale:**
+> - Presenting the platform interface ensures guest software executes unmodified with high fidelity.
+> - VM isolation ensures one compromised VM cannot access neighboring physical frames or registers.
+> - Protecting the guest OS from its applications requires multiple hardware protection levels inside the VM.
+> - Protecting the hypervisor from the guest OS dictates that the hypervisor and guest OS cannot execute at the same CPU privilege level.
+
+---
+
+### Quiz 5: Problematic x86 Sensitive Unprivileged Instructions (Clips 414-415)
+
+> [!question]
+> Under classical virtualization theorems, an architecture is virtualizable if all sensitive instructions are a subset of privileged instructions.
+> Prior to Intel VT-x (2005), 17 x86 instructions violated this theorem by being sensitive but unprivileged.
+> For example, `POPF` modifies the CPU interrupt enable flag (`IF`), but when executed in Ring 1, it silently ignores the flag modification without trapping to Ring 0.
+> What are the consequences of this silent failure?
+
+> [!success]- Answer
+> Because `POPF` fails silently without generating a trap:
+> 1. The guest OS cannot reliably disable interrupts during critical section execution.
+> 2. The guest OS cannot re-enable interrupts upon exiting critical sections.
+> 3. The guest OS cannot reliably query or inspect the state of the hardware interrupt flag.
+> The guest OS assumes its interrupt control requests succeeded when the underlying hardware state remained completely unchanged, corrupting OS synchronization logic.
+
+---
+
+### Quiz 6: Binary Translation vs. Paravirtualization VM Traps (Clips 418-419)
+
+> [!question]
+> Which of the following operations will trigger a trap into the hypervisor under **both** VMware Binary Translation (Full Virtualization) and Xen Paravirtualization?
+> 1. Access to a virtual memory page that has been swapped out to disk
+> 2. An update to an existing page table entry
+
+> [!success]- Answer
+> **Option 1: Access to a swapped-out page.**
+> When a virtual address references an unmapped or swapped page, the hardware Memory Management Unit (MMU) encounters a non-present PTE and raises a hardware page fault exception.
+> The hardware trap is routed directly to the hypervisor regardless of whether full virtualization or paravirtualization is employed.
+> In contrast, Option 2 (updating a PTE) does not always trap: in paravirtualization, the guest batches updates into explicit hypercalls, whereas in binary translation with shadow page tables, write-protecting guest page tables forces a trap.
+
+---
+
+### Quiz 7: Relevance of Split Device Drivers with Hardware Virtualization (Clips 427-428)
+
+> [!question]
+> Modern hardware extensions provide direct device passthrough and SR-IOV.
+> Is the split device driver model (frontend driver in guest, backend driver in host/Dom0) still relevant in modern datacenters?
+
+> [!success]- Answer
+> **Yes.**
+> While direct hardware passthrough offers maximum raw throughput, the split driver model remains indispensable because:
+> 1. **Centralized policy and QoS:** The host can throttle bandwidth, enforce fair sharing, and filter malicious packets without hardware device support.
+> 2. **Live migration:** Directly passed-through physical PCI devices cannot be transparently live-migrated across physical hosts; split virtual devices decouple guest state from physical hardware registers.
+
+---
+
+### Quiz 8: EPT / NPT vs. Shadow Page Tables Tradeoff
+
+> [!question]
+> Extended Page Tables (EPT on Intel) and Nested Page Tables (NPT on AMD) introduce two-dimensional page walks requiring up to 24 memory accesses on a TLB miss.
+> Why does hardware-assisted memory virtualization drastically outperform software shadow page tables despite this high TLB miss penalty?
+
+> [!success]- Answer
+> Shadow page tables require write-protecting all guest page tables, forcing an expensive **VM exit on every single guest page table modification** (costing thousands of CPU cycles for register state serialization).
+> Hardware EPT completely eliminates VM exits during page table updates because the hardware MMU walks both guest and host tables natively.
+> Because hardware TLB hit rates in production workloads exceed 98%, the occasional nested 24-step page walk is dwarfed by the massive CPU savings of eliminating tens of thousands of VM exits per second.
 
 ---
 
@@ -1134,7 +1264,109 @@ docker save nginx:latest | tar -xv  # See layer tarballs
 
 ---
 
+## 21. macOS Virtualization Framework and Darwin Hypervisors
+
+### 21.1 The Low-Level `Hypervisor.framework`
+
+On Darwin (macOS), virtualization does not require third-party kernel extensions (KEXTs).
+Apple provides **`Hypervisor.framework`** (`<Hypervisor/Hypervisor.h>`), a low-level C API that allows unprivileged user-space processes (with the `com.apple.security.hypervisor` entitlement) to construct and manage virtual machines:
+
+- **Intel x86-64 Architecture:** Interacts directly with Intel VT-x hardware primitives, controlling VMX root and non-root execution modes, VMCS registers, and extended page tables via `hv_vcpu_create()`, `hv_vcpu_run()`, and `hv_vm_map()`.
+- **Apple Silicon (ARM64) Architecture:** Leverages ARMv8.4-A Virtualization Host Extensions (VHE).
+The host macOS kernel executes at Exception Level 2 (EL2), allowing guest operating systems (such as Linux or Windows for ARM) to run at Exception Level 1 (EL1) and guest applications at Exception Level 0 (EL0).
+Hardware traps during guest execution are intercepted directly by `hv_vcpu_run()` without entering a guest kernel stub.
+
+```c
+/* hv_arm64_demo.c - Minimal vCPU allocation using Hypervisor.framework */
+#include <stdio.h>
+#include <stdlib.h>
+#include <Hypervisor/Hypervisor.h>
+
+int main(void) {
+    /* 1. Initialize the VM instance */
+    hv_return_t ret = hv_vm_create(HV_VM_DEFAULT);
+    if (ret != HV_SUCCESS) {
+        fprintf(stderr, "hv_vm_create failed: 0x%x (ensure hypervisor entitlement is present)\n", ret);
+        return 1;
+    }
+    printf("Successfully initialized Mach hypervisor instance\n");
+
+    /* 2. Allocate and map guest physical memory (16 KB aligned) */
+    size_t mem_size = 64 * 1024 * 1024; /* 64 MB */
+    void *guest_mem = valloc(mem_size);
+    ret = hv_vm_map(guest_mem, 0x00000000, mem_size, HV_MEMORY_READ | HV_MEMORY_WRITE | HV_MEMORY_EXEC);
+    if (ret != HV_SUCCESS) {
+        fprintf(stderr, "hv_vm_map failed: 0x%x\n", ret);
+        hv_vm_destroy();
+        return 1;
+    }
+    printf("Mapped 64 MB guest memory at physical base 0x0\n");
+
+    /* 3. Create virtual CPU */
+    hv_vcpu_t vcpu;
+    ret = hv_vcpu_create(&vcpu, HV_VCPU_DEFAULT);
+    if (ret != HV_SUCCESS) {
+        fprintf(stderr, "hv_vcpu_create failed: 0x%x\n", ret);
+        hv_vm_destroy();
+        return 1;
+    }
+    printf("Created vCPU handle: %llu\n", (unsigned long long)vcpu);
+
+    /* 4. Teardown vCPU and VM */
+    hv_vcpu_destroy(vcpu);
+    hv_vm_destroy();
+    free(guest_mem);
+    printf("Hypervisor demo completed successfully\n");
+
+    return 0;
+}
+```
+
+```bash
+# Compile on macOS with Hypervisor framework link flag
+clang -Wall -Wextra hv_arm64_demo.c -framework Hypervisor -o hv_arm64_demo
+```
+
+### 21.2 The High-Level `Virtualization.framework` (`VZVirtualMachine`)
+
+In macOS 11 and later, Apple introduced the high-level **`Virtualization.framework`** (available via Swift and Objective-C), which provides out-of-the-box virtual hardware devices:
+- **`VZLinuxBootLoader`:** Directly boots Linux `vmlinuz` kernels and `initrd` ramdisks without requiring a separate firmware bootloader.
+- **`VZEFIBootLoader`:** Provides UEFI firmware initialization for booting Windows 11 ARM64 and modern Linux distributions.
+- **`VZVirtioBlockDeviceConfiguration`:** Paravirtualized Virtio storage attachments backed by raw disk images or sparse bundles.
+- **`VZVirtioNetworkDeviceConfiguration`:** Virtio network interfaces supporting NAT mode, host-only mode, and bridged mode over physical adapters.
+- **Rosetta 2 Inside Linux VMs (`VZLinuxRosettaDirectorySharingDeviceAttachment`):**
+On Apple Silicon, macOS can share its Rosetta 2 translation daemon with guest ARM64 Linux VMs.
+This allows a Linux ARM64 container or virtual machine to execute x86-64 Linux ELF binaries transparently with near-native translation performance.
+
+### 21.3 Developer Tooling: Colima, Lima, and OrbStack
+
+Modern cloud-native development on macOS replaces legacy VirtualBox and Docker Desktop setups with lightweight virtualization runners built directly atop Apple's `Virtualization.framework`:
+
+```bash
+# Verify Darwin hardware virtualization support
+sysctl kern.hv_support
+# kern.hv_support: 1 (indicates hardware virtualization is active)
+
+# Launch a lightweight Linux VM with native VirtioFS and Rosetta translation
+colima start --vm-type=vz --vz-rosetta --cpu 4 --memory 8 --disk 60
+
+# Inspect active Lima/Colima hypervisor instances
+colima status
+colima list
+
+# Inspect network bridge interfaces managed by vmnet
+ifconfig bridge0
+```
+
+### Related Concepts
+
+- [[Virtual-Machines-vs-Containers]]: Detailed comparison of hypervisors (Type 1 and Type 2) versus Linux namespaces and cgroups.
+- [[Docker-and-Container-Runtimes]]: Container standards (OCI runtime-spec, image-spec), containerd, runc, and storage drivers.
+
+---
+
 **Previous:** [P3L5: I/O Management](P3L5-IO-Management.md)
 **Next:** [P4L1: Remote Procedure Calls](../Part-4-Distributed-Systems/P4L1-Remote-Procedure-Calls.md)
+
 
 

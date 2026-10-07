@@ -247,3 +247,9 @@ Today, cloud data warehouses and serverless computing engines incorporate simila
 
 - Dean, J., & Ghemawat, S. (2004). MapReduce: Simplified Data Processing on Large Clusters. OSDI'04.
 - White, T. (2012). Hadoop: The Definitive Guide. O'Reilly Media.
+
+## Related concepts
+
+- [[MapReduce-Architecture]]: Comprehensive system design breakdown of the distributed map-shuffle-reduce execution pipeline and failure handling.
+- [[Hadoop-and-HDFS]]: Distributed storage and execution framework implementing the MapReduce paradigm on commodity hardware clusters.
+- [[Apache-Spark]]: In-memory distributed DAG computing engine evolving beyond disk-bound MapReduce.

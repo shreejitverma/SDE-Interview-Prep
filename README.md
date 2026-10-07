@@ -34,10 +34,11 @@ Every knowledge note carries typed frontmatter (type, track, level, status), and
 ## Start here
 
 1. Read [00-Start-Here/Roadmap.md](./00-Start-Here/Roadmap.md) for the overall path.
-2. Copy [00-Start-Here/Checklist.md](./00-Start-Here/Checklist.md) and track your progress against it.
-3. Use [INDEX.md](./INDEX.md) as the phased table of contents.
-4. Pick a track below based on your target role.
-5. Work the [Review queue](./00-Start-Here/Review-Queue.md): notes come due by status and last review date.
+2. In Obsidian, open [00-Start-Here/Vault-Map.canvas](./00-Start-Here/Vault-Map.canvas) for the same path as a clickable map, and [00-Start-Here/How-This-Vault-Works.md](./00-Start-Here/How-This-Vault-Works.md) for how the notes, diagrams, and review queue fit together.
+3. Copy [00-Start-Here/Checklist.md](./00-Start-Here/Checklist.md) and track your progress against it.
+4. Use [INDEX.md](./INDEX.md) as the phased table of contents.
+5. Pick a track below based on your target role.
+6. Work the [Review queue](./00-Start-Here/Review-Queue.md): notes come due by status and last review date.
 
 ### If you are targeting...
 
@@ -109,7 +110,7 @@ About 3,500 C++ and 3,300 Python files, organized by pattern under [01-Topics](.
 - [HLD case studies](./04-System-Design/02-Case-Studies): URL shortener, rate limiter, real-time chat, distributed ID generator.
 - [Most Asked Design Questions](./04-System-Design/Most%20Asked%20Design%20Questions): 80+ "Design X" problems (LRU cache, Twitter, skiplist, file system, underground system, web crawler) in both C++ and Python.
 - [Low Level Design](./04-System-Design/Low%20Level%20Design): distributed cache, distributed event bus, rate limiter, service orchestrator.
-- Design pattern catalogs: [C++](./04-System-Design/Design%20Patterns), [Python](./04-System-Design/Design%20Patterns/python-patterns), [Java](./04-System-Design/design-patterns-java).
+- Design pattern catalogs: [C++](./04-System-Design/design-patterns-cpp), [Python](./04-System-Design/design-patterns-python), [Java](./04-System-Design/design-patterns-java).
 - [InterviewReady](./04-System-Design/InterviewReady) reference material and the [top-20 questions list](./04-System-Design/top-20-questions.md).
 
 ### 05 - Quantitative Finance
@@ -188,10 +189,10 @@ g++ -std=c++20 -O2 -Wall -Wextra -pthread \
 python3 05-Quantitative-Finance/01-Mathematics/Option-Pricing/black_scholes.py
 
 # C++ design patterns (CMake project)
-cmake -S "04-System-Design/Design Patterns" -B build && cmake --build build
+cmake -S "04-System-Design/design-patterns-cpp" -B build && cmake --build build
 
 # Python design patterns (has its own Makefile and tests)
-cd "04-System-Design/Design Patterns/python-patterns" && make
+cd "04-System-Design/design-patterns-cpp/python-patterns" && make
 ```
 
 The Java projects under `04-System-Design` use Maven (`mvn test`).

@@ -1,8 +1,8 @@
 ---
 type: concept
 track: [sde]
-level: advanced
-status: complete
+level:
+status: solid
 last_reviewed:
 sources:
   - "Georgia Tech CS 6200 P2L4"
@@ -28,6 +28,10 @@ sources:
 - [10. Native POSIX Thread Library (NPTL)](#10-native-posix-thread-library-nptl)
 - [11. Quizzes and Exercises](#11-quizzes-and-exercises)
 - [12. Key Takeaways](#12-key-takeaways)
+- [13. Futex: The Kernel Primitive Behind All Modern Synchronization](#13-futex-the-kernel-primitive-behind-all-modern-synchronization)
+- [14. Modern Threading Models: Go, Java Virtual Threads, Rust](#14-modern-threading-models-go-java-virtual-threads-rust)
+- [15. Kernel Thread Internals: task_struct Deep Dive](#15-kernel-thread-internals-task_struct-deep-dive)
+- [16. Cross-Platform Event Multiplexing: Linux (epoll), macOS (kqueue), Windows (IOCP)](#16-cross-platform-event-multiplexing-linux-epoll-macos-kqueue-windows-iocp)
 
 ---
 
@@ -628,22 +632,74 @@ strace -e futex ./my_threaded_program 2>&1 | head -20
 
 ## 11. Quizzes and Exercises
 
-### Quiz 1: Threading Model Identification
+> [!question] Quiz 1: Thread Structures and State Separation (Clips 153-154)
+> In a multithreaded process, identify whether each of the following components belongs to the **shared process-wide state** or the **private per-thread state**:
+> 1. Virtual address space (page tables, code segment, data segment, heap).
+> 2. CPU register set (instruction pointer, general-purpose registers, flags).
+> 3. Open file descriptor table and network sockets.
+> 4. Execution call stack (local function variables and activation frames).
+> 5. Signal handlers (actions associated with `SIGINT`, `SIGTERM`, etc.).
+> 6. Signal mask (which signals are currently blocked from delivery).
 
-> | System | Model |
-> |--------|-------|
-> | Linux NPTL | **One-to-one** |
-> | Windows threads | **One-to-one** |
-> | Go goroutines | **Many-to-many** (GMP scheduler) |
-> | Java Virtual Threads (Loom) | **Many-to-many** |
-> | Python threading | **One-to-one** (but GIL limits to one at a time) |
-> | Erlang processes | **Many-to-many** (BEAM scheduler) |
+> [!success]- Answer
+> - **Shared Process-Wide State:**
+>   - **1 (Virtual Address Space):** All threads share the identical memory map and heap.
+>   - **3 (File Descriptor Table):** File descriptors opened by one thread are accessible to all threads.
+>   - **5 (Signal Handlers):** Installed signal dispositions (`sigaction`) apply globally across the entire process.
+> - **Private Per-Thread State:**
+>   - **2 (CPU Registers):** Each thread represents an independent execution stream with its own `%rip`, `%rsp`, and general-purpose register state.
+>   - **4 (Execution Call Stack):** Each thread allocates a distinct stack region in virtual memory to track function call frames.
+>   - **6 (Signal Mask):** Each thread maintains an individual signal mask (`pthread_sigmask`), allowing individual threads to block or unblock specific signals independently.
 
-### Quiz 2: clone() Flags
+> [!question] Quiz 2: Thread Concurrency & Kernel Visibility (Clips 158-159)
+> In Solaris and early UNIX systems implementing an M:N threading model, the programmer could call `pthread_setconcurrency(int level)`.
+> 1. What was the purpose of informing the runtime of the desired concurrency level?
+> 2. Why does `pthread_setconcurrency()` have no effect on modern Linux (NPTL) and macOS?
 
-> *To create a new process (like `fork()`), which flags should be ABSENT?*
->
-> **Answer:** `CLONE_VM`, `CLONE_FILES`, `CLONE_SIGHAND`, `CLONE_THREAD` should all be absent (or not set). Without these, the child gets its own address space, file descriptors, signal handlers, and PID.
+> [!success]- Answer
+> 1. **Purpose in M:N Models:** In an M:N model, user-level threads (ULTs) are multiplexed onto a pool of kernel-level threads (Lightweight Processes - LWPs). If the user application has 50 ULTs but only 1 LWP allocated by the kernel, all 50 ULTs serialize on a single core. Calling `pthread_setconcurrency(k)` provided an advisory hint to the user-level thread library to request $k$ underlying LWPs from the kernel so that $k$ threads could execute simultaneously on multiple physical cores.
+> 2. **Irrelevance in Modern 1:1 Models:** Both Linux (NPTL) and modern macOS implement a strict **1:1 threading model** where every user-level thread is created with a corresponding kernel-level thread (`task_struct` on Linux, Mach thread on Darwin). The kernel scheduler is already aware of every individual thread, rendering user-level concurrency hints completely redundant.
+
+> [!question] Quiz 3: Optimal Thread Count Calculation (Clips 163-164)
+> An engineer is designing an image-processing microservice deployed on an 8-core server.
+> Profiling reveals that each request takes 100 ms total: 20 ms of CPU compute (decoding and filtering) and 80 ms of I/O wait (reading from disk and network transfer).
+> What is the mathematically optimal number of worker threads to maximize server throughput without causing excessive thrashing?
+
+> [!success]- Answer
+> Using Little's Law and the CPU wait-to-compute ratio:
+> $$N_{\text{threads}} = N_{\text{cores}} \times \left(1 + \frac{\text{Wait Time}}{\text{Compute Time}}\right)$$
+> Substituting the measured values:
+> $$N_{\text{threads}} = 8 \times \left(1 + \frac{80\text{ ms}}{20\text{ ms}}\right) = 8 \times (1 + 4) = 40\text{ threads}$$
+> Sizing the worker pool to 40 threads ensures that while 32 threads are waiting on disk/network I/O, exactly 8 threads are ready to saturate the 8 physical CPU cores, achieving near 100% compute hardware utilization.
+
+> [!question] Quiz 4: Signal Delivery in Multithreaded Programs (Clips 173-174)
+> Consider a process with 4 active threads. A `SIGSEGV` signal is generated, and a `SIGINT` signal arrives from the terminal.
+> 1. How is a **synchronous signal** (e.g., `SIGSEGV`, `SIGFPE`) handled across threads?
+> 2. How is an **asynchronous signal** (e.g., `SIGINT`, `SIGTERM`) delivered across threads?
+> 3. What is the recommended production pattern for handling asynchronous signals in multithreaded servers?
+
+> [!success]- Answer
+> 1. **Synchronous Signals:** Generated by an illegal CPU instruction executed by a specific thread (e.g., invalid memory dereference, division by zero). The signal is directed **strictly to the specific thread that caused the hardware fault**.
+> 2. **Asynchronous Signals:** Sent externally from another process (`kill()`) or terminal interrupt. The kernel delivers the signal to **any arbitrary thread** in the process that does not have the signal blocked in its `pthread_sigmask`.
+> 3. **Production Dedicated Signal Thread Pattern:**
+>    - At process startup, block all asynchronous signals in the main thread using `pthread_sigmask(SIG_BLOCK, &set, NULL)`. Because child threads inherit the parent's signal mask, all worker threads start with signals blocked.
+>    - Spawn a dedicated signal-handling thread that synchronously waits for signals using `sigwait(&set, &sig)`. This thread cleanly executes shutdown logic without interrupting worker thread execution or corrupting mutex states.
+
+> [!question] Quiz 5: Interrupt Handling: Top-Half versus Bottom-Half (Clip 176)
+> Operating system kernels divide hardware interrupt handling into a Top Half and a Bottom Half.
+> Explain the distinct roles of each half, why the division is necessary, and what mechanisms Linux and Windows provide for bottom-half processing.
+
+> [!success]- Answer
+> 1. **Top Half (Hard IRQ):**
+>    - *Role:* Executes immediately when the hardware interrupt fires, running with interrupts disabled (or masked). Performs only the minimal critical work: acknowledges the hardware device, resets interrupt lines, and copies raw packet/data pointers to a kernel queue.
+>    - *Constraint:* Must complete in sub-microsecond time to avoid dropping subsequent hardware interrupts.
+> 2. **Bottom Half (Deferred Execution):**
+>    - *Role:* Performs the heavy, time-consuming processing (e.g., TCP/IP protocol checksumming, packet routing, file buffer cache updates) with interrupts re-enabled.
+> 3. **Operating System Implementations:**
+>    - **Linux:** Softirqs (for high-throughput networking), Tasklets (dynamically allocated deferred functions), and Workqueues / Threaded IRQs (executed by dedicated kernel threads with sleep capability).
+>    - **Windows:** Deferred Procedure Calls (DPCs) queued at `DISPATCH_LEVEL`, running before returning to user space.
+
+---
 
 ### Exercise: Inspecting Threads on Linux
 
@@ -1026,6 +1082,103 @@ top -H -p <pid>                  # Thread view in top
 
 ---
 
+## 16. Cross-Platform Event Multiplexing: Linux (epoll), macOS (kqueue), Windows (IOCP)
+
+Modern high-performance concurrent servers combine multi-threading with asynchronous I/O multiplexing to handle tens of thousands of simultaneous connections (the C10K/C10M problem).
+Each major operating system provides an architectural event demultiplexer:
+
+```
++-------------------------------------------------------------------------------+
+| Feature              | Linux epoll            | macOS kqueue         | Windows IOCP         |
++----------------------+------------------------+----------------------+----------------------+
+| Core Paradigm        | Readiness Notification | Readiness Notification| Completion Model     |
+| Creation Syscall     | epoll_create1()        | kqueue()             | CreateIoCompletionPort()|
+| Registration         | epoll_ctl()            | kevent() EV_SET      | CreateIoCompletionPort()|
+| Event Wait           | epoll_wait()           | kevent()             | GetQueuedCompletionStatus()|
+| Edge vs Level        | Both (EPOLLET default) | Both (EV_CLEAR)      | Completion only      |
+| Signal Multiplexing  | signalfd()             | EVFILT_SIGNAL        | MsgWaitForMultipleObjects|
+| File I/O Support     | Poor (need io_uring)   | EVFILT_VNODE         | First-class support  |
++-------------------------------------------------------------------------------+
+```
+
+### 1. Linux: `epoll` Edge-Triggered Architecture
+
+```c
+// Linux epoll readiness loop
+int epoll_fd = epoll_create1(0);
+struct epoll_event ev, events[64];
+
+ev.events = EPOLLIN | EPOLLET; // Edge-triggered
+ev.data.fd = server_socket;
+epoll_ctl(epoll_fd, EPOLL_CTL_ADD, server_socket, &ev);
+
+while (running) {
+    int nfds = epoll_wait(epoll_fd, events, 64, -1);
+    for (int i = 0; i < nfds; i++) {
+        // Handle ready file descriptors
+    }
+}
+```
+
+### 2. macOS: `kqueue` and `kevent` Filter Architecture
+
+`kqueue` is Darwin's native event multiplexing engine.
+Unlike `epoll` which is limited to file descriptors, `kqueue` provides a unified filter mechanism (`struct kevent`) capable of monitoring sockets, files (`EVFILT_VNODE`), POSIX signals (`EVFILT_SIGNAL`), process termination (`EVFILT_PROC`), and hardware timers (`EVFILT_TIMER`):
+
+```c
+// macOS kqueue event loop
+#include <sys/event.h>
+#include <sys/time.h>
+
+int kq = kqueue();
+struct kevent change_event, event_list[64];
+
+// Monitor socket readiness and process signals through the exact same queue
+EV_SET(&change_event, socket_fd, EVFILT_READ, EV_ADD | EV_ENABLE, 0, 0, NULL);
+kevent(kq, &change_event, 1, NULL, 0, NULL);
+
+// Register signal monitoring without signal handlers
+signal(SIGINT, SIG_IGN); // Ignore default signal disposition
+EV_SET(&change_event, SIGINT, EVFILT_SIGNAL, EV_ADD | EV_ENABLE, 0, 0, NULL);
+kevent(kq, &change_event, 1, NULL, 0, NULL);
+
+while (1) {
+    int nevents = kevent(kq, NULL, 0, event_list, 64, NULL);
+    for (int i = 0; i < nevents; i++) {
+        if (event_list[i].filter == EVFILT_SIGNAL) {
+            printf("Caught signal %ld safely inside kqueue event loop\n", event_list[i].ident);
+            return 0;
+        }
+        // Handle socket I/O
+    }
+}
+```
+
+### 3. Windows: I/O Completion Ports (IOCP)
+
+Windows implements a **proactive completion model** rather than a reactive readiness model.
+The application initiates an asynchronous I/O operation (e.g., `ReadFile`, `WSARecv`) and provides an `OVERLAPPED` structure.
+The Windows kernel performs the I/O transfer via DMA into the application's user buffer and delivers a completion packet to the thread-pool completion port queue:
+
+```c
+#include <windows.h>
+
+HANDLE iocp = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, 0, 0);
+CreateIoCompletionPort((HANDLE)socket, iocp, (ULONG_PTR)context, 0);
+
+// Worker threads dequeue completed I/O packets:
+DWORD bytes_transferred;
+ULONG_PTR completion_key;
+LPOVERLAPPED overlapped;
+
+while (GetQueuedCompletionStatus(iocp, &bytes_transferred, &completion_key, &overlapped, INFINITE)) {
+    // Process completed buffer without needing to call read() again
+}
+```
+
+---
+
 **Previous:** [P2L3: Threads Case Study - PThreads](P2L3-PThreads-Case-Study.md)
 **Next:** [P2L5: Thread Performance Considerations](P2L5-Thread-Performance-Considerations.md)
+
 

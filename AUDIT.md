@@ -1,6 +1,6 @@
 # Vault Audit
 
-Generated 2026-10-01 by `python3 tools/audit_vault.py` over git-tracked files.
+Generated 2026-10-07 by `python3 tools/audit_vault.py` over git-tracked files.
 Re-run the script after every structural change; this file is its output and should not be hand-edited.
 0 files in private locations (`tools/private_paths.py`) are excluded; `tools/audit_pii.py` inventories them into a private path.
 
@@ -8,16 +8,16 @@ Re-run the script after every structural change; this file is its output and sho
 
 | Check | Result |
 | :--- | ---: |
-| Tracked files | 15262 |
-| Markdown notes | 1625 |
-| Internal links checked | 10702 |
+| Tracked files | 15642 |
+| Markdown notes | 1860 |
+| Internal links checked | 12773 |
 | Broken links (links into private locations are not counted) | 0 |
 | Wikilink aliases that split a table cell | 0 |
 | Broken wikilinks fixable by unique basename | 0 |
 | Orphan knowledge notes (no inbound links) | 0 |
 | Archived drafts (`_archive/`, `_consolidated*/`) | 305 |
 | Knowledge notes without frontmatter | 0 |
-| Note folders without README (depth <= 3) | 1 |
+| Note folders without README (depth <= 3) | 0 |
 | Notes with emojis / total emojis | 0 / 0 |
 | Notes with em dashes / total em dashes | 0 / 0 |
 | Identical-content groups / redundant MB | 304 / 41.9 |
@@ -29,34 +29,34 @@ Re-run the script after every structural change; this file is its output and sho
 
 | Folder | Files | Notes | Code | Papers | Other | MB | Last touched |
 | :--- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| `(root)` | 11 | 6 | 0 | 0 | 5 | 0.1 | 2026-09-21 |
+| `(root)` | 11 | 6 | 0 | 0 | 5 | 0.1 | 2026-10-07 |
 | `.github` | 1 | 0 | 0 | 0 | 1 | 0.0 | 2026-09-21 |
-| `.obsidian` | 45 | 0 | 0 | 0 | 45 | 0.0 | 2026-10-01 |
-| `00-Start-Here` | 4 | 4 | 0 | 0 | 0 | 0.0 | 2026-09-21 |
-| `01-CS-Foundations` | 185 | 82 | 68 | 0 | 35 | 2.6 | 2026-09-27 |
-| `02-Programming-Languages` | 5827 | 817 | 2860 | 466 | 1684 | 112.3 | 2026-09-30 |
+| `.obsidian` | 45 | 0 | 0 | 0 | 45 | 0.0 | 2026-10-07 |
+| `00-Start-Here` | 6 | 5 | 0 | 0 | 1 | 0.0 | 2026-10-07 |
+| `01-CS-Foundations` | 492 | 247 | 141 | 0 | 104 | 4.6 | 2026-10-07 |
+| `02-Programming-Languages` | 5827 | 817 | 2860 | 466 | 1684 | 112.3 | 2026-10-07 |
 | `03-Data-Structures-Algorithms` | 7708 | 82 | 7506 | 0 | 120 | 15.2 | 2026-09-21 |
-| `04-System-Design` | 880 | 66 | 657 | 0 | 157 | 7.5 | 2026-09-21 |
-| `05-Quantitative-Finance` | 9 | 2 | 7 | 0 | 0 | 0.0 | 2026-09-21 |
-| `06-Interview-Prep` | 13 | 12 | 0 | 0 | 1 | 0.2 | 2026-09-21 |
+| `04-System-Design` | 937 | 123 | 657 | 0 | 157 | 9.2 | 2026-10-07 |
+| `05-Quantitative-Finance` | 9 | 2 | 7 | 0 | 0 | 0.0 | 2026-10-07 |
+| `06-Interview-Prep` | 13 | 12 | 0 | 0 | 1 | 0.2 | 2026-10-07 |
 | `07-Project-Portfolio` | 1 | 1 | 0 | 0 | 0 | 0.0 | 2026-09-21 |
-| `08-Distinguished-Engineering` | 9 | 3 | 6 | 0 | 0 | 0.0 | 2026-09-21 |
+| `08-Distinguished-Engineering` | 18 | 12 | 6 | 0 | 0 | 0.1 | 2026-10-07 |
 | `09-Engineering-Leadership` | 3 | 3 | 0 | 0 | 0 | 0.0 | 2026-09-21 |
-| `10-Development-Practices` | 4 | 2 | 0 | 0 | 2 | 0.0 | 2026-09-21 |
-| `11-Security-And-Cryptography` | 3 | 2 | 1 | 0 | 0 | 0.0 | 2026-09-21 |
-| `12-Performance-Engineering` | 4 | 2 | 2 | 0 | 0 | 0.0 | 2026-09-21 |
-| `13-Agentic-AI` | 185 | 185 | 0 | 0 | 0 | 3.4 | 2026-09-24 |
-| `14-Low-Latency-Systems` | 262 | 262 | 0 | 0 | 0 | 1.7 | 2026-09-21 |
+| `10-Development-Practices` | 4 | 2 | 0 | 0 | 2 | 0.0 | 2026-10-07 |
+| `11-Security-And-Cryptography` | 3 | 2 | 1 | 0 | 0 | 0.0 | 2026-10-07 |
+| `12-Performance-Engineering` | 4 | 2 | 2 | 0 | 0 | 0.0 | 2026-10-07 |
+| `13-Agentic-AI` | 185 | 185 | 0 | 0 | 0 | 3.4 | 2026-10-07 |
+| `14-Low-Latency-Systems` | 262 | 262 | 0 | 0 | 0 | 1.7 | 2026-10-07 |
 | `15-Technical-Whitepapers` | 44 | 44 | 0 | 0 | 0 | 0.3 | 2026-09-21 |
-| `16-Interview-Command-Center` | 48 | 48 | 0 | 0 | 0 | 0.1 | 2026-09-21 |
+| `16-Interview-Command-Center` | 51 | 51 | 0 | 0 | 0 | 0.1 | 2026-10-07 |
 | `CS-Subjects` | 1 | 1 | 0 | 0 | 0 | 0.0 | 2026-09-21 |
-| `tools` | 15 | 1 | 12 | 0 | 2 | 0.1 | 2026-09-21 |
+| `tools` | 17 | 1 | 14 | 0 | 2 | 0.1 | 2026-10-01 |
 
 ## 2. Duplicate and overlapping sections
 
 ### Folders whose names normalize to the same topic
 
-- **design pattern**: `04-System-Design/03-Design-Patterns`, `04-System-Design/Design Patterns`, `04-System-Design/design-patterns-java`, `04-System-Design/design-patterns-python`
+- **design pattern**: `04-System-Design/03-Design-Patterns`, `04-System-Design/design-patterns-cpp`, `04-System-Design/design-patterns-java`, `04-System-Design/design-patterns-python`
 - **godhood to zero**: `02-Programming-Languages/C++/CPP_Zero_to_Godhood`, `02-Programming-Languages/Python/Python_Zero_to_Godhood`
 - **linked list**: `02-Programming-Languages/C++/Linked List`, `03-Data-Structures-Algorithms/01-Topics/Linked-Lists`
 - **recursion**: `02-Programming-Languages/C++/Recursion`, `03-Data-Structures-Algorithms/01-Topics/Recursion`
@@ -151,9 +151,8 @@ Notes that no other note links to. Most become reachable once each folder has a 
 A folder counts as covered by `README.md`, `_README.md`, `index.md`, a folder note named after it, `00 Home`, `00-Dashboard`, or a `MOC - ` note.
 
 <details>
-<summary>All 1 folders</summary>
+<summary>All 0 folders</summary>
 
-- `01-CS-Foundations/Operating-Systems/GIOS`
 
 </details>
 
@@ -186,10 +185,10 @@ Folders carrying their own LICENSE, `.gitignore`, `package.json`, or similar; ou
 | Folder | Files | Last touched |
 | :--- | ---: | ---: |
 | `03-Data-Structures-Algorithms/02-Practice-Platforms/LeetCode` | 5953 | 2026-09-21 |
-| `02-Programming-Languages/Python/python in depth` | 2030 | 2026-09-21 |
+| `02-Programming-Languages/Python/python in depth` | 2030 | 2026-10-07 |
 | `04-System-Design/design-patterns-java` | 177 | 2026-09-21 |
 | `04-System-Design/design-questions` | 172 | 2026-09-21 |
-| `04-System-Design/Design Patterns/python-patterns` | 106 | 2026-09-21 |
+| `04-System-Design/design-patterns-cpp/python-patterns` | 106 | 2026-10-07 |
 | `03-Data-Structures-Algorithms/01-Topics/General-DSA` | 94 | 2026-09-21 |
 | `04-System-Design/Low Level Design` | 58 | 2026-09-21 |
 | `01-CS-Foundations/Operating-Systems/code/os` | 17 | 2026-07-24 |

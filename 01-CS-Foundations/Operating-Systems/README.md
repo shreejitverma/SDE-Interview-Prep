@@ -33,6 +33,7 @@ Bold problems were solved during the session.
 **Sections**
 
 - [AOS](AOS/README.md)
+- [GIOS](GIOS/README.md)
 - [notes](notes/README.md)
 
 **Notes**
