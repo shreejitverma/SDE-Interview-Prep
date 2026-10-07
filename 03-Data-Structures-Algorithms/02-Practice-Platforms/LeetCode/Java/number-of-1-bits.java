@@ -1,0 +1,19 @@
+/*
+ * Author: Shreejit Verma
+ * GitHub: https://github.com/shreejitverma
+ */
+
+// Time:  O(1)
+// Space: O(1)
+
+class Solution {
+    // treat n as an unsigned value
+    public int hammingWeight(int n) {
+        int count = 0;
+        while (n != 0) {
+            n &= (n - 1);
+            count++;
+        }
+        return count;
+    }
+}
