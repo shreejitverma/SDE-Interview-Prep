@@ -17,6 +17,25 @@ Welcome to the vault. This repository is a production-grade, hardware-first know
 
 Every note is grounded in the hardware-software boundary: nanosecond latency budgets, cache coherence protocols, kernel-bypass networking, lock-free concurrency, and FPGA acceleration.
 
+```mermaid
+flowchart LR
+    Mcast["Multicast market data"] --> FH["Feed handler"]
+    FH --> Book["Book reconstructor"]
+    Book --> Signal["Signal and pricing"]
+    Signal --> Risk["Pre-trade risk"]
+    Risk --> OE["Order entry"]
+    OE --> GW["Exchange gateway"]
+    GW --> Seq["Sequencer"]
+    Seq --> ME["Matching engine"]
+    ME --> Pub["Market-data publisher"]
+    Pub --> Mcast
+```
+
+Read this left to right as one order's life, then top to bottom through the modules.
+Module 02 draws the venue half, from the gateway to the publisher.
+Module 11 draws the participant half, from the feed handler to order entry.
+The modules in between are the reasons each box is or is not fast enough.
+
 ---
 
 ## Curriculum Modules

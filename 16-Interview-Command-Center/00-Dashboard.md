@@ -12,6 +12,13 @@ sources: []
 > *Last updated: `= date(today)`*
 > Your mission control for clearing every interview across all target roles.
 
+## Study
+
+[[00-Start-Here/Roadmap|Roadmap]] is the learning order.
+[[00-Start-Here/Vault-Map.canvas|Vault map]] is the same order as a canvas.
+[[00-Start-Here/How-This-Vault-Works|How this vault works]] explains the diagrams, properties, and review queue.
+[[00-Start-Here/Review-Queue|Review queue]] is what to reread before an onsite.
+
 ---
 
 ## Pipeline

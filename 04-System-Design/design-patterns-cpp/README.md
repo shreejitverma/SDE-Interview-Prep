@@ -115,6 +115,5 @@ Design patterns in this repository are based on
 **Notes**
 
 - [The Ultimate C++ Design Patterns Guide: From Basics to Advanced Mastery](Ultimate-CPP-Design-Patterns.md)
-- [The Ultimate Python Design Patterns Guide: From Basics to Advanced Mastery](python-patterns/Ultimate-Python-Design-Patterns.md)
 
 <!-- moc:end -->

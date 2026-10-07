@@ -79,20 +79,13 @@ To achieve extreme throughput, KGS loads blocks of keys (e.g., 5,000 keys at a t
 When a worker receives a shorten request, it assigns an in-memory key instantaneously without running hash computations or executing database uniqueness lookups.
 If a worker crashes, its unused in-memory block is discarded; given 3.52 trillion available keys, losing thousands of keys during node restarts has negligible impact on key space exhaustion.
 
-```
-+---------------------------------------------------------------+
-|             KGS Key Allocation & Memory Buffering             |
-+---------------------------------------------------------------+
-|  KGS Storage (Database)                                       |
-|  [ key_id | short_code | status: (ALLOCATED | UNALLOCATED) ]   |
-|         |                                                     |
-|         v (Batch Prefetch: 5,000 keys)                        |
-|  +--------------------+       +--------------------+          |
-|  | App Worker 1       |       | App Worker 2       |          |
-|  | In-Memory Queue    |       | In-Memory Queue    |          |
-|  | [7aB9x2, 8kL0p1..] |       | [9mN4q5, 1vC8z3..] |          |
-|  +--------------------+       +--------------------+          |
-+---------------------------------------------------------------+
+```mermaid
+flowchart TD
+    Store["KGS store: unallocated keys"] -->|prefetch a block of 5000| W1["Worker 1 in-memory queue"]
+    Store -->|prefetch a block of 5000| W2["Worker 2 in-memory queue"]
+    W1 -->|assign one key, no lookup| Write["Shorten request"]
+    W2 -->|assign one key, no lookup| Write
+    Crash["Worker crash"] -->|discard the unused block| Store
 ```
 
 ### 3.2 HTTP 301 vs. HTTP 302 Redirection

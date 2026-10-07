@@ -8,6 +8,8 @@ This repository is a structured knowledge base designed to take you from a Junio
 
 ### Phase 1: Foundations
 *   **[Roadmap](./00-Start-Here/Roadmap.md):** Start here.
+*   **[How this vault works](./00-Start-Here/How-This-Vault-Works.md):** Diagrams, properties, callouts, and the review queue.
+*   **[Vault map](./00-Start-Here/Vault-Map.canvas):** The same path as an Obsidian canvas.
 *   **CS Basics:**
     *   [Concurrency](./01-CS-Foundations/Operating-Systems/Concurrency-Cpp): Producer-Consumer.
     *   [Networking](./01-CS-Foundations/Computer-Networks/Socket-Programming-Cpp): TCP Server.

@@ -34,10 +34,11 @@ Every knowledge note carries typed frontmatter (type, track, level, status), and
 ## Start here
 
 1. Read [00-Start-Here/Roadmap.md](./00-Start-Here/Roadmap.md) for the overall path.
-2. Copy [00-Start-Here/Checklist.md](./00-Start-Here/Checklist.md) and track your progress against it.
-3. Use [INDEX.md](./INDEX.md) as the phased table of contents.
-4. Pick a track below based on your target role.
-5. Work the [Review queue](./00-Start-Here/Review-Queue.md): notes come due by status and last review date.
+2. In Obsidian, open [00-Start-Here/Vault-Map.canvas](./00-Start-Here/Vault-Map.canvas) for the same path as a clickable map, and [00-Start-Here/How-This-Vault-Works.md](./00-Start-Here/How-This-Vault-Works.md) for how the notes, diagrams, and review queue fit together.
+3. Copy [00-Start-Here/Checklist.md](./00-Start-Here/Checklist.md) and track your progress against it.
+4. Use [INDEX.md](./INDEX.md) as the phased table of contents.
+5. Pick a track below based on your target role.
+6. Work the [Review queue](./00-Start-Here/Review-Queue.md): notes come due by status and last review date.
 
 ### If you are targeting...
 
