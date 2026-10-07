@@ -50,7 +50,7 @@ Re-run the script after every structural change; this file is its output and sho
 | `15-Technical-Whitepapers` | 44 | 44 | 0 | 0 | 0 | 0.3 | 2026-09-21 |
 | `16-Interview-Command-Center` | 51 | 51 | 0 | 0 | 0 | 0.1 | 2026-10-07 |
 | `CS-Subjects` | 1 | 1 | 0 | 0 | 0 | 0.0 | 2026-09-21 |
-| `tools` | 17 | 1 | 14 | 0 | 2 | 0.1 | 2026-10-01 |
+| `tools` | 17 | 1 | 14 | 0 | 2 | 0.1 | 2026-10-07 |
 
 ## 2. Duplicate and overlapping sections
 
