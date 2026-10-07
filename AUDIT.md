@@ -8,10 +8,10 @@ Re-run the script after every structural change; this file is its output and sho
 
 | Check | Result |
 | :--- | ---: |
-| Tracked files | 15632 |
-| Markdown notes | 1851 |
-| Internal links checked | 12689 |
-| Broken links (links into private locations are not counted) | 8 |
+| Tracked files | 15643 |
+| Markdown notes | 1861 |
+| Internal links checked | 12774 |
+| Broken links (links into private locations are not counted) | 0 |
 | Wikilink aliases that split a table cell | 0 |
 | Broken wikilinks fixable by unique basename | 0 |
 | Orphan knowledge notes (no inbound links) | 0 |
@@ -32,7 +32,7 @@ Re-run the script after every structural change; this file is its output and sho
 | `(root)` | 11 | 6 | 0 | 0 | 5 | 0.1 | 2026-10-07 |
 | `.github` | 1 | 0 | 0 | 0 | 1 | 0.0 | 2026-09-21 |
 | `.obsidian` | 45 | 0 | 0 | 0 | 45 | 0.0 | 2026-10-07 |
-| `00-Start-Here` | 4 | 4 | 0 | 0 | 0 | 0.0 | 2026-09-28 |
+| `00-Start-Here` | 6 | 5 | 0 | 0 | 1 | 0.0 | 2026-10-07 |
 | `01-CS-Foundations` | 492 | 247 | 141 | 0 | 104 | 4.6 | 2026-10-07 |
 | `02-Programming-Languages` | 5827 | 817 | 2860 | 466 | 1684 | 112.3 | 2026-09-30 |
 | `03-Data-Structures-Algorithms` | 7708 | 82 | 7506 | 0 | 120 | 15.2 | 2026-09-21 |
@@ -40,13 +40,13 @@ Re-run the script after every structural change; this file is its output and sho
 | `05-Quantitative-Finance` | 9 | 2 | 7 | 0 | 0 | 0.0 | 2026-10-07 |
 | `06-Interview-Prep` | 13 | 12 | 0 | 0 | 1 | 0.2 | 2026-10-07 |
 | `07-Project-Portfolio` | 1 | 1 | 0 | 0 | 0 | 0.0 | 2026-09-21 |
-| `08-Distinguished-Engineering` | 9 | 3 | 6 | 0 | 0 | 0.0 | 2026-09-21 |
+| `08-Distinguished-Engineering` | 18 | 12 | 6 | 0 | 0 | 0.1 | 2026-10-07 |
 | `09-Engineering-Leadership` | 3 | 3 | 0 | 0 | 0 | 0.0 | 2026-09-21 |
-| `10-Development-Practices` | 4 | 2 | 0 | 0 | 2 | 0.0 | 2026-09-21 |
-| `11-Security-And-Cryptography` | 3 | 2 | 1 | 0 | 0 | 0.0 | 2026-09-21 |
-| `12-Performance-Engineering` | 4 | 2 | 2 | 0 | 0 | 0.0 | 2026-09-21 |
-| `13-Agentic-AI` | 185 | 185 | 0 | 0 | 0 | 3.4 | 2026-09-24 |
-| `14-Low-Latency-Systems` | 262 | 262 | 0 | 0 | 0 | 1.7 | 2026-09-21 |
+| `10-Development-Practices` | 4 | 2 | 0 | 0 | 2 | 0.0 | 2026-10-07 |
+| `11-Security-And-Cryptography` | 3 | 2 | 1 | 0 | 0 | 0.0 | 2026-10-07 |
+| `12-Performance-Engineering` | 4 | 2 | 2 | 0 | 0 | 0.0 | 2026-10-07 |
+| `13-Agentic-AI` | 185 | 185 | 0 | 0 | 0 | 3.4 | 2026-10-07 |
+| `14-Low-Latency-Systems` | 262 | 262 | 0 | 0 | 0 | 1.7 | 2026-10-07 |
 | `15-Technical-Whitepapers` | 44 | 44 | 0 | 0 | 0 | 0.3 | 2026-09-21 |
 | `16-Interview-Command-Center` | 51 | 51 | 0 | 0 | 0 | 0.1 | 2026-10-07 |
 | `CS-Subjects` | 1 | 1 | 0 | 0 | 0 | 0.0 | 2026-09-21 |
@@ -113,23 +113,13 @@ Re-run the script after every structural change; this file is its output and sho
 
 | Folder | Broken |
 | :--- | ---: |
-| `08-Distinguished-Engineering` | 6 |
-| `00-Start-Here` | 2 |
 
 0 broken wikilinks point at a path that no longer exists but name a note that exists exactly once elsewhere.
 These come from folder reorganizations that did not rewrite links and can be fixed mechanically.
 
 <details>
-<summary>All 8 broken links</summary>
+<summary>All 0 broken links</summary>
 
-- `00-Start-Here/Roadmap.md` (md) -> `How-This-Vault-Works.md`
-- `00-Start-Here/Roadmap.md` (md) -> `Vault-Map.canvas`
-- `08-Distinguished-Engineering/README.md` (wiki) -> `Circuit-Breaker`
-- `08-Distinguished-Engineering/README.md` (wiki) -> `Consistent-Hash-Ring`
-- `08-Distinguished-Engineering/README.md` (wiki) -> `LSM-Tree`
-- `08-Distinguished-Engineering/README.md` (wiki) -> `Lock-Free-Stack`
-- `08-Distinguished-Engineering/README.md` (wiki) -> `Raft-Consensus`
-- `08-Distinguished-Engineering/README.md` (wiki) -> `Write-Ahead-Log`
 
 </details>
 

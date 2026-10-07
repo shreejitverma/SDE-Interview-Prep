@@ -13,7 +13,7 @@ Staff-plus systems depth: advanced concurrency, distributed systems internals, d
 Each folder pairs a short lab with an architecture note.
 Read the diagram, run the code, then read the pitfalls.
 The labs are teaching implementations.
-They leave out the production hazards the notes name on purpose, so you can see the gap.
+The notes name the production hazards those labs leave out.
 
 ```mermaid
 flowchart TD
