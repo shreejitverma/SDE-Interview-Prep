@@ -1,43 +1,43 @@
-/*
- * Author: Shreejit Verma
- * GitHub: https://github.com/shreejitverma
- */
+#include <vector>
+#include <string>
 
-// Time:  O(n)
-// Space: O(n)
+using namespace std;
+
+/*
+ * Problem: LeetCode 150 - Evaluate Reverse Polish Notation
+ * Difficulty: Medium
+ * Concepts: Stack, Math, Array
+ *
+ * Time Complexity: O(n)
+ * Space Complexity: O(n)
+ */
 
 class Solution {
 public:
     int evalRPN(vector<string>& tokens) {
-        if (tokens.empty()) {
-            return 0;
-        }
-        stack<string> s;
-        for (const auto& tok : tokens) {
-            if (!is_operator(tok)) {
-                s.emplace(tok);
-            } else {
-                auto&& y = stoi(s.top());
-                s.pop();
-                auto&& x = stoi(s.top());
-                s.pop();
-                if (tok[0] == '+') {
-                    x += y;
-                } else if (tok[0] == '-') {
-                    x -= y;
-                } else if (tok[0] == '*') {
-                    x *= y;
+        vector<int> st;
+
+        for (const string& token : tokens) {
+            if (token == "+" || token == "-" || token == "*" || token == "/") {
+                int b = st.back();
+                st.pop_back();
+                int a = st.back();
+                st.pop_back();
+
+                if (token == "+") {
+                    st.push_back(a + b);
+                } else if (token == "-") {
+                    st.push_back(a - b);
+                } else if (token == "*") {
+                    st.push_back(a * b);
                 } else {
-                    x /= y;
+                    st.push_back(a / b);
                 }
-                s.emplace(to_string(x));
+            } else {
+                st.push_back(stoi(token));
             }
         }
-        return stoi(s.top());
-    }
 
-private:
-    bool is_operator(const string& op) {
-        return op.length() == 1 && string("+-*/").find(op) != string::npos;
+        return st.back();
     }
 };

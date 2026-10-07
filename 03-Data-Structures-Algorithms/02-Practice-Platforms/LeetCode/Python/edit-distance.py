@@ -1,47 +1,33 @@
-# Author: Shreejit Verma
- # GitHub: https://github.com/shreejitverma
+"""
+Problem: LeetCode 72 - Edit Distance
+Difficulty: Hard
+Concepts: Dynamic Programming, String
 
-# Time:  O(n * m)
-# Space: O(n + m)
+Time Complexity: O(m * n)
+Space Complexity: O(min(m, n))
+"""
 
-class Solution(object):
-    # @return an integer
-    def minDistance(self, word1, word2):
-        if len(word1) < len(word2):
+
+class Solution:
+    def minDistance(self, word1: str, word2: str) -> int:
+        m, n = len(word1), len(word2)
+
+        # Optimize space to O(min(m, n))
+        if m < n:
             return self.minDistance(word2, word1)
 
-        distance = [i for i in xrange(len(word2) + 1)]
+        dp = list(range(n + 1))
 
-        for i in xrange(1, len(word1) + 1):
-            pre_distance_i_j = distance[0]
-            distance[0] = i
-            for j in xrange(1, len(word2) + 1):
-                insert = distance[j - 1] + 1
-                delete = distance[j] + 1
-                replace = pre_distance_i_j
-                if word1[i - 1] != word2[j - 1]:
-                    replace += 1
-                pre_distance_i_j = distance[j]
-                distance[j] = min(insert, delete, replace)
+        for i in range(1, m + 1):
+            prev_diag = dp[0]
+            dp[0] = i
 
-        return distance[-1]
+            for j in range(1, n + 1):
+                temp = dp[j]
+                if word1[i - 1] == word2[j - 1]:
+                    dp[j] = prev_diag
+                else:
+                    dp[j] = 1 + min(dp[j], dp[j - 1], prev_diag)
+                prev_diag = temp
 
-# Time:  O(n * m)
-# Space: O(n * m)
-class Solution2(object):
-    # @return an integer
-    def minDistance(self, word1, word2):
-        distance = [[i] for i in xrange(len(word1) + 1)]
-        distance[0] = [j for j in xrange(len(word2) + 1)]
-
-        for i in xrange(1, len(word1) + 1):
-            for j in xrange(1, len(word2) + 1):
-                insert = distance[i][j - 1] + 1
-                delete = distance[i - 1][j] + 1
-                replace = distance[i - 1][j - 1]
-                if word1[i - 1] != word2[j - 1]:
-                    replace += 1
-                distance[i].append(min(insert, delete, replace))
-
-        return distance[-1][-1]
-
+        return dp[n]

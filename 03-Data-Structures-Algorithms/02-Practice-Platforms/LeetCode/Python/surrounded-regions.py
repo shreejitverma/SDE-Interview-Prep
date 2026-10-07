@@ -1,50 +1,46 @@
-# Author: Shreejit Verma
- # GitHub: https://github.com/shreejitverma
+"""
+Problem: LeetCode 130 - Surrounded Regions
+Difficulty: Medium
+Concepts: Graph, Matrix, DFS, BFS
 
-# Time:  O(m * n)
-# Space: O(m + n)
+Time Complexity: O(m * n)
+Space Complexity: O(m * n) recursion stack
+"""
 
-import collections
+from typing import List
 
 
-class Solution(object):
-    def solve(self, board):
+class Solution:
+    def solve(self, board: List[List[str]]) -> None:
         """
-        :type board: List[List[str]]
-        :rtype: void Do not return anything, modify board in-place instead.
+        Do not return anything, modify board in-place instead.
         """
-        if not board:
+        if not board or not board[0]:
             return
 
-        q = collections.deque()
+        m, n = len(board), len(board[0])
 
-        for i in xrange(len(board)):
-            if board[i][0] == 'O':
-                board[i][0] = 'V'
-                q.append((i, 0))
-            if board[i][len(board[0])-1] == 'O':
-                board[i][len(board[0])-1] = 'V'
-                q.append((i, len(board[0])-1))
+        def dfs(r: int, c: int) -> None:
+            if r < 0 or r >= m or c < 0 or c >= n or board[r][c] != "O":
+                return
+            board[r][c] = "#"
+            dfs(r + 1, c)
+            dfs(r - 1, c)
+            dfs(r, c + 1)
+            dfs(r, c - 1)
 
-        for j in xrange(1, len(board[0])-1):
-            if board[0][j] == 'O':
-                board[0][j] = 'V'
-                q.append((0, j))
-            if board[len(board)-1][j] == 'O':
-                board[len(board)-1][j] = 'V'
-                q.append((len(board)-1, j))
+        # Step 1: Mark boundary-connected 'O's
+        for i in range(m):
+            dfs(i, 0)
+            dfs(i, n - 1)
+        for j in range(n):
+            dfs(0, j)
+            dfs(m - 1, j)
 
-        while q:
-            i, j = q.popleft()
-            for x, y in [(i+1, j), (i-1, j), (i, j+1), (i, j-1)]:
-                if 0 <= x < len(board) and 0 <= y < len(board[0]) and \
-                   board[x][y] == 'O':
-                    board[x][y] = 'V'
-                    q.append((x, y))
-
-        for i in xrange(len(board)):
-            for j in xrange(len(board[0])):
-                if board[i][j] != 'V':
-                    board[i][j] = 'X'
-                else:
-                    board[i][j] = 'O'
+        # Step 2: Flip unvisited 'O' -> 'X', and '#' -> 'O'
+        for i in range(m):
+            for j in range(n):
+                if board[i][j] == "O":
+                    board[i][j] = "X"
+                elif board[i][j] == "#":
+                    board[i][j] = "O"

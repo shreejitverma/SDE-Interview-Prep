@@ -1,7 +1,3 @@
-#include <vector>
-
-using namespace std;
-
 /*
  * Problem: LeetCode 130 - Surrounded Regions
  * Difficulty: Medium
@@ -12,28 +8,27 @@ using namespace std;
  */
 
 class Solution {
-public:
-    void solve(vector<vector<char>>& board) {
-        if (board.empty() || board[0].empty()) {
+    public void solve(char[][] board) {
+        if (board == null || board.length == 0 || board[0].length == 0) {
             return;
         }
 
-        int m = static_cast<int>(board.size());
-        int n = static_cast<int>(board[0].size());
+        int m = board.length;
+        int n = board[0].length;
 
-        // Step 1: Mark all boundary-connected 'O's with a temporary marker '#'
-        for (int i = 0; i < m; ++i) {
+        // Step 1: Mark boundary-connected 'O's with '#'
+        for (int i = 0; i < m; i++) {
             dfs(board, i, 0, m, n);
             dfs(board, i, n - 1, m, n);
         }
-        for (int j = 0; j < n; ++j) {
+        for (int j = 0; j < n; j++) {
             dfs(board, 0, j, m, n);
             dfs(board, m - 1, j, m, n);
         }
 
-        // Step 2: Flip unvisited 'O's to 'X', restore '#' back to 'O'
-        for (int i = 0; i < m; ++i) {
-            for (int j = 0; j < n; ++j) {
+        // Step 2: Flip unvisited 'O' -> 'X', and restore '#' -> 'O'
+        for (int i = 0; i < m; i++) {
+            for (int j = 0; j < n; j++) {
                 if (board[i][j] == 'O') {
                     board[i][j] = 'X';
                 } else if (board[i][j] == '#') {
@@ -43,8 +38,7 @@ public:
         }
     }
 
-private:
-    void dfs(vector<vector<char>>& board, int r, int c, int m, int n) {
+    private void dfs(char[][] board, int r, int c, int m, int n) {
         if (r < 0 || r >= m || c < 0 || c >= n || board[r][c] != 'O') {
             return;
         }
@@ -55,4 +49,4 @@ private:
         dfs(board, r, c + 1, m, n);
         dfs(board, r, c - 1, m, n);
     }
-};
+}

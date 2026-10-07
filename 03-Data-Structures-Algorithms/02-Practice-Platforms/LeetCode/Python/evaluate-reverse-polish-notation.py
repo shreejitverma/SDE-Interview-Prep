@@ -1,21 +1,33 @@
-# Author: Shreejit Verma
- # GitHub: https://github.com/shreejitverma
+"""
+Problem: LeetCode 150 - Evaluate Reverse Polish Notation
+Difficulty: Medium
+Concepts: Stack, Math, Array
 
-# Time:  O(n)
-# Space: O(n)
+Time Complexity: O(n)
+Space Complexity: O(n)
+"""
 
-import operator
+from typing import List
 
-class Solution(object):
-    # @param tokens, a list of string
-    # @return an integer
-    def evalRPN(self, tokens):
-        numerals, operators = [], {"+": operator.add, "-": operator.sub, "*": operator.mul, "/": operator.div}
+
+class Solution:
+    def evalRPN(self, tokens: List[str]) -> int:
+        stack: List[int] = []
+
         for token in tokens:
-            if token not in operators:
-                numerals.append(int(token))
+            if token in {"+", "-", "*", "/"}:
+                b = stack.pop()
+                a = stack.pop()
+                if token == "+":
+                    stack.append(a + b)
+                elif token == "-":
+                    stack.append(a - b)
+                elif token == "*":
+                    stack.append(a * b)
+                else:
+                    # Truncate division toward zero
+                    stack.append(int(a / b))
             else:
-                y, x = numerals.pop(), numerals.pop()
-                numerals.append(int(operators[token](x * 1.0, y)))
-        return numerals.pop()
+                stack.append(int(token))
 
+        return stack[-1]
