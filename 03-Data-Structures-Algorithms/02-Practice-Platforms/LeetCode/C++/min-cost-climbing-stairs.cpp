@@ -6,15 +6,21 @@
 // Time:  O(n)
 // Space: O(1)
 
+#include <vector>
+#include <algorithm>
+
 class Solution {
 public:
-    int minCostClimbingStairs(vector<int>& cost) {
-        vector<int> dp(3);
-        for (int i = cost.size() - 1; i >= 0; --i) {
-            dp[i % 3] = cost[i] + 
-                        min(dp[(i + 1) % 3],
-                            dp[(i + 2) % 3]);
+    int minCostClimbingStairs(const std::vector<int>& cost) {
+        int prev2 = 0;
+        int prev1 = 0;
+
+        for (int c : cost) {
+            const int curr = c + std::min(prev1, prev2);
+            prev2 = prev1;
+            prev1 = curr;
         }
-        return min(dp[0], dp[1]);
+
+        return std::min(prev1, prev2);
     }
 };

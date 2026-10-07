@@ -44,6 +44,7 @@ sources: []
 - [LeetCode 0076: Minimum Window Substring](0076-Minimum-Window-Substring.md)
 - [LeetCode 0078: Subsets](0078-Subsets.md)
 - [LeetCode 0079: Word Search](0079-Word-Search.md)
+- [LeetCode 0084: Largest Rectangle in Histogram](0084-Largest-Rectangle-in-Histogram.md)
 - [LeetCode 0091: Decode Ways](0091-Decode-Ways.md)
 - [LeetCode 0098: Validate Binary Search Tree](0098-Validate-Binary-Search-Tree.md)
 - [LeetCode 0100: Same Tree](0100-Same-Tree.md)
@@ -65,6 +66,7 @@ sources: []
 - [LeetCode 0190: Reverse Bits](0190-Reverse-Bits.md)
 - [LeetCode 0191: Number of 1 Bits](0191-Number-of-1-Bits.md)
 - [LeetCode 0198: House Robber](0198-House-Robber.md)
+- [LeetCode 0199: Binary Tree Right Side View](0199-Binary-Tree-Right-Side-View.md)
 - [LeetCode 0200: Number of Islands](0200-Number-of-Islands.md)
 - [LeetCode 0206: Reverse Linked List](0206-Reverse-Linked-List.md)
 - [LeetCode 0207: Course Schedule](0207-Course-Schedule.md)
@@ -92,6 +94,9 @@ sources: []
 - [LeetCode 0543: Diameter of Binary Tree](0543-Diameter-of-Binary-Tree.md)
 - [LeetCode 647: Palindromic Substrings (Manacher's Algorithm & Center Expansion Deep Dive)](0647-Palindromic-Substrings.md)
 - [LeetCode 0739: Daily Temperatures](0739-Daily-Temperatures.md)
+- [LeetCode 0746: Min Cost Climbing Stairs](0746-Min-Cost-Climbing-Stairs.md)
+- [LeetCode 0853: Car Fleet](0853-Car-Fleet.md)
 - [LeetCode 0875: Koko Eating Bananas](0875-Koko-Eating-Bananas.md)
+- [LeetCode 0994: Rotting Oranges](0994-Rotting-Oranges.md)
 
 <!-- moc:end -->

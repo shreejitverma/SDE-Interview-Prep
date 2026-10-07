@@ -6,41 +6,56 @@
 // Time:  O(m * n)
 // Space: O(m * n)
 
+#include <vector>
+#include <queue>
+#include <utility>
+
 class Solution {
 public:
-    int orangesRotting(vector<vector<int>>& grid) {
-        static const vector<pair<int, int>> directions{{0, 1}, {1, 0},
-                                                       {0, -1}, {-1, 0}};
+    int orangesRotting(std::vector<std::vector<int>>& grid) {
+        if (grid.empty() || grid[0].empty()) return 0;
 
-        int count = 0;
-        queue<tuple<int, int, int>> q;
-        for (int r = 0; r < grid.size(); ++r) {
-            for (int c = 0; c < grid[r].size(); ++c) {
+        const int m = static_cast<int>(grid.size());
+        const int n = static_cast<int>(grid[0].size());
+        std::queue<std::pair<int, int>> q;
+        int fresh = 0;
+
+        for (int r = 0; r < m; ++r) {
+            for (int c = 0; c < n; ++c) {
                 if (grid[r][c] == 2) {
-                    q.emplace(r, c, 0);
-                } else if (grid[r][c]  == 1) {
-                    ++count;
+                    q.emplace(r, c);
+                } else if (grid[r][c] == 1) {
+                    ++fresh;
                 }
             }
         }
 
-        int result = 0;
-        while (!q.empty()) {
-            int r, c;
-            tie(r, c, result) = q.front(); q.pop();
-            for (const auto& d : directions) {
-                int nr = r + d.first, nc = c + d.second;
-                if  (!(0 <= nr && nr < grid.size() &&
-                       0 <= nc && nc < grid[r].size())) {
-                    continue;
-                }
-                if (grid[nr][nc] == 1) {
-                    --count;
-                    grid[nr][nc] = 2;
-                    q.emplace(nr, nc, result + 1);
+        if (fresh == 0) return 0;
+
+        int minutes = 0;
+        static const int dr[4] = {-1, 1, 0, 0};
+        static const int dc[4] = {0, 0, -1, 1};
+
+        while (!q.empty() && fresh > 0) {
+            const size_t sz = q.size();
+            for (size_t i = 0; i < sz; ++i) {
+                const auto [r, c] = q.front();
+                q.pop();
+
+                for (int d = 0; d < 4; ++d) {
+                    const int nr = r + dr[d];
+                    const int nc = c + dc[d];
+
+                    if (nr >= 0 && nr < m && nc >= 0 && nc < n && grid[nr][nc] == 1) {
+                        grid[nr][nc] = 2;
+                        --fresh;
+                        q.emplace(nr, nc);
+                    }
                 }
             }
+            ++minutes;
         }
-        return (count == 0) ? result : -1;
+
+        return (fresh == 0) ? minutes : -1;
     }
 };
