@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "00-Start-Here/Roadmap.md",
+                "file": "16-Interview-Command-Center/00-Dashboard.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "Roadmap"
+              "title": "00-Dashboard"
             }
           }
         ]
@@ -214,8 +214,9 @@
       "obsidian-git:Open Git source control": false
     }
   },
-  "active": "25e9a2f618275701",
+  "active": "e7a7b303c61786dc",
   "lastOpenFiles": [
+    "00-Start-Here/Roadmap.md",
     "03-Data-Structures-Algorithms/02-Practice-Platforms/LeetCode/Java/word-search.java",
     "03-Data-Structures-Algorithms/02-Practice-Platforms/LeetCode/C++/clone-graph.cpp",
     "00-Start-Here/Vault-Map.canvas",
@@ -232,7 +233,6 @@
     "03-Data-Structures-Algorithms/02-Practice-Platforms/LeetCode/TypeScript/merge-intervals.ts",
     "03-Data-Structures-Algorithms/02-Practice-Platforms/LeetCode/Java/merge-intervals.java",
     "03-Data-Structures-Algorithms/02-Practice-Platforms/LeetCode/Problems/0054-Spiral-Matrix.md",
-    "03-Data-Structures-Algorithms/02-Practice-Platforms/LeetCode/Rust/spiral-matrix.rs",
     "03-Data-Structures-Algorithms/02-Practice-Platforms/LeetCode/Problems/0049-Group-Anagrams.md",
     "03-Data-Structures-Algorithms/02-Practice-Platforms/LeetCode/Problems/0019-Remove-Nth-Node-From-End-of-List.md",
     "03-Data-Structures-Algorithms/02-Practice-Platforms/LeetCode/Problems/0005-Longest-Palindromic-Substring.md",

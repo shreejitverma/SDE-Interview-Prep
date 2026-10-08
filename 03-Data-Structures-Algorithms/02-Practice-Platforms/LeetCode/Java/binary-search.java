@@ -1,7 +1,3 @@
-#include <vector>
-
-using namespace std;
-
 /*
  * Problem: LeetCode 704 - Binary Search
  * Difficulty: Easy
@@ -12,10 +8,9 @@ using namespace std;
  */
 
 class Solution {
-public:
-    int search(vector<int>& nums, int target) {
+    public int search(int[] nums, int target) {
         int left = 0;
-        int right = static_cast<int>(nums.size()) - 1;
+        int right = nums.length - 1;
 
         while (left <= right) {
             int mid = left + (right - left) / 2;
@@ -30,4 +25,4 @@ public:
 
         return -1;
     }
-};
+}

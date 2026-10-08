@@ -1,99 +1,57 @@
-/*
- * Author: Shreejit Verma
- * GitHub: https://github.com/shreejitverma
- */
-
-// Time:  O(1), per operation.
-// Space: O(k), k is the capacity of cache.
-
 #include <list>
+#include <unordered_map>
+#include <utility>
+
+using namespace std;
+
+/*
+ * Problem: LeetCode 146 - LRU Cache
+ * Difficulty: Medium
+ * Concepts: Hash Table, Linked List, Design, Doubly-Linked List
+ *
+ * Time Complexity: O(1) for both get and put
+ * Space Complexity: O(capacity)
+ */
 
 class LRUCache {
 public:
-    LRUCache(int capacity) : capa_(capacity) {
+    LRUCache(int capacity) : capacity_(capacity) {
     }
-    
+
     int get(int key) {
-        if (!map_.count(key)) {
+        auto it = cache_.find(key);
+        if (it == cache_.end()) {
             return -1;
         }
-        // It key exists, update it.
-        const auto value = map_[key]->second;
-        update(key, value);
-        return value;
+
+        // Move the accessed item to the front of the list (most recently used)
+        items_.splice(items_.begin(), items_, it->second);
+        return it->second->second;
     }
-    
+
     void put(int key, int value) {
-        if (capa_ <= 0) {
+        auto it = cache_.find(key);
+        if (it != cache_.end()) {
+            // Key already exists: update value and move to front
+            it->second->second = value;
+            items_.splice(items_.begin(), items_, it->second);
             return;
         }
 
-        // If cache is full while inserting, remove the last one.
-        if (!map_.count(key) && list_.size() == capa_) {
-            auto del = list_.front(); list_.pop_front();
-            map_.erase(del.first);
+        // Evict least recently used item if at capacity
+        if (static_cast<int>(cache_.size()) == capacity_) {
+            int lru_key = items_.back().first;
+            cache_.erase(lru_key);
+            items_.pop_back();
         }
-        update(key, value);
-    }
-    
-private:
-    list<pair<int, int>> list_; // key, value
-    unordered_map<int, list<pair<int, int>>::iterator> map_; // key, list iterator
-    int capa_;
-    
-    // Update (key, iterator of (key, value)) pair
-    void update(int key, int value) {
-        auto it = map_.find(key);
-        if (it != map_.end()) {
-            list_.erase(it->second);
-        }
-        list_.emplace_back(key, value);
-        map_[key] = prev(end(list_));
-    }
-};
 
-// Time:  O(1), per operation.
-// Space: O(k), k is the capacity of cache.
-class LRUCache2 {
-public:
-    LRUCache2(int capacity) : capa_(capacity) {
+        // Insert new item at the front
+        items_.emplace_front(key, value);
+        cache_[key] = items_.begin();
     }
-    
-    int get(int key) {
-        if (!map_.count(key)) {
-            return -1;
-        }
-        // It key exists, update it.
-        const auto value = map_[key]->second;
-        update(key, value);
-        return value;
-    }
-    
-    void put(int key, int value) {
-        if (capa_ <= 0) {
-            return;
-        }
-    
-        // If cache is full while inserting, remove the last one.
-        if (!map_.count(key) && list_.size() == capa_) {
-            auto del = list_.back(); list_.pop_back();
-            map_.erase(del.first);
-        }
-        update(key, value);
-    }
-    
+
 private:
-    list<pair<int, int>> list_; // key, value
-    unordered_map<int, list<pair<int, int>>::iterator> map_; // key, list iterator
-    int capa_;
-    
-    // Update (key, iterator of (key, value)) pair
-    void update(int key, int value) {
-        auto it = map_.find(key);
-        if (it != map_.end()) {
-            list_.erase(it->second);
-        }
-        list_.emplace_front(key, value);
-        map_[key] = list_.begin();
-    }
+    int capacity_;
+    list<pair<int, int>> items_; // List of (key, value) pairs
+    unordered_map<int, list<pair<int, int>>::iterator> cache_; // Map of key -> list iterator
 };
