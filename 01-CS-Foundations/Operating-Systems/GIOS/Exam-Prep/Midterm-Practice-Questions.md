@@ -567,6 +567,7 @@ Back to [GIOS Dashboard](../_GIOS-Dashboard.md).
 
 ## 11. Birrell's Thread Synchronization Pitfalls
 
+
 > [!question] Question
 > In Andrew D. Birrell's landmark paper *"An Introduction to Programming with Threads"* (1989), several subtle concurrency hazards and design principles are highlighted.
 > 

@@ -1,6 +1,10 @@
 {
   "recentFiles": [
     {
+      "basename": "Midterm-Practice-Questions",
+      "path": "01-CS-Foundations/Operating-Systems/GIOS/Exam-Prep/Midterm-Practice-Questions.md"
+    },
+    {
       "basename": "00-Dashboard",
       "path": "16-Interview-Command-Center/00-Dashboard.md"
     },
@@ -15,10 +19,6 @@
     {
       "basename": "P2L1-Processes-and-Process-Management",
       "path": "01-CS-Foundations/Operating-Systems/GIOS/Part-2-Process-Thread-Management/P2L1-Processes-and-Process-Management.md"
-    },
-    {
-      "basename": "Midterm-Practice-Questions",
-      "path": "01-CS-Foundations/Operating-Systems/GIOS/Exam-Prep/Midterm-Practice-Questions.md"
     },
     {
       "basename": "04-FastAPI",
