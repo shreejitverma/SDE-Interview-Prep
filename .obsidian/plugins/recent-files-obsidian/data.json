@@ -1,12 +1,24 @@
 {
   "recentFiles": [
     {
-      "basename": "Midterm-Practice-Questions",
-      "path": "01-CS-Foundations/Operating-Systems/GIOS/Exam-Prep/Midterm-Practice-Questions.md"
-    },
-    {
       "basename": "00-Dashboard",
       "path": "16-Interview-Command-Center/00-Dashboard.md"
+    },
+    {
+      "basename": "P2L4-Thread-Design-Considerations",
+      "path": "01-CS-Foundations/Operating-Systems/GIOS/Part-2-Process-Thread-Management/P2L4-Thread-Design-Considerations.md"
+    },
+    {
+      "basename": "P2L3-PThreads-Case-Study",
+      "path": "01-CS-Foundations/Operating-Systems/GIOS/Part-2-Process-Thread-Management/P2L3-PThreads-Case-Study.md"
+    },
+    {
+      "basename": "P2L5-Thread-Performance-Considerations",
+      "path": "01-CS-Foundations/Operating-Systems/GIOS/Part-2-Process-Thread-Management/P2L5-Thread-Performance-Considerations.md"
+    },
+    {
+      "basename": "Midterm-Practice-Questions",
+      "path": "01-CS-Foundations/Operating-Systems/GIOS/Exam-Prep/Midterm-Practice-Questions.md"
     },
     {
       "basename": "Roadmap",

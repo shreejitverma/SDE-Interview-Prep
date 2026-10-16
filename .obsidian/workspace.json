@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "01-CS-Foundations/Operating-Systems/GIOS/Exam-Prep/Midterm-Practice-Questions.md",
+                "file": "16-Interview-Command-Center/00-Dashboard.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "Midterm-Practice-Questions"
+              "title": "00-Dashboard"
             }
           }
         ]
@@ -216,6 +216,10 @@
   },
   "active": "e7a7b303c61786dc",
   "lastOpenFiles": [
+    "01-CS-Foundations/Operating-Systems/GIOS/Part-2-Process-Thread-Management/P2L4-Thread-Design-Considerations.md",
+    "01-CS-Foundations/Operating-Systems/GIOS/Part-2-Process-Thread-Management/P2L3-PThreads-Case-Study.md",
+    "01-CS-Foundations/Operating-Systems/GIOS/Part-2-Process-Thread-Management/P2L5-Thread-Performance-Considerations.md",
+    "01-CS-Foundations/Operating-Systems/GIOS/Exam-Prep/Midterm-Practice-Questions.md",
     "16-Interview-Command-Center/00-Dashboard.md",
     "00-Start-Here/Roadmap.md",
     "03-Data-Structures-Algorithms/02-Practice-Platforms/LeetCode/Java/word-search.java",
@@ -249,10 +253,6 @@
     "03-Data-Structures-Algorithms/02-Practice-Platforms/LeetCode/Problems/0020-Valid-Parentheses.md",
     "03-Data-Structures-Algorithms/02-Practice-Platforms/LeetCode/Problems/0003-Longest-Substring-Without-Repeating-Characters.md",
     "03-Data-Structures-Algorithms/02-Practice-Platforms/LeetCode/Problems/0011-Container-With-Most-Water.md",
-    "03-Data-Structures-Algorithms/02-Practice-Platforms/LeetCode/Problems/0015-3Sum.md",
-    "03-Data-Structures-Algorithms/02-Practice-Platforms/LeetCode/Problems/0033-Search-in-Rotated-Sorted-Array.md",
-    "03-Data-Structures-Algorithms/02-Practice-Platforms/LeetCode/Problems/0153-Find-Minimum-in-Rotated-Sorted-Array.md",
-    "03-Data-Structures-Algorithms/02-Practice-Platforms/LeetCode/Problems/0152-Maximum-Product-Subarray.md",
     "01-CS-Foundations/Operating-Systems/AOS/AOS-Concept-Map.canvas",
     "04-System-Design/Design Patterns/python-patterns/patterns/structural/viz/mvc.py.png",
     "04-System-Design/Design Patterns/python-patterns/patterns/structural/viz/proxy.py.png",
