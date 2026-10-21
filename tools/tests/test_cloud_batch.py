@@ -104,6 +104,21 @@ class ExtractAndCleanTest(unittest.TestCase):
         self.assertNotIn("UNVERIFIED", body)
         self.assertIn("claim one", tail)
 
+    def test_progress_note_block_does_not_hide_the_title(self):
+        # Regression: the batch returned "Let me read the pages." and the chapter as separate text
+        # blocks; joined without a separator, the title line was lost and a code comment became the start.
+        msg = {"content": [{"type": "text", "text": "Let me read the pages."},
+                           {"type": "server_tool_use"},
+                           {"type": "text", "text": FULL_BODY + "\n\n```hcl\n# main.tf\n```\n"}]}
+        body, _ = cb.extract_note(cb.response_text(msg), "Fabrics")
+        self.assertTrue(body.startswith("# Fabrics\n"))
+        self.assertEqual(cb.missing_sections(body), [])
+
+    def test_fallback_title_ignores_comments_inside_code_fences(self):
+        text = "intro\n```sh\n# not a title\n```\n# Real Title\n\nbody\n"
+        body, _ = cb.extract_note(text, "Some Other Title")
+        self.assertTrue(body.startswith("# Real Title"))
+
     def test_no_title_line_returns_empty_body(self):
         body, _ = cb.extract_note("no heading here", "Fabrics")
         self.assertEqual(body, "")
@@ -232,6 +247,17 @@ class SelectAndApplyTest(unittest.TestCase):
         cb.apply_result("draft", self.ch, message(FULL_BODY), r.root, self.state, set(), True, report)
         self.assertIn("hand written", (r.root / self.ch.path).read_text())
         self.assertIn("skipped", report[0])
+
+    def test_draft_rewrites_its_own_unedited_note_but_not_an_edited_one(self):
+        r, report = self.repo, []
+        cb.apply_result("draft", self.ch, message(FULL_BODY), r.root, self.state, set(), True, report)
+        fixed = FULL_BODY.replace("Line about TL;DR.", "Better TL;DR.")
+        cb.apply_result("draft", self.ch, message(fixed), r.root, self.state, set(), True, report)
+        self.assertIn("Better TL;DR.", (r.root / self.ch.path).read_text())
+        p = r.root / self.ch.path
+        p.write_text(p.read_text() + "\nhuman edit\n")
+        cb.apply_result("draft", self.ch, message(FULL_BODY), r.root, self.state, set(), True, report)
+        self.assertIn("human edit", p.read_text())
 
     def test_truncated_result_is_not_written(self):
         r, report = self.repo, []

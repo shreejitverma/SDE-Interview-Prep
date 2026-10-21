@@ -340,7 +340,8 @@ def build_requests(phase: str, repo: Path, chapters: list[Chapter], todo: list[C
 
 
 def response_text(message: dict) -> str:
-    return "".join(b.get("text", "") for b in message.get("content", []) if b.get("type") == "text")
+    # Separate blocks: a short progress note between tool calls must not glue onto the "# Title" line.
+    return "\n\n".join(b.get("text", "") for b in message.get("content", []) if b.get("type") == "text")
 
 
 def cited_urls(message: dict) -> list[str]:
@@ -365,8 +366,14 @@ def extract_note(text: str, title: str) -> tuple[str, str]:
     """Return (body starting at the '# ' title line, trailing marker section)."""
     lines = text.splitlines()
     start = next((i for i, ln in enumerate(lines) if ln.strip() == f"# {title}"), None)
-    if start is None:
-        start = next((i for i, ln in enumerate(lines) if ln.startswith("# ")), None)
+    if start is None:  # first level-1 heading outside code fences
+        fenced = False
+        for i, ln in enumerate(lines):
+            if ln.lstrip().startswith(("```", "~~~")):
+                fenced = not fenced
+            elif not fenced and ln.startswith("# "):
+                start = i
+                break
     if start is None:
         return "", text
     body = "\n".join(lines[start:])
@@ -622,7 +629,7 @@ def apply_result(phase: str, ch: Chapter, message: dict, repo: Path, state: dict
     note = ""
 
     if phase == "draft":
-        if note_status(path) not in ("missing", "seed"):
+        if note_status(path) not in ("missing", "seed") and not owned_unchanged(repo, ch, state):
             report.append(f"- {ch.cid} {ch.title}: skipped, file changed to a non-seed note meanwhile")
             return cost
         sources = list(dict.fromkeys(cited_urls(message) + further_reading_urls(body)))[:30]
@@ -664,7 +671,9 @@ def cmd_collect(args, repo, chapters, state) -> int:
     by_path = {c.path: c for c in chapters}
     known = {c.link for c in chapters} | set(related_notes(repo)) | {f"{CURRICULUM}/SUMMARY", f"{CURRICULUM}/README", f"{CURRICULUM}/STYLE"}
     api = None
-    for b in [b for b in state["batches"] if not b.get("collected")]:
+    redo = set(args.reprocess.split(",")) if args.reprocess else set()
+    for b in [b for b in state["batches"] if not b.get("collected") or b["id"] in redo]:
+        again = b.get("collected", False)
         raw = repo / STATE_DIR / "results" / f"{b['id']}.jsonl"
         if not raw.exists():
             api = api or client()
@@ -699,7 +708,7 @@ def cmd_collect(args, repo, chapters, state) -> int:
         out.parent.mkdir(parents=True, exist_ok=True)
         out.write_text("\n".join(report) + "\n")
         print("\n".join(report))
-        if args.apply:
+        if args.apply and not again:
             b["collected"] = True
             b["actual_usd"] = round(spent, 4)
             state["spent_usd"] = round(state["spent_usd"] + spent, 4)
@@ -722,6 +731,9 @@ def main(argv: list[str] | None = None) -> int:
             p.add_argument("--limit", type=int, default=0)
             p.add_argument("--model", choices=list(PRICES), default="", help="override the phase's default model")
             p.add_argument("--budget", type=float, default=100.0, help="USD cap for spent + in flight + this batch")
+        if name == "collect":
+            p.add_argument("--reprocess", default="", help="comma-separated collected batch ids to re-apply from stored results "
+                           "(rewrites only chapters the pipeline wrote and nobody edited; spend is not counted again)")
     args = ap.parse_args(argv)
     repo = args.repo.resolve()
     summary = repo / CURRICULUM / "SUMMARY.md"
