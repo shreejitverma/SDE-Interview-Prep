@@ -30,6 +30,7 @@ Every script that edits notes is a dry run unless you pass `--apply`.
 
 `cloud_batch.py` is the one tool with a third-party dependency (the `anthropic` SDK), so run its API commands with `uv run tools/cloud_batch.py ...`; `plan` works under plain `python3`.
 It spends real money: `submit` is a dry run without `--apply`, prints a cost estimate, and refuses to exceed `--budget` across everything spent and in flight.
+Until a phase has a collected batch on the chosen model, `submit` accepts at most 3 chapters, because its estimate is only a heuristic; server-side web search re-reads the growing context on every search, so a 10-search fact-check can bill 100K-700K input tokens.
 It writes only chapters it owns (missing or `seed` files, then its own unchanged drafts), makes flashcards for its verified chapters and for hand-written `solid` or `canonical` ones, keeps state, raw results, and per-chapter reports in `build/cloud_batch/`, and reads the API key from `~/.config/sde-vault/anthropic.env`, never from this public repo.
 
 ```sh

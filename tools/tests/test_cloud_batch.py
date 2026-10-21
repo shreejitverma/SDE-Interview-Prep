@@ -383,11 +383,22 @@ class CollectTest(unittest.TestCase):
 class CliTest(unittest.TestCase):
     def test_plan_and_submit_dry_run_write_nothing(self):
         repo = Repo(self)
-        for cmd in (["plan"], ["submit", "--phase", "draft"]):
+        for cmd in (["plan"], ["submit", "--phase", "draft", "--limit", "3"]):
             out = subprocess.run([sys.executable, str(TOOLS / "cloud_batch.py"), "--repo", str(repo.root), *cmd],
                                  capture_output=True, text=True, check=True).stdout
             self.assertTrue(out)
         self.assertEqual(sorted(p.name for p in (repo.root / cb.CURRICULUM).iterdir()), ["STYLE.md", "SUMMARY.md"])
+
+    def test_submit_refuses_an_unmeasured_phase_beyond_a_pilot(self):
+        # The fixture has 4 draft-ready chapters and no collected batch, so only 3 may go out as a pilot.
+        repo = Repo(self)
+        run = [sys.executable, str(TOOLS / "cloud_batch.py"), "--repo", str(repo.root), "submit", "--phase", "draft"]
+        full = subprocess.run(run, capture_output=True, text=True, check=False)
+        self.assertEqual(full.returncode, 1)
+        self.assertIn("pilot with --limit 3", full.stdout)
+        pilot = subprocess.run([*run, "--limit", "3"], capture_output=True, text=True, check=False)
+        self.assertEqual(pilot.returncode, 0)
+        self.assertIn("dry run", pilot.stdout)
 
     def test_submit_refuses_over_budget(self):
         repo = Repo(self)

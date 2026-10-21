@@ -65,6 +65,8 @@ PRICES = {
     "claude-haiku-5-5": (0.10, 0.50),
 }
 BATCH_DISCOUNT = 0.5
+# A phase and model pair with no collected batch has only a heuristic estimate, so its first batch is a pilot.
+PILOT_MAX = 3
 CACHE_WRITE, CACHE_READ = 1.25, 0.10
 WEB_SEARCH_USD = 10.00 / 1000
 
@@ -91,7 +93,9 @@ class PhaseConfig:
 
 PHASES = {
     "draft": PhaseConfig("claude-opus-5-5", "high", 64000, 8, (20_000, 60_000), (12_000, 30_000), (3, 8)),
-    "verify": PhaseConfig("claude-sonnet-5-5", "high", 64000, 10, (20_000, 60_000), (14_000, 30_000), (4, 10)),
+    # Measured 2026-10 on 24 chapters: the server-side search loop re-reads the growing context on every search,
+    # so a 10-search fact-check bills 100K-730K input tokens, not the prompt plus one page of results.
+    "verify": PhaseConfig("claude-sonnet-5-5", "high", 64000, 10, (100_000, 730_000), (31_000, 51_000), (10, 10)),
     "cards": PhaseConfig("claude-haiku-5-5", "medium", 16000, 0, (0, 0), (2_000, 6_000), (0, 0)),
 }
 
@@ -421,11 +425,15 @@ def usage_cost(model: str, usage: dict) -> float:
     return cost + searches * WEB_SEARCH_USD
 
 
+def measured_batches(phase: str, model: str, state: dict | None) -> list[dict]:
+    return [b for b in (state or {}).get("batches", [])
+            if b["phase"] == phase and b.get("model", PHASES[phase].model) == model and b.get("collected") and b.get("actual_usd")]
+
+
 def estimate(phase: str, reqs: list[dict], state: dict | None = None) -> tuple[float, float]:
     """Cost range for reqs: measured per-request average (+-25%) once a batch of this phase is collected."""
     model = reqs[0]["params"]["model"] if reqs else PHASES[phase].model
-    measured = [b for b in (state or {}).get("batches", [])
-                if b["phase"] == phase and b.get("model", PHASES[phase].model) == model and b.get("collected") and b.get("actual_usd")]
+    measured = measured_batches(phase, model, state)
     if measured:
         avg = sum(b["actual_usd"] for b in measured) / sum(len(b["custom_ids"]) for b in measured)
         return 0.75 * avg * len(reqs), 1.25 * avg * len(reqs)
@@ -560,6 +568,11 @@ def cmd_submit(args, repo, chapters, state) -> int:
         print(f"  {ch.cid:8s} {ch.title}")
     if len(todo) > 10:
         print(f"  ... and {len(todo) - 10} more")
+    model = reqs[0]["params"]["model"]
+    if len(reqs) > PILOT_MAX and not measured_batches(args.phase, model, state):
+        print(f"refusing: no collected {args.phase} batch on {model} to measure cost from; "
+              f"pilot with --limit {PILOT_MAX} and collect it first")
+        return 1
     if state["spent_usd"] + committed + hi > args.budget:
         print(f"refusing: spent + in flight + this batch (high) exceeds --budget ${args.budget:.2f}; lower --limit")
         return 1
@@ -568,7 +581,7 @@ def cmd_submit(args, repo, chapters, state) -> int:
         return 0
     batch = client().messages.batches.create(requests=reqs)
     state["batches"].append({
-        "id": batch.id, "phase": args.phase, "model": reqs[0]["params"]["model"], "created": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "id": batch.id, "phase": args.phase, "model": model, "created": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "custom_ids": {r["custom_id"]: ch.path for r, ch in zip(reqs, todo, strict=True)},
         "estimate_high": round(hi, 2), "collected": False,
     })
