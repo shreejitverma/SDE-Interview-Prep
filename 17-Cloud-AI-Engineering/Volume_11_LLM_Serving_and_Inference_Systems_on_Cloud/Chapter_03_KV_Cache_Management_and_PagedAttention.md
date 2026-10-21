@@ -1,10 +1,22 @@
 ---
 type: concept
-track: [cloud-ai, ai-eng]
+track: [cloud-ai, ai-eng, sde, distinguished]
 level:
 status: draft
 last_reviewed:
-sources: []
+sources: 
+  - "https://arxiv.org/abs/2309.06180"
+  - "https://docs.vllm.ai/en/stable/design/prefix_caching/"
+  - "https://docs.vllm.ai/en/stable/configuration/optimization/"
+  - "https://www.usenix.org/conference/osdi24/presentation/agrawal"
+  - "https://arxiv.org/abs/2308.16369"
+  - "https://www.usenix.org/conference/osdi22/presentation/yu"
+  - "https://arxiv.org/abs/2312.07104"
+  - "https://arxiv.org/abs/2405.04437"
+  - "https://arxiv.org/abs/2205.14135"
+  - "https://arxiv.org/abs/2305.13245"
+  - "https://arxiv.org/abs/2401.09670"
+  - "https://arxiv.org/abs/2407.00079"
 ---
 
 # KV-Cache Management and PagedAttention
@@ -107,9 +119,9 @@ Across the 8-GPU node, the same block is 5 MiB.
 Each step, the CPU computes `slot = block_id x B + offset` for every new token and ships this `slot_mapping` to the GPU.
 A fused `reshape_and_cache` kernel then scatters the freshly projected K and V into those slots in each layer.
 The paper describes this as a fused reshape and block write.
-The original vLLM PagedAttention kernel walks the block table, loads one K block per iteration, and computes `q . K` scores for the whole context.
-It then reduces a global max and exponent sum, normalizes the logits, and makes a separate pass over the V blocks to accumulate `softmax x V`, so its softmax is two-pass rather than online (vLLM paged attention design doc, which describes the original kernel, as of 2026-10).
-The FlashAttention and FlashInfer paged backends that vLLM V1 uses instead keep a running softmax max and sum and accumulate `softmax x V` block by block, which is the online-softmax technique from FlashAttention with the address indirection added in.
+The attention kernel walks the block table, loads one K block per iteration, and computes `q . K` partial scores.
+It keeps a running softmax max and sum, accumulates `softmax x V`, and moves to the next block.
+That is the online-softmax technique from FlashAttention, with the address indirection added in.
 
 ### Choosing the block size
 
@@ -146,8 +158,7 @@ One edited token in the first block (a timestamp, a request ID, a reordered tool
 Even a 100% prefix hit cannot skip all compute.
 Sampling needs the final hidden state of the last prompt token, and the KV cache does not store hidden states.
 The engine must therefore run at least the last token through the model.
-Since v0.11 the default block hash, set by `--prefix-caching-hash-algo`, is `sha256` (vLLM prefix caching design doc, as of 2026-10).
-The docs warn that the opt-in non-cryptographic `xxhash` and `xxhash_cbor` options raise collision risk, which in multi-tenant settings can cause undefined behavior or leak private information.
+The vLLM docs warn that the default hash is not collision-free and recommend SHA256 for multi-tenant deployments (vLLM design docs, as of 2026-10).
 
 ### Eviction: lazy and tail-first
 
@@ -370,9 +381,7 @@ cat > user-data.sh <<'EOF'
 #!/bin/bash
 shutdown -h +180
 apt-get update -y && apt-get install -y python3-venv
-# Dedicated service user: EC2 Ubuntu AMIs have "ubuntu", GCE images have no such user at boot.
-id -u vllm >/dev/null 2>&1 || useradd -m -s /bin/bash vllm
-sudo -u vllm bash -lc 'python3 -m venv ~/v && ~/v/bin/pip install -U vllm && \
+sudo -u ubuntu bash -lc 'python3 -m venv ~/v && ~/v/bin/pip install -U vllm && \
   nohup ~/v/bin/vllm serve Qwen/Qwen2.5-7B-Instruct --host 127.0.0.1 --port 8000 \
   --max-model-len 8192 --gpu-memory-utilization 0.90 --enable-prefix-caching \
   > ~/vllm.log 2>&1 &'
@@ -397,7 +406,7 @@ The only open port is SSH, restricted to your address.
 ### Step 3: read the pool the engine computed
 
 ```bash
-ssh -i kv-lab.pem ubuntu@"$IP" 'sudo grep -iE "KV cache|concurrency|block" /home/vllm/vllm.log | tail -n 20'
+ssh -i kv-lab.pem ubuntu@"$IP" 'grep -iE "KV cache|concurrency|block" ~/vllm.log | tail -n 20'
 ```
 
 Look for the lines that report the GPU KV cache size in tokens and the maximum concurrency for `max_model_len`-sized requests (exact wording varies by version, UNVERIFIED).
@@ -455,23 +464,12 @@ gcloud billing budgets create --billing-account="$BILLING_ACCOUNT" \
 gcloud compute instances create kv-lab --zone=us-central1-a --machine-type=g2-standard-8 \
   --maintenance-policy=TERMINATE --boot-disk-size=100GB \
   --image-project=deeplearning-platform-release --image-family="$DLVM_FAMILY" \
-  --metadata=install-nvidia-driver=True \
-  --max-run-duration=170m --instance-termination-action=DELETE \
   --metadata-from-file=startup-script=user-data.sh
 ```
-
-On GCE, the in-guest `shutdown -h +180` only stops the VM, and a stopped VM keeps its boot disk billing.
-`--max-run-duration` with `--instance-termination-action=DELETE` makes Compute Engine delete the VM itself, and the boot disk goes with it because gcloud creates boot disks with auto-delete enabled (Compute Engine docs, as of 2026-10).
-The limit is 170 minutes so that it fires before the in-guest timer, because a stop clears the run-duration timer and would leave the stopped VM in place.
 
 ### Teardown (run both even if auto-shutdown fired)
 
 ```bash
-# Fresh shell: re-derive the values the lab scripts set.
-export AWS_REGION=us-east-1
-ACCT=$(aws sts get-caller-identity --query Account --output text)
-SG=$(aws ec2 describe-security-groups --filters Name=group-name,Values=kv-lab \
-  --query 'SecurityGroups[0].GroupId' --output text)
 aws ec2 terminate-instances --instance-ids "$(cat iid.txt)"
 aws ec2 wait instance-terminated --instance-ids "$(cat iid.txt)"
 aws ec2 delete-security-group --group-id "$SG"
@@ -479,8 +477,6 @@ aws ec2 delete-key-pair --key-name kv-lab && rm -f kv-lab.pem
 aws budgets delete-budget --account-id "$ACCT" --budget-name kv-cache-lab
 # GCP
 gcloud compute instances delete kv-lab --zone=us-central1-a --quiet
-gcloud billing budgets list --billing-account="$BILLING_ACCOUNT" --format="value(name,displayName)"
-gcloud billing budgets delete <BUDGET_ID> --billing-account="$BILLING_ACCOUNT"
 ```
 
 ## Failure Modes and Pitfalls
@@ -559,9 +555,8 @@ A shared prefix cache is a timing oracle.
 If tenant B's TTFT drops when B sends a guessed prefix, B learns that some other tenant recently sent that prefix.
 Mitigations:
 
-- Mix a per-tenant salt into the block hash so prefixes never match across tenants.
-  vLLM's documented mechanism is the per-request `cache_salt` field, which is injected into the first block's hash so only requests carrying the same salt can reuse each other's KV blocks (vLLM prefix caching design doc, as of 2026-10).
-- Keep the default `sha256` block hash and do not switch to the `xxhash` options, which the vLLM docs flag as a collision and information-leak risk in multi-tenant settings (vLLM prefix caching design doc, as of 2026-10).
+- Mix a per-tenant salt into the block hash so prefixes never match across tenants. vLLM exposes a per-request cache salt for this (UNVERIFIED parameter name and status).
+- Use SHA256 block hashing, as the vLLM docs recommend for multi-tenant setups (vLLM design docs, as of 2026-10).
 - Isolate high-sensitivity tenants on dedicated replicas.
 
 ### Data at rest and in use
@@ -606,7 +601,7 @@ At 8,192 tokens per conversation that is about 150 concurrent sequences, assumin
 The first lever is FP8 KV.
 It halves bytes per token, so capacity rises to about 300 sequences, and it also roughly doubles the KV-bandwidth ceiling on decode throughput.
 It costs an accuracy risk on long-context retrieval, so I would gate it behind long-context evals.
-Weight quantization to FP8 frees only about 70 GB, which is about 17% more KV capacity against the 403 GB pool, and it does not move the long-context bandwidth ceiling.
+Weight quantization to FP8 frees only about 70 GB, which is about 26% more KV capacity, and it does not move the long-context bandwidth ceiling.
 I would also check TP: 8 KV heads at TP=8 means no replication, while TP=16 would waste capacity.
 
 #### Follow-up Interviewer Question
@@ -730,7 +725,7 @@ On GCP I would evaluate GKE Inference Gateway's prefix-aware mode.
 On AWS I would run an open-source KV-aware router on EKS, because there is no first-party equivalent (UNVERIFIED status of both).
 
 For isolation, the per-tenant salt is mixed into the hash: shared prefixes stay shareable only within a tenant, or within an explicit "public prompt" namespace.
-Set the per-tenant `cache_salt` on every request, keep the default `sha256` block hash rather than the `xxhash` options, keep metrics private, and put regulated tenants on dedicated cells (see [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_03_Cell_Based_Architecture_and_Shuffle_Sharding|Cell-Based Architecture]]).
+Use SHA256 hashing, keep metrics private, and put regulated tenants on dedicated cells (see [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_03_Cell_Based_Architecture_and_Shuffle_Sharding|Cell-Based Architecture]]).
 
 Failure handling: KV is soft state, so any tier loss degrades to recompute, never to errors.
 Rollouts are paced by rewarm time, and Spot capacity is held only in pools with retry headroom.
@@ -775,7 +770,7 @@ Hybrid models interleave sliding-window and full-attention layers, or state-spac
 - [Yu et al., "Orca: A Distributed Serving System for Transformer-Based Generative Models", OSDI 2022](https://www.usenix.org/conference/osdi22/presentation/yu) - iteration-level scheduling, the baseline PagedAttention improved on.
 - [Zheng et al., "SGLang: Efficient Execution of Structured Language Model Programs" (RadixAttention)](https://arxiv.org/abs/2312.07104) - the radix-tree alternative to hash-chain prefix indexing.
 - [Prabhu et al., "vAttention: Dynamic Memory Management for Serving LLMs without PagedAttention"](https://arxiv.org/abs/2405.04437) - the counter-design that moves translation into the GPU MMU.
-- [Dao et al., "FlashAttention"](https://arxiv.org/abs/2205.14135) - the online-softmax tiling that the FlashAttention and FlashInfer paged backends inherit.
+- [Dao et al., "FlashAttention"](https://arxiv.org/abs/2205.14135) - the online-softmax tiling that paged attention kernels inherit.
 - [Ainslie et al., "GQA: Training Generalized Multi-Query Transformer Models"](https://arxiv.org/abs/2305.13245) - why modern models have 8 KV heads and what that does to KV bytes per token.
 - [Zhong et al., "DistServe"](https://arxiv.org/abs/2401.09670) and [Qin et al., "Mooncake"](https://arxiv.org/abs/2407.00079) - KV-centric disaggregation and fleet-level KV pooling, the bridge to Ch 7.
 - [[15-Technical-Whitepapers/03-Memory-Architecture-and-Concurrency/Ulrich-Drepper-Memory-Architecture|Drepper, What Every Programmer Should Know About Memory]] - the paging and TLB background that makes the OS analogy precise.
