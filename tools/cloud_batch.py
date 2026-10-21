@@ -291,11 +291,12 @@ def tools_for(cfg: PhaseConfig) -> list[dict]:
     return [{"type": "web_search_20260209", "name": "web_search", "max_uses": cfg.web_searches}]
 
 
-def build_params(phase: str, system: list[dict] | str, messages: list[dict], model: str = "") -> dict:
+def build_params(phase: str, system: list[dict] | str, messages: list[dict], model: str = "",
+                 max_tokens: int = 0) -> dict:
     cfg = PHASES[phase]
     params = {
         "model": model or cfg.model,
-        "max_tokens": cfg.max_tokens,
+        "max_tokens": max_tokens or cfg.max_tokens,
         "system": system,
         "messages": messages,
         "output_config": {"effort": cfg.effort},
@@ -309,25 +310,26 @@ def strip_frontmatter(text: str) -> str:
     return FRONTMATTER_RE.sub("", text, count=1).lstrip()
 
 
-def build_requests(phase: str, repo: Path, chapters: list[Chapter], todo: list[Chapter], model: str = "") -> list[dict]:
+def build_requests(phase: str, repo: Path, chapters: list[Chapter], todo: list[Chapter], model: str = "",
+                   max_tokens: int = 0) -> list[dict]:
     reqs = []
     month = date.today().strftime("%Y-%m")
     if phase == "draft":
         systems = {flag: draft_system(repo, chapters, flag) for flag in (False, True)}
         for ch in todo:
             reqs.append({"custom_id": f"draft-{ch.cid}", "params": build_params(
-                phase, systems[ch.is_appendix], [{"role": "user", "content": draft_user(ch, chapters)}], model)})
+                phase, systems[ch.is_appendix], [{"role": "user", "content": draft_user(ch, chapters)}], model, max_tokens)})
     elif phase == "verify":
         system = VERIFY_SYSTEM.format(month=month)
         for ch in todo:
             body = strip_frontmatter((repo / ch.path).read_text())
             reqs.append({"custom_id": f"verify-{ch.cid}", "params": build_params(
-                phase, system, [{"role": "user", "content": f"Fact-check this chapter.\n\n{body}"}], model)})
+                phase, system, [{"role": "user", "content": f"Fact-check this chapter.\n\n{body}"}], model, max_tokens)})
     elif phase == "cards":
         for ch in todo:
             body = strip_frontmatter((repo / ch.path).read_text())
             reqs.append({"custom_id": f"cards-{ch.cid}", "params": build_params(
-                phase, CARDS_SYSTEM, [{"role": "user", "content": body}], model)})
+                phase, CARDS_SYSTEM, [{"role": "user", "content": body}], model, max_tokens)})
     else:
         raise ValueError(f"unknown phase {phase}")
     return reqs
@@ -550,7 +552,7 @@ def cmd_submit(args, repo, chapters, state) -> int:
     if not todo:
         print(f"nothing ready for phase {args.phase}")
         return 0
-    reqs = build_requests(args.phase, repo, chapters, todo, args.model)
+    reqs = build_requests(args.phase, repo, chapters, todo, args.model, args.max_tokens)
     lo, hi = estimate(args.phase, reqs, state)
     committed = sum(b.get("estimate_high", 0.0) for b in state["batches"] if not b.get("collected"))
     print(f"{args.phase}: {len(reqs)} requests, est ${lo:.2f} - ${hi:.2f}; spent ${state['spent_usd']:.2f}, in flight up to ${committed:.2f}")
@@ -727,6 +729,8 @@ def main(argv: list[str] | None = None) -> int:
             p.add_argument("--phase", choices=list(PHASES), required=True)
             p.add_argument("--limit", type=int, default=0)
             p.add_argument("--model", choices=list(PRICES), default="", help="override the phase's default model")
+            p.add_argument("--max-tokens", type=int, default=0,
+                           help="override the phase's max_tokens, e.g. to retry a chapter that stopped at max_tokens")
             p.add_argument("--budget", type=float, default=100.0, help="USD cap for spent + in flight + this batch")
         if name == "collect":
             p.add_argument("--reprocess", default="", help="comma-separated collected batch ids to re-apply from stored results "

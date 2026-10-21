@@ -201,6 +201,14 @@ class RequestTest(unittest.TestCase):
             self.assertRegex(r["custom_id"], r"^[a-zA-Z0-9_-]{1,64}$")
             self.assertNotIn("thinking", r["params"])
 
+    def test_max_tokens_override_lifts_the_output_cap_for_a_retry(self):
+        # Sonnet 5.5 allows 128K output tokens, double the draft phase's 64K default.
+        repo = Repo(self)
+        default = cb.build_requests("draft", repo.root, repo.chapters, repo.chapters[:2], "claude-sonnet-5-5")
+        retry = cb.build_requests("draft", repo.root, repo.chapters, repo.chapters[:2], "claude-sonnet-5-5", 128000)
+        self.assertEqual({r["params"]["max_tokens"] for r in default}, {64000})
+        self.assertEqual({r["params"]["max_tokens"] for r in retry}, {128000})
+
     def test_cards_requests_have_no_tools(self):
         repo = Repo(self)
         repo.write(repo.chapters[1].path, cb.render_note(repo.chapters[1], "draft", FULL_BODY, []))
@@ -350,7 +358,7 @@ class CollectTest(unittest.TestCase):
         cb.client = lambda: api
         try:
             with contextlib.redirect_stdout(io.StringIO()):
-                cb.cmd_collect(Namespace(apply=True), self.repo.root, self.repo.chapters, self.state)
+                cb.cmd_collect(Namespace(apply=True, reprocess=""), self.repo.root, self.repo.chapters, self.state)
         finally:
             cb.client = orig
 
