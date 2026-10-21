@@ -2,14 +2,14 @@
 
 Frontmatter schema for knowledge notes (see CLAUDE.md):
     type: concept | pattern | problem | case-study | paper | playbook | moc
-    track: [sde, quant-dev, quant-research, low-latency, ai-eng, distinguished]
+    track: [sde, quant-dev, quant-research, low-latency, ai-eng, distinguished, cloud-ai]
     level: L3 | L4 | L5 | L6 | L7 | L8+   (blank until someone assigns it)
     status: seed | draft | solid | canonical
     last_reviewed: YYYY-MM-DD           (blank until someone reviews it)
     sources: [...]
 """
 
-ALL_TRACKS = ["sde", "quant-dev", "quant-research", "low-latency", "ai-eng", "distinguished"]
+ALL_TRACKS = ["sde", "quant-dev", "quant-research", "low-latency", "ai-eng", "distinguished", "cloud-ai"]
 
 # Top-level folder -> tracks its notes serve.
 TRACKS: dict[str, list[str]] = {
@@ -19,7 +19,7 @@ TRACKS: dict[str, list[str]] = {
     "03-Data-Structures-Algorithms": ["sde", "quant-dev"],
     "04-System-Design": ["sde", "distinguished"],
     "05-Quantitative-Finance": ["quant-dev", "quant-research"],
-    "06-Interview-Prep": ["sde", "quant-dev", "quant-research", "low-latency", "ai-eng"],
+    "06-Interview-Prep": ["sde", "quant-dev", "quant-research", "low-latency", "ai-eng", "cloud-ai"],
     "07-Project-Portfolio": ["sde"],
     "08-Distinguished-Engineering": ["distinguished"],
     "09-Engineering-Leadership": ["distinguished"],
@@ -30,6 +30,7 @@ TRACKS: dict[str, list[str]] = {
     "14-Low-Latency-Systems": ["low-latency", "quant-dev"],
     "15-Technical-Whitepapers": ["distinguished", "sde"],
     "16-Interview-Command-Center": ALL_TRACKS,
+    "17-Cloud-AI-Engineering": ["cloud-ai", "ai-eng", "sde", "distinguished"],
     "CS-Subjects": ["sde"],
 }
 
@@ -46,6 +47,7 @@ SCOPES: dict[str, str] = {
     "11-Security-And-Cryptography": "Security: common vulnerabilities and secure coding.",
     "12-Performance-Engineering": "Performance engineering: CPU architecture effects and profiling.",
     "13-Agentic-AI": "AI engineering: the Agentic AI Zero to Godhood curriculum.",
+    "17-Cloud-AI-Engineering": "Cloud AI engineering: the Cloud AI Engineering Zero to Godhood curriculum (AWS and Google Cloud).",
 }
 
 
