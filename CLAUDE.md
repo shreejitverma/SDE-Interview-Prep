@@ -17,7 +17,7 @@ Every knowledge note starts with this frontmatter (`tools/vault_schema.py`):
 
 ```yaml
 type: concept | pattern | problem | case-study | paper | playbook | moc
-track: [sde, quant-dev, quant-research, low-latency, ai-eng, distinguished]
+track: [sde, quant-dev, quant-research, low-latency, ai-eng, distinguished, cloud-ai]
 level: L3 | L4 | L5 | L6 | L7 | L8+   # blank until a human assigns it
 status: seed | draft | solid | canonical
 last_reviewed: YYYY-MM-DD             # blank until a human reviews it

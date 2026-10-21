@@ -1,6 +1,6 @@
 # Vault Audit
 
-Generated 2026-10-07 by `python3 tools/audit_vault.py` over git-tracked files.
+Generated 2026-10-20 by `python3 tools/audit_vault.py` over git-tracked files.
 Re-run the script after every structural change; this file is its output and should not be hand-edited.
 0 files in private locations (`tools/private_paths.py`) are excluded; `tools/audit_pii.py` inventories them into a private path.
 
@@ -8,9 +8,9 @@ Re-run the script after every structural change; this file is its output and sho
 
 | Check | Result |
 | :--- | ---: |
-| Tracked files | 16269 |
-| Markdown notes | 2027 |
-| Internal links checked | 14614 |
+| Tracked files | 16459 |
+| Markdown notes | 2194 |
+| Internal links checked | 14940 |
 | Broken links (links into private locations are not counted) | 0 |
 | Wikilink aliases that split a table cell | 0 |
 | Broken wikilinks fixable by unique basename | 0 |
@@ -31,11 +31,11 @@ Re-run the script after every structural change; this file is its output and sho
 | :--- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
 | `(root)` | 11 | 6 | 0 | 0 | 5 | 0.1 | 2026-10-07 |
 | `.github` | 1 | 0 | 0 | 0 | 1 | 0.0 | 2026-09-21 |
-| `.obsidian` | 45 | 0 | 0 | 0 | 45 | 0.0 | 2026-10-07 |
+| `.obsidian` | 45 | 0 | 0 | 0 | 45 | 0.0 | 2026-10-16 |
 | `00-Start-Here` | 6 | 5 | 0 | 0 | 1 | 0.0 | 2026-10-07 |
 | `01-CS-Foundations` | 507 | 262 | 141 | 0 | 104 | 4.7 | 2026-10-07 |
 | `02-Programming-Languages` | 5827 | 817 | 2860 | 466 | 1684 | 112.3 | 2026-10-07 |
-| `03-Data-Structures-Algorithms` | 8266 | 180 | 7966 | 0 | 120 | 17.3 | 2026-10-07 |
+| `03-Data-Structures-Algorithms` | 8293 | 185 | 7988 | 0 | 120 | 17.3 | 2026-10-07 |
 | `04-System-Design` | 991 | 177 | 657 | 0 | 157 | 9.7 | 2026-10-07 |
 | `05-Quantitative-Finance` | 9 | 2 | 7 | 0 | 0 | 0.0 | 2026-10-07 |
 | `06-Interview-Prep` | 13 | 12 | 0 | 0 | 1 | 0.2 | 2026-10-07 |
@@ -49,8 +49,9 @@ Re-run the script after every structural change; this file is its output and sho
 | `14-Low-Latency-Systems` | 262 | 262 | 0 | 0 | 0 | 1.7 | 2026-10-07 |
 | `15-Technical-Whitepapers` | 44 | 44 | 0 | 0 | 0 | 0.3 | 2026-09-21 |
 | `16-Interview-Command-Center` | 51 | 51 | 0 | 0 | 0 | 0.1 | 2026-10-07 |
+| `17-Cloud-AI-Engineering` | 162 | 162 | 0 | 0 | 0 | 0.3 |  |
 | `CS-Subjects` | 1 | 1 | 0 | 0 | 0 | 0.0 | 2026-09-21 |
-| `tools` | 17 | 1 | 14 | 0 | 2 | 0.1 | 2026-10-07 |
+| `tools` | 18 | 1 | 15 | 0 | 2 | 0.1 | 2026-10-07 |
 
 ## 2. Duplicate and overlapping sections
 
@@ -69,6 +70,7 @@ Re-run the script after every structural change; this file is its output and sho
 - **behavioral**: `04-System-Design/03-Design-Patterns/Behavioral`, `06-Interview-Prep/01-Behavioral`
 - **dev quant**: `05-Quantitative-Finance/02-Quant-Dev`, `16-Interview-Command-Center/01-Roles/Quant-Dev`
 - **interview**: `13-Agentic-AI/Agentic-Harness/interview`, `14-Low-Latency-Systems/Interview`
+- **appendice**: `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Appendices`, `17-Cloud-AI-Engineering/Appendices`
 
 ### Folder pairs sharing the most identical files
 
@@ -186,7 +188,7 @@ Folders carrying their own LICENSE, `.gitignore`, `package.json`, or similar; ou
 
 | Folder | Files | Last touched |
 | :--- | ---: | ---: |
-| `03-Data-Structures-Algorithms/02-Practice-Platforms/LeetCode` | 6432 | 2026-10-07 |
+| `03-Data-Structures-Algorithms/02-Practice-Platforms/LeetCode` | 6459 | 2026-10-07 |
 | `02-Programming-Languages/Python/python in depth` | 2030 | 2026-10-07 |
 | `04-System-Design/design-patterns-java` | 177 | 2026-09-21 |
 | `04-System-Design/design-questions` | 172 | 2026-09-21 |

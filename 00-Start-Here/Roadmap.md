@@ -121,6 +121,7 @@ The [review queue](Review-Queue.md) brings a note back after 7, 21, or 60 days, 
 | 14 | Exchange architecture through FPGAs | [Low-latency systems](<../14-Low-Latency-Systems/00 Home.md>) |
 | 15 | Reading notes on the papers the other folders cite | [Whitepapers](../15-Technical-Whitepapers/README.md) |
 | 16 | Role hubs, drills, and the local interview loop | [Command Center](../16-Interview-Command-Center/00-Dashboard.md) |
+| 17 | Cloud and AI infrastructure on AWS and Google Cloud, from the hardware up | [Cloud AI engineering](../17-Cloud-AI-Engineering/README.md) |
 
 Private application data is not in this repository.
 The Command Center links that point at companies, pipeline, and retrospectives resolve only in a local checkout that has those folders.
