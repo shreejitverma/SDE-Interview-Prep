@@ -145,6 +145,30 @@ class CostTest(unittest.TestCase):
         self.assertLessEqual(lo, hi)
 
 
+class PilotLearningsTest(unittest.TestCase):
+    def test_sources_fall_back_to_further_reading_links(self):
+        body = ("# T\n\n## Internals\n\n[not this](https://x.example)\n\n## Further Reading\n\n"
+                "- [Paper](https://a.example/p.pdf) - why.\n- [Docs](https://b.example/d) - why.\n- [Paper](https://a.example/p.pdf)\n")
+        self.assertEqual(cb.further_reading_urls(body), ["https://a.example/p.pdf", "https://b.example/d"])
+        self.assertEqual(cb.further_reading_urls("# T\n\n## TL;DR\n"), [])
+
+    def test_estimate_uses_measured_cost_for_the_same_model_only(self):
+        repo = Repo(self)
+        state = {"batches": [{"phase": "draft", "model": "claude-opus-5-5", "collected": True, "actual_usd": 2.4,
+                              "custom_ids": {"a": "", "b": "", "c": ""}}]}
+        opus = cb.build_requests("draft", repo.root, repo.chapters, repo.chapters[:2])
+        lo, hi = cb.estimate("draft", opus, state)
+        self.assertAlmostEqual(lo, 0.75 * 0.8 * 2)
+        self.assertAlmostEqual(hi, 1.25 * 0.8 * 2)
+        sonnet = cb.build_requests("draft", repo.root, repo.chapters, repo.chapters[:2], "claude-sonnet-5-5")
+        self.assertEqual(sonnet[0]["params"]["model"], "claude-sonnet-5-5")
+        self.assertNotAlmostEqual(cb.estimate("draft", sonnet, state)[1], hi)
+
+    def test_only_filter_accepts_several_volumes(self):
+        chs = cb.parse_summary(SUMMARY)
+        self.assertEqual([c.cid for c in chs if cb.matches(c, "Volume_13, Appendices")], ["v13c01", "appA"])
+
+
 class RequestTest(unittest.TestCase):
     def test_draft_requests_share_a_cached_system_prefix(self):
         repo = Repo(self)

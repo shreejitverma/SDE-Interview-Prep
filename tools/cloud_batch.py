@@ -294,10 +294,10 @@ def tools_for(cfg: PhaseConfig) -> list[dict]:
     return [{"type": "web_search_20260209", "name": "web_search", "max_uses": cfg.web_searches}]
 
 
-def build_params(phase: str, system: list[dict] | str, messages: list[dict]) -> dict:
+def build_params(phase: str, system: list[dict] | str, messages: list[dict], model: str = "") -> dict:
     cfg = PHASES[phase]
     params = {
-        "model": cfg.model,
+        "model": model or cfg.model,
         "max_tokens": cfg.max_tokens,
         "system": system,
         "messages": messages,
@@ -312,25 +312,25 @@ def strip_frontmatter(text: str) -> str:
     return FRONTMATTER_RE.sub("", text, count=1).lstrip()
 
 
-def build_requests(phase: str, repo: Path, chapters: list[Chapter], todo: list[Chapter]) -> list[dict]:
+def build_requests(phase: str, repo: Path, chapters: list[Chapter], todo: list[Chapter], model: str = "") -> list[dict]:
     reqs = []
     month = date.today().strftime("%Y-%m")
     if phase == "draft":
         systems = {flag: draft_system(repo, chapters, flag) for flag in (False, True)}
         for ch in todo:
             reqs.append({"custom_id": f"draft-{ch.cid}", "params": build_params(
-                phase, systems[ch.is_appendix], [{"role": "user", "content": draft_user(ch, chapters)}])})
+                phase, systems[ch.is_appendix], [{"role": "user", "content": draft_user(ch, chapters)}], model)})
     elif phase == "verify":
         system = VERIFY_SYSTEM.format(month=month)
         for ch in todo:
             body = strip_frontmatter((repo / ch.path).read_text())
             reqs.append({"custom_id": f"verify-{ch.cid}", "params": build_params(
-                phase, system, [{"role": "user", "content": f"Fact-check this chapter.\n\n{body}"}])})
+                phase, system, [{"role": "user", "content": f"Fact-check this chapter.\n\n{body}"}], model)})
     elif phase == "cards":
         for ch in todo:
             body = strip_frontmatter((repo / ch.path).read_text())
             reqs.append({"custom_id": f"cards-{ch.cid}", "params": build_params(
-                phase, CARDS_SYSTEM, [{"role": "user", "content": body}])})
+                phase, CARDS_SYSTEM, [{"role": "user", "content": body}], model)})
     else:
         raise ValueError(f"unknown phase {phase}")
     return reqs
@@ -350,6 +350,15 @@ def cited_urls(message: dict) -> list[str]:
             if (u := c.get("url")) and u not in urls:
                 urls.append(u)
     return urls
+
+
+URL_RE = re.compile(r"\]\((https?://[^)\s]+)\)")
+
+
+def further_reading_urls(body: str) -> list[str]:
+    """URLs linked under the Further Reading heading (web search with dynamic filtering returns no citations)."""
+    m = re.search(r"^## Further Reading\s*$(.*?)(?=^## |\Z)", body, re.M | re.S)
+    return list(dict.fromkeys(URL_RE.findall(m[1]))) if m else []
 
 
 def extract_note(text: str, title: str) -> tuple[str, str]:
@@ -406,9 +415,16 @@ def usage_cost(model: str, usage: dict) -> float:
     return cost + searches * WEB_SEARCH_USD
 
 
-def estimate(phase: str, reqs: list[dict]) -> tuple[float, float]:
+def estimate(phase: str, reqs: list[dict], state: dict | None = None) -> tuple[float, float]:
+    """Cost range for reqs: measured per-request average (+-25%) once a batch of this phase is collected."""
+    model = reqs[0]["params"]["model"] if reqs else PHASES[phase].model
+    measured = [b for b in (state or {}).get("batches", [])
+                if b["phase"] == phase and b.get("model", PHASES[phase].model) == model and b.get("collected") and b.get("actual_usd")]
+    if measured:
+        avg = sum(b["actual_usd"] for b in measured) / sum(len(b["custom_ids"]) for b in measured)
+        return 0.75 * avg * len(reqs), 1.25 * avg * len(reqs)
     cfg = PHASES[phase]
-    pin, pout = PRICES[cfg.model]
+    pin, pout = PRICES[model]
     lo = hi = 0.0
     for r in reqs:
         prompt = len(json.dumps(r["params"]["system"])) // 4 + len(json.dumps(r["params"]["messages"])) // 4
@@ -501,15 +517,19 @@ def to_dict(obj) -> dict:
 # ---------------------------------------------------------------- commands
 
 
+def matches(ch: Chapter, only: str) -> bool:
+    return any(part.strip() and part.strip() in ch.path for part in only.split(","))
+
+
 def cmd_plan(args, repo, chapters, state) -> int:
     print(f"{len(chapters)} chapters in SUMMARY.md; spent so far ${state['spent_usd']:.2f}")
     total_lo = total_hi = 0.0
     for phase in PHASES:
         todo = select(phase, repo, chapters, state)
         if args.only:
-            todo = [c for c in todo if args.only in c.path]
+            todo = [c for c in todo if matches(c, args.only)]
         reqs = build_requests(phase, repo, chapters, todo) if todo else []
-        lo, hi = estimate(phase, reqs)
+        lo, hi = estimate(phase, reqs, state)
         total_lo, total_hi = total_lo + lo, total_hi + hi
         print(f"{phase:7s} {len(todo):4d} ready  model={PHASES[phase].model:18s} est ${lo:6.2f} - ${hi:6.2f}")
     print(f"total   est ${total_lo:.2f} - ${total_hi:.2f} (heuristic; `collect` records the real spend)")
@@ -520,14 +540,14 @@ def cmd_plan(args, repo, chapters, state) -> int:
 def cmd_submit(args, repo, chapters, state) -> int:
     todo = select(args.phase, repo, chapters, state)
     if args.only:
-        todo = [c for c in todo if args.only in c.path]
+        todo = [c for c in todo if matches(c, args.only)]
     if args.limit:
         todo = todo[: args.limit]
     if not todo:
         print(f"nothing ready for phase {args.phase}")
         return 0
-    reqs = build_requests(args.phase, repo, chapters, todo)
-    lo, hi = estimate(args.phase, reqs)
+    reqs = build_requests(args.phase, repo, chapters, todo, args.model)
+    lo, hi = estimate(args.phase, reqs, state)
     committed = sum(b.get("estimate_high", 0.0) for b in state["batches"] if not b.get("collected"))
     print(f"{args.phase}: {len(reqs)} requests, est ${lo:.2f} - ${hi:.2f}; spent ${state['spent_usd']:.2f}, in flight up to ${committed:.2f}")
     for ch in todo[:10]:
@@ -542,7 +562,7 @@ def cmd_submit(args, repo, chapters, state) -> int:
         return 0
     batch = client().messages.batches.create(requests=reqs)
     state["batches"].append({
-        "id": batch.id, "phase": args.phase, "created": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "id": batch.id, "phase": args.phase, "model": reqs[0]["params"]["model"], "created": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "custom_ids": {r["custom_id"]: ch.path for r, ch in zip(reqs, todo, strict=True)},
         "estimate_high": round(hi, 2), "collected": False,
     })
@@ -605,7 +625,7 @@ def apply_result(phase: str, ch: Chapter, message: dict, repo: Path, state: dict
         if note_status(path) not in ("missing", "seed"):
             report.append(f"- {ch.cid} {ch.title}: skipped, file changed to a non-seed note meanwhile")
             return cost
-        sources = cited_urls(message)[:30]
+        sources = list(dict.fromkeys(cited_urls(message) + further_reading_urls(body)))[:30]
         note = render_note(ch, "draft", body, sources)
         unverified = len(re.findall(r"^- (?!none)", tail.split("-->", 1)[-1], re.M))
         report.append(f"- {ch.cid} {ch.title}: {len(body.splitlines())} lines, {len(sources)} cited sources, "
@@ -626,7 +646,7 @@ def apply_result(phase: str, ch: Chapter, message: dict, repo: Path, state: dict
         unresolved = int(m[1]) if m else -1
         status = "solid" if unresolved == 0 and not gaps else "draft"
         old_sources = re.findall(r'^\s+-\s+"([^"]+)"', FRONTMATTER_RE.match(old)[1], re.M) if FRONTMATTER_RE.match(old) else []
-        sources = list(dict.fromkeys(old_sources + cited_urls(message)))[:40]
+        sources = list(dict.fromkeys(old_sources + cited_urls(message) + further_reading_urls(body)))[:40]
         note = render_note(ch, status, body, sources)
         corrections = len(re.findall(r"^- CORRECTED:", tail, re.M))
         report.append(f"- {ch.cid} {ch.title}: {corrections} corrections, unresolved {unresolved}, status {status}")
@@ -696,10 +716,11 @@ def main(argv: list[str] | None = None) -> int:
     for name in ("plan", "submit", "status", "collect"):
         p = sub.add_parser(name)
         p.add_argument("--apply", action="store_true")
-        p.add_argument("--only", default="", help="substring filter on chapter paths, e.g. Volume_10")
+        p.add_argument("--only", default="", help="comma-separated substrings of chapter paths, e.g. Volume_10,Volume_11")
         if name == "submit":
             p.add_argument("--phase", choices=list(PHASES), required=True)
             p.add_argument("--limit", type=int, default=0)
+            p.add_argument("--model", choices=list(PRICES), default="", help="override the phase's default model")
             p.add_argument("--budget", type=float, default=100.0, help="USD cap for spent + in flight + this batch")
     args = ap.parse_args(argv)
     repo = args.repo.resolve()
