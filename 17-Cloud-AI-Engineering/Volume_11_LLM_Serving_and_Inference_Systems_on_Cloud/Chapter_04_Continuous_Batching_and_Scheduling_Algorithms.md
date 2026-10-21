@@ -393,7 +393,7 @@ What the runs show (simulator output, this chapter):
 | Load 8 / 16 / 24 req/s | TTFT p50 47 ms / 88 ms / 8.8 s; TPOT p50 16 / 31 / 50 ms | Capacity is ~22 req/s; past it TTFT grows without bound while TPOT flattens at the budget-bound step time |
 | Long prompts, unchunked | TPOT p99 46.2 ms, TTFT p50 53 ms | A 16k prefill in one step stalls every decode in the batch |
 | Long prompts, chunked budget 512 | TPOT p99 20.1 ms, TTFT p50 79 ms, p99 1.48 s | Stall-free decodes, paid for in TTFT |
-| KV 8 GB, max_seqs 256 | 459 preemptions, 2,476 output tok/s | Overcommit causes recompute churn |
+| KV 8 GB, max_seqs 256 | 277 preemptions, 2,537 output tok/s | Overcommit causes recompute churn |
 | KV 8 GB, max_seqs 48 | 0 preemptions, 2,636 output tok/s, TPOT p99 18.2 ms | Capping concurrency at KV capacity (61k tokens / 1,280 = 48) beats preemption |
 | Priority vs FCFS at 22 req/s | High-class TTFT p50 5.4 s -> 117 ms; low class 5.5 s -> 8.4 s | Priority moves queueing delay to the low class but adds no capacity |
 
@@ -609,7 +609,7 @@ A vLLM deployment meets its TPOT SLO most of the time, but p99 TPOT spikes to 3-
 
 Flat 100% utilization tells me nothing, so I go to engine metrics and the request log.
 First hypothesis: long prompts creating compute-bound iterations.
-I correlate TPOT spikes with arrivals of large-prompt requests, and check whether chunked prefill is effectively disabled or the token budget is far above the balanced point. For an 8B model with 256 decodes on H100, roughly 400 extra prefill tokens per step are free, and a budget of 8k makes those steps about 3x longer.
+I correlate TPOT spikes with arrivals of large-prompt requests, and check whether chunked prefill is effectively disabled or the token budget is far above the balanced point. For an 8B model with 256 decodes on H100, roughly 400 extra prefill tokens per step are free, and a budget of 8k (8,192 x 2 x 8.03e9 / 4.945e14 FLOP/s ≈ 266 ms against a 21.8 ms decode step) makes those steps roughly 12x longer.
 Second hypothesis: preemption.
 If `num_preemptions` increments at the spike times, those are recompute bursts. The fix is to lower `max_num_seqs` or reserve headroom, not to change the budget.
 Third hypothesis: host-side stalls such as grammar compilation, detokenization of huge outputs, or Python GC. These show up as gaps between GPU kernels in an Nsight or PyTorch profiler trace.

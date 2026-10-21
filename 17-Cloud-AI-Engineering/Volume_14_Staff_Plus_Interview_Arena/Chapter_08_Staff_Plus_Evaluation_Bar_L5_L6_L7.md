@@ -509,7 +509,7 @@ During last week's brownout, a downstream embedding service lost 60 percent of i
 The 30-second capacity loss was the trigger, and the 20 minutes are the sustaining effect, which is the signature of a metastable failure.
 Two mechanisms explain it.
 First, the embedding service queues FIFO and cannot see client timeouts, so once its queueing delay passed the client timeout, it spent all its capacity on requests nobody was waiting for, and goodput dropped close to zero even though utilization stayed at 100 percent.
-Second, every timed-out request came back as a retry, and if the gateway, the retrieval service, and the SDK each retry, load multiplies at every layer; in my simulation, four attempts at a single layer is enough to hold offered load at 4x capacity indefinitely.
+Second, every timed-out request came back as a retry, and if the gateway, the retrieval service, and the SDK each retry, load multiplies at every layer; in my simulation, four attempts at a single layer is enough to hold offered load at 3.2x capacity indefinitely (3,201 rps vs 1,000 capacity).
 The fix comes in layers.
 On the server side, I drop requests whose propagated deadline has already passed before doing any work, and under backlog I consider serving newest-first.
 On the client side, I retry at exactly one layer, use capped exponential backoff with full jitter, and enforce a retry budget, for example retries limited to 10 percent of first attempts through a token bucket.
@@ -575,7 +575,7 @@ The difference that matters is HBM capacity.
 The v6e-8 slice has 256 GB of HBM against 640 GB, so after weights it fits about 326 sequences instead of about 1,029, and the fleet needs 9 replicas instead of 4.
 More, smaller replicas have both costs and benefits.
 On cost, there are more units to reserve, more rollout steps, and a lower ceiling on context length per replica.
-On benefit, the granularity is finer, so three-zone static stability needs 15 replicas, a 1.67x overhead in units, while H100 needs 6, a 1.5x overhead, and the hourly totals end up close at about $324 and $330.
+On benefit, the granularity is finer, though three-zone static stability against one-zone loss requires each surviving pair of zones to carry the load: ceil(9/2)=5 per zone gives 15 TPU replicas (1.67x overhead), whereas ceil(4/2)=2 per zone gives 6 H100 replicas (1.5x overhead), keeping hourly totals close at about $324 and $330.
 Commitments change the picture: at about $1.89 per chip-hour on a 1-year term, the v6e fleet falls to about $227 per hour if utilization of committed capacity stays above 70 percent.
 The non-price factors usually decide it.
 Those are engine maturity and kernel coverage for our model on each platform, where capacity actually exists in the zones we need, the team's operational experience, and lock-in, since a TPU path generally implies JAX- or XLA-based serving.

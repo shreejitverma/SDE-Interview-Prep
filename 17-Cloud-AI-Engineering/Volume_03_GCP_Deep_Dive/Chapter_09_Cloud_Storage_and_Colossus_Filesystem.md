@@ -177,7 +177,7 @@ Google does not publish how its replication scheduler prioritizes work. Any assu
 | SLA, Standard regional and Rapid zonal | 99.9% | (Google Cloud docs, as of 2026-10) |
 | Minimum storage duration | Nearline 30 d, Coldline 90 d, Archive 365 d | (Google Cloud docs, as of 2026-10) |
 | Standard storage price, us-central1 regional | $0.020 per GB-month | (Google Cloud pricing via nOps and CloudZero, as of 2026-10) |
-| Standard storage price, dual-region | $0.022 per GB-month per regional SKU, billed against both regions | (Google Cloud pricing, as of 2026-10) |
+| Standard storage price, dual-region | $0.022 per GB-month (single dual-region SKU) | (Google Cloud pricing, as of 2026-10) |
 | Standard storage price, US multi-region | $0.026 per GB-month | (nOps, as of 2026-10) |
 | Inter-region replication, default, NA and EU | $0.02 per GiB written | (CloudZero summary of Google pricing, as of 2026-10) |
 | Class B operations, Standard | $0.004 per 10,000 | (nOps summary of Google pricing, as of 2026-10) |

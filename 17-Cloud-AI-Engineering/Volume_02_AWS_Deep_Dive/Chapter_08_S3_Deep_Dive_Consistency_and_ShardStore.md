@@ -660,7 +660,7 @@ The principal-level answer is to shard on Standard for the durable copy, and to 
 
 A 70B-parameter model with mixed-precision Adam state is about 16 bytes/param, so 1.12 TB per full checkpoint.
 
-With 64 MiB multipart parts that is about 16,700 PUTs, roughly $0.08 in request charges on Standard and well within one partition's write budget if parts spread across keys.
+With 64 MiB multipart parts that is about 16,700 PUTs (sharded across at least 2 object keys, or using 128 MiB parts to respect S3's 10,000-part limit per object), roughly $0.08 in request charges on Standard and well within one partition's write budget if parts spread across keys.
 
 On Express, PUT charges are trivial ($0.02), but the per-GB upload charge for bytes beyond 512 KB adds about 1,120 x $0.0032 = $3.58 per checkpoint.
 

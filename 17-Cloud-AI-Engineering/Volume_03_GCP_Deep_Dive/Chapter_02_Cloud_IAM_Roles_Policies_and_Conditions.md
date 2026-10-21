@@ -448,7 +448,7 @@ set -euo pipefail
 SA="iam-lab-sa"
 SA_EMAIL="${SA}@${PROJECT_ID}.iam.gserviceaccount.com"
 ATTACH="cloudresourcemanager.googleapis.com/projects/${PROJECT_ID}"
-EXPIRY="$(date -u -d '+2 hours' +%Y-%m-%dT%H:%M:%SZ)"
+EXPIRY="$(date -u -d '+2 hours' +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || date -u -v+2H +%Y-%m-%dT%H:%M:%SZ)"
 
 # 0. Budget alarm at 50 and 100 percent of 5 USD for this project
 gcloud billing budgets create \
@@ -486,7 +486,7 @@ gcloud iam policies create deny-sa-keys \
   --kind=denypolicies \
   --policy-file=/tmp/deny-sa-keys.json
 
-# 4. Verify: retry until the deny propagates (expect PERMISSION_DENIED)
+# 4. Verify: retry until the deny propagates (expect PERMISSION_DENIED caused by deny policy)
 for i in $(seq 1 20); do
   if gcloud iam service-accounts keys create /tmp/should-not-exist.json \
        --iam-account="${SA_EMAIL}" --project="${PROJECT_ID}" 2>/tmp/err.txt; then
@@ -497,7 +497,11 @@ for i in $(seq 1 20); do
     rm -f /tmp/should-not-exist.json
     sleep 30
   else
-    echo "attempt ${i}: denied as expected"; grep -i denied /tmp/err.txt || true; break
+    if grep -iqE "deny|denypolicies" /tmp/err.txt; then
+      echo "attempt ${i}: denied by deny policy as expected"; break
+    else
+      echo "attempt ${i}: call failed for non-deny cause (e.g. org policy or missing role)"; cat /tmp/err.txt; break
+    fi
   fi
 done
 
@@ -522,7 +526,7 @@ Scenario: an AI platform organization with 3,000 projects, 180 teams, three envi
 1. Allow policy sizing: give each team one reader group and one writer group per environment folder, which uses 360 group slots per folder policy.
 2. That exceeds the 250 domain-and-group limit per allow policy (Google Cloud docs, as of 2026-10), so either split each environment into two sub-folders of 90 teams (180 groups each, 70 slots of headroom) or move writer grants down to team-owned projects.
 3. Deny sizing: an org-level guardrail set of 40 rules uses 8 percent of the 500 deny-rule budget per resource, and principal usage is tiny because each rule names `public:all` plus one or two exception groups.
-4. Condition budget: a bucket-prefix allowlist costs one `||` per prefix plus one for the `resource.type` guard, so at most 11 prefixes fit under 12 operators. Beyond that, move data into fewer buckets or use tags instead of name prefixes.
+4. Condition budget: a bucket-prefix allowlist costs one `||` per prefix plus one for the `resource.type` guard, so at most 12 prefixes fit under 12 operators (or 11 if one operator is reserved for future guards). Beyond that, move data into fewer buckets or use tags instead of name prefixes.
 5. Key risk sizing: with no expiry, a key's exposure window is unbounded. With a 90-day expiry constraint, each key is usable for at most 2,160 hours, so the fleet's total exposure is bounded at 2,000 x 2,160 = 4.32 million key-hours per quarter. Federating 80 percent of those workloads cuts the bound to 864,000 key-hours, a 5x reduction before counting detection.
 6. Direct IAM cost is effectively 0 USD (UNVERIFIED). The real cost driver is Data Access audit logging: at 50 million authorized calls per day and about 1.5 KB per entry, ingestion is about 75 GB per day, so multiply by the current Cloud Logging per-GiB ingestion price and use log exclusions for high-volume read paths that do not need auditing (price UNVERIFIED in this session).
 
@@ -537,7 +541,7 @@ Scenario: an AI platform organization with 3,000 projects, 180 teams, three envi
 ### Condition semantics
 
 - An inherited `resource.name` condition at project or folder level grants nothing on resource types that do not expose a name, and the team responds by widening the role instead of adding a `resource.type` guard.
-- A guard with the wrong polarity, `resource.type != X || name check`, grants the whole role on every type except X, which is far broader than intended.
+- A guard with reversed logic or wrong boolean operators (for example writing `resource.type == X || name check`, or applying `resource.type == X && name check` to a multi-service role) inadvertently grants the whole role on all other resource types or blocks all other operations.
 - A deny condition written on a non-tag attribute cannot be evaluated, so it applies unconditionally and turns a narrow guardrail into an org-wide outage for every listed principal.
 - Tag-based deny conditions depend on tag bindings, so whoever can bind or unbind tags (`resourcemanager.tagUser`) can switch the deny on or off. Tag administration is therefore part of your trusted computing base.
 

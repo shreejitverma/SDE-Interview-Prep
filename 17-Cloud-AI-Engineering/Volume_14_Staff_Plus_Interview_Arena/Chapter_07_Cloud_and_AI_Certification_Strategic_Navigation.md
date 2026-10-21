@@ -27,7 +27,7 @@ sources:
 ## TL;DR
 
 A certification shows you cleared a minimum-competence cut on one versioned blueprint, under a compensatory scoring model; it does not show depth in any single domain.
-Plan from the exam guide's domain weights, not from service lists: SAP-C02 is 26/29/25/20 across four domains, and MLA-C01 is 28/26/22/24 (AWS docs, as of 2026-10).
+Plan from the exam guide's domain weights, not from service lists: SAP-C02 is 26/29/25/20 across four domains, and MLA-C01 is 28/26/22/24 (verify MLA-C02 before planning; AWS docs, as of 2026-10).
 The AWS ML track changed underneath most study plans: MLS-C01 had its last test day on 2026-03-31, and AWS's AI coverage now runs through the ML Engineer Associate and the Generative AI Developer - Professional (AIP-C01) (third-party reports, as of 2026-10).
 Google's blueprints change through guide versions and product renames: the PCA guide is v6.1 with four published case studies, and the current PMLE guide names "Gemini Enterprise Agent Platform" products (Google Cloud docs, as of 2026-10).
 The real cost of a credential is study hours times the probability of a retake, not the $200-$300 fee, so size your preparation with a pass-probability model and a safety margin of about two standard errors.
@@ -181,7 +181,7 @@ A candidate who knows why Aurora uses a 4-of-6 write quorum can eliminate a whol
 | AWS score scale and cut (Professional, Specialty) | 100-1,000 scaled, pass at 750, compensatory | (third-party reports citing AWS exam guides, as of 2026-10) |
 | AWS multiple-response scoring | all correct selections required; no guessing penalty | (AWS docs, as of 2026-10) |
 | MLS-C01 status | last test day 2026-03-31; existing credentials valid 3 years from pass | (third-party reports, as of 2026-10) |
-| MLA-C01 domain weights | 28% / 26% / 22% / 24% | (AWS docs, guide v1.0, as of 2026-10) |
+| MLA-C01 domain weights | 28% / 26% / 22% / 24% (verify MLA-C02 before planning) | (AWS docs, guide v1.0, as of 2026-10) |
 | MLA-C01 to MLA-C02 cutover | English MLA-C01 last day reported 2026-09-28 | (third-party report, as of 2026-10; UNVERIFIED) |
 | AIP-C01 target candidate | 2+ years production apps, 1 year hands-on GenAI | (AWS docs, as of 2026-10) |
 | AIP-C01 format | 75 items, 180 min; 65 scored per AWS guide | (third-party report and AWS docs, as of 2026-10) |

@@ -844,8 +844,8 @@ Both are at-least-once, unordered routers, but they differ in five ways.
 - **Cost.** SNS-to-SQS delivery is free on top of the publish, while EventBridge charges per custom event published and per bus-to-bus hop.
   At billions of events per month, that difference is real money.
 - **Throughput and quotas.** EventBridge `PutEvents` and invocation quotas are per account-region and shared by every team in that account.
-- **Operations.** EventBridge has archive and replay, a schema registry, cross-account bus routing, and global endpoints.
-  SNS has none of those, but it does have FIFO topics for ordered fan-out into FIFO queues.
+- **Operations.** EventBridge provides native archive and replay on all buses, a schema registry, cross-account bus routing, and global endpoints with automatic failover.
+  Standard SNS topics lack built-in archiving and schema registries (though SNS FIFO topics added message archiving and replay in 2023), but SNS provides predictable single-digit millisecond latency and ordered FIFO fan-out into SQS FIFO queues.
 
 My default is EventBridge for low-to-medium-volume domain events crossing team or account boundaries, where decoupling and replay matter.
 I choose SNS plus SQS for high-volume, latency-sensitive fan-out inside one domain, and whenever ordering is required.

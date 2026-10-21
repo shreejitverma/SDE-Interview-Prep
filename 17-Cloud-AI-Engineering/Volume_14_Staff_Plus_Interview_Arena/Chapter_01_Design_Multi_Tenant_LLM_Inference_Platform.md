@@ -702,7 +702,7 @@ You run the same model in three regions, GPU capacity is scarce and takes weeks 
 #### Model Answer
 
 Naive static stability says each region carries half of global peak, so three regions cost 1.5x steady-state capacity: 24 nodes instead of about 15 in my worked example.
-At hundreds of dollars per node-hour, that is a seven-figure annual decision, and it ignores the fact that tiers have different promises.
+At tens of dollars per node-hour (around $55/node-hr, adding 9 nodes is a $4.3M annual decision), that is a seven-figure commitment, and it ignores the fact that tiers have different promises.
 I would make survivability tier-aware: Priority and Standard (60% of traffic in the example) must survive a region loss, and Flex and batch are explicitly shed or deferred.
 With that, each region needs `max(peak/3, 0.6 x peak/2)` and the fleet stays at 15 nodes.
 The shed policy must be pre-computed and pushed to the front door as static weights, not decided during the incident by a control plane that might be impaired.

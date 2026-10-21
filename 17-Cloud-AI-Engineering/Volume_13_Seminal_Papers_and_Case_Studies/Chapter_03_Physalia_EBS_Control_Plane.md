@@ -452,7 +452,7 @@ All inputs below are illustrative assumptions, not published EBS figures.
 5. Failure burst: a row-level event forces failover on 5% of volumes, so 50,000 volumes.
 6. Each failover takes two conditional writes (claim primacy, then register the new replica), so 100,000 transactions.
 7. Each transaction is accepted by 7 nodes, so 700,000 acceptor operations, or 350 per node across 2,000 nodes.
-8. At an assumed 2,000 durable accepts per second per node, the burst clears in about 0.2 seconds of acceptor work, spread across 100,000 independent leaders.
+8. At an assumed 2,000 durable accepts per second per node, the burst clears in about 0.2 seconds of acceptor work, spread across 50,000 independent cell leaders (covering the 50,000 volumes with one cell each, executing 100,000 total transactions).
 9. Compare a single monolithic leader at an assumed 10,000 transactions per second with batching. The same burst takes 10 seconds of serialised work.
 10. Retries make the monolithic case worse. If storage servers time out after 1 second and retry, the offered load multiplies during those 10 seconds, which is the 2011 mechanism. See [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_03_Resilient_Communication_Retries_Jitter_and_Circuit_Breakers|Retries, Jitter, and Circuit Breakers]].
 11. The scaling unit is the number of independent consensus groups, not the size of any one leader. Aggregate failover capacity grows with the number of cells and nodes.

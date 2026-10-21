@@ -279,6 +279,7 @@ Answers that have no checker remain human attestations and are labeled as such.
 ### Step 3: Google-side evidence harvest (read-only)
 
 ```bash
+PROJECT=$(gcloud config get-value project)
 # Snapshot resource inventory as the review baseline (writes to your BigQuery dataset)
 gcloud asset export --project="$PROJECT" --content-type=resource \
   --bigquery-dataset="projects/$PROJECT/datasets/waf_baseline" \
@@ -323,6 +324,8 @@ Using an assumed 40 USD per node-hour (placeholder, substitute the current price
 ### Teardown
 
 ```bash
+WID=${WID:-$(aws wellarchitected list-workloads --region us-east-1 --query "WorkloadSummaries[?WorkloadName=='waf-lab-inference-gateway'].WorkloadId" --output text)}
+PROJECT=${PROJECT:-$(gcloud config get-value project)}
 aws wellarchitected delete-workload --workload-id "$WID" --region us-east-1
 aws budgets delete-budget --account-id "$ACCT" --budget-name waf-lab-guard
 bq rm -r -f -d "$PROJECT:waf_baseline"
@@ -433,7 +436,7 @@ How would you keep the control catalog from collapsing to the lowest common deno
 
 ### Question 3 (L6 - Staff)
 
-You own governance for 300 workloads. Design the review cadence so it does not become a checkbox exercise and does not consume the platform team.
+You own governance for 120 workloads. Design the review cadence so it does not become a checkbox exercise and does not consume the platform team.
 
 #### Model Answer
 

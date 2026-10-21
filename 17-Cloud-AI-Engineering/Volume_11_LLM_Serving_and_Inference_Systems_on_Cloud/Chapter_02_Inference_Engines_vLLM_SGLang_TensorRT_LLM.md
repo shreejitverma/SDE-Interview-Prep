@@ -1,24 +1,10 @@
 ---
 type: concept
-track: [cloud-ai, ai-eng, sde, distinguished]
+track: [cloud-ai, ai-eng]
 level:
 status: draft
 last_reviewed:
-sources: 
-  - "https://arxiv.org/abs/2309.06180"
-  - "https://arxiv.org/abs/2312.07104"
-  - "https://www.usenix.org/conference/osdi22/presentation/yu"
-  - "https://www.usenix.org/conference/osdi24/presentation/agrawal"
-  - "https://arxiv.org/abs/2405.04437"
-  - "https://arxiv.org/abs/2501.01005"
-  - "https://vllm.ai/blog/2025-01-27-v1-alpha-release"
-  - "https://docs.vllm.ai/en/latest/design/arch_overview/"
-  - "https://docs.vllm.ai/en/stable/design/prefix_caching/"
-  - "https://nvidia.github.io/TensorRT-LLM/features/paged-attention-ifb-scheduler.html"
-  - "https://nvidia.github.io/TensorRT-LLM/reference/memory.html"
-  - "https://nvidia.github.io/TensorRT-LLM/latest/legacy/tensorrt-backend-removal.html"
-  - "https://github.com/NVIDIA/TensorRT-LLM/releases/tag/v1.0.0"
-  - "https://github.com/zhaochenyang20/Awesome-ML-SYS-Tutorial/blob/main/sglang/scheduler/readme-en.md"
+sources: []
 ---
 
 # Inference Engines: vLLM, SGLang, and TensorRT-LLM
@@ -83,7 +69,7 @@ A decode is a request that needs 1 token.
 A chunked prefill is a request that is granted fewer tokens than it is missing.
 A prefix cache hit just moves `num_computed_tokens` forward before the first step.
 Speculative decoding is a request that is granted 1 + k tokens to verify.
-Because of this, vLLM can mix prefills and decodes in one step, and it schedules running (decode) requests ahead of waiting ones to protect inter-token latency (vLLM V1 blog, 2025-01).
+Because of this, vLLM can mix prefills and decodes in one step, and with chunked prefill enabled it schedules all pending decode requests before any prefill to protect inter-token latency (vLLM optimization and tuning docs, as of 2026-10).
 With tensor parallelism, the engine core sends one compact scheduler output to every worker, and each worker keeps a persistent batch: input tensors are cached on the GPU side and only diffs are applied each step, so per-step host-to-device traffic is small (vLLM V1 blog, 2025-01).
 
 ### vLLM block identity: the hash chain
@@ -115,13 +101,15 @@ RadixAttention keeps KV for finished requests in a radix tree keyed by token seq
 On insert, the tree splits an edge where a new sequence diverges, so sharing is found at token granularity rather than block granularity, subject to the configured page size (default page size UNVERIFIED).
 Eviction is LRU over leaves only. A shared ancestor such as a system prompt cannot be evicted while any descendant is still cached, which protects hot prefixes from being evicted by long-tail traffic (SGLang paper, NeurIPS 2024).
 Reference counts pin nodes in use by running requests, so eviction never removes KV that is being read.
-The scheduler is cache-aware: by default it orders the waiting queue by matched prefix length, and the paper argues that this approximates a depth-first traversal of the tree, which maximizes hit rate for a batch of requests (SGLang paper, NeurIPS 2024).
+The scheduler can be cache-aware: with `--schedule-policy lpm` (longest prefix match) it orders the waiting queue by matched prefix length, and the paper argues that this approximates a depth-first traversal of the tree, which maximizes hit rate for a batch of requests (SGLang paper, NeurIPS 2024).
+The server default is `fcfs`, so this ordering is opt-in (SGLang server arguments docs, as of 2026-10).
 The trade-off is fairness. Pure longest-prefix-first can starve requests with unique prefixes under sustained load, which is why production deployments set a scheduling policy deliberately and watch tail queueing time.
 The paper reports up to 6.4x higher throughput than prior systems on agent, few-shot, JSON, RAG, and multi-turn workloads (SGLang paper, NeurIPS 2024).
 That headline comes from workloads with heavy prefix sharing and structured control flow. On single-turn, unique-prompt traffic, the radix tree adds bookkeeping and saves nothing.
 SGLang also uses compressed finite-state machines for constrained decoding: deterministic runs of the grammar are collapsed so several forced tokens can be emitted in one step instead of one per step (SGLang paper, NeurIPS 2024).
-For data-parallel replicas, SGLang has a cache-aware router that predicts which replica holds a request's prefix and routes there (SGLang v0.4 coverage, 2025-02).
-In January 2026, contributors formed RadixArk to commercialize services around SGLang while keeping it open source (Wikipedia citing TechCrunch, as of 2026-10). This is relevant when you assess long-term support risk.
+For data-parallel replicas, SGLang has a cache-aware router that predicts which replica holds a request's prefix and routes there (SGLang v0.4 release blog, LMSYS, 2024-12).
+RadixArk, a startup built by SGLang contributors to commercialize services around SGLang while keeping it open source, was first announced in 2025-08, and its spin-out was reported in January 2026 (TechCrunch, 2026-01-21, via Wikipedia, as of 2026-10).
+This is relevant when you assess long-term support risk.
 
 ### SGLang zero-overhead scheduling: the FutureMap trick
 
@@ -344,7 +332,7 @@ import json, time, uuid, statistics, requests
 
 URL = "http://127.0.0.1:8000/v1/completions"
 MODEL = "Qwen/Qwen3-8B"
-SYSTEM = ("You are a meticulous infrastructure reviewer. " * 220).strip()  # ~2k tokens
+SYSTEM = ("You are a meticulous infrastructure reviewer. " * 220).strip()  # est. ~1.5-1.8k tokens
 
 def run(prompt, max_tokens=64):
     body = {"model": MODEL, "prompt": prompt, "max_tokens": max_tokens,
@@ -376,7 +364,7 @@ if __name__ == "__main__":
     print("\n".join(l for l in m.splitlines() if "prefix_cache" in l and not l.startswith("#")))
 ```
 
-The expected result is that nonce-at-end shows a TTFT drop of roughly the 2,048-token prefill time computed above, while ITL is essentially the same in both layouts, because the decode step still reads the full context from HBM.
+The expected result is that nonce-at-end shows a TTFT drop of roughly the prefill time of the repeated prompt, an estimated 1.5-1.8k tokens at the rate computed above (2 x 8.19e9 FLOP per token at 362 TFLOPS and 50 percent MFU, about 90 us per token), so about 135-165 ms, while ITL is essentially the same in both layouts, because the decode step still reads the full context from HBM.
 The `/metrics` grep prints vLLM's prefix-cache query and hit counters without hard-coding metric names, since those have changed across releases.
 To compare engines on the same box, stop the container and run SGLang (`python3 -m sglang.launch_server --model-path Qwen/Qwen3-8B --port 8000`) or TensorRT-LLM (`trtllm-serve Qwen/Qwen3-8B --port 8000`) in their official images (image tags UNVERIFIED), then rerun the same script.
 
@@ -498,14 +486,14 @@ The prompt is now stable and the hit rate is 95 percent, but the GPU's decode to
 
 ### Question 2 (L5 - Senior)
 
-The same model and GPU run with `0.9` in both vLLM and TensorRT-LLM configs, but TensorRT-LLM admits far more concurrent sequences. Explain.
+The same model and GPU run with `0.9` in both vLLM and TensorRT-LLM configs, but TensorRT-LLM admits roughly 10-15 percent more concurrent sequences. Explain.
 
 #### Model Answer
 
 The two numbers mean different things.
 vLLM's `gpu_memory_utilization` caps the instance's total device memory use, and the KV pool is whatever remains after weights, activation profiling, and CUDA graph memory are subtracted.
 TensorRT-LLM's default sizes the KV pool at 90 percent of memory still free after weights and runtime buffers are allocated, and when both `max_tokens` and `free_gpu_memory_fraction` are set, the smaller result wins.
-On a 48 GB card with 16 GB of weights, vLLM's KV pool might be about 24 GB, while TensorRT-LLM's could be about 0.9 x (48 - 16 - buffers), which is meaningfully larger.
+On a 48 GB card with 16 GB of weights, vLLM's KV pool might be about 23.8 GB, while TensorRT-LLM's could be about 0.9 x (48 - 16 - buffers), roughly 26-27 GB with 2-3 GB of buffers, which is about 10-15 percent larger.
 The larger pool raises concurrency but leaves less headroom for anything else on the device, including a second process, fragmentation, or a larger `max_num_tokens` workspace.
 The right comparison fixes the KV pool in tokens for both engines and then compares throughput at equal ITL.
 
@@ -520,7 +508,7 @@ You are choosing an engine for a multi-tenant agent platform on EKS and GKE: man
 #### Model Answer
 
 Write down the workload properties first: heavy prefix sharing within a tenant, multi-call programs with branching, constrained decoding on most calls, strict tenant isolation, and two hardware vendors.
-SGLang fits the sharing pattern best. The radix tree gives token-granular reuse across branching calls, leaf-only LRU protects shared ancestors, and the cache-aware scheduler maximizes hits. The paper's up-to-6.4x results come from exactly these workloads.
+SGLang fits the sharing pattern best. The radix tree gives token-granular reuse across branching calls, leaf-only LRU protects shared ancestors, and the cache-aware scheduler maximizes hits when it is configured with `--schedule-policy lpm` rather than the default `fcfs`. The paper's up-to-6.4x results come from exactly these workloads.
 vLLM's hash-chain cache is nearly as effective for linear shared prefixes and has the widest hardware and model coverage, plus a cache salt for tenant isolation.
 TensorRT-LLM gives the best NVIDIA kernels and NVFP4 paths but is NVIDIA-only, so it cannot be the single engine for the TPU estate.
 I would pick one primary engine for both clouds to avoid two sets of metrics, two sets of failure modes, and two upgrade pipelines. That choice is vLLM or SGLang, depending on which one's TPU path has passed our evals at the time of decision.
@@ -594,7 +582,7 @@ Treat the engine as a fast-moving dependency inside a stable platform contract, 
 The stable contract has four parts: an OpenAI-compatible request surface, a normalized metrics schema mapped from each engine's `/metrics`, a routing layer that speaks KV events where available, and an eval suite measuring quality, TTFT, ITL, and cost per token per (model, GPU, dtype) SKU.
 Pin engine versions per SKU and promote them through canary with automated rollback on eval or SLO regression. Move upgrades on a cadence you choose, not the upstream cadence.
 Keep at least one alternative engine qualified on the top two models so a regression, license change, or project governance shift becomes a deployment decision.
-Weigh project governance as a real risk factor: vLLM became a PyTorch Foundation hosted project in May 2025, SGLang contributors formed a commercial company in January 2026, and TensorRT-LLM is vendor-controlled. Each implies different roadmap incentives.
+Weigh project governance as a real risk factor: vLLM became a PyTorch Foundation hosted project in May 2025, SGLang contributors started a commercial company, RadixArk (announced in 2025-08, spin-out reported in January 2026), and TensorRT-LLM is vendor-controlled. Each implies different roadmap incentives.
 Tie the strategy to capacity economics: TPU and non-NVIDIA options exist only with vLLM- or SGLang-class engines, and that optionality is worth real money in commitment negotiations.
 State what would end the strategy: if one engine's kernel advantage on our dominant SKU exceeds the cost of running two stacks, typically when that SKU dominates fleet spend, we run a dedicated cell on it.
 

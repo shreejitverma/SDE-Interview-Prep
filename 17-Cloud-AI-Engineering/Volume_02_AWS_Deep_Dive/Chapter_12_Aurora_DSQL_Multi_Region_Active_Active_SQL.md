@@ -248,6 +248,7 @@ aws dsql update-cluster --region "$R2" --identifier "$B_ID" \
 
 echo "A=$A_ID ($R1)  B=$B_ID ($R2)"
 echo "Endpoints: $A_ID.dsql.$R1.on.aws and $B_ID.dsql.$R2.on.aws"
+echo "export A_ID=$A_ID B_ID=$B_ID ACCOUNT_ID=$ACCOUNT_ID" > ~/.dsql_lab_env
 ```
 
 The `--multi-region-properties` JSON shape and the `<id>.dsql.<region>.on.aws` endpoint format follow the GA API as best known at the time of writing; check them against `aws dsql help` before running (listed as UNVERIFIED).
@@ -325,6 +326,7 @@ The idempotency row is also written, so two concurrent retries of the same key c
 ### Step 5: DPU alarm per cluster
 
 ```bash
+[ -f ~/.dsql_lab_env ] && source ~/.dsql_lab_env
 # Hourly threshold for a USD 100/month budget at USD 8 per 1M DPU: 0.8 * 12.5e6 / 730 = ~13,699 DPU.
 aws cloudwatch put-metric-alarm --region us-east-1 --alarm-name dsql-lab-dpu \
   --namespace "AWS/AuroraDSQL" --metric-name TotalDPU \
@@ -339,10 +341,13 @@ The namespace and dimension name are UNVERIFIED and should be checked in the Clo
 ### Step 6: teardown
 
 ```bash
+[ -f ~/.dsql_lab_env ] && source ~/.dsql_lab_env
+ACCOUNT_ID=${ACCOUNT_ID:-$(aws sts get-caller-identity --query Account --output text)}
 aws dsql delete-cluster --region us-east-1 --identifier "$A_ID"
 aws dsql delete-cluster --region us-east-2 --identifier "$B_ID"
 aws budgets delete-budget --account-id "$ACCOUNT_ID" --budget-name dsql-lab
 aws cloudwatch delete-alarms --region us-east-1 --alarm-names dsql-lab-dpu
+rm -f ~/.dsql_lab_env
 ```
 
 ### Capacity and cost sizing

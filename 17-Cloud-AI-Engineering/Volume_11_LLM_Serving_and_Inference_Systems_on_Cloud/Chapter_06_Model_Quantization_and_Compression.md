@@ -332,8 +332,15 @@ AMI=$(aws ssm get-parameter --region "$REGION" \
   --name /aws/service/deeplearning/ami/x86_64/base-oss-nvidia-driver-gpu-ubuntu-22.04/latest/ami-id \
   --query Parameter.Value --output text)
 
+VPC_ID=$(aws ec2 describe-vpcs --region "$REGION" --filters "Name=isDefault,Values=true" --query "Vpcs[0].VpcId" --output text)
+SG_ID=$(aws ec2 create-security-group --region "$REGION" --group-name quant-lab-sg --description "SSH access for quant lab" --vpc-id "$VPC_ID" --query GroupId --output text)
+MY_IP=$(curl -s https://checkip.amazonaws.com)
+aws ec2 authorize-security-group-ingress --region "$REGION" --group-id "$SG_ID" --protocol tcp --port 22 --cidr "${MY_IP}/32"
+echo "$SG_ID" > /tmp/quant-lab-sg
+
 IID=$(aws ec2 run-instances --region "$REGION" \
   --image-id "$AMI" --instance-type g6e.xlarge --key-name my-key \
+  --security-group-ids "$SG_ID" \
   --metadata-options HttpTokens=required \
   --instance-initiated-shutdown-behavior terminate \
   --user-data '#!/bin/bash
@@ -512,7 +519,9 @@ If FP8-KV moves the flip rate noticeably on top of FP8 weights, the KV scales ar
 
 ```bash
 # AWS
-aws ec2 terminate-instances --instance-ids "$(cat /tmp/quant-lab-iid)"
+aws ec2 terminate-instances --region "$REGION" --instance-ids "$(cat /tmp/quant-lab-iid)"
+aws ec2 wait instance-terminated --region "$REGION" --instance-ids "$(cat /tmp/quant-lab-iid)"
+aws ec2 delete-security-group --region "$REGION" --group-id "$(cat /tmp/quant-lab-sg)" || true
 aws budgets delete-budget --account-id "$(aws sts get-caller-identity --query Account --output text)" --budget-name quant-lab
 # GCP
 gcloud compute instances delete quant-lab --zone us-central1-a --quiet
@@ -536,7 +545,7 @@ The first two rows are not a coincidence.
 Halving every tensor and halving the GPU count gives the same per-GPU memory traffic, so FP8 doubles tokens per GPU-hour in the memory-bound regime.
 In practice it does slightly better than that, because TP2 all-reduces are cheaper than TP4.
 The W4A16 row is the trap.
-INT4 lets the model fit on one H100, but only about 36 GB of HBM is left for KV, so concurrency (not bandwidth) caps throughput, and per-GPU efficiency ends up no better than FP8 on two GPUs.
+INT4 lets the model fit on one H100, but only about 29.5 GB of HBM is left for KV (44 sequences at 4K context, or 53 sequences if 36 GB could be spared), so concurrency (not bandwidth) caps throughput, and per-GPU efficiency ends up no better than FP8 on two GPUs.
 The cost per million output tokens is `P_gpu_hour * GPUs / (tok_per_s * 3600) * 1e6`.
 At a hypothetical USD 10 per GPU-hour, FP8 TP2 on H100 works out to `10 * 2 / (2640 * 3600) * 1e6 = USD 2.10` and BF16 TP4 to USD 4.20.
 Plug in current negotiated rates from [[17-Cloud-AI-Engineering/Volume_09_FinOps_and_Cloud_Economics/Chapter_05_GPU_and_TPU_Unit_Economics|GPU and TPU Unit Economics]].
@@ -652,7 +661,7 @@ The weights are about 141 GB BF16, 71 GB FP8 and about 40 GB for W4 including BF
 I assume 70% achieved bandwidth and 90% usable HBM.
 BF16 on H100 TP4 holds about 97 sequences and runs batch 64 at about 24 ms per step, roughly 660 tok/s per GPU.
 FP8 with FP8 KV on H100 TP2 has the same per-GPU traffic at half the GPUs, about 1,320 tok/s per GPU, at the same 24 ms step.
-W4A16 on a single H100 leaves only about 36 GB for KV, about 44 sequences, so it runs batch 32 at about 26 ms, roughly 1,250 tok/s per GPU, and concurrency caps it rather than bandwidth.
+W4A16 on a single H100 leaves only about 29.5 GB for KV, about 44 sequences (or 53 sequences if 36 GB could be spared), so it runs batch 32 at about 26 ms, roughly 1,250 tok/s per GPU, and concurrency caps it rather than bandwidth.
 FP8 on H200 TP2 holds about 260 sequences and runs batch 64 at about 17 ms, roughly 1,900 tok/s per GPU, and I could push the batch to about 128 while staying under 40 ms.
 At 2,000 streams with batch 64 per replica, H100 FP8 TP2 needs about 32 replicas and 64 GPUs, compared with 128 GPUs for BF16.
 H200 FP8 TP2 at batch 120 needs about 17 replicas and 34 GPUs.

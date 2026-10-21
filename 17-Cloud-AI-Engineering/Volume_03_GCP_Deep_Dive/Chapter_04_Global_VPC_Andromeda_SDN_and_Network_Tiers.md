@@ -177,7 +177,7 @@ A dependency behind a single VIP turns the whole NAT IP pool into one narrow bot
 Two RFC behaviors change the arithmetic.
 Endpoint-independent mapping (EIM) maps one internal IP and port to the same NAT IP and port for every destination, and it is disabled by default on new gateways ([Public NAT docs, as of 2026-10](https://docs.cloud.google.com/nat/docs/public-nat)).
 With EIM on, two internal flows can collide on one NAT pair toward the same destination, and the dataplane drops the packet with reason ENDPOINT_INDEPENDENCE_CONFLICT ([Cloud NAT troubleshooting](https://cloud.google.com/nat/docs/troubleshooting)).
-Endpoint-dependent filtering is always on, and Public NAT behaves as a Port Restricted Cone NAT under RFC 3489.
+Endpoint-dependent filtering is always on, so with EIM enabled Public NAT behaves as a Port Restricted Cone NAT under RFC 3489 (without EIM, mapping is endpoint-dependent and behaves as Symmetric NAT).
 When a VM has no free pair for a destination, the packet is dropped with reason OUT_OF_RESOURCES; Cloud NAT does not queue it.
 
 NAT rules split the pool further.

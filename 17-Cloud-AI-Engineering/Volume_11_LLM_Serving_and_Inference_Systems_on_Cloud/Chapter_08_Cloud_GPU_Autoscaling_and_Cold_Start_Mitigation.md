@@ -504,7 +504,15 @@ export INSTANCE_ID=$(aws ec2 run-instances --region "$REGION" \
   --tag-specifications 'ResourceType=instance,Tags=[{Key=lab,Value=cold-start}]' \
   --query 'Instances[0].InstanceId' --output text)
 echo "$INSTANCE_ID"
-aws ec2 wait instance-terminated --instance-ids "$INSTANCE_ID"
+echo "Waiting for instance $INSTANCE_ID to terminate..."
+while true; do
+  STATE=$(aws ec2 describe-instances --region "$REGION" --instance-ids "$INSTANCE_ID" \
+    --query 'Reservations[0].Instances[0].State.Name' --output text 2>/dev/null || echo "terminated")
+  if [ "$STATE" = "terminated" ] || [ -z "$STATE" ]; then
+    break
+  fi
+  sleep 15
+done
 aws s3 cp "s3://${BUCKET}/lab/results/results.jsonl" - | jq -c \
   '{chunk_mib,workers,agg_GBps,ttfb_p99_ms,slowest_worker_over_median,bootstrap_load_p99_s}'
 ```
@@ -548,7 +556,7 @@ gcloud compute disks delete weights-hdml --zone=us-central1-a --quiet
 ### Teardown (AWS)
 
 ```bash
-aws ec2 terminate-instances --instance-ids "$INSTANCE_ID" || true
+aws ec2 terminate-instances --region "$REGION" --instance-ids "$INSTANCE_ID" || true
 aws s3 rb "s3://${BUCKET}" --force
 aws iam remove-role-from-instance-profile \
   --instance-profile-name cold-start-lab-profile --role-name cold-start-lab-role

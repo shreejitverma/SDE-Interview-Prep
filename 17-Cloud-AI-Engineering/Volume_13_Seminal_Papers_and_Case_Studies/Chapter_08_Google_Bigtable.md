@@ -383,7 +383,7 @@ drop_tombstones_early=True: deleted row reads back as b'xxxx...' | write_amp=3.5
 
 How to read it:
 - A write amplification of 3.55 means every user byte was written about 3.5 times: once in the flush and again in each merge. Real systems add a log write on top.
-- 68 block reads for 5,000 misses across three SSTables is a false-positive rate of about 0.45% per filter. That matches the textbook rate for 10 bits per key.
+- 68 block reads for 5,000 misses across two effective SSTable filters (10,000 queries) is a false-positive rate of about 0.68% (~0.7% vs ~0.8% theoretical), matching the textbook rate for 10 bits per key.
 - The second line is the resurrection bug. The merged run dropped the tombstone while the base run still held the old value.
 
 ### Part B - Webtable on Cloud Bigtable (billable)
@@ -465,6 +465,8 @@ Teardown, which deletes all clusters, tables, and data in the instance:
 
 ```bash
 gcloud bigtable instances delete bt-lab --project="$PROJECT" --quiet
+gcloud billing budgets list --billing-account="$BILLING" --filter='displayName=bt-lab-budget' --format='value(name)' \
+  | xargs -r -n1 gcloud billing budgets delete --quiet
 ```
 
 ### Part C - Capacity and cost sizing

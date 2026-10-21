@@ -339,7 +339,7 @@ The model treats chunk cost as linear, which flatters colocation, because a 247-
 Step 6: At the UNVERIFIED ~$55/hr p5 rate, disaggregation costs $716/hr versus $1,321/hr, which is $19.41 versus $35.83 per million output tokens (with 8K input tokens behind every 512 output tokens).
 Step 7: The fabric carries about 429 Gbps of KV across the whole cluster, which is small next to 13 nodes x 3.2 Tbps.
 Incast is the real constraint, so check the worst case where 18 prefill instances each target the same decode instance at once: 45 GiB into 4 GPUs at about 140 GB/s effective is roughly 345 ms of extra TTFT for the last request in line.
-Change `prompt=1024` and run the script again: the P:D ratio inverts, the colocated penalty shrinks sharply, and the case for disaggregation weakens.
+Change `prompt=1024` and run the script again: the prefill burden drops by roughly 8x, the P:D instance ratio inverts from prefill-heavy (18:8) to decode-heavy (3:8, roughly 2 prefill and 4 decode nodes), the colocated penalty shrinks sharply, and the case for disaggregation weakens.
 
 ### Part B - Single-node hand-off validation on one p5.48xlarge (billable)
 

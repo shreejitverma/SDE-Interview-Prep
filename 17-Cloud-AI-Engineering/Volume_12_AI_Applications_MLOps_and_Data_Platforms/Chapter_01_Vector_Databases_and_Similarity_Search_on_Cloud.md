@@ -249,7 +249,7 @@ Their zone placement is managed by the service and is not a documented customer-
 This lab reproduces Mechanism 2 on any pgvector 0.8+ build, and the result transfers directly to Aurora and AlloyDB because the planner and index access method are the same code.
 
 ```bash
-docker run -d --name pgv -e POSTGRES_PASSWORD=pw -p 5432:5432 pgvector/pgvector:pg17
+docker run -d --name pgv --shm-size 2g -e POSTGRES_PASSWORD=pw -p 5432:5432 pgvector/pgvector:pg17
 sleep 5
 docker exec -i pgv psql -U postgres <<'SQL'
 CREATE EXTENSION IF NOT EXISTS vector;
@@ -298,6 +298,7 @@ Budget alarm (run first):
 
 ```bash
 ACCT=$(aws sts get-caller-identity --query Account --output text)
+export BUCKET="vec-lab-${ACCT}-$(date +%s)"
 aws budgets create-budget --account-id "$ACCT" \
   --budget '{"BudgetName":"vec-lab","BudgetLimit":{"Amount":"5","Unit":"USD"},"TimeUnit":"MONTHLY","BudgetType":"COST"}' \
   --notifications-with-subscribers '[{"Notification":{"NotificationType":"ACTUAL","ComparisonOperator":"GREATER_THAN","Threshold":80,"ThresholdType":"PERCENTAGE"},"Subscribers":[{"SubscriptionType":"EMAIL","Address":"you@example.com"}]}]'
@@ -307,12 +308,12 @@ Lab script (run from an EC2 instance in the same Region so the latency is servic
 
 ```python
 # s3vectors_lab.py - requires boto3 with the s3vectors client and numpy
-import time, sys
+import os, time, sys
 import numpy as np
 import boto3
 
 REGION, D, N, NQ, K, TENANTS = "us-east-1", 768, 20000, 200, 10, 20
-BUCKET = sys.argv[1] if len(sys.argv) > 1 else f"vec-lab-{int(time.time())}"
+BUCKET = sys.argv[1] if len(sys.argv) > 1 else os.environ.get("BUCKET", f"vec-lab-{int(time.time())}")
 INDEX = "lab-768"
 s3v = boto3.client("s3vectors", region_name=REGION)
 rng = np.random.default_rng(7)
@@ -377,7 +378,7 @@ The cluster is memory-bound: 20 shards * about 1 ms CPU each is about 20 ms of c
 Step 3, OpenSearch on_disk 32x: 1.1 * (96 + 128) = 246 B/vector, which is 24.6 GB per copy and 49 GB with a replica, so RAM stops being the constraint.
 The bottleneck moves to rescoring reads: each shard reads k * oversample = 20 full vectors per query.
 At 20 shards that is 400 random 3 KB reads per query and 800,000 reads/s at 2,000 QPS if nothing is cached.
-Cut shards to 4 (16,000 reads per query second... more precisely 80 reads per query, 160,000 reads/s cluster-wide), use instance-store NVMe-backed nodes, and give the hot fraction of the 307 GB full-precision set room in the page cache.
+Cut shards to 4 (80 reads per query, yielding 160,000 reads/s cluster-wide at 2,000 QPS), use instance-store NVMe-backed nodes, and give the hot fraction of the 307 GB full-precision set room in the page cache.
 This option is cheaper only if you size for IOPS, which is what the "1.3 TB to 66 GB" headline numbers leave out.
 
 Step 4, S3 Vectors: 100M * about 3.2 KB is about 317 GB, or about $19/month of storage at $0.06/GB-month (UNVERIFIED rate).

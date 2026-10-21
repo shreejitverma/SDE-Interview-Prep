@@ -358,6 +358,8 @@ Record the observed states; if your result differs, the cache key definition has
 aws sagemaker delete-pipeline --pipeline-name mlops-cache-lab-mutable
 aws sagemaker delete-pipeline --pipeline-name mlops-cache-lab-addressed
 aws s3 rm "s3://$LAB_BUCKET" --recursive && aws s3 rb "s3://$LAB_BUCKET"
+SM_DEFAULT_BUCKET="sagemaker-${AWS_REGION:-us-east-1}-${ACCOUNT_ID}"
+aws s3 rm "s3://${SM_DEFAULT_BUCKET}" --recursive 2>/dev/null && aws s3 rb "s3://${SM_DEFAULT_BUCKET}" 2>/dev/null || true
 aws budgets delete-budget --account-id "$ACCOUNT_ID" --budget-name mlops-cache-lab
 python -c "from google.cloud import aiplatform as a; a.init(project='$GCP_PROJECT', location='$GCP_REGION'); [j.delete() for j in a.PipelineJob.list(filter='display_name=\"lab-mutable\" OR display_name=\"lab-addressed\"')]"
 gcloud storage rm -r "gs://$LAB_GCS_BUCKET"

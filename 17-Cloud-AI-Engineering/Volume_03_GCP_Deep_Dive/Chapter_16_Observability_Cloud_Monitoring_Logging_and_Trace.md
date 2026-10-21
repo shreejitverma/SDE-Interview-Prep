@@ -602,7 +602,7 @@ Create one aggregated sink at the organization (or the relevant folder) with `in
 Filter on `logName:"cloudaudit.googleapis.com"` and point it at a BigQuery dataset in a dedicated security project, with `--use-partitioned-tables` so each audit log type is a single time-partitioned table.
 Grant the sink's writer identity `roles/bigquery.dataEditor` on that dataset only.
 Set a partition expiration of about 1,095 days and protect the dataset with CMEK and an org policy that blocks deletion by non-security principals.
-Use a single sink, not 300 project sinks, because of the 200-sinks-per-resource limit, and because one sink lets drift detection reason about a single resource.
+Use a single aggregated sink, not 300 project sinks, because the sink limit is 200 sinks per project, and because an aggregated sink lets security and compliance drift detection reason about a single immutable resource.
 Two failure modes matter.
 First, the table schema is fixed by the first entry, and audit `protoPayload` shapes differ by service, so watch for mismatch error tables.
 Second, the BigQuery sink is bound by the table streaming quota, so a burst of Data Access logs can produce `table_resource_exhausted` and stop routing.

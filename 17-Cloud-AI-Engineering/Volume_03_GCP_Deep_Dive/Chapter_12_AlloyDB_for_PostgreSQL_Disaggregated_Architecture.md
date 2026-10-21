@@ -230,7 +230,7 @@ Treat them as the last known values to confirm before you use them in a design r
 | AlloyDB storage price, us-central1 | about $0.30 per GB-month, billed on used bytes | Google Cloud AlloyDB pricing, UNVERIFIED as of 2026-10 |
 | AlloyDB I/O charges | none billed separately | Google Cloud AlloyDB pricing, UNVERIFIED as of 2026-10 |
 | HA primary billing | active node plus standby node, about 2x compute | Google Cloud AlloyDB pricing, UNVERIFIED as of 2026-10 |
-| N2 machine shapes | 2 to 128 vCPU at 8 GB per vCPU, top shape 864 GB | Google Cloud AlloyDB docs, UNVERIFIED as of 2026-10 |
+| N2 machine shapes | 2 to 64 vCPU at 8 GB per vCPU, top 128-vCPU shape at 864 GB | Google Cloud AlloyDB docs, UNVERIFIED as of 2026-10 |
 | Max cluster storage | 128 TiB | Google Cloud AlloyDB quotas, UNVERIFIED as of 2026-10 |
 | Read pool size | up to 20 nodes per read pool instance | Google Cloud AlloyDB quotas, UNVERIFIED as of 2026-10 |
 | Availability SLA, HA instance | 99.99% including maintenance | Google Cloud AlloyDB SLA, UNVERIFIED as of 2026-10 |

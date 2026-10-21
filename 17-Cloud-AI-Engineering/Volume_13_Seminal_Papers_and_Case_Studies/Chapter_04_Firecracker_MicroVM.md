@@ -428,14 +428,20 @@ On a nested-virtualization host, every exit is reflected through the L0 hypervis
 
 ```bash
 # Google Cloud
+PROJECT="${PROJECT:-$(gcloud config get-value project 2>/dev/null)}"
+ZONE="${ZONE:-us-central1-a}"
+BILLING_ACCOUNT="${BILLING_ACCOUNT:-$(gcloud billing projects describe "$PROJECT" --format='value(billingAccountName)' 2>/dev/null | sed 's|billingAccounts/||')}"
 gcloud compute instances delete fc-lab --project="${PROJECT}" --zone="${ZONE}" --quiet
-gcloud billing budgets list --billing-account="${BILLING_ACCOUNT}" --filter='displayName=fc-lab-budget' --format='value(name)' \
-  | xargs -r -n1 gcloud billing budgets delete --quiet
+if [ -n "${BILLING_ACCOUNT}" ]; then
+  gcloud billing budgets list --billing-account="${BILLING_ACCOUNT}" --filter='displayName=fc-lab-budget' --format='value(name)' \
+    | xargs -r -n1 gcloud billing budgets delete --quiet
+fi
 
 # AWS
+ACCOUNT_ID="${ACCOUNT_ID:-$(aws sts get-caller-identity --query Account --output text 2>/dev/null)}"
 IID="$(aws ec2 describe-instances --filters Name=tag:Name,Values=fc-lab Name=instance-state-name,Values=running,stopped --query 'Reservations[].Instances[].InstanceId' --output text)"
 [ -n "${IID}" ] && aws ec2 terminate-instances --instance-ids ${IID}
-aws budgets delete-budget --account-id "${ACCOUNT_ID}" --budget-name fc-lab
+[ -n "${ACCOUNT_ID}" ] && aws budgets delete-budget --account-id "${ACCOUNT_ID}" --budget-name fc-lab
 ```
 
 ## Failure Modes and Pitfalls

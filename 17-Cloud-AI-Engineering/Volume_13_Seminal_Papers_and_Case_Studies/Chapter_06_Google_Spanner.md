@@ -113,8 +113,9 @@ On top of Paxos, each leader runs two more components.
 The *lock table* implements two-phase locking with *wound-wait* deadlock avoidance: an older transaction wounds (aborts) a younger lock holder, while a younger one waits for an older holder.
 The *transaction manager* handles distributed transactions; the leader whose group takes part in a transaction is the *participant leader*.
 Locks live only at the leader and are never replicated through Paxos.
-Losing the leader therefore loses the locks, and in-flight read-write transactions on that group abort.
-That is cheaper than replicating lock state, and safe, because nothing reaches durable storage without a Paxos-logged commit.
+Losing the leader therefore loses in-memory locks, causing uncommitted, un-prepared in-flight read-write transactions on that group to abort.
+Prepared participants survive because prepare records are Paxos-logged; the new leader recovers them and reacquires the locks.
+That is cheaper than replicating lock state on every read, and safe, because nothing reaches durable storage without a Paxos-logged commit.
 
 ### Directories, splits, and placement
 
@@ -200,8 +201,8 @@ There is a second-order effect most users miss: locks are released only after co
 The time a lock on a hot row is held is therefore roughly `client read RTT + max(Paxos quorum RTT, 2 * epsilon) + commit-message handling`.
 Transactions that conflict on one key are fully serialized behind that lock.
 So one key's ceiling is about `1 / lock_hold_time` transactions per second, however many nodes you buy.
-If epsilon spikes from 1 ms to 20 ms on a leader, latency on that group rises a little.
-Throughput on a hot key, however, drops by an order of magnitude.
+If epsilon spikes from 1 ms to 20 ms on a leader, commit wait jumps to 40 ms, raising latency by up to ~2 x epsilon on that group.
+Throughput on a hot key, however, drops by an order of magnitude as lock hold times balloon.
 This failure path shows up as a throughput collapse, not as a latency alert.
 
 ### Two-phase commit over Paxos groups
@@ -581,7 +582,7 @@ That breaks any assumption of an error bound below 1 second.
 ### Leader loss and lease-bounded unavailability
 
 If a Paxos leader dies, its group cannot accept writes until a new leader is elected and the old lease has provably expired.
-With the paper's 10-second default lease, a hard failure costs up to about 10 seconds of write unavailability for that group, plus aborts for every in-flight read-write transaction whose locks lived on that leader.
+With the paper's 10-second default lease, a hard failure costs up to about 10 seconds of write unavailability for that group, plus aborts for every in-flight read-write transaction that had not yet prepared (prepared transactions survive because their prepare state is Paxos-logged).
 Design client deadlines and retry budgets around a group failover of several seconds, not milliseconds.
 
 ### Prepared transactions stall snapshot reads on a group

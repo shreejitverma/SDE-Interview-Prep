@@ -366,7 +366,7 @@ When load is flat and high, instance-based billing wins; request-based billing w
 
 Scenario B is an LLM token-streaming gateway at 200 RPS, where each stream stays open 20 s and uses only 50 ms of CPU.
 In-flight requests are `200 x 20 = 4,000`.
-At `C = 250` the concurrency-driven count is `4000 / 150 = 26.7`, about 27 instances, and the CPU-driven count is only 16.7, so concurrency decides.
+At `C = 250` the concurrency-driven count is `4000 / 150 = 26.7`, about 27 instances, and the CPU-driven count is only 8.3 (from 200 x 0.050 / (2 x 0.6)), so concurrency decides.
 Twenty-seven 2-vCPU, 2-GiB instances on instance-based billing cost about $2,800 per month.
 The same workload on default-mode Lambda needs 4,000 concurrent execution environments, each billed for the full 20 s it spends waiting on tokens, which at 512 MB is about $86,500 per month.
 It would also need a concurrency quota increase above the usual 1,000 default (AWS docs, UNVERIFIED as of 2026-10).

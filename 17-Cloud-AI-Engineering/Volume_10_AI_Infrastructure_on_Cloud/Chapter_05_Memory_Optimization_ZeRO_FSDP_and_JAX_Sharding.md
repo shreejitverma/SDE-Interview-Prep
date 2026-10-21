@@ -303,10 +303,11 @@ Launch with a dead-man switch that terminates the instance after 120 minutes eve
 
 ```bash
 AMI=$(aws ssm get-parameter --region us-east-1 \
-  --name /aws/service/deeplearning/ami/x86_64/base-oss-nvidia-driver-gpu-ubuntu-22.04/latest/ami-id \
+  --name /aws/service/deeplearning/ami/x86_64/pytorch-latest/ubuntu-22.04/ami-id \
   --query Parameter.Value --output text)
+SG_ID=$(aws ec2 describe-security-groups --region us-east-1 --filters "Name=group-name,Values=default" --query "SecurityGroups[0].GroupId" --output text)
 IID=$(aws ec2 run-instances --region us-east-1 --image-id "$AMI" \
-  --instance-type g6e.12xlarge --key-name my-key \
+  --instance-type g6e.12xlarge --key-name my-key --security-group-ids "$SG_ID" \
   --instance-initiated-shutdown-behavior terminate \
   --user-data '#!/bin/bash
 shutdown -h +120' \
@@ -431,7 +432,7 @@ if __name__ == "__main__":
 
 Experiments to run, each one isolating a single mechanism:
 
-1. Run `CKPT=0` and then `CKPT=1`. Peak allocated memory should fall by roughly the per-layer activation term times LAYERS, and tokens per second should fall by roughly 20-33%.
+1. Run `CKPT=0` and then `CKPT=1`. Peak allocated memory should fall by roughly the per-layer activation term times LAYERS, and tokens per second should fall by up to ~25%.
 2. Run `REPLICAS=2`. Per-GPU persistent state doubles, because the shard group halves, and all-gather traffic now stays within each 2-GPU group.
 3. Remove the `set_requires_gradient_sync` line. Step time rises because every micro-batch now pays a full reduce-scatter.
 4. Watch `alloc_retries`. It should stay at 0. A growing value means fragmentation or a too-large T, and `PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True` is the first lever.
@@ -447,6 +448,7 @@ gcloud billing budgets create --billing-account=XXXXXX-XXXXXX-XXXXXX \
   --threshold-rule=percent=0.5 --threshold-rule=percent=0.9
 gcloud compute tpus tpu-vm create fsdp-lab --zone=us-east5-b \
   --accelerator-type=v6e-8 --version=v2-alpha-tpuv6e --spot
+gcloud compute tpus tpu-vm scp jax_fsdp.py fsdp-lab:~/jax_fsdp.py --zone=us-east5-b
 gcloud compute tpus tpu-vm ssh fsdp-lab --zone=us-east5-b \
   --command='pip install -U "jax[tpu]" && python3 jax_fsdp.py'
 ```

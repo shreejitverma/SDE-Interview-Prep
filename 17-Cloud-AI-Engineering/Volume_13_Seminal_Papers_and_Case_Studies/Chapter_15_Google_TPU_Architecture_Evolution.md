@@ -14,7 +14,7 @@ sources:
   - "https://docs.cloud.google.com/compute/docs/tpus/tpu-machines"
 ---
 
-# Google TPU Architecture Papers: TPU v1 to v5p (ISCA 2017-2023)
+# Google TPU Architecture Papers: TPU v1 to v4 (ISCA 2017-2023)
 
 ## TL;DR
 
@@ -118,7 +118,7 @@ Two consequences follow, and both bite in production.
 
 First, utilization depends on matching shapes.
 A contraction or output dimension that is not a multiple of the array width still costs a full pass.
-On a 128-wide MXU a dimension of 129 costs two passes, which wastes nearly half of the second pass.
+On a 128-wide MXU a dimension of 129 costs two passes: the second pass uses only 1 of 128 columns, wasting nearly all of that second pass and nearly half of the total work across both passes.
 If a layer's K dimension is only 64, half the cells hold no useful weight.
 The v1 paper observed this directly: on its CNN1 workload only about half of the MACs held useful weights on active cycles, because some layers had shallow feature depths (Jouppi et al., ISCA 2017).
 

@@ -131,7 +131,8 @@ That makes KMS the strongest resource-side control in AWS, and it is why envelop
 
 ### Condition evaluation edge semantics
 
-A condition key absent from the request context makes ordinary operators evaluate to false, which means a Deny guarded by a missing key never fires, while `...IfExists` operators evaluate to true when the key is absent.
+A condition key absent from the request context makes ordinary positive operators evaluate to false, while negated operators (`StringNotEquals`, `StringNotLike`, `ArnNotLike`) treat a missing key as true.
+Consequently, a Deny statement guarded by a negated condition such as `StringNotEquals aws:SourceVpce` fires and denies the request when the key is absent, while `...IfExists` operators evaluate to true when the key is absent.
 `ForAllValues` over an empty or missing multivalued key is vacuously true, so `ForAllValues:StringEquals` on `aws:TagKeys` in an Allow statement can grant to requests that carry no tags at all.
 `aws:PrincipalArn` for an assumed-role session evaluates to the role ARN, not the session ARN, which is what makes role-scoped conditions stable across sessions.
 `aws:ViaAWSService` and `aws:CalledVia` are how perimeter Denies exempt forward-access-session calls, for example CloudFormation or Athena acting on your behalf, without exempting the caller's direct calls.
@@ -252,7 +253,11 @@ def cond_ok(cond, ctx):
         for key, want in kv.items():
             have = ctx.get(key)
             if have is None:
-                return False  # missing key: non-IfExists operators evaluate false
+                # In IAM: positive operators evaluate to false on missing keys;
+                # negated operators evaluate to true on missing keys.
+                if op in ("StringNotEquals", "ArnNotEquals", "StringNotLike", "ArnNotLike"):
+                    continue
+                return False
             if op in ("StringEquals", "ArnEquals"):
                 ok = any(have == w for w in as_list(want))
             elif op in ("StringLike", "ArnLike"):
@@ -493,7 +498,8 @@ Engineers misdiagnose it as eventual consistency and wait.
 
 ### Condition-key absence
 
-A perimeter Deny such as `StringNotEquals aws:SourceVpce` does not fire when the key is missing, for example on calls not routed through an endpoint, and it also blocks AWS services acting on your behalf unless you exempt `aws:ViaAWSService`.
+A perimeter Deny such as `StringNotEquals aws:SourceVpce` fires when the key is missing, because negated operators evaluate to true when the condition key is absent from the request context.
+This successfully blocks calls from the public internet that bypass your endpoint, but it also blocks AWS services acting on your behalf unless you add an `aws:ViaAWSService` exemption.
 Data perimeters therefore need paired statements, one for principals and one for networks, with explicit service exemptions.
 
 ### Credential theft beats perfect policy logic

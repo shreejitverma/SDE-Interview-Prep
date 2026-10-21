@@ -426,9 +426,10 @@ aws budgets create-budget --account-id "$ACCOUNT_ID" \
   --notifications-with-subscribers '[{"Notification":{"NotificationType":"ACTUAL","ComparisonOperator":"GREATER_THAN","Threshold":80,"ThresholdType":"PERCENTAGE"},"Subscribers":[{"SubscriptionType":"EMAIL","Address":"you@example.com"}]}]'
 
 # GCP: budget scoped to the lab project with an 80 percent threshold.
-gcloud billing budgets create --billing-account="$BILLING_ACCOUNT_ID" \
+BUDGET_ID=$(gcloud billing budgets create --billing-account="$BILLING_ACCOUNT_ID" \
   --display-name="claude-lab" --budget-amount=5USD \
-  --threshold-rule=percent=0.8 --filter-projects="projects/$PROJECT_ID"
+  --threshold-rule=percent=0.8 --filter-projects="projects/$PROJECT_ID" \
+  --format="value(name)")
 ```
 
 Budgets on both clouds only send alerts. They do not cap spend, and billing data arrives with a delay of hours, so a runaway loop can overshoot before any alert fires.
@@ -438,9 +439,10 @@ For a hard stop, use the quota itself as the limiter: request a low quota for th
 
 ```bash
 # AWS: interface endpoint for the runtime API in two subnets (hourly per-AZ and per-GB charges apply, UNVERIFIED as of 2026-10).
-aws ec2 create-vpc-endpoint --vpc-id "$VPC_ID" --vpc-endpoint-type Interface \
+VPCE_ID=$(aws ec2 create-vpc-endpoint --vpc-id "$VPC_ID" --vpc-endpoint-type Interface \
   --service-name "com.amazonaws.us-east-1.bedrock-runtime" \
-  --subnet-ids "$SUBNET_A" "$SUBNET_B" --security-group-ids "$SG_ID" --private-dns-enabled
+  --subnet-ids "$SUBNET_A" "$SUBNET_B" --security-group-ids "$SG_ID" --private-dns-enabled \
+  --query 'VpcEndpoint.VpcEndpointId' --output text)
 
 # GCP: PSC endpoint for Google APIs (also requires a private DNS zone for googleapis.com).
 gcloud compute addresses create claude-psc-ip --global --purpose=PRIVATE_SERVICE_CONNECT \
@@ -453,10 +455,10 @@ gcloud compute forwarding-rules create claudepsc --global --network="$NETWORK" \
 
 ```bash
 aws budgets delete-budget --account-id "$ACCOUNT_ID" --budget-name claude-lab
-aws ec2 delete-vpc-endpoints --vpc-endpoint-ids "$VPCE_ID"
-gcloud billing budgets delete "$BUDGET_ID" --billing-account="$BILLING_ACCOUNT_ID"
-gcloud compute forwarding-rules delete claudepsc --global --quiet
-gcloud compute addresses delete claude-psc-ip --global --quiet
+[ -n "${VPCE_ID:-}" ] && aws ec2 delete-vpc-endpoints --vpc-endpoint-ids "$VPCE_ID"
+[ -n "${BUDGET_ID:-}" ] && gcloud billing budgets delete "$BUDGET_ID" --quiet
+gcloud compute forwarding-rules delete claudepsc --global --quiet || true
+gcloud compute addresses delete claude-psc-ip --global --quiet || true
 ```
 
 ### Capacity sizing: a support assistant at 20 RPS peak
@@ -476,7 +478,7 @@ Step 3, settled quota without caching: 12,000 + 1,500 + 400 x 5 = 15,500 tokens 
 Step 4, settled quota with caching at p = 0.95: 1,500 + 0.05 x 12,000 written + 2,000 = 4,100 tokens per request, which needs 4.9 million tokens per minute, a 3.8x reduction in quota requirement.
 Step 5, cost at illustrative Sonnet-class prices of 3 USD input and 15 USD output per million tokens (UNVERIFIED as of 2026-10): uncached is 0.0465 USD per request, and cached is 0.0162 USD per request, so 46,500 USD versus 16,170 USD per million requests.
 Step 6, failover sizing: the standby Region starts cold, so its quota must cover the uncached 18.6 million tokens per minute for at least one TTL window, plus the reservation burst from every client reconnecting at once.
-Step 7, sensitivity: if a global profile drops p from 0.95 to 0.47, the cost per request rises by about 60%, and the quota requirement more than doubles.
+Step 7, sensitivity: if a global profile drops p from 0.95 to 0.47, the cost per request rises by about 123% (from 0.01617 USD to 0.03604 USD), and the quota requirement more than doubles.
 The full cost model continues in [[17-Cloud-AI-Engineering/Volume_11_LLM_Serving_and_Inference_Systems_on_Cloud/Chapter_11_End_to_End_Latency_Throughput_and_Cost_Modeling|End-to-End Latency, Throughput, and Cost Modeling]].
 
 ## Failure Modes and Pitfalls
@@ -566,7 +568,7 @@ The zero-operator-access property is documented for the new Bedrock integration 
 
 ### Unit-economics levers, in order of typical impact
 
-1. Cache hit rate. Measure it per prefix, keep prefixes byte-stable, and pin low-rate prefixes to one Region. A drop from 0.95 to 0.47 costs about 60% more per request in the worked example.
+1. Cache hit rate. Measure it per prefix, keep prefixes byte-stable, and pin low-rate prefixes to one Region. A drop from 0.95 to 0.47 costs about 123% more per request (rising from 0.01617 USD to 0.03604 USD) in the worked example.
 2. Model tiering. Route classification and extraction to Haiku-class models and reserve Opus-class models for multi-step reasoning, enforced in the gateway rather than left to caller discretion.
 3. Choosing the TTL. Use the 1-hour TTL only when the same prefix recurs at least twice per hour with gaps longer than 5 minutes; otherwise the 5-minute TTL with refresh-on-hit is cheaper.
 4. Right-sizing `max_tokens`. It costs nothing in dollars but directly buys quota headroom, which delays the need for quota increases or provisioned capacity.

@@ -731,11 +731,11 @@ Start with the failure model: at about 4.7e-4 interruptions per GPU-day, the job
 With a 2-minute blocking checkpoint, Young/Daly gives T_opt of about 27 minutes.
 With a 10-minute restart, expected waste is C/T + (T/2 + R)/M, which comes out near 20 percent, consistent with the 75 percent symptom.
 Three levers, in order of impact.
-Restart time R dominates, so the scheduler should keep warm spare nodes, with images pulled and health checks passed, inside the same topology domain, and use in-place node replacement so the gang is not requeued from scratch.
+Checkpoint cost C drives both larger terms (C/T = 7.3% and T/(2M) = 7.3%, while R/M = 5.4%), though restart time R is also substantial; the scheduler should keep warm spare nodes, with images pulled and health checks passed, inside the same topology domain, and use in-place node replacement so the gang is not requeued from scratch.
 Checkpoint cost C should go toward zero through asynchronous sharded checkpoints to local NVMe with background upload, which lets the interval shrink.
 MTBF can be raised by proactive eviction: straggler detection on per-rank step time, and known-answer tests on idle spares, catch degrading hardware before it crashes the job.
 The scheduler also has to avoid making things worse: requeue backoff jitter and checkpoint read fan-out must not overload object storage at restart.
-Cutting R to 1 minute and C to 15 seconds gives T_opt of about 9.6 minutes and waste around 3 to 4 percent, which is in line with publicly reported frontier results.
+Cutting R to 1 minute and C to 15 seconds gives T_opt of about 9.6 minutes and waste around 5.7 percent, which is in line with publicly reported frontier results.
 
 #### Follow-up Interviewer Question
 

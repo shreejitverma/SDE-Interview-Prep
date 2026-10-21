@@ -152,7 +152,7 @@ That is the mechanism behind every "spec decode hurt our throughput" ticket, and
 The first effect that moves the crossover is long context.
 The key and value tensors of the committed prefix are read from HBM once per round and shared by all gamma+1 query positions.
 KV bytes therefore scale with batch x context, not with batch x (gamma+1).
-In the same model with 8192 tokens of context per sequence (1 GiB of KV per sequence for a Llama-3.1-8B shape: 32 layers x 8 KV heads x 128 head dim x 2 tensors x 2 bytes = 128 KiB per token), the 2.80x speedup at gamma = 4 holds up to batch 48, the most that fits on 80 GB, because the step stays limited by KV reads.
+In the same model with 8192 tokens of context per sequence (1 GiB of KV per sequence for a Llama-3.1-8B shape: 32 layers x 8 KV heads x 128 head dim x 2 tensors x 2 bytes = 128 KiB per token), the 2.80x speedup at gamma = 4 holds up to batch 48-52 (the practical limit on 80 GB reserving 10% headroom beside 16 GB of weights), because the step stays limited by KV reads.
 Long-context agentic and RAG workloads are the case where speculation stays profitable at production batch sizes.
 The second effect is MoE expert spread.
 In a top-k MoE at low batch, verifying gamma+1 tokens can activate up to (gamma+1) x k distinct experts per layer instead of k, so weight bytes read per round grow with the verify width.
@@ -200,7 +200,7 @@ A deployment where a broken drafter fails the replica's health check has turned 
 | Ridge point on that part | about 295 tokens per step for a BF16 dense model | Derived from the row above |
 | Llama-3.1-8B KV per token (BF16) | 128 KiB (32 x 8 x 128 x 2 x 2 bytes) | Derived from public model config |
 | Modeled crossover, alpha 0.8, gamma 4, short context | gain 2.62x at batch 64, 0.74x at batch 256 | Computed, lab roofline model |
-| Modeled gain, 8K context, gamma 4 | 2.80x up to memory-limited batch 48 | Computed, lab roofline model |
+| Modeled gain, 8K context, gamma 4 | 2.80x up to memory-limited batch 48-52 | Computed, lab roofline model |
 | g6e.xlarge on-demand (us-east-1) | about 1.86 USD/hour | UNVERIFIED; fetch with the pricing CLI in the lab |
 
 Roofline numbers are upper bounds.
@@ -301,7 +301,7 @@ if __name__ == "__main__":
         row = " ".join(f"{speedup(b, 0.8, g, 0.05, hw):5.2f}" for g in (1, 2, 3, 4, 6, 8))
         print(f"batch={b:4d} gamma[1,2,3,4,6,8]: {row}")
     print("\nSame, but every sequence carries 8192 tokens of context (KV-read bound)")
-    print("(8192 tokens x 128 KiB = 1 GiB KV per sequence; ~60 sequences fit beside 16 GB of weights on 80 GB)")
+    print("(8192 tokens x 128 KiB = 1 GiB KV per sequence; ~52-60 sequences fit beside 16 GB of weights on 80 GB, ~52 at 90% utilization)")
     for b in (1, 8, 16, 32, 48):
         row = " ".join(f"{speedup(b, 0.8, g, 0.05, hw, ctx=8192):5.2f}" for g in (1, 2, 3, 4, 6, 8))
         print(f"batch={b:4d} gamma[1,2,3,4,6,8]: {row}")

@@ -459,12 +459,12 @@ Cross-account snapshot sharing requires a customer managed key whose policy gran
 
 ### Question 1 (L5 - Senior)
 
-**A PostgreSQL primary on a gp3 volume provisioned at 16,000 IOPS and 500 MiB/s shows only about 3,000 IOPS with 3 ms commit latency during peak, and VolumeQueueLength sits near 1. What is happening and what do you change?**
+**A PostgreSQL primary on a gp3 volume provisioned at 16,000 IOPS and 500 MiB/s shows only about 3,000 IOPS with 3 ms commit latency during peak, and VolumeQueueLength sits near 9. What is happening and what do you change?**
 
 #### Model Answer
 
-Queue length near 1 is the tell: by Little's law, 1 outstanding I/O at 3 ms latency sustains about 333 IOPS per stream, so the observed 3,000 IOPS means roughly nine effective streams, nowhere near what 16,000 IOPS requires.
-The volume is not throttling; the workload is latency-bound, and the WAL fsync path is serial by construction.
+Queue length near 9 is the tell: by Little's law, L = lambda * W, so 9 outstanding I/Os with 3 ms commit latency sustains 9 / 0.003 s = 3,000 IOPS across roughly nine effective concurrent commit streams, nowhere near what 16,000 IOPS requires.
+The volume is not throttling; the workload is concurrency- and latency-bound, and the individual transaction WAL fsync paths serialize commits.
 I would first confirm the volume is not the limit by checking that throughput and IOPS are well under provisioning and that the instance's sustained EBS baseline is not being hit, using `describe-instance-types` and instance-level EBS metrics.
 I would check whether the volume was restored from a snapshot recently, since unhydrated blocks inflate latency.
 Then I would attack latency or serialization: group commit settings that batch more transactions per fsync, `wal_compression` to shrink WAL bytes, moving WAL to its own volume so data-file checkpoint writes do not queue behind it, and if commit latency is the SLO, moving the WAL volume to io2 Block Express for sub-500 us average latency.

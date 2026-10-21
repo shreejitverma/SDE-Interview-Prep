@@ -211,7 +211,7 @@ If the judge is reached through a cross-region inference profile or a global end
 | Paired diff SE, 10 percent discordance, n=500 | ~1.4 pp | McNemar arithmetic |
 | Strong-judge agreement with humans | >80 percent, on par with human-human | (Zheng et al., NeurIPS 2023) |
 | Bias shrink factor of an imperfect judge | Se + Sp - 1 (0.55 at Se 0.95, Sp 0.60) | Measurement-error algebra |
-| Samples per arm to detect 2 pp drop from 80 percent, 80 percent power | ~6,270 | Two-proportion power formula |
+| Samples per arm to detect 2 pp drop from 80 percent, 80 percent power | ~6,500 | Two-proportion power formula |
 
 ## AWS vs GCP Mechanism Parity
 

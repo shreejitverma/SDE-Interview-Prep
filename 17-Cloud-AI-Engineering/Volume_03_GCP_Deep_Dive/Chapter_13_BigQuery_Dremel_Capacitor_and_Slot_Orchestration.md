@@ -287,13 +287,14 @@ resource "google_bigquery_reservation_assignment" "lab" {
 }
 
 data "google_project" "query" { project_id = var.query_project }
+data "google_project" "admin" { project_id = var.admin_project }
 
 resource "google_billing_budget" "bq_lab" {
   billing_account = var.billing_account
   display_name    = "bq-reservation-lab"
   budget_filter {
     projects = ["projects/${data.google_project.query.number}",
-                "projects/${var.admin_project}"]
+                "projects/${data.google_project.admin.number}"]
   }
   amount {
     specified_amount {

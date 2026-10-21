@@ -285,7 +285,7 @@ The Autopilot cluster fee is $0.10/h, which the free tier credit can absorb ([GK
 The regional Standard cluster fee is $0.10/h and is not covered by the free tier credit (as of 2026-10).
 Standard nodes are three e2-standard-4 VMs (one per zone) at an assumed $0.134/h each (UNVERIFIED list price), or about $0.40/h.
 Autopilot lab pods total about 2 vCPU and 4 GiB: 2 x 0.0445 + 4 x 0.0049225 = $0.109/h.
-The all-in total is about $0.71/h, or roughly $2-3 for the lab, before load balancer forwarding rules and persistent disks; the script creates neither.
+The all-in total is about $0.71/h, plus roughly $0.04/h for the Standard node pool's three 100 GB boot persistent disks (and no external load balancer forwarding rules), bringing the total to roughly $2.50-$3.50 for the 3-hour run.
 A $20 budget with 50/90/100% alerts is set below.
 
 ### Provision

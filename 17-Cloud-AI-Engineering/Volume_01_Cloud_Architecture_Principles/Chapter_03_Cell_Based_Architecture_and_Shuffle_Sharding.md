@@ -163,7 +163,7 @@ In the lab with n=64 workers and m=4, one poison tenant degrades 23 percent of v
 Simple sharding into 16 disjoint groups degrades 6.2 percent, but fully takes down all of that 6.2 percent.
 Shuffle sharding takes down 0 percent, and the 23 percent see retried-then-succeeded requests with added latency.
 At n=2048, m=4, the degraded fraction for one attacker falls to 0.78 percent (derived).
-Shuffle sharding therefore gets better as the fleet grows, while simple sharding's per-group blast radius is fixed at 1/(n/m).
+Shuffle sharding therefore gets dramatically better as the fleet grows because its fully-down fraction shrinks combinatorially as 1/C(n,m), whereas simple sharding's per-group blast radius shrinks only linearly as m/n.
 The AWS Builders' Library makes the same point: most scaling challenges get harder with size, but shuffle sharding gets more effective (AWS Builders' Library, as of 2026-10).
 
 **5. Recursion.**

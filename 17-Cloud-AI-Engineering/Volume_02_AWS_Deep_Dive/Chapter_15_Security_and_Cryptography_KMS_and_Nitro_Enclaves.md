@@ -335,15 +335,16 @@ nitro-cli run-enclave --eif-path app.eif --cpu-count 2 --memory 1024 --enclave-c
 vsock-proxy 8000 kms.us-east-1.amazonaws.com 443 &
 ```
 
-Put a key policy statement in place that denies all decrypt-class calls unless the request carries a matching attestation.
+Put a key policy statement in place that denies all decrypt-class calls (including `ReEncrypt` and `ReEncryptFrom`, which have no `Recipient` parameter and could otherwise be abused to re-encrypt under an unattensted key) unless the request carries a matching attestation.
 The statement uses `StringNotEqualsIgnoreCase`, which also evaluates true when the condition key is missing, so a plain `Decrypt` from the parent's role is denied as well.
+Producer pipelines that only generate data keys (`kms:GenerateDataKey`) are kept out of this Deny block so they can encrypt model weights without enclave attestation.
 
 ```json
 {
   "Sid": "DenyDecryptUnlessAttestedImage",
   "Effect": "Deny",
   "Principal": "*",
-  "Action": ["kms:Decrypt", "kms:GenerateDataKey", "kms:GenerateDataKeyPair"],
+  "Action": ["kms:Decrypt", "kms:ReEncryptFrom", "kms:ReEncrypt*"],
   "Resource": "*",
   "Condition": {
     "StringNotEqualsIgnoreCase": {
@@ -381,10 +382,11 @@ A further price is that a memory-disclosure bug exposes up to 75,000 records per
 ### Teardown
 
 ```bash
-source /tmp/lab.env
-aws kms delete-alias --alias-name alias/lab-envelope
-aws kms schedule-key-deletion --key-id "$KEY_ARN" --pending-window-in-days 7
-aws guardduty delete-detector --detector-id "$DETECTOR_ID"
+export AWS_REGION=us-east-1
+source /tmp/lab.env 2>/dev/null || true
+aws kms delete-alias --region "$AWS_REGION" --alias-name alias/lab-envelope
+aws kms schedule-key-deletion --region "$AWS_REGION" --key-id "$KEY_ARN" --pending-window-in-days 7
+aws guardduty delete-detector --region "$AWS_REGION" --detector-id "$DETECTOR_ID"
 nitro-cli terminate-enclave --all 2>/dev/null || true
 # Terminate the enclave parent instance if you launched one:
 # aws ec2 terminate-instances --instance-ids <id>
@@ -556,7 +558,7 @@ At startup the enclave generates an RSA key pair, asks the NSM for an attestatio
 The TLS session terminates inside the enclave and travels over a vsock-proxy on the parent.
 KMS verifies the COSE_Sign1 signature chain up to the Nitro root.
 KMS then evaluates `kms:RecipientAttestation:ImageSha384` or the PCR keys in the key policy, and returns `CiphertextForRecipient` encrypted to the enclave's public key, so the parent only ever relays a ciphertext.
-The key policy must contain an explicit Deny on decrypt-class actions when the attestation does not match, because otherwise any admin whose IAM policy grants `kms:Decrypt` can simply call it without a recipient.
+The key policy must contain an explicit Deny on decrypt-class actions (specifically `kms:Decrypt`, `kms:ReEncryptFrom`, and `kms:ReEncrypt*`, because `ReEncrypt` lacks a `Recipient` parameter and could otherwise be used to move ciphertext to an unattensted key) when the attestation does not match, because otherwise any admin whose IAM policy grants `kms:Decrypt` can simply call it without a recipient.
 I would pin PCR0 for strictness, or PCR8 for operational ease, and add PCR3 to bind to the parent role.
 Failure modes:
 - Debug-mode enclaves report zero PCRs and are correctly rejected, but a policy that only checks PCR8 trusts every image the signing key has ever signed.

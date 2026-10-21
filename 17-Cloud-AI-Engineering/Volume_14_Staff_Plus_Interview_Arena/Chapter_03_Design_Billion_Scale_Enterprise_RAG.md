@@ -25,7 +25,7 @@ sources:
 ## TL;DR
 
 At a billion chunks, cost and capacity are set by the vector index's memory footprint, not by the embedding bill: 1B x 1024-dim FP32 HNSW needs about 4.6 TB of RAM per copy, while 32x binary quantization with on-disk rescoring needs about 0.28 TB.
-Keep p99 under 100 ms by fanning out to fewer shards, not by making each shard faster: route each query to the 1-4 shards that hold the tenant, because a 120-shard fan-out turns every shard's p99 into the query's p70.
+Keep p99 under 100 ms by fanning out to fewer shards, not by making each shard faster: route each query to the 1-4 shards that hold the tenant, because a 120-shard fan-out turns every shard's p99 into the query's p30.
 Filtered ANN has a selectivity cliff: a small tenant filtered out of a large shared HNSW graph causes recall collapse or latency blow-up, so partition by filter selectivity (dedicated graph or exact scan), never by convenience.
 Run hybrid retrieval (BM25 plus dense, fused with Reciprocal Rank Fusion) for recall, and also as a degradation path: when the embedding endpoint fails, BM25-only keeps serving.
 Freshness and deletion are Lucene segment mechanics: refresh makes writes visible in about a second, deletes are tombstones until merge, and bulk tenant offboarding through delete-by-query triggers merge storms that hurt query p99.
@@ -420,7 +420,7 @@ def upsert_document(tenant, doc_id, chunks, acl_groups):
                             "acl_groups": acl_groups, "chunk_hash": h,
                             "embed_model": MODEL_ID, "text": text,
                             "embedding": embed(text)}})
-    helpers.bulk(os_client, actions)
+    helpers.bulk(os_client, actions, refresh="wait_for")
     # Remove orphaned tail chunks when a document shrinks.
     os_client.delete_by_query(index=INDEX, routing=tenant, body={"query": {"bool": {
         "filter": [{"term": {"tenant_id": tenant}}, {"term": {"doc_id": doc_id}},
@@ -708,7 +708,7 @@ Your p99 is 180 ms against a 100 ms SLO while median is 35 ms; diagnose and fix 
 #### Model Answer
 
 A 5x gap between p50 and p99 usually means tail amplification or bimodal work, not uniform slowness, so I break the latency down per stage and per shard, using traces.
-The first suspect is fan-out: if queries hit many shards, the query's p99 is roughly the per-shard p99.9 or worse, because `1 - 0.99^120` is 70%.
+The first suspect is fan-out: if queries hit many shards, the query's p99 requires roughly the per-shard p99.99 (since `0.99^(1/120) ≈ 0.99992`), because `1 - 0.99^120` is about 70%.
 The fix is tenant routing to cut fan-out, with hedged requests only for the remaining multi-shard queries, sent after the per-shard p95, which costs about 5% extra load.
 The second suspect is bimodal filtered search: small tenants in the danger-zone selectivity band traverse huge parts of the graph.
 I would bucket p99 by tenant size class, and if one class dominates, adjust the exact-search threshold or re-place those tenants.
@@ -733,7 +733,7 @@ Embeddings from different models live in incompatible spaces, so this is a full 
 Cost in dollars is modest: 1B chunks x 300 tokens = 3 x 10^11 tokens, about $6,000 at Titan V2 list price, with a similar order of magnitude for other managed models.
 The real constraints are throughput and capacity.
 At a 2-week window, 3 x 10^11 tokens is about 250k tokens/s sustained, far above typical default on-demand quotas, so the bulk lane uses batch inference or a self-hosted encoder fleet on Spot GPUs with checkpointed progress.
-During the migration I am also double-provisioned on index memory, so with 32x quantization that is about 560 GB extra per copy for several weeks, which I budget explicitly.
+During the migration I am also double-provisioned on index memory, so with 32x quantization that is about 282 GB extra per copy (~564 GB with one replica) for several weeks, which I budget explicitly.
 The sequence starts with offline evaluation of the new model on our labeled query set per tenant class, because a model that wins public benchmarks can lose on domain identifiers.
 Then the new index is created with the model ID in its name, the real-time lane dual-writes to both indexes, and the bulk lane backfills from the source of truth, not from the old index.
 Next comes shadow traffic: send a sample of live queries to both, compare recall against judgments and overlap metrics, and watch latency on the new index under real filters.

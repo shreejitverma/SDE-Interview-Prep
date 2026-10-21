@@ -63,7 +63,7 @@ New ENIs, new routes and new instances depend on the control plane propagating s
 ### The substrate: encapsulation, the mapping service, and anti-spoofing
 
 Every VPC packet leaves the instance through the Elastic Network Adapter (ENA) or the Elastic Fabric Adapter (EFA), into the Nitro card. There it is wrapped in AWS's proprietary VPC encapsulation, which carries the VPC identity and the source interface identity across the physical network.
-Eric Brandwine's re:Invent 2015 talk "A Day in the Life of a Billion Packets" describes the mapping service. It is the authoritative map from VPC addresses to the physical hosts that hold them. Hosts look entries up and cache them, and edge devices called Blackfoot translate between the encapsulated substrate and the outside world.
+Eric Brandwine's re:Invent 2013 talk "A Day in the Life of a Billion Packets" describes the mapping service. It is the authoritative map from VPC addresses to the physical hosts that hold them. Hosts look entries up and cache them, and edge devices called Blackfoot translate between the encapsulated substrate and the outside world.
 The non-obvious mechanism is on the receive side.
 The destination host checks against the mapping that the claimed source ENI really lives on the sending host. Spoofing is therefore blocked at both ends, not only by the sender's source/destination check.
 This is why you must disable source/destination checking on an ENI before it can forward traffic it did not originate (NAT instances, firewalls). It is also why a "promiscuous" VPC sniffer does not exist: Traffic Mirroring is a separate copy path that uses VXLAN on UDP 4789 (AWS docs, 2025 reading, UNVERIFIED).
@@ -215,7 +215,7 @@ Prices are for us-east-1 or the base US region, on-demand.
 | NACL rules | 20 per direction default, adjustable to 40 | AWS VPC quotas, 2025 reading, UNVERIFIED |
 | Active VPC peerings per VPC | 50 default, max 125 | AWS VPC quotas, 2025 reading, UNVERIFIED |
 | Link-local packet budget | 1,024 pps per ENI (DNS, IMDS, Time Sync) | AWS EC2 docs, 2025 reading, UNVERIFIED |
-| MTU | 9001 in VPC; 8500 via TGW; 1500 via IGW and VPN | AWS EC2/TGW docs, 2025 reading, UNVERIFIED |
+| MTU | 9001 in VPC; 8500 via TGW; 1500 via IGW; 1446 via AWS Site-to-Site VPN | AWS EC2/TGW docs, 2025 reading, UNVERIFIED |
 | Single-flow bandwidth | 5 Gbps outside a cluster placement group; 10 Gbps inside; 25 Gbps with ENA Express | AWS EC2 docs, 2025 reading, UNVERIFIED |
 | Internet/DX egress cap | 50% of instance bandwidth for 32+ vCPUs; 5 Gbps below 32 vCPUs | AWS EC2 docs, 2025 reading, UNVERIFIED |
 | Conntrack TCP established timeout | 432,000 s default; 60-432,000 s range | AWS EC2 docs, 2025 reading, UNVERIFIED |
@@ -246,7 +246,7 @@ Prices are for us-east-1 or the base US region, on-demand.
 | Concern | AWS | Google Cloud | Critical difference |
 |---|---|---|---|
 | Network scope | VPC is regional; subnets are AZ-scoped | VPC network is global; subnets are regional and span zones | GCP needs no transit layer for multi-region inside one network; AWS needs TGW, Cloud WAN or peering |
-| Virtualization data plane | Nitro card encapsulation plus mapping service lookup and cache (re:Invent 2015 talk) | Andromeda on-host fast path plus Hoverboard gateways for long-tail flows, with heavy flows offloaded to direct host paths (NSDI 2018) | Andromeda openly documents a default-gateway-then-offload model; AWS documents host-side lookup and cache |
+| Virtualization data plane | Nitro card encapsulation plus mapping service lookup and cache (re:Invent 2013 talk) | Andromeda on-host fast path plus Hoverboard gateways for long-tail flows, with heavy flows offloaded to direct host paths (NSDI 2018) | Andromeda openly documents a default-gateway-then-offload model; AWS documents host-side lookup and cache |
 | Route table binding | One route table per subnet association; gateway route tables for ingress | Routes belong to the whole network, scoped by network tags or service accounts, with a numeric priority after longest prefix | AWS routing differs per subnet; GCP routing differs per instance tag |
 | Steering to middleboxes | More-specific-than-local routes, GWLB endpoints, Network Firewall endpoints | Static routes or policy-based routes with an internal passthrough NLB as next hop | Both rely on a load-balanced next hop for appliance high availability |
 | Stateful filtering | Security groups on ENIs, conntrack in Nitro, untracked-flow rule | VPC firewall rules and hierarchical/network firewall policies enforced on host by Andromeda | GCP has org/folder-level firewall policy inheritance; AWS centralizes through Firewall Manager or Network Firewall |
@@ -552,7 +552,7 @@ All three are covered in [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE
 - **Conntrack exhaustion.** Proxies and NAT instances with many short-lived or idle connections fill the tracking table. Watch `conntrack_allowance_available` and tune the TCP established idle timeout, or make flows untracked where the security posture allows.
 - **NAT Gateway port allocation.** The 55,000 limit is per destination tuple per NAT IP. One hot SaaS endpoint exhausts it while total connections look small. Add secondary NAT IPs, spread destinations, or use PrivateLink to that SaaS if it is offered.
 - **Idle timeouts at 350 s.** Database pools or gRPC channels idle through NAT Gateway, NLB or PrivateLink are silently dropped, and the next write gets an RST. Set TCP keepalive below 350 s.
-- **MTU black holes.** 9001-byte frames inside the VPC drop to 8500 through TGW and 1500 through VPN or the internet. If ICMP "fragmentation needed" is blocked by a NACL or an appliance, large TLS records hang. Allow ICMP type 3 code 4 and clamp MSS on appliances.
+- **MTU black holes.** 9001-byte frames inside the VPC drop to 8500 through TGW, 1500 through the internet, and 1446 through AWS Site-to-Site VPN. If ICMP "fragmentation needed" is blocked by a NACL or an appliance, large TLS records hang. Allow ICMP type 3 code 4 and clamp MSS on appliances.
 
 ### Routing and segmentation errors
 
@@ -790,7 +790,7 @@ The CFO asks why AWS inter-VPC traffic now has a per-GB processing line item tha
 - [A Cloud-Optimized Transport Protocol for Elastic and Scalable HPC (IEEE Micro 2020)](https://www.amazon.science/publications/a-cloud-optimized-transport-protocol-for-elastic-and-scalable-hpc) - The SRD protocol behind EFA and ENA Express, explaining why single-flow limits differ by path.
 - [AWS Builders' Library: Workload isolation using shuffle-sharding](https://aws.amazon.com/builders-library/workload-isolation-using-shuffle-sharding/) - The isolation math Hyperplane-backed services rely on.
 - [AWS Builders' Library: Reliability, constant work, and a good cup of coffee](https://aws.amazon.com/builders-library/reliability-and-constant-work/) - How AWS distributes network configuration with constant-work patterns so propagation does not collapse under load.
-- AWS re:Invent 2015, "A Day in the Life of a Billion Packets" (Eric Brandwine) - Primary public source for the mapping service, encapsulation and Blackfoot edge model; search by title.
+- AWS re:Invent 2013, "A Day in the Life of a Billion Packets" (Eric Brandwine) - Primary public source for the mapping service, encapsulation and Blackfoot edge model; search by title.
 - AWS re:Invent 2017, "Another Day, Another Billion Flows" (Colm MacCarthaigh) - Primary public source for Hyperplane's design goals and the services it underpins; search by title.
 - [Amazon EC2 security group connection tracking](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/security-group-connection-tracking.html) - The authoritative rules for tracked, untracked and automatically tracked flows and their timeouts.
 - [Monitor network performance for ENA settings](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/monitoring-network-performance-ena.html) - Defines the allowance-exceeded counters you need to diagnose drops.

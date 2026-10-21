@@ -89,7 +89,7 @@ It covers a 12,288-GPU training system that reached 55.2% MFU on a 175B model, p
 ### Two fabrics and why rank order matters
 
 A modern 8-GPU node has a scale-up fabric (NVLink through NVSwitch, roughly 900 GB/s per H100 GPU) and a scale-out fabric (P5 provides 3,200 Gbps of EFA per instance, so 400 Gbps per GPU) (AWS P5 launch, 2023-07).
-That is about an 18x bandwidth gap per GPU between the two fabrics, before counting the latency difference.
+That is about a 9x bandwidth gap per direction per GPU between the two fabrics, before counting the latency difference.
 So the mapping is roughly fixed: tensor parallelism and expert all-to-all stay inside the NVLink domain; pipeline stages cross the scale-out fabric point to point; data parallelism crosses it with large, overlap-friendly reduce-scatter and all-gather operations.
 The next chapter, [[17-Cloud-AI-Engineering/Volume_10_AI_Infrastructure_on_Cloud/Chapter_04_Distributed_Training_Parallelism_Strategies|Distributed Training Parallelism Strategies]], derives the volumes; this chapter is about making the physical layout match them.
 
@@ -287,7 +287,7 @@ The lesson: compare cost per useful FLOP at your measured MFU and your negotiate
 
 Using the derived rate of 1.58e-4 interruptions per node-hour, a 128-node job has M = 1/(128 x 1.58e-4) = about 49.5 hours.
 Over 24 days (576 hours) that means about 11.6 expected interruptions.
-Checkpoint state is about 16 bytes per parameter for BF16 weights plus FP32 master weights and two Adam moments, so 70e9 x 16 = 1.12 TB.
+Checkpoint state is about 16 bytes per parameter for BF16 weights plus FP32 master weights, two Adam moments, and gradients (or 14 bytes without gradients), so 70e9 x 16 = 1.12 TB.
 At 50 GB/s of aggregate write bandwidth to FSx for Lustre, a synchronous checkpoint blocks for about 22 s; assume C = 30 s including the barrier.
 Young/Daly gives T_opt = sqrt(2 x 30 x 178,200) = about 3,270 s, so checkpoint every ~55 minutes.
 With R = 20 minutes, waste = 30/3270 + 3270/(2 x 178,200) + 1200/178,200 = 0.9% + 0.9% + 0.7% = about 2.5%.
@@ -540,7 +540,8 @@ Then watch the node pool recover as a unit while the JobSet restarts both slices
 ```bash
 kubectl delete jobset ms --ignore-not-found
 gcloud container clusters delete "${CLUSTER}" --location="${REGION}" --quiet
-gcloud compute tpus tpu-vm list --zone="${ZONE}"   # expect empty
+gcloud compute instances list --filter="name~${CLUSTER}" --format="table(name,status)" # expect empty
+gcloud container clusters list --filter="name=${CLUSTER}" # expect empty
 ```
 
 ## Failure Modes and Pitfalls
@@ -634,7 +635,7 @@ Envelope-encrypt them with per-run data keys under a KMS key whose policy is nar
 ### Cost
 
 The largest lever is goodput.
-Moving from 82% to 94% effective training time on a fixed-size reservation is a 15% price cut that no negotiation will match.
+Moving from 82% to 94% effective training time on a fixed-size reservation drops the cost per useful hour by 12.8% (a 14.6% throughput gain) that no negotiation will match.
 The second lever is matching capacity instruments to workload shape:
 
 - Capacity Blocks and training plans for bounded experiments.
@@ -682,7 +683,7 @@ The mapping follows bandwidth.
 Tensor parallelism has the most frequent, latency-sensitive collectives, so it goes on an ICI axis, typically small and inside a cube.
 FSDP's all-gathers and reduce-scatters are also large and frequent, so they go on the remaining ICI axes within the slice.
 Pure data parallelism goes on the DCN axis between the four slices, because it only needs one gradient reduction per step, and that reduction can overlap with the backward pass.
-In JAX I would build the mesh with `create_hybrid_device_mesh(ici_shape=(1, fsdp, tp), dcn_shape=(4, 1, 1))` and name the axes ("data", "fsdp", "tensor").
+In JAX I would build the mesh with `create_hybrid_device_mesh(ici_mesh_shape=(1, fsdp, tp), dcn_mesh_shape=(4, 1, 1))` and name the axes ("data", "fsdp", "tensor").
 Only the "data" axis crosses DCN.
 I would also check that the slice shape uses full cubes in each dimension, so the ICI axes are true tori with wraparound, not meshes.
 

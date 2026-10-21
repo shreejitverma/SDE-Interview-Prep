@@ -356,9 +356,10 @@ resource "google_billing_budget" "lab" {
   threshold_rules { threshold_percent = 1.0 }
 }
 
-output "policy_id"      { value = google_access_context_manager_access_policy.lab.name }
-output "inside_bucket"  { value = google_storage_bucket.inside.name }
-output "outside_bucket" { value = google_storage_bucket.outside.name }
+output "policy_id"          { value = google_access_context_manager_access_policy.lab.name }
+output "inside_bucket"      { value = google_storage_bucket.inside.name }
+output "outside_bucket"     { value = google_storage_bucket.outside.name }
+output "inside_project_id"  { value = var.inside_project_id }
 ```
 
 ### Run book
@@ -366,11 +367,12 @@ output "outside_bucket" { value = google_storage_bucket.outside.name }
 1. Apply.
 
 ```bash
-export TF_VAR_my_cidr="$(curl -s https://ifconfig.me)/32"
+export TF_VAR_my_cidr="$(curl -4 -s https://ifconfig.me)/32"
 terraform init && terraform apply
 POLICY=$(terraform output -raw policy_id)
 IN=$(terraform output -raw inside_bucket)
 OUT=$(terraform output -raw outside_bucket)
+INSIDE_PROJECT_ID=$(terraform output -raw inside_project_id)
 ```
 
 2. Wait for propagation, plan on up to 30 minutes, and then generate traffic from three contexts.
@@ -424,7 +426,7 @@ for (mode, reason, svc, method, who), n in hist.most_common(50):
 ```
 
 ```bash
-python3 vpcsc_violations.py "$TF_VAR_inside_project_id" 2
+python3 vpcsc_violations.py "${INSIDE_PROJECT_ID:-$TF_VAR_inside_project_id}" 2
 ```
 
 Expected output: one `DRY_RUN` row for the Cloud Shell read, with an access-level reason such as `NO_MATCHING_ACCESS_LEVEL`, and one row for the copy, with a resource-mismatch reason such as `RESOURCES_NOT_IN_SAME_SERVICE_PERIMETER`.

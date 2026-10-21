@@ -488,7 +488,7 @@ gcloud resource-manager folders delete "$FOLDER_ID" || echo "retry folder delete
 ### Capacity sizing: hierarchy and rollout for 4,000 projects
 
 Suppose you have 4,000 projects, 12 business units, 3 environments, and about 40 teams per business unit.
-A layout of `org / bu (12) / env (3) / team (40) / projects` uses 4 folder levels, well inside the 10-level limit.
+A layout of `org / bu (12) / env (3) / team (40) / projects` uses 3 folder levels, well inside the 10-level limit.
 The widest fan-out is 40 team folders per environment folder, well under 300 direct children.
 A flat `org / team` layout with 480 team folders breaks the 300-children limit at the root, which is why you need at least one intermediate level.
 For policy objects: 35 org-level guardrails, plus about 10 environment-specific constraints on 36 environment folders, gives 35 + 360 = 395 policy objects before exceptions.

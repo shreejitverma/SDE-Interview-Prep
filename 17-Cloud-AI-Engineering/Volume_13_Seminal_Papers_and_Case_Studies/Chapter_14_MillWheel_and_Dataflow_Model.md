@@ -485,7 +485,7 @@ gcloud pubsub subscriptions create mw-in-sub --topic=mw-in
 gcloud pubsub topics create mw-out
 gcloud storage buckets create "gs://$PROJECT-mw-tmp" --location="$REGION"
 
-python windowed_counts.py --mode=pubsub \
+python windowed_counts.py --mode=pubsub --job_name=windowed-counts \
   --runner=DataflowRunner --project="$PROJECT" --region="$REGION" \
   --temp_location="gs://$PROJECT-mw-tmp/tmp" \
   --input_subscription="projects/$PROJECT/subscriptions/mw-in-sub" \
@@ -504,8 +504,8 @@ Exact teardown:
 
 ```bash
 JOB_ID=$(gcloud dataflow jobs list --region="$REGION" --status=active \
-  --format='value(JOB_ID)' --filter='name~windowed')
-gcloud dataflow jobs cancel "$JOB_ID" --region="$REGION"
+  --format='value(id)' --filter='name~windowed')
+[ -n "$JOB_ID" ] && gcloud dataflow jobs cancel "$JOB_ID" --region="$REGION"
 gcloud pubsub subscriptions delete mw-in-sub
 gcloud pubsub topics delete mw-in mw-out
 gcloud storage rm -r "gs://$PROJECT-mw-tmp"

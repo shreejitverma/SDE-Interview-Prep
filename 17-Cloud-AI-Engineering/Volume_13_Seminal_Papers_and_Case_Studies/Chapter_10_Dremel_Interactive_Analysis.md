@@ -344,6 +344,9 @@ The three executed queries scan a few tens of MB in total, which falls inside th
 Budget alarm (create it before running the lab):
 
 ```bash
+GOOGLE_CLOUD_PROJECT="${GOOGLE_CLOUD_PROJECT:-$(gcloud config get-value project 2>/dev/null)}"
+BILLING_ACCOUNT_ID="${BILLING_ACCOUNT_ID:-$(gcloud billing projects describe "${GOOGLE_CLOUD_PROJECT}" --format='value(billingAccountName)' 2>/dev/null | sed 's|billingAccounts/||')}"
+
 gcloud billing budgets create \
   --billing-account="${BILLING_ACCOUNT_ID}" \
   --display-name="dremel-lab" \
@@ -432,6 +435,10 @@ Teardown (deletes the dataset and every table in it):
 
 ```bash
 bq rm -r -f -d "${GOOGLE_CLOUD_PROJECT}:dremel_lab"
+if [ -n "${BILLING_ACCOUNT_ID:-}" ]; then
+  gcloud billing budgets list --billing-account="${BILLING_ACCOUNT_ID}" --filter='displayName=dremel-lab' --format='value(name)' \
+    | xargs -r -n1 gcloud billing budgets delete --quiet
+fi
 ```
 
 ### Part C - Equivalent AWS guardrail (no billable resources created)

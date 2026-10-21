@@ -535,7 +535,7 @@ The `finally` clause resumes the processes, at which point the ASG launches repl
 ```bash
 gcloud compute instance-templates create ss-lab-tmpl \
   --machine-type=e2-micro --image-family=debian-12 --image-project=debian-cloud \
-  --no-address --region=us-central1
+  --no-address
 
 gcloud compute instance-groups managed create ss-lab-mig \
   --template=ss-lab-tmpl --size=6 --region=us-central1 \
@@ -726,7 +726,7 @@ Walk through the behavior, the decisions you make in the first hour, and the ris
 Because replicas are rack-aware, every partition has exactly one replica in each AZ, so a zone loss removes one replica per partition and leaves two, which satisfies `min.insync.replicas=2`, and leaders for partitions that were in the dead zone are re-elected from the survivors.
 Producers with `acks=all` keep writing, with a brief stall for leader election and metadata refresh, and consumers rebalance.
 The cluster is now running with no redundancy margin: any further broker loss that touches a partition drops its ISR to one and writes to that partition fail (availability loss, not data loss, with `acks=all`).
-The tempting action is to rebuild 6 brokers in the surviving zones, but that is a control plane operation, there is no valid rack-aware placement for RF=3 across two zones, and re-replication traffic is large: a broker's 2 TB at a 200 MB/s throttle is 10,000 seconds, about 2.8 hours, and that traffic competes with production for disk and network, which risks pushing the survivors out of their own SLO.
+The tempting action is to rebuild 3 brokers in the surviving zones, but that is a control plane operation, there is no valid rack-aware placement for RF=3 across two zones, and re-replication traffic is large: a broker's 2 TB at a 200 MB/s throttle is 10,000 seconds, about 2.8 hours, and that traffic competes with production for disk and network, which risks pushing the survivors out of their own SLO.
 My first-hour decision is therefore not to rebuild eagerly: confirm the survivors have capacity headroom (this is why the cluster is sized so two zones carry the traffic), watch ISR shrink and under-min-ISR partition counts, throttle any replication, and set a timer after which, if the zone has not returned, I begin controlled re-replication into a temporary two-rack layout while accepting that placement is not zone-diverse.
 EBS volumes are zonal, so the dead zone's volumes cannot be attached elsewhere, and if the failed zone returns, brokers come back with intact data and catch up from the log, which is usually much cheaper than a rebuild.
 Tiered storage reduces the local data per broker and therefore the rebuild cost, and I would record that as a design lever for next time.

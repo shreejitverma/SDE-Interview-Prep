@@ -136,7 +136,7 @@ The SC21 paper reports this schedule improved throughput by 10+% ([Narayanan et 
 Zero Bubble PP ([Qi et al., ICLR 2024](https://arxiv.org/abs/2401.10241)) splits backward into B (input gradient, on the critical path to the previous stage) and W (weight gradient, schedulable anywhere) and uses W to fill the bubbles.
 Its authors report up to 15% higher throughput than 1F1B under similar memory limits ([ICLR 2024](https://proceedings.iclr.cc/paper_files/paper/2024/hash/d5a8e37f38a08c68162452dcba89ae9c-Abstract-Conference.html)).
 DeepSeek-V3's DualPipe feeds microbatches from both ends of the pipeline and overlaps forward/backward compute with MoE all-to-all, giving fewer bubbles and hiding most communication ([DeepSeek-V3 report](https://arxiv.org/abs/2412.19437)).
-PP intensity is ~72h^2 x (L/p) x s x b FLOPs per stage over 4 x s x b x h bytes per boundary, about 18hL/p FLOP/byte per direction.
+PP intensity is ~72h^2 x (L/p) x s x b FLOPs per stage over 4 x s x b x h bytes total (2 x s x b x h bytes per direction), giving about 36hL/p FLOP/byte per direction (or 18hL/p across both directions).
 That is the highest of any axis, so PP tolerates slow links but pays in bubbles, memory skew, and schedule complexity.
 
 ### Expert parallelism: all-to-all and the tail-latency tax

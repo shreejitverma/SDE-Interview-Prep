@@ -396,7 +396,7 @@ RS(10,4)  P=1.943e-20  needs >= 4 failure domains (<= 4 fragments each)
 
 Step-by-step reading of the model:
 
-1. Bytes never threatened the GFS master. Going from 1 GB files to 1 MB files at the same 1 PB multiplies master RAM by about 116x, because every file costs at least one chunk record.
+1. Bytes never threatened the GFS master. Going from 1 GB files to 1 MB files at the same 1 PB multiplies master RAM by about 120x (from 1.06 GB to 128 GB), because every file costs at least one chunk record.
 2. RS(6,3) halves raw capacity relative to R=3. At 100 PB logical that is 150 PB of disks not bought, which dominates the TCO of a storage fleet.
 3. The price is a 6x larger repair read. With the same throttled repair budget, the vulnerable window is 6x longer, and the probability model has to use the longer window for RS.
 4. The independent-failure probabilities look astronomically safe, and they are misleading. Ford et al. show that failures are bursty and rack-correlated, so in practice the binding constraint is the last line: how many failure domains each stripe is spread across.
@@ -710,7 +710,7 @@ A single master makes placement, re-replication and lease decisions with global 
 The paper argues this was fine because the master handles only metadata.
 
 The first thing to break was file count.
-Every file costs at least one chunk record and one namespace entry no matter how small it is, so 1 MB files cost about 116x more master RAM per byte than 1 GB files.
+Every file costs at least one chunk record and one namespace entry no matter how small it is, so 1 MB files cost about 120x more master RAM per byte than 1 GB files (128 GB versus 1.06 GB per PB).
 Metadata QPS and failover time came next, once latency-sensitive services arrived.
 Bandwidth never broke, because it was never on the master.
 A secondary problem was hot small files: a one-chunk executable launched on hundreds of machines overloaded its three replicas, which forced per-file replication factors.
@@ -757,7 +757,7 @@ I would separate staging from committing.
 Each producer writes immutable segment objects with `if_generation_match=0` under randomized prefixes, which scales with the bucket's key-index autoscaling.
 A small number of committers, ideally one per log partition chosen through a lease in a database, fold up to 31 segments per compose into the partition's log object.
 Each compose uses `if_generation_match` on the current generation as the fencing token.
-At about one compose per second per partition, 2,000 records per second needs either about 65 records per compose (achievable if producers batch records into segments) or about 4 to 8 partitions for headroom.
+At about one compose per second per partition, 2,000 records per second needs either about 65 records per segment (31 segments x ~65 = ~2,000 records folded per compose) or about 4 to 8 partitions for headroom.
 Exactly-once needs two layers.
 The committer records the last committed batch ID in the object's metadata, so a retry after a lost response is detected.
 Every record carries a unique ID and a checksum, and consumers deduplicate, because a lost response followed by another committer's success defeats the metadata fence.

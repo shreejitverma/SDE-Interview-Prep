@@ -510,7 +510,7 @@ done
 python wds_s3_loader.py read --source s3 --bucket "$BUCKET" --region "$REGION" --workers 16 --step-ms 0
 
 # FUSE comparison on AWS: Mountpoint read-only with a local cache, same loader in local mode.
-sudo mkdir -p /mnt/s3 /mnt/nvme/mp-cache
+sudo mkdir -p /mnt/s3 /mnt/nvme/mp-cache && sudo chown -R "$USER" /mnt/s3 /mnt/nvme/mp-cache
 mount-s3 "$BUCKET" /mnt/s3 --read-only --prefix train/ --cache /mnt/nvme/mp-cache
 python wds_s3_loader.py read --source local --local-dir /mnt/s3 --workers 8 --epochs 3
 ```
@@ -538,7 +538,7 @@ metadata-cache:
 EOF
 # ttl-secs: -1 is only safe because this dataset is immutable for the life of the mount.
 
-sudo mkdir -p /mnt/gcs /mnt/disks/localssd/gcsfuse-cache
+sudo mkdir -p /mnt/gcs /mnt/disks/localssd/gcsfuse-cache && sudo chown -R "$USER" /mnt/gcs /mnt/disks/localssd/gcsfuse-cache
 gcsfuse --config-file gcsfuse.yaml -o ro "$GBUCKET" /mnt/gcs
 python wds_s3_loader.py read --source local --local-dir /mnt/gcs/train --workers 8 --epochs 3
 ```

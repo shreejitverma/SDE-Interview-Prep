@@ -32,7 +32,7 @@ sources:
 
 Every cloud AI system has three ceilings: bandwidth (bytes per second), latency (seconds per operation), and concurrency (operations in flight); Little's Law (`throughput = concurrency / latency`) links all three, and most "slow cloud" tickets trace back to one of them.
 LLM decode is limited by HBM bandwidth, not FLOPs: the most tokens per second one sequence can get is roughly aggregate HBM bandwidth divided by the bytes read per step (weights plus KV-cache).
-Each step outward in the bandwidth ladder costs about an order of magnitude: HBM (3.35-8 TB/s per chip), scale-up fabric (0.9-1.8 TB/s per GPU), scale-out NIC (about 50 GB/s per GPU on a 3.2 Tbps node), then object storage at 10-100 ms time to first byte.
+Each step outward in the bandwidth ladder costs about an order of magnitude: HBM (3.35-8 TB/s per chip), scale-up fabric (0.9-1.8 TB/s per GPU), scale-out NIC (about 50 GB/s per GPU on a 3.2 Tbps node), then object storage at 100-200 ms time to first byte.
 Cloud networks do not give you "the" bandwidth; they enforce several separate limiters (aggregate, per-flow, packets per second, connection tracking, link-local), and each one drops packets silently when you exceed it.
 An SLA is a refund schedule, not a design target: when services are chained in series, their availabilities multiply, the credit is capped at the bill for the failed service, and the business loss is uncapped.
 
@@ -655,8 +655,8 @@ Design checkpointing for a 400B-parameter dense model trained on 8,192 H100s on 
 
 Start with size: mixed-precision Adam carries about 16 bytes per parameter (BF16 weights, FP32 master weights, two FP32 moments), so a full checkpoint is about 6.4 TB.
 Next, failure rate: Llama 3 saw an interruption about every 3 hours on 16K GPUs, so at 8K GPUs plan for an MTBF of about 6 hours.
-Young/Daly gives an interval of `sqrt(2 x C x MTBF)`; with a 30-second blocking cost, the interval is about `sqrt(2 x 30 x 21,600)`, roughly 1,140 s, or about 19 minutes.
-Expected loss per failure is about half the interval plus restart time, so restart time has to be driven below 10 minutes to stay within 5%, using hot spares and pre-pulled container images.
+Young/Daly gives an interval of `sqrt(2 x C x MTBF)`; with a 15-second blocking copy time, the interval is `sqrt(2 x 15 x 21,600)` ~ 805 s (~13.4 minutes), giving ~3.7% combined overhead for checkpointing and rollback.
+Expected loss per failure adds restart overhead (`R / MTBF`), so restart time must be driven under 3 minutes (~0.8%) to stay within the 5% total waste target, using hot spares and pre-pulled container images.
 The design is two-tier and asynchronous: each rank snapshots its shard to host memory in seconds (blocking only on the device-to-host copy), and a background thread drains it to local NVMe and then to S3.
 Bandwidth is not the binding term: 6.4 TB across 1,024 nodes is 6.25 GB per node, a few seconds at tens of Gbps per node.
 Requests are: 64 MiB parts produce about 100,000 PUTs per checkpoint, which would take about 30 s even on one fully scaled prefix at 3,500 PUT/s, and a cold prefix would return 503s.

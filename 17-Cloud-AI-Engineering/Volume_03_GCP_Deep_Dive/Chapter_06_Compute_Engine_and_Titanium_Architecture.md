@@ -279,7 +279,14 @@ Budgets send alerts but do not stop spending, so the teardown step below is mand
 
 ```bash
 export ZONE="us-central1-a"
+export REGION="us-central1"
 gcloud config set project "${PROJECT_ID}"
+
+# Enable Cloud NAT and IAP SSH so the no-address VM can reach Debian apt repos and be accessed
+gcloud compute routers create titanium-lab-router --region="${REGION}" --network=default 2>/dev/null || true
+gcloud compute routers nats create titanium-lab-nat --router=titanium-lab-router --region="${REGION}" \
+  --auto-allocate-nat-external-ips --nat-all-subnet-ip-ranges 2>/dev/null || true
+gcloud compute firewall-rules create allow-iap-ssh --network=default --allow=tcp:22 --source-ranges=35.235.240.0/20 2>/dev/null || true
 
 gcloud compute instances create titanium-lab \
   --zone="${ZONE}" \
@@ -299,7 +306,7 @@ gcloud compute instances attach-disk titanium-lab \
   --zone="${ZONE}" --disk=hdb-test --device-name=hdb-test
 ```
 
-`--no-address` keeps the VM off the internet. Use `gcloud compute ssh titanium-lab --zone="${ZONE}" --tunnel-through-iap` with a firewall rule that allows IAP's range on TCP 22.
+`--no-address` keeps the VM off the internet. Connect via `gcloud compute ssh titanium-lab --zone="${ZONE}" --tunnel-through-iap`.
 
 ### Inspect topology inside the guest
 
@@ -353,6 +360,9 @@ If IOPS falls by less than half while visible vCPUs halve, the bottleneck was de
 ```bash
 gcloud compute instances delete titanium-lab --zone="${ZONE}" --quiet
 gcloud compute disks delete hdb-test --zone="${ZONE}" --quiet
+gcloud compute routers nats delete titanium-lab-nat --router=titanium-lab-router --region="${REGION:-us-central1}" --quiet 2>/dev/null || true
+gcloud compute routers delete titanium-lab-router --region="${REGION:-us-central1}" --quiet 2>/dev/null || true
+gcloud compute firewall-rules delete allow-iap-ssh --quiet 2>/dev/null || true
 gcloud billing budgets list --billing-account="${BILLING_ACCOUNT}" --filter="displayName=titanium-lab-budget" --format="value(name)" \
   | xargs -r -I{} gcloud billing budgets delete {} --quiet
 ```

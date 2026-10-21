@@ -553,6 +553,7 @@ def main():
                 pending.result()            # at most one in-flight save
             dig = digest(model)             # computed on the exact state being snapshotted
             msd, osd = get_state_dict(model, opt)
+            msd = {k: v.clone().detach() if isinstance(v, torch.Tensor) else v for k, v in msd.items()}
             local = os.path.join(a.local_dir, f"step_{step:08d}_a{a.attempt}")
             t0 = time.perf_counter()
             pending = dcp.async_save({"model": msd, "optim": osd, "step": step},

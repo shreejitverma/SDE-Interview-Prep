@@ -214,7 +214,7 @@ Pricing on the Google side changed at least three times between 2025-12 and 2026
 | Outbound identity | AgentCore Identity: OAuth token vault, user-delegated 3LO tokens | Service accounts plus agent identity features (exact GA scope UNVERIFIED) | Both aim to keep long-lived secrets out of agent code; audit which principal appears in downstream logs |
 | Memory | AgentCore Memory: short-term events plus async long-term strategies | Agent Engine Sessions plus Memory Bank | Both are eventually consistent for long-term recall |
 | Coarse workflow and HITL | Step Functions callbacks (`.waitForTaskToken`), Lambda durable functions | Cloud Workflows callbacks | Neither should host the inner agent loop |
-| Event-log store with fencing | DynamoDB `TransactWriteItems` with `ConditionCheck` | Firestore transactions or Spanner read-write transactions | Spanner gives externally consistent multi-region fencing; DynamoDB global tables are last-writer-wins |
+| Event-log store with fencing | DynamoDB `TransactWriteItems` with `ConditionCheck` | Firestore transactions or Spanner read-write transactions | Spanner gives externally consistent multi-region fencing; DynamoDB global tables are asynchronously replicated last-writer-wins unless configured with multi-Region strong consistency |
 | Framework | Strands Agents (open source) | Agent Development Kit (open source) | Both deploy elsewhere; framework choice need not lock in the runtime |
 | Inter-agent protocol | MCP and A2A | MCP and A2A | Protocol parity is high; auth and policy parity is not |
 | Private networking | VPC-attached runtime and PrivateLink endpoints (endpoint coverage UNVERIFIED) | VPC Service Controls perimeter and PSC (Agent Engine coverage UNVERIFIED) | VPC SC is a perimeter on API calls; PrivateLink is a network path; see the Security section |
@@ -682,7 +682,7 @@ Costs: two to four extra conditional writes per step, which is negligible next t
 
 #### Follow-up Interviewer Question
 
-Your log lives in a DynamoDB global table for cross-region failover; what happens to the fencing guarantee during a regional partition, and what do you change?
+Your log lives in a DynamoDB global table for cross-region failover; under standard asynchronous replication what happens to the fencing guarantee during a regional partition, and what do you change (such as enabling multi-Region strong consistency or active-passive partition leasing) to preserve correctness?
 
 ### Question 4 (L6 - Staff)
 

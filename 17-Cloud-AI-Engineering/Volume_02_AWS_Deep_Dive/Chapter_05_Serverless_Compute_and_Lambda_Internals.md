@@ -231,9 +231,9 @@ For the full Cloud Run treatment see [[17-Cloud-AI-Engineering/Volume_03_GCP_Dee
 
 ### Cost estimate and budget guardrail
 
-The lab runs about 40 invocations at 1,024 MB for about 3 seconds each, roughly 120 GB-s, or about $0.002 of duration charges.
-One SnapStart version costs at minimum 1 GB times 10,800 s of cache, about $0.016, plus about 20 restores at 1 GB each, about $0.003.
-The expected total is under $0.05, excluding the free tier.
+The lab runs 10 invocations across the two functions at 1,024 MB for about 3 seconds each, roughly 30 GB-s, or about $0.0005 of duration charges.
+The script publishes 5 SnapStart versions, each carrying its own 3-hour minimum snapshot cache charge: 5 times 1 GB times 10,800 s of cache costs about $0.08, plus 5 restores at 1 GB each, about $0.0008.
+The expected total is about $0.09, well under $0.15, excluding the free tier.
 Create a budget alarm before running the lab:
 
 ```bash

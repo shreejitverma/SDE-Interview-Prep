@@ -21,7 +21,7 @@ sources:
 - The data plane bypasses the kernel: the NIC and a userspace process share one packet pool, a steering module hashes each packet's 5-tuple onto per-core rings, lock-free packet threads pick a backend and GRE-encapsulate the packet, and pointers move between rings without copies, so one machine fills a 10 Gbps link with small packets (Maglev paper, NSDI 2016).
 - Backend selection has two layers: a per-thread, unshared, fixed-size connection-tracking table keeps a flow sticky while one Maglev sees it, and Maglev hashing gives every Maglev the same answer for the same 5-tuple when that table cannot help.
 - Maglev hashing fills a prime-sized lookup table (65537 or 655373 entries) by taking turns across per-backend permutations, which gives O(1) lookup and near-perfect balance but more disruption than the minimum: removing 1 of 1000 backends at M=65537 remaps about 6.6x the ideal number of slots (this chapter's simulator).
-- Responses skip the load balancer through direct server return (DSR), so you size Maglev against ingress packets per second only; the costs are asymmetric routing, encapsulation overhead, and broken connections that appear only when ECMP churn coincides with backends sets that differ across Maglevs.
+- Responses skip the load balancer through direct server return (DSR), so you size Maglev against ingress packets per second only; the costs are asymmetric routing, encapsulation overhead, and broken connections that appear when ECMP churn coincides with any backend-set change (skewed or consistent).
 
 ## Mental Model
 

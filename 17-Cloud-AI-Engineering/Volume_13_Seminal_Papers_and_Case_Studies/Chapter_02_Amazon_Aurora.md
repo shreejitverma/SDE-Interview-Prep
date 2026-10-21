@@ -144,7 +144,7 @@ When 4 of 6 have acked, the record counts toward PGCL, VCL, and VDL.
 Because each AZ holds exactly 2 segments, any 4 acks must come from at least two AZs.
 The writer's own AZ can supply at most 2, so every commit needs at least two acks from another AZ.
 In practice commit latency is the 4th-fastest of six storage RTTs.
-A whole slow AZ is ignored, but one slow node in each of two remote AZs is not.
+Any two slow segments are hidden by the 4-of-6 quorum; it takes three slow segments to set commit latency.
 Commits: a worker thread that reaches COMMIT records the transaction's commit LSN, puts the transaction on a wait list, and moves on to other work.
 A separate thread sends commit acknowledgments to clients for every waiting transaction whose commit LSN is less than or equal to VDL.
 No worker thread is blocked per commit, so group commit happens naturally and the system is never tied up waiting.
@@ -380,7 +380,7 @@ import threading
 import time
 
 import boto3
-from botocore.exceptions import ClientError
+from botocore.exceptions import BotoCoreError, ClientError
 
 REGION = os.environ.get("AWS_REGION", "us-east-1")
 CLUSTER_ARN = os.environ["CLUSTER_ARN"]
@@ -401,21 +401,29 @@ sql("CREATE TABLE IF NOT EXISTS probe (id bigserial PRIMARY KEY, ts timestamptz 
 
 stop = threading.Event()
 last_ok = time.monotonic()
+first_fail = None
 max_gap = 0.0
 errors = 0
 
 
 def writer_loop():
-    global last_ok, max_gap, errors
+    global last_ok, first_fail, max_gap, errors
     while not stop.is_set():
         try:
             sql("INSERT INTO probe DEFAULT VALUES")
             now = time.monotonic()
-            max_gap = max(max_gap, now - last_ok)
+            if first_fail is not None:
+                max_gap = max(max_gap, now - first_fail)
+                first_fail = None
+            else:
+                max_gap = max(max_gap, now - last_ok)
             last_ok = now
-        except ClientError as exc:
+        except (ClientError, BotoCoreError) as exc:
+            now = time.monotonic()
+            if first_fail is None:
+                first_fail = now
             errors += 1
-            code = exc.response["Error"]["Code"]
+            code = exc.response.get("Error", {}).get("Code") if isinstance(exc, ClientError) else type(exc).__name__
             print(f"{time.strftime('%H:%M:%S')} write failed: {code}")
         time.sleep(0.2)
 
@@ -505,14 +513,14 @@ Put long analytic scans on clones or zero-ETL targets, not on OLTP readers.
 
 ### LAL backpressure that looks like an engine bug
 
-When storage slows down (a gray-failing node in each of two AZs, or a background-work backlog), VDL stops moving, the writer reaches VDL + LAL, and commits stall while CPU sits idle.
+When storage slows down (three or more degraded segments across the Protection Group, or a background-work backlog), VDL stops moving, the writer reaches VDL + LAL, and commits stall while CPU sits idle.
 Teams often misdiagnose this as locking.
 Correlate commit-latency spikes with storage-side metrics before adding instance size.
 
 ### Cross-AZ tail latency set by order statistics
 
 Commit latency is the 4th-fastest of six acks, with at least two acks from outside the writer's AZ.
-One slow AZ is hidden, but a gray failure that adds latency to one node in each of two remote AZs is not.
+Any two slow segments are masked by the 4-of-6 quorum, but three slow segments force the commit to wait for a degraded node.
 p99 commit latency is driven by tail behavior of the inter-AZ network, so alert on p99, not just the mean.
 
 ### I/O bill shock on Aurora Standard

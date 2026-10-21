@@ -68,7 +68,7 @@ This is why KV-head count, MLA-style latent compression, and KV quantization are
 
 Prefill multiplies an `S_in x d_model` activation matrix by every weight matrix, so arithmetic intensity grows with `S_in`, and on modern accelerators it passes the roofline ridge point after a few hundred tokens ([Williams, Waterman, Patterson, Roofline, CACM 2009](https://dl.acm.org/doi/10.1145/1498765.1498785)).
 Linear-layer FLOPs are `2 * P * S_in`.
-Causal attention adds about `2 * L * (n_q * d_h) * S_in` FLOPs per prompt token, averaged over positions. That is about 4% of linear FLOPs at 2K context for a 70B model, 30% at 32K, and more than the linear FLOPs at 128K.
+Causal attention adds about `2 * L * (n_q * d_h) * S_in` FLOPs per prompt token, averaged over positions. That is about 1.9% (about 2%) of linear FLOPs at 2K context for a 70B model, 30% at 32K, and more than the linear FLOPs at 128K.
 Prefill time on one replica is `T_pre = S_in * (2P + 2 * L * n_q * d_h * S_in) / (N * F * MFU)`.
 For the 70B model in FP8 on 8x H100 at an assumed MFU of 0.45, a 2,000-token prompt takes about 40 ms of whole-replica time, and a 128K-token prompt takes about 5.6 s.
 
@@ -157,7 +157,7 @@ For a 200-in/2,000-out reasoning workload on one 8x H100 replica, the model give
 
 Within 2 ms above the 5.56 ms floor, cost per token falls 12x. Past the ridge it barely moves.
 If you set an SLO without looking at where your floor is, you either pay 10x for latency nobody perceives or get no savings from a looser SLO.
-The chat workload is compute-bound at every SLO from 10 ms to 120 ms, and its cost per token varies only between $2.25 and $1.87. Relaxing its SLO saves almost nothing.
+The chat workload is compute-bound at every SLO from 10 ms to 120 ms, and its cost per token varies only between $2.25 and $1.90. Relaxing its SLO saves almost nothing.
 
 ### Cost per token: three denominators
 
@@ -372,7 +372,7 @@ Output of the script as written, with uncalibrated defaults:
 What the numbers show:
 
 1. The workload is compute-bound, so H200 has the same throughput as H100 at 15% higher price. Its only benefit is 1.9x the KV capacity, which this workload does not need.
-2. B200 matches 4x p5 throughput with 2 nodes. Fleet dollars are about the same, but there are fewer, larger failure units: losing one replica loses half the fleet, so N+1 means 3 nodes and $341.90/hr.
+2. B200 matches 4x p5 throughput with 2 nodes. Fleet dollars are about the same, but there are fewer, larger failure units: losing one replica loses half the fleet, so N+1 means 3 nodes and $341.80/hr.
 3. On paper, TPU v6e-8 has the lowest $/M, but its batch is capped by 256 GB of HBM holding 141 GB of BF16 weights. Artificial Analysis measured NVIDIA ahead by about 5x on tokens per dollar for a comparable 70B model. The gap between the paper roofline and the measured stack is why the decision tree applies a software haircut.
 4. On the reasoning workload at 8 ms TPOT, TPU v6e-8 BF16 does not fit at all: streaming 141 GB at 9.2 TB/s effective takes 15.4 ms per step. You would need INT8, more chips, or a looser SLO.
 

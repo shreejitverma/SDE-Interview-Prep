@@ -367,7 +367,7 @@ The hot-row run should plateau at a much lower rate than the distinct-row run ho
 
 The serialized throughput limit for one row is about 1 / T_hold, where T_hold is the time from lock acquisition to lock release.
 For a read-modify-write, T_hold is approximately: client-to-leader RTT for the read, plus client processing, plus client-to-leader RTT for the commit, plus max(quorum replication, commit wait).
-Regional, client in the same region (assumed 0.5 ms RTT to the leader, 2 ms quorum, 1 ms processing): T_hold is about 0.5 + 1 + 0.5 + 2 = 4 ms, so the ceiling is about 250 txn/s on that row.
+Regional, client in the same region (assumed 0.5 ms RTT to the leader, 2 ms quorum, 1 ms processing, and commit wait 2 x epsilon ≈ 8 ms at historical epsilon = 4 ms): max(2 ms, 8 ms) is 8 ms, so T_hold is about 0.5 + 1 + 0.5 + 8 = 10 ms, yielding a ceiling of about 100 txn/s on that row (rising to roughly 250 txn/s on modern clusters where hardware PTP keeps epsilon under 1 ms).
 Multi-region, client 60 ms RTT from the leader region, 10 ms RTT to the nearest quorum region: T_hold is about 60 + 60 + 10 = 130 ms, so the ceiling is about 7.7 txn/s on that row.
 That gap of more than 30x comes from client placement relative to the leader, not from Spanner capacity, and adding nodes does nothing for it.
 Fix 1: run the transaction logic in the leader region, which removes 120 ms and brings the ceiling to roughly 1 / 11 ms, about 90 txn/s.

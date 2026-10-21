@@ -123,7 +123,7 @@ The alternative, entity homing (one owner cloud per entity computes all of its a
 
 A single store call with a p99 of 4ms does not give a 4ms request p99 when the request makes N parallel calls.
 The probability that all N calls finish under their individual p99 is 0.99^N: about 0.97 for N=3 and about 0.74 for N=30.
-So the request-level p99 is set by roughly the p99.9 to p99.97 of a single call, the effect described in "The Tail at Scale" (Dean and Barroso, CACM 2013).
+So the request-level p99 is set by roughly the p99.67 (N=3) to p99.97 (N=30) of a single call, the effect described in "The Tail at Scale" (Dean and Barroso, CACM 2013).
 The levers, in order of impact, are:
 first, cut N by packing all feature groups for an entity into one item or row, so one entity costs one call;
 second, batch keys into one call (`BatchGetItem` on DynamoDB, a multi-row `ReadRows` on Bigtable);
@@ -233,7 +233,7 @@ See [[17-Cloud-AI-Engineering/Volume_04_AWS_vs_GCP_Translation/Chapter_07_Multi_
 ### What the lab proves
 
 The script writes the same feature update to DynamoDB and to Bigtable out of order, and shows that both stores converge on the highest version.
-It prints DynamoDB consumed capacity, so you can see that a rejected stale write is not free.
+It prints DynamoDB consumed capacity, showing that a rejected conditional write still consumes 1 WCU (reported as None in this wrapper since the exception suppresses normal response payload), proving that stale writes are not free.
 It then runs a local point-in-time join with and without serving-lag correction, so you can see the leakage directly.
 
 ### Provision
@@ -384,13 +384,15 @@ def pit_demo(lag_s):
     })
     for name, lag in (("naive", 0), ("lag-corrected", lag_s)):
         f = feats.assign(visible_ts=feats["feature_ts"] + pd.Timedelta(seconds=lag))
+        f_cols = ["entity", "visible_ts", "clicks_1h"]
         out = pd.merge_asof(
             labels.sort_values("label_ts"),
-            f.sort_values("visible_ts")"entity", "visible_ts", "clicks_1h",
+            f.sort_values("visible_ts").loc[:, f_cols],
             left_on="label_ts", right_on="visible_ts", by="entity",
             direction="backward", allow_exact_matches=False,
         )
-        print(name, out"entity", "label_ts", "clicks_1h".to_dict("records"))
+        out_cols = ["entity", "label_ts", "clicks_1h"]
+        print(name, out.loc[:, out_cols].to_dict("records"))
 
 
 def main():

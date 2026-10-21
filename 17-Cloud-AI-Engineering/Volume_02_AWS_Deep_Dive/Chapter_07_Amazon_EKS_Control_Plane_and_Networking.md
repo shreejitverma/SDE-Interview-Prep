@@ -310,7 +310,7 @@ def node_ips(pods, enis, ips, mode, warm_eni=1, warm_ip=0, min_ip=0,
             need = max(min_ip, pods + warm_ip)
             prefixes = math.ceil(need / 16)
         else:
-            prefixes = pods // 16 + warm_prefix
+            prefixes = math.ceil(pods / 16) + warm_prefix
         n = max(1, math.ceil(prefixes / slots))
         return prefixes * 16 + n, n
     raise ValueError(mode)
@@ -357,7 +357,7 @@ Output for 400 m5.4xlarge nodes at 20 pods each, with three /20 subnets (12,273 
 ```text
 - secondary, WARM_ENI_TARGET=1 (default): maxPods=234 ENIs/node=2 IPs/node=60 fleet=24000 nodes-that-fit=204 EXHAUSTED
 - secondary, WARM_IP_TARGET=5 MINIMUM_IP_TARGET=20: maxPods=234 ENIs/node=1 IPs/node=26 fleet=10400 nodes-that-fit=472 OK
-- prefix /28, WARM_PREFIX_TARGET=1: maxPods=110 ENIs/node=1 IPs/node=33 fleet=13200 nodes-that-fit=371 EXHAUSTED
+- prefix /28, WARM_PREFIX_TARGET=1: maxPods=110 ENIs/node=1 IPs/node=49 fleet=19600 nodes-that-fit=250 EXHAUSTED
 - prefix /28, WARM_IP_TARGET=5 MINIMUM_IP_TARGET=20: maxPods=110 ENIs/node=1 IPs/node=33 fleet=13200 nodes-that-fit=371 EXHAUSTED
 ```
 
@@ -365,7 +365,7 @@ How to read it:
 
 1. With the default warm ENI, 20 real pods hold 60 IPs per node, so the fleet uses up the VPC at about 204 nodes. That is half the target, while the pods themselves need only 8,000 IPs.
 2. Per-IP warm targets fit the fleet, but each pod churn event becomes an EC2 call. At 400 nodes, a rolling restart produces thousands of AssignPrivateIpAddresses calls competing with Karpenter in the same account bucket.
-3. Prefix mode is less IP-efficient at low density, because 20 pods need two /28 blocks (32 IPs). It needs 16x fewer EC2 calls, though, and it becomes the most efficient mode at high density. At 100 pods per node, prefix mode holds 113 IPs per node against 150 for the secondary-mode default.
+3. Prefix mode is less IP-efficient at low density, because 20 pods need two /28 blocks (32 IPs). It needs 16x fewer EC2 calls, though, and it becomes the most efficient mode at high density. At 100 pods per node, prefix mode holds 129 IPs per node against 150 for the secondary-mode default.
 4. The answer for this fleet is to stop sharing node subnets with pods. A 100.64.0.0/16 secondary CIDR split into three /18s gives about 49K pod IPs, with prefix mode and subnet CIDR reservations on the pod subnets.
 
 ### Step 2 - Control plane sizing

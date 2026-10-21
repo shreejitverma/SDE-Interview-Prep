@@ -75,7 +75,7 @@ A mirrored MySQL setup on network block storage writes several kinds of data for
 Each of those then gets copied again to a standby over synchronous block replication, so the foreground path pays for every copy in serial.
 Aurora's answer is to send only redo records over the network and to let storage build pages from them.
 The paper reports, for a 30-minute SysBench write-only run, about 35 times more transactions than mirrored MySQL and about 7.7 times fewer I/Os per transaction (Verbitski et al., SIGMOD 2017). These are paper-era figures and should not be read as current benchmarks.
-The current AWS docs claim up to 6x the throughput of stock PostgreSQL and of stock MySQL on similar hardware (AWS docs, as of 2026-10). This is a vendor claim, not an independent benchmark.
+The current AWS docs claim up to 5x the throughput of stock MySQL and up to 3x the throughput of stock PostgreSQL on similar hardware (AWS docs, as of 2026-10). This is a vendor claim, not an independent benchmark.
 
 ### Segments, protection groups, and quorum arithmetic
 
@@ -179,7 +179,7 @@ Replica lag is therefore the time to ship and apply in memory, not the time to r
 Because nothing has to be copied, promoting a reader is a recovery run (VDL computation plus truncation) with no rebuild.
 The cost of this design is that every reader holds a connection to every storage node it reads from, plus one redo stream from the writer.
 Up to 15 replicas per cluster are supported (AWS docs, as of 2026-10).
-On Aurora MySQL, readers always use REPEATABLE READ for InnoDB tables, and you can change isolation level only on the primary (AWS docs, as of 2026-10).
+On Aurora MySQL, readers historically used REPEATABLE READ for InnoDB tables, though modern Aurora MySQL (2.09+ and 3.x) supports READ COMMITTED via `aurora_read_replica_read_committed` (AWS docs, as of 2026-10).
 
 ### Control plane versus data plane
 
@@ -219,7 +219,7 @@ Static-stability lesson (see [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architect
 | I/O-Optimized storage | $0.225 per GB-month, no I/O charge | (Vantage/CloudZero, as of 2026-10) |
 | I/O-Optimized instance premium | about 30% over Standard | (Bytebase summary, as of 2026-10) |
 | Serverless v2 compute | about $0.12 per ACU-hour, us-east-1 Standard | (secondary source, as of 2026-10) |
-| Vendor throughput claim | up to 6x stock MySQL / PostgreSQL | (AWS docs, as of 2026-10) |
+| Vendor throughput claim | up to 5x stock MySQL / 3x stock PostgreSQL | (AWS docs, as of 2026-10) |
 
 ## AWS vs GCP Mechanism Parity
 
@@ -574,7 +574,7 @@ Writer latency on an Aurora MySQL cluster degraded over a week, with no change i
 
 The suspect is purge lag from reader read views.
 All instances share one volume, so the writer cannot purge undo for row versions that any reader's open read view might still need. The cluster-wide minimum read point holds back cleanup.
-A reader running multi-hour REPEATABLE READ reports, the only isolation readers allow for InnoDB, pins old versions. History list length grows, undo chains lengthen, and writer queries walk longer chains on secondary index lookups and in-place updates.
+A reader running multi-hour REPEATABLE READ reports (or queries without `aurora_read_replica_read_committed`) pins old versions. History list length grows, undo chains lengthen, and writer queries walk longer chains on secondary index lookups and in-place updates.
 Confirm by plotting history list length (the RollbackSegmentHistoryListLength CloudWatch metric on Aurora MySQL) against the report schedule, and by listing the oldest transactions on each reader.
 Fix: cap reader transaction duration, split reports into shorter transactions, or move them to a fast clone that does not share read points with production.
 The broader point: shared storage couples instances through MVCC garbage collection, so readers are not fully isolated tenants. Workload isolation needs a separate volume, not just a separate instance.

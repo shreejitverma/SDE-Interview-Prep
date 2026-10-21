@@ -484,9 +484,6 @@ def run(mode, seconds=60, threads=48):
 
 def occ_withdraw(amount=10, attempts=5):
     key = {"pk": {"S": "acct#1"}, "sk": {"S": "balance"}}
-    ddb.put_item(TableName=TABLE,
-                 Item={**key, "v": {"N": "0"}, "bal": {"N": "100"}},
-                 ConditionExpression="attribute_not_exists(pk)") if False else None
     for _ in range(attempts):
         cur = ddb.get_item(TableName=TABLE, Key=key, ConsistentRead=True).get("Item")
         if cur is None:

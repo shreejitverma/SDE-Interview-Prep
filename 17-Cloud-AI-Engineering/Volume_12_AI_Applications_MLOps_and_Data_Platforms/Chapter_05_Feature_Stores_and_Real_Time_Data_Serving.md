@@ -255,8 +255,9 @@ def bitemporal_pit(lbl, feat):
         out.append({**row.to_dict(), "chargebacks_30d": val})
     return pd.DataFrame(out)
 
-print("naive:\n", naive_pit(labels, features)"label_ts", "chargebacks_30d")
-print("bitemporal:\n", bitemporal_pit(labels, features)"label_ts", "chargebacks_30d")
+cols = ["label_ts", "chargebacks_30d"]
+print("naive:\n", naive_pit(labels, features).loc[:, cols])
+print("bitemporal:\n", bitemporal_pit(labels, features).loc[:, cols])
 # For label_ts=2026-03-05 the naive join returns 1 (correct by luck), but if the
 # backfill had event_ts 2026-03-04 it would return 3, a value the online model never saw.
 # Change the third event_ts to 2026-03-04 and rerun to watch the leak appear.
@@ -302,7 +303,7 @@ Reads are 8,000 x 3 x 2,592,000 = 62.2 billion per month, which is $15,552 at $0
 Writes are 5,000 x 2,592,000 = 12.96 billion per month, which is $16,200 at $1.25 per million, more than all the reads.
 Storage at 60 GB is about $27 and does not matter.
 On the node-priced side, average load is 24,000 + 5,000 = 29,000 ops/s, which at 5,000 effective ops per node (10,000 x 0.5 CPU target) is 6 nodes, about $2,847 per month at $0.65 per node-hour. Peak needs 15 nodes.
-The crossover: node pricing wins once sustained ops/s exceed roughly (p_node x 730 x 1e6) / (SEC_MONTH x c_blended x ops_per_node x u). That works out to a few thousand ops/s at these placeholder prices.
+The crossover: node pricing wins once sustained ops/s exceed roughly 370-730 ops/s (depending on the read/write mix) at these placeholder prices.
 The biggest saving is not the pricing model. It is write coalescing: buffer per key for one tile width and write only when a value changes enough to move the model score. Cutting writes 10x saves about $14,500 per month in the request-priced case.
 
 ### Step 3 - AWS lab: SageMaker Feature Store (estimated cost under $1 for one hour)
@@ -362,6 +363,7 @@ def put(uid, et, cnt, amt):
 
 put("u1", "2026-10-20T10:00:00Z", 3, 120.0)
 put("u1", "2026-10-20T09:00:00Z", 9, 999.0)   # older event time, arrives later
+time.sleep(1)  # allow online store update to settle
 t0 = time.perf_counter()
 print(rt.get_record(FeatureGroupName=FG, RecordIdentifierValueAsString="u1")["Record"])
 print(f"GetRecord client-observed latency: {(time.perf_counter()-t0)*1000:.1f} ms")
@@ -385,7 +387,10 @@ aws budgets delete-budget --account-id "$ACCT" --budget-name fs-lab
 # main.tf - OpenTofu/Terraform with hashicorp/google provider. tofu init && tofu apply
 variable "project" {}
 variable "region" { default = "us-central1" }
-provider "google" { project = var.project, region = var.region }
+provider "google" {
+  project = var.project
+  region  = var.region
+}
 
 resource "google_bigquery_dataset" "fs" {
   dataset_id                 = "fs_lab"

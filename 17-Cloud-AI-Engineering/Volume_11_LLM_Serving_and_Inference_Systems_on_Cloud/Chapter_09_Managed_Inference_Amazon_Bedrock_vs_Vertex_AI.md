@@ -511,7 +511,7 @@ Fix: put Flex on a separate account or region (a quota cell), or rate-limit Flex
 
 ### Admission-plane outages: public post-incident reviews
 
-On 2025-06-12, a Google Service Control policy change containing blank fields replicated globally and triggered a null-pointer crash loop. Many Google Cloud APIs, Vertex AI Gemini among them, failed until the change was rolled back, and us-central1 recovered slowly because of herd effects on the backing store ([Google Cloud incident report](https://status.cloud.google.com/incidents/ow5i3PPK96RduMcb1SsW)).
+On 2025-06-12, a Google Service Control policy change containing blank fields replicated globally and triggered a null-pointer crash loop. Many Google Cloud APIs, Vertex AI Gemini among them, failed until the change was rolled back, and us-central1 recovered slowly because of herd effects on the backing store ([Google Cloud incident report](https://status.cloud.google.com/incidents/ow5i3PPK96RduMB9yLsU)).
 The lesson for managed inference is that quota checking is itself a global dependency, and reserved capacity does not protect you from it.
 On 2025-10-19 and 20, a race condition in DynamoDB's DNS automation in us-east-1 emptied the regional endpoint record and cascaded through services that depend on it ([AWS summary](https://aws.amazon.com/message/101925/)).
 Any Bedrock architecture whose global-profile quotas are managed in us-east-1, or whose IAM and STS calls go to us-east-1, inherits that region's control-plane blast radius.

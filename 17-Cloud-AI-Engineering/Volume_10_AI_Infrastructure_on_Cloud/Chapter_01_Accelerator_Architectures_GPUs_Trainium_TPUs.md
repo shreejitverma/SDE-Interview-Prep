@@ -120,7 +120,7 @@ H100 SXM5 enables five HBM3 stacks through ten 512-bit memory controllers, a 5,1
 B200's eight HBM3e stacks give an 8,192-bit bus, and 8 TB/s implies about 7.8 Gb/s per pin.
 Trainium2 puts four 24 GB HBM stacks on package for 96 GiB at 2.9 TB/s ([Microprocessor Report](https://www.microprocessorreport.com/p/trainium2-puts-aws-on-track-for-ai), as of 2026-10).
 Capacity and bandwidth are coupled through the stack count, which is why vendors raise both together and why a 32 GB part like TPU v6e can only reach 1.6 TB/s.
-Bytes per FLOP keep falling: H100 provides about 0.0034 HBM bytes per BF16 FLOP, B200 about 0.0036, and TPU v6e about 0.0018.
+Bytes per FLOP remain tightly constrained: H100 provides about 0.0034 HBM bytes per BF16 FLOP, B200 about 0.0036, and TPU v6e about 0.0018.
 Each generation therefore pushes harder toward data reuse in SRAM, lower precision, and larger batches.
 
 HBM is also a reliability component.
@@ -383,7 +383,7 @@ gcloud compute tpus tpu-vm ssh "$TPU_NAME" --project "$PROJECT_ID" --zone "$ZONE
 
 Read the output as three regions.
 For M up to about 64, achieved TFLOP/s should rise linearly with M and stay close to the memory roof, which shows the weight read sets the time.
-Around the ridge (560 FLOP/byte on v6e, which this shape reaches near M = 1,000), the curve bends.
+Around the ridge (560 FLOP/byte on v6e, which this shape reaches near M = 650), the curve bends.
 Beyond it, the fraction of the compute roof you reach is your real MFU ceiling for that shape.
 Record the achieved HBM stream fraction, because the capacity model below scales by it.
 On an H100 instance the same script bends near M = 300, and that gap is the whole argument for why H100 serves small batches more efficiently per peak FLOP than v6e.

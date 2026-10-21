@@ -242,7 +242,7 @@ Do not design a production SLO around the in-memory tier or tiered storage while
 | HDD node throughput | up to 500 reads/s or 10,000 writes/s or 180 MBps scan | (Google Cloud docs, as of 2026-10) |
 | Infrequent access tier throughput | up to 100 reads/s or 10,000 writes/s or 36 MBps scan | (Google Cloud docs, as of 2026-10) |
 | In-memory tier (Preview, Enterprise Plus) | 40,000 rows/s per increment, up to 120,000 reads/s per node, 8 GB per node | (Google Cloud docs, as of 2026-10) |
-| Linear scaling example | 10 SSD nodes ~ 140,000 rows/s read-only or write-only | (Google Cloud docs, as of 2026-10) |
+| Linear scaling example | 10 SSD nodes ~ 170,000 reads/s or 140,000 writes/s | (Google Cloud docs, as of 2026-10) |
 | Storage per node, SSD | 5 TB (TiB) | (Google Cloud docs, as of 2026-10) |
 | Storage per node, HDD | 16 TB | (Google Cloud docs, as of 2026-10) |
 | Storage per node, SSD with tiered storage | 32 TB Enterprise, 64 TB Enterprise Plus, max 5 TB of it SSD | (Google Cloud docs, as of 2026-10) |
@@ -441,6 +441,8 @@ To inspect hotspots on a real workload, use Key Visualizer in the console, or `g
 ```bash
 gcloud bigtable instances delete "$BT_INSTANCE" --project="$PROJECT_ID" --quiet
 gcloud bigtable instances list --project="$PROJECT_ID"
+BUDGET="$(gcloud billing budgets list --billing-account="${BILLING_ACCOUNT:-}" --filter='displayName=bigtable-lsm-lab' --format='value(name)' 2>/dev/null || true)"
+[ -n "$BUDGET" ] && gcloud billing budgets delete "$BUDGET" --quiet || true
 ```
 
 ### Capacity sizing: replicated telemetry store

@@ -343,6 +343,7 @@ aws logs create-log-group --log-group-name /cwlab/checkout
 aws logs put-retention-policy --log-group-name /cwlab/checkout --retention-in-days 1
 aws logs create-log-stream --log-group-name /cwlab/checkout --log-stream-name host-a
 QUEUE_URL=$(aws sqs create-queue --queue-name cwlab-orders --query QueueUrl --output text)
+echo "export QUEUE_URL=$QUEUE_URL ACCOUNT_ID=$ACCOUNT_ID" > ~/.cwlab_env
 echo "QUEUE_URL=$QUEUE_URL"
 ```
 
@@ -637,11 +638,15 @@ The expected output is `segments=2` with names `checkout-api` and `order-worker`
 ### Teardown
 
 ```bash
+[ -f ~/.cwlab_env ] && source ~/.cwlab_env
+ACCOUNT_ID=${ACCOUNT_ID:-$(aws sts get-caller-identity --query Account --output text)}
+QUEUE_URL=${QUEUE_URL:-$(aws sqs get-queue-url --queue-name cwlab-orders --query QueueUrl --output text 2>/dev/null || true)}
 aws cloudwatch delete-alarms --alarm-names cwlab-p99-schmitt
 aws cloudwatch delete-alarms --alarm-names cwlab-p99-single-800 cwlab-p99-recent-breach-800 cwlab-p99-above-500
 aws logs delete-log-group --log-group-name /cwlab/checkout
-aws sqs delete-queue --queue-url "$QUEUE_URL"
+[ -n "$QUEUE_URL" ] && aws sqs delete-queue --queue-url "$QUEUE_URL"
 aws budgets delete-budget --account-id "$ACCOUNT_ID" --budget-name cwlab-5usd
+rm -f ~/.cwlab_env
 # Custom metrics cannot be deleted; they stop billing when no new data arrives and expire after 15 months.
 ```
 
