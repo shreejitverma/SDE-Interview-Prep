@@ -118,7 +118,8 @@ An interface endpoint (PrivateLink) is an ENI per chosen subnet with a private I
 Endpoint policies never grant; they intersect with identity and resource policies.
 The default endpoint policy allows everything, so adding an endpoint without tightening its policy adds a network path but no control.
 Conditions such as `aws:SourceVpc` and `aws:SourceVpce` are populated only when a request traverses the endpoint, so a resource policy that says "deny unless `aws:SourceVpce` equals X" must also carve out requests made by AWS services on your behalf (using `aws:ViaAWSService` or `aws:PrincipalIsAWSService`) or it breaks features such as CloudFormation, Athena, or Bedrock batch jobs that call S3 from AWS-owned networks (AWS whitepaper, Building a Data Perimeter on AWS: [link](https://docs.aws.amazon.com/whitepapers/latest/building-a-data-perimeter-on-aws/building-a-data-perimeter-on-aws.html)).
-Conditions like `StringNotEqualsIfExists` and `BoolIfExists` are the sharp tools here, because an absent key evaluates differently for `IfExists` than for plain operators, and getting this wrong either locks out services or silently skips the deny.
+A negated operator such as `StringNotEquals` on `aws:SourceVpce` is true when the key is absent, so the Deny fires for those service calls, and `StringNotEqualsIfExists` is also true when the key is absent, so the suffix does not exempt them.
+The exemption is a separate AND clause: `BoolIfExists` requires `aws:PrincipalIsAWSService` and `aws:ViaAWSService` to be false, and a plain `Bool` on that clause is false when the key is missing, which skips the Deny for anonymous callers.
 
 VPC SC works at a different layer.
 A service perimeter lists projects (and, in newer configurations, VPC networks) and a set of restricted services.
@@ -635,7 +636,8 @@ The perimeter check is made at the API front end using the project identity of s
 It does not stop an in-perimeter principal with write access from placing data into an in-perimeter bucket that is later shared by some other mechanism, and it does not stop non-API channels.
 On AWS the equivalent is a composition.
 An endpoint policy on the S3 gateway endpoint restricts the destination buckets to my organization (`aws:ResourceOrgID`) and the callers to my principals (`aws:PrincipalOrgID`), which stops in-VPC copies to external buckets.
-An SCP denies actions when the request does not come from my VPCs or from an AWS service on my behalf, which addresses stolen credentials, but the denial must use `IfExists` semantics and carve out `aws:PrincipalIsAWSService` and `aws:ViaAWSService` or I break managed services.
+An SCP denies actions that did not come from my VPCs, which addresses stolen credentials.
+A negated operator on `aws:SourceVpc` or `aws:SourceVpce` is true when the key is absent, so that Deny also hits managed services unless a separate AND clause carves out calls where `aws:PrincipalIsAWSService` or `aws:ViaAWSService` is true.
 An RCP at the organization applies the same conditions to my S3 buckets and KMS keys regardless of who calls, which closes the inbound cross-account gap that SCPs cannot.
 I would prove the controls by running the exfiltration attempts as a red-team test in a staging organization and confirming each fails with an error from the intended layer.
 What neither cloud stops is covert channels, and what both leave open is KMS: a key policy that allows a foreign account to decrypt turns a copy of the ciphertext into a readable asset, so I add key policy conditions as a third layer.
@@ -653,8 +655,8 @@ Explain why a naive "deny unless `aws:SourceVpce`" bucket policy broke Athena an
 
 The condition keys `aws:SourceVpc` and `aws:SourceVpce` are set by the network path of the request.
 When Athena or CloudFormation reads S3 on my behalf, the request originates from the AWS service's own network using forward access session credentials, so those keys are absent.
-With a plain `StringNotEquals` operator, an absent key makes the condition not match, and the Deny does not fire, but with `StringNotEqualsIfExists` the deny fires when the key is absent only if written to treat absence as mismatch; the behaviors differ by operator, and authors who combine them wrongly either leave a hole or break services.
-The robust pattern is a Deny with conditions ANDed: principal is not an AWS service (`BoolIfExists aws:PrincipalIsAWSService false`), the request is not made via a service on my behalf (`BoolIfExists aws:ViaAWSService false`), and the source VPC endpoint is not in the allowed list.
+A plain `StringNotEquals` on `aws:SourceVpce` is true when the key is absent, so the Deny fires, and `StringNotEqualsIfExists` is also true when the key is absent, so swapping in `IfExists` still denies the service call.
+The exemption is a separate AND, not the operator suffix: principal is not an AWS service (`BoolIfExists aws:PrincipalIsAWSService false`), the request is not made via a service on my behalf (`BoolIfExists aws:ViaAWSService false`), and the source VPC endpoint is not in the allowed list.
 The request is denied only when all of these hold.
 Then I test in four ways: from inside the VPC through the endpoint, from outside the VPC with valid credentials, through Athena, and through CloudFormation, and verify that only the second is blocked.
 I record the test as a regression test in CI against a staging account, because the semantics are subtle enough that edits regress easily.

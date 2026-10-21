@@ -512,7 +512,7 @@ Wait at least an hour after `terraform apply`, then:
 TRAIL_ARN=$(terraform output -raw trail_arn)
 aws cloudtrail validate-logs \
   --trail-arn "$TRAIL_ARN" \
-  --start-time "$(date -u -d '-3 hours' +%Y-%m-%dT%H:%M:%SZ)" \
+  --start-time "$(date -u -d '-3 hours' +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || date -u -v-3H +%Y-%m-%dT%H:%M:%SZ)" \
   --verbose
 ```
 

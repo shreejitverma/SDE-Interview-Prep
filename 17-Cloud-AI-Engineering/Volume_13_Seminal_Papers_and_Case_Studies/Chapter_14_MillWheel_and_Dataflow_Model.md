@@ -442,20 +442,23 @@ def run(argv=None):
     args, beam_args = ap.parse_known_args(argv)
     opts = PipelineOptions(beam_args)
     opts.view_as(StandardOptions).streaming = True
-    with beam.Pipeline(options=opts) as p:
-        if args.mode == "local":
-            windowed_sum(p | "TestStream" >> local_source()) | beam.Map(print)
-        else:
-            events = (
-                p
-                | "Read" >> beam.io.ReadFromPubSub(
-                    subscription=args.input_subscription,
-                    timestamp_attribute="event_ts",   # event time, drives the watermark
-                    id_label="event_id")              # stable ID for dedup of publisher retries
-                | "Key" >> beam.Map(lambda b: (json.loads(b.decode("utf-8"))["user"], 1)))
-            (windowed_sum(events)
-             | "Encode" >> beam.Map(lambda s: s.encode("utf-8"))
-             | "Write" >> beam.io.WriteToPubSub(topic=args.output_topic))
+    p = beam.Pipeline(options=opts)
+    if args.mode == "local":
+        windowed_sum(p | "TestStream" >> local_source()) | beam.Map(print)
+    else:
+        events = (
+            p
+            | "Read" >> beam.io.ReadFromPubSub(
+                subscription=args.input_subscription,
+                timestamp_attribute="event_ts",   # event time, drives the watermark
+                id_label="event_id")              # stable ID for dedup of publisher retries
+            | "Key" >> beam.Map(lambda b: (json.loads(b.decode("utf-8"))["user"], 1)))
+        (windowed_sum(events)
+         | "Encode" >> beam.Map(lambda s: s.encode("utf-8"))
+         | "Write" >> beam.io.WriteToPubSub(topic=args.output_topic))
+    result = p.run()
+    if args.mode == "local":
+        result.wait_until_finish()
 
 
 if __name__ == "__main__":
@@ -468,6 +471,9 @@ Whether the EARLY pane fires depends on how the DirectRunner advances processing
 The dropped record is the lesson: there is no error and no exception, only a dropped-due-to-lateness counter.
 
 ### Part C - run on Dataflow, with budget alarm and teardown
+
+Pubsub mode calls `run()` and returns while the job stays RUNNING, so the publishes in this script run.
+Local mode still waits, because the TestStream is finite.
 
 ```bash
 export PROJECT=my-project REGION=us-central1 BILLING=XXXXXX-XXXXXX-XXXXXX
@@ -497,7 +503,7 @@ python windowed_counts.py --mode=pubsub --job_name=windowed-counts \
 gcloud pubsub topics publish mw-in --message='{"user":"u1"}' \
   --attribute=event_ts="$(date -u +%Y-%m-%dT%H:%M:%SZ)",event_id=e1
 gcloud pubsub topics publish mw-in --message='{"user":"u1"}' \
-  --attribute=event_ts="$(date -u -d '-10 minutes' +%Y-%m-%dT%H:%M:%SZ)",event_id=e2
+  --attribute=event_ts="$(date -u -d '-10 minutes' +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || date -u -v-10M +%Y-%m-%dT%H:%M:%SZ)",event_id=e2
 ```
 
 Exact teardown:

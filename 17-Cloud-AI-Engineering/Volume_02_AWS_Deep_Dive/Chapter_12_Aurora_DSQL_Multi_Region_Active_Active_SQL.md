@@ -231,11 +231,14 @@ aws budgets create-budget --account-id "$ACCOUNT_ID" \
 #!/usr/bin/env bash
 set -euo pipefail
 R1=us-east-1; R2=us-east-2; WITNESS=us-west-2
+ACCOUNT_ID="$(aws sts get-caller-identity --query Account --output text)"
 
 A_ID=$(aws dsql create-cluster --region "$R1" --no-deletion-protection-enabled \
   --multi-region-properties "{\"witnessRegion\":\"$WITNESS\"}" --query identifier --output text)
+echo "export A_ID=$A_ID B_ID= ACCOUNT_ID=$ACCOUNT_ID" > ~/.dsql_lab_env
 B_ID=$(aws dsql create-cluster --region "$R2" --no-deletion-protection-enabled \
   --multi-region-properties "{\"witnessRegion\":\"$WITNESS\"}" --query identifier --output text)
+echo "export A_ID=$A_ID B_ID=$B_ID ACCOUNT_ID=$ACCOUNT_ID" > ~/.dsql_lab_env
 
 A_ARN=$(aws dsql get-cluster --region "$R1" --identifier "$A_ID" --query arn --output text)
 B_ARN=$(aws dsql get-cluster --region "$R2" --identifier "$B_ID" --query arn --output text)
@@ -248,10 +251,10 @@ aws dsql update-cluster --region "$R2" --identifier "$B_ID" \
 
 echo "A=$A_ID ($R1)  B=$B_ID ($R2)"
 echo "Endpoints: $A_ID.dsql.$R1.on.aws and $B_ID.dsql.$R2.on.aws"
-echo "export A_ID=$A_ID B_ID=$B_ID ACCOUNT_ID=$ACCOUNT_ID" > ~/.dsql_lab_env
 ```
 
 The `--multi-region-properties` JSON shape and the `<id>.dsql.<region>.on.aws` endpoint format follow the GA API as best known at the time of writing; check them against `aws dsql help` before running (listed as UNVERIFIED).
+Each cluster id is written to `~/.dsql_lab_env` before the next command, and `ACCOUNT_ID` is read in this step, so a later failure still leaves teardown the identifiers.
 
 ### Step 3: schema designed for range sharding and OCC
 
@@ -343,8 +346,8 @@ The namespace and dimension name are UNVERIFIED and should be checked in the Clo
 ```bash
 [ -f ~/.dsql_lab_env ] && source ~/.dsql_lab_env
 ACCOUNT_ID=${ACCOUNT_ID:-$(aws sts get-caller-identity --query Account --output text)}
-aws dsql delete-cluster --region us-east-1 --identifier "$A_ID"
-aws dsql delete-cluster --region us-east-2 --identifier "$B_ID"
+[ -n "${A_ID:-}" ] && aws dsql delete-cluster --region us-east-1 --identifier "$A_ID"
+[ -n "${B_ID:-}" ] && aws dsql delete-cluster --region us-east-2 --identifier "$B_ID"
 aws budgets delete-budget --account-id "$ACCOUNT_ID" --budget-name dsql-lab
 aws cloudwatch delete-alarms --region us-east-1 --alarm-names dsql-lab-dpu
 rm -f ~/.dsql_lab_env

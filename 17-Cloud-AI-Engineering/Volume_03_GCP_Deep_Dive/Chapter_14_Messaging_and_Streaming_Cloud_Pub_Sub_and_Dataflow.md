@@ -524,26 +524,30 @@ def parse(b):
 def run(argv=None):
     opts = PipelineOptions(argv, streaming=True, save_main_session=True)
     project = opts.get_all_options()["project"]
-    with beam.Pipeline(options=opts) as p:
-        (p
-         | "Read" >> beam.io.ReadFromPubSub(
-               subscription=f"projects/{project}/subscriptions/events-dataflow",
-               timestamp_attribute="event_ts")
-         | "Parse" >> beam.Map(parse)
-         | "Window" >> beam.WindowInto(
-               window.FixedWindows(60),
-               trigger=trigger.AfterWatermark(
-                   early=trigger.AfterProcessingTime(10),
-                   late=trigger.AfterCount(1)),
-               accumulation_mode=trigger.AccumulationMode.ACCUMULATING,
-               allowed_lateness=600)
-         | "Sum" >> beam.CombinePerKey(sum).with_hot_key_fanout(4)
-         | "Format" >> beam.ParDo(Format())
-         | "Write" >> beam.io.WriteToPubSub(topic=f"projects/{project}/topics/aggregates"))
+    p = beam.Pipeline(options=opts)
+    (p
+     | "Read" >> beam.io.ReadFromPubSub(
+           subscription=f"projects/{project}/subscriptions/events-dataflow",
+           timestamp_attribute="event_ts")
+     | "Parse" >> beam.Map(parse)
+     | "Window" >> beam.WindowInto(
+           window.FixedWindows(60),
+           trigger=trigger.AfterWatermark(
+               early=trigger.AfterProcessingTime(10),
+               late=trigger.AfterCount(1)),
+           accumulation_mode=trigger.AccumulationMode.ACCUMULATING,
+           allowed_lateness=600)
+     | "Sum" >> beam.CombinePerKey(sum).with_hot_key_fanout(4)
+     | "Format" >> beam.ParDo(Format())
+     | "Write" >> beam.io.WriteToPubSub(topic=f"projects/{project}/topics/aggregates"))
+    p.run()
 
 if __name__ == "__main__":
     run()
 ```
+
+`run` submits the streaming job and returns.
+The `Pipeline` context manager would call `wait_until_finish()`, and a streaming Dataflow job stays RUNNING, so that wait would never reach the publish step or the drain.
 
 ```bash
 PROJECT=my-project; REGION=us-central1
