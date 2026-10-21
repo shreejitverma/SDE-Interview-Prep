@@ -82,7 +82,8 @@ class ParseSummaryTest(unittest.TestCase):
         self.assertEqual(chs[1].volume, "Volume 00 - Foundations")
         self.assertTrue(chs[3].is_appendix)
         self.assertEqual(cb.note_type(chs[2]), "paper")
-        self.assertIn("distinguished", cb.note_tracks(chs[2]))
+        for ch in chs:
+            self.assertEqual(cb.note_tracks(ch), ["cloud-ai", "ai-eng", "sde", "distinguished"])
 
     def test_duplicate_ids_rejected(self):
         dup = SUMMARY + "3. [Again](./Volume_00_Foundations/Chapter_01_Again.md) - x\n"
@@ -233,7 +234,7 @@ class SelectAndApplyTest(unittest.TestCase):
         cost = cb.apply_result("draft", self.ch, message(text, urls=["https://a", "https://a", "https://b"]),
                                r.root, self.state, allowed, True, report)
         note = (r.root / self.ch.path).read_text()
-        self.assertTrue(note.startswith("---\ntype: concept\ntrack: [cloud-ai]\nlevel:\nstatus: draft\n"))
+        self.assertTrue(note.startswith("---\ntype: concept\ntrack: [cloud-ai, ai-eng, sde, distinguished]\nlevel:\nstatus: draft\n"))
         self.assertIn('  - "https://a"\n  - "https://b"\n---', note)
         self.assertNotIn("Researching", note)
         self.assertEqual(cb.note_status(r.root / self.ch.path), "draft")

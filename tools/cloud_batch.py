@@ -43,6 +43,7 @@ from datetime import date, datetime, timezone
 from pathlib import Path
 
 CURRICULUM = "17-Cloud-AI-Engineering"
+TRACKS = ("cloud-ai", "ai-eng", "sde", "distinguished")
 STATE_DIR = Path("build/cloud_batch")
 ENV_FILE = Path.home() / ".config/sde-vault/anthropic.env"
 
@@ -173,12 +174,8 @@ def note_type(ch: Chapter) -> str:
 
 
 def note_tracks(ch: Chapter) -> list[str]:
-    tracks = ["cloud-ai"]
-    if any(f"Volume_{n}" in ch.volume_dir for n in ("10", "11", "12")):
-        tracks.append("ai-eng")
-    if any(f"Volume_{n}" in ch.volume_dir for n in ("01", "13", "14")):
-        tracks.append("distinguished")
-    return tracks
+    # Every curriculum note serves the same tracks; keep in sync with vault_schema.TRACKS[CURRICULUM].
+    return list(TRACKS)
 
 
 def render_note(ch: Chapter, status: str, body: str, sources: list[str]) -> str:
