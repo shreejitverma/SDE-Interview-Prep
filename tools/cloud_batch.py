@@ -24,7 +24,6 @@ A key that is not scoped to a workspace also needs ANTHROPIC_WORKSPACE_ID (same 
 
 Usage (from the repo root; `uv run` installs the SDK for this script only):
     python3 tools/cloud_batch.py plan                          # chapters per phase + cost estimate
-    python3 tools/cloud_batch.py stubs --apply                 # seed stubs so every SUMMARY link resolves
     uv run tools/cloud_batch.py submit --phase draft --limit 3 --apply    # pilot
     uv run tools/cloud_batch.py status
     uv run tools/cloud_batch.py collect --apply                # write notes, reports, spend ledger
@@ -188,10 +187,6 @@ def render_note(ch: Chapter, status: str, body: str, sources: list[str]) -> str:
         f"---\ntype: {note_type(ch)}\ntrack: [{', '.join(note_tracks(ch))}]\nlevel:\n"
         f"status: {status}\nlast_reviewed:\nsources: {src}\n---\n\n{body.strip()}\n"
     )
-
-
-def stub_body(ch: Chapter) -> str:
-    return f"# {ch.title}\n\nScope: {ch.scope or 'to be written.'}\n\nPart of [[{CURRICULUM}/SUMMARY\\|{ch.volume}]].\n"
 
 
 # ---------------------------------------------------------------- prompts
@@ -453,6 +448,7 @@ def in_flight(state: dict) -> set[str]:
 def select(phase: str, repo: Path, chapters: list[Chapter], state: dict) -> list[Chapter]:
     busy = in_flight(state)
     done = set(state["done"].get(phase, []))
+    verified = set(state["done"].get("verify", []))
     out = []
     for ch in chapters:
         if f"{phase}-{ch.cid}" in busy or ch.path in done:
@@ -462,9 +458,17 @@ def select(phase: str, repo: Path, chapters: list[Chapter], state: dict) -> list
             out.append(ch)
         elif phase == "verify" and status == "draft" and owned_unchanged(repo, ch, state):
             out.append(ch)
-        elif phase == "cards" and status in ("draft", "solid", "canonical") and ch.path in set(state["done"].get("verify", [])):
+        elif phase == "cards" and (
+                (status in ("draft", "solid", "canonical") and ch.path in verified)
+                or (status in ("solid", "canonical") and ch.path not in state["owned"])):
             out.append(ch)
     return out
+
+
+def mark_done(state: dict, phase: str, path: str) -> None:
+    done = state["done"].setdefault(phase, [])
+    if path not in done:
+        done.append(path)
 
 
 def owned_unchanged(repo: Path, ch: Chapter, state: dict) -> bool:
@@ -510,18 +514,6 @@ def cmd_plan(args, repo, chapters, state) -> int:
         print(f"{phase:7s} {len(todo):4d} ready  model={PHASES[phase].model:18s} est ${lo:6.2f} - ${hi:6.2f}")
     print(f"total   est ${total_lo:.2f} - ${total_hi:.2f} (heuristic; `collect` records the real spend)")
     print("note: verify and cards become ready only after the previous phase is collected.")
-    return 0
-
-
-def cmd_stubs(args, repo, chapters, state) -> int:
-    missing = [c for c in chapters if not (repo / c.path).exists()]
-    for ch in missing:
-        print(f"{'create' if args.apply else 'would create'} {ch.path}")
-        if args.apply:
-            p = repo / ch.path
-            p.parent.mkdir(parents=True, exist_ok=True)
-            p.write_text(render_note(ch, "seed", stub_body(ch), []))
-    print(f"{len(missing)} stubs {'written' if args.apply else 'to write (dry run; pass --apply)'}")
     return 0
 
 
@@ -595,7 +587,7 @@ def apply_result(phase: str, ch: Chapter, message: dict, repo: Path, state: dict
             out.parent.mkdir(parents=True, exist_ok=True)
             kept = [ln for ln in (out.read_text().splitlines() if out.exists() else []) if not ln.endswith(f"\t{tag}")]
             out.write_text("\n".join(kept + [f"{r}\t{tag}" for r in rows]) + "\n")
-            state["done"].setdefault(phase, []).append(ch.path)
+            mark_done(state, phase, ch.path)
         report.append(f"- {ch.cid} {ch.title}: {len(rows)} cards")
         return cost
 
@@ -628,7 +620,7 @@ def apply_result(phase: str, ch: Chapter, message: dict, repo: Path, state: dict
         if len(body) < 0.85 * len(old_body):
             (reports / f"{ch.cid}.corrected.md").write_text(body)
             report.append(f"- {ch.cid} {ch.title}: corrected text is {len(body) / max(len(old_body), 1):.0%} of the draft; kept the draft, saved the correction for review")
-            state["done"].setdefault(phase, []).append(ch.path)
+            mark_done(state, phase, ch.path)
             return cost
         m = re.search(r"UNRESOLVED:\s*(\d+)", tail)
         unresolved = int(m[1]) if m else -1
@@ -644,7 +636,7 @@ def apply_result(phase: str, ch: Chapter, message: dict, repo: Path, state: dict
         path.write_text(note)
         state["owned"][ch.path] = sha(note)
         if phase == "verify":
-            state["done"].setdefault(phase, []).append(ch.path)
+            mark_done(state, phase, ch.path)
     return cost
 
 
@@ -660,9 +652,11 @@ def cmd_collect(args, repo, chapters, state) -> int:
                 print(f"{b['id']}: still processing")
                 continue
             raw.parent.mkdir(parents=True, exist_ok=True)
-            with raw.open("w") as f:
+            part = raw.with_name(raw.name + ".part")
+            with part.open("w") as f:
                 for r in api.messages.batches.results(b["id"]):
                     f.write(json.dumps(to_dict(r)) + "\n")
+            part.replace(raw)
         report: list[str] = [f"# {b['phase']} batch {b['id']}", ""]
         spent = 0.0
         for line in raw.read_text().splitlines():
@@ -677,6 +671,8 @@ def cmd_collect(args, repo, chapters, state) -> int:
                 report.append(f"- {ch.cid} {ch.title}: {res['type']} {err.get('type', '')} {err.get('message', '')}".rstrip())
                 continue
             spent += apply_result(b["phase"], ch, res["message"], repo, state, known, args.apply, report)
+            if args.apply:
+                save_state(repo, state)
         report.append("")
         report.append(f"Actual spend: ${spent:.2f}")
         out = repo / STATE_DIR / "reports" / f"{b['phase']}-{b['id']}.md"
@@ -687,9 +683,8 @@ def cmd_collect(args, repo, chapters, state) -> int:
             b["collected"] = True
             b["actual_usd"] = round(spent, 4)
             state["spent_usd"] = round(state["spent_usd"] + spent, 4)
-    if args.apply:
-        save_state(repo, state)
-    else:
+            save_state(repo, state)
+    if not args.apply:
         print("dry run; pass --apply to write notes and record spend")
     return 0
 
@@ -698,7 +693,7 @@ def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--repo", type=Path, default=Path(__file__).resolve().parent.parent)
     sub = ap.add_subparsers(dest="cmd", required=True)
-    for name in ("plan", "stubs", "submit", "status", "collect"):
+    for name in ("plan", "submit", "status", "collect"):
         p = sub.add_parser(name)
         p.add_argument("--apply", action="store_true")
         p.add_argument("--only", default="", help="substring filter on chapter paths, e.g. Volume_10")
@@ -714,7 +709,7 @@ def main(argv: list[str] | None = None) -> int:
         return 1
     chapters = parse_summary(summary.read_text())
     state = load_state(repo)
-    return {"plan": cmd_plan, "stubs": cmd_stubs, "submit": cmd_submit,
+    return {"plan": cmd_plan, "submit": cmd_submit,
             "status": cmd_status, "collect": cmd_collect}[args.cmd](args, repo, chapters, state)
 
 

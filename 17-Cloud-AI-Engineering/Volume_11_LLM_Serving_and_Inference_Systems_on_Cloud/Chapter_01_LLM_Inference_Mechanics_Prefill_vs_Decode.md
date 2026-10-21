@@ -14,7 +14,7 @@ sources: []
 Prefill pushes all N prompt tokens through every weight matrix in one pass, so it runs as a large GEMM with arithmetic intensity of about N FLOP/byte and is limited by tensor-core FLOPS, which sets TTFT.
 Decode produces one token per sequence per step, so every step reads all weights plus that sequence's whole KV cache from HBM, and step time is roughly bytes moved divided by HBM bandwidth, which sets TPOT and ITL.
 Batching spreads the weight reads across B sequences, but each sequence still reads its own KV cache, so at long context the KV term grows with B x context and batching stops paying off well before the FLOPS roofline.
-TTFT = queueing + prefill compute + first decode step, and E2E = TTFT + (n_out - 1) x TPOT; p99 ITL spikes come mostly from prefill interference inside a shared iteration, not from decode itself.
+TTFT = queueing + prefill compute (the first token is sampled from the prefill logits), and E2E = TTFT + (n_out - 1) x TPOT; p99 ITL spikes come mostly from prefill interference inside a shared iteration, not from decode itself.
 Accelerator choice follows the phase mix: prefill-heavy traffic buys FLOPS per dollar, decode-heavy traffic buys HBM GB/s and GB per dollar, and fleets that ignore this split overpay by a constant factor.
 
 ## Mental Model
@@ -144,7 +144,7 @@ Plan on 40% to 60% MFU for prefill and 60% to 85% MBU (model bandwidth utilizati
 | Scale-up domain for TP | NVLink within an 8-GPU instance; NeuronLink within Trn2 instance or UltraServer | NVLink within an 8-GPU VM; ICI within a TPU slice (up to 256 chips for v6e) | TPU ICI lets decode TP span far more chips without leaving the low-latency fabric, which changes how far all-reduce latency limits TP width |
 | Scale-out for PD disaggregation | EFA with SRD multipath transport (3,200 Gbps on p5.48xlarge) | GPUDirect RDMA over RoCE on A3 Ultra / A4; DCN between TPU slices | KV transfer between prefill and decode pools rides the scale-out fabric; SRD's out-of-order delivery has to be handled by the transport library (libfabric / NIXL plugins) |
 | Serving stack on custom silicon | vLLM / NxD Inference on Neuron SDK | vLLM TPU backend, JetStream on XLA | Static-shape compilation on both: prefill buckets and decode batch sizes are compiled ahead, so an unexpected shape means recompilation or padding waste |
-| Managed model APIs | Amazon Bedrock (CloudWatch: InvocationLatency, InputTokenCount, OutputTokenCount) | Vertex AI Model Garden MaaS and Gemini API | Both expose tokens and end-to-end latency; a first-class server-side TTFT metric is UNVERIFIED, so measure TTFT at the client |
+| Managed model APIs | Amazon Bedrock (CloudWatch `AWS/Bedrock`: InvocationLatency, TimeToFirstToken, InputTokenCount, OutputTokenCount) | Vertex AI Model Garden MaaS and Gemini API | Both expose tokens and end-to-end latency; Bedrock also publishes `TimeToFirstToken` in milliseconds for the ConverseStream and InvokeModelWithResponseStream streaming operations (AWS Bedrock docs, as of 2026-10), but it is a service-side view, so still measure TTFT at the client to capture network and gateway time |
 | Self-managed endpoints | SageMaker AI real-time endpoints and inference components; EKS | Vertex AI online prediction endpoints; GKE | GKE Inference Gateway adds queue- and KV-utilization-aware routing (GA status UNVERIFIED); on EKS you assemble this yourself |
 | Capacity procurement | EC2 Capacity Blocks for ML, On-Demand Capacity Reservations | Dynamic Workload Scheduler (flex-start, calendar mode), reservations | Serving needs steady capacity, so reservations, not spot, back the decode floor; spot fits only stateless overflow prefill |
 
@@ -377,10 +377,10 @@ gcloud billing budgets delete <BUDGET_ID> --billing-account="$BILLING_ACCOUNT"
 Requirements: 200 requests/s at peak, mean 2,000 input and 250 output tokens, SLO p99 TTFT < 1 s and p99 TPOT < 50 ms, Llama 3.1 70B BF16 on 8x H100 replicas.
 
 1. Output token rate = 200 x 250 = 50,000 tokens/s; input token rate = 200 x 2,000 = 400,000 tokens/s.
-2. Mean decode context is about 2,000 + 250 / 2 = 2,125 tokens; at B = 128 the model gives about 13.5 ms per step (rerun with `--ctx 2125`), which meets the 50 ms TPOT SLO with room for interference.
+2. Mean decode context is about 2,000 + 250 / 2 = 2,125 tokens; at B = 128 the model gives (141.2 GB weights + 128 x 2,125 x 327,680 B = 89.1 GB KV) / 21.44 TB/s (8 x 3.35 TB/s at 80% MBU), about 10.7 ms per step and memory-bound (rerun with `--ctx 2125`), which meets the 50 ms TPOT SLO with room for interference.
 3. Prefill load per replica: 400,000 tokens/s x 2 x 70.6e9 FLOPs = 5.65e16 FLOP/s fleet-wide; one replica at 50% MFU delivers 8 x 989e12 x 0.5 = 3.96e15 FLOP/s, so about 14.3 replicas of pure prefill time.
-4. Decode load: each replica at B = 128 produces about 128 / 0.0135 = 9,500 tokens/s if it did nothing else, so 50,000 / 9,500 = 5.3 replica-equivalents of decode time.
-5. In a colocated (non-disaggregated) design the two loads add: about 14.3 + 5.3 = 19.6 replica-equivalents, so provision 24 replicas (192 H100s) for about 20% headroom and N+2 for replica-level failures.
+4. Decode load: each replica at B = 128 produces about 128 / 0.0107 = 11,900 tokens/s if it did nothing else, so 50,000 / 11,900 = 4.2 replica-equivalents of decode time.
+5. In a colocated (non-disaggregated) design the two loads add: about 14.3 + 4.2 = 18.5 replica-equivalents, so provision 18.5 x 1.2 + 2 = about 24 replicas (192 H100s) for about 20% headroom and N+2 for replica-level failures.
 6. This traffic is prefill-dominated (an 8:1 input to output ratio), so the bigger levers are prefix caching (a 50% hit rate on shared system prompts removes about 7 replica-equivalents) and FP8 prefill (about 2x FLOPS), not faster HBM.
 7. Cost per million output tokens = (replicas x hourly rate) / (output tokens per hour / 1e6) = 24 x R / 180, where 50,000 tokens/s x 3,600 = 180M tokens/hour.
 8. At an illustrative R = $60/hour per 8x H100 node (an assumption, not a list price), this comes to $8.00 per million output tokens, with input-token processing folded in.

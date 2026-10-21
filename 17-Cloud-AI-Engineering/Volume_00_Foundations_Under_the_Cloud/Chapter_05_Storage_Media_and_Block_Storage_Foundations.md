@@ -6,8 +6,8 @@ status: solid
 last_reviewed:
 sources:
   - "NVM Express Base Specification Revision 2.0 (NVM Express Organization 2021)"
-  - "Flash Boys: Auto-Tuning Flash Storage Engines for Modern Solid-State Drives (VLDB 2020)"
-  - "Millions of Distributed Databases: Building the Amazon EBS Control Plane (NSDI 2020) by Antonov et al."
+  - "The Unwritten Contract of Solid State Drives (EuroSys 2017) by He, Kannan, Arpaci-Dusseau, and Arpaci-Dusseau"
+  - "Millions of Tiny Databases (NSDI 2020) by Marc Brooker, Tao Chen, and Fan Ping"
   - "Google Cloud Persistent Disk Architecture and Performance Limits (Google Cloud 2024)"
 ---
 
@@ -48,12 +48,12 @@ flowchart TD
 
     subgraph StorageFabric["Distributed Storage Cluster (EBS Cells / Colossus)"]
         StorageNetwork["Dedicated Storage Network Fabric"]
-        SN1["Storage Server 1 (Primary Write Replica)"]
-        SN2["Storage Server 2 (Synchronous Quorum Replica)"]
-        SN3["Storage Server 3 (Snapshot / Scrubbing Replica)"]
+        SN1["EBS Storage Server 1 (Primary Copy)"]
+        SN2["EBS Storage Server 2 (Replica Copy, same AZ)"]
+        SN3["Colossus Storage Servers (GCP PD extents)"]
         NetworkStack --> StorageNetwork
         StorageNetwork --> SN1
-        StorageNetwork --> SN2
+        SN1 -->|Synchronous chain replication| SN2
         StorageNetwork --> SN3
     end
 ```
@@ -69,7 +69,7 @@ Understanding cloud disk performance and I/O latency variance requires understan
 - Flash Cells: NAND flash stores bits by trapping electrons inside insulated floating gates or charge-trap transistors.
   - Single-Level Cell (SLC): 1 bit per cell. Highest endurance (50,000 to 100,000 Program/Erase cycles), lowest latency (<25 microseconds), highest cost.
   - Multi-Level Cell (MLC): 2 bits per cell (4 voltage levels). ~3,000 to 10,000 P/E cycles.
-  - Triple-Level Cell (TLC): 3 bits per cell (8 voltage levels). Standard workhorse of cloud block storage (gp3, io2, Standard Persistent Disk). ~1,000 to 3,000 P/E cycles.
+  - Triple-Level Cell (TLC): 3 bits per cell (8 voltage levels). Common workhorse of SSD-backed cloud block tiers (gp3, io2, Balanced PD), although providers do not publish the NAND type behind each tier; Standard PD is HDD-backed. ~1,000 to 3,000 P/E cycles.
   - Quad-Level Cell (QLC): 4 bits per cell (16 precise voltage levels). High density, lowest endurance (~100 to 1,000 P/E cycles), slower write performance. Used in low-cost archival storage tiers.
 - Asymmetric Read, Write, and Erase Granularity:
   - Read: Executed at Page granularity (typically 4 KiB to 16 KiB). Latency: ~10 to 50 microseconds.
@@ -106,20 +106,20 @@ Cloud providers do not attach physical SATA/SAS cables between storage arrays an
 They virtualize the block interface at the physical PCIe layer:
 
 #### AWS Nitro Card for EBS
-On an EC2 instance, the Nitro Card for EBS presents itself to the server motherboard as a physical PCIe endpoint supporting the standard NVMe 1.4 specification.
+On an EC2 instance, the Nitro Card for EBS presents itself to the server motherboard as a physical PCIe endpoint implementing the standard NVMe interface.
 The guest Linux kernel loads its standard, unmodified open-source `nvme` driver.
 When an application executes a write:
 1. The guest OS writes a 64-byte NVMe command into the host Submission Queue and updates the Nitro doorbell register.
 2. The Nitro Card ASIC fetches the command over PCIe via Direct Memory Access (DMA), completely bypassing the host CPU.
-3. The Nitro hardware cryptographic engine encrypts the sector payload using an instance-specific AES-256 XTS data key.
+3. The Nitro hardware cryptographic engine encrypts the sector payload using the volume's unique AES-256 XTS data key (each encrypted EBS volume gets its own data key, protected by an AWS KMS key).
 4. Nitro encapsulates the I/O into proprietary network packets and routes them across the dedicated EBS storage network to the target storage server cluster.
-5. In Amazon EBS, volume extents are managed by a specialized consensus control plane called Physalia, which organizes storage nodes into localized 7-node Paxos clusters.
-The primary storage node synchronously replicates the write to a secondary storage node across different power domains before returning an acknowledgment.
+5. EBS uses chain replication: the primary storage server synchronously forwards the write to a replica storage server in the same AZ before returning an acknowledgment.
+Physalia is not on this read/write path; it is the configuration store that holds each volume's replication-chain membership (which servers are primary and replica) in small 7-node Paxos cells, and it is consulted only when that configuration changes, for example on failover or re-mirroring after a storage server fails (Brooker et al., NSDI 2020).
 6. The Nitro Card receives the network acknowledgment, writes a 16-byte completion record into the guest Completion Queue, and triggers an MSI-X interrupt.
 
 #### Google Cloud Persistent Disk (PD)
 Google Cloud Persistent Disk operates entirely over Google's Andromeda SDN and Colossus distributed filesystem:
-1. GCE virtual machines run a specialized block driver that communicates with Google's Titanium offload processor or hypervisor block virtualization layers.
+1. Compute Engine presents a Persistent Disk to the guest as a virtio-SCSI device or, on newer machine series (C3, C3D, M3, H3, Tau T2A) and Confidential VMs, as an NVMe device, backed by Titanium offload or the hypervisor block virtualization layer (Google Cloud docs, as of 2026-10).
 2. Persistent Disk slices the virtual volume into fixed-size block chunks (extents).
 3. Writes are transformed into Remote Procedure Calls (RPCs) sent directly over Andromeda to Colossus storage servers (D-Servers).
 4. For Regional Persistent Disks, the write is synchronously replicated across two separate Availability Zones before the block write acknowledges.
@@ -129,23 +129,23 @@ Google Cloud Persistent Disk operates entirely over Google's Andromeda SDN and C
 
 | Parameter | AWS EBS gp3 | AWS EBS io2 Block Express | GCP Balanced Persistent Disk | GCP Extreme Persistent Disk | Sourced As-Of |
 |---|---|---|---|---|---|
-| Max IOPS per Volume | 16,000 IOPS | 256,000 IOPS | Up to 80,000 IOPS | Up to 120,000 IOPS | AWS/GCP Docs (as of 2026-10) |
-| Max Throughput per Volume | 1,000 MiB/s | 4,000 MiB/s | 1,200 MiB/s | 2,400 MiB/s | AWS/GCP Docs (as of 2026-10) |
-| Max Volume Size | 16 TiB | 64 TiB | 64 TiB | 64 TiB | AWS/GCP Docs (as of 2026-10) |
-| Baseline Latency | 1 to 2 milliseconds | Sub-millisecond (~250-500 us) | 1 to 2 milliseconds | Sub-millisecond | AWS/GCP Specs (as of 2026-10) |
-| Baseline IOPS Included | 3,000 IOPS (free) | 100 IOPS per GiB | Based on capacity | Provisioned separately | AWS/GCP Pricing (as of 2026-10) |
+| Max IOPS per Volume | 80,000 IOPS (500 IOPS/GiB; raised from 16,000 in Sept 2025) | 256,000 IOPS (1,000 IOPS/GiB) | Up to 80,000 IOPS | Up to 120,000 IOPS | AWS/GCP Docs (as of 2026-10) |
+| Max Throughput per Volume | 2,000 MiB/s (0.25 MiB/s per provisioned IOPS) | 4,000 MiB/s | 1,200 MiB/s | 4,000 MiB/s read, 3,000 MiB/s write (N2 with 64+ vCPUs) | AWS/GCP Docs (as of 2026-10) |
+| Max Volume Size | 64 TiB | 64 TiB | 64 TiB | 64 TiB | AWS/GCP Docs (as of 2026-10) |
+| Baseline Latency | Single-digit milliseconds | Under 500 us average for 16 KiB I/O | 1 to 2 milliseconds | Sub-millisecond | AWS/GCP Specs (as of 2026-10) |
+| Baseline IOPS Included | 3,000 IOPS and 125 MiB/s (free) | None (all IOPS provisioned) | 3,000 IOPS and 140 MiB/s baseline, plus 6 IOPS and 0.28 MiB/s per GiB | Provisioned separately | AWS/GCP Docs (as of 2026-10) |
 | Base Storage Price | $0.08 / GB-month | $0.125 / GB-month | $0.10 / GB-month | $0.125 / GB-month | us-east-1 / us-central1 (as of 2026-10) |
-| Additional IOPS Price | $0.005 / provisioned IOPS | Tiered from $0.065 to $0.032 | Included in disk size | $0.05 / provisioned IOPS | AWS/GCP Pricing (as of 2026-10) |
+| Additional IOPS Price | $0.005 / provisioned IOPS | Tiered from $0.065 to $0.032 | Included in disk size | $0.065 / provisioned IOPS (UNVERIFIED against Google's price page) | AWS/GCP Pricing (as of 2026-10) |
 | Additional Throughput Price | $0.04 / provisioned MiB/s | Included in IOPS tier | Included in disk size | Included in IOPS tier | AWS/GCP Pricing (as of 2026-10) |
 
 ## AWS vs GCP Mechanism Parity
 
 | Dimension | AWS Elastic Block Store (EBS) | Google Cloud Persistent Disk (PD) | Architectural Difference |
 |---|---|---|---|
-| Hardware Device Interface | Emulated physical PCIe NVMe controller via Nitro Card ASIC | Paravirtualized block device driver integrated with Titanium / Andromeda | AWS exposes raw NVMe hardware devices directly to the guest; GCP uses Andromeda SDN network endpoints to pipe blocks into Colossus. |
-| Multi-AZ Synchronous Replication | Not supported natively on gp3/io2 (Requires application replication) | Native feature: Regional Persistent Disk (Synchronous 2-AZ replication) | GCP provides block-level active-active synchronous replication across two physical zones; AWS EBS is strictly single-AZ (snapshots are multi-AZ on S3). |
+| Hardware Device Interface | Emulated physical PCIe NVMe controller via Nitro Card ASIC | virtio-SCSI on older machine series; NVMe on newer series (C3, C3D, M3, H3, T2A) and Confidential VMs | AWS always exposes an NVMe device on Nitro instances; GCP's guest interface depends on machine series, and behind either interface the I/O travels over Andromeda to Colossus. |
+| Multi-AZ Synchronous Replication | Not supported natively on gp3/io2 (Requires application replication) | Native feature: Regional Persistent Disk (Synchronous 2-AZ replication) | GCP provides block-level synchronous replication across two zones, with one writer VM attached at a time (failover by force-attach); AWS EBS is strictly single-AZ (snapshots are regional, stored in S3). |
 | Multi-Attach Capabilities | io2 Multi-Attach (Attach up to 16 Nitro instances in single AZ with NVMe PR) | Persistent Disk Multi-Writer mode (Attach to multiple instances for clustered FS) | Both require cluster-aware filesystems (such as GFS2 or OCFS2) or custom distributed locks to avoid filesystem corruption. |
-| Performance Decoupling | gp3 completely decouples IOPS, throughput, and capacity allocation | Balanced PD couples IOPS and throughput directly to provisioned gigabytes | On AWS gp3, you can allocate a 100 GB disk with 16,000 IOPS and 1,000 MiB/s; on GCP Balanced PD, achieving 16,000 IOPS requires provisioning at least 534 GB. |
+| Performance Decoupling | gp3 completely decouples IOPS, throughput, and capacity allocation | Balanced PD couples IOPS and throughput directly to provisioned gigabytes | On AWS gp3, you can allocate a 100 GiB disk with 16,000 IOPS and 1,000 MiB/s (within the 500 IOPS/GiB and 0.25 MiB/s per IOPS ratios); on GCP Balanced PD, achieving 16,000 IOPS requires `(16,000 - 3,000) / 6 = 2,167 GiB`, before per-VM limits. |
 
 ## Worked Example: Capacity Sizing, IOPS Budgeting, and OpenTofu Deployment
 
@@ -166,15 +166,16 @@ We compare AWS EBS gp3 versus GCP Balanced Persistent Disk.
      - Total AWS EBS Monthly Cost: `$163.84 + $60.00 + $9.00 = $232.84 / month`.
 
 2. GCP Balanced Persistent Disk Configuration:
-   - Balanced PD yields 6 IOPS per GiB and 0.28 MiB/s per GiB.
-   - To achieve 15,000 IOPS natively: `15,000 / 6 = 2,500 GiB`.
-   - Provisioning 2,500 GiB provides:
-     - IOPS: `2,500 * 6 = 15,000 IOPS`.
-     - Throughput: `2,500 * 0.28 = 700 MiB/s` (exceeds the 350 MiB/s requirement).
+   - Balanced PD yields a baseline of 3,000 IOPS and 140 MiB/s, plus 6 IOPS per GiB and 0.28 MiB/s per GiB (Google Cloud docs, as of 2026-10).
+   - Capacity needed for 15,000 IOPS: `(15,000 - 3,000) / 6 = 2,000 GiB`, so the 2,048 GiB capacity requirement already covers it.
+   - Provisioning 2,048 GiB provides:
+     - IOPS: `3,000 + 2,048 * 6 = 15,288 IOPS`.
+     - Throughput: `140 + 2,048 * 0.28 = 713.44 MiB/s` (exceeds the 350 MiB/s requirement).
+   - The VM's machine type and vCPU count must also allow 15,000 IOPS; achievable performance is the lower of the disk limit and the VM limit.
    - Monthly Cost Breakdown (us-central1, as of 2026-10):
-     - Storage fee: `2,500 GB * $0.10 / GB-month = $250.00`.
+     - Storage fee: `2,048 GB * $0.10 / GB-month = $204.80`.
      - Additional IOPS / Throughput fees: $0.00 (Included in disk capacity).
-     - Total GCP PD Monthly Cost: `$250.00 / month`.
+     - Total GCP PD Monthly Cost: `$204.80 / month`.
 
 ### Runnable OpenTofu / Terraform Configuration: High-Performance EBS gp3 Volume
 
@@ -194,6 +195,11 @@ provider "aws" {
   region = "us-east-1"
 }
 
+# kms_key_id must be a KMS key ARN, not an alias; resolve the alias to its key ARN
+data "aws_kms_alias" "ebs" {
+  name = "alias/aws/ebs"
+}
+
 # High-performance gp3 block volume with custom IOPS and throughput
 resource "aws_ebs_volume" "database_data_volume" {
   availability_zone = "us-east-1a"
@@ -205,7 +211,7 @@ resource "aws_ebs_volume" "database_data_volume" {
   throughput = 350
 
   encrypted  = true # Hardware AES-256 via Nitro Card
-  kms_key_id = "alias/aws/ebs"
+  kms_key_id = data.aws_kms_alias.ebs.target_key_arn
 
   final_snapshot = false
 
@@ -222,16 +228,17 @@ resource "aws_ebs_volume" "database_data_volume" {
 #   instance_id = aws_instance.db_node.id
 # }
 
-# Cost guardrail: Alarm on high read/write burst exhaustion or volume latency
+# Latency guardrail: VolumeAvgReadLatency (milliseconds, Nitro instances only)
+# VolumeTotalReadTime is a per-period sum, and its Average statistic is not meaningful on Nitro
 resource "aws_cloudwatch_metric_alarm" "ebs_high_latency_alarm" {
   alarm_name          = "ebs-volume-high-latency-alert"
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 3
-  metric_name         = "VolumeTotalReadTime"
+  metric_name         = "VolumeAvgReadLatency"
   namespace           = "AWS/EBS"
   period              = 60
-  statistic           = "Average"
-  threshold           = 0.005 # 5 milliseconds
+  statistic           = "Maximum"
+  threshold           = 5 # milliseconds
   alarm_description   = "Triggers when EBS read latency exceeds 5ms across consecutive evaluation periods"
 
   dimensions = {
@@ -239,7 +246,30 @@ resource "aws_cloudwatch_metric_alarm" "ebs_high_latency_alarm" {
   }
 }
 
-# Teardown Command:
+# Budget guardrail: email when forecasted monthly account spend exceeds 80% of $300
+# (the lab estimate above is ~$233/month for the volume alone)
+variable "budget_alert_email" {
+  type        = string
+  description = "Address that receives AWS Budgets notifications"
+}
+
+resource "aws_budgets_budget" "ebs_lab_monthly" {
+  name         = "ebs-lab-monthly-budget"
+  budget_type  = "COST"
+  limit_amount = "300"
+  limit_unit   = "USD"
+  time_unit    = "MONTHLY"
+
+  notification {
+    comparison_operator        = "GREATER_THAN"
+    threshold                  = 80
+    threshold_type             = "PERCENTAGE"
+    notification_type          = "FORECASTED"
+    subscriber_email_addresses = [var.budget_alert_email]
+  }
+}
+
+# Teardown Command (also deletes the alarm and the budget):
 # tofu destroy -auto-approve
 ```
 
@@ -247,16 +277,17 @@ resource "aws_cloudwatch_metric_alarm" "ebs_high_latency_alarm" {
 
 ### Pitfall 1: EC2 Instance-Level EBS Bandwidth Throttling
 Engineers frequently provision high-performance EBS volumes (e.g., io2 with 64,000 IOPS and 1,000 MiB/s) attached to small or medium EC2 instances (such as `c6i.large`).
-A `c6i.large` instance has a maximum dedicated EBS throughput cap of only 156 MiB/s and 10,000 IOPS.
-When the database demands 350 MiB/s, the Nitro Card throttles I/O at the instance boundary, causing thread queues to back up and p99 database latency to spike to seconds, while the EBS volume metrics report zero saturation.
+A `c6i.large` instance has a baseline EBS limit of only 650 Mbps (81.25 MB/s) and 3,600 IOPS; it can burst to 10 Gbps (1,250 MB/s) and 40,000 IOPS, but only for 30 minutes at least once every 24 hours (AWS instance specs, as of 2026-10).
+When the database sustains 350 MiB/s, the burst credits drain and the Nitro Card throttles I/O at the instance boundary, causing thread queues to back up and p99 database latency to spike to seconds, while the volume-level metrics show the volume itself is not saturated.
+The instance-level CloudWatch metrics `InstanceEBSThroughputExceededCheck` and `InstanceEBSIOPSExceededCheck` (and `EBSByteBalance%` / `EBSIOBalance%` on burstable sizes) expose the real bottleneck.
 Mitigation: Consult AWS EBS-optimized instance tables.
-Select instance sizes (typically `.4xlarge` or larger) whose dedicated EBS bandwidth exceeds the volume's provisioned performance limits.
+Select an instance size whose baseline (not burst) EBS bandwidth and IOPS exceed the volume's provisioned performance; many `.4xlarge` and smaller sizes only reach their maximum in 30-minute bursts.
 
 ### Pitfall 2: Queue Depth Starvation on High-Throughput NVMe Volumes
 High-performance block storage requires sufficient concurrent I/O requests in flight to fill the storage controller's pipelines.
 If an application uses synchronous single-threaded I/O (`O_SYNC` with queue depth = 1), maximum achievable throughput is physically bounded by round-trip latency:
 $$\text{Max IOPS} = \frac{1}{\text{Round-Trip Latency}} = \frac{1}{0.001 \text{ s}} = 1,000 \text{ IOPS}$$
-Even on a 256,000 IOPS io2 volume, a single-threaded synchronous writer will never exceed 1,000 IOPS.
+Even on a 256,000 IOPS io2 Block Express volume with an average latency under 500 microseconds, a single-threaded synchronous writer is capped at roughly `1 / 0.0005 s = 2,000 IOPS`, far below what was provisioned.
 Mitigation: Tune application database engines to use asynchronous I/O (`io_uring`, `libaio`, or multi-threaded worker pools) with a target queue depth between 16 and 32 per volume.
 
 ### Pitfall 3: Filesystem Metadata Corruption in Multi-Attach Volumes
@@ -305,14 +336,15 @@ AWS presents block storage as an emulated physical PCIe hardware device.
 The Nitro Card implements physical NVMe controller hardware specifications via SR-IOV.
 The guest OS interacts with the drive using standard, native NVMe drivers, submitting commands to lockless per-core memory-mapped Queue Pairs.
 The Nitro Card DMA-reads the command directly from host memory, performs AES-256 XTS encryption in hardware on the ASIC, and encapsulates the sector data into low-latency network packets.
-These packets traverse a dedicated storage network to a localized 7-node Paxos replication cluster managed by the Physalia control plane.
-The write is synchronously confirmed across two physical storage servers before Nitro writes a completion entry into the guest NVMe Completion Queue and signals an interrupt.
+These packets traverse a dedicated storage network to the volume's primary storage server, which chain-replicates the write to a replica storage server in the same AZ.
+The write is synchronously confirmed on both servers before Nitro writes a completion entry into the guest NVMe Completion Queue and signals an interrupt.
+Physalia, a store of small 7-node Paxos cells, holds the chain's membership and is consulted only when that configuration changes (failover or re-mirroring), never on the per-I/O path.
 Google Cloud Persistent Disk:
-GCP does not emulate physical PCIe NVMe devices for persistent disks.
-Instead, GCE utilizes a paravirtualized block device layer integrated with Google's Andromeda Software-Defined Network.
+GCP exposes a Persistent Disk to the guest as either a virtio-SCSI device or, on newer machine series such as C3, as an NVMe device, but either way the guest-visible device is only a front end.
+Behind it, Compute Engine's block virtualization layer (offloaded to Titanium on newer series) is integrated with Google's Andromeda Software-Defined Network.
 When a write occurs, the block subsystem splits the volume into discrete chunk extents and issues Remote Procedure Calls (RPCs) directly over Andromeda to Colossus, Google's global distributed filesystem.
 Data is striped across distributed D-Servers and encoded using Reed-Solomon erasure coding or multi-zone replication.
-In summary: AWS Nitro emulates localized NVMe hardware speaking to specialized Paxos storage cells, delivering predictable single-digit millisecond latency; GCP integrates block storage directly into its global Colossus distributed filesystem, enabling seamless features like native multi-zone synchronous replication (Regional PD) and online volume resizing without device resets.
+In summary: AWS Nitro emulates localized NVMe hardware speaking to a primary-replica storage chain inside one AZ, with Physalia guarding the chain configuration, delivering predictable latency (single-digit milliseconds on gp3, sub-millisecond on io2 Block Express); GCP integrates block storage directly into its Colossus distributed filesystem, enabling features like native multi-zone synchronous replication (Regional PD).
 
 #### Follow-up Interviewer Question
 Why does an application executing synchronous single-threaded I/O with a queue depth of 1 experience poor IOPS on a cloud block storage volume regardless of whether 10,000 or 100,000 IOPS are provisioned?
@@ -326,24 +358,79 @@ Architectural Blueprint:
    - Primary Storage Primitive: GCP Regional Persistent Disk (Balanced or Extreme PD).
    - Replication Topology: Regional PD executes synchronous replication at the block layer across two discrete Availability Zones (e.g., `us-central1-a` and `us-central1-b`) before acknowledging writes.
    - Fault Recovery (RTO < 15s): If the primary compute instance in Zone A crashes or Zone A suffers complete power loss, an automated control plane script or Kubernetes StatefulSet attaches the existing Regional PD volume to a standby instance in Zone B using force-attach (`--force-attach`).
-   Because the file sectors are already synchronously replicated at the block layer in Zone B, the standby database initiates standard crash recovery (WAL replay) and resumes processing in under 10 seconds, achieving RPO = 0 and RTO < 15 seconds.
+   Because the file sectors are already synchronously replicated at the block layer in Zone B, the standby database initiates standard crash recovery (WAL replay) with RPO = 0, provided the disk was fully replicated (not running degraded on one zone) at the moment of failure.
+   The RTO is the sum of failure detection, force-attach, and WAL replay, so it must be measured in failover drills to prove it fits the 15-second budget.
 2. Amazon Web Services Implementation:
    - AWS EBS gp3/io2 is strictly a single-AZ construct; AWS does not offer multi-AZ synchronous block replication.
    Therefore, relying on EBS block storage alone cannot achieve RPO = 0 across an AZ failure without application-level distributed consensus.
    - Architectural Selection: We deploy a multi-node database cluster (e.g., PostgreSQL with synchronous streaming replication or Amazon Aurora Multi-AZ with a 4-of-6 storage quorum).
-   - If deploying a custom database engine on EC2: We provision io2 Block Express volumes (for sub-millisecond p99 write latency) in two separate AZs and configure synchronous quorum commits at the database engine level (e.g., Raft/Paxos or PostgreSQL `synchronous_commit = on` with `synchronous_standby_names = 'ANY 1'`).
+   - If deploying a custom database engine on EC2: We provision io2 Block Express volumes (for sub-millisecond average write latency) in two separate AZs and configure synchronous quorum commits at the database engine level (e.g., Raft/Paxos or PostgreSQL `synchronous_commit = on` with `synchronous_standby_names = 'ANY 1 (standby_b, standby_c)'`).
 3. Trade-off and Latency Analysis:
    - GCP Regional PD incurs a ~1.5ms to 2.5ms latency penalty due to the inter-AZ speed-of-light network round trip on every write, but eliminates the operational complexity of managing application-level database consensus.
-   - AWS io2 Block Express delivers ultra-low local latency (~250 to 500 microseconds) within a single AZ, but requires application-level replication across zones to achieve RPO = 0.
+   - AWS io2 Block Express delivers low local latency (under 500 microseconds average for 16 KiB I/O, per AWS docs as of 2026-10) within a single AZ, but requires application-level replication across zones to achieve RPO = 0.
    - Cost: GCP Regional PD charges 2x the standard disk price ($0.20/GB vs $0.10/GB) for synchronous replication.
    On AWS, running two EC2 instances with independent io2 Block Express volumes and inter-AZ data replication incurs higher compute and provisioned IOPS costs, but yields superior p99 read/write tail latency.
 
 #### Follow-up Interviewer Question
 If a write operation to a GCP Regional Persistent Disk succeeds in Zone A but times out in Zone B due to an inter-zone optical fiber cut, how does the storage controller resolve the split-brain state without compromising consistency?
 
+### Question 4 (L5 - Senior)
+A PostgreSQL primary on a `c6i.large` uses an io2 volume provisioned with 20,000 IOPS and 500 MiB/s, yet p99 query latency degrades every afternoon while the volume's own metrics show it is far below its provisioned limits. Walk through your diagnosis and fix.
+
+#### Model Answer
+Block storage performance is the minimum of three independent limits: the volume's provisioned IOPS and throughput, the instance's EBS bandwidth and IOPS limit, and the concurrency (queue depth) the application keeps in flight.
+The volume metrics only describe the first limit, so a healthy-looking volume does not prove the I/O path is healthy.
+A `c6i.large` has a baseline EBS limit of 650 Mbps (81.25 MB/s) and 3,600 IOPS, with bursts to 1,250 MB/s and 40,000 IOPS for only 30 minutes at least once every 24 hours (AWS instance specs, as of 2026-10).
+The morning workload runs on burst credits; once they drain in the afternoon, the Nitro Card enforces the baseline and requests queue in the guest block layer, which is exactly where p99 latency grows.
+I confirm it with instance-level metrics rather than volume metrics: `InstanceEBSIOPSExceededCheck` and `InstanceEBSThroughputExceededCheck` flip to 1, `EBSIOBalance%` and `EBSByteBalance%` fall toward zero, and `VolumeAvgReadLatency` / `VolumeAvgWriteLatency` rise while `VolumeIOPSExceededCheck` stays at 0.
+On the guest, `iostat -x` shows rising `aqu-sz` and `await` with throughput flat at the instance ceiling.
+The fix is to size the instance so that its baseline, not its burst, exceeds the volume's provisioned performance; otherwise the io2 IOPS being paid for are unreachable.
+The trade-off is cost: a larger instance adds vCPUs and memory the database may not need, so the cheaper alternative is often to right-size the volume down to what the instance can sustain, or to pick a family with higher EBS bandwidth per vCPU.
+I would also verify the remaining limit, queue depth, because a single-threaded synchronous writer is capped at `1 / latency` regardless of either ceiling.
+
+#### Follow-up Interviewer Question
+How would you build a CloudWatch alarm that distinguishes "instance EBS ceiling reached" from "volume provisioned IOPS exceeded" so that on-call knows which resource to resize?
+
+### Question 5 (L6 - Staff)
+A team proposes attaching one io2 volume with Multi-Attach to two EC2 instances so the standby can take over instantly if the primary dies. Evaluate the design and specify what is required to make it safe.
+
+#### Model Answer
+Multi-Attach lets up to 16 Nitro-based instances in the same Availability Zone attach one io2 volume, but EBS only shares the blocks; it provides no coordination of who may write.
+If both instances mount an `ext4` or `XFS` filesystem, each kernel caches allocation bitmaps, inodes, and the journal in RAM and writes them back independently, so the filesystem is corrupted as soon as both write.
+The real problem is fencing: when the standby decides the primary is dead, the primary may only be partitioned or paused (a long GC or hypervisor stall) and can resume writing stale data.
+A safe design therefore needs three pieces.
+First, a single-writer filesystem must be mounted on only one node at a time, or a cluster-aware filesystem (GFS2, OCFS2) with its own distributed lock manager must be used.
+Second, the storage must enforce exclusion: io2 Multi-Attach supports NVMe reservations, so the cluster manager uses reservation-based fencing in which the new primary preempts the old primary's reservation, after which the old primary's writes are rejected by the storage rather than trusted to stop voluntarily.
+Third, leadership must come from a quorum outside the two nodes (a third voter or an external lock service), otherwise a network partition leaves each side believing the other failed.
+Even when done correctly, the design only protects against instance failure: the volume, its replicas, and both instances sit in one AZ, so an AZ failure takes out everything, and a logical corruption is faithfully shared by both nodes.
+For most databases, two instances with independent volumes and database-level synchronous replication across AZs is the better design, trading higher storage cost and replication latency for AZ-level fault tolerance and isolation from shared corruption.
+
+#### Follow-up Interviewer Question
+Why is it unsafe for the standby to simply wait for the primary's heartbeat to stop for N seconds before mounting the volume, even with a generous timeout?
+
+### Question 6 (L7+ - Principal)
+In April 2011 a network configuration error made 13% of the EBS volumes in one Availability Zone unavailable, and the replication configuration store sat in the shared EBS control plane. Using that incident, explain how you would design the configuration store for a replicated block storage service, and why Physalia looks the way it does.
+
+#### Model Answer
+EBS volume data uses chain replication: writes flow from the client instance to the primary storage server and on to a replica, with no control-plane involvement per I/O.
+The configuration store is consulted only when the chain must change, for example when a replica is lost and the volume must be re-mirrored, and it must decide atomically which copy is authoritative so that two servers never both act as primary.
+That access pattern is pathological for a conventional design: the store is nearly idle in steady state, but a large correlated failure makes thousands of volumes ask for reconfiguration at the same moment, exactly when the network is partitioned and capacity is scarce.
+In 2011 the replication configuration shared a database with API traffic, so the re-mirroring storm overloaded the control plane and spread the impact beyond the original failure (Brooker et al., NSDI 2020).
+The design principles that follow are the ones Physalia embodies.
+First, keep consistency non-negotiable, since a wrong answer about the chain corrupts data, and accept that by CAP not every key can be available to every client during a partition.
+Second, exploit the fact that each volume's configuration needs to be available to only three parties: the client instance, the primary, and the replica.
+Physalia therefore partitions configuration into millions of tiny databases, each served by a cell that runs Paxos over seven nodes, and places the cell's nodes close to those three parties using knowledge of network and power topology, so a partition that isolates them from the rest of the datacenter does not isolate them from their configuration.
+Seven nodes is a deliberate trade-off: larger cells improve durability and tail latency, while keeping each cell small bounds the blast radius of a bug, overload, or bad deployment to a few volumes.
+Third, separate the configuration store from the customer-facing API control plane so that API load and reconfiguration storms cannot starve each other.
+The costs are real: millions of cells need their own control plane to create, repair, and move cells, reconfiguration is frequent and must be proven safe, and the system is harder to test than a single database.
+I would accept that complexity because the alternative couples the availability of every volume in a zone to one shared service at the moment it is most stressed.
+
+#### Follow-up Interviewer Question
+Physalia continuously moves cells to be close to their clients through Paxos reconfiguration; what safety invariant must every reconfiguration step preserve, and how would you test it?
+
 ## Further Reading
 
 - [NVM Express Base Specification Revision 2.0](https://nvmexpress.org/specifications/) - The authoritative industry specification defining NVMe multi-queue mechanics, doorbell registers, and admin commands.
-- [Millions of Distributed Databases: Building the Amazon EBS Control Plane (NSDI 2020)](https://www.usenix.org/conference/nsdi20/presentation/antonov) - AWS architecture paper detailing Physalia, localized Paxos cells, and blast-radius containment in EBS.
+- [Millions of Tiny Databases (NSDI 2020)](https://www.usenix.org/conference/nsdi20/presentation/brooker) - Marc Brooker, Tao Chen, and Fan Ping describe Physalia, the EBS replication-configuration store built from small 7-node Paxos cells placed for blast-radius containment.
 - [Google Cloud Persistent Disk Architecture and Internals](https://cloud.google.com/compute/docs/disks) - Technical documentation detailing Persistent Disk extents, Colossus integration, and Regional PD replication.
-- [Flash Boys: Auto-Tuning Flash Storage Engines (VLDB 2020)](https://dl.acm.org/doi/10.14778/3407790.3407812) - Systems research paper analyzing Flash Translation Layer garbage collection, wear leveling, and write amplification.
+- [The Unwritten Contract of Solid State Drives (EuroSys 2017)](https://pages.cs.wisc.edu/~jhe/eurosys17-he.pdf) - Jun He, Sudarsun Kannan, Andrea Arpaci-Dusseau, and Remzi Arpaci-Dusseau formalize the rules (request scale, locality, aligned sequentiality, grouping by death time, uniform data lifetime) that software must follow to avoid FTL garbage-collection and write-amplification penalties.

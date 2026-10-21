@@ -56,7 +56,7 @@ Each chapter note is self-contained while building upon the foundational mechani
 | 11 | LLM Serving on Cloud | Inference engines (vLLM/SGLang), PagedAttention, continuous batching, speculative decoding, Bedrock, Vertex |
 | 12 | AI Applications and MLOps | Vector search engines, enterprise RAG, agent runtimes, pipeline orchestration, feature stores, AI security |
 | 13 | Seminal Papers and Case Studies | Deep dives into 15 foundational papers: Dynamo, DynamoDB, Aurora, Physalia, Firecracker, Spanner, Borg, TPU |
-| 14 | Staff+ Interview Arena | 25+ end-to-end design walkthroughs, cheat sheet numbers, certification roadmap, staff bar analysis |
+| 14 | Staff+ Interview Arena | Five end-to-end design walkthroughs, cheat sheet numbers, certification roadmap, staff bar analysis |
 | 15 | Capstones | Three end-to-end dual-cloud implementations in OpenTofu/Terraform with budget guardrails and teardown |
 
 ## Learning path

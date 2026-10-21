@@ -6,6 +6,7 @@ status: solid
 last_reviewed:
 sources:
   - "RFC 8446: The Transport Layer Security (TLS) Protocol Version 1.3"
+  - "RFC 8470: Using Early Data in HTTP"
   - "BBR: Congestion-Based Congestion Control (ACM Queue 2016) by Cardwell et al."
   - "Amazon CloudFront Infrastructure and Architecture Guide (AWS 2024)"
   - "Google Cloud CDN and Edge Point of Presence Overview (Google Cloud 2024)"
@@ -66,7 +67,7 @@ Both AWS and Google Cloud organize their global perimeter into a tiered caching 
 They house high-density rack clusters containing Google Front Ends (GFEs) or AWS Edge Proxies connected directly to Internet Service Providers (ISPs) via Internet Exchange Points (IXPs) and private network-to-network interfaces (NNIs).
 - Regional Edge Caches (REC): Positioned between local edge locations and origin datacenters.
 Regional Edge Caches feature larger storage tiers that retain cached objects evicted from local edge locations due to memory pressure, shielding the origin from cache-stampede traffic.
-- Private Global Backbones: Once traffic enters an edge POP, it never traverses the public, unmanaged Internet.
+- Private Global Backbones: Once traffic enters an edge POP bound for an origin hosted in the same cloud, it does not traverse the public, unmanaged Internet (origins outside the cloud are still reached over the Internet).
 It travels over dedicated, private terrestrial and subsea fiber-optic cables owned and operated by the cloud provider, avoiding public BGP routing congestion, packet drops, and transit hops.
 
 ### TLS 1.3 Protocol Mechanics and Handshake Latency
@@ -74,13 +75,14 @@ It travels over dedicated, private terrestrial and subsea fiber-optic cables own
 Defined in RFC 8446, TLS 1.3 radically overhauls secure communications:
 - Mandatory 1-RTT Handshake: In TLS 1.2, negotiating cipher suites and exchanging Diffie-Hellman parameters required two round trips (2-RTT).
 TLS 1.3 eliminates obsolete cipher suites (dropping RSA key transport, static Diffie-Hellman, RC4, and CBC-mode ciphers).
-Because all permitted ciphers use Ephemeral Diffie-Hellman (ECDHE), the client guesses the server's key exchange algorithm and includes its `KeyShare` parameter directly inside the initial `ClientHello`.
+Because every full TLS 1.3 handshake uses ephemeral Diffie-Hellman key exchange ((EC)DHE) from a small set of named groups, the client guesses the server's key exchange algorithm and includes its `KeyShare` parameter directly inside the initial `ClientHello`.
 The server responds with `ServerHello`, its certificate, and `Finished` in one flight, completing the cryptographic handshake in exactly 1-RTT.
 - Cryptographic Ciphers: TLS 1.3 restricts symmetric encryption to Authenticated Encryption with Associated Data (AEAD) algorithms:
   - `TLS_AES_256_GCM_SHA384`
   - `TLS_CHACHA20_POLY1305_SHA256`
   - `TLS_AES_128_GCM_SHA256`
-- Forward Secrecy: By mandating ECDHE for every session, compromising the server's long-term private key in the future cannot decrypt recorded historical network traffic.
+- Forward Secrecy: Because full handshakes always use ephemeral (EC)DHE, compromising the server's long-term private key in the future cannot decrypt recorded historical network traffic.
+The exception is PSK resumption: the `psk_ke` mode skips the fresh (EC)DHE exchange and loses forward secrecy with respect to the PSK, so edges should offer only `psk_dhe_ke`, and 0-RTT early data is never forward secret.
 
 ### Zero-RTT (0-RTT) Early Data and Replay Attacks
 
@@ -91,8 +93,10 @@ When reconnecting, the client encrypts the initial HTTP request using this PSK a
 If the 0-RTT payload is an idempotent `GET /index.html`, replaying causes minimal harm.
 However, if the 0-RTT payload is a state-mutating request (such as `POST /api/v1/transfer_funds` or `POST /api/v1/generate_token`), the server could execute the transaction repeatedly.
 3. Edge Mitigations:
-   - Method Restriction: RFC 8446 mandates that edge proxies must never forward non-idempotent HTTP methods (POST, PUT, DELETE, PATCH) received via 0-RTT early data.
-   - Single-Use Ticket Trackers: Edge proxies maintain distributed Bloom filters and local in-memory caches to record recently seen session tickets, rejecting replayed tickets within a sliding time window.
+   - Method Restriction: RFC 8446 defines early data but gives it no replay protection across connections (Section 8 and Appendix E.5), and it forbids application protocols from using 0-RTT without a profile that defines its use.
+   RFC 8470 is that profile for HTTP: clients MAY send safe methods in early data and MUST NOT send unsafe methods (or methods of unknown safety); an intermediary that forwards a request before the handshake completes MUST add `Early-Data: 1`; and a server unwilling to risk a replay answers `425 (Too Early)`, which the client MUST retry after the handshake.
+   An edge proxy therefore accepts early data only for safe methods such as `GET` and `HEAD`, and either delays or rejects with 425 anything else.
+   - Single-Use Ticket Trackers: RFC 8446 Section 8 describes single-use tickets, ClientHello recording, and freshness checks; edge proxies implement them with distributed Bloom filters and local in-memory caches of recently seen tickets or ClientHellos, rejecting replays within a sliding time window.
 
 ### Session Resumption and Distributed STEK Rotation
 
@@ -109,10 +113,10 @@ Keys follow a dual-key lifecycle: a `current` key encrypts new tickets, while a 
 - Hardware Offload: Terminating TLS 1.3 for millions of concurrent requests consumes massive CPU resources for asymmetric elliptic-curve scalar multiplication (X25519) and symmetric AES-GCM encryption.
 Edge servers offload these operations to dedicated hardware cryptographic accelerators or CPU vector instruction sets (Intel AVX-512 with VAES, ARMv8 Cryptographic Extensions).
 - TCP BBR (Bottleneck Bandwidth and RTT): Traditional TCP congestion control algorithms (Reno, CUBIC) interpret packet loss as an indicator of network congestion.
-On long-haul transoceanic fiber links, transient packet loss frequently occurs without buffer overflow, causing CUBIC to slash its transmission window in half and collapse throughput.
-Google BBR builds an explicit real-time mathematical model of the physical path:
-$$BBR = \text{Bottleneck Bandwidth} \times \text{Minimum RTT}$$
-BBR paces packet transmissions to keep exactly one bandwidth-delay product of data in flight, eliminating bufferbloat at intermediate routers and maintaining line-rate throughput across transoceanic routes.
+On long-haul transoceanic fiber links, transient packet loss frequently occurs without buffer overflow, causing CUBIC to cut its congestion window to 70% on every loss event (multiplicative decrease factor 0.7, RFC 9438; Reno halves it) and, on a long-RTT path, to take many seconds to grow back, collapsing throughput.
+Google BBR builds an explicit real-time model of the physical path from two estimates, the bottleneck bandwidth (BtlBw) and the round-trip propagation time (RTprop), whose product is the bandwidth-delay product:
+$$BDP = \text{BtlBw} \times \text{RTprop}$$
+BBR paces packet transmissions at the estimated bottleneck bandwidth and aims to keep about one BDP of data in flight (capping the window at a small multiple of BDP), which limits queue build-up at intermediate routers and sustains high throughput across lossy transoceanic routes.
 
 ## Numbers to Know
 
@@ -120,26 +124,27 @@ BBR paces packet transmissions to keep exactly one bandwidth-delay product of da
 |---|---|---|---|
 | TLS 1.2 Full Handshake Latency | 2 RTT (e.g., 300ms intercontinental) | Requires separate cipher and key exchange flights | RFC 5246 Specification |
 | TLS 1.3 Full Handshake Latency | 1 RTT (e.g., 15ms local edge POP) | 1-RTT key exchange via pre-populated KeyShare | RFC 8446 Specification |
-| TLS 1.3 0-RTT Latency | 0 RTT (Application data in first flight) | Only permitted for safe, idempotent HTTP methods | RFC 8446 Specification |
-| CloudFront Edge POP Count | 600+ Points of Presence worldwide | Includes Edge Locations and Regional Edge Caches | AWS Global Infra (as of 2026-10) |
-| Google Cloud Edge POP Count | 180+ Edge Network POPs in 200+ countries | Integrated with Google Front End (GFE) network | Google Cloud Infra (as of 2026-10) |
-| STEK Lifetime / Rotation Window | Typically rotated every 1 to 24 hours | Dual-key overlap prevents session drop | AWS / Google Sec (as of 2026-10) |
+| TLS 1.3 0-RTT Latency | 0 RTT (Application data in first flight) | HTTP clients may send only safe methods in early data | RFC 8446 (mechanism), RFC 8470 (HTTP rules) |
+| CloudFront Edge POP Count | 750+ POPs in 100+ cities across 50+ countries, plus 15 Regional Edge Caches | Embedded POPs inside ISP networks are counted separately | AWS CloudFront details page (as of 2026-10) |
+| Google Cloud Edge Locations | 200+ network edge locations | Integrated with Google Front End (GFE) network | Google Cloud VPC docs (as of 2026-10) |
+| STEK Lifetime / Rotation Window | Commonly rotated every 1 to 24 hours | Dual-key overlap prevents session drop | UNVERIFIED (operator practice, no provider-published figure) |
 | CloudFront Data Out to Internet | $0.085 / GB (First 10 TB, US/Europe) | CloudFront free tier includes 1 TB/month | AWS Pricing (as of 2026-10) |
-| Google Cloud CDN Egress Price | $0.080 / GB (First 10 TB, US/Europe) | Varies by cache hit and network tier | GCP Pricing (as of 2026-10) |
+| CloudFront HTTPS Requests | $0.0100 per 10,000 (US), $0.0120 per 10,000 (Europe) | Free tier includes 10,000,000 requests/month | AWS Pricing (as of 2026-10) |
+| Google Cloud CDN Egress Price | $0.080 / GiB cache egress (First 10 TiB, North America/Europe) | Cache fill and cache lookups are billed separately | GCP Pricing (as of 2026-10) |
 
 ## AWS vs GCP Mechanism Parity
 
 | Mechanism | Amazon Web Services (CloudFront) | Google Cloud Platform (Cloud CDN) | Architectural Distinction |
 |---|---|---|---|
 | Edge Proxy Architecture | Amazon CloudFront (Dedicated reverse-proxy software on custom hardware) | Google Front End (GFE - Unified edge proxy for Search, YouTube, Cloud) | GFEs handle all internal and external Google services simultaneously using a unified codebase; CloudFront is an AWS-specific service. |
-| Ingress Network Steering | DNS Anycast steering to local Edge POPs | Anycast VIPs terminated directly at nearest edge POP | GCP provides single static Anycast IP addresses globally; AWS CloudFront uses DNS Anycast that resolves to regional VIP pools. |
+| Ingress Network Steering | DNS-based steering: CloudFront's DNS answers with IP addresses of a nearby edge location | Anycast VIPs terminated directly at nearest edge POP | GCP provides single static Anycast IP addresses globally; CloudFront steers by DNS resolution to per-location edge addresses (with optional anycast static IPs). |
 | Regional Cache Layer | Regional Edge Caches (REC) sitting between POPs and origin | Media CDN and multi-tier edge cache hierarchy | Both platforms shield origin datacenters using intermediate caching tiers with multi-terabyte storage. |
-| Edge Programmability | CloudFront Functions (V8 micro-engine) and Lambda@Edge | Service Extensions / Cloud Functions for Cloud CDN | CloudFront Functions execute sub-millisecond transforms directly in the edge process; Lambda@Edge runs full Node/Python containers in RECs. |
+| Edge Programmability | CloudFront Functions (lightweight JavaScript runtime, ES 5.1 compliant plus some ES6-12 features) and Lambda@Edge | Service Extensions (callouts and plugins) on Cloud Load Balancing and Media CDN | CloudFront Functions execute short request and response transforms at edge locations; Lambda@Edge runs full Node.js or Python functions at Regional Edge Caches. |
 
 ## Worked Example: CloudFront CDN Distribution with OpenTofu / Terraform
 
 Consider deploying a global caching and TLS termination layer for an AI inference API.
-We enforce TLS 1.3, configure safe HTTP methods, and establish budget guardrails.
+We redirect HTTP to HTTPS (CloudFront negotiates TLS 1.3 with clients that support it), restrict the behavior to safe HTTP methods, and set TTL bounds in a custom cache policy.
 
 ### Capacity and Cost Calculation
 
@@ -151,18 +156,26 @@ We enforce TLS 1.3, configure safe HTTP methods, and establish budget guardrails
 2. Cost Estimation (US/Europe Region, as of 2026-10):
    - Data Transfer Out (First 1 TB free):
      `19,000 GB * $0.085 / GB = $1,615.00`.
-   - HTTPS Request Fees:
-     `50,000,000 * $0.010 per 10,000 requests = 5,000 * $0.10 = $50.00`.
-   - Origin Shield / Regional Edge Cache transfers: Included at zero surcharge.
-   - Total Monthly Edge Cost: `$1,615.00 + $50.00 = $1,665.00 / month`.
-   - Cost Savings vs Direct Origin Egress:
-     Direct EC2 egress costs $0.09/GB ($1,800) + compute costs to handle 50M handshakes.
-     Caching 80% of requests at the edge offloads 40M invocations from regional compute, saving over $4,000/month in origin backend infrastructure.
+   - HTTPS Request Fees ($0.0100 per 10,000 requests in the US; first 10,000,000 requests free):
+     `(50,000,000 - 10,000,000) / 10,000 = 4,000 units * $0.0100 = $40.00`.
+     Without the free tier the same line is `5,000 units * $0.0100 = $50.00`; note that `5,000 * $0.10` would be $500.00, ten times the real price.
+   - Regional Edge Cache tier: no additional charge; Origin Shield is not enabled here and would add $0.0075 per 10,000 requests that reach it (US).
+   - Total Monthly Edge Cost: `$1,615.00 + $40.00 = $1,655.00 / month`.
+   - Cost Comparison vs Direct Origin Egress:
+     Serving the same 20,000 GB straight from EC2 costs about $1,740 in data transfer (first 100 GB free, then $0.09/GB up to 10 TB and $0.085/GB for the next 40 TB), plus the compute to terminate 50M TLS sessions.
+     Caching 80% of requests at the edge offloads 40M requests from regional compute; the dollar value of that offload depends on per-request origin cost and is not estimated here.
 
-### Runnable OpenTofu / Terraform Configuration: CloudFront with Strict TLS 1.3
+3. Lab Cost (the configuration below as written, with only test traffic; AWS CloudFront, Amazon S3, and AWS Budgets pricing, as of 2026-10):
+   - CloudFront: test traffic stays inside the always-free monthly tier (1 TB data transfer out, 10,000,000 requests), which is shared by every distribution in the account.
+   - S3 origin: an empty or near-empty bucket costs well under $0.01 per month, and data transfer from an AWS origin to CloudFront is not charged.
+   - Cache policy and origin access control: no charge.
+   - Budget: AWS Budgets without actions is free.
+   - Lab total: about $0.00 per month unless the account has already used its CloudFront free tier.
+
+### Runnable OpenTofu / Terraform Configuration: CloudFront with HTTPS Enforcement and a Custom Cache Policy
 
 ```hcl
-# edge_cdn.tf - CloudFront Distribution with TLS 1.3 Enforcement
+# edge_cdn.tf - CloudFront Distribution with HTTPS redirect and explicit cache policy
 terraform {
   required_version = ">= 1.6.0"
   required_providers {
@@ -170,11 +183,45 @@ terraform {
       source  = "hashicorp/aws"
       version = "~> 5.0"
     }
+    random = {
+      source  = "hashicorp/random"
+      version = "~> 3.0"
+    }
   }
 }
 
 provider "aws" {
   region = "us-east-1"
+}
+
+variable "budget_alert_email" {
+  type        = string
+  description = "Email address that receives the lab budget alerts"
+}
+
+# Budget alarm: account-wide monthly cost budget for the lab (budgets without actions are free)
+resource "aws_budgets_budget" "lab_budget" {
+  name         = "cloud-ai-ch04-edge-lab"
+  budget_type  = "COST"
+  limit_amount = "10"
+  limit_unit   = "USD"
+  time_unit    = "MONTHLY"
+
+  notification {
+    comparison_operator        = "GREATER_THAN"
+    threshold                  = 50
+    threshold_type             = "PERCENTAGE"
+    notification_type          = "ACTUAL"
+    subscriber_email_addresses = [var.budget_alert_email]
+  }
+
+  notification {
+    comparison_operator        = "GREATER_THAN"
+    threshold                  = 100
+    threshold_type             = "PERCENTAGE"
+    notification_type          = "FORECASTED"
+    subscriber_email_addresses = [var.budget_alert_email]
+  }
 }
 
 # Example Origin: S3 Bucket or Application Load Balancer
@@ -196,6 +243,32 @@ resource "aws_cloudfront_origin_access_control" "oac" {
   signing_protocol                  = "sigv4"
 }
 
+# TTL bounds live in the cache policy. Behavior-level min_ttl/default_ttl/max_ttl and
+# forwarded_values are deprecated legacy settings; a behavior uses either a cache
+# policy or forwarded_values, and a cache policy's TTLs take precedence.
+resource "aws_cloudfront_cache_policy" "edge_cache" {
+  name        = "cloud-ai-edge-cache"
+  comment     = "Static assets: no cookies, headers, or query strings in the cache key"
+  min_ttl     = 0
+  default_ttl = 3600
+  max_ttl     = 86400
+
+  parameters_in_cache_key_and_forwarded_to_origin {
+    cookies_config {
+      cookie_behavior = "none"
+    }
+    headers_config {
+      header_behavior = "none"
+    }
+    query_strings_config {
+      query_string_behavior = "none"
+    }
+    # Normalizes Accept-Encoding into the cache key so compress = true is effective
+    enable_accept_encoding_brotli = true
+    enable_accept_encoding_gzip   = true
+  }
+}
+
 resource "aws_cloudfront_distribution" "cdn" {
   enabled             = true
   is_ipv6_enabled     = true
@@ -213,13 +286,10 @@ resource "aws_cloudfront_distribution" "cdn" {
     cached_methods   = ["GET", "HEAD"]
     target_origin_id = "s3-origin"
 
-    # Forward headers and cookies via managed cache policy
-    cache_policy_id = "658327ea-f89d-4fab-a63d-7e88639e58f6" # Managed-CachingOptimized
+    # Cache key, forwarded values, and TTLs all come from the cache policy
+    cache_policy_id = aws_cloudfront_cache_policy.edge_cache.id
 
     viewer_protocol_policy = "redirect-to-https"
-    min_ttl                = 0
-    default_ttl            = 3600
-    max_ttl                = 86400
     compress               = true
   }
 
@@ -232,14 +302,45 @@ resource "aws_cloudfront_distribution" "cdn" {
     }
   }
 
+  # The default *.cloudfront.net certificate fixes the security policy at TLSv1, so
+  # minimum_protocol_version cannot be raised here. To enforce TLS 1.2+ (for example
+  # "TLSv1.2_2021"), attach an ACM certificate from us-east-1 with
+  # ssl_support_method = "sni-only" and an alias (custom domain) on the distribution.
   viewer_certificate {
     cloudfront_default_certificate = true
-    minimum_protocol_version       = "TLSv1.2_2021" # Enforces modern TLS protocols
   }
 }
 
-# Teardown Command:
-# tofu destroy -auto-approve
+# Let only this distribution read the bucket through OAC
+data "aws_iam_policy_document" "origin_read" {
+  statement {
+    sid       = "AllowCloudFrontOACRead"
+    actions   = ["s3:GetObject"]
+    resources = ["${aws_s3_bucket.origin_bucket.arn}/*"]
+
+    principals {
+      type        = "Service"
+      identifiers = ["cloudfront.amazonaws.com"]
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = "AWS:SourceArn"
+      values   = [aws_cloudfront_distribution.cdn.arn]
+    }
+  }
+}
+
+resource "aws_s3_bucket_policy" "origin_read" {
+  bucket = aws_s3_bucket.origin_bucket.id
+  policy = data.aws_iam_policy_document.origin_read.json
+}
+
+# Deploy Command:
+# tofu init && tofu apply -var 'budget_alert_email=you@example.com'
+# Teardown Command (force_destroy empties the bucket; CloudFront must disable the
+# distribution before deleting it, so destroy can take several minutes):
+# tofu destroy -auto-approve -var 'budget_alert_email=you@example.com'
 ```
 
 ## Failure Modes and Pitfalls
@@ -248,14 +349,14 @@ resource "aws_cloudfront_distribution" "cdn" {
 If an edge proxy terminates TLS 1.3 with 0-RTT early data enabled, and forwards incoming requests directly to a non-idempotent API gateway without inspecting the method, malicious actors can record valid 0-RTT packets from the wire and replay them.
 Symptoms: Duplicate account registrations, duplicated billing charges, or corrupted database balances caused by replayed client sessions.
 Mitigation: Enforce strict WAF rules at the edge.
-Reject any request carrying an early data header (`Early-Data: 1`) if the HTTP method is non-idempotent (POST, PUT, DELETE).
+Answer `425 (Too Early)` to any request carrying the early data header (`Early-Data: 1`) whose method is unsafe (POST, PUT, DELETE, PATCH), so the client retries it after the handshake completes (RFC 8470).
 
 ### Pitfall 2: Cache Stampede (Thundering Herd) on Origin Outages
 When a highly requested cached asset expires at the edge, hundreds of concurrent incoming requests miss the cache simultaneously.
 The edge proxy opens hundreds of simultaneous backend connections to the origin to fetch the exact same object.
 This sudden traffic spike overloads the database or origin application, causing cascading failures.
-Mitigation: Enable Origin Shield on CloudFront or Collapsed Forwarding on NGINX/Envoy.
-Collapsed forwarding holds concurrent duplicate requests in an edge queue, sending exactly one request to the origin and streaming the response to all waiting clients simultaneously.
+Mitigation: Enable Origin Shield on CloudFront, or request collapsing on self-managed caches (NGINX `proxy_cache_lock`, Varnish request coalescing, Apache Traffic Server collapsed forwarding).
+Request collapsing holds concurrent duplicate requests in an edge queue, sending exactly one request to the origin and streaming the response to all waiting clients simultaneously.
 
 ### Pitfall 3: Stale STEK Keys Causing Fleet-Wide Reconnection Storms
 If the automated key rotation pipeline for Session Ticket Encryption Keys (STEK) fails silently, edge servers eventually discard expired keys without receiving replacements.
@@ -314,7 +415,7 @@ Architectural Blueprint:
 1. Perimeter Network and Protocol Sizing:
    - Terminate client connections at global edge POPs using Anycast routing (BGP Anycast over AWS Global Accelerator or Google Cloud External Application Load Balancers).
    - Enforce HTTP/3 over QUIC (RFC 9000) at the edge.
-   QUIC combines the transport and cryptographic handshake into a single UDP packet exchange, eliminating head-of-line blocking across lossy wireless/mobile client connections.
+   QUIC combines the transport and TLS 1.3 cryptographic handshake into a single round trip over UDP, and its independent streams remove TCP's cross-stream head-of-line blocking on lossy wireless/mobile client connections.
    - For clients that do not support QUIC, fall back to TLS 1.3 over TCP with BBR congestion control and aggressive TCP window scaling.
 2. Backhaul Connection Pooling and Split-TCP:
    - Edge POPs maintain persistent, warm connection pools to the origin cloud regions across dedicated private fiber backbones (AWS Global Backbone or Google Private Network).
@@ -331,9 +432,73 @@ Architectural Blueprint:
 #### Follow-up Interviewer Question
 If an adversary floods your edge POPs with SSL renegotiation attacks or malformed TLS ClientHello packets, how does your edge layer protect its cryptographic offload hardware from exhaustion?
 
+### Question 4 (L5 - Senior)
+A fleet of thousands of edge servers behind anycast sees a TLS resumption rate below 10%, so most returning clients pay for a full handshake.
+Explain how session resumption works across a fleet, why the rate is low, and what the security cost of fixing it is.
+
+#### Model Answer
+Resumption lets a returning client skip the certificate exchange and the server's signature, which are the expensive asymmetric operations at the edge.
+TLS 1.2 session IDs keep the session state in the memory of the server that issued it, so resumption works only if the next connection lands on the same server; behind anycast and per-POP load balancers it usually does not, which is the most common cause of a low rate.
+Session tickets (RFC 5077 for TLS 1.2, `NewSessionTicket` PSKs in TLS 1.3) move the state to the client: the server encrypts it under a Session Ticket Encryption Key (STEK), and any server holding that STEK can decrypt the ticket and resume.
+So the fix is to share STEKs across every server that may receive the client's next connection, with a dual-key window (a current key that issues tickets and a previous key that still decrypts) so rotation does not invalidate live tickets.
+The security cost is that the STEK becomes a high-value secret:
+1. In TLS 1.2, a ticket carries the master secret, so anyone who steals a STEK can decrypt every recorded session whose ticket it protected until that key is destroyed; forward secrecy degrades to the STEK rotation interval.
+2. In TLS 1.3, the `psk_dhe_ke` mode mixes a fresh (EC)DHE exchange into the resumed handshake, so a stolen STEK alone does not decrypt recorded traffic, but 0-RTT early data is protected only by the PSK and remains exposed.
+3. RFC 8446 caps ticket lifetime at seven days, which bounds how long a single ticket is usable, but not how long a stolen STEK is useful against recorded traffic.
+Operational rules follow: generate STEKs in a key-management pipeline, distribute them only in memory, never write them to disk, rotate them on a fixed schedule, and alert on resumption-rate drops, which are the first symptom of a broken rotation pipeline (Pitfall 3).
+The scope of STEK sharing is the core trade-off: sharing globally maximizes resumption but turns one leaked key into a global exposure, whereas per-POP keys contain the blast radius but lose resumption when anycast moves a client to another POP.
+
+#### Follow-up Interviewer Question
+How would you measure the resumption rate per POP, and what would you expect it to look like immediately after a STEK rotation if the dual-key window were misconfigured?
+
+### Question 5 (L6 - Staff)
+Your CloudFront distribution in front of an inference gateway reports a 12% cache hit ratio, even though product analytics show that most responses are byte-identical.
+Diagnose the likely causes and describe how you would raise the hit ratio without serving one user's data to another.
+
+#### Model Answer
+A low hit ratio on identical content almost always means the cache key is more specific than the content, so identical objects are stored under many different keys.
+In CloudFront, the cache policy defines the cache key (which headers, cookies, and query strings are included, plus the TTL bounds), and every value in the cache key is also forwarded to the origin.
+Diagnosis, from most to least common:
+1. Cookies or broad headers in the cache key: including all cookies, `User-Agent`, or similar high-cardinality values fragments the cache per user or per browser build.
+2. Unnormalized query strings: tracking parameters, random cache-busting values, or the same parameters in different order produce distinct keys for the same object.
+3. Accept-Encoding variation: without the policy's gzip and Brotli normalization, compressed variants multiply.
+4. TTLs that are too short or `Cache-Control: no-store` from the origin: objects expire before a second request arrives at the same edge location.
+5. Geographic spread: each edge location has its own cache, so a long tail of locations each sees the object too rarely to hit.
+Fixes:
+- Keep only values that actually change the response in the cache policy, and move values the origin needs but that do not change the response (for example a request ID) into an origin request policy, which forwards them without adding them to the cache key.
+- Normalize or strip query parameters at the edge with a CloudFront Function before the cache lookup.
+- Set TTL bounds in the cache policy and have the origin send explicit `Cache-Control` with `max-age` or `s-maxage`.
+- Enable Origin Shield so every edge miss is served from one regional layer, which raises the effective hit ratio seen by the origin at an extra per-request charge ($0.0075 per 10,000 requests in the US, AWS pricing as of 2026-10).
+Isolation guardrail: anything that varies by user (authorization, tenant, entitlement) must either be part of the cache key or make the response uncacheable; never drop such a value from the key to improve the hit ratio, because the result is a cross-user data leak, which is far worse than a low hit ratio.
+The trade-off is that every value added to the key lowers the hit ratio, so the design work is to make personalized responses small and separate from the large shared ones.
+
+#### Follow-up Interviewer Question
+How would you cache responses for an authenticated API where entitlements differ per tenant but most tenants see identical content?
+
+### Question 6 (L7+ - Principal)
+A regulated customer asks whether their inference traffic, which contains personal data, may be decrypted at your cloud provider's edge.
+Lay out the trust boundary of edge TLS termination, the alternative architectures, and how you would decide.
+
+#### Model Answer
+Edge termination means the provider's edge process holds the TLS session keys and sees plaintext requests and responses in memory, and every edge feature (WAF, caching, header rewriting, logging) depends on that plaintext.
+The trust boundary therefore includes the provider's edge software, its operators, and any logs the edge writes, not only the customer's own VPC.
+Architectures, from most edge capability to least plaintext exposure:
+1. Terminate at the edge and re-encrypt to the origin: CloudFront can use HTTPS to the origin and checks that the origin certificate is valid for the origin domain; on Google Cloud, the load balancer does not validate certificates presented by backends inside Google Cloud unless backend authenticated TLS is configured, so encryption to the backend does not by itself authenticate the backend (Google Cloud docs, as of 2026-10).
+This keeps WAF and caching, but plaintext still exists at the edge.
+2. Edge termination with field-level protection: CloudFront field-level encryption encrypts specified POST form fields at the edge with a public key, so only the origin application holding the private key can read them; it protects selected fields, not whole JSON or streaming payloads.
+3. Key custody without plaintext custody: designs such as Cloudflare Keyless SSL keep the certificate private key on the customer's key server, but the edge still derives session keys and sees plaintext, so they address key theft, not data visibility.
+4. Layer 4 pass-through: AWS Global Accelerator, or a Google passthrough Network Load Balancer, forwards encrypted bytes and terminates TLS in the customer's VPC; it keeps anycast ingress and the private backbone, but loses edge WAF, caching, and the short client-to-edge TLS handshake, because the TLS handshake now spans the full client-to-origin RTT.
+5. Application-layer encryption: the client encrypts the payload end to end (for example with HPKE, RFC 9180), so any TLS terminator sees only ciphertext bodies; this costs client changes and disables body inspection and caching.
+Decision process: classify which fields are actually sensitive, check whether the provider's compliance attestations cover edge processing for that data class, and then pick the least exposure that still meets the latency and protection goals; often the answer is split, with public and cacheable paths terminated at the edge and the sensitive inference path on Layer 4 pass-through or application-layer encryption.
+Whichever option is chosen, audit edge logging configuration (WAF and access logs can capture headers and query strings) as part of the same review.
+
+#### Follow-up Interviewer Question
+If the edge provider suffered a memory-disclosure bug like Cloudflare's 2017 "Cloudbleed" incident, which of these architectures would have limited what leaked, and why?
+
 ## Further Reading
 
 - [RFC 8446: The Transport Layer Security (TLS) Protocol Version 1.3](https://datatracker.ietf.org/doc/html/rfc8446) - The definitive IETF specification for TLS 1.3 handshakes, 0-RTT data, and cipher suites.
 - [BBR: Congestion-Based Congestion Control (ACM Queue 2016)](https://queue.acm.org/detail.cfm?id=3022184) - Neal Cardwell and the Google networking team detail the physics and math behind BBR.
 - [Amazon CloudFront Architecture Guide](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/Introduction.html) - Technical details on Points of Presence, Regional Edge Caches, and origin shielding.
-- [Cloudflare: Why TLS 1.3 is a Huge Step for the Web](https://blog.cloudflare.com/why-tls-1-3-is-a-huge-step-for-the-web/) - Engineering analysis of cryptographic performance gains and 0-RTT replay mitigations.
+- [RFC 8470: Using Early Data in HTTP](https://datatracker.ietf.org/doc/html/rfc8470) - The HTTP profile for 0-RTT: safe-method rules, the `Early-Data` header, and the 425 (Too Early) status code.
+- [Cloudflare: Introducing Zero Round Trip Time Resumption (0-RTT)](https://blog.cloudflare.com/introducing-0-rtt/) - Production account of deploying 0-RTT at a CDN edge, including replay risk and the request restrictions used to contain it.

@@ -1,10 +1,14 @@
 """Behavior tests for tools/cloud_batch.py (offline; no API calls): `python3 -m unittest discover tools/tests`."""
 
+import contextlib
+import io
 import json
 import subprocess
 import sys
 import tempfile
 import unittest
+from argparse import Namespace
+from types import SimpleNamespace
 from pathlib import Path
 
 TOOLS = Path(__file__).resolve().parent.parent
@@ -174,7 +178,7 @@ class SelectAndApplyTest(unittest.TestCase):
     def test_draft_selects_missing_and_seed_only(self):
         r = self.repo
         r.write(r.chapters[0].path, cb.render_note(r.chapters[0], "solid", "# Hypervisors\n", []))
-        r.write(r.chapters[1].path, cb.render_note(r.chapters[1], "seed", cb.stub_body(r.chapters[1]), []))
+        r.write(r.chapters[1].path, cb.render_note(r.chapters[1], "seed", "# Fabrics\n", []))
         picked = [c.cid for c in cb.select("draft", r.root, r.chapters, self.state)]
         self.assertEqual(picked, ["v00c02", "v13c01", "appA"])
 
@@ -242,6 +246,17 @@ class SelectAndApplyTest(unittest.TestCase):
         self.assertEqual((r.root / self.ch.path).read_text(), before)
         self.assertIn("kept the draft", report[-1])
 
+    def test_cards_select_verified_and_hand_written_finished_chapters(self):
+        r = self.repo
+        r.write(r.chapters[0].path, cb.render_note(r.chapters[0], "solid", "# Hypervisors\n", []))
+        r.write(r.chapters[2].path, cb.render_note(r.chapters[2], "draft", "# Dynamo\n", []))
+        cb.apply_result("draft", self.ch, message(FULL_BODY), r.root, self.state, set(), True, [])
+        self.assertEqual([c.cid for c in cb.select("cards", r.root, r.chapters, self.state)], ["v00c01"])
+        self.state["done"]["verify"] = [self.ch.path]
+        self.assertEqual([c.cid for c in cb.select("cards", r.root, r.chapters, self.state)], ["v00c01", "v00c02"])
+        self.state["done"]["cards"] = [r.chapters[0].path]
+        self.assertEqual([c.cid for c in cb.select("cards", r.root, r.chapters, self.state)], ["v00c02"])
+
     def test_cards_write_tsv_per_volume_and_replace_on_rerun(self):
         r, report = self.repo, []
         msg = message("front one\tback one\nnot a card\nfront two\tback two\n")
@@ -251,10 +266,65 @@ class SelectAndApplyTest(unittest.TestCase):
         self.assertEqual(tsv, ["front one\tback one\tChapter_02_Fabrics", "front two\tback two\tChapter_02_Fabrics"])
 
 
+class FakeBatches:
+    """Stands in for `client().messages.batches`; `fail_after` makes a results stream break after N rows."""
+
+    def __init__(self, results: dict, fail_after: dict | None = None):
+        self.data, self.fail_after = results, fail_after or {}
+
+    def retrieve(self, batch_id):
+        return SimpleNamespace(processing_status="ended")
+
+    def results(self, batch_id):
+        for i, r in enumerate(self.data[batch_id]):
+            if i == self.fail_after.get(batch_id, -1):
+                raise ConnectionError("stream reset")
+            yield r
+
+
+class CollectTest(unittest.TestCase):
+    def setUp(self):
+        self.repo = Repo(self)
+        self.state = cb.load_state(self.repo.root)
+        self.a, self.b = self.repo.chapters[0], self.repo.chapters[1]
+        for bid, ch in (("b1", self.a), ("b2", self.b)):
+            self.state["batches"].append({"id": bid, "phase": "draft", "custom_ids": {f"draft-{ch.cid}": ch.path},
+                                          "estimate_high": 1.0, "collected": False})
+        self.results = {bid: [{"custom_id": f"draft-{ch.cid}", "result": {"type": "succeeded", "message": message(
+            FULL_BODY.replace("# Fabrics", f"# {ch.title}"))}}] for bid, ch in (("b1", self.a), ("b2", self.b))}
+
+    def collect(self, batches: FakeBatches) -> None:
+        api = SimpleNamespace(messages=SimpleNamespace(batches=batches))
+        orig = cb.client
+        cb.client = lambda: api
+        try:
+            with contextlib.redirect_stdout(io.StringIO()):
+                cb.cmd_collect(Namespace(apply=True), self.repo.root, self.repo.chapters, self.state)
+        finally:
+            cb.client = orig
+
+    def test_interrupted_download_keeps_earlier_batches_and_retries_cleanly(self):
+        with self.assertRaises(ConnectionError):
+            self.collect(FakeBatches(self.results, fail_after={"b2": 0}))
+        saved = cb.load_state(self.repo.root)
+        self.assertEqual([b["collected"] for b in saved["batches"]], [True, False])
+        self.assertIn(self.a.path, saved["owned"])
+        self.assertFalse((self.repo.root / cb.STATE_DIR / "results" / "b2.jsonl").exists())
+        self.assertEqual([c.cid for c in cb.select("verify", self.repo.root, self.repo.chapters, saved)], ["v00c01"])
+
+        self.state = saved
+        self.collect(FakeBatches(self.results))
+        saved = cb.load_state(self.repo.root)
+        self.assertEqual([b["collected"] for b in saved["batches"]], [True, True])
+        self.assertEqual(cb.note_status(self.repo.root / self.b.path), "draft")
+        # Each batch: (1M input * $4 + 0.1M output * $20) * 0.5 + 2 searches * $0.01 = $3.02.
+        self.assertAlmostEqual(saved["spent_usd"], 6.04)
+
+
 class CliTest(unittest.TestCase):
-    def test_plan_and_stubs_dry_run_write_nothing(self):
+    def test_plan_and_submit_dry_run_write_nothing(self):
         repo = Repo(self)
-        for cmd in (["plan"], ["stubs"], ["submit", "--phase", "draft"]):
+        for cmd in (["plan"], ["submit", "--phase", "draft"]):
             out = subprocess.run([sys.executable, str(TOOLS / "cloud_batch.py"), "--repo", str(repo.root), *cmd],
                                  capture_output=True, text=True, check=True).stdout
             self.assertTrue(out)
@@ -267,12 +337,6 @@ class CliTest(unittest.TestCase):
                               capture_output=True, text=True)
         self.assertEqual(proc.returncode, 1)
         self.assertIn("refusing", proc.stdout)
-
-    def test_stubs_apply_creates_seed_notes(self):
-        repo = Repo(self)
-        subprocess.run([sys.executable, str(TOOLS / "cloud_batch.py"), "--repo", str(repo.root), "stubs", "--apply"],
-                       capture_output=True, text=True, check=True)
-        self.assertEqual(cb.note_status(repo.root / repo.chapters[0].path), "seed")
 
 
 if __name__ == "__main__":

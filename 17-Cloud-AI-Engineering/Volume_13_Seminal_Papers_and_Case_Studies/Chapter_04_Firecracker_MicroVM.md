@@ -11,7 +11,7 @@ sources: []
 
 ## Scope
 
-Minimal device virtualization in Rust, 5-millisecond startup, Linux KVM integration, and memory overcommit.
+Minimal device virtualization in Rust, boot to guest userspace in about 125 ms, Linux KVM integration, and memory overcommit.
 
 > [!todo] Seed note
 > This chapter note is queued for full development according to the Cloud AI Engineering Zero to Godhood specification.

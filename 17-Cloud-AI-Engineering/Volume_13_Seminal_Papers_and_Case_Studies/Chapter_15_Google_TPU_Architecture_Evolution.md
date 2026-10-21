@@ -7,7 +7,7 @@ last_reviewed:
 sources: []
 ---
 
-# Google TPU Architecture Papers: TPU v1 to v5p (ISCA 2017-2023)
+# Google TPU Architecture Papers: TPU v1 to v4 (ISCA 2017-2023)
 
 ## Scope
 

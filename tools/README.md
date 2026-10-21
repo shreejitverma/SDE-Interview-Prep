@@ -28,9 +28,9 @@ Every script that edits notes is a dry run unless you pass `--apply`.
 | :--- | :--- |
 | `cloud_batch.py` | Drafts (Opus 5.5 + web search), fact-checks (Sonnet 5.5 + web search), and flashcards (Haiku 5.5) the `17-Cloud-AI-Engineering` chapters listed in its `SUMMARY.md` through the Message Batches API at half price. |
 
-`cloud_batch.py` is the one tool with a third-party dependency (the `anthropic` SDK), so run its API commands with `uv run tools/cloud_batch.py ...`; `plan` and `stubs` work under plain `python3`.
+`cloud_batch.py` is the one tool with a third-party dependency (the `anthropic` SDK), so run its API commands with `uv run tools/cloud_batch.py ...`; `plan` works under plain `python3`.
 It spends real money: `submit` is a dry run without `--apply`, prints a cost estimate, and refuses to exceed `--budget` across everything spent and in flight.
-It writes only chapters it owns (missing or `seed` files, then its own unchanged drafts), keeps state, raw results, and per-chapter reports in `build/cloud_batch/`, and reads the API key from `~/.config/sde-vault/anthropic.env`, never from this public repo.
+It writes only chapters it owns (missing or `seed` files, then its own unchanged drafts), makes flashcards for its verified chapters and for hand-written `solid` or `canonical` ones, keeps state, raw results, and per-chapter reports in `build/cloud_batch/`, and reads the API key from `~/.config/sde-vault/anthropic.env`, never from this public repo.
 
 ```sh
 python3 tools/cloud_batch.py plan                                  # chapters ready per phase + cost range
