@@ -89,7 +89,7 @@ run_containers() {
     printf '== building %s\n' "$image"
     docker build -q -t "$image" -f "$dockerfile" "$LABS_DIR/matrix" >/dev/null \
       || die "docker build failed for $dockerfile"
-    docker run --rm -v "$LABS_DIR:/labs:ro" "$image" bash /labs/run-matrix.sh --in-container "$@"
+    docker run --rm -e BATS_TEST_TIMEOUT -v "$LABS_DIR:/labs:ro" "$image" bash /labs/run-matrix.sh --in-container "$@"
     status=$?
     [ "$status" -eq 0 ] || rc=$status
   done
@@ -121,6 +121,8 @@ main() {
   fi
 
   command -v bats >/dev/null 2>&1 || die "bats not found; brew install bats-core (macOS) or apt-get install bats"
+  # A lab that blocks (a FIFO open with no peer, a read with no input) must fail, not stall the matrix.
+  export BATS_TEST_TIMEOUT="${BATS_TEST_TIMEOUT:-60}"
   # shellcheck source=SCRIPTDIR/lib/lab.bash
   . "$LABS_DIR/lib/lab.bash"
 
@@ -150,7 +152,7 @@ EOF_DIRS
     files+=("$dir"/*.bats)
   done
 
-  local entry label family cmd first path real key seen=" " version log rc tests failed ran=0 bad=0 missing=0
+  local entry label family cmd first path real key seen=" " version log rc tests skipped passed note failed ran=0 bad=0 missing=0 skips=0
   local -a failures=()
   log=$(mktemp "${TMPDIR:-/tmp}/run-matrix.XXXXXX") || die "mktemp failed"
   # shellcheck disable=SC2064 # expand $log now; it never changes
@@ -186,26 +188,37 @@ EOF_DIRS
       printf '   %-12s %-38s %s\n' "$label" "$version" "$real${cmd#"$first"}"
       continue
     fi
-    if LAB_SHELL=$cmd LAB_EXPECT_FAMILY=$family bats --formatter tap "${files[@]}" >"$log" 2>&1; then
+    if LAB_SHELL=$cmd LAB_EXPECT_FAMILY=$family bats --formatter tap --print-output-on-failure "${files[@]}" >"$log" 2>&1; then
       rc=0
     else
       rc=$?
     fi
+    # A skipped test is reported as "ok N # skip" in TAP; count it apart so it never reads as a pass.
     tests=$(grep -c '^ok ' "$log")
+    skipped=$(grep -c '^ok .*# skip' "$log")
     failed=$(grep -c '^not ok ' "$log")
+    passed=$((tests - skipped))
     ran=$((ran + 1))
+    skips=$((skips + skipped))
+    note=""
+    if [ "$skipped" -gt 0 ]; then
+      note=" ($skipped skipped)"
+    fi
     if [ "$rc" -eq 0 ] && [ "$failed" -eq 0 ]; then
-      printf '   %-12s %-38s PASS %3s/%-3s %s\n' "$label" "$version" "$tests" "$tests" "$real"
+      printf '   %-12s %-38s PASS %3s/%-3s %s%s\n' "$label" "$version" "$passed" "$((tests + failed))" "$real" "$note"
+      if [ "$skipped" -gt 0 ]; then
+        sed -n 's/^\(ok .*# skip.*\)$/      \1/p' "$log"
+      fi
     else
       bad=$((bad + 1))
-      printf '   %-12s %-38s FAIL %3s/%-3s %s\n' "$label" "$version" "$tests" "$((tests + failed))" "$real"
+      printf '   %-12s %-38s FAIL %3s/%-3s %s%s\n' "$label" "$version" "$passed" "$((tests + failed))" "$real" "$note"
       failures+=("$label")
       sed 's/^/      /' "$log"
     fi
   done
 
   [ "$list" -eq 1 ] && exit 0
-  printf '   %s shells ran, %s failed, %s not installed; labs: %s\n' "$ran" "$bad" "$missing" "${#dirs[@]}"
+  printf '   %s shells ran, %s failed, %s tests skipped, %s not installed; labs: %s\n' "$ran" "$bad" "$skips" "$missing" "${#dirs[@]}"
   [ "$ran" -gt 0 ] || die "no shell from the matrix is installed here"
   if [ "$bad" -gt 0 ]; then
     printf '   failing shells: %s\n' "${failures[*]}"

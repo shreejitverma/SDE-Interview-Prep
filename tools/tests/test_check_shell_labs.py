@@ -96,6 +96,15 @@ class CheckShellLabsTest(unittest.TestCase):
         self.assertIn(f"{LABS}/demo/demo.bats", bats)
         self.assertEqual(self.calls("zsh"), [f"-n {LABS}/demo/prompt.zsh"])
 
+    def test_bats_runs_with_a_test_timeout_so_a_blocking_lab_cannot_hang_the_gate(self):
+        self.add_lab()
+        self.write_exe(self.bin / "bats", f'#!/bin/sh\nprintf "%s\\n" "${{BATS_TEST_TIMEOUT-unset}}" > "{self.log}/bats-timeout.log"\n')
+        result = self.run_tool()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual((self.log / "bats-timeout.log").read_text().strip(), "60")
+        self.run_tool(BATS_TEST_TIMEOUT="5")
+        self.assertEqual((self.log / "bats-timeout.log").read_text().strip(), "5")  # an explicit setting wins
+
     def test_linter_failure_fails_the_gate_and_names_the_check(self):
         self.add_lab()
         result = self.run_tool(FAKE_SHELLCHECK_RC="1")

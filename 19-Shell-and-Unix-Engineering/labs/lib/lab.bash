@@ -25,10 +25,11 @@ run_lab_c() {
 }
 
 # lab_shell_family: print the family of the shell under test, detected from the shell itself:
-# bash, zsh, zsh-sh (zsh emulating sh), yash, busybox, posh, mksh, ksh93, or the command name
-# (for example dash) when the shell sets no identifying variable.
+# bash, zsh, zsh-sh (zsh emulating sh), yash, busybox, posh, mksh, ksh93, or, when the shell sets
+# no identifying variable, the name of the binary the command resolves to (so "sh" that is a
+# symlink to dash reports dash, and Debian's "busybox ash" reports busybox).
 lab_shell_family() {
-  local family
+  local family path real
   lab_shell_words
   # shellcheck disable=SC2016 # these expansions belong to the shell under test
   family=$("${LAB_SHELL_WORDS[@]}" -c '
@@ -47,7 +48,9 @@ lab_shell_family() {
       esac
     fi' 2>/dev/null) || family=unknown
   if [ "$family" = unknown ]; then
-    family=${LAB_SHELL_WORDS[0]##*/}
+    path=$(command -v "${LAB_SHELL_WORDS[0]}") || path=${LAB_SHELL_WORDS[0]}
+    real=$(readlink -f "$path" 2>/dev/null) || real=$path
+    family=${real##*/}
   fi
   printf '%s\n' "$family"
 }
@@ -61,4 +64,34 @@ lab_shell_version() {
     printf "%s\n" "${BASH_VERSION:-${ZSH_VERSION:-${YASH_VERSION:-${BB_ASH_VERSION:-${POSH_VERSION:-${KSH_VERSION-}}}}}}"
   ' 2>/dev/null) || version=""
   printf '%s\n' "${version:-n/a}"
+}
+
+# lab_awk_flavor [CMD...]: print the implementation behind an awk command (default: awk) as
+# gawk, mawk, onetrue, busybox, or unknown. The shell under test never changes which awk runs,
+# so awk labs assert per-implementation behavior with this instead of lab_shell_family.
+lab_awk_flavor() {
+  local out
+  [ "$#" -gt 0 ] || set -- awk
+  out="$("$@" --version 2>&1 </dev/null) $("$@" -W version 2>&1 </dev/null)" || true
+  case $out in
+    *"GNU Awk"*) echo gawk ;;
+    *mawk*) echo mawk ;;
+    *BusyBox*) echo busybox ;;
+    *"awk version 20"*) echo onetrue ;;
+    *) echo unknown ;;
+  esac
+}
+
+# lab_awks: print each awk implementation installed here, one command per line
+# (for example "awk", "gawk", "original-awk", or "busybox awk"), so a lab can loop over them.
+lab_awks() {
+  local cmd
+  for cmd in awk gawk mawk original-awk nawk; do
+    if command -v "$cmd" >/dev/null 2>&1; then
+      printf '%s\n' "$cmd"
+    fi
+  done
+  if command -v busybox >/dev/null 2>&1 && busybox awk 'BEGIN { exit 0 }' >/dev/null 2>&1; then
+    printf '%s\n' "busybox awk"
+  fi
 }
