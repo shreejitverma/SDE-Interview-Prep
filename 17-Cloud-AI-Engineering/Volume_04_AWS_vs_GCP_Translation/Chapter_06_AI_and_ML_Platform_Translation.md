@@ -158,9 +158,9 @@ The TPU lineage is treated in depth in [[17-Cloud-AI-Engineering/Volume_13_Semin
 | TPU v6e chip | 918 TFLOPs bf16, 32 GB HBM, 1638 GB/s, ICI 800 GB/s, 4 ICI ports, 8 chips per host | Google Cloud docs, as of 2026-10 |
 | TPU v6e pod | 256 chips, 2D torus, 234.9 PFLOPs bf16, all-reduce 102.4 TB/s, bisection 3.2 TB/s, 25.6 Tbps DCN | Google Cloud docs, as of 2026-10 |
 | TPU7x Ironwood chip | 4614 TFLOPs FP8, 192 GB HBM, 7380 GB/s, ICI 1200 GB/s bidirectional, 2 TensorCores, 4 SparseCores | Google Cloud docs, as of 2026-10 |
-| Ironwood scale | slice topologies in docs up to 8x16x16 (2048 chips) in 64-chip cubes; 9,216-chip superpod in launch material | Google Cloud docs and Google blog, as of 2026-10 |
+| Ironwood scale | slice topologies in docs up to 8x16x16 (2048 chips) in 64-chip cubes (largest documented topology UNVERIFIED); 9,216-chip superpod in launch material | Google Cloud docs and Google blog, as of 2026-10 |
 | Ironwood status | docs page exists for TPU7x; press sources disagree on GA date (late 2025 versus 2026-04) so treat the GA date as UNVERIFIED | Press reporting, as of 2026-10 |
-| TPU 8t and 8i | previewed, press-reported late 2027 target | Press reporting, as of 2026-10 (Preview, not GA) |
+| TPU 8t and 8i | previewed, press-reported late 2027 target (UNVERIFIED) | Press reporting, as of 2026-10 (Preview, not GA) |
 | Bedrock output-token burndown | 5x for Claude 4.7 and below, 10x or 15x for newer listed models, 1:1 for others | Bedrock docs, as of 2026-10 |
 | Bedrock admission charge | input tokens plus `max_tokens` at start, reconciled to input plus cache-write plus output x burndown | Bedrock docs, as of 2026-10 |
 | Bedrock global versus geographic profile | roughly 10 percent lower price for one Claude model, priced by source Region | Bedrock docs, as of 2026-10 |

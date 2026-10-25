@@ -85,6 +85,7 @@ Three clocks matter.
 - Export time: when the row was last written. GCP exposes `export_time`. For AWS you infer it from the manifest and object timestamps.
 
 AWS refreshes CUR 2.0 at least once a day, keeps refreshing the current billing period partition until the period ends, and may still update the previous period within the first two weeks after it ends ([AWS Data Exports delivery docs](https://docs.aws.amazon.com/cur/latest/userguide/dataexports-export-delivery.html), as of 2026-10).
+I could not re-verify the exact two-week prior-period window (UNVERIFIED).
 The first delivery after creating an export can take up to 24 hours (AWS Data Exports user guide, as of 2026-10).
 An export can be configured to overwrite existing files on each refresh or to create new files (AWS docs, as of 2026-10).
 
@@ -260,7 +261,7 @@ Three traps:
 ### Normalizing with FOCUS
 
 The FinOps Open Cost and Usage Specification (FOCUS) defines a vendor-neutral column set so AWS and GCP data can share one model.
-AWS Data Exports offers FOCUS 1.2 and FOCUS 1.0 tables with AWS-specific columns (AWS docs, as of 2026-10).
+AWS Data Exports offers FOCUS 1.2 and FOCUS 1.0 tables with AWS-specific columns (AWS docs, as of 2026-10; UNVERIFIED for the FOCUS 1.2 table).
 I could not verify whether a GCP-native FOCUS export is generally available (UNVERIFIED), so plan to normalize GCP in a BigQuery view.
 The columns that carry the cost-semantics decisions are `BilledCost` (invoice view), `EffectiveCost` (amortized view), `ListCost`, and `ContractedCost`.
 Map them deliberately. AWS amortized cost approximates `EffectiveCost`, and for GCP `cost + SUM(credits)` is the closest equivalent to the net view.
@@ -271,10 +272,10 @@ Document the mapping and test it against the invoice each month.
 | Quantity | Value | Source |
 |---|---|---|
 | AWS CUR 2.0 refresh cadence | At least once a day; current billing-period partition refreshed until period end | AWS docs, as of 2026-10 |
-| Prior-period restatement window | May update the previous billing period within the first two weeks after it ends | AWS docs, as of 2026-10 |
+| Prior-period restatement window | May update the previous billing period within the first two weeks after it ends | AWS docs, as of 2026-10; UNVERIFIED for the two-week figure |
 | First delivery after creating an export | Up to 24 hours | AWS Data Exports user guide, as of 2026-10 |
-| Console refresh option for billing exports | Daily, refreshed up to one time per day | AWS docs, as of 2026-10 |
-| AWS FOCUS tables | FOCUS 1.2 and FOCUS 1.0, each with AWS columns | AWS docs, as of 2026-10 |
+| Console refresh option for billing exports | Daily, refreshed up to one time per day | AWS docs, UNVERIFIED |
+| AWS FOCUS tables | FOCUS 1.2 and FOCUS 1.0, each with AWS columns | AWS docs, as of 2026-10; UNVERIFIED for FOCUS 1.2 |
 | Cost allocation tag backfill | Up to 12 months, one request per 24 hours, none concurrent, tag must have been assigned historically | AWS docs, as of 2026-10 |
 | Tag activation latency | Up to 24 hours to become activatable plus up to 24 hours to take effect | Third-party summary of AWS docs, UNVERIFIED against primary |
 | AWS tags per resource, key and value length | 50 user tags, 128-char key, 256-char value | UNVERIFIED |
@@ -295,8 +296,8 @@ Verify current list prices from the AWS and Google Cloud pricing pages before us
 | Billing entity | Payer (management) account in an Organization, consolidated billing across linked accounts | Cloud Billing account that projects link to, independent of the resource hierarchy |
 | Structural allocation key | Account ID on every line item | Project ID on every row |
 | Detailed export | CUR 2.0 via Data Exports to S3, Parquet or CSV | Detailed usage cost table in BigQuery |
-| Export refresh | At least daily, previous period may be restated for about two weeks | Continuous load into BigQuery, `export_time` per row (cadence UNVERIFIED) |
-| Normalized schema | FOCUS 1.2 or 1.0 with AWS columns | Build FOCUS view in BigQuery (native FOCUS export UNVERIFIED) |
+| Export refresh | At least daily, previous period may be restated for about two weeks (UNVERIFIED for the two-week figure) | Continuous load into BigQuery, `export_time` per row (cadence UNVERIFIED) |
+| Normalized schema | FOCUS 1.2 or 1.0 with AWS columns (UNVERIFIED for FOCUS 1.2) | Build FOCUS view in BigQuery (native FOCUS export UNVERIFIED) |
 | Tag and label model | Tags, plus activation step, map column in CUR 2.0 | Labels, `system_labels`, and `project.labels` on each row |
 | Retroactivity | Backfill up to 12 months | Forward only (UNVERIFIED) |
 | Discount representation | Separate line item types and effective-cost columns, needs `CASE` for amortized view | Negative `credits` entries nested on each row |

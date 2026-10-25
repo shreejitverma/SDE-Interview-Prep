@@ -62,7 +62,7 @@ Google Cloud ships several load balancer families, and each one is a different c
 - **Regional and cross-region internal Application Load Balancers**: also Envoy-based. The cross-region variant fails over automatically to healthy backends in other regions and returns HTTP 503 when every backend is unhealthy (Google Cloud docs, as of 2026-10).
 - **Backend service-based regional external passthrough Network Load Balancer**: carries TCP, UDP, ESP, GRE, ICMP, and ICMPv6, supports IPv6, and offers connection tracking, draining, traffic steering, weighted balancing, and failover policies (Google Cloud docs, as of 2026-10).
 - **Target pool-based passthrough NLB**: the legacy form, which ignores established connections when distributing load (Google Cloud docs, as of 2026-10).
-- **Global external passthrough Network Load Balancer**: a newer L4 variant whose backends can span multiple regions. It supports only `PER_CONNECTION` tracking, and its `RATE` mode is measured in incoming packets per second, not requests (Google Cloud docs, as of 2026-10). Its launch stage is UNVERIFIED, so treat it as Preview until you confirm it is GA.
+- **Global external passthrough Network Load Balancer**: a newer L4 variant whose backends can span multiple regions. It supports only `PER_CONNECTION` tracking (UNVERIFIED: tracking-mode restriction not confirmed in this session), and its `RATE` mode is measured in incoming packets per second, not requests (Google Cloud docs, as of 2026-10). Google Cloud release notes announced it in Preview (Google Cloud release notes, as of 2026-10), and its current launch stage is UNVERIFIED, so treat it as Preview until you confirm it is GA.
 - **Internal passthrough Network Load Balancer**: has no proxy and no Maglev hop. It is a virtual network function of Andromeda, whose controllers program backend health into the host dataplane (third-party summary of Google's Cloud Next '18 Andromeda talk). See [[17-Cloud-AI-Engineering/Volume_13_Seminal_Papers_and_Case_Studies/Chapter_12_Andromeda_Network_Virtualization|Andromeda]].
 
 ### Control plane versus data plane
@@ -179,7 +179,7 @@ The 90 ms figure is an illustrative transatlantic RTT, not a published number.
 
 Timers are layered and asymmetric.
 The GFE's client-side HTTP keepalive defaults to 610 s and is configurable from 5 to 1200 s, while its backend-side keepalive is fixed at 600 s (Google Cloud docs, as of 2026-10).
-The regional Envoy-based Application Load Balancer defaults both to 600 s (Google Cloud docs, as of 2026-10).
+The regional Envoy-based Application Load Balancer defaults to 610 s on the client side and 600 s on the backend side (Google Cloud docs, as of 2026-10).
 The backend service `timeout` is a response timeout for HTTP(S), with a default of 30 s.
 For TCP and SSL proxy load balancers it behaves as an idle timeout (Google Cloud community forum answer citing docs, as of 2026-10).
 For global and classic Application Load Balancers the effective maximum is 86400 s, and active WebSockets are cut at 24 h (third-party summary of Google Cloud docs, as of 2026-10).
@@ -193,7 +193,7 @@ Under it, the proxies in the region closest to the user collectively fill backen
 Each individual proxy prefers backends in the zone closest to it by network RTT.
 At low request rates, a proxy may therefore send all of its traffic to its own zone (Google Cloud docs, as of 2026-10).
 Traffic spills to the next region only when the closest region is at its configured capacity or unhealthy.
-Since May 2025 you can block that spillover with traffic isolation (Google Cloud release notes, as of 2026-10).
+Since May 2025 you can block that spillover with traffic isolation, which was in Preview at launch (Google Cloud release notes, as of 2026-10).
 
 The `serviceLbPolicy` resource adds four more controls (Google Cloud docs, as of 2026-10):
 
@@ -202,7 +202,7 @@ The `serviceLbPolicy` resource adds four more controls (Google Cloud docs, as of
 - A failover health threshold.
 - Preferred backends.
 
-In July 2026 this resource was extended to regional external and regional internal Application Load Balancers (Google Cloud release notes, as of 2026-10).
+In July 2026 (UNVERIFIED: date not confirmed) this resource was extended to regional external and regional internal Application Load Balancers, and the docs list the regional internal variant as Preview (Google Cloud docs, as of 2026-10).
 `SPRAY_TO_REGION` sends each client's requests across all MIGs and NEGs in the region.
 `WATERFALL_BY_REGION` keeps MIGs evenly loaded in aggregate, but an individual client may not reach all of them (Cloud Service Mesh API reference, as of 2026-10).
 
@@ -234,12 +234,12 @@ When every region is full, the load balancer still forwards traffic, and you nee
 | Table churn when 1 of 1000 backends is removed, M=65537 | 0.68% of slots (minimum 0.10%) | This chapter's simulation, 2026-10 |
 | GFE client HTTP keepalive | 610 s default, configurable 5-1200 s | Google Cloud docs, as of 2026-10 |
 | GFE backend keepalive | 600 s, fixed | Google Cloud docs, as of 2026-10 |
-| Regional Envoy ALB client / backend keepalive | 600 s / 600 s defaults | Google Cloud docs, as of 2026-10 |
+| Regional Envoy ALB client / backend keepalive | 610 s / 600 s defaults | Google Cloud docs, as of 2026-10 |
 | Backend service timeout default | 30 s | Google Cloud community forum citing docs, as of 2026-10 |
 | Max effective backend timeout, global/classic ALB | 86400 s; active WebSockets closed at 24 h | Third-party summary of Google Cloud docs, as of 2026-10 |
 | Regional external passthrough NLB conntrack idle timeout | 60 s, not configurable | Google Cloud docs, as of 2026-10 |
 | Compute Engine idle TCP connection timeout | 10 min | Google Cloud community forum quoting docs, as of 2026-10 |
-| Global external passthrough NLB tracking modes | `PER_CONNECTION` only; `RATE` counts packets/s | Google Cloud docs, as of 2026-10 |
+| Global external passthrough NLB tracking modes | `PER_CONNECTION` only (UNVERIFIED); `RATE` counts packets/s | Google Cloud docs, as of 2026-10 |
 | Forwarding rule price | ~$0.025/h each for the first 5, ~$0.01/h each additional | Third-party pricing summaries, as of 2026-10, UNVERIFIED against the official page |
 | Data processed by the load balancer | ~$0.008/GiB in typical regions | Third-party pricing summaries, as of 2026-10, UNVERIFIED |
 | Envoy-based regional proxy instance | ~$0.025 per proxy-hour | Third-party summary, UNVERIFIED |
@@ -324,7 +324,7 @@ if __name__ == "__main__":
 ```
 
 Run it with `python3 maglev_sim.py`.
-It takes about 6 s on one core and reproduces the table in Internals.
+It takes about 9 s on one core (measured, as of 2026-10) and reproduces the table in Internals.
 
 ### Part B - Global external ALB across two regions
 
@@ -576,7 +576,7 @@ Quiet periods are exactly when connections sit idle past the backend timeout.
 To confirm, check the load balancer request logs for the status details on the 502s and correlate them with connection age.
 The fix is to set the backend keepalive above 600 s, for example 620 s.
 Raising GFE retries is the wrong fix, because retries on non-idempotent POSTs are unsafe and only hide the cause.
-For the regional Envoy-based load balancer the same reasoning applies with its 600 s defaults.
+For the regional Envoy-based load balancer the same reasoning applies with its 600 s backend default.
 
 #### Follow-up Interviewer Question
 

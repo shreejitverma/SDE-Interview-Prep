@@ -120,7 +120,7 @@ The corruption is laundered into a state that is consistent across replicas but 
 A cross-replica parameter checksum therefore cannot catch corruption that happens before the reduction.
 It can catch only corruption that happens after it: in the optimizer update, in HBM holding parameters or optimizer state, or in a parameter shard broadcast.
 That limitation is stated directly in the literature: checksumming parameters across replicas, as [Elsen et al. recommend](https://arxiv.org/html/2604.00726v1), does [not address corruption that arises during the forward or backward pass and propagates through gradient aggregation](https://arxiv.org/html/2604.00726v1) (arXiv 2604.00726, 2026-04).
-NVIDIA's OCP whitepaper describes the same cascade: [in synchronous training a corrupting device with a persistent SDC will continue to corrupt the iteration](https://www.opencompute.org/documents/sdc-in-ai-ocp-whitepaper-ver-1-1-final-pdf/) across all accelerators (OCP SDC in AI whitepaper, 2025).
+The OCP whitepaper (attribution to NVIDIA alone UNVERIFIED) describes the same cascade: [in synchronous training a corrupting device with a persistent SDC will continue to corrupt the iteration](https://www.opencompute.org/documents/sdc-in-ai-ocp-whitepaper-ver-1-1-final-pdf/) across all accelerators (OCP SDC in AI whitepaper, as of 2026-10).
 
 **Detection therefore needs two layers.**
 Layer one is cheap invariants that run continuously.

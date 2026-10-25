@@ -121,7 +121,7 @@ With a bucket-level key, per-object KMS audit events and per-object encryption-c
 The context becomes the bucket ARN instead of the object ARN (AWS docs, recalled, UNVERIFIED this session).
 A cache also widens the memory-disclosure surface.
 A plaintext DEK sitting in a long-lived process is what a crash dump or core file will contain.
-Microsoft's Storm-0558 signing-key compromise is the canonical example of key material leaking through a crash dump (CISA Cyber Safety Review Board, Review of the Summer 2023 Exchange Online Intrusion, 2024-03).
+Microsoft's Storm-0558 signing-key compromise is the canonical example of key material probably leaking through a crash dump, although Microsoft's leading theory was not confirmed (CISA Cyber Safety Review Board, Review of the Summer 2023 Exchange Online Intrusion, 2024-03, recalled, UNVERIFIED this session).
 See [[17-Cloud-AI-Engineering/Volume_02_AWS_Deep_Dive/Chapter_09_Elastic_Block_Store_and_Network_Storage|Elastic Block Store and Network Storage]] for the equivalent host-side behavior on EBS volumes.
 The point to carry from EBS is that an attached volume may keep working after key disablement until the volume is next attached, and that behavior is a cache effect (AWS docs, recalled, UNVERIFIED this session).
 
@@ -188,9 +188,9 @@ Rows marked UNVERIFIED are recalled from official documentation and were not re-
 | Item | Value | Source and date | Status |
 |---|---|---|---|
 | Symmetric crypto quota scope | One shared quota per account, per Region, per key type, per one-second interval, across Decrypt, Encrypt, GenerateDataKey, GenerateDataKeyWithoutPlaintext, GenerateMac, GenerateRandom, ReEncrypt, VerifyMac | AWS docs, as of 2026-10 | Verified |
-| Symmetric default in large Regions | 100,000 req/s in us-east-1, us-west-2, eu-west-1 (raised from 50,000) | AWS What's New, 2024-07-22 | Verified at announcement; check Service Quotas |
-| RSA and ECC default | 1,000 req/s in all Regions (raised from 500) | AWS What's New, 2024-07-22 | Verified at announcement |
-| Symmetric default elsewhere | 10,000 req/s in most Regions, 20,000 in some | Third-party summary of AWS quotas, as of 2026-09 | UNVERIFIED against AWS table |
+| Symmetric default in large Regions | 100,000 req/s in us-east-1, us-west-2, eu-west-1 (raised from 50,000) | AWS What's New, 2024-07-22; AWS docs, as of 2026-10 | Verified at announcement and in current docs; check Service Quotas |
+| RSA and ECC default | 1,000 req/s in all Regions (raised from 500) | AWS What's New, 2024-07-22; AWS docs, as of 2026-10 | Verified at announcement and in current docs |
+| Symmetric default elsewhere | 10,000 req/s in most Regions, 20,000 in some | AWS docs, as of 2026-10 | Verified |
 | Quota adjustability | All KMS request quotas adjustable except the CloudHSM key store quota | AWS docs, as of 2026-10 | Verified |
 | Quota alarm | Request rates visible via Service Quotas and CloudWatch alarms | AWS docs, as of 2026-10 | Verified |
 | Direct Encrypt payload | 4,096 bytes | AWS docs, recalled | UNVERIFIED |
@@ -617,7 +617,7 @@ There is also a per-key grant cap (recalled, UNVERIFIED).
 
 ### Public-key-style failures in the signing analogy
 
-Storm-0558 combined a key leaving its protected environment through a crash dump with validation code that accepted a consumer-scope key for enterprise-scope tokens (CISA CSRB, 2024-03).
+Storm-0558 combined a key that, on Microsoft's unconfirmed leading theory, left its protected environment through a crash dump with validation code that accepted a consumer-scope key for enterprise-scope tokens (CISA CSRB, 2024-03, recalled, UNVERIFIED this session).
 The generalization is to scope keys by purpose and tenant, validate scope on every use, and keep keys out of dumps.
 
 ## Security and Cost Angles

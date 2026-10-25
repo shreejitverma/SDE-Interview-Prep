@@ -67,7 +67,7 @@ A pod never holds a long-lived secret.
 The kubelet obtains from the API server a short-lived, audience-scoped JWT that says "I am service account X in namespace Y of cluster Z".
 A cloud-side verifier turns that statement into a cloud credential by checking a signature, an issuer, an audience, and a policy that maps the subject to a role.
 The three mechanisms differ in where verification happens.
-IRSA does it in the global STS control plane using public keys.
+IRSA does it in the global STS control plane using public keys (UNVERIFIED this session: STS is a regional service with a legacy global endpoint, so "global" may be wrong).
 Pod Identity does it inside a regional EKS service, with the node's own IAM identity as a second factor.
 GKE does it on the node, attributing calls to pods by network source address.
 Everything else in this chapter (blast radius, revocation, static stability, interview traps) follows from that choice.

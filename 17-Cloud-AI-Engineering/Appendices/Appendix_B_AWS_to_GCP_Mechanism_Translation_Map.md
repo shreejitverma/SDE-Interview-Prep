@@ -88,7 +88,7 @@ Columns: concern, AWS mechanism, GCP mechanism, the difference that bites when y
 | Packet filtering | Security group (stateful, on the ENI, allow-only) plus NACL (stateless) | VPC firewall rules and hierarchical firewall policies (stateful, priority-ordered, allow and deny, target by tag or service account) | AWS SGs can reference other SGs. GCP rules target by network tag or service account identity. | [[17-Cloud-AI-Engineering/Volume_02_AWS_Deep_Dive/Chapter_03_VPC_Networking_Internals\|VPC internals]] |
 | Hub-and-spoke | Transit Gateway route domains | Network Connectivity Center, VPC peering | Peering is non-transitive on both. | [[17-Cloud-AI-Engineering/Volume_03_GCP_Deep_Dive/Chapter_04_Global_VPC_Andromeda_SDN_and_Network_Tiers\|Global VPC]] |
 | Private service access | PrivateLink interface endpoints (ENIs) and gateway endpoints for S3 and DynamoDB (route-table prefix-list targets) | Private Service Connect: a forwarding rule with an internal IP in the consumer VPC | Producer and consumer CIDRs may overlap on both because traffic is NATed. | [[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter/Chapter_06_Constructing_an_Impenetrable_Data_Perimeter\|Data perimeter]] |
-| Egress NAT | NAT gateway: zonal, billed per hour plus per GB | Cloud NAT: regional config, implemented in the host dataplane (Andromeda) with no appliance VM `[P]` | Per-destination connection budget versus per-VM port blocks. See Section 2.1. | [[17-Cloud-AI-Engineering/Volume_13_Seminal_Papers_and_Case_Studies/Chapter_12_Andromeda_Network_Virtualization\|Andromeda]] |
+| Egress NAT | NAT gateway: zonal by default, with a regional mode that spans AZs (AWS CloudFormation docs, as of 2026-10), billed per hour plus per GB | Cloud NAT: regional config, implemented in the host dataplane (Andromeda) with no appliance VM `[P]` | Per-destination connection budget versus per-VM port blocks. See Section 2.1. | [[17-Cloud-AI-Engineering/Volume_13_Seminal_Papers_and_Case_Studies/Chapter_12_Andromeda_Network_Virtualization\|Andromeda]] |
 | Dedicated links | Direct Connect | Cloud Interconnect (Dedicated, Partner, Cross-Cloud) `[U]` | Cross-cloud managed links are a fast-moving area. Verify status before designing. | [[17-Cloud-AI-Engineering/Volume_04_AWS_vs_GCP_Translation/Chapter_07_Multi_Cloud_and_Hybrid_Architecture_Reality\|Multi-cloud reality]] |
 | Subnet resize | Immutable. Add secondary VPC CIDRs. | Primary range expandable in place, never shrinkable `[U]` | GCP forgives under-sizing. AWS does not. | [[17-Cloud-AI-Engineering/Volume_00_Foundations_Under_the_Cloud/Chapter_02_Datacenter_Networking_Fabrics\|Fabrics]] |
 
@@ -159,9 +159,9 @@ Columns: concern, AWS mechanism, GCP mechanism, the difference that bites when y
 | Custom accelerator | Trainium (NeuronCore, NeuronLink), Inferentia `[U]` for current generations | TPU (MXU systolic arrays, ICI 3D torus with optical circuit switches) `[U]` for current generations | TPU slices are topology-shaped. GPU and Trainium instances are node-shaped. | [[17-Cloud-AI-Engineering/Volume_10_AI_Infrastructure_on_Cloud/Chapter_01_Accelerator_Architectures_GPUs_Trainium_TPUs\|Accelerators]] |
 | Scale-out fabric | EFA with SRD: multipath, out-of-order delivery handled in the NIC `[P]` | GPUDirect over TCPX or RoCE on GPU series, ICI plus data-center network for TPU multislice `[U]` | See ECMP collision math in Section 2.7. | [[17-Cloud-AI-Engineering/Volume_10_AI_Infrastructure_on_Cloud/Chapter_02_Interconnect_Technologies_NVLink_EFA_and_TPU_ICI\|Interconnects]] |
 | Resilient training clusters | SageMaker HyperPod (automated node repair) | GKE-based AI clusters, TPU multislice | | [[17-Cloud-AI-Engineering/Volume_10_AI_Infrastructure_on_Cloud/Chapter_03_High_Performance_AI_Cluster_Architectures\|AI clusters]] |
-| Managed model APIs | Bedrock: on-demand, provisioned throughput (model units), cross-region inference profiles `[U]` | Vertex AI: pay-as-you-go, provisioned throughput, regional and global endpoints `[U]` | Quota, burst, and throttle semantics differ. Read the per-model quota page. | [[17-Cloud-AI-Engineering/Volume_11_LLM_Serving_and_Inference_Systems_on_Cloud/Chapter_09_Managed_Inference_Amazon_Bedrock_vs_Vertex_AI\|Managed inference]], [[17-Cloud-AI-Engineering/Volume_11_LLM_Serving_and_Inference_Systems_on_Cloud/Chapter_10_Claude_on_Bedrock_and_Vertex_AI\|Claude on both]] |
-| ML pipelines | SageMaker Pipelines | Vertex AI Pipelines (Kubeflow DAGs) | | [[17-Cloud-AI-Engineering/Volume_12_AI_Applications_MLOps_and_Data_Platforms/Chapter_04_MLOps_Pipelines_SageMaker_vs_Vertex_AI\|MLOps]] |
-| Guardrails | Bedrock Guardrails | Vertex safety filters, Model Armor `[U]` | | [[17-Cloud-AI-Engineering/Volume_12_AI_Applications_MLOps_and_Data_Platforms/Chapter_07_AI_Safety_Guardrails_and_Governance\|Guardrails]] |
+| Managed model APIs | Bedrock: on-demand, provisioned throughput (model units), cross-region inference profiles `[U]` | Vertex AI (renamed Gemini Enterprise Agent Platform at Google Cloud Next 2026, HPCwire, as of 2026-10): pay-as-you-go, provisioned throughput, regional and global endpoints `[U]` | Quota, burst, and throttle semantics differ. Read the per-model quota page. | [[17-Cloud-AI-Engineering/Volume_11_LLM_Serving_and_Inference_Systems_on_Cloud/Chapter_09_Managed_Inference_Amazon_Bedrock_vs_Vertex_AI\|Managed inference]], [[17-Cloud-AI-Engineering/Volume_11_LLM_Serving_and_Inference_Systems_on_Cloud/Chapter_10_Claude_on_Bedrock_and_Vertex_AI\|Claude on both]] |
+| ML pipelines | SageMaker Pipelines | Vertex AI Pipelines (Kubeflow DAGs) `UNVERIFIED` (product name after the 2026 rebrand) | | [[17-Cloud-AI-Engineering/Volume_12_AI_Applications_MLOps_and_Data_Platforms/Chapter_04_MLOps_Pipelines_SageMaker_vs_Vertex_AI\|MLOps]] |
+| Guardrails | Bedrock Guardrails | Vertex safety filters `UNVERIFIED` (product name after the 2026 rebrand), Model Armor `[U]` | | [[17-Cloud-AI-Engineering/Volume_12_AI_Applications_MLOps_and_Data_Platforms/Chapter_07_AI_Safety_Guardrails_and_Governance\|Guardrails]] |
 
 ## 2. Mechanisms that getting-started guides skip
 
@@ -173,12 +173,12 @@ The two clouds expose different failure surfaces for the same symptom, which is 
 <br>A single NAT gateway supports up to 55,000 simultaneous connections per assigned IP address to each unique destination.
 That number can be raised by quota request to eight assigned IPs, which gives 440,000 simultaneous connections to one destination (AWS whitepaper, as of 2026-10) `[V]`.
 The limit is keyed on the destination, so fan-out across many destination IPs multiplies capacity, and fan-in to one SaaS IP exhausts it.
-A NAT gateway lives in one AZ, so a per-AZ routing design divides the budget by the number of AZs.
+A zonal NAT gateway lives in one AZ, so a per-AZ routing design divides the budget by the number of AZs (a regional NAT gateway mode that spans AZs also exists, AWS CloudFormation docs, as of 2026-10).
 
 **GCP Cloud NAT.**
 <br>Each NAT IP offers ports 1024 to 65535, which is 64,512 usable ports.
-By default a public NAT with static port allocation reserves a minimum of 64 ports per VM, and dynamic port allocation defaults to 32 minimum ports per VM when you do not set a value (third-party summary of Google docs, as of 2026-10; recheck against Cloud NAT docs) `[U]`.
-Dynamic allocation requires endpoint-independent mapping to be disabled, as the gcloud flags in the same summary show.
+By default a public NAT with static port allocation reserves a minimum of 64 ports per VM, and dynamic port allocation defaults to 32 minimum ports per VM when you do not set a value (Google Cloud gcloud reference and Cloud NAT quickstart, as of 2026-10) `[V]`.
+Dynamic allocation requires endpoint-independent mapping to be disabled, as the gcloud flags in the Cloud NAT docs show.
 Capacity is therefore a reservation of ports per VM, not a per-destination counter.
 Cloud NAT is implemented in the host networking stack (Andromeda), so there is no NAT appliance to scale, only a port inventory to size `[P]`.
 
@@ -354,7 +354,7 @@ Size pod CIDRs from max-nodes x per-node-allocation, not from current pod counts
 | AWS NAT gateway connections per IP per unique destination | 55,000 | AWS whitepaper, as of 2026-10 `[V]` |
 | AWS NAT gateway with 8 assigned IPs | 440,000 to one destination | AWS whitepaper, as of 2026-10 `[V]` |
 | Usable ports per Cloud NAT IP | 64,512 (ports 1024 to 65535) | Arithmetic, confirmed by third-party summary of Google docs, as of 2026-10 `[U]` |
-| Cloud NAT static minimum ports per VM, default | 64 | Third-party summary of Google docs, as of 2026-10 `[U]` |
+| Cloud NAT static minimum ports per VM, default | 64 | Google Cloud gcloud reference, as of 2026-10 `[V]` |
 | S3 per-prefix request floor | 3,500 write-class, 5,500 read-class per second | AWS docs, as of 2026-10 `[V]` |
 | GCS initial bucket I/O | 1,000 writes per second, 5,000 reads per second | Google Cloud docs, as of 2026-10 `[V]` |
 | GCS ramp guidance | Double the request rate every 20 minutes | Google Cloud docs, as of 2026-10 `[V]` |
@@ -399,7 +399,7 @@ Which of those five would you load-test before cutover, and what is the pass cri
 Start by separating three causes: vendor throttling, NAT port exhaustion, and DNS or routing.
 
 1. Vendor throttling returns HTTP 429 or resets after the TCP handshake. Port exhaustion fails before or at connect, and the NAT drop log shows allocation failures.
-2. Compute the port demand: pods per node x concurrent connections per pod to that single destination, compared with the VM's allocated ports (default 64 minimum under static allocation `[U]`).
+2. Compute the port demand: pods per node x concurrent connections per pod to that single destination, compared with the VM's allocated ports (default 64 minimum under static allocation, Google Cloud gcloud reference, as of 2026-10 `[V]`).
 3. With 32 pods x 150 connections you need 4,800 ports on that VM, which is far over 64.
 4. Fix in order of cost: pool and reuse connections, enable dynamic port allocation (requires endpoint-independent mapping off), raise minimum and maximum ports, add NAT IPs (64,512 ports each), and finally move the vendor to private connectivity if offered.
 5. Remember the vendor may allowlist your NAT IPs, so adding IPs is a coordination task, not just a config change.

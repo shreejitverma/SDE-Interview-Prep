@@ -15,6 +15,7 @@ sources:
   - "https://github.com/aws/aws-ofi-nccl"
   - "https://github.com/NVIDIA/nccl-tests/blob/master/doc/PERFORMANCE.md"
   - "https://cloud.google.com/tpu/docs/system-architecture-tpu-vm"
+  - "https://aws.amazon.com/about-aws/whats-new/2026/04/ec2-p6-b300-govcloud-us-east/"
 ---
 
 # Interconnect Technologies: NVLink, EFA, and TPU ICI
@@ -110,10 +111,10 @@ SRD's answer has four parts, and together they explain why EFA behaves different
 - **Packet spraying.** SRD does not preserve packet order. It sends the packets of a single message over as many paths as it can (Shalev et al. 2020).
 - **Path steering.** The sender steers each packet by changing fields in the encapsulation header that the switches' ECMP hash reads, so the switches stay ordinary ECMP routers while the endpoint chooses the path.
 - **RTT-based avoidance.** SRD tracks round-trip time per path and avoids overloaded paths, so a congested spine link drains instead of growing a queue (Shalev et al. 2020).
-- **Hardware retransmission.** Reliability and congestion control live on the Nitro card, which avoids OS scheduling jitter. Dropped packets are resent at microsecond timescales on a different path. The paper's baseline, kernel TCP, has a minimum retransmission timeout of 50 ms, which shows up directly as tail latency (Shalev et al. 2020).
+- **Hardware retransmission.** Reliability and congestion control live on the Nitro card, which avoids OS scheduling jitter. Dropped packets are resent at microsecond timescales on a different path. The paper's baseline, kernel TCP, has a minimum retransmission timeout of 50 ms (UNVERIFIED in this pass), which shows up directly as tail latency (Shalev et al. 2020).
 
 SRD's congestion control works to keep queues near empty. That lowers the chance of drops in the first place and shortens recovery when drops happen (Shalev et al. 2020).
-Order restoration is left to the layer above, which knows which ordering the application actually needs. For message passing, AWS put a reordering engine in the EFA user-space stack (AWS HPC whitepaper "Lower the Time-to-Results for Tightly Coupled HPC", 2019).
+Order restoration is left to the layer above, which knows which ordering the application actually needs. For message passing, AWS put a reordering engine in the EFA user-space stack (AWS HPC whitepaper "Lower the Time-to-Results for Tightly Coupled HPC", 2019; title and year UNVERIFIED in this pass).
 The design consequence is that SRD does not need a lossless fabric. RoCEv2 deployments usually depend on Priority Flow Control (PFC), because classic go-back-N retransmission collapses when packets are lost. PFC in turn brings head-of-line blocking, pause storms, and deadlocks (Guo et al., "RDMA over Commodity Ethernet at Scale", SIGCOMM 2016).
 SRD instead accepts loss and repairs it fast and per packet. That lets EFA run over a multi-tenant, lossy, commodity Ethernet Clos without per-priority pause.
 The costs are real. Applications must be written against libfabric's message and RDMA semantics, not the verbs reliable-connection model. Ecosystem support depends on the plugin. And per-path state plus reordering logic sit in custom Nitro silicon that only AWS can change.
@@ -190,8 +191,8 @@ Patarasuk and Yuan prove the ring's bandwidth optimality ("Bandwidth optimal all
 | PCIe Gen5 x16 | ~64 GB/s per direction | (PCIe 5.0 specification) |
 | EC2 P6-B300 networking | 6.4 Tbps EFA plus 300 Gbps dedicated ENA, 8x B300, 2.1 TB HBM | (AWS What's New, as of 2026-10) |
 | EC2 P6-B200 EFA | 3.2 Tbps (AWS states P6-B300 doubles it) | Derived from (AWS What's New, as of 2026-10) |
-| EC2 P5 EFA | 3,200 Gbps per instance | UNVERIFIED |
-| Kernel TCP minimum RTO in SRD comparison | 50 ms | (Shalev et al., IEEE Micro 2020) |
+| EC2 P5 EFA | 3,200 Gbps per instance | (AWS accelerated computing instance types page, as of 2026-10) |
+| Kernel TCP minimum RTO in SRD comparison | 50 ms | (Shalev et al., IEEE Micro 2020) UNVERIFIED |
 | TPU v4 pod | 4,096 chips, 64 cubes of 4x4x4, 48 OCS | (Jouppi et al., ISCA 2023) UNVERIFIED |
 | TPU v4 OCS overhead | <5% system cost, <3% system power | (Jouppi et al., ISCA 2023) UNVERIFIED |
 | TPU v5p, v6e, Ironwood pod sizes | 8,960 (3D torus); 256 (2D torus); 9,216 | UNVERIFIED |
@@ -718,7 +719,7 @@ How does adding OCS-based reconfiguration change your answer if the scheduler ca
 - [NVIDIA NVLink and NVLink Switch](https://www.nvidia.com/en-us/data-center/nvlink/) - Current per-generation NVLink bandwidth and switch SHARP capabilities.
 - [NVIDIA GB200 NVL72](https://www.nvidia.com/en-us/data-center/gb200-nvl72/) - The rack-scale 72-GPU NVLink domain specification.
 - [NVIDIA developer blog: NVLink, the scale-up network for AI factories](https://developer.nvidia.com/blog/nvidia-nvlink-the-scale-up-network-for-ai-factories/) - Sixth-generation NVLink figures and FP8 in-network reduction.
-- [AWS What's New: EC2 P6-B300](https://aws.amazon.com/about-aws/whats-new/2026/08/amazon-ec2-p6-b300/) - The current flagship EFA bandwidth figure and the split between EFA and ENA.
+- [AWS What's New: EC2 P6-B300](https://aws.amazon.com/about-aws/whats-new/2026/04/ec2-p6-b300-govcloud-us-east/) - The current flagship EFA bandwidth figure and the split between EFA and ENA.
 - [Amazon EC2 Elastic Fabric Adapter user guide](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/efa.html) - Supported instances, security group requirements, and installer procedures.
 - [aws-ofi-nccl](https://github.com/aws/aws-ofi-nccl) - The plugin that connects NCCL to libfabric EFA; read its release notes before upgrading NCCL.
 - [nccl-tests PERFORMANCE.md](https://github.com/NVIDIA/nccl-tests/blob/master/doc/PERFORMANCE.md) - The authoritative definition of algbw and busbw.

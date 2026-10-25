@@ -20,8 +20,8 @@ sources:
 4. Neither AWS Savings Plans nor GCP CUDs reserve capacity. GPU fleets need a capacity instrument (On-Demand Capacity Reservations, Capacity Blocks, GCP reservations, future reservations) bought separately, with the commitment layered on top for price.
 5. Ladder purchases, size to a trimmed demand quantile rather than the recommendation default, buy the 3-year term only for slices with at least (1 - d3)/(1 - d1) expected survival, and measure marginal utilization instead of average utilization.
 
-Evidence note: web verification was unavailable while this chapter was written.
-Every volatile figure below (discount percentages, windows, prices, product scope) is therefore tagged UNVERIFIED and is recalled from AWS and Google Cloud documentation, not re-checked against it.
+Evidence note: web verification was only partial when this chapter was revised (2026-10).
+Volatile figures that were re-checked now carry a source tag, and figures still tagged UNVERIFIED are recalled from AWS and Google Cloud documentation and not re-checked against it.
 The mechanisms and formulas are derived and do not depend on those figures.
 
 ## Mental Model
@@ -69,7 +69,7 @@ AWS currently sells four plan types: Compute, EC2 Instance, SageMaker, and Datab
 Compute Savings Plans apply to EC2 regardless of family, size, region, OS, or tenancy, and also to Fargate and Lambda (same source).
 EC2 Instance Savings Plans are scoped to one instance family in one region and are flexible across size, OS, and tenancy within it (AWS docs, recalled, UNVERIFIED).
 
-The application order, from the Savings Plans user guide as I recall it (UNVERIFIED as of 2026-10), is:
+The application order, from the Savings Plans user guide (AWS Savings Plans user guide, as of 2026-10), is:
 
 1. Reserved Instances are applied first.
 2. EC2 Instance Savings Plans are applied next.
@@ -90,8 +90,8 @@ See [[17-Cloud-AI-Engineering/Volume_09_FinOps_and_Cloud_Economics/Chapter_01_Cl
 
 Operationally, AWS exposes these controls:
 
-- Purchases can be queued for a future time, and a queued purchase can be deleted before it fires (AWS docs, recalled, UNVERIFIED as of 2026-10).
-- Returns are limited to a short window after purchase and only within the same calendar month (AWS docs, recalled, UNVERIFIED as of 2026-10).
+- Purchases can be queued for a future time, and a queued purchase can be deleted before it fires (AWS Savings Plans user guide, as of 2026-10).
+- Returns are limited to a short window after purchase and only within the same calendar month (AWS Savings Plans FAQ, as of 2026-10).
 - Savings Plans cannot be cancelled or exchanged, unlike Convertible Reserved Instances.
 - The Savings Plans API endpoint lives in us-east-1.
 
@@ -99,14 +99,14 @@ Operationally, AWS exposes these controls:
 
 GCP sells two structurally different instruments.
 
-Resource-based CUDs commit to quantities in a region: vCPUs, GB of memory, GPUs, and local SSD (Google Cloud docs, recalled, UNVERIFIED as of 2026-10).
+Resource-based CUDs commit to quantities in a region: vCPUs, GB of memory, GPUs, and local SSD (third-party summaries such as nOps and Spendark, as of 2026-10).
 vCPU and memory commitments are tied to a machine family, are purchased separately from each other, and are billed monthly for the whole term whether or not the resources run.
-A commitment is scoped to the purchasing project unless CUD sharing is enabled on the billing account, in which case it can apply across projects (UNVERIFIED current scoping controls).
+A commitment is scoped to the purchasing project unless CUD sharing is enabled on the billing account, in which case it can apply across projects (UNVERIFIED current scoping controls; a third-party source reports that CUD sharing became the default scope for most accounts on 2026-06-16, usage.ai, as of 2026-10).
 
-Flexible CUDs are spend-based: you commit a dollar amount per hour, and the discount applies across eligible machine families, regions, and projects on the billing account (Google Cloud docs, recalled, UNVERIFIED as of 2026-10).
-They exclude GPUs and local SSD (UNVERIFIED current exclusions list).
+Flexible CUDs are spend-based: you commit a dollar amount per hour, and the discount applies across eligible machine families, regions, and projects on the billing account (Google Cloud Billing docs, as of 2026-10).
+They exclude GPUs (UNVERIFIED current exclusions list), and local SSD is listed as eligible under the revised model (usage.ai, third-party, as of 2026-10).
 
-Google has been migrating spend-based CUDs to a revised billing model during 2025 and 2026 (UNVERIFIED details).
+Google has been migrating spend-based CUDs to a revised billing model during 2025 and 2026 (Google Cloud CUD migration timelines doc, as of 2026-10).
 Check your own billing export for which accounting you actually see.
 In the classic model the standard export shows a commitment-fee line plus credits of type `COMMITTED_USAGE_DISCOUNT` (resource-based) or `COMMITTED_USAGE_DISCOUNT_DOLLAR_BASE` (spend-based).
 Sustained use credits have type `SUSTAINED_USAGE_DISCOUNT`.
@@ -161,16 +161,16 @@ The commitment layer is the financial analogue: cover the long-lived production 
 |---|---|---|
 | AWS Savings Plan types | Compute, EC2 Instance, SageMaker, Database | [CloudZero summary](https://www.cloudzero.com/blog/aws-savings-plans/), third-party, as of 2026-10 |
 | AWS Savings Plan terms and payment | 1 or 3 years; All, Partial, or No Upfront | AWS docs, recalled, UNVERIFIED, as of 2026-10 |
-| AWS headline maximum discount | EC2 Instance up to 72%; Compute up to 66% | 72% per the CloudZero summary above; 66% from AWS pricing page recall, UNVERIFIED, as of 2026-10 |
+| AWS headline maximum discount | EC2 Instance up to 72%; Compute up to 66% | 72% per the AWS EC2 pricing page and 66% per usage.ai (third-party), as of 2026-10 |
 | AWS Compute SP scope | EC2, Fargate, Lambda | CloudZero summary above, as of 2026-10 |
-| AWS application order | RI, then EC2 Instance SP, then Compute SP; highest savings percentage first within type | AWS user guide, recalled, UNVERIFIED, as of 2026-10 |
-| AWS return rule | Short window after purchase, same calendar month only | AWS docs, recalled, UNVERIFIED, as of 2026-10 |
+| AWS application order | RI, then EC2 Instance SP, then Compute SP; highest savings percentage first within type | AWS Savings Plans user guide, as of 2026-10 |
+| AWS return rule | Short window after purchase, same calendar month only | AWS Savings Plans FAQ, as of 2026-10 |
 | AWS recommendation lookbacks | 7, 30, or 60 days | Cost Explorer API reference, recalled, UNVERIFIED, as of 2026-10 |
 | Cost Explorer API cost | About $0.01 per request | AWS pricing, recalled, UNVERIFIED, as of 2026-10 |
-| GCP Flexible CUD discount | 28% for 1 year, 46% for 3 years | Google Cloud docs, recalled, UNVERIFIED, as of 2026-10, may differ under the revised spend-based model |
-| GCP resource-based CUD discount | About 37% (1 year) and 55% (3 year) general purpose; up to about 70% for 3-year memory-optimized | Google Cloud docs, recalled, UNVERIFIED, as of 2026-10 |
+| GCP Flexible CUD discount | 28% for 1 year, 46% for 3 years | Google Cloud Billing docs, as of 2026-10, may differ by machine family under the revised spend-based model |
+| GCP resource-based CUD discount | About 37% (1 year) and 55% (3 year) general purpose; up to about 70% for 3-year memory-optimized | Google Cloud Compute Engine pricing page, as of 2026-10 |
 | GCP CUD billing | Monthly for the full term; no upfront option; no cancellation | Google Cloud docs, recalled, UNVERIFIED, as of 2026-10 |
-| GCP sustained use discount | Up to about 30% on N1, about 20% on N2/N2D/C2-class, none on E2 | Google Cloud docs, recalled, UNVERIFIED, as of 2026-10 |
+| GCP sustained use discount | Up to about 30% on N1, about 20% on N2/N2D/C2-class, none on E2 | Google Cloud Compute Engine pricing page for the 30% maximum; usage.ai and devzero (third-party) for the per-family caps, as of 2026-10 |
 | Pointwise breakeven utilization | 1 - d (72% at d = 0.28; 54% at d = 0.46) | Derived in Internals |
 | Optimal commitment level | d-quantile of hourly demand | Derived in Internals |
 | Lab result, d = 0.28 | Optimal level P28, utilization 96.3%, coverage 81.5%, saving 20.5% | Lab script output, synthetic demand |
@@ -189,13 +189,13 @@ Pull current rates with the AWS Price List API or the Cloud Billing Catalog API 
 | Commitment unit | Dollars per hour at the discounted rate | Resource-based: vCPU, GB, GPU, local SSD per region. Flexible: dollars per hour |
 | Discount scope | Compute SP: any EC2 family, region, OS; Fargate; Lambda. EC2 Instance SP: one family in one region | Resource-based: region and machine family for vCPU and memory. Flexible: across eligible families, regions, projects |
 | Matching time | Hourly, retrospective, in the billing plane | Retrospective in the billing plane; reservations additionally hold capacity in the data plane |
-| Application order | RI, EC2 Instance SP, Compute SP; highest savings percent first (UNVERIFIED) | Resource-based, then Flexible (UNVERIFIED); SUD only on uncovered SUD-eligible usage |
+| Application order | RI, EC2 Instance SP, Compute SP; highest savings percent first (AWS user guide) | Resource-based, then Flexible (UNVERIFIED); SUD only on uncovered SUD-eligible usage |
 | Payment options | All, Partial, No Upfront | Monthly billing only (UNVERIFIED) |
 | Cancellation or exchange | None for Savings Plans; short return window; Convertible RIs are exchangeable | None once purchased (UNVERIFIED); you can add more |
 | Capacity guarantee | None; use On-Demand Capacity Reservations or Capacity Blocks | None; use reservations or future reservations |
-| Sharing | Organization-wide by default; sharing can be disabled per account (UNVERIFIED) | Project scope by default for resource-based; billing-account sharing is a setting (UNVERIFIED) |
-| GPUs and accelerators | GPU and Trainium instances are EC2 usage and are generally eligible (UNVERIFIED for Capacity Blocks: believed not eligible) | Flexible CUD excludes GPUs; GPUs use resource-based commitments; TPU CUDs exist (UNVERIFIED) |
-| Serverless and containers | Compute SP covers Lambda and Fargate | Flexible CUD covers GKE Autopilot and Cloud Run (UNVERIFIED current scope) |
+| Sharing | Organization-wide by default; sharing can be disabled per account (UNVERIFIED) | Project scope by default for resource-based; billing-account sharing is a setting (UNVERIFIED; a third-party source reports sharing became the default for most accounts on 2026-06-16) |
+| GPUs and accelerators | GPU and Trainium instances are EC2 usage and are generally eligible; Capacity Blocks are not eligible (AWS EC2 docs, as of 2026-10) | Flexible CUD excludes GPUs; GPUs use resource-based commitments; TPU CUDs exist (UNVERIFIED) |
+| Serverless and containers | Compute SP covers Lambda and Fargate | Flexible CUD covers GKE Autopilot and Cloud Run (Google Cloud Run docs, as of 2026-10) |
 | Spot or preemptible usage | Not covered by Savings Plans | Not covered by CUDs (UNVERIFIED) |
 | Price-decline risk | Dollar commitments lose when rates fall | Flexible CUD same; resource-based CUD benefits from falling unit price |
 | Export visibility | CUR line item types and used/unused commitment columns | Export `credits` array with CUD credit types, plus commitment fee SKUs |
@@ -294,7 +294,7 @@ if __name__ == "__main__":
     price_cut(d, 0.28)
 ```
 
-The discounts 0.28 and 0.46 are the recalled Flexible CUD percentages (UNVERIFIED) and are used here only as parameters.
+The discounts 0.28 and 0.46 are the Flexible CUD percentages (Google Cloud Billing docs, as of 2026-10) and are used here only as parameters.
 
 ### Step 2: Back-of-the-envelope capacity and cost calculation
 
@@ -497,7 +497,7 @@ Coordinate commitment purchases with the Spot and serverless roadmaps (see [[17-
 ### Metric blind spots
 
 Coverage is measured against eligible spend only.
-If GPU spend flows through products that are not eligible (for example Capacity Blocks, which I believe are not Savings Plan eligible, UNVERIFIED, or managed model APIs), a 95% coverage figure describes a small part of the bill.
+If GPU spend flows through products that are not eligible (for example Capacity Blocks, which AWS documents as not eligible for Savings Plans or Reserved Instance discounts, AWS EC2 docs, as of 2026-10, or managed model APIs), a 95% coverage figure describes a small part of the bill.
 Report coverage as a share of total compute spend as well.
 
 ### Currency and contract interactions
@@ -641,7 +641,7 @@ On GCP you run GKE Autopilot, standard GKE with N2 nodes, and A3 GPU nodes. Whic
 #### Model Answer
 
 I treat each class separately.
-For Autopilot and for general-purpose nodes whose shape may change, Flexible CUDs are the default because they cover a dollar amount across eligible families, regions, and projects, so a node-pool migration does not strand them (current scope UNVERIFIED).
+For Autopilot and for general-purpose nodes whose shape may change, Flexible CUDs are the default because they cover a dollar amount across eligible families, regions, and projects, so a node-pool migration does not strand them (Google Cloud Run and Billing docs, as of 2026-10).
 For stable standard-node floors I would add resource-based commitments sized to vCPU and memory separately, since they are bought as separate resources and a shape mismatch leaves one side covered and the other billed on demand.
 Resource-based commitments are matched before flexible ones, so size them conservatively to avoid stealing coverage you wanted for the flexible layer.
 For N2, the incremental discount over sustained use discounts is smaller than the headline: with 20% sustained use and a 28% CUD, the increment is 1 - 0.72/0.80 = 10%, so the breakeven is more demanding than the headline suggests (stacking rules UNVERIFIED).

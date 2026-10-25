@@ -130,8 +130,8 @@ Pod ranges cannot be freely resized in place, so IP exhaustion at node 1,025 is 
 | S3 general purpose | Prefixes per bucket | No limit | Hard (none) | V | AWS docs, as of 2026-10 |
 | S3 general purpose | Scaling trigger | Sustained request rate above guideline | Scaling | V | AWS docs, as of 2026-10 |
 | S3 Express One Zone | Transactions per directory bucket | Up to 2 million TPS, independent of directory count | Scaling | V | [AWS S3 FAQ](https://aws.amazon.com/s3/faqs/), as of 2026-10 |
-| S3 Express One Zone | Observed checkpoint workload | Up to 2 million reads/s and 200,000 writes/s, 503 rate under 0.1 percent | Case study | V | [AWS Storage Blog](https://aws.amazon.com/blogs/storage/prime-video-improved-stream-analytics-performance-with-amazon-s3-express-one-zone/), as of 2026-10 |
-| S3 | Max object size, single PUT, multipart parts | 5 TB, 5 GB, 10,000 parts of 5 MiB to 5 GiB | Hard | U | AWS docs, UNVERIFIED, last known |
+| S3 Express One Zone | Directory bucket read and write ceiling cited in a case study | Up to 2 million reads/s and 200,000 writes/s; observed 503 rate under 0.1 percent UNVERIFIED | Case study | V | [AWS Storage Blog](https://aws.amazon.com/blogs/storage/prime-video-improved-stream-analytics-performance-with-amazon-s3-express-one-zone/), as of 2026-10 |
+| S3 | Max object size, single PUT, multipart parts | 50 TB, 5 GB, 10,000 parts of 5 MiB to 5 GiB | Hard | U | [AWS docs](https://docs.aws.amazon.com/AmazonS3/latest/userguide/UsingObjects.html), as of 2026-10 for object size and 5 GiB part ceiling; single PUT size and 5 MiB minimum part UNVERIFIED |
 | Cloud Storage | Writes to the same object name | About 1 per second | Hard-ish | U | Google Cloud docs, UNVERIFIED, last known |
 | Cloud Storage | Initial bucket I/O capacity | About 1,000 object writes/s and 5,000 reads/s, doubling about every 20 min | Scaling | U | Google Cloud docs, UNVERIFIED, last known |
 | Cloud Storage | Max object size, compose components | 5 TiB, 32 | Hard | U | Google Cloud docs, UNVERIFIED, last known |
@@ -397,7 +397,7 @@ Expected: when the expected wait times the cost of delay exceeds the penalty of 
 
 - [S3 request rate and performance guidelines](https://docs.aws.amazon.com/AmazonS3/latest/userguide/optimizing-performance.html) - the primary statement of per-prefix rates and the sustained-rate scaling behavior.
 - [Amazon S3 FAQs](https://aws.amazon.com/s3/faqs/) - the source for the 2 million TPS directory bucket figure.
-- [Prime Video on S3 Express One Zone](https://aws.amazon.com/blogs/storage/prime-video-improved-stream-analytics-performance-with-amazon-s3-express-one-zone/) - a measured checkpoint-spike workload with the 503 rate reported.
+- [Prime Video on S3 Express One Zone](https://aws.amazon.com/blogs/storage/prime-video-improved-stream-analytics-performance-with-amazon-s3-express-one-zone/) - a case-study workload that states the directory bucket read and write ceilings, with the 503 rate reported UNVERIFIED.
 - [Lambda quotas](https://docs.amazonaws.cn/en_us/lambda/latest/dg/gettingstarted-limits.html) - the scale-out rate per function, on a docs mirror.
 - AWS Builders' Library article on timeouts, retries, and backoff with jitter - why a rate limit is only as good as the retry policy in front of it (search by title, URL not verified).
 - Google SRE book chapters on handling overload and addressing cascading failures - the origin of load shedding and retry budgets.

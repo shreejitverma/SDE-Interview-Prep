@@ -80,7 +80,7 @@ Three properties of this model drive perimeter design.
 First, SCPs only constrain principals in your member accounts, and they never apply to the management account or to service-linked roles.
 An SCP therefore cannot stop an outside principal from reading a bucket whose policy is too permissive.
 Resource control policies, launched in November 2024, close that gap: an RCP attaches to resources in your accounts and applies regardless of who the caller is, including principals outside your organization.
-RCPs are Deny-only guardrails like SCPs, they do not apply to resources in the management account, and they were launched for a limited set of services (S3, STS, KMS, SQS, and Secrets Manager at launch; later additions UNVERIFIED as of 2026-10).
+RCPs are Deny-only guardrails like SCPs, they do not apply to resources in the management account, and they were launched for a limited set of services (S3, STS, KMS, SQS, and Secrets Manager at launch; later additions include ECR, OpenSearch Serverless, CloudWatch Logs, Cognito, and DynamoDB, and the list keeps growing, so check the current list) (AWS Organizations docs, as of 2026-10).
 
 Second, the VPC endpoint policy is evaluated as an additional gate and never grants anything.
 Its default is "Allow all", so an endpoint with no policy provides a private path but no perimeter.
@@ -143,7 +143,7 @@ The principal looks like your role, `aws:PrincipalIsAWSService` is `false`, `aws
 Source IP is an AWS-owned address.
 Your network-perimeter SCP sees "an IAM role calling S3 from an unknown network" and denies it.
 
-The whitepaper's answer is an explicit, tag-based exception: principals carrying a perimeter-exemption tag (the AWS `data-perimeter-policy-examples` repository uses keys in a `dp:exclude:*` namespace; exact key names UNVERIFIED as of 2026-10) are exempted from the network clause.
+The whitepaper's answer is an explicit, tag-based exception: principals carrying a perimeter-exemption tag (the AWS `data-perimeter-policy-examples` repository uses keys in a `dp:exclude:*` namespace, such as `dp:exclude:network` and `dp:exclude:identity`, with the value `true`) are exempted from the network clause (AWS data-perimeter-policy-examples repository, as of 2026-10).
 The exemption must be paired with a control that stops anyone with `iam:TagRole` from granting themselves the tag, an ABAC privilege-escalation path.
 The standard fix is an SCP that denies `iam:TagRole`, `iam:UntagRole`, and `iam:CreateRole` with tags on perimeter tag keys unless the caller is the perimeter-admin role, expressed with `aws:TagKeys` and `aws:PrincipalArn` conditions.
 Pair exempted service roles with confused-deputy keys (`aws:SourceAccount`, `aws:SourceArn`, `aws:SourceOrgID`) in their trust policies so the exemption is useless to a different caller.
@@ -165,7 +165,7 @@ The practical consequences are:
 
 - `aws:SourceIp` is not meaningful for requests that traverse a gateway endpoint, because the S3 service sees a private VPC address. Use `aws:VpcSourceIp`, which is only present for endpoint traffic.
 - Gateway endpoints are regional and non-transitive. They do not serve on-premises clients over Direct Connect, peered VPCs, or Transit Gateway attachments, which need an interface endpoint for S3 instead.
-- A gateway endpoint carries no hourly or per-GB charge (AWS pricing, UNVERIFIED as of 2026-10), which makes it both a security control and a large cost lever compared with NAT.
+- A gateway endpoint carries no hourly or per-GB charge (AWS pricing, as of 2026-10), which makes it both a security control and a large cost lever compared with NAT.
 - Interface endpoints (PrivateLink) are ENIs in your subnets backed by the Hyperplane flow-tracking data plane, with private DNS that overrides the public service name inside the VPC. If private DNS is disabled, clients resolve the public address, traffic leaves via NAT, `aws:SourceVpce` is absent, and any network-perimeter Deny fires. See the AWS re:Invent talk on VPC internals and Hyperplane (talk ID UNVERIFIED) and the Reachability Analyzer paper (Backes et al., "Reachability Analysis for AWS-based Networks", CAV 2019).
 
 ### Non-obvious mechanism 5: endpoint policies and AWS-owned buckets
@@ -179,7 +179,7 @@ The structural fix is a `NotResource` carve-out on the resource-perimeter Deny, 
 
 ### Non-obvious mechanism 6: policy size is a design constraint, not a footnote
 
-SCPs and RCPs are each limited to 5,120 characters per policy (AWS Organizations docs, UNVERIFIED as of 2026-10), and historically only five SCPs could be attached to any one root, OU, or account (a raise to ten is something I recall but could not verify; UNVERIFIED).
+SCPs are limited to 10,240 characters per policy (raised from 5,120 in 2026) and RCPs are limited to 5,120 characters per policy, and up to ten SCPs (raised from five) or five RCPs can be attached to any one root, OU, or account (AWS Organizations docs, as of 2026-10).
 A full network-perimeter statement with a service list, CIDR list, VPC list, exemption clauses, and tag exceptions routinely consumes 800 to 1,200 characters.
 You therefore split perimeters across multiple policies by objective, push resource-side conditions into RCPs and endpoint policies (endpoint policies allow up to 20,480 characters, UNVERIFIED as of 2026-10), and keep exceptions in tags rather than in enumerated ARNs.
 Tag-based exceptions trade policy size for a new attack surface in the tagging API, which is why the tag-the-tagger SCP above is mandatory rather than optional.
@@ -249,26 +249,27 @@ For the identity foundations on the Google side, BeyondCorp (Ward and Beyer, ";l
 
 ## Numbers to Know
 
-Every row below is a figure I recalled from official documentation but could not re-verify during this authoring session.
-Each is therefore marked UNVERIFIED and must be re-checked against the cited source before the note moves to `status: solid`.
+Rows still marked UNVERIFIED are figures I recalled from official documentation but could not re-verify.
+Each of those must be re-checked against the cited source before the note moves to `status: solid`.
+Rows without an UNVERIFIED mark were checked in the 2026-10 pass.
 
 | Item | Value | Source and date |
 |---|---|---|
-| SCP maximum document size | 5,120 characters | AWS Organizations docs, UNVERIFIED as of 2026-10 |
-| RCP maximum document size | 5,120 characters | AWS Organizations docs, UNVERIFIED as of 2026-10 |
-| SCPs attachable per root, OU, or account | 5 historically; a raise to 10 is possible | AWS Organizations docs, UNVERIFIED as of 2026-10 |
-| RCPs attachable per root, OU, or account | 5 | AWS Organizations docs, UNVERIFIED as of 2026-10 |
-| RCP launch service coverage | S3, STS, KMS, SQS, Secrets Manager | AWS launch post (Nov 2024), UNVERIFIED as of 2026-10 for later additions |
+| SCP maximum document size | 10,240 characters (raised from 5,120) | AWS Organizations docs, as of 2026-10 |
+| RCP maximum document size | 5,120 characters | AWS Organizations docs, as of 2026-10 |
+| SCPs attachable per root, OU, or account | 10 (raised from 5) | AWS Organizations docs, as of 2026-10 |
+| RCPs attachable per root, OU, or account | 5 | AWS Organizations docs, as of 2026-10 |
+| RCP launch service coverage | S3, STS, KMS, SQS, Secrets Manager at launch; later additions include ECR, OpenSearch Serverless, CloudWatch Logs, Cognito, DynamoDB | AWS launch post (Nov 2024) and AWS Organizations docs, as of 2026-10 |
 | VPC endpoint policy maximum size | 20,480 characters | AWS PrivateLink docs, UNVERIFIED as of 2026-10 |
 | S3 bucket policy maximum size | 20 KB | S3 docs, UNVERIFIED as of 2026-10 |
 | KMS key policy maximum size | 32 KB | KMS docs, UNVERIFIED as of 2026-10 |
-| S3 gateway endpoint charge | no hourly or data charge | AWS VPC pricing, UNVERIFIED as of 2026-10 |
-| Interface endpoint price, us-east-1 | $0.01 per AZ-hour plus $0.01 per GB processed (first PB) | AWS PrivateLink pricing, UNVERIFIED as of 2026-10 |
-| NAT gateway price, us-east-1 | $0.045 per hour plus $0.045 per GB processed | AWS VPC pricing, UNVERIFIED as of 2026-10 |
-| NAT gateway throughput ceiling | up to 100 Gbps; 55,000 simultaneous connections per unique destination tuple | AWS NAT docs, UNVERIFIED as of 2026-10 |
+| S3 gateway endpoint charge | no hourly or data charge | AWS VPC pricing, as of 2026-10 |
+| Interface endpoint price, us-east-1 | $0.01 per AZ-hour plus $0.01 per GB processed (first PB) | AWS PrivateLink pricing, as of 2026-10 |
+| NAT gateway price, us-east-1 | $0.045 per hour plus $0.045 per GB processed | AWS VPC pricing, as of 2026-10 |
+| NAT gateway throughput ceiling | up to 100 Gbps; 55,000 simultaneous connections per unique destination tuple | AWS NAT docs, as of 2026-10 |
 | Interface endpoint bandwidth | 10 Gbps per AZ baseline, scales to 100 Gbps | AWS PrivateLink docs, UNVERIFIED as of 2026-10 |
 | VPC-SC perimeter change propagation | up to about 30 minutes | Google Cloud VPC-SC docs, UNVERIFIED as of 2026-10 |
-| IAM policy change propagation (GCP) | typically minutes; documented worst case of several minutes | Google Cloud IAM docs, UNVERIFIED as of 2026-10 |
+| IAM policy change propagation (GCP) | typically 2 minutes, potentially 7 minutes or longer | Google Cloud IAM docs, as of 2026-10 |
 | restricted.googleapis.com VIP | 199.36.153.4/30 | Google Cloud docs, UNVERIFIED as of 2026-10 |
 | private.googleapis.com VIP | 199.36.153.8/30 | Google Cloud docs, UNVERIFIED as of 2026-10 |
 | S3 Bucket Keys KMS request reduction | up to 99% | S3 docs, UNVERIFIED as of 2026-10 |
@@ -290,7 +291,7 @@ Each is therefore marked UNVERIFIED and must be re-checked against the cited sou
 | Error diagnosis | AccessDenied text names the policy type that denied (SCP, RCP, endpoint policy) | Audit log with violation reason and `vpcServiceControlsUniqueId`, resolvable by Troubleshooter | GCP's tool maps a denial to the exact rule. AWS's message identifies the layer only |
 | Scope of protection | Per action and per resource condition. A service with no support is invisible to the control | Per restricted service per project. A service not listed or not supported is unprotected | Both leave unsupported services uncovered. Inventory them |
 | Blast radius of the control plane | Organizations policy plane. Management account is exempt from SCP | Access Policy (one per organization, plus scoped policies on folders or projects) | A single organization-level policy is one blast radius. Use scoped policies and OU or folder canaries |
-| AI-service surface | Bedrock runtime and agent endpoints through interface endpoints (policy support UNVERIFIED). SageMaker network isolation and VPC mode | Vertex AI supported by VPC-SC (verify per feature) | Managed AI services that call back into your S3 or GCS with a service role bypass the network clause. See mechanism 2 |
+| AI-service surface | Bedrock runtime and agent endpoints through interface endpoints (endpoint policies are supported). SageMaker network isolation and VPC mode | Vertex AI supported by VPC-SC (verify per feature) | Managed AI services that call back into your S3 or GCS with a service role bypass the network clause. See mechanism 2 |
 
 ## Worked Example: A Layered Perimeter in One Account, Plus a VPC-SC Dry-Run
 
@@ -302,10 +303,10 @@ The SCP and RCP are created through CLI commands you run against your management
 
 Assume a training fleet reads a 20 TB dataset per epoch (20,000 GB), with 30 epochs per month.
 
-1. Without a gateway endpoint, S3 traffic from private subnets goes through NAT. Data processing: 20,000 GB x 30 x $0.045 = $27,000 per month (NAT pricing, UNVERIFIED as of 2026-10).
-2. With a gateway endpoint, the same traffic costs $0 in processing charges (UNVERIFIED as of 2026-10). The perimeter is cheaper than the leak path it replaces.
-3. Throughput: 16 nodes each reading at 25 Gbps need 400 Gbps aggregate. A NAT gateway tops out around 100 Gbps (UNVERIFIED), so NAT is also the throughput bottleneck. Check current gateway-endpoint throughput guidance before relying on it as unbounded.
-4. Interface endpoints for the control plane: assume eight services (STS, KMS, ECR API, ECR DKR, CloudWatch Logs, Secrets Manager, Bedrock runtime, SSM) across 3 AZs. 8 x 3 x 730 h x $0.01 = $175.20 per month per VPC, plus about 2 TB of API traffic at $0.01 per GB = $20.48. Total about $196 per month per VPC (UNVERIFIED pricing).
+1. Without a gateway endpoint, S3 traffic from private subnets goes through NAT. Data processing: 20,000 GB x 30 x $0.045 = $27,000 per month (NAT pricing, as of 2026-10).
+2. With a gateway endpoint, the same traffic costs $0 in processing charges (AWS VPC pricing, as of 2026-10). The perimeter is cheaper than the leak path it replaces.
+3. Throughput: 16 nodes each reading at 25 Gbps need 400 Gbps aggregate. A NAT gateway tops out around 100 Gbps (AWS NAT docs, as of 2026-10), so NAT is also the throughput bottleneck. Check current gateway-endpoint throughput guidance before relying on it as unbounded.
+4. Interface endpoints for the control plane: assume eight services (STS, KMS, ECR API, ECR DKR, CloudWatch Logs, Secrets Manager, Bedrock runtime, SSM) across 3 AZs. 8 x 3 x 730 h x $0.01 = $175.20 per month per VPC, plus about 2 TB of API traffic at $0.01 per GB = $20.48. Total about $196 per month per VPC (PrivateLink pricing, as of 2026-10).
 5. Break-even on endpoint consolidation: a hub VPC with shared endpoints saves the per-VPC hourly charge but adds Transit Gateway data processing at about $0.02 per GB (UNVERIFIED). With more than about 10 spoke VPCs and low API traffic, the hub wins. With heavy API traffic, per-VPC endpoints win. See [[17-Cloud-AI-Engineering/Volume_09_FinOps_and_Cloud_Economics/Chapter_04_Network_Egress_Economics_and_Optimization|Network Egress Economics and Optimization]].
 6. Lab cost: VPC, route table, S3 gateway endpoint, and an empty bucket are free or pennies. Expected lab cost is under $1 for a one-day run, and the budget alarm below caps surprises at $5.
 
@@ -565,8 +566,9 @@ Add the vendor account IDs as a `StringNotEqualsIfExists` clause on `aws:Princip
 # size_check.py (usage: python3 size_check.py rcp.json scp.json)
 import json, sys
 
-LIMIT = 5120
+LIMIT_SCP, LIMIT_RCP = 10240, 5120
 for path in sys.argv[1:]:
+    LIMIT = LIMIT_SCP if "scp" in path else LIMIT_RCP
     doc = json.load(open(path))
     compact = json.dumps(doc, separators=(",", ":"))
     status = "OK" if len(compact) <= LIMIT else "TOO LARGE"
@@ -712,7 +714,8 @@ gcloud logging read \
 ```
 
 When the violation stream is empty or fully explained by rules, promote the dry-run spec to enforced (copy `spec` to a `status` block in the Terraform and apply, or use the dry-run enforce command in `gcloud access-context-manager perimeters dry-run`).
-The log filter field names and the dry-run enforce command spelling are UNVERIFIED as of 2026-10.
+The dry-run enforce command is `gcloud access-context-manager perimeters dry-run enforce PERIMETER_NAME` (Google Cloud VPC-SC docs, as of 2026-10).
+The log filter field names are UNVERIFIED as of 2026-10.
 
 DNS for the private path, so that VPC clients reach the restricted VIP:
 
@@ -793,7 +796,7 @@ Mitigations are canary OUs or scoped access policies, staged rollout by blast ra
 ### Self-lockout
 
 An explicit Deny that no principal can satisfy locks everyone out, including administrators.
-On S3, a bucket policy that denies all principals can be repaired by the account root user, and since 2024 AWS lets you do this without root credentials through centralized root access, via `sts:AssumeRoot` with the `S3UnlockBucketPolicy` task policy (AWS IAM docs, UNVERIFIED as of 2026-10).
+On S3, a bucket policy that denies all principals can be repaired by the account root user, and since 2024 AWS lets you do this without root credentials through centralized root access, via `sts:AssumeRoot` with the `S3UnlockBucketPolicy` task policy (AWS IAM docs, as of 2026-10).
 SCPs do not apply to the management account, so detaching a bad SCP is always possible from there, but only if you retained access to that account.
 Design the break-glass path before the perimeter and test it quarterly: a named role exempted by `aws:PrincipalArn`, hardware-MFA protected, with alerts on every use, and an equivalent Google access level or ingress rule for a break-glass group.
 
@@ -879,7 +882,7 @@ On Google Cloud, route all `*.googleapis.com` to the restricted VIP or a PSC `vp
 ### Unit economics
 
 - Gateway endpoint versus NAT for bulk S3 reads is the largest lever: in the sizing above, about $27,000 per month of NAT processing disappears, and the security control is the cost control.
-- Interface endpoints cost about $22 per service per month in a 3-AZ VPC (3 x 730 x $0.01, UNVERIFIED pricing). Count them before copy-pasting a "one endpoint per service" module into 40 VPCs.
+- Interface endpoints cost about $22 per service per month in a 3-AZ VPC (3 x 730 x $0.01, PrivateLink pricing, as of 2026-10). Count them before copy-pasting a "one endpoint per service" module into 40 VPCs.
 - Shared hub endpoints trade hourly charges for Transit Gateway data charges and a larger blast radius, as the sizing above shows.
 - VPC-SC dry-run logging can generate large audit-log volume. Set retention, route to a dedicated bucket, and exclude known-good traffic with a log exclusion once explained.
 - Access Analyzer unused-access and external-access analyzers have their own pricing (UNVERIFIED), so enable them per account selectively rather than blanket.
@@ -946,7 +949,7 @@ The hard part is service roles: SageMaker training, Bedrock batch inference, and
 So the network SCP gets a tag-based exemption for those roles, paired with confused-deputy keys in their trust policies and an SCP that only the perimeter-admin role can set the exemption tag.
 Rollout is by blast radius: a canary OU of sandbox accounts for two weeks, then non-production OUs, then production accounts in waves of roughly 10 percent, with CloudTrail `AccessDenied` messages that name an SCP or RCP as the alarm signal.
 SCPs and RCPs have no dry-run, so my substitute is Access Analyzer policy checks in CI and a negative-test canary in each wave.
-Size is the other constraint: with 5,120 characters per policy I split by objective and keep exceptions in tags, not ARN lists.
+Size is the other constraint: with 10,240 characters per SCP and 5,120 per RCP I split by objective and keep exceptions in tags, not ARN lists.
 What I refuse to promise is that the perimeter stops network exfiltration, because API conditions do not control a TCP session through NAT, and that rollout is quick, because the long pole is exemption discovery, not writing JSON.
 
 #### Follow-up Interviewer Question

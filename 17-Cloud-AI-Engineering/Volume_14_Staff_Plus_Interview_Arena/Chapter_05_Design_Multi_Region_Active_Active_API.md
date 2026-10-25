@@ -110,7 +110,7 @@ With five voting replicas (2 + 2 + 1), the majority is 3, so a leader in the def
 Aurora DSQL makes the same trade more explicitly.
 In a multi-region cluster of two peered regions plus a witness, the Journal commits to 2 of 3 regions ([Brooker, Aurora DSQL: Scalable, Multi-Region OLTP, arXiv 2607.13276](https://arxiv.org/abs/2607.13276)).
 The paper measured a cluster spanning us-east-1 and us-east-2 with a witness in us-west-2.
-In that setup, p99 COMMIT was about 30 ms against 7.4 ms single-region, even though the round trip to us-west-2 was 63 ms p99, because the nearest majority does not need the farthest region (Brooker, arXiv 2607.13276, as of 2026-10).
+In that setup, p99 COMMIT was about 30 ms against 7.4 ms single-region (UNVERIFIED figures), even though the round trip to us-west-2 was 63 ms p99, because the nearest majority does not need the farthest region (Brooker, arXiv 2607.13276, as of 2026-10).
 Primary-key SELECTs measured about 2 ms p99 and UPDATEs about 3 ms p99 in the same setup, because DSQL pays the cross-region cost once, at COMMIT, not per statement (Brooker, arXiv 2607.13276, as of 2026-10).
 DSQL uses optimistic concurrency control, so conflicting transactions are rejected at commit, and the application must retry the whole transaction with backoff.
 When one of the two active regions goes down, the surviving active region and the witness still form a majority, so commits continue without data loss (AWS Database Blog, as of 2026-10).
@@ -174,7 +174,7 @@ See [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_04
 ### Latency physics you design around
 
 Light in fiber travels at roughly two-thirds of c, about 5 us per km one-way, so route length, not geodesic distance, sets the floor.
-Measured inter-region round trips are the honest input, for example 63 ms p99 between US East and us-west-2 in the DSQL paper (Brooker, arXiv 2607.13276, as of 2026-10).
+Measured inter-region round trips are the honest input, for example 63 ms p99 between us-east-1 and us-west-2 in the DSQL paper (Brooker, arXiv 2607.13276, as of 2026-10).
 A write path's latency is roughly: client-to-edge RTT, plus edge-to-region RTT over the provider backbone, plus app time, plus the store's commit cost.
 The commit cost is one nearest-majority RTT for class Q, a local commit (or local plus one round trip to the home region for remote writers) for class S, and a local commit for class M.
 PACELC frames the trade-off: even with no partition, you choose between latency and consistency on every write ([Abadi, IEEE Computer 2012](https://www.cs.umd.edu/~abadi/papers/abadi-pacelc.pdf)).
@@ -195,9 +195,9 @@ PACELC frames the trade-off: even with no partition, you choose between latency 
 | Aurora storage quorum | 6 copies across 3 AZs, write 4/6, read 3/6 | Aurora SIGMOD 2017 |
 | Aurora DSQL GA | 2025-05-27, 8 regions at GA | AWS press release, 2025-05 |
 | Aurora DSQL availability design | 99.99 percent single-region, 99.999 percent multi-region | AWS DSQL features page, as of 2026-10 |
-| Aurora DSQL multi-region COMMIT p99 | about 30 ms (us-east-1 + us-east-2, witness us-west-2) vs 7.4 ms single-region | Brooker, arXiv 2607.13276, 2026 |
+| Aurora DSQL multi-region COMMIT p99 | about 30 ms (us-east-1 + us-east-2, witness us-west-2) vs 7.4 ms single-region (UNVERIFIED figures) | Brooker, arXiv 2607.13276, 2026 |
 | Aurora DSQL PK read p99, multi-region | about 2 ms | Brooker, arXiv 2607.13276, 2026 |
-| US East to us-west-2 RTT p99 | about 63 ms | Brooker, arXiv 2607.13276, 2026 |
+| us-east-1 to us-west-2 RTT p99 | about 63 ms | Brooker, arXiv 2607.13276, 2026 |
 | DynamoDB global tables MRSC | GA mid-2025, RPO 0, 10 regions at launch, standard global tables pricing | AWS announcement, 2025-06 |
 | Spanner TrueTime epsilon (2012 paper) | about 1-7 ms sawtooth | Spanner OSDI 2012 |
 | Spanner Paxos leader lease (2012 paper) | 10 s default | Spanner OSDI 2012 |

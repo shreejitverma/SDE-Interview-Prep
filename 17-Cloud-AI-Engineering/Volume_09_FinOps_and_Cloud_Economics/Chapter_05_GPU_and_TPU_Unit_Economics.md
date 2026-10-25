@@ -52,7 +52,7 @@ The rest of this chapter makes each factor measurable and shows where each one s
 ### How the hourly price is formed
 
 A cloud accelerator-hour bundles amortized hardware, power and cooling at facility PUE, networking fabric share, host CPU and memory, software and operations, and a scarcity premium for guaranteed capacity.
-The scarcity term is the one that moves: AWS cut On-Demand prices for P5 by up to 45 percent, P5en by up to 26 percent, and P4d/P4de by up to 33 percent effective 2025-06-01, with Savings Plan purchases repriced after 2025-06-04 (AWS What's New, 2025-06-05, as of 2026-10; [announcement](https://aws.amazon.com/about-aws/whats-new/2025/06/pricing-usage-model-ec2-instances-nvidia-gpus)).
+The scarcity term is the one that moves: AWS cut On-Demand prices for P5 by 44 percent, P5en by 25 percent, and P4d/P4de by 33 percent effective 2025-06-01, with Savings Plan reductions of up to 45 percent for P5 and up to 26 percent for P5en, and with Savings Plan purchases repriced after 2025-06-04 (AWS What's New, 2025-06-05, as of 2026-10; [announcement](https://aws.amazon.com/about-aws/whats-new/2025/06/pricing-usage-model-ec2-instances-nvidia-gpus); [AWS News Blog](https://aws.amazon.com/blogs/aws/announcing-up-to-45-price-reduction-for-amazon-ec2-nvidia-gpu-accelerated-instances/)).
 The percentages apply to Amazon Linux and are smaller for other operating systems (same source), and the same announcement made at-scale On-Demand capacity available in more Regions and made Savings Plans available for P6-B200, which had launched only through EC2 Capacity Blocks for ML (same source).
 The lesson for a model is that list price is a time series, not a constant, and a three-year commitment signed before a cut keeps paying the old rate.
 Treat any $/hr in a spreadsheet as an input with a timestamp and a source query, as the worked example does.
@@ -63,7 +63,7 @@ Peak FLOPs are quoted per precision and with or without 2:4 structured sparsity,
 Using the sparse number as the denominator understates cost per FLOP by 2x, which is the single most common error in vendor comparisons.
 Model FLOPs Utilization (MFU) is defined in the PaLM paper as observed model FLOPs per second over theoretical peak, counting only the FLOPs the model math requires and excluding recomputation ([Chowdhery et al., PaLM, 2022](https://arxiv.org/abs/2204.02311)).
 Hardware FLOPs Utilization (HFU) counts recomputed FLOPs too, so activation checkpointing raises HFU without raising useful throughput; always cost against MFU.
-Published large-scale training sits in the high 30s to mid 40s percent MFU for dense transformers: PaLM reported 46.2 percent on 6144 TPU v4 chips, and the Llama 3 paper reported 38 to 43 percent BF16 MFU on up to 16K H100s ([Llama 3 Herd of Models, 2024](https://arxiv.org/abs/2407.21783)) (both UNVERIFIED this session, recalled from the papers).
+Published large-scale training sits in the high 30s to mid 40s percent MFU for dense transformers: PaLM reported 46.2 percent on 6144 TPU v4 chips, and the Llama 3 paper reported 38 to 43 percent BF16 MFU on up to 16K H100s ([Llama 3 Herd of Models, 2024](https://arxiv.org/abs/2407.21783)).
 A second mechanism hides in the monitoring stack: nvidia-smi "GPU-Util" is the fraction of sample intervals in which at least one kernel was resident, not SM occupancy, so a job can show 100 percent while tensor pipes idle at 20 percent.
 The DCGM profiling fields (for example `DCGM_FI_PROF_SM_ACTIVE` and `DCGM_FI_PROF_PIPE_TENSOR_ACTIVE`) measure what you actually want, and chargeback built on the coarse metric rewards busy-waiting on NCCL collectives.
 See [[17-Cloud-AI-Engineering/Volume_10_AI_Infrastructure_on_Cloud/Chapter_01_Accelerator_Architectures_GPUs_Trainium_TPUs|Accelerator Architectures]] for why each precision's peak is reachable only with specific tile shapes.
@@ -88,7 +88,7 @@ The consequences are not obvious from product docs.
 First, doubling N halves M, so the C/T and lost-work terms grow by sqrt(2) and the R/M term doubles.
 Second, R is not a constant: it grows with rank count (more processes to rendezvous), includes XLA or `torch.compile` recompilation, and on Spot or flex capacity includes the wait to re-acquire replacement nodes, which can be hours.
 Third, the formula is only valid while T << M; once R approaches M the job spends its life restarting and effective cost diverges, which the worked example shows numerically.
-Meta reported 466 job interruptions in a 54-day window on a 16,384-GPU H100 cluster, 419 of them unexpected and most attributed to hardware, while still holding over 90 percent effective training time through automation ([Llama 3 Herd of Models](https://arxiv.org/abs/2407.21783)) (UNVERIFIED recall of exact counts).
+Meta reported 466 job interruptions in a 54-day window on a 16,384-GPU H100 cluster, 419 of them unexpected and most attributed to hardware, while still holding over 90 percent effective training time through automation ([Llama 3 Herd of Models](https://arxiv.org/abs/2407.21783)).
 That is the public reference dataset for what a well-run fleet sees; plan for an interruption every few hours at 10K+ accelerators.
 Asynchronous checkpointing shrinks C to the device-to-host copy, but the remote write still has to finish before the next snapshot, so object-store write bandwidth bounds T from below; see [[17-Cloud-AI-Engineering/Volume_10_AI_Infrastructure_on_Cloud/Chapter_06_High_Throughput_Checkpointing_to_Object_Storage|High-Throughput Checkpointing]] and [[17-Cloud-AI-Engineering/Volume_10_AI_Infrastructure_on_Cloud/Chapter_08_Fault_Tolerance_and_Fleet_Resiliency_at_Scale|Fault Tolerance and Fleet Resiliency]].
 Spot and preemptible capacity changes M (interruptions are far more frequent than hardware faults) and R (capacity may not exist when you retry), so the Spot break-even is "waste < 1 - spot/on-demand price ratio", not "Spot is 60 percent cheaper"; see [[17-Cloud-AI-Engineering/Volume_09_FinOps_and_Cloud_Economics/Chapter_03_Spot_Economics_and_Interruption_Handling|Spot Economics and Interruption Handling]].
@@ -135,21 +135,21 @@ Do not paste UNVERIFIED rows into a business case; re-query the cited source.
 
 | Quantity | Value | Source and date | Status |
 |---|---|---|---|
-| AWS GPU On-Demand cut, P5 | up to 45 percent, effective 2025-06-01 | AWS What's New, 2025-06-05 (as of 2026-10) | Verified |
-| AWS GPU On-Demand cut, P5en | up to 26 percent | AWS What's New, 2025-06-05 (as of 2026-10) | Verified |
+| AWS GPU On-Demand cut, P5 | 44 percent On-Demand (up to 45 percent with Savings Plans), effective 2025-06-01 | AWS What's New, 2025-06-05 (as of 2026-10) | Verified |
+| AWS GPU On-Demand cut, P5en | 25 percent On-Demand (up to 26 percent with Savings Plans) | AWS What's New, 2025-06-05 (as of 2026-10) | Verified |
 | AWS GPU On-Demand cut, P4d and P4de | up to 33 percent | AWS What's New, 2025-06-05 (as of 2026-10) | Verified |
-| P6-B200 Savings Plans | available after launch via Capacity Blocks only | AWS What's New, 2025-06-05 (as of 2026-10) | Verified |
+| P6-B200 Savings Plans | available since 2025-06 (at launch only via Capacity Blocks) | AWS What's New, 2025-06-05 (as of 2026-10) | Verified |
 | Current absolute P5/P6 hourly price | varies by Region and OS; query the Pricing API | AWS Price List API (as of 2026-10) | UNVERIFIED (not fetched) |
 | H100 SXM dense BF16 | about 989 TFLOPS (1979 with sparsity) | NVIDIA H100 datasheet (as of 2026-10) | UNVERIFIED |
 | H100 SXM HBM | 80 GB HBM3, about 3.35 TB/s | NVIDIA H100 datasheet (as of 2026-10) | UNVERIFIED |
 | p5.48xlarge shape | 8 x H100, 640 GB HBM, 3200 Gbps EFA | AWS EC2 docs (as of 2026-10) | UNVERIFIED |
-| TPU v5p | about 459 TFLOPS BF16, 95 GB HBM | Google Cloud TPU docs (as of 2026-10) | UNVERIFIED |
-| TPU v6e (Trillium) | about 918 TFLOPS BF16, 32 GB HBM, 256-chip pod | Google Cloud TPU docs (as of 2026-10) | UNVERIFIED |
-| TPU v6e list price, us-central | about $2.70 per chip-hour (illustrative input) | Google Cloud TPU pricing (as of 2026-10) | UNVERIFIED |
-| TPU v5p list price | about $4.20 per chip-hour (illustrative input) | Google Cloud TPU pricing (as of 2026-10) | UNVERIFIED |
+| TPU v5p | about 459 TFLOPS BF16, 95 GB HBM | Google Cloud TPU docs (as of 2026-10) | Verified (secondary spec sheets) |
+| TPU v6e (Trillium) | about 918 TFLOPS BF16, 32 GB HBM, 256-chip pod | Google Cloud TPU docs (as of 2026-10) | Verified |
+| TPU v6e list price, us-east1 and us-east5 | about $2.70 per chip-hour (illustrative input) | Google Cloud TPU pricing (as of 2026-10) | Verified (copy of pricing page) |
+| TPU v5p list price | about $4.20 per chip-hour (illustrative input) | Google Cloud TPU pricing (as of 2026-10) | Verified (secondary sources) |
 | TPU v7 (Ironwood) GA status and price | not stated here | Google Cloud docs (as of 2026-10) | UNVERIFIED |
-| PaLM 540B MFU | 46.2 percent on 6144 TPU v4 | Chowdhery et al., 2022 | UNVERIFIED recall |
-| Llama 3 405B, 16,384 H100 | 466 interruptions in 54 days, MFU 38 to 43 percent | Llama 3 Herd of Models, 2024 | UNVERIFIED recall |
+| PaLM 540B MFU | 46.2 percent on 6144 TPU v4 | Chowdhery et al., 2022 | Verified |
+| Llama 3 405B, 16,384 H100 | 466 interruptions in 54 days, MFU 38 to 43 percent | Llama 3 Herd of Models, 2024 | Verified |
 | DGX H100 max system power | about 10.2 kW | NVIDIA DGX H100 docs (as of 2026-10) | UNVERIFIED |
 | KV bytes per token, 70B-class GQA, FP16 | 327,680 B (320 KiB) | derived from model config | UNVERIFIED config |
 | Young/Daly optimum interval | T* = sqrt(2 C M) | Young 1974, Daly 2006 | derivation, checked numerically |
@@ -314,7 +314,7 @@ The same decode fleet at 80, 50, and 30 percent average busy costs $1.77, $2.83,
 **Own versus rent.**
 With $360K all-in per 8-GPU node (illustrative, includes fabric share), five-year amortization, 10.2 kW at PUE 1.3 and $0.10 per kWh, $150 per kW-month colocation, and 8 percent annual support, owned cost is $14.93 per node-hour at full utilization.
 Break-even utilization is 27 percent versus the illustrative $55 On-Demand rate and 54 percent versus a $27.50 three-year commitment.
-If obsolescence means you retain only 70 percent or 50 percent of economic value over the horizon, the owned rate rises to $21.33 or $29.86, which crosses the three-year commitment price.
+If obsolescence means you retain only 70 percent or 50 percent of economic value over the horizon, the owned rate rises to $21.33 or $29.86, and the second crosses the three-year commitment price.
 That crossing, not the headline $/GPU-hour, is why owners need a believable 3-year-plus demand forecast.
 
 ### Pull live prices instead of trusting the constants

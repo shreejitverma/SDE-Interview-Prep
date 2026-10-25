@@ -60,18 +60,18 @@ The diagram shows the only layout in which no single provider holds a quorum (2 
 
 ### The physical and logical shape of a cloud-to-cloud link
 
-A dedicated cross-cloud link is a cross-connect in a facility where both providers have presence, carrying an 802.1Q VLAN, an eBPG session over a link-local /30, and BFD or timers for failure detection.
+A dedicated cross-cloud link is a cross-connect in a facility where both providers have presence, carrying an 802.1Q VLAN, an eBGP session over a link-local /30, and BFD or timers for failure detection.
 Historically you built this yourself: Google documents that with Cross-Cloud Interconnect 
 
 you pay for ports and attachments in both clouds and data transfer out for traffic leaving Google Cloud
 
-, with supported speeds of 10, 100, and 400 Gbps (Google Cloud docs, as of 2026-10).
+, with supported speeds of 10, 100, and 400 Gbps (Google Cloud docs, as of 2026-10; UNVERIFIED: 400 Gbps).
 The managed model changes who operates the colo.
 
 
 AWS Interconnect - multicloud reached general availability on 2026-04-14 with Google Cloud as launch partner, and Azure and OCI planned later in 2026
 
- (AWS What's New, as of 2026-10).
+ (AWS What's New, as of 2026-10; UNVERIFIED: day of month 14).
 The AWS docs state that 
 
 traffic is transported on the AWS global backbone until it is handed off to the other cloud provider directly
@@ -168,7 +168,7 @@ See [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_02
 
 Hybrid (on-premises or colo to cloud) uses the same primitives as cloud-to-cloud: a dedicated port (AWS Direct Connect, Google Dedicated Interconnect), a partner-provided virtual circuit (Direct Connect hosted connections, Partner Interconnect), or IPsec over the internet (AWS Site-to-Site VPN, Google HA VPN) as a lower-bandwidth backup.
 The design rule is the same too: two physically diverse paths, BGP with BFD, a tested failover, and no assumption that the backup VPN can carry the primary's load.
-AWS now also lists an Interconnect - last mile product, which was found on a pricing page this session but whose details were not verified (UNVERIFIED).
+AWS now also lists an Interconnect - last mile product, which reached general availability alongside multicloud with Lumen as the initial partner in US East (N. Virginia) (InfoQ and CloudThat, as of 2026-10), and whose pricing details were not verified (UNVERIFIED).
 For in-cloud hybrid compute (AWS Outposts, Google Distributed Cloud, EKS Anywhere, GKE Enterprise) the relevant fact is that the control plane stays in the cloud region and the data plane runs on your hardware, so the same static-stability rule applies: the local rack must keep serving when the WAN to the region is cut.
 For Kubernetes-level federation see [[04-System-Design/07-Infrastructure-and-Orchestration/Kubernetes-Architecture|Kubernetes Architecture]].
 
@@ -178,17 +178,17 @@ For Kubernetes-level federation see [[04-System-Design/07-Infrastructure-and-Orc
 
 | Item | Value | Source |
 |---|---|---|
-| AWS Interconnect - multicloud status | GA since 2026-04-14, Google Cloud first launch partner, Azure and OCI planned later in 2026, five AWS Regions | AWS What's New, as of 2026-10 |
+| AWS Interconnect - multicloud status | GA since 2026-04-14 (UNVERIFIED: day of month), Google Cloud first launch partner, Azure and OCI planned later in 2026, five AWS Regions | AWS What's New, as of 2026-10 |
 | Pricing model of AWS Interconnect - multicloud | Single fee by selected bandwidth and geographic scope, no per-GB charge | AWS What's New and secondary summaries, as of 2026-10 |
 | Free tier | One free local 500 Mbps interconnect per Region starting May 2026 | AWS What's New, as of 2026-10 |
-| Bandwidth range at GA | 1 Gbps to 100 Gbps, modifiable without recreating the connection | AWS docs and secondary summary, as of 2026-10 |
+| Bandwidth range at GA | 1 Gbps to 100 Gbps, modifiable without recreating the connection (UNVERIFIED for multicloud, the secondary source re-checked describes last mile) | AWS docs and secondary summary, as of 2026-10 |
 | Tier 1 AWS-side rate, 1 Gbps / 10 Gbps | $1.37 / $12.33 per hour (about $1,000 / $9,000 per month) | AWS pricing page example and secondary summaries, as of 2026-10 |
 | Tier 1 vs Tier 4 spread (last-mile product, 10 Gbps) | $12.33 vs $51.78 per hour, $37,799.40 per month at Tier 4 | AWS Interconnect last-mile pricing page, as of 2026-10 |
 | Region pairs documented in preview | us-east-1 with Google N. Virginia (us-east4); us-west-1 with Google Los Angeles (us-west2) | AWS docs, as of 2026-10 |
 | Billing granularity | Starts at creation, stops at deletion, rounded up to the hour | Third-party hands-on report, as of 2026-10 |
 | Google Partner Cross-Cloud Interconnect for AWS, North America | 1 Gbps $3.50 per hour, 10 Gbps $19.00 per hour, no data transfer fee | Secondary summary (classmethod), UNVERIFIED against Google pricing page, as of 2026-10 |
 | Google Cross-Cloud Interconnect (self-managed) | 10 Gbps port $5.60 per hour, VLAN attachment $0.10 per hour, $0.02 per GiB egress via CCI | Secondary summary, UNVERIFIED against Google pricing page, as of 2026-10 |
-| Cross-Cloud Interconnect speeds | 10, 100, 400 Gbps | Google Cloud docs, as of 2026-10 |
+| Cross-Cloud Interconnect speeds | 10, 100, 400 Gbps | Google Cloud docs, as of 2026-10; UNVERIFIED: 400 Gbps |
 | AWS internet egress tiers | $0.09 (to 10 TB), $0.085 (next 40 TB), $0.07 (next 100 TB), $0.05 (over 150 TB) per GB | Secondary summary of AWS pricing, as of 2026-10 |
 | Google Cloud Storage internet egress, Premium Tier | $0.12 per GiB to 1 TiB, $0.11 per GiB to 10 TiB | Secondary summary, as of 2026-10 |
 | Raft timing guidance | Election timeout 150 to 300 ms; broadcast time much less than election timeout | Raft paper, USENIX ATC 2014 |
@@ -352,7 +352,7 @@ Tunnel pre-shared keys are generated by AWS and passed to Google, so they land i
 
 Cost estimate (rates UNVERIFIED, confirm on both pricing pages): 2 AWS VPN connections at about $0.05 per hour is $0.10 per hour, and 4 Google HA VPN tunnels at about $0.075 per hour is $0.30 per hour, so roughly $0.40 per hour plus data.
 A 4-hour lab is about $1.60 plus under a dollar of data transfer.
-The budget below caps the exposure at $25 per month.
+The budget below alerts on a $25 per month limit but does not cap the exposure, so run the teardown promptly.
 
 ```hcl
 terraform {

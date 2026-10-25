@@ -97,7 +97,7 @@ Each step spends at most `max_num_batched_tokens` tokens across running sequence
 The step time is the inter-token latency (ITL) every running sequence experiences, so any prefill chunk that rides in a step delays all decoders in that step.
 The vLLM tuning docs state the trade-off: smaller values improve ITL and larger values improve TTFT ([vLLM optimization docs](https://docs.vllm.ai/en/stable/configuration/optimization/), as of 2026-10).
 The docs also say that with chunked prefill disabled, `max_num_batched_tokens` must exceed `max_model_len` or startup can crash.
-Chunked prefill in V1 is on by default whenever possible ([Parasail, as of 2026-10](https://www.parasail.io/blog/offline-llm-inference-batching-throughput)), and defaults vary by version and hardware, so read the startup log rather than trusting a doc table.
+Chunked prefill in V1 is on by default whenever possible ([Parasail, as of 2026-10](https://www.parasail.io/guides/offline-llm-inference-batching-throughput)), and defaults vary by version and hardware, so read the startup log rather than trusting a doc table.
 The lineage is Orca's iteration-level scheduling (OSDI 2022) and Sarathi-Serve's stall-free chunked batching (OSDI 2024).
 Disaggregation is the next step and is covered in [[17-Cloud-AI-Engineering/Volume_11_LLM_Serving_and_Inference_Systems_on_Cloud/Chapter_07_Prefill_and_Decode_Disaggregation|Prefill and Decode Disaggregation]].
 
@@ -105,7 +105,7 @@ Disaggregation is the next step and is covered in [[17-Cloud-AI-Engineering/Volu
 
 When the KV pool cannot hold all running sequences, vLLM preempts a request, frees its blocks, and recomputes it later.
 The docs describe recompute and recommend raising `gpu_memory_utilization` or tensor parallel size ([vLLM docs, as of 2026-10](https://docs.vllm.ai/en/stable/configuration/optimization/)).
-V1 defaults to recompute over swap and dropped the swap-space flag ([Parasail, as of 2026-10](https://www.parasail.io/blog/offline-llm-inference-batching-throughput)).
+V1 defaults to recompute over swap and dropped the swap-space flag ([Parasail, as of 2026-10](https://www.parasail.io/guides/offline-llm-inference-batching-throughput)).
 Recompute makes overload self-amplifying:
 
 1. A preempted request re-enters the waiting queue.
@@ -226,7 +226,7 @@ Worst case is 4 GPU nodes for 3 hours.
 - GPU nodes: 4 x 3 h x $2.50/hr planning ceiling (UNVERIFIED; look up the real rate below) = $30.
 - Control plane: 3 h x $0.10/hr = $0.30 (UNVERIFIED).
 - NAT, EBS and data transfer: allow $5.
-- Total ceiling is about $36, so set the budget to $50.
+- Total ceiling is about $35, so set the budget to $50.
 
 A budget alert is not a cap.
 The real caps are the NodePool `limits` of 4 GPUs, the KEDA `maxReplicaCount: 4`, and the teardown below.
@@ -346,7 +346,7 @@ Fleet sizing for a 100 rps peak with traffic doubling in 10 minutes and a 420 s 
 2. Maximum steady utilization from the headroom formula: `exp(-ln2/600 * 420)` = 0.62.
 3. Provisioned replicas: `24 / 0.62` = 39, or 20 p5.48xlarge nodes at two replicas each.
 4. Cost at on-demand: 20 x $55.04 = $1,100 per hour.
-5. Cutting scale-up lag from 420 s to 120 s moves utilization from 0.62 to 0.87 and shrinks the fleet from 39 to 28 replicas. A 30% GPU saving comes purely from cold-start engineering.
+5. Cutting scale-up lag from 420 s to 120 s moves utilization from 0.62 to 0.87 and shrinks the fleet from 39 to 28 replicas. A 28% GPU saving comes purely from cold-start engineering.
 
 Per-replica autoscaling threshold: take the lower of the KV-bound concurrency (216) and the concurrency at which ITL p99 meets your SLO, then multiply by 0.7.
 Set `CONC_PER_REPLICA` to that value.

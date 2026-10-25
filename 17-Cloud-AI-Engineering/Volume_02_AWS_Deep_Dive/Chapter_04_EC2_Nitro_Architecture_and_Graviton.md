@@ -165,11 +165,12 @@ The design lesson is that your recovery plan must not depend on launching new ca
 |---|---|---|---|---|---|---|
 | Graviton2 | Neoverse N1 | Armv8.2-A | 64 | 2.5 GHz | 8-channel DDR4 | First with LSE atomics; no SVE |
 | Graviton3 | Neoverse V1 | Armv8.4-A | 64 | 2.6 GHz | 8-channel DDR5 | SVE with 256-bit vectors, bfloat16 |
-| Graviton4 | Neoverse V2 | Armv9.0-A | 96 | 2.8 GHz | 12-channel DDR5 | SVE2 with 128-bit vectors, 2 MB L2 per core, two-socket coherent on largest sizes |
+| Graviton4 | Neoverse V2 | Armv9.0-A | 96 | 2.8 GHz (2.7 GHz on 48xlarge) | 12-channel DDR5 | SVE2 with 128-bit vectors, 2 MB L2 per core, two-socket coherent on largest sizes |
 | Graviton5 | Neoverse V3 | Armv9.2-A | 192 | 3.3 GHz | DDR5 | 3 nm, 5x L3 versus Graviton4, PCIe Gen6 |
 
 Graviton5 row: [AWS News Blog](https://aws.amazon.com/blogs/aws/now-available-amazon-ec2-m9g-and-m9gd-instances-powered-by-new-aws-graviton5-processors/) and [Phoronix](https://www.phoronix.com/review/aws-graviton5), as of 2026-10.
 Graviton2 to Graviton4 core and clock figures come from the AWS launch posts as tabulated by [Wikipedia](https://en.wikipedia.org/wiki/AWS_Graviton) and Phoronix, as of 2026-10.
+The Graviton4 clock of 2.7 GHz on 48xlarge sizes comes from the [AWS Graviton technical guide](https://aws.github.io/graviton/), as of 2026-10.
 The Graviton4 vector width, L2 size, and two-socket topology were not re-verified against primary sources in this pass (UNVERIFIED 2026-10).
 
 #### No SMT: a vCPU is a core
@@ -190,7 +191,7 @@ Under contention, each successful increment needs the line to migrate into the w
 Armv8.1 Large System Extensions (LSE) add single-instruction atomics such as `LDADD`, `CAS`, and `SWP`.
 The coherent mesh interconnect can execute these at the line's home node as "far" atomics instead of pulling the line into the requester's cache.
 That turns a cache-line ping-pong into a stream of requests to one place, and the effect is largest on 96-core and 192-core parts with a long mesh diameter (mechanism per Arm CMN documentation, UNVERIFIED 2026-10).
-GCC 10 and later default to `-moutline-atomics` on aarch64 Linux, which calls a helper that checks `HWCAP_ATOMICS` at runtime and picks LSE when present.
+GCC 10 and later default to `-moutline-atomics` on aarch64 Linux, which calls a helper that checks `HWCAP_ATOMICS` at runtime and picks LSE when present (default behavior UNVERIFIED 2026-10).
 Older toolchains, statically linked binaries built with `-march=armv8-a`, and some JIT runtimes still emit LL/SC loops.
 You can check with `objdump -d binary | grep -cE 'ldxr|ldaxr'` against `grep -c ldadd`.
 The worked example below measures this difference directly.
@@ -227,8 +228,8 @@ Graviton3 and later support Armv8.3 pointer authentication and Armv8.5 BTI, whic
 | Graviton5 L3 cache | 5x Graviton4; reported as 180 MB | AWS News Blog; Tom's Hardware, as of 2026-10 |
 | Graviton5 claimed compute uplift | Up to 25% over Graviton4 | AWS announcement via Techzine, as of 2026-10 |
 | Graviton5 inter-core latency | Up to 33% lower than Graviton4 | AWS News Blog, as of 2026-10 |
-| Graviton5 memory | DDR5-8800 reported | daily.dev summary of Phoronix, UNVERIFIED 2026-10 |
-| M9g and M9gd GA | June 2026; C9g and R9g announced for 2026 | AWS What's New; Tom's Hardware, as of 2026-10 |
+| Graviton5 memory | DDR5-8800 reported | Phoronix; InfoQ, as of 2026-10 |
+| M9g and M9gd GA | June 2026; C9g and R9g announced for 2026 (UNVERIFIED) | AWS What's New; Tom's Hardware, as of 2026-10 |
 | M9gd local NVMe | Up to 11.4 TB per instance | About Amazon, as of 2026-10 |
 | Nitro generation on M9g | Sixth generation, first with Nitro Isolation Engine | AWS What's New, as of 2026-10 |
 | Isolation Engine proof size | ~260K lines (HCSS 2026) to ~330K lines (Amazon Science) | as of 2026-10 |

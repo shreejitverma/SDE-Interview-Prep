@@ -81,7 +81,7 @@ That embedding is why rotation is cheap: a new primary version takes over for ne
 ### Protection levels as distinct data planes
 
 Cloud KMS exposes five protection levels: `SOFTWARE`, `HSM` (multi-tenant), `HSM_SINGLE_TENANT`, `EXTERNAL`, and `EXTERNAL_VPC` (Encryption Consulting summary of Google docs, as of 2026-10).
-Software keys run on FIPS 140-3 Level 1 validated BoringCrypto primitives, and Cloud HSM keys are generated and used in FIPS 140-2 Level 3 validated HSMs (Google Cloud KMS docs and Encryption Consulting summary, as of 2026-10).
+Software keys run on FIPS 140-3 Level 1 validated BoringCrypto primitives, and Cloud HSM keys are generated and used in FIPS 140-2 Level 3 validated HSMs (Google Cloud KMS docs and Encryption Consulting summary, HSM validation level UNVERIFIED as of 2026-10).
 The API is the same at every level, but each level is a different data plane with different latency, quota, and failure characteristics.
 For `SOFTWARE`, the KMS server unwraps the key material in memory and performs AES-256-GCM itself, so the main costs are an RPC hop and an IAM check.
 For `HSM`, the cryptographic operation is forwarded to an HSM partition, which is a separate device pool with its own capacity ceiling and a separate quota class (Google Cloud docs, UNVERIFIED as of 2026-10).
@@ -155,18 +155,18 @@ For the physical meaning of zones and regions, see [[17-Cloud-AI-Engineering/Vol
 | Cloud KMS key use operations (encrypt/decrypt) | $0.03 per 10,000 operations | (Google Cloud pricing page, as of 2026-10) |
 | Cloud KMS key admin operations | Free | (Google Cloud pricing page, as of 2026-10) |
 | Cloud HSM key version, AES-256 or RSA-2048 | $1.00 per version per month | (Google Cloud pricing page, as of 2026-10) |
-| Cloud HSM key version, EC P-256 or P-384 | $2.50 per month for versions 0-2,000, $1.00 per month above 2,000 | (Google Cloud pricing page, as of 2026-10) |
+| Cloud HSM key version, EC P-256 or P-384 | $2.50 per month for versions 0-2,000, $1.00 per month above 2,000 | UNVERIFIED (Google Cloud pricing page, as of 2026-10) |
 | Protection levels | 5: SOFTWARE, HSM, HSM_SINGLE_TENANT, EXTERNAL, EXTERNAL_VPC | (Encryption Consulting summary of Google docs, as of 2026-10) |
 | Software key validation | FIPS 140-3 Level 1 (BoringCrypto) | (Google Cloud KMS docs, as of 2026-10) |
-| Cloud HSM validation | FIPS 140-2 Level 3 | (Encryption Consulting summary of Google docs, as of 2026-10) |
-| CMEK-integrated services | 40+ | (Google Cloud KMS docs, as of 2026-10) |
+| Cloud HSM validation | FIPS 140-2 Level 3 | UNVERIFIED (Encryption Consulting summary of Google docs, as of 2026-10) |
+| CMEK-integrated services | 40+ | UNVERIFIED (Google Cloud KMS docs, as of 2026-10) |
 | Max plaintext per Cloud KMS `Encrypt` | 64 KiB | UNVERIFIED (Google Cloud docs, as of 2026-10) |
 | Default scheduled-destruction window | 30 days, configurable from 24 hours to 120 days | UNVERIFIED (Google Cloud docs, as of 2026-10) |
 | Default cryptographic request quota | 60,000 per minute per project per region (software keys) | UNVERIFIED (Google Cloud docs, as of 2026-10) |
 | HSM and EKM request quotas | Separate and lower than software quota | UNVERIFIED (Google Cloud docs, as of 2026-10) |
 | AES-GCM safe message count per key, random 96-bit nonce | About 2^32 messages | (NIST SP 800-38D guidance; stable) |
 | AWS KMS key | $1 per key per month plus $0.03 per 10,000 requests | (AWS Security Blog, as of 2026-10) |
-| AWS CloudHSM | About $1.60 per HSM-hour in us-east-1 | (AWS Security Blog, as of 2026-10) |
+| AWS CloudHSM | About $1.60 per HSM-hour in us-east-1 | UNVERIFIED (AWS Security Blog, as of 2026-10) |
 | Max plaintext per AWS KMS `Encrypt` | 4,096 bytes | UNVERIFIED (AWS docs, as of 2026-10) |
 | AWS KMS key deletion waiting period | 7-30 days, default 30 | UNVERIFIED (AWS docs, as of 2026-10) |
 | SEV and SEV-SNP memory cipher | AES-128 with address tweak, in memory controller | (AMD SEV-SNP whitepaper, 2020; stable) |

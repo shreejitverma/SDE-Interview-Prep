@@ -175,9 +175,9 @@ Replication latency is usually under a second and is exposed as the `Replication
 Condition expressions are evaluated only against the local replica.
 So a `ConditionExpression` like `stock > 0` cannot stop two Regions from both decrementing the last unit.
 MRSC replicates writes synchronously to at least one other Region before acknowledging.
-It needs exactly three Regions, either three full replicas or two replicas plus a witness, and was announced GA in mid-2025 (AWS launch post; UNVERIFIED as of 2026-10).
+It needs exactly three Regions, either three full replicas or two replicas plus a witness, and was announced GA in mid-2025 (AWS docs and AWS announcement, as of 2026-10).
 MRSC gives an RPO of zero and strongly consistent reads in any Region.
-In exchange, every write pays at least one inter-Region round trip, and some APIs are restricted, for example transactions (UNVERIFIED as of 2026-10; check current docs).
+In exchange, every write pays at least one inter-Region round trip, and some APIs are restricted, for example transactions (AWS docs, as of 2026-10).
 
 ### Control plane versus data plane
 
@@ -206,9 +206,9 @@ The October 2025 outage showed that the regional DNS record for the endpoint is 
 | Burst capacity retention | Up to 300 s of unused capacity | Covers spikes, not sustained skew | AWS docs; UNVERIFIED as of 2026-10 |
 | New on-demand table initial capacity | 4,000 WRU/s and 12,000 RRU/s | Launch spikes above this need warm throughput | AWS docs; UNVERIFIED as of 2026-10 |
 | On-demand scaling rule | Up to 2x previous peak; faster growth within 30 min may throttle | Pre-warm before launches | AWS docs; UNVERIFIED as of 2026-10 |
-| Default per-table throughput quota | 40,000 RCU and 40,000 WCU (us-east-1) | Large tables need a quota increase in advance | AWS docs; UNVERIFIED as of 2026-10 |
-| Default per-account throughput quota | 80,000 RCU and 80,000 WCU (us-east-1) | Shared across tables in a Region | AWS docs; UNVERIFIED as of 2026-10 |
-| Tables per account per Region | 2,500 default | Caps table-per-tenant designs | AWS docs; UNVERIFIED as of 2026-10 |
+| Default per-table throughput quota | 40,000 RCU and 40,000 WCU (us-east-1) | Large tables need a quota increase in advance | AWS docs, as of 2026-10 |
+| Default per-account throughput quota | 80,000 RCU and 80,000 WCU (us-east-1) | Shared across provisioned tables in a Region | AWS docs, as of 2026-10 |
+| Tables per account per Region | 2,500 default | Caps table-per-tenant designs | AWS docs, as of 2026-10 |
 | GSIs / LSIs per table | 20 / 5 default | LSIs fix item collections to one partition, 10 GB limit | AWS docs; UNVERIFIED as of 2026-10 |
 | Transaction size | 100 actions, 4 MB aggregate | Cross-partition coordination limit | AWS docs; UNVERIFIED as of 2026-10 |
 | BatchWriteItem / BatchGetItem | 25 items / 100 items, 16 MB | Partial failures returned as UnprocessedItems/Keys | AWS docs; UNVERIFIED as of 2026-10 |
@@ -216,9 +216,9 @@ The October 2025 outage showed that the regional DNS record for the endpoint is 
 | Streams retention | 24 hours | Consumer lag beyond this loses change records | AWS docs; UNVERIFIED as of 2026-10 |
 | PITR window | Configurable up to 35 days | Restore creates a new table | AWS docs; UNVERIFIED as of 2026-10 |
 | SLA | 99.99% single-Region, 99.999% global tables | Multi-Region is the only path to five nines | AWS SLA page; UNVERIFIED as of 2026-10 |
-| On-demand price, Standard class, us-east-1 | $0.625 per million WRU, $0.125 per million RRU | Post-November-2024 price cut | AWS pricing; UNVERIFIED as of 2026-10 |
-| Provisioned price, Standard class, us-east-1 | $0.00065 per WCU-hour, $0.00013 per RCU-hour | Breakeven vs on-demand at about 29% utilization | AWS pricing; UNVERIFIED as of 2026-10 |
-| Storage price, Standard class, us-east-1 | $0.25 per GB-month | Standard-IA trades lower storage for higher throughput prices | AWS pricing; UNVERIFIED as of 2026-10 |
+| On-demand price, Standard class, us-east-1 | $0.625 per million WRU, $0.125 per million RRU | Post-November-2024 price cut | AWS pricing, as of 2026-10 |
+| Provisioned price, Standard class, us-east-1 | $0.00065 per WCU-hour, $0.00013 per RCU-hour | Breakeven vs on-demand at about 29% utilization | AWS pricing, as of 2026-10 |
+| Storage price, Standard class, us-east-1 | $0.25 per GB-month | Standard-IA trades lower storage for higher throughput prices | AWS pricing, as of 2026-10 |
 
 ## AWS vs GCP Mechanism Parity
 
@@ -236,7 +236,7 @@ The October 2025 outage showed that the regional DNS record for the endpoint is 
 | Change data capture | DynamoDB Streams, 24 h; Kinesis Data Streams integration | Change streams | Change streams | Retention windows differ; check current docs |
 | Secondary indexes | GSI (async, separate capacity), LSI (sync, same partition) | None native | Synchronous secondary indexes | An under-provisioned DynamoDB GSI throttles base-table writes |
 | Private access | Gateway VPC endpoint; interface endpoint via PrivateLink | Private Google Access, Private Service Connect | Private Google Access, Private Service Connect | Gateway endpoints are route-table based and free; PSC is IP-based |
-| Data perimeter | Endpoint policies, SCPs, RCPs, `aws:SourceVpce` | VPC Service Controls perimeter | VPC Service Controls perimeter | VPC SC is one service-level perimeter; AWS composes several policy types |
+| Data perimeter | Endpoint policies, SCPs, RCPs (RCP support for DynamoDB UNVERIFIED as of 2026-10), `aws:SourceVpce` | VPC Service Controls perimeter | VPC Service Controls perimeter | VPC SC is one service-level perimeter; AWS composes several policy types |
 | Encryption at rest | Always on; AWS owned, AWS managed, or customer managed KMS key | Google-managed or CMEK via Cloud KMS | Google-managed or CMEK via Cloud KMS | Revoking the key makes data unreadable on both; check recovery windows |
 | Pricing model | Per request unit or provisioned units plus GB-month | Per node-hour plus storage | Per compute (nodes or processing units) plus storage | DynamoDB on-demand scales to zero; Bigtable and Spanner have a minimum footprint |
 
@@ -256,8 +256,8 @@ The difference you observe is the gap between a table-level budget and a partiti
 ### Lab cost estimate
 
 Each run writes 200,000 items of under 1 KB, so each write costs 1 WRU.
-Two runs come to 400,000 WRU, or about $0.25 at $0.625 per million WRU (AWS pricing; UNVERIFIED as of 2026-10).
-Storage for 400,000 small items is well under 1 GB, and the first 25 GB per month are in the free tier (AWS pricing; UNVERIFIED as of 2026-10).
+Two runs come to 400,000 WRU, or about $0.25 at $0.625 per million WRU (AWS pricing, as of 2026-10).
+Storage for 400,000 small items is well under 1 GB, and the first 25 GB per month are in the free tier (AWS pricing, as of 2026-10).
 Contributor Insights adds a small per-event charge, under $1 for this lab (UNVERIFIED as of 2026-10).
 Budget for under $2 in total, provided you tear everything down the same day.
 
@@ -373,6 +373,8 @@ output "table_name" {
 }
 ```
 
+The `on_demand_throughput` block needs a recent 5.x AWS provider release, and the exact minimum version is UNVERIFIED as of 2026-10.
+
 ```bash
 terraform init
 terraform apply -var "alert_email=you@example.com"
@@ -456,7 +458,7 @@ terraform destroy -var "alert_email=you@example.com" -auto-approve
 aws dynamodb list-backups --table-name ddb-partition-lab --region us-east-1
 ```
 
-PITR history goes away with the table.
+PITR history goes away with the table (UNVERIFIED as of 2026-10; DynamoDB may keep a system backup of a deleted table that had PITR enabled, so check the list-backups output).
 On-demand backups created by hand are kept and billed until you delete them, which is why the second command lists them.
 
 ### Capacity sizing: production order-events table
@@ -472,7 +474,7 @@ A 2.5 KB item rounds up to 3 WCU, so peak demand is 50,000 x 3 = 150,000 WCU/s.
 Step 2, read units.
 A 2.5 KB item fits in one 4 KB read unit, and an eventually consistent read costs 0.5 RCU, so peak demand is 120,000 x 0.5 = 60,000 RCU/s.
 Step 3, quotas.
-150,000 WCU is well above the default 40,000 per-table quota (UNVERIFIED as of 2026-10), so file the increase weeks before launch.
+150,000 WCU is well above the default 40,000 per-table quota (AWS docs, as of 2026-10), so file the increase weeks before launch.
 Step 4, partition floor.
 Writes need at least 150,000 / 1,000 = 150 partitions, and reads need at least 60,000 / 3,000 = 20.
 Storage drives about 300 partitions if partitions hold around 10 GB (UNVERIFIED as of 2026-10), so the aggregate partition ceiling is not the constraint.
@@ -484,7 +486,7 @@ Step 6, on-demand cost.
 Average writes: 20,000 x 3 = 60,000 WRU/s, times 2,592,000 s in a 30-day month, is 155,520 million WRU, which at $0.625 per million is $97,200.
 Average reads: 25,000 RRU/s x 2,592,000 s is 64,800 million RRU, which at $0.125 per million is $8,100.
 Storage: 3,000 GB x $0.25 = $750.
-On-demand total: about $106,000 per month (prices UNVERIFIED as of 2026-10).
+On-demand total: about $106,000 per month (AWS pricing, as of 2026-10).
 Step 7, provisioned cost with auto scaling at a 70 percent target.
 Average provisioned writes are 60,000 / 0.7 = 85,714 WCU, and 85,714 x 730 h x $0.00065 is about $40,700.
 Average provisioned reads are 25,000 / 0.7 = 35,714 RCU, and 35,714 x 730 h x $0.00013 is about $3,400.
@@ -494,7 +496,7 @@ One provisioned WCU-second costs $0.00065 / 3600 = $1.81e-7, and one on-demand w
 Provisioned is cheaper whenever the provisioned capacity you pay for is used more than about 29 percent of the time on average.
 The read prices have the same ratio, so the same rule applies to reads.
 Step 9, global tables.
-A three-Region MREC table bills each write in every Region as a replicated write, so write cost roughly triples (UNVERIFIED as of 2026-10).
+A three-Region MREC table bills each write as a standard write in the origin Region and as a replicated write in each other Region, so write cost roughly triples (AWS pricing, as of 2026-10).
 Replication also moves about 20,000 x 2.5 KB x 2 destinations = 100 MB/s, which is about 259 TB per month.
 At $0.02 per GB for inter-Region transfer that adds about $5,200 per month (UNVERIFIED as of 2026-10).
 
@@ -605,7 +607,7 @@ For the full design, see [[17-Cloud-AI-Engineering/Volume_08_Security_Identity_a
 
 - Choose the billing mode by measured utilization against the roughly 29 percent breakeven computed in the Worked Example, and revisit it each quarter.
 - Reserved capacity discounts provisioned throughput further in exchange for a term commitment (AWS pricing; discount levels UNVERIFIED as of 2026-10).
-- The Standard-IA table class cuts storage price and raises request price, so it pays off for tables dominated by storage and rarely read (UNVERIFIED as of 2026-10).
+- The Standard-IA table class cuts storage price and raises request price, so it pays off for tables dominated by storage and rarely read (AWS pricing, as of 2026-10).
 - Shrink items: short attribute names, compressed blobs, and large payloads moved to S3 behind a pointer, because WCU rounds up per 1 KB.
 - Use sparse GSIs with `KEYS_ONLY` or `INCLUDE` projections, because every projected attribute is written again into every index.
 - Prefer eventually consistent reads when staleness is acceptable: they cost half and are served by any replica.
@@ -669,15 +671,15 @@ A new on-demand table starts at about 4,000 WRU/s.
 On-demand absorbs up to double the previous peak straight away, but faster growth needs partition splits, and splits move data and take minutes (UNVERIFIED numbers as of 2026-10).
 So without pre-provisioning, the launch will throttle hard during exactly the period that matters.
 First, set warm throughput on the table ahead of time to the target, so DynamoDB creates enough partitions in advance, and confirm via DescribeTable that warm throughput has reached its target.
-Second, file a quota increase, because 150,000 WRU is well above the default 40,000 per-table quota (UNVERIFIED as of 2026-10).
+Second, file a quota increase, because 150,000 WRU is well above the default 40,000 per-table quota (AWS docs, as of 2026-10).
 Third, verify key distribution by load-testing with production-shaped keys, because pre-split partitions still cannot rescue a key carrying more than 1,000 WCU.
 Fourth, protect the client side with an adaptive-mode SDK retry policy, a capped number of attempts, and a bounded local queue that sheds non-critical writes first.
 That way a throttling event degrades features instead of collapsing the service through retry amplification.
 Fifth, set `on_demand_throughput` maximums at roughly two times the expected peak, so a client bug cannot generate unbounded spend.
 Sixth, alarm on `WriteThrottleEvents` and on the `ThrottlingReasons`-style detail exposed in current SDK exceptions (UNVERIFIED as of 2026-10), plus a burn-rate alert on the launch SLO.
-Cost check: 150,000 WRU/s sustained for one hour is 540 million WRU, about $340 at $0.625 per million (UNVERIFIED as of 2026-10).
+Cost check: 150,000 WRU/s sustained for one hour is 540 million WRU, about $340 at $0.625 per million (AWS pricing, as of 2026-10).
 That is trivial next to the revenue at risk, so pre-warming is clearly justified.
-The trade-off: warm throughput is billed as a one-time charge, and leftover partitions remain after the launch, which slightly increases per-partition dilution risk for later skewed workloads under provisioned mode.
+The trade-off: warm throughput is billed as a one-time charge (UNVERIFIED as of 2026-10), and leftover partitions remain after the launch, which slightly increases per-partition dilution risk for later skewed workloads under provisioned mode.
 
 #### Follow-up Interviewer Question
 
@@ -696,7 +698,7 @@ I would offer three redesigns, with these trade-offs.
 Option one, home-Region write affinity: each SKU has a home Region stored in the item, all decrements for that SKU are routed there, and the other Regions forward to it.
 This keeps MREC's cheap local reads, but cross-Region decrements pay one inter-Region round trip, and if the home Region fails you need an explicit, fenced transfer of ownership.
 Option two, MRSC: writes synchronously reach at least one other Region before they are acknowledged, so conditional checks run against strongly consistent state.
-That gives an RPO of zero, but every write pays inter-Region latency, you are limited to three-Region configurations, and some API restrictions apply (UNVERIFIED as of 2026-10).
+That gives an RPO of zero, but every write pays inter-Region latency, you are limited to three-Region configurations, and some API restrictions apply (AWS docs, as of 2026-10).
 Option three, reservations: split stock into per-Region allocations that each Region decrements locally, and rebalance asynchronously.
 This keeps local latency and turns the consistency problem into a capacity-planning problem, at the cost of selling out in one Region while another still has stock.
 I would choose option three for flash sales where latency matters, and MRSC for low-volume, high-value items such as tickets with seat numbers.
@@ -771,7 +773,7 @@ But every tenant shares GAC table tokens, and the big tenants become hot keys.
 A tenant at 1 percent of traffic can exceed a 1,000 WCU partition ceiling and throttle itself, and any table-level throttling hits everyone.
 Table-per-tenant gives each tenant its own GAC budget, its own on-demand scaling history, per-tenant CMKs, and per-tenant PITR restores.
 With on-demand billing, an idle table costs only storage, so the unit economics stay flat.
-The limits are the default 2,500 tables per Region per account (UNVERIFIED as of 2026-10), control-plane rate limits on CreateTable, and per-table alarms and Contributor Insights that grow linearly with tenants.
+The limits are the default 2,500 tables per Region per account (AWS docs, as of 2026-10), control-plane rate limits on CreateTable, and per-table alarms and Contributor Insights that grow linearly with tenants.
 Account-per-tenant gives the strongest blast-radius and quota isolation and clean cost allocation, but it brings account-vending, cross-account identity, and fleet-wide schema migration as permanent operational costs.
 My recommendation is a tiered cell model.
 - Put the long tail of small tenants in a set of shared tables, each acting as a cell of a few thousand tenants, using shuffle-sharding-style assignment so a noisy tenant affects one cell.

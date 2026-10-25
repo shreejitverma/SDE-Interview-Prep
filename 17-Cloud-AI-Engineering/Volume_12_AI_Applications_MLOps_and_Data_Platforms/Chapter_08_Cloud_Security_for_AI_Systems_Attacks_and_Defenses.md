@@ -195,7 +195,7 @@ The robust controls are rendering model output without automatic fetches, proxyi
 | Sandbox primitive | Firecracker microVMs (Lambda, Fargate, AgentCore Runtime) | gVisor (GKE Sandbox, Cloud Run first generation) | Hardware virtualization boundary vs user-space kernel boundary |
 | Managed code sandbox | AgentCore Code Interpreter | Agent Platform code execution (status UNVERIFIED) | Verify GA status and network modes before you design around either |
 | Platform naming | Amazon Bedrock, Bedrock AgentCore | Gemini Enterprise Agent Platform, formerly Vertex AI, renamed at Cloud Next in April 2026 ([HPCwire](https://www.hpcwire.com/aiwire/2026/04/23/google-unveils-gemini-enterprise-agent-platform/), as of 2026-10) | Existing Vertex AI API resources continued to work after the rename (UNVERIFIED for whether API service names changed) |
-| Screening audit trail | CloudWatch metrics and guardrail traces; Bedrock invocation logging can contain full prompts | Model Armor audit logs exclude prompt and response payloads unless payload logging is configured | Payload logging is itself a sensitive-data store on both clouds |
+| Screening audit trail | CloudWatch metrics and guardrail traces; Bedrock invocation logging can contain full prompts | Model Armor audit logs exclude prompt and response payloads unless payload logging is configured (UNVERIFIED this session) | Payload logging is itself a sensitive-data store on both clouds |
 
 ## Worked Example: Scanning Tool Outputs and Fencing Credentials
 

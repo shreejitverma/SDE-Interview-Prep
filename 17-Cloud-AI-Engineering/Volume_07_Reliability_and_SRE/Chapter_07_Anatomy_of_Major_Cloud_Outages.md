@@ -83,7 +83,7 @@ The cell-based answer in [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_
 ### Case 2: EBS us-east-1, April 2011 (re-mirroring storm)
 
 Source: [AWS summary of the EBS event](https://aws.amazon.com/message/65648/) (AWS PES, as of 2026-10).
-Details below are reported from the published summary and should be re-verified against it (UNVERIFIED in the batch report).
+Details below were re-verified against the published summary.
 
 - Trigger: a network configuration change during a capacity upgrade shifted traffic onto a lower-capacity network used for replication, isolating many EBS nodes from their replicas.
 - Amplifier: nodes that lost replicas all searched for free capacity to re-mirror simultaneously. The re-mirroring demand exceeded spare capacity and left many volumes stuck, which in turn tied up EBS control plane resources.
@@ -122,7 +122,7 @@ This is the dual of static stability: the data plane stayed up because it did no
 ### Case 5: Google Cloud IAM and authentication, December 2020 (quota system as single point of failure)
 
 Source: [Google Cloud incident 20013](https://status.cloud.google.com/incident/zall/20013) (Google Cloud status, as of 2026-10).
-Mechanism details are recalled from the report and are marked UNVERIFIED in the batch report.
+Mechanism details were re-checked against the report.
 
 - Trigger: an automated quota-management system reduced the capacity allotted to Google's central user-identity service, so authentication requests to that service were rejected.
 - Propagation: services that authenticate users against that backend (consumer and Cloud products) failed. The impact window was under an hour, roughly 47 minutes.
@@ -131,17 +131,17 @@ Mechanism details are recalled from the report and are marked UNVERIFIED in the 
 ### Case 6: Google Cloud networking, June 2019 (the repair path was the failing path)
 
 Source: [Google Cloud incident 19009](https://status.cloud.google.com/incident/cloud-networking/19009) (Google Cloud status, as of 2026-10).
-Details are recalled and marked UNVERIFIED.
+Details are recalled from the report; the recovery-obstacle claim is marked UNVERIFIED.
 
 - Trigger: a configuration change intended for a small number of servers in one region was applied to a larger set across several neighboring regions, descheduling network control plane jobs.
 - Effect: network capacity dropped and egress traffic congested.
-- Recovery obstacle: the congestion also degraded the network that engineers needed to reach the systems they were repairing, which lengthened the event to several hours.
+- Recovery obstacle: UNVERIFIED the congestion also degraded the network that engineers needed to reach the systems they were repairing, which lengthened the event to several hours.
 - Lesson: the repair path must have its own bandwidth reservation and its own path, and "who can fix it when the network is down" is a design requirement.
 
 ### Case 7: DynamoDB us-east-1, October 2025 (stale actor, then congestive collapse)
 
 Source: [AWS summary of the DynamoDB event](https://aws.amazon.com/message/101925/) (AWS PES, as of 2026-10).
-Timestamps and component names are recalled from the summary and marked UNVERIFIED for re-check.
+Timestamps and component names were re-checked against the summary.
 
 - The DNS automation for DynamoDB's regional endpoint has two roles. A DNS Planner produces numbered plans of load balancer IP sets, and several independent DNS Enactors (one per AZ) apply plans to the DNS service.
 - Trigger: a latent race condition. One Enactor was delayed while applying an older plan. A second Enactor applied a newer plan and then ran cleanup of older plans. The delayed Enactor then wrote its older plan over the newer one, passing a freshness check it had performed before the delay. The cleanup then deleted that now-live older plan, which removed all IP addresses from the regional endpoint record.
@@ -157,7 +157,7 @@ The runnable replay in the Worked Example reproduces this class.
 ### Case 8: Google Cloud Service Control, June 2025 (global config row, no feature flag, herd on restart)
 
 Source: [Google Cloud incident report, June 12 2025](https://status.cloud.google.com/incidents/ow5i3PPK96RduMcb1SsW) (Google Cloud status, as of 2026-10).
-Details are recalled from the report and marked UNVERIFIED for re-check.
+Details were re-checked against the report.
 
 - Service Control is the component that checks API requests against policy (authorization, quota, and similar) for Google Cloud APIs.
 - A new quota-policy check had been rolled out weeks earlier without a feature flag, in a code path that no production data had yet exercised.
@@ -202,7 +202,7 @@ Health checks that test only liveness cause automated failover to make things wo
 #### Control-plane scale as a latent coupling
 
 Physalia (Brooker et al., NSDI 2020) is the published design of how EBS's control plane was re-architected to bound the blast radius of configuration-state failures to small cells, motivated by exactly the Case 2 class of shared-control-plane events.
-Read it with [[17-Cloud-AI-Engineering/Volume_13_Seminal_Papers_and_Case_Studies/Chapter_03_Physalia_EBS_Control_Plane|Physalia: Millions of Distributed Databases (2020 NSDI)]] and [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_04_Control_Plane_vs_Data_Plane_Separation|Control Plane vs Data Plane Separation]].
+Read it with [[17-Cloud-AI-Engineering/Volume_13_Seminal_Papers_and_Case_Studies/Chapter_03_Physalia_EBS_Control_Plane|Physalia: Millions of Tiny Databases (2020 NSDI)]] and [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_04_Control_Plane_vs_Data_Plane_Separation|Control Plane vs Data Plane Separation]].
 
 ## Numbers to Know
 
@@ -211,7 +211,7 @@ Re-read the linked source before quoting any of them externally.
 
 | Item | Value | Source |
 |---|---|---|
-| S3 us-east-1 disruption duration (Feb 2017) | Roughly 4 hours 15 minutes, from about 09:37 to about 13:54 PST | (AWS PES, as of 2026-10) |
+| S3 us-east-1 disruption duration (Feb 2017) | Roughly 4 hours 17 minutes, from about 09:37 to about 13:54 PST | (AWS PES, as of 2026-10) |
 | Kinesis us-east-1 event duration (Nov 2020) | About 17 hours, from about 05:15 to about 22:23 PST | (AWS PES, as of 2026-10) |
 | us-east-1 network congestion duration (Dec 2021) | Roughly 7 hours, from about 07:30 to about 14:22 PST | (AWS PES, as of 2026-10) |
 | DynamoDB DNS empty-record window (Oct 2025) | About 2 hours 37 minutes, 23:48 PDT to 02:25 PDT | (AWS PES, as of 2026-10) |

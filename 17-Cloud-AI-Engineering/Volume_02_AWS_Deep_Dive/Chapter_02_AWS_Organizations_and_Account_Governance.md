@@ -146,7 +146,7 @@ Treat the extra expressiveness as a risk to manage, not only as a feature.
 
 Character counting differs by write path.
 The console strips whitespace between JSON elements before counting; SDK and CLI saves count what you send ([AWS Organizations quotas](https://docs.aws.amazon.com/en_us/organizations/latest/userguide/orgs_reference_limits.html), as of 2026-10).
-For RCPs, all characters count ([AWS RCP docs](https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_rcps.html), as of 2026-10).
+For RCPs, all characters count (UNVERIFIED; the quotas page whitespace note is not RCP-specific) ([AWS RCP docs](https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_rcps.html), as of 2026-10).
 A policy that saves in the console can therefore fail in a pipeline.
 Always minify in CI; Terraform's `jsonencode` does this for you.
 
@@ -233,7 +233,7 @@ A share bundles three things:
 Once sharing with Organizations is enabled:
 - RAM creates the `AWSServiceRoleForResourceAccessManager` SLR;
 - in-org shares skip the invitation handshake;
-- by default, in-org sharing restricts consumers to the same organization ([AWS RAM docs](https://docs.aws.amazon.com/ram/latest/userguide/getting-started-sharing.html), as of 2026-10).
+- by default, in-org sharing restricts consumers to the same organization (default behavior UNVERIFIED; the API default for external principals may be permissive) ([AWS RAM docs](https://docs.aws.amazon.com/ram/latest/userguide/getting-started-sharing.html), as of 2026-10).
 
 Sharing a resource does not change the owner-side permissions or quotas that apply to it ([AWS RAM docs](https://docs.aws.amazon.com/ram/latest/userguide/getting-started-sharing.html), as of 2026-10).
 For a shared subnet, this means IP space, route tables, and quota pressure stay with the owning network account.
@@ -283,7 +283,7 @@ Two primary sources sit behind every SCP and RCP linting tool you should use.
 | SCPs attached per root, OU, or account | 10 (was 5 before 2026-05) | (AWS What's New 2026-05, as of 2026-10) |
 | Max SCP size | 10,240 characters (was 5,120) | (AWS What's New 2026-05, as of 2026-10) |
 | RCPs attached per node / max RCP size | 5 / 5,120 characters | (AWS Organizations docs, as of 2026-10) |
-| SCPs definable per org / RCPs per org | 10,000 / 1,000 | (AWS Organizations quotas, as of 2026-10) |
+| SCPs definable per org / RCPs per org | 10,000 / 2,000 | (AWS Organizations quotas, as of 2026-10) |
 | Declarative, tag, backup policy max size | 10,000 characters | (AWS Organizations quotas, as of 2026-10) |
 | AI services opt-out policy max size | 2,500 characters | (AWS Organizations quotas, as of 2026-10) |
 | Worst-case SCP text on one request path | 7 nodes x 10 x 10,240 = 716,800 chars | (derived from above, as of 2026-10) |
@@ -678,7 +678,7 @@ Assume 400 accounts x 4 active Regions = 1,600 account-Regions.
    Canary by moving test accounts into a canary child OU that mirrors the target path, as in the Worked Example.
 4. **Pipeline-only size failures.**
    Pretty-printed JSON passes in the console, which strips whitespace, and fails through SDK or CLI, which counts it (AWS Organizations quotas, as of 2026-10).
-   RCPs count every character.
+   RCPs count every character (UNVERIFIED).
 5. **Workloads in the management account.**
    SCPs and RCPs do not apply there.
    Any workload or long-lived credential in that account sits outside every preventive control you have built.
@@ -689,7 +689,7 @@ Assume 400 accounts x 4 active Regions = 1,600 account-Regions.
    Gate the trigger APIs.
 7. **Org-ID coupled policies during account moves.**
    Resource policies conditioned on `aws:PrincipalOrgID` or `aws:PrincipalOrgPaths` start denying the moment an account changes organization or OU.
-   In-org RAM shares restrict access to consumers in the same organization by default (AWS RAM docs, as of 2026-10).
+   In-org RAM shares restrict access to consumers in the same organization by default (default behavior UNVERIFIED; AWS RAM docs, as of 2026-10).
    Direct transfers (2025-11) remove the standalone phase, but the new organization's SCPs and RCPs apply on arrival ([AWS re:Post](https://repost.aws/knowledge-center/organizations-move-accounts), as of 2026-10).
    AWS's recommended pattern uses RAM resource share retention with temporary bridge shares ([AWS Cloud Operations blog](https://aws.amazon.com/blogs/mt/transfer-aws-accounts-between-aws-organizations-while-preserving-aws-lake-formation-permissions/), as of 2026-10).
 8. **Config quota exhaustion during a compliance push.**

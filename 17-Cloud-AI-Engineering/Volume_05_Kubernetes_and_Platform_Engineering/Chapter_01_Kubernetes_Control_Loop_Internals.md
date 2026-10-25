@@ -65,7 +65,7 @@ The broader platform model is in [[04-System-Design/07-Infrastructure-and-Orches
 
 ### The storage layer: etcd revisions are the clock
 
-etcd keeps one monotonically increasing 64-bit revision for the whole keyspace, assigned by the Raft leader as each write transaction is applied (see [[08-Distinguished-Engineering/02-Distributed-Systems-Internals/Raft-Consensus|Raft Consensus]]).
+etcd keeps one monotonically increasing 64-bit revision for the whole keyspace, assigned deterministically on every member as each committed write transaction is applied in Raft log order (etcd data model docs, as of 2026-10; see [[08-Distinguished-Engineering/02-Distributed-Systems-Internals/Raft-Consensus|Raft Consensus]]).
 Each key stores a `create_revision` and a `mod_revision`.
 The apiserver surfaces `mod_revision` as the object's `metadata.resourceVersion`, and it surfaces the store's current revision as the `resourceVersion` of a LIST response.
 Therefore a LIST's resourceVersion means "this snapshot is consistent as of revision R", and a WATCH from R means "send me every change with revision greater than R".
@@ -125,9 +125,9 @@ The mechanism is that an unset-resourceVersion LIST is served from the watch cac
 The apiserver fetches the current etcd revision with a cheap call, then waits until the cache has seen that revision.
 To make an idle cache advance, a background goroutine sends etcd `WatchProgressRequest` messages, repeating about every 100 ms while there are waiting reads (KEP-2340, as of 2026-10).
 It requires etcd v3.4.31+ or v3.5.13+, and with an older etcd the apiserver detects this and falls back to quorum reads (Kubernetes website docs commit for the beta, as of 2026-10).
-The KEP reports the cache becoming fresh within its 3 s wait timeout in 99.999% of observed cases (KEP-2340, as of 2026-10).
+The KEP reports the cache becoming fresh within its 3 s wait timeout in 99.999% of observed cases (KEP-2340, UNVERIFIED).
 The [Kubernetes 1.31 blog post](https://kubernetes.io/blog/2024/08/15/consistent-read-from-cache-beta/) covers the user-visible effect.
-A GitHub issue ([#129931](https://github.com/kubernetes/kubernetes/issues/129931)) tracks create and update latency increases that appeared in some clusters with consistent reads enabled, so treat the feature as a load shift, not free.
+A GitHub issue ([#129931](https://github.com/kubernetes/kubernetes/issues/129931), UNVERIFIED) tracks create and update latency increases that appeared in some clusters with consistent reads enabled, so treat the feature as a load shift, not free.
 
 ### Client side: Reflector, DeltaFIFO, Indexer
 
@@ -211,7 +211,7 @@ Rows marked UNVERIFIED were not re-checked against primary sources in this autho
 | Consistent reads from cache (KEP-2340) | Alpha 1.28, beta 1.31, stable 1.34 | [KEP-2340](https://www.kubernetes.dev/resources/keps/2340/) (as of 2026-10) |
 | Minimum etcd for cache-consistent reads | v3.4.31+ or v3.5.13+, else automatic fallback to quorum reads | Kubernetes website beta docs commit (as of 2026-10) |
 | Progress request cadence while reads wait | Every 100 ms | KEP-2340 (as of 2026-10) |
-| Cache freshness within 3 s wait | 99.999% of observed cases | KEP-2340 (as of 2026-10) |
+| Cache freshness within 3 s wait | 99.999% of observed cases | KEP-2340, UNVERIFIED |
 | Watch history gone | HTTP 410 or in-stream ERROR with code 410, client must relist | [API concepts](https://github.com/kubernetes/website/blob/main/content/en/docs/reference/using-api/api-concepts.md) (as of 2026-10) |
 | resourceVersion semantics | Opaque string, equality and pass-through only | API concepts (as of 2026-10) |
 | Default controller rate limiter | Per-item 5 ms doubling to 1000 s, plus bucket 10 qps burst 100 | client-go workqueue, UNVERIFIED |
@@ -240,7 +240,7 @@ Statements below not otherwise marked are UNVERIFIED against current provider do
 | Flags for apiserver, controller manager, scheduler | Not exposed | Not exposed | You cannot raise `--concurrent-*-syncs` or APF settings for built-in controllers; only your own controllers are tunable |
 | Custom controller leader election | Lease in any namespace through the standard API | Same | Identical semantics; RBAC for `coordination.k8s.io/leases` is the only prerequisite |
 | Built-in controller visibility | Control plane logs (api, audit, authenticator, controllerManager, scheduler) can be sent to CloudWatch Logs; apiserver `/metrics` readable with RBAC | Control plane metrics and logs in Cloud Monitoring and Cloud Logging | Both let you see `workqueue_*` and `apiserver_*` series for the control plane, with different retention and cost |
-| Identity from controllers to cloud APIs | IRSA or EKS Pod Identity | GKE Workload Identity | Controllers that reconcile cloud resources are subject to cloud API rate limits as well as Kubernetes limits |
+| Identity from controllers to cloud APIs | IRSA or EKS Pod Identity | Workload Identity Federation for GKE (Google Cloud docs, as of 2026-10) | Controllers that reconcile cloud resources are subject to cloud API rate limits as well as Kubernetes limits |
 | Upgrade behavior | Control plane upgraded by AWS on your trigger; version skew with node groups | Release channels with automatic control plane upgrades | An apiserver upgrade restarts watches cluster-wide and causes a relist wave from every informer |
 | Price of the loop | Per-cluster hourly fee plus nodes | Per-cluster hourly fee plus nodes | Control plane fee is flat; the cost of a bad controller shows up as API throttling and node-side cloud API spend |
 
@@ -685,7 +685,7 @@ Use `resourceNames` for Lease access in leader election so a compromised control
 Status writes need the `/status` subresource verb, which can be granted separately from spec writes.
 
 **Cloud identity.**
-Controllers that reconcile cloud resources should use per-controller workload identity (IRSA or EKS Pod Identity on AWS, GKE Workload Identity on GCP) with permissions scoped by resource tags or labels derived from the owning object's UID, so one controller bug cannot delete resources it did not create.
+Controllers that reconcile cloud resources should use per-controller workload identity (IRSA or EKS Pod Identity on AWS, Workload Identity Federation for GKE on GCP) with permissions scoped by resource tags or labels derived from the owning object's UID, so one controller bug cannot delete resources it did not create.
 See [[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter/Chapter_02_Workload_Identity_Federation|Workload Identity Federation]].
 
 **Encryption at rest.**
