@@ -32,7 +32,7 @@ labs/
 ## The lab contract
 
 1. A lab directory holds the scripts under test and at least one `.bats` file that tests them; `tools/check_shell_labs.py` fails a lab without a test.
-2. Every shell file declares its dialect with a shebang, or with a `# shellcheck shell=bash` directive when it is only sourced.
+2. Every shell file declares its dialect with a shebang, or with a `# shellcheck shell=bash` directive in its leading comment block when it is only sourced; the gate reads the shebang first, then the directive, then the suffix.
 3. A file with a shebang is executable in git (`git update-index --chmod=+x FILE`).
 4. ShellCheck and `shfmt -d` are clean; a `# shellcheck disable=SCnnnn` carries a reason on the same line.
 5. Tests run the code under test through `run_lab` or `run_lab_c`, never by calling `sh` or `bash` directly, so the matrix can swap the shell.
@@ -84,6 +84,6 @@ On a host where `sh` on PATH is not `/bin/sh` (a Nix or Homebrew setup), the mat
 
 ## Gotchas
 
-- ShellCheck does not support zsh, so `.zsh` files get `shfmt` and `zsh -n` only; test their behavior in bats like any other lab.
+- ShellCheck does not support zsh, so zsh files (a zsh shebang, even on a `.sh` file, or a `.zsh` suffix) get `shfmt` and `zsh -n` only; test their behavior in bats like any other lab.
 - `zsh` and `zsh --emulate sh` are different shells for portability purposes: native zsh does not field split unquoted parameters.
 - bats itself runs under bash; only the code passed to `run_lab` runs under the shell under test.
