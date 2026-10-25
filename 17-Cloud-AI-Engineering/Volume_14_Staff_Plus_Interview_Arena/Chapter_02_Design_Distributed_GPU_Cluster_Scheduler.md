@@ -2,7 +2,7 @@
 type: playbook
 track: [cloud-ai, ai-eng, sde, distinguished]
 level:
-status: draft
+status: solid
 last_reviewed:
 sources: 
   - "https://research.google/pubs/large-scale-cluster-management-at-google-with-borg/"
@@ -21,6 +21,28 @@ sources:
   - "https://github.com/kubernetes-sigs/kueue/blob/main/keps/2724-topology-aware-scheduling/README.md"
   - "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-instance-topology-examples.html"
   - "https://docs.aws.amazon.com/sagemaker/latest/dg/sagemaker-hyperpod-eks-operate-console-ui-governance-tasks-gang-scheduling.html"
+  - "https://docs.aws.amazon.com/sagemaker/latest/dg/sagemaker-hyperpod-eks-operate-console-ui-governance-tasks-scheduling.html"
+  - "https://docs.aws.amazon.com/sagemaker/latest/dg/sagemaker-hyperpod-eks-operate-console-ui-governance-setup-task-governance.html"
+  - "https://www.kubernetes.dev/resources/keps/4671/"
+  - "https://kubernetes.io/blog/2026/09/08/kubernetes-v1-37-advancing-workload-aware-scheduling/"
+  - "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/spot-instance-termination-notices.html"
+  - "https://docs.cloud.google.com/compute/docs/instances/spot"
+  - "https://docs.cloud.google.com/compute/docs/release-notes"
+  - "https://docs.cloud.google.com/tpu/docs/v5p"
+  - "https://docs.cloud.google.com/tpu/docs/tpu7x"
+  - "https://status.openai.com/incidents/ctrsv3lwd797/write-up"
+  - "https://github.com/kubernetes-sigs/kueue/issues/16666"
+  - "https://github.com/kubernetes-sigs/kueue/pull/16738"
+  - "https://aws.amazon.com/blogs/machine-learning/secure-short-term-gpu-capacity-for-ml-workloads-with-ec2-capacity-blocks-for-ml-and-sagemaker-training-plans/"
+  - "https://www.theregister.com/2026/01/05/aws_price_increase/"
+  - "https://aws.amazon.com/ec2/instance-types/p5/"
+  - "https://cloud.google.com/products/dws/pricing"
+  - "https://aws.amazon.com/ec2/ultraservers/"
+  - "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-instance-topology-prerequisites.html"
+  - "https://docs.aws.amazon.com/AWSEC2/latest/APIReference/API_DescribeInstanceTopology.html"
+  - "https://docs.aws.amazon.com/ec2/latest/instancetypes/ec2-instance-quotas.html"
+  - "https://docs.cloud.google.com/ai-hypercomputer/docs/workloads/schedule-gke-workloads-tas"
+  - "https://github.com/kubernetes-sigs/kueue/releases/tag/v0.14.0"
 ---
 
 # System Design: Distributed GPU Cluster Scheduler
@@ -70,7 +92,8 @@ NCCL or JAX initialization blocks until every rank joins, so both jobs sit forev
 That is a textbook deadlock: mutual exclusion on nodes, hold-and-wait by partially placed gangs, no preemption, and circular wait.
 There are three standard fixes, and each attacks a different Coffman condition.
 Coscheduling plugins (the scheduler-plugins PodGroup, Volcano) hold pods at a Permit barrier until minMember pods can be bound, which removes hold-and-wait at the binder.
-Kubernetes 1.35 added native gang scheduling as an alpha feature (KEP-4671), built on a new core Workload API that pods reference ([ScaleOps 1.35 overview](https://scaleops.com/blog/kubernetes-1-35-release-overview/), as of 2026-10); its graduation status in later minor releases is UNVERIFIED.
+Kubernetes 1.35 added native gang scheduling as an alpha feature (KEP-4671), built on a new core Workload API that pods reference ([ScaleOps 1.35 overview](https://scaleops.com/blog/kubernetes-1-35-release-overview/), as of 2026-10).
+In v1.37 the Workload and PodGroup APIs and gang scheduling graduated to beta (`scheduling.k8s.io/v1beta1`), but the `GenericWorkload` feature gate is still disabled by default ([Kubernetes v1.37 blog](https://kubernetes.io/blog/2026/09/08/kubernetes-v1-37-advancing-workload-aware-scheduling/), as of 2026-10); KEP-4671 targets stable in v1.38 ([KEP-4671](https://www.kubernetes.dev/resources/keps/4671/), as of 2026-10).
 Queue-level admission (Kueue, Slurm) keeps the job suspended until quota and placement are reserved for the whole gang, so no pod exists until the gang fits.
 The third approach is the one hyperscale fleets use, because it puts quota, fairness, and topology into a single decision.
 
@@ -88,16 +111,16 @@ BestEffortFIFO lets smaller workloads go around a head that does not fit, which 
 
 Kueue's Topology-Aware Scheduling (TAS) is beta and enabled by default since Kueue v0.14 ([Kueue docs](https://kueue.sigs.k8s.io/docs/concepts/topology_aware_scheduling/), as of 2026-10).
 A Topology object lists node labels from coarsest to finest, for example block, then sub-block or rack, then hostname, and a ResourceFlavor points at it.
-On GKE the labels are `cloud.google.com/gce-topology-block`, `cloud.google.com/gce-topology-subblock`, and `cloud.google.com/gce-topology-host` ([LWS TAS example](https://lws.sigs.k8s.io/docs/examples/tas/), as of 2026-10).
+On GKE the labels are `cloud.google.com/gce-topology-block`, `cloud.google.com/gce-topology-subblock`, and `cloud.google.com/gce-topology-host` ([LWS TAS example](https://lws.sigs.k8s.io/docs/examples/tas/), [Google Cloud TAS guide](https://docs.cloud.google.com/ai-hypercomputer/docs/workloads/schedule-gke-workloads-tas), as of 2026-10).
 On AWS the raw input is the EC2 `DescribeInstanceTopology` API, which returns an ordered `NetworkNodes` list per instance, plus `CapacityBlockId` and `ZoneId` ([boto3 docs](https://docs.aws.amazon.com/boto3/latest/reference/services/ec2/client/describe_instance_topology.html), as of 2026-10).
-HyperPod surfaces this as node labels of the form `topology.k8s.aws/network-node-layer-N` (UNVERIFIED label spelling).
+HyperPod surfaces this as node labels `topology.k8s.aws/network-node-layer-1` through `-4`, plus `topology.k8s.aws/ultraserver-id` ([AWS HyperPod TAS docs](https://docs.aws.amazon.com/sagemaker/latest/dg/sagemaker-hyperpod-eks-operate-console-ui-governance-tasks-scheduling.html), as of 2026-10).
 A workload states its constraint per PodSet with `kueue.x-k8s.io/podset-required-topology` (hard) or `kueue.x-k8s.io/podset-preferred-topology` (soft: Kueue climbs one level at a time when the preferred level does not fit) ([AWS HyperPod TAS docs](https://docs.aws.amazon.com/sagemaker/latest/dg/sagemaker-hyperpod-eks-operate-console-ui-governance-tasks-scheduling.html), as of 2026-10).
 The search runs over a capacity-annotated tree.
 Every leaf (host) records free accelerators after subtracting both TAS-admitted pods and non-TAS pods such as DaemonSets, and every inner node sums its children.
 For a required level L, the algorithm looks for domains at L whose free capacity, counted in whole pod slots, is at least the PodSet count.
-Among those it prefers the tightest fit, which leaves big holes untouched for later big gangs; profile names and tie-breaking have changed between releases (UNVERIFIED for any given version).
+Among those it prefers the tightest fit, which leaves big holes untouched for later big gangs; profile names and tie-breaking have changed between releases, and since v0.15 the default `TASProfileMixed` uses BestFit for required and preferred requests and LeastFreeCapacity for unconstrained ones ([KEP-2724](https://github.com/kubernetes-sigs/kueue/blob/main/keps/2724-topology-aware-scheduling/README.md), as of 2026-10).
 The result is written into the Workload's admission as a topology assignment: a list of domains with pod counts.
-Pods are created behind a scheduling gate, then ungated with node selectors that pin them to the assigned domains, so kube-scheduler only binds inside a pre-approved set (gate name and pinning details UNVERIFIED for current release).
+Pods are created behind a scheduling gate, then ungated with node selectors that pin them to the assigned domains, so kube-scheduler only binds inside a pre-approved set; the gate is `kueue.x-k8s.io/topology`, and a TopologyUngater reconciler removes it once the nodeSelectors are injected ([KEP-2724](https://github.com/kubernetes-sigs/kueue/blob/main/keps/2724-topology-aware-scheduling/README.md), as of 2026-10).
 When a node fails, the beta TASFailedNodeReplacement feature, on by default, tries to find a replacement node for the affected workload in place, instead of evicting and re-queueing the whole gang ([Kueue docs](https://kueue.sigs.k8s.io/docs/concepts/topology_aware_scheduling/), as of 2026-10).
 
 ### The mechanism getting-started guides skip: schedulable capacity and fragmentation
@@ -134,18 +157,18 @@ Tiresias (Gu et al., NSDI 2019) shows that when job durations are unknown, least
 
 Preempting a gang destroys all work done since its last durable checkpoint, multiplied by its size, and also charges restart time (image pull, weight and optimizer load, NCCL rendezvous) to the fleet.
 Victim cost is therefore lost_gpu_hours = size_gpus x (t_now - t_last_checkpoint) + size_gpus x t_restart.
-Kueue's built-in ordering puts lower priority first, then, among equals, more recently admitted workloads first, which approximates "least work lost" only when every job checkpoints at the same cadence.
+Kueue's built-in classic ordering prefers workloads from ClusterQueues that are borrowing in the cohort, then lower priority, then more recently admitted workloads ([Kueue preemption docs](https://kueue.sigs.k8s.io/docs/concepts/preemption/), as of 2026-10), which approximates "least work lost" only when every job checkpoints at the same cadence.
 A production design exports t_last_checkpoint (for example as a workload annotation written by the trainer) and uses it in a custom ordering or an external controller.
 The other lever is cooperative preemption: send SIGTERM, let the trainer write an emergency checkpoint within `terminationGracePeriodSeconds`, then kill.
 For a model whose sharded checkpoint flushes to local NVMe in 30 to 60 seconds and drains to object storage asynchronously, a 120-second grace period turns lost work into near zero.
-That grace period is the same order of magnitude as the EC2 Spot two-minute notice, and much longer than the GCP Spot 30-second notice (UNVERIFIED in this session, see [[17-Cloud-AI-Engineering/Volume_09_FinOps_and_Cloud_Economics/Chapter_03_Spot_Economics_and_Interruption_Handling|Spot Economics]]).
+That grace period is the same order of magnitude as the EC2 Spot two-minute notice ([AWS docs](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/spot-instance-termination-notices.html), as of 2026-10) and the optional 120-second preemption notice for Google Cloud Spot VMs (GA on 2026-09-30), and much longer than a GCP Spot VM's default, which gives no dedicated notice and only a best-effort shutdown period of up to 30 seconds ([Google Cloud Spot docs](https://docs.cloud.google.com/compute/docs/instances/spot), [release notes](https://docs.cloud.google.com/compute/docs/release-notes), as of 2026-10; see [[17-Cloud-AI-Engineering/Volume_09_FinOps_and_Cloud_Economics/Chapter_03_Spot_Economics_and_Interruption_Handling|Spot Economics]]).
 Preemption also needs damping.
 Without a minimum runtime before a workload can be preempted, and without hysteresis between the share that triggers preemption and the share admission aims for, two cohorts can ping-pong a workload forever.
 Kueue issue #16666 documents exactly this, an infinite preemption and readmission loop with fair sharing and hierarchical cohorts, caused by the preemption ordering disagreeing with the admission ordering ([kueue#16666](https://github.com/kubernetes-sigs/kueue/issues/16666), as of 2026-10).
 
 ### Failure domains and why the scheduler owns reliability
 
-Meta's Llama 3 report gives the best public failure-rate data: 466 job interruptions in a 54-day pre-training window on a 16,384-H100 job, 419 of them unexpected, with GPU and HBM faults the leading causes ([Llama 3 paper, arXiv 2407.21783](https://arxiv.org/abs/2407.21783), 2024; counts UNVERIFIED in this session).
+Meta's Llama 3 report gives the best public failure-rate data: 466 job interruptions in a 54-day pre-training window on a 16,384-H100 job, 419 of them unexpected, with GPU and HBM faults the leading causes ([Llama 3 paper, arXiv 2407.21783](https://arxiv.org/abs/2407.21783), 2024, section 3.3.4; about 78 percent of unexpected interruptions were confirmed or suspected hardware issues).
 That works out to about 4.7e-4 unexpected interruptions per GPU-day, which is the planning number used in the worked example.
 ByteDance's MegaScale (Jiang et al., NSDI 2024) shows that a single straggler or flapping NIC gates the entire collective, so detecting and evicting stragglers is a scheduling feature, not a monitoring nicety.
 Google's TPU v4 paper (Jouppi et al., ISCA 2023) explains why optical circuit switches between 64-chip cubes raise slice availability: a slice can be assembled from any healthy cubes rather than needing a contiguous physical block.
@@ -156,17 +179,17 @@ Borg (Verma et al., EuroSys 2015) contributed the priority bands, quota-as-admis
 
 | Quantity | Value | Source |
 | --- | --- | --- |
-| p5.48xlarge accelerators | 8 x H100, 640 GB HBM3 total, 900 GB/s NVSwitch peer-to-peer | ([Vantage, citing AWS](https://www.vantage.sh/blog/aws-ec2-capacity-blocks-gpu-shortage-cost), as of 2026-10) |
-| p5.48xlarge scale-out network | 3,200 Gbps EFAv2, GPUDirect RDMA | ([Vantage, citing AWS](https://www.vantage.sh/blog/aws-ec2-capacity-blocks-gpu-shortage-cost), as of 2026-10) |
+| p5.48xlarge accelerators | 8 x H100, 640 GB HBM3 total, 900 GB/s NVSwitch peer-to-peer | ([AWS P5 page](https://aws.amazon.com/ec2/instance-types/p5/), as of 2026-10) |
+| p5.48xlarge scale-out network | 3,200 Gbps EFAv2, GPUDirect RDMA | ([AWS P5 page](https://aws.amazon.com/ec2/instance-types/p5/), as of 2026-10) |
 | p5.48xlarge Capacity Block vs On-Demand, us-east-1 | 34.608 USD/hr vs 55.04 USD/hr | ([AWS ML Blog](https://aws.amazon.com/blogs/machine-learning/secure-short-term-gpu-capacity-for-ml-workloads-with-ec2-capacity-blocks-for-ml-and-sagemaker-training-plans/), as of 2026-05) |
 | Capacity Block price change, Jan 2026 | p5e.48xlarge 34.61 to 39.80 USD/hr; p5en.48xlarge 36.18 to 41.61 USD/hr | ([The Register](https://www.theregister.com/2026/01/05/aws_price_increase/), as of 2026-01) |
 | DWS Flex-start billing | Billed on usage like on-demand; Flex-start and Calendar prices scheduled to change November 2026 | ([Google Cloud DWS pricing](https://cloud.google.com/products/dws/pricing), as of 2026-10) |
 | Kueue TAS status | Beta, on by default since v0.14; TASFailedNodeReplacement beta, on by default | ([Kueue docs](https://kueue.sigs.k8s.io/docs/concepts/topology_aware_scheduling/), as of 2026-10) |
-| HyperPod task governance add-on | v1.6.0-eksbuild.1 installs Kueue v0.19.2 | ([AWS docs](https://docs.aws.amazon.com/sagemaker/latest/dg/sagemaker-hyperpod-eks-operate-console-ui-governance-setup-task-governance.html), as of 2026-10) |
-| Native Kubernetes gang scheduling | Alpha in v1.35 (KEP-4671) | ([Palark](https://palark.com/blog/kubernetes-1-35-release-features/), as of 2026-10) |
-| Unexpected interruptions, 16k H100 job | 419 in 54 days, about 4.7e-4 per GPU-day | ([Llama 3 paper](https://arxiv.org/abs/2407.21783), 2024, UNVERIFIED in session) |
-| Spot interruption notice | EC2 2 minutes; GCP Spot VMs 30 seconds | (AWS and Google Cloud docs, UNVERIFIED in session) |
-| TPU largest single-pod slices | v5p 8,960 chips; Ironwood (TPU7x) 9,216 chips; Trillium 256 chips per pod | (Google Cloud docs, UNVERIFIED in session) |
+| HyperPod task governance add-on | v1.6.0-eksbuild.1 and v1.6.1-eksbuild.1 install Kueue v0.19.2 | ([AWS docs](https://docs.aws.amazon.com/sagemaker/latest/dg/sagemaker-hyperpod-eks-operate-console-ui-governance-setup-task-governance.html), as of 2026-10) |
+| Native Kubernetes gang scheduling | Alpha in v1.35 (KEP-4671); beta in v1.37 with the `GenericWorkload` gate off by default | ([Palark](https://palark.com/blog/kubernetes-1-35-release-features/), [Kubernetes v1.37 blog](https://kubernetes.io/blog/2026/09/08/kubernetes-v1-37-advancing-workload-aware-scheduling/), as of 2026-10) |
+| Unexpected interruptions, 16k H100 job | 419 in 54 days (466 total, 47 planned), about 4.7e-4 per GPU-day | ([Llama 3 paper](https://arxiv.org/abs/2407.21783), 2024, section 3.3.4) |
+| Spot interruption notice | EC2 2 minutes; GCP Spot VMs default 0 s notice plus best-effort shutdown of up to 30 s, or an optional 120 s notice (GA 2026-09-30) | ([AWS docs](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/spot-instance-termination-notices.html), [Google Cloud Spot docs](https://docs.cloud.google.com/compute/docs/instances/spot), as of 2026-10) |
+| TPU pod sizes | v5p 8,960 chips per pod, largest schedulable job 6,144 chips (96 cubes); Ironwood (TPU7x) 9,216 chips per pod, slices above 2,048 chips via account team; Trillium (v6e) 256 chips per pod | ([v5p docs](https://docs.cloud.google.com/tpu/docs/v5p), [TPU7x docs](https://docs.cloud.google.com/tpu/docs/tpu7x), as of 2026-10) |
 | Derived: 512 x p5.48xlarge (4,096 H100) on Capacity Blocks | 17,719 USD/hr, about 12.9M USD per 730-hr month | (computed from AWS ML Blog price, as of 2026-05) |
 | Derived: cost of 1 percent idle on that fleet | about 129k USD per month | (computed) |
 
@@ -178,10 +201,10 @@ Borg (Verma et al., EuroSys 2015) contributed the priority bands, quota-as-admis
 | Gang semantics | HyperPod gang scheduling uses Kueue `waitForPodsReady`, which evicts and requeues if pods are not all ready before the timeout ([AWS docs](https://docs.aws.amazon.com/sagemaker/latest/dg/sagemaker-hyperpod-eks-operate-console-ui-governance-tasks-gang-scheduling.html), as of 2026-10) | Same Kueue mechanism; JobSet plus ProvisioningRequest for atomic node acquisition | `waitForPodsReady` is a runtime safety net; quota-level admission is the real gang barrier on both clouds |
 | Topology discovery | `DescribeInstanceTopology` returns ordered NetworkNodes per instance, and is eventually consistent right after launch ([boto3](https://docs.aws.amazon.com/boto3/latest/reference/services/ec2/client/describe_instance_topology.html)); `DescribeCapacityReservationTopology` ([AWS docs](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-instance-topology-examples.html)) | Node labels for block, sub-block, and host on RDMA-capable GKE nodes ([llm-d GKE guide](https://llm-d.ai/docs/dev/infrastructure/providers/gke)) | On AWS, an agent has to poll and label nodes; on GKE, labels arrive with the node, so there is no labeling race |
 | Topology placement | Kueue TAS in HyperPod, on by default; documented to be disabled if Karpenter provisions nodes ([AWS docs](https://docs.aws.amazon.com/sagemaker/latest/dg/sagemaker-hyperpod-eks-operate-console-ui-governance-tasks-scheduling.html)) | Kueue TAS; for Ironwood TPU7x, dynamic slices scheduled with Kueue and TAS ([GKE docs](https://docs.cloud.google.com/kubernetes-engine/docs/how-to/use-gke-dynamic-slicing)) | TPU slices are topology-shaped units (for example 4x4x4), so placement becomes slice-shape fitting through OCS rather than a choice of switch tier |
-| Scale-up domain | 8-GPU NVLink per p5 node; larger UltraServer domains on GB200 and Trn2 (UNVERIFIED sizes) | 8-GPU NVLink per A3/A4 node; GB200 NVL72 on A4X; TPU ICI across a slice | Any gang member split across a scale-up boundary pays a 10x or greater bandwidth cliff |
+| Scale-up domain | 8-GPU NVLink per p5 node; UltraServer domains of up to 72 GPUs in one NVLink domain on P6e-GB200 and up to 64 Trainium2 chips over NeuronLink on Trn2 (listed as preview) ([AWS UltraServers page](https://aws.amazon.com/ec2/ultraservers/), as of 2026-10) | 8-GPU NVLink per A3/A4 node; GB200 NVL72 on A4X; TPU ICI across a slice | Any gang member split across a scale-up boundary pays a 10x or greater bandwidth cliff |
 | Guaranteed future capacity | EC2 Capacity Blocks for ML (upfront, fixed window, price set at purchase) | DWS Calendar mode future reservations | Both are calendar-shaped; your scheduler must treat the block end as a hard deadline for checkpointing |
 | Queued "start when available" capacity | No exact EC2 equivalent; SageMaker training plans are closest | DWS Flex-start via ProvisioningRequest or MIG resize requests | Flex-start delivers all-or-nothing node sets, which is gang semantics at the infrastructure layer |
-| Cheapest preemptible | EC2 Spot, 2-minute notice | Spot VMs, 30-second notice | 30 s is too short for a synchronous checkpoint; on GCP Spot you need continuous async checkpointing |
+| Cheapest preemptible | EC2 Spot, 2-minute notice | Spot VMs: by default no dedicated notice and a best-effort shutdown period of up to 30 seconds; an optional 120-second preemption notice is GA since 2026-09-30 | With GCP defaults, 30 s is too short for a synchronous checkpoint, so set the 120 s notice or checkpoint asynchronously and continuously |
 | Node repair | HyperPod health checks, node replacement, and auto-resume | GKE node auto-repair; GPU and TPU maintenance notifications | Both replace nodes; neither preserves your topology domain unless capacity exists in the same block |
 
 ## Worked Example: Gang, Topology, and Fair-Share Admission on a Local Fleet
@@ -251,7 +274,8 @@ kubectl -n kueue-system rollout status deploy/kueue-controller-manager --timeout
 
 ```yaml
 # /tmp/kueue-fleet.yaml
-apiVersion: kueue.x-k8s.io/v1alpha1
+# Kueue v0.14.0 serves the Topology CRD only as v1beta1 (v1alpha1 is rejected).
+apiVersion: kueue.x-k8s.io/v1beta1
 kind: Topology
 metadata:
   name: fleet-topology
@@ -396,7 +420,7 @@ What to observe: `rack-gang` stays inadmissible and creates no running pods, whi
 `block-gang` gets a topology assignment listing all 4 hosts of one block.
 `borrow-gang` lands in the other block by borrowing prod's lent quota.
 `prod-gang` triggers `reclaimWithinCohort`, which evicts a research workload because prod is below its nominal quota.
-The topology assignment field path varies by Kueue API version (UNVERIFIED for releases that serve v1beta2); `kubectl get workload -o yaml` always shows it.
+The topology assignment's shape varies by Kueue API version: it is a list of `domains` through v1beta1 and of `slices` from v1beta2 ([KEP-2724](https://github.com/kubernetes-sigs/kueue/blob/main/keps/2724-topology-aware-scheduling/README.md), as of 2026-10); `kubectl get workload -o yaml` always shows it.
 
 ### Step 4: lost-work-aware victim selection and the fragmentation metric
 
@@ -549,7 +573,7 @@ Fleet: 512 x p5.48xlarge = 4,096 H100 on Capacity Blocks at 34.608 USD/hr (AWS M
 Hourly cost: 512 x 34.608 = 17,719 USD/hr, or about 12.9M USD per 730-hour month; per GPU-hour, 34.608 / 8 = 4.33 USD.
 Each percentage point of idle or fragmented capacity costs about 129k USD per month, which is the budget that justifies building the scheduler at all.
 
-Failure rate: take 4.7e-4 unexpected interruptions per GPU-day from the Llama 3 data (UNVERIFIED in session).
+Failure rate: take 4.7e-4 unexpected interruptions per GPU-day from the Llama 3 data (419 / (54 x 16,384), Llama 3 paper section 3.3.4).
 A 2,048-GPU job sees 0.97 interruptions per day, so MTBF M is about 24.7 hours; a 16,384-GPU job sees 7.8 per day, so M is about 3.1 hours.
 
 Checkpoint interval (Young 1974, refined by Daly 2006): T_opt = sqrt(2 x C x M), where C is the blocking checkpoint cost.
@@ -588,18 +612,18 @@ Mitigation: track S(L, k) as an SLO, drain domains with a controller once a larg
 ### Preemption ping-pong and cascading requeues
 
 Symptom: the same workloads are admitted and evicted every few cycles, and the API server write rate climbs.
-Public example: Kueue issue #16666, an infinite fair-share preemption loop with hierarchical cohorts and multiple flavors, fixed by checking borrowing up to the least common ancestor cohort ([kueue PR #16886](https://github.com/kubernetes-sigs/kueue/pull/16886), as of 2026-10).
+Public example: Kueue issue #16666, an infinite fair-share preemption loop with hierarchical cohorts and multiple flavors, fixed by checking borrowing along the path to the least common ancestor cohort and pruning candidates that borrow only uncontested flavors ([kueue PR #16738](https://github.com/kubernetes-sigs/kueue/pull/16738), merged; the overlapping PR #16886 was closed in its favor, as of 2026-10).
 Mitigation: minimum runtime before a workload is preemptible, hysteresis between preemption and admission thresholds, and a preemption budget per cohort per hour.
 
 ### Control-plane overload from the scheduler's own clients
 
 A fleet of thousands of nodes, each running list-watch agents (DCGM exporters, topology labelers, health checkers), can overwhelm kube-apiserver.
-OpenAI's December 2024 public postmortem described a new telemetry deployment that overloaded Kubernetes API servers in large clusters and broke DNS-based service discovery (UNVERIFIED, link omitted).
+OpenAI's public postmortem of its 11 December 2024 outage described a new telemetry service configuration that made every node run resource-intensive Kubernetes API operations, overwhelming the API servers in most large clusters and breaking DNS-based service discovery ([OpenAI write-up](https://status.openai.com/incidents/ctrsv3lwd797/write-up), 2024).
 The general lesson: agents must use informers with resync jitter, never relist at the same moment across the fleet, and a GPU scheduler must keep admitted work running when the control plane is degraded, which is static stability (see [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_02_Regions_Zones_and_Static_Stability|Static Stability]]).
 
 ### Topology label drift and the post-launch consistency window
 
-`DescribeInstanceTopology` is eventually consistent right after launch, so an early read can return incomplete topology ([boto3 docs](https://docs.aws.amazon.com/boto3/latest/reference/services/ec2/client/describe_instance_topology.html), as of 2026-10).
+`DescribeInstanceTopology` is eventually consistent right after launch, so an early read can return incomplete data; AWS calls out a `null` `capacityBlockId` ([EC2 API reference](https://docs.aws.amazon.com/AWSEC2/latest/APIReference/API_DescribeInstanceTopology.html), [boto3 docs](https://docs.aws.amazon.com/boto3/latest/reference/services/ec2/client/describe_instance_topology.html), as of 2026-10).
 If a labeler marks a node schedulable before its labels are correct, TAS will place a "rack-local" gang across spines.
 Mitigation: taint new nodes until their topology labels are verified, and re-check labels after any host replacement.
 
@@ -617,7 +641,7 @@ Mitigation: requeue with jittered backoff, pre-stage images on spare nodes, and 
 
 ### Quota and capacity-block edges
 
-EC2 P-instance On-Demand quotas are counted in vCPUs, and a p5.48xlarge consumes 192 of them, so a quota request sized in "instances" comes out short (UNVERIFIED current default values).
+EC2 P-instance On-Demand quotas are counted in vCPUs, and a p5.48xlarge consumes 192 of them, so a quota request sized in "instances" comes out short ([EC2 instance quotas](https://docs.aws.amazon.com/ec2/latest/instancetypes/ec2-instance-quotas.html), [AWS P5 page](https://aws.amazon.com/ec2/instance-types/p5/), as of 2026-10); AWS pages disagree on the default P quota, so read it from the account's Service Quotas console.
 Capacity Blocks end at a fixed time; any job still running at expiry loses all work since its last checkpoint, so the scheduler must force a checkpoint and drain before the block ends.
 Karpenter and Kueue TAS can disagree about node placement, which is why AWS documents disabling TAS in HyperPod when Karpenter provisions nodes ([AWS docs](https://docs.aws.amazon.com/sagemaker/latest/dg/sagemaker-hyperpod-eks-operate-console-ui-governance-tasks-scheduling.html), as of 2026-10).
 
@@ -714,7 +738,7 @@ Mechanically: trainers report their last checkpoint time as a workload annotatio
 A second pass then tries to put back each selected victim, most expensive first, so greedy over-selection is undone.
 Cooperative preemption turns cost into near zero: SIGTERM, an emergency checkpoint to local NVMe within a grace period of about 120 seconds, then an asynchronous drain to object storage.
 I would add damping: a minimum runtime before preemptibility, a per-cohort preemption budget, and hysteresis between preemption and admission thresholds, because fair-share preemption loops are a documented failure in Kueue (issue #16666).
-For Spot capacity, GCP's 30-second notice cannot fit a synchronous multi-TB checkpoint, so jobs on GCP Spot must checkpoint asynchronously and continuously; EC2's 2-minute notice leaves room for a cooperative flush.
+For Spot capacity, a GCP Spot VM's default (no dedicated notice, best-effort shutdown of up to 30 seconds) cannot fit a synchronous multi-TB checkpoint, so jobs on GCP Spot must either opt into the 120-second preemption notice (GA since 2026-09-30) or checkpoint asynchronously and continuously; EC2's 2-minute notice leaves room for a cooperative flush.
 I would report lost GPU-hours per tenant and charge them to the preemptor, which makes priority inflation self-correcting.
 
 #### Follow-up Interviewer Question

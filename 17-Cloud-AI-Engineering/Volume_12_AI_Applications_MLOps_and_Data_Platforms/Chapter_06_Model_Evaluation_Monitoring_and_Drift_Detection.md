@@ -22,6 +22,23 @@ sources:
   - "https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_DataCaptureConfig.html"
   - "https://openai.com/index/expanding-on-sycophancy/"
   - "https://www.anthropic.com/engineering/a-postmortem-of-three-recent-issues"
+  - "https://docs.aws.amazon.com/sagemaker/latest/dg/model-monitor-availability-change.html"
+  - "https://docs.aws.amazon.com/sagemaker/latest/dg/model-monitor-byoc-constraints.html"
+  - "https://docs.aws.amazon.com/sagemaker/latest/dg/model-monitor-byoc-statistics.html"
+  - "https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-model-monitor-feature-attribution-drift.html"
+  - "https://docs.cloud.google.com/vertex-ai/docs/model-monitoring/overview"
+  - "https://docs.cloud.google.com/vertex-ai/docs/model-monitoring/monitor-explainable-ai"
+  - "https://docs.cloud.google.com/vertex-ai/docs/predictions/online-prediction-logging"
+  - "https://docs.cloud.google.com/vertex-ai/generative-ai/docs/multimodal/request-response-logging"
+  - "https://docs.cloud.google.com/vertex-ai/generative-ai/docs/models/evaluation-overview"
+  - "https://docs.cloud.google.com/vertex-ai/generative-ai/docs/multimodal/batch-prediction-gemini"
+  - "https://docs.aws.amazon.com/bedrock/latest/userguide/evaluation.html"
+  - "https://aws.amazon.com/about-aws/whats-new/2025/03/amazon-bedrock-model-evaluation-llm-as-a-judge/"
+  - "https://aws.amazon.com/about-aws/whats-new/2025/03/amazon-bedrock-rag-evaluation-generally-available/"
+  - "https://docs.aws.amazon.com/bedrock/latest/userguide/model-invocation-logging.html"
+  - "https://aws.amazon.com/bedrock/pricing/"
+  - "https://platform.claude.com/docs/en/about-claude/pricing"
+  - "https://www.sec.gov/Archives/edgar/data/1617640/000161764021000087/z-20210930.htm"
 ---
 
 # Model Evaluation, Monitoring, and Drift Detection
@@ -74,7 +91,7 @@ Without it the LLM judge is an unmeasured instrument, and every dashboard downst
 The data plane is the request path plus the capture tap: the endpoint serializes a sampled subset of requests and responses into an object store or warehouse, asynchronously and off the critical path.
 On SageMaker the tap is `DataCaptureConfig` on the endpoint config, with `InitialSamplingPercentage` described as "The percentage of requests SageMaker AI will capture", capture options for input, output or both, and an S3 destination (AWS API reference, as of 2026-10, [DataCaptureConfig](https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_DataCaptureConfig.html)).
 The API reference explicitly advises a lower sampling value for high-traffic endpoints (AWS API reference, as of 2026-10).
-On Vertex AI the equivalent tap is endpoint request-response logging to a BigQuery table with a sampling rate (Google Cloud docs, UNVERIFIED as of 2026-10).
+On Vertex AI the equivalent tap is endpoint request-response logging to a BigQuery table with a sampling rate (`samplingPercentage`, a fraction between 0 and 1, on standard endpoints) (Google Cloud docs, as of 2026-10, [Online inference logging](https://docs.cloud.google.com/vertex-ai/docs/predictions/online-prediction-logging)).
 The control plane covers baselines, schedules, thresholds and alert routing.
 It runs as batch jobs that read the capture store, compute statistics, compare them with a stored baseline, and emit metrics and violation reports.
 Because of this split, a failed monitoring job never affects serving, which is the right static-stability property (see [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_04_Control_Plane_vs_Data_Plane_Separation|Control Plane vs Data Plane Separation]]).
@@ -83,21 +100,24 @@ The control plane therefore needs its own liveness SLO, for example "a completed
 
 ### SageMaker Model Monitor pipeline mechanics
 
+AWS states that SageMaker Model Monitor is no longer open to new customers: existing customers can keep using it, AWS plans no new features, and it points new users to open-source monitoring solutions built on SageMaker AI MLflow Apps and Evidently AI plus QuickSight and CloudWatch (AWS docs, as of 2026-10, [Model Monitor availability change](https://docs.aws.amazon.com/sagemaker/latest/dg/model-monitor-availability-change.html)).
+The mechanics below still apply to existing deployments, and they are the reference design that the replacements reproduce.
 A baseline job runs over the training or validation dataset and writes `statistics.json` and `constraints.json` to S3 (AWS docs, as of 2026-10, [Model Monitor FAQs](https://docs.aws.amazon.com/sagemaker/latest/dg/model-monitor-faqs.html)).
 The data quality container computes per-feature constraints and statistics with Deequ, the open-source Spark-based data quality library (AWS docs, as of 2026-10, [Data quality](https://docs.aws.amazon.com/sagemaker/latest/dg/model-monitor-data-quality.html)).
-A 2023 engineering write-up reported the container as Spark 3.3.0 with Deequ 2.0.2 ([Kablamo engineering blog, 2023](https://engineering.kablamo.com.au/posts/model-monitoring/)); the current versions are UNVERIFIED as of 2026-10.
+A 2023 engineering write-up reported the container as Spark 3.3.0 with Deequ 2.0.2 ([Kablamo engineering blog, 2023](https://engineering.kablamo.com.au/posts/model-monitoring/)); the current versions are UNVERIFIED as of 2026-10 (not stated in AWS docs).
 Violations are written as a constraint violations JSON file next to the reports (AWS docs, as of 2026-10).
 Monitoring schedules use cron expressions, and the Python SDK ships `CronExpressionGenerator.hourly()`; the SDK default frequency is daily (SageMaker Python SDK docs, as of 2026-10, [Model Monitor API](https://sagemaker.readthedocs.io/en/stable/model_monitor.html)).
 Model quality monitoring runs two jobs in each execution, a ground-truth merge job and then the monitoring job, and they share the maximum runtime.
 For an hourly model quality schedule, AWS therefore says `MaxRuntimeInSeconds` should be no more than 1800 (AWS docs, as of 2026-10, [Schedule model quality monitoring jobs](https://docs.aws.amazon.com/sagemaker/latest/dg/model-monitor-model-quality-schedule.html)).
 That 1800-second cap is the real constraint on hourly concept-drift monitoring: if the merge of captured predictions with ground-truth labels cannot finish in half an hour, you cannot run hourly quality checks on that data volume.
-Bias drift and feature-attribution drift monitors come from SageMaker Clarify, and the attribution monitor compares feature-importance rankings between baseline and live traffic (AWS docs, UNVERIFIED as of 2026-10).
+Bias drift and feature-attribution drift monitors come from SageMaker Clarify, and the attribution monitor compares feature-importance rankings between baseline and live traffic with an NDCG score, raising an alert when NDCG falls below 0.90 (AWS docs, as of 2026-10, [Feature attribution drift](https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-model-monitor-feature-attribution-drift.html)).
+The data quality container's drift distance is an L-infinity distance between the baseline and current CDFs (`linf_simple`, or the KS-based `linf_robust` for small samples), with a default `comparison_threshold` of 0.1; categorical features use L-infinity by default or chi-squared (AWS docs, as of 2026-10, [constraints.json schema](https://docs.aws.amazon.com/sagemaker/latest/dg/model-monitor-byoc-constraints.html)).
 
 ### Why sketches: Deequ and mergeable quantile summaries
 
 Deequ is built on the model in Schelter et al., "Automating Large-Scale Data Quality Verification" (VLDB 2018): declarative constraints compile into Spark aggregation queries, and the metric states can be merged incrementally.
-For numeric distributions the expensive primitive is the quantile, and Deequ approximates it with a KLL sketch (Karnin, Lang, Liberty, "Optimal Quantile Approximation in Streams", FOCS 2016).
-A KLL sketch keeps a hierarchy of compactors in memory that grows as O((1/epsilon) sqrt(log(1/delta))), independent of stream length.
+For numeric distributions the expensive primitive is the quantile, and Deequ approximates it with a KLL sketch (Karnin, Lang, Liberty, "Optimal Quantile Approximation in Streams", FOCS 2016); Model Monitor's `statistics.json` stores each numeric feature's distribution as a KLL sketch materialized in 10 buckets (AWS docs, as of 2026-10, [statistics.json schema](https://docs.aws.amazon.com/sagemaker/latest/dg/model-monitor-byoc-statistics.html)).
+A KLL sketch keeps a hierarchy of compactors in memory that grows as O((1/epsilon) sqrt(log(1/delta))), independent of stream length; that is the paper's first, mergeable construction, and its optimal O((1/epsilon) log log(1/delta)) variant gives up mergeability (Karnin et al., FOCS 2016).
 It is mergeable, so per-partition sketches computed on Spark executors combine into one summary without a shuffle of raw rows.
 This mechanism is what you will not find in the getting-started guide: the drift comparison is between two approximate CDFs, not two exact histograms.
 The sketch rank error epsilon puts a floor under detectable drift.
@@ -119,7 +139,7 @@ If the window has zero rows in a bin and you clip at epsilon = 1e-6, the term q_
 The runnable lab shows this: at n = 50 the 99th-percentile null PSI with epsilon clipping is about 1.39, and Laplace smoothing (add 0.5 per bin) brings it down to about 0.41.
 Jensen-Shannon divergence avoids the infinity because it compares each distribution against the mixture M = (p + q)/2, and it is bounded in [0, 1] with log base 2.
 It has the same n-dependent null bias, though: its second-order term is the PSI approximation divided by about 8 ln 2.
-Vertex AI Model Monitoring v1 uses Jensen-Shannon divergence for numerical features and L-infinity distance for categorical features, with a default alert threshold of 0.3 (Google Cloud docs, UNVERIFIED as of 2026-10).
+Vertex AI Model Monitoring v1 (GA) uses Jensen-Shannon divergence for numerical features and L-infinity distance for categorical features, with a default alert threshold of 0.3; Model Monitoring v2 is in Preview and also allows Jensen-Shannon for categorical features (Google Cloud docs, as of 2026-10, [Model Monitoring overview](https://docs.cloud.google.com/vertex-ai/docs/model-monitoring/overview), [Monitor feature attributions](https://docs.cloud.google.com/vertex-ai/docs/model-monitoring/monitor-explainable-ai)).
 L-infinity on categorical frequencies is the largest absolute change in any single category's share, which makes it robust to long-tail cardinality but blind to many small shifts spread across categories.
 The KS statistic avoids binning, but with a large n every shift becomes statistically significant: the two-sample 99 percent critical value is about 1.63 sqrt(1/n + 1/m), roughly 0.008 at n = 50,000.
 What to deploy: a two-part rule.
@@ -199,7 +219,8 @@ If the judge is reached through a cross-region inference profile or a global end
 | SageMaker hourly model-quality job runtime | `MaxRuntimeInSeconds` <= 1800, shared by merge and monitor jobs | (AWS docs, as of 2026-10) |
 | SageMaker SDK default schedule | Daily; `CronExpressionGenerator.hourly()` available | (SageMaker Python SDK docs, as of 2026-10) |
 | Model Monitor statistics engine | Deequ on Apache Spark | (AWS docs, as of 2026-10) |
-| Vertex AI v1 drift distances | JS divergence numeric, L-infinity categorical, default threshold 0.3 | (Google Cloud docs, UNVERIFIED as of 2026-10) |
+| SageMaker data quality drift distance | L-infinity between CDFs, default `comparison_threshold` 0.1 | (AWS docs, as of 2026-10) |
+| Vertex AI v1 drift distances | JS divergence numeric, L-infinity categorical, default threshold 0.3 | (Google Cloud docs, as of 2026-10) |
 | Null mean PSI, B bins | (B-1)(1/n + 1/m) | Derivation in this chapter |
 | Null mean PSI, B=10, n=500 | ~0.018 (simulated p99 ~0.042) | Lab output, 2026-10 |
 | Null p99 PSI, B=10, n=50, epsilon clip | ~1.39 (Laplace smoothing: ~0.41) | Lab output, 2026-10 |
@@ -217,15 +238,15 @@ If the judge is reached through a cross-region inference profile or a global end
 
 | Concern | AWS | Google Cloud | Critical difference |
 |---|---|---|---|
-| Capture tap | SageMaker `DataCaptureConfig` writes sampled request/response to S3 (AWS docs, as of 2026-10) | Vertex AI endpoint request-response logging to BigQuery with sampling rate (UNVERIFIED as of 2026-10) | S3 capture is file-oriented and needs a query layer (Athena); BigQuery capture is immediately SQL-queryable but incurs streaming and storage costs per table |
-| Baseline statistics | Deequ on Spark, KLL quantile sketches, `statistics.json` and `constraints.json` | TFDV-style statistics in Model Monitoring v1 (UNVERIFIED as of 2026-10) | Both compare sketches, not raw rows; neither calibrates thresholds to window size for you |
-| Drift distance | Distribution comparison against baseline with a configurable threshold (exact method UNVERIFIED as of 2026-10) | JS numeric, L-infinity categorical (UNVERIFIED as of 2026-10) | L-infinity misses diffuse categorical shifts; JS has an n-dependent null bias |
-| Concept drift | Model quality monitor with ground-truth merge job keyed by inference ID (AWS docs, as of 2026-10) | No managed label-join equivalent verified; typically BigQuery join plus scheduled query (UNVERIFIED as of 2026-10) | On GCP the label join is usually your code, which is more flexible and also easier to break silently |
-| Attribution drift | SageMaker Clarify feature attribution monitor (UNVERIFIED as of 2026-10) | Vertex Explainable AI feature attribution drift (UNVERIFIED as of 2026-10) | Both depend on SHAP-family baselines; cost grows with feature count times sample count |
-| Managed LLM evaluation | Amazon Bedrock Evaluations: programmatic, human, LLM-as-a-judge, RAG evaluation (UNVERIFIED GA scope as of 2026-10) | Vertex AI Gen AI evaluation service: computation-based plus model-based pointwise and pairwise metrics (UNVERIFIED GA scope as of 2026-10) | Both bill judge tokens at model rates; neither publishes a calibration of its judge against your human labels, so you have to measure it |
+| Capture tap | SageMaker `DataCaptureConfig` writes sampled request/response to S3 (AWS docs, as of 2026-10) | Vertex AI endpoint request-response logging to BigQuery with sampling rate (Google Cloud docs, as of 2026-10) | S3 capture is file-oriented and needs a query layer (Athena); BigQuery capture is immediately SQL-queryable but incurs streaming and storage costs per table |
+| Baseline statistics | Deequ on Spark, KLL quantile sketches, `statistics.json` and `constraints.json` | Model Monitoring v1 uses TensorFlow Data Validation (TFDV) for distributions and distance scores (Google Cloud docs, as of 2026-10) | Both compare sketches, not raw rows; neither calibrates thresholds to window size for you |
+| Drift distance | L-infinity distance between baseline and current CDFs (`linf_simple` or KS-based `linf_robust`), default threshold 0.1; categorical L-infinity or chi-squared (AWS docs, as of 2026-10) | JS numeric, L-infinity categorical in v1 (GA); v2 (Preview) also allows JS for categorical (Google Cloud docs, as of 2026-10) | L-infinity misses diffuse categorical shifts; JS has an n-dependent null bias |
+| Concept drift | Model quality monitor with ground-truth merge job keyed by inference ID (AWS docs, as of 2026-10) | No managed label-join equivalent verified; typically BigQuery join plus scheduled query (UNVERIFIED as of 2026-10: Vertex Model Monitoring docs describe skew, drift and attribution objectives, and no ground-truth merge was found) | On GCP the label join is usually your code, which is more flexible and also easier to break silently |
+| Attribution drift | SageMaker Clarify feature attribution monitor on a SHAP baseline, NDCG alert below 0.90 (AWS docs, as of 2026-10) | Vertex Explainable AI feature attribution skew and drift in Model Monitoring (Google Cloud docs, as of 2026-10) | Both depend on SHAP-family baselines; cost grows with feature count times sample count |
+| Managed LLM evaluation | Amazon Bedrock Evaluations: programmatic, human, LLM-as-a-judge, RAG evaluation; LLM-as-a-judge and RAG evaluation GA since March 2025 (AWS docs and What's New, as of 2026-10) | Vertex AI Gen AI evaluation service: computation-based plus LLM rubric-based metrics; the `EvalTask` SDK module is GA but no longer actively developed, and the newer GenAI client with adaptive rubrics is Preview (Google Cloud docs, as of 2026-10) | Both bill judge tokens at model rates; neither publishes a calibration of its judge against your human labels, so you have to measure it |
 | Pipeline orchestration | SageMaker Pipelines | Vertex AI Pipelines (Kubeflow Pipelines) | See [[17-Cloud-AI-Engineering/Volume_12_AI_Applications_MLOps_and_Data_Platforms/Chapter_04_MLOps_Pipelines_SageMaker_vs_Vertex_AI\|MLOps Pipelines]] |
 | Metrics and alerting | CloudWatch metrics and alarms from monitoring executions | Cloud Monitoring alerting and notification channels | Neither applies FDR control across features; do it in a post-processor |
-| Invocation logging for foundation models | Bedrock model invocation logging to S3 or CloudWatch Logs (UNVERIFIED field names as of 2026-10) | Vertex AI request-response logging for Gemini and partner models (UNVERIFIED as of 2026-10) | Logs contain full prompts, so they are a data-perimeter object (see Security) |
+| Invocation logging for foundation models | Bedrock model invocation logging to S3 or CloudWatch Logs; records carry `requestId`, `modelId`, `identity.arn`, `input.inputBodyJson`, `output.outputBodyJson` and token counts, bodies over 100 KB go to S3 (AWS docs, as of 2026-10) | Vertex AI request-response logging to BigQuery for Gemini `generateContent` and Anthropic Claude `rawPredict`, configured per model with `setPublisherModelConfig` (Google Cloud docs, as of 2026-10) | Logs contain full prompts, so they are a data-perimeter object (see Security) |
 | Perimeter | VPC interface endpoints, endpoint policies, KMS on capture | VPC Service Controls around Vertex AI, BigQuery, Cloud Storage | VPC SC can block the judge call if the judge model's API is outside the perimeter |
 
 ## Worked Example: Sample-Size-Aware Drift and a Bias-Corrected LLM Judge
@@ -361,7 +382,7 @@ n=   500 PSI=0.0287 PSI_laplace=0.0282 analytic_null_mean=0.0180 null_p99=0.0425
 n=  5000 PSI=0.0010 PSI_laplace=0.0010 analytic_null_mean=0.0018 null_p99=0.0043 null_p99_laplace=0.0042 ...
 n= 50000 PSI=0.0002 PSI_laplace=0.0002 analytic_null_mean=0.0002 null_p99=0.0004 null_p99_laplace=0.0004 ...
 == Drift: real 0.1-sigma mean shift ==
-n=   500 PSI=0.0130 ... null_p99_laplace=0.0416
+n=   500 PSI=0.0133 ... null_p99_laplace=0.0416
 n=  5000 PSI=0.0157 ... null_p99_laplace=0.0042
 n= 50000 PSI=0.0108 ... null_p99_laplace=0.0004
 == Judge calibration ==
@@ -369,13 +390,13 @@ true=0.700 naive_judge=0.785 ppi=0.669 ci95=(0.624,0.714) rogan_gladen=0.701
 ```
 
 How to read it: with no drift, n = 50 produces a PSI of 0.17, which crosses the conventional 0.1 threshold.
-A real 0.1-sigma shift produces a PSI of about 0.01, which never crosses 0.1 but is 3.7x and 27x the null p99 at n = 5000 and n = 50,000.
+A real 0.1-sigma shift produces a PSI of about 0.01 at n >= 500, which never crosses 0.1 but is 3.7x and 27x the null p99 at n = 5000 and n = 50,000 (the omitted n = 50 row is dominated by empty-bin noise: PSI 1.53 with epsilon clipping, 0.51 with Laplace smoothing, in a re-run on 2026-10-25).
 The raw judge overstates the pass rate by 8.5 points, and the PPI interval built from 300 human labels covers the true value.
 To use the optional judge, set `JUDGE_MODEL_ID` to a Bedrock model ID or inference profile ID enabled in your account; this chapter does not hard-code one, because model availability per region changes.
 
 ### Part B guardrails: budget alarm and teardown
 
-The only billable action is one Converse call with fewer than 200 tokens, so the expected cost is well under one US cent at any current Bedrock text-model price (UNVERIFIED as of 2026-10; check the Bedrock pricing page).
+The only billable action is one Converse call with fewer than 200 tokens, so the expected cost is well under one US cent: even at $15 per million input tokens, the highest Claude input list price (Claude Opus 4.1, still offered on Bedrock), 200 tokens cost $0.003 (Anthropic pricing docs, as of 2026-10; Bedrock list prices for other providers can differ, so check the Bedrock pricing page).
 Create a budget alarm before you start:
 
 ```bash
@@ -426,7 +447,7 @@ sm.create_endpoint_config(
 ```
 
 If you deploy this, the teardown is `aws sagemaker delete-monitoring-schedule --monitoring-schedule-name <name>`, then `aws sagemaker delete-endpoint --endpoint-name <name>`, `aws sagemaker delete-endpoint-config --endpoint-config-name fraud-v7-capture`, and `aws s3 rm s3://my-capture-bucket/fraud-v7/ --recursive`.
-Instance-hour pricing for real-time endpoints and processing jobs is UNVERIFIED as of 2026-10; take it from the SageMaker pricing page before you deploy.
+Instance-hour pricing for real-time endpoints and processing jobs is UNVERIFIED as of 2026-10 (the current rate could not be read from the SageMaker pricing page); take it from that page before you deploy.
 
 ### Capacity and cost sizing
 
@@ -437,7 +458,7 @@ Capture storage at 36,000 rows per hour and 2 KB per row is 72 MB per hour, or a
 LLM judge sizing: an application at 50 RPS serves 4.32 million requests per day.
 A 1 percent trace-hashed sample gives 43,200 judged items per day.
 At 1,500 judge input tokens and 200 output tokens per item, that is 64.8 million input and 8.64 million output tokens per day.
-At illustrative prices of $3 per million input tokens and $15 per million output tokens (UNVERIFIED as of 2026-10), the judge costs $194.40 + $129.60 = $324 per day, or about $9,700 per 30-day month.
+At illustrative prices of $3 per million input tokens and $15 per million output tokens (the Claude Sonnet 4.6 list price; Claude Sonnet 5.5 lists at $2 and $10, Anthropic pricing docs, as of 2026-10), the judge costs $194.40 + $129.60 = $324 per day, or about $9,700 per 30-day month.
 A judge model at one tenth of that price, with escalation of uncertain verdicts to the large judge, brings this down to roughly $1,000 to $1,500 per month, depending on the escalation rate.
 Statistical sufficiency: a daily sample of 43,200 at an 80 percent pass rate has a standard error of 0.19 points, so a one-day window detects drops of about 0.6 points.
 An hourly window of 1,800 items has a standard error of 0.94 points, so it detects only drops of about 2.6 points at roughly 2.8 sigma.
@@ -463,7 +484,7 @@ It also shows that canaries in production need continuous quality probes, not on
 
 ### Concept drift with feedback loops
 
-Zillow wound down its Zillow Offers home-buying business in Q3 2021 and reported an inventory write-down of roughly $304 million, after its pricing models failed to track a fast-moving housing market.
+Zillow announced the wind-down of its Zillow Offers home-buying business with its Q3 2021 results in November 2021 and reported a Q3 inventory write-down of $304.4 million, after its pricing models failed to track a fast-moving housing market ([Zillow Q3 2021 Form 10-Q](https://www.sec.gov/Archives/edgar/data/1617640/000161764021000087/z-20210930.htm)).
 The general pattern is concept drift with long label delay (the sale price is known months after the purchase decision) combined with a model whose own actions shift the market it measures.
 Input-drift monitors cannot catch this; only leading proxy labels and tight position limits can.
 
@@ -528,7 +549,7 @@ Delimit candidate content strictly, and spot-check judge verdicts on adversarial
 
 Sampling rate sets the cost directly, so derive it from the required standard error per slice rather than picking a round percentage.
 Cascade judges: a cheap model grades everything, and the expensive model or a human grades only items near the decision boundary or where the cheap judge has low confidence.
-Run offline eval suites and daily judge backfills through batch inference APIs where your provider offers discounted batch pricing; the discount level is UNVERIFIED as of 2026-10.
+Run offline eval suites and daily judge backfills through batch inference APIs where your provider offers discounted batch pricing; Bedrock batch inference for select models, Vertex AI batch inference for Gemini, and the Anthropic Batch API are all priced 50 percent below on-demand (AWS, Google Cloud and Anthropic pricing docs, as of 2026-10).
 Cache judge verdicts keyed by hash(rubric version, judge version, candidate output) so re-running a dashboard does not re-bill tokens.
 Prompt caching on the fixed rubric prefix reduces judge input cost when the rubric is long (see [[17-Cloud-AI-Engineering/Volume_11_LLM_Serving_and_Inference_Systems_on_Cloud/Chapter_10_Claude_on_Bedrock_and_Vertex_AI|Claude on Bedrock and Vertex AI]]).
 Allocate eval spend as its own cost line with tags or labels, and express it as a fraction of serving spend; 2 to 10 percent is a reasonable planning range, not a benchmark (see [[17-Cloud-AI-Engineering/Volume_09_FinOps_and_Cloud_Economics/Chapter_01_Cloud_Billing_Models_and_Unit_Cost_Allocation|Unit Cost Allocation]]).
@@ -582,7 +603,7 @@ How do you detect concept drift fast enough to matter, using AWS or GCP managed 
 
 Detection latency is bounded below by label delay, so the design has to split the signal into leading proxies and lagging truth.
 For lagging truth, I would stamp an inference ID at serving time and carry it into the chargeback system.
-On SageMaker, the model quality monitor joins captured predictions to uploaded ground truth through a merge job, but an hourly schedule caps the combined merge and monitor runtime at 1800 seconds, so at this volume I would run it daily over the partial cohort that has matured.
+On SageMaker, the model quality monitor (available to existing Model Monitor customers only, as of 2026-10) joins captured predictions to uploaded ground truth through a merge job, but an hourly schedule caps the combined merge and monitor runtime at 1800 seconds, so at this volume I would run it daily over the partial cohort that has matured.
 On GCP I would implement the same join as a scheduled BigQuery query over the request-response log table.
 To use partial labels, I would track maturity-adjusted metrics: for each transaction cohort, compare the chargeback rate at day k with the historical rate at day k, which turns a 90-day wait into a 7-to-14-day early read with known variance.
 For leading proxies, I would monitor prediction-score drift and the score distribution within the flagged band, analyst-review outcomes (labels within hours for the reviewed subset, corrected for review selection bias), customer dispute calls, and label-shift estimates by black-box shift estimation, inverting the confusion matrix on predicted-class frequencies (Lipton et al., ICML 2018).
@@ -644,7 +665,7 @@ I would define the platform as a measurement service with versioned contracts, n
 The core entities are eval sets (immutable, versioned, with provenance and contamination controls), scorers (programmatic checks, judges pinned to a model version, rubric version and calibration record), runs (candidate configuration, seeds, repeats) and decisions (the gate rule and its outcome).
 The data plane is a cloud-neutral capture schema emitted at the gateway with trace-hashed stratified sampling and inclusion probabilities.
 It lands in S3 and BigQuery under customer-managed keys, inside each cloud's perimeter, and only aggregates and redacted exemplars cross clouds, which avoids egress cost and data-residency problems.
-Managed services serve as adapters, not as the source of truth: SageMaker Model Monitor and Vertex Model Monitoring for tabular drift where they fit, and Bedrock Evaluations and the Vertex Gen AI evaluation service as execution backends.
+Managed services serve as adapters, not as the source of truth: SageMaker Model Monitor (closed to new customers as of 2026-10; new accounts use the Evidently-based replacement AWS recommends) and Vertex Model Monitoring for tabular drift where they fit, and Bedrock Evaluations and the Vertex Gen AI evaluation service as execution backends.
 Their outputs are normalized into my metric schema with confidence intervals, because neither calibrates its judge against my human labels.
 The judge layer has its own reliability design: a separate account and project with separate quotas, lower priority, load shedding, a cache keyed by rubric, judge version and output, and a cascade from a cheap judge to an expensive judge to humans.
 Governance consists of three rules.

@@ -28,6 +28,23 @@ sources:
   - "https://blog.google/products/gemini/gemini-image-generation-issue/"
   - "https://aws.amazon.com/message/101925/"
   - "https://www.canlii.org/en/bc/bccrt/doc/2024/2024bccrt149/2024bccrt149.html"
+  - "https://docs.aws.amazon.com/general/latest/gr/bedrock.html"
+  - "https://docs.aws.amazon.com/bedrock/latest/userguide/guardrails-streaming.html"
+  - "https://docs.aws.amazon.com/bedrock/latest/APIReference/API_GuardrailPiiEntityConfig.html"
+  - "https://docs.aws.amazon.com/bedrock/latest/userguide/guardrails-permissions-id.html"
+  - "https://docs.aws.amazon.com/bedrock/latest/userguide/guardrails-tagging.html"
+  - "https://docs.aws.amazon.com/bedrock/latest/userguide/guardrails-tiers.html"
+  - "https://docs.aws.amazon.com/bedrock/latest/userguide/guardrails-cross-region.html"
+  - "https://docs.aws.amazon.com/bedrock/latest/userguide/validate-automated-reasoning-policy-results.html"
+  - "https://docs.aws.amazon.com/bedrock/latest/userguide/logging-using-cloudtrail.html"
+  - "https://docs.aws.amazon.com/nova/latest/userguide/image-generation.html"
+  - "https://cloud.google.com/security-command-center/pricing"
+  - "https://docs.cloud.google.com/model-armor/model-armor-vertex-integration"
+  - "https://docs.cloud.google.com/model-armor/model-armor-networking-integration"
+  - "https://docs.cloud.google.com/model-armor/access-control/roles-permissions"
+  - "https://docs.cloud.google.com/vpc-service-controls/docs/supported-products"
+  - "https://docs.cloud.google.com/logging/quotas"
+  - "https://docs.cloud.google.com/vertex-ai/generative-ai/docs/multimodal/request-response-logging"
 ---
 
 # AI Safety, Guardrails, and Governance
@@ -98,7 +115,7 @@ Probability measures how confident the classifier is that the text belongs to th
 A crime novelist's sentence about a fictional murder can score high probability and low severity, and a coded instruction can score low probability and high severity, so thresholding on probability alone over-blocks creative traffic and under-blocks evasive traffic.
 When Vertex blocks a prompt, the response carries `promptFeedback.blockReason` and no candidates.
 When it blocks an output, the candidate's `finishReason` is `SAFETY`, `BLOCKLIST`, `PROHIBITED_CONTENT`, `SPII`, or `RECITATION`, and in streaming mode the client may already have rendered a partial answer before the terminating chunk arrives.
-Default thresholds have changed between Gemini generations, so pin them explicitly in every request and never inherit them (UNVERIFIED: current per-model defaults).
+Default thresholds have changed between Gemini generations, for example `OFF` is the default for gemini-3.5-flash and later models while the same page's REST example still labels `BLOCK_MEDIUM_AND_ABOVE` as the default, so pin them explicitly in every request and never inherit them ([Vertex AI safety filters](https://cloud.google.com/vertex-ai/generative-ai/docs/multimodal/configure-safety-filters), as of 2026-10).
 
 ### Prompt attack detection and input tags
 
@@ -114,7 +131,7 @@ The trade-off is that tags move part of the security boundary into application c
 Denied topics are defined in natural language with a definition and example phrases, so they are semantic classifiers, not keyword lists, and their latency and cost are in the same class as the content filters.
 Word filters are exact-match blocklists, including a managed profanity list, and they are cheap and fully predictable, which makes them right for legal requirements like competitor names and wrong for anything semantic.
 The sensitive information filter combines ML-based detection of PII entity types (email, phone, SSN, card numbers, names, addresses, and others) with customer regexes, and each entity has an action of BLOCK or ANONYMIZE, where ANONYMIZE replaces the span with a placeholder such as `{EMAIL}`.
-Separate input and output actions per entity are available in current versions of the API (UNVERIFIED: exact field names `inputAction` and `outputAction`).
+Separate input and output actions per entity are available in current versions of the API through the `inputAction` and `outputAction` fields, each `BLOCK`, `ANONYMIZE`, or `NONE`, plus `inputEnabled` and `outputEnabled` flags that skip and stop billing evaluation in one direction (AWS Bedrock API reference, as of 2026-10).
 On Google Cloud, the equivalent detection engine is Sensitive Data Protection (formerly Cloud DLP), which Model Armor calls in basic mode (a fixed set of infoTypes) or advanced mode (customer inspect and de-identify templates).
 Sensitive Data Protection exposes something Bedrock's filter does not: reversible, keyed pseudonymization.
 `CryptoDeterministicConfig` with a surrogate infoType replaces `jane@example.com` with a token such as `EMAIL_ADDRESS(52):AbX...`, using a data key wrapped by Cloud KMS, and the token is deterministic, so joins and frequency analysis still work on the tokenized data.
@@ -129,7 +146,7 @@ The content passed to `ApplyGuardrail` carries `qualifiers` of `grounding_source
 A grounding checker is itself a model, so it shares failure modes with the generator: it can be fooled by text that paraphrases the source closely while reversing a negation.
 Automated Reasoning checks take a different approach: an uploaded policy document, such as an HR leave policy, is translated into formal logic (variables, types, and rules), and each model answer is translated into logical claims that an SMT solver checks against the rules.
 The solver step is sound, but the translation from natural language into logic is done by an LLM, so the guarantee is only as strong as that translation.
-AWS exposes this uncertainty as findings that distinguish valid, invalid, satisfiable-but-not-entailed, and translation-ambiguous results (UNVERIFIED: exact finding type names in the current API).
+AWS exposes this uncertainty as finding types `VALID`, `INVALID`, `SATISFIABLE` (true or false depending on assumptions), `IMPOSSIBLE`, `TRANSLATION_AMBIGUOUS`, `TOO_COMPLEX`, and `NO_TRANSLATIONS` (AWS Bedrock docs, as of 2026-10).
 The lineage is the same SMT-based approach AWS used for IAM policy analysis in Zelkova (Backes et al., FMCAD 2018), applied to business rules instead of access policies.
 Treat a "valid" finding as "consistent with the formalized policy under the extracted claims", never as "true".
 
@@ -137,7 +154,7 @@ Treat a "valid" finding as "consistent with the formalized policy under the extr
 
 Streaming forces a design choice that request-response APIs hide.
 In Bedrock `ConverseStream`, `streamProcessingMode` set to `sync` buffers output chunks and releases each one only after the guardrail has evaluated it, which adds evaluation latency to every chunk and delays the first visible token.
-Set to `async`, it releases chunks immediately and evaluates in the background, so violating content can reach the client before the intervention arrives, and PII masking cannot work because the unmasked bytes have already left (UNVERIFIED: whether async mode rejects masking configurations or silently skips them).
+Set to `async`, it releases chunks immediately and evaluates in the background, so violating content can reach the client before the intervention arrives, and PII masking cannot work because the unmasked bytes have already left; AWS documents that masking of sensitive information is not supported in asynchronous mode, without saying whether such a configuration is rejected or skipped (AWS Bedrock docs, as of 2026-10).
 A further mechanism is chunk-boundary splitting: a phone number or a harmful instruction split across two evaluation windows may not match in either window, so a sync guard must evaluate overlapping windows or a trailing context, and that context is billed again as text units.
 Vertex AI streaming has the same property from the other side: a mid-stream safety block ends the stream with `finishReason: SAFETY`, and the client has to retract text it already rendered.
 The production pattern is risk-tiered: sync mode with a small release buffer for consumer-facing surfaces, async mode with retraction UX for internal copilots, and no streaming at all for regulated outputs such as credit decisions.
@@ -151,7 +168,7 @@ SynthID Text (Dathathri et al., Nature 2024) replaces the logit bias with tourna
 Because selection works on samples from the unmodified distribution, the scheme can be set up to be non-distortionary for individual tokens, which is why Google could deploy it in Gemini and report no measurable quality loss in a large live experiment.
 Detection power depends on entropy: a factual answer like "Paris" has almost no sampling freedom, so it carries almost no watermark signal, and short or low-entropy outputs are not detectable at any usable false positive rate.
 Paraphrasing, translation, and model-assisted rewriting lower the share of key-aligned tokens toward chance, and Zhang et al. ("Watermarks in the Sand", ICML 2024) argue that strong watermarking is impossible against an adversary with a quality oracle and a perturbation oracle.
-Image watermarks such as SynthID for Imagen and the invisible watermarks on Amazon Titan and Nova image models embed a learned signal in pixel space that survives JPEG compression, resizing, and moderate cropping, but not adversarial removal by a decoder-aware attacker (UNVERIFIED: current AWS watermark detection API name and availability for Nova models).
+Image watermarks such as SynthID for Imagen and the invisible watermarks on Amazon Titan and Nova image models embed a learned signal in pixel space that survives JPEG compression, resizing, and moderate cropping, but not adversarial removal by a decoder-aware attacker; AWS states that Nova Canvas adds an invisible watermark to all generated images and that watermark detection is available for them (Amazon Nova docs, as of 2026-10) (UNVERIFIED: the detection API name, which that page does not give).
 C2PA Content Credentials are a different mechanism entirely: a manifest describing the asset's origin, signed with COSE using an X.509 certificate chain and bound to the asset by a hash.
 A C2PA manifest is cryptographically strong but fragile: re-encoding or a screenshot strips it, and having no manifest proves nothing.
 The defensible design layers a signed C2PA manifest (strong when present), an in-signal watermark (survives stripping, weak against active attackers), and server-side generation logs keyed by content hash (authoritative for your own outputs).
@@ -159,8 +176,9 @@ The defensible design layers a signed C2PA manifest (strong when present), an in
 ### Audit trail planes
 
 Plane one is control-plane audit: AWS CloudTrail management events and Google Cloud Admin Activity audit logs record who created, updated, or versioned a guardrail, template, floor setting, or logging configuration, and Admin Activity logs are always on.
-Plane two is data-plane call metadata: CloudTrail records Bedrock runtime calls with caller identity, model ID, and source IP but not the prompt body, while on Google Cloud, Vertex AI prediction calls show up in Data Access audit logs only when those logs are enabled for `aiplatform.googleapis.com`, because Data Access logs are off by default for most services (UNVERIFIED: current CloudTrail classification of `InvokeModel` and `Converse` as management events versus data events).
-Plane three is payload logging: Bedrock model invocation logging writes request and response bodies to CloudWatch Logs and/or S3, with large bodies going to S3, and Vertex AI request-response logging writes sampled Gemini and endpoint traffic to BigQuery (UNVERIFIED: GA status and sampling parameters of Vertex request-response logging for all publisher models).
+Plane two is data-plane call metadata: CloudTrail records Bedrock runtime calls with caller identity, model ID, and source IP but not the prompt body, while on Google Cloud, Vertex AI prediction calls show up in Data Access audit logs only when those logs are enabled for `aiplatform.googleapis.com`, because Data Access logs are off by default for most services.
+On the `bedrock-runtime` endpoint, `InvokeModel`, `InvokeModelWithResponseStream`, `Converse`, and `ConverseStream` are logged as CloudTrail management events at no extra cost, while async invoke, bidirectional streaming, and agent runtime operations are data events that must be enabled explicitly (AWS Bedrock docs, as of 2026-10).
+Plane three is payload logging: Bedrock model invocation logging (disabled by default) writes request and response bodies to CloudWatch Logs and/or S3, with JSON bodies over 100 KB and binary data going to S3, and Vertex AI request-response logging writes sampled traffic (a configurable `samplingRate`) to BigQuery for all Gemini models on `generateContent` and `streamGenerateContent` plus Anthropic Claude partner models, a feature still in Preview (AWS Bedrock docs and Google Cloud docs, as of 2026-10).
 Guardrail traces sit between planes two and three: the `ApplyGuardrail` response and `trace` output carry per-policy assessments, including which filter fired and at what confidence, and those traces are the only record of why a request was blocked.
 Tamper evidence comes from different mechanisms on each cloud: CloudTrail log file integrity validation writes hourly digest files that chain SHA-256 hashes and are signed with RSA keys, S3 Object Lock in compliance mode makes objects undeletable until retention expires, and Cloud Logging buckets with locked retention policies refuse deletion and retention reduction.
 Payload logs are by far the most sensitive data in the system, because they hold every secret, every piece of PII, and every injected exploit any user ever pasted, so they need the encryption hierarchy from [[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter/Chapter_04_Encryption_Key_Hierarchies_and_Envelope_Encryption|Encryption Key Hierarchies and Envelope Encryption]] and stricter IAM than the production model endpoint.
@@ -168,7 +186,8 @@ Payload logs are by far the most sensitive data in the system, because they hold
 ### Failure domains
 
 Guardrails are regional services in the request path, so a guardrail outage is a model outage unless the gateway has an explicit degraded mode.
-Bedrock Guardrails offers a Standard tier that uses cross-Region routing through a guardrail profile for capacity and broader language support, which means guardrail evaluation can leave the source Region and must be included in data residency analysis (UNVERIFIED: Standard tier feature list and the set of Regions in each guardrail profile).
+Bedrock Guardrails offers a Standard tier that uses cross-Region routing through a guardrail profile for capacity and broader language support, which means guardrail evaluation can leave the source Region and must be included in data residency analysis.
+Per AWS, the Standard tier applies to content filters, prompt attacks, denied topics, and contextual grounding, adds extensive language support (Classic covers English, French, and Spanish), prompt leakage detection, code-aware filtering, and 1,000-character topic definitions (versus 200), and keeps cross-Region requests within the source geography, for example US Regions for a US request, while the guardrail configuration stays in the primary Region (AWS Bedrock docs, as of 2026-10).
 Model Armor exposes regional endpoints (`modelarmor.LOCATION.rep.googleapis.com`) and multi-region locations, so the template's location decides where prompt text is processed.
 The static stability principle from [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_02_Regions_Zones_and_Static_Stability|Regions, Zones, and Static Stability]] implies pre-provisioning the guard path's capacity and fallback in each serving Region, never failing over guard evaluation on demand.
 
@@ -176,21 +195,21 @@ The static stability principle from [[17-Cloud-AI-Engineering/Volume_01_Cloud_Ar
 
 | Item | Value | Source and date |
 |---|---|---|
-| Bedrock text unit | Up to 1,000 characters; longer text consumes multiple units, billed per policy per evaluation | AWS Bedrock pricing as reported by secondary sources, as of 2026-10 |
-| Bedrock content filters (text) | $0.15 per 1,000 text units | AWS Bedrock pricing as reported by secondary sources, as of 2026-10 |
-| Bedrock denied topics | $0.15 per 1,000 text units | AWS Bedrock pricing as reported by secondary sources, as of 2026-10 |
-| Bedrock sensitive information filter (ML PII) | $0.10 per 1,000 text units | AWS Bedrock pricing as reported by secondary sources, as of 2026-10 |
-| Bedrock contextual grounding | $0.10 per 1,000 text units | AWS Bedrock pricing as reported by secondary sources, as of 2026-10 |
-| Bedrock word filters and regex PII | No charge | AWS Bedrock pricing as reported by secondary sources, as of 2026-10 |
-| Bedrock image content filter | $0.00075 per image | AWS Bedrock pricing as reported by secondary sources, as of 2026-10 |
+| Bedrock text unit | Up to 1,000 characters; longer text consumes multiple units, billed per policy per evaluation | AWS Bedrock pricing page, as of 2026-10 |
+| Bedrock content filters (text) | $0.15 per 1,000 text units | AWS Bedrock pricing page, as of 2026-10 |
+| Bedrock denied topics | $0.15 per 1,000 text units | AWS Bedrock pricing page, as of 2026-10 |
+| Bedrock sensitive information filter (ML PII) | $0.10 per 1,000 text units | AWS Bedrock pricing page, as of 2026-10 |
+| Bedrock contextual grounding | $0.10 per 1,000 text units, counted over the combined source, query, and response characters | AWS Bedrock pricing page, as of 2026-10 |
+| Bedrock word filters and regex PII | No charge | AWS Bedrock pricing page, as of 2026-10 |
+| Bedrock image content filter | $0.00075 per image | AWS Bedrock pricing page, as of 2026-10 |
 | Earlier Bedrock list prices still quoted in stale guides | $0.75 content filters, $1.00 denied topics per 1,000 units | Third-party guides, as of 2026-10; superseded |
-| Bedrock denied topics per guardrail | 30 | UNVERIFIED |
-| Bedrock custom words per guardrail | 10,000 | UNVERIFIED |
-| Bedrock ApplyGuardrail text units per second | Per-policy Service Quotas entries; read with `aws service-quotas list-service-quotas --service-code bedrock` | UNVERIFIED default values |
-| Bedrock invocation logging body limit in CloudWatch Logs | 100 KB, larger to S3 | UNVERIFIED |
-| Model Armor free tier and per-token price | 2M tokens per month free, then per-million-token pricing | UNVERIFIED |
-| Cloud Logging default retention | Admin Activity 400 days, Data Access 30 days in default buckets | UNVERIFIED |
-| CloudTrail digest file cadence | Hourly, SHA-256 hash chain with RSA signature | AWS CloudTrail docs, UNVERIFIED this cycle |
+| Bedrock denied topics per guardrail | 30 (not adjustable), up to 5 example phrases each | AWS Bedrock service quotas, as of 2026-10 |
+| Bedrock custom words per guardrail | 10,000 words per word policy (not adjustable) | AWS Bedrock service quotas, as of 2026-10 |
+| Bedrock ApplyGuardrail text units per second | Per-policy Service Quotas entries, adjustable; us-east-1 defaults are 200 for content filters (Standard tier), 200 for denied topics (Standard tier), 1,000 for sensitive information, 106 for contextual grounding; read with `aws service-quotas list-service-quotas --service-code bedrock` | AWS Bedrock service quotas, as of 2026-10 |
+| Bedrock invocation logging body limit in CloudWatch Logs | 100 KB, larger to S3 | AWS Bedrock docs, as of 2026-10 |
+| Model Armor free tier and per-token price | Standalone: 2M tokens per month free, then $0.10 per 1M tokens; 4 characters per token excluding white space; SCC Enterprise and Premium subscriptions include 3B tokens per month | Google Cloud SCC pricing page, as of 2026-10 |
+| Cloud Logging default retention | Admin Activity 400 days (`_Required` bucket), Data Access 30 days (`_Default` bucket) | Google Cloud Logging quotas docs, as of 2026-10 |
+| CloudTrail digest file cadence | Hourly, SHA-256 hash chain with SHA-256-with-RSA signature | AWS CloudTrail docs, as of 2026-10 |
 | Kirchenbauer detection threshold in paper | z = 4, one-sided false positive rate about 3.2e-5 | Kirchenbauer et al., ICML 2023 (stable) |
 | Tokens to detect at gamma 0.25, green share 0.5 | About 48 tokens for z = 4 | Derived from the z formula |
 | Tokens to detect after paraphrase lowers green share to 0.30 | About 1,200 tokens for z = 4 | Derived from the z formula |
@@ -202,21 +221,21 @@ The static stability principle from [[17-Cloud-AI-Engineering/Volume_01_Cloud_Ar
 
 | Concern | AWS | Google Cloud | Critical difference |
 |---|---|---|---|
-| Integrated guard on model call | `guardrailConfig` on `InvokeModel` / `Converse` referencing guardrail ID and version | `safetySettings` per request on `generateContent`; Model Armor integration with Vertex AI via floor settings | AWS guard is a versioned resource; Vertex thresholds are per-request fields with no resource identity (UNVERIFIED: GA status of Model Armor inline Vertex integration) |
-| Detached, model-agnostic guard | `ApplyGuardrail` with `source` INPUT or OUTPUT | Model Armor `sanitizeUserPrompt` / `sanitizeModelResponse` | Both can front self-hosted models; Model Armor also integrates at the network layer with load balancer service extensions (UNVERIFIED) |
+| Integrated guard on model call | `guardrailConfig` on `InvokeModel` / `Converse` referencing guardrail ID and version | `safetySettings` per request on `generateContent`; Model Armor integration with Vertex AI via floor settings | AWS guard is a versioned resource; Vertex thresholds are per-request fields with no resource identity; the Model Armor integration covers `generateContent` and skips sanitization (fails open) when Model Armor is unavailable in the Region or unreachable (Google Cloud docs, as of 2026-10) |
+| Detached, model-agnostic guard | `ApplyGuardrail` with `source` INPUT or OUTPUT | Model Armor `sanitizeUserPrompt` / `sanitizeModelResponse` | Both can front self-hosted models; Model Armor also integrates at the network layer through Service Extensions on Application Load Balancers, GKE Inference Gateway, and Secure Web Proxy (Google Cloud docs, as of 2026-10) |
 | Harm categories | Hate, Insults, Sexual, Violence, Misconduct, Prompt Attack | Hate speech, Harassment, Sexually explicit, Dangerous content | Vertex exposes probability and severity scores separately; Bedrock exposes confidence levels |
 | Non-removable provider filters | Provider abuse detection outside customer control | Non-configurable CSAM, prohibited content, and SPII filters surfaced as finish reasons | Vertex makes these visible per response via `finishReason` |
 | Prompt injection and jailbreak | Prompt Attack filter, input only, scoped by input tags | Model Armor prompt injection and jailbreak filter with confidence level | Bedrock scoping relies on caller-constructed tags; Model Armor scans the text it is given |
-| Custom semantic topics | Denied topics defined in natural language | No managed equivalent in Model Armor; build with a Gemini or ShieldGemma classifier | UNVERIFIED: absence of a Model Armor custom-topic feature |
+| Custom semantic topics | Denied topics defined in natural language | No managed equivalent in Model Armor; build with a Gemini or ShieldGemma classifier | UNVERIFIED: the Model Armor overview mentions custom rules in an example but documents no custom-topic filter, as of 2026-10 |
 | PII detection and transformation | Sensitive information filter: BLOCK or ANONYMIZE, plus regex | Sensitive Data Protection via Model Armor basic or advanced config | SDP supports keyed reversible tokenization and format-preserving encryption |
 | Hallucination control | Contextual grounding scores; Automated Reasoning checks with SMT | Check grounding API in Vertex AI Search / Agent Builder | No GCP equivalent of solver-backed policy verification (UNVERIFIED) |
 | Org-wide enforcement | IAM condition key `bedrock:GuardrailIdentifier` plus SCPs | Model Armor floor settings at org, folder, project | Floor settings set minimums; the IAM key pins an exact guardrail but not tag coverage |
-| Payload logging | Model invocation logging to CloudWatch Logs and S3 | Request-response logging to BigQuery; Cloud Logging for Model Armor findings | BigQuery lands logs directly in an analytics store; S3 needs Athena or a pipeline |
-| API audit | CloudTrail management and data events | Admin Activity always on; Data Access opt-in and billable | Turning on Data Access logs for Vertex is a deliberate cost decision |
+| Payload logging | Model invocation logging to CloudWatch Logs and S3 | Request-response logging to BigQuery (Preview); Cloud Logging for Model Armor findings | BigQuery lands logs directly in an analytics store; S3 needs Athena or a pipeline |
+| API audit | CloudTrail management events for `InvokeModel` and `Converse`; data events for async invoke and agents | Admin Activity always on; Data Access opt-in and billable | Turning on Data Access logs for Vertex is a deliberate cost decision |
 | Tamper evidence | CloudTrail digest validation, S3 Object Lock compliance mode | Locked log bucket retention, bucket lock on Cloud Storage | Both are WORM-style; neither redacts PII for you |
 | Text watermark | No first-party text watermark on Bedrock models (UNVERIFIED) | SynthID Text in Gemini; open-sourced detector in Hugging Face Transformers | Google detection requires Google-held keys for Gemini outputs |
 | Image provenance | Invisible watermark and C2PA credentials on Amazon image models | SynthID image watermark on Imagen, verification in Vertex AI | Both layer watermark and metadata; detectors are vendor-specific |
-| Billing unit | Text units of 1,000 characters per policy | Tokens (UNVERIFIED pricing) | Character-based billing penalizes verbose languages less than token-based billing does, and vice versa for CJK |
+| Billing unit | Text units of 1,000 characters per policy | Tokens of 4 characters excluding white space, $0.10 per 1M after 2M free per month (Google Cloud pricing, as of 2026-10) | Both meter characters, not model tokens: Bedrock rounds each evaluation up to whole 1,000-character units and bills every enabled policy separately, while Model Armor bills one token count covering all filters and excludes white space, so short, many-policy requests cost relatively more on Bedrock |
 
 ## Worked Example: Guarded Inference Path on Both Clouds with Cost Sizing
 
@@ -224,7 +243,7 @@ The static stability principle from [[17-Cloud-AI-Engineering/Volume_01_Cloud_Ar
 
 Neither guardrail product has a standing hourly charge, so the lab costs only what it evaluates.
 The AWS script below makes 6 `ApplyGuardrail` calls of about 1 text unit each across 4 billable policies, which comes to well under $0.01 at the prices in Numbers to Know.
-The Model Armor calls fall inside a small free allowance if one applies (UNVERIFIED), and otherwise cost fractions of a cent.
+The Model Armor calls fall inside the standalone free allowance of 2M tokens per month (Google Cloud SCC pricing page, as of 2026-10), and beyond it cost $0.10 per 1M tokens, fractions of a cent for this lab.
 Both budgets below are capped at $10 per month as a tripwire, not as a forecast.
 
 ### Budget alarms first
@@ -416,10 +435,11 @@ That "inspect, then the caller enforces" contract is the biggest semantic differ
 
 Assume 10M requests per month, a 3,000-character tagged user input, and a 1,500-character output.
 Input policies are content, denied topics, and ML PII at $0.15 + $0.15 + $0.10 = $0.40 per 1,000 units, and ceil(3,000 / 1,000) = 3 units each, so input guarding costs 3 x $0.40 / 1,000 = $0.0012 per request.
-Output policies are the same three over ceil(1,500 / 1,000) = 2 units, which is 2 x $0.40 / 1,000 = $0.0008, plus grounding on the 2 response units at $0.10 / 1,000, which is $0.0002 (UNVERIFIED: whether grounding source and query text are also billed).
-The total is $0.0022 per request, or $22,000 per month.
-For comparison, a hypothetical model priced at $3 per million input tokens and $15 per million output tokens, at about 4 characters per token, costs 750 x $3/1e6 + 375 x $15/1e6 = $0.0079 per request, so guarding adds about 28 percent to the variable cost.
-Average load is 10M / 2.592M seconds = 3.9 requests per second, and with a 5x peak factor that is about 19 requests per second, or about 58 input text units per second per policy, a figure to check against the ApplyGuardrail quotas in Service Quotas before launch.
+Output policies are the same three over ceil(1,500 / 1,000) = 2 units, which is 2 x $0.40 / 1,000 = $0.0008.
+Contextual grounding is billed on the combined characters of the grounding source, the query, and the response (AWS Bedrock pricing page, as of 2026-10), so with the 3,000-character query, the 1,500-character response, and an assumed 2,500-character retrieved source, that is 7,000 characters, or 7 units at $0.10 / 1,000, which is $0.0007.
+The total is $0.0027 per request, or $27,000 per month.
+For comparison, a hypothetical model priced at $3 per million input tokens and $15 per million output tokens, at about 4 characters per token, costs 750 x $3/1e6 + 375 x $15/1e6 = $0.0079 per request, so guarding adds about 34 percent to the variable cost.
+Average load is 10M / 2.592M seconds = 3.9 requests per second, and with a 5x peak factor that is about 19 requests per second, or about 58 input text units per second per policy, a figure to check against the ApplyGuardrail quotas in Service Quotas before launch (it fits under the us-east-1 defaults of 200 text units per second for content filters and denied topics, per AWS service quotas as of 2026-10).
 
 ### Capacity and cost sizing: the quadratic trap in multi-turn chat
 
@@ -472,7 +492,7 @@ These are the cases denied topics and prompt attack filters exist for, but the d
 
 ### Enforced guardrail, zero coverage
 
-`bedrock:GuardrailIdentifier` makes the caller attach the pinned guardrail, but a caller that wraps only an empty string or a harmless fragment in input tags gets a guardrail that evaluates nothing meaningful (UNVERIFIED: whether IAM-enforced guardrails ignore input tags in any current mode).
+`bedrock:GuardrailIdentifier` makes the caller attach the pinned guardrail, but a caller that wraps only an empty string or a harmless fragment in input tags gets a guardrail that evaluates nothing meaningful on the input side; AWS documents this limitation directly, noting that a user can bypass the enforced guardrail on the prompt with input tags while the guardrail is always applied to the response (AWS Bedrock docs, as of 2026-10).
 The control that actually works is architectural: only the central gateway builds guarded requests, workload roles cannot call `bedrock-runtime` directly, and an SCP or VPC endpoint policy denies runtime calls from any principal except the gateway role, as in [[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter/Chapter_06_Constructing_an_Impenetrable_Data_Perimeter|Constructing an Impenetrable Data Perimeter]].
 
 ### DRAFT in production
@@ -517,7 +537,7 @@ Detection thresholds must be set from the population size and the cost of a fals
 
 Split roles so that guardrail authors (`bedrock:CreateGuardrail`, `bedrock:UpdateGuardrail`, `bedrock:CreateGuardrailVersion`), runtime callers (`bedrock:InvokeModel`, `bedrock:ApplyGuardrail` on specific guardrail ARNs), and log readers are disjoint principals, following the evaluation logic in [[17-Cloud-AI-Engineering/Volume_02_AWS_Deep_Dive/Chapter_01_IAM_Policy_Evaluation_Engine|IAM Policy Evaluation Engine]].
 Deny `bedrock:DeleteGuardrail` and changes to model invocation logging configuration via SCP for everyone except a break-glass role, because turning off logging is the first step of a cover-up.
-On Google Cloud, grant `roles/modelarmor.user` to runtime callers and limit template and floor-setting administration to a small group, and use deny policies from [[17-Cloud-AI-Engineering/Volume_03_GCP_Deep_Dive/Chapter_02_Cloud_IAM_Roles_Policies_and_Conditions|Cloud IAM: Roles, Policies, and Conditions]] to block disabling Data Access audit logs on `aiplatform.googleapis.com` (UNVERIFIED: exact Model Armor predefined role names).
+On Google Cloud, grant `roles/modelarmor.user` to runtime callers and limit template and floor-setting administration to a small group, and use deny policies from [[17-Cloud-AI-Engineering/Volume_03_GCP_Deep_Dive/Chapter_02_Cloud_IAM_Roles_Policies_and_Conditions|Cloud IAM: Roles, Policies, and Conditions]] to block disabling Data Access audit logs on `aiplatform.googleapis.com` (predefined roles include `roles/modelarmor.admin`, `roles/modelarmor.editor`, `roles/modelarmor.viewer`, `roles/modelarmor.user`, and `roles/modelarmor.floorSettingsAdmin`, per Google Cloud docs as of 2026-10).
 
 ### Key hierarchy
 
@@ -529,7 +549,7 @@ That approach requires the envelope-encryption design from [[17-Cloud-AI-Enginee
 ### Private network boundaries
 
 Reach `bedrock-runtime` through an interface VPC endpoint with an endpoint policy that allows only the gateway role, and deny public-path access with `aws:SourceVpce` conditions.
-Put Vertex AI, Model Armor, Sensitive Data Protection, BigQuery, and Cloud Storage inside one VPC Service Controls perimeter from [[17-Cloud-AI-Engineering/Volume_03_GCP_Deep_Dive/Chapter_03_VPC_Service_Controls_Security_Perimeters|VPC Service Controls]], otherwise prompts sanitized inside the perimeter can be logged to a dataset outside it (UNVERIFIED: Model Armor VPC-SC support status).
+Put Vertex AI, Model Armor, Sensitive Data Protection, BigQuery, and Cloud Storage inside one VPC Service Controls perimeter from [[17-Cloud-AI-Engineering/Volume_03_GCP_Deep_Dive/Chapter_03_VPC_Service_Controls_Security_Perimeters|VPC Service Controls]], otherwise prompts sanitized inside the perimeter can be logged to a dataset outside it (Model Armor, `modelarmor.googleapis.com`, is GA for VPC Service Controls and needs a Private Service Connect endpoint when restricted inside a perimeter, per Google Cloud docs as of 2026-10).
 Account for cross-Region guardrail routing in residency reviews, since a Standard-tier guardrail profile can process prompt text in a Region other than the model's.
 
 ### Unit-economics levers

@@ -18,6 +18,20 @@ sources:
   - "https://docs.opensearch.org/latest/vector-search/ai-search/hybrid-search/rrf/"
   - "https://aws.amazon.com/blogs/machine-learning/multi-tenant-rag-with-amazon-bedrock-knowledge-bases/"
   - "https://docs.cloud.google.com/vertex-ai/docs/vector-search/overview"
+  - "https://docs.opensearch.org/latest/mappings/supported-field-types/knn-methods-engines/"
+  - "https://docs.opensearch.org/latest/vector-search/filter-search-knn/efficient-knn-filtering/"
+  - "https://docs.opensearch.org/latest/vector-search/optimizing-storage/binary-quantization/"
+  - "https://docs.opensearch.org/latest/search-plugins/search-pipelines/score-ranker-processor/"
+  - "https://aws.amazon.com/about-aws/whats-new/2025/12/amazon-s3-vectors-generally-available/"
+  - "https://docs.aws.amazon.com/general/latest/gr/bedrock.html"
+  - "https://docs.aws.amazon.com/bedrock/latest/userguide/titan-embedding-models.html"
+  - "https://aws.amazon.com/blogs/machine-learning/get-started-with-amazon-titan-text-embeddings-v2-a-new-state-of-the-art-embeddings-model-on-amazon-bedrock/"
+  - "https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonES/current/us-east-1/index.json"
+  - "https://cloud.google.com/vertex-ai/pricing"
+  - "https://docs.cloud.google.com/vertex-ai/docs/release-notes"
+  - "https://docs.cloud.google.com/vertex-ai/docs/vector-search-2/overview"
+  - "https://aws.amazon.com/message/101925/"
+  - "https://status.cloud.google.com/incidents/ow5i3PPK96RduMcb1SsW"
 ---
 
 # System Design: Billion-Scale Real-Time Enterprise RAG
@@ -145,7 +159,7 @@ Google's ScaNN (Guo et al., ICML 2020) adds anisotropic vector quantization, whi
 SOAR (Sun et al., NeurIPS 2023) extends ScaNN's IVF partitioning with spilled assignments, where a vector's secondary cluster is chosen so its residual is near-orthogonal to the primary residual, reducing correlated misses.
 Vertex AI Vector Search is built on the ScaNN lineage.
 AWS publishes less detail on the internals of Amazon S3 Vectors.
-S3 Vectors reached GA on 2025-12-02 with up to 2 billion vectors per index, up to 20 trillion per bucket, and roughly 100 ms query latency ([AWS announcement](https://www.amazonaws.cn/en/new/2026/announcing-amazon-s3-vectors-cloud-object-storage-with-native-support-to-store-and-query-vectors/), [BigDATAwire](https://www.hpcwire.com/bigdatawire/this-just-in/amazon-s3-vectors-now-generally-available-with-increased-scale-and-performance/), as of 2026-10).
+S3 Vectors reached GA on 2025-12-02 with up to 2 billion vectors per index, up to 10,000 indexes (so 20 trillion vectors) per bucket, latencies around 100 ms or less for frequent queries, and under one second for infrequent ones ([AWS announcement](https://aws.amazon.com/about-aws/whats-new/2025/12/amazon-s3-vectors-generally-available/), [BigDATAwire](https://www.hpcwire.com/bigdatawire/this-just-in/amazon-s3-vectors-now-generally-available-with-increased-scale-and-performance/), as of 2026-10).
 
 ### The deep mechanism: the filtered-ANN selectivity cliff
 
@@ -166,14 +180,14 @@ Worse, the subgraph induced by the predicate may be disconnected, so greedy sear
 Exact search over the filtered set is cheap when the matching set is small.
 Scanning 10,000 1-bit vectors is 1.28 MB of popcount work, which takes well under a millisecond on one core.
 Scanning 10,000 FP32 1024-d vectors moves about 41 MB, which costs a few milliseconds of memory bandwidth.
-OpenSearch's efficient filtering switches to exact search when the filtered candidate count is small relative to k, with a configurable threshold (`knn.advanced.filtered_exact_search_threshold`, UNVERIFIED setting name).
+OpenSearch's efficient filtering switches to exact search when the filtered candidate count is small relative to k, with a configurable index-level threshold (`index.knn.advanced.filtered_exact_search_threshold`) ([OpenSearch docs](https://docs.opensearch.org/latest/vector-search/filter-search-knn/efficient-knn-filtering/), as of 2026-10).
 
 That leaves a danger zone in the middle, roughly 10^-3 < s < 10^-1.
 There, the filtered set is too large to scan within budget, yet the induced subgraph is sparse enough that graph search loses recall or explodes in latency.
 Research systems attack this zone directly.
 Filtered-DiskANN (Gollapudi et al., ACM Web Conference 2023) builds label-aware graph edges, so each label's subgraph stays navigable.
 ACORN (Patel et al., SIGMOD 2024) builds a denser, predicate-agnostic HNSW variant and expands the neighbor lists during search, so arbitrary predicate subgraphs stay connected.
-Managed services do not let you pick these algorithms, so the production fix is placement:
+Managed services expose little of this: OpenSearch 3.1+ adds an ACORN-style optimization that expands to neighbors of neighbors during filtered HNSW search, applied only when the filter keeps 60% or fewer of the documents ([OpenSearch docs](https://docs.opensearch.org/latest/vector-search/filter-search-knn/efficient-knn-filtering/), as of 2026-10), but you cannot pick label-aware graph construction, so the production fix is still placement:
 
 | Tenant size class | Placement | Effective selectivity inside its graph | Search mode |
 | --- | --- | --- | --- |
@@ -222,7 +236,7 @@ Score-based fusion wins once you have tuned weights from offline evaluation, bec
 On Google Cloud, Vertex AI Vector Search supports dense, sparse, and hybrid search over dense plus sparse embeddings ([Google Cloud docs](https://docs.cloud.google.com/vertex-ai/docs/vector-search/overview), as of 2026-10).
 There is no built-in BM25 analyzer in the classic API.
 You generate sparse vectors yourself (TF-IDF, BM25 weights, or a learned sparse model) and the service fuses them with RRF.
-LangChain's integration docs describe a "Vector Search 2.0" with auto-generated embeddings and RRF-based hybrid text search; its GA status is UNVERIFIED.
+Vector Search 2.0, built on collections with auto-embeddings and hybrid search that combines vector, full-text, and built-in semantic re-ranking in one query, became GA on 2026-03-05 ([Vertex AI release notes](https://docs.cloud.google.com/vertex-ai/docs/release-notes), as of 2026-10), and Google's docs now call it Agent Retrieval ([Google Cloud docs](https://docs.cloud.google.com/vertex-ai/docs/vector-search-2/overview), as of 2026-10).
 Google's Vector Search documentation now carries the "Gemini Enterprise Agent Platform" branding (Google Cloud docs, as of 2026-10), and this chapter keeps the historical name Vertex AI Vector Search for the API surface.
 
 ### Reranking and the latency budget
@@ -265,14 +279,15 @@ A cell is an independent cluster with its own index, encoder pool, and quotas, a
 | `on_disk` mode introduced / default compression | OpenSearch 2.17 / 32x | (OpenSearch docs and blog, as of 2026-10) |
 | RRF in OpenSearch hybrid search | 2.19+ via `score-ranker-processor` | (OpenSearch docs, as of 2026-10) |
 | S3 Vectors scale at GA (2025-12-02) | 2B vectors/index, 20T vectors/bucket | (AWS announcement, as of 2026-10) |
-| S3 Vectors query latency | ~100 ms | (AWS announcement via BigDATAwire, as of 2026-10) |
-| S3 Vectors preview index cap (2025-07) | 50M vectors/index | (VentureBeat, as of 2026-10) |
-| Bedrock Knowledge Bases concurrency | 1 ingestion job per KB, 5 per account | (AWS ML Blog, as of 2026-10) |
-| Bedrock KB job size / docs per data source | 100 GB per job / 5M documents per data source | (AWS ML Blog, as of 2026-10) |
-| Bedrock KB per-file size limit | 50 MB | (Bedrock User Guide via secondary source, as of 2026-10) |
+| S3 Vectors query latency | ~100 ms or less for frequent queries, < 1 s for infrequent | (AWS announcement, as of 2026-10) |
+| S3 Vectors preview index cap (2025-07) | 50M vectors/index | (AWS GA announcement: 2B is 40x the preview scale, as of 2026-10) |
+| Bedrock Knowledge Bases concurrency | 1 ingestion job per KB (and per data source), 5 per account | (AWS service quotas, as of 2026-10) |
+| Bedrock KB job size / files per job | 100 GB per job / 5M new or updated files per ingestion job | (AWS service quotas, as of 2026-10) |
+| Bedrock KB per-file size limit | 50 MB for files with text content | (AWS service quotas, as of 2026-10) |
 | Titan Text Embeddings V2 price | $0.00002 per 1K input tokens ($0.02/M) | (AWS ML Blog, as of 2026-10) |
-| Titan Text Embeddings V2 max input | 8,192 tokens | (AWS docs via secondary source, as of 2026-10) |
-| Vertex AI node price, e2-standard-16 | $0.6165 per hour | (Google Cloud pricing page, as of 2026-10; attribution to the Vector Search table is UNVERIFIED) |
+| Titan Text Embeddings V2 max input | 8,192 tokens or 50,000 characters | (AWS docs, as of 2026-10) |
+| Titan Text Embeddings V2 on-demand quota | 300,000 tokens/min, 6,000 requests/min per Region, not adjustable | (AWS service quotas, as of 2026-10) |
+| Vector Search node price, e2-standard-16, us-central1 | $0.7505 per hour (the $0.6165 figure is the general Vertex AI prediction rate) | (Google Cloud Vertex AI pricing page, as of 2026-10) |
 | Fan-out tail, 120 shards | 70.1% of queries exceed per-shard p99 | derived: 1 - 0.99^120 |
 | Rescore I/O at 5,000 QPS, k=50, oversample 3 | up to 750k random 4 KB reads/s | derived |
 | Full re-embed, 1B chunks x 300 tokens | 3 x 10^11 tokens, ~$6,000 at Titan V2 list | derived from the price above |
@@ -290,7 +305,7 @@ A cell is an independent cluster with its own index, encoder pool, and quotas, a
 | Filtering | `filter` inside `knn` clause, efficient filtering with exact fallback | Token `restricts` (allow/deny) and numeric restricts on datapoints | Neither publishes recall guarantees under low selectivity; benchmark it |
 | Tenant co-location | `_routing` + `routing_partition_size`, or index-per-tenant | Index or namespace-per-tenant, restricts on `tenant` token | No shard-routing primitive on Vector Search; isolation is by index or restrict |
 | Freshness | Refresh interval (default 1 s) on segments | Streaming update indexes vs batch-update indexes | Batch-update indexes cannot meet a 60 s SLO |
-| Cheap cold tier | S3 Vectors (GA 2025-12, ~100 ms) | UNVERIFIED equivalent; Vector Search 2.0 status UNVERIFIED | AWS has a first-party object-storage vector tier |
+| Cheap cold tier | S3 Vectors (GA 2025-12, ~100 ms) | Agent Retrieval (formerly Vector Search 2.0, GA 2026-03-05) offers usage-based pricing for small workloads (Google Cloud docs, as of 2026-10); an object-storage-backed equivalent is UNVERIFIED: none found in current docs | AWS has a first-party object-storage vector tier |
 | Managed RAG | Bedrock Knowledge Bases | Vertex AI RAG Engine | Bedrock KB job and doc-count quotas bind at billion scale |
 | Private network | VPC domain for OpenSearch, PrivateLink interface endpoints for Bedrock | Private Service Connect for Vector Search endpoints, VPC Service Controls | VPC-SC is an API-level perimeter; AWS composes SCPs + endpoint policies |
 | Keys | KMS CMK on OpenSearch domain and S3 | CMEK via Cloud KMS on supported resources | Verify CMEK coverage per resource before promising it |
@@ -306,7 +321,7 @@ The lab builds a one-node Amazon OpenSearch Service domain, an index with 1-bit 
 ### Cost estimate and budget guardrail
 
 Cost drivers: one `r7g.large.search` data node plus 20 GB gp3 storage, billed hourly while the domain exists.
-The current hourly rate is UNVERIFIED here, so check the OpenSearch Service pricing page for your region before you start.
+In us-east-1 the node is $0.178 per hour (about $4.27 per day) and gp3 storage is $0.122 per GB-month (AWS Price List API, as of 2026-10), so check the OpenSearch Service pricing page if you use another region.
 Embedding 10,000 chunks of about 300 tokens is 3M tokens, which costs about $0.06 at Titan V2 list price (as of 2026-10).
 Delete the domain the same day.
 
@@ -500,7 +515,7 @@ Validate with a replayed production query log, not synthetic uniform queries.
 Step 6, embedding spend.
 Steady state is 50M chunk mutations/day x 300 tokens = 15B tokens/day, or about $300/day at $0.02/M (as of 2026-10).
 With 90% hash-gate hits, that falls to about $30/day.
-Peak ingest is 5,800 chunks/s x 300 tokens, about 104M tokens/min, which is far above typical default managed TPM quotas (UNVERIFIED for specific values).
+Peak ingest is 5,800 chunks/s x 300 tokens, about 104M tokens/min, roughly 350x the Titan Text Embeddings V2 on-demand default of 300,000 tokens/min per Region, which is not adjustable (AWS service quotas, as of 2026-10).
 So the real-time lane needs either a quota increase or a self-hosted encoder fleet, and the bulk lane uses batch inference.
 
 Step 7, query embedding spend.
@@ -557,8 +572,8 @@ Mitigation: separate quotas or accounts for query and ingest embedding, capped e
 
 ### Regional dependency outages
 
-On 2025-10-20, a latent race condition in DynamoDB's automated DNS management in us-east-1 left the regional endpoint without valid DNS records, and services that depended on it failed in cascade ([AWS PIR](https://aws.amazon.com/message/101925/), UNVERIFIED in this session).
-On 2025-06-12, a Google Cloud Service Control change with a null-pointer path, which was not feature-flagged, crash-looped globally once replicated policy data arrived ([Google Cloud incident report](https://status.cloud.google.com/incidents/ow5i3PPK96RduMcb1SsW), UNVERIFIED in this session).
+On 2025-10-20, a latent race condition in DynamoDB's automated DNS management in us-east-1 left the regional endpoint without valid DNS records, and services that depended on it failed in cascade ([AWS PIR](https://aws.amazon.com/message/101925/), as of 2026-10).
+On 2025-06-12, a Google Cloud Service Control change with a null-pointer path, which was not feature-flagged, crash-looped globally once replicated policy data with blank fields arrived ([Google Cloud incident report](https://status.cloud.google.com/incidents/ow5i3PPK96RduMcb1SsW), as of 2026-10).
 The RAG lessons: the query path should not depend on a regional control-plane API at request time.
 Cache IAM-derived ACL group memberships with a bounded staleness window.
 Treat the embedding endpoint as a dependency that may vanish, and keep a BM25-only mode that still meets a reduced quality SLO.
@@ -566,7 +581,7 @@ See [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_07_Anatomy_o
 
 ### Managed RAG quota ceilings
 
-Bedrock Knowledge Bases allows one concurrent ingestion job per knowledge base and five per account, 100 GB per job, and 5M documents per data source (AWS ML Blog, as of 2026-10).
+Bedrock Knowledge Bases allows one concurrent ingestion job per knowledge base and five per account, 100 GB per job, and 5M new or updated files per ingestion job, none of them adjustable ([AWS service quotas](https://docs.aws.amazon.com/general/latest/gr/bedrock.html), as of 2026-10).
 A pooled single-KB design for thousands of tenants therefore serializes freshness across all tenants.
 At billion-chunk scale, managed KBs fit the silo pattern for mid-size tenants, while the pooled long tail and the largest tenants need a custom pipeline.
 
@@ -708,7 +723,7 @@ Your p99 is 180 ms against a 100 ms SLO while median is 35 ms; diagnose and fix 
 #### Model Answer
 
 A 5x gap between p50 and p99 usually means tail amplification or bimodal work, not uniform slowness, so I break the latency down per stage and per shard, using traces.
-The first suspect is fan-out: if queries hit many shards, the query's p99 requires roughly the per-shard p99.99 (since `0.99^(1/120) ≈ 0.99992`), because `1 - 0.99^120` is about 70%.
+The first suspect is fan-out: if queries hit many shards, the query's p99 requires roughly the per-shard p99.99 (since `0.99^(1/120) ~= 0.99992`), because `1 - 0.99^120` is about 70%.
 The fix is tenant routing to cut fan-out, with hedged requests only for the remaining multi-shard queries, sent after the per-shard p95, which costs about 5% extra load.
 The second suspect is bimodal filtered search: small tenants in the danger-zone selectivity band traverse huge parts of the graph.
 I would bucket p99 by tenant size class, and if one class dominates, adjust the exact-search threshold or re-place those tenants.
@@ -758,7 +773,7 @@ OpenSearch gives native BM25, graph and quantization knobs, routing, and documen
 Vertex AI Vector Search gives managed ScaNN-lineage ANN with streaming updates and dense-plus-sparse hybrid, but I would have to generate sparse vectors myself, and there is no shard-routing primitive, so isolation is by index or restricts.
 The cold tier is the long tail of tenants that query rarely.
 S3 Vectors stores up to 2B vectors per index at about 100 ms query latency (as of 2026-10), which cannot meet the hot SLO but removes always-on nodes for most tenants by count.
-Bedrock Knowledge Bases fits as an onboarding path for mid-size tenants in a silo model, but one concurrent job per KB, five per account, and 5M documents per data source rule it out for the pooled long tail and the largest tenants.
+Bedrock Knowledge Bases fits as an onboarding path for mid-size tenants in a silo model, but one concurrent job per KB, five per account, and 5M files per ingestion job rule it out for the pooled long tail and the largest tenants.
 For the CFO: the dominant cost is in-memory vector footprint, and quantization plus tiering cut node count by roughly an order of magnitude versus naive FP32.
 I would present unit cost per tenant-GB-month and per thousand queries, with committed-use discounts on the steady hot fleet.
 For the CISO: tenant ID is derived from identity, enforced in-index and in every cache key, data stays behind PrivateLink or VPC-SC perimeters, KMS keys protect data at rest, and embeddings are classified like source text because they can leak content.

@@ -21,6 +21,20 @@ sources:
   - "https://docs.cloud.google.com/kubernetes-engine/docs/how-to/serve-with-gke-inference-gateway"
   - "https://docs.aws.amazon.com/bedrock/latest/userguide/service-tiers-inference.html"
   - "https://www.anthropic.com/engineering/a-postmortem-of-three-recent-issues"
+  - "https://aws.amazon.com/bedrock/pricing/"
+  - "https://docs.aws.amazon.com/bedrock/latest/userguide/model-card-moonshot-ai-kimi-k3.html"
+  - "https://docs.aws.amazon.com/bedrock/latest/userguide/cross-region-inference.html"
+  - "https://docs.aws.amazon.com/bedrock/latest/userguide/geographic-cross-region-inference.html"
+  - "https://www.nvidia.com/en-us/data-center/h100/"
+  - "https://aws.amazon.com/ec2/instance-types/p5/"
+  - "https://aws.amazon.com/about-aws/whats-new/2025/06/pricing-usage-model-ec2-instances-nvidia-gpus"
+  - "https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_ProductionVariantRoutingConfig.html"
+  - "https://gateway-api-inference-extension.sigs.k8s.io/implementations/gateways/"
+  - "https://cloud.google.com/blog/products/ai-machine-learning/gke-inference-gateway-and-quickstart-are-ga"
+  - "https://docs.cloud.google.com/kubernetes-engine/docs/how-to/setup-multicluster-inference-gateway"
+  - "https://docs.cloud.google.com/vertex-ai/generative-ai/docs/deploy/consumption-options"
+  - "https://docs.cloud.google.com/vertex-ai/generative-ai/docs/dynamic-shared-quota"
+  - "https://docs.cloud.google.com/compute/docs/gpus/gpu-network-bandwidth"
 ---
 
 # System Design: Multi-Tenant LLM Inference Platform
@@ -153,8 +167,8 @@ The bounded-load cap comes from consistent hashing with bounded loads ([Mirrokni
 Without the cap, one viral system prompt pins every request to the replica that cached it first.
 That replica's queue grows until the TTFT saved by the cache hit is smaller than the TTFT lost to queueing.
 With the cap, overflow spills to the next-best replica, which then caches the hot prefix too, so hot prefixes replicate themselves in proportion to their load.
-GKE Inference Gateway is GA and ships prefix-aware routing and disaggregated serving ([Google Cloud](https://cloud.google.com/discover/inference-optimization), as of 2026-10).
-Its InferenceObjective resource carries an integer priority where a higher value means a more critical request ([GKE docs](https://docs.cloud.google.com/kubernetes-engine/docs/how-to/serve-with-gke-inference-gateway), as of 2026-10).
+GKE Inference Gateway has been GA since September 10, 2025, with prefix-aware load balancing as a GA feature, and disaggregated prefill/decode serving is offered through AI Hypercomputer with Inference Gateway, llm-d, and vLLM without a stated GA label ([Google Cloud blog](https://cloud.google.com/blog/products/ai-machine-learning/gke-inference-gateway-and-quickstart-are-ga), as of 2026-10).
+Its InferenceObjective resource, still an alpha CRD that you install manually, carries an integer priority where a higher value means a more critical request ([GKE docs](https://docs.cloud.google.com/kubernetes-engine/docs/how-to/serve-with-gke-inference-gateway), as of 2026-10).
 
 **LoRA multiplexing.**
 S-LoRA showed that thousands of adapters can share one base model by paging adapter weights in and out of unified GPU memory ([Sheng et al., MLSys 2024](https://arxiv.org/abs/2311.03285)).
@@ -238,35 +252,35 @@ Without that envelope, one tenant's 1M-token prompts would breach your SLA for y
 | Quantity | Value | Source |
 |---|---|---|
 | Bedrock service tiers | Reserved, Priority, Standard, Flex; selected with `service_tier` values `reserved`, `priority`, `default`, `flex` | ([AWS Bedrock docs](https://docs.aws.amazon.com/bedrock/latest/userguide/service-tiers-inference.html), as of 2026-10) |
-| Bedrock Priority price | 1.75x Standard per-token rate | ([AWS Bedrock pricing](https://aws.amazon.com/bedrock/pricing/), as of 2026-10) |
+| Bedrock Priority price | 1.75x Standard per-token rate (a 75% premium) | ([AWS Bedrock pricing](https://aws.amazon.com/bedrock/pricing/), as of 2026-10) |
 | Bedrock Flex and Batch price | 0.5x Standard per-token rate | ([AWS Bedrock pricing](https://aws.amazon.com/bedrock/pricing/), as of 2026-10) |
 | Bedrock Reserved tier | Targets 99.5% uptime for model response; 1- or 3-month term; separate input and output TPM; overflows to Standard | ([AWS Bedrock docs](https://docs.aws.amazon.com/bedrock/latest/userguide/service-tiers-inference.html), as of 2026-10) |
-| Bedrock Reserved minimum | 100,000 input TPM and 10,000 output TPM | (Caylent analysis, third-party, as of 2026-08; UNVERIFIED against AWS docs) |
+| Bedrock Reserved minimum | 100,000 input TPM and 10,000 output TPM | ([AWS Bedrock docs](https://docs.aws.amazon.com/bedrock/latest/userguide/service-tiers-inference.html), as of 2026-10) |
 | KV cache per token, Llama-3.1-70B-class (80 layers, 8 KV heads, head dim 128, BF16) | 2 x 80 x 8 x 128 x 2 B = 320 KiB | (derived from the published model config; arithmetic) |
 | Dense 70.6B weights | 141 GB BF16, 71 GB FP8 | (arithmetic) |
-| H100 SXM HBM3 per GPU | 80 GB, 3.35 TB/s | (NVIDIA H100 datasheet; UNVERIFIED this pass) |
-| H100 SXM dense BF16 | ~989 TFLOPS | (NVIDIA H100 datasheet; UNVERIFIED this pass) |
+| H100 SXM HBM3 per GPU | 80 GB, 3.35 TB/s | ([NVIDIA H100 product page](https://www.nvidia.com/en-us/data-center/h100/), as of 2026-10) |
+| H100 SXM dense BF16 | ~989 TFLOPS (NVIDIA lists 1,979 TFLOPS with sparsity; dense is half) | ([NVIDIA H100 product page](https://www.nvidia.com/en-us/data-center/h100/), as of 2026-10) |
 | KV capacity, 8 x H100, 90% memory utilization, 40 GB activation reserve, BF16 weights | ~395 GB, ~1.2M tokens, ~294 sequences at 4k context | (derived, this chapter) |
 | Decode iteration, batch 128, mean context 2.5k, 50% bandwidth efficiency | ~18 ms per step, ~7,000 output tok/s per node | (derived roofline, this chapter) |
 | Prefill throughput, same node, 40% MFU | ~22,000 tok/s | (derived, this chapter) |
 | Prefill chunk cost on that node | 512 tokens ~23 ms, 2048 tokens ~91 ms added to the iteration | (derived, this chapter) |
 | vLLM PagedAttention throughput gain | 2-4x vs FasterTransformer and Orca at the same latency | ([Kwon et al., SOSP 2023](https://arxiv.org/abs/2309.06180)) |
 | DistServe gain | Up to 7.4x more requests or 12.6x tighter SLO vs colocated baselines | ([Zhong et al., OSDI 2024](https://www.usenix.org/conference/osdi24/presentation/zhong-yinmin)) |
-| p5.48xlarge | 8 x H100 80 GB, 3,200 Gbps EFA | (AWS EC2 docs; UNVERIFIED this pass) |
-| p5.48xlarge on-demand price | Assumed USD 55/hr in the cost model | (UNVERIFIED; check the EC2 pricing page) |
+| p5.48xlarge | 8 x H100 80 GB (640 GB HBM3), 3,200 Gbps EFA | ([AWS EC2 P5 page](https://aws.amazon.com/ec2/instance-types/p5/), as of 2026-10) |
+| p5.48xlarge on-demand price | USD 55.04/hr, Linux, us-east-1 (after the June 2025 P5 price cut of up to 45%); the cost model uses USD 55/hr | (AWS public EC2 price list, as of 2026-10; [AWS price-reduction announcement](https://aws.amazon.com/about-aws/whats-new/2025/06/pricing-usage-model-ec2-instances-nvidia-gpus)) |
 
 ## AWS vs GCP Mechanism Parity
 
 | Concern | AWS | Google Cloud | Critical difference |
 |---|---|---|---|
 | Global front door | Global Accelerator anycast to regional NLB/ALB; Route 53 latency and weighted records | Global external Application LB on GFE anycast VIP | GCP terminates L7 at the global edge in one resource, while AWS puts L7 in each region behind L4 anycast; see [[17-Cloud-AI-Engineering/Volume_04_AWS_vs_GCP_Translation/Chapter_02_Networking_and_Load_Balancing_Translation\|Networking Translation]] |
-| Inference-aware L7 routing (self-hosted) | Gateway API Inference Extension on EKS via a conformant gateway (UNVERIFIED for specific AWS-managed support); SageMaker endpoints offer least-outstanding-requests routing (UNVERIFIED this pass) | GKE Inference Gateway GA: InferencePool, InferenceObjective priority, prefix-aware routing, disaggregated serving | GCP has a first-party managed endpoint picker, while on AWS you run and operate the picker yourself |
+| Inference-aware L7 routing (self-hosted) | Gateway API Inference Extension on EKS via a self-installed conformant gateway such as Istio or NGINX Gateway Fabric (the project lists no AWS implementation, as of 2026-10); SageMaker endpoints offer `LEAST_OUTSTANDING_REQUESTS`, `RANDOM`, and `PREFIX_AWARE` routing strategies, the last spilling to another copy or instance at a `ConcurrencyThreshold` ([SageMaker API reference](https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_ProductionVariantRoutingConfig.html), as of 2026-10) | GKE Inference Gateway GA (September 2025): InferencePool, InferenceObjective priority (alpha CRD), GA prefix-aware routing, disaggregated serving via llm-d | GCP has a first-party managed endpoint picker for GKE, while on EKS you run and operate the picker yourself; SageMaker's prefix-aware routing is the managed AWS option, but only inside a SageMaker endpoint |
 | Multi-region self-hosted routing | Global Accelerator endpoint weights driven by your own headroom signals | Multi-cluster GKE Inference Gateway across regions | On AWS the headroom-to-weight feedback loop is your code |
-| Managed priority tiers | Bedrock Reserved, Priority (1.75x), Standard, Flex (0.5x) | Vertex AI Provisioned Throughput plus pay-as-you-go and batch (UNVERIFIED this pass for current tier names and multipliers) | Bedrock Reserved overflows to Standard automatically, so you must decide whether overflow is acceptable for your SLA |
-| Managed cross-region routing | Bedrock CRIS geographic and global inference profiles | Vertex AI global endpoint for Gemini (UNVERIFIED this pass) | A geographic profile keeps processing inside a geography, while a global profile may not, which is a residency decision rather than a performance one |
-| RDMA for KV transfer | EFA with SRD multipath transport | GPUDirect-TCPX/TCPXO on A3 and A3 Mega, RDMA on A3 Ultra (UNVERIFIED this pass) | SRD tolerates out-of-order delivery by design, while RoCE fabrics depend on lossless or congestion-controlled configuration |
+| Managed priority tiers | Bedrock Reserved, Priority (1.75x), Standard, Flex (0.5x) | Vertex AI consumption options: Provisioned Throughput (1-week to 1-year terms), Standard PayGo, Priority PayGo (premium rate), Flex PayGo (about 50% off), and Batch inference (50% off) ([Google Cloud docs](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/deploy/consumption-options), as of 2026-10) | Bedrock Reserved overflows to Standard automatically, so you must decide whether overflow is acceptable for your SLA |
+| Managed cross-region routing | Bedrock CRIS geographic and global inference profiles ([AWS Bedrock docs](https://docs.aws.amazon.com/bedrock/latest/userguide/cross-region-inference.html), as of 2026-10) | Vertex AI global endpoint for Gemini, which draws on Google's global capacity pool ([Google Cloud docs](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/deploy/consumption-options), as of 2026-10) | A geographic profile keeps processing inside a geography, while a global profile may not, which is a residency decision rather than a performance one |
+| RDMA for KV transfer | EFA with SRD multipath transport | GPUDirect-TCPX on A3 High (1,000 Gbps), GPUDirect-TCPXO on A3 Mega (1,800 Gbps), GPUDirect RDMA on A3 Ultra (3,200 Gbps over eight CX-7 NICs) ([Compute Engine docs](https://docs.cloud.google.com/compute/docs/gpus/gpu-network-bandwidth), as of 2026-10) | SRD tolerates out-of-order delivery by design, while RoCE fabrics depend on lossless or congestion-controlled configuration |
 | Private access to managed endpoints | PrivateLink interface endpoints for `bedrock-runtime`; SCP and endpoint policies | Private Service Connect plus VPC Service Controls perimeter around `aiplatform.googleapis.com` | VPC SC is an API-level perimeter, while AWS composes several policy layers; see [[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter/Chapter_06_Constructing_an_Impenetrable_Data_Perimeter\|Data Perimeter]] |
-| Quota model (managed) | Per-account, per-region, per-model TPM and RPM in Service Quotas; Standard, Priority, and Flex share on-demand quota while Reserved has its own pool (third-party source) | Provisioned Throughput in GSUs plus shared pay-as-you-go capacity (UNVERIFIED this pass) | You must still enforce per-tenant quotas inside your gateway on both clouds, because the provider sees only your account |
+| Quota model (managed) | Per-account, per-region, per-model TPM and RPM in Service Quotas; Standard, Priority, and Flex share on-demand quota while Reserved has its own pool ([AWS Bedrock docs](https://docs.aws.amazon.com/bedrock/latest/userguide/service-tiers-inference.html), as of 2026-10) | Provisioned Throughput in GSUs that spills over to pay-as-you-go by default, plus Standard PayGo on a shared pool with spend-based prioritized-throughput tiers ([Google Cloud docs](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/dynamic-shared-quota), as of 2026-10) | You must still enforce per-tenant quotas inside your gateway on both clouds, because the provider sees only your account |
 
 ## Worked Example: Token-Fair Priority Scheduler and Capacity Model
 
@@ -445,6 +459,7 @@ spec:
   priority: 100          # higher value = more critical
   poolRef:
     name: vllm-pool      # replace with your InferencePool name
+    group: "inference.networking.k8s.io"
 ---
 apiVersion: inference.networking.x-k8s.io/v1alpha2
 kind: InferenceObjective
@@ -454,9 +469,10 @@ spec:
   priority: 1
   poolRef:
     name: vllm-pool
+    group: "inference.networking.k8s.io"
 ```
 
-Cost estimate: the tutorial's GPU node pool dominates cost, roughly USD 10-15 per hour for a single H100 node on demand (UNVERIFIED; check the Compute Engine GPU pricing page for your region), so a 2-hour session costs about USD 20-30.
+Cost estimate: the tutorial's GPU node pool dominates cost, roughly USD 11 per hour for a one-GPU a3-highgpu-1g node or roughly USD 88 per hour for an eight-GPU a3-highgpu-8g node in us-central1 on demand (UNVERIFIED: third-party price trackers as of 2026-10, the Compute Engine pricing page did not render for checking), so a 2-hour session costs about USD 22 on one GPU or about USD 177 on a full 8-GPU node; raise the budget below if you use the 8-GPU shape.
 
 Budget alarm on GCP, created before the cluster:
 
@@ -495,11 +511,11 @@ Step 2, decode demand: `100 x 400 = 40,000 tok/s`, divided by about 6,970 tok/s 
 Step 3, steady state: 10.2 node-equivalents of time-shared work; at a 70% utilization target for queueing headroom, that is 14.6 nodes.
 Step 4, region-loss tolerance done naively: 3 regions, each able to carry half of global peak, means `3 x ceil(14.6 / 2) = 24` nodes.
 Step 5, tier-aware static stability: if only the 60% Priority and Standard share must survive a region loss and Flex or batch is shed, each region needs `max(14.6 / 3, 14.6 x 0.6 / 2) = 4.9`, giving 3 x 5 = 15 nodes.
-That tier policy saves 9 nodes, about USD 361k per month at the assumed USD 55 per node-hour (UNVERIFIED price).
+That tier policy saves 9 nodes, about USD 361k per month at USD 55 per node-hour (p5.48xlarge on demand is USD 55.04/hr in us-east-1, AWS public price list, as of 2026-10).
 Step 6, unit cost: 15 nodes x USD 55 = USD 825 per hour, serving 144M output tokens and 360M input tokens per hour (720M before cache hits).
 That works out to about USD 5.7 per million output tokens if all cost is assigned to output, or about USD 1.6 per million tokens blended over 504M uncached tokens per hour.
 Step 7, sensitivity: the prefix hit rate is the biggest lever; dropping it from 50% to 0% adds 4.5 node-equivalents, about 6.4 nodes at a 70% target.
-FP8 weights cut the decode step from about 18 ms to about 13 ms in the same roofline, worth about 25% of decode capacity, which needs an accuracy check per [[17-Cloud-AI-Engineering/Volume_11_LLM_Serving_and_Inference_Systems_on_Cloud/Chapter_06_Model_Quantization_and_Compression|Model Quantization and Compression]].
+FP8 weights cut the decode step from about 18 ms to about 13 ms in the same roofline, about 28% less time per step or about 39% more decode throughput, which needs an accuracy check per [[17-Cloud-AI-Engineering/Volume_11_LLM_Serving_and_Inference_Systems_on_Cloud/Chapter_06_Model_Quantization_and_Compression|Model Quantization and Compression]].
 
 ## Failure Modes and Pitfalls
 
@@ -530,7 +546,7 @@ The fix is the `(1 + eps)` load cap plus spill-induced replication of hot prefix
 
 A client timeout at 30 s on a request already 25 s into prefill wastes all that compute if the engine does not see the disconnect, and the retry pays it again.
 Propagate cancellation from the gateway to the engine (abort on stream close), honor `Retry-After`, and use full-jitter backoff with retry budgets ([[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_03_Resilient_Communication_Retries_Jitter_and_Circuit_Breakers|Retries, Jitter, and Circuit Breakers]]).
-Queues that grow faster than they drain become insurrmountable backlogs, so cap queue age per tier and drop the expired work ([Avoiding insurmountable queue backlogs](https://aws.amazon.com/builders-library/avoiding-insurmountable-queue-backlogs/)).
+Queues that grow faster than they drain become insurmountable backlogs, so cap queue age per tier and drop the expired work ([Avoiding insurmountable queue backlogs](https://aws.amazon.com/builders-library/avoiding-insurmountable-queue-backlogs/)).
 
 ### Preemption thrash
 
@@ -563,7 +579,7 @@ An unsalted shared prefix cache lets one tenant detect another tenant's prompts 
 ### IAM scoping
 
 On AWS, scope `bedrock:InvokeModel` and `bedrock:InvokeModelWithResponseStream` to specific inference-profile and foundation-model ARNs.
-With cross-region inference, the policy must also allow the model ARN in every destination region the profile can route to, and an SCP that denies those regions will break CRIS (AWS docs, UNVERIFIED this pass).
+With geographic cross-region inference, the policy must also allow the foundation-model ARN in every destination region the profile can route to, and an SCP that denies those regions without an inference-profile exception (the `bedrock:InferenceProfileArn` condition key) will break CRIS; global profiles instead need the SCP to allow `aws:RequestedRegion` set to `unspecified` ([AWS Bedrock docs](https://docs.aws.amazon.com/bedrock/latest/userguide/geographic-cross-region-inference.html), as of 2026-10).
 Use a separate role per gateway cell, so a compromised cell cannot invoke models outside its pool.
 On GCP, grant `roles/aiplatform.user` only to the gateway's workload identity, never to tenant principals ([[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter/Chapter_02_Workload_Identity_Federation|Workload Identity Federation]]).
 Tenants authenticate to your gateway, and the gateway alone holds cloud credentials, which is the confused-deputy boundary you must defend.
@@ -744,7 +760,7 @@ Should this platform self-host open-weight models on EKS or GKE, front Bedrock o
 #### Model Answer
 
 The self-hosted unit cost is `node_price_per_hour / (tokens_per_hour_per_node x effective_utilization)`.
-In my model that is about USD 1.6 per million blended tokens at 70% utilization with a 50% prefix hit rate, under an unverified USD 55 per node-hour assumption.
+In my model that is about USD 1.6 per million blended tokens at 70% utilization with a 50% prefix hit rate, at about USD 55 per node-hour, the p5.48xlarge on-demand rate in us-east-1 as of 2026-10.
 Halve utilization and the cost doubles, which is why most self-hosted fleets end up more expensive than they look on paper.
 Compare that against the managed per-token price for the same model and tier, including Flex or Batch discounts for latency-tolerant traffic and Priority premiums for interactive traffic.
 Self-hosting wins when utilization is high and predictable, when you need custom kernels, LoRA multiplexing, or cache policies the provider does not offer, or when the model is not available managed.

@@ -2,7 +2,7 @@
 type: concept
 track: [cloud-ai, ai-eng, sde, distinguished]
 level:
-status: draft
+status: solid
 last_reviewed:
 sources: 
   - "https://research.google/pubs/the-tail-at-scale/"
@@ -19,6 +19,22 @@ sources:
   - "https://docs.aws.amazon.com/sagemaker/latest/dg/feature-store.html"
   - "https://aws.amazon.com/builders-library/timeouts-retries-and-backoff-with-jitter/"
   - "https://aws.amazon.com/message/101925/"
+  - "https://docs.aws.amazon.com/sagemaker/latest/dg/feature-store-quotas.html"
+  - "https://aws.amazon.com/sagemaker/ai/pricing/"
+  - "https://docs.aws.amazon.com/sagemaker/latest/dg/feature-store-offline.html"
+  - "https://docs.aws.amazon.com/sagemaker/latest/dg/feature-store-storage-configurations-offline-store.html"
+  - "https://docs.aws.amazon.com/sagemaker/latest/dg/feature-store-storage-configurations-online-store.html"
+  - "https://docs.aws.amazon.com/sagemaker/latest/dg/feature-store-collection-types.html"
+  - "https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_feature_store_PutRecord.html"
+  - "https://docs.aws.amazon.com/sagemaker/latest/dg/feature-store-create-a-dataset.html"
+  - "https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_BatchGetItem.html"
+  - "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Constraints.html"
+  - "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/bp-partition-key-design.html"
+  - "https://docs.cloud.google.com/vertex-ai/docs/deprecations"
+  - "https://cloud.google.com/vertex-ai/pricing"
+  - "https://cloud.google.com/bigtable/pricing"
+  - "https://docs.cloud.google.com/bigtable/docs/performance"
+  - "https://github.com/feast-dev/feast/blob/master/sdk/python/feast/infra/online_stores/redis.py"
 ---
 
 # Feature Stores and Real-Time Data Serving
@@ -91,7 +107,8 @@ The materialization path copies "latest as of now" from offline to online. It is
 SageMaker Feature Store, now part of the Amazon SageMaker AI service family, takes writes through `PutRecord` on the `sagemaker-featurestore-runtime` endpoint.
 The online store is updated synchronously.
 The offline store is filled asynchronously as Parquet files in S3, registered in the AWS Glue Data Catalog in either Glue table format or Apache Iceberg format.
-The offline table carries system columns (`write_time`, `api_invocation_time`, `is_deleted`) alongside your `EventTime` and `RecordIdentifier` features, so the offline table is a change log rather than a snapshot (UNVERIFIED for the exact replication lag window).
+The offline table carries system columns (`write_time`, `api_invocation_time`, `is_deleted`) alongside your `EventTime` and `RecordIdentifier` features, so the offline table is a change log rather than a snapshot (AWS docs, as of 2026-10).
+`PutRecord` data is buffered, batched, and written to S3 within 15 minutes, and for the Iceberg format the rows become queryable only after an additional asynchronous table commit (AWS docs, as of 2026-10).
 Vertex AI Feature Store, now documented under the Gemini Enterprise Agent Platform name after the Cloud Next 2026 rebrand, inverts this. You keep feature data in BigQuery tables or views, the service acts as a metadata layer over them, and online stores are filled by syncing feature views from BigQuery (Google Cloud docs, as of 2026-10).
 A `FeatureGroup` must point at a BigQuery table or view with at least one entity ID column and a column named `feature_timestamp`, and by default the source is treated as a sparse time series (Google Cloud REST reference, as of 2026-10).
 There is no separate offline copy: training data comes from BigQuery queries, so offline point-in-time correctness is your SQL's responsibility (Google Cloud docs, as of 2026-10).
@@ -117,7 +134,7 @@ The practical fix on engines without as-of support is to bucket time: join on (k
 ### The bitemporal leak that getting-started guides do not mention
 
 Each feature row has two times: event_ts, when the fact was true in the world, and availability time, when the row actually reached a store the online path could read.
-Feast uses `created_timestamp` only as a tiebreak among rows with equal event_ts, not as a filter, and SageMaker's `DatasetBuilder` point-in-time join keys on `EventTime` (UNVERIFIED for every SDK major version).
+Feast uses `created_timestamp` only as a tiebreak among rows with equal event_ts, not as a filter, and SageMaker's `DatasetBuilder` point-in-time join (`point_in_time_accurate_join`) compares event times (SageMaker AI docs, as of 2026-10).
 Now suppose a data engineer backfills a corrected `chargeback_count_30d` on March 10 for event_ts March 1.
 A label at March 5 will join to the corrected value in training. The online model on March 5 saw the uncorrected value, because the correction did not exist yet.
 Offline metrics then look better than production, and the gap is invisible in the usual monitoring because both sides individually look healthy.
@@ -129,11 +146,12 @@ The strongest guarantee comes from not reconstructing at all: log the exact feat
 
 ### Online store layouts
 
-Feast's Redis online store, as implemented in its source (verify against your version), stores one Redis hash per (project, entity key).
+Feast's Redis online store, as implemented in its source (Feast `redis.py`, as of 2026-10), stores one Redis hash per (project, entity key).
 Hash fields are a murmur3 hash of `feature_view:feature_name` mapping to a serialized `ValueProto`, plus a `_ts:feature_view` field holding the event timestamp.
 A read for n entities across k feature views becomes one pipelined `HMGET` per entity, so latency is one network round trip plus Redis's single-threaded service time for the whole batch.
 On write, Feast reads the existing `_ts` field and skips the write if the stored timestamp is newer or equal. That gives last-writer-wins by event time rather than by arrival order, which is what makes out-of-order backfills safe for the online view.
-Feast's DynamoDB online store uses one table per feature view, keyed by the serialized entity key, and reads with `BatchGetItem`. DynamoDB caps that call at 100 items and 16 MB per request (AWS docs, long-standing limit), so large entity batches split into parallel calls and pay tail latency for each.
+The store's `skip_dedup` option turns this check off for write throughput, and its own docstring warns that older values can then overwrite newer ones (Feast source, as of 2026-10).
+Feast's DynamoDB online store uses one table per feature view, keyed by the serialized entity key, and reads with `BatchGetItem`. DynamoDB caps that call at 100 items and 16 MB per request (DynamoDB API reference, as of 2026-10), and Feast's default `batch_size` is 100 to match, so large entity batches split into parallel calls and pay tail latency for each.
 Vertex AI Bigtable online serving writes each feature view's latest values into a Bigtable-backed store sized by autoscaling bounds (`min_node_count`, `max_node_count`, `cpu_utilization_target`) (Google Cloud docs, as of 2026-10).
 Bigtable keeps rows sorted lexicographically by row key, as described in the 2006 OSDI Bigtable paper, so sequential or timestamp-prefixed entity IDs concentrate load on a single tablet server. Entity IDs should be hashed or reversed before they become keys.
 See [[17-Cloud-AI-Engineering/Volume_03_GCP_Deep_Dive/Chapter_11_Cloud_Bigtable_LSM_Storage_and_Tablet_Serving|Cloud Bigtable internals]] and [[17-Cloud-AI-Engineering/Volume_02_AWS_Deep_Dive/Chapter_10_Amazon_DynamoDB_Architecture_and_Partitioning|DynamoDB partitioning]] for the tablet-split and partition-split dynamics underneath.
@@ -173,20 +191,20 @@ The AWS Builders' Library article on timeouts, retries, and backoff with jitter 
 | Vertex AI Optimized online serving - feature freeze | 2026-05-17 | (Google Cloud docs, as of 2026-10) |
 | Vertex AI Optimized online serving - API sunset | 2027-02-17 | (Google Cloud docs, as of 2026-10) |
 | Vertex AI Feature Store (Legacy) - deprecated | 2026-02-17 | (Google Cloud release notes, as of 2026-10) |
-| Vertex AI Feature Store (Legacy) - full sunset | 2027-02-17 | Third-party report, UNVERIFIED |
+| Vertex AI Feature Store (Legacy) - full sunset | 2027-02-17 | (Vertex AI deprecations page, as of 2026-10) |
 | Vertex AI Bigtable online serving data scale | "order of terabytes" | (Google Cloud docs, as of 2026-10) |
 | Vertex AI online store autoscaling knobs | min nodes, max nodes, CPU target (doc example 1-3 nodes, 50%) | (Google Cloud docs, as of 2026-10) |
 | Vertex AI online serving type change after creation | Not allowed | (Google Cloud docs, as of 2026-10) |
-| DynamoDB `BatchGetItem` per call | 100 items, 16 MB | (AWS docs, long-standing limit) UNVERIFIED this cycle |
-| DynamoDB max item size | 400 KB | (AWS docs, long-standing limit) UNVERIFIED this cycle |
-| DynamoDB per-partition throughput | 3,000 RCU / 1,000 WCU | (DynamoDB docs and USENIX ATC 2022 paper) UNVERIFIED this cycle |
-| SageMaker Feature Store max record size | about 350 KB | UNVERIFIED |
-| SageMaker online read unit / write unit size | 4 KB read, 1 KB write | UNVERIFIED |
-| SageMaker on-demand online pricing (us-east-1) | about $0.25 per million reads, about $1.25 per million writes, about $0.45 per GB-month | UNVERIFIED - check the pricing page before quoting |
-| SageMaker offline store replication lag | minutes, often quoted as within about 15 minutes | UNVERIFIED |
-| Bigtable SSD node point-read planning throughput | about 10,000 rows/s per node at 1 KB | UNVERIFIED planning figure; benchmark your own workload |
-| Bigtable SSD node list price (us-central1) | about $0.65 per node-hour | UNVERIFIED |
-| Vertex AI Bigtable online serving node price | P_node, likely above raw Bigtable | UNVERIFIED - read the Vertex AI pricing page |
+| DynamoDB `BatchGetItem` per call | 100 items, 16 MB | (DynamoDB API reference, as of 2026-10) |
+| DynamoDB max item size | 400 KB | (DynamoDB constraints docs, as of 2026-10) |
+| DynamoDB per-partition throughput | 3,000 read units/s / 1,000 write units/s | (DynamoDB partition-key best practices, as of 2026-10) |
+| SageMaker Feature Store max record size | 350 KB | (SageMaker AI Feature Store quotas, as of 2026-10) |
+| SageMaker online read unit / write unit size | 4 KB read, 1 KB write (minimum 1 write unit per write; InMemory reads are metered per 1 KB) | (SageMaker AI quotas and pricing pages, as of 2026-10) |
+| SageMaker on-demand online pricing (Standard tier) | $0.25 per million read units, $1.25 per million write units, $0.45 per GB-month | Example rates on the SageMaker AI pricing page, region not stated (as of 2026-10); confirm for your region |
+| SageMaker offline store replication lag | written to S3 within 15 minutes; Iceberg adds an asynchronous commit before rows are queryable | (AWS docs, as of 2026-10) |
+| Bigtable SSD node throughput | up to 17,000 reads/s or 14,000 writes/s per node at 1 KB rows (not simultaneous); this chapter plans at 10,000 mixed ops/s | (Bigtable performance docs, as of 2026-10); benchmark your own workload |
+| Bigtable node list price (us-central1) | $0.65 per node-hour (Enterprise edition, on demand); Enterprise Plus $0.85 | (Bigtable pricing page, as of 2026-10) |
+| Vertex AI Bigtable online serving node price | $0.94 per node-hour (us-central1), about 15,000 QPS and up to 5 TB per node; data processing node $0.08 per node-hour; storage about $0.25 per GB-month | (Vertex AI pricing page, as of 2026-10) |
 | Fan-out tail amplification | 1 - (1 - p)^k | Dean and Barroso, CACM 2013 |
 
 ## AWS vs GCP Mechanism Parity
@@ -196,16 +214,16 @@ The AWS Builders' Library article on timeouts, retries, and backoff with jitter 
 | Source of truth | Online write via `PutRecord`, offline filled asynchronously | BigQuery table or view | Offline batch source; push sources for streaming |
 | Offline store | S3 Parquet, Glue or Iceberg table, queried with Athena or Spark | BigQuery itself, no copy | BigQuery, Redshift, Snowflake, Spark, DuckDB/file, and others |
 | Offline semantics | Append-only change log with `write_time`, `api_invocation_time`, `is_deleted` | Whatever your table holds; feature groups need `feature_timestamp` | Feature rows with event_ts and optional created_ts |
-| Online store | Standard tier (managed KV) or InMemory tier | Bigtable online serving (Optimized deprecated) | Redis, DynamoDB, Bigtable, Postgres, SQLite, Cassandra, and others |
-| Online pricing model | Request units on-demand, or provisioned throughput, plus storage (UNVERIFIED details) | Node-hours plus sync processing (UNVERIFIED details) | Pricing of the underlying store |
+| Online store | Standard tier (managed KV), Standard_V2 (partial updates via `UpdateRecord`), or InMemory tier on ElastiCache for Redis OSS (AWS docs, as of 2026-10) | Bigtable online serving (Optimized deprecated) | Redis, DynamoDB, Bigtable, Postgres, SQLite, Cassandra, and others |
+| Online pricing model | Request units on-demand (writes per 1 KB, reads per 4 KB), or provisioned throughput, plus storage (AWS pricing page, as of 2026-10) | Bigtable online serving node-hours, data processing node-hours for sync, plus storage (Vertex AI pricing page, as of 2026-10) | Pricing of the underlying store |
 | Freshness path | Synchronous online write | Scheduled cron sync, or continuous sync with constraints | Scheduled materialization, or `push` |
-| Out-of-order writes | Online keeps the latest EventTime record (UNVERIFIED) | Latest by `feature_timestamp` at sync | Redis store skips older event_ts writes |
+| Out-of-order writes | A record with an older EventTime is written only to the offline store (PutRecord API reference, as of 2026-10) | Latest by `feature_timestamp` at sync | Redis store skips older event_ts writes unless `skip_dedup` is set |
 | Null handling | Value stored as written | Default serves latest non-null; `dense=true` to serve nulls | Value stored as written |
 | TTL | Online `TtlDuration` per feature group | No per-row online TTL; freshness set by sync | Feature view `ttl`, applied at read and in PIT joins |
-| PIT join tool | SDK `DatasetBuilder` over Athena (UNVERIFIED for SDK v3) | Your BigQuery SQL | `get_historical_features` |
-| Embeddings | InMemory tier vector type (UNVERIFIED) | Vector Search (Bigtable serving has no embeddings) | Vector-capable online stores (version dependent) |
-| Private access | VPC interface endpoint for featurestore-runtime (UNVERIFIED name) | VPC Service Controls; PSC endpoints were for Optimized only | Your VPC, your store's private endpoints |
-| Encryption | KMS key for online store and S3 offline | CMEK on online store (`encryption_spec`) | Store-native |
+| PIT join tool | SDK `DatasetBuilder` (`create_dataset`) over Athena, documented in the v3 `sagemaker.mlops.feature_store` module (AWS docs, as of 2026-10) | Your BigQuery SQL | `get_historical_features` |
+| Embeddings | InMemory tier vector collection type, Fractional elements, up to 8,192 dimensions, one per feature group (AWS docs, as of 2026-10) | Vector Search (Bigtable serving has no embeddings) | Vector-capable online stores (version dependent) |
+| Private access | VPC interface endpoint `com.amazonaws.<region>.sagemaker.featurestore-runtime` (AWS docs, as of 2026-10) | VPC Service Controls; PSC endpoints were for Optimized only | Your VPC, your store's private endpoints |
+| Encryption | KMS key for online store and S3 offline; InMemory tier does not support customer managed keys (AWS docs, as of 2026-10) | CMEK on online store (`encryption_spec`) | Store-native |
 | Regional failure | Regional; no built-in multi-region replication | Regional; online store is regional | Whatever you build |
 
 ## Worked Example: Leakage-Safe Point-in-Time Join, Online Store Sizing, and Two Cloud Labs
@@ -273,7 +291,7 @@ Streaming updates write user features 5,000 times per second on average, about 1
 The keyspace is 50 M users, 5 M merchants, and 80 M devices, about 60 GB of latest values.
 
 ```python
-# sizing.py - prices are parameters; replace with current list prices (UNVERIFIED defaults).
+# sizing.py - prices are parameters; defaults are list/example prices as of 2026-10.
 SEC_MONTH = 30 * 24 * 3600          # 2,592,000
 HOURS_MONTH = 730
 
@@ -282,13 +300,13 @@ writes_avg, writes_peak = 5_000, 12_000
 storage_gb = 60
 
 # Request-priced store (SageMaker on-demand style)
-c_read_per_m, c_write_per_m, c_gb = 0.25, 1.25, 0.45     # UNVERIFIED
+c_read_per_m, c_write_per_m, c_gb = 0.25, 1.25, 0.45     # SageMaker pricing-page example rates
 reads_m = avg_qps * reads_per_req * SEC_MONTH / 1e6
 writes_m = writes_avg * SEC_MONTH / 1e6
 req_cost = reads_m * c_read_per_m + writes_m * c_write_per_m + storage_gb * c_gb
 
 # Node-priced store (Bigtable online serving style)
-ops_per_node, cpu_target, p_node = 10_000, 0.5, 0.65     # UNVERIFIED planning values
+ops_per_node, cpu_target, p_node = 10_000, 0.5, 0.65     # planning ops/node; raw Bigtable us-central1 $/node-h
 peak_nodes = -(-(peak_qps * reads_per_req + writes_peak) // int(ops_per_node * cpu_target))
 avg_nodes = -(-(avg_qps * reads_per_req + writes_avg) // int(ops_per_node * cpu_target))
 node_cost = avg_nodes * p_node * HOURS_MONTH   # assumes autoscaler tracks average
@@ -303,7 +321,8 @@ Reads are 8,000 x 3 x 2,592,000 = 62.2 billion per month, which is $15,552 at $0
 Writes are 5,000 x 2,592,000 = 12.96 billion per month, which is $16,200 at $1.25 per million, more than all the reads.
 Storage at 60 GB is about $27 and does not matter.
 On the node-priced side, average load is 24,000 + 5,000 = 29,000 ops/s, which at 5,000 effective ops per node (10,000 x 0.5 CPU target) is 6 nodes, about $2,847 per month at $0.65 per node-hour. Peak needs 15 nodes.
-The crossover: node pricing wins once sustained ops/s exceed roughly 370-730 ops/s (depending on the read/write mix) at these placeholder prices.
+At the Vertex AI Bigtable online serving rate of $0.94 per node-hour, the same 6 nodes cost about $4,117 per month, and its documented 15,000 QPS per node may need fewer nodes (Vertex AI pricing page, as of 2026-10).
+The crossover: one node costs about $475 per month, so node pricing wins once sustained ops/s exceed roughly 150-730 ops/s (all writes to all reads; about 430 ops/s at this scenario's 24:5 read/write mix) at these prices.
 The biggest saving is not the pricing model. It is write coalescing: buffer per key for one tile width and write only when a value changes enough to move the model score. Cutting writes 10x saves about $14,500 per month in the request-priced case.
 
 ### Step 3 - AWS lab: SageMaker Feature Store (estimated cost under $1 for one hour)
@@ -381,7 +400,7 @@ aws budgets delete-budget --account-id "$ACCT" --budget-name fs-lab
 # Then drop the Glue database/table that the feature group registered, if it remains.
 ```
 
-### Step 4 - GCP lab: Vertex AI Feature Store with Bigtable online serving (estimate: one online node, roughly $1 per hour, UNVERIFIED)
+### Step 4 - GCP lab: Vertex AI Feature Store with Bigtable online serving (estimate: one online node at $0.94 per node-hour plus $0.08 per data processing node-hour during syncs, roughly $1 per hour, Vertex AI pricing as of 2026-10)
 
 ```hcl
 # main.tf - OpenTofu/Terraform with hashicorp/google provider. tofu init && tofu apply
@@ -542,7 +561,7 @@ Set an explicit per-call timeout, allow at most one retry inside the deadline, a
 ### Product-lifecycle traps
 
 Teams on Vertex AI Optimized online serving or Feature Store (Legacy) are on deprecated paths with a February 2027 sunset. Because the serving type of an online store cannot be changed after creation, migration means building a new store, dual-reading, comparing results, and cutting over.
-On SageMaker, the offline store in Glue format collects many small Parquet files under high-frequency `PutRecord` traffic, which slows Athena PIT queries. The Iceberg table format plus periodic compaction is the mitigation (UNVERIFIED that compaction is automatic; plan to run it).
+On SageMaker, the offline store in Glue format collects many small Parquet files under high-frequency `PutRecord` traffic, which slows Athena PIT queries. The Iceberg table format plus periodic compaction is the mitigation; the SageMaker docs describe compaction as an operation you run through Athena or Lake Formation, not as automatic (AWS docs, as of 2026-10).
 
 ### Registry and schema drift
 
@@ -566,7 +585,7 @@ Key hierarchy design lives in [[17-Cloud-AI-Engineering/Volume_08_Security_Ident
 
 ### Network perimeter
 
-On AWS, reach the featurestore-runtime API through an interface VPC endpoint with an endpoint policy restricted to your feature-group ARNs (UNVERIFIED endpoint service name; check the PrivateLink service list).
+On AWS, reach the featurestore-runtime API through an interface VPC endpoint with an endpoint policy restricted to your feature-group ARNs; the PrivateLink service name is `com.amazonaws.<region>.sagemaker.featurestore-runtime` (AWS docs, as of 2026-10).
 On GCP, put `aiplatform.googleapis.com`, `bigquery.googleapis.com`, and `bigtable.googleapis.com` inside the same VPC Service Controls perimeter, so that a compromised notebook cannot copy BigQuery feature history to an outside project; see [[17-Cloud-AI-Engineering/Volume_03_GCP_Deep_Dive/Chapter_03_VPC_Service_Controls_Security_Perimeters|VPC Service Controls]].
 Feature stores collect PII by design (user IDs, location, spend). Treat the offline store as a regulated data lake, with row-level deletion workflows: SageMaker `DeleteRecord` with hard delete, and BigQuery DML deletes followed by a resync.
 
@@ -645,8 +664,8 @@ You must choose an online store for 30,000 sustained reads per second and 5,000 
 #### Model Answer
 
 Start with the cost structure, not features.
-Request-priced: 30,000 reads/s is about 77.8 billion reads per month and 5,000 writes/s is about 13 billion writes per month. At placeholder prices of $0.25 and $1.25 per million, that is about $19,400 plus $16,200, so about $36k per month, dominated by writes.
-Node-priced: about 35,000 ops/s at about 5,000 effective ops per node at 50% CPU is about 7 nodes. At roughly $0.65 per node-hour that is about $3.3k per month for raw Bigtable, plus whatever the Vertex AI managed premium is. I would get the real per-node-hour price from the pricing page before committing.
+Request-priced: 30,000 reads/s is about 77.8 billion reads per month and 5,000 writes/s is about 13 billion writes per month. At the pricing-page example rates of $0.25 and $1.25 per million, that is about $19,400 plus $16,200, so about $36k per month, dominated by writes.
+Node-priced: about 35,000 ops/s at about 5,000 effective ops per node at 50% CPU is about 7 nodes. At roughly $0.65 per node-hour that is about $3.3k per month for raw Bigtable, plus whatever the Vertex AI managed premium is. The Vertex AI pricing page lists Bigtable online serving at $0.94 per node-hour in us-central1, about $4.8k per month for 7 nodes, though its documented 15,000 QPS per node suggests fewer nodes (Vertex AI pricing page, as of 2026-10).
 So at sustained high QPS, node-priced wins by an order of magnitude. Request pricing wins for spiky, low-average workloads, or many small feature groups that would each need a minimum node.
 Operationally: SageMaker gives synchronous online writes and an automatic offline log, so freshness is immediate and the offline lag is minutes.
 Vertex AI makes BigQuery the truth, so freshness depends on sync. Continuous sync only works with Bigtable serving, registry-based feature views, and supported regions. And Optimized serving is deprecated, so I would not take a dependency on it.
@@ -677,7 +696,7 @@ How would you detect this class of skew automatically across hundreds of feature
 
 ### Question 6 (L7+ - Principal)
 
-Design the feature-serving layer for a payments company running on AWS, so that a full-day regional outage of DynamoDB, like the us-east-1 event of October 2025, does not stop authorizations, while keeping fraud loss bounded.
+Design the feature-serving layer for a payments company running on AWS, so that a full-day regional outage of DynamoDB, longer than the us-east-1 event of October 2025 (about three hours of DynamoDB DNS failure, with dependent services impaired into the afternoon), does not stop authorizations, while keeping fraud loss bounded.
 
 #### Model Answer
 
