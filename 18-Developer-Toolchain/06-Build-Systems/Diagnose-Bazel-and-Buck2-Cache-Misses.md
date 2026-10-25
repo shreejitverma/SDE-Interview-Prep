@@ -18,4 +18,4 @@ sources: []
 
 - Prerequisites: [[Remote-Execution-API-and-Remote-Caching]], [[Bazel-Skyframe-Bzlmod-and-Execution-Model]]
 - Next: [[Migrate-a-Polyglot-Codebase-to-Hermetic-Builds]]
-- Lab: `code/06-Build-Systems/cache_miss_diagnosis/`
+- Lab: `code/06-Build-Systems/cache_miss_diagnosis/` (requires: network)

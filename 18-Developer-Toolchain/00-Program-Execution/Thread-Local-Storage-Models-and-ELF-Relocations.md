@@ -11,7 +11,7 @@ sources: []
 
 > [!summary] Scope
 > Owns compiler and linker Thread-Local Storage (TLS) mechanics across General Dynamic, Local Dynamic, Initial Exec, and Local Exec access models, as well as TLSDESC optimizations.
-> Explains thread pointer registers (FS/GS on x86-64, TPIDR_EL0 on AArch64), .tdata and .tbss initialization, and dlopen failures caused by static TLS surplus exhaustion in glibc.
+> Explains thread pointer registers (FS on x86-64 (GS on i386), TPIDR_EL0 on AArch64), .tdata and .tbss initialization, and dlopen failures caused by static TLS surplus exhaustion in glibc.
 > Reaches Explain through Debug, handing general relocation mechanics to Symbols-Relocations-and-Static-Linking.md.
 
 ## Related

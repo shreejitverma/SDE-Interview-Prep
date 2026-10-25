@@ -202,10 +202,10 @@ All runnable code, reproduction test cases, and benchmarks must reside inside th
   - `# requires: linux`: Linux system call dependencies (e.g., ptrace, namespaces, epoll); the lab runs only on a Linux host and is skipped on macOS.
   - `# requires: macos`: macOS-only tools (e.g., Instruments, xctrace, codesign); the lab runs only on a macOS host and is skipped on Linux.
   - `# requires: docker`: The lab itself drives Docker (building or running images) and needs a working daemon.
-  - An unknown requirement fails `make verify`, so a typo cannot silently stop a lab from running.
   - `# requires: pmu`: Hardware performance counters or PMU virtualization, opted in with `TOOLCHAIN_LABS_PMU=1`.
   - `# requires: nightly`: Nightly language compiler features.
   - `# requires: network`: External network or package registry access, opted in with `TOOLCHAIN_LABS_NETWORK=1`.
+  - An unknown requirement fails `make verify`, so a typo cannot silently stop a lab from running.
 
 ## 9. The Manifest Contract (`manifest.tsv`)
 

@@ -19,4 +19,4 @@ sources: []
 - Prerequisites: [[Git-Refs-Reflog-and-Reftable]]
 - Next: [[Git-Email-and-Patch-Workflows]]
 - See also: [[19-Shell-and-Unix-Engineering/11-Networking-and-SSH/SSH-Protocol-and-Keys|SSH Protocol and Keys]]
-- Lab: `code/02-Version-Control/signed_commit_verify/`
+- Lab: `code/02-Version-Control/signed_commit_verify/` (requires: network)

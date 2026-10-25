@@ -95,7 +95,7 @@ The harness enforces reproducible accuracy and prevents documentation drift:
   - `# requires: macos`: runs only on a macOS host (Instruments, xctrace, codesign); on Linux the harness skips it.
   - `# requires: docker`: the lab itself drives Docker (for example building manylinux wheels), so it needs a working Docker daemon.
   - `# requires: pmu`: requires hardware performance counters (bare metal or a PMU-virtualized hypervisor) and runs only when `TOOLCHAIN_LABS_PMU=1` is set.
-  - `# requires: nightly`: requires compiler nightly toolchains (e.g., Rust nightly for Miri or sanitizer flags).
+  - `# requires: nightly`: requires a nightly Rust toolchain (e.g., for Miri or sanitizer flags).
   - `# requires: network`: permits external registry or network access during verification, only when `TOOLCHAIN_LABS_NETWORK=1` is set.
 
 ## Related Books
@@ -103,7 +103,8 @@ The harness enforces reproducible accuracy and prevents documentation drift:
 This curriculum operates as an integrated knowledge base within the broader study vault.
 It connects to several sibling books and specialized volumes:
 
-- [[19-Shell-and-Unix-Engineering/README|19-Shell-and-Unix-Engineering]]: A deep sister volume dedicated exclusively to the Unix shell and userland utilities. Pillar 18 maintains self-contained CLI and process notes, linking to Pillar 19 under See Also for extended POSIX exploration.
+- [[19-Shell-and-Unix-Engineering/README|19-Shell-and-Unix-Engineering]]: A deep sister volume dedicated exclusively to the Unix shell and userland utilities.
+  Pillar 18 maintains self-contained CLI and process notes, linking to Pillar 19 under See Also for extended POSIX exploration.
 - [[17-Cloud-AI-Engineering/README|17-Cloud-AI-Engineering]]: Covers cloud hypervisors, Kubernetes internal control loops, progressive delivery, and cloud infrastructure security that complement local build and release pipelines.
 - [[12-Performance-Engineering/README|12-Performance-Engineering]]: Provides deeper microarchitectural analysis, memory subsystem benchmarks, and CPU execution engine mechanics.
 - [[02-Programming-Languages/C++/README|02-Programming-Languages/C++]]: The C++ Zero to Godhood curriculum providing exhaustive language and template metaprogramming foundations.

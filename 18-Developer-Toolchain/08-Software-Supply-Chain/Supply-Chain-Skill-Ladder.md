@@ -52,4 +52,4 @@ Five-tier competency framework defining observable engineering behaviors from L4
 - Conceives and directs enterprise zero-trust supply chain architectures that isolate the organization from public package registry risks: [[Enterprise-Third-Party-Code-Ingestion-and-Quarantine-Architecture]].
 - Formulates corporate policies governing third-party software ingestion, internal source rebuilds, and automated gate enforcement: [[Supply-Chain-Decision-Records]], [[Enterprise-Third-Party-Code-Ingestion-and-Quarantine-Architecture]].
 - Designs cryptographic provenance evaluation engines capable of detecting sophisticated compiler-swap and build-system compromises: [[SLSA-Framework-Build-and-Source-Tracks]], [[Case-Study-SolarWinds-Orion-SUNBURST]].
-- Represents the organization in international supply chain standards bodies including OpenSSF, in-toto, and SLSA steering committees: [[Supply-Chain-Skill-Ladder]], [[SLSA-Framework-Build-and-Source-Tracks]].
+- Represents the organization in international supply chain standards bodies including OpenSSF, in-toto, and SLSA steering committees: [[SLSA-Framework-Build-and-Source-Tracks]].

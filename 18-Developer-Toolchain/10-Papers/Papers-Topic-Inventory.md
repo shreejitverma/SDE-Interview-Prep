@@ -23,7 +23,7 @@ sources:
   - "Nicholas Nethercote, Julian Seward, Valgrind: A Framework for Heavyweight Dynamic Binary Instrumentation, PLDI '07, pp. 89-100, 2007, https://doi.org/10.1145/1250734.1250746"
   - "Evgeniy Stepanov, Konstantin Serebryany, MemorySanitizer: fast detector of uninitialized memory use in C++, CGO 2015, pp. 46-55, 2015, https://doi.org/10.1109/CGO.2015.7054186"
   - "Dehao Chen, David Xinliang Li, Tipp Moseley, AutoFDO: Automatic Feedback-Directed Optimization for Warehouse-Scale Applications, CGO '16, pp. 12-23, 2016, https://doi.org/10.1145/2854038.2854044"
-  - "Teresa Johnson, Mehdi Amini, David Xinliang Li, ThinLTO: Scalable and Incremental LTO, CGO 2017, pp. 111-121, 2017, https://doi.org/10.1109/CGO.2017.7863733"
+  - "Teresa Johnson, Mehdi Amini, Xinliang David Li, ThinLTO: Scalable and Incremental LTO, CGO 2017, pp. 111-121, 2017, https://doi.org/10.1109/CGO.2017.7863733"
   - "Brendan Gregg, The Flame Graph, Communications of the ACM, Vol. 59, No. 6, pp. 48-57, 2016, https://doi.org/10.1145/2909476"
   - "Benjamin H. Sigelman et al., Dapper, a Large-Scale Distributed Systems Tracing Infrastructure, Google Technical Report dapper-2010-1, 2010, https://research.google/pubs/dapper-a-large-scale-distributed-systems-tracing-infrastructure/"
   - "Caitlin Sadowski et al., Modern Code Review: A Case Study at Google, ICSE-SEIP '18, pp. 181-190, 2018, https://sback.it/publications/icse2018seip.pdf"

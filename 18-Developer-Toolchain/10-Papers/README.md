@@ -10,7 +10,7 @@ sources: []
 # The Developer Toolchain Papers Canon
 
 This pillar curates, analyzes, and contextualizes the foundational computer science papers and canonical technical specifications that define the developer toolchain discipline.
-It spans four decades of systems research, from Ken Thompson's 1984 Turing Award lecture on compiler trust up through modern breakthroughs in deterministic record-and-replay debugging, causal profiling, scalable link-time optimization, and formal build system taxonomy.
+It spans four decades of systems research, from Ken Thompson's 1983 Turing Award lecture on compiler trust (published in CACM in 1984) up through modern breakthroughs in deterministic record-and-replay debugging, causal profiling, scalable link-time optimization, and formal build system taxonomy.
 Every paper note dissects the core problem, foundational insight, mathematical or architectural mechanism, empirical evaluation limits, and real-world deployment legacy.
 The canon directly grounds the mechanism concepts, rebuild labs, and decision records across all toolchain pillars, providing software engineers with deep intellectual lineage and first-principles mastery.
 

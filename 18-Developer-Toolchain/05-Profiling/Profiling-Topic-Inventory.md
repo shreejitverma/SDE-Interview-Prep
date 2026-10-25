@@ -67,4 +67,4 @@ This document maps authoritative upstream source heading groups for profilers, t
 The following source heading groups are explicitly excluded from Pillar 05:
 
 - Linux perf Man Pages: perf-kvm(1) and perf-iostat(1): Hypervisor guest exit profiling and PCIe I/O statistics are specialized cloud infrastructure operations outside developer toolchain scope.
-- Gregg BPF Performance Tools Part II Ch 8-11 & 14-16 (File Systems, Disks, Networking, Security, Hypervisors): Storage, networking, kernel, and hypervisor administration BPF tools belong in operating systems and cloud engineering tracks rather than developer toolchains.
+- Gregg BPF Performance Tools Part II Ch 8-11 & 14-16 (File Systems, Disk I/O, Networking, Security, Kernel, Containers, Hypervisors): Storage, networking, kernel, and hypervisor administration BPF tools belong in operating systems and cloud engineering tracks rather than developer toolchains.

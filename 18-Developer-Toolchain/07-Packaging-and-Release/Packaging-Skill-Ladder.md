@@ -53,7 +53,7 @@ Five-tier competency framework defining observable engineering behaviors from L4
 
 ## L8+
 
-- Defines organization-wide ABI governance and binary compatibility verification standards across thousands of repositories: [[Packaging-Skill-Ladder]], [[Diamond-Dependency-and-Incompatible-ABI-Mitigation]].
+- Defines organization-wide ABI governance and binary compatibility verification standards across thousands of repositories: [[Cpp-ABI-Stability-Symbol-Visibility-and-SONAME]], [[Diamond-Dependency-and-Incompatible-ABI-Mitigation]].
 - Architects multi-region artifact registry topologies with immutable retention, regional caching proxies, and air-gapped mirrors: [[Lockfiles-Vendoring-and-Offline-Mirrors]], [[Case-Study-Left-Pad-and-Registry-Immutability]].
 - Establishes enterprise release engineering guardrails that separate code deployment from runtime feature activation to prevent fleet-wide outages: [[Progressive-Delivery-Rollbacks-and-Feature-Flags]], [[Case-Study-CrowdStrike-Falcon-Channel-File-291]], [[Case-Study-Knight-Capital-Deployment-Failure]].
 - Authors industry-standard packaging specifications or contributes directly to toolchain package resolution backends: [[Packaging-Decision-Records]], [[Dependency-Resolution-SAT-PubGrub-and-MVS]].
