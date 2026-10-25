@@ -167,6 +167,8 @@ class PilotLearningsTest(unittest.TestCase):
                 "- [Paper](https://a.example/p.pdf) - why.\n- [Docs](https://b.example/d) - why.\n- [Paper](https://a.example/p.pdf)\n")
         self.assertEqual(cb.further_reading_urls(body), ["https://a.example/p.pdf", "https://b.example/d"])
         self.assertEqual(cb.further_reading_urls("# T\n\n## TL;DR\n"), [])
+        appendix = "# Appendix\n\n| Term | Ref |\n| --- | --- |\n| ENI | [AWS](https://c.example/eni) |\n\nSee [GCP](https://d.example/vpc).\n"
+        self.assertEqual(cb.further_reading_urls(appendix), ["https://c.example/eni", "https://d.example/vpc"])
 
     def test_estimate_uses_measured_cost_for_the_same_model_only(self):
         repo = Repo(self)

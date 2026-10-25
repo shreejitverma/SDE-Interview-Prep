@@ -360,9 +360,12 @@ URL_RE = re.compile(r"\]\((https?://[^)\s]+)\)")
 
 
 def further_reading_urls(body: str) -> list[str]:
-    """URLs linked under the Further Reading heading (web search with dynamic filtering returns no citations)."""
+    """URLs linked under the Further Reading heading (web search with dynamic filtering returns no citations).
+
+    Appendices have no Further Reading section; their sources are every URL the body links.
+    """
     m = re.search(r"^## Further Reading\s*$(.*?)(?=^## |\Z)", body, re.M | re.S)
-    return list(dict.fromkeys(URL_RE.findall(m[1]))) if m else []
+    return list(dict.fromkeys(URL_RE.findall(m[1] if m else body)))
 
 
 def extract_note(text: str, title: str) -> tuple[str, str]:
