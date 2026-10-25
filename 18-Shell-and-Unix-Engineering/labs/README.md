@@ -21,7 +21,7 @@ This note is the contract for writing a lab and the manual for running the gate 
 labs/
   README.md          this note
   .shellcheckrc      ShellCheck options for every lab (found by searching upward from each script)
-  .editorconfig      shfmt formatting for every lab (2-space indent, case indent, binary ops at line start)
+  .editorconfig      shfmt formatting for every lab file, suffixed or not (2-space indent, case indent, binary ops at line start)
   run-matrix.sh      runs every lab's bats tests once per shell, on the host or in the matrix images
   lib/lab.bash       shared bats helpers: run_lab, run_lab_c, lab_shell_family, lab_shell_version
   matrix/            alpine.Dockerfile and debian.Dockerfile, the two container images of the matrix
@@ -43,7 +43,7 @@ labs/
 ## Helpers in lib/lab.bash
 
 `LAB_SHELL` names the shell under test as a command plus arguments, for example `dash`, `busybox ash`, or `zsh --emulate sh`; it defaults to `sh`.
-`run-matrix.sh` also exports `LAB_EXPECT_FAMILY`, the family each shell must report, so `common/showargs.bats` fails when the matrix runs the wrong shell; it is empty for `sh` and `/bin/sh`, whose family varies by host.
+`run-matrix.sh` also exports `LAB_EXPECT_FAMILY`, the family each shell must report, so `common/showargs.bats` fails when the matrix runs the wrong shell; it is empty for `sh`, `/bin/sh`, and `ksh`, whose family varies by host.
 
 | Helper | Purpose |
 |---|---|

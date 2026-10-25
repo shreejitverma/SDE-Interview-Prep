@@ -20,7 +20,7 @@ LABS_DIR=$(cd "$(dirname "$0")" && pwd -P)
 
 # label|family|command: the shells to try, in report order.
 # family is what lab_shell_family must report, exported to the tests as LAB_EXPECT_FAMILY;
-# it is empty for sh and /bin/sh, which are a different shell on each host.
+# it is empty for sh, /bin/sh, and ksh, which are a different shell on each host.
 # The command may carry arguments ("busybox ash"); it is split on spaces, as LAB_SHELL is.
 CANDIDATES=(
   "sh||sh"
@@ -35,7 +35,7 @@ CANDIDATES=(
   "dash|dash|dash"
   "posh|posh|posh"
   "ksh93|ksh93|ksh93"
-  "ksh|ksh93|ksh"
+  "ksh||ksh"
   "mksh|mksh|mksh"
   "yash|yash|yash"
   "busybox-ash|busybox|busybox ash"

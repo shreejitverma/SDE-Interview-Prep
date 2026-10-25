@@ -1,5 +1,5 @@
 ---
-type: concept
+type: case-study
 track: [sde, distinguished]
 level:
 status: seed
