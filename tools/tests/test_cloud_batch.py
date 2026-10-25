@@ -313,6 +313,18 @@ class SelectAndApplyTest(unittest.TestCase):
         self.assertEqual((r.root / self.ch.path).read_text(), before)
         self.assertIn("skipped, already verified", report[-1])
 
+    def test_draft_never_rewrites_a_chapter_with_a_verify_in_flight(self):
+        # The in-flight verify request carries the old body; rewriting now would let it overwrite the repair.
+        r, report = self.repo, []
+        cb.apply_result("draft", self.ch, message(FULL_BODY), r.root, self.state, set(), True, report)
+        before = (r.root / self.ch.path).read_text()
+        self.state["batches"].append({"id": "v1", "phase": "verify", "collected": False,
+                                      "custom_ids": {f"verify-{self.ch.cid}": self.ch.path}})
+        cb.apply_result("draft", self.ch, message(FULL_BODY.replace("Line about TL;DR.", "Repaired.")),
+                        r.root, self.state, set(), True, report)
+        self.assertEqual((r.root / self.ch.path).read_text(), before)
+        self.assertIn("skipped, a verify batch for it is in flight", report[-1])
+
     def test_truncated_result_is_not_written(self):
         r, report = self.repo, []
         cb.apply_result("draft", self.ch, message(FULL_BODY, stop="max_tokens"), r.root, self.state, set(), True, report)

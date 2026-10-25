@@ -15,8 +15,10 @@ Each phase is one batch at 50% of standard API prices:
 Every command is a dry run unless you pass `--apply`.
 `submit` prints a cost estimate and refuses to exceed `--budget` (spent + in flight + this batch).
 Run state, raw results, and reports live in `build/cloud_batch/` (gitignored).
-The pipeline only writes a chapter it owns: a missing or `seed` file for `draft`, and for
-`verify` only a file whose content is unchanged since the pipeline wrote it.
+The pipeline only writes a chapter it owns: `draft` writes a missing or `seed` file and, via
+`collect --reprocess`, its own draft when the file is unchanged since the pipeline wrote it and
+no verify result covers it (collected or in flight); `verify` writes only a pipeline draft whose
+content is unchanged since the pipeline wrote it.
 
 The API key is read from ANTHROPIC_API_KEY, else from `~/.config/sde-vault/anthropic.env`
 (KEY=value lines), else from an `ant auth login` profile; keep it out of this public repo.
@@ -664,6 +666,9 @@ def apply_result(phase: str, ch: Chapter, message: dict, repo: Path, state: dict
                 return cost
             if status != "draft" or ch.path in state["done"].get("verify", []):
                 report.append(f"- {ch.cid} {ch.title}: skipped, already verified")
+                return cost
+            if f"verify-{ch.cid}" in in_flight(state):
+                report.append(f"- {ch.cid} {ch.title}: skipped, a verify batch for it is in flight")
                 return cost
         sources = list(dict.fromkeys(cited_urls(message) + further_reading_urls(body)))[:30]
         note = render_note(ch, "draft", body, sources)
