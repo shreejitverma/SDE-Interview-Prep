@@ -14,7 +14,8 @@ Checks, all of which must pass:
                 ash and busybox files are checked as busybox, yash and posh as sh, ksh93 and mksh as ksh
     shfmt       `shfmt -d` on all files, configured by labs/.editorconfig
     zsh -n      a syntax check for each zsh file
-    bats        every .bats file, under the default LAB_SHELL (the cross-shell matrix is labs/run-matrix.sh)
+    bats        every .bats file, under the default LAB_SHELL (the cross-shell matrix is labs/run-matrix.sh),
+                with each test bounded by BATS_TEST_TIMEOUT (default 60 seconds) so a blocking lab fails instead of hanging
 
 A missing linter is an error (exit 2), never a skip.
 Exit 0 when everything passes or no lab files are tracked, 1 on any finding.
@@ -27,6 +28,7 @@ from __future__ import annotations
 
 import argparse
 import itertools
+import os
 import re
 import shutil
 import subprocess
@@ -43,6 +45,7 @@ DIRECTIVE_RE = re.compile(r"^#\s*shellcheck\s+shell=(\w+)")
 # Dialects checked under a fixed --shell rather than ShellCheck's own shebang detection.
 SHELLCHECK_SHELL = {"ash": "busybox", "busybox": "busybox", "yash": "sh", "posh": "sh",
                     "ksh93": "ksh", "mksh": "ksh"}
+BATS_TIMEOUT_DEFAULT = "60"
 INSTALL_HINT = "install the lab toolchain: `brew install shellcheck shfmt bats-core` (macOS) or see 19-Shell-and-Unix-Engineering/labs/README.md"
 
 
@@ -70,8 +73,8 @@ def dialect(repo: Path, path: str) -> tuple[str | None, bool, bool]:
     return found, bool(shebang or directive), lines[0].startswith("#!")
 
 
-def run(cmd: list[str], repo: Path) -> tuple[int, str]:
-    proc = subprocess.run(cmd, cwd=repo, capture_output=True, text=True)
+def run(cmd: list[str], repo: Path, env: dict[str, str] | None = None) -> tuple[int, str]:
+    proc = subprocess.run(cmd, cwd=repo, capture_output=True, text=True, env=env)
     return proc.returncode, (proc.stdout + proc.stderr).strip()
 
 
@@ -137,7 +140,8 @@ def main(argv: list[str] | None = None) -> int:
     if zsh_bad := [f"{p}: {out}" for p, rc, out in zsh_out if rc != 0]:
         report("zsh -n", 1, "\n".join(zsh_bad))
     if bats_files:
-        report("bats", *run(["bats", *bats_files], repo))
+        bats_env = {**os.environ, "BATS_TEST_TIMEOUT": os.environ.get("BATS_TEST_TIMEOUT", BATS_TIMEOUT_DEFAULT)}
+        report("bats", *run(["bats", *bats_files], repo, bats_env))
 
     print(f"result: FAIL ({', '.join(failed)})" if failed else "result: PASS")
     return 1 if failed else 0

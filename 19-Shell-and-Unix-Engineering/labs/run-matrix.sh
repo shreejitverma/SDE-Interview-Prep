@@ -121,6 +121,8 @@ main() {
   fi
 
   command -v bats >/dev/null 2>&1 || die "bats not found; brew install bats-core (macOS) or apt-get install bats"
+  # A lab that blocks (a FIFO open with no peer, a read with no input) must fail, not stall the matrix.
+  export BATS_TEST_TIMEOUT="${BATS_TEST_TIMEOUT:-60}"
   # shellcheck source=SCRIPTDIR/lib/lab.bash
   . "$LABS_DIR/lib/lab.bash"
 
