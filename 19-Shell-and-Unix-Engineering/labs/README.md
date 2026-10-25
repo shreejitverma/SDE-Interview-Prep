@@ -51,6 +51,8 @@ labs/
 | `run_lab_c CODE [NAME [ARG...]]` | Run inline code under the shell under test, like `sh -c`. |
 | `lab_shell_family` | Print bash, zsh, zsh-sh, yash, busybox, posh, mksh, ksh93, or the command name (for example dash), detected by asking the shell itself. |
 | `lab_shell_version` | Print the version the shell reports about itself, or `n/a` (dash has no version variable). |
+| `lab_awk_flavor [CMD...]` | Print the implementation behind an awk command (default `awk`): gawk, mawk, onetrue, busybox, or unknown. The shell under test never changes which awk runs, so awk labs branch on this, not on the shell family. |
+| `lab_awks` | List every awk command installed here (`awk`, `gawk`, `mawk`, `original-awk`, `nawk`, `busybox awk`), so one test can assert each implementation's behavior. |
 
 `common/showargs.sh` prints the argument count and each argument in angle brackets, the standard probe for seeing what quoting, splitting, and globbing produced.
 
@@ -75,9 +77,9 @@ The script prints the live versions on every run; this table records one run so 
 
 | Where | Shells |
 |---|---|
-| macOS host | `/bin/sh` and `/bin/bash` (bash 3.2.57), `bash` on PATH (5.3), zsh 5.9 native and with `--emulate sh`, dash, ksh93 (93u+ 2012-08-01) |
-| `matrix/alpine.Dockerfile` (Alpine 3.22) | BusyBox ash 1.37.0 as `/bin/sh`, bash 3.2.57, 4.4.23, 5.1.16, 5.2.37, and 5.3.20, dash 0.5.12, mksh R59, yash 2.58.1, zsh 5.9 |
-| `matrix/debian.Dockerfile` (Debian 13 trixie) | dash 0.5.12 as `/bin/sh`, bash 5.2.37, posh 0.14.1, ksh93u+m 1.0.10, mksh R59, BusyBox ash 1.37.0, zsh 5.9, GNU coreutils 9.7 |
+| macOS host | `/bin/sh` and `/bin/bash` (bash 3.2.57), `bash` on PATH (5.3), zsh 5.9 native and with `--emulate sh`, dash, ksh93 (93u+ 2012-08-01), and the one true awk (version 20200816) as `awk` |
+| `matrix/alpine.Dockerfile` (Alpine 3.22) | BusyBox ash 1.37.0 as `/bin/sh` and BusyBox awk as `awk`, bash 3.2.57, 4.4.23, 5.1.16, 5.2.37, and 5.3.20, dash 0.5.12, mksh R59, yash 2.58.1, zsh 5.9 |
+| `matrix/debian.Dockerfile` (Debian 13 trixie) | dash 0.5.12 as `/bin/sh`, bash 5.2.37, posh 0.14.1, ksh93u+m 1.0.10, mksh R59, BusyBox ash 1.37.0, zsh 5.9, GNU coreutils 9.7, and three awks: mawk 1.3.4 (the default `awk`), gawk 5.2.1, and original-awk 2025-01-16 |
 
 Container runs use an unprivileged `lab` user, so permission behavior matches a normal account.
 On a host where `sh` on PATH is not `/bin/sh` (a Nix or Homebrew setup), the matrix runs both, because they are different shells.
