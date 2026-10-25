@@ -747,3 +747,7 @@ Six months in, a product team says verification adds 8 seconds to cold starts of
 - [[17-Cloud-AI-Engineering/Volume_06_Infrastructure_as_Code_and_Delivery/Chapter_04_Policy_as_Code_OPA_Sentinel_and_Guardrails|Policy as Code]]: how to express and test the admission policy as code.
 - [[17-Cloud-AI-Engineering/Volume_05_Kubernetes_and_Platform_Engineering/Chapter_07_GitOps_Delivery_Argo_CD_and_Flux|GitOps Delivery]]: where digest pinning and signature verification meet reconciliation.
 - [[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter/Chapter_07_Compliance_Auditing_and_Non_Repudiation|Compliance, Auditing, and Non-Repudiation]]: mapping signing and log evidence to audit requirements.
+
+## See also in Developer Toolchain
+
+- [[Python-Trusted-Publishing-and-PEP-740-Attestations]], [[SLSA-Framework-Build-and-Source-Tracks]], [[In-Toto-Layouts-Link-Metadata-and-DSSE-Attestations]], [[Sigstore-Keyless-Signing-Cosign-Fulcio-and-Rekor]], [[Enterprise-Third-Party-Code-Ingestion-and-Quarantine-Architecture]], [[Capstone-Polyglot-Packaging-and-Release-Pipeline]]

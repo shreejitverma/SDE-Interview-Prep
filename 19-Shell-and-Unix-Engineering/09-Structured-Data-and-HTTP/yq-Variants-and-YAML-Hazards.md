@@ -40,4 +40,6 @@ Prerequisites: [[jq-Streaming-Large-Inputs]]
 
 Next: [[XML-with-xmlstarlet]]
 
+See also: [[Structured-Data-Wrangling-Jq-Yq-and-Coreutils]]
+
 ## Further reading

@@ -40,6 +40,6 @@ Prerequisites: [[cgroups-v2-from-the-Shell]]
 
 Next: [[seccomp]]
 
-See also: [[01-CS-Foundations/Operating-Systems/AOS/labs/lab-24-security/README|AOS lab 24: capabilities and namespaces]]
+See also: [[01-CS-Foundations/Operating-Systems/AOS/labs/lab-24-security/README|AOS lab 24: capabilities and namespaces]], [[Proc-Filesystem-and-Process-Credentials]]
 
 ## Further reading

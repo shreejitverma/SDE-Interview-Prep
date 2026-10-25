@@ -53,3 +53,7 @@ For rigorous exploit mechanics, penetration testing methodologies, and defensive
 - [[../../15-Technical-Whitepapers/05-Offensive-Security-and-Exploitation/Binary-Exploitation-and-Reverse-Eng|Binary Exploitation & Reverse Engineering]]: Stack buffer overflows, EIP hijacking, and shellcode mechanics.
 - [[../../15-Technical-Whitepapers/06-Defensive-Security-and-Hardening/Application-and-Infrastructure-Sec|Enterprise Application Security Standards]]: OWASP Application Security Verification Standard (ASVS 3.0.1) and OWASP Testing Guide v4.
 - [[../../15-Technical-Whitepapers/06-Defensive-Security-and-Hardening/Linux-Operating-System-Hardening|Linux OS Hardening]]: Sysctl baseline, kernel self-protection, and SELinux mandatory access control.
+
+## See also in Developer Toolchain
+
+- [[SBOM-Standards-SPDX-CycloneDX-and-VEX]]

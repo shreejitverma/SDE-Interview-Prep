@@ -40,4 +40,6 @@ Prerequisites: [[Redirection-Order-and-Semantics]]
 
 Next: [[Descriptor-Duplication-and-Closing]]
 
+See also: [[Pipelines-Subshells-Redirection-and-Process-Substitution]]
+
 ## Further reading

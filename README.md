@@ -22,6 +22,9 @@ It has been built and maintained continuously since 2021.
 | Agentic AI | 14-volume curriculum from LLM foundations to multi-agent systems, MCP, evals, and coding agents, plus agentic harness docs and an interview prep pack |
 | Distinguished engineering | Lock-free stack, Raft, consistent hashing, LSM tree, WAL, circuit breaker |
 | Technical whitepapers | Reading notes on ~159 papers (Linux eBPF, memory hierarchies, Windows NT, exploitation, hardening, seminal CS and low-latency/HFT canon), linked to public copies |
+| Cloud AI engineering | 16-volume curriculum on AWS and Google Cloud internals, Kubernetes, IaC, SRE, security, FinOps, and AI infrastructure and serving |
+| Developer toolchain | Atomic notes on program execution, the command line, Git, debugging, profiling, build systems, and packaging and shipping in C++, Python, and Rust, with labs checked by `make verify` |
+| Shell and Unix | Atomic notes from the system call to the organization: POSIX, bash, the userland, networking, security, and incident response, with labs run in a 13-shell matrix |
 | Interview prep | Behavioral, resume, mock interview checklists, and a phased roadmap |
 | Interview Command Center | Obsidian mission control: 5 role hubs with skill matrices and question banks, templates, QuickAdd macros, and dashboards; the private application pipeline is kept outside this repo |
 
@@ -42,10 +45,10 @@ Every knowledge note carries typed frontmatter (type, track, level, status), and
 
 ### If you are targeting...
 
-- **General SDE (FAANG-style):** `01` -> `03` -> `04` -> `06`.
-- **Quant developer / HFT C++:** `02/C++` -> `03/04-Gold-Standard-Cpp-Patterns` -> `05` -> `14` -> `12`.
+- **General SDE (FAANG-style):** `01` -> `03` -> `04` -> `06`, with `18` and `19` for the toolchain and the shell.
+- **Quant developer / HFT C++:** `02/C++` -> `03/04-Gold-Standard-Cpp-Patterns` -> `05` -> `14` -> `12` -> `18` (debugging, profiling, and shipping C++).
 - **Quant trader or researcher, or the finance side of quant dev:** [The-Quant-Prep](https://github.com/shreejitverma/The-Quant-Prep), the companion repo for probability, pricing, market making, alpha research and firm preparation.
-- **Senior / staff / distinguished:** `04` -> `08` -> `09` -> `10` -> `11`.
+- **Senior / staff / distinguished:** `04` -> `08` -> `09` -> `10` -> `11` -> `18` (engineering systems at scale).
 - **AI / agent engineering:** `13`, then `04` for the production side.
 
 ---
@@ -71,6 +74,7 @@ Every knowledge note carries typed frontmatter (type, track, level, status), and
 15-Technical-Whitepapers/      Technical whitepapers archive (eBPF, Memory, Kernels, Exploitation, Hardening)
 16-Interview-Command-Center/   Obsidian mission control: role hubs, templates, macros, dashboards (private data symlinked in)
 17-Cloud-AI-Engineering/       Cloud AI Engineering: Zero to Godhood (16 volumes, AWS and Google Cloud)
+18-Developer-Toolchain/        Developer toolchain knowledge base (12 pillar folders, labs checked by make verify)
 19-Shell-and-Unix-Engineering/ Shell and Unix knowledge base (27 topic folders, labs run in a 13-shell matrix)
 INDEX.md                       Phased table of contents with direct links
 CS-Subjects/                   Legacy index that now points into 01-CS-Foundations
@@ -174,6 +178,8 @@ The papers themselves are not stored here; 82 of them link to a legitimate publi
 - [06 - Interview Prep](./06-Interview-Prep/README.md): behavioral answers, resume guidance, mock interview checklists.
 - [07 - Project Portfolio](./07-Project-Portfolio/README.md): portfolio project ideas by track.
 - [09 - Engineering Leadership](./09-Engineering-Leadership/README.md), [10 - Development Practices](./10-Development-Practices/README.md), [11 - Security and Cryptography](./11-Security-And-Cryptography/README.md), [12 - Performance Engineering](./12-Performance-Engineering/README.md).
+- [18 - Developer Toolchain](./18-Developer-Toolchain/README.md): program execution, the command line, Git, debugging, profiling, build systems, and packaging and shipping in C++, Python, and Rust.
+- [19 - Shell and Unix Engineering](./19-Shell-and-Unix-Engineering/README.md): a separate book on the shell and the Unix userland, overlapping 18 on the process model and the command line.
 - [16 - Interview Command Center](./16-Interview-Command-Center/00-Dashboard.md): the Obsidian homepage; role hubs, macros, dashboards, and the review loop.
 - [CS-Subjects](./CS-Subjects/README.md): a legacy index kept for old links; everything it lists lives in `01-CS-Foundations`.
 

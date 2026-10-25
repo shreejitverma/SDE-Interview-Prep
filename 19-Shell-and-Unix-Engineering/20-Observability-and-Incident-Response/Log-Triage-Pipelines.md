@@ -40,4 +40,6 @@ Prerequisites: [[bpftrace-One-Liners]]
 
 Next: [[journalctl-Queries]]
 
+See also: [[Analyze-Gigabyte-Terminal-Logs]], [[Git-Trace2-Telemetry-and-Diagnostics]]
+
 ## Further reading

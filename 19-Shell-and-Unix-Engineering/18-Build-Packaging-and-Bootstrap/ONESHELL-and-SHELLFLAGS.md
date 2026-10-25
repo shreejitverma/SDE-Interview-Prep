@@ -40,4 +40,6 @@ Prerequisites: [[Make-Recipe-Execution]]
 
 Next: [[Autoconf-and-configure]]
 
+See also: [[Make-and-Ninja-Mechanics]]
+
 ## Further reading

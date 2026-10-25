@@ -40,4 +40,6 @@ Prerequisites: [[Pipes-and-FIFOs]]
 
 Next: [[SIGPIPE-and-EPIPE]]
 
+See also: [[Pipe-Buffering-and-Stdbuf]]
+
 ## Further reading

@@ -40,4 +40,6 @@ Prerequisites: [[Brace-Expansion]]
 
 Next: [[Coprocesses]]
 
+See also: [[Pipelines-Subshells-Redirection-and-Process-Substitution]]
+
 ## Further reading

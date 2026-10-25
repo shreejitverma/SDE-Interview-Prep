@@ -40,4 +40,6 @@ Prerequisites: [[Traps-and-EXIT]]
 
 Next: [[The-read-Builtin]]
 
+See also: [[Pipelines-Subshells-Redirection-and-Process-Substitution]]
+
 ## Further reading

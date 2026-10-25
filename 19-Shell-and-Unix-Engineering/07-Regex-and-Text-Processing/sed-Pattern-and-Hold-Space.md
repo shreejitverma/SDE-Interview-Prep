@@ -40,4 +40,6 @@ Prerequisites: [[ripgrep-Internals]]
 
 Next: [[sed-Addresses-and-Branching]]
 
+See also: [[Sed-and-Awk-Stream-Processing]]
+
 ## Further reading

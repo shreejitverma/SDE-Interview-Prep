@@ -115,3 +115,7 @@ Key patterns documented in the 2016 SysAdmin compilation:
 - [[../01-Systems-Performance-and-Tracing/Linux-Tracing-and-Instrumentation|Linux Tracing and Instrumentation]]
 - [[../06-Defensive-Security-and-Hardening/Linux-Operating-System-Hardening|Linux Operating System Hardening]]
 - [[../README|Technical Whitepapers Master MOC]]
+
+## See also in Developer Toolchain
+
+- [[Sed-and-Awk-Stream-Processing]], [[Modal-Editing-LSP-Tree-Sitter-and-DAP]]

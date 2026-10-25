@@ -53,3 +53,7 @@ This section is maintained in [[Chapter_56_The_Typing_System_Static_Analysis_vs_
 # Chapter 68: The Python Packaging Ecosystem: PEP 517 to Wheels
 
 This section is maintained in [[Chapter_57_The_Python_Packaging_Ecosystem_PEP_517_to_Wheels]].
+
+## See also in Developer Toolchain
+
+- [[Python-Packaging-History-and-pyproject-toml]]

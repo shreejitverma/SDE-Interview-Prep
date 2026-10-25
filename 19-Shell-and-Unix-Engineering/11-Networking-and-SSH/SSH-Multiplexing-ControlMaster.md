@@ -40,4 +40,6 @@ Prerequisites: [[SSH-Config-and-ProxyJump]]
 
 Next: [[SSH-Port-Forwarding-and-Tunnels]]
 
+See also: [[SSH-In-Depth-Keys-Forwarding-Certificates-and-FIDO2]], [[Drill-Command-Line-SSH-Multiplexing-and-Broken-PTY]]
+
 ## Further reading

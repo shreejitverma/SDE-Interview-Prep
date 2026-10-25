@@ -38,4 +38,6 @@ Part of [Regular Expressions and Text Processing](README.md) in [Shell and Unix 
 
 Prerequisites: [[Locale-and-LC_ALL]]
 
+See also: [[Locale-Collation-and-Unicode-in-CLI-Tools]]
+
 ## Further reading

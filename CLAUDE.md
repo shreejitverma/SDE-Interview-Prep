@@ -46,6 +46,7 @@ python3 tools/audit_vault.py --out - --check links
 python3 tools/audit_vault.py --out - --check style
 python3 tools/audit_pii.py --check
 python3 tools/check_shell_labs.py   # needs shellcheck, shfmt, bats-core
+python3 tools/check_manifest.py     # 18-Developer-Toolchain reading order
 python3 -m unittest discover tools/tests
 python3 tools/audit_vault.py        # refresh AUDIT.md
 ```

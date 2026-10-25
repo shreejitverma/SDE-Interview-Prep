@@ -40,4 +40,6 @@ Prerequisites: [[Userland-Portability-Traps]]
 
 Next: [[find-print0-and-exec-Plus]]
 
+See also: [[File-Discovery-and-Batch-Execution-Find-Fd-Xargs-Parallel]]
+
 ## Further reading

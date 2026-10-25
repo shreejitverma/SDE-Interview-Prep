@@ -1,7 +1,8 @@
 # no-mistakes gate commands for this vault; `no-mistakes ci-workflow` mirrors them into CI.
 # lint: no broken links or table-splitting wikilinks, no emojis or em dashes, no private data,
-#       and shell labs that pass ShellCheck, shfmt, and their bats tests.
+#       shell labs that pass ShellCheck, shfmt, and their bats tests, and a complete
+#       18-Developer-Toolchain/manifest.tsv (the reading order a later book build uses).
 # test: behavior tests for the vault tools.
 commands:
-  lint: 'python3 tools/audit_vault.py --out - --check links && python3 tools/audit_vault.py --out - --check style && python3 tools/audit_pii.py --check && python3 tools/check_shell_labs.py'
+  lint: 'python3 tools/audit_vault.py --out - --check links && python3 tools/audit_vault.py --out - --check style && python3 tools/audit_pii.py --check && python3 tools/check_shell_labs.py && python3 tools/check_manifest.py'
   test: 'python3 -m unittest discover tools/tests'

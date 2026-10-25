@@ -40,4 +40,6 @@ Prerequisites: [[Zombies-and-Orphans]]
 
 Next: [[dev-fd-and-dev-stdin]]
 
+See also: [[Proc-Filesystem-and-Process-Credentials]]
+
 ## Further reading

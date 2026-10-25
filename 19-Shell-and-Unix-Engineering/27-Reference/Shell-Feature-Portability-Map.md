@@ -22,4 +22,6 @@ Prerequisites: [[Shell-and-Unix-Glossary]]
 
 Next: [[Userland-Differences-Map]]
 
+See also: [[POSIX-sh-Bash-Zsh-and-Fish-Compared]]
+
 ## Further reading

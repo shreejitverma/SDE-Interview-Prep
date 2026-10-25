@@ -38,4 +38,6 @@ Part of [Structured Data and HTTP](README.md) in [Shell and Unix Engineering](..
 
 Next: [[jq-Paths-and-Updates]]
 
+See also: [[Structured-Data-Wrangling-Jq-Yq-and-Coreutils]]
+
 ## Further reading

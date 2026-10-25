@@ -128,3 +128,7 @@ Concurrency is the hardest thing to test because the bug depends on a specific *
 | Model checking / `rr` | Interleaving bugs; reproduction | High; small scope | Hand-rolled lock-free; rare races |
 
 > **The discipline.** UB and race bugs are invisible to output-checking tests, so they require tools that detect the *violation*, not the symptom. The baseline for any serious C++ codebase: run the test suite under **ASan+UBSan** continuously in CI (catches the single-threaded UB and memory bugs of Chapter 104), run concurrent tests under **TSan** (catches the races of Chapter 76 before they reach a weakly-ordered machine), **fuzz** any code that parses untrusted input, and reserve **model checking** for hand-rolled lock-free structures you cannot avoid writing. These tools are not optional polish - for the systems this volume targets, where a single latent UB or race is a production incident, they are the only practical way to know the code is actually correct. The final chapter unifies the volume's performance and correctness threads into the discipline that matters most for these systems: determinism.
+
+## See also in Developer Toolchain
+
+- [[Cpp-AddressSanitizer-and-LeakSanitizer-Internals]], [[Cpp-ThreadSanitizer-and-MemorySanitizer-Internals]], [[Cpp-UndefinedBehaviorSanitizer-and-UB-Field-Guide]], [[Cpp-Clang-Tidy-Static-Analyzer-and-Fuzzing-libFuzzer-AFLPlusPlus]]

@@ -40,4 +40,6 @@ Prerequisites: [[Command-Search-and-PATH]]
 
 Next: [[Compound-Commands]]
 
+See also: [[Pipelines-Subshells-Redirection-and-Process-Substitution]]
+
 ## Further reading

@@ -31,3 +31,5 @@ sources: []
 - [[../README|Technical Whitepapers Master MOC]]
 - [[../01-Systems-Performance-and-Tracing/Linux-Tracing-and-Instrumentation|Linux Tracing and Instrumentation]]
 - [[../06-Defensive-Security-and-Hardening/Linux-Operating-System-Hardening|Linux Operating System Hardening]]
+- [[../../18-Developer-Toolchain/README|Developer Toolchain]] (the command line, editors, Git, debugging, profiling, builds, and packaging as atomic notes)
+- [[../../18-Developer-Toolchain/10-Papers/README|Developer Toolchain: Papers]] (build systems, profilers, sanitizers, record and replay, static analysis, supply chain)

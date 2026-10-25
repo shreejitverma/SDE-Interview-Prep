@@ -40,4 +40,6 @@ Prerequisites: [[sed-Pattern-and-Hold-Space]]
 
 Next: [[sed-In-Place-Editing-Portability]]
 
+See also: [[Sed-and-Awk-Stream-Processing]]
+
 ## Further reading

@@ -912,3 +912,7 @@ Which three language features would you ban from shared modules today to keep po
 - [[17-Cloud-AI-Engineering/Volume_06_Infrastructure_as_Code_and_Delivery/Chapter_05_State_Management_Drift_Detection_and_Compliance|State Management, Drift Detection, and Compliance]] - State boundaries and drift, which determine blueprint blast radius.
 - [[17-Cloud-AI-Engineering/Volume_06_Infrastructure_as_Code_and_Delivery/Chapter_06_Progressive_Delivery_and_Deployment_Pipelines|Progressive Delivery and Deployment Pipelines]] - Ring rollout and automated rollback applied to module releases.
 - [[17-Cloud-AI-Engineering/Volume_06_Infrastructure_as_Code_and_Delivery/Chapter_03_Programmatic_IaC_AWS_CDK_and_Pulumi|Programmatic IaC: AWS CDK and Pulumi]] - The next chapter, where constructs and components replace HCL modules as the abstraction unit.
+
+## See also in Developer Toolchain
+
+- [[Versioning-SemVer-CalVer-and-ABI]], [[Lockfiles-Vendoring-and-Offline-Mirrors]]

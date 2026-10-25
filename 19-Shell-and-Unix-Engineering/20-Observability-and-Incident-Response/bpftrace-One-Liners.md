@@ -40,4 +40,6 @@ Prerequisites: [[perf-from-the-Shell]]
 
 Next: [[Log-Triage-Pipelines]]
 
+See also: [[eBPF-bpftrace-ftrace-uprobes-and-USDT]], [[Playbook-Diagnose-a-Production-Tail-Latency-Spike-with-eBPF-and-perf]]
+
 ## Further reading

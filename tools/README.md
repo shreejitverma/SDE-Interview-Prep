@@ -10,6 +10,7 @@ Every script that edits notes is a dry run unless you pass `--apply`.
 | :--- | :--- | :--- |
 | `audit_vault.py` | `AUDIT.md` | Counts, duplicates, broken links, table-splitting wikilinks, orphans, frontmatter and `status` values, entry notes, emoji and em-dash use, vendored and large files. |
 | `check_shell_labs.py` | stdout | Shell lab gate: every tracked shell file under `19-Shell-and-Unix-Engineering/labs/` declares its dialect, is executable when it has a shebang, and passes ShellCheck (non-zsh files), `shfmt -d`, and `zsh -n` (zsh files); every lab has a bats test, and the tests pass. A missing linter is an error, never a skip. |
+| `check_manifest.py` | stdout | Book manifest gate: `18-Developer-Toolchain/manifest.tsv` lists every tracked note in the folder exactly once, in order 1..N, with `note_id` equal to the path without `.md` and `kind` equal to the note's frontmatter `type`. It is the reading order a later book build consumes. |
 | `audit_pii.py` | a path you pass with `--out` | Inventory of private job-search data and PII; refuses to write inside this repo. `--check` is the CI and pre-commit guard. |
 | `private_paths.py` | - | Private locations: gitignored here, symlinked in from the private `career-ops` repo. |
 
@@ -49,6 +50,8 @@ python3 tools/audit_vault.py --out - --check links         # exit 1 on a broken 
 python3 tools/audit_vault.py --out - --check style         # exit 1 on an emoji, an em dash, or a missing or invalid note status
 python3 tools/audit_pii.py --check                         # exit 1 on private data in tracked files
 python3 tools/check_shell_labs.py                          # exit 1 on a shell lab finding, 2 on a missing linter
+python3 tools/check_manifest.py                            # exit 1 when 18-Developer-Toolchain/manifest.tsv and its notes disagree
+make -C 18-Developer-Toolchain/code verify                 # re-run the toolchain labs and diff their output (local; per-platform expected output)
 python3 tools/audit_pii.py --out ~/github/career-ops/command-center/PII-INVENTORY.md
 python3 -m unittest discover tools/tests                   # tool behavior tests
 git config core.hooksPath tools/hooks                      # once per clone: pre-commit private-data guard

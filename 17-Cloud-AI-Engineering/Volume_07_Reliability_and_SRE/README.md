@@ -20,3 +20,7 @@ Volume 07 - Reliability and Site Reliability Engineering in the Cloud AI Enginee
 5. [Chaos Engineering and Game Days](Chapter_05_Chaos_Engineering_and_Game_Days.md) - Fault Injection Simulator, network partition injection, zonal degradation drills, and production game day design.
 6. [Incident Response, Blameless Postmortems, and RCA](Chapter_06_Incident_Response_Blameless_Postmortems_and_RCA.md) - Incident command hierarchy, chronological timeline assembly, cognitive bias elimination, and root cause mitigation tracking.
 7. [Anatomy of Major Cloud Outages](Chapter_07_Anatomy_of_Major_Cloud_Outages.md) - Dissecting historical AWS and Google Cloud post-incident reports, cascaded failure loops, and lessons for platform designers.
+
+## See also in Developer Toolchain
+
+- [[Production-Incident-Simulation-Drills]]

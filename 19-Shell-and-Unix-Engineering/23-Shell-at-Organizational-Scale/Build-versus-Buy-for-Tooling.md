@@ -38,4 +38,6 @@ Part of [Shell at Organizational Scale](README.md) in [Shell and Unix Engineerin
 
 Prerequisites: [[Incident-Reviews-of-Script-Failures]]
 
+See also: [[Playbook-Write-a-Toolchain-Migration-RFC]]
+
 ## Further reading

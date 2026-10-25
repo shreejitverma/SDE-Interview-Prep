@@ -40,4 +40,6 @@ Prerequisites: [[Regex-Engines-NFA-DFA-and-Backtracking]]
 
 Next: [[grep-in-Depth]]
 
+See also: [[Regex-Engines-Automata-Backtracking-and-ReDoS]], [[Drill-Command-Line-Catastrophic-Backtracking-and-Stream-Bottleneck]]
+
 ## Further reading

@@ -38,4 +38,6 @@ Part of [Regular Expressions and Text Processing](README.md) in [Shell and Unix 
 
 Next: [[POSIX-Leftmost-Longest-Matching]]
 
+See also: [[Regex-Engines-Automata-Backtracking-and-ReDoS]]
+
 ## Further reading

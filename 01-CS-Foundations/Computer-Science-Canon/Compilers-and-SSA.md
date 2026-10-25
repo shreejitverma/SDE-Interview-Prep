@@ -162,3 +162,7 @@ The C++ side of the memory half is [[cpp_safety.cpp]].
 - Cooper and Torczon, for a modern pass-by-pass picture.
 - Braun and others, for a construction of SSA that does not require a separate dominance-frontier textbook first.
 - [[Types-Lambda-and-Memory-Safety]] for the judgment the front end is applying.
+
+## See also in Developer Toolchain
+
+- [[Compiler-Pipeline-and-Debuggability]]

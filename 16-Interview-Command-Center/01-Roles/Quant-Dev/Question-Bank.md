@@ -56,3 +56,11 @@ sources: []
 | 3 | How does a matching engine handle limit vs market orders? | Medium | High | ☐ |
 | 4 | What is queue position and why does it matter? | Medium | Med | ☐ |
 | 5 | Explain maker-taker vs inverted fee models | Medium | Med | ☐ |
+
+## Developer Toolchain
+
+Scenario questions with model answers at L6, L7, and L8+ live in the toolchain arena.
+
+- [[Cross-Pillar-Debugging-Scenario-Bank]]: production crashes, hangs, leaks, and regressions to walk through out loud.
+- [[Cross-Pillar-Design-Scenario-Bank]]: build, release, version-control, and developer-platform design questions.
+- [[Staff-and-Principal-Toolchain-Interview-Bar]]: what separates a staff answer from a principal one.

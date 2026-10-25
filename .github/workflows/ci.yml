@@ -57,7 +57,7 @@ jobs:
 
       - name: Lint
         run: |
-          python3 tools/audit_vault.py --out - --check links && python3 tools/audit_vault.py --out - --check style && python3 tools/audit_pii.py --check && python3 tools/check_shell_labs.py
+          python3 tools/audit_vault.py --out - --check links && python3 tools/audit_vault.py --out - --check style && python3 tools/audit_pii.py --check && python3 tools/check_shell_labs.py && python3 tools/check_manifest.py
 
       - name: Test
         run: |

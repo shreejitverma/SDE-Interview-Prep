@@ -60,3 +60,7 @@ target_link_libraries(MathCore PRIVATE $<$<PLATFORM_ID:Windows>:ws2_32>)
 
 
 ---
+
+## See also in Developer Toolchain
+
+- [[Modern-CMake-Architecture-and-Targets]]

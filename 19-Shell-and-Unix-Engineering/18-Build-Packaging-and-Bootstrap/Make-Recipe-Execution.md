@@ -38,4 +38,6 @@ Part of [Build, Packaging, and Bootstrap](README.md) in [Shell and Unix Engineer
 
 Next: [[ONESHELL-and-SHELLFLAGS]]
 
+See also: [[Make-and-Ninja-Mechanics]]
+
 ## Further reading

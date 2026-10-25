@@ -40,4 +40,6 @@ Prerequisites: [[SSH-Port-Forwarding-and-Tunnels]]
 
 Next: [[SSH-Remote-Command-Quoting]]
 
+See also: [[SSH-In-Depth-Keys-Forwarding-Certificates-and-FIDO2]], [[Harden-SSH-Access-With-Certificates-and-Hardware-Keys]]
+
 ## Further reading

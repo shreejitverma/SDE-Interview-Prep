@@ -40,4 +40,6 @@ Prerequisites: [[Org-Shell-Standards-and-Lint-Rollout]]
 
 Next: [[Migrating-Shell-to-Real-Languages]]
 
+See also: [[Platform-Engineering-Paved-Roads-and-Deprecation]]
+
 ## Further reading

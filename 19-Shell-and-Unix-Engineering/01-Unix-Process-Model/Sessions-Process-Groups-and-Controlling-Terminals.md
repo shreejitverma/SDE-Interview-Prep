@@ -40,4 +40,6 @@ Prerequisites: [[Async-Signal-Safety]]
 
 Next: [[Daemonization]]
 
+See also: [[Signals-Process-Groups-Sessions-and-Job-Control]], [[Capstone-Unix-Shell-with-Job-Control]]
+
 ## Further reading

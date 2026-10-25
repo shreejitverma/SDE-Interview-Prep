@@ -61,3 +61,7 @@ Historically, `pdb` was built on top of `sys.settrace()`: starting a debugging s
 
 
 ---
+
+## See also in Developer Toolchain
+
+- [[Python-pdb-debugpy-and-Remote-Attach]], [[Python-Hypothesis-and-Type-Checkers-as-Bug-Prevention]]

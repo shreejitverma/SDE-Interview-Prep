@@ -40,4 +40,6 @@ Prerequisites: [[Filesystem-Hierarchy-Standard]]
 
 Next: [[File-Locking-Semantics]]
 
+See also: [[Git-Index-Stat-Cache-and-Fsmonitor]]
+
 ## Further reading

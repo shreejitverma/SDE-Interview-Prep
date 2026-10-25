@@ -462,7 +462,7 @@ Prerequisites: [[Arithmetic-Expansion]]
 
 Next: [[Pathname-Expansion]]
 
-See also: [[Expansion-Order]], [[Token-Recognition]], [[Quoting-Backslash-Single-and-Double]], [[Parameter-Expansion]], [[Null-versus-Unset]], [[Special-Parameters]], [[Command-Substitution]], [[Tilde-Expansion]], [[Quote-Removal]], [[Simple-Commands-and-Assignment-Prefixes]], [[Command-Search-and-PATH]], [[Subshells-and-the-Execution-Environment]], [[The-read-Builtin]], [[The-eval-Builtin]], [[The-set-Builtin-and-Shell-Options]], [[POSIX-2024-Changes]]
+See also: [[Expansion-Order]], [[Token-Recognition]], [[Quoting-Backslash-Single-and-Double]], [[Parameter-Expansion]], [[Null-versus-Unset]], [[Special-Parameters]], [[Command-Substitution]], [[Tilde-Expansion]], [[Quote-Removal]], [[Simple-Commands-and-Assignment-Prefixes]], [[Command-Search-and-PATH]], [[Subshells-and-the-Execution-Environment]], [[The-read-Builtin]], [[The-eval-Builtin]], [[The-set-Builtin-and-Shell-Options]], [[POSIX-2024-Changes]], [[Shell-Parsing-Tokenization-and-Expansion-Order]]
 
 ## Further reading
 

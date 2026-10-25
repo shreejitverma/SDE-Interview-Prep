@@ -133,3 +133,7 @@ The **One Definition Rule (ODR)** requires that every entity (function, variable
 | General | UBSan in CI; `-Wall -Wextra`; treat warnings as errors |
 
 > **The discipline.** Undefined behaviour is the source of C++'s speed *and* its most insidious bugs, and the two are inseparable: the optimizer is fast *because* it assumes no UB, so the price of that speed is upholding the contract everywhere. The practical defence is twofold: *understand* the boundary (know that signed overflow, OOB, strict-aliasing violations, data races, and ODR breaches are UB, and use the defined alternatives - unsigned wrap, `memcpy`/`bit_cast`, atomics, consistent definitions); and *detect* what slips through with the sanitizers and warnings of the next chapter, run in CI on every build. UB that "works today" is a latent miscompilation waiting for an optimizer change - the only safe amount is zero, and the only way to be sure is to test for it. The next chapter is the tooling that makes that testing systematic.
+
+## See also in Developer Toolchain
+
+- [[Cpp-Debugging-Optimized-Code]], [[Cpp-UndefinedBehaviorSanitizer-and-UB-Field-Guide]], [[Cpp-ODR-Violations-Static-Init-and-Linker-Template-Errors]]

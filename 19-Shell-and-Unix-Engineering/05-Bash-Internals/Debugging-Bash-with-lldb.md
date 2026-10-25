@@ -40,4 +40,6 @@ Prerequisites: [[Command-Hashing]]
 
 Next: [[How-to-Write-a-Shell]]
 
+See also: [[Debugging-Expert-Defaults-gdbinit-and-lldbinit]], [[Cpp-GDB-and-LLDB-Expert-Guide]]
+
 ## Further reading

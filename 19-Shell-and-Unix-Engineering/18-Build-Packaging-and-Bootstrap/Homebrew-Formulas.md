@@ -40,4 +40,6 @@ Prerequisites: [[writeShellApplication]]
 
 Next: [[Debian-Maintainer-Scripts]]
 
+See also: [[Cpp-System-Packaging-Deb-RPM-and-Homebrew]]
+
 ## Further reading

@@ -40,4 +40,6 @@ Prerequisites: [[xargs-and-Argument-Batching]]
 
 Next: [[External-Merge-Sort]]
 
+See also: [[Structured-Data-Wrangling-Jq-Yq-and-Coreutils]], [[Locale-Collation-and-Unicode-in-CLI-Tools]]
+
 ## Further reading

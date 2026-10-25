@@ -758,3 +758,7 @@ The registry itself is the single point of failure now. How do you decide whethe
 - [[04-System-Design/07-Infrastructure-and-Orchestration/Kubernetes-Architecture|Kubernetes Architecture]] - the vault's overview of the API server and etcd limits that bound what GitOps can do.
 - [[17-Cloud-AI-Engineering/Volume_06_Infrastructure_as_Code_and_Delivery/Chapter_06_Progressive_Delivery_and_Deployment_Pipelines|Progressive Delivery and Deployment Pipelines]] - canary analysis and traffic shifting that sit on top of a GitOps base.
 - [[17-Cloud-AI-Engineering/Volume_05_Kubernetes_and_Platform_Engineering/Chapter_08_Service_Mesh_Architecture_and_Trade_Offs|Service Mesh Architecture and Trade-Offs]] - the next chapter, where mesh configuration becomes one more thing the reconciler must deliver safely.
+
+## See also in Developer Toolchain
+
+- [[Git-Branching-Models-Merge-Queues-and-Code-Review]], [[Progressive-Delivery-Rollbacks-and-Feature-Flags]]

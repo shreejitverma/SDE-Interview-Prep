@@ -38,4 +38,6 @@ Part of [Terminals and Job Control](README.md) in [Shell and Unix Engineering](.
 
 Next: [[Canonical-and-Raw-Mode]]
 
+See also: [[TTYs-PTYs-and-Line-Discipline]]
+
 ## Further reading

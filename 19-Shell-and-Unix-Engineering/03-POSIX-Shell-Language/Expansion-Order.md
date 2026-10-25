@@ -40,4 +40,6 @@ Prerequisites: [[Dollar-Single-Quotes]]
 
 Next: [[Tilde-Expansion]]
 
+See also: [[Shell-Parsing-Tokenization-and-Expansion-Order]]
+
 ## Further reading

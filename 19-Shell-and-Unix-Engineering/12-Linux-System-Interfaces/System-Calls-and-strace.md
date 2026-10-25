@@ -38,4 +38,6 @@ Part of [Linux System Interfaces](README.md) in [Shell and Unix Engineering](../
 
 Next: [[Namespaces-from-the-Shell-unshare-and-nsenter]]
 
+See also: [[How-Debuggers-Work-ptrace-Mach-and-Breakpoints]]
+
 ## Further reading

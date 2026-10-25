@@ -123,3 +123,7 @@ strace -f -e trace=pipe,dup2,close,write,read bash -c "cat file | grep foo"
 - [[../02-Operating-Systems-and-Kernels/Unix-and-Linux-Kernel-Foundations|UNIX and Linux Kernel Foundations]]
 - [[../../12-Performance-Engineering/02-Profiling/profiling_guide|Performance Engineering: Profiling Guide]]
 - [[../README|Technical Whitepapers Master MOC]]
+
+## See also in Developer Toolchain
+
+- [[DWARF-Debug-Information-and-Symbol-Bundles]], [[System-Inspection-and-Syscall-Tracing-From-the-Shell]], [[Paper-Google-Wide-Profiling]], [[Sampling-vs-Instrumentation-Skid-and-Safepoint-Bias]], [[eBPF-bpftrace-ftrace-uprobes-and-USDT]]

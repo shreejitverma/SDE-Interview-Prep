@@ -125,3 +125,7 @@ Formulate the complete, production-grade refactoring plan to eliminate all 2.8µ
 - [[08 - Low-Latency Programming/Allocation-Free Steady State Patterns]]
 - [[07 - Time & Measurement/Coordinated Omission in Low Latency Systems]]
 - [[11 - Participant-Side Systems/MOC - 11 Participant-Side Systems]]
+
+## See also in Developer Toolchain
+
+- [[Linux-perf-in-Depth-and-perf-c2c]], [[Playbook-Diagnose-a-Production-Tail-Latency-Spike-with-eBPF-and-perf]]

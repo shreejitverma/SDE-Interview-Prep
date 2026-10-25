@@ -34,3 +34,7 @@ sources: []
 ## 5. The "Nitpick" Rule
 *   Don't block PRs on style/formatting. Use a linter (Prettier, Clang-Format) instead.
 *   **Tone:** Be kind. "Have you considered..." instead of "Change this."
+
+## See also in Developer Toolchain
+
+- [[Git-Branching-Models-Merge-Queues-and-Code-Review]], [[Code-Review-and-Readability-Systems-at-Scale]], [[Paper-Modern-Code-Review-at-Google]]

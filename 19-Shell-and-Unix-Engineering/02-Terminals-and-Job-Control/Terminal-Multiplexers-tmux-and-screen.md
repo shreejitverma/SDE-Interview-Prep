@@ -40,4 +40,6 @@ Prerequisites: [[Readline-and-inputrc]]
 
 Next: [[Terminal-Emulators-and-TERM]]
 
+See also: [[Tmux-Architecture-and-Session-Persistence]]
+
 ## Further reading

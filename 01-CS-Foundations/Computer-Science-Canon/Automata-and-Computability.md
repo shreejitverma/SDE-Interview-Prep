@@ -114,3 +114,7 @@ Add a dead state rather than letting the lookup throw, if you want the mathemati
 - Turing, 1936. The vault note is [[15-Technical-Whitepapers/09-Seminal-Computer-Science-Papers/01-Foundations-and-Information-Theory|Foundations and Information Theory]].
 - Sipser, for the pumping lemmas and the subset construction written out.
 - [[Complexity-and-NP-Completeness]] for the problems that are decidable and still too expensive.
+
+## See also in Developer Toolchain
+
+- [[Regex-Engines-Automata-Backtracking-and-ReDoS]]

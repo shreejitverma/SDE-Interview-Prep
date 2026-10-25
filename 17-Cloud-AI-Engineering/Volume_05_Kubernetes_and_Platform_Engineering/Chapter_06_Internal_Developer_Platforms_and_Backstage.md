@@ -677,3 +677,7 @@ Product wants the portal to show live provisioning progress. Where does that sta
 - [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_04_Control_Plane_vs_Data_Plane_Separation|Control Plane vs Data Plane Separation]] - the architectural rule that keeps the portal off the critical path.
 - [[17-Cloud-AI-Engineering/Volume_05_Kubernetes_and_Platform_Engineering/Chapter_01_Kubernetes_Control_Loop_Internals|Kubernetes Control Loop Internals]] - the reconciliation mechanics that every platform API depends on.
 - [[04-System-Design/07-Infrastructure-and-Orchestration/Kubernetes-Architecture|Kubernetes Architecture]] - background on API server, etcd and admission.
+
+## See also in Developer Toolchain
+
+- [[Platform-Engineering-Paved-Roads-and-Deprecation]], [[Cross-Pillar-Design-Scenario-Bank]]

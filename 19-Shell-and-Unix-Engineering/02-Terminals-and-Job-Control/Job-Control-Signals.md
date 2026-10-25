@@ -40,4 +40,6 @@ Prerequisites: [[terminfo-and-tput]]
 
 Next: [[fg-bg-jobs-and-the-Foreground-Process-Group]]
 
+See also: [[Signals-Process-Groups-Sessions-and-Job-Control]], [[Rebuild-a-Minimal-Shell-With-Job-Control]]
+
 ## Further reading

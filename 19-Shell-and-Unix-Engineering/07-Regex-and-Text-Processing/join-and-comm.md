@@ -40,4 +40,6 @@ Prerequisites: [[tr-cut-and-paste]]
 
 Next: [[column-fold-and-fmt]]
 
+See also: [[Structured-Data-Wrangling-Jq-Yq-and-Coreutils]]
+
 ## Further reading

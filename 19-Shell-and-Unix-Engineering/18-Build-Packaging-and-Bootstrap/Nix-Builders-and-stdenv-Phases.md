@@ -40,4 +40,6 @@ Prerequisites: [[Portable-sh-for-configure]]
 
 Next: [[writeShellApplication]]
 
+See also: [[Hermetic-and-Reproducible-Builds]], [[Cpp-Spack-and-Nix-for-Native-Dependencies]]
+
 ## Further reading

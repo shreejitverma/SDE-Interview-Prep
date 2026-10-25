@@ -257,3 +257,7 @@ int main() {
 - [[Sources/Systems Performance by Brendan Gregg]]
 - [[Sources/Intel 64 and IA-32 Architectures Software Developer's Manual]]
 - [[Sources/How to Build an Exchange by Jane Street]]
+
+## See also in Developer Toolchain
+
+- [[Performance-Regression-Detection-in-CI]]

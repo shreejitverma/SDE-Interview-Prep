@@ -40,4 +40,6 @@ Prerequisites: [[Field-Splitting-and-IFS]]
 
 Next: [[Quote-Removal]]
 
+See also: [[Shell-Parsing-Tokenization-and-Expansion-Order]]
+
 ## Further reading
