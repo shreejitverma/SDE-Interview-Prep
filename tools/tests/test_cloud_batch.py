@@ -473,6 +473,20 @@ class CliTest(unittest.TestCase):
             self.assertTrue(out)
         self.assertEqual(sorted(p.name for p in (repo.root / cb.CURRICULUM).iterdir()), ["STYLE.md", "SUMMARY.md"])
 
+    def test_plan_labels_each_estimate_measured_or_heuristic(self):
+        repo = Repo(self)
+        state = cb.load_state(repo.root)
+        state["batches"] = [{"phase": "draft", "model": cb.PHASES["draft"].model, "collected": True,
+                             "actual_usd": 2.4, "custom_ids": {"a": "", "b": "", "c": ""}}]
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            cb.cmd_plan(Namespace(only=None), repo.root, repo.chapters, state)
+        lines = {line.split()[0]: line for line in out.getvalue().splitlines() if line.strip()}
+        self.assertTrue(lines["draft"].endswith("(measured)"))
+        self.assertTrue(lines["verify"].endswith("(heuristic)"))
+        self.assertNotIn("heuristic", lines["total"])
+        self.assertIn("`collect` records the real spend", lines["total"])
+
     def test_submit_refuses_an_unmeasured_phase_beyond_a_pilot(self):
         # The fixture has 4 draft-ready chapters and no collected batch, so only 3 may go out as a pilot.
         repo = Repo(self)

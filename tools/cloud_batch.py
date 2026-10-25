@@ -563,8 +563,9 @@ def cmd_plan(args, repo, chapters, state) -> int:
         reqs = build_requests(phase, repo, chapters, todo) if todo else []
         lo, hi = estimate(phase, reqs, state)
         total_lo, total_hi = total_lo + lo, total_hi + hi
-        print(f"{phase:7s} {len(todo):4d} ready  model={PHASES[phase].model:18s} est ${lo:6.2f} - ${hi:6.2f}")
-    print(f"total   est ${total_lo:.2f} - ${total_hi:.2f} (heuristic; `collect` records the real spend)")
+        basis = "measured" if measured_batches(phase, PHASES[phase].model, state) else "heuristic"
+        print(f"{phase:7s} {len(todo):4d} ready  model={PHASES[phase].model:18s} est ${lo:6.2f} - ${hi:6.2f} ({basis})")
+    print(f"total   est ${total_lo:.2f} - ${total_hi:.2f} (`collect` records the real spend)")
     print("note: verify and cards become ready only after the previous phase is collected.")
     return 0
 
