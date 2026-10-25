@@ -40,4 +40,6 @@ Prerequisites: [[Autoconf-and-configure]]
 
 Next: [[Nix-Builders-and-stdenv-Phases]]
 
+See also: [[Cross-Compilation-and-Sysroots]]
+
 ## Further reading

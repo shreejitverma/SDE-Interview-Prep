@@ -144,3 +144,7 @@ This requires the build system to parse all your C++ files *before* compilation 
 We have now reached the absolute peak of the C++ ecosystem. From the earliest C98 arrays to the C++26 concurrency primitives, from CPU cache locality to CMake build pipelines.
 
 In our final Phase, we will cover the essential Utilities that the Standard Library provides to make day-to-day programming easier, before culminating in a final Capstone Project. Let's move to **Part XI: Standard Utilities**.
+
+## See also in Developer Toolchain
+
+- [[Cpp-Modules-in-Build-Systems]], [[Capstone-Hermetic-Cached-Monorepo-Build]]

@@ -40,4 +40,6 @@ Prerequisites: [[awk-Language]]
 
 Next: [[awk-Implementations]]
 
+See also: [[Sed-and-Awk-Stream-Processing]]
+
 ## Further reading

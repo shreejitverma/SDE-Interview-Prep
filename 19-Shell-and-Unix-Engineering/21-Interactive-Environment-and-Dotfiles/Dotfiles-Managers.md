@@ -40,6 +40,6 @@ Prerequisites: [[atuin]]
 
 Next: [[Nix-home-manager]]
 
-See also: [[13-Agentic-AI/Agentic-Harness/components/dotfiles-nix|dotfiles-nix]]
+See also: [[13-Agentic-AI/Agentic-Harness/components/dotfiles-nix|dotfiles-nix]], [[Git-Expert-Config]]
 
 ## Further reading

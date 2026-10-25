@@ -33,6 +33,11 @@ class VaultSchemaTest(unittest.TestCase):
         self.assertIn("19-Shell-and-Unix-Engineering", vault_schema.SCOPES)
         self.assertIn("low-latency", vault_schema.tracks_for("19-Shell-and-Unix-Engineering/README.md"))
 
+    def test_toolchain_folder_registered(self):
+        self.assertIn("18-Developer-Toolchain", vault_schema.TRACKS)
+        self.assertIn("18-Developer-Toolchain", vault_schema.SCOPES)
+        self.assertIn("quant-dev", vault_schema.tracks_for("18-Developer-Toolchain/03-Debugging/README.md"))
+
     def test_tracks_for_utility(self):
         self.assertIn("cloud-ai", vault_schema.tracks_for("17-Cloud-AI-Engineering/README.md"))
         self.assertEqual(vault_schema.tracks_for("nonexistent_folder/note.md"), [])

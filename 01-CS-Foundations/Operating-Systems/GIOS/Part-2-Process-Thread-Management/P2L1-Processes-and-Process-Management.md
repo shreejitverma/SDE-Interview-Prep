@@ -2154,4 +2154,6 @@ sudo dtrace -n 'syscall::proc_info:entry { printf("PID %d queried proc_info", pi
 **Previous:** [P1L2: Introduction to Operating Systems](../Part-1-Architecture/P1L2-Introduction-to-Operating-Systems.md)
 **Next:** [P2L2: Threads and Concurrency](P2L2-Threads-and-Concurrency.md)
 
+## See also in Developer Toolchain
 
+- [[Processes-Fork-Exec-and-File-Descriptors]], [[How-Debuggers-Work-ptrace-Mach-and-Breakpoints]], [[Rebuild-Lab-ptrace-Debugger-with-DWARF-Backtrace]], [[Capstone-Ptrace-Debugger-with-DWARF]]

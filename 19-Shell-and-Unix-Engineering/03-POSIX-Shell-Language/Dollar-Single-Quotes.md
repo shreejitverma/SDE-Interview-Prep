@@ -40,4 +40,6 @@ Prerequisites: [[Quoting-Backslash-Single-and-Double]]
 
 Next: [[Expansion-Order]]
 
+See also: [[Shell-Parsing-Tokenization-and-Expansion-Order]]
+
 ## Further reading

@@ -253,3 +253,7 @@ In a regulated release process this is the difference between a failed step that
 Upside: roughly 40% fewer tokens and explicit array lengths.
 Downside: TOON is a young format with less tooling than `jq`, so shell scripts that parse AXI output are brittle; `firstmate` parses `gh-axi` TOON with `awk` (`firstmate/bin/fm-pr-lib.sh:908-915`) and only uses it as a fallback after plain `gh --json` (`fm-pr-lib.sh:949-955`).
 I accept it because the primary consumer is a model, and scripts that need stability call the underlying tool's JSON directly.
+
+## See also in Developer Toolchain
+
+- [[CLI-Design-and-Agent-Friendly-Interfaces-AXI]], [[AI-Coding-Agents-Sandboxes-Worktrees-and-Ship-Gates]]

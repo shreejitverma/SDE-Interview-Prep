@@ -40,4 +40,6 @@ Prerequisites: [[Homebrew-Formulas]]
 
 Next: [[Installer-Script-Design]]
 
+See also: [[Cpp-System-Packaging-Deb-RPM-and-Homebrew]]
+
 ## Further reading

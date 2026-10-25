@@ -40,4 +40,6 @@ Prerequisites: [[Piped-Installers]]
 
 Next: [[xz-Utils-Backdoor]]
 
+See also: [[Lockfiles-Vendoring-and-Offline-Mirrors]], [[Dependency-Confusion-Typosquatting-and-Registry-Attacks]]
+
 ## Further reading

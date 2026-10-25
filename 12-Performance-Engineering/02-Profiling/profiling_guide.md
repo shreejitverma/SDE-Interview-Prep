@@ -47,3 +47,7 @@ For enterprise-scale Linux performance engineering, kernel tracing, and hardware
 - [[../../15-Technical-Whitepapers/01-Systems-Performance-and-Tracing/Brendan-Gregg-Performance-Canon|Brendan Gregg Performance Canon]]: The USE Method, eBPF superpowers, CPU flamegraphs, off-CPU analysis, and production SRE checklists.
 - [[../../15-Technical-Whitepapers/01-Systems-Performance-and-Tracing/Linux-Tracing-and-Instrumentation|Linux Tracing & Instrumentation Guide]]: Ian Munsie's tracepoints and Jörg Zinke's syscall tracing overhead benchmarks.
 - [[../../15-Technical-Whitepapers/03-Memory-Architecture-and-Concurrency/Ulrich-Drepper-Memory-Architecture|Ulrich Drepper - What Every Programmer Should Know About Memory]]: Cache line associativity, TLBs, NUMA topologies, and false sharing elimination.
+
+## See also in Developer Toolchain
+
+- [[Linux-perf-in-Depth-and-perf-c2c]], [[Cpp-Memory-Profiling-heaptrack-Massif-DHAT-and-Allocators]], [[Capstone-Sampling-Profiler-Folded-Stacks]]

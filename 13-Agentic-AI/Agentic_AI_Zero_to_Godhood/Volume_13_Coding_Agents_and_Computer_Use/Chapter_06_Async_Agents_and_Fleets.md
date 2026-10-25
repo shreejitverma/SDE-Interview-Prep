@@ -282,3 +282,7 @@ You have mastered this chapter when you can:
 - Reproduce the six-layer verification pyramid, say what humans should review after it runs, and explain review capitulation and its defense.
 - Enumerate the seven fleet-management concerns and design controls for each on a concrete team.
 - Describe the five agent-manager skills and argue honestly about where the role does not apply and how skill atrophy is mitigated.
+
+## See also in Developer Toolchain
+
+- [[Multi-Agent-Supervision-and-Quota-Aware-Routing]]

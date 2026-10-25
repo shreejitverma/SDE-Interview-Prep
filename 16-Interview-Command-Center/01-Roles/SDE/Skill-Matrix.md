@@ -79,3 +79,20 @@ sources: []
 | "Why This Company?" | /5 | | |
 | Conflict Resolution | /5 | | |
 | Leadership Signals | /5 | | |
+
+## Developer Toolchain
+
+Rate against the L4 to L8+ ladders in [[18-Developer-Toolchain/README|Developer Toolchain]].
+
+| Skill | Level | Last Assessed | Notes |
+|-------|-------|---------------|-------|
+| [[Program-Execution-Skill-Ladder\|Program execution: ELF, linking, loading, ABIs]] | /5 | | |
+| [[Command-Line-Skill-Ladder\|Command line and developer environment]] | /5 | | |
+| [[Git-Skill-Ladder\|Git internals and version control at scale]] | /5 | | |
+| [[Debugging-Skill-Ladder\|Debugging C++, Python, and Rust]] | /5 | | |
+| [[Measurement-Methodology-Skill-Ladder\|Measurement and benchmarking methodology]] | /5 | | |
+| [[Profiling-Skill-Ladder\|Profiling and tracing]] | /5 | | |
+| [[Build-Systems-Skill-Ladder\|Build systems]] | /5 | | |
+| [[Packaging-Skill-Ladder\|Packaging and release]] | /5 | | |
+| [[Supply-Chain-Skill-Ladder\|Software supply chain]] | /5 | | |
+| [[Engineering-Systems-Skill-Ladder\|Engineering systems at scale]] | /5 | | |

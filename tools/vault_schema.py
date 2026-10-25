@@ -33,6 +33,7 @@ TRACKS: dict[str, list[str]] = {
     "15-Technical-Whitepapers": ["distinguished", "sde"],
     "16-Interview-Command-Center": ALL_TRACKS,
     "17-Cloud-AI-Engineering": ["cloud-ai", "ai-eng", "sde", "distinguished"],
+    "18-Developer-Toolchain": ["sde", "distinguished", "low-latency", "quant-dev", "ai-eng"],
     "19-Shell-and-Unix-Engineering": ["sde", "distinguished", "low-latency", "cloud-ai", "ai-eng"],
     "CS-Subjects": ["sde"],
 }
@@ -51,6 +52,7 @@ SCOPES: dict[str, str] = {
     "12-Performance-Engineering": "Performance engineering: CPU architecture effects and profiling.",
     "13-Agentic-AI": "AI engineering: the Agentic AI Zero to Godhood curriculum.",
     "17-Cloud-AI-Engineering": "Cloud AI engineering: the Cloud AI Engineering Zero to Godhood curriculum (AWS and Google Cloud).",
+    "18-Developer-Toolchain": "Developer toolchain: atomic notes on program execution, the command line, version control, debugging, profiling, build systems, and packaging and shipping in C++, Python, and Rust, with labs checked by make verify.",
     "19-Shell-and-Unix-Engineering": "Shell and Unix engineering: an atomic-notes knowledge base from the system call to the organization, with labs run under a matrix of shells.",
 }
 

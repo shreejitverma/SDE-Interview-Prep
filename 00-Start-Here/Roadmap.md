@@ -36,6 +36,9 @@ flowchart TD
     DSA --> Interview["06 Interview prep"]
     Interview --> Command["16 Interview Command Center"]
     Distinguished --> Leadership["09 Engineering leadership"]
+    Languages --> Toolchain["18 Developer toolchain"]
+    Practices --> Toolchain
+    Design --> Cloud["17 Cloud AI engineering"]
 ```
 
 Each box is a folder.
@@ -57,6 +60,8 @@ flowchart LR
     L --> Sh["19 Shell and Unix"]
     D --> S["04 System design"]
     Sh --> S
+    L --> T["18 Developer toolchain"]
+    T --> S
     S --> I["06 Interview prep"]
     I --> C["16 Command Center"]
 ```
@@ -70,6 +75,7 @@ flowchart LR
     Q --> LL["14 Low-latency systems"]
     LL --> Perf["12 Performance"]
     Perf --> Sh["19 Shell: process model, performance, incident response"]
+    Perf --> T["18 Toolchain: debugging, profiling, shipping C++"]
 ```
 
 The finance curriculum that sits beside the code lives in The-Quant-Prep.
@@ -84,6 +90,7 @@ flowchart LR
     E --> P["15 Whitepapers"]
     E --> Lead["09 Leadership"]
     S --> Ops["10 Practices and 11 Security"]
+    Ops --> T["18 Toolchain: engineering systems at scale"]
 ```
 
 ### AI or agent engineering
@@ -127,6 +134,7 @@ The [review queue](Review-Queue.md) brings a note back after 7, 21, or 60 days, 
 | 15 | Reading notes on the papers the other folders cite | [Whitepapers](../15-Technical-Whitepapers/README.md) |
 | 16 | Role hubs, drills, and the local interview loop | [Command Center](../16-Interview-Command-Center/00-Dashboard.md) |
 | 17 | Cloud and AI infrastructure on AWS and Google Cloud, from the hardware up | [Cloud AI engineering](../17-Cloud-AI-Engineering/README.md) |
+| 18 | Program execution, the command line, Git, debugging, profiling, build systems, and packaging and shipping in C++, Python, and Rust, with labs checked by make verify | [Developer toolchain](../18-Developer-Toolchain/README.md) |
 | 19 | The shell from the system call up: POSIX, bash, zsh, the userland, filesystems, networking, robustness, security, production, and organizational scale | [Shell and Unix engineering](../19-Shell-and-Unix-Engineering/README.md) |
 
 Private application data is not in this repository.

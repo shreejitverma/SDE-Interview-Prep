@@ -39,3 +39,8 @@ sources: []
 | Python (statistical computing) | /5 | | |
 | Monte Carlo Simulation | /5 | | |
 | Data Analysis (pandas/numpy) | /5 | | |
+| **Developer Toolchain** | | | |
+| [[Command-Line-Skill-Ladder\|Command line and developer environment]] | /5 | | |
+| [[Git-Skill-Ladder\|Git internals and version control at scale]] | /5 | | |
+| [[Profiling-Skill-Ladder\|Profiling and tracing]] | /5 | | |
+| [[Packaging-Skill-Ladder\|Packaging and release]] | /5 | | |

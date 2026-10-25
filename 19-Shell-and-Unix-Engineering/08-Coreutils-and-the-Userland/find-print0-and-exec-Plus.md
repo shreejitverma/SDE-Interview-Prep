@@ -40,4 +40,6 @@ Prerequisites: [[find-Expressions]]
 
 Next: [[xargs-and-Argument-Batching]]
 
+See also: [[File-Discovery-and-Batch-Execution-Find-Fd-Xargs-Parallel]]
+
 ## Further reading

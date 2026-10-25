@@ -40,4 +40,6 @@ Prerequisites: [[Terminal-Emulators-and-TERM]]
 
 Next: [[expect-and-Automating-Interactive-Programs]]
 
+See also: [[Terminal-Escape-Sequences-and-Unicode]]
+
 ## Further reading

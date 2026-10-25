@@ -487,3 +487,7 @@ How would you detect in production that two restored clones produced colliding r
 - [Borg, Omega, and Kubernetes (ACM Queue 2016)](https://queue.acm.org/detail.cfm?id=2898444) - Google systems engineers describe ten years of container orchestration experience inside Borg and its translation to Kubernetes.
 - [AWS Nitro System Architecture Whitepaper](https://docs.aws.amazon.com/whitepapers/latest/aws-nitro-system/aws-nitro-system.html) - Official technical breakdown of Nitro Cards, the Nitro Security Chip, and hypervisor offloading.
 - [gVisor Architecture and Sandbox Principles](https://gvisor.dev/docs/architecture_guide/) - Deep dive into Sentry syscall interception, Gofer proxy isolation, and memory-safe kernel emulation.
+
+## See also in Developer Toolchain
+
+- [[Containers-and-VMs-for-macOS-Development]]

@@ -30,3 +30,7 @@ Read in this order; each note links its prerequisite and the next note.
 10. [AWS CLI Scripting](AWS-CLI-Scripting.md)
 11. [gcloud Scripting](gcloud-Scripting.md)
 12. [cloud-init and User Data](cloud-init-and-User-Data.md)
+
+## See also in Developer Toolchain
+
+- [[Ephemeral-Cloud-Development-Environments]]

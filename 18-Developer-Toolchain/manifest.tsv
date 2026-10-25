@@ -1,0 +1,344 @@
+order	pillar_label	pillar_title	note_id	kind	path
+1	root	Developer Toolchain	README	moc	README.md
+2	root	Developer Toolchain	STYLE	concept	STYLE.md
+3	00	Program Execution	00-Program-Execution/README	moc	00-Program-Execution/README.md
+4	00	Program Execution	00-Program-Execution/Program-Execution-Topic-Inventory	moc	00-Program-Execution/Program-Execution-Topic-Inventory.md
+5	00	Program Execution	00-Program-Execution/Program-Execution-Skill-Ladder	moc	00-Program-Execution/Program-Execution-Skill-Ladder.md
+6	00	Program Execution	00-Program-Execution/Processes-Fork-Exec-and-File-Descriptors	concept	00-Program-Execution/Processes-Fork-Exec-and-File-Descriptors.md
+7	00	Program Execution	00-Program-Execution/Signals-Process-Groups-Sessions-and-Job-Control	concept	00-Program-Execution/Signals-Process-Groups-Sessions-and-Job-Control.md
+8	00	Program Execution	00-Program-Execution/Proc-Filesystem-and-Process-Credentials	concept	00-Program-Execution/Proc-Filesystem-and-Process-Credentials.md
+9	00	Program Execution	00-Program-Execution/TTYs-PTYs-and-Line-Discipline	concept	00-Program-Execution/TTYs-PTYs-and-Line-Discipline.md
+10	00	Program Execution	00-Program-Execution/Terminal-Escape-Sequences-and-Unicode	concept	00-Program-Execution/Terminal-Escape-Sequences-and-Unicode.md
+11	00	Program Execution	00-Program-Execution/Virtual-Memory-Mmap-and-Process-Address-Space	concept	00-Program-Execution/Virtual-Memory-Mmap-and-Process-Address-Space.md
+12	00	Program Execution	00-Program-Execution/Program-Startup-C-Runtime-Init-and-Auxiliary-Vectors	concept	00-Program-Execution/Program-Startup-C-Runtime-Init-and-Auxiliary-Vectors.md
+13	00	Program Execution	00-Program-Execution/ELF-Mach-O-and-PE-Object-Formats	concept	00-Program-Execution/ELF-Mach-O-and-PE-Object-Formats.md
+14	00	Program Execution	00-Program-Execution/Symbols-Relocations-and-Static-Linking	concept	00-Program-Execution/Symbols-Relocations-and-Static-Linking.md
+15	00	Program Execution	00-Program-Execution/Dynamic-Linking-PLT-GOT-and-Loaders	concept	00-Program-Execution/Dynamic-Linking-PLT-GOT-and-Loaders.md
+16	00	Program Execution	00-Program-Execution/Symbol-Versioning-IFUNC-and-Linker-Scripts	concept	00-Program-Execution/Symbol-Versioning-IFUNC-and-Linker-Scripts.md
+17	00	Program Execution	00-Program-Execution/Thread-Local-Storage-Models-and-ELF-Relocations	concept	00-Program-Execution/Thread-Local-Storage-Models-and-ELF-Relocations.md
+18	00	Program Execution	00-Program-Execution/Hardware-Security-ABIs-PAC-BTI-CET-and-RELRO	concept	00-Program-Execution/Hardware-Security-ABIs-PAC-BTI-CET-and-RELRO.md
+19	00	Program Execution	00-Program-Execution/Calling-Conventions-System-V-AMD64-and-AAPCS64	concept	00-Program-Execution/Calling-Conventions-System-V-AMD64-and-AAPCS64.md
+20	00	Program Execution	00-Program-Execution/Cpp-Itanium-ABI-Object-Model-Vtables-and-RTTI	concept	00-Program-Execution/Cpp-Itanium-ABI-Object-Model-Vtables-and-RTTI.md
+21	00	Program Execution	00-Program-Execution/Stack-Unwinding-CFI-and-Exception-ABI	concept	00-Program-Execution/Stack-Unwinding-CFI-and-Exception-ABI.md
+22	00	Program Execution	00-Program-Execution/DWARF-Debug-Information-and-Symbol-Bundles	concept	00-Program-Execution/DWARF-Debug-Information-and-Symbol-Bundles.md
+23	00	Program Execution	00-Program-Execution/Compiler-Pipeline-and-Debuggability	concept	00-Program-Execution/Compiler-Pipeline-and-Debuggability.md
+24	00	Program Execution	00-Program-Execution/Reading-Assembly-and-Optimization-Remarks	concept	00-Program-Execution/Reading-Assembly-and-Optimization-Remarks.md
+25	00	Program Execution	00-Program-Execution/Linkers-LTO-PGO-AutoFDO-and-BOLT	concept	00-Program-Execution/Linkers-LTO-PGO-AutoFDO-and-BOLT.md
+26	00	Program Execution	00-Program-Execution/macOS-vs-Linux-Toolchain-Mechanics	concept	00-Program-Execution/macOS-vs-Linux-Toolchain-Mechanics.md
+27	00	Program Execution	00-Program-Execution/Program-Execution-Decision-Records	playbook	00-Program-Execution/Program-Execution-Decision-Records.md
+28	00	Program Execution	00-Program-Execution/Diagnose-Dynamic-Linker-and-ABI-Failures	playbook	00-Program-Execution/Diagnose-Dynamic-Linker-and-ABI-Failures.md
+29	00	Program Execution	00-Program-Execution/Drill-Program-Execution-Broken-Rpath-and-Symbol-Interposition	problem	00-Program-Execution/Drill-Program-Execution-Broken-Rpath-and-Symbol-Interposition.md
+30	00	Program Execution	00-Program-Execution/Drill-Program-Execution-Stripped-Binary-Crash-and-Split-DWARF	problem	00-Program-Execution/Drill-Program-Execution-Stripped-Binary-Crash-and-Split-DWARF.md
+31	00	Program Execution	00-Program-Execution/Drill-Program-Execution-Cross-DSO-Exception-and-RTTI-Failure	problem	00-Program-Execution/Drill-Program-Execution-Cross-DSO-Exception-and-RTTI-Failure.md
+32	01	Command Line	01-Command-Line/README	moc	01-Command-Line/README.md
+33	01	Command Line	01-Command-Line/Command-Line-Topic-Inventory	moc	01-Command-Line/Command-Line-Topic-Inventory.md
+34	01	Command Line	01-Command-Line/Command-Line-Skill-Ladder	moc	01-Command-Line/Command-Line-Skill-Ladder.md
+35	01	Command Line	01-Command-Line/Shell-Parsing-Tokenization-and-Expansion-Order	concept	01-Command-Line/Shell-Parsing-Tokenization-and-Expansion-Order.md
+36	01	Command Line	01-Command-Line/Pipelines-Subshells-Redirection-and-Process-Substitution	concept	01-Command-Line/Pipelines-Subshells-Redirection-and-Process-Substitution.md
+37	01	Command Line	01-Command-Line/Pipe-Buffering-and-Stdbuf	concept	01-Command-Line/Pipe-Buffering-and-Stdbuf.md
+38	01	Command Line	01-Command-Line/POSIX-sh-Bash-Zsh-and-Fish-Compared	concept	01-Command-Line/POSIX-sh-Bash-Zsh-and-Fish-Compared.md
+39	01	Command Line	01-Command-Line/Robust-Shell-Scripting-and-ShellCheck	concept	01-Command-Line/Robust-Shell-Scripting-and-ShellCheck.md
+40	01	Command Line	01-Command-Line/Regex-Engines-Automata-Backtracking-and-ReDoS	concept	01-Command-Line/Regex-Engines-Automata-Backtracking-and-ReDoS.md
+41	01	Command Line	01-Command-Line/Ripgrep-Internals-and-Fast-Text-Search	concept	01-Command-Line/Ripgrep-Internals-and-Fast-Text-Search.md
+42	01	Command Line	01-Command-Line/Sed-and-Awk-Stream-Processing	concept	01-Command-Line/Sed-and-Awk-Stream-Processing.md
+43	01	Command Line	01-Command-Line/Structured-Data-Wrangling-Jq-Yq-and-Coreutils	concept	01-Command-Line/Structured-Data-Wrangling-Jq-Yq-and-Coreutils.md
+44	01	Command Line	01-Command-Line/File-Discovery-and-Batch-Execution-Find-Fd-Xargs-Parallel	concept	01-Command-Line/File-Discovery-and-Batch-Execution-Find-Fd-Xargs-Parallel.md
+45	01	Command Line	01-Command-Line/Locale-Collation-and-Unicode-in-CLI-Tools	concept	01-Command-Line/Locale-Collation-and-Unicode-in-CLI-Tools.md
+46	01	Command Line	01-Command-Line/Analyze-Gigabyte-Terminal-Logs	playbook	01-Command-Line/Analyze-Gigabyte-Terminal-Logs.md
+47	01	Command Line	01-Command-Line/Tmux-Architecture-and-Session-Persistence	concept	01-Command-Line/Tmux-Architecture-and-Session-Persistence.md
+48	01	Command Line	01-Command-Line/SSH-In-Depth-Keys-Forwarding-Certificates-and-FIDO2	concept	01-Command-Line/SSH-In-Depth-Keys-Forwarding-Certificates-and-FIDO2.md
+49	01	Command Line	01-Command-Line/Harden-SSH-Access-With-Certificates-and-Hardware-Keys	playbook	01-Command-Line/Harden-SSH-Access-With-Certificates-and-Hardware-Keys.md
+50	01	Command Line	01-Command-Line/Modal-Editing-LSP-Tree-Sitter-and-DAP	concept	01-Command-Line/Modal-Editing-LSP-Tree-Sitter-and-DAP.md
+51	01	Command Line	01-Command-Line/Dotfiles-Nix-Direnv-Mise-and-Devcontainers	concept	01-Command-Line/Dotfiles-Nix-Direnv-Mise-and-Devcontainers.md
+52	01	Command Line	01-Command-Line/Nix-Store-Derivations-and-Flakes-Internals	concept	01-Command-Line/Nix-Store-Derivations-and-Flakes-Internals.md
+53	01	Command Line	01-Command-Line/System-Inspection-and-Syscall-Tracing-From-the-Shell	concept	01-Command-Line/System-Inspection-and-Syscall-Tracing-From-the-Shell.md
+54	01	Command Line	01-Command-Line/Containers-and-VMs-for-macOS-Development	concept	01-Command-Line/Containers-and-VMs-for-macOS-Development.md
+55	01	Command Line	01-Command-Line/CLI-Design-and-Agent-Friendly-Interfaces-AXI	concept	01-Command-Line/CLI-Design-and-Agent-Friendly-Interfaces-AXI.md
+56	01	Command Line	01-Command-Line/Command-Line-Decision-Records	playbook	01-Command-Line/Command-Line-Decision-Records.md
+57	01	Command Line	01-Command-Line/Rebuild-a-Minimal-Shell-With-Job-Control	playbook	01-Command-Line/Rebuild-a-Minimal-Shell-With-Job-Control.md
+58	01	Command Line	01-Command-Line/Drill-Command-Line-Quoting-and-Signal-Trap-Race	problem	01-Command-Line/Drill-Command-Line-Quoting-and-Signal-Trap-Race.md
+59	01	Command Line	01-Command-Line/Drill-Command-Line-Catastrophic-Backtracking-and-Stream-Bottleneck	problem	01-Command-Line/Drill-Command-Line-Catastrophic-Backtracking-and-Stream-Bottleneck.md
+60	01	Command Line	01-Command-Line/Drill-Command-Line-SSH-Multiplexing-and-Broken-PTY	problem	01-Command-Line/Drill-Command-Line-SSH-Multiplexing-and-Broken-PTY.md
+61	02	Version Control	02-Version-Control/README	moc	02-Version-Control/README.md
+62	02	Version Control	02-Version-Control/Git-Topic-Inventory	moc	02-Version-Control/Git-Topic-Inventory.md
+63	02	Version Control	02-Version-Control/Git-Skill-Ladder	moc	02-Version-Control/Git-Skill-Ladder.md
+64	02	Version Control	02-Version-Control/Git-Object-Model-and-Content-Addressing	concept	02-Version-Control/Git-Object-Model-and-Content-Addressing.md
+65	02	Version Control	02-Version-Control/Git-Refs-Reflog-and-Reftable	concept	02-Version-Control/Git-Refs-Reflog-and-Reftable.md
+66	02	Version Control	02-Version-Control/Git-Revision-Selection-and-Graph-Walks	concept	02-Version-Control/Git-Revision-Selection-and-Graph-Walks.md
+67	02	Version Control	02-Version-Control/Git-Index-Stat-Cache-and-Fsmonitor	concept	02-Version-Control/Git-Index-Stat-Cache-and-Fsmonitor.md
+68	02	Version Control	02-Version-Control/Git-Packfiles-and-Delta-Compression	concept	02-Version-Control/Git-Packfiles-and-Delta-Compression.md
+69	02	Version Control	02-Version-Control/Git-GC-Maintenance-MIDX-and-Commit-Graph	concept	02-Version-Control/Git-GC-Maintenance-MIDX-and-Commit-Graph.md
+70	02	Version Control	02-Version-Control/Git-Transfer-Protocol-and-Partial-Clone	concept	02-Version-Control/Git-Transfer-Protocol-and-Partial-Clone.md
+71	02	Version Control	02-Version-Control/Git-Three-Way-Merge-ORT-and-Diff-Algorithms	concept	02-Version-Control/Git-Three-Way-Merge-ORT-and-Diff-Algorithms.md
+72	02	Version Control	02-Version-Control/Git-Rebase-Internals-and-Stacked-Branches	concept	02-Version-Control/Git-Rebase-Internals-and-Stacked-Branches.md
+73	02	Version Control	02-Version-Control/Git-Replay-and-Server-Side-History-Rewriting	concept	02-Version-Control/Git-Replay-and-Server-Side-History-Rewriting.md
+74	02	Version Control	02-Version-Control/Git-Archaeology-Log-Blame-and-Bisect	concept	02-Version-Control/Git-Archaeology-Log-Blame-and-Bisect.md
+75	02	Version Control	02-Version-Control/Git-Submodules-Subtrees-LFS-and-Attributes	concept	02-Version-Control/Git-Submodules-Subtrees-LFS-and-Attributes.md
+76	02	Version Control	02-Version-Control/Git-Hooks-and-Cryptographic-Signing	concept	02-Version-Control/Git-Hooks-and-Cryptographic-Signing.md
+77	02	Version Control	02-Version-Control/Git-Email-and-Patch-Workflows	concept	02-Version-Control/Git-Email-and-Patch-Workflows.md
+78	02	Version Control	02-Version-Control/Git-Trace2-Telemetry-and-Diagnostics	concept	02-Version-Control/Git-Trace2-Telemetry-and-Diagnostics.md
+79	02	Version Control	02-Version-Control/Git-Expert-Config	concept	02-Version-Control/Git-Expert-Config.md
+80	02	Version Control	02-Version-Control/Git-Branching-Models-Merge-Queues-and-Code-Review	concept	02-Version-Control/Git-Branching-Models-Merge-Queues-and-Code-Review.md
+81	02	Version Control	02-Version-Control/Decision-Record-Merge-vs-Rebase-and-Branching	playbook	02-Version-Control/Decision-Record-Merge-vs-Rebase-and-Branching.md
+82	02	Version Control	02-Version-Control/Git-At-Scale-VFS-Scalar-and-Monorepos	concept	02-Version-Control/Git-At-Scale-VFS-Scalar-and-Monorepos.md
+83	02	Version Control	02-Version-Control/Decision-Record-Monorepo-vs-Polyrepo	playbook	02-Version-Control/Decision-Record-Monorepo-vs-Polyrepo.md
+84	02	Version Control	02-Version-Control/Beyond-Git-Jujutsu-Sapling-and-Patch-Theory	concept	02-Version-Control/Beyond-Git-Jujutsu-Sapling-and-Patch-Theory.md
+85	02	Version Control	02-Version-Control/Recover-Lost-Git-Work	playbook	02-Version-Control/Recover-Lost-Git-Work.md
+86	02	Version Control	02-Version-Control/Repair-a-Corrupted-Git-Repository	playbook	02-Version-Control/Repair-a-Corrupted-Git-Repository.md
+87	02	Version Control	02-Version-Control/Remove-Secrets-and-Rewrite-Git-History	playbook	02-Version-Control/Remove-Secrets-and-Rewrite-Git-History.md
+88	02	Version Control	02-Version-Control/Case-Study-SHAttered-SHA1-Collision-and-Git-Hardening	case-study	02-Version-Control/Case-Study-SHAttered-SHA1-Collision-and-Git-Hardening.md
+89	02	Version Control	02-Version-Control/Rebuild-Mini-Git-Lab	playbook	02-Version-Control/Rebuild-Mini-Git-Lab.md
+90	02	Version Control	02-Version-Control/Drill-Git-Detached-Rebase-and-Dangling-Tree-Recovery	problem	02-Version-Control/Drill-Git-Detached-Rebase-and-Dangling-Tree-Recovery.md
+91	02	Version Control	02-Version-Control/Drill-Git-Corrupted-Packfile-and-MIDX-Rescue	problem	02-Version-Control/Drill-Git-Corrupted-Packfile-and-MIDX-Rescue.md
+92	02	Version Control	02-Version-Control/Drill-Git-Automated-Bisect-on-Non-Linear-History	problem	02-Version-Control/Drill-Git-Automated-Bisect-on-Non-Linear-History.md
+93	03	Debugging	03-Debugging/README	moc	03-Debugging/README.md
+94	03	Debugging	03-Debugging/Debugging-Topic-Inventory	moc	03-Debugging/Debugging-Topic-Inventory.md
+95	03	Debugging	03-Debugging/Debugging-Skill-Ladder	moc	03-Debugging/Debugging-Skill-Ladder.md
+96	03	Debugging	03-Debugging/Scientific-Debugging-Delta-Debugging-and-Heisenbugs	concept	03-Debugging/Scientific-Debugging-Delta-Debugging-and-Heisenbugs.md
+97	03	Debugging	03-Debugging/Debugging-Without-a-Debugger-and-Concurrency-Bugs	concept	03-Debugging/Debugging-Without-a-Debugger-and-Concurrency-Bugs.md
+98	03	Debugging	03-Debugging/How-Debuggers-Work-ptrace-Mach-and-Breakpoints	concept	03-Debugging/How-Debuggers-Work-ptrace-Mach-and-Breakpoints.md
+99	03	Debugging	03-Debugging/Remote-Debugging-gdbserver-lldb-server-and-RSP	concept	03-Debugging/Remote-Debugging-gdbserver-lldb-server-and-RSP.md
+100	03	Debugging	03-Debugging/Core-Dumps-Minidumps-and-Crash-Reporting	concept	03-Debugging/Core-Dumps-Minidumps-and-Crash-Reporting.md
+101	03	Debugging	03-Debugging/Symbol-Servers-and-debuginfod	concept	03-Debugging/Symbol-Servers-and-debuginfod.md
+102	03	Debugging	03-Debugging/Record-and-Replay-rr-UDB-and-Pernosco	concept	03-Debugging/Record-and-Replay-rr-UDB-and-Pernosco.md
+103	03	Debugging	03-Debugging/Debugging-Distributed-Systems-with-Traces-and-Correlation	concept	03-Debugging/Debugging-Distributed-Systems-with-Traces-and-Correlation.md
+104	03	Debugging	03-Debugging/Debugging-Decision-Records	playbook	03-Debugging/Debugging-Decision-Records.md
+105	03	Debugging	03-Debugging/Debugging-Expert-Defaults-gdbinit-and-lldbinit	concept	03-Debugging/Debugging-Expert-Defaults-gdbinit-and-lldbinit.md
+106	03	Debugging	03-Debugging/Debug-a-Production-Crash-From-a-Core-Dump	playbook	03-Debugging/Debug-a-Production-Crash-From-a-Core-Dump.md
+107	03	Debugging	03-Debugging/Rebuild-Lab-ptrace-Debugger-with-DWARF-Backtrace	playbook	03-Debugging/Rebuild-Lab-ptrace-Debugger-with-DWARF-Backtrace.md
+108	03	Debugging	03-Debugging/Drill-Debugging-Use-After-Free-Core-Dump	problem	03-Debugging/Drill-Debugging-Use-After-Free-Core-Dump.md
+109	03	Debugging	03-Debugging/Drill-Debugging-Asyncio-and-Tokio-Deadlock	problem	03-Debugging/Drill-Debugging-Asyncio-and-Tokio-Deadlock.md
+110	03	Debugging	03-Debugging/Drill-Debugging-Mixed-Python-Rust-FFI-Segfault	problem	03-Debugging/Drill-Debugging-Mixed-Python-Rust-FFI-Segfault.md
+111	03	Debugging	03-Debugging/Cpp/README	moc	03-Debugging/Cpp/README.md
+112	03	Debugging	03-Debugging/Cpp/Cpp-GDB-and-LLDB-Expert-Guide	concept	03-Debugging/Cpp/Cpp-GDB-and-LLDB-Expert-Guide.md
+113	03	Debugging	03-Debugging/Cpp/Cpp-Debugger-Scripting-and-Pretty-Printers	concept	03-Debugging/Cpp/Cpp-Debugger-Scripting-and-Pretty-Printers.md
+114	03	Debugging	03-Debugging/Cpp/Cpp-Debugging-Optimized-Code	concept	03-Debugging/Cpp/Cpp-Debugging-Optimized-Code.md
+115	03	Debugging	03-Debugging/Cpp/Cpp-AddressSanitizer-and-LeakSanitizer-Internals	concept	03-Debugging/Cpp/Cpp-AddressSanitizer-and-LeakSanitizer-Internals.md
+116	03	Debugging	03-Debugging/Cpp/Cpp-ThreadSanitizer-and-MemorySanitizer-Internals	concept	03-Debugging/Cpp/Cpp-ThreadSanitizer-and-MemorySanitizer-Internals.md
+117	03	Debugging	03-Debugging/Cpp/Cpp-UndefinedBehaviorSanitizer-and-UB-Field-Guide	concept	03-Debugging/Cpp/Cpp-UndefinedBehaviorSanitizer-and-UB-Field-Guide.md
+118	03	Debugging	03-Debugging/Cpp/Cpp-HWASan-and-Hardware-Memory-Tagging	concept	03-Debugging/Cpp/Cpp-HWASan-and-Hardware-Memory-Tagging.md
+119	03	Debugging	03-Debugging/Cpp/Cpp-Sanitizers-and-Memory-Debugging-on-macOS	concept	03-Debugging/Cpp/Cpp-Sanitizers-and-Memory-Debugging-on-macOS.md
+120	03	Debugging	03-Debugging/Cpp/Cpp-Valgrind-Memcheck-Helgrind-and-DRD	concept	03-Debugging/Cpp/Cpp-Valgrind-Memcheck-Helgrind-and-DRD.md
+121	03	Debugging	03-Debugging/Cpp/Cpp-ODR-Violations-Static-Init-and-Linker-Template-Errors	concept	03-Debugging/Cpp/Cpp-ODR-Violations-Static-Init-and-Linker-Template-Errors.md
+122	03	Debugging	03-Debugging/Cpp/Cpp-Clang-Tidy-Static-Analyzer-and-Fuzzing-libFuzzer-AFLPlusPlus	concept	03-Debugging/Cpp/Cpp-Clang-Tidy-Static-Analyzer-and-Fuzzing-libFuzzer-AFLPlusPlus.md
+123	03	Debugging	03-Debugging/Cpp/Cpp-Playbook-Heap-Corruption	playbook	03-Debugging/Cpp/Cpp-Playbook-Heap-Corruption.md
+124	03	Debugging	03-Debugging/Cpp/Cpp-Playbook-Deadlocks-and-Livelocks	playbook	03-Debugging/Cpp/Cpp-Playbook-Deadlocks-and-Livelocks.md
+125	03	Debugging	03-Debugging/Python/README	moc	03-Debugging/Python/README.md
+126	03	Debugging	03-Debugging/Python/Python-pdb-debugpy-and-Remote-Attach	concept	03-Debugging/Python/Python-pdb-debugpy-and-Remote-Attach.md
+127	03	Debugging	03-Debugging/Python/Python-sys-monitoring-and-Tracing	concept	03-Debugging/Python/Python-sys-monitoring-and-Tracing.md
+128	03	Debugging	03-Debugging/Python/Python-faulthandler-and-Crash-Diagnostics	concept	03-Debugging/Python/Python-faulthandler-and-Crash-Diagnostics.md
+129	03	Debugging	03-Debugging/Python/Python-tracemalloc-gc-and-Memory-Leaks	concept	03-Debugging/Python/Python-tracemalloc-gc-and-Memory-Leaks.md
+130	03	Debugging	03-Debugging/Python/Python-Debugging-Hung-Processes-and-C-Extensions	concept	03-Debugging/Python/Python-Debugging-Hung-Processes-and-C-Extensions.md
+131	03	Debugging	03-Debugging/Python/Python-Concurrency-Asyncio-Multiprocessing-and-Free-Threading-Bugs	concept	03-Debugging/Python/Python-Concurrency-Asyncio-Multiprocessing-and-Free-Threading-Bugs.md
+132	03	Debugging	03-Debugging/Python/Python-Hypothesis-and-Type-Checkers-as-Bug-Prevention	concept	03-Debugging/Python/Python-Hypothesis-and-Type-Checkers-as-Bug-Prevention.md
+133	03	Debugging	03-Debugging/Rust/README	moc	03-Debugging/Rust/README.md
+134	03	Debugging	03-Debugging/Rust/Rust-GDB-LLDB-Panics-and-Backtraces	concept	03-Debugging/Rust/Rust-GDB-LLDB-Panics-and-Backtraces.md
+135	03	Debugging	03-Debugging/Rust/Rust-Miri-Sanitizers-Loom-and-Cargo-Fuzz	concept	03-Debugging/Rust/Rust-Miri-Sanitizers-Loom-and-Cargo-Fuzz.md
+136	03	Debugging	03-Debugging/Rust/Rust-Async-Debugging-tokio-console-and-tracing	concept	03-Debugging/Rust/Rust-Async-Debugging-tokio-console-and-tracing.md
+137	03	Debugging	03-Debugging/Rust/Rust-Borrow-Checker-Trait-Errors-Cargo-Expand-and-Clippy	concept	03-Debugging/Rust/Rust-Borrow-Checker-Trait-Errors-Cargo-Expand-and-Clippy.md
+138	03	Debugging	03-Debugging/Rust/Rust-FFI-Boundary-Debugging-Across-Cpp-and-Python	concept	03-Debugging/Rust/Rust-FFI-Boundary-Debugging-Across-Cpp-and-Python.md
+139	04	Measurement Methodology	04-Measurement-Methodology/README	moc	04-Measurement-Methodology/README.md
+140	04	Measurement Methodology	04-Measurement-Methodology/Measurement-Methodology-Topic-Inventory	moc	04-Measurement-Methodology/Measurement-Methodology-Topic-Inventory.md
+141	04	Measurement Methodology	04-Measurement-Methodology/Measurement-Methodology-Skill-Ladder	moc	04-Measurement-Methodology/Measurement-Methodology-Skill-Ladder.md
+142	04	Measurement Methodology	04-Measurement-Methodology/Sampling-vs-Instrumentation-Skid-and-Safepoint-Bias	concept	04-Measurement-Methodology/Sampling-vs-Instrumentation-Skid-and-Safepoint-Bias.md
+143	04	Measurement Methodology	04-Measurement-Methodology/Benchmark-Methodology-Noise-and-Environment-Control	concept	04-Measurement-Methodology/Benchmark-Methodology-Noise-and-Environment-Control.md
+144	04	Measurement Methodology	04-Measurement-Methodology/Statistics-for-Benchmarks-Coordinated-Omission-and-HDR-Histograms	concept	04-Measurement-Methodology/Statistics-for-Benchmarks-Coordinated-Omission-and-HDR-Histograms.md
+145	04	Measurement Methodology	04-Measurement-Methodology/Hardware-Performance-Counters-Top-Down-TMA-and-Roofline	concept	04-Measurement-Methodology/Hardware-Performance-Counters-Top-Down-TMA-and-Roofline.md
+146	04	Measurement Methodology	04-Measurement-Methodology/USE-RED-and-Systems-Performance-Methodologies	concept	04-Measurement-Methodology/USE-RED-and-Systems-Performance-Methodologies.md
+147	04	Measurement Methodology	04-Measurement-Methodology/Off-CPU-Analysis-Thread-States-and-Causal-Profiling	concept	04-Measurement-Methodology/Off-CPU-Analysis-Thread-States-and-Causal-Profiling.md
+148	04	Measurement Methodology	04-Measurement-Methodology/Flame-Graphs-Differential-Flame-Graphs-and-Visualizations	concept	04-Measurement-Methodology/Flame-Graphs-Differential-Flame-Graphs-and-Visualizations.md
+149	04	Measurement Methodology	04-Measurement-Methodology/Performance-Regression-Detection-in-CI	concept	04-Measurement-Methodology/Performance-Regression-Detection-in-CI.md
+150	04	Measurement Methodology	04-Measurement-Methodology/Measurement-Methodology-Decision-Records	playbook	04-Measurement-Methodology/Measurement-Methodology-Decision-Records.md
+151	04	Measurement Methodology	04-Measurement-Methodology/Design-a-Low-Noise-Benchmark-Harness-Playbook	playbook	04-Measurement-Methodology/Design-a-Low-Noise-Benchmark-Harness-Playbook.md
+152	04	Measurement Methodology	04-Measurement-Methodology/Drill-Measurement-Methodology-Environment-Size-Bias	problem	04-Measurement-Methodology/Drill-Measurement-Methodology-Environment-Size-Bias.md
+153	04	Measurement Methodology	04-Measurement-Methodology/Drill-Measurement-Methodology-Coordinated-Omission-Trap	problem	04-Measurement-Methodology/Drill-Measurement-Methodology-Coordinated-Omission-Trap.md
+154	05	Profiling	05-Profiling/README	moc	05-Profiling/README.md
+155	05	Profiling	05-Profiling/Profiling-Topic-Inventory	moc	05-Profiling/Profiling-Topic-Inventory.md
+156	05	Profiling	05-Profiling/Profiling-Skill-Ladder	moc	05-Profiling/Profiling-Skill-Ladder.md
+157	05	Profiling	05-Profiling/Linux-perf-in-Depth-and-perf-c2c	concept	05-Profiling/Linux-perf-in-Depth-and-perf-c2c.md
+158	05	Profiling	05-Profiling/eBPF-bpftrace-ftrace-uprobes-and-USDT	concept	05-Profiling/eBPF-bpftrace-ftrace-uprobes-and-USDT.md
+159	05	Profiling	05-Profiling/macOS-Instruments-xctrace-and-DTrace	concept	05-Profiling/macOS-Instruments-xctrace-and-DTrace.md
+160	05	Profiling	05-Profiling/Intel-VTune-AMD-uProf-and-Hardware-Tracing-PT-SPE	concept	05-Profiling/Intel-VTune-AMD-uProf-and-Hardware-Tracing-PT-SPE.md
+161	05	Profiling	05-Profiling/Tracy-and-Perfetto-Hybrid-Profilers	concept	05-Profiling/Tracy-and-Perfetto-Hybrid-Profilers.md
+162	05	Profiling	05-Profiling/Continuous-Profiling-GWP-Parca-Pyroscope-and-OTel-Profiles	concept	05-Profiling/Continuous-Profiling-GWP-Parca-Pyroscope-and-OTel-Profiles.md
+163	05	Profiling	05-Profiling/Profiling-Decision-Records	playbook	05-Profiling/Profiling-Decision-Records.md
+164	05	Profiling	05-Profiling/Rebuild-Lab-Sampling-Profiler-to-Folded-Stacks	playbook	05-Profiling/Rebuild-Lab-Sampling-Profiler-to-Folded-Stacks.md
+165	05	Profiling	05-Profiling/Playbook-Diagnose-a-Production-Tail-Latency-Spike-with-eBPF-and-perf	playbook	05-Profiling/Playbook-Diagnose-a-Production-Tail-Latency-Spike-with-eBPF-and-perf.md
+166	05	Profiling	05-Profiling/Drill-Profiling-False-Sharing-Cache-Contention	problem	05-Profiling/Drill-Profiling-False-Sharing-Cache-Contention.md
+167	05	Profiling	05-Profiling/Drill-Profiling-Python-C-Extension-GIL-and-Allocation-Bottleneck	problem	05-Profiling/Drill-Profiling-Python-C-Extension-GIL-and-Allocation-Bottleneck.md
+168	05	Profiling	05-Profiling/Drill-Profiling-Rust-Monomorphization-and-Inlining-Regression	problem	05-Profiling/Drill-Profiling-Rust-Monomorphization-and-Inlining-Regression.md
+169	05	Profiling	05-Profiling/Cpp/README	moc	05-Profiling/Cpp/README.md
+170	05	Profiling	05-Profiling/Cpp/Cpp-CPU-Profiling-perf-samply-Callgrind-and-llvm-mca	concept	05-Profiling/Cpp/Cpp-CPU-Profiling-perf-samply-Callgrind-and-llvm-mca.md
+171	05	Profiling	05-Profiling/Cpp/Cpp-Memory-Profiling-heaptrack-Massif-DHAT-and-Allocators	concept	05-Profiling/Cpp/Cpp-Memory-Profiling-heaptrack-Massif-DHAT-and-Allocators.md
+172	05	Profiling	05-Profiling/Cpp/Cpp-Google-Benchmark-and-nanobench	concept	05-Profiling/Cpp/Cpp-Google-Benchmark-and-nanobench.md
+173	05	Profiling	05-Profiling/Cpp/Cpp-Compile-Time-Profiling-ftime-trace-and-ClangBuildAnalyzer	concept	05-Profiling/Cpp/Cpp-Compile-Time-Profiling-ftime-trace-and-ClangBuildAnalyzer.md
+174	05	Profiling	05-Profiling/Cpp/Cpp-PGO-AutoFDO-and-BOLT-Workflow	concept	05-Profiling/Cpp/Cpp-PGO-AutoFDO-and-BOLT-Workflow.md
+175	05	Profiling	05-Profiling/Python/README	moc	05-Profiling/Python/README.md
+176	05	Profiling	05-Profiling/Python/Python-cProfile-Tachyon-and-Sampling-Profilers	concept	05-Profiling/Python/Python-cProfile-Tachyon-and-Sampling-Profilers.md
+177	05	Profiling	05-Profiling/Python/Python-CPython-perf-Trampoline-and-Tachyon-Internals	concept	05-Profiling/Python/Python-CPython-perf-Trampoline-and-Tachyon-Internals.md
+178	05	Profiling	05-Profiling/Python/Python-Memory-Profiling-Memray-and-Line-Profiler	concept	05-Profiling/Python/Python-Memory-Profiling-Memray-and-Line-Profiler.md
+179	05	Profiling	05-Profiling/Python/Python-Benchmarking-pyperf-asv-and-NumPy-Pandas-Profiling	concept	05-Profiling/Python/Python-Benchmarking-pyperf-asv-and-NumPy-Pandas-Profiling.md
+180	05	Profiling	05-Profiling/Rust/README	moc	05-Profiling/Rust/README.md
+181	05	Profiling	05-Profiling/Rust/Rust-CPU-Profiling-cargo-flamegraph-samply-and-Frame-Pointers	concept	05-Profiling/Rust/Rust-CPU-Profiling-cargo-flamegraph-samply-and-Frame-Pointers.md
+182	05	Profiling	05-Profiling/Rust/Rust-Benchmarking-Criterion-Divan-Gungraun-and-dhat	concept	05-Profiling/Rust/Rust-Benchmarking-Criterion-Divan-Gungraun-and-dhat.md
+183	05	Profiling	05-Profiling/Rust/Rust-Compile-Time-and-Binary-Size-Profiling	concept	05-Profiling/Rust/Rust-Compile-Time-and-Binary-Size-Profiling.md
+184	06	Build Systems	06-Build-Systems/README	moc	06-Build-Systems/README.md
+185	06	Build Systems	06-Build-Systems/Build-Systems-Topic-Inventory	moc	06-Build-Systems/Build-Systems-Topic-Inventory.md
+186	06	Build Systems	06-Build-Systems/Build-Systems-Skill-Ladder	moc	06-Build-Systems/Build-Systems-Skill-Ladder.md
+187	06	Build Systems	06-Build-Systems/Build-System-Theory-Schedulers-and-Rebuilders	concept	06-Build-Systems/Build-System-Theory-Schedulers-and-Rebuilders.md
+188	06	Build Systems	06-Build-Systems/Hermetic-and-Reproducible-Builds	concept	06-Build-Systems/Hermetic-and-Reproducible-Builds.md
+189	06	Build Systems	06-Build-Systems/Sandboxing-and-Hermetic-Execution-Internals	concept	06-Build-Systems/Sandboxing-and-Hermetic-Execution-Internals.md
+190	06	Build Systems	06-Build-Systems/Make-and-Ninja-Mechanics	concept	06-Build-Systems/Make-and-Ninja-Mechanics.md
+191	06	Build Systems	06-Build-Systems/Modern-CMake-Architecture-and-Targets	concept	06-Build-Systems/Modern-CMake-Architecture-and-Targets.md
+192	06	Build Systems	06-Build-Systems/CMake-Presets-Toolchains-and-File-API	concept	06-Build-Systems/CMake-Presets-Toolchains-and-File-API.md
+193	06	Build Systems	06-Build-Systems/Meson-Build-System-and-WrapDB	concept	06-Build-Systems/Meson-Build-System-and-WrapDB.md
+194	06	Build Systems	06-Build-Systems/Cpp-Modules-in-Build-Systems	concept	06-Build-Systems/Cpp-Modules-in-Build-Systems.md
+195	06	Build Systems	06-Build-Systems/Bazel-Skyframe-Bzlmod-and-Execution-Model	concept	06-Build-Systems/Bazel-Skyframe-Bzlmod-and-Execution-Model.md
+196	06	Build Systems	06-Build-Systems/Buck2-DICE-Starlark-and-BXL	concept	06-Build-Systems/Buck2-DICE-Starlark-and-BXL.md
+197	06	Build Systems	06-Build-Systems/Remote-Execution-API-and-Remote-Caching	concept	06-Build-Systems/Remote-Execution-API-and-Remote-Caching.md
+198	06	Build Systems	06-Build-Systems/Compiler-Caches-ccache-and-sccache	concept	06-Build-Systems/Compiler-Caches-ccache-and-sccache.md
+199	06	Build Systems	06-Build-Systems/Cross-Compilation-and-Sysroots	concept	06-Build-Systems/Cross-Compilation-and-Sysroots.md
+200	06	Build Systems	06-Build-Systems/Cargo-Build-Graph-and-Rustc-Pipelining	concept	06-Build-Systems/Cargo-Build-Graph-and-Rustc-Pipelining.md
+201	06	Build Systems	06-Build-Systems/Build-Performance-Economics-and-Decision-Record	playbook	06-Build-Systems/Build-Performance-Economics-and-Decision-Record.md
+202	06	Build Systems	06-Build-Systems/Diagnose-Bazel-and-Buck2-Cache-Misses	playbook	06-Build-Systems/Diagnose-Bazel-and-Buck2-Cache-Misses.md
+203	06	Build Systems	06-Build-Systems/Migrate-a-Polyglot-Codebase-to-Hermetic-Builds	playbook	06-Build-Systems/Migrate-a-Polyglot-Codebase-to-Hermetic-Builds.md
+204	06	Build Systems	06-Build-Systems/Rebuild-Content-Hashed-Build-System-Lab	playbook	06-Build-Systems/Rebuild-Content-Hashed-Build-System-Lab.md
+205	06	Build Systems	06-Build-Systems/Drill-Build-Systems-Hunt-Non-Determinism-with-Diffoscope	problem	06-Build-Systems/Drill-Build-Systems-Hunt-Non-Determinism-with-Diffoscope.md
+206	06	Build Systems	06-Build-Systems/Drill-Build-Systems-Fix-Broken-Incremental-Depfile	problem	06-Build-Systems/Drill-Build-Systems-Fix-Broken-Incremental-Depfile.md
+207	06	Build Systems	06-Build-Systems/Drill-Build-Systems-Break-a-Dependency-Bottleneck	problem	06-Build-Systems/Drill-Build-Systems-Break-a-Dependency-Bottleneck.md
+208	07	Packaging and Release	07-Packaging-and-Release/README	moc	07-Packaging-and-Release/README.md
+209	07	Packaging and Release	07-Packaging-and-Release/Packaging-Topic-Inventory	moc	07-Packaging-and-Release/Packaging-Topic-Inventory.md
+210	07	Packaging and Release	07-Packaging-and-Release/Packaging-Skill-Ladder	moc	07-Packaging-and-Release/Packaging-Skill-Ladder.md
+211	07	Packaging and Release	07-Packaging-and-Release/Versioning-SemVer-CalVer-and-ABI	concept	07-Packaging-and-Release/Versioning-SemVer-CalVer-and-ABI.md
+212	07	Packaging and Release	07-Packaging-and-Release/Dependency-Resolution-SAT-PubGrub-and-MVS	concept	07-Packaging-and-Release/Dependency-Resolution-SAT-PubGrub-and-MVS.md
+213	07	Packaging and Release	07-Packaging-and-Release/Lockfiles-Vendoring-and-Offline-Mirrors	concept	07-Packaging-and-Release/Lockfiles-Vendoring-and-Offline-Mirrors.md
+214	07	Packaging and Release	07-Packaging-and-Release/Release-Trains-Backports-and-Artifact-Registries	concept	07-Packaging-and-Release/Release-Trains-Backports-and-Artifact-Registries.md
+215	07	Packaging and Release	07-Packaging-and-Release/OCI-Images-Layers-Multi-Stage-and-Distroless	concept	07-Packaging-and-Release/OCI-Images-Layers-Multi-Stage-and-Distroless.md
+216	07	Packaging and Release	07-Packaging-and-Release/Progressive-Delivery-Rollbacks-and-Feature-Flags	concept	07-Packaging-and-Release/Progressive-Delivery-Rollbacks-and-Feature-Flags.md
+217	07	Packaging and Release	07-Packaging-and-Release/Diamond-Dependency-and-Incompatible-ABI-Mitigation	concept	07-Packaging-and-Release/Diamond-Dependency-and-Incompatible-ABI-Mitigation.md
+218	07	Packaging and Release	07-Packaging-and-Release/Packaging-Decision-Records	concept	07-Packaging-and-Release/Packaging-Decision-Records.md
+219	07	Packaging and Release	07-Packaging-and-Release/Ship-a-Rust-Extension-in-a-Python-Wheel	playbook	07-Packaging-and-Release/Ship-a-Rust-Extension-in-a-Python-Wheel.md
+220	07	Packaging and Release	07-Packaging-and-Release/Execute-Zero-Downtime-Shared-Library-SONAME-Migration	playbook	07-Packaging-and-Release/Execute-Zero-Downtime-Shared-Library-SONAME-Migration.md
+221	07	Packaging and Release	07-Packaging-and-Release/Contain-and-Roll-Back-a-Bad-Production-Release	playbook	07-Packaging-and-Release/Contain-and-Roll-Back-a-Bad-Production-Release.md
+222	07	Packaging and Release	07-Packaging-and-Release/Drill-Packaging-Manylinux-GLIBC-Symbol-Leak	problem	07-Packaging-and-Release/Drill-Packaging-Manylinux-GLIBC-Symbol-Leak.md
+223	07	Packaging and Release	07-Packaging-and-Release/Drill-Packaging-Cpp-Silent-ABI-Break-Across-Shared-Libraries	problem	07-Packaging-and-Release/Drill-Packaging-Cpp-Silent-ABI-Break-Across-Shared-Libraries.md
+224	07	Packaging and Release	07-Packaging-and-Release/Drill-Packaging-Cargo-Feature-Unification-Hazard	problem	07-Packaging-and-Release/Drill-Packaging-Cargo-Feature-Unification-Hazard.md
+225	07	Packaging and Release	07-Packaging-and-Release/Drill-Packaging-PubGrub-Conflict-Diagnosis	problem	07-Packaging-and-Release/Drill-Packaging-PubGrub-Conflict-Diagnosis.md
+226	07	Packaging and Release	07-Packaging-and-Release/Case-Study-CrowdStrike-Falcon-Channel-File-291	case-study	07-Packaging-and-Release/Case-Study-CrowdStrike-Falcon-Channel-File-291.md
+227	07	Packaging and Release	07-Packaging-and-Release/Case-Study-Knight-Capital-Deployment-Failure	case-study	07-Packaging-and-Release/Case-Study-Knight-Capital-Deployment-Failure.md
+228	07	Packaging and Release	07-Packaging-and-Release/Case-Study-Left-Pad-and-Registry-Immutability	case-study	07-Packaging-and-Release/Case-Study-Left-Pad-and-Registry-Immutability.md
+229	07	Packaging and Release	07-Packaging-and-Release/Cpp/README	moc	07-Packaging-and-Release/Cpp/README.md
+230	07	Packaging and Release	07-Packaging-and-Release/Cpp/Cpp-ABI-Stability-Symbol-Visibility-and-SONAME	concept	07-Packaging-and-Release/Cpp/Cpp-ABI-Stability-Symbol-Visibility-and-SONAME.md
+231	07	Packaging and Release	07-Packaging-and-Release/Cpp/Cpp-Glibc-Symbol-Versioning-and-Portable-Linux-Binaries	concept	07-Packaging-and-Release/Cpp/Cpp-Glibc-Symbol-Versioning-and-Portable-Linux-Binaries.md
+232	07	Packaging and Release	07-Packaging-and-Release/Cpp/Cpp-CMake-Package-Configs-pkg-config-and-CPS	concept	07-Packaging-and-Release/Cpp/Cpp-CMake-Package-Configs-pkg-config-and-CPS.md
+233	07	Packaging and Release	07-Packaging-and-Release/Cpp/Cpp-Distributing-Cxx20-Modules	concept	07-Packaging-and-Release/Cpp/Cpp-Distributing-Cxx20-Modules.md
+234	07	Packaging and Release	07-Packaging-and-Release/Cpp/Cpp-Conan-2-Architecture-and-Binary-Model	concept	07-Packaging-and-Release/Cpp/Cpp-Conan-2-Architecture-and-Binary-Model.md
+235	07	Packaging and Release	07-Packaging-and-Release/Cpp/Cpp-vcpkg-Manifests-Registries-and-Binary-Caching	concept	07-Packaging-and-Release/Cpp/Cpp-vcpkg-Manifests-Registries-and-Binary-Caching.md
+236	07	Packaging and Release	07-Packaging-and-Release/Cpp/Cpp-Spack-and-Nix-for-Native-Dependencies	concept	07-Packaging-and-Release/Cpp/Cpp-Spack-and-Nix-for-Native-Dependencies.md
+237	07	Packaging and Release	07-Packaging-and-Release/Cpp/Cpp-System-Packaging-Deb-RPM-and-Homebrew	concept	07-Packaging-and-Release/Cpp/Cpp-System-Packaging-Deb-RPM-and-Homebrew.md
+238	07	Packaging and Release	07-Packaging-and-Release/Cpp/Cpp-Hardened-Release-Builds-and-Separate-Debug-Symbols	concept	07-Packaging-and-Release/Cpp/Cpp-Hardened-Release-Builds-and-Separate-Debug-Symbols.md
+239	07	Packaging and Release	07-Packaging-and-Release/Cpp/Cpp-macOS-Universal-Binaries-Code-Signing-and-Notarization	concept	07-Packaging-and-Release/Cpp/Cpp-macOS-Universal-Binaries-Code-Signing-and-Notarization.md
+240	07	Packaging and Release	07-Packaging-and-Release/Python/README	moc	07-Packaging-and-Release/Python/README.md
+241	07	Packaging and Release	07-Packaging-and-Release/Python/Python-Packaging-History-and-pyproject-toml	concept	07-Packaging-and-Release/Python/Python-Packaging-History-and-pyproject-toml.md
+242	07	Packaging and Release	07-Packaging-and-Release/Python/Python-Wheels-Platform-Tags-Manylinux-and-ABI3	concept	07-Packaging-and-Release/Python/Python-Wheels-Platform-Tags-Manylinux-and-ABI3.md
+243	07	Packaging and Release	07-Packaging-and-Release/Python/Python-Free-Threaded-Wheels-and-Wheel-Variants	concept	07-Packaging-and-Release/Python/Python-Free-Threaded-Wheels-and-Wheel-Variants.md
+244	07	Packaging and Release	07-Packaging-and-Release/Python/Python-Cross-Platform-Wheel-Pipelines-with-cibuildwheel	concept	07-Packaging-and-Release/Python/Python-Cross-Platform-Wheel-Pipelines-with-cibuildwheel.md
+245	07	Packaging and Release	07-Packaging-and-Release/Python/Python-Native-Build-Backends-scikit-build-core-meson-python-and-maturin	concept	07-Packaging-and-Release/Python/Python-Native-Build-Backends-scikit-build-core-meson-python-and-maturin.md
+246	07	Packaging and Release	07-Packaging-and-Release/Python/Python-Dependency-Resolution-pip-uv-and-PEP-751-Lockfiles	concept	07-Packaging-and-Release/Python/Python-Dependency-Resolution-pip-uv-and-PEP-751-Lockfiles.md
+247	07	Packaging and Release	07-Packaging-and-Release/Python/Python-Conda-and-Pixi-for-Polyglot-Environments	concept	07-Packaging-and-Release/Python/Python-Conda-and-Pixi-for-Polyglot-Environments.md
+248	07	Packaging and Release	07-Packaging-and-Release/Python/Python-Trusted-Publishing-and-PEP-740-Attestations	concept	07-Packaging-and-Release/Python/Python-Trusted-Publishing-and-PEP-740-Attestations.md
+249	07	Packaging and Release	07-Packaging-and-Release/Python/Python-Shipping-Applications-Zipapp-PEX-and-Bundlers	concept	07-Packaging-and-Release/Python/Python-Shipping-Applications-Zipapp-PEX-and-Bundlers.md
+250	07	Packaging and Release	07-Packaging-and-Release/Python/Python-Entry-Points-Plugins-and-Namespace-Packages	concept	07-Packaging-and-Release/Python/Python-Entry-Points-Plugins-and-Namespace-Packages.md
+251	07	Packaging and Release	07-Packaging-and-Release/Rust/README	moc	07-Packaging-and-Release/Rust/README.md
+252	07	Packaging and Release	07-Packaging-and-Release/Rust/Rust-Cargo-Model-Packages-Targets-Features-and-Workspaces	concept	07-Packaging-and-Release/Rust/Rust-Cargo-Model-Packages-Targets-Features-and-Workspaces.md
+253	07	Packaging and Release	07-Packaging-and-Release/Rust/Rust-Build-Scripts-and-Sys-Crates	concept	07-Packaging-and-Release/Rust/Rust-Build-Scripts-and-Sys-Crates.md
+254	07	Packaging and Release	07-Packaging-and-Release/Rust/Rust-SemVer-Checks-MSRV-and-Editions	concept	07-Packaging-and-Release/Rust/Rust-SemVer-Checks-MSRV-and-Editions.md
+255	07	Packaging and Release	07-Packaging-and-Release/Rust/Rust-Publishing-Crates-io-Trusted-Publishing-and-Private-Registries	concept	07-Packaging-and-Release/Rust/Rust-Publishing-Crates-io-Trusted-Publishing-and-Private-Registries.md
+256	07	Packaging and Release	07-Packaging-and-Release/Rust/Rust-Binary-Distribution-with-dist-and-Cross-Compilation	concept	07-Packaging-and-Release/Rust/Rust-Binary-Distribution-with-dist-and-Cross-Compilation.md
+257	07	Packaging and Release	07-Packaging-and-Release/Rust/Rust-FFI-Packaging-cdylib-staticlib-and-cbindgen	concept	07-Packaging-and-Release/Rust/Rust-FFI-Packaging-cdylib-staticlib-and-cbindgen.md
+258	07	Packaging and Release	07-Packaging-and-Release/Rust/Rust-PyO3-and-Maturin-Internals	concept	07-Packaging-and-Release/Rust/Rust-PyO3-and-Maturin-Internals.md
+259	07	Packaging and Release	07-Packaging-and-Release/Rust/Rust-Dependency-Hygiene-cargo-deny-cargo-audit-and-cargo-vet	concept	07-Packaging-and-Release/Rust/Rust-Dependency-Hygiene-cargo-deny-cargo-audit-and-cargo-vet.md
+260	08	Software Supply Chain	08-Software-Supply-Chain/README	moc	08-Software-Supply-Chain/README.md
+261	08	Software Supply Chain	08-Software-Supply-Chain/Supply-Chain-Topic-Inventory	moc	08-Software-Supply-Chain/Supply-Chain-Topic-Inventory.md
+262	08	Software Supply Chain	08-Software-Supply-Chain/Supply-Chain-Skill-Ladder	moc	08-Software-Supply-Chain/Supply-Chain-Skill-Ladder.md
+263	08	Software Supply Chain	08-Software-Supply-Chain/SLSA-Framework-Build-and-Source-Tracks	concept	08-Software-Supply-Chain/SLSA-Framework-Build-and-Source-Tracks.md
+264	08	Software Supply Chain	08-Software-Supply-Chain/In-Toto-Layouts-Link-Metadata-and-DSSE-Attestations	concept	08-Software-Supply-Chain/In-Toto-Layouts-Link-Metadata-and-DSSE-Attestations.md
+265	08	Software Supply Chain	08-Software-Supply-Chain/Sigstore-Keyless-Signing-Cosign-Fulcio-and-Rekor	concept	08-Software-Supply-Chain/Sigstore-Keyless-Signing-Cosign-Fulcio-and-Rekor.md
+266	08	Software Supply Chain	08-Software-Supply-Chain/SBOM-Standards-SPDX-CycloneDX-and-VEX	concept	08-Software-Supply-Chain/SBOM-Standards-SPDX-CycloneDX-and-VEX.md
+267	08	Software Supply Chain	08-Software-Supply-Chain/Dependency-Confusion-Typosquatting-and-Registry-Attacks	concept	08-Software-Supply-Chain/Dependency-Confusion-Typosquatting-and-Registry-Attacks.md
+268	08	Software Supply Chain	08-Software-Supply-Chain/OpenSSF-Scorecard-and-CI-CD-Pipeline-Hardening	concept	08-Software-Supply-Chain/OpenSSF-Scorecard-and-CI-CD-Pipeline-Hardening.md
+269	08	Software Supply Chain	08-Software-Supply-Chain/Reproducible-Builds-as-a-Security-Control	concept	08-Software-Supply-Chain/Reproducible-Builds-as-a-Security-Control.md
+270	08	Software Supply Chain	08-Software-Supply-Chain/Enterprise-Third-Party-Code-Ingestion-and-Quarantine-Architecture	concept	08-Software-Supply-Chain/Enterprise-Third-Party-Code-Ingestion-and-Quarantine-Architecture.md
+271	08	Software Supply Chain	08-Software-Supply-Chain/Supply-Chain-Decision-Records	concept	08-Software-Supply-Chain/Supply-Chain-Decision-Records.md
+272	08	Software Supply Chain	08-Software-Supply-Chain/Respond-to-a-Compromised-Transitive-Dependency	playbook	08-Software-Supply-Chain/Respond-to-a-Compromised-Transitive-Dependency.md
+273	08	Software Supply Chain	08-Software-Supply-Chain/Audit-and-Harden-a-GitHub-Actions-Release-Pipeline	playbook	08-Software-Supply-Chain/Audit-and-Harden-a-GitHub-Actions-Release-Pipeline.md
+274	08	Software Supply Chain	08-Software-Supply-Chain/Drill-Supply-Chain-Detect-Tarball-vs-Git-Tag-Backdoor	problem	08-Software-Supply-Chain/Drill-Supply-Chain-Detect-Tarball-vs-Git-Tag-Backdoor.md
+275	08	Software Supply Chain	08-Software-Supply-Chain/Drill-Supply-Chain-Exploit-and-Fix-Dependency-Confusion	problem	08-Software-Supply-Chain/Drill-Supply-Chain-Exploit-and-Fix-Dependency-Confusion.md
+276	08	Software Supply Chain	08-Software-Supply-Chain/Drill-Supply-Chain-Verify-and-Reject-Forged-SLSA-Provenance	problem	08-Software-Supply-Chain/Drill-Supply-Chain-Verify-and-Reject-Forged-SLSA-Provenance.md
+277	08	Software Supply Chain	08-Software-Supply-Chain/Case-Study-XZ-Utils-Backdoor-CVE-2024-3094	case-study	08-Software-Supply-Chain/Case-Study-XZ-Utils-Backdoor-CVE-2024-3094.md
+278	08	Software Supply Chain	08-Software-Supply-Chain/Case-Study-SolarWinds-Orion-SUNBURST	case-study	08-Software-Supply-Chain/Case-Study-SolarWinds-Orion-SUNBURST.md
+279	08	Software Supply Chain	08-Software-Supply-Chain/Case-Study-Event-Stream-and-Maintainer-Handoff	case-study	08-Software-Supply-Chain/Case-Study-Event-Stream-and-Maintainer-Handoff.md
+280	08	Software Supply Chain	08-Software-Supply-Chain/Case-Study-Codecov-Bash-Uploader-and-TJ-Actions	case-study	08-Software-Supply-Chain/Case-Study-Codecov-Bash-Uploader-and-TJ-Actions.md
+281	08	Software Supply Chain	08-Software-Supply-Chain/Case-Study-PyTorch-torchtriton-and-Dependency-Confusion	case-study	08-Software-Supply-Chain/Case-Study-PyTorch-torchtriton-and-Dependency-Confusion.md
+282	08	Software Supply Chain	08-Software-Supply-Chain/Case-Study-Shai-Hulud-and-Self-Replicating-Registry-Worms	case-study	08-Software-Supply-Chain/Case-Study-Shai-Hulud-and-Self-Replicating-Registry-Worms.md
+283	09	Engineering Systems at Scale	09-Engineering-Systems-at-Scale/README	moc	09-Engineering-Systems-at-Scale/README.md
+284	09	Engineering Systems at Scale	09-Engineering-Systems-at-Scale/Engineering-Systems-Topic-Inventory	moc	09-Engineering-Systems-at-Scale/Engineering-Systems-Topic-Inventory.md
+285	09	Engineering Systems at Scale	09-Engineering-Systems-at-Scale/Engineering-Systems-Skill-Ladder	moc	09-Engineering-Systems-at-Scale/Engineering-Systems-Skill-Ladder.md
+286	09	Engineering Systems at Scale	09-Engineering-Systems-at-Scale/Developer-Productivity-Metrics-DORA-SPACE-and-GSM	concept	09-Engineering-Systems-at-Scale/Developer-Productivity-Metrics-DORA-SPACE-and-GSM.md
+287	09	Engineering Systems at Scale	09-Engineering-Systems-at-Scale/Build-and-Test-Latency-Economics-and-Flaky-Tests	concept	09-Engineering-Systems-at-Scale/Build-and-Test-Latency-Economics-and-Flaky-Tests.md
+288	09	Engineering Systems at Scale	09-Engineering-Systems-at-Scale/Platform-Engineering-Paved-Roads-and-Deprecation	concept	09-Engineering-Systems-at-Scale/Platform-Engineering-Paved-Roads-and-Deprecation.md
+289	09	Engineering Systems at Scale	09-Engineering-Systems-at-Scale/Dependency-Management-Theory-and-Hyrums-Law	concept	09-Engineering-Systems-at-Scale/Dependency-Management-Theory-and-Hyrums-Law.md
+290	09	Engineering Systems at Scale	09-Engineering-Systems-at-Scale/Large-Scale-Changes-and-Codemods-Across-Repos	concept	09-Engineering-Systems-at-Scale/Large-Scale-Changes-and-Codemods-Across-Repos.md
+291	09	Engineering Systems at Scale	09-Engineering-Systems-at-Scale/Code-Search-and-Semantic-Indexing-at-Scale	concept	09-Engineering-Systems-at-Scale/Code-Search-and-Semantic-Indexing-at-Scale.md
+292	09	Engineering Systems at Scale	09-Engineering-Systems-at-Scale/Static-Analysis-at-Scale-Tricorder-and-Autofix	concept	09-Engineering-Systems-at-Scale/Static-Analysis-at-Scale-Tricorder-and-Autofix.md
+293	09	Engineering Systems at Scale	09-Engineering-Systems-at-Scale/Code-Review-and-Readability-Systems-at-Scale	concept	09-Engineering-Systems-at-Scale/Code-Review-and-Readability-Systems-at-Scale.md
+294	09	Engineering Systems at Scale	09-Engineering-Systems-at-Scale/Ephemeral-Cloud-Development-Environments	concept	09-Engineering-Systems-at-Scale/Ephemeral-Cloud-Development-Environments.md
+295	09	Engineering Systems at Scale	09-Engineering-Systems-at-Scale/AI-Coding-Agents-Sandboxes-Worktrees-and-Ship-Gates	concept	09-Engineering-Systems-at-Scale/AI-Coding-Agents-Sandboxes-Worktrees-and-Ship-Gates.md
+296	09	Engineering Systems at Scale	09-Engineering-Systems-at-Scale/Multi-Agent-Supervision-and-Quota-Aware-Routing	concept	09-Engineering-Systems-at-Scale/Multi-Agent-Supervision-and-Quota-Aware-Routing.md
+297	09	Engineering Systems at Scale	09-Engineering-Systems-at-Scale/Playbook-Quarantine-and-Eliminate-Flaky-Tests	playbook	09-Engineering-Systems-at-Scale/Playbook-Quarantine-and-Eliminate-Flaky-Tests.md
+298	09	Engineering Systems at Scale	09-Engineering-Systems-at-Scale/Playbook-Execute-a-1000-Repo-Breaking-API-Migration	playbook	09-Engineering-Systems-at-Scale/Playbook-Execute-a-1000-Repo-Breaking-API-Migration.md
+299	09	Engineering Systems at Scale	09-Engineering-Systems-at-Scale/Playbook-Write-a-Toolchain-Migration-RFC	playbook	09-Engineering-Systems-at-Scale/Playbook-Write-a-Toolchain-Migration-RFC.md
+300	09	Engineering Systems at Scale	09-Engineering-Systems-at-Scale/Drill-Engineering-Systems-Diagnose-CI-Merge-Queue-Collapse	problem	09-Engineering-Systems-at-Scale/Drill-Engineering-Systems-Diagnose-CI-Merge-Queue-Collapse.md
+301	09	Engineering Systems at Scale	09-Engineering-Systems-at-Scale/Drill-Engineering-Systems-Audit-a-Gamed-Productivity-Dashboard	problem	09-Engineering-Systems-at-Scale/Drill-Engineering-Systems-Audit-a-Gamed-Productivity-Dashboard.md
+302	10	Papers	10-Papers/README	moc	10-Papers/README.md
+303	10	Papers	10-Papers/Papers-Topic-Inventory	moc	10-Papers/Papers-Topic-Inventory.md
+304	10	Papers	10-Papers/Papers-Skill-Ladder	moc	10-Papers/Papers-Skill-Ladder.md
+305	10	Papers	10-Papers/Paper-Reflections-on-Trusting-Trust	paper	10-Papers/Paper-Reflections-on-Trusting-Trust.md
+306	10	Papers	10-Papers/Paper-Zeller-Delta-Debugging	paper	10-Papers/Paper-Zeller-Delta-Debugging.md
+307	10	Papers	10-Papers/Paper-Valgrind-Dynamic-Binary-Instrumentation	paper	10-Papers/Paper-Valgrind-Dynamic-Binary-Instrumentation.md
+308	10	Papers	10-Papers/Paper-Producing-Wrong-Data-Measurement-Bias	paper	10-Papers/Paper-Producing-Wrong-Data-Measurement-Bias.md
+309	10	Papers	10-Papers/Paper-ThreadSanitizer	paper	10-Papers/Paper-ThreadSanitizer.md
+310	10	Papers	10-Papers/Paper-Google-Wide-Profiling	paper	10-Papers/Paper-Google-Wide-Profiling.md
+311	10	Papers	10-Papers/Paper-Dapper-Distributed-Systems-Tracing	paper	10-Papers/Paper-Dapper-Distributed-Systems-Tracing.md
+312	10	Papers	10-Papers/Paper-AddressSanitizer	paper	10-Papers/Paper-AddressSanitizer.md
+313	10	Papers	10-Papers/Paper-MemorySanitizer	paper	10-Papers/Paper-MemorySanitizer.md
+314	10	Papers	10-Papers/Paper-Tricorder-Program-Analysis-Ecosystem	paper	10-Papers/Paper-Tricorder-Program-Analysis-Ecosystem.md
+315	10	Papers	10-Papers/Paper-Coz-Causal-Profiling	paper	10-Papers/Paper-Coz-Causal-Profiling.md
+316	10	Papers	10-Papers/Paper-AutoFDO-Warehouse-Scale-Optimization	paper	10-Papers/Paper-AutoFDO-Warehouse-Scale-Optimization.md
+317	10	Papers	10-Papers/Paper-The-Flame-Graph-Gregg	paper	10-Papers/Paper-The-Flame-Graph-Gregg.md
+318	10	Papers	10-Papers/Paper-Google-Monorepo-Piper-and-CitC	paper	10-Papers/Paper-Google-Monorepo-Piper-and-CitC.md
+319	10	Papers	10-Papers/Paper-ThinLTO-Scalable-Incremental-LTO	paper	10-Papers/Paper-ThinLTO-Scalable-Incremental-LTO.md
+320	10	Papers	10-Papers/Paper-rr-Record-and-Replay	paper	10-Papers/Paper-rr-Record-and-Replay.md
+321	10	Papers	10-Papers/Paper-Lessons-From-Static-Analysis-at-Google	paper	10-Papers/Paper-Lessons-From-Static-Analysis-at-Google.md
+322	10	Papers	10-Papers/Paper-Modern-Code-Review-at-Google	paper	10-Papers/Paper-Modern-Code-Review-at-Google.md
+323	10	Papers	10-Papers/Paper-Build-Systems-a-la-Carte	paper	10-Papers/Paper-Build-Systems-a-la-Carte.md
+324	10	Papers	10-Papers/Paper-PubGrub-and-Minimal-Version-Selection	paper	10-Papers/Paper-PubGrub-and-Minimal-Version-Selection.md
+325	10	Papers	10-Papers/Paper-BOLT-Binary-Optimizer	paper	10-Papers/Paper-BOLT-Binary-Optimizer.md
+326	10	Papers	10-Papers/Paper-in-toto-Supply-Chain-Guarantees	paper	10-Papers/Paper-in-toto-Supply-Chain-Guarantees.md
+327	10	Papers	10-Papers/Paper-Reproducible-Builds-Lamb-Zacchiroli	paper	10-Papers/Paper-Reproducible-Builds-Lamb-Zacchiroli.md
+328	11	Arena and Capstones	11-Arena-and-Capstones/README	moc	11-Arena-and-Capstones/README.md
+329	11	Arena and Capstones	11-Arena-and-Capstones/Arena-Topic-Inventory	moc	11-Arena-and-Capstones/Arena-Topic-Inventory.md
+330	11	Arena and Capstones	11-Arena-and-Capstones/Arena-Skill-Ladder	moc	11-Arena-and-Capstones/Arena-Skill-Ladder.md
+331	11	Arena and Capstones	11-Arena-and-Capstones/Toolchain-24-Week-Mastery-Plan	playbook	11-Arena-and-Capstones/Toolchain-24-Week-Mastery-Plan.md
+332	11	Arena and Capstones	11-Arena-and-Capstones/Staff-and-Principal-Toolchain-Interview-Bar	concept	11-Arena-and-Capstones/Staff-and-Principal-Toolchain-Interview-Bar.md
+333	11	Arena and Capstones	11-Arena-and-Capstones/Cross-Pillar-Debugging-Scenario-Bank	problem	11-Arena-and-Capstones/Cross-Pillar-Debugging-Scenario-Bank.md
+334	11	Arena and Capstones	11-Arena-and-Capstones/Cross-Pillar-Design-Scenario-Bank	problem	11-Arena-and-Capstones/Cross-Pillar-Design-Scenario-Bank.md
+335	11	Arena and Capstones	11-Arena-and-Capstones/Production-Incident-Simulation-Drills	problem	11-Arena-and-Capstones/Production-Incident-Simulation-Drills.md
+336	11	Arena and Capstones	11-Arena-and-Capstones/Capstone-Mini-Git-in-Rust	playbook	11-Arena-and-Capstones/Capstone-Mini-Git-in-Rust.md
+337	11	Arena and Capstones	11-Arena-and-Capstones/Capstone-Ptrace-Debugger-with-DWARF	playbook	11-Arena-and-Capstones/Capstone-Ptrace-Debugger-with-DWARF.md
+338	11	Arena and Capstones	11-Arena-and-Capstones/Capstone-Sampling-Profiler-Folded-Stacks	playbook	11-Arena-and-Capstones/Capstone-Sampling-Profiler-Folded-Stacks.md
+339	11	Arena and Capstones	11-Arena-and-Capstones/Capstone-Polyglot-Packaging-and-Release-Pipeline	playbook	11-Arena-and-Capstones/Capstone-Polyglot-Packaging-and-Release-Pipeline.md
+340	11	Arena and Capstones	11-Arena-and-Capstones/Capstone-Hermetic-Cached-Monorepo-Build	playbook	11-Arena-and-Capstones/Capstone-Hermetic-Cached-Monorepo-Build.md
+341	11	Arena and Capstones	11-Arena-and-Capstones/Capstone-PubGrub-Dependency-Resolver	playbook	11-Arena-and-Capstones/Capstone-PubGrub-Dependency-Resolver.md
+342	11	Arena and Capstones	11-Arena-and-Capstones/Capstone-Unix-Shell-with-Job-Control	playbook	11-Arena-and-Capstones/Capstone-Unix-Shell-with-Job-Control.md
+343	code	Code	code/README	moc	code/README.md

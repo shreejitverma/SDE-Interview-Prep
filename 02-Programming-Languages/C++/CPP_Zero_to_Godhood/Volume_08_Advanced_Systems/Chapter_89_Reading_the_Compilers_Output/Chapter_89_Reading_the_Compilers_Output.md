@@ -132,3 +132,7 @@ The optimiser operates under the **as-if rule**: it may perform *any* transforma
 | Why didn't it optimise? | `-Rpass-missed=` / `-fopt-info-missed` remarks |
 
 > **The discipline.** Reading assembly is not about writing it; it is about *verification*. Before claiming an optimisation worked, look at the output. Before believing a benchmark, confirm the work survived. Before trusting an abstraction is zero-cost, diff its disassembly against the manual version. This habit - ground every performance claim in the emitted instructions - is what makes the rest of the compute-cost chapters (branchless, SIMD) trustworthy, and it is the prerequisite for the measurement rigour of Chapter 103. The next chapter turns from reading the code to shaping the *data* it operates on.
+
+## See also in Developer Toolchain
+
+- [[Calling-Conventions-System-V-AMD64-and-AAPCS64]], [[Reading-Assembly-and-Optimization-Remarks]]

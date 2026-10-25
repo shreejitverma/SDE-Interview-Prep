@@ -65,6 +65,8 @@ TABLE_ALIAS_RE = re.compile(r"\[\[[^\]\n]*[^\\\]]\|[^\]\n]*\]\]")  # [[a|b]] wit
 
 VENDOR_MARKERS = {"license", "license.md", "license.txt", "code_of_conduct.md", "contributing.md",
                   "package.json", "setup.py", "pom.xml", "cargo.toml", "go.mod"}
+# Lab trees whose own Cargo.toml, setup.py, or package.json are authored labs, not imported repos.
+LAB_TREES = ("18-Developer-Toolchain/code/",)
 JUNK_RE = re.compile(r"(^|/)(\.DS_Store|cmake-build-[^/]+/|CMakeFiles/|__pycache__/|\.ipynb_checkpoints/)|\.(o|obj|exe|class|pyc|out)$")
 GENERIC_DIR_KEYS = {"note", "code", "src", "intro", "idea", "pattern", "asset", "image", "doc", "test", "example", "archive", "_archive"}
 LARGE_FILE_BYTES = 5_000_000
@@ -394,7 +396,7 @@ def main() -> int:
     vendored: dict[str, int] = {}
     for f in files:
         pp = PurePosixPath(f)
-        if pp.name.lower() in VENDOR_MARKERS and len(pp.parts) > 1:
+        if pp.name.lower() in VENDOR_MARKERS and len(pp.parts) > 1 and not f.startswith(LAB_TREES):
             d = str(pp.parent)
             if not any(d.startswith(v + "/") for v in vendored):
                 vendored = {v: n for v, n in vendored.items() if not v.startswith(d + "/")}

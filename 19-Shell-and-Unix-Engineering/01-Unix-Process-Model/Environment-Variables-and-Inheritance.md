@@ -40,4 +40,6 @@ Prerequisites: [[dev-fd-and-dev-stdin]]
 
 Next: [[Resource-Limits-and-ulimit]]
 
+See also: [[Program-Startup-C-Runtime-Init-and-Auxiliary-Vectors]]
+
 ## Further reading

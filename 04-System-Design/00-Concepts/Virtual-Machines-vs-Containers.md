@@ -296,3 +296,7 @@ Google contributed Linux cgroups to the mainline Linux kernel in 2007 to provide
 - Agache, Alexandru, et al. "Firecracker: Lightweight virtualization for serverless applications." *17th USENIX Symposium on Networked Systems Design and Implementation (NSDI 20)*. 2020.
 - Rice, Liz. *Container Security: Fundamental Technology Concepts that Protect Containerized Applications*. O'Reilly Media, 2020.
 - Poulton, Nigel. *Docker Deep Dive*. Independently published, 2020.
+
+## See also in Developer Toolchain
+
+- [[Containers-and-VMs-for-macOS-Development]], [[OCI-Images-Layers-Multi-Stage-and-Distroless]]

@@ -121,3 +121,7 @@ Even with batched syscalls, the *copy* between kernel and user buffers remains. 
 | Kernel bypass (Ch. 100) | Zero | Zero | Extreme packet rates |
 
 > **The discipline.** High-performance I/O is the systematic removal of the two non-device costs. Climb from the simple model to the one your rate demands: blocking for a handful of connections; `epoll` for scalable connection counts; `io_uring` when per-operation syscall cost dominates; `mmap` for random large-file access; zero-copy (`sendfile`, registered buffers) when the data copy itself is the bottleneck. Each step trades simplicity for the elimination of a crossing or a copy, and the right stopping point is dictated by *measurement* (`strace -c` for crossings, `perf` for copy/`memcpy` time), not ambition. When even the kernel's involvement is too much - at millions of packets per second - the next chapter removes it entirely.
+
+## See also in Developer Toolchain
+
+- [[Virtual-Memory-Mmap-and-Process-Address-Space]]

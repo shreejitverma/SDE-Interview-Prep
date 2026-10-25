@@ -40,4 +40,6 @@ Prerequisites: [[Zsh-Completion-System]]
 
 Next: [[Zsh-Emulation-Modes]]
 
+See also: [[POSIX-sh-Bash-Zsh-and-Fish-Compared]]
+
 ## Further reading

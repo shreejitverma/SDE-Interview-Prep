@@ -40,4 +40,6 @@ Prerequisites: [[SSH-Protocol-and-Keys]]
 
 Next: [[SSH-Config-and-ProxyJump]]
 
+See also: [[SSH-In-Depth-Keys-Forwarding-Certificates-and-FIDO2]]
+
 ## Further reading

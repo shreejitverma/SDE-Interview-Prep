@@ -51,3 +51,11 @@ sources: []
 | 3 | What is DPDK? Walk through the packet processing pipeline | Hard | ☐ |
 | 4 | How does hardware timestamping work? PTP vs NTP? | Medium | ☐ |
 | 5 | Compare busy-polling vs epoll for low-latency networking | Medium | ☐ |
+
+## Developer Toolchain
+
+Scenario questions with model answers at L6, L7, and L8+ live in the toolchain arena.
+
+- [[Cross-Pillar-Debugging-Scenario-Bank]]: production crashes, hangs, leaks, and regressions to walk through out loud.
+- [[Cross-Pillar-Design-Scenario-Bank]]: build, release, version-control, and developer-platform design questions.
+- [[Staff-and-Principal-Toolchain-Interview-Bar]]: what separates a staff answer from a principal one.

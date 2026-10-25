@@ -38,4 +38,6 @@ Part of [Observability and Incident Response](README.md) in [Shell and Unix Engi
 
 Next: [[ps-and-Process-States]]
 
+See also: [[Analyze-Gigabyte-Terminal-Logs]]
+
 ## Further reading

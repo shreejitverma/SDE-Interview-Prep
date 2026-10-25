@@ -40,4 +40,6 @@ Prerequisites: [[Sixty-Second-Linux-Analysis]]
 
 Next: [[top-and-Load-Average]]
 
+See also: [[System-Inspection-and-Syscall-Tracing-From-the-Shell]]
+
 ## Further reading

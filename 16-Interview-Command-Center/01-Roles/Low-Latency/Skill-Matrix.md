@@ -45,3 +45,9 @@ sources: []
 | Feed Handlers | /5 | | |
 | Order Entry Systems | /5 | | |
 | FIX / SBE / ITCH | /5 | | |
+| **Developer Toolchain** | | | |
+| [[Program-Execution-Skill-Ladder\|Program execution: ELF, linking, loading, ABIs]] | /5 | | |
+| [[Debugging-Skill-Ladder\|Debugging C++, Python, and Rust]] | /5 | | |
+| [[Measurement-Methodology-Skill-Ladder\|Measurement and benchmarking methodology]] | /5 | | |
+| [[Profiling-Skill-Ladder\|Profiling and tracing]] | /5 | | |
+| [[Build-Systems-Skill-Ladder\|Build systems]] | /5 | | |

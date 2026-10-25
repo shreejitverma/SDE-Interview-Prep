@@ -40,4 +40,6 @@ Prerequisites: [[vmstat-iostat-and-mpstat]]
 
 Next: [[ss-and-Socket-States]]
 
+See also: [[System-Inspection-and-Syscall-Tracing-From-the-Shell]]
+
 ## Further reading

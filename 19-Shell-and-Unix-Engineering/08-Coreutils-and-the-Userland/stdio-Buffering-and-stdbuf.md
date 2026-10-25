@@ -40,4 +40,6 @@ Prerequisites: [[install-and-Atomic-Deployment]]
 
 Next: [[timeout]]
 
+See also: [[Pipe-Buffering-and-Stdbuf]], [[Drill-Command-Line-Catastrophic-Backtracking-and-Stream-Bottleneck]]
+
 ## Further reading

@@ -40,4 +40,6 @@ Prerequisites: [[Functions-and-Scope]]
 
 Next: [[Traps-and-EXIT]]
 
+See also: [[Robust-Shell-Scripting-and-ShellCheck]], [[Drill-Command-Line-Quoting-and-Signal-Trap-Race]]
+
 ## Further reading

@@ -17,6 +17,8 @@ For any command line, the notes let you explain what the terminal, the parser, e
 > Pick a folder, read its notes in the folder's Learning order, and run each note's lab.
 > Every note links its prerequisite and the next note, so you can also walk the graph from any starting point.
 
+[Developer Toolchain](../18-Developer-Toolchain/README.md) is a separate book that overlaps this one on the process model and the command line, and goes deeper on object formats, debuggers, profilers, build systems, and packaging.
+
 ## Concept map
 
 ```mermaid

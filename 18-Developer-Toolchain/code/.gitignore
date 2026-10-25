@@ -1,0 +1,14 @@
+# Build output from labs; expected/<platform>.txt files are tracked, everything built is not.
+build/
+target/
+.venv/
+__pycache__/
+*.o
+*.a
+*.so
+*.dylib
+*.dSYM/
+core
+!core/
+core.[0-9]*
+perf.data*

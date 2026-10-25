@@ -153,3 +153,7 @@ C++ **attributes** (`[[...]]`) give the compiler standardized hints, several rel
 *Listing 111.5 - `[[nodiscard]]` forces callers to check an error code; `[[deprecated]]` manages API evolution.*
 
 > **The discipline.** Interoperability is the discipline of reducing C++'s rich, mangled, exception-throwing, RAII-managed world to a *narrow, explicit contract* the other side can honour - and the C ABI is that contract. The rules compose into one practice: expose `extern "C"` functions over standard-layout types and opaque handles; make ownership explicit with paired create/destroy and documented return-value policies; never let exceptions cross the boundary; batch work per crossing because every boundary call has overhead; and respect the *other* runtime's rules (Python's refcounting, the JVM's thread-local environment and local references). `[[nodiscard]]` and friends harden the contract against careless callers. Master this and C++ becomes what it already is in practice - the engine beneath every other language. The next chapters explore the domains those engines power, starting with networking.
+
+## See also in Developer Toolchain
+
+- [[Calling-Conventions-System-V-AMD64-and-AAPCS64]], [[Cpp-Itanium-ABI-Object-Model-Vtables-and-RTTI]], [[Rust-FFI-Boundary-Debugging-Across-Cpp-and-Python]], [[Cpp-ABI-Stability-Symbol-Visibility-and-SONAME]], [[Rust-Build-Scripts-and-Sys-Crates]], [[Rust-FFI-Packaging-cdylib-staticlib-and-cbindgen]]

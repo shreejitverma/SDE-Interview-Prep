@@ -26,3 +26,7 @@ A "Wheel" (`.whl`) is a built distribution format.
 *   **Platform Tags**: Wheels for C extensions include tags like `manylinux2014_x86_64` (defined under PEP 600 as perpetual tag `manylinux_2_17_x86_64`) to specify exactly which OS and architecture they are compatible with, avoiding the need for the end-user to have a C compiler installed.
 
 ---
+
+## See also in Developer Toolchain
+
+- [[Python-Packaging-History-and-pyproject-toml]], [[Python-Wheels-Platform-Tags-Manylinux-and-ABI3]], [[Python-Free-Threaded-Wheels-and-Wheel-Variants]]

@@ -187,3 +187,7 @@ public:
 - [[Sources/How NOT to Measure Latency by Gil Tene]]
 - [[Sources/HdrHistogram Repository and Documentation]]
 - [[Sources/Systems Performance by Brendan Gregg]]
+
+## See also in Developer Toolchain
+
+- [[Statistics-for-Benchmarks-Coordinated-Omission-and-HDR-Histograms]], [[Drill-Measurement-Methodology-Coordinated-Omission-Trap]]

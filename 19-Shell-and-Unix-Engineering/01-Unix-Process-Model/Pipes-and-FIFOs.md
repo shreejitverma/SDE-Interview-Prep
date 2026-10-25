@@ -635,7 +635,7 @@ Prerequisites: [[Close-on-Exec-and-Descriptor-Inheritance]]
 
 Next: [[PIPE_BUF-and-Write-Atomicity]]
 
-See also: [[01-CS-Foundations/Operating-Systems/IPC-Complete-Guide|IPC Complete Guide]], [[File-Descriptors-and-Open-File-Descriptions]], [[SIGPIPE-and-EPIPE]], [[Processes-fork-exec-and-wait]], [[Posix-Spawn-and-Vfork]], [[dev-fd-and-dev-stdin]]
+See also: [[01-CS-Foundations/Operating-Systems/IPC-Complete-Guide|IPC Complete Guide]], [[File-Descriptors-and-Open-File-Descriptions]], [[SIGPIPE-and-EPIPE]], [[Processes-fork-exec-and-wait]], [[Posix-Spawn-and-Vfork]], [[dev-fd-and-dev-stdin]], [[Pipelines-Subshells-Redirection-and-Process-Substitution]]
 
 ## Further reading
 

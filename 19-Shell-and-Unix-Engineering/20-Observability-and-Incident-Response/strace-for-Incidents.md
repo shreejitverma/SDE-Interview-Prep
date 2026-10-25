@@ -40,4 +40,6 @@ Prerequisites: [[ss-and-Socket-States]]
 
 Next: [[perf-from-the-Shell]]
 
+See also: [[System-Inspection-and-Syscall-Tracing-From-the-Shell]]
+
 ## Further reading

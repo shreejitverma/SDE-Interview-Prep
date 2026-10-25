@@ -40,4 +40,6 @@ Prerequisites: [[ONESHELL-and-SHELLFLAGS]]
 
 Next: [[Portable-sh-for-configure]]
 
+See also: [[Meson-Build-System-and-WrapDB]]
+
 ## Further reading

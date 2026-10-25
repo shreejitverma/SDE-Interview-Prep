@@ -40,4 +40,6 @@ Prerequisites: [[Pseudo-Terminals]]
 
 Next: [[terminfo-and-tput]]
 
+See also: [[Terminal-Escape-Sequences-and-Unicode]]
+
 ## Further reading

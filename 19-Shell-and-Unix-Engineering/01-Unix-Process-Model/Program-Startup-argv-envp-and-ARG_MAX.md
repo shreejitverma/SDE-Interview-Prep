@@ -587,7 +587,7 @@ Prerequisites: [[Posix-Spawn-and-Vfork]]
 
 Next: [[File-Descriptors-and-Open-File-Descriptions]]
 
-See also: [[Processes-fork-exec-and-wait]], [[Environment-Variables-and-Inheritance]], [[Resource-Limits-and-ulimit]], [[The-proc-Filesystem]], [[Close-on-Exec-and-Descriptor-Inheritance]].
+See also: [[Processes-fork-exec-and-wait]], [[Environment-Variables-and-Inheritance]], [[Resource-Limits-and-ulimit]], [[The-proc-Filesystem]], [[Close-on-Exec-and-Descriptor-Inheritance]], [[Program-Startup-C-Runtime-Init-and-Auxiliary-Vectors]].
 
 ## Further reading
 

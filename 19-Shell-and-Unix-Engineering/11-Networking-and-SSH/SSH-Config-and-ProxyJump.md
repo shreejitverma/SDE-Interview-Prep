@@ -40,4 +40,6 @@ Prerequisites: [[ssh-agent-and-Forwarding]]
 
 Next: [[SSH-Multiplexing-ControlMaster]]
 
+See also: [[SSH-In-Depth-Keys-Forwarding-Certificates-and-FIDO2]], [[Harden-SSH-Access-With-Certificates-and-Hardware-Keys]]
+
 ## Further reading

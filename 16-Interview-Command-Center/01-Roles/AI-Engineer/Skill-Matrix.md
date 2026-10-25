@@ -41,3 +41,10 @@ sources: []
 | PyTorch | /5 | | |
 | DSA (LeetCode) | /5 | | |
 | NumPy / Pandas | /5 | | |
+| **Developer Toolchain** | | | |
+| [[Command-Line-Skill-Ladder\|Command line and developer environment]] | /5 | | |
+| [[Git-Skill-Ladder\|Git internals and version control at scale]] | /5 | | |
+| [[Debugging-Skill-Ladder\|Debugging C++, Python, and Rust]] | /5 | | |
+| [[Profiling-Skill-Ladder\|Profiling and tracing]] | /5 | | |
+| [[Packaging-Skill-Ladder\|Packaging and release]] | /5 | | |
+| [[Engineering-Systems-Skill-Ladder\|Engineering systems at scale]] | /5 | | |

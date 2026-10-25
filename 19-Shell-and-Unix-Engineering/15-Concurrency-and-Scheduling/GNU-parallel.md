@@ -40,4 +40,6 @@ Prerequisites: [[xargs-P]]
 
 Next: [[Named-Pipes-for-IPC]]
 
+See also: [[File-Discovery-and-Batch-Execution-Find-Fd-Xargs-Parallel]]
+
 ## Further reading

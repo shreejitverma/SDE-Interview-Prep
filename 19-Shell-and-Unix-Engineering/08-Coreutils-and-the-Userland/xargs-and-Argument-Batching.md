@@ -40,4 +40,6 @@ Prerequisites: [[find-print0-and-exec-Plus]]
 
 Next: [[sort-Keys-and-Stability]]
 
+See also: [[File-Discovery-and-Batch-Execution-Find-Fd-Xargs-Parallel]]
+
 ## Further reading

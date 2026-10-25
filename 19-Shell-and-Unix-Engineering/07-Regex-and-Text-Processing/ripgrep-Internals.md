@@ -40,4 +40,6 @@ Prerequisites: [[grep-in-Depth]]
 
 Next: [[sed-Pattern-and-Hold-Space]]
 
+See also: [[Ripgrep-Internals-and-Fast-Text-Search]]
+
 ## Further reading

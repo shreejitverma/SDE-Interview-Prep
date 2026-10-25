@@ -40,4 +40,6 @@ Prerequisites: [[column-fold-and-fmt]]
 
 Next: [[Unicode-and-UTF-8-in-Text-Tools]]
 
+See also: [[Locale-Collation-and-Unicode-in-CLI-Tools]]
+
 ## Further reading

@@ -40,4 +40,6 @@ Prerequisites: [[ShellCheck-Internals]]
 
 Next: [[shfmt]]
 
+See also: [[Robust-Shell-Scripting-and-ShellCheck]]
+
 ## Further reading

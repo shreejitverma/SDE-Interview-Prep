@@ -196,3 +196,7 @@ flowchart TD
 - [[../03-Memory-Architecture-and-Concurrency/Ulrich-Drepper-Memory-Architecture|Ulrich Drepper Memory Architecture]]
 - [[../../12-Performance-Engineering/02-Profiling/profiling_guide|Performance Engineering: Profiling Guide]]
 - [[../README|Technical Whitepapers Master MOC]]
+
+## See also in Developer Toolchain
+
+- [[Paper-Producing-Wrong-Data-Measurement-Bias]], [[Paper-The-Flame-Graph-Gregg]], [[USE-RED-and-Systems-Performance-Methodologies]], [[Off-CPU-Analysis-Thread-States-and-Causal-Profiling]], [[Flame-Graphs-Differential-Flame-Graphs-and-Visualizations]], [[Capstone-Sampling-Profiler-Folded-Stacks]]

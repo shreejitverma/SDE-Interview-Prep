@@ -40,4 +40,6 @@ Prerequisites: [[Aliases]]
 
 Next: [[Dollar-Single-Quotes]]
 
+See also: [[Shell-Parsing-Tokenization-and-Expansion-Order]]
+
 ## Further reading

@@ -40,4 +40,6 @@ Prerequisites: [[termios-and-stty]]
 
 Next: [[Escape-Sequences-ECMA-48-and-xterm]]
 
+See also: [[TTYs-PTYs-and-Line-Discipline]]
+
 ## Further reading

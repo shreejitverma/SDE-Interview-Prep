@@ -40,4 +40,6 @@ Prerequisites: [[SSH-Multiplexing-ControlMaster]]
 
 Next: [[SSH-Certificates]]
 
+See also: [[SSH-In-Depth-Keys-Forwarding-Certificates-and-FIDO2]]
+
 ## Further reading

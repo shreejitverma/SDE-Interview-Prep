@@ -40,4 +40,6 @@ Prerequisites: [[POSIX-Leftmost-Longest-Matching]]
 
 Next: [[ReDoS]]
 
+See also: [[Regex-Engines-Automata-Backtracking-and-ReDoS]]
+
 ## Further reading

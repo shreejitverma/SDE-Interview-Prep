@@ -518,6 +518,7 @@ See also:
 - [[Sessions-Process-Groups-and-Controlling-Terminals]]
 - [[Exit-Status-and-Wait-Status]]
 - [[Resource-Limits-and-ulimit]]
+- [[Processes-Fork-Exec-and-File-Descriptors]]
 
 ## Further reading
 

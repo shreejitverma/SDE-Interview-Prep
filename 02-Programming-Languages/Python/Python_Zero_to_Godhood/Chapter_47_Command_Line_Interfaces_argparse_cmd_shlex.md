@@ -32,3 +32,7 @@ The `cmd` module provides a framework for building interactive line-oriented com
 *   **Parsing**: It is a state-based lexical analyzer. It handles quotes, escapes, and comments in a way that resembles the Unix shell (most closely in POSIX mode, which `shlex.split()` uses), but it performs no parameter, command, or glob expansion and is not a full `/bin/sh` parser, making it useful for splitting command strings in process orchestration.
 
 ---
+
+## See also in Developer Toolchain
+
+- [[CLI-Design-and-Agent-Friendly-Interfaces-AXI]], [[Python-Entry-Points-Plugins-and-Namespace-Packages]]

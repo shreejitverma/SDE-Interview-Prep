@@ -176,3 +176,7 @@ To restrict compilation to the Stable ABI, define `Py_LIMITED_API` before import
 This guarantees that the resulting compiled binary links only with stable symbols exported by the dynamic library (`libpython3.so` or `python3.dll`), allowing the extension to load and run on any subsequent Python version without recompilation.
 
 ---
+
+## See also in Developer Toolchain
+
+- [[Python-Wheels-Platform-Tags-Manylinux-and-ABI3]], [[Python-Native-Build-Backends-scikit-build-core-meson-python-and-maturin]], [[Rust-PyO3-and-Maturin-Internals]]

@@ -375,3 +375,7 @@ The honest caveat is that the process exit code stays 0, so anything consuming e
 **Defensible trade-off: `mkOutOfStoreSymlink` for app configs and skills.**
 Linking into the working tree means edits are live without a rebuild and a `git pull` updates behavior immediately.
 The downside is losing Nix's immutability guarantee, so a moved checkout breaks links while activation still exits 0; the fork pays for that with assertions, pre-flight guards, and a doctor check rather than giving up the edit loop.
+
+## See also in Developer Toolchain
+
+- [[Dotfiles-Nix-Direnv-Mise-and-Devcontainers]], [[Nix-Store-Derivations-and-Flakes-Internals]], [[Command-Line-Decision-Records]]

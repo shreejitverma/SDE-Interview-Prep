@@ -191,3 +191,7 @@ In-use is a live process with cwd in the slot; a reservation is a short-lived ow
 **Defensible trade-off.**
 treehouse has no daemon: every command reads and writes a small locked JSON state file and scans processes inline.
 That keeps it simple, portable across macOS, Linux, and Windows, and crash-recoverable, at the cost of per-command process scans and fetches (seconds, not milliseconds) and of needing explicit recovery quarantine when the state file is damaged, as the 11 recovered slots on this machine show.
+
+## See also in Developer Toolchain
+
+- [[Git-Transfer-Protocol-and-Partial-Clone]], [[Git-At-Scale-VFS-Scalar-and-Monorepos]], [[AI-Coding-Agents-Sandboxes-Worktrees-and-Ship-Gates]]

@@ -45,3 +45,11 @@ sources: []
 | 3 | I have a bag with R red and B blue balls. You draw one - how would you bet? | Medium | ☐ |
 | 4 | Design a trading strategy for a coin flip game with edge | Medium | ☐ |
 | 5 | Kelly criterion - derive and apply | Hard | ☐ |
+
+## Developer Toolchain
+
+Scenario questions with model answers at L6, L7, and L8+ live in the toolchain arena.
+
+- [[Cross-Pillar-Debugging-Scenario-Bank]]: production crashes, hangs, leaks, and regressions to walk through out loud.
+- [[Cross-Pillar-Design-Scenario-Bank]]: build, release, version-control, and developer-platform design questions.
+- [[Staff-and-Principal-Toolchain-Interview-Bar]]: what separates a staff answer from a principal one.

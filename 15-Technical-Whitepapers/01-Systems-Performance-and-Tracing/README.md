@@ -68,4 +68,6 @@ flowchart TD
 ## Cross-Links
 - [[../README|Technical Whitepapers Master MOC]]
 - [[../../12-Performance-Engineering/02-Profiling/profiling_guide|12-Performance-Engineering: Profiling Guide]]
+- [[../../18-Developer-Toolchain/04-Measurement-Methodology/README|18-Developer-Toolchain: Measurement Methodology]]
+- [[../../18-Developer-Toolchain/05-Profiling/README|18-Developer-Toolchain: Profiling]]
 - [[../../14-Low-Latency-Systems/Sources/Systems Performance by Brendan Gregg|14-Low-Latency-Systems: Systems Performance Source Summary]]

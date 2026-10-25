@@ -40,4 +40,6 @@ Prerequisites: [[Four-Userlands-GNU-BSD-BusyBox-uutils]]
 
 Next: [[find-Expressions]]
 
+See also: [[Locale-Collation-and-Unicode-in-CLI-Tools]]
+
 ## Further reading

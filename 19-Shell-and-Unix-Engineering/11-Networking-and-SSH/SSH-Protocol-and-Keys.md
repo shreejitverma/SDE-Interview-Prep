@@ -40,4 +40,6 @@ Prerequisites: [[tcpdump-and-tshark]]
 
 Next: [[ssh-agent-and-Forwarding]]
 
+See also: [[SSH-In-Depth-Keys-Forwarding-Certificates-and-FIDO2]], [[Git-Hooks-and-Cryptographic-Signing]]
+
 ## Further reading

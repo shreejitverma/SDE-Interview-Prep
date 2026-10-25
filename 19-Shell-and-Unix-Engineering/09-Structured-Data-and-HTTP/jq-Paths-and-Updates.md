@@ -40,4 +40,6 @@ Prerequisites: [[jq-Language]]
 
 Next: [[jq-Streaming-Large-Inputs]]
 
+See also: [[Structured-Data-Wrangling-Jq-Yq-and-Coreutils]]
+
 ## Further reading

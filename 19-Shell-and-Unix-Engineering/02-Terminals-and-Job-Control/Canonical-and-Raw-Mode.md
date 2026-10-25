@@ -40,4 +40,6 @@ Prerequisites: [[TTY-Line-Discipline]]
 
 Next: [[termios-and-stty]]
 
+See also: [[TTYs-PTYs-and-Line-Discipline]]
+
 ## Further reading

@@ -40,4 +40,6 @@ Prerequisites: [[Bounded-Job-Pools]]
 
 Next: [[GNU-parallel]]
 
+See also: [[File-Discovery-and-Batch-Execution-Find-Fd-Xargs-Parallel]]
+
 ## Further reading

@@ -106,3 +106,7 @@ void process_incoming_order(const ParentOrder& parent) {
 - [[Sources/SEC Administrative Proceeding File No. 3-15570: In the Matter of Knight Capital Americas LLC]]
 - [[Sources/Site Reliability Engineering at Scale for Financial Systems]]
 - [[Sources/How to Build an Exchange by Jane Street]]
+
+## See also in Developer Toolchain
+
+- [[Case-Study-Knight-Capital-Deployment-Failure]]

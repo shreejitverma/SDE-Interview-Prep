@@ -130,3 +130,7 @@ Microbenchmarks measure a *known* hot spot; **profiling** finds *which* code is 
 | Wrong target | Optimising cold code | Profile first; hardware counters |
 
 > **The discipline.** A benchmark is only as good as its defences against self-deception: force the work to be observed, feed it runtime inputs, warm to steady state, run it enough times to beat the noise, and - above all for these systems - report the *full distribution and its tail*, measured without coordinated omission. Pair microbenchmarks with whole-program profiling so you optimise the code that is actually hot, and verify every result in the disassembly. This is the measurement foundation the entire volume rests on: every "this is faster" claim in the preceding chapters is only meaningful if measured this way. The final two chapters address the correctness counterpart - undefined behaviour and the tools to catch it - and then the synthesis: engineering for determinism.
+
+## See also in Developer Toolchain
+
+- [[Benchmark-Methodology-Noise-and-Environment-Control]], [[Statistics-for-Benchmarks-Coordinated-Omission-and-HDR-Histograms]], [[Design-a-Low-Noise-Benchmark-Harness-Playbook]], [[Cpp-CPU-Profiling-perf-samply-Callgrind-and-llvm-mca]], [[Cpp-Google-Benchmark-and-nanobench]]

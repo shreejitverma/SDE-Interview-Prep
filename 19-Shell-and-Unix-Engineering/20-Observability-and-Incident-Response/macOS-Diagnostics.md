@@ -40,4 +40,6 @@ Prerequisites: [[journalctl-Queries]]
 
 Next: [[CPU-Affinity-and-chrt]]
 
+See also: [[macOS-vs-Linux-Toolchain-Mechanics]]
+
 ## Further reading

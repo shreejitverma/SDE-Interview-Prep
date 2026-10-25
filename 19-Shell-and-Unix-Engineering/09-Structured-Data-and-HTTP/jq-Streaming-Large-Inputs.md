@@ -40,4 +40,6 @@ Prerequisites: [[jq-Paths-and-Updates]]
 
 Next: [[yq-Variants-and-YAML-Hazards]]
 
+See also: [[Structured-Data-Wrangling-Jq-Yq-and-Coreutils]]
+
 ## Further reading

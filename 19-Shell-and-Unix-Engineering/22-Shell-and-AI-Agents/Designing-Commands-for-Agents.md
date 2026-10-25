@@ -40,6 +40,6 @@ Prerequisites: [[Agent-Shell-Sandboxing-Seatbelt-and-Landlock]]
 
 Next: [[Agent-Friendly-Output-and-Errors]]
 
-See also: [[13-Agentic-AI/Agentic-Harness/components/axi|AXI principles]]
+See also: [[13-Agentic-AI/Agentic-Harness/components/axi|AXI principles]], [[AI-Coding-Agents-Sandboxes-Worktrees-and-Ship-Gates]]
 
 ## Further reading

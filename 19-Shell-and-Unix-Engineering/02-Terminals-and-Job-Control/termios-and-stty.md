@@ -40,4 +40,6 @@ Prerequisites: [[Canonical-and-Raw-Mode]]
 
 Next: [[Pseudo-Terminals]]
 
+See also: [[TTYs-PTYs-and-Line-Discipline]], [[Drill-Command-Line-SSH-Multiplexing-and-Broken-PTY]]
+
 ## Further reading

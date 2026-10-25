@@ -40,4 +40,6 @@ Prerequisites: [[Escape-Sequences-ECMA-48-and-xterm]]
 
 Next: [[Job-Control-Signals]]
 
+See also: [[Terminal-Escape-Sequences-and-Unicode]]
+
 ## Further reading

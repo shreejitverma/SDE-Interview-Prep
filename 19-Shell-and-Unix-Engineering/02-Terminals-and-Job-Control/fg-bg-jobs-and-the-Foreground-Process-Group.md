@@ -40,4 +40,6 @@ Prerequisites: [[Job-Control-Signals]]
 
 Next: [[Readline-and-inputrc]]
 
+See also: [[Rebuild-a-Minimal-Shell-With-Job-Control]], [[Capstone-Unix-Shell-with-Job-Control]]
+
 ## Further reading

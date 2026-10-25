@@ -439,3 +439,7 @@ Netflix engineered Titus, an open-source container management platform built on 
 - Open Container Initiative. *OCI Runtime Specification (v1.1)*. https://opencontainers.org.
 - Agache, Alexandru, et al. "Firecracker: Lightweight Virtualization for Serverless Applications." *USENIX NSDI*, 2020.
 - Verma, Abhishek, et al. "Large-Scale Cluster Management at Google with Borg." *Proceedings of the European Conference on Computer Systems (EuroSys)*, 2015.
+
+## See also in Developer Toolchain
+
+- [[OCI-Images-Layers-Multi-Stage-and-Distroless]]
