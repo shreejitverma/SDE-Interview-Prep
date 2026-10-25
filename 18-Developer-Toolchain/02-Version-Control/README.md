@@ -29,7 +29,7 @@ flowchart TD
         MAINT["Git-GC-Maintenance-MIDX-and-Commit-Graph<br/>(Commit-Graph, Incremental MIDX, Bitmaps)"]
     end
     subgraph S3["Network and Protocols"]
-        PROTO["Git-Transfer-Protocol-and-Partial-Clone<br/>(Wire Protocol v2, Blobless Clone, Sparse Index)"]
+        PROTO["Git-Transfer-Protocol-and-Partial-Clone<br/>(Wire Protocol v2, Blobless Clone, Sparse Checkout)"]
         REPLAY["Git-Replay-and-Server-Side-History-Rewriting<br/>(Merge-Tree, Worktree-Free Replay)"]
         ARCH["Git-Archaeology-Log-Blame-and-Bisect<br/>(Pickaxe, Log -L, Automated Bisect)"]
         ATTR["Git-Submodules-Subtrees-LFS-and-Attributes<br/>(Submodules, Git LFS, Clean/Smudge)"]

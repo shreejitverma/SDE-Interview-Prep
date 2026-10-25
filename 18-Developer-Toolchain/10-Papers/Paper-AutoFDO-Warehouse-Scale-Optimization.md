@@ -7,7 +7,7 @@ last_reviewed:
 sources: []
 ---
 
-# Paper: AutoFDO: Automatic Feedback-Directed Optimization (Chen et al. 2016)
+# Paper: AutoFDO: Automatic Feedback-Directed Optimization for Warehouse-Scale Applications (Chen et al. 2016)
 
 > [!summary] Scope
 > Owns the CGO 2016 compiler optimization paper by Dehao Chen, David Xinliang Li, and Tipp Moseley on sample-based Feedback-Directed Optimization.

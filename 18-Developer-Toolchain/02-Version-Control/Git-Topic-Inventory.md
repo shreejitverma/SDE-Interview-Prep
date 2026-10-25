@@ -23,15 +23,15 @@ This inventory maps the authoritative documentation, internal technical specific
 
 | Source heading group | Owning note | Depth target | Existing vault coverage |
 | :--- | :--- | :--- | :--- |
-| Git Reference: Main Porcelain - Getting and Creating Projects (`init`, `clone`) | [[Git-Object-Model-and-Content-Addressing]], [[Git-Transfer-Protocol-and-Partial-Clone]] | Use, Explain, Rebuild | none |
-| Git Reference: Main Porcelain - Basic Snapshotting (`add`, `status`, `diff`, `commit`, `restore`, `reset`, `rm`, `mv`) | [[Git-Index-Stat-Cache-and-Fsmonitor]], [[Git-Three-Way-Merge-ORT-and-Diff-Algorithms]] | Use, Explain, Debug | none |
-| Git Reference: Main Porcelain - Branching and Merging (`branch`, `checkout`, `switch`, `merge`, `mergetool`, `log`, `stash`, `tag`, `worktree`) | [[Git-Refs-Reflog-and-Reftable]], [[Git-Transfer-Protocol-and-Partial-Clone]] | Use, Explain, Decide at Scale | [[13-Agentic-AI/Agentic-Harness/components/treehouse.md\|treehouse]] |
-| Git Reference: Main Porcelain - Sharing and Updating Projects (`fetch`, `pull`, `push`, `remote`, `submodule`) | [[Git-Transfer-Protocol-and-Partial-Clone]], [[Git-Submodules-Subtrees-LFS-and-Attributes]] | Use, Explain, Decide at Scale | none |
-| Git Reference: Main Porcelain - Inspection and Comparison (`show`, `log`, `diff`, `difftool`, `range-diff`, `shortlog`, `describe`) | [[Git-Archaeology-Log-Blame-and-Bisect]] | Use, Explain, Debug | none |
-| Git Reference: Main Porcelain - Patching (`apply`, `cherry-pick`, `rebase`, `revert`) | [[Git-Rebase-Internals-and-Stacked-Branches]] | Use, Explain, Debug | none |
-| Git Reference: Main Porcelain - Debugging (`bisect`, `blame`, `grep`) | [[Git-Archaeology-Log-Blame-and-Bisect]] | Use, Explain, Debug | none |
-| Git Reference: Main Porcelain - Repository Upkeep (`gc`, `maintenance`) | [[Git-GC-Maintenance-MIDX-and-Commit-Graph]] | Use, Explain, Decide at Scale | none |
-| Git Reference: Main Porcelain - Email and Patch Communication (`am`, `format-patch`, `send-email`, `request-pull`) | [[Git-Email-and-Patch-Workflows]] | Use, Explain | none |
+| git-scm.com Reference: Getting and Creating Projects (`init`, `clone`) | [[Git-Object-Model-and-Content-Addressing]], [[Git-Transfer-Protocol-and-Partial-Clone]] | Use, Explain, Rebuild | none |
+| git-scm.com Reference: Basic Snapshotting (`add`, `status`, `diff`, `commit`, `restore`, `reset`, `rm`, `mv`) | [[Git-Index-Stat-Cache-and-Fsmonitor]], [[Git-Three-Way-Merge-ORT-and-Diff-Algorithms]] | Use, Explain, Debug | none |
+| git-scm.com Reference: Branching and Merging (`branch`, `checkout`, `switch`, `merge`, `mergetool`, `log`, `stash`, `tag`, `worktree`) | [[Git-Refs-Reflog-and-Reftable]], [[Git-Transfer-Protocol-and-Partial-Clone]] | Use, Explain, Decide at Scale | [[13-Agentic-AI/Agentic-Harness/components/treehouse.md\|treehouse]] |
+| git-scm.com Reference: Sharing and Updating Projects (`fetch`, `pull`, `push`, `remote`, `submodule`) | [[Git-Transfer-Protocol-and-Partial-Clone]], [[Git-Submodules-Subtrees-LFS-and-Attributes]] | Use, Explain, Decide at Scale | none |
+| git-scm.com Reference: Inspection and Comparison (`show`, `log`, `diff`, `difftool`, `range-diff`, `shortlog`, `describe`) | [[Git-Archaeology-Log-Blame-and-Bisect]] | Use, Explain, Debug | none |
+| git-scm.com Reference: Patching (`apply`, `cherry-pick`, `rebase`, `revert`) | [[Git-Rebase-Internals-and-Stacked-Branches]] | Use, Explain, Debug | none |
+| git-scm.com Reference: Debugging (`bisect`, `blame`, `grep`) | [[Git-Archaeology-Log-Blame-and-Bisect]] | Use, Explain, Debug | none |
+| git-scm.com Reference: Administration (`gc`) and git(1) Main Porcelain (`maintenance`) | [[Git-GC-Maintenance-MIDX-and-Commit-Graph]] | Use, Explain, Decide at Scale | none |
+| git-scm.com Reference: Email (`am`, `format-patch`, `send-email`, `request-pull`) | [[Git-Email-and-Patch-Workflows]] | Use, Explain | none |
 | Git Reference: Ancillary Manipulators (`config`, `pack-refs`, `prune`, `reflog`, `refs`, `repack`, `replace`) | [[Git-Packfiles-and-Delta-Compression]], [[Git-GC-Maintenance-MIDX-and-Commit-Graph]], [[Git-Expert-Config]] | Use, Explain, Decide at Scale | none |
 | Git Reference: Ancillary Interrogators (`blame`, `fsck`, `merge-tree`, `rerere`, `verify-commit`, `verify-tag`) and the EXPERIMENTAL low-level interrogator `last-modified` (added in 2.52) | [[Git-Archaeology-Log-Blame-and-Bisect]], [[Repair-a-Corrupted-Git-Repository]], [[Git-Hooks-and-Cryptographic-Signing]] | Use, Debug, Rebuild | none |
 | Git Reference: Plumbing Manipulation (`apply`, `checkout-index`, `commit-graph`, `commit-tree`, `hash-object`, `index-pack`, `merge-file`, `multi-pack-index`, `pack-objects`, `read-tree`, `replay` (EXPERIMENTAL), `symbolic-ref`, `update-index`, `update-ref`, `write-tree`) | [[Git-Object-Model-and-Content-Addressing]], [[Git-Replay-and-Server-Side-History-Rewriting]], [[Rebuild-Mini-Git-Lab]] | Explain, Rebuild, Decide at Scale | none |
@@ -62,6 +62,6 @@ This inventory maps the authoritative documentation, internal technical specific
 
 ## Out of scope
 
-- Main Porcelain External Systems (`git-svn`, `git-p4`, `fast-import` legacy bridges) are out of scope because legacy Subversion and Perforce client bridges are superseded by native modern version control coverage and git-filter-repo.
+- git-scm.com Reference: External Systems (`git-svn`, `git-p4`, `fast-import` legacy bridges) are out of scope because legacy Subversion and Perforce client bridges are superseded by native modern version control coverage and git-filter-repo.
 - Pro Git Chapter 6 GitHub is out of scope because forge-specific web user interface tutorials and web settings do not belong in core toolchain mechanics; CLI and GitHub Actions workflows are owned by 01-Command-Line and CI systems.
 - Git internal C helper APIs (`api-parse-options`, `api-error-handling`, `api-simple-ipc`) are out of scope because internal C helper macros are git.git contributor internals rather than developer toolchain engineering concepts.

@@ -49,6 +49,7 @@ Different toolchain mechanisms require specific operating systems, CPU architect
 Each lab declares its environmental requirements in a `# requires:` comment within the first 10 lines of its `run.sh`:
 
 - `# requires: linux`: Gated to native Linux environments. On macOS hosts the harness skips these labs; run `make verify` inside an OrbStack or Docker Linux environment to exercise them.
+- `# requires: macos`: Gated to macOS hosts (Instruments, xctrace, codesign). On Linux hosts the harness skips these labs.
 - `# requires: docker`: Requires an active Docker daemon to build OCI containers or test isolated build sandboxes.
 - `# requires: pmu`: Requires access to hardware performance monitoring unit counters (e.g., instructions, cycles, cache misses), opted in with `TOOLCHAIN_LABS_PMU=1`. These cannot run inside virtualized hypervisors without PMU passthrough (an OrbStack VM exposes software events only).
 - `# requires: nightly`: Requires a nightly Rust toolchain listed by `rustup toolchain list` (e.g., for Miri or `-Zsanitizer`).

@@ -7,7 +7,7 @@ last_reviewed:
 sources: []
 ---
 
-# Paper: MemorySanitizer: Fast Detector of Uninitialized Memory Use (Stepanov and Serebryany 2015)
+# Paper: MemorySanitizer: Fast Detector of Uninitialized Memory Use in C++ (Stepanov and Serebryany 2015)
 
 > [!summary] Scope
 > Owns the CGO 2015 paper by Evgeniy Stepanov and Konstantin Serebryany on detecting reads of uninitialized memory.

@@ -79,6 +79,21 @@ class HarnessTest(unittest.TestCase):
         self.assertIn("SKIP  pillar/counters (requires pmu)", out)
         self.assertIn("0 passed", out)
 
+    def test_macos_lab_is_skipped_off_darwin_and_runs_on_darwin(self):
+        self.lab("xctrace", "#!/usr/bin/env bash\n# requires: macos\necho traced\n", "traced\n")
+        real_system = verify.platform.system
+        try:
+            verify.platform.system = lambda: "Linux"
+            rc, out = self.run_harness()
+            self.assertEqual(rc, 0, out)
+            self.assertIn("SKIP  pillar/xctrace (requires macos)", out)
+            verify.platform.system = lambda: "Darwin"
+            rc, out = self.run_harness()
+            self.assertEqual(rc, 0, out)
+            self.assertIn("PASS  pillar/xctrace", out)
+        finally:
+            verify.platform.system = real_system
+
     def test_unknown_requirement_fails_the_run(self):
         self.lab("odd", "#!/usr/bin/env bash\n# requires: linx\necho x\n", "x\n")
         rc, out = self.run_harness()

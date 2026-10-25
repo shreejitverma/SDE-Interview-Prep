@@ -7,7 +7,7 @@ last_reviewed:
 sources: []
 ---
 
-# Paper: BOLT: A Practical Binary Optimizer for Data Centers (Panchenko et al. 2019)
+# Paper: BOLT: A Practical Binary Optimizer for Data Centers and Beyond (Panchenko et al. 2019)
 
 > [!summary] Scope
 > Owns the CGO 2019 systems paper by Maksim Panchenko et al. introducing post-link binary optimization for data centers.

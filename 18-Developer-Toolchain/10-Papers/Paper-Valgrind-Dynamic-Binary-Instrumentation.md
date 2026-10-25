@@ -7,7 +7,7 @@ last_reviewed:
 sources: []
 ---
 
-# Paper: Valgrind: Dynamic Binary Instrumentation (Nethercote and Seward 2007)
+# Paper: Valgrind: A Framework for Heavyweight Dynamic Binary Instrumentation (Nethercote and Seward 2007)
 
 > [!summary] Scope
 > Owns the seminal PLDI 2007 paper on Valgrind heavyweight dynamic binary instrumentation framework by Nicholas Nethercote and Julian Seward.

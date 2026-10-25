@@ -13,6 +13,7 @@ Requirements are declared in the first lines of run.sh:
 
 - linux:   runs only on a Linux host (ptrace, perf, rr, bpftrace). On macOS such labs are
            skipped; run `make verify` inside a Linux VM or container to exercise them.
+- macos:   runs only on a macOS host (Instruments, xctrace, codesign). On Linux such labs are skipped.
 - docker:  the lab itself drives `docker` (building or running images), so it needs a working one.
 - pmu:     needs hardware performance counters; set TOOLCHAIN_LABS_PMU=1 on a host that has them.
 - nightly: needs a nightly Rust toolchain (Miri, -Zsanitizer).
@@ -40,7 +41,7 @@ import sys
 from pathlib import Path
 
 REQUIRES_RE = re.compile(r"^#\s*requires:\s*(.+)$", re.M)
-KNOWN = ("linux", "docker", "pmu", "nightly", "network")
+KNOWN = ("linux", "macos", "docker", "pmu", "nightly", "network")
 TIMEOUT_S = 900
 PROBE_TIMEOUT_S = 10
 # Run-to-run noise with no teaching value: heap and stack addresses, and temp paths.
@@ -75,6 +76,8 @@ def unmet(reqs: list[str]) -> list[str]:
     missing = []
     for r in reqs:
         if r == "linux" and platform.system() != "Linux":
+            missing.append(r)
+        elif r == "macos" and platform.system() != "Darwin":
             missing.append(r)
         elif r == "docker" and ((p := probe(["docker", "info"])) is None or p.returncode != 0):
             missing.append(r)

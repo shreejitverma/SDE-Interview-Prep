@@ -9,7 +9,7 @@ sources:
   - "Santiago Torres-Arias et al., in-toto Specification v1.0, in-toto Project, 2023, https://github.com/in-toto/specification/blob/master/in-toto-spec.md"
   - "in-toto Attestation Framework Contributors, in-toto Attestation Framework Specification v1.1 (v1.2.0), in-toto Project, 2026, https://github.com/in-toto/attestation/tree/main/spec/v1"
   - "Sigstore Project Authors, Sigstore Documentation (Cosign v3.1.3, Fulcio, Rekor, Gitsign), Linux Foundation, 2026, https://docs.sigstore.dev/"
-  - "SPDX Workgroup, The System Package Data Exchange (SPDX) Specification Version 3.0.1, Linux Foundation, 2024, https://spdx.github.io/spdx-spec/v3.0.1/"
+  - "SPDX Workgroup, The Software Package Data Exchange (SPDX) Specification Version 3.0.1, Linux Foundation, 2024, https://spdx.github.io/spdx-spec/v3.0.1/"
   - "OWASP CycloneDX Project, CycloneDX Authoritative Guide and Specification v1.7.2, OWASP Foundation, 2026, https://cyclonedx.org/specification/overview/"
   - "OpenSSF Scorecard Maintainers, OpenSSF Scorecard Checks Documentation v5.6.0, Open Source Security Foundation, 2026, https://github.com/ossf/scorecard/blob/main/docs/checks.md"
   - "Reproducible Builds Project, Reproducible Builds Documentation and Specification, Software in the Public Interest, 2026, https://reproducible-builds.org/docs/"

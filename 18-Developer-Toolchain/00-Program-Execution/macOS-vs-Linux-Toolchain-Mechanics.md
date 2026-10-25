@@ -19,4 +19,4 @@ sources: []
 - Prerequisites: [[Dynamic-Linking-PLT-GOT-and-Loaders]], [[ELF-Mach-O-and-PE-Object-Formats]]
 - Next: [[Program-Execution-Decision-Records]]
 - See also: [[19-Shell-and-Unix-Engineering/20-Observability-and-Incident-Response/macOS-Diagnostics|macOS Diagnostics]]
-- Lab: `code/00-Program-Execution/macos_codesign_entitlements/`
+- Lab: `code/00-Program-Execution/macos_codesign_entitlements/` (requires: macos)

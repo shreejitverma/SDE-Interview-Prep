@@ -18,4 +18,4 @@ sources: []
 
 - Prerequisites: none
 - Next: [[Intel-VTune-AMD-uProf-and-Hardware-Tracing-PT-SPE]]
-- Lab: `code/05-Profiling/xctrace_automation/`
+- Lab: `code/05-Profiling/xctrace_automation/` (requires: macos)

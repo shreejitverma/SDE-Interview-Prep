@@ -7,7 +7,7 @@ last_reviewed:
 sources: []
 ---
 
-# Paper: Producing Wrong Data Without Doing Anything Obviously Wrong (Mytkowicz et al. 2009)
+# Paper: Producing Wrong Data Without Doing Anything Obviously Wrong! (Mytkowicz et al. 2009)
 
 > [!summary] Scope
 > Owns the foundational ASPLOS 2009 empirical measurement study by Todd Mytkowicz et al. demonstrating how innocuous experimental variations fundamentally bias performance benchmarks.

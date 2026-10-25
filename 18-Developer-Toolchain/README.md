@@ -92,6 +92,7 @@ The harness enforces reproducible accuracy and prevents documentation drift:
 - **Platform Gating:**
   Labs declare environmental prerequisites using header comments:
   - `# requires: linux`: runs only on a Linux host; on macOS the harness skips it, so run `make verify` inside a Linux VM or container to exercise it.
+  - `# requires: macos`: runs only on a macOS host (Instruments, xctrace, codesign); on Linux the harness skips it.
   - `# requires: docker`: the lab itself drives Docker (for example building manylinux wheels), so it needs a working Docker daemon.
   - `# requires: pmu`: requires hardware performance counters (bare metal or a PMU-virtualized hypervisor) and runs only when `TOOLCHAIN_LABS_PMU=1` is set.
   - `# requires: nightly`: requires compiler nightly toolchains (e.g., Rust nightly for Miri or sanitizer flags).
