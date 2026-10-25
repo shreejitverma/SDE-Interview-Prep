@@ -89,7 +89,7 @@ run_containers() {
     printf '== building %s\n' "$image"
     docker build -q -t "$image" -f "$dockerfile" "$LABS_DIR/matrix" >/dev/null \
       || die "docker build failed for $dockerfile"
-    docker run --rm -v "$LABS_DIR:/labs:ro" "$image" bash /labs/run-matrix.sh --in-container "$@"
+    docker run --rm -e BATS_TEST_TIMEOUT -v "$LABS_DIR:/labs:ro" "$image" bash /labs/run-matrix.sh --in-container "$@"
     status=$?
     [ "$status" -eq 0 ] || rc=$status
   done

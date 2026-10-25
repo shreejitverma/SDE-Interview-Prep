@@ -34,11 +34,11 @@ case $mode in
     ;;
 
   safe-arith)
-    # Hardened: restrict to ASCII decimal digits before arithmetic expansion.
+    # Hardened: accept only canonical ASCII decimals of at most 9 digits before arithmetic expansion.
     a=0
     metric=${1:-}
     case $metric in
-      '' | *[!0-9]*)
+      '' | *[!0-9]* | 0?* | ??????????*)
         printf 'error:invalid integer\n' >&2
         exit 2
         ;;

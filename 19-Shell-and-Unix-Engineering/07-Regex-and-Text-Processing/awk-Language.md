@@ -354,7 +354,8 @@ Notice in Phase 1 that `exit 0` on `NR == 3` immediately abandons `f2.txt` befor
 > - **Symptom**: In POSIX-conforming implementations (`gawk`, `onetrueawk`, `BusyBox awk`), `<newline>` is always treated as an additional field separator (`POSIX.1-2024 XCU Chapter 4 awk, Variables and Special Variables`), splitting lines into separate fields (`NF = 4` for `\n\na:b\nc:d\n\n`).
 >   In `mawk` (the default `/usr/bin/awk` on Debian and Ubuntu; `/usr/bin/awk` resolves to `/usr/bin/mawk` in Debian 13 trixie as of 2026-10), `<newline>` is treated as whitespace only when `FS = " "`.
 >   When `FS` is customized (such as `FS = ":"`), `mawk` splits strictly on `FS` alone, embedding literal newlines inside fields (`$2` becomes `"b\nc"` and `NF = 3`) (`mawk(1)` Section 12 "Multi-line records" and the COMPATIBILITY section, a documented intentional divergence that persists under `mawk -W posix` on `mawk 1.3.4 20250131`; not found in the changelog as of 2026-10).
-> - **Fix**: To parse multi-line delimited records portably across all `awk` implementations including `mawk`, include `\n` explicitly in `FS` as a regular expression (for example, `FS = "[:\n]+"` or `FS = "[\n:]"`), or normalize records before passing them to `awk`.
+> - **Fix**: To parse multi-line delimited records portably across all `awk` implementations including `mawk`, include `\n` explicitly in `FS` as a single-character bracket expression (`FS = "[\n:]"`), or normalize records before passing them to `awk`.
+>   Avoid `FS = "[:\n]+"`: the `+` merges adjacent delimiters, so `a::b` yields 2 fields instead of the 3 (`a`, empty, `b`) that POSIX paragraph mode produces.
 
 ## Security and robustness
 
@@ -383,7 +384,7 @@ Its enduring advantage is that the `BEGIN` -> `RS`/`FS` record-field loop -> `EN
 
 The engineering trade-off hinges on **implicitness vs. invariants**:
 - **Stay in `awk`** when the input is line- or paragraph-oriented text with flat delimiter- or regex-separated columns, the logic fits in `< 50` lines of pattern-action rules or associative-array aggregations (`[[awk-Associative-Arrays-and-Idioms]]`), and streaming throughput with zero external runtime dependencies is the primary constraint.
-  When deploying across heterogeneous Linux environments, remember that default `awk` on Debian and Ubuntu is `mawk`, which violates POSIX `RS = ""` paragraph mode by failing to split fields on newlines when `FS` is custom: either standardize on `gawk` or specify `FS = "[:\n]+"` explicitly.
+  When deploying across heterogeneous Linux environments, remember that default `awk` on Debian and Ubuntu is `mawk`, which violates POSIX `RS = ""` paragraph mode by failing to split fields on newlines when `FS` is custom: either standardize on `gawk` or specify `FS = "[\n:]"` explicitly (not `[:\n]+`, which merges adjacent delimiters and drops empty fields).
 - **Step down to `cut`, `tr`, or `grep`** when delimiters are single literal bytes (such as `:` or `\t`) and no arithmetic, field reordering, or state across lines is needed; `LC_ALL=C cut -d: -f1` avoids `awk`'s ERE field-splitting and `STRNUM` inspection overhead entirely.
 - **Step up to `[[Python-as-a-Shell-Companion]]` (or Rust/Go)** the moment any of four boundaries is crossed:
   1. The data format has nested or quoted escaping rules (JSON, YAML, XML, or RFC 4180 CSV with embedded newlines where POSIX `awk` lacks a parser).

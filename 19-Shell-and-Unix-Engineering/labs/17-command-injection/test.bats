@@ -92,6 +92,22 @@ setup() {
   [[ "$output" != *"PWNED_ARITH"* ]]
 }
 
+@test "safe-arith rejects leading zeros and over-long values that shells evaluate inconsistently" {
+  run_lab "$SCRIPT" safe-arith '0'
+  [ "$status" -eq 0 ]
+  [ "$output" = "val:1 a:0" ]
+
+  run_lab "$SCRIPT" safe-arith '999999999'
+  [ "$status" -eq 0 ]
+  [ "$output" = "val:1000000000 a:0" ]
+
+  for metric in 010 08 00 1234567890; do
+    run_lab "$SCRIPT" safe-arith "$metric"
+    [ "$status" -eq 2 ]
+    [ "$output" = "error:invalid integer" ]
+  done
+}
+
 @test "vuln-test-eq executes subscript command substitution in Korn-derived test builtins" {
   # shellcheck disable=SC2016 # literal command substitution inside array subscript payload
   payload='a[$(printf "PWNED_%s\n" "TESTEQ" >&2)0]'

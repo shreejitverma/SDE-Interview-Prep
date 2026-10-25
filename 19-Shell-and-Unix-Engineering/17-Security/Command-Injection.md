@@ -232,11 +232,11 @@ case $mode in
     ;;
 
   safe-arith)
-    # Hardened: restrict to ASCII decimal digits before arithmetic expansion.
+    # Hardened: accept only canonical ASCII decimals of at most 9 digits before arithmetic expansion.
     a=0
     metric=${1:-}
     case $metric in
-      '' | *[!0-9]*)
+      '' | *[!0-9]* | 0?* | ??????????*)
         printf 'error:invalid integer\n' >&2
         exit 2
         ;;
@@ -352,13 +352,15 @@ error:invalid integer
 > [!warning] Arithmetic Expansion with Unsanitized Variables
 > Trigger: Passing unvalidated environment or user variables directly into arithmetic evaluations `$((var))` or `let`.
 > Symptom: State corruption via recursive variable assignment or command execution via array subscript expansion in Bash, Zsh, mksh, posh, and legacy AT&T ksh93u+.
-> Fix: Validate that the variable consists exclusively of ASCII decimal digits using `case $var in '' | *[!0-9]*) exit 2 ;; *) ;; esac` before evaluating arithmetic expressions.
+> Fix: Validate that the variable is a canonical ASCII decimal of at most 9 digits using `case $var in '' | *[!0-9]* | 0?* | ??????????*) exit 2 ;; *) ;; esac` before evaluating arithmetic expressions.
+> The `0?*` branch rejects leading zeros, because `$((010 + 1))` is 9 in `bash` and `dash` but 11 in `zsh` and `ksh93`, and `08` aborts `bash` and `dash` while `zsh` and `ksh93` read it as 8.
+> The `??????????*` branch rejects 10 or more digits, so the value always fits in the 32-bit signed arithmetic of `mksh` and never wraps silently.
 > Incident: GNU Bash arithmetic recursive expansion in `expr.c:evalexp` and array subscript evaluation in `arrayfunc.c:array_expand_index` through `subst.c:expand_arith_string` (bash 5.3 source).
 
 > [!warning] KornShell Arithmetic Divergence Across Releases (ksh93u+ vs ksh93u+m)
 > Trigger: Running scripts that evaluate unvalidated variables in arithmetic expressions or integer test comparisons under differing KornShell releases.
 > Symptom: Under legacy AT&T ksh93u+ (such as macOS `/bin/ksh`), array subscripts with command substitutions `a[$(cmd)0]` fork a subshell and execute commands; under modern ksh93u+m (version 1.0+ on Debian and modern Linux), the arithmetic parser rejects `$` inside subscripts with an arithmetic syntax error (`rc=1` in `$(( ... ))`, `rc=2` in `[`), aborting execution without invoking the command.
-> Fix: Never assume identical arithmetic evaluation semantics across KornShell implementations; enforce strict integer validation using `case $var in '' | *[!0-9]*) exit 2 ;; *) ;; esac` before entering arithmetic expansion or conditional comparisons.
+> Fix: Never assume identical arithmetic evaluation semantics across KornShell implementations; enforce strict integer validation using `case $var in '' | *[!0-9]* | 0?* | ??????????*) exit 2 ;; *) ;; esac` before entering arithmetic expansion or conditional comparisons.
 > Incident: ksh93u+m `NEWS` entry dated 2021-03-04, "Fixed an arbitrary command execution vulnerability that occurred when parsing the subscripts of arrays within arithmetic commands and expansion", which legacy AT&T ksh93u+ 2012-08-01 never received (as of 2026-10).
 
 > [!warning] Dynamic Variable Binding in `read` and Indirection
@@ -425,7 +427,7 @@ Because arithmetic contexts in Korn-derived and GNU shells parse variable conten
 ```sh
 validate_integer() {
   case $1 in
-    '' | *[!0-9]*)
+    '' | *[!0-9]* | 0?* | ??????????*)
       printf 'security error: invalid integer: %s\n' "$1" >&2
       return 1
       ;;
@@ -436,12 +438,15 @@ validate_integer() {
 }
 ```
 
-For signed integers, allow an optional leading minus or plus sign:
+The `0?*` branch rejects leading zeros (a lone `0` still passes), because shells disagree on whether `010` is octal 8 or decimal 10, and `08` is a fatal error in `bash` and `dash`.
+The `??????????*` branch caps the value at 9 digits, so it fits in 32-bit signed arithmetic (`mksh`) and in every wider shell without silent wraparound.
+
+For signed integers, allow an optional leading minus or plus sign under the same leading-zero and length rules:
 
 ```sh
 validate_signed_integer() {
   case $1 in
-    '' | - | + | *[!0-9+-]* | ?*[+-]*)
+    '' | - | + | *[!0-9+-]* | ?*[+-]* | 0?* | [+-]0?* | [0-9]?????????* | [+-]??????????*)
       printf 'security error: invalid signed integer: %s\n' "$1" >&2
       return 1
       ;;
@@ -488,11 +493,11 @@ Shell allows rapid prototyping of process pipelines, but its fundamental design-
 
 ## Interview questions
 
-> [!question] L5: Why does `sh -c "echo $1" sh "$val"` execute code if `$val` contains `$(id)`, whereas `sh -c 'echo "$1"' sh "$val"` does not?
+> [!question] L5: Why does `sh -c "echo $val"` execute code if `$val` contains `$(id)`, whereas `sh -c 'echo "$1"' sh "$val"` does not?
 >
 > > [!success]- Answer
-> > In the first command, double quotes allow the outer calling shell to expand `$1` prior to spawning the child shell process.
-> > If `$val` contains `$(id)`, the outer shell interpolates the string into the command operand, forcing the inner shell to parse and execute `$(id)` during its initial lexical scan.
+> > In the first command, double quotes allow the outer calling shell to expand `$val` prior to spawning the child shell process.
+> > If `$val` contains `$(id)`, the outer shell interpolates that text into the command operand without executing it, so the inner shell receives `echo $(id)` as code and executes `$(id)` when it parses the string.
 > > In the second command, single quotes prevent parameter expansion in the outer shell, delivering the literal string `'echo "$1"'` as code.
 > > The inner shell parses the command with a static parameter reference and receives `$val` out-of-band in its own argument vector, expanding it safely without re-tokenization.
 > >
@@ -520,7 +525,8 @@ Shell allows rapid prototyping of process pipelines, but its fundamental design-
 >
 > > [!success]- Answer
 > > The function contains three critical injection vulnerabilities: `eval` re-parses the entire string, the `$table` variable is concatenated into shell code, and `$id` is concatenated into both shell code and SQL.
-> > An attacker supplying an `$id` of `1; reboot` executes commands at the shell level, while supplying `1 UNION SELECT ...` achieves SQL injection.
+> > An `$id` of `1; reboot` stays inside the single-quoted SQL operand after expansion, so `sqlite3` receives it as SQL and nothing reaches the shell.
+> > A shell-level break-out needs a quote in the payload: an `$id` of `1'$(reboot)'` closes the single-quoted operand, so `eval` parses and executes `$(reboot)`, while `1 UNION SELECT ...` achieves SQL injection.
 > > The `eval` wrapper is completely redundant and must be eliminated.
 > > To harden the function, validate `$table` against a strict whitelist of known table names, validate `$id` as an ASCII integer, and pass parameters to `sqlite3` without `eval`.
 > >

@@ -304,7 +304,8 @@ Under native `zsh`, `1_candidates` prints `argc=3 <a:b> <c:d> <a:b>`, `2_mixed_i
 > [!warning] Inherited `IFS` environment pollution in `posh` (Austin Group Defect 884)
 > - Trigger: Invoking a script under `posh` 0.14.1 when the calling process exported `IFS` in `environ` (such as `export IFS=:` in a parent wrapper).
 > - Symptom: While standard POSIX shells sanitize `IFS` to `<space><tab><newline>` on startup per Austin Group Defect 884 (`(POSIX.1-2024 XCU 2.5.3)`), `posh` inherits the caller's `IFS` unchanged (`len=1 hex=3a`), causing subsequent unquoted expansions and default `read` commands to split on the foreign delimiter instead of whitespace.
-> - Fix: Explicitly initialize `IFS` at the head of every script (`IFS="$(printf ' \t\n')"`), or invoke scripts using `env -u IFS` to prevent environment pollution.
+> - Fix: Explicitly reset `IFS` at the head of every script with `unset IFS` (which splits on `<space><tab><newline>`) or the sentinel idiom `IFS=$(printf ' \t\nx'); IFS=${IFS%x}`, or invoke scripts using `env -u IFS` to prevent environment pollution.
+> - Never write `IFS="$(printf ' \t\n')"`: command substitution strips the trailing newline, leaving `IFS` as `<space><tab>` only.
 
 > [!warning] Spurious backslash in `ksh93u+m 1.0.10` during `"$*"` with null `IFS`
 > - Trigger: Expanding double-quoted `"$*"` directly in a command argument under `ksh93u+m 1.0.10` when `IFS=` is null and positional parameters contain an empty string (for example, `set -- "a b" "" "c:d"; IFS=; printf '%s' "$*"`).
