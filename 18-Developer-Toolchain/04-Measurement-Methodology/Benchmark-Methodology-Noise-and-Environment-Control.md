@@ -12,8 +12,7 @@ sources: []
 > [!summary] Scope
 > This note owns experimental rigor and environmental noise elimination in software benchmarking.
 > It reaches the Use, Explain, and Debug rungs by showing how CPU frequency governors, Turbo Boost, SMT/hyperthreading, NUMA topology, ASLR, and memory layout bias corrupt benchmarks.
-> It grounds the empirical findings of Mytkowicz et al.
-> and establishes host preparation protocols for low-noise measurement.
+> It grounds the empirical findings of Mytkowicz et al. and establishes host preparation protocols for low-noise measurement.
 
 ## Related
 

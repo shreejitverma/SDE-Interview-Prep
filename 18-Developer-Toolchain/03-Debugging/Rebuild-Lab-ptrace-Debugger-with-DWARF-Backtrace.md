@@ -19,4 +19,4 @@ sources: []
 - Prerequisites: [[How-Debuggers-Work-ptrace-Mach-and-Breakpoints]]
 - Next: [[Drill-Debugging-Use-After-Free-Core-Dump]]
 - See also: [[01-CS-Foundations/Operating-Systems/GIOS/Part-2-Process-Thread-Management/P2L1-Processes-and-Process-Management|P2L1 Processes and Process Management]]
-- Lab: `code/03-Debugging/ptrace_debugger/` (requires: linux, docker)
+- Lab: `code/03-Debugging/ptrace_debugger/` (requires: linux)

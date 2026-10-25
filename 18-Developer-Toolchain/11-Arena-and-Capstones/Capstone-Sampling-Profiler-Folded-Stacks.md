@@ -19,4 +19,4 @@ sources: []
 - Prerequisites: [[Sampling-vs-Instrumentation-Skid-and-Safepoint-Bias]], [[Stack-Unwinding-CFI-and-Exception-ABI]], [[Flame-Graphs-Differential-Flame-Graphs-and-Visualizations]], [[Rebuild-Lab-Sampling-Profiler-to-Folded-Stacks]]
 - Next: [[Capstone-Polyglot-Packaging-and-Release-Pipeline]]
 - See also: [[12-Performance-Engineering/02-Profiling/profiling_guide|profiling_guide]], [[15-Technical-Whitepapers/01-Systems-Performance-and-Tracing/Brendan-Gregg-Performance-Canon|Brendan Gregg Performance Canon]]
-- Lab: `code/11-Arena-and-Capstones/capstone_sampling_profiler/` (requires: linux, docker)
+- Lab: `code/11-Arena-and-Capstones/capstone_sampling_profiler/` (requires: linux)

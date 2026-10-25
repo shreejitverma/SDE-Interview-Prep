@@ -19,4 +19,4 @@ sources: []
 - Prerequisites: none
 - Next: [[Cpp-Google-Benchmark-and-nanobench]]
 - See also: [[12-Performance-Engineering/02-Profiling/profiling_guide|profiling_guide]]
-- Lab: `code/05-Profiling/heaptrack_profiling/` (requires: linux, docker)
+- Lab: `code/05-Profiling/heaptrack_profiling/` (requires: linux)

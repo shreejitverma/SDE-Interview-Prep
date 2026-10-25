@@ -19,4 +19,4 @@ sources: []
 - Prerequisites: [[How-Debuggers-Work-ptrace-Mach-and-Breakpoints]], [[DWARF-Debug-Information-and-Symbol-Bundles]], [[Calling-Conventions-System-V-AMD64-and-AAPCS64]], [[Rebuild-Lab-ptrace-Debugger-with-DWARF-Backtrace]]
 - Next: [[Capstone-Sampling-Profiler-Folded-Stacks]]
 - See also: [[01-CS-Foundations/Operating-Systems/GIOS/Part-2-Process-Thread-Management/P2L1-Processes-and-Process-Management|P2L1 Processes and Process Management]]
-- Lab: `code/11-Arena-and-Capstones/capstone_ptrace_debugger/` (requires: linux, docker)
+- Lab: `code/11-Arena-and-Capstones/capstone_ptrace_debugger/` (requires: linux)

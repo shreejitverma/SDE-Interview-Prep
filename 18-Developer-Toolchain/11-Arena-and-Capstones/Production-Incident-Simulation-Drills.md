@@ -19,4 +19,4 @@ sources: []
 - Prerequisites: [[Cross-Pillar-Debugging-Scenario-Bank]], [[Diagnose-Dynamic-Linker-and-ABI-Failures]], [[Respond-to-a-Compromised-Transitive-Dependency]]
 - Next: [[Capstone-Mini-Git-in-Rust]]
 - See also: [[14-Low-Latency-Systems/13 - Reliability, Ops & Testing/Deterministic Replay and Packet Injection Testing|Deterministic Replay and Packet Injection Testing]], [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/README|README]]
-- Lab: `code/11-Arena-and-Capstones/incident_sim_drills/` (requires: linux, docker)
+- Lab: `code/11-Arena-and-Capstones/incident_sim_drills/` (requires: linux)

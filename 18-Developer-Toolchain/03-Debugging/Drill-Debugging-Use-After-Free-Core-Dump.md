@@ -18,4 +18,4 @@ sources: []
 
 - Prerequisites: [[Debug-a-Production-Crash-From-a-Core-Dump]]
 - Next: [[Drill-Debugging-Asyncio-and-Tokio-Deadlock]]
-- Lab: `code/03-Debugging/drill_uaf_core/` (requires: linux, docker)
+- Lab: `code/03-Debugging/drill_uaf_core/` (requires: linux)

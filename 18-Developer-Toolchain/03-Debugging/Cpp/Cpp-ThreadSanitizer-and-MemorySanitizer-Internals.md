@@ -19,4 +19,4 @@ sources: []
 - Prerequisites: [[Cpp-AddressSanitizer-and-LeakSanitizer-Internals]]
 - Next: [[Cpp-UndefinedBehaviorSanitizer-and-UB-Field-Guide]]
 - See also: [[02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_105_Sanitizers_Fuzzing_Testing_Concurrency/Chapter_105_Sanitizers_Fuzzing_and_Testing_Concurrent_Code|Chapter_105_Sanitizers_Fuzzing_and_Testing_Concurrent_Code]]
-- Lab: `code/03-Debugging/tsan_race_vector/` (requires: linux, docker)
+- Lab: `code/03-Debugging/tsan_race_vector/` (requires: linux)

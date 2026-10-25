@@ -10,8 +10,7 @@ sources: []
 # Case Study: Knight Capital Deployment Failure and Reused Feature Flags
 
 > [!summary] Scope
-> Analysis of the August 1, 2012 Knight Capital $460 million trading disaster documented in SEC Release No.
-> 34-70694.
+> Analysis of the August 1, 2012 Knight Capital $460 million trading disaster documented in SEC Release No. 34-70694.
 > Details how manual server-by-server deployment left one server running legacy code where a repurposed feature flag inadvertently triggered high-speed test trading routines in production.
 > Extracts rigorous release engineering rules for automated atomic fleet deployment, configuration immutability, and dead-flag decommissioning.
 > Links the operational breakdown to foundational exchange architecture and automated risk controls.

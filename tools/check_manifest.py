@@ -88,8 +88,9 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--book", default=DEFAULT_BOOK)
     args = ap.parse_args(argv)
     if not (args.repo / args.book).is_dir():
-        print(f"manifest: {args.book}/ does not exist; nothing to check")
-        return 0
+        print(f"FAIL {args.book}/ does not exist (renamed, deleted, or a --book typo)")
+        print("result: FAIL")
+        return 1
     problems = check(args.repo, args.book)
     for p in problems:
         print(f"FAIL {p}")

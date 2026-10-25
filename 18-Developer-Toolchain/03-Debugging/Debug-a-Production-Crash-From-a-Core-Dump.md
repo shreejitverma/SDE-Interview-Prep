@@ -19,4 +19,4 @@ sources: []
 - Prerequisites: [[Core-Dumps-Minidumps-and-Crash-Reporting]], [[Symbol-Servers-and-debuginfod]]
 - Next: [[Rebuild-Lab-ptrace-Debugger-with-DWARF-Backtrace]]
 - See also: [[14-Low-Latency-Systems/13 - Reliability, Ops & Testing/Observability Without Perturbation|Observability Without Perturbation]]
-- Lab: `code/03-Debugging/core_dump_triage/` (requires: linux, docker)
+- Lab: `code/03-Debugging/core_dump_triage/` (requires: linux)

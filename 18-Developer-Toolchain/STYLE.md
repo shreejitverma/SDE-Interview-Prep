@@ -196,8 +196,9 @@ All runnable code, reproduction test cases, and benchmarks must reside inside th
   - `make record`: Runs labs and updates the golden output files.
   - `make verify LAB=<name>`: Runs verification only for labs whose path contains `<name>`.
 - **Environment Gating:** Every lab's `run.sh` must declare its environmental requirements in a `# requires:` comment within its first 10 lines:
-  - `# requires: linux`: Linux system call dependencies (e.g., ptrace, namespaces, epoll).
-  - `# requires: docker`: Container-isolated executions.
+  - `# requires: linux`: Linux system call dependencies (e.g., ptrace, namespaces, epoll); the lab runs only on a Linux host and is skipped on macOS.
+  - `# requires: docker`: The lab itself drives Docker (building or running images) and needs a working daemon.
+  - An unknown requirement fails `make verify`, so a typo cannot silently stop a lab from running.
   - `# requires: pmu`: Hardware performance counters or PMU virtualization, opted in with `TOOLCHAIN_LABS_PMU=1`.
   - `# requires: nightly`: Nightly language compiler features.
   - `# requires: network`: External network or package registry access, opted in with `TOOLCHAIN_LABS_NETWORK=1`.
@@ -208,7 +209,7 @@ The file `18-Developer-Toolchain/manifest.tsv` is the single source of truth for
 - **File Format:** Tab-separated values (TSV) with UTF-8 encoding and Unix LF line endings.
 - **Columns (in exact order):**
   1. `order`: 1-based sequential integer defining global reading order.
-  2. `pillar_label`: Two-digit pillar identifier (e.g., `00`, `01`, ..., `11`), or `root` for the folder-level `README.md` and `STYLE.md`.
+  2. `pillar_label`: Two-digit pillar identifier (e.g., `00`, `01`, ..., `11`), `root` for the folder-level `README.md` and `STYLE.md`, or `code` for `code/README.md`.
   3. `pillar_title`: Clean pillar title (e.g., `Program Execution`, `Arena and Capstones`).
   4. `note_id`: The note's `path` without `.md` (for example `00-Program-Execution/README`), unique by construction.
   5. `kind`: Note type (`concept`, `playbook`, `problem`, `case-study`, `paper`, `moc`), equal to the note's frontmatter `type`.

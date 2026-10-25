@@ -10,8 +10,7 @@ sources: []
 # Paper: Modern Code Review: A Case Study at Google (Sadowski et al. 2018)
 
 > [!summary] Scope
-> Owns the ICSE-SEIP 2018 empirical study of 9 million code reviews at Google by Caitlin Sadowski et al.
-> Analyzes review participation dynamics, turnaround latencies, change size distributions, and developer motivations.
+> Owns the ICSE-SEIP 2018 empirical study of 9 million code reviews at Google by Caitlin Sadowski et al. Analyzes review participation dynamics, turnaround latencies, change size distributions, and developer motivations.
 > Demonstrates that code review primary organizational values are code maintainability, readability, and knowledge transfer rather than finding obscure bugs, grounding the code review and readability notes in pillar 09.
 
 ## Related

@@ -15,7 +15,7 @@ sources:
 # Developer Toolchain
 
 This knowledge base provides an atomic, mechanism-first curriculum covering the complete software engineering developer toolchain across C++, Python, and Rust.
-It spans five core pillars - command-line execution, version control, debugging, profiling, and build and release systems - grounded in low-level operating system foundations and scaled to enterprise developer infrastructure.
+It spans twelve pillar folders around five themes - the command line, version control, debugging, profiling, and build and release - grounded in low-level operating system foundations and scaled to enterprise developer infrastructure.
 Every concept reaches rigorous depth rungs from daily expert usage and kernel mechanics up to minimal system rebuilds and staff-plus organizational decision records verified by automated test suites.
 
 ```mermaid
@@ -91,8 +91,8 @@ The harness enforces reproducible accuracy and prevents documentation drift:
   Running `make verify` re-executes all lab scripts and asserts that raw CLI and program outputs match the golden expected outputs recorded in `expected/<platform>.txt`, where platform is `<os>-<arch>` (for example `darwin-arm64` or `linux-aarch64`).
 - **Platform Gating:**
   Labs declare environmental prerequisites using header comments:
-  - `# requires: linux`: gated to native Linux or containerized environments.
-  - `# requires: docker`: executed inside an OrbStack or Docker container.
+  - `# requires: linux`: runs only on a Linux host; on macOS the harness skips it, so run `make verify` inside a Linux VM or container to exercise it.
+  - `# requires: docker`: the lab itself drives Docker (for example building manylinux wheels), so it needs a working Docker daemon.
   - `# requires: pmu`: requires hardware performance counters (bare metal or a PMU-virtualized hypervisor) and runs only when `TOOLCHAIN_LABS_PMU=1` is set.
   - `# requires: nightly`: requires compiler nightly toolchains (e.g., Rust nightly for Miri or sanitizer flags).
   - `# requires: network`: permits external registry or network access during verification, only when `TOOLCHAIN_LABS_NETWORK=1` is set.

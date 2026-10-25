@@ -11,13 +11,15 @@ Requirements are declared in the first lines of run.sh:
 
     # requires: linux, pmu
 
-- linux:   runs only on Linux (ptrace, perf, rr, bpftrace).
-- docker:  needs a working `docker` (Linux labs run from macOS in a container).
+- linux:   runs only on a Linux host (ptrace, perf, rr, bpftrace). On macOS such labs are
+           skipped; run `make verify` inside a Linux VM or container to exercise them.
+- docker:  the lab itself drives `docker` (building or running images), so it needs a working one.
 - pmu:     needs hardware performance counters; set TOOLCHAIN_LABS_PMU=1 on a host that has them.
 - nightly: needs a nightly Rust toolchain (Miri, -Zsanitizer).
 - network: downloads something; set TOOLCHAIN_LABS_NETWORK=1 to allow it.
 
 A lab whose requirements are not met is reported as skipped, never as passed.
+An unknown requirement (a typo such as `linx`) fails the run, so a lab cannot silently stop running.
 
 Usage (from code/):
     python3 -m _harness.verify              # check every lab on this platform
@@ -70,8 +72,8 @@ def unmet(reqs: list[str]) -> list[str]:
             missing.append(r)
         elif r == "pmu" and os.environ.get("TOOLCHAIN_LABS_PMU") != "1":
             missing.append(r)
-        elif r == "nightly" and "nightly" not in subprocess.run(
-                ["rustup", "toolchain", "list"], capture_output=True, text=True).stdout:
+        elif r == "nightly" and (shutil.which("rustup") is None or "nightly" not in subprocess.run(
+                ["rustup", "toolchain", "list"], capture_output=True, text=True).stdout):
             missing.append(r)
         elif r == "network" and os.environ.get("TOOLCHAIN_LABS_NETWORK") != "1":
             missing.append(r)
@@ -104,7 +106,13 @@ def main(argv: list[str] | None = None) -> int:
     passed = failed = skipped = unrecorded = 0
     for lab in discover(args.root, args.needle):
         name = lab.relative_to(args.root).as_posix()
-        missing = unmet(requirements(lab / "run.sh"))
+        reqs = requirements(lab / "run.sh")
+        unknown = [r for r in reqs if r not in KNOWN]
+        if unknown:
+            failed += 1
+            print(f"FAIL  {name} (unknown requirement: {', '.join(unknown)}; known: {', '.join(KNOWN)})")
+            continue
+        missing = unmet(reqs)
         if missing:
             skipped += 1
             print(f"SKIP  {name} (requires {', '.join(missing)})")

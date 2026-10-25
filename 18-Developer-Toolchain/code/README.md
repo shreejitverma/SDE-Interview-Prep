@@ -23,7 +23,7 @@ code/
   Makefile                          # Master verification harness entry point
   _harness/                         # Verification harness
     verify.py                       # Discovers labs, checks requirements, runs, scrubs, and diffs
-  00-program-execution/
+  00-Program-Execution/
     <lab_name>/
       run.sh                        # Lab execution entry point (run as `bash run.sh`)
       ...source files...            # C++, Python, Rust, or Shell source code
@@ -31,16 +31,16 @@ code/
         darwin-arm64.txt            # Golden output for macOS Apple Silicon
         linux-amd64.txt             # Golden output for Linux x86-64
         linux-aarch64.txt           # Golden output for Linux AArch64
-  01-command-line/
-  02-version-control/
-  03-debugging/
-  04-measurement-methodology/
-  05-profiling/
-  06-build-systems/
-  07-packaging-and-release/
-  08-software-supply-chain/
-  09-engineering-systems-at-scale/
-  11-arena-and-capstones/
+  01-Command-Line/
+  02-Version-Control/
+  03-Debugging/
+  04-Measurement-Methodology/
+  05-Profiling/
+  06-Build-Systems/
+  07-Packaging-and-Release/
+  08-Software-Supply-Chain/
+  09-Engineering-Systems-at-Scale/
+  11-Arena-and-Capstones/
 ```
 
 ## Platform Gating and Requires Tags

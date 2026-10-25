@@ -19,4 +19,4 @@ sources: []
 - Prerequisites: [[Cpp-AddressSanitizer-and-LeakSanitizer-Internals]], [[Cpp-ThreadSanitizer-and-MemorySanitizer-Internals]]
 - Next: [[Cpp-ODR-Violations-Static-Init-and-Linker-Template-Errors]]
 - See also: [[02-Programming-Languages/C++/CPP_Zero_to_Godhood/manuscript/09-part-design/36_advanced_debugging|36_advanced_debugging]]
-- Lab: `code/03-Debugging/valgrind_memcheck/` (requires: linux, docker)
+- Lab: `code/03-Debugging/valgrind_memcheck/` (requires: linux)

@@ -11,8 +11,7 @@ sources: []
 
 > [!summary] Scope
 > Owns Google foundational 2010 technical report on distributed systems request tracing by Benjamin H.
-> Sigelman et al.
-> Analyzes the span tree execution model, out-of-band asynchronous trace collection, ubiquitous RPC context propagation, and low-overhead adaptive sampling rates.
+> Sigelman et al. Analyzes the span tree execution model, out-of-band asynchronous trace collection, ubiquitous RPC context propagation, and low-overhead adaptive sampling rates.
 > Grounds modern distributed observability frameworks including OpenTelemetry and Jaeger while linking existing vault whitepapers.
 
 ## Related

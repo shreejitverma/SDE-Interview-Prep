@@ -57,9 +57,10 @@ class ManifestTest(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stdout)
         self.assertIn("result: PASS", result.stdout)
 
-    def test_missing_book_folder_is_not_an_error(self):
+    def test_missing_book_folder_fails(self):
         result = self.run_tool(self.make_repo({}, None))
-        self.assertEqual(result.returncode, 0)
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("does not exist", result.stdout)
 
     def test_missing_manifest_fails(self):
         result = self.run_tool(self.make_repo(NOTES, None))

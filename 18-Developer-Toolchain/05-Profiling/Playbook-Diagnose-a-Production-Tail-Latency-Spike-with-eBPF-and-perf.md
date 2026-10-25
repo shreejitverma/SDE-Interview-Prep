@@ -19,4 +19,4 @@ sources: []
 - Prerequisites: [[Linux-perf-in-Depth-and-perf-c2c]], [[eBPF-bpftrace-ftrace-uprobes-and-USDT]]
 - Next: [[Drill-Profiling-False-Sharing-Cache-Contention]]
 - See also: [[14-Low-Latency-Systems/11 - Participant-Side Systems/Drill - 11 Tick-to-Trade Pipeline Bottleneck Hunting|Drill   11 Tick to Trade Pipeline Bottleneck Hunting]], [[19-Shell-and-Unix-Engineering/20-Observability-and-Incident-Response/bpftrace-One-Liners|bpftrace One Liners]]
-- Lab: `code/05-Profiling/latency_spike_triage/` (requires: linux, docker)
+- Lab: `code/05-Profiling/latency_spike_triage/` (requires: linux)

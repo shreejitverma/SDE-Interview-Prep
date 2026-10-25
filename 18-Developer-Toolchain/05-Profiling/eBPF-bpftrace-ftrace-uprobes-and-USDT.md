@@ -19,4 +19,4 @@ sources: []
 - Prerequisites: none
 - Next: [[macOS-Instruments-xctrace-and-DTrace]]
 - See also: [[15-Technical-Whitepapers/01-Systems-Performance-and-Tracing/Linux-Tracing-and-Instrumentation|Linux Tracing and Instrumentation]], [[19-Shell-and-Unix-Engineering/20-Observability-and-Incident-Response/bpftrace-One-Liners|bpftrace One Liners]]
-- Lab: `code/05-Profiling/bpftrace_usdt/` (requires: linux, docker)
+- Lab: `code/05-Profiling/bpftrace_usdt/` (requires: linux)

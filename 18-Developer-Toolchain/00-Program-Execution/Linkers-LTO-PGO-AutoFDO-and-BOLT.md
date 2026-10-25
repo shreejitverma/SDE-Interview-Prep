@@ -19,4 +19,4 @@ sources: []
 - Prerequisites: [[Symbols-Relocations-and-Static-Linking]], [[Dynamic-Linking-PLT-GOT-and-Loaders]]
 - Next: [[macOS-vs-Linux-Toolchain-Mechanics]]
 - See also: [[02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_102_Linking_Loading_ABI/Chapter_102_Linking_Loading_ABI_and_WPO|Chapter_102_Linking_Loading_ABI_and_WPO]]
-- Lab: `code/00-Program-Execution/thinlto_bolt_pgo/` (requires: linux, docker)
+- Lab: `code/00-Program-Execution/thinlto_bolt_pgo/` (requires: linux)

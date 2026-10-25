@@ -19,4 +19,4 @@ sources: []
 
 - Prerequisites: [[Python-Wheels-Platform-Tags-Manylinux-and-ABI3]], [[Cpp-Glibc-Symbol-Versioning-and-Portable-Linux-Binaries]]
 - Next: [[Drill-Packaging-Cpp-Silent-ABI-Break-Across-Shared-Libraries]]
-- Lab: `code/07-Packaging-and-Release/manylinux_leak/` (requires: linux, docker)
+- Lab: `code/07-Packaging-and-Release/manylinux_leak/` (requires: docker)

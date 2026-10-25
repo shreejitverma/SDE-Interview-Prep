@@ -77,10 +77,23 @@ class HarnessTest(unittest.TestCase):
         self.assertIn("SKIP  pillar/counters (requires pmu)", out)
         self.assertIn("0 passed", out)
 
-    def test_unknown_requirement_is_reported(self):
-        self.lab("odd", "#!/usr/bin/env bash\n# requires: quantum\necho x\n", "x\n")
-        _, out = self.run_harness()
-        self.assertIn("quantum (unknown requirement)", out)
+    def test_unknown_requirement_fails_the_run(self):
+        self.lab("odd", "#!/usr/bin/env bash\n# requires: linx\necho x\n", "x\n")
+        rc, out = self.run_harness()
+        self.assertEqual(rc, 1)
+        self.assertIn("unknown requirement: linx", out)
+        self.assertIn("1 failed", out)
+
+    def test_nightly_without_rustup_is_skipped_not_a_crash(self):
+        self.lab("miri", "#!/usr/bin/env bash\n# requires: nightly\necho x\n", "x\n")
+        real_which = verify.shutil.which
+        verify.shutil.which = lambda name: None if name == "rustup" else real_which(name)
+        try:
+            rc, out = self.run_harness()
+        finally:
+            verify.shutil.which = real_which
+        self.assertEqual(rc, 0, out)
+        self.assertIn("SKIP  pillar/miri (requires nightly)", out)
 
     def test_addresses_and_temp_paths_are_scrubbed(self):
         self.assertEqual(verify.scrub("ptr=0x7ffee3b2c9a0 at /tmp/abc/x.c:3"), "ptr=0xADDR at /TMP:3")

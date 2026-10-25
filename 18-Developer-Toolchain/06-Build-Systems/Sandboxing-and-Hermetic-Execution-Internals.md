@@ -19,4 +19,4 @@ sources: []
 - Prerequisites: [[Hermetic-and-Reproducible-Builds]]
 - Next: [[Make-and-Ninja-Mechanics]]
 - See also: [[19-Shell-and-Unix-Engineering/22-Shell-and-AI-Agents/Agent-Shell-Sandboxing-Seatbelt-and-Landlock|Agent Shell Sandboxing Seatbelt and Landlock]]
-- Lab: `code/06-Build-Systems/linux_sandbox/` (requires: linux, docker)
+- Lab: `code/06-Build-Systems/linux_sandbox/` (requires: linux)
