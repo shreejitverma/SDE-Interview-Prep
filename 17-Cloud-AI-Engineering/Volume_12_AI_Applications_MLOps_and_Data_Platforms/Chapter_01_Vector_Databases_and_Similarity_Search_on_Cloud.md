@@ -24,6 +24,23 @@ sources:
   - "https://cloud.google.com/vertex-ai/docs/vector-search/overview"
   - "https://aws.amazon.com/builders-library/using-load-shedding-to-avoid-overload/"
   - "https://aws.amazon.com/builders-library/timeouts-retries-and-backoff-with-jitter/"
+  - "https://docs.aws.amazon.com/AmazonS3/latest/API/API_S3VectorBuckets_QueryVectors.html"
+  - "https://aws.amazon.com/s3/pricing/"
+  - "https://aws.amazon.com/about-aws/whats-new/2025/12/amazon-s3-vectors-generally-available/"
+  - "https://docs.opensearch.org/latest/vector-search/settings/"
+  - "https://docs.opensearch.org/latest/mappings/supported-field-types/knn-memory-optimized/"
+  - "https://docs.opensearch.org/latest/mappings/supported-field-types/knn-spaces/"
+  - "https://docs.opensearch.org/latest/vector-search/optimizing-storage/binary-quantization/"
+  - "https://github.com/opensearch-project/k-NN/blob/main/release-notes/opensearch-knn.release-notes-2.18.0.0.md"
+  - "https://github.com/opensearch-project/k-NN/blob/main/release-notes/opensearch-knn.release-notes-2.19.0.0.md"
+  - "https://github.com/opensearch-project/k-NN/pull/2573"
+  - "https://aws.amazon.com/opensearch-service/pricing/"
+  - "https://docs.cloud.google.com/vertex-ai/docs/vector-search/configuring-indexes"
+  - "https://docs.cloud.google.com/vertex-ai/docs/vector-search/update-rebuild-index"
+  - "https://docs.cloud.google.com/vertex-ai/docs/vector-search/monitor"
+  - "https://cloud.google.com/blog/products/databases/scann-for-alloydb-index-is-ga"
+  - "https://aws.amazon.com/about-aws/whats-new/2025/04/pgvector-0-8-0-aurora-postgresql/"
+  - "https://docs.cloud.google.com/bigquery/docs/vector-index"
 ---
 
 # Vector Databases and Similarity Search on Cloud
@@ -113,11 +130,11 @@ Getting-started guides present compression_level as the only dial, but on a cost
 ### Mechanism 2: filter selectivity times beam width equals recall collapse
 
 pgvector applies a WHERE clause after the index returns candidates.
-The HNSW scan yields at most hnsw.ef_search candidates, which defaults to 40 (pgvector README, UNVERIFIED as of 2026-10).
+The HNSW scan yields at most hnsw.ef_search candidates, which defaults to 40 (pgvector README, as of 2026-10).
 With a tenant filter of selectivity s and filter-independent candidates, the expected number of survivors is ef_search * s.
 At s = 0.1% (1,000 equal tenants) that is 0.04 rows, so LIMIT 10 usually returns zero rows rather than slow rows.
 This is a silent correctness bug, not a latency bug.
-pgvector 0.8.0 added iterative index scans (hnsw.iterative_scan = strict_order or relaxed_order), which keep extending the scan until enough rows pass the filter or hnsw.max_scan_tuples is reached (default 20,000) (pgvector README, UNVERIFIED as of 2026-10).
+pgvector 0.8.0 added iterative index scans (hnsw.iterative_scan = strict_order or relaxed_order), which keep extending the scan until enough rows pass the filter or hnsw.max_scan_tuples is reached (default 20,000) (pgvector README, as of 2026-10).
 At s = 0.1% a 20,000-tuple budget yields about 20 survivors, so LIMIT 10 succeeds, but the query now does up to 500x the layer-0 work, and that is a p99 problem.
 For very selective filters the right plan is often exact search: with a B-tree on tenant_id, the Postgres planner can choose a bitmap scan plus sort when it estimates the tenant is small.
 That is both exact and fast.
@@ -160,18 +177,18 @@ A newly promoted writer or a newly added reader starts with a cold cache, and HN
 Aurora PostgreSQL cluster cache management (apg_ccm_enabled) keeps a designated failover reader's cache warm for exactly this reason.
 See [[17-Cloud-AI-Engineering/Volume_02_AWS_Deep_Dive/Chapter_11_Amazon_Aurora_Log_Is_The_Database|Aurora: Log-Is-The-Database]] and [[17-Cloud-AI-Engineering/Volume_03_GCP_Deep_Dive/Chapter_12_AlloyDB_for_PostgreSQL_Disaggregated_Architecture|AlloyDB disaggregated architecture]].
 pgvector's HNSW build is fast only while the graph fits in maintenance_work_mem.
-After that, the README warns that the build slows sharply as inserts hit shared buffers, so size maintenance_work_mem and parallel maintenance workers before you build, not after.
+After that, Postgres emits the notice "hnsw graph no longer fits into maintenance_work_mem" and the README warns that the build takes significantly more time (pgvector README, as of 2026-10), so size maintenance_work_mem and parallel maintenance workers before you build, not after.
 
 ### Service-by-service control and data plane
 
 Amazon OpenSearch Service (provisioned) uses the k-NN plugin with the Faiss and Lucene engines.
-The default engine changed from NMSLIB to Faiss in OpenSearch 2.18, and NMSLIB is deprecated in 3.0 (OpenSearch docs, as of 2026-10).
+The default engine changed from NMSLIB to Faiss in OpenSearch 2.18, NMSLIB was deprecated in 2.19, and 3.0 blocks creating new NMSLIB indexes ([k-NN release notes and PR #2573](https://github.com/opensearch-project/k-NN/pull/2573), as of 2026-10).
 Native Faiss graphs live off the JVM heap and are capped by knn.memory.circuit_breaker.limit, which defaults to 50% of the RAM left after the heap (OpenSearch docs, as of 2026-10).
 on_disk mode, introduced in 2.17, defaults to Faiss HNSW with 32x compression and rescoring enabled (OpenSearch docs, as of 2026-10).
-The default oversample at 32x is 2.0 (AWS OpenSearch blog via community post, as of 2026-10).
+The default oversample_factor at 32x is 2.0, and 16x, 8x, and 4x default to 1.0 (OpenSearch docs, as of 2026-10).
 OpenSearch Serverless vector search collections bill in OCUs, each bundling about 6 GB of RAM with compute, at $0.24 per OCU-hour in us-east-1 (AWS pricing page, as of 2026-10).
 
-Amazon S3 Vectors has been GA since 2025-12-02.
+Amazon S3 Vectors has been GA since 2025-12-02 ([AWS What's New](https://aws.amazon.com/about-aws/whats-new/2025/12/amazon-s3-vectors-generally-available/), as of 2026-10).
 It supports up to 2 billion vectors per index, 10,000 indexes per vector bucket, and dimensions from 1 to 4,096 (AWS docs, as of 2026-10).
 AWS describes latency qualitatively: about 100 ms or less for frequently queried indexes and under one second for infrequent ones (AWS launch announcement, as of 2026-10).
 AWS has not published S3 Vectors' index structure.
@@ -182,10 +199,11 @@ It offers a tree-AH algorithm (partition tree plus asymmetric hashing) or brute 
 Filtering uses restricts: token namespaces with allow and deny lists, plus numeric restricts, evaluated during search rather than after it.
 Crowding attributes cap the number of results per group, for example per document, so one long document cannot fill the top k.
 Indexes update by batch rebuild or by streaming updates.
-Streaming writes become searchable in seconds and are periodically compacted into a rebuilt index, which is billed as index building (Google Cloud docs, UNVERIFIED as of 2026-10).
+Streaming writes become searchable in seconds and are periodically compacted into a rebuilt index, which is billed as index building at the batch-update rate (Google Cloud docs, as of 2026-10).
+Compaction runs on service heuristics and always runs once the oldest uncompacted data is five days old, and streaming writes themselves cost $0.45 per GB (Google Cloud docs, as of 2026-10).
 
-AlloyDB for PostgreSQL supports pgvector (HNSW and IVFFlat) plus the alloydb_scann extension, which adds a ScaNN partition index with scalar quantization inside Postgres (Google Cloud docs, GA status UNVERIFIED as of 2026-10).
-Aurora PostgreSQL supports pgvector, including the 0.8.x iterative-scan releases on current minor versions (AWS docs, UNVERIFIED as of 2026-10).
+AlloyDB for PostgreSQL supports pgvector (HNSW and IVFFlat) plus the alloydb_scann extension, which adds a ScaNN partition index with scalar quantization inside Postgres; the ScaNN index is GA ([Google Cloud blog](https://cloud.google.com/blog/products/databases/scann-for-alloydb-index-is-ga), as of 2026-10).
+Aurora PostgreSQL supports pgvector, including the 0.8.0 iterative-scan release on PostgreSQL 16.8, 15.12, 14.17, 13.20 and later minor versions ([AWS What's New, 2025-04](https://aws.amazon.com/about-aws/whats-new/2025/04/pgvector-0-8-0-aurora-postgresql/), as of 2026-10).
 
 ### Failure domain boundaries
 
@@ -194,8 +212,8 @@ An AZ loss halves or thirds query capacity immediately, and shard recovery copie
 Size for N-1 AZ capacity as described in [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_02_Regions_Zones_and_Static_Stability|Static Stability]].
 Aurora and AlloyDB storage replicate across zones below the database engine, so the engine's failure domain is the writer instance and its cache, not the index data.
 S3 Vectors inherits S3's regional durability model.
-Vertex AI Vector Search deployed indexes scale by replicas of the full shard set behind an endpoint.
-Their zone placement is managed by the service and is not a documented customer-controlled parameter (UNVERIFIED as of 2026-10).
+Vertex AI Vector Search deployed indexes scale by replicas behind an endpoint, between minReplicaCount and maxReplicaCount, and autoscaling can serve each shard with a different number of replicas; the SLA requires at least two replicas per shard (Google Cloud docs, as of 2026-10).
+Their zone placement is managed by the service and is not a documented customer-controlled parameter (UNVERIFIED: replica zone placement is not described in current docs).
 
 ## Numbers to Know
 
@@ -207,21 +225,21 @@ Their zone placement is managed by the service and is not a documented customer-
 | Example: 1M x 256d, m=16, fp32 | about 1.27 GB | (OpenSearch docs, as of 2026-10) |
 | k-NN native memory circuit breaker default | 50% of RAM remaining after JVM heap | (OpenSearch docs, as of 2026-10) |
 | on_disk mode default | Faiss HNSW, 32x compression, rescoring on | (OpenSearch docs, as of 2026-10) |
-| on_disk default oversample at 32x | 2.0 | (AWS OpenSearch blog, as of 2026-10) |
-| Default k-NN engine | Faiss since 2.18; NMSLIB deprecated in 3.0 | (OpenSearch docs, as of 2026-10) |
+| on_disk default oversample at 32x | 2.0 (1.0 at 16x, 8x, 4x) | (OpenSearch docs, as of 2026-10) |
+| Default k-NN engine | Faiss since 2.18; NMSLIB deprecated in 2.19, new NMSLIB indexes blocked in 3.0 | (k-NN release notes, as of 2026-10) |
 | OpenSearch Serverless OCU | about 6 GB RAM, $0.24/OCU-hour us-east-1 | (AWS pricing page, as of 2026-10) |
 | S3 Vectors vectors per index | up to 2 billion (preview was 50 million) | (AWS docs, as of 2026-10) |
 | S3 Vectors indexes per bucket / buckets per Region | 10,000 / 10,000 | (AWS docs, as of 2026-10) |
 | S3 Vectors dimension | 1 to 4,096 | (AWS docs, as of 2026-10) |
 | S3 Vectors metadata | 40 KB total, 2 KB filterable, 50 keys, 10 non-filterable keys per index | (AWS docs, as of 2026-10) |
 | S3 Vectors write limits per index | 1,000 Put+Delete requests/s; 2,500 vectors/s; 500 vectors per PutVectors; 20 MiB payload | (AWS docs, as of 2026-10) |
-| S3 Vectors query latency | about 100 ms or less frequent; under 1 s infrequent | (AWS launch announcement, as of 2026-10) |
-| S3 Vectors storage price | $0.06 per logical GB-month | (UNVERIFIED as of 2026-10, secondary sources) |
-| pgvector HNSW defaults | m = 16, ef_construction = 64, hnsw.ef_search = 40 | (pgvector README, UNVERIFIED as of 2026-10) |
-| pgvector iterative scan budget | hnsw.max_scan_tuples = 20,000 | (pgvector README, UNVERIFIED as of 2026-10) |
-| pgvector max indexed dimensions | 2,000 for vector, 4,000 for halfvec | (pgvector README, UNVERIFIED as of 2026-10) |
-| pgvector IVFFlat sizing heuristic | lists = rows/1000 up to 1M rows, sqrt(rows) above; probes about sqrt(lists) | (pgvector README, UNVERIFIED as of 2026-10) |
-| Vertex AI Vector Search shard sizes | SMALL 2 GiB, MEDIUM 20 GiB, LARGE 50 GiB | (Google Cloud docs, UNVERIFIED as of 2026-10) |
+| S3 Vectors query latency | about 100 ms or less frequent; under 1 s infrequent | (AWS GA announcement, 2025-12, as of 2026-10) |
+| S3 Vectors price, us-east-1 | $0.06 per logical GB-month storage; $0.20/GB PUT; $2.50 per million queries plus per-TB processed | (AWS S3 pricing page, as of 2026-10) |
+| pgvector HNSW defaults | m = 16, ef_construction = 64, hnsw.ef_search = 40 | (pgvector README, as of 2026-10) |
+| pgvector iterative scan budget | hnsw.max_scan_tuples = 20,000 | (pgvector README, as of 2026-10) |
+| pgvector max indexed dimensions | 2,000 for vector, 4,000 for halfvec | (pgvector README, as of 2026-10) |
+| pgvector IVFFlat sizing heuristic | lists = rows/1000 up to 1M rows, sqrt(rows) above; probes about sqrt(lists) | (pgvector README, as of 2026-10) |
+| Vertex AI Vector Search shard sizes | SMALL 2 GiB, MEDIUM 20 GiB, LARGE 50 GiB | (Google Cloud docs, as of 2026-10) |
 | Fan-out tail amplification | P(query > shard p99) = 1 - 0.99^S: 18.2% at S=20, 63.4% at S=100 | (derived) |
 | HNSW layer-0 work at ef=100, M=16, d=768 | up to about 3,200 distance evals, about 10 MB touched, about 1 ms/core | (derived estimate) |
 
@@ -235,7 +253,7 @@ Their zone placement is managed by the service and is not a documented customer-
 | Filtering | Efficient filtering: engine chooses exact or approximate from filter cardinality | Restricts (token allow/deny, numeric) evaluated in the search loop; crowding | Both avoid naive post-filtering; Vertex restricts must be declared at upsert time, OpenSearch filters are arbitrary query DSL |
 | Freshness | refresh_interval (NRT, segment-based), merges in the background | Streaming updates in seconds, background compaction; or batch rebuild | Segment explosion (AWS) vs compaction cost and delay (GCP) are the analogous control-plane debts |
 | Postgres-native | Aurora PostgreSQL and RDS with pgvector HNSW/IVFFlat | AlloyDB with pgvector and alloydb_scann; Cloud SQL with pgvector | AlloyDB adds a partition (ScaNN) index inside Postgres; Aurora offers pgvector only |
-| Object-storage-native | S3 Vectors (GA 2025-12) | No direct equivalent; BigQuery vector indexes are the closest analytical analog (UNVERIFIED as of 2026-10) | S3 Vectors is the only first-party pay-per-query vector store on object storage |
+| Object-storage-native | S3 Vectors (GA 2025-12) | No direct equivalent; BigQuery vector indexes (IVF and TreeAH) are the closest analytical analog (BigQuery docs, as of 2026-10) | S3 Vectors is the only first-party pay-per-query vector store on object storage |
 | Scale unit | Data node or OCU; shards and replicas | Deployed index replicas of a fixed shard layout and machine type | Vertex shard count follows from shard size; OpenSearch shard count is the operator's choice and can be misjudged |
 | Replication | Document or segment replication; Serverless separates indexing and search compute over S3 | Managed replicas behind an endpoint | OpenSearch document replication multiplies graph-build CPU per replica |
 | Private networking | VPC domains; Serverless VPC endpoints (PrivateLink); S3 Vectors via IAM and VPC endpoints | Private Service Connect or VPC peering for index endpoints; public endpoints optional | See [[17-Cloud-AI-Engineering/Volume_04_AWS_vs_GCP_Translation/Chapter_02_Networking_and_Load_Balancing_Translation\|PrivateLink vs PSC]] |
@@ -290,8 +308,8 @@ Uniform random vectors are a worst case for ANN structure, so absolute recall nu
 ### Lab B: S3 Vectors recall and client-observed p50/p99 (billable, cents)
 
 Cost estimate: 20,000 vectors * (3,072 + about 64 bytes) is about 63 MB.
-Storage is about $0.004 per month at $0.06/GB-month, and PUT data is under $0.02 at the secondary-source rate of $0.20/GB.
-200 queries add a per-request and per-TB-processed charge whose current rates are UNVERIFIED but negligible at this scale.
+Storage is about $0.004 per month at $0.06/GB-month, and PUT data is under $0.02 at $0.20/GB (AWS S3 pricing page, us-east-1, as of 2026-10).
+200 queries add $2.50 per million requests plus a per-TB-processed charge of $0.004/TB for the first 100K vectors, which is well under $0.001 at this scale (AWS S3 pricing page, as of 2026-10).
 Budget the lab at under $0.10 (estimate, as of 2026-10).
 
 Budget alarm (run first):
@@ -379,9 +397,9 @@ Step 3, OpenSearch on_disk 32x: 1.1 * (96 + 128) = 246 B/vector, which is 24.6 G
 The bottleneck moves to rescoring reads: each shard reads k * oversample = 20 full vectors per query.
 At 20 shards that is 400 random 3 KB reads per query and 800,000 reads/s at 2,000 QPS if nothing is cached.
 Cut shards to 4 (80 reads per query, yielding 160,000 reads/s cluster-wide at 2,000 QPS), use instance-store NVMe-backed nodes, and give the hot fraction of the 307 GB full-precision set room in the page cache.
-This option is cheaper only if you size for IOPS, which is what the "1.3 TB to 66 GB" headline numbers leave out.
+This option is cheaper only if you size for IOPS, which is what the "32x less memory" headline leaves out.
 
-Step 4, S3 Vectors: 100M * about 3.2 KB is about 317 GB, or about $19/month of storage at $0.06/GB-month (UNVERIFIED rate).
+Step 4, S3 Vectors: 100M * about 3.2 KB is about 317 GB, or about $19/month of storage at $0.06/GB-month (AWS S3 pricing page, as of 2026-10).
 It fails the 50 ms p99 requirement against a documented profile of about 100 ms.
 At 2,500 vectors/s per index, the initial load into one index takes 40,000 s, about 11 hours.
 Use it as the cold tier or for offline and batch retrieval.
@@ -390,8 +408,8 @@ Step 5, Aurora or AlloyDB pgvector: the fp32 HNSW index alone is about 330 GB or
 Low latency requires the index to stay in the buffer cache, which points to the largest memory-optimized instances.
 An expression index on embedding::halfvec(768) halves the index size at a small recall cost, and alloydb_scann with SQ8 shrinks it further on GCP.
 
-Step 6, Vertex AI Vector Search: 307 GB at an UNVERIFIED 50 GiB LARGE shard size gives about 6 to 7 shards per replica, and the replica count follows from QPS per replica measured in a load test.
-Price it as replicas * shards * machine-hour plus index-build GiB; current rates are UNVERIFIED as of 2026-10 and must come from the pricing page.
+Step 6, Vertex AI Vector Search: 307 GB at the 50 GiB SHARD_SIZE_LARGE (Google Cloud docs, as of 2026-10) gives about 6 to 7 shards per replica, and the replica count follows from QPS per replica measured in a load test.
+Price it as replicas * shards * machine-hour plus index-build GiB (and $0.45 per GB of streaming updates); machine-hour and build rates vary by machine type and Region, so take them from the current pricing page rather than from this chapter.
 
 ## Failure Modes and Pitfalls
 
@@ -400,7 +418,7 @@ They look like poor model quality rather than an infrastructure fault, and they 
 Monitor result count per query and alert when the ratio of returned rows to the LIMIT falls below 1.
 
 When graphs fall out of their memory tier, latency jumps from milliseconds to disk-bound seconds.
-In OpenSearch, hitting the native memory circuit breaker makes the cluster refuse graph loads, so k-NN queries fail rather than slow down.
+In OpenSearch, exceeding knn.memory.circuit_breaker.limit makes the plugin evict the least recently used native graphs (OpenSearch docs, as of 2026-10), so queries thrash on graph reloads from disk, and while knn.circuit_breaker.triggered stays set, new indexing can be blocked (OpenSearch maintainer forum reply, as of 2026-10).
 Watch the k-NN stats for graph memory usage and cache evictions, and treat any steady eviction rate as a capacity alarm.
 
 A refresh-rate segment explosion follows bulk ingest at a 1 s refresh interval.
@@ -427,8 +445,8 @@ S3 Vectors enforces 1,000 write requests/s and 2,500 vectors/s per index (AWS do
 A re-embedding job that ignores this gets throttled responses, and naive retries turn throttling into a sustained backlog.
 Shard writes across indexes or rate-limit the producer, as described in [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_02_Load_Shedding_Backpressure_and_Admission_Control|Load Shedding and Admission Control]].
 
-The engine default changed in OpenSearch 2.18 from NMSLIB to Faiss, and cosinesimil vectors are now normalized automatically, so retrieved stored vectors differ from their inputs (OpenSearch docs, as of 2026-10).
-In 3.0, creating a new index on NMSLIB fails with a mapper parsing exception, which breaks client libraries that still default to NMSLIB.
+The engine default changed in OpenSearch 2.18 from NMSLIB to Faiss, and since 2.19 Faiss supports cosinesimil by normalizing vectors to unit length at index time, so retrieved stored vectors can differ from their inputs (OpenSearch docs, as of 2026-10).
+In 3.0, creating a new index on NMSLIB fails ([k-NN PR #2573](https://github.com/opensearch-project/k-NN/pull/2573)), which breaks client libraries that still default to NMSLIB.
 
 An embedding model upgrade makes the whole index obsolete at once, because vectors from different models are not comparable.
 Mixing them in one index produces nonsense neighbors without errors.
@@ -453,11 +471,11 @@ Use OpenSearch document-level security or filters bound to the caller's identity
 
 Scope IAM to the data-plane verbs.
 For S3 Vectors, separate writer roles (s3vectors:PutVectors, s3vectors:DeleteVectors) from reader roles (s3vectors:QueryVectors).
-Queries that use filter or returnMetadata also require s3vectors:GetVectors (UNVERIFIED as of 2026-10).
+Queries that use filter or returnMetadata also require s3vectors:GetVectors, and fail with 403 without it (AWS QueryVectors API reference, as of 2026-10).
 For Vertex AI, grant index-endpoint query permissions separately from index administration.
 
 Use envelope encryption with customer-managed keys everywhere.
-OpenSearch domains and Serverless collections use AWS KMS keys, and Serverless collections that share an encryption key can share OCUs.
+OpenSearch domains and Serverless collections use AWS KMS keys, and Serverless collections that share an encryption key can share OCUs, except that vector search collections never share OCUs with search or time-series collections (AWS pricing page, as of 2026-10).
 S3 Vectors buckets use SSE-S3 or SSE-KMS.
 Aurora uses KMS at the cluster level, and AlloyDB and Vertex AI support CMEK.
 See [[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter/Chapter_04_Encryption_Key_Hierarchies_and_Envelope_Encryption|Encryption Key Hierarchies]].

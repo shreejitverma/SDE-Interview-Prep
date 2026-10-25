@@ -18,6 +18,20 @@ sources:
   - "https://aws.amazon.com/builders-library/using-load-shedding-to-avoid-overload/"
   - "https://sre.google/sre-book/handling-overload/"
   - "https://aws.amazon.com/blogs/aws/aws-weekly-roundup-new-aws-heroes-amazon-q-developer-ec2-gpu-price-reduction-and-more-june-9-2025/"
+  - "https://www.nvidia.com/en-us/data-center/h100/"
+  - "https://www.nvidia.com/en-us/data-center/h200/"
+  - "https://www.nvidia.com/en-us/data-center/dgx-b200/"
+  - "https://docs.cloud.google.com/tpu/docs/v6e"
+  - "https://cloud.google.com/tpu/pricing"
+  - "https://cloud.google.com/products/compute/pricing/accelerator-optimized"
+  - "https://pricing.us-east-1.amazonaws.com/savingsPlan/v1.0/aws/AWSComputeSavingsPlan/current/region_index.json"
+  - "https://aws.amazon.com/about-aws/whats-new/2025/07/amazon-p6e-gb200-ultraservers-gpu-performance-ec2"
+  - "https://cloud.google.com/blog/products/compute/new-a4x-vms-powered-by-nvidia-gb200-gpus"
+  - "https://aws.amazon.com/ec2/instance-types/trn2/"
+  - "https://docs.cloud.google.com/kubernetes-engine/docs/how-to/migrate-gke-inference-gateway"
+  - "https://www.anthropic.com/engineering/a-postmortem-of-three-recent-issues"
+  - "https://aws.amazon.com/message/101925/"
+  - "https://status.cloud.google.com/incidents/ow5i3PPK96RduMcb1SsW"
 ---
 
 # End-to-End Latency, Throughput, and Cost Modeling
@@ -89,7 +103,7 @@ For the 70B FP8 model on 8x H100 at `eta = 0.70`, reading the weights alone take
 ### The ridge point: why batching works and where it stops
 
 With FP8 weights each parameter is 1 byte and costs 2 FLOPs per token, so weight-streaming arithmetic intensity is `2B` FLOP/byte.
-The H100 FP8 ridge point is `1979e12 / 3.35e12 = ~591` FLOP/byte (datasheet figures, UNVERIFIED this cycle). If you ignore KV traffic, decode GEMMs become compute-bound at about `B = 295`.
+The H100 FP8 ridge point is `1979e12 / 3.35e12 = ~591` FLOP/byte ([NVIDIA H100 datasheet](https://www.nvidia.com/en-us/data-center/h100/): 3,958 TFLOPS FP8 with sparsity, so 1,979 dense, and 3.35 TB/s, as of 2026-10). If you ignore KV traffic, decode GEMMs become compute-bound at about `B = 295`.
 Below that batch size, adding a sequence costs almost nothing in step time. That is the whole economic argument for continuous batching ([Orca, OSDI 2022](https://www.usenix.org/conference/osdi22/presentation/yu)).
 Above it, step time grows linearly with `B` and cost per token stops falling.
 
@@ -113,7 +127,7 @@ This is the physical reason providers price long-context tiers higher, and why F
 Megatron-style tensor parallelism inserts two all-reduces per transformer layer: after the attention output projection and after the MLP down projection.
 For an 80-layer model that is 160 serialized collectives per decode step.
 At small batch each message is only `B * d_model * 2` bytes, so the collective is latency-bound, not bandwidth-bound.
-Assuming about 8 us per small all-reduce across 8 NVLink-connected GPUs (UNVERIFIED planning value; measure yours with `nccl-tests all_reduce_perf`), that adds 1.28 ms per step regardless of `B`.
+Assuming about 8 us per small all-reduce across 8 NVLink-connected GPUs (UNVERIFIED planning value: no primary source publishes a small-message all-reduce latency for 8x H100; measure yours with `nccl-tests all_reduce_perf`), that adds 1.28 ms per step regardless of `B`.
 At `B = 1` the model predicts `3.76 + 1.28 + 0.5 = 5.56 ms` TPOT on TP8 versus 9.35 ms on TP4. TP8 halves weight-streaming time but cannot remove the collective floor.
 This is why TP degree is a latency decision and DP replica count is a throughput decision. Once you are compute-bound, the two have the same cost per token.
 
@@ -199,20 +213,20 @@ flowchart TD
 
 | Quantity | Value | Source |
 |---|---|---|
-| p5.48xlarge (8x H100 80 GB, 192 vCPU, 2 TiB, 3,200 Gbps EFA) on-demand, us-east-1 | $55.04/hr ($6.88 per GPU-hr) | [AWS list price via Holori and DoiT aggregators](https://calculator.holori.com/aws/ec2/p5.48xlarge), as of 2026-10 |
-| p5.48xlarge 1-yr Compute Savings Plan, no upfront | $43.344/hr | Holori aggregator, as of 2026-10 |
-| p5.48xlarge 3-yr EC2 Instance Savings Plan, no upfront | $23.7773/hr | Holori aggregator, as of 2026-10 |
+| p5.48xlarge (8x H100 80 GB, 192 vCPU, 2 TiB, 3,200 Gbps EFA) on-demand, us-east-1 | $55.04/hr ($6.88 per GPU-hr) | AWS public EC2 price list (published 2026-10-23), also [Holori](https://calculator.holori.com/aws/ec2/p5.48xlarge), as of 2026-10 |
+| p5.48xlarge 1-yr Compute Savings Plan, no upfront | $43.344/hr | [AWS Savings Plans bulk price list](https://pricing.us-east-1.amazonaws.com/savingsPlan/v1.0/aws/AWSComputeSavingsPlan/current/region_index.json), us-east-1, as of 2026-10 |
+| p5.48xlarge 3-yr EC2 Instance Savings Plan, no upfront | $23.7773/hr | AWS Savings Plans bulk price list, us-east-1, as of 2026-10 |
 | p5.48xlarge Spot, us-east-1 | ~$20.3-21.0/hr, varies by AZ | DoiT and Holori aggregators, as of 2026-10 |
-| p5en.48xlarge (8x H200 141 GB) on-demand, us-east-1 | $63.296/hr | Holori aggregator, as of 2026-10 |
-| p6-b200.48xlarge (8x B200, ~179 GiB each) on-demand, us-east-1 | $113.9328/hr | [DoiT aggregator](https://www.doit.com/compute/spot/us-east-1/p6-b200.48xlarge), as of 2026-10 |
+| p5en.48xlarge (8x H200 141 GB) on-demand, us-east-1 | $63.296/hr | AWS public EC2 price list, as of 2026-10 |
+| p6-b200.48xlarge (8x B200, ~179 GiB each) on-demand, us-east-1 | $113.9328/hr | AWS public EC2 price list, also [DoiT](https://www.doit.com/compute/spot/us-east-1/p6-b200.48xlarge), as of 2026-10 |
 | AWS GPU price cut (P4d, P4de, P5, P5en), on-demand and Savings Plans | up to 45% | [AWS Weekly Roundup, 2025-06-09](https://aws.amazon.com/blogs/aws/aws-weekly-roundup-new-aws-heroes-amazon-q-developer-ec2-gpu-price-reduction-and-more-june-9-2025/), as of 2026-10 |
-| a3-highgpu-8g (8x H100, 208 vCPU, 1,872 GB) on-demand, us-central1 | ~$88/hr (aggregators report $87.83-$88.49) | Holori and DevZero aggregators, as of 2026-10 |
-| Cloud TPU v6e (Trillium) on-demand, selected US regions | $2.70 per chip-hour | [Google Cloud TPU pricing](https://cloud.google.com/tpu/pricing) as reported by third parties, as of 2026-10 |
-| TPU v6e per-chip HBM and BF16 peak | 32 GB, ~918 TFLOPS | Google Cloud TPU docs via third-party summary, as of 2026-10 |
-| TPU v6e per-chip HBM bandwidth | 1,640 GB/s | Google Cloud TPU docs, UNVERIFIED this cycle |
-| H100 SXM: HBM, bandwidth, dense BF16, dense FP8 | 80 GB, 3.35 TB/s, 989 TFLOPS, 1,979 TFLOPS | NVIDIA datasheet, UNVERIFIED this cycle |
-| H200: HBM, bandwidth | 141 GB, 4.8 TB/s | NVIDIA datasheet, capacity confirmed via AWS listing, bandwidth UNVERIFIED |
-| B200: bandwidth, dense FP8 | 8 TB/s, ~4.5 PFLOPS | NVIDIA HGX B200 spec, UNVERIFIED this cycle |
+| a3-highgpu-8g (8x H100, 208 vCPU, 1,871 GB) on-demand, us-central1 | $88.49/hr | [Google Cloud accelerator-optimized VM pricing](https://cloud.google.com/products/compute/pricing/accelerator-optimized), as of 2026-10 |
+| Cloud TPU v6e (Trillium) on-demand, us-east1 and us-east5 | $2.70 per chip-hour | [Google Cloud TPU pricing](https://cloud.google.com/tpu/pricing), as of 2026-10 |
+| TPU v6e per-chip HBM and BF16 peak | 32 GB, 918 TFLOPS | [Google Cloud TPU v6e docs](https://docs.cloud.google.com/tpu/docs/v6e), as of 2026-10 |
+| TPU v6e per-chip HBM bandwidth | 1,638 GB/s (~1.64 TB/s) | [Google Cloud TPU v6e docs](https://docs.cloud.google.com/tpu/docs/v6e), as of 2026-10 |
+| H100 SXM: HBM, bandwidth, dense BF16, dense FP8 | 80 GB, 3.35 TB/s, 989 TFLOPS, 1,979 TFLOPS | [NVIDIA H100 datasheet](https://www.nvidia.com/en-us/data-center/h100/) (lists 1,979 and 3,958 TFLOPS with sparsity; dense is half), as of 2026-10 |
+| H200: HBM, bandwidth | 141 GB, 4.8 TB/s | [NVIDIA H200 page](https://www.nvidia.com/en-us/data-center/h200/), as of 2026-10 |
+| B200: bandwidth, dense FP8 | 8 TB/s, ~4.5 PFLOPS | [NVIDIA DGX B200](https://www.nvidia.com/en-us/data-center/dgx-b200/): 64 TB/s HBM3e and 72 PFLOPS sparse FP8 (dense is half) across 8 GPUs, as of 2026-10 |
 | KV bytes per token, 70B GQA (80 L, 8 KV heads, d_h 128) | 320 KiB BF16, 160 KiB FP8 | derived from [Llama 3 paper](https://arxiv.org/abs/2407.21783) architecture |
 | KV bytes per token, 8B GQA (32 L, 8 KV heads, d_h 128) | 128 KiB BF16, 64 KiB FP8 | derived |
 | Weight-streaming TPOT floor, 70B FP8, 8x H100, eta 0.7 | 3.76 ms (+1.28 ms TP8 all-reduce, +0.5 ms overhead) | derived, all-reduce latency is a planning assumption |
@@ -220,9 +234,9 @@ flowchart TD
 | 128K-token prefill, 70B FP8, 8x H100 at MFU 0.45 | ~5.6 s | derived |
 | KV capacity, 70B FP8 on 8x H100 (10% reserve) | ~3.08 M tokens (376 x 8K sessions) | derived |
 | KV capacity, 70B BF16 on 8x H100 | ~1.33 M tokens (162 x 8K sessions) | derived |
-| Measured inference cost, Llama 3.3 70B on vLLM | NVIDIA H100 and B200 about 5x more tokens per dollar than TPU v6e in Artificial Analysis's metric | [Artificial Analysis](https://x.com/ArtificialAnlys/status/1993878037226557519), late 2025 |
+| Measured inference cost, Llama 3.3 70B on vLLM | NVIDIA H100 and B200 about 5x more tokens per dollar than TPU v6e in Artificial Analysis's metric (at a 30 output tok/s per-query reference speed: H100 $1.06 vs TPU v6e $5.13 per M input and output tokens) | [Artificial Analysis](https://x.com/ArtificialAnlys/status/1993878037226557519), late 2025 |
 
-The aggregator prices match each other and match AWS's announced June 2025 cut. Before committing spend, re-pull them from the AWS Price List Query API and the Cloud Billing Catalog API.
+The aggregator prices match each other, match the AWS public price list as of 2026-10, and match AWS's announced June 2025 cut. Before committing spend, re-pull them from the AWS Price List Query API and the Cloud Billing Catalog API.
 
 ## AWS vs GCP Mechanism Parity
 
@@ -230,15 +244,15 @@ The aggregator prices match each other and match AWS's announced June 2025 cut. 
 |---|---|---|---|
 | NVIDIA H100 node | p5.48xlarge, 8x H100, 3,200 Gbps EFA | a3-highgpu-8g, 8x H100 | List prices differ by more than 50% at on-demand (as of 2026-10), so the same tokens/s gives different $/token |
 | NVIDIA H200 node | p5en.48xlarge | a3-ultragpu-8g (A3 Ultra) | Same chip. Bandwidth helps only memory-bound regimes |
-| NVIDIA B200 node | p6-b200.48xlarge | a4-highgpu-8g (A4), price UNVERIFIED | Most FP8 FLOPs per node. Wins compute-bound chat/RAG regimes |
-| Rack-scale NVLink domain | P6e-GB200 UltraServers, UNVERIFIED status | A4X (GB200 NVL72), UNVERIFIED status | Changes the "fits one scale-up domain" branch for very large MoE models |
-| First-party accelerator | Trainium2 and Inferentia2 via the Neuron SDK, specs and prices UNVERIFIED this cycle | TPU v6e (Trillium) and newer generations via XLA/JAX and vLLM-TPU | Paper roofline per dollar may look competitive, but measured stack efficiency decides. Benchmark before you commit |
+| NVIDIA B200 node | p6-b200.48xlarge | a4-highgpu-8g (A4); no on-demand price listed, DWS Flex-start $64.44/hr, 1-yr CUD $88.93/hr, 3-yr CUD $56.71/hr ([Google Cloud pricing](https://cloud.google.com/products/compute/pricing/accelerator-optimized), as of 2026-10) | Most FP8 FLOPs per node. Wins compute-bound chat/RAG regimes |
+| Rack-scale NVLink domain | P6e-GB200 UltraServers (GB200 NVL72), GA since 2025-07-09, initially via Capacity Blocks in the Dallas Local Zone ([AWS What's New](https://aws.amazon.com/about-aws/whats-new/2025/07/amazon-p6e-gb200-ultraservers-gpu-performance-ec2)) | A4X (GB200 NVL72), GA since 2025-05-29 ([Google Cloud blog](https://cloud.google.com/blog/products/compute/new-a4x-vms-powered-by-nvidia-gb200-gpus)) | Changes the "fits one scale-up domain" branch for very large MoE models |
+| First-party accelerator | Trainium2 (trn2.48xlarge: 16 chips, 1.5 TB HBM, 46 TB/s, up to 20.8 PFLOPS FP8 per [AWS Trn2 page](https://aws.amazon.com/ec2/instance-types/trn2/); no us-east-1 on-demand price listed) and Inferentia2 (inf2.48xlarge $12.98/hr on-demand, us-east-1, AWS price list) via the Neuron SDK, as of 2026-10 | TPU v6e (Trillium) and newer generations via XLA/JAX and vLLM-TPU | Paper roofline per dollar may look competitive, but measured stack efficiency decides. Benchmark before you commit |
 | Scale-out fabric | EFA with SRD multipath transport | GPUDirect over Google's fabric (TCPXO on A3 Mega, RDMA on A3 Ultra and A4) | Matters for disaggregated KV transfer and multi-node TP/PP, not for single-node TP8 decode |
 | Spot interruption notice | 2 minutes | 30 seconds | Long decodes cannot drain in 30 s. Use spot only for batch or offline inference on GCP |
 | Capacity procurement | On-Demand Capacity Reservations, EC2 Capacity Blocks for ML, Savings Plans | Reservations, Dynamic Workload Scheduler, committed use discounts | A commitment pins price but not physical availability. A reservation pins availability |
 | Price discovery API | Price List Query API (`pricing:GetProducts`) | Cloud Billing Catalog API (`services.skus.list`) | Both are free to call. Wire them into the sizing model so prices are never stale |
 | Managed token serving | Bedrock on-demand, batch, Provisioned Throughput (model units) | Vertex AI on-demand, batch, Provisioned Throughput (GSUs) | Per-token pricing moves utilization risk to the provider. Provisioned throughput moves it back to you |
-| Engine-level autoscaling signal | EKS plus Karpenter, scaling on engine queue depth via KEDA or custom metrics | GKE plus node auto-provisioning, scaling on engine metrics; GKE Inference Gateway, GA status UNVERIFIED | `nvidia-smi` GPU utilization is the wrong signal on both clouds (see Failure Modes) |
+| Engine-level autoscaling signal | EKS plus Karpenter, scaling on engine queue depth via KEDA or custom metrics | GKE plus node auto-provisioning, scaling on engine metrics; GKE Inference Gateway, GA on the `v1` API ([GKE docs](https://docs.cloud.google.com/kubernetes-engine/docs/how-to/migrate-gke-inference-gateway), as of 2026-10) | `nvidia-smi` GPU utilization is the wrong signal on both clouds (see Failure Modes) |
 | Local NVMe for weight caching | Instance store on p5 (about 30 TB), encrypted by Nitro | Local SSD on A3 | Cold-start time sets the minimum warm pool, which sets the realized denominator |
 
 ## Worked Example: Sizing a 70B chat fleet, then calibrating the model
@@ -392,7 +406,7 @@ The lever with the biggest effect is commitment coverage of the baseload, not th
 The model above is only as good as its two efficiency parameters.
 This step calibrates them on a small, cheap configuration: Llama-3.1-8B in FP8 on one GPU, using vLLM's OpenAI-compatible server.
 
-Cost estimate: one single-GPU instance, for example g6e.xlarge with one L40S, for 2 hours. The rate is in the low single-digit dollars per hour (UNVERIFIED; fetch it with `python3 llm_capacity.py --fetch-aws-price g6e.xlarge`), so expect under $10 in total.
+Cost estimate: one single-GPU instance, for example g6e.xlarge with one L40S, for 2 hours. The rate is $1.861/hr on-demand in us-east-1 (AWS public price list, as of 2026-10; re-check with `python3 llm_capacity.py --fetch-aws-price g6e.xlarge`), so 2 hours is about $3.72 and you should expect under $10 in total.
 
 Budget alarm first:
 
@@ -517,9 +531,9 @@ The capacity lesson: length-aware pools improve cost per token, but every routin
 
 ### Regional control-plane events freeze your scaling
 
-AWS's summary of the October 2025 us-east-1 event describes a DynamoDB DNS automation race that left an empty endpoint record. EC2 instance launches stayed impaired for an extended period after DynamoDB recovered ([AWS post-event summary](https://aws.amazon.com/message/101925/)).
+AWS's summary of the October 2025 us-east-1 event describes a DynamoDB DNS automation race that left an empty endpoint record. EC2 instance launches stayed impaired for about 11 more hours after DynamoDB DNS was restored at 2:25 AM PDT on 2025-10-20, with full EC2 recovery at 1:50 PM PDT ([AWS post-event summary](https://aws.amazon.com/message/101925/)).
 A fleet that depends on scaling out during an incident has no capacity at exactly the wrong moment. Pre-provisioned N+1 replicas and static admission limits keep serving; see [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_07_Anatomy_of_Major_Cloud_Outages|Anatomy of Major Cloud Outages]].
-Google Cloud's June 2025 incident, in which a Service Control policy change crash-looped across regions, is the managed-API counterpart. A token API in a single region and single provider shares fate with that provider's API control plane.
+Google Cloud's June 12, 2025 incident, in which a Service Control policy change crash-looped across regions, is the managed-API counterpart ([Google Cloud incident report](https://status.cloud.google.com/incidents/ow5i3PPK96RduMcb1SsW)). A token API in a single region and single provider shares fate with that provider's API control plane.
 
 ### Quota and 429 retry storms on managed APIs
 

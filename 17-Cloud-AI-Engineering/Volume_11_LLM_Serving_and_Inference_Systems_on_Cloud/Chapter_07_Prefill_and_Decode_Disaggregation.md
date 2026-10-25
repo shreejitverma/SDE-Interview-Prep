@@ -18,6 +18,27 @@ sources:
   - "https://github.com/ai-dynamo/dynamo"
   - "https://github.com/llm-d/llm-d"
   - "https://docs.vllm.ai/en/latest/features/disagg_prefill.html"
+  - "https://arxiv.org/abs/2401.09670"
+  - "https://arxiv.org/abs/2311.18677"
+  - "https://docs.vllm.ai/en/latest/features/nixl_connector_usage.html"
+  - "https://docs.vllm.ai/en/latest/features/nixl_connector_compatibility/"
+  - "https://github.com/vllm-project/vllm/blob/main/tests/v1/kv_connector/nixl_integration/toy_proxy_server.py"
+  - "https://github.com/ai-dynamo/nixl/tree/main/src/plugins/libfabric"
+  - "https://docs.nvidia.com/dynamo/latest/architecture/disagg_serving.html"
+  - "https://rocm.docs.amd.com/projects/ai-developer-hub/en/v8.0/notebooks/inference/SGlang_PD_Disagg_On_AMD_GPU.html"
+  - "https://docs.cloud.google.com/compute/docs/gpus/gpu-network-bandwidth"
+  - "https://docs.cloud.google.com/cluster-toolkit/docs/machine-learning/a3-mega-enable-gpudirect-tcpxo"
+  - "https://cloud.google.com/blog/products/ai-machine-learning/gke-inference-gateway-and-quickstart-are-ga"
+  - "https://www.nvidia.com/en-us/data-center/h100/"
+  - "https://www.nvidia.com/en-us/data-center/h200/"
+  - "https://aws.amazon.com/ec2/instance-types/p5/"
+  - "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/efa-acc-inst-types.html"
+  - "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/efa-start.html"
+  - "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/data-protection.html"
+  - "https://aws.amazon.com/about-aws/whats-new/2025/06/pricing-usage-model-ec2-instances-nvidia-gpus"
+  - "https://awsdocs-neuron.readthedocs-hosted.com/en/latest/vllm-neuron/docs/tutorials/tutorial-di-1p1d-xpyd.html"
+  - "https://dl.acm.org/doi/10.1145/3651890.3672233"
+  - "https://www.anthropic.com/engineering/a-postmortem-of-three-recent-issues"
 ---
 
 # Prefill and Decode Disaggregation
@@ -28,7 +49,7 @@ Prefill is limited by compute and decode is limited by memory bandwidth, so putt
 Disaggregation runs prefill and decode on separate GPU pools and moves the KV cache between them, which lets you tune TTFT and TPOT separately and size each pool for goodput instead of raw throughput.
 The KV hand-off is the whole design: it is a one-sided RDMA transfer (EFA/SRD on AWS, RoCEv2 on Google Cloud A3 Ultra and A4) between KV pools that were registered once at startup, and it moves a few GiB per long prompt in tens of milliseconds, compared with close to a second over plain TCP.
 The P:D ratio is a control variable that follows the prompt-length and output-length mix, so a fixed ratio is a latent incident that fires when the traffic mix shifts.
-Disaggregation ties prefill and decode into one zonal fabric failure domain, adds a version-skew hazard (both sides must agree on weights, KV dtype, block size and layout), and does not pay off for short prompts or small fleets.
+Disaggregation ties prefill and decode into one zonal fabric failure domain, adds a version-skew hazard (both sides must agree on weights, KV dtype and layout, and on block size unless the connector supports heterogeneous block sizes), and does not pay off for short prompts or small fleets.
 
 ## Mental Model
 
@@ -74,7 +95,7 @@ Splitwise ([Patel et al., ISCA 2024](https://www.microsoft.com/en-us/research/pu
 Splitwise sends the KV cache in one serialized transfer for small prompts and layer by layer for large ones, which is the overlap mechanism described below.
 Mooncake ([Qin et al., FAST 2025](https://arxiv.org/abs/2407.00079)), the serving platform behind Moonshot AI's Kimi, makes the KV cache the central object: a disaggregated KV pool built from otherwise idle CPU DRAM and SSD on GPU servers, a scheduler that routes for cache reuse, and a prediction-based early-rejection policy for overload.
 It reports up to 525% more throughput in simulated long-context scenarios and 75% more requests handled under real Kimi traffic (paper, 2025).
-DeepSeek-V3 ([DeepSeek-AI, arXiv 2412.19437](https://arxiv.org/abs/2412.19437)) shows the extreme form at production scale: prefill and decode use different deployment units and different expert-parallel layouts, with a far larger decode unit than prefill unit (UNVERIFIED exact unit sizes, recalled from the report).
+DeepSeek-V3 ([DeepSeek-AI, arXiv 2412.19437](https://arxiv.org/abs/2412.19437)) shows the extreme form at production scale: prefill and decode use different deployment units and different expert-parallel layouts, with a far larger decode unit than prefill unit: the minimum prefill unit is 4 nodes with 32 GPUs (attention TP4 with sequence parallelism plus DP8, MoE EP32), and the minimum decode unit is 40 nodes with 320 GPUs (attention TP4 plus DP80, MoE EP320) ([DeepSeek-V3 report, section 3.4](https://arxiv.org/abs/2412.19437), as of 2026-10).
 
 ### Data plane: what moves, and how big it is
 
@@ -96,17 +117,17 @@ Peers then exchange memory descriptors (base address, length, rkey, block size, 
 After that, a transfer is just a list of `(remote_addr, local_addr, len)` tuples computed from block ids, with no further control-plane round trips.
 In vLLM's NIXL-based connector, the proxy first sends the request to a prefill instance with `max_tokens=1` and a flag asking for remote decode.
 The prefill instance returns its block ids and engine identity in the response, keeps those blocks pinned, and the proxy forwards the request and those handles to a decode instance.
-The decode instance allocates local blocks, issues one-sided READs, and then notifies the prefill side to release its blocks (vLLM docs, UNVERIFIED protocol details as of 2026-10).
-NVIDIA's NIXL library ([ai-dynamo/nixl](https://github.com/ai-dynamo/nixl)) hides the transports behind backends such as UCX and, for AWS EFA, a libfabric plugin (UNVERIFIED backend list as of 2026-10).
+The decode instance allocates local blocks, issues one-sided READs, and then notifies the prefill side to release its blocks; if neither a heartbeat nor a read notification arrives before the prefill-side `kv_lease_duration` expires, the blocks are freed ([vLLM NixlConnector usage guide](https://docs.vllm.ai/en/latest/features/nixl_connector_usage.html) and the `toy_proxy_server.py` source, as of 2026-10).
+NVIDIA's NIXL library ([ai-dynamo/nixl](https://github.com/ai-dynamo/nixl)) hides the transports behind backend plugins such as UCX (vLLM's default), libfabric (whose README lists AWS EFA support), GDS, POSIX, and Mooncake (NIXL README, as of 2026-10).
 
 ### Pull versus push, and the lease that makes either correct
 
 In pull (decode-initiated READ), prefill runs as soon as a prefill slot frees up, decode admission happens only after prefill finishes, and the prefill instance holds a lease on its KV blocks until the reader arrives.
 The risk with pull is a leaked lease: if the decode instance crashes, or the proxy drops the request between steps 2 and 3, the prefill blocks stay pinned until a timeout reclaims them.
-In push with pre-allocation, used by SGLang with the Mooncake transfer engine (UNVERIFIED detail as of 2026-10), the router contacts both sides up front, decode reserves its destination blocks and publishes their addresses, and prefill WRITEs into them.
+In push with pre-allocation, used by SGLang with the Mooncake transfer engine (the decode server preallocates KV and then signals prefill to start, per [AMD's SGLang PD tutorial](https://rocm.docs.amd.com/projects/ai-developer-hub/en/v8.0/notebooks/inference/SGlang_PD_Disagg_On_AMD_GPU.html), as of 2026-10), the router contacts both sides up front, decode reserves its destination blocks and publishes their addresses, and prefill WRITEs into them.
 Push lets prefill stream each layer as soon as it finishes, but it reserves decode HBM for the whole queueing time plus prefill time.
 The reservation cost is easy to bound with Little's law: reserved bytes equal arrival rate times (prefill queue wait plus prefill time) times KV size.
-At 20 requests per second, 0.63 s prefill, and 2.85 GiB per request at full length, that is about 36 GiB, roughly 3% of the decode pool sized below.
+At 20 requests per second, 0.63 s prefill, and 2.85 GB (2.66 GiB) per request at full length, that is about 36 GB, roughly 3% of the decode pool's KV capacity sized below (8 instances x 4 GPUs x 38.7 GB).
 Pull puts the reservation cost on the prefill pool and push puts it on the decode pool.
 Pick whichever side has more spare HBM, and in both designs make the lease timeout shorter than the time it would take leaked leases to exhaust that pool.
 
@@ -128,7 +149,7 @@ Run `ib_read_bw` (RoCE) or the libfabric `fi_rma_bw` fabtest (EFA) at both 8 KiB
 Layout matters most when prefill and decode run different TP degrees.
 If prefill runs TP4 (2 KV heads per rank) and decode runs TP8 (1 KV head per rank), each decode rank needs half of each source block.
 In a token-major layout (NHD: block, token, head, dim) that half is 16 strided 256 B pieces, while in a head-major layout (HND) it is one contiguous 4 KiB run.
-That is why heterogeneous-TP support in transfer libraries goes together with head-major KV layouts (UNVERIFIED which engines default to HND as of 2026-10).
+That is why heterogeneous-TP support in transfer libraries goes together with head-major KV layouts: vLLM's NixlConnector defaults to a head-major layout (`LBHNC`, formerly HND) for non-MLA models, and with NHD it does not allow heterogeneous-TP head splitting ([vLLM NixlConnector compatibility](https://docs.vllm.ai/en/latest/features/nixl_connector_compatibility/), as of 2026-10).
 The cost of getting this wrong does not show up as an error: the transfer still completes correctly, but with 16x more operations, and TTFT p99 rises only under load.
 
 ### Transport physics: EFA SRD versus RoCEv2
@@ -137,10 +158,10 @@ AWS EFA carries OS-bypass traffic over SRD, a reliable datagram protocol that sp
 SRD does not rely on a lossless fabric, so it avoids PFC pause storms, and multipath spraying avoids the ECMP hash collisions that pin one large flow onto one hot link (see [[17-Cloud-AI-Engineering/Volume_10_AI_Infrastructure_on_Cloud/Chapter_02_Interconnect_Technologies_NVLink_EFA_and_TPU_ICI|Interconnect Technologies]]).
 The catch for portability is the programming interface: EFA is exposed through libfabric RDM endpoints, not the ibverbs Reliable Connected queue pairs that most RoCE-first stacks were written against.
 A transfer engine that hard-codes ibverbs RC will not run over EFA's RDMA path and, depending on its configuration, may silently fall back to TCP.
-RoCEv2 on Google Cloud A3 Ultra and A4 uses ConnectX-7-class NICs with GPUDirect RDMA over a dedicated RDMA VPC (UNVERIFIED NIC and VPC-profile details as of 2026-10).
+RoCEv2 on Google Cloud A3 Ultra and A4 uses eight ConnectX-7 NICs (3,200 Gbps, one per GPU, exposed as MRDMA virtual functions) for GPUDirect RDMA over a dedicated VPC created with the RoCE network profile, with one subnet per CX-7 NIC ([Google Cloud GPU network bandwidth docs](https://docs.cloud.google.com/compute/docs/gpus/gpu-network-bandwidth), as of 2026-10).
 RC queue pairs keep per-connection state on the NIC, so a full mesh of prefill and decode ranks costs `N_prefill x N_decode x tp` connections.
 That is fine at 18 x 8 x 4 = 576 connections and becomes a NIC-cache pressure problem at thousands, which is why UCX offers Dynamically Connected transports on NVIDIA NICs.
-A3 Mega's GPUDirect-TCPXO is a TCP-based offload path designed for NCCL collectives, not a general one-sided RDMA verbs path, so expect KV transfer to go through host memory there (UNVERIFIED as of 2026-10).
+A3 Mega's GPUDirect-TCPXO is a TCP-based offload path that Google documents as an NCCL optimization ([Cluster Toolkit docs](https://docs.cloud.google.com/cluster-toolkit/docs/machine-learning/a3-mega-enable-gpudirect-tcpxo), as of 2026-10), not a general one-sided RDMA verbs path, so expect KV transfer to go through host memory there unless your transfer library explicitly supports TCPXO.
 Mooncake measured its transfer engine at up to 87 GB/s on 4x200 Gbps RoCE and 190 GB/s on 8x400 Gbps RoCE for 40 GB transfers, which is roughly 87% and 48% of line rate ([Mooncake README](https://github.com/kvcache-ai/Mooncake), as of 2026-10).
 Plan for 50-70% of nominal line rate per NIC until you have measured your own numbers.
 
@@ -149,10 +170,10 @@ Plan for 50-70% of nominal line rate per NIC until you have measured your own nu
 RDMA fabrics are zonal, and on both clouds the densest topology needs explicit placement (EC2 cluster placement groups and UltraClusters, Compute Engine compact placement policies), so a P/D pair is a single-zone unit.
 Treat a matched set of prefill pool, decode pool, and router as a cell (see [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_03_Cell_Based_Architecture_and_Shuffle_Sharding|Cell-Based Architecture]]), never let KV transfers cross cells, and do failover at the request level by re-prefilling in another cell.
 The router makes three decisions in sequence.
-First, it decides whether to disaggregate at all: short prompts, or prompts with a large prefix-cache hit on a decode instance, are cheaper to prefill locally (sometimes called conditional disaggregation, for example in [NVIDIA Dynamo](https://github.com/ai-dynamo/dynamo); UNVERIFIED feature naming as of 2026-10).
+First, it decides whether to disaggregate at all: short prompts, or prompts with a large prefix-cache hit on a decode instance, are cheaper to prefill locally (Dynamo calls this conditional disaggregation: its disaggregated router prefills locally when the uncached prefill length is below a threshold or the remote prefill queue is too long, per the [NVIDIA Dynamo disaggregation docs](https://docs.nvidia.com/dynamo/latest/architecture/disagg_serving.html), as of 2026-10).
 Second, it picks a prefill instance by prefix-cache affinity and queue depth.
 Third, it picks a decode instance by free KV blocks, not by request count.
-Kubernetes-native stacks such as [llm-d](https://github.com/llm-d/llm-d) and the GKE Inference Gateway implement this kind of scoring as an extension of the gateway's endpoint picker (UNVERIFIED GA status as of 2026-10).
+Kubernetes-native stacks such as [llm-d](https://github.com/llm-d/llm-d) and the GKE Inference Gateway implement this kind of scoring as an extension of the gateway's endpoint picker; GKE Inference Gateway became generally available in September 2025 and is now documented as "powered by llm-d" ([Google Cloud blog](https://cloud.google.com/blog/products/ai-machine-learning/gke-inference-gateway-and-quickstart-are-ga), as of 2026-10), while llm-d itself is an open-source project rather than a managed service.
 
 ## Numbers to Know
 
@@ -167,13 +188,13 @@ Kubernetes-native stacks such as [llm-d](https://github.com/llm-d/llm-d) and the
 | Llama 3.1 70B KV, 8K / 32K / 128K prompt | 2.5 GiB / 10 GiB / 40 GiB | Derived, this chapter |
 | DeepSeek-V3 MLA KV per token, BF16 | 70,272 B (~69 KiB) | Derived from model config, this chapter |
 | Ops per TP4 rank, 8K prompt, 16-token blocks | 81,920 x 8 KiB | Derived, this chapter |
-| H100 SXM dense BF16 / HBM / HBM bandwidth | ~989 TFLOPS / 80 GB / 3.35 TB/s | NVIDIA datasheet, UNVERIFIED as of 2026-10 |
-| H200 HBM / bandwidth | 141 GB / 4.8 TB/s | NVIDIA datasheet, UNVERIFIED as of 2026-10 |
-| EC2 p5.48xlarge scale-out | 8x H100, 3,200 Gbps EFA aggregate | AWS docs, UNVERIFIED as of 2026-10 |
-| EC2 p5en.48xlarge | 8x H200, 3,200 Gbps EFAv3 | AWS docs, UNVERIFIED as of 2026-10 |
-| Compute Engine a3-ultragpu-8g | 8x H200, 8x 400 Gbps RoCE GPU NICs (3.2 Tbps) | Google Cloud docs, UNVERIFIED as of 2026-10 |
-| Compute Engine A3 Mega | 8x H100, GPUDirect-TCPXO ~1.6 Tbps | Google Cloud docs, UNVERIFIED as of 2026-10 |
-| p5.48xlarge on-demand, us-east-1 | ~$55/hr | AWS pricing, UNVERIFIED as of 2026-10 |
+| H100 SXM dense BF16 / HBM / HBM bandwidth | ~989 TFLOPS / 80 GB / 3.35 TB/s | NVIDIA H100 page lists 1,979 TFLOPS with sparsity (half dense), as of 2026-10 |
+| H200 HBM / bandwidth | 141 GB / 4.8 TB/s | NVIDIA H200 page, as of 2026-10 |
+| EC2 p5.48xlarge scale-out | 8x H100, 3,200 Gbps EFA aggregate over 32 network cards | AWS P5 page and EC2 EFA docs, as of 2026-10 |
+| EC2 p5en.48xlarge | 8x H200, 3,200 Gbps EFAv3 | AWS P5 page (third-generation EFA on Nitro v5), as of 2026-10 |
+| Compute Engine a3-ultragpu-8g | 8x H200, 8x 400 Gbps RoCE GPU NICs (3.2 Tbps; 3.6 Tbps VM total with 2 gVNICs) | Google Cloud GPU network bandwidth docs, as of 2026-10 |
+| Compute Engine A3 Mega | 8x H100, GPUDirect-TCPXO, up to 1,800 Gbps VM total | Google Cloud GPU network bandwidth docs, as of 2026-10 |
+| p5.48xlarge on-demand, us-east-1 | ~$55/hr ($55.04, after the June 2025 P5 price cut of up to 45%) | DoiT and Holori trackers of AWS list price (2026) plus AWS June 2025 announcement |
 | 2.5 GiB KV over RDMA (TP4, 35 GB/s effective per rank) | ~19 ms | Derived, this chapter |
 | 2.5 GiB KV over 25 Gbps effective TCP | ~860 ms | Derived, this chapter |
 
@@ -181,16 +202,16 @@ Kubernetes-native stacks such as [llm-d](https://github.com/llm-d/llm-d) and the
 
 | Dimension | AWS | Google Cloud | Critical difference |
 | --- | --- | --- | --- |
-| KV fabric transport | EFA with SRD, multipath spraying, out-of-order delivery | RoCEv2 GPUDirect RDMA on A3 Ultra, A4 (UNVERIFIED as of 2026-10) | SRD needs libfabric; RoCE stacks assume ibverbs RC |
+| KV fabric transport | EFA with SRD, multipath spraying, out-of-order delivery | RoCEv2 GPUDirect RDMA on A3 Ultra, A4 (Google Cloud docs, as of 2026-10) | SRD needs libfabric; RoCE stacks assume ibverbs RC |
 | Programming API | libfabric RDM endpoints; NCCL via aws-ofi-nccl | ibverbs; UCX and NCCL native | RoCE-native transfer engines need a libfabric backend on AWS |
 | Loss handling | Transport-level retransmit in SRD on Nitro; no PFC dependence | Depends on fabric congestion control; operator managed | RoCE incast behavior depends on the fabric; SRD absorbs reordering |
-| Previous-gen fabric | p4d EFA at 400 Gbps | A3 Mega GPUDirect-TCPXO, A3 High TCPX | TCPX/TCPXO target NCCL; KV transfer may go through host memory (UNVERIFIED) |
+| Previous-gen fabric | p4d EFA at 400 Gbps | A3 Mega GPUDirect-TCPXO, A3 High TCPX | TCPX/TCPXO target NCCL (Google Cloud docs, as of 2026-10); KV transfer may go through host memory |
 | Dense placement | Cluster placement groups, UltraClusters | Compact placement policy, dense deployment / reservations | Both zonal; P/D cells must be single-zone |
-| Capacity acquisition | On-demand, ODCR, Capacity Blocks for ML | On-demand, reservations, DWS flex-start and calendar mode (UNVERIFIED naming as of 2026-10) | Size the decode pool on committed capacity; prefill is the elastic tier |
-| Orchestration | EKS with Dynamo or llm-d; SageMaker HyperPod | GKE with Inference Gateway and llm-d | GKE gateway endpoint picking is a managed path (UNVERIFIED GA as of 2026-10) |
+| Capacity acquisition | On-demand, ODCR, Capacity Blocks for ML | On-demand, reservations, DWS flex-start and calendar mode (Google Cloud DWS pages, as of 2026-10) | Size the decode pool on committed capacity; prefill is the elastic tier |
+| Orchestration | EKS with Dynamo or llm-d; SageMaker HyperPod | GKE with Inference Gateway and llm-d | GKE gateway endpoint picking is a managed path (GKE Inference Gateway GA since September 2025) |
 | Managed abstraction | Bedrock hides P/D entirely | Vertex AI hides P/D entirely | Only self-managed serving exposes these knobs ([[17-Cloud-AI-Engineering/Volume_11_LLM_Serving_and_Inference_Systems_on_Cloud/Chapter_09_Managed_Inference_Amazon_Bedrock_vs_Vertex_AI\|Managed Inference]]) |
-| Network isolation | Security group must allow all traffic to itself for EFA | Dedicated RDMA VPC separate from host gVNIC VPC (UNVERIFIED) | Firewalling is coarse on both; isolate at the subnet or VPC level |
-| Accelerator alternative | Trainium2 with Neuron; disaggregation support UNVERIFIED | TPU v6e/v7 with JetStream or vLLM TPU; disaggregation UNVERIFIED | Do not assume GPU transfer libraries exist on non-GPU silicon |
+| Network isolation | Security group must allow all traffic to itself for EFA | Dedicated RoCE-profile VPC separate from host gVNIC VPCs (Google Cloud docs, as of 2026-10) | Firewalling is coarse on both; isolate at the subnet or VPC level |
+| Accelerator alternative | Trainium2 with Neuron; disaggregated inference is a Beta feature in NxD Inference and vLLM on Neuron, using NIXL over libfabric/EFA (Neuron docs, as of 2026-10) | TPU v6e/v7 with JetStream or vLLM TPU; disaggregation UNVERIFIED: only a 2024 JetStream PR found, no current Google Cloud docs | Do not assume GPU transfer libraries exist on non-GPU silicon |
 
 ## Worked Example: Sizing a Llama 3.1 70B P/D Fleet and Validating the Hand-off
 
@@ -336,16 +357,16 @@ With 70% prefill utilization (to protect TTFT p99) and 80% decode utilization, t
 Step 5: The colocated baseline with chunked prefill gets only 19 ms of slack per 50 ms step, which is a 247-token chunk.
 That caps prefill at 0.6 requests per second per instance and needs 24 nodes.
 The model treats chunk cost as linear, which flatters colocation, because a 247-token GEMM has lower MFU than a full 8K-token one.
-Step 6: At the UNVERIFIED ~$55/hr p5 rate, disaggregation costs $716/hr versus $1,321/hr, which is $19.41 versus $35.83 per million output tokens (with 8K input tokens behind every 512 output tokens).
+Step 6: At the ~$55/hr p5 on-demand rate ($55.04 in us-east-1 per third-party trackers of AWS list price, as of 2026), disaggregation costs $716/hr versus $1,321/hr, which is $19.41 versus $35.83 per million output tokens (with 8K input tokens behind every 512 output tokens).
 Step 7: The fabric carries about 429 Gbps of KV across the whole cluster, which is small next to 13 nodes x 3.2 Tbps.
 Incast is the real constraint, so check the worst case where 18 prefill instances each target the same decode instance at once: 45 GiB into 4 GPUs at about 140 GB/s effective is roughly 345 ms of extra TTFT for the last request in line.
-Change `prompt=1024` and run the script again: the prefill burden drops by roughly 8x, the P:D instance ratio inverts from prefill-heavy (18:8) to decode-heavy (3:8, roughly 2 prefill and 4 decode nodes), the colocated penalty shrinks sharply, and the case for disaggregation weakens.
+Change `prompt=1024` and run the script again: prefill time drops from 629 ms to 74 ms (about 8.5x), the fleet shrinks to 3 prefill and 2 decode instances (3 nodes, $165/hr), and the colocated baseline also needs 3 nodes at the same $4.48 per million output tokens, so the case for disaggregation disappears at this scale.
 
 ### Part B - Single-node hand-off validation on one p5.48xlarge (billable)
 
 This lab runs a TP4 prefill instance on GPUs 0-3 and a TP4 decode instance on GPUs 4-7 of one node, so the KV moves over NVLink through NIXL's UCX backend.
 It checks the protocol, the version-skew checks, and the lease behavior, but it does not exercise EFA.
-Cost estimate: about $55/hr for the instance (UNVERIFIED as of 2026-10) plus about $0.08/GB-month for 500 GB of gp3 (UNVERIFIED), so a 2-hour session is roughly $112.
+Cost estimate: about $55/hr for the instance ($55.04 on-demand in us-east-1 per third-party price trackers, as of 2026) plus about $0.08/GB-month for 500 GB of gp3 (UNVERIFIED: the AWS EBS pricing page text uses $0.08 only as an example rate), so a 2-hour session is roughly $112.
 Many accounts have no on-demand P-instance quota, so expect to request a quota increase or buy an EC2 Capacity Block.
 
 Budget alarm (create it before launching):
@@ -387,15 +408,17 @@ On the instance (vLLM with NIXL installed; check the connector name and flags ag
 ```bash
 export HF_TOKEN=YOUR_TOKEN
 MODEL=meta-llama/Llama-3.1-70B-Instruct
-KVCFG='{"kv_connector":"NixlConnector","kv_role":"kv_both"}'
+# kv_both is deprecated for NixlConnector; use kv_producer on prefill and kv_consumer on decode (vLLM docs, as of 2026-10)
+PCFG='{"kv_connector":"NixlConnector","kv_role":"kv_producer"}'
+DCFG='{"kv_connector":"NixlConnector","kv_role":"kv_consumer"}'
 
 CUDA_VISIBLE_DEVICES=0,1,2,3 VLLM_NIXL_SIDE_CHANNEL_PORT=5600 \
   vllm serve "$MODEL" --port 8100 --tensor-parallel-size 4 \
-  --kv-transfer-config "$KVCFG" > prefill.log 2>&1 &
+  --kv-transfer-config "$PCFG" > prefill.log 2>&1 &
 
 CUDA_VISIBLE_DEVICES=4,5,6,7 VLLM_NIXL_SIDE_CHANNEL_PORT=5601 \
   vllm serve "$MODEL" --port 8200 --tensor-parallel-size 4 \
-  --kv-transfer-config "$KVCFG" > decode.log 2>&1 &
+  --kv-transfer-config "$DCFG" > decode.log 2>&1 &
 
 # Proxy shipped in the vLLM repo under tests/v1/kv_connector/nixl_integration/
 python toy_proxy_server.py --port 8000 \
@@ -408,8 +431,8 @@ curl -s localhost:8000/v1/completions -H 'Content-Type: application/json' \
 
 Experiments to run:
 1. Compare TTFT and TPOT against a single TP8 colocated server using `vllm bench serve` with 8K random prompts.
-2. Kill the decode server in the middle of a run and watch prefill KV usage stay high until the abort timeout releases the leases.
-3. Start the decode server with a different `--kv-cache-dtype` or `--block-size` and confirm that the handshake rejects the mismatch instead of returning wrong output.
+2. Kill the decode server in the middle of a run and watch prefill KV usage stay high until `kv_lease_duration` expires and releases the leases (watch `vllm:nixl_num_kv_expired_reqs`).
+3. Start the decode server with a different `--kv-cache-dtype` and confirm that the handshake compatibility-hash check rejects the mismatch instead of returning wrong output; then try a different `--block-size` and note that current vLLM accepts heterogeneous block sizes ([vLLM NixlConnector compatibility](https://docs.vllm.ai/en/latest/features/nixl_connector_compatibility/), as of 2026-10).
 
 Teardown (exact):
 
@@ -441,7 +464,7 @@ Mitigation: scale prefill on queue wait and TTFT, scale decode on KV block utili
 
 ### Version and format skew
 
-Prefill and decode must agree on weights revision, KV dtype, quantization scales, block size, KV layout, RoPE scaling, and TP rank mapping.
+Prefill and decode must agree on weights revision, KV dtype, quantization scales, KV layout, RoPE scaling, and TP rank mapping, and on block size unless the connector supports heterogeneous block sizes (vLLM's NixlConnector checks a compatibility hash covering model, attention backend, and KV cache dtype, while allowing TP size and block size to differ, as of 2026-10).
 A rolling deploy that upgrades the decode pool before the prefill pool can produce fluent but wrong text without raising any errors.
 Mitigation: put a format fingerprint in the handshake, reject mismatches, and deploy P and D together per cell, never pool by pool.
 Anthropic's [September 2025 postmortem](https://www.anthropic.com/engineering/a-postmortem-of-three-recent-issues) is a public example of routing and configuration faults in a serving fleet degrading output quality without any availability signal, and of sticky routing amplifying how much traffic was affected.
@@ -450,13 +473,13 @@ Anthropic's [September 2025 postmortem](https://www.anthropic.com/engineering/a-
 
 PFC-based lossless Ethernet can produce pause storms, deadlocks, and head-of-line blocking that spread across switches, as documented in Microsoft's [RDMA over Commodity Ethernet at Scale (Guo et al., SIGCOMM 2016)](https://www.microsoft.com/en-us/research/publication/rdma-over-commodity-ethernet-at-scale/).
 P/D incast, where many prefill instances finish at once and target the same decode instance, is the traffic pattern most likely to trigger these problems.
-Meta's [RDMA over Ethernet for Distributed AI Training at Meta Scale (SIGCOMM 2024)](https://dl.acm.org/doi/10.1145/3651890.3672233) is the most recent public account of running RoCE at that scale (UNVERIFIED DOI).
+Meta's [RDMA over Ethernet for Distributed AI Training at Meta Scale (SIGCOMM 2024)](https://dl.acm.org/doi/10.1145/3651890.3672233) (Gangidi et al., DOI 10.1145/3651890.3672233) is the most recent public account of running RoCE at that scale.
 On managed clouds you cannot tune switch buffers, so control incast at the router by spreading decode targets and capping concurrent pulls per decode instance.
 
 ### NUMA and PCIe affinity
 
 A GPU reading KV through a NIC attached to the other CPU socket sends traffic across the inter-socket link and can lose half its bandwidth.
-On p5, launching with fewer EFA interfaces than there are network cards also caps bandwidth well below 3.2 Tbps (UNVERIFIED per-card detail as of 2026-10).
+On p5, launching with fewer EFA interfaces than there are network cards also caps bandwidth well below 3.2 Tbps, because p5.48xlarge spreads its 3,200 Gbps across 32 network cards and AWS documents one EFA interface per card for full bandwidth ([EC2 EFA multi-card docs](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/efa-acc-inst-types.html), as of 2026-10).
 Mitigation: pin each TP rank to the NIC nearest its GPU and check with per-rank transfer metrics.
 
 ### Coupled failure domains
@@ -475,14 +498,14 @@ Never resize the KV pool on the fly, because that forces re-registration and a n
 
 The NIXL side channel and the RDMA endpoints are not authenticated at the application layer, so the security boundary is the network.
 On AWS, EFA needs a security group that allows all traffic to and from itself, so use a dedicated SG and subnet per cell and never share that SG with general workloads.
-On Google Cloud, put RDMA NICs in a dedicated RDMA VPC with no routes to other networks, and keep the router and API ingress on the host VPC (UNVERIFIED VPC-profile mechanics as of 2026-10).
+On Google Cloud, put RDMA NICs in a dedicated RDMA VPC with no routes to other networks, and keep the router and API ingress on the host VPC; the CX-7 NICs attach only to a VPC created with the RoCE network profile and cannot carry other traffic such as internet access (Google Cloud GPU network bandwidth docs, as of 2026-10).
 Give the serving pods narrowly scoped workload identities (EKS Pod Identity or GKE Workload Identity, see [[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter/Chapter_02_Workload_Identity_Federation|Workload Identity Federation]]) that can only read the model bucket and write metrics.
 If weights live in S3 or GCS, put the model bucket behind VPC endpoints and endpoint policies, or VPC Service Controls (see [[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter/Chapter_06_Constructing_an_Impenetrable_Data_Perimeter|Data Perimeter]]).
 
 ### KV is data
 
 A KV cache is a deterministic function of the prompt and should be classified with the same sensitivity as the prompt.
-Nitro-based in-transit encryption between supported instance types may cover inter-instance traffic on AWS (UNVERIFIED for EFA OS-bypass traffic as of 2026-10), and RoCE payloads should be assumed unencrypted unless the provider documents otherwise.
+Nitro-based in-transit encryption covers inter-instance traffic between supported instance types in the same or peered VPC, and P5, P5e and P5en are on the supported list ([EC2 data protection docs](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/data-protection.html), as of 2026-10), but whether it applies to EFA OS-bypass traffic is UNVERIFIED: the docs do not mention EFA, and RoCE payloads should be assumed unencrypted unless the provider documents otherwise.
 A tiered KV store in DRAM or SSD (the Mooncake design) puts prompt-derived data at rest, so encrypt that tier with envelope encryption (see [[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter/Chapter_04_Encryption_Key_Hierarchies_and_Envelope_Encryption|Envelope Encryption]]) or keep it in volatile memory only.
 Cross-tenant prefix sharing creates a timing side channel, because a cache hit visibly lowers TTFT, so salt prefix hashes per tenant whenever tenants must not learn about each other's prompts.
 

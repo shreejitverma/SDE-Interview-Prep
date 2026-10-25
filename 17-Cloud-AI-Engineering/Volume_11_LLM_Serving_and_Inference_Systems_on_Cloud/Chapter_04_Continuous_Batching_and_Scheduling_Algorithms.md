@@ -2,7 +2,7 @@
 type: concept
 track: [cloud-ai, ai-eng, sde, distinguished]
 level:
-status: draft
+status: solid
 last_reviewed:
 sources: 
   - "https://www.usenix.org/conference/osdi22/presentation/yu"
@@ -14,6 +14,37 @@ sources:
   - "https://arxiv.org/abs/2312.07104"
   - "https://docs.vllm.ai/en/latest/configuration/optimization.html"
   - "https://gateway-api-inference-extension.sigs.k8s.io/"
+  - "https://github.com/vllm-project/vllm/blob/main/vllm/v1/core/sched/scheduler.py"
+  - "https://github.com/vllm-project/vllm/blob/main/vllm/config/scheduler.py"
+  - "https://github.com/vllm-project/vllm/blob/main/vllm/config/compilation.py"
+  - "https://docs.vllm.ai/en/latest/design/prefix_caching.html"
+  - "https://vllm.ai/blog/2025-01-27-v1-alpha-release"
+  - "https://arxiv.org/abs/2403.02310"
+  - "https://arxiv.org/abs/2305.05920"
+  - "https://arxiv.org/abs/2408.15792"
+  - "https://www.usenix.org/conference/osdi24/presentation/sun-biao"
+  - "https://github.com/AI-Hypercomputer/JetStream/blob/main/jetstream/engine/engine_api.py"
+  - "https://awsdocs-neuron.readthedocs-hosted.com/en/latest/_sources/vllm-neuron/docs/guides/reference-configuration.md"
+  - "https://huggingface.co/Qwen/Qwen2.5-7B-Instruct/blob/main/config.json"
+  - "https://huggingface.co/unsloth/Meta-Llama-3.1-8B-Instruct/blob/main/config.json"
+  - "https://github.com/sgl-project/sglang/blob/main/docs/docs/advanced_features/server_arguments.mdx"
+  - "https://nvidia.github.io/TensorRT-LLM/legacy/performance/performance-tuning-guide/useful-runtime-flags.html"
+  - "https://docs.cloud.google.com/kubernetes-engine/docs/concepts/about-gke-inference-gateway"
+  - "https://cloud.google.com/blog/products/ai-machine-learning/gke-inference-gateway-and-quickstart-are-ga"
+  - "https://www.nvidia.com/en-us/data-center/h100/"
+  - "https://www.nvidia.com/en-us/data-center/l40s/"
+  - "https://aws.amazon.com/blogs/aws/announcing-up-to-45-price-reduction-for-amazon-ec2-nvidia-gpu-accelerated-instances/"
+  - "https://instances.vantage.sh/aws/ec2/g6e.xlarge"
+  - "https://gcloud-compute.com/g2-standard-8.html"
+  - "https://docs.cloud.google.com/compute/docs/gpus"
+  - "https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_ProductionVariantRoutingConfig.html"
+  - "https://docs.djl.ai/docs/serving/serving/docs/lmi/deployment_guide/configurations.html"
+  - "https://docs.aws.amazon.com/sagemaker/latest/dg/endpoint-auto-scaling-add-code-define.html"
+  - "https://aws.amazon.com/bedrock/pricing/"
+  - "https://docs.cloud.google.com/vertex-ai/generative-ai/docs/multimodal/batch-prediction-gemini"
+  - "https://www.anthropic.com/engineering/a-postmortem-of-three-recent-issues"
+  - "https://status.openai.com/incidents/ctrsv3lwd797"
+  - "https://arxiv.org/abs/2409.20002"
 ---
 
 # Continuous Batching and Scheduling Algorithms
@@ -67,7 +98,7 @@ Modern engines go one step further. PagedAttention-style kernels (see [[17-Cloud
 
 ### The unified "computed tokens" state machine
 
-The cleanest way to reason about a modern scheduler is the representation that the vLLM V1 engine adopted (vLLM V1 design, UNVERIFIED as of 2026-10).
+The cleanest way to reason about a modern scheduler is the representation that the vLLM V1 engine adopted ([vLLM V1 scheduler source](https://github.com/vllm-project/vllm/blob/main/vllm/v1/core/sched/scheduler.py), as of 2026-10).
 Each request carries two counters: `num_tokens` (prompt plus generated tokens so far) and `num_computed_tokens` (tokens whose KV is resident in HBM).
 On every iteration the scheduler gives a request some number `c` of tokens to compute, with `1 <= c <= num_tokens - num_computed_tokens`.
 If after the step `num_computed_tokens == num_tokens`, the last position produced logits and one token is sampled, so `num_tokens` grows by one.
@@ -85,14 +116,14 @@ That is why chunked prefill, which Sarathi-Serve introduced as [chunked-prefills
 
 ### One scheduler iteration, step by step
 
-The following is the canonical loop shared, with variations, by vLLM, SGLang, and TensorRT-LLM in-flight batching. Names follow vLLM; per-engine details are UNVERIFIED as of 2026-10.
+The following is the canonical loop shared, with variations, by vLLM, SGLang, and TensorRT-LLM in-flight batching. Names and steps follow the vLLM V1 scheduler source (as of 2026-10); SGLang and TensorRT-LLM differ in detail, as the knobs table below shows.
 
 1. Set `budget = max_num_batched_tokens`.
 2. Walk the running set in priority order (FCFS order under the default policy).
 For each request, take `c = min(uncomputed, budget)` and ask the KV manager for `ceil((computed + c) / block_size) - blocks_held` new blocks.
 3. If allocation fails, pick a victim from the tail of the running set (lowest priority, latest arrival) and preempt it. Preemption frees its blocks, resets its computed counter to zero (recompute mode), and pushes it to the front of its priority class in the waiting queue. Retry the allocation.
 If the victim is the request being scheduled, stop scheduling running requests for this step.
-4. If nothing was preempted this step, admit waiting requests in queue order while `budget > 0`, `len(running) < max_num_seqs`, and the KV pool keeps a free-block watermark after allocation.
+4. If nothing was preempted this step, admit waiting requests in queue order while `budget > 0`, `len(running) < max_num_seqs`, and the KV pool keeps a free-block watermark after allocation (in vLLM V1 the scheduler `watermark` fraction is opt-in and defaults to 0, per the vLLM `SchedulerConfig` source as of 2026-10).
 5. Build the flattened token batch, launch the forward pass, sample, append tokens, and free the blocks of finished requests.
 
 Three details in this loop are easy to miss in getting-started guides and decide production behavior:
@@ -105,15 +136,15 @@ Without this rule the scheduler would evict request A to grow request B and then
 
 Recompute preemption is much cheaper than it looks when prefix caching is on.
 Blocks freed by a preempted request go back to the free pool with their content hashes intact. They are only truly evicted when the allocator hands them to someone else, in LRU order with a request's tail blocks evicted first.
-When the victim is readmitted, the prefix-cache lookup often finds most of its earlier blocks still resident, so the "recompute" shrinks to the tail that was actually overwritten (vLLM V1 prefix-caching design, UNVERIFIED as of 2026-10).
-Swap-to-host preemption, offered by the vLLM paper and the V0 engine, trades PCIe bandwidth for FLOPs. The V1 engine dropped swap preemption in favor of recompute plus prefix caching (UNVERIFIED as of 2026-10).
+When the victim is readmitted, the prefix-cache lookup often finds most of its earlier blocks still resident, so the "recompute" shrinks to the tail that was actually overwritten ([vLLM prefix-caching design](https://docs.vllm.ai/en/latest/design/prefix_caching.html), as of 2026-10).
+Swap-to-host preemption, offered by the vLLM paper and the V0 engine, trades PCIe bandwidth for FLOPs. The V1 scheduler implements only recompute preemption, resetting `num_computed_tokens` to zero, and the vLLM tuning guide states that recompute has lower overhead than swap in the V1 architecture (vLLM V1 scheduler source and optimization docs, as of 2026-10).
 
 ### Dynamic slot assignment and the static-shape problem
 
 On GPUs with eager kernels, a "slot" is just a row in the batch. The runner assigns each new request a row, and when a request finishes its row is compacted out.
-vLLM V1 keeps a persistent batch: input tensors (token ids, positions, block tables) stay resident across steps and are patched with diffs rather than rebuilt, which takes Python and host-to-device copy cost out of the per-step critical path (vLLM V1 announcement, UNVERIFIED as of 2026-10).
-CUDA graphs add a hidden constraint. Graphs are captured for a discrete set of batch sizes, and a decode batch of 37 runs as the next captured size up with padding. So the effective cost function is a step function of batch size, not a smooth curve (UNVERIFIED as of 2026-10).
-On XLA-compiled accelerators, Google TPUs and AWS Trainium/Inferentia via Neuron, shapes must be static. Engines there pre-allocate a fixed number of decode slots and a fixed set of prefill-length buckets. JetStream's prefill-then-insert-into-slot API shows this pattern directly (JetStream and Neuron docs, UNVERIFIED as of 2026-10).
+vLLM V1 keeps a persistent batch: input tensors (token ids, positions, block tables) stay resident across steps and are patched with diffs rather than rebuilt, which takes Python and host-to-device copy cost out of the per-step critical path ([vLLM V1 announcement](https://vllm.ai/blog/2025-01-27-v1-alpha-release), January 2025).
+CUDA graphs add a hidden constraint. Graphs are captured for a discrete set of batch sizes, and a decode batch of 37 runs as the next captured size up (40) with padding, because vLLM's default capture list is 1, 2, 4, then multiples of 8 below 256 and multiples of 16 above. So the effective cost function is a step function of batch size, not a smooth curve (vLLM `CompilationConfig` source, as of 2026-10).
+On XLA-compiled accelerators, Google TPUs and AWS Trainium/Inferentia via Neuron, shapes must be static. Engines there pre-allocate a fixed number of decode slots and a fixed set of prefill-length buckets. JetStream's prefill-then-insert-into-slot API shows this pattern directly, and the Neuron vLLM plugin pads decode batches to `num_seqs_buckets` whose largest entry must equal `max_num_seqs` ([JetStream engine API](https://github.com/AI-Hypercomputer/JetStream/blob/main/jetstream/engine/engine_api.py) and [Neuron vLLM configuration reference](https://awsdocs-neuron.readthedocs-hosted.com/en/latest/_sources/vllm-neuron/docs/guides/reference-configuration.md), as of 2026-10).
 The consequence: on TPU and Trainium, `max_num_seqs` and the bucket set are compile-time decisions. A badly chosen bucket set wastes FLOPs on padding, or triggers recompilation stalls when a new shape shows up.
 
 ### The step-time model that governs every policy
@@ -125,7 +156,7 @@ t_step = t_overhead + max( 2*P*n / (F_peak * MFU) ,  (P*w + S*k) / (BW * eta) )
 ```
 
 Here `k` is KV bytes per token, `F_peak` is peak dense FLOPs, `BW` is HBM bandwidth, and `MFU` and `eta` are achieved efficiencies.
-`k = 2 * layers * kv_heads * head_dim * bytes_per_elem`, which comes to 128 KiB/token for Llama-3.1-8B in bf16 (32 layers, 8 KV heads, head_dim 128). For Llama-3.1-70B it is 320 KiB/token (80 layers, 8 KV heads), and for Qwen2.5-7B 56 KiB/token (28 layers, 4 KV heads) (model configs, UNVERIFIED as of 2026-10; arithmetic derived).
+`k = 2 * layers * kv_heads * head_dim * bytes_per_elem`, which comes to 128 KiB/token for Llama-3.1-8B in bf16 (32 layers, 8 KV heads, head_dim 128). For Llama-3.1-70B it is 320 KiB/token (80 layers, 8 KV heads), and for Qwen2.5-7B 56 KiB/token (28 layers, 4 KV heads, head_dim 3584 / 28 = 128) (Hugging Face model `config.json` files, as of 2026-10; arithmetic derived).
 The model ignores attention FLOPs, which grow quadratically with prompt length, as well as sampling and tensor-parallel collectives. It is a planning tool, not a benchmark.
 
 Two consequences of this model are the core of this chapter.
@@ -150,9 +181,9 @@ A low-priority request admitted during a quiet period holds KV blocks for its en
 There are three mechanisms that fix it, in increasing cost:
 (1) Reserve headroom: cap the low class at a fraction of `max_num_seqs` or of the KV pool.
 (2) Preemptive priority: when a high-priority request cannot be admitted, preempt the lowest-priority running request.
-(3) Live migration of the victim's KV to another replica instead of discarding it, as Llumnix does (OSDI 2024, UNVERIFIED venue details).
+(3) Live migration of the victim's KV to another replica instead of discarding it, as Llumnix does ([Llumnix, OSDI 2024](https://www.usenix.org/conference/osdi24/presentation/sun-biao)).
 Strict priority starves the low class without bound under sustained overload. The standard remedy is aging, which raises effective priority with wait time, or a weighted-fair token-budget split per class.
-Several research schedulers attack head-of-line blocking from long jobs. FastServe uses skip-join multi-level feedback queues to approximate shortest-remaining-first without knowing output lengths in advance (arXiv 2023, UNVERIFIED). Learning-to-rank schedulers predict relative output length to approximate SJF (NeurIPS 2024, UNVERIFIED).
+Several research schedulers attack head-of-line blocking from long jobs. FastServe uses skip-join multi-level feedback queues to approximate shortest-remaining-first without knowing output lengths in advance ([FastServe, arXiv 2023](https://arxiv.org/abs/2305.05920)). Learning-to-rank schedulers predict relative output length to approximate SJF ([Fu et al., NeurIPS 2024](https://arxiv.org/abs/2408.15792)).
 In production, the cheapest proxy for job size is the client-declared `max_tokens` plus prompt length. It is known at admission and costs nothing to compute.
 
 ### Engine-specific policy knobs
@@ -163,7 +194,7 @@ In production, the cheapest proxy for job size is the client-declared `max_token
 | SGLang | `--schedule-policy` (e.g. `lpm` longest-prefix-match, `fcfs`), `--schedule-conservativeness` scales KV reservation | Retract to waiting queue | RadixAttention tree; `lpm` orders admission by cached-prefix length |
 | TensorRT-LLM | In-flight batching; capacity scheduler `GUARANTEED_NO_EVICT` (reserve for full `max_tokens`) vs `MAX_UTILIZATION` (optimistic, may pause requests) | Pause and evict under `MAX_UTILIZATION` | KV cache reuse with block hashing |
 
-All rows: engine docs, UNVERIFIED as of 2026-10.
+Sources: vLLM V1 scheduler source and `SchedulerConfig`, SGLang server-arguments and hyperparameter-tuning docs (current default `--schedule-policy` is `fcfs`; retraction is logged as "KV cache pool is full. Retract requests."), and the TensorRT-LLM runtime-options guide (default policy `GUARANTEED_NO_EVICT`), all as of 2026-10.
 `GUARANTEED_NO_EVICT` versus `MAX_UTILIZATION` is the cleanest framing of the central trade-off. Pessimistic reservation never preempts but strands memory, because it reserves for `max_tokens` that most requests never reach. Optimistic reservation fills the pool but must evict when outputs run long.
 
 ### Cluster-level scheduling above the engine
@@ -171,9 +202,9 @@ All rows: engine docs, UNVERIFIED as of 2026-10.
 A replica's scheduler only sees its own queue, so the router decides most of the tail latency.
 Round-robin ignores queue depth and is wrong for LLMs, because request cost varies by 100x or more.
 Least-outstanding-requests is better but treats a 100-token chat and a 100k-token document as equal.
-KV-aware routing scores replicas by waiting-queue length and KV utilization scraped from engine metrics. This is how the Kubernetes Gateway API Inference Extension endpoint picker behind GKE Inference Gateway works (GKE docs, UNVERIFIED GA status as of 2026-10).
+KV-aware routing scores replicas by waiting-queue length and KV utilization scraped from engine metrics. This is how the Kubernetes Gateway API Inference Extension endpoint picker behind GKE Inference Gateway works, with prefix-cache match and active LoRA adapters as additional score terms ([GKE docs](https://docs.cloud.google.com/kubernetes-engine/docs/concepts/about-gke-inference-gateway); GA per the [Google Cloud blog](https://cloud.google.com/blog/products/ai-machine-learning/gke-inference-gateway-and-quickstart-are-ga), as of 2026-10).
 Prefix-affinity routing sends requests that share a prefix to the replica that already caches it. This raises cache hit rate but creates hotspots when one system prompt dominates traffic, so practical routers blend affinity and load scores with a load cap that overrides affinity.
-Disaggregating prefill and decode onto separate pools (DistServe, OSDI 2024; Splitwise, ISCA 2024; UNVERIFIED venue details) removes the budget trade-off within each pool and replaces it with a KV-transfer problem. See [[17-Cloud-AI-Engineering/Volume_11_LLM_Serving_and_Inference_Systems_on_Cloud/Chapter_07_Prefill_and_Decode_Disaggregation|Prefill and Decode Disaggregation]].
+Disaggregating prefill and decode onto separate pools (DistServe, OSDI 2024; Splitwise, ISCA 2024) removes the budget trade-off within each pool and replaces it with a KV-transfer problem. See [[17-Cloud-AI-Engineering/Volume_11_LLM_Serving_and_Inference_Systems_on_Cloud/Chapter_07_Prefill_and_Decode_Disaggregation|Prefill and Decode Disaggregation]].
 
 ### Failure domain boundaries
 
@@ -185,36 +216,36 @@ The router is the shared component, and a bug there, such as a misrouting or sco
 
 | Quantity | Value | Source |
 |---|---|---|
-| Orca throughput vs FasterTransformer at same latency (GPT-3 175B) | 36.9x | Orca, OSDI 2022 (UNVERIFIED figure, as of 2026-10) |
-| vLLM throughput vs FasterTransformer and Orca at same latency | 2-4x | vLLM, SOSP 2023 (UNVERIFIED figure, as of 2026-10) |
-| Sarathi-Serve serving capacity gain, Mistral-7B on 1x A100 | up to 2.6x | Sarathi-Serve, OSDI 2024 (UNVERIFIED figure, as of 2026-10) |
+| Orca throughput vs FasterTransformer at same latency (GPT-3 175B) | 36.9x | Orca, OSDI 2022 abstract (baseline is FasterTransformer with a scheduler the authors built) |
+| vLLM throughput vs FasterTransformer and Orca at same latency | 2-4x | [vLLM, SOSP 2023](https://arxiv.org/abs/2309.06180) abstract |
+| Sarathi-Serve serving capacity gain over vLLM, Mistral-7B on 1x A100 | 2.6x | [Sarathi-Serve](https://arxiv.org/abs/2403.02310) abstract (OSDI 2024) |
 | Static batching slot utilization, B=32, exponential output lengths | ~25% (1/H_32) | Derived, this chapter |
-| KV bytes per token, Llama-3.1-8B bf16 | 131,072 B (128 KiB) | Derived from model config (config UNVERIFIED, as of 2026-10) |
-| KV bytes per token, Llama-3.1-70B bf16 | 327,680 B (320 KiB) | Derived from model config (config UNVERIFIED, as of 2026-10) |
-| KV bytes per token, Qwen2.5-7B bf16 | 57,344 B (56 KiB) | Derived from model config (config UNVERIFIED, as of 2026-10) |
-| H100 SXM HBM capacity and bandwidth | 80 GB, 3.35 TB/s | NVIDIA datasheet (UNVERIFIED, as of 2026-10) |
-| H100 SXM dense BF16 peak | ~989 TFLOPS | NVIDIA datasheet (UNVERIFIED, as of 2026-10) |
-| L40S memory and bandwidth | 48 GB GDDR6, 864 GB/s | NVIDIA datasheet (UNVERIFIED, as of 2026-10) |
+| KV bytes per token, Llama-3.1-8B bf16 | 131,072 B (128 KiB) | Derived from Hugging Face `config.json` (32 layers, 8 KV heads, head_dim 128), as of 2026-10 |
+| KV bytes per token, Llama-3.1-70B bf16 | 327,680 B (320 KiB) | Derived from Hugging Face `config.json` (80 layers, 8 KV heads, head_dim 128), as of 2026-10 |
+| KV bytes per token, Qwen2.5-7B bf16 | 57,344 B (56 KiB) | Derived from Hugging Face `config.json` (28 layers, 4 KV heads, head_dim 128), as of 2026-10 |
+| H100 SXM HBM capacity and bandwidth | 80 GB, 3.35 TB/s | [NVIDIA H100 page](https://www.nvidia.com/en-us/data-center/h100/), as of 2026-10 |
+| H100 SXM dense BF16 peak | ~989 TFLOPS | NVIDIA H100 page lists 1,979 TFLOPS with sparsity; dense is half, as of 2026-10 |
+| L40S memory and bandwidth | 48 GB GDDR6, 864 GB/s | [NVIDIA L40S page](https://www.nvidia.com/en-us/data-center/l40s/), as of 2026-10 |
 | Decode half-saturation batch, 8B on H100, L_avg 1,152 | ~106 sequences | Derived, this chapter |
 | Free piggyback prefill tokens per step, 256 decodes, 8B on H100 | ~410 (B* ~670 total) | Derived, this chapter |
 | Simulated capacity, 8B on 1x H100, 1024 in / 256 out | ~20-22 req/s, ~5,000 output tok/s | Simulator below, this chapter |
 | Chunked prefill effect, 5% 16k prompts at 7 req/s | TPOT p99 46 ms -> 20 ms, TTFT p50 53 ms -> 79 ms | Simulator below, this chapter |
-| p5.48xlarge (8x H100) on-demand, us-east-1 | ~$55/hr | AWS pricing (UNVERIFIED, as of 2026-10) |
-| g6e.xlarge (1x L40S) on-demand, us-east-1 | ~$1.86/hr | AWS pricing (UNVERIFIED, as of 2026-10) |
-| g2-standard-8 (1x L4) on-demand, us-central1 | ~$0.85/hr | Google Cloud pricing (UNVERIFIED, as of 2026-10) |
+| p5.48xlarge (8x H100) on-demand, us-east-1 | ~$55/hr ($55.04) | Third-party price trackers, consistent with the [AWS June 2025 P5 on-demand cut of 44%](https://aws.amazon.com/blogs/aws/announcing-up-to-45-price-reduction-for-amazon-ec2-nvidia-gpu-accelerated-instances/), as of 2026-10 |
+| g6e.xlarge (1x L40S) on-demand, us-east-1 | ~$1.86/hr ($1.861) | Third-party price tracker (instances.vantage.sh), as of 2026-10 |
+| g2-standard-8 (1x L4) on-demand, us-central1 | ~$0.85/hr ($0.8536) | Third-party price tracker (gcloud-compute.com), as of 2026-10 |
 
 ## AWS vs GCP Mechanism Parity
 
 | Mechanism | AWS | Google Cloud | Critical difference |
 |---|---|---|---|
-| Self-managed engine host | EC2 P5/P5e/P6 (H100/H200/B200), G6e (L40S) running vLLM, SGLang, or TRT-LLM (AWS docs, UNVERIFIED as of 2026-10) | Compute Engine A3/A4 (H100/H200/B200), G2 (L4) (Google Cloud docs, UNVERIFIED as of 2026-10) | Scheduler identical; differences are interconnect (EFA vs GPUDirect-TCPX/RDMA) and capacity-reservation mechanics |
-| Managed container hosting | SageMaker real-time endpoints with LMI containers (vLLM, TRT-LLM backends), rolling-batch config via `OPTION_*` env vars (AWS docs, UNVERIFIED as of 2026-10) | Vertex AI endpoints with Model Garden vLLM containers (Google Cloud docs, UNVERIFIED as of 2026-10) | Both expose engine flags; neither replaces the in-engine scheduler |
-| Replica routing | SageMaker `RoutingConfig` with `LEAST_OUTSTANDING_REQUESTS` (AWS docs, UNVERIFIED as of 2026-10) | GKE Inference Gateway endpoint picker scoring queue depth and KV utilization (GKE docs, UNVERIFIED as of 2026-10) | Request count vs engine-state-aware scoring; the latter handles heterogeneous prompt lengths |
-| Kubernetes path | EKS plus Karpenter; Gateway API Inference Extension is open source and portable (UNVERIFIED as of 2026-10) | GKE plus Inference Gateway and custom-metrics HPA | GKE packages the extension as a managed product; on EKS you operate it |
-| Static-shape accelerators | Inferentia2/Trainium via Neuron with vLLM integration; bucketed shapes, fixed decode slots (AWS Neuron docs, UNVERIFIED as of 2026-10) | TPU v5e/v6e via vLLM TPU or JetStream; fixed slots and prefill buckets (Google Cloud docs, UNVERIFIED as of 2026-10) | `max_num_seqs` and buckets are compile-time; bad choices cost padding or recompiles |
-| Managed API queuing | Bedrock on-demand throttles by RPM/TPM quotas; Provisioned Throughput buys model units; cross-region inference profiles spread load (AWS docs, UNVERIFIED as of 2026-10) | Vertex AI dynamic shared quota for Gemini, Provisioned Throughput in GSUs, global endpoint (Google Cloud docs, UNVERIFIED as of 2026-10) | Scheduler is opaque; your only levers are quota, provisioned capacity, and client-side admission |
-| Offline low-priority tier | Bedrock batch inference (discounted vs on-demand) (UNVERIFIED rate, as of 2026-10) | Vertex AI batch prediction (discounted vs online) (UNVERIFIED rate, as of 2026-10) | The managed equivalent of a low-priority class; latency in hours, not seconds |
-| Autoscaling signal | SageMaker concurrency-based metrics or custom CloudWatch metrics from engine (UNVERIFIED as of 2026-10) | HPA on `vllm:num_requests_waiting` or KV utilization via Managed Prometheus (UNVERIFIED as of 2026-10) | GPU utilization is a useless signal on both; scale on queue depth |
+| Self-managed engine host | EC2 P5/P5e/P6-B200 (H100/H200/B200), G6e (L40S) running vLLM, SGLang, or TRT-LLM (AWS EC2 docs, as of 2026-10) | Compute Engine A3 High/Mega (H100), A3 Ultra (H200), A4 (B200), G2 (L4) ([Google Cloud GPU docs](https://docs.cloud.google.com/compute/docs/gpus), as of 2026-10) | Scheduler identical; differences are interconnect (EFA vs GPUDirect-TCPX/RDMA) and capacity-reservation mechanics |
+| Managed container hosting | SageMaker real-time endpoints with LMI containers (vLLM, TRT-LLM backends), rolling-batch config via `OPTION_*` env vars such as `OPTION_ROLLING_BATCH=vllm` ([DJL LMI configuration docs](https://docs.djl.ai/docs/serving/serving/docs/lmi/deployment_guide/configurations.html), as of 2026-10) | Vertex AI endpoints with Model Garden vLLM containers (Google Cloud docs, as of 2026-10) | Both expose engine flags; neither replaces the in-engine scheduler |
+| Replica routing | SageMaker `RoutingConfig` with `LEAST_OUTSTANDING_REQUESTS`; the default is `RANDOM` ([SageMaker API reference](https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_ProductionVariantRoutingConfig.html), as of 2026-10) | GKE Inference Gateway endpoint picker scoring queue depth, KV utilization, and prefix-cache match (GKE docs, GA, as of 2026-10) | Request count vs engine-state-aware scoring; the latter handles heterogeneous prompt lengths |
+| Kubernetes path | EKS plus Karpenter; Gateway API Inference Extension is open source (kubernetes-sigs) and portable ([project site](https://gateway-api-inference-extension.sigs.k8s.io/), as of 2026-10) | GKE plus Inference Gateway and custom-metrics HPA | GKE packages the extension as a managed product; on EKS you operate it |
+| Static-shape accelerators | Inferentia2/Trainium via Neuron with vLLM integration; bucketed shapes, fixed decode slots (AWS Neuron vLLM docs, as of 2026-10) | TPU v5e/v6e via vLLM TPU or JetStream; fixed slots and prefill buckets (JetStream engine API, as of 2026-10) | `max_num_seqs` and buckets are compile-time; bad choices cost padding or recompiles |
+| Managed API queuing | Bedrock on-demand throttles by RPM/TPM quotas; Provisioned Throughput buys model units; cross-region inference profiles spread load (Amazon Bedrock docs, as of 2026-10) | Vertex AI dynamic shared quota for Gemini, Provisioned Throughput in GSUs, global endpoint (Vertex AI docs, as of 2026-10) | Scheduler is opaque; your only levers are quota, provisioned capacity, and client-side admission |
+| Offline low-priority tier | Bedrock batch inference at 50% below on-demand for select models ([Bedrock pricing](https://aws.amazon.com/bedrock/pricing/), as of 2026-10) | Vertex AI Gemini batch inference at 50% below real-time, 24-hour turnaround target ([Vertex AI docs](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/multimodal/batch-prediction-gemini), as of 2026-10) | The managed equivalent of a low-priority class; latency in hours, not seconds |
+| Autoscaling signal | SageMaker high-resolution `ConcurrentRequestsPerModel` metric (10 s, launched July 2024) or custom CloudWatch metrics from engine ([SageMaker scaling-policy docs](https://docs.aws.amazon.com/sagemaker/latest/dg/endpoint-auto-scaling-add-code-define.html), as of 2026-10) | HPA on `vllm:num_requests_waiting` or KV utilization via Managed Prometheus (GKE docs, as of 2026-10) | GPU utilization is a useless signal on both; scale on queue depth |
 
 ## Worked Example: Simulate the Scheduler, Then Measure a Real One
 
@@ -407,16 +438,16 @@ Step 2, compute ceiling. Each request costs 1,280 tokens x 2 x 8.03e9 = 20.6 TFL
 
 Step 3, concurrency from Little's law. At 16 req/s, end-to-end latency is about 0.09 s + 255 x 0.031 s = 8.0 s, so N = 16 x 8.0 = 128 concurrent sequences. That needs 128 x ~1,152 x 128 KiB = 19 GB of KV, well inside 50 GB. This deployment is compute-bound, not memory-bound.
 
-Step 4, SLO check. At 16 req/s the simulator gives TTFT p99 268 ms and TPOT p99 39.6 ms, so 16 req/s is the SLO-compliant operating point, about 73% of the compute ceiling. That 27% headroom is what absorbs Poisson burstiness.
+Step 4, SLO check. At 16 req/s the simulator gives TTFT p99 268 ms and TPOT p99 39.6 ms, so 16 req/s is the SLO-compliant operating point, about 73% of the ~22 req/s simulated capacity (67% of the 24 req/s compute ceiling). That 27% headroom is what absorbs Poisson burstiness.
 
 Step 5, cost. 16 req/s x 256 = 4,096 output tok/s = 14.7M output tokens per GPU-hour.
-At ~$6.88 per H100-hour (p5.48xlarge on-demand / 8, UNVERIFIED as of 2026-10) this is about $0.47 per million output tokens, with the 1,024 input tokens per request included.
+At ~$6.88 per H100-hour (p5.48xlarge at $55.04 on-demand / 8, third-party price trackers, as of 2026-10) this is about $0.47 per million output tokens, with the 1,024 input tokens per request included.
 The general formula is `$/M_out = gpu_hour_price / (req_per_s * out_tokens * 3600 / 1e6)`.
 See [[17-Cloud-AI-Engineering/Volume_11_LLM_Serving_and_Inference_Systems_on_Cloud/Chapter_11_End_to_End_Latency_Throughput_and_Cost_Modeling|End-to-End Latency, Throughput, and Cost Modeling]] for the multi-GPU generalization.
 
 ### Part C - validate against a real engine on AWS (billable)
 
-Cost estimate: one g6e.xlarge for at most 2 hours, about $3.72 compute (UNVERIFIED rate as of 2026-10), plus 200 GB gp3 for 2 hours (cents). The instance terminates itself after 110 minutes.
+Cost estimate: one g6e.xlarge for at most 2 hours, about $3.72 compute at $1.861/hr (third-party price tracker, as of 2026-10), plus 200 GB gp3 for 2 hours (cents). The instance terminates itself after 110 minutes.
 The design has no SSH and no inbound ports. Results come back through the EC2 serial console log.
 
 ```bash
@@ -471,7 +502,7 @@ echo "$IID" > iid.txt
 echo "Wait ~30 min, then: aws ec2 get-console-output --region $REGION --instance-id $IID --latest --output text"
 ```
 
-Interactive-priority probe, sent while the benchmark saturates the box. You must forward port 8000 yourself, for example via SSM, which needs an instance profile. In vLLM, lower `priority` values are served earlier (vLLM docs, UNVERIFIED as of 2026-10).
+Interactive-priority probe, sent while the benchmark saturates the box. You must forward port 8000 yourself, for example via SSM, which needs an instance profile. In vLLM, lower `priority` values are served earlier, with ties broken by arrival time ([vLLM V1 request-queue source](https://github.com/vllm-project/vllm/blob/main/vllm/v1/core/sched/request_queue.py), as of 2026-10).
 
 ```bash
 curl -s localhost:8000/v1/completions -H 'Content-Type: application/json' \
@@ -545,8 +576,11 @@ Per-step Python overhead, detokenization, and grammar-constrained decoding run o
 Watch the gap between GPU kernel time and wall-clock step time.
 
 **Public post-incident reviews.**
-Anthropic's September 2025 postmortem, "A postmortem of three recent issues", describes, among other things, a context-window routing error that sent some requests to servers configured for a different context length. Sticky routing amplified the effect for affected users, a reminder that the router is a shared failure domain above every engine (Anthropic engineering blog, UNVERIFIED details as of 2026-10).
-OpenAI's December 2024 incident report describes a telemetry deployment that overloaded Kubernetes API servers and cascaded into DNS-based service discovery failures across serving clusters. Inference data planes need static stability against control-plane loss (OpenAI status page, UNVERIFIED details as of 2026-10). See [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_02_Regions_Zones_and_Static_Stability|Regions, Zones, and Static Stability]].
+Anthropic's September 2025 postmortem, "A postmortem of three recent issues", describes, among other things, a context-window routing error that sent some Sonnet 4 requests to servers configured for the upcoming 1M-token context window.
+It began on August 5, 2025 at about 0.8% of requests, a load-balancing change on August 29 raised it to a peak of 16% of Sonnet 4 requests in the worst hour on August 31, and sticky routing meant that about 30% of Claude Code users who made requests in the window had at least one message misrouted.
+It is a reminder that the router is a shared failure domain above every engine ([Anthropic engineering blog](https://www.anthropic.com/engineering/a-postmortem-of-three-recent-issues), published 2025-09-17).
+OpenAI's December 11, 2024 incident report describes a new telemetry service configuration that overloaded Kubernetes API servers and cascaded into DNS-based service discovery failures across many large clusters; node-level DNS caching hid the failure for about 20 minutes, which let the rollout continue fleet-wide.
+Inference data planes need static stability against control-plane loss ([OpenAI status page](https://status.openai.com/incidents/ctrsv3lwd797)). See [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_02_Regions_Zones_and_Static_Stability|Regions, Zones, and Static Stability]].
 For the general cascade anatomy see [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_07_Anatomy_of_Major_Cloud_Outages|Anatomy of Major Cloud Outages]].
 
 ## Security and Cost Angles
@@ -556,15 +590,15 @@ The gateway must strip any client-supplied `priority` and stamp it from the auth
 Otherwise any caller can preempt other tenants' work.
 
 **Prefix caching is a cross-tenant side channel.**
-A shared prefix cache makes TTFT depend on whether someone else recently sent the same prefix. Researchers have shown prompt-reconstruction attacks that exploit this timing difference (UNVERIFIED specific papers, as of 2026-10).
-Isolate caches per tenant, either with separate replicas or by salting the block hash with a tenant identifier where the engine supports it (vLLM `cache_salt`, UNVERIFIED as of 2026-10).
+A shared prefix cache makes TTFT depend on whether someone else recently sent the same prefix. Researchers have shown prompt-reconstruction attacks that exploit this timing difference, recovering shared prefixes token by token from cache-hit timing ([Song et al., arXiv 2409.20002](https://arxiv.org/abs/2409.20002)).
+Isolate caches per tenant, either with separate replicas or by salting the block hash with a tenant identifier where the engine supports it (vLLM `cache_salt`, which mixes the salt into the first block's hash so only requests with the same salt share cached blocks; [vLLM prefix-caching design](https://docs.vllm.ai/en/latest/design/prefix_caching.html), as of 2026-10).
 
 **Swapped and offloaded KV is user data at rest.**
 If you enable CPU swap or KV offload to local NVMe or remote storage, the offload target holds prompt contents. It needs the same encryption and tenancy controls as the request logs.
 
 **IAM scoping.**
 On AWS, grant `sagemaker:InvokeEndpoint` or `bedrock:InvokeModel` / `bedrock:InvokeModelWithResponseStream` only on specific endpoint, model, or inference-profile ARNs.
-On Google Cloud, prefer a custom role with only the endpoint predict permission over the broad `roles/aiplatform.user` (Google Cloud IAM docs, UNVERIFIED permission names as of 2026-10).
+On Google Cloud, prefer a custom role with only the endpoint predict permission (`aiplatform.endpoints.predict`) over the broad `roles/aiplatform.user` (Google Cloud IAM docs, as of 2026-10).
 See [[17-Cloud-AI-Engineering/Volume_02_AWS_Deep_Dive/Chapter_01_IAM_Policy_Evaluation_Engine|IAM Policy Evaluation Engine]] and [[17-Cloud-AI-Engineering/Volume_03_GCP_Deep_Dive/Chapter_02_Cloud_IAM_Roles_Policies_and_Conditions|Cloud IAM]].
 
 **Network boundaries.**
@@ -609,7 +643,7 @@ A vLLM deployment meets its TPOT SLO most of the time, but p99 TPOT spikes to 3-
 
 Flat 100% utilization tells me nothing, so I go to engine metrics and the request log.
 First hypothesis: long prompts creating compute-bound iterations.
-I correlate TPOT spikes with arrivals of large-prompt requests, and check whether chunked prefill is effectively disabled or the token budget is far above the balanced point. For an 8B model with 256 decodes on H100, roughly 400 extra prefill tokens per step are free, and a budget of 8k (8,192 x 2 x 8.03e9 / 4.945e14 FLOP/s ≈ 266 ms against a 21.8 ms decode step) makes those steps roughly 12x longer.
+I correlate TPOT spikes with arrivals of large-prompt requests, and check whether chunked prefill is effectively disabled or the token budget is far above the balanced point. For an 8B model with 256 decodes on H100, roughly 400 extra prefill tokens per step are free, and a budget of 8k (8,192 x 2 x 8.03e9 / 4.945e14 FLOP/s ~ 266 ms against a 21.8 ms decode step) makes those steps roughly 12x longer.
 Second hypothesis: preemption.
 If `num_preemptions` increments at the spike times, those are recompute bursts. The fix is to lower `max_num_seqs` or reserve headroom, not to change the budget.
 Third hypothesis: host-side stalls such as grammar compilation, detokenization of huge outputs, or Python GC. These show up as gaps between GPU kernels in an Nsight or PyTorch profiler trace.
@@ -635,7 +669,7 @@ Token budget: I want steps capped at about 40 ms. Compute time per token per rep
 TTFT check: a 2,000-token prompt then takes about 4 chunked steps of about 40 ms, so roughly 160 ms plus queueing, comfortably under 1 s at 73% utilization.
 Fleet: 400 / 4.4 = 91 replicas, which is 46 nodes. With N+2 per zone for failure and deploys across two zones I would provision about 50 nodes.
 I would set `max_num_seqs` around 128, above the expected 62 to absorb bursts but well below the KV limit of about 200, so preemption stays rare.
-Cost at ~$55 per node-hour (UNVERIFIED price) is about $2,750/hr for 400 x 300 = 120k output tok/s, or about $6.4 per million output tokens with 2k input tokens bundled in. Prefix caching of shared system prompts is the first lever to cut it, because the workload is prefill-dominated: 87% of tokens are input.
+Cost at ~$55 per node-hour (p5.48xlarge on-demand, $55.04 per third-party price trackers, as of 2026-10) is about $2,750/hr for 400 x 300 = 120k output tok/s, or about $6.4 per million output tokens with 2k input tokens bundled in. Prefix caching of shared system prompts is the first lever to cut it, because the workload is prefill-dominated: 87% of tokens are input.
 The biggest risks in this estimate are MFU (it could be 35-40% with TP4 communication) and output-length variance. I would calibrate both with a trace replay on one node before committing reservations.
 
 #### Follow-up Interviewer Question

@@ -2,9 +2,39 @@
 type: concept
 track: [cloud-ai, ai-eng]
 level:
-status: draft
+status: solid
 last_reviewed:
-sources: []
+sources:
+  - "https://arxiv.org/abs/2309.06180"
+  - "https://docs.vllm.ai/en/stable/design/prefix_caching/"
+  - "https://docs.vllm.ai/en/stable/configuration/optimization/"
+  - "https://docs.vllm.ai/en/stable/design/metrics/"
+  - "https://docs.vllm.ai/en/stable/api/vllm/config/cache/"
+  - "https://docs.vllm.ai/en/v0.16.0/api/vllm/v1/attention/backends/flash_attn/"
+  - "https://github.com/vllm-project/vllm/blob/main/vllm/v1/core/kv_cache_utils.py"
+  - "https://arxiv.org/abs/2405.04437"
+  - "https://proceedings.neurips.cc/paper_files/paper/2024/hash/724be4472168f31ba1c9ac630f15dec8-Abstract.html"
+  - "https://www.nvidia.com/en-us/data-center/h100/"
+  - "https://www.nvidia.com/en-us/data-center/h200/"
+  - "https://www.nvidia.com/en-us/data-center/l4/"
+  - "https://aws.amazon.com/ec2/instance-types/p5/"
+  - "https://docs.cloud.google.com/compute/docs/gpus"
+  - "https://aws.amazon.com/ec2/pricing/on-demand/"
+  - "https://aws.amazon.com/ebs/pricing/"
+  - "https://cloud.google.com/blog/products/ai-machine-learning/gke-inference-gateway-and-quickstart-are-ga"
+  - "https://aws.amazon.com/about-aws/whats-new/2025/11/sagemaker-hyperpod-managed-tiered-kv-cache"
+  - "https://aws.amazon.com/about-aws/whats-new/2025/04/amazon-bedrock-general-availability-prompt-caching/"
+  - "https://awsdocs-neuron.readthedocs-hosted.com/en/latest/libraries/nxd-inference/developer_guides/vllm-user-guide-v1.html"
+  - "https://vllm.ai/blog/2025-10-16-vllm-tpu"
+  - "https://docs.aws.amazon.com/dlami/latest/devguide/aws-deep-learning-x86-base-gpu-ami-ubuntu-22-04.html"
+  - "https://docs.cloud.google.com/deep-learning-vm/docs/images"
+  - "https://openai.com/index/march-20-chatgpt-outage/"
+  - "https://www.anthropic.com/engineering/a-postmortem-of-three-recent-issues"
+  - "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ssd-instance-store.html"
+  - "https://docs.cloud.google.com/java/docs/reference/google-cloud-compute/latest/com.google.cloud.compute.v1.Instance.LocalSsdEncryptionMode"
+  - "https://docs.cloud.google.com/confidential-computing/confidential-vm/docs/create-a-confidential-vm-instance-with-gpu"
+  - "https://aws.amazon.com/confidential-computing/"
+  - "https://platform.claude.com/docs/en/docs/build-with-claude/prompt-caching"
 ---
 
 # KV-Cache Management and PagedAttention
@@ -94,7 +124,8 @@ The paper reports near-zero waste and a 2-4x throughput gain over FasterTransfor
 ### A mechanism the getting-started guides skip: the block ID is shared across layers
 
 The physical pool is not one flat array.
-Each attention layer owns its own K and V tensors, shaped roughly `[num_blocks, block_size, num_kv_heads, head_dim]`. The exact layout depends on the attention backend (UNVERIFIED for current backends).
+Each attention layer owns its own K and V tensors, shaped roughly `[num_blocks, block_size, num_kv_heads, head_dim]`.
+The exact layout depends on the attention backend: the V1 FlashAttention backend allocates `(2, num_blocks, block_size, num_kv_heads, head_size)` per layer, with K and V stacked on the leading axis, and requires `block_size` to be a multiple of 16 (vLLM FlashAttention backend API docs, as of 2026-10).
 A single block ID indexes the same slot range in every layer's tensors at once.
 So a sequence needs only one block table, not one per layer.
 The CPU-side manager allocates "a block" one time.
@@ -193,7 +224,7 @@ The paper offers two recovery mechanisms:
 
 Victims are evicted all-or-nothing per sequence group, because a partial KV cache cannot be used (Kwon et al., SOSP 2023).
 vLLM's tuning guide treats frequent preemption as a sign to raise `gpu_memory_utilization` or lower `max_num_seqs` or `max_num_batched_tokens` (vLLM docs, as of 2026-10).
-Current vLLM V1 uses recompute-based preemption (UNVERIFIED that swap has been fully removed).
+Current vLLM V1 uses recompute-based preemption: the tuning guide names `RECOMPUTE` as the V1 default, and the metrics design doc says swap mode is no longer relevant in V1 and the `--swap-space` flag has been removed (vLLM docs, as of 2026-10).
 Recompute costs FLOPs but no PCIe bandwidth.
 Prefix caching softens it, because a preempted request's full blocks usually remain cached and are hit again on readmission.
 
@@ -226,7 +257,7 @@ Very small chunks also underfill GEMM tiles: a 64-token chunk on a kernel tuned 
 ### Beyond paging: virtual-memory-backed contiguity
 
 vAttention (Prabhu et al., ASPLOS 2025) keeps the KV cache virtually contiguous and uses CUDA virtual memory APIs to map physical pages on demand.
-Unmodified attention kernels then run without a block table (venue and details UNVERIFIED in this pass).
+Unmodified attention kernels then run without a block table (Prabhu et al., ASPLOS 2025).
 The trade-off is page granularity: driver-level physical pages are much larger than a 16-token block, so per-sequence internal waste rises.
 Sharing at token-block granularity also becomes harder.
 PagedAttention puts translation in the kernel; vAttention puts it in the GPU MMU.
@@ -255,7 +286,7 @@ That is why prefix-aware routing (Ch 4 and [[17-Cloud-AI-Engineering/Volume_11_L
 |---|---|---|
 | KV memory actually used before paging | 20.4% to 38.2% | Kwon et al., SOSP 2023 |
 | vLLM throughput vs FasterTransformer / Orca | 2-4x at same latency | Kwon et al., SOSP 2023 |
-| vLLM default block size | 16 tokens | vLLM v1 source walkthroughs, as of 2026-10 |
+| vLLM default block size | 16 tokens | vLLM `CacheConfig.DEFAULT_BLOCK_SIZE`, as of 2026-10 |
 | OPT-13B KV per token (MHA) | 800 KB | Kwon et al., SOSP 2023 |
 | Llama 3.1 8B KV per token, BF16 (32 L, 8 KV heads, d=128) | 128 KiB; 16 GiB at 128k ctx | Derived from model config, as of 2026-10 |
 | Llama 3.1 70B KV per token, BF16 (80 L, 8 KV heads, d=128) | 320 KiB; 40 GiB at 128k ctx | Derived from model config, as of 2026-10 |
@@ -265,12 +296,12 @@ That is why prefix-aware routing (Ch 4 and [[17-Cloud-AI-Engineering/Volume_11_L
 | Paged internal waste, mean | (B - 1) / 2 tokens per sequence | Kwon et al., SOSP 2023, derived |
 | Chunked-prefill budget for better ITL | ~2048 tokens | vLLM docs, as of 2026-10 |
 | Chunked-prefill budget for throughput | > 8192 tokens | vLLM docs, as of 2026-10 |
-| H100 SXM HBM / bandwidth | 80 GB / 3.35 TB/s | NVIDIA datasheet, UNVERIFIED in this pass |
-| H200 HBM / bandwidth | 141 GB / 4.8 TB/s | NVIDIA datasheet, UNVERIFIED in this pass |
-| L4 HBM-class memory / bandwidth | 24 GB GDDR6 / 300 GB/s | NVIDIA datasheet, UNVERIFIED in this pass |
-| p5.48xlarge / a3-highgpu-8g | 8x H100 80 GB | AWS and Google Cloud docs, UNVERIFIED in this pass |
-| p5e.48xlarge / a3-ultragpu-8g | 8x H200 141 GB | AWS and Google Cloud docs, UNVERIFIED in this pass |
-| g6.xlarge on-demand, us-east-1 | ~$0.80/hr | AWS pricing, UNVERIFIED in this pass |
+| H100 SXM HBM / bandwidth | 80 GB / 3.35 TB/s | NVIDIA H100 product page, as of 2026-10 |
+| H200 HBM / bandwidth | 141 GB / 4.8 TB/s | NVIDIA H200 product page, as of 2026-10 |
+| L4 HBM-class memory / bandwidth | 24 GB GDDR6 / 300 GB/s | NVIDIA L4 product page (capacity, bandwidth); GDDR6 per HPE L4 spec, as of 2026-10 |
+| p5.48xlarge / a3-highgpu-8g | 8x H100 80 GB | AWS P5 page and Google Cloud GPU docs (`nvidia-h100-80gb`), as of 2026-10 |
+| p5e.48xlarge / a3-ultragpu-8g | 8x H200 141 GB | AWS P5 page (1128 GB per instance) and Google Cloud GPU docs (`nvidia-h200-141gb`), as of 2026-10 |
+| g6.xlarge on-demand, us-east-1 | $0.8048/hr (Linux) | AWS public pricing data, as of 2026-10 |
 
 ### Derived capacity: Llama 3.1 70B BF16 on 8x H100 80 GB, TP=8
 
@@ -299,12 +330,12 @@ Weight quantization does not.
 
 | Dimension | AWS | Google Cloud | Critical difference |
 |---|---|---|---|
-| GPU hosts for paged KV serving | P5 (H100), P5e/P5en (H200), G6 (L4) | A3 High (H100), A3 Ultra (H200), G2 (L4) | Same NVIDIA silicon, so PagedAttention behaves the same; HBM per GPU sets KV capacity (UNVERIFIED families in this pass) |
-| Custom accelerators | Trainium / Inferentia via Neuron SDK, which has its own KV cache layout (UNVERIFIED for current paging support) | TPU via vLLM TPU backend using a Pallas ragged paged attention kernel (UNVERIFIED) | Paging is implemented in a different kernel stack per chip; block size and layout do not carry over |
+| GPU hosts for paged KV serving | P5 (H100), P5e/P5en (H200), G6 (L4) | A3 High (H100), A3 Ultra (H200), G2 (L4) | Same NVIDIA silicon, so PagedAttention behaves the same; HBM per GPU sets KV capacity (AWS P5 page and Google Cloud GPU docs, as of 2026-10) |
+| Custom accelerators | Trainium / Inferentia via Neuron SDK; NxD Inference has an opt-in block KV cache layout (`is_block_kv_layout`, `pa_block_size`) that enables prefix caching on the Neuron fork of vLLM since Neuron SDK 2.24 (AWS Neuron docs, as of 2026-10) | TPU via the vLLM TPU backend (`tpu-inference`) using the Pallas Ragged Paged Attention kernel (vLLM TPU blog, as of 2026-10) | Paging is implemented in a different kernel stack per chip; block size and layout do not carry over |
 | Self-managed engine on Kubernetes | EKS GPU node groups or Karpenter running vLLM or SGLang | GKE GPU or TPU node pools running vLLM | KV-cache behavior is engine-defined on both; the cloud only provides HBM |
-| Prefix-aware routing | No first-party KV-aware router; use NVIDIA Dynamo, llm-d, or the SGLang router on EKS (UNVERIFIED status) | GKE Inference Gateway with prefix-cache-aware load balancing (UNVERIFIED GA status as of 2026-10) | GCP offers a managed gateway path; on AWS you run the router yourself |
+| Prefix-aware routing | SageMaker HyperPod Inference Operator offers managed intelligent routing (prefix-aware, KV-aware, round-robin) plus a managed tiered KV cache, launched November 2025 (AWS What's New, as of 2026-10); on plain EKS, run NVIDIA Dynamo, llm-d, or the SGLang router yourself | GKE Inference Gateway, GA since September 2025, with prefix-aware load balancing GA (Google Cloud blog, as of 2026-10) | Both now have a managed path; AWS's is tied to HyperPod clusters, while GKE's is a Gateway API extension on standard GKE |
 | Host offload tier for evicted KV | Instance-store NVMe and host DRAM on P5; tools such as LMCache | Local SSD and host DRAM on A3; same tools | Offload bandwidth is PCIe-bound on both; Nitro and Titanium differences do not affect the HBM-to-host path |
-| Managed prompt caching (API level) | Amazon Bedrock prompt caching (UNVERIFIED feature matrix) | Vertex AI context caching for Gemini; Claude prompt caching on Vertex | Explicit cache breakpoints vs implicit caching; see [[17-Cloud-AI-Engineering/Volume_11_LLM_Serving_and_Inference_Systems_on_Cloud/Chapter_10_Claude_on_Bedrock_and_Vertex_AI\|Claude on Bedrock and Vertex AI]] |
+| Managed prompt caching (API level) | Amazon Bedrock prompt caching, GA since April 2025 for supported Claude and Nova models, with explicit cache checkpoints (AWS What's New, as of 2026-10) | Vertex AI context caching for Gemini; Claude prompt caching on Vertex | Explicit cache breakpoints vs implicit caching; see [[17-Cloud-AI-Engineering/Volume_11_LLM_Serving_and_Inference_Systems_on_Cloud/Chapter_10_Claude_on_Bedrock_and_Vertex_AI\|Claude on Bedrock and Vertex AI]] |
 | Managed model serving | SageMaker AI endpoints with LMI containers using vLLM backends | Vertex AI endpoints with vLLM serving containers from Model Garden | Both expose engine flags (block size, memory fraction) through container env vars; defaults may differ from upstream |
 | Weight-load path that limits cache rewarm | S3 to instance, or FSx for Lustre | GCS to instance, or Cloud Storage FUSE | Cold replicas start with empty KV caches on both; see [[17-Cloud-AI-Engineering/Volume_11_LLM_Serving_and_Inference_Systems_on_Cloud/Chapter_08_Cloud_GPU_Autoscaling_and_Cold_Start_Mitigation\|Cold-Start Mitigation]] |
 
@@ -325,7 +356,7 @@ The model is Qwen2.5-7B-Instruct in BF16, about 7.6B parameters, so about 15.2 G
 The L4 has 24 GB; at `gpu_memory_utilization=0.90` the budget is 21.6 GB.
 Assume about 1.5 GB for profiled activations and runtime.
 That leaves 21.6 - 15.2 - 1.5 = ~4.9 GB for KV.
-At 56 KiB per token, the pool holds about 84,000 tokens, or about 5,300 blocks of 16 tokens.
+At 56 KiB per token, the pool holds about 85,000 tokens (4.9e9 / 57,344), or about 5,300 blocks of 16 tokens.
 At `max_model_len=8192` that is about 10 full-length sequences, or about 140 sequences averaging 600 tokens.
 The decode bandwidth floor is 15.2 GB / 300 GB/s = ~51 ms per step at batch 1, so expect at most ~20 tok/s for a single stream.
 The L4 is a weight-bandwidth-bound device, and batching is the only way to improve its unit economics.
@@ -334,8 +365,8 @@ The L4 is a weight-bandwidth-bound device, and batching is the only way to impro
 
 | Item | Rate | Duration | Cost |
 |---|---|---|---|
-| g6.xlarge on-demand, us-east-1 | ~$0.80/hr (UNVERIFIED) | 3 h max (auto-shutdown) | ~$2.41 |
-| 100 GB gp3 root volume | ~$0.08/GB-month (UNVERIFIED) | 3 h | ~$0.03 |
+| g6.xlarge on-demand, us-east-1 | $0.8048/hr (AWS pricing, as of 2026-10) | 3 h max (auto-shutdown) | ~$2.41 |
+| 100 GB gp3 root volume | $0.08/GB-month (AWS pricing, as of 2026-10) | 3 h | ~$0.03 |
 | Model download over the internet | Free ingress | - | $0 |
 | Total ceiling | - | - | < $3 |
 
@@ -357,7 +388,7 @@ aws budgets create-budget --account-id "$ACCT" \
 set -euo pipefail
 export AWS_REGION=us-east-1
 MYIP=$(curl -s https://checkip.amazonaws.com)/32
-# SSM path for the DLAMI base image; UNVERIFIED path - if it fails, run:
+# Public SSM path for the DLAMI base image (AWS DLAMI docs, as of 2026-10); fallback:
 # aws ec2 describe-images --owners amazon --filters "Name=name,Values=Deep Learning Base OSS Nvidia Driver GPU AMI (Ubuntu 22.04)*"
 AMI=$(aws ssm get-parameter \
   --name /aws/service/deeplearning/ami/x86_64/base-oss-nvidia-driver-gpu-ubuntu-22.04/latest/ami-id \
@@ -400,8 +431,8 @@ The only open port is SSH, restricted to your address.
 ssh -i kv-lab.pem ubuntu@"$IP" 'sudo grep -iE "KV cache|concurrency|block" /home/vllm/vllm.log | tail -n 20'
 ```
 
-Look for the lines that report the GPU KV cache size in tokens and the maximum concurrency for `max_model_len`-sized requests (exact wording varies by version, UNVERIFIED).
-Compare them with the ~84,000-token estimate.
+Look for the line `GPU KV cache size: N tokens, Maximum concurrency for 8192 tokens per request: X.XXx` (format string in vLLM `kv_cache_utils.py`, as of 2026-10; wording has changed across releases).
+Compare them with the ~85,000-token estimate.
 The difference is your profiled activation and CUDA-graph reserve.
 Restart the server with `--max-num-batched-tokens 16384` and read the logs again.
 The pool shrinks, which shows the profiling coupling described in Internals.
@@ -443,14 +474,14 @@ for line in cache_metrics():
 The expected shape: the cold request pays a full prefill of about 2,100 tokens.
 The warm requests pay only the uncached tail and the first decode step.
 The "busted" request, with a timestamp prepended, pays the full prefill again, because every block hash downstream of the first block changed.
-The metric names have changed between vLLM releases, so the script matches substrings instead of exact names (UNVERIFIED current names).
+The metric names have changed between vLLM releases, so the script matches substrings instead of exact names; current releases expose `vllm:prefix_cache_queries`, `vllm:prefix_cache_hits`, and `vllm:kv_cache_usage_perc` (vLLM metrics design doc, as of 2026-10).
 
 ### GCP variant
 
 ```bash
 gcloud billing budgets create --billing-account="$BILLING_ACCOUNT" \
   --display-name=kv-cache-lab --budget-amount=10USD --threshold-rule=percent=0.5
-# Image family UNVERIFIED; list with:
+# Base GPU family, e.g. DLVM_FAMILY=common-cu129-ubuntu-2204-nvidia-580 (DLVM docs, as of 2026-10); list with:
 # gcloud compute images list --project deeplearning-platform-release --filter="family~cu12"
 gcloud compute instances create kv-lab --zone=us-central1-a --machine-type=g2-standard-8 \
   --maintenance-policy=TERMINATE --boot-disk-size=100GB \
@@ -546,9 +577,9 @@ Spot capacity for latency-sensitive serving needs headroom for that retry surge 
 
 ### Public incident analogs
 
-OpenAI's March 2023 ChatGPT incident exposed other users' conversation titles through a bug in a caching client library (UNVERIFIED in this pass).
+OpenAI's March 20, 2023 ChatGPT incident exposed other users' conversation titles, and payment details of about 1.2% of ChatGPT Plus subscribers active in a nine-hour window, through a request-cancellation bug in the open-source redis-py client library that returned one user's cached data to another (OpenAI postmortem, March 2023).
 It is the canonical warning that shared caches must be keyed by tenant.
-Anthropic's September 2025 postmortem described requests being routed to servers configured for a different context-window size, among other issues (UNVERIFIED in this pass).
+Anthropic's September 17, 2025 postmortem described some Sonnet 4 requests being misrouted to servers configured for the upcoming 1M-token context window, peaking at 16% of Sonnet 4 requests in the worst hour on August 31, with sticky routing keeping follow-ups on the wrong servers, alongside two unrelated TPU bugs (Anthropic engineering blog).
 It shows that heterogeneous fleets, whose KV and context configurations differ, need routing invariants that are tested like correctness properties.
 
 ## Security and Cost Angles
@@ -568,8 +599,9 @@ Mitigations:
 
 KV blocks in HBM are plaintext derivatives of the prompt and must be treated with the same classification as the prompt.
 If you offload KV to host DRAM or local NVMe, that tier now holds prompt-derived data.
-Rely on the platform's local-disk encryption and wipe-on-release semantics (AWS Nitro instance store and GCP Local SSD, UNVERIFIED specifics), and never ship offloaded KV to shared object storage without CMEK.
-Confidential GPU computing for H100-class parts exists on both clouds in some form (UNVERIFIED GA status as of 2026-10).
+Rely on the platform's local-disk encryption and wipe-on-release semantics: EC2 NVMe instance store is encrypted with XTS-AES-256 in a hardware module and its keys are destroyed on stop or terminate (AWS EC2 docs, as of 2026-10), and GCP Local SSD is encrypted automatically with infrastructure-managed keys deleted when the VM is deleted (Google Cloud Compute API reference, as of 2026-10).
+Never ship offloaded KV to shared object storage without CMEK.
+Confidential GPU computing is asymmetric: Google Cloud documents Confidential VM instances with NVIDIA H100 on A3 High (`a3-highgpu-1g`, Intel TDX), while AWS's confidential-computing page names no GPU confidential-computing mode and relies on the Nitro System blocking operator access to data sent to a GPU (Google Cloud and AWS docs, as of 2026-10).
 
 ### IAM and perimeter
 
@@ -587,7 +619,7 @@ Cache-usage and prefix-hit counters leak traffic shape.
 4. Prefer GQA, MLA, or other KV-compressed architectures when choosing a model. At long context, KV bytes, not parameters, set cost per token.
 5. Tune the chunked-prefill budget per SLO class instead of using one fleet-wide value.
 
-At the managed-API layer, Anthropic-style prompt caching bills cache writes at a premium and cache reads at a small fraction of base input price (UNVERIFIED current multipliers).
+At the managed-API layer, Anthropic prompt caching bills 5-minute cache writes at 1.25x and 1-hour writes at 2x base input price, and cache reads at 0.1x for most models, lower on some newer models (Claude docs, as of 2026-10).
 That makes the prompt-ordering discipline above directly visible on the invoice (see [[17-Cloud-AI-Engineering/Volume_09_FinOps_and_Cloud_Economics/Chapter_05_GPU_and_TPU_Unit_Economics|GPU and TPU Unit Economics]]).
 
 ## Interview Questions and Model Answers
@@ -720,14 +752,14 @@ Treat the KV cache as a three-level hierarchy with explicit cost-of-miss economi
 
 The value of a tier is the prefill FLOPs avoided per byte moved.
 A 320 KiB-per-token block for 70B costs about 5 MiB per 16 tokens to fetch.
-PCIe Gen5 x16 is roughly 50-60 GB/s effective (UNVERIFIED), so L2 is cheaper than recompute for long prefixes.
+PCIe Gen5 x16 signals at 32 GT/s per lane with 128b/130b encoding, about 63 GB/s per direction, so roughly 50-60 GB/s effective after protocol overhead (derived estimate), and L2 is cheaper than recompute for long prefixes.
 Remote L3 only pays when network bandwidth per GPU is high and the prefix is long.
 
 Routing is the main lever.
 A gateway computes the same block-hash chain on the tokenized prompt, so the routing key equals the cache key.
 It routes with bounded-load consistent hashing over replicas, using cached-prefix length as the primary score and queue depth as the tiebreak.
 On GCP I would evaluate GKE Inference Gateway's prefix-aware mode.
-On AWS I would run an open-source KV-aware router on EKS, because there is no first-party equivalent (UNVERIFIED status of both).
+On AWS I would evaluate SageMaker HyperPod's managed intelligent routing and tiered KV cache if the fleet runs on HyperPod, and otherwise run an open-source KV-aware router on EKS (Google Cloud blog and AWS What's New, as of 2026-10).
 
 For isolation, the per-tenant salt is mixed into the hash: shared prefixes stay shareable only within a tenant, or within an explicit "public prompt" namespace.
 Set the per-tenant `cache_salt` on every request, keep the default `sha256` block hash rather than the `xxhash` options, keep metrics private, and put regulated tenants on dedicated cells (see [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_03_Cell_Based_Architecture_and_Shuffle_Sharding|Cell-Based Architecture]]).
@@ -758,7 +790,7 @@ The three designs place address translation in different layers.
 For a GPU fleet serving many short-to-medium, prefix-heavy requests, I keep paging plus a prefix index.
 Fine-grained sharing and copy-on-write are worth the kernel coupling, and the ecosystem's kernels already speak block tables.
 I would consider virtual-memory-backed contiguity for a fleet that runs few, very long, rarely shared sequences and wants the newest attention kernels on day one, without waiting for paged ports.
-On TPU, the MMU option does not apply, so paging lives in a Pallas kernel (UNVERIFIED current implementation).
+On TPU, the MMU option does not apply, so paging lives in a Pallas kernel: vLLM's TPU backend uses Ragged Paged Attention (vLLM TPU blog, as of 2026-10).
 What I would protect most is the hash and routing contract, because it outlives any single kernel.
 
 #### Follow-up Interviewer Question
