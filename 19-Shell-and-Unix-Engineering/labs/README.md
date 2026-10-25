@@ -78,10 +78,11 @@ The script prints the live versions on every run; this table records one run so 
 | Where | Shells |
 |---|---|
 | macOS host | `/bin/sh` and `/bin/bash` (bash 3.2.57), `bash` on PATH (5.3), zsh 5.9 native and with `--emulate sh`, dash, ksh93 (93u+ 2012-08-01), and the one true awk (version 20200816) as `awk` |
-| `matrix/alpine.Dockerfile` (Alpine 3.22) | BusyBox ash 1.37.0 as `/bin/sh` and BusyBox awk as `awk`, bash 3.2.57, 4.4.23, 5.1.16, 5.2.37, and 5.3.20, dash 0.5.12, mksh R59, yash 2.58.1, zsh 5.9 |
-| `matrix/debian.Dockerfile` (Debian 13 trixie) | dash 0.5.12 as `/bin/sh`, bash 5.2.37, posh 0.14.1, ksh93u+m 1.0.10, mksh R59, BusyBox ash 1.37.0, zsh 5.9, GNU coreutils 9.7, and three awks: mawk 1.3.4 (the default `awk`), gawk 5.2.1, and original-awk 2025-01-16 |
+| `matrix/alpine.Dockerfile` (Alpine 3.22) | gcc for C probes, BusyBox ash 1.37.0 as `/bin/sh` and BusyBox awk as `awk`, bash 3.2.57, 4.4.23, 5.1.16, 5.2.37, and 5.3.20, dash 0.5.12, mksh R59, yash 2.58.1, zsh 5.9 |
+| `matrix/debian.Dockerfile` (Debian 13 trixie) | gcc for C probes, dash 0.5.12 as `/bin/sh`, bash 5.2.37, posh 0.14.1, ksh93u+m 1.0.10, mksh R59, BusyBox ash 1.37.0, zsh 5.9, GNU coreutils 9.7, and three awks: mawk 1.3.4 (the default `awk`), gawk 5.2.1, and original-awk 2025-01-16 |
 
 Container runs use an unprivileged `lab` user, so permission behavior matches a normal account.
+A skipped test is counted and printed separately in every matrix row, never as a pass; with gcc in both images, a lab should not need to skip.
 On a host where `sh` on PATH is not `/bin/sh` (a Nix or Homebrew setup), the matrix runs both, because they are different shells.
 
 ## Gotchas

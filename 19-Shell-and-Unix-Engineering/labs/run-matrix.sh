@@ -150,7 +150,7 @@ EOF_DIRS
     files+=("$dir"/*.bats)
   done
 
-  local entry label family cmd first path real key seen=" " version log rc tests failed ran=0 bad=0 missing=0
+  local entry label family cmd first path real key seen=" " version log rc tests skipped passed note failed ran=0 bad=0 missing=0 skips=0
   local -a failures=()
   log=$(mktemp "${TMPDIR:-/tmp}/run-matrix.XXXXXX") || die "mktemp failed"
   # shellcheck disable=SC2064 # expand $log now; it never changes
@@ -191,21 +191,32 @@ EOF_DIRS
     else
       rc=$?
     fi
+    # A skipped test is reported as "ok N # skip" in TAP; count it apart so it never reads as a pass.
     tests=$(grep -c '^ok ' "$log")
+    skipped=$(grep -c '^ok .*# skip' "$log")
     failed=$(grep -c '^not ok ' "$log")
+    passed=$((tests - skipped))
     ran=$((ran + 1))
+    skips=$((skips + skipped))
+    note=""
+    if [ "$skipped" -gt 0 ]; then
+      note=" ($skipped skipped)"
+    fi
     if [ "$rc" -eq 0 ] && [ "$failed" -eq 0 ]; then
-      printf '   %-12s %-38s PASS %3s/%-3s %s\n' "$label" "$version" "$tests" "$tests" "$real"
+      printf '   %-12s %-38s PASS %3s/%-3s %s%s\n' "$label" "$version" "$passed" "$((tests + failed))" "$real" "$note"
+      if [ "$skipped" -gt 0 ]; then
+        sed -n 's/^\(ok .*# skip.*\)$/      \1/p' "$log"
+      fi
     else
       bad=$((bad + 1))
-      printf '   %-12s %-38s FAIL %3s/%-3s %s\n' "$label" "$version" "$tests" "$((tests + failed))" "$real"
+      printf '   %-12s %-38s FAIL %3s/%-3s %s%s\n' "$label" "$version" "$passed" "$((tests + failed))" "$real" "$note"
       failures+=("$label")
       sed 's/^/      /' "$log"
     fi
   done
 
   [ "$list" -eq 1 ] && exit 0
-  printf '   %s shells ran, %s failed, %s not installed; labs: %s\n' "$ran" "$bad" "$missing" "${#dirs[@]}"
+  printf '   %s shells ran, %s failed, %s tests skipped, %s not installed; labs: %s\n' "$ran" "$bad" "$skips" "$missing" "${#dirs[@]}"
   [ "$ran" -gt 0 ] || die "no shell from the matrix is installed here"
   if [ "$bad" -gt 0 ]; then
     printf '   failing shells: %s\n' "${failures[*]}"
