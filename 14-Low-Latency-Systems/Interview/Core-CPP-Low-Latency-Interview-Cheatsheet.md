@@ -1,7 +1,7 @@
 ---
 tags: [trading/interview, trading/low-latency-cpp, trading/cheatsheet, type/cheatsheet]
 aliases: [C++ Interview Cheatsheet, Low-Latency Cheatsheet, HFT C++ Quick Reference, Systems Programming Cheatsheet]
-status: evergreen
+status: draft
 module: 14
 created: 2026-08-22
 type: concept

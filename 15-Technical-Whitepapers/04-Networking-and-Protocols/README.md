@@ -1,7 +1,7 @@
 ---
 tags: [networking, tcp, protocols, ddos, firewalls, iptables, packet-analysis, type/moc]
 aliases: [Networking and Protocols MOC, Network Engineering Canon]
-status: evergreen
+status: draft
 created: 2026-09-17
 type: moc
 track: [distinguished, sde]

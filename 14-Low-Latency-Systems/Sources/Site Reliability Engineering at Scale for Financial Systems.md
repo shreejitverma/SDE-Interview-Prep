@@ -1,7 +1,7 @@
 ---
 tags: [trading/canon, trading/sources, type/source-summary]
 aliases: [SRE for Financial Systems, Financial Reliability, Financial SRE Canon, High Availability Systems]
-status: evergreen
+status: draft
 module: 14
 created: 2026-08-22
 type: paper

@@ -1,7 +1,7 @@
 ---
 tags: [trading/hardware, type/concept]
 aliases: [Cache Hierarchy, Line Alignment, Cache Sets, L1 L2 L3 Caches]
-status: evergreen
+status: draft
 module: 04
 created: 2026-08-22
 type: concept

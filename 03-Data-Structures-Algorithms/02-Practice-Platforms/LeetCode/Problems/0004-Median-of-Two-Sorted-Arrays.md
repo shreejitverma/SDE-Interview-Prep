@@ -14,6 +14,8 @@ created_date: 2026-10-07
 updated_date: 2026-10-07
 sources:
   - "https://leetcode.com/problems/median-of-two-sorted-arrays/"
+track: [sde, quant-dev]
+last_reviewed:
 ---
 
 # LeetCode 0004: Median of Two Sorted Arrays

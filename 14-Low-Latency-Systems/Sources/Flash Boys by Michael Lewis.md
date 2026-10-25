@@ -1,7 +1,7 @@
 ---
 tags: [trading/canon, trading/sources, type/source-summary]
 aliases: [Flash Boys, Michael Lewis, HFT History, IEX Speed Bump, Spread Networks]
-status: evergreen
+status: draft
 module: 14
 created: 2026-08-22
 type: paper

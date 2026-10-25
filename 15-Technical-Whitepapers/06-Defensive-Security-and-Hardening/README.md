@@ -1,7 +1,7 @@
 ---
 tags: [security/defensive, hardening, linux/security, appsec, containers, owasp, asvs, type/moc]
 aliases: [Defensive Security and Hardening MOC, Security Hardening Canon]
-status: evergreen
+status: draft
 created: 2026-09-17
 type: moc
 track: [distinguished, sde]

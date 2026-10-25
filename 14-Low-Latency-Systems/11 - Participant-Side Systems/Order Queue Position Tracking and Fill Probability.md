@@ -1,7 +1,7 @@
 ---
 tags: [trading/participant-systems, trading/microstructure, type/concept]
 aliases: [Queue Position Tracking, Fill Probability, Level-2 Queue Estimation, Proportional Cancel Model, FIFO Priority Estimator]
-status: evergreen
+status: draft
 module: 11
 created: 2026-08-22
 type: concept

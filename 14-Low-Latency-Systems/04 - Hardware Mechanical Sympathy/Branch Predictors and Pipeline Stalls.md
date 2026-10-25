@@ -1,7 +1,7 @@
 ---
 tags: [trading/hardware, trading/low-latency-cpp, type/concept]
 aliases: [Branch Predictor, Pipeline Stalls, Branchless C++, TAGE Predictor, CMOV, Likely Unlikely]
-status: evergreen
+status: draft
 module: 04
 created: 2026-08-22
 type: concept

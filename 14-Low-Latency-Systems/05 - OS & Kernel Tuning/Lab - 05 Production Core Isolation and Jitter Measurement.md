@@ -1,7 +1,7 @@
 ---
 tags: [trading/kernel-tuning, type/lab]
 aliases: [Lab 05, Core Isolation Lab, Jitter Measurement Lab, OS Jitter Lab]
-status: evergreen
+status: draft
 module: 05
 created: 2026-08-22
 type: playbook

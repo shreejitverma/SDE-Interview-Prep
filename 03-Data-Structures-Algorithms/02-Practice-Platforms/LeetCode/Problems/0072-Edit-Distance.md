@@ -11,6 +11,12 @@ problem_number: "0072"
 topics:
   - Dynamic Programming
   - String
+type: problem
+track: [sde, quant-dev]
+level:
+status: draft
+last_reviewed:
+sources: []
 ---
 
 # LeetCode 0072: Edit Distance

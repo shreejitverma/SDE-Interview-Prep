@@ -16,6 +16,8 @@ created_date: 2026-10-07
 updated_date: 2026-10-07
 sources:
   - "https://leetcode.com/problems/design-add-and-search-words-data-structure/"
+track: [sde, quant-dev]
+last_reviewed:
 ---
 
 # LeetCode 0211: Design Add and Search Words Data Structure

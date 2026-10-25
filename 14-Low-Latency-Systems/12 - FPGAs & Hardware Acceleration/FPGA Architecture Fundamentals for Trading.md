@@ -1,7 +1,7 @@
 ---
 tags: [trading/fpga, trading/hardware, type/concept]
 aliases: [FPGA Architecture, LUTs, Flip-Flops, BRAM, UltraRAM, DSP48E2, GTY SerDes, Clock Domains, Timing Closure]
-status: evergreen
+status: draft
 module: 12
 created: 2026-08-22
 type: concept

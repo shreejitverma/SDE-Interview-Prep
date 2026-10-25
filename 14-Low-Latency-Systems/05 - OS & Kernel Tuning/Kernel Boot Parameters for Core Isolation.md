@@ -1,7 +1,7 @@
 ---
 tags: [trading/kernel-tuning, type/concept]
 aliases: [Core Isolation, isolcpus, nohz_full, rcu_nocbs, Linux Boot Parameters, Low Latency Kernel]
-status: evergreen
+status: draft
 module: 05
 created: 2026-08-22
 type: concept

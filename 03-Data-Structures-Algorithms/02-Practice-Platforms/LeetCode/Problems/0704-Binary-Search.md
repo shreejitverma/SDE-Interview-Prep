@@ -11,6 +11,12 @@ problem_number: "0704"
 topics:
   - Binary Search
   - Array
+type: problem
+track: [sde, quant-dev]
+level:
+status: draft
+last_reviewed:
+sources: []
 ---
 
 # LeetCode 0704: Binary Search

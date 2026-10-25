@@ -1,7 +1,7 @@
 ---
 tags: [trading/canon, trading/sources, type/source-summary]
 aliases: [Wait-Free Synchronization, Maurice Herlihy, Consensus Hierarchy, Lock-Free Hierarchy]
-status: evergreen
+status: draft
 module: 14
 created: 2026-09-17
 type: paper

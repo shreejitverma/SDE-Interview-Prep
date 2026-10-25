@@ -90,7 +90,7 @@ C++ is *mostly* a superset of C, but several differences bite when mixing them:
 - **Empty parameter lists** - `int f()` in C means "unspecified arguments"; in C++ it means "no arguments" (`int f(void)`). A C function declared `f()` and called with arguments is legal C but wrong in C++.
 - **Stricter type rules** - C++ forbids many implicit narrowing conversions and enum-to-int laxity that C permits.
 
-> **Why this matters.** These differences are why a C header may not compile cleanly in C++ and why the same source can mean different things in each language. When consuming a C library, wrap its header in `extern "C" { #include <clib.h> }` so its functions get C linkage, and be aware that the C header's idioms (implicit `void*` casts, `f()` meaning variadic) follow C rules. When *writing* a header meant for both, restrict yourself to the common subset. These are small traps individually, but at a language boundary a single one - `f()` interpreted as variadic, a struct layout assumed identical - corrupts the call.
+> **Why this matters.** These differences are why a C header may not compile cleanly in C++ and why the same source can mean different things in each language. When consuming a C library, wrap its header in `extern "C" { #include <clib.h> }` so its functions get C linkage, and be aware that the C header's idioms (implicit `void*` casts, `f()` declaring a function with unspecified parameters before C23, whereas C23 and C++ treat it as `f(void)`) follow C rules. When *writing* a header meant for both, restrict yourself to the common subset. These are small traps individually, but at a language boundary a single one - an unprototyped `f()` called with arguments, a struct layout assumed identical - corrupts the call.
 
 ---
 

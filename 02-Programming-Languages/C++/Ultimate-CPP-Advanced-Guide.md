@@ -1626,12 +1626,12 @@ public:
 
 class Timer {
 private:
-    std::chrono::high_resolution_clock::time_point start;
+    std::chrono::steady_clock::time_point start;
 public:
-    Timer() : start(std::chrono::high_resolution_clock::now()) {}
+    Timer() : start(std::chrono::steady_clock::now()) {}
     
     double elapsed_ms() const {
-        auto end = std::chrono::high_resolution_clock::now();
+        auto end = std::chrono::steady_clock::now();
         return std::chrono::duration<double, std::milli>(end - start).count();
     }
     
@@ -1651,8 +1651,8 @@ void profiling_example() {
     }  // Destructor prints elapsed time
 }
 
-// Using perf (Linux)
-// g++ -O0 -g program.cpp -o program
+// Using perf (Linux) - always profile optimized builds with debug symbols
+// g++ -O2 -g program.cpp -o program
 // perf record ./program
 // perf report
 
@@ -2271,7 +2271,7 @@ void debugging_techniques() {
 ### CMake
 
 ```cmake
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.20)
 project(MyProject)
 
 set(CMAKE_CXX_STANDARD 20)
@@ -2315,8 +2315,8 @@ CMakeDeps
 CMakeToolchain
 
 [options]
-boost:shared=True
-openssl:shared=True
+boost/*:shared=True
+openssl/*:shared=True
 ```
 
 ---

@@ -1,7 +1,7 @@
 ---
 tags: [systems/performance, security/offensive, security/defensive, kernel/internals, memory/architecture, networking, type/moc]
 aliases: [Technical Whitepapers Archive, Technical Whitepapers MOC, Whitepapers Canon, Systems and Security Whitepapers]
-status: evergreen
+status: draft
 created: 2026-09-17
 type: moc
 track: [distinguished, sde]

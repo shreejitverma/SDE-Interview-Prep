@@ -1,7 +1,7 @@
 ---
 tags: [trading/microstructure, type/concept]
 aliases: [Queue Position, Queue Depletion, Cancel Ratios, Level 2 Queue Estimation, Fill Probability, Adverse Selection]
-status: evergreen
+status: draft
 module: 01
 created: 2026-08-22
 type: concept

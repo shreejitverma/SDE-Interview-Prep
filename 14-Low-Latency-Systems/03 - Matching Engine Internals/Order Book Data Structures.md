@@ -1,7 +1,7 @@
 ---
 tags: [trading/matching-engine, type/concept]
 aliases: [Order Book, LOB Internals, Intrusive Order Book, Price Level Array, Limit Order Book Data Structures]
-status: evergreen
+status: draft
 module: 03
 created: 2026-08-22
 type: concept

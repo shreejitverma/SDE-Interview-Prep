@@ -15,6 +15,8 @@ created_date: 2026-10-07
 updated_date: 2026-10-07
 sources:
   - "https://leetcode.com/problems/word-search-ii/"
+track: [sde, quant-dev]
+last_reviewed:
 ---
 
 # LeetCode 212: Word Search II (Trie & Backtracking Deep Dive)

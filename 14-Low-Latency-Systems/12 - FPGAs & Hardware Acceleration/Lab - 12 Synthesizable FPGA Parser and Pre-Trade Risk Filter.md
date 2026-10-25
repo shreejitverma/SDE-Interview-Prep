@@ -1,7 +1,7 @@
 ---
 tags: [trading/fpga, type/lab]
 aliases: [Lab 12, FPGA Parser Lab, HLS Parser Lab, Verilog Risk Filter Lab]
-status: evergreen
+status: draft
 module: 12
 created: 2026-08-22
 type: playbook

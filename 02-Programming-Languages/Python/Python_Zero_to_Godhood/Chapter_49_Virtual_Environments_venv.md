@@ -29,6 +29,6 @@ Every venv contains a `pyvenv.cfg` file. When the Python binary starts, it looks
 
 ### 60.2 `ensurepip`: Bootstraping the Ecosystem
 
-The `ensurepip` module provides a way to install `pip` into an environment without needing an internet connection. It contains bundled "wheel" files of `pip` and `setuptools`.
+The `ensurepip` module provides a way to install `pip` into an environment without needing an internet connection. In Python 3.12+, it bundles only `pip` (`setuptools` is no longer included).
 
 ---

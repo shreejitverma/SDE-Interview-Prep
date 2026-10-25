@@ -1,7 +1,7 @@
 ---
 tags: [trading/time-measurement, type/concept]
 aliases: [Coordinated Omission, Gil Tene Latency, HDR Histogram, Service Time vs Response Time, Tail Latency]
-status: evergreen
+status: draft
 module: 07
 created: 2026-08-22
 type: concept

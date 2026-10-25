@@ -1,7 +1,7 @@
 ---
 tags: [trading/reliability-ops, trading/testing, trading/latency-optimization, type/concept]
 aliases: [Latency Regression Testing, Performance CI, Bare-Metal Benchmarking, Tail Shift Detection, Mann-Whitney U, ASLR Disablement, Nanosecond CI]
-status: evergreen
+status: draft
 module: 13
 created: 2026-08-22
 type: concept
@@ -33,13 +33,13 @@ flowchart TD
     end
 
     subgraph BareMetalHarness ["2. Hardened Bare-Metal Testbed (No Virtualization)"]
-        ENV["Environment Lockdown:\n• CPU Frequency Fixed @ 4.0 GHz (TurboBoost OFF)\n• Core Isolated (isolcpus + nohz_full)\n• ASLR Disabled (Fixed Memory Addresses)\n• 500K Warmup Iterations (L1/BTB Hot)"]
+        ENV["Environment Lockdown:\n• CPU Frequency Fixed @ 2.0 GHz Base Clock (TurboBoost OFF)\n• Core Isolated (isolcpus + nohz_full)\n• ASLR Disabled (Fixed Memory Addresses)\n• 500K Warmup Iterations (L1/BTB Hot)"]
         RUN["Execute 10,000,000 Tick-to-Trade Loops"]
         ENV --> RUN
     end
 
     subgraph StatisticalGate ["3. Statistical Regression Verification (<10ns Sensitivity)"]
-        STAT["Statistical Distribution Analysis:\n• Mann-Whitney U Test (Median Shift > 2ns?)\n• HdrHistogram Tail Analysis (p99.9 Shift > 10ns?)\n• Hardware Cache-Miss Counter Delta"]
+        STAT["Statistical Distribution Analysis:\n• Mann-Whitney U Test (Stochastic Dominance / Rank Shift?)\n• HdrHistogram Tail Analysis (p99.9 Shift > 10ns?)\n• Hardware Cache-Miss Counter Delta"]
         DEC{"Regression Detected?"}
         
         STAT --> DEC
@@ -64,7 +64,7 @@ To eliminate environmental measurement noise, the CI benchmark host must be conf
 | **Intel TurboBoost** | **DISABLED** (`no_turbo=1`) | Eliminates thermal frequency fluctuations between runs. |
 | **CPU C-States / P-States**| `idle=poll processor.max_cstate=0`| Prevents CPU cores from entering power-saving sleep. |
 | **Kernel Core Isolation** | `isolcpus=2-3 nohz_full=2-3` | Eliminates OS kernel interrupts and scheduler ticks. |
-| **ASLR (Address Space)** | `echo 0 > /proc/sys/kernel/randomize_va_space` | Fixes memory addresses to ensure identical cache layouts. |
+| **ASLR (Address Space)** | `echo 0 > /proc/sys/kernel/randomize_va_space` | Fixes memory addresses for layout reproducibility (note Mytkowicz et al. 2009 caveat on structural measurement bias). |
 | **Compiler Flags** | `-O3 -march=native -fno-strict-aliasing` | Production-exact assembly instruction emission. |
 
 ### 2. The Cache & Branch Predictor Warmup Protocol
@@ -75,7 +75,7 @@ Before recording timing measurements:
 
 ### 3. Statistical Distribution Testing (Mann-Whitney U Test)
 Comparing raw minimum or average numbers is statistically flawed. A robust CI gate uses non-parametric hypothesis testing:
-- **Mann-Whitney U Test**: Evaluates whether the median of the candidate build's latency distribution is statistically significantly greater than the baseline build ($p < 0.001$).
+- **Mann-Whitney U Test**: Evaluates whether the candidate build's latency distribution stochastically dominates the baseline (testing rank distribution rather than medians unless distribution shapes are identical; $p < 0.001$).
 - **HdrHistogram Tail Delta**: Asserts that $\text{Candidate}_{p99.9} - \text{Baseline}_{p99.9} \le \mathbf{10.0\text{ ns}}$.
 
 ---
@@ -86,6 +86,8 @@ Comparing raw minimum or average numbers is statistically flawed. A robust CI ga
 
 ```cpp
 #include <x86intrin.h>
+#include <chrono>
+#include <thread>
 #include <iostream>
 #include <vector>
 #include <algorithm>
@@ -107,6 +109,20 @@ inline uint64_t rdtsc_end() noexcept {
     return tsc;
 }
 
+// Nanoseconds per invariant-TSC tick, calibrated against the monotonic clock.
+// The TSC ticks at the nominal frequency regardless of core clock, so never hardcode it:
+// a 2.0 GHz nominal TSC (e.g. Xeon Platinum 8480+) gives 0.5 ns per tick, a 4.0 GHz one 0.25 ns.
+// On Linux the kernel's calibrated tsc_khz, or CPUID leaf 0x15 where it reports the crystal clock, is an alternative source.
+inline double calibrate_ns_per_tick() noexcept {
+    uint64_t tsc_start = rdtsc_start();
+    auto wall_start = std::chrono::steady_clock::now();
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    uint64_t tsc_end = rdtsc_end();
+    auto wall_end = std::chrono::steady_clock::now();
+    std::chrono::duration<double, std::nano> elapsed_ns = wall_end - wall_start;
+    return elapsed_ns.count() / static_cast<double>(tsc_end - tsc_start);
+}
+
 // Simulated Function Under Test
 __attribute__((noinline)) uint32_t process_order_candidate(uint32_t price, uint32_t qty) {
     return price * qty + 1;
@@ -120,6 +136,7 @@ public:
     static void run_benchmark(double baseline_p50_ns, double baseline_p99_ns) {
         std::vector<uint32_t> latencies;
         latencies.reserve(BENCHMARK_ITERATIONS);
+        const double ns_per_tick = calibrate_ns_per_tick();
 
         // 1. WARMUP PHASE (Prime L1i, L1d, and BTB)
         uint32_t dummy = 0;
@@ -133,8 +150,8 @@ public:
             dummy += process_order_candidate(100 + (i & 0x7), 50);
             uint64_t t1 = rdtsc_end();
 
-            // Convert cycles to nanoseconds (assuming 4.0 GHz CPU: 1 cycle = 0.25 ns)
-            uint32_t ns = static_cast<uint32_t>((t1 - t0) * 0.25);
+            // Convert TSC ticks to nanoseconds with the calibrated factor
+            uint32_t ns = static_cast<uint32_t>((t1 - t0) * ns_per_tick);
             latencies.push_back(ns);
         }
 
@@ -182,7 +199,7 @@ int main() {
 
 ## Numbers
 
-*Hardware Baseline: Dedicated Bare-Metal Dell PowerEdge R660 (Intel Xeon Platinum 8480+ @ 4.0 GHz).*
+*Hardware Baseline: Dedicated Bare-Metal Dell PowerEdge R660 (Intel Xeon Platinum 8480+ @ 2.0 GHz base clock).*
 
 | Measurement Environment | Minimum Detectable Latency Shift | Run-to-Run Variance ($\sigma$) | Suitability for HFT CI |
 | :--- | :--- | :--- | :--- |
@@ -223,7 +240,7 @@ int main() {
 > 1. **Why are standard cloud CI runners (e.g. GitHub Actions, AWS EC2) useless for detecting low-latency trading code regressions?**
 >    *Answer*: Virtualized cloud runners suffer from hypervisor CPU time-stealing, noisy-neighbor cache thrashing, variable dynamic CPU clock frequencies (power scaling), and virtualized timers. This introduces 100 to 500 nanoseconds of background measurement jitter, making it impossible to detect legitimate 5 to 15-nanosecond software regressions.
 > 2. **Why must Address Space Layout Randomization (ASLR) be disabled during bare-metal latency benchmarking?**
->    *Answer*: ASLR randomizes the starting memory addresses of the program's stack, heap, and data segments on every execution. Different memory addresses map to different L1/L2 cache sets and different page table entries, causing run-to-run cache collision variations (up to 8 ns). Disabling ASLR (`randomize_va_space = 0`) guarantees that memory structures occupy the exact same physical cache lines on every benchmark run.
+>    *Answer*: ASLR randomizes the starting memory addresses of the program's stack, heap, and data segments on every execution. Different memory addresses map to different L1/L2 cache sets and different page table entries, causing run-to-run cache collision variations (up to 8 ns). Disabling ASLR (`randomize_va_space = 0`) fixes memory layouts for determinism, though engineers must account for structural measurement bias (Mytkowicz et al. 2009), where a fixed layout can systematically bias results.
 > 3. **What is the purpose of running 500,000 warmup iterations before recording benchmark data?**
 >    *Answer*: Warmup iterations prime the CPU's hardware caches (L1i, L1d), load Translation Lookaside Buffers (TLB), and train Branch Target Buffers (BTB) and pattern history tables. This ensures that recorded measurements reflect the code's steady-state hot-path production latency rather than cold-cache startup page faults or initial branch mispredictions.
 

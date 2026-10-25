@@ -1,7 +1,7 @@
 ---
 tags: [trading/protocols, trading/low-latency-cpp, type/concept]
 aliases: [Zero-Copy, In-Place Parsing, Unaligned Memory, BSWAP, Split-Cache Penalty, Endianness Conversion]
-status: evergreen
+status: draft
 module: 10
 created: 2026-08-22
 type: concept

@@ -1,7 +1,7 @@
 ---
 tags: [trading/reliability-ops, trading/testing, type/concept]
 aliases: [Deterministic Replay, Packet Injection, PCAP Replay, Event Sourcing Testing, Bit-for-Bit Verification, Time Virtualization]
-status: evergreen
+status: draft
 module: 13
 created: 2026-08-22
 type: concept

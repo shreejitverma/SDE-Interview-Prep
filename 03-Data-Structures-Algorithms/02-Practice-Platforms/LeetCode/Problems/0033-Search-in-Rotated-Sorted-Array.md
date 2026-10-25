@@ -13,6 +13,8 @@ created_date: 2026-10-07
 updated_date: 2026-10-07
 sources:
   - "https://leetcode.com/problems/search-in-rotated-sorted-array/"
+track: [sde, quant-dev]
+last_reviewed:
 ---
 
 # LeetCode 0033: Search in Rotated Sorted Array

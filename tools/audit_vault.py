@@ -11,6 +11,7 @@ Usage:
     python3 tools/audit_vault.py                   # writes AUDIT.md at the repo root
     python3 tools/audit_vault.py --out - --json    # machine-readable summary to stdout
     python3 tools/audit_vault.py --check links     # exit 1 if any broken link (for CI)
+    python3 tools/audit_vault.py --check style     # exit 1 on an emoji, em dash, or invalid note status
 """
 
 from __future__ import annotations
@@ -28,6 +29,7 @@ from pathlib import Path, PurePosixPath
 from urllib.parse import unquote
 
 from private_paths import is_private, private_link_prefixes
+from vault_schema import STATUSES
 
 PRIVATE_LINK_PREFIXES = tuple(private_link_prefixes())
 
@@ -122,6 +124,17 @@ def has_frontmatter(text: str) -> bool:
     if not text.startswith("---\n"):
         return False
     return "\n---\n" in text[4:] or text[4:].startswith("---\n") or text.rstrip().endswith("\n---")
+
+
+FRONTMATTER_RE = re.compile(r"\A---\n(.*?)\n---(?:\n|\Z)", re.S)
+STATUS_RE = re.compile(r"^status:[ \t]*(.*?)[ \t]*$", re.M)
+
+
+def note_status(text: str) -> str | None:
+    """The frontmatter `status` value with quotes removed, "" when blank, None when the key is absent."""
+    m = FRONTMATTER_RE.match(text)
+    s = STATUS_RE.search(m.group(1)) if m else None
+    return s.group(1).strip("'\"") if s else None
 
 
 class Resolver:
@@ -312,6 +325,8 @@ def main() -> int:
 
     # 3. Frontmatter.
     no_fm = [f for f in md_files if is_knowledge_note(f) and not has_frontmatter(texts[f])]
+    bad_status = sorted((f, note_status(texts[f])) for f in md_files
+                        if is_knowledge_note(f) and note_status(texts[f]) not in STATUSES)
 
     # 4. Folders without a README-like entry note (folders that hold notes, depth <= 3).
     note_dirs: set[str] = set()
@@ -398,7 +413,7 @@ def main() -> int:
     summary = {
         "generated": date.today().isoformat(), "private_files_excluded": private_count,
         "files": len(files), "notes": len(md_files), "links_checked": total_links,
-        "archived_notes": len(archived), "broken_links": len(broken), "table_breaking_links": len(table_breaks), "broken_fixable_by_basename": len(fixable), "orphans": len(orphans), "no_frontmatter": len(no_fm),
+        "archived_notes": len(archived), "broken_links": len(broken), "table_breaking_links": len(table_breaks), "broken_fixable_by_basename": len(fixable), "orphans": len(orphans), "no_frontmatter": len(no_fm), "invalid_status": len(bad_status),
         "folders_without_readme": len(no_readme), "emoji_files": len(emoji_files),
         "emoji_count": sum(emoji_files.values()), "emdash_files": len(emdash_files),
         "emdash_count": sum(emdash_files.values()), "duplicate_groups": len(dup_groups),
@@ -420,7 +435,9 @@ def main() -> int:
             print(f"table-breaking wikilink: {loc}")
         return 1 if broken or table_breaks else 0
     if args.check == "style":
-        return 1 if emoji_files or emdash_files else 0
+        for f, status in bad_status:
+            print(f"invalid status {status!r} (want one of {', '.join(STATUSES)}): {f}")
+        return 1 if emoji_files or emdash_files or bad_status else 0
     return 0
 
 
@@ -443,6 +460,7 @@ def write_report(path, s, counts, top_last, broken, orphans, no_fm, no_readme, e
             ["Broken wikilinks fixable by unique basename", s["broken_fixable_by_basename"]],
             ["Orphan knowledge notes (no inbound links)", s["orphans"]],
             ["Archived drafts (`_archive/`, `_consolidated*/`)", s["archived_notes"]], ["Knowledge notes without frontmatter", s["no_frontmatter"]],
+            ["Knowledge notes with a missing or invalid `status`", s["invalid_status"]],
             ["Note folders without README (depth <= 3)", s["folders_without_readme"]],
             ["Notes with emojis / total emojis", f"{s['emoji_files']} / {s['emoji_count']}"],
             ["Notes with em dashes / total em dashes", f"{s['emdash_files']} / {s['emdash_count']}"],

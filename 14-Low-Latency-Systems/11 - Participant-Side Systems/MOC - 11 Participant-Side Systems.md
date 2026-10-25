@@ -1,7 +1,7 @@
 ---
 tags: [trading/participant-systems, type/moc]
 aliases: [Participant Systems MOC, HFT Trading System MOC]
-status: evergreen
+status: draft
 module: 11
 created: 2026-08-22
 type: moc

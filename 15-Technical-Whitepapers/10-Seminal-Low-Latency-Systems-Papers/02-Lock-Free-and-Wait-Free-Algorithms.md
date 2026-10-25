@@ -1,7 +1,7 @@
 ---
 tags: [low-latency, lock-free, wait-free, michael-scott-queue, disruptor, rcu, treiber-stack, herlihy]
 aliases: [Lock-Free and Wait-Free Algorithms, Michael-Scott Queue, LMAX Disruptor Paper, Herlihy Wait-Free, RCU Paper]
-status: evergreen
+status: draft
 created: 2026-09-17
 type: paper
 track: [distinguished, sde]

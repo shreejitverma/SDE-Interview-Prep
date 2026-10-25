@@ -13,6 +13,8 @@ created_date: 2026-10-07
 updated_date: 2026-10-07
 sources:
   - "https://leetcode.com/problems/remove-nth-node-from-end-of-list/"
+track: [sde, quant-dev]
+last_reviewed:
 ---
 
 # LeetCode 0019: Remove Nth Node From End of List

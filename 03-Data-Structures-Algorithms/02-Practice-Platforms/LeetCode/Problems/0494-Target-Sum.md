@@ -13,6 +13,12 @@ topics:
   - Dynamic Programming
   - Knapsack
   - Array
+type: problem
+track: [sde, quant-dev]
+level:
+status: draft
+last_reviewed:
+sources: []
 ---
 
 # LeetCode 0494: Target Sum

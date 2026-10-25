@@ -1,7 +1,7 @@
 ---
 tags: [trading/matching-engine, type/concept]
 aliases: [Matching Algorithms, Price-Time Priority, Pro-Rata, FIFO Matching, Execution Logic, CME Matching Rules]
-status: evergreen
+status: draft
 module: 03
 created: 2026-08-22
 type: concept

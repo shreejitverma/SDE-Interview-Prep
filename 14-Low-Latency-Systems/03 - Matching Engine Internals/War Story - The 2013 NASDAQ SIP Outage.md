@@ -1,7 +1,7 @@
 ---
 tags: [trading/matching-engine, trading/war-story, trading/infrastructure, type/war-story]
 aliases: [The 2013 NASDAQ SIP Outage, August 22 2013 Halt, UTP SIP Freeze, NYSE Arca Reconnect Bug, SIP Capacity Exhaustion]
-status: evergreen
+status: draft
 module: 03
 created: 2026-08-22
 type: case-study

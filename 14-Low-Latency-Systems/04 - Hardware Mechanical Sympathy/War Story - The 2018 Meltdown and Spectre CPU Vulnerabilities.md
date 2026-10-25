@@ -1,7 +1,7 @@
 ---
 tags: [trading/hardware, trading/war-story, trading/security, type/war-story]
 aliases: [Meltdown and Spectre, Speculative Execution Attacks, KPTI Overhead, Retpoline Latency, Microcode Mitigation Penalties]
-status: evergreen
+status: draft
 module: 04
 created: 2026-08-22
 type: case-study

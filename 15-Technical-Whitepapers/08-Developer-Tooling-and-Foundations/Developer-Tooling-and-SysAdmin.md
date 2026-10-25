@@ -1,7 +1,7 @@
 ---
 tags: [developer-tooling, awk, vim, devops, sysadmin, automation]
 aliases: [Developer Tooling and SysAdmin Practices, AWK Programming Language Guide, Vim for Humans, DevOps Toolchain]
-status: evergreen
+status: draft
 created: 2026-09-17
 type: paper
 track: [distinguished, sde]

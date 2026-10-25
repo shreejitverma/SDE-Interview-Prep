@@ -13,6 +13,8 @@ created_date: 2026-10-07
 updated_date: 2026-10-07
 sources:
   - "https://leetcode.com/problems/copy-list-with-random-pointer/"
+track: [sde, quant-dev]
+last_reviewed:
 ---
 
 # LeetCode 0138: Copy List with Random Pointer

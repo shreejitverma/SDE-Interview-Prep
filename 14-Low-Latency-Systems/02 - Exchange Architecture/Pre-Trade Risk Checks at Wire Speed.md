@@ -1,7 +1,7 @@
 ---
 tags: [trading/exchange-arch, trading/risk-systems, type/concept]
 aliases: [Pre-Trade Risk, SEC Rule 15c3-5, Market Access Rule, Credit Controls, Price Collars, Fat-Finger Checks, Message Throttling]
-status: evergreen
+status: draft
 module: 02
 created: 2026-08-22
 type: concept

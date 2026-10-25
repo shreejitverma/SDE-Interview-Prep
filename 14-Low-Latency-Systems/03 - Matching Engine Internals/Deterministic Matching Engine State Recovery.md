@@ -1,7 +1,7 @@
 ---
 tags: [trading/matching-engine, trading/exchange-arch, trading/reliability-ops, type/concept]
 aliases: [Deterministic Replay, State Machine Replication, Event Sourcing, Sequenced Log, Journal Snapshotting, Active-Passive Failover]
-status: evergreen
+status: draft
 module: 03
 created: 2026-08-22
 type: concept

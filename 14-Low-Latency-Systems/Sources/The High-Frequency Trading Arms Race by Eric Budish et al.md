@@ -1,7 +1,7 @@
 ---
 tags: [trading/canon, trading/sources, type/source-summary]
 aliases: [The High-Frequency Trading Arms Race, Eric Budish, Frequent Batch Auctions, Continuous Limit Order Books Flaw, HFT Arms Race]
-status: evergreen
+status: draft
 module: 14
 created: 2026-09-17
 type: paper

@@ -14,6 +14,8 @@ created_date: 2026-10-07
 updated_date: 2026-10-07
 sources:
   - "Designing Data-Intensive Applications by Martin Kleppmann"
+track: [sde, distinguished]
+last_reviewed:
 ---
 
 # Low-Level Design: Splitwise Expense Sharing and Debt Simplification

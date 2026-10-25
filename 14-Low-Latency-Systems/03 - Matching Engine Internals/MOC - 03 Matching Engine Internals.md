@@ -1,7 +1,7 @@
 ---
 tags: [trading/matching-engine, type/moc]
 aliases: [Matching Engine MOC, Order Book Internals MOC]
-status: evergreen
+status: draft
 module: 03
 created: 2026-08-22
 type: moc

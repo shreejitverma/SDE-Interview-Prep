@@ -1,7 +1,7 @@
 ---
 tags: [trading/networking, trading/hardware, type/concept]
 aliases: [Switch Architecture, Cut-Through Switching, Store-and-Forward, Layer-1 Switch, Arista 7130, Cisco Nexus 3548, Buffer Bloat]
-status: evergreen
+status: draft
 module: 06
 created: 2026-08-22
 type: concept

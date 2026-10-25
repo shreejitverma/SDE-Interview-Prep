@@ -15,6 +15,12 @@ topics:
   - Linked List
   - Design
   - Doubly-Linked List
+type: problem
+track: [sde, quant-dev]
+level:
+status: draft
+last_reviewed:
+sources: []
 ---
 
 # LeetCode 0146: LRU Cache

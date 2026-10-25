@@ -13,6 +13,8 @@ created_date: 2026-10-07
 updated_date: 2026-10-07
 sources:
   - "https://leetcode.com/problems/number-of-1-bits/"
+track: [sde, quant-dev]
+last_reviewed:
 ---
 
 # LeetCode 0191: Number of 1 Bits

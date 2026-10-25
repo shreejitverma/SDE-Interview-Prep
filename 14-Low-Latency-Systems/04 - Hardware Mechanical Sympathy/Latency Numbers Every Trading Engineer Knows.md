@@ -1,7 +1,7 @@
 ---
 tags: [trading/hardware, type/concept]
 aliases: [Latency Numbers, Hardware Latency Budget, Nanosecond Budget]
-status: evergreen
+status: draft
 module: 04
 created: 2026-08-22
 type: concept

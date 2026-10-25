@@ -1,7 +1,7 @@
 ---
 tags: [trading/microstructure, type/lab]
 aliases: [Lab 01, Double Auction Lab, Uncrossing Lab, CDA Simulator Lab]
-status: evergreen
+status: draft
 module: 01
 created: 2026-08-22
 type: playbook

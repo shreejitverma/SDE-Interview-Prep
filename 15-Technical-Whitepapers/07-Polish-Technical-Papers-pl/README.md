@@ -1,7 +1,7 @@
 ---
 tags: [security/offensive, security/defensive, reverse-engineering, malware, rootkits, polish, type/moc]
 aliases: [Polskie Whitepapery Techniczne MOC, Polish Technical Papers MOC]
-status: evergreen
+status: draft
 created: 2026-09-17
 type: moc
 track: [distinguished, sde]

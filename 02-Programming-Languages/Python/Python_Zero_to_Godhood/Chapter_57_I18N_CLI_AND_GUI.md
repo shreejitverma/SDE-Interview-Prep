@@ -27,43 +27,8 @@ The `locale` module is a thin wrapper around the C library `setlocale()` and ass
 
 # Chapter 58: Command Line Interfaces (`argparse`, `cmd`, `shlex`)
 
-Building robust CLI tools requires sophisticated argument parsing and command-loop management.
-
-### 58.1 `argparse`: The Declarative CLI Engine
-
-`argparse` replaced the older `optparse` and `getopt` modules.
-*   **Argument Actions**: `store`, `store_true`, `append`.
-*   **Type Conversion**: It can automatically convert inputs to `int`, `Path`, or even open files directly using the `FileType` factory.
-*   **Subcommands**: Supports Git-style subcommands (e.g., `git push`, `git pull`) by creating a separate parser for each subcommand and nesting them.
-
-### 58.2 `cmd`: The Interactive Shell Framework
-
-The `cmd` module provides a framework for building interactive line-oriented command interpreters (REPLs).
-*   **The Event Loop**: `Cmd.cmdloop()` manages the reading of input and dispatching to methods named `do_X`.
-*   **Tab Completion**: Integrates with the `readline` module (on Unix) to provide command and argument completion.
-
-### 58.3 `shlex`: Shell Lexical Analysis
-
-`shlex` splits strings following the rules of the POSIX shell.
-*   **`quote()`**: Use this when building commands to be executed by a shell to prevent injection.
-*   **Parsing**: It is a state-based lexical analyzer. It handles quotes, escapes, and comments identically to how `/bin/sh` would, making it essential for process orchestration.
-
----
+This section is maintained in [[Chapter_47_Command_Line_Interfaces_argparse_cmd_shlex]].
 
 # Chapter 59: Tcl/Tk and GUI Foundations (`tkinter`)
 
-`tkinter` is the standard Python interface to the Tk GUI toolkit.
-
-### 59.1 The C-Bridge: `_tkinter`
-
-`tkinter` is not written in Python. It is a wrapper around the **Tcl/Tk** C library.
-*   **The Tcl Interpreter**: When you instantiate `Tk()`, a full Tcl interpreter is created inside your Python process.
-*   **Command Marshalling**: When you call `button.configure(text="Click")`, Python marshals the arguments into Tcl strings and executes them in the Tcl VM.
-
-### 59.2 The Main Loop and Event Concurrency
-
-GUIs are event-driven. `root.mainloop()` enters a blocking loop that waits for OS events (mouse clicks, key presses).
-*   **Thread Safety**: Tk is not thread-safe. All GUI updates must happen on the main thread.
-*   **`after()`**: Use `root.after(ms, callback)` to schedule Python functions without blocking the GUI event loop. This is effectively a simple cooperative multitasking scheduler built on top of the Tk event queue.
-
----
+This section is maintained in [[Chapter_48_TclTk_and_GUI_Foundations_tkinter]].

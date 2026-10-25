@@ -1,7 +1,7 @@
 ---
 tags: [trading/interview, trading/system-design, type/blueprint]
 aliases: [System Design Blueprint, HFT System Design, Staff Engineer Blueprint, Low-Latency Architecture Blueprint]
-status: evergreen
+status: draft
 module: 14
 created: 2026-08-22
 type: concept

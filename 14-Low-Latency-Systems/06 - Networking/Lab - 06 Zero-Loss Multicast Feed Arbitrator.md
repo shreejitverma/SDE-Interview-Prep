@@ -1,7 +1,7 @@
 ---
 tags: [trading/networking, type/lab]
 aliases: [Lab 06, Feed Arbitrator Lab, Multicast Arbitration Lab, Zero-Loss Feed Lab]
-status: evergreen
+status: draft
 module: 06
 created: 2026-08-22
 type: playbook

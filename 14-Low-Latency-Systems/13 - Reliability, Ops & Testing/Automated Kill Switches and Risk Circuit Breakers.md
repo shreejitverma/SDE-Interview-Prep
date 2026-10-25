@@ -1,7 +1,7 @@
 ---
 tags: [trading/reliability-ops, trading/risk-management, type/concept]
 aliases: [Kill Switches, Circuit Breakers, Cancel-on-Disconnect, COD, MiFID II RTS 6, Emergency Shutdown, Hardware Laser Kill]
-status: evergreen
+status: draft
 module: 13
 created: 2026-08-22
 type: concept

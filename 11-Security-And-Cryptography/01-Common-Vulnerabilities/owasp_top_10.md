@@ -7,34 +7,46 @@ last_reviewed:
 sources: []
 ---
 
-# OWASP Top 10 (Security Checklist)
+# OWASP Top 10:2025 (Security Checklist)
 
-Every SDE must know these.
+This note covers the current OWASP Top 10 edition (2025 edition).
+Official standard documentation: [OWASP Top 10:2025](https://owasp.org/Top10/2025/).
 
-1.  **Injection:** SQL Injection, Command Injection.
-    *   *Fix:* Use Parameterized Queries (Prepared Statements). Never concat strings into queries.
-2.  **Broken Authentication:** Weak passwords, session hijacking.
-    *   *Fix:* MFA, short session timeouts, don't roll your own crypto.
-3.  **Sensitive Data Exposure:** Storing passwords in plain text.
-    *   *Fix:* Salt & Hash (Argon2, bcrypt). Encrypt PII at rest.
-4.  **XXE (XML External Entities):** Parsing hostile XML.
-    *   *Fix:* Disable external entities in XML parsers.
-5.  **Broken Access Control:** User A accessing User B's data.
-    *   *Fix:* Check ownership on every API call (`if user.id != resource.owner_id: raise 403`).
-6.  **Security Misconfiguration:** Default passwords, detailed error messages.
-    *   *Fix:* Automate hardening, disable stack traces in Prod.
-7.  **XSS (Cross-Site Scripting):** Injecting JS into web pages.
-    *   *Fix:* Content Security Policy (CSP), Context-aware encoding (React/Angular do this mostly automatically).
-8.  **Insecure Deserialization:** Executing code via serialized objects (e.g., Python Pickle, Java ObjectStream).
-    *   *Fix:* Use JSON/Protobuf instead of native serialization.
-9.  **Using Components with Known Vulnerabilities:** Old npm/maven packages.
-    *   *Fix:* `npm audit`, Snyk, Dependabot.
-10. **Insufficient Logging:** Not knowing you were hacked.
-    *   *Fix:* Centralized logging (ELK/Splunk), Alerting on anomalies.
+1. **A01:2025 - Broken Access Control**
+   Enforce the principle of least privilege and deny access by default across all endpoints.
+   Verify user authorization and resource ownership on every API call to prevent unauthorized access.
+   Allowlist outbound destinations for server-side fetches to prevent SSRF, which the 2025 edition maps into this category.
+2. **A02:2025 - Security Misconfiguration**
+   Harden configurations using automated security baselines and disable unneeded services or debug endpoints.
+   Remove default credentials, restrict error stack traces in production, and enforce secure headers.
+3. **A03:2025 - Software Supply Chain Failures**
+   Maintain an accurate Software Bill of Materials (SBOM) and continuously audit third-party dependencies.
+   Pin dependency versions, verify cryptographic hashes, and validate signatures across CI/CD pipelines.
+4. **A04:2025 - Cryptographic Failures**
+   Encrypt sensitive data in transit using TLS 1.2 or later (prefer TLS 1.3) and at rest using authenticated encryption like AES-GCM.
+   Hash passwords with a slow, salted password-hashing function such as Argon2id (or scrypt, bcrypt, or PBKDF2 where required), and manage cryptographic keys securely.
+5. **A05:2025 - Injection**
+   Use parameterized queries and prepared statements for all database operations to prevent SQL injection.
+   Apply context-aware output encoding and strict input validation to prevent command and interpreter injection.
+6. **A06:2025 - Insecure Design**
+   Integrate threat modeling and security architecture reviews into early design phases before writing code.
+   Establish clear trust boundaries and enforce rate limiting to defend against automated abuse.
+7. **A07:2025 - Authentication Failures**
+   Enforce multi-factor authentication (MFA) and strong password policies for all accounts.
+   Implement rate limiting against brute-force attempts and use secure session tokens.
+8. **A08:2025 - Software or Data Integrity Failures**
+   Verify cryptographic signatures on software binaries, updates, and pipeline dependencies before execution.
+   Avoid unsafe deserialization of untrusted input and use structured interchange formats like JSON or Protocol Buffers.
+9. **A09:2025 - Security Logging and Alerting Failures**
+   Log security-critical events with sufficient context to an append-only centralized log service.
+   Configure real-time monitoring and alerting on anomalous access patterns to detect breaches promptly.
+10. **A10:2025 - Mishandling of Exceptional Conditions**
+    Handle errors explicitly and ensure that failure paths fail closed without exposing internal diagnostics.
+    Ensure systems remain in a secure state during resource exhaustion, network timeouts, or unexpected inputs.
 
 ---
 
-## Advanced Deep-Dives & Technical Whitepapers
+## Advanced Deep-Dives and Technical Whitepapers
 
 For rigorous exploit mechanics, penetration testing methodologies, and defensive benchmarks:
 - [[../../15-Technical-Whitepapers/05-Offensive-Security-and-Exploitation/Database-Exploitation-and-SQL-Injection|Database Exploitation & SQL Injection Canon]]: Chris Anley's advanced SQL Server vectors, blind inferential extraction, and second-order injection.

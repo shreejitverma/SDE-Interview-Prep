@@ -1,7 +1,7 @@
 ---
 tags: [low-latency, kernel-bypass, netmap, dpdk, rdma, ramcloud, jitter, sub-microsecond]
 aliases: [Kernel Bypass and Sub-Microsecond IO, Grosvenor Jitter Paper, Netmap Paper, Stanford IX Dataplane, RAMCloud Low Latency]
-status: evergreen
+status: draft
 created: 2026-09-17
 type: paper
 track: [distinguished, sde]

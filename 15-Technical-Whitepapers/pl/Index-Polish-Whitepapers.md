@@ -1,7 +1,7 @@
 ---
 tags: [security/offensive, security/defensive, reverse-engineering, malware, rootkits, polish, type/index]
 aliases: [Polish Whitepapers Index, Polskie Whitepapery Techniczne, Polish Papers Catalog]
-status: evergreen
+status: draft
 created: 2026-09-17
 type: paper
 track: [distinguished, sde]

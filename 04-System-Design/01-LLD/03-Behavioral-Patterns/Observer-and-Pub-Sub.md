@@ -14,6 +14,8 @@ status: solid
 created_date: 2026-10-07
 updated_date: 2026-10-07
 sources: []
+track: [sde, distinguished]
+last_reviewed:
 ---
 
 # Observer and Publish-Subscribe Patterns: Staff-Plus Deep Dive

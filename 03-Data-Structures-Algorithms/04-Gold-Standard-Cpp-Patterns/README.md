@@ -14,6 +14,8 @@ created_date: 2026-10-07
 updated_date: 2026-10-07
 sources:
   - "https://en.cppreference.com/w/cpp/20"
+track: [sde, quant-dev]
+last_reviewed:
 ---
 
 # Gold-Standard C++20 DSA Reference Patterns

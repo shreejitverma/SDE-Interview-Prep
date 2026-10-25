@@ -1,7 +1,7 @@
 ---
 tags: [trading/kernel-tuning, trading/war-story, trading/time, type/war-story]
 aliases: [The 2012 Leap Second Bug, Leap Second Linux Lockup, Futex Spinlock Freeze, June 30 2012 Outage, CLOCK_REALTIME Jump]
-status: evergreen
+status: draft
 module: 05
 created: 2026-08-22
 type: case-study

@@ -1,7 +1,7 @@
 ---
 tags: [trading/microstructure, type/concept]
 aliases: [MiFID II, European Market Structure, RTS 25, Systematic Internalisers, Double Volume Cap, DVC, Best Execution]
-status: evergreen
+status: draft
 module: 01
 created: 2026-08-22
 type: concept

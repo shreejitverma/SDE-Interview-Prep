@@ -1,7 +1,7 @@
 ---
 tags: [trading/low-latency-cpp, type/lab]
 aliases: [Lab 08, SPSC Ring Buffer Lab, Lock-Free Lab, Wait-Free Ring Buffer Lab]
-status: evergreen
+status: draft
 module: 08
 created: 2026-08-22
 type: playbook

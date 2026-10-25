@@ -1,7 +1,7 @@
 ---
 tags: [trading/protocols, type/lab]
 aliases: [Lab 10, ITCH Parser Lab, Zero-Copy Parser Lab, MoldUDP64 Lab]
-status: evergreen
+status: draft
 module: 10
 created: 2026-08-22
 type: playbook

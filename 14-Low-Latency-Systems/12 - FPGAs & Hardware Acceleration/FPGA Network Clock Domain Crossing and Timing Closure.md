@@ -1,7 +1,7 @@
 ---
 tags: [trading/fpga, trading/hardware, type/concept]
 aliases: [Clock Domain Crossing, CDC, Timing Closure, Metastability, Gray Code FIFO, 322MHz Clocking, FPGA Timing Violations]
-status: evergreen
+status: draft
 module: 12
 created: 2026-08-22
 type: concept

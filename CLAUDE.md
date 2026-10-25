@@ -26,6 +26,7 @@ sources: []
 
 - A note reaches `solid` when it has a TL;DR, core concepts, a worked example or runnable code, pitfalls, interview questions, and further reading.
 - `seed` notes are stubs that other notes already cite; they are the writing backlog.
+- `status` must be one of `seed`, `draft`, `solid`, `canonical` (`tools/vault_schema.py` `STATUSES`); `audit_vault.py --check style` fails on anything else.
 - Every note folder has an entry note (`README.md`, or `00 Home` / `MOC - ` in the low-latency vault); `tools/build_mocs.py` keeps the generated part current.
 - Superseded drafts go in `_archive/` folders; they are excluded from indexes, link repair, and orphan counts.
 - Inside a Markdown table, write a wikilink alias as `[[Note\|Alias]]`; a bare `|` splits the cell.

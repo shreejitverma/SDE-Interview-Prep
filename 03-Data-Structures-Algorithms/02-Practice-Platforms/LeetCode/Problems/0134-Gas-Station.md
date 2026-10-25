@@ -11,6 +11,12 @@ problem_number: "0134"
 topics:
   - Greedy
   - Array
+type: problem
+track: [sde, quant-dev]
+level:
+status: draft
+last_reviewed:
+sources: []
 ---
 
 # LeetCode 0134: Gas Station

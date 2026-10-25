@@ -134,5 +134,5 @@ clang++ -Xclang -fdump-record-layouts -c my_file.cpp
 g++ -fdump-lang-class my_file.cpp
 ```
 
-This will output the exact byte offsets the compiler is using. Don't take my word for itverify it with the machine!
+This will output the exact byte offsets the compiler is using. Don't take my word for it - verify it with the machine!
 

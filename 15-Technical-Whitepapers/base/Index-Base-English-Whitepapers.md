@@ -1,7 +1,7 @@
 ---
 tags: [systems/performance, security/offensive, security/defensive, kernel/internals, memory/architecture, networking, type/index]
 aliases: [Base English Whitepapers, Technical Whitepapers English, Base Papers Catalog]
-status: evergreen
+status: draft
 created: 2026-09-17
 type: paper
 track: [distinguished, sde]

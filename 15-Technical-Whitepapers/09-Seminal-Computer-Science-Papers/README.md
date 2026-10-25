@@ -1,7 +1,7 @@
 ---
 tags: [computer-science, seminal-papers, distributed-systems, databases, networking, algorithms, type/moc]
 aliases: [Seminal Computer Science Papers MOC, Computer Science Canon, 20 Essential CS Papers]
-status: evergreen
+status: draft
 created: 2026-09-17
 type: moc
 track: [distinguished, sde]

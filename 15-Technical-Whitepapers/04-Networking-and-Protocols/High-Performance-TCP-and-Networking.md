@@ -1,7 +1,7 @@
 ---
 tags: [networking, tcp, tcp-fast-open, van-jacobson, low-latency, protocols]
 aliases: [High Performance TCP and Networking, TCP Fast Open Guide, Van Jacobson Networking]
-status: evergreen
+status: draft
 created: 2026-09-17
 type: paper
 track: [distinguished, sde]

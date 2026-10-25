@@ -48,14 +48,14 @@ A `MagicMock` is a subclass of `Mock` that implements most dunder methods by def
 `pdb` is an interactive source code debugger.
 
 #### 1. The Trace Hook
-`pdb` is built on top of `sys.settrace()`. When you start a debugging session, `pdb` registers a trace function.
-*   **Execution**: The VM calls this trace function before every line of code is executed.
+Historically, `pdb` was built on top of `sys.settrace()`: starting a debugging session registers a trace function. Since Python 3.14, `pdb` also has a `sys.monitoring` backend (PEP 669); the `pdb` command line, `breakpoint()`, and `pdb.set_trace()` use it, while a directly constructed `pdb.Pdb()` still defaults to `sys.settrace()` (configurable with `backend=` or `pdb.set_default_backend()`).
+*   **Execution**: With the settrace backend, the VM calls the trace function before every line of code is executed; the monitoring backend receives only the events it enables.
 *   **Interaction**: The trace function checks for breakpoints, and if one is hit, it enters an interactive loop that allows the user to inspect variables, step through code, and evaluate expressions.
 
 ### 41.5 Advanced Diagnostics: `tracemalloc` and `faulthandler`
 
 *   **`tracemalloc`**: A debug tool to trace memory blocks allocated by Python. It allows you to see exactly where memory is being consumed and identify leaks.
-*   **`faulthandler`**: Registers handlers for symbols like `SIGSEGV` or `SIGILL` to dump a Python traceback when a crash occurs in a C extension. This is invaluable for debugging low-level C API issues.
+*   **`faulthandler`**: Registers handlers for signals like `SIGSEGV` or `SIGILL` to dump a Python traceback when a crash occurs in a C extension. This is invaluable for debugging low-level C API issues.
 
 ---
 

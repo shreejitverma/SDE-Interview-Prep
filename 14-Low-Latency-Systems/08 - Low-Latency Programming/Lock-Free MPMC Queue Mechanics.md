@@ -1,7 +1,7 @@
 ---
 tags: [trading/low-latency-cpp, trading/ipc-messaging, type/concept]
 aliases: [MPMC Queue, Lock-Free MPMC, Vyukov Queue, ABA Problem, Hazard Pointers, CAS Loop]
-status: evergreen
+status: draft
 module: 08
 created: 2026-08-22
 type: concept

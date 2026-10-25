@@ -15,6 +15,8 @@ created_date: 2026-10-07
 updated_date: 2026-10-07
 sources:
   - "https://leetcode.com/problems/longest-palindromic-substring/"
+track: [sde, quant-dev]
+last_reviewed:
 ---
 
 # LeetCode 0005: Longest Palindromic Substring

@@ -1,7 +1,7 @@
 ---
 tags: [trading/microstructure, type/drill]
 aliases: [Drill 01, Microstructure Drill, Order Mechanics Drill]
-status: evergreen
+status: draft
 module: 01
 created: 2026-08-22
 type: playbook

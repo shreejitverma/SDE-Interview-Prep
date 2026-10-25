@@ -1,7 +1,7 @@
 ---
 tags: [trading/networking, trading/market-data, type/concept]
 aliases: [Feed Arbitration, A-B Feed Arbitration, UDP Multicast, Sequence Gap Detection, Packet Reordering, ITCH Arbitration]
-status: evergreen
+status: draft
 module: 06
 created: 2026-08-22
 type: concept

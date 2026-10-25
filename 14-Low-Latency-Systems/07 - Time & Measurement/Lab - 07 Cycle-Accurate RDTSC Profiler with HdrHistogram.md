@@ -1,7 +1,7 @@
 ---
 tags: [trading/time-measurement, type/lab]
 aliases: [Lab 07, HdrHistogram Lab, RDTSC Profiler Lab, Coordinated Omission Lab]
-status: evergreen
+status: draft
 module: 07
 created: 2026-08-22
 type: playbook

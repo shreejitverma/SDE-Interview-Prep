@@ -1,7 +1,7 @@
 ---
 tags: [trading/networking, trading/kernel-bypass, type/concept]
 aliases: [Low-Latency TCP, TCP_NODELAY, TCP_QUICKACK, SO_BUSY_POLL, TCP Connection Warming, User-Space TCP, OpenOnload TCP]
-status: evergreen
+status: draft
 module: 06
 created: 2026-08-22
 type: concept

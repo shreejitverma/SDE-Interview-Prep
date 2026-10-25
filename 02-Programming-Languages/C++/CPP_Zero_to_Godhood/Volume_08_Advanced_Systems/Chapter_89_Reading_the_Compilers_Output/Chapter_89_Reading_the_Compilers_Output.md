@@ -37,7 +37,7 @@ High-level C++ is many transformations removed from what runs (Chapter 81). The 
 **Compiler Explorer** (godbolt.org) is the standard tool: paste C++, pick a compiler and flags, and see the generated assembly side by side, with colour-coding that maps source lines to instructions. Locally, the equivalent is:
 
 ```bash
-# Emit assembly with source interleaved (GCC/Clang). Min: any modern GCC/Clang.
+# Emit assembly (GCC/Clang). With GCC, -fverbose-asm interleaves source lines (file:line: text) and operand hints as comments; Clang's -fverbose-asm adds only sparse comments, so use objdump -S on a -g build or Compiler Explorer there.
 g++ -O2 -S -masm=intel -fverbose-asm hot.cpp -o hot.s   # human-readable Intel syntax
 objdump -d -M intel --no-show-raw-insn a.out            # disassemble a built binary
 clang++ -O2 -S -emit-llvm hot.cpp -o hot.ll             # see the LLVM IR before codegen

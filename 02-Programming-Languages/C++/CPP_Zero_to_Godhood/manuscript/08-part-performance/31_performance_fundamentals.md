@@ -119,6 +119,6 @@ Never guess where your code is slow. You will be wrong 90% of the time.
 
 > [!TIP]
 > **Godhood Tip: Small Object Optimization (SOO)**
-> Many standard library components, like `std::string` and `std::function`, use SOO. They have a small internal buffer (usually ~15 bytes for a string). If your string fits in that buffer, it is stored directly on the stack. If it exceeds that buffer, it allocates on the heap. Keeping your strings short prevents expensive `malloc` calls and cache misses.
+> Many standard library components, like `std::string` and `std::function`, use SOO. They have a small internal buffer (usually ~15 bytes for a string). If your string fits in that buffer, it is stored inline within the string object itself without dynamic allocation. If it exceeds that buffer, it allocates on the heap. Keeping your strings short prevents expensive `malloc` calls and cache misses.
 
 We've talked about how expensive RAM is. In the next chapter, we will take absolute control over how memory is allocated and freed.

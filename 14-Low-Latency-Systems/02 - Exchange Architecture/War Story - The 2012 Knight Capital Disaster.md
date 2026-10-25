@@ -1,7 +1,7 @@
 ---
 tags: [trading/architecture, trading/war-story, trading/risk-management, type/war-story]
 aliases: [The 2012 Knight Capital Disaster, Knight Capital Outage, Power Peg Bug, $440M Glitch, Dead Code Reuse]
-status: evergreen
+status: draft
 module: 02
 created: 2026-08-22
 type: case-study

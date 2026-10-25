@@ -1,7 +1,7 @@
 ---
 tags: [trading/protocols, trading/low-latency-cpp, trading/hardware, type/concept]
 aliases: [SIMD Parsing, Vectorized Parsing, AVX2 Parsing, AVX-512, Fast FIX Parser, Daniel Lemire Parser, Fast ATOI]
-status: evergreen
+status: draft
 module: 10
 created: 2026-08-22
 type: concept

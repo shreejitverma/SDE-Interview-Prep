@@ -1,7 +1,7 @@
 ---
 tags: [trading/time, trading/war-story, trading/exchange-arch, type/war-story]
 aliases: [The 2015 NYSE Outage, July 8 2015 Shutdown, NYSE Gateway Desync, Protocol State Mismatch, 3.5-Hour NYSE Freeze]
-status: evergreen
+status: draft
 module: 07
 created: 2026-08-22
 type: case-study

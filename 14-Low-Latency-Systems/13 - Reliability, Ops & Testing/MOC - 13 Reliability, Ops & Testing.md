@@ -1,7 +1,7 @@
 ---
 tags: [trading/reliability-ops, type/moc]
 aliases: [Reliability and Ops MOC, Exchange Testing MOC]
-status: evergreen
+status: draft
 module: 13
 created: 2026-08-22
 type: moc

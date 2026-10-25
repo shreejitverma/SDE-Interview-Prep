@@ -1,7 +1,7 @@
 ---
 tags: [trading/canon, trading/sources, type/source-summary]
 aliases: [LMAX Disruptor Architecture, Martin Thompson, Mechanical Sympathy Ring Buffer, Disruptor Paper]
-status: evergreen
+status: draft
 module: 14
 created: 2026-09-17
 type: paper

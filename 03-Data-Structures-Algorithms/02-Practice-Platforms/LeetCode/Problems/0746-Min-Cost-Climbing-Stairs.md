@@ -13,6 +13,8 @@ created_date: 2026-10-07
 updated_date: 2026-10-07
 sources:
   - "https://leetcode.com/problems/min-cost-climbing-stairs/"
+track: [sde, quant-dev]
+last_reviewed:
 ---
 
 # LeetCode 0746: Min Cost Climbing Stairs

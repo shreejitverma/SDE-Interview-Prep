@@ -1,7 +1,7 @@
 ---
 tags: [trading/participant-systems, trading/quantitative, type/concept]
 aliases: [Signal Generation, Microstructure Alpha, Micro-Price, Stoikov Model, Order Flow Imbalance, OFI, EWMA, Fixed-Point Features]
-status: evergreen
+status: draft
 module: 11
 created: 2026-08-22
 type: concept

@@ -1,7 +1,7 @@
 ---
 tags: [trading/matching-engine, type/lab]
 aliases: [Lab 03, Intrusive LOB Lab, Order Book Lab, Matching Engine Lab]
-status: evergreen
+status: draft
 module: 03
 created: 2026-08-22
 type: playbook

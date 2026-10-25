@@ -1,7 +1,7 @@
 ---
 tags: [computer-science, turing, shannon, information-theory, von-neumann, dijkstra, semaphores]
 aliases: [Foundations and Information Theory, Turing 1936, Shannon 1948, Von Neumann Architecture, Dijkstra Multiprogramming]
-status: evergreen
+status: draft
 created: 2026-09-17
 type: paper
 track: [distinguished, sde]

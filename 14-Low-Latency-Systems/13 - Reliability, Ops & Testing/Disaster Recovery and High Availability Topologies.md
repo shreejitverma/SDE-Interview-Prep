@@ -1,7 +1,7 @@
 ---
 tags: [trading/reliability-ops, trading/architecture, type/concept]
 aliases: [Disaster Recovery, High Availability, Active-Active, Active-Passive, Split-Brain, Lockstep Execution, Replicated State Machine, Failover]
-status: evergreen
+status: draft
 module: 13
 created: 2026-08-22
 type: concept

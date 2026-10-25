@@ -1,7 +1,7 @@
 ---
 tags: [security/defensive, appsec, owasp, asvs, web-security, apache, postgresql, database-security]
 aliases: [Application and Infrastructure Security, OWASP ASVS Guide, Web Application Security Auditing, Apache Hardening, PostgreSQL Security]
-status: evergreen
+status: draft
 created: 2026-09-17
 type: paper
 track: [distinguished, sde]

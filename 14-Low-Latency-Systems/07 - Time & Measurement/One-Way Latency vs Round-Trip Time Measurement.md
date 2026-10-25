@@ -1,7 +1,7 @@
 ---
 tags: [trading/time-measurement, trading/networking, type/concept]
 aliases: [One-Way Latency, RTT, Asymmetric Latency, Tick-to-Trade Budget, Wire-to-Wire]
-status: evergreen
+status: draft
 module: 07
 created: 2026-08-22
 type: concept

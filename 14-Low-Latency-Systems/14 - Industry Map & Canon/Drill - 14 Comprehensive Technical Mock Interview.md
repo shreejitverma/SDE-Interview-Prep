@@ -1,7 +1,7 @@
 ---
 tags: [trading/canon, trading/interviews, type/drill]
 aliases: [Drill 14, Mock Interview, Principal Engineer Interview, Comprehensive Technical Interview, C++ Systems Interview Drill]
-status: evergreen
+status: draft
 module: 14
 created: 2026-08-22
 type: playbook

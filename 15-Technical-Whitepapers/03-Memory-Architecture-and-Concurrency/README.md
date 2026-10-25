@@ -1,7 +1,7 @@
 ---
 tags: [memory/architecture, concurrency, cpu/cache, numa, drepper, threading, type/moc]
 aliases: [Memory Architecture and Concurrency MOC, Memory Mechanics Canon]
-status: evergreen
+status: draft
 created: 2026-09-17
 type: moc
 track: [distinguished, sde]

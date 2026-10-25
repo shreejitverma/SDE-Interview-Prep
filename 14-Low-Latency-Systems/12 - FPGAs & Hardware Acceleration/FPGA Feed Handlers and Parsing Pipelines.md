@@ -1,7 +1,7 @@
 ---
 tags: [trading/fpga, trading/protocols, type/concept]
 aliases: [FPGA Feed Handler, Hardware Parsing, AXI-Stream Parser, ITCH Verilog Parser, Wire Routing BSWAP, Hardware A/B Arbitration]
-status: evergreen
+status: draft
 module: 12
 created: 2026-08-22
 type: concept

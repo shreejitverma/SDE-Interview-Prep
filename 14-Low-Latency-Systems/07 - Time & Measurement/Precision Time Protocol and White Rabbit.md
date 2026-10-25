@@ -1,7 +1,7 @@
 ---
 tags: [trading/time-measurement, type/concept]
 aliases: [PTP, IEEE 1588, White Rabbit, Clock Synchronization, ptp4l, phc2sys, Boundary Clock]
-status: evergreen
+status: draft
 module: 07
 created: 2026-08-22
 type: concept

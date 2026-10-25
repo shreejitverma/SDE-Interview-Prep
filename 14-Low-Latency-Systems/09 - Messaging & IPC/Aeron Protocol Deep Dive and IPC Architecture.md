@@ -1,7 +1,7 @@
 ---
 tags: [trading/ipc, trading/messaging, type/concept]
 aliases: [Aeron Protocol, Aeron IPC, Martin Thompson Aeron, Log Buffers, Term Buffers, Aeron Cluster, Low-Latency Messaging]
-status: evergreen
+status: draft
 module: 09
 created: 2026-08-22
 type: concept

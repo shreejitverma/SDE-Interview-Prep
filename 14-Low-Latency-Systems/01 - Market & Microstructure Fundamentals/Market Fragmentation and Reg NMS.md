@@ -1,7 +1,7 @@
 ---
 tags: [trading/microstructure, trading/exchange-arch, type/concept]
 aliases: [Reg NMS, Rule 611, Rule 610, Intermarket Sweep Order, ISO, SIP vs Direct Feeds, Synthetic NBBO, Market Fragmentation]
-status: evergreen
+status: draft
 module: 01
 created: 2026-08-22
 type: concept

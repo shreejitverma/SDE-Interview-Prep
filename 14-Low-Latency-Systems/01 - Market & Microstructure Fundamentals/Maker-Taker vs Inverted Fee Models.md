@@ -1,7 +1,7 @@
 ---
 tags: [trading/microstructure, type/concept]
 aliases: [Maker-Taker, Inverted Fee, Taker-Maker, Exchange Fees, Rebates, Access Fees, Adverse Selection]
-status: evergreen
+status: draft
 module: 01
 created: 2026-08-22
 type: concept

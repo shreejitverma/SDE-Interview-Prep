@@ -1,7 +1,7 @@
 ---
 tags: [trading/exchange-arch, trading/networking, type/concept]
 aliases: [Exchange Gateway, Line Handler, OUCH Gateway, FIX Gateway, Session Management, TCP Terminator]
-status: evergreen
+status: draft
 module: 02
 created: 2026-08-22
 type: concept

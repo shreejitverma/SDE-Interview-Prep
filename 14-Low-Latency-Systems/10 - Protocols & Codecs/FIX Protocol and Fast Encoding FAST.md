@@ -1,7 +1,7 @@
 ---
 tags: [trading/protocols, type/concept]
 aliases: [FIX Protocol, FAST Protocol, Tag-Value FIX, SOH Delimiter, FIX Checksum, FAST Compression, PMAP]
-status: evergreen
+status: draft
 module: 10
 created: 2026-08-22
 type: concept

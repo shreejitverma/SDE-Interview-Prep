@@ -14,6 +14,8 @@ created_date: 2026-10-07
 updated_date: 2026-10-07
 sources:
   - "https://leetcode.com/problems/search-a-2d-matrix/"
+track: [sde, quant-dev]
+last_reviewed:
 ---
 
 # LeetCode 0074: Search a 2D Matrix

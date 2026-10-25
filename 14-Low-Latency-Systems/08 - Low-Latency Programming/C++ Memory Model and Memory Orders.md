@@ -1,7 +1,7 @@
 ---
 tags: [trading/low-latency-cpp, type/concept]
 aliases: [Memory Model, Memory Ordering, acquire release, seq_cst, TSO, Total Store Order, Atomics]
-status: evergreen
+status: draft
 module: 08
 created: 2026-08-22
 type: concept

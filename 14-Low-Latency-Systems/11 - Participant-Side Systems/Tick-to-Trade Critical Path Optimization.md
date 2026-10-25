@@ -1,7 +1,7 @@
 ---
 tags: [trading/participant-systems, trading/latency-optimization, type/concept]
 aliases: [Tick-to-Trade, T2T, Critical Path, Wire-to-Wire, Latency Budget, Nanosecond Optimization]
-status: evergreen
+status: draft
 module: 11
 created: 2026-08-22
 type: concept

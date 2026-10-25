@@ -1,7 +1,7 @@
 ---
 tags: [low-latency, mechanical-sympathy, lock-free, kernel-bypass, market-microstructure, type/moc]
 aliases: [Seminal Low-Latency Systems Papers MOC, Low-Latency Canon, 18 Essential Low-Latency Papers]
-status: evergreen
+status: draft
 created: 2026-09-17
 type: moc
 track: [distinguished, sde]

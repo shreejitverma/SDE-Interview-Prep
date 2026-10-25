@@ -1,7 +1,7 @@
 ---
 tags: [trading/low-latency-cpp, type/concept]
 aliases: [Allocation-Free, Zero-Allocation, Object Pools, Arena Allocator, Intrusive Containers, ptmalloc Jitter]
-status: evergreen
+status: draft
 module: 08
 created: 2026-08-22
 type: concept

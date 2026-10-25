@@ -1,7 +1,7 @@
 ---
 tags: [trading/hardware, type/concept]
 aliases: [NUMA, Inter-Socket Jitter, Non-Uniform Memory Access, UPI Interconnect, Infinity Fabric]
-status: evergreen
+status: draft
 module: 04
 created: 2026-08-22
 type: concept

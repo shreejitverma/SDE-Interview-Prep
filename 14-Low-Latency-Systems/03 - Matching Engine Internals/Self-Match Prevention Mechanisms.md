@@ -1,7 +1,7 @@
 ---
 tags: [trading/matching-engine, trading/microstructure, type/concept]
 aliases: [SMP, Self-Match Prevention, Wash Trade Prevention, Cancel Oldest, Cancel Newest, Decrement and Cancel]
-status: evergreen
+status: draft
 module: 03
 created: 2026-08-22
 type: concept

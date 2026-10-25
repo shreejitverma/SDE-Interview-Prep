@@ -1,7 +1,7 @@
 ---
 tags: [trading/microstructure, trading/war-story, type/war-story]
 aliases: [The 2010 Flash Crash, May 6 2010 Crash, E-mini Liquidity Evaporation, Stub Quotes, CFTC-SEC Joint Report]
-status: evergreen
+status: draft
 module: 01
 created: 2026-08-22
 type: case-study
