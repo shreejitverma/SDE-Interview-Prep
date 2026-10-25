@@ -8,7 +8,7 @@ sources:
   - "System V Application Binary Interface - AMD64 Architecture Processor Supplement, Draft Version 1.0, GitLab, 2026, https://gitlab.com/x86-psABIs/x86-64-ABI"
   - "Procedure Call Standard for the Arm 64-bit Architecture (AAPCS64), Arm Limited, 2025, https://github.com/ARM-software/abi-aa/blob/main/aapcs64/aapcs64.rst"
   - "DWARF Debugging Information Format Specification Version 5.0, DWARF Debugging Information Format Committee, 2017, https://dwarfstd.org/doc/DWARF5.pdf"
-  - "Linux man-pages 6.16, Michael Kerrisk et al., 2025, https://man7.org/linux/man-pages/"
+  - "Linux man-pages 6.19 as served by man7.org (6.20 released 2026-10-21), Michael Kerrisk et al., 2026, https://man7.org/linux/man-pages/"
   - "John R. Levine, Linkers and Loaders, Morgan Kaufmann, 1999, https://www.iecc.com/linker/"
   - "Itanium C++ ABI Specification, Codesourcery et al., 2026, https://itanium-cxx-abi.github.io/cxx-abi/abi.html"
 ---

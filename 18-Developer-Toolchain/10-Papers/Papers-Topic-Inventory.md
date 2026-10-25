@@ -12,7 +12,7 @@ sources:
   - "Todd Mytkowicz, Amer Diwan, Matthias Hauswirth, Peter F. Sweeney, Producing Wrong Data Without Doing Anything Obviously Wrong!, ASPLOS XIV, pp. 265-276, 2009, https://doi.org/10.1145/1508244.1508275"
   - "Andreas Zeller, Ralf Hildebrandt, Simplifying and Isolating Failure-Inducing Input, IEEE Transactions on Software Engineering, Vol. 28, No. 2, pp. 183-200, 2002, https://doi.org/10.1109/32.988498"
   - "Konstantin Serebryany, Derek Bruening, Alexander Potapenko, Dmitry Vyukov, AddressSanitizer: A Fast Address Sanity Checker, USENIX ATC 12, pp. 309-318, 2012, https://www.usenix.org/conference/atc12/technical-sessions/presentation/serebryany"
-  - "Konstantin Serebryany, Timur Iskhodzhanov, ThreadSanitizer: data race detection in practice, WBIA '09, pp. 62-71, 2009, https://doi.org/10.1145/1709397.1709408"
+  - "Konstantin Serebryany, Timur Iskhodzhanov, ThreadSanitizer: data race detection in practice, WBIA '09, pp. 62-71, 2009, https://doi.org/10.1145/1791194.1791203"
   - "Robert O'Callahan et al., Engineering Record and Replay for Deployability, USENIX ATC 17, pp. 377-389, 2017, https://www.usenix.org/system/files/conference/atc17/atc17-o_callahan.pdf"
   - "Maksim Panchenko, Rafael Auler, Bill Nell, Guilherme Ottoni, BOLT: A Practical Binary Optimizer for Data Centers and Beyond, CGO 2019, pp. 2-14, 2019, https://arxiv.org/abs/1807.06735"
   - "Caitlin Sadowski et al., Tricorder: Building a Program Analysis Ecosystem, ICSE 2015, pp. 598-608, 2015, https://research.google/pubs/tricorder-building-a-program-analysis-ecosystem/"
@@ -37,7 +37,7 @@ This inventory maps the seminal computer science literature and canonical techni
 
 | Source heading group | Owning note | Depth target | Existing vault coverage |
 | :--- | :--- | :--- | :--- |
-| Thompson 1984: Quines, Self-Reproducing Compilers, Diverse Double-Compiling | [[Paper-Reflections-on-Trusting-Trust]] | Explain | none |
+| Thompson 1984: Quines, Self-Reproducing Compilers, Compiler Backdoors (Diverse Double-Compiling is the later Wheeler 2005 countermeasure) | [[Paper-Reflections-on-Trusting-Trust]] | Explain | none |
 | Zeller & Hildebrandt 2002: Test Case Reduction, Minimizing Delta Debugging (`ddmin`) | [[Paper-Zeller-Delta-Debugging]] | Explain, Rebuild | none |
 | Nethercote & Seward 2007: VEX Intermediate Representation, Dynamic Binary Instrumentation | [[Paper-Valgrind-Dynamic-Binary-Instrumentation]] | Explain | none |
 | Mytkowicz et al. 2009: Measurement Bias, Hardware Layout Variance, Setup Randomization | [[Paper-Producing-Wrong-Data-Measurement-Bias]] | Explain | [[15-Technical-Whitepapers/01-Systems-Performance-and-Tracing/Brendan-Gregg-Performance-Canon.md\|Brendan-Gregg-Performance-Canon]] |

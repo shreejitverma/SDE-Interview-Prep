@@ -43,7 +43,7 @@ This skill ladder establishes observable, testable engineering behaviors for ver
 
 ## L7
 
-- Can design and deploy high-throughput server-side merge queues and speculative build trains using worktree-free git replay and merge-tree primitives ([[Git-Replay-and-Server-Side-History-Rewriting]], [[Git-Branching-Models-Merge-Queues-and-Code-Review]]).
+- Can design and deploy high-throughput server-side merge queues and speculative build trains using worktree-free git replay (EXPERIMENTAL as of Git 2.56) and merge-tree primitives ([[Git-Replay-and-Server-Side-History-Rewriting]], [[Git-Branching-Models-Merge-Queues-and-Code-Review]]).
 - Can evaluate trade-offs and author an organizational decision record choosing between merge commits, rebase fast-forward, and squash-merge strategies ([[Decision-Record-Merge-vs-Rebase-and-Branching]]).
 - Can migrate high-churn enterprise repositories to modern block-indexed reftable backends and configure server-side reference transaction logging ([[Git-Refs-Reflog-and-Reftable]]).
 - Can tune wire protocol v2 capabilities and CDN bundle-URI offloading to protect internal Git server infrastructure from CI clone storms ([[Git-Transfer-Protocol-and-Partial-Clone]]).

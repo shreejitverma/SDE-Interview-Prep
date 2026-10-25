@@ -30,7 +30,7 @@ Every competency is formulated as a verifiable operational behavior linked to th
 - Can decompress Git packfile delta chains across OFS_DELTA and REF_DELTA objects to extract repository revisions using [[Capstone-Mini-Git-in-Rust|Capstone-Mini-Git-in-Rust.md]].
 - Can implement a software breakpoint engine using ptrace and int3 opcode patching on Linux x86-64 and AArch64 using [[Capstone-Ptrace-Debugger-with-DWARF|Capstone-Ptrace-Debugger-with-DWARF.md]].
 - Can resolve a multi-package dependency conflict graph and emit deterministic lockfiles using a custom PubGrub constraint solver using [[Capstone-PubGrub-Dependency-Resolver|Capstone-PubGrub-Dependency-Resolver.md]].
-- Can configure and execute multi-platform wheel generation with cibuildwheel and cargo-dist dry-run validation using [[Capstone-Polyglot-Packaging-and-Release-Pipeline|Capstone-Polyglot-Packaging-and-Release-Pipeline.md]].
+- Can configure and execute multi-platform wheel generation with cibuildwheel and dist (formerly cargo-dist, renamed in v0.24.0) `dist plan` dry-run validation using [[Capstone-Polyglot-Packaging-and-Release-Pipeline|Capstone-Polyglot-Packaging-and-Release-Pipeline.md]].
 
 ## Level 6: Senior Cross-System Incident Triage and Infrastructure Design
 

@@ -6,7 +6,7 @@ status: draft
 last_reviewed:
 sources:
   - "Andrey Mokhov, Neil Mitchell, Simon Peyton Jones, Build Systems a la Carte: Theory and Practice, Journal of Functional Programming, Vol. 30, e11, 2020, https://doi.org/10.1017/S0956796820000088"
-  - "Kitware, CMake Reference Documentation Manuals, v4.4.4, 2026, https://cmake.org/cmake/help/latest/"
+  - "Kitware, CMake Reference Documentation Manuals, v4.4.4, 2026, https://cmake.org/cmake/help/v4.4/"
   - "The Bazel Authors, Bazel Documentation, Bazel 9.3.1 (prerelease 10.0.0rc2), 2026, https://bazel.build/docs"
   - "Meta Open Source, Buck2 Documentation, 2026, https://buck2.build/docs/"
 ---

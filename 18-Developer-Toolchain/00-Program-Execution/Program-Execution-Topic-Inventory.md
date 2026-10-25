@@ -10,7 +10,7 @@ sources:
   - "Procedure Call Standard for the Arm 64-bit Architecture (AAPCS64), Arm Limited, 2025, https://github.com/ARM-software/abi-aa/blob/main/aapcs64/aapcs64.rst"
   - "ELF for the Arm 64-bit Architecture (AAELF64) and SYSVABI64, Arm Limited, 2025, https://github.com/ARM-software/abi-aa/blob/main/aaelf64/aaelf64.rst"
   - "DWARF Debugging Information Format Specification Version 5.0, DWARF Debugging Information Format Committee, 2017, https://dwarfstd.org/doc/DWARF5.pdf"
-  - "Linux man-pages 6.16: ld.so(8), fork(2), execve(2), posix_spawn(3), signal(7), credentials(7), pty(7), termios(3), proc(5), Michael Kerrisk et al., 2025, https://man7.org/linux/man-pages/"
+  - "Linux man-pages 6.19 as served by man7.org (6.20 released 2026-10-21): ld.so(8), fork(2), execve(2), posix_spawn(3), signal(7), credentials(7), pty(7), termios(3), proc(5), Michael Kerrisk et al., 2026, https://man7.org/linux/man-pages/"
   - "Apple Inc., dyld and Mach-O Runtime, Apple Open Source, 2026, https://github.com/apple-oss-distributions/dyld"
   - "John R. Levine, Linkers and Loaders, Morgan Kaufmann, 1999, https://www.iecc.com/linker/"
   - "Itanium C++ ABI Specification and Exception Handling ABI, Codesourcery et al., 2026, https://itanium-cxx-abi.github.io/cxx-abi/abi.html"
@@ -41,14 +41,14 @@ Curriculum coverage matrix mapping authoritative execution specifications to own
 | AMD64 psABI: Ch 3 Low-Level System Information (3.3-3.4 Virtual Memory, Auxiliary Vector, Initial Stack) | [[Program-Startup-C-Runtime-Init-and-Auxiliary-Vectors]] | Explain | none |
 | AMD64 psABI: Ch 3 Low-Level System Information (3.5 Code Models: Small, Medium, Large, Kernel, PIC) | [[Calling-Conventions-System-V-AMD64-and-AAPCS64]] | Explain | none |
 | AMD64 psABI: Ch 4 Object Files (4.1 ELF Header, 4.3 Symbol Table, 4.4 Relocations R_X86_64_*) | [[Symbols-Relocations-and-Static-Linking]] | Explain | [[02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_102_Linking_Loading_ABI/Chapter_102_Linking_Loading_ABI_and_WPO.md\|C++ Ch 102 Linking Loading ABI]] |
-| AMD64 psABI: Ch 4 & 6 (.eh_frame Section, Unwind Library Interface, DWARF Register Mapping) | [[Stack-Unwinding-CFI-and-Exception-ABI]] | Explain | [[14-Low-Latency-Systems/13 - Reliability, Ops & Testing/Observability Without Perturbation.md\|Observability Without Perturbation]] |
+| AMD64 psABI: Ch 3.6, 4 & 6 (DWARF Register Number Mapping, .eh_frame Section, Unwind Library Interface) | [[Stack-Unwinding-CFI-and-Exception-ABI]] | Explain | [[14-Low-Latency-Systems/13 - Reliability, Ops & Testing/Observability Without Perturbation.md\|Observability Without Perturbation]] |
 | AMD64 psABI: Ch 5 Dynamic Linking (GOT, PLT, STT_GNU_IFUNC Indirect Functions) | [[Dynamic-Linking-PLT-GOT-and-Loaders]] | Explain | [[02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_102_Linking_Loading_ABI/Chapter_102_Linking_Loading_ABI_and_WPO.md\|C++ Ch 102 Linking Loading ABI]] |
 | AAPCS64: Sections 1-5 Data Types and Alignment (Fundamental Types, SVE Vectors, Composite Aggregates) | [[Calling-Conventions-System-V-AMD64-and-AAPCS64]] | Explain | none |
 | AAPCS64: Section 6 Base Procedure Call Standard (Registers X0-X30, SP, FP X29, LR X30, Stack Rules) | [[Calling-Conventions-System-V-AMD64-and-AAPCS64]] | Use | none |
-| AAPCS64: Section 7 Standard Variants (Pointer Authentication PAC, Branch Target Identification BTI) | [[Hardware-Security-ABIs-PAC-BTI-CET-and-RELRO]] | Explain | none |
-| AAELF64 & SYSVABI64: Sections 1-4 ELF Header, Sections (.note.gnu.property), Symbol Mapping ($x, $d) | [[ELF-Mach-O-and-PE-Object-Formats]] | Explain | none |
-| AAELF64 & SYSVABI64: Section 4 Instruction Relocations (ADRP, ADD, LDR, Jump Veneers) | [[Symbols-Relocations-and-Static-Linking]] | Explain | none |
-| AAELF64 & SYSVABI64: Section 4 TLS Relocations (General Dynamic, Local Dynamic, Initial Exec, TLSDESC) | [[Thread-Local-Storage-Models-and-ELF-Relocations]] | Explain | none |
+| AAPCS64 Section 7 Standard Variants and SYSVABI64 GNU Property Notes (Pointer Authentication PAC, Branch Target Identification BTI) | [[Hardware-Security-ABIs-PAC-BTI-CET-and-RELRO]] | Explain | none |
+| AAELF64 & SYSVABI64: AAELF64 Section 5 Object Files (ELF Header, Sections, .note.gnu.property, Mapping Symbols $x, $d) | [[ELF-Mach-O-and-PE-Object-Formats]] | Explain | none |
+| AAELF64 & SYSVABI64: AAELF64 Section 5 Instruction Relocations (ADRP, ADD, LDR, Jump Veneers) | [[Symbols-Relocations-and-Static-Linking]] | Explain | none |
+| AAELF64 & SYSVABI64: AAELF64 Section 5 TLS Relocations and SYSVABI64 Thread Local Storage (General Dynamic, Local Dynamic, Initial Exec, TLSDESC) | [[Thread-Local-Storage-Models-and-ELF-Relocations]] | Explain | none |
 | AAELF64 & SYSVABI64: SYSVABI64 Program Loading (Dynamic Section DT_AARCH64_BTI_PLT, PAC PLT, GOT) | [[Hardware-Security-ABIs-PAC-BTI-CET-and-RELRO]] | Explain | none |
 | DWARF 5 Spec & DWARF 6 Draft: Ch 1-2 General Description (DIEs, Attribute Forms, Location Expressions) | [[DWARF-Debug-Information-and-Symbol-Bundles]] | Explain | none |
 | DWARF 5 Spec & DWARF 6 Draft: Ch 3-5 Program Scope (Compilation Unit, Subprogram, Inlined Subroutines) | [[DWARF-Debug-Information-and-Symbol-Bundles]] | Explain | none |
@@ -56,7 +56,7 @@ Curriculum coverage matrix mapping authoritative execution specifications to own
 | DWARF 5 Spec & DWARF 6 Draft: Ch 6.4 Call Frame Information (.debug_frame, CIE, FDE, CFA Rules) | [[Stack-Unwinding-CFI-and-Exception-ABI]] | Explain | none |
 | DWARF 5 Spec & DWARF 6 Draft: Ch 7 Data Representation (LEB128, Split DWARF .dwo/.dwp, Compression) | [[DWARF-Debug-Information-and-Symbol-Bundles]] | Rebuild | none |
 | Linux ld.so(8): Search Paths (Rpath, Runpath, Tokens $ORIGIN, $LIB), Options, Environment Variables | [[Dynamic-Linking-PLT-GOT-and-Loaders]] | Use | none |
-| Linux ld.so(8): Dynamic Linker Failure Diagnosis (LD_DEBUG, LD_AUDIT, GLIBC_TUNABLES, AT_SECURE) | [[Diagnose-Dynamic-Linker-and-ABI-Failures]] | Debug | none |
+| Linux ld.so(8): Dynamic Linker Failure Diagnosis (LD_DEBUG, LD_AUDIT, --list-tunables, AT_SECURE) | [[Diagnose-Dynamic-Linker-and-ABI-Failures]] | Debug | none |
 | Apple dyld & Mach-O: dyld(1) Environment Variables (DYLD_LIBRARY_PATH, @rpath, dyld shared cache) | [[Dynamic-Linking-PLT-GOT-and-Loaders]] | Use | none |
 | Apple dyld & Mach-O: Mach-O Headers, Load Commands (LC_SEGMENT_64, LC_DYLD_CHAINED_FIXUPS), Segments | [[ELF-Mach-O-and-PE-Object-Formats]] | Explain | none |
 | Apple dyld & Mach-O: Compact Unwinding (__compact_unwind Section Format and Encodings) | [[Stack-Unwinding-CFI-and-Exception-ABI]] | Explain | none |
@@ -83,8 +83,8 @@ Curriculum coverage matrix mapping authoritative execution specifications to own
 
 ## Out of scope
 
-- System V AMD64 psABI Ch 1-2: SVR4 packaging formats and legacy installation directories, omitted due to modern container and package manager standards.
-- System V AMD64 psABI Ch 6.1, 7, 8, 9: Standard C library symbol lists and obsolete environment conventions, omitted because glibc man-pages maintain live references.
+- System V AMD64 psABI Ch 1-2: Introduction and Software Installation, omitted because Ch 2 only states that the psABI does not specify how software is installed.
+- System V AMD64 psABI Ch 6.1, 7, 8, 9: C Library notes, predefined preprocessor symbols, the execution environment stub, and the C++ and Fortran conventions, omitted because glibc and the Itanium C++ ABI are the live references.
 - System V AMD64 psABI Ch 10: ILP32 programming model (x32 ABI), omitted due to lack of adoption in modern production environments.
 - CS:APP 3e Ch 1, 2, 4, 6: Hardware logic, binary integer representation, and CPU cache hierarchies, preserved in [[01-CS-Foundations/Operating-Systems/README.md\|01-CS-Foundations]] and [[12-Performance-Engineering/README.md\|12-Performance-Engineering]].
 - CS:APP 3e Ch 11, 12: Network socket programming and thread synchronization, owned by [[01-CS-Foundations/Computer-Networks/README.md\|Computer Networks]] and [[04-System-Design/00-Concepts/README.md\|System Design]].

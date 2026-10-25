@@ -5,7 +5,7 @@ level:
 status: draft
 last_reviewed:
 sources:
-  - "Antigravity Engineering Team, Developer Toolchain Curriculum Specification, SDE Interview Prep, 2026, https://github.com/shreejitverma/SDE-Interview-Prep"
+  - "SDE-Interview-Prep contributors, Developer Toolchain Curriculum Specification, SDE Interview Prep, 2026, https://github.com/shreejitverma/SDE-Interview-Prep"
 ---
 
 # Developer Toolchain Style Guide and Authoring Contract
@@ -190,17 +190,17 @@ To ensure mechanical compilation into the Zero to Godhood book format:
 
 All runnable code, reproduction test cases, and benchmarks must reside inside the `code/` directory:
 - **Directory Layout:** Labs are organized strictly as `code/<pillar>/<lab_name>/`.
-- **Golden Outputs:** Expected execution output must be stored in `code/<pillar>/<lab_name>/expected/<target>.out`.
+- **Golden Outputs:** Expected execution output must be stored in `code/<pillar>/<lab_name>/expected/<platform>.txt`, where platform is `<os>-<arch>` as computed by `code/_harness/verify.py` (for example `darwin-arm64`, `linux-aarch64`, `linux-amd64`).
 - **Harness Scripts:**
-  - `make verify`: Executes all runnable labs and validates that generated output matches `expected/<target>.out`.
+  - `make verify`: Executes every lab (a directory holding `run.sh`) whose requirements are met and validates that its stdout matches `expected/<platform>.txt`.
   - `make record`: Runs labs and updates the golden output files.
-  - `make verify LAB=<name>`: Runs verification for a single isolated lab directory.
-- **Environment Gating:** Every lab script must declare its environmental requirements in a header comment:
+  - `make verify LAB=<name>`: Runs verification only for labs whose path contains `<name>`.
+- **Environment Gating:** Every lab's `run.sh` must declare its environmental requirements in a `# requires:` comment within its first 10 lines:
   - `# requires: linux`: Linux system call dependencies (e.g., ptrace, namespaces, epoll).
   - `# requires: docker`: Container-isolated executions.
-  - `# requires: pmu`: Hardware performance counters or PMU virtualization.
+  - `# requires: pmu`: Hardware performance counters or PMU virtualization, opted in with `TOOLCHAIN_LABS_PMU=1`.
   - `# requires: nightly`: Nightly language compiler features.
-  - `# requires: network`: External network or package registry access.
+  - `# requires: network`: External network or package registry access, opted in with `TOOLCHAIN_LABS_NETWORK=1`.
 
 ## 9. The Manifest Contract (`manifest.tsv`)
 
@@ -208,10 +208,10 @@ The file `18-Developer-Toolchain/manifest.tsv` is the single source of truth for
 - **File Format:** Tab-separated values (TSV) with UTF-8 encoding and Unix LF line endings.
 - **Columns (in exact order):**
   1. `order`: 1-based sequential integer defining global reading order.
-  2. `pillar_label`: Two-digit pillar identifier (e.g., `00`, `01`, ..., `11`).
+  2. `pillar_label`: Two-digit pillar identifier (e.g., `00`, `01`, ..., `11`), or `root` for the folder-level `README.md` and `STYLE.md`.
   3. `pillar_title`: Clean pillar title (e.g., `Program Execution`, `Arena and Capstones`).
-  4. `note_id`: Unique hyphenated note identifier matching the filename without extension.
-  5. `kind`: Note type (`concept`, `playbook`, `problem`, `case-study`, `paper`, `moc`).
+  4. `note_id`: The note's `path` without `.md` (for example `00-Program-Execution/README`), unique by construction.
+  5. `kind`: Note type (`concept`, `playbook`, `problem`, `case-study`, `paper`, `moc`), equal to the note's frontmatter `type`.
   6. `path`: Relative path from `18-Developer-Toolchain/` (e.g., `11-Arena-and-Capstones/README.md`).
 - **Integrity Constraints:**
   - Every note in `18-Developer-Toolchain/` must appear in `manifest.tsv` exactly once.

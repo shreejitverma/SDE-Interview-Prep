@@ -5,12 +5,12 @@ level:
 status: draft
 last_reviewed:
 sources:
-  - "Linux Kernel Organization, Linux perf Man Pages and Wiki (Linux 6.x), Linux Kernel Organization, 2026, https://perfwiki.github.io/"
+  - "Linux Kernel Organization, Linux perf Man Pages and Wiki (Linux 7.x), Linux Kernel Organization, 2026, https://perfwiki.github.io/"
   - "Brendan Gregg, Systems Performance: Enterprise and the Cloud, 2nd Edition, Addison-Wesley, 2020, https://www.brendangregg.com/systems-performance-2nd-edition-book.html"
   - "Brendan Gregg, BPF Performance Tools: Linux System and Application Observability, Addison-Wesley, 2019, https://www.brendangregg.com/bpf-performance-tools-book.html"
   - "bpftrace Developers, bpftrace Reference Guide (v0.27.1), bpftrace Project, 2026, https://github.com/bpftrace/bpftrace/blob/master/docs/reference_guide.md"
   - "Apple Inc., Instruments and xctrace Command-Line Tool, Apple Inc., 2026, https://developer.apple.com/documentation/xcode/improving-your-app-s-performance"
-  - "Bartosz Tanczyk, Tracy Profiler User Manual (v0.14.1), Tracy Profiler Project, 2026, https://github.com/wolfpld/tracy"
+  - "Bartosz Taudul, Tracy Profiler User Manual (v0.14.1), Tracy Profiler Project, 2026, https://github.com/wolfpld/tracy"
   - "Google LLC, Perfetto: System Profiling, App Tracing and Analysis (v58.2), Google LLC, 2026, https://perfetto.dev/docs/"
   - "Milian Wolff, heaptrack: A Heap Memory Profiler for Linux (v1.3.0), KDE Project, 2026, https://github.com/KDE/heaptrack"
   - "Julian Seward et al., Valgrind User Manual: Cachegrind, Callgrind, Massif, DHAT (Valgrind 3.28.0), Valgrind Developers, 2026, https://valgrind.org/docs/manual/manual.html"
@@ -19,8 +19,8 @@ sources:
   - "Ben Frederickson, py-spy: A Sampling Profiler for Python Programs (v0.4.2), Ben Frederickson, 2026, https://github.com/benfred/py-spy"
   - "Emery Berger et al., Scalene: A High-Performance, High-Precision CPU, GPU, and Memory Profiler for Python (v2.4.0), Plasma Lab at UMass Amherst, 2026, https://github.com/plasma-umass/scalene"
   - "Bloomberg Finance L.P., Memray: Memory Profiler for Python (v1.20.0), Bloomberg Finance L.P., 2026, https://bloomberg.github.io/memray/"
-  - "Joerick De Schepper, pyinstrument: Call Stack Profiler for Python (v5.1.3), Joerick De Schepper, 2026, https://pyinstrument.readthedocs.io/en/latest/"
-  - "Gabriele Tornetta, Austin: An In-Process Profiler for Python (v4.0.0 / austin-python 2.4.0), Gabriele Tornetta, 2026, https://github.com/P403n1x87/austin"
+  - "Joe Rickerby, pyinstrument: Call Stack Profiler for Python (v5.1.3), Joe Rickerby, 2026, https://pyinstrument.readthedocs.io/en/latest/"
+  - "Gabriele Tornetta, Austin: A Frame Stack Sampler for CPython (v4.0.0 / austin-python 2.4.0), Gabriele Tornetta, 2026, https://github.com/P403n1x87/austin"
   - "Airspeed Velocity Developers, Airspeed Velocity: A Simple Python Benchmarking Tool (v0.6.6), asv Developers, 2026, https://asv.readthedocs.io/en/latest/"
   - "Brook Heisler, The Criterion.rs Book: Statistics-Driven Benchmarking in Rust (v0.5.1), Criterion.rs Developers, 2026, https://bheisler.github.io/criterion.rs/book/"
   - "Nikolai Vazquez, Divan: Fast and Simple Benchmarking for Rust (v0.1.14), Nikolai Vazquez, 2026, https://github.com/nvzqz/divan"
@@ -46,7 +46,7 @@ This document maps authoritative upstream source heading groups for profilers, t
 | Apple Instruments & xctrace Docs: Time Profiler, Counters/KPEP, Allocations, xctrace CLI, DTrace under SIP | [[macOS-Instruments-xctrace-and-DTrace]] | Use, Explain | none |
 | Tracy Profiler Manual: Nanosecond Frame/Zone Client Markup, Context-Switch Tracking, Headless Capture | [[Tracy-and-Perfetto-Hybrid-Profilers]] | Use, Explain, Rebuild | none |
 | Perfetto Docs: Service Model, ProtoZero Ring Buffers, Linux ftrace, heapprofd, PerfettoSQL Queries | [[Tracy-and-Perfetto-Hybrid-Profilers]] | Use, Explain, Rebuild | none |
-| Continuous Profiling Docs: Google-Wide Profiling (GWP), Parca eBPF SFrame/DWARF, Pyroscope, OTel Profiles | [[Continuous-Profiling-GWP-Parca-Pyroscope-and-OTel-Profiles]] | Explain, Decide | none |
+| Continuous Profiling Docs: Google-Wide Profiling (GWP), Parca eBPF DWARF and Frame-Pointer Unwinding, Pyroscope, OTel Profiles | [[Continuous-Profiling-GWP-Parca-Pyroscope-and-OTel-Profiles]] | Explain, Decide | none |
 | Profiling Architecture: Decision Records for Profiler Selection, Parca vs Pyroscope, Frame Pointer Policy | [[Profiling-Decision-Records]] | Explain, Decide | none |
 | Profiler Implementation: Rebuild Lab for Sampling Profiler Emitting Folded Stack Formats | [[Rebuild-Lab-Sampling-Profiler-to-Folded-Stacks]] | Rebuild | none |
 | C++ CPU Profiling: perf, samply, Callgrind Cache Simulation, llvm-mca Pipeline Modeling | [[Cpp-CPU-Profiling-perf-samply-Callgrind-and-llvm-mca]] | Use, Explain, Debug | [[02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_103_Microbenchmarking_and_Tail_Latency/Chapter_103_Microbenchmarking_and_Tail_Latency.md\|Chapter_103]] |

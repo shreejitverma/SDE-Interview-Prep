@@ -6,7 +6,7 @@ status: draft
 last_reviewed:
 sources:
   - "Andrey Mokhov, Neil Mitchell, Simon Peyton Jones, Build Systems a la Carte: Theory and Practice, Journal of Functional Programming, Vol. 30, e11, 2020, https://doi.org/10.1017/S0956796820000088"
-  - "Kitware, CMake Reference Documentation Manuals, v4.4.4, 2026, https://cmake.org/cmake/help/latest/"
+  - "Kitware, CMake Reference Documentation Manuals, v4.4.4, 2026, https://cmake.org/cmake/help/v4.4/"
   - "Evan Martin, The Ninja Build System Manual, v1.13.2, 2026, https://ninja-build.org/manual.html"
   - "Jussi Pakkanen et al., The Meson Build System User Manual, v1.12.1, 2026, https://mesonbuild.com/Manual.html"
   - "The Bazel Authors, Bazel Documentation, Bazel 9.3.1 (prerelease 10.0.0rc2), 2026, https://bazel.build/docs"
@@ -28,8 +28,8 @@ This inventory maps the authoritative documentation, formal build theory, execut
 | Build Systems a la Carte: Rebuilders (Dirty Bit, Verifying Traces, Constructive Traces) | [[Build-System-Theory-Schedulers-and-Rebuilders]], [[10-Papers/Paper-Build-Systems-a-la-Carte\|Paper-Build-Systems-a-la-Carte]] | Explain, Rebuild | none |
 | Reproducible Builds: Deterministic Systems, Variation Taxonomy, Timestamps (`SOURCE_DATE_EPOCH`) | [[Hermetic-and-Reproducible-Builds]] | Explain, Debug, Decide at Scale | [[19-Shell-and-Unix-Engineering/18-Build-Packaging-and-Bootstrap/Nix-Builders-and-stdenv-Phases.md\|Nix-Builders-and-stdenv-Phases]] |
 | Reproducible Builds: Path Remapping (`-ffile-prefix-map`), Archive Normalization, Verification Tools | [[Hermetic-and-Reproducible-Builds]], [[Drill-Build-Systems-Hunt-Non-Determinism-with-Diffoscope]] | Explain, Debug | none |
-| Ninja Manual: Architecture, Execution, Jobserver Client/Server Support | [[Make-and-Ninja-Mechanics]] | Use, Explain, Rebuild | [[19-Shell-and-Unix-Engineering/18-Build-Packaging-and-Bootstrap/Make-Recipe-Execution.md\|Make-Recipe-Execution]] |
-| Ninja Manual: Binary Log (`.ninja_log`), Header Log (`.ninja_deps`), `depfile`, Pools, `dyndep` | [[Make-and-Ninja-Mechanics]], [[Cpp-Modules-in-Build-Systems]] | Explain, Debug, Rebuild | none |
+| Ninja Manual: Architecture, Execution, GNU Jobserver Client Support (since 1.13) | [[Make-and-Ninja-Mechanics]] | Use, Explain, Rebuild | [[19-Shell-and-Unix-Engineering/18-Build-Packaging-and-Bootstrap/Make-Recipe-Execution.md\|Make-Recipe-Execution]] |
+| Ninja Manual: Build Log (`.ninja_log`), Binary Deps Log (`.ninja_deps`), `depfile`, Pools, `dyndep` | [[Make-and-Ninja-Mechanics]], [[Cpp-Modules-in-Build-Systems]] | Explain, Debug, Rebuild | none |
 | CMake Reference: `cmake-buildsystem(7)`, Targets, Properties, Usage Requirements | [[Modern-CMake-Architecture-and-Targets]] | Use, Explain, Debug | [[02-Programming-Languages/C++/CPP_Zero_to_Godhood/Appendices/Appendix_T_Appendix_T_THE_MASTERS_GUIDE_TO_CMAKE.md\|Appendix_T_THE_MASTERS_GUIDE_TO_CMAKE]] |
 | CMake Reference: `cmake-generator-expressions(7)`, Generator Expressions, Compile Features | [[Modern-CMake-Architecture-and-Targets]] | Use, Explain | [[02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_09_Specialized_Mastery/Chapter_110_Build_Systems_and_Tooling/Chapter_110_Build_Systems_Dependency_Management_and_Tooling.md\|Chapter_110_Build_Systems]] |
 | CMake Reference: `cmake-presets(7)`, `cmake-toolchains(7)`, `cmake-file-api(7)`, `cmake-configure-log(7)` | [[CMake-Presets-Toolchains-and-File-API]] | Use, Explain | none |
@@ -56,5 +56,5 @@ This inventory maps the authoritative documentation, formal build theory, execut
 
 ## Out of scope
 
-- CMake Qt moc integration (`cmake-qt(7)`), deprecated `cmake-server(7)`, and GUI dialogs (`cmake-gui(1)`) are out of scope because framework-specific Qt code generation rules and deprecated GUI interfaces are outside general toolchain architecture.
+- CMake Qt moc integration (`cmake-qt(7)`), removed `cmake-server(7)` (dropped in CMake 3.20), and GUI dialogs (`cmake-gui(1)`) are out of scope because framework-specific Qt code generation rules and deprecated GUI interfaces are outside general toolchain architecture.
 - Meson language-specific helper modules (`Java`, `Vala`, `Hotdoc`, `i18n`, `Windows`) are out of scope because language-specific Meson helper modules are outside the core C++, Python, and Rust toolchain focus; Python build packaging (`meson-python`) is owned by 07-Packaging-and-Release.

@@ -6,16 +6,16 @@ status: draft
 last_reviewed:
 sources:
   - "OpenSSF SLSA Steering Committee, Supply-chain Levels for Software Artifacts (SLSA) Specification v1.2, OpenSSF, 2026, https://slsa.dev/spec/v1.2/"
-  - "Santiago Torres-Arias et al., in-toto Specification v1.0, in-toto Project, 2024, https://github.com/in-toto/docs/blob/master/in-toto-spec.md"
+  - "Santiago Torres-Arias et al., in-toto Specification v1.0, in-toto Project, 2023, https://github.com/in-toto/specification/blob/master/in-toto-spec.md"
   - "in-toto Attestation Framework Contributors, in-toto Attestation Framework Specification v1.1 (v1.2.0), in-toto Project, 2026, https://github.com/in-toto/attestation/tree/main/spec/v1"
   - "Sigstore Project Authors, Sigstore Documentation (Cosign v3.1.3, Fulcio, Rekor, Gitsign), Linux Foundation, 2026, https://docs.sigstore.dev/"
-  - "Linux Foundation, System Design Specification for SPDX 3.0.1, SPDX Workgroup, 2026, https://spdx.github.io/spdx-spec/v3.0.1/"
+  - "SPDX Workgroup, The System Package Data Exchange (SPDX) Specification Version 3.0.1, Linux Foundation, 2024, https://spdx.github.io/spdx-spec/v3.0.1/"
   - "OWASP CycloneDX Project, CycloneDX Authoritative Guide and Specification v1.7.2, OWASP Foundation, 2026, https://cyclonedx.org/specification/overview/"
   - "OpenSSF Scorecard Maintainers, OpenSSF Scorecard Checks Documentation v5.6.0, Open Source Security Foundation, 2026, https://github.com/ossf/scorecard/blob/main/docs/checks.md"
   - "Reproducible Builds Project, Reproducible Builds Documentation and Specification, Software in the Public Interest, 2026, https://reproducible-builds.org/docs/"
   - "Andres Freund, Backdoor in upstream xz/liblzma leading to SSH server compromise (CVE-2024-3094), oss-security, 2024, https://www.openwall.com/lists/oss-security/2024/03/29/4"
-  - "Dominic Tarr, I don't know what to say (event-stream Issue 116), GitHub, 2018, https://github.com/dominictarr/event-stream/issues/116"
-  - "Cybersecurity and Infrastructure Security Agency, Emergency Directive 21-01 Mitigate SolarWinds Orion Code Compromise, CISA, 2020, https://www.cisa.gov/news-events/directives/ed-21-01-mitigate-solarwinds-orion-code-compromise"
+  - "Ayrton Sparling (FallingSnow), I don't know what to say. (event-stream Issue 116, repository of Dominic Tarr), GitHub, 2018, https://github.com/dominictarr/event-stream/issues/116"
+  - "Cybersecurity and Infrastructure Security Agency, Emergency Directive 21-01 Mitigate SolarWinds Orion Code Compromise, CISA, 2020, https://www.cisa.gov/news-events/directives/ed-21-01-mitigate-solarwinds-orion-code-compromise-closed"
   - "Codecov Security Team, Bash Uploader Security Update, Codecov, 2021, https://about.codecov.io/security-update/"
   - "GitHub Advisory Database, tj-actions/changed-files runner memory exfiltration (CVE-2025-30066 / GHSA-mrrh-fwg8-r2c3), GitHub, 2025, https://github.com/advisories/GHSA-mrrh-fwg8-r2c3"
   - "PyTorch Team, Compromised PyTorch-nightly Dependency Chain (torchtriton), PyTorch Foundation, 2022, https://pytorch.org/blog/compromised-nightly-dependency/"
@@ -33,7 +33,7 @@ Authoritative source-to-note mapping and depth targets for software supply chain
 
 | Source heading group | Owning note | Depth target | Existing vault coverage |
 |---|---|---|---|
-| SLSA v1.2 Spec (Threats A-H, Build L0-L3, Source Track, VSAs) | [[SLSA-Framework-Build-and-Source-Tracks]] | Concept / L6 | [[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter/Chapter_05_Software_Supply_Chain_Security_SLSA_and_Sigstore.md\|Supply Chain Security SLSA and Sigstore]] |
+| SLSA v1.2 Spec (Threats A-I, Build L0-L3, Source Track, VSAs) | [[SLSA-Framework-Build-and-Source-Tracks]] | Concept / L6 | [[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter/Chapter_05_Software_Supply_Chain_Security_SLSA_and_Sigstore.md\|Supply Chain Security SLSA and Sigstore]] |
 | in-toto Spec & Attestation Framework v1.1/v1.2 (DSSE, Links) | [[In-Toto-Layouts-Link-Metadata-and-DSSE-Attestations]] | Concept / L6 | [[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter/Chapter_05_Software_Supply_Chain_Security_SLSA_and_Sigstore.md\|Supply Chain Security SLSA and Sigstore]] |
 | Sigstore Docs (Cosign v3.1.3, Fulcio OIDC, Rekor, Gitsign) | [[Sigstore-Keyless-Signing-Cosign-Fulcio-and-Rekor]] | Concept / L6 | [[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter/Chapter_05_Software_Supply_Chain_Security_SLSA_and_Sigstore.md\|Supply Chain Security SLSA and Sigstore]] |
 | SPDX v3.0.1 Spec (Core, Software, Security, Licensing, purl) | [[SBOM-Standards-SPDX-CycloneDX-and-VEX]] | Concept / L6 | [[11-Security-And-Cryptography/01-Common-Vulnerabilities/owasp_top_10.md\|OWASP Top 10]] |

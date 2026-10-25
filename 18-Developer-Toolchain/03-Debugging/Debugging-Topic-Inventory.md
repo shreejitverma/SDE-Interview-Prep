@@ -29,7 +29,7 @@ sources:
   - "Tokio Project, Tokio Console: Async Diagnostics for Rust (v0.1.14), Tokio Project, 2026, https://github.com/tokio-rs/console"
   - "Tokio Project, tracing: Application-Level Tracing for Rust (v0.1.41), Tokio Project, 2026, https://docs.rs/tracing/latest/tracing/"
   - "The Chromium Projects, Crashpad: Multi-Platform Crash Reporting System, Google LLC, 2026, https://chromium.googlesource.com/crashpad/crashpad/+/HEAD/doc/overview_design.md"
-  - "elfutils Developers, debuginfod: Debuginfo Federation Server and Client (elfutils 0.196), elfutils Project, 2026, https://sourceware.org/elfutils/Debuginfod.html"
+  - "elfutils Developers, debuginfod: Debuginfo Federation Server and Client (elfutils 0.197), elfutils Project, 2026, https://sourceware.org/elfutils/Debuginfod.html"
 ---
 
 # Debugging Topic Inventory
@@ -38,7 +38,7 @@ This document maps authoritative upstream source heading groups for debugging to
 
 | Source heading group | Owning note | Depth target | Existing vault coverage |
 | :--- | :--- | :--- | :--- |
-| GDB Manual: Ch 1-4 (Sample Session, Command Line, Running Programs, Inferior I/O, Multi-Process fork, Multi-Thread Non-Stop) | [[Cpp-GDB-and-LLDB-Expert-Guide]] | Use, Explain | [[02-Programming-Languages/C++/CPP_Zero_to_Godhood/manuscript/09-part-design/36_advanced_debugging.md\|36_advanced_debugging]] |
+| GDB Manual: Ch 1-4 (Sample Session, Command Line, Running Programs, Inferior I/O, Multi-Process fork, Multi-Thread Debugging) | [[Cpp-GDB-and-LLDB-Expert-Guide]] | Use, Explain | [[02-Programming-Languages/C++/CPP_Zero_to_Godhood/manuscript/09-part-design/36_advanced_debugging.md\|36_advanced_debugging]] |
 | GDB Manual: Ch 5 (Stopping and Continuing, Breakpoints, Hardware Watchpoints, Catchpoints, Signals) | [[How-Debuggers-Work-ptrace-Mach-and-Breakpoints]] | Use, Explain, Rebuild | [[01-CS-Foundations/Operating-Systems/GIOS/Part-2-Process-Thread-Management/P2L1-Processes-and-Process-Management.md\|P2L1]] |
 | GDB Manual: Ch 6-7 (Reverse Execution, Process Record and Replay) | [[Record-and-Replay-rr-UDB-and-Pernosco]] | Use, Explain | none |
 | GDB Manual: Ch 8-10 (Stack Frames, Examining Memory and Registers, Value History) | [[Cpp-GDB-and-LLDB-Expert-Guide]] | Use, Explain | [[02-Programming-Languages/C++/CPP_Zero_to_Godhood/manuscript/09-part-design/36_advanced_debugging.md\|36_advanced_debugging]] |
@@ -48,7 +48,7 @@ This document maps authoritative upstream source heading groups for debugging to
 | GDB Manual: Ch 16-18 (Symbol Table, Inferior Function Calls, Separate Debug Files, GDB Index, Core Files) | [[Core-Dumps-Minidumps-and-Crash-Reporting]] | Use, Explain, Decide | [[14-Low-Latency-Systems/13 - Reliability, Ops & Testing/Observability Without Perturbation.md\|Observability]] |
 | GDB Manual: Ch 19-21 & App E-G (Remote Debugging, Remote Serial Protocol RSP, Target XML Descriptions) | [[Remote-Debugging-gdbserver-lldb-server-and-RSP]] | Use, Explain | none |
 | GDB Manual: Ch 22-23 (Python API: gdb.Value, Pretty-Printers, Frame Filters, Unwinders) | [[Cpp-Debugger-Scripting-and-Pretty-Printers]] | Use, Explain, Rebuild | none |
-| GDB Manual: Ch 24-25 & 33 (Configuration, Command Line Options, Readline, History) | [[Debugging-Expert-Defaults-gdbinit-and-lldbinit]] | Use, Explain | none |
+| GDB Manual: Ch 2, 22 & 33-34 (Command Line Options, Controlling GDB Settings, Readline, History) | [[Debugging-Expert-Defaults-gdbinit-and-lldbinit]] | Use, Explain | none |
 | GDB Manual: Ch 30 (JIT Debugging Interface, Custom JIT Readers) | [[How-Debuggers-Work-ptrace-Mach-and-Breakpoints]] | Explain, Rebuild | none |
 | LLDB Documentation: Tutorial, GDB-to-LLDB Command Equivalence, Settings | [[Cpp-GDB-and-LLDB-Expert-Guide]] | Use, Explain | [[19-Shell-and-Unix-Engineering/05-Bash-Internals/Debugging-Bash-with-lldb.md\|Debugging-Bash]] |
 | LLDB Documentation: Variable Formatting, Type Summaries, Synthetic Children, Formatter Bytecode | [[Cpp-Debugger-Scripting-and-Pretty-Printers]] | Use, Explain, Rebuild | none |
@@ -60,7 +60,7 @@ This document maps authoritative upstream source heading groups for debugging to
 | rr Documentation: Deterministic Replay, Chaos Mode, Reverse Execution, Checkpoints | [[Record-and-Replay-rr-UDB-and-Pernosco]] | Use, Debug | none |
 | Clang AddressSanitizer: 1:8 Shadow Memory, Redzones, Quarantine, Stack UAR, Container Overflow | [[Cpp-AddressSanitizer-and-LeakSanitizer-Internals]] | Use, Explain, Rebuild | [[02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_105_Sanitizers_Fuzzing_Testing_Concurrency/Chapter_105_Sanitizers_Fuzzing_and_Testing_Concurrent_Code.md\|Chapter_105]] |
 | Clang LeakSanitizer: Standalone Mode, Reachability Heap Pointer Scanning, Suppressions | [[Cpp-AddressSanitizer-and-LeakSanitizer-Internals]] | Use, Explain | [[02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_105_Sanitizers_Fuzzing_Testing_Concurrency/Chapter_105_Sanitizers_Fuzzing_and_Testing_Concurrent_Code.md\|Chapter_105]] |
-| Clang HWASan: ARM64 TBI and MTE Hardware Tagging, 1:16 Shadow, Tag Fault Modes | [[Cpp-HWASan-and-Hardware-Memory-Tagging]] | Explain, Decide | none |
+| Clang HWASan: AArch64 TBI and x86-64 LAM Address Tagging, 1:16 Shadow, Short Granules (Arm MTE as the Hardware Analog) | [[Cpp-HWASan-and-Hardware-Memory-Tagging]] | Explain, Decide | none |
 | Clang ThreadSanitizer: Shadow State Machine, Vector Clocks, Happens-Before, TSan v3 | [[Cpp-ThreadSanitizer-and-MemorySanitizer-Internals]] | Use, Explain, Debug | [[02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_105_Sanitizers_Fuzzing_Testing_Concurrency/Chapter_105_Sanitizers_Fuzzing_and_Testing_Concurrent_Code.md\|Chapter_105]] |
 | Clang MemorySanitizer: Bit-Exact Shadow Memory, Origin Tracking, Standard Library Recompilation | [[Cpp-ThreadSanitizer-and-MemorySanitizer-Internals]] | Use, Explain, Debug | none |
 | Clang UndefinedBehaviorSanitizer: UB Check Catalog, Trap Mode, vptr Checks, Minimal Runtime | [[Cpp-UndefinedBehaviorSanitizer-and-UB-Field-Guide]] | Use, Explain, Debug | [[02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_104_Undefined_Behaviour_and_the_Optimiser/Chapter_104_Undefined_Behaviour_and_the_Optimiser.md\|Chapter_104]] |

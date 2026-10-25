@@ -5,7 +5,7 @@ level:
 status: draft
 last_reviewed:
 sources:
-  - "Linux Kernel Organization, Linux perf Man Pages and Wiki (Linux 6.x), Linux Kernel Organization, 2026, https://perfwiki.github.io/"
+  - "Linux Kernel Organization, Linux perf Man Pages and Wiki (Linux 7.x), Linux Kernel Organization, 2026, https://perfwiki.github.io/"
   - "Brendan Gregg, Systems Performance: Enterprise and the Cloud, 2nd Edition, Addison-Wesley, 2020, https://www.brendangregg.com/systems-performance-2nd-edition-book.html"
   - "bpftrace Developers, bpftrace Reference Guide (v0.27.1), bpftrace Project, 2026, https://github.com/bpftrace/bpftrace/blob/master/docs/reference_guide.md"
   - "Apple Inc., Instruments and xctrace Command-Line Tool, Apple Inc., 2026, https://developer.apple.com/documentation/xcode/improving-your-app-s-performance"

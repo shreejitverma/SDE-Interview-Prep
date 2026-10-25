@@ -88,14 +88,14 @@ The harness enforces reproducible accuracy and prevents documentation drift:
 - **Isolated Labs:**
   Each runnable lab lives under `code/<pillar>/<lab_name>/` and provides a self-contained execution recipe.
 - **Automated Verification:**
-  Running `make verify` re-executes all lab scripts and asserts that raw CLI and program outputs match the golden expected outputs recorded under `expected/<target>/`.
+  Running `make verify` re-executes all lab scripts and asserts that raw CLI and program outputs match the golden expected outputs recorded in `expected/<platform>.txt`, where platform is `<os>-<arch>` (for example `darwin-arm64` or `linux-aarch64`).
 - **Platform Gating:**
   Labs declare environmental prerequisites using header comments:
   - `# requires: linux`: gated to native Linux or containerized environments.
   - `# requires: docker`: executed inside an OrbStack or Docker container.
-  - `# requires: pmu`: requires a bare-metal performance monitoring unit or PMU-virtualized hypervisor.
+  - `# requires: pmu`: requires hardware performance counters (bare metal or a PMU-virtualized hypervisor) and runs only when `TOOLCHAIN_LABS_PMU=1` is set.
   - `# requires: nightly`: requires compiler nightly toolchains (e.g., Rust nightly for Miri or sanitizer flags).
-  - `# requires: network`: permits external registry or network access during verification.
+  - `# requires: network`: permits external registry or network access during verification, only when `TOOLCHAIN_LABS_NETWORK=1` is set.
 
 ## Related Books
 

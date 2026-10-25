@@ -6,8 +6,8 @@ status: draft
 last_reviewed:
 sources:
   - "Brendan Gregg, Systems Performance: Enterprise and the Cloud, 2nd Edition, Addison-Wesley, 2020, https://www.brendangregg.com/systems-performance-2nd-edition-book.html"
-  - "Intel Corporation, Intel VTune Profiler User Guide: Top-Down Microarchitecture Analysis Method, Intel Corporation, 2026, https://www.intel.com/content/www/us/en/docs/vtune-profiler/cookbook/2025-0/top-down-microarchitecture-analysis-method.html"
-  - "Linux Kernel Organization, Linux perf Man Pages and Wiki (Linux 6.x), Linux Kernel Organization, 2026, https://perfwiki.github.io/"
+  - "Intel Corporation, Intel VTune Profiler Performance Analysis Cookbook (2025.0): Top-down Microarchitecture Analysis Method, Intel Corporation, 2025, https://www.intel.com/content/www/us/en/docs/vtune-profiler/cookbook/2025-0/top-down-microarchitecture-analysis-method.html"
+  - "Linux Kernel Organization, Linux perf Man Pages and Wiki (Linux 7.x), Linux Kernel Organization, 2026, https://perfwiki.github.io/"
   - "Google LLC, Google Benchmark User Guide (v1.10.0), Google LLC, 2026, https://github.com/google/benchmark/blob/main/docs/user_guide.md"
   - "Martin Ankerl, nanobench: Fast and Accurate Microbenchmarking for C++ (v4.4.0), Martin Ankerl, 2026, https://nanobench.ankerl.com/"
   - "Victor Stinner, pyperf: Run Python Benchmarks (v2.10.0), Python Software Foundation, 2026, https://pyperf.readthedocs.io/en/latest/"

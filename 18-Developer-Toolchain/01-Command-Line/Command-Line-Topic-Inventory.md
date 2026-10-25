@@ -11,20 +11,20 @@ sources:
   - "fish-shell developers, fish shell documentation, fish-shell, 2026, https://fishshell.com/docs/current/"
   - "Jim Meyering et al., GNU Coreutils Manual, Free Software Foundation, 2026, https://www.gnu.org/software/coreutils/manual/"
   - "Ken Pizzini and Paolo Bonzini, GNU sed Manual, Free Software Foundation, 2026, https://www.gnu.org/software/sed/manual/"
-  - "Arnold Robbins, Effective AWK Programming: A User's Guide for GNU AWK, 5th Edition, Free Software Foundation, 2024, https://www.gnu.org/software/gawk/manual/"
+  - "Arnold Robbins, GAWK: Effective AWK Programming: A User's Guide for GNU Awk, Edition 5.4 (for gawk 5.4.1), Free Software Foundation, 2026, https://www.gnu.org/software/gawk/manual/"
   - "Stephen Dolan et al., jq Manual, jqlang, 2026, https://jqlang.org/manual/"
   - "Andrew Gallant, ripgrep User Guide and Architecture, GitHub, 2026, https://github.com/BurntSushi/ripgrep/blob/master/GUIDE.md"
   - "Google Inc., RE2 Regular Expression Engine Syntax and Documentation, Google, 2026, https://github.com/google/re2/wiki/Syntax"
   - "OpenBSD Project, OpenSSH Manual Pages: ssh(1), ssh_config(5), ssh-agent(1), ssh-keygen(1), OpenBSD, 2026, https://man.openbsd.org/ssh.1"
   - "Nicholas Marriott, tmux(1) Manual Page, OpenBSD, 2026, https://man.openbsd.org/tmux.1"
   - "Anish Athalye, Jon Gjengset, and Jose Javier Gonzalez, The Missing Semester of Your CS Education, MIT CSAIL, 2026, https://missing.csail.mit.edu/2026/"
-  - "Microsoft Corporation, Language Server Protocol Specification 3.17, Microsoft, 2024, https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/"
+  - "Microsoft Corporation, Language Server Protocol Specification 3.17 (3.17.0 released 2022-05-10; 3.18 is the latest version), Microsoft, 2022, https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/"
   - "Microsoft Corporation, Debug Adapter Protocol Specification, Microsoft, 2026, https://microsoft.github.io/debug-adapter-protocol/specification"
   - "Max Brunsfeld et al., Tree-sitter Documentation, Tree-sitter, 2026, https://tree-sitter.github.io/tree-sitter/"
   - "Eelco Dolstra et al., Nix Reference Manual, NixOS Foundation, 2026, https://nix.dev/manual/nix/stable/"
   - "direnv authors, direnv documentation, direnv, 2026, https://direnv.net/"
   - "Jeff Dickey, mise-en-place documentation, mise, 2026, https://mise.jdx.dev/"
-  - "Development Containers Community, Development Containers Specification, Linux Foundation, 2026, https://containers.dev/implementors/spec/"
+  - "Development Containers Community, Development Containers Specification, Microsoft (containers.dev), 2026, https://containers.dev/implementors/spec/"
   - "Vidar Holen, ShellCheck Wiki Check Categories, GitHub, 2026, https://github.com/koalaman/shellcheck/wiki"
   - "Command Line Interface Guidelines contributors, Command Line Interface Guidelines (clig.dev), 2026, https://clig.dev/"
 ---
@@ -36,12 +36,12 @@ Curriculum coverage matrix mapping authoritative command-line and shell specific
 | Source heading group | Owning note | Depth target | Existing vault coverage |
 | :--- | :--- | :--- | :--- |
 | GNU Bash Manual: Ch 1-3.1, 3.4, 3.5 Shell Syntax, Quoting, Parameters, Seven-Stage Word Expansion Order | [[Shell-Parsing-Tokenization-and-Expansion-Order]] | Explain | [[19-Shell-and-Unix-Engineering/03-POSIX-Shell-Language/Expansion-Order.md\|19 Expansion Order]] |
-| GNU Bash Manual: Ch 3.2, 3.3, 3.6-3.8 Pipelines, Redirections (Here-Docs, Process Substitution), Scripts | [[Pipelines-Subshells-Redirection-and-Process-Substitution]] | Explain | [[19-Shell-and-Unix-Engineering/01-Unix-Process-Model/Pipes-and-FIFOs.md\|19 Pipes and FIFOs]] |
+| GNU Bash Manual: Ch 3.2, 3.5.6, 3.6-3.8 Pipelines, Process Substitution, Redirections (Here-Docs), Scripts | [[Pipelines-Subshells-Redirection-and-Process-Substitution]] | Explain | [[19-Shell-and-Unix-Engineering/01-Unix-Process-Model/Pipes-and-FIFOs.md\|19 Pipes and FIFOs]] |
 | GNU Bash Manual: Ch 4 Builtins (set, shopt), Ch 5 Variables, Ch 6.4 Conditionals, Ch 6.7 Arrays | [[Robust-Shell-Scripting-and-ShellCheck]] | Use | [[19-Shell-and-Unix-Engineering/13-Robust-Scripting/Error-Handling-Patterns.md\|19 Error Handling Patterns]] |
-| GNU Bash Manual: Ch 6.1-6.3 Invocation, Startup Files, Interactive Shells, Ch 6.10-6.11 POSIX Mode | [[POSIX-sh-Bash-Zsh-and-Fish-Compared]] | Use | [[19-Shell-and-Unix-Engineering/21-Interactive-Environment-and-Dotfiles/Startup-File-Decision-Table.md\|19 Startup Decision Table]] |
+| GNU Bash Manual: Ch 6.1-6.3 Invocation, Startup Files, Interactive Shells, Ch 6.11 POSIX Mode | [[POSIX-sh-Bash-Zsh-and-Fish-Compared]] | Use | [[19-Shell-and-Unix-Engineering/21-Interactive-Environment-and-Dotfiles/Startup-File-Decision-Table.md\|19 Startup Decision Table]] |
 | GNU Bash Manual: Ch 7 Job Control (Basics, Builtins, Variables) | [[Rebuild-a-Minimal-Shell-With-Job-Control]] | Rebuild | [[19-Shell-and-Unix-Engineering/02-Terminals-and-Job-Control/Job-Control-Signals.md\|19 Job Control Signals]] |
 | GNU Bash Manual: Ch 8-9 Readline, .inputrc, vi Mode, Programmable Completion, History | [[POSIX-sh-Bash-Zsh-and-Fish-Compared]] | Use | [[19-Shell-and-Unix-Engineering/02-Terminals-and-Job-Control/Readline-and-inputrc.md\|19 Readline and inputrc]] |
-| POSIX.1-2024 XCU Ch 2: 2.1-2.6 Quoting ($'...'), Token Recognition, Word Expansions, Pattern Matching | [[Shell-Parsing-Tokenization-and-Expansion-Order]] | Explain | [[19-Shell-and-Unix-Engineering/03-POSIX-Shell-Language/POSIX-2024-Changes.md\|19 POSIX 2024 Changes]] |
+| POSIX.1-2024 XCU Ch 2: 2.1-2.6, 2.14 Quoting ($'...'), Token Recognition, Word Expansions, Pattern Matching | [[Shell-Parsing-Tokenization-and-Expansion-Order]] | Explain | [[19-Shell-and-Unix-Engineering/03-POSIX-Shell-Language/POSIX-2024-Changes.md\|19 POSIX 2024 Changes]] |
 | POSIX.1-2024 XCU Ch 2: 2.7-2.10, 2.13 Redirection, Exit Status, Pipelines, Subshell Environments | [[Pipelines-Subshells-Redirection-and-Process-Substitution]] | Explain | [[19-Shell-and-Unix-Engineering/03-POSIX-Shell-Language/Subshells-and-the-Execution-Environment.md\|19 Subshells]] |
 | POSIX.1-2024 XCU Ch 2: 2.11-2.12, 2.15 Job Control, Signals and Error Handling (trap), Special Builtins | [[Robust-Shell-Scripting-and-ShellCheck]] | Use | [[19-Shell-and-Unix-Engineering/13-Robust-Scripting/Cleanup-Traps-and-Re-Raising-Signals.md\|19 Traps]] |
 | Zsh Manual: Ch 1-9 Invocation, Startup Files (.zshenv, .zshrc), Grammar, Multios, Prompt Hooks | [[POSIX-sh-Bash-Zsh-and-Fish-Compared]] | Use | [[19-Shell-and-Unix-Engineering/06-Zsh-Ksh-Dash-and-Other-Shells/Zsh-Startup-Files.md\|19 Zsh Startup]] |
@@ -64,7 +64,7 @@ Curriculum coverage matrix mapping authoritative command-line and shell specific
 | LSP 3.17 & DAP Specs: JSON-RPC 2.0 Base Protocol, Synchronization, Semantic Tokens, DAP Lifecycle | [[Modal-Editing-LSP-Tree-Sitter-and-DAP]] | Explain | none |
 | Tree-sitter Docs: Incremental GLR Parsing, S-expression Syntax Queries (.scm), Structural Highlighting | [[Modal-Editing-LSP-Tree-Sitter-and-DAP]] | Explain | none |
 | Nix & Home Manager Manuals: Store Paths, Cryptographic Hashing, Derivations (.drv), Hermetic Sandbox | [[Nix-Store-Derivations-and-Flakes-Internals]] | Explain | [[13-Agentic-AI/Agentic-Harness/components/dotfiles-nix.md\|Agentic Harness dotfiles-nix]] |
-| direnv & mise Docs: Prompt Hooks (.envrc), Tool Pinning (.rust-toolchain.toml, uv), Shims vs PATH | [[Dotfiles-Nix-Direnv-Mise-and-Devcontainers]] | Use | none |
+| direnv & mise Docs: Prompt Hooks (.envrc), Tool Pinning (rust-toolchain.toml, uv), Shims vs PATH | [[Dotfiles-Nix-Direnv-Mise-and-Devcontainers]] | Use | none |
 | Devcontainers Spec: devcontainer.json Reference (Images, Features, Lifecycle Hooks Execution Order) | [[Dotfiles-Nix-Direnv-Mise-and-Devcontainers]] | Use | none |
 | ShellCheck Wiki: Static Analysis Warnings (SC1xxx Parser, SC2xxx Semantic Bugs, SC3xxx Portability) | [[Robust-Shell-Scripting-and-ShellCheck]] | Use | [[19-Shell-and-Unix-Engineering/14-Testing-and-Static-Analysis/ShellCheck-Warning-Families.md\|19 ShellCheck Families]] |
 | clig.dev & AXI: Dual-Mode CLI Architecture, Standard Streams, Exit Codes, 10 AXI Principles for AI Agents | [[CLI-Design-and-Agent-Friendly-Interfaces-AXI]] | Use | [[13-Agentic-AI/Agentic-Harness/components/axi.md\|AXI Principles]] |
@@ -72,6 +72,6 @@ Curriculum coverage matrix mapping authoritative command-line and shell specific
 ## Out of scope
 
 - GNU Bash Manual Ch 10 & Appendices: Autotools compilation and GNU Free Documentation License text.
-- Zsh Manual Ch 23-26: Legacy TCP and FTP client systems and calendar utilities, omitted due to modern standard protocol tools.
+- Zsh Manual Ch 23-26: Calendar, TCP, and Zftp function systems and User Contributions, omitted due to modern standard protocol tools.
 - MIT Missing Semester Student Q&A Sessions: Unstructured open discussions omitted from technical curriculum reference.
 - Codecov Bash Uploader security incident: Reassigned exclusively to 08-Software-Supply-Chain to ground CI/CD credential compromise and curl-to-sh attack vectors.

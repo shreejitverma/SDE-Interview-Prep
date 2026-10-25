@@ -20,7 +20,7 @@ This skill ladder establishes observable, testable engineering behaviors for rea
 - Can read an empirical systems paper and state its core claim, primary mechanism, and evaluation baseline in three sentences without confusing correlation with causation ([[Paper-AddressSanitizer]], [[Paper-Google-Monorepo-Piper-and-CitC]]).
 - Can explain the mechanism of Thompson's self-reproducing compiler backdoor and why source code review alone cannot detect binary-level implants ([[Paper-Reflections-on-Trusting-Trust]]).
 - Can interpret a flame graph accurately, explaining why horizontal box widths represent population proportions rather than chronological wall-clock durations ([[Paper-The-Flame-Graph-Gregg]]).
-- Can explain why memory layout shifts caused by environment size or link order can distort benchmark measurements by up to 18% ([[Paper-Producing-Wrong-Data-Measurement-Bias]]).
+- Can explain why memory layout shifts caused by environment size or link order can flip benchmark conclusions (for example perlbench O3 results spanning an apparent 7% slowdown to an 8% speedup across link orders) ([[Paper-Producing-Wrong-Data-Measurement-Bias]]).
 - Can trace the execution of the ddmin divide-and-conquer algorithm across an automated test failure minimization run ([[Paper-Zeller-Delta-Debugging]]).
 
 ## L5
@@ -36,7 +36,7 @@ This skill ladder establishes observable, testable engineering behaviors for rea
 - Can evaluate the threats to validity in an empirical systems paper, identifying hidden assumptions, benchmark selection biases, and hardware-specific anomalies ([[Paper-Producing-Wrong-Data-Measurement-Bias]], [[Paper-BOLT-Binary-Optimizer]]).
 - Can contrast NP-complete CDCL dependency solving with human-readable conflict derivation trees against deterministic polynomial-time Minimal Version Selection ([[Paper-PubGrub-and-Minimal-Version-Selection]]).
 - Can compare monolithic Whole-Program Optimization against distributed module summary indexing in ThinLTO to optimize compilation pipelines ([[Paper-ThinLTO-Scalable-Incremental-LTO]]).
-- Can evaluate static analysis platform metrics, demonstrating why standalone bug dashboards rot to 0% actionability and how review-integrated warnings maintain developer trust ([[Paper-Tricorder-Program-Analysis-Ecosystem]], [[Paper-Lessons-From-Static-Analysis-at-Google]]).
+- Can evaluate static analysis platform metrics, demonstrating why standalone bug dashboards were largely ignored by developers and how review-integrated warnings maintain developer trust ([[Paper-Tricorder-Program-Analysis-Ecosystem]], [[Paper-Lessons-From-Static-Analysis-at-Google]]).
 - Can implement a working prototype of a trace-based constructive rebuilder or delta debugger based on published formal models ([[Paper-Build-Systems-a-la-Carte]], [[Paper-Zeller-Delta-Debugging]]).
 
 ## L7

@@ -5,7 +5,7 @@ level:
 status: draft
 last_reviewed:
 sources:
-  - "Antigravity Engineering Team, Developer Toolchain Verification Harness, SDE Interview Prep, 2026, https://github.com/shreejitverma/SDE-Interview-Prep"
+  - "SDE-Interview-Prep contributors, Developer Toolchain Verification Harness, SDE Interview Prep, 2026, https://github.com/shreejitverma/SDE-Interview-Prep"
 ---
 
 # Developer Toolchain Code Labs and Verification Harness
@@ -21,17 +21,16 @@ No Markdown files are permitted in `code/` other than this `README.md`:
 ```
 code/
   Makefile                          # Master verification harness entry point
-  _harness/                         # Core execution, diffing, and crosscheck scripts
-    runner.py                       # Lab runner and platform dependency evaluator
-    crosscheck.py                   # Validates note code excerpts against lab output
+  _harness/                         # Verification harness
+    verify.py                       # Discovers labs, checks requirements, runs, scrubs, and diffs
   00-program-execution/
     <lab_name>/
-      Makefile or run.sh            # Lab execution entry point
+      run.sh                        # Lab execution entry point (run as `bash run.sh`)
       ...source files...            # C++, Python, Rust, or Shell source code
       expected/
-        darwin-arm64.out            # Golden output for macOS Apple Silicon
-        linux-x86_64.out            # Golden output for Linux x86-64
-        linux-arm64.out             # Golden output for Linux AArch64
+        darwin-arm64.txt            # Golden output for macOS Apple Silicon
+        linux-amd64.txt             # Golden output for Linux x86-64
+        linux-aarch64.txt           # Golden output for Linux AArch64
   01-command-line/
   02-version-control/
   03-debugging/
@@ -47,15 +46,15 @@ code/
 ## Platform Gating and Requires Tags
 
 Different toolchain mechanisms require specific operating systems, CPU architectures, or execution privileges.
-Each lab declares its environmental requirements in the first lines of its primary script or `Makefile`:
+Each lab declares its environmental requirements in a `# requires:` comment within the first 10 lines of its `run.sh`:
 
-- `# requires: linux`: Gated to native Linux environments. On macOS hosts, the harness automatically dispatches these labs inside an OrbStack or Docker container.
+- `# requires: linux`: Gated to native Linux environments. On macOS hosts the harness skips these labs; run `make verify` inside an OrbStack or Docker Linux environment to exercise them.
 - `# requires: docker`: Requires an active Docker daemon to build OCI containers or test isolated build sandboxes.
-- `# requires: pmu`: Requires access to hardware performance monitoring unit counters (e.g., instructions, cycles, cache misses). These cannot run inside virtualized hypervisors without PMU passthrough and require bare-metal Linux.
-- `# requires: nightly`: Requires nightly language toolchains (e.g., Rust nightly for Miri or `-Zsanitizer`).
-- `# requires: network`: Requires active Internet access to communicate with upstream package registries (e.g., crates.io, PyPI, Conan Center).
+- `# requires: pmu`: Requires access to hardware performance monitoring unit counters (e.g., instructions, cycles, cache misses), opted in with `TOOLCHAIN_LABS_PMU=1`. These cannot run inside virtualized hypervisors without PMU passthrough (an OrbStack VM exposes software events only).
+- `# requires: nightly`: Requires a nightly Rust toolchain listed by `rustup toolchain list` (e.g., for Miri or `-Zsanitizer`).
+- `# requires: network`: Requires active Internet access to communicate with upstream package registries (e.g., crates.io, PyPI, Conan Center), opted in with `TOOLCHAIN_LABS_NETWORK=1`.
 
-If the current environment cannot satisfy a declared prerequisite, the harness cleanly skips the lab and records the skip reason in the verification report rather than failing.
+If the current environment cannot satisfy a declared prerequisite, the harness prints a `SKIP` line naming the unmet requirement and never counts the lab as passed.
 
 ## Harness Commands
 
@@ -65,34 +64,35 @@ The master `Makefile` at the root of `code/` exposes the following standard targ
 ```bash
 make verify
 ```
-This command iterates over all labs across all pillars, evaluates `# requires:` tags against the host system, executes each eligible lab, and diffs stdout/stderr against the corresponding `expected/<target>.out` file.
-Any output mismatch causes a non-zero exit code.
+This command iterates over all labs across all pillars, evaluates `# requires:` tags against the host system, executes each eligible lab, scrubs heap addresses and temporary paths from stdout, and diffs it against the corresponding `expected/<platform>.txt` file.
+Any output mismatch, failing lab, or missing expected file causes a non-zero exit code.
 
 ### Verify a Specific Lab
 ```bash
 make verify LAB=capstone_mini_git
 ```
-Runs the verification harness exclusively for the named lab directory.
+Runs the verification harness only for labs whose path contains the given text.
 This allows rapid test-driven iteration during lab authoring and debugging.
 
 ### Record Golden Outputs
 ```bash
 make record LAB=capstone_ptrace_debugger
 ```
-Executes the specified lab and updates or creates its golden output file under `expected/<target>.out` using the current platform target tuple (e.g., `linux-arm64`).
+Executes the specified lab and updates or creates its golden output file `expected/<platform>.txt` using the current platform key (e.g., `linux-aarch64`).
 Always inspect the resulting diff carefully before committing.
 
-### Crosscheck Notes Against Code
+### List Labs and Their Requirements
 ```bash
-make crosscheck
+make list
 ```
-Scans all Markdown notes in `18-Developer-Toolchain/` to ensure that every code block labeled with a lab link matches the verified source or output in `code/`.
+Prints every lab directory with its `# requires:` line.
+A note-to-lab crosscheck target is planned but not implemented yet.
 
 ## Authoring a New Lab
 
 When contributing a new lab:
 1. Create `code/<pillar>/<lab_name>/` using lowercase snake_case.
-2. Provide a self-contained entry point (`Makefile` or executable `run.sh`).
-3. Add the `# requires:` header comment specifying platform dependencies.
+2. Provide a self-contained `run.sh` entry point (the harness runs it with `bash run.sh` and reads its stdout).
+3. Add the `# requires:` comment within the first 10 lines of `run.sh` specifying platform dependencies.
 4. Run `make record LAB=<lab_name>` on the required platform to generate the initial golden output.
 5. Reference the lab in the owning Markdown note using a standard relative link to the lab directory.

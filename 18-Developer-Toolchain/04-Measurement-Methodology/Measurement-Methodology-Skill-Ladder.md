@@ -7,7 +7,7 @@ last_reviewed:
 sources:
   - "Brendan Gregg, Systems Performance: Enterprise and the Cloud, 2nd Edition, Addison-Wesley, 2020, https://www.brendangregg.com/systems-performance-2nd-edition-book.html"
   - "Google LLC, Google Benchmark User Guide (v1.10.0), Google LLC, 2026, https://github.com/google/benchmark/blob/main/docs/user_guide.md"
-  - "Linux Kernel Organization, Linux perf Man Pages and Wiki (Linux 6.x), Linux Kernel Organization, 2026, https://perfwiki.github.io/"
+  - "Linux Kernel Organization, Linux perf Man Pages and Wiki (Linux 7.x), Linux Kernel Organization, 2026, https://perfwiki.github.io/"
 ---
 
 # Measurement Methodology Skill Ladder
@@ -34,7 +34,7 @@ Each capability requires rigorous experimental design and resistance to systemic
 
 - Can diagnose non-CPU bottlenecks using kernel sched_switch off-CPU tracing and causal profiling with Coz to evaluate virtual speedup potential: [[Off-CPU-Analysis-Thread-States-and-Causal-Profiling]]
 - Can execute Ahmad Yasin's Top-Down Microarchitecture Analysis (TMA) to classify bottlenecks into Retiring, Bad Speculation, Front-End Bound, or Back-End Bound categories: [[Hardware-Performance-Counters-Top-Down-TMA-and-Roofline]]
-- Can reproduce and eliminate subtle code alignment and environment variable size biases that artificially distort execution time by up to 15%: [[Drill-Measurement-Methodology-Environment-Size-Bias]], [[Benchmark-Methodology-Noise-and-Environment-Control]]
+- Can reproduce and eliminate subtle code alignment and environment variable size biases that can flip the sign of a measured speedup (Mytkowicz et al. 2009 report lbm going from an apparent 12% slowdown to a 9% speedup): [[Drill-Measurement-Methodology-Environment-Size-Bias]], [[Benchmark-Methodology-Noise-and-Environment-Control]]
 - Can construct automated statistical hypothesis testing pipelines (Mann-Whitney U, bootstrap confidence intervals) to detect performance regressions in CI: [[Performance-Regression-Detection-in-CI]], [[Statistics-for-Benchmarks-Coordinated-Omission-and-HDR-Histograms]]
 - Can apply Brendan Gregg's USE method to identify resource saturation bottlenecks across CPU, memory buses, and interconnects: [[USE-RED-and-Systems-Performance-Methodologies]]
 
