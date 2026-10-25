@@ -239,7 +239,7 @@ The table below contrasts argument handling, exit status semantics, and shell bu
 | Initial `$0` Representation | Command path | Command path | Command path | Command path | Command path | Command path | Command path | Command path | Command path | Command path | Command path |
 | Default `xargs` Limit Rule | `ARG_MAX - 2048` | BSD `xargs`: `ARG_MAX - 4096` | GNU `xargs`: 128 KiB buffer | N/A | N/A | N/A | N/A | N/A | N/A | N/A | About 32 KiB per batch (measured) |
 
-The `E2BIG`, `exec -a`, builtin, empty-string, and `$#` rows are proved by the lab (tests 1, 4, 5, 6, and 7) on every shell in `matrix-output.txt`.
+The `E2BIG`, `exec -a`, builtin, empty-string, and `$#` rows are proved by the lab (tests 1, 4, 5, 6, and 7) on every shell in the matrix table of [the labs README](../labs/README.md); rerun them with `labs/run-matrix.sh --containers 01-program-startup-argv-envp-and-arg_max`.
 The `$*` row was measured separately with `IFS=; set -- a b; printf '<%s>' $* "$*"`: every shell prints `<a><b><ab>` except posh 0.14.1, which prints `<a b><ab>`; this includes ksh93u+m 1.0.10 and macOS ksh 93u+ 2012-08-01 (measured 2026-10).
 The `xargs` row describes the userland `xargs` that ships beside each shell, not the shell: macOS `xargs(1)` documents "The current default value for size is ARG_MAX - 4096", GNU findutils `xargs --show-limits` on Debian 13 reports a POSIX upper limit of `ARG_MAX - 2048 - environment` and a command buffer of 131,072 bytes, and BusyBox 1.37.0 `xargs` batched 3,837 eight-byte arguments per invocation (measured 2026-10).
 The `$0` row reflects a script run through its shebang, where `$0` is the script path the kernel inserts (measured), not a lab assertion.
@@ -253,7 +253,7 @@ On BusyBox userlands where `/bin/sh` is a multicall binary, `exec -a <name> /bin
 ## Worked example
 
 The automated test suite for this note is implemented under the [lab](../labs/01-program-startup-argv-envp-and-arg_max/).
-The probe script `startup-probe.sh` inspects argument boundaries, count, `$0`, and inherited environment variables:
+The probe script `startup-probe.sh` inspects argument boundaries, count, `$0`, and which of an exported and an unexported variable reach it:
 
 ```sh
 #!/bin/sh
@@ -272,6 +272,7 @@ fi
 printf '\n'
 
 printf 'env: <%s>\n' "${STARTUP_PROBE_ENV:-UNSET}"
+printf 'unexported: <%s>\n' "${STARTUP_PROBE_UNEXPORTED:-UNSET}"
 ```
 
 The accompanying test file `test.bats` verifies boundary preservation, environment inheritance, builtin immunity, and `E2BIG` exit code divergence:
@@ -284,15 +285,7 @@ setup() {
   load ../lib/lab
   STARTUP_PROBE="$BATS_TEST_DIRNAME/startup-probe.sh"
   ARGV0_PROBE="$BATS_TEST_TMPDIR/argv0-probe"
-  if [ ! -x "$ARGV0_PROBE" ]; then
-    if command -v gcc >/dev/null 2>&1; then
-      gcc -O2 "$BATS_TEST_DIRNAME/argv0-probe.c" -o "$ARGV0_PROBE"
-    elif command -v cc >/dev/null 2>&1; then
-      cc -O2 "$BATS_TEST_DIRNAME/argv0-probe.c" -o "$ARGV0_PROBE"
-    elif command -v clang >/dev/null 2>&1; then
-      clang -O2 "$BATS_TEST_DIRNAME/argv0-probe.c" -o "$ARGV0_PROBE"
-    fi
-  fi
+  cc -O2 "$BATS_TEST_DIRNAME/argv0-probe.c" -o "$ARGV0_PROBE"
 }
 
 @test "startup-probe preserves spaces and empty arguments" {
@@ -301,16 +294,50 @@ setup() {
   [ "${lines[1]}" = "argc: 3" ]
   [ "${lines[2]}" = "args: <first arg> <> <third arg>" ]
   [ "${lines[3]}" = "env: <UNSET>" ]
+  [ "${lines[4]}" = "unexported: <UNSET>" ]
+}
+
+@test "quoted glob character is literal while unquoted glob is expanded by shell" {
+  mkdir -p "$BATS_TEST_TMPDIR/glob_test"
+  touch "$BATS_TEST_TMPDIR/glob_test/file1.tmp" "$BATS_TEST_TMPDIR/glob_test/file2.tmp"
+
+  # shellcheck disable=SC2016 # the expansions belong to the shell under test
+  run_lab_c '
+    probe="$1"
+    dir="$2"
+    cd "$dir" || exit 1
+    # shellcheck disable=SC2086,SC2248 # intentional unquoted glob to demonstrate expansion
+    "$probe" "*" *
+  ' sh "$STARTUP_PROBE" "$BATS_TEST_TMPDIR/glob_test"
+
+  [ "$status" -eq 0 ]
+  [ "${lines[1]}" = "argc: 3" ]
+  [ "${lines[2]}" = "args: <*> <file1.tmp> <file2.tmp>" ]
+}
+
+@test "exported environment variable is inherited while unexported variable is omitted" {
+  # shellcheck disable=SC2016 # the expansions belong to the shell under test
+  run_lab_c '
+    probe="$1"
+    STARTUP_PROBE_ENV="inherited_val"
+    export STARTUP_PROBE_ENV
+    STARTUP_PROBE_UNEXPORTED="secret_val"
+    "$probe"
+  ' sh "$STARTUP_PROBE"
+
+  [ "$status" -eq 0 ]
+  [ "${lines[3]}" = "env: <inherited_val>" ]
+  [ "${lines[4]}" = "unexported: <UNSET>" ]
 }
 
 @test "shell builtin handles arguments larger than ARG_MAX without calling execve" {
   # shellcheck disable=SC2016 # the expansions belong to the shell under test
   run_lab_c '
     big=$(dd if=/dev/zero bs=1024 count=1100 2>/dev/null | tr "\0" "a")
-    printf "%d\n" "${#big}"
+    echo "$big" | wc -c | tr -d " "
   '
   [ "$status" -eq 0 ]
-  [ "$output" = "1126400" ]
+  [ "$output" = "1126401" ]
 }
 
 @test "external command execution exceeding ARG_MAX fails with E2BIG exit status" {
@@ -352,10 +379,17 @@ setup() {
       ;;
   esac
 }
+
+@test "positional parameter count matches exact argument list length" {
+  run_lab "$STARTUP_PROBE" a b c d e
+  [ "$status" -eq 0 ]
+  [ "${lines[1]}" = "argc: 5" ]
+  [ "${lines[2]}" = "args: <a> <b> <c> <d> <e>" ]
+}
 ```
 
 The 1,126,400-byte string in tests 4 and 5 exceeds the 1 MiB `ARG_MAX` on macOS, while on Linux it stays under the 2 MiB `ARG_MAX` and instead trips the 128 KiB `MAX_ARG_STRLEN` per-string limit; both paths return `E2BIG`, so the exit-status assertions hold on both kernels.
-When executed against the lab harness, the test run demonstrates consistent behavior across the shell matrix (all 7 tests pass on every shell listed in `matrix-output.txt`, captured 2026-10-25):
+When executed against the lab harness, all 7 tests pass on every shell in the matrix table of [the labs README](../labs/README.md) (observed 2026-10-25 with `labs/run-matrix.sh` on the host and `labs/run-matrix.sh --containers`):
 
 ```text
 1..7

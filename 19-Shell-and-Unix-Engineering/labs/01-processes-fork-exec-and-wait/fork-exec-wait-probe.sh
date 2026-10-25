@@ -12,7 +12,7 @@ var="parent"
   : "$var"
 )
 # shellcheck disable=SC2031 # verifying parent retained pre-subshell value
-printf '1_subshell_isolation: orig_var=<%s> child_var=<%s>\n' "parent" "$var"
+printf '1_subshell_isolation: orig_var=<%s> after_subshell=<%s>\n' "parent" "$var"
 
 # 2. Subshell $$ invariant (POSIX.1-2024 XCU 2.13: $$ expands to invoking shell PID)
 parent_pid="$$"

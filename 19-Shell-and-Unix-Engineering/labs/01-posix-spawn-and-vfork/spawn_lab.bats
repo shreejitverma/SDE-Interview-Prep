@@ -25,10 +25,20 @@ setup() {
   [ "$output" = "parent_val:initial_parent_value" ]
 }
 
-@test "posix_spawn: open file descriptors without cloexec are inherited across subshell" {
+@test "posix_spawn: exec'd child inherits descriptor 3 except where the shell sets cloexec (ksh93, mksh)" {
   run_lab "$SPAWN_PROBE" fd-inheritance "$BATS_TEST_TMPDIR/fd_out.txt"
   [ "$status" -eq 0 ]
-  [ "$output" = "inherited_write" ]
+  case $(lab_shell_family) in
+    ksh93 | mksh)
+      [ "$output" = "not_inherited" ]
+      ;;
+    bash | zsh | zsh-sh | dash | yash | busybox | posh)
+      [ "$output" = "inherited_write" ]
+      ;;
+    *)
+      false
+      ;;
+  esac
 }
 
 @test "posix_spawn: subshell execution is virtual in ksh93 but forked in other families" {
@@ -62,9 +72,6 @@ setup() {
 @test "posix_spawn: C harness executes file actions and descriptor redirection" {
   run_lab "$RUN_HARNESS" "$BATS_TEST_TMPDIR" actions "$BATS_TEST_TMPDIR/action_out.txt"
   [ "$status" -eq 0 ]
-  if [ "$output" = "no_c_compiler" ]; then
-    skip "No C compiler available in environment"
-  fi
   [ "$output" = "spawn_actions_success" ]
   run cat "$BATS_TEST_TMPDIR/action_out.txt"
   [ "$status" -eq 0 ]
@@ -81,9 +88,6 @@ setup() {
       ;;
     bash | zsh | zsh-sh | yash | busybox | mksh | ksh93 | dash)
       [ "$status" -eq 0 ]
-      if [ "$output" = "no_c_compiler" ]; then
-        skip "No C compiler available in environment"
-      fi
       [ "$output" = "missing_err:2" ]
       ;;
     *)

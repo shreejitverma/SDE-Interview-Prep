@@ -60,6 +60,12 @@ static int run_spawn_with_actions(const char *outfile) {
   return WIFEXITED(status) ? WEXITSTATUS(status) : 1;
 }
 
+static int reaped_exit_zero(pid_t pid) {
+  int status;
+  if (waitpid(pid, &status, 0) == -1) return 0;
+  return WIFEXITED(status) && WEXITSTATUS(status) == 0;
+}
+
 static int test_missing_binary(void) {
   pid_t pid;
   char *const argv[] = {"nonexistent_binary_xyz", NULL};
@@ -100,8 +106,14 @@ int main(int argc, char **argv) {
     t0 = get_time_us();
     for (int i = 0; i < iterations; i++) {
       pid_t pid;
-      if (posix_spawn(&pid, "/usr/bin/true", NULL, NULL, child_argv, environ) == 0) {
-        waitpid(pid, NULL, 0);
+      int err = posix_spawn(&pid, "/usr/bin/true", NULL, NULL, child_argv, environ);
+      if (err != 0) {
+        fprintf(stderr, "posix_spawn failed: %d (%s)\n", err, strerror(err));
+        return 1;
+      }
+      if (!reaped_exit_zero(pid)) {
+        fprintf(stderr, "posix_spawn child did not exit 0\n");
+        return 1;
       }
     }
     t1 = get_time_us();
@@ -111,11 +123,17 @@ int main(int argc, char **argv) {
     t0 = get_time_us();
     for (int i = 0; i < iterations; i++) {
       pid_t pid = fork();
+      if (pid == -1) {
+        fprintf(stderr, "fork failed: %d (%s)\n", errno, strerror(errno));
+        return 1;
+      }
       if (pid == 0) {
         execve("/usr/bin/true", child_argv, environ);
         _exit(127);
-      } else if (pid > 0) {
-        waitpid(pid, NULL, 0);
+      }
+      if (!reaped_exit_zero(pid)) {
+        fprintf(stderr, "fork+exec child did not exit 0\n");
+        return 1;
       }
     }
     t1 = get_time_us();

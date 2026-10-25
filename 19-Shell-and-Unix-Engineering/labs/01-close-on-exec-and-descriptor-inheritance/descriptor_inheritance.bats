@@ -50,14 +50,15 @@ setup() {
   [ "$output" = "open" ]
 }
 
-@test "closing stdin reuses descriptor 0 on next open" {
-  # shellcheck disable=SC2016 # expansions belong to the shell under test
-  run_lab_c 'exec 0<&-; exec 0</dev/null; "$1" 0' inline "$PROBE"
+@test "closed stdin is reused as descriptor 0 by the child's next open" {
+  # ls opens the /dev/fd directory without naming a descriptor, so the kernel hands it the lowest free one.
+  run_lab_c 'exec 0<&-; ls /dev/fd/'
   [ "$status" -eq 0 ]
-  [ "$output" = "0:open" ]
+  [ "${lines[0]}" = "0" ]
 }
 
-@test "pipe writer closure allows reader to detect EOF" {
+@test "pipe writer closure allows reader to detect EOF while the writer still runs" {
+  # cat returns only at EOF; the writer is still alive afterwards, so the EOF came from the close, not its exit.
   # shellcheck disable=SC2016 # expansions belong to the shell under test
   run_lab_c '
     fifo="$1/fifo"
@@ -66,11 +67,16 @@ setup() {
       exec 3>"$fifo"
       printf "data\n" >&3
       exec 3>&-
+      exec /bin/sleep 30 >/dev/null 2>&1
     ) &
-    read -r line <"$fifo"
+    writer=$!
+    line=$(cat <"$fifo")
+    if kill -0 "$writer" 2>/dev/null; then state=writer_alive; else state=writer_gone; fi
+    kill -9 "$writer" 2>/dev/null
+    wait "$writer" 2>/dev/null
     rm -f "$fifo"
-    printf "%s\n" "$line"
+    printf "%s %s\n" "$line" "$state"
   ' inline "$BATS_TEST_TMPDIR"
   [ "$status" -eq 0 ]
-  [ "$output" = "data" ]
+  [ "$output" = "data writer_alive" ]
 }

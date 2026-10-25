@@ -14,3 +14,4 @@ fi
 printf '\n'
 
 printf 'env: <%s>\n' "${STARTUP_PROBE_ENV:-UNSET}"
+printf 'unexported: <%s>\n' "${STARTUP_PROBE_UNEXPORTED:-UNSET}"

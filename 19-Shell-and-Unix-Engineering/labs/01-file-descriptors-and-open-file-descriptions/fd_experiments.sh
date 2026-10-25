@@ -89,10 +89,11 @@ case "$action" in
 
   subshell-sharing)
     # Subshell redirection: shell opens target once.
-    # Forked children inherit fd 1 pointing to the same OFD.
+    # Each external env printf is a forked child that inherits fd 1 pointing to the same OFD,
+    # so the second child writes at the offset the first one advanced.
     (
-      printf 'CHILD_1\n'
-      printf 'CHILD_2\n'
+      env printf 'CHILD_1\n'
+      env printf 'CHILD_2\n'
     ) >"$target"
     ;;
 

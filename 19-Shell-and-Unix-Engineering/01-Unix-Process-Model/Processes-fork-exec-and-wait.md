@@ -254,7 +254,7 @@ By default, the exit status of the pipeline is that of the last command (`cmd2`)
 | Signal exit status offset (standard shells) | `128 + N` (SIGTERM=143, SIGKILL=137) | bash, dash, zsh, busybox, posh | `(POSIX.1-2024 XCU 2.8.2)`, lab proven for SIGTERM |
 | Signal exit status offset (`ksh93`) | `256 + N` (SIGTERM=271, SIGKILL=265) | AT&T ksh93u+ 2012, ksh93u+m 1.0.10 | `(POSIX.1-2024 XCU 2.8.2)` permits values above 255, lab proven for SIGTERM |
 | Signal exit status offset (`yash`) | `384 + N` (SIGTERM=399, SIGKILL=393) | Yet Another Shell (yash) | Yash manual (as of 2026-10), lab proven |
-| Signal exit status on early-killed async job (`mksh`) | 0 when `SIGTERM` reaches the child before its `execve`; 143 after a 1 s delay | MirBSD mksh R59 (Alpine 59c, Debian 59c) | Lab proven, mechanism verified 2026-10 (caught `SIGTERM`, job ran to completion); `posh` 0.14.1 reports 143 |
+| Signal exit status on early-killed async job (`mksh`) | 0 when `SIGTERM` reaches the child before its `execve`; 143 after a 1 s delay | MirBSD mksh R59 (Alpine 59c, Debian 59c) | Mechanism verified 2026-10 (caught `SIGTERM`, job ran to completion); the lab kills only after the child has exec'd and asserts 143; `posh` 0.14.1 reports 143 |
 | Unknown PID wait exit status | 127 | All POSIX-conforming shells | `(POSIX.1-2024 XCU wait)`, lab proven |
 | Pipeline variable isolation | Isolated (initial value retained) | bash, dash, mksh, yash, posh, busybox, zsh-sh | `(POSIX.1-2024 XCU 2.13)`, lab proven |
 | Pipeline variable persistence | Mutated (runs last stage in main shell) | ksh93, zsh native | ksh93 / zsh manuals, lab proven |
@@ -297,7 +297,7 @@ var="parent"
   : "$var"
 )
 # shellcheck disable=SC2031 # verifying parent retained pre-subshell value
-printf '1_subshell_isolation: orig_var=<%s> child_var=<%s>\n' "parent" "$var"
+printf '1_subshell_isolation: orig_var=<%s> after_subshell=<%s>\n' "parent" "$var"
 
 # 2. Subshell $$ invariant (POSIX.1-2024 XCU 2.13: $$ expands to invoking shell PID)
 parent_pid="$$"
@@ -335,9 +335,26 @@ bg_rc=$?
 printf '4_async_wait_reap: status=%s\n' "$bg_rc"
 
 # 5. Signal termination exit status (kill -15 / SIGTERM)
-# Sleep in background, kill with SIGTERM, wait for exit status
-sleep 10 &
+# Kill only after the child has exec'd sleep: a SIGTERM that lands between fork and execve
+# hits a shell that may catch it (mksh does), which makes the observed status a race.
+# /bin/sleep, not sleep: ksh93's builtin sleep runs inside a forked ksh whose name never becomes sleep.
+/bin/sleep 30 &
 term_pid=$!
+tries=0
+while [ "$tries" -lt 500 ]; do
+  comm=""
+  if [ -r "/proc/$term_pid/comm" ]; then
+    read -r comm <"/proc/$term_pid/comm"
+  else
+    comm=$(ps -o comm= -p "$term_pid" 2>/dev/null) || comm=""
+  fi
+  case $comm in
+    *sleep) break ;;
+    *) ;;
+  esac
+  sleep 0.01 2>/dev/null || sleep 1
+  tries=$((tries + 1))
+done
 kill -15 "$term_pid" 2>/dev/null
 wait "$term_pid" 2>/dev/null
 term_rc=$?
@@ -345,8 +362,9 @@ printf '5_signal_termination: status=%s\n' "$term_rc"
 
 # 6. Pipeline execution environment (subshell vs current environment)
 pipe_var="initial"
-# shellcheck disable=SC2030 # deliberate pipeline subshell environment test
+# shellcheck disable=SC2030,SC2031 # testing intentional pipeline environment mutation
 printf 'data\n' | { pipe_var="mutated"; }
+# In POSIX, pipeline elements may run in subshell; ksh93 and zsh run last stage in main shell
 # shellcheck disable=SC2031 # intentional test of pipeline variable scope
 printf '6_pipeline_isolation: var=%s\n' "$pipe_var"
 
@@ -356,10 +374,10 @@ unknown_rc=$?
 printf '7_wait_unknown_pid: status=%s\n' "$unknown_rc"
 ```
 
-Expected output under standard POSIX shells (`bash`, `dash`, `busybox`, `zsh-sh`, `posh`):
+Expected output under standard POSIX shells (`bash`, `dash`, `busybox`, `zsh-sh`, `posh`, `mksh`):
 
 ```text
-1_subshell_isolation: orig_var=<parent> child_var=<parent>
+1_subshell_isolation: orig_var=<parent> after_subshell=<parent>
 2_subshell_dollar_dollar: parent_pid=child_pid=match
 3_exec_pid_preservation: before=after=match
 4_async_wait_reap: status=42
@@ -371,7 +389,7 @@ Expected output under standard POSIX shells (`bash`, `dash`, `busybox`, `zsh-sh`
 Expected output under native `zsh`:
 
 ```text
-1_subshell_isolation: orig_var=<parent> child_var=<parent>
+1_subshell_isolation: orig_var=<parent> after_subshell=<parent>
 2_subshell_dollar_dollar: parent_pid=child_pid=match
 3_exec_pid_preservation: before=after=match
 4_async_wait_reap: status=42
@@ -383,7 +401,7 @@ Expected output under native `zsh`:
 Expected output under `ksh93`:
 
 ```text
-1_subshell_isolation: orig_var=<parent> child_var=<parent>
+1_subshell_isolation: orig_var=<parent> after_subshell=<parent>
 2_subshell_dollar_dollar: parent_pid=child_pid=match
 3_exec_pid_preservation: before=after=match
 4_async_wait_reap: status=42
@@ -395,23 +413,11 @@ Expected output under `ksh93`:
 Expected output under `yash`:
 
 ```text
-1_subshell_isolation: orig_var=<parent> child_var=<parent>
+1_subshell_isolation: orig_var=<parent> after_subshell=<parent>
 2_subshell_dollar_dollar: parent_pid=child_pid=match
 3_exec_pid_preservation: before=after=match
 4_async_wait_reap: status=42
 5_signal_termination: status=399
-6_pipeline_isolation: var=initial
-7_wait_unknown_pid: status=127
-```
-
-Expected output under `mksh`:
-
-```text
-1_subshell_isolation: orig_var=<parent> child_var=<parent>
-2_subshell_dollar_dollar: parent_pid=child_pid=match
-3_exec_pid_preservation: before=after=match
-4_async_wait_reap: status=42
-5_signal_termination: status=0
 6_pipeline_isolation: var=initial
 7_wait_unknown_pid: status=127
 ```

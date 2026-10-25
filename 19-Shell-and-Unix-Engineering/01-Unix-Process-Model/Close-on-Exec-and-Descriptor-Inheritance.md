@@ -300,14 +300,15 @@ setup() {
   [ "$output" = "open" ]
 }
 
-@test "closing stdin reuses descriptor 0 on next open" {
-  # shellcheck disable=SC2016 # expansions belong to the shell under test
-  run_lab_c 'exec 0<&-; exec 0</dev/null; "$1" 0' inline "$PROBE"
+@test "closed stdin is reused as descriptor 0 by the child's next open" {
+  # ls opens the /dev/fd directory without naming a descriptor, so the kernel hands it the lowest free one.
+  run_lab_c 'exec 0<&-; ls /dev/fd/'
   [ "$status" -eq 0 ]
-  [ "$output" = "0:open" ]
+  [ "${lines[0]}" = "0" ]
 }
 
-@test "pipe writer closure allows reader to detect EOF" {
+@test "pipe writer closure allows reader to detect EOF while the writer still runs" {
+  # cat returns only at EOF; the writer is still alive afterwards, so the EOF came from the close, not its exit.
   # shellcheck disable=SC2016 # expansions belong to the shell under test
   run_lab_c '
     fifo="$1/fifo"
@@ -316,13 +317,18 @@ setup() {
       exec 3>"$fifo"
       printf "data\n" >&3
       exec 3>&-
+      exec /bin/sleep 30 >/dev/null 2>&1
     ) &
-    read -r line <"$fifo"
+    writer=$!
+    line=$(cat <"$fifo")
+    if kill -0 "$writer" 2>/dev/null; then state=writer_alive; else state=writer_gone; fi
+    kill -9 "$writer" 2>/dev/null
+    wait "$writer" 2>/dev/null
     rm -f "$fifo"
-    printf "%s\n" "$line"
+    printf "%s %s\n" "$line" "$state"
   ' inline "$BATS_TEST_TMPDIR"
   [ "$status" -eq 0 ]
-  [ "$output" = "data" ]
+  [ "$output" = "data writer_alive" ]
 }
 ```
 
@@ -335,8 +341,8 @@ ok 2 descriptor 3 opened via exec is inherited in most shells but closed in ksh9
 ok 3 descriptor 3 is passed to child across all shells with explicit command redirection
 ok 4 explicit descriptor closure with exec 3>&- closes descriptor in shell and child
 ok 5 subshell preserves open descriptor without execve across all shells
-ok 6 closing stdin reuses descriptor 0 on next open
-ok 7 pipe writer closure allows reader to detect EOF
+ok 6 closed stdin is reused as descriptor 0 by the child's next open
+ok 7 pipe writer closure allows reader to detect EOF while the writer still runs
 ```
 
 ## Pitfalls
@@ -374,7 +380,8 @@ ok 7 pipe writer closure allows reader to detect EOF
 > [!warning] Sudo Privilege Boundary Descriptor Leaks (sudoers `closefrom`)
 > Trigger: Transitioning privileges via setuid binaries or `sudo` without closing non-standard descriptors inherited from an untrusted calling process.
 > Symptom: Unprivileged users pass open write descriptors pointing to sensitive files or pseudo-terminals into elevated execution contexts.
-> Incident: `sudo` closes every descriptor from 3 upward before running a command by default (sudoers(5) `closefrom`, default `3`), and lets a user override the starting point with `-C` only when `closefrom_override` is set (off by default); `closefrom()` dates to FreeBSD 8.0 and `close_range()` to FreeBSD 12.2 and Linux 5.9.> Fix: Call `close_range(3, ~0U, 0)` or `closefrom(3)` before executing binaries across security or identity domains.
+> Incident: `sudo` closes every descriptor from 3 upward before running a command by default (sudoers(5) `closefrom`, default `3`), and lets a user override the starting point with `-C` only when `closefrom_override` is set (off by default); `closefrom()` dates to FreeBSD 8.0 and `close_range()` to FreeBSD 12.2 and Linux 5.9.
+> Fix: Call `close_range(3, ~0U, 0)` or `closefrom(3)` before executing binaries across security or identity domains.
 
 ## Security and robustness
 

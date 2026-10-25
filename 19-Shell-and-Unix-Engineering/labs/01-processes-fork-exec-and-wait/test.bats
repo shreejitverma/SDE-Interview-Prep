@@ -12,7 +12,7 @@ setup() {
 
   case $(lab_shell_family) in
     bash | dash | busybox | zsh-sh)
-      [ "${lines[0]}" = "1_subshell_isolation: orig_var=<parent> child_var=<parent>" ]
+      [ "${lines[0]}" = "1_subshell_isolation: orig_var=<parent> after_subshell=<parent>" ]
       [ "${lines[1]}" = "2_subshell_dollar_dollar: parent_pid=child_pid=match" ]
       [ "${lines[2]}" = "3_exec_pid_preservation: before=after=match" ]
       [ "${lines[3]}" = "4_async_wait_reap: status=42" ]
@@ -21,7 +21,7 @@ setup() {
       [ "${lines[6]}" = "7_wait_unknown_pid: status=127" ]
       ;;
     zsh)
-      [ "${lines[0]}" = "1_subshell_isolation: orig_var=<parent> child_var=<parent>" ]
+      [ "${lines[0]}" = "1_subshell_isolation: orig_var=<parent> after_subshell=<parent>" ]
       [ "${lines[1]}" = "2_subshell_dollar_dollar: parent_pid=child_pid=match" ]
       [ "${lines[2]}" = "3_exec_pid_preservation: before=after=match" ]
       [ "${lines[3]}" = "4_async_wait_reap: status=42" ]
@@ -30,7 +30,7 @@ setup() {
       [ "${lines[6]}" = "7_wait_unknown_pid: status=127" ]
       ;;
     ksh93)
-      [ "${lines[0]}" = "1_subshell_isolation: orig_var=<parent> child_var=<parent>" ]
+      [ "${lines[0]}" = "1_subshell_isolation: orig_var=<parent> after_subshell=<parent>" ]
       [ "${lines[1]}" = "2_subshell_dollar_dollar: parent_pid=child_pid=match" ]
       [ "${lines[2]}" = "3_exec_pid_preservation: before=after=match" ]
       [ "${lines[3]}" = "4_async_wait_reap: status=42" ]
@@ -39,7 +39,7 @@ setup() {
       [ "${lines[6]}" = "7_wait_unknown_pid: status=127" ]
       ;;
     yash)
-      [ "${lines[0]}" = "1_subshell_isolation: orig_var=<parent> child_var=<parent>" ]
+      [ "${lines[0]}" = "1_subshell_isolation: orig_var=<parent> after_subshell=<parent>" ]
       [ "${lines[1]}" = "2_subshell_dollar_dollar: parent_pid=child_pid=match" ]
       [ "${lines[2]}" = "3_exec_pid_preservation: before=after=match" ]
       [ "${lines[3]}" = "4_async_wait_reap: status=42" ]
@@ -48,7 +48,7 @@ setup() {
       [ "${lines[6]}" = "7_wait_unknown_pid: status=127" ]
       ;;
     mksh)
-      [ "${lines[0]}" = "1_subshell_isolation: orig_var=<parent> child_var=<parent>" ]
+      [ "${lines[0]}" = "1_subshell_isolation: orig_var=<parent> after_subshell=<parent>" ]
       [ "${lines[1]}" = "2_subshell_dollar_dollar: parent_pid=child_pid=match" ]
       [ "${lines[2]}" = "3_exec_pid_preservation: before=after=match" ]
       [ "${lines[3]}" = "4_async_wait_reap: status=42" ]
@@ -57,7 +57,7 @@ setup() {
       [ "${lines[6]}" = "7_wait_unknown_pid: status=127" ]
       ;;
     posh) # no sleep builtin: the external sleep dies by SIGTERM, so posh reports 128 + 15
-      [ "${lines[0]}" = "1_subshell_isolation: orig_var=<parent> child_var=<parent>" ]
+      [ "${lines[0]}" = "1_subshell_isolation: orig_var=<parent> after_subshell=<parent>" ]
       [ "${lines[1]}" = "2_subshell_dollar_dollar: parent_pid=child_pid=match" ]
       [ "${lines[2]}" = "3_exec_pid_preservation: before=after=match" ]
       [ "${lines[3]}" = "4_async_wait_reap: status=42" ]

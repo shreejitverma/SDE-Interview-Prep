@@ -5,15 +5,7 @@ setup() {
   load ../lib/lab
   STARTUP_PROBE="$BATS_TEST_DIRNAME/startup-probe.sh"
   ARGV0_PROBE="$BATS_TEST_TMPDIR/argv0-probe"
-  if [ ! -x "$ARGV0_PROBE" ]; then
-    if command -v gcc >/dev/null 2>&1; then
-      gcc -O2 "$BATS_TEST_DIRNAME/argv0-probe.c" -o "$ARGV0_PROBE"
-    elif command -v cc >/dev/null 2>&1; then
-      cc -O2 "$BATS_TEST_DIRNAME/argv0-probe.c" -o "$ARGV0_PROBE"
-    elif command -v clang >/dev/null 2>&1; then
-      clang -O2 "$BATS_TEST_DIRNAME/argv0-probe.c" -o "$ARGV0_PROBE"
-    fi
-  fi
+  cc -O2 "$BATS_TEST_DIRNAME/argv0-probe.c" -o "$ARGV0_PROBE"
 }
 
 @test "startup-probe preserves spaces and empty arguments" {
@@ -22,6 +14,7 @@ setup() {
   [ "${lines[1]}" = "argc: 3" ]
   [ "${lines[2]}" = "args: <first arg> <> <third arg>" ]
   [ "${lines[3]}" = "env: <UNSET>" ]
+  [ "${lines[4]}" = "unexported: <UNSET>" ]
 }
 
 @test "quoted glob character is literal while unquoted glob is expanded by shell" {
@@ -48,22 +41,23 @@ setup() {
     probe="$1"
     STARTUP_PROBE_ENV="inherited_val"
     export STARTUP_PROBE_ENV
-    UNEXPORTED_VAR="secret_val"
+    STARTUP_PROBE_UNEXPORTED="secret_val"
     "$probe"
   ' sh "$STARTUP_PROBE"
 
   [ "$status" -eq 0 ]
   [ "${lines[3]}" = "env: <inherited_val>" ]
+  [ "${lines[4]}" = "unexported: <UNSET>" ]
 }
 
 @test "shell builtin handles arguments larger than ARG_MAX without calling execve" {
   # shellcheck disable=SC2016 # the expansions belong to the shell under test
   run_lab_c '
     big=$(dd if=/dev/zero bs=1024 count=1100 2>/dev/null | tr "\0" "a")
-    printf "%d\n" "${#big}"
+    echo "$big" | wc -c | tr -d " "
   '
   [ "$status" -eq 0 ]
-  [ "$output" = "1126400" ]
+  [ "$output" = "1126401" ]
 }
 
 @test "external command execution exceeding ARG_MAX fails with E2BIG exit status" {

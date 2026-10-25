@@ -165,16 +165,10 @@ setup() {
       [ "$content" = "" ]
       ;;
     busybox)
-      # In busybox ash, with CONFIG_ASH_BASH_COMPAT &> is combined redirection; without, & backgrounds
+      # The Alpine and Debian BusyBox 1.37.0 builds enable CONFIG_ASH_BASH_COMPAT, so &> is combined redirection
       [ "$status" -eq 0 ]
       content=$(cat "$target")
-      case "$content" in
-        COMBINED | "")
-          ;;
-        *)
-          false
-          ;;
-      esac
+      [ "$content" = "COMBINED" ]
       ;;
     *)
       false

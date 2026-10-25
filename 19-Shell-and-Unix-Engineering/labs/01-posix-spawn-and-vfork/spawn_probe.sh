@@ -53,12 +53,13 @@ probe_env_isolation() {
 
 probe_fd_inheritance() {
   target_file=$1
-  # Open file descriptor 3 pointing to target_file
-  # Verify that a spawned subshell can write to fd 3
+  # Open file descriptor 3 pointing to target_file, then exec an external child that writes to it.
+  # The child sees fd 3 only if the shell left FD_CLOEXEC clear on it.
   exec 3>"$target_file"
-  (
-    printf 'inherited_write\n' >&3
-  )
+  # shellcheck disable=SC2016 # the redirection belongs to the child shell
+  if ! /bin/sh -c 'printf "inherited_write\n" >&3' 2>/dev/null; then
+    printf 'not_inherited\n' >"$target_file"
+  fi
   exec 3>&-
   cat "$target_file"
 }

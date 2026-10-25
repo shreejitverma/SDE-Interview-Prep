@@ -240,30 +240,32 @@ The executable test harness and test suites for this note are located in [lab](.
 The C harness demonstrates how `posix_spawn` configures descriptor redirection and signal masking declaratively:
 
 ```c
-/* File: labs/01-posix-spawn-and-vfork/spawn_harness.c */
-#define _POSIX_C_SOURCE 200809L
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <spawn.h>
-#include <sys/wait.h>
-#include <fcntl.h>
-#include <signal.h>
-
-int run_spawn_redirect(const char *outfile) {
+/* Excerpt: run_spawn_with_actions() from labs/01-posix-spawn-and-vfork/spawn_harness.c */
+static int run_spawn_with_actions(const char *outfile) {
   posix_spawn_file_actions_t actions;
   posix_spawnattr_t attr;
   sigset_t mask;
   pid_t pid;
   int err, status;
 
-  posix_spawn_file_actions_init(&actions);
-  /* Redirect stdout (fd 1) to outfile */
-  posix_spawn_file_actions_addopen(&actions, STDOUT_FILENO, outfile,
-                                   O_WRONLY | O_CREAT | O_TRUNC, 0644);
+  err = posix_spawn_file_actions_init(&actions);
+  if (err != 0) return err;
 
-  posix_spawnattr_init(&attr);
-  /* Mask SIGUSR1 in child before exec */
+  /* Redirect standard output (fd 1) to outfile */
+  err = posix_spawn_file_actions_addopen(&actions, STDOUT_FILENO, outfile,
+                                         O_WRONLY | O_CREAT | O_TRUNC, 0644);
+  if (err != 0) {
+    posix_spawn_file_actions_destroy(&actions);
+    return err;
+  }
+
+  err = posix_spawnattr_init(&attr);
+  if (err != 0) {
+    posix_spawn_file_actions_destroy(&actions);
+    return err;
+  }
+
+  /* Block SIGUSR1 in the child via spawn attributes */
   sigemptyset(&mask);
   sigaddset(&mask, SIGUSR1);
   posix_spawnattr_setsigmask(&attr, &mask);
@@ -277,7 +279,8 @@ int run_spawn_redirect(const char *outfile) {
   posix_spawnattr_destroy(&attr);
 
   if (err != 0) return err;
-  waitpid(pid, &status, 0);
+
+  if (waitpid(pid, &status, 0) == -1) return errno;
   return WIFEXITED(status) ? WEXITSTATUS(status) : 1;
 }
 ```
@@ -285,7 +288,7 @@ int run_spawn_redirect(const char *outfile) {
 The shell lab tests the behavior of subshell execution, process ID inheritance, and descriptor passing across the matrix:
 
 ```bash
-# File: labs/01-posix-spawn-and-vfork/spawn_probe.sh
+# Simplified excerpt of labs/01-posix-spawn-and-vfork/spawn_probe.sh (the lab also reports a mismatch and fails)
 probe_pid_subshell() {
   parent_pid=$$
   subshell_pid=$(echo "$$")
@@ -304,7 +307,7 @@ $ bats labs/01-posix-spawn-and-vfork/spawn_lab.bats
 ok 1 posix_spawn: $$ PID remains invariant in subshells
 ok 2 posix_spawn: missing executable exits 127 and unexecutable exits 126
 ok 3 posix_spawn: child subshell cannot mutate parent environment
-ok 4 posix_spawn: open file descriptors without cloexec are inherited across subshell
+ok 4 posix_spawn: exec'd child inherits descriptor 3 except where the shell sets cloexec (ksh93, mksh)
 ok 5 posix_spawn: subshell execution is virtual in ksh93 but forked in other families
 ok 6 posix_spawn: C harness executes file actions and descriptor redirection
 ok 7 posix_spawn: C harness returns ENOENT directly on missing executable
