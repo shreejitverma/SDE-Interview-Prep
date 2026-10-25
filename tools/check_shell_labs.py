@@ -11,7 +11,7 @@ Checks, all of which must pass:
     structure   every shell file names its dialect (a shebang or a `# shellcheck shell=` directive),
                 every file with a shebang is executable in git, and every lab directory has a .bats test
     shellcheck  all non-zsh files, configured by labs/.shellcheckrc (ShellCheck has no zsh support);
-                ash, busybox, yash, and posh files are checked as sh, ksh93 files as ksh
+                ash and busybox files are checked as busybox, yash and posh as sh, ksh93 and mksh as ksh
     shfmt       `shfmt -d` on all files, configured by labs/.editorconfig
     zsh -n      a syntax check for each zsh file
     bats        every .bats file, under the default LAB_SHELL (the cross-shell matrix is labs/run-matrix.sh)
@@ -40,8 +40,9 @@ SUFFIX_DIALECT = {".sh": "sh", ".bash": "bash", ".bats": "bats", ".zsh": "zsh"}
 SHEBANG_RE = re.compile(
     r"^#!\s*(?:/usr/bin/env\s+(?:-S\s+)?)?(?:\S*/)?(sh|ash|bash|dash|ksh|ksh93|mksh|yash|posh|busybox|bats|zsh)\b")
 DIRECTIVE_RE = re.compile(r"^#\s*shellcheck\s+shell=(\w+)")
-# Dialects ShellCheck cannot name from a shebang, mapped to the --shell it checks them as.
-SHELLCHECK_SHELL = {"ash": "sh", "busybox": "sh", "yash": "sh", "posh": "sh", "ksh93": "ksh"}
+# Dialects checked under a fixed --shell rather than ShellCheck's own shebang detection.
+SHELLCHECK_SHELL = {"ash": "busybox", "busybox": "busybox", "yash": "sh", "posh": "sh",
+                    "ksh93": "ksh", "mksh": "ksh"}
 INSTALL_HINT = "install the lab toolchain: `brew install shellcheck shfmt bats-core` (macOS) or see 18-Shell-and-Unix-Engineering/labs/README.md"
 
 

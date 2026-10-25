@@ -181,11 +181,14 @@ class CheckShellLabsTest(unittest.TestCase):
         self.add_lab()
         self.add(f"{LABS}/demo/tool-ash", "#!/bin/ash\necho hi\n", executable=True)
         self.add(f"{LABS}/demo/tool-ksh93", "#!/usr/bin/env ksh93\necho hi\n", executable=True)
+        self.add(f"{LABS}/demo/tool-mksh", "#!/bin/mksh\necho hi\n", executable=True)
+        self.add(f"{LABS}/demo/tool-posh", "#!/usr/bin/posh\necho hi\n", executable=True)
         result = self.run_tool()
         self.assertEqual(result.returncode, 0, result.stdout)
         calls = self.calls("shellcheck")
-        self.assertIn(f"--format=gcc --shell=sh {LABS}/demo/tool-ash", calls)
-        self.assertIn(f"--format=gcc --shell=ksh {LABS}/demo/tool-ksh93", calls)
+        self.assertIn(f"--format=gcc --shell=busybox {LABS}/demo/tool-ash", calls)
+        self.assertIn(f"--format=gcc --shell=ksh {LABS}/demo/tool-ksh93 {LABS}/demo/tool-mksh", calls)
+        self.assertIn(f"--format=gcc --shell=sh {LABS}/demo/tool-posh", calls)
         self.assertIn(f"{LABS}/demo/tool-ash", self.calls("shfmt")[0])
 
     def test_suffixless_ash_script_gets_the_executable_check(self):
