@@ -1,0 +1,10 @@
+# ShellCheck configuration for the shell labs; ShellCheck finds it by searching upward from each script.
+# Optional checks enabled because each one catches a real class of bug (see `shellcheck --list-optional`).
+# check-unassigned-uppercase stays off: labs read variables the harness sets (LAB_SHELL, BATS_*), so it would only add disable comments.
+enable=add-default-case
+enable=avoid-nullary-conditions
+enable=check-extra-masked-returns
+enable=check-set-e-suppressed
+enable=deprecate-which
+enable=quote-safe-variables
+external-sources=true

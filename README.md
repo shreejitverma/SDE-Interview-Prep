@@ -71,6 +71,7 @@ Every knowledge note carries typed frontmatter (type, track, level, status), and
 15-Technical-Whitepapers/      Technical whitepapers archive (eBPF, Memory, Kernels, Exploitation, Hardening)
 16-Interview-Command-Center/   Obsidian mission control: role hubs, templates, macros, dashboards (private data symlinked in)
 17-Cloud-AI-Engineering/       Cloud AI Engineering: Zero to Godhood (16 volumes, AWS and Google Cloud)
+18-Shell-and-Unix-Engineering/ Shell and Unix Engineering: Zero to Godhood (22 volumes, labs run in a 13-shell matrix)
 INDEX.md                       Phased table of contents with direct links
 CS-Subjects/                   Legacy index that now points into 01-CS-Foundations
 tools/                         Vault audit, link repair, and guard scripts (see tools/README.md)

@@ -181,6 +181,7 @@ flowchart LR
 - `fleet-ops`: manifest entry with `sync: true` and `install: "pnpm install"` (`~/github/.fleet/manifest.yaml:56-69`); the 2026-09-23 run logged `[axi] already up to date with upstream` (`~/github/.fleet/logs/sync-20260923.log`).
 - `no-mistakes`: upstream's PR gate is a thin caller of `kunchenguid/no-mistakes/.github/actions/require-no-mistakes`, pinned to SHA `f6441c96` (v1.80.1) (`axi/.github/workflows/no-mistakes-required.yml`), so every upstream PR must carry a no-mistakes pipeline attestation.
 - `agents`: `OPINIONS.md:78` states "Tools built for agents should follow the AXI principles in the operating manual."
+- Shell curriculum: the principles applied to shell tools are taught in [[18-Shell-and-Unix-Engineering/Volume_18_Shell_and_AI_Agents/Chapter_05_Designing_Commands_for_Agents|Designing Commands for Agents]].
 
 ## 7. Lifecycle walkthrough: `gh-axi pr list -R kunchenguid/gh-axi --limit 3`
 

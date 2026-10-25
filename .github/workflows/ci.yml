@@ -24,10 +24,50 @@ jobs:
         with:
           python-version: '3.12'
 
+      # The shell lab gate needs the same linter versions as 18-Shell-and-Unix-Engineering/labs/README.md,
+      # so warnings match local runs. Hashes were computed from the release assets on 2026-10-25.
+      - name: Install shell lab toolchain (pinned)
+        env:
+          SHELLCHECK_VERSION: '0.11.0'
+          SHELLCHECK_SHA256: '8c3be12b05d5c177a04c29e3c78ce89ac86f1595681cab149b65b97c4e227198'
+          SHFMT_VERSION: '3.14.1'
+          SHFMT_SHA256: '76e77641faa025814b77f153b29796b8e6fa2fca03e0c76a691608b86c7ea7bf'
+          BATS_VERSION: '1.14.0'
+          BATS_SHA256: 'bb537b70b15b732f6d8827dd6578e3d8ce166636ce1f18ea9a074184fcce9177'
+        run: |
+          set -euo pipefail
+          prefix="$HOME/.local"
+          mkdir -p "$prefix/bin"
+          cd "$RUNNER_TEMP"
+          sc="shellcheck-v${SHELLCHECK_VERSION}.linux.x86_64.tar.xz"
+          curl -fsSLO "https://github.com/koalaman/shellcheck/releases/download/v${SHELLCHECK_VERSION}/${sc}"
+          echo "${SHELLCHECK_SHA256}  ${sc}" | sha256sum -c -
+          tar -xJf "$sc"
+          install -m 755 "shellcheck-v${SHELLCHECK_VERSION}/shellcheck" "$prefix/bin/shellcheck"
+          curl -fsSL -o shfmt "https://github.com/mvdan/sh/releases/download/v${SHFMT_VERSION}/shfmt_v${SHFMT_VERSION}_linux_amd64"
+          echo "${SHFMT_SHA256}  shfmt" | sha256sum -c -
+          install -m 755 shfmt "$prefix/bin/shfmt"
+          curl -fsSL -o bats.tar.gz "https://github.com/bats-core/bats-core/archive/refs/tags/v${BATS_VERSION}.tar.gz"
+          echo "${BATS_SHA256}  bats.tar.gz" | sha256sum -c -
+          tar -xzf bats.tar.gz
+          "bats-core-${BATS_VERSION}/install.sh" "$prefix"
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq --no-install-recommends zsh
+          echo "$prefix/bin" >> "$GITHUB_PATH"
+
       - name: Lint
         run: |
-          python3 tools/audit_vault.py --out - --check links && python3 tools/audit_vault.py --out - --check style && python3 tools/audit_pii.py --check
+          python3 tools/audit_vault.py --out - --check links && python3 tools/audit_vault.py --out - --check style && python3 tools/audit_pii.py --check && python3 tools/check_shell_labs.py
 
       - name: Test
         run: |
           python3 -m unittest discover tools/tests
+
+  # Every shell lab under every shell in the Alpine and Debian matrix images (labs/matrix/).
+  shell-matrix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Lab suites across the shell matrix
+        run: 18-Shell-and-Unix-Engineering/labs/run-matrix.sh --containers
