@@ -80,18 +80,6 @@ setup() {
 
 @test "posix_spawn: C harness returns ENOENT directly on missing executable" {
   run_lab "$RUN_HARNESS" "$BATS_TEST_TMPDIR" missing
-  family=$(lab_shell_family)
-  case "$family" in
-    posh)
-      [ "$status" -ne 0 ]
-      [[ "$output" == *"@: parameter not set"* ]]
-      ;;
-    bash | zsh | zsh-sh | yash | busybox | mksh | ksh93 | dash)
-      [ "$status" -eq 0 ]
-      [ "$output" = "missing_err:2" ]
-      ;;
-    *)
-      false
-      ;;
-  esac
+  [ "$status" -eq 0 ]
+  [ "$output" = "missing_err:2" ]
 }

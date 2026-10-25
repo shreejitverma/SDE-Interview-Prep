@@ -210,7 +210,7 @@ The table below contrasts resource limits, algorithmic complexities, and empiric
 | `ARG_MAX` buffer limit | 1,048,576 B (macOS) / 2,097,152 B (Linux glibc with the default 8 MiB stack limit) | Upper bound on combined length of `argv` and `envp`; on Linux `sysconf` derives it from `RLIMIT_STACK` / 4 | `(POSIX.1-2024 XBD <limits.h>)`; `getconf ARG_MAX` on Darwin 27.2 and Debian 13 (as of 2026-10) |
 | Default `posix_spawn` file actions limit | Open file descriptor ceiling | Bounded by `{OPEN_MAX}` (`EBADF`, which may track `RLIMIT_NOFILE`) and available process heap (`ENOMEM`) | `(POSIX.1-2024 XSH posix_spawn_file_actions_addclose)` |
 | Missing executable `posix_spawn` return | `ENOENT` (2) | Direct integer return value from `posix_spawn` without child creation | Measured in [lab](../labs/01-posix-spawn-and-vfork/) (as of 2026-10) |
-| `posh` empty `"$@"` under `set -u` exit | Non-zero (`1` or `2`) | Parameter expansion aborts launcher on empty positional parameter list | Debian Bug #913718 (reported against 0.13.2 in 2018, no fixed version listed); reproduced in posh 0.14.1 and asserted by the lab (as of 2026-10) |
+| `posh` empty `"$@"` under `set -u` exit | Non-zero (`1` or `2`) | Parameter expansion aborts launcher on empty positional parameter list | Debian Bug #913718 (reported against 0.13.2 in 2018, no fixed version listed); reproduced in posh 0.14.1 (as of 2026-10); the lab wrapper `run_harness.sh` forwards its arguments as `${1+"$@"}`, so posh runs the harness too |
 
 ## Portability
 

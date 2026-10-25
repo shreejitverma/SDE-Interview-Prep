@@ -14,4 +14,4 @@ if [ ! -x "$bin" ]; then
   cc -O2 -Wall -Wextra -std=c99 "$c_src" -o "$bin"
 fi
 
-"$bin" "$mode" "$@"
+"$bin" "$mode" ${1+"$@"}
