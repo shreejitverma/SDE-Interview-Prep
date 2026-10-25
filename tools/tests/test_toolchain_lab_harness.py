@@ -2,11 +2,13 @@
 
 import importlib.util
 import io
+import os
 import subprocess
 import tempfile
 import unittest
 from contextlib import redirect_stdout
 from pathlib import Path
+from unittest import mock
 
 CODE = Path(__file__).resolve().parents[2] / "18-Developer-Toolchain" / "code"
 HARNESS = CODE / "_harness" / "verify.py"
@@ -74,25 +76,24 @@ class HarnessTest(unittest.TestCase):
 
     def test_unmet_requirement_is_skipped_not_passed(self):
         self.lab("counters", "#!/usr/bin/env bash\n# requires: pmu\necho cycles\n", "cycles\n")
-        rc, out = self.run_harness()
+        with mock.patch.dict(os.environ):
+            os.environ.pop("TOOLCHAIN_LABS_PMU", None)
+            rc, out = self.run_harness()
         self.assertEqual(rc, 0)
         self.assertIn("SKIP  pillar/counters (requires pmu)", out)
         self.assertIn("0 passed", out)
 
     def test_macos_lab_is_skipped_off_darwin_and_runs_on_darwin(self):
-        self.lab("xctrace", "#!/usr/bin/env bash\n# requires: macos\necho traced\n", "traced\n")
-        real_system = verify.platform.system
-        try:
-            verify.platform.system = lambda: "Linux"
-            rc, out = self.run_harness()
+        with mock.patch.object(verify, "platform_key", return_value="test-key"):
+            self.lab("xctrace", "#!/usr/bin/env bash\n# requires: macos\necho traced\n", "traced\n")
+            with mock.patch.object(verify.platform, "system", return_value="Linux"):
+                rc, out = self.run_harness()
             self.assertEqual(rc, 0, out)
             self.assertIn("SKIP  pillar/xctrace (requires macos)", out)
-            verify.platform.system = lambda: "Darwin"
-            rc, out = self.run_harness()
+            with mock.patch.object(verify.platform, "system", return_value="Darwin"):
+                rc, out = self.run_harness()
             self.assertEqual(rc, 0, out)
             self.assertIn("PASS  pillar/xctrace", out)
-        finally:
-            verify.platform.system = real_system
 
     def test_unknown_requirement_fails_the_run(self):
         self.lab("odd", "#!/usr/bin/env bash\n# requires: linx\necho x\n", "x\n")
