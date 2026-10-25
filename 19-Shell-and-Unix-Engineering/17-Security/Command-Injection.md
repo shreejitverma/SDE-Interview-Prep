@@ -353,7 +353,7 @@ error:invalid integer
 > Trigger: Passing unvalidated environment or user variables directly into arithmetic evaluations `$((var))` or `let`.
 > Symptom: State corruption via recursive variable assignment or command execution via array subscript expansion in Bash, Zsh, mksh, posh, and legacy AT&T ksh93u+.
 > Fix: Validate that the variable is a canonical ASCII decimal of at most 9 digits using `case $var in '' | *[!0-9]* | 0?* | ??????????*) exit 2 ;; *) ;; esac` before evaluating arithmetic expressions.
-> The `0?*` branch rejects leading zeros, because `$((010 + 1))` is 9 in `bash` and `dash` but 11 in `zsh` and `ksh93`, and `08` aborts `bash` and `dash` while `zsh` and `ksh93` read it as 8.
+> The `0?*` branch rejects leading zeros, because `m=010; echo $((m + 1))` prints 9 in `bash` and `dash` but 11 in `zsh` and `ksh93`, and `m=08` aborts `bash` and `dash` while `zsh` and `ksh93` read it as 8.
 > The `??????????*` branch rejects 10 or more digits, so the value always fits in the 32-bit signed arithmetic of `mksh` and never wraps silently.
 > Incident: GNU Bash arithmetic recursive expansion in `expr.c:evalexp` and array subscript evaluation in `arrayfunc.c:array_expand_index` through `subst.c:expand_arith_string` (bash 5.3 source).
 
@@ -526,7 +526,8 @@ Shell allows rapid prototyping of process pipelines, but its fundamental design-
 > > [!success]- Answer
 > > The function contains three critical injection vulnerabilities: `eval` re-parses the entire string, the `$table` variable is concatenated into shell code, and `$id` is concatenated into both shell code and SQL.
 > > An `$id` of `1; reboot` stays inside the single-quoted SQL operand after expansion, so `sqlite3` receives it as SQL and nothing reaches the shell.
-> > A shell-level break-out needs a quote in the payload: an `$id` of `1'$(reboot)'` closes the single-quoted operand, so `eval` parses and executes `$(reboot)`, while `1 UNION SELECT ...` achieves SQL injection.
+> > A shell-level break-out needs a quote in the payload: an `$id` of `1'; reboot; '` or `1'$(reboot)'` closes the single-quoted operand, so `eval` parses and executes `reboot` as shell code.
+> > A payload such as `1 UNION SELECT ...` stays inside the quotes and achieves SQL injection instead.
 > > The `eval` wrapper is completely redundant and must be eliminated.
 > > To harden the function, validate `$table` against a strict whitelist of known table names, validate `$id` as an ASCII integer, and pass parameters to `sqlite3` without `eval`.
 > >
