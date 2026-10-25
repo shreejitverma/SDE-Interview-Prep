@@ -86,6 +86,8 @@ Comparing raw minimum or average numbers is statistically flawed. A robust CI ga
 
 ```cpp
 #include <x86intrin.h>
+#include <chrono>
+#include <thread>
 #include <iostream>
 #include <vector>
 #include <algorithm>
@@ -107,6 +109,20 @@ inline uint64_t rdtsc_end() noexcept {
     return tsc;
 }
 
+// Nanoseconds per invariant-TSC tick, calibrated against the monotonic clock.
+// The TSC ticks at the nominal frequency regardless of core clock, so never hardcode it:
+// a 2.0 GHz nominal TSC (e.g. Xeon Platinum 8480+) gives 0.5 ns per tick, a 4.0 GHz one 0.25 ns.
+// On Linux the kernel's calibrated tsc_khz, or CPUID leaf 0x15 where it reports the crystal clock, is an alternative source.
+inline double calibrate_ns_per_tick() noexcept {
+    uint64_t tsc_start = rdtsc_start();
+    auto wall_start = std::chrono::steady_clock::now();
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    uint64_t tsc_end = rdtsc_end();
+    auto wall_end = std::chrono::steady_clock::now();
+    std::chrono::duration<double, std::nano> elapsed_ns = wall_end - wall_start;
+    return elapsed_ns.count() / static_cast<double>(tsc_end - tsc_start);
+}
+
 // Simulated Function Under Test
 __attribute__((noinline)) uint32_t process_order_candidate(uint32_t price, uint32_t qty) {
     return price * qty + 1;
@@ -120,6 +136,7 @@ public:
     static void run_benchmark(double baseline_p50_ns, double baseline_p99_ns) {
         std::vector<uint32_t> latencies;
         latencies.reserve(BENCHMARK_ITERATIONS);
+        const double ns_per_tick = calibrate_ns_per_tick();
 
         // 1. WARMUP PHASE (Prime L1i, L1d, and BTB)
         uint32_t dummy = 0;
@@ -133,8 +150,8 @@ public:
             dummy += process_order_candidate(100 + (i & 0x7), 50);
             uint64_t t1 = rdtsc_end();
 
-            // Convert cycles to nanoseconds (assuming 4.0 GHz CPU: 1 cycle = 0.25 ns)
-            uint32_t ns = static_cast<uint32_t>((t1 - t0) * 0.25);
+            // Convert TSC ticks to nanoseconds with the calibrated factor
+            uint32_t ns = static_cast<uint32_t>((t1 - t0) * ns_per_tick);
             latencies.push_back(ns);
         }
 
