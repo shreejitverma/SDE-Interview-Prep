@@ -64,12 +64,14 @@ class StyleCheckTest(unittest.TestCase):
             "Topic/old.md": note("status: evergreen"),
             "Topic/blank.md": note("status:"),
             "Topic/missing.md": note("tags: []"),
+            "Topic/bare.md": "# Bare note without frontmatter\n",
         }
         result = self.run_check(files)
         self.assertEqual(result.returncode, 1)
-        self.assertIn("invalid_status: 3", result.stdout)
+        self.assertIn("invalid_status: 4", result.stdout)
         self.assertIn("invalid status 'evergreen'", result.stdout)
         self.assertIn("Topic/missing.md", result.stdout)
+        self.assertIn("Topic/bare.md", result.stdout)
 
     def test_templates_are_not_checked(self):
         files = {"Topic/README.md": note("status: draft"), "Topic/_Templates/App.md": note('status: "researching"')}

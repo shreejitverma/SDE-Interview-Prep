@@ -326,7 +326,7 @@ def main() -> int:
     # 3. Frontmatter.
     no_fm = [f for f in md_files if is_knowledge_note(f) and not has_frontmatter(texts[f])]
     bad_status = sorted((f, note_status(texts[f])) for f in md_files
-                        if is_knowledge_note(f) and has_frontmatter(texts[f]) and note_status(texts[f]) not in STATUSES)
+                        if is_knowledge_note(f) and note_status(texts[f]) not in STATUSES)
 
     # 4. Folders without a README-like entry note (folders that hold notes, depth <= 3).
     note_dirs: set[str] = set()
