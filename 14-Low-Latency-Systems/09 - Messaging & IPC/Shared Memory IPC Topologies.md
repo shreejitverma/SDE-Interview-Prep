@@ -1,7 +1,7 @@
 ---
 tags: [trading/ipc-messaging, type/concept]
 aliases: [Shared Memory IPC, POSIX SHM, shm_open, mmap IPC, Zero-Copy IPC, Inter-Process Communication]
-status: evergreen
+status: draft
 module: 09
 created: 2026-08-22
 type: concept

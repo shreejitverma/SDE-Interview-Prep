@@ -1,7 +1,7 @@
 ---
 tags: [security/offensive, security/defensive, web-security, sajdak, sqli, file-upload, google-dorking, polish]
 aliases: [Bezpieczeństwo Web i Baz Danych, Michał Sajdak Web Security, Podatności Uploadu, Defensywne Kodowanie]
-status: evergreen
+status: draft
 created: 2026-09-17
 type: paper
 track: [distinguished, sde]

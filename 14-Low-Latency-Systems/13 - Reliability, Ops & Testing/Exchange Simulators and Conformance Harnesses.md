@@ -1,7 +1,7 @@
 ---
 tags: [trading/reliability-ops, trading/testing, type/concept]
 aliases: [Exchange Simulator, Conformance Testing, AutoCert+, Impairment Injection, Microburst Simulator, Mock Matching Engine]
-status: evergreen
+status: draft
 module: 13
 created: 2026-08-22
 type: concept

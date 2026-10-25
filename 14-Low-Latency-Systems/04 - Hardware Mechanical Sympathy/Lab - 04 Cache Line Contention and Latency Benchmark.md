@@ -1,7 +1,7 @@
 ---
 tags: [trading/hardware, type/lab]
 aliases: [Lab 04, Cache Benchmark Lab, False Sharing Lab]
-status: evergreen
+status: draft
 module: 04
 created: 2026-08-22
 type: playbook

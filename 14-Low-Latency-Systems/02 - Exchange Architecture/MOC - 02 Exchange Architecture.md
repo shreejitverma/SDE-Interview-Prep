@@ -1,7 +1,7 @@
 ---
 tags: [trading/exchange-arch, type/moc]
 aliases: [Exchange Architecture MOC]
-status: evergreen
+status: draft
 module: 02
 created: 2026-08-22
 type: moc

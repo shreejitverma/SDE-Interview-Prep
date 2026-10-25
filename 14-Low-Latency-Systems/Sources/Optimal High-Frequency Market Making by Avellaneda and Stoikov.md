@@ -1,7 +1,7 @@
 ---
 tags: [trading/canon, trading/sources, type/source-summary]
 aliases: [Optimal High-Frequency Market Making, Avellaneda-Stoikov Model, Market Making Inventory Risk, Reservation Price]
-status: evergreen
+status: draft
 module: 14
 created: 2026-09-17
 type: paper

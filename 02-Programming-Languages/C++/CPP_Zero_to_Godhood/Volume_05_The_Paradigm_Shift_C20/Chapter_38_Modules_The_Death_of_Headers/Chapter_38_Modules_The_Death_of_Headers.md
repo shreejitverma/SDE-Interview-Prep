@@ -208,7 +208,7 @@ Listing 38.8: the BMI build pipeline (conceptual)
        └─ compile (reads math.pcm) ─▶ main.o ─▶ link ─▶ executable
 ```
 
-A BMI is **compiler- and flag-specific**: a `.pcm` from Clang is unreadable by GCC, and even the same compiler with different flags may invalidate it. BMIs are build artifacts, never checked in. This is why modules require a build system that understands the two-phase scan-then-compile model - **CMake 3.26+** (with `3.28+` for solid `import std;` support), Build2, XMake, and MSBuild. A bare `g++ *.cpp` no longer works for a modular project; the dependency scan is mandatory.
+A BMI is **compiler- and flag-specific**: a `.pcm` from Clang is unreadable by GCC, and even the same compiler with different flags may invalidate it. BMIs are build artifacts, never checked in. This is why modules require a build system that understands the two-phase scan-then-compile model - **CMake 3.28+** for C++20 named modules (`import std;` support arrived in CMake 3.30 and, as of CMake 4.4, is still experimental behind the `CMAKE_EXPERIMENTAL_CXX_IMPORT_STD` gate and limited to the Ninja generators), Build2, XMake, and MSBuild. A bare `g++ *.cpp` no longer works for a modular project; the dependency scan is mandatory.
 
 ---
 

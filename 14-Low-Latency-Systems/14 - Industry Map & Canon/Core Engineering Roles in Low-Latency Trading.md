@@ -1,7 +1,7 @@
 ---
 tags: [trading/canon, trading/engineering, type/concept]
 aliases: [Engineering Roles, Core C++ Engineer, FPGA Engineer, Quant Dev, Performance Engineer, Gateway Specialist, Trading Systems Careers]
-status: evergreen
+status: draft
 module: 14
 created: 2026-08-22
 type: concept

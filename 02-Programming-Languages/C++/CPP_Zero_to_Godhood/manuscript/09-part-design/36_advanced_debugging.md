@@ -57,7 +57,7 @@ Sometimes a variable changes, but you have no idea *which* function changed it. 
 
 Debugging memory corruption (like a Buffer Overflow) in GDB is incredibly difficult because the crash usually happens millions of instructions *after* the actual corruption occurred.
 
-Modern compilers (GCC and Clang) include **Sanitizers**. These are compiler flags that inject tracking code into your application. They slow your program down by 2x-5x, but they catch bugs the exact moment they happen.
+Modern compilers (GCC and Clang) include **Sanitizers**. These are compiler flags that inject tracking code into your application. Slowdown varies by sanitizer (ASan is typically ~2x, while TSan is typically 5x-15x), but they catch bugs the exact moment they happen.
 
 ### AddressSanitizer (ASan)
 Compile with `-fsanitize=address`.
@@ -79,7 +79,7 @@ Unlike ASan, which requires you to recompile your code, Valgrind runs your pre-c
 ```bash
 valgrind --leak-check=full ./my_app
 ```
-It tracks every single `malloc` and `free`. When your program exits, Valgrind prints a detailed report of any memory that was not freed, completely eliminating memory leaks. *(Note: Valgrind is much slower than ASan, often slowing execution by 20x).*
+It tracks every single `malloc` and `free`. When your program exits, Valgrind prints a detailed report of any memory that was not freed, allowing developers to detect and fix memory leaks. *(Note: Valgrind is much slower than ASan, often slowing execution by 20x).*
 
 ## 36.5 Post-Mortem Debugging: Core Dumps
 
@@ -91,7 +91,7 @@ You can then load that file into GDB on your local machine:
 ```bash
 gdb ./my_app ./core
 ```
-GDB will instantly put you at the exact line of code that caused the crash, allowing you to inspect the variables as they existed at the moment of failure.
+GDB opens the core at the frame that was executing when the process died, which is often inside a library such as libc (for example `abort` or `memcpy`); use `bt` and `frame N` to reach your own code. With debug info (`-g`) and the matching unstripped binary, you can see the source line and inspect the variables as they existed at the moment of failure.
 
 ## 36.6 Modern Stack Traces (C++23)
 
@@ -109,7 +109,7 @@ void crash_handler() {
     std::abort();
 }
 ```
-You can tie this into a custom `std::set_terminate` handler to ensure that your application always prints a stack trace before it dies.
+You can tie this into a custom `std::set_terminate` handler to ensure that your application always prints a stack trace before it dies (note: on GCC 14+ with libstdc++, link with `-lstdc++exp`).
 
 ---
 

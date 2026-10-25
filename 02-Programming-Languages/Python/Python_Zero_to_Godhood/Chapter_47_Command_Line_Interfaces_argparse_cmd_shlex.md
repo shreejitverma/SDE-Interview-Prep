@@ -14,7 +14,7 @@ Building robust CLI tools requires sophisticated argument parsing and command-lo
 
 ### 58.1 `argparse`: The Declarative CLI Engine
 
-`argparse` replaced the older `optparse` and `getopt` modules.
+`argparse` (PEP 389, Python 3.2) is the recommended parser for new code and the successor to `optparse`; both `optparse` and the lower-level, C-style `getopt` remain supported and are not deprecated.
 *   **Argument Actions**: `store`, `store_true`, `append`.
 *   **Type Conversion**: It can automatically convert inputs to `int`, `Path`, or even open files directly using the `FileType` factory.
 *   **Subcommands**: Supports Git-style subcommands (e.g., `git push`, `git pull`) by creating a separate parser for each subcommand and nesting them.
@@ -29,6 +29,6 @@ The `cmd` module provides a framework for building interactive line-oriented com
 
 `shlex` splits strings following the rules of the POSIX shell.
 *   **`quote()`**: Use this when building commands to be executed by a shell to prevent injection.
-*   **Parsing**: It is a state-based lexical analyzer. It handles quotes, escapes, and comments identically to how `/bin/sh` would, making it essential for process orchestration.
+*   **Parsing**: It is a state-based lexical analyzer. It handles quotes, escapes, and comments in a way that resembles the Unix shell (most closely in POSIX mode, which `shlex.split()` uses), but it performs no parameter, command, or glob expansion and is not a full `/bin/sh` parser, making it useful for splitting command strings in process orchestration.
 
 ---

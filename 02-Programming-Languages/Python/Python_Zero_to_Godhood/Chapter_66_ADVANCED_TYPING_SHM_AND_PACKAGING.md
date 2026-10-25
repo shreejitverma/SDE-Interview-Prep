@@ -48,42 +48,8 @@ The `multiprocessing.Manager` allows you to share complex Python objects (like d
 
 # Chapter 67: The Typing System: Static Analysis vs. Runtime Enforcement
 
-Python's type system has evolved from simple comments to a sophisticated language-level feature. This chapter deconstructs how types exist in the runtime.
-
-### 67.1 `typing` Internals: The `GenericAlias` and `SpecialForm`
-
-When you write `list[int]`, you are creating a `types.GenericAlias` object.
-*   **The `__getitem__` Hook**: Classes like `list` or `dict` implement `__class_getitem__` to support the bracket syntax.
-*   **Runtime Overhead**: Type hints are evaluated at import time. Large-scale use of complex nested types can noticeably slow down the startup of a Python application.
-
-### 67.2 Static vs. Runtime Verification
-
-*   **Static Analysis**: Tools like `mypy` or `pyright` scan the AST (Chapter 31) and verify types without running the code.
-*   **Runtime Enforcement**: Libraries like `pydantic` or `beartype` intercept function calls or class instantiation to verify types at execution time.
-*   **`inspect.get_type_hints()`**: This function is the "Godhood" way to retrieve types at runtime, handling forward references (strings like `"MyClass"`) by evaluating them in the correct namespace.
-
-### 67.3 Protocols and Structural Subtyping (PEP 544)
-
-Protocols allow for "static duck typing."
-*   **Internals**: A `Protocol` class uses a specialized metaclass that identifies which methods define the interface. Unlike `abc.ABC`, you don't need to inherit from the Protocol; you just need to implement the methods.
-
----
+This section is maintained in [[Chapter_56_The_Typing_System_Static_Analysis_vs_Runtime_Enfor]].
 
 # Chapter 68: The Python Packaging Ecosystem: PEP 517 to Wheels
 
-Understanding how Python code is distributed is essential for senior engineering.
-
-### 68.1 The Evolution of Installation
-
-1.  **Legacy (`setup.py install`)**: Executed a script that performed arbitrary actions. This was insecure and non-reproducible.
-2.  **Modern (PEP 517/518)**: Decouples the build backend (e.g., `setuptools`, `flit`, `poetry`) from the frontend (`pip`).
-*   **`pyproject.toml`**: The source of truth for build requirements.
-*   **Build Isolation**: `pip` creates a temporary virtual environment to build your package, ensuring that build dependencies don't pollute your system.
-
-### 68.2 The Wheel Format (PEP 427)
-
-A "Wheel" (`.whl`) is a built distribution format.
-*   **Internals**: It is a ZIP file (Chapter 50) containing the code and a `.dist-info` directory with metadata (dependencies, entry points).
-*   **Platform Tags**: Wheels for C extensions include tags like `manylinux2014_x86_64` to specify exactly which OS and architecture they are compatible with, avoiding the need for the end-user to have a C compiler installed.
-
----
+This section is maintained in [[Chapter_57_The_Python_Packaging_Ecosystem_PEP_517_to_Wheels]].

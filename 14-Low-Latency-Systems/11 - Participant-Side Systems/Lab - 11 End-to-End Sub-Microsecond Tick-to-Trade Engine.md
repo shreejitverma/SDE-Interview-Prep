@@ -1,7 +1,7 @@
 ---
 tags: [trading/participant-systems, type/lab]
 aliases: [Lab 11, Tick-to-Trade Lab, End-to-End HFT Pipeline Lab, Sub-Microsecond Engine Lab]
-status: evergreen
+status: draft
 module: 11
 created: 2026-08-22
 type: playbook

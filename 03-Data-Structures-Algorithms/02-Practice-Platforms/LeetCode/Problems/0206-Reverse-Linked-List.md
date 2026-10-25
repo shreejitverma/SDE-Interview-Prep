@@ -13,6 +13,8 @@ created_date: 2026-10-07
 updated_date: 2026-10-07
 sources:
   - "https://leetcode.com/problems/reverse-linked-list/"
+track: [sde, quant-dev]
+last_reviewed:
 ---
 
 # LeetCode 0206: Reverse Linked List

@@ -1,7 +1,7 @@
 ---
 tags: [trading/exchange-arch, type/drill]
 aliases: [Drill 02, Exchange System Design Drill, Architecture Drill]
-status: evergreen
+status: draft
 module: 02
 created: 2026-08-22
 type: playbook

@@ -1,7 +1,7 @@
 ---
 tags: [trading/canon, trading/sources, type/source-summary]
 aliases: [Cont and Stoikov, Microstructure Papers, Order Flow Imbalance Paper, Micro-Price Paper, Avellaneda-Stoikov]
-status: evergreen
+status: draft
 module: 14
 created: 2026-08-22
 type: paper

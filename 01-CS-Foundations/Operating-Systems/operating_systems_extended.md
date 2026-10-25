@@ -54,7 +54,7 @@ This document contains an exhaustive list of **192 essential operating systems k
 
 **Ready Queue** - Queue of processes ready to run, waiting for CPU allocation. Ordered by scheduling priority. Scheduler picks next process from this queue when current process yields or is preempted.
 
-**Run Queue** - Set of processes currently executing on available CPUs. On system with N cores, at most N processes execute simultaneously. Rest wait in ready queue.
+**Run Queue** - Data structure holding all runnable processes ready to execute (including processes actively executing on available CPUs and those awaiting CPU allocation).
 
 **Process State** - Current state of process in its lifecycle: New (created), Ready (waiting for CPU), Running (executing), Waiting (blocked on I/O or event), Terminated (finished). State transitions driven by scheduling events and I/O completion.
 
@@ -100,7 +100,7 @@ This document contains an exhaustive list of **192 essential operating systems k
 
 **fork()** - System call creating new child process by duplicating parent. Child receives copy of parent's address space, file descriptors, signal handlers. Returns child PID to parent, 0 to child. Foundation of process creation on Unix.
 
-**exec()** - System call replacing current process image with new program. Loads new executable, discards old memory image, restarts execution from entry point. File descriptors and PID remain same. Common pattern: fork() then exec().
+**exec()** - System call replacing current process image with new program. Loads new executable, discards old memory image, restarts execution from entry point. File descriptors remain open unless FD_CLOEXEC/O_CLOEXEC is set, and PID remains same. Common pattern: fork() then exec().
 
 **wait()** - System call blocking parent process until specified child terminates. Returns child's exit code. Reaps child resources (prevents zombie). Essential for parent-child synchronization.
 

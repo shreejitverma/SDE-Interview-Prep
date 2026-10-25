@@ -1,7 +1,7 @@
 ---
 tags: [trading/networking, trading/hardware, type/concept]
 aliases: [Colocation, Physical Layer, Fiber Optics, Microwave Networks, Propagation Delay, Hollow-Core Fiber, Golden Triangle]
-status: evergreen
+status: draft
 module: 06
 created: 2026-08-22
 type: concept

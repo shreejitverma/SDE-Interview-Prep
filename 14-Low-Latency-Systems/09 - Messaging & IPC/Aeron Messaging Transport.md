@@ -1,7 +1,7 @@
 ---
 tags: [trading/ipc-messaging, trading/exchange-arch, type/concept]
 aliases: [Aeron, Aeron Transport, Media Driver, Aeron IPC, Aeron Cluster, Reliable Multicast, Term Buffers]
-status: evergreen
+status: draft
 module: 09
 created: 2026-08-22
 type: concept

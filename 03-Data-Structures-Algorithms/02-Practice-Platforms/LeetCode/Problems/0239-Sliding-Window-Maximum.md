@@ -15,6 +15,12 @@ topics:
   - Monotonic Queue
   - Heap (Priority Queue)
   - Array
+type: problem
+track: [sde, quant-dev]
+level:
+status: draft
+last_reviewed:
+sources: []
 ---
 
 # LeetCode 0239: Sliding Window Maximum

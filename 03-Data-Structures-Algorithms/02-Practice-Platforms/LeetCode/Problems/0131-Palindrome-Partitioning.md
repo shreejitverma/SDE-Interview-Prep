@@ -13,6 +13,12 @@ topics:
   - Backtracking
   - Dynamic Programming
   - String
+type: problem
+track: [sde, quant-dev]
+level:
+status: draft
+last_reviewed:
+sources: []
 ---
 
 # LeetCode 0131: Palindrome Partitioning

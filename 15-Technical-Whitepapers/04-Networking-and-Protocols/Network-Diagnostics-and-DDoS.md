@@ -1,7 +1,7 @@
 ---
 tags: [networking, diagnostics, tcpdump, ddos, firewalls, iptables, pf, hardening]
 aliases: [Network Diagnostics and DDoS Mitigation, TCPDump and TCPTrace Guide, DDoS Handbook, Iptables and PF]
-status: evergreen
+status: draft
 created: 2026-09-17
 type: paper
 track: [distinguished, sde]

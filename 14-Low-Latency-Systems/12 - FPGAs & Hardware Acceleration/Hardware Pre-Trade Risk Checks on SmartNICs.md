@@ -1,7 +1,7 @@
 ---
 tags: [trading/fpga, trading/risk-management, trading/hardware, type/concept]
 aliases: [Hardware Risk, Bump-in-the-Wire, SmartNIC Risk, Packet Poisoning, CRC Invalidation, SEC 15c3-5 Hardware Gate]
-status: evergreen
+status: draft
 module: 12
 created: 2026-08-22
 type: concept

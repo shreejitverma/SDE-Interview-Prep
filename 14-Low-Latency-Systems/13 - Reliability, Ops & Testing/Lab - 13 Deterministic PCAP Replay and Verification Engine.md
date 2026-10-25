@@ -1,7 +1,7 @@
 ---
 tags: [trading/reliability-ops, type/lab]
 aliases: [Lab 13, PCAP Replay Lab, Deterministic Testing Lab, Bitwise Verification Lab]
-status: evergreen
+status: draft
 module: 13
 created: 2026-08-22
 type: playbook

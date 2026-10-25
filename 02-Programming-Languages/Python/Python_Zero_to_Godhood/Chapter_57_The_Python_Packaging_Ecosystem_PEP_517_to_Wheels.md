@@ -23,6 +23,6 @@ Understanding how Python code is distributed is essential for senior engineering
 
 A "Wheel" (`.whl`) is a built distribution format.
 *   **Internals**: It is a ZIP file (Chapter 50) containing the code and a `.dist-info` directory with metadata (dependencies, entry points).
-*   **Platform Tags**: Wheels for C extensions include tags like `manylinux2014_x86_64` to specify exactly which OS and architecture they are compatible with, avoiding the need for the end-user to have a C compiler installed.
+*   **Platform Tags**: Wheels for C extensions include tags like `manylinux2014_x86_64` (defined under PEP 600 as perpetual tag `manylinux_2_17_x86_64`) to specify exactly which OS and architecture they are compatible with, avoiding the need for the end-user to have a C compiler installed.
 
 ---

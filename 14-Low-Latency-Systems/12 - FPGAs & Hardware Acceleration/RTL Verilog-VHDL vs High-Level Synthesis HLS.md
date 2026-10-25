@@ -1,7 +1,7 @@
 ---
 tags: [trading/fpga, trading/low-latency-cpp, type/concept]
 aliases: [RTL vs HLS, SystemVerilog, VHDL, High-Level Synthesis, Vitis HLS, Initiation Interval, II=1, Hardware Pipelines]
-status: evergreen
+status: draft
 module: 12
 created: 2026-08-22
 type: concept

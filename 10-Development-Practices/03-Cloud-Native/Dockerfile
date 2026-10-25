@@ -1,38 +1,40 @@
-# ==========================================
-# Stage 1: Build Stage
-# ==========================================
-FROM python:3.9-slim as builder
+# Stage 1: Build stage
+FROM python:3.13-slim AS builder
 
 WORKDIR /app
 
-# Install build dependencies (GCC, Make) needed for some Python libs
-# We verify this in the build stage, but don't want these in Prod.
-RUN apt-get update && apt-get install -y \
+# Install build dependencies for compiling native extensions
+RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     && rm -rf /var/lib/apt/lists/*
 
+# Create isolated virtual environment
+RUN python -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
 COPY requirements.txt .
-RUN pip install --user --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy source code
-COPY . .
-
-# ==========================================
-# Stage 2: Production Stage (Distroless/Slim)
-# ==========================================
-FROM python:3.9-slim
+# Stage 2: Runtime stage (Debian-based slim image, no compilers)
+FROM python:3.13-slim AS runner
 
 WORKDIR /app
 
-# Copy only installed dependencies from builder
-COPY --from=builder /root/.local /root/.local
-COPY --from=builder /app /app
+# Create non-root user and group
+RUN useradd --create-home --user-group appuser
 
-# Add local bin to PATH
-ENV PATH=/root/.local/bin:$PATH
+# Copy the virtual environment from the builder stage.
+# It stays root-owned and world-readable, so appuser can run it but not modify it.
+COPY --from=builder /opt/venv /opt/venv
 
-# Non-root user for security
-RUN useradd -m appuser
+# Copy application source code (root-owned, read-only for appuser)
+COPY . .
+
+# Set environment variables for virtual environment and unbuffered logs
+ENV PATH="/opt/venv/bin:$PATH" \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
 USER appuser
 
 CMD ["python", "main.py"]

@@ -149,7 +149,7 @@ To resolve this compilation dependency, PEP 384 introduced the **Stable ABI** (A
 +---------------------------------------+
 |          Stable ABI Extension         |
 |  Uses opaque pointers and accessors   | ---> Compile once. Runs on
-|  (e.g., Py_REFCNT(op), PyType_GetSlot) |      Python 3.5, 3.6, ... 3.13+
+|  (e.g., Py_REFCNT(op), PyType_GetSlot) |      Python 3.10, 3.11, ... 3.13+
 +---------------------------------------+
 ```
 

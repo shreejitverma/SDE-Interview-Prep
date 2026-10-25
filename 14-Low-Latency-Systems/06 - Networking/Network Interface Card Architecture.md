@@ -1,7 +1,7 @@
 ---
 tags: [trading/networking, trading/hardware, type/concept]
 aliases: [NIC Architecture, RX Ring, TX Ring, DMA Engine, Packet Descriptors, PCIe TLP, NIC Buffer Bloat]
-status: evergreen
+status: draft
 module: 06
 created: 2026-08-22
 type: concept

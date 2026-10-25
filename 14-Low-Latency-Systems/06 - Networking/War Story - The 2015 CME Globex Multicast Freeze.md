@@ -1,7 +1,7 @@
 ---
 tags: [trading/networking, trading/war-story, type/war-story]
 aliases: [The CME Globex Multicast Freeze, Microburst Packet Drops, TCP Gap Fill Storm, A-B Feed Arbitration Failure, Switch Buffer Exhaustion]
-status: evergreen
+status: draft
 module: 06
 created: 2026-08-22
 type: case-study

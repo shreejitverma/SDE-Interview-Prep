@@ -1,7 +1,7 @@
 ---
 tags: [trading/exchange-arch, type/lab]
 aliases: [Lab 02, Sequencer Lab, Event Log Lab, Deterministic Sequencer Lab]
-status: evergreen
+status: draft
 module: 02
 created: 2026-08-22
 type: playbook

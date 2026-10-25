@@ -1,7 +1,7 @@
 ---
 tags: [trading/kernel-tuning, trading/networking, type/concept]
 aliases: [MSI-X, Interrupt Routing, IRQ Affinity, smp_affinity, irqbalance, Receive Side Scaling]
-status: evergreen
+status: draft
 module: 05
 created: 2026-08-22
 type: concept

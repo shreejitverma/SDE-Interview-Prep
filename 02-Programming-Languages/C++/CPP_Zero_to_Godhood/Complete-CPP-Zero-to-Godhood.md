@@ -5600,7 +5600,7 @@ Never guess where your code is slow. You will be wrong 90% of the time.
 
 > [!TIP]
 > **Godhood Tip: Small Object Optimization (SOO)**
-> Many standard library components, like `std::string` and `std::function`, use SOO. They have a small internal buffer (usually ~15 bytes for a string). If your string fits in that buffer, it is stored directly on the stack. If it exceeds that buffer, it allocates on the heap. Keeping your strings short prevents expensive `malloc` calls and cache misses.
+> Many standard library components, like `std::string` and `std::function`, use SOO. They have a small internal buffer (usually ~15 bytes for a string). If your string fits in that buffer, it is stored inline within the string object itself without dynamic allocation. If it exceeds that buffer, it allocates on the heap. Keeping your strings short prevents expensive `malloc` calls and cache misses.
 
 We've talked about how expensive RAM is. In the next chapter, we will take absolute control over how memory is allocated and freed.
 
@@ -5620,7 +5620,7 @@ For 95% of applications, the default OS allocator is fantastic. But for the rema
 `malloc` is a general-purpose allocator. It has to handle everything from 1-byte requests to 1-gigabyte requests. 
 When you call `malloc`:
 1.  It checks its internal "Free List" to see if it has a block of memory that fits your request.
-2.  If it doesn't, it has to make an expensive System Call (like `sbrk` or `mmap` on Linux) to ask the Operating System for more physical RAM.
+2.  If it doesn't, it has to make a system call (like `sbrk` or `mmap` on Linux) to extend the process virtual address space (the OS maps physical pages later on demand).
 3.  Because multiple threads can call `malloc` at the same time, it relies on locks/mutexes internally, causing contention.
 4.  If you allocate and free small, random chunks of memory, it causes **Memory Fragmentation**, where your RAM looks like Swiss cheese. You might have 100MB of free RAM, but if it's broken up into 10-byte chunks, allocating a 1MB block will fail.
 
@@ -6190,7 +6190,7 @@ Sometimes a variable changes, but you have no idea *which* function changed it. 
 
 Debugging memory corruption (like a Buffer Overflow) in GDB is incredibly difficult because the crash usually happens millions of instructions *after* the actual corruption occurred.
 
-Modern compilers (GCC and Clang) include **Sanitizers**. These are compiler flags that inject tracking code into your application. They slow your program down by 2x-5x, but they catch bugs the exact moment they happen.
+Modern compilers (GCC and Clang) include **Sanitizers**. These are compiler flags that inject tracking code into your application. Slowdown varies by sanitizer (ASan is typically ~2x, while TSan is typically 5x-15x), but they catch bugs the exact moment they happen.
 
 ### AddressSanitizer (ASan)
 Compile with `-fsanitize=address`.
@@ -6212,7 +6212,7 @@ Unlike ASan, which requires you to recompile your code, Valgrind runs your pre-c
 ```bash
 valgrind --leak-check=full ./my_app
 ```
-It tracks every single `malloc` and `free`. When your program exits, Valgrind prints a detailed report of any memory that was not freed, completely eliminating memory leaks. *(Note: Valgrind is much slower than ASan, often slowing execution by 20x).*
+It tracks every single `malloc` and `free`. When your program exits, Valgrind prints a detailed report of any memory that was not freed, allowing developers to detect and fix memory leaks. *(Note: Valgrind is much slower than ASan, often slowing execution by 20x).*
 
 ## 36.5 Post-Mortem Debugging: Core Dumps
 
@@ -6224,7 +6224,7 @@ You can then load that file into GDB on your local machine:
 ```bash
 gdb ./my_app ./core
 ```
-GDB will instantly put you at the exact line of code that caused the crash, allowing you to inspect the variables as they existed at the moment of failure.
+GDB opens the core at the frame that was executing when the process died, which is often inside a library such as libc (for example `abort` or `memcpy`); use `bt` and `frame N` to reach your own code. With debug info (`-g`) and the matching unstripped binary, you can see the source line and inspect the variables as they existed at the moment of failure.
 
 ## 36.6 Modern Stack Traces (C++23)
 
@@ -6242,7 +6242,7 @@ void crash_handler() {
     std::abort();
 }
 ```
-You can tie this into a custom `std::set_terminate` handler to ensure that your application always prints a stack trace before it dies.
+You can tie this into a custom `std::set_terminate` handler to ensure that your application always prints a stack trace before it dies (note: on GCC 14+ with libstdc++, link with `-lstdc++exp`).
 
 ---
 
@@ -6418,7 +6418,7 @@ The compiler takes the Translation Unit and begins analysis.
 1.  **Lexical Analysis**: It breaks the text into tokens (Keywords, Identifiers, Operators).
 2.  **Parsing**: It builds an **Abstract Syntax Tree (AST)**, verifying that the grammar of your code is correct.
 3.  **Semantic Analysis**: It checks types. If you try to add a `std::string` to an `int`, it throws an error here.
-4.  **Optimization**: It runs hundreds of passes over the AST, unrolling loops, inlining functions, and dead-code elimination.
+4.  **Optimization**: The compiler lowers the AST to intermediate representation (such as GIMPLE/RTL in GCC or LLVM IR in Clang) and runs optimization passes over the IR, unrolling loops, inlining functions, and eliminating dead code.
 The output of this stage is Assembly Language specific to your CPU architecture (e.g., x86_64 or ARM).
 
 ### Stage 3: The Assembler
@@ -6475,14 +6475,14 @@ extern "C" {
 When your program uses a third-party library (like a JSON parser or a graphics library), how does the Linker attach it?
 
 ### Static Libraries (`.a` on Linux, `.lib` on Windows)
-A static library is just a zip file of `.o` files. The Linker literally extracts the binary code from the library and glues it directly into your executable.
+A static library is an archive (`ar` format) of `.o` files. The Linker copies in only the archive members that resolve still-undefined symbols and links their code directly into your executable.
 *   **Pros**: Your executable is standalone. You just send the `.exe` to your customer and it works.
 *   **Cons**: Massive file sizes. If 10 apps on your computer use the same library, you have 10 copies of the library wasting disk space and RAM.
 
 ### Dynamic Libraries (`.so` on Linux, `.dll` on Windows, `.dylib` on macOS)
 With a dynamic library, the Linker doesn't copy the binary code. It just leaves a note in your executable: *"When this program runs, ask the OS to find `libgraphics.so` and load it into RAM."*
 *   **Pros**: Small executables. Multiple programs can share the exact same library in physical RAM, saving massive amounts of memory.
-*   **Cons**: "DLL Hell". If the user deletes the library, or updates it to an incompatible version, your program crashes on startup.
+*   **Cons**: "DLL Hell". If the user deletes the library, the dynamic loader cannot find it and the program fails to start. If they replace it with an ABI-incompatible version, the program may fail to start (missing symbol or version), fail later when a lazily bound symbol is first called, or silently misbehave.
 
 ---
 
@@ -10449,11 +10449,11 @@ valgrind --leak-check=full ./my_program
 It will tell you exactly which line of code called `new` without a matching `delete`.
 
 ### 3. Sanitizers (The Modern Way)
-Valgrind is slow (10x-50x slower). Modern compilers have built-in **Sanitizers** that only slow your program by 2x.
+Valgrind is slow (10x-50x slower). Modern compilers have built-in **Sanitizers** with much lower overhead (ASan is typically ~2x; TSan is typically 5x-15x).
 ```bash
 clang++ main.cpp -fsanitize=address,undefined -g
 ```
-If your program does *anything* wrong (out of bounds array, memory leak, undefined behavior), it will instantly crash and print a beautiful color-coded stack trace. **Always run your tests with sanitizers enabled.**
+If your program makes an invalid memory access, ASan stops at the first error and prints a stack trace. LeakSanitizer (on by default with ASan on Linux) reports leaks when the process exits. UBSan prints a diagnostic and keeps running unless you build with `-fno-sanitize-recover`. **Always run your tests with sanitizers enabled.**
 
 ***
 

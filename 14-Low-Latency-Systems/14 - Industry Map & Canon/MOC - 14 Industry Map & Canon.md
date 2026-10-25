@@ -1,7 +1,7 @@
 ---
 tags: [trading/canon, type/moc]
 aliases: [Industry Map MOC, Canon MOC]
-status: evergreen
+status: draft
 module: 14
 created: 2026-08-22
 type: moc

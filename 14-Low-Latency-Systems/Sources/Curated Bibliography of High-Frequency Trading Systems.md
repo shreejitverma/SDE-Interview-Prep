@@ -1,7 +1,7 @@
 ---
 tags: [trading/canon, trading/sources, type/bibliography]
 aliases: [Curated Bibliography, HFT Master Library, Academic Papers Index, Literature Canon]
-status: evergreen
+status: draft
 module: 14
 created: 2026-08-22
 type: paper

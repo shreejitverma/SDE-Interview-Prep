@@ -13,6 +13,8 @@ created_date: 2026-10-07
 updated_date: 2026-10-07
 sources:
   - "https://leetcode.com/problems/koko-eating-bananas/"
+track: [sde, quant-dev]
+last_reviewed:
 ---
 
 # LeetCode 0875: Koko Eating Bananas

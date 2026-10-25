@@ -14,6 +14,8 @@ created_date: 2026-10-07
 updated_date: 2026-10-07
 sources:
   - "https://leetcode.com/problems/two-sum-ii-input-array-is-sorted/"
+track: [sde, quant-dev]
+last_reviewed:
 ---
 
 # LeetCode 0167: Two Sum II - Input Array Is Sorted

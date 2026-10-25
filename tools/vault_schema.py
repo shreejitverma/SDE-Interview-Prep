@@ -9,6 +9,8 @@ Frontmatter schema for knowledge notes (see CLAUDE.md):
     sources: [...]
 """
 
+STATUSES = ("seed", "draft", "solid", "canonical")
+
 ALL_TRACKS = ["sde", "quant-dev", "quant-research", "low-latency", "ai-eng", "distinguished", "cloud-ai"]
 
 # Top-level folder -> tracks its notes serve.

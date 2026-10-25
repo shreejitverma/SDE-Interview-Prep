@@ -1,7 +1,7 @@
 ---
 tags: [trading/low-latency-cpp, trading/ipc-messaging, type/concept]
 aliases: [SPSC Ring Buffer, Lock-Free SPSC, Circular Buffer, Single Producer Single Consumer, Wait-Free Queue]
-status: evergreen
+status: draft
 module: 08
 created: 2026-08-22
 type: concept

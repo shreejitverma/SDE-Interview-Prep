@@ -1,7 +1,7 @@
 ---
 tags: [trading/time-measurement, type/moc]
 aliases: [Time Measurement MOC, Microbenchmarking MOC]
-status: evergreen
+status: draft
 module: 07
 created: 2026-08-22
 type: moc

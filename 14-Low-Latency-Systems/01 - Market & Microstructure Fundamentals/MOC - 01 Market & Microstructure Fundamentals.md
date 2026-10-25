@@ -1,7 +1,7 @@
 ---
 tags: [trading/microstructure, type/moc]
 aliases: [Microstructure MOC, Market Fundamentals MOC]
-status: evergreen
+status: draft
 module: 01
 created: 2026-08-22
 type: moc

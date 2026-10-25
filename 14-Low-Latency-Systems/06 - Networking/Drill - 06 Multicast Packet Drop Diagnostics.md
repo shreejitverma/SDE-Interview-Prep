@@ -1,7 +1,7 @@
 ---
 tags: [trading/networking, type/drill]
 aliases: [Drill 06, Packet Drop Diagnostics, Multicast Troubleshooting, Microburst Diagnostics]
-status: evergreen
+status: draft
 module: 06
 created: 2026-08-22
 type: playbook

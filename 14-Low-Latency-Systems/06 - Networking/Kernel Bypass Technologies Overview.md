@@ -1,7 +1,7 @@
 ---
 tags: [trading/networking, trading/kernel-bypass, type/concept]
 aliases: [Kernel Bypass, OpenOnload, ef_vi, DPDK, AF_XDP, Zero-Copy Networking, User-Space Networking]
-status: evergreen
+status: draft
 module: 06
 created: 2026-08-22
 type: concept

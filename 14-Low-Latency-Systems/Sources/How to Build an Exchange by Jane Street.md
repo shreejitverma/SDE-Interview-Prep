@@ -1,7 +1,7 @@
 ---
 tags: [trading/canon, trading/sources, type/source-summary]
 aliases: [How to Build an Exchange, Jane Street Tech, Exchange Engineering Canon, Signals & Threads]
-status: evergreen
+status: draft
 module: 14
 created: 2026-08-22
 type: paper

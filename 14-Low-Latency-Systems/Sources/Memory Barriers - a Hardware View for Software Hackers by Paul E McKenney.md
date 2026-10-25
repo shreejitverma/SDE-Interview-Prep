@@ -1,7 +1,7 @@
 ---
 tags: [trading/canon, trading/sources, type/source-summary]
 aliases: [Memory Barriers Hardware View for Software Hackers, Paul McKenney, Memory Barriers Paper, Store Buffer Invalidation Queue]
-status: evergreen
+status: draft
 module: 14
 created: 2026-09-17
 type: paper

@@ -1,7 +1,7 @@
 ---
 tags: [trading/low-latency-cpp, trading/hardware, type/concept]
 aliases: [AVX-512, BMI2, Vectorization, PEXT, PDEP, Mask Registers, Fast Hashing, SIMD Filtering]
-status: evergreen
+status: draft
 module: 08
 created: 2026-08-22
 type: concept

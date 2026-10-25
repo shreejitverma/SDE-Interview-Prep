@@ -1,7 +1,7 @@
 ---
 tags: [systems/performance, ebpf, tracing, brendan-gregg, profiling, flamegraphs, use-method]
 aliases: [Brendan Gregg Performance Canon, Gregg Systems Performance, eBPF Superpowers]
-status: evergreen
+status: draft
 created: 2026-09-17
 type: paper
 track: [distinguished, sde]
@@ -19,7 +19,7 @@ sources: []
 
 ## Executive Overview
 
-Brendan Gregg revolutionized modern operating systems performance engineering by shifting the discipline from intuitive guesswork ("streetlamp anti-methodology") to **systematic, measurement-driven observability**. His papers introduce the industry-standard **USE Method**, pioneered **Flamegraphs**, and unlocked **eBPF (Extended Berkeley Packet Filter)** for safe, zero-overhead in-kernel programmability.
+Brendan Gregg revolutionized modern operating systems performance engineering by shifting the discipline from intuitive guesswork ("streetlamp anti-methodology") to **systematic, measurement-driven observability**. His papers introduce the industry-standard **USE Method**, pioneered **Flamegraphs**, and popularized **eBPF (Extended Berkeley Packet Filter)** tracing tools for safe, low-overhead in-kernel observability.
 
 ```mermaid
 flowchart TD
@@ -101,7 +101,7 @@ flowchart TD
 
 **Source:** [open copy](https://www.brendangregg.com/Slides/SCALE2015_Linux_perf_profiling.pdf)
 - **Core Contribution**: Case study of running continuous low-overhead profiling across tens of thousands of AWS EC2 cloud instances.
-- **The Vector Architecture**: Building self-service web dashboards showing real-time CPU flame graphs generated via hardware PMU counters without user application recompilation.
+- **The Vector Architecture**: Building self-service web dashboards showing real-time CPU flame graphs generated via sampled call stacks (using timer interrupts and PMU events) without user application recompilation.
 - **Java on Linux**: Enabling Java stack symbol resolution with `perf-map-agent` to preserve frame pointers (`-XX:+PreserveFramePointer`), allowing `perf` to walk compiled JVM call frames.
 
 ### 8. Linux Systems Performance (2016)

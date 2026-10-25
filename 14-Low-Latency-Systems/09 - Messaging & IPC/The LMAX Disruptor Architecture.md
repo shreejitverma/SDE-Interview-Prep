@@ -1,7 +1,7 @@
 ---
 tags: [trading/ipc-messaging, trading/exchange-arch, type/concept]
 aliases: [LMAX Disruptor, Disruptor Pattern, SequenceBarrier, RingBuffer, Mechanical Sympathy, WaitStrategy]
-status: evergreen
+status: draft
 module: 09
 created: 2026-08-22
 type: concept

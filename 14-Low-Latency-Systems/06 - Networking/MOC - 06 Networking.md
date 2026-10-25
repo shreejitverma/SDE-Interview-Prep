@@ -1,7 +1,7 @@
 ---
 tags: [trading/networking, type/moc]
 aliases: [Networking MOC, Kernel Bypass MOC]
-status: evergreen
+status: draft
 module: 06
 created: 2026-08-22
 type: moc

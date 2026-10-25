@@ -13,6 +13,12 @@ topics:
   - Greedy
   - Array
   - Dynamic Programming
+type: problem
+track: [sde, quant-dev]
+level:
+status: draft
+last_reviewed:
+sources: []
 ---
 
 # LeetCode 0045: Jump Game II

@@ -1,7 +1,7 @@
 ---
 tags: [trading/time-measurement, type/concept]
 aliases: [Hardware Timestamping, PHY Timestamping, MAC Timestamping, SO_TIMESTAMPING, Oscillator Stability]
-status: evergreen
+status: draft
 module: 07
 created: 2026-08-22
 type: concept

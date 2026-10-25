@@ -14,6 +14,8 @@ status: solid
 created_date: 2026-10-07
 updated_date: 2026-10-07
 sources: []
+track: [sde, distinguished]
+last_reviewed:
 ---
 
 # Low-Level Design: In-Memory Event Bus and Pub-Sub Broker

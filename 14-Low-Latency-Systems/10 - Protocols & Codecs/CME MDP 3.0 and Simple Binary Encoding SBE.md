@@ -1,7 +1,7 @@
 ---
 tags: [trading/protocols, trading/market-data, type/concept]
 aliases: [SBE, Simple Binary Encoding, CME MDP 3.0, MDP3, FIX SBE, Binary Codecs, Template 46]
-status: evergreen
+status: draft
 module: 10
 created: 2026-08-22
 type: concept

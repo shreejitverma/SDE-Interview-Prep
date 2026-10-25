@@ -1,7 +1,7 @@
 ---
 tags: [trading/canon, trading/interviews, trading/low-latency-cpp, type/concept]
 aliases: [Technical Interview Bar, HFT Interview, Systems Interview Bar, Mechanical Sympathy Interview, C++ Interview Questions]
-status: evergreen
+status: draft
 module: 14
 created: 2026-08-22
 type: concept

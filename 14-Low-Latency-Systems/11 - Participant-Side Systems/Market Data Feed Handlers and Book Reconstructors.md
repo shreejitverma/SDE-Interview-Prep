@@ -1,7 +1,7 @@
 ---
 tags: [trading/participant-systems, trading/market-data, type/concept]
 aliases: [Feed Handler, Book Reconstructor, L3 Book Builder, BBO Cache, Order Book Engine, Bit-Scan Top of Book]
-status: evergreen
+status: draft
 module: 11
 created: 2026-08-22
 type: concept

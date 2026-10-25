@@ -1,7 +1,7 @@
 ---
 tags: [trading/fpga, type/drill]
 aliases: [Drill 12, Hybrid Architecture Drill, System Design Drill, FPGA Partitioning Drill]
-status: evergreen
+status: draft
 module: 12
 created: 2026-08-22
 type: playbook

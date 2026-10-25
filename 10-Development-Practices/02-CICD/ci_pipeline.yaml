@@ -1,57 +1,45 @@
-name: C++ and Python CI
+# Example GitHub Actions CI workflow for building and testing C++ and Python projects.
+name: CI Example
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [main]
   pull_request:
-    branches: [ "main" ]
+    branches: [main]
+
+# Least privilege: the job only needs to read the repository.
+permissions:
+  contents: read
 
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
 
     steps:
-    # 1. Checkout Code
-    - uses: actions/checkout@v3
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
-    # 2. Set up Python environment
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.9'
+      - name: Install C++ dependencies and tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build build-essential libgtest-dev
 
-    # 3. Install Python Dependencies
-    - name: Install Python dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install pytest numpy pandas scipy
+      - name: Configure C++ project with CMake and Ninja
+        run: cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
 
-    # 4. Run Python Tests
-    - name: Run Python Tests
-      run: |
-        # Assuming you have tests in a 'tests' folder
-        # pytest 02-Programming-Languages/Python
+      - name: Build C++ project
+        run: cmake --build build
 
-    # 5. Set up C++ Compiler
-    - name: Install GTest and CMake
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y libgtest-dev cmake
-        cd /usr/src/gtest
-        sudo cmake CMakeLists.txt
-        sudo make
-        sudo cp lib/*.a /usr/lib
+      - name: Run C++ tests
+        run: ctest --test-dir build --output-on-failure
 
-    # 6. Build C++ Project
-    - name: Build C++
-      run: |
-        mkdir -p build
-        cd build
-        # cmake .. 
-        # make
+      - name: Set up uv and Python
+        uses: astral-sh/setup-uv@v10
+        with:
+          python-version: "3.13"
+          enable-cache: true
 
-    # 7. Run C++ Unit Tests
-    - name: Run C++ Tests
-      run: |
-        # cd build
-        # ctest --output-on-failure
+      - name: Run Python tests with pytest
+        run: uv run --with pytest pytest

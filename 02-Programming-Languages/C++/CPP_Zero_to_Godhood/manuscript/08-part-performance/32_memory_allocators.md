@@ -22,7 +22,7 @@ For 95% of applications, the default OS allocator is fantastic. But for the rema
 `malloc` is a general-purpose allocator. It has to handle everything from 1-byte requests to 1-gigabyte requests. 
 When you call `malloc`:
 1.  It checks its internal "Free List" to see if it has a block of memory that fits your request.
-2.  If it doesn't, it has to make an expensive System Call (like `sbrk` or `mmap` on Linux) to ask the Operating System for more physical RAM.
+2.  If it doesn't, it has to make a system call (like `sbrk` or `mmap` on Linux) to extend the process virtual address space (the OS maps physical pages later on demand).
 3.  Because multiple threads can call `malloc` at the same time, it relies on locks/mutexes internally, causing contention.
 4.  If you allocate and free small, random chunks of memory, it causes **Memory Fragmentation**, where your RAM looks like Swiss cheese. You might have 100MB of free RAM, but if it's broken up into 10-byte chunks, allocating a 1MB block will fail.
 

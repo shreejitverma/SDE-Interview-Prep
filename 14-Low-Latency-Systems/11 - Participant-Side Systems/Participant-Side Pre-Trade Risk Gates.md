@@ -1,7 +1,7 @@
 ---
 tags: [trading/participant-systems, trading/risk-management, type/concept]
 aliases: [Pre-Trade Risk, Risk Gate, SEC 15c3-5, Fat-Finger Check, Price Collar, Position Limits, Kill-Switch, Leaky Bucket]
-status: evergreen
+status: draft
 module: 11
 created: 2026-08-22
 type: concept

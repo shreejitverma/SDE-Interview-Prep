@@ -1,7 +1,7 @@
 ---
 tags: [security/audit, audit/antivirus, clamav, provenance]
 aliases: [ClamAV Scan Report, Whitepapers Security Audit, Antivirus Verification]
-status: verified
+status: draft
 created: 2026-09-17
 type: paper
 track: [distinguished, sde]

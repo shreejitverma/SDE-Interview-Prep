@@ -14,6 +14,8 @@ created_date: 2026-10-07
 updated_date: 2026-10-07
 sources:
   - "https://leetcode.com/problems/longest-increasing-subsequence/"
+track: [sde, quant-dev]
+last_reviewed:
 ---
 
 # LeetCode 0300: Longest Increasing Subsequence

@@ -1,7 +1,7 @@
 ---
 tags: [trading/kernel-tuning, trading/low-latency-cpp, type/concept]
 aliases: [Thread Pinning, Core Affinity, SMT Contention, Hyperthreading Jitter, SCHED_FIFO]
-status: evergreen
+status: draft
 module: 05
 created: 2026-08-22
 type: concept

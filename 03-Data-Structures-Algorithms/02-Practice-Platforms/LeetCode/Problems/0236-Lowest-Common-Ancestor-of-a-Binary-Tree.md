@@ -15,6 +15,8 @@ created_date: 2026-10-07
 updated_date: 2026-10-07
 sources:
   - "https://leetcode.com/problems/lowest-common-ancestor-of-a-binary-tree/"
+track: [sde, quant-dev]
+last_reviewed:
 ---
 
 # LeetCode 0236: Lowest Common Ancestor of a Binary Tree

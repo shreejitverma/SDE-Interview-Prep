@@ -1,7 +1,7 @@
 ---
 tags: [trading/microstructure, type/concept]
 aliases: [Price Discovery, Microstructure Noise, Roll Model, Kyle's Lambda, Glosten-Milgrom, Bid-Ask Bounce, Adverse Selection]
-status: evergreen
+status: draft
 module: 01
 created: 2026-08-22
 type: concept

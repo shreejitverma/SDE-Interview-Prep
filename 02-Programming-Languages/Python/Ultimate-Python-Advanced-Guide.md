@@ -1990,10 +1990,10 @@ import ctypes.util
 libc = ctypes.CDLL(ctypes.util.find_library('c'))
 
 # Define function signature
-# int strlen(const char *s);
+# size_t strlen(const char *s);
 strlen = libc.strlen
 strlen.argtypes = [ctypes.c_char_p]
-strlen.restype = ctypes.c_int
+strlen.restype = ctypes.c_size_t
 
 # Call C function
 length = strlen(b"Hello")

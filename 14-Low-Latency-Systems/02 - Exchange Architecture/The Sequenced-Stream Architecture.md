@@ -1,7 +1,7 @@
 ---
 tags: [trading/exchange-arch, trading/ipc-messaging, type/concept]
 aliases: [Sequencer, Sequenced Stream, Total Order Broadcast, Inbound Ordering, Exchange Sequencer]
-status: evergreen
+status: draft
 module: 02
 created: 2026-08-22
 type: concept

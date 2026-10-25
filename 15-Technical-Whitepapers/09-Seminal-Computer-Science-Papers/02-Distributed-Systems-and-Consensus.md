@@ -1,7 +1,7 @@
 ---
 tags: [distributed-systems, consensus, lamport-clocks, paxos, raft, flp-impossibility, cap-theorem, byzantine]
 aliases: [Distributed Systems and Consensus, Lamport 1978, Paxos Made Simple, Raft Consensus Paper, FLP Impossibility]
-status: evergreen
+status: draft
 created: 2026-09-17
 type: paper
 track: [distinguished, sde]

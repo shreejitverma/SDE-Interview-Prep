@@ -1,7 +1,7 @@
 ---
 tags: [operating-systems, xv6, kernel/internals, bootloader, x86, paging, gdt]
 aliases: [OS From Scratch, xv6 Teaching OS, Nick Blundell OS Guide, Kernel From Scratch]
-status: evergreen
+status: draft
 created: 2026-09-17
 type: paper
 track: [distinguished, sde]

@@ -30,7 +30,7 @@ The compiler takes the Translation Unit and begins analysis.
 1.  **Lexical Analysis**: It breaks the text into tokens (Keywords, Identifiers, Operators).
 2.  **Parsing**: It builds an **Abstract Syntax Tree (AST)**, verifying that the grammar of your code is correct.
 3.  **Semantic Analysis**: It checks types. If you try to add a `std::string` to an `int`, it throws an error here.
-4.  **Optimization**: It runs hundreds of passes over the AST, unrolling loops, inlining functions, and dead-code elimination.
+4.  **Optimization**: The compiler lowers the AST to intermediate representation (such as GIMPLE/RTL in GCC or LLVM IR in Clang) and runs optimization passes over the IR, unrolling loops, inlining functions, and eliminating dead code.
 The output of this stage is Assembly Language specific to your CPU architecture (e.g., x86_64 or ARM).
 
 ### Stage 3: The Assembler
@@ -87,14 +87,14 @@ extern "C" {
 When your program uses a third-party library (like a JSON parser or a graphics library), how does the Linker attach it?
 
 ### Static Libraries (`.a` on Linux, `.lib` on Windows)
-A static library is just a zip file of `.o` files. The Linker literally extracts the binary code from the library and glues it directly into your executable.
+A static library is an archive (`ar` format) of `.o` files. The Linker copies in only the archive members that resolve still-undefined symbols and links their code directly into your executable.
 *   **Pros**: Your executable is standalone. You just send the `.exe` to your customer and it works.
 *   **Cons**: Massive file sizes. If 10 apps on your computer use the same library, you have 10 copies of the library wasting disk space and RAM.
 
 ### Dynamic Libraries (`.so` on Linux, `.dll` on Windows, `.dylib` on macOS)
 With a dynamic library, the Linker doesn't copy the binary code. It just leaves a note in your executable: *"When this program runs, ask the OS to find `libgraphics.so` and load it into RAM."*
 *   **Pros**: Small executables. Multiple programs can share the exact same library in physical RAM, saving massive amounts of memory.
-*   **Cons**: "DLL Hell". If the user deletes the library, or updates it to an incompatible version, your program crashes on startup.
+*   **Cons**: "DLL Hell". If the user deletes the library, the dynamic loader cannot find it and the program fails to start. If they replace it with an ABI-incompatible version, the program may fail to start (missing symbol or version), fail later when a lazily bound symbol is first called, or silently misbehave.
 
 ---
 

@@ -14,6 +14,8 @@ created_date: 2026-10-07
 updated_date: 2026-10-07
 sources:
   - "https://leetcode.com/problems/largest-rectangle-in-histogram/"
+track: [sde, quant-dev]
+last_reviewed:
 ---
 
 # LeetCode 0084: Largest Rectangle in Histogram

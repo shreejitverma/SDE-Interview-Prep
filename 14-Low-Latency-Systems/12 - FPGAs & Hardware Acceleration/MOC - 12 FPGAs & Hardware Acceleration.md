@@ -1,7 +1,7 @@
 ---
 tags: [trading/fpga, type/moc]
 aliases: [FPGA Acceleration MOC, Hardware Acceleration MOC]
-status: evergreen
+status: draft
 module: 12
 created: 2026-08-22
 type: moc

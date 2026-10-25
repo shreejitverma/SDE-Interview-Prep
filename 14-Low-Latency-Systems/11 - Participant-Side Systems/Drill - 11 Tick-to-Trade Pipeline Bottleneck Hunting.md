@@ -1,7 +1,7 @@
 ---
 tags: [trading/participant-systems, type/drill]
 aliases: [Drill 11, Bottleneck Hunting Drill, Latency Profiling Drill, Perf Profiling Drill]
-status: evergreen
+status: draft
 module: 11
 created: 2026-08-22
 type: playbook

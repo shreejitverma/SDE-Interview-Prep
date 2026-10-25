@@ -1,7 +1,7 @@
 ---
 tags: [memory/architecture, databases, joins, splay-trees, cuda, gpu, optimization]
 aliases: [Data Structures and Memory Optimization, Database Join Memory Effects, Splay Trees Guide, CUDA in Practice]
-status: evergreen
+status: draft
 created: 2026-09-17
 type: paper
 track: [distinguished, sde]

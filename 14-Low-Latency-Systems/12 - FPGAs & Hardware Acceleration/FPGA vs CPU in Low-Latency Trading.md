@@ -1,7 +1,7 @@
 ---
 tags: [trading/fpga, trading/hardware, type/concept]
 aliases: [FPGA vs CPU, Hardware Acceleration, Spatial Computing, Determinism, Tail Latency Elimination, SmartNICs]
-status: evergreen
+status: draft
 module: 12
 created: 2026-08-22
 type: concept

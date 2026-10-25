@@ -1,7 +1,7 @@
 ---
 tags: [trading/exchange-arch, trading/risk-systems, type/concept]
 aliases: [Drop Copy, Clearing Feeds, Trade Capture Report, Post-Trade Risk, FIX Drop Copy, Out-of-Band Delivery]
-status: evergreen
+status: draft
 module: 02
 created: 2026-08-22
 type: concept

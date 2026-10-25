@@ -143,7 +143,7 @@ Signals are software interrupts - a way to asynchronously notify a process that 
 
 ```
 Signal Definition:
-├─ Signal number (SIGTERM = 15, SIGUSR1 = 10, etc.)
+├─ Signal number (SIGTERM = 15; SIGUSR1 = 10 on Linux x86/ARM, 30 on macOS)
 ├─ Handler function (what to do when signal arrives)
 └─ Delivery mechanism (OS interrupts running code)
 
@@ -176,7 +176,7 @@ SIGCONT (18)    : Continue stopped process
 #include <unistd.h>
 #include <cstring>
 
-// Global flag (must be volatile sig_atomic_t for thread-safety)
+// Global flag (volatile sig_atomic_t ensures async-signal-safety; use std::atomic for inter-thread synchronization)
 volatile sig_atomic_t signal_received = 0;
 volatile sig_atomic_t sigusr1_count = 0;
 

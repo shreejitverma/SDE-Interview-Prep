@@ -26,11 +26,7 @@ UFuncs are C-loops that operate on `ndarray` data. They handle type dispatching 
 
 # Chapter 87: SciPy: Optimization and Linear Algebra Backends
 
-SciPy builds on NumPy, providing interfaces to legacy but highly optimized libraries like **LAPACK** and **BLAS**.
-*   **Sparse Matrices**: Storing large matrices with many zeros using CSR (Compressed Sparse Row) or CSC (Compressed Sparse Column) formats to save memory.
-*   **Optimization**: Implementations of algorithms like BFGS and Nelder-Mead in C/Fortran.
-
----
+This section is maintained in [[Chapter_64_SciPy_Optimization_and_Linear_Algebra_Backends]].
 
 # Chapter 88: Matplotlib: The Artist Layer and Backend Architecture
 
@@ -57,11 +53,7 @@ ASGI (PEP 3112) is the asynchronous successor, supporting WebSockets and long-li
 
 # Chapter 90: Django Internals: The ORM and Migration Engine
 
-Django is the "batteries-included" web framework.
-*   **The ORM**: Translates Python class definitions into SQL. It uses a complex tree-based query generator to handle joins and filters.
-*   **Migrations**: Uses the `ast` module to analyze changes in models and generate the minimal SQL required to update the database schema.
-
----
+This section is maintained in [[Chapter_66_Django_Internals_The_ORM_and_Migration_Engine]].
 
 # Chapter 91: FastAPI and Pydantic: Type-Safe Web Development
 

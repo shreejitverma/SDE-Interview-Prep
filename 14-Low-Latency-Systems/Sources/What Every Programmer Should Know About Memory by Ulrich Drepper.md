@@ -1,7 +1,7 @@
 ---
 tags: [trading/canon, trading/sources, type/source-summary]
 aliases: [What Every Programmer Should Know About Memory, Ulrich Drepper, Memory Architecture Paper]
-status: evergreen
+status: draft
 module: 14
 created: 2026-08-22
 type: paper

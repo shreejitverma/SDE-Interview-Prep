@@ -1,7 +1,7 @@
 ---
 tags: [trading/reliability-ops, type/drill]
 aliases: [Drill 13, Production Outage Post-Mortem, 2012 BATS IPO Bug, Split-Brain Post-Mortem, Root Cause Analysis]
-status: evergreen
+status: draft
 module: 13
 created: 2026-08-22
 type: playbook

@@ -1,7 +1,7 @@
 ---
 tags: [trading/protocols, trading/order-entry, type/concept]
 aliases: [iLink 3, CME iLink 3, MSGW, SBE Order Entry, SOFH, Simple Open Framing Header, CME Futures Execution]
-status: evergreen
+status: draft
 module: 10
 created: 2026-08-22
 type: concept

@@ -1,7 +1,7 @@
 ---
 tags: [trading/time-measurement, type/concept]
 aliases: [RDTSC, RDTSCP, TSC Mechanics, Cycle Accurate Profiling, Invariant TSC]
-status: evergreen
+status: draft
 module: 07
 created: 2026-08-22
 type: concept

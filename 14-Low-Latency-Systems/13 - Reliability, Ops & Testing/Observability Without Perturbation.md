@@ -1,7 +1,7 @@
 ---
 tags: [trading/reliability-ops, trading/observability, type/concept]
 aliases: [Observability, Flight Recorder, Zero-Overhead Logging, Optical Taps, Observer Effect, Heisenbug, Hardware PMU]
-status: evergreen
+status: draft
 module: 13
 created: 2026-08-22
 type: concept

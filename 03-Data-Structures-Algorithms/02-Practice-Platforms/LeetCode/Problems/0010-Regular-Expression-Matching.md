@@ -13,6 +13,12 @@ topics:
   - Dynamic Programming
   - String
   - Recursion
+type: problem
+track: [sde, quant-dev]
+level:
+status: draft
+last_reviewed:
+sources: []
 ---
 
 # LeetCode 0010: Regular Expression Matching

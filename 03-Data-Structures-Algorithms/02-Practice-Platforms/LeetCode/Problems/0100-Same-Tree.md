@@ -15,6 +15,8 @@ created_date: 2026-10-07
 updated_date: 2026-10-07
 sources:
   - "https://leetcode.com/problems/same-tree/"
+track: [sde, quant-dev]
+last_reviewed:
 ---
 
 # LeetCode 0100: Same Tree

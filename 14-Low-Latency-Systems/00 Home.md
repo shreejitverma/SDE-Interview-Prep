@@ -1,7 +1,7 @@
 ---
 tags: [trading/master, type/moc]
 aliases: [Home, Index, Master MOC]
-status: evergreen
+status: draft
 module: 00
 created: 2026-08-22
 type: moc

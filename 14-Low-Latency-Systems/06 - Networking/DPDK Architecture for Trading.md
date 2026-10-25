@@ -1,7 +1,7 @@
 ---
 tags: [trading/networking, trading/kernel-bypass, type/concept]
 aliases: [DPDK, Data Plane Development Kit, Poll Mode Driver, PMD, rte_mbuf, rte_mempool, rte_ring, User-Space Networking]
-status: evergreen
+status: draft
 module: 06
 created: 2026-08-22
 type: concept

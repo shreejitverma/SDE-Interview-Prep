@@ -1,7 +1,7 @@
 ---
 tags: [trading/exchange-arch, trading/market-data, trading/networking, type/concept]
 aliases: [Market Data Publisher, ITCH Publisher, MDP3 Publisher, Multicast Line Handler, Feed A Feed B, Packet Pacing, Snapshot Channel]
-status: evergreen
+status: draft
 module: 02
 created: 2026-08-22
 type: concept

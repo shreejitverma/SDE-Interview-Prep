@@ -15,6 +15,12 @@ topics:
   - Matrix
   - Depth-First Search
   - Breadth-First Search
+type: problem
+track: [sde, quant-dev]
+level:
+status: draft
+last_reviewed:
+sources: []
 ---
 
 # LeetCode 0130: Surrounded Regions

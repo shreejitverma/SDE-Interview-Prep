@@ -2364,7 +2364,7 @@ To bypass this, developers use string literals (forward references):
 class Node:
     parent: 'Node'  # Compiles successfully as a string literal
 ```
-At runtime, frameworks inspect these annotations using `inspect.get_type_hints()` or `typing.get_type_hints()`. These utilities automatically resolve string-based forward references by evaluating them within the global and local namespace of the target class or module.
+At runtime, frameworks inspect these annotations using `typing.get_type_hints()` or `inspect.get_annotations()`. These utilities automatically resolve string-based forward references by evaluating them within the global and local namespace of the target class or module.
 
 ---
 
@@ -4374,7 +4374,7 @@ To resolve this compilation dependency, PEP 384 introduced the **Stable ABI** (A
 +---------------------------------------+
 |          Stable ABI Extension         |
 |  Uses opaque pointers and accessors   | ---> Compile once. Runs on
-|  (e.g., Py_REFCNT(op), PyType_GetSlot) |      Python 3.5, 3.6, ... 3.13+
+|  (e.g., Py_REFCNT(op), PyType_GetSlot) |      Python 3.10, 3.11, ... 3.13+
 +---------------------------------------+
 ```
 
@@ -4991,7 +4991,7 @@ Under the hood, `cProfile` registers a profile hook at the C level using CPython
 
 At regular intervals (e.g. 100 times per second), `py-spy` performs the following steps:
 1.  Locates CPython's global runtime structure (`_PyRuntime` or the active `PyThreadState`).
-2.  Reads the thread's call stack, traversing the linked list of interpreter frames (`PyFrameObject`).
+2.  Reads the thread's call stack, traversing interpreter execution frames (`_PyInterpreterFrame` in Python 3.11+, or legacy `PyFrameObject` lists in older versions).
 3.  Resolves the code objects and file names associated with the frames to reconstruct the Python-level stack trace.
 
 ##### Advantages
@@ -5008,7 +5008,6 @@ The `tracemalloc` module tracks allocations at the allocator level. When enabled
 
 For every block of memory allocated, `tracemalloc` stores:
 *   The virtual memory address and allocation size in bytes.
-*   The C-level call stack.
 *   The Python-level stack trace (up to a configurable number of frames).
 
 #### 2. Memory Leak Snapshot Script
@@ -5055,7 +5054,7 @@ def main():
         # Print the exact traceback line that allocated the leaked memory
         print("Traceback:")
         for frame in stat.traceback:
-            print(f"  File {frame.filename}, line {frame.lineno}: {frame.line}")
+            print(f"  File {frame.filename}, line {frame.lineno}")
         print("-" * 50)
 
 if __name__ == '__main__':
@@ -5719,14 +5718,14 @@ A `MagicMock` is a subclass of `Mock` that implements most dunder methods by def
 `pdb` is an interactive source code debugger.
 
 #### 1. The Trace Hook
-`pdb` is built on top of `sys.settrace()`. When you start a debugging session, `pdb` registers a trace function.
-*   **Execution**: The VM calls this trace function before every line of code is executed.
+Historically, `pdb` was built on top of `sys.settrace()`: starting a debugging session registers a trace function. Since Python 3.14, `pdb` also has a `sys.monitoring` backend (PEP 669); the `pdb` command line, `breakpoint()`, and `pdb.set_trace()` use it, while a directly constructed `pdb.Pdb()` still defaults to `sys.settrace()` (configurable with `backend=` or `pdb.set_default_backend()`).
+*   **Execution**: With the settrace backend, the VM calls the trace function before every line of code is executed; the monitoring backend receives only the events it enables.
 *   **Interaction**: The trace function checks for breakpoints, and if one is hit, it enters an interactive loop that allows the user to inspect variables, step through code, and evaluate expressions.
 
 ### 41.5 Advanced Diagnostics: `tracemalloc` and `faulthandler`
 
 *   **`tracemalloc`**: A debug tool to trace memory blocks allocated by Python. It allows you to see exactly where memory is being consumed and identify leaks.
-*   **`faulthandler`**: Registers handlers for symbols like `SIGSEGV` or `SIGILL` to dump a Python traceback when a crash occurs in a C extension. This is invaluable for debugging low-level C API issues.
+*   **`faulthandler`**: Registers handlers for signals like `SIGSEGV` or `SIGILL` to dump a Python traceback when a crash occurs in a C extension. This is invaluable for debugging low-level C API issues.
 
 ---
 
@@ -6165,7 +6164,7 @@ Building robust CLI tools requires sophisticated argument parsing and command-lo
 
 ### 58.1 `argparse`: The Declarative CLI Engine
 
-`argparse` replaced the older `optparse` and `getopt` modules.
+`argparse` (PEP 389, Python 3.2) is the recommended parser for new code and the successor to `optparse`; both `optparse` and the lower-level, C-style `getopt` remain supported and are not deprecated.
 *   **Argument Actions**: `store`, `store_true`, `append`.
 *   **Type Conversion**: It can automatically convert inputs to `int`, `Path`, or even open files directly using the `FileType` factory.
 *   **Subcommands**: Supports Git-style subcommands (e.g., `git push`, `git pull`) by creating a separate parser for each subcommand and nesting them.
@@ -6180,7 +6179,7 @@ The `cmd` module provides a framework for building interactive line-oriented com
 
 `shlex` splits strings following the rules of the POSIX shell.
 *   **`quote()`**: Use this when building commands to be executed by a shell to prevent injection.
-*   **Parsing**: It is a state-based lexical analyzer. It handles quotes, escapes, and comments identically to how `/bin/sh` would, making it essential for process orchestration.
+*   **Parsing**: It is a state-based lexical analyzer. It handles quotes, escapes, and comments in a way that resembles the Unix shell (most closely in POSIX mode, which `shlex.split()` uses), but it performs no parameter, command, or glob expansion and is not a full `/bin/sh` parser, making it useful for splitting command strings in process orchestration.
 
 ---
 
@@ -6226,7 +6225,7 @@ Every venv contains a `pyvenv.cfg` file. When the Python binary starts, it looks
 
 ### 60.2 `ensurepip`: Bootstraping the Ecosystem
 
-The `ensurepip` module provides a way to install `pip` into an environment without needing an internet connection. It contains bundled "wheel" files of `pip` and `setuptools`.
+The `ensurepip` module provides a way to install `pip` into an environment without needing an internet connection. In Python 3.12+, it bundles only `pip` (`setuptools` is no longer included).
 
 ---
 
@@ -6467,7 +6466,7 @@ When you write `list[int]`, you are creating a `types.GenericAlias` object.
 
 *   **Static Analysis**: Tools like `mypy` or `pyright` scan the AST (Chapter 31) and verify types without running the code.
 *   **Runtime Enforcement**: Libraries like `pydantic` or `beartype` intercept function calls or class instantiation to verify types at execution time.
-*   **`inspect.get_type_hints()`**: This function is the "Godhood" way to retrieve types at runtime, handling forward references (strings like `"MyClass"`) by evaluating them in the correct namespace.
+*   **`typing.get_type_hints()`**: This function is the standard way to retrieve types at runtime, handling forward references (strings like `"MyClass"`) by evaluating them in the correct namespace (or `inspect.get_annotations()` in Python 3.10+).
 
 ### 67.3 Protocols and Structural Subtyping (PEP 544)
 
@@ -6491,7 +6490,7 @@ Understanding how Python code is distributed is essential for senior engineering
 
 A "Wheel" (`.whl`) is a built distribution format.
 *   **Internals**: It is a ZIP file (Chapter 50) containing the code and a `.dist-info` directory with metadata (dependencies, entry points).
-*   **Platform Tags**: Wheels for C extensions include tags like `manylinux2014_x86_64` to specify exactly which OS and architecture they are compatible with, avoiding the need for the end-user to have a C compiler installed.
+*   **Platform Tags**: Wheels for C extensions include tags like `manylinux2014_x86_64` (defined under PEP 600 as perpetual tag `manylinux_2_17_x86_64`) to specify exactly which OS and architecture they are compatible with, avoiding the need for the end-user to have a C compiler installed.
 
 ---
 

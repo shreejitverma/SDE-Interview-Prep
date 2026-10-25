@@ -14,6 +14,12 @@ topics:
   - Hash Table
   - Bit Manipulation
   - Array
+type: problem
+track: [sde, quant-dev]
+level:
+status: draft
+last_reviewed:
+sources: []
 ---
 
 # LeetCode 0036: Valid Sudoku

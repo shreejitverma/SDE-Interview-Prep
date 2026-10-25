@@ -1,7 +1,7 @@
 ---
 tags: [trading/roadmap, type/curriculum]
 aliases: [12-Week Roadmap, Calibration Roadmap]
-status: evergreen
+status: draft
 module: 00
 created: 2026-08-22
 type: concept

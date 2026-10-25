@@ -1,7 +1,7 @@
 ---
 tags: [trading/canon, trading/literature, type/concept]
 aliases: [Canonical Literature, Trading Books, Seminal Papers, HFT Talks, Essential Reading, Bibliography]
-status: evergreen
+status: draft
 module: 14
 created: 2026-08-22
 type: concept

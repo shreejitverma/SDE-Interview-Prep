@@ -15,6 +15,8 @@ created_date: 2026-10-07
 updated_date: 2026-10-07
 sources:
   - "https://leetcode.com/problems/alien-dictionary/"
+track: [sde, quant-dev]
+last_reviewed:
 ---
 
 # LeetCode 269: Alien Dictionary (Topological Sort & Graph Cycle Detection Deep Dive)

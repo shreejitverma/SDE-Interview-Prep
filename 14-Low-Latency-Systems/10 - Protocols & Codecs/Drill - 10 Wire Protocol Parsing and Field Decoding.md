@@ -1,7 +1,7 @@
 ---
 tags: [trading/protocols, type/drill]
 aliases: [Drill 10, Protocol Decoding Drill, Hex Decoding Drill, Wire Protocol Drill]
-status: evergreen
+status: draft
 module: 10
 created: 2026-08-22
 type: playbook

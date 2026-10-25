@@ -1,7 +1,7 @@
 ---
 tags: [trading/participant-systems, trading/order-management, type/concept]
 aliases: [Order State Management, Position Tracking, Real-Time PnL, Order State Machine, In-Flight Races, Token Mapping]
-status: evergreen
+status: draft
 module: 11
 created: 2026-08-22
 type: concept

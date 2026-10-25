@@ -25,24 +25,11 @@ The modern senior engineer must know how Python scales in the cloud.
 
 # Chapter 100: Distributed Databases: Python and the CAP Theorem
 
-Python often acts as the glue for massive distributed data stores.
-
-### 100.1 Understanding CAP (Consistency, Availability, Partition Tolerance)
-*   **Relational (ACID)**: PostgreSQL and MySQL internals with `psycopg2` and `mysql-connector`.
-*   **NoSQL (BASE)**: MongoDB and Cassandra. How Python's drivers handle connection pooling and cluster discovery.
-
-### 100.2 Distributed Locking: Redis Redlock
-Implementing distributed locks in Python to prevent race conditions across multiple nodes in a cluster.
-
----
+This section is maintained in [[Chapter_74_Distributed_Databases_Python_and_the_CAP_Theorem]].
 
 # Chapter 101: Search and Information Retrieval: Elasticsearch
 
-### 101.1 The Inverted Index
-Deconstructing how search engines work at the data structure level.
-*   **Python Integration**: Using the `elasticsearch-py` client to perform complex DSL queries.
-
----
+This section is maintained in [[Chapter_75_Search_and_Information_Retrieval_Elasticsearch]].
 
 # Chapter 102: Message Brokers: Kafka and RabbitMQ
 

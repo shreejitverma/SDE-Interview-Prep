@@ -1,7 +1,7 @@
 ---
 tags: [trading/low-latency-cpp, type/moc]
 aliases: [Low-Latency C++ MOC, Lock-Free C++ MOC]
-status: evergreen
+status: draft
 module: 08
 created: 2026-08-22
 type: moc

@@ -1,7 +1,7 @@
 ---
 tags: [trading/hardware, type/concept]
 aliases: [False Sharing, Cache Line Contention, Cache Line Bouncing, MESI Coherence]
-status: evergreen
+status: draft
 module: 04
 created: 2026-08-22
 type: concept

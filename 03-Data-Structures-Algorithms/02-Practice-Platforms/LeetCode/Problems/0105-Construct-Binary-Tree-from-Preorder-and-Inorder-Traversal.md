@@ -15,6 +15,8 @@ created_date: 2026-10-07
 updated_date: 2026-10-07
 sources:
   - "https://leetcode.com/problems/construct-binary-tree-from-preorder-and-inorder-traversal/"
+track: [sde, quant-dev]
+last_reviewed:
 ---
 
 # LeetCode 0105: Construct Binary Tree from Preorder and Inorder Traversal

@@ -50,7 +50,7 @@ Under the hood, `cProfile` registers a profile hook at the C level using CPython
 
 At regular intervals (e.g. 100 times per second), `py-spy` performs the following steps:
 1.  Locates CPython's global runtime structure (`_PyRuntime` or the active `PyThreadState`).
-2.  Reads the thread's call stack, traversing the linked list of interpreter frames (`PyFrameObject`).
+2.  Reads the thread's call stack, traversing interpreter execution frames (`_PyInterpreterFrame` in Python 3.11+, or legacy `PyFrameObject` lists in older versions).
 3.  Resolves the code objects and file names associated with the frames to reconstruct the Python-level stack trace.
 
 ##### Advantages
@@ -67,7 +67,6 @@ The `tracemalloc` module tracks allocations at the allocator level. When enabled
 
 For every block of memory allocated, `tracemalloc` stores:
 *   The virtual memory address and allocation size in bytes.
-*   The C-level call stack.
 *   The Python-level stack trace (up to a configurable number of frames).
 
 #### 2. Memory Leak Snapshot Script
@@ -114,7 +113,7 @@ def main():
         # Print the exact traceback line that allocated the leaked memory
         print("Traceback:")
         for frame in stat.traceback:
-            print(f"  File {frame.filename}, line {frame.lineno}: {frame.line}")
+            print(f"  File {frame.filename}, line {frame.lineno}")
         print("-" * 50)
 
 if __name__ == '__main__':

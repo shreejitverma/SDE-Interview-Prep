@@ -1,7 +1,7 @@
 ---
 tags: [trading/hardware, trading/kernel-tuning, type/concept]
 aliases: [C-States, P-States, CPU Power Management, Turbo Boost Jitter, PM-QoS, cpu_dma_latency]
-status: evergreen
+status: draft
 module: 04
 created: 2026-08-22
 type: concept

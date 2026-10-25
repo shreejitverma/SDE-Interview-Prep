@@ -1,7 +1,7 @@
 ---
 tags: [trading/canon, trading/sources, type/source-summary]
 aliases: [Intel SDM, Intel Manual, IA-32 Architecture Manual, x86-64 Hardware Manual]
-status: evergreen
+status: draft
 module: 14
 created: 2026-08-22
 type: paper

@@ -1,7 +1,7 @@
 ---
 tags: [trading/microstructure, type/concept]
 aliases: [Order Types, Order Lifecycle, Order State Machine, IOC, FOK, Post-Only, Pegged Orders]
-status: evergreen
+status: draft
 module: 01
 created: 2026-08-22
 type: concept

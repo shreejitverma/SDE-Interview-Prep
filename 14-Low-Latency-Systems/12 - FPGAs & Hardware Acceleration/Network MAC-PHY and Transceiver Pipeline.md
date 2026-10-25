@@ -1,7 +1,7 @@
 ---
 tags: [trading/fpga, trading/networking, trading/hardware, type/concept]
 aliases: [Transceiver Pipeline, GTY SerDes, Low-Latency MAC, LL-MAC, PCS Layer, PMA Layer, 64b66b Gearbox, FCS Cut-Through]
-status: evergreen
+status: draft
 module: 12
 created: 2026-08-22
 type: concept

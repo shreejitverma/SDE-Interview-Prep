@@ -1,7 +1,7 @@
 ---
 tags: [trading/canon, trading/industry, type/concept]
 aliases: [Industry Landscape, Trading Firms, Market Makers, Prop Trading, Hedge Funds, Exchanges, Citadel Securities, Jane Street, Jump Trading, HRT, Optiver, IMC]
-status: evergreen
+status: draft
 module: 14
 created: 2026-08-22
 type: concept

@@ -1,7 +1,7 @@
 ---
 tags: [trading/ipc-messaging, type/moc]
 aliases: [Messaging IPC MOC, Disruptor Aeron MOC]
-status: evergreen
+status: draft
 module: 09
 created: 2026-08-22
 type: moc

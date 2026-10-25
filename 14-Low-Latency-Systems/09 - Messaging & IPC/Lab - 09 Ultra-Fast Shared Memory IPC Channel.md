@@ -1,7 +1,7 @@
 ---
 tags: [trading/ipc-messaging, type/lab]
 aliases: [Lab 09, Shared Memory IPC Lab, POSIX SHM Lab, Cross-Process Latency Lab]
-status: evergreen
+status: draft
 module: 09
 created: 2026-08-22
 type: playbook

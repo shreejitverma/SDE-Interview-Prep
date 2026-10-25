@@ -18,8 +18,10 @@ Extension modules are shared libraries that the Python interpreter can load dyna
 #### 1. The `PyObject` Foundation
 Every Python object in C is represented as a pointer to a `PyObject` struct.
 ```c
+/* Simplified layout of a default (GIL) build. Since 3.12, ob_refcnt sits in an
+   anonymous union (PEP 683 immortal objects); free-threaded builds (PEP 703)
+   use a different layout with ob_tid and split reference counts. */
 typedef struct _object {
-    _PyObject_HEAD_EXTRA
     Py_ssize_t ob_refcnt;
     struct _typeobject *ob_type;
 } PyObject;

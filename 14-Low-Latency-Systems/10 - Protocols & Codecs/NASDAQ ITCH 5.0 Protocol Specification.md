@@ -1,7 +1,7 @@
 ---
 tags: [trading/protocols, trading/market-data, type/concept]
 aliases: [ITCH 5.0, NASDAQ ITCH, TotalView-ITCH, MoldUDP64, Order Book Protocol, L3 Market Data]
-status: evergreen
+status: draft
 module: 10
 created: 2026-08-22
 type: concept

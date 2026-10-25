@@ -14,6 +14,12 @@ topics:
   - Heap (Priority Queue)
   - Divide and Conquer
   - Array
+type: problem
+track: [sde, quant-dev]
+level:
+status: draft
+last_reviewed:
+sources: []
 ---
 
 # LeetCode 0215: Kth Largest Element in an Array

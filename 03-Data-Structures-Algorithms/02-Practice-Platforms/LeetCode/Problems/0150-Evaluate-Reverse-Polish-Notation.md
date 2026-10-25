@@ -13,6 +13,12 @@ topics:
   - Stack
   - Array
   - Math
+type: problem
+track: [sde, quant-dev]
+level:
+status: draft
+last_reviewed:
+sources: []
 ---
 
 # LeetCode 0150: Evaluate Reverse Polish Notation

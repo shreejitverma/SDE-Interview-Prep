@@ -1,7 +1,7 @@
 ---
 tags: [trading/exchange-arch, trading/measurement, type/concept]
 aliases: [Fairness, Determinism, Jitter Envelope, Cable Equalization, Tail Latency, Order-to-Ack, Optical Tapping]
-status: evergreen
+status: draft
 module: 02
 created: 2026-08-22
 type: concept

@@ -15,6 +15,8 @@ created_date: 2026-10-07
 updated_date: 2026-10-07
 sources:
   - "https://leetcode.com/problems/kth-smallest-element-in-a-bst/"
+track: [sde, quant-dev]
+last_reviewed:
 ---
 
 # LeetCode 0230: Kth Smallest Element in a BST

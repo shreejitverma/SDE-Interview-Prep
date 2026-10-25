@@ -1,7 +1,7 @@
 ---
 tags: [trading/microstructure, trading/exchange-arch, type/concept]
 aliases: [Continuous Double Auction, Discrete Auctions, Call Auction, Opening Cross, Closing Cross, NOII, Uncrossing Algorithm]
-status: evergreen
+status: draft
 module: 01
 created: 2026-08-22
 type: concept

@@ -1,7 +1,7 @@
 ---
 tags: [trading/fpga, trading/hardware, trading/kernel-bypass, type/concept]
 aliases: [PCIe DMA, SmartNIC DMA, XDMA, QDMA, MMIO Latency, Intel DDIO, TLP Processing Hints, Memory-Mapped IO]
-status: evergreen
+status: draft
 module: 12
 created: 2026-08-22
 type: concept

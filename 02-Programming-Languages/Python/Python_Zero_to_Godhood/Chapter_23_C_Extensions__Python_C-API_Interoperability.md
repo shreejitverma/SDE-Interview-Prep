@@ -65,12 +65,13 @@ When interacting with the Python C-API, developers must manually manage referenc
     *   *Examples*: `PyTuple_GetItem()`, `PyList_GetItem()`.
 
 ```c
-PyObject* list = PyList_New(1);      /* Returns a New Reference */
-PyObject* item = PyList_GetItem(list, 0); /* Returns a Borrowed Reference */
+PyObject* list = PyList_New(1);              /* Returns a New Reference */
+PyList_SetItem(list, 0, PyLong_FromLong(42)); /* Steals reference to item */
+PyObject* item = PyList_GetItem(list, 0);     /* Returns a Borrowed Reference */
 
-Py_INCREF(item);                    /* Converts 'item' to a New Reference */
-Py_DECREF(list);                    /* Safely frees list; item remains valid */
-Py_DECREF(item);                    /* Frees item */
+Py_INCREF(item);                            /* Converts 'item' to a New Reference */
+Py_DECREF(list);                            /* Safely frees list; item remains valid */
+Py_DECREF(item);                            /* Frees item */
 ```
 
 ---

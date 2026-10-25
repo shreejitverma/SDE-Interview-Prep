@@ -1,7 +1,7 @@
 ---
 tags: [trading/canon, trading/legal, trading/industry, type/concept]
 aliases: [Proprietary Secrecy, Trade Secrets, Public Knowledge Boundary, Clean-Room Engineering, Non-Competes, Aleynikov Case]
-status: evergreen
+status: draft
 module: 14
 created: 2026-08-22
 type: concept

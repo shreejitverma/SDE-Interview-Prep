@@ -1,6 +1,12 @@
 ---
 kanban-plugin: board
 tags: [cs6210]
+type: concept
+track: [sde]
+level:
+status: draft
+last_reviewed:
+sources: []
 ---
 
 ## Backlog

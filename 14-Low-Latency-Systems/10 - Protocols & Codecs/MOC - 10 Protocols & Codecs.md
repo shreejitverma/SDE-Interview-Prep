@@ -1,7 +1,7 @@
 ---
 tags: [trading/protocols, type/moc]
 aliases: [Protocols and Codecs MOC, SBE ITCH FIX MOC]
-status: evergreen
+status: draft
 module: 10
 created: 2026-08-22
 type: moc

@@ -1,7 +1,7 @@
 ---
 tags: [security/defensive, containers, docker, microservices, sandboxing, namespaces, seccomp, chromium]
 aliases: [Container and Microservice Security, Docker High Security Microservices, Chromium Sandbox Guide, LXC Docker Security]
-status: evergreen
+status: draft
 created: 2026-09-17
 type: paper
 track: [distinguished, sde]

@@ -1,7 +1,7 @@
 ---
 tags: [trading/hardware, trading/kernel-tuning, type/concept]
 aliases: [TLB, Huge Pages, HugeTLBFS, Page Table Walk, Translation Lookaside Buffer]
-status: evergreen
+status: draft
 module: 04
 created: 2026-08-22
 type: concept

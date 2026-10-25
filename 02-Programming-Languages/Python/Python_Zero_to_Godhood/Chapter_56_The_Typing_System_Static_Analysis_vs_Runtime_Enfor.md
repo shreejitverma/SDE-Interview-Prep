@@ -22,7 +22,7 @@ When you write `list[int]`, you are creating a `types.GenericAlias` object.
 
 *   **Static Analysis**: Tools like `mypy` or `pyright` scan the AST (Chapter 31) and verify types without running the code.
 *   **Runtime Enforcement**: Libraries like `pydantic` or `beartype` intercept function calls or class instantiation to verify types at execution time.
-*   **`inspect.get_type_hints()`**: This function is the "Godhood" way to retrieve types at runtime, handling forward references (strings like `"MyClass"`) by evaluating them in the correct namespace.
+*   **`typing.get_type_hints()`**: This function is the standard way to retrieve types at runtime, handling forward references (strings like `"MyClass"`) by evaluating them in the correct namespace (or `inspect.get_annotations()` in Python 3.10+).
 
 ### 67.3 Protocols and Structural Subtyping (PEP 544)
 

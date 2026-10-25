@@ -1,7 +1,7 @@
 ---
 tags: [trading/exchange-arch, trading/reliability-ops, type/concept]
 aliases: [Replicated State Machine, RSM, Consensus in Exchanges, Active-Active Lockstep, Hot Standby, Raft vs Sequencer]
-status: evergreen
+status: draft
 module: 02
 created: 2026-08-22
 type: concept

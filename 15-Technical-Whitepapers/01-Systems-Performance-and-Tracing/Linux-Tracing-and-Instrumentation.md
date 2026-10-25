@@ -1,7 +1,7 @@
 ---
 tags: [systems/performance, tracing, strace, ptrace, instrumentation, syscalls]
 aliases: [Linux Tracing and Instrumentation, Syscall Tracing Overhead, strace Shell Guide]
-status: evergreen
+status: draft
 created: 2026-09-17
 type: paper
 track: [distinguished, sde]
@@ -72,10 +72,10 @@ When an engineer attaches a tracer to diagnose latency in a production system, t
 
 ### The In-Kernel Alternative (Kprobes & Tracepoints)
 - Running instrumentation inside kernel space without waking user-space processes avoids context switches.
-- **Overhead Comparison**:
+- **Overhead Comparison (order-of-magnitude figures; real costs depend on CPU, kernel version, and mitigations)**:
   - `ptrace`: $\approx 2,000 \text{ to } 5,000\text{ nanoseconds}$ per event.
   - In-kernel tracepoint: $\approx 15 \text{ to } 35\text{ nanoseconds}$ per event.
-  - In modern Linux (eBPF): $\approx 10 \text{ to } 25\text{ nanoseconds}$ per event.
+  - In modern Linux (eBPF, which postdates this 2009 talk): $\approx 10 \text{ to } 25\text{ nanoseconds}$ per event.
 
 ---
 
@@ -110,9 +110,9 @@ strace -f -e trace=pipe,dup2,close,write,read bash -c "cat file | grep foo"
 ## Engineering Implications
 
 1. **Never Run `strace` on High-Throughput Production Systems**: Because of `ptrace` context-switch penalties, running `strace -p <pid>` on a production database or high-frequency trading matching engine can cause instant client timeouts or queue saturation.
-2. **Use eBPF for Production Tracing**: Use `bpftrace` or `perf trace` instead of `strace` for zero-overhead, non-disruptive production debugging:
+2. **Use eBPF for Production Tracing**: Use `bpftrace` or `perf trace` instead of `strace` for low-overhead, non-disruptive production debugging:
    ```bash
-   # Modern zero-overhead equivalent to strace:
+   # Modern low-overhead equivalent to strace:
    perf trace -p <PID>
    ```
 

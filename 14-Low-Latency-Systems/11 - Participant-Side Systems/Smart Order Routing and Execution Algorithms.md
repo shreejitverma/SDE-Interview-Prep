@@ -1,7 +1,7 @@
 ---
 tags: [trading/participant-systems, trading/execution-algorithms, type/concept]
 aliases: [Smart Order Router, SOR, Execution Algorithms, ISO Routing, Inverted Venue Routing, Fee-Adjusted Pricing, Speed Bumps, IEX D-Limit]
-status: evergreen
+status: draft
 module: 11
 created: 2026-08-22
 type: concept
