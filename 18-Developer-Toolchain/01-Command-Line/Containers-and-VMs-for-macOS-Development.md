@@ -19,4 +19,4 @@ sources: []
 - Prerequisites: [[macOS-vs-Linux-Toolchain-Mechanics]]
 - Next: [[CLI-Design-and-Agent-Friendly-Interfaces-AXI]]
 - See also: [[04-System-Design/00-Concepts/Virtual-Machines-vs-Containers|Virtual Machines vs Containers]], [[17-Cloud-AI-Engineering/Volume_00_Foundations_Under_the_Cloud/Chapter_01_Hypervisors_MicroVMs_and_Sandboxing|Chapter_01_Hypervisors_MicroVMs_and_Sandboxing]]
-- Lab: `code/01-Command-Line/container_vm_io_bench/`
+- Lab: `code/01-Command-Line/container_vm_io_bench/` (requires: docker)

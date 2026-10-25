@@ -148,6 +148,7 @@ class LabGitignoreTest(unittest.TestCase):
 
     def test_core_dumps_are_ignored_but_core_sources_are_not(self):
         self.assertTrue(self.ignored("02-Version-Control/mini_git/core.12345"))
+        self.assertTrue(self.ignored("03-Debugging/drill_uaf_core/core"))
         for source in ("02-Version-Control/mini_git/src/core.rs", "03-Debugging/lab/core.py",
                        "03-Debugging/lab/core.cpp", "02-Version-Control/mini_git/src/core/mod.rs"):
             self.assertFalse(self.ignored(source), source)

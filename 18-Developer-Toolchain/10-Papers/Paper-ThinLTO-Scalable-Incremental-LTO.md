@@ -7,7 +7,7 @@ last_reviewed:
 sources: []
 ---
 
-# Paper: ThinLTO: Scalable and Incremental Link-Time Optimization (Johnson et al. 2017)
+# Paper: ThinLTO: Scalable and Incremental LTO (Johnson et al. 2017)
 
 > [!summary] Scope
 > Owns the CGO 2017 compiler paper by Teresa Johnson, Mehdi Amini, and Xinliang David Li on scalable whole-program optimization in LLVM.

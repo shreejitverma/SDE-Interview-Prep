@@ -18,4 +18,4 @@ sources: []
 
 - Prerequisites: [[Build-System-Theory-Schedulers-and-Rebuilders]], [[Hermetic-and-Reproducible-Builds]]
 - Next: [[Buck2-DICE-Starlark-and-BXL]]
-- Lab: `code/06-Build-Systems/bazel_skyframe_inspect/`
+- Lab: `code/06-Build-Systems/bazel_skyframe_inspect/` (requires: network)

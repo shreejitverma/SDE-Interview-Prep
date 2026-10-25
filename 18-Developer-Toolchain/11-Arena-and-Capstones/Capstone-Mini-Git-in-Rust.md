@@ -19,4 +19,4 @@ sources: []
 - Prerequisites: [[Git-Object-Model-and-Content-Addressing]], [[Git-Packfiles-and-Delta-Compression]], [[Git-Index-Stat-Cache-and-Fsmonitor]], [[Rebuild-Mini-Git-Lab]]
 - Next: [[Capstone-Ptrace-Debugger-with-DWARF]]
 - See also: [[02-Programming-Languages/Python/Python-Backend-Interview-Prep/02-Python-Core|02 Python Core]]
-- Lab: `code/11-Arena-and-Capstones/capstone_mini_git/`
+- Lab: `code/11-Arena-and-Capstones/capstone_mini_git/` (requires: network)

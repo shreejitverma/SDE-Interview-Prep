@@ -7,7 +7,7 @@ last_reviewed:
 sources: []
 ---
 
-# Paper: Google-Wide Profiling: Continuous Profiling for Data Centers (Ren et al. 2010)
+# Paper: Google-Wide Profiling: A Continuous Profiling Infrastructure for Data Centers (Ren et al. 2010)
 
 > [!summary] Scope
 > Owns the pioneering IEEE Micro 2010 paper on continuous, fleet-wide production profiling by Gang Ren et al.

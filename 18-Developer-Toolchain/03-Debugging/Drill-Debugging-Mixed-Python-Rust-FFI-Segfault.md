@@ -17,4 +17,4 @@ sources: []
 ## Related
 
 - Prerequisites: [[Rust-FFI-Boundary-Debugging-Across-Cpp-and-Python]]
-- Lab: `code/03-Debugging/drill_ffi_segfault/`
+- Lab: `code/03-Debugging/drill_ffi_segfault/` (requires: linux, nightly)

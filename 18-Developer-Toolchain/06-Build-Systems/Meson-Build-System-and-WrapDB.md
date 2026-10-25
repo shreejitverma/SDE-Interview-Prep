@@ -19,4 +19,4 @@ sources: []
 - Prerequisites: [[Make-and-Ninja-Mechanics]]
 - Next: [[Cpp-Modules-in-Build-Systems]]
 - See also: [[19-Shell-and-Unix-Engineering/18-Build-Packaging-and-Bootstrap/Autoconf-and-configure|Autoconf and configure]]
-- Lab: `code/06-Build-Systems/meson_wrap_build/`
+- Lab: `code/06-Build-Systems/meson_wrap_build/` (requires: network)

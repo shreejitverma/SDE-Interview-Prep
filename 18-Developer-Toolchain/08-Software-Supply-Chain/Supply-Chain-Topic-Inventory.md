@@ -49,7 +49,7 @@ Authoritative source-to-note mapping and depth targets for software supply chain
 | Drill: Exploit and Remediate Dependency Confusion | [[Drill-Supply-Chain-Exploit-and-Fix-Dependency-Confusion]] | Problem / L6 | none |
 | Drill: Verify and Reject Forged SLSA Provenance | [[Drill-Supply-Chain-Verify-and-Reject-Forged-SLSA-Provenance]] | Problem / L6 | none |
 | Case Study: xz-utils Multi-Year Backdoor (CVE-2024-3094) | [[Case-Study-XZ-Utils-Backdoor-CVE-2024-3094]] | Case Study / L7 | none |
-| Case Study: SolarWinds Orion SUNBURST Compiler Swap | [[Case-Study-SolarWinds-Orion-SUNBURST]] | Case Study / L7 | none |
+| Case Study: SolarWinds Orion SUNBURST Build-Time Source Swap | [[Case-Study-SolarWinds-Orion-SUNBURST]] | Case Study / L7 | none |
 | Case Study: event-stream & Maintainer Burnout Exploitation | [[Case-Study-Event-Stream-and-Maintainer-Handoff]] | Case Study / L6 | none |
 | Case Study: Codecov Bash Uploader & tj-actions Exfiltration | [[Case-Study-Codecov-Bash-Uploader-and-TJ-Actions]] | Case Study / L6 | none |
 | Case Study: PyTorch torchtriton & Dependency Confusion | [[Case-Study-PyTorch-torchtriton-and-Dependency-Confusion]] | Case Study / L6 | none |

@@ -10,7 +10,7 @@ sources: []
 # Drill: Cross-DSO Exception and RTTI Failure
 
 > [!summary] Scope
-> Blind problem drill presenting a mysterious std::terminate crash when an exception is thrown across a dlopen(..., RTLD_LOCAL) shared library boundary.
+> Blind problem drill presenting a mysterious std::terminate crash when an exception is thrown across a dlopen(..., RTLD_LOCAL) shared library boundary in a libc++ build on Linux, where catch matching compares typeinfo addresses (libstdc++ compares mangled names for external-linkage types and usually masks the bug).
 > Requires the engineer to diagnose typeinfo pointer inequality resulting from hidden RTTI visibility, inspect the Itanium personality routine exception match logic, and rectify symbol export maps.
 > Reaches Debug, validating mastery of Cpp-Itanium-ABI-Object-Model-Vtables-and-RTTI.md and Dynamic-Linking-PLT-GOT-and-Loaders.md.
 

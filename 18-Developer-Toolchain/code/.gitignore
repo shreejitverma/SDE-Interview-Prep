@@ -8,5 +8,7 @@ __pycache__/
 *.so
 *.dylib
 *.dSYM/
+core
+!core/
 core.[0-9]*
 perf.data*

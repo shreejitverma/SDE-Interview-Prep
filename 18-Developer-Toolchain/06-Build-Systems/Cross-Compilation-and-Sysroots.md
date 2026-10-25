@@ -19,4 +19,4 @@ sources: []
 - Prerequisites: [[Modern-CMake-Architecture-and-Targets]], [[Hermetic-and-Reproducible-Builds]]
 - Next: [[Cargo-Build-Graph-and-Rustc-Pipelining]]
 - See also: [[19-Shell-and-Unix-Engineering/18-Build-Packaging-and-Bootstrap/Portable-sh-for-configure|Portable sh for configure]]
-- Lab: `code/06-Build-Systems/cross_sysroot_demo/`
+- Lab: `code/06-Build-Systems/cross_sysroot_demo/` (requires: linux)

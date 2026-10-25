@@ -19,4 +19,4 @@ sources: []
 
 - Prerequisites: [[Rust-PyO3-and-Maturin-Internals]], [[Python-Cross-Platform-Wheel-Pipelines-with-cibuildwheel]], [[Python-Trusted-Publishing-and-PEP-740-Attestations]]
 - Next: [[Execute-Zero-Downtime-Shared-Library-SONAME-Migration]]
-- Lab: `code/07-Packaging-and-Release/maturin_wheel/` (requires: docker)
+- Lab: `code/07-Packaging-and-Release/maturin_wheel/` (requires: docker, network)

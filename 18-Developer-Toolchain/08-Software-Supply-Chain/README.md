@@ -16,7 +16,7 @@ Through rigorous incident response runbooks, forensic drills, and deep case stud
 
 ```mermaid
 flowchart TD
-    SLSA["SLSA v1.2 Framework<br/>(Threats A-H, Build L0-L3)"] --> INTOTO["in-toto Layouts & DSSE<br/>(Steps, Links, Attestations)"]
+    SLSA["SLSA v1.2 Framework<br/>(Threats A-I, Build L0-L3)"] --> INTOTO["in-toto Layouts & DSSE<br/>(Steps, Links, Attestations)"]
     INTOTO --> SIG["Sigstore Architecture<br/>(Cosign, Fulcio, Rekor)"]
     SLSA --> SBOM["SBOM Standards<br/>(SPDX 3.0, CycloneDX 1.7, VEX)"]
     

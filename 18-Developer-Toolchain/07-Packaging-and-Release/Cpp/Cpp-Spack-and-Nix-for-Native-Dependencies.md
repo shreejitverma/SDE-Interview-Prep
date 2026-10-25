@@ -7,7 +7,7 @@ last_reviewed:
 sources: []
 ---
 
-# Spack and Nix: Content-Addressed Native Dependency Management
+# Spack and Nix: Hash-Addressed Native Dependency Management
 
 > [!summary] Scope
 > Combinatorial package concretization in Spack and input-addressed derivation store architectures in Nix.
