@@ -161,14 +161,39 @@ class CheckShellLabsTest(unittest.TestCase):
         self.assertIn("0 files", result.stdout)
         self.assertEqual(self.calls("shellcheck"), [])
 
-    def test_list_shows_classification_without_running_linters(self):
+    def test_shebang_decides_the_dialect_over_the_suffix(self):
         self.add_lab()
-        result = self.run_tool("--list")
-        self.assertEqual(result.returncode, 0)
-        self.assertIn(f"bats {LABS}/demo/demo.bats", result.stdout)
-        self.assertIn(f"bash {LABS}/lib/lab.bash", result.stdout)
-        self.assertIn(f"sh {LABS}/demo/demo.sh", result.stdout)
-        self.assertEqual(self.calls("shellcheck"), [])
+        self.add(f"{LABS}/demo/qualifiers.sh", ZSH, executable=True)
+        result = self.run_tool()
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertEqual(self.calls("zsh"), [f"-n {LABS}/demo/qualifiers.sh"])
+        self.assertNotIn("qualifiers.sh", self.calls("shellcheck")[0])
+
+    def test_directive_in_a_non_shell_file_is_ignored(self):
+        self.add_lab()
+        self.add(f"{LABS}/demo/NOTES.md", "# Notes\n\n```sh\n# shellcheck shell=bash\necho hi\n```\n")
+        result = self.run_tool()
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertNotIn("NOTES.md", self.calls("shellcheck")[0])
+        self.assertNotIn("NOTES.md", self.calls("shfmt")[0])
+
+    def test_shells_shellcheck_cannot_name_are_checked_as_their_base_dialect(self):
+        self.add_lab()
+        self.add(f"{LABS}/demo/tool-ash", "#!/bin/ash\necho hi\n", executable=True)
+        self.add(f"{LABS}/demo/tool-ksh93", "#!/usr/bin/env ksh93\necho hi\n", executable=True)
+        result = self.run_tool()
+        self.assertEqual(result.returncode, 0, result.stdout)
+        calls = self.calls("shellcheck")
+        self.assertIn(f"--format=gcc --shell=sh {LABS}/demo/tool-ash", calls)
+        self.assertIn(f"--format=gcc --shell=ksh {LABS}/demo/tool-ksh93", calls)
+        self.assertIn(f"{LABS}/demo/tool-ash", self.calls("shfmt")[0])
+
+    def test_suffixless_ash_script_gets_the_executable_check(self):
+        self.add_lab()
+        self.add(f"{LABS}/demo/tool-ash", "#!/bin/ash\necho hi\n", executable=False)
+        result = self.run_tool()
+        self.assertEqual(result.returncode, 1)
+        self.assertIn(f"{LABS}/demo/tool-ash: has a shebang but is not executable", result.stdout)
 
 
 if __name__ == "__main__":

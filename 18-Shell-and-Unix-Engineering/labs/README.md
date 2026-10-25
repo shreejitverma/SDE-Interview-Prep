@@ -43,6 +43,7 @@ labs/
 ## Helpers in lib/lab.bash
 
 `LAB_SHELL` names the shell under test as a command plus arguments, for example `dash`, `busybox ash`, or `zsh --emulate sh`; it defaults to `sh`.
+`run-matrix.sh` also exports `LAB_EXPECT_FAMILY`, the family each shell must report, so `common/showargs.bats` fails when the matrix runs the wrong shell; it is empty for `sh` and `/bin/sh`, whose family varies by host.
 
 | Helper | Purpose |
 |---|---|

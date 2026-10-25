@@ -9,7 +9,7 @@ sources: []
 
 # Authoring Style and Quality Standards for Shell and Unix Engineering
 
-These rules govern every chapter note in `18-Shell-and-Unix-Engineering/`.
+These rules govern every chapter note in `18-Shell-and-Unix-Engineering/`; the appendices follow the prose and verification rules but not the chapter template.
 They extend the vault conventions in the repository `CLAUDE.md` and mirror the Cloud AI curriculum's contract, adapted to a subject whose claims can be executed.
 
 ## Prose and Formatting
@@ -27,7 +27,8 @@ State trade-offs explicitly, including the failure modes of every recommended pa
 ## Note Template: The Solid Bar
 
 Every chapter note that reaches `status: solid` contains these ten level-2 sections in this exact order.
-A seed note already carries the ten headings; drafting fills them in and removes the seed callout.
+A chapter seed already carries the ten headings; drafting fills them in and removes the seed callout.
+Appendices are reference pages with their own form: a Scope section, then content suited to a glossary, map, cheat sheet, or plan, as in `17-Cloud-AI-Engineering`.
 
 1. TL;DR.
 Five lines a staff engineer must know cold: the mechanism, the rule, the trap, the portability fact, and when not to use it.
@@ -69,7 +70,7 @@ Each question has a thorough model answer and a realistic follow-up question.
 10. Further Reading.
 Primary sources only (specifications, source trees, man pages, papers, maintainer writing, and canonical books), each with one line on why it matters.
 
-Chapters in Volumes 19 to 21 and the appendices may adapt sections 5 to 8 to their form (a paper, a drill, or a capstone), but keep the ten headings so the structure stays uniform.
+Chapters in Volumes 19 to 21 may adapt sections 5 to 8 to their form (a paper, a drill, or a capstone), but keep the ten headings so the structure stays uniform.
 
 ## Verification and Accuracy Rules
 
@@ -82,7 +83,7 @@ Prioritize sources in this order: the POSIX specification and its rationale, imp
 
 ## Lifecycle
 
-`seed`: frontmatter, scope, and the ten empty headings.
+`seed`: frontmatter, scope, and, for a chapter, the ten empty headings.
 `draft`: all ten sections written and the lab passing, with `UNVERIFIED` markers allowed.
 `solid`: an independent verification pass (by an agent or person who did not draft the chapter) has rerun the lab, re-executed every portability claim, recomputed every number, and left no `UNVERIFIED` marker.
 `canonical`: a human has reviewed the chapter and set `last_reviewed`; `level` is also set only by a human.

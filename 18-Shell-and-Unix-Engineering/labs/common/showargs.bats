@@ -33,8 +33,12 @@ setup() {
   esac
 }
 
-@test "the shell under test identifies itself" {
-  family=$(lab_shell_family)
-  [ -n "$family" ]
-  [ "$family" != unknown ]
+@test "the shell under test runs and is the family the matrix expects" {
+  run_lab_c 'echo ok'
+  [ "$status" -eq 0 ]
+  [ "$output" = ok ]
+  if [ -n "${LAB_EXPECT_FAMILY-}" ]; then
+    family=$(lab_shell_family)
+    [ "$family" = "$LAB_EXPECT_FAMILY" ]
+  fi
 }

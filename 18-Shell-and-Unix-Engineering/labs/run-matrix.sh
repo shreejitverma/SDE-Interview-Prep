@@ -18,27 +18,29 @@ set -u
 
 LABS_DIR=$(cd "$(dirname "$0")" && pwd -P)
 
-# label|command: the shells to try, in report order.
+# label|family|command: the shells to try, in report order.
+# family is what lab_shell_family must report, exported to the tests as LAB_EXPECT_FAMILY;
+# it is empty for sh and /bin/sh, which are a different shell on each host.
 # The command may carry arguments ("busybox ash"); it is split on spaces, as LAB_SHELL is.
 CANDIDATES=(
-  "sh|sh"
-  "sh-system|/bin/sh"
-  "bash-system|/bin/bash"
-  "bash-path|bash"
-  "bash-3.2|/opt/shells/bash-3.2"
-  "bash-4.4|/opt/shells/bash-4.4"
-  "bash-5.1|/opt/shells/bash-5.1"
-  "bash-5.2|/opt/shells/bash-5.2"
-  "bash-5.3|/opt/shells/bash-5.3"
-  "dash|dash"
-  "posh|posh"
-  "ksh93|ksh93"
-  "ksh|ksh"
-  "mksh|mksh"
-  "yash|yash"
-  "busybox-ash|busybox ash"
-  "zsh|zsh"
-  "zsh-sh|zsh --emulate sh"
+  "sh||sh"
+  "sh-system||/bin/sh"
+  "bash-system|bash|/bin/bash"
+  "bash-path|bash|bash"
+  "bash-3.2|bash|/opt/shells/bash-3.2"
+  "bash-4.4|bash|/opt/shells/bash-4.4"
+  "bash-5.1|bash|/opt/shells/bash-5.1"
+  "bash-5.2|bash|/opt/shells/bash-5.2"
+  "bash-5.3|bash|/opt/shells/bash-5.3"
+  "dash|dash|dash"
+  "posh|posh|posh"
+  "ksh93|ksh93|ksh93"
+  "ksh|ksh93|ksh"
+  "mksh|mksh|mksh"
+  "yash|yash|yash"
+  "busybox-ash|busybox|busybox ash"
+  "zsh|zsh|zsh"
+  "zsh-sh|zsh-sh|zsh --emulate sh"
 )
 
 die() {
@@ -148,7 +150,7 @@ EOF_DIRS
     files+=("$dir"/*.bats)
   done
 
-  local entry label cmd first path real key seen=" " version log rc tests failed ran=0 bad=0 missing=0
+  local entry label family cmd first path real key seen=" " version log rc tests failed ran=0 bad=0 missing=0
   local -a failures=()
   log=$(mktemp "${TMPDIR:-/tmp}/run-matrix.XXXXXX") || die "mktemp failed"
   # shellcheck disable=SC2064 # expand $log now; it never changes
@@ -156,6 +158,8 @@ EOF_DIRS
   for entry in "${CANDIDATES[@]}"; do
     label=${entry%%|*}
     cmd=${entry#*|}
+    family=${cmd%%|*}
+    cmd=${cmd#*|}
     first=${cmd%% *}
     if ! command -v "$first" >/dev/null 2>&1; then
       printf '   %-12s %-38s not installed\n' "$label" "-"
@@ -182,7 +186,7 @@ EOF_DIRS
       printf '   %-12s %-38s %s\n' "$label" "$version" "$real${cmd#"$first"}"
       continue
     fi
-    if LAB_SHELL=$cmd bats --formatter tap "${files[@]}" >"$log" 2>&1; then
+    if LAB_SHELL=$cmd LAB_EXPECT_FAMILY=$family bats --formatter tap "${files[@]}" >"$log" 2>&1; then
       rc=0
     else
       rc=$?
