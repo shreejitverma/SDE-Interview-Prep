@@ -50,11 +50,19 @@ setup() {
   [ "$output" = "open" ]
 }
 
-@test "closed stdin is reused as descriptor 0 by the child's next open" {
+@test "closing stdin frees descriptor 0, which the child's next open reuses" {
   # ls opens the /dev/fd directory without naming a descriptor, so the kernel hands it the lowest free one.
-  run_lab_c 'exec 0<&-; ls /dev/fd/'
+  # With stdin closed the listing loses one entry (stdin) yet still starts at 0 (the directory itself).
+  # Both listings go straight to stdout: a pipe or command substitution opened after the close could take fd 0 itself.
+  run_lab_c 'ls /dev/fd/; echo --; exec 0<&-; ls /dev/fd/'
   [ "$status" -eq 0 ]
-  [ "${lines[0]}" = "0" ]
+  local sep=-1 i
+  for i in "${!lines[@]}"; do
+    if [ "${lines[$i]}" = "--" ]; then sep=$i; fi
+  done
+  [ "$sep" -gt 0 ]
+  [ "$((${#lines[@]} - sep - 1))" -eq "$((sep - 1))" ]
+  [ "${lines[$((sep + 1))]}" = "0" ]
 }
 
 @test "pipe writer closure allows reader to detect EOF while the writer still runs" {

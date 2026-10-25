@@ -203,7 +203,7 @@ POSIX.1-2024 XSH `exec` (DESCRIPTION) explicitly warns that executing a conformi
 
 ## Worked example
 
-The companion lab under `[lab](../labs/01-close-on-exec-and-descriptor-inheritance/)` verifies file descriptor inheritance, close-on-exec behavior, and lowest-available-descriptor allocation across POSIX shells.
+The companion lab under [lab](../labs/01-close-on-exec-and-descriptor-inheritance/) verifies file descriptor inheritance, close-on-exec behavior, and lowest-available-descriptor allocation across POSIX shells.
 
 The lab provides the probe utility `probe_fds.sh`:
 
@@ -300,11 +300,19 @@ setup() {
   [ "$output" = "open" ]
 }
 
-@test "closed stdin is reused as descriptor 0 by the child's next open" {
+@test "closing stdin frees descriptor 0, which the child's next open reuses" {
   # ls opens the /dev/fd directory without naming a descriptor, so the kernel hands it the lowest free one.
-  run_lab_c 'exec 0<&-; ls /dev/fd/'
+  # With stdin closed the listing loses one entry (stdin) yet still starts at 0 (the directory itself).
+  # Both listings go straight to stdout: a pipe or command substitution opened after the close could take fd 0 itself.
+  run_lab_c 'ls /dev/fd/; echo --; exec 0<&-; ls /dev/fd/'
   [ "$status" -eq 0 ]
-  [ "${lines[0]}" = "0" ]
+  local sep=-1 i
+  for i in "${!lines[@]}"; do
+    if [ "${lines[$i]}" = "--" ]; then sep=$i; fi
+  done
+  [ "$sep" -gt 0 ]
+  [ "$((${#lines[@]} - sep - 1))" -eq "$((sep - 1))" ]
+  [ "${lines[$((sep + 1))]}" = "0" ]
 }
 
 @test "pipe writer closure allows reader to detect EOF while the writer still runs" {
@@ -341,7 +349,7 @@ ok 2 descriptor 3 opened via exec is inherited in most shells but closed in ksh9
 ok 3 descriptor 3 is passed to child across all shells with explicit command redirection
 ok 4 explicit descriptor closure with exec 3>&- closes descriptor in shell and child
 ok 5 subshell preserves open descriptor without execve across all shells
-ok 6 closed stdin is reused as descriptor 0 by the child's next open
+ok 6 closing stdin frees descriptor 0, which the child's next open reuses
 ok 7 pipe writer closure allows reader to detect EOF while the writer still runs
 ```
 
