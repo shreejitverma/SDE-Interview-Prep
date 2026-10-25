@@ -10,7 +10,7 @@ sources: []
 # Symbols, Relocations, and Static Linking
 
 > [!summary] Scope
-> Owns static symbol resolution, archive (.a) member extraction algorithms, symbol binding rules (local, global, weak, common), and visibility attributes (STV_DEFAULT, STV_HIDDEN, STV_PROTECTED).
+> Owns static symbol resolution, archive (.a) member extraction algorithms, symbol binding rules (local, global, weak) and common symbols, and visibility attributes (STV_DEFAULT, STV_HIDDEN, STV_PROTECTED).
 > Covers relocation mechanics, symbol table sections (.symtab vs .dynsym), and relocation calculations for x86-64 (R_X86_64_64, R_X86_64_PC32, R_X86_64_PLT32) and AArch64.
 > Reaches Explain through Rebuild, handing dynamic relocation to Dynamic-Linking-PLT-GOT-and-Loaders.md.
 

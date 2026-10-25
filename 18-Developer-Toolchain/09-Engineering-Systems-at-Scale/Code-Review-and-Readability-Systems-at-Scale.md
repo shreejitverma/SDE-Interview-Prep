@@ -12,7 +12,7 @@ sources: []
 > [!summary] Scope
 > Owns the organizational engineering, tooling automation, and cultural dynamics of high-throughput peer code review.
 > Reaches Explain and Decide at Scale rungs by evaluating modern code review workflows, optimal change size distributions, automated reviewer routing heuristics, review turnaround SLAs, and language-specific Readability certification programs.
-> Emphasizes code review as a mechanism for knowledge distribution, consistency, and readability rather than defect detection.
+> Emphasizes code review as a mechanism for knowledge distribution, consistency, and readability as well as defect detection.
 
 ## Related
 

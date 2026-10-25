@@ -11,7 +11,7 @@ sources: []
 
 > [!summary] Scope
 > Analysis of the December 2022 PyTorch-nightly supply chain compromise via torchtriton, contextualized with Alex Birsan original 2021 dependency confusion research.
-> Explains how pip default resolution priority allowed an attacker to register torchtriton on public PyPI with a higher version number than the custom nightly index, resulting in arbitrary code execution and secret exfiltration during nightly installs.
+> Explains how pip default resolution priority allowed an attacker to register torchtriton on public PyPI with a higher version number than the custom nightly index, resulting in arbitrary code execution and secret exfiltration when the triton package was imported from affected nightly installs.
 > Details index pinning and scoped namespace solutions.
 > Provides prevention guidelines for multi-index package installation pipelines.
 

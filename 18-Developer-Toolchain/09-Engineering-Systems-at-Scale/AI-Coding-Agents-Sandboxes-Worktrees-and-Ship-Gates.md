@@ -12,7 +12,7 @@ sources: []
 > [!summary] Scope
 > Owns the developer toolchain integration, runtime safety, and verification harnesses required for autonomous AI coding agents.
 > Reaches Use, Explain, and Decide at Scale rungs by detailing git worktree isolation, OS filesystem and process sandboxing, Agent eXperience Interface CLI design principles, and deterministic verification gates.
-> Explains why agent integration requires strict gate verification rather than post-facto human code review.
+> Explains why agent integration requires strict automated gate verification before human code review rather than relying on post-facto review alone.
 
 ## Related
 

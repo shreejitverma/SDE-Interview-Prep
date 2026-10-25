@@ -10,10 +10,10 @@ sources: []
 # Spack and Nix: Content-Addressed Native Dependency Management
 
 > [!summary] Scope
-> Combinatorial package concretization in Spack and content-addressed derivation store architectures in Nix.
+> Combinatorial package concretization in Spack and input-addressed derivation store architectures in Nix.
 > Analyzes compiler-directed specs, RPATH-encoded store paths, and relocatable binary buildcaches for high-performance computing and enterprise quantitative systems.
 > Compares Spack spec graphs with standard Linux package topologies and virtual environments.
-> Covers environment isolation and bitwise reproducible toolchains across cluster deployments.
+> Covers environment isolation and reproducible toolchains across cluster deployments.
 
 ## Related
 

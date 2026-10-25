@@ -11,7 +11,7 @@ sources: []
 
 > [!summary] Scope
 > Owns the socio-technical principles of software dependency lifecycles, API contracts, and ecosystem evolution across thousands of services.
-> Reaches Explain and Decide at Scale rungs by formalizing Hyrum's Law, the One-Version Rule, and the mathematical impossibility of unconstrained SemVer in deep diamond dependency graphs.
+> Reaches Explain and Decide at Scale rungs by formalizing Hyrum's Law, the One-Version Rule, and the NP-completeness of version selection with unconstrained SemVer ranges in deep diamond dependency graphs.
 > Contrasts Live-at-Head continuous integration models against version-pinned dependency hell.
 
 ## Related

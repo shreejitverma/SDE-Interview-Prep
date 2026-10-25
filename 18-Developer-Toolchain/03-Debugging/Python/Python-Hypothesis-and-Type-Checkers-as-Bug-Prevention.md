@@ -11,8 +11,8 @@ sources: []
 
 > [!summary] Scope
 > This note owns proactive defect prevention in Python using the Hypothesis property-based testing framework and static type checkers like mypy and pyright.
-> It covers the Use and Explain rungs, focusing on Conjecture test-case input shrinking, stateful RuleBasedStateMachine models, and sound type narrowing.
-> It demonstrates how to mathematically falsify invariants before code reaches production environments.
+> It covers the Use and Explain rungs, focusing on Conjecture test-case input shrinking, stateful RuleBasedStateMachine models, and type narrowing.
+> It demonstrates how to find counterexamples that falsify invariants before code reaches production environments.
 
 ## Related
 

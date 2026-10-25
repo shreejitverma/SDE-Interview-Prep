@@ -10,7 +10,7 @@ sources: []
 # C++ Itanium ABI: Object Model, Vtables, and RTTI
 
 > [!summary] Scope
-> Owns the Itanium C++ ABI specification covering object layout, single and multiple inheritance offsets, empty base optimization (EBO), virtual function tables (vtables), virtual table tables (VTTs), adjustor thunks, and runtime type information (__type_info).
+> Owns the Itanium C++ ABI specification covering object layout, single and multiple inheritance offsets, empty base optimization (EBO), virtual function tables (vtables), virtual table tables (VTTs), adjustor thunks, and runtime type information (std::type_info and the __cxxabiv1::__class_type_info family).
 > Details C++ name mangling grammar, guard variables for thread-safe static initialization, and COMDAT vague linkage rules.
 > Reaches Explain through Debug, handing call frame unwinding to Stack-Unwinding-CFI-and-Exception-ABI.md and cross-DSO visibility issues to Drill-Program-Execution-Cross-DSO-Exception-and-RTTI-Failure.md.
 

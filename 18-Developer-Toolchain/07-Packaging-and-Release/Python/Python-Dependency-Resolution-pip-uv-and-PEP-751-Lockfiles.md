@@ -10,7 +10,7 @@ sources: []
 # Python Dependency Resolution: pip, uv, and PEP 751 Lockfiles
 
 > [!summary] Scope
-> Algorithmic comparison between pip backtracking resolver via resolvelib and uv PubGrub-based solver with version maps and global hardlinked caches.
+> Algorithmic comparison between pip backtracking resolver via resolvelib and uv PubGrub-based solver with version maps and a global cache linked via hardlinks or copy-on-write clones.
 > Details universal lockfile invariants in uv.lock, the standardized PEP 751 pylock.toml file format, and cross-platform resolution constraints.
 > Explores resolution failure troubleshooting and lockfile synchronization workflows.
 > Analyzes performance benchmarks and cache deduplication mechanics in large monorepos.

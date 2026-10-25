@@ -11,7 +11,7 @@ sources: []
 
 > [!summary] Scope
 > Owns the operational runbook for diagnosing dynamic loading errors, missing symbol faults, GLIBC/GLIBCXX version mismatches, and broken rpath or runpath configurations.
-> Details step-by-step diagnostic workflows utilizing LD_DEBUG, DYLD_PRINT_TO_STDERR, readelf, objdump, and nm to isolate symbol resolution and ABI versioning conflicts.
+> Details step-by-step diagnostic workflows utilizing LD_DEBUG, the DYLD_PRINT_* variables, readelf, objdump, and nm to isolate symbol resolution and ABI versioning conflicts.
 > Reaches Debug, serving as the practical troubleshooting companion to Dynamic-Linking-PLT-GOT-and-Loaders.md.
 
 ## Related

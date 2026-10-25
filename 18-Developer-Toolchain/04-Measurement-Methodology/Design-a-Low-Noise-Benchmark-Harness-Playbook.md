@@ -12,7 +12,7 @@ sources: []
 > [!summary] Scope
 > This playbook provides a concrete operational runbook for configuring a host system and authoring a repeatable, low-noise benchmarking suite.
 > It guides engineers through CPU core isolation with isolcpus, frequency governor locking, ASLR disabling, interleaved A/B sample execution, and Mann-Whitney U validation.
-> It delivers a verifiable harness that minimizes experimental variance to under 1%.
+> It delivers a verifiable harness that reports its own run-to-run variance and aims to keep it under 1% on a well-tuned host.
 
 ## Related
 

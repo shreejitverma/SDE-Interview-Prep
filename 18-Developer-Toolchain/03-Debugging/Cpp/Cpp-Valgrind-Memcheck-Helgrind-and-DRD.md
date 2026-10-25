@@ -11,8 +11,8 @@ sources: []
 
 > [!summary] Scope
 > This note owns dynamic binary translation debugging using the Valgrind VEX intermediate representation.
-> It reaches the Explain and Debug rungs, detailing Memcheck V-bit and A-bit tracking, Helgrind Eraser locksets, and DRD happens-before thread analysis.
-> It contrasts binary instrumentation with compiler sanitizers, noting Valgrind's lack of upstream Apple Silicon support and its role for uninstrumented binaries.
+> It reaches the Explain and Debug rungs, detailing Memcheck V-bit and A-bit tracking, Helgrind happens-before race detection with lock-order checking, and DRD happens-before thread analysis.
+> It contrasts binary instrumentation with compiler sanitizers, noting Valgrind's lack of upstream arm64 macOS support and its role for uninstrumented binaries.
 
 ## Related
 

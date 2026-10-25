@@ -13,7 +13,7 @@ sources: []
 > Structure and archive invariants of Python wheels, platform compatibility tags, and the PEP 600 perennial manylinux_2_28 and PEP 656 musllinux standards.
 > Details external shared library grafting and symbol auditing via auditwheel, delocate, and delvewheel.
 > Covers the CPython Limited API and abi3 stable ABI contract across minor Python versions.
-> Examines common pitfalls where extension modules inadvertently leak unversioned CPython symbols.
+> Examines common pitfalls where extension modules tagged abi3 inadvertently use CPython symbols outside the Limited API.
 
 ## Related
 

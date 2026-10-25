@@ -10,7 +10,7 @@ sources: []
 # Drill: Environment Size and Code Alignment Bias
 
 > [!summary] Scope
-> This problem note presents a hands-on drill reproducing a 15% execution swing caused solely by environment variable string sizes shifting binary stack and code alignment.
+> This problem note presents a hands-on drill reproducing a 15% execution swing caused solely by environment variable string sizes shifting stack alignment.
 > It challenges the engineer to measure L1 instruction cache misses and branch target buffer collisions using PMU counters, diagnose the artifact, and stabilize the harness.
 > It validates the foundational lessons of Mytkowicz et al.
 

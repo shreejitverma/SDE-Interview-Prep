@@ -11,7 +11,7 @@ sources: []
 
 > [!summary] Scope
 > This note owns the operating system primitives behind modern debuggers, including Linux ptrace, Mach exception ports on macOS, software INT3 trap patching, and hardware debug registers.
-> It covers the Use, Explain, and Rebuild rungs by showing how single-stepping, memory patching, and DWARF expression evaluation operate at the kernel-user boundary.
+> It covers the Use, Explain, and Rebuild rungs by showing how single-stepping and memory patching operate at the kernel-user boundary and how the debugger evaluates DWARF expressions in user space on top of them.
 > It provides the architectural foundation for Rebuild-Lab-ptrace-Debugger-with-DWARF-Backtrace while leaving remote stubs to Remote-Debugging-gdbserver-lldb-server-and-RSP.
 
 ## Related

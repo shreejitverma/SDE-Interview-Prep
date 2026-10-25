@@ -10,7 +10,7 @@ sources: []
 # Regex Engines: Automata, Backtracking, and ReDoS
 
 > [!summary] Scope
-> Owns regular expression engine theory and implementation architectures, contrasting non-deterministic finite automata (Thompson NFA, lazy DFA, PikeVM) with recursive backtracking matchers.
+> Owns regular expression engine theory and implementation architectures, contrasting automata-based engines (Thompson NFA, PikeVM, lazy DFA) with recursive backtracking matchers.
 > Details polynomial time guarantees versus catastrophic backtracking vulnerability (ReDoS), literal prefiltering, and feature divergence across PCRE2, Google RE2, Rust regex, and Python re.
 > Reaches Explain through Debug, handing tool search integration to Ripgrep-Internals-and-Fast-Text-Search.md.
 

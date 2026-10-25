@@ -11,8 +11,8 @@ sources: []
 
 > [!summary] Scope
 > Owns internationalization and encoding subsystems in command-line environments.
-> Analyzes how LC_ALL, LC_COLLATE, and LC_CTYPE control byte versus multi-byte interpretation, regex range semantics ([a-z] matching uppercase in en_US), sorting stability in sort/join/comm, and performance acceleration under LC_ALL=C.
-> Details filename normalization pitfalls between macOS APFS NFD decomposition and Linux NFC.
+> Analyzes how LC_ALL, LC_COLLATE, and LC_CTYPE control byte versus multi-byte interpretation, regex range semantics ([a-z] matching uppercase in some en_US implementations), consistent sort order across sort/join/comm, and performance acceleration under LC_ALL=C.
+> Details filename normalization pitfalls between macOS (HFS+ stores NFD, APFS preserves the form but matches normalization-insensitively) and Linux, which stores raw bytes that are usually NFC.
 > Reaches Use through Debug, handing log processing runbooks to Analyze-Gigabyte-Terminal-Logs.md.
 
 ## Related

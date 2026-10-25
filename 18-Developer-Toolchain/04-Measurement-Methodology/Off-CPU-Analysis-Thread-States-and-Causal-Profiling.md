@@ -12,7 +12,7 @@ sources: []
 > [!summary] Scope
 > This note owns the diagnosis of non-running thread bottlenecks, including lock contention, I/O blocking, and scheduler sleep.
 > It covers the Use, Explain, and Decide rungs by tracing kernel sched_switch events and calculating potential speedups via Curtsinger and Berger's Coz causal profiling.
-> It explains why standard CPU sampling profilers fail on latency-critical concurrent software.
+> It explains why standard on-CPU sampling profilers miss blocked time in latency-critical concurrent software.
 
 ## Related
 

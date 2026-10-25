@@ -11,7 +11,7 @@ sources: []
 
 > [!summary] Scope
 > Owns high-performance text search mechanics exemplified by ripgrep.
-> Details literal substring extraction, SIMD vector prefilters (memchr, Teddy algorithm), lazy DFA execution, byte-oriented bstr scanning avoiding UTF-8 validation overhead, buffered reading versus mmap trade-offs, and lock-free parallel directory traversal respecting .gitignore.
+> Details literal substring extraction, SIMD vector prefilters (memchr, Teddy algorithm), lazy DFA execution, byte-oriented bstr scanning avoiding UTF-8 validation overhead, buffered reading versus mmap trade-offs, and work-stealing parallel directory traversal respecting .gitignore.
 > Reaches Use through Explain, handing line editing stream transformations to Sed-and-Awk-Stream-Processing.md.
 
 ## Related

@@ -11,7 +11,7 @@ sources: []
 
 > [!summary] Scope
 > Owns low-level execution engines and file-level dependency graph execution.
-> Reaches Use, Explain, and Rebuild rungs by examining GNU Make pitfalls, the POSIX and GNU Make jobserver protocol, and high-performance Ninja execution internals.
+> Reaches Use, Explain, and Rebuild rungs by examining GNU Make pitfalls, the GNU Make jobserver protocol, which POSIX does not define and Ninja 1.13 joins as a client, and high-performance Ninja execution internals.
 > Establishes the boundary with high-level meta-build generators like CMake and Meson.
 
 ## Related

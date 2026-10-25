@@ -11,7 +11,7 @@ sources: []
 
 > [!summary] Scope
 > Owns alternative and next-generation version control paradigms that improve upon Git's data model and user experience.
-> Reaches Explain and Decide at Scale rungs by analyzing Jujutsu, Meta Sapling, Darcs and Pijul commutative patch theory, and Perforce Helix Core for terabyte binary gaming assets.
+> Reaches Explain and Decide at Scale rungs by analyzing Jujutsu, Meta Sapling, Darcs and Pijul commutative patch theory, and Perforce P4 (formerly Helix Core) for terabyte binary gaming assets.
 > Leaves Git-specific internals to earlier notes while exploring the frontier of source control.
 
 ## Related

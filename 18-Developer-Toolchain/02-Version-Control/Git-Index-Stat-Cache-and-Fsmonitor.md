@@ -10,7 +10,7 @@ sources: []
 # Git Index, Stat Cache, and Fsmonitor
 
 > [!summary] Scope
-> Owns the binary .git/index file format across versions 2, 3, and 4, the operating system stat cache, and working-tree modification detection.
+> Owns the binary .git/index file format across versions 2, 3, and 4, the stat data the index caches for each entry, and working-tree modification detection.
 > Reaches Explain, Debug, and Rebuild rungs by analyzing cached filesystem metadata, racy-Git timestamp resolution, conflict stage entries, and extensions including tree cache, untracked cache, sparse-index, and fsmonitor daemon integration.
 > Sets the boundary with working-tree checkout operations and sparse-checkout cone-mode mechanics.
 

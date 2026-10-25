@@ -11,7 +11,7 @@ sources: []
 
 > [!summary] Scope
 > Timed problem drill presenting a stripped production binary crash with only a raw instruction pointer and a detached Split DWARF (.dwp) package file.
-> Challenges the engineer to locate the crash point, reconstruct the stack frame using .eh_frame unwinding, resolve inlined frames via DWARF debug line tables, and configure a local debuginfod daemon.
+> Challenges the engineer to locate the crash point, reconstruct the stack frame using .eh_frame unwinding, resolve inlined frames via DWARF inlined-subroutine entries and line tables, and configure a local debuginfod daemon.
 > Reaches Debug, testing mastery of Stack-Unwinding-CFI-and-Exception-ABI.md and DWARF-Debug-Information-and-Symbol-Bundles.md.
 
 ## Related

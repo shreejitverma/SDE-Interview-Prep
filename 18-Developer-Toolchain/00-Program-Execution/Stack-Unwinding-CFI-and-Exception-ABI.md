@@ -11,7 +11,7 @@ sources: []
 
 > [!summary] Scope
 > Owns call stack traversal mechanisms, contrasting frame pointer chaining (-fno-omit-frame-pointer) with DWARF Call Frame Information (CFI) in .eh_frame and .eh_frame_hdr, alongside macOS __compact_unwind.
-> Details the Itanium two-phase exception handling process (_Unwind_RaiseException, personality routines, Language Specific Data Areas), asynchronous unwinding tables, and zero-cost exception costs.
+> Details the Itanium two-phase exception handling process (_Unwind_RaiseException, personality routines, Language Specific Data Areas), asynchronous unwinding tables, and the real size and throw-time costs of table-based "zero-cost" exceptions.
 > Reaches Explain through Decide at scale, handing debugger backtracing to DWARF-Debug-Information-and-Symbol-Bundles.md and 03-Debugging tools.
 
 ## Related

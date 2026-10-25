@@ -11,7 +11,7 @@ sources: []
 
 > [!summary] Scope
 > Owns live process introspection via /proc/[pid]/* pseudofiles (maps, smaps_rollup, pagemap, fd, status, auxv, oom_score_adj) and POSIX process credentials.
-> Covers real, effective, saved, and filesystem UID/GID transitions alongside Linux capability sets.
+> Covers real, effective, saved, and Linux-specific filesystem UID/GID transitions alongside Linux capability sets.
 > Reaches Use through Debug, bounding its scope against shell-level inspection tools covered in System-Inspection-and-Syscall-Tracing-From-the-Shell.md.
 
 ## Related

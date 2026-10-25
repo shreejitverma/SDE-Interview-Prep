@@ -11,7 +11,7 @@ sources: []
 
 > [!summary] Scope
 > Low-level mechanisms governing C++ binary compatibility, virtual table layouts, struct alignment, and member offsets under the Itanium ABI.
-> Details default hidden symbol visibility, SONAME tagging, dynamic linking resolution via DT_NEEDED and RUNPATH, and PImpl isolation patterns.
+> Details hidden-by-default symbol visibility via -fvisibility=hidden, SONAME tagging, dynamic linking resolution via DT_NEEDED and RUNPATH, and PImpl isolation patterns.
 > Defines rules for preventing catastrophic silent memory corruption when upgrading shared objects in production.
 > Contrasts header-only library distribution hazards with compiled shared object ABI boundaries.
 

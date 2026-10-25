@@ -12,7 +12,7 @@ sources: []
 > [!summary] Scope
 > This note owns CPU profiling methodologies in Python, contrasting deterministic call tracing with statistical sampling.
 > It reaches the Use, Explain, and Debug rungs by analyzing cProfile overhead, Python 3.15's standard profiling.sampling (Tachyon) module, py-spy, pyinstrument, Scalene, and Austin.
-> It diagnoses async task execution delays and GIL contention without distorting interpreter bytecode execution.
+> It diagnoses async task execution delays and GIL contention, using sampling to keep perturbation of interpreter execution low.
 
 ## Related
 

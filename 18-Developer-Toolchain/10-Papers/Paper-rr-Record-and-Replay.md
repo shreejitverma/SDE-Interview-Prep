@@ -10,8 +10,9 @@ sources: []
 # Paper: Engineering Record and Replay for Deployability (O'Callahan et al. 2017)
 
 > [!summary] Scope
-> Owns the USENIX ATC 2017 systems paper on deterministic record and replay debugging by Robert O'Callahan et al. Details how rr achieves low recording overhead on commodity Linux hardware through single-core thread scheduling, hardware performance counters for retired conditional branches, and seccomp-bpf syscall buffering.
-> Analyzes copy-on-write memory checkpointing and reverse execution mechanics, establishing the scientific foundation for deterministic debugging.
+> Owns the USENIX ATC 2017 systems paper on deterministic record and replay debugging by Robert O'Callahan et al.
+> Details how rr achieves low recording overhead on commodity Linux hardware through single-core thread scheduling, hardware performance counters for retired conditional branches, and seccomp-bpf syscall buffering.
+> Analyzes copy-on-write memory checkpointing and reverse execution mechanics that make deterministic debugging practical on stock Linux.
 
 ## Related
 

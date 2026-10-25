@@ -12,7 +12,7 @@ sources: []
 > [!summary] Scope
 > This note owns memory and concurrency debugging specific to macOS and Apple Silicon hardware.
 > It reaches the Use and Debug rungs by documenting ASan and TSan capabilities, native leaks analysis, libgmalloc guard pages, and MallocScribble instrumentation.
-> It explicitly identifies platform boundaries where LSan, MSan, and HWASan cannot be used under macOS.
+> It explicitly identifies platform boundaries where MSan and HWASan cannot be used under macOS and where LSan is missing from Apple clang.
 
 ## Related
 

@@ -12,7 +12,7 @@ sources: []
 > [!summary] Scope
 > This capstone playbook implements a modular PubGrub dependency resolution engine with Conflict-Driven Clause Learning (CDCL) over simulated package registries.
 > It details version constraint term algebra, unit propagation, conflict graph construction, and backjumping with human-readable error explanations.
-> It benchmarks resolution performance and verifies exact parity with cargo and uv resolution outputs on complex diamond dependency graphs.
+> It benchmarks resolution performance and compares its resolution outputs against cargo and uv on complex diamond dependency graphs.
 
 ## Related
 

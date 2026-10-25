@@ -11,7 +11,7 @@ sources: []
 
 > [!summary] Scope
 > Owns network data synchronization across remotes, wire protocol framing, and selective content retrieval.
-> Reaches Explain, Debug, and Decide at Scale rungs by detailing wire protocol v2 pkt-line exchanges, ref-in-want capabilities, CDN bundle offloading, promisor remotes, blobless and treeless partial clones, git backfill, and sparse-checkout cone-mode filtering with worktrees.
+> Reaches Explain, Debug, and Decide at Scale rungs by detailing wire protocol v2 pkt-line exchanges, ref-in-want capabilities, CDN bundle offloading, promisor remotes, blobless and treeless partial clones, the experimental git backfill command, and sparse-checkout cone-mode filtering with worktrees.
 > Leaves local object decoding to packfiles and large binary file pointer interception to Git LFS.
 
 ## Related

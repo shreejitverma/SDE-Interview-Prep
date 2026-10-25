@@ -12,7 +12,7 @@ sources: []
 > [!summary] Scope
 > Owns the operating system primitives and filesystem abstractions used to guarantee action isolation in modern build systems.
 > Reaches Explain and Debug rungs by contrasting Linux namespaces and chroot, macOS Seatbelt, FUSE action trees, and containerization.
-> Details how undeclared inputs and network leaks are intercepted, analyzes the I/O throughput penalty of sandbox overlay mounts, and explains differences in execution behavior between local developer laptops and remote CI workers.
+> Details how undeclared inputs and network leaks are intercepted, analyzes the setup and I/O cost of staging sandbox inputs through symlink trees, bind mounts, or overlay filesystems, and explains differences in execution behavior between local developer laptops and remote CI workers.
 
 ## Related
 

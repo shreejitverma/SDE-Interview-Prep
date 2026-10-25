@@ -12,7 +12,7 @@ sources: []
 > [!summary] Scope
 > Owns the IEEE Software 2022 case study and retrospective on the Reproducible Builds initiative by Chris Lamb and Stefano Zacchiroli.
 > Analyzes the threat model of compromised build infrastructure, catalogs sources of binary non-determinism, details the SOURCE_DATE_EPOCH specification, and demonstrates independent verification in Debian and open-source ecosystems.
-> Grounds bit-for-bit reproducibility as a primary security control against compiler trojans and build farm compromises.
+> Grounds bit-for-bit reproducibility as a security control against build farm compromises, complementing diverse double-compiling against compiler trojans.
 
 ## Related
 

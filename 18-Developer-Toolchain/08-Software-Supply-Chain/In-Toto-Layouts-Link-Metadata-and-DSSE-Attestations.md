@@ -12,7 +12,7 @@ sources: []
 > [!summary] Scope
 > Cryptographic verification of multi-step software development pipelines using in-toto.
 > Details root supply chain layouts, authorized functionaries, step definitions, inspections, and Dead Simple Signing Envelope encapsulation.
-> Explores the in-toto Attestation Framework v1.1 Statement model binding subjects to typed predicates including provenance, SBOMs, and VEX statements.
+> Explores the in-toto Attestation Framework v1.2 Statement model binding subjects to typed predicates including provenance, SBOMs, and VEX statements.
 > Covers verification workflows that detect malicious tampering between distinct pipeline steps.
 
 ## Related

@@ -11,7 +11,7 @@ sources: []
 
 > [!summary] Scope
 > This note owns techniques for diagnosing deadlocked Python processes and segfaulting native C extensions using py-spy and GDB.
-> It covers the Use and Explain rungs, exploring py-spy dump out-of-process virtual memory reading, python-gdb.py macros like py-bt, and PyObject inspection.
+> It covers the Use and Explain rungs, exploring py-spy dump out-of-process virtual memory reading, python-gdb.py commands like py-bt, and PyObject inspection.
 > It bridges pure Python execution issues with compiled C/C++ extension debugging.
 
 ## Related

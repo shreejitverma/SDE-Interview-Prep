@@ -11,7 +11,7 @@ sources: []
 
 > [!summary] Scope
 > Owns relational and structured data processing in the terminal.
-> Details jq filter algebra, streaming parsing (--stream) for multi-gigabyte JSON payloads, yq YAML structure handling, and GNU Coreutils relational joins (sort, uniq, join, comm, cut, paste, datamash).
+> Details jq filter algebra, streaming parsing (--stream) for multi-gigabyte JSON payloads, yq YAML structure handling, and GNU Coreutils relational joins (sort, uniq, join, comm, cut, paste) plus GNU datamash, a separate package.
 > Reaches Use through Explain, handing multi-file discovery to File-Discovery-and-Batch-Execution-Find-Fd-Xargs-Parallel.md and high-volume incident triage to Analyze-Gigabyte-Terminal-Logs.md.
 
 ## Related

@@ -11,7 +11,7 @@ sources: []
 
 > [!summary] Scope
 > Owns the CGO 2019 systems paper by Maksim Panchenko et al. introducing post-link binary optimization for data centers.
-> Details binary disassembly, Control Flow Graph reconstruction, LBR profile attribution, basic block reordering, and cold function splitting to eliminate instruction-cache and ITLB misses.
+> Details binary disassembly, Control Flow Graph reconstruction, LBR profile attribution, basic block reordering, and hot-cold function splitting to reduce instruction-cache and ITLB misses.
 > Explains how BOLT extracts significant speedups on top of existing PGO and LTO compilations.
 
 ## Related

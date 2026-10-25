@@ -11,7 +11,7 @@ sources: []
 
 > [!summary] Scope
 > Owns the grammar of revision resolution and commit DAG traversal algorithms.
-> Reaches Use and Explain rungs by analyzing revision syntax, ancestry dereferences, branch peelers, symmetric differences, refspecs, and topological versus chronological traversal ordering.
+> Reaches Use and Explain rungs by analyzing revision syntax, ancestry dereferences, object peeling with ^{type}, symmetric differences, refspecs, and topological versus chronological traversal ordering.
 > Leaves underlying commit-graph binary acceleration chunks to the GC and maintenance note and server-side history rewriting to git replay.
 
 ## Related

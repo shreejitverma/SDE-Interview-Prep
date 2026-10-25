@@ -11,7 +11,7 @@ sources: []
 
 > [!summary] Scope
 > Owns distributed compilation, remote action caching, and content-addressable storage protocols.
-> Reaches Explain, Debug, and Decide at Scale rungs by detailing the Linux Foundation and Bazel Remote Execution API v2, covering ActionCache, ContentAddressableStorage, and Execution gRPC services.
+> Reaches Explain, Debug, and Decide at Scale rungs by detailing the Remote Execution API v2 maintained in the bazelbuild/remote-apis repository, covering ActionCache, ContentAddressableStorage, and Execution gRPC services.
 > Analyzes Merkle tree digests, ByteStream chunking, Build without the Bytes bandwidth optimization, and cache poisoning mitigation strategies.
 > Establishes the boundary with local wrapper compiler caches.
 

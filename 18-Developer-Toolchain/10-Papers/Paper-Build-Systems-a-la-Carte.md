@@ -11,7 +11,7 @@ sources: []
 
 > [!summary] Scope
 > Owns the seminal ICFP 2018 and JFP 2020 functional programming paper by Andrey Mokhov, Neil Mitchell, and Simon Peyton Jones formalizing the build system design space.
-> Deconstructs existing build systems into orthogonal combinations of task dependency schedulers and trace-based rebuilders.
+> Deconstructs existing build systems into orthogonal combinations of schedulers and rebuilders, from dirty-bit timestamps to verifying and constructive traces.
 > Directly grounds the core build-system theory note in pillar 06 and the content-hashed build system rebuild lab.
 
 ## Related

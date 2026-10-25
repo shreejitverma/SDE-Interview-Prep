@@ -12,7 +12,7 @@ sources: []
 > [!summary] Scope
 > Owns internal developer platform architecture, golden path engineering, and fleet-wide library and toolchain deprecation programs.
 > Reaches Explain and Decide at Scale rungs by applying the CNCF Platform-as-a-Product paradigm, the Beyonce Rule, cognitive load reduction, and the distinction between advisory and compulsory deprecation.
-> Details why centralized deprecation budgets are mandatory to prevent uncoordinated migration churn.
+> Details why centralized deprecation budgets help prevent uncoordinated migration churn.
 
 ## Related
 

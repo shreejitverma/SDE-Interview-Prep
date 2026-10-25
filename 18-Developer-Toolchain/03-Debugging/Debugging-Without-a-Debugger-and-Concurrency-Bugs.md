@@ -12,7 +12,7 @@ sources: []
 > [!summary] Scope
 > This note owns techniques for diagnosing live production concurrency bugs without attaching an interactive debugger.
 > It covers in-memory ring-buffer flight recorders, dynamic assertion tripwires, lock-order acquisition graphs, and deterministic thread interleaving.
-> It reaches the Use, Explain, and Debug rungs, leaving static synchronization checking to language-specific sanitizer notes and full execution replay to rr.
+> It reaches the Use, Explain, and Debug rungs, leaving dynamic race detection to language-specific sanitizer notes and full execution replay to rr.
 
 ## Related
 

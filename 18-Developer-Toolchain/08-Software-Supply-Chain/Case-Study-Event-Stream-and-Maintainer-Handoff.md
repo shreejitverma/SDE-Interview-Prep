@@ -11,7 +11,7 @@ sources: []
 
 > [!summary] Scope
 > Analysis of the November 2018 event-stream npm incident where an unvetted maintainer handoff enabled targeted malicious payload injection via the flatmap-stream transitive dependency.
-> Details how SemVer caret ranges propagated the attack to millions of downstream developers to steal cryptocurrency wallet credentials.
+> Details how SemVer caret ranges propagated the malicious version to millions of downstream installs, while the payload activated only inside the Copay bitcoin wallet build to steal wallet keys.
 > Extracts governance models for enterprise maintainer succession and automated delta-auditing.
 > Examines the structural challenges of uncompensated open-source maintenance.
 

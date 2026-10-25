@@ -11,7 +11,7 @@ sources: []
 
 > [!summary] Scope
 > Owns developer environment reproducibility and configuration management.
-> Evaluates dotfile managers (GNU Stow, chezmoi, Home Manager), directory-scoped environment activation (direnv prompt hooks), runtime tool version pinning (mise shims vs PATH manipulation, .rust-toolchain.toml, uv), and devcontainer.json lifecycle hooks.
+> Evaluates dotfile managers (GNU Stow, chezmoi, Home Manager), directory-scoped environment activation (direnv prompt hooks), runtime tool version pinning (mise shims vs PATH manipulation, rust-toolchain.toml, uv), and devcontainer.json lifecycle hooks.
 > Reaches Use through Decide at scale, handing Nix internal store architecture to Nix-Store-Derivations-and-Flakes-Internals.md.
 
 ## Related

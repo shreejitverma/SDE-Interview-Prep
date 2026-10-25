@@ -10,7 +10,7 @@ sources: []
 # Shell Parsing, Tokenization, and Expansion Order
 
 > [!summary] Scope
-> Owns POSIX shell parsing and grammar rules, lexing, alias substitution, and the exact seven-stage word expansion sequence: brace expansion, tilde expansion, parameter expansion, command substitution, arithmetic expansion, process substitution, word splitting, and pathname expansion (globbing).
+> Owns POSIX shell parsing and grammar rules, lexing, alias substitution, and the Bash word expansion order: brace expansion; then tilde expansion, parameter expansion, arithmetic expansion, command substitution, and process substitution in one left-to-right pass; then word splitting, pathname expansion (globbing), and quote removal.
 > Analyzes quoting semantics (single, double, and POSIX.1-2024 dollar-single quotes) and IFS boundary hazards.
 > Reaches Use through Rebuild, handing pipeline execution mechanics to Pipelines-Subshells-Redirection-and-Process-Substitution.md.
 

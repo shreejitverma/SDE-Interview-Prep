@@ -11,7 +11,7 @@ sources: []
 
 > [!summary] Scope
 > This note owns the indexing, federation, and retrieval of separate debug information using GNU Build IDs, Mach-O UUIDs, debuginfod HTTP servers, and macOS dSYM bundles.
-> It covers the Use, Explain, and Decide rungs, explaining on-demand symbol stripping, caching, and enterprise symbol distribution pipelines.
+> It covers the Use, Explain, and Decide rungs, explaining symbol stripping, on-demand retrieval and caching, and enterprise symbol distribution pipelines.
 > It supplies symbols to debugger sessions in Cpp-GDB-and-LLDB-Expert-Guide and crash triages in Debug-a-Production-Crash-From-a-Core-Dump.
 
 ## Related

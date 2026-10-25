@@ -10,7 +10,7 @@ sources: []
 # Robust Shell Scripting and ShellCheck
 
 > [!summary] Scope
-> Owns production shell scripting best practices, dissecting why strict mode (set -euo pipefail) silently fails inside conditionals and command assignments (SC2155).
+> Owns production shell scripting best practices, dissecting why strict mode (set -euo pipefail) silently fails inside conditionals and combined declare-and-assign commands such as local var=$(cmd) (SC2155).
 > Covers reliable signal trapping on EXIT, ERR, INT, and TERM, safe temporary file creation (mktemp), idempotent file operations, and static analysis with ShellCheck.
 > Reaches Use through Debug, handing language migration guidelines to Command-Line-Decision-Records.md.
 

@@ -10,8 +10,8 @@ sources: []
 # Paper: Dapper, a Large-Scale Distributed Systems Tracing Infrastructure (Sigelman et al. 2010)
 
 > [!summary] Scope
-> Owns Google foundational 2010 technical report on distributed systems request tracing by Benjamin H.
-> Sigelman et al. Analyzes the span tree execution model, out-of-band asynchronous trace collection, ubiquitous RPC context propagation, and low-overhead adaptive sampling rates.
+> Owns Google foundational 2010 technical report on distributed systems request tracing by Benjamin H. Sigelman et al.
+> Analyzes the span tree execution model, out-of-band asynchronous trace collection, ubiquitous RPC context propagation, and low-overhead adaptive sampling rates.
 > Grounds modern distributed observability frameworks including OpenTelemetry and Jaeger while linking existing vault whitepapers.
 
 ## Related

@@ -11,7 +11,7 @@ sources: []
 
 > [!summary] Scope
 > High-severity incident response playbook for arresting broken progressive delivery deployments and poisoned package releases.
-> Details emergency stop commands for canary traffic shifting, registry yanking workflows across pip and cargo, backward-compatible database migration reversal, and cache eviction across edge proxies.
+> Details emergency stop commands for canary traffic shifting, registry yanking workflows across PyPI and crates.io, backward-compatible database migration reversal, and cache eviction across edge proxies.
 > Establishes post-incident forensic capture procedures and fleet synchronization verification.
 > Covers stakeholder communication protocols and post-mortem retrospective templates.
 

@@ -11,7 +11,7 @@ sources: []
 
 > [!summary] Scope
 > Owns the operational runbook for high-throughput log analysis on gigabyte-to-terabyte incident dumps directly in the terminal.
-> Details pipeline architectures utilizing LC_ALL=C byte-locale bypass, parallel decompression (pzstd, pigz), ripgrep pre-filtering into streaming mawk/gawk and jq, reservoir sampling, and numeric histogram aggregation.
+> Details pipeline architectures utilizing LC_ALL=C byte-locale bypass, fast decompression (pzstd, which parallelizes only multi-frame files, and pigz, which decompresses on one thread plus I/O and checksum threads), ripgrep pre-filtering into streaming mawk/gawk and jq, reservoir sampling, and numeric histogram aggregation.
 > Reaches Use and Debug, putting the text-processing and buffering concept notes into emergency incident production practice.
 
 ## Related

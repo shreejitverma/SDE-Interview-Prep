@@ -11,7 +11,7 @@ sources: []
 
 > [!summary] Scope
 > Technical examination of the September 2025 Shai-Hulud self-propagating npm package worm.
-> Details how the malicious package exploited automatic lifecycle install hooks to harvest developer environment variables and registry publishing tokens, automatically backdooring and publishing new versions of all packages owned by the compromised maintainer.
+> Details how the malicious package exploited automatic lifecycle install hooks to harvest developer environment variables and registry publishing tokens, automatically backdooring and publishing new versions of up to 20 packages owned by each compromised maintainer.
 > Synthesizes defensive policies for disabling arbitrary execution during dependency installation and enforcing scoped, tokenless publishing.
 > Analyzes the dynamics of rapid package infection across interconnected package ecosystems.
 

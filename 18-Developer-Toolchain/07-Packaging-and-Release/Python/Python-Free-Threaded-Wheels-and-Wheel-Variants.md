@@ -11,7 +11,7 @@ sources: []
 
 > [!summary] Scope
 > Binary wheel distribution under free-threaded CPython, ABI tags cp313t and cp314t, and multi-phase initialization with Py_mod_gil.
-> Analyzes WheelNext specifications including PEP 817, 825, and 850 for hardware-accelerated wheel variants targeting CUDA, ROCm, and x86-64 microarchitecture levels.
+> Analyzes WheelNext proposals PEP 817 (draft), PEP 825 (provisional), and PEP 850 (draft) for hardware-accelerated wheel variants targeting CUDA, ROCm, and x86-64 microarchitecture levels.
 > Establishes matrix build strategies for high-performance Python libraries.
 > Details fallback behavior when specialized hardware wheels are requested on generic platforms.
 

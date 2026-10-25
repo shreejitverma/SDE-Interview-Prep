@@ -12,7 +12,7 @@ sources: []
 > [!summary] Scope
 > This note owns microbenchmarking practice in C++ using Google Benchmark and nanobench.
 > It reaches the Use, Explain, and Rebuild rungs by implementing optimizer-proof test harnesses using DoNotOptimize and ClobberMemory, measuring hardware PMU counters, and performing asymptotic complexity curve fitting.
-> It ensures microbenchmark results reflect genuine algorithmic performance rather than compiler dead-code elimination.
+> It helps ensure microbenchmark results reflect genuine algorithmic performance rather than compiler dead-code elimination.
 
 ## Related
 

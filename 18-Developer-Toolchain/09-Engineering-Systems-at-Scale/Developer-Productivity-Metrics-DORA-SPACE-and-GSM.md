@@ -11,7 +11,7 @@ sources: []
 
 > [!summary] Scope
 > Owns the quantitative and qualitative measurement science of software engineering velocity, satisfaction, and operational performance.
-> Reaches Explain and Decide at Scale rungs by breaking down DORA Four Keys and capabilities, the five dimensions of the SPACE framework, Google Goals-Signals-Metrics method, and the Core 4 synthesis.
+> Reaches Explain and Decide at Scale rungs by breaking down the DORA software delivery metrics, the original Four Keys plus the rework rate added in 2024, and capabilities, the five dimensions of the SPACE framework, Google Goals-Signals-Metrics method, and the Core 4 synthesis.
 > Analyzes Goodhart's Law failure modes when engineering metrics are tied to individual performance evaluations.
 
 ## Related

@@ -12,7 +12,7 @@ sources: []
 > [!summary] Scope
 > This note owns undefined behavior detection, concurrency model checking, and fuzzing in Rust.
 > It reaches the Use, Explain, and Debug rungs by analyzing Miri MIR interpretation under Stacked and Tree Borrows, Tier 2 pre-instrumented sanitizer targets, Loom permutation checking, and cargo-fuzz.
-> It verifies that unsafe Rust blocks strictly adhere to Rust's aliasing and memory safety invariants.
+> It checks that unsafe Rust blocks adhere to Rust's aliasing and memory safety invariants on the paths that tests actually execute.
 
 ## Related
 

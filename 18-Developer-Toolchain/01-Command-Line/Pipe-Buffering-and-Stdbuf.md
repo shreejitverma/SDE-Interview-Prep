@@ -10,7 +10,7 @@ sources: []
 # Pipe Buffering and Stdbuf
 
 > [!summary] Scope
-> Owns I/O buffering interactions across pipeline stages, contrasting kernel pipe ring buffers (default 64 KB on Linux) with libc stdio buffer modes (unbuffered, line-buffered, and 4-8 KB block-buffered).
+> Owns I/O buffering interactions across pipeline stages, contrasting kernel pipe ring buffers (default 16 pages, 64 KB with 4 KB pages, on Linux) with libc stdio buffer modes (unbuffered, line-buffered, and block-buffered at st_blksize, such as 4 KB for glibc and 16 KB for macOS on pipes).
 > Analyzes inter-process pipeline deadlocks and latency lag in interactive streaming commands.
 > Details dynamic library interposition via stdbuf (libstdbuf.so) and pty wrapping to force line-buffering.
 > Reaches Use through Debug, handing pty kernel mechanics to 00-Program-Execution/TTYs-PTYs-and-Line-Discipline.md.

@@ -11,7 +11,7 @@ sources: []
 
 > [!summary] Scope
 > This note owns CPU profiling for compiled Rust binaries on Linux and macOS.
-> It reaches the Use, Explain, and Debug rungs by deploying cargo flamegraph and samply, evaluating frame pointer defaults in rustc and std (since Rust 1.79), and resolving inlined generic stack frames.
+> It reaches the Use, Explain, and Debug rungs by deploying cargo flamegraph and samply, evaluating rustc frame pointer defaults and the frame pointers std has been built with since Rust 1.79, and resolving inlined generic stack frames.
 > It teaches engineers how to extract actionable CPU profiles without sacrificing release build optimizations.
 
 ## Related

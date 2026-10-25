@@ -11,8 +11,8 @@ sources: []
 
 > [!summary] Scope
 > This note owns deterministic user-space record-and-replay debugging systems, analyzing rr, UndoDB (UDB), and cloud-hosted Pernosco.
-> It reaches the Use, Explain, and Decide depth rungs by examining PMU retired conditional branch counters, syscallbuf kernel interception, and hardware watchpoints during reverse execution.
-> It distinguishes Linux bare-metal PMU requirements from Apple Silicon VM limitations and leaves macro replay testing to 14-Low-Latency-Systems.
+> It reaches the Use, Explain, and Decide depth rungs by examining PMU retired conditional branch counters, in-process syscallbuf interception that avoids ptrace stops, and hardware watchpoints during reverse execution.
+> It distinguishes Linux PMU requirements (bare metal or a VM with PMU virtualization) from Apple Silicon VM limitations and leaves macro replay testing to 14-Low-Latency-Systems.
 
 ## Related
 

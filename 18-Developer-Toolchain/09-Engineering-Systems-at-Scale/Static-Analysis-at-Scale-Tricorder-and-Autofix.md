@@ -11,7 +11,7 @@ sources: []
 
 > [!summary] Scope
 > Owns organizational static analysis platform architecture integrated directly into the developer workflow.
-> Reaches Explain and Decide at Scale rungs by detailing Google Tricorder architecture, why standalone bug dashboards inevitably rots to zero actionability, the strict requirement for low effective false-positive rates via telemetry, and machine-applicable suggested fixes.
+> Reaches Explain and Decide at Scale rungs by detailing Google Tricorder architecture, why developers tend to ignore standalone bug dashboards, the strict requirement for low effective false-positive rates via telemetry, and machine-applicable suggested fixes.
 > Establishes the boundary with compiler diagnostics and individual IDE linters.
 
 ## Related

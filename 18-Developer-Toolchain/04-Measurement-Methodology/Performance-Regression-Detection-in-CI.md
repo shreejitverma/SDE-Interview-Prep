@@ -11,7 +11,7 @@ sources: []
 
 > [!summary] Scope
 > This note owns automated detection of performance regressions within continuous integration pipelines.
-> It covers the Explain and Decide rungs by contrasting noisy wall-clock execution against deterministic hardware instruction counts and cache simulations.
+> It covers the Explain and Decide rungs by contrasting noisy wall-clock execution against low-noise hardware instruction counts and deterministic cache simulations.
 > It evaluates non-parametric statistical hypothesis testing, A/B interleaved runners, and change-point detection algorithms.
 
 ## Related

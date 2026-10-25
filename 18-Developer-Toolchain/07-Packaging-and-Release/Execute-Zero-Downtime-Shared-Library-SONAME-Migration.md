@@ -11,9 +11,9 @@ sources: []
 
 > [!summary] Scope
 > Operational runbook for safely migrating an ABI-breaking C++ shared library across an enterprise fleet without breaking downstream services.
-> Details dual-SONAME packaging, inline namespace versioning, glibc version script symbol mapping, and side-by-side deployment staging.
+> Details dual-SONAME packaging, inline namespace versioning, GNU ld version script symbol mapping, and side-by-side deployment staging.
 > Includes pre-flight validation scripts, symlink management, and emergency rollback procedures.
-> Provides concrete verification commands using readelf and ldd to guarantee binary compatibility.
+> Provides concrete verification commands using readelf and ldd to check binary compatibility.
 
 ## Related
 

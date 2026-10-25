@@ -12,7 +12,7 @@ sources: []
 > [!summary] Scope
 > Owns operational remediation of filesystem, disk, and object-database corruptions in Git repositories.
 > Reaches Debug and Rebuild rungs by diagnosing bitflipped loose objects via checksum mismatches, truncated pack and index files, broken multi-pack-index chains, corrupt commit-graph layers, and damaged index binary headers.
-> Provides commands to rebuild indexes, excise dead objects, unpack valid objects from broken packs, and restore consistency without data loss.
+> Provides commands to rebuild indexes, excise dead objects, unpack valid objects from broken packs, and restore consistency while minimizing data loss.
 
 ## Related
 

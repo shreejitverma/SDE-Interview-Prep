@@ -12,7 +12,7 @@ sources: []
 > [!summary] Scope
 > This note owns feedback-directed binary optimization pipelines, including instrumentation PGO, sampling-based AutoFDO via hardware LBR, and LLVM BOLT post-link layout optimization.
 > It covers the Use, Explain, and Decide rungs, evaluating instruction cache miss reductions, basic block reordering, and function splitting.
-> It provides a complete end-to-end production workflow with measured speedups.
+> It provides a complete end-to-end production workflow and shows how to measure the resulting speedups.
 
 ## Related
 

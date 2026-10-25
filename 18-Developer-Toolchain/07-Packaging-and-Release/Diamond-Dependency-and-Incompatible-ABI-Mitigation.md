@@ -11,7 +11,7 @@ sources: []
 
 > [!summary] Scope
 > Comprehensive mitigation strategies for diamond dependency graphs and conflicting binary interfaces across languages.
-> Compares C++ inline namespaces and hidden symbol visibility, Python wheel vendoring and mangling, and Cargo multi-version linking via the semver trick.
+> Compares C++ inline namespaces and hidden symbol visibility, Python wheel vendoring and mangling, and Cargo multi-version linking and the semver trick.
 > Provides an architectural decision framework for eliminating link-time duplicate symbol crashes and runtime memory corruption.
 > Details compiler and linker flags for isolating internal symbols across shared library boundaries.
 
