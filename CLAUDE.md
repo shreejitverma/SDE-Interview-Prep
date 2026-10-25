@@ -44,6 +44,7 @@ Run these before committing structural changes; CI runs the same commands from `
 python3 tools/audit_vault.py --out - --check links
 python3 tools/audit_vault.py --out - --check style
 python3 tools/audit_pii.py --check
+python3 tools/check_shell_labs.py   # needs shellcheck, shfmt, bats-core
 python3 -m unittest discover tools/tests
 python3 tools/audit_vault.py        # refresh AUDIT.md
 ```

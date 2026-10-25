@@ -1,0 +1,43 @@
+---
+type: concept
+track: [sde, distinguished, ai-eng]
+level:
+status: seed
+last_reviewed:
+sources: []
+---
+
+# Quoting Across Tool Boundaries
+
+> [!summary] Claim
+> Seed note: the claim, mechanism, and proof are written when this note is drafted.
+
+Part of [Shell and AI Agents](README.md) in [Shell and Unix Engineering](../README.md).
+
+## TL;DR
+
+## Mental model
+
+## How it works
+
+## Numbers and limits
+
+## Portability
+
+## Worked example
+
+## Pitfalls
+
+## Security and robustness
+
+## The principal's view
+
+## Interview questions
+
+## Related
+
+Prerequisites: [[How-Agents-Execute-Shell]]
+
+Next: [[Command-Safety-Guards]]
+
+## Further reading

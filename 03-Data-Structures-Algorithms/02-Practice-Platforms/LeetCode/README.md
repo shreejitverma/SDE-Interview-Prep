@@ -58,6 +58,7 @@ sources: []
 ## Shell
 
 * [Shell Script](https://github.com/kamyu104/LeetCode-Solutions#shell-script)
+* The solutions in [Shell/](Shell/) are explained, with portable alternatives, in [[LeetCode-Shell-Problems]].
 
 ## Reference
 

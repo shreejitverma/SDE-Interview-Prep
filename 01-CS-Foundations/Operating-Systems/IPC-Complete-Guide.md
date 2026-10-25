@@ -1932,6 +1932,7 @@ Cross-network:
 ## References & Further Reading
 
 - POSIX IPC: `man 7 ipc`
+- Pipes, FIFOs, and coprocesses from the shell: [[Pipes-and-FIFOs]] and [[Named-Pipes-for-IPC]]
 - Boost.Interprocess: https://www.boost.org/doc/libs/release/libs/interprocess/
 - LMAX Disruptor: https://github.com/LMAX-Exchange/disruptor
 - Linux man pages: `man 2 shmat`, `man 2 mmap`, `man 7 semaphore`

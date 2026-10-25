@@ -1,0 +1,7 @@
+# Formatting for the shell labs; shfmt reads these keys when run without formatting flags.
+# [*] so suffix-less scripts get the same style; shfmt is the only consumer of these keys here.
+[*]
+indent_style = space
+indent_size = 2
+switch_case_indent = true
+binary_next_line = true

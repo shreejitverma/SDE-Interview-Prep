@@ -27,6 +27,12 @@ class VaultSchemaTest(unittest.TestCase):
         self.assertIn("cloud-ai", vault_schema.TRACKS["17-Cloud-AI-Engineering"])
         self.assertIn("17-Cloud-AI-Engineering", vault_schema.SCOPES)
 
+    def test_shell_folder_registered(self):
+        self.assertIn("19-Shell-and-Unix-Engineering", vault_schema.TRACKS)
+        self.assertIn("sde", vault_schema.TRACKS["19-Shell-and-Unix-Engineering"])
+        self.assertIn("19-Shell-and-Unix-Engineering", vault_schema.SCOPES)
+        self.assertIn("low-latency", vault_schema.tracks_for("19-Shell-and-Unix-Engineering/README.md"))
+
     def test_tracks_for_utility(self):
         self.assertIn("cloud-ai", vault_schema.tracks_for("17-Cloud-AI-Engineering/README.md"))
         self.assertEqual(vault_schema.tracks_for("nonexistent_folder/note.md"), [])
