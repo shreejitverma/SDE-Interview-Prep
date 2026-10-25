@@ -249,7 +249,7 @@ The repo also carries `dotfiles-nix/CLAUDE.md`, which is only `@AGENTS.md` (Clau
 | [compact-adviser](../components/compact-adviser.md) | key injection | Keychain wrapper around `claude` and `grok` |
 | [wheelhouse](../components/wheelhouse.md) | documented fork | README Step 2 forks it from `ImZoomBoy/wheelhouse` (`README.md:437-450`) |
 | Skills | owner of 12 | `files/skills/*` plus `THIRD_PARTY_NOTICES.md`; see [skills catalog](../components/skills-catalog.md) |
-| [Dotfiles Management](../../../18-Shell-and-Unix-Engineering/Volume_17_The_Interactive_Environment_and_Dotfiles/Chapter_07_Dotfiles_Management.md) (shell curriculum) | taught by | symlink managers, chezmoi, and Nix home-manager compared |
+| [Dotfiles Managers](../../../19-Shell-and-Unix-Engineering/21-Interactive-Environment-and-Dotfiles/Dotfiles-Managers.md) (shell notes) | taught by | symlink managers, chezmoi, and Nix home-manager compared |
 | gh, osascript, notify-send | called | `gh repo sync`, `gh auth status`; `ic_notify` (`platform.sh:134-146`) |
 
 ## 7. Lifecycle walkthrough: the 2026-09-23 10:00 sync run

@@ -8,9 +8,9 @@ Re-run the script after every structural change; this file is its output and sho
 
 | Check | Result |
 | :--- | ---: |
-| Tracked files | 16687 |
-| Markdown notes | 2410 |
-| Internal links checked | 18728 |
+| Tracked files | 16877 |
+| Markdown notes | 2600 |
+| Internal links checked | 19569 |
 | Broken links (links into private locations are not counted) | 0 |
 | Wikilink aliases that split a table cell | 0 |
 | Broken wikilinks fixable by unique basename | 0 |
@@ -50,7 +50,7 @@ Re-run the script after every structural change; this file is its output and sho
 | `15-Technical-Whitepapers` | 44 | 44 | 0 | 0 | 0 | 0.3 | 2026-09-21 |
 | `16-Interview-Command-Center` | 51 | 51 | 0 | 0 | 0 | 0.1 | 2026-10-07 |
 | `17-Cloud-AI-Engineering` | 162 | 162 | 0 | 0 | 0 | 8.9 | 2026-10-21 |
-| `18-Shell-and-Unix-Engineering` | 224 | 216 | 2 | 0 | 6 | 0.3 | 2026-10-25 |
+| `19-Shell-and-Unix-Engineering` | 414 | 406 | 2 | 0 | 6 | 0.3 |  |
 | `CS-Subjects` | 1 | 1 | 0 | 0 | 0 | 0.0 | 2026-09-21 |
 | `tools` | 22 | 1 | 19 | 0 | 2 | 0.2 | 2026-10-25 |
 
@@ -59,7 +59,6 @@ Re-run the script after every structural change; this file is its output and sho
 ### Folders whose names normalize to the same topic
 
 - **design pattern**: `04-System-Design/03-Design-Patterns`, `04-System-Design/design-patterns-cpp`, `04-System-Design/design-patterns-java`, `04-System-Design/design-patterns-python`
-- **appendice**: `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Appendices`, `17-Cloud-AI-Engineering/Appendices`, `18-Shell-and-Unix-Engineering/Appendices`
 - **godhood to zero**: `02-Programming-Languages/C++/CPP_Zero_to_Godhood`, `02-Programming-Languages/Python/Python_Zero_to_Godhood`
 - **linked list**: `02-Programming-Languages/C++/Linked List`, `03-Data-Structures-Algorithms/01-Topics/Linked-Lists`
 - **recursion**: `02-Programming-Languages/C++/Recursion`, `03-Data-Structures-Algorithms/01-Topics/Recursion`
@@ -72,6 +71,7 @@ Re-run the script after every structural change; this file is its output and sho
 - **behavioral**: `04-System-Design/03-Design-Patterns/Behavioral`, `06-Interview-Prep/01-Behavioral`
 - **dev quant**: `05-Quantitative-Finance/02-Quant-Dev`, `16-Interview-Command-Center/01-Roles/Quant-Dev`
 - **interview**: `13-Agentic-AI/Agentic-Harness/interview`, `14-Low-Latency-Systems/Interview`
+- **appendice**: `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Appendices`, `17-Cloud-AI-Engineering/Appendices`
 
 ### Folder pairs sharing the most identical files
 

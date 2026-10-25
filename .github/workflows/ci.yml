@@ -24,7 +24,7 @@ jobs:
         with:
           python-version: '3.12'
 
-      # The shell lab gate needs the same linter versions as 18-Shell-and-Unix-Engineering/labs/README.md,
+      # The shell lab gate needs the same linter versions as 19-Shell-and-Unix-Engineering/labs/README.md,
       # so warnings match local runs. Hashes were computed from the release assets on 2026-10-25.
       - name: Install shell lab toolchain (pinned)
         env:
@@ -70,4 +70,4 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Lab suites across the shell matrix
-        run: 18-Shell-and-Unix-Engineering/labs/run-matrix.sh --containers
+        run: 19-Shell-and-Unix-Engineering/labs/run-matrix.sh --containers

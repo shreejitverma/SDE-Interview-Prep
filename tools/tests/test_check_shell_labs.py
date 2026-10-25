@@ -14,7 +14,7 @@ import unittest
 from pathlib import Path
 
 TOOL = Path(__file__).resolve().parent.parent / "check_shell_labs.py"
-LABS = "18-Shell-and-Unix-Engineering/labs"
+LABS = "19-Shell-and-Unix-Engineering/labs"
 GIT = shutil.which("git")
 
 FAKE = """#!/bin/sh

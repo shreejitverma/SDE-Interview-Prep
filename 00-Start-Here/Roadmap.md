@@ -23,7 +23,7 @@ Read [How this vault works](How-This-Vault-Works.md) once, so the diagrams, call
 flowchart TD
     Start["00 Start here"] --> Foundations["01 CS foundations"]
     Foundations --> Languages["02 Languages"]
-    Foundations --> Shell["18 Shell and Unix engineering"]
+    Foundations --> Shell["19 Shell and Unix engineering"]
     Shell --> Practices
     Languages --> DSA["03 DSA"]
     DSA --> Design["04 System design"]
@@ -54,7 +54,7 @@ You can enter a later box once the earlier one is good enough to support it.
 flowchart LR
     F["01 Foundations"] --> L["02 Languages"]
     L --> D["03 DSA"]
-    L --> Sh["18 Shell and Unix"]
+    L --> Sh["19 Shell and Unix"]
     D --> S["04 System design"]
     Sh --> S
     S --> I["06 Interview prep"]
@@ -69,7 +69,7 @@ flowchart LR
     Gold --> Q["05 Quant finance"]
     Q --> LL["14 Low-latency systems"]
     LL --> Perf["12 Performance"]
-    Perf --> Sh["18 Shell: process model, performance, incident response"]
+    Perf --> Sh["19 Shell: process model, performance, incident response"]
 ```
 
 The finance curriculum that sits beside the code lives in The-Quant-Prep.
@@ -127,7 +127,7 @@ The [review queue](Review-Queue.md) brings a note back after 7, 21, or 60 days, 
 | 15 | Reading notes on the papers the other folders cite | [Whitepapers](../15-Technical-Whitepapers/README.md) |
 | 16 | Role hubs, drills, and the local interview loop | [Command Center](../16-Interview-Command-Center/00-Dashboard.md) |
 | 17 | Cloud and AI infrastructure on AWS and Google Cloud, from the hardware up | [Cloud AI engineering](../17-Cloud-AI-Engineering/README.md) |
-| 18 | The shell from the system call up: POSIX, bash, zsh, the userland, robustness, security, and production use | [Shell and Unix engineering](../18-Shell-and-Unix-Engineering/README.md) |
+| 19 | The shell from the system call up: POSIX, bash, zsh, the userland, filesystems, networking, robustness, security, production, and organizational scale | [Shell and Unix engineering](../19-Shell-and-Unix-Engineering/README.md) |
 
 Private application data is not in this repository.
 The Command Center links that point at companies, pipeline, and retrospectives resolve only in a local checkout that has those folders.

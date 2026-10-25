@@ -1932,7 +1932,7 @@ Cross-network:
 ## References & Further Reading
 
 - POSIX IPC: `man 7 ipc`
-- Pipes, FIFOs, and coprocesses from the shell: [[18-Shell-and-Unix-Engineering/Volume_00_The_Unix_Process_Model/Chapter_04_Pipes_and_FIFOs|Pipes and FIFOs]] and [[18-Shell-and-Unix-Engineering/Volume_11_Concurrency_and_Parallelism_in_Shell/Chapter_04_Named_Pipes_Coprocesses_and_Descriptor_Semaphores|Named Pipes, Coprocesses, and Descriptor Semaphores]]
+- Pipes, FIFOs, and coprocesses from the shell: [[Pipes-and-FIFOs]] and [[Named-Pipes-for-IPC]]
 - Boost.Interprocess: https://www.boost.org/doc/libs/release/libs/interprocess/
 - LMAX Disruptor: https://github.com/LMAX-Exchange/disruptor
 - Linux man pages: `man 2 shmat`, `man 2 mmap`, `man 7 semaphore`

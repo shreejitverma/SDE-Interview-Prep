@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Gate the shell curriculum's labs: ShellCheck, shfmt, and bats over every tracked lab file.
+"""Gate the shell notes' labs: ShellCheck, shfmt, and bats over every tracked lab file.
 
-Scope is `18-Shell-and-Unix-Engineering/labs/`, read through `git ls-files` like every vault tool,
+Scope is `19-Shell-and-Unix-Engineering/labs/`, read through `git ls-files` like every vault tool,
 so a new lab is checked once it is staged.
 A file's dialect comes from its shebang, then a `# shellcheck shell=` directive in its leading comment block
 (read only for files with a shell suffix or none), then its suffix (.sh, .bash, .bats, or .zsh).
@@ -33,7 +33,7 @@ import subprocess
 import sys
 from pathlib import Path, PurePosixPath
 
-LABS = "18-Shell-and-Unix-Engineering/labs"
+LABS = "19-Shell-and-Unix-Engineering/labs"
 # Lab directories that hold shared support files rather than a lab.
 SUPPORT_DIRS = {"lib", "matrix"}
 SUFFIX_DIALECT = {".sh": "sh", ".bash": "bash", ".bats": "bats", ".zsh": "zsh"}
@@ -43,7 +43,7 @@ DIRECTIVE_RE = re.compile(r"^#\s*shellcheck\s+shell=(\w+)")
 # Dialects checked under a fixed --shell rather than ShellCheck's own shebang detection.
 SHELLCHECK_SHELL = {"ash": "busybox", "busybox": "busybox", "yash": "sh", "posh": "sh",
                     "ksh93": "ksh", "mksh": "ksh"}
-INSTALL_HINT = "install the lab toolchain: `brew install shellcheck shfmt bats-core` (macOS) or see 18-Shell-and-Unix-Engineering/labs/README.md"
+INSTALL_HINT = "install the lab toolchain: `brew install shellcheck shfmt bats-core` (macOS) or see 19-Shell-and-Unix-Engineering/labs/README.md"
 
 
 def tracked(repo: Path) -> dict[str, str]:

@@ -9,7 +9,7 @@ Every script that edits notes is a dry run unless you pass `--apply`.
 | Script | Output | Purpose |
 | :--- | :--- | :--- |
 | `audit_vault.py` | `AUDIT.md` | Counts, duplicates, broken links, table-splitting wikilinks, orphans, frontmatter, entry notes, emoji and em-dash use, vendored and large files. |
-| `check_shell_labs.py` | stdout | Shell lab gate: every tracked shell file under `18-Shell-and-Unix-Engineering/labs/` declares its dialect, is executable when it has a shebang, and passes ShellCheck (non-zsh files), `shfmt -d`, and `zsh -n` (zsh files); every lab has a bats test, and the tests pass. A missing linter is an error, never a skip. |
+| `check_shell_labs.py` | stdout | Shell lab gate: every tracked shell file under `19-Shell-and-Unix-Engineering/labs/` declares its dialect, is executable when it has a shebang, and passes ShellCheck (non-zsh files), `shfmt -d`, and `zsh -n` (zsh files); every lab has a bats test, and the tests pass. A missing linter is an error, never a skip. |
 | `audit_pii.py` | a path you pass with `--out` | Inventory of private job-search data and PII; refuses to write inside this repo. `--check` is the CI and pre-commit guard. |
 | `private_paths.py` | - | Private locations: gitignored here, symlinked in from the private `career-ops` repo. |
 
