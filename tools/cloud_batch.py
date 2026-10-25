@@ -15,8 +15,10 @@ Each phase is one batch at 50% of standard API prices:
 Every command is a dry run unless you pass `--apply`.
 `submit` prints a cost estimate and refuses to exceed `--budget` (spent + in flight + this batch).
 Run state, raw results, and reports live in `build/cloud_batch/` (gitignored).
-The pipeline only writes a chapter it owns: a missing or `seed` file for `draft`, and for
-`verify` only a file whose content is unchanged since the pipeline wrote it.
+The pipeline only writes a chapter it owns: `draft` writes a missing or `seed` file and, via
+`collect --reprocess`, its own draft when the file is unchanged since the pipeline wrote it and
+no verify result covers it (collected or in flight); `verify` writes only a pipeline draft whose
+content is unchanged since the pipeline wrote it.
 
 The API key is read from ANTHROPIC_API_KEY, else from `~/.config/sde-vault/anthropic.env`
 (KEY=value lines), else from an `ant auth login` profile; keep it out of this public repo.
@@ -43,6 +45,7 @@ from datetime import date, datetime, timezone
 from pathlib import Path
 
 CURRICULUM = "17-Cloud-AI-Engineering"
+TRACKS = ("cloud-ai", "ai-eng", "sde", "distinguished")
 STATE_DIR = Path("build/cloud_batch")
 ENV_FILE = Path.home() / ".config/sde-vault/anthropic.env"
 
@@ -64,6 +67,8 @@ PRICES = {
     "claude-haiku-5-5": (0.10, 0.50),
 }
 BATCH_DISCOUNT = 0.5
+# A phase and model pair with no collected batch has only a heuristic estimate, so its first batch is a pilot.
+PILOT_MAX = 3
 CACHE_WRITE, CACHE_READ = 1.25, 0.10
 WEB_SEARCH_USD = 10.00 / 1000
 
@@ -90,7 +95,9 @@ class PhaseConfig:
 
 PHASES = {
     "draft": PhaseConfig("claude-opus-5-5", "high", 64000, 8, (20_000, 60_000), (12_000, 30_000), (3, 8)),
-    "verify": PhaseConfig("claude-sonnet-5-5", "high", 64000, 10, (20_000, 60_000), (14_000, 30_000), (4, 10)),
+    # Measured 2026-10 on 24 chapters: the server-side search loop re-reads the growing context on every search,
+    # so a 10-search fact-check bills 100K-730K input tokens, not the prompt plus one page of results.
+    "verify": PhaseConfig("claude-sonnet-5-5", "high", 64000, 10, (100_000, 730_000), (31_000, 51_000), (10, 10)),
     "cards": PhaseConfig("claude-haiku-5-5", "medium", 16000, 0, (0, 0), (2_000, 6_000), (0, 0)),
 }
 
@@ -173,12 +180,8 @@ def note_type(ch: Chapter) -> str:
 
 
 def note_tracks(ch: Chapter) -> list[str]:
-    tracks = ["cloud-ai"]
-    if any(f"Volume_{n}" in ch.volume_dir for n in ("10", "11", "12")):
-        tracks.append("ai-eng")
-    if any(f"Volume_{n}" in ch.volume_dir for n in ("01", "13", "14")):
-        tracks.append("distinguished")
-    return tracks
+    # Every curriculum note serves the same tracks; keep in sync with vault_schema.TRACKS[CURRICULUM].
+    return list(TRACKS)
 
 
 def render_note(ch: Chapter, status: str, body: str, sources: list[str]) -> str:
@@ -294,11 +297,12 @@ def tools_for(cfg: PhaseConfig) -> list[dict]:
     return [{"type": "web_search_20260209", "name": "web_search", "max_uses": cfg.web_searches}]
 
 
-def build_params(phase: str, system: list[dict] | str, messages: list[dict]) -> dict:
+def build_params(phase: str, system: list[dict] | str, messages: list[dict], model: str = "",
+                 max_tokens: int = 0) -> dict:
     cfg = PHASES[phase]
     params = {
-        "model": cfg.model,
-        "max_tokens": cfg.max_tokens,
+        "model": model or cfg.model,
+        "max_tokens": max_tokens or cfg.max_tokens,
         "system": system,
         "messages": messages,
         "output_config": {"effort": cfg.effort},
@@ -312,25 +316,26 @@ def strip_frontmatter(text: str) -> str:
     return FRONTMATTER_RE.sub("", text, count=1).lstrip()
 
 
-def build_requests(phase: str, repo: Path, chapters: list[Chapter], todo: list[Chapter]) -> list[dict]:
+def build_requests(phase: str, repo: Path, chapters: list[Chapter], todo: list[Chapter], model: str = "",
+                   max_tokens: int = 0) -> list[dict]:
     reqs = []
     month = date.today().strftime("%Y-%m")
     if phase == "draft":
         systems = {flag: draft_system(repo, chapters, flag) for flag in (False, True)}
         for ch in todo:
             reqs.append({"custom_id": f"draft-{ch.cid}", "params": build_params(
-                phase, systems[ch.is_appendix], [{"role": "user", "content": draft_user(ch, chapters)}])})
+                phase, systems[ch.is_appendix], [{"role": "user", "content": draft_user(ch, chapters)}], model, max_tokens)})
     elif phase == "verify":
         system = VERIFY_SYSTEM.format(month=month)
         for ch in todo:
             body = strip_frontmatter((repo / ch.path).read_text())
             reqs.append({"custom_id": f"verify-{ch.cid}", "params": build_params(
-                phase, system, [{"role": "user", "content": f"Fact-check this chapter.\n\n{body}"}])})
+                phase, system, [{"role": "user", "content": f"Fact-check this chapter.\n\n{body}"}], model, max_tokens)})
     elif phase == "cards":
         for ch in todo:
             body = strip_frontmatter((repo / ch.path).read_text())
             reqs.append({"custom_id": f"cards-{ch.cid}", "params": build_params(
-                phase, CARDS_SYSTEM, [{"role": "user", "content": body}])})
+                phase, CARDS_SYSTEM, [{"role": "user", "content": body}], model, max_tokens)})
     else:
         raise ValueError(f"unknown phase {phase}")
     return reqs
@@ -340,7 +345,15 @@ def build_requests(phase: str, repo: Path, chapters: list[Chapter], todo: list[C
 
 
 def response_text(message: dict) -> str:
-    return "".join(b.get("text", "") for b in message.get("content", []) if b.get("type") == "text")
+    # Consecutive text blocks (split at citations) join directly; a tool call between them starts a new
+    # paragraph, so a short progress note before the search does not glue onto the "# Title" line.
+    runs: list[list[str]] = [[]]
+    for b in message.get("content", []):
+        if b.get("type") == "text":
+            runs[-1].append(b.get("text", ""))
+        elif runs[-1]:
+            runs.append([])
+    return "\n\n".join("".join(r) for r in runs if r)
 
 
 def cited_urls(message: dict) -> list[str]:
@@ -352,12 +365,30 @@ def cited_urls(message: dict) -> list[str]:
     return urls
 
 
+URL_RE = re.compile(r"\]\((https?://[^)\s]+)\)")
+
+
+def further_reading_urls(body: str) -> list[str]:
+    """URLs linked under the Further Reading heading (web search with dynamic filtering returns no citations).
+
+    Appendices have no Further Reading section; their sources are every URL the body links.
+    """
+    m = re.search(r"^## Further Reading\s*$(.*?)(?=^## |\Z)", body, re.M | re.S)
+    return list(dict.fromkeys(URL_RE.findall(m[1] if m else body)))
+
+
 def extract_note(text: str, title: str) -> tuple[str, str]:
     """Return (body starting at the '# ' title line, trailing marker section)."""
     lines = text.splitlines()
     start = next((i for i, ln in enumerate(lines) if ln.strip() == f"# {title}"), None)
-    if start is None:
-        start = next((i for i, ln in enumerate(lines) if ln.startswith("# ")), None)
+    if start is None:  # first level-1 heading outside code fences
+        fenced = False
+        for i, ln in enumerate(lines):
+            if ln.lstrip().startswith(("```", "~~~")):
+                fenced = not fenced
+            elif not fenced and ln.startswith("# "):
+                start = i
+                break
     if start is None:
         return "", text
     body = "\n".join(lines[start:])
@@ -406,9 +437,26 @@ def usage_cost(model: str, usage: dict) -> float:
     return cost + searches * WEB_SEARCH_USD
 
 
-def estimate(phase: str, reqs: list[dict]) -> tuple[float, float]:
+def succeeded(batch: dict) -> int:
+    """Billed requests of a collected batch; entries recorded before the count existed assume all succeeded."""
+    return batch.get("succeeded", len(batch["custom_ids"]))
+
+
+def measured_batches(phase: str, model: str, state: dict | None) -> list[dict]:
+    return [b for b in (state or {}).get("batches", [])
+            if b["phase"] == phase and b.get("model", PHASES[phase].model) == model and b.get("collected")
+            and b.get("actual_usd") and succeeded(b)]
+
+
+def estimate(phase: str, reqs: list[dict], state: dict | None = None) -> tuple[float, float]:
+    """Cost range for reqs: measured per-request average (+-25%) once a batch of this phase is collected."""
+    model = reqs[0]["params"]["model"] if reqs else PHASES[phase].model
+    measured = measured_batches(phase, model, state)
+    if measured:
+        avg = sum(b["actual_usd"] for b in measured) / sum(succeeded(b) for b in measured)
+        return 0.75 * avg * len(reqs), 1.25 * avg * len(reqs)
     cfg = PHASES[phase]
-    pin, pout = PRICES[cfg.model]
+    pin, pout = PRICES[model]
     lo = hi = 0.0
     for r in reqs:
         prompt = len(json.dumps(r["params"]["system"])) // 4 + len(json.dumps(r["params"]["messages"])) // 4
@@ -501,18 +549,23 @@ def to_dict(obj) -> dict:
 # ---------------------------------------------------------------- commands
 
 
+def matches(ch: Chapter, only: str) -> bool:
+    return any(part.strip() and part.strip() in ch.path for part in only.split(","))
+
+
 def cmd_plan(args, repo, chapters, state) -> int:
     print(f"{len(chapters)} chapters in SUMMARY.md; spent so far ${state['spent_usd']:.2f}")
     total_lo = total_hi = 0.0
     for phase in PHASES:
         todo = select(phase, repo, chapters, state)
         if args.only:
-            todo = [c for c in todo if args.only in c.path]
+            todo = [c for c in todo if matches(c, args.only)]
         reqs = build_requests(phase, repo, chapters, todo) if todo else []
-        lo, hi = estimate(phase, reqs)
+        lo, hi = estimate(phase, reqs, state)
         total_lo, total_hi = total_lo + lo, total_hi + hi
-        print(f"{phase:7s} {len(todo):4d} ready  model={PHASES[phase].model:18s} est ${lo:6.2f} - ${hi:6.2f}")
-    print(f"total   est ${total_lo:.2f} - ${total_hi:.2f} (heuristic; `collect` records the real spend)")
+        basis = "measured" if measured_batches(phase, PHASES[phase].model, state) else "heuristic"
+        print(f"{phase:7s} {len(todo):4d} ready  model={PHASES[phase].model:18s} est ${lo:6.2f} - ${hi:6.2f} ({basis})")
+    print(f"total   est ${total_lo:.2f} - ${total_hi:.2f} (`collect` records the real spend)")
     print("note: verify and cards become ready only after the previous phase is collected.")
     return 0
 
@@ -520,20 +573,25 @@ def cmd_plan(args, repo, chapters, state) -> int:
 def cmd_submit(args, repo, chapters, state) -> int:
     todo = select(args.phase, repo, chapters, state)
     if args.only:
-        todo = [c for c in todo if args.only in c.path]
+        todo = [c for c in todo if matches(c, args.only)]
     if args.limit:
         todo = todo[: args.limit]
     if not todo:
         print(f"nothing ready for phase {args.phase}")
         return 0
-    reqs = build_requests(args.phase, repo, chapters, todo)
-    lo, hi = estimate(args.phase, reqs)
+    reqs = build_requests(args.phase, repo, chapters, todo, args.model, args.max_tokens)
+    lo, hi = estimate(args.phase, reqs, state)
     committed = sum(b.get("estimate_high", 0.0) for b in state["batches"] if not b.get("collected"))
     print(f"{args.phase}: {len(reqs)} requests, est ${lo:.2f} - ${hi:.2f}; spent ${state['spent_usd']:.2f}, in flight up to ${committed:.2f}")
     for ch in todo[:10]:
         print(f"  {ch.cid:8s} {ch.title}")
     if len(todo) > 10:
         print(f"  ... and {len(todo) - 10} more")
+    model = reqs[0]["params"]["model"]
+    if len(reqs) > PILOT_MAX and not measured_batches(args.phase, model, state):
+        print(f"refusing: no collected {args.phase} batch on {model} to measure cost from; "
+              f"pilot with --limit {PILOT_MAX} and collect it first")
+        return 1
     if state["spent_usd"] + committed + hi > args.budget:
         print(f"refusing: spent + in flight + this batch (high) exceeds --budget ${args.budget:.2f}; lower --limit")
         return 1
@@ -542,7 +600,7 @@ def cmd_submit(args, repo, chapters, state) -> int:
         return 0
     batch = client().messages.batches.create(requests=reqs)
     state["batches"].append({
-        "id": batch.id, "phase": args.phase, "created": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "id": batch.id, "phase": args.phase, "model": model, "created": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "custom_ids": {r["custom_id"]: ch.path for r, ch in zip(reqs, todo, strict=True)},
         "estimate_high": round(hi, 2), "collected": False,
     })
@@ -602,10 +660,18 @@ def apply_result(phase: str, ch: Chapter, message: dict, repo: Path, state: dict
     note = ""
 
     if phase == "draft":
-        if note_status(path) not in ("missing", "seed"):
-            report.append(f"- {ch.cid} {ch.title}: skipped, file changed to a non-seed note meanwhile")
-            return cost
-        sources = cited_urls(message)[:30]
+        status = note_status(path)
+        if status not in ("missing", "seed"):
+            if not owned_unchanged(repo, ch, state):
+                report.append(f"- {ch.cid} {ch.title}: skipped, file changed to a non-seed note meanwhile")
+                return cost
+            if status != "draft" or ch.path in state["done"].get("verify", []):
+                report.append(f"- {ch.cid} {ch.title}: skipped, already verified")
+                return cost
+            if f"verify-{ch.cid}" in in_flight(state):
+                report.append(f"- {ch.cid} {ch.title}: skipped, a verify batch for it is in flight")
+                return cost
+        sources = list(dict.fromkeys(cited_urls(message) + further_reading_urls(body)))[:30]
         note = render_note(ch, "draft", body, sources)
         unverified = len(re.findall(r"^- (?!none)", tail.split("-->", 1)[-1], re.M))
         report.append(f"- {ch.cid} {ch.title}: {len(body.splitlines())} lines, {len(sources)} cited sources, "
@@ -626,7 +692,7 @@ def apply_result(phase: str, ch: Chapter, message: dict, repo: Path, state: dict
         unresolved = int(m[1]) if m else -1
         status = "solid" if unresolved == 0 and not gaps else "draft"
         old_sources = re.findall(r'^\s+-\s+"([^"]+)"', FRONTMATTER_RE.match(old)[1], re.M) if FRONTMATTER_RE.match(old) else []
-        sources = list(dict.fromkeys(old_sources + cited_urls(message)))[:40]
+        sources = list(dict.fromkeys(old_sources + cited_urls(message) + further_reading_urls(body)))[:40]
         note = render_note(ch, status, body, sources)
         corrections = len(re.findall(r"^- CORRECTED:", tail, re.M))
         report.append(f"- {ch.cid} {ch.title}: {corrections} corrections, unresolved {unresolved}, status {status}")
@@ -644,7 +710,11 @@ def cmd_collect(args, repo, chapters, state) -> int:
     by_path = {c.path: c for c in chapters}
     known = {c.link for c in chapters} | set(related_notes(repo)) | {f"{CURRICULUM}/SUMMARY", f"{CURRICULUM}/README", f"{CURRICULUM}/STYLE"}
     api = None
-    for b in [b for b in state["batches"] if not b.get("collected")]:
+    redo = {s.strip() for s in args.reprocess.split(",") if s.strip()}
+    for bid in sorted(redo - {b["id"] for b in state["batches"]}):
+        print(f"{bid}: no such batch in state; not reprocessed")
+    for b in [b for b in state["batches"] if not b.get("collected") or b["id"] in redo]:
+        again = b.get("collected", False)
         raw = repo / STATE_DIR / "results" / f"{b['id']}.jsonl"
         if not raw.exists():
             api = api or client()
@@ -658,7 +728,7 @@ def cmd_collect(args, repo, chapters, state) -> int:
                     f.write(json.dumps(to_dict(r)) + "\n")
             part.replace(raw)
         report: list[str] = [f"# {b['phase']} batch {b['id']}", ""]
-        spent = 0.0
+        spent, ok = 0.0, 0
         for line in raw.read_text().splitlines():
             r = json.loads(line)
             ch = by_path.get(b["custom_ids"].get(r["custom_id"], ""))
@@ -671,6 +741,7 @@ def cmd_collect(args, repo, chapters, state) -> int:
                 report.append(f"- {ch.cid} {ch.title}: {res['type']} {err.get('type', '')} {err.get('message', '')}".rstrip())
                 continue
             spent += apply_result(b["phase"], ch, res["message"], repo, state, known, args.apply, report)
+            ok += 1
             if args.apply:
                 save_state(repo, state)
         report.append("")
@@ -679,9 +750,10 @@ def cmd_collect(args, repo, chapters, state) -> int:
         out.parent.mkdir(parents=True, exist_ok=True)
         out.write_text("\n".join(report) + "\n")
         print("\n".join(report))
-        if args.apply:
+        if args.apply and not again:
             b["collected"] = True
             b["actual_usd"] = round(spent, 4)
+            b["succeeded"] = ok
             state["spent_usd"] = round(state["spent_usd"] + spent, 4)
             save_state(repo, state)
     if not args.apply:
@@ -696,11 +768,17 @@ def main(argv: list[str] | None = None) -> int:
     for name in ("plan", "submit", "status", "collect"):
         p = sub.add_parser(name)
         p.add_argument("--apply", action="store_true")
-        p.add_argument("--only", default="", help="substring filter on chapter paths, e.g. Volume_10")
+        p.add_argument("--only", default="", help="comma-separated substrings of chapter paths, e.g. Volume_10,Volume_11")
         if name == "submit":
             p.add_argument("--phase", choices=list(PHASES), required=True)
             p.add_argument("--limit", type=int, default=0)
+            p.add_argument("--model", choices=list(PRICES), default="", help="override the phase's default model")
+            p.add_argument("--max-tokens", type=int, default=0,
+                           help="override the phase's max_tokens, e.g. to retry a chapter that stopped at max_tokens")
             p.add_argument("--budget", type=float, default=100.0, help="USD cap for spent + in flight + this batch")
+        if name == "collect":
+            p.add_argument("--reprocess", default="", help="comma-separated collected batch ids to re-apply from stored results "
+                           "(rewrites only chapters the pipeline wrote, nobody edited, and verify has not checked; spend is not counted again)")
     args = ap.parse_args(argv)
     repo = args.repo.resolve()
     summary = repo / CURRICULUM / "SUMMARY.md"

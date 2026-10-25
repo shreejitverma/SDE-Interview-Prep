@@ -82,7 +82,8 @@ class ParseSummaryTest(unittest.TestCase):
         self.assertEqual(chs[1].volume, "Volume 00 - Foundations")
         self.assertTrue(chs[3].is_appendix)
         self.assertEqual(cb.note_type(chs[2]), "paper")
-        self.assertIn("distinguished", cb.note_tracks(chs[2]))
+        for ch in chs:
+            self.assertEqual(cb.note_tracks(ch), ["cloud-ai", "ai-eng", "sde", "distinguished"])
 
     def test_duplicate_ids_rejected(self):
         dup = SUMMARY + "3. [Again](./Volume_00_Foundations/Chapter_01_Again.md) - x\n"
@@ -103,6 +104,30 @@ class ExtractAndCleanTest(unittest.TestCase):
         self.assertTrue(body.startswith("# Fabrics"))
         self.assertNotIn("UNVERIFIED", body)
         self.assertIn("claim one", tail)
+
+    def test_progress_note_block_does_not_hide_the_title(self):
+        # Regression: the batch returned "Let me read the pages." and the chapter as separate text
+        # blocks; joined without a separator, the title line was lost and a code comment became the start.
+        msg = {"content": [{"type": "text", "text": "Let me read the pages."},
+                           {"type": "server_tool_use"},
+                           {"type": "text", "text": FULL_BODY + "\n\n```hcl\n# main.tf\n```\n"}]}
+        body, _ = cb.extract_note(cb.response_text(msg), "Fabrics")
+        self.assertTrue(body.startswith("# Fabrics\n"))
+        self.assertEqual(cb.missing_sections(body), [])
+
+    def test_consecutive_text_blocks_split_at_citations_join_directly(self):
+        # The API splits one table row at citation boundaries; only a tool call between blocks starts a paragraph.
+        msg = {"content": [{"type": "text", "text": "| Nitro | "},
+                           {"type": "text", "text": "5 us", "citations": [{"url": "https://a"}]},
+                           {"type": "text", "text": " |"},
+                           {"type": "web_search_tool_result"},
+                           {"type": "text", "text": "Next."}]}
+        self.assertEqual(cb.response_text(msg), "| Nitro | 5 us |\n\nNext.")
+
+    def test_fallback_title_ignores_comments_inside_code_fences(self):
+        text = "intro\n```sh\n# not a title\n```\n# Real Title\n\nbody\n"
+        body, _ = cb.extract_note(text, "Some Other Title")
+        self.assertTrue(body.startswith("# Real Title"))
 
     def test_no_title_line_returns_empty_body(self):
         body, _ = cb.extract_note("no heading here", "Fabrics")
@@ -145,6 +170,44 @@ class CostTest(unittest.TestCase):
         self.assertLessEqual(lo, hi)
 
 
+class PilotLearningsTest(unittest.TestCase):
+    def test_sources_fall_back_to_further_reading_links(self):
+        body = ("# T\n\n## Internals\n\n[not this](https://x.example)\n\n## Further Reading\n\n"
+                "- [Paper](https://a.example/p.pdf) - why.\n- [Docs](https://b.example/d) - why.\n- [Paper](https://a.example/p.pdf)\n")
+        self.assertEqual(cb.further_reading_urls(body), ["https://a.example/p.pdf", "https://b.example/d"])
+        self.assertEqual(cb.further_reading_urls("# T\n\n## TL;DR\n"), [])
+        appendix = "# Appendix\n\n| Term | Ref |\n| --- | --- |\n| ENI | [AWS](https://c.example/eni) |\n\nSee [GCP](https://d.example/vpc).\n"
+        self.assertEqual(cb.further_reading_urls(appendix), ["https://c.example/eni", "https://d.example/vpc"])
+
+    def test_estimate_uses_measured_cost_for_the_same_model_only(self):
+        repo = Repo(self)
+        state = {"batches": [{"phase": "draft", "model": "claude-opus-5-5", "collected": True, "actual_usd": 2.4,
+                              "custom_ids": {"a": "", "b": "", "c": ""}}]}
+        opus = cb.build_requests("draft", repo.root, repo.chapters, repo.chapters[:2])
+        lo, hi = cb.estimate("draft", opus, state)
+        self.assertAlmostEqual(lo, 0.75 * 0.8 * 2)
+        self.assertAlmostEqual(hi, 1.25 * 0.8 * 2)
+        sonnet = cb.build_requests("draft", repo.root, repo.chapters, repo.chapters[:2], "claude-sonnet-5-5")
+        self.assertEqual(sonnet[0]["params"]["model"], "claude-sonnet-5-5")
+        self.assertNotAlmostEqual(cb.estimate("draft", sonnet, state)[1], hi)
+
+    def test_estimate_averages_over_billed_requests_only(self):
+        # A pilot of 3 where one request expired: $1.40 over the 2 billed requests is $0.70 each, not $0.47.
+        repo = Repo(self)
+        batch = {"phase": "draft", "model": "claude-opus-5-5", "collected": True, "actual_usd": 1.4,
+                 "succeeded": 2, "custom_ids": {"a": "", "b": "", "c": ""}}
+        reqs = cb.build_requests("draft", repo.root, repo.chapters, repo.chapters[:2])
+        lo, hi = cb.estimate("draft", reqs, {"batches": [batch]})
+        self.assertAlmostEqual(lo, 0.75 * 0.7 * 2)
+        self.assertAlmostEqual(hi, 1.25 * 0.7 * 2)
+        none_billed = {**batch, "succeeded": 0}
+        self.assertEqual(cb.measured_batches("draft", "claude-opus-5-5", {"batches": [none_billed]}), [])
+
+    def test_only_filter_accepts_several_volumes(self):
+        chs = cb.parse_summary(SUMMARY)
+        self.assertEqual([c.cid for c in chs if cb.matches(c, "Volume_13, Appendices")], ["v13c01", "appA"])
+
+
 class RequestTest(unittest.TestCase):
     def test_draft_requests_share_a_cached_system_prefix(self):
         repo = Repo(self)
@@ -160,6 +223,14 @@ class RequestTest(unittest.TestCase):
         for r in reqs:
             self.assertRegex(r["custom_id"], r"^[a-zA-Z0-9_-]{1,64}$")
             self.assertNotIn("thinking", r["params"])
+
+    def test_max_tokens_override_lifts_the_output_cap_for_a_retry(self):
+        # Sonnet 5.5 allows 128K output tokens, double the draft phase's 64K default.
+        repo = Repo(self)
+        default = cb.build_requests("draft", repo.root, repo.chapters, repo.chapters[:2], "claude-sonnet-5-5")
+        retry = cb.build_requests("draft", repo.root, repo.chapters, repo.chapters[:2], "claude-sonnet-5-5", 128000)
+        self.assertEqual({r["params"]["max_tokens"] for r in default}, {64000})
+        self.assertEqual({r["params"]["max_tokens"] for r in retry}, {128000})
 
     def test_cards_requests_have_no_tools(self):
         repo = Repo(self)
@@ -194,7 +265,7 @@ class SelectAndApplyTest(unittest.TestCase):
         cost = cb.apply_result("draft", self.ch, message(text, urls=["https://a", "https://a", "https://b"]),
                                r.root, self.state, allowed, True, report)
         note = (r.root / self.ch.path).read_text()
-        self.assertTrue(note.startswith("---\ntype: concept\ntrack: [cloud-ai]\nlevel:\nstatus: draft\n"))
+        self.assertTrue(note.startswith("---\ntype: concept\ntrack: [cloud-ai, ai-eng, sde, distinguished]\nlevel:\nstatus: draft\n"))
         self.assertIn('  - "https://a"\n  - "https://b"\n---', note)
         self.assertNotIn("Researching", note)
         self.assertEqual(cb.note_status(r.root / self.ch.path), "draft")
@@ -208,6 +279,51 @@ class SelectAndApplyTest(unittest.TestCase):
         cb.apply_result("draft", self.ch, message(FULL_BODY), r.root, self.state, set(), True, report)
         self.assertIn("hand written", (r.root / self.ch.path).read_text())
         self.assertIn("skipped", report[0])
+
+    def test_draft_rewrites_its_own_unedited_note_but_not_an_edited_one(self):
+        r, report = self.repo, []
+        cb.apply_result("draft", self.ch, message(FULL_BODY), r.root, self.state, set(), True, report)
+        fixed = FULL_BODY.replace("Line about TL;DR.", "Better TL;DR.")
+        cb.apply_result("draft", self.ch, message(fixed), r.root, self.state, set(), True, report)
+        self.assertIn("Better TL;DR.", (r.root / self.ch.path).read_text())
+        p = r.root / self.ch.path
+        p.write_text(p.read_text() + "\nhuman edit\n")
+        cb.apply_result("draft", self.ch, message(FULL_BODY), r.root, self.state, set(), True, report)
+        self.assertIn("human edit", p.read_text())
+
+    def test_draft_never_reverts_a_verified_note(self):
+        r, report = self.repo, []
+        cb.apply_result("draft", self.ch, message(FULL_BODY), r.root, self.state, set(), True, report)
+        verified = FULL_BODY.replace("Line about Internals.", "Corrected internals.") + "\n<!-- VERIFICATION REPORT -->\nUNRESOLVED: 0\n"
+        cb.apply_result("verify", self.ch, message(verified), r.root, self.state, set(), True, report)
+        before = (r.root / self.ch.path).read_text()
+        self.assertIn("status: solid", before)
+        cb.apply_result("draft", self.ch, message(FULL_BODY), r.root, self.state, set(), True, report)
+        self.assertEqual((r.root / self.ch.path).read_text(), before)
+        self.assertIn("skipped, already verified", report[-1])
+
+    def test_draft_never_rewrites_a_draft_the_verify_phase_kept(self):
+        r, report = self.repo, []
+        cb.apply_result("draft", self.ch, message(FULL_BODY), r.root, self.state, set(), True, report)
+        cb.apply_result("verify", self.ch, message("# Fabrics\n\n## TL;DR\nshort\nUNRESOLVED: 0\n"),
+                        r.root, self.state, set(), True, report)
+        before = (r.root / self.ch.path).read_text()
+        cb.apply_result("draft", self.ch, message(FULL_BODY.replace("Line about TL;DR.", "Other.")),
+                        r.root, self.state, set(), True, report)
+        self.assertEqual((r.root / self.ch.path).read_text(), before)
+        self.assertIn("skipped, already verified", report[-1])
+
+    def test_draft_never_rewrites_a_chapter_with_a_verify_in_flight(self):
+        # The in-flight verify request carries the old body; rewriting now would let it overwrite the repair.
+        r, report = self.repo, []
+        cb.apply_result("draft", self.ch, message(FULL_BODY), r.root, self.state, set(), True, report)
+        before = (r.root / self.ch.path).read_text()
+        self.state["batches"].append({"id": "v1", "phase": "verify", "collected": False,
+                                      "custom_ids": {f"verify-{self.ch.cid}": self.ch.path}})
+        cb.apply_result("draft", self.ch, message(FULL_BODY.replace("Line about TL;DR.", "Repaired.")),
+                        r.root, self.state, set(), True, report)
+        self.assertEqual((r.root / self.ch.path).read_text(), before)
+        self.assertIn("skipped, a verify batch for it is in flight", report[-1])
 
     def test_truncated_result_is_not_written(self):
         r, report = self.repo, []
@@ -293,15 +409,42 @@ class CollectTest(unittest.TestCase):
         self.results = {bid: [{"custom_id": f"draft-{ch.cid}", "result": {"type": "succeeded", "message": message(
             FULL_BODY.replace("# Fabrics", f"# {ch.title}"))}}] for bid, ch in (("b1", self.a), ("b2", self.b))}
 
-    def collect(self, batches: FakeBatches) -> None:
+    def collect(self, batches: FakeBatches, reprocess: str = "") -> str:
         api = SimpleNamespace(messages=SimpleNamespace(batches=batches))
         orig = cb.client
         cb.client = lambda: api
+        out = io.StringIO()
         try:
-            with contextlib.redirect_stdout(io.StringIO()):
-                cb.cmd_collect(Namespace(apply=True), self.repo.root, self.repo.chapters, self.state)
+            with contextlib.redirect_stdout(out):
+                cb.cmd_collect(Namespace(apply=True, reprocess=reprocess), self.repo.root, self.repo.chapters, self.state)
         finally:
             cb.client = orig
+        return out.getvalue()
+
+    def test_failed_requests_do_not_count_toward_the_measured_average(self):
+        self.state["batches"][1]["custom_ids"]["draft-v13c01"] = self.repo.chapters[2].path
+        self.results["b2"].append({"custom_id": "draft-v13c01", "result": {"type": "expired"}})
+        self.collect(FakeBatches(self.results))
+        saved = cb.load_state(self.repo.root)
+        self.assertEqual([b["succeeded"] for b in saved["batches"]], [1, 1])
+        reqs = cb.build_requests("draft", self.repo.root, self.repo.chapters, self.repo.chapters[:1])
+        # Every billed request cost $3.02 (see the interrupted-download test), so one request averages $3.02.
+        self.assertAlmostEqual(cb.estimate("draft", reqs, saved)[1], 1.25 * 3.02)
+
+    def test_reprocess_strips_ids_reports_unknown_ones_and_keeps_verified_notes(self):
+        self.collect(FakeBatches(self.results))
+        verified = FULL_BODY.replace("# Fabrics", f"# {self.a.title}") + "\n<!-- VERIFICATION REPORT -->\nUNRESOLVED: 0\n"
+        cb.apply_result("verify", self.a, message(verified), self.repo.root, self.state, set(), True, [])
+        solid = (self.repo.root / self.a.path).read_text()
+        self.assertIn("status: solid", solid)
+        spent = self.state["spent_usd"]
+        out = self.collect(FakeBatches({}), reprocess=" b1, b2 ,nope")
+        self.assertIn("nope: no such batch in state; not reprocessed", out)
+        self.assertIn(f"{self.a.cid} {self.a.title}: skipped, already verified", out)
+        self.assertIn("# draft batch b2", out)
+        self.assertEqual((self.repo.root / self.a.path).read_text(), solid)
+        self.assertEqual(cb.note_status(self.repo.root / self.b.path), "draft")
+        self.assertEqual(self.state["spent_usd"], spent)
 
     def test_interrupted_download_keeps_earlier_batches_and_retries_cleanly(self):
         with self.assertRaises(ConnectionError):
@@ -324,11 +467,36 @@ class CollectTest(unittest.TestCase):
 class CliTest(unittest.TestCase):
     def test_plan_and_submit_dry_run_write_nothing(self):
         repo = Repo(self)
-        for cmd in (["plan"], ["submit", "--phase", "draft"]):
+        for cmd in (["plan"], ["submit", "--phase", "draft", "--limit", "3"]):
             out = subprocess.run([sys.executable, str(TOOLS / "cloud_batch.py"), "--repo", str(repo.root), *cmd],
                                  capture_output=True, text=True, check=True).stdout
             self.assertTrue(out)
         self.assertEqual(sorted(p.name for p in (repo.root / cb.CURRICULUM).iterdir()), ["STYLE.md", "SUMMARY.md"])
+
+    def test_plan_labels_each_estimate_measured_or_heuristic(self):
+        repo = Repo(self)
+        state = cb.load_state(repo.root)
+        state["batches"] = [{"phase": "draft", "model": cb.PHASES["draft"].model, "collected": True,
+                             "actual_usd": 2.4, "custom_ids": {"a": "", "b": "", "c": ""}}]
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            cb.cmd_plan(Namespace(only=None), repo.root, repo.chapters, state)
+        lines = {line.split()[0]: line for line in out.getvalue().splitlines() if line.strip()}
+        self.assertTrue(lines["draft"].endswith("(measured)"))
+        self.assertTrue(lines["verify"].endswith("(heuristic)"))
+        self.assertNotIn("heuristic", lines["total"])
+        self.assertIn("`collect` records the real spend", lines["total"])
+
+    def test_submit_refuses_an_unmeasured_phase_beyond_a_pilot(self):
+        # The fixture has 4 draft-ready chapters and no collected batch, so only 3 may go out as a pilot.
+        repo = Repo(self)
+        run = [sys.executable, str(TOOLS / "cloud_batch.py"), "--repo", str(repo.root), "submit", "--phase", "draft"]
+        full = subprocess.run(run, capture_output=True, text=True, check=False)
+        self.assertEqual(full.returncode, 1)
+        self.assertIn("pilot with --limit 3", full.stdout)
+        pilot = subprocess.run([*run, "--limit", "3"], capture_output=True, text=True, check=False)
+        self.assertEqual(pilot.returncode, 0)
+        self.assertIn("dry run", pilot.stdout)
 
     def test_submit_refuses_over_budget(self):
         repo = Repo(self)
