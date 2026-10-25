@@ -186,7 +186,7 @@ EOF_DIRS
       printf '   %-12s %-38s %s\n' "$label" "$version" "$real${cmd#"$first"}"
       continue
     fi
-    if LAB_SHELL=$cmd LAB_EXPECT_FAMILY=$family bats --formatter tap "${files[@]}" >"$log" 2>&1; then
+    if LAB_SHELL=$cmd LAB_EXPECT_FAMILY=$family bats --formatter tap --print-output-on-failure "${files[@]}" >"$log" 2>&1; then
       rc=0
     else
       rc=$?

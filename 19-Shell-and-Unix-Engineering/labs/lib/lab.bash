@@ -25,10 +25,11 @@ run_lab_c() {
 }
 
 # lab_shell_family: print the family of the shell under test, detected from the shell itself:
-# bash, zsh, zsh-sh (zsh emulating sh), yash, busybox, posh, mksh, ksh93, or the command name
-# (for example dash) when the shell sets no identifying variable.
+# bash, zsh, zsh-sh (zsh emulating sh), yash, busybox, posh, mksh, ksh93, or, when the shell sets
+# no identifying variable, the name of the binary the command resolves to (so "sh" that is a
+# symlink to dash reports dash, and Debian's "busybox ash" reports busybox).
 lab_shell_family() {
-  local family
+  local family path real
   lab_shell_words
   # shellcheck disable=SC2016 # these expansions belong to the shell under test
   family=$("${LAB_SHELL_WORDS[@]}" -c '
@@ -47,7 +48,9 @@ lab_shell_family() {
       esac
     fi' 2>/dev/null) || family=unknown
   if [ "$family" = unknown ]; then
-    family=${LAB_SHELL_WORDS[0]##*/}
+    path=$(command -v "${LAB_SHELL_WORDS[0]}") || path=${LAB_SHELL_WORDS[0]}
+    real=$(readlink -f "$path" 2>/dev/null) || real=$path
+    family=${real##*/}
   fi
   printf '%s\n' "$family"
 }
