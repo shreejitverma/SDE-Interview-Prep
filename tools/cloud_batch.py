@@ -343,8 +343,15 @@ def build_requests(phase: str, repo: Path, chapters: list[Chapter], todo: list[C
 
 
 def response_text(message: dict) -> str:
-    # Separate blocks: a short progress note between tool calls must not glue onto the "# Title" line.
-    return "\n\n".join(b.get("text", "") for b in message.get("content", []) if b.get("type") == "text")
+    # Consecutive text blocks (split at citations) join directly; a tool call between them starts a new
+    # paragraph, so a short progress note before the search does not glue onto the "# Title" line.
+    runs: list[list[str]] = [[]]
+    for b in message.get("content", []):
+        if b.get("type") == "text":
+            runs[-1].append(b.get("text", ""))
+        elif runs[-1]:
+            runs.append([])
+    return "\n\n".join("".join(r) for r in runs if r)
 
 
 def cited_urls(message: dict) -> list[str]:
@@ -428,9 +435,15 @@ def usage_cost(model: str, usage: dict) -> float:
     return cost + searches * WEB_SEARCH_USD
 
 
+def succeeded(batch: dict) -> int:
+    """Billed requests of a collected batch; entries recorded before the count existed assume all succeeded."""
+    return batch.get("succeeded", len(batch["custom_ids"]))
+
+
 def measured_batches(phase: str, model: str, state: dict | None) -> list[dict]:
     return [b for b in (state or {}).get("batches", [])
-            if b["phase"] == phase and b.get("model", PHASES[phase].model) == model and b.get("collected") and b.get("actual_usd")]
+            if b["phase"] == phase and b.get("model", PHASES[phase].model) == model and b.get("collected")
+            and b.get("actual_usd") and succeeded(b)]
 
 
 def estimate(phase: str, reqs: list[dict], state: dict | None = None) -> tuple[float, float]:
@@ -438,7 +451,7 @@ def estimate(phase: str, reqs: list[dict], state: dict | None = None) -> tuple[f
     model = reqs[0]["params"]["model"] if reqs else PHASES[phase].model
     measured = measured_batches(phase, model, state)
     if measured:
-        avg = sum(b["actual_usd"] for b in measured) / sum(len(b["custom_ids"]) for b in measured)
+        avg = sum(b["actual_usd"] for b in measured) / sum(succeeded(b) for b in measured)
         return 0.75 * avg * len(reqs), 1.25 * avg * len(reqs)
     cfg = PHASES[phase]
     pin, pout = PRICES[model]
@@ -644,9 +657,14 @@ def apply_result(phase: str, ch: Chapter, message: dict, repo: Path, state: dict
     note = ""
 
     if phase == "draft":
-        if note_status(path) not in ("missing", "seed") and not owned_unchanged(repo, ch, state):
-            report.append(f"- {ch.cid} {ch.title}: skipped, file changed to a non-seed note meanwhile")
-            return cost
+        status = note_status(path)
+        if status not in ("missing", "seed"):
+            if not owned_unchanged(repo, ch, state):
+                report.append(f"- {ch.cid} {ch.title}: skipped, file changed to a non-seed note meanwhile")
+                return cost
+            if status != "draft" or ch.path in state["done"].get("verify", []):
+                report.append(f"- {ch.cid} {ch.title}: skipped, already verified")
+                return cost
         sources = list(dict.fromkeys(cited_urls(message) + further_reading_urls(body)))[:30]
         note = render_note(ch, "draft", body, sources)
         unverified = len(re.findall(r"^- (?!none)", tail.split("-->", 1)[-1], re.M))
@@ -686,7 +704,9 @@ def cmd_collect(args, repo, chapters, state) -> int:
     by_path = {c.path: c for c in chapters}
     known = {c.link for c in chapters} | set(related_notes(repo)) | {f"{CURRICULUM}/SUMMARY", f"{CURRICULUM}/README", f"{CURRICULUM}/STYLE"}
     api = None
-    redo = set(args.reprocess.split(",")) if args.reprocess else set()
+    redo = {s.strip() for s in args.reprocess.split(",") if s.strip()}
+    for bid in sorted(redo - {b["id"] for b in state["batches"]}):
+        print(f"{bid}: no such batch in state; not reprocessed")
     for b in [b for b in state["batches"] if not b.get("collected") or b["id"] in redo]:
         again = b.get("collected", False)
         raw = repo / STATE_DIR / "results" / f"{b['id']}.jsonl"
@@ -702,7 +722,7 @@ def cmd_collect(args, repo, chapters, state) -> int:
                     f.write(json.dumps(to_dict(r)) + "\n")
             part.replace(raw)
         report: list[str] = [f"# {b['phase']} batch {b['id']}", ""]
-        spent = 0.0
+        spent, ok = 0.0, 0
         for line in raw.read_text().splitlines():
             r = json.loads(line)
             ch = by_path.get(b["custom_ids"].get(r["custom_id"], ""))
@@ -715,6 +735,7 @@ def cmd_collect(args, repo, chapters, state) -> int:
                 report.append(f"- {ch.cid} {ch.title}: {res['type']} {err.get('type', '')} {err.get('message', '')}".rstrip())
                 continue
             spent += apply_result(b["phase"], ch, res["message"], repo, state, known, args.apply, report)
+            ok += 1
             if args.apply:
                 save_state(repo, state)
         report.append("")
@@ -726,6 +747,7 @@ def cmd_collect(args, repo, chapters, state) -> int:
         if args.apply and not again:
             b["collected"] = True
             b["actual_usd"] = round(spent, 4)
+            b["succeeded"] = ok
             state["spent_usd"] = round(state["spent_usd"] + spent, 4)
             save_state(repo, state)
     if not args.apply:
@@ -750,7 +772,7 @@ def main(argv: list[str] | None = None) -> int:
             p.add_argument("--budget", type=float, default=100.0, help="USD cap for spent + in flight + this batch")
         if name == "collect":
             p.add_argument("--reprocess", default="", help="comma-separated collected batch ids to re-apply from stored results "
-                           "(rewrites only chapters the pipeline wrote and nobody edited; spend is not counted again)")
+                           "(rewrites only chapters the pipeline wrote, nobody edited, and verify has not checked; spend is not counted again)")
     args = ap.parse_args(argv)
     repo = args.repo.resolve()
     summary = repo / CURRICULUM / "SUMMARY.md"

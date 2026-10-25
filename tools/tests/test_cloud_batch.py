@@ -115,6 +115,15 @@ class ExtractAndCleanTest(unittest.TestCase):
         self.assertTrue(body.startswith("# Fabrics\n"))
         self.assertEqual(cb.missing_sections(body), [])
 
+    def test_consecutive_text_blocks_split_at_citations_join_directly(self):
+        # The API splits one table row at citation boundaries; only a tool call between blocks starts a paragraph.
+        msg = {"content": [{"type": "text", "text": "| Nitro | "},
+                           {"type": "text", "text": "5 us", "citations": [{"url": "https://a"}]},
+                           {"type": "text", "text": " |"},
+                           {"type": "web_search_tool_result"},
+                           {"type": "text", "text": "Next."}]}
+        self.assertEqual(cb.response_text(msg), "| Nitro | 5 us |\n\nNext.")
+
     def test_fallback_title_ignores_comments_inside_code_fences(self):
         text = "intro\n```sh\n# not a title\n```\n# Real Title\n\nbody\n"
         body, _ = cb.extract_note(text, "Some Other Title")
@@ -181,6 +190,18 @@ class PilotLearningsTest(unittest.TestCase):
         sonnet = cb.build_requests("draft", repo.root, repo.chapters, repo.chapters[:2], "claude-sonnet-5-5")
         self.assertEqual(sonnet[0]["params"]["model"], "claude-sonnet-5-5")
         self.assertNotAlmostEqual(cb.estimate("draft", sonnet, state)[1], hi)
+
+    def test_estimate_averages_over_billed_requests_only(self):
+        # A pilot of 3 where one request expired: $1.40 over the 2 billed requests is $0.70 each, not $0.47.
+        repo = Repo(self)
+        batch = {"phase": "draft", "model": "claude-opus-5-5", "collected": True, "actual_usd": 1.4,
+                 "succeeded": 2, "custom_ids": {"a": "", "b": "", "c": ""}}
+        reqs = cb.build_requests("draft", repo.root, repo.chapters, repo.chapters[:2])
+        lo, hi = cb.estimate("draft", reqs, {"batches": [batch]})
+        self.assertAlmostEqual(lo, 0.75 * 0.7 * 2)
+        self.assertAlmostEqual(hi, 1.25 * 0.7 * 2)
+        none_billed = {**batch, "succeeded": 0}
+        self.assertEqual(cb.measured_batches("draft", "claude-opus-5-5", {"batches": [none_billed]}), [])
 
     def test_only_filter_accepts_several_volumes(self):
         chs = cb.parse_summary(SUMMARY)
@@ -270,6 +291,28 @@ class SelectAndApplyTest(unittest.TestCase):
         cb.apply_result("draft", self.ch, message(FULL_BODY), r.root, self.state, set(), True, report)
         self.assertIn("human edit", p.read_text())
 
+    def test_draft_never_reverts_a_verified_note(self):
+        r, report = self.repo, []
+        cb.apply_result("draft", self.ch, message(FULL_BODY), r.root, self.state, set(), True, report)
+        verified = FULL_BODY.replace("Line about Internals.", "Corrected internals.") + "\n<!-- VERIFICATION REPORT -->\nUNRESOLVED: 0\n"
+        cb.apply_result("verify", self.ch, message(verified), r.root, self.state, set(), True, report)
+        before = (r.root / self.ch.path).read_text()
+        self.assertIn("status: solid", before)
+        cb.apply_result("draft", self.ch, message(FULL_BODY), r.root, self.state, set(), True, report)
+        self.assertEqual((r.root / self.ch.path).read_text(), before)
+        self.assertIn("skipped, already verified", report[-1])
+
+    def test_draft_never_rewrites_a_draft_the_verify_phase_kept(self):
+        r, report = self.repo, []
+        cb.apply_result("draft", self.ch, message(FULL_BODY), r.root, self.state, set(), True, report)
+        cb.apply_result("verify", self.ch, message("# Fabrics\n\n## TL;DR\nshort\nUNRESOLVED: 0\n"),
+                        r.root, self.state, set(), True, report)
+        before = (r.root / self.ch.path).read_text()
+        cb.apply_result("draft", self.ch, message(FULL_BODY.replace("Line about TL;DR.", "Other.")),
+                        r.root, self.state, set(), True, report)
+        self.assertEqual((r.root / self.ch.path).read_text(), before)
+        self.assertIn("skipped, already verified", report[-1])
+
     def test_truncated_result_is_not_written(self):
         r, report = self.repo, []
         cb.apply_result("draft", self.ch, message(FULL_BODY, stop="max_tokens"), r.root, self.state, set(), True, report)
@@ -354,15 +397,42 @@ class CollectTest(unittest.TestCase):
         self.results = {bid: [{"custom_id": f"draft-{ch.cid}", "result": {"type": "succeeded", "message": message(
             FULL_BODY.replace("# Fabrics", f"# {ch.title}"))}}] for bid, ch in (("b1", self.a), ("b2", self.b))}
 
-    def collect(self, batches: FakeBatches) -> None:
+    def collect(self, batches: FakeBatches, reprocess: str = "") -> str:
         api = SimpleNamespace(messages=SimpleNamespace(batches=batches))
         orig = cb.client
         cb.client = lambda: api
+        out = io.StringIO()
         try:
-            with contextlib.redirect_stdout(io.StringIO()):
-                cb.cmd_collect(Namespace(apply=True, reprocess=""), self.repo.root, self.repo.chapters, self.state)
+            with contextlib.redirect_stdout(out):
+                cb.cmd_collect(Namespace(apply=True, reprocess=reprocess), self.repo.root, self.repo.chapters, self.state)
         finally:
             cb.client = orig
+        return out.getvalue()
+
+    def test_failed_requests_do_not_count_toward_the_measured_average(self):
+        self.state["batches"][1]["custom_ids"]["draft-v13c01"] = self.repo.chapters[2].path
+        self.results["b2"].append({"custom_id": "draft-v13c01", "result": {"type": "expired"}})
+        self.collect(FakeBatches(self.results))
+        saved = cb.load_state(self.repo.root)
+        self.assertEqual([b["succeeded"] for b in saved["batches"]], [1, 1])
+        reqs = cb.build_requests("draft", self.repo.root, self.repo.chapters, self.repo.chapters[:1])
+        # Every billed request cost $3.02 (see the interrupted-download test), so one request averages $3.02.
+        self.assertAlmostEqual(cb.estimate("draft", reqs, saved)[1], 1.25 * 3.02)
+
+    def test_reprocess_strips_ids_reports_unknown_ones_and_keeps_verified_notes(self):
+        self.collect(FakeBatches(self.results))
+        verified = FULL_BODY.replace("# Fabrics", f"# {self.a.title}") + "\n<!-- VERIFICATION REPORT -->\nUNRESOLVED: 0\n"
+        cb.apply_result("verify", self.a, message(verified), self.repo.root, self.state, set(), True, [])
+        solid = (self.repo.root / self.a.path).read_text()
+        self.assertIn("status: solid", solid)
+        spent = self.state["spent_usd"]
+        out = self.collect(FakeBatches({}), reprocess=" b1, b2 ,nope")
+        self.assertIn("nope: no such batch in state; not reprocessed", out)
+        self.assertIn(f"{self.a.cid} {self.a.title}: skipped, already verified", out)
+        self.assertIn("# draft batch b2", out)
+        self.assertEqual((self.repo.root / self.a.path).read_text(), solid)
+        self.assertEqual(cb.note_status(self.repo.root / self.b.path), "draft")
+        self.assertEqual(self.state["spent_usd"], spent)
 
     def test_interrupted_download_keeps_earlier_batches_and_retries_cleanly(self):
         with self.assertRaises(ConnectionError):
