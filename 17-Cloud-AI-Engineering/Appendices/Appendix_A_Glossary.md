@@ -4,7 +4,27 @@ track: [cloud-ai, ai-eng, sde, distinguished]
 level:
 status: draft
 last_reviewed:
-sources: []
+sources: 
+  - "https://docs.cloud.google.com/tpu/docs/tpu7x"
+  - "https://docs.cloud.google.com/tpu/docs/v6e"
+  - "https://docs.cloud.google.com/tpu/docs/v5p"
+  - "https://docs.cloud.google.com/tpu/docs/release-notes"
+  - "https://blog.google/innovation-and-ai/infrastructure-and-cloud/google-cloud/eighth-generation-tpu-agentic-era/"
+  - "https://www.datacenterdynamics.com/en/news/google-unveils-eighth-generation-tpus-two-dedicated-training-and-inference-chips/"
+  - "https://www.usenix.org/conference/nsdi20/presentation/agache"
+  - "https://research.google/pubs/spanner-googles-globally-distributed-database-2/"
+  - "https://www.amazon.science/publications/amazon-aurora-design-considerations-for-high-throughput-cloud-native-relational-databases"
+  - "https://www.usenix.org/conference/nsdi20/presentation/brooker"
+  - "https://research.google/pubs/maglev-a-fast-and-reliable-software-network-load-balancer/"
+  - "https://research.google/pubs/andromeda-performance-isolation-and-velocity-at-scale-in-cloud-network-virtualization/"
+  - "https://research.google/pubs/the-tail-at-scale/"
+  - "https://sigops.org/s/conferences/hotos/2021/papers/hotos21-s11-bronson.pdf"
+  - "https://www.microsoft.com/en-us/research/publication/gray-failure-achilles-heel-cloud-scale-systems/"
+  - "https://arxiv.org/abs/1910.02054"
+  - "https://arxiv.org/abs/2304.01433"
+  - "https://docs.cloud.google.com/tpu/docs"
+  - "https://aws.amazon.com/builders-library/"
+  - "https://arxiv.org/abs/2309.06180"
 ---
 
 # Appendix A: Glossary of Cloud and AI Infrastructure Terms

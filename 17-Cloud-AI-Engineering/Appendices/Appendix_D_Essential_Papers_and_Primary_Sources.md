@@ -4,7 +4,37 @@ track: [cloud-ai, ai-eng, sde, distinguished]
 level:
 status: draft
 last_reviewed:
-sources: []
+sources: 
+  - "https://www.allthingsdistributed.com/files/amazon-dynamo-sosp2007.pdf"
+  - "https://www.usenix.org/conference/atc22/presentation/elhemali"
+  - "https://dl.acm.org/doi/10.1145/3035918.3056101"
+  - "https://dl.acm.org/doi/10.1145/3183713.3196937"
+  - "https://www.usenix.org/conference/nsdi20/presentation/brooker"
+  - "https://dl.acm.org/doi/10.1145/3477132.3483540"
+  - "https://www.usenix.org/conference/nsdi20/presentation/agache"
+  - "https://doi.org/10.1109/MM.2020.3016891"
+  - "https://docs.aws.amazon.com/whitepapers/latest/security-design-of-aws-nitro-system/security-design-of-aws-nitro-system.html"
+  - "https://www.usenix.org/conference/osdi12/technical-sessions/presentation/corbett"
+  - "https://research.google/pubs/spanner-truetime-and-the-cap-theorem/"
+  - "https://dl.acm.org/doi/10.1145/3035918.3056103"
+  - "https://dl.acm.org/doi/10.1145/2741948.2741964"
+  - "https://dl.acm.org/doi/10.1145/2465351.2465386"
+  - "https://queue.acm.org/detail.cfm?id=2898444"
+  - "https://dl.acm.org/doi/10.1145/1365815.1365816"
+  - "https://dl.acm.org/doi/10.1145/945445.945450"
+  - "https://cloud.google.com/blog/products/storage-data-transfer/a-peek-behind-colossus-googles-file-system"
+  - "https://www.usenix.org/legacy/event/osdi06/tech/full_papers/burrows/burrows.pdf"
+  - "https://www.vldb.org/pvldb/vol3/R29.pdf"
+  - "https://www.vldb.org/pvldb/vol6/p1033-akidau.pdf"
+  - "https://www.vldb.org/pvldb/vol8/p1792-Akidau.pdf"
+  - "https://www.usenix.org/conference/atc19/presentation/pang"
+  - "https://dl.acm.org/doi/10.5555/2930611.2930645"
+  - "https://www.usenix.org/conference/nsdi18/presentation/dalton"
+  - "https://dl.acm.org/doi/10.1145/2829988.2787508"
+  - "https://dl.acm.org/doi/10.1145/3544216.3544265"
+  - "https://dl.acm.org/doi/10.1145/2408776.2408794"
+  - "https://sigops.org/s/conferences/hotos/2021/papers/hotos21-s11-bronson.pdf"
+  - "https://www.usenix.org/conference/osdi22/presentation/huang-lexiang"
 ---
 
 # Appendix D: Essential Papers, Talks, and Primary Sources Reading List

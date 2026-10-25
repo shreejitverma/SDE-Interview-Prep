@@ -4,7 +4,21 @@ track: [cloud-ai, ai-eng, sde, distinguished]
 level:
 status: draft
 last_reviewed:
-sources: []
+sources: 
+  - "https://aws.amazon.com/builders-library/static-stability-using-availability-zones/"
+  - "https://aws.amazon.com/builders-library/workload-isolation-using-shuffle-sharding/"
+  - "https://aws.amazon.com/builders-library/timeouts-retries-and-backoff-with-jitter/"
+  - "https://docs.aws.amazon.com/AmazonS3/latest/userguide/optimizing-performance.html"
+  - "https://docs.cloud.google.com/storage/docs/request-rate"
+  - "https://docs.cloud.google.com/storage/docs/best-practices-media-workload"
+  - "https://docs.aws.amazon.com/whitepapers/latest/building-scalable-secure-multi-vpc-network-infrastructure/using-nat-gateway-for-centralized-egress.html"
+  - "https://www.usenix.org/conference/osdi12/technical-sessions/presentation/corbett"
+  - "https://dl.acm.org/doi/10.1145/3035918.3056101"
+  - "https://www.usenix.org/conference/nsdi20/presentation/agache"
+  - "https://www.usenix.org/conference/nsdi16/technical-sessions/presentation/eisenbud"
+  - "https://www.usenix.org/conference/nsdi18/presentation/dalton"
+  - "https://cloud.google.com/blog/products/storage-data-transfer/a-peek-behind-colossus-googles-file-system"
+  - "https://sre.google/sre-book/table-of-contents/"
 ---
 
 # Appendix B: Comprehensive AWS to GCP Mechanism Translation Map

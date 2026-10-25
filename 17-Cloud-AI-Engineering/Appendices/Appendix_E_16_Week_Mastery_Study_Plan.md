@@ -4,7 +4,14 @@ track: [cloud-ai, ai-eng, sde, distinguished]
 level:
 status: draft
 last_reviewed:
-sources: []
+sources: 
+  - "https://docs.aws.amazon.com/AmazonS3/latest/userguide/directory-bucket-high-performance.html"
+  - "https://repost.aws/articles/AROs3zfLYxT56d3MAKp28Tqg/choosing-an-s3-connector-for-ml-training-with-s3-express-one-zone"
+  - "https://aws.amazon.com/premiumsupport/technology/pes/"
+  - "https://status.cloud.google.com/summary"
+  - "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/spot-instance-termination-notices.html"
+  - "https://docs.cloud.google.com/compute/docs/instances/preemptible"
+  - "https://docs.cloud.google.com/tpu/docs/v6e"
 ---
 
 # Appendix E: 16-Week Mastery Study Plan for Senior Engineers

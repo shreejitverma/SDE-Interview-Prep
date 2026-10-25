@@ -4,7 +4,15 @@ track: [cloud-ai, ai-eng, sde, distinguished]
 level:
 status: draft
 last_reviewed:
-sources: []
+sources: 
+  - "https://docs.aws.amazon.com/AmazonS3/latest/userguide/optimizing-performance.html"
+  - "https://aws.amazon.com/s3/faqs/"
+  - "https://aws.amazon.com/blogs/storage/prime-video-improved-stream-analytics-performance-with-amazon-s3-express-one-zone/"
+  - "https://docs.aws.amazon.com/AmazonS3/latest/userguide/UsingObjects.html"
+  - "https://docs.amazonaws.cn/en_us/lambda/latest/dg/gettingstarted-limits.html"
+  - "https://aws.amazon.com/message/11201/"
+  - "https://aws.amazon.com/message/12721/"
+  - "https://aws.amazon.com/message/101925/"
 ---
 
 # Appendix C: Limits, Quotas, and Thresholds Reference Matrix
