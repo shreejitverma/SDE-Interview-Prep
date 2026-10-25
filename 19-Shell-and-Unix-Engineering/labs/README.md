@@ -23,7 +23,7 @@ labs/
   .shellcheckrc      ShellCheck options for every lab (found by searching upward from each script)
   .editorconfig      shfmt formatting for every lab file, suffixed or not (2-space indent, case indent, binary ops at line start)
   run-matrix.sh      runs every lab's bats tests once per shell, on the host or in the matrix images
-  lib/lab.bash       shared bats helpers: run_lab, run_lab_c, lab_shell_family, lab_shell_version
+  lib/lab.bash       shared bats helpers, listed under Helpers below
   matrix/            alpine.Dockerfile and debian.Dockerfile, the two container images of the matrix
   common/            shared lab tools, starting with showargs.sh
   NN-<note-stem>/    one lab per note, named after its folder number and lowercased note stem, for example 03-field-splitting-and-ifs
@@ -49,7 +49,7 @@ labs/
 |---|---|
 | `run_lab SCRIPT [ARG...]` | Run a lab script under the shell under test, through bats `run`. |
 | `run_lab_c CODE [NAME [ARG...]]` | Run inline code under the shell under test, like `sh -c`. |
-| `lab_shell_family` | Print bash, zsh, zsh-sh, yash, busybox, posh, mksh, ksh93, or the command name (for example dash), detected by asking the shell itself. |
+| `lab_shell_family` | Print bash, zsh, zsh-sh, yash, busybox, posh, mksh, ksh93, or, when the shell sets no identifying variable, the name of the binary the command resolves to through symlinks (so Debian `sh` reports dash), detected by asking the shell itself. |
 | `lab_shell_version` | Print the version the shell reports about itself, or `n/a` (dash has no version variable). |
 | `lab_awk_flavor [CMD...]` | Print the implementation behind an awk command (default `awk`): gawk, mawk, onetrue, busybox, or unknown. The shell under test never changes which awk runs, so awk labs branch on this, not on the shell family. |
 | `lab_awks` | List every awk command installed here (`awk`, `gawk`, `mawk`, `original-awk`, `nawk`, `busybox awk`), so one test can assert each implementation's behavior. |
@@ -69,6 +69,8 @@ python3 tools/check_shell_labs.py                         # the gate: structure,
 Toolchain on macOS: `brew install shellcheck shfmt bats-core`, plus Docker or OrbStack for `--containers` (`orb start`).
 The gate and CI pin ShellCheck 0.11.0, shfmt 3.14.1, and bats-core 1.14.0; use the same versions locally so warnings match.
 The gate reads files through `git ls-files`, so stage a new lab (`git add`) before running it.
+The gate and the matrix bound every test with `BATS_TEST_TIMEOUT` (default 60 seconds), so a lab that blocks fails instead of hanging; set the variable to override it, and `--containers` forwards it into the images.
+A failing matrix row prints the output of each failing test.
 
 ## The shell matrix
 
