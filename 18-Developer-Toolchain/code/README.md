@@ -94,5 +94,5 @@ When contributing a new lab:
 1. Create `code/<pillar>/<lab_name>/` using lowercase snake_case.
 2. Provide a self-contained `run.sh` entry point (the harness runs it with `bash run.sh` and reads its stdout).
 3. Add the `# requires:` comment within the first 10 lines of `run.sh` specifying platform dependencies.
-4. Run `make record LAB=<lab_name>` on the required platform to generate the initial golden output.
+4. Run `make record LAB=<pillar>/<lab_name>/` on the required platform to generate the initial golden output.
 5. Reference the lab in the owning Markdown note using a standard relative link to the lab directory.

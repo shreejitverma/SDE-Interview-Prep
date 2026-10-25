@@ -19,4 +19,4 @@ sources: []
 - Prerequisites: none
 - Next: [[Cpp-Compile-Time-Profiling-ftime-trace-and-ClangBuildAnalyzer]]
 - See also: [[02-Programming-Languages/C++/CPP_Zero_to_Godhood/Volume_08_Advanced_Systems/Chapter_103_Microbenchmarking_and_Tail_Latency/Chapter_103_Microbenchmarking_and_Tail_Latency|Chapter_103_Microbenchmarking_and_Tail_Latency]]
-- Lab: `code/05-Profiling/google_benchmark_tuning/`
+- Lab: `code/05-Profiling/google_benchmark_tuning/` (requires: linux, pmu)

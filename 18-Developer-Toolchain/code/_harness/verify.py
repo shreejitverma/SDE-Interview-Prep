@@ -24,7 +24,7 @@ An unknown requirement (a typo such as `linx`) fails the run, so a lab cannot si
 Usage (from code/):
     python3 -m _harness.verify              # check every lab on this platform
     python3 -m _harness.verify --record     # (re)write expected output for this platform
-    python3 -m _harness.verify mini_git     # only labs whose path contains "mini_git"
+    python3 -m _harness.verify 02-Version-Control/mini_git/   # only labs whose path/ contains this text
 """
 
 from __future__ import annotations
@@ -42,6 +42,7 @@ from pathlib import Path
 REQUIRES_RE = re.compile(r"^#\s*requires:\s*(.+)$", re.M)
 KNOWN = ("linux", "docker", "pmu", "nightly", "network")
 TIMEOUT_S = 900
+PROBE_TIMEOUT_S = 10
 # Run-to-run noise with no teaching value: heap and stack addresses, and temp paths.
 SCRUB = (
     (re.compile(r"0x[0-9a-fA-F]{8,16}"), "0xADDR"),
@@ -60,20 +61,26 @@ def requirements(run_sh: Path) -> list[str]:
     return [r.strip() for r in m.group(1).split(",") if r.strip()] if m else []
 
 
+def probe(cmd: list[str]) -> subprocess.CompletedProcess | None:
+    """Run a requirement probe; None if the tool is missing or hangs past PROBE_TIMEOUT_S."""
+    if shutil.which(cmd[0]) is None:
+        return None
+    try:
+        return subprocess.run(cmd, capture_output=True, text=True, timeout=PROBE_TIMEOUT_S)
+    except subprocess.TimeoutExpired:
+        return None
+
+
 def unmet(reqs: list[str]) -> list[str]:
     missing = []
     for r in reqs:
-        if r not in KNOWN:
-            missing.append(f"{r} (unknown requirement)")
-        elif r == "linux" and platform.system() != "Linux":
+        if r == "linux" and platform.system() != "Linux":
             missing.append(r)
-        elif r == "docker" and (shutil.which("docker") is None or
-                                subprocess.run(["docker", "info"], capture_output=True).returncode != 0):
+        elif r == "docker" and ((p := probe(["docker", "info"])) is None or p.returncode != 0):
             missing.append(r)
         elif r == "pmu" and os.environ.get("TOOLCHAIN_LABS_PMU") != "1":
             missing.append(r)
-        elif r == "nightly" and (shutil.which("rustup") is None or "nightly" not in subprocess.run(
-                ["rustup", "toolchain", "list"], capture_output=True, text=True).stdout):
+        elif r == "nightly" and ((p := probe(["rustup", "toolchain", "list"])) is None or "nightly" not in p.stdout):
             missing.append(r)
         elif r == "network" and os.environ.get("TOOLCHAIN_LABS_NETWORK") != "1":
             missing.append(r)
@@ -88,7 +95,7 @@ def scrub(text: str) -> str:
 
 def discover(root: Path, needle: str | None) -> list[Path]:
     labs = sorted(p.parent for p in root.rglob("run.sh") if "_harness" not in p.parts)
-    return [lab for lab in labs if needle is None or needle in lab.relative_to(root).as_posix()]
+    return [lab for lab in labs if needle is None or needle in f"{lab.relative_to(root).as_posix()}/"]
 
 
 def run_lab(lab: Path) -> subprocess.CompletedProcess:
@@ -97,7 +104,7 @@ def run_lab(lab: Path) -> subprocess.CompletedProcess:
 
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description="Verify or record Developer Toolchain lab output.")
-    ap.add_argument("needle", nargs="?", help="only labs whose path contains this text")
+    ap.add_argument("needle", nargs="?", help="only labs whose path, with a trailing /, contains this text")
     ap.add_argument("--record", action="store_true", help="write expected output for this platform")
     ap.add_argument("--root", type=Path, default=Path(__file__).resolve().parent.parent)
     args = ap.parse_args(argv)
@@ -137,7 +144,7 @@ def main(argv: list[str] | None = None) -> int:
             continue
         if not expected_file.exists():
             unrecorded += 1
-            print(f"MISS  {name} (no expected/{key}.txt; run make record LAB={lab.name} and review the diff)")
+            print(f"MISS  {name} (no expected/{key}.txt; run make record LAB={name}/ and review the diff)")
             continue
         expected = expected_file.read_text()
         if actual == expected:

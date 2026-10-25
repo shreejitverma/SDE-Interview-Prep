@@ -13,7 +13,7 @@ help:
 	@echo "make verify            - run every lab whose requirements are met and diff against expected output"
 	@echo "make record            - (re)write expected output for this platform (review the diff before committing)"
 	@echo "make list              - list labs and their requirements"
-	@echo "Restrict to one lab with LAB=<name>, e.g. 'make verify LAB=mini_git'"
+	@echo "Restrict to labs whose path contains LAB, e.g. 'make verify LAB=02-Version-Control/mini_git/'"
 	@echo "Opt in to gated labs with TOOLCHAIN_LABS_PMU=1 or TOOLCHAIN_LABS_NETWORK=1"
 
 verify:

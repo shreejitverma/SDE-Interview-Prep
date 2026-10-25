@@ -18,4 +18,4 @@ sources: []
 
 - Prerequisites: [[Benchmark-Methodology-Noise-and-Environment-Control]], [[Hardware-Performance-Counters-Top-Down-TMA-and-Roofline]]
 - Next: [[Drill-Measurement-Methodology-Coordinated-Omission-Trap]]
-- Lab: `code/04-Measurement-Methodology/drill_env_size_bias/` (requires: linux)
+- Lab: `code/04-Measurement-Methodology/drill_env_size_bias/` (requires: linux, pmu)

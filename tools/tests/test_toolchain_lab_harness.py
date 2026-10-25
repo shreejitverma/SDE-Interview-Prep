@@ -2,12 +2,14 @@
 
 import importlib.util
 import io
+import subprocess
 import tempfile
 import unittest
 from contextlib import redirect_stdout
 from pathlib import Path
 
-HARNESS = Path(__file__).resolve().parents[2] / "18-Developer-Toolchain" / "code" / "_harness" / "verify.py"
+CODE = Path(__file__).resolve().parents[2] / "18-Developer-Toolchain" / "code"
+HARNESS = CODE / "_harness" / "verify.py"
 spec = importlib.util.spec_from_file_location("toolchain_verify", HARNESS)
 verify = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(verify)
@@ -95,6 +97,38 @@ class HarnessTest(unittest.TestCase):
         self.assertEqual(rc, 0, out)
         self.assertIn("SKIP  pillar/miri (requires nightly)", out)
 
+    def test_miss_hint_records_only_that_lab(self):
+        self.lab("ptrace_debugger", "#!/usr/bin/env bash\necho mine\n")
+        capstone = self.lab("capstone_ptrace_debugger", "#!/usr/bin/env bash\necho new\n", "golden\n")
+        rc, out = self.run_harness()
+        self.assertEqual(rc, 1)
+        hint = next(line for line in out.splitlines() if line.startswith("MISS"))
+        self.assertIn("LAB=pillar/ptrace_debugger/", hint)
+        needle = hint.split("LAB=", 1)[1].split()[0]
+        rc, out = self.run_harness("--record", needle)
+        self.assertEqual(rc, 0, out)
+        self.assertIn("REC   pillar/ptrace_debugger", out)
+        self.assertNotIn("capstone_ptrace_debugger", out)
+        self.assertEqual((capstone / "expected" / f"{verify.platform_key()}.txt").read_text(), "golden\n")
+
+    def test_hung_requirement_probe_is_unmet_not_a_hang(self):
+        real_which, real_run = verify.shutil.which, verify.subprocess.run
+        calls = []
+
+        def hang(cmd, **kwargs):
+            calls.append(kwargs.get("timeout"))
+            raise subprocess.TimeoutExpired(cmd, kwargs.get("timeout"))
+
+        verify.shutil.which = lambda name: "/usr/bin/" + name
+        verify.subprocess.run = hang
+        try:
+            missing = verify.unmet(["docker", "nightly"])
+        finally:
+            verify.shutil.which, verify.subprocess.run = real_which, real_run
+        self.assertEqual(missing, ["docker", "nightly"])
+        self.assertEqual(len(calls), 2)
+        self.assertTrue(all(t is not None and t > 0 for t in calls), calls)
+
     def test_addresses_and_temp_paths_are_scrubbed(self):
         self.assertEqual(verify.scrub("ptr=0x7ffee3b2c9a0 at /tmp/abc/x.c:3"), "ptr=0xADDR at /TMP:3")
 
@@ -104,6 +138,19 @@ class HarnessTest(unittest.TestCase):
         _, out = self.run_harness("alpha")
         self.assertIn("pillar/alpha", out)
         self.assertNotIn("pillar/beta", out)
+
+
+class LabGitignoreTest(unittest.TestCase):
+    def ignored(self, rel: str) -> bool:
+        proc = subprocess.run(["git", "check-ignore", "--no-index", "-q", rel], cwd=CODE)
+        self.assertIn(proc.returncode, (0, 1))
+        return proc.returncode == 0
+
+    def test_core_dumps_are_ignored_but_core_sources_are_not(self):
+        self.assertTrue(self.ignored("02-Version-Control/mini_git/core.12345"))
+        for source in ("02-Version-Control/mini_git/src/core.rs", "03-Debugging/lab/core.py",
+                       "03-Debugging/lab/core.cpp", "02-Version-Control/mini_git/src/core/mod.rs"):
+            self.assertFalse(self.ignored(source), source)
 
 
 if __name__ == "__main__":

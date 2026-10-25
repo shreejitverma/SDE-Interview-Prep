@@ -18,4 +18,4 @@ sources: []
 
 - Prerequisites: [[Rust-CPU-Profiling-cargo-flamegraph-samply-and-Frame-Pointers]]
 - Next: [[Rust-Compile-Time-and-Binary-Size-Profiling]]
-- Lab: `code/05-Profiling/criterion_gungraun/`
+- Lab: `code/05-Profiling/criterion_gungraun/` (requires: linux)

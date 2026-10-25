@@ -117,7 +117,7 @@ Every topic in `18-Developer-Toolchain/` is developed across five progressive de
 
 ## 4. The Seed Shape
 
-When a new note is initially stubbed during curriculum planning, it must follow this exact template:
+When a new note is initially stubbed during curriculum planning, it must follow this template:
 
 ```markdown
 ---
@@ -126,26 +126,29 @@ track: [sde, distinguished]
 level:
 status: seed
 last_reviewed:
-sources:
-  - "Author, Title, Publisher or Venue, Year, URL"
+sources: []
 ---
 
-# Note-Title-Here
+# Note Title Here
 
-> [!summary] Claim
-> One to two sentences summarizing the core mechanism.
+> [!summary] Scope
+> This note owns [exact mechanism].
+> It reaches the [Use, Explain, Debug, Rebuild, Decide at Scale] rungs by [what it covers].
+> It hands [adjacent topic] to [neighbor note].
 
-## Scope and Boundary
+## Related
 
-This note owns [exact mechanism].
-It covers depth rungs [Use, Explain, Debug, Rebuild, Decide at Scale].
-It links to [Neighbor-Note] for [adjacent topic].
-
-## Reading Path and Prerequisites
-
-- Prerequisites: [[Prerequisite-Note\|Prerequisite]]
-- See also: [[Related-Note\|Related]]
+- Prerequisites: [[Prerequisite-Note]]
+- Next: [[Next-Note]]
+- See also: [[Overlapping-Note]]
+- Lab: `code/<pillar>/<lab_name>/` (requires: linux, pmu)
 ```
+
+- The `> [!summary] Scope` callout is one short paragraph, one sentence per line.
+- `## Related` always carries a `Prerequisites:` line.
+- `Next:`, `See also:`, and `Lab:` appear only where they apply: a following note, a real overlapping note, or a runnable lab.
+- A `Lab:` line carries a `(requires: ...)` suffix listing every requirement from section 8 that the lab needs, and none when it runs on the recording platform as is.
+- A seed may leave `sources: []` empty until its prose is written.
 
 ## 5. Solid Bar Checklist
 
