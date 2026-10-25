@@ -2,7 +2,7 @@
 type: concept
 track: [cloud-ai, ai-eng, sde, distinguished]
 level:
-status: draft
+status: solid
 last_reviewed:
 sources: 
   - "https://arxiv.org/abs/1909.08053"
@@ -22,6 +22,17 @@ sources:
   - "https://arxiv.org/abs/2407.21783"
   - "https://arxiv.org/abs/2412.19437"
   - "https://arxiv.org/abs/1812.06162"
+  - "https://github.com/pytorch/pytorch/blob/main/torch/nn/parallel/distributed.py"
+  - "https://www.nvidia.com/en-us/data-center/h100/"
+  - "https://aws.amazon.com/ec2/instance-types/p5/"
+  - "https://docs.cloud.google.com/tpu/docs/v5p"
+  - "https://aws.amazon.com/about-aws/whats-new/2025/05/amazon-ec2-p6-b200-instances-nvidia-b200-gpus/"
+  - "https://aws.amazon.com/about-aws/whats-new/2025/07/amazon-p6e-gb200-ultraservers-gpu-performance-ec2"
+  - "https://aws.amazon.com/about-aws/whats-new/2024/12/amazon-ec2-trn2-instances-available/"
+  - "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-capacity-blocks.html"
+  - "https://docs.cloud.google.com/compute/docs/gpus/gpu-network-bandwidth"
+  - "https://cloud.google.com/tpu/pricing"
+  - "https://docs.cloud.google.com/tpu/docs/runtimes"
 ---
 
 # Distributed Training Parallelism Strategies
@@ -61,7 +72,7 @@ The planner in this chapter uses the arithmetic-intensity framing to show why th
 ### Why parallelism exists: three walls
 
 A dense model with N parameters trained with mixed-precision Adam needs about 2 bytes (bf16 weights) + 4 bytes (fp32 gradient buffer) + 12 bytes (fp32 master, m, v) = 18 bytes per parameter before activations.
-A 70B model therefore needs ~1.27 TB of static state, roughly 16x an 80 GB HBM part.
+A 70B model therefore needs ~1.26 TB of static state, roughly 16x an 80 GB HBM part.
 That is the memory wall, and it forces sharding of weights (TP, PP, ZeRO-3/FSDP) or of optimizer state (ZeRO-1/2).
 Training FLOPs are ~6N per token plus attention, so 2T tokens on 70B is ~8.5e23 FLOPs; one GPU would take decades, so you need thousands of devices running at once.
 That is the compute wall.
@@ -130,7 +141,7 @@ GPipe ([Huang et al., NeurIPS 2019](https://arxiv.org/abs/1811.06965)) runs all 
 1F1B (PipeDream-Flush, from the [PipeDream](https://arxiv.org/abs/1806.03377) line of work) has the same bubble, but after a warm-up of p-i forwards, stage i alternates one forward with one backward, capping in-flight activations at p-i microbatches.
 Stage 0 therefore holds p microbatches x (L/p) layers = activations for all L layers at microbatch size b.
 That memory skew is structural: the first stage hits the HBM wall first, and the last stage carries the LM head and loss.
-Llama 3 rebalanced its stages by removing layers from the first and last stages (UNVERIFIED this revision).
+Llama 3 rebalanced its stages by removing one Transformer layer each from the first and last stages ([Llama 3 paper, 2024](https://arxiv.org/abs/2407.21783)).
 Interleaved 1F1B gives each rank v non-contiguous layer chunks, which divides the bubble by v at the cost of v times more point-to-point messages and somewhat more activation memory.
 The SC21 paper reports this schedule improved throughput by 10+% ([Narayanan et al., SC21](https://arxiv.org/abs/2104.04473)).
 Zero Bubble PP ([Qi et al., ICLR 2024](https://arxiv.org/abs/2401.10241)) splits backward into B (input gradient, on the critical path to the previous stage) and W (weight gradient, schedulable anywhere) and uses W to fill the bubbles.
@@ -147,7 +158,7 @@ Backward mirrors both, so every MoE layer costs 4 all-to-alls per step.
 Each expert has a static buffer of capacity = C x (tokens x k / E) slots, where C is the capacity factor.
 Tokens beyond that capacity are dropped (they pass through the residual path) or the buffer is padded, so C trades wasted FLOPs and memory against model quality.
 An auxiliary load-balancing loss pushes the router toward uniform expert usage.
-DeepSeek-V3 instead uses an auxiliary-loss-free per-expert bias adjustment and node-limited routing that caps how many nodes a token's experts can span (UNVERIFIED this revision).
+DeepSeek-V3 instead uses an auxiliary-loss-free per-expert bias term (added to the affinity score for top-k selection only, not to the gating value) and node-limited routing that sends each token to at most 4 nodes ([DeepSeek-V3 report](https://arxiv.org/abs/2412.19437)).
 On the wire, an all-to-all is n^2 flows with message sizes set by the router.
 A hot expert makes one rank receive far more than average (incast), and the whole collective completes only when that slowest transfer lands, so step time tracks the maximum expert load rather than the mean.
 Fine-grained experts make this worse: per token per MoE layer, expert compute is ~18 x h x f_e x k FLOPs against ~8 x k x h bytes of all-to-all, about 2.25 x f_e FLOP/byte.
@@ -190,7 +201,7 @@ What you can do instead is shrink the recovery window: fast detection, hot spare
 | MegaScale | 55.2% MFU, 175B model, 12,288 GPUs, 1.34x over Megatron-LM | ([MegaScale, NSDI 2024](https://www.usenix.org/system/files/nsdi24-jiang-ziheng.pdf)) |
 | DeepSeek-V3 pre-training cost | 180K H800 GPU-hours per trillion tokens, 3.7 days per trillion tokens on their cluster | ([DeepSeek-V3 report](https://arxiv.org/pdf/2412.19437), paper 2024) |
 | Llama 3 405B scale | up to 16K H100 80 GB HBM3 GPUs at 700 W, 8 GPUs per NVLink server | ([Llama 3 paper](https://arxiv.org/abs/2407.21783), paper 2024) |
-| Llama 3 405B BF16 MFU | 38-43% depending on configuration | UNVERIFIED this revision |
+| Llama 3 405B BF16 MFU | 38-43% depending on configuration (43% at 8K GPUs, 41% at 16K GPUs, 38% at 16K GPUs with CP=16 and 131K sequence) | ([Llama 3 paper](https://arxiv.org/abs/2407.21783), Table 4, paper 2024) |
 | Ring all-reduce bytes per rank | 2(n-1)/n x S | derivation |
 | Reduce-scatter or all-gather bytes per rank | (n-1)/n x S | derivation |
 | Pipeline bubble fraction | (p-1)/(v x m) of ideal time | ([Narayanan et al., SC21](https://arxiv.org/abs/2104.04473)) |
@@ -198,18 +209,18 @@ What you can do instead is shrink the recovery window: fast detection, hot spare
 | Activations per layer, TP+SP+selective recompute | 34 x s x b x h / t bytes | ([Korthikanti et al.](https://arxiv.org/abs/2205.05198)) |
 | TP arithmetic intensity | ~4.5h/(t-1) FLOP/byte | derivation, this chapter |
 | DP arithmetic intensity | ~1.5 x tokens per replica per step FLOP/byte | derivation, this chapter |
-| PyTorch DDP default gradient bucket | 25 MB (`bucket_cap_mb`) | (PyTorch docs, as of 2026-10, UNVERIFIED) |
-| H100 SXM NVLink bandwidth | 900 GB/s per GPU bidirectional | (NVIDIA spec, as of 2026-10, UNVERIFIED) |
-| H100 SXM dense BF16 peak | ~989 TFLOP/s | (NVIDIA spec, as of 2026-10, UNVERIFIED) |
-| AWS p5.48xlarge | 8x H100, 3200 Gbps EFA per instance | (AWS docs, as of 2026-10, UNVERIFIED) |
-| Google TPU v5p pod | 8960 chips, 3D torus ICI | (Google Cloud docs, as of 2026-10, UNVERIFIED) |
+| PyTorch DDP default gradient bucket | 25 MiB (`bucket_cap_mb`) | ([PyTorch source](https://github.com/pytorch/pytorch/blob/main/torch/nn/parallel/distributed.py), as of 2026-10) |
+| H100 SXM NVLink bandwidth | 900 GB/s per GPU bidirectional | ([NVIDIA H100 spec](https://www.nvidia.com/en-us/data-center/h100/), as of 2026-10) |
+| H100 SXM dense BF16 peak | ~989 TFLOP/s (NVIDIA lists 1,979 TFLOP/s with sparsity) | ([NVIDIA H100 spec](https://www.nvidia.com/en-us/data-center/h100/), as of 2026-10) |
+| AWS p5.48xlarge | 8x H100, 3200 Gbps EFA per instance | ([AWS P5 page](https://aws.amazon.com/ec2/instance-types/p5/), as of 2026-10) |
+| Google TPU v5p pod | 8960 chips, 3D torus ICI | ([Google Cloud TPU v5p docs](https://docs.cloud.google.com/tpu/docs/v5p), as of 2026-10) |
 
 ## AWS vs GCP Mechanism Parity
 
 | Mechanism | AWS | Google Cloud | Critical difference |
 |---|---|---|---|
-| TP / EP scale-up domain | 8-GPU NVLink nodes (P5/P5en/P6-B200); rack-scale NVLink on P6e-GB200 UltraServers; NeuronLink on Trn2 and Trn2 UltraServers (UNVERIFIED) | 8-GPU NVLink nodes (A3/A4); rack-scale NVLink on A4X (GB200); ICI inside a TPU slice (UNVERIFIED) | TPU ICI spans the entire slice (hundreds to thousands of chips), so TP/EP can extend beyond 8 without crossing a NIC; GPU domains are 8 or 72 |
-| Scale-out transport for PP/DP | Elastic Fabric Adapter with SRD: multipath spraying, out-of-order reliable delivery offloaded to Nitro, via the aws-ofi-nccl libfabric plugin | GPUDirect-TCPXO on A3 Mega; RDMA over Converged Ethernet on A3 Ultra/A4 (UNVERIFIED); DCN between TPU slices | SRD's packet spraying makes the fabric tolerant of the ECMP flow collisions that hurt single-path RoCE flows; TPU DCN is much slower than ICI, so only DP belongs on it |
+| TP / EP scale-up domain | 8-GPU NVLink nodes (P5/P5en/P6-B200); rack-scale NVLink on P6e-GB200 UltraServers (up to 72 GPUs, GA 2025-07); NeuronLink on Trn2 (16 chips) and Trn2 UltraServers (64 chips; reservable through Capacity Blocks in us-east-2, though some AWS pages still label them preview) (AWS docs and announcements, as of 2026-10) | 8-GPU NVLink nodes (A3/A4); rack-scale NVLink on A4X (GB200, 72 GPUs per subblock); ICI inside a TPU slice (Google Cloud docs, as of 2026-10) | TPU ICI spans the entire slice (hundreds to thousands of chips), so TP/EP can extend beyond 8 without crossing a NIC; GPU domains are 8 or 72 |
+| Scale-out transport for PP/DP | Elastic Fabric Adapter with SRD: multipath spraying, out-of-order reliable delivery offloaded to Nitro, via the aws-ofi-nccl libfabric plugin | GPUDirect-TCPXO on A3 Mega; GPUDirect RDMA over a RoCE VPC network on A3 Ultra/A4 (Google Cloud docs, as of 2026-10); DCN between TPU slices | SRD's packet spraying makes the fabric tolerant of the ECMP flow collisions that hurt single-path RoCE flows; TPU DCN is much slower than ICI, so only DP belongs on it |
 | Placement and locality | Cluster placement groups, EC2 UltraClusters | Compact placement policies; TPU slices are physically contiguous by construction | Without compact placement, PP/DP traffic crosses more switch tiers and tail latency widens |
 | Collective library | NCCL (GPU), Neuron Collective Communication (Trainium) | NCCL plus Google's network plugins (GPU), XLA collectives over ICI (TPU) | On TPU, the compiler schedules collectives statically, so there is no runtime NCCL tuning surface |
 | Parallelism frameworks | Megatron-Core/NeMo, PyTorch FSDP2 and DTensor; NeuronX Distributed Training on Trainium | Megatron-Core/NeMo on GPU; JAX + GSPMD/shard_map, MaxText on TPU | Megatron hand-places collectives; GSPMD infers them from sharding annotations |
@@ -460,7 +471,7 @@ Real runs land well below its estimates.
 ### Artifact 3 (optional, billable): watch GSPMD insert Megatron's collectives on a TPU slice
 
 This step creates a single-host TPU v6e-8 slice and checks that sharding annotations alone make XLA emit the TP all-reduce.
-Cost estimate: 8 chips x the current v6e on-demand chip-hour price (UNVERIFIED; ~$2.70 per chip-hour in some regions as last checked), so roughly $22 per hour.
+Cost estimate: 8 chips x the v6e (Trillium) on-demand price of $2.70 per chip-hour in us-east1 and us-east5 ([Cloud TPU pricing](https://cloud.google.com/tpu/pricing), as of 2026-10), so roughly $22 per hour.
 Budget for a 1-hour lab with a $30 cap.
 Accelerator type, runtime version, and zone availability change; confirm them with `gcloud compute tpus tpu-vm versions list` and `gcloud compute tpus accelerator-types list` first.
 
@@ -547,7 +558,7 @@ On RoCE fabrics, you depend on QP-count tuning and adaptive routing.
 A rank stuck in a collective (a bad NVLink lane, an ECC-retired page causing slow memory, a thermally throttled GPU) does not fail; it stalls.
 Every other rank then waits until the NCCL watchdog timeout fires, often after many minutes of a fully paid, fully idle fleet.
 MegaScale documents the in-depth observability and diagnosis tooling ByteDance had to build to localize such stragglers at 10K+ GPUs ([MegaScale, NSDI 2024](https://www.usenix.org/system/files/nsdi24-jiang-ziheng.pdf)).
-Llama 3 reported hundreds of job interruptions over a ~54-day window, the majority attributed to hardware, GPUs in particular (exact counts UNVERIFIED this revision).
+Llama 3 reported 466 job interruptions over a 54-day snapshot (47 planned, 419 unexpected); about 78% of the unexpected ones were attributed to confirmed hardware issues, and GPU issues alone were 58.7% of unexpected interruptions ([Llama 3 paper](https://arxiv.org/abs/2407.21783)).
 At those rates, mean time between job-level failures at 16K GPUs is measured in hours, so checkpoint and restart latency become first-order throughput terms.
 
 ### Silent numerical divergence from parallelism bugs

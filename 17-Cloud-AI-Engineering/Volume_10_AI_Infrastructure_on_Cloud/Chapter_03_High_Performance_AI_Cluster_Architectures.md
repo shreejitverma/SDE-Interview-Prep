@@ -18,6 +18,30 @@ sources:
   - "https://cloud.google.com/kubernetes-engine/docs/how-to/tpu-multislice"
   - "https://aws.amazon.com/builders-library/static-stability-using-availability-zones/"
   - "https://aws.amazon.com/message/101925/"
+  - "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-capacity-blocks.html"
+  - "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/capacity-blocks-purchase.html"
+  - "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/how-ec2-instance-topology-works.html"
+  - "https://docs.aws.amazon.com/sagemaker/latest/dg/sagemaker-hyperpod-eks-resiliency-node-labels.html"
+  - "https://docs.aws.amazon.com/sagemaker/latest/dg/sagemaker-hyperpod-resiliency-slurm-deep-health-checks.html"
+  - "https://aws.amazon.com/about-aws/whats-new/2025/09/managed-tiered-checkpointing-amazon-sagemaker-hyperpod/"
+  - "https://aws.amazon.com/blogs/aws/introducing-checkpointless-and-elastic-training-on-amazon-sagemaker-hyperpod/"
+  - "https://docs.aws.amazon.com/sagemaker/latest/dg/sagemaker-eks-checkpointless-considerations.html"
+  - "https://aws.amazon.com/cn/blogs/china/10p10u-aws-innovates-network-architecture-to-support-large-scale-ai-training"
+  - "https://aws.amazon.com/ec2/pricing/on-demand/"
+  - "https://docs.cloud.google.com/ai-hypercomputer/docs/workloads/schedule-gke-workloads-tas"
+  - "https://docs.cloud.google.com/cluster-director/docs/overview"
+  - "https://cloud.google.com/blog/products/compute/dynamic-workload-scheduler-calendar-mode-reserves-gpus-and-tpus"
+  - "https://docs.cloud.google.com/compute/docs/instances/future-reservations-calendar-mode-overview"
+  - "https://docs.cloud.google.com/compute/docs/gpus"
+  - "https://docs.cloud.google.com/tpu/docs/tpu7x"
+  - "https://docs.cloud.google.com/tpu/docs/v5p"
+  - "https://docs.cloud.google.com/tpu/docs/v6e"
+  - "https://docs.cloud.google.com/tpu/docs/release-notes"
+  - "https://cloud.google.com/tpu/pricing"
+  - "https://cloud.google.com/kubernetes-engine/pricing"
+  - "https://docs.cloud.google.com/kubernetes-engine/docs/tutorials/tpu-multislice-kueue"
+  - "https://github.com/AI-Hypercomputer/xpk"
+  - "https://github.com/jax-ml/jax/blob/main/jax/_src/mesh_utils.py"
 ---
 
 # High-Performance AI Cluster Architectures
@@ -75,7 +99,7 @@ That makes the job a series system: if each node fails independently at rate lam
 Meta's Llama 3 report gives a public calibration point: in a 54-day snapshot of pre-training on 16,384 H100 GPUs there were 466 job interruptions, 419 of them unexpected, and about 78% of the unexpected ones traced to confirmed or suspected hardware, with faulty GPUs and HBM3 the leading categories (Meta, The Llama 3 Herd of Models, 2024-07).
 Taking 419 interruptions over 2,048 nodes and 54 days gives roughly 1.6e-4 interruptions per node-hour, or a per-node MTBF of about 6,300 hours.
 With that rate, a 128-node (1,024-GPU) job fails about every 49 hours and a 2,048-node job about every 3.1 hours.
-Meta's reliability study of its research clusters reports the same inverse scaling, with mean time to failure shrinking from hours at the thousand-GPU scale toward minutes in projections for 100K-GPU jobs (Kokolis et al., Revisiting Reliability in Large-Scale ML Research Clusters, arXiv 2410.21680, 2024-10; exact MTTF figures UNVERIFIED in this edition).
+Meta's reliability study of its research clusters reports the same inverse scaling, with mean time to failure shrinking from hours at the thousand-GPU scale toward minutes in projections for 100K-GPU jobs: an observed MTTF of 7.9 hours for 1,024-GPU jobs, and projected MTTFs of 1.8 hours at 16,384 GPUs and 0.23 hours (about 14 minutes) at 131,072 GPUs (Kokolis et al., Revisiting Reliability in Large-Scale ML Research Clusters, arXiv 2410.21680, 2024-10, v2 2025-02).
 
 The classical way to tune checkpointing against this is the Young/Daly first-order optimum: interval T_opt = sqrt(2 x C x M), where C is the blocking checkpoint cost and M is job MTBF (Young, CACM 1974; Daly, FGCS 2006).
 The fraction of time wasted is approximately C/T + T/(2M) + R/M, where R is restart time: detect, replace node, re-rendezvous, reload state, warm up compilation caches.
@@ -104,7 +128,7 @@ The Worked Example does this on AWS.
 
 An EC2 UltraCluster is a physical deployment: high-end accelerated instances co-located in one Availability Zone on a non-blocking, petabit-class EFA network, with access to FSx for Lustre.
 At P5 launch AWS described UltraClusters that scale to 20,000 H100 GPUs (AWS P5 launch, 2023-07).
-At re:Invent 2024 AWS described its "10p10u" fabric for Trainium2 UltraClusters, targeting tens of petabits per second with under 10 microseconds of latency (AWS re:Invent 2024 infrastructure keynote; exact figures UNVERIFIED).
+AWS describes its "10p10u" fabric (UltraCluster 2.0), which serves Trainium2 as well as NVIDIA GPU clusters, as targeting tens of petabits per second of fully non-blocking capacity with a half round-trip time under 10 microseconds ([AWS China blog, 10p10u](https://aws.amazon.com/cn/blogs/china/10p10u-aws-innovates-network-architecture-to-support-large-scale-ai-training), 2025-02).
 EFA's transport is Scalable Reliable Datagram (SRD), which sprays packets of one flow across many ECMP paths, tolerates out-of-order arrival, and runs retransmission in the Nitro card at microsecond timescales instead of in host software at millisecond timescales (Shalev et al., A Cloud-Optimized Transport Protocol for Elastic and Scalable HPC, IEEE Micro 2020).
 Because SRD sprays, a single elephant flow does not hash onto one congested link the way RoCE's per-flow ECMP does.
 That is why AWS can run large collectives on a shared Clos without per-tenant lossless-Ethernet tuning; the previous chapter, [[17-Cloud-AI-Engineering/Volume_10_AI_Infrastructure_on_Cloud/Chapter_02_Interconnect_Technologies_NVLink_EFA_and_TPU_ICI|Interconnect Technologies: NVLink, EFA, and TPU ICI]], covers the transport itself.
@@ -122,7 +146,7 @@ A replacement has to come from the same UltraServer class, which narrows the poo
 **Placement controls on EC2:**
 
 - Cluster placement groups ask for low-latency co-location.
-- Capacity Blocks for ML sell future, time-boxed, co-located capacity inside UltraClusters. At launch they ran 1 to 14 days, up to 64 instances, and could be booked up to 8 weeks ahead (AWS docs, 2023-11). Later duration and size extensions are UNVERIFIED for 2026-10.
+- Capacity Blocks for ML sell future, time-boxed, co-located capacity inside UltraClusters. At launch they ran 1 to 14 days, up to 64 instances, and could be booked up to 8 weeks ahead (AWS docs, 2023-11). Durations now run in 1-day increments up to 14 days and 7-day increments up to 182 days, still with up to 64 instances per block (256 across all blocks) and start times up to 8 weeks out; blocks also cover Trn2 and P6e-GB200 UltraServers, and they do not accept a placement group at launch (AWS EC2 docs, as of 2026-10).
 - The DescribeInstanceTopology API returns, for each supported instance, an ordered list of network node IDs from the top of the hierarchy down to the node the instance attaches to (AWS EC2 docs, 2023-11).
 
 Two instances that share their last network node are under the same leaf.
@@ -135,9 +159,9 @@ It is the cheapest topology optimization available on AWS, and most teams do not
 HyperPod launched at re:Invent 2023 with Slurm orchestration and added Amazon EKS orchestration in 2024 (AWS launch posts, 2023-11 and 2024-09).
 Architecturally, it is a managed control plane that owns the EC2 instances in service-managed accounts, attaches their ENIs and EFA interfaces into your VPC, runs your lifecycle scripts from S3 at node creation, and runs a repair loop with four stages:
 
-1. **Admission screening.** For EKS-orchestrated clusters, CreateCluster accepts per-instance-group `OnStartDeepHealthChecks` (InstanceStress, InstanceConnectivity), which run GPU or accelerator stress and EFA/NCCL connectivity tests before a node is marked schedulable (SageMaker API reference, 2025; parameter names UNVERIFIED for 2026-10). Admission screening matters because a newly provisioned node is the most likely one to be bad: burn-in failures cluster at the start of the bathtub curve.
+1. **Admission screening.** For EKS-orchestrated clusters, and now Slurm-orchestrated ones too, CreateCluster and UpdateCluster accept per-instance-group `OnStartDeepHealthChecks` (InstanceStress, InstanceConnectivity), which run hardware stress, DCGM level-4 GPU diagnostics and EFA loopback tests, plus multi-node NCCL all-reduce tests, before a node is marked schedulable (SageMaker HyperPod docs, as of 2026-10). Admission screening matters because a newly provisioned node is the most likely one to be bad: burn-in failures cluster at the start of the bathtub curve.
 2. **Continuous detection.** A health-monitoring agent on each node watches accelerator, interconnect and NIC signals (NVIDIA Xid and DCGM events, Neuron errors, EFA link state) and reports to the control plane.
-3. **State machine.** On EKS, health is projected into the node label `sagemaker.amazonaws.com/node-health-status`. Its states include Schedulable, Unschedulable, UnschedulablePendingReboot and UnschedulablePendingReplacement (AWS docs, 2025; exact keys UNVERIFIED). Schedulers and operators see repair intent as Kubernetes metadata, which lets Kueue or your own controllers stop placing gang members onto a node that is about to disappear.
+3. **State machine.** On EKS, health is projected into the node label `sagemaker.amazonaws.com/node-health-status`. Its states include Schedulable, Unschedulable, UnschedulablePendingReboot and UnschedulablePendingReplacement (AWS HyperPod EKS node-label docs, as of 2026-10). Schedulers and operators see repair intent as Kubernetes metadata, which lets Kueue or your own controllers stop placing gang members onto a node that is about to disappear.
 4. **Remediation and resume.** With `NodeRecovery: Automatic`, the faulty instance is rebooted or replaced. On Slurm, a job launched with `srun --auto-resume=1` is requeued onto the healthy set after replacement and restarts from the last checkpoint. Operators can force the same path by setting a Slurm node to fail with a reason such as `Action:Replace` or `Action:Reboot` (HyperPod docs, 2024).
 
 Auto-resume only restarts the job.
@@ -148,8 +172,8 @@ Hence the spare-capacity question in the Worked Example.
 HyperPod's later features address exactly the terms in the Young/Daly model:
 
 - **Task governance** (Kueue-based quotas, priorities and preemption on EKS; AWS launch, 2024-12) and **flexible training plans** (reserved, time-boxed capacity for HyperPod; AWS launch, 2024-12) handle capacity.
-- **Managed tiered checkpointing**, which writes checkpoints to host memory with peer replication and drains them to S3 asynchronously, attacks C and the reload part of R (AWS launch, 2025; UNVERIFIED).
-- **Elastic and checkpointless training**, which lets a job continue or recover from peer state without a full storage reload, also targets R (AWS re:Invent, 2025-12; UNVERIFIED).
+- **Managed tiered checkpointing**, which writes checkpoints to host memory with peer replication and drains them to S3 asynchronously, attacks C and the reload part of R (AWS launch, 2025-09, EKS-orchestrated clusters only at launch).
+- **Elastic and checkpointless training**, which lets a job continue or recover from peer state without a full storage reload, also targets R (AWS launch, 2025-12). Current docs say its recipes are verified on ml.p5 instances and that it is incompatible with managed tiered checkpointing and elastic training (SageMaker HyperPod docs, as of 2026-10).
 
 Treat the last two as features to verify against your SDK version before designing around them.
 
@@ -169,17 +193,18 @@ The practical consequences:
 - A version drift between nodes shows up as NCCL falling back to host bounce buffers, which is silent apart from lower bus bandwidth.
 - Each GPU NIC is a separate VPC network attachment, so GKE multi-networking objects (`Network`, `GKENetworkParamSet`) and per-pod interface annotations are part of the cluster's critical path.
 
-TCPXO on A3 Mega offloads more of the data path to the NIC and doubles per-VM GPU network bandwidth over A3 (Google Cloud docs, 2024).
+TCPXO on A3 Mega offloads more of the data path to the NIC and doubles per-VM GPU network bandwidth over A3 (Google Cloud docs, 2024): a3-megagpu-8g is rated at 1,800 Gbps per VM against 1,000 Gbps for a3-highgpu-8g, host NIC included (Google Cloud GPU docs, as of 2026-10).
 
-**A3 Ultra, A4 and A4X move to RDMA over Converged Ethernet** on ConnectX-7 NICs at 3,200 Gbps per VM in a rail-aligned, non-blocking design (Google Cloud docs, 2025).
+**A3 Ultra, A4 and A4X move to RDMA over Converged Ethernet** on ConnectX-7 NICs in a rail-aligned, non-blocking design (Google Cloud docs, 2025).
+The 8-GPU A3 Ultra and A4 VMs carry 3,200 Gbps of GPU RDMA (3,600 Gbps maximum per VM including host NICs), while a 4-GPU A4X VM is rated at 2,000 Gbps maximum (Google Cloud GPU docs, as of 2026-10).
 This brings GCP's GPU clusters close to the conventional NCCL-over-RDMA model, along with its classic failure modes: PFC and ECN tuning, per-flow ECMP hash collisions, and link flaps that NCCL sees as timeouts.
 
-**Cluster Director** (launched as Hypercompute Cluster in 2024 and renamed in 2025) is Google's dense-deployment and management layer: capacity in co-located blocks, topology-aware placement, and fault reporting (Google Cloud blog, 2024-10 and 2025; naming UNVERIFIED for 2026-10).
-On GKE, nodes in these deployments carry topology labels: `cloud.google.com/gce-topology-block`, `cloud.google.com/gce-topology-subblock` and `cloud.google.com/gce-topology-host` (GKE docs, 2025; UNVERIFIED).
+**Cluster Director** (launched as Hypercompute Cluster in 2024 and renamed in 2025) is Google's dense-deployment and management layer: capacity in co-located blocks, topology-aware placement, and fault reporting (Google Cloud blog, 2024-10 and 2025; Google's Cluster Director overview still describes it as "formerly known as Hypercompute Cluster", as of 2026-10).
+On GKE, nodes in these deployments carry topology labels: `cloud.google.com/gce-topology-block`, `cloud.google.com/gce-topology-subblock` and `cloud.google.com/gce-topology-host` (Google Cloud AI Hypercomputer TAS docs, as of 2026-10).
 Kueue's Topology Aware Scheduling consumes a `Topology` object that lists those label levels.
-It places a gang so that all pods fit under the lowest level that can hold them, and workloads ask for this through pod-set annotations for required or preferred topology level (Kueue docs, 2025; annotation names UNVERIFIED).
+It places a gang so that all pods fit under the lowest level that can hold them, and workloads ask for this through the pod-set annotations `kueue.x-k8s.io/podset-required-topology` and `kueue.x-k8s.io/podset-preferred-topology` (Google Cloud AI Hypercomputer TAS docs, as of 2026-10).
 This is the GKE equivalent of sorting by DescribeInstanceTopology network nodes, except that it runs in the admission controller and not in a launcher script.
-JobSet supplies the multi-job gang abstraction (one replicated job per slice or per pipeline stage, with a shared failure policy), and the Dynamic Workload Scheduler supplies capacity in flex-start (queue until the whole request fits) and calendar (fixed future window) modes (Google Cloud docs, 2025; calendar mode GA status UNVERIFIED).
+JobSet supplies the multi-job gang abstraction (one replicated job per slice or per pipeline stage, with a shared failure policy), and the Dynamic Workload Scheduler supplies capacity in flex-start (queue until the whole request fits) and calendar (fixed future window of up to 90 days) modes (Google Cloud docs, 2025; calendar mode was announced in preview in 2025-07 and marked generally available on 2025-12-17 per the Google Cloud blog's editor's note).
 GKE's control plane supports clusters of up to 65,000 nodes (Google Cloud blog, 2024-11).
 
 ### TPU slices, cubes, OCS and multislice
@@ -191,21 +216,21 @@ The faces of each cube connect to optical circuit switches (OCS).
 A TPU v4 pod is 64 cubes (4,096 chips) wired through 48 OCSes, and the OCS layer accounts for under 5% of system cost and under 3% of system power (Jouppi et al., TPU v4: An Optically Reconfigurable Supercomputer for Machine Learning, ISCA 2023).
 TPU v5p scales the pod to 8,960 chips with 4,800 Gbps of ICI per chip (Google Cloud launch, 2023-12).
 **Trillium (v6e) and v5e** use 2D tori of up to 256 chips per pod (Google Cloud docs, 2024).
-**Ironwood (TPU7x)** scales to 9,216 chips per superpod with 192 GB of HBM per chip (Google Cloud blog, 2025-04; GA status and the 2026-10 product name UNVERIFIED).
+**Ironwood (TPU7x)** scales to 9,216 chips (144 cubes of 4x4x4) per superpod with 192 GiB of HBM per chip (Google Cloud blog, 2025-04; Cloud TPU TPU7x docs, as of 2026-10); TPU7x entered preview on 2025-11-24 and became generally available on 2026-03-31 (Cloud TPU release notes).
 
 The OCS mechanism matters more than the chip specs, because it determines how failures and placement behave.
 
 - **Slices are compositions, not locations.** The scheduler programs OCS mirrors to connect any set of healthy cubes into the requested shape, so a slice does not need physically adjacent racks. That removes most of the fragmentation problem that plagues switched GPU clusters.
 - **Failed cubes are swapped, not routed around.** When a host or chip in a cube fails, the system can rebuild the slice with a spare cube by reprogramming the OCS. Google's TPU v4 resilience paper describes this reconfiguration-based availability model and its effect on how often large slices can be scheduled (Zu et al., Resiliency at Scale: Managing Google's TPUv4 Machine Learning Supercomputer, NSDI 2024).
-- **Torus wraparound depends on shape.** The wraparound links in a 3D slice come through the OCS on cube faces. A slice smaller than a full cube in some dimension is a mesh in that dimension, not a torus, and the worst-case hop count for a ring collective along that axis roughly doubles. The v4 paper also describes twisted-torus wirings for non-cubic shapes that raise bisection bandwidth (Jouppi et al., ISCA 2023; exact per-generation shape rules for v5p and Ironwood UNVERIFIED). The practical rule: request shapes whose dimensions are multiples of the cube edge, and benchmark your collective along each mesh axis.
+- **Torus wraparound depends on shape.** The wraparound links in a 3D slice come through the OCS on cube faces. A slice smaller than a full cube in some dimension is a mesh in that dimension, not a torus, and the worst-case hop count for a ring collective along that axis roughly doubles. The v4 paper also describes twisted-torus wirings for non-cubic shapes that raise bisection bandwidth (Jouppi et al., ISCA 2023). Current docs state the per-generation rules: on v5p, slices of 4x4x4 and larger have full 3D torus connectivity, smaller slices have no wraparound links, and twisted topologies are offered only where each dimension equals or is twice the smallest; on TPU7x, slices of 64 or more chips use AxBxC shapes with every dimension a multiple of 4 (Cloud TPU v5p and TPU7x docs, as of 2026-10). The practical rule: request shapes whose dimensions are multiples of the cube edge, and benchmark your collective along each mesh axis.
 
 **Multislice** joins several slices over the data-center network (DCN), meaning the hosts' ordinary NICs, not ICI (Google Cloud TPU docs, 2023).
 ICI bandwidth per chip is roughly an order of magnitude above DCN bandwidth per chip, so the only collective that belongs on DCN is the data-parallel gradient reduction.
 In practice, an FSDP or hybrid-sharded reduction runs within each slice and only the cross-slice reduction crosses DCN.
-In JAX this is explicit: `mesh_utils.create_hybrid_device_mesh(ici_mesh_shape, dcn_mesh_shape)` returns a device array whose DCN axis spans slices.
+In JAX this is explicit: `mesh_utils.create_hybrid_device_mesh(mesh_shape, dcn_mesh_shape)`, where `mesh_shape` is the per-slice ICI shape, returns a device array whose DCN axis spans slices (JAX source, as of 2026-10).
 You then name that axis "data" and keep "fsdp" and "tensor" axes inside the slice.
 On GKE each slice is one multi-host TPU node pool and one JobSet replicated-job replica.
-The runtime finds its peers through MEGASCALE_* environment variables (coordinator address, number of slices, slice ID), which tooling such as xpk wires up from JobSet labels (xpk and GKE docs, 2024; variable wiring UNVERIFIED for 2026-10).
+The runtime finds its peers through MEGASCALE_* environment variables (coordinator address, number of slices, slice ID), which tooling such as xpk wires up from JobSet labels: its Pathways workload template maps `MEGASCALE_SLICE_ID` to `jobset.sigs.k8s.io/job-index`, `MEGASCALE_NUM_SLICES` to `jobset.sigs.k8s.io/replicatedjob-replicas` and `MEGASCALE_COORDINATOR_ADDRESS` to `jobset.sigs.k8s.io/coordinator` (xpk source, as of 2026-10), while GKE's own multislice JobSet tutorial manifests do not set them by hand (GKE docs, as of 2026-10).
 Pathways, Google's single-controller runtime, coordinates many slices from one client and was used to train PaLM across two TPU v4 pods (Barham et al., Pathways, MLSys 2022; Chowdhery et al., PaLM, 2022).
 
 **Atomicity** is the TPU property that most often surprises GPU engineers.
@@ -231,23 +256,24 @@ The first failure during a control-plane brownout turns into a stall that lasts 
 | P5 UltraCluster scale at launch | up to 20,000 H100 GPUs | AWS P5 launch, 2023-07 |
 | P6e-GB200 UltraServer NVLink domain | up to 72 Blackwell GPUs | AWS launch, 2025-07 |
 | Trn2 UltraServer | 64 Trainium2 chips over NeuronLink | AWS re:Invent, 2024-12 |
-| Capacity Blocks for ML at launch | 1-14 days, up to 64 instances, up to 8 weeks ahead | AWS docs, 2023-11 (extensions UNVERIFIED) |
-| DescribeInstanceTopology depth | ordered list of network nodes, 3 layers for most supported families | AWS EC2 docs, 2023-11 |
-| A3 Ultra / A4 GPU network per VM | 3,200 Gbps RDMA (ConnectX-7) | Google Cloud docs, 2025 |
+| Capacity Blocks for ML at launch | 1-14 days, up to 64 instances, up to 8 weeks ahead | AWS docs, 2023-11 |
+| Capacity Blocks for ML now | 1-day steps to 14 days, 7-day steps to 182 days; 64 instances per block, 256 across blocks; up to 8 weeks ahead | AWS EC2 docs, as of 2026-10 |
+| DescribeInstanceTopology depth | ordered list of network nodes, top to bottom; 3 or 4 layers depending on instance type | AWS EC2 docs, as of 2026-10 |
+| A3 Ultra / A4 GPU network per VM | 3,200 Gbps RDMA (ConnectX-7); 3,600 Gbps max per VM incl. host NICs | Google Cloud GPU docs, as of 2026-10 |
 | A4X NVLink domain | 72 GPUs (18 VMs x 4 GPUs) | Google Cloud docs, 2025 |
 | GKE max cluster size | 65,000 nodes | Google Cloud blog, 2024-11 |
 | TPU v4 pod | 4,096 chips, 64 cubes of 4x4x4, 48 OCS | Jouppi et al., ISCA 2023 |
 | TPU v4 OCS cost and power share | under 5% of cost, under 3% of power | Jouppi et al., ISCA 2023 |
-| TPU v5p pod | 8,960 chips, 4,800 Gbps ICI per chip, 95 GB HBM | Google Cloud launch, 2023-12 |
+| TPU v5p pod | 8,960 chips, 4,800 Gbps ICI per chip (1,200 GBps bidirectional), 95 GiB HBM | Google Cloud launch, 2023-12; Cloud TPU v5p docs, as of 2026-10 |
 | TPU v6e (Trillium) pod | 256 chips, 2D torus | Google Cloud docs, 2024 |
-| Ironwood superpod | 9,216 chips, 192 GB HBM per chip | Google Cloud blog, 2025-04 |
+| Ironwood (TPU7x) superpod | 9,216 chips, 192 GiB HBM per chip; GA 2026-03-31 | Google Cloud blog, 2025-04; Cloud TPU docs and release notes, as of 2026-10 |
 | Llama 3 pre-training interruptions | 419 unexpected in 54 days on 16,384 H100s, ~78% hardware | Meta, 2024-07 |
 | Derived per-node interruption rate | ~1.6e-4 per node-hour (MTBF ~6,300 h) | computed from Meta, 2024-07 |
 | MegaScale | 12,288 GPUs, 55.2% MFU on 175B, >90% effective training time | Jiang et al., NSDI 2024 |
-| p5.48xlarge on-demand, us-east-1 | ~$55/h after the 2025-06 price reduction | AWS pricing, 2025-06 (UNVERIFIED for 2026-10) |
-| TPU v5p on-demand | $4.20 per chip-hour | Google Cloud pricing, 2024 (UNVERIFIED for 2026-10) |
-| TPU v6e on-demand | $2.70 per chip-hour | Google Cloud pricing, 2024 (UNVERIFIED for 2026-10) |
-| TPU v5e on-demand | $1.20 per chip-hour | Google Cloud pricing, 2024 (UNVERIFIED for 2026-10) |
+| p5.48xlarge on-demand, us-east-1 | $55.04/h after the 2025-06 price reduction | AWS price list, as of 2026-10 |
+| TPU v5p on-demand | $4.20 per chip-hour (us-east5) | Google Cloud TPU pricing, as of 2026-10 |
+| TPU v6e on-demand | $2.70 per chip-hour (us-east1) | Google Cloud TPU pricing, as of 2026-10 |
+| TPU v5e on-demand | $1.20 per chip-hour (us-central1, us-west4) | Google Cloud TPU pricing, as of 2026-10 |
 
 Prices vary by region and by negotiated agreement, and they change often.
 Treat every price row as an order of magnitude and re-check the pricing page before committing to a budget.
@@ -276,8 +302,8 @@ Target: a 70B dense transformer trained on 2T tokens.
 Training FLOPs are about 6 x N x D = 6 x 70e9 x 2e12 = 8.4e23.
 On H100 at 989 TFLOP/s dense BF16 and an assumed 40% MFU, each GPU delivers about 3.96e14 FLOP/s.
 On 1,024 GPUs (128 p5.48xlarge) that is 8.4e23 / (1,024 x 3.96e14) = about 2.07e6 s, or 24.0 days, which is about 590,000 GPU-hours.
-At ~$55/h per instance (~$6.88 per GPU-hour, UNVERIFIED), the list-price compute bill is about $4.1M before discounts.
-On TPU v5p at 459 TFLOP/s BF16 and an assumed 45% MFU, 1,024 chips take about 46 days and about 1.13M chip-hours, or about $4.7M at the $4.20 list price (UNVERIFIED).
+At $55.04/h per instance ($6.88 per GPU-hour, AWS price list for us-east-1, as of 2026-10), the list-price compute bill is about $4.1M before discounts.
+On TPU v5p at 459 TFLOP/s BF16 (Cloud TPU v5p docs) and an assumed 45% MFU, 1,024 chips take about 46 days and about 1.13M chip-hours, or about $4.7M at the $4.20 list price (Google Cloud TPU pricing, as of 2026-10).
 That is a worse result than H100 at list price for this model size.
 Committed-use pricing, and the fact that a v5p slice is one ICI domain (letting you use larger tensor or FSDP groups at higher MFU), can reverse the comparison.
 The lesson: compare cost per useful FLOP at your measured MFU and your negotiated price, never spec sheets.
@@ -396,8 +422,8 @@ Do not run it in a lab.
 
 **Cost estimate:**
 
-- Two v5e slices of topology 2x4 (8 chips, 2 hosts each) is 16 chips, about $19.20/h at the $1.20 on-demand list price (UNVERIFIED).
-- The GKE cluster management fee is about $0.10/h and an e2-standard-4 system node is about $0.13/h (UNVERIFIED).
+- Two v5e slices of topology 2x4 (8 chips, 2 hosts each) is 16 chips, about $19.20/h at the $1.20 on-demand list price in us-west4 (Google Cloud TPU pricing, as of 2026-10).
+- The GKE cluster management fee is $0.10 per cluster per hour (GKE pricing, as of 2026-10) and an e2-standard-4 system node is about $0.13/h (UNVERIFIED: e2 rate not read from the script-rendered Compute Engine pricing page).
 - One hour of lab is therefore about $20 on demand; `--spot` usually lowers this substantially but can be preempted.
 
 Create a budget first:
@@ -581,7 +607,7 @@ Re-run the topology report after every repair, alert on leaf-count growth, and p
 
 ### 5. Capacity window cliffs
 
-Capacity Blocks end at a fixed time, and EC2 reclaims the instances near the end of the window (AWS docs, 2023-11; exact reclaim lead time UNVERIFIED).
+Capacity Blocks end at a fixed time, 11:30 UTC, and EC2 begins terminating the instances at 11:00 UTC on the final day, 30 minutes before the end; for P6e-GB200 UltraServer blocks you must terminate instances yourself at least 60 minutes before the end (AWS EC2 docs, as of 2026-10).
 A job that has not written a final checkpoint before then loses everything since the last one.
 Schedule a forced checkpoint and graceful stop well ahead of the window end, and watch the window-end time from the same automation that launches jobs.
 
@@ -683,7 +709,7 @@ The mapping follows bandwidth.
 Tensor parallelism has the most frequent, latency-sensitive collectives, so it goes on an ICI axis, typically small and inside a cube.
 FSDP's all-gathers and reduce-scatters are also large and frequent, so they go on the remaining ICI axes within the slice.
 Pure data parallelism goes on the DCN axis between the four slices, because it only needs one gradient reduction per step, and that reduction can overlap with the backward pass.
-In JAX I would build the mesh with `create_hybrid_device_mesh(ici_mesh_shape=(1, fsdp, tp), dcn_mesh_shape=(4, 1, 1))` and name the axes ("data", "fsdp", "tensor").
+In JAX I would build the mesh with `create_hybrid_device_mesh(mesh_shape=(1, fsdp, tp), dcn_mesh_shape=(4, 1, 1))` and name the axes ("data", "fsdp", "tensor").
 Only the "data" axis crosses DCN.
 I would also check that the slice shape uses full cubes in each dimension, so the ICI axes are true tori with wraparound, not meshes.
 

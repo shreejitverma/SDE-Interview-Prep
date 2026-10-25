@@ -2,7 +2,7 @@
 type: concept
 track: [cloud-ai, ai-eng, sde, distinguished]
 level:
-status: draft
+status: solid
 last_reviewed:
 sources: 
   - "https://modal-cdn.com/gpu-glossary/gtc22-whitepaper-hopper.pdf"
@@ -18,6 +18,30 @@ sources:
   - "https://doi.org/10.1145/1498765.1498785"
   - "https://arxiv.org/abs/2407.21783"
   - "https://jax-ml.github.io/scaling-book/"
+  - "https://www.nvidia.com/en-us/data-center/h100/"
+  - "https://www.nvidia.com/en-us/data-center/h200/"
+  - "https://www.nvidia.com/en-us/data-center/hgx/"
+  - "https://www.nvidia.com/en-us/data-center/dgx-b200/"
+  - "https://www.nvidia.com/en-us/data-center/technologies/blackwell-architecture/"
+  - "https://docs.cloud.google.com/tpu/docs/tpu7x"
+  - "https://docs.cloud.google.com/tpu/docs/release-notes"
+  - "https://cloud.google.com/tpu/pricing"
+  - "https://docs.cloud.google.com/tpu/docs/v5p"
+  - "https://docs.cloud.google.com/tpu/docs/v5e"
+  - "https://docs.cloud.google.com/tpu/docs/v4"
+  - "https://docs.cloud.google.com/tpu/docs/runtimes"
+  - "https://docs.cloud.google.com/tpu/docs/regions-zones"
+  - "https://docs.cloud.google.com/tpu/docs/spot"
+  - "https://docs.cloud.google.com/compute/docs/accelerator-optimized-machines"
+  - "https://docs.cloud.google.com/confidential-computing/confidential-vm/docs/release-notes"
+  - "https://blogs.nvidia.com/blog/azure-confidential-vm-h100-general-availability/"
+  - "https://awsdocs-neuron.readthedocs-hosted.com/en/latest/about-neuron/arch/neuron-hardware/neuron-core-v3.html"
+  - "https://awsdocs-neuron.readthedocs-hosted.com/en/latest/about-neuron/arch/neuron-hardware/trn2-arch.html"
+  - "https://aws.amazon.com/ec2/instance-types/accelerated-computing/"
+  - "https://aws.amazon.com/ec2/instance-types/trn2/"
+  - "https://aws.amazon.com/about-aws/whats-new/2025/12/amazon-ec2-trn3-ultraservers/"
+  - "https://arxiv.org/pdf/2608.12700"
+  - "https://arxiv.org/pdf/2609.12923"
 ---
 
 # Accelerator Architectures: GPUs, Trainium, TPUs
@@ -87,14 +111,14 @@ Thread block clusters (up to 16 co-scheduled CTAs, as documented in [arXiv 2604.
 
 The Hopper Transformer Engine adds FP8 in E4M3 and E5M2 formats with per-tensor scale factors, which doubles dense throughput to about 1,979 TFLOP/s on H100 SXM.
 The cost is that FP8 training needs amax tracking and scaling recipes to avoid overflow and underflow.
-H200 uses the same GH100 compute with 141 GB of HBM3e at 4.8 TB/s instead of 80 GB of HBM3 at 3.35 TB/s ([NVIDIA figures via Medium summary](https://medium.com/@vedantb3705/nvidia-blackwell-when-208-billion-transistors-decided-to-rewrite-the-rules-ed827ae281ae), as of 2026-10).
+H200 uses the same GH100 compute with 141 GB of HBM3e at 4.8 TB/s instead of 80 GB of HBM3 at 3.35 TB/s ([NVIDIA H200 page](https://www.nvidia.com/en-us/data-center/h200/) and [NVIDIA H100 page](https://www.nvidia.com/en-us/data-center/h100/), as of 2026-10).
 That makes H200 the better decode part at identical FLOPs, because its ridge point drops from 295 to 206.
 
 ### NVIDIA Blackwell (B200, GB200): two dies, Tensor Memory, and single-thread MMA
 
-B200 is two reticle-limited dies totalling 208 billion transistors, joined by the 10 TB/s NV-HBI die-to-die link and presented to CUDA as one device ([Wikipedia summary of NVIDIA disclosures](https://en.wikipedia.org/wiki/Blackwell_(microarchitecture)), as of 2026-10).
+B200 is two reticle-limited dies totalling 208 billion transistors, joined by the 10 TB/s NV-HBI die-to-die link and presented to CUDA as one device ([NVIDIA Blackwell architecture page](https://www.nvidia.com/en-us/data-center/technologies/blackwell-architecture/), as of 2026-10).
 The package carries 192 GB of HBM3e at 8 TB/s ([Jarvislabs B200 spec summary](https://jarvislabs.ai/ai-faqs/nvidia-b200-specs), as of 2026-10).
-Some system listings expose about 180 GB per GPU, so check usable memory in the actual instance spec rather than the chip datasheet ([Runpod B200 guide](https://www.runpod.io/articles/guides/nvidia-b200), as of 2026-10).
+Some system listings expose about 180 GB per GPU, including NVIDIA's own DGX B200 at 1,440 GB and 64 TB/s for eight GPUs, so check usable memory in the actual instance spec rather than the chip datasheet ([NVIDIA DGX B200 page](https://www.nvidia.com/en-us/data-center/dgx-b200/); [Runpod B200 guide](https://www.runpod.io/articles/guides/nvidia-b200), as of 2026-10).
 Microbenchmark work counts 148 SMs on B200 ([Jarmusch et al., arXiv 2512.02189](https://arxiv.org/pdf/2512.02189)).
 
 The architectural change that matters most for kernel authors is the fifth-generation Tensor Core and its `tcgen05` PTX instruction family.
@@ -138,7 +162,7 @@ One or more matrix-multiply units (MXUs) are systolic arrays of BF16 multipliers
 The lineage begins with TPU v1, whose matrix unit was a weight-stationary systolic array: weights were loaded into the array and double-buffered while activations streamed through ([Jouppi et al., ISCA 2017](https://arxiv.org/abs/1704.04760)).
 In the cloud generations:
 - TPU v4 has two TensorCores and introduced optical circuit switches (OCSes) that let a 4,096-chip supercomputer reconfigure around unavailable hosts, plus SparseCores that accelerate embedding-heavy models 5x to 7x for about 5% of die area and power ([Jouppi et al., ISCA 2023](https://arxiv.org/abs/2304.01433)).
-- TPU v5p has two TensorCores with four MXUs each, 95 GB of HBM at 2,765 GB/s, and scales to 8,960 chips in a 3D torus ([Clarigital v5p guide](https://www.clarigital.com/hardware/ai-chips/google-tpu/v5p/); [Medium TPU versions summary](https://medium.com/womenintechnology/google-cloud-tpu-architecture-versions-explained-from-v1-to-the-eighth-generation-3f2371962154), as of 2026-10).
+- TPU v5p has two TensorCores with four MXUs each, 95 GB of HBM at 2,765 GB/s, and scales to 8,960 chips in a 3D torus ([Google Cloud TPU v5p docs](https://docs.cloud.google.com/tpu/docs/v5p), as of 2026-10).
 - TPU v6e (Trillium) has one TensorCore with two MXUs, a vector unit, and a scalar unit, delivering 918 BF16 TFLOP/s with 32 GB of HBM at 1,638 GBps per chip ([Google Cloud TPU v6e docs](https://docs.cloud.google.com/tpu/docs/v6e), as of 2026-10).
 
 The mechanism that matters operationally is static scheduling.
@@ -150,17 +174,17 @@ Second, matmul dimensions are padded up to MXU-friendly multiples (128 on older 
 Third, a weight-stationary array only hides weight-load latency when each loaded weight tile is reused across enough streamed rows, so tiny batches leave the MXU waiting on weight movement as well as HBM.
 Pallas, the JAX kernel language, exposes VMEM and the DMA schedule when XLA's fusion decisions are wrong.
 
-Ironwood, the seventh-generation TPU (TPU7x in API surfaces), was announced at Google Cloud Next 2025 and reported generally available in late 2025 ([Medium TPU versions summary](https://medium.com/womenintechnology/google-cloud-tpu-architecture-versions-explained-from-v1-to-the-eighth-generation-3f2371962154), as of 2026-10).
-Its per-chip figures are omitted here because they could not be checked against Google documentation for this edition (UNVERIFIED).
+Ironwood, the seventh-generation TPU (TPU7x in API surfaces), was announced at Google Cloud Next 2025, entered Preview on November 24, 2025, and became generally available on March 31, 2026 ([Google Cloud TPU release notes](https://docs.cloud.google.com/tpu/docs/release-notes), as of 2026-10).
+Each TPU7x chip has two TensorCores and delivers 2,307 BF16 and 4,614 FP8 TFLOP/s with 192 GiB of HBM at 7,380 GBps, 1,200 GBps of bidirectional ICI, and pods of 9,216 chips ([Google Cloud TPU7x docs](https://docs.cloud.google.com/tpu/docs/tpu7x), as of 2026-10).
 
 ### AWS Trainium (Trn1, Trn2): four engines and an explicit memory hierarchy
 
 Each Trainium2 chip contains eight NeuronCore-v3.
 Together they deliver 1,299 dense FP8 TFLOP/s, 667 BF16/FP16/TF32 TFLOP/s, and 181 FP32 TFLOP/s, with 96 GiB of HBM at 2.9 TB/s and 3.5 TB/s of DMA bandwidth with inline compression ([AWS Neuron docs, Trainium2 architecture](https://awsdocs-neuron.readthedocs-hosted.com/en/v2.25.0/general/arch/neuron-hardware/trainium2.html), as of 2026-10).
 On-chip SBUF grows from 48 MiB on Trainium to 224 MiB on Trainium2, and the NeuronLink memory pool grows from 16 to 64 chips ([AWS Neuron docs](https://awsdocs-neuron.readthedocs-hosted.com/en/latest/about-neuron/arch/neuron-hardware/trainium2.html), as of 2026-10).
-NeuronLink-v3 provides 1.28 TB/s of chip-to-chip bandwidth per chip, and within a trn2.48xlarge the 16 chips form a 4 x 4 2D torus ([Microprocessor Report](https://www.microprocessorreport.com/p/trainium2-puts-aws-on-track-for-ai), as of 2026-10).
+NeuronLink-v3 provides 1.28 TB/s of chip-to-chip bandwidth per chip, and within a trn2.48xlarge the 16 chips form a 4 x 4 2D torus ([AWS Neuron docs, Trainium2 architecture](https://awsdocs-neuron.readthedocs-hosted.com/en/latest/about-neuron/arch/neuron-hardware/trainium2.html); [AWS Neuron docs, Trn2 architecture](https://awsdocs-neuron.readthedocs-hosted.com/en/latest/about-neuron/arch/neuron-hardware/trn2-arch.html), as of 2026-10).
 
-Each NeuronCore has four heterogeneous engines - Tensor, Vector, Scalar, and GpSimd - and each one runs its own instruction stream ([Clarigital Trainium2 guide citing Neuron docs](https://www.clarigital.com/hardware/ai-chips/amazon-trainium/trainium2/), as of 2026-10).
+Each NeuronCore has four heterogeneous engines - Tensor, Vector, Scalar, and GpSimd - and each one runs its own instruction stream ([AWS Neuron docs, NeuronCore-v3](https://awsdocs-neuron.readthedocs-hosted.com/en/latest/about-neuron/arch/neuron-hardware/neuron-core-v3.html); [Clarigital Trainium2 guide citing Neuron docs](https://www.clarigital.com/hardware/ai-chips/amazon-trainium/trainium2/), as of 2026-10).
 The Tensor Engine is a systolic array that reads operands from SBUF, a software-managed scratchpad organized as 128 partitions, and writes partial sums to PSUM, a separate accumulation buffer.
 The Vector and Scalar engines then move results out of PSUM into SBUF, applying activations and casts on the way.
 DMA queues move data between HBM and SBUF.
@@ -169,7 +193,7 @@ Two Trainium2 features matter for training numerics and placement.
 Hardware stochastic rounding can be selected instead of round-to-nearest-even, which helps BF16 weight updates avoid systematic bias.
 Logical NeuronCore Configuration (LNC) fuses physical cores into one larger logical core, which changes the device count frameworks see and has to match the compiled artifact ([AWS Neuron docs](https://awsdocs-neuron.readthedocs-hosted.com/en/v2.25.0/general/arch/neuron-hardware/trainium2.html), as of 2026-10).
 GpSimd engines run custom operators in C++, the way to write an op the compiler does not lower well.
-AWS has announced Trainium3 and Trn3 UltraServers, but their specifications and GA status are not stated here (UNVERIFIED).
+AWS made Trn3 UltraServers generally available on December 2, 2025, with each Trainium3 chip providing 2.52 PFLOP/s of FP8 compute and 144 GB of HBM3e at 4.9 TB/s, and up to 144 chips per UltraServer ([AWS What's New, Trn3 UltraServers](https://aws.amazon.com/about-aws/whats-new/2025/12/amazon-ec2-trn3-ultraservers/), as of 2026-10).
 
 ### Control plane, data plane, partitioning, and failure domains
 
@@ -179,7 +203,7 @@ The data plane is the kernels and DMA traffic, which never touch the host CPU on
 This is the accelerator form of the separation in [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_04_Control_Plane_vs_Data_Plane_Separation|Control Plane vs Data Plane Separation]]: a hung runtime call or a failed collective setup stops new work, but kernels already in flight finish.
 
 Partitioning options differ by family.
-H100 supports up to seven isolated MIG instances, each with dedicated slices of SMs, L2, and HBM bandwidth ([Yobitel H100 reference](https://yobitel.com/knowledge-base/nvidia-h100), as of 2026-10).
+H100 supports up to seven isolated MIG instances, each with dedicated slices of SMs, L2, and HBM bandwidth ([NVIDIA H100 page](https://www.nvidia.com/en-us/data-center/h100/) lists up to 7 MIGs at 10 GB each; [Yobitel H100 reference](https://yobitel.com/knowledge-base/nvidia-h100), as of 2026-10).
 TPUs are partitioned by slice topology, not within a chip.
 Trainium is partitioned by NeuronCore and by LNC grouping.
 Failure domains nest outward from the chip: chip (ECC, Xid, HBM), host (PCIe, NIC, CPU), scale-up domain (the 8-GPU NVLink board, NVL72 rack, TPU slice, or Trn2 UltraServer), then cluster fabric.
@@ -191,32 +215,32 @@ Interconnect mechanics are covered in [[17-Cloud-AI-Engineering/Volume_10_AI_Inf
 | Metric | Value | Source and date |
 | --- | --- | --- |
 | H100 SXM5 SMs | 132 enabled of 144 on GH100 | NVIDIA H100 whitepaper, as of 2026-10 |
-| H100 SXM dense BF16 / FP8 | ~989 / ~1,979 TFLOP/s | NVIDIA datasheet via spec aggregators, as of 2026-10 |
-| H100 SXM HBM | 80 GB HBM3, 3.35 TB/s | NVIDIA via secondary summaries, as of 2026-10 |
+| H100 SXM dense BF16 / FP8 | ~989 / ~1,979 TFLOP/s | NVIDIA H100 page (1,979 / 3,958 with sparsity, halved for dense), as of 2026-10 |
+| H100 SXM HBM | 80 GB HBM3, 3.35 TB/s | NVIDIA H100 page and H100 whitepaper, as of 2026-10 |
 | H100 per-SM registers / max SMEM | 65,536 x 32-bit / 228 KB | arXiv 2609.12923 citing NVIDIA, as of 2026-10 |
-| H100 SXM TDP | 700 W | Spheron H100 spec table, as of 2026-10 |
-| H200 HBM | 141 GB HBM3e, 4.8 TB/s | NVIDIA via secondary summaries, as of 2026-10 |
-| B200 transistors / die link | 208 B, two dies, NV-HBI 10 TB/s | NVIDIA via Wikipedia and Civo, as of 2026-10 |
-| B200 HBM | 192 GB HBM3e physical, 8 TB/s; some systems expose ~180 GB | Jarvislabs, Runpod, as of 2026-10 |
-| B200 dense BF16 / FP8 | ~2,250 / ~4,500 TFLOP/s (HGX-class) | Spheron B200 guide, as of 2026-10 |
-| B200 TMEM | 256 KB per SM, 128 lanes x 512 cols x 32 bit | Blackwell microbenchmark summaries, as of 2026-10 |
+| H100 SXM TDP | Up to 700 W (configurable) | NVIDIA H100 page, as of 2026-10 |
+| H200 HBM | 141 GB HBM3e, 4.8 TB/s | NVIDIA H200 page, as of 2026-10 |
+| B200 transistors / die link | 208 B, two dies, NV-HBI 10 TB/s | NVIDIA Blackwell architecture page, as of 2026-10 |
+| B200 HBM | 192 GB HBM3e physical, 8 TB/s; some systems expose ~180 GB | Jarvislabs, Runpod; NVIDIA DGX B200 lists 1,440 GB and 64 TB/s for 8 GPUs, as of 2026-10 |
+| B200 dense BF16 / FP8 | ~2,250 / ~4,500 TFLOP/s (HGX-class) | NVIDIA HGX page (HGX B200 36 / 72 PFLOP/s sparse for 8 GPUs, halved for dense), as of 2026-10 |
+| B200 TMEM | 256 KB per SM, 128 lanes x 512 cols x 32 bit | Jarmusch et al., arXiv 2512.02189; MLC notes, as of 2026-10 |
 | Trainium2 compute | 1,299 FP8 / 667 BF16 / 181 FP32 TFLOP/s dense | AWS Neuron docs, as of 2026-10 |
 | Trainium2 memory | 96 GiB HBM, 2.9 TB/s; SBUF 224 MiB per chip | AWS Neuron docs, as of 2026-10 |
 | Trainium2 NeuronLink-v3 | 1.28 TB/s per chip; pool up to 64 chips | AWS Neuron docs, as of 2026-10 |
 | Trainium (gen 1) memory | 32 GiB HBM, 0.8 TB/s; SBUF 48 MiB | AWS Neuron docs, as of 2026-10 |
-| trn2.48xlarge | 16 Trainium2, 1.5 TiB HBM, 20.8 PF FP8 | AWS figures via Neuron guides, as of 2026-10 |
-| Trn2 UltraServer | 64 Trainium2, 6 TiB HBM, 83 PF FP8 | AWS figures via Clarigital, as of 2026-10 |
-| TPU v4 | 275 BF16 TFLOP/s, 32 GB HBM, ~1.2 TB/s, 4,096-chip pod | ISCA 2023 paper; EaseCloud summary, as of 2026-10 |
-| TPU v5e | 197 BF16 TFLOP/s, 16 GB HBM, 800 GBps | Google Cloud v6e docs comparison table, as of 2026-10 |
-| TPU v5p | 459 BF16 TFLOP/s, 95 GB HBM, 2,765 GB/s, 8,960-chip pod | Google figures via Tweaktown and Clarigital, as of 2026-10 |
+| trn2.48xlarge | 16 Trainium2, 1.5 TiB HBM, 20.8 PF FP8 | AWS Neuron docs, Trn2 architecture, as of 2026-10 |
+| Trn2 UltraServer | 64 Trainium2, 6 TiB HBM, 83.2 PF FP8 | AWS Neuron docs, Trn2 architecture, as of 2026-10 |
+| TPU v4 | 275 BF16 TFLOP/s, 32 GiB HBM2, 1,200 GBps, 4,096-chip pod | Google Cloud TPU v4 docs; ISCA 2023 paper, as of 2026-10 |
+| TPU v5e | 197 BF16 TFLOP/s, 16 GB HBM, 800 GiBps (ridge below uses 800 GB/s) | Google Cloud TPU v5e docs, as of 2026-10 |
+| TPU v5p | 459 BF16 TFLOP/s, 95 GiB HBM, 2,765 GBps, 8,960-chip pod | Google Cloud TPU v5p docs, as of 2026-10 |
 | TPU v6e | 918 BF16 TFLOP/s, 1,836 INT8 TOP/s, 32 GB, 1,638 GBps | Google Cloud TPU v6e docs, as of 2026-10 |
 | TPU v6e ICI and pod | 800 GBps bidirectional per chip, 4 ports, 2D torus, 256 chips, 234.9 PF BF16 per pod | Google Cloud TPU v6e docs, as of 2026-10 |
 | TPU v6e host | 8 chips per host, 1,536 GiB DRAM, 4 x 200 Gbps NIC | Google Cloud TPU v6e docs, as of 2026-10 |
 | Ridge point, dense BF16 FLOP/byte | H100 295, H200 206, B200 281, Trn2 230 (FP8 448), v4 229, v5e 246, v5p 166, v6e 560 | Computed from rows above |
-| DWS flex-start price per chip-hour | v6e $1.35, v5p $2.10, v5e $0.60 | Google Cloud DWS pricing, as of 2026-10 |
-| DWS calendar mode price per chip-hour | v6e $1.89, v5p $2.94, v5e $0.84 | Google Cloud DWS pricing, as of 2026-10 |
-| TPU on-demand per chip-hour | v5e ~$1.20, v5p ~$4.20 | Secondary pricing guides, as of 2026-10 |
-| Llama 3 interruptions (54 days, 16K H100) | 419 unexpected; GPU 30.1%, HBM3 17.2% | Meta, arXiv 2407.21783 |
+| DWS flex-start price per chip-hour | v6e $1.35, v5p $2.10, v5e $0.60 | Google Cloud TPU pricing (US regions), as of 2026-10 |
+| DWS calendar mode price per chip-hour | v6e $1.89, v5p $2.94, v5e $0.84 | Google Cloud TPU pricing (US regions), as of 2026-10 |
+| TPU on-demand per chip-hour | v6e $2.70, v5e $1.20, v5p $4.20 | Google Cloud TPU pricing (us-east1, us-east5, us-central1), as of 2026-10 |
+| Llama 3 interruptions (54 days, 16K H100) | 466 total, 419 unexpected; GPU 30.1%, HBM3 17.2% | Meta, arXiv 2407.21783 |
 | TPU v4 OCS cost and power | <5% of system cost, <3% of system power | ISCA 2023 paper |
 
 ## AWS vs GCP Mechanism Parity
@@ -225,10 +249,10 @@ Interconnect mechanics are covered in [[17-Cloud-AI-Engineering/Volume_10_AI_Inf
 | --- | --- | --- | --- |
 | First-party accelerator | Trainium2 (NeuronCore-v3, four engines per core) | TPU v5e, v5p, v6e, Ironwood (TensorCore with MXUs) | Trainium exposes independent engines synchronized by semaphores; a TPU core issues one VLIW stream |
 | On-chip memory model | SBUF scratchpad plus PSUM accumulator, software-managed | VMEM scratchpad managed by XLA or Pallas | Neither has a cache in front of HBM for the matrix path, so tiling quality is a compiler property |
-| NVIDIA offering | P5 (H100), P5e/P5en (H200), P6 (B200), P6e GB200 UltraServers (UNVERIFIED for current SKU list) | A3 (H100), A3 Ultra (H200), A4 (B200), A4X (GB200) (UNVERIFIED for current SKU list) | Same silicon; the differences are host NIC, scale-out fabric, and placement controls |
+| NVIDIA offering | P5 (H100), P5e/P5en (H200), P6-B200 (B200), P6-B300 (B300), P6e-GB200 UltraServers (GB200) (AWS EC2 accelerated computing page, as of 2026-10) | A3 High, Mega, and Edge (H100), A3 Ultra (H200), A4 (B200), A4X (GB200), A4X Max (GB300) (Google Cloud accelerator-optimized machine docs, as of 2026-10) | Same silicon; the differences are host NIC, scale-out fabric, and placement controls |
 | Compiler stack | Neuron SDK, neuronx-cc, NKI; PyTorch via Neuron integrations; JAX support | XLA with JAX first-class, PyTorch/XLA, Pallas kernels | XLA is the most mature ahead-of-time ML compiler; on Neuron, operator coverage has to be checked per model |
 | Scale-up domain | 16 chips per trn2.48xlarge in a 4 x 4 torus, 64 per UltraServer | 256 chips per v6e pod (2D torus), 8,960 per v5p pod (3D torus with OCS) | TPU scale-up domains are much larger, which favors model parallelism without leaving ICI |
-| Numerics | FP8, BF16, FP32, hardware stochastic rounding, structured sparsity | BF16 and INT8 on v6e; FP8 on newer generations (UNVERIFIED per generation) | Stochastic rounding on Trainium is selected by the user; on TPU, numerics are mostly decided by XLA |
+| Numerics | FP8, BF16, FP32, hardware stochastic rounding, structured sparsity | BF16 and INT8 on v6e, whose listed FP8 peak equals its BF16 peak; native FP8 at twice the BF16 rate on Ironwood (TPU7x) (Google Cloud TPU7x docs, as of 2026-10) | Stochastic rounding on Trainium is selected by the user; on TPU, numerics are mostly decided by XLA |
 | Partitioning | NeuronCore and LNC grouping; MIG on NVIDIA instances | Slice topology (1x1 up to pod); MIG on NVIDIA VMs | You cannot split a TPU chip between tenants; you can pick a smaller slice |
 | Shape tolerance | Static shapes preferred; dynamic shapes supported via NeuronCore-v3 ISA extensions | Static shapes; every new shape recompiles | Both punish unbucketed dynamic shapes; GPUs mostly do not |
 | Capacity procurement | On-demand, Spot, EC2 Capacity Blocks for ML, Savings Plans | On-demand, Spot, DWS flex-start and calendar mode, CUDs | DWS publishes per-chip prices; Capacity Blocks price by instance-hour and vary over time |
@@ -239,7 +263,7 @@ Interconnect mechanics are covered in [[17-Cloud-AI-Engineering/Volume_10_AI_Inf
 ### Step 0: cost estimate, budget alarm, and quota check
 
 The lab uses one v6e-1 TPU VM (one chip) for under an hour.
-At the published DWS flex-start reference of $1.35 per chip-hour and an on-demand rate that is higher (UNVERIFIED at about $2.70 per chip-hour), the lab costs a few dollars plus the boot disk.
+At the published DWS flex-start reference of $1.35 per chip-hour and an on-demand rate of $2.70 per chip-hour in us-east1 and us-east5 ([Google Cloud TPU pricing](https://cloud.google.com/tpu/pricing), as of 2026-10), the lab costs a few dollars plus the boot disk.
 A $25 budget leaves a wide margin.
 Before you start, confirm that your project has v6e quota in the target zone, because new projects frequently have zero.
 
@@ -271,7 +295,7 @@ gcloud compute tpus tpu-vm create "$TPU_NAME" \
   --spot
 ```
 
-The runtime version string follows the v6e docs pattern and should be checked against the current docs before use (UNVERIFIED).
+`v2-alpha-tpuv6e` is the listed v6e software version, `us-east5-b` is a listed v6e zone, and `--version` with `--spot` is the documented `tpu-vm create` form ([Google Cloud TPU software versions](https://docs.cloud.google.com/tpu/docs/runtimes); [TPU regions and zones](https://docs.cloud.google.com/tpu/docs/regions-zones); [TPU Spot VMs](https://docs.cloud.google.com/tpu/docs/spot), as of 2026-10).
 If Spot capacity is not available, drop `--spot` and accept the on-demand price.
 
 ### Step 2: the probe
@@ -504,7 +528,10 @@ Crypto-mining abuse targets exactly these instance types, so alert on any accele
 Weights and optimizer state are the most valuable artifacts in the system, so store them in S3 or GCS encrypted with customer-managed KMS keys and grant decrypt only to the training and serving roles ([[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter/Chapter_04_Encryption_Key_Hierarchies_and_Envelope_Encryption|Encryption Key Hierarchies and Envelope Encryption]]).
 Pull weights over S3 gateway or interface VPC endpoints on AWS, and over Private Google Access inside a VPC Service Controls perimeter that includes `storage.googleapis.com` and `tpu.googleapis.com` on Google Cloud ([[17-Cloud-AI-Engineering/Volume_03_GCP_Deep_Dive/Chapter_03_VPC_Service_Controls_Security_Perimeters|VPC Service Controls: Security Perimeters]]).
 Uninitialized GPU local memory leaks such as LeftoverLocals (CVE-2023-4969) affected several non-NVIDIA vendors, which is a reminder to treat on-chip memory reuse between tenants as part of the threat model whenever accelerators are shared below the VM level.
-H100-class confidential computing modes exist, but the GA status of their cloud offerings varies by provider and region and should be checked before you design around them (UNVERIFIED).
+H100-class confidential computing modes exist, but their cloud offerings vary by provider, machine type, and region.
+Azure's NCC H100 v5 confidential VMs reached GA in September 2024 ([NVIDIA blog](https://blogs.nvidia.com/blog/azure-confidential-vm-h100-general-availability/), as of 2026-10).
+Google Cloud made Confidential VM on `a3-highgpu-1g` (one H100, Intel TDX plus NVIDIA Confidential Computing) GA on July 31, 2025, limited to a few zones and without multi-node clusters ([Google Cloud Confidential VM release notes](https://docs.cloud.google.com/confidential-computing/confidential-vm/docs/release-notes), as of 2026-10).
+Check the current AWS instance documentation before you design around GPU confidential computing there.
 
 ### Unit-economics levers
 
@@ -512,7 +539,7 @@ Match the chip to the bottleneck.
 Buy HBM bandwidth per dollar for decode, FLOPs per dollar for prefill and training, and HBM capacity per dollar for long-context KV cache.
 H200 over H100 is the canonical example: the same FLOPs with 43% more bandwidth and 76% more memory improve decode economics directly.
 Model FLOPs utilization is the multiplier on every price: a 35% MFU job pays nearly twice as much per useful FLOP as a 60% MFU job on the same hardware, and kernel work such as TMA pipelining or Pallas tiling is often cheaper than a hardware upgrade.
-For capacity, DWS flex-start lists v6e at $1.35 per chip-hour against a higher on-demand rate, and calendar mode at $1.89 buys a time guarantee ([Google Cloud DWS pricing](https://cloud.google.com/products/dws/pricing), as of 2026-10).
+For capacity, DWS flex-start lists v6e at $1.35 per chip-hour against a $2.70 on-demand rate, and calendar mode at $1.89 buys a time guarantee ([Google Cloud DWS pricing](https://cloud.google.com/products/dws/pricing); [Google Cloud TPU pricing](https://cloud.google.com/tpu/pricing), as of 2026-10).
 Commitments (Savings Plans and CUDs) only pay off at sustained utilization, as discussed in [[17-Cloud-AI-Engineering/Volume_09_FinOps_and_Cloud_Economics/Chapter_02_Commitment_Discounts_Savings_Plans_vs_CUDs|Commitment Discounts: Savings Plans vs CUDs]].
 
 ## Interview Questions and Model Answers

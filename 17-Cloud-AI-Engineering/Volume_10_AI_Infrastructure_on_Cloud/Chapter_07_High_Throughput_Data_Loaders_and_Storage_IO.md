@@ -25,6 +25,24 @@ sources:
   - "https://aws.amazon.com/blogs/aws/up-to-85-price-reductions-for-amazon-s3-express-one-zone/"
   - "https://aws.amazon.com/builders-library/timeouts-retries-and-backoff-with-jitter/"
   - "https://aws.amazon.com/message/41926/"
+  - "https://docs.aws.amazon.com/AmazonS3/latest/userguide/optimizing-performance-design-patterns.html"
+  - "https://docs.aws.amazon.com/AmazonS3/latest/userguide/directory-bucket-high-performance.html"
+  - "https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonS3/current/us-east-1/index.json"
+  - "https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AWSDataTransfer/current/us-east-1/index.json"
+  - "https://b0.p.awsstatic.com/pricing/2.0/meteredUnitMaps/ec2/USD/current/ec2-ondemand-without-sec-sel/US%20East%20(N.%20Virginia)/Linux/index.json"
+  - "https://docs.aws.amazon.com/kms/latest/developerguide/requests-per-second.html"
+  - "https://docs.aws.amazon.com/ebs/latest/userguide/ebs-volumes-multi.html"
+  - "https://aws.amazon.com/about-aws/whats-new/2023/08/mountpoint-amazon-s3-generally-available/"
+  - "https://cloud.google.com/storage/pricing"
+  - "https://docs.cloud.google.com/storage/docs/release-notes"
+  - "https://docs.cloud.google.com/storage/docs/anywhere-cache"
+  - "https://docs.cloud.google.com/storage/docs/pytorch-connector"
+  - "https://docs.cloud.google.com/managed-lustre/docs/release-notes"
+  - "https://docs.cloud.google.com/compute/docs/disks/hyperdisks"
+  - "https://docs.docker.com/engine/containers/run/"
+  - "https://github.com/meta-pytorch/data/releases"
+  - "https://github.com/torvalds/linux/blob/master/fs/fuse/inode.c"
+  - "https://arxiv.org/abs/2210.14826"
 ---
 
 # High-Throughput Data Loaders and Storage I/O
@@ -100,22 +118,23 @@ The design consequence is that the leading characters of object keys determine h
 Ten prefixes give you 55,000 GET/s of headroom, but only after S3 has actually partitioned them.
 GCS scales per bucket: a bucket starts at roughly 1,000 object writes and 5,000 object reads per second and auto-scales from there (Google Cloud docs, as of 2026-10).
 Google tells you to ramp gradually on any bucket that has not seen high request rates for several days, or that has a new range of object keys (Google Cloud docs, as of 2026-10).
-The widely cited ramp rule is to double request rate no faster than once every 20 minutes (UNVERIFIED in this revision).
+Google's ramp rule is to increase the rate no faster than doubling it over a period of 20 minutes (Google Cloud docs, as of 2026-10).
 Under that rule, taking a cold bucket from 5,000 to 1.28 million reads per second takes `log2(256) = 8` doublings, which is about 160 minutes of ramp.
 That is the hidden reason per-sample object layouts throttle a large job in its first hours and then appear to heal.
 S3 Express One Zone puts directory buckets inside a single Availability Zone and authenticates with session tokens obtained from `CreateSession`, which removes per-request SigV4 overhead from the hot path.
-It is marketed for single-digit-millisecond first-byte latency (AWS docs, UNVERIFIED in this revision).
+AWS documents it as purpose-built for consistent single-digit-millisecond data access (AWS docs, as of 2026-10).
 In April 2025 AWS cut its storage price by 31 percent, PUT price by 55 percent, and GET price by 85 percent; the per-GB upload and retrieval charges dropped 60 percent and now apply to all bytes (AWS News Blog, 2025-04-10).
 GCS has two answers to low latency.
-Anywhere Cache is a zonal SSD read cache in front of a regional bucket (Google Cloud docs, UNVERIFIED in this revision).
-Rapid Bucket zonal storage has its own Cloud Storage FUSE read path; that path relies on kernel read-ahead and is incompatible with the gcsfuse file cache and buffered reader (Google Cloud docs, as of 2026-10; GA status UNVERIFIED).
+Anywhere Cache is an SSD-backed zonal read cache created in a zone within the bucket's location, and object metadata requests still go to the bucket (Google Cloud docs, as of 2026-10).
+It went GA on 2025-03-13 and was renamed Rapid Cache on 2026-03-24 (Cloud Storage release notes, as of 2026-10).
+Rapid Bucket zonal storage, GA since 2026-03-10 (Cloud Storage release notes, as of 2026-10), has its own Cloud Storage FUSE read path; that path relies on kernel read-ahead and is incompatible with the gcsfuse file cache and buffered reader (Google Cloud docs, as of 2026-10).
 
 ### Stage 2: client transport and Little's law
 
 Little's law, `L = lambda x W`, sets the in-flight byte budget: `bytes_in_flight = target_bandwidth x per_request_latency`.
 A node that needs 2.2 GB/s from a store with 50 ms effective latency per 8 MiB ranged GET needs about 2.2 GB/s x 0.05 s / 8 MiB, which is roughly 13 GETs in flight before transfer time.
 Once you include per-connection transfer rate, the practical figure is about 25 to 40 concurrent requests per node.
-AWS guidance has historically been about one concurrent request per 85 to 90 MB/s of desired throughput (UNVERIFIED in this revision).
+AWS guidance has historically been about one concurrent request per 85 to 90 MB/s of desired throughput (UNVERIFIED: historical AWS guidance, no longer in the current S3 performance docs).
 No single-threaded Python `boto3.get_object().read()` loop can sustain that, because one connection's TCP window and first-byte latency cap it.
 The Amazon S3 Connector for PyTorch (`s3torchconnector`) exists for this reason.
 It ships `S3IterableDataset`, `S3MapDataset`, `S3Reader`, `S3Writer`, `S3Checkpoint`, a Lightning integration, and a Distributed Checkpoint (`dcp`) module (awslabs docs, versions 1.4.x-1.5.x, as of 2026-10).
@@ -129,7 +148,7 @@ The worked example below builds the `S3IterableDataset` inside `__iter__`, which
 
 With a FUSE mount (Mountpoint for Amazon S3, GA since 2023-08-09, or Cloud Storage FUSE), each `read(2)` goes through several hops.
 It enters the kernel VFS, is queued on `/dev/fuse`, is read by the userspace daemon, is translated to HTTP, and the reply is copied back through the kernel into the page cache and the user buffer.
-The kernel sends FUSE reads in bounded chunks, historically 128 KiB and up to about 1 MiB with larger `max_pages` on newer kernels (UNVERIFIED in this revision), so mapping each kernel request to its own GET would issue thousands of GETs per GiB.
+The kernel sends FUSE reads in bounded chunks, by default 32 pages (128 KiB) and up to 256 pages (1 MiB) when the daemon negotiates a larger `max_pages`, a cap that recent kernels expose as `/proc/sys/fs/fuse/max_pages_limit` (Linux kernel source fs/fuse, as of 2026-10), so mapping each kernel request to its own GET would issue thousands of GETs per GiB.
 Each FUSE daemon therefore runs its own prefetcher.
 Mountpoint watches for sequential access on a file handle, grows its in-flight read-ahead window as sequential reads continue, and resets the window on a seek.
 Sequential tar streaming is cheap for it; random access inside large files is expensive, because every seek collapses the window back to small ranged GETs.
@@ -192,7 +211,7 @@ Third, emit unbatched samples from workers and re-shuffle and batch in the main 
 ### Determinism and mid-epoch resume
 
 TorchData 0.8.0 (July 2024) introduced `StatefulDataLoader`, a drop-in replacement for `torch.utils.data.DataLoader` with `state_dict` and `load_state_dict` for mid-epoch checkpointing (meta-pytorch/data releases, as of 2026-10).
-The same project deprecated DataPipes and DataLoaderV2 in 0.8.0 and scheduled their deletion for 0.10.0.
+The same project deprecated DataPipes and DataLoaderV2 in 0.8.0 and announced their deletion for 0.9.0 (October 2024); they were actually dropped in 0.10 (December 2024) (meta-pytorch/data releases, as of 2026-10).
 Version 0.10 introduced `torchdata.nodes`, composable iterators for building multi-threaded and multi-process pipelines (meta-pytorch/data releases, as of 2026-10).
 Mid-epoch resume matters because of the fleet failure rates covered in [[17-Cloud-AI-Engineering/Volume_10_AI_Infrastructure_on_Cloud/Chapter_08_Fault_Tolerance_and_Fleet_Resiliency_at_Scale|Fault Tolerance and Fleet Resiliency at Scale]].
 Without it, a job that restarts from a checkpoint either replays the start of the epoch, oversampling early shards, or skips to the next epoch, never seeing the tail.
@@ -229,24 +248,24 @@ A local NVMe cache dies with its instance, so after node replacement the new nod
 | S3 request rate per partitioned prefix | at least 3,500 PUT/COPY/POST/DELETE and 5,500 GET/HEAD per second | (AWS docs, as of 2026-10) |
 | S3 prefix scaling behavior | Gradual, not instantaneous; 503 Slow Down while scaling | (AWS docs, as of 2026-10) |
 | S3 Express One Zone price change | Storage -31%, PUT -55%, GET -85%, per-GB transfer -60% (now on all bytes) | (AWS News Blog, 2025-04-10) |
-| S3 Express One Zone first-byte latency | single-digit milliseconds | (AWS docs, UNVERIFIED) |
-| S3 Standard GET price | USD 0.0004 per 1,000 requests, us-east-1 | (AWS pricing, UNVERIFIED) |
-| S3 Standard storage | USD 0.023 per GB-month, first 50 TB tier, us-east-1 | (AWS pricing, UNVERIFIED) |
-| Concurrency rule of thumb | about 1 request per 85-90 MB/s of target throughput | (AWS docs, UNVERIFIED) |
+| S3 Express One Zone data access latency | consistent single-digit milliseconds | (AWS docs, as of 2026-10) |
+| S3 Standard GET price | USD 0.0004 per 1,000 requests, us-east-1 | (AWS Price List API, as of 2026-10) |
+| S3 Standard storage | USD 0.023 per GB-month, first 50 TB tier (USD 0.022 next 450 TB), us-east-1 | (AWS Price List API, as of 2026-10) |
+| Concurrency rule of thumb | about 1 request per 85-90 MB/s of target throughput | (UNVERIFIED: historical AWS guidance, not in current docs) |
 | GCS initial bucket request rate | about 1,000 writes/s and 5,000 reads/s, then auto-scales | (Google Cloud docs, as of 2026-10) |
 | GCS ramp guidance | ramp gradually after several idle days or for new key ranges | (Google Cloud docs, as of 2026-10) |
-| GCS ramp doubling interval | no faster than every 20 minutes | (Google Cloud docs, UNVERIFIED) |
+| GCS ramp doubling interval | no faster than doubling over 20 minutes | (Google Cloud docs, as of 2026-10) |
 | GCS maximum object size | 5 TiB | (Google Cloud docs, as of 2026-10) |
-| GCS Standard Class B operations | USD 0.0004 per 1,000 | (Google Cloud pricing, UNVERIFIED) |
+| GCS Standard Class B operations | USD 0.0004 per 1,000, regional bucket, flat namespace (USD 0.0005 with hierarchical namespace) | (Google Cloud pricing, as of 2026-10) |
 | gcsfuse parallel downloads | auto-enabled with file cache on v2.12+; up to 9x faster model load | (Google Cloud docs, as of 2026-10) |
 | gcsfuse tuning baseline | v3.0+; GKE 1.32.2-gke.1297001+ | (Google Cloud docs, as of 2026-10) |
-| Mountpoint for Amazon S3 GA | 2023-08-09 | (AWS announcement via secondary source, as of 2026-10) |
+| Mountpoint for Amazon S3 GA | 2023-08-09 | (AWS What's New, 2023-08-09) |
 | Mountpoint shared cache target | small objects up to 1 MB, in an S3 directory bucket | (awslabs docs, as of 2026-10) |
 | StatefulDataLoader first release | TorchData 0.8.0, July 2024 | (meta-pytorch/data, as of 2026-10) |
-| DataPipes removal | TorchData 0.10.0 | (meta-pytorch/data, as of 2026-10) |
+| DataPipes removal | TorchData 0.10, December 2024 (originally announced for 0.9.0) | (meta-pytorch/data, as of 2026-10) |
 | WebDataset sequential vs random local I/O | 3x-10x | (WebDataset README, as of 2026-10) |
 | DataLoader default prefetch_factor | 2 batches per worker | (PyTorch docs, as of 2026-10) |
-| Container default /dev/shm (Docker) | 64 MB | (Docker docs, UNVERIFIED) |
+| Container default /dev/shm (Docker) | 64 MB | (Docker docs, as of 2026-10) |
 
 ## AWS vs GCP Mechanism Parity
 
@@ -254,13 +273,13 @@ A local NVMe cache dies with its instance, so after node replacement the new nod
 |---|---|---|---|
 | Request-rate scaling unit | Partitioned prefix; 3,500 W / 5,500 R per second each | Bucket-wide auto-scaling from about 1,000 W / 5,000 R per second | Key prefix design matters on S3; ramp rate matters on GCS |
 | Throttle signal | HTTP 503 Slow Down | HTTP 429 or 5xx with exponential backoff | Both require jittered backoff; see [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_03_Resilient_Communication_Retries_Jitter_and_Circuit_Breakers\|Retries and Jitter]] |
-| Low-latency tier | S3 Express One Zone directory buckets, zonal, `CreateSession` auth | Anywhere Cache (zonal SSD cache) and Rapid Bucket zonal storage (status UNVERIFIED) | Express is a separate bucket you write into; Anywhere Cache is transparent in front of a regional bucket |
-| Native PyTorch connector | `s3torchconnector` on CRT: iterable and map datasets, checkpoint, DCP, Lightning | Google's Dataflux / Cloud Storage connector for PyTorch (status UNVERIFIED) | AWS connector is open source on awslabs with documented API surface |
+| Low-latency tier | S3 Express One Zone directory buckets, zonal, `CreateSession` auth | Anywhere Cache, renamed Rapid Cache in 2026-03 (zonal SSD cache, GA), and Rapid Bucket zonal storage (GA since 2026-03-10) | Express is a separate bucket you write into; Anywhere Cache is transparent in front of a regional bucket |
+| Native PyTorch connector | `s3torchconnector` on CRT: iterable and map datasets, checkpoint, DCP, Lightning | Cloud Storage Connector for PyTorch (`gcs-torch-dataflux`, Google-supported open source): map and iterable datasets, Lightning and distributed checkpointing | Both are open source with documented APIs; the AWS client shares the CRT transport with Mountpoint |
 | FUSE client | Mountpoint for Amazon S3 (Rust, CRT), relaxed POSIX, optional local and shared cache | Cloud Storage FUSE (gcsfuse), file cache plus parallel downloads, metadata caches | gcsfuse file cache doubles as a parallel prefetch buffer; Mountpoint relies on a streaming prefetcher |
 | Kubernetes integration | Mountpoint for Amazon S3 CSI driver (EKS add-on) | Cloud Storage FUSE CSI driver with injected sidecar on GKE | GKE runs FUSE in a pod sidecar, so its CPU and memory count against the pod |
 | Cross-node shared cache | Mountpoint shared cache in an S3 Express directory bucket | Anywhere Cache per zone | Both are zonal; both are lost on zone failure |
-| Parallel file system | FSx for Lustre with S3 data repository association | Google Cloud Managed Lustre (GA status UNVERIFIED) | Lustre gives POSIX random access at per-TiB provisioned throughput; you pay for capacity even when idle |
-| Read-only block fan-out | EBS io2 Multi-Attach (small fan-out, UNVERIFIED limit) | Hyperdisk ML read-only multi-attach (large fan-out, limits UNVERIFIED) | Hyperdisk ML targets model-weight and dataset fan-out to many nodes |
+| Parallel file system | FSx for Lustre with S3 data repository association | Google Cloud Managed Lustre (GA since 2025-06-30) | Lustre gives POSIX random access at per-TiB provisioned throughput; you pay for capacity even when idle |
+| Read-only block fan-out | EBS io1/io2 Multi-Attach (up to 16 Nitro instances in one AZ) | Hyperdisk ML read-only multi-attach (up to 2,500 instances) | Hyperdisk ML targets model-weight and dataset fan-out to many nodes |
 | Private path | S3 gateway VPC endpoint, no per-GB endpoint charge | Private Google Access or Private Service Connect | Without them, traffic through NAT pays per-GB processing |
 | Encryption at rest with customer keys | SSE-KMS; S3 Bucket Keys reduce KMS calls | CMEK with Cloud KMS | SSE-KMS without Bucket Keys can turn GET rate into KMS request rate |
 
@@ -274,25 +293,25 @@ Step 2, global read bandwidth: 1.28e6 x 110 KB = 140.8 GB/s from the object stor
 Step 3, per-node bandwidth for 8 GPUs: 20,000 x 110 KB = 2.2 GB/s, or 17.6 Gbps, which fits within front-end NIC bandwidth; network is not the binding stage.
 Step 4, layout with one object per sample: 1.28 million GET/s.
 On S3 that needs at least 1.28e6 / 5,500 = 233 already-partitioned prefixes.
-At USD 0.0004 per 1,000 GETs (UNVERIFIED) it costs 1.28e6 x 3,600 x 0.0004 / 1,000 = USD 1,843 per hour in GET charges alone.
+At USD 0.0004 per 1,000 GETs (AWS Price List API, us-east-1, as of 2026-10) it costs 1.28e6 x 3,600 x 0.0004 / 1,000 = USD 1,843 per hour in GET charges alone.
 Step 5, layout with 1 GiB WebDataset shards read as 8 MiB ranged GETs: 140.8e9 / 8,388,608 = 16,785 GET/s globally.
 That costs USD 24 per hour, about 76 times less, and fits within four S3 prefixes or a modestly ramped GCS bucket.
 Step 6, shard count: 1 GiB / 110 KB is about 9,761 samples per shard.
 A 2 billion sample corpus is about 205,000 shards, far more than the 512 ranks x 12 workers = 6,144 readers, so the per-reader assignment can be made exactly even.
-Step 7, concurrency per node: 2.2 GB/s at about 90 MB/s per stream (UNVERIFIED rule) is about 25 concurrent ranged GETs, spread across 96 workers, so even one in-flight request per worker covers it.
+Step 7, concurrency per node: 2.2 GB/s at about 90 MB/s per stream (UNVERIFIED rule, no longer in current AWS docs) is about 25 concurrent ranged GETs, spread across 96 workers, so even one in-flight request per worker covers it.
 Step 8, CPU: at an assumed 150 decode-and-augment operations per core per second, a node needs 20,000 / 150 = 133 cores.
 That is more physical cores than a typical 8-GPU host provides, so decode is the binding stage.
 The fix is GPU decode, pre-resized shards, or disaggregated preprocessing, not faster storage.
-Step 9, storage: 2e9 x 110 KB = 220 TB, about USD 5,060 per month at the first-tier USD 0.023 per GB-month rate (UNVERIFIED), and lower in practice because of volume tiers.
+Step 9, storage: 2e9 x 110 KB = 220 TB, about USD 5,060 per month at the first-tier USD 0.023 per GB-month rate, or about USD 4,890 once the USD 0.022 tier above 50 TB applies (AWS Price List API, us-east-1, as of 2026-10).
 Step 10, the contrast case: LLM text pretraining of a 70B model on 1,024 H100s at 40 percent MFU consumes about 0.4 x 989e12 / (6 x 70e9) = 942 tokens per second per GPU.
 That is 965,000 tokens per second globally, or about 1.9 MB/s of pre-tokenized `uint16` tokens; text LLM pretraining is almost never storage-bound, while multimodal training usually is.
 
 ### Lab cost estimate
 
 The lab writes 64 shards of 64 MiB each, 4 GiB in total.
-Storage for one day is under USD 0.01, and 10 epochs at 8 MiB ranged GETs come to about 5,120 GETs, under USD 0.01 (prices UNVERIFIED).
-Run it on an in-region instance such as an `m7i.2xlarge`, at about USD 0.40 per hour (UNVERIFIED), so total lab cost stays under USD 1.
-Running from outside the region adds internet egress of about USD 0.09 per GB (UNVERIFIED), which for 40 GiB read is about USD 3.60.
+Storage for one day is under USD 0.01, and 10 epochs at 8 MiB ranged GETs come to about 5,120 GETs, under USD 0.01 (AWS Price List API, us-east-1, as of 2026-10).
+Run it on an in-region instance such as an `m7i.2xlarge`, at USD 0.4032 per hour on demand in us-east-1 (AWS pricing, as of 2026-10), so total lab cost stays under USD 1.
+Running from outside the region adds internet egress of USD 0.09 per GB for the first 10 TB per month (AWS Price List API, us-east-1, as of 2026-10), which for 40 GiB (about 43 GB) read is about USD 3.90.
 
 ### Budget alarms (create before provisioning)
 
@@ -648,7 +667,7 @@ FUSE mounts expose the bucket to every process in the pod, so mount read-only an
 ### Encryption key hierarchy and throughput
 
 SSE-KMS encrypts each object's data key under a KMS key.
-Without S3 Bucket Keys, reads can drive `kms:Decrypt` calls in proportion to object GET rate, which hits the regional KMS request quota and fails S3 reads with KMS throttling (quota values UNVERIFIED in this revision).
+Without S3 Bucket Keys, reads can drive `kms:Decrypt` calls in proportion to object GET rate, which hits the shared symmetric cryptographic-operations quota (default 10,000 requests per second per account and Region, 20,000 in some Regions, and 100,000 in us-east-1, us-west-2, and eu-west-1, all adjustable) and fails S3 reads with KMS throttling (AWS KMS docs, as of 2026-10).
 S3 Bucket Keys derive a bucket-level intermediate key and cut KMS traffic sharply, which is mandatory at training-scale GET rates.
 Per-sample objects multiply this risk, and shards remove most of it.
 For GCS CMEK, check Cloud KMS quotas against your request profile before launch.
@@ -726,7 +745,7 @@ Design the data ingestion for a 4,096-GPU multimodal pretraining run reading a 2
 Start with the rate.
 At an assumed 2,500 samples per second per GPU and 110 KB per sample, the job consumes 10.24 million samples per second, or about 1.1 TB/s globally and 2.2 GB/s per 8-GPU node.
 Layout comes first.
-Per-sample objects would need about 10 million GET/s, which means about 1,900 pre-partitioned S3 prefixes, and over USD 14,000 per hour in GETs at USD 0.0004 per 1,000 (UNVERIFIED price).
+Per-sample objects would need about 10 million GET/s, which means about 1,900 pre-partitioned S3 prefixes, and over USD 14,000 per hour in GETs at USD 0.0004 per 1,000 (AWS Price List API, us-east-1, as of 2026-10).
 So the corpus becomes globally pre-shuffled WebDataset tar shards of about 1 GiB, written under hashed leading key prefixes.
 Read as 8 to 16 MiB ranged GETs, that is roughly 70,000 to 130,000 GET/s globally, across a few dozen prefixes.
 Writing the data with global shuffle at shard-creation time is the decisive choice, because it makes the small per-worker shuffle buffer statistically adequate.

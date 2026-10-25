@@ -4,7 +4,44 @@ track: [cloud-ai, ai-eng]
 level:
 status: draft
 last_reviewed:
-sources: []
+sources:
+  - "https://arxiv.org/abs/2309.06180"
+  - "https://arxiv.org/abs/2312.07104"
+  - "https://arxiv.org/abs/2405.04437"
+  - "https://docs.vllm.ai/en/latest/design/arch_overview/"
+  - "https://docs.vllm.ai/en/stable/design/prefix_caching/"
+  - "https://docs.vllm.ai/en/stable/configuration/engine_args/"
+  - "https://docs.vllm.ai/en/stable/configuration/optimization/"
+  - "https://docs.vllm.ai/en/stable/design/cuda_graphs/"
+  - "https://vllm.ai/blog/2025-01-27-v1-alpha-release"
+  - "https://pypi.org/project/vllm/#history"
+  - "https://hub.docker.com/r/vllm/vllm-openai/tags"
+  - "https://docs.sglang.io/advanced_features/server_arguments.html"
+  - "https://www.lmsys.org/blog/2024-12-04-sglang-v0-4"
+  - "https://lmsys.org/blog/2025-10-29-sglang-jax"
+  - "https://en.wikipedia.org/wiki/SGLang"
+  - "https://pytorch.org/blog/pytorch-foundation-welcomes-vllm/"
+  - "https://nvidia.github.io/TensorRT-LLM/latest/release-notes.html"
+  - "https://nvidia.github.io/TensorRT-LLM/latest/legacy/tensorrt-backend-removal.html"
+  - "https://github.com/NVIDIA/TensorRT-LLM/releases/tag/v1.0.0"
+  - "https://github.com/NVIDIA/TensorRT-LLM/releases/tag/v1.1.0"
+  - "https://nvidia.github.io/TensorRT-LLM/reference/memory.html"
+  - "https://nvidia.github.io/TensorRT-LLM/features/paged-attention-ifb-scheduler.html"
+  - "https://nvidia.github.io/TensorRT-LLM/advanced/gpt-attention.html"
+  - "https://nvidia.github.io/TensorRT-LLM/torch/attention.html"
+  - "https://huggingface.co/Qwen/Qwen3-8B"
+  - "https://www.nvidia.com/en-us/data-center/l40s/"
+  - "https://www.nvidia.com/en-us/data-center/l4/"
+  - "https://aws.amazon.com/ec2/instance-types/g6e/"
+  - "https://aws.amazon.com/ec2/pricing/on-demand/"
+  - "https://docs.aws.amazon.com/dlami/latest/devguide/aws-deep-learning-x86-base-gpu-ami-ubuntu-22-04.html"
+  - "https://docs.djl.ai/docs/serving/serving/docs/lmi/index.html"
+  - "https://awsdocs-neuron.readthedocs-hosted.com/en/latest/libraries/nxd-inference/vllm/index.html"
+  - "https://docs.cloud.google.com/vertex-ai/generative-ai/docs/open-models/use-prebuilt-containers"
+  - "https://cloud.google.com/blog/products/ai-machine-learning/gke-inference-gateway-and-quickstart-are-ga"
+  - "https://docs.cloud.google.com/compute/docs/gpus"
+  - "https://docs.cloud.google.com/compute/docs/gpus/gpu-network-bandwidth"
+  - "https://docs.vllm.ai/projects/tpu/en/latest/"
 ---
 
 # Inference Engines: vLLM, SGLang, and TensorRT-LLM
@@ -52,18 +89,18 @@ Each sequence holds a block table that maps logical blocks to non-contiguous phy
 The paper reports 2-4x throughput over FasterTransformer and Orca at the same latency (Kwon et al., SOSP 2023).
 Chunked prefill (Sarathi-Serve, Agrawal et al., OSDI 2024) splits long prompts into token-budgeted chunks and runs them in the same step as decodes, which bounds the stall a long prefill can inflict on inter-token latency.
 All three engines now implement all three ideas, so comparing them really means comparing their details: how they identify blocks, the shape of the scheduler loop, where CPU work runs, and which kernels get dispatched.
-The vAttention line of work (ASPLOS 2025, arXiv 2405.04437) is the main critique of paging. It argues that paging forces every attention kernel to be rewritten around block tables, and it proposes keeping KV virtually contiguous and relying on CUDA demand paging instead.
+The vAttention line of work (ASPLOS 2025, arXiv 2405.04437) is the main critique of paging. It argues that paging forces every attention kernel to be rewritten around block tables, and it proposes keeping KV virtually contiguous and using the CUDA virtual memory APIs to map physical memory on demand instead (vAttention, ASPLOS 2025).
 That critique explains why kernel availability, not scheduler cleverness, is often what decides whether a new model runs fast on a given engine on day one.
 
 ### vLLM V1: process topology and the unified token scheduler
 
 vLLM V1 (default engine since 2025) uses a multi-process layout: one or more API server processes, one engine core process per data-parallel rank, and one GPU worker process per GPU (vLLM docs, as of 2026-10).
 A single-node `vllm serve -tp=4` therefore runs 6 processes, and `-tp=2 -dp=4` runs 17 processes including a DP coordinator (vLLM docs, as of 2026-10).
-The API server handles HTTP, chat templating, tokenization, and detokenization, and it talks to the engine core over ZeroMQ IPC (vLLM V1 blog, 2025-01).
+The API server handles HTTP, chat templating, tokenization, and detokenization, and it talks to the engine core over ZeroMQ sockets (vLLM architecture docs, as of 2026-10).
 The engine core runs a busy loop: pull new requests from its input queue, schedule, execute one forward pass, push outputs (vLLM docs, as of 2026-10).
 The V1 scheduler drops the prefill/decode distinction as a scheduling concept.
 Each request carries `num_tokens`, the prompt plus generated tokens so far, and `num_computed_tokens`, the tokens whose KV is already in the pool.
-Each step, the scheduler hands out a per-request token count under a global token budget so that every request's `num_computed_tokens` catches up toward its `num_tokens` (vLLM V1 blog, 2025-01).
+Each step, the scheduler hands out a per-request token count under a global token budget so that every request's `num_computed_tokens` catches up toward its `num_tokens` (vLLM V1 blog, 2025-01; field names from the V1 scheduler source, v0.32.0).
 This bookkeeping is the mechanism that unifies features most readers treat as separate.
 A decode is a request that needs 1 token.
 A chunked prefill is a request that is granted fewer tokens than it is missing.
@@ -98,7 +135,7 @@ So your decode tokens/s ceiling does not improve with prefix caching the way you
 
 SGLang (Zheng et al., NeurIPS 2024, arXiv 2312.07104) co-designs a Python frontend language for multi-call LLM programs with a runtime built around RadixAttention (NeurIPS 2024 proceedings).
 RadixAttention keeps KV for finished requests in a radix tree keyed by token sequences instead of freeing it. Edges are labeled with token runs, and nodes point to KV pages.
-On insert, the tree splits an edge where a new sequence diverges, so sharing is found at token granularity rather than block granularity, subject to the configured page size (default page size UNVERIFIED).
+On insert, the tree splits an edge where a new sequence diverges, so sharing is found at token granularity rather than block granularity, subject to the configured page size, whose server default is 1 token (SGLang server arguments docs, as of 2026-10).
 Eviction is LRU over leaves only. A shared ancestor such as a system prompt cannot be evicted while any descendant is still cached, which protects hot prefixes from being evicted by long-tail traffic (SGLang paper, NeurIPS 2024).
 Reference counts pin nodes in use by running requests, so eviction never removes KV that is being read.
 The scheduler can be cache-aware: with `--schedule-policy lpm` (longest prefix match) it orders the waiting queue by matched prefix length, and the paper argues that this approximates a depth-first traversal of the tree, which maximizes hit rate for a batch of requests (SGLang paper, NeurIPS 2024).
@@ -107,8 +144,8 @@ The trade-off is fairness. Pure longest-prefix-first can starve requests with un
 The paper reports up to 6.4x higher throughput than prior systems on agent, few-shot, JSON, RAG, and multi-turn workloads (SGLang paper, NeurIPS 2024).
 That headline comes from workloads with heavy prefix sharing and structured control flow. On single-turn, unique-prompt traffic, the radix tree adds bookkeeping and saves nothing.
 SGLang also uses compressed finite-state machines for constrained decoding: deterministic runs of the grammar are collapsed so several forced tokens can be emitted in one step instead of one per step (SGLang paper, NeurIPS 2024).
-For data-parallel replicas, SGLang has a cache-aware router that predicts which replica holds a request's prefix and routes there (SGLang v0.4 release blog, LMSYS, 2024-12).
-RadixArk, a startup built by SGLang contributors to commercialize services around SGLang while keeping it open source, was first announced in 2025-08, and its spin-out was reported in January 2026 (TechCrunch, 2026-01-21, via Wikipedia, as of 2026-10).
+For data-parallel replicas, SGLang has a cache-aware router that predicts which replica holds a request's prefix and routes there (SGLang v0.4 release blog, LMSYS, 2024-12-04).
+RadixArk, a startup built by SGLang contributors to commercialize services around SGLang while keeping it open source, was reported as a spin-out in January 2026 (TechCrunch, 2026-01-21, via Wikipedia, as of 2026-10); an earlier 2025-08 announcement date could not be confirmed.
 This is relevant when you assess long-term support risk.
 
 ### SGLang zero-overhead scheduling: the FutureMap trick
@@ -125,7 +162,7 @@ TensorRT-LLM's PyTorch executor has its own overlap scheduler and added support 
 
 TensorRT-LLM began as a compiler: you converted a checkpoint and ran `trtllm-build` to produce a serialized TensorRT engine per GPU type, TP degree, and maximum shape.
 TensorRT-LLM 1.0 made the PyTorch-based architecture the stable default and stabilized the LLM API, with breaking changes that made PyTorch the default in both `LLM()` and `trtllm-serve` (TensorRT-LLM v1.0.0 release notes).
-A later 1.x release removed the TensorRT engine backend entirely: `LLM(backend="tensorrt")` now raises an error, the `convert_checkpoint.py` and `trtllm-build` example paths are gone, and `trtllm-serve <hf_model>` serves straight from a Hugging Face checkpoint without an engine build (TensorRT-LLM migration guide, as of 2026-10; exact removal version UNVERIFIED).
+Release 1.2 removed the TensorRT engine backend entirely: `LLM(backend="tensorrt")` now raises an error, the `convert_checkpoint.py` and `trtllm-build` example paths are gone, and `trtllm-serve <hf_model>` serves straight from a Hugging Face checkpoint without an engine build (TensorRT-LLM 1.2 release notes and migration guide, as of 2026-10).
 The 1.1.0 release is built on `nvcr.io/nvidia/pytorch:25.10-py3` with PyTorch 2.9.0 (TensorRT-LLM v1.1.0 release notes).
 What survives from TensorRT-LLM's lineage is the kernel library and the C++ runtime design: hand-written context-phase FMHA and generation-phase XQA kernels, precompiled cubins per SM architecture (1.0 added NVFP4 MoE cubins, for example), and a GEMM autotuner that picks tactics per shape (TensorRT-LLM release notes and changelog, as of 2026-10).
 The XQA generation kernel supports FP16, BF16, FP8, and INT8 KV caches and paged blocks of 8, 16, 32, 64, or 128 tokens (TensorRT-LLM docs, as of 2026-10).
@@ -134,22 +171,23 @@ The XQA generation kernel supports FP16, BF16, FP8, and INT8 KV caches and paged
 
 In-flight batching in TensorRT-LLM requires packed inputs, meaning no padding. In the current implementation, every context-phase (prefill) sequence must appear in the input tensor before any generation-phase sequence (TensorRT-LLM docs, as of 2026-10).
 That ordering lets a single fused attention op split the batch at one offset and send the front to the FMHA kernel and the back to the XQA kernel, with no per-token branching.
-The scheduler is bounded by three knobs: `max_batch_size` (concurrent requests), `max_seq_len`, and `max_num_tokens` (tokens per step). A large `max_num_tokens` takes activation workspace away from the KV pool, which is why NVIDIA recommends always enabling chunked context for long-context workloads (TensorRT-LLM docs, as of 2026-10).
+The scheduler is bounded by three knobs: `max_batch_size` (concurrent requests), `max_seq_len`, and `max_num_tokens` (tokens per step). A large `max_num_tokens` takes activation workspace away from the KV pool, which is one reason NVIDIA recommends always enabling chunked context, whatever the workload (TensorRT-LLM docs, as of 2026-10).
 Memory semantics differ in a way that bites teams porting configs between engines.
 In TensorRT-LLM, if neither `max_tokens` nor `free_gpu_memory_fraction` is set, the KV pool takes 90 percent of the memory still free after weights and runtime buffers are allocated. If both are set, the smaller of the two wins (TensorRT-LLM memory docs, as of 2026-10).
-In vLLM, `--gpu-memory-utilization` (default 0.9, UNVERIFIED for current release) is a fraction of total device memory that the whole instance may use, and the KV pool is whatever remains after weights, activation profiling, and CUDA graph memory.
-So "0.9" in TensorRT-LLM and "0.9" in vLLM produce different KV pool sizes on the same GPU, and a co-located sidecar that uses 2 GB of HBM breaks the vLLM budget assumption but only shrinks the TensorRT-LLM pool.
+In vLLM, `--gpu-memory-utilization` (default 0.92 in current releases; vLLM engine args docs, as of 2026-10) is a per-instance fraction of total device memory that the whole instance may use, and the KV pool is whatever remains after weights, activation profiling, and CUDA graph memory.
+So an explicit "0.9" in TensorRT-LLM and "0.9" in vLLM produce different KV pool sizes on the same GPU, and a co-located sidecar that uses 2 GB of HBM breaks the vLLM budget assumption but only shrinks the TensorRT-LLM pool.
 
 ### Custom kernel dispatching
 
 Every engine has a dispatch layer that maps (GPU architecture, dtype, attention variant, quantization format, batch shape) to a kernel. This layer is where most "same model, different speed" surprises come from.
-In vLLM, the attention backend is chosen per platform and model. FlashAttention, FlashInfer, MLA-specific backends, and Triton fallbacks sit behind a common interface that consumes block tables and slot mappings (vLLM docs; current backend list and selection flag UNVERIFIED).
-In SGLang, the attention backend is selectable, FlashInfer and FlashAttention-3 are the main CUDA paths, and custom fused ops ship in the `sgl-kernel` package (UNVERIFIED for current defaults).
-In TensorRT-LLM's PyTorch backend, the default attention backend wraps the TRT-LLM FMHA/XQA kernels, and FlashInfer is an alternative (TensorRT-LLM docs mirror, UNVERIFIED).
+In vLLM, the attention backend is chosen per platform and model. FlashAttention, FlashInfer, MLA-specific backends, and Triton fallbacks sit behind a common interface that consumes block tables and slot mappings, and `--attention-backend` overrides the default `auto` selection (vLLM engine args docs, as of 2026-10).
+In SGLang, `--attention-backend` defaults to automatic selection, the CUDA choices include `flashinfer`, `fa3`, `fa4`, `trtllm_mha`, and `triton`, and custom fused ops ship in the `sgl-kernel` package (SGLang server arguments docs, as of 2026-10).
+In TensorRT-LLM's PyTorch backend, the default TRT-LLM attention backend wraps the FMHA/XQA kernels, and FlashInfer and a vanilla backend are alternatives (TensorRT-LLM PyTorch attention docs, as of 2026-10).
 CUDA graphs are the second half of dispatch.
 A decode step for an 8B model launches hundreds of small kernels, and at batch sizes where each kernel runs for only microseconds, CPU launch overhead dominates.
 Engines capture CUDA graphs at a fixed ladder of batch sizes and pad each live batch up to the nearest captured size, trading a few wasted rows for replaying the whole step with one launch.
-vLLM V1 pairs `torch.compile` with piecewise CUDA graphs, where attention, whose metadata varies with sequence lengths, can run outside the captured segments, and full-graph capture is available for backends whose attention metadata can be made static (vLLM V1 blog, 2025-01; current `cudagraph_mode` default UNVERIFIED).
+vLLM V1 pairs `torch.compile` with piecewise CUDA graphs, where attention, whose metadata varies with sequence lengths, can run outside the captured segments, and full-graph capture is available for backends whose attention metadata can be made static (vLLM V1 blog, 2025-01).
+With piecewise compilation, the current `cudagraph_mode` default is `FULL_AND_PIECEWISE` for generative models (vLLM CUDA graphs design doc, as of 2026-10).
 Graph capture consumes HBM and adds startup time, so it competes directly with KV capacity and with cold-start SLOs (see [[17-Cloud-AI-Engineering/Volume_11_LLM_Serving_and_Inference_Systems_on_Cloud/Chapter_08_Cloud_GPU_Autoscaling_and_Cold_Start_Mitigation|GPU autoscaling and cold starts]]).
 
 ### Control plane versus data plane inside an engine
@@ -172,17 +210,17 @@ The cell and blast-radius discipline from [[17-Cloud-AI-Engineering/Volume_01_Cl
 | vLLM processes, `-tp=4` single node | 6 (1 API server + 1 engine core + 4 workers) | (vLLM docs, as of 2026-10) |
 | vLLM processes, `-tp=2 -dp=4` | 17 (4 API + 4 engine core + 8 workers + 1 DP coordinator) | (vLLM docs, as of 2026-10) |
 | vLLM prefix-cache hash default | SHA-256 since v0.11; options sha256, sha256_cbor, xxhash, xxhash_cbor | (vLLM docs, as of 2026-10) |
-| vLLM cache granularity | Full blocks only; block size 16 used in design-doc examples | (vLLM docs, as of 2026-10) |
+| vLLM cache granularity | Full blocks only; design-doc examples use block sizes 4 and 16 | (vLLM docs, as of 2026-10) |
 | PagedAttention throughput vs FasterTransformer/Orca | 2-4x at the same latency | (Kwon et al., SOSP 2023) |
 | SGLang throughput vs prior systems | Up to 6.4x on structured / shared-prefix workloads | (Zheng et al., NeurIPS 2024) |
 | TensorRT-LLM XQA paged block sizes | 8, 16, 32, 64, 128 tokens | (TensorRT-LLM docs, as of 2026-10) |
 | TensorRT-LLM default KV pool | 90 percent of free memory after weights and buffers | (TensorRT-LLM docs, as of 2026-10) |
 | TensorRT-LLM 1.1.0 base | nvcr.io/nvidia/pytorch:25.10-py3, PyTorch 2.9.0 | (TensorRT-LLM release notes, as of 2026-10) |
-| TensorRT-LLM execution backends | PyTorch only; TensorRT engine backend removed | (TensorRT-LLM docs, as of 2026-10) |
-| Qwen3-8B KV per token, BF16 | 2 x 36 layers x 8 KV heads x 128 dim x 2 B = 144 KiB | (derived from model config; config values UNVERIFIED) |
-| Llama-3.1-8B KV per token, BF16 | 2 x 32 x 8 x 128 x 2 B = 128 KiB | (derived from model config; config values UNVERIFIED) |
-| NVIDIA L40S memory / bandwidth | 48 GB GDDR6 / ~864 GB/s | (UNVERIFIED) |
-| EC2 g6e.xlarge on-demand, us-east-1 | ~$1.861/hr | (UNVERIFIED, check AWS pricing page) |
+| TensorRT-LLM execution backends | PyTorch only; TensorRT engine backend removed in release 1.2 | (TensorRT-LLM release notes, as of 2026-10) |
+| Qwen3-8B KV per token, BF16 | 2 x 36 layers x 8 KV heads x 128 dim x 2 B = 144 KiB | (derived from Hugging Face config.json, as of 2026-10) |
+| Llama-3.1-8B KV per token, BF16 | 2 x 32 x 8 x 128 x 2 B = 128 KiB | (derived from Hugging Face config.json, as of 2026-10) |
+| NVIDIA L40S memory / bandwidth / BF16 dense | 48 GB GDDR6 / 864 GB/s / 362.05 TFLOPS | (NVIDIA L40S product page, as of 2026-10) |
+| EC2 g6e.xlarge on-demand, us-east-1 | $1.861/hr (Linux) | (AWS EC2 on-demand price data, as of 2026-10) |
 
 ## AWS vs GCP Mechanism Parity
 
@@ -190,12 +228,12 @@ The engines are cloud-neutral, so the parity question is about the substrate eac
 
 | Concern | AWS | Google Cloud | Critical difference |
 |---|---|---|---|
-| Managed container running these engines | SageMaker AI Large Model Inference (LMI) containers with vLLM and TensorRT-LLM backends (UNVERIFIED as of 2026-10) | Vertex AI prebuilt vLLM serving containers via Model Garden (UNVERIFIED as of 2026-10) | Both pin an engine version for you, and upgrade cadence lags upstream by weeks to months |
-| Kubernetes substrate | EKS with Karpenter GPU NodePools, see [[17-Cloud-AI-Engineering/Volume_02_AWS_Deep_Dive/Chapter_07_Amazon_EKS_Control_Plane_and_Networking\|EKS]] | GKE with node auto-provisioning, see [[17-Cloud-AI-Engineering/Volume_03_GCP_Deep_Dive/Chapter_07_GKE_Deep_Dive_Standard_vs_Autopilot\|GKE]] | GKE ships an Inference Gateway with model- and prefix-aware endpoint picking (GA status UNVERIFIED), while on EKS you assemble the equivalent yourself |
-| Single-GPU dev/test tier | g6e (L40S 48 GB) (UNVERIFIED) | g2 (L4 24 GB) (UNVERIFIED) | A 24 GB L4 leaves almost no KV room for an 8B BF16 model, so FP8 weights or a smaller model are required |
-| Hopper / Blackwell 8-GPU nodes | p5 / p5e / p5en / p6 families (UNVERIFIED) | A3 / A3 Ultra / A4 families (UNVERIFIED) | NVLink inside the node behaves the same on both, so engine TP inside a node is portable |
-| Multi-node fabric for EP, PP, KV transfer | EFA with SRD multipath transport, see [[17-Cloud-AI-Engineering/Volume_10_AI_Infrastructure_on_Cloud/Chapter_02_Interconnect_Technologies_NVLink_EFA_and_TPU_ICI\|interconnects]] | GPUDirect RDMA over RoCE on newer A3/A4 families (UNVERIFIED) | NIXL/UCX and NCCL plugins differ, so disaggregated KV transfer must be validated per cloud |
-| Non-NVIDIA serving | Inferentia2 / Trainium via Neuron SDK vLLM integration (UNVERIFIED) | TPU via vLLM TPU backend; SGLang TPU support (UNVERIFIED) | TensorRT-LLM is NVIDIA-only, so engine choice can lock you into a vendor |
+| Managed container running these engines | SageMaker AI Large Model Inference (LMI) containers with vLLM and TensorRT-LLM backends (DJL LMI docs, as of 2026-10) | Vertex AI prebuilt serving containers via Model Garden: a customized vLLM, plus SGLang, TensorRT-LLM, TGI, and Hex-LLM (Vertex AI docs, as of 2026-10) | Both pin an engine version for you, and upgrade cadence lags upstream by weeks to months |
+| Kubernetes substrate | EKS with Karpenter GPU NodePools, see [[17-Cloud-AI-Engineering/Volume_02_AWS_Deep_Dive/Chapter_07_Amazon_EKS_Control_Plane_and_Networking\|EKS]] | GKE with node auto-provisioning, see [[17-Cloud-AI-Engineering/Volume_03_GCP_Deep_Dive/Chapter_07_GKE_Deep_Dive_Standard_vs_Autopilot\|GKE]] | GKE Inference Gateway, GA since 2025-09 with prefix-aware load balancing (Google Cloud blog, 2025-09-10), while on EKS you assemble the equivalent yourself |
+| Single-GPU dev/test tier | g6e (L40S 48 GB) (AWS G6e page, as of 2026-10) | g2 (L4 24 GB, 300 GB/s) (Google Cloud GPU docs and NVIDIA L4 page, as of 2026-10) | A 24 GB L4 leaves almost no KV room for an 8B BF16 model, so FP8 weights or a smaller model are required |
+| Hopper / Blackwell 8-GPU nodes | p5 / p5e / p5en / p6 families (AWS DLAMI supported instances, as of 2026-10) | A3 (H100) / A3 Ultra (H200) / A4 (B200) families (Google Cloud GPU docs, as of 2026-10) | NVLink inside the node behaves the same on both, so engine TP inside a node is portable |
+| Multi-node fabric for EP, PP, KV transfer | EFA with SRD multipath transport, see [[17-Cloud-AI-Engineering/Volume_10_AI_Infrastructure_on_Cloud/Chapter_02_Interconnect_Technologies_NVLink_EFA_and_TPU_ICI\|interconnects]] | GPUDirect RDMA over RoCE v2 on A3 Ultra and A4 (Google Cloud docs and networking blog, as of 2026-10) | NIXL/UCX and NCCL plugins differ, so disaggregated KV transfer must be validated per cloud |
+| Non-NVIDIA serving | Inferentia2 / Trainium via the vLLM Neuron plugin on NxD Inference (AWS Neuron docs, as of 2026-10) | TPU via vLLM's `tpu-inference` plugin; SGLang on TPU via the separate JAX-based SGLang-Jax engine (vLLM TPU docs, LMSYS blog, as of 2026-10) | TensorRT-LLM is NVIDIA-only, so engine choice can lock you into a vendor |
 | Weight distribution | S3 + VPC gateway endpoint; Mountpoint or S3 Express One Zone for fast loads | GCS + Private Google Access; Cloud Storage FUSE or Anywhere Cache | Cold-start weight streaming is covered in [[17-Cloud-AI-Engineering/Volume_10_AI_Infrastructure_on_Cloud/Chapter_07_High_Throughput_Data_Loaders_and_Storage_IO\|data loaders]] |
 | Pod identity for weight buckets | EKS Pod Identity or IRSA | GKE Workload Identity Federation | Both remove static keys, see [[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter/Chapter_02_Workload_Identity_Federation\|workload identity]] |
 | Engine metrics | Amazon Managed Service for Prometheus scraping `/metrics` | Google Cloud Managed Service for Prometheus | Metric names are engine-specific, so dashboards do not port between engines |
@@ -211,8 +249,8 @@ Second, prefix caching improves TTFT but does not change the decode inter-token 
 
 ### Cost estimate and guardrails
 
-The g6e.xlarge costs about $1.861/hr on demand in us-east-1 (UNVERIFIED, check the pricing page before running).
-A 150 GiB gp3 root volume adds about $0.02/hr (UNVERIFIED).
+The g6e.xlarge costs $1.861/hr on demand for Linux in us-east-1 (AWS EC2 on-demand price data, as of 2026-10).
+A 150 GiB gp3 root volume at $0.08 per GB-month adds about $12 per month, or about $0.02/hr (AWS EBS price data, as of 2026-10).
 A 3-hour lab costs about $6, and the instance shuts itself down after 180 minutes. With `--instance-initiated-shutdown-behavior terminate`, that shutdown terminates the instance.
 
 ```bash
@@ -262,7 +300,7 @@ if __name__ == "__main__":
 ```
 
 Here is the arithmetic, so you can redo it on a whiteboard.
-Weights are 8.19B parameters x 2 bytes = 16.4 GB (parameter count UNVERIFIED).
+Weights are 8.19B parameters x 2 bytes = 16.4 GB (the model card lists 8.2B parameters, as of 2026-10).
 The vLLM budget is 48 GB x 0.90 = 43.2 GB. Reserving about 3 GB for activations, the sampler, and CUDA graphs leaves a KV pool of about 23.8 GB.
 At 144 KiB per token that is about 161,500 tokens, or about 10,100 blocks of 16 tokens.
 Requests carry a 2,048-token shared system prompt plus 1,024 unique tokens, for a 3,072-token context.
@@ -273,7 +311,7 @@ At batch 32, the KV read is 32 x 3,072 x 144 KiB = 14.5 GB per step, plus 16.4 G
 At batch 128, the KV read grows to 58 GB, the step to about 86 ms, the per-stream rate falls to about 11.6 tok/s, and the aggregate rises to about 1,490 tok/s.
 If your product SLO is 20 tok/s per stream, the bandwidth model caps you near batch 60. Memory would allow 155 sequences, but the interconnect between HBM and the SMs is the binding constraint.
 Unit cost at batch 64 is $1.861 / (1,219 tok/s x 3,600 s) = about $0.42 per million output tokens at 100 percent utilization. At a realistic 40 percent average utilization, divide that by 0.4 and get about $1.06.
-The prefill saved per cache hit is about 2 x 8.19e9 x 2,048 = 33.5 TFLOP. At an assumed 362 dense BF16 TFLOPS (UNVERIFIED) and 50 percent MFU, that is about 185 ms of TTFT removed per request.
+The prefill saved per cache hit is about 2 x 8.19e9 x 2,048 = 33.5 TFLOP. At the L40S's 362 dense BF16 TFLOPS (NVIDIA L40S product page, as of 2026-10) and an assumed 50 percent MFU, that is about 185 ms of TTFT removed per request.
 These derivations feed the fleet-level model in [[17-Cloud-AI-Engineering/Volume_11_LLM_Serving_and_Inference_Systems_on_Cloud/Chapter_11_End_to_End_Latency_Throughput_and_Cost_Modeling|end-to-end cost modeling]].
 
 ### Step 2: launch
@@ -285,7 +323,7 @@ set -euo pipefail
 REGION=us-east-1
 KEY=engine-lab
 MYIP="$(curl -s https://checkip.amazonaws.com)/32"
-# SSM path for the DLAMI base image is UNVERIFIED; confirm with: aws ssm get-parameters-by-path --path /aws/service/deeplearning/ami/x86_64
+# SSM path from the AWS DLAMI docs (as of 2026-10); the AMI ships Docker and the NVIDIA Container Toolkit and supports G6e
 AMI="$(aws ssm get-parameter --region "$REGION" \
   --name /aws/service/deeplearning/ami/x86_64/base-oss-nvidia-driver-gpu-ubuntu-22.04/latest/ami-id \
   --query Parameter.Value --output text)"
@@ -321,7 +359,7 @@ echo "ssh -i $KEY.pem -N -L 8000:127.0.0.1:8000 ubuntu@$IP"
 ```
 
 The container binds to 127.0.0.1 on the host, so the OpenAI-compatible endpoint is never exposed to the internet. The only way in is the SSH tunnel.
-The `vllm/vllm-openai:v0.32.0` tag follows the upstream tagging convention (tag existence for 0.32.0 UNVERIFIED), and the image's Docker installation and NVIDIA container runtime on this AMI are also UNVERIFIED.
+The `vllm/vllm-openai:v0.32.0` tag exists on Docker Hub, pushed 2026-10-18 (Docker Hub, as of 2026-10), and the Deep Learning Base OSS Nvidia Driver GPU AMI ships Docker and the NVIDIA Container Toolkit and lists G6e as supported (AWS DLAMI release notes, as of 2026-10).
 Prefix caching is on by default in V1, and `sha256_cbor` is set explicitly so block hashes would be reproducible if this replica ever joined a KV-aware routed fleet (vLLM docs, as of 2026-10).
 
 ### Step 3: measure
@@ -366,7 +404,7 @@ if __name__ == "__main__":
 
 The expected result is that nonce-at-end shows a TTFT drop of roughly the prefill time of the repeated prompt, an estimated 1.5-1.8k tokens at the rate computed above (2 x 8.19e9 FLOP per token at 362 TFLOPS and 50 percent MFU, about 90 us per token), so about 135-165 ms, while ITL is essentially the same in both layouts, because the decode step still reads the full context from HBM.
 The `/metrics` grep prints vLLM's prefix-cache query and hit counters without hard-coding metric names, since those have changed across releases.
-To compare engines on the same box, stop the container and run SGLang (`python3 -m sglang.launch_server --model-path Qwen/Qwen3-8B --port 8000`) or TensorRT-LLM (`trtllm-serve Qwen/Qwen3-8B --port 8000`) in their official images (image tags UNVERIFIED), then rerun the same script.
+To compare engines on the same box, stop the container and run SGLang (`python3 -m sglang.launch_server --model-path Qwen/Qwen3-8B --port 8000`) or TensorRT-LLM (`trtllm-serve Qwen/Qwen3-8B --port 8000`) in their official images (`lmsysorg/sglang` on Docker Hub and `nvcr.io/nvidia/tensorrt-llm/release` on NGC; pin a specific tag yourself, as of 2026-10), then rerun the same script.
 
 ### Teardown
 
@@ -381,13 +419,13 @@ aws ec2 delete-key-pair --region "$REGION" --key-name engine-lab && rm -f engine
 aws budgets delete-budget --account-id "$(aws sts get-caller-identity --query Account --output text)" --budget-name engine-lab
 ```
 
-On GCP, the closest single-GPU equivalent is a g2 instance with one L4. With only 24 GB of memory, serve FP8 weights or a 3-4B model, or the KV pool will be too small to see batching effects (UNVERIFIED sizing guidance).
+On GCP, the closest single-GPU equivalent is a g2 instance with one L4. With only 24 GB of memory, serve FP8 weights or a 3-4B model, or the KV pool will be too small to see batching effects (derived: 16.4 GB of BF16 weights on a 24 GB card leaves under 6 GB for KV and activations at a 0.92 utilization cap).
 
 ## Failure Modes and Pitfalls
 
 ### Preemption storms
 
-When the KV pool runs out mid-decode, the scheduler preempts running requests. vLLM V1 preempts by freeing their blocks and recomputing later (UNVERIFIED for current default policy).
+When the KV pool runs out mid-decode, the scheduler preempts running requests. vLLM V1 preempts by freeing their blocks and recomputing later, since `RECOMPUTE` rather than `SWAP` is the default preemption mode (vLLM optimization docs, as of 2026-10).
 Recompute preemption is cheap when it happens rarely and catastrophic when it happens often: preempted requests come back as large prefills, consume the token budget, delay decodes, and push more requests over the memory edge.
 The signature is a rising preemption counter, falling generation throughput, and TTFT p99 rising together. The fix is admission control (lower `max_num_seqs`, a lower `max_model_len`, or rejection at the gateway), not more retries. See [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_02_Load_Shedding_Backpressure_and_Admission_Control|admission control]].
 
@@ -427,7 +465,7 @@ Benchmark every (GPU, dtype, engine version) tuple as its own SKU, and record th
 
 ### Graph capture memory and startup time
 
-CUDA graph capture across a wide batch-size ladder consumes HBM that would otherwise hold KV and adds tens of seconds to startup (magnitude UNVERIFIED). That affects both capacity and scale-out reaction time.
+CUDA graph capture across a wide batch-size ladder consumes HBM that would otherwise hold KV and adds startup time that grows with model size and ladder width (magnitude UNVERIFIED: vLLM docs give no figure, and published startup logs range from a few seconds on small models upward). That affects both capacity and scale-out reaction time.
 
 ### Upstream churn and backend removal
 
@@ -436,7 +474,7 @@ Pin image digests, keep a per-version eval gate (see [[13-Agentic-AI/Agentic_AI_
 
 ### Public incident record
 
-No public AWS or Google Cloud post-incident review attributes an outage specifically to one of these engines (to the author's knowledge, UNVERIFIED). The general cascade patterns of retry storms, cache cold-start after failover, and capacity exhaustion are analyzed in [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_07_Anatomy_of_Major_Cloud_Outages|major cloud outages]].
+No public AWS or Google Cloud post-incident review attributes an outage specifically to one of these engines (UNVERIFIED: absence of evidence, none found in searches as of 2026-10). The general cascade patterns of retry storms, cache cold-start after failover, and capacity exhaustion are analyzed in [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_07_Anatomy_of_Major_Cloud_Outages|major cloud outages]].
 
 ## Security and Cost Angles
 
@@ -582,7 +620,7 @@ Treat the engine as a fast-moving dependency inside a stable platform contract, 
 The stable contract has four parts: an OpenAI-compatible request surface, a normalized metrics schema mapped from each engine's `/metrics`, a routing layer that speaks KV events where available, and an eval suite measuring quality, TTFT, ITL, and cost per token per (model, GPU, dtype) SKU.
 Pin engine versions per SKU and promote them through canary with automated rollback on eval or SLO regression. Move upgrades on a cadence you choose, not the upstream cadence.
 Keep at least one alternative engine qualified on the top two models so a regression, license change, or project governance shift becomes a deployment decision.
-Weigh project governance as a real risk factor: vLLM became a PyTorch Foundation hosted project in May 2025, SGLang contributors started a commercial company, RadixArk (announced in 2025-08, spin-out reported in January 2026), and TensorRT-LLM is vendor-controlled. Each implies different roadmap incentives.
+Weigh project governance as a real risk factor: vLLM became a PyTorch Foundation hosted project in May 2025 (PyTorch Foundation, 2025-05-07), SGLang contributors started a commercial company, RadixArk (spin-out reported by TechCrunch on 2026-01-21), and TensorRT-LLM is vendor-controlled. Each implies different roadmap incentives.
 Tie the strategy to capacity economics: TPU and non-NVIDIA options exist only with vLLM- or SGLang-class engines, and that optionality is worth real money in commitment negotiations.
 State what would end the strategy: if one engine's kernel advantage on our dominant SKU exceeds the cost of running two stacks, typically when that SKU dominates fleet spend, we run a dedicated cell on it.
 
