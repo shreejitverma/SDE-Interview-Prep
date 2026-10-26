@@ -57,26 +57,18 @@ resolve() {
   readlink -f "$1" 2>/dev/null || printf '%s\n' "$1"
 }
 
-# detached CMD...: exec CMD as the leader of a new session, which has no controlling terminal,
-# so every suite sees the terminal-less environment that CI and the images have, and cannot be stopped by one.
-# macOS has no setsid(1); python3 stands in, as the vault's tools already need it.
-detached() {
-  if command -v setsid >/dev/null 2>&1; then
-    exec setsid "$@"
-  fi
-  exec python3 -c 'import os, sys; os.setsid(); os.execvp(sys.argv[1], sys.argv[1:])' "$@"
-}
-
-# run_bounded SECONDS CMD...: run CMD detached with stdin from /dev/null, kill its process group
+# run_bounded SECONDS CMD...: run CMD through lib/detach (a new session with no controlling terminal,
+# default signal dispositions, an empty signal mask) with stdin from /dev/null, kill its process group
 # after SECONDS, and return CMD's status (137 when killed).
-# BATS_TEST_TIMEOUT cannot end a suite whose stray child (a stopped one, say) keeps bats's output open.
+# So every suite starts the same way on every host, and cannot be stopped by a terminal;
+# and BATS_TEST_TIMEOUT cannot end a suite whose stray child (a stopped one, say) keeps bats's output open.
 run_bounded() {
   local limit=$1 pid watchdog rc
   shift
-  (detached "$@") </dev/null &
+  "$DETACH" "$@" </dev/null &
   pid=$!
   # shellcheck disable=SC2016 # $1 and $2 are the inner sh's arguments, expanded there
-  (detached sh -c 'sleep "$1" && kill -s KILL -- "-$2"' sh "$limit" "$pid") >/dev/null 2>&1 &
+  "$DETACH" sh -c 'sleep "$1" && kill -s KILL -- "-$2"' sh "$limit" "$pid" >/dev/null 2>&1 &
   watchdog=$!
   wait "$pid"
   rc=$?
@@ -182,11 +174,16 @@ EOF_DIRS
     files+=("$dir"/*.bats)
   done
 
-  local entry label family cmd first path real key seen=" " version log rc tests skipped passed note failed ran=0 bad=0 missing=0 skips=0
+  local entry label family cmd first path real key seen=" " version work log rc tests skipped passed note failed ran=0 bad=0 missing=0 skips=0
   local -a failures=()
-  log=$(mktemp "${TMPDIR:-/tmp}/run-matrix.XXXXXX") || die "mktemp failed"
-  # shellcheck disable=SC2064 # expand $log now; it never changes
-  trap "rm -f '$log'" EXIT
+  work=$(mktemp -d "${TMPDIR:-/tmp}/run-matrix.XXXXXX") || die "mktemp failed"
+  # shellcheck disable=SC2064 # expand $work now; it never changes
+  trap "rm -rf '$work'" EXIT
+  log=$work/log
+  DETACH=$work/detach
+  if [ "$list" -eq 0 ]; then
+    "${CC:-cc}" -O2 -o "$DETACH" "$LABS_DIR/lib/detach.c" || die "cannot compile lib/detach.c (set CC to a C compiler)"
+  fi
   for entry in "${CANDIDATES[@]}"; do
     label=${entry%%|*}
     cmd=${entry#*|}

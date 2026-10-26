@@ -83,6 +83,18 @@ def run(cmd: list[str], repo: Path, env: dict[str, str] | None = None) -> tuple[
     return proc.returncode, (proc.stdout + proc.stderr).strip()
 
 
+def clean_signals() -> None:
+    """Undo an inherited ignore of SIGINT or SIGQUIT and any blocked signals, so bats starts as labs/lib/detach starts a suite.
+
+    An ignored disposition survives exec while a handler does not, so the gate's children start clean.
+    """
+    if signal.getsignal(signal.SIGINT) == signal.SIG_IGN:
+        signal.signal(signal.SIGINT, signal.default_int_handler)
+    if signal.getsignal(signal.SIGQUIT) == signal.SIG_IGN:
+        signal.signal(signal.SIGQUIT, signal.SIG_DFL)
+    signal.pthread_sigmask(signal.SIG_SETMASK, [])
+
+
 def run_bounded(cmd: list[str], repo: Path, env: dict[str, str], limit: float) -> tuple[int, str]:
     """Run cmd in its own session and kill its process group after limit seconds.
 
@@ -109,6 +121,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--repo", type=Path, default=Path(__file__).resolve().parent.parent)
     args = ap.parse_args(argv)
     repo = args.repo.resolve()
+    clean_signals()
     try:
         suite_limit = float(os.environ.get("LAB_SUITE_TIMEOUT", SUITE_TIMEOUT_DEFAULT))
     except ValueError:

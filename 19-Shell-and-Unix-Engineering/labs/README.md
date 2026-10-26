@@ -72,6 +72,8 @@ The gate reads files through `git ls-files`, so stage a new lab (`git add`) befo
 The gate and the matrix bound every test with `BATS_TEST_TIMEOUT` (default 60 seconds), so a lab that blocks fails instead of hanging; set the variable to override it, and `--containers` forwards it into the images.
 The matrix also kills each shell's whole suite after `LAB_SUITE_TIMEOUT` (default 600 seconds), because a stray child that keeps bats's output open, such as a stopped process, outlives the per-test timeout; the suite then fails with `suite killed`.
 Every suite runs as the leader of a new session, with no controlling terminal and stdin from `/dev/null`, in the gate, the matrix, the images, and CI alike.
+It also starts from a clean signal state: `SIGINT` and `SIGQUIT` (in the matrix, every catchable signal) at their default dispositions and nothing blocked, whatever the caller ignored.
+The matrix compiles `lib/detach.c` for this at the start of each run (set `CC` to choose the compiler), because a shell cannot do it: a non-interactive shell may not reset a signal ignored on entry, and it ignores `SIGINT` and `SIGQUIT` in its own background jobs.
 So `set -m` is refused or disabled by most shells, `/dev/tty` cannot be opened, and a lab that needs a terminal must create a pseudo-terminal itself.
 A failing matrix row prints the output of each failing test.
 

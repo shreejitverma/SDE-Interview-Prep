@@ -122,6 +122,24 @@ class CheckShellLabsTest(unittest.TestCase):
         self.assertIn("suite killed after LAB_SUITE_TIMEOUT=1 seconds", result.stdout)
         self.assertIn("result: FAIL (bats)", result.stdout)
 
+    def test_bats_starts_with_default_signal_dispositions_even_if_the_caller_ignored_them(self):
+        # A lab that asserts how a shell treats SIGINT and SIGQUIT is only meaningful from a clean start;
+        # a gate run from a background job (or a CI step) can inherit both ignored.
+        self.add_lab()
+        probe = (f'import signal; open("{self.log}/signals.log", "w").write('
+                 '" ".join(str(signal.getsignal(s) == signal.SIG_IGN) for s in (signal.SIGINT, signal.SIGQUIT)))')
+        self.write_exe(self.bin / "bats", f"#!/bin/sh\nexec '{sys.executable}' -c '{probe}'\n")
+
+        def ignore_int_and_quit() -> None:
+            signal.signal(signal.SIGINT, signal.SIG_IGN)
+            signal.signal(signal.SIGQUIT, signal.SIG_IGN)
+
+        full_env = {"PATH": str(self.bin), "HOME": self.tmp.name}
+        result = subprocess.run([sys.executable, str(TOOL), "--repo", str(self.repo)], capture_output=True,
+                                text=True, env=full_env, timeout=60, check=False, preexec_fn=ignore_int_and_quit)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual((self.log / "signals.log").read_text(), "False False")
+
     def kill_stray(self) -> None:
         pid_file = self.log / "stray.pid"
         if pid_file.exists():
