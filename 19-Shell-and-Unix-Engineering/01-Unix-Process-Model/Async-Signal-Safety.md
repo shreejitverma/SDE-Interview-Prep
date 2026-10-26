@@ -314,7 +314,9 @@ static int s_pipe[2];
 static void handler(int sig) {
   int saved_errno = errno;
   char b = (char)sig;
-  (void)write(s_pipe[1], &b, 1);
+  if (write(s_pipe[1], &b, 1) < 0) {
+    /* EAGAIN: the pipe is full, so a wake-up byte is already pending. */
+  }
   errno = saved_errno;
 }
 
