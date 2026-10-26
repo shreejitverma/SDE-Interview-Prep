@@ -1,0 +1,24 @@
+Objects total: 21
+
+Object counts by type:
+  blob: 7
+  commit: 7
+  tree: 7
+
+Delta-chain depth histogram:
+  chain length 0: 15
+  chain length 1: 1
+  chain length 2: 1
+  chain length 3: 1
+  chain length 4: 1
+  chain length 5: 1
+  chain length 6: 1
+
+Trailer checksums: pack SHA-1 OK, idx SHA-1 OK, idx copy of pack checksum OK
+
+Byte-for-byte match with git cat-file --batch: 21/21 objects
+
+Spot checks (fanout binary search, then git cat-file -s):
+  ee4882e3d2e51878fc2e905dbcf7e762dd5c5c18 (base blob, depth 0): size=17352 (git: 17352) OK
+  552d35aa8847740dfa7b1417590d32b7c478bdd6 (delta blob, depth 1): size=16960 (git: 16960) OK
+  97b8f0240c0a7de782f9d49f50d9f276766cb3d8 (delta blob, depth 6): size=15000 (git: 15000) OK

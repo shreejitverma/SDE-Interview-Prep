@@ -1,0 +1,25 @@
+=== Pass: without-debug-info ===
+Frames with a function name: 1 of 6
+Frames with a source line: 0 of 6
+
+=== Pass: with-build-id ===
+Core source: kernel (core_pattern is a file path)
+Build ID match: yes
+
+=== Backtrace (Symbols Resolved via .build-id) ===
+#0 trigger_crash at crash.c:6
+#1 process_transaction at crash.c:11
+#2 main at crash.c:17
+
+=== Register State ===
+Faulting program counter (pc): <trigger_crash+4>
+
+=== Faulting Instruction ===
+=> str	w1, [x0]
+
+=== Summary ===
+Build ID equal: yes
+Crashing function: trigger_crash
+Crashing line: 6
+Signal name: SIGSEGV
+Frame count: 3

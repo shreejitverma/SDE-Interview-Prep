@@ -1,0 +1,8 @@
+[build-system]
+requires = ["maturin>=1.5,<2.0"]
+build-backend = "maturin"
+
+[project]
+name = "rust_abi3_example"
+version = "0.1.0"
+description = "Minimal Rust extension using PyO3 Limited API abi3"

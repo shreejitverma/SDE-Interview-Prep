@@ -1,0 +1,44 @@
+managed (python-build-standalone) CPython: 3.15, sysconfig MACOSX_DEPLOYMENT_TARGET=11.0
+system (non-managed) CPython:              3.15, sysconfig MACOSX_DEPLOYMENT_TARGET=27
+older system CPython for import tests:     3.14, sysconfig MACOSX_DEPLOYMENT_TARGET=27
+
+=== c_managed ===
+Filename tags: cp38-abi3-macosx_11_0_arm64
+WHEEL Tag lines: cp38-abi3-macosx_11_0_arm64
+Extension module file: c_abi3_example.abi3.so
+Accepted by this interpreter's sys_tags(): yes
+Binary minimum macOS (LC_BUILD_VERSION minos): 11.0
+delocate --require-target-macos-version 11.0: accepted, wrote c_abi3_example-0.1.0-cp38-abi3-macosx_11_0_arm64.whl
+Import on 3.15: ok
+Import on 3.14: ok
+
+=== c_system ===
+Filename tags: cp38-abi3-macosx_27_0_arm64
+WHEEL Tag lines: cp38-abi3-macosx_27_0_arm64
+Extension module file: c_abi3_example.abi3-darwin.so
+Accepted by this interpreter's sys_tags(): yes
+Binary minimum macOS (LC_BUILD_VERSION minos): 27.0
+delocate --require-target-macos-version 11.0: rejected
+Import on 3.15: ok
+Import on 3.14: ModuleNotFoundError: No module named '...'
+
+=== c_system_target11 ===
+Filename tags: cp38-abi3-macosx_27_0_arm64
+WHEEL Tag lines: cp38-abi3-macosx_27_0_arm64
+Extension module file: c_abi3_example.abi3-darwin.so
+Accepted by this interpreter's sys_tags(): yes
+Binary minimum macOS (LC_BUILD_VERSION minos): 11.0
+delocate --require-target-macos-version 11.0: accepted, wrote c_abi3_example-0.1.0-cp38-abi3-macosx_11_0_arm64.whl
+Import on 3.15: ok
+Import on 3.14: ModuleNotFoundError: No module named '...'
+
+=== rust_system ===
+Filename tags: cp38-abi3-macosx_11_0_arm64
+WHEEL Tag lines: cp38-abi3-macosx_11_0_arm64
+Extension module file: rust_abi3_example.abi3.so
+Accepted by this interpreter's sys_tags(): yes
+Binary minimum macOS (LC_BUILD_VERSION minos): 11.0
+delocate --require-target-macos-version 11.0: accepted, wrote rust_abi3_example-0.1.0-cp38-abi3-macosx_11_0_arm64.whl
+Import on 3.15: ok
+Import on 3.14: ok
+
