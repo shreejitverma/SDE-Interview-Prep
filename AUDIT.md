@@ -8,9 +8,9 @@ Re-run the script after every structural change; this file is its output and sho
 
 | Check | Result |
 | :--- | ---: |
-| Tracked files | 17305 |
+| Tracked files | 17319 |
 | Markdown notes | 2944 |
-| Internal links checked | 22427 |
+| Internal links checked | 22518 |
 | Broken links (links into private locations are not counted) | 0 |
 | Wikilink aliases that split a table cell | 0 |
 | Broken wikilinks fixable by unique basename | 0 |
@@ -30,7 +30,7 @@ Re-run the script after every structural change; this file is its output and sho
 
 | Folder | Files | Notes | Code | Papers | Other | MB | Last touched |
 | :--- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| `(root)` | 11 | 6 | 0 | 0 | 5 | 0.1 | 2026-10-25 |
+| `(root)` | 11 | 6 | 0 | 0 | 5 | 0.1 | 2026-10-26 |
 | `.github` | 1 | 0 | 0 | 0 | 1 | 0.0 | 2026-10-25 |
 | `.obsidian` | 45 | 0 | 0 | 0 | 45 | 0.0 | 2026-10-21 |
 | `00-Start-Here` | 6 | 5 | 0 | 0 | 1 | 0.0 | 2026-10-25 |
@@ -52,7 +52,7 @@ Re-run the script after every structural change; this file is its output and sho
 | `16-Interview-Command-Center` | 51 | 51 | 0 | 0 | 0 | 0.1 | 2026-10-25 |
 | `17-Cloud-AI-Engineering` | 162 | 162 | 0 | 0 | 0 | 8.9 | 2026-10-25 |
 | `18-Developer-Toolchain` | 365 | 343 | 12 | 0 | 10 | 0.8 | 2026-10-26 |
-| `19-Shell-and-Unix-Engineering` | 472 | 406 | 39 | 0 | 27 | 1.6 | 2026-10-26 |
+| `19-Shell-and-Unix-Engineering` | 486 | 406 | 47 | 0 | 33 | 2.0 | 2026-10-26 |
 | `CS-Subjects` | 1 | 1 | 0 | 0 | 0 | 0.0 | 2026-09-21 |
 | `tools` | 26 | 1 | 23 | 0 | 2 | 0.2 | 2026-10-26 |
 
