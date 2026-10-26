@@ -24,6 +24,17 @@ run_lab_c() {
   run "${LAB_SHELL_WORDS[@]}" -c "$@"
 }
 
+# lab_poll SECONDS CMD [ARG...]: retry CMD every 0.1 s until it succeeds; fail after SECONDS.
+lab_poll() {
+  local tries=$(($1 * 10))
+  shift
+  until "$@"; do
+    tries=$((tries - 1))
+    [ "$tries" -gt 0 ] || return 1
+    sleep 0.1
+  done
+}
+
 # lab_shell_family: print the family of the shell under test, detected from the shell itself:
 # bash, zsh, zsh-sh (zsh emulating sh), yash, busybox, posh, mksh, ksh93, or, when the shell sets
 # no identifying variable, the name of the binary the command resolves to (so "sh" that is a

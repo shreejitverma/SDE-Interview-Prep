@@ -52,6 +52,7 @@ labs/
 | `run_lab_c CODE [NAME [ARG...]]` | Run inline code under the shell under test, like `sh -c`. |
 | `lab_shell_family` | Print bash, zsh, zsh-sh, yash, busybox, posh, mksh, ksh93, or, when the shell sets no identifying variable, the name of the binary the command resolves to through symlinks (so Debian `sh` reports dash), detected by asking the shell itself. |
 | `lab_shell_version` | Print the version the shell reports about itself, or `n/a` (dash has no version variable). |
+| `lab_poll SECONDS CMD [ARG...]` | Retry CMD every 0.1 seconds until it succeeds, failing after SECONDS; await background writers with it instead of a fixed sleep. |
 | `lab_awk_flavor [CMD...]` | Print the implementation behind an awk command (default `awk`): gawk, mawk, onetrue, busybox, or unknown. The shell under test never changes which awk runs, so awk labs branch on this, not on the shell family. |
 | `lab_awks` | List every awk command installed here (`awk`, `gawk`, `mawk`, `original-awk`, `nawk`, `busybox awk`), so one test can assert each implementation's behavior. |
 
