@@ -34,7 +34,7 @@ block = gdb.block_for_pc(pc)
 func_name = block.function.name if block and block.function else func
 offset = pc - block.start if block else 0
 
-pc_reg = "rip" if "x86_64" in arch.name().lower() else "pc"
+pc_reg = "rip" if "x86-64" in arch.name() else "pc"
 inst = arch.disassemble(pc)[0]["asm"]
 
 mode = os.environ.get("TRIAGE_PASS", "unknown")

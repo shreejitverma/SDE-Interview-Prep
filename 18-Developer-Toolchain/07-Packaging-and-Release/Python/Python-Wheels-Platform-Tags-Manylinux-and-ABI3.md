@@ -121,7 +121,7 @@ pip and uv first choose the project version, then prefer the wheel whose tag app
 On the lab host (CPython 3.15.1, macOS 27.2 arm64, packaging 26.3, as of 2026-10), `sys_tags()` yields 1569 tags in this order:
 1. `cp315-cp315-` with each of 47 platform tags, from `macosx_27_0_arm64` and `macosx_27_0_universal2` down through `macosx_11_0_*`, then `macosx_10_16_universal2` down to `macosx_10_4_universal2`.
 2. `cp315-abi3-` and then `cp315-none-` with the same 47 platforms.
-3. `cp314-abi3-` down to `cp32-abi3-`, each with all 47 platforms, so `cp38-abi3-macosx_27_0_arm64` is entry 423 and `cp38-abi3-macosx_11_0_arm64` is entry 455.
+3. `cp314-abi3-` down to `cp32-abi3-`, each with all 47 platforms, so `cp38-abi3-macosx_27_0_arm64` is entry 424 and `cp38-abi3-macosx_11_0_arm64` is entry 456, counting from 1.
 4. `py315-none-`, `py3-none-`, and `py314-none-` down to `py30-none-` with all platforms.
 5. The `any` tags: `cp315-none-any`, `py315-none-any`, `py3-none-any`, then older `pyXY-none-any`.
 
@@ -292,6 +292,8 @@ The lab lives at `code/07-Packaging-and-Release/wheel_tags/`; `run.sh` is tagged
 It contains two `cp38-abi3` projects:
 1. `c_extension/` is a setuptools C-API module with `py_limited_api=True` and `Py_LIMITED_API=0x03080000` in both `define_macros` and the source.
 2. `rust_extension/` is a PyO3 0.22 module built by maturin with the `abi3-py38` and `extension-module` features.
+
+The build requirements are pinned to the versions that produced the recording: `setuptools==84.2.1` and `wheel==0.48.0` for the C project, and `maturin==1.15.0` with `pyo3 = "=0.22.6"` for the Rust project.
 
 `run.sh` does the following:
 1. It selects three final-release CPython builds through uv: the managed python-build-standalone `cpython-3.14.6-macos-aarch64-none`, pinned exactly and looked up with a `+gil` suffix so uv cannot return an installed free-threaded 3.14.6 (installed with `--no-bin` if missing), and the non-managed system 3.14 and 3.15 (`--no-managed-python`, Homebrew 3.14.9 and 3.15.1 on the lab host).
