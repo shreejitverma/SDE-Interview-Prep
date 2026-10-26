@@ -418,8 +418,9 @@ The lab in `code/03-Debugging/core_dump_triage/` runs the Linux procedure end to
 2. It reads the build ID with `eu-readelf -n`, splits debug info with `objcopy --only-keep-debug`, and runs `strip --strip-all`, which removes the DWARF sections and `.symtab` but keeps the build ID note.
 3. It installs `app.debug` as `debug_root/.build-id/nn/rest.debug`.
 4. It sets `ulimit -c unlimited` and reads `/proc/sys/kernel/core_pattern`.
-   When the pattern is a file path, it runs the program, fails unless the exit status is 139 (`SIGSEGV`), and takes the core the kernel wrote into the working directory.
-   When the pattern pipes to a handler such as `systemd-coredump` or `apport`, the core never lands there, so it falls back to GDB's `generate-core-file` after `run` stops on the `SIGSEGV`.
+   When the pattern is a file name without a `/`, it runs the program, fails unless the exit status is 139 (`SIGSEGV`), and takes the core the kernel wrote into the working directory.
+   When the pattern pipes to a handler such as `systemd-coredump` or `apport`, or contains a `/` that sends the core to another directory, the core never lands there, so it falls back to GDB's `generate-core-file` after `run` stops on the `SIGSEGV`.
+   The `Core source:` line then names which of the two reasons applied.
    Either way it fails if no non-empty core exists, and it reports which source it used on the `Core source:` line.
 5. It compares the executable's build ID with the one `eu-unstrip -n --core` reads from the core and exports the result.
 6. It opens the core in GDB batch mode twice and runs `triage.py` each time.
@@ -427,7 +428,7 @@ The lab in `code/03-Debugging/core_dump_triage/` runs the Linux procedure end to
    Pass 2 sets it to the `.build-id` tree and prints the core source, the build ID check, the backtrace, the faulting `pc` as `function+offset`, the faulting instruction, the signal from `$_siginfo`, and a frame count.
 
 What the output proves and what it does not:
-- The recorded run took a real kernel core, so it exercised `core_pattern` as a file path and `RLIMIT_CORE`, but not `systemd-coredump`; on a host whose pattern pipes to a handler, the `Core source:` line names the GDB fallback instead.
+- The recorded run took a real kernel core, so it exercised `core_pattern` as a file path and `RLIMIT_CORE`, but not `systemd-coredump`; on a host whose pattern pipes to a handler or names another directory, the `Core source:` line names the GDB fallback instead.
 - Pass 1 shows `1 of 6` frames named and `0 of 6` with a source line: with `strip --strip-all` and no reachable debug file, none of the program's own frames has a name or a line, and GDB, unable to recognize `main`, unwinds on into libc startup code.
   The one named frame is `__libc_start_main`, which GDB names from libc's exported dynamic symbols, not from any debug info.
 - In pass 2 every function name and line (`trigger_crash` at `crash.c:6`, `process_transaction` at `crash.c:11`, `main` at `crash.c:17`) comes from the `.build-id` debug file, because the only change from pass 1 is `debug-file-directory` and the binary has no `.symtab` left.
@@ -572,8 +573,8 @@ flowchart LR
 > [!tip] Practice Drill: Break each link of the chain
 > Copy `code/03-Debugging/core_dump_triage/` to a scratch directory on a Linux host with gdb and elfutils (the lab itself stays unchanged), run `bash run.sh`, and confirm the output equals `expected/linux-aarch64.txt` (on x86-64 the register name and instruction differ).
 > Then make one change at a time, predict the output first, and explain the difference.
-> 1. Delete the `.build-id` copy step: pass 2 now looks like pass 1, with every frame `?? at ??:0`, six frames instead of three, `Crashing function: None`, and the faulting `pc` as `<None+0>`, because `--strip-all` left no `.symtab` to fall back on.
-> 2. Replace `strip --strip-all` with `strip --strip-debug` and run pass 1's GDB command with `-ex bt`: `trigger_crash`, `process_transaction`, and `main` come back from `.symtab` without lines, and the backtrace stops at `main` with three frames; explain why `triage.py` still prints `0 of 3` for function names.
+> 1. Delete the `.build-id` copy step: pass 2 now looks like pass 1, with every program frame `?? at ??:0` and only the libc frame named (`__libc_start_main at ??:0`), six frames instead of three, `Crashing function: None`, and the faulting `pc` as `<None+0>`, because `--strip-all` left no `.symtab` to fall back on.
+> 2. Replace `strip --strip-all` with `strip --strip-debug` and run pass 1's GDB command with `-ex bt`: `trigger_crash`, `process_transaction`, and `main` come back from `.symtab` without lines, and the backtrace stops at `main` with three frames; predict that `triage.py` now prints `3 of 3` frames with a function name but `0 of 3` with a source line, and explain why GDB can name a frame from `.symtab` but needs DWARF for its line.
 > 3. Truncate the core with `head -c 8192 core > core.trunc` and open it: GDB warns that the core `has a segment extending past end of file`, frame 1 still resolves from `lr`, and the backtrace stops with `Cannot access memory` because the stack pages are gone.
 > 4. Change `42` to `43` in `crash.c`, rebuild with the same flags, and open the old core with the new binary: compare the two build IDs, and note that GDB 15.1 warned that the core may not match only when the new binary was unstripped.
 > 5. Drop `-fno-optimize-sibling-calls`, rebuild, and run `disassemble process_transaction` and `info frame` on frame 1: the call becomes `b trigger_crash` and frame 1 is a synthesized tail-call frame.
@@ -644,7 +645,7 @@ flowchart LR
 > > To recover others, disassemble around the PC, look for the value in callee-saved registers (`rbx`, `r12`-`r15` on x86-64, `x19`-`x28` on arm64) in this or outer frames, and inspect the object the value came from in a caller.
 
 > [!question] L6
-> The lab takes a kernel core when `core_pattern` is a file path and falls back to GDB `generate-core-file` only when it pipes to a handler.
+> The lab takes a kernel core when `core_pattern` is a file name in the working directory and falls back to GDB `generate-core-file` only when it pipes to a handler or names another directory.
 > Why prefer the kernel core, and what does the fallback give up?
 >
 > > [!success]- Answer

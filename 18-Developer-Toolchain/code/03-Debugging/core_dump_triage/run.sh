@@ -21,11 +21,16 @@ DEBUG_ROOT="$WORKDIR/debug_root"
 mkdir -p "$DEBUG_ROOT/.build-id/${BUILD_ID:0:2}"
 mv app.debug "$DEBUG_ROOT/.build-id/${BUILD_ID:0:2}/${BUILD_ID:2}.debug"
 
-# Prefer a real kernel core. If core_pattern pipes to a handler (systemd-coredump, apport),
-# the core never lands here, so fall back to having gdb write one at the fault.
+# Prefer a real kernel core. If core_pattern pipes to a handler (systemd-coredump, apport) or
+# names another directory, the core never lands here, so fall back to having gdb write one at the fault.
 ulimit -c unlimited
 PATTERN="$(cat /proc/sys/kernel/core_pattern)"
-if [ "${PATTERN:0:1}" != "|" ]; then
+case "$PATTERN" in
+    "|"*) FALLBACK_REASON="core_pattern pipes to a handler" ;;
+    */*) FALLBACK_REASON="core_pattern writes to another directory" ;;
+    *) FALLBACK_REASON="" ;;
+esac
+if [ -z "$FALLBACK_REASON" ]; then
     set +e
     ./app
     status=$?
@@ -39,7 +44,7 @@ if [ "${PATTERN:0:1}" != "|" ]; then
 else
     gdb -batch -nx -ex run -ex "generate-core-file core" ./app >/dev/null 2>&1
     CORE="./core"
-    CORE_SOURCE="gdb generate-core-file (core_pattern pipes to a handler)"
+    CORE_SOURCE="gdb generate-core-file ($FALLBACK_REASON)"
 fi
 if [ -z "$CORE" ] || [ ! -s "$CORE" ]; then
     echo "no core file was produced" >&2

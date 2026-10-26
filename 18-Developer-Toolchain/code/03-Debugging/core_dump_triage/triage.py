@@ -2,10 +2,8 @@ import gdb
 import os
 
 frame = gdb.newest_frame()
-sal = frame.find_sal()
 func = frame.name()
-line = sal.line
-filename = os.path.basename(sal.symtab.filename) if sal.symtab else "unknown"
+line = frame.find_sal().line
 
 count = 0
 f = frame
@@ -41,9 +39,8 @@ inst = arch.disassemble(pc)[0]["asm"]
 
 mode = os.environ.get("TRIAGE_PASS", "unknown")
 if mode == "without-debug-info":
-    named = named_frames
     print(f"=== Pass: {mode} ===")
-    print(f"Frames with a function name: {named} of {count}")
+    print(f"Frames with a function name: {named_frames} of {count}")
     print(f"Frames with a source line: {line_frames} of {count}")
 else:
     print(f"=== Pass: {mode} ===")
