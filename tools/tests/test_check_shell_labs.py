@@ -4,12 +4,15 @@ The real linters are replaced by fake executables on PATH that log their argumen
 so these tests pin the tool's own logic (what it checks, how it reports) on any machine.
 """
 
+import contextlib
 import os
 import shutil
+import signal
 import stat
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 from pathlib import Path
 
@@ -72,7 +75,7 @@ class CheckShellLabsTest(unittest.TestCase):
     def run_tool(self, *args: str, **env: str) -> subprocess.CompletedProcess:
         full_env = {"PATH": str(self.bin), "HOME": self.tmp.name, **env}
         return subprocess.run([sys.executable, str(TOOL), "--repo", str(self.repo), *args],
-                              capture_output=True, text=True, env=full_env)
+                              capture_output=True, text=True, env=full_env, timeout=60, check=False)
 
     def calls(self, name: str) -> list[str]:
         path = self.log / f"{name}.log"
@@ -104,6 +107,44 @@ class CheckShellLabsTest(unittest.TestCase):
         self.assertEqual((self.log / "bats-timeout.log").read_text().strip(), "60")
         self.run_tool(BATS_TEST_TIMEOUT="5")
         self.assertEqual((self.log / "bats-timeout.log").read_text().strip(), "5")  # an explicit setting wins
+
+    def test_bats_suite_is_killed_after_the_suite_timeout_even_if_a_stray_holds_its_output(self):
+        # A stopped child in another process group once kept bats's output open for hours,
+        # outliving BATS_TEST_TIMEOUT; the gate must still end, and fail, after LAB_SUITE_TIMEOUT.
+        self.add_lab()
+        stray = f'import os, time; os.setpgid(0, 0); open("{self.log}/stray.pid", "w").write(str(os.getpid())); time.sleep(30)'
+        self.write_exe(self.bin / "bats", f"#!/bin/sh\n'{sys.executable}' -c '{stray}' &\nexec /bin/sleep 30\n")
+        self.addCleanup(self.kill_stray)
+        started = time.monotonic()
+        result = self.run_tool(LAB_SUITE_TIMEOUT="1")
+        self.assertLess(time.monotonic() - started, 15, "the gate waited for the stray")
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertIn("suite killed after LAB_SUITE_TIMEOUT=1 seconds", result.stdout)
+        self.assertIn("result: FAIL (bats)", result.stdout)
+
+    def test_bats_starts_with_default_signal_dispositions_even_if_the_caller_ignored_them(self):
+        # A lab that asserts how a shell treats SIGINT and SIGQUIT is only meaningful from a clean start;
+        # a gate run from a background job (or a CI step) can inherit both ignored.
+        self.add_lab()
+        probe = (f'import signal; open("{self.log}/signals.log", "w").write('
+                 '" ".join(str(signal.getsignal(s) == signal.SIG_IGN) for s in (signal.SIGINT, signal.SIGQUIT)))')
+        self.write_exe(self.bin / "bats", f"#!/bin/sh\nexec '{sys.executable}' -c '{probe}'\n")
+
+        def ignore_int_and_quit() -> None:
+            signal.signal(signal.SIGINT, signal.SIG_IGN)
+            signal.signal(signal.SIGQUIT, signal.SIG_IGN)
+
+        full_env = {"PATH": str(self.bin), "HOME": self.tmp.name}
+        result = subprocess.run([sys.executable, str(TOOL), "--repo", str(self.repo)], capture_output=True,
+                                text=True, env=full_env, timeout=60, check=False, preexec_fn=ignore_int_and_quit)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual((self.log / "signals.log").read_text(), "False False")
+
+    def kill_stray(self) -> None:
+        pid_file = self.log / "stray.pid"
+        if pid_file.exists():
+            with contextlib.suppress(ProcessLookupError):
+                os.kill(int(pid_file.read_text()), signal.SIGKILL)
 
     def test_linter_failure_fails_the_gate_and_names_the_check(self):
         self.add_lab()

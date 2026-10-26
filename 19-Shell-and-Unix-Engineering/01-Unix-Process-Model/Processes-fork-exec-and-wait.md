@@ -164,7 +164,7 @@ In GNU Bash (`execute_cmd.c, shell_execve`), if `execve` fails with `ENOEXEC` an
 
 When a child process exits by invoking `exit(2)` or receiving a terminating signal, the kernel frees its address space and closes its file descriptors.
 However, the kernel retains the process entry in `EXIT_ZOMBIE` state inside the task table (`(Linux kernel/exit.c, do_wait)`).
-The zombie preserves the process ID, the termination status, and resource usage metrics (`struct rusage`) until reaped by the parent (`[[Zombies-and-Orphans]]`).
+The zombie preserves the process ID, the termination status, and resource usage metrics (`struct rusage`) until reaped by the parent ([[Zombies-and-Orphans]]).
 
 The parent collects status using `wait(2)` or `waitpid(2)`:
 
@@ -214,7 +214,7 @@ A `kill` that reaches the forked child before it restores default dispositions a
 When the shell encounters an external simple command (`(POSIX.1-2024 XCU 2.9.1.4)`):
 1. In GNU Bash (`execute_cmd.c, execute_simple_command`), the shell checks whether the command is a builtin, a shell function, or on disk.
 2. If disk execution is required, Bash calls `make_child` (`jobs.c, make_child`), which calls `fork()`.
-3. If job control is enabled, the parent shell assigns the child to a new process group via `setpgid(2)` and hands foreground terminal control to the child via `tcsetpgrp(3)` (`[[Sessions-Process-Groups-and-Controlling-Terminals]]`).
+3. If job control is enabled, the parent shell assigns the child to a new process group via `setpgid(2)` and hands foreground terminal control to the child via `tcsetpgrp(3)` ([[Sessions-Process-Groups-and-Controlling-Terminals]]).
 4. In the child process:
    - Traps caught by the parent shell are reset to default actions (`SIG_DFL`) (`(POSIX.1-2024 XCU 2.13)`).
    - Signals ignored by the parent shell remain ignored (`SIG_IGN`).
@@ -232,7 +232,7 @@ When the final command of a shell script or subshell is an external executable a
 Inside a `( ... )` subshell every shell in the matrix execs the final external command without a second fork, but for the last command of a multi-command `sh -c` string only bash 5.2 and 5.3, ksh93, zsh, yash, and BusyBox ash skip the fork, while dash 0.5.12, posh 0.14.1, mksh R59, and bash 3.2 and 4.4 still fork (verified 2026-10 by comparing `$$` with the child's `$$` and `$PPID`).
 
 Pipelines (`cmd1 | cmd2`):
-The shell calls `pipe(2)` to create a unidirectional data channel (`[[Pipes-and-FIFOs]]`).
+The shell calls `pipe(2)` to create a unidirectional data channel ([[Pipes-and-FIFOs]]).
 The shell forks both commands.
 The child for `cmd1` executes `dup2(pipe_fds[1], 1)` and closes both pipe descriptors.
 The child for `cmd2` executes `dup2(pipe_fds[0], 0)` and closes both pipe descriptors.
@@ -455,7 +455,7 @@ Expected output under `yash`:
 > [!warning] Container PID 1 Signal Forwarding and Zombie Swallowing
 > Trigger: Running a shell wrapper script as the container `ENTRYPOINT` without using `exec` to invoke the target daemon (e.g. `sh -c "/entrypoint.sh"` followed by `my-daemon`).
 > Symptom: Docker or Kubernetes stop operations wait out the grace period (10 s by default for `docker stop` on Linux, 30 s by default for a Kubernetes Pod) before forcibly killing the container with `SIGKILL`, and zombie processes from child tasks accumulate indefinitely.
-> Root cause: In Linux, PID 1 has unique semantics: the kernel ignores unhandled signals including `SIGTERM` unless explicitly handled, and default shells do not forward signals or reap orphaned child processes (`[[Zombies-and-Orphans]]`).
+> Root cause: In Linux, PID 1 has unique semantics: the kernel ignores unhandled signals including `SIGTERM` unless explicitly handled, and default shells do not forward signals or reap orphaned child processes ([[Zombies-and-Orphans]]).
 > Fix: Use `exec my-daemon "$@"` at the end of the entrypoint script so the daemon replaces the shell and assumes PID 1, or use an init supervisor such as `tini` or `dumb-init`.
 
 > [!warning] Non-Standard and Zero Signal Exit Status Divergence
@@ -478,14 +478,14 @@ Changing user ID before group ID prevents dropping group privileges due to loss 
 
 ### 2. File descriptor leakage and `FD_CLOEXEC`
 
-File descriptors left open in parent processes are inherited across `fork` and `execve` unless marked with `FD_CLOEXEC` (`[[Close-on-Exec-and-Descriptor-Inheritance]]`).
+File descriptors left open in parent processes are inherited across `fork` and `execve` unless marked with `FD_CLOEXEC` ([[Close-on-Exec-and-Descriptor-Inheritance]]).
 If a privileged script opens a sensitive handle (such as `/etc/shadow`, a database connection socket, or a cryptographic key file) and invokes an external utility without `FD_CLOEXEC`, the child binary gains unauthorized read and write access to the resource.
 Always use `O_CLOEXEC` on `open(2)` or set `FD_CLOEXEC` via `fcntl(fd, F_SETFD, FD_CLOEXEC)`.
 In POSIX.1-2024, use `FD_CLOFORK` to prevent inheritance across `fork()` even before `exec()` occurs (`(POSIX.1-2024 XSH fcntl)`).
 
 ### 3. Argument injection and command injection boundaries
 
-Never pass untrusted user input into `sh -c "cmd $input"` or `eval` (`[[Command-Injection]]`).
+Never pass untrusted user input into `sh -c "cmd $input"` or `eval` ([[Command-Injection]]).
 A command string passed to `sh -c` undergoes full shell parsing, word splitting, and expansion.
 When invoking programs from high-level languages (Python, Go, Node.js), pass argument vectors directly to `execve` via argument slices (`subprocess.run(["cmd", arg])`), bypassing the shell parser entirely.
 

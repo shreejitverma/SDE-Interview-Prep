@@ -57,6 +57,26 @@ resolve() {
   readlink -f "$1" 2>/dev/null || printf '%s\n' "$1"
 }
 
+# run_bounded SECONDS CMD...: run CMD through lib/detach (a new session with no controlling terminal,
+# default signal dispositions, an empty signal mask) with stdin from /dev/null, kill its process group
+# after SECONDS, and return CMD's status (137 when killed).
+# So every suite starts the same way on every host, and cannot be stopped by a terminal;
+# and BATS_TEST_TIMEOUT cannot end a suite whose stray child (a stopped one, say) keeps bats's output open.
+run_bounded() {
+  local limit=$1 pid watchdog rc
+  shift
+  "$DETACH" "$@" </dev/null &
+  pid=$!
+  # shellcheck disable=SC2016 # $1 and $2 are the inner sh's arguments, expanded there
+  "$DETACH" sh -c 'sleep "$1" && kill -s KILL -- "-$2"' sh "$limit" "$pid" >/dev/null 2>&1 &
+  watchdog=$!
+  wait "$pid"
+  rc=$?
+  kill -- "-$watchdog" 2>/dev/null
+  wait "$watchdog" 2>/dev/null
+  return "$rc"
+}
+
 # lab_dirs LAB...: print the lab directories to test, one per line.
 lab_dirs() {
   local dir name
@@ -89,7 +109,7 @@ run_containers() {
     printf '== building %s\n' "$image"
     docker build -q -t "$image" -f "$dockerfile" "$LABS_DIR/matrix" >/dev/null \
       || die "docker build failed for $dockerfile"
-    docker run --rm -e BATS_TEST_TIMEOUT -v "$LABS_DIR:/labs:ro" "$image" bash /labs/run-matrix.sh --in-container "$@"
+    docker run --rm -e BATS_TEST_TIMEOUT -e LAB_SUITE_TIMEOUT -v "$LABS_DIR:/labs:ro" "$image" bash /labs/run-matrix.sh --in-container "$@"
     status=$?
     [ "$status" -eq 0 ] || rc=$status
   done
@@ -112,6 +132,13 @@ main() {
       *) labs+=("$arg") ;;
     esac
   done
+
+  # Backstop for one shell's whole suite, in case a test outlives its own timeout.
+  LAB_SUITE_TIMEOUT="${LAB_SUITE_TIMEOUT:-600}"
+  case $LAB_SUITE_TIMEOUT in
+    '' | *[!0-9]*) die "LAB_SUITE_TIMEOUT must be a whole number of seconds, not '$LAB_SUITE_TIMEOUT'" ;;
+    *) ;;
+  esac
 
   if [ "$containers" -eq 1 ]; then
     local -a pass=()
@@ -152,11 +179,16 @@ EOF_DIRS
     files+=("$dir"/*.bats)
   done
 
-  local entry label family cmd first path real key seen=" " version log rc tests skipped passed note failed ran=0 bad=0 missing=0 skips=0
+  local entry label family cmd first path real key seen=" " version work log rc tests skipped passed note failed ran=0 bad=0 missing=0 skips=0
   local -a failures=()
-  log=$(mktemp "${TMPDIR:-/tmp}/run-matrix.XXXXXX") || die "mktemp failed"
-  # shellcheck disable=SC2064 # expand $log now; it never changes
-  trap "rm -f '$log'" EXIT
+  work=$(mktemp -d "${TMPDIR:-/tmp}/run-matrix.XXXXXX") || die "mktemp failed"
+  # shellcheck disable=SC2064 # expand $work now; it never changes
+  trap "rm -rf '$work'" EXIT
+  log=$work/log
+  DETACH=$work/detach
+  if [ "$list" -eq 0 ]; then
+    "${CC:-cc}" -O2 -o "$DETACH" "$LABS_DIR/lib/detach.c" || die "cannot compile lib/detach.c (set CC to a C compiler)"
+  fi
   for entry in "${CANDIDATES[@]}"; do
     label=${entry%%|*}
     cmd=${entry#*|}
@@ -188,10 +220,14 @@ EOF_DIRS
       printf '   %-12s %-38s %s\n' "$label" "$version" "$real${cmd#"$first"}"
       continue
     fi
-    if LAB_SHELL=$cmd LAB_EXPECT_FAMILY=$family bats --formatter tap --print-output-on-failure "${files[@]}" >"$log" 2>&1; then
+    if LAB_SHELL=$cmd LAB_EXPECT_FAMILY=$family run_bounded "$LAB_SUITE_TIMEOUT" \
+      bats --formatter tap --print-output-on-failure "${files[@]}" >"$log" 2>&1; then
       rc=0
     else
       rc=$?
+    fi
+    if [ "$rc" -eq 137 ]; then
+      printf 'not ok - suite killed after LAB_SUITE_TIMEOUT=%s seconds\n' "$LAB_SUITE_TIMEOUT" >>"$log"
     fi
     # A skipped test is reported as "ok N # skip" in TAP; count it apart so it never reads as a pass.
     tests=$(grep -c '^ok ' "$log")

@@ -5,7 +5,7 @@ setup() {
   load ../lib/lab
   STARTUP_PROBE="$BATS_TEST_DIRNAME/startup-probe.sh"
   ARGV0_PROBE="$BATS_TEST_TMPDIR/argv0-probe"
-  cc -O2 "$BATS_TEST_DIRNAME/argv0-probe.c" -o "$ARGV0_PROBE"
+  "${CC:-cc}" -O2 "$BATS_TEST_DIRNAME/argv0-probe.c" -o "$ARGV0_PROBE"
 }
 
 @test "startup-probe preserves spaces and empty arguments" {

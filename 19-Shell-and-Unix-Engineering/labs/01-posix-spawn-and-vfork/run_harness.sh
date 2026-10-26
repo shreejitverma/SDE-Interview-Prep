@@ -11,7 +11,7 @@ bin="$tmpdir/spawn_harness"
 if [ ! -x "$bin" ]; then
   script_dir=$(cd "$(dirname "$0")" && pwd)
   c_src="$script_dir/spawn_harness.c"
-  cc -O2 -Wall -Wextra -std=c99 "$c_src" -o "$bin"
+  "${CC:-cc}" -O2 -Wall -Wextra -std=c99 "$c_src" -o "$bin"
 fi
 
 "$bin" "$mode" ${1+"$@"}
