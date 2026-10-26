@@ -181,9 +181,9 @@ POSIX.1-2024 XSH `exec` (DESCRIPTION) explicitly warns that executing a conformi
 | Linux default soft `RLIMIT_NOFILE` | `1024` descriptors (hard `4096`) | Process resource limit | `INR_OPEN_CUR` / `INR_OPEN_MAX` in `include/uapi/linux/fs.h` `(as of 2026-10)`; init systems often raise the hard limit |
 | Linux per-process `RLIMIT_NOFILE` ceiling | `1048576` descriptors | `fs.nr_open` sysctl | `sysctl_nr_open = 1024*1024` in `fs/file.c` `(as of 2026-10)` |
 | macOS Darwin default soft `RLIMIT_NOFILE` | `256` (launchd soft default) | Process resource limit | `launchctl limit maxfiles` on macOS 27.2 `(as of 2026-10)`; the `kern.maxfilesperproc` ceiling is hardware-dependent (`138240` on the test host) |
-| `exec 3>file` child inheritance (bash/dash/zsh/yash/busybox/posh) | `3:open` | External utility execution | Verified by lab under `[lab](../labs/01-close-on-exec-and-descriptor-inheritance/)` |
-| `exec 3>file` child inheritance (ksh93/mksh) | `3:closed` | External utility execution | Verified by lab under `[lab](../labs/01-close-on-exec-and-descriptor-inheritance/)` |
-| Subshell `( )` fd 3 inheritance (all shells) | `open` | Subshell without execve | Verified by lab under `[lab](../labs/01-close-on-exec-and-descriptor-inheritance/)` |
+| `exec 3>file` child inheritance (bash/dash/zsh/yash/busybox/posh) | `3:open` | External utility execution | Verified by lab under [lab](../labs/01-close-on-exec-and-descriptor-inheritance/) |
+| `exec 3>file` child inheritance (ksh93/mksh) | `3:closed` | External utility execution | Verified by lab under [lab](../labs/01-close-on-exec-and-descriptor-inheritance/) |
+| Subshell `( )` fd 3 inheritance (all shells) | `open` | Subshell without execve | Verified by lab under [lab](../labs/01-close-on-exec-and-descriptor-inheritance/) |
 
 ## Portability
 
