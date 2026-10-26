@@ -48,10 +48,13 @@ code/
 Different toolchain mechanisms require specific operating systems, CPU architectures, or execution privileges.
 Each lab declares its environmental requirements in a `# requires:` comment within the first 10 lines of its `run.sh`:
 
-- `# requires: linux`: Gated to native Linux environments. On macOS hosts the harness skips these labs; run `make verify` inside an OrbStack or Docker Linux environment to exercise them.
-- `# requires: macos`: Gated to macOS hosts (Instruments, xctrace, codesign). On Linux hosts the harness skips these labs.
+- `# requires: linux`: Gated to native Linux environments.
+  On macOS hosts the harness skips these labs; run `make verify` inside an OrbStack or Docker Linux environment to exercise them.
+- `# requires: macos`: Gated to macOS hosts (Instruments, xctrace, codesign).
+  On Linux hosts the harness skips these labs.
 - `# requires: docker`: Requires an active Docker daemon to build OCI containers or test isolated build sandboxes.
-- `# requires: pmu`: Requires access to hardware performance monitoring unit counters (e.g., instructions, cycles, cache misses), opted in with `TOOLCHAIN_LABS_PMU=1`. These cannot run inside virtualized hypervisors without PMU passthrough (an OrbStack VM exposes software events only).
+- `# requires: pmu`: Requires access to hardware performance monitoring unit counters (e.g., instructions, cycles, cache misses), opted in with `TOOLCHAIN_LABS_PMU=1`.
+  These cannot run inside virtualized hypervisors without PMU passthrough (an OrbStack VM exposes software events only).
 - `# requires: nightly`: Requires a nightly Rust toolchain listed by `rustup toolchain list` (e.g., for Miri or `-Zsanitizer`).
 - `# requires: network`: Requires active Internet access to communicate with upstream package registries (e.g., crates.io, PyPI, Conan Center), opted in with `TOOLCHAIN_LABS_NETWORK=1`.
 
@@ -96,4 +99,4 @@ When contributing a new lab:
 2. Provide a self-contained `run.sh` entry point (the harness runs it with `bash run.sh` and reads its stdout).
 3. Add the `# requires:` comment within the first 10 lines of `run.sh` specifying platform dependencies.
 4. Run `make record LAB=<pillar>/<lab_name>/` on the required platform to generate the initial golden output.
-5. Reference the lab in the owning Markdown note using a standard relative link to the lab directory.
+5. Reference the lab in the owning Markdown note with a `Lab:` code-span line under `## Related`, in the format of STYLE.md section 4.

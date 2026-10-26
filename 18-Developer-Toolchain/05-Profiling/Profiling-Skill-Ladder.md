@@ -18,7 +18,7 @@ Each capability requires direct measurement of runtime software bottlenecks and 
 
 ## Level 4 (Software Engineer I)
 
-- Can capture an on-CPU profile using Linux perf record or macOS samply and inspect the hottest functions in a flame graph: [[Linux-perf-in-Depth-and-perf-c2c]], [[macOS-Instruments-xctrace-and-DTrace]]
+- Can capture an on-CPU profile using Linux perf record, samply (Linux and macOS), or macOS Instruments and inspect the hottest functions in a flame graph: [[Linux-perf-in-Depth-and-perf-c2c]], [[macOS-Instruments-xctrace-and-DTrace]]
 - Can execute deterministic call tracing in Python using cProfile and inspect cumulative execution time using pstats: [[Python-cProfile-Tachyon-and-Sampling-Profilers]]
 - Can generate flame graphs for Rust applications using cargo-flamegraph and identify hot stack branches: [[Rust-CPU-Profiling-cargo-flamegraph-samply-and-Frame-Pointers]]
 - Can run basic bpftrace one-liners to trace process execution counts, open files, and syscall frequencies: [[eBPF-bpftrace-ftrace-uprobes-and-USDT]]
@@ -44,7 +44,7 @@ Each capability requires direct measurement of runtime software bottlenecks and 
 ## Level 7 (Staff Software Engineer)
 
 - Can architect continuous fleet-wide profiling pipelines using Parca or Grafana Pyroscope to continuously index CPU and memory profiles: [[Continuous-Profiling-GWP-Parca-Pyroscope-and-OTel-Profiles]]
-- Can deploy automated feedback-directed binary optimization pipelines (PGO, AutoFDO with LBR, and LLVM BOLT) that achieve 7-15% fleet capacity wins: [[Cpp-PGO-AutoFDO-and-BOLT-Workflow]]
+- Can deploy automated feedback-directed binary optimization pipelines (PGO, AutoFDO with LBR, and LLVM BOLT), where the CGO 2019 BOLT paper reports up to 7% on data-center workloads on top of PGO and LTO: [[Cpp-PGO-AutoFDO-and-BOLT-Workflow]]
 - Can implement custom sampling profilers in C++ or Rust that read kernel performance ring buffers and emit folded stack formats: [[Rebuild-Lab-Sampling-Profiler-to-Folded-Stacks]]
 - Can correlate continuous profiling exemplars with distributed trace spans using OpenTelemetry Profiles standards: [[Continuous-Profiling-GWP-Parca-Pyroscope-and-OTel-Profiles]]
 - Can automate headless macOS performance regression auditing in Xcode CI pipelines using xctrace recording and XML extraction: [[macOS-Instruments-xctrace-and-DTrace]]

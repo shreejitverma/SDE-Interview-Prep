@@ -42,7 +42,7 @@ Each capability requires reproducible execution under realistic development and 
 - Can isolate deadlocks in multi-threaded services by dumping mutex ownership graphs and thread wait queues under GDB without restarting the process: [[Cpp-Playbook-Deadlocks-and-Livelocks]]
 - Can safely attach to a live production CPython process using PEP 768 or py-spy dump to extract active stacks without destabilizing runtime throughput: [[Python-pdb-debugpy-and-Remote-Attach]], [[Python-Debugging-Hung-Processes-and-C-Extensions]]
 - Can root-cause memory safety, alignment, and panic unwinding bugs across Foreign Function Interface (FFI) boundaries connecting Rust, C++, and Python: [[Rust-FFI-Boundary-Debugging-Across-Cpp-and-Python]], [[Drill-Debugging-Mixed-Python-Rust-FFI-Segfault]]
-- Can construct automated property-based test suites using Hypothesis and Loom to systematically falsify concurrent synchronization invariants: [[Python-Hypothesis-and-Type-Checkers-as-Bug-Prevention]], [[Rust-Miri-Sanitizers-Loom-and-Cargo-Fuzz]]
+- Can construct property-based test suites with Hypothesis and exhaustive interleaving model checks with Loom to systematically falsify concurrent synchronization invariants: [[Python-Hypothesis-and-Type-Checkers-as-Bug-Prevention]], [[Rust-Miri-Sanitizers-Loom-and-Cargo-Fuzz]]
 
 ## Level 7 (Staff Software Engineer)
 

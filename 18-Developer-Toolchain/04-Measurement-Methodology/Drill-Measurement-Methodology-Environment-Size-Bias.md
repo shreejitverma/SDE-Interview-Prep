@@ -11,7 +11,7 @@ sources: []
 
 > [!summary] Scope
 > This problem note presents a hands-on drill reproducing a 15% execution swing caused solely by environment variable string sizes shifting stack alignment.
-> It challenges the engineer to measure L1 instruction cache misses and branch target buffer collisions using PMU counters, diagnose the artifact, and stabilize the harness.
+> It challenges the engineer to measure the stack-placement effects, such as L1 data cache misses and 4K address-aliasing load stalls, using PMU counters, diagnose the artifact, and stabilize the harness.
 > It validates the foundational lessons of Mytkowicz et al.
 
 ## Related

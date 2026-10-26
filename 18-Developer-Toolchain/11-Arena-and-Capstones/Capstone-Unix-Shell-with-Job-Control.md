@@ -18,4 +18,4 @@ sources: []
 
 - Prerequisites: [[Shell-Parsing-Tokenization-and-Expansion-Order]], [[Pipelines-Subshells-Redirection-and-Process-Substitution]], [[Signals-Process-Groups-Sessions-and-Job-Control]], [[TTYs-PTYs-and-Line-Discipline]], [[Rebuild-a-Minimal-Shell-With-Job-Control]]
 - See also: [[19-Shell-and-Unix-Engineering/01-Unix-Process-Model/Sessions-Process-Groups-and-Controlling-Terminals|Sessions Process Groups and Controlling Terminals]], [[19-Shell-and-Unix-Engineering/02-Terminals-and-Job-Control/fg-bg-jobs-and-the-Foreground-Process-Group|fg bg jobs and the Foreground Process Group]]
-- Lab: `code/11-Arena-and-Capstones/capstone_unix_shell/` (requires: linux)
+- Lab: `code/11-Arena-and-Capstones/capstone_unix_shell/`
