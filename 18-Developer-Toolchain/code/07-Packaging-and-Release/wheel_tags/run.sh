@@ -2,8 +2,8 @@
 set -euo pipefail
 # requires: macos, network
 
-# Builds the same C abi3 extension four ways and a Rust abi3 extension once. Each adjacent pair of
-# builds differs in exactly one variable (interpreter provenance, deployment target env var,
+# Builds the same C abi3 extension four ways and a Rust abi3 extension once. Each build differs from
+# an earlier one in exactly one variable (interpreter provenance, deployment target env var,
 # interpreter version, build backend), and every interpreter is a final release. For each wheel it
 # shows what the tags promise versus what the binary needs, and whether it imports on 3.15 and 3.14.
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

@@ -298,7 +298,7 @@ It contains two `cp38-abi3` projects:
 2. It prints each interpreter's full version and `sysconfig` `MACOSX_DEPLOYMENT_TARGET`.
 3. It runs `uv build --wheel` five times, so that each build differs from an earlier one in exactly one variable:
    - `c_managed`: the C project on the managed 3.14.6.
-   - `c_system`: the C project on Homebrew 3.14.9, which differs from `c_managed` in interpreter provenance.
+   - `c_system`: the C project on Homebrew 3.14.9, which differs from `c_managed` in interpreter provenance (and in patch release, 3.14.9 versus 3.14.6).
    - `c_system_target11`: `c_system` plus `MACOSX_DEPLOYMENT_TARGET=11.0`.
    - `c_system315`: the C project on Homebrew 3.15.1, which differs from `c_system` in interpreter version.
    - `rust_system315`: the Rust project on Homebrew 3.15.1, which differs from `c_system315` in build backend (maturin instead of setuptools).

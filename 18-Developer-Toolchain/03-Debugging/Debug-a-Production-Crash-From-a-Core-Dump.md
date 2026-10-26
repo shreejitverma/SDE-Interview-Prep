@@ -420,8 +420,7 @@ The lab in `code/03-Debugging/core_dump_triage/` runs the Linux procedure end to
 4. It sets `ulimit -c unlimited` and reads `/proc/sys/kernel/core_pattern`.
    When the pattern is a file name without a `/`, it runs the program, fails unless the exit status is 139 (`SIGSEGV`), and takes the core the kernel wrote into the working directory.
    When the pattern pipes to a handler such as `systemd-coredump` or `apport`, or contains a `/` that sends the core to another directory, the core never lands there, so it falls back to GDB's `generate-core-file` after `run` stops on the `SIGSEGV`.
-   The `Core source:` line then names which of the two reasons applied.
-   Either way it fails if no non-empty core exists, and it reports which source it used on the `Core source:` line.
+   Either way it fails if no non-empty core exists, and it reports on the `Core source:` line which source it used and, for the fallback, which of the two reasons applied.
 5. It compares the executable's build ID with the one `eu-unstrip -n --core` reads from the core and exports the result.
 6. It opens the core in GDB batch mode twice and runs `triage.py` each time.
    Pass 1 sets `debug-file-directory` to a nonexistent path and prints only how many frames have a function name and a source line.
