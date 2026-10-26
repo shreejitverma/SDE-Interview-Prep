@@ -1,6 +1,6 @@
 # Vault Audit
 
-Generated 2026-10-25 by `python3 tools/audit_vault.py` over git-tracked files.
+Generated 2026-10-26 by `python3 tools/audit_vault.py` over git-tracked files.
 Re-run the script after every structural change; this file is its output and should not be hand-edited.
 0 files in private locations (`tools/private_paths.py`) are excluded; `tools/audit_pii.py` inventories them into a private path.
 
@@ -8,9 +8,9 @@ Re-run the script after every structural change; this file is its output and sho
 
 | Check | Result |
 | :--- | ---: |
-| Tracked files | 16899 |
-| Markdown notes | 2600 |
-| Internal links checked | 19658 |
+| Tracked files | 17305 |
+| Markdown notes | 2944 |
+| Internal links checked | 22427 |
 | Broken links (links into private locations are not counted) | 0 |
 | Wikilink aliases that split a table cell | 0 |
 | Broken wikilinks fixable by unique basename | 0 |
@@ -21,7 +21,7 @@ Re-run the script after every structural change; this file is its output and sho
 | Note folders without README (depth <= 3) | 0 |
 | Notes with emojis / total emojis | 0 / 0 |
 | Notes with em dashes / total em dashes | 0 / 0 |
-| Identical-content groups / redundant MB | 304 / 41.9 |
+| Identical-content groups / redundant MB | 305 / 41.9 |
 | Vendored or imported repos | 10 |
 | Tracked build junk | 0 |
 | Files >= 5 MB / total MB | 1 / 5.1 |
@@ -35,31 +35,33 @@ Re-run the script after every structural change; this file is its output and sho
 | `.obsidian` | 45 | 0 | 0 | 0 | 45 | 0.0 | 2026-10-21 |
 | `00-Start-Here` | 6 | 5 | 0 | 0 | 1 | 0.0 | 2026-10-25 |
 | `01-CS-Foundations` | 507 | 262 | 141 | 0 | 104 | 4.7 | 2026-10-25 |
-| `02-Programming-Languages` | 5827 | 817 | 2860 | 466 | 1684 | 112.2 | 2026-10-25 |
+| `02-Programming-Languages` | 5828 | 818 | 2860 | 466 | 1684 | 112.2 | 2026-10-25 |
 | `03-Data-Structures-Algorithms` | 8293 | 185 | 7988 | 0 | 120 | 17.3 | 2026-10-25 |
-| `04-System-Design` | 991 | 177 | 657 | 0 | 157 | 9.7 | 2026-10-25 |
+| `04-System-Design` | 991 | 177 | 657 | 0 | 157 | 9.8 | 2026-10-25 |
 | `05-Quantitative-Finance` | 9 | 2 | 7 | 0 | 0 | 0.0 | 2026-10-07 |
 | `06-Interview-Prep` | 13 | 12 | 0 | 0 | 1 | 0.2 | 2026-10-07 |
 | `07-Project-Portfolio` | 1 | 1 | 0 | 0 | 0 | 0.0 | 2026-09-21 |
-| `08-Distinguished-Engineering` | 18 | 12 | 6 | 0 | 0 | 0.1 | 2026-10-07 |
-| `09-Engineering-Leadership` | 3 | 3 | 0 | 0 | 0 | 0.0 | 2026-09-21 |
+| `08-Distinguished-Engineering` | 18 | 12 | 6 | 0 | 0 | 0.1 | 2026-10-25 |
+| `09-Engineering-Leadership` | 3 | 3 | 0 | 0 | 0 | 0.0 | 2026-10-25 |
 | `10-Development-Practices` | 4 | 2 | 0 | 0 | 2 | 0.0 | 2026-10-25 |
 | `11-Security-And-Cryptography` | 3 | 2 | 1 | 0 | 0 | 0.0 | 2026-10-25 |
-| `12-Performance-Engineering` | 4 | 2 | 2 | 0 | 0 | 0.0 | 2026-10-07 |
+| `12-Performance-Engineering` | 4 | 2 | 2 | 0 | 0 | 0.0 | 2026-10-25 |
 | `13-Agentic-AI` | 185 | 185 | 0 | 0 | 0 | 3.4 | 2026-10-25 |
 | `14-Low-Latency-Systems` | 262 | 262 | 0 | 0 | 0 | 1.7 | 2026-10-25 |
 | `15-Technical-Whitepapers` | 44 | 44 | 0 | 0 | 0 | 0.3 | 2026-10-25 |
-| `16-Interview-Command-Center` | 51 | 51 | 0 | 0 | 0 | 0.1 | 2026-10-07 |
-| `17-Cloud-AI-Engineering` | 162 | 162 | 0 | 0 | 0 | 8.9 | 2026-10-21 |
-| `19-Shell-and-Unix-Engineering` | 435 | 406 | 14 | 0 | 15 | 0.8 | 2026-10-25 |
+| `16-Interview-Command-Center` | 51 | 51 | 0 | 0 | 0 | 0.1 | 2026-10-25 |
+| `17-Cloud-AI-Engineering` | 162 | 162 | 0 | 0 | 0 | 8.9 | 2026-10-25 |
+| `18-Developer-Toolchain` | 365 | 343 | 12 | 0 | 10 | 0.8 | 2026-10-26 |
+| `19-Shell-and-Unix-Engineering` | 472 | 406 | 39 | 0 | 27 | 1.6 | 2026-10-26 |
 | `CS-Subjects` | 1 | 1 | 0 | 0 | 0 | 0.0 | 2026-09-21 |
-| `tools` | 23 | 1 | 20 | 0 | 2 | 0.2 | 2026-10-25 |
+| `tools` | 26 | 1 | 23 | 0 | 2 | 0.2 | 2026-10-26 |
 
 ## 2. Duplicate and overlapping sections
 
 ### Folders whose names normalize to the same topic
 
 - **design pattern**: `04-System-Design/03-Design-Patterns`, `04-System-Design/design-patterns-cpp`, `04-System-Design/design-patterns-java`, `04-System-Design/design-patterns-python`
+- **debugging**: `02-Programming-Languages/Python/Debugging`, `18-Developer-Toolchain/03-Debugging`, `18-Developer-Toolchain/code/03-Debugging`
 - **godhood to zero**: `02-Programming-Languages/C++/CPP_Zero_to_Godhood`, `02-Programming-Languages/Python/Python_Zero_to_Godhood`
 - **linked list**: `02-Programming-Languages/C++/Linked List`, `03-Data-Structures-Algorithms/01-Topics/Linked-Lists`
 - **recursion**: `02-Programming-Languages/C++/Recursion`, `03-Data-Structures-Algorithms/01-Topics/Recursion`
@@ -71,8 +73,11 @@ Re-run the script after every structural change; this file is its output and sho
 - **limiter rate**: `04-System-Design/02-Case-Studies/02-Rate-Limiter`, `04-System-Design/Low Level Design/rate-limiter`
 - **behavioral**: `04-System-Design/03-Design-Patterns/Behavioral`, `06-Interview-Prep/01-Behavioral`
 - **dev quant**: `05-Quantitative-Finance/02-Quant-Dev`, `16-Interview-Command-Center/01-Roles/Quant-Dev`
+- **profiling**: `12-Performance-Engineering/02-Profiling`, `18-Developer-Toolchain/05-Profiling`
 - **interview**: `13-Agentic-AI/Agentic-Harness/interview`, `14-Low-Latency-Systems/Interview`
 - **appendice**: `13-Agentic-AI/Agentic_AI_Zero_to_Godhood/Appendices`, `17-Cloud-AI-Engineering/Appendices`
+- **control version**: `18-Developer-Toolchain/02-Version-Control`, `18-Developer-Toolchain/code/02-Version-Control`
+- **packaging release**: `18-Developer-Toolchain/07-Packaging-and-Release`, `18-Developer-Toolchain/code/07-Packaging-and-Release`
 
 ### Folder pairs sharing the most identical files
 
