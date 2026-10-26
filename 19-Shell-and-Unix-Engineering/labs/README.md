@@ -24,6 +24,7 @@ labs/
   .editorconfig      shfmt formatting for every lab file, suffixed or not (2-space indent, case indent, binary ops at line start)
   run-matrix.sh      runs every lab's bats tests once per shell, on the host or in the matrix images
   lib/lab.bash       shared bats helpers, listed under Helpers below
+  lib/detach.c       the launcher that starts each matrix suite in a new session with a clean signal state
   matrix/            alpine.Dockerfile and debian.Dockerfile, the two container images of the matrix
   common/            shared lab tools, starting with showargs.sh
   NN-<note-stem>/    one lab per note, named after its folder number and lowercased note stem, for example 03-field-splitting-and-ifs
@@ -70,12 +71,13 @@ Toolchain on macOS: `brew install shellcheck shfmt bats-core`, plus Docker or Or
 The gate and CI pin ShellCheck 0.11.0, shfmt 3.14.1, and bats-core 1.14.0; use the same versions locally so warnings match.
 The gate reads files through `git ls-files`, so stage a new lab (`git add`) before running it.
 The gate and the matrix bound every test with `BATS_TEST_TIMEOUT` (default 60 seconds), so a lab that blocks fails instead of hanging; set the variable to override it, and `--containers` forwards it into the images.
-The matrix also kills each shell's whole suite after `LAB_SUITE_TIMEOUT` (default 600 seconds), because a stray child that keeps bats's output open, such as a stopped process, outlives the per-test timeout; the suite then fails with `suite killed`.
+Both also kill each shell's whole suite after `LAB_SUITE_TIMEOUT` (default 600 seconds; the matrix accepts only whole seconds), because a stray child that keeps bats's output open, such as a stopped process, outlives the per-test timeout; the suite then fails with `suite killed`, and `--containers` forwards this variable too.
 Every suite runs as the leader of a new session, with no controlling terminal and stdin from `/dev/null`, in the gate, the matrix, the images, and CI alike.
 It also starts from a clean signal state: `SIGINT` and `SIGQUIT` (in the matrix, every catchable signal) at their default dispositions and nothing blocked, whatever the caller ignored.
-The matrix compiles `lib/detach.c` for this at the start of each run (set `CC` to choose the compiler), because a shell cannot do it: a non-interactive shell may not reset a signal ignored on entry, and it ignores `SIGINT` and `SIGQUIT` in its own background jobs.
+The matrix compiles `lib/detach.c` for this at the start of each run, on the host and inside each image, because a shell cannot do it: a non-interactive shell may not reset a signal ignored on entry, and it ignores `SIGINT` and `SIGQUIT` in its own background jobs.
 So `set -m` is refused or disabled by most shells, `/dev/tty` cannot be opened, and a lab that needs a terminal must create a pseudo-terminal itself.
 A failing matrix row prints the output of each failing test.
+Every C probe, and `lib/detach.c`, is compiled with `${CC:-cc}`, so set `CC` to choose the compiler.
 
 ## The shell matrix
 
