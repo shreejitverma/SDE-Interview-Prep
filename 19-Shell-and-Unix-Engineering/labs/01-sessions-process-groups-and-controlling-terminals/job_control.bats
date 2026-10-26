@@ -6,7 +6,7 @@ setup() {
   SCRIPT="${BATS_TEST_DIRNAME}/job_control_probe.sh"
   PROBE="${BATS_TEST_TMPDIR}/pgrp_probe"
   if [ ! -x "${PROBE}" ]; then
-    gcc -O2 -Wall -Wextra -Werror "${BATS_TEST_DIRNAME}/pgrp_probe.c" -o "${PROBE}"
+    "${CC:-cc}" -O2 -Wall -Wextra -Werror "${BATS_TEST_DIRNAME}/pgrp_probe.c" -o "${PROBE}"
   fi
   export PROBE
 }

@@ -192,10 +192,10 @@ To bridge asynchronous signals cleanly into synchronous event loops without sign
 | `PIPE_BUF` atomic write limit (self-pipe) | 4096 bytes (Linux) / 512 bytes (Darwin) | Pipe write atomicity | Measured; Darwin `<sys/syslimits.h>` |
 | Default kernel pipe buffer capacity | 65,536 bytes (Linux) / 16,384 bytes (Darwin, growing to 64 KiB) | Kernel pipe ring buffer | `F_GETPIPE_SZ` measured on Alpine; Darwin `<sys/pipe.h>` `PIPE_SIZE` and `BIG_PIPE_SIZE` |
 | OpenSSH `LoginGraceTime` default | 120 seconds (600 in old OpenSSH versions) | OpenSSH daemon timeout | Qualys CVE-2024-6387 advisory |
-| Standard shell exit status on signal | 128 + N (where N is signal number) | Standard POSIX convention | Verified by lab under `[lab](../labs/01-async-signal-safety/)` |
-| AT&T ksh93 exit status on signal | 256 + N (where N is signal number) | AT&T ksh93 convention | Verified by lab under `[lab](../labs/01-async-signal-safety/)` |
-| AT&T ksh93 interrupted `wait` exit status | 1 (ksh93u+ 2012 and ksh93u+m 1.0.10) | `job_wait()` in `sh/jobs.c`; AT&T RELEASE `10-11-29` | Verified by lab under `[lab](../labs/01-async-signal-safety/)` `(as of 2026-10)` |
-| Yash exit status on signal | 384 + N (where N is signal number) | Yash shell convention | Verified by lab under `[lab](../labs/01-async-signal-safety/)` |
+| Standard shell exit status on signal | 128 + N (where N is signal number) | Standard POSIX convention | Verified by lab under [lab](../labs/01-async-signal-safety/) |
+| AT&T ksh93 exit status on signal | 256 + N (where N is signal number) | AT&T ksh93 convention | Verified by lab under [lab](../labs/01-async-signal-safety/) |
+| AT&T ksh93 interrupted `wait` exit status | 1 (ksh93u+ 2012 and ksh93u+m 1.0.10) | `job_wait()` in `sh/jobs.c`; AT&T RELEASE `10-11-29` | Verified by lab under [lab](../labs/01-async-signal-safety/) `(as of 2026-10)` |
+| Yash exit status on signal | 384 + N (where N is signal number) | Yash shell convention | Verified by lab under [lab](../labs/01-async-signal-safety/) |
 
 ## Portability
 
@@ -215,7 +215,7 @@ To bridge asynchronous signals cleanly into synchronous event loops without sign
 
 ## Worked example
 
-The companion lab under `[lab](../labs/01-async-signal-safety/)` validates trap deferral, `wait` interruption, `errno` preservation, and the self-pipe trick.
+The companion lab under [lab](../labs/01-async-signal-safety/) validates trap deferral, `wait` interruption, `errno` preservation, and the self-pipe trick.
 
 The script `deferred_trap.sh` proves that incoming signals do not interrupt foreground external commands midway: the foreground utility prints `utility_done` as its last act, so a trap run while it was still running would print `trap_executed` first (as native zsh does with `setopt TRAPSASYNC`):
 
@@ -375,8 +375,8 @@ setup() {
   DEFERRED="$BATS_TEST_DIRNAME/deferred_trap.sh"
   PROBE_ERRNO="$BATS_TEST_TMPDIR/probe_errno"
   SELF_PIPE="$BATS_TEST_TMPDIR/self_pipe"
-  cc -O2 -Wall -Wextra -Werror -o "$PROBE_ERRNO" "$BATS_TEST_DIRNAME/probe_errno.c"
-  cc -O2 -Wall -Wextra -Werror -o "$SELF_PIPE" "$BATS_TEST_DIRNAME/self_pipe.c"
+  "${CC:-cc}" -O2 -Wall -Wextra -Werror -o "$PROBE_ERRNO" "$BATS_TEST_DIRNAME/probe_errno.c"
+  "${CC:-cc}" -O2 -Wall -Wextra -Werror -o "$SELF_PIPE" "$BATS_TEST_DIRNAME/self_pipe.c"
 }
 
 @test "trap execution is deferred until foreground utility completion" {
@@ -437,7 +437,7 @@ setup() {
     target=$$
     ( /bin/sleep 0.05; kill -USR1 "$target" ) &
     sender=$!
-    sh -c "sleep 0.2; exit 42"
+    sh -c "sleep 1; exit 42"
     echo "saved_status:$?"
     wait "$sender" 2>/dev/null || true
   '
@@ -461,7 +461,7 @@ setup() {
       kill -USR1 "$target"
     ) &
     sender=$!
-    /bin/sleep 0.2
+    /bin/sleep 1
     wait "$sender" 2>/dev/null || true
     echo "$count"
   '

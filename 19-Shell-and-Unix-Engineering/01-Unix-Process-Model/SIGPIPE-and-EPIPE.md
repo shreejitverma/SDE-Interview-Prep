@@ -271,7 +271,7 @@ Under `yash`, Step 2 prints `kill -13 exit status: 397`, while Step 4 prints `pi
 > Symptom: Upstream writer never receives `SIGPIPE` and never sees `EPIPE` after the main consumer exits; once the pipe buffer fills, the writer blocks indefinitely.
 > Mechanism: The kernel checks `pipe->readers == 0` before raising `SIGPIPE`.
 > Because the background process holds a duplicated open file description to the read end, the reference count remains at least 1.
-> Fix: Close standard input in background tasks (`background_cmd <&- &` or `background_cmd </dev/null &`), or ensure child utilities set `FD_CLOEXEC` on open descriptors `[[Close-on-Exec-and-Descriptor-Inheritance]]`.
+> Fix: Close standard input in background tasks (`background_cmd <&- &` or `background_cmd </dev/null &`), or ensure child utilities set `FD_CLOEXEC` on open descriptors [[Close-on-Exec-and-Descriptor-Inheritance]].
 
 > [!warning] Inherited SIG_IGN silencing SIGPIPE in child processes
 > Trigger: Spawning child processes from a runtime or supervisor that sets `SIGPIPE` to `SIG_IGN` and does not restore it for children, such as Python's `os.system()` or `subprocess` with `restore_signals=False` (Python ignores `SIGPIPE` at startup), or a systemd unit, where `IgnoreSIGPIPE=` defaults to yes.
@@ -333,7 +333,7 @@ Multi-threaded services must never rely on thread-local signal masks alone for p
 ### Asynchronous signal safety and trap handlers
 
 Handling `SIGPIPE` with a custom shell trap or C signal handler introduces reentrancy risks.
-Under POSIX, signal handlers must only invoke async-signal-safe functions `[[Async-Signal-Safety]]`.
+Under POSIX, signal handlers must only invoke async-signal-safe functions [[Async-Signal-Safety]].
 Attempting to allocate memory, acquire non-recursive mutexes, or perform buffered I/O (`printf`, `fprintf`) inside a `SIGPIPE` handler causes deadlocks or heap corruption if the signal interrupted another I/O call.
 In shell scripts, `trap 'echo error' PIPE` causes the shell builtin `echo` to attempt writing to standard output.
 If standard output is the broken pipe, the trap triggers a secondary `EPIPE`, printing diagnostics to standard error or cascading into unexpected loop behavior.

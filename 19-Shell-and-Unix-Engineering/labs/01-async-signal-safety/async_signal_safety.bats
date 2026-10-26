@@ -6,8 +6,8 @@ setup() {
   DEFERRED="$BATS_TEST_DIRNAME/deferred_trap.sh"
   PROBE_ERRNO="$BATS_TEST_TMPDIR/probe_errno"
   SELF_PIPE="$BATS_TEST_TMPDIR/self_pipe"
-  cc -O2 -Wall -Wextra -Werror -o "$PROBE_ERRNO" "$BATS_TEST_DIRNAME/probe_errno.c"
-  cc -O2 -Wall -Wextra -Werror -o "$SELF_PIPE" "$BATS_TEST_DIRNAME/self_pipe.c"
+  "${CC:-cc}" -O2 -Wall -Wextra -Werror -o "$PROBE_ERRNO" "$BATS_TEST_DIRNAME/probe_errno.c"
+  "${CC:-cc}" -O2 -Wall -Wextra -Werror -o "$SELF_PIPE" "$BATS_TEST_DIRNAME/self_pipe.c"
 }
 
 @test "trap execution is deferred until foreground utility completion" {
@@ -68,7 +68,7 @@ setup() {
     target=$$
     ( /bin/sleep 0.05; kill -USR1 "$target" ) &
     sender=$!
-    sh -c "sleep 0.2; exit 42"
+    sh -c "sleep 1; exit 42"
     echo "saved_status:$?"
     wait "$sender" 2>/dev/null || true
   '
@@ -92,7 +92,7 @@ setup() {
       kill -USR1 "$target"
     ) &
     sender=$!
-    /bin/sleep 0.2
+    /bin/sleep 1
     wait "$sender" 2>/dev/null || true
     echo "$count"
   '

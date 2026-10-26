@@ -176,12 +176,14 @@ setup() {
       [ "${output}" = "unsupported" ]
       ;;
     dash)
-      # Debian's dash 0.5.12-7 and later carries the upstream pipefail patch (2024-04-05);
-      # the 0.5.12 release on Alpine and macOS predates it (first released in dash 0.5.13).
-      if [ -r /etc/debian_version ]; then
-        [ "${output}" = "22" ]
+      # Debian's dash 0.5.12-7 and later carries the upstream pipefail patch (2024-04-05),
+      # first released in dash 0.5.13; older builds reject the option, so ask the shell itself.
+      probe_output="${output}"
+      run_lab_c 'set -o pipefail 2>/dev/null'
+      if [ "${status}" -eq 0 ]; then
+        [ "${probe_output}" = "22" ]
       else
-        [ "${output}" = "unsupported" ]
+        [ "${probe_output}" = "unsupported" ]
       fi
       ;;
     *)
@@ -201,7 +203,7 @@ setup() {
 
 @test "C probe verifies kernel wait status bitfield layout and waitid siginfo" {
   probe_bin="${BATS_TEST_TMPDIR}/inspect_wstatus"
-  gcc -Wall -Wextra -Werror -o "${probe_bin}" "${BATS_TEST_DIRNAME}/inspect_wstatus.c"
+  "${CC:-cc}" -Wall -Wextra -Werror -o "${probe_bin}" "${BATS_TEST_DIRNAME}/inspect_wstatus.c"
 
   run "${probe_bin}" exit_val 42
   [ "${status}" -eq 0 ]

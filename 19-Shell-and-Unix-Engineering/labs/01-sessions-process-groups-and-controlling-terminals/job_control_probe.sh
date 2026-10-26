@@ -46,33 +46,6 @@ case "${MODE}" in
     printf 'shell_pgid=%s pipe_pgid=%s bg_pgid=%s\n' "${sh_pgid}" "${pipe_pgid}" "${bg_pgid}"
     ;;
 
-  async-stdin)
-    opt="${2:-+m}"
-    case "${opt}" in
-      +m)
-        if (set +m) 2>/dev/null; then
-          set +m 2>/dev/null || true
-        fi
-        ;;
-      -m)
-        set -m
-        ;;
-      *)
-        printf 'invalid option: %s\n' "${opt}" >&2
-        exit 1
-        ;;
-    esac
-
-    out_file="${TMP}/async_stdin.out"
-    (
-      read -r line || line="EOF"
-      printf 'read: %s\n' "${line}" >"${out_file}"
-    ) &
-    wait
-    cat "${out_file}"
-    rm -f "${out_file}"
-    ;;
-
   async-traps)
     opt="${2:-+m}"
     case "${opt}" in
@@ -110,7 +83,7 @@ case "${MODE}" in
     ;;
 
   *)
-    printf 'Usage: %s {pgid-inherited|pgid-monitored|async-stdin|async-traps|setsid-detach|orphan-read|orphan-stop}\n' "$0" >&2
+    printf 'Usage: %s {pgid-inherited|pgid-monitored|async-traps|setsid-detach|orphan-read|orphan-stop}\n' "$0" >&2
     exit 1
     ;;
 esac

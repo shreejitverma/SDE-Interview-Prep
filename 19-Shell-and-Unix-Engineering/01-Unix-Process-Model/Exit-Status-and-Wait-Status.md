@@ -176,6 +176,7 @@ In dash `src/jobs.c`, `getstatus()` scans backward through the pipeline process 
 Support across `/bin/sh` implementations remains fragmented `(as of 2026-10)`.
 Debian backports that upstream patch into `dash` 0.5.12-7 (2024-05-17, closing Debian bug #1071238), so Debian 13's `dash` 0.5.12-12 reports the rightmost failure status `(Debian dash changelog)`.
 `dash` 0.5.12 on Alpine 3.22 and macOS `/bin/dash` reject `set -o pipefail` with `set: Illegal option -o pipefail` and exit status 2 (measured).
+Because the distribution does not pin the `dash` build, the lab asks the shell under test: it expects `22` when `set -o pipefail` succeeds and `unsupported` when the option is rejected.
 BusyBox `ash` compiles `pipefail` in through `BASH_PIPEFAIL`, which follows `CONFIG_ASH_BASH_COMPAT` (default `y`, and enabled in both the Alpine and Debian builds) `(BusyBox shell/ash.c)`, and `posh` 0.14.1 rejects it with `posh: set: pipefail: bad option` and exit status 1 (measured).
 Bash provides the array `PIPESTATUS`, where each index corresponds to the exit status of the respective command in the last pipeline; mksh provides the same `PIPESTATUS` array (measured in mksh R59 on Alpine and Debian).
 Zsh provides the identical diagnostic array under the lowercase name `pipestatus`, but only in native mode: zsh started as `zsh --emulate sh` leaves it unset, while `emulate sh` run later inside a native zsh keeps it (measured in zsh 5.9).

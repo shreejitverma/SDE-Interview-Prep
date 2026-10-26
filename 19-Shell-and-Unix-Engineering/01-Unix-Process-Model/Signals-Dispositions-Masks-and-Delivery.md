@@ -251,7 +251,7 @@ POSIX does not require a controlling terminal for `set -m`: XCU 2.11 makes its t
 When scripts attempt to execute `set -m` in headless environments lacking a controlling terminal (such as containers, daemons, or CI runners with stdin from `/dev/null`), `dash` and BusyBox `ash` print a warning (`can't access tty; job control turned off`) and disable job control, leaving asynchronous jobs under `SIG_IGN`.
 Under identical headless conditions, `yash` emits a warning (`set: disabling job control`) after failing to open `/dev/tty` and disables job control, and `zsh` aborts with an error (`can't change option: -m`) and non-zero exit status, although with a terminal (`script -qec`) both `zsh` and `dash` accept `set -m`.
 `posh` fails with `set: -m: unknown option` whether or not a terminal is present, because it has no job control at all (its `set -o` lists no `monitor` option; measured 2026-10 on Debian `posh 0.14.1`).
-Only `bash`, `ksh93`, and `mksh` permit `set -m` without a controlling terminal, retaining `SIG_DFL` (lab `test.bats`) and placing each asynchronous job into its own process group via `setpgid(2)` (measured 2026-10 from `/proc/self/stat`; `ksh93` keeps foreground commands in its own group, while `bash` and `mksh` give them their own groups too).
+Only `bash`, `ksh93`, and `mksh` permit `set -m` without a controlling terminal, retaining `SIG_DFL` (lab `test.bats`) and placing each asynchronous job into its own process group via `setpgid(2)` (measured 2026-10 from `/proc/self/stat`; `ksh93u+ 2012` keeps synchronous pipelines in its own group, while `ksh93u+m 1.0.10`, `bash`, and `mksh` give them their own groups too, matching the Sessions lab `job_control.bats`).
 
 Subshell Trap Resets:
 When entering a subshell `( ... )`, POSIX dictates that "traps that are not being ignored shall be set to the default actions" (`(POSIX.1-2024 XCU 2.15 trap)`).
@@ -292,8 +292,6 @@ The following table documents kernel, architecture, and shell limits governing s
 | yash signal exit status | `384 + N` (399 for `SIGTERM`, Alpine yash 2.58.1) | Not measured (yash not installed on the host) | `> 128`, values above 255 permitted (`(POSIX.1-2024 XCU 2.8.2)`) | Lab `signal-probe.sh` |
 | Asynchronous job INT/QUIT (`set +m`) | `SIG_IGN` (standard) / `SIG_DFL` (posh 0.14.1, Alpine mksh R59 2020/10/31) | `SIG_IGN` (bash 3.2, bash 5.3, dash, ksh93u+, zsh) | `SIG_IGN` (`(POSIX.1-2024 XCU 2.12)`) | Lab `test.bats` |
 | Headless `set -m` without tty | Disabled (dash, BusyBox ash, yash) / Error (zsh) / no `-m` (posh) / Allowed (bash, ksh93, mksh) | Allowed (bash 3.2, bash 5.3, ksh93u+) / Disabled (dash) / Error (zsh) | Unspecified: XCU 2.11 terminal steps apply only "if the shell has a controlling terminal" (`(POSIX.1-2024 XCU 2.11)`) | Lab `test.bats` |
-| Test timeout (`BATS_TEST_TIMEOUT`) | 60 seconds | 60 seconds | Harness specification | Harness test runner configuration |
-| Suite timeout (`LAB_SUITE_TIMEOUT`) | 600 seconds | 600 seconds | Harness specification | Harness test runner configuration |
 | Signal round trip (`raise` + handler + `sigreturn`) | About 0.6 to 0.8 microseconds (Debian 13 arm64 container on an Apple silicon Mac) | About 1.5 microseconds (macOS arm64 host) | Hardware / kernel dependent | Measured 2026-10: 3 runs of 1,000,000 `raise(SIGUSR1)` calls with an empty handler, `-O2` |
 
 ## Portability

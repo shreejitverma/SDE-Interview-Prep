@@ -205,7 +205,7 @@ int main(void) {
     return 0;
 }
 EOF
-  cc -O2 -o "$BATS_TEST_TMPDIR/probe_kernel" "$BATS_TEST_TMPDIR/probe_kernel.c"
+  "${CC:-cc}" -O2 -o "$BATS_TEST_TMPDIR/probe_kernel" "$BATS_TEST_TMPDIR/probe_kernel.c"
   run "$BATS_TEST_TMPDIR/probe_kernel"
   [ "$status" -eq 0 ]
   [ "$output" = "KERNEL_PROBE_OK EPIPE=32" ]

@@ -420,7 +420,7 @@ Every suite runs as the leader of a new session with no controlling terminal, so
 - `orphan_stop`: the child calls `setsid()` and forks the grandchild, which reads the child's pid before the fork, waits for `getppid()` to change, and sends itself `SIGTSTP`; its group is orphaned because its only member's parent is now the reaper in another session (a plain `setpgid()` would not do: in a container the reaper is in the test's own session, so the grandchild stopped and hung the matrix), and the parent's read is bounded by `poll()` and followed by a kill of the group.
 - `pty CMD...`: runs a shell as a session leader whose controlling terminal and standard input are a fresh pseudo-terminal, which lets tests 9 and 10 show real job control in shells that refuse `set -m` without a terminal.
 
-The lab probe script (`job_control_probe.sh`) drives the low-level C inspection harness (excerpt: the unused `async-stdin` mode is omitted):
+The lab probe script (`job_control_probe.sh`) drives the low-level C inspection harness:
 
 ```sh
 #!/bin/sh
@@ -508,7 +508,7 @@ case "${MODE}" in
     ;;
 
   *)
-    printf 'Usage: %s {pgid-inherited|pgid-monitored|async-stdin|async-traps|setsid-detach|orphan-read|orphan-stop}\n' "$0" >&2
+    printf 'Usage: %s {pgid-inherited|pgid-monitored|async-traps|setsid-detach|orphan-read|orphan-stop}\n' "$0" >&2
     exit 1
     ;;
 esac
@@ -525,7 +525,7 @@ setup() {
   SCRIPT="${BATS_TEST_DIRNAME}/job_control_probe.sh"
   PROBE="${BATS_TEST_TMPDIR}/pgrp_probe"
   if [ ! -x "${PROBE}" ]; then
-    gcc -O2 -Wall -Wextra -Werror "${BATS_TEST_DIRNAME}/pgrp_probe.c" -o "${PROBE}"
+    "${CC:-cc}" -O2 -Wall -Wextra -Werror "${BATS_TEST_DIRNAME}/pgrp_probe.c" -o "${PROBE}"
   fi
   export PROBE
 }

@@ -133,6 +133,13 @@ main() {
     esac
   done
 
+  # Backstop for one shell's whole suite, in case a test outlives its own timeout.
+  LAB_SUITE_TIMEOUT="${LAB_SUITE_TIMEOUT:-600}"
+  case $LAB_SUITE_TIMEOUT in
+    '' | *[!0-9]*) die "LAB_SUITE_TIMEOUT must be a whole number of seconds, not '$LAB_SUITE_TIMEOUT'" ;;
+    *) ;;
+  esac
+
   if [ "$containers" -eq 1 ]; then
     local -a pass=()
     [ "$list" -eq 1 ] && pass+=(--list)
@@ -143,8 +150,6 @@ main() {
   command -v bats >/dev/null 2>&1 || die "bats not found; brew install bats-core (macOS) or apt-get install bats"
   # A lab that blocks (a FIFO open with no peer, a read with no input) must fail, not stall the matrix.
   export BATS_TEST_TIMEOUT="${BATS_TEST_TIMEOUT:-60}"
-  # Backstop for one shell's whole suite, in case a test outlives its own timeout.
-  LAB_SUITE_TIMEOUT="${LAB_SUITE_TIMEOUT:-600}"
   # shellcheck source=SCRIPTDIR/lib/lab.bash
   . "$LABS_DIR/lib/lab.bash"
 
