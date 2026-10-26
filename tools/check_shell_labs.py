@@ -15,7 +15,8 @@ Checks, all of which must pass:
     shfmt       `shfmt -d` on all files, configured by labs/.editorconfig
     zsh -n      a syntax check for each zsh file
     bats        every .bats file, under the default LAB_SHELL (the cross-shell matrix is labs/run-matrix.sh),
-                with each test bounded by BATS_TEST_TIMEOUT (default 60 seconds) so a blocking lab fails instead of hanging
+                with each test bounded by BATS_TEST_TIMEOUT (default 60 seconds) so a blocking lab fails instead of hanging,
+                and the whole suite killed after LAB_SUITE_TIMEOUT (default 600 seconds) in case a test outlives its own
 
 A missing linter is an error (exit 2), never a skip.
 Exit 0 when everything passes or no lab files are tracked, 1 on any finding.
@@ -27,12 +28,15 @@ Usage (from the repo root):
 from __future__ import annotations
 
 import argparse
+import contextlib
 import itertools
 import os
 import re
 import shutil
+import signal
 import subprocess
 import sys
+import tempfile
 from pathlib import Path, PurePosixPath
 
 LABS = "19-Shell-and-Unix-Engineering/labs"
@@ -46,6 +50,7 @@ DIRECTIVE_RE = re.compile(r"^#\s*shellcheck\s+shell=(\w+)")
 SHELLCHECK_SHELL = {"ash": "busybox", "busybox": "busybox", "yash": "sh", "posh": "sh",
                     "ksh93": "ksh", "mksh": "ksh"}
 BATS_TIMEOUT_DEFAULT = "60"
+SUITE_TIMEOUT_DEFAULT = "600"
 INSTALL_HINT = "install the lab toolchain: `brew install shellcheck shfmt bats-core` (macOS) or see 19-Shell-and-Unix-Engineering/labs/README.md"
 
 
@@ -74,8 +79,29 @@ def dialect(repo: Path, path: str) -> tuple[str | None, bool, bool]:
 
 
 def run(cmd: list[str], repo: Path, env: dict[str, str] | None = None) -> tuple[int, str]:
-    proc = subprocess.run(cmd, cwd=repo, capture_output=True, text=True, env=env)
+    proc = subprocess.run(cmd, cwd=repo, capture_output=True, text=True, env=env, check=False)
     return proc.returncode, (proc.stdout + proc.stderr).strip()
+
+
+def run_bounded(cmd: list[str], repo: Path, env: dict[str, str], limit: float) -> tuple[int, str]:
+    """Run cmd in its own session and kill its process group after limit seconds.
+
+    Output goes to a file rather than a pipe, so a stray child that keeps it open
+    (a stopped process in another group, say) cannot hold the gate once cmd is gone.
+    """
+    with tempfile.TemporaryFile("w+") as out:
+        proc = subprocess.Popen(cmd, cwd=repo, env=env, stdin=subprocess.DEVNULL, stdout=out,
+                                stderr=subprocess.STDOUT, text=True, start_new_session=True)
+        note = ""
+        try:
+            rc = proc.wait(timeout=limit)
+        except subprocess.TimeoutExpired:
+            with contextlib.suppress(ProcessLookupError):
+                os.killpg(proc.pid, signal.SIGKILL)
+            proc.wait()
+            rc, note = 1, f"\nsuite killed after LAB_SUITE_TIMEOUT={limit:g} seconds"
+        out.seek(0)
+        return rc, out.read().strip() + note
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -83,6 +109,12 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--repo", type=Path, default=Path(__file__).resolve().parent.parent)
     args = ap.parse_args(argv)
     repo = args.repo.resolve()
+    try:
+        suite_limit = float(os.environ.get("LAB_SUITE_TIMEOUT", SUITE_TIMEOUT_DEFAULT))
+    except ValueError:
+        print(f"error: LAB_SUITE_TIMEOUT must be a number of seconds, not {os.environ['LAB_SUITE_TIMEOUT']!r}",
+              file=sys.stderr)
+        return 2
 
     modes = tracked(repo)
     shell_files: dict[str, str] = {}
@@ -141,7 +173,7 @@ def main(argv: list[str] | None = None) -> int:
         report("zsh -n", 1, "\n".join(zsh_bad))
     if bats_files:
         bats_env = {**os.environ, "BATS_TEST_TIMEOUT": os.environ.get("BATS_TEST_TIMEOUT", BATS_TIMEOUT_DEFAULT)}
-        report("bats", *run(["bats", *bats_files], repo, bats_env))
+        report("bats", *run_bounded(["bats", *bats_files], repo, bats_env, suite_limit))
 
     print(f"result: FAIL ({', '.join(failed)})" if failed else "result: PASS")
     return 1 if failed else 0

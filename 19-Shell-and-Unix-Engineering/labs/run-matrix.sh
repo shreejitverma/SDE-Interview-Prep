@@ -57,6 +57,34 @@ resolve() {
   readlink -f "$1" 2>/dev/null || printf '%s\n' "$1"
 }
 
+# detached CMD...: exec CMD as the leader of a new session, which has no controlling terminal,
+# so every suite sees the terminal-less environment that CI and the images have, and cannot be stopped by one.
+# macOS has no setsid(1); python3 stands in, as the vault's tools already need it.
+detached() {
+  if command -v setsid >/dev/null 2>&1; then
+    exec setsid "$@"
+  fi
+  exec python3 -c 'import os, sys; os.setsid(); os.execvp(sys.argv[1], sys.argv[1:])' "$@"
+}
+
+# run_bounded SECONDS CMD...: run CMD detached with stdin from /dev/null, kill its process group
+# after SECONDS, and return CMD's status (137 when killed).
+# BATS_TEST_TIMEOUT cannot end a suite whose stray child (a stopped one, say) keeps bats's output open.
+run_bounded() {
+  local limit=$1 pid watchdog rc
+  shift
+  (detached "$@") </dev/null &
+  pid=$!
+  # shellcheck disable=SC2016 # $1 and $2 are the inner sh's arguments, expanded there
+  (detached sh -c 'sleep "$1" && kill -s KILL -- "-$2"' sh "$limit" "$pid") >/dev/null 2>&1 &
+  watchdog=$!
+  wait "$pid"
+  rc=$?
+  kill -- "-$watchdog" 2>/dev/null
+  wait "$watchdog" 2>/dev/null
+  return "$rc"
+}
+
 # lab_dirs LAB...: print the lab directories to test, one per line.
 lab_dirs() {
   local dir name
@@ -89,7 +117,7 @@ run_containers() {
     printf '== building %s\n' "$image"
     docker build -q -t "$image" -f "$dockerfile" "$LABS_DIR/matrix" >/dev/null \
       || die "docker build failed for $dockerfile"
-    docker run --rm -e BATS_TEST_TIMEOUT -v "$LABS_DIR:/labs:ro" "$image" bash /labs/run-matrix.sh --in-container "$@"
+    docker run --rm -e BATS_TEST_TIMEOUT -e LAB_SUITE_TIMEOUT -v "$LABS_DIR:/labs:ro" "$image" bash /labs/run-matrix.sh --in-container "$@"
     status=$?
     [ "$status" -eq 0 ] || rc=$status
   done
@@ -123,6 +151,8 @@ main() {
   command -v bats >/dev/null 2>&1 || die "bats not found; brew install bats-core (macOS) or apt-get install bats"
   # A lab that blocks (a FIFO open with no peer, a read with no input) must fail, not stall the matrix.
   export BATS_TEST_TIMEOUT="${BATS_TEST_TIMEOUT:-60}"
+  # Backstop for one shell's whole suite, in case a test outlives its own timeout.
+  LAB_SUITE_TIMEOUT="${LAB_SUITE_TIMEOUT:-600}"
   # shellcheck source=SCRIPTDIR/lib/lab.bash
   . "$LABS_DIR/lib/lab.bash"
 
@@ -188,10 +218,14 @@ EOF_DIRS
       printf '   %-12s %-38s %s\n' "$label" "$version" "$real${cmd#"$first"}"
       continue
     fi
-    if LAB_SHELL=$cmd LAB_EXPECT_FAMILY=$family bats --formatter tap --print-output-on-failure "${files[@]}" >"$log" 2>&1; then
+    if LAB_SHELL=$cmd LAB_EXPECT_FAMILY=$family run_bounded "$LAB_SUITE_TIMEOUT" \
+      bats --formatter tap --print-output-on-failure "${files[@]}" >"$log" 2>&1; then
       rc=0
     else
       rc=$?
+    fi
+    if [ "$rc" -eq 137 ]; then
+      printf 'not ok - suite killed after LAB_SUITE_TIMEOUT=%s seconds\n' "$LAB_SUITE_TIMEOUT" >>"$log"
     fi
     # A skipped test is reported as "ok N # skip" in TAP; count it apart so it never reads as a pass.
     tests=$(grep -c '^ok ' "$log")

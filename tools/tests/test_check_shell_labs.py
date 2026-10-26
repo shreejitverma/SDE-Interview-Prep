@@ -4,12 +4,15 @@ The real linters are replaced by fake executables on PATH that log their argumen
 so these tests pin the tool's own logic (what it checks, how it reports) on any machine.
 """
 
+import contextlib
 import os
 import shutil
+import signal
 import stat
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 from pathlib import Path
 
@@ -72,7 +75,7 @@ class CheckShellLabsTest(unittest.TestCase):
     def run_tool(self, *args: str, **env: str) -> subprocess.CompletedProcess:
         full_env = {"PATH": str(self.bin), "HOME": self.tmp.name, **env}
         return subprocess.run([sys.executable, str(TOOL), "--repo", str(self.repo), *args],
-                              capture_output=True, text=True, env=full_env)
+                              capture_output=True, text=True, env=full_env, timeout=60, check=False)
 
     def calls(self, name: str) -> list[str]:
         path = self.log / f"{name}.log"
@@ -104,6 +107,26 @@ class CheckShellLabsTest(unittest.TestCase):
         self.assertEqual((self.log / "bats-timeout.log").read_text().strip(), "60")
         self.run_tool(BATS_TEST_TIMEOUT="5")
         self.assertEqual((self.log / "bats-timeout.log").read_text().strip(), "5")  # an explicit setting wins
+
+    def test_bats_suite_is_killed_after_the_suite_timeout_even_if_a_stray_holds_its_output(self):
+        # A stopped child in another process group once kept bats's output open for hours,
+        # outliving BATS_TEST_TIMEOUT; the gate must still end, and fail, after LAB_SUITE_TIMEOUT.
+        self.add_lab()
+        stray = f'import os, time; os.setpgid(0, 0); open("{self.log}/stray.pid", "w").write(str(os.getpid())); time.sleep(30)'
+        self.write_exe(self.bin / "bats", f"#!/bin/sh\n'{sys.executable}' -c '{stray}' &\nexec /bin/sleep 30\n")
+        self.addCleanup(self.kill_stray)
+        started = time.monotonic()
+        result = self.run_tool(LAB_SUITE_TIMEOUT="1")
+        self.assertLess(time.monotonic() - started, 15, "the gate waited for the stray")
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertIn("suite killed after LAB_SUITE_TIMEOUT=1 seconds", result.stdout)
+        self.assertIn("result: FAIL (bats)", result.stdout)
+
+    def kill_stray(self) -> None:
+        pid_file = self.log / "stray.pid"
+        if pid_file.exists():
+            with contextlib.suppress(ProcessLookupError):
+                os.kill(int(pid_file.read_text()), signal.SIGKILL)
 
     def test_linter_failure_fails_the_gate_and_names_the_check(self):
         self.add_lab()
