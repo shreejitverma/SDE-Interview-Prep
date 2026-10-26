@@ -8,7 +8,7 @@ setup() {
 }
 
 @test "special built-in preceding assignments persist in execution environment" {
-  run_lab "$PROBE" assign-persist all
+  run_lab "$PROBE" assign-persist
   case $(lab_shell_family) in
     dash | ksh93 | mksh | posh | busybox | yash | zsh-sh)
       [ "$status" -eq 0 ]

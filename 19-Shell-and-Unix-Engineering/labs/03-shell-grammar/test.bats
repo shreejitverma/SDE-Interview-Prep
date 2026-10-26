@@ -17,21 +17,21 @@ no_line() {
 @test "grammar-probe.sh all runs cleanly and produces consistent output" {
   run_lab "$PROBE" all
   [ "$status" -eq 0 ]
-  [ "${lines[0]}" = "1_reserved_words: unquoted=keyword" ]
+  [ "${lines[0]}" = "1_reserved_words: unquoted=keyword escaped=word quoted=word" ]
   [ "${lines[1]}" = "2_esac_pattern: paren=parenthesized quoted=quoted" ]
   [ "${lines[2]}" = "3_prefix_export: env_seen=prefix_val outer_retained=outer" ]
   [ "${lines[3]}" = "4_prefix_standalone: var=persisted_val" ]
   [ "${lines[4]}" = "argc=2 <SUFFIX_VAR=assigned_in_suffix> <regular_arg>" ]
   [ "${lines[5]}" = "5_fn_brace: caller_var=mutated_parent" ]
   [ "${lines[6]}" = "6_fn_deferred: val=second" ]
-  [ "${lines[7]}" = "7_linebreaks: valid" ]
+  [ "${lines[7]}" = "7_linebreaks: and_or=ran pipe=pipe-line" ]
   [ "${lines[8]}" = "8_negation: inverted" ]
 }
 
-@test "probe reserved-words verifies unquoted keyword recognition" {
+@test "probe reserved-words verifies only the unquoted if is a keyword" {
   run_lab "$PROBE" reserved-words
   [ "$status" -eq 0 ]
-  [ "$output" = "1_reserved_words: unquoted=keyword" ]
+  [ "$output" = "1_reserved_words: unquoted=keyword escaped=word quoted=word" ]
 }
 
 @test "probe esac-pattern verifies POSIX Rule 4 quoting and parenthesization" {
@@ -55,10 +55,10 @@ no_line() {
   [ "${lines[1]}" = "6_fn_deferred: val=second" ]
 }
 
-@test "probe linebreaks verifies legal multiline continuations" {
+@test "probe linebreaks verifies newlines after &&, ||, and | without backslashes" {
   run_lab "$PROBE" linebreaks
   [ "$status" -eq 0 ]
-  [ "$output" = "7_linebreaks: valid" ]
+  [ "$output" = "7_linebreaks: and_or=ran pipe=pipe-line" ]
 }
 
 @test "probe negation verifies single ! pipeline inversion" {
@@ -116,7 +116,8 @@ no_line() {
           # Apple's bash 3.2.57 build (macOS /bin/sh and /bin/bash) accepts it;
           # an upstream bash 3.2.57 build, on any system, rejects it.
           os=$(uname -s)
-          if [ "$os" = Darwin ] && { [ "${LAB_SHELL%% *}" = /bin/sh ] || [ "${LAB_SHELL%% *}" = /bin/bash ]; }; then
+          shell_path=$(command -v "${LAB_SHELL_WORDS[0]}")
+          if [ "$os" = Darwin ] && { [ "$shell_path" = /bin/sh ] || [ "$shell_path" = /bin/bash ]; }; then
             [ "$status" -eq 0 ]
             [ "$output" = "paren" ]
           else

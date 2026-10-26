@@ -18,8 +18,7 @@ t2_sep=$(eval 'echo foo #bar')
 printf '2_comment_mid: word=<%s> separated=<%s>\n' "${t2_mid}" "${t2_sep}"
 
 # 3. Quoted vs bare digit redirection (XCU 2.10.1 IO_NUMBER)
-tmp_dir="${1:-${BATS_TEST_TMPDIR:-.}/token_probe_$$}"
-mkdir -p "${tmp_dir}"
+tmp_dir=$(mktemp -d)
 # shellcheck disable=SC2317 # executed in cleanup trap
 trap 'rm -rf "${tmp_dir}"' EXIT
 

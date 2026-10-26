@@ -35,9 +35,11 @@ case "$mode" in
     ;;
 
   line-continuation)
-    # Line continuation: unquoted, double-quoted, single-quoted
-    # shellcheck disable=SC1007 # Testing literal line continuations
-    val_unquoted=firstsecond
+    # Line continuation: unquoted, double-quoted, single-quoted.
+    # The unquoted case is an eval string because shfmt joins an unquoted continuation.
+    val_unquoted=''
+    eval 'val_unquoted=first\
+second'
 
     val_dq="first\
 second"
@@ -72,14 +74,12 @@ second'
       NULL)
         IFS=""
         ;;
-      DEFAULT)
-        unset IFS
-        ;;
       COLON)
         IFS=":"
         ;;
       *)
-        IFS="$ifs_mode"
+        printf 'Unknown IFS mode: %s\n' "$ifs_mode" >&2
+        exit 1
         ;;
     esac
 

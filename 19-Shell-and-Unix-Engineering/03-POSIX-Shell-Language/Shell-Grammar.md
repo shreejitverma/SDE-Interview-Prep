@@ -342,26 +342,37 @@ fmt_args() {
 
 probe_mode="${1:-all}"
 
+# token_class CODE: run CODE through eval in a subshell and print how its first token parsed:
+# word (status 127, looked up as a command name), keyword (a syntax error), or ran (status 0).
+token_class() {
+  rc=0
+  (eval "$1") >/dev/null 2>&1 || rc=$?
+  case "${rc}" in
+    0) printf 'ran' ;;
+    127) printf 'word' ;;
+    *) printf 'keyword' ;;
+  esac
+}
+
 probe_reserved_words() {
   # POSIX Rule 1: reserved words are recognized only unquoted in command position.
-  # Unquoted if is a keyword; escaped \if or quoted 'if' is a command name (WORD).
-  unquoted_state="keyword"
-  if false; then
-    unquoted_state="failed"
-  fi
-  printf '1_reserved_words: unquoted=%s\n' "${unquoted_state}"
+  # Unquoted if opens an if clause, so "if true" alone is a syntax error;
+  # escaped \if or quoted 'if' is a command name (WORD) that no command search finds.
+  unquoted=$(token_class 'if true')
+  escaped=$(token_class '\if true')
+  quoted=$(token_class "'if' true")
+  printf '1_reserved_words: unquoted=%s escaped=%s quoted=%s\n' "${unquoted}" "${escaped}" "${quoted}"
 }
 
 probe_esac_pattern() {
   # POSIX Rule 4: esac is recognized as Esac terminating case unless parenthesized or quoted.
   # Both patterns are quoted: an unquoted (esac) is rejected by bash 5.1 and older upstream
   # builds and by zsh --emulate sh (see test.bats), so only quoting is portable.
+  # The parenthesized case is an eval string because shfmt drops the optional '('.
   target="esac"
   p_match="none"
-  case "${target}" in
-    ('esac') p_match="parenthesized" ;;
-    *) p_match="wildcard" ;;
-  esac
+  # shellcheck disable=SC2016 # expanded by eval
+  eval 'case "${target}" in ("esac") p_match="parenthesized" ;; *) p_match="wildcard" ;; esac'
 
   q_match="none"
   case "${target}" in
@@ -411,17 +422,16 @@ probe_function_bodies() {
 
 probe_linebreaks() {
   # POSIX grammar allows linebreaks after &&, ||, |, and in compound_list.
-  # shellcheck disable=SC2015 # intentional multiline pipeline / logic grammar check
   # No backslashes: each newline below follows an operator, so only the grammar's
   # linebreak productions make these commands complete.
-  true &&
-    true ||
-    false
-
-  echo "pipe_line" |
-    cat >/dev/null
-
-  printf '7_linebreaks: valid\n'
+  # The code is in eval strings because shfmt moves the operators to the next line
+  # and joins the lines with backslash-newline, which is removed before tokenization.
+  and_or=$(eval 'false &&
+printf skipped ||
+printf ran')
+  pipe=$(eval 'printf pipe_line |
+tr _ -')
+  printf '7_linebreaks: and_or=%s pipe=%s\n' "${and_or}" "${pipe}"
 }
 
 probe_negation() {
@@ -458,14 +468,14 @@ esac
 Executing `grammar-probe.sh all` in the test suite yields the exact output:
 
 ```
-1_reserved_words: unquoted=keyword
+1_reserved_words: unquoted=keyword escaped=word quoted=word
 2_esac_pattern: paren=parenthesized quoted=quoted
 3_prefix_export: env_seen=prefix_val outer_retained=outer
 4_prefix_standalone: var=persisted_val
 argc=2 <SUFFIX_VAR=assigned_in_suffix> <regular_arg>
 5_fn_brace: caller_var=mutated_parent
 6_fn_deferred: val=second
-7_linebreaks: valid
+7_linebreaks: and_or=ran pipe=pipe-line
 8_negation: inverted
 ```
 
@@ -476,7 +486,7 @@ argc=2 <SUFFIX_VAR=assigned_in_suffix> <regular_arg>
 > Symptom: The parser aborts with `syntax error near unexpected token ')'`.
 > Mechanism: POSIX Grammar Rule 4 dictates that an unquoted `esac` appearing in pattern position without a leading `(` is classified as the reserved word `Esac` closing the statement.
 > Historical AT&T ksh93u+ 2012-08-01 (macOS `/bin/ksh`) accepts bare `esac)` and matches it, but ksh93u+m 1.0.10 and all other shells in the matrix reject it with a syntax error (lab test `unquoted esac in pattern position`).
-> Fix: Quote the pattern: `'esac')` or `('esac')` works in every shell in the matrix.
+> Fix: Quote the pattern: `'esac')` or `("esac")` works in every shell in the matrix.
 > The unquoted parenthesized form `(esac)` is what the grammar allows (`'(' WORD /* Do not apply rule 4 */`), but upstream bash 3.2, 4.4, and 5.1 and `zsh --emulate sh` still reject it; bash 5.2 and later, Apple's bash 3.2.57, and the other shells accept it (lab test `unquoted esac after an opening parenthesis`).
 
 > [!warning] Semicolon omission in brace group compound command

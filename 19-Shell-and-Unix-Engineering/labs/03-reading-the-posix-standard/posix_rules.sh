@@ -10,32 +10,13 @@ shift || true
 
 case "${mode}" in
   assign-persist)
-    target="${1:-all}"
-    case "${target}" in
-      colon)
-        unset PERSIST_VAL
-        PERSIST_VAL=active :
-        printf '%s\n' "${PERSIST_VAL:-unset}"
-        ;;
-      true)
-        unset PERSIST_VAL
-        PERSIST_VAL=active true
-        printf '%s\n' "${PERSIST_VAL:-unset}"
-        ;;
-      all)
-        unset PERSIST_VAL
-        PERSIST_VAL=active :
-        colon_result="${PERSIST_VAL:-unset}"
-        unset PERSIST_VAL
-        PERSIST_VAL=active true
-        true_result="${PERSIST_VAL:-unset}"
-        printf 'colon:%s true:%s\n' "${colon_result}" "${true_result}"
-        ;;
-      *)
-        printf 'Unknown assign-persist target: %s\n' "${target}" >&2
-        exit 2
-        ;;
-    esac
+    unset PERSIST_VAL
+    PERSIST_VAL=active :
+    colon_result="${PERSIST_VAL:-unset}"
+    unset PERSIST_VAL
+    PERSIST_VAL=active true
+    true_result="${PERSIST_VAL:-unset}"
+    printf 'colon:%s true:%s\n' "${colon_result}" "${true_result}"
     ;;
 
   error-abort)
@@ -85,16 +66,16 @@ case "${mode}" in
     ;;
 
   function-precedence)
-    submode="${1:-regular}"
+    submode="${1:-}"
     case "${submode}" in
-      --regular | regular)
+      --regular)
         # Functions shadow regular built-ins and external utilities (XCU 2.9.1.4)
         true() {
           printf 'shadowed-true\n'
         }
         true
         ;;
-      --special | special)
+      --special)
         # Function definition with special built-in name (XCU 2.9.5, XCU 2.9.1.4).
         # Run inside eval within a subshell so that syntax errors during definition
         # on strict POSIX shells (dash, posh, ksh93, yash, bash posix) do not abort the script.

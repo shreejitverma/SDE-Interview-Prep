@@ -287,7 +287,7 @@ count=4: <li> <e1 li>
 
 > [!warning] The double-quoted wrapping trap
 > Trigger: Wrapping `$'...'` inside double quotes, such as `message="$'hello\nworld'"`.
-> Symptom: The shell treats `$` followed by `'` as literal characters rather than an ANSI-C quoting construct, producing the literal five-character string `$'hello\nworld'`.
+> Symptom: The shell treats `$` followed by `'` as literal characters rather than an ANSI-C quoting construct, producing the literal fifteen-character string `$'hello\nworld'`.
 > Fix: Assign the ANSI-C quoted string to an intermediate parameter first (`newline=$'\n'`) and double-quote the parameter expansion (`"prefix${newline}suffix"`), or use a literal newline inside standard double quotes.
 
 > [!warning] The dash/posh silent IFS corruption trap

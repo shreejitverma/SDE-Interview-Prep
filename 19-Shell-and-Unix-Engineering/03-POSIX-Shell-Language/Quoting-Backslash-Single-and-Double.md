@@ -85,7 +85,7 @@ According to POSIX.1-2024 XCU 2.2.1, an unquoted backslash `\` preserves the lit
 When `<newline>` immediately follows an unquoted backslash, the shell treats it as line continuation.
 The shell discards both the backslash and the newline before splitting input into tokens.
 Because the line continuation sequence is removed entirely without inserting whitespace, it cannot serve as a token separator.
-For example, the input `com\ <newline>mand` forms the single token `command`.
+For example, the input `com\<newline>mand` forms the single token `command`.
 When an unquoted backslash precedes any other character outside quotes, the backslash protects that single character from being treated as an operator, glob wildcard, or field delimiter.
 During the subsequent quote removal stage, the shell discards the escaping backslash and retains the literal character.
 
@@ -246,10 +246,11 @@ case "$mode" in
     ;;
 
   line-continuation)
-    # Line continuation: unquoted, double-quoted, single-quoted
-    # shellcheck disable=SC1007 # Testing literal line continuations
-    val_unquoted=first\
-second
+    # Line continuation: unquoted, double-quoted, single-quoted.
+    # The unquoted case is an eval string because shfmt joins an unquoted continuation.
+    val_unquoted=''
+    eval 'val_unquoted=first\
+second'
 
     val_dq="first\
 second"
