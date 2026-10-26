@@ -213,7 +213,7 @@ On operating systems without native `/dev/fd` support, `subst.c` falls back to `
 
 Process substitution support diverges sharply across shell families and configuration modes (as of 2026-10).
 In GNU Bash, process substitution is enabled outside POSIX mode.
-When Bash runs in POSIX mode (`set -o posix`, `--posix`, or invoked as `/bin/sh`), versions up to Bash 4.4 strictly disable `<(cmd)`, treating the syntax as an unexpected token error.
+When Bash runs in POSIX mode (`set -o posix`, `--posix`, or invoked as `/bin/sh`), versions up to Bash 5.0 strictly disable `<(cmd)`, treating the syntax as an unexpected token error.
 Beginning with Bash 5.1, GNU Bash supports process substitution even when running in POSIX mode (Bash NEWS for bash-5.1, item u: "Process substitution is now available in posix mode"; measured with bash 4.4 and 5.1 `--posix` in the shell matrix).
 In BusyBox `ash`, releases since 1.34.0 (commit a1b0d3856, June 2021) support process substitution `<(cmd)` when built with `CONFIG_ASH_BASH_COMPAT` on a platform with `/dev/fd` (the internal `BASH_PROCESS_SUBST` macro in `shell/ash.c`), creating a pipe and passing a `/dev/fd/N` argument.
 In Yash (Yet Another Shell), `<(cmd)` and `>(cmd)` are implemented as process redirection operators rather than command expansions.
@@ -237,7 +237,7 @@ In Dash, Posh, and Mksh, process substitution is unsupported and yields a parse 
 | Linux socket reopen error | `ENXIO` (errno 6, "No such device or address") | Linux `sockfs` | Linux kernel `fs/inode.c` `no_open` (measured in lab 2026-10) |
 | macOS socket open via `/dev/fd` | `0` (Success via `dup` semantics) | Darwin `fdesc_open` | XNU `devfs_fdesc_support.c` and `dupfdopen` (measured in lab 2026-10) |
 | Bash process substitution fd | Highest free descriptor below 64 (63, then 62) | GNU Bash `subst.c` | GNU Bash `general.c` `move_to_high_fd` (measured bash 3.2, 5.2, 5.3, 2026-10) |
-| Bash POSIX mode `<(...)` support | Supported in >= 5.1; syntax error in <= 4.4 | GNU Bash parser | GNU Bash `NEWS` bash-5.1 item u (measured bash 4.4 and 5.1 `--posix`, 2026-10) |
+| Bash POSIX mode `<(...)` support | Supported in >= 5.1; syntax error in <= 5.0 | GNU Bash parser | GNU Bash `NEWS` bash-5.1 item u (measured bash 4.4 and 5.1 `--posix`, 2026-10) |
 | BusyBox ash `<(...)` support | Supported when `CONFIG_ASH_BASH_COMPAT=y` and `/dev/fd` exists | BusyBox `ash.c` `BASH_PROCESS_SUBST` | BusyBox 1.34.0+ (measured 1.37.0 in shell matrix 2026-10) |
 | ksh93u+m default pipeline transport | `socketpair(2)` (AF_UNIX stream socket) | ksh93u+m pipeline subsystem | ksh93u+m manual `ksh93(1)` (as of 2026-10) |
 | ksh93u+m POSIX mode pipeline transport | `pipe(2)` (unidirectional pipe) | ksh93u+m `set -o posix` | ksh93u+m manual `ksh93(1)`; NEWS 2022-06-09 (as of 2026-10) |
@@ -367,7 +367,7 @@ ok 10 unknown action in demo script fails with status 2
 In test 2 the shell's second `read` from `/dev/stdin` returns `beta` on macOS and `alpha` again on Linux, and in test 5 the probe on macOS reports `bsd-dup-ofd` because `dupfdopen()` duplicated descriptor `fd1`, preserving offset 5 and reading `56`.
 Under Linux containers, test 5 asserts `linux-new-ofd` because the open through the `proc_fd_link()` magic-link allocated a new open file description with offset 0, reading `01`.
 In test 1 on Linux, `ksh93u+m` exits non-zero with `No such device or address` when `cat` opens `/dev/stdin` because its pipeline transport defaults to `socketpair(2)`, whereas the other shells use `pipe(2)`; that `set -o posix` switches ksh93u+m to `pipe(2)` was measured by hand in the shell matrix, not by the test.
-In test 9, process substitution availability reports `supported` for Bash (outside POSIX mode, or in POSIX mode in Bash 5.1+), Zsh, ksh93, and BusyBox ash (`CONFIG_ASH_BASH_COMPAT`), `redirection only` for Yash, and `unsupported` for Dash, Posh, Mksh, and Bash <= 4.4 in POSIX mode; the matrix exercises POSIX mode only through macOS `/bin/sh` (bash 3.2), and the Bash 5.1+ and Yash POSIX-mode branches were measured by hand.
+In test 9, process substitution availability reports `supported` for Bash (outside POSIX mode, or in POSIX mode in Bash 5.1+), Zsh, ksh93, and BusyBox ash (`CONFIG_ASH_BASH_COMPAT`), `redirection only` for Yash, and `unsupported` for Dash, Posh, Mksh, and Bash <= 5.0 in POSIX mode; the matrix exercises POSIX mode only through macOS `/bin/sh` (bash 3.2), and the Bash 5.1+ and Yash POSIX-mode branches were measured by hand.
 
 ## Pitfalls
 

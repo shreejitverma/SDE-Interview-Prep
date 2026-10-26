@@ -164,7 +164,7 @@ setup() {
     bash)
       if run_lab_c '[ -o posix ]' 2>/dev/null && [ "${status}" -eq 0 ]; then
         case $(lab_shell_version) in
-          [0-4].*)
+          [0-4].* | 5.0.*)
             [ "${actual_output}" = "procsub: unsupported" ]
             ;;
           *)

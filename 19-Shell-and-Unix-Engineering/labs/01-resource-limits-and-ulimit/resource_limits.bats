@@ -244,16 +244,14 @@ setup() {
     bash)
       # bash 4.0 and later use 512-byte blocks in POSIX mode and 1024-byte blocks otherwise;
       # bash 3.2 uses 1024-byte blocks even in POSIX mode (macOS /bin/sh).
+      actual_output=$output
       version=$(lab_shell_version)
       run_lab_c '[ -o posix ]'
       if [ "$status" -eq 0 ] && [ "${version%%.*}" -ge 4 ]; then
-        expected="fsize cur=51200 max=51200"
+        [ "$actual_output" = "fsize cur=51200 max=51200" ]
       else
-        expected="fsize cur=102400 max=102400"
+        [ "$actual_output" = "fsize cur=102400 max=102400" ]
       fi
-      # shellcheck disable=SC2016 # expansions belong to the shell under test
-      run_lab_c 'ulimit -f 100; "$1" get fsize' inline "$BATS_TEST_TMPDIR/inspect_rlimit"
-      [ "$output" = "$expected" ]
       ;;
     zsh | zsh-sh)
       [ "$output" = "fsize cur=51200 max=unlimited" ]

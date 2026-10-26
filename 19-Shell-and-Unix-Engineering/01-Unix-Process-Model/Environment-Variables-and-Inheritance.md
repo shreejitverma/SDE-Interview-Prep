@@ -122,7 +122,7 @@ However, POSIX specifies a critical divergence: if the command name is a special
 While POSIX shells such as dash, mksh, and ksh93 enforce this persistence, default native bash and native zsh diverge by clearing the assignment when the built-in completes.
 When bash executes in POSIX mode (`bash --posix`, invoked as `sh`, or with `set -o posix`), it conforms to POSIX.1-2024 XCU 2.9.1.2 and retains the assignment in the caller environment (Bash Reference Manual Section 6.11, Bash and POSIX).
 If the command name is a shell function, POSIX leaves it unspecified whether prefix assignments persist after the function returns (POSIX.1-2024 XCU 2.9.1.2).
-In ksh93, `zsh --emulate sh`, and older bash releases (bash <= 4.4, including macOS `/bin/sh`) in POSIX mode, prefix assignments preceding a function call persist in the caller.
+In ksh93, `zsh --emulate sh`, and older bash releases (bash <= 5.0, including macOS `/bin/sh`) in POSIX mode, prefix assignments preceding a function call persist in the caller.
 In modern bash (bash >= 5.1 in both default and POSIX modes), dash, posh, mksh, BusyBox ash, yash, and native zsh, prefix assignments preceding a function call revert upon return.
 Both behaviors conform: Austin Group Defect 654 replaced the Issue 7 TC1 wording that made such assignments affect the current environment with the current unspecified wording, and bash-5.1-alpha changed its POSIX mode to match its default mode, citing "POSIX interp 654" (bash CHANGES, bash-5.1-alpha item o).
 
@@ -466,7 +466,7 @@ In high-throughput multi-threaded software, enforce a strict ban on `setenv(3)` 
 > ```
 >
 > > [!success]- Answer
-> > In ksh93, `zsh --emulate sh`, and older bash releases (bash <= 4.4, such as macOS `/bin/sh`) under POSIX mode, the script outputs `temp`.
+> > In ksh93, `zsh --emulate sh`, and older bash releases (bash <= 5.0, such as macOS `/bin/sh`) under POSIX mode, the script outputs `temp`.
 > > In dash, posh, mksh, BusyBox ash, yash, native zsh, and modern bash (bash >= 5.1 in both default and POSIX modes), the script outputs `empty`.
 > > The function case of the list in POSIX.1-2024 XCU 2.9.1.2 specifies that whether variable assignments preceding a shell function remain in effect after the function completes is unspecified.
 > > Austin Group Defect 654 amended the POSIX standard so that function prefix assignments are not required to persist in the caller shell; Issue 7 TC1 had said they affect the current execution environment.

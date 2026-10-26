@@ -10,17 +10,6 @@ setup() {
   "${CC:-cc}" -O2 -Wall -Wextra -pedantic "$PROBE_SRC" -o "$PROBE"
 }
 
-# poll SECONDS CMD [ARG...]: retry CMD every 0.1 s until it succeeds; fail after SECONDS.
-poll() {
-  local tries=$(($1 * 10))
-  shift
-  until "$@"; do
-    tries=$((tries - 1))
-    [ "$tries" -gt 0 ] || return 1
-    sleep 0.1
-  done
-}
-
 # proc_ppid PID: print the parent PID of PID (procfs on Linux, ps elsewhere).
 proc_ppid() {
   if [ -r "/proc/$1/status" ]; then
@@ -94,30 +83,30 @@ is_sleep() { case $(proc_comm "$1") in *sleep) return 0 ;; *) return 1 ;; esac }
   run_lab_c '"$1" fd-reuse "$2"' -- "$PROBE" "$tempfile"
   [ "$status" -eq 0 ]
   # First line proves closed fd 0 is reallocated to new file
-  # Second line proves dup2 /dev/null to fd 0 keeps low descriptors occupied so next open gets >= 3
+  # Second line proves dup2 replaced that file on fd 0 with /dev/null, so the next open gets >= 3
   [ "${lines[0]}" = "closed_fd0: allocated_fd=0" ]
-  [[ "${lines[1]}" =~ ^redirected_fd0:[[:space:]]allocated_fd=[3-9][0-9]*$ ]]
+  [[ "${lines[1]}" =~ ^redirected_fd0:[[:space:]]fd0=devnull[[:space:]]allocated_fd=([3-9]|[1-9][0-9]+)$ ]]
 }
 
-@test "probe print-attrs reports matching process group and session IDs under direct invocation" {
+@test "probe print-attrs reports the forking shell as parent and the detached session as process group" {
   # shellcheck disable=SC2016 # parameter expansion belongs to the shell under test
-  run_lab_c '"$1" print-attrs' -- "$PROBE"
+  run_lab_c 'echo "shell=$$"; "$1" print-attrs; :' -- "$PROBE"
   [ "$status" -eq 0 ]
-  [[ "$output" =~ pid=[0-9]+[[:space:]]ppid=[0-9]+[[:space:]]pgid=[0-9]+[[:space:]]sid=[0-9]+ ]]
+  [[ "${lines[1]}" =~ ^pid=([0-9]+)[[:space:]]ppid=([0-9]+)[[:space:]]pgid=([0-9]+)[[:space:]]sid=([0-9]+)$ ]]
+  local pid=${BASH_REMATCH[1]} ppid=${BASH_REMATCH[2]} pgid=${BASH_REMATCH[3]} sid=${BASH_REMATCH[4]}
+  # A command that is not the last one must be forked, so its parent is the shell itself.
+  [ "$ppid" = "${lines[0]#shell=}" ]
+  # The suite runs detached as its own session and the shell has no job control,
+  # so the probe stays in the session leader's process group without leading it.
+  [ "$pgid" = "$sid" ]
+  [ "$pid" != "$pgid" ]
 }
 
-@test "probe check-ctty detects controlling terminal status" {
+@test "probe check-ctty reports no controlling terminal in the detached lab session" {
   # shellcheck disable=SC2016 # parameter expansion belongs to the shell under test
   run_lab_c '"$1" check-ctty' -- "$PROBE"
   [ "$status" -eq 0 ]
-  case "$output" in
-    "ctty: present" | "ctty: none (ENXIO)")
-      true
-      ;;
-    *)
-      false
-      ;;
-  esac
+  [ "$output" = "ctty: none (ENXIO)" ]
 }
 
 @test "asynchronous list & without job control automatically redirects stdin from dev null" {
@@ -146,7 +135,7 @@ is_sleep() { case $(proc_comm "$1") in *sleep) return 0 ;; *) return 1 ;; esac }
   [ -f "$pidfile" ]
   # The script exits right after forking the job, so the job may not have written yet:
   # poll for up to 3 seconds (printf finishes in milliseconds).
-  poll 3 file_is "$outfile" "daemon output"
+  lab_poll 3 file_is "$outfile" "daemon output"
 }
 
 @test "subshell double fork runs asynchronously and orphans grandchild" {
@@ -156,16 +145,16 @@ is_sleep() { case $(proc_comm "$1") in *sleep) return 0 ;; *) return 1 ;; esac }
   run_lab "$DAEMONIZE" double-fork "$pidfile" /bin/sleep 15
   [ "$status" -eq 0 ]
   # Both PID files are written by background subshells after the script returns.
-  poll 3 file_nonempty "$pidfile"
-  poll 3 file_nonempty "$pidfile.parent"
+  lab_poll 3 file_nonempty "$pidfile"
+  lab_poll 3 file_nonempty "$pidfile.parent"
   local bg_pid mid_pid
   bg_pid=$(cat "$pidfile")
   mid_pid=$(cat "$pidfile.parent")
   # The intermediate subshell exits right after forking the worker.
-  poll 3 pid_gone "$mid_pid"
+  lab_poll 3 pid_gone "$mid_pid"
   # The worker has exec'd sleep (so a TERM below is not caught by a shell) and
   # is still running although its parent has exited: it was orphaned and reparented.
-  poll 3 is_sleep "$bg_pid"
+  lab_poll 3 is_sleep "$bg_pid"
   kill -0 "$bg_pid"
   local ppid
   ppid=$(proc_ppid "$bg_pid")

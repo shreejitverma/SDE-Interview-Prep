@@ -46,8 +46,8 @@ static int run_zombie_probe(void) {
   printf("ZOMBIE_PID=%d\n", (int)pid);
   fflush(stdout);
 
-  /* Parent sleeps 2 seconds to allow caller / ps inspection */
-  sleep(2);
+  /* Parent sleeps 3 seconds to allow caller / ps inspection */
+  sleep(3);
 
   /* Parent reaps zombie */
   int status = 0;

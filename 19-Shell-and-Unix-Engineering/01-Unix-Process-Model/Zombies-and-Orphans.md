@@ -198,7 +198,7 @@ static int run_zombie_probe(void) {
   }
   printf("ZOMBIE_PID=%d\n", (int)pid);
   fflush(stdout);
-  sleep(2);
+  sleep(3);
   int status = 0;
   waitpid(pid, &status, 0);
   if (WIFEXITED(status)) {

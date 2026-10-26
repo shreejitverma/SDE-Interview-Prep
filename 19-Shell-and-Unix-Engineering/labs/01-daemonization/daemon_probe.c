@@ -197,7 +197,8 @@ static int mode_fd_reuse(const char *tempfile) {
 
   /*
    * Case B: Redirect fd 0 to /dev/null using dup2().
-   * Now fd 0 is safely occupied. Opening another file must return >= 3.
+   * Now fd 0 is safely occupied by /dev/null, not the file, and opening
+   * another file must return >= 3.
    */
   int devnull = open("/dev/null", O_RDONLY);
   if (devnull < 0) {
@@ -211,13 +212,21 @@ static int mode_fd_reuse(const char *tempfile) {
   if (devnull != 0) {
     close(devnull);
   }
+  struct stat null_st, fd0_st;
+  if (stat("/dev/null", &null_st) < 0 || fstat(0, &fd0_st) < 0) {
+    perror("stat fd 0");
+    return 1;
+  }
+  int fd0_is_null =
+      fd0_st.st_dev == null_st.st_dev && fd0_st.st_ino == null_st.st_ino;
 
   int fd_safe = open(tempfile, O_RDWR);
   if (fd_safe < 0) {
     perror("open after dup2");
     return 1;
   }
-  printf("redirected_fd0: allocated_fd=%d\n", fd_safe);
+  printf("redirected_fd0: fd0=%s allocated_fd=%d\n",
+         fd0_is_null ? "devnull" : "other", fd_safe);
   fflush(stdout);
   close(fd_safe);
   return 0;
@@ -245,7 +254,7 @@ static int mode_check_ctty(void) {
   }
   printf("ctty: error (%d: %s)\n", errno, strerror(errno));
   fflush(stdout);
-  return 0;
+  return 1;
 }
 
 int main(int argc, char **argv) {

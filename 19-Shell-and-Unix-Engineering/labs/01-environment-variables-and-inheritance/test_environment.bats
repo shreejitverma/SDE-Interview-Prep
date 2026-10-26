@@ -117,7 +117,7 @@ setup() {
       if "${LAB_SHELL_WORDS[@]}" -c '[ -o posix ]' 2>/dev/null; then
         version=$(lab_shell_version)
         case "$version" in
-          [0-4].*)
+          [0-4].* | 5.0.*)
             [ "$output" = "temp" ]
             ;;
           *)

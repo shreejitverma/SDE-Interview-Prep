@@ -484,8 +484,8 @@ ok 1 setsid fails with EPERM when called by a process group leader
 ok 2 setsid succeeds in a non-leader child and detaches controlling terminal
 ok 3 classical double fork creates a new session where grandchild is not session leader
 ok 4 closing fd 0 reuses fd 0 on subsequent open whereas dev null redirection preserves low fds
-ok 5 probe print-attrs reports matching process group and session IDs under direct invocation
-ok 6 probe check-ctty detects controlling terminal status
+ok 5 probe print-attrs reports the forking shell as parent and the detached session as process group
+ok 6 probe check-ctty reports no controlling terminal in the detached lab session
 ok 7 asynchronous list & without job control automatically redirects stdin from dev null
 ok 8 background execution with descriptor redirection captures output safely
 ok 9 subshell double fork runs asynchronously and orphans grandchild

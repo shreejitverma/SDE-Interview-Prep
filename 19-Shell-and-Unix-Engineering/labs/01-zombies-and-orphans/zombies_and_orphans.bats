@@ -13,35 +13,28 @@ setup() {
     "${PROBE_SRC}" -o "${PROBE_BIN}"
 }
 
+# is_zombie PID: true while PID has exited but not been reaped (procfs on Linux, ps elsewhere).
+is_zombie() {
+  if [ -r "/proc/$1/status" ]; then
+    awk '$1 == "State:" { exit ($2 == "Z") ? 0 : 1 }' "/proc/$1/status"
+  else
+    case $(ps -o stat= -p "$1") in Z*) return 0 ;; *) return 1 ;; esac
+  fi
+}
+
 @test "zombie process exists in defunct state prior to parent waitpid" {
   probe_out="${BATS_TEST_TMPDIR}/zombie_probe.out"
   "${PROBE_BIN}" zombie >"${probe_out}" &
   parent_pid=$!
 
-  # Allow child to fork and exit into zombie state
-  /bin/sleep 1
+  # The probe prints ZOMBIE_PID right after the fork and reaps the child 3 s later;
+  # each poll below is bounded at 1 s, so the zombie check ends at least 1 s before the reap.
+  lab_poll 1 grep -q '^ZOMBIE_PID=[0-9][0-9]*$' "${probe_out}"
+  zombie_line=$(head -n 1 "${probe_out}")
+  zombie_pid="${zombie_line#ZOMBIE_PID=}"
 
-  zombie_pid=""
-  if [ -s "${probe_out}" ]; then
-    zombie_line=$(head -n 1 "${probe_out}")
-    zombie_pid="${zombie_line#ZOMBIE_PID=}"
-  fi
-
-  [ -n "${zombie_pid}" ]
-
-  # Check that process is in zombie / defunct state
-  stat_col=$(ps -o stat= -p "${zombie_pid}" 2>/dev/null || ps -o state= -p "${zombie_pid}" 2>/dev/null || true)
-  case "${stat_col}" in
-    *Z* | *z*) ;;
-    *)
-      # Fallback to /proc if ps does not show state
-      if [ -r "/proc/${zombie_pid}/status" ]; then
-        grep -q 'State:.*Z' "/proc/${zombie_pid}/status"
-      else
-        false
-      fi
-      ;;
-  esac
+  # The child exits at once but may not have run yet when its PID is printed.
+  lab_poll 1 is_zombie "${zombie_pid}"
 
   # Wait for parent probe to call waitpid and finish
   wait "${parent_pid}"
@@ -85,14 +78,12 @@ setup() {
     bash)
       # In POSIX mode (e.g. macOS /bin/sh or bash --posix), bash discards known PID and returns 127.
       # In default native mode, bash retains exited status up to CHILD_MAX and returns 42.
+      actual_output=$output
       run_lab_c '[ -o posix ]'
       if [ "$status" -eq 0 ]; then
-        # POSIX mode
-        run_lab "${REAP_MONITOR}" double-wait 42
-        [ "$output" = "$(printf 'FIRST_WAIT=42\nSECOND_WAIT=127')" ]
+        [ "$actual_output" = "$(printf 'FIRST_WAIT=42\nSECOND_WAIT=127')" ]
       else
-        run_lab "${REAP_MONITOR}" double-wait 42
-        [ "$output" = "$(printf 'FIRST_WAIT=42\nSECOND_WAIT=42')" ]
+        [ "$actual_output" = "$(printf 'FIRST_WAIT=42\nSECOND_WAIT=42')" ]
       fi
       ;;
     dash | busybox)
