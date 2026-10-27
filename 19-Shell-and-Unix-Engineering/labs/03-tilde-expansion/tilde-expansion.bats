@@ -65,7 +65,9 @@ setup() {
         *)
           # Legacy AT&T ksh93u+ (2012) returns the session login name from getlogin(3),
           # which logname(1) reports; it differs from id -un under su, sudo, cron, or a daemon.
-          [ "$output" = "<$(logname)>" ]
+          local login_name
+          login_name=$(logname)
+          [ "$output" = "<$login_name>" ]
           ;;
       esac
       ;;
