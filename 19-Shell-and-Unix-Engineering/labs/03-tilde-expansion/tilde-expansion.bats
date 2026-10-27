@@ -63,8 +63,9 @@ setup() {
           [ "$output" = "<$user_pw_dir>" ]
           ;;
         *)
-          # Legacy AT&T ksh93u+ (2012) returns login name
-          [ "$output" = "<$user_name>" ]
+          # Legacy AT&T ksh93u+ (2012) returns the session login name from getlogin(3),
+          # which logname(1) reports; it differs from id -un under su, sudo, cron, or a daemon.
+          [ "$output" = "<$(logname)>" ]
           ;;
       esac
       ;;
