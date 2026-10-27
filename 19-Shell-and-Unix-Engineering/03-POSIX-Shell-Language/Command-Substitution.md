@@ -98,7 +98,7 @@ The mechanism is the virtual subshell: `comsubst` calls `sh_subshell`, which run
 ### Process and descriptor consequences
 
 The parent returns only at end of file, and end of file needs every copy of the write end closed.
-A background job started inside the substitution inherits the pipe as its stdout and stderr, so `$(cmd &)` waits for the job, and the fix is to redirect the job's output (`cmd >/dev/null 2>&1 &`).
+A background job started inside the substitution inherits the pipe as its stdout, so `$(cmd &)` waits for the job, and the fix is to redirect the job's output (`cmd >/dev/null 2>&1 &`).
 Yash and ksh93u+m were measured waiting for the job even when its output was redirected away, for two different reasons.
 Yash applies the job's redirections in the job's own yash process after saving the original descriptors, and it execs the command in place only when nothing was saved (`finally_exit && savefd == NULL` in `exec_simple_command_with_words`, yash 2.58.1 `exec.c`), so that process forks the command and keeps a saved copy of the pipe's write end open until the command exits (a process listing in the matrix shows it at descriptor 100).
 In ksh93u+m the output goes to a temporary file, not a pipe, but `sh_exec` records every process forked inside a subshell in `sh.spid`, clears it only when a later foreground child is waited for, and `sh_subshell` ends a command substitution with `job_wait(sh.spid)` (ksh93u+m 1.0.10 `xec.c` and `subshell.c`), so a background job that is the last process the substitution started is waited for whatever its redirections.

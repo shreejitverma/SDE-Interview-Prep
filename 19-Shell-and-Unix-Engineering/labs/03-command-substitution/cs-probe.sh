@@ -10,7 +10,7 @@ case $mode in
     # shellcheck disable=SC2016 # the markers expand in the job's own shell
     case $variant in
       hold)
-        # The job inherits the substitution's pipe as its stdout and stderr; it sleeps one second,
+        # The job inherits the substitution's pipe as its stdout; it sleeps one second,
         # then writes a marker file. No timing is involved: end of file on the pipe comes only
         # after the job has written the marker and exited.
         job='/bin/sleep 1; echo done >"$1/late"'
