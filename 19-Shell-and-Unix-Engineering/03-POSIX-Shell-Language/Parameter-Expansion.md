@@ -309,8 +309,16 @@ Wrapping every expansion in double quotes (`"${cache_dir}"`) guarantees that the
 
 For resilient system initialization, production scripts should enforce mandatory environment variables using the `:?` operator.
 Writing `export DB_HOST="${DB_HOST:?Fatal: DB_HOST environment variable required}"` guarantees that if `DB_HOST` is unset or empty, the script aborts immediately with a clear error on standard error before performing network connections or database migrations.
-Additionally, when processing untrusted filenames, defensive scripts use prefix removal to prevent argument injection against utilities that accept command-line options.
-A file named `-rf` passed to `rm "$file"` will be interpreted as a command flag; writing `rm -- "${file}"` or sanitizing paths via `clean_path="./${file#./}"` neutralizes option parsing exploits.
+Additionally, when processing untrusted filenames, defensive scripts must prevent argument injection against utilities that accept command-line options.
+A file named `-rf` passed to `rm "$file"` will be interpreted as a command flag; writing `rm -- "${file}"` ends option parsing and is the primary defense.
+For a utility that does not honor `--`, prefix only relative names with `./`, because a blind `"./${file}"` turns `/etc/passwd` into `.//etc/passwd`, which names `./etc/passwd` under the current directory:
+
+```sh
+case $file in
+  /*) clean_path=$file ;;
+  *) clean_path=./$file ;;
+esac
+```
 
 Finally, developers must guard against algorithmic complexity attacks in pattern removal.
 POSIX specifies only the pattern notation `(POSIX.1-2024 XCU 2.14)`, not the algorithm, and real shells try the pattern once per candidate prefix or suffix (`(bash-5.3 subst.c, remove_upattern)` loops over every end position), so a failing removal costs time quadratic in the string length, and multiple unanchored asterisks add backtracking on top; attacker-sized input can therefore cause denial-of-service through CPU exhaustion.

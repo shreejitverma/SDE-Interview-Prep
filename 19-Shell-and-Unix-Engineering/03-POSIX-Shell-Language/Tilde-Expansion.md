@@ -456,7 +456,8 @@ Writing `~/bin` saves four keystrokes compared to `"$HOME/bin"`, but introduces 
 2. Portability divergence: shells differ fundamentally on how they handle unset `HOME` variables (literal `~` in `dash`, `posh`, `busybox`, `mksh`, and `yash`; home directory in `bash` and `ksh93u+m`; login name in `ksh93u+` 2012; empty string in `zsh`), null `HOME` fields under Defect 1632, double-quoted parameter expansion defaults in `yash`, declaration utilities in `posh`, and command arguments (`magic_equal_subst` in `bash`, leading equals only in `mksh`).
 3. Network latency and reliability: resolving `~user` introduces synchronous external I/O across the NSS switch stack, creating points of failure in containerized or network-degraded environments.
 
-In production engineering, enforce strict linter rules (such as ShellCheck SC2088) across repositories to forbid tilde prefixes in non-interactive shell scripts.
+ShellCheck SC2088 ("Tilde does not expand in quotes") catches only the quoted-tilde trap from the first Pitfall, such as `"~/bin"`; it does not flag an unquoted `~/bin`.
+To forbid tilde prefixes in non-interactive scripts, add a custom check, such as a CI grep for a `~` at the start of a word or a code review rule.
 When user directory paths are required, reference standard environment variables explicitly:
 ```sh
 # Correct, deterministic, and portable

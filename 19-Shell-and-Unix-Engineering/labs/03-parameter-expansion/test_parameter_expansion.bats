@@ -64,14 +64,16 @@ setup() {
 @test "lazy evaluation skips word expansion and side effects when parameter is set" {
   # shellcheck disable=SC2016 # expressions tested under target shell
   run_lab_c '
+    cd "$1" || exit 1
     v="initial"
     count=0
-    # Command substitution and arithmetic must not execute
-    res="${v:-$(echo side_effect; count=$((count + 1)))}"
+    # The assignment runs in this shell and the substitution creates a file, so an eager shell is visible
+    res="${v:-$(: >expanded)$((count = count + 1))}"
     printf "%s|%s\n" "${res}" "${count}"
-  '
+  ' lazy "${BATS_TEST_TMPDIR}"
   [ "${status}" -eq 0 ]
   [ "${output}" = "initial|0" ]
+  [ ! -e "${BATS_TEST_TMPDIR}/expanded" ]
 }
 
 @test "assigning default to positional parameter is rejected by POSIX shells but accepted by zsh" {
@@ -96,7 +98,7 @@ setup() {
   run_lab_c '
     export LC_ALL=C.UTF-8
     # alpha beta gamma: 3 Greek characters, each 2 bytes in UTF-8 (6 bytes total)
-    s="αβγ"
+    s=$(printf "\316\261\316\262\316\263")
     raw_bytes=$(printf "%s" "$s" | wc -c | tr -d " \t")
     printf "%s|%s\n" "${#s}" "${raw_bytes}"
   '
