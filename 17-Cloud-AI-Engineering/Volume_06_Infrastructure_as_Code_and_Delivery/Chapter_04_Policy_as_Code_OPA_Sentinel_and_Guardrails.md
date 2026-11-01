@@ -2,7 +2,7 @@
 type: concept
 track: [cloud-ai, ai-eng, sde, distinguished]
 level:
-status: draft
+status: solid
 last_reviewed:
 sources: 
   - "https://www.openpolicyagent.org/docs/"
@@ -12,18 +12,51 @@ sources:
   - "https://cloud.google.com/resource-manager/docs/organization-policy/overview"
   - "https://aws.amazon.com/builders-library/automating-safe-hands-off-deployments/"
   - "https://engineering.fb.com/2021/10/05/networking-traffic/outage-details/"
+  - "https://www.openpolicyagent.org/docs/cli"
+  - "https://www.openpolicyagent.org/docs/policy-performance"
+  - "https://www.openpolicyagent.org/docs/v0-upgrade"
+  - "https://github.com/hashicorp/terraform/blob/main/internal/command/jsonplan/plan.go"
+  - "https://github.com/hashicorp/terraform/blob/v1.6/CHANGELOG.md"
+  - "https://developer.hashicorp.com/terraform/language/validate"
+  - "https://developer.hashicorp.com/terraform/cli/commands/show"
+  - "https://developer.hashicorp.com/terraform/cloud-docs/policy-enforcement/manage-policy-sets"
+  - "https://developer.hashicorp.com/terraform/enterprise/run/states"
+  - "https://www.hashicorp.com/en/pricing"
+  - "https://aws.amazon.com/config/pricing/"
+  - "https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AWSConfig/current/us-east-1/index.json"
+  - "https://docs.aws.amazon.com/config/latest/developerguide/configlimits.html"
+  - "https://docs.aws.amazon.com/config/latest/developerguide/select-resources.html"
+  - "https://docs.aws.amazon.com/config/latest/developerguide/evaluate-config-rules.html"
+  - "https://docs.aws.amazon.com/config/latest/developerguide/s3-default-encryption-kms.html"
+  - "https://docs.aws.amazon.com/config/latest/APIReference/API_ConfigRule.html"
+  - "https://docs.aws.amazon.com/config/latest/APIReference/API_Compliance.html"
+  - "https://docs.aws.amazon.com/organizations/latest/userguide/orgs_reference_limits.html"
+  - "https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_scps.html"
+  - "https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_declarative.html"
+  - "https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_s3.html"
+  - "https://docs.aws.amazon.com/controltower/latest/controlreference/control-behavior.html"
+  - "https://aws.amazon.com/blogs/aws/simplify-governance-with-declarative-policies/"
+  - "https://docs.cloud.google.com/resource-manager/docs/organization-policy/dry-run-policy"
+  - "https://docs.cloud.google.com/resource-manager/docs/organization-policy/creating-managing-custom-constraints"
+  - "https://docs.cloud.google.com/organization-policy/reference/org-policy-constraints"
+  - "https://docs.cloud.google.com/storage/docs/custom-constraints"
+  - "https://cloud.google.com/products/organization-policy/pricing"
+  - "https://docs.cloud.google.com/docs/terraform/policy-validation"
+  - "https://docs.cloud.google.com/docs/terraform/policy-validation/create-terraform-constraints"
+  - "https://docs.cloud.google.com/security-command-center/docs/service-tiers"
 ---
 
 # Policy as Code: OPA, Sentinel, and Guardrails
 
 ## TL;DR
 
-Research caveat: the web-search budget for this authoring session was exhausted after one successful OPA docs lookup, so almost every volatile figure below is tagged `UNVERIFIED` and listed in the batch report. Mechanism descriptions come from primary docs and papers recalled from memory and were not re-fetched.
+Verification note: volatile figures below were checked against primary docs and price lists, and the plan-time lab code was run locally (as of 2026-11).
+The plan-size heuristic remains a labeled engineering estimate.
 
 - A guardrail is only as strong as its enforcement point: plan-time policy (OPA, Sentinel) sees intent but not outcome, preventive control-plane policy (SCP, Org Policy) sees every API call but few resource attributes, and detective policy (AWS Config, Cloud Asset Inventory) sees reality but only after the fact.
 - Rego has three-valued behavior in practice (true, false, undefined), and a `deny` rule whose body hits an undefined reference or a swallowed builtin error silently produces "no violation", so every policy must be written and tested to fail closed.
 - `terraform show -json` omits unknown values from `after` and flags them in `after_unknown`, so cross-resource invariants such as "every bucket has KMS encryption" must be joined through `configuration.*.expressions.*.references`, not through attribute values.
-- Org Policy and SCPs are checked at request time and are not retroactive, while AWS Config is recorder-driven and eventually consistent, so each layer has a different detection latency and a different bypass path.
+- Org Policy and SCPs are checked at request time and are generally not retroactive, while AWS Config is recorder-driven and eventually consistent, so each layer has a different detection latency and a different bypass path.
 - Policy is code that ships to a global blast radius: stage it (dry-run, advisory, canary OU), version it, test negative cases, and design what happens when the policy engine itself fails.
 
 ## Mental Model
@@ -64,16 +97,18 @@ Rules come in four shapes: complete rules (one value), partial set rules (`deny 
 Virtual documents (rule results) are cached per query evaluation, so a helper rule such as `kms_protected` is computed once per evaluation, while a function with arguments is cached by argument value.
 
 Rule indexing is the mechanism that keeps large rule sets cheap.
-At compile time OPA inspects rule bodies for equality expressions between a reference rooted at `input` or `data` and a ground value, such as `input.request.kind == "Pod"`, and builds a trie keyed on those references.
+At compile time OPA inspects rule bodies for equality expressions between a non-nested, variable-free reference and a scalar, array, or variable, such as `input.request.kind == "Pod"`, and builds a trie keyed on those references.
 At evaluation time only rules whose indexed conditions match the input are visited.
-Rules that express the same test through a non-ground comparison, a function call, or a negation are not indexable and are always evaluated, which is the usual cause of linear slowdowns as policy count grows.
-Measure with `opa eval --profile` and `--explain=notes` rather than guessing (OPA docs, recalled, not re-fetched 2026-10-21).
+The indexer also recognizes `glob.match` with supported patterns, `startswith`, `endswith`, and `in`.
+Rules that express the same test through a reference with a variable mid-path (`input.x[i].y == "foo"`), another function call, or a negation are not indexable and are always evaluated, which is the usual cause of linear slowdowns as policy count grows.
+Measure with `opa eval --profile` and `--explain=notes` rather than guessing ([OPA policy performance docs](https://www.openpolicyagent.org/docs/policy-performance), as of 2026-11).
 
 The semantic detail that most guides skip is what "undefined" does.
 A reference to a missing key, an out-of-range index, or a builtin that errors (for example `split` on a non-string) makes the enclosing expression undefined, and an undefined expression makes the whole rule body fail without any error.
 For a positive `allow` rule that is fail-closed.
 For a `deny` rule it is fail-open: the violation condition cannot be established, so no message is emitted, so the plan passes.
-By default OPA swallows builtin errors into undefined; `--strict-builtin-errors` on `opa eval` and `opa test` turns them into hard errors, and `opa check --strict` catches unused variables and imports.
+By default OPA swallows builtin errors into undefined; `--strict-builtin-errors` on `opa eval` turns them into hard errors, and `opa check --strict` catches unused variables and imports.
+`opa test` has no such flag and rejects it as unknown (OPA CLI docs and OPA 1.22.0, as of 2026-11), so the strict evaluation has to run as a separate `opa eval` step.
 Treat both flags as mandatory in CI.
 
 Other engine properties worth knowing cold:
@@ -82,21 +117,21 @@ Other engine properties worth knowing cold:
 - Builtins such as `http.send` are nondeterministic and make decisions non-reproducible, while `time.now_ns` is fixed for the duration of one query.
 - `with input as ...` and `with data.x as ...` override values for one expression, which is how `opa test` mocks inputs, and it invalidates cached virtual documents that depend on the overridden path.
 - Partial evaluation (`opa eval --partial`) treats chosen inputs as unknown and emits residual queries, and `opa build -t wasm` compiles an entrypoint to WebAssembly for embedding in a gateway or edge runtime.
-- Since OPA 1.0 the `in`, `every`, `if`, and `contains` keywords are part of the language by default and the `rego.v1` import is the compatibility bridge for older versions (OPA docs v0.60.0 migration page, retrieved 2026-10-21).
+- Since OPA 1.0 the `in`, `every`, `if`, and `contains` keywords are part of the language by default and the `rego.v1` import is the compatibility bridge for older versions ([OPA v0 upgrade docs](https://www.openpolicyagent.org/docs/v0-upgrade), as of 2026-11).
 
 Conceptually Rego descends from Datalog, and its undefined semantics are what distinguish it from a pure logic engine.
-Amazon's Cedar language takes the opposite design stance, with a bounded, analyzable language and explicit default deny, as described in the Cedar paper (OOPSLA 2024).
+Amazon's Cedar language takes the opposite design stance, with a bounded, analyzable language, default deny, and forbid-overrides-permit semantics, as described in the [Cedar paper](https://doi.org/10.1145/3649835) (PACMPL 8, OOPSLA1, 2024) and the [Cedar docs](https://docs.cedarpolicy.com/auth/authorization.html).
 For IAM, AWS also uses SMT-based reasoning (Zelkova, FMCAD 2018) to answer "can this policy ever allow X" for all inputs, which evaluation-based engines like OPA cannot do.
 That is the trade-off: OPA answers "does this concrete input pass", while solver-backed tools answer "for all inputs", at the cost of a restricted language.
 
 ### Terraform plan JSON as a data contract
 
 The plan-time pipeline is `terraform plan -out=tfplan` followed by `terraform show -json tfplan`.
-The JSON document has a `format_version` (a 1.x string at the time of writing, UNVERIFIED), `planned_values`, `resource_changes`, `configuration`, `prior_state`, `resource_drift`, and `output_changes`.
+The JSON document has a `format_version` (`1.2` in the [Terraform source](https://github.com/hashicorp/terraform/blob/main/internal/command/jsonplan/plan.go) and in a plan from Terraform 1.15.7, as of 2026-11; consumers should reject an unsupported major version), `planned_values`, `resource_changes`, `configuration`, `prior_state`, `resource_drift`, and `output_changes`.
 See [[17-Cloud-AI-Engineering/Volume_06_Infrastructure_as_Code_and_Delivery/Chapter_01_Terraform_and_OpenTofu_Internals|Terraform and OpenTofu Internals]] for how the graph walk produces these.
 
 Each `resource_changes` entry carries `address`, `module_address` (absent for the root module), `mode`, `type`, `name`, optional `index`, and a `change` object with `actions`, `before`, `after`, `after_unknown`, `before_sensitive`, and `after_sensitive`.
-`actions` is an array and its exact value matters: `["no-op"]`, `["create"]`, `["update"]`, `["delete"]`, `["delete","create"]` (replace, destroy first), and `["create","delete"]` (replace, create first).
+`actions` is an array and its exact value matters: `["no-op"]`, `["create"]`, `["read"]`, `["update"]`, `["delete"]`, `["delete","create"]` (replace, destroy first), and `["create","delete"]` (replace, create first).
 A check that tests `actions == ["create"]` silently skips replacements.
 
 Three mechanisms matter for correctness:
@@ -113,10 +148,11 @@ Anything a plan-time policy cannot see must be enforced by a layer that sees the
 ### Sentinel and HCP Terraform policy enforcement
 
 Sentinel is HashiCorp's embedded policy language.
-In HCP Terraform and Terraform Enterprise, policies are grouped into policy sets attached to workspaces or projects, and they are evaluated in the run pipeline after the plan (and cost estimation) and before the apply confirmation.
+In HCP Terraform and Terraform Enterprise, policies are grouped into policy sets applied globally or to projects, workspaces, and Stacks, and they are evaluated in the run pipeline after the plan and before the apply confirmation, with OPA checks before cost estimation and Sentinel checks after it ([run states docs](https://developer.hashicorp.com/terraform/enterprise/run/states), as of 2026-11).
 Sentinel policies read data through imports such as `tfplan/v2`, `tfconfig/v2`, `tfstate/v2`, and `tfrun`, and a policy's `main` rule yields the pass or fail verdict.
-Sentinel has three enforcement levels: `advisory` (logged), `soft-mandatory` (blocks unless a user with override permission approves), and `hard-mandatory` (blocks, no override) (HashiCorp docs, recalled, UNVERIFIED as of 2026-10).
-HCP Terraform also accepts OPA/Rego policies in policy sets, with a smaller set of enforcement levels (UNVERIFIED), and each OPA policy declares the query that determines pass or fail.
+Sentinel has three enforcement levels: `advisory` (logged), `soft-mandatory` (blocks unless a user with override permission approves), and `hard-mandatory` (blocks until fixed, unless the policy set enables its set-level override option, which takes precedence over each policy's level) ([HashiCorp policy set docs](https://developer.hashicorp.com/terraform/cloud-docs/policy-enforcement/manage-policy-sets), as of 2026-11).
+HCP Terraform also accepts OPA/Rego policies in policy sets, with two enforcement levels, advisory and mandatory, where a user with the Manage Policy Overrides permission can override a mandatory failure (same docs).
+Each OPA policy declares the query that determines pass or fail: the result must be an array, and the policy passes when it is empty.
 Sentinel has an explicit `undefined` value in its type system, so the same "does a missing key fail open" question applies, and you answer it with `sentinel test` cases that include missing and unknown attributes rather than by reading the language reference.
 
 The operational value of Sentinel and the HCP policy pipeline is not the language.
@@ -126,7 +162,8 @@ The cost is lock-in to one execution platform and a proprietary language; OPA in
 ### Terraform-native guardrails
 
 Before reaching for an external engine, use the language.
-`precondition` and `postcondition` blocks in `lifecycle` (Terraform 1.2 and later), `check` blocks (1.5 and later), and `terraform test` (1.6 and later) all evaluate with full visibility of resolved values at plan or apply time (HashiCorp docs, recalled, UNVERIFIED version numbers).
+`precondition` and `postcondition` blocks in `lifecycle` (Terraform 1.2 and later), `check` blocks (1.5 and later), and `terraform test` (1.6 and later) all evaluate with full visibility of resolved values at plan or apply time ([Terraform validation docs](https://developer.hashicorp.com/terraform/language/validate) and the [1.6 changelog](https://github.com/hashicorp/terraform/blob/v1.6/CHANGELOG.md), as of 2026-11).
+A failed `check` assertion only reports a warning and does not block the operation, unlike a failed `precondition` or `postcondition`.
 A `postcondition` is the only plan-adjacent mechanism that sees values after the provider has resolved them, so it closes part of the unknown-value gap for a single resource.
 The limit is organizational: these guards live in the module author's code, so they are not a central control.
 
@@ -134,9 +171,9 @@ The limit is organizational: these guards live in the module author's code, so t
 
 AWS splits enforcement across several services, and AWS Control Tower names the behaviors preventive, detective, and proactive.
 
-- **Preventive:** Service Control Policies and Resource Control Policies filter IAM authorization decisions for principals and resources in an organization, and they can only use condition keys the request context exposes. Declarative policies enforce baseline service configuration for supported services at the organization level, independent of which API path made the change (UNVERIFIED launch details). See [[17-Cloud-AI-Engineering/Volume_02_AWS_Deep_Dive/Chapter_01_IAM_Policy_Evaluation_Engine|IAM Policy Evaluation Engine]] and [[17-Cloud-AI-Engineering/Volume_02_AWS_Deep_Dive/Chapter_02_AWS_Organizations_and_Account_Governance|AWS Organizations and Account Governance]].
-- **Proactive:** CloudFormation Hooks (including Guard-based hooks) run before a stack operation provisions a resource and can fail or warn. AWS Config rules can also run in proactive evaluation mode against a resource configuration supplied before deployment. Both only see changes that go through CloudFormation or an integration that calls the evaluation API.
-- **Detective:** AWS Config records configuration items (CIs) for supported resource types into a per-region recorder and evaluates rules against them. Rules are managed (AWS-authored), custom Lambda, or custom policy rules written in CloudFormation Guard. Results are `COMPLIANT`, `NON_COMPLIANT`, `NOT_APPLICABLE`, or `INSUFFICIENT_DATA`. Rules trigger on configuration change or on a periodic frequency of 1, 3, 6, 12, or 24 hours (AWS docs, recalled, UNVERIFIED).
+- **Preventive:** Service Control Policies and Resource Control Policies filter IAM authorization decisions for principals and resources in an organization, and they can only use condition keys the request context exposes. Declarative policies, launched on 2024-12-01 for EC2, VPC, and EBS settings ([AWS News Blog](https://aws.amazon.com/blogs/aws/simplify-governance-with-declarative-policies/)), enforce baseline service configuration in the service's control plane for supported services at the organization level, independent of which API path made the change, and unlike SCPs and RCPs they also govern service-linked roles ([AWS Organizations docs](https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_declarative.html), as of 2026-11). See [[17-Cloud-AI-Engineering/Volume_02_AWS_Deep_Dive/Chapter_01_IAM_Policy_Evaluation_Engine|IAM Policy Evaluation Engine]] and [[17-Cloud-AI-Engineering/Volume_02_AWS_Deep_Dive/Chapter_02_AWS_Organizations_and_Account_Governance|AWS Organizations and Account Governance]].
+- **Proactive:** CloudFormation Hooks (including Guard-based hooks) run before a stack operation provisions a resource and can fail or warn. AWS Config rules can also run in proactive evaluation mode against a resource configuration supplied before deployment, but a proactive result does not itself prevent deployment ([AWS Config docs](https://docs.aws.amazon.com/config/latest/developerguide/evaluate-config-rules.html), as of 2026-11). Both only see changes that go through CloudFormation or an integration that calls the evaluation API.
+- **Detective:** AWS Config records configuration items (CIs) for supported resource types into a per-region recorder and evaluates rules against them. Rules are managed (AWS-authored), custom Lambda, or custom policy rules written in CloudFormation Guard. Results are `COMPLIANT`, `NON_COMPLIANT`, `NOT_APPLICABLE`, or `INSUFFICIENT_DATA`, the last meaning no evaluation results are available ([Compliance API](https://docs.aws.amazon.com/config/latest/APIReference/API_Compliance.html), as of 2026-11). Rules trigger on configuration change or on a periodic frequency of 1, 3, 6, 12, or 24 hours ([ConfigRule API](https://docs.aws.amazon.com/config/latest/APIReference/API_ConfigRule.html), as of 2026-11).
 - **Corrective:** Config remediation actions invoke SSM Automation documents on NON_COMPLIANT resources, optionally automatically with retry limits.
 
 The mechanism most guides skip is that Config evaluation latency is the sum of the recorder's change detection, CI construction (service describe calls), CI delivery, and rule execution, and the recorder can be stopped, scoped, or throttled without any rule turning red.
@@ -153,16 +190,17 @@ A policy resource has a `spec` (and optionally a `dryRunSpec`), whose `rules` ca
 Enforcement is performed by the service that owns the resource, at request time, using the effective policy from the Org Policy service.
 Three consequences follow, and all three differ from a plan-time scan:
 
-1. It is not retroactive: existing resources that violate a newly enforced constraint are left alone and typically fail on their next update.
+1. It is usually not retroactive: existing resources that violate a newly enforced constraint are left alone and typically fail on their next update, and the exceptions are labeled in the constraint list ([Org Policy overview](https://docs.cloud.google.com/resource-manager/docs/organization-policy/overview), as of 2026-11). For example, `storage.publicAccessPrevention` revokes public access on existing buckets and objects when enabled ([constraint reference](https://docs.cloud.google.com/organization-policy/reference/org-policy-constraints), as of 2026-11).
 2. It only works for constraints a service implements, so coverage is per service and per resource type.
-3. Policy changes take time to propagate to enforcing services (documented as up to roughly 15 minutes, UNVERIFIED), so automation that sets a policy and immediately creates a resource can race.
+3. Policy changes take time to propagate to enforcing services (a newly set policy requires up to 15 minutes to take effect, per the [custom constraints docs](https://docs.cloud.google.com/resource-manager/docs/organization-policy/creating-managing-custom-constraints), as of 2026-11), so automation that sets a policy and immediately creates a resource can race.
 
-Custom constraints let you write a CEL condition over a resource's fields for specific resource types and methods (`CREATE`, `UPDATE`) and choose `ALLOW` or `DENY` as the action (Google Cloud docs, recalled, UNVERIFIED field coverage).
+Custom constraints let you write a CEL condition over a resource's fields for specific resource types and methods (`CREATE`, `UPDATE`) and choose `ALLOW` or `DENY` as the action, and the supported fields and method types vary by service, with some resources rejecting `UPDATE` (same docs, as of 2026-11).
 Dry-run mode (`dryRunSpec`) evaluates a candidate policy on live traffic and records violations in Cloud Audit Logs without blocking, which is the safest rollout primitive in either cloud.
-AWS SCPs have no equivalent native dry-run (UNVERIFIED), so the usual substitutes are CloudTrail analysis and staged OU rollout.
+It is accepted only for custom constraints, managed constraints, and four legacy constraints (service usage, endpoint usage, TLS versions, TLS cipher suites), and any other constraint returns an error ([dry-run docs](https://docs.cloud.google.com/resource-manager/docs/organization-policy/dry-run-policy), as of 2026-11).
+AWS SCPs have no equivalent native dry-run in the [SCP docs](https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_scps.html) (as of 2026-11), which instead recommend moving accounts through a test OU and examining service last accessed data and CloudTrail.
 
-For plan-time checks on GCP, Policy Library constraint templates are written in Rego and evaluated against Terraform plans with `gcloud beta terraform vet` (beta at last recall, UNVERIFIED).
-That means the same Rego skills transfer, but you must track the beta status and the input shape it converts the plan into, which is not the raw `terraform show -json` document.
+For plan-time checks on GCP, Policy Library constraint templates are written in Rego and evaluated against Terraform plans with `gcloud beta terraform vet`, which is Preview under pre-GA terms ([Google Cloud docs](https://docs.cloud.google.com/docs/terraform/policy-validation), as of 2026-11).
+That means the same Rego skills transfer, but you must track the Preview status and the input shape: the tool takes `terraform show -json` output as its file argument, but a Terraform-based constraint sees one `resource_changes` entry as `input.review`, not the whole document ([constraint docs](https://docs.cloud.google.com/docs/terraform/policy-validation/create-terraform-constraints), as of 2026-11).
 See [[17-Cloud-AI-Engineering/Volume_03_GCP_Deep_Dive/Chapter_03_VPC_Service_Controls_Security_Perimeters|VPC Service Controls: Security Perimeters]] and [[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter/Chapter_06_Constructing_an_Impenetrable_Data_Perimeter|Constructing an Impenetrable Data Perimeter]] for the perimeter layer that complements these.
 
 ### Policy engines in the cluster
@@ -172,37 +210,37 @@ See [[04-System-Design/07-Infrastructure-and-Orchestration/Kubernetes-Architectu
 
 ## Numbers to Know
 
-Verification status: only the first row was fetched this session.
-Every other row is recalled from official documentation and carries an explicit `UNVERIFIED` tag; do not promote this chapter to `status: solid` until each is re-checked.
+Verification status: every sourced row was checked against the named primary source (as of 2026-11).
+The last row is an engineering estimate and is labeled as one.
 
 | Quantity | Value | Source |
 | --- | --- | --- |
-| Rego keywords `in`, `every`, `if`, `contains` | Default in OPA 1.0; `import rego.v1` is the bridge for older versions | OPA docs v0.60.0 migration page, retrieved 2026-10-21 |
-| Terraform plan JSON `format_version` | 1.x series | UNVERIFIED (HashiCorp docs, recalled; re-check as of 2026-10) |
-| Terraform in-language guards | `precondition`/`postcondition` 1.2+, `check` 1.5+, `terraform test` 1.6+ | UNVERIFIED (HashiCorp docs, recalled) |
-| HCP Terraform Sentinel enforcement levels | advisory, soft-mandatory, hard-mandatory | UNVERIFIED (HashiCorp docs, recalled) |
-| AWS Config periodic rule frequencies | 1, 3, 6, 12, 24 hours | UNVERIFIED (AWS docs, recalled) |
-| AWS Config price per configuration item | $0.003 per CI, continuous recording | UNVERIFIED (AWS pricing, recalled) |
-| AWS Config rule evaluation price | $0.001 for first 100,000, $0.0008 for next 400,000, $0.0005 beyond, per account-region per month | UNVERIFIED (AWS pricing, recalled) |
-| AWS Config rules per account-region (default) | 1,000, soft limit | UNVERIFIED (AWS docs, recalled) |
-| SCP maximum document size | 5,120 characters | UNVERIFIED (AWS docs, recalled) |
-| Org Policy propagation delay | Up to about 15 minutes | UNVERIFIED (Google Cloud docs, recalled) |
-| Org Policy custom constraints per organization | 20 | UNVERIFIED (Google Cloud docs, recalled) |
-| Org Policy dry-run | Violations logged to Cloud Audit Logs, no enforcement | UNVERIFIED (Google Cloud docs, recalled) |
+| Rego keywords `in`, `every`, `if`, `contains` | Default in OPA 1.0; `import rego.v1` is the bridge for older versions | OPA v0 upgrade docs, as of 2026-11 |
+| Terraform plan JSON `format_version` | `1.2` (docs example still shows `1.0`; minor bumps are additive, major bumps are breaking) | Terraform source and JSON format docs; observed on Terraform 1.15.7, as of 2026-11 |
+| Terraform in-language guards | `precondition`/`postcondition` 1.2+, `check` 1.5+, `terraform test` 1.6+ (GA in 1.6.0) | HashiCorp docs and 1.6 changelog, as of 2026-11 |
+| HCP Terraform Sentinel enforcement levels | advisory, soft-mandatory, hard-mandatory; OPA has advisory and mandatory | HashiCorp policy set docs, as of 2026-11 |
+| AWS Config periodic rule frequencies | 1, 3, 6, 12, 24 hours | AWS Config API reference, as of 2026-11 |
+| AWS Config price per configuration item | $0.003 per CI continuous; $0.012 per CI daily, us-east-1 | AWS Price List API (published 2026-09-11) and AWS Config pricing page, as of 2026-11 |
+| AWS Config rule evaluation price | $0.001 for first 100,000, $0.0008 for next 400,000, $0.0005 beyond, per account-region per month, us-east-1 | AWS Price List API (published 2026-09-11), as of 2026-11 |
+| AWS Config rules per account-region | 1,000, cannot be increased; rules in conformance packs count toward it | AWS Config service limits, as of 2026-11 |
+| SCP maximum document size | 10,240 characters (RCP: 5,120) | AWS Organizations quotas, as of 2026-11 |
+| Org Policy propagation delay | Up to 15 minutes for a newly set policy; updates to an already enforced custom constraint take effect immediately | Google Cloud custom constraints docs, as of 2026-11 |
+| Org Policy custom constraints per resource type | 20 for most resource types; creating more fails | Google Cloud custom constraints docs, as of 2026-11 |
+| Org Policy dry-run | Violations logged to Cloud Audit Logs, no enforcement; custom, managed, and four legacy constraints only | Google Cloud dry-run docs, as of 2026-11 |
 | Plan JSON size heuristic | Roughly 1-4 KB per resource change, so 10,000 resources is on the order of tens of MB | Engineering estimate, not sourced; measure your own plans |
 
 ## AWS vs GCP Mechanism Parity
 
 | Concern | AWS | GCP |
 | --- | --- | --- |
-| Plan-time policy | OPA/Conftest, Sentinel, Checkov on `terraform show -json`; CloudFormation Guard and Hooks for CFN | OPA/Conftest on plan JSON; Policy Library via `gcloud beta terraform vet` (UNVERIFIED beta) |
+| Plan-time policy | OPA/Conftest, Sentinel, Checkov on `terraform show -json`; CloudFormation Guard and Hooks for CFN | OPA/Conftest on plan JSON; Policy Library via `gcloud beta terraform vet` (Preview, Google Cloud docs, as of 2026-11) |
 | Language for custom checks | Rego, Sentinel, CloudFormation Guard, Lambda code | Rego (Policy Library), CEL (custom constraints), Cloud Functions code |
 | Preventive control location | IAM authorization layer (SCP, RCP) filters requests; declarative policies enforce service baselines | Owning service checks the request against effective Org Policy |
 | Visible attributes at enforcement | IAM condition keys only (principal, tags, service keys) | Resource fields via CEL, per supported service and resource type |
 | Hierarchy semantics | OU tree; SCPs are a ceiling, intersected at every level | Org, folder, project; policies merge with `inheritFromParent` and `reset` |
-| Dry-run before enforce | No native SCP dry-run (UNVERIFIED); Config and CloudTrail used for impact analysis | `dryRunSpec` on Org Policy, logged to audit logs |
-| Retroactivity | Not retroactive for SCP; Config evaluates existing resources | Not retroactive; Asset Inventory and Security Health Analytics scan existing resources |
-| Detective engine | AWS Config recorder, rules, conformance packs, organization aggregator | Cloud Asset Inventory, Security Command Center findings (UNVERIFIED tier details) |
+| Dry-run before enforce | No native SCP dry-run in the SCP docs (as of 2026-11); test OU, service last accessed data, Config, and CloudTrail used for impact analysis | `dryRunSpec` on Org Policy for custom, managed, and four legacy constraints, logged to audit logs |
+| Retroactivity | Not retroactive for SCP; Config evaluates existing resources | Usually not retroactive (`storage.publicAccessPrevention` is an exception); Asset Inventory and Security Health Analytics scan existing resources |
+| Detective engine | AWS Config recorder, rules, conformance packs, organization aggregator | Cloud Asset Inventory, Security Command Center findings (Security Health Analytics is not supported on new Standard tier activations, SCC docs, as of 2026-11) |
 | Detection latency drivers | Recorder detection, CI build, delivery, rule execution; periodic rules at 1-24 hours | Asset feed and scan cadence, per detector |
 | Corrective action | SSM Automation via Config remediation | Cloud Functions or Workflows triggered from Pub/Sub feeds |
 | Typical fail-open trap | Recorder stopped or resource type unrecorded | Service does not implement the constraint, or tag condition omitted |
@@ -418,12 +456,13 @@ terraform plan -out=tfplan
 terraform show -json tfplan > tfplan.json
 opa fmt --rego-v1 --diff policy/
 opa check --strict policy/
-opa test --strict-builtin-errors -v policy/
+opa test -v policy/
 opa eval --strict-builtin-errors --fail-defined --format pretty \
   --data policy --input tfplan.json 'data.terraform.s3.deny[_]'
 ```
 
 `--fail-defined` makes `opa eval` exit non-zero when the query returns any result, which turns a non-empty `deny` set into a failed CI job.
+This sequence was run with Terraform 1.15.7 and OPA 1.22.0 (as of 2026-11): 7 of 7 tests pass, the compliant plan exits 0, and a plan without the encryption resource exits 1 with the deny message.
 To see the fail-open trap, replace the bucket join with a rule that reads `after.rule[0]...sse_algorithm != "aws:kms"` and delete the `rule` block from the config: the plan will pass.
 
 Gate the apply on the exact artifact you evaluated:
@@ -436,14 +475,14 @@ terraform apply tfplan
 
 ### Part B: Runtime backstops
 
-Prerequisite: an AWS account where a Config recorder is already running and records `AWS::S3::Bucket` (Control Tower accounts qualify), and a GCP project you can modify with `roles/orgpolicy.policyAdmin`.
+Prerequisite: an AWS account where a Config recorder is already running and records `AWS::S3::Bucket` (Control Tower accounts qualify), and a GCP project in an organization where you hold `roles/orgpolicy.policyAdmin` on the organization (Google Cloud docs, as of 2026-11).
 Check with `aws configservice describe-configuration-recorder-status` before starting.
 
-Cost estimate for Part B (all prices UNVERIFIED, recalled):
+Cost estimate for Part B (AWS Price List API, us-east-1, as of 2026-11):
 
 - One test bucket produces a handful of CIs, about 5 x $0.003 = $0.015.
 - Rule evaluations for one rule over that bucket are well under 100 x $0.001 = $0.10.
-- GCP Org Policy and dry-run are free; the test bucket costs cents for a few minutes.
+- GCP Org Policy and dry-run are free ([Organization Policy pricing](https://cloud.google.com/products/organization-policy/pricing), as of 2026-11); the test bucket costs cents for a few minutes (estimate).
 - Expected total: under $0.25.
 
 Budget alarm for AWS (`budget.json` and `notif.json`):
@@ -488,22 +527,43 @@ aws configservice get-compliance-details-by-config-rule \
 New buckets get SSE-S3 by default, so the bucket should appear as NON_COMPLIANT against a KMS-only rule, which demonstrates why the plan policy and runtime rule must express the same invariant.
 Expect minutes of latency between bucket creation and the result, which is the detective-layer lag.
 
-GCP Org Policy dry-run (`ubla-dry-run.yaml`):
+GCP Org Policy dry-run uses a custom constraint, because the legacy `storage.uniformBucketLevelAccess` constraint is not among the legacy constraints that accept `dryRunSpec` ([dry-run docs](https://docs.cloud.google.com/resource-manager/docs/organization-policy/dry-run-policy) and [Cloud Storage custom constraints](https://docs.cloud.google.com/storage/docs/custom-constraints), as of 2026-11).
+
+`ubla-constraint.yaml`:
 
 ```yaml
-name: projects/PROJECT_ID/policies/storage.uniformBucketLevelAccess
+name: organizations/ORGANIZATION_ID/customConstraints/custom.requireUbla
+resourceTypes:
+- storage.googleapis.com/Bucket
+methodTypes:
+- CREATE
+- UPDATE
+condition: "resource.iamConfiguration.uniformBucketLevelAccess.enabled == true"
+actionType: ALLOW
+displayName: Require uniform bucket-level access
+description: Buckets must use uniform bucket-level access.
+```
+
+`ubla-dry-run.yaml`:
+
+```yaml
+name: projects/PROJECT_ID/policies/custom.requireUbla
 dryRunSpec:
   rules:
   - enforce: true
 ```
 
 ```bash
-gcloud org-policies set-policy ubla-dry-run.yaml
+gcloud org-policies set-custom-constraint ubla-constraint.yaml
+gcloud org-policies set-policy ubla-dry-run.yaml --update-mask=dryRunSpec
+# Allow up to 15 minutes for the policy to take effect, then create the violating bucket.
 gcloud storage buckets create gs://policy-lab-PROJECT_ID-$RANDOM --no-uniform-bucket-level-access
-# Inspect Cloud Audit Logs for the dry-run policy violation entry (filter fields UNVERIFIED).
+# Cloud Audit Logs filter for would-be denials:
+# protoPayload.metadata.dryRunResult = "DENIED" AND protoPayload.metadata.liveResult = "ALLOWED"
 ```
 
-If your organization already enforces this constraint by default, the create call is blocked and you will see the enforced behavior rather than the dry-run.
+These gcloud steps follow the linked docs and were not executed for this note.
+If your organization already enforces `storage.uniformBucketLevelAccess`, the create call is blocked and you will see the enforced behavior rather than the dry-run.
 
 Teardown (run all of it):
 
@@ -511,7 +571,8 @@ Teardown (run all of it):
 aws configservice delete-config-rule --config-rule-name s3-default-encryption-kms
 aws s3api delete-bucket --bucket "$BUCKET" --region us-east-1
 aws budgets delete-budget --account-id "$ACCOUNT_ID" --budget-name policy-lab
-gcloud org-policies delete storage.uniformBucketLevelAccess --project=PROJECT_ID
+gcloud org-policies delete custom.requireUbla --project=PROJECT_ID
+gcloud org-policies delete-custom-constraint custom.requireUbla --organization=ORGANIZATION_ID
 gcloud storage buckets delete gs://YOUR_GCP_TEST_BUCKET
 gcloud billing budgets list --billing-account=BILLING_ACCOUNT_ID   # find and delete policy-lab
 ```
@@ -543,15 +604,16 @@ def monthly(account_regions, ci_per_ar, rules_per_resource):
     return per_ar, per_ar * account_regions
 
 for label, ci, rules in [("baseline", 50_000, 10),
-                         ("daily-record high churn types", 20_000, 10),
+                         ("reduced churn, continuous CIs", 20_000, 10),
                          ("scoped rules", 50_000, 3)]:
     per_ar, total = monthly(60, ci, rules)
     print(f"{label}: per account-region ${per_ar:,.0f}, fleet ${total:,.0f} per month")
 ```
 
-Output of this script: baseline is $570 per account-region and $34,200 per month fleet-wide, the reduced-churn case is $14,400, and the scoped-rules case is $17,400 (prices UNVERIFIED, so treat the shape as the lesson).
-Two conclusions: evaluations, not CIs, dominate the bill once rules per resource climb, and high-churn resource types (network interfaces, security group rules, ephemeral compute) are where recording strategy pays back.
-Reducing cost is a policy decision: record fewer types, use daily recording for churny types where AWS supports it (UNVERIFIED), and scope each rule to the resource types it can actually judge.
+Output of this script: baseline is $570 per account-region and $34,200 per month fleet-wide, the reduced-churn case is $14,400, and the scoped-rules case is $17,400 (us-east-1 list prices from the AWS Price List API, as of 2026-11; the script ignores regional price differences).
+Two conclusions: evaluations, not CIs, dominate the bill once rules per resource climb (about 74 percent of the baseline, $420 of $570), and high-churn resource types (network interfaces, security group rules, ephemeral compute) are where recording strategy pays back.
+Reducing cost is a policy decision: record fewer types, use daily recording for churny types, and scope each rule to the resource types it can actually judge.
+Daily recording emits at most one CI per resource per 24 hours, only when the state changed ([AWS Config docs](https://docs.aws.amazon.com/config/latest/developerguide/select-resources.html), as of 2026-11), but each daily CI costs $0.012 versus $0.003, so on CI price alone it pays back only above about 4 recorded changes per resource per day, at the cost of up to a day of detection latency.
 See [[17-Cloud-AI-Engineering/Volume_09_FinOps_and_Cloud_Economics/Chapter_06_FinOps_Organizational_Practices_and_Automation|FinOps Organizational Practices and Automation]] for the budget loop that should watch this line item.
 
 ## Failure Modes and Pitfalls
@@ -574,18 +636,18 @@ See [[17-Cloud-AI-Engineering/Volume_09_FinOps_and_Cloud_Economics/Chapter_06_Fi
 
 - **Config recorder gaps.** A stopped or scoped recorder produces no evaluations, which dashboards display as nothing wrong. Alert on recorder state and `INSUFFICIENT_DATA`.
 - **Remediation fights IaC.** SSM auto-remediation and Terraform apply converge on different values and flap, burning CI and evaluation spend. Make Terraform authoritative and have remediation open a ticket or a pull request, or ensure both target the same value.
-- **Non-retroactive preventive policy.** Org Policy and SCP changes do not touch existing resources, so a "new guardrail" leaves a violating estate until something updates it. Pair with a Config or Asset Inventory sweep and a burn-down plan.
+- **Non-retroactive preventive policy.** Org Policy and SCP changes generally do not touch existing resources (labeled Org Policy exceptions such as `storage.publicAccessPrevention` do, which is its own blast-radius risk), so a "new guardrail" leaves a violating estate until something updates it. Pair with a Config or Asset Inventory sweep and a burn-down plan.
 - **Propagation races.** Automation that sets an Org Policy and then creates a resource can see the old policy for minutes. CI that tests enforcement needs retries with a bounded wait, not a fixed sleep.
 - **Service coverage holes.** A constraint exists in the catalog but a given service or API path may not enforce it. Test with a real violating request, not by reading the constraint name.
-- **Lockout.** An SCP that denies too broadly can block the very roles needed to fix it, and SCPs do not apply to the management account's principals, so break-glass design must be explicit (SCP size limit and exempt principals UNVERIFIED).
+- **Lockout.** An SCP that denies too broadly can block the very roles needed to fix it, and SCPs do not apply to the management account's principals or to service-linked roles, so break-glass design must be explicit (the SCP size limit is 10,240 characters; [AWS Organizations docs](https://docs.aws.amazon.com/organizations/latest/userguide/orgs_reference_limits.html), as of 2026-11).
 
 ### Public post-incident precedents
 
 These are not Terraform incidents; they are the same failure class applied to guardrail and policy data.
 
-- **Google Cloud, 2025-06-12.** A policy-related data record with blank fields was replicated globally to a service that evaluated quota policy, hit an unguarded null path, and crash-looped regional binaries; recovery was prolonged by herd load on the backing database. Lessons: policy data is code, it needs staged rollout and feature flags, and a global replication path is a global blast radius. Details recalled from the Google Cloud incident report (not re-fetched, UNVERIFIED).
-- **Meta, 2021-10-04.** An audit tool that was supposed to stop a destructive backbone command had a bug and let it through. The guardrail failed open. Lesson: test the guardrail's negative path with the same rigor as the system it guards (Meta engineering post, recalled).
-- **CrowdStrike, 2024-07-19.** A content validator bug allowed a malformed channel file to ship to the sensor. Lesson: validators of data pushed at fleet scale are production-critical code and need their own canary stage (CrowdStrike root cause analysis, recalled).
+- **Google Cloud, 2025-06-12.** A policy-related data record with blank fields was replicated globally to a service that evaluated quota policy, hit an unguarded null path, and crash-looped regional binaries; recovery was prolonged by herd load on the backing database. Lessons: policy data is code, it needs staged rollout and feature flags, and a global replication path is a global blast radius ([Google Cloud incident report](https://status.cloud.google.com/incidents/ow5i3PPK96RduMcb1SsW)).
+- **Meta, 2021-10-04.** An audit tool that was supposed to stop a destructive backbone command had a bug and let it through. The guardrail failed open. Lesson: test the guardrail's negative path with the same rigor as the system it guards ([Meta engineering post](https://engineering.fb.com/2021/10/05/networking-traffic/outage-details/)).
+- **CrowdStrike, 2024-07-19.** A content validator bug allowed a malformed channel file to ship to the sensor. Lesson: validators of data pushed at fleet scale are production-critical code and need their own canary stage ([CrowdStrike preliminary post-incident review](https://www.crowdstrike.com/en-us/blog/falcon-content-update-preliminary-post-incident-report/)).
 
 Related: [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_07_Anatomy_of_Major_Cloud_Outages|Anatomy of Major Cloud Outages]] and [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_03_Cell_Based_Architecture_and_Shuffle_Sharding|Cell-Based Architecture and Shuffle Sharding]] for staging policy by cell.
 
@@ -595,7 +657,7 @@ Related: [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_07_Anat
 
 - Separate the plan role from the apply role. The plan job needs read access and policy evaluation, and only the post-policy apply job gets write credentials, bound to the evaluated plan hash.
 - Policy repositories need CODEOWNERS with a security reviewer and mandatory tests, since a merged `allow` is equivalent to a permission grant. Sign OPA bundles (OPA supports signed bundles) so a compromised bucket cannot swap policy.
-- Org Policy administration is a high-privilege role (`roles/orgpolicy.policyAdmin`, recalled), so restrict it, require approvals, and keep dry-run as the default first step.
+- Org Policy administration is a high-privilege role (`roles/orgpolicy.policyAdmin`, granted on the organization, Google Cloud docs, as of 2026-11), so restrict it, require approvals, and keep dry-run as the default first step.
 - Plan JSON contains sensitive values in clear text, so encrypt build artifacts with a customer-managed key, set short retention, and never send raw plans to a third-party service without redaction. See [[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter/Chapter_04_Encryption_Key_Hierarchies_and_Envelope_Encryption|Encryption Key Hierarchies and Envelope Encryption]].
 - Config delivery buckets and aggregators concentrate configuration data for the whole organization, so use SSE-KMS, bucket policies that restrict to the Config service principal, and a separate audit account.
 - Network boundaries: run Config aggregation and policy bundle distribution over private endpoints where supported, and keep Org Policy and perimeter definitions aligned with VPC Service Controls.
@@ -606,7 +668,7 @@ Related: [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_07_Anat
 - **Scope recording and rules.** Cut evaluations by restricting each rule to the resource types it judges, using change-triggered rules where sub-hour latency is not required and periodic rules where it is.
 - **Aggregate before you alert.** Use organization aggregators and conformance packs for baselines, and individual rules only for exceptions.
 - **Measure exception cost.** Every waiver is a future audit finding; track count, age, and owner as a FinOps and risk metric.
-- **HCP Terraform and Sentinel licensing** is a platform cost that depends on tier and resource count (UNVERIFIED current pricing), so compare it against the cost of building override, audit, and rollout tooling around OPA in your own CI.
+- **HCP Terraform and Sentinel licensing** is a platform cost that depends on tier and resource count (list prices start at $0.10, $0.47, and $0.99 per resource per month for Essentials, Standard, and Premium, and the Free tier allows one policy set of up to five policies; [HashiCorp pricing](https://www.hashicorp.com/en/pricing) and policy set docs, as of 2026-11), so compare it against the cost of building override, audit, and rollout tooling around OPA in your own CI.
 
 ## Interview Questions and Model Answers
 
@@ -675,7 +737,7 @@ You need to roll out a new organization-wide guardrail across about 2,000 projec
 #### Model Answer
 
 Treat it as a deployment with stages and a rollback, per [[17-Cloud-AI-Engineering/Volume_06_Infrastructure_as_Code_and_Delivery/Chapter_06_Progressive_Delivery_and_Deployment_Pipelines|Progressive Delivery and Deployment Pipelines]].
-Stage 0 is measurement: on GCP, set the constraint in `dryRunSpec` at the organization and read violation logs for a full business cycle; on AWS, which lacks a native SCP dry-run (UNVERIFIED), deploy a Config rule or analyze CloudTrail to quantify who would be blocked.
+Stage 0 is measurement: on GCP, set the constraint in `dryRunSpec` at the organization (it must be custom, managed, or one of the four supported legacy constraints) and read violation logs for a full business cycle; on AWS, whose SCP docs describe no native dry-run (as of 2026-11), deploy a Config rule or analyze CloudTrail to quantify who would be blocked.
 Stage 1 is plan-time `advisory`: add the check to Sentinel at advisory or OPA as a warning so teams see the message in the PR.
 Stage 2 is burn-down: publish the violating inventory per owner with a deadline, and fix it with automation where the remediation is mechanical.
 Stage 3 is enforcement on a canary OU or folder of volunteer teams, with an expiry-bound exception mechanism, then widening in rings sized by blast radius, not by org chart.
@@ -734,8 +796,8 @@ AWS Config spend has tripled quarter over quarter without a matching growth in r
 
 First decompose the bill: CIs recorded, evaluations by rule, conformance pack evaluations, and by account-region and resource type.
 Evaluations scale as CIs times applicable rules, and CIs are driven by churn, so the usual culprits are a high-churn resource type being recorded continuously (network interfaces, security group rules, short-lived compute or container resources), a remediation loop that keeps flipping an attribute and generating CIs, or a new conformance pack that added many rules to every resource of a common type.
-Use the cost model: with 10 applicable rules per CI, evaluations are roughly 80 to 90 percent of the bill in the baseline example, so adding a rule is the expensive act, not adding a resource.
-Fixes in order: stop the remediation fight by making one reconciler authoritative; scope recording by excluding types no rule judges and use daily recording for churny types where the platform supports it (UNVERIFIED); scope each rule to the types it can evaluate; replace broad periodic rules with change-triggered rules for the few types where latency matters; and move invariants that can be enforced preventively (Org Policy, SCP, declarative policy) out of the detective layer, keeping Config as a sampled proof that the preventive layer works.
+Use the cost model: with 10 applicable rules per CI, evaluations are about 74 percent of the bill in the baseline example ($420 of $570 per account-region), so adding a rule is the expensive act, not adding a resource.
+Fixes in order: stop the remediation fight by making one reconciler authoritative; scope recording by excluding types no rule judges and use daily recording for types that average more than about 4 recorded changes per day, the break-even of $0.012 per daily CI against $0.003 per continuous CI (AWS Price List API, as of 2026-11); scope each rule to the types it can evaluate; replace broad periodic rules with change-triggered rules for the few types where latency matters; and move invariants that can be enforced preventively (Org Policy, SCP, declarative policy) out of the detective layer, keeping Config as a sampled proof that the preventive layer works.
 Compliance is preserved because the invariant is now enforced earlier and proven continuously at lower cost.
 Track cost per account-region per month as a FinOps KPI with an anomaly alert.
 
@@ -752,7 +814,7 @@ Explain precisely why an SCP and an Org Policy constraint are not interchangeabl
 An SCP is a filter on IAM authorization.
 It can allow or deny an API action for principals in the organization based on the request context, so it can say "deny `s3:PutBucketPolicy` unless condition X", but it cannot inspect an arbitrary attribute of the resource payload unless the service exposes it as a condition key, and it does not apply to service-linked roles or the management account.
 An Org Policy constraint is evaluated by the owning service against the resource configuration at create or update time, so it can express "this bucket must not have public access" directly, but only where the service implements that constraint, and it is not an identity control.
-The equivalent guarantee on AWS composes S3 Block Public Access enforced at the account or organization level (and declarative policy where available, UNVERIFIED), an SCP denying the actions that disable it, an RCP for resource-side data perimeter conditions, and a Config rule as continuous proof.
+The equivalent guarantee on AWS composes S3 Block Public Access enforced at the account level or through the AWS Organizations S3 policy type, which overrides account-level settings ([AWS Organizations docs](https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_s3.html), as of 2026-11), an SCP denying the actions that disable it, an RCP for resource-side data perimeter conditions, and a Config rule as continuous proof.
 On GCP it composes a boolean constraint for public access prevention, IAM deny policies for the permissions that grant `allUsers`, VPC Service Controls for exfiltration paths, and Asset Inventory or Security Health Analytics for detection.
 In both clouds I add the plan-time check so developers learn at PR time.
 The principal-level point is that guarantees are about bypass paths: for each layer, list who can bypass it (management account principals, service-linked roles, unsupported services, out-of-pipeline tools), and ensure the union of layers leaves no unmonitored path.
@@ -768,9 +830,9 @@ Name one bypass path per layer in your design and the specific signal you would 
 - [Sentinel documentation](https://developer.hashicorp.com/sentinel) - language semantics, imports, enforcement levels, and testing with mocks.
 - [AWS Config Developer Guide](https://docs.aws.amazon.com/config/latest/developerguide/WhatIsConfig.html) - recorder, rule types, evaluation modes, conformance packs, and remediation.
 - [Google Cloud Organization Policy overview](https://cloud.google.com/resource-manager/docs/organization-policy/overview) - hierarchy evaluation, constraints, custom constraints, and dry-run.
-- Cedar: A New Language for Expressive, Fast, Safe, and Analyzable Authorization (OOPSLA 2024) - why a bounded, analyzable policy language changes what you can prove.
-- Semantic-based Automated Reasoning for AWS Access Policies using SMT (Zelkova, FMCAD 2018) - the contrast between evaluating a concrete input and reasoning about all inputs.
+- [Cedar: A New Language for Expressive, Fast, Safe, and Analyzable Authorization](https://doi.org/10.1145/3649835) (OOPSLA 2024) - why a bounded, analyzable policy language changes what you can prove.
+- [Semantic-based Automated Reasoning for AWS Access Policies using SMT](https://www.amazon.science/publications/semantic-based-automated-reasoning-for-aws-access-policies-using-smt) (Zelkova, FMCAD 2018) - the contrast between evaluating a concrete input and reasoning about all inputs.
 - [AWS Builders' Library: Automating safe, hands-off deployments](https://aws.amazon.com/builders-library/automating-safe-hands-off-deployments/) - the deployment discipline that policy rollouts should copy.
 - [Meta engineering: More details about the October 4 outage](https://engineering.fb.com/2021/10/05/networking-traffic/outage-details/) - a guardrail audit tool failing open.
-- Google Cloud incident report for 2025-06-12 (Service Control, search the Google Cloud status history by date) - policy data as a global blast radius.
+- [Google Cloud incident report for 2025-06-12](https://status.cloud.google.com/incidents/ow5i3PPK96RduMcb1SsW) (Service Control) - policy data as a global blast radius.
 - [[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter/Chapter_06_Constructing_an_Impenetrable_Data_Perimeter|Constructing an Impenetrable Data Perimeter]] - how SCP, RCP, endpoint, and VPC-SC controls compose with the layers in this chapter.

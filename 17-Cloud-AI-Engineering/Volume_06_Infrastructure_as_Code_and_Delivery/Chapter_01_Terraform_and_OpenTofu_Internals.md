@@ -2,7 +2,7 @@
 type: concept
 track: [cloud-ai, ai-eng, sde, distinguished]
 level:
-status: draft
+status: solid
 last_reviewed:
 sources: 
   - "https://developer.hashicorp.com/terraform/internals"
@@ -12,6 +12,39 @@ sources:
   - "https://developer.hashicorp.com/terraform/plugin/terraform-plugin-protocol"
   - "https://aws.amazon.com/builders-library/static-stability-using-availability-zones/"
   - "https://sre.google/sre-book/table-of-contents/"
+  - "https://developer.hashicorp.com/terraform/language/v1.10.x/backend/s3"
+  - "https://developer.hashicorp.com/terraform/cli/commands/plan"
+  - "https://developer.hashicorp.com/terraform/plugin/framework/provider-servers"
+  - "https://raw.githubusercontent.com/hashicorp/terraform/main/internal/command/meta.go"
+  - "https://raw.githubusercontent.com/hashicorp/terraform/main/internal/terraform/graph_builder_plan.go"
+  - "https://raw.githubusercontent.com/hashicorp/terraform/main/internal/backend/local/backend_local.go"
+  - "https://raw.githubusercontent.com/hashicorp/terraform/main/internal/backend/remote-state/s3/client.go"
+  - "https://raw.githubusercontent.com/hashicorp/terraform/main/internal/backend/remote-state/gcs/client.go"
+  - "https://raw.githubusercontent.com/hashicorp/terraform/main/docs/plugin-protocol/tfplugin6.proto"
+  - "https://raw.githubusercontent.com/hashicorp/terraform/v1.17/CHANGELOG.md"
+  - "https://raw.githubusercontent.com/hashicorp/terraform/v1.15/CHANGELOG.md"
+  - "https://raw.githubusercontent.com/hashicorp/terraform/v1.11/CHANGELOG.md"
+  - "https://raw.githubusercontent.com/hashicorp/terraform/v1.10/CHANGELOG.md"
+  - "https://raw.githubusercontent.com/opentofu/opentofu/v1.13/CHANGELOG.md"
+  - "https://raw.githubusercontent.com/opentofu/opentofu/v1.12/CHANGELOG.md"
+  - "https://raw.githubusercontent.com/opentofu/opentofu/v1.11/CHANGELOG.md"
+  - "https://github.com/opentofu/opentofu/security/advisories/GHSA-q7j3-v8qv-22vq"
+  - "https://opentofu.org/docs/language/state/encryption/"
+  - "https://www.cncf.io/projects/opentofu/"
+  - "https://raw.githubusercontent.com/hashicorp/terraform-provider-aws/main/website/docs/index.html.markdown"
+  - "https://docs.aws.amazon.com/AmazonS3/latest/userguide/conditional-writes.html"
+  - "https://docs.aws.amazon.com/AmazonS3/latest/API/API_PutObject.html"
+  - "https://aws.amazon.com/about-aws/whats-new/2024/08/amazon-s3-conditional-writes/"
+  - "https://aws.amazon.com/about-aws/whats-new/2024/11/amazon-s3-functionality-conditional-writes/"
+  - "https://aws.amazon.com/blogs/aws/amazon-s3-update-strong-read-after-write-consistency/"
+  - "https://b0.p.awsstatic.com/pricing/2.0/meteredUnitMaps/s3/USD/current/s3.json"
+  - "https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/throttling-api-requests.html"
+  - "https://aws.amazon.com/message/41926/"
+  - "https://status.cloud.google.com/incidents/ow5i3PPK96RduMcb1SsW"
+  - "https://docs.cloud.google.com/infrastructure-manager/docs/release-notes"
+  - "https://newsroom.ibm.com/2025-02-27-ibm-completes-acquisition-of-hashicorp,-creates-comprehensive,-end-to-end-hybrid-cloud-platform"
+  - "https://www.hashicorp.com/en/blog/hashicorp-adopts-business-source-license"
+  - "https://www.hashicorp.com/en/pricing"
 ---
 
 # Terraform and OpenTofu Internals
@@ -36,7 +69,7 @@ flowchart LR
   W --> PL["Plan artifact: changes, prior state, config snapshot"]
   PL --> AG["Apply graph rebuilt from plan"]
   AG --> W2["Walker again: ApplyResourceChange"]
-  W2 -->|"snapshots every few seconds"| S
+  W2 -->|"snapshots about every 20 s by default"| S
   L["Lock object, no TTL"] -. guards .-> S
 ```
 
@@ -54,8 +87,10 @@ See [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_04
 
 The CLI (core) never talks to AWS or Google directly.
 Each provider is a separate executable launched through HashiCorp's go-plugin framework and spoken to over gRPC on a local socket.
-Providers speak plugin protocol 5 or 6 (6 adds nested attributes and is used by the Plugin Framework), and the RPC surface is small: `GetProviderSchema`, `ValidateResourceConfig`, `ConfigureProvider`, `ReadResource`, `PlanResourceChange`, `ApplyResourceChange`, `ImportResourceState`, `ReadDataSource`, and `UpgradeResourceState`.
-As far as I know each configured provider instance, including each `alias`, is its own plugin process, which is why configurations that fan out across 20 regions hold 20 copies of a large provider in memory.
+Providers speak plugin protocol 5 or 6: the Plugin Framework can serve either, and only protocol 6's schema carries nested attributes (`nested_type` is in `tfplugin6.proto` and absent from `tfplugin5.proto`, Terraform source and framework docs, as of 2026-11).
+The core RPC surface, in protocol 6 names, is small: `GetProviderSchema`, `ValidateResourceConfig`, `ConfigureProvider`, `ReadResource`, `PlanResourceChange`, `ApplyResourceChange`, `ImportResourceState`, `ReadDataSource`, and `UpgradeResourceState`.
+Protocol 5 uses older names for some of these (`GetSchema`, `ValidateResourceTypeConfig`, `Configure`), and both protocols have since grown RPCs for ephemeral resources and provider functions (`tfplugin5.proto` and `tfplugin6.proto`, as of 2026-11).
+Each configured provider instance, including each `alias`, is its own plugin process, because `InitProvider` calls `NewProviderInstance` once per provider address (`internal/terraform/eval_context_builtin.go`, as of 2026-11), which is why configurations that fan out across 20 regions hold 20 copies of a large provider in memory.
 Providers are cached and verified against hashes in `.terraform.lock.hcl`, which pins version and checksums per platform.
 
 ### Graph construction: the transformer pipeline
@@ -69,9 +104,9 @@ An abridged plan-graph pipeline looks like this (names from `internal/terraform/
 3. State-based transformers add nodes for resource instances present in state but absent from config (orphans).
 4. `AttachResourceConfigTransformer` and `AttachStateTransformer` bind each node to its config and its state.
 5. `ProviderConfigTransformer` adds provider-configuration nodes, and every resource gets an edge to its provider node.
-6. `ReferenceTransformer` scans every expression for traversals (`aws_vpc.main.id`, `var.x`, `module.m.out`) and adds an edge from the referrer to the referent.
-7. Module expansion nodes, then a root node, then pruning of unused nodes.
-8. `TransitiveReductionTransformer` removes edges implied by longer paths, which is what `terraform graph` prints.
+6. `ModuleExpansionTransformer` adds module expansion nodes.
+7. `ReferenceTransformer` scans every expression for traversals (`aws_vpc.main.id`, `var.x`, `module.m.out`) and adds an edge from the referrer to the referent.
+8. `pruneUnusedNodesTransformer` drops unused nodes, `CloseRootModuleTransformer` adds the root node, and `TransitiveReductionTransformer` removes edges implied by longer paths, which is what `terraform graph -type=plan` prints (plain `terraform graph` only summarizes resource relationships).
 
 Three consequences are rarely spelled out in getting-started material.
 
@@ -161,7 +196,7 @@ This is optimistic concurrency, but it is enforced by the client, not by the sto
 ### State persistence during apply
 
 During apply, core does not wait until the end to write state.
-A state hook snapshots the in-memory state and persists it to the backend periodically while the walk proceeds, with a default interval I recall as 20 seconds (UNVERIFIED), plus a final write.
+A state hook snapshots the in-memory state and persists it to the backend periodically while the walk proceeds, with a default interval of 20 seconds that `TF_STATE_PERSIST_INTERVAL` can only raise (`internal/command/meta.go`, as of 2026-11), plus a final write.
 A crash, OOM kill, or spot-instance reclaim therefore loses at most the last interval of completed vertices rather than the whole run.
 It also means every persist writes the complete state object, so write volume per apply is roughly (apply duration / interval) times state size, which matters for versioned buckets (see Worked Example).
 
@@ -169,13 +204,13 @@ It also means every persist writes the complete state object, so write volume pe
 
 The lock is a `Locker` interface on the backend: `Lock(info)` returns an ID, `Unlock(id)` releases it.
 Lock info is a small JSON document (ID, operation, who, version, creation time, path).
-Lock acquisition takes place in `init`-time backend setup for every state-touching command, including plain `plan`, unless `-lock=false` is set; `-lock-timeout` makes the client retry until the timeout, and the default timeout is zero.
+Lock acquisition takes place when the operation starts (`localRun` in `internal/backend/local/backend_local.go`, as of 2026-11), not at `init`, for every state-touching command, including plain `plan`, unless `-lock=false` is set; `-lock-timeout` makes the client retry until the timeout, and the default timeout is zero.
 
 Backends implement the lock with whatever primitive the store offers:
 
-- S3 with `use_lockfile = true`: a conditional `PutObject` with `If-None-Match: *` creates `<key>.tflock`; only one concurrent writer can succeed, and others get HTTP 412 (or 409 on a racing conditional write).
+- S3 with `use_lockfile = true`: a conditional `PutObject` with `If-None-Match: *` creates `<key>.tflock`; only one concurrent writer can succeed, and others get HTTP 412, or 409 `ConditionalRequestConflict` if a conflicting operation occurs during the upload (S3 PutObject API docs, as of 2026-11).
   Unlock deletes the object.
-  It relies on S3 conditional writes (introduced August 2024) and S3's strong consistency.
+  It relies on S3 conditional writes (announced 2024-08-20, AWS What's New) and S3's strong consistency.
 - S3 with DynamoDB: a conditional `PutItem` with `attribute_not_exists(LockID)`.
   The DynamoDB path is deprecated in the Terraform docs and slated for removal in a future minor version.
   When both are configured, locks are acquired from both.
@@ -195,16 +230,17 @@ Two operational consequences: the plan file contains every resolved value includ
 
 ### Terraform versus OpenTofu: where the code diverged
 
-OpenTofu forked from the last MPL-licensed Terraform (1.5.x) after HashiCorp moved Terraform to the Business Source License in August 2023, and is governed under the Linux Foundation and now hosted at the CNCF (UNVERIFIED this session).
+OpenTofu forked from the last MPL-licensed Terraform line (1.5.x: `v1.5.7` carries MPL 2.0 and `v1.6.0` carries BUSL, per the repository `LICENSE` files) after HashiCorp announced the move to the Business Source License on 2023-08-10, and it sits under Linux Foundation stewardship (opentofu.org, as of 2026-11) and was accepted as a CNCF Sandbox project on 2025-04-23 (CNCF, as of 2026-11).
 The core graph, state, and provider protocol are shared lineage, and providers are largely interchangeable, but features have diverged.
 
-- OpenTofu 1.10 added OCI registry support for providers and modules, native S3 locking, and a global provider cache lock (OpenTofu 1.10 release notes via Spacelift, as of 2026-10).
-- OpenTofu 1.11 added ephemeral resources and values, which are guaranteed not to be persisted in state or plan files, and `lifecycle.enabled` as a conditional-creation switch (OpenTofu 1.11 coverage and changelog, as of 2026-10).
-- OpenTofu 1.7 added client-side state and plan encryption, 1.8 added early variable evaluation (allowing variables in backend and module source), and 1.9 added `for_each` on providers and the `-exclude` flag (attribution recalled from release notes, UNVERIFIED).
-- Terraform 1.15.0 shipped 2026-04-29 and includes a `deprecated` attribute on `variable` and `output` blocks (HashiCorp Discuss release notes, as of 2026-10).
-  Terraform has also added ephemeral resources and write-only attributes in the 1.10 and 1.11 timeframe (recalled, UNVERIFIED).
-- Support windows matter: the OpenTofu 1.11 series was supported until 2026-08-01 (OpenTofu CHANGELOG, as of 2026-10), so on 2026-10-21 you should be on a newer OpenTofu line, and you should pin and verify against the current release page.
-- Supply-chain note: OpenTofu 1.11.10 shipped a security advisory for a crafted-URL issue that could read an arbitrary file during git operations used for module fetches (OpenTofu 1.11.10 release, as of 2026-10).
+- OpenTofu 1.10 added OCI registry support for providers and modules, native S3 locking, and a global provider cache lock (OpenTofu 1.10 "What's New" docs, as of 2026-11).
+- OpenTofu 1.11 added ephemeral resources and values, which are guaranteed not to be persisted in state or plan files, and `lifecycle.enabled` as a conditional-creation switch (OpenTofu 1.11 "What's New" docs and changelog, as of 2026-11).
+- OpenTofu 1.7 added client-side state encryption (plan files are covered by the same `encryption` block, per the current encryption docs), 1.8 added early variable evaluation (allowing variables in backend and module source), and 1.9 added `for_each` on providers and the `-exclude` flag (OpenTofu "What's New" docs for each version, as of 2026-11).
+- Terraform 1.15.0 shipped 2026-04-29 and includes a `deprecated` attribute on `variable` and `output` blocks (Terraform CHANGELOG, as of 2026-11).
+  Terraform 1.10 added ephemeral resources and values, and 1.11 added write-only attributes (Terraform CHANGELOG, as of 2026-11).
+  Terraform 1.17.0 shipped 2026-10-21 and adds a `-minimal-refresh` planning option that refreshes only resources with proposed changes (Terraform CHANGELOG, as of 2026-11).
+- Support windows matter: the OpenTofu 1.11 series was supported until 2026-08-01, 1.12 until 2027-02-01, and 1.13 until 2027-08-01 (OpenTofu CHANGELOG per branch, as of 2026-11), so today you should be on 1.12 or 1.13, and you should pin and verify against the current release page.
+- Supply-chain note: OpenTofu 1.11.10 (2026-06-18) shipped a security advisory, GHSA-q7j3-v8qv-22vq, for a crafted-URL issue that could read an arbitrary file during certain git operations (OpenTofu 1.11.10 release, as of 2026-11).
   Module source fetching is code execution adjacent, so treat module sources and `tofu init` in CI as part of your trust boundary.
 
 Foundational references for the mechanisms above: Mokhov et al., "Build Systems a la Carte" (ICFP 2018), for the dependency-model vocabulary; Tarjan (1972) for cycle detection; Graham (1966) for the scheduling bound; Gray and Cheriton (SOSP 1989) for leases.
@@ -214,24 +250,25 @@ HashiCorp has not published an academic paper on Terraform; the authoritative so
 
 | Quantity | Value | Source and date | Status |
 |---|---|---|---|
-| Current Terraform minor line | 1.15.0 released 2026-04-29, followed by 1.15.x patches | HashiCorp Discuss release notes, as of 2026-10 | Verified |
-| OpenTofu 1.11 support end | 2026-08-01 | OpenTofu CHANGELOG, as of 2026-10 | Verified |
-| S3 backend DynamoDB locking | Deprecated, to be removed in a future minor version | Terraform S3 backend docs, as of 2026-10 | Verified |
-| `use_lockfile` maturity | Experimental in Terraform 1.10, GA in 1.11 | Terraform release notes, as of 2026-10 | UNVERIFIED |
-| OpenTofu native S3 locking | Shipped in 1.10 | OpenTofu 1.10 coverage, as of 2026-10 | Verified |
-| Default `-parallelism` | 10 concurrent vertex evaluations | Terraform CLI docs, as of 2026-10 | UNVERIFIED this session |
-| Default `-lock-timeout` | 0s (fail immediately on contention) | Terraform CLI docs, as of 2026-10 | UNVERIFIED this session |
-| State persist interval during apply | 20 s default | Terraform source `internal/backend/local`, as of 2026-10 | UNVERIFIED |
-| State format version | 4 | Terraform internals docs, as of 2026-10 | UNVERIFIED this session |
-| S3 conditional writes | `If-None-Match` (Aug 2024), `If-Match` (Nov 2024) | AWS What's New, as of 2026-10 | UNVERIFIED this session |
-| S3 read-after-write consistency | Strong, for all PUT, DELETE, LIST (since Dec 2020) | AWS S3 docs, as of 2026-10 | UNVERIFIED this session |
-| S3 Standard storage price | about 0.023 USD per GB-month, us-east-1, first 50 TB | AWS S3 pricing, as of 2026-10 | UNVERIFIED |
-| S3 PUT price | about 0.005 USD per 1,000 requests, us-east-1 Standard | AWS S3 pricing, as of 2026-10 | UNVERIFIED |
-| Route 53 API rate limit | about 5 requests per second per account | AWS Route 53 docs, as of 2026-10 | UNVERIFIED |
-| AWS provider default `max_retries` | 25 with `standard` retry mode | Terraform AWS provider docs, as of 2026-10 | UNVERIFIED |
+| Current Terraform minor line | 1.17.0 released 2026-10-21, latest patch 1.17.1 on 2026-10-28 (1.15.0 was 2026-04-29, 1.16.0 was 2026-08-26) | Terraform CHANGELOG and GitHub releases, as of 2026-11 | Verified |
+| Current OpenTofu minor line | 1.13.0 released 2026-09-30, followed by 1.13.x patches | OpenTofu GitHub releases, as of 2026-11 | Verified |
+| OpenTofu 1.11 support end | 2026-08-01 | OpenTofu CHANGELOG, as of 2026-11 | Verified |
+| S3 backend DynamoDB locking | Deprecated, to be removed in a future minor version | Terraform S3 backend docs, as of 2026-11 | Verified |
+| `use_lockfile` maturity | Experimental in Terraform 1.10, GA in 1.11 | Terraform 1.10 S3 backend docs and 1.11 CHANGELOG, as of 2026-11 | Verified |
+| OpenTofu native S3 locking | Shipped in 1.10 | OpenTofu 1.10 docs, as of 2026-11 | Verified |
+| Default `-parallelism` | 10 concurrent vertex evaluations | Terraform CLI docs, as of 2026-11 | Verified |
+| Default `-lock-timeout` | 0s (fail immediately on contention) | Terraform source `internal/command/arguments/extended.go` and `plan` help text, as of 2026-11 | Verified |
+| State persist interval during apply | 20 s default, `TF_STATE_PERSIST_INTERVAL` can only raise it | Terraform source `internal/command/meta.go`, as of 2026-11 | Verified |
+| State format version | 4 | Terraform source `internal/states/statefile/version4.go`, as of 2026-11 | Verified |
+| S3 conditional writes | `If-None-Match` (2024-08-20), `If-Match` (2024-11-25) | AWS What's New, as of 2026-11 | Verified |
+| S3 read-after-write consistency | Strong, for all PUT, DELETE, LIST (since 2020-12-01) | AWS S3 docs and AWS News Blog, as of 2026-11 | Verified |
+| S3 Standard storage price | 0.023 USD per GB-month, us-east-1, first 50 TB | AWS S3 price list feed, as of 2026-11 | Verified |
+| S3 PUT price | 0.005 USD per 1,000 requests, us-east-1 Standard | AWS S3 price list feed, as of 2026-11 | Verified |
+| Route 53 API rate limit | 10 requests per second sustained, burst 50, per account, with lower limits on some actions (`CreateHostedZone` refills at 2 per second) and a separate change limit of 100 per second, burst 1,500 | AWS Route 53 throttling docs, as of 2026-11 | Verified |
+| AWS provider default `max_retries` | 25, and `retry_mode` accepts `standard` or `adaptive` | Terraform AWS provider docs, as of 2026-11 | Verified |
 | Graham greedy-schedule bound | T <= W/p + (1 - 1/p) * CP | Graham 1966 | Mathematical |
 
-Treat every UNVERIFIED row as a prompt to run `terraform -help plan`, read the pricing page, or read the provider docs before you put it in a design review.
+Treat every row as a prompt to run `terraform -help plan`, read the pricing page, or read the provider docs before you put it in a design review, because these values drift.
 
 ## AWS vs GCP Mechanism Parity
 
@@ -243,7 +280,7 @@ Treat every UNVERIFIED row as a prompt to run `terraform -help plan`, read the p
 | State encryption at rest | SSE-S3 or SSE-KMS (bucket key reduces KMS calls) | Google-managed keys or CMEK | State holds secrets; key policy is a data-access control. See [[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter/Chapter_04_Encryption_Key_Hierarchies_and_Envelope_Encryption\|Encryption Key Hierarchies]]. |
 | Network boundary for state | Gateway VPC endpoint for S3 plus bucket policy on `aws:SourceVpce` | VPC Service Controls perimeter on `storage.googleapis.com` | Stops a stolen CI credential from reading state off-network. |
 | Provider construction | `hashicorp/aws`: hand-written resources, large surface, Plugin SDK plus Framework | `hashicorp/google` and `google-beta`: largely generated from the Magic Modules codebase | Generated providers have uniform behavior; hand-written ones vary by resource in read fan-out and retry. |
-| Service-side competitor | CloudFormation: stack state held by the service, change sets, service-side rollback and drift detection | Infrastructure Manager (managed Terraform execution; GA status UNVERIFIED) | Terraform has no rollback and keeps state client-side; CloudFormation trades that for slower coverage and per-stack limits. |
+| Service-side competitor | CloudFormation: stack state held by the service, change sets, service-side rollback and drift detection | Infrastructure Manager (managed Terraform execution; GA since 2023-08-21, Google Cloud release notes, as of 2026-11) | Terraform has no rollback and keeps state client-side; CloudFormation trades that for slower coverage and per-stack limits. |
 | Credential model for CI | OIDC to `sts:AssumeRoleWithWebIdentity` | Workload Identity Federation to service account impersonation | Both remove static keys. See [[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter/Chapter_02_Workload_Identity_Federation\|Workload Identity Federation]]. |
 | API consistency quirks | IAM is global and eventually consistent (role then instance profile then launch), Route 53 changes are asynchronous | API enablement via `serviceusage` propagates with lag, IAM policy changes are eventually consistent | Provider retry wrappers paper over both; unlisted ones become flaky first-apply failures. |
 | Throttling surface | Per-service per-account per-region token buckets; provider `max_retries` and `retry_mode` | Per-project per-API quotas; provider `request_timeout` and batching for some services | Real ceiling on `-parallelism`; see Worked Example sizing. |
@@ -373,7 +410,7 @@ Raising parallelism beyond 20 buys nothing here, because the 40-deep dependency 
 ### Part B: lock contention and write amplification (billable, pennies)
 
 Cost estimate: one S3 bucket holding under 1 MB of state and a lock object, a few hundred requests in total.
-At about 0.005 USD per 1,000 PUTs and 0.023 USD per GB-month (UNVERIFIED prices, as of 2026-10) the total is well under 0.01 USD, provided you run the teardown the same day.
+At 0.005 USD per 1,000 PUTs and 0.023 USD per GB-month (AWS S3 price list, us-east-1, as of 2026-11) the total is well under 0.01 USD, provided you run the teardown the same day.
 
 Budget alarm (create before provisioning):
 
@@ -439,7 +476,7 @@ aws s3 cp "s3://$BUCKET/lab/terraform.tfstate.tflock" -    # lock info: ID, Oper
 # After the apply:
 aws s3 cp "s3://$BUCKET/lab/terraform.tfstate" - | jq '{version, serial, lineage, terraform_version}'
 aws s3api list-object-versions --bucket "$BUCKET" --prefix lab/terraform.tfstate \
-  --query 'length(Versions)'             # one version per persisted snapshot
+  --query "length(Versions[?Key=='lab/terraform.tfstate'])"   # one version per persisted snapshot; the filter excludes .tflock versions
 ```
 
 Prove that mutual exclusion comes from the store, not from Terraform, by racing eight writers on the same lock key:
@@ -504,7 +541,7 @@ Assumptions (state them in the design doc, then measure): 4,000 resource instanc
    The binding constraint is the quota, not the semaphore, so raising `-parallelism` to 30 helps only to the extent that load is spread across multiple APIs with separate quotas.
 4. Apply persists: a 20-minute apply with a 20-second persist interval writes up to 60 snapshots, each 16 MB, which is about 960 MB of state PUTs per apply.
 5. Version growth: at 150 applies per day, that is about 144 GB per day of new object versions.
-   With 7-day noncurrent expiry the steady state is about 1 TB, which is about 23 USD per month at 0.023 USD per GB-month (UNVERIFIED price, as of 2026-10).
+   With 7-day noncurrent expiry the steady state is about 1 TB, which is about 23 USD per month at 0.023 USD per GB-month (AWS S3 price list, us-east-1, as of 2026-11).
    This is small money, but without the lifecycle rule it grows without bound, and a 16 MB state read on every plan is a latency tax of its own.
 6. Lock queueing: assume 40 state-changing runs per day against this one state, each holding the lock for 25 minutes.
    Offered load is 1,000 minutes of lock hold per day, which on an 8-hour working window of 480 minutes is utilization above 1, so the queue is unstable.
@@ -556,8 +593,8 @@ Real protection comes from cloud-side deletion protection (RDS deletion protecti
 
 ### API throttling and eventual consistency
 
-Parallelism that is safe for compute APIs can exceed Route 53's very low per-account request limit (UNVERIFIED) or a GCP per-API quota.
-Providers retry with backoff (the AWS provider defaults to many retries, UNVERIFIED), but retries hold the vertex slot, so throttling converts directly into longer plans and head-of-line blocking.
+Parallelism that is safe for compute APIs can exceed Route 53's low per-account request limit (10 requests per second sustained, burst 50, AWS Route 53 docs, as of 2026-11) or a GCP per-API quota.
+Providers retry with backoff (the AWS provider defaults to `max_retries = 25`, provider docs, as of 2026-11), but retries hold the vertex slot, so throttling converts directly into longer plans and head-of-line blocking.
 IAM eventual consistency produces first-apply failures that pass on rerun; the provider's built-in retries cover well-known cases, and anything else shows up as "works on second apply" noise that erodes trust in the pipeline.
 
 ### Drift and stale refresh
@@ -573,14 +610,14 @@ Commit `.terraform.lock.hcl`, generate hashes for every platform your CI and lap
 
 ### Blast radius of a single command
 
-The 2017 S3 us-east-1 event, per AWS's post-event summary, began with an authorized debugging command in which a mistyped input removed more capacity than intended, and AWS's remediation included making the tool remove capacity more slowly and adding a minimum-capacity safeguard (AWS PIR, 2017-03, [aws.amazon.com/message/41926](https://aws.amazon.com/message/41926/); content recalled, UNVERIFIED this session).
+The S3 us-east-1 event of 2017-02-28, per AWS's post-event summary, began with an authorized debugging command in which a mistyped input removed more capacity than intended, and AWS's remediation included making the tool remove capacity more slowly and adding a minimum-capacity safeguard (AWS post-event summary, [aws.amazon.com/message/41926](https://aws.amazon.com/message/41926/), as of 2026-11).
 `terraform destroy` against a monolithic state is the same shape of hazard: one command, one lock, a very large set of resources.
-Related: Google's June 2025 Service Control incident, in which a policy metadata change replicated globally in seconds without a gradual rollout, is the cloud-side analogue of a single global apply (Google Cloud incident report, June 2025, UNVERIFIED this session).
+Related: Google's 2025-06-12 Service Control incident, in which a policy change with blank fields replicated globally within seconds and crashed a code path with no feature flag and no error handling, is the cloud-side analogue of a single global apply ([Google Cloud incident report](https://status.cloud.google.com/incidents/ow5i3PPK96RduMcb1SsW), as of 2026-11).
 The IaC response is the same as the cloud-side one: small states, wave-based rollout across accounts or projects, policy checks on the plan, and apply roles that cannot delete protected resource types.
 
 ### Supply chain in `init`
 
-`terraform init` and `tofu init` execute network fetches of providers and modules, and module source fetching has had a path-traversal-class advisory (OpenTofu 1.11.10, as of 2026-10).
+`terraform init` and `tofu init` execute network fetches of providers and modules, and git operations in that path have had an arbitrary-file-read advisory (GHSA-q7j3-v8qv-22vq, fixed in OpenTofu 1.11.10, as of 2026-11).
 Pin module versions, mirror providers to an internal registry or OCI repository, and run `init` in an egress-restricted CI environment.
 
 ## Security and Cost Angles
@@ -591,10 +628,10 @@ State stores every attribute the provider returns, including generated passwords
 Sensitive marking only redacts CLI output; it does not remove values from state or plan files.
 Controls, in order of strength:
 
-1. Do not let secrets enter state: ephemeral resources and write-only attributes (Terraform 1.10 and 1.11 timeframe, UNVERIFIED; OpenTofu 1.11 ephemeral values, as of 2026-10) keep values out of persisted artifacts, at the cost of provider support being uneven.
+1. Do not let secrets enter state: ephemeral resources and write-only attributes (Terraform 1.10 and 1.11 respectively, Terraform CHANGELOG; OpenTofu 1.11 for both, as of 2026-11) keep values out of persisted artifacts, at the cost of provider support being uneven.
 2. Encrypt at rest with a key you control: SSE-KMS on S3 or CMEK on GCS.
    With SSE-KMS each object has its own data key wrapped by the KMS key (envelope encryption), and an S3 Bucket Key cuts KMS request volume for high-frequency persists.
-3. Client-side encryption with OpenTofu's state and plan encryption, using key providers such as AWS KMS or Google Cloud KMS (UNVERIFIED provider list), so the bucket never holds plaintext.
+3. Client-side encryption with OpenTofu's state and plan encryption, using key providers such as AWS KMS or Google Cloud KMS (OpenTofu encryption docs, as of 2026-11), so the bucket never holds plaintext.
 4. Restrict read access to state to a small set of roles, because `state pull` is a secret dump.
 
 ### IAM scoping
@@ -602,7 +639,7 @@ Controls, in order of strength:
 Split roles by phase.
 The plan role needs read access across managed resource types plus `GetObject` and lock-object write on the state prefix.
 The apply role needs mutation rights but should be assumed only from a protected branch pipeline, with explicit denies for destructive actions on protected resource types.
-For S3 state: `s3:GetObject`, `s3:PutObject`, and `s3:DeleteObject` on `.../terraform.tfstate*` (the `.tflock` object needs `PutObject` and `DeleteObject`), and `s3:ListBucket` on the bucket scoped by prefix condition.
+For S3 state: `s3:GetObject` and `s3:PutObject` on the state key, `s3:GetObject`, `s3:PutObject`, and `s3:DeleteObject` on the `.tflock` key (`s3:DeleteObject` is not required on the state file, Terraform S3 backend docs, as of 2026-11), and `s3:ListBucket` on the bucket scoped by prefix condition.
 Use one bucket policy statement requiring TLS and, for production, the gateway endpoint ID (`aws:SourceVpce`).
 On GCP, grant `roles/storage.objectUser` or a custom role on the state bucket only, wrap the project in a VPC Service Controls perimeter, and authenticate CI by Workload Identity Federation rather than keys.
 See [[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter/Chapter_06_Constructing_an_Impenetrable_Data_Perimeter|Constructing an Impenetrable Data Perimeter]].
@@ -610,9 +647,9 @@ See [[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter
 ### Cost levers
 
 - State bucket: noncurrent-version expiry (Worked Example step 5) and avoiding monolithic states, which multiply both snapshot size and persist volume.
-- CI compute: refresh dominates plan time, so PR plans with `-refresh=false` plus scheduled full-refresh drift runs cut runner minutes by an order of magnitude on large estates.
+- CI compute: refresh dominates plan time, so PR plans with `-refresh=false` plus scheduled full-refresh drift runs cut runner minutes in proportion to the refresh share of plan time on large estates (measure it; the Worked Example shows how to size it).
 - API quota: lowering `-parallelism` for quota-bound services is cheaper than raising quotas, and spreading resources across accounts spreads per-account quotas.
-- Licensing and platform: choose Terraform or OpenTofu on governance, feature, and licence grounds, then price managed platforms by resources under management (UNVERIFIED, pricing changes often).
+- Licensing and platform: choose Terraform or OpenTofu on governance, feature, and licence grounds, then price managed platforms by resources under management (HCP Terraform lists per-resource monthly tiers, HashiCorp pricing, as of 2026-11, and pricing changes often).
 - Tagging: `default_tags` in the AWS provider and `default_labels` in the Google provider feed cost allocation. See [[17-Cloud-AI-Engineering/Volume_09_FinOps_and_Cloud_Economics/Chapter_01_Cloud_Billing_Models_and_Unit_Cost_Allocation|Cloud Billing Models and Unit Cost Allocation]].
 
 Policy-as-code on the plan JSON (`terraform show -json planfile`) and drift workflows are developed in [[17-Cloud-AI-Engineering/Volume_06_Infrastructure_as_Code_and_Delivery/Chapter_04_Policy_as_Code_OPA_Sentinel_and_Guardrails|Policy as Code]] and [[17-Cloud-AI-Engineering/Volume_06_Infrastructure_as_Code_and_Delivery/Chapter_05_State_Management_Drift_Detection_and_Compliance|State Management, Drift Detection, and Compliance]].
@@ -693,7 +730,7 @@ Fix by keying on values known at plan time (static names or variable-derived key
 
 #### Follow-up Interviewer Question
 
-OpenTofu 1.9 added `for_each` on providers and early variable evaluation. What problem does early evaluation solve, and what new class of unknown-value errors does it introduce?
+OpenTofu 1.8 added early variable evaluation and 1.9 added `for_each` on providers. What problem does early evaluation solve, and what new class of unknown-value errors does it introduce?
 
 ### Question 5 (L6 - Staff)
 
@@ -744,9 +781,9 @@ Your CTO asks: "Should we standardize on Terraform or OpenTofu?" Give a recommen
 #### Model Answer
 
 Treat it as a decision under reversibility, not a licence debate.
-Facts: both share graph, state, and provider-protocol lineage up to the fork, so migration is mostly a binary swap plus lock-file and CI changes, provided you avoid forked-only features; Terraform has been under the Business Source License since August 2023 and HashiCorp is owned by IBM (UNVERIFIED this session), while OpenTofu is MPL-licensed and community-governed (UNVERIFIED this session).
+Facts: both share graph, state, and provider-protocol lineage up to the fork, so migration is mostly a binary swap plus lock-file and CI changes, provided you avoid forked-only features; Terraform moved to the Business Source License in the release line after the August 2023 announcement and HashiCorp has been owned by IBM since 2025-02-27 (IBM newsroom), while OpenTofu is MPL-licensed (repository `LICENSE`, as of 2026-11) and sits under Linux Foundation stewardship as a CNCF Sandbox project (CNCF, as of 2026-11).
 Feature divergence is real and growing: OpenTofu has client-side state and plan encryption, provider `for_each`, OCI distribution, and early evaluation; Terraform has the features HashiCorp ships on its own roadmap and a tighter relationship with its managed platform.
-Release cadence also differs and support windows are short on the OpenTofu side (the 1.11 line ended support on 2026-08-01), so either choice requires a pinned-version upgrade program.
+Release cadence also differs and support windows are short on the OpenTofu side (the 1.11 line ended support on 2026-08-01, and 1.13.0, released 2026-09-30, is supported until 2027-08-01), so either choice requires a pinned-version upgrade program.
 My recommendation process: inventory which divergent features you actually use, which providers you depend on (all are consumed through the same registry protocol, but registries differ), and what your managed-platform dependencies are (policy engines, run tasks, private registries).
 Default to staying portable: keep the dialect to the intersection, run CI plan on both binaries for a shared core of modules (`terraform test` and `tofu test` against the same fixtures), and make the choice per estate with an exit plan documented.
 If the state-encryption requirement is a hard compliance control (customer-managed keys on state itself), OpenTofu is the lower-effort path; if you depend on a managed platform's policy and run-task ecosystem, Terraform is.

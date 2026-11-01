@@ -2,7 +2,7 @@
 type: concept
 track: [cloud-ai, ai-eng, sde, distinguished]
 level:
-status: draft
+status: solid
 last_reviewed:
 sources: 
   - "https://developer.hashicorp.com/terraform/language/modules/develop/refactoring"
@@ -17,6 +17,34 @@ sources:
   - "https://opentofu.org/blog/opentofu-1-11-0/"
   - "https://github.com/opentofu/opentofu/blob/v1.11.11/CHANGELOG.md"
   - "https://aws.amazon.com/message/41926/"
+  - "https://developer.hashicorp.com/terraform/language/files/dependency-lock"
+  - "https://raw.githubusercontent.com/hashicorp/terraform/v1.12/CHANGELOG.md"
+  - "https://raw.githubusercontent.com/hashicorp/terraform/v1.15/CHANGELOG.md"
+  - "https://github.com/hashicorp/terraform/releases/tag/v1.17.1"
+  - "https://developer.hashicorp.com/terraform/language/block/variable"
+  - "https://developer.hashicorp.com/terraform/language/expressions/custom-conditions"
+  - "https://opentofu.org/docs/language/expressions/custom-conditions/"
+  - "https://raw.githubusercontent.com/opentofu/opentofu/v1.9/CHANGELOG.md"
+  - "https://developer.hashicorp.com/terraform/internals/module-registry-protocol"
+  - "https://developer.hashicorp.com/terraform/internals/json-format"
+  - "https://developer.hashicorp.com/terraform/cli/commands/plan"
+  - "https://developer.hashicorp.com/terraform/registry/modules/publish"
+  - "https://developer.hashicorp.com/terraform/language/block/output"
+  - "https://raw.githubusercontent.com/hashicorp/terraform-provider-aws/main/website/docs/guides/enhanced-region-support.html.markdown"
+  - "https://raw.githubusercontent.com/hashicorp/terraform-provider-aws/main/website/docs/guides/version-4-upgrade.html.markdown"
+  - "https://raw.githubusercontent.com/hashicorp/terraform-provider-google/main/website/docs/guides/provider_reference.html.markdown"
+  - "https://raw.githubusercontent.com/hashicorp/terraform-provider-google/main/website/docs/r/google_project_service.html.markdown"
+  - "https://github.com/terraform-google-modules"
+  - "https://docs.aws.amazon.com/servicecatalog/latest/adminguide/getstarted-Terraform.html"
+  - "https://docs.cloud.google.com/infrastructure-manager/docs/overview"
+  - "https://docs.cloud.google.com/config-connector/docs/overview"
+  - "https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/modules.html"
+  - "https://github.com/hashicorp/terraform-config-inspect"
+  - "https://aws.amazon.com/message/101925/"
+  - "https://status.cloud.google.com/incidents/ow5i3PPK96RduMcb1SsW"
+  - "https://aws.amazon.com/about-aws/whats-new/2026/03/amazon-s3-account-regional-namespaces/"
+  - "https://github.com/opentofu/opentofu/releases"
+  - "https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonS3/current/us-east-1/index.json"
 ---
 
 # Enterprise Module Design and Abstraction Layers
@@ -77,21 +105,24 @@ Changing `optional(number, 30)` to `optional(number, 7)` changes behavior for ev
 Validation rules have an ordering property that matters for blast radius.
 Before Terraform 1.9 a `validation` condition could refer only to its own variable, and the cross-variable workaround was a `precondition` on a later resource, which HashiCorp notes could lead to a partially completed deployment ([HashiCorp blog, as of 2026-10](https://www.hashicorp.com/en/blog/terraform-1-9-enhances-input-variable-validations)).
 The restriction existed because validation is also checked in limited evaluation contexts such as `terraform validate`, which lack a full evaluation context for the module ([HashiCorp Discuss, as of 2026-10](https://discuss.hashicorp.com/t/trying-to-use-another-variable-in-validation-block/53746)).
-Since Terraform 1.9 (June 2024) a validation condition can reference other variables, locals, data sources, and resources, provided the values are known at plan time, and it must still reference the variable it is attached to ([mattias.engineer](https://mattias.engineer/blog/2024/terraform-variable-cross-validation/), as of 2026-10).
-OpenTofu support for the same cross-object form, and the first OpenTofu version that has it, is UNVERIFIED in this batch, so a module that must run on both engines should keep cross-field rules in `precondition` blocks.
+Since Terraform 1.9 (June 2024) a validation condition can reference other variables, locals, data sources, and resources, and it must still reference the variable it is attached to ([mattias.engineer](https://mattias.engineer/blog/2024/terraform-variable-cross-validation/), as of 2026-10).
+A condition that depends on a value unknown at plan time does not fail the plan, and a condition that omits its own variable is rejected with `must refer to var.b` (local test on Terraform 1.15.7 and OpenTofu 1.13.2, as of 2026-11).
+OpenTofu has the same cross-object form from 1.9.0 ([OpenTofu 1.9 changelog](https://raw.githubusercontent.com/opentofu/opentofu/v1.9/CHANGELOG.md), as of 2026-11), so a module that must also run on engine versions older than 1.9 should keep cross-field rules in `precondition` blocks.
 
-One HCL gotcha belongs in every module reviewer's head: `||` and `&&` are not short-circuiting (HCL specification behavior, UNVERIFIED in this batch).
-A condition such as `r.expire_days == null || r.expire_days >= 1` therefore errors when `expire_days` is null, because the right operand is still evaluated.
-Use the conditional operator, `r.expire_days == null ? true : r.expire_days >= 1`, or wrap the risky operand in `can()`.
+One HCL gotcha belongs in every module reviewer's head: whether `||` and `&&` short-circuit depends on the engine version.
+Terraform made logical binary operators short-circuit in 1.12.0 ([Terraform 1.12 changelog](https://raw.githubusercontent.com/hashicorp/terraform/v1.12/CHANGELOG.md), as of 2026-11).
+In a local test the null-guarded condition passes on Terraform 1.15.7 and on OpenTofu 1.10.10, 1.11.14, 1.12.11, and 1.13.2, and fails with `argument must not be null` on OpenTofu 1.9.4 (as of 2026-11).
+A condition such as `r.expire_days == null || r.expire_days >= 1` therefore errors on older engines when `expire_days` is null, because the right operand is still evaluated.
+A module whose version floor includes those engines should use the conditional operator, `r.expire_days == null ? true : r.expire_days >= 1`, or wrap the risky operand in `can()`.
 
 ### Where each guard fires
 
 | Guard | Fires at | Can reference | Failure leaves |
 | --- | --- | --- | --- |
-| `validation` on a variable | Plan, before any resource in the module is evaluated | The variable itself, and from 1.9 other plan-time-known objects | Nothing applied |
+| `validation` on a variable | Plan; a condition that depends on an unknown value does not fail the plan | The variable itself, and from 1.9 other objects | Nothing applied when it fails at plan |
 | `precondition` on resource, data, output | Plan or apply, immediately before that object is evaluated | Anything the object can see | Earlier siblings may already be applied |
 | `postcondition` | After the object is created or read, blocks its dependents | The object's own result attributes | The object exists, dependents do not run |
-| `check` block | After apply, non-blocking | Anything, including scoped data sources | Warning only |
+| `check` block | End of both plan and apply, non-blocking ([OpenTofu docs](https://opentofu.org/docs/language/expressions/custom-conditions/), as of 2026-11) | Anything, including scoped data sources | Warning only |
 
 The design rule that follows is to push every invariant that can be decided from inputs as early as possible, and reserve postconditions for facts only the cloud can tell you, such as a computed attribute.
 
@@ -103,17 +134,17 @@ By default Terraform interprets an address change as destroy the old object and 
 Before planning the `to` address, Terraform checks the state for an object at the `from` address and renames it if found.
 Four properties are not in getting-started guides.
 Moves chain, so `a -> b` followed by `b -> c` lets a consumer jump from the oldest version straight to the newest, which is why deleting old `moved` blocks is itself a breaking change.
-The destination must exist in configuration, since the move is only a bridge between two real addresses.
-A `moved` block belongs in the smallest common parent module of the two addresses, so a move from a root resource into a child module is declared in the root and cannot be shipped inside the child module ([nicheelab](https://nicheelab.com/en/articles/terraform/moved-block/), as of 2026-10).
+The destination must exist in configuration, since the move is only a bridge between two real addresses; if it is absent, the plan renames the object and then destroys it (local test on Terraform 1.15.7, as of 2026-11).
+A `moved` block belongs in the smallest common parent module of the two addresses, because a module may only make `moved` statements about its own objects and those of its child modules, so a move from a root resource into a child module is declared in the root and cannot be shipped inside the child module ([HashiCorp docs](https://developer.hashicorp.com/terraform/language/modules/develop/refactoring), as of 2026-11).
 The move is a no-op when the `from` address is absent from state, which is what makes it safe to ship to consumers at any version.
 Cross-state moves and one-off repairs still need `terraform state mv`, and the `removed` block with `destroy = false` is the declarative way to stop managing an object without deleting it.
 
 ### Version resolution and the lock file gap
 
 Registry modules are resolved at `init`.
-The registry protocol (module registry protocol docs, not re-verified in this batch, UNVERIFIED) is a service-discovery document, a versions listing per `namespace/name/system`, and a download endpoint that answers with an `X-Terraform-Get` header pointing at the actual archive.
+The registry protocol is a service-discovery document (the `modules.v1` key), a versions listing per `namespace/name/system`, and a download endpoint that answers `204 No Content` with an `X-Terraform-Get` header pointing at the actual archive ([module registry protocol docs](https://developer.hashicorp.com/terraform/internals/module-registry-protocol), as of 2026-11).
 The resolved version and source are written under `.terraform/modules/`.
-The `.terraform.lock.hcl` file records provider versions and hashes and, in the format shown in current guides, nothing about modules ([Terraform Pilot guide](https://www.terraformpilot.com/articles/terraform-managing-version-constraints-for-reliable-infrastructure-as-code/), as of 2026-10).
+The `.terraform.lock.hcl` file tracks only provider dependencies, and Terraform does not remember version selections for remote modules ([HashiCorp docs](https://developer.hashicorp.com/terraform/language/files/dependency-lock), as of 2026-11).
 Consequences:
 
 - A fresh `init` in a new CI container with `version = "~> 2.1"` selects the newest matching release, which can be newer than the one the author tested.
@@ -129,8 +160,10 @@ That diamond is the practical reason raising a module's provider minimum to a ne
 
 Modules should not contain `provider` blocks.
 Modules with local provider configurations cannot use `count`, `for_each`, or `depends_on`, and OpenTofu 1.11.4 extended the same rejection to the new `enabled` argument ([OpenTofu changelog, as of 2026-10](https://github.com/opentofu/opentofu/blob/v1.11.11/CHANGELOG.md)).
-Multi-region modules on AWS therefore need `configuration_aliases` in `required_providers` and a `providers = { aws.replica = aws.us_west_2 }` map at the call site, because the AWS provider is bound to one region per configuration.
-Most Google provider resources accept an explicit `location` or `region` argument, so a GCP module can usually express multi-region through a variable instead of provider aliasing (UNVERIFIED across resource types).
+Multi-account modules on AWS, and multi-region modules on AWS provider versions before 6.0, therefore need `configuration_aliases` in `required_providers` and a `providers = { aws.replica = aws.us_west_2 }` map at the call site.
+AWS provider 6.0.0 added an optional per-resource `region` argument that defaults to the provider's region, and per-region provider blocks remain valid and are not deprecated ([AWS provider guide](https://raw.githubusercontent.com/hashicorp/terraform-provider-aws/main/website/docs/guides/enhanced-region-support.html.markdown), as of 2026-11).
+A module that uses this argument must raise its provider minimum to 6.0, which is itself a breaking change for consumers capped at 5.x.
+On the Google provider, a region or zone set on a regional or zonal resource takes precedence over the provider default, so a GCP module can usually express multi-region through a variable instead of provider aliasing ([Google provider reference](https://raw.githubusercontent.com/hashicorp/terraform-provider-google/main/website/docs/guides/provider_reference.html.markdown), as of 2026-11).
 
 When a module call uses `for_each`, the keys become part of every state address under it.
 Keys must be known at plan time, so keys derived from a resource attribute that is only known after apply fail with an invalid `for_each` argument error.
@@ -142,10 +175,10 @@ Never key by list index, because deleting the first element shifts every address
 An output is part of the public API, and its type is part of that API.
 Exporting a whole resource object such as `value = aws_s3_bucket.this` couples every consumer to the provider schema, and a provider upgrade that adds or renames an attribute silently changes the module's output type.
 Export a flat set of named scalars or a documented object with fixed keys.
-A consumer's reference to a module output depends on that output's own references, so an output with a `depends_on` list is a way to publish an ordering contract, for example "this ARN is not usable until the public-access block and the encryption configuration exist" (core graph behavior, engineering knowledge, not re-verified in this batch).
+A consumer's reference to a module output depends on that output's own references, so an output with a `depends_on` list is a way to publish an ordering contract, for example "this ARN is not usable until the public-access block and the encryption configuration exist", because Terraform completes all operations on the upstream resource before it computes the output ([HashiCorp docs](https://developer.hashicorp.com/terraform/language/block/output), as of 2026-11).
 Outputs propagate sensitivity automatically, and since Terraform 1.10 outputs and variables can be marked `ephemeral` so the value never lands in plan or state ([HashiCorp blog, as of 2026-10](https://www.hashicorp.com/en/blog/terraform-1-10-improves-handling-secrets-in-state-with-ephemeral-values)).
 Write-only attributes arrived in Terraform 1.11 ([HashiCorp blog](https://www.hashicorp.com/en/blog/terraform-1-11-ephemeral-values-managed-resources-write-only-arguments)).
-Because the engine does not store a write-only value, it cannot detect that the value changed, so providers pair these arguments with a version counter such as `secret_string_wo_version` that the author must bump to force a re-send ([Sailor.sh guide](https://sailor.sh/blog/terraform-ephemeral-values-ephemeral-resources-write-only-arguments-secrets/), as of 2026-10).
+Because the engine does not store a write-only value, it cannot detect that the value changed, so providers pair these arguments with a version counter such as `secret_string_wo_version` that the author must bump to force a re-send ([AWS provider docs](https://raw.githubusercontent.com/hashicorp/terraform-provider-aws/main/website/docs/r/secretsmanager_secret_version.html.markdown), as of 2026-11).
 
 ### Abstraction layers
 
@@ -165,9 +198,11 @@ For scarce accelerator capacity the abstraction must expose the zone and the res
 ### Terraform and OpenTofu divergence as a design constraint
 
 OpenTofu 1.8 added early variable and local evaluation, so variables and locals can be used in module sources, backend configuration, and state encryption, and added `.tofu` file extensions so module authors can use OpenTofu-only features while keeping `.tf` files compatible with Terraform ([OpenTofu 1.8 announcement](https://opentofu.org/blog/opentofu-1-8-0/), as of 2026-10).
-Terraform rejects `version = var.module_version`, so this feature is not portable ([oneuptime guide](https://oneuptime.com/blog/post/2026-02-23-use-opentofu-early-variable-evaluation/view), as of 2026-10).
-OpenTofu 1.11.0 (December 9, 2025) shipped ephemeral resources, write-only attributes, and the `enabled` meta-argument for resources and modules ([OpenTofu blog](https://opentofu.org/blog/opentofu-1-11-0/)); it also stabilized module deprecation, so callers see warnings when they use deprecated variables ([OpenTofu 1.11 beta announcement](https://opentofu.org/blog/help-us-test-opentofu-1-11-0-beta1/)).
-Terraform parity for `enabled` and for variable deprecation warnings is UNVERIFIED in this batch.
+Terraform added variables and locals in module `source` and `version` only in 1.15.0 (April 29, 2026) ([Terraform 1.15 changelog](https://raw.githubusercontent.com/hashicorp/terraform/v1.15/CHANGELOG.md), as of 2026-11), and it requires a `const = true` variable: without it, `version = var.module_version` fails `init` with `Only literal values and const variables can be evaluated during init` (local test on Terraform 1.15.7, as of 2026-11).
+This feature is therefore not portable to a shared module whose floor is below Terraform 1.15.
+OpenTofu 1.11.0 (December 9, 2025) shipped ephemeral resources, write-only attributes, and the `enabled` meta-argument for resources and modules, nested inside the `lifecycle` block ([OpenTofu blog](https://opentofu.org/blog/opentofu-1-11-0/)); it also stabilized module deprecation, so callers see warnings when they use deprecated variables ([OpenTofu 1.11 beta announcement](https://opentofu.org/blog/help-us-test-opentofu-1-11-0-beta1/)).
+Terraform added a `deprecated` attribute on variables and outputs in 1.15.0 ([Terraform 1.15 changelog](https://raw.githubusercontent.com/hashicorp/terraform/v1.15/CHANGELOG.md), as of 2026-11).
+Terraform has no `enabled` equivalent: 1.15.7 rejects `lifecycle { enabled = false }` as an unsupported argument (local test, as of 2026-11), and the changelogs through 1.17 list no such feature.
 A shared module intended for both engines should therefore use `count` for toggles and keep engine-specific features in `.tofu` files or a separate major line.
 
 ## Numbers to Know
@@ -175,45 +210,50 @@ A shared module intended for both engines should therefore use `count` for toggl
 | Item | Value | Source and date |
 | --- | --- | --- |
 | `moved` block minimum version | Terraform 1.1 | HashiCorp docs, as of 2026-10 |
-| `optional(type, default)` in object types | Terraform 1.3 | oneuptime and brainboard guides citing the 1.3 release, as of 2026-10 |
-| Cross-object variable validation | Terraform 1.9, June 2024 | HashiCorp blog, as of 2026-10 |
+| `optional(type, default)` in object types | Terraform 1.3.0, September 21, 2022 | Terraform 1.3 changelog, as of 2026-11 |
+| Mock providers in `terraform test` | Terraform 1.7.0, January 17, 2024 | Terraform 1.7 changelog and HashiCorp docs, as of 2026-11 |
+| Cross-object variable validation | Terraform 1.9.0, June 26, 2024; OpenTofu 1.9.0 | Terraform and OpenTofu 1.9 changelogs, as of 2026-11 |
 | Ephemeral variables, outputs, resources | Terraform 1.10 | HashiCorp blog, as of 2026-10 |
-| Write-only arguments | Terraform 1.11 (Feb 2025) | Scalr and HashiCorp blog, as of 2026-10 |
-| `override_during = plan` in mock providers | Terraform 1.11+ | oneuptime test guide, as of 2026-10 |
+| Write-only arguments | Terraform 1.11.0, February 27, 2025 | Terraform 1.11 changelog, as of 2026-11 |
+| `override_during = plan` in mock providers | Terraform 1.11.0 | Terraform 1.11 changelog, as of 2026-11 |
+| Short-circuiting `\|\|` and `&&` | Terraform 1.12.0, May 14, 2025 | Terraform 1.12 changelog, as of 2026-11 |
+| Variables in module `source` and `version`, `deprecated` on variables and outputs | Terraform 1.15.0, April 29, 2026 | Terraform 1.15 changelog, as of 2026-11 |
 | OpenTofu early variable evaluation | 1.8 | OpenTofu blog, as of 2026-10 |
 | OpenTofu ephemeral, write-only, `enabled` | 1.11.0, December 9, 2025 | OpenTofu blog, as of 2026-10 |
-| OpenTofu 1.11 series status | Final planned patch is v1.11.14 | Releasebot, as of 2026-10 |
-| OpenTofu stable release (reference) | 1.12.3 on 2026-06-18; docs site banner names 1.13.x as latest | Wikipedia and OpenTofu docs, as of 2026-10 |
+| OpenTofu 1.11 series status | Final planned patch is v1.11.14 (2026-08-19) | OpenTofu v1.11.14 release notes, as of 2026-11 |
+| OpenTofu stable releases (reference) | 1.13.2 on 2026-10-21; 1.12.11 on 2026-10-29 | OpenTofu GitHub releases, as of 2026-11 |
 | `~> 5.1.0` | `>= 5.1.0, < 5.2.0` | Terraform docs, as of 2026-10 |
 | `~> 5.1` | `>= 5.1.0, < 6.0.0` | Terraform docs, as of 2026-10 |
 | Pre-release matching | Not matched by range operators, exact pin only | Terraform docs, as of 2026-10 |
-| Public registry module naming | `terraform-<PROVIDER>-<NAME>` on GitHub with SemVer tags | Sailor.sh and oneuptime guides, as of 2026-10 |
-| Latest Terraform release | UNVERIFIED in this batch | not verified |
-| AWS and GCP list prices relevant to this chapter | Not verified; the lab uses assumptions labelled as such | not verified |
+| Public registry module naming | `terraform-<PROVIDER>-<NAME>` repository with semantic-version release tags | HashiCorp registry docs, as of 2026-11 |
+| Latest Terraform release | 1.17.1, October 28, 2026 | hashicorp/terraform GitHub releases, as of 2026-11 |
+| S3 Standard request prices, us-east-1 | 0.005 USD per 1,000 PUT, COPY, POST, or LIST; 0.0004 USD per 1,000 GET and other requests | AWS Price List API (publication 2026-10-15), as of 2026-11 |
+| Other AWS and GCP list prices | Not used; the sizing inputs are assumptions labelled as such | not applicable |
 
 ## AWS vs GCP Mechanism Parity
 
 Module semantics are cloud-neutral, so the differences are in provider shape, identity, and guardrail integration.
-Rows marked UNVERIFIED were not re-checked against current official documentation in this batch.
+The location, API enablement, tagging, ecosystem, runner, native abstraction, budget, and namespace rows were checked against the AWS and Google provider documentation and the cloud vendors' docs (as of 2026-11).
 
 | Concern | AWS | GCP | Design consequence |
 | --- | --- | --- | --- |
-| Location binding | AWS provider is bound to one region and account per configuration; multi-region needs aliased providers and a `providers` map | Many resources take explicit `location` or `region` (UNVERIFIED across types) | AWS modules expose provider aliases; GCP modules expose location variables |
+| Location binding | AWS provider is bound to one account per configuration; from provider 6.0.0 resources take an optional `region` argument, and earlier versions need aliased providers and a `providers` map for multi-region | Regional and zonal resources take their own `region` or `zone`, which overrides the provider default | AWS modules expose provider aliases for multi-account and either aliases or a region variable for multi-region; GCP modules expose location variables |
 | Scope root | Account is implied by credentials | Project ID must be passed or defaulted for most resources | Every GCP module needs a `project_id` input and a decision on where it comes from |
-| API enablement | Services are available by default | Services must be enabled per project, via `google_project_service` or equivalent (UNVERIFIED) | GCP blueprints must own API enablement and handle propagation delay |
-| Default tagging | Provider-level `default_tags` | Provider-level default labels (UNVERIFIED) | Cost allocation defaults can live in the provider, not in each module |
-| Community module ecosystem | `terraform-aws-modules` organization | `terraform-google-modules` and blueprints (UNVERIFIED) | Wrap, fork, or vendor decision is the same; upstream release cadence differs |
-| Managed plan/apply runner | Service Catalog Terraform products or self-run pipelines (UNVERIFIED) | Infrastructure Manager (UNVERIFIED) | Runner choice decides where module version pinning is enforced |
-| Native non-Terraform abstraction | CloudFormation modules and CDK constructs, see [[17-Cloud-AI-Engineering/Volume_06_Infrastructure_as_Code_and_Delivery/Chapter_03_Programmatic_IaC_AWS_CDK_and_Pulumi\|Programmatic IaC]] | Config Connector and Terraform-based blueprints (UNVERIFIED) | Native tools have their own versioning and rollback model |
+| API enablement | Services are available by default | Services must be enabled per project, via `google_project_service` or equivalent (Google provider docs, as of 2026-11) | GCP blueprints must own API enablement and handle propagation delay |
+| Default tagging | Provider-level `default_tags` | Provider-level `default_labels` (Google provider reference, as of 2026-11) | Cost allocation defaults can live in the provider, not in each module |
+| Community module ecosystem | `terraform-aws-modules` organization | `terraform-google-modules` organization, including Cloud Foundation Toolkit modules (GitHub, as of 2026-11) | Wrap, fork, or vendor decision is the same; upstream release cadence differs |
+| Managed plan/apply runner | Service Catalog Terraform products (Terraform Cloud or External product type; AWS docs, as of 2026-11) or self-run pipelines | Infrastructure Manager, which runs Terraform in ephemeral Cloud Build environments (Google Cloud docs, as of 2026-11) | Runner choice decides where module version pinning is enforced |
+| Native non-Terraform abstraction | CloudFormation modules and CDK constructs, see [[17-Cloud-AI-Engineering/Volume_06_Infrastructure_as_Code_and_Delivery/Chapter_03_Programmatic_IaC_AWS_CDK_and_Pulumi\|Programmatic IaC]] | Config Connector, which manages Google Cloud resources through Kubernetes, and Terraform-based blueprints (Google Cloud docs, as of 2026-11) | Native tools have their own versioning and rollback model |
 | Org-level backstop | SCPs and RCPs, see [[17-Cloud-AI-Engineering/Volume_02_AWS_Deep_Dive/Chapter_01_IAM_Policy_Evaluation_Engine\|IAM Policy Evaluation Engine]] | Organization Policy constraints, see [[17-Cloud-AI-Engineering/Volume_03_GCP_Deep_Dive/Chapter_01_Resource_Hierarchy_and_Organization_Policies\|Resource Hierarchy and Organization Policies]] | Module defaults are advisory; these are enforcing |
 | CI identity | OIDC to an IAM role via web identity | Workload Identity Federation plus service account impersonation, see [[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter/Chapter_02_Workload_Identity_Federation\|Workload Identity Federation]] | Module test pipelines must not use static keys |
 | Budget resource | `aws_budgets_budget` | `google_billing_budget` (billing-account scoped) | Lab guardrails differ in scope: account versus billing account |
-| Global namespace collisions | S3 bucket names are global | GCS bucket names are global | Name inputs need caller-supplied uniqueness on both |
+| Global namespace collisions | S3 bucket names are global by default; since March 2026 an opt-in account regional namespace is available, set with `bucket_namespace = "account-regional"` on `aws_s3_bucket` (AWS and AWS provider docs, as of 2026-11) | GCS bucket names are global | Name inputs need caller-supplied uniqueness on both unless the S3 module opts into the account regional namespace |
 
 ## Worked Example: A Secure Bucket Module with a Contract Test and an Upgrade Gate
 
 The artifact is an AWS module for a hardened S3 bucket (the base layer for training data, checkpoints, and model registries), a contract test that runs without cloud credentials, and an upgrade gate that proves a new version does not delete anything for an unchanged consumer.
-The module deliberately keeps cross-field rules in `precondition` blocks so it runs on both Terraform and OpenTofu.
+The module deliberately keeps cross-field rules in `precondition` blocks so it also runs on Terraform and OpenTofu versions older than 1.9.
+The contract test below passes 4 of 4 runs on Terraform 1.15.7 and OpenTofu 1.13.2 with the latest AWS provider (local test, as of 2026-11).
 
 ### Module layout
 
@@ -232,7 +272,7 @@ terraform-aws-secure-bucket/
 
 ```hcl
 terraform {
-  required_version = ">= 1.6.0"
+  required_version = ">= 1.7.0"
 
   required_providers {
     aws = {
@@ -244,6 +284,7 @@ terraform {
 ```
 
 The module states minimums only, per HashiCorp's guidance for reusable modules.
+The Terraform floor is 1.7.0 because the contract test uses `mock_provider`, which arrived in that release ([HashiCorp docs](https://developer.hashicorp.com/terraform/language/tests/mocking), as of 2026-11).
 The root module that consumes it pins tighter and commits its lock file.
 
 ### variables.tf
@@ -574,8 +615,8 @@ fi
 
 The gate applies the old version with fixed inputs, swaps the source to the new ref, and inspects the plan JSON.
 A `delete` action on any resource for unchanged inputs means either a missing `moved` block or a change that must be released as a major version.
-Moved resources appear with a `previous_address` field in the plan JSON (Terraform JSON plan format, not re-verified in this batch, UNVERIFIED).
-The gate ignores the exit code split between 0 and 2 on purpose, because I did not verify whether a plan with only moves is reported as a diff.
+Moved resources appear with a `previous_address` field in the plan JSON, included only when the address has changed ([JSON format docs](https://developer.hashicorp.com/terraform/internals/json-format), as of 2026-11).
+The gate ignores the exit code split between 0 and 2 on purpose, because a plan with only moves exits 2 even though its action is `no-op` (plan-only local test against a handwritten pre-move state, Terraform 1.15.7 and OpenTofu 1.13.2, as of 2026-11).
 
 ### Capacity and cost sizing
 
@@ -585,7 +626,7 @@ All inputs below are assumptions for a mid-size platform and are not list prices
 2. A fleet-wide plan sweep for a candidate release takes R x T / C = 240 x 3 / 20 = 36 minutes of wall time and 720 runner-minutes.
 3. At an assumed internal runner cost of 0.008 USD per runner-minute (ASSUMPTION), one sweep costs about 5.76 USD, so sweeping on every release candidate is cheap relative to one unplanned bucket replacement.
 4. Ring rollout of 2 percent, 18 percent, and 80 percent gives about 5, 43, and 192 roots; with a 24-hour soak per ring the minimum calendar time of a breaking default change is three days, which is the real cost of semver discipline.
-5. Lab cost: one empty bucket and about 15 API calls; the storage charge is zero for an empty bucket and request charges are negligible, but the current S3 request prices were not verified in this batch (UNVERIFIED), so cap the exposure with the budget below.
+5. Lab cost: one empty bucket and about 15 API calls; the storage charge is zero for an empty bucket and request charges are negligible, because 15 requests at the higher us-east-1 rate of 0.005 USD per 1,000 cost 0.000075 USD (AWS Price List API, as of 2026-11), and the budget below caps the exposure anyway.
 
 ### Budget alarm for the sandbox account
 
@@ -625,7 +666,7 @@ If the second command prints a name, empty the bucket (versioning is on, so dele
 
 A reviewer approves a plan produced with module 2.1.4, and the apply job runs a fresh `init` that selects 2.2.0 because the constraint is `~> 2.1`.
 The lock file does not pin modules, so nothing detects the difference.
-Fixes, in order of strength: pin exact module versions in root modules and move upgrades through automated pull requests that show the plan diff; apply the saved plan artifact rather than re-planning (a saved plan carries a configuration snapshot, not re-verified in this batch, UNVERIFIED); pin git sources to a commit SHA, or consume immutable archives, because tags are mutable.
+Fixes, in order of strength: pin exact module versions in root modules and move upgrades through automated pull requests that show the plan diff; apply the saved plan artifact rather than re-planning, because a saved plan contains the full configuration and the state snapshot it was based on ([plan command docs](https://developer.hashicorp.com/terraform/cli/commands/plan) and [planfile source](https://raw.githubusercontent.com/hashicorp/terraform/main/internal/plans/planfile/doc.go), as of 2026-11); pin git sources to a commit SHA, or consume immutable archives, because tags are mutable.
 
 ### Rename without `moved` replaces a stateful resource
 
@@ -656,7 +697,7 @@ The failure surfaces at plan, not apply, which is good, but the fix is a redesig
 A new module release raises its AWS provider minimum from 5.0 to 6.0.
 Consumers that pinned `~> 5.0` in the root, or that depend on another module capped at 5.x, fail `init`.
 Releases that raise a provider major minimum are breaking even if the module's own interface is unchanged.
-I recall the AWS provider's 4.0 release splitting S3 bucket arguments into separate resources as the canonical case of an upstream break that cascaded through every wrapper module (UNVERIFIED in this batch).
+The AWS provider's 4.0 release is the canonical case of an upstream break that cascaded through every wrapper module: it made many `aws_s3_bucket` arguments read-only in favor of separate `aws_s3_bucket_*` resources, and 4.9.0 restored those arguments for practitioners who had not migrated ([AWS provider v4 upgrade guide](https://raw.githubusercontent.com/hashicorp/terraform-provider-aws/main/website/docs/guides/version-4-upgrade.html.markdown), as of 2026-11).
 
 ### Over-broad abstraction
 
@@ -665,11 +706,11 @@ Every provider release produces a module backlog, consumers file issues for miss
 
 ### Operational analogs from public post-incident reviews
 
-The AWS S3 event of February 28, 2017 began with an operator running a command whose input removed a larger set of servers than intended, and AWS's remediation included making the tool remove capacity more slowly and enforce a minimum capacity ([AWS post-event summary](https://aws.amazon.com/message/41926/), recalled from memory, UNVERIFIED in this batch).
+The AWS S3 event of February 28, 2017 began with an operator running a command whose input removed a larger set of servers than intended, and AWS's remediation included making the tool remove capacity more slowly and block removals below a subsystem's minimum capacity ([AWS post-event summary](https://aws.amazon.com/message/41926/), as of 2026-11).
 The IaC analog is a module input with no bounds, for example a `count` or `max_size` with no validation ceiling; validation rules that cap blast radius are the cheap equivalent of that safeguard.
-The AWS DynamoDB DNS event of October 2025 involved delayed automation applying an older plan after a newer one, followed by cleanup of the newer plan (my recollection of the AWS summary, UNVERIFIED in this batch).
-The IaC analog is a stale saved plan; Terraform refuses to apply a saved plan whose base state has moved on, and pipelines should never bypass that check with a re-plan on the fly.
-The Google Cloud outage of June 2025, where a policy change replicated globally without gradual rollout exposed a null-handling defect, is the same lesson as module releases without rings (UNVERIFIED in this batch).
+The AWS DynamoDB DNS event of October 19-20, 2025 involved a delayed DNS Enactor overwriting a newer plan with a much older one, after which another Enactor's cleanup deleted that older plan because it was many generations behind, which removed all IP addresses for the regional endpoint ([AWS post-event summary](https://aws.amazon.com/message/101925/), as of 2026-11).
+The IaC analog is a stale saved plan; Terraform refuses to apply a saved plan whose base state has moved on, with a `Saved plan is stale` error ([Terraform source](https://raw.githubusercontent.com/hashicorp/terraform/main/internal/backend/local/backend_local.go), as of 2026-11), and pipelines should never bypass that check with a re-plan on the fly.
+The Google Cloud outage of June 12, 2025, where a policy change with blank fields replicated globally within seconds and hit a null pointer in Service Control code that had no feature flag, is the same lesson as module releases without rings ([Google Cloud incident report](https://status.cloud.google.com/incidents/ow5i3PPK96RduMcb1SsW), as of 2026-11).
 See [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_07_Anatomy_of_Major_Cloud_Outages|Anatomy of Major Cloud Outages]] for the full treatment.
 
 ### Secrets in module interfaces
@@ -723,7 +764,7 @@ A single object variable lets me add a new optional field without adding a new t
 Its cost is that one validation block must cover the whole object, error messages are coarser, and the whole object is marked sensitive if any field is.
 My default is flat variables for scalars and a typed `map(object(...))` for collections keyed by stable logical names, which preserves state addresses.
 On `null`: with `optional(number, 30)`, Terraform substitutes the default both when the caller omits the attribute and when the caller sets it to null, so inside the module the value is never null (HashiCorp type-constraint docs).
-Without a default, the value is a typed null and the module must handle it, which is why my validation uses the conditional operator rather than `||`.
+Without a default, the value is a typed null and the module must handle it, which is why my validation uses the conditional operator rather than `||`: short-circuiting arrived only in Terraform 1.12, and my module's floor is older.
 At the top level, a flat variable with a default still accepts an explicit `null` unless I set `nullable = false`; with `nullable = false`, null is replaced by the default.
 I set `nullable = false` on anything the module logic dereferences.
 The interface rule I enforce is that the default is part of the contract, so changing it is a breaking change even though the type signature is identical.
@@ -748,7 +789,7 @@ Moves chain, so a consumer upgrading across two releases still lands at the righ
 That is why I do not delete `moved` blocks when the next release ships.
 I delete them only when telemetry or an inventory scan shows no supported consumer is on a version that predates the move, which in practice means after a major version boundary and a published support window.
 For state that lives in a different state file I use `terraform state mv` or an `import` plus `removed` with `destroy = false`, since `moved` is within one state.
-The same mechanism converts `count` to `for_each`: `from = aws_instance.web` and `to = aws_instance.web["a"]`.
+The same mechanism converts `count` to `for_each`: `from = aws_instance.web[0]` and `to = aws_instance.web["a"]`, one block per instance.
 I add a CI step that applies the old version and plans the new one, because the move block being syntactically valid does not prove the addresses match.
 
 #### Follow-up Interviewer Question
@@ -770,7 +811,7 @@ The state contract covers resource addresses and instance keys; changing them wi
 The behavior contract covers the plan diff for a fixed set of inputs, including in-place updates caused by changed defaults and ForceNew attributes.
 Patch means no change to any of the three for any caller; minor means additive optional interface plus no change to existing callers' plans; major is everything else, including narrowing validation and raising a provider major minimum.
 The gate has three layers.
-Layer one is a static interface diff between the previous tag and the candidate, using a parser such as `terraform-config-inspect` to dump variables and outputs as JSON (tool name from memory, UNVERIFIED), which classifies additions and removals mechanically.
+Layer one is a static interface diff between the previous tag and the candidate, using a parser such as `terraform-config-inspect --json` to dump variables and outputs as JSON ([hashicorp/terraform-config-inspect](https://github.com/hashicorp/terraform-config-inspect), as of 2026-11), which classifies additions and removals mechanically.
 Layer two is the upgrade test from this chapter: apply the old tag with fixed inputs, swap the source, plan, and fail on any `delete` action, and report in-place updates for human review.
 Layer three is consumer-driven: run plan-only against a sampled corpus of real consumer inputs, because synthetic fixtures miss the one team that sets an obscure combination.
 The release bot computes the required bump from these results and refuses a lower label.
@@ -794,7 +835,7 @@ So two `init` runs at different times under a range constraint can legitimately 
 The second contributing factor is a pipeline that re-plans inside the apply job instead of applying the reviewed artifact.
 The fix has four parts.
 First, in root modules use exact module versions, or a commit SHA for git sources, because a tag can be force-moved; use a bot to open upgrade pull requests that include a plan diff, so a version bump is a reviewed change.
-Second, apply the saved plan output from the plan job, so the thing reviewed is the thing executed; a saved plan carries its configuration snapshot and is rejected if the state has changed since, which also gives me protection against stale-plan application (I would verify the snapshot behavior in the target version).
+Second, apply the saved plan output from the plan job, so the thing reviewed is the thing executed; a saved plan carries its configuration snapshot and is rejected if the state has changed since, which also gives me protection against stale-plan application (Terraform plan docs and source, as of 2026-11).
 Third, publish releases as immutable artifacts with checksums to a registry or versioned bucket with object lock, so the content under a version never changes.
 Fourth, keep ranges for libraries only: composition modules state minimum provider versions, and roots decide.
 The principle is that the version resolution decision must be made once, in a reviewed commit, and not re-made by whichever runner happens to run `init`.
@@ -815,7 +856,8 @@ How do you ship the change?
 
 The change alters the behavior contract: a new bucket policy statement appears in every consumer's plan, and a TLS-only policy can break clients that use plain HTTP, so it is a breaking default.
 I would not flip it in a patch or a minor.
-Release 2.5.0 adds `enforce_tls` with the default set to the old behavior, plus a deprecation warning for callers who leave it unset (OpenTofu 1.11 supports module variable deprecation warnings; Terraform parity is UNVERIFIED, so I would use a plan-time `check` warning as the portable alternative).
+Release 2.5.0 adds `enforce_tls` with the default set to the old behavior, plus a warning for callers who leave it unset.
+The `deprecated` attribute (OpenTofu 1.11, Terraform 1.15) does not fit, because it warns when a caller sets a variable rather than when the caller omits it (HashiCorp docs, as of 2026-11), so I would use a plan-time `check` warning, which is also portable to older engines.
 Next, run a fleet plan-only sweep with `enforce_tls = true` injected, and use the results to identify roots with existing bucket policies that conflict, because the module's policy resource is a singleton per bucket and merging policies is a classic outage cause.
 Roll out in rings: a handful of internal roots, then about a fifth of the fleet, then the rest, with a soak period and client-error metrics (4xx and SSL errors from access logs) as the gate.
 Auto-open pull requests with the plan diff; teams that need exceptions register them in a registry with an expiry.
@@ -865,7 +907,7 @@ Terraform 1.10 introduced ephemeral input variables, outputs, and resources, and
 The module declares `ephemeral = true` on the password variable, passes it to a `_wo` argument on the resource, and exposes a plain integer `password_version` variable that maps to the provider's companion version argument.
 What I lose: because the engine does not store a write-only value, it cannot compare it with the previous value, so rotation happens only when the version integer changes; drift in the real credential is invisible to plan; and ephemeral values can only be used in ephemeral contexts, so I cannot, for example, compute a non-ephemeral local from them.
 Provider support is also per-argument, so I need to check that the target resource has a write-only variant in the pinned provider version.
-Where the service supports it, I prefer to avoid handling the secret at all, for example having the database service create and rotate the master credential in the cloud secret manager (RDS has a managed master user password option; I would confirm the argument name against the pinned provider version).
+Where the service supports it, I prefer to avoid handling the secret at all, for example having the database service create and rotate the master credential in the cloud secret manager (RDS has a managed master user password option, `manage_master_user_password` on `aws_db_instance`, which cannot be combined with `password_wo`; [AWS provider docs](https://raw.githubusercontent.com/hashicorp/terraform-provider-aws/main/website/docs/r/db_instance.html.markdown), as of 2026-11).
 Then the module outputs only the secret's ARN, never the value.
 The interface contract is therefore: no secret value ever appears in outputs, and any rotation is an explicit, versioned input.
 
@@ -882,10 +924,11 @@ How do you handle this without forking the module catalog?
 
 First, I treat engine compatibility as part of the module's interface contract, stated in `required_version` and in the README, and tested in CI against both engines.
 The known divergences are concrete.
-OpenTofu 1.8 allows variables and locals in module sources and backend blocks through early evaluation, which Terraform rejects.
-OpenTofu 1.11 added the `enabled` meta-argument for resources and modules and module deprecation warnings, and I have not verified Terraform equivalents.
+OpenTofu 1.8 allows variables and locals in module sources and backend blocks through early evaluation, while Terraform added variables and locals in module `source` and `version` only in 1.15, limited to literal values and `const` variables.
+OpenTofu 1.11 added the `enabled` meta-argument for resources and modules, which Terraform 1.15.7 rejects and which is absent from the Terraform changelogs through 1.17.
+OpenTofu 1.11 also stabilized module deprecation warnings, and Terraform reached parity with a `deprecated` attribute in 1.15.
 OpenTofu supports `.tofu` extension files so a module can ship OpenTofu-only code next to `.tf` code that Terraform loads.
-The practical policy: shared L1 and L2 modules use only the intersection of the two languages, with `count` for toggles and `precondition` for cross-field rules, since I have not verified OpenTofu support for cross-object variable validation.
+The practical policy: shared L1 and L2 modules use only the intersection of the two languages, with `count` for toggles and `precondition` for cross-field rules whenever the supported floor is below 1.9 on either engine, since both engines gained cross-object variable validation in their 1.9 releases.
 Features that exist in only one engine go into an overlay file (`.tofu`) with a fallback in the `.tf` file, or into a separate major line, with the divergence called out in the changelog.
 CI runs `init`, `validate`, `test`, and the upgrade gate on a matrix of the oldest supported and newest versions of each engine, including the OpenTofu release series that are still in security support (the 1.11 series reached its final planned patch, so I plan for 1.12 and 1.13 now).
 The `required_version` constraint is a trap, because the two engines use independent version numbers, so a `>= 1.9` constraint can pass on an OpenTofu version that lacks a feature that Terraform 1.9 has; I gate on tested engine and version pairs.
@@ -907,7 +950,7 @@ Which three language features would you ban from shared modules today to keep po
 - [OpenTofu 1.8 announcement](https://opentofu.org/blog/opentofu-1-8-0/) - Early evaluation, provider mocking, and `.tofu` files, the first major divergence from Terraform.
 - [OpenTofu 1.11 announcement](https://opentofu.org/blog/opentofu-1-11-0/) - Ephemeral resources, write-only attributes, and the `enabled` meta-argument.
 - [OpenTofu changelog](https://github.com/opentofu/opentofu/blob/v1.11.11/CHANGELOG.md) - Day-to-day semantics fixes around moves, provider addresses, and local provider configurations in modules.
-- [AWS S3 service disruption summary, February 2017](https://aws.amazon.com/message/41926/) - The canonical input-bounds failure that motivates validation ceilings (UNVERIFIED in this batch).
+- [AWS S3 service disruption summary, February 2017](https://aws.amazon.com/message/41926/) - The canonical input-bounds failure that motivates validation ceilings.
 - [[17-Cloud-AI-Engineering/Volume_06_Infrastructure_as_Code_and_Delivery/Chapter_01_Terraform_and_OpenTofu_Internals|Terraform and OpenTofu Internals]] - The graph walk, state, and plan/apply lifecycle that these module contracts sit on.
 - [[17-Cloud-AI-Engineering/Volume_06_Infrastructure_as_Code_and_Delivery/Chapter_05_State_Management_Drift_Detection_and_Compliance|State Management, Drift Detection, and Compliance]] - State boundaries and drift, which determine blueprint blast radius.
 - [[17-Cloud-AI-Engineering/Volume_06_Infrastructure_as_Code_and_Delivery/Chapter_06_Progressive_Delivery_and_Deployment_Pipelines|Progressive Delivery and Deployment Pipelines]] - Ring rollout and automated rollback applied to module releases.
