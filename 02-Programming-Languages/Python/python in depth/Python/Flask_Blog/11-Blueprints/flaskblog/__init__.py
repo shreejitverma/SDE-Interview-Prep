@@ -1,6 +1,7 @@
 # Author: Shreejit Verma
  # GitHub: https://github.com/shreejitverma
 
+import os
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from flask_bcrypt import Bcrypt
@@ -18,7 +19,7 @@ mail = Mail()
 
 
 def create_app(config_class=Config):
-    app = Flask(__name__)
+    app = Flask(__name__, instance_path=os.path.dirname(os.path.abspath(__file__)))
     app.config.from_object(Config)
 
     db.init_app(app)
