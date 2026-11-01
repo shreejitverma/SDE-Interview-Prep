@@ -436,7 +436,9 @@ What the output proves and what it does not:
 
 ### Verified output
 
-Recorded by `make record` on linux-aarch64 on 2026-10-25 and re-checked by `make verify`; the file is `code/03-Debugging/core_dump_triage/expected/linux-aarch64.txt`.
+Recorded by `make record` on linux-aarch64 on 2026-10-25; the file is `code/03-Debugging/core_dump_triage/expected/linux-aarch64.txt`.
+On macOS, `make verify` re-runs the lab in the pinned image from `code/_harness/linux-labs.Dockerfile`; it matched byte for byte on OrbStack on 2026-11-01 with gdb 15.1, elfutils 0.190, and gcc 13.
+The container runs unprivileged with no capabilities, because OrbStack's `core_pattern` is `core` and the kernel core needs only `RLIMIT_CORE`.
 
 ```text
 === Pass: without-debug-info ===

@@ -23,6 +23,7 @@ code/
   Makefile                          # Master verification harness entry point
   _harness/                         # Verification harness
     verify.py                       # Discovers labs, checks requirements, runs, scrubs, and diffs
+    linux-labs.Dockerfile           # Pinned image for `# requires: linux` labs on a non-Linux host
   00-Program-Execution/
     <lab_name>/
       run.sh                        # Lab execution entry point (run as `bash run.sh`)
@@ -48,17 +49,45 @@ code/
 Different toolchain mechanisms require specific operating systems, CPU architectures, or execution privileges.
 Each lab declares its environmental requirements in a `# requires:` comment within the first 10 lines of its `run.sh`:
 
-- `# requires: linux`: Gated to native Linux environments.
-  On macOS hosts the harness skips these labs; run `make verify` inside an OrbStack or Docker Linux environment to exercise them.
+- `# requires: linux`: Needs a Linux kernel.
+  On a Linux host the lab runs natively; on any other host it runs in a container, as described in the section on container dispatch below.
 - `# requires: macos`: Gated to macOS hosts (Instruments, xctrace, codesign).
   On Linux hosts the harness skips these labs.
 - `# requires: docker`: Requires an active Docker daemon to build OCI containers or test isolated build sandboxes.
 - `# requires: pmu`: Requires access to hardware performance monitoring unit counters (e.g., instructions, cycles, cache misses), opted in with `TOOLCHAIN_LABS_PMU=1`.
-  These cannot run inside virtualized hypervisors without PMU passthrough (an OrbStack VM exposes software events only).
+  These cannot run inside virtualized hypervisors without PMU passthrough (an OrbStack VM exposes software events only, and `perf_event_open` for cycles returned `ENOENT` even in a privileged OrbStack container on 2026-11-01).
 - `# requires: nightly`: Requires a nightly Rust toolchain listed by `rustup toolchain list` (e.g., for Miri or `-Zsanitizer`).
 - `# requires: network`: Requires active Internet access to communicate with upstream package registries (e.g., crates.io, PyPI, Conan Center), opted in with `TOOLCHAIN_LABS_NETWORK=1`.
 
 If the current environment cannot satisfy a declared prerequisite, the harness prints a `SKIP` line naming the unmet requirement and never counts the lab as passed.
+
+## Container Dispatch for Linux Labs
+
+When a lab requires `linux`, the host is not Linux, and `docker info` succeeds, `make verify` and `make record` run the lab in a container and say so on its result line.
+
+- **Image:** `_harness/linux-labs.Dockerfile`, tagged `toolchain-labs:<hash of the Dockerfile>` and built on first use, so editing the file forces a rebuild.
+  The base is pinned by digest.
+  The packages come from the live archive at build time, because Ubuntu's archive snapshots do not cover `ports.ubuntu.com`, where arm64 lives.
+  A rebuild can therefore pull newer tools; `make verify` reports any change that matters, and `/etc/toolchain-labs-versions` in the image lists what was installed.
+- **Isolation:** only the lab's directory is mounted, read-only, at `/mnt/lab`; the lab runs on a private copy at `/tmp/lab`, so it cannot dirty the tree.
+  A dispatched lab therefore cannot reach its siblings through `../`.
+- **Privileges:** the image's unprivileged `lab` user with `--cap-drop ALL`, `--security-opt no-new-privileges`, `--network none`, and `--ulimit core=-1`; never `--privileged`.
+  Verified on OrbStack (as of 2026-11, kernel 7.2): this is enough for a kernel core and for GDB to run and dump its own child.
+  A lab that needs a capability fails visibly until the harness grants it on purpose.
+- **Expected file:** `expected/linux-<arch>.txt`, using the arch `uname -m` reports inside the container, not the host's.
+- **Limit:** `core_pattern` belongs to the VM's kernel, and a container cannot change it, so a Docker VM whose pattern pipes to a handler sends `core_dump_triage` down its GDB fallback and the `Core source:` line fails the diff.
+  That failure is correct: the run did not exercise what the recording did.
+  OrbStack's pattern is `core`.
+
+| Situation | Result |
+|---|---|
+| `TOOLCHAIN_LABS_CONTAINER=0`, no `docker` on `PATH`, or `docker info` fails or hangs | `SKIP` naming the reason |
+| Image build failure, docker error, non-zero exit in the container, or timeout | `FAIL` with stderr; a timed-out container is removed |
+| `linux, pmu` | `SKIP`, even with `TOOLCHAIN_LABS_PMU=1`: the VM has no hardware counters |
+| `linux, nightly` | `SKIP`: the image has no Rust toolchain |
+| `linux, docker` | `SKIP`: the container gets no docker socket, which would hand it root on the VM |
+| `linux, network` | `SKIP` without `TOOLCHAIN_LABS_NETWORK=1`; with it, the container gets the default network instead of `--network none` |
+| `macos`, alone or with `linux` | Never dispatches |
 
 ## Harness Commands
 
@@ -68,7 +97,7 @@ The master `Makefile` at the root of `code/` exposes the following standard targ
 ```bash
 make verify
 ```
-This command iterates over all labs across all pillars, evaluates `# requires:` tags against the host system, executes each eligible lab, scrubs heap addresses and temporary paths from stdout, and diffs it against the corresponding `expected/<platform>.txt` file.
+This command iterates over all labs across all pillars, evaluates `# requires:` tags against the host system, executes each eligible lab (in a container for a `linux` lab on a non-Linux host), scrubs heap addresses and temporary paths from stdout, and diffs it against the corresponding `expected/<platform>.txt` file.
 Any output mismatch, failing lab, or missing expected file causes a non-zero exit code.
 
 ### Verify a Specific Lab
@@ -82,7 +111,7 @@ This allows rapid test-driven iteration during lab authoring and debugging.
 ```bash
 make record LAB=capstone_ptrace_debugger
 ```
-Executes the specified lab and updates or creates its golden output file `expected/<platform>.txt` using the current platform key (e.g., `linux-aarch64`).
+Executes the specified lab and updates or creates its golden output file `expected/<platform>.txt` using the current platform key (e.g., `linux-aarch64`), which is the container's for a dispatched lab.
 Always inspect the resulting diff carefully before committing.
 
 ### List Labs and Their Requirements

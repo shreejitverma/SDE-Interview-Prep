@@ -91,7 +91,7 @@ The harness enforces reproducible accuracy and prevents documentation drift:
   Running `make verify` re-executes all lab scripts and asserts that raw CLI and program outputs match the golden expected outputs recorded in `expected/<platform>.txt`, where platform is `<os>-<arch>` (for example `darwin-arm64` or `linux-aarch64`).
 - **Platform Gating:**
   Labs declare environmental prerequisites using header comments:
-  - `# requires: linux`: runs only on a Linux host; on macOS the harness skips it, so run `make verify` inside a Linux VM or container to exercise it.
+  - `# requires: linux`: runs natively on a Linux host and, on macOS, in a pinned Docker or OrbStack container; without docker the harness skips it.
   - `# requires: macos`: runs only on a macOS host (Instruments, xctrace, codesign); on Linux the harness skips it.
   - `# requires: docker`: the lab itself drives Docker (for example building manylinux wheels), so it needs a working Docker daemon.
   - `# requires: pmu`: requires hardware performance counters (bare metal or a PMU-virtualized hypervisor) and runs only when `TOOLCHAIN_LABS_PMU=1` is set.
