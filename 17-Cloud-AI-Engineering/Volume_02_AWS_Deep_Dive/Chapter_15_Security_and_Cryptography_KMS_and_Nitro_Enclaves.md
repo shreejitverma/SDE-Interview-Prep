@@ -2,7 +2,7 @@
 type: concept
 track: [cloud-ai, ai-eng, sde, distinguished]
 level:
-status: draft
+status: solid
 last_reviewed:
 sources: 
   - "https://docs.aws.amazon.com/kms/latest/cryptographic-details/intro.html"
@@ -17,14 +17,42 @@ sources:
   - "https://www.usenix.org/conference/usenixsecurity22/presentation/albertini"
   - "https://www.usenix.org/conference/usenixsecurity21/presentation/len"
   - "https://eprint.iacr.org/2016/086"
+  - "https://docs.aws.amazon.com/kms/latest/developerguide/requests-per-second.html"
+  - "https://docs.aws.amazon.com/kms/latest/developerguide/resource-limits.html"
+  - "https://docs.aws.amazon.com/kms/latest/developerguide/key-policy-overview.html"
+  - "https://docs.aws.amazon.com/kms/latest/developerguide/rotate-keys.html"
+  - "https://docs.aws.amazon.com/kms/latest/developerguide/create-keystore.html"
+  - "https://docs.aws.amazon.com/kms/latest/APIReference/API_Encrypt.html"
+  - "https://docs.aws.amazon.com/kms/latest/APIReference/API_Decrypt.html"
+  - "https://docs.aws.amazon.com/kms/latest/APIReference/API_EnableKeyRotation.html"
+  - "https://docs.aws.amazon.com/kms/latest/APIReference/API_ScheduleKeyDeletion.html"
+  - "https://aws.amazon.com/kms/pricing/"
+  - "https://docs.aws.amazon.com/cloudhsm/latest/userguide/limits.html"
+  - "https://docs.aws.amazon.com/cloudhsm/latest/userguide/hsm-types.html"
+  - "https://docs.aws.amazon.com/cloudhsm/latest/userguide/manage-hsm-users-chsm-cli.html"
+  - "https://docs.aws.amazon.com/cloudhsm/latest/userguide/data-protection-backup-security.html"
+  - "https://docs.aws.amazon.com/general/latest/gr/cloudhsm.html"
+  - "https://docs.aws.amazon.com/AmazonS3/latest/userguide/bucket-key.html"
+  - "https://docs.aws.amazon.com/guardduty/latest/ug/guardduty_findings_cloudwatch.html"
+  - "https://docs.aws.amazon.com/guardduty/latest/ug/guardduty-pricing.html"
+  - "https://aws.amazon.com/about-aws/whats-new/2024/12/amazon-guardduty-extended-threat-detection/"
+  - "https://docs.aws.amazon.com/enclaves/latest/user/nitro-enclave.html"
+  - "https://docs.aws.amazon.com/enclaves/latest/user/set-up-attestation.html"
+  - "https://docs.aws.amazon.com/enclaves/latest/user/kms.html"
+  - "https://docs.aws.amazon.com/whitepapers/latest/security-design-of-aws-nitro-system/the-ec2-approach-to-preventing-side-channels.html"
+  - "https://aws.amazon.com/message/101925/"
+  - "https://aws.amazon.com/blogs/security/preventing-unintended-encryption-of-amazon-s3-objects/"
+  - "https://aws.amazon.com/about-aws/whats-new/2026/04/s3-default-bucket-security-setting/"
+  - "https://www.securityweek.com/compromised-aws-keys-abused-in-codefinger-ransomware-attacks/"
+  - "https://docs.cloud.google.com/kms/docs/reference/rest/v1/projects.locations.keyRings.cryptoKeys/encrypt"
 ---
 
 # Security and Cryptography: KMS and Nitro Enclaves
 
 ## TL;DR
 
-KMS keys never leave FIPS 140-3 Level 3 HSMs in plaintext, and the hard ceiling is the per-account, per-Region request quota (10,000 to 100,000 TPS depending on Region), not the cryptography (AWS Security Blog, as of 2026-10).
-Envelope encryption exists because KMS `Encrypt` accepts at most 4 KB, and because a KMS call costs latency, quota and $0.03 per 10,000 requests (AWS Security Blog, as of 2026-10).
+KMS keys never leave FIPS 140-3 Level 3 HSMs in plaintext, and the hard ceiling is the per-account, per-Region request quota (10,000 to 100,000 TPS depending on Region), not the cryptography (AWS Security Blog, as of 2026-11).
+Envelope encryption exists because KMS `Encrypt` accepts at most 4 KB, and because a KMS call costs latency, quota and $0.03 per 10,000 requests (AWS KMS API docs and pricing, as of 2026-11).
 Each KMS encryption uses a fresh 256-bit key derived from the HSM backing key with a random 128-bit nonce, so AES-GCM nonce-reuse limits never apply to the KMS key itself, while the data key you keep in your own process stays fully exposed to them.
 Nitro Enclaves turn "who may decrypt" from an IAM identity question into a code-measurement question: KMS checks a signed attestation document against PCR condition keys and re-encrypts the plaintext to a key that only the enclave holds.
 GuardDuty is a detective control that reads independent copies of CloudTrail, VPC Flow Logs and Route 53 Resolver DNS logs; it detects compromise after the fact and prevents nothing, so its value is limited by how fast you act on its findings.
@@ -93,7 +121,7 @@ Changes to HSM software and domain membership require quorum approval, which is 
 
 The control plane covers `CreateKey`, `PutKeyPolicy`, `CreateGrant`, `ScheduleKeyDeletion`, `EnableKeyRotation` and aliases.
 The data plane covers `Encrypt`, `Decrypt`, `ReEncrypt`, `GenerateDataKey*`, `Sign`, `Verify`, `GenerateMac` and `DeriveSharedSecret`.
-All symmetric data-plane operations in an account and Region draw on one shared token bucket, so a batch job's `GenerateDataKey` storm and S3's `Decrypt` calls on your behalf compete for the same quota ([AWS KMS request quotas](https://docs.amazonaws.cn/en_us/kms/latest/developerguide/requests-per-second.html)).
+All symmetric data-plane operations in an account and Region draw on one shared token bucket, so a batch job's `GenerateDataKey` storm and S3's `Decrypt` calls on your behalf compete for the same quota ([AWS KMS request quotas](https://docs.aws.amazon.com/kms/latest/developerguide/requests-per-second.html)).
 Grants are evaluated by the front end and are eventually consistent.
 A newly created grant may not be usable straight away unless the caller passes the returned grant token, and that delay is a classic cause of intermittent `AccessDeniedException` in autoscaling paths.
 
@@ -126,15 +154,16 @@ With XKS, every `Decrypt` depends on your proxy, your WAN link and your key mana
 
 ### CloudHSM key hierarchy and trust bootstrapping
 
-CloudHSM gives you single-tenant HSMs, exposed as ENIs inside your VPC, and is FIPS 140-3 Level 3 validated (AWS Security Blog, as of 2026-10).
+CloudHSM gives you single-tenant HSMs, exposed as ENIs inside your VPC, and is FIPS 140-3 Level 3 validated (AWS Security Blog, as of 2026-11).
+That validation applies to the current `hsm2m.medium` type; the older `hsm1.medium` is FIPS 140-2 compliant and can no longer be used to create new clusters ([CloudHSM HSM types](https://docs.aws.amazon.com/cloudhsm/latest/userguide/hsm-types.html), as of 2026-11).
 Cluster ownership is bootstrapped by PKI.
 The first HSM issues a CSR, which you sign with your own issuing CA, and the client SDK then pins your CA when it opens end-to-end encrypted channels that terminate inside the HSM.
 The HSM's own certificate chains back to the manufacturer and to AWS hardware roots, so you can verify the device is genuine before you trust it.
-Users are split into crypto officers (COs), who manage users, and crypto users (CUs), who own and use keys.
-M-of-N quorum authentication can be required for CO operations.
-Keys are owned by a CU and shared explicitly, and a lost CO credential cannot be recovered by AWS.
+Users are split into admins (called crypto officers, or COs, in the previous-generation CMU tooling), who manage users, and crypto users (CUs), who own and use keys ([HSM user types](https://docs.aws.amazon.com/cloudhsm/latest/userguide/manage-hsm-users-chsm-cli.html), as of 2026-11).
+M-of-N quorum authentication can be required for admin operations.
+Keys are owned by a CU and shared explicitly, and a lost admin credential cannot be recovered by AWS.
 Backups follow their own key hierarchy.
-The HSM encrypts each backup under an ephemeral backup key (EBK), and the EBK is wrapped under a persistent backup key derived from manufacturer-held and AWS-held key-backup keys, so a backup can only be restored into genuine CloudHSM hardware ([CloudHSM backups](https://docs.aws.amazon.com/cloudhsm/latest/userguide/backups.html)).
+The HSM encrypts each backup under an ephemeral backup key (EBK), and the EBK is wrapped under a persistent backup key derived from manufacturer-held and AWS-held key-backup keys, so a backup can only be restored into AWS-owned HSMs from the same manufacturer ([CloudHSM backup security](https://docs.aws.amazon.com/cloudhsm/latest/userguide/data-protection-backup-security.html)).
 The client SDK load-balances across the HSMs in a cluster, and the cluster synchronizes token keys among them.
 A key created on one HSM is not durable against that HSM failing until the sync finishes, so the SDK's key-availability checks should be enforced for production keys.
 
@@ -143,7 +172,7 @@ A key created on one HSM is not durable against that HSM failing until the sync 
 A Nitro Enclave is a separate VM carved out of the parent instance's vCPUs and memory by the Nitro Hypervisor.
 It has no persistent storage, no external networking and no interactive access, and its only channel is a vsock to the parent ([The Security Design of the AWS Nitro System](https://docs.aws.amazon.com/whitepapers/latest/security-design-of-aws-nitro-system/security-design-of-aws-nitro-system.html)).
 Root on the parent cannot read enclave memory, because the hypervisor never maps those pages into the parent.
-The vCPUs given to an enclave are removed from the parent as whole cores, which keeps SMT siblings from being shared across the boundary.
+The vCPUs given to an enclave are removed from the parent as whole cores, which keeps SMT siblings from being shared across the boundary ([Nitro whitepaper, side channels](https://docs.aws.amazon.com/whitepapers/latest/security-design-of-aws-nitro-system/the-ec2-approach-to-preventing-side-channels.html)).
 That narrows, but does not remove, the microarchitectural side-channel surface described in work like Spectre (Kocher et al., IEEE S&P 2019).
 Compared with Intel SGX, which places the trust boundary inside a process and relies on CPU memory encryption (McKeen et al., HASP 2013; Costan and Devadas, "Intel SGX Explained", IACR ePrint 2016/086), Nitro Enclaves trust the Nitro Hypervisor and the AWS hardware.
 That makes the programming model a normal Linux VM, at the price of trusting AWS as the root of the TCB (see Sabt et al., "Trusted Execution Environment: What It Is, and What It Is Not", IEEE TrustCom 2015, for the taxonomy).
@@ -162,63 +191,64 @@ The document carries SHA-384 platform configuration registers (PCRs), which are 
 | PCR4 | Instance ID of the parent | Every instance (too specific for fleets) |
 | PCR8 | EIF signing certificate | The signing key changes, not the code |
 
-An enclave started in debug mode reports all-zero PCRs, so a policy that pins real measurements rejects debug enclaves automatically.
+An enclave started with `--debug-mode` or `--attach-console` reports all-zero PCRs, so a policy that pins real measurements rejects debug enclaves automatically ([Nitro Enclaves attestation](https://docs.aws.amazon.com/enclaves/latest/user/set-up-attestation.html), as of 2026-11).
 
 KMS integrates with attestation through the `Recipient` parameter on `Decrypt`, `GenerateDataKey`, `GenerateDataKeyPair`, `GenerateRandom` and `DeriveSharedSecret` ([KMS and Nitro Enclaves](https://docs.aws.amazon.com/kms/latest/developerguide/services-nitro-enclaves.html)).
+The same parameter also accepts NitroTPM attestation documents from EC2 instances, which is a separate instance-level mechanism (AWS KMS docs, as of 2026-11).
 The steps are as follows.
 1. The enclave generates an RSA key pair in enclave memory and obtains an attestation document that embeds the public key.
 2. The enclave sends the KMS request, signed with credentials the parent forwards, with the TLS session terminated inside the enclave and carried as raw bytes over the parent's vsock-proxy.
-3. KMS validates the document's signature chain, evaluates condition keys such as `kms:RecipientAttestation:ImageSha384` and `kms:RecipientAttestation:PCR0` through `PCR8` in the key policy, and only then runs the operation.
-4. KMS leaves `Plaintext` null and returns `CiphertextForRecipient`, which is the result encrypted to the enclave's public key with RSAES-OAEP-SHA-256.
+3. KMS validates the document's signature chain, evaluates condition keys such as `kms:RecipientAttestation:ImageSha384` and the `kms:RecipientAttestation:PCR` family (for the measured registers listed above) in the key policy, and only then runs the operation ([Nitro Enclaves and KMS](https://docs.aws.amazon.com/enclaves/latest/user/kms.html)).
+4. KMS leaves `Plaintext` null or empty and returns `CiphertextForRecipient`, which is the result encrypted to the enclave's public key with `RSAES_OAEP_SHA_256`, the only valid algorithm ([KMS Decrypt API](https://docs.aws.amazon.com/kms/latest/APIReference/API_Decrypt.html)).
 Even if the parent terminated TLS, it would only ever see a ciphertext it cannot open.
 This is the mechanism that keeps model weights, signing keys or PII decryptable only by reviewed code, and not by every admin with `kms:Decrypt`.
-One limitation matters for AI workloads: enclaves have no GPU access, so they protect key release and CPU-side processing, not GPU inference (see [[17-Cloud-AI-Engineering/Volume_12_AI_Applications_MLOps_and_Data_Platforms/Chapter_08_Cloud_Security_for_AI_Systems_Attacks_and_Defenses|Cloud Security for AI Systems]]).
+One limitation matters for AI workloads: AWS docs describe an enclave as isolated vCPUs and memory with only a local socket to the parent and no way to attach a device, so even on a GPU parent instance it protects key release and CPU-side processing, not GPU inference (AWS Nitro Enclaves docs, as of 2026-11; the docs do not state the GPU exclusion in those words) (see [[17-Cloud-AI-Engineering/Volume_12_AI_Applications_MLOps_and_Data_Platforms/Chapter_08_Cloud_Security_for_AI_Systems_Attacks_and_Defenses|Cloud Security for AI Systems]]).
 
 ### GuardDuty detection pipeline
 
 GuardDuty builds its foundational detections from CloudTrail management events, VPC Flow Logs and DNS query logs from the Route 53 Resolver.
 It reads these through independent, AWS-internal streams, so you do not need to turn on Flow Logs or trails, and your own logging settings do not change what it sees ([GuardDuty docs](https://docs.aws.amazon.com/guardduty/latest/ug/what-is-guardduty.html)).
-Optional protection plans add more telemetry: S3 data events, EKS audit logs, Runtime Monitoring (an eBPF-based agent for EKS, ECS and EC2), Malware Protection (agentless EBS snapshot scans and S3 object scans), RDS login activity and Lambda network activity.
+Optional protection plans add more telemetry: S3 data events, EKS audit logs, Runtime Monitoring (an eBPF-based agent for EKS, ECS and EC2), Malware Protection (agentless EBS snapshot scans, S3 object scans and AWS Backup scans), RDS login activity, Lambda network activity, and AI Protection (CloudTrail data events from Amazon Bedrock, Bedrock AgentCore and SageMaker AI) (GuardDuty docs, as of 2026-11).
 Detection combines threat-intelligence matching (known-bad IPs and domains), rules (for example, EC2 instance-role credentials used from outside AWS, reported as `UnauthorizedAccess:IAMUser/InstanceCredentialExfiltration.OutsideAWS`) and per-account behavioral baselines.
-Extended Threat Detection correlates multiple signals into attack-sequence findings across a multi-stage intrusion (launched 2024-12, UNVERIFIED as of 2026-10).
+Extended Threat Detection correlates multiple signals into attack-sequence findings across a multi-stage intrusion ([launched 2024-12](https://aws.amazon.com/about-aws/whats-new/2024/12/amazon-guardduty-extended-threat-detection/); on by default at no additional cost per the GuardDuty docs, as of 2026-11).
 Findings are regional, and you aggregate them with a delegated administrator account in AWS Organizations.
 
 ## Numbers to Know
 
 | Item | Value | Source |
 | --- | --- | --- |
-| KMS shared symmetric crypto request quota | 10,000 to 100,000 TPS per account per Region, depending on Region; adjustable | (AWS Security Blog, as of 2026-10) |
-| KMS customer managed key price | $1 per key per month, prorated hourly | (AWS Security Blog, as of 2026-10) |
-| KMS symmetric request price | $0.03 per 10,000 requests | (AWS Security Blog, as of 2026-10) |
-| KMS rotation surcharge | +$1/month for each of the first two rotations, capped after the second (so $3/month max per key) | (AWS What's New, 2024-04, as of 2026-10) |
-| KMS rotation period | 90 to 2,560 days, plus on-demand rotation | (AWS What's New, 2024-04, as of 2026-10) |
-| KMS `Encrypt` max plaintext | 4 KB | (AWS Security Blog, as of 2026-10) |
-| KMS per-call derived key | 256-bit AES-GCM key from a 128-bit random nonce, SP 800-108r1 HMAC-SHA256 KDF | (AWS Security Blog, as of 2026-10) |
-| KMS keys per account per Region | 100,000 (adjustable) | (AWS KMS docs, as of 2026-10) |
-| Grants per KMS key | 50,000 (adjustable) | (AWS KMS docs, as of 2026-10) |
-| Key policy document size | 32 KB (not adjustable) | (AWS KMS docs, as of 2026-10) |
-| Custom key stores per account per Region | 10 (not adjustable) | (AWS KMS docs, as of 2026-10) |
-| Key deletion waiting period | 7 to 30 days (default 30) | (AWS KMS docs, as of 2026-10) |
-| KMS and CloudHSM hardware validation | FIPS 140-3 Level 3 | (AWS Security Blog, as of 2026-10) |
-| CloudHSM price | $1.60 per HSM-hour in us-east-1 (about $1,168 per HSM per 730-hour month) | (AWS Security Blog, as of 2026-10) |
-| CloudHSM Region coverage | 32 Regions | (AWS Security Blog, as of 2026-10) |
-| CloudHSM HSMs per cluster | 28 | UNVERIFIED |
+| KMS shared symmetric crypto request quota | 10,000 TPS per account per Region by default, 20,000 in 7 Regions, 100,000 in us-east-1, us-west-2 and eu-west-1; adjustable | (AWS KMS docs, as of 2026-11) |
+| KMS customer managed key price | $1 per key per month, prorated hourly | (AWS KMS pricing, as of 2026-11) |
+| KMS symmetric request price | $0.03 per 10,000 requests | (AWS Security Blog, as of 2026-11) |
+| KMS rotation surcharge | +$1/month for each of the first two rotations, capped after the second (so $3/month max per key) | (AWS KMS pricing, as of 2026-11) |
+| KMS rotation period | 90 to 2,560 days (default 365), plus on-demand rotation (at most 25 per key, not adjustable) | (AWS KMS API and docs, as of 2026-11) |
+| KMS `Encrypt` max plaintext | 4,096 bytes (symmetric keys) | (AWS KMS API docs, as of 2026-11) |
+| KMS per-call derived key | 256-bit AES-GCM key from a 128-bit random nonce, SP 800-108r1 HMAC-SHA256 KDF | (AWS Security Blog, as of 2026-11) |
+| KMS keys per account per Region | 100,000 (adjustable) | (AWS KMS docs, as of 2026-11) |
+| Grants per KMS key | 50,000 (adjustable) | (AWS KMS docs, as of 2026-11) |
+| Key policy document size | 32 KB (32,768 bytes), a document format rule and not a listed Service Quota | (AWS KMS docs, as of 2026-11) |
+| Custom key stores per account per Region | 10 (adjustable) | (AWS KMS docs, as of 2026-11) |
+| Key deletion waiting period | 7 to 30 days (default 30) | (AWS KMS docs, as of 2026-11) |
+| KMS and CloudHSM hardware validation | FIPS 140-3 Level 3 (CloudHSM `hsm2m.medium`; legacy `hsm1.medium` is FIPS 140-2) | (AWS Security Blog; CloudHSM docs, as of 2026-11) |
+| CloudHSM price | $1.60 per HSM-hour in us-east-1 (about $1,168 per HSM per 730-hour month) | (AWS Security Blog; AWS KMS pricing example, as of 2026-11) |
+| CloudHSM Region coverage | 32 commercial Regions plus 2 GovCloud Regions (34 endpoints) | (AWS General Reference count, as of 2026-11) |
+| CloudHSM HSMs per cluster | 28 (not adjustable) | (CloudHSM docs, as of 2026-11) |
 | AES-GCM random-IV invocation cap per key | 2^32 | (NIST SP 800-38D) |
-| S3 Bucket Keys KMS request reduction | Up to 99% | (Amazon S3 docs, UNVERIFIED as of 2026-10) |
-| GuardDuty updated-finding export to EventBridge | 6 h default; configurable to 1 h or 15 min | (GuardDuty docs, UNVERIFIED as of 2026-10) |
-| GuardDuty finding retention | 90 days | (GuardDuty docs, UNVERIFIED as of 2026-10) |
-| GuardDuty free trial | 30 days per account per Region | (GuardDuty docs, UNVERIFIED as of 2026-10) |
-| Nitro Enclaves price | No additional charge beyond the parent instance | (Nitro Enclaves docs, UNVERIFIED as of 2026-10) |
+| S3 Bucket Keys KMS request reduction | Up to 99% | (Amazon S3 docs, as of 2026-11) |
+| GuardDuty updated-finding export to EventBridge | 6 h default; configurable to 1 h or 15 min | (GuardDuty docs, as of 2026-11) |
+| GuardDuty finding retention | 90 days | (GuardDuty docs, as of 2026-11) |
+| GuardDuty free trial | 30 days per account per Region, on first enablement in that Region | (GuardDuty docs, as of 2026-11) |
+| Nitro Enclaves price | No additional charge beyond the parent instance | (Nitro Enclaves docs, as of 2026-11) |
 
 ## AWS vs GCP Mechanism Parity
 
 | Dimension | AWS | Google Cloud | Critical difference |
 | --- | --- | --- | --- |
-| Managed key service | KMS: regional, multi-tenant HSM fleet, FIPS 140-3 L3 | Cloud KMS with protection levels SOFTWARE, HSM, EXTERNAL, EXTERNAL_VPC | GCP lets you pick software-only protection per key; on AWS, every KMS key is HSM-backed |
+| Managed key service | KMS: regional, multi-tenant HSM fleet, FIPS 140-3 L3 | Cloud KMS with protection levels SOFTWARE, HSM, HSM_SINGLE_TENANT, EXTERNAL, EXTERNAL_VPC | GCP lets you pick software-only protection per key; on AWS, every KMS key is HSM-backed |
 | Key versions | HBK versions are hidden; old versions cannot be disabled one at a time | Key versions are first-class and can be disabled or destroyed individually | GCP supports targeted crypto-shredding of one version; AWS needs the whole key deleted |
 | Rotation | Automatic every 90-2,560 days or on demand; symmetric keys only | Automatic rotation schedule on symmetric keys; new primary version | Neither re-encrypts existing data; both only change the key for new encryptions |
-| Direct encrypt payload | 4 KB | 64 KiB (UNVERIFIED as of 2026-10) | Envelope encryption is mandatory on both for bulk data |
-| Dedicated HSM | CloudHSM: single-tenant cluster in your VPC, PKCS#11/JCE/OpenSSL | Cloud HSM is multi-tenant behind the Cloud KMS API (UNVERIFIED for single-tenant offerings) | AWS offers customer-administered HSM partitions as a first-party service |
+| Direct encrypt payload | 4 KB | 64 KiB for SOFTWARE, EXTERNAL and EXTERNAL_VPC keys; 8 KiB combined plaintext plus AAD for HSM keys (Google Cloud KMS API docs, as of 2026-11) | Envelope encryption is mandatory on both for bulk data |
+| Dedicated HSM | CloudHSM: single-tenant cluster in your VPC, PKCS#11/JCE/OpenSSL | Cloud HSM is multi-tenant behind the Cloud KMS API; Single-tenant Cloud HSM (`HSM_SINGLE_TENANT`, GA 2025-12, in four regions) gives a dedicated partition cluster with quorum-approved customer administration ([Cloud KMS release notes](https://docs.cloud.google.com/kms/docs/release-notes) and [locations](https://docs.cloud.google.com/kms/docs/locations), as of 2026-11) | Both now offer first-party single tenancy, but AWS exposes the HSM directly in your VPC through PKCS#11/JCE/OpenSSL, while Google keeps keys behind the Cloud KMS API |
 | External keys | XKS proxy, double encryption | Cloud EKM, with Key Access Justifications | Both put your external key manager on the decrypt critical path |
 | Cross-region keys | Multi-Region keys (`mrk-` prefix, shared material, independent policies) | Multi-region and global key locations | AWS replicas are separate resources whose policies can drift apart |
 | Confidential compute release | Nitro Enclaves + KMS `Recipient` attestation condition keys | Confidential Space: confidential VM + attestation token consumed by Workload Identity Federation attribute conditions | AWS binds release to PCR hashes in the key policy; GCP binds it to OIDC claims in a WIF provider |
@@ -232,9 +262,9 @@ See [[17-Cloud-AI-Engineering/Volume_03_GCP_Deep_Dive/Chapter_15_Security_and_Co
 
 ### Cost estimate
 
-The KMS key costs $1 per month prorated hourly, about $0.0014 per hour, and the lab's few hundred requests cost under $0.01 (AWS Security Blog, as of 2026-10).
-GuardDuty falls inside the 30-day free trial on a new detector (UNVERIFIED as of 2026-10).
-The optional enclave part uses one m5.xlarge on-demand instance, roughly $0.19 per hour in us-east-1 (UNVERIFIED as of 2026-10).
+The KMS key costs $1 per month prorated hourly, about $0.0014 per hour, and the lab's few hundred requests cost under $0.01 (AWS Security Blog, as of 2026-11).
+GuardDuty falls inside the 30-day free trial if this is the account's first enablement in the Region; otherwise it bills for usage (GuardDuty docs, as of 2026-11).
+The optional enclave part uses one m5.xlarge on-demand instance, $0.192 per hour in us-east-1 (Vantage EC2 price catalog, as of 2026-11).
 Expect the whole lab to cost under $1 if torn down the same day.
 
 ### Step 0: budget alarm
@@ -335,7 +365,7 @@ nitro-cli run-enclave --eif-path app.eif --cpu-count 2 --memory 1024 --enclave-c
 vsock-proxy 8000 kms.us-east-1.amazonaws.com 443 &
 ```
 
-Put a key policy statement in place that denies all decrypt-class calls (including `ReEncrypt` and `ReEncryptFrom`, which have no `Recipient` parameter and could otherwise be abused to re-encrypt under an unattensted key) unless the request carries a matching attestation.
+Put a key policy statement in place that denies all decrypt-class calls (including `ReEncrypt` and `ReEncryptFrom`, which have no `Recipient` parameter and could otherwise be abused to re-encrypt under an unattested key) unless the request carries a matching attestation.
 The statement uses `StringNotEqualsIgnoreCase`, which also evaluates true when the condition key is missing, so a plain `Decrypt` from the parent's role is denied as well.
 Producer pipelines that only generate data keys (`kms:GenerateDataKey`) are kept out of this Deny block so they can encrypt model weights without enclave attestation.
 
@@ -366,9 +396,10 @@ Assume a training data loader reads 20,000 SSE-KMS objects per second from S3 (s
 Without S3 Bucket Keys, every GET makes S3 call `Decrypt` on your behalf, which is 20,000 KMS TPS charged to your account's shared quota.
 In a Region with a 10,000 TPS default, the loader is throttled at half its target rate before anything else in the account uses KMS.
 Monthly cost: 20,000 x 86,400 x 30 = 5.184e10 requests, and 5.184e10 / 1e4 x $0.03 = $155,520 per month.
-With Bucket Keys, S3 uses a bucket-level key with a limited lifetime to make object data keys, which cuts KMS calls by up to 99% (UNVERIFIED as of 2026-10).
-That brings the load to about 200 TPS and about $1,555 per month.
-The trade-off is that CloudTrail then logs one bucket-key ARN in place of per-object events, and the encryption context changes from object ARN to bucket ARN, which breaks any key-policy conditions written against the object ARN.
+With Bucket Keys, S3 uses a bucket-level key with a limited lifetime to make object data keys, which cuts KMS calls by up to 99% (Amazon S3 docs, as of 2026-11).
+That best case brings the load to about 200 TPS and about $1,555 per month; actual savings depend on the number of requesters, because S3 fetches a unique bucket-level key at least once per requester.
+Bucket Keys apply only to objects written after they are enabled, so a read-heavy loader sees no reduction on existing objects until they are rewritten with `CopyObject` (Amazon S3 docs, as of 2026-11).
+The trade-off is that KMS CloudTrail events then log the bucket ARN in place of the object ARN, with fewer events in total, and the encryption context changes from object ARN to bucket ARN, which breaks any key-policy conditions written against the object ARN.
 
 ### Capacity sizing: application DEK caching
 
@@ -412,10 +443,11 @@ The controls that would have helped are IMDSv2 hop limits, key-policy conditions
 
 ### Cryptographic ransomware against your own storage
 
-The publicly reported "Codefinger" campaign in January 2025 used stolen keys to rewrite S3 objects with SSE-C, under a customer-provided key the victim never held, and then set lifecycle deletion (UNVERIFIED as of 2026-10).
+The publicly reported "Codefinger" campaign in January 2025 used stolen keys to rewrite S3 objects with SSE-C, under a customer-provided key the victim never held, and then set lifecycle deletion within seven days ([Halcyon via SecurityWeek](https://www.securityweek.com/compromised-aws-keys-abused-in-codefinger-ransomware-attacks/), 2025-01; AWS confirms the SSE-C `CopyObject` overwrite pattern in its [Security Blog](https://aws.amazon.com/blogs/security/preventing-unintended-encryption-of-amazon-s3-objects/)).
+S3 has since been [rolling out SSE-C disabled by default](https://aws.amazon.com/about-aws/whats-new/2026/04/s3-default-bucket-security-setting/) for new general purpose buckets, and for new writes to existing buckets in accounts with no SSE-C objects (from 2026-04, as of 2026-11).
 The KMS variants of this attack are re-encrypting under a key in an attacker account, attaching an XKS the attacker controls, or calling `ScheduleKeyDeletion` on your own keys.
 Preventive controls include the following.
-- SCPs that deny `s3:PutObject` when the SSE-C algorithm header (`s3:x-amz-server-side-encryption-customer-algorithm`) is present (condition key name UNVERIFIED as of 2026-10).
+- Bucket policies or resource control policies that deny `s3:PutObject` when the SSE-C algorithm header (`s3:x-amz-server-side-encryption-customer-algorithm`) is present, using `Null` set to `false` (AWS Security Blog, as of 2026-11), or the bucket-level `BlockedEncryptionTypes` setting in `PutBucketEncryption` (Amazon S3 docs, as of 2026-11).
 - SCPs that deny `kms:ScheduleKeyDeletion`, `kms:PutKeyPolicy` and `kms:CreateCustomKeyStore` outside a break-glass role.
 - Resource control policies that keep principals outside the organization off your keys and buckets.
 - Detection through CloudTrail and EventBridge alarms on `ScheduleKeyDeletion`, because the 7- to 30-day waiting period is a response window only if someone is paged.
@@ -442,12 +474,12 @@ Pipelines that create a grant and immediately launch a consumer see intermittent
 DNS-based findings depend on instances using the Amazon-provided Route 53 Resolver.
 Workloads that send DNS to self-managed resolvers or straight to the internet produce no DNS telemetry for GuardDuty.
 GuardDuty is regional, so enabling it only in "used" Regions leaves the Regions attackers like for crypto-mining unmonitored.
-Updated findings reach EventBridge every 6 hours by default (UNVERIFIED as of 2026-10), so an alert pipeline that relies on updates rather than new findings can lag by hours.
+Updated findings reach EventBridge every 6 hours by default (GuardDuty docs, as of 2026-11), so an alert pipeline that relies on updates rather than new findings can lag by hours.
 
 ### Regional dependency cascades
 
 KMS is a regional service, and many AWS services call it on their data paths, so a KMS or IAM degradation in one Region spreads into EBS, S3 SSE-KMS, Lambda environment variable decryption and Secrets Manager.
-The 2025-10-20 us-east-1 post-incident summary attributed a broad multi-service outage to a latent race condition in DynamoDB's automated DNS management, which spread to dependent services (UNVERIFIED as of 2026-10).
+The [2025-10-20 us-east-1 post-incident summary](https://aws.amazon.com/message/101925/) attributed a broad multi-service outage to a latent race condition in DynamoDB's automated DNS management that left an empty DNS record, which spread to dependent services; the summary does not single out KMS, so this is an analogy for the dependency shape and not a KMS incident.
 The lesson for key design is to know which encryption paths have no cache and therefore fail closed the moment KMS degrades (see [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_07_Anatomy_of_Major_Cloud_Outages|Anatomy of Major Cloud Outages]]).
 
 ### Crypto-shredding defeated by backups
@@ -481,8 +513,8 @@ It gives per-tenant shredding, KMS call volume proportional to (hosts x tenants 
 ### Unit-economics levers
 
 The S3 Bucket Keys math above shows KMS request cost overtaking storage cost on hot SSE-KMS data.
-Use AWS-owned or AWS-managed keys where policy control and audit are not required, because their request charges and key fees differ from customer managed keys (UNVERIFIED as of 2026-10 for the exact pricing differences).
-CloudHSM costs about $1,168 per HSM per month at $1.60 per hour, so a two-AZ minimum cluster runs about $2,336 per month before any traffic (AWS Security Blog, as of 2026-10).
+Use AWS-owned or AWS-managed keys where policy control and audit are not required: neither carries a monthly key fee, AWS-managed keys still bill API requests, and AWS-owned keys do not count against your request quotas (AWS KMS pricing and docs, as of 2026-11).
+CloudHSM costs about $1,168 per HSM per month at $1.60 per hour, so a two-AZ minimum cluster runs about $2,336 per month before any traffic (AWS Security Blog, as of 2026-11).
 Choose it only when single-tenancy, PKCS#11 or algorithms outside KMS (for example AES key wrap, CBC or CTR modes) are hard requirements.
 GuardDuty cost scales with CloudTrail event volume and Flow/DNS log volume.
 Chatty automation that emits millions of management events inflates the bill, and the GuardDuty usage-statistics API shows which accounts and data sources drive cost.
@@ -516,7 +548,8 @@ A new data loader reading SSE-KMS objects from S3 causes Secrets Manager reads i
 
 S3 calls KMS `Decrypt` on our behalf for each GET of an SSE-KMS object, and that call counts against the account's shared symmetric cryptographic quota in the Region.
 Secrets Manager also calls KMS to decrypt secrets, so both workloads draw on one token bucket, and the loader's thousands of TPS starve the other.
-The immediate fix is enabling S3 Bucket Keys, which replaces per-object KMS calls with calls for a time-limited bucket-level key, cutting requests by up to about 99%.
+The immediate relief is a quota increase, because S3 Bucket Keys, which replace per-object KMS calls with calls for a time-limited bucket-level key and cut requests by up to about 99%, apply only to objects written after enablement.
+So I would enable them and rewrite existing objects with `CopyObject`.
 Note that the context and CloudTrail granularity change from object to bucket.
 Structural fixes are moving the heavy consumer to its own account so its quota is isolated, requesting a quota increase sized to measured p99 demand plus headroom, and alarming on KMS request usage as a percentage of quota.
 I would also check client retry behavior, because synchronized retries after throttling make the overload worse.
@@ -558,7 +591,7 @@ At startup the enclave generates an RSA key pair, asks the NSM for an attestatio
 The TLS session terminates inside the enclave and travels over a vsock-proxy on the parent.
 KMS verifies the COSE_Sign1 signature chain up to the Nitro root.
 KMS then evaluates `kms:RecipientAttestation:ImageSha384` or the PCR keys in the key policy, and returns `CiphertextForRecipient` encrypted to the enclave's public key, so the parent only ever relays a ciphertext.
-The key policy must contain an explicit Deny on decrypt-class actions (specifically `kms:Decrypt`, `kms:ReEncryptFrom`, and `kms:ReEncrypt*`, because `ReEncrypt` lacks a `Recipient` parameter and could otherwise be used to move ciphertext to an unattensted key) when the attestation does not match, because otherwise any admin whose IAM policy grants `kms:Decrypt` can simply call it without a recipient.
+The key policy must contain an explicit Deny on decrypt-class actions (specifically `kms:Decrypt`, `kms:ReEncryptFrom`, and `kms:ReEncrypt*`, because `ReEncrypt` lacks a `Recipient` parameter and could otherwise be used to move ciphertext to an unattested key) when the attestation does not match, because otherwise any admin whose IAM policy grants `kms:Decrypt` can simply call it without a recipient.
 I would pin PCR0 for strictness, or PCR8 for operational ease, and add PCR3 to bind to the parent role.
 Failure modes:
 - Debug-mode enclaves report zero PCRs and are correctly rejected, but a policy that only checks PCR8 trusts every image the signing key has ever signed.
@@ -618,9 +651,9 @@ A board member asks whether moving all keys to CloudHSM or an external key manag
 #### Model Answer
 
 Both KMS and CloudHSM run FIPS 140-3 Level 3 validated hardware, so the question is not cryptographic strength but who controls administration and who is on the availability path.
-CloudHSM gives single-tenant partitions and customer-held CO credentials, and adds PKCS#11 and algorithms KMS lacks.
+CloudHSM gives single-tenant partitions and customer-held admin credentials, and adds PKCS#11 and algorithms KMS lacks.
 It costs about $1,168 per HSM per month in us-east-1 with at least two HSMs for availability, and it makes us responsible for user management, quorum policies and capacity planning.
-Lost CO credentials are unrecoverable.
+Lost admin credentials are unrecoverable.
 XKS keeps key material outside AWS and adds a kill switch we control, but every decrypt now depends on our proxy and WAN, which almost certainly lowers availability.
 The largest real-world risk is credential compromise of authorized principals, as Capital One and SSE-C ransomware campaigns show, and none of these options reduces it.
 Narrow key policies, encryption-context conditions, data-perimeter controls, SCPs on destructive key actions and enclave-gated release for the most sensitive keys do reduce it.

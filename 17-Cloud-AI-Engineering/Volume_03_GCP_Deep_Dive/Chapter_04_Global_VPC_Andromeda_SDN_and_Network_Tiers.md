@@ -14,6 +14,29 @@ sources:
   - "https://docs.cloud.google.com/nat/docs/ports-and-addresses"
   - "https://cloud.google.com/nat/docs/troubleshooting"
   - "https://docs.cloud.google.com/nat/docs/nat-rules-overview"
+  - "https://www.usenix.org/system/files/conference/nsdi18/nsdi18-dalton.pdf"
+  - "https://conf.researchr.org/event/vee-2018/vee-2018-research-papers-vm-live-migration-at-scale"
+  - "https://docs.cloud.google.com/nat/docs/public-nat"
+  - "https://docs.cloud.google.com/nat/docs/tune-nat-configuration"
+  - "https://cloud.google.com/nat/pricing"
+  - "https://cloud.google.com/vpc/network-pricing"
+  - "https://docs.cloud.google.com/vpc/docs/mtu"
+  - "https://docs.cloud.google.com/vpc/docs/vpc"
+  - "https://cloud.google.com/network-connectivity/docs/router/concepts/learned-routes"
+  - "https://docs.cloud.google.com/network-tiers/docs/overview"
+  - "https://docs.cloud.google.com/network-tiers/docs/set-network-tier"
+  - "https://docs.cloud.google.com/organization-policy/reference/org-policy-constraints"
+  - "https://docs.cloud.google.com/docs/security/encryption-in-transit"
+  - "https://status.cloud.google.com/incident/compute/16007"
+  - "https://cloud.google.com/blog/topics/inside-google-cloud/an-update-on-sundays-service-disruption"
+  - "https://github.com/GoogleCloudPlatform/cluster-toolkit/pull/6369"
+  - "https://docs.aws.amazon.com/vpc/latest/userguide/nat-gateway-basics.html"
+  - "https://docs.aws.amazon.com/vpc/latest/userguide/metrics-dimensions-nat-gateway.html"
+  - "https://docs.aws.amazon.com/vpc/latest/userguide/nat-gateways-regional.html"
+  - "https://aws.amazon.com/blogs/networking-and-content-delivery/introducing-amazon-vpc-regional-nat-gateway"
+  - "https://aws.amazon.com/builders-library/avoiding-overload-in-distributed-systems-by-putting-the-smaller-service-in-control/"
+  - "https://aws.amazon.com/ec2/features/"
+  - "https://docs.aws.amazon.com/global-accelerator/latest/dg/what-is-global-accelerator.html"
 ---
 
 # Global VPC, Andromeda SDN, and Network Tiers
@@ -80,7 +103,7 @@ The paper reports networks of more than 100,000 VMs and a median network-update 
 ### Why on-demand and preprogrammed models both fail, and what Hoverboards fix
 
 There are two classic SDN programming models.
-In the preprogrammed model, the controller pushes a full mesh of forwarding state to every host, so programming time grows as O(n x H), with n the number of VMs and H the number of hosts ([Andromeda NSDI slides](https://www.usenix.org/sites/default/files/conference/protected-files/andromeda_nsdi18_slides.pdf)).
+In the preprogrammed model, the controller pushes a full mesh of forwarding state to every host, so programming time grows as O(n x h), with n the number of VMs and h the number of hosts with at least one VM in the network ([NSDI 2018 paper](https://www.usenix.org/system/files/conference/nsdi18/nsdi18-dalton.pdf)).
 At tens of thousands of hosts, that quadratic growth costs control-plane CPU and memory and also host dataplane memory.
 In the on-demand model, a host that misses in its flow table asks the controller for the entry.
 The paper names the metastable failure of the on-demand model: if the controller falls behind, every host requests on-demand programming, the extra load pushes it further behind, and the result is an outage ([NSDI 2018 paper](https://www.usenix.org/system/files/conference/nsdi18/nsdi18-dalton.pdf)).
@@ -89,7 +112,7 @@ Andromeda first used OpenFlow with the preprogrammed model only.
 The Hoverboard model is a third option.
 A host sends every packet it has no route for to Hoverboard gateways, which have forwarding information for all virtual networks.
 The controller watches flow statistics, and when a flow exceeds a usage threshold it installs an offload flow, which is a direct host-to-host path that skips the Hoverboard ([Morning Paper summary](https://blog.acolyer.org/2018/05/02/andromeda-performance-isolation-and-velocity-at-scale-in-cloud-network-virtualization/)).
-The host keeps a low-priority default route to the Hoverboards, and the more specific offload entries take precedence.
+Hoverboards act as the default router for flows the control plane has not offloaded, and offload flows are direct host-to-host routes programmed by the control plane ([NSDI 2018 paper](https://www.usenix.org/system/files/conference/nsdi18/nsdi18-dalton.pdf)).
 Google reported that more than 99.5% of traffic was offloaded ([NSDI slides](https://www.usenix.org/sites/default/files/conference/protected-files/andromeda_nsdi18_slides.pdf)).
 The long tail of mostly idle VM pairs never costs per-host state, and the gateways absorb it.
 
@@ -112,7 +135,7 @@ The paper notes that stateful firewalls and most middlebox functions can run in 
 Against Andromeda's first production deployment, the paper reports 19x throughput, 16x CPU efficiency, 7x lower latency, and 50x larger maximum network size.
 
 The dataplane now runs on Snap, Google's microkernel-style host networking framework.
-Snap packet processing runs as pluggable "engines" that the control plane manages over RPC, and Snap lists Andromeda as one of its production users ([Marty et al., SOSP 2019 slides](https://www.sigops.org/s/conferences/sosp/2019/slides/marty.pdf)).
+Snap packet processing runs as "engines" alongside a Snap control plane, and Snap lists Andromeda as one of its production users ([Marty et al., SOSP 2019 slides](https://www.sigops.org/s/conferences/sosp/2019/slides/marty.pdf)).
 The trade-off is plain: Google spends host CPU cores on networking in exchange for software velocity and live-migratable state.
 The paper says live migration was one of the main reasons it avoided hardware-only SR-IOV designs ([Morning Paper summary](https://blog.acolyer.org/2018/05/02/andromeda-performance-isolation-and-velocity-at-scale-in-cloud-network-virtualization/)).
 That contrasts with the AWS approach, which moves the VPC dataplane onto dedicated Nitro hardware; see [[17-Cloud-AI-Engineering/Volume_02_AWS_Deep_Dive/Chapter_04_EC2_Nitro_Architecture_and_Graviton|EC2, Nitro Architecture, and Graviton]].
@@ -122,7 +145,8 @@ That contrasts with the AWS approach, which moves the VPC dataplane onto dedicat
 Andromeda supports global virtual networks and live migration across clusters, and its stated challenge is to avoid packet loss even though global routing tables cannot be updated instantly ([NSDI 2018 paper](https://www.usenix.org/system/files/conference/nsdi18/nsdi18-dalton.pdf)).
 During the migration blackout, the source host enables "hairpin" flows: it forwards ingress packets meant for the departed VM on to the destination host until senders' flow tables converge.
 The paper reports a migration blackout with a median of 65 ms and a 99th percentile of 388 ms.
-Google's separate live-migration paper reports a fleet-wide median blackout of 50 ms as of April 2017, varying by machine shape and mainly with memory size ([Ruprecht et al., VEE 2018](https://dl.acm.org/doi/pdf/10.1145/3186411.3186415)).
+Google's separate live-migration paper reports over 1,000,000 migrations monthly with a 50 ms median and a 300 ms p99 blackout ([Ruprecht et al., VEE 2018](https://dl.acm.org/doi/pdf/10.1145/3186411.3186415), [abstract](https://conf.researchr.org/event/vee-2018/vee-2018-research-papers-vm-live-migration-at-scale)).
+An April 2017 snapshot date and variation by machine shape and memory size are also attributed to the full paper, but are UNVERIFIED here: only the abstract was accessible.
 Dataplane upgrades transfer firewall and VM state from the old engine to the new one in the background, then take a short blackout to switch over.
 Google lecture material cites about a 200 ms median network blackout and about 1 s at p99 for this hitless upgrade ([Stanford CS244 2022 lecture](https://2022-cs244.github.io/slides/Lecture_09_2022.pdf)).
 These are 2017-2022 published figures, not SLAs, and current values are not public.
@@ -135,9 +159,9 @@ See [[17-Cloud-AI-Engineering/Volume_10_AI_Infrastructure_on_Cloud/Chapter_08_Fa
 The VPC network resource, its routing table, and its firewall policy are global, and subnets are regional.
 Two VMs in different regions of the same VPC reach each other on internal IPs with no peering, transit hub, or VPN, because Andromeda encapsulates and routes the traffic over Google's backbone.
 Cloud Router is regional.
-In regional dynamic routing mode, routes Cloud Router learns over BGP are programmed only in its own region, and in global mode they are programmed in all regions (UNVERIFIED in this revision).
+In regional dynamic routing mode, which is the default, each region processes only the routes learned by Cloud Router BGP tasks in that region, and in global mode each region also sends its best path per prefix to all other regions, so resulting routes can have next hops in any region ([Cloud Router learned routes, as of 2026-11](https://cloud.google.com/network-connectivity/docs/router/concepts/learned-routes)).
 Cloud NAT gateways are regional.
-You can have several Public NAT gateways in one region of a VPC only if each one covers different source subnets ([Public NAT docs, as of 2026-10](https://docs.cloud.google.com/nat/docs/public-nat)).
+You can have several Public NAT gateways in one region of a VPC only if each one serves a different source subnet or, within one subnet, a different IP address range of that subnet ([Public NAT docs, as of 2026-11](https://docs.cloud.google.com/nat/docs/public-nat)).
 
 Failure-domain reasoning splits in two.
 The data plane is per-host and per-cluster, which makes it effectively zonal, so a VM's packets depend on its own host and the fabric.
@@ -158,9 +182,10 @@ The control plane reserves sets of NAT IP and source port pairs for each VM ahea
 The VM's host then translates on its own, with no per-connection coordination.
 Under static port allocation, which is the Public NAT default, each VM gets a fixed minPortsPerVm.
 Under dynamic port allocation (DPA), which is the Private NAT default, each VM gets a minimum and can grow to a maximum ([Cloud NAT ports and addresses, as of 2026-10](https://docs.cloud.google.com/nat/docs/ports-and-addresses)).
-With DPA, the minimum must be a power of 2 between 32 and 32,768 ([Tune NAT configuration, as of 2026-10](https://docs.cloud.google.com/nat/docs/tune-nat-configuration)).
-The GoogleCloudPlatform cluster-toolkit change that enabled DPA describes the allocation growing by doubling from 32 to 64 to 128 and up, on demand ([cluster-toolkit PR 6369](https://github.com/GoogleCloudPlatform/cluster-toolkit/pull/6369)).
-That PR also says static allocation forces a 1,024-port minimum per node when NAT covers GKE alias IP ranges, which is why GKE nodes use up NAT IPs about 16 times faster than plain VMs at the default of 64.
+With DPA, the minimum must be a power of 2 between 32 and 32,768, and the maximum must be a power of 2 from 64 to 65,536, with a default of 65,536 ([Tune NAT configuration, as of 2026-11](https://docs.cloud.google.com/nat/docs/tune-nat-configuration)).
+The default DPA minimum is 32, and a VM close to exhausting its ports has its allocation doubled, up to the maximum ([Cloud NAT ports and addresses, as of 2026-11](https://docs.cloud.google.com/nat/docs/ports-and-addresses)).
+The GoogleCloudPlatform cluster-toolkit change that enabled DPA describes the same doubling from 32 to 64 to 128 and up ([cluster-toolkit PR 6369](https://github.com/GoogleCloudPlatform/cluster-toolkit/pull/6369)).
+Google's docs and that PR also say static allocation raises the minimum to at least 1,024 ports per VM when NAT serves alias IP ranges larger than a /32, so GKE nodes use up NAT IPs about 16 times faster than plain VMs at the static default of 64 (1,024 / 64, this chapter's arithmetic).
 
 The unit of capacity is a unique destination 3-tuple (destination IP, destination port, protocol), not the VM.
 A connection is the 5-tuple formed by a NAT IP and source port plus that destination 3-tuple.
@@ -171,13 +196,15 @@ That gives the sustainable new-connection rate from one VM to one destination 3-
 `max_new_conn_per_s = reserved_pairs / (mean_connection_lifetime_s + tcp_time_wait_s)`
 
 This formula is the second mechanism a getting-started guide will not give you.
-At 1,024 pairs, a 0.2 s request, and a TIME_WAIT of 120 s (the default value is UNVERIFIED), one VM can open only about 8.5 new connections per second to one partner endpoint such as `api.vendor.example:443`.
+The default TIME_WAIT depends on the gateway's creation date: 30 s for gateways created after 2026-09-30, and otherwise 120 s; `effectiveTcpTimeWaitTimeoutSec` shows the value on a given gateway ([Tune NAT configuration, as of 2026-11](https://docs.cloud.google.com/nat/docs/tune-nat-configuration)).
+At 1,024 pairs, a 0.2 s request, and a TIME_WAIT of 120 s, one VM can open only about 8.5 new connections per second to one partner endpoint such as `api.vendor.example:443`, and at 30 s the same VM reaches only about 34.
 A dependency behind a single VIP turns the whole NAT IP pool into one narrow bottleneck.
 
 Two RFC behaviors change the arithmetic.
 Endpoint-independent mapping (EIM) maps one internal IP and port to the same NAT IP and port for every destination, and it is disabled by default on new gateways ([Public NAT docs, as of 2026-10](https://docs.cloud.google.com/nat/docs/public-nat)).
 With EIM on, two internal flows can collide on one NAT pair toward the same destination, and the dataplane drops the packet with reason ENDPOINT_INDEPENDENCE_CONFLICT ([Cloud NAT troubleshooting](https://cloud.google.com/nat/docs/troubleshooting)).
-Endpoint-dependent filtering is always on, so with EIM enabled Public NAT behaves as a Port Restricted Cone NAT under RFC 3489 (without EIM, mapping is endpoint-dependent and behaves as Symmetric NAT).
+Endpoint-dependent filtering is always on, and Google's docs call Public NAT a Port Restricted Cone NAT as defined in RFC 3489, without making that conditional on EIM ([Public NAT docs, as of 2026-11](https://docs.cloud.google.com/nat/docs/public-nat)).
+Strictly, that label fits only with EIM enabled, because endpoint-dependent mapping is what RFC 3489 calls Symmetric NAT; this is this chapter's reading of the RFC, and the docs do not use the term.
 When a VM has no free pair for a destination, the packet is dropped with reason OUT_OF_RESOURCES; Cloud NAT does not queue it.
 
 NAT rules split the pool further.
@@ -186,11 +213,12 @@ A VM that runs out of ports in one rule has new connections matching that rule d
 
 ### Network Service Tiers: cold potato versus hot potato
 
-The Network Service Tiers statements in this subsection come from prior reading of the Network Service Tiers documentation and were not re-verified for this revision, so they are flagged UNVERIFIED in the report.
+The routing behavior below follows the [Network Service Tiers overview, as of 2026-11](https://docs.cloud.google.com/network-tiers/docs/overview), although that page does not use the terms hot potato and cold potato.
 Premium Tier, the default, routes internet traffic cold-potato.
 Inbound traffic enters Google's network at the edge point of presence nearest the client and rides Google's backbone to the region, and outbound traffic stays on the backbone until an edge near the destination.
 Standard Tier routes hot-potato: traffic enters and leaves Google's network near the hosting region and crosses transit and peering ISPs for the rest of the way.
-Standard Tier addresses are regional only, so global external load balancers with one anycast IP require Premium Tier.
+Standard Tier applies to regional external addresses, and global external Application, proxy Network, and passthrough Network Load Balancers are not supported on it, so one anycast IP on a global load balancer requires Premium Tier.
+The same overview is inconsistent on global addresses alone: its table lists Standard Tier global external IPs as Preview, while its text says all global external IPs must use Premium Tier.
 Google's peering edge, where Premium Tier traffic enters and leaves, is the subject of the Espresso paper (SIGCOMM 2017), which Google lists alongside Andromeda as a Snap-era production system ([Snap SOSP 2019 slides](https://www.sigops.org/s/conferences/sosp/2019/slides/marty.pdf)).
 
 The engineering trade-off is about variance more than the median.
@@ -208,42 +236,44 @@ The next chapter covers how the GFE and Maglev terminate Premium Tier traffic: [
 | Largest virtual network reported | more than 100,000 VMs | (Dalton et al., NSDI 2018) |
 | Control-plane network update latency | median 184 ms | (Dalton et al., NSDI 2018) |
 | Traffic carried on offload flows rather than Hoverboards | more than 99.5% | (Andromeda NSDI 2018 slides) |
-| Preprogrammed full-mesh programming cost | O(VMs x hosts) | (Andromeda NSDI 2018 slides) |
+| Preprogrammed full-mesh programming cost | O(VMs x hosts) | (Dalton et al., NSDI 2018) |
 | Gains vs first production deployment | 19x throughput, 16x CPU efficiency, 7x latency, 50x network size | (Dalton et al., NSDI 2018) |
 | Live-migration blackout | median 65 ms, p99 388 ms | (Dalton et al., NSDI 2018) |
-| Fleet live-migration median blackout | 50 ms as of April 2017 | (Ruprecht et al., VEE 2018) |
+| Fleet live-migration blackout | median 50 ms, p99 300 ms, over 1,000,000 migrations monthly | (Ruprecht et al., VEE 2018 abstract) |
 | Dataplane hitless upgrade network blackout | about 200 ms median, about 1 s p99 | (Stanford CS244 2022 lecture, Google speaker) |
 | Snap Pony Express throughput efficiency | about 3x vs kernel TCP | (Marty et al., SOSP 2019 slides) |
 | Usable source ports per NAT IP | 64,512 TCP plus 64,512 UDP | (Google Cloud docs, as of 2026-10) |
 | VMs per NAT IP at minPortsPerVm 1,024 | 63 | (Google Cloud docs, as of 2026-10) |
-| Public NAT static default minPortsPerVm | 64, which gives 1,008 VMs per NAT IP | (secondary sources, as of 2026-10; primary UNVERIFIED) |
+| Public NAT static default minPortsPerVm | 64, which gives 1,008 VMs per NAT IP | (Google Cloud docs, as of 2026-11) |
 | DPA minPortsPerVm range | power of 2 from 32 to 32,768 | (Google Cloud docs, as of 2026-10) |
-| DPA default minimum and growth | 32, doubling on demand | (GoogleCloudPlatform cluster-toolkit PR, as of 2026-10) |
+| DPA maxPortsPerVm range | power of 2 from 64 to 65,536, default 65,536 | (Google Cloud docs, as of 2026-11) |
+| DPA default minimum and growth | 32, doubling on demand | (Google Cloud docs, as of 2026-11) |
 | Default port allocation mode | static for Public NAT, dynamic for Private NAT | (Google Cloud docs, as of 2026-10) |
 | Endpoint-independent mapping default | disabled at gateway creation | (Google Cloud docs, as of 2026-10) |
-| Cloud NAT default timeouts | TCP established 1,200 s, TCP transitory 30 s, TCP TIME_WAIT 120 s, UDP 30 s | UNVERIFIED |
-| VPC MTU | default 1,460 bytes, maximum 8,896 bytes | UNVERIFIED |
-| Cloud NAT gateway price | about USD 0.0014 per VM-hour up to 32 VMs, capped near USD 0.044 per hour, plus about USD 0.045 per GiB processed | UNVERIFIED |
-| Premium vs Standard internet egress per GiB | read the current Network Service Tiers pricing page | UNVERIFIED - no figure stated |
-| AWS NAT Gateway connections per IP | about 55,000 simultaneous per unique destination | UNVERIFIED |
+| Cloud NAT default timeouts | TCP established 1,200 s, TCP transitory 30 s, TCP TIME_WAIT 30 s on gateways created after 2026-09-30 and otherwise 120 s, UDP 30 s, ICMP 30 s | (Google Cloud docs, as of 2026-11) |
+| VPC MTU | default 1,460 bytes, range 1,300 to 8,896 bytes | (Google Cloud docs, as of 2026-11) |
+| Cloud NAT gateway price | USD 0.0014 per VM-hour up to 32 VMs, USD 0.044 per hour above 32 VMs, plus USD 0.045 per GiB processed and USD 0.005 per NAT IP-hour | (Google Cloud pricing, as of 2026-11) |
+| Premium internet egress from us-central1 to North America per GiB | USD 0.12 to 1 TiB (first 1 GiB free), USD 0.11 to 10 TiB, USD 0.08 above | (Google Cloud pricing, as of 2026-11) |
+| Standard internet egress from us-central1 per GiB | free to 200 GiB, USD 0.085 to 10 TiB, USD 0.065 to 150 TiB, USD 0.045 above | (Google Cloud pricing, as of 2026-11) |
+| AWS NAT Gateway connections per IP | up to 55,000 simultaneous per unique destination | (AWS docs, as of 2026-11) |
 
 ## AWS vs GCP Mechanism Parity
 
-The AWS column comes from prior reading and was not re-verified in this revision; each row carrying an AWS-specific number or feature name appears in the UNVERIFIED report.
+AWS-specific numbers and feature names below were checked against AWS sources as of 2026-11, except where a row is marked otherwise.
 
 | Dimension | Google Cloud | AWS | Critical difference |
 |---|---|---|---|
 | VPC scope | One global VPC, regional subnets | Regional VPC, subnets scoped to one Availability Zone | GCP crosses regions without a transit construct, and AWS needs Transit Gateway, peering, or Cloud WAN |
 | Host dataplane | Andromeda userspace Fast Path on host CPU cores, on Snap | VPC dataplane offloaded to Nitro cards | GCP spends host cores for software velocity, and AWS spends dedicated silicon for isolation |
-| Programming model | Hoverboard gateways for the long tail, controller-installed offload flows for active pairs | Mapping service lookups cached on the host, per AWS public talks (UNVERIFIED detail) | Both avoid full-mesh preprogramming, and GCP documents the gateway-first path explicitly |
+| Programming model | Hoverboard gateways for the long tail, controller-installed offload flows for active pairs | Mapping service lookups cached on the host, per AWS public talks (UNVERIFIED: host-caching detail not in AWS docs, only secondary write-ups) | Both avoid full-mesh preprogramming, and GCP documents the gateway-first path explicitly |
 | Control-plane partitioning | Per-cluster control stacks, VMC partitions by consistent hashing | Cellular and zonal control planes, per Builders' Library principles | Both are cellular, and GCP's global configuration object still fans out to every region |
-| NAT architecture | Distributed SNAT on each host, ports preallocated per VM | NAT Gateway as a managed Hyperplane-based service inside one AZ (UNVERIFIED) | GCP has no gateway throughput ceiling, but each VM has a port budget; AWS has a per-gateway connection and bandwidth ceiling |
-| NAT failure domain | Regional config, per-host data path | Zonal gateway, so you deploy one per AZ for static stability | A cross-AZ NAT dependency on AWS is a classic zonal-failure trap, and GCP has no such hop |
-| NAT port exhaustion signal | Drops with reason OUT_OF_RESOURCES or ENDPOINT_INDEPENDENCE_CONFLICT | ErrorPortAllocation CloudWatch metric (UNVERIFIED) | Same physics, a 5-tuple held in TIME_WAIT, observed differently |
+| NAT architecture | Distributed SNAT on each host, ports preallocated per VM | NAT Gateway as a managed Hyperplane-based service ([AWS Builders' Library](https://aws.amazon.com/builders-library/avoiding-overload-in-distributed-systems-by-putting-the-smaller-service-in-control/)), zonal or regional | GCP has no gateway throughput ceiling, but each VM has a port budget; AWS has a per-gateway ceiling of up to 100 Gbps and 55,000 connections per IP per destination ([AWS docs, as of 2026-11](https://docs.aws.amazon.com/vpc/latest/userguide/nat-gateway-basics.html)) |
+| NAT failure domain | Regional config, per-host data path | Zonal gateway, so you deploy one per AZ for static stability, or the regional availability mode launched in November 2025, which expands across AZs automatically ([AWS docs, as of 2026-11](https://docs.aws.amazon.com/vpc/latest/userguide/nat-gateways-regional.html)) | A cross-AZ dependency on a zonal NAT gateway is a classic zonal-failure trap, and GCP has no such hop |
+| NAT port exhaustion signal | Drops with reason OUT_OF_RESOURCES or ENDPOINT_INDEPENDENCE_CONFLICT | ErrorPortAllocation CloudWatch metric ([AWS docs, as of 2026-11](https://docs.aws.amazon.com/vpc/latest/userguide/metrics-dimensions-nat-gateway.html)) | Same physics, a 5-tuple held in TIME_WAIT, observed differently |
 | Cross-region internal routing | Native within one VPC | Inter-region peering or Transit Gateway peering | GCP has less plumbing, but changes have a larger blast radius |
-| Dynamic routing | Cloud Router BGP, regional or global routing mode (UNVERIFIED) | Virtual private gateway, Transit Gateway route tables, Direct Connect gateway | GCP global mode makes on-premises routes visible in all regions |
-| Internet edge tiering | Premium cold-potato vs Standard hot-potato per resource | No per-IP tier, and Global Accelerator or CloudFront give backbone ingress (UNVERIFIED) | GCP exposes backbone vs transit as a per-address billing choice |
-| Live migration | Routine, with a hairpin forwarding mechanism | EC2 generally uses scheduled events and reboots rather than transparent migration (UNVERIFIED) | GCP workloads must tolerate sub-second blackouts, and AWS workloads must handle maintenance events |
+| Dynamic routing | Cloud Router BGP, regional or global routing mode (Google Cloud docs, as of 2026-11) | Virtual private gateway, Transit Gateway route tables, Direct Connect gateway | GCP global mode makes on-premises routes visible in all regions |
+| Internet edge tiering | Premium cold-potato vs Standard hot-potato per resource | No per-IP tier, and Global Accelerator or CloudFront give backbone ingress ([Global Accelerator docs, as of 2026-11](https://docs.aws.amazon.com/global-accelerator/latest/dg/what-is-global-accelerator.html)) | GCP exposes backbone vs transit as a per-address billing choice |
+| Live migration | Routine, with a hairpin forwarding mechanism | EC2 uses live update and live migration for maintenance with no customer action ([EC2 features, as of 2026-11](https://aws.amazon.com/ec2/features/)), and still issues scheduled events such as reboot migration | GCP publishes blackout figures that workloads should tolerate, and AWS workloads must tolerate migration and also handle scheduled events |
 | Curriculum mapping | This chapter | [[17-Cloud-AI-Engineering/Volume_02_AWS_Deep_Dive/Chapter_03_VPC_Networking_Internals\|VPC Networking Internals]] | See [[17-Cloud-AI-Engineering/Volume_04_AWS_vs_GCP_Translation/Chapter_02_Networking_and_Load_Balancing_Translation\|Networking Translation]] |
 
 ## Worked Example: Global VPC, Two Tiers, and a Sized Cloud NAT
@@ -256,11 +286,11 @@ Second, a VM without an external IP reaches the internet only through Cloud NAT,
 Third, two external IPs in the same region, one Premium and one Standard, show different paths when traced from your laptop.
 Fourth, the NAT sizing formula predicts when port exhaustion starts.
 
-### Cost estimate (UNVERIFIED prices; check the pricing pages before running)
+### Cost estimate (UNVERIFIED VM price; check the pricing pages before running)
 
-Four e2-micro VMs at an assumed USD 0.01 per hour each come to about USD 0.04 per hour.
-One Cloud NAT gateway serving one VM comes to about USD 0.0014 per hour, plus about USD 0.045 per GiB processed.
-Two static external IPv4 addresses for NAT and two ephemeral ones on the edge VMs come to about USD 0.005 per address-hour each, or USD 0.02 per hour.
+Four e2-micro VMs at an assumed USD 0.01 per hour each come to about USD 0.04 per hour (UNVERIFIED: the e2-micro rate was not readable from the pricing page).
+One Cloud NAT gateway serving one VM comes to USD 0.0014 per hour, plus USD 0.045 per GiB processed ([Cloud NAT pricing, as of 2026-11](https://cloud.google.com/nat/pricing)).
+Two static external IPv4 addresses for NAT and two ephemeral ones on the edge VMs come to USD 0.005 per address-hour each, or USD 0.02 per hour ([network pricing, as of 2026-11](https://cloud.google.com/vpc/network-pricing)).
 A two-hour run with under 1 GiB of traffic should cost less than USD 0.25.
 The budget below alerts at USD 10.
 
@@ -508,8 +538,8 @@ if __name__ == "__main__":
 ```
 
 Step-by-step for the scenario: 400 GKE nodes, each making 150 new HTTPS connections per second to one partner VIP, with 0.2 s requests.
-With TIME_WAIT at 120 s, each node needs 150 x 120.2 = 18,030 pairs, which rounds up to 32,768, so the fleet needs 400 x 32,768 x 1.3 / 64,512 = 265 NAT IPs.
-With TIME_WAIT at 30 s, each node needs 4,530 pairs, which rounds up to 8,192, so the fleet needs 67 NAT IPs.
+With TIME_WAIT at 120 s, the default on gateways created on or before 2026-09-30, each node needs 150 x 120.2 = 18,030 pairs, which rounds up to 32,768, so the fleet needs 400 x 32,768 x 1.3 / 64,512 = 265 NAT IPs.
+With TIME_WAIT at 30 s, the default on newer gateways, each node needs 4,530 pairs, which rounds up to 8,192, so the fleet needs 67 NAT IPs.
 With a connection pool of 64 persistent connections per node, each node needs 64 pairs, so the fleet needs 1 NAT IP.
 The fix is connection reuse.
 Buying 265 NAT IPs means 265 addresses the partner has to allowlist, and every one is billed by the hour.
@@ -530,16 +560,16 @@ Reserved static IPs left behind after a partial destroy keep billing.
 
 The signature is intermittent connect timeouts to one third-party API while every other destination works, and the CPU and NAT gateway dashboards look normal.
 The cause is the per-3-tuple port budget combined with TIME_WAIT reuse delay, which shows up as drops with reason OUT_OF_RESOURCES ([Cloud NAT troubleshooting](https://cloud.google.com/nat/docs/troubleshooting)).
-Mitigations, in order: HTTP keepalive and connection pooling, then DPA with a higher maximum, then a shorter TIME_WAIT if your traffic allows it, and only then more NAT IPs.
+Mitigations, in order: HTTP keepalive and connection pooling, then DPA with a higher maximum, then a shorter TIME_WAIT if your traffic allows it (Google recommends at least 15 s, per [Tune NAT configuration, as of 2026-11](https://docs.cloud.google.com/nat/docs/tune-nat-configuration)), and only then more NAT IPs.
 
 ### Endpoint-independent mapping conflicts
 
 Turning on EIM for STUN or TURN compatibility lowers effective capacity, because two internal flows can map to the same NAT pair, and the conflicting packets are dropped as ENDPOINT_INDEPENDENCE_CONFLICT.
-The documented options are to disable EIM, which does not interrupt established connections, or to raise the minimum ports per VM ([Cloud NAT troubleshooting](https://cloud.google.com/nat/docs/troubleshooting)).
+The documented options are to disable EIM, which does not interrupt established connections, to raise the minimum ports per VM, or to widen the VM's ephemeral source port range ([Cloud NAT troubleshooting](https://cloud.google.com/nat/docs/troubleshooting)).
 
 ### Switching port allocation modes breaks live connections
 
-Moving a gateway from static allocation to DPA breaks established connections if the new maximum is below the old minimum ([Cloud NAT ports and addresses, as of 2026-10](https://docs.cloud.google.com/nat/docs/ports-and-addresses)).
+Moving a gateway from static allocation to DPA breaks established connections if the new maximum is below the old static minimum or below 1,024, and moving from DPA back to static breaks all active NAT connections ([Cloud NAT ports and addresses, as of 2026-11](https://docs.cloud.google.com/nat/docs/ports-and-addresses)).
 Google's own cluster-toolkit uses a DPA maximum of 1,024 so that migrating gateways that were already at 1,024 is non-disruptive ([cluster-toolkit PR 6369](https://github.com/GoogleCloudPlatform/cluster-toolkit/pull/6369)).
 Treat NAT changes as production deploys, with a maintenance window and per-region staging.
 
@@ -580,19 +610,20 @@ For training jobs, configure collective-communication timeouts in seconds, not m
 
 A VPC MTU set above what an attached VPN or interconnect path carries, combined with ICMP filtered somewhere on that path, produces path-MTU black holes: small requests succeed and large responses hang.
 Size the MTU for the most restrictive hybrid path, or clamp MSS at the boundary.
-The specific MTU limits are listed as UNVERIFIED in Numbers to Know.
+The specific MTU limits are listed in Numbers to Know, and Cloud VPN does not support jumbo frames and clamps MSS on its tunnels ([VPC MTU docs, as of 2026-11](https://docs.cloud.google.com/vpc/docs/mtu)).
 
 ### Global configuration blast radius, with public incident analogues
 
-Google's public incident report for the April 2016 Compute Engine networking outage (incident 16007) described a configuration change that withdrew Compute Engine IP blocks from Google's BGP announcements, with safeguards that failed to stop propagation (details UNVERIFIED in this revision).
-Google's write-up of the 2 June 2019 disruption described a configuration change meant for a few servers in one region being applied more broadly, which cut available network capacity in several US regions (details UNVERIFIED in this revision).
+Google's public incident report for the 11 April 2016 Compute Engine networking outage (incident 16007) described removal of one unused IP block exposing a bug that removed all Compute Engine IP blocks from the configuration, so sites stopped announcing them over BGP and external connectivity was lost for about 18 minutes.
+A second bug stopped the canary's failure verdict from reaching the push system, so the progressive rollout continued ([Google incident report](https://status.cloud.google.com/incident/compute/16007)).
+Google's write-up of the 2 June 2019 disruption described a configuration change meant for a small number of servers in one region being applied to more servers across several neighboring regions, which made those regions stop using more than half of their network capacity ([Google Cloud blog](https://cloud.google.com/blog/topics/inside-google-cloud/an-update-on-sundays-service-disruption)).
 The lesson for global VPC users is that a global configuration object needs the same staged, canaried rollout discipline that Google applies to its own network.
 See [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_07_Anatomy_of_Major_Cloud_Outages|Anatomy of Major Cloud Outages]].
 
 ### Tier mismatches
 
-Reserving a Standard Tier address and then trying to attach it to a global external load balancer fails, because global anycast frontends require Premium Tier (UNVERIFIED in this revision).
-Changing a project's default tier does not move existing resources to the new tier.
+Reserving a Standard Tier address and then trying to attach it to a global external load balancer fails, because global external load balancers are not supported on Standard Tier ([Network Service Tiers overview, as of 2026-11](https://docs.cloud.google.com/network-tiers/docs/overview)).
+Changing a project's default tier does not move existing resources to the new tier ([Set the network tier, as of 2026-11](https://docs.cloud.google.com/network-tiers/docs/set-network-tier)).
 
 ## Security and Cost Angles
 
@@ -601,7 +632,7 @@ Changing a project's default tier does not move existing resources to the new ti
 Split network administration from security administration: the network admin role manages VPCs, routers, and NAT, the security admin role manages firewalls and SSL policy, and the Shared VPC admin role attaches service projects.
 See [[17-Cloud-AI-Engineering/Volume_03_GCP_Deep_Dive/Chapter_02_Cloud_IAM_Roles_Policies_and_Conditions|Cloud IAM]].
 Use organization policy to prevent VMs from getting external IPs, so that egress has to go through NAT where it is logged.
-Constraints such as `compute.vmExternalIpAccess`, `compute.skipDefaultNetworkCreation`, and `compute.restrictCloudNATUsage` cover this; constraint names are UNVERIFIED in this revision.
+Constraints such as `compute.vmExternalIpAccess` (which restricts IPv4 only, with a managed form `compute.managed.vmExternalIpAccess`), `compute.skipDefaultNetworkCreation`, and `compute.restrictCloudNATUsage` cover this ([Organization Policy constraints, as of 2026-11](https://docs.cloud.google.com/organization-policy/reference/org-policy-constraints)).
 See [[17-Cloud-AI-Engineering/Volume_03_GCP_Deep_Dive/Chapter_01_Resource_Hierarchy_and_Organization_Policies|Resource Hierarchy and Organization Policies]].
 
 ### Private boundaries
@@ -615,16 +646,17 @@ Turn on NAT logging (ERRORS_ONLY at minimum) and VPC Flow Logs on sensitive subn
 
 ### Encryption
 
-Google states that it encrypts VM-to-VM traffic that crosses physical boundaries, but that is not a substitute for application-layer TLS or mTLS when your threat model includes compromised workloads inside the VPC (UNVERIFIED scope details).
+Google states that VM-to-VM traffic on private IPs within a VPC and across peered VPCs is integrity-protected and encrypted at the network layer, while connections between VMs using external IPs are not automatically encrypted ([Encryption in transit, as of 2026-11](https://docs.cloud.google.com/docs/security/encryption-in-transit)).
+That is not a substitute for application-layer TLS or mTLS when your threat model includes compromised workloads inside the VPC.
 The key hierarchy for data at rest is covered in [[17-Cloud-AI-Engineering/Volume_03_GCP_Deep_Dive/Chapter_15_Security_and_Confidential_Computing_Cloud_KMS|Cloud KMS]].
 
 ### Unit-economics levers
 
-NAT data processing is charged per GiB (rate UNVERIFIED), so pulling multi-terabyte checkpoints or container layers through NAT instead of Private Google Access or Artifact Registry is avoidable spend.
+NAT data processing is charged at USD 0.045 per GiB ([Cloud NAT pricing, as of 2026-11](https://cloud.google.com/nat/pricing)), so pulling multi-terabyte checkpoints or container layers through NAT instead of Private Google Access or Artifact Registry is avoidable spend.
 Connection pooling cuts NAT IP count, and each reserved IP is billed hourly, as the sizing example showed.
 Standard Tier is a legitimate saving for bulk egress to a small number of known destinations with little latency sensitivity, such as nightly dataset syncs or partner deliveries.
 Premium Tier pays for itself on interactive and streaming inference, where tail latency drives user-visible stalls.
-Cross-region traffic inside a global VPC is billed as inter-region egress, even though no peering or transit resource exists to remind you of it.
+Cross-region traffic inside a global VPC is billed as inter-region data transfer, for example USD 0.02 per GiB within North America and USD 0.05 per GiB between North America and Europe ([network pricing, as of 2026-11](https://cloud.google.com/vpc/network-pricing)), even though no peering or transit resource exists to remind you of it.
 See [[17-Cloud-AI-Engineering/Volume_09_FinOps_and_Cloud_Economics/Chapter_04_Network_Egress_Economics_and_Optimization|Network Egress Economics and Optimization]].
 
 ## Interview Questions and Model Answers
@@ -638,7 +670,7 @@ A GKE service calls a payments API at about 100 requests per second per node, an
 Cloud NAT capacity is measured per unique destination 3-tuple, not per gateway, so a single payments VIP on port 443 is the bottleneck no matter how many ports other destinations have free.
 Each VM, or each node with alias ranges, has a reserved set of NAT IP and port pairs, and a closed connection's 5-tuple is unusable for the TCP TIME_WAIT period.
 The sustainable new-connection rate from one node to that destination is reserved_pairs / (lifetime + TIME_WAIT).
-With static allocation on GKE alias ranges at 1,024 pairs and a TIME_WAIT on the order of 120 s, that is under 10 new connections per second, so at 100 per second without keepalive the node runs out within seconds.
+With static allocation on GKE alias ranges at 1,024 pairs, that is under 10 new connections per second at a 120 s TIME_WAIT and about 34 at the 30 s default on gateways created after 2026-09-30, so at 100 per second without keepalive the node runs out within seconds either way.
 I would confirm by looking for NAT drops with reason OUT_OF_RESOURCES and checking `get-nat-mapping-info` for the node.
 The first fix is HTTP keepalive and a bounded connection pool in the client, which turns 100 new connections per second into a few dozen long-lived ones.
 After that, enable DPA with a maximum sized from the formula, consider a shorter TIME_WAIT, and only then add NAT IPs, remembering that the partner may have to allowlist each new address.
@@ -673,9 +705,9 @@ Walk through Andromeda's Hoverboard programming model, why Google built it, and 
 
 Preprogramming a full mesh of VM-to-host mappings costs O(VMs x hosts) in control-plane work and host memory, which does not scale to networks of 100,000-plus VMs with rapid churn.
 Pure on-demand programming has a metastable failure: a controller that falls behind gets flooded with miss requests from every host and collapses, and the Andromeda paper names this outcome as an outage.
-Hoverboards give each host a low-priority default route to shared gateways that know every virtual network, so a miss is forwarded, not escalated to the controller.
+Hoverboards give each host a default route to shared gateways that know every virtual network, so a miss is forwarded, not escalated to the controller.
 The controller watches flow statistics and installs direct host-to-host offload flows only for flows above a usage threshold, and Google reported more than 99.5% of traffic on offload flows.
-This is a constant-work, statically stable design: controller lag means slower paths for new flows, not lost reachability.
+This is a statically stable design, consistent with the paper's fail-static principle: controller lag means slower paths for new flows, not lost reachability.
 The cost to customers is that new flows take an extra gateway hop until they are offloaded, so first-packet latency and the first few RTTs between new VM pairs differ from steady state.
 That matters for benchmark methodology, for latency SLOs on short-lived connections, and for collective-communication bootstrap in large training jobs.
 The gateways are also a shared tier whose capacity planning belongs to Google, so a mostly-new-flows workload, such as massive fan-out with short connections, leans on infrastructure you cannot see.
@@ -732,9 +764,9 @@ Compare the GCP and AWS philosophies for VPC data planes and NAT, and argue whic
 
 Andromeda puts virtualization in host software: a busy-polling Fast Path with a 300 ns per-packet budget, coprocessor threads for heavy features, and weekly hitless upgrades.
 Google trades host CPU and some blackout time for velocity and transparent live migration, and its NAT follows the same pattern as SNAT state on every host with ports preallocated by a regional control plane.
-AWS moves the dataplane onto Nitro hardware and runs NAT as a managed service in each AZ, trading feature velocity and per-host flexibility for hardware isolation and a clearer per-gateway capacity envelope.
+AWS moves the dataplane onto Nitro hardware and runs NAT as a managed gateway, zonal or, since November 2025, regional, trading feature velocity and per-host flexibility for hardware isolation and a clearer per-gateway capacity envelope.
 The GCP model removes the NAT throughput bottleneck and the cross-AZ NAT dependency, but it turns NAT into a distributed quota problem: exhaustion is per VM, per destination 3-tuple, silent at gateway level, and coupled to autoscaling through alias ranges and DPA growth.
-The AWS model's typical failures are per-gateway connection ceilings toward one destination and the zonal static-stability trap, where subnets in AZ-b route through a NAT gateway in AZ-a and lose egress when AZ-a fails.
+The AWS model's typical failures are per-gateway connection ceilings toward one destination and, with zonal gateways, the static-stability trap, where subnets in AZ-b route through a NAT gateway in AZ-a and lose egress when AZ-a fails.
 At the configuration layer, GCP's global VPC concentrates change risk, so one object can fan bad intent out to every region, and Google's own public PIRs on global network configuration show why staged rollouts matter.
 AWS's regional VPCs make cross-region coupling explicit and contained, but add transit components that each have their own limits and failure modes.
 As a principal, I would not pick a winner in the abstract.
@@ -768,7 +800,7 @@ How would you prove to Google support that a reset cluster is caused by their da
 ## Further Reading
 
 - [Dalton et al., "Andromeda: Performance, Isolation, and Velocity at Scale in Cloud Network Virtualization", NSDI 2018](https://www.usenix.org/conference/nsdi18/presentation/dalton) - The primary source for the control-plane layers, Hoverboards, the Fast Path budget, and live-migration hairpinning.
-- [Andromeda NSDI 2018 slides](https://www.usenix.org/sites/default/files/conference/protected-files/andromeda_nsdi18_slides.pdf) - Shows the O(n x H) programming argument and the offload percentage that the paper text only summarizes.
+- [Andromeda NSDI 2018 slides](https://www.usenix.org/sites/default/files/conference/protected-files/andromeda_nsdi18_slides.pdf) - Shows the Hoverboard offloading argument and the 99.5% offload figure that is not in the paper text.
 - [Marty et al., "Snap: a Microkernel Approach to Host Networking", SOSP 2019](https://www.sigops.org/s/conferences/sosp/2019/slides/marty.pdf) - Explains the engine and upgrade framework that Andromeda's dataplane now runs on.
 - [Ruprecht et al., "VM Live Migration At Scale", VEE 2018](https://dl.acm.org/doi/pdf/10.1145/3186411.3186415) - Fleet-wide blackout distributions you should design your timeouts around.
 - [Stanford CS244 2022 cloud virtual networking lecture](https://2022-cs244.github.io/slides/Lecture_09_2022.pdf) - A Google engineer's view of hitless upgrade blackouts and fast-path versus coprocessor division.

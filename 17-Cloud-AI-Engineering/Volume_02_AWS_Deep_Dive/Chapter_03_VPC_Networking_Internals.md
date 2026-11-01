@@ -18,6 +18,33 @@ sources:
   - "https://docs.aws.amazon.com/vpc-lattice/latest/ug/what-is-vpc-lattice.html"
   - "https://cloud.google.com/vpc/docs/private-service-connect"
   - "https://cloud.google.com/network-connectivity/docs/network-connectivity-center/concepts/overview"
+  - "https://docs.aws.amazon.com/vpc/latest/userguide/amazon-vpc-limits.html"
+  - "https://docs.aws.amazon.com/vpc/latest/tgw/transit-gateway-quotas.html"
+  - "https://docs.aws.amazon.com/vpc/latest/privatelink/vpc-limits-endpoints.html"
+  - "https://docs.aws.amazon.com/vpc/latest/userguide/nat-gateway-basics.html"
+  - "https://docs.aws.amazon.com/vpc/latest/userguide/nat-gateways-regional.html"
+  - "https://docs.aws.amazon.com/vpc/latest/userguide/route-tables-priority.html"
+  - "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-instance-network-bandwidth.html"
+  - "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/network_mtu.html"
+  - "https://docs.aws.amazon.com/vpn/latest/s2svpn/vpn-limits.html"
+  - "https://docs.aws.amazon.com/vpc/latest/peering/vpc-peering-connection-quotas.html"
+  - "https://docs.aws.amazon.com/vpc/latest/userguide/flow-logs-limitations.html"
+  - "https://docs.aws.amazon.com/vpc/latest/mirroring/traffic-mirroring-packet-formats.html"
+  - "https://docs.aws.amazon.com/ec2/latest/instancetypes/ac.html"
+  - "https://docs.aws.amazon.com/elasticloadbalancing/latest/network/network-load-balancers.html"
+  - "https://docs.aws.amazon.com/vpc-lattice/latest/ug/quotas.html"
+  - "https://docs.aws.amazon.com/vpc-lattice/latest/ug/security-groups.html"
+  - "https://aws.amazon.com/vpc/lattice/pricing/"
+  - "https://aws.amazon.com/vpc/pricing/"
+  - "https://aws.amazon.com/transit-gateway/pricing/"
+  - "https://aws.amazon.com/privatelink/pricing/"
+  - "https://docs.aws.amazon.com/vpc/latest/tgw/how-transit-gateways-work.html"
+  - "https://aws.amazon.com/about-aws/whats-new/2022/04/aws-data-transfer-price-reduction-privatelink-transit-gateway-client-vpn-services/"
+  - "https://docs.aws.amazon.com/vpc/latest/userguide/WhatsNew.html"
+  - "https://aws.amazon.com/message/101925/"
+  - "https://aws.amazon.com/blogs/compute/announcing-improved-vpc-networking-for-aws-lambda-functions/"
+  - "https://docs.cloud.google.com/vpc/docs/multiple-interfaces-concepts"
+  - "https://docs.cloud.google.com/nat/docs/tune-nat-configuration"
 ---
 
 # VPC Networking Internals
@@ -26,7 +53,7 @@ sources:
 
 - An Amazon VPC has no router appliance in it. The Nitro card on each host enforces security groups, tracks connections, looks up the compiled route table and wraps each packet with VPC metadata. A mapping service turns virtual addresses into physical hosts, and the receiving host checks that mapping again before it delivers the packet.
 - Route tables pick the longest matching prefix and are attached per subnet. Since 2021 you can steer traffic inside a VPC to a middlebox by adding a route more specific than the local route. Gateway route tables add ingress routing at the internet gateway and virtual private gateway.
-- NAT Gateway, Network Load Balancer, PrivateLink, Gateway Load Balancer and Transit Gateway all run on Hyperplane. Hyperplane is AWS's multi-tenant fleet that keeps per-flow state. Its limits per destination, per flow and per AZ, plus its idle timeouts, are the real capacity limits behind these products.
+- NAT Gateway, Network Load Balancer, PrivateLink and Gateway Load Balancer run on Hyperplane, and Transit Gateway is reported to as well (UNVERIFIED for TGW: not stated in AWS docs, secondary sources only). Hyperplane is AWS's multi-tenant fleet that keeps per-flow state. Its limits per destination, per flow and per AZ, plus its idle timeouts, are the real capacity limits behind these products.
 - A Transit Gateway "route domain" comes from two separate actions. Association decides which TGW route table an attachment's traffic is looked up in. Propagation decides which route tables learn the attachment's prefixes. When appliance mode is off, AZ affinity silently breaks stateful inspection that crosses AZs.
 - PrivateLink is a unidirectional, source-NATed, per-AZ channel to one service. VPC Lattice is a managed layer-7 proxy fabric reached through link-local addresses, with IAM auth policies. TGW gives full layer-3 reachability. Choose by trust model, CIDR overlap and unit cost, not by habit.
 
@@ -66,7 +93,7 @@ Every VPC packet leaves the instance through the Elastic Network Adapter (ENA) o
 Eric Brandwine's re:Invent 2013 talk "A Day in the Life of a Billion Packets" describes the mapping service. It is the authoritative map from VPC addresses to the physical hosts that hold them. Hosts look entries up and cache them, and edge devices called Blackfoot translate between the encapsulated substrate and the outside world.
 The non-obvious mechanism is on the receive side.
 The destination host checks against the mapping that the claimed source ENI really lives on the sending host. Spoofing is therefore blocked at both ends, not only by the sender's source/destination check.
-This is why you must disable source/destination checking on an ENI before it can forward traffic it did not originate (NAT instances, firewalls). It is also why a "promiscuous" VPC sniffer does not exist: Traffic Mirroring is a separate copy path that uses VXLAN on UDP 4789 (AWS docs, 2025 reading, UNVERIFIED).
+This is why you must disable source/destination checking on an ENI before it can forward traffic it did not originate (NAT instances, firewalls). It is also why a "promiscuous" VPC sniffer does not exist: Traffic Mirroring is a separate copy path that uses VXLAN on UDP 4789 (AWS Traffic Mirroring docs, as of 2026-11).
 For the physical fabric underneath, see [[17-Cloud-AI-Engineering/Volume_00_Foundations_Under_the_Cloud/Chapter_02_Datacenter_Networking_Fabrics|Datacenter Networking Fabrics]]. For the offload card, see [[17-Cloud-AI-Engineering/Volume_02_AWS_Deep_Dive/Chapter_04_EC2_Nitro_Architecture_and_Graviton|EC2, Nitro Architecture, and Graviton]].
 
 ### Route tables as compiled policy
@@ -74,17 +101,17 @@ For the physical fabric underneath, see [[17-Cloud-AI-Engineering/Volume_00_Foun
 A VPC route table is a set of prefixes mapped to targets. Each subnet is associated with exactly one route table (explicitly, or implicitly through the main table).
 Evaluation order:
 1. Longest prefix match.
-2. On equal prefixes, static routes beat propagated routes.
-3. Among propagated routes, Direct Connect BGP routes beat static VPN routes, which beat BGP VPN routes (AWS docs, 2025 reading, UNVERIFIED).
+2. On equal prefixes, static routes beat prefix-list routes, which beat propagated routes.
+3. Among propagated routes, Direct Connect BGP routes beat static VPN routes, which beat BGP VPN routes (AWS VPC docs, as of 2026-11).
 
 The local route covering the VPC CIDRs used to be immutable and always won.
-Since August 2021 you can add a route that is more specific than the local CIDR, for example a peer subnet's /24. Its target can be a firewall ENI, a Gateway Load Balancer endpoint or an AWS Network Firewall endpoint, which forces east-west traffic inside the VPC through inspection.
-Gateway route tables (December 2019) attach to an internet gateway or virtual private gateway. They steer inbound traffic to an appliance before it reaches the destination subnet. This "ingress routing" is how you insert north-south inspection without NAT.
-Managed prefix lists can be route destinations. Each one counts against the route quota by its declared maximum entries, not by how many entries it currently holds. This is a common hidden source of quota exhaustion.
-Amazon VPC Route Server, which injects BGP-learned routes into VPC route tables for floating-IP appliance failover, is described as launched in 2025 (UNVERIFIED).
+Since August 30, 2021 (VPC doc history) you can add a route that is more specific than the local CIDR, for example a peer subnet's /24. Its target can be a firewall ENI, a Gateway Load Balancer endpoint or an AWS Network Firewall endpoint, which forces east-west traffic inside the VPC through inspection.
+Gateway route tables (December 3, 2019, per the VPC doc history) attach to an internet gateway or virtual private gateway. They steer inbound traffic to an appliance before it reaches the destination subnet. This "ingress routing" is how you insert north-south inspection without NAT.
+Managed prefix lists can be route destinations. A customer-managed list counts against the entry quota of the referencing resource by its declared maximum entries, not by how many entries it currently holds, and an AWS-managed list counts by its published weight (S3 and DynamoDB weigh 1, CloudFront origin-facing weighs 55) (AWS VPC docs, as of 2026-11). This is a common hidden source of quota exhaustion.
+Amazon VPC Route Server, which injects BGP-learned routes into VPC route tables for floating-IP appliance failover, reached general availability in April 2025 ([AWS What's New](https://aws.amazon.com/about-aws/whats-new/2025/04/amazon-vpc-route-server/); the VPC doc history dates the feature March 31, 2025).
 
 The VPC router at the subnet's .1 address and the Amazon DNS resolver at the VPC base plus two are emulations.
-Packets to link-local services count against a fixed per-ENI packet budget. Those services include the Route 53 Resolver, the Instance Metadata Service (IMDS) and Amazon Time Sync. The budget is 1024 packets per second per ENI (AWS docs, 2025 reading, UNVERIFIED).
+Packets to link-local services count against a fixed per-ENI packet budget. Those services include the Route 53 Resolver, the Instance Metadata Service (IMDS) and Amazon Time Sync. The documented figure is 1024 packets per second per network interface to the Route 53 Resolver, and it cannot be increased (AWS VPC quotas, as of 2026-11); the ENA docs describe one per-interface link-local maximum spanning all three services without restating the number (AWS EC2 docs, as of 2026-11).
 
 ### Elastic Network Interfaces
 
@@ -95,9 +122,9 @@ There are several ENI variants:
 - Requester-managed ENIs are created by AWS services in your subnet (interface endpoints, NLB nodes, TGW attachments, RDS). You can see them but not modify them.
 - Hyperplane ENIs, used by Lambda since 2019, are shared per (subnet, security group set) combination, so many function instances reach your VPC through one ENI.
 
-Large accelerator instances expose multiple network cards. Each card has its own ENI and EFA slots, which is how p5.48xlarge reaches 3200 Gbps of EFA bandwidth across 32 network cards (AWS docs, 2025 reading, UNVERIFIED). See [[17-Cloud-AI-Engineering/Volume_10_AI_Infrastructure_on_Cloud/Chapter_02_Interconnect_Technologies_NVLink_EFA_and_TPU_ICI|Interconnect Technologies: NVLink, EFA, and TPU ICI]].
+Large accelerator instances expose multiple network cards. Each card has its own ENI and EFA slots, which is how p5.48xlarge reaches 3200 Gbps of EFA bandwidth across 32 network cards (AWS EC2 instance types docs, as of 2026-11). See [[17-Cloud-AI-Engineering/Volume_10_AI_Infrastructure_on_Cloud/Chapter_02_Interconnect_Technologies_NVLink_EFA_and_TPU_ICI|Interconnect Technologies: NVLink, EFA, and TPU ICI]].
 
-The ENA driver exposes counters that show which per-ENI allowance was hit. Get them with `ethtool -S` and publish them through the CloudWatch agent:
+The ENA driver exposes per-interface counters that show which allowance was hit; bandwidth, pps and conntrack allowances are defined per instance, and the link-local allowance per network interface. Get them with `ethtool -S` and publish them through the CloudWatch agent:
 - `bw_in_allowance_exceeded`
 - `bw_out_allowance_exceeded`
 - `pps_allowance_exceeded`
@@ -105,16 +132,16 @@ The ENA driver exposes counters that show which per-ENI allowance was hit. Get t
 - `conntrack_allowance_available`
 - `linklocal_allowance_exceeded`
 
-These counters are the only way to tell "the network is slow" apart from "my instance hit its shaping budget" (AWS docs, 2025 reading, UNVERIFIED).
+These counters are the only way to tell "the network is slow" apart from "my instance hit its shaping budget" (AWS EC2 docs, as of 2026-11; `conntrack_allowance_available` is Nitro-only and needs ENA driver 2.8.1 or later on Linux).
 
 ### Connection tracking: the mechanism nobody reads about
 
-Security groups are stateful because the Nitro card keeps a connection-tracking table per ENI. Its size is bounded by an allowance that scales with instance size and is not published.
+Security groups are stateful because each connection is tracked, and EC2 defines the maximum number of tracked connections per instance, not per ENI (AWS EC2 docs, as of 2026-11). That allowance varies by instance type and its size is not published as a table, so read the remaining headroom from `conntrack_allowance_available`.
 A flow is untracked when both of these hold:
 - The rule allowing it permits all addresses (0.0.0.0/0 or ::/0) for TCP or UDP.
 - The opposite direction has a matching allow-all rule for all ports.
 
-ICMP is always tracked. Flows arriving through Hyperplane-backed services (NLB, NAT Gateway, TGW, PrivateLink, GWLB, Global Accelerator, Lambda) are "automatically tracked" whatever the rules say (AWS EC2 docs, 2025 reading, UNVERIFIED).
+ICMP is always tracked. Connections made through egress-only internet gateways, Global Accelerator, NAT gateways, Network Firewall endpoints, NLBs, PrivateLink interface endpoints, Lambda Hyperplane ENIs and DynamoDB gateway endpoints are "automatically tracked" whatever the rules say; TGW and GWLB are not on that list (AWS EC2 docs, as of 2026-11).
 Two consequences matter in production.
 First, removing a security group rule does not cut existing tracked connections. Removing a rule for untracked traffic stops it immediately. During incident response, a stateless network ACL deny is the reliable kill switch.
 Second, a busy proxy or NAT instance can run out of conntrack entries long before it runs out of bandwidth, and the symptom is silent packet drops.
@@ -122,31 +149,32 @@ The idle timeouts can be set per ENI through the connection tracking specificati
 
 | Flow type | Default | Configurable range |
 |---|---|---|
-| TCP established | 432,000 s (5 days) | 60-432,000 s |
+| TCP established | 350 s on Nitro v6 instance types except P6e-GB200; 432,000 s (5 days) on all others | 60-432,000 s |
 | UDP stream | 180 s | 60-180 s |
 | Other UDP | 30 s | 30-60 s |
 
-(AWS EC2 docs, 2025 reading, UNVERIFIED)
+(AWS EC2 docs, as of 2026-11)
 Lowering the TCP established timeout on a fleet of proxies that see short-lived connections from millions of clients is the main lever against conntrack exhaustion. The cost is that long-lived idle connections get killed unless they send keepalives.
 
 ### Hyperplane: the shared-state fabric
 
-Colm MacCarthaigh's re:Invent 2017 talk "Another Day, Another Billion Flows" introduced Hyperplane. It is an internal, horizontally scaled, multi-tenant fleet of EC2-based nodes that does stateful flow processing for NAT Gateway, NLB, PrivateLink and EFS. AWS later said Transit Gateway and Gateway Load Balancer are built on it too.
+Colm MacCarthaigh's re:Invent 2017 talk "Another Day, Another Billion Flows" introduced Hyperplane. It is an internal, horizontally scaled, multi-tenant fleet of EC2-based nodes that does stateful flow processing for NAT Gateway, NLB, PrivateLink and EFS. AWS confirms Hyperplane for NLB, NAT Gateway and PrivateLink ([AWS Compute Blog, 2019](https://aws.amazon.com/blogs/compute/announcing-improved-vpc-networking-for-aws-lambda-functions/)) and for Gateway Load Balancer ([AWS Networking Blog](https://aws.amazon.com/blogs/networking-and-content-delivery/scaling-network-traffic-inspection-using-aws-gateway-load-balancer/)).
+Transit Gateway on Hyperplane is reported by third parties such as Aviatrix (UNVERIFIED: not stated in current AWS docs).
 Customers are isolated on it with shuffle sharding. Each customer resource maps to a small random subset of nodes, so one poison workload overlaps only a small fraction of any other tenant's shard. See [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_03_Cell_Based_Architecture_and_Shuffle_Sharding|Cell-Based Architecture and Shuffle Sharding]].
 The ENI you see in your subnet for a NAT Gateway or an interface endpoint is the front door to that shard. It is not the box that processes your packets.
-The internal details of how flow state is replicated across Hyperplane nodes are not documented publicly in detail, and this chapter does not describe them (UNVERIFIED).
+This chapter does not describe how flow state is replicated across Hyperplane nodes, because the AWS docs and blog posts checked for this revision do not detail it.
 The architectural lesson to carry forward is the per-flow consistent assignment. Every Hyperplane-backed product inherits these properties:
 - a 5-tuple flow is pinned to one path
 - per-destination port budgets
-- 350-second TCP idle timeouts on NAT Gateway and the PrivateLink/NLB path
+- 350-second TCP idle timeouts on NAT Gateway and interface endpoints, and by default on NLB, where TCP listeners can be set to 60-6,000 s and TLS listeners stay fixed at 350 s
 
-(AWS docs, 2025 reading, UNVERIFIED)
+(AWS VPC and ELB docs, plus [AWS Networking Blog](https://aws.amazon.com/blogs/networking-and-content-delivery/implementing-long-running-tcp-connections-within-vpc-networking/) for interface endpoints, as of 2026-11)
 For the Google analogue, compare [[17-Cloud-AI-Engineering/Volume_13_Seminal_Papers_and_Case_Studies/Chapter_11_Maglev_Network_Load_Balancer|Maglev]] and the consistent hashing in [[08-Distinguished-Engineering/02-Distributed-Systems-Internals/Consistent-Hash-Ring|Consistent Hash Ring]].
 
 ### Transit Gateway: route domains, AZ affinity, appliance mode
 
 A TGW VPC attachment puts a requester-managed ENI in one subnet you pick per AZ. Best practice is a dedicated /28 per AZ with its own route table, so the attachment subnet's routing is separate from workload routing.
-Resources in an AZ where the attachment has no subnet cannot use the attachment (AWS TGW docs, 2025 reading, UNVERIFIED).
+Resources in an AZ where the attachment has no subnet cannot use the attachment (AWS TGW docs, as of 2026-11).
 Routing is decided by two independent relationships:
 - **Association.** Each attachment is associated with exactly one TGW route table, which decides where packets arriving from that attachment are looked up.
 - **Propagation.** An attachment can propagate its prefixes into any number of TGW route tables.
@@ -154,13 +182,13 @@ Routing is decided by two independent relationships:
 A "route domain", or segment, is just a pattern of associations and propagations. The classic isolation design associates prod and dev spokes with a "spokes" table that only learns the shared-services prefixes, and associates shared services with a table that learns every spoke.
 TGW does not write routes into VPC route tables. You add static routes (or prefix-list routes) that point at the `tgw-` target yourself. A missing return route in the VPC table is the most common one-way-reachability bug.
 Blackhole routes in a TGW table drop matching traffic explicitly. Static routes beat propagated routes for the same prefix.
-Inter-region TGW peering carries only static routes. AWS Cloud WAN adds a policy-document-driven global core network with segments and dynamic route exchange between its edge locations.
+Inter-region TGW peering carries only static routes (AWS TGW docs, as of 2026-11). AWS Cloud WAN adds a policy-document-driven global core network with segments and dynamic route exchange between its edge locations.
 
 AZ affinity is the mechanism that bites.
 TGW keeps a flow in the AZ where it entered whenever the destination attachment has an ENI in that AZ.
 With a centralized inspection VPC, the forward path of a flow from a spoke in AZ-a goes through the AZ-a firewall. If the return traffic comes from a resource in AZ-b, it is sent to the AZ-b firewall, which has no state for the flow and drops it.
 Appliance mode on the inspection VPC attachment changes this. TGW hashes the flow on its addresses and ports, picks one AZ's ENI and keeps both directions of the flow on it for the flow's lifetime.
-Appliance mode adds cross-AZ data transfer and couples the flow's survival to that one AZ's appliance. Gateway Load Balancer gives similar flow stickiness across appliance targets using GENEVE on UDP 6081.
+Appliance mode adds cross-AZ hops, although inter-AZ transfer through TGW has not been billed since April 1, 2022 ([AWS What's New](https://aws.amazon.com/about-aws/whats-new/2022/04/aws-data-transfer-price-reduction-privatelink-transit-gateway-client-vpn-services/)), and it couples the flow's survival to that one AZ's appliance. Gateway Load Balancer gives similar flow stickiness across appliance targets using GENEVE on UDP 6081.
 
 ### PrivateLink: unidirectional, source-NATed service exposure
 
@@ -172,24 +200,24 @@ This design has three consequences:
 - Only the consumer can open connections.
 - The provider's per-consumer controls are endpoint acceptance, allowed principals and PPv2-based authorization, not source IP.
 
-NLBs have supported security groups since 2023. A specific setting decides whether inbound rules are enforced on PrivateLink traffic, and leaving it enforced while allowing only VPC CIDRs breaks every consumer (AWS ELB docs, 2025 reading, UNVERIFIED).
+NLBs have supported security groups since August 2023 ([AWS What's New](https://aws.amazon.com/about-aws/whats-new/2023/08/network-load-balancer-supports-security-groups/)), and they must be associated at creation time. The setting "Enforce inbound rules on PrivateLink traffic" (`--enforce-security-group-inbound-rules-on-private-link-traffic`) is on by default, and leaving it enforced while allowing only VPC CIDRs can block consumers, because the rules are then evaluated against client addresses that may not match (AWS ELB docs, as of 2026-11).
 Gateway endpoints for S3 and DynamoDB are a different mechanism. They are route table entries whose destination is an AWS-managed prefix list, they are free, and they only apply to traffic that starts in that VPC and is routed by that route table.
 Endpoint policies are IAM resource policies evaluated by the target service. Combined with `aws:SourceVpce` conditions on bucket policies, they are the building blocks of the data perimeter in [[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter/Chapter_06_Constructing_an_Impenetrable_Data_Perimeter|Constructing an Impenetrable Data Perimeter]].
-Native cross-region PrivateLink connectivity for endpoint services was announced in late 2024 (UNVERIFIED).
+Native cross-region PrivateLink connectivity for endpoint services was announced in November 2024 ([AWS What's New](https://aws.amazon.com/about-aws/whats-new/2024/11/aws-privatelink-across-region-connectivity/)) and extended to selected AWS services in November 2025 ([AWS What's New](https://aws.amazon.com/about-aws/whats-new/2025/11/aws-privatelink-cross-region-connectivity-aws-services/)).
 
 ### VPC Lattice: a managed layer-7 fabric reached through link-local addresses
 
 VPC Lattice (GA March 2023) has these building blocks:
 - **Service networks:** logical groupings shared across accounts through AWS RAM.
 - **Services:** each with listeners, rules and target groups. Targets can be instances, IPs, Lambda functions, ALBs or ECS tasks.
-- **VPC associations:** connect a client VPC to a service network. A VPC can be associated with only one service network (AWS Lattice docs, 2025 reading, UNVERIFIED).
+- **VPC associations:** connect a client VPC to a service network. A VPC can be associated with only one service network through a VPC association; to reach more, use VPC endpoints of type service network (AWS Lattice quotas, as of 2026-11).
 
 The mechanism behind it is the interesting part.
-A Lattice service's DNS name resolves, inside an associated VPC, to an address in the link-local range 169.254.171.0/24 (IPv6 fd00:ec2:80::/64). The VPC fabric diverts those packets to the Lattice data plane instead of routing them through your route tables (AWS Lattice docs, 2025 reading, UNVERIFIED).
+A Lattice service's DNS name resolves, inside an associated VPC, to an address in the link-local range 169.254.171.0/24 (IPv6 fd00:ec2:80::/64). The VPC fabric diverts those packets to the Lattice data plane instead of routing them through your route tables ([AWS Networking Blog](https://aws.amazon.com/blogs/networking-and-content-delivery/managing-dns-resolution-with-amazon-vpc-lattice-and-vpc-resources/) for the ranges, as of 2026-11). The Lattice prefix lists can also hold non-routable public addresses (AWS Lattice docs, as of 2026-11).
 That is why Lattice works across overlapping CIDRs and ignores TGW and peering entirely.
 On the target side, packets arrive from addresses in the managed prefix list `com.amazonaws.<region>.vpc-lattice`. Target security groups must allow that prefix list, and forgetting this is the most common Lattice onboarding failure.
 Authorization uses IAM auth policies, enforced at both the service network and the service level. Clients sign requests with SigV4, so the proxy authorizes on principal, organization ID and request attributes rather than on IP.
-Since re:Invent 2024, resource gateways and resource configurations extend Lattice to TCP resources such as RDS endpoints, domain names and IPs. Service network endpoints let you reach a service network through PrivateLink from peered or on-premises networks (UNVERIFIED).
+Since December 2024 ([AWS What's New](https://aws.amazon.com/about-aws/whats-new/2024/12/access-vpc-resources-aws-privatelink/)), resource gateways and resource configurations extend Lattice to TCP resources such as RDS endpoints, domain names and IPs. Service network endpoints let you reach a service network through PrivateLink from peered, TGW-connected, Direct Connect or VPN networks (AWS Lattice docs, as of 2026-11).
 
 ### Formal reasoning about reachability
 
@@ -199,47 +227,46 @@ This is the same automated-reasoning lineage as the Zelkova IAM policy analyzer 
 
 ## Numbers to Know
 
-Live re-verification against documentation was not possible for this revision.
-Each figure below comes from the named AWS or Google Cloud page as last read in 2025, and is marked UNVERIFIED until it is re-checked against the 2026-10 docs.
-Prices are for us-east-1 or the base US region, on-demand.
+Each figure below was re-checked against the named AWS or Google Cloud page in 2026-11.
+Prices are on-demand for the base US regions; the TGW and NAT Gateway hourly and per-GB rates come from the US East (Ohio) examples on the AWS pricing pages, and the PrivateLink hourly rate from that page's worked example.
 
 | Item | Value | Source |
 |---|---|---|
-| VPC IPv4 CIDR size | /16 to /28 | AWS VPC docs, 2025 reading, UNVERIFIED |
-| Reserved IPs per subnet | 5 (network, +1 router, +2 DNS, +3 reserved, broadcast) | AWS VPC docs, 2025 reading, UNVERIFIED |
-| IPv4 CIDR blocks per VPC | 5 default, adjustable to 50 | AWS VPC quotas, 2025 reading, UNVERIFIED |
-| Route tables per VPC | 200 default | AWS VPC quotas, 2025 reading, UNVERIFIED |
-| Routes per route table | 50 default, adjustable to 1,000 | AWS VPC quotas, 2025 reading, UNVERIFIED |
-| Security groups per ENI | 5 default, max 16 | AWS VPC quotas, 2025 reading, UNVERIFIED |
-| Rules per SG | 60 inbound + 60 outbound; rules x SGs per ENI capped at 1,000 | AWS VPC quotas, 2025 reading, UNVERIFIED |
-| NACL rules | 20 per direction default, adjustable to 40 | AWS VPC quotas, 2025 reading, UNVERIFIED |
-| Active VPC peerings per VPC | 50 default, max 125 | AWS VPC quotas, 2025 reading, UNVERIFIED |
-| Link-local packet budget | 1,024 pps per ENI (DNS, IMDS, Time Sync) | AWS EC2 docs, 2025 reading, UNVERIFIED |
-| MTU | 9001 in VPC; 8500 via TGW; 1500 via IGW; 1446 via AWS Site-to-Site VPN | AWS EC2/TGW docs, 2025 reading, UNVERIFIED |
-| Single-flow bandwidth | 5 Gbps outside a cluster placement group; 10 Gbps inside; 25 Gbps with ENA Express | AWS EC2 docs, 2025 reading, UNVERIFIED |
-| Internet/DX egress cap | 50% of instance bandwidth for 32+ vCPUs; 5 Gbps below 32 vCPUs | AWS EC2 docs, 2025 reading, UNVERIFIED |
-| Conntrack TCP established timeout | 432,000 s default; 60-432,000 s range | AWS EC2 docs, 2025 reading, UNVERIFIED |
-| TGW attachments per TGW | 5,000 | AWS TGW quotas, 2025 reading, UNVERIFIED |
-| TGW route tables per TGW | 20 | AWS TGW quotas, 2025 reading, UNVERIFIED |
-| TGW total routes | 10,000 across all route tables | AWS TGW quotas, 2025 reading, UNVERIFIED |
-| TGW bandwidth per VPC attachment per AZ | up to 50 Gbps burst (may since have been raised) | AWS TGW quotas, 2025 reading, UNVERIFIED |
-| TGW VPN tunnel | 1.25 Gbps per tunnel | AWS TGW quotas, 2025 reading, UNVERIFIED |
-| Interface endpoint bandwidth | 10 Gbps per AZ, scaling automatically to 100 Gbps | AWS PrivateLink docs, 2025 reading, UNVERIFIED |
-| Interface endpoints per VPC | 50 default | AWS PrivateLink quotas, 2025 reading, UNVERIFIED |
-| NAT Gateway throughput | 5 Gbps, auto-scaling to 100 Gbps | AWS VPC docs, 2025 reading, UNVERIFIED |
-| NAT Gateway connections | 55,000 simultaneous per unique destination (IP, port, protocol) per NAT IP | AWS VPC docs, 2025 reading, UNVERIFIED |
-| NAT Gateway / PrivateLink TCP idle timeout | 350 s | AWS VPC docs, 2025 reading, UNVERIFIED |
-| Flow Logs aggregation interval | 10 min default, 1 min option | AWS VPC docs, 2025 reading, UNVERIFIED |
-| Price: TGW | $0.05 per attachment-hour + $0.02/GB processed | AWS TGW pricing, 2025 reading, UNVERIFIED |
-| Price: interface endpoint | $0.01 per endpoint per AZ per hour + $0.01/GB for the first PB | AWS PrivateLink pricing, 2025 reading, UNVERIFIED |
-| Price: NAT Gateway | $0.045/hour + $0.045/GB processed | AWS VPC pricing, 2025 reading, UNVERIFIED |
-| Price: VPC Lattice | $0.025 per service-hour + $0.025/GB + $0.10 per million requests | AWS Lattice pricing, 2025 reading, UNVERIFIED |
-| Price: cross-AZ transfer | $0.01/GB in each direction | AWS EC2 pricing, 2025 reading, UNVERIFIED |
-| Price: public IPv4 address | $0.005/hour per address | AWS VPC pricing, 2025 reading, UNVERIFIED |
-| Price: Reachability Analyzer | $0.10 per analysis | AWS VPC pricing, 2025 reading, UNVERIFIED |
-| GCP VPC MTU | 1460 default, configurable 1300-8896 | Google Cloud docs, 2025 reading, UNVERIFIED |
-| GCP vNICs per VM | up to 8, each in a different VPC network | Google Cloud docs, 2025 reading, UNVERIFIED |
-| GCP Cloud NAT TCP established idle timeout | 1,200 s default | Google Cloud docs, 2025 reading, UNVERIFIED |
+| VPC IPv4 CIDR size | /16 to /28 | AWS VPC docs, as of 2026-11 |
+| Reserved IPs per subnet | 5 (network, +1 router, +2 DNS, +3 reserved, broadcast) | AWS VPC docs, as of 2026-11 |
+| IPv4 CIDR blocks per VPC | 5 default, adjustable to 50 | AWS VPC quotas, as of 2026-11 |
+| Route tables per VPC | 200 default, adjustable | AWS VPC quotas, as of 2026-11 |
+| Routes per route table | 500 non-propagated default, adjustable to 1,000; 100 propagated, not adjustable | AWS VPC quotas, as of 2026-11 (the AWS-managed prefix list page still cites a default of 50, so confirm in Service Quotas) |
+| Security groups per ENI | 5 default, max 16 | AWS VPC quotas, as of 2026-11 |
+| Rules per SG | 60 inbound + 60 outbound, enforced separately for IPv4 and IPv6; rules x SGs per ENI capped at 1,000 | AWS VPC quotas, as of 2026-11 |
+| NACL rules | 20 per direction default, adjustable to 40 | AWS VPC quotas, as of 2026-11 |
+| Active VPC peerings per VPC | 50 default, max 125 | AWS VPC peering quotas, as of 2026-11 |
+| Link-local packet budget | 1,024 pps per ENI to Route 53 Resolver, not adjustable; the same per-interface allowance also covers IMDS and Time Sync | AWS VPC quotas and EC2 ENA docs, as of 2026-11 |
+| MTU | 9001 in VPC; 8500 via TGW, NAT Gateway, VPC endpoints and inter-region peering; 1500 via IGW; 1446 via AWS Site-to-Site VPN | AWS EC2, TGW, VPC and VPN docs, as of 2026-11 |
+| Single-flow bandwidth | 5 Gbps outside a cluster placement group; 10 Gbps inside; 25 Gbps with ENA Express within one AZ | AWS EC2 docs, as of 2026-11 |
+| Egress cap via IGW or local gateway | 50% of instance bandwidth above 32 vCPUs; 5 Gbps below 32 vCPUs; baseline bandwidth on C8in, C8ine, M8in, M8ine, M8idn, R8in, R8idn | AWS EC2 docs, as of 2026-11 |
+| Conntrack TCP established timeout | 350 s default on Nitro v6 except P6e-GB200; 432,000 s default elsewhere; 60-432,000 s range | AWS EC2 docs, as of 2026-11 |
+| TGW attachments per TGW | 5,000, adjustable | AWS TGW quotas, as of 2026-11 |
+| TGW route tables per TGW | 20, adjustable | AWS TGW quotas, as of 2026-11 |
+| TGW total routes | 10,000 across all route tables; increases go through your SA or TAM | AWS TGW quotas, as of 2026-11 |
+| TGW bandwidth per VPC attachment per AZ | up to 100 Gbps each direction and 7,500,000 pps | AWS TGW quotas, as of 2026-11 |
+| Site-to-Site VPN tunnel | up to 1.25 Gbps per standard tunnel; up to 5 Gbps per large bandwidth tunnel | AWS VPN quotas, as of 2026-11 |
+| Interface endpoint bandwidth | 10 Gbps per AZ, scaling automatically to 100 Gbps | AWS PrivateLink quotas, as of 2026-11 |
+| Interface and GWLB endpoints per VPC | 50 default combined, adjustable | AWS PrivateLink quotas, as of 2026-11 |
+| NAT Gateway throughput | 5 Gbps and 1M pps, auto-scaling to 100 Gbps and 10M pps | AWS VPC docs, as of 2026-11 |
+| NAT Gateway connections | 55,000 simultaneous per unique destination (IP, port, protocol) per NAT IP; up to 8 IPs on a zonal NAT Gateway, 32 per AZ on a regional one | AWS VPC docs, as of 2026-11 |
+| NAT Gateway / PrivateLink TCP idle timeout | 350 s (NLB TCP listeners default to 350 s, configurable 60-6,000 s) | AWS VPC and ELB docs, AWS Networking Blog for PrivateLink, as of 2026-11 |
+| Flow Logs aggregation interval | 10 min default maximum, 1 min option; always 1 min or less on Nitro-based instances | AWS VPC docs, as of 2026-11 |
+| Price: TGW | $0.05 per attachment-hour + $0.02/GB processed | AWS TGW pricing, US East (Ohio) example, as of 2026-11 |
+| Price: interface endpoint | $0.01 per endpoint per AZ per hour (worked example) + $0.01/GB for the first PB | AWS PrivateLink pricing, as of 2026-11 |
+| Price: NAT Gateway | $0.045/hour + $0.045/GB processed; regional mode bills $0.045/hour per AZ | AWS VPC pricing, US East (Ohio) example, as of 2026-11 |
+| Price: VPC Lattice | $0.025 per service-hour + $0.025/GB + $0.10 per million requests, first 300,000 requests per hour free; no separate inter-AZ charge | AWS Lattice pricing, us-east-1, as of 2026-11 |
+| Price: cross-AZ transfer | $0.01/GB in each direction (peered path); no inter-AZ transfer charge through TGW or PrivateLink since April 2022 | AWS VPC pricing and AWS What's New, as of 2026-11 |
+| Price: public IPv4 address | $0.005/hour per address | AWS VPC pricing, as of 2026-11 |
+| Price: Reachability Analyzer | $0.10 per analysis | AWS VPC pricing, as of 2026-11 |
+| GCP VPC MTU | 1460 default, configurable 1300-8896 | [Google Cloud docs](https://docs.cloud.google.com/vpc/docs/mtu), as of 2026-11 |
+| GCP vNICs per VM | up to 10 on most machine types, scaling with vCPUs; each on a unique subnet; up to 16 interfaces with Dynamic NICs | Google Cloud docs, as of 2026-11 |
+| GCP Cloud NAT TCP established idle timeout | 1,200 s default | Google Cloud docs, as of 2026-11 |
 
 ## AWS vs GCP Mechanism Parity
 
@@ -250,14 +277,14 @@ Prices are for us-east-1 or the base US region, on-demand.
 | Route table binding | One route table per subnet association; gateway route tables for ingress | Routes belong to the whole network, scoped by network tags or service accounts, with a numeric priority after longest prefix | AWS routing differs per subnet; GCP routing differs per instance tag |
 | Steering to middleboxes | More-specific-than-local routes, GWLB endpoints, Network Firewall endpoints | Static routes or policy-based routes with an internal passthrough NLB as next hop | Both rely on a load-balanced next hop for appliance high availability |
 | Stateful filtering | Security groups on ENIs, conntrack in Nitro, untracked-flow rule | VPC firewall rules and hierarchical/network firewall policies enforced on host by Andromeda | GCP has org/folder-level firewall policy inheritance; AWS centralizes through Firewall Manager or Network Firewall |
-| Multi-NIC | Multiple ENIs can share one VPC, in different subnets of the same AZ | Each vNIC must be in a different VPC network | Multi-homed appliance designs do not port directly between the two |
+| Multi-NIC | Multiple ENIs can share one VPC, in different subnets of the same AZ | Each vNIC needs a unique subnet, and vNICs can share a VPC network only if that network also holds `nic0` (Google Cloud docs, as of 2026-11) | Multi-homed appliance designs do not port directly between the two |
 | Secondary IPs | Secondary IPs and /28 prefix delegation | Alias IP ranges (the basis of VPC-native GKE) | Same idea; GCP alias ranges are first-class subnet secondary ranges |
 | Hub-and-spoke transit | Transit Gateway route tables (association plus propagation), Cloud WAN segments | Network Connectivity Center hub with VPC and hybrid spokes, mesh or star topologies | Both supply segmentation; GCP often avoids the hub by using one Shared VPC |
 | Shared network ownership | AWS RAM VPC subnet sharing | Shared VPC host and service projects | Conceptually equivalent; GCP's model is older and more widely used |
 | Private service exposure | PrivateLink: endpoint ENI -> Hyperplane SNAT -> NLB; PPv2 TLV 0xEA | Private Service Connect: endpoint forwarding rule -> service attachment -> producer ILB via a PSC NAT subnet; PROXY protocol optional | Same unidirectional, CIDR-overlap-tolerant contract |
 | Private access to provider APIs | Gateway endpoints (S3, DynamoDB) and interface endpoints | Private Google Access, private.googleapis.com and restricted.googleapis.com VIPs, PSC for Google APIs | GCP's API perimeter (VPC Service Controls) is an identity-and-context layer above routing |
 | Service-to-service layer 7 | VPC Lattice: link-local entry, IAM SigV4 auth policies | No direct managed equivalent; Cloud Service Mesh (Envoy or proxyless gRPC) plus PSC | Lattice moves mesh functions into the provider fabric; GCP keeps them in the mesh |
-| NAT | NAT Gateway is a zonal Hyperplane middlebox with per-destination port budgets | Cloud NAT is software-defined in Andromeda and allocates port ranges per VM | AWS exhausts ports per destination per NAT IP; GCP exhausts ports per VM |
+| NAT | NAT Gateway is a zonal Hyperplane middlebox, or since November 2025 a regional one that expands across AZs (AWS VPC docs, as of 2026-11), with per-destination port budgets | Cloud NAT is software-defined in Andromeda and allocates port ranges per VM | AWS exhausts ports per destination per NAT IP; GCP exhausts ports per VM |
 | Reachability verification | Reachability Analyzer and Network Access Analyzer (Tiros, SMT-based) | Network Intelligence Center Connectivity Tests (configuration analysis plus live data-plane checks) | Both reason over configuration; neither replaces data-plane canaries |
 
 ## Worked Example: Proving Transit Gateway Segmentation Without Launching Instances
@@ -274,8 +301,8 @@ Two Reachability Analyzer analyses then show formally that prod can reach shared
 
 ### Cost estimate
 
-- 3 TGW attachments x $0.05/hour = $0.15/hour (AWS TGW pricing, 2025 reading, UNVERIFIED).
-- 2 Reachability Analyzer analyses x $0.10 = $0.20 one time (AWS VPC pricing, 2025 reading, UNVERIFIED).
+- 3 TGW attachments x $0.05/hour = $0.15/hour (AWS TGW pricing, US East (Ohio) example, as of 2026-11).
+- 2 Reachability Analyzer analyses x $0.10 = $0.20 one time (AWS VPC pricing, as of 2026-11).
 - VPCs, subnets, route tables, security groups and unattached ENIs are not charged. No data moves, so there is no per-GB charge.
 - A two-hour session costs about $0.50. A forgotten teardown costs about $110 a month, which is why the budget alarm below is mandatory.
 
@@ -413,7 +440,7 @@ resource "aws_security_group" "probe" {
   }
 }
 
-# Unattached ENIs are free and are valid Reachability Analyzer endpoints
+# ENIs are valid Reachability Analyzer endpoints; the unattached case is UNVERIFIED: not stated in the docs
 resource "aws_network_interface" "probe" {
   for_each        = local.vpcs
   subnet_id       = aws_subnet.work[each.key].id
@@ -479,7 +506,7 @@ aws ec2 search-transit-gateway-routes \
 
 # Read the machine-generated explanation of why prod cannot reach dev
 aws ec2 describe-network-insights-analyses \
-  --query 'NetworkInsightsAnalyses[?PathFound==`false`].Explanations[].ExplanationCode'
+  --query 'NetworkInsightsAnalyses[?NetworkPathFound==`false`].Explanations[].ExplanationCode'
 
 # Teardown - exact command; removes TGW, attachments, ENIs, analyses, and the budget
 tofu destroy -auto-approve -var "budget_email=you@example.com"
@@ -489,12 +516,12 @@ Notice that the dev-to-prod question never needed a firewall. Isolation comes fr
 
 ### Back-of-the-envelope: choosing a connectivity primitive for 40 VPCs
 
-Assume 40 workload VPCs spread over 3 AZs, 200 TB/month of east-west traffic, and 5 internal HTTP services each consumed by all 40 VPCs at 2 billion requests/month in total. All prices are from the pricing rows above (2025 reading, UNVERIFIED).
+Assume 40 workload VPCs spread over 3 AZs, 200 TB/month of east-west traffic, and 5 internal HTTP services each consumed by all 40 VPCs at 2 billion requests/month in total. All prices are from the pricing rows above (as of 2026-11).
 
 **Average bandwidth**
 
 1. 200e12 bytes x 8 bits / 2,592,000 s is about 617 Mbps on average.
-2. At a 5x peak that is about 3.1 Gbps, comfortably inside any single TGW attachment's per-AZ burst.
+2. At a 5x peak that is about 3.1 Gbps, comfortably inside any single TGW attachment's 100 Gbps per-AZ limit.
 3. Any single 5-tuple flow is still capped at 5 Gbps by EC2 (10 Gbps inside a placement group), whatever transit you choose.
 
 **Option A: Transit Gateway**
@@ -502,18 +529,18 @@ Assume 40 workload VPCs spread over 3 AZs, 200 TB/month of east-west traffic, an
 1. Attachments: 40 x $0.05 x 730 h = $1,460/month.
 2. Data processing: 200,000 GB x $0.02 = $4,000/month.
 3. Total is about $5,460/month, with full layer-3 reachability and a central place to insert inspection.
-4. Whether cross-AZ data transfer is billed on top of TGW processing for traffic that crosses AZs inside TGW is UNVERIFIED. Model it before committing.
+4. Inter-AZ data transfer through TGW has not been billed since April 1, 2022, so only the processing fee applies to these bytes (AWS What's New, as of 2026-11).
 
 **Option B: full-mesh VPC peering**
 
-1. 40 x 39 / 2 = 780 peering connections, 39 per VPC. That is inside the 125-per-VPC maximum, but each workload route table needs 39 routes against a default of 50.
+1. 40 x 39 / 2 = 780 peering connections, 39 per VPC. That is inside the 125-per-VPC maximum, and each workload route table needs 39 routes against a default of 500 (AWS VPC quotas, as of 2026-11).
 2. There are no hourly or processing fees. With uniformly random AZ placement, about 2/3 of the traffic crosses AZs: 200,000 x 2/3 x $0.02 (both directions) is about $2,667/month.
 3. It is cheaper, but it has no transitive routing, no central inspection, and it creates an operational problem that grows as N squared.
 
 **Option C: VPC Lattice for the 5 HTTP services**
 
 1. Services: 5 x $0.025 x 730 = about $91/month.
-2. Requests: 2,000 M x $0.10 = $200/month, before any free-tier request allowance.
+2. Requests: 2,000 M x $0.10 = $200/month, before the allowance of 300,000 free requests per hour (AWS Lattice pricing, as of 2026-11).
 3. Data: if those services carry 20 TB, 20,000 x $0.025 = $500/month.
 4. Total is about $791/month, with IAM-authenticated, CIDR-overlap-tolerant access and no route tables to manage.
 
@@ -533,7 +560,7 @@ Assume 40 workload VPCs spread over 3 AZs, 200 TB/month of east-west traffic, an
 ### Control-plane propagation lag during large recoveries
 
 The data plane can be healthy while new capacity is unroutable.
-AWS's summary of the October 2025 us-east-1 event describes how a DynamoDB DNS automation race cascaded into EC2 instance launches. It reports that delays in propagating network state for newly launched instances made Network Load Balancer health checks fail, which removed capacity (AWS PIR, [aws.amazon.com/message/101925](https://aws.amazon.com/message/101925/), details UNVERIFIED).
+AWS's summary of the October 2025 us-east-1 event describes how a DynamoDB DNS automation race cascaded into EC2 instance launches. It reports that delays in propagating network state for newly launched instances made Network Load Balancer health checks fail, which removed capacity, and that engineers disabled automatic health check failover to stop it ([AWS PIR](https://aws.amazon.com/message/101925/), October 19-20, 2025).
 The lesson matches [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_02_Regions_Zones_and_Static_Stability|Regions, Zones, and Static Stability]]:
 - Pre-provision capacity, ENIs and routes.
 - Do not depend on launching and wiring new instances during recovery.
@@ -548,18 +575,18 @@ All three are covered in [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE
 
 ### Per-instance and per-path limits that surface as mysterious drops
 
-- **DNS throttling.** Every ENI is limited to 1,024 link-local pps, so a pod-dense node making uncached DNS lookups hits `linklocal_allowance_exceeded` and gets intermittent resolution failures. The fix is node-local caching, such as NodeLocal DNSCache on EKS (AWS docs, 2025 reading, UNVERIFIED).
+- **DNS throttling.** Every ENI is limited to 1,024 link-local pps, so a pod-dense node making uncached DNS lookups hits `linklocal_allowance_exceeded` and gets intermittent resolution failures. The fix is node-local caching, such as NodeLocal DNSCache on EKS (AWS VPC quotas and EC2 docs, as of 2026-11).
 - **Conntrack exhaustion.** Proxies and NAT instances with many short-lived or idle connections fill the tracking table. Watch `conntrack_allowance_available` and tune the TCP established idle timeout, or make flows untracked where the security posture allows.
 - **NAT Gateway port allocation.** The 55,000 limit is per destination tuple per NAT IP. One hot SaaS endpoint exhausts it while total connections look small. Add secondary NAT IPs, spread destinations, or use PrivateLink to that SaaS if it is offered.
-- **Idle timeouts at 350 s.** Database pools or gRPC channels idle through NAT Gateway, NLB or PrivateLink are silently dropped, and the next write gets an RST. Set TCP keepalive below 350 s.
+- **Idle timeouts at 350 s.** The same default now also applies at the ENI on Nitro v6 instances, and NLB TCP listeners can be raised to 6,000 s only if target ENI timeouts are raised to match (AWS ELB docs, as of 2026-11). Database pools or gRPC channels idle through NAT Gateway, NLB or PrivateLink are silently dropped, and the next write gets an RST. Set TCP keepalive below 350 s.
 - **MTU black holes.** 9001-byte frames inside the VPC drop to 8500 through TGW, 1500 through the internet, and 1446 through AWS Site-to-Site VPN. If ICMP "fragmentation needed" is blocked by a NACL or an appliance, large TLS records hang. Allow ICMP type 3 code 4 and clamp MSS on appliances.
 
 ### Routing and segmentation errors
 
 - **TGW asymmetric drops.** Centralized inspection without appliance mode produces flows that work in one direction and time out in the other, or only for some AZ pairs. Enable appliance mode on the inspection attachment and confirm with TGW Flow Logs.
 - **Missing VPC return routes.** TGW propagation fills TGW route tables, never VPC route tables. If one side lacks a route to the TGW, traffic is one-way.
-- **AZ coverage gaps.** Instances in an AZ with no attachment subnet cannot use the TGW. The same applies to interface endpoints: a consumer in an AZ without an endpoint ENI crosses AZs and pays for it, or fails if zonal DNS names are pinned.
-- **Prefix list quota math.** A managed prefix list with max-entries 100 consumes 100 route slots in every route table that references it, even when it holds 3 entries.
+- **AZ coverage gaps.** Instances in an AZ with no attachment subnet cannot use the TGW. The same applies to interface endpoints: a consumer in an AZ without an endpoint ENI crosses AZs, adding latency and an AZ dependency though no inter-AZ transfer charge since April 2022, or fails if zonal DNS names are pinned.
+- **Prefix list quota math.** A customer-managed prefix list with max-entries 100 consumes 100 route slots in every route table that references it, even when it holds 3 entries.
 - **Gateway endpoint scope.** S3 gateway endpoints do nothing for traffic from on-premises, peered VPCs or TGW spokes. Use S3 interface endpoints for those paths.
 
 ### Service-exposure misconfigurations
@@ -576,7 +603,7 @@ Separating noisy batch egress (model weight downloads, dataset pulls) onto its o
 
 ### Observability gaps
 
-- VPC Flow Logs are aggregated over 1 to 10 minutes and do not capture traffic to Amazon DNS, IMDS, Time Sync or DHCP. They are not a packet capture (AWS docs, 2025 reading, UNVERIFIED).
+- VPC Flow Logs are aggregated over at most 10 minutes by default, or 1 minute or less on Nitro-based instances, and do not capture traffic to Amazon DNS, IMDS, Time Sync or DHCP. They are not a packet capture (AWS VPC docs, as of 2026-11).
 - Use ENA counters for host limits, TGW Flow Logs for transit, Traffic Mirroring for payloads, and Reachability Analyzer for intent.
 
 ## Security and Cost Angles
@@ -587,10 +614,10 @@ Network-changing actions belong to a small set of roles, guarded by SCPs from [[
 - `ec2:CreateRoute`, `ec2:ReplaceRoute`
 - `ec2:ModifyVpcEndpoint`
 - `ec2:AuthorizeSecurityGroupIngress`
-- `ec2:CreateTransitGatewayRouteTablePropagation`
+- `ec2:EnableTransitGatewayRouteTablePropagation`
 - `ec2:AttachInternetGateway`
 
-A common pattern is an SCP that denies `ec2:CreateInternetGateway` and `ec2:AttachInternetGateway` everywhere except a central egress account. VPC Block Public Access, launched in late 2024, adds an account- or organization-level control over IGW traffic (UNVERIFIED).
+A common pattern is an SCP that denies `ec2:CreateInternetGateway` and `ec2:AttachInternetGateway` everywhere except a central egress account. VPC Block Public Access, launched on November 19, 2024, adds an account-level control over IGW and egress-only IGW traffic, and declarative policies extend it across an organization (AWS VPC doc history, as of 2026-11).
 TGW and Lattice service networks are shared through AWS RAM. Restricting RAM sharing to your organization (`ram:RequestedAllowsExternalPrincipals` false) stops a compromised account from sharing your transit fabric outward.
 
 ### Endpoints as policy enforcement points
@@ -602,14 +629,14 @@ GCP's equivalent perimeter is identity-and-context based and sits above routing.
 
 ### Encryption on the wire
 
-On Nitro instance families that support it, traffic between supported instances inside a VPC or across peered VPCs is encrypted transparently by the Nitro card (AWS EC2 docs, 2025 reading, UNVERIFIED).
-This does not cover traffic through every middlebox or to the internet. Keep TLS end to end for regulated data, with keys from the hierarchy in [[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter/Chapter_04_Encryption_Key_Hierarchies_and_Envelope_Encryption|Encryption Key Hierarchies and Envelope Encryption]].
+On Nitro instance families that support it, traffic between supported instances inside a VPC or across peered VPCs is encrypted transparently by the Nitro card (AWS EC2 docs, as of 2026-11).
+This does not cover traffic that passes through a load balancer, a transit gateway or another virtual network device, or traffic to the internet. Keep TLS end to end for regulated data, with keys from the hierarchy in [[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter/Chapter_04_Encryption_Key_Hierarchies_and_Envelope_Encryption|Encryption Key Hierarchies and Envelope Encryption]].
 TGW VPN tunnels use IPsec. Direct Connect needs MACsec on supported dedicated ports, or IPsec over DX, to be encrypted.
 
 ### Unit-economics levers
 
 - **S3 and DynamoDB traffic.** Send it through gateway endpoints, never NAT Gateway. At $0.045/GB, a 10 TB model-artifact pull through NAT costs about $450 in processing that a gateway endpoint makes free.
-- **Zonal alignment.** Keep chatty tiers in the same AZ, or use AZ-aware routing, because cross-AZ transfer at $0.01/GB each way usually dominates east-west cost before TGW does.
+- **Zonal alignment.** Keep chatty tiers in the same AZ, or use AZ-aware routing, because cross-AZ transfer at $0.01/GB each way on direct and peered paths usually dominates east-west cost; inter-AZ transfer through TGW and PrivateLink carries no such charge (AWS What's New, as of 2026-11).
 - **Consolidation.** Centralize interface endpoints in a shared-services VPC reached over TGW, with Route 53 private hosted zones shared through Resolver rules. You pay endpoint-hours once instead of per VPC, at the price of TGW processing on every byte. Compute the breakeven from the per-hour and per-GB terms above.
 - **Public IPv4.** Since February 2024 every public IPv4 address costs $0.005/hour. Prefer IPv6 with an egress-only internet gateway where clients support it.
 
@@ -623,7 +650,7 @@ During an incident you remove the security group rule that allows an attacker's 
 
 #### Model Answer
 
-Security groups are stateful. The Nitro card holds a connection-tracking entry for the established SSH flow, and removing a rule does not tear down tracked connections. New connections are blocked, but existing ones survive until they close or idle out, and the TCP established idle timeout defaults to 5 days.
+Security groups are stateful. The Nitro card holds a connection-tracking entry for the established SSH flow, and removing a rule does not tear down tracked connections. New connections are blocked, but existing ones survive until they close or idle out, and the TCP established idle timeout defaults to 5 days, or 350 s on Nitro v6 instance types other than P6e-GB200.
 If the rule had produced untracked traffic (allow-all in both directions), removing it would have cut the flow immediately, which is a distinction most candidates miss.
 The reliable kill is a stateless network ACL deny for the attacker's prefix on the subnet. NACLs are evaluated per packet with no connection memory, so the session dies on the next packet.
 In parallel, I would move the instance's ENI to a quarantine security group with no rules. I would snapshot volumes for forensics before stopping anything, and pull VPC Flow Logs plus GuardDuty findings to scope lateral movement.
@@ -668,7 +695,7 @@ Across regions I would either peer the TGWs with static routes, accepting manual
 The failure modes and their controls:
 1. An engineer adds a propagation that merges domains. I would gate every TGW change through IaC with a Reachability Analyzer or Network Access Analyzer assertion in CI, for example "no path from any prod ENI to any non-prod ENI", which is an SMT-solved proof rather than a test.
 2. Inspection capacity is a shared bottleneck and an AZ-scoped blast radius. GWLB health checks drain bad appliances, but appliance-mode flows pinned to a failed AZ reset. I would size for N-1 AZs and treat the inspection VPC as a tier-0 cell.
-3. Quotas: 20 route tables and 10,000 routes per TGW. I would summarize CIDRs through IPAM pools per environment so the tables hold a handful of summaries, not 300 prefixes.
+3. Quotas: 20 route tables per TGW by default, and 10,000 routes per TGW. I would summarize CIDRs through IPAM pools per environment so the tables hold a handful of summaries, not 300 prefixes.
 4. TGW data processing on every inspected byte. I would exempt high-volume, low-risk flows such as S3 through gateway endpoints, which keeps those bytes off TGW entirely.
 
 #### Follow-up Interviewer Question
@@ -681,15 +708,15 @@ Fifty product teams across fifty accounts need to call each other's HTTP and gRP
 
 #### Model Answer
 
-TGW gives layer-3 reachability, but overlapping CIDRs make it unusable without NAT layers. Authorization would still depend on IP-based security groups, which does not meet the identity requirement.
-PrivateLink handles overlap through source NAT and is unidirectional and least-privilege by construction. But each consumer-service pair costs an endpoint per AZ: 50 consumers x 3 AZs x $0.01/hour is about $1,100/month per service before data (2025 pricing, UNVERIFIED). Providers see only NLB IPs unless they parse PPv2 TLV 0xEA, and there is no request-level authorization.
+TGW gives layer-3 reachability, but overlapping CIDRs make it unusable without address translation; AWS announced managed 1:1 NAT on TGW attachments in October 2026 ([AWS What's New](https://aws.amazon.com/about-aws/whats-new/2026/10/aws-transit-gateway-cloud-wan-1-1-nat/)), which removes the appliance but not the address design. Authorization would still depend on IP-based security groups, which does not meet the identity requirement.
+PrivateLink handles overlap through source NAT and is unidirectional and least-privilege by construction. But each consumer-service pair costs an endpoint per AZ: 50 consumers x 3 AZs x $0.01/hour is about $1,100/month per service before data (AWS PrivateLink pricing, as of 2026-11). Providers see only NLB IPs unless they parse PPv2 TLV 0xEA, and there is no request-level authorization.
 VPC Lattice fits this problem.
 Clients reach services through link-local addresses that the fabric diverts, so CIDR overlap is irrelevant. Auth policies evaluate the SigV4-signed caller principal and organization at both the service network and service level. Cost scales per service-hour, per GB and per request, not per consumer-AZ.
 The trade-offs I would state:
 - Lattice is a regional layer-7 proxy hop, so I would measure added latency for chatty gRPC.
 - Clients must sign requests to use IAM auth, which means SDK or sidecar changes.
 - Target security groups must allow the Lattice prefix list.
-- A VPC joins only one service network, so I would design one org-wide service network per environment, not one per team.
+- A VPC joins only one service network through a VPC association, so I would design one org-wide service network per environment, not one per team.
 
 I would keep PrivateLink for the few very-high-volume, few-consumer data services, where its per-GB rate is lower than Lattice's. I would keep TGW for non-HTTP layer-3 needs and inspection.
 
@@ -731,7 +758,7 @@ Trace a packet from instance A to instance B in different subnets of the same VP
 The send side:
 1. The guest writes the frame to an ENA queue.
 2. The Nitro card applies the ENI's outbound security group and checks the conntrack entry.
-3. It checks the per-ENI bandwidth, pps and conntrack allowances.
+3. It checks the per-instance bandwidth, pps and conntrack allowances.
 4. It performs a longest-prefix lookup in the compiled route table for A's subnet. The local route, or a more-specific middlebox route if one exists, picks the next hop.
 5. It resolves B's VPC address to a physical host through mapping-service state cached on the host.
 6. It encapsulates the frame with VPC and source identity and sends it across the Clos substrate.
@@ -748,7 +775,7 @@ What breaks is everything that needs new state propagated:
 - route and security group changes, which may apply late or unevenly
 - autoscaling, and load balancer target registration of new nodes
 
-The October 2025 us-east-1 summary describes this pattern: network-state propagation delays for new instances made health checks fail and removed capacity (details UNVERIFIED).
+The October 2025 us-east-1 summary describes this pattern: network-state propagation delays for new instances made health checks fail and removed capacity ([AWS PIR](https://aws.amazon.com/message/101925/)).
 My design implications:
 - Keep warm capacity instead of scaling during recovery.
 - Avoid health checks that eject fresh nodes during propagation delays.
@@ -773,7 +800,7 @@ The target architecture I would propose:
 - **Regional cells.** One TGW per region per environment, or Cloud WAN with segments declared in one policy document and dynamic route exchange between core network edges. Cloud WAN's deployment process must stage policy changes per region and have rollback.
 - **Translated firewall model.** GCP firewall rules scoped by network tags become security groups referencing security groups within a VPC, with central guardrails through Firewall Manager and Network Firewall. GCP hierarchical firewall policies have no exact AWS analogue, so I would enforce them as SCP-protected, IaC-owned baselines.
 - **Translated service exposure.** Private Service Connect maps to PrivateLink almost one-to-one, since both are source-NATed and unidirectional. Mesh traffic can move to Lattice for identity-authorized layer 7, replacing reliance on GCP service-account-scoped firewalling.
-- **Multi-NIC.** GCP's one-vNIC-per-network rule does not apply in AWS, so appliance designs can be simplified.
+- **Multi-NIC.** GCP's rules that each vNIC needs a unique subnet and that vNICs share a network only alongside `nic0` do not apply in AWS, so appliance designs can be simplified.
 - **Cross-cloud link.** Dedicated Interconnect or Direct Connect via partners, with no stretched layer-2, no cross-cloud synchronous dependencies, and a deliberate egress budget, as covered in [[17-Cloud-AI-Engineering/Volume_04_AWS_vs_GCP_Translation/Chapter_07_Multi_Cloud_and_Hybrid_Architecture_Reality|Multi-Cloud and Hybrid Architecture Reality]].
 
 The principle is to accept regional blast radius in AWS as a feature rather than fight it to imitate GCP's global abstraction.

@@ -2,7 +2,7 @@
 type: concept
 track: [cloud-ai, ai-eng, sde, distinguished]
 level:
-status: draft
+status: solid
 last_reviewed:
 sources: 
   - "https://aws.amazon.com/builders-library/instrumenting-distributed-systems-for-operational-visibility/"
@@ -18,6 +18,33 @@ sources:
   - "https://www.usenix.org/conference/nsdi-07/x-trace-pervasive-network-tracing-framework"
   - "https://sre.google/sre-book/monitoring-distributed-systems/"
   - "https://www.w3.org/TR/trace-context/"
+  - "https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/cloudwatch_concepts.html"
+  - "https://docs.aws.amazon.com/AmazonCloudWatch/latest/APIReference/API_PutMetricData.html"
+  - "https://docs.aws.amazon.com/AmazonCloudWatch/latest/APIReference/API_PutCompositeAlarm.html"
+  - "https://docs.aws.amazon.com/AmazonCloudWatch/latest/APIReference/API_DescribeAlarmHistory.html"
+  - "https://docs.aws.amazon.com/AmazonCloudWatch/latest/APIReference/API_DescribeAlarms.html"
+  - "https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/alarm-evaluation.html"
+  - "https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/alarms-and-missing-data.html"
+  - "https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/CloudWatch_Embedded_Metric_Format_Generation_CloudWatch_Agent.html"
+  - "https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/CloudWatch-Transaction-Search.html"
+  - "https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/cloudwatch_limits_cwl.html"
+  - "https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonCloudWatch/current/us-east-1/index.json"
+  - "https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/CloudWatch_Logs_Log_Classes.html"
+  - "https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/CloudWatchLogs-Field-Indexing.html"
+  - "https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/CloudWatchLogs-Field-Indexing-Syntax.html"
+  - "https://docs.aws.amazon.com/AmazonCloudWatchLogs/latest/APIReference/API_StartQuery.html"
+  - "https://docs.aws.amazon.com/AmazonCloudWatchLogs/latest/APIReference/API_PutAccountPolicy.html"
+  - "https://docs.aws.amazon.com/xray/latest/devguide/xray-concepts.html"
+  - "https://docs.aws.amazon.com/xray/latest/devguide/xray-console-sampling.html"
+  - "https://docs.aws.amazon.com/xray/latest/devguide/xray-api-sampling.html"
+  - "https://docs.aws.amazon.com/xray/latest/devguide/xray-api-sendingdata.html"
+  - "https://docs.aws.amazon.com/xray/latest/devguide/xray-daemon.html"
+  - "https://docs.aws.amazon.com/xray/latest/devguide/xray-sdk-daemon-timeline.html"
+  - "https://github.com/aws/aws-xray-sdk-python/blob/master/aws_xray_sdk/core/sampling/reservoir.py"
+  - "https://docs.aws.amazon.com/lambda/latest/dg/invocation-recursion.html"
+  - "https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/monitoring-health-checks.html"
+  - "https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AWSXRay/current/us-east-1/index.json"
+  - "https://aws.amazon.com/cloudwatch/pricing/"
 ---
 
 # Observability: CloudWatch, Metrics, Logs, and X-Ray
@@ -99,17 +126,17 @@ Treat any claim about CloudWatch's internal storage layout as inference unless i
 A metric is uniquely identified by namespace, metric name, and the complete set of dimension name-value pairs.
 `{Service=checkout}` and `{Service=checkout, Operation=PlaceOrder}` are two unrelated time series.
 CloudWatch does not derive one from the other.
-This is the root of most cost surprises: the EMF specification states that every DimensionSet used creates a new metric in CloudWatch ([AWS EMF specification, as of 2026-10](https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/CloudWatch_Embedded_Metric_Format_Specification.html)).
+This is the root of most cost surprises: the EMF specification states that every DimensionSet used creates a new metric in CloudWatch ([AWS EMF specification, as of 2026-11](https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/CloudWatch_Embedded_Metric_Format_Specification.html)).
 
 Each stored datapoint keeps SampleCount, Sum, Minimum, and Maximum.
 When you publish raw values, it also keeps a distribution that supports percentile, trimmed-mean, and percentile-rank statistics.
-If you publish a pre-summarized `StatisticSet`, the distribution is lost and percentiles become unavailable for that data.
+If you publish a pre-summarized `StatisticSet`, the distribution is lost and percentiles become unavailable for that data, except for degenerate sets where `SampleCount` is 1 or `Minimum` equals `Maximum` ([PutMetricData API reference, as of 2026-11](https://docs.aws.amazon.com/AmazonCloudWatch/latest/APIReference/API_PutMetricData.html)).
 Percentiles are not linear, so the p99 of a fleet is not the average, maximum, or any other function of per-host p99 series.
 The only correct way to get a fleet p99 is to publish the raw values (or value-count histograms) under the fleet-level dimension set at write time.
 EMF makes that cheap by letting one event list several DimensionSets, but each additional set multiplies the metric count.
 
-Datapoints roll up by age: sub-minute data is available for 3 hours, 1-minute data for 15 days, 5-minute data for 63 days, and 1-hour data for 455 days (AWS docs, as of 2026-10, UNVERIFIED).
-A metric that receives no data for 15 months expires, and there is no delete API (AWS docs, as of 2026-10, UNVERIFIED).
+Datapoints roll up by age: sub-minute data is available for 3 hours, 1-minute data for 15 days, 5-minute data for 63 days, and 1-hour data for 455 days ([CloudWatch metrics concepts, as of 2026-11](https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/cloudwatch_concepts.html)).
+A metric that receives no data for 15 months expires, and metrics cannot be deleted (CloudWatch metrics concepts, as of 2026-11).
 
 ### EMF: the extraction path most guides skip
 
@@ -120,9 +147,9 @@ That member contains `Timestamp` (epoch milliseconds) and a `CloudWatchMetrics` 
 Each directive has a `Namespace`, a `Dimensions` array of DimensionSets, and a `Metrics` array of MetricDefinitions (`Name`, optional `Unit`, optional `StorageResolution`).
 The metric values and dimension values live as root-level "target members" of the same JSON object.
 
-Spec limits that matter operationally (AWS EMF specification, as of 2026-10):
+Spec limits that matter operationally (AWS EMF specification, as of 2026-11):
 
-- A directive's `Metrics` array must not contain more than 100 MetricDefinitions.
+- A log event must not contain more than 100 MetricDefinitions in total, counted across all of its directives, and exceeding that limit means no metrics are extracted from the event.
 - A DimensionSet must not contain more than 30 dimension keys, and it may be empty.
 - A dimension target member must be a string of at most 1024 characters.
 - `StorageResolution` is 1 (high resolution) or 60 (the default).
@@ -130,21 +157,23 @@ Spec limits that matter operationally (AWS EMF specification, as of 2026-10):
 - Older mirrors of the same page still say 256 KB, so check which limit your agent version and SDK enforce.
 
 The non-obvious part is where and when extraction happens.
-Your process writes a log line to stdout (Lambda), to the CloudWatch agent's EMF listener (EC2, ECS, EKS; port 25888 by default, UNVERIFIED), or directly via `PutLogEvents`.
+Your process writes a log line to stdout (Lambda), to the CloudWatch agent's EMF listener (EC2, ECS, EKS; default socket `tcp:25888`, and UDP is also supported, [CloudWatch agent EMF docs, as of 2026-11](https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/CloudWatch_Embedded_Metric_Format_Generation_CloudWatch_Agent.html)), or directly via `PutLogEvents`.
 The log is accepted and stored first.
 Extraction then runs inside the CloudWatch Logs ingestion pipeline, after the write has already succeeded.
 That gives EMF three properties a getting-started guide does not spell out:
 
 1. The emitter never sees a metric error, because `PutLogEvents` succeeds even when the `_aws` block is invalid.
-A misspelled dimension key, a dimension value that is a number instead of a string, or 101 metric definitions produce a stored log line and no metric.
-CloudWatch Logs reports the drop only as `EMFValidationErrors` and `EMFParsingErrors` in the `AWS/Logs` namespace, by `LogGroupName` ([CloudWatch Logs metrics docs, as of 2026-10](https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/CloudWatch-Logs-Monitoring-CloudWatch-Metrics.html)).
-2. An account policy of type `METRIC_EXTRACTION_POLICY` can make CloudWatch Logs ignore EMF events in matching log groups, and those ignored events are counted in a separate `AWS/Logs` metric (CloudWatch Logs metrics docs, as of 2026-10).
+Blast radius varies by defect: 101 metric definitions or a 101-member value array drop every metric in the event, while a dimension value that is a number instead of a string drops only the affected DimensionSet and leaves the others published (AWS EMF specification, as of 2026-11).
+In each case the log line is stored and the caller sees success.
+CloudWatch Logs reports the drop only as `EMFValidationErrors` and `EMFParsingErrors` in the `AWS/Logs` namespace, by `LogGroupName` ([CloudWatch Logs metrics docs, as of 2026-11](https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/CloudWatch-Logs-Monitoring-CloudWatch-Metrics.html)).
+2. An account policy of type `METRIC_EXTRACTION_POLICY` can make CloudWatch Logs ignore EMF events in matching log groups, and those ignored events are counted in the `EMFDisabledErrors` metric in `AWS/Logs` (CloudWatch Logs metrics docs, as of 2026-11).
 That makes extraction a centrally governed cost control, not just an application choice.
+The same policy also disables AWS features that create metrics through EMF, such as Container Insights and Application Signals, unless their log groups are excluded with selection criteria ([PutAccountPolicy API reference, as of 2026-11](https://docs.aws.amazon.com/AmazonCloudWatchLogs/latest/APIReference/API_PutAccountPolicy.html)).
 3. Extraction is coupled to log delivery latency.
 If your agent buffers and flushes every few seconds, or a Lambda extension delays log shipping, metric datapoints arrive late relative to the alarm evaluator's view of "now".
 
-EMF value arrays are capped at 100 values per metric per event (AWS EMF specification, as of 2026-10, UNVERIFIED), and EMF has no counts array.
-`PutMetricData` accepts a `Values` array with a parallel `Counts` array, up to 150 unique values per metric per call (AWS API reference, as of 2026-10, UNVERIFIED).
+EMF value arrays are capped at 100 values per metric per event (AWS EMF specification, as of 2026-11), and EMF has no counts array.
+`PutMetricData` accepts a `Values` array with a parallel `Counts` array, up to 150 values per metric per call (PutMetricData API reference, as of 2026-11).
 A host can therefore quantize a minute of latencies into at most 150 log-spaced buckets and ship one weighted histogram, which EMF cannot express.
 That difference decides the economics at high request rates, as the sizing section shows.
 
@@ -160,7 +189,7 @@ An alarm configured as M=1, N=10 therefore stays in ALARM for ten periods after 
 
 `TreatMissingData` takes `missing`, `notBreaching`, `breaching`, or `ignore`.
 CloudWatch documents an "evaluation range" for missing data.
-The evaluator retrieves more datapoints than N, and if the retrieved count is below M, it fills the gaps with the missing-data policy.
+The evaluator retrieves more datapoints than N, and if the retrieved count is below N, it fills the gaps with the missing-data policy ([CloudWatch alarm missing-data docs, as of 2026-11](https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/alarms-and-missing-data.html)).
 The consequence is that sparse metrics (error counts that are only published when non-zero) behave differently from dense metrics under the same M-of-N.
 `notBreaching` on a heartbeat-style metric turns a dead emitter into a green alarm.
 
@@ -168,7 +197,7 @@ M-of-N gives temporal hysteresis: it suppresses short spikes.
 It gives no amplitude hysteresis: a signal oscillating around the threshold still flaps between ALARM and OK every few periods.
 A control engineer would use a Schmitt trigger, which enters at a high threshold H and exits only below a lower threshold L.
 CloudWatch has no native two-threshold alarm.
-A composite alarm rule is a stateless boolean over child alarm states, using `ALARM()`, `OK()`, `INSUFFICIENT_DATA()`, `AND`, `OR`, `NOT`, `TRUE`, and `FALSE`, and composites cannot reference themselves.
+A composite alarm rule is a stateless boolean over child alarm states, using `ALARM()`, `OK()`, `INSUFFICIENT_DATA()`, `AND`, `OR`, `NOT`, `TRUE`, and `FALSE`, and a cycle of composites is a defect rather than a source of memory, because CloudWatch stops evaluating a composite when it detects a cycle in the evaluation path ([PutCompositeAlarm API reference, as of 2026-11](https://docs.aws.amazon.com/AmazonCloudWatch/latest/APIReference/API_PutCompositeAlarm.html)).
 The trick is to borrow memory from the M-of-N window of a child alarm:
 
 - Child `RecentHigh`: statistic above H, M=1, N=K, so it is ALARM if any of the last K periods exceeded H.
@@ -203,13 +232,16 @@ Its documented behavior implies a distributed scan over time-partitioned storage
 
 Two consequences follow from that.
 First, `pct(field, 99)` in Logs Insights is computed over log events, not over values inside an EMF array, so the p99 from Insights and the p99 from the extracted metric are different quantities.
-Second, results are capped at 10,000 rows (AWS docs, as of 2026-10, UNVERIFIED), so a high-cardinality `stats ... by customerId` is silently truncated.
+Second, a query returns at most 10,000 rows per `GetQueryResults` call and at most 100,000 rows in total by paginating with `nextToken`, and the 100,000 limit applies only to Logs Insights QL, not to PPL or SQL ([StartQuery API reference, as of 2026-11](https://docs.aws.amazon.com/AmazonCloudWatchLogs/latest/APIReference/API_StartQuery.html)), so a high-cardinality `stats ... by customerId` that exceeds the limit is truncated.
 
 Field indexes, configured with an index policy on fields such as `requestId` or `traceId`, let the engine skip events that cannot match an equality or `IN` predicate on an indexed field.
 That reduces `bytesScanned` for needle-in-haystack lookups.
-It does not help full-range aggregations (AWS docs, as of 2026-10, UNVERIFIED for limits and pricing interaction).
-The Infrequent Access log class halves ingestion cost.
-It gives up features such as metric filters, subscription filters, and EMF extraction (AWS docs, as of 2026-10, UNVERIFIED for the exact feature list), so it suits forensic logs, not EMF logs.
+It does not help full-range aggregations, because indexes serve only equality-based lookups.
+Each index policy can list up to 20 fields, only events ingested after the policy exists are indexed, and an indexed event stays indexed for 30 days from ingestion ([field indexing docs, as of 2026-11](https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/CloudWatchLogs-Field-Indexing.html)).
+Standard log groups also get default indexes that do not count toward that quota, including `traceId` and `@logStream` ([field index quotas, as of 2026-11](https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/CloudWatchLogs-Field-Indexing-Syntax.html)).
+The Essentials log class (formerly Infrequent Access) halves ingestion cost.
+It gives up metric filters, subscription filters, EMF extraction, field indexing, Live Tail, and `GetLogEvents`/`FilterLogEvents`, and a log group's class cannot be changed after creation ([log classes docs, as of 2026-11](https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/CloudWatch_Logs_Log_Classes.html)), so it suits forensic logs, not EMF logs.
+The API still accepts `INFREQUENT_ACCESS`, and read APIs start returning `ESSENTIALS` in December 2026 (log classes docs, as of 2026-11).
 
 ### X-Ray trace context, sampling, and assembly
 
@@ -217,30 +249,38 @@ The X-Ray header looks like `X-Amzn-Trace-Id: Root=1-5759e988-bd862e3fe1be46a994
 `Root` is version `1`, then 8 hex digits of Unix epoch seconds, then 24 hex digits (96 bits) of randomness.
 `Parent` is the 64-bit ID of the calling segment or subsegment.
 `Sampled` is `1`, `0`, or `?` (defer the decision).
-Lambda exposes the incoming context as the `_X_AMZN_TRACE_ID` environment variable and, for loop detection, may append a `Lineage` field that you must forward unchanged (AWS docs, as of 2026-10, UNVERIFIED for field format).
+Lambda exposes the incoming context as the `_X_AMZN_TRACE_ID` environment variable.
+Lambda and other AWS services may append a `Lineage` field, for example `Lineage=25:a87bd80c:1`, which the docs say should not be used directly ([X-Ray concepts, as of 2026-11](https://docs.aws.amazon.com/xray/latest/devguide/xray-concepts.html)).
+Lambda's recursive loop detection relies on metadata in the X-Ray tracing header, even without active tracing, so forward the header intact ([Lambda recursion docs, as of 2026-11](https://docs.aws.amazon.com/lambda/latest/dg/invocation-recursion.html)).
 For SQS, the context travels as the `AWSTraceHeader` message system attribute, not as a user message attribute.
 That is why it survives SNS-to-SQS and Lambda event source mappings without code changes.
 
 The W3C mapping is mechanical.
 The X-Ray root `1-5759e988-bd862e3fe1be46a994272793` corresponds to the W3C `trace-id` `5759e988bd862e3fe1be46a994272793`, the parent ID maps to `parent-id`, and `Sampled=1` maps to trace-flags `01`.
 The OpenTelemetry X-Ray ID generator puts epoch seconds in the high 32 bits to keep this mapping valid.
-Historically X-Ray rejected trace IDs whose embedded timestamp was too far from the current time, and current docs state support for W3C-format random trace IDs (AWS docs, as of 2026-10, UNVERIFIED for exact acceptance rules).
+`PutTraceSegments` can return `InvalidTraceId` when the date in a trace ID is too far in the past, and current docs state that a W3C trace ID reformatted as `1-xxxxxxxx-<24 hex digits>` need not embed a timestamp ([X-Ray sending data docs, as of 2026-11](https://docs.aws.amazon.com/xray/latest/devguide/xray-api-sendingdata.html)).
+AWS does not document the exact acceptance window.
 
 Sampling is head-based and centrally coordinated.
 A sampling rule has a priority, matching criteria (service name, host, HTTP method, URL path, and others), a reservoir size, and a fixed rate.
-The default rule samples the first request each second and 5% of additional requests (AWS docs, as of 2026-10, UNVERIFIED).
-The reservoir in a centralized rule applies to the whole fleet, not per host.
-SDKs and collectors poll `GetSamplingRules` for rule definitions and `GetSamplingTargets` for per-client reservoir quotas and adjusted rates, and report their request counts with each poll (roughly every 5 minutes and 10 seconds respectively, UNVERIFIED).
-When a client's target lease expires, for example because the X-Ray API is unreachable, it falls back to the fixed rate without a reservoir.
-That is a silent reduction in trace volume during exactly the events you want traced.
+The default rule samples the first request each second and 5% of additional requests ([X-Ray sampling docs, as of 2026-11](https://docs.aws.amazon.com/xray/latest/devguide/xray-console-sampling.html)).
+The reservoir in a centralized rule applies to the whole fleet, not per host (X-Ray sampling docs, as of 2026-11).
+Sampling is parent-based, so a rule on a downstream service usually never applies, because that service honors the decision made at the root (X-Ray sampling docs, as of 2026-11).
+Rules can also carry an optional `SamplingRateBoost` that raises the rate during anomalies up to a configured maximum (X-Ray sampling docs, as of 2026-11).
+SDKs and collectors poll `GetSamplingRules` for rule definitions and `GetSamplingTargets` for per-client reservoir quotas and adjusted rates, and report their request counts with each target poll, about every 5 minutes ([X-Ray SDK for Python `rule_poller.py`](https://github.com/aws/aws-xray-sdk-python/blob/master/aws_xray_sdk/core/sampling/rule_poller.py)) and every 10 seconds by default ([X-Ray sampling API docs, as of 2026-11](https://docs.aws.amazon.com/xray/latest/devguide/xray-api-sampling.html)) respectively.
+An assigned quota is good for about five minutes (X-Ray sampling API docs, as of 2026-11).
+When it expires, for example because the X-Ray API is unreachable, the X-Ray SDK for Python borrows at most one trace per second per client on any rule with a non-zero reservoir and applies the fixed rate to the rest ([X-Ray SDK for Python `reservoir.py`](https://github.com/aws/aws-xray-sdk-python/blob/master/aws_xray_sdk/core/sampling/reservoir.py)).
+Its rule cache expires one hour after the last refresh, and it then falls back to local rules ([`rule_cache.py`](https://github.com/aws/aws-xray-sdk-python/blob/master/aws_xray_sdk/core/sampling/rule_cache.py)).
+Fleet-wide coordination is therefore silently lost during exactly the events you want traced: trace volume drops for a rule whose reservoir exceeds the client count, and rises for one whose reservoir is smaller.
 
-Segments are JSON documents of at most 64 KB (AWS docs, as of 2026-10, UNVERIFIED).
+Segments are JSON documents of at most 64 KB (X-Ray concepts, as of 2026-11).
 They are shipped either as UDP datagrams to a local daemon on port 2000, which batches them into `PutTraceSegments`, or as OTLP to a collector.
 X-Ray assembles traces server-side by `trace_id`.
 It builds the service map from `parent_id` edges, and it uses wall-clock `start_time`/`end_time` from each host, so clock skew between hosts shows up as children that start before their parents.
-Traces are retained for 30 days (AWS docs, as of 2026-10, UNVERIFIED).
-With CloudWatch Transaction Search, spans are ingested as structured logs into the `aws/spans` log group, and a configurable percentage is indexed as X-Ray trace summaries (AWS docs, as of 2026-10, UNVERIFIED for GA scope and pricing).
-AWS has announced that the X-Ray SDKs and daemon are moving to maintenance mode in favor of OpenTelemetry and ADOT (AWS docs, as of 2026-10, UNVERIFIED for exact dates), so new instrumentation should be OpenTelemetry.
+Traces are retained for 30 days (X-Ray concepts, as of 2026-11).
+With CloudWatch Transaction Search, generally available since November 2024 ([AWS What's New](https://aws.amazon.com/about-aws/whats-new/2024/11/amazon-cloudwatch-visibility-application-transactions/)), spans are ingested as structured logs into the `aws/spans` log group, and a configurable percentage is indexed as X-Ray trace summaries ([Transaction Search docs, as of 2026-11](https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/CloudWatch-Transaction-Search.html)).
+The first 1% of spans is indexed at no charge, and further indexing costs $0.75 per million spans ([CloudWatch pricing, as of 2026-11](https://aws.amazon.com/cloudwatch/pricing/)).
+The X-Ray SDKs and daemon entered maintenance mode on 2026-02-25, with security fixes only, and reach end of support on 2027-02-25, while the X-Ray service itself continues ([X-Ray SDK and daemon timeline, as of 2026-11](https://docs.aws.amazon.com/xray/latest/devguide/xray-sdk-daemon-timeline.html)), so new instrumentation should be OpenTelemetry.
 
 The intellectual lineage is Dapper, which established low-overhead, application-transparent tracing.
 Dapper used a sampling rate as low as 1/1024 on high-throughput services and collected spans out of band through per-host daemons into Bigtable ([Sigelman et al., Google Technical Report 2010](https://research.google/pubs/dapper-a-large-scale-distributed-systems-tracing-infrastructure/)).
@@ -251,7 +291,7 @@ X-Trace introduced cross-layer metadata propagation ([Fonseca et al., NSDI 2007]
 
 All three services are regional.
 Cross-account and cross-region viewing uses CloudWatch cross-account observability (Observability Access Manager sinks and links), which shares read access but does not move the data path out of the source region.
-Route 53 health-check metrics are published only in us-east-1 (AWS docs, as of 2026-10, UNVERIFIED), which is a hidden cross-region dependency for any alarm built on them.
+Route 53 health-check metrics are available only in us-east-1 ([Route 53 health-check monitoring docs, as of 2026-11](https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/monitoring-health-checks.html)), which is a hidden cross-region dependency for any alarm built on them.
 Your independent "is the region healthy" signal must be evaluated outside the region it judges.
 In practice that means synthetic canaries running from at least one other region, with alarms and paging defined there.
 
@@ -259,32 +299,32 @@ In practice that means synthetic canaries running from at least one other region
 
 | Quantity | Value | Source and date | Status |
 |---|---|---|---|
-| EMF MetricDefinitions per directive | 100 | AWS EMF specification, as of 2026-10 | Verified |
-| EMF dimension keys per DimensionSet | 30 | AWS EMF specification, as of 2026-10 | Verified |
-| EMF dimension value length | 1024 characters | AWS EMF specification, as of 2026-10 | Verified |
-| EMF / log event max size | 1 MB (older mirrors: 256 KB) | AWS EMF specification, as of 2026-10 | Verified |
-| EMF StorageResolution values | 1 or 60 seconds | AWS EMF specification, as of 2026-10 | Verified |
-| EMF error metrics | `EMFValidationErrors`, `EMFParsingErrors` in `AWS/Logs` | CloudWatch Logs docs, as of 2026-10 | Verified |
-| EMF values per metric array | 100 | AWS EMF specification, as of 2026-10 | UNVERIFIED |
-| Dimensions per metric (PutMetricData) | 30 | AWS docs, as of 2026-10 | UNVERIFIED |
-| PutMetricData unique values per metric (Values/Counts) | 150 | AWS API reference, as of 2026-10 | UNVERIFIED |
-| PutMetricData items per request / payload | 1,000 / 1 MB | AWS quotas, as of 2026-10 | UNVERIFIED |
-| Datapoint timestamp acceptance window | 2 weeks past, 2 hours future | AWS docs, as of 2026-10 | UNVERIFIED |
-| Retention by resolution | <60 s: 3 h; 60 s: 15 d; 300 s: 63 d; 3600 s: 455 d | AWS docs, as of 2026-10 | UNVERIFIED |
-| High-resolution alarm periods | 10 s, 30 s, or multiples of 60 s | AWS docs, as of 2026-10 | UNVERIFIED |
-| Subscription filters per log group | 2 | AWS quotas, as of 2026-10 | UNVERIFIED |
-| Logs Insights max result rows / query timeout | 10,000 / 60 min | AWS docs, as of 2026-10 | UNVERIFIED |
-| X-Ray segment document max | 64 KB | AWS docs, as of 2026-10 | UNVERIFIED |
-| X-Ray default sampling | 1 req/s reservoir + 5% | AWS docs, as of 2026-10 | UNVERIFIED |
-| X-Ray trace retention | 30 days | AWS docs, as of 2026-10 | UNVERIFIED |
-| X-Ray daemon listener | UDP 2000 | AWS docs, as of 2026-10 | UNVERIFIED |
-| Custom metric price (us-east-1) | $0.30 first 10k, $0.10 next 240k, $0.05 next 750k, $0.02 beyond | AWS pricing, as of 2026-10 | UNVERIFIED |
-| Alarm price (us-east-1) | $0.10 standard / $0.30 high-res per alarm metric-month; $0.50 composite | AWS pricing, as of 2026-10 | UNVERIFIED |
-| API price (us-east-1) | $0.01 per 1,000 PutMetricData requests; $0.01 per 1,000 metrics via GetMetricData | AWS pricing, as of 2026-10 | UNVERIFIED |
-| Logs ingestion (us-east-1) | $0.50/GB Standard, $0.25/GB Infrequent Access | AWS pricing, as of 2026-10 | UNVERIFIED |
-| Logs storage (us-east-1) | $0.03/GB-month | AWS pricing, as of 2026-10 | UNVERIFIED |
-| Logs Insights (us-east-1) | $0.005/GB scanned | AWS pricing, as of 2026-10 | UNVERIFIED |
-| X-Ray (us-east-1) | $5.00 per 1M traces recorded; $0.50 per 1M traces retrieved or scanned | AWS pricing, as of 2026-10 | UNVERIFIED |
+| EMF MetricDefinitions per log event, across all directives | 100 | AWS EMF specification, as of 2026-11 | Verified |
+| EMF dimension keys per DimensionSet | 30 | AWS EMF specification, as of 2026-11 | Verified |
+| EMF dimension value length | 1024 characters | AWS EMF specification, as of 2026-11 | Verified |
+| EMF / log event max size | 1 MB (older mirrors: 256 KB) | AWS EMF specification, as of 2026-11 | Verified |
+| EMF StorageResolution values | 1 or 60 seconds | AWS EMF specification, as of 2026-11 | Verified |
+| EMF error metrics | `EMFValidationErrors`, `EMFParsingErrors` in `AWS/Logs` | CloudWatch Logs docs, as of 2026-11 | Verified |
+| EMF values per metric array | 100 | AWS EMF specification, as of 2026-11 | Verified |
+| Dimensions per metric (PutMetricData) | 30 | PutMetricData API reference, as of 2026-11 | Verified |
+| PutMetricData values per metric (Values/Counts) | 150 | PutMetricData API reference, as of 2026-11 | Verified |
+| PutMetricData metrics per request / payload | 1,000 / 1 MB | PutMetricData API reference, as of 2026-11 | Verified |
+| Datapoint timestamp acceptance window | 2 weeks past, 2 hours future | PutMetricData API reference, as of 2026-11 | Verified |
+| Retention by resolution | <60 s: 3 h; 60 s: 15 d; 300 s: 63 d; 3600 s: 455 d | CloudWatch metrics concepts, as of 2026-11 | Verified |
+| High-resolution alarm periods | 10 s, 20 s, or 30 s (the metrics concepts page still lists only 10 s and 30 s), or multiples of 60 s | CloudWatch alarm evaluation docs, as of 2026-11 | Verified |
+| Subscription filters per log group | 5, not adjustable (the PutSubscriptionFilter API reference still says 2) | CloudWatch Logs quotas, as of 2026-11 | Verified |
+| Logs Insights max rows per GetQueryResults call / per query / query timeout | 10,000 / 100,000 with pagination (Logs Insights QL only) / 60 min | StartQuery API reference, as of 2026-11 | Verified |
+| X-Ray segment document max | 64 KB | X-Ray concepts, as of 2026-11 | Verified |
+| X-Ray default sampling | 1 req/s reservoir + 5% | X-Ray sampling docs, as of 2026-11 | Verified |
+| X-Ray trace retention | 30 days | X-Ray concepts, as of 2026-11 | Verified |
+| X-Ray daemon listener | UDP 2000 | X-Ray daemon docs, as of 2026-11 | Verified |
+| Custom metric price (us-east-1) | $0.30 first 10k, $0.10 next 240k, $0.05 next 750k, $0.02 beyond | AWS Price List API, as of 2026-11 | Verified |
+| Alarm price (us-east-1) | $0.10 standard / $0.30 high-res per alarm metric-month; $0.50 composite | AWS Price List API, as of 2026-11 | Verified |
+| API price (us-east-1) | $0.01 per 1,000 PutMetricData requests; $0.01 per 1,000 metrics via GetMetricData | AWS Price List API, as of 2026-11 | Verified |
+| Logs ingestion (us-east-1) | $0.50/GB Standard, $0.25/GB Essentials (formerly Infrequent Access) | AWS Price List API, as of 2026-11 | Verified |
+| Logs storage (us-east-1) | $0.03/GB-month | AWS Price List API, as of 2026-11 | Verified |
+| Logs Insights (us-east-1) | $0.005/GB scanned | AWS Price List API, as of 2026-11 | Verified |
+| X-Ray (us-east-1) | $5.00 per 1M traces recorded; $0.50 per 1M traces retrieved or scanned; free tier 100k recorded and 1M retrieved or scanned | AWS Price List API, as of 2026-11 | Verified |
 | Gorilla compression | about 1.37 bytes per datapoint | Pelkonen et al., VLDB 2015 | Paper |
 | Dapper sampling on high-QPS services | 1/1024 | Sigelman et al., 2010 | Paper |
 
@@ -299,8 +339,8 @@ In practice that means synthetic canaries running from at least one other region
 | Alert temporal filter | Period, M of N, TreatMissingData | Alignment period, condition duration (retest window), `evaluationMissingData` | Similar semantics, different names; GCP duration requires continuous violation |
 | Alert hysteresis | None native; composite-alarm memory trick or EventBridge plus state store | None native; autoclose duration and duration windows only | Neither cloud offers a two-threshold alert primitive |
 | Alert dedup / suppression | Composite alarms with ActionsSuppressor | Alerting policy conditions combined with AND/OR; snoozes | AWS suppression is keyed on another alarm's state |
-| Log query | Logs Insights (pipe language, plus OpenSearch PPL and SQL, UNVERIFIED), per-GB scanned | Logs Explorer plus Log Analytics (SQL on BigQuery-backed buckets) | GCP Log Analytics uses the Dremel/BigQuery engine, AWS uses a proprietary scan engine with field indexes |
-| Log storage classes | Standard vs Infrequent Access | Log buckets with configurable retention; Log Analytics upgrade | AWS IA removes features to cut ingest price, GCP prices storage beyond default retention |
+| Log query | Logs Insights (pipe language, plus OpenSearch PPL and SQL, StartQuery API reference, as of 2026-11), per-GB scanned | Logs Explorer plus Log Analytics (SQL on BigQuery-backed buckets) | GCP Log Analytics uses the Dremel/BigQuery engine, AWS uses a proprietary scan engine with field indexes |
+| Log storage classes | Standard vs Essentials (formerly Infrequent Access) | Log buckets with configurable retention; Log Analytics upgrade | AWS Essentials removes features to cut ingest price, GCP prices storage beyond default retention |
 | Trace header | `X-Amzn-Trace-Id`, `AWSTraceHeader` on SQS, W3C via OTel | `traceparent` (W3C), legacy `X-Cloud-Trace-Context` | Both accept W3C via OpenTelemetry, legacy formats differ |
 | Sampling | Centralized rules with fleet-wide reservoir leases | Client-side samplers in OTel SDKs; collector tail sampling | AWS has a server-coordinated reservoir, GCP relies on the SDK or collector |
 | Cross-account view | Observability Access Manager sinks and links | Metrics scopes and log views / aggregated sinks | Both are read federation, the data stays in its home region |
@@ -322,9 +362,9 @@ The lab proves four things:
 
 ### Cost estimate and budget guard
 
-The emitter writes 2 events per second for 15 minutes, about 1,800 events of roughly 0.5 KB, so about 1 MB of log ingestion, which is about $0.0005 at $0.50/GB (UNVERIFIED price).
-Extraction creates 2 metric names under 3 dimension combinations, so about 6 custom metrics active for one hour, which is about 6 x $0.30 / 730 = $0.0025 (UNVERIFIED price).
-Four alarms (three standard, one composite) for one hour cost about (3 x 0.10 + 0.50) / 730 = $0.0011 (UNVERIFIED price).
+The emitter writes 2 events per second for 15 minutes, about 1,800 events of roughly 0.5 KB, so about 1 MB of log ingestion, which is about $0.0005 at $0.50/GB (AWS Price List API, as of 2026-11).
+Extraction creates 2 metric names under 3 dimension combinations, so about 6 custom metrics active for one hour, which is about 6 x $0.30 / 730 = $0.0025 (AWS Price List API, as of 2026-11).
+Four alarms (three standard, one composite) for one hour cost about (3 x 0.10 + 0.50) / 730 = $0.0011 (AWS Price List API, as of 2026-11).
 X-Ray records a handful of traces, which falls in the free tier, and SQS uses a few requests, also in the free tier.
 The expected total is under $0.05, and the budget below alerts at $4 of a $5 monthly cap.
 
@@ -359,9 +399,11 @@ echo "QUEUE_URL=$QUEUE_URL"
      "Resource": "arn:aws:logs:us-east-1:ACCOUNT_ID:log-group:/cwlab/*"},
     {"Effect": "Allow", "Action": ["logs:GetQueryResults"], "Resource": "*"},
     {"Effect": "Allow",
-     "Action": ["cloudwatch:PutMetricAlarm", "cloudwatch:PutCompositeAlarm", "cloudwatch:DeleteAlarms",
-                "cloudwatch:DescribeAlarms", "cloudwatch:DescribeAlarmHistory"],
+     "Action": ["cloudwatch:PutMetricAlarm", "cloudwatch:DeleteAlarms"],
      "Resource": "arn:aws:cloudwatch:us-east-1:ACCOUNT_ID:alarm:cwlab-*"},
+    {"Effect": "Allow",
+     "Action": ["cloudwatch:PutCompositeAlarm", "cloudwatch:DescribeAlarms", "cloudwatch:DescribeAlarmHistory"],
+     "Resource": "*"},
     {"Effect": "Allow", "Action": ["xray:PutTraceSegments", "xray:BatchGetTraces", "xray:GetTraceSummaries"],
      "Resource": "*"},
     {"Effect": "Allow",
@@ -370,6 +412,8 @@ echo "QUEUE_URL=$QUEUE_URL"
   ]
 }
 ```
+
+`PutCompositeAlarm`, and `DescribeAlarms` and `DescribeAlarmHistory` when they return composite alarms, require permissions scoped to `*` (CloudWatch API reference, as of 2026-11).
 
 ### Step 1 - EMF emitter with a stepped latency profile
 
@@ -500,7 +544,9 @@ python3 emf_emitter.py --minutes 15
 
 for a in cwlab-p99-single-800 cwlab-p99-schmitt; do
   echo "== $a"
+  # Without --alarm-types, only metric alarm history is returned, so the composite would show nothing.
   aws cloudwatch describe-alarm-history --alarm-name "$a" --history-item-type StateUpdate \
+    --alarm-types MetricAlarm CompositeAlarm \
     --query 'reverse(AlarmHistoryItems)[].[Timestamp,HistorySummary]' --output text
 done
 ```
@@ -536,7 +582,7 @@ QUERIES = {
         '| limit 20'
     ),
 }
-PRICE_PER_GB = 0.005  # us-east-1 list price, UNVERIFIED as of 2026-10
+PRICE_PER_GB = 0.005  # us-east-1 list price, AWS Price List API, as of 2026-11
 
 
 def run(group, name, minutes):
@@ -633,7 +679,8 @@ if __name__ == "__main__":
 ```
 
 Run it with `python3 xray_sqs.py "$QUEUE_URL"`.
-The expected output is `segments=2` with names `checkout-api` and `order-worker` under a single trace ID.
+The expected output includes names `checkout-api` and `order-worker` under a single trace ID.
+The `segments` count can be 3 rather than 2, because X-Ray can generate an inferred `SQS` segment from a subsegment for a downstream call to an AWS service (X-Ray concepts, as of 2026-11).
 
 ### Teardown
 
@@ -654,7 +701,7 @@ The composite is deleted first because it references the child alarms.
 
 ### Capacity and cost sizing for a production fleet
 
-Assumptions: a checkout service at 50,000 requests/s across 300 hosts in 3 AZs, with 3 operations and 5 metrics per operation (Latency, Requests, Errors, Faults, Throttles), at us-east-1 list prices (UNVERIFIED as of 2026-10).
+Assumptions: a checkout service at 50,000 requests/s across 300 hosts in 3 AZs, with 3 operations and 5 metrics per operation (Latency, Requests, Errors, Faults, Throttles), at us-east-1 list prices (AWS Price List API, as of 2026-11).
 
 1. Metric count.
 The dimension combinations are [Service] = 1, [Service, Operation] = 3, [Service, Operation, AZ] = 9, and [Service, InstanceId] = 300, for 313 combinations.
@@ -673,7 +720,7 @@ The 100-value array cap forces 100 events/min/host for latency alone, which is a
 That costs about $583/month in ingestion, plus storage.
 EMF wins on simplicity and non-blocking emission, while Values+Counts wins about 4.5x on unit cost at this request rate.
 6. Full request logs at 1 KB per request.
-That is 50 MB/s, or 4,320 GB/day, or 129,600 GB/month, which costs $64,800/month in Standard or $32,400 in Infrequent Access.
+That is 50 MB/s, or 4,320 GB/day, or 129,600 GB/month, which costs $64,800/month in Standard or $32,400 in Essentials (formerly Infrequent Access).
 The design response is to log 100% of errors and slow requests (above p99) plus a 1% uniform sample, which cuts this to about 2% of the volume and roughly $1,300/month in Standard.
 7. Logs Insights dashboard tax.
 Against unsampled request logs, one widget with a 3-hour window scans 540 GB, which is $2.70 per refresh.
@@ -708,7 +755,7 @@ When ingestion is delayed (agent buffering, log shipping lag, a regional ingesti
 `Sum` and `SampleCount` alarms then see an apparent traffic drop, and low-traffic alarms fire falsely.
 Use `DatapointsToAlarm` lower than N, longer periods, or alarm on ratios (errors / requests) that are invariant to partial periods.
 7. Low-sample percentiles.
-At 3 a.m. a p99 over 40 requests is the second-highest value.
+At 3 a.m. a p99 over 40 requests is effectively the highest value, since 0.99 x 40 = 39.6 rounds up to the 40th ranked sample.
 Set `EvaluateLowSampleCountPercentile=ignore` and pair the alarm with a minimum-traffic condition in a composite.
 8. Cardinality explosions from user input.
 A dimension populated from a header, a URL path with IDs, or an exception message creates unbounded series and an unbounded bill.
@@ -723,19 +770,20 @@ Test every paging path end to end with `set-alarm-state` on a schedule.
 One dependency failure trips hundreds of symptom alarms.
 Use composite alarms with `ActionsSuppressor` keyed on the dependency alarm, and page on customer-facing SLO burn rates rather than component metrics (see [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_01_SLIs_SLOs_and_Error_Budget_Engineering|SLIs, SLOs, and Error Budget Engineering]]).
 12. Logs Insights truncation and recurring scans.
-The 10,000-row cap silently truncates high-cardinality `stats` results.
+The row limit (10,000 per `GetQueryResults` call, 100,000 per query with pagination in Logs Insights QL) truncates high-cardinality `stats` results.
 Dashboard widgets re-scan on every refresh.
 Queries over "all log groups" multiply bytes scanned.
 13. Never-expire retention.
 New log groups default to no expiry, so storage grows linearly forever.
 Enforce retention through IaC policy checks (see [[17-Cloud-AI-Engineering/Volume_06_Infrastructure_as_Code_and_Delivery/Chapter_04_Policy_as_Code_OPA_Sentinel_and_Guardrails|Policy as Code]]).
 14. Broken trace context.
-Hand-rolled HTTP clients, message buses that drop unknown headers, thread pools that do not carry context, and Lambda functions that strip `Lineage` all break traces.
+Hand-rolled HTTP clients, message buses that drop unknown headers, and thread pools that do not carry context all break traces.
+Rewriting the header in a Lambda function can also lose the metadata that recursive loop detection relies on.
 Batch consumers (SQS to Lambda with batch size above 1, Kinesis) receive N parent contexts for one invocation, and a tree cannot represent that fan-in.
 OpenTelemetry span links can.
 15. Sampling bias.
 Head sampling at 0.1% misses most one-in-a-million errors.
-When the sampling-target lease lapses during an X-Ray API impairment, clients drop to the fixed rate and you get fewer traces exactly when you need more.
+When the reservoir quota lapses during an X-Ray API impairment, the X-Ray SDK for Python drops to one borrowed trace per second per client plus the fixed rate, so a large rule reservoir stops being honored and you can get fewer traces exactly when you need more.
 16. Clock skew.
 X-Ray assembles timelines from host wall clocks, so a host with drift renders children before parents and produces negative gaps that mislead latency attribution.
 Keep hosts on the Amazon Time Sync Service and treat sub-millisecond cross-host ordering as unreliable.
@@ -780,7 +828,7 @@ Stage them per account or region and gate on telemetry-health metrics.
 3. Use exemplar trace IDs in logs to bridge to traces.
 4. Use `PutMetricData` with Values+Counts histograms when per-host request rates exceed what 100-value EMF arrays can carry in a few events per minute.
 5. Use EMF when emission simplicity and non-blocking stdout matter more, which is typically the case for Lambda.
-6. Use Infrequent Access for logs you only query during investigations, and keep EMF and metric-filter logs in Standard.
+6. Use Essentials (formerly Infrequent Access) for logs you only query during investigations, and keep EMF, metric-filter, and field-indexed logs in Standard.
 7. Sample request logs by outcome: keep all errors and slow requests, plus a uniform sample.
 8. Set X-Ray fixed rates per route by traffic volume, and use tail sampling in a collector for error retention.
 9. Track telemetry cost as a unit metric (dollars per million requests) next to compute cost, as described in [[17-Cloud-AI-Engineering/Volume_09_FinOps_and_Cloud_Economics/Chapter_01_Cloud_Billing_Models_and_Unit_Cost_Allocation|Cloud Billing Models and Unit Cost Allocation]].
@@ -848,7 +896,8 @@ At tiered list prices that is roughly $3,000 for the first 10,000 plus $14,000 f
 The emitter received no signal, because extraction happens asynchronously inside CloudWatch Logs.
 
 For containment, I would apply a `METRIC_EXTRACTION_POLICY` account policy scoped to that log group so EMF events are stored but not extracted.
-That stops new series within the billing hour while keeping raw data, and the effect is visible in the ignored-events metric in `AWS/Logs`.
+That stops new series once the policy takes effect while keeping raw data, and the effect is visible in the `EMFDisabledErrors` metric in `AWS/Logs`.
+AWS does not document a propagation time for this policy type, so I would watch that metric rather than assume one.
 I would also ship a library change that rejects non-allowlisted dimension keys.
 
 For the durable design, I would split signals by cardinality.
@@ -948,7 +997,8 @@ Capacity is pre-scaled to absorb the loss of an AZ, so Auto Scaling going blind 
 Scale-in is disabled when metrics are missing, because a blind scale-in during an outage is the classic self-inflicted cascade.
 
 Fourth, local buffering.
-Agents buffer EMF and spans to disk with bounded size and backfill when ingestion recovers, which is possible because CloudWatch accepts timestamps up to about two weeks in the past (UNVERIFIED).
+Agents buffer EMF and spans to disk with bounded size and backfill when ingestion recovers, which is possible because CloudWatch accepts timestamps up to two weeks in the past (PutMetricData API reference, as of 2026-11).
+Datapoints stamped 24 hours ago or older can take at least 48 hours to become readable, and those stamped 3 to 24 hours ago up to 2 hours (PutMetricData API reference, as of 2026-11).
 Backfilled data will not retroactively fire alarms, so the postmortem uses it and the incident does not.
 
 Fifth, an independent minimal signal path.
@@ -983,12 +1033,12 @@ Quarter 2 is the signal-tier contract in the shared SDK, built on OpenTelemetry.
 Metrics carry allowlisted low-cardinality dimensions.
 High-rate services use Values+Counts histograms, and EMF is the default for Lambda.
 Request logs follow outcome-aware sampling: all errors and slow requests plus a 1% uniform sample.
-Investigation-only logs go to Infrequent Access.
+Investigation-only logs go to Essentials (formerly Infrequent Access).
 Traces use a low head rate with per-route reservoirs plus tail sampling for errors.
 
 Quarter 3 is query economics.
 Move dashboards off Logs Insights and onto metrics.
-Add field indexes on trace ID and request ID.
+Add a field index on request ID, and standardize on the `traceId` field name because Standard log groups index it by default.
 Define query budgets per team.
 
 Quarter 4 is reliability of the telemetry plane itself.

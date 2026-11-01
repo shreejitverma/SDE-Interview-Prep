@@ -2,7 +2,7 @@
 type: playbook
 track: [cloud-ai, ai-eng, sde, distinguished]
 level:
-status: draft
+status: solid
 last_reviewed:
 sources: 
   - "https://sigops.org/s/conferences/hotos/2021/papers/hotos21-s11-bronson.pdf"
@@ -18,6 +18,23 @@ sources:
   - "https://sre.google/workbook/alerting-on-slos/"
   - "https://arxiv.org/abs/2407.21783"
   - "https://staffeng.com/guides/staff-archetypes/"
+  - "https://github.com/meta-llama/llama-models/blob/main/models/sku_list.py"
+  - "https://aws.amazon.com/ec2/pricing/on-demand/"
+  - "https://aws.amazon.com/ec2/instance-types/p5/"
+  - "https://aws.amazon.com/blogs/aws/announcing-up-to-45-price-reduction-for-amazon-ec2-nvidia-gpu-accelerated-instances/"
+  - "https://www.doit.com/compute/spot/us-east-1/p5.48xlarge"
+  - "https://cloud.google.com/tpu/pricing"
+  - "https://docs.cloud.google.com/tpu/docs/v6e"
+  - "https://www.nvidia.com/en-us/data-center/h100/"
+  - "https://portal.mlcloud.uni-tuebingen.de/user-guide/_specs/gpu/h100/"
+  - "https://docs.aws.amazon.com/whitepapers/latest/aws-fault-isolation-boundaries/global-services.html"
+  - "https://docs.aws.amazon.com/sdkref/latest/guide/feature-retry-behavior.html"
+  - "https://docs.aws.amazon.com/cost-management/latest/userguide/budgets-controls.html"
+  - "https://docs.cloud.google.com/billing/docs/how-to/budgets"
+  - "https://docs.cloud.google.com/billing/docs/how-to/budgets-spend-caps"
+  - "https://docs.cloud.google.com/billing/docs/release-notes"
+  - "https://docs.cloud.google.com/gemini-enterprise-agent-platform/vertex-ai-name-changes"
+  - "https://x.com/ArtificialAnlys/status/1993878037226557519"
 ---
 
 # Staff+ Evaluation Bar: What Separates L5, L6, and L7+
@@ -82,7 +99,7 @@ Level names differ across companies, so this vault uses a normalized scale: L5 S
 ### Axis 1: Technical depth markers
 
 The depth marker is not vocabulary; it is the ability to predict a number from a mechanism before measuring it.
-Take LLM decode on a dense 70B model with grouped-query attention, 80 layers, 8 KV heads, and head dimension 128 (Llama 3 70B architecture per [the Llama 3 paper](https://arxiv.org/abs/2407.21783), UNVERIFIED in this pass).
+Take LLM decode on a dense 70B model with grouped-query attention, 80 layers, 8 KV heads, and head dimension 128 (Llama 3 70B per Table 3 of [the Llama 3 paper](https://arxiv.org/abs/2407.21783) and Meta's [model SKU list](https://github.com/meta-llama/llama-models/blob/main/models/sku_list.py), with head dimension 8,192 / 64 = 128, as of 2026-11).
 KV-cache bytes per token are 2 (K and V) x 80 layers x 8 heads x 128 dims x bytes per element, which is 163,840 bytes or 160 KiB at one byte per element and 320 KiB at BF16.
 Each decode step reads every weight once plus the KV cache for every sequence in the batch, so step time is bounded below by (W + B x L x kv) / HBM bandwidth, where W is weight bytes, B is batch size, and L is average context length.
 Tokens per second per replica are therefore B divided by step time, and they rise with batch size only until either the inter-token-latency SLO or the HBM capacity left over for KV cache runs out.
@@ -125,13 +142,14 @@ Third, recovery work that grows with the size of the outage.
 Lease re-establishment, cache refill, and reconnection storms all scale with the number of clients that lost state, so the longer the trigger lasts, the bigger the recovery spike.
 
 Two recent hyperscaler incidents show all three mechanisms at work.
-In the AWS us-east-1 event of 2025-10-19 and 2025-10-20, two DynamoDB DNS Enactor processes raced, a stale-plan check let an old plan overwrite a newer one, and cleanup automation then deleted it, leaving the regional DynamoDB endpoint with an empty DNS record ([techupkeep summary of the AWS post-event summary](https://www.techupkeep.dev/blog/aws-outage-october-2025-analysis), as of 2026-10).
-DynamoDB recovered in about 3 hours, but EC2's Droplet Workflow Manager needed 12 or more additional hours to clear, and the event lasted about 15 hours end to end ([DEV Community analysis](https://dev.to/techlogstack/a-race-condition-in-dynamodbs-dns-took-down-snapchat-fortnite-ring-and-half-the-internet-for-15-3l9f), as of 2026-10).
+In the AWS us-east-1 event of 2025-10-19 and 2025-10-20, two DynamoDB DNS Enactor processes raced, a stale-plan check let an old plan overwrite a newer one, and cleanup automation then deleted it, leaving the regional DynamoDB endpoint with an empty DNS record ([AWS post-event summary](https://aws.amazon.com/message/101925/), as of 2026-11).
+DynamoDB recovered in about 3 hours (11:48 PM PDT on 10-19 to 2:40 AM PDT on 10-20), and EC2's Droplet Workflow Manager finished re-establishing leases about 2 hours 48 minutes later, at 5:28 AM (same source).
+A Network Manager propagation backlog then lasted until 10:36 AM, NLB connection errors lasted until 2:09 PM, EC2 was fully recovered at 1:50 PM, and the event ended at 2:20 PM, about 14.5 hours end to end (same source).
 The trigger was the DNS race.
-The sustaining effect, per the [AWS post-event summary](https://aws.amazon.com/message/101925/), was congestive collapse in Droplet Workflow Manager as it tried to re-establish host leases across the fleet faster than it could finish them (detail of the mechanism UNVERIFIED in this pass against the primary text).
-In the Google Cloud incident of 2025-06-12, a policy change containing unintended blank fields was written to the regional Spanner tables behind Service Control, replicated globally within seconds, and hit a null-pointer code path that put the binaries into a crash loop ([Google Cloud Service Health incident report](https://status.cloud.google.com/incidents/ow5i3PPK96RduMcb1SsW), as of 2026-10).
+The sustaining effect, per the [AWS post-event summary](https://aws.amazon.com/message/101925/), was congestive collapse in Droplet Workflow Manager as it tried to re-establish droplet leases across the fleet faster than it could finish them, which took work throttling and host restarts at 4:14 AM to clear (as of 2026-11).
+In the Google Cloud incident of 2025-06-12, a policy change containing unintended blank fields was written to the regional Spanner tables behind Service Control, replicated globally within seconds, and hit a null-pointer code path that put the binaries into a crash loop ([Google Cloud Service Health incident report](https://status.cloud.google.com/incidents/ow5i3PPK96RduMcb1SsW), as of 2026-11).
 Google's report states that if the code had been behind a feature flag, the issue would have been caught in staging (same source).
-Recovery lagged in us-central1 because Service Control lacked randomized exponential backoff, so restarting tasks overloaded the backing infrastructure ([outagecost case study](https://outagecost.com/case-studies/gcp-june-2025), as of 2026-10).
+Recovery lagged in us-central1, taking up to about 2 hours 40 minutes, because Service Control lacked randomized exponential backoff, so restarting tasks overloaded the backing Spanner table (same source).
 Both incidents have the same structure: fast global or regional propagation of bad state, then a recovery path that amplified load.
 [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_07_Anatomy_of_Major_Cloud_Outages|Anatomy of Major Cloud Outages]] dissects them further.
 
@@ -155,8 +173,8 @@ See [[17-Cloud-AI-Engineering/Volume_09_FinOps_and_Cloud_Economics/Chapter_05_GP
 
 Every NFR should end up as a number with a price attached.
 A 99.9 percent monthly availability SLO allows 43.2 minutes of downtime in a 30-day month, and 99.99 percent allows 4.32 minutes.
-A single regional event lasting about 15 hours, like the one above, uses up a 99.9 percent monthly budget about 20 times over, so a 99.99 percent target on a single-region dependency is not an engineering plan.
-Burn-rate alerting turns the budget into a pager rule: a 14.4x burn sustained for one hour consumes 14.4 / 720 = 2 percent of a 30-day budget, which is the fast-burn page threshold in the [Google SRE Workbook chapter on alerting on SLOs](https://sre.google/workbook/alerting-on-slos/) (threshold values UNVERIFIED in this pass).
+A single regional event lasting about 14.5 hours, like the one above, uses up a 99.9 percent monthly budget about 20 times over, so a 99.99 percent target on a single-region dependency is not an engineering plan.
+Burn-rate alerting turns the budget into a pager rule: a 14.4x burn sustained for one hour consumes 14.4 / 720 = 2 percent of a 30-day budget, which is the fast-burn page threshold in the [Google SRE Workbook chapter on alerting on SLOs](https://sre.google/workbook/alerting-on-slos/) (Table 5-6: 2 percent, 1 hour, burn rate 14.4, page; as of 2026-11).
 For LLM serving, the two NFRs that pull against each other most are inter-token latency and cost: a bigger batch lowers cost per token and raises step time, and the ITL SLO caps the batch.
 Consistency trades against latency the same way it always does, and the AI-specific version is how fresh the retrieval index must be versus how much reindexing and embedding cost you pay for.
 See [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_01_SLIs_SLOs_and_Error_Budget_Engineering|SLIs, SLOs, and Error Budgets]] and [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_02_Regions_Zones_and_Static_Stability|Static Stability]].
@@ -181,23 +199,23 @@ A common false negative is a quiet candidate who derives the binding constraint 
 
 | Quantity | Value | Source and date |
 | --- | --- | --- |
-| p5.48xlarge on-demand, us-east-1 | $55.04 per hour, 8x H100 80 GiB, 192 vCPU, 2,048 GiB RAM | AWS list price via [DoiT tracker](https://www.doit.com/compute/compute/aws/us-east-1/p5.48xlarge), as of 2026-10 |
-| P5 price reduction, June 2025 | about 44 percent | [Spheron summary of AWS announcement](https://www.spheron.network/blog/aws-h100-pricing-2026/), as of 2026-10 |
-| p5.48xlarge Spot low, us-east-1 | about $20.78 to $27.87 per hour, varies by AZ and time | [DoiT tracker](https://compute.doit.com/spot/us-east-1/p5.48xlarge), as of 2026-10 |
-| TPU v6e (Trillium) on-demand | $2.70 per chip-hour in selected US regions | Google Cloud list price via [itechguides](https://www.itechguides.com/how-to-choose-a-cloud-tpu-provider-for-ai-training-and-inference/), as of 2026-10 |
-| TPU v6e committed | about $1.89 (1-year) and $1.22 (3-year) per chip-hour | [Spheron](https://www.spheron.network/blog/google-tpu-v7-ironwood-vs-nvidia-b200-inference-cost/), as of 2026-10 |
-| TPU v6e HBM per chip | 32 GB at about 1,640 GB/s | [inferencebench](https://inferencebench.io/gpus/google-tpu-v6e/), as of 2026-10 |
-| H100 SXM HBM per GPU | 80 GB at about 3.35 TB/s | NVIDIA datasheet, UNVERIFIED in this pass |
-| H100 SXM dense FP8 peak | about 1,979 TFLOPS | NVIDIA datasheet, UNVERIFIED in this pass |
-| KV cache, 70B GQA (80 layers, 8 KV heads, d=128) | 160 KiB per token at 1 byte, 320 KiB at BF16 | Derived; architecture UNVERIFIED in this pass |
+| p5.48xlarge on-demand, us-east-1 | $55.04 per hour, 8x H100 80 GB, 192 vCPU, 2,048 GiB RAM | [AWS On-Demand price list](https://aws.amazon.com/ec2/pricing/on-demand/) (Linux, published 2026-10-29) and [AWS P5 page](https://aws.amazon.com/ec2/instance-types/p5/), as of 2026-11 |
+| P5 price reduction, June 2025 | 44 percent On-Demand, effective 2025-06-01 | [AWS News Blog](https://aws.amazon.com/blogs/aws/announcing-up-to-45-price-reduction-for-amazon-ec2-nvidia-gpu-accelerated-instances/), as of 2026-11 |
+| p5.48xlarge Spot, us-east-1 | about $20.62 to $37.38 per hour, varies by AZ and time | [DoiT tracker](https://www.doit.com/compute/spot/us-east-1/p5.48xlarge) (third-party, undated snapshot), as of 2026-11 |
+| TPU v6e (Trillium) on-demand | $2.70 per chip-hour in us-east1 and us-east5 | [Google Cloud TPU pricing](https://cloud.google.com/tpu/pricing), as of 2026-11 |
+| TPU v6e committed | $1.89 (1-year) and $1.22 (3-year) per chip-hour in us-east1 and us-east5 | [Google Cloud TPU pricing](https://cloud.google.com/tpu/pricing), as of 2026-11 |
+| TPU v6e HBM per chip | 32 GB at 1,638 GB/s (the lab rounds to 1.64 TB/s) | [Google Cloud TPU v6e docs](https://docs.cloud.google.com/tpu/docs/v6e), as of 2026-11 |
+| H100 SXM HBM per GPU | 80 GB at 3.35 TB/s | [NVIDIA H100 page](https://www.nvidia.com/en-us/data-center/h100/), as of 2026-11 |
+| H100 SXM dense FP8 peak | about 1,979 TFLOPS, half of the 3,958 NVIDIA lists with sparsity | [NVIDIA H100 page](https://www.nvidia.com/en-us/data-center/h100/) for 3,958; dense value per [Tuebingen ML Cloud spec table](https://portal.mlcloud.uni-tuebingen.de/user-guide/_specs/gpu/h100/), as of 2026-11 |
+| KV cache, 70B GQA (80 layers, 8 KV heads, d=128) | 160 KiB per token at 1 byte, 320 KiB at BF16 | Derived; architecture per [Llama 3 paper](https://arxiv.org/abs/2407.21783) Table 3 |
 | Fan-out tail | 100 leaves at p99 means 63.4 percent of parents see a slow leaf | Derived from [The Tail at Scale](https://research.google/pubs/the-tail-at-scale/) |
 | Retry amplification | a^d for a attempts per layer and d layers; 3^5 = 243 | Derived |
 | Static-stability headroom | k / (k - 1) for k zones surviving one zone loss | Derived |
 | Error budget, 30-day month | 43.2 min at 99.9 percent, 4.32 min at 99.99 percent | Derived |
-| Fast-burn page | 14.4x burn for 1 hour equals 2 percent of a 30-day budget | Derived; threshold per SRE Workbook, UNVERIFIED in this pass |
-| AWS us-east-1 DynamoDB DNS event | about 3 hours to DynamoDB recovery, about 15 hours total | [DEV Community analysis of AWS PES](https://dev.to/techlogstack/a-race-condition-in-dynamodbs-dns-took-down-snapchat-fortnite-ring-and-half-the-internet-for-15-3l9f), as of 2026-10 |
-| Google Cloud Service Control event | start about 10:51 PDT, most regions about 2 hours, full restoration 18:18 PDT | [Cultured Turtle timeline](https://culturedturtle.com/google-cloud-outage-on-june-12-2025-what-happened-why-it-matters/), as of 2026-10 |
-| Large-scale training interruptions | 466 job interruptions in 54 days on about 16K H100 | [Llama 3 paper](https://arxiv.org/abs/2407.21783), UNVERIFIED in this pass |
+| Fast-burn page | 14.4x burn for 1 hour equals 2 percent of a 30-day budget | Derived; threshold per [SRE Workbook](https://sre.google/workbook/alerting-on-slos/) Table 5-6, as of 2026-11 |
+| AWS us-east-1 DynamoDB DNS event | about 3 hours to DynamoDB recovery, about 14.5 hours total (11:48 PM to 2:20 PM PDT) | [AWS post-event summary](https://aws.amazon.com/message/101925/), as of 2026-11 |
+| Google Cloud Service Control event | start about 10:51 PDT, most regions within about 2 hours, us-central1 up to about 2 hours 40 minutes, full restoration 18:18 PDT | [Google Cloud incident report](https://status.cloud.google.com/incidents/ow5i3PPK96RduMcb1SsW), as of 2026-11 |
+| Large-scale training interruptions | 466 job interruptions (47 planned, 419 unexpected) in a 54-day snapshot of 405B pre-training on up to 16K H100 | [Llama 3 paper](https://arxiv.org/abs/2407.21783), as of 2026-11 |
 
 ## AWS vs GCP Mechanism Parity
 
@@ -206,13 +224,13 @@ The parity a staff candidate is expected to articulate is about failure domains 
 | Concern | AWS mechanism | Google Cloud mechanism | Critical difference an L6 must state |
 | --- | --- | --- | --- |
 | Primary fault-isolation unit | Availability Zone inside a Region; cell-based architecture inside services | Zone inside a Region; many resources such as VPC, global load balancing, and IAM are global | GCP's global resources simplify multi-region designs but widen the blast radius of control-plane faults; the 2025-06-12 Service Control event was global because the policy data replicated globally within seconds |
-| Global control-plane dependencies | Some global services run control planes in us-east-1 (per the AWS Fault Isolation Boundaries whitepaper, UNVERIFIED in this pass) | Service Control sits on the API request path for Google Cloud APIs | Data planes must stay statically stable when these control planes are impaired: cached credentials, pre-provisioned capacity, no launch-on-failover dependency |
+| Global control-plane dependencies | Some global services run control planes in us-east-1, such as IAM, Organizations, Route 53, and CloudFront (per the [AWS Fault Isolation Boundaries whitepaper](https://docs.aws.amazon.com/whitepapers/latest/aws-fault-isolation-boundaries/global-services.html), as of 2026-11) | Service Control sits on the API request path for Google Cloud APIs | Data planes must stay statically stable when these control planes are impaired: cached credentials, pre-provisioned capacity, no launch-on-failover dependency |
 | Published incident analysis | Post-Event Summaries, for example [the 2025-10 DynamoDB DNS event](https://aws.amazon.com/message/101925/) | Service Health incident reports, for example [the 2025-06-12 Service Control event](https://status.cloud.google.com/incidents/ow5i3PPK96RduMcb1SsW) | Both publish trigger and sustaining effect; read them for the recovery-amplification section, not the root-cause sentence |
 | Accelerator scale-up unit | p5.48xlarge with 8x H100 and NVLink inside the instance | TPU slices such as v6e-8, with ICI between chips | Replica granularity differs, which changes N+1 overhead and how many zones you can spread across |
 | Accelerator price levers | On-Demand, Spot, Savings Plans, Capacity Blocks for ML, On-Demand Capacity Reservations | On-demand, Spot, committed use discounts, reservations, Dynamic Workload Scheduler | Check GA status and regional availability for each lever per accelerator before quoting it; availability, not price, is usually the binding constraint |
-| Client retry behavior | AWS SDK retry modes with exponential backoff; standard mode includes a client-side retry quota (UNVERIFIED in this pass) | Google client libraries retry selected methods with exponential backoff | Neither default protects you from multiplication across your own service layers; retry at one layer and propagate deadlines |
-| Budget controls | AWS Budgets with notifications and budget actions | Cloud Billing budgets with email and Pub/Sub notifications | GCP budgets notify but do not stop spending on their own; AWS budget actions can apply IAM or SCP restrictions, and neither is a hard real-time cap |
-| Private access to managed model APIs | Interface VPC endpoints through PrivateLink for Bedrock | Private Service Connect and VPC Service Controls perimeters for Vertex AI | VPC SC is a perimeter against data exfiltration across APIs, while AWS builds the equivalent from endpoint policies, SCPs, and resource policies |
+| Client retry behavior | AWS SDK retry modes with exponential backoff; standard mode includes a client-side retry quota token bucket ([AWS SDK docs](https://docs.aws.amazon.com/sdkref/latest/guide/feature-retry-behavior.html), as of 2026-11) | Google client libraries retry selected methods with exponential backoff | Neither default protects you from multiplication across your own service layers; retry at one layer and propagate deadlines |
+| Budget controls | AWS Budgets with notifications and budget actions | Cloud Billing budgets with email and Pub/Sub notifications, plus spend cap budgets for a limited set of services | GCP alerts-only budgets notify but do not stop spending; spend cap budgets (GA 2026-10-13) pause new usage per project and service, but cover only the Gemini API, Agent Platform, Cloud Run, and Cloud Run functions, not Compute Engine or Cloud TPU, and do not pause persistent resources ([Google Cloud docs](https://docs.cloud.google.com/billing/docs/how-to/budgets-spend-caps), as of 2026-11); AWS budget actions can apply IAM or SCP restrictions or target specific EC2 and RDS instances ([AWS docs](https://docs.aws.amazon.com/cost-management/latest/userguide/budgets-controls.html), as of 2026-11), and neither is a hard real-time cap |
+| Private access to managed model APIs | Interface VPC endpoints through PrivateLink for Bedrock | Private Service Connect and VPC Service Controls perimeters for Gemini Enterprise Agent Platform ([formerly Vertex AI](https://docs.cloud.google.com/gemini-enterprise-agent-platform/vertex-ai-name-changes)) | VPC SC is a perimeter against data exfiltration across APIs, while AWS builds the equivalent from endpoint policies, SCPs, and resource policies |
 
 ## Worked Example: Defending a 70B Serving Fleet and Reproducing a Metastable Collapse
 
@@ -383,7 +401,7 @@ no_retry       goodput pre= 800 during=  27 late= 800 offered_late=  800 recover
 deadline_drop  goodput pre= 800 during= 400 late= 800 offered_late=  800 recovery=0s after trigger ends
 ```
 
-TPU v6e-8 run: `python3 staff_bar_lab.py --usd-per-hour 21.60 --hbm-gb 32 --hbm-tbps 1.64 --peak-tflops 918` (8 chips x $2.70; the 918 TFLOPS BF16 peak is UNVERIFIED and only matters for the compute-bound row).
+TPU v6e-8 run: `python3 staff_bar_lab.py --usd-per-hour 21.60 --hbm-gb 32 --hbm-tbps 1.64 --peak-tflops 918` (8 chips x $2.70; the 918 TFLOPS BF16 peak is per [Google Cloud TPU v6e docs](https://docs.cloud.google.com/tpu/docs/v6e), as of 2026-11, which also list 1,836 TOPs at Int8, so this run is conservative for 1-byte weights, and it only matters for the compute-bound row).
 
 ```text
 ctx= 1000 kv/tok=160KiB B_mem= 979 B_slo=1975 B_avg= 685 step=26.1ms compute tok/s=  26229 $/M_out=0.229
@@ -405,11 +423,13 @@ Step 8, static stability: to survive the loss of one of three zones, each zone n
 Step 9, the TPU alternative: 9 v6e-8 replicas cost $194.40 per hour, and three-zone static stability needs ceil(9 / 2) = 5 per zone, 15 replicas in total, $324.00 per hour, or $1.125 per million output tokens on demand.
 Step 10, commitment: at the 1-year v6e rate of about $1.89 per chip-hour, 15 replicas cost 15 x 8 x $1.89 = $226.80 per hour, which is $0.788 per million output tokens, provided the committed capacity stays above 70 percent utilization (1.89 / 2.70 = 0.70).
 Step 11, error bars: these are roofline ceilings, and measured engine throughput on replayed traces is routinely several times lower, so the defended number is "no better than $0.76 per million output tokens on H100 before headroom, with the measured figure to come from a trace-replay benchmark."
-One third-party benchmark of a 70B model on vLLM reports a blended input-plus-output cost of $1.06 per million tokens on H100 at $2.70 per GPU-hour ([Artificial Analysis](https://x.com/ArtificialAnlys/status/1993878037226557519), as of 2026-10), versus a roofline floor of $0.22 per million output tokens at that price, which is the size of gap you should expect to explain.
+One third-party benchmark of Llama 3.3 70B on vLLM reports a cost of $1.06 per million input and output tokens on H100 at $2.70 per GPU-hour and a reference speed of 30 output tokens per second per query ([Artificial Analysis](https://x.com/ArtificialAnlys/status/1993878037226557519), published 2025-11), versus a roofline floor of $0.22 per million output tokens at that price, which is the size of gap you should expect to explain.
 Step 12, sensitivity: going from 3,000 to 8,000 tokens of context raises the cost floor 2.7x on both platforms, so context length policy, prompt caching, and KV quantization are the largest economic levers, larger than switching vendors.
 
 The non-obvious result: TPU v6e and H100 are within 10 percent on roofline cost per token, but the 32 GB-per-chip HBM limit more than doubles the replica count.
 That gives finer N+1 granularity, more reservation units to secure, and a different rollout blast radius per replica.
+Measured numbers can reverse that parity: the same Artificial Analysis benchmark reports $5.13 per million input and output tokens on TPU v6e at $2.70 per chip-hour against $1.06 on H100 at $2.70 per GPU-hour, about 5x, so treat the roofline result as a comparison of ceilings and not as a forecast.
+Repricing H100 at AWS's $6.88 per GPU-hour ($55.04 / 8) implies about $2.70 and narrows the gap to about 1.9x (derived, since the metric is rental cost divided by throughput).
 
 The Part B result to defend in an interview: retries did not cause the outage, but they turned a 30-second brownout into a permanent one.
 Breaking the loop took either a retry budget or server-side shedding of expired work, and only shedding kept goodput up during the trigger itself.
@@ -459,7 +479,7 @@ rm -f staff_bar_lab.py
 - Synchronized restarts without randomized backoff: crash-looping tasks that all restart together overload their backing store, which is the herd effect reported for us-central1 in the Google event.
 - FIFO goodput collapse: once queueing delay exceeds client timeout, a fully busy server produces almost no useful work; drop expired requests, propagate deadlines, and consider LIFO under backlog.
 - Retry multiplication: retrying at every layer turns a transient fault into a^d load; retry at one layer, cap retries with a budget, and fail fast everywhere else.
-- Correlated hardware failure in training fleets: at tens of thousands of GPUs, job interruptions arrive multiple times a day (Llama 3 paper, UNVERIFIED), so checkpoint cadence and automated node eviction are throughput features, not reliability extras; see [[17-Cloud-AI-Engineering/Volume_10_AI_Infrastructure_on_Cloud/Chapter_08_Fault_Tolerance_and_Fleet_Resiliency_at_Scale|Fault Tolerance at Scale]].
+- Correlated hardware failure in training fleets: at more than ten thousand GPUs, job interruptions arrive multiple times a day (466 in 54 days at up to 16K GPUs, about 8.6 per day, [Llama 3 paper](https://arxiv.org/abs/2407.21783), as of 2026-11), so checkpoint cadence and automated node eviction are throughput features, not reliability extras; see [[17-Cloud-AI-Engineering/Volume_10_AI_Infrastructure_on_Cloud/Chapter_08_Fault_Tolerance_and_Fleet_Resiliency_at_Scale|Fault Tolerance at Scale]].
 - Capacity is not fungible: a failover plan that relies on launching accelerators in another zone or region during an event depends on the same control plane and the same scarce capacity that everyone else is reaching for at that moment.
 
 ## Security and Cost Angles
@@ -528,7 +548,7 @@ Product wants the LLM inference API to be multi-region active-active with a 99.9
 #### Model Answer
 
 First I would turn the request into numbers and prices.
-99.99 percent is 4.32 minutes a month, and the 2025-10 us-east-1 event lasted about 15 hours, so any single-region dependency in the request path makes the target unreachable regardless of how the fleet is built.
+99.99 percent is 4.32 minutes a month, and the 2025-10 us-east-1 event lasted about 14.5 hours, so any single-region dependency in the request path makes the target unreachable regardless of how the fleet is built.
 Active-active with each region able to absorb the other's load means about 2x the accelerator capacity, on top of the 1.5x three-zone static-stability multiplier inside each region.
 On the earlier sizing, that moves a $220-per-hour steady state to about $660 per hour, roughly $480,000 per month, before any engineering cost.
 Accelerators are also the scarcest resource, so the plan has to show the standby capacity is reserved, because launching capacity at failover time depends on the control plane and the capacity pool that are under stress at that exact moment.
@@ -552,7 +572,7 @@ Walk me through the AWS us-east-1 DynamoDB DNS event of October 2025 and tell me
 The trigger was a race in DynamoDB's automated DNS management.
 One Enactor was delayed while another applied a newer plan, the delayed Enactor's staleness check had passed earlier, so it overwrote the endpoint with an old plan, and cleanup automation then deleted that old plan, which left the regional endpoint with an empty record.
 The bug class is check-then-act across a long delay, made worse by a cleanup job that could delete live state.
-DynamoDB recovered in about three hours, but EC2's host-management workflow needed many more hours to re-establish leases across the fleet, and that recovery work is what stretched the event to about 15 hours.
+DynamoDB recovered in about three hours, but EC2's host-management workflow then spent almost three more hours in congestive collapse re-establishing leases across the fleet, and the network-configuration backlog and NLB health-check failures that followed are what stretched the event to about 14.5 hours.
 In my own systems I would change four things.
 First, I would enforce invariants at apply time, not plan time, using compare-and-swap on a monotonic generation number, so a stale writer cannot overwrite newer state, and I would make cleanup refuse to delete anything currently referenced.
 Second, I would require every automated mutation of a critical record to check that the result is not empty and fall back to last-known-good instead.
@@ -571,7 +591,8 @@ Choose between 8x H100 instances on AWS and TPU v6e-8 slices on Google Cloud for
 #### Model Answer
 
 On roofline, the two are within about 10 percent: about $0.56 per million output tokens on H100 at $55.04 per hour and about $0.61 on v6e-8 at 8 x $2.70 per hour, both at a 3,000-token context.
-The difference that matters is HBM capacity.
+Measured data cautions against trusting that parity: Artificial Analysis reports $1.06 on H100 and $5.13 on v6e per million input and output tokens for Llama 3.3 70B on vLLM, both at $2.70 per accelerator-hour (published 2025-11), so the bake-off below has to decide, not the roofline.
+The difference that matters on roofline is HBM capacity.
 The v6e-8 slice has 256 GB of HBM against 640 GB, so after weights it fits about 326 sequences instead of about 1,029, and the fleet needs 9 replicas instead of 4.
 More, smaller replicas have both costs and benefits.
 On cost, there are more units to reserve, more rollout steps, and a lower ceiling on context length per replica.
@@ -627,7 +648,7 @@ The vendor offers an extra 10 percent discount if you sign the 3-year deal this 
 
 ### Question 8 (L7+ - Principal)
 
-Your company serves 60 percent of its LLM traffic on self-hosted GPUs and 40 percent through managed APIs on Amazon Bedrock and Vertex AI; an executive wants everything consolidated onto one path within a year; how do you decide?
+Your company serves 60 percent of its LLM traffic on self-hosted GPUs and 40 percent through managed APIs on Amazon Bedrock and Gemini Enterprise Agent Platform (formerly Vertex AI); an executive wants everything consolidated onto one path within a year; how do you decide?
 
 #### Model Answer
 
@@ -660,7 +681,7 @@ The gateway team estimates a year to build that abstraction layer; how do you de
 - [Williams, Waterman, Patterson, Roofline (CACM 2009)](https://dl.acm.org/doi/10.1145/1498765.1498785) - the model behind every defensible accelerator throughput ceiling.
 - [Kwon et al., Efficient Memory Management for LLM Serving with PagedAttention (SOSP 2023)](https://arxiv.org/abs/2309.06180) - why KV-cache occupancy, not FLOPs, governs serving economics.
 - [Google SRE Workbook, Alerting on SLOs](https://sre.google/workbook/alerting-on-slos/) - multiwindow, multi-burn-rate alerting that turns an NFR into a pager rule.
-- [Llama 3 Herd of Models (2024)](https://arxiv.org/abs/2407.21783) - rare public data on failure rates and goodput for training at tens of thousands of GPUs.
+- [Llama 3 Herd of Models (2024)](https://arxiv.org/abs/2407.21783) - rare public data on failure rates and goodput for training at up to 16K GPUs.
 - [Will Larson, Staff Engineer archetypes](https://staffeng.com/guides/staff-archetypes/) - a practitioner model of what staff-plus scope means outside the interview room.
 - [[17-Cloud-AI-Engineering/Volume_14_Staff_Plus_Interview_Arena/Chapter_06_Cloud_AI_Numbers_Every_Staff_Engineer_Must_Know|Cloud AI Numbers Every Staff Engineer Must Know]] - the numeric reference these answers draw on.
 - [[17-Cloud-AI-Engineering/Volume_14_Staff_Plus_Interview_Arena/Chapter_07_Cloud_and_AI_Certification_Strategic_Navigation|Cloud and AI Certification Strategic Navigation Guide]] - the previous chapter, which maps certification syllabi to the L5 baseline this chapter builds on.

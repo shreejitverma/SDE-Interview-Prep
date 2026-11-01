@@ -2,7 +2,7 @@
 type: concept
 track: [cloud-ai, ai-eng, sde, distinguished]
 level:
-status: draft
+status: solid
 last_reviewed:
 sources: 
   - "https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_evaluation-logic.html"
@@ -14,6 +14,36 @@ sources:
   - "https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_iam-quotas.html"
   - "https://www.cs.utexas.edu/~hunt/FMCAD/FMCAD18/papers/paper3.pdf"
   - "https://docs.aws.amazon.com/whitepapers/latest/aws-fault-isolation-boundaries/abstract-and-introduction.html"
+  - "https://docs.aws.amazon.com/whitepapers/latest/aws-fault-isolation-boundaries/global-services.html"
+  - "https://docs.aws.amazon.com/organizations/latest/userguide/orgs_reference_limits.html"
+  - "https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_rcps_syntax.html"
+  - "https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_scps.html"
+  - "https://docs.aws.amazon.com/organizations/latest/userguide/pricing.html"
+  - "https://aws.amazon.com/about-aws/whats-new/2024/11/resource-control-policies-restrict-access-aws-resources"
+  - "https://aws.amazon.com/about-aws/whats-new/2025/06/aws-resource-control-policies-additional-services"
+  - "https://aws.amazon.com/about-aws/whats-new/2026/01/aws-expands-resource-control-policies"
+  - "https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies.html"
+  - "https://docs.aws.amazon.com/IAM/latest/UserGuide/introduction.html"
+  - "https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_managed-versioning.html"
+  - "https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_elements_principal.html"
+  - "https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_elements_condition_operators.html"
+  - "https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_condition-single-vs-multi-valued-context-keys.html"
+  - "https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_condition-keys.html"
+  - "https://docs.aws.amazon.com/IAM/latest/UserGuide/troubleshoot_access-denied.html"
+  - "https://docs.aws.amazon.com/IAM/latest/APIReference/API_SimulateCustomPolicy.html"
+  - "https://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRole.html"
+  - "https://docs.aws.amazon.com/kms/latest/developerguide/key-policies.html"
+  - "https://aws.amazon.com/iam/access-analyzer/pricing/"
+  - "https://docs.aws.amazon.com/access-analyzer/latest/APIReference/API_CheckNoPublicAccess.html"
+  - "https://aws.amazon.com/message/101925/"
+  - "https://status.cloud.google.com/incidents/ow5i3PPK96RduMcb1SsW"
+  - "https://docs.cloud.google.com/iam/docs/principal-access-boundary-policies"
+  - "https://docs.cloud.google.com/iam/docs/release-notes"
+  - "https://docs.cloud.google.com/iam/docs/downscoping-short-lived-credentials"
+  - "https://www.justice.gov/usao-wdwa/united-states-v-paige-thompson"
+  - "https://krebsonsecurity.com/2019/08/what-we-can-learn-from-the-capital-one-hack/"
+  - "https://www.amazon.science/blog/a-billion-smt-queries-a-day"
+  - "https://results2021.ref.ac.uk/impact/5bdb86d1-fce4-49e6-9335-08bae5e3a551/pdf"
 ---
 
 # IAM Policy Evaluation Engine
@@ -21,7 +51,7 @@ sources:
 ## TL;DR
 
 Every AWS request is a pure function evaluation: a SigV4-authenticated principal plus a request context goes through a deny sweep over every applicable policy, then the organizational ceilings (RCPs on the resource side, SCPs on the principal side), then grants (identity union resource), then the principal-side ceilings (permissions boundary, session policy).
-Explicit deny always wins, default is implicit deny, and only identity-based and resource-based policies can grant; SCPs, RCPs, boundaries, and session policies only filter.
+Explicit deny always wins, default is implicit deny, and only identity-based and resource-based policies (plus legacy cross-account ACLs) can grant; SCPs, RCPs, boundaries, and session policies only filter.
 Same-account access is a union of identity and resource grants, while cross-account access is an intersection of two independent account-local evaluations, so a bucket policy alone never lets a foreign principal in.
 The principal ARN form written in a resource policy changes the semantics: a same-account grant to a user ARN or role-session ARN bypasses implicit denies in boundaries and session policies, while a grant to the role ARN does not.
 IAM is eventually consistent, its control plane is concentrated while its data plane is regional, and policy semantics are decidable enough that AWS proves properties with SMT (Zelkova), which is the only scalable way to change guardrails across thousands of accounts safely.
@@ -65,21 +95,22 @@ The one asymmetry that breaks the clean picture is that a same-account resource 
 Authorization is not a central RPC to an "IAM server" for every API call.
 Each AWS service front end authenticates the SigV4 signature, resolves the principal, assembles the request context (action, resource ARN, principal ARN, tags, `aws:SourceIp`, `aws:SourceVpce`, `aws:PrincipalOrgID`, `aws:RequestedRegion`, `aws:CalledVia`, and service-specific keys), and runs AWS enforcement code against the policy set that applies (AWS IAM docs, as of 2026-10).
 The policies come from IAM and Organizations through a replicated, regionally served data plane.
-The control plane for IAM, the APIs that create roles and change policies, is a global service whose writes are concentrated in one Region (us-east-1 for the aws partition), while authentication and authorization are served from each Region (AWS Fault Isolation Boundaries whitepaper; UNVERIFIED this session).
+The control plane for IAM, the APIs that create roles and change policies, is a global service whose writes are concentrated in one Region (us-east-1 for the aws partition), while authentication and authorization are served from each Region ([AWS Fault Isolation Boundaries whitepaper, as of 2026-11](https://docs.aws.amazon.com/whitepapers/latest/aws-fault-isolation-boundaries/global-services.html)).
 This split has two consequences that a getting-started guide never mentions.
 First, a policy write is eventually consistent: a role you just created or a deny you just attached may not be visible to every service endpoint in every Region yet, and AWS explicitly recommends not putting IAM mutations into critical, high-availability code paths (AWS IAM docs).
 Second, the static-stability lesson from [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_04_Control_Plane_vs_Data_Plane_Separation|Control Plane vs Data Plane Separation]] applies directly: a workload that only assumes pre-existing roles and calls regional STS endpoints keeps working during an IAM control-plane impairment, and one that creates roles or rewrites policies at runtime does not.
 
 ### The policy types and what each can do
 
-There are seven policy types, and only two can grant.
+AWS documents nine policy types, adding ACLs and AWS RAM resource shares to the seven below ([AWS IAM docs, as of 2026-11](https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies.html)).
+Of the seven JSON policy types in this table, only two can grant; ACLs also grant, but only to principals in other accounts, and RAM shares resources across accounts rather than evaluating a JSON policy you write.
 
 | Policy type | Attached to | Can grant | Can deny | Applies to whom |
 |---|---|---|---|---|
 | Identity-based (managed, inline) | User, group, role | Yes | Yes | The principal it is attached to |
 | Resource-based | Bucket, key, queue, secret, role trust, and others | Yes | Yes | Principals named in `Principal` |
 | Permissions boundary | User or role | No (ceiling) | Yes | That principal's identity-based grants |
-| Session policy | STS session (passed at AssumeRole or GetFederationToken) | No (ceiling) | Yes | That one session |
+| Session policy | STS session (passed at AssumeRole, AssumeRoleWithSAML, AssumeRoleWithWebIdentity, or GetFederationToken) | No (ceiling) | Yes | That one session |
 | SCP | Org root, OU, account | No (ceiling) | Yes | Principals in member accounts |
 | RCP | Org root, OU, account | No (ceiling, Deny-only for customer policies) | Yes | Resources in member accounts, for supported services |
 | VPC endpoint policy | Interface or gateway endpoint | No (ceiling) | Yes | Requests that traverse that endpoint |
@@ -87,7 +118,7 @@ There are seven policy types, and only two can grant.
 SCPs filter what principals in member accounts can do, never affect the management account, and do not restrict service-linked roles (AWS Organizations docs, as of 2026-10).
 SCPs gained full IAM policy language support on 2025-09-19, including conditions and resource ARNs in Allow statements, NotAction with Allow, NotResource, and wildcards anywhere in action strings ([AWS What's New, 2025-09](https://aws.amazon.com/about-aws/whats-new/2025/09/aws-organizations-iam-language-service-control-policies)).
 RCPs set the maximum permissions available on resources in member accounts, require an organization with all features enabled, and do not affect resources in the management account ([AWS Organizations RCP docs, as of 2026-10](https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_rcps.html)).
-Customer-authored RCPs can only use `"Effect": "Deny"`, the AWS-managed `RCPFullAWSAccess` is auto-attached, and RCPs do not restrict calls by service-linked roles or apply to AWS managed KMS keys (third-party summary of AWS docs, native.security, as of 2026-08).
+Customer-authored RCPs can only use `"Effect": "Deny"` with `"Principal": "*"`, the AWS-managed `RCPFullAWSAccess` is auto-attached and cannot be detached, and RCPs do not restrict calls by service-linked roles or apply to AWS managed KMS keys ([AWS Organizations RCP syntax docs, as of 2026-11](https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_rcps_syntax.html)).
 The use rule is simple: use an SCP to cap your own principals, and use an RCP to cap external principals reaching into your resources (AWS Organizations RCP docs, as of 2026-10).
 
 ### The decision function, precisely
@@ -102,7 +133,7 @@ The engine computes the following, and the order is significant only for short-c
 5. Cross account: require the principal-account half (identity Allow AND boundary AND session) AND the resource-account half (resource policy names the principal or its account).
 6. Otherwise IMPLICIT_DENY.
 
-Step 3 is where allow-list SCP strategies fail: an Allow has to be present at every node on the path, so replacing `FullAWSAccess` on one intermediate OU without an equivalent Allow quietly shuts down every account beneath it (Sonrai and AWS Security Blog, as of 2026-05).
+Step 3 is where allow-list SCP strategies fail: an Allow has to be present at every node on the path, so replacing `FullAWSAccess` on one intermediate OU without an equivalent Allow quietly shuts down every account beneath it (AWS Security Blog and AWS Organizations SCP docs, as of 2026-11).
 
 ### The mechanism you will not find in a getting-started guide: principal-ARN-type semantics
 
@@ -116,34 +147,35 @@ The boundary and session-policy design goal is to cap what the principal's own i
 A resource owner who names an exact session is making an independent, more specific grant, so the engine treats it as resource-side authority rather than identity-side authority.
 A wildcard principal with a condition is, in the engine's eyes, still a resource-side grant to "whoever matches," not a grant routed through the role.
 The operational consequence is serious: the "Principal star plus aws:PrincipalArn" pattern, recommended for readability and for avoiding trust-policy unique-ID rewrites, silently removes your permissions boundary as an enforcement layer for that resource.
-If boundaries are a security control in your platform, and not only a convenience, then an explicit Deny in the boundary is the only construct that survives every branch, because step 1 runs before branch selection.
+If boundaries are a security control in your platform, and not only a convenience, then an explicit Deny, in the boundary or any other applicable policy, is the only construct that survives every branch, because step 1 runs before branch selection ([AWS IAM docs, as of 2026-11](https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies.html)).
 
 ### Role trust policies are resource policies, with a hidden rewrite
 
-A role trust policy is the resource-based policy of the `sts:AssumeRole` action on that role, so the same-account union rule applies: when the trust policy names a specific principal ARN, the caller does not also need an identity-policy Allow for `sts:AssumeRole`, but when it names only the account (`arn:aws:iam::111111111111:root`), the account's IAM policies must grant it (AWS IAM docs; UNVERIFIED this session).
-When you save a trust or resource policy that names a specific IAM user or role ARN, IAM binds it to that principal's internal unique ID, so deleting and recreating a same-named role leaves the old policy matching nobody, shown as an `AROA...` identifier (AWS IAM docs; UNVERIFIED this session).
+A role trust policy is the resource-based policy of the `sts:AssumeRole` action on that role, so the same-account union rule applies: when the trust policy names a specific principal ARN, the caller does not also need an identity-policy Allow for `sts:AssumeRole`, but when it names only the account (`arn:aws:iam::111111111111:root`), the account's IAM policies must grant it ([AWS STS AssumeRole API reference, as of 2026-11](https://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRole.html)).
+An identity-policy Allow alone is never enough, because the trust policy must always allow the principal or its account ([AWS IAM enforcement-logic docs, as of 2026-11](https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_evaluation-logic_policy-eval-denyallow.html)).
+When you save a trust policy that names a specific IAM user or role ARN, IAM transforms it to that principal's unique ID, so deleting and recreating a same-named role leaves the old policy matching nobody, and the unresolved ID, such as an `AROA...` identifier for a role, also shows up in resource-based policies ([AWS IAM Principal element docs, as of 2026-11](https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_elements_principal.html)).
 This is deliberate anti-impersonation behavior, and it is the reason "recreate the role" changes break cross-account trust in ways that look like eventual consistency but never heal.
 
 ### KMS inverts the default
 
-For AWS KMS, the key policy is primary: IAM identity policies grant access to a customer managed key only if the key policy delegates to the account by naming the account principal (AWS KMS docs; UNVERIFIED this session).
+For AWS KMS, the key policy is primary: IAM identity policies grant access to a customer managed key only if the key policy delegates to the account by naming the account principal ([AWS KMS key policy docs, as of 2026-11](https://docs.aws.amazon.com/kms/latest/developerguide/key-policies.html)).
 That makes KMS the strongest resource-side control in AWS, and it is why envelope-encrypted data is protected by two independent policy evaluations, the storage service's and the key's, as covered in [[17-Cloud-AI-Engineering/Volume_02_AWS_Deep_Dive/Chapter_15_Security_and_Cryptography_KMS_and_Nitro_Enclaves|Security and Cryptography: KMS and Nitro Enclaves]].
 
 ### Condition evaluation edge semantics
 
-A condition key absent from the request context makes ordinary positive operators evaluate to false, while negated operators (`StringNotEquals`, `StringNotLike`, `ArnNotLike`) treat a missing key as true.
+A condition key absent from the request context makes ordinary positive operators evaluate to false, while negated operators (`StringNotEquals`, `StringNotLike`, `ArnNotLike`) treat a missing key as true ([AWS IAM condition operator docs, as of 2026-11](https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_elements_condition_operators.html)).
 Consequently, a Deny statement guarded by a negated condition such as `StringNotEquals aws:SourceVpce` fires and denies the request when the key is absent, while `...IfExists` operators evaluate to true when the key is absent.
-`ForAllValues` over an empty or missing multivalued key is vacuously true, so `ForAllValues:StringEquals` on `aws:TagKeys` in an Allow statement can grant to requests that carry no tags at all.
-`aws:PrincipalArn` for an assumed-role session evaluates to the role ARN, not the session ARN, which is what makes role-scoped conditions stable across sessions.
+`ForAllValues` over an empty or missing multivalued key is vacuously true, so `ForAllValues:StringEquals` on `aws:TagKeys` in an Allow statement can grant to requests that carry no tags at all, which is why AWS recommends pairing it with a `Null` check set to `false` ([AWS IAM multivalued key docs, as of 2026-11](https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_condition-single-vs-multi-valued-context-keys.html)).
+`aws:PrincipalArn` for an assumed-role session evaluates to the role ARN, not the session ARN, which is what makes role-scoped conditions stable across sessions ([AWS global condition key docs, as of 2026-11](https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_condition-keys.html)).
 `aws:ViaAWSService` and `aws:CalledVia` are how perimeter Denies exempt forward-access-session calls, for example CloudFormation or Athena acting on your behalf, without exempting the caller's direct calls.
 Confused-deputy protection for service principals relies on `aws:SourceArn`, `aws:SourceAccount`, or `aws:SourceOrgID` in the resource policy, because the service principal itself is shared across all customers.
 
 ### Formal semantics: Zelkova
 
 AWS formalized the policy language and built Zelkova, which encodes policy semantics into SMT, compares behaviors, and answers questions such as "does this policy allow any principal outside my organization"; the FMCAD 2018 paper reports that the analysis solves a PSPACE-complete problem and is invoked many millions of times daily ([Backes et al., FMCAD 2018](https://www.cs.utexas.edu/~hunt/FMCAD/FMCAD18/papers/paper3.pdf)).
-Regular-expression-like wildcard matching on ARNs is why plain Z3 was not enough, and the team built an automata-based string extension, Z3Automata, used alongside Z3 and CVC4 (ProVerB tool summary).
-The follow-up work "A Billion SMT Queries a Day" (CAV 2022) describes how this scaled in production.
-Zelkova research fed customer features including IAM Access Analyzer and S3 Block Public Access (UCL REF2021 impact case study).
+Regular-expression-like wildcard matching on ARNs is why plain Z3 was not enough, and the team built an in-house decision procedure for regular expressions, Z3Automata, used alongside Z3 and CVC4 (Backes et al., FMCAD 2018).
+The follow-up invited paper "A Billion SMT Queries a Day" (Rungta, CAV 2022, LNCS 13371) describes how this scaled in production, including a portfolio solver and the risk of solver upgrades ([Amazon Science, 2022](https://www.amazon.science/blog/a-billion-smt-queries-a-day)).
+Zelkova research fed customer features including IAM Access Analyzer and S3 Block Public Access ([UCL REF2021 impact case study](https://results2021.ref.ac.uk/impact/5bdb86d1-fce4-49e6-9335-08bae5e3a551/pdf)).
 The engineering lesson is that the IAM policy language is deliberately constrained enough to stay decidable: no loops, no recursion, no external lookups at evaluation time, which is also why Cedar, AWS's later authorization language for application-level policies, was designed around analyzability.
 When you design guardrails, prefer constructs that keep analysis tractable: explicit ARNs and well-known condition keys beat deep NotAction and NotResource trees, even though the September 2025 SCP language expansion allows the latter.
 
@@ -151,24 +183,26 @@ When you design guardrails, prefer constructs that keep analysis tractable: expl
 
 | Item | Value | Source and date |
 |---|---|---|
-| Customer managed policy size | 6,144 characters, white space not counted | (AWS IAM quotas docs, as of 2026-10) |
-| Inline policy aggregate per user / group / role | 2,048 / 5,120 / 10,240 characters | (AWS IAM quotas docs, as of 2026-10) |
-| Managed policies per role | 20 default, 25 maximum | (AWS IAM quotas docs and re:Post, as of 2026-10) |
-| Managed policies per user | 10 default, 20 maximum | (AWS IAM quotas docs, as of 2026-10) |
-| Managed policies per group | 10, not raisable | (AWS IAM quotas docs, as of 2026-10) |
-| Role trust policy length | 2,048 characters default, 8,192 maximum | (AWS IAM quotas docs, as of 2026-10) |
-| Roles per account | 1,000 default, 10,000 maximum | (AWS IAM quotas docs, as of 2026-10) |
-| Customer managed policies per account | 1,500 default, 10,000 maximum | (AWS IAM quotas docs, as of 2026-10) |
-| Managed policy versions retained | 5 | (AWS IAM quotas docs via sph.sh summary, as of 2026-07) |
-| Session policy limits | Up to 10 managed policy ARNs; inline JSON plus ARN characters capped at 2,048 | (AWS IAM quotas docs via summary, as of 2026-08) |
-| RCPs attachable per root, OU, or account | 5 | (Tenable and native.security summaries of AWS docs, as of 2026-08) |
-| RCP-supported services at launch (2024-11) | S3, STS, KMS, SQS, Secrets Manager | (AWS launch-partner coverage, as of 2024-12) |
-| RCP additions | ECR and OpenSearch Serverless (2025-06); Cognito and CloudWatch Logs (2026-01) | ([AWS What's New 2025-06](https://aws.amazon.com/about-aws/whats-new/2025/06/aws-resource-control-policies-additional-services), [2026-01](https://aws.amazon.com/about-aws/whats-new/2026/01/aws-expands-resource-control-policies)) |
+| Customer managed policy size | 6,144 characters, white space not counted | (AWS IAM quotas docs, as of 2026-11) |
+| Inline policy aggregate per user / group / role | 2,048 / 5,120 / 10,240 characters | (AWS IAM quotas docs, as of 2026-11) |
+| Managed policies per role | 20 default, 25 maximum | (AWS IAM quotas docs, as of 2026-11) |
+| Managed policies per user | 10 default, 20 maximum | (AWS IAM quotas docs, as of 2026-11) |
+| Managed policies per group | 10, not raisable | (AWS IAM quotas docs, as of 2026-11) |
+| Role trust policy length | 2,048 characters default, 8,192 maximum | (AWS IAM quotas docs, as of 2026-11) |
+| Roles per account | 1,000 default, 10,000 maximum | (AWS IAM quotas docs, as of 2026-11) |
+| Customer managed policies per account | 1,500 default, 10,000 maximum | (AWS IAM quotas docs, as of 2026-11) |
+| Managed policy versions retained | 5 | ([AWS IAM policy versioning docs, as of 2026-11](https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_managed-versioning.html)) |
+| Session policy limits | Up to 10 managed policy ARNs; inline JSON plus ARN characters capped at 2,048 | (AWS IAM quotas docs, as of 2026-11) |
+| RCPs attachable per root, OU, or account | 5, including the non-detachable `RCPFullAWSAccess`, so 4 customer RCPs | ([AWS Organizations quotas docs, as of 2026-11](https://docs.aws.amazon.com/organizations/latest/userguide/orgs_reference_limits.html)) |
+| RCP document size | 5,120 characters | (AWS Organizations quotas docs, as of 2026-11) |
+| RCP-supported services at launch (2024-11-13) | S3, STS, KMS, SQS, Secrets Manager | ([AWS What's New, 2024-11](https://aws.amazon.com/about-aws/whats-new/2024/11/resource-control-policies-restrict-access-aws-resources)) |
+| RCP additions | ECR and OpenSearch Serverless (2025-06-19); Cognito and CloudWatch Logs (2026-01-22); the current list has 62 service-prefix entries | ([AWS What's New 2025-06](https://aws.amazon.com/about-aws/whats-new/2025/06/aws-resource-control-policies-additional-services), [2026-01](https://aws.amazon.com/about-aws/whats-new/2026/01/aws-expands-resource-control-policies), [AWS Organizations RCP docs, as of 2026-11](https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_rcps.html)) |
 | SCP full IAM language | GA in all commercial and GovCloud (US) Regions since 2025-09-19 | (AWS What's New, 2025-09) |
-| SCPs per target and SCP document size | 5 per target and 5,120 characters historically; AWS updated SCP quotas on 2026-05-20 | UNVERIFIED current values (AWS Security Blog notes the 2026-05 change) |
-| STS role session duration | 1 hour default, up to 12 hours by role setting; role chaining capped at 1 hour | (AWS STS docs; UNVERIFIED this session) |
-| Zelkova invocation volume | "many millions of times daily" in 2018; about a billion SMT queries per day reported in 2022 | (FMCAD 2018 paper; CAV 2022 title) |
-| IAM, STS, and Organizations policy price | No charge | (AWS pricing; UNVERIFIED this session) |
+| SCPs per root, OU, or account and SCP document size | 10 attached per target and 10,240 characters; 10,000 SCPs per organization; OUs nest at most 5 levels under the root | (AWS Organizations quotas docs, as of 2026-11) |
+| STS role session duration | 1 hour default, 15 minutes minimum, up to 12 hours by role setting; role chaining capped at 1 hour | (AWS STS AssumeRole API reference, as of 2026-11) |
+| Zelkova invocation volume | "many millions of times daily" in 2018; about a billion SMT queries per day implied in 2022 | (FMCAD 2018 paper; CAV 2022 title, not a figure from the Amazon Science summary) |
+| IAM, STS, and Organizations policy price | No additional charge; Access Analyzer unused-access and custom checks are billed | ([AWS IAM docs](https://docs.aws.amazon.com/IAM/latest/UserGuide/introduction.html), [AWS Organizations docs, as of 2026-11](https://docs.aws.amazon.com/organizations/latest/userguide/pricing.html)) |
+| Access Analyzer prices | Custom policy checks 0.0020 USD per call; unused access 0.20 USD per role or user per month; external access no additional charge | ([IAM Access Analyzer pricing, as of 2026-11](https://aws.amazon.com/iam/access-analyzer/pricing/)) |
 
 ## AWS vs GCP Mechanism Parity
 
@@ -176,10 +210,10 @@ When you design guardrails, prefer constructs that keep analysis tractable: expl
 |---|---|---|---|
 | Grant primitive | Identity-based policy on principal, resource-based policy on resource | IAM allow policy bound on a resource node (org, folder, project, resource) | GCP has no identity-attached grants; every grant lives on a resource and inherits down the hierarchy |
 | Combination rule | Explicit deny wins, then union of grants, intersected with ceilings | Deny policies evaluated before allow policies; allow policies inherited and unioned | Both are deny-overrides; GCP inheritance is additive and cannot be revoked by a child allow policy |
-| Org-level principal ceiling | SCP (filter, every level must Allow) | IAM deny policies at org or folder, plus Principal Access Boundary policies | PAB restricts which resources a principal set may access, closer to an org-scoped boundary (PAB GA status UNVERIFIED) |
+| Org-level principal ceiling | SCP (filter, every level must Allow) | IAM deny policies at org or folder, plus Principal Access Boundary policies | PAB restricts which resources a principal set may access, closer to an org-scoped boundary; PAB has been GA since 2024-12-16 and blocks only supported permissions ([Google Cloud IAM release notes](https://docs.cloud.google.com/iam/docs/release-notes), [PAB docs, as of 2026-11](https://docs.cloud.google.com/iam/docs/principal-access-boundary-policies)) |
 | Org-level resource ceiling | RCP (Deny-only, supported services only) | VPC Service Controls perimeters plus Domain Restricted Sharing org policy | VPC SC is context and perimeter based, not a policy-language ceiling; see [[17-Cloud-AI-Engineering/Volume_03_GCP_Deep_Dive/Chapter_03_VPC_Service_Controls_Security_Perimeters\|VPC Service Controls]] |
 | Per-principal ceiling | Permissions boundary | No direct equivalent; approximated with deny policies, PAB, and custom roles | Delegated IAM admin is harder to cap on GCP without PAB |
-| Per-session ceiling | Session policy on AssumeRole or GetFederationToken | Credential Access Boundaries on downscoped tokens (Cloud Storage focused) | AWS session policies apply across services; GCP downscoping is narrower |
+| Per-session ceiling | Session policy on AssumeRole or GetFederationToken | Credential Access Boundaries on downscoped tokens (Cloud Storage only) | AWS session policies apply across services; GCP downscoping is narrower ([Google Cloud docs, as of 2026-11](https://docs.cloud.google.com/iam/docs/downscoping-short-lived-credentials)) |
 | Cross-tenant semantics | Two-sided: caller account and resource account must both Allow | One-sided: a resource owner can bind any Google identity, unless Domain Restricted Sharing or PAB prevents it | The single largest translation pitfall; GCP external access is blocked by org policy, not by the caller's IAM |
 | Condition language | Fixed condition operators over typed context keys | CEL expressions in IAM Conditions | CEL is more expressive; AWS keys are more uniform across services |
 | Static reasoning | Zelkova-backed IAM Access Analyzer (external access, unused access, custom policy checks) | Policy Analyzer, Policy Troubleshooter, Policy Simulator | AWS exposes "no new access" proofs as CI-callable APIs |
@@ -197,7 +231,7 @@ An optional `--aws` mode calls `iam:SimulateCustomPolicy` with a permissions bou
 
 ### Cost estimate and budget guardrail
 
-IAM users, policies, and the policy simulator API carry no direct charge (AWS pricing; UNVERIFIED this session), so the expected lab cost is 0.00 USD.
+IAM users, policies, and the policy simulator API carry no additional charge ([AWS IAM docs, as of 2026-11](https://docs.aws.amazon.com/IAM/latest/UserGuide/introduction.html)), so the expected lab cost is 0.00 USD.
 Install a 1 USD monthly cost budget anyway, because a lab account with no budget is how stray resources become invoices.
 
 ```bash
@@ -436,7 +470,7 @@ python3 iam_eval_lab.py --aws "$USER_ARN"
 
 Expected offline output is six `ok` lines: T1 IMPLICIT_DENY, T2 ALLOW, T3 ALLOW, T4 IMPLICIT_DENY, T5 EXPLICIT_DENY, T6 EXPLICIT_DENY.
 T1 and T2 differ only in the string inside `Principal`, which is the whole point of the chapter's deep mechanism.
-If the simulator's answer ever disagrees with the documented semantics, treat a real request plus its CloudTrail `errorCode` and `errorMessage` as ground truth; the simulator only accepts an IAM user as `CallerArn`, so it cannot model the role-session branch at all (AWS IAM API reference; UNVERIFIED this session).
+If the simulator's answer ever disagrees with the documented semantics, treat a real request plus its CloudTrail `errorCode` and `errorMessage` as ground truth; the simulator's `CallerArn` accepts an IAM user, group, or role but not an assumed-role session or federated user, so it cannot model the role-session branch at all, and AWS warns that its results can differ from your live environment ([AWS IAM API reference, as of 2026-11](https://docs.aws.amazon.com/IAM/latest/APIReference/API_SimulateCustomPolicy.html)).
 
 ### Capacity sizing: policy character budgets
 
@@ -444,16 +478,16 @@ Per-role identity budget at default quotas is 20 managed policies times 6,144 ch
 At the 25-policy maximum it is 153,600 plus 10,240, or 163,840 characters.
 At roughly 250 characters per scoped statement, that is about 530 statements by default, which is ample, so if you are hitting it, the problem is role design, not quota.
 The binding constraint in practice is the trust policy.
-A GitHub Actions OIDC trust policy costs about 300 characters of skeleton plus about 58 characters per `token.actions.githubusercontent.com:sub` subject string such as `repo:acme/payments:ref:refs/heads/main`.
+A GitHub Actions OIDC trust policy costs about 300 characters of skeleton plus about 58 characters per `token.actions.githubusercontent.com:sub` subject string, an assumed planning figure for longer names, since the example `repo:acme/payments:ref:refs/heads/main` is itself 38 characters, or 41 with quotes and a comma.
 At the 2,048-character default, (2,048 - 300) / 58 is about 30 subjects; at the 8,192 maximum, (8,192 - 300) / 58 is about 136 subjects.
 Beyond that you must move from enumerating repos to wildcards plus a Deny on unexpected `job_workflow_ref`, or fan out into per-team roles.
-The session policy is the tightest budget: 2,048 characters across inline JSON and up to 10 ARNs, and STS reports usage as a packed-size percentage that also includes session tags (UNVERIFIED this session), so tag-heavy ABAC sessions run out first.
-For SCPs, assuming the historical 5-per-target quota still holds (UNVERIFIED after the 2026-05 quota update), a path from root through five nested OUs to an account has 7 attachment points and therefore at most 35 SCPs, and every one of those 7 points must carry an Allow for any action to survive.
+The session policy is the tightest budget: 2,048 characters across inline JSON and up to 10 ARNs, and session policies and session tags also share a separate session-token size limit that STS reports as the `SessionTokenUtilization` percentage (the older `PackedPolicySize` element is deprecated), so tag-heavy ABAC sessions can fail with `PackedPolicyTooLarge` even within the individual limits ([AWS STS AssumeRole API reference, as of 2026-11](https://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRole.html)).
+For SCPs, the quota is 10 directly attached per root, OU, or account ([AWS Organizations quotas docs, as of 2026-11](https://docs.aws.amazon.com/organizations/latest/userguide/orgs_reference_limits.html)), so a path from root through five nested OUs to an account has 7 attachment points and therefore at most 70 SCPs, and every one of those 7 points must carry an Allow for any action to survive.
 
 ### Capacity sizing: CI policy proofs
 
 Model Access Analyzer custom policy checks as a per-call cost: calls per month = PRs per month x changed policies per PR x check types.
-For 2,000 PRs, 3 changed policies each, and 2 checks (`CheckNoNewAccess` and `CheckNoPublicAccess`), that is 12,000 calls per month, multiplied by the current per-call list price (UNVERIFIED; check the IAM Access Analyzer pricing page).
+For 2,000 PRs, 3 changed policies each, and 2 checks (`CheckNoNewAccess` and `CheckNoPublicAccess`), that is 12,000 calls per month, which at the list price of 0.0020 USD per call is 24 USD per month ([IAM Access Analyzer pricing, as of 2026-11](https://aws.amazon.com/iam/access-analyzer/pricing/)).
 
 ### Teardown
 
@@ -466,19 +500,19 @@ aws budgets delete-budget --account-id "$ACCOUNT_ID" --budget-name iam-eval-lab
 
 ### Guardrail lockout through the SCP Allow chain
 
-Detaching `FullAWSAccess` from one OU without an equivalent Allow denies every action for every account below it at once, because the Allow is required at every level (AWS Security Blog and tocconsulting summary, as of 2026).
+Detaching `FullAWSAccess` from one OU while its remaining SCPs carry no equivalent Allow denies every action for every account below it at once, because the Allow is required at every level, and the last SCP on an entity cannot be removed, so this happens through a Deny-only or narrower replacement (AWS Security Blog and [AWS Organizations docs, as of 2026-11](https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_scps.html)).
 The blast radius is the subtree, and because the management account is exempt from SCPs, recovery is possible only from there, which is one more reason never to run workloads in the management account.
 Roll SCP and RCP changes as you would roll code: test accounts first, then low OUs, then upward, while watching CloudTrail for new AccessDenied errors, which is AWS's own recommendation for RCPs (AWS Organizations RCP docs, as of 2026-10).
 
 ### Global policy propagation as a blast-radius vector
 
-On 2025-06-12 a Google Cloud outage began when a policy change with unintended blank fields replicated globally within seconds and hit a code path in Service Control, the component that performs API authorization and quota checks, which was not protected by a feature flag; the null-pointer crash loop took down API serving across regions, and us-central1 recovered last because restarting tasks overloaded the backing store (Google Cloud incident report; UNVERIFIED this session).
+On 2025-06-12 a Google Cloud outage began when a policy change with unintended blank fields replicated globally within seconds and hit a code path in Service Control, the component that performs API authorization and quota checks, which was not protected by a feature flag; the null-pointer crash loop took down API serving across regions, and full recovery in us-central1 took up to about 2h 40m because restarting tasks overloaded the backing Spanner table ([Google Cloud incident report, 2025-06](https://status.cloud.google.com/incidents/ow5i3PPK96RduMcb1SsW)).
 The transferable lesson for AWS guardrails is that a fast, globally replicated policy plane is a global single point of failure unless policy rollouts are staged, validated, and data-driven gated, as discussed in [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_07_Anatomy_of_Major_Cloud_Outages|Anatomy of Major Cloud Outages]].
 
 ### Runtime dependency on the IAM control plane
 
 Systems that create roles, attach policies, or rotate access keys in the request path fail when the IAM control plane is impaired or simply lagging under eventual consistency, and they fail as AccessDenied, which callers usually do not retry.
-Use pre-provisioned roles, regional STS endpoints, and cached credentials refreshed well before expiry; AWS public post-event summaries for us-east-1 events have listed STS and IAM-dependent console sign-in among impacted functions (AWS Post-Event Summaries; UNVERIFIED this session).
+Use pre-provisioned roles, regional STS endpoints, and cached credentials refreshed well before expiry; AWS public post-event summaries for us-east-1 events have listed STS and IAM-dependent console sign-in among impacted functions, as in the October 2025 event ([AWS Post-Event Summary, 2025-10](https://aws.amazon.com/message/101925/)).
 
 ### Boundary bypass by resource-policy shape
 
@@ -493,7 +527,7 @@ The same artifact flips from ALLOW to IMPLICIT_DENY at the account boundary, and
 
 ### Trust-policy unique-ID rot
 
-Delete and recreate a role named in another account's trust or bucket policy, and the reference silently becomes an unmatched unique ID that never heals (AWS IAM docs; UNVERIFIED this session).
+Delete and recreate a role named in another account's trust or bucket policy, and the reference silently becomes an unmatched unique ID that never heals until someone edits the policy back to the correct ARN (AWS IAM Principal element docs, as of 2026-11).
 Engineers misdiagnose it as eventual consistency and wait.
 
 ### Condition-key absence
@@ -504,7 +538,7 @@ Data perimeters therefore need paired statements, one for principals and one for
 
 ### Credential theft beats perfect policy logic
 
-The 2019 Capital One breach combined an SSRF against a misconfigured web application firewall with instance-metadata credential retrieval and an over-broad role that could list and read S3 buckets (US DOJ complaint; UNVERIFIED this session).
+The 2019 Capital One breach combined an SSRF against a misconfigured web application firewall with instance-metadata credential retrieval and an over-broad role that could list and read S3 buckets ([US DOJ case page](https://www.justice.gov/usao-wdwa/united-states-v-paige-thompson) for the misconfigured firewall; [KrebsOnSecurity, 2019-08](https://krebsonsecurity.com/2019/08/what-we-can-learn-from-the-capital-one-hack/) for the SSRF, metadata, and permissions detail).
 Policy evaluation was correct; the identity policy was the bug.
 Mitigations are IMDSv2 enforcement, network-perimeter conditions on sensitive data (`aws:SourceVpc`, `aws:SourceVpce`), and RCPs that pin access to your organization.
 
@@ -538,7 +572,7 @@ Session policies let a broker issue narrowly scoped, short-lived credentials per
 
 ### Unit economics
 
-IAM evaluation is not billed, so cost levers are indirect: CloudTrail data-event logging for audit of sensitive buckets, Access Analyzer unused-access and custom-check charges (UNVERIFIED current prices), and engineering hours lost to AccessDenied debugging.
+IAM evaluation is not billed, so cost levers are indirect: CloudTrail data-event logging for audit of sensitive buckets, Access Analyzer unused-access charges of 0.20 USD per role or user per month and custom-check charges of 0.0020 USD per call (IAM Access Analyzer pricing, as of 2026-11), and engineering hours lost to AccessDenied debugging.
 The highest-leverage investment is CI-time proof (`CheckNoNewAccess` against the last approved version, `CheckNoPublicAccess` on resource policies), because a rejected PR costs cents of analysis while an over-grant in production costs an incident; see [[17-Cloud-AI-Engineering/Volume_06_Infrastructure_as_Code_and_Delivery/Chapter_04_Policy_as_Code_OPA_Sentinel_and_Guardrails|Policy as Code]].
 
 ## Interview Questions and Model Answers
@@ -551,11 +585,11 @@ Walk through how you find the cause.
 #### Model Answer
 
 AdministratorAccess only makes the identity-based half allow, so I enumerate every other input of the decision function and ask which one denies or fails to allow.
-First, I read the AccessDenied message and the CloudTrail record, because modern error messages name the policy type responsible and say whether the deny was explicit or implicit (AWS IAM docs; UNVERIFIED this session).
+First, I read the AccessDenied message and the CloudTrail record, because modern error messages usually name the policy type responsible and say whether the deny was explicit or implicit, though some services do not use this format and only one denying policy type is reported ([AWS IAM docs, as of 2026-11](https://docs.aws.amazon.com/IAM/latest/UserGuide/troubleshoot_access-denied.html)).
 An explicit deny points me to a Deny statement; candidates are an SCP in the account's chain, an RCP if the bucket is in a member account, the bucket policy, a VPC endpoint policy if the call traversed a gateway or interface endpoint, a permissions boundary on the role, or a session policy passed at AssumeRole.
 An implicit deny with AdministratorAccess usually means a ceiling failed to allow: a boundary without `s3:GetObject`, a session policy from an SSO permission set or a credential broker, or an SCP chain missing an Allow at some OU.
 Then I check the two non-IAM layers that look like IAM: SSE-KMS, where the error is really a KMS key-policy denial on `kms:Decrypt`, and S3 Object Ownership or legacy ACLs if the object was written by another account.
-I reproduce with the IAM policy simulator only for identity, boundary, and resource policies, and confirm the final hypothesis with a real call, because the simulator does not model every input.
+I reproduce with the IAM policy simulator only for identity, boundary, SCP, and resource policies, and confirm the final hypothesis with a real call, because the simulator does not model every input.
 
 #### Follow-up Interviewer Question
 
@@ -611,7 +645,7 @@ When the owner names the role ARN, the grant flows to every session of the role,
 The wildcard-principal-plus-`aws:PrincipalArn` form is treated as a direct grant and also escapes boundaries and session policies unless an explicit deny exists (AWS IAM docs, as of 2026-10).
 It bites credential brokers: a broker issues a session with a session policy scoped to tenant prefix `t1/`, but a bucket policy written with the wildcard pattern for that role lets the session read `t2/`.
 Mitigations are explicit Deny statements in the session policy, which survive every branch, writing tenant scoping into the resource policy using `aws:PrincipalTag` from session tags, and banning the wildcard pattern for multi-tenant buckets in CI.
-I would also note the testing gap: the IAM simulator accepts only an IAM user as caller, so this branch must be tested with real sessions.
+I would also note the testing gap: the IAM simulator rejects assumed-role session ARNs as the caller, so this branch must be tested with real sessions (AWS IAM API reference, as of 2026-11).
 
 #### Follow-up Interviewer Question
 
@@ -682,7 +716,7 @@ Which AWS mental models break, and how do you redesign?
 
 #### Model Answer
 
-The most dangerous break is cross-tenant semantics: AWS cross-account access is two-sided, so a foreign principal needs its own account's Allow, while on Google Cloud a resource owner can bind an external identity unilaterally, so the external-access defense moves from IAM evaluation to organization policy (Domain Restricted Sharing) and, where available, Principal Access Boundary policies.
+The most dangerous break is cross-tenant semantics: AWS cross-account access is two-sided, so a foreign principal needs its own account's Allow, while on Google Cloud a resource owner can bind an external identity unilaterally, so the external-access defense moves from IAM evaluation to organization policy (Domain Restricted Sharing) and, for supported permissions, Principal Access Boundary policies.
 The second break is attachment: AWS lets you attach grants to identities, while Google Cloud grants live in allow policies on resource nodes and inherit additively down the org-folder-project tree, so you cannot revoke an inherited grant with a child allow policy; you need deny policies.
 Third, AWS permissions boundaries and session policies have only partial equivalents: deny policies with exception principals, PAB for principal-centric scoping, and Credential Access Boundaries for downscoped Cloud Storage tokens.
 Fourth, resource-side org ceilings map not to a policy-language twin of RCPs but to VPC Service Controls perimeters, which are context-based and also govern API ingress and egress between projects, so perimeter design becomes a network-and-project topology exercise.
@@ -696,12 +730,12 @@ Which AWS invariant has no clean Google Cloud equivalent, and what compensating 
 ## Further Reading
 
 - [AWS IAM: Policy evaluation logic](https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_evaluation-logic.html) - the canonical decision flow, including same-account, cross-account, and organization policy interactions.
-- [AWS IAM: How AWS enforcement code logic evaluates requests](https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_evaluation-logic_policy-eval-denyallow.html) - the only official source for the principal-ARN-type asymmetry and wildcard-principal boundary bypass.
+- [AWS IAM: How AWS enforcement code logic evaluates requests](https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_evaluation-logic_policy-eval-denyallow.html) - the primary official source for the principal-ARN-type asymmetry and wildcard-principal boundary bypass.
 - [AWS IAM: Permissions boundaries for IAM entities](https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_boundaries.html) - exact semantics of boundaries against resource-based policies for users, roles, and sessions.
-- [AWS Organizations: Resource control policies](https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_rcps.html) - the supported-service list, exemptions, and rollout guidance for the newest policy type.
+- [AWS Organizations: Resource control policies](https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_rcps.html) - the supported-service list, exemptions, and rollout guidance for the resource-side organization policy type.
 - [AWS What's New: Full IAM policy language for SCPs (2025-09)](https://aws.amazon.com/about-aws/whats-new/2025/09/aws-organizations-iam-language-service-control-policies) - defines what changed in SCP expressiveness and why old allow-list limitations no longer apply.
-- [AWS Security Blog: Get more out of service control policies](https://aws.amazon.com/blogs/security/get-more-out-of-service-control-policies-in-a-multi-account-environment/) - inheritance, Allow-chain behavior, and current SCP quota updates from the service team.
-- [AWS IAM and STS quotas](https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_iam-quotas.html) - the authoritative source for every character and attachment limit in this chapter.
+- [AWS Security Blog: Get more out of service control policies](https://aws.amazon.com/blogs/security/get-more-out-of-service-control-policies-in-a-multi-account-environment/) - inheritance, Allow-chain behavior, and SCP quota notes from the service team; the [AWS Organizations quotas page](https://docs.aws.amazon.com/organizations/latest/userguide/orgs_reference_limits.html) holds the current values.
+- [AWS IAM and STS quotas](https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_iam-quotas.html) - the authoritative source for every IAM and STS character and attachment limit in this chapter.
 - [Backes et al., Semantic-based Automated Reasoning for AWS Access Policies using SMT (FMCAD 2018)](https://www.cs.utexas.edu/~hunt/FMCAD/FMCAD18/papers/paper3.pdf) - the formal semantics of the policy language and the Zelkova encoding behind Access Analyzer.
 - Rungta, A Billion SMT Queries a Day (CAV 2022) - how policy reasoning was scaled and operationalized as a production service.
 - Cutler et al., Cedar: A New Language for Expressive, Fast, Safe, and Analyzable Authorization (OOPSLA 2024) - design choices for analyzable authorization languages, useful for contrasting with IAM JSON.

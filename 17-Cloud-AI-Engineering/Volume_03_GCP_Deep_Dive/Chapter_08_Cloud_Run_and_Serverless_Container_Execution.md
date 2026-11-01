@@ -2,7 +2,7 @@
 type: concept
 track: [cloud-ai, ai-eng, sde, distinguished]
 level:
-status: draft
+status: solid
 last_reviewed:
 sources: 
   - "https://docs.cloud.google.com/run/docs/configuring/execution-environments"
@@ -19,6 +19,31 @@ sources:
   - "https://knative.dev/docs/serving/"
   - "https://research.google/pubs/the-tail-at-scale/"
   - "https://status.cloud.google.com/incidents/ow5i3PPK96RduMcb1SsW"
+  - "https://docs.cloud.google.com/run/quotas"
+  - "https://cloud.google.com/run/pricing"
+  - "https://docs.cloud.google.com/run/docs/about-instance-autoscaling"
+  - "https://docs.cloud.google.com/run/docs/about-concurrency"
+  - "https://docs.cloud.google.com/run/docs/configuring/billing-settings"
+  - "https://docs.cloud.google.com/run/docs/configuring/max-instances"
+  - "https://docs.cloud.google.com/run/docs/configuring/min-instances"
+  - "https://docs.cloud.google.com/run/docs/configuring/request-timeout"
+  - "https://docs.cloud.google.com/run/docs/configuring/services/cpu"
+  - "https://docs.cloud.google.com/run/docs/configuring/services/gpu"
+  - "https://docs.cloud.google.com/run/docs/configuring/services/containers"
+  - "https://docs.cloud.google.com/run/docs/configuring/services/in-memory-volume-mounts"
+  - "https://docs.cloud.google.com/run/docs/deploying"
+  - "https://docs.cloud.google.com/run/docs/troubleshooting"
+  - "https://docs.cloud.google.com/run/docs/securing/security"
+  - "https://run.googleapis.com/$discovery/rest?version=v2"
+  - "https://gvisor.dev/docs/architecture_guide/platforms/"
+  - "https://gvisor.dev/docs/user_guide/filesystem/"
+  - "https://www.usenix.org/system/files/hotcloud19-paper-young.pdf"
+  - "https://raw.githubusercontent.com/firecracker-microvm/firecracker/main/SPECIFICATION.md"
+  - "https://docs.aws.amazon.com/lambda/latest/dg/gettingstarted-limits.html"
+  - "https://docs.aws.amazon.com/lambda/latest/dg/lambda-concurrency.html"
+  - "https://aws.amazon.com/lambda/pricing/"
+  - "https://aws.amazon.com/message/101925/"
+  - "https://conf.researchr.org/details/vee-2020/vee-2020-papers/1/Blending-Containers-and-Virtual-Machines-A-Study-of-Firecracker-and-gVisor"
 ---
 
 # Cloud Run and Serverless Container Execution
@@ -67,72 +92,75 @@ A deploy creates a new revision, and a revision is immutable: image digest, CPU 
 Tags such as `:latest` are resolved to a digest at deploy time, so a revision cannot drift when a tag later moves.
 The data plane only needs that revision record and the instance fleet to keep serving, which means already-running revisions should ride through control-plane trouble (see [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_04_Control_Plane_vs_Data_Plane_Separation|Control Plane vs Data Plane Separation]]).
 Scaling up is the exception, because it depends on the autoscaler and the scheduler, so a service sitting at its warm capacity is statically stable and a service that needs new instances is not (see [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_02_Regions_Zones_and_Static_Stability|Regions, Zones, and Static Stability]]).
-Google has said publicly that Cloud Run runs on Borg infrastructure, so placement, bin-packing, and machine failure handling are Borg-cell concerns that the user never sees (see [[17-Cloud-AI-Engineering/Volume_13_Seminal_Papers_and_Case_Studies/Chapter_07_Google_Borg_and_Omega|Google Borg and Omega]]).
+Google states in its security overview that Cloud Run runs on top of Borg (Google Cloud docs, as of 2026-11), so placement, bin-packing, and machine failure handling are Borg-cell concerns that the user never sees (see [[17-Cloud-AI-Engineering/Volume_13_Seminal_Papers_and_Case_Studies/Chapter_07_Google_Borg_and_Omega|Google Borg and Omega]]).
 
 ### Sandbox generation 1: gVisor as an application kernel
 
-The first generation execution environment is based on gVisor, offers fast cold starts, and emulates most but not all operating system calls (Google Cloud docs, as of 2026-10).
+The first generation execution environment is based on gVisor, offers fast cold starts, and emulates most but not all operating system calls (Google Cloud docs, as of 2026-11).
 gVisor splits the kernel role into a few cooperating processes.
 The Sentry is a user-space kernel written in Go that implements the Linux syscall ABI, including memory management, signals, a VFS, and a full TCP/IP stack called netstack.
-The Gofer is a separate process that brokers host filesystem access for the Sentry over an RPC protocol (9P originally, lisafs in current releases), so a compromised Sentry still cannot open arbitrary host files.
+The Gofer is a separate process that mediates host filesystem access for the sandbox, either over an RPC protocol (9P originally, LISAFS in current releases) or, with the default-on directfs feature, by donating file descriptors for the container's mount points (gVisor docs, as of 2026-11).
+Either way the sandbox can operate only on the trees the Gofer exposes and its mount namespace is empty, so a compromised Sentry still cannot open arbitrary host files (gVisor docs, as of 2026-11).
 The Sentry also runs under its own restrictive seccomp filter, which means an attacker has to escape the Sentry first and then gets only a small host syscall surface.
+Cloud Run adds a second layer in both generations: its security overview describes a hardware-backed, VM-equivalent layer plus a software kernel layer, with a virtual machine monitor enforcing the boundary around each instance (Google Cloud docs, as of 2026-11).
 
 The way syscalls are intercepted is called the platform, and it determines the cost of every syscall.
 The ptrace platform stops the application on each syscall and switches to the Sentry, which costs several context switches per call.
 The KVM platform runs the Sentry as a guest kernel and needs hardware virtualization, and inside a cloud VM that means nested virtualization.
 The systrap platform installs a seccomp filter that returns `SECCOMP_RET_TRAP` for application syscalls, so the kernel delivers `SIGSYS` to a small stub inside the sandboxed process.
 That stub hands syscall arguments to the Sentry through shared memory, which avoids the full ptrace stop and does not need nested virtualization.
-gVisor made systrap its default platform in 2023, and how Cloud Run configures its platform internally is not public (UNVERIFIED).
+gVisor made systrap its default platform in mid-2023 and no longer supports ptrace (gVisor docs, as of 2026-11), and Cloud Run's security overview does not name the platform Cloud Run uses (Google Cloud docs, as of 2026-11).
 
 The cost model follows from this structure.
 Pure user-space compute such as JSON parsing or matrix arithmetic runs at near-native speed, because no syscall crosses the interception boundary.
 Workloads heavy in syscalls, file metadata, and small I/O pay a per-call tax, and network traffic goes through netstack instead of the host Linux TCP stack.
-The HotCloud 2019 gVisor case study measured roughly 2.2x slower simple syscalls and two orders of magnitude slower open/close on external tmpfs, on the ptrace-era implementation ([Young et al., HotCloud 2019](https://www.usenix.org/conference/hotcloud19/presentation/young)).
-Treat those ratios as historical upper bounds rather than current Cloud Run figures, because systrap, lisafs, and the 2022 first-generation filesystem speedup Google announced in its release notes have all closed part of the gap (Google Cloud docs, as of 2026-10).
+The HotCloud 2019 gVisor case study measured simple syscalls at least 2.2x slower than runc and open/close on external tmpfs 216x slower, on the pre-systrap implementation with its KVM and ptrace modes, and ptrace syscall latencies ran 42-232x native ([Young et al., HotCloud 2019](https://www.usenix.org/conference/hotcloud19/presentation/young)).
+Treat those ratios as historical figures rather than current Cloud Run figures, because systrap, LISAFS, directfs, and the September 2022 first-generation filesystem speedup Google announced in its release notes were all introduced after that measurement (Google Cloud docs, as of 2026-11).
 
 ### Sandbox generation 2: microVM with a real Linux kernel
 
-The second generation execution environment is a microVM with full Linux compatibility, including all syscalls, namespaces, cgroups, and network file systems, plus faster CPU and network performance, especially under packet loss (Google Cloud docs, as of 2026-10).
-Inside the guest, Cloud Run runs your containers in user, network, PID, and other Linux namespaces, so a root container is not "true root" even inside its own VM (Google Cloud docs, as of 2026-10).
-In the second generation environment `/sys/class/dmi/id/product_name` reads `Google Compute Engine`, which points to a Compute-Engine-lineage VMM, although Google does not document the hypervisor stack (Google Cloud docs, as of 2026-10).
-Second generation has longer cold starts than first generation because a guest kernel has to boot and initialize devices before your entrypoint runs (Google Cloud docs, as of 2026-10).
+The second generation execution environment is a microVM with full Linux compatibility, including all syscalls, namespaces, cgroups, and network file systems, plus faster CPU and network performance, especially under packet loss (Google Cloud docs, as of 2026-11).
+Inside the guest, Cloud Run runs your containers in user, network, PID, and other Linux namespaces, so a root container is not "true root" even inside its own VM (Google Cloud docs, as of 2026-11).
+In the second generation environment `/sys/class/dmi/id/product_name` reads `Google Compute Engine`, which points to a Compute-Engine-lineage VMM, although the security overview names only a virtual machine monitor and Linux microVMs, not the hypervisor stack (Google Cloud docs, as of 2026-11).
+Second generation has longer cold starts than first generation because a guest kernel has to boot and initialize devices before your entrypoint runs (Google Cloud docs, as of 2026-11).
 The packet-loss advantage is most likely because a lossy path exercises loss recovery and congestion control, and the Linux TCP stack has had decades more tuning there than netstack, but that is an inference, not a documented mechanism.
-Cloud Run jobs always use the second generation environment (Google Cloud docs, as of 2026-10).
-If a service does not specify an environment, Cloud Run picks one based on the features the service uses, so you should pin it explicitly and not depend on that heuristic (Google Cloud docs, as of 2026-10).
-Second generation went GA on 2022-12-06, along with NFS and Cloud Storage FUSE volume support (Google Cloud release notes, as of 2026-10).
+Cloud Run jobs and worker pools always use the second generation environment (Google Cloud docs, as of 2026-11).
+If a service does not specify an environment, Cloud Run picks one based on the features the service uses, so you should pin it explicitly and not depend on that heuristic (Google Cloud docs, as of 2026-11).
+Second generation went GA on 2022-12-06, along with NFS and Cloud Storage FUSE volume support (Google Cloud release notes, as of 2026-11).
 The comparison with Firecracker is in [[17-Cloud-AI-Engineering/Volume_00_Foundations_Under_the_Cloud/Chapter_01_Hypervisors_MicroVMs_and_Sandboxing|Hypervisors, MicroVMs, and Sandboxing]].
 
 ### Concurrent request multiplexing: admission at the router, scaling at the autoscaler
 
 `containerConcurrency` (`--concurrency`) is a hard cap on in-flight requests per instance, and the router enforces it.
-It does not ask the instance whether it is busy.
+It does not ask your process whether it is busy, although Cloud Run might send fewer requests to an instance whose CPU is already highly utilized, and adaptive concurrency tuning lowers an instance's effective limit by 1 per second while CPU exceeds 90 percent (Google Cloud docs, as of 2026-11).
 Until you set a better value, the platform assumes your process can handle that many requests at once on its configured CPU and memory.
-The default is 80 and the maximum is 1000 concurrent requests per instance (Google Cloud docs, UNVERIFIED as of 2026-10).
+The default is 80 x vCPUs for services created with gcloud or Terraform and 80 for services created in the console, and the maximum is 1000 concurrent requests per instance (Google Cloud docs, as of 2026-11).
 
 Little's law sets how many instances you need.
 Average in-flight requests are `L = lambda x W`, where `lambda` is arrival rate and `W` is wall-clock latency, including time spent waiting on downstream calls.
 If the autoscaler targets a fraction `u` of max concurrency, the concurrency-driven instance count is `N_conc = lambda x W / (C x u)`.
 CPU drives scaling separately: `N_cpu = lambda x t_cpu / (vCPU x u_cpu)`, where `t_cpu` is CPU-seconds per request.
-Cloud Run documents a target of roughly 60 percent CPU utilization and 60 percent of max concurrency, averaged over a one-minute window (Google Cloud docs, UNVERIFIED as of 2026-10).
-Whichever of `N_conc` and `N_cpu` is larger sets the instance count, capped by `--max-instances`.
+Cloud Run documents default targets of 60 percent CPU utilization, averaged over 1 minute, and 60 percent of max concurrency, using the higher of the 1-minute and 10-minute concurrency averages (Google Cloud docs, as of 2026-11).
+Whichever of `N_conc` and `N_cpu` is larger sets the instance count, capped by `--max-instances` (Google Cloud docs, as of 2026-11).
 
 The deeper mechanism is that `W` is not a property of your code.
 It includes downstream latency, so a slow database raises `W`, which raises `L`, which raises `N_conc`, so the autoscaler starts instances and each new instance opens new connections to the database that is already slow.
 This is a positive feedback loop between router admission and autoscaling, and it is the most common Cloud Run cascading failure (see Failure Modes).
 The counter-intuitive fix is to lower `containerConcurrency` and set `--max-instances` deliberately so that total load on the dependency is bounded, and then to add client-side deadlines and load shedding (see [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_02_Load_Shedding_Backpressure_and_Admission_Control|Load Shedding, Backpressure, and Admission Control]]).
 
-When every instance is at its cap and the autoscaler has not yet produced capacity, requests wait in the router for a bounded time.
-After that they fail with HTTP 429 or 500-class errors, and the exact pending window is not a documented SLA (UNVERIFIED).
-On scale-in, idle instances can be kept for up to about 15 minutes to absorb the next burst, and that retention is best-effort, not guaranteed (Google Cloud docs, UNVERIFIED as of 2026-10).
+When every instance is at its cap and the autoscaler has not yet produced capacity, requests pend for a bounded time: up to the longer of 10 seconds or 3.5 times the service's average startup time (Google Cloud docs, as of 2026-11).
+On-demand scaling uses the same window, because a pending request waits that long, measured against predicted cold start time, before Cloud Run starts a new instance for it (Google Cloud docs, as of 2026-11).
+After that a request fails with HTTP 429 if the service is at its maximum instance limit, or with HTTP 500 if scaling lagged a spike, a long cold start, or long request processing below that limit (Google Cloud docs, as of 2026-11).
+On scale-in, idle instances can be kept for up to 15 minutes (10 minutes for GPU instances) to absorb the next burst, and that retention is best-effort, not guaranteed (Google Cloud docs, as of 2026-11).
 
 ### CPU allocation, billing modes, and the background-work trap
 
-Cloud Run has two billing modes, request-based and instance-based, which were earlier called "CPU allocated only during requests" and "CPU always allocated" (Google Cloud docs, UNVERIFIED as of 2026-10).
-Under request-based billing, an instance gets CPU only while at least one request is in flight, and outside that window CPU is throttled to near zero.
+Cloud Run has two billing modes, request-based and instance-based, which were earlier called "CPU allocated only during requests" and "CPU always allocated" and were renamed in the console on 2024-12-13 (Google Cloud release notes, as of 2026-11).
+Under request-based billing, an instance gets CPU during startup, during graceful shutdown, and while at least one request is in flight, and outside those windows CPU is not allocated (Google Cloud docs, as of 2026-11).
 The throttle is most likely a cgroup CPU quota (inference), and it affects everything in the instance: background goroutines, thread pools, timers, gRPC keepalives, and sidecars.
-Billable time under request-based billing is the union of intervals with at least one active request, rounded up to 100 ms, not the sum of request durations (Google Cloud docs, UNVERIFIED as of 2026-10).
+Billable time under request-based billing is the union of intervals with at least one active request, plus startup and graceful shutdown, rounded up to the nearest 100 ms, not the sum of request durations (Google Cloud pricing, as of 2026-11).
 Because billing counts the union of active intervals, 80 overlapping requests cost the same instance-seconds as one, which is the economic argument for concurrency.
-Instance-based billing charges for the whole instance lifetime at a lower unit rate with no per-request fee, and it keeps CPU available between requests (Google Cloud pricing, UNVERIFIED as of 2026-10).
+Instance-based billing charges for the whole instance lifetime, with a 1-minute minimum, at a lower unit rate with no per-request fee, and it keeps CPU available between requests (Google Cloud pricing, as of 2026-11).
 
 The background-work trap catches anyone who moves a service from GKE to Cloud Run.
 Code that flushes batched telemetry, renews leases, refreshes OAuth tokens, or drains a Pub/Sub streaming pull on a background thread works fine under load and then stalls silently once traffic stops.
@@ -149,9 +177,11 @@ Phase 4 is runtime init, such as JVM class loading, Python imports, or CUDA cont
 Phase 5 is application init (connection pools, config fetches, model weight loading) and ends when the startup probe passes or the port starts listening.
 
 Phases 4 and 5 are CPU-bound for most real services, which is why startup CPU boost (`--cpu-boost`) helps.
-It temporarily raises the instance's CPU allocation during startup, so a 1-vCPU JVM service gets more cores while it JITs (Google Cloud docs, UNVERIFIED as of 2026-10).
-Min instances (`--min-instances`) keeps warm capacity per revision and bills it at an idle rate, so it removes cold starts for a steady baseline and does nothing for bursts above that baseline.
-Revision-scoped min instances are the source of a common surprise: a 100 percent traffic cutover to a new revision sends all traffic to instances that have to start cold, while the old revision's warm instances sit idle.
+It temporarily raises the instance's CPU allocation during startup and for 10 seconds after it, so a 1-vCPU JVM service gets 2 vCPU while it JITs, a 2-vCPU limit gets 4, and limits of 4 or more get 8 (Google Cloud docs, as of 2026-11).
+Min instances (`--min-instances`) keeps warm capacity and, under request-based billing, bills it at an idle rate of $0.0000025 per vCPU-s and GiB-s in Tier 1, so it removes cold starts for a steady baseline and does nothing for bursts above that baseline (Google Cloud pricing, as of 2026-11).
+Revision-level min instances are the source of a common surprise, because warm instances of the old revision do not serve the new one.
+Google recommends service-level min instances, which are divided across revisions by traffic split and take effect without a new deployment (Google Cloud docs, as of 2026-11).
+When you deploy a new revision to serve 100 percent of traffic, Cloud Run starts enough new-revision instances before directing traffic to it, which reduces the latency impact, but the docs give no count or guarantee and those instances still pay their own cold start (Google Cloud docs, as of 2026-11).
 Gradual traffic migration (`gcloud run services update-traffic --to-revisions=NEW=10`) amortizes those cold starts over the rollout and also gives you a canary (see [[17-Cloud-AI-Engineering/Volume_06_Infrastructure_as_Code_and_Delivery/Chapter_06_Progressive_Delivery_and_Deployment_Pipelines|Progressive Delivery and Deployment Pipelines]]).
 For comparison, AWS Lambda's on-demand container loading splits images into deduplicated, convergently encrypted chunks and loads them lazily through a tiered cache ([Brooker et al., USENIX ATC 2023](https://www.usenix.org/conference/atc23/presentation/brooker)), so image size there turns into a hit-rate problem rather than a transfer-time problem.
 GPU instances add CUDA initialization and weight loading to phase 5, which dominates all the other phases (see [[17-Cloud-AI-Engineering/Volume_11_LLM_Serving_and_Inference_Systems_on_Cloud/Chapter_08_Cloud_GPU_Autoscaling_and_Cold_Start_Mitigation|Cloud GPU Autoscaling and Cold-Start Mitigation]]).
@@ -159,51 +189,54 @@ GPU instances add CUDA initialization and weight loading to phase 5, which domin
 ### Sidecar container lifecycles
 
 A multi-container instance has exactly one ingress container, which receives traffic on `PORT`, and some number of sidecars, all of which share the instance's network namespace and can talk over `localhost`.
-The per-instance container limit is 10 (Google Cloud docs, UNVERIFIED as of 2026-10).
-Containers can share `emptyDir` volumes, and in-memory volumes count against the memory limit of the container that writes to them.
-Startup order is declared with the `run.googleapis.com/container-dependencies` annotation in Knative YAML or `dependsOn` in the v2 API, and a container starts only after its dependencies report started, which means passing their startup probes.
-A dependency without a startup probe counts as started as soon as its process launches, so ordering without probes guarantees only exec order, not readiness.
+The per-instance container limit is 10, including the ingress container (Google Cloud docs, as of 2026-11).
+Containers can share `emptyDir` volumes, and in-memory volumes count against the memory limit of the container that writes to them (Google Cloud docs, as of 2026-11).
+Startup order is declared with the `run.googleapis.com/container-dependencies` annotation in Knative YAML or `dependsOn` in the v2 API, and a container starts only after its dependencies report started, which means passing their startup probes (Google Cloud docs, as of 2026-11).
+Without health checks, containers start in the specified order even if a container they depend on fails to start, so ordering without probes guarantees only exec order, not readiness (Google Cloud docs, as of 2026-11).
 
 Shutdown is where sidecars usually go wrong.
-On scale-in or revision replacement the instance receives `SIGTERM`, and processes still alive after a short grace period, documented as 10 seconds, get `SIGKILL` (Google Cloud docs, UNVERIFIED as of 2026-10).
-Google recommends installing a SIGTERM handler for second generation services (Google Cloud docs, as of 2026-10).
+On scale-in or revision replacement the instance receives `SIGTERM`, and processes still alive after a short grace period, documented as 10 seconds, get `SIGKILL`, and the instance is allocated CPU and billed during that window (Google Cloud docs, as of 2026-11).
+Cloud Run normally lets in-flight requests finish before shutting an instance down, and only in rare cases sends `SIGTERM` to a container still processing requests (Google Cloud docs, as of 2026-11).
+Google recommends installing a SIGTERM handler for second generation services (Google Cloud docs, as of 2026-11).
 Every container in the instance shares that one grace window, so an OpenTelemetry collector sidecar that needs 8 seconds to flush, behind an app that takes 5 seconds to drain, will lose data.
 Under request-based billing a sidecar is also CPU-throttled between requests, so an exporter running on a 60-second batch timer may never flush at all.
 Proxies, collectors, and auth agents run as sidecars should therefore use instance-based billing, small batch timeouts, and a flush on SIGTERM that finishes in well under the grace window.
 
 ### Failure domains
 
-A Cloud Run service is regional, and Google spreads instances across the zones in that region; GPU services can opt out of zonal redundancy to cut cost, accepting zonal risk (Google Cloud docs, UNVERIFIED as of 2026-10).
+A Cloud Run service is regional, and Google spreads instances across the zones in that region; GPU services can opt out of zonal redundancy to cut cost, which removes reserved failover capacity and makes failover best-effort (Google Cloud docs, as of 2026-11).
 Losing an instance takes out up to `containerConcurrency` in-flight requests, so concurrency is a blast-radius setting as well as a throughput setting.
 Losing a region takes out the service, so multi-region deployments put serverless network endpoint groups behind a global external Application Load Balancer (see [[17-Cloud-AI-Engineering/Volume_03_GCP_Deep_Dive/Chapter_05_Cloud_Load_Balancing_GFEs_and_Maglev|Cloud Load Balancing: GFEs and Maglev]]).
+Cloud Run service health, GA since 2026-06-29, adds automated failover and failback for such multi-region services (Google Cloud release notes, as of 2026-11).
 
 ## Numbers to Know
 
 | Quantity | Value | Source |
 |---|---|---|
-| First generation sandbox | gVisor, syscall emulation, faster cold start | (Google Cloud docs, as of 2026-10) |
-| Second generation sandbox | microVM, full Linux, network FS, longer cold start | (Google Cloud docs, as of 2026-10) |
-| Jobs execution environment | Always second generation | (Google Cloud docs, as of 2026-10) |
-| Second generation GA date | 2022-12-06 | (Google Cloud release notes, as of 2026-10) |
-| Default / max concurrency per instance | 80 / 1000 | (Google Cloud docs, UNVERIFIED as of 2026-10) |
-| Service request timeout | Default 300 s, max 3600 s | (Google Cloud docs, UNVERIFIED as of 2026-10) |
-| Max CPU / memory per instance | 8 vCPU / 32 GiB | (Google Cloud docs, UNVERIFIED as of 2026-10) |
-| Containers per instance | Up to 10, one ingress | (Google Cloud docs, UNVERIFIED as of 2026-10) |
-| SIGTERM to SIGKILL grace | 10 s | (Google Cloud docs, UNVERIFIED as of 2026-10) |
-| Idle instance retention | Up to about 15 min, best-effort | (Google Cloud docs, UNVERIFIED as of 2026-10) |
-| Autoscaler targets | About 60 percent CPU and 60 percent of max concurrency over 1 min | (Google Cloud docs, UNVERIFIED as of 2026-10) |
-| Default max instances per revision | 100 | (Google Cloud docs, UNVERIFIED as of 2026-10) |
-| HTTP/1 request body limit | 32 MiB, lifted with end-to-end HTTP/2 | (Google Cloud docs, UNVERIFIED as of 2026-10) |
-| Billing granularity, request-based | 100 ms over union of active intervals | (Google Cloud pricing, UNVERIFIED as of 2026-10) |
-| Request-based price, Tier 1 | $0.000024 per vCPU-s, $0.0000025 per GiB-s, $0.40 per million requests | (Google Cloud pricing, UNVERIFIED as of 2026-10) |
-| Instance-based price, Tier 1 | $0.000018 per vCPU-s, $0.0000020 per GiB-s, no request fee | (Google Cloud pricing, UNVERIFIED as of 2026-10) |
-| Monthly free tier, request-based | 180,000 vCPU-s, 360,000 GiB-s, 2 million requests | (Google Cloud pricing, UNVERIFIED as of 2026-10) |
-| GPU option | NVIDIA L4 24 GB, 1 per instance, min 4 vCPU and 16 GiB | (Google Cloud docs, UNVERIFIED as of 2026-10) |
-| gVisor ptrace-era overhead | About 2.2x simple syscalls, much higher for small-file metadata | (HotCloud 2019 paper, historical) |
-| Firecracker boot / overhead | Under 125 ms to user space, under 5 MiB per microVM | (NSDI 2020 paper) |
-| Lambda concurrency per environment | 1 request per execution environment (default mode) | (AWS docs, UNVERIFIED as of 2026-10) |
-| Lambda limits | 15 min timeout, 10,240 MB memory | (AWS docs, UNVERIFIED as of 2026-10) |
-| Lambda price, x86 us-east-1 | $0.0000166667 per GB-s, $0.20 per million requests | (AWS pricing, UNVERIFIED as of 2026-10) |
+| First generation sandbox | gVisor, syscall emulation, faster cold start | (Google Cloud docs, as of 2026-11) |
+| Second generation sandbox | microVM, full Linux, network FS, longer cold start | (Google Cloud docs, as of 2026-11) |
+| Jobs execution environment | Always second generation | (Google Cloud docs, as of 2026-11) |
+| Second generation GA date | 2022-12-06 | (Google Cloud release notes, as of 2026-11) |
+| Default / max concurrency per instance | Default 80 x vCPUs with gcloud or Terraform, 80 in the console / max 1000 | (Google Cloud docs, as of 2026-11) |
+| Service request timeout | Default 300 s, max 3600 s | (Google Cloud docs, as of 2026-11) |
+| Max CPU / memory per instance | 8 vCPU / 32 GiB, except RTX PRO 6000 GPU instances, which require at least 20 CPU and 80 GiB | (Google Cloud docs, as of 2026-11) |
+| Containers per instance | Up to 10, one ingress | (Google Cloud docs, as of 2026-11) |
+| SIGTERM to SIGKILL grace | 10 s | (Google Cloud docs, as of 2026-11) |
+| Idle instance retention | Up to 15 min (10 min for GPU), best-effort | (Google Cloud docs, as of 2026-11) |
+| Autoscaler targets | 60 percent CPU over 1 min, 60 percent of max concurrency over the higher of 1 min and 10 min averages | (Google Cloud docs, as of 2026-11) |
+| Request pending window | Longer of 10 s or 3.5 x average startup time | (Google Cloud docs, as of 2026-11) |
+| Default max instances per revision | 100 | (Google Cloud docs, as of 2026-11) |
+| HTTP/1 request body limit | 32 MiB, no limit with HTTP/2 | (Google Cloud docs, as of 2026-11) |
+| Billing granularity, request-based | 100 ms over union of active intervals, plus startup and shutdown | (Google Cloud pricing, as of 2026-11) |
+| Request-based price, Tier 1 | $0.000024 per vCPU-s, $0.0000025 per GiB-s, $0.40 per million requests | (Google Cloud pricing, as of 2026-11) |
+| Instance-based price, Tier 1 | $0.000018 per vCPU-s, $0.0000020 per GiB-s, no request fee, 1 min minimum | (Google Cloud pricing, as of 2026-11) |
+| Monthly free tier, request-based | 180,000 vCPU-s, 360,000 GiB-s, 2 million requests | (Google Cloud pricing, as of 2026-11) |
+| GPU option | 1 per instance, instance-based billing: NVIDIA L4 24 GB (min 4 CPU, 16 GiB) or RTX PRO 6000 Blackwell 96 GB (min 20 CPU, 80 GiB) | (Google Cloud docs, as of 2026-11) |
+| gVisor pre-systrap overhead | At least 2.2x simple syscalls vs runc, 216x open/close on external tmpfs | (HotCloud 2019 paper, historical) |
+| Firecracker boot / overhead | At most 125 ms to guest user space, at most 5 MiB VMM overhead per microVM | (Firecracker specification, as of 2026-11; NSDI 2020 paper) |
+| Lambda concurrency per environment | 1 request per execution environment (default mode) | (AWS docs, as of 2026-11) |
+| Lambda limits | 15 min timeout, 10,240 MB memory | (AWS docs, as of 2026-11) |
+| Lambda price, x86 us-east-1 | $0.0000166667 per GB-s, $0.20 per million requests | (AWS pricing, as of 2026-11) |
 
 ## AWS vs GCP Mechanism Parity
 
@@ -212,23 +245,23 @@ Losing a region takes out the service, so multi-region deployments put serverles
 | Isolation | gVisor (gen1) or microVM (gen2), plus namespaces | Firecracker microVM per execution environment | VM-isolated task boundary | Gen1 swaps syscall compatibility for start speed; Lambda and gen2 run a guest kernel |
 | Unit of scale | Instance serving up to `containerConcurrency` requests | Execution environment serving one request at a time (default mode) | Task, scaled by Application Auto Scaling | Cloud Run spreads the Little's-law concurrency over instances; Lambda gives each request its own environment |
 | Admission control | Router-enforced per-instance in-flight cap | Per-function reserved and account concurrency quotas | ALB or NLB with target health | Cloud Run admission is per instance; Lambda admission is per function and per account |
-| Autoscaling signal | CPU and concurrency targets over about 1 min | Instant per-request provisioning up to a burst scaling rate | Target tracking on CloudWatch metrics, minutes | Lambda scales per request with no utilization target; Cloud Run lags behind steps in demand |
+| Autoscaling signal | CPU target over 1 min, concurrency target over 1 and 10 min, plus on-demand scaling after a pending window | Per-request provisioning up to a scaling rate of 1,000 environments per 10 s per function | Target tracking on CloudWatch metrics, minutes | Lambda scales per request with no utilization target; Cloud Run lags behind steps in demand |
 | Billing | Instance time (union of active intervals) or full instance lifetime | Per-request duration times configured memory | Per task vCPU and GB lifetime | I/O-heavy streaming is far cheaper when billed per instance |
-| Cold start mitigation | Min instances, startup CPU boost, gen1 | Provisioned concurrency, SnapStart | Keep tasks warm | SnapStart restores a memory snapshot; Cloud Run has no documented snapshot restore (UNVERIFIED) |
+| Cold start mitigation | Min instances, startup CPU boost, gen1 | Provisioned concurrency, SnapStart | Keep tasks warm | SnapStart restores a memory snapshot; Cloud Run release notes list no snapshot or checkpoint restore (as of 2026-11) |
 | Image loading | Digest resolved and copied at deploy | Chunked, deduplicated, lazily loaded image | Image pull, optional SOCI lazy loading | Lambda's lazy loading mechanism is published ([[17-Cloud-AI-Engineering/Volume_02_AWS_Deep_Dive/Chapter_05_Serverless_Compute_and_Lambda_Internals\|Lambda Internals]]) |
 | Sidecars | Up to 10 containers, dependency ordering, shared netns | Extensions API inside the environment | Multi-container task definitions with `dependsOn` | Cloud Run and ECS support real sidecar containers; Lambda extensions are processes inside the function sandbox |
 | Shutdown signal | SIGTERM, then SIGKILL after about 10 s | SHUTDOWN event to extensions, short limit | SIGTERM, then SIGKILL after `stopTimeout` | Fargate lets you configure the grace period; Cloud Run's is fixed |
 | Max request duration | 60 min for services | 15 min | Unbounded | Long streams fit Cloud Run or Fargate, not default Lambda |
 | API surface | Knative Serving v1 compatible plus Admin API v2 | Proprietary Lambda API | ECS API | Knative compatibility makes a GKE move mostly a manifest change ([[17-Cloud-AI-Engineering/Volume_03_GCP_Deep_Dive/Chapter_07_GKE_Deep_Dive_Standard_vs_Autopilot\|GKE Deep Dive]]) |
 | Private egress | Direct VPC egress or Serverless VPC Access connector | ENI-attached VPC config via Hyperplane | awsvpc ENI per task | Connector throughput is a separately scaled hop; Direct VPC egress removes it |
-| Accelerators | NVIDIA L4 GPU option (UNVERIFIED as of 2026-10) | None | None on Fargate | Only Cloud Run offers scale-to-zero GPU containers among these three |
+| Accelerators | NVIDIA L4 or RTX PRO 6000 GPU option (as of 2026-11) | None | None on Fargate | Only Cloud Run offers scale-to-zero GPU containers among these three |
 
 ## Worked Example: Sidecar-Ordered Service, Capacity Math, and Teardown
 
 ### Lab cost estimate
 
 The lab deploys one Cloud Run service with two containers totaling 2 vCPU and 768 MiB, request-based billing, and `minScale: 0`.
-A few hundred curl requests at under 100 ms each use far less than 1,000 vCPU-seconds, which is inside the monthly free tier, so expected cost is under $0.05 (pricing UNVERIFIED as of 2026-10).
+A few hundred curl requests at under 100 ms each use far less than 1,000 vCPU-seconds, which is inside the monthly free tier, so expected cost is under $0.05 (Google Cloud pricing, as of 2026-11).
 The expensive mistake is leaving min instances at 1 with instance-based billing: 2 vCPU x $0.000018 x 2,592,000 s plus 0.75 GiB x $0.000002 x 2,592,000 s comes to about $97 per month.
 The budget alarm below sends an alert at 50 and 90 percent of $10 so that a mistake like that is caught.
 
@@ -326,11 +359,11 @@ In Cloud Logging, the gap between the `helper` and `app` container start entries
 
 ```python
 # capacity.py - Little's law sizing for Cloud Run vs per-request billing.
-# Prices are Tier 1 list prices, UNVERIFIED as of 2026-10; replace from the pricing page.
+# Prices are Tier 1 list prices (Google Cloud pricing, as of 2026-11); refresh from the pricing page.
 SEC_PER_MONTH = 30 * 24 * 3600
 CPU_INST, MEM_INST = 0.000018, 0.0000020      # instance-based, per vCPU-s and GiB-s
 CPU_REQ, MEM_REQ, REQ_FEE = 0.000024, 0.0000025, 0.40
-LAMBDA_GB_S, LAMBDA_REQ = 0.0000166667, 0.20  # x86, UNVERIFIED as of 2026-10
+LAMBDA_GB_S, LAMBDA_REQ = 0.0000166667, 0.20  # x86 (AWS pricing, as of 2026-11)
 
 def size(rps, wall_s, cpu_s, vcpu, concurrency, u=0.6):
     inflight = rps * wall_s
@@ -369,7 +402,7 @@ In-flight requests are `200 x 20 = 4,000`.
 At `C = 250` the concurrency-driven count is `4000 / 150 = 26.7`, about 27 instances, and the CPU-driven count is only 8.3 (from 200 x 0.050 / (2 x 0.6)), so concurrency decides.
 Twenty-seven 2-vCPU, 2-GiB instances on instance-based billing cost about $2,800 per month.
 The same workload on default-mode Lambda needs 4,000 concurrent execution environments, each billed for the full 20 s it spends waiting on tokens, which at 512 MB is about $86,500 per month.
-It would also need a concurrency quota increase above the usual 1,000 default (AWS docs, UNVERIFIED as of 2026-10).
+It would also need a concurrency quota increase above the 1,000 default (AWS docs, as of 2026-11).
 That 30x gap comes from billing per request versus per instance on a workload that is almost all waiting, and it is the central argument in [[17-Cloud-AI-Engineering/Volume_11_LLM_Serving_and_Inference_Systems_on_Cloud/Chapter_11_End_to_End_Latency_Throughput_and_Cost_Modeling|End-to-End Latency, Throughput, and Cost Modeling]].
 The limit on `C = 250` is memory: 250 streams per instance at about 2 MB of buffers each is 500 MB, so 2 GiB leaves room, while `C = 1000` would risk an OOM that fails 1,000 streams at once.
 
@@ -387,7 +420,7 @@ Then add per-request deadlines and fast failure on pool exhaustion so that `W` s
 
 If one request triggers unbounded allocation, the OOM kill takes the whole instance down with every request on it.
 The writable container filesystem is in memory, so writing temp files or logs to local disk uses the same memory budget and causes the same kind of OOM.
-The fix is to set `containerConcurrency` from measured peak memory per request rather than leaving the default of 80, and to stream large payloads instead of buffering them.
+The fix is to set `containerConcurrency` from measured peak memory per request rather than leaving the default (80 x vCPUs with gcloud or Terraform, 80 in the console), and to stream large payloads instead of buffering them.
 
 ### Silent background starvation
 
@@ -397,9 +430,10 @@ The fix is to use instance-based billing for any service with background work, o
 
 ### Revision cutover cold-start stampede
 
-A 100 percent traffic shift lands on a revision whose min instances have just started, or on zero instances, while the old revision's warm fleet does nothing.
-For JVM or Python services with heavy imports, the first minute after the shift shows high TTFB and router queueing.
-Use gradual traffic migration with tagged revisions, and size min instances on the new revision before the shift.
+A 100 percent traffic shift lands on a revision whose instances have just started, while the old revision's warm fleet does nothing.
+Cloud Run documents that a deployment to 100 percent of traffic starts enough new-revision instances before directing traffic to them, which reduces this effect, but the docs give no count or guarantee (Google Cloud docs, as of 2026-11).
+For JVM or Python services with heavy imports, a shift the pre-started capacity does not cover can show high TTFB and router queueing.
+Use gradual traffic migration with tagged revisions, and size min instances, preferably at the service level, before the shift.
 
 ### Sidecar shutdown data loss
 
@@ -417,7 +451,7 @@ On 2025-06-12, Google Cloud had a multi-product outage when a new quota-policy c
 The change had not been feature-flagged, and recovery in us-central1 took longer because restarting tasks overloaded a shared Spanner dependency ([Google Cloud incident report](https://status.cloud.google.com/incidents/ow5i3PPK96RduMcb1SsW)).
 For Cloud Run designers, the lesson is that management APIs and anything authenticated through Google APIs share a common admission dependency, so warm capacity and static configuration are what survive.
 On 2025-10-20 the AWS us-east-1 DynamoDB DNS automation race left an empty DNS record for the regional endpoint, and Lambda, which depends on DynamoDB internally, was degraded for hours ([AWS post-event summary](https://aws.amazon.com/message/101925/)).
-Both incidents point to the same rule: serverless platforms inherit the availability of their internal metadata stores, so multi-region failover has to be built above the platform (see [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_07_Anatomy_of_Major_Cloud_Outages|Anatomy of Major Cloud Outages]]).
+Both incidents point to the same rule: serverless platforms inherit the availability of their internal metadata stores, so multi-region failover has to be designed and deployed explicitly rather than assumed from one regional service (see [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_07_Anatomy_of_Major_Cloud_Outages|Anatomy of Major Cloud Outages]]).
 
 ### Quota and max-instance ceilings
 
@@ -443,7 +477,7 @@ Cloud Run is a VPC Service Controls supported service, so a perimeter can stop a
 
 Mount secrets from Secret Manager pinned to versions rather than `latest`, so that a rotation is an explicit deploy.
 Artifact Registry with CMEK and a Binary Authorization policy ensures that only attested digests become revisions (see [[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter/Chapter_05_Software_Supply_Chain_Security_SLSA_and_Sigstore|SLSA and Sigstore]]).
-For untrusted, AI-generated code, the July 2026 release notes announce Cloud Run sandboxes as an isolated environment for running untrusted code; check the launch stage before relying on it (Google Cloud release notes, as of 2026-10; GA status UNVERIFIED).
+For untrusted, AI-generated code, the 2026-07-08 release notes announce Cloud Run sandboxes as an isolated environment for running untrusted code, and they remain in Preview, including the 2026-08-05 extension to jobs and worker pools, so do not treat them as GA (Google Cloud release notes, as of 2026-11).
 
 ### Unit-economics levers
 
@@ -451,7 +485,7 @@ Concurrency is the biggest cost lever, because instance-seconds are shared acros
 Billing mode is next: use instance-based billing for steady or streaming load and request-based billing for spiky load with long idle periods.
 Min instances buys lower p99 at an idle price, so price it as an SLO purchase, not as a default.
 Right-size CPU against the CPU-driven instance count, because on I/O-bound services excess vCPU buys nothing once concurrency is the binding constraint.
-Committed use discounts can apply to Cloud Run spend; check current eligibility before modeling it (UNVERIFIED as of 2026-10; see [[17-Cloud-AI-Engineering/Volume_09_FinOps_and_Cloud_Economics/Chapter_02_Commitment_Discounts_Savings_Plans_vs_CUDs|Commitment Discounts]]).
+Compute flexible committed use discounts apply to Cloud Run: list rates imply 28 percent for 1 year and 46 percent for 3 years on instance-based billing, 17 percent on request-based billing, and none on GPUs (derived from Google Cloud pricing, as of 2026-11; see [[17-Cloud-AI-Engineering/Volume_09_FinOps_and_Cloud_Economics/Chapter_02_Commitment_Discounts_Savings_Plans_vs_CUDs|Commitment Discounts]]).
 
 ## Interview Questions and Model Answers
 
@@ -483,8 +517,8 @@ Placement and sandbox boot belong to the platform, and the only control there is
 JVM class loading and JIT warm-up are CPU-bound runtime init, which startup CPU boost targets by granting extra CPU only during startup.
 Application init, such as building the Spring context, connection pools, and config fetches, is under your control: lazy beans, fewer auto-configurations, and deferring non-critical clients.
 A startup probe sets when the router considers the instance ready, so a probe that passes too early sends traffic to an instance that then serves slowly.
-Min instances hides cold starts for a baseline but is scoped to a revision, so it does nothing for the first minute after a 100 percent cutover.
-Gradual traffic migration fixes the cutover case, and only snapshot-style restore would remove JVM init entirely; that is Lambda SnapStart's approach, and I would not assume Cloud Run has an equivalent.
+Min instances hides cold starts for a baseline, but revision-level min instances do not carry warm capacity to a new revision, and on a 100 percent deployment Cloud Run pre-starts new-revision instances that still pay their own cold start.
+Service-level min instances and gradual traffic migration address the cutover case, and only snapshot-style restore would remove JVM init entirely; that is Lambda SnapStart's approach, and I would not assume Cloud Run has an equivalent.
 
 #### Follow-up Interviewer Question
 
@@ -556,7 +590,7 @@ Default-mode Lambda gives each stream its own execution environment billed for i
 Cloud Run at `C = 250` on 2-vCPU, 2-GiB instances needs about 27 instances, roughly $2,800 per month on instance-based billing, with a 60-minute stream ceiling.
 GKE could run even cheaper on committed nodes, but it adds node operations, upgrades, and autoscaler tuning, and that platform team's time costs more than the difference at this scale.
 I would choose Cloud Run in two or more regions behind a global external Application Load Balancer with serverless NEGs, using instance-based billing and min instances sized to the baseline.
-The risks I would name are blast radius (250 streams per OOM), a fixed SIGTERM window that cuts streams on scale-in, and router queueing during load steps.
+The risks I would name are blast radius (250 streams per OOM), a fixed SIGTERM window that can cut streams in the rare case Cloud Run signals an instance still processing requests, and router queueing during load steps.
 Mitigations are memory-derived concurrency, client resume tokens so a cut stream reconnects to any instance, and min instances to absorb the autoscaler's one-minute lag.
 I would revisit the decision if AWS's multi-concurrency Lambda modes change the economics or if p99 queueing on steps breaks the SLO, and I would set those as explicit decision triggers.
 
@@ -571,8 +605,8 @@ Leadership wants to run AI-agent-generated code on behalf of customers using Clo
 #### Model Answer
 
 I would treat generated code as hostile and layer the boundaries so that defeating any single one does not breach the tenant boundary.
-Layer one is the sandbox: second generation puts a hypervisor boundary around a guest kernel, and first generation puts gVisor's Sentry plus a seccomp-restricted host surface in front of the kernel; both are stronger than shared-kernel containers.
-I would evaluate the newer Cloud Run sandboxes offering only after confirming its launch stage and isolation documentation.
+Layer one is the sandbox: second generation puts a virtual machine boundary around a guest kernel, and first generation puts gVisor's Sentry plus a seccomp-restricted host surface in front of the kernel, with Google documenting a VMM-enforced boundary around each instance in both; both are stronger than shared-kernel containers.
+I would evaluate the newer Cloud Run sandboxes offering, which is in Preview as of 2026-11, only after it reaches GA and I have reviewed its isolation documentation.
 Layer two is tenancy: one service or project per tenant tier, concurrency 1 for executions of untrusted code so that no two tenants share an instance's memory, and no shared writable volumes.
 Layer three is identity: a runtime service account with zero IAM roles, so any metadata-server token the code steals grants nothing.
 Layer four is network: Direct VPC egress with all traffic routed through deny-by-default firewall rules and an egress proxy allowlist, plus a VPC Service Controls perimeter around the data projects.
@@ -591,7 +625,7 @@ An attacker finds a gVisor Sentry bug; walk through exactly what they can and ca
 - [Cloud Run release notes](https://docs.cloud.google.com/run/docs/release-notes) - the dated launch-stage record for every feature cited here.
 - [gVisor architecture guide](https://gvisor.dev/docs/) - Sentry, Gofer, platform, and netstack design from the project itself.
 - [gVisor systrap platform announcement](https://gvisor.dev/blog/2023/04/28/systrap-release/) - explains seccomp-trap interception and why it beats ptrace without nested virtualization.
-- [Young et al., The True Cost of Containing: A gVisor Case Study, HotCloud 2019](https://www.usenix.org/conference/hotcloud19/presentation/young) - the only peer-reviewed measurement of gVisor's per-syscall costs.
+- [Young et al., The True Cost of Containing: A gVisor Case Study, HotCloud 2019](https://www.usenix.org/conference/hotcloud19/presentation/young) - an early peer-reviewed measurement of gVisor's per-syscall costs; see also Anjali et al., VEE 2020, for a later study of gVisor and Firecracker.
 - [Agache et al., Firecracker, NSDI 2020](https://www.usenix.org/conference/nsdi20/presentation/agache) - the AWS counterpart sandbox and its density and boot-time design goals.
 - [Brooker et al., On-demand Container Loading in AWS Lambda, USENIX ATC 2023](https://www.usenix.org/conference/atc23/presentation/brooker) - the most detailed public account of a cold-start image-loading pipeline.
 - [Shahrad et al., Serverless in the Wild, USENIX ATC 2020](https://www.usenix.org/conference/atc20/presentation/shahrad) - production invocation traces that justify keep-alive and pre-warming policies.

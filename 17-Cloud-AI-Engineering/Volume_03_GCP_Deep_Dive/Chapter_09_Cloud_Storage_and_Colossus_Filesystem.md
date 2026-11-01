@@ -20,6 +20,31 @@ sources:
   - "https://arxiv.org/abs/1301.3791"
   - "https://www.amazon.science/publications/using-lightweight-formal-methods-to-validate-a-key-value-storage-node-in-amazon-s3"
   - "https://aws.amazon.com/message/41926/"
+  - "https://docs.cloud.google.com/storage/quotas"
+  - "https://cloud.google.com/storage/pricing"
+  - "https://cloud.google.com/storage/pricing-announce"
+  - "https://cloud.google.com/storage/sla"
+  - "https://cloud.google.com/storage"
+  - "https://docs.cloud.google.com/storage/docs/soft-delete"
+  - "https://docs.cloud.google.com/storage/docs/release-notes"
+  - "https://docs.cloud.google.com/storage/docs/rapid/rapid-bucket"
+  - "https://docs.cloud.google.com/storage/docs/hns-overview"
+  - "https://docs.cloud.google.com/storage/docs/composite-objects"
+  - "https://docs.cloud.google.com/storage/docs/turbo-replication"
+  - "https://docs.cloud.google.com/storage/docs/folder-types"
+  - "https://docs.cloud.google.com/storage/docs/encryption/customer-managed-keys"
+  - "https://docs.cloud.google.com/storage/docs/access-control/iam-roles"
+  - "https://docs.cloud.google.com/sdk/gcloud/reference/storage/buckets/create"
+  - "https://cloud.google.com/blog/products/storage-data-transfer/enabling-end-to-end-checksums-in-cloud-storage"
+  - "https://www.usenix.net/system/files/atc22-yang-tzu-wei.pdf"
+  - "https://status.cloud.google.com/incidents/dS9ps52MUnxQfyDGPfkY"
+  - "https://status.cloud.google.com/incidents/ow5i3PPK96RduMcb1SsW"
+  - "https://docs.aws.amazon.com/AmazonS3/latest/userguide/optimizing-performance.html"
+  - "https://docs.aws.amazon.com/AmazonS3/latest/userguide/replication-walkthrough-5.html"
+  - "https://aws.amazon.com/s3/sla-rtc/"
+  - "https://docs.aws.amazon.com/AmazonS3/latest/userguide/conditional-writes.html"
+  - "https://docs.aws.amazon.com/AmazonS3/latest/userguide/directory-buckets-objects-rename.html"
+  - "https://aws.amazon.com/blogs/aws/amazon-s3-update-strong-read-after-write-consistency/"
 ---
 
 # Cloud Storage and Colossus Filesystem
@@ -27,7 +52,7 @@ sources:
 ## TL;DR
 
 Cloud Storage is two systems joined by a transaction: Spanner holds the bucket and object namespace, and per-cluster Colossus file systems hold the bytes, so every guarantee you rely on belongs to one of those two layers.
-Metadata and listing are strongly consistent everywhere, including dual-region buckets, but bytes move between regions asynchronously: by default 99.9% of new objects within 1 hour and 100% within 12 hours, or 100% within 15 minutes with turbo replication (Google Cloud docs, as of 2026-10).
+Metadata and listing are strongly consistent everywhere, including dual-region buckets, but bytes move between regions asynchronously: the default targets are 99.9% of new objects within 1 hour and 100% within 12 hours, and the turbo replication target is 100% within 15 minutes (Google Cloud docs, as of 2026-11).
 So if a region fails, an object can still appear in listings while reads of it return a retryable 500 until its bytes exist somewhere reachable. RPO is a data-plane property, and "RTO zero" only applies to bytes that have already been replicated.
 Request throughput scales by splitting a lexicographically ordered key index. A bucket starts at roughly 1,000 writes/s and 5,000 reads/s and grows over minutes, so names that sort sequentially, and any single object name written more than once per second, will hit throttling first.
 Underneath, Colossus gets durability from client-side encoding spread across D servers, uses Custodians to rebuild lost data, and puts only the hottest bytes on flash through L4 and CacheSack. Your cost levers are location type, storage class, replication fees driven by write churn, operation counts, and soft-delete retention.
@@ -71,12 +96,12 @@ Colossus has five parts, as described publicly by Google.
 
 The client library is, in Google's words, probably the most complex part of the file system. It implements software RAID and lets each application pick an encoding.
 Curators are a horizontally scalable metadata service that clients call for control operations such as file creation.
-The metadata database is Bigtable. Secondary write-ups based on Google talks describe roughly one Bigtable row per file.
+The metadata database is Bigtable. Secondary write-ups based on Google talks describe roughly one Bigtable row per file (UNVERIFIED: not in Google's published descriptions).
 D file servers are network-attached disks, and data moves directly between clients and D servers with no Curator in the byte path.
 Custodians are background managers that balance disk space and reconstruct lost data, the RAID-repair role.
 
 There is an obvious recursion: Bigtable stores its SSTables on Colossus, and Colossus stores its metadata in Bigtable.
-Secondary write-ups based on Google talks say the loop ends by stacking smaller Colossus instances until the remaining metadata is small enough for Chubby ([Burrows, OSDI 2006](https://research.google/pubs/the-chubby-lock-service-for-loosely-coupled-distributed-systems/)). Google has not documented this layering formally, so it is marked UNVERIFIED.
+Secondary write-ups based on Google talks say the loop ends by stacking smaller Colossus instances until the remaining metadata is small enough for Chubby ([Burrows, OSDI 2006](https://research.google/pubs/the-chubby-lock-service-for-loosely-coupled-distributed-systems/)). UNVERIFIED: Google's Colossus posts do not describe this layering or mention Chubby.
 Operationally this means a Colossus cluster depends on a Bigtable that depends on a smaller Colossus, and any bootstrap or cold-start procedure has to bring the layers up from the bottom.
 
 A single Colossus cluster scales to exabytes and tens of thousands of machines ([Google Cloud blog, 2021-04](https://cloud.google.com/blog/products/storage-data-transfer/a-peek-behind-colossus-googles-file-system)).
@@ -86,9 +111,11 @@ Google's largest file systems regularly exceed 50 TB/s of reads and 25 TB/s of w
 
 The control plane is Curators plus Bigtable: create, open, file-to-stripe mapping, permissions, and placement decisions.
 The data plane is the client library plus D servers: encoded stripes travel from the client NIC through the Jupiter fabric to D server disks (see [[17-Cloud-AI-Engineering/Volume_00_Foundations_Under_the_Cloud/Chapter_02_Datacenter_Networking_Fabrics|Datacenter Networking Fabrics]]).
-D servers do very little. Google SRE material describes D as closer to a block server than a file server, providing little beyond checksums. That keeps the per-disk process simple and pushes all the smarts into the client.
+D servers do very little.
+Google calls them "our network attached disks", and they store inline checksums for each range of data within a Colossus block ([Google Cloud blog, 2026-10](https://cloud.google.com/blog/products/storage-data-transfer/enabling-end-to-end-checksums-in-cloud-storage)).
+That keeps the per-disk process simple and pushes the encoding logic into the client.
 Pushing encoding into the client means one hop per byte, and it means encoding policy changes ship as library releases, not storage-server upgrades.
-The cost is that a client bug can write bad stripes cluster-wide, which is why end-to-end checksums carried from client to D server are mandatory and not optional.
+The cost is that a client bug can write bad stripes cluster-wide, which is why Cloud Storage layers its checks: chunk, shard, and block-level checksums, with the Colossus client verifying reads against D's inline checksums ([Google Cloud blog, 2026-10](https://cloud.google.com/blog/products/storage-data-transfer/enabling-end-to-end-checksums-in-cloud-storage)).
 
 ### Erasure coding: the math that sets cost and repair load
 
@@ -99,9 +126,11 @@ Degraded reads behave the same way: if a fragment you need is on a slow or dead 
 Ford et al. modelled Google's distributed storage and found that correlated failures, meaning many nodes lost together to rack, power, or rolling-upgrade events, dominate unavailability. Spreading fragments across failure domains therefore matters more than the choice of (k, m) ([Ford et al., OSDI 2010](https://www.usenix.org/conference/osdi10/availability-globally-distributed-storage-systems)).
 A first-order durability model for independent failures says data is lost when more than m fragments of one stripe fail inside a single repair window. Loss probability per stripe therefore scales roughly as C(k+m, m+1) * p^(m+1), where p is the probability a given fragment fails within the repair window.
 That is why repair throughput, meaning Custodian bandwidth and the cluster's spare network capacity, is a durability parameter and not only a performance one: halving mean time to repair cuts p and improves durability superlinearly.
-Local Reconstruction Codes, used by Azure and Facebook, attack the repair amplification problem by adding local parities so a single-fragment repair reads a small local group instead of k fragments ([Huang et al., USENIX ATC 2012](https://www.usenix.org/conference/atc12/technical-sessions/presentation/huang); [Sathiamoorthy et al., VLDB 2013](https://arxiv.org/abs/1301.3791)).
-Google has publicly said only that applications on Colossus "use a variety of encodings". The exact codes behind Cloud Storage objects are not documented, so any specific (k, m) for GCS is UNVERIFIED.
-How GCS packs objects into Colossus files is not documented either. Packing small objects into large append-only files, the approach S3 ShardStore documents, is the standard way to make erasure coding efficient for small objects, but it is UNVERIFIED for GCS ([Bornholt et al., SOSP 2021](https://www.amazon.science/publications/using-lightweight-formal-methods-to-validate-a-key-value-storage-node-in-amazon-s3)).
+Local Reconstruction Codes, used by Azure, and the locally repairable codes implemented for HDFS in XORing Elephants, attack the repair amplification problem by adding local parities so a single-fragment repair reads a small local group instead of k fragments ([Huang et al., USENIX ATC 2012](https://www.usenix.org/conference/atc12/technical-sessions/presentation/huang); [Sathiamoorthy et al., VLDB 2013](https://arxiv.org/abs/1301.3791)).
+Google states that Colossus uses Reed-Solomon encodings to protect Cloud Storage shard files against disk, machine, and rack failures, but it publishes no (k, m) ([Google Cloud blog, 2026-10](https://cloud.google.com/blog/products/storage-data-transfer/enabling-end-to-end-checksums-in-cloud-storage)).
+Cloud Storage splits uploads into checksummed chunks and groups thousands of chunks into gigabyte-sized shard files, which are the unit it hands to Colossus (same source).
+Packing small objects into large append-only files, the approach S3 ShardStore documents, is the standard way to make erasure coding efficient for small objects ([Bornholt et al., SOSP 2021](https://www.amazon.science/publications/using-lightweight-formal-methods-to-validate-a-key-value-storage-node-in-amazon-s3)).
+UNVERIFIED: Google's post does not say whether chunks of different small objects share one shard file.
 
 ### The mechanism the getting-started guides skip: flash admission in Colossus
 
@@ -114,81 +143,91 @@ CacheSack replaced the fixed rule with an admission policy optimized per workloa
 Below flash, D servers keep a RAM buffer cache that holds recent reads and writes for a few seconds and does small prefetches, so a flash miss is not always a disk read.
 The 2025 L4 work generalizes this into a distributed SSD cache and placement service. It sorts files into categories, simulates placement policies such as "on SSD for one hour", "on SSD for two hours", or "not on SSD", and picks the best one. Users who want guarantees can also use hybrid placement, which pins only one replica on SSD ([Google Cloud blog, 2025-03](https://cloud.google.com/blog/products/storage-data-transfer/how-colossus-optimizes-data-placement-for-performance)).
 For a GCS user, this means first-byte latency on a cold object is bounded by HDD seek plus queueing, repeated access gets faster, and a training job reading a fresh dataset in random order sees the worst case.
-It also explains why Google offers explicit SSD tiers in front of GCS, such as Rapid storage in zonal buckets and Anywhere Cache: you cannot directly control which bytes Colossus admits to flash for you. Anywhere Cache launch stage is UNVERIFIED as of 2026-10.
+It also explains why Google offers explicit SSD tiers for GCS, such as Rapid Bucket (zonal buckets using the Rapid storage class) and Rapid Cache (formerly Anywhere Cache): you cannot directly control which bytes Colossus admits to flash for you.
+Anywhere Cache went GA on 2025-03-13 and was renamed Rapid Cache on 2026-03-24, and Rapid Bucket went GA on 2026-03-10 ([Cloud Storage release notes, as of 2026-11](https://docs.cloud.google.com/storage/docs/release-notes)).
 
 ### Layer two: the object namespace on Spanner
 
-Cloud Storage first kept bucket and object metadata on Megastore and later moved it to Spanner, which is what made bucket and object listing strongly consistent across all locations ([Google Cloud blog](https://cloud.google.com/blog/products/gcp/how-google-cloud-storage-offers-strongly-consistent-object-listing-thanks-to-spanner); see [[17-Cloud-AI-Engineering/Volume_03_GCP_Deep_Dive/Chapter_10_Cloud_Spanner_TrueTime_and_External_Consistency|Cloud Spanner: TrueTime and External Consistency]]).
-Each bucket has an index of object keys stored in lexicographic order and updated on every write or delete ([Google Cloud docs, as of 2026-10](https://docs.cloud.google.com/storage/docs/request-rate)).
-Spanner range-partitions that index into splits. When one key range becomes hot, Cloud Storage detects the contention and spreads that range across more servers, which typically takes on the order of minutes.
-Sequential names, such as timestamps, zero-padded step numbers, or monotonically increasing IDs, send all inserts to the tail of one range. Splitting does not help, because the new tail split becomes hot immediately.
+Cloud Storage first kept bucket and object metadata on Megastore and later moved it to Spanner, which is what made bucket and object listing strongly consistent across all locations ([Google Cloud blog, 2018-02](https://cloud.google.com/blog/products/gcp/how-google-cloud-storage-offers-strongly-consistent-object-listing-thanks-to-spanner); see [[17-Cloud-AI-Engineering/Volume_03_GCP_Deep_Dive/Chapter_10_Cloud_Spanner_TrueTime_and_External_Consistency|Cloud Spanner: TrueTime and External Consistency]]).
+Each bucket has an index of object keys stored in lexicographic order and updated on every write or delete ([Google Cloud docs, as of 2026-11](https://docs.cloud.google.com/storage/docs/request-rate)).
+Spanner range-partitions that index into splits, which is an inference: the docs describe index ranges without naming Spanner splits.
+When one key range becomes hot, Cloud Storage detects the contention and spreads that range across more servers, which typically takes on the order of minutes.
+Sequential names, such as timestamps, zero-padded step numbers, or monotonically increasing IDs, send all inserts to the tail of one range.
+Google says sequential names can slow auto-scaling of an index range, because load keeps shifting to new ranges and redistribution becomes less effective.
 The documented ramp-up applies both to buckets that have not had high request rates for several days and to new ranges of object keys. A new prefix used by a large job is therefore a cold range, even inside a busy bucket.
 
 Each object version has a generation number, and each metadata change bumps a metageneration.
 Precondition parameters (ifGenerationMatch, ifMetagenerationMatch) turn writes into compare-and-swap operations against the Spanner row. ifGenerationMatch=0 means "create only if absent".
 Because the precondition is checked inside the globally serialized metadata transaction, it holds across regions, even for writers on different continents writing to one dual-region bucket.
-The documented limit of one write per second to a single object name, and one metadata update per second to a single object, is the visible cost of serializing updates to one key ([Google Cloud quotas, as of 2026-10](https://docs.cloud.google.com/storage/quotas)). Attributing that limit to per-row commit serialization is an engineering inference, not something Google documents.
+The documented limit of one write per second to a single object name, and one metadata update per second to a single object, is the visible cost of serializing updates to one key ([Google Cloud quotas, as of 2026-11](https://docs.cloud.google.com/storage/quotas)). Attributing that limit to per-row commit serialization is an engineering inference, not something Google documents.
 
 The write path that matches the documented behaviour is: stream the bytes to Colossus, then commit a metadata row that points at them and makes the object visible atomically.
-That ordering is why you never get a 404 or stale data after a successful write, even in dual-region and multi-region buckets ([Google Cloud docs, as of 2026-10](https://docs.cloud.google.com/storage/docs/consistency)). The exact internal ordering is inferred, not documented.
+That ordering is why you never get a 404 or stale data after a successful write, even in dual-region and multi-region buckets ([Google Cloud docs, as of 2026-11](https://docs.cloud.google.com/storage/docs/consistency)). The exact internal ordering is inferred, not documented.
 A failed or abandoned upload leaves orphaned bytes that only background garbage collection can see, and that never surfaces as a partially visible object.
+Zonal buckets are the documented exception: their objects are appendable, and partially uploaded objects are visible immediately ([Google Cloud docs, as of 2026-11](https://docs.cloud.google.com/storage/docs/rapid/rapid-bucket)).
 
 ### Bucket namespaces: flat, managed folders, and hierarchical namespace
 
-In a flat-namespace bucket, folders are simulated: they are just object-name prefixes split on "/", and object names can be 1 to 1024 bytes of UTF-8 ([Google Cloud docs, as of 2026-10](https://docs.cloud.google.com/storage/docs/objects)).
+In a flat-namespace bucket, folders are simulated: they are just object-name prefixes split on "/", and object names can be 1 to 1024 bytes of UTF-8 ([Google Cloud docs, as of 2026-11](https://docs.cloud.google.com/storage/docs/objects)).
 A flat-namespace "rename" of a directory is a copy plus a delete for every object. It is O(n), not atomic, and reports partial failure as a half-moved tree.
-Hierarchical namespace (HNS) makes folders real resources that can be created, listed, deleted, and renamed atomically. It must be enabled when the bucket is created and cannot be changed afterwards ([Google Cloud docs, as of 2026-10](https://docs.cloud.google.com/storage/docs/hns-overview)).
-In an HNS bucket an object name has two parts, a folder segment of up to 512 bytes and a base name of up to 512 bytes ([Google Cloud quotas, as of 2026-10](https://docs.cloud.google.com/storage/quotas)).
-Google introduced HNS on 2025-03-17 for AI and analytics workloads and claimed up to 20x faster checkpointing and 8x higher QPS ([InfoQ, 2025-05](https://www.infoq.com/news/2025/05/google-cloud-ai-workflow/)). Those are vendor numbers, not independent benchmarks.
+Hierarchical namespace (HNS) makes folders real resources that can be created, listed, deleted, and renamed atomically. It must be enabled when the bucket is created and cannot be changed afterwards ([Google Cloud docs, as of 2026-11](https://docs.cloud.google.com/storage/docs/hns-overview)).
+In an HNS bucket an object name has two parts, a folder segment of up to 512 bytes and a base name of up to 512 bytes ([Google Cloud quotas, as of 2026-11](https://docs.cloud.google.com/storage/quotas)).
+Google introduced HNS on 2025-03-17 for AI and analytics workloads and claimed up to 20x faster checkpointing and 8x higher initial QPS ([InfoQ, 2025-05](https://www.infoq.com/news/2025/05/google-cloud-ai-workflow/); [Google Cloud docs, as of 2026-11](https://docs.cloud.google.com/storage/docs/hns-overview)). Those are vendor numbers, not independent benchmarks.
 The mechanism behind atomic rename is a metadata-only change to a folder node, instead of rewriting every child key. Google has not published the exact Spanner schema, so this description is an inference.
-Managed folders are a separate feature: they let you attach IAM policies to a prefix, and they work in both flat and HNS buckets ([Google Cloud docs, as of 2026-10](https://cloud.google.com/storage/docs/folder-types)).
+Managed folders are a separate feature: they let you attach IAM policies to a prefix, and they work in both flat and HNS buckets ([Google Cloud docs, as of 2026-11](https://docs.cloud.google.com/storage/docs/folder-types)).
 
 ### Location types and the dual-region replication pipeline
 
 In a regional bucket, data is redundant across zones within one region. In a dual-region bucket, newly written objects start out with exactly that regional, multi-zone protection, and asynchronous replication later copies them to the second region ([Google Cloud blog](https://cloud.google.com/blog/products/storage-data-transfer/using-dual-region-buckets-in-google-cloud-storage)).
-Predefined dual-regions include asia1, eur4, eur5, eur7, eur8, and nam4. Configurable dual-regions let you choose a region pair inside a continent ([Google Cloud pricing, as of 2026-10](https://cloud.google.com/storage/pricing)).
-Default replication targets 99.9% of newly written objects within one hour and 100% within 12 hours. Google notes that most objects replicate within minutes ([Google Cloud docs, as of 2026-10](https://docs.cloud.google.com/storage/docs/availability-durability)).
-Turbo replication, which is available only for dual-region buckets, targets 100% of newly written objects in both regions within 15 minutes regardless of object size, and is backed by the SLA through replication time and replication volume conformance measured per bucket ([Google Cloud SLA, as of 2026-10](https://cloud.google.com/storage/sla)).
+Predefined dual-regions include asia1, eur4, eur5, eur7, eur8, and nam4. Configurable dual-regions let you choose a region pair inside a continent ([Google Cloud pricing, as of 2026-11](https://cloud.google.com/storage/pricing)).
+Default replication targets 99.9% of newly written objects within one hour and 100% within 12 hours. Google notes that most objects replicate within minutes ([Google Cloud docs, as of 2026-11](https://docs.cloud.google.com/storage/docs/availability-durability)).
+Turbo replication, which is available only for dual-region buckets, targets 100% of newly written objects in both regions within 15 minutes regardless of object size.
+The SLA behind that target is narrower: monthly replication volume conformance of at least 99.9% and monthly replication time conformance of at least 99.0%, measured per bucket, with financial credits as the sole remedy ([Google Cloud SLA, as of 2026-11](https://cloud.google.com/storage/sla)).
 Inserts, rewrites, copies, and composes all count as "newly written objects", which makes compose-heavy pipelines replication-heavy as well.
+A composite falls back to default replication if any source was written with default replication in the last 12 hours ([Google Cloud docs, as of 2026-11](https://docs.cloud.google.com/storage/docs/turbo-replication)).
 
 Here is the deep consequence.
 Because the namespace is global and strongly consistent, the second region knows an object exists before it has the bytes.
-If the region where an object was first written becomes unavailable before replication finishes, reads of that object return a retryable 500 ([Google Cloud docs, as of 2026-10](https://docs.cloud.google.com/storage/docs/consistency)).
-Google markets dual-region as an RTO of zero with no failover or failback ([Google Cloud product page, as of 2026-10](https://cloud.google.com/storage)). That holds for the namespace and for replicated bytes. Unreplicated bytes become an availability gap, not silent data loss, and once the region recovers replication catches up.
-Model replication as a queue. If writes arrive at W bytes/s and replication lag is L seconds, then about W * L bytes are exposed at any moment. Turbo puts a contractual ceiling on L, and default replication gives you only a distribution.
+If the region where an object was first written becomes unavailable before replication finishes, reads of that object return a retryable 500 ([Google Cloud docs, as of 2026-11](https://docs.cloud.google.com/storage/docs/consistency)).
+Google markets dual-region as an RTO of zero with no failover or failback ([Google Cloud product page, as of 2026-11](https://cloud.google.com/storage)). That holds for the namespace and for replicated bytes. Unreplicated bytes become an availability gap, not silent data loss, and once the region recovers replication catches up.
+Model replication as a queue. If writes arrive at W bytes/s and replication lag is L seconds, then about W * L bytes are exposed at any moment. Turbo puts an SLA-backed target on L, not a hard ceiling, since a breach earns credits, and default replication gives you only a distribution.
 Google does not publish how its replication scheduler prioritizes work. Any assumption that default replication is "usually fast enough" is therefore an empirical bet, not a guarantee, and should be measured continuously.
 
 ## Numbers to Know
 
 | Quantity | Value | Source |
 | --- | --- | --- |
-| Initial bucket write capacity | ~1,000 object writes/s (uploads, updates, deletes) | (Google Cloud docs, as of 2026-10) |
-| Initial bucket read capacity | ~5,000 object reads/s (reads, metadata reads, listing) | (Google Cloud docs, as of 2026-10) |
-| Ramp-up guidance | Start at 1,000 W / 5,000 R and double every 20 minutes | (Google Cloud docs, as of 2026-10) |
-| Hot-range redistribution time | On the order of minutes | (Google Cloud docs, as of 2026-10) |
-| Writes to the same object name | 1 per second | (Google Cloud quotas, as of 2026-10) |
-| Metadata updates to one object | 1 per second | (Google Cloud quotas, as of 2026-10) |
-| Compose sources per request | 32 | (Google Cloud quotas, as of 2026-10) |
-| Object name length | 1-1024 bytes flat; 512 + 512 bytes in HNS | (Google Cloud docs, as of 2026-10) |
-| Default replication | 99.9% of new objects in 1 h, 100% in 12 h | (Google Cloud docs, as of 2026-10) |
-| Turbo replication | 100% of new objects in 15 min, SLA-backed, dual-region only | (Google Cloud docs and SLA, as of 2026-10) |
-| Annual durability design target | 99.999999999% | (Google Cloud docs, as of 2026-10) |
-| SLA, Standard in multi-region or dual-region | >= 99.95% monthly uptime | (Google Cloud SLA, as of 2026-10) |
-| SLA, Standard regional and Rapid zonal | 99.9% | (Google Cloud docs, as of 2026-10) |
-| Minimum storage duration | Nearline 30 d, Coldline 90 d, Archive 365 d | (Google Cloud docs, as of 2026-10) |
-| Standard storage price, us-central1 regional | $0.020 per GB-month | (Google Cloud pricing via nOps and CloudZero, as of 2026-10) |
-| Standard storage price, dual-region | $0.022 per GB-month (single dual-region SKU) | (Google Cloud pricing, as of 2026-10) |
-| Standard storage price, US multi-region | $0.026 per GB-month | (nOps, as of 2026-10) |
-| Inter-region replication, default, NA and EU | $0.02 per GiB written | (CloudZero summary of Google pricing, as of 2026-10) |
-| Class B operations, Standard | $0.004 per 10,000 | (nOps summary of Google pricing, as of 2026-10) |
+| Initial bucket write capacity | ~1,000 object writes/s (uploads, updates, deletes) | (Google Cloud docs, as of 2026-11) |
+| Initial bucket read capacity | ~5,000 object reads/s (reads, metadata reads, listing) | (Google Cloud docs, as of 2026-11) |
+| Ramp-up guidance | Start at 1,000 W / 5,000 R and double every 20 minutes | (Google Cloud docs, as of 2026-11) |
+| Hot-range redistribution time | On the order of minutes | (Google Cloud docs, as of 2026-11) |
+| Writes to the same object name | 1 per second | (Google Cloud quotas, as of 2026-11) |
+| Metadata updates to one object | 1 per second | (Google Cloud quotas, as of 2026-11) |
+| Compose sources per request | 32 | (Google Cloud quotas, as of 2026-11) |
+| Object name length | 1-1024 bytes flat; 512 + 512 bytes in HNS | (Google Cloud docs, as of 2026-11) |
+| Default replication | 99.9% of new objects in 1 h, 100% in 12 h | (Google Cloud docs, as of 2026-11) |
+| Turbo replication | Target 100% of new objects in 15 min, dual-region only; SLA is >= 99.9% volume and >= 99.0% time conformance | (Google Cloud docs and SLA, as of 2026-11) |
+| Annual durability design target | 99.999999999% | (Google Cloud docs, as of 2026-11) |
+| SLA, Standard in multi-region or dual-region | >= 99.95% monthly uptime | (Google Cloud SLA, as of 2026-11) |
+| SLA, Standard regional and Rapid zonal | >= 99.9% (>= 99.5% in Stockholm) | (Google Cloud SLA, as of 2026-11) |
+| Minimum storage duration | Nearline 30 d, Coldline 90 d, Archive 365 d | (Google Cloud pricing, as of 2026-11) |
+| Soft-delete retention | 7 d default; 0 disables; otherwise 7 to 90 d; unsupported in zonal buckets | (Google Cloud docs, as of 2026-11) |
+| Standard storage price, us-central1 regional | $0.020 per GB-month | (Google Cloud pricing, as of 2026-11) |
+| Standard storage price, dual-region | $0.044 per GB-month for nam4; configurable pairs bill $0.022 on each of two regional dual-region SKUs in the Iowa-Oregon example | (Google Cloud pricing, as of 2026-11) |
+| Standard storage price, US multi-region | $0.026 per GB-month | (Google Cloud pricing, as of 2026-11) |
+| Inter-region replication, default, NA and EU | $0.02 per GiB written | (Google Cloud pricing, as of 2026-11) |
+| Inter-region replication, turbo, NA and EU | $0.04 per GiB written | (Google Cloud pricing, as of 2026-11) |
+| Class A operations, Standard, flat namespace | $0.005 per 1,000 regional; $0.01 per 1,000 dual-region or multi-region | (Google Cloud pricing, as of 2026-11) |
+| Class B operations, Standard, flat namespace | $0.0004 per 1,000 ($0.004 per 10,000) | (Google Cloud pricing, as of 2026-11) |
 | Colossus largest file system throughput | >50 TB/s read, >25 TB/s write | (Google Cloud blog, 2025-03) |
 | Colossus busiest cluster | >600M IOPS | (Google Cloud blog, 2025-03) |
 | Colossus metadata scale vs GFS | >100x the largest GFS cluster | (Google Cloud blog, 2021-04) |
 | Colossus Flash Cache single-access traffic | >60% | (USENIX ATC 2022) |
 | GFS chunk size and replication | 64 MB, 3 replicas by default | (SOSP 2003) |
-| HNS vendor claims | Up to 8x QPS, 20x faster checkpointing | (Google via InfoQ, 2025-05) |
+| HNS vendor claims | Up to 8x initial QPS, 20x faster checkpointing | (Google via InfoQ, 2025-05) |
 
-Turbo replication per-GiB price and Class A operation price are omitted because they could not be re-verified in this pass. They appear as parameters in the cost model below.
+HNS buckets pay more per operation, for example $0.0065 instead of $0.005 per 1,000 regional Standard Class A operations (Google Cloud pricing, as of 2026-11).
+Asian dual-regions replicate at higher rates, $0.08 per GiB default and $0.11 per GiB turbo (Google Cloud pricing, as of 2026-11).
 
 ## AWS vs GCP Mechanism Parity
 
@@ -196,14 +235,14 @@ Turbo replication per-GiB price and Class A operation price are omitted because 
 | --- | --- | --- | --- |
 | Metadata substrate | Spanner holds the object index and ACLs, globally consistent | Regional index subsystem; the 2017 us-east-1 PIR names index and placement subsystems | GCS metadata spans regions for dual-region and multi-region; S3 metadata is per-region |
 | Byte substrate | Colossus per cluster, client-side encoding, Custodian repair | ShardStore storage nodes ([[17-Cloud-AI-Engineering/Volume_13_Seminal_Papers_and_Case_Studies/Chapter_05_Amazon_S3_ShardStore_Formal_Methods\|ShardStore]]) | Both publish only partial internals; encoding parameters are undocumented on both |
-| Consistency | Strong global read-after-write, metadata, delete, and list | Strong read-after-write and list since 2020-12 (UNVERIFIED in this pass) | GCS keeps strong listing across regions inside a single dual-region bucket |
-| Request scaling unit | Bucket-level, lexicographic key ranges split on load, ramp doubling every 20 min | Per partitioned prefix, ~3,500 writes/s and 5,500 reads/s (UNVERIFIED in this pass) | Both punish sequential keys; GCS guidance is phrased per bucket and per new key range |
-| Single-key write rate | 1 write/s per object name | No published per-key limit (UNVERIFIED) | GCS makes "status object" anti-patterns fail loudly |
-| Conditional writes | ifGenerationMatch / ifMetagenerationMatch, including create-if-absent | If-None-Match and If-Match conditional writes (UNVERIFIED launch details) | GCS generation numbers double as fencing tokens |
+| Consistency | Strong global read-after-write, metadata, delete, and list | Strong read-after-write and list since 2020-12 ([AWS blog, 2020-12](https://aws.amazon.com/blogs/aws/amazon-s3-update-strong-read-after-write-consistency/)) | GCS keeps strong listing across regions inside a single dual-region bucket |
+| Request scaling unit | Bucket-level, lexicographic key ranges split on load, ramp doubling every 20 min | Per partitioned prefix, at least 3,500 writes/s and 5,500 reads/s (AWS docs, as of 2026-11) | Both punish sequential keys; GCS guidance is phrased per bucket and per new key range |
+| Single-key write rate | 1 write/s per object name | S3 performance guides quote per-prefix rates and no per-key limit (AWS docs, as of 2026-11) | GCS makes "status object" anti-patterns fail loudly |
+| Conditional writes | ifGenerationMatch / ifMetagenerationMatch, including create-if-absent | If-None-Match and If-Match conditional writes on PutObject, CopyObject, and CompleteMultipartUpload ([AWS docs, as of 2026-11](https://docs.aws.amazon.com/AmazonS3/latest/userguide/conditional-writes.html)) | GCS generation numbers double as fencing tokens |
 | Geo-redundancy primitive | Dual-region or multi-region: one bucket, one namespace, async bytes | Cross-Region Replication to a second bucket, plus Multi-Region Access Points for routing | GCS replicates inside a bucket; S3 replicates between buckets with separate namespaces |
-| Replication SLO | Turbo: 100% in 15 min, SLA-backed | Replication Time Control: 15-minute target, SLA-backed (UNVERIFIED percentages) | GCS failover needs no DNS or endpoint change; S3 needs MRAP or application failover |
+| Replication SLO | Turbo: 100% target in 15 min; SLA >= 99.9% volume, >= 99.0% time conformance | Replication Time Control: 99.9% of objects in 15 min, SLA credits below that, and the SLA excludes periods above the default 1 Gbps replication quota ([AWS docs, as of 2026-11](https://docs.aws.amazon.com/AmazonS3/latest/userguide/replication-walkthrough-5.html); [AWS SLA](https://aws.amazon.com/s3/sla-rtc/)) | GCS failover needs no DNS or endpoint change; S3 needs MRAP or application failover |
 | Behaviour of unreplicated data on region loss | Object listed, read returns retryable 500 | Object missing from the replica bucket | GCS surfaces the gap as an error; S3 surfaces it as absence |
-| Directory semantics | HNS buckets with atomic folder rename, chosen at creation | S3 Express One Zone directory buckets (UNVERIFIED rename semantics) | GCS HNS is regional or multi-region capable; S3 directory buckets are zonal |
+| Directory semantics | HNS buckets with atomic folder rename, chosen at creation | S3 Express One Zone directory buckets, where RenameObject atomically renames one object, not a folder ([AWS docs, as of 2026-11](https://docs.aws.amazon.com/AmazonS3/latest/userguide/directory-buckets-objects-rename.html)) | GCS HNS is regional or multi-region capable; S3 directory buckets are zonal |
 | Zonal low-latency tier | Rapid storage in zonal buckets via Rapid Bucket, 99.9% SLA | S3 Express One Zone | Both trade zone-level durability scope for latency |
 | Perimeter | VPC Service Controls around storage.googleapis.com | VPC endpoint policies plus SCPs and RCPs | VPC SC is identity-plus-network at the API layer; AWS composes several policy types |
 
@@ -213,9 +252,9 @@ For the full translation, see [[17-Cloud-AI-Engineering/Volume_04_AWS_vs_GCP_Tra
 
 ### Lab cost estimate
 
-The lab writes fewer than 1 MB across about 600 objects, so storage costs fractions of a cent at $0.022 per GB-month.
-Operations are about 1,200 Class A and Class B calls, which costs well under $0.05 at list prices.
-Inter-region replication of under 1 MB is negligible at $0.02 per GiB, and turbo adds a per-GiB premium on the same tiny volume.
+The lab writes fewer than 1 MB across about 400 objects, so storage costs fractions of a cent at $0.044 per GB-month.
+Operations are at most about 1,200 Class A and Class B calls, which costs well under $0.05 at list prices of $0.01 per 1,000 Class A and $0.0004 per 1,000 Class B in a dual-region.
+Inter-region replication of under 1 MB is negligible at the $0.04 per GiB turbo rate used by this bucket.
 Expected total is under $0.10 if you tear down the same day. The budget below alerts at $5.
 
 ### Provision with gcloud
@@ -327,20 +366,22 @@ gcloud billing budgets list --billing-account="${BILLING_ACCOUNT}" --filter="dis
 
 Step 1, checkpoint size: 70e9 parameters x (2 bytes bf16 weights + 4 bytes fp32 master + 8 bytes Adam moments) = 980 GB, so call it 1 TB per checkpoint.
 Step 2, write churn: one checkpoint every 30 minutes is 48 TB/day, or about 1.44 PB/month written.
-Step 3, replication fee if checkpoints go to a dual-region bucket: 1,440,000 GiB x $0.02 = about $28,800/month at default replication, before any turbo premium. That is more than the cost of storing a 1 PB dataset in the same bucket.
-Step 4, storage: keeping the last 4 checkpoints (4 TB) regionally costs 4,000 GB x $0.020 = $80/month, while the same 4 TB in dual-region costs about $88/month in list storage plus the replication fee above.
-Step 5, soft-delete trap: if the bucket kept a 7-day soft-delete window (the commonly cited default, UNVERIFIED for 2026-10), deleted checkpoints stay billable. 48 TB/day x 7 days = 336 TB x $0.020 = about $6,720/month for bytes you already deleted.
+Step 3, replication fee if checkpoints go to a dual-region bucket: 1.44 PB is about 1,341,000 GiB, and 1,341,000 GiB x $0.02 = about $26,800/month at default replication, or about $53,600/month at the $0.04 turbo rate.
+That is about 60% of the roughly $44,000/month it costs to store a 1 PB dataset in the same nam4 bucket at default replication, and more than that storage bill at turbo.
+Step 4, storage: keeping the last 4 checkpoints (4 TB) regionally costs 4,000 GB x $0.020 = $80/month, while the same 4 TB in nam4 costs 4,000 GB x $0.044 = about $176/month in list storage plus the replication fee above.
+Step 5, soft-delete trap: if the bucket kept the default 7-day soft-delete window ([Google Cloud docs, as of 2026-11](https://docs.cloud.google.com/storage/docs/soft-delete)), deleted checkpoints stay billable. 48 TB/day x 7 days = 336 TB x $0.020 = about $6,720/month for bytes you already deleted.
 Step 6, request rate: 1 TB written as 64 MiB shards is about 15,000 objects. Spread over a 60-second write window that is about 250 writes/s, inside initial capacity.
 The same checkpoint written as 4,096 ranks x 50 tensor files is 204,800 objects. In a 60-second window that is about 3,400 writes/s, which exceeds the initial 1,000 writes/s on a new key range for every step.
 Step 7, ramp time for a read-heavy data loader: 2,048 GPUs streaming 100 KB samples at an aggregate 200 GB/s need about 2M reads/s. From 5,000 reads/s doubling every 20 minutes, that takes log2(400) = 8.6, so 9 doublings, or about 3 hours of ramp.
 Switching to 256 MB WebDataset shards drops the requirement to about 780 reads/s, which needs no ramp at all ([[17-Cloud-AI-Engineering/Volume_10_AI_Infrastructure_on_Cloud/Chapter_07_High_Throughput_Data_Loaders_and_Storage_IO|High-Throughput Data Loaders and Storage I/O]]).
-Decision: write checkpoints to a regional bucket (or a zonal Rapid bucket) in the training region with soft delete tuned down, use rank-hashed prefixes and a manifest commit, and copy only milestone checkpoints to a dual-region bucket ([[17-Cloud-AI-Engineering/Volume_10_AI_Infrastructure_on_Cloud/Chapter_06_High_Throughput_Checkpointing_to_Object_Storage|High-Throughput Checkpointing to Object Storage]]).
+Bandwidth is a separate limit: 200 GB/s is 1.6 Tbps, eight times the 200 Gbps default regional egress quota to Google services, so that stream needs a quota increase whichever object size you pick (Google Cloud quotas, as of 2026-11).
+Decision: write checkpoints to a regional bucket (or a zonal Rapid bucket, which has no soft delete) in the training region with soft delete disabled, because retention can only be 0 or 7 to 90 days, use rank-hashed prefixes and a manifest commit, and copy only milestone checkpoints to a dual-region bucket ([[17-Cloud-AI-Engineering/Volume_10_AI_Infrastructure_on_Cloud/Chapter_06_High_Throughput_Checkpointing_to_Object_Storage|High-Throughput Checkpointing to Object Storage]]).
 
 ## Failure Modes and Pitfalls
 
 ### Sequential-key index hotspots
 
-Names prefixed with timestamps or zero-padded step numbers send every insert to the tail of one lexicographic range. During redistribution, which takes minutes, latency and error rates rise ([Google Cloud docs, as of 2026-10](https://docs.cloud.google.com/storage/docs/request-rate)).
+Names prefixed with timestamps or zero-padded step numbers send every insert to the tail of one lexicographic range. During redistribution, which takes minutes, latency and error rates rise ([Google Cloud docs, as of 2026-11](https://docs.cloud.google.com/storage/docs/request-rate)).
 The failure feeds itself: clients that retry without jitter add load to the hot range just as it is splitting ([[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_03_Resilient_Communication_Retries_Jitter_and_Circuit_Breakers|Retries, Jitter, and Circuit Breakers]]).
 The fix is a short hash prefix ahead of the time component. The trade-off is that you lose time-ordered listing, so keep a manifest or an index in BigQuery or Spanner for ordered discovery.
 
@@ -351,14 +392,16 @@ Use generation-fenced pointers that change at most once per commit, and keep hig
 
 ### Treating dual-region as synchronous
 
-During a regional loss, any object written in the previous RPO window is listed but unreadable and returns retryable 500s until recovery ([Google Cloud docs, as of 2026-10](https://docs.cloud.google.com/storage/docs/consistency)).
+During a regional loss, any object written in the previous RPO window is listed but unreadable and returns retryable 500s until recovery ([Google Cloud docs, as of 2026-11](https://docs.cloud.google.com/storage/docs/consistency)).
 Consumers that treat 500 as permanent will drop work. Consumers that retry tightly will add load to a recovering system. And a downstream system that read the listing may commit references to bytes that cannot currently be read.
-The 2023 europe-west9 (Paris) incident, a water intrusion and fire that degraded a whole region well past single-zone failure assumptions, is the reference case for why region-level loss belongs in your plan. Incident details are UNVERIFIED in this pass ([[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_07_Anatomy_of_Major_Cloud_Outages|Anatomy of Major Cloud Outages]]).
+The 2023-04-25 europe-west9 (Paris) incident, a water leak that led to a UPS battery-room fire, degraded a whole region well past single-zone failure assumptions and is the reference case for why region-level loss belongs in your plan.
+The building shutdown removed two of three Regional Spanner replicas because of a misconfiguration, and regional GCS services returned only on 2023-04-26 at 15:14 PDT ([Google Cloud incident report](https://status.cloud.google.com/incidents/dS9ps52MUnxQfyDGPfkY); [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_07_Anatomy_of_Major_Cloud_Outages|Anatomy of Major Cloud Outages]]).
 
 ### Metadata-layer blast radius
 
 The byte layer is regional, but every request depends on the metadata path, on IAM, and on Google's API admission infrastructure. Those dependencies are shared fate that dual-region placement does not remove.
-The Google Cloud incident of 2025-06-12, in which a quota-policy change crashed a globally replicated API control component, caused errors across many APIs including storage. Details are UNVERIFIED in this pass, and the lesson holds regardless: regional data redundancy does not protect against a global control-plane fault.
+In the Google Cloud incident of 2025-06-12, a policy change with blank fields replicated globally within seconds and hit a null pointer in Service Control, crash-looping API admission in every region and causing errors across many APIs, including Cloud Storage ([Google Cloud incident report](https://status.cloud.google.com/incidents/ow5i3PPK96RduMcb1SsW)).
+The lesson is that regional data redundancy does not protect against a global control-plane fault.
 The AWS analogue is the 2017-02-28 S3 us-east-1 outage. A mistyped command removed more servers than intended from the index and placement subsystems, and those subsystems needed a full restart that took hours ([AWS PIR](https://aws.amazon.com/message/41926/)).
 For both providers, the metadata index is the component whose cold-start time sets your worst-case RTO.
 
@@ -369,7 +412,8 @@ Use HNS buckets for atomic folder rename, or a manifest-commit protocol in which
 
 ### Composite object and checksum gaps
 
-Composing up to 32 sources per request is how parallel composite uploads work. Composite objects carry a CRC32C but no whole-object MD5, so validation that relies on MD5 silently skips them (MD5 behaviour UNVERIFIED in this pass).
+Composing up to 32 sources per request is how parallel composite uploads work.
+Composite objects carry a CRC32C but no whole-object MD5, so validation that relies on MD5 silently skips them ([Google Cloud docs, as of 2026-11](https://docs.cloud.google.com/storage/docs/composite-objects)).
 Compose also counts as a new write for replication, so compose-heavy pipelines pay replication fees again for bytes that were already written.
 
 ### Cold-read tail latency
@@ -379,7 +423,7 @@ Benchmark with the access pattern you will run in production, not a warm sequent
 
 ### Early deletion and soft-delete surprises
 
-Nearline, Coldline, and Archive have minimum durations of 30, 90, and 365 days, so lifecycle rules that move short-lived checkpoints into colder classes are charged early-deletion fees on top of storage.
+Nearline, Coldline, and Archive have minimum durations of 30, 90, and 365 days, so short-lived checkpoints that lifecycle rules move into colder classes are charged early-deletion fees on top of storage when deleted before the minimum, although the lifecycle class change itself is exempt (Google Cloud pricing, as of 2026-11).
 Soft-delete retention bills deleted bytes for the whole retention window, which multiplies the cost of high-churn prefixes, as the sizing section showed.
 
 ## Security and Cost Angles
@@ -388,14 +432,14 @@ Soft-delete retention bills deleted bytes for the whole retention window, which 
 
 Use uniform bucket-level access so IAM is the only authorization path, and enforce public access prevention at bucket or organization level ([[17-Cloud-AI-Engineering/Volume_03_GCP_Deep_Dive/Chapter_02_Cloud_IAM_Roles_Policies_and_Conditions|Cloud IAM: Roles, Policies, and Conditions]]).
 Grant training jobs roles/storage.objectViewer on dataset buckets. Grant checkpoint writers a create-only or object-user role scoped by a managed folder or IAM Condition on the prefix, not storage.admin.
-Note that roles/storage.objectViewer includes storage.folders.list on HNS buckets ([Google Cloud docs, as of 2026-10](https://docs.cloud.google.com/storage-transfer/docs/hns)).
+Note that roles/storage.objectViewer includes storage.folders.list on HNS buckets ([Google Cloud docs, as of 2026-11](https://docs.cloud.google.com/storage/docs/access-control/iam-roles)).
 Prefer Workload Identity Federation over HMAC keys and service account keys. HMAC keys are long-lived bearer secrets that bypass short-lived token hygiene ([[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter/Chapter_02_Workload_Identity_Federation|Workload Identity Federation]]).
 
 ### Encryption hierarchy
 
 By default Google encrypts data chunks with data encryption keys that are wrapped by key encryption keys in Google's key management infrastructure. That is envelope encryption, applied with no customer action.
 With CMEK, the bucket's default key is a Cloud KMS key, and the Cloud Storage service agent needs roles/cloudkms.cryptoKeyEncrypterDecrypter on it. Disabling or destroying the key makes every object under it unreadable, which is both the crypto-shredding feature and a self-inflicted outage risk ([[17-Cloud-AI-Engineering/Volume_03_GCP_Deep_Dive/Chapter_15_Security_and_Confidential_Computing_Cloud_KMS|Security and Confidential Computing: Cloud KMS]]).
-CMEK key-location compatibility rules for dual-region and multi-region buckets must be checked against the current CMEK docs before rollout (UNVERIFIED in this pass).
+The key ring must match the bucket's location code: same location for regional and multi-region buckets, NAM4 for a NAM4 bucket, and the multi-region code such as US for a configurable dual-region ([Google Cloud docs, as of 2026-11](https://docs.cloud.google.com/storage/docs/encryption/customer-managed-keys)).
 
 ### Private network boundary
 
@@ -407,7 +451,7 @@ Use dry-run mode first. Perimeters break Storage Transfer Service, BigQuery exte
 
 Replication fees scale with bytes written, not bytes stored, so the location decision for a prefix should follow its write churn. Keep checkpoints and scratch data regional, and put curated datasets and milestone artifacts in dual-region.
 Operation charges dominate for small objects. Packing 100 KB samples into 256 MB shards cuts per-byte operation cost by orders of magnitude and avoids request-rate ramps.
-Tune the soft-delete duration per bucket to match the actual restore requirement, and use lifecycle rules to delete noncurrent versions.
+Set the soft-delete duration per bucket to match the actual restore requirement (0 to disable, otherwise 7 to 90 days), and use lifecycle rules to delete noncurrent versions.
 Weigh turbo replication's premium against expected loss: the cost of the data at risk during a region event, times the probability of that event, compared with the turbo fee on monthly written bytes ([[17-Cloud-AI-Engineering/Volume_09_FinOps_and_Cloud_Economics/Chapter_04_Network_Egress_Economics_and_Optimization|Network Egress Economics and Optimization]]).
 
 ## Interview Questions and Model Answers
@@ -422,7 +466,7 @@ The reader sees the new object, never a 404 or stale bytes, because the upload's
 The bytes may exist only in the ingest region at that point, with multi-zone redundancy there, because cross-region replication is asynchronous.
 So the read can be served by fetching bytes from the ingest region across Google's backbone. The consistency guarantee comes from metadata, not from where the bytes physically are.
 If the ingest region becomes unavailable before replication completes, the object still appears in listings but reads return a retryable 500.
-With default replication that exposure window is up to 1 hour for 99.9% of objects and 12 hours worst case. With turbo it is bounded at 15 minutes and backed by the SLA.
+With default replication that exposure window is up to 1 hour for 99.9% of objects and 12 hours worst case. With turbo the target is 15 minutes, and the SLA pays credits if conformance falls below 99.9% of objects or 99.0% of minutes.
 The application consequence is that consumers must treat 500 as retryable with backoff, and producers whose data must survive region loss need turbo, a dual write, or an application-level replication check.
 
 #### Follow-up Interviewer Question
@@ -437,7 +481,7 @@ An ingestion service writes 20,000 small objects per second named "events/2026-1
 
 There are two problems stacked on each other.
 First, a fresh bucket starts at about 1,000 writes/s, and Google's guidance is to double every 20 minutes. Getting to 20,000 writes/s takes log2(20) = 4.3, so 5 doublings, about 100 minutes.
-Second, the timestamp-first names sort sequentially, so all inserts land at the tail of one range of the lexicographic object index. Each split creates a new hot tail, and redistribution cannot catch up.
+Second, the timestamp-first names sort sequentially, so all inserts land at the tail of one range of the lexicographic object index. Each split creates a new hot tail, and Google warns that sequential names slow auto-scaling of the index range.
 The fix is to put a high-cardinality hash, for example 2 to 4 hex characters of a hash of the UUID, before the timestamp, and to ramp traffic gradually or pre-warm with synthetic load.
 The trade-off is losing time-ordered listing, so I would write a per-minute manifest or stream metadata to BigQuery for ordered discovery.
 I would also batch events into larger objects. 20,000 events/s packed into 1 MB objects is a few hundred writes per second, which removes the scaling problem and cuts Class A operation cost by about the same factor.
@@ -454,13 +498,13 @@ Design the checkpoint storage layer for a 4,096-GPU training run on GCP with rou
 #### Model Answer
 
 I would split the requirements, because restore-latency and disaster-recovery needs pull in opposite directions on location type.
-For the hot path, write every checkpoint to a regional bucket, or a zonal Rapid bucket if latency matters, in the training region. That avoids the inter-region replication fee, which at 1.44 PB/month written would be about $28,800/month at $0.02/GiB.
+For the hot path, write every checkpoint to a regional bucket, or a zonal Rapid bucket if latency matters, in the training region. That avoids the inter-region replication fee, which at 1.44 PB/month written would be about $26,800/month at $0.02/GiB.
 The object layout uses about 64 MiB shards with names prefixed by a hash of the rank, so each checkpoint is about 15,000 writes spread across many index ranges, instead of 200,000 tiny files landing on one new zero-padded step prefix.
 Commit is a manifest written with ifGenerationMatch: restore code trusts only shards listed in the latest committed manifest, so a crash mid-write never produces a torn checkpoint, and this works even on a flat bucket.
 On an HNS bucket I could instead write into a temporary folder and atomically rename it, which Google claims is materially faster, but the manifest protocol is portable to S3 and does not depend on that feature.
 For DR, a scheduled job copies the last good checkpoint every few hours into a dual-region bucket, or a bucket in another region, so replicated bytes are about 8 TB/day instead of 48 TB/day. That gives an RPO of a few hours against a one-day budget at a sixth of the fee.
 Restore bandwidth: 1 TB in 10 minutes is about 1.7 GB/s aggregate, which is trivial spread across 512 hosts. The real risk is restoring into a cold region, where the DR bucket's key ranges and the new hosts' read pattern need ramping, so restores should be drilled regularly.
-I would set soft delete to a short window on the hot bucket, because a 7-day window on 48 TB/day of churn keeps about 336 TB of deleted data billable.
+I would disable soft delete on the hot bucket, because the shortest non-zero retention is 7 days, and a 7-day window on 48 TB/day of churn keeps about 336 TB of deleted data billable.
 Failure modes I would instrument: manifest commit errors, per-shard 429s, age of the latest DR copy as an SLI, and a periodic restore test that proves the checkpoint is readable, not just present.
 
 #### Follow-up Interviewer Question
@@ -498,7 +542,7 @@ Repair: losing one fragment under RS(6,3) means reading six fragments to rebuild
 Durability depends on repair speed, because loss requires m+1 failures inside one repair window. If heavy repair traffic slows repair, durability gets worse, a feedback loop that pure fault-tolerance counting misses.
 Ford et al. showed that correlated failures dominate, so I would first make sure fragments span racks, power domains, and upgrade domains. Only after that would I tune (k, m).
 Tail latency: a healthy RS read touches k servers, so the slowest of six sets the latency. A degraded read adds decode work and more fan-out.
-The standard mitigation is hedged reads: request k+1 or k+2 fragments and decode from the first k to arrive, trading roughly 15 to 30 percent extra read bandwidth for a much shorter tail.
+The standard mitigation is hedged reads: request k+1 or k+2 fragments and decode from the first k to arrive, trading roughly 17 to 33 percent extra read bandwidth for a much shorter tail.
 For ML training data, which is read-heavy, mostly sequential within shards, and replaceable from upstream, I would choose RS or an LRC variant to reduce single-fragment repair fan-out, plus a flash cache with second-access admission, because more than half of cache traffic in Google's measurements is touched once.
 Replication still makes sense for small, hot, latency-critical objects where decode fan-out costs more than the extra bytes.
 
@@ -513,10 +557,12 @@ Your company runs on both clouds. Compare GCS dual-region with turbo replication
 #### Model Answer
 
 Start by quantifying exposure. At 2 GB/s, a 15-minute replication bound puts up to 2 x 900 = 1.8 TB at risk. With default GCS replication, the 99.9th-percentile one-hour bound puts 7.2 TB at risk, and the 12-hour ceiling up to about 86 TB.
-Both turbo and RTC give a contractual 15-minute target, so the RPO math is similar. The differences are in failure semantics and RTO mechanics.
+Both turbo and RTC give an SLA-backed 15-minute target, so the RPO math is similar.
+One caveat: 2 GB/s is 16 Gbps, and the RTC SLA does not apply above the default 1 Gbps replication quota, so that quota must be raised first (AWS docs, as of 2026-11).
+The differences are in failure semantics and RTO mechanics.
 GCS dual-region uses one bucket and one namespace. Clients need no endpoint change, the namespace stays consistent across regions, and unreplicated objects show up as retryable 500s instead of disappearing. RTO for replicated data is effectively zero.
 S3 CRR replicates between two buckets with separate namespaces. Failover requires Multi-Region Access Points or application-level endpoint switching, and unreplicated objects are simply missing from the replica. That is a clearer signal to code against, but it means a real failover and failback runbook.
-The GCS model hides a shared dependency: one logical metadata system serves both regions. The design protects bytes against regional loss, but it does not isolate you from a global metadata or control-plane fault, and the 2025-06-12 Google Cloud API incident (details UNVERIFIED) is exactly that kind of event.
+The GCS model hides a shared dependency: one logical metadata system serves both regions. The design protects bytes against regional loss, but it does not isolate you from a global metadata or control-plane fault, and the 2025-06-12 Google Cloud Service Control incident is exactly that kind of event.
 The S3 model has more independent failure domains, because the replica bucket's metadata lives in a different region, at the cost of more operational machinery.
 On cost, both charge per written GiB for replication, so 5 PB/month of writes is the dominant line item on either cloud, and I would first ask whether all 2 GB/s really needs geo-redundancy.
 Recommendation: for data whose consumers are on GCP, use dual-region with turbo for the business-critical subset and keep the rest regional with periodic copies. For the tier-0 subset, add an asynchronous copy to a separate GCS region or to S3, so at least one replica sits outside the shared metadata domain.

@@ -2,10 +2,31 @@
 type: concept
 track: [cloud-ai, ai-eng, sde, distinguished]
 level:
-status: draft
+status: solid
 last_reviewed:
 sources: 
   - "https://www.allthingsdistributed.com/2019/03/amazon-aurora-design-cloud-native-relational-database.html"
+  - "https://www.cs.purdue.edu/homes/csjgwang/CS592DisaggregatedDB/AuroraSIGMOD17.pdf"
+  - "https://aws.amazon.com/rds/aurora/pricing/"
+  - "https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/Aurora.Overview.StorageReliability.html"
+  - "https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/Aurora.Replication.html"
+  - "https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/AuroraPostgreSQL.Replication.html"
+  - "https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/AuroraMySQL.Reference.IsolationLevels.html"
+  - "https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/aurora-serverless-v2.how-it-works.html"
+  - "https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/aurora-serverless-v2-auto-pause.html"
+  - "https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/Overview.Encryption.html"
+  - "https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/aurora_replica_status.html"
+  - "https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/rds-secrets-manager.html"
+  - "https://docs.aws.amazon.com/rds/latest/auroraextendedcontent/aurora-faq-billing.html"
+  - "https://docs.aws.amazon.com/rds/latest/auroraextendedcontent/aurora-faq-availability-and-durability.html"
+  - "https://docs.aws.amazon.com/rds/latest/auroraextendedcontent/aurora-features-cost-effective.html"
+  - "https://docs.aws.amazon.com/rds/latest/auroraextendedcontent/aurora-features-scalability.html"
+  - "https://aws.amazon.com/about-aws/whats-new/2025/07/amazon-aurora-mysql-database-clusters-256-tib-storage/"
+  - "https://aws.amazon.com/about-aws/whats-new/2025/07/amazon-aurora-postgresql-database-clusters-256-tib-storage-volume/"
+  - "https://aws.amazon.com/about-aws/whats-new/2025/12/database-savings-plans-savings"
+  - "https://aws.amazon.com/blogs/database/manage-long-running-read-queries-on-amazon-aurora-postgresql-compatible-edition/"
+  - "https://cloud.google.com/blog/products/databases/alloydb-for-postgresql-intelligent-scalable-storage"
+  - "https://cloud.google.com/blog/products/databases/announcing-postgresql-for-agents-in-alloydb"
   - "https://blog.acolyer.org/2019/03/25/amazon-aurora-design-considerations-for-high-throughput-cloud-native-relational-databases/"
   - "https://dl.acm.org/doi/10.1145/3183713.3196937"
   - "https://pages.cs.wisc.edu/~yxy/cs839-s20/papers/aurora-sigmod-18.pdf"
@@ -75,7 +96,7 @@ A mirrored MySQL setup on network block storage writes several kinds of data for
 Each of those then gets copied again to a standby over synchronous block replication, so the foreground path pays for every copy in serial.
 Aurora's answer is to send only redo records over the network and to let storage build pages from them.
 The paper reports, for a 30-minute SysBench write-only run, about 35 times more transactions than mirrored MySQL and about 7.7 times fewer I/Os per transaction (Verbitski et al., SIGMOD 2017). These are paper-era figures and should not be read as current benchmarks.
-The current AWS docs claim up to 5x the throughput of stock MySQL and up to 3x the throughput of stock PostgreSQL on similar hardware (AWS docs, as of 2026-10). This is a vendor claim, not an independent benchmark.
+The current AWS docs claim up to 6x the throughput of stock PostgreSQL and up to 6x the throughput of stock MySQL on similar hardware (AWS docs, as of 2026-11), while some older AWS pages still show the earlier 5x MySQL and 3x PostgreSQL figures. This is a vendor claim, not an independent benchmark.
 
 ### Segments, protection groups, and quorum arithmetic
 
@@ -134,6 +155,7 @@ A dedicated thread acknowledges commits to clients once VDL moves past each comm
 This is group commit without the usual serialization on a log flush: thousands of transactions ride one VDL advance.
 
 Page eviction follows a rule you can derive from this: a page may be evicted from the writer's cache only if its page LSN is at or below VDL. That way a later read from storage can never return a version older than what the cache served.
+The 2017 paper's text prints this condition as "greater than or equal to the VDL", but its stated rationale, that all changes in the page have been hardened in the log, requires page LSN at or below VDL (Verbitski et al., SIGMOD 2017, section 4.2.3).
 
 ### Reads without quorum
 
@@ -175,11 +197,11 @@ A reader follows two rules:
 - If a record targets a page in the reader's buffer cache, apply it. If not, discard it, because the page will be fetched from storage at the right version on its next miss.
 - Apply only records at or below the writer's VDL, and apply each MTR atomically, so a reader never sees a half-split B-tree.
 
-Replica lag is therefore the time to ship and apply in memory, not the time to replay a full write workload. That is why the docs describe lag as often single-digit milliseconds (AWS docs, as of 2026-10).
+Replica lag is therefore the time to ship and apply in memory, not the time to replay a full write workload. That is why the docs describe lag as often single-digit milliseconds on the features page, typically tens of milliseconds in the FAQ, and usually much less than 100 ms in the User Guide (AWS docs, as of 2026-11).
 Because nothing has to be copied, promoting a reader is a recovery run (VDL computation plus truncation) with no rebuild.
 The cost of this design is that every reader holds a connection to every storage node it reads from, plus one redo stream from the writer.
-Up to 15 replicas per cluster are supported (AWS docs, as of 2026-10).
-On Aurora MySQL, readers historically used REPEATABLE READ for InnoDB tables, though modern Aurora MySQL (2.09+ and 3.x) supports READ COMMITTED via `aurora_read_replica_read_committed` (AWS docs, as of 2026-10).
+Up to 15 replicas per cluster are supported (AWS docs, as of 2026-11).
+On Aurora MySQL, readers use REPEATABLE READ by default and ignore `SET TRANSACTION ISOLATION LEVEL`, unless a session first sets `aurora_read_replica_read_committed = ON` to opt into a weaker READ COMMITTED that allows non-repeatable and phantom reads (AWS docs, as of 2026-11).
 
 ### Control plane versus data plane
 
@@ -192,9 +214,9 @@ Static-stability lesson (see [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architect
 
 - **Fast clone**: storage-level copy-on-write over segment pages. A clone shares pages until either side modifies them, so creation time does not depend on volume size.
 - **Backtrack** (Aurora MySQL only): rewinds the volume to an earlier LSN by keeping change records for a bounded window.
-- **Global Database**: replication at the storage layer to up to 10 secondary Regions (AWS docs, as of 2026-10). Lag is typically under one second, per secondary sources (as of 2026-10). A secondary Region is a separate volume, not a cross-Region quorum member, so writes there are asynchronous.
-- **Serverless v2**: the same engine and storage, with instance capacity resized in 0.5 ACU steps from 0 to 256 ACU on recent versions, or 128 on older ones (AWS API reference, as of 2026-10).
-- **Volume ceiling**: 256 TiB per cluster volume (AWS docs, as of 2026-10). Aurora MySQL doubled from 128 TiB in 2025 (AWS What's New, 2025-07). The limit depends on engine version.
+- **Global Database**: replication at the storage layer to up to 10 secondary Regions (AWS docs, as of 2026-11). Lag is typically under one second (AWS docs, as of 2026-11). A secondary Region is a separate volume, not a cross-Region quorum member, so writes there are asynchronous.
+- **Serverless v2** (the docs now say "Aurora serverless", the API keeps the `ServerlessV2` names): the same engine and storage, with instance capacity scaled in increments as small as 0.5 ACU, from 0 to 256 ACU on recent Aurora MySQL and up to 384 ACU on recent Aurora PostgreSQL with platform version 4, and 128 on older versions (AWS docs, as of 2026-11). The API reference still lists 256 as the largest value (AWS API reference, as of 2026-11).
+- **Volume ceiling**: 256 TiB per cluster volume (AWS docs, as of 2026-11). Both engines doubled from 128 TiB in 2025 (AWS What's New, 2025-07). The limit depends on engine version: Aurora MySQL 3.10+ and Aurora PostgreSQL 15.13+, 16.9+ and 17.5+ (AWS docs, as of 2026-11).
 - **Write scale-out**: still a single writer per cluster. Aurora Limitless Database (sharded Aurora PostgreSQL) and [[17-Cloud-AI-Engineering/Volume_02_AWS_Deep_Dive/Chapter_12_Aurora_DSQL_Multi_Region_Active_Active_SQL|Aurora DSQL]] are the escape routes.
 
 ## Numbers to Know
@@ -206,20 +228,22 @@ Static-stability lesson (see [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architect
 | Segment repair time | "seconds", about 10 s per 10 GiB at 10 Gbps | (Vogels 2019; SIGMOD 2017) |
 | LSN Allocation Limit | 10 million LSNs ahead of VDL | (SIGMOD 2017, paper-era) |
 | Crash recovery | under 10 s at about 100K writes/s | (SIGMOD 2017, paper-era) |
-| Max cluster volume | 256 TiB, depends on version | (AWS docs, as of 2026-10) |
-| Aurora Replicas per cluster | up to 15 | (AWS docs, as of 2026-10) |
-| In-Region replica lag | "often single-digit milliseconds", FAQ says "tens of milliseconds" | (AWS docs, as of 2026-10) |
-| Global Database secondaries | up to 10 secondary Regions | (AWS docs, as of 2026-10) |
-| Global replication lag | typically under 1 s | (secondary sources, as of 2026-10) |
-| Serverless v2 range | 0 to 256 ACU in 0.5 steps, 128 on older versions | (AWS API reference, as of 2026-10) |
-| Serverless v2 memory per ACU | about 2 GiB | (secondary sources, as of 2026-10) |
-| Auto-pause idle timeout | 300 to 86,400 s; PG 13.15+, MySQL 3.08.0+ | (secondary sources, as of 2026-10) |
-| Aurora Standard storage | $0.10 per GB-month, us-east-1 PG | (Vantage/CloudZero summaries of AWS pricing, as of 2026-10) |
-| Aurora Standard I/O | $0.20 per million requests | (Vantage/CloudZero, as of 2026-10) |
-| I/O-Optimized storage | $0.225 per GB-month, no I/O charge | (Vantage/CloudZero, as of 2026-10) |
-| I/O-Optimized instance premium | about 30% over Standard | (Bytebase summary, as of 2026-10) |
-| Serverless v2 compute | about $0.12 per ACU-hour, us-east-1 Standard | (secondary source, as of 2026-10) |
-| Vendor throughput claim | up to 5x stock MySQL / 3x stock PostgreSQL | (AWS docs, as of 2026-10) |
+| Max cluster volume | 256 TiB on MySQL 3.10+ and PG 15.13+, 16.9+, 17.5+; 128 TiB on earlier versions | (AWS docs, as of 2026-11) |
+| Aurora Replicas per cluster | up to 15 | (AWS docs, as of 2026-11) |
+| In-Region replica lag | "often single-digit milliseconds", FAQ says "tens of milliseconds", User Guide says "usually much less than 100 milliseconds" | (AWS docs, as of 2026-11) |
+| Global Database secondaries | up to 10 secondary Regions | (AWS docs, as of 2026-11) |
+| Global replication lag | typically under 1 s | (AWS docs, as of 2026-11) |
+| Serverless v2 range | 0 to 256 ACU (MySQL 3.08.0+), up to 384 ACU on PostgreSQL 14.23+, 15.18+, 16.14+, 17.10+, 18.4+ with platform version 4, 128 on older versions; increments as small as 0.5 | (AWS docs, as of 2026-11) |
+| Serverless v2 memory per ACU | about 2 GiB | (AWS docs, as of 2026-11) |
+| Auto-pause idle timeout | 300 to 86,400 s, default 300; PG 13.15+, 14.12+, 15.7+, 16.3+, MySQL 3.08.0+ | (AWS docs, as of 2026-11) |
+| Auto-pause resume time | typically about 15 s, 30 s or longer after more than 24 h paused | (AWS docs, as of 2026-11) |
+| Aurora Standard storage | $0.10 per GB-month, us-east-1 PG | (AWS pricing page, as of 2026-11) |
+| Aurora Standard I/O | $0.20 per million requests | (AWS pricing page, as of 2026-11) |
+| Billed I/O units | writes in 4 KB units, reads per page: 8 KB PG, 16 KB MySQL | (AWS docs, as of 2026-11) |
+| I/O-Optimized storage | $0.225 per GB-month, no I/O charge | (AWS pricing page, as of 2026-11) |
+| I/O-Optimized instance premium | 30% over Standard, e.g. db.r6i.large $0.29 to $0.377 per hour | (AWS pricing page, as of 2026-11) |
+| Serverless v2 compute | $0.12 per ACU-hour Standard, $0.156 I/O-Optimized, us-east-1 | (AWS pricing page, as of 2026-11) |
+| Vendor throughput claim | up to 6x stock PostgreSQL / 6x stock MySQL | (AWS docs, as of 2026-11) |
 
 ## AWS vs GCP Mechanism Parity
 
@@ -237,7 +261,7 @@ Spanner is listed to show the line between scaling up and scaling out.
 | Read scaling | Up to 15 readers on the shared volume, cache-only redo apply | Read pool instances on shared storage | Any replica, with bounded-staleness or strong reads |
 | In-Region HA | Promote a reader (priority tiers), no data copy | HA primary with standby node in another zone | Built-in, no failover concept |
 | Cross-Region | Global Database, storage-level async, up to 10 secondaries | Cross-region secondary clusters, async | Multi-region configs, synchronous |
-| Serverless | Serverless v2, 0 to 256 ACU, scale to zero | No scale-to-zero equivalent | Granular compute (processing units) |
+| Serverless | Serverless v2, 0 to 256 ACU (384 on recent PostgreSQL), scale to zero | No GA scale-to-zero equivalent; "PostgreSQL for agents" scale-to-zero instances are in preview (Google Cloud blog, 2026-09) | Granular compute (processing units) |
 | I/O pricing | Standard meters I/O; I/O-Optimized bundles it | Not metered per request | Not metered per request |
 | Analytics offload | Zero-ETL to Redshift | Built-in columnar engine | Data Boost |
 
@@ -250,7 +274,7 @@ For translation tables across the whole storage portfolio, see [[17-Cloud-AI-Eng
 ### Lab cost estimate and guardrails
 
 The lab runs one Aurora PostgreSQL Serverless v2 writer and one reader with a 0 to 4 ACU range, for about 2 hours.
-Estimate: 2 instances at about 2 ACU average for 2 hours is 8 ACU-hours, at about $0.12 per ACU-hour, so about $0.96. Storage and I/O add cents (secondary pricing sources, as of 2026-10).
+Estimate: 2 instances at about 2 ACU average for 2 hours is 8 ACU-hours, at $0.12 per ACU-hour, so about $0.96. Storage and I/O add cents (AWS pricing page, as of 2026-11).
 Set a $10 monthly budget alarm before you create anything.
 
 ```bash
@@ -381,7 +405,7 @@ aws rds delete-db-cluster --db-cluster-identifier aurora-lab --skip-final-snapsh
 aws budgets delete-budget --account-id "$ACCOUNT_ID" --budget-name aurora-lab
 ```
 
-Deleting the cluster also deletes the managed master secret, though Secrets Manager may apply a recovery window. Check that the secret and all automated snapshots are gone.
+Deleting the cluster also deletes the managed master secret and its metadata (AWS docs, as of 2026-11). Check that the secret and all automated snapshots are gone.
 
 ### Back-of-the-envelope: network, I/O, and the storage-type decision
 
@@ -392,12 +416,12 @@ Step 1 - redo bandwidth: 20,000 * 1.5 KB = 30 MB/s of redo.
 Step 2 - writer network egress: 6 segment copies * 30 MB/s = 180 MB/s, about 1.44 Gbps. Each reader adds one stream (2 * 30 MB/s = 60 MB/s). Total is about 1.9 Gbps before client traffic.
 This is why the instance's network bandwidth, not its storage throughput, sets a writer's ceiling.
 
-Step 3 - write I/Os depend on batching: if redo is packed into 4 KB billing units, 30 MB/s is about 7,500 write I/Os per second. If every commit flushes alone, it is about 20,000 per second. The 4 KB unit and the batching effect are UNVERIFIED.
+Step 3 - write I/Os depend on batching: if redo is packed into 4 KB billing units, 30 MB/s is about 7,500 write I/Os per second. If every commit flushes alone, it is about 20,000 per second. Writes are counted in 4 KB units, a 1,024-byte log record counts as one I/O, and the engine can batch concurrent log records smaller than 4 KB (AWS docs, as of 2026-11).
 Add 100,000 logical page reads per second at a 95% cache hit rate, which gives 5,000 read I/Os per second.
 
 Step 4 - monthly I/O at the good-batching case: 12,500 I/O/s * 2,628,000 s = 32.85 billion I/Os, times $0.20 per million, is about $6,570 per month.
 
-Step 5 - compute: 64 ACU * 730 h * $0.12 = about $5,606 per month on Standard. With an assumed 30% premium on I/O-Optimized, that is about $7,288.
+Step 5 - compute: 64 ACU * 730 h * $0.12 = about $5,606 per month on Standard. At the I/O-Optimized rate of $0.156 per ACU-hour, a 30% premium (AWS pricing page, as of 2026-11), that is about $7,288.
 
 Step 6 - storage: 2,000 GB costs $200 on Standard and $450 on I/O-Optimized.
 
@@ -405,7 +429,8 @@ Step 7 - totals: Standard is about $12,376 per month, with I/O at 53% of the bil
 
 Step 8 - break-even rule: I/O-Optimized wins when monthly I/O spend is greater than 0.30 * compute + 0.125 * GB stored.
 Here that is 0.30 * 5,606 + 0.125 * 2,000, about $1,932, or about 3,700 sustained I/O/s.
-The rule of thumb that I/O-Optimized pays off once I/O is more than about 25% of the Aurora bill (secondary sources, as of 2026-10) is the same inequality, stated as a share of the bill.
+AWS's rule of thumb that I/O-Optimized is the best choice once I/O is 25% or more of Aurora spend (AWS docs, as of 2026-11) approximates this inequality rather than restating it.
+At this workload the break-even share is 1,932 / (5,606 + 200 + 1,932), about 25%; it falls to about 23% when storage cost is negligible and rises toward 56% for a storage-dominated bill, so run the inequality for storage-heavy clusters.
 
 ## Failure Modes and Pitfalls
 
@@ -413,7 +438,9 @@ The rule of thumb that I/O-Optimized pays off once I/O is more than about 25% of
 
 Readers share the writer's storage, and storage garbage collection and engine cleanup are bounded by the cluster-wide minimum read point (PGMRPL).
 On Aurora MySQL, a long transaction or open read view on a reader stops InnoDB purge on the writer, so the history list length grows. Undo chains then get longer for everyone, and writer queries slow down even though the writer did nothing wrong.
-On Aurora PostgreSQL, the equivalent is a reader snapshot that holds back vacuum, or conflicts between query snapshots and replayed cleanup records. These lead to cancelled queries or, if a reader falls too far behind, a reader restart. The exact restart threshold is UNVERIFIED.
+On Aurora PostgreSQL, the equivalent is a reader snapshot that holds back vacuum, or conflicts between query snapshots and replayed cleanup records. These lead to cancelled queries or, if a reader falls too far behind, a reader restart.
+The restart threshold depends on version: a 2022 AWS blog describes a restart when long-running queries push lag past 60 seconds, with `max_standby_streaming_delay` capped at 30 seconds, and the docs list a restart after losing writer communication for more than 60 seconds on 14.6, 13.9, 12.13 and older (AWS Database Blog, 2022-07; AWS docs, as of 2026-11).
+Versions with the read availability feature (12.14+, 13.10+, 14.7+, 15.2+, 16.1+) recover in place, though readers can still restart when replication is blocked or near transaction ID wraparound (AWS docs, as of 2026-11).
 Mitigation: put statement and idle-in-transaction timeouts on reader endpoints, and send long analytics to a fast clone or a zero-ETL target rather than the production reader pool.
 
 ### Write ceiling and the binlog trap
@@ -441,7 +468,7 @@ For static stability, keep at least one reader in each AZ you depend on, sized t
 ### Global Database RPO is replication lag
 
 Global Database secondaries are asynchronous.
-A managed switchover (planned) waits for the secondary to catch up. An unplanned failover with data loss allowed loses whatever was within the lag window, typically under a second (secondary sources, as of 2026-10), but unbounded during an impairment.
+A managed switchover (planned) waits for the secondary to catch up. An unplanned failover with data loss allowed loses whatever was within the lag window, typically under a second (AWS docs, as of 2026-11), but unbounded during an impairment.
 The usual mistake is an RPO of zero written in the DR plan with nothing in the architecture enforcing it.
 See [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_04_Disaster_Recovery_Tiers_and_RTO_RPO_Engineering|DR Tiers and RTO/RPO Engineering]].
 
@@ -452,7 +479,7 @@ Alarm on the VolumeReadIOPs and VolumeWriteIOPs CloudWatch metrics. Do not wait 
 
 ### Serverless v2 resume latency
 
-A cluster scaled to 0 ACU must resume on the first connection, and that first request waits for it.
+A cluster scaled to 0 ACU must resume on the first connection, and that first request waits for it: typically about 15 seconds, or 30 seconds or longer after more than 24 hours paused (AWS docs, as of 2026-11).
 Never use a minimum of 0 for latency-sensitive production traffic. Keep a floor large enough for the steady-state buffer cache, because shrinking capacity also shrinks the cache and causes a burst of read I/Os on the next spike.
 
 ### Post-incident reviews
@@ -472,7 +499,8 @@ Data API access is governed by IAM on the cluster ARN plus read access to the se
 ### Encryption
 
 Storage encryption is set when the cluster is created and covers the volume, the S3-staged backups and snapshots, through envelope encryption under a KMS key. See [[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter/Chapter_04_Encryption_Key_Hierarchies_and_Envelope_Encryption|Encryption Key Hierarchies]].
-An unencrypted cluster cannot be encrypted in place. You must snapshot, copy the snapshot with a KMS key, and restore, so plan the cutover.
+New clusters created on or after 2026-02-18 are encrypted by default with an AWS owned key unless you choose another key (AWS docs, as of 2026-11).
+An older unencrypted cluster cannot be encrypted in place, and copying its snapshot does not encrypt it. Restore the unencrypted snapshot to a new cluster with a KMS key, or use a blue/green deployment, so plan the cutover (AWS docs, as of 2026-11).
 Cross-Region snapshot copies and Global Database secondaries need a KMS key in the destination Region. A customer-managed key policy that does not allow the RDS service in that Region is a common late blocker in DR setups.
 Enforce TLS on the server side with `rds.force_ssl` on PostgreSQL and `require_secure_transport` on MySQL.
 
@@ -485,7 +513,7 @@ Database Activity Streams push a KMS-encrypted audit stream that DBAs cannot tam
 ### Unit-economics levers
 
 - **Storage type**: use the break-even inequality from the Worked Example and re-evaluate it quarterly as I/O patterns drift.
-- **Graviton instance classes** and commitments: reserved instances for steady writers and readers. For Database Savings Plans, see [[17-Cloud-AI-Engineering/Volume_09_FinOps_and_Cloud_Economics/Chapter_02_Commitment_Discounts_Savings_Plans_vs_CUDs|Savings Plans vs CUDs]]; their availability and discount for Aurora are UNVERIFIED here.
+- **Graviton instance classes** and commitments: reserved instances for steady writers and readers. For Database Savings Plans, see [[17-Cloud-AI-Engineering/Volume_09_FinOps_and_Cloud_Economics/Chapter_02_Commitment_Discounts_Savings_Plans_vs_CUDs|Savings Plans vs CUDs]]; launched in December 2025, they cover Aurora serverless and provisioned usage at up to 35% on a 1-year, no-upfront commitment, and the rate varies by usage type (AWS What's New, 2025-12; AWS FAQ, as of 2026-11).
 - **Fast clones** for test and analytics: you pay only for pages that diverge, unlike a full snapshot restore.
 - **Serverless v2 scale-to-zero** for dev and ephemeral environments; provisioned instances for steady production.
 - **Reader right-sizing**: each reader is a full instance bill but adds no storage cost. Readers are cheap to add for HA and expensive to keep idle.
@@ -558,7 +586,7 @@ A team runs a 3 TB Aurora PostgreSQL cluster whose bill is 60% I/O. They want to
 First, confirm the decision with the inequality: I/O-Optimized wins when I/O spend is greater than about 0.30 * compute + 0.125 * GB stored. At 60% I/O it almost certainly wins, but write the numbers into the decision record.
 Second, ask why I/O is 60%. Read I/Os are buffer-cache misses, so check the cache hit ratio per instance, missing indexes, and readers sized smaller than the writer that miss more on the same queries.
 Write I/Os scale with redo volume and commit batching, so look for chatty single-row autocommit loops, oversized JSONB rewrites and frequent large index maintenance.
-Third, check operational limits: storage-type switches are rate-limited (I recall once per 30 days in one direction, UNVERIFIED), the instance premium also applies to readers, and reserved instance coverage may need re-planning.
+Third, check operational limits: a switch to I/O-Optimized is allowed once every 30 days while a switch back to Standard is allowed at any time, and NVMe-based instances need an engine restart for a switch (AWS docs, as of 2026-11). The instance premium also applies to readers, and existing reserved instances keep applying with the price difference accounted for automatically (AWS FAQ, as of 2026-11).
 Fourth, look at structural options: move analytics off readers to a clone or zero-ETL target, raise instance memory where the working set barely misses, and batch commits in the application.
 The staff-level answer is to do both: switch to stop the bleeding, then fix the access pattern so the system stays cheap if the storage type is ever changed back.
 

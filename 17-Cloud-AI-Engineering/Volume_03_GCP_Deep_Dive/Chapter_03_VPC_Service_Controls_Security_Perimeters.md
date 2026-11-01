@@ -17,6 +17,23 @@ sources:
   - "https://research.google/pubs/beyondcorp-a-new-approach-to-enterprise-security/"
   - "https://docs.aws.amazon.com/whitepapers/latest/building-a-data-perimeter-on-aws/building-a-data-perimeter-on-aws.html"
   - "https://github.com/aws-samples/data-perimeter-policy-examples"
+  - "https://docs.cloud.google.com/vpc-service-controls/docs/create-service-perimeters"
+  - "https://docs.cloud.google.com/vpc-service-controls/docs/troubleshooting"
+  - "https://cloud.google.com/vpc-service-controls/pricing"
+  - "https://docs.cloud.google.com/vpc/docs/configure-private-google-access"
+  - "https://docs.cloud.google.com/vpc/docs/release-notes"
+  - "https://docs.cloud.google.com/access-context-manager/docs/scoped-policies"
+  - "https://docs.cloud.google.com/logging/docs/audit"
+  - "https://docs.cloud.google.com/bigtable/docs/audit-log-estimate-costs"
+  - "https://docs.cloud.google.com/organization-policy/domain-restricted-sharing"
+  - "https://docs.cloud.google.com/gemini-enterprise-agent-platform/release-notes"
+  - "https://docs.cloud.google.com/gemini/enterprise/docs/release-notes"
+  - "https://status.cloud.google.com/incidents/ow5i3PPK96RduMcb1SsW"
+  - "https://docs.aws.amazon.com/organizations/latest/userguide/orgs_reference_limits.html"
+  - "https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_condition-keys.html"
+  - "https://aws.amazon.com/organizations/faqs/"
+  - "https://aws.amazon.com/blogs/aws/introducing-resource-control-policies-rcps-a-new-authorization-policy/"
+  - "https://www.bankinfosecurity.com/capital-ones-breach-may-be-server-side-request-forgery-a-12871"
 ---
 
 # VPC Service Controls: Security Perimeters
@@ -68,14 +85,14 @@ Dry-run is the same evaluator running a second configuration on live traffic, wi
 ### Object model
 
 The root object is an access policy, the container for all access levels and service perimeters.
-An organization has one organization-level access policy and can add scoped policies, each scoped to a single folder or project, so admin rights over a business unit's perimeters can be delegated without org-wide rights (Google Cloud docs, as of 2026-10).
+An organization has one organization-level access policy and can add scoped policies, each scoped to a single folder or project, so admin rights over a business unit's perimeters can be delegated without org-wide rights (Google Cloud docs, as of 2026-11).
 An access level is a named predicate over request context.
 Basic access levels combine conditions such as IP subnetworks, member principals, regions, device policy, and VPC network sources with AND or OR.
 Custom access levels express the predicate in Common Expression Language (CEL), the same language used for IAM Conditions in [[17-Cloud-AI-Engineering/Volume_03_GCP_Deep_Dive/Chapter_02_Cloud_IAM_Roles_Policies_and_Conditions|Cloud IAM: Roles, Policies, and Conditions]].
 A service perimeter carries a list of member resources, a list of restricted services (for example `storage.googleapis.com`, `bigquery.googleapis.com`, `aiplatform.googleapis.com`), an optional VPC accessible services list, a list of access levels, and ingress and egress policies.
 Perimeters are either regular or bridge.
 A project can belong to only one regular perimeter but to many bridges.
-Bridges are the older, coarse way to connect two perimeters; ingress and egress rules can replace and simplify most uses that used to need a bridge (Google Cloud docs, as of 2026-10).
+Bridges are the older, coarse way to connect two perimeters; ingress and egress rules can replace and simplify most uses that used to need a bridge (Google Cloud docs, as of 2026-11).
 Each perimeter holds two configurations: `status`, which is enforced, and `spec`, which is the dry-run candidate, used when `useExplicitDryRunSpec` is true.
 
 ### Control plane versus data plane
@@ -84,7 +101,7 @@ The control plane is the Access Context Manager API (`accesscontextmanager.googl
 It stores the policy, validates it, applies optimistic concurrency through etags on the access policy, and runs mutations as long-running operations.
 The data plane is the set of Google API front ends and service backends that evaluate every request to a restricted service.
 The two are decoupled: a perimeter edit is accepted by the control plane and then distributed to enforcement points.
-Plan for a propagation window of up to about 30 minutes (UNVERIFIED in this revision; re-check the "service perimeter details" page).
+Plan for a propagation window of up to 30 minutes, which Google states as a maximum and for which it publishes no typical value (Google Cloud docs, as of 2026-11).
 This is the same separation described in [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_04_Control_Plane_vs_Data_Plane_Separation|Control Plane vs Data Plane Separation]].
 The design consequence is static stability: enforcement uses the last distributed policy, and the policy store is not called synchronously per request.
 Google does not publish how policy is cached at the enforcement points, so treat "an ACM outage does not open or close perimeters" as an inference from the architecture and not a contract.
@@ -99,7 +116,7 @@ Network origin is one of the following:
 - A specific Private Service Connect forwarding rule.
 
 Private RFC 1918 addresses mean nothing to an IP-based access level, because the evaluator identifies VPC traffic by network, not by address.
-That is why basic access levels gained VPC network sources, and why the ACM quota page lists a separate cap of 500 VPC networks across all access levels in a policy (Google Cloud docs, as of 2026-10).
+That is why basic access levels gained VPC network sources, and why the ACM quota page lists a separate cap of 500 VPC networks across all access levels in a policy (Google Cloud docs, as of 2026-11).
 
 The decision logic, written as a reasoning model rather than a published pseudocode, is:
 
@@ -111,11 +128,11 @@ The decision logic, written as a reasoning model rather than a published pseudoc
 6. In parallel, the same steps run against each perimeter's `spec`. Any divergence is logged with `dryRun: true`, and the logged result never changes the decision.
 
 Ingress rules have the shape `ingressFrom {identityType | identities, sources[accessLevel | resource | pscEndpoint]}` and `ingressTo {operations[serviceName, methodSelectors] | roles, resources}`.
-Egress rules mirror that shape and add `externalResources`, which applies only to BigQuery Omni paths on Amazon S3 or Azure Blob Storage, plus `sourceRestriction` on the from side (Google Cloud docs, as of 2026-10).
+Egress rules mirror that shape and add `externalResources`, which applies only to BigQuery Omni paths on Amazon S3 or Azure Blob Storage, plus `sourceRestriction` on the from side (Google Cloud docs, as of 2026-11).
 `identityType` accepts `ANY_IDENTITY`, `ANY_USER_ACCOUNT`, or `ANY_SERVICE_ACCOUNT`.
-`ANY_IDENTITY` also matches unauthenticated requests, and `ANY_SERVICE_ACCOUNT` matches service accounts from any organization (Google Cloud docs, as of 2026-10).
+`ANY_IDENTITY` also matches unauthenticated requests, and `ANY_SERVICE_ACCOUNT` matches service accounts from any organization (Google Cloud docs, as of 2026-11).
 The `identities` list accepts single users and service accounts, Google groups, workforce and workload identity pool principals and principal sets, and agent identities.
-Agent identities and SPIFFE-format third-party identities went GA on 2026-06-29, and Workload Identity Federation for GKE principals entered Preview on 2026-10-14 (VPC SC release notes, as of 2026-10).
+Agent identities and SPIFFE-format third-party identities went GA on 2026-06-29, and Workload Identity Federation for GKE principals entered Preview on 2026-10-14 (VPC SC release notes, as of 2026-11).
 
 ### The mechanism a getting-started guide skips: two enforcement boundaries per call
 
@@ -145,20 +162,20 @@ The first form is a broad network trust grant and the second is a capability gra
 ### Network-side enforcement: VIPs, VPC accessible services, and PSC
 
 Google API traffic from a VPC can use the restricted VIP `restricted.googleapis.com` (199.36.153.4/30), which serves only APIs that VPC SC supports.
-It can also use the private VIP `private.googleapis.com` (199.36.153.8/30), which serves most Google APIs (Google Cloud docs, UNVERIFIED in this revision).
+It can also use the private VIP `private.googleapis.com` (199.36.153.8/30), which serves most Google APIs (Google Cloud docs, as of 2026-11).
 The standard pattern is a private Cloud DNS zone that maps `*.googleapis.com` to the restricted VIP and a route for 199.36.153.4/30 toward the default internet gateway, which stays inside Google's network when Private Google Access is enabled.
 That turns "an unsupported API used as an exfiltration channel" into a resolution failure instead of a policy question.
 VPC accessible services is the matching policy-side control: it limits which APIs can be called from networks inside the perimeter at all.
-Service patterns, GA on 2026-08-06, extend that control to the private VIP and to PSC endpoints that use the all-apis bundle, for both supported and unsupported Google APIs (VPC SC release notes, as of 2026-10).
-PSC endpoints as `sources` in ingress and egress rules went GA on 2026-06-30, so you can grant access to a specific internal forwarding rule instead of to a whole network (VPC SC release notes, as of 2026-10).
-Connecting a PSC consumer to a producer in a different perimeter does not need explicit egress authorization (VPC release notes, as of 2026-10).
+Service patterns, GA on 2026-08-06, extend that control to the private VIP and to PSC endpoints that use the all-apis bundle, for both supported and unsupported Google APIs (VPC SC release notes, as of 2026-11).
+PSC endpoints as `sources` in ingress and egress rules went GA on 2026-06-30, so you can grant access to a specific internal forwarding rule instead of to a whole network (VPC SC release notes, as of 2026-11).
+Connecting a PSC consumer to a producer in a different perimeter does not need explicit egress authorization (VPC release notes entry of 2022-09-23, as of 2026-11).
 The packet-level mechanics of how Andromeda tags VPC traffic are covered in [[17-Cloud-AI-Engineering/Volume_03_GCP_Deep_Dive/Chapter_04_Global_VPC_Andromeda_SDN_and_Network_Tiers|Global VPC, Andromeda SDN, and Network Tiers]] and the NSDI 2018 Andromeda paper.
 
 ### Folder membership and hierarchical rule sources
 
 Since 2026-09-30, folders can be perimeter members, so every current and future project under the folder is protected automatically.
-Folders and organizations can also appear as resources in ingress and egress rules, which avoids per-project enumeration limits (VPC SC release notes, as of 2026-10).
-The trade-off is written into the docs: a folder or organization in a rule also allows resources parented there that VPC SC cannot protect (Google Cloud docs, as of 2026-10).
+Folders and organizations can also appear as resources in ingress and egress rules, which avoids per-project enumeration limits (VPC SC release notes, as of 2026-11).
+The trade-off is written into the docs: a folder or organization in a rule also allows resources parented there that VPC SC cannot protect (Google Cloud docs, as of 2026-11).
 Folder-scoped rules are therefore compact but implicitly include future projects, so they should be paired with folder-level IAM and Org Policy guardrails from [[17-Cloud-AI-Engineering/Volume_03_GCP_Deep_Dive/Chapter_01_Resource_Hierarchy_and_Organization_Policies|Resource Hierarchy and Organization Policies]].
 
 ### Failure domain boundaries
@@ -178,25 +195,25 @@ The network-origin signal relies on SDN-attached identity of the kind Andromeda 
 
 | Quantity | Value | Source |
 | --- | --- | --- |
-| Ingress plus egress attributes per perimeter configuration | 6,000, applied separately to the dry-run and enforced configurations | (Google Cloud docs, as of 2026-10) |
-| What counts as an attribute | Projects, VPC networks, access levels, method selectors, identities, roles, and wildcard `*` uses | (Google Cloud docs, as of 2026-10) |
-| Policy-level quota accounting | Enforced plus dry-run usage are summed; 5 resources enforced plus 7 dry-run counts as 12 | (Google Cloud docs, as of 2026-10) |
-| Access levels | 500 (listed per organization on the ACM quota page) | (Google Cloud docs, as of 2026-10) |
-| Conditions per access level | 40 | (Google Cloud docs, as of 2026-10) |
-| List items per access level attribute, for example CIDRs | 200 | (Google Cloud docs, as of 2026-10) |
-| VPC networks across all access levels in a policy | 500 | (Google Cloud docs, as of 2026-10) |
-| Ingress or egress rule title length | 100 characters; 240,000 characters combined per access policy | (Google Cloud docs, as of 2026-10) |
-| Restricted VIP range | 199.36.153.4/30 | UNVERIFIED in this revision |
-| Private VIP range | 199.36.153.8/30 | UNVERIFIED in this revision |
-| Policy propagation window | Up to about 30 minutes | UNVERIFIED in this revision |
-| VPC SC list price | No additional cost for VPC SC features | (itbrief.co.uk report of Google launch, as of 2026-10) |
-| Violation analyzer | GA 2025-12-15 | (VPC SC release notes, as of 2026-10) |
-| PSC endpoints in rules | GA 2026-06-30 | (VPC SC release notes, as of 2026-10) |
-| Service patterns in VPC accessible services | GA 2026-08-06 | (VPC SC release notes, as of 2026-10) |
-| Folder membership; folders and orgs in rules | GA 2026-09-30 | (VPC SC release notes, as of 2026-10) |
-| Guided remediation suggestions | Preview 2026-10-08 | (VPC SC release notes, as of 2026-10) |
-| Workload Identity Federation for GKE principals in rules | Preview 2026-10-14 | (VPC SC release notes, as of 2026-10) |
-| Managing perimeters that contain deleted principals | Preview 2026-09-03 | (VPC SC release notes, as of 2026-10) |
+| Ingress plus egress attributes per perimeter configuration | 6,000, applied separately to the dry-run and enforced configurations | (Google Cloud docs, as of 2026-11) |
+| What counts as an attribute | Projects, VPC networks, access levels, method selectors, identities, roles, and wildcard `*` uses | (Google Cloud docs, as of 2026-11) |
+| Policy-level quota accounting | Enforced plus dry-run usage are summed; 5 resources enforced plus 7 dry-run counts as 12 | (Google Cloud docs, as of 2026-11) |
+| Access levels | 500 per access policy | (Google Cloud docs, as of 2026-11) |
+| Conditions per access level | 40 | (Google Cloud docs, as of 2026-11) |
+| List items per access level attribute, for example CIDRs | 200 | (Google Cloud docs, as of 2026-11) |
+| VPC networks across all access levels in a policy | 500 | (Google Cloud docs, as of 2026-11) |
+| Ingress or egress rule title length | 100 characters; 240,000 characters combined per access policy | (Google Cloud docs, as of 2026-11) |
+| Restricted VIP range | 199.36.153.4/30 | (Google Cloud docs, as of 2026-11) |
+| Private VIP range | 199.36.153.8/30 | (Google Cloud docs, as of 2026-11) |
+| Policy propagation window | Up to 30 minutes (a stated maximum) | (Google Cloud docs, as of 2026-11) |
+| VPC SC list price | No separate charge for using VPC SC | (VPC SC pricing page, as of 2026-11) |
+| Violation analyzer | GA 2025-12-15 | (VPC SC release notes, as of 2026-11) |
+| PSC endpoints in rules | GA 2026-06-30 | (VPC SC release notes, as of 2026-11) |
+| Service patterns in VPC accessible services | GA 2026-08-06 | (VPC SC release notes, as of 2026-11) |
+| Folder membership; folders and orgs in rules | GA 2026-09-30 | (VPC SC release notes, as of 2026-11) |
+| Guided remediation suggestions | Preview 2026-10-08; the 2026-10-15 launch blog says "generally available" without excepting this feature, and the release notes are the more specific source | (VPC SC release notes, as of 2026-11) |
+| Workload Identity Federation for GKE principals in rules | Preview 2026-10-14 | (VPC SC release notes, as of 2026-11) |
+| Managing perimeters that contain deleted principals | Preview 2026-09-03 | (VPC SC release notes, as of 2026-11) |
 
 ## AWS vs GCP Mechanism Parity
 
@@ -205,15 +222,15 @@ The network-origin signal relies on SDN-attached identity of the kind Andromeda 
 | Primitive | Service perimeter around projects or folders, with restricted services | A pattern built from SCPs, RCPs, VPC endpoint policies, and resource policies with global condition keys | GCP ships one product; AWS ships building blocks that you assemble |
 | Where it is evaluated | A separate layer next to IAM; both must allow | Inside the IAM policy evaluation engine, as explicit Deny statements | AWS perimeter errors are IAM denies; GCP returns a distinct VPC SC error with a unique ID |
 | Network origin signal | VPC network identity from Private Google Access, restricted VIP, or PSC; public IP for internet callers | `aws:SourceVpc` and `aws:SourceVpce` only on traffic through VPC endpoints; `aws:SourceIp` on public endpoints | AWS loses VPC identity on traffic that skips endpoints, so endpoint coverage is mandatory |
-| Trusted identities | `identityType` or `identities` in rules; does not restrict the identity's org by itself | `aws:PrincipalOrgID` in RCPs and resource policies | GCP needs Domain Restricted Sharing (`iam.allowedPolicyMemberDomains`) in addition to VPC SC |
+| Trusted identities | `identityType` or `identities` in rules; does not restrict the identity's org by itself | `aws:PrincipalOrgID` in RCPs and resource policies | GCP needs Domain Restricted Sharing (`iam.managed.allowedPolicyMembers`, or the legacy `iam.allowedPolicyMemberDomains`; Google Cloud docs, as of 2026-11) in addition to VPC SC |
 | Trusted resources (anti-exfiltration) | Egress rules naming allowed external projects, folders, or orgs | `aws:ResourceOrgID` in SCPs and VPC endpoint policies | Equivalent intent; GCP also checks multi-resource calls automatically |
 | Calls made on a caller's behalf | Perimeter context propagates into service-to-service calls | `aws:ViaAWSService`, `aws:PrincipalIsAWSService`, and `aws:SourceOrgID` exceptions written by hand | AWS policies break managed services unless you add these exceptions |
 | Unsupported services | Restricted VIP refuses them; service patterns cover the private VIP and PSC | SCP can deny unlisted services; endpoint policies exist only where endpoints exist | Both need an explicit "default deny unknown services" posture |
-| Device and context | Access levels with IP, region, device policy, and CEL | No native device posture on AWS API calls (UNVERIFIED in this revision) | GCP can bind API access to managed-device posture |
+| Device and context | Access levels with IP, region, device policy, and CEL | No device-posture key among the IAM global condition keys (AWS docs, as of 2026-11) | GCP can bind API access to managed-device posture |
 | Staged rollout | Native `spec` dry-run evaluated on live traffic | No native dry-run; use sandbox OUs, CloudTrail analysis, and IAM Access Analyzer | GCP can measure the blast radius before enforcement |
 | Diagnostics | `vpcServiceControlsUniqueIdentifier`, policy audit log, violation analyzer (GA) | CloudTrail `AccessDenied` events, with messages that name the denying policy type | Both join on a request ID; GCP's analyzer proposes fixes (Preview) |
-| Size limits | 6,000 attributes per perimeter configuration | SCP document size and per-target attachment limits (UNVERIFIED in this revision) | Both force hierarchy-based rules over enumeration at scale |
-| Price | No additional cost | No additional cost for SCPs or RCPs (UNVERIFIED in this revision) | The cost lives in logging volume and engineering time |
+| Size limits | 6,000 attributes per perimeter configuration | SCP: 10,240 characters and 10 attached per root, OU, or account; RCP: 5,120 characters and 5 attached (AWS docs, as of 2026-11) | Both force hierarchy-based rules over enumeration at scale |
+| Price | No separate charge (VPC SC pricing page, as of 2026-11) | AWS Organizations is offered at no additional charge, and the RCP launch post states no additional charges for RCPs (AWS, as of 2026-11) | The cost lives in logging volume and engineering time |
 
 For the AWS evaluation order these conditions plug into, see [[17-Cloud-AI-Engineering/Volume_02_AWS_Deep_Dive/Chapter_01_IAM_Policy_Evaluation_Engine|IAM Policy Evaluation Engine]].
 For the cross-cloud synthesis, see [[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter/Chapter_06_Constructing_an_Impenetrable_Data_Perimeter|Constructing an Impenetrable Data Perimeter]].
@@ -229,7 +246,8 @@ You also need `roles/billing.costsManager` or an equivalent role on the billing 
 
 ### Cost estimate
 
-VPC SC and Access Context Manager carry no charge (as of 2026-10).
+VPC SC carries no separate charge (VPC SC pricing page, as of 2026-11).
+Access Context Manager used for this lab is expected to carry no charge either (UNVERIFIED: the VPC SC pricing page does not mention it and no ACM price page was found).
 Two buckets holding a few kilobytes cost fractions of a cent per month.
 Policy-denied audit logs for a few hundred lab requests are kilobytes.
 Expected total is under 0.10 USD if you tear down the same day; no VMs are created.
@@ -474,13 +492,13 @@ Each consumer uses one ingress rule with 1 service-account identity, 1 source pr
 - Growth to 750 consumers: 750 x 8 = 6,000, which is the limit, so the next onboarding fails at apply time.
 - During a migration, the dry-run copy is checked against its own 6,000 limit, but policy-level totals sum both configurations, so staging a full rewrite roughly doubles policy-level usage.
 - Hierarchical alternative, GA since 2026-09-30: group consumers into 12 business-unit folders and write 12 rules with an identity group, a folder source, 4 methods, and 2 targets, which is 12 x 8 = 96 attributes.
-- The cost of the 62x compression is implicit trust in every future project under those folders, including resources VPC SC cannot protect, so the folders need IAM and Org Policy guardrails that are at least as strict.
+- The compression is about 33x against the 400-consumer usage (3,200 / 96) and about 62x against the 750-consumer usage (6,000 / 96), and its cost is implicit trust in every future project under those folders, including resources VPC SC cannot protect, so the folders need IAM and Org Policy guardrails that are at least as strict.
 
 ### Sizing the dry-run log stream
 
-Suppose a fleet produces 2 million would-be violations per day in the first week of dry-run, at about 3 KB per policy audit entry (UNVERIFIED size).
-That is about 6 GB per day of policy-denied logs.
-At a Cloud Logging ingestion price of about 0.50 USD per GiB (UNVERIFIED in this revision), that is about 3 USD per day, which is trivial next to the engineering hours spent triaging.
+Suppose a fleet produces 2 million would-be violations per day in the first week of dry-run, at about 3 KB per policy audit entry (UNVERIFIED: illustrative assumption, entry size is not in the docs).
+That is about 6 GB, or 5.6 GiB, per day of policy-denied logs, which are generated by default, cannot be disabled, and are billed for log storage unless excluded (Google Cloud docs, as of 2026-11).
+At a Cloud Logging ingestion price of 0.50 USD per GiB after the first 50 GiB per month (Google Cloud docs, as of 2026-11), that is about 3 USD per day before the free allotment, which is trivial next to the engineering hours spent triaging.
 Route policy logs to a dedicated bucket or BigQuery with an aggregated sink, as in [[17-Cloud-AI-Engineering/Volume_03_GCP_Deep_Dive/Chapter_16_Observability_Cloud_Monitoring_Logging_and_Trace|Observability: Cloud Monitoring, Logging, and Trace]], and group the data by the histogram key above.
 
 ## Failure Modes and Pitfalls
@@ -498,7 +516,7 @@ Combined with the two-hop download-and-upload path, the perimeter then provides 
 
 ### `ANY_IDENTITY` and cross-org identities
 
-`ANY_IDENTITY` also matches unauthenticated requests, and `ANY_SERVICE_ACCOUNT` matches service accounts from any organization (Google Cloud docs, as of 2026-10).
+`ANY_IDENTITY` also matches unauthenticated requests, and `ANY_SERVICE_ACCOUNT` matches service accounts from any organization (Google Cloud docs, as of 2026-11).
 An ingress rule with either value plus `accessLevel: "*"` is a public door, and only IAM stands behind it.
 Without Domain Restricted Sharing, an insider can grant a personal Gmail account IAM access, and an overly broad ingress rule then lets that identity in from home.
 
@@ -510,17 +528,17 @@ Every egress rule should name specific destination projects, folders, or externa
 ### Unconfigured VPC accessible services
 
 Without VPC accessible services or the restricted VIP, workloads inside the perimeter can call APIs that VPC SC does not protect and use them as a side channel.
-Google's August 2026 perimeter findings explicitly flag perimeters that leave APIs unrestricted from within the boundary, and mismatches between accessible and restricted services (VPC SC release notes, as of 2026-10).
+Google's perimeter optimization recommender, in Preview since 2026-08-13, flags unconfigured or misconfigured VPC accessible services (VPC SC release notes, as of 2026-11).
 
 ### Quota exhaustion during migration
 
-Usage is summed across enforced and dry-run configurations (Google Cloud docs, as of 2026-10).
+Usage is summed across enforced and dry-run configurations (Google Cloud docs, as of 2026-11).
 Teams often discover this halfway through a large refactor, when the dry-run spec they need to stage pushes policy-level totals over a limit and blocks unrelated perimeter edits.
 
 ### Deleted principals freezing perimeter updates
 
 Rules that reference deleted users, groups, or service accounts have caused perimeter updates to fail with an invalid or non-existent email error.
-A Preview feature from 2026-09-03 addresses this (VPC SC release notes, as of 2026-10).
+A Preview feature from 2026-09-03 addresses this (VPC SC release notes, as of 2026-11).
 Until that feature is enabled, deprovisioning an identity can block emergency perimeter changes, so rules should reference groups rather than individuals.
 
 ### Propagation races in CI/CD
@@ -532,21 +550,21 @@ The pipeline should apply, wait, and verify with synthetic probes that assert bo
 ### Partially supported services and AI features
 
 Support can depend on feature and creation date.
-For example, VPC SC is supported only for Agent Gateway deployments created after 2026-09-08 that use the agent connectivity template (Gemini Enterprise Agent Platform release notes, as of 2026-10).
-Projects with VPC SC enabled cannot add website URLs as notebook sources in Gemini Notebook Enterprise, because live crawling would create outbound traffic beyond Google's network (Google Cloud release notes, as of 2026-10).
+For example, VPC SC is supported only for Agent Gateway deployments created after 2026-09-08 that use the agent connectivity template (Gemini Enterprise Agent Platform release notes, as of 2026-11).
+Projects with VPC SC enabled cannot add website URLs as notebook sources in Gemini Notebook Enterprise, because live crawling would create outbound traffic beyond Google's network (Gemini Enterprise release notes entry of 2026-09-09, as of 2026-11).
 Verify the supported-products page for every AI service and every sub-feature before you promise a perimeter to an auditor.
 
 ### Shared fate of the policy check path
 
 On 2025-06-12, a crash in Google's Service Control, the system that performs policy and quota checks on Google API requests, caused widespread global API failures.
-The trigger was replicated policy data hitting a code path that had no feature flag (Google Cloud incident report; details UNVERIFIED in this revision).
+The trigger was globally replicated policy data with unintended blank fields hitting a code path that had no feature flag and no error handling for the resulting null pointer (Google Cloud incident report, as of 2026-11).
 VPC SC is a different system, but the lesson carries over: a centrally distributed authorization policy sits in the data path of every request.
 Changes to it need the progressive rollout discipline in [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_07_Anatomy_of_Major_Cloud_Outages|Anatomy of Major Cloud Outages]].
 For VPC SC that means dry-run soak, scoped policies as cells, and a small first perimeter, never a big-bang org-wide enforcement.
 
 ### The canonical motivating breach
 
-In the 2019 Capital One incident on AWS, credentials stolen through SSRF against instance metadata were used from outside the victim's network to list and copy S3 data.
+In the 2019 Capital One incident on AWS, role credentials taken from the instance metadata service, by a path widely attributed to SSRF in analyst reporting rather than established as a court finding, were used from outside the victim's network to list and copy S3 data (BankInfoSecurity, as of 2026-11).
 A network-origin perimeter condition on that role or bucket would have rejected the calls despite valid credentials.
 VPC SC exists to make that class of attack a policy failure rather than a data loss.
 
@@ -586,11 +604,11 @@ Payload-level controls belong to [[17-Cloud-AI-Engineering/Volume_12_AI_Applicat
 
 ### Unit economics
 
-The control itself costs nothing (as of 2026-10).
-The real costs are policy-log storage, usually single-digit USD per day even at large scale, and engineering time per violation.
+The control itself has no separate charge (VPC SC pricing page, as of 2026-11).
+The real costs are policy-log storage, usually single-digit USD per day even at large scale (UNVERIFIED: extrapolated from the sizing estimate above), and engineering time per violation.
 The second cost is the one that matters: if triaging one denial takes 2 engineer-hours and a migration produces 300 distinct violation keys, budget 600 hours, or tooling.
 Guided remediation is Preview as of 2026-10-08, so it cannot be the production triage path yet.
-Grouping by histogram key, rather than by raw event, usually cuts distinct work items by one to two orders of magnitude (UNVERIFIED rule of thumb).
+Grouping by histogram key, rather than by raw event, usually cuts distinct work items by one to two orders of magnitude (UNVERIFIED: rule of thumb with no published source).
 
 ## Interview Questions and Model Answers
 

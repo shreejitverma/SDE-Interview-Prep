@@ -2,7 +2,7 @@
 type: concept
 track: [cloud-ai, ai-eng, sde, distinguished]
 level:
-status: draft
+status: solid
 last_reviewed:
 sources: 
   - "https://cloud.google.com/resource-manager/docs/organization-policy/understanding-hierarchy"
@@ -19,6 +19,32 @@ sources:
   - "https://research.google/pubs/large-scale-cluster-management-at-google-with-borg/"
   - "https://www.amazon.science/publications/semantic-based-automated-reasoning-for-aws-access-policies-using-smt"
   - "https://github.com/google/cel-spec"
+  - "https://docs.cloud.google.com/organization-policy/apply-policies"
+  - "https://docs.cloud.google.com/resource-manager/docs/organization-policy/defining-locations"
+  - "https://docs.cloud.google.com/resource-manager/docs/access-control-org"
+  - "https://docs.cloud.google.com/resource-manager/docs/organization-policy/restricting-resources"
+  - "https://docs.cloud.google.com/storage/docs/org-policy-constraints"
+  - "https://docs.cloud.google.com/storage/docs/custom-constraints"
+  - "https://docs.cloud.google.com/logging/docs/audit"
+  - "https://cloud.google.com/products/observability/pricing"
+  - "https://cloud.google.com/resource-manager/pricing"
+  - "https://docs.cloud.google.com/compute/docs/access/custom-constraints"
+  - "https://docs.cloud.google.com/resource-manager/docs/delete-restore-projects"
+  - "https://docs.cloud.google.com/resource-manager/reference/rest/v3/folders/delete"
+  - "https://docs.cloud.google.com/resource-manager/docs/moving-projects-folders"
+  - "https://docs.cloud.google.com/organization-policy/release-notes"
+  - "https://docs.cloud.google.com/resource-manager/docs/release-notes"
+  - "https://docs.cloud.google.com/policy-intelligence/docs/iam-simulator-overview"
+  - "https://status.cloud.google.com/incidents/ow5i3PPK96RduMcb1SsW"
+  - "https://cloud.google.com/blog/products/identity-security/introducing-stronger-default-org-policies-for-our-customers"
+  - "https://docs.cloud.google.com/iam/docs/troubleshoot-org-policies"
+  - "https://docs.aws.amazon.com/organizations/latest/userguide/orgs_reference_limits.html"
+  - "https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_scps.html"
+  - "https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_rcps.html"
+  - "https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_declarative.html"
+  - "https://docs.aws.amazon.com/organizations/latest/userguide/orgs_troubleshoot.html"
+  - "https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_testing-policies.html"
+  - "https://docs.aws.amazon.com/IAM/latest/UserGuide/access-analyzer-reference-policy-checks.html"
 ---
 
 # Resource Hierarchy and Organization Policies
@@ -28,7 +54,7 @@ sources:
 The Google Cloud resource hierarchy (organization -> folders -> projects -> service resources) is the only structure that carries both IAM allow policies and Organization Policy, so its shape defines the blast radius of every governance decision.
 Organization Policy limits what a resource's *configuration* can be, while IAM limits *who* can call an API; they are separate engines, and a control is only as strong as the IAM on `orgpolicy.policyAdmin` and on tag binding.
 List-constraint inheritance can loosen as well as tighten: by default a child policy replaces its parent's, `inheritFromParent: true` merges allow and deny sets as unions with deny winning, and `reset` returns to the Google default, so a child can widen what its parent allowed.
-Each owning service enforces the policy when a resource is created or updated, so enforcement is not retroactive, coverage differs per service, and policy changes take up to 15 minutes to reach every enforcement point (Google Cloud docs, as of 2026-10).
+Each owning service enforces the policy when a resource is created or updated, so enforcement is usually not retroactive, coverage differs per service, and policy changes take up to 15 minutes to reach every enforcement point (Google Cloud docs, as of 2026-10).
 Safe rollout runs in this order: custom or managed constraint, then Policy Simulator, then a dry-run spec that writes violations to audit logs, then staged live enforcement by folder, with tag-conditioned exceptions instead of project overrides.
 
 ## Mental Model
@@ -52,7 +78,7 @@ flowchart TB
   subgraph DP["Enforcement: each owning service"]
     REQ["CREATE / UPDATE request"] --> EP["Service-side admission check<br/>walk ancestry, compute effective policy,<br/>evaluate list / boolean / CEL"]
     EP -->|allow| MUT["Persist resource config"]
-    EP -->|deny| ERR["FAILED_PRECONDITION + Policy Denied audit log"]
+    EP -->|deny| ERR["Service error, often FAILED_PRECONDITION + Policy Denied audit log"]
     EP -->|dry-run violation| LOG["Audit log only"]
   end
 ```
@@ -62,7 +88,7 @@ Authors write small declarative objects, one per (hierarchy node, constraint) pa
 Each Google Cloud service that owns a resource type pulls those objects, plus the resource's ancestry and tags from Resource Manager, and evaluates them in its own control plane when a create or update request tries to change the resource's configuration.
 The hierarchy works like a path in a tree: the effective policy at a project is a fold over the policies on the path from the organization root down to that project.
 Because that fold allows replacement and union, not just intersection, the tree behaves more like inherited configuration with overrides than like a stack of filters.
-Because the check runs only on mutation, anything that already exists is unaffected until someone changes it.
+Because the check usually runs only on mutation, most existing resources are unaffected until someone changes them; the documented exceptions are listed under "Where and when enforcement happens".
 
 ## Internals
 
@@ -101,7 +127,7 @@ Each organization policy enforces exactly one constraint, in active mode, dry-ru
 Because of that cardinality, at most one policy object exists per (node, constraint) pair, and that keeps the hierarchy walk well defined.
 
 Not every service supports custom constraints for every resource type, and support is announced service by service.
-For example, custom organization policies for Cloud Resource Manager entered Preview on 2025-03-26 (Resource Manager release notes, as of 2026-10), custom policies for Essential Contacts became GA on 2025-02-19 (as of 2026-10), and custom policies for Memorystore for Valkey were announced on 2026-07-31 (Organization Policy release notes, as of 2026-10).
+For example, custom organization policies for Cloud Resource Manager entered Preview on 2025-03-26 (Resource Manager release notes, as of 2026-10), custom policies for Essential Contacts became GA on 2025-02-19 (as of 2026-10), and custom policies for Memorystore for Valkey were announced as GA on 2026-07-31 (Organization Policy release notes, as of 2026-11).
 Check the per-service supported-resources page before you build a control on a custom constraint.
 Treat Preview coverage as non-production.
 
@@ -139,7 +165,7 @@ The worked example below includes an offline evaluator that reproduces this beha
 
 Value matching is richer than string equality.
 Values prefixed with `under:` match any node whose ancestry contains the named folder, organization, or project, for example `under:folders/VALUE_A` (Google Cloud docs, as of 2026-10).
-`gcp.resourceLocations` also accepts value groups with the `in:` prefix, for example `in:us-locations`, which expand to curated sets of regions and zones (UNVERIFIED in this revision).
+`gcp.resourceLocations` also accepts value groups with the `in:` prefix, for example `in:us-locations`, which expand to curated sets of regions and zones (Google Cloud resource locations docs, as of 2026-11).
 
 Boolean constraints have no merge.
 The nearest policy on the path with an unconditional rule decides `enforce: true` or `enforce: false`.
@@ -158,6 +184,7 @@ If you use tag-conditioned exceptions, the IAM on tag binding is part of your se
 
 The owning service enforces the policy on the mutation path.
 Enforcement of most organization policies is not retroactive: if a resource already violates a new policy, it is flagged as a violation, but the service does not change its existing behavior (Google Cloud docs, as of 2026-10).
+The exceptions matter: `gcp.restrictServiceUsage` controls runtime access to in-scope resources, and `storage.publicAccessPrevention` covers both new and existing buckets and objects (Google Cloud docs, as of 2026-11).
 Changes can take up to 15 minutes to be fully enforced (Google Cloud docs, as of 2026-10).
 That bound is consistent with a design in which effective policies and ancestry are cached near each service's control plane and refreshed asynchronously.
 Google does not publish the internal distribution topology, so treat any detailed cache model as inference, not documentation.
@@ -165,7 +192,7 @@ Three operational consequences follow from the documented behavior.
 First, a pipeline that sets a policy and then immediately creates resources can race the propagation window in either direction.
 Second, a compliance report has to scan existing resources, for example with Cloud Asset Inventory, because enforcement events only cover new mutations.
 Third, coverage depends on the service: a constraint protects only the resource types and methods its owning service checks.
-The same eventual-consistency shape exists in IAM, where access changes are eventually consistent and a revoked role can keep working for a while (IAM docs, as of 2026-10).
+The same eventual-consistency shape exists in IAM, where policy changes typically take 2 minutes and potentially 7 minutes or longer, so a revoked role can keep working for a while (IAM docs, as of 2026-11).
 
 ### Custom constraint evaluation
 
@@ -174,7 +201,8 @@ With `actionType: ALLOW`, the operation is allowed only if the condition is true
 With `actionType: DENY`, the operation is blocked if the condition is true.
 If a resource falls under several enforced custom constraints, every applicable constraint must pass, so the semantics are a conjunction.
 This is the closest Google Cloud analogue to a Kubernetes validating admission webhook, but it runs inside the provider's control plane, so there is no webhook availability risk on your side ([[17-Cloud-AI-Engineering/Volume_05_Kubernetes_and_Platform_Engineering/Chapter_01_Kubernetes_Control_Loop_Internals|Kubernetes Control Loop Internals]]).
-CEL was chosen because it is non-Turing-complete, side-effect free, and linear-time in expression size, which lets the provider run customer predicates on its own control plane hot path without a sandbox ([CEL spec](https://github.com/google/cel-spec)).
+CEL evaluates in linear time, is mutation free, and is not Turing-complete ([CEL spec](https://github.com/google/cel-spec), as of 2026-11).
+Those properties suit running customer predicates on a provider control plane hot path, though Google does not document this as its selection rationale, so treat that reading as inference.
 
 ### Testing: dry-run and Policy Simulator
 
@@ -185,22 +213,23 @@ Policy Simulator for Organization Policy previews a new custom constraint, or a 
 The two tools answer different questions.
 The simulator answers "what existing state would be in violation".
 Dry-run answers "what future mutations would have been blocked".
-You need both, because enforcement is not retroactive while the breakage you care about happens on the mutation path.
+You need both, because enforcement is usually not retroactive while the breakage you care about happens on the mutation path.
 
 ### Secure-by-default baseline
 
 Organizations created on or after 2024-05-03 get a bundle of Google Cloud security baseline constraints enforced at creation (Google Cloud docs, as of 2026-10).
-The bundle includes `iam.managed.disableServiceAccountKeyUpload` and `essentialcontacts.managed.allowedContactDomains`, and its contents changed on 2025-11-11 (Organization Policy release notes, as of 2026-10).
-The announcement also listed `iam.automaticIamGrantsForDefaultServiceAccounts`, which stops default service accounts from receiving the Editor role when they are created ([Google Cloud blog](https://cloud.google.com/blog/products/identity-security/introducing-stronger-default-org-policies-for-our-customers)).
-An organization created before that date has a different starting posture.
+The bundle has seven constraints: `iam.managed.disableServiceAccountKeyCreation`, `iam.managed.disableServiceAccountKeyUpload`, `iam.automaticIamGrantsForDefaultServiceAccounts`, `iam.allowedPolicyMemberDomains`, `essentialcontacts.managed.allowedContactDomains`, `compute.managed.restrictProtocolForwardingCreationForTypes`, and `storage.uniformBucketLevelAccess` (Google Cloud docs, as of 2026-11).
+Its contents changed on 2025-11-11 (Organization Policy release notes, as of 2026-11).
+The 2024-03-20 announcement already listed `iam.automaticIamGrantsForDefaultServiceAccounts`, which stops default service accounts from receiving the Editor role when they are created ([Google Cloud blog](https://cloud.google.com/blog/products/identity-security/introducing-stronger-default-org-policies-for-our-customers)).
+An organization created before 2024-05-03 usually has a different starting posture, although some created between February and April 2024 might also have these enforcements (Google Cloud docs, as of 2026-11).
 When you migrate automation between organizations, run `describe --effective` on both, because the same Terraform can behave differently.
 
 ### Foundational lineage
 
-Borg's cell and allocation hierarchy introduced the idea that placement and policy follow an administrative tree ([Borg, EuroSys 2015](https://research.google/pubs/large-scale-cluster-management-at-google-with-borg/)).
+Borg is background on admission control, task-packing, and over-commitment at Google, not a source for folder-style policy inheritance ([Borg, EuroSys 2015](https://research.google/pubs/large-scale-cluster-management-at-google-with-borg/)).
 Zanzibar shows how Google evaluates hierarchical, inherited authorization at global scale, and why snapshot consistency (the "new enemy" problem and zookies) matters when ACLs and their containers change concurrently ([Zanzibar, USENIX ATC 2019](https://www.usenix.org/conference/atc19/presentation/pang)).
 Organization Policy is not documented as being built on Zanzibar, so read the paper for the problem class, not as a description of this implementation.
-On the AWS side, Zelkova turns IAM and SCP policies into SMT formulas so their semantics can be checked by proof ([Zelkova, FMCAD 2018](https://www.amazon.science/publications/semantic-based-automated-reasoning-for-aws-access-policies-using-smt)).
+On the AWS side, Zelkova encodes the semantics of AWS access policies into SMT so their properties can be checked by proof; the paper does not discuss SCPs ([Zelkova, FMCAD 2018](https://www.amazon.science/publications/semantic-based-automated-reasoning-for-aws-access-policies-using-smt)).
 Cedar shows how a policy language can be designed for analyzability from the start ([Cedar, OOPSLA 2024](https://www.amazon.science/publications/cedar-a-new-language-for-expressive-fast-safe-and-analyzable-authorization)).
 Both are the right lens for asking whether an Organization Policy set can be verified rather than only tested.
 
@@ -214,33 +243,34 @@ Both are the right lens for asking whether an Organization Policy set can be ver
 | Organization Policy change propagation | Up to 15 minutes | (Google Cloud docs, as of 2026-10) |
 | Constraints per organization policy | Exactly 1 (active, dry-run, or both) | (Google Cloud docs, as of 2026-10) |
 | Custom constraint CEL condition length | Up to 1000 characters | (Google Cloud docs, as of 2026-10) |
-| Managed constraint parameter values | At most 100 | (Google Cloud docs, as of 2026-10) |
+| Managed constraint parameter values | At most 100 | (Google Cloud docs, as of 2026-11) |
+| Legacy list policy values and size | At most 500 values, at most 32 KB | (Google Cloud docs, as of 2026-11) |
 | Dry-run eligible constraints | Custom, managed, and 4 legacy (service usage, endpoint usage, TLS versions, TLS cipher suites) | (Google Cloud docs, as of 2026-10) |
 | Policy Simulator for allow policies replay window | Last 90 days of access logs | (Policy Intelligence docs, as of 2026-10) |
 | Security baseline auto-enforced for new orgs | Orgs created on or after 2024-05-03 | (Google Cloud docs, as of 2026-10) |
 | Baseline bundle last changed | 2025-11-11 | (Organization Policy release notes, as of 2026-10) |
-| Project pending-deletion recovery window | 30 days | UNVERIFIED |
-| Organization Policy Service list price | No separate charge | UNVERIFIED |
-| IAM allow-policy propagation typical / tail | Minutes, eventually consistent | (IAM docs, as of 2026-10); exact figures UNVERIFIED |
+| Project pending-deletion recovery window | 30 days | (Resource Manager docs, as of 2026-11) |
+| Organization Policy Service list price | No charge, including custom policies | (Compute Engine custom constraints docs, as of 2026-11) |
+| IAM allow-policy propagation typical / tail | Typically 2 minutes, potentially 7 minutes or longer | (IAM docs, as of 2026-11) |
 
 ## AWS vs GCP Mechanism Parity
 
-All AWS-side numeric limits and semantics in this table are UNVERIFIED in this revision and must be re-checked against AWS Organizations docs before you rely on them.
+AWS-side limits and semantics in this table were checked against AWS Organizations and IAM docs (as of 2026-11).
 
 | Dimension | AWS | Google Cloud | Critical difference |
 | --- | --- | --- | --- |
 | Hierarchy | Organization root -> OUs -> accounts | Organization -> folders -> projects -> resources | GCP hierarchy reaches service resources; AWS stops at the account |
-| Depth / fan-out | OU nesting depth 5 (UNVERIFIED) | Folder depth 10, 300 direct child folders (Resource Manager docs, as of 2026-10) | GCP allows deeper trees, but deep trees make the ancestry fold harder to reason about |
-| Identity guardrail | SCP limits maximum permissions of principals in member accounts; RCP limits resource-side access (UNVERIFIED) | IAM deny policies and Principal Access Boundary (see [[17-Cloud-AI-Engineering/Volume_03_GCP_Deep_Dive/Chapter_02_Cloud_IAM_Roles_Policies_and_Conditions\|Cloud IAM]]) | GCP keeps identity guardrails out of Organization Policy entirely |
-| Configuration guardrail | Declarative policies for selected EC2/VPC settings; otherwise SCP condition keys on API parameters (UNVERIFIED) | Organization Policy legacy, managed, and custom constraints | GCP evaluates the resource representation with CEL; SCPs only see request context keys |
-| Inheritance semantics | Intersection along the path; Allow required at every level, explicit Deny anywhere wins (UNVERIFIED) | Replace by default, union-merge with `inheritFromParent`, deny-wins only inside merges, `reset` to default | GCP is non-monotonic: a descendant can widen what is allowed |
-| Exemptions | Management account not affected by SCPs (UNVERIFIED) | No exempt project; exceptions are policies or tag conditions | GCP exceptions are explicit objects you can audit |
-| Retroactivity | SCPs apply on every API call, so existing resources lose operations immediately | Mutation-time enforcement, not retroactive (Google Cloud docs, as of 2026-10) | AWS stops actions; GCP stops configurations |
-| Pre-deployment testing | IAM policy simulator and Access Analyzer checks; no native SCP dry-run (UNVERIFIED) | Policy Simulator for Org Policy plus `dryRunSpec` (Google Cloud docs, as of 2026-10) | GCP has first-class shadow mode for custom and managed constraints |
+| Depth / fan-out | OUs nest five levels deep under a root (AWS Organizations quotas, as of 2026-11) | Folder depth 10, 300 direct child folders (Resource Manager docs, as of 2026-10) | GCP allows deeper trees, but deep trees make the ancestry fold harder to reason about |
+| Identity guardrail | SCP limits maximum permissions of principals in member accounts; RCP limits maximum permissions on resources (AWS Organizations docs, as of 2026-11) | IAM deny policies and Principal Access Boundary (see [[17-Cloud-AI-Engineering/Volume_03_GCP_Deep_Dive/Chapter_02_Cloud_IAM_Roles_Policies_and_Conditions\|Cloud IAM]]) | GCP keeps identity guardrails out of Organization Policy entirely |
+| Configuration guardrail | Declarative policies for selected EC2/VPC settings; otherwise SCP condition keys on API parameters (AWS Organizations docs, as of 2026-11) | Organization Policy legacy, managed, and custom constraints | GCP evaluates the resource representation with CEL; SCPs only see request context keys |
+| Inheritance semantics | Intersection along the path; Allow required at every level, explicit Deny anywhere wins (AWS Organizations docs, as of 2026-11) | Replace by default, union-merge with `inheritFromParent`, deny-wins only inside merges, `reset` to default | GCP is non-monotonic: a descendant can widen what is allowed |
+| Exemptions | Management account not affected by SCPs or RCPs; service-linked roles also exempt (AWS Organizations docs, as of 2026-11) | No exempt project; exceptions are policies or tag conditions | GCP exceptions are explicit objects you can audit |
+| Retroactivity | SCPs apply on every API call, so existing resources lose operations immediately | Mutation-time enforcement, usually not retroactive (Google Cloud docs, as of 2026-11) | AWS stops actions; GCP stops configurations |
+| Pre-deployment testing | IAM policy simulator evaluates SCPs but not RCPs, and Access Analyzer validates SCP syntax and size; AWS docs describe no SCP dry-run mode and recommend staged testing (AWS docs, as of 2026-11) | Policy Simulator for Org Policy plus `dryRunSpec` (Google Cloud docs, as of 2026-10) | GCP has first-class shadow mode for custom and managed constraints |
 | Condition language | IAM JSON condition operators | CEL, up to 1000 characters per custom condition (Google Cloud docs, as of 2026-10) | CEL is typed and can reach nested resource fields |
-| Policy size limits | SCP document size and attachments per target are capped (UNVERIFIED) | One constraint per policy; managed parameter values at most 100 | Different sharding pressure: AWS packs statements, GCP multiplies objects |
-| Propagation | Eventually consistent (UNVERIFIED) | Up to 15 minutes (Google Cloud docs, as of 2026-10) | Both need settle time in pipelines |
-| Formal analysis | Zelkova SMT backend for IAM and SCP reasoning | Policy Analyzer and Simulator; no published SMT-style proof engine | AWS can prove properties; GCP mostly tests them empirically |
+| Policy size limits | SCP document at most 10,240 characters, at most 10 SCPs directly attached per root, OU, or account (AWS Organizations quotas, as of 2026-11) | One constraint per policy; managed parameter values at most 100; legacy list values at most 500 and 32 KB (Google Cloud docs, as of 2026-11) | Different sharding pressure: AWS packs statements, GCP multiplies objects |
+| Propagation | AWS Organizations is eventually consistent, with no published SCP bound (AWS Organizations troubleshooting docs, as of 2026-11) | Up to 15 minutes (Google Cloud docs, as of 2026-10) | Both need settle time in pipelines |
+| Formal analysis | Zelkova SMT backend for AWS access-policy reasoning (FMCAD 2018; the paper does not discuss SCPs) | Policy Analyzer and Simulator; no published SMT-style proof engine | AWS can prove properties; GCP mostly tests them empirically |
 
 ## Worked Example: Proving Non-Monotonic Inheritance, Then Rolling Out a Guardrail Safely
 
@@ -252,10 +282,10 @@ An offline Python evaluator reproduces the effective-policy computation, so you 
 
 ### Cost estimate and prerequisites
 
-Folders, projects, tags, organization policies, and custom constraints carry no line-item charge (UNVERIFIED).
+Organization policies, custom constraints, and Resource Manager API calls carry no charge, and although tags attached to Cloud Storage buckets cost USD 0.005 per tag per month, this lab binds none (Google Cloud docs and Resource Manager pricing, as of 2026-11).
 The only billable resource is one empty Cloud Storage bucket for under an hour, which rounds to USD 0.00.
 The budget below is a tripwire set at USD 5.
-You need `roles/orgpolicy.policyAdmin` and `roles/resourcemanager.folderCreator` at the organization, `roles/resourcemanager.projectCreator`, and `roles/billing.user` on the billing account.
+You need `roles/orgpolicy.policyAdmin`, `roles/policysimulator.orgPolicyAdmin`, and `roles/resourcemanager.folderCreator` at the organization, `roles/resourcemanager.projectCreator`, and `roles/billing.user` on the billing account.
 
 ### Step 1 - Provision the hierarchy and a budget alarm
 
@@ -272,7 +302,8 @@ export FOLDER_ID="$(gcloud resource-manager folders list --organization="$ORG_ID
 
 gcloud projects create "$PROJECT_ID" --folder="$FOLDER_ID"
 gcloud billing projects link "$PROJECT_ID" --billing-account="$BILLING_ACCOUNT"
-gcloud services enable storage.googleapis.com orgpolicy.googleapis.com --project="$PROJECT_ID"
+gcloud services enable storage.googleapis.com orgpolicy.googleapis.com \
+  policysimulator.googleapis.com cloudresourcemanager.googleapis.com --project="$PROJECT_ID"
 
 gcloud billing budgets create --billing-account="$BILLING_ACCOUNT" \
   --display-name="orgpol-lab-budget" --budget-amount=5USD \
@@ -309,7 +340,7 @@ gcloud org-policies describe gcp.resourceLocations --effective --project="$PROJE
 ```
 
 The effective policy you get back is the union of both allow lists.
-A project-scoped principal holding policy-admin rights has widened the folder's residency control.
+A principal whose policy-admin binding reaches this project, for example through a tag-conditioned delegation, has widened the folder's residency control.
 
 ### Step 3 - Boolean constraint, and the mutation-path check
 
@@ -334,7 +365,7 @@ gcloud storage buckets create "gs://${PROJECT_ID}-eu" --project="$PROJECT_ID" \
 
 ### Step 4 - Custom constraint in dry-run, then simulate
 
-The CEL field path below follows the Cloud Storage resource representation and must be checked against the Cloud Storage custom-constraint supported-fields page (UNVERIFIED).
+The CEL field path below is listed as a supported field for `storage.googleapis.com/Bucket`, and a bucket's public access prevention value is `enforced` or `inherited` (Cloud Storage docs, as of 2026-11).
 
 ```bash
 cat > /tmp/cc.yaml <<EOF
@@ -370,7 +401,7 @@ gcloud policy-intelligence simulate orgpolicy --organization="$ORG_ID" \
 ```
 
 The simulation should list `gs://${PROJECT_ID}-eu` as an existing violation, because it was created without public access prevention.
-Any new bucket created without it appears in Policy Denied audit logs (log name `cloudaudit.googleapis.com/policy`, UNVERIFIED) but is not blocked.
+Any new bucket created without it appears in Policy Denied audit logs (log name `cloudaudit.googleapis.com%2Fpolicy`, Google Cloud docs, as of 2026-11) but is not blocked.
 
 ### Step 5 - Offline evaluator for CI
 
@@ -466,7 +497,7 @@ projects/p-reset {'us-east1': True, 'us-central1': True, 'asia-south1': True}
 `p-shadow` adds a region the organization never allowed, `p-rogue` drops the folder's deny, and `p-reset` removes residency control entirely.
 In CI, load every policy YAML in the repo into this model and assert invariants such as "no project under `folders/regulated` can allow a non-EU location".
 Fail the merge if any invariant breaks.
-To compare against live state, fetch effective policies with the `google-cloud-org-policy` client (`orgpolicy_v2.OrgPolicyClient.get_effective_policy`, UNVERIFIED) and diff them against the model.
+To compare against live state, fetch effective policies with the `google-cloud-org-policy` client (`orgpolicy_v2.OrgPolicyClient.get_effective_policy`, Python client reference, as of 2026-11) and diff them against the model.
 
 ### Step 6 - Teardown
 
@@ -481,8 +512,9 @@ BUDGET_ID="$(gcloud billing budgets list --billing-account="$BILLING_ACCOUNT" \
   --filter='displayName=orgpol-lab-budget' --format='value(name)')"
 gcloud billing budgets delete "$BUDGET_ID" --billing-account="$BILLING_ACCOUNT" --quiet
 gcloud projects delete "$PROJECT_ID" --quiet
-# Folder deletion may be refused while the project is pending deletion (UNVERIFIED); retry after purge.
-gcloud resource-manager folders delete "$FOLDER_ID" || echo "retry folder delete after project purge"
+# folders.delete counts only ACTIVE children as contents, so a DELETE_REQUESTED project does not block it
+# (Resource Manager REST docs, as of 2026-11).
+gcloud resource-manager folders delete "$FOLDER_ID"
 ```
 
 ### Capacity sizing: hierarchy and rollout for 4,000 projects
@@ -499,16 +531,19 @@ Waves of 1 percent (40 projects), 10 percent, 50 percent, and 100 percent, each 
 Batching 5 constraints per release train brings 35 guardrails to 7 trains, or about 8 weeks.
 Audit volume from dry-run: if 4,000 projects average 20 would-be-violating mutations a day, that is 80,000 entries a day.
 At about 2 KB per entry, that is about 160 MB a day, or 4.8 GB a month.
-Price that at your Cloud Logging ingestion rate (UNVERIFIED for this revision), or route it with a log sink, as described in [[17-Cloud-AI-Engineering/Volume_03_GCP_Deep_Dive/Chapter_16_Observability_Cloud_Monitoring_Logging_and_Trace|Observability: Cloud Monitoring, Logging, and Trace]].
+Policy Denied logs are charged for log storage and cannot be disabled, only excluded (Cloud Audit Logs docs, as of 2026-11).
+At USD 0.50 per GiB after the first free 50 GiB per project per month (Google Cloud Observability pricing, as of 2026-11), 4.8 GB (about 4.47 GiB) costs at most about USD 2.24 a month, and spread across 4,000 projects it stays inside the free allotment unless those projects already use it.
+Budget for that, or route it with a log sink, as described in [[17-Cloud-AI-Engineering/Volume_03_GCP_Deep_Dive/Chapter_16_Observability_Cloud_Monitoring_Logging_and_Trace|Observability: Cloud Monitoring, Logging, and Trace]].
 
 ## Failure Modes and Pitfalls
 
 ### Guardrail erosion through overrides
 
-Anyone holding `roles/orgpolicy.policyAdmin` at or below the guarded node can write `inheritFromParent: false` or `reset`.
+`roles/orgpolicy.policyAdmin` can be granted only on the organization resource, and Google documents delegating it through a tag condition on that binding (Resource Manager docs, as of 2026-11).
+Any principal whose binding reaches the guarded node or a node below it can write `inheritFromParent: false` or `reset`.
 That silently removes the parent's deny list for their subtree.
 Detection: periodically enumerate every policy object below each guarded folder and alert on any object that is not on an allow list.
-Prevention: grant policy administration only at the organization node to a small group managed through a pipeline, and verify that with Policy Analyzer.
+Prevention: limit the organization-level binding to a small group managed through a pipeline, review every tag-conditioned delegation, and verify that with Policy Analyzer.
 
 ### Ancestry and tag bypass
 
@@ -526,7 +561,7 @@ The metric to track is "existing violating resources", which comes from Policy S
 ### Propagation races in automation
 
 A project factory that sets policies and then deploys workloads in the same run can see resources created before the policy took effect.
-That leaves violations that stay forever because enforcement is not retroactive.
+That leaves violations that stay until remediated because enforcement is usually not retroactive.
 In the other direction, a pipeline can be denied by a policy that is still propagating after being relaxed.
 Order the operations as policy, wait or verify the effective state, then resources.
 For example, poll `describe --effective` and run a canary mutation that must fail.
@@ -553,21 +588,21 @@ An auditor who reads the constraint text can assume a protection that does not e
 ### Policy data as a global blast radius
 
 On 2025-06-12, Google Cloud had a multi-hour, multi-product outage.
-Its incident report attributed the outage to a policy-data change that replicated globally almost immediately and crashed Service Control, the component that runs policy and quota checks on API requests, through an unguarded code path (UNVERIFIED, see status.cloud.google.com).
+Its incident report attributed the outage to a policy-data change that replicated globally almost immediately and crashed Service Control, the component that runs policy and quota checks on API requests, through a null-pointer code path that lacked error handling and was not behind a feature flag ([Google Cloud incident report](https://status.cloud.google.com/incidents/ow5i3PPK96RduMcb1SsW)).
 The generalizable lesson: policy objects are configuration that gets pushed to every enforcement point, and they need the same staged rollout, feature flags, and fail-safe parsing as code.
 See [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_07_Anatomy_of_Major_Cloud_Outages|Anatomy of Major Cloud Outages]] and [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_04_Control_Plane_vs_Data_Plane_Separation|Control Plane vs Data Plane Separation]].
 Inside your own organization, the same principle means an org-level policy is a 100-percent-blast-radius change and should never skip the folder waves.
 
 ### Limit cliffs
 
-The 300-child folder limit and the 100-parameter limit for managed constraints are hard design boundaries (Google Cloud docs, as of 2026-10).
-An allow list of 150 approved images or 150 approved projects needs either `under:` folder references or a custom CEL constraint, not a longer list.
+The 300-child folder limit, the 100-parameter limit for managed constraints, and the 500-value and 32 KB limits for legacy list policies are hard design boundaries (Google Cloud docs, as of 2026-11).
+An allow list of 150 approved images or 150 approved projects fits a legacy list policy, but on a managed constraint it needs `under:` folder references or a custom CEL constraint, not a longer list.
 
 ## Security and Cost Angles
 
 ### IAM scoping
 
-Grant `roles/orgpolicy.policyAdmin` only at the organization node, and only to a pipeline service account plus a break-glass group.
+`roles/orgpolicy.policyAdmin` can be granted only at the organization node (Resource Manager docs, as of 2026-11), so grant it only to a pipeline service account plus a break-glass group.
 Give humans `roles/orgpolicy.policyViewer`.
 Separate tag administration (creating keys and values) from tag use (binding).
 Grant binding rights for exception tags only to the governance pipeline.
@@ -577,7 +612,7 @@ Back up org-level controls with IAM deny policies on the dangerous permissions (
 
 ### Key hierarchy and CMEK enforcement
 
-Use CMEK-related constraints, such as `gcp.restrictNonCmekServices` and `gcp.restrictCmekCryptoKeyProjects` (UNVERIFIED names in this revision), to require that regulated folders encrypt with keys held in a dedicated key project.
+Use CMEK-related constraints, such as `gcp.restrictNonCmekServices` and `gcp.restrictCmekCryptoKeyProjects` (Google Cloud constraints reference, as of 2026-11), to require that regulated folders encrypt with keys held in a dedicated key project.
 That forms the envelope hierarchy described in [[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter/Chapter_04_Encryption_Key_Hierarchies_and_Envelope_Encryption|Encryption Key Hierarchies and Envelope Encryption]] and [[17-Cloud-AI-Engineering/Volume_03_GCP_Deep_Dive/Chapter_15_Security_and_Confidential_Computing_Cloud_KMS|Security and Confidential Computing: Cloud KMS]].
 
 ### Network and data perimeter
@@ -596,10 +631,10 @@ Combine these with `gcp.resourceLocations` for data residency of model endpoints
 
 ### Unit economics levers
 
-Organization Policy itself has no line-item cost (UNVERIFIED), so its costs are indirect.
+Organization Policy itself is offered at no charge (Compute Engine custom constraints docs, as of 2026-11), so its costs are indirect.
 Location constraints that forbid cheaper regions raise unit prices for compute and accelerators.
 Model the price delta per region before you pin regulated folders ([[17-Cloud-AI-Engineering/Volume_09_FinOps_and_Cloud_Economics/Chapter_05_GPU_and_TPU_Unit_Economics|GPU and TPU Unit Economics]]).
-Constraints that restrict service usage (`gcp.restrictServiceUsage`) are a strong FinOps lever, because they stop expensive services from being enabled in sandbox folders at all.
+Constraints that restrict service usage (`gcp.restrictServiceUsage`) are a strong FinOps lever, because they block runtime use of supported expensive services in sandbox folders, including their existing resources (Google Cloud docs, as of 2026-11).
 Constraints that restrict machine types or accelerator configurations, through custom constraints where the service supports them, keep sandbox spend from going to on-demand accelerators.
 Folder structure determines billing-export grouping and budget scope.
 A hierarchy that mirrors cost ownership makes chargeback a query instead of a tagging project ([[17-Cloud-AI-Engineering/Volume_09_FinOps_and_Cloud_Economics/Chapter_01_Cloud_Billing_Models_and_Unit_Cost_Allocation|Cloud Billing Models and Unit Cost Allocation]]).
@@ -620,7 +655,7 @@ At `regulated`, the effective policy is the org's allow set merged with the fold
 At `p1`, the project merges again: the allow set becomes US plus `asia-south1`, and the deny set still contains `us-east1`.
 Deny wins inside the merge, so `p1` can create buckets in US locations other than `us-east1`, and also in `asia-south1`.
 The project-level policy widened the residency control, which is the non-monotonic property of list policies.
-To fix it, delete the project policy, and make sure project-scoped principals cannot write policy objects by granting policy administration only at the organization.
+To fix it, delete the project policy and remove any policy-admin delegation that reaches the project; the role can be granted only on the organization, so inspect the tag conditions on those bindings.
 Then add a CI invariant, using an offline evaluator, that no descendant of `regulated` has an effective allow outside the approved set.
 If a team really needs Asia, the right answer is a separate folder with its own reviewed policy, not a project override.
 
@@ -654,7 +689,7 @@ Design a rollout process for adding 30 new guardrails across 4,000 projects with
 #### Model Answer
 
 Treat policy as code with the same progressive-delivery rigor as binaries, because an org-level policy has a 100-percent blast radius and takes up to 15 minutes to propagate.
-Start with authoring: prefer managed or custom constraints, because only those, plus four legacy constraints, support dry-run and simulation.
+Start with authoring: prefer managed or custom constraints, because only those support simulation, and only those plus four legacy constraints support dry-run.
 For each constraint, run Policy Simulator first to measure existing violations, then attach a `dryRunSpec` at the org.
 Collect Policy Denied audit entries for at least one full business cycle, including month-end batch jobs, so you see what new mutations would have been blocked.
 Triage every hit into one of three buckets: fix the workload, grant a tag-conditioned exception, or narrow the constraint.
@@ -683,7 +718,7 @@ SCPs that deny identity actions, such as "nobody may disable CloudTrail" or "nob
 SCPs that act as configuration guards through condition keys, such as region restriction or requiring encryption, map naturally to Organization Policy constraints like `gcp.resourceLocations` or CMEK constraints, or to custom CEL constraints, which can read nested resource fields that SCP condition keys cannot.
 Teams get burned in three places.
 First, inheritance: SCPs intersect down the tree, but Organization Policy lets descendants replace or widen, so policy-admin scoping becomes the real control, and descendant policies need invariant checks.
-Second, retroactivity: an SCP deny stops actions on existing resources immediately, while Organization Policy only gates future mutations, so the migration needs a separate scan-and-remediate plan for existing state.
+Second, retroactivity: an SCP deny stops actions on existing resources immediately, while Organization Policy usually gates only future mutations, so the migration needs a separate scan-and-remediate plan for existing state.
 Third, exemptions: there is no exempt management account, so break-glass must be designed explicitly with tags or a separate folder.
 On the plus side, Google Cloud gives you a real shadow mode, dry-run plus simulation, that SCP rollouts do not have natively.
 Mapping tables are in [[17-Cloud-AI-Engineering/Volume_04_AWS_vs_GCP_Translation/Chapter_03_Identity_Security_and_Governance_Translation|Identity, Security, and Governance Translation]].
@@ -699,14 +734,14 @@ Name three plausible paths and the controls for each.
 
 #### Model Answer
 
-First, an ancestry move: someone with move rights on the project and create rights on a permissive destination folder moved the project there.
+First, an ancestry move: someone with `resourcemanager.projects.update` on the project and `resourcemanager.projects.move` on the source and a permissive destination folder moved the project there (Resource Manager docs, as of 2026-11).
 The effective policy changed within the propagation window, with no policy write.
 Control: restrict `resourcemanager.projects.move` and folder admin with IAM deny, alert on move events in audit logs, and use the export and import destination constraints for cross-org moves.
 Second, a tag rebind: if the restriction carries a tag-conditioned exception, binding the exception tag to the project turned the exception on.
 Control: limit tag binding on exception keys to the pipeline identity, and alert on bindings of those keys.
 Third, coverage gaps: they created the resource through a service or resource type the constraint does not cover, or a resource whose location semantics are global, or one created before the policy existed.
 Control: maintain a per-service coverage matrix, add custom constraints where a service supports them, and run asset scans for location attributes across all resource types.
-A fourth path is worth naming: a principal with policy-admin rights below the org who never touched the org-level policy but wrote a descendant override.
+A fourth path is worth naming: a principal with tag-conditioned policy-admin rights who never touched the org-level policy but wrote a descendant override.
 That counts as "no organization policy changed" only if you treat the org-level object as "the policy".
 The deeper lesson is that the security of an Organization Policy control equals the closure of all privileges that can change the policy, the ancestry, or the condition inputs.
 
@@ -734,7 +769,7 @@ Availability-oriented ones, such as service usage, may fail static: keep enforci
 Contain blast radius at two levels.
 Customer level: staged waves and dry-run.
 Provider level: policy data is code-like configuration, so roll it out cell by cell, behind feature flags, with parsers that reject malformed objects instead of crashing.
-The 2025-06-12 Service Control incident is the cautionary case: policy data replicated globally in seconds and exercised an unguarded code path everywhere at once (UNVERIFIED details).
+The 2025-06-12 Service Control incident is the cautionary case: policy data replicated globally in seconds and exercised an unguarded code path everywhere at once ([Google Cloud incident report](https://status.cloud.google.com/incidents/ow5i3PPK96RduMcb1SsW)).
 Also bound fan-out: an org-root policy change touches every cache, so rate-limit root writes and coalesce deltas.
 Use constant-work refresh, periodic full snapshots instead of only deltas, so recovery after a cache wipe does not become a thundering herd against the authoring store ([[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_05_Constant_Work_and_Workload_Smoothing|Constant Work and Workload Smoothing]]).
 Finally, choose a non-Turing-complete, cost-bounded condition language like CEL, so evaluation is predictable inside every service's latency budget.
@@ -757,7 +792,7 @@ It does not stop data from being copied through an allowed API into an unregulat
 It is only as strong as the principals who can change the policy, the ancestry, or the tags.
 The defensible design has layers.
 Put the regulated scope in a dedicated folder whose `gcp.resourceLocations` is set once at that folder, with no descendant policy objects allowed, verified continuously.
-Allow policy administration only at the org through a pipeline.
+Limit the org-level policy administration binding to a pipeline, with no tag-conditioned delegation reaching the folder.
 Block project moves out of the folder with IAM deny.
 Require CMEK with keys held in an EU key project, so data that leaks elsewhere stays unreadable without key access.
 Wrap the folder's projects in a VPC Service Controls perimeter, so data cannot cross API boundaries to projects outside it.
@@ -784,7 +819,7 @@ The model team needs a GPU type available only in a US region for a training run
 - [Domain-restricted sharing](https://docs.cloud.google.com/organization-policy/domain-restricted-sharing) - The best worked example of migrating from a legacy list constraint to CEL-based custom policies.
 - [Access change propagation - IAM](https://cloud.google.com/iam/docs/access-change-propagation) - The eventual-consistency model that Organization Policy shares in spirit and that pipelines must design around.
 - [Zanzibar: Google's Consistent, Global Authorization System (USENIX ATC 2019)](https://www.usenix.org/conference/atc19/presentation/pang) - The reference design for hierarchical, globally distributed authorization with bounded-staleness snapshots.
-- [Large-scale cluster management at Google with Borg (EuroSys 2015)](https://research.google/pubs/large-scale-cluster-management-at-google-with-borg/) - The origin of administrative hierarchy and policy-as-placement thinking at Google.
+- [Large-scale cluster management at Google with Borg (EuroSys 2015)](https://research.google/pubs/large-scale-cluster-management-at-google-with-borg/) - Background on admission control and cluster-scale placement at Google; it does not describe an administrative policy tree.
 - [Zelkova: Semantic-based Automated Reasoning for AWS Access Policies using SMT (FMCAD 2018)](https://www.amazon.science/publications/semantic-based-automated-reasoning-for-aws-access-policies-using-smt) - Shows what proving guardrail properties looks like, as a contrast to empirical simulation.
 - [Common Expression Language specification](https://github.com/google/cel-spec) - The evaluation semantics and cost model behind custom constraints and tag conditions.
 - [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_06_Multi_Account_and_Multi_Project_Landing_Zones|Multi-Account and Multi-Project Landing Zones]] - How this hierarchy becomes a full landing zone with log routing and identity federation.
