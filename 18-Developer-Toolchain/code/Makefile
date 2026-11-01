@@ -15,6 +15,7 @@ help:
 	@echo "make list              - list labs and their requirements"
 	@echo "Restrict to labs whose path contains LAB, e.g. 'make verify LAB=02-Version-Control/mini_git/'"
 	@echo "Opt in to gated labs with TOOLCHAIN_LABS_PMU=1 or TOOLCHAIN_LABS_NETWORK=1"
+	@echo "Off Linux, linux labs run in a pinned container; TOOLCHAIN_LABS_CONTAINER=0 skips them instead"
 
 verify:
 	@$(PYTHON) -m _harness.verify $(LAB)

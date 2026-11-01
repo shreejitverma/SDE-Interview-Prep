@@ -160,7 +160,7 @@ You need the `.dSYM` bundle archived from the exact release build; one generated
 | `kernel.core_pipe_limit` | Linux | `0` kernel default; `16` set by systemd's `50-coredump.conf` (systemd 255) | `0` means unlimited parallel pipes but no guarantee `/proc/PID` survives for the collector; over the limit, dumps are skipped and logged. |
 | `fs.suid_dumpable` | Linux | `0` kernel default; `2` set by systemd's `50-coredump.conf` | Controls dumps after setuid, setgid, or capability changes. |
 | `/proc/PID/coredump_filter` | Linux | `0x33` (bits 0, 1, 4, 5) | Private and shared anonymous memory, ELF header pages, private huge pages; file-backed mappings are excluded. |
-| `RLIMIT_CORE` (`ulimit -c`) | Both | Distribution and service dependent; `0` in the lab container | Blocks file targets on Linux; ignored by the kernel for pipe targets; macOS core(5) says cores are disabled by default this way. |
+| `RLIMIT_CORE` (`ulimit -c`) | Both | Distribution and service dependent; `0` in a default container of the lab image | Blocks file targets on Linux; ignored by the kernel for pipe targets; macOS core(5) says cores are disabled by default this way. |
 | `ProcessSizeMax=` / `ExternalSizeMax=` | Linux | `32G` each on 64-bit (`1G` on 32-bit) | Above `ProcessSizeMax` no backtrace is generated; above `ExternalSizeMax` the stored core is truncated. |
 | `JournalSizeMax=` | Linux | `767M` | Cap when `Storage=journal`. |
 | `MaxUse=` / `KeepFree=` | Linux | 10% / 15% of the filesystem | Old cores are deleted silently to stay under these. |
@@ -198,7 +198,8 @@ Read the result with core(5) in mind:
 - An executable without read permission produces no core.
 
 **Verification:** you can state which collector receives the core and that the limit allows it.
-For example, the lab container printed `core` for the pattern, `0` for `core_uses_pid` and `suid_dumpable`, `00000033` for `coredump_filter`, and `0` for `ulimit -c`, which means no core at all until `ulimit -c unlimited` is set, which is what the lab's `run.sh` does before it crashes the program.
+For example, a default container of the lab image printed `core` for the pattern, `0` for `core_uses_pid` and `suid_dumpable`, `00000033` for `coredump_filter`, and `0` for `ulimit -c`, which means no core at all until `ulimit -c unlimited` is set, which is what the lab's `run.sh` does before it crashes the program.
+The harness also starts its container with `--ulimit core=-1`, so `ulimit -c` is already `unlimited` in a dispatched run.
 
 ### Step 2: Retrieve the core and prove it is complete
 
@@ -436,7 +437,9 @@ What the output proves and what it does not:
 
 ### Verified output
 
-Recorded by `make record` on linux-aarch64 on 2026-10-25 and re-checked by `make verify`; the file is `code/03-Debugging/core_dump_triage/expected/linux-aarch64.txt`.
+Recorded by `make record` on linux-aarch64 on 2026-10-25; the file is `code/03-Debugging/core_dump_triage/expected/linux-aarch64.txt`.
+On macOS, `make verify` re-runs the lab in the pinned image from `code/_harness/linux-labs.Dockerfile`; it matched byte for byte on OrbStack on 2026-11-01 with gdb 15.1, elfutils 0.190, and gcc 13.
+The container runs unprivileged with no capabilities, because OrbStack's `core_pattern` is `core` and the kernel core needs only `RLIMIT_CORE`.
 
 ```text
 === Pass: without-debug-info ===
