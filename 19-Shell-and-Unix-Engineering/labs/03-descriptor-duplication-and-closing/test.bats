@@ -139,6 +139,12 @@ lacks_fd() {
   has_fd 0
   has_fd 1
   lacks_fd 2
+  # With stdout closed the probe must report on stderr, which the lab helper captures.
+  run_lab_c '"$FDPROBE" -e >&-'
+  [ "$status" -eq 0 ]
+  has_fd 0
+  lacks_fd 1
+  has_fd 2
 }
 
 @test "a closed stdout fails an external writer, and a built-in writer in every shell but zsh" {
@@ -352,6 +358,23 @@ lacks_fd() {
   [ "$waited" -lt 3 ]
 }
 
+@test "with the job in the substitution's own shell, redirecting its output frees the substitution except in yash and ksh93u+m" {
+  run_lab_c 's=$(date +%s); o=$(/bin/sleep 3 >/dev/null 2>&1 </dev/null & echo $!); e=$(date +%s); kill -9 "$o" 2>/dev/null; echo "dt=$((e - s))"'
+  [ "$status" -eq 0 ]
+  waited=${output#dt=}
+  case $(lab_shell_family) in
+    bash | zsh | zsh-sh | busybox | posh | dash | mksh) [ "$waited" -lt 3 ] ;;
+    yash) [ "$waited" -ge 3 ] ;;
+    ksh93)
+      case $(lab_shell_version) in
+        *93u+m*) [ "$waited" -ge 3 ] ;;
+        *) [ "$waited" -lt 3 ] ;;
+      esac
+      ;;
+    *) false ;;
+  esac
+}
+
 @test "the word after >& is expanded: a digit string duplicates and a lone - closes, except in BusyBox ash" {
   run_lab_c 'fd=2; { echo x >&$fd; } 2>e 1>o; echo "o=[$(cat o)] e=[$(cat e)]"'
   [ "$status" -eq 0 ]
@@ -394,6 +417,12 @@ lacks_fd() {
       [ -f out ]
       content=$(cat out)
       [ "$content" = x ]
+      # The word opens one file for both streams, so stderr must land there too and after stdout.
+      run_lab_c '{ echo o; echo e >&2; } >&both; echo "st=$?"'
+      [ "$status" -eq 0 ]
+      [ "$output" = "st=0" ]
+      content=$(cat both)
+      [ "$content" = $'o\ne' ]
       ;;
     dash)
       [ "$status" -eq 2 ]

@@ -2,7 +2,7 @@
 type: concept
 track: [sde, distinguished]
 level:
-status: draft
+status: solid
 last_reviewed:
 sources:
   - "https://pubs.opengroup.org/onlinepubs/9799919799/utilities/V3_chap02.html"
@@ -13,6 +13,9 @@ sources:
   - "https://man7.org/linux/man-pages/man2/dup.2.html"
   - "https://man7.org/linux/man-pages/man2/open.2.html"
   - "https://zsh.sourceforge.io/Doc/Release/Redirection.html"
+  - "https://pubs.opengroup.org/onlinepubs/9699919799/utilities/V3_chap02.html"
+  - "https://www.austingroupbugs.net/view.php?id=1036"
+  - "https://ftpmirror.gnu.org/bash/bash-5.3.tar.gz"
 ---
 
 # Redirection Order and Semantics
@@ -61,6 +64,7 @@ Only descriptors 0 to 9 are guaranteed; larger numbers and the `{location}redir-
 If more than one redirection is given, "the order of evaluation is from beginning to end" (XCU 2.7), and the rationale spells out the consequence: `ls > foo 2>&1` sends both streams to `foo`, while `ls 2>&1 > foo` sends only stdout there (XRAT C.2.7).
 The word after the operator undergoes tilde expansion, parameter expansion, command substitution, arithmetic expansion, and quote removal, but not field splitting, and not pathname expansion in a non-interactive shell (XCU 2.7).
 Within a simple command, redirections are performed in step 3 of the order of processing, after the command word and arguments are expanded and before the variable assignments of step 4 (XCU 2.9.1.1).
+The same section lets steps 3 and 4 be swapped when there is no command name or the command is a special built-in, which is why ksh93 seeing the new value in `v=new : >"$v"` (Portability, below) is conforming rather than a bug (XCU 2.9.1.1).
 
 **The operators and the system call each one becomes.**
 
@@ -80,11 +84,12 @@ Two descriptors that refer to the same open file description share the file offs
 That one sentence explains the whole `>f 2>&1` versus `>f 2>f` difference below.
 
 **Implementations.**
-dash walks the list in `redirect()`: for each node it calls `openredirect()` and then `dupredirect()`, and for builtins and compound commands it first saves the old descriptor above 9 with `fcntl(F_DUPFD_CLOEXEC, 10)` in `savefd()` so `popredir()` can restore it (dash `src/redir.c`).
+dash walks the list in `redirect()`: for each node it calls `openredirect()` and then `dupredirect()`, and for builtins and compound commands, between those two calls, it saves the old descriptor above 9 with `fcntl(F_DUPFD_CLOEXEC, 10)` in `savefd()` so `popredir()` can restore it (dash `src/redir.c`, `redirect`, `savefd`, `popredir`, rechecked 2026-10-28).
 Before that, dash's `evalcommand` calls `expredir()` on the whole list, so every redirection word is expanded before any file is opened (dash `src/eval.c`, `evalcommand`, `expredir` then `redirectsafe`).
 bash instead expands each word inside `do_redirection_internal()` through `redirection_expand()`, so a later word can observe a file created by an earlier redirection; bash undoes redirections for builtins and compound commands with `add_undo_redirect()`, saving the old descriptor at 10 or higher (`SHELL_FD_BASE`) (bash-5.3 `redir.c`, `do_redirection_internal`, `redirection_expand`, `add_undo_redirect`).
 The lab shows the difference: `: >f1 >"$(test -e f1 ...)"` sees `f1` in bash, zsh, ksh93, mksh, yash and posh, but not in dash or BusyBox ash.
-Both are consistent with "from beginning to end"; whether the standard requires interleaving the expansion with the open is UNVERIFIED (the text of XCU 2.7 does not say).
+Both are consistent with "from beginning to end"; whether the standard requires interleaving the expansion with the open is not stated: XCU 2.7 says only that "the order of evaluation is from beginning to end" and XCU 2.9.1.1 that redirections are "performed from the beginning of the command text to the end", neither says whether a word's expansion is part of its redirection's turn, and no Austin Group defect found (as of 2026-10) settles it for ordinary words.
+The nearest text is for here-documents: Austin Group Defect 1036 made XCU 2.7.4 say their lines are expanded "when the redirection operator is evaluated", which ties that one expansion to its own turn in the sequence (POSIX.1-2024 XCU 2.7.4; austingroupbugs.net bug 1036).
 
 **`set -C` (noclobber).**
 `>` fails if the target exists and is a regular file, or a symbolic link to one (POSIX.1-2024 XCU 2.7.2); `>|` overrides, `>>` is unaffected, and `/dev/null` is fine because it is not a regular file.
@@ -101,7 +106,7 @@ If `exec` has no operands, its redirections are made in the current shell; wheth
 **Errors.**
 A failure to open or create a file makes the redirection fail (XCU 2.7).
 A redirection error with a special built-in makes a non-interactive shell exit; with a compound command, a function, or another utility it must not (XCU 2.8.1).
-Austin Group Defect 914 added the compound-command and function rows, and defect 1427 accounted for `command` running a special built-in (XRAT C.2.8.1).
+Those two rows already existed in POSIX.1-2017 with "may exit" for a non-interactive shell; Austin Group Defect 914 changed them to "shall not exit", and defect 1427 accounted for `command` running a special built-in (XRAT C.2.8.1; POSIX.1-2017 XCU 2.8.1 table).
 `exec` is a special built-in, so a failed `exec >/nonexistent/log` is fatal in a conforming shell.
 The lab asserts exit statuses too: a failed redirection on a simple command returns 1 in every shell measured except dash and yash, which return 2, and a fatal special built-in redirection error exits with 1 except in dash, which exits with 2 (measured in the shell matrix).
 
@@ -113,7 +118,7 @@ The lab asserts exit statuses too: a failed redirection on a simple command retu
 | Descriptors dash uses to save originals | 10 and up, close-on-exec | dash `src/redir.c`, `savefd` (read 2026-10-27) |
 | Descriptors bash uses to save originals | `SHELL_FD_BASE` = 10 | bash-5.3 `redir.c` |
 | `{var}>` descriptor chosen at the top level of a script | bash 4.4 to 5.3 10, ksh93 (both releases) 10, native zsh 11; ksh93 gives 12 inside a subshell (cause not investigated) | the lab asserts these exact numbers per family (2026-10-27); details in [[Descriptor-Duplication-and-Closing]] |
-| Soft `RLIMIT_NOFILE` in the Debian matrix container | 20480 (hard 1048576) | measured by hand 2026-10-27 |
+| Soft `RLIMIT_NOFILE` in the Debian matrix container | 20480 (hard 1048576) | measured by hand 2026-10-27, rechecked with `ulimit -n` and `ulimit -Hn` in the container 2026-10-28 |
 | Bytes of `out 0\n` then `err\n` in `>f 2>f` | file ends as `err\n0\n` (6 bytes) | the lab, `order.sh` line `four.open` |
 | Redirections `order.sh` asserts per shell | 8 report lines | the lab |
 | Tests in the lab | 38, all passing in the 30 shell configurations listed under Worked example | the lab, run 2026-10-27 |
@@ -404,7 +409,7 @@ Past a few dozen lines of descriptor juggling (three or more `exec N>` plus swap
 >
 > > [!success]- Answer
 > > `{ cmd 3>&1 1>&2 2>&3 3>&-; }` or `cmd 3>&1 1>&2 2>&3 3>&-` directly; the lab proves the swap (`three.stdout=[err|]`).
-> > It needs a spare descriptor below 10, which every shell guarantees; do not use `{fd}>` (bash 4.4 and later in the matrix, ksh93, and native zsh only) or `/dev/fd` paths.
+> > It needs a spare descriptor below 10, which every shell guarantees; do not use `{fd}>` (bash 4.4 and later in the matrix, a form bash added in 4.1 per its `CHANGES` file, plus ksh93 and native zsh only) or `/dev/fd` paths.
 > > In native zsh, `MULTIOS` can duplicate output if a later redirection reuses a descriptor that is already redirected, so wrap the group in `emulate -L sh` or run it under `sh`.
 > >
 > > Follow-up: What happens if descriptor 3 is already open in the caller?
@@ -413,7 +418,7 @@ Past a few dozen lines of descriptor juggling (three or more `exec N>` plus swap
 > [!question] L7+: dash expands every redirection word before opening any file and bash expands each as it goes, so which is right and where does it bite?
 >
 > > [!success]- Answer
-> > The lab shows both behaviors; POSIX.1-2024 XCU 2.7 says only that redirections are evaluated from beginning to end, and I could not verify that it settles the interleaving, so neither can be called wrong from the text.
+> > The lab shows both behaviors; POSIX.1-2024 XCU 2.7 says only that redirections are evaluated from beginning to end, and neither that text nor any Austin Group defect found settles the interleaving for ordinary words, so neither can be called wrong from the text (only here-documents are tied to "when the redirection operator is evaluated", XCU 2.7.4).
 > > It bites in `: >f >"$(test -e f && echo seen || echo unseen)"`, in a target that depends on a file an earlier redirection created, and in side effects of command substitutions inside redirection words.
 > > Avoid any redirection word whose value depends on another redirection in the same command; compute the name into a variable first.
 > >

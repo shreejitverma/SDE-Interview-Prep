@@ -2,7 +2,7 @@
 type: concept
 track: [sde, distinguished]
 level:
-status: draft
+status: solid
 last_reviewed:
 sources:
   - "https://pubs.opengroup.org/onlinepubs/9799919799/utilities/V3_chap02.html"
@@ -32,7 +32,7 @@ Part of [The POSIX Shell Language](README.md) in [Shell and Unix Engineering](..
 
 ## TL;DR
 
-- Mechanism: `n>&m` and `n<&m` are `dup2(m, n)` (the new slot shares offset and status flags with the old one and has `FD_CLOEXEC` clear); `n>&-` and `n<&-` are `close(n)`.
+- Mechanism: `n>&m` and `n<&m` have the semantics of `dup2(m, n)` (the new slot shares offset and status flags with the old one and has `FD_CLOEXEC` clear); `n>&-` and `n<&-` are `close(n)`.
 - Rule: redirections run strictly left to right and `n>&m` copies what `m` names right now, so `>f 2>&1` and `2>&1 >f` differ; closing a descriptor that is not open is not an error (POSIX.1-2024 XCU 2.7.5 and 2.7.6).
 - Trap: a descriptor you forgot to close rides into every child, so a background process that inherits the write end of a `$(...)` pipe keeps the substitution waiting for its whole lifetime, and `exec 10>f` is the command word `10` plus a redirection in dash, mksh, ksh93, zsh and posh.
 - Portability: POSIX guarantees only descriptors 0 to 9 and leaves it unspecified whether `exec`-opened descriptors above 2 reach children; ksh93 and mksh mark them close-on-exec, every other measured shell passes them on.
@@ -71,8 +71,9 @@ The dashed arrow is `7>&-`: the slot is freed, the description lives on while an
 **Two tables, not one.**
 A descriptor is an index into a per-process table; each slot holds a pointer to a kernel open file description (Linux dup(2): `dup` and `dup2` "refer to the same open file description", which means the two descriptors "share file offset and file status flags").
 The close-on-exec flag lives in the slot, not in the description, so it is not shared, and the duplicate's flag is off (Linux dup(2); POSIX.1-2024 dup: "the `FD_CLOEXEC` and `FD_CLOFORK` flags associated with fildes2 shall be cleared").
-In the Linux kernel `do_dup2` takes a reference on the source `struct file` with `get_file`, stores the same pointer in the target slot, sets the slot's close-on-exec bit only if the caller asked for it, and closes whatever was in the target slot first (Linux `fs/file.c`, `do_dup2`, master as of 2026-10).
-`dup2(fd, fd)` is a checked no-op, and the close-then-reuse is atomic, which is why a shell never implements `n>&m` as `close(n)` followed by `dup(m)`: a signal handler or another thread could claim `n` in between (Linux dup(2)).
+In the Linux kernel `do_dup2` takes a reference on the source `struct file` with `get_file`, stores the same pointer in the target slot, sets the slot's close-on-exec bit only if the caller asked for it, and closes whatever the target slot held only after the new pointer is installed and the table lock is dropped (Linux `fs/file.c`, `do_dup2`, master as of 2026-11).
+`dup2(fd, fd)` is a checked no-op, and the close-then-reuse is atomic, while `close(n)` followed by `dup(m)` is not: a signal handler or another thread could claim `n` in between (Linux dup(2)).
+dash and mksh call `dup2` (dash `sh_dup2`, mksh `ksh_dup2`), but ksh93u+m does not: `sh_iorenumber` runs `sh_close(f2)` and then `fcntl(f1, F_DUPFD, f2)`, so the atomicity belongs to `dup2`, not to every shell (ksh93u+m `src/cmd/ksh93/sh/io.c`, dev branch as of 2026-11).
 
 **What the standard says.**
 POSIX.1-2024 XCU 2.7 defines the form `[n]redir-op word`, where `n` is a decimal number written with no blank before the operator, and a quoted `n` is not a descriptor number (`echo \2>a` writes the character 2 into `a`).
@@ -90,11 +91,11 @@ The word is expanded like any redirection word, so `>&$fd` and `>&$v` with `v=-`
 A redirection on an external command is applied in the child between `fork` and `execve`.
 A redirection on a built-in, compound command, or function must be applied in the shell's own table and undone afterwards, so the shell first saves the descriptor it is about to overwrite.
 dash does this in `redirect`: for each redirection `openredirect` returns the source descriptor (for `NTOFD` and `NFROMFD` it is simply the duplicated number), `savefd` moves the old occupant to a descriptor of 10 or higher with `fcntl(from, F_DUPFD_CLOEXEC, 10)`, `dupredirect` performs `dup2` through `sh_dup2`, and `>&-` becomes a plain `close` (dash `src/redir.c`, `redirect`, `savefd`, `dupredirect`, `sh_dup2`).
-The saved copy is what `popredir` restores afterwards, and its loop runs over descriptors 0 to 9 only (`for (i = 0 ; i < 10 ; i++)`), which is why 0 to 9 is the range a script can rely on and descriptors from 10 up are the shell's scratch space.
+The saved copy is what `popredir` restores afterwards, and its loop runs over descriptors 0 to 9 only (`for (i = 0 ; i < 10 ; i++)`), which matches the 0 to 9 a script can rely on and leaves descriptors from 10 up as dash's scratch space.
 
 A simple command with no command name performs its redirections "in a subshell environment", so they do not persist; "to affect the current execution environment, see the exec special built-in" (POSIX.1-2024 XCU 2.9.1.3).
 `exec` with only redirections makes them permanent in the current shell, and it is the only way to open or close a descriptor for the rest of a script (POSIX.1-2024 XCU 2.15, exec: `exec 3< readfile`, `exec 5<&0`, `exec 3<&-`).
-"Open files controlled by exec" are part of the shell execution environment, and the separate environment of a non-built-in utility lists the same open files (POSIX.1-2024 XCU 2.13).
+Open files "controlled by exec" are part of the shell execution environment, and the separate environment of a non-built-in utility lists the same open files (POSIX.1-2024 XCU 2.13).
 Whether descriptors above 2 opened by `exec` stay open when the shell invokes another utility is explicitly "unspecified" (POSIX.1-2024 XCU 2.15, exec), and the standard's own advice is that scripts "can always close them explicitly".
 
 **Redirection errors.**
@@ -102,7 +103,7 @@ A redirection error on a special built-in makes a non-interactive shell exit; on
 So `: >&9` with 9 not open ends a conforming script, while `{ : ; } >&9` only fails the group.
 
 **Implementations differ exactly where the standard is silent.**
-ksh93u+m opens `exec` redirections with a flag documented in `sh_redirect` as "redirections persist, but file descriptors > 2 are closed when executing an external command", and it turns that off under `set -o posix` (ksh93u+m `src/cmd/ksh93/sh/io.c`, `sh_redirect`, dev branch as of 2026-10).
+ksh93u+m opens `exec` redirections with a flag documented in `sh_redirect` as "redirections persist, but file descriptors > 2 are closed when executing an external command", and it turns that off under `set -o posix` (ksh93u+m `src/cmd/ksh93/sh/io.c`, `sh_redirect`, dev branch as of 2026-11).
 mksh does the same in `c_exec`: "for ksh, keep file descriptors private (except stdin/out/err)" by setting `FD_CLOEXEC` on every descriptor above 2, except "for POSIX or legacy/kludge sh" (mksh `funcs.c`, `c_exec`).
 mksh also marks a redirection of `n>&n` (dup from equal to dup to) with `IODUPSELF` and clears close-on-exec for that one command, which is why `cmd 9>&9` hands descriptor 9 to one child and nothing else (mksh `exec.c`, `iosetup` and the `TEXEC` case in `execute`).
 mksh accepts only a single digit as a descriptor name in a dup (`check_fd` rejects a name longer than one character with "illegal file descriptor name"), which matches the single-digit lexing measured in the shell matrix (mksh `main.c`, `check_fd`).
@@ -122,6 +123,7 @@ The table shows the state of descriptors 1, 2 and 3 after each redirection of `c
 
 Step 4 matters: without it the child holds a third path to the original stdout and, if that is a pipe, keeps the reader waiting after the child's stdout is closed.
 The stderr-filter idiom `{ cmd 2>&1 1>&3 3>&- | filter >&2; } 3>&1` uses the same table: inside the group, fd 3 is the saved stdout, the command's stderr goes into the pipe (`2>&1` runs while 1 is still the pipe), its stdout goes to fd 3, and fd 3 is closed for it.
+Under native zsh this bare form is wrong, because MULTIOS also copies the command's stdout into the pipe and the filter sees it (measured in the shell matrix); the lab's version in the worked example puts the command inside an inner group, which avoids that.
 
 ## Numbers and limits
 
@@ -129,30 +131,30 @@ The stderr-filter idiom `{ cmd 2>&1 1>&3 3>&- | filter >&2; } 3>&1` uses the sam
 |---|---|---|
 | Descriptors every shell must support in redirections | 0 to 9 | POSIX.1-2024 XCU 2.7 |
 | `dup` result | the lowest-numbered unused descriptor | Linux dup(2) |
-| Kernel cost of a duplicate | one extra reference on one `struct file`, one table slot | Linux `fs/file.c`, `do_dup2` (master as of 2026-10) |
+| Kernel cost of a duplicate | one extra reference on one `struct file`, one table slot | Linux `fs/file.c`, `do_dup2` (master as of 2026-11) |
 | Shell scratch descriptors in dash | 10 and up (`F_DUPFD_CLOEXEC`, 10) | dash `src/redir.c`, `savefd` |
 | Shell families that read `exec 10>f` as a descriptor | 3 of 9 (bash, yash, BusyBox ash); dash, mksh, ksh93, zsh, zsh in `sh` mode and posh read `10` as a word | lab, test "a descriptor number above 9" (2026-10) |
-| Descriptor chosen by `{fd}>f` | 10 in bash 4.4 to 5.3, 11 in zsh 5.9, and in ksh93 10 at the top level of a script but 12 inside the lab's subshell (cause not investigated) | measured by hand in the shell matrix (2026-10); the lab asserts only >= 10 |
-| Shell families that pass `exec`-opened descriptors above 2 to children | 7 of 9 (all except ksh93 and mksh, which pass them on under `set -o posix`) | lab, test "descriptors above 2 opened by exec" (2026-10) |
-| Delay a leaked pipe end adds to `$(...)` | the background job's lifetime: 3 s for `sleep 3` in every measured shell except ksh93u+m 1.0.10, and under 3 s with `>/dev/null` in all of them | lab, test "a background child holding a duplicate" (2026-10) |
+| Descriptor chosen by `{fd}>f` | 10 in bash 4.4 to 5.3, 11 in zsh 5.9, and in ksh93 10, except that ksh93u+m 1.0.10 gives 12 in the lab's subshell with `2>/dev/null` and an `&&` list (cause not investigated; ksh93u+ 2012 gives 10 there) | measured by hand in the shell matrix (2026-10 and 2026-11); the lab asserts only >= 10 |
+| Shell families that pass `exec`-opened descriptors above 2 to children | 7 of 9 (all except ksh93 and mksh; mksh and ksh93u+m pass them on under `set -o posix`, an option ksh93u+ 2012 rejects) | lab, test "descriptors above 2 opened by exec" (2026-10) |
+| Delay a leaked pipe end adds to `$(...)` | the background job's lifetime, with the job started by an inner `/bin/sh`: 3 s for `sleep 3` in every measured shell except ksh93u+m 1.0.10, and under 3 s with `>/dev/null` in all of them | lab, test "a background child holding a duplicate" (2026-10) |
 | Descriptors open in a child of a bats test | 0, 1, 2, 3, 4 (bats holds 3 and 4) | measured with the lab's `fdprobe` (2026-10) |
 | Lab assertions passing | 26 of 26 in each of 30 shell configurations | lab run, 2026-10 |
 
 ## Portability
 
-Every cell is asserted by the lab or measured in the shell matrix on the same date (2026-10).
-Versions: bash 3.2.57 (macOS), bash 3.2 to 5.3 (images), zsh 5.9, dash 0.5.12, ksh93u+m 1.0.10 and macOS ksh93u+ 2012-08-01, mksh R59 (2020/10/31 on Alpine, 2025/04/26 on Debian), yash 2.58.1, posh 0.14.1, BusyBox 1.37.0 ash.
+Every cell is asserted by the lab or measured in the shell matrix on the same date (2026-10); cells the lab does not assert were re-measured by hand in 2026-11.
+Versions: bash 3.2.57 (macOS), bash 3.2 to 5.3 (images), zsh 5.9 (5.9.2 on the macOS host), dash 0.5.12, ksh93u+m 1.0.10 and macOS ksh93u+ 2012-08-01, mksh R59 (2020/10/31 on Alpine, 2025/04/26 on Debian), yash 2.58.1, posh 0.14.1, BusyBox 1.37.0 ash.
 
 | Shell | Redirection error on a special built-in (`: >&9`) | `exec 8>f` then external child | `exec 10>f` | `{fd}>f` | `>&word`, word not a number | `>&$v` with `v=-` | built-in `echo` with stdout closed |
 |---|---|---|---|---|---|---|---|
-| POSIX sh | shall exit | unspecified | at least 0 to 9 required | implementation-defined | unspecified | closes | not specified |
+| POSIX sh | shall exit | unspecified | at least 0 to 9 required | implementation-defined | unspecified | closes | environment is non-conforming (XCU 2.9.1.5) |
 | macOS bash 3.2 (`/bin/bash`) | continues, status 1 | child sees 8 | descriptor 10 | no | writes both streams to the file | closes | status 1, and `x` is still written to stdout |
 | macOS `/bin/sh` (bash 3.2 in POSIX mode) | exits | child sees 8 | descriptor 10 | no | writes both streams to the file | closes | status 1, and `x` is still written to stdout |
 | bash 4.4 to 5.3 | continues, status 1 (exits in POSIX mode) | child sees 8 | descriptor 10 | yes (fd 10) | writes both streams to the file | closes | status 1 |
 | zsh 5.9 native | continues, status 1 | child sees 8 | the word `10` | yes (fd 11) | writes both streams to the file | closes | status 0, silently |
 | zsh 5.9 `--emulate sh` | exits | child sees 8 | the word `10` | no | writes both streams to the file | closes | status 0, silently |
 | dash 0.5.12 | exits | child sees 8 | the word `10` | no | aborts the script (bad fd number) | closes | status 1 ("I/O error") |
-| ksh93u+m 1.0.10, ksh93u+ 2012 | exits | child does not see 8; sees it with `8>&8` or `set -o posix` (u+m) | the word `10` | yes (fd 10 at top level, 12 in the lab's subshell) | error, command fails | closes | status 1 |
+| ksh93u+m 1.0.10, ksh93u+ 2012 | exits | child does not see 8; sees it with `8>&8` or `set -o posix` (u+m) | the word `10` | yes (fd 10 at top level; in the lab's subshell u+m gives 12 and 2012 gives 10) | error, command fails | closes | status 1 |
 | mksh R59 | exits | child does not see 8; sees it with `8>&8` or `set -o posix` | the word `10` | no | error, command fails | closes | status 1 |
 | yash 2.58.1 | continues, status 2 | child sees 8 | descriptor 10 | no | error, command fails | closes | status 1 |
 | posh 0.14.1 | exits | child sees 8 | the word `10` | no | error, command fails | closes | status 1 |
@@ -237,7 +239,7 @@ Verbatim excerpt of the test that proves the ksh behavior and its escape hatch (
 }
 ```
 
-Run it with `cd labs/03-descriptor-duplication-and-closing && LAB_SHELL=dash bats test.bats`; the expected TAP summary is `1..26` followed by 26 `ok` lines, and the matrix run (2026-10) printed 26 `ok` lines in each of the 30 configurations (8 on the macOS host: `/bin/sh`, `/bin/bash`, bash 5.3, `bash --posix`, dash, `/bin/ksh`, zsh native and `--emulate sh`; 9 on Debian; 13 on Alpine including bash 3.2, 4.4, 5.1, 5.2 and 5.3).
+Run it with `cd labs/03-descriptor-duplication-and-closing && LAB_SHELL=dash bats test.bats`; the expected TAP summary is `1..26` followed by 26 `ok` lines, and the matrix run (2026-10) printed 26 `ok` lines in each of the 30 configurations (8 on the macOS host: `/bin/sh`, `/bin/bash`, bash 5.3, `sh` on `PATH` (bash 5.3 in POSIX mode), dash, `/bin/ksh`, zsh native and `--emulate sh`; 9 on Debian; 13 on Alpine including bash 3.2, 4.4, 5.1, 5.2 and 5.3).
 
 ## Pitfalls
 
@@ -252,14 +254,17 @@ Run it with `cd labs/03-descriptor-duplication-and-closing && LAB_SHELL=dash bat
 > Trigger: `pid=$(server & echo $!)` or any daemon started inside `$(...)`, a CI step, or a pipeline whose reader waits for end of file.
 > Symptom: the command substitution or the pipeline hangs until the daemon exits, because the daemon inherited the write end of the pipe; the lab shows a 3 s `sleep` delaying `$(...)` by 3 s, and under `>/dev/null` by under 3 s.
 > Fix: start long-lived children with every inherited descriptor they do not need closed or replaced: `server >/dev/null 2>&1 </dev/null &`, plus `n>&-` for any extra descriptor you opened with `exec`.
+> Keep them out of `$(...)` as well (`server >/dev/null 2>&1 </dev/null & pid=$!`): yash 2.58.1 and ksh93u+m 1.0.10 still waited out `$(/bin/sleep 2 >/dev/null 2>&1 </dev/null & echo $!)`, where yash's job held pipes on descriptors 100 and 101 and ksh93u+m's held none (measured in the shell matrix, 2026-11; the ksh93u+m cause was not read).
 > The security face of the same bug is CVE-2024-21626, in which a leaked internal descriptor in runc 1.1.11 and earlier let a container process obtain a working directory in the host filesystem (NVD, published 2024-01-31).
-> ksh93u+m 1.0.10 returned early in the lab's test, so do not rely on the wait either way.
+> In the lab's inner-`/bin/sh` form ksh93u+m 1.0.10 returned early, and its stdout inside `$(...)` is a deleted temporary file rather than a pipe (`readlink /proc/self/fd/1`, measured in the shell matrix), while with the `&` directly inside the substitution it waited like the others, so do not rely on the wait either way.
 
 > [!warning] Descriptor numbers above 9 are not descriptors in most shells
 > Trigger: `exec 10>log` or `echo x >&10` in a script run by dash, mksh, ksh93, zsh or posh.
-> Symptom: the shell reads `10` as a command word and the `>log` as an ordinary redirection, so you see "exec: 10: not found", `log` is created empty, and a non-interactive shell exits because a failed `exec` ends it (measured in the shell matrix).
+> Symptom: the shell reads `10` as a command word and the `>log` as an ordinary redirection, so you see "exec: 10: not found" (zsh says "command not found: 10" and mksh "10: inaccessible or not found"), `log` is created empty, and a non-interactive shell exits because a failed `exec` ends it (measured in the shell matrix).
+> `echo x >&10` fails differently: dash aborts with the syntax error "Bad fd number", mksh and posh report "illegal file descriptor name", and ksh93 and zsh accept the multi-digit source and fail only because descriptor 10 is not open (measured in the shell matrix, 2026-11).
 > Fix: stay within 0 to 9, which POSIX requires every implementation to support (POSIX.1-2024 XCU 2.7); in bash 4.1 and later, ksh93 and zsh you may use `exec {fd}>log` and keep `fd` in a variable (bash CHANGES, bash-4.1-alpha).
 > The shell's own scratch descriptors live at 10 and up in dash (`savefd`), which is another reason not to count on that range.
+> bash 3.2 shows the hazard: `echo x >&10` with nothing opened on 10 prints `x` with status 0 on macOS and Alpine, where bash 4.4 and later report a bad descriptor (measured in the shell matrix, 2026-11; bash source not read).
 
 > [!warning] `>&word` is a bash habit, not POSIX
 > Trigger: `cmd >&out`, intended as "stdout and stderr to the file out".
@@ -284,20 +289,20 @@ Run it with `cd labs/03-descriptor-duplication-and-closing && LAB_SHELL=dash bat
 
 > [!warning] A failed redirection kills the script in some shells and not in others
 > Trigger: `exec 3<missing.txt`, `: >&9`, or any redirection with an unusable source on a special built-in.
-> Symptom: dash, BusyBox ash, mksh, ksh93, posh, zsh in `sh` mode and bash in POSIX mode exit at that line; bash in its default mode, native zsh and yash print an error and run the next line with a bad descriptor (POSIX.1-2024 XCU 2.8.1; lab test "a redirection error on a special built-in").
-> Fix: test first (`[ -r missing.txt ]`), or probe a descriptor with a compound command, `if { :; } 2>/dev/null >&9; then`, which never ends the shell.
+> Symptom: dash, BusyBox ash, mksh, ksh93, posh, zsh in `sh` mode and bash in POSIX mode exit at that line; bash in its default mode, native zsh and yash print an error and run the next line with a bad descriptor (POSIX.1-2024 XCU 2.8.1; lab test "a redirection error on a special built-in" for `: >&9`, measured in the shell matrix for `exec 3<missing.txt`).
+> Fix: test first (`[ -r missing.txt ]`), or probe a descriptor with a compound command, `if { { :; } >&9; } 2>/dev/null; then`, which never ends the shell and is silent everywhere (the flatter `{ :; } 2>/dev/null >&9` still prints zsh's diagnostic, measured in the shell matrix).
 > A redirection error on a compound command or a function call must not exit in any shell, and the lab checks that all of them keep going.
 
 ## Security and robustness
 
 - **Close what the child does not need.** Every descriptor above 2 that a shell script opened with `exec` is an inheritance channel to everything it spawns, in all measured shells except ksh93 and mksh.
   CVE-2024-21626 is the container-grade version: an unintended leaked descriptor became a host working directory (NVD).
-- **Never close 0, 1 or 2 for a child.** Redirect them to `/dev/null`; a program started with a standard descriptor closed may write secrets into whatever its next `open` returns (Linux dup(2) semantics, POSIX.1-2024 XCU rationale C.2.7).
-- **`dup2` is atomic and `close` plus `dup` is not.** The shell's own `n>&m` is one `dup2` call, so there is no window, but any multi-threaded helper you write in C or Python must use `dup2` or `dup3` rather than `close` followed by `dup` (Linux dup(2) documents the `EBUSY` race window on Linux).
+- **Never close 0, 1 or 2 for a child.** Redirect them to `/dev/null`; a program started with a standard descriptor closed may write secrets into whatever its next `open` returns (Linux open(2) lowest-numbered rule, POSIX.1-2024 XCU rationale C.2.7).
+- **`dup2` is atomic and `close` plus `dup` is not.** In dash and mksh `n>&m` is one `dup2` call, so there is no window, and ksh93u+m's `sh_iorenumber` is `close` plus `F_DUPFD`; any multi-threaded helper you write in C or Python must use `dup2` or `dup3` rather than `close` followed by `dup` (Linux dup(2) documents the `EBUSY` race window on Linux).
 - **Do not expect `n>&-` to surface write-back errors.** POSIX.1-2024 close and Linux close(2) say `close` can fail with `EIO` and advise `fsync` first.
-  UNVERIFIED: whether any shell reports a failing `close(2)` from `n>&-`; the lab only proves that closing an unopened descriptor returns 0.
+  With a preloaded `close` that reports `EIO` on descriptor 8, `exec 8>&-` still returned status 0 in bash, dash, mksh, ksh93u+m, posh, zsh, yash and BusyBox ash; only yash printed a diagnostic, and bash 5.2 and 5.3 printed one, again with status 0, only when undoing `{ :; } 8>g` (measured in the shell matrix, 2026-11).
   If durability matters, use a tool that checks `fsync` and `close`.
-- **Fail loudly on a bad descriptor.** In `set -e` scripts a redirection error on a special built-in exits only in some shells, so assert descriptors explicitly rather than rely on the abort.
+- **Fail loudly on a bad descriptor.** Without `set -e` a redirection error on a special built-in exits only in some shells, and with `set -e` every measured shell stops there (measured in the shell matrix, 2026-11), so assert descriptors explicitly rather than rely on the abort.
 - **Do not let untrusted input choose a descriptor number or a redirect target.** `eval "cmd >&$fd"` is command injection plus descriptor confusion; validate with a `case` on digits first.
 
 ## The principal's view
@@ -354,7 +359,7 @@ Related decisions: [[Pipelines-and-And-Or-Lists]] for how the pipe descriptors a
 > >
 > > Follow-up: Which kernel object do two duplicated descriptors share that two separate opens do not?
 
-> [!question] L6: Why does this script hang until the server exits in most shells, and how do you fix it?
+> [!question] L6: Why does this script hang until the server exits, and how do you fix it?
 >
 > ```sh
 > #!/bin/sh
@@ -365,10 +370,11 @@ Related decisions: [[Pipelines-and-And-Or-Lists]] for how the pipe descriptors a
 > > [!success]- Answer
 > > The command substitution reads its pipe until end of file, which arrives only when every holder of the write end has closed it.
 > > The background `serve` inherited stdout, which is that write end, so it holds the pipe open for its whole life.
-> > Fix: `pid=$(/usr/local/bin/serve --port 8080 >/dev/null 2>&1 </dev/null & echo $!)`, so the server holds no descriptor of the pipe.
-> > The lab shows the same with `sleep 3`: `dt >= 3` without the redirect, under 3 with it.
+> > Fix: `/usr/local/bin/serve --port 8080 >/dev/null 2>&1 </dev/null & pid=$!`, with no substitution, so nothing reads a pipe and the server holds none of the script's streams.
+> > Redirecting inside the substitution (`pid=$(serve >/dev/null 2>&1 </dev/null & echo $!)`) is enough in most shells, but yash 2.58.1 and ksh93u+m 1.0.10 still wait (measured in the shell matrix).
+> > The lab shows the same with `sleep 3` started by an inner `/bin/sh`: `dt >= 3` without the redirect, under 3 with it.
 > >
-> > Follow-up: Why did ksh93u+m 1.0.10 return early in the lab, and why should you not rely on that?
+> > Follow-up: Why did ksh93u+m 1.0.10 return early in the lab's inner-`/bin/sh` form, and why should you not rely on that?
 
 > [!question] L6: Why does `cmd 3>&1 1>&2 2>&3 3>&-` end with `3>&-`?
 >
@@ -408,6 +414,7 @@ Related decisions: [[Pipelines-and-And-Or-Lists]] for how the pipe descriptors a
 >
 > > [!success]- Answer
 > > Save the real stdout on descriptor 3 and run the command with `2>&1 1>&3 3>&-`: stderr goes into the pipe (the redirect runs while 1 is still the pipe), stdout goes to the saved descriptor, and the command does not see 3.
+> > Put the command in a group with its status report, as the lab does, because under native zsh a bare `cmd 2>&1 1>&3 | filter` also copies stdout into the pipe (MULTIOS, measured in the shell matrix).
 > > The pipe feeds `sed "s/^/PREFIX/" >&2`.
 > > The pipeline status would be sed's, so the command writes its own `$?` to descriptor 4, which the outer shell has pointed at a command substitution, and the wrapper returns that value.
 > > The command must also be started with 4 closed (`4>&-`), or a long-lived child would hold the substitution open.
@@ -430,7 +437,7 @@ Related decisions: [[Pipelines-and-And-Or-Lists]] for how the pipe descriptors a
 > > [!success]- Answer
 > > Special built-ins are the language's own control and state operations, and POSIX makes their errors fatal in a non-interactive shell; compound commands, functions, and ordinary utilities are not allowed to exit the shell on a redirection error (POSIX.1-2024 XCU 2.8.1).
 > > bash in its default mode, native zsh and yash do not follow the special-built-in rule, so a script must not depend on either behavior.
-> > A defensive script probes first: `if { :; } 2>/dev/null >&9; then ... fi` is portable, because the group keeps every shell alive and the status tells you whether the descriptor is open.
+> > A defensive script probes first: `if { { :; } >&9; } 2>/dev/null; then ... fi` is portable, because the group keeps every shell alive, the outer redirect hides the diagnostic, and the status tells you whether the descriptor is open.
 > > It does not tell you the access mode, because no shell checks it at duplication time (lab test "no shell checks the access mode").
 > >
 > > Follow-up: Which redirection operator would you use to verify that a descriptor is writable, and why can it not be done with a dup alone?

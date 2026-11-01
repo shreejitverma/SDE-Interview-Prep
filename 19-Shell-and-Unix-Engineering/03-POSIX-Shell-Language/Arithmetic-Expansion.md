@@ -2,7 +2,7 @@
 type: concept
 track: [sde, distinguished]
 level:
-status: draft
+status: solid
 last_reviewed:
 sources:
   - "https://pubs.opengroup.org/onlinepubs/9799919799/utilities/V3_chap02.html"
@@ -20,6 +20,9 @@ sources:
   - "https://zsh.sourceforge.io/Doc/Release/Arithmetic-Evaluation.html"
   - "https://zsh.sourceforge.io/Doc/Release/Options.html"
   - "https://manpages.debian.org/trixie/mksh/mksh.1.en.html"
+  - "https://austingroupbugs.net/view.php?id=559"
+  - "https://ftpmirror.gnu.org/bash/bash-5.3.tar.gz"
+  - "https://raw.githubusercontent.com/mirror/busybox/master/shell/math.h"
 ---
 
 # Arithmetic Expansion
@@ -32,7 +35,7 @@ Part of [The POSIX Shell Language](README.md) in [Shell and Unix Engineering](..
 ## TL;DR
 
 - Mechanism: the shell expands the text inside `$((` and `))` as if double-quoted, parses it as a C expression over `signed long`, evaluates it in-process, and substitutes the decimal result (POSIX.1-2024 XCU 2.6.4).
-- Rule: assignments inside the expression take effect in the current shell, a variable name is read without a dollar sign, and `x` and `$x` agree only when `x` holds a plain signed decimal constant.
+- Rule: assignments inside the expression take effect in the current shell, a variable name is read without a dollar sign, and `x` and `$x` are guaranteed to agree only when `x` holds a valid integer constant with an optional leading sign (POSIX.1-2024 XCU 2.6.4).
 - Trap: a value that is data to you is code to the evaluator - `010` is octal, `3-$x` with a negative `x` forms `--`, and in bash, mksh, posh and ksh93u+ a variable holding `a[$(cmd)]` runs `cmd` when named in an expression.
 - Portability: only signed long, the C operators, and the `$((` versus `$(` disambiguation are specified; `**`, `++`, `,`, `base#n`, `((...))` as a command, 64-bit width, overflow results and recursive evaluation of variable values all vary (measured in the shell matrix).
 - When not to use it: for untrusted input without validating it first, for anything needing floating point or more than 63 bits (use `awk` or `bc`), and for exit-status tests (`[ ]` over `$((...))` is the portable spelling).
@@ -65,16 +68,16 @@ The resulting string is subject to field splitting when unquoted, which is why t
 The specification (POSIX.1-2024 XCU 2.6.4) says the expression is "treated as if it were in double-quotes, except that a double-quote inside the expression is not treated specially".
 The shell expands all tokens for parameter expansion, command substitution and quote removal, then evaluates the result under the rules of (POSIX.1-2024 XCU 1.1.2.1): integers are equivalent to ISO C `signed long`, and the operators are those of ISO C section 6.5.
 Only `signed long`, the decimal, octal and hexadecimal constants, and the C operators (without `sizeof`, prefix and postfix `++` and `--`, the comma operator, or any statement) are required.
-Changes to variables "shall be in effect after the arithmetic expansion, as in the parameter expansion `${x=value}`", because arithmetic expansion is not specified to run in a subshell (rationale C.2.6.4 in the Shell and Utilities rationale).
+All changes to variables "shall be in effect after the arithmetic expansion, as in the parameter expansion `${x=value}`" (POSIX.1-2024 XCU 2.6.4), because arithmetic expansion is not specified to run in a subshell (rationale C.2.6.4 in the Shell and Utilities rationale).
 An invalid expression, or a variable whose contents the shell cannot recognize, is an expansion error and the shell must write a diagnostic.
 For a non-interactive shell an expansion error is a "shall exit" case, and in a subshell it ends only the subshell (POSIX.1-2024 XCU 2.8.1).
 
 The standard is deliberately silent about how a variable's string becomes a number.
 The rationale says it "could be done as a text substitution, as a conversion like that performed by strtol(), or even recursive evaluation", so only variables holding a valid integer constant have defined behavior, and `x=010; echo $((x += 1))` "must be 9" while `x=1+1` is unspecified.
 Four implementations show the spread of designs.
-dash reads a named variable with `lookupvarint`, which calls `atomax(lookupvar(name), 0)` and so accepts only a number (dash src/var.c, `lookupvarint`); its constants are scanned by `strtoimax(buf, &end, 0)` in `yylex`, so the C library decides what a constant looks like (dash src/arith_yylex.c, `yylex`).
+dash reads a named variable with `lookupvarint`, which returns `atomax(lookupvar(name) ?: nullstr, 0)` and so accepts only a number (dash src/var.c, `lookupvarint`); its constants are scanned by `strtoimax(buf, (char **)&arith_buf, 0)` in `yylex`, so the C library decides what a constant looks like (dash src/arith_yylex.c, `yylex`).
 bash recurses: `expr_streval` finds the variable and evaluates its value again as an expression, with a depth cap of `MAX_EXPR_RECURSION_LEVEL` 1024 (bash-5.3 expr.c, `expr_streval` and the `#define`), and its header comment states "All arithmetic is done as intmax_t integers with no checking for overflow (though division by 0 is caught and flagged as an error)".
-BusyBox keeps one evaluator in `shell/math.c` (`arith`, `evaluate_string`, `arith_apply`), code lifted out of ash for sharing, and `ash.c` wraps it in `ash_arith` with `typedef long arith_t`.
+BusyBox keeps one evaluator in `shell/math.c` (`arith`, `evaluate_string`, `arith_apply`), code "ripped out of ash shell for code sharing" (its header comment), and `ash.c` wraps it in `ash_arith`; `arith_t` is `long long` when `FEATURE_SH_MATH_64` is enabled and `long` otherwise (BusyBox `shell/math.h`), and `ash.c` declares its own `typedef long arith_t` only for builds without shell math.
 zsh evaluates through `matheval` and `mathevall` in `Src/math.c`, which can produce floating point as well as integers, and its operator table is its own unless `C_PRECEDENCES` is set (zsh manual, Arithmetic Evaluation).
 
 The `$((` ambiguity is a parser decision.
@@ -85,7 +88,7 @@ The portable spelling for a command substitution that starts with a subshell is 
 
 An arithmetic expansion runs no process.
 The shell evaluates the tree in its own address space.
-A loop of 5000 increments was measured by hand on one macOS arm64 host (as of October 2026): 9 to 17 ms in `/bin/dash` (what(1) project dash-16) and 16 to 23 ms in bash 5.3.15, against 8.9 to 10.3 s and 9.7 to 11.7 s when each increment forks `expr`.
+A loop of 5000 increments was measured by hand on one macOS arm64 host (as of October 2026): 9 to 17 ms in `/bin/dash` (what(1) project dash-16) and 16 to 23 ms in bash 5.3.15, against 8.9 to 10.7 s and 9.7 to 11.7 s when each increment forks `expr`.
 The same loop on Debian dash 0.5.12-12 took 4 ms versus 0.97 to 1.04 s.
 The lab does not assert these times.
 The gap is `fork` plus `execve` per iteration.
@@ -94,7 +97,7 @@ The gap is `fork` plus `execve` per iteration.
 
 | Quantity | Value | Source |
 | --- | --- | --- |
-| Required integer type | signed long, at least 32 bits by ISO C | POSIX.1-2024 XCU 2.6.4 and rationale C.1 |
+| Required integer type | signed long, at least 32 bits by ISO C | POSIX.1-2024 XCU 2.6.4, XCU 1.1.2.1 and rationale C.2.6.4 |
 | Integer width in mksh | exactly 32 bits, silent wraparound; `lksh` uses `long` | mksh manual (Debian trixie page); lab test "integer width" |
 | Integer width elsewhere in the matrix | 64 bits: `2147483647 + 1` is `2147483648` | lab test "integer width" |
 | `9223372036854775807 + 1` | wraps to `-9223372036854775808` (bash, dash, zsh, BusyBox, posh), `0` (mksh), `9223372036854775808` (ksh93u+m, not a wrap), `9223372036854775807` (ksh93u+ 2012), error (yash) | lab test "signed overflow" |
@@ -103,8 +106,8 @@ The gap is `fork` plus `execve` per iteration.
 | zsh recursion depth | 254 links evaluate to 5 and 255 links fail (zsh 5.9 and 5.9.2); 1000 links fail | lab tests for the 255-link and 1000-link chains (as of October 2026) |
 | ksh93u+ 2012 recursion depth | 8 links evaluate to 5 and 9 links fail; 1000 links fail | lab tests for the 9-link and 1000-link chains, on ksh93u+ 2012-08-01 (as of October 2026) |
 | BusyBox, posh, mksh recursion | no depth cap seen (1100 links work); loops are detected by name | lab tests "1100-link chain" and "refers to itself" |
-| Cost of a 5000-increment loop, `$((i + 1))` versus `expr` | macOS `/bin/dash` 9 to 17 ms versus 8.9 to 10.3 s; bash 5.3.15 16 to 23 ms versus 9.7 to 11.7 s; Debian dash 0.5.12-12 4 ms versus 0.97 to 1.04 s | measured by hand (as of October 2026), not asserted by the lab |
-| Required operators absent from POSIX | `sizeof`, `++`, `--`, comma, `**`, `base#n` | POSIX.1-2024 XCU 2.6.4 and 1.1.2.1 |
+| Cost of a 5000-increment loop, `$((i + 1))` versus `expr` | macOS `/bin/dash` 9 to 17 ms versus 8.9 to 10.7 s; bash 5.3.15 16 to 23 ms versus 9.7 to 11.7 s; Debian dash 0.5.12-12 4 ms versus 0.97 to 1.04 s | measured by hand (as of October 2026), not asserted by the lab |
+| Operators POSIX does not require | `sizeof`, `++`, `--`, comma, `**`, `base#n` | POSIX.1-2024 XCU 2.6.4 and 1.1.2.1 |
 
 ## Portability
 
@@ -112,7 +115,7 @@ Every cell below is asserted by a test in the lab, or states what the cited manu
 
 | Shell | Width | `**` | `base#n` | comma | empty `$(( ))` | `((cmd))` as command | unset name under `set -u` |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| POSIX sh | signed long | not required | not required | not required | unspecified | unspecified | expansion error for `$x`; name case unspecified |
+| POSIX sh | signed long | not required | not required | not required | unspecified | unspecified | expansion error for `$x` and for a bare name (XCU `set -u`, Austin Group defect 559) |
 | bash 3.2 (macOS) and 5.x | 64 | yes | yes | yes | 0 | evaluates | error |
 | zsh native | 64 | yes | yes | yes | 0 | evaluates | error |
 | zsh `--emulate sh` | 64 | yes | yes | yes | 0 | evaluates | error |
@@ -210,7 +213,7 @@ The validated script prints the same answer, `20`, for `add 010 010` in all of t
 
 > [!warning] Textual substitution forms `--`
 > Trigger: `$((3-$x))` or `$((a - $b))` where the variable is negative.
-> Symptom: the text becomes `3--5`, which bash, dash and BusyBox read as `3 - (-5)` but zsh, posh, mksh, ksh93 and yash reject as a decrement of a constant, and the unspaced `$((-$x))` breaks the same way in zsh, posh, mksh and ksh93 (measured by hand, not asserted by the lab); `$((- $x))` with a space is safe.
+> Symptom: the text becomes `3--5`, which bash, dash and BusyBox read as `3 - (-5)` but zsh, posh, mksh, ksh93 and yash reject as a decrement of a constant, and the unspaced `$((-$x))` breaks the same way in zsh, posh, mksh, ksh93 and yash (measured by hand, not asserted by the lab); `$((- $x))` with a space is safe.
 > Fix: name the variable (`$((3 - x))`) or parenthesize (`$((3-($x)))`); the specification only promises that `$((x))` and `$(($x))` agree for a lone constant.
 
 > [!warning] Evaluation of a variable is evaluation of code
@@ -221,7 +224,7 @@ The validated script prints the same answer, `20`, for `add 010 010` in all of t
 > [!warning] The increment that does nothing
 > Trigger: `$((++x))` or `$((x++))` in a script that runs under dash (Debian and Ubuntu `/bin/sh`).
 > Symptom: dash has no `++`, so `++x` parses as unary plus applied twice, yields the old value and leaves `x` unchanged, while `x++` is a syntax error; the loop that depends on it never advances.
-> Fix: write `x=$((x + 1))`, which is the form POSIX specifies and the one in its own example.
+> Fix: write `x=$((x + 1))`, the assignment form POSIX specifies; the specification's own example counts down the same way with `x=$(($x-1))` (POSIX.1-2024 XCU 2.6.4, Examples).
 
 > [!warning] Double parentheses are not a POSIX command
 > Trigger: `(( i < n )) && ...` or `((count++))` in a `#!/bin/sh` script.
@@ -252,7 +255,7 @@ Measured by hand on ksh93u+ 2012-08-01 (as of October 2026), and not asserted by
 The defense is the allowlist in `arith-safe.sh`: an optional sign and digits only, no leading-zero ambiguity, at most 9 digits, and operand names rather than substituted text so a negative value cannot form `--`.
 
 Division by zero and syntax errors are expansion errors: a non-interactive shell exits, so `set -e` is not needed for them, but a library function called inside a subshell or a command substitution only ends that subshell.
-`set -u` makes `$(($undef + 1))` an error everywhere, but a bare `undef` in `$((undef + 1))` is an error in bash, ksh93, zsh, posh and yash and silently zero in dash, mksh and BusyBox, so write the dollar form when you rely on `-u`.
+`set -u` makes `$(($undef + 1))` an error everywhere, and POSIX.1-2024 requires the same for a bare `undef` in `$((undef + 1))` (XCU `set -u`, worded by Austin Group defect 559), but only bash, ksh93, zsh, posh and yash honor that while dash, mksh and BusyBox silently use zero, so write the dollar form when you rely on `-u`.
 A self-referencing variable (`a=a; echo $((a))`) terminates with an error in every shell tested except non-POSIX yash, which returns the text, so there is no hang.
 Depth caps differ: 1024 levels in bash (a 1000-link chain works and a 1100-link chain fails), 255 links in zsh 5.9 and 5.9.2, and 9 links in ksh93u+ 2012-08-01.
 
@@ -283,7 +286,7 @@ Prefer `[ "$a" -lt "$b" ]` for comparisons in conditions, since it needs no exte
 > > [!success]- Answer
 > > `$x` is substituted as text before the evaluator parses, so its contents become operators and tokens.
 > > `x` names the variable, so the evaluator reads one value and never re-parses the text around it.
-> > The two agree only when `x` holds a signed decimal constant, which is all POSIX promises.
+> > POSIX promises that the two agree only when `x` holds a valid integer constant with an optional leading sign.
 > >
 > > Follow-up: what does `x=-5; echo $((3-$x))` do in zsh versus bash?
 

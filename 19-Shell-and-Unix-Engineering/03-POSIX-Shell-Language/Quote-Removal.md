@@ -2,7 +2,7 @@
 type: concept
 track: [sde, distinguished]
 level:
-status: draft
+status: solid
 last_reviewed:
 sources:
   - "https://pubs.opengroup.org/onlinepubs/9799919799/utilities/V3_chap02.html"
@@ -17,6 +17,12 @@ sources:
   - "https://www.austingroupbugs.net/view.php?id=985"
   - "https://www.austingroupbugs.net/view.php?id=249"
   - "https://nvd.nist.gov/vuln/detail/CVE-2021-42740"
+  - "https://pubs.opengroup.org/onlinepubs/9699919799/xrat/V4_xcu_chap02.html"
+  - "https://pubs.opengroup.org/onlinepubs/9799919799/utilities/read.html"
+  - "https://ftpmirror.gnu.org/bash/bash-4.1.tar.gz"
+  - "https://ftpmirror.gnu.org/bash/bash-4.2.tar.gz"
+  - "https://docs.python.org/3/library/shlex.html"
+  - "https://fishshell.com/docs/current/language.html"
 ---
 
 # Quote Removal
@@ -70,19 +76,20 @@ The words that go through it are listed where each construct is defined.
 Command words and arguments and variable assignments `(POSIX.1-2024 XCU 2.9.1.1)`, the word after a redirection operator other than `<<` and `<<-` `(POSIX.1-2024 XCU 2.7)`, the subject word of `case` `(POSIX.1-2024 XCU 2.9.4.3)`, and the `word` of `${parameter:-word}` and its siblings when that word is used `(POSIX.1-2024 XCU 2.6.2)` all get it.
 For `${parameter:=word}` quote removal is applied before the value is stored, "in order that a subsequent expansion of the same parameter produces the same value as the original expansion" `(POSIX.1-2024 XCU C.2.6.2)`.
 A here-document delimiter word is subjected to it to find the delimiter, and the body is not `(POSIX.1-2024 XCU 2.7.4)`.
+With an unquoted delimiter the body's backslashes still behave as inside double quotes, so `\$` and `\\` lose their backslash there, but that is the rule of 2.7.4 and the body's `'` and `"` stay (lab `heredoc`).
 The history is visible in the Austin Group tracker: defect 985 recorded that the standard did not say quote removal applies to `case` patterns and to the word of `${var:-word}` although bash, ksh and dash already did it, and defect 221 reworded the double-quote rules around `${...}`; defect 249 added `$'...'` and therefore the first clause of 2.6.7.
 
 Inside double quotes the backslash is itself removed only before `$`, a backquote, `"`, `\` and newline `(POSIX.1-2024 XCU 2.2.3)`; anywhere else it stays with the following character, which the rationale illustrates with `"\$"` giving `$` and `"\a"` giving `\a` `(POSIX.1-2024 XCU C.2.2.3)`.
 A backslash followed by newline is not quote removal at all: it is deleted "before splitting the input into tokens" `(POSIX.1-2024 XCU 2.2.1)`, which is why it vanishes inside double quotes and outside any quotes but survives inside single quotes.
 
 One empty-field rule matters for the arithmetic of arguments.
-Field splitting with an empty `IFS` removes input fields that are entirely empty, and the standard stresses that "this occurs before quote removal; any input field that contains any quoting characters can never be empty at this point" `(POSIX.1-2024 XCU 2.6.5)`.
+Field splitting with an empty `IFS` removes an input field that contained the results of an expansion and is entirely empty, and the standard stresses that "this occurs before quote removal; any input field that contains any quoting characters can never be empty at this point" `(POSIX.1-2024 XCU 2.6.5)`.
 That is the reason `''` and `"$empty"` give one empty argument while an unquoted `$empty` gives none.
 
 ### Where the system call is
 
 Quote removal is pure user-space string work.
-The only kernel-visible result is the `argv` array handed to `execve(2)`, and the kernel limits are applied to what survives: on Linux the limit on one argument string is 32 pages (the kernel constant `MAX_ARG_STRLEN`), and the total is a quarter of the stack limit `(execve(2), man7.org, as of 2026-10)`.
+The only kernel-visible result is the `argv` array handed to `execve(2)`, and the kernel limits are applied to what survives: on Linux the limit on one argument string is 32 pages (the kernel constant `MAX_ARG_STRLEN`), and the total is a quarter of the stack limit, with a floor of 32 pages and a ceiling of 3/4 of the kernel constant `_STK_LIM` `(execve(2), man7.org, as of 2026-11)`.
 The lab shows the consequence with a real payload: a single shell word of 160,000 source bytes, made of 20,000 repetitions of `'a'"a"\a`, runs fine because only 60,000 bytes reach `execve`.
 
 ### How real shells implement the memory of "was quoted"
@@ -92,7 +99,7 @@ Both implementations read for this note keep quotedness in-band, as marker bytes
 GNU bash 5.3 scans the word in `(bash-5.3 subst.c, expand_word_internal)`.
 For a single-quoted span it calls `string_extract_single_quoted` and takes the quote characters out as it goes; for a backslash it emits `CTLESC` followed by the character, and for a quoted empty string it emits a `CTLNUL` "quoted null" byte so that an empty quoted word survives splitting.
 `CTLESC` is `'\001'` and `CTLNUL` is `'\177'` `(bash-5.3 shell.h)`.
-`(bash-5.3 subst.c, quote_string)` shows the cost: a string being quoted is rebuilt with a `CTLESC` before every byte and allocated as `slen * 2 + 1`.
+`(bash-5.3 subst.c, quote_string)` shows the cost: a string being quoted is rebuilt with a `CTLESC` before every character (every byte in a single-byte locale; `COPY_CHAR_P` copies a whole multibyte character) and allocated as `slen * 2 + 1`.
 The marks are removed at the end by `(bash-5.3 subst.c, dequote_string)`, which skips each `CTLESC` and keeps the byte after it, and returns an empty string for a lone quoted null.
 Near its end `(bash-5.3 subst.c, expand_word_list_internal)` calls `glob_expand_word_list` when globbing is enabled and `dequote_list` when it is not, with the comment "Dequote the words, because we're not performing globbing".
 `(bash-5.3 subst.c, glob_expand_word_list)` calls `dequote_string` on a word that has no unquoted pattern character, and on a pattern word only if the glob returned nothing, so the pattern matcher sees the marks and the final argument does not.
@@ -113,24 +120,24 @@ The practical lesson of both designs is the same: the shell does not "remove quo
 | :--- | :--- | :--- |
 | Quote characters from the original word left in `argv` | 0 (`'a'"b"\c` arrives as 3 bytes, `quotes=0`) | lab: `argv-inspect`, test "the program receives the bytes left after quote removal" |
 | Bytes of one source word versus bytes delivered | 160,000 source bytes become 60,000 argument bytes (8 to 3) | lab: 20,000 repetitions of `'a'"a"\a` |
-| Linux limit for one argument string | 32 pages, so 131,072 bytes with 4 KiB pages | `(execve(2), man7.org, as of 2026-10)`; the lab word is larger than this in source form and still runs |
+| Linux limit for one argument string | 32 pages, so 131,072 bytes with 4 KiB pages, counting the terminating NUL | `(execve(2), man7.org, as of 2026-11)`; hand run in the Debian image (page size 4096): a 131,071-byte argument runs and a 131,072-byte one fails with `Argument list too long`; the lab word is larger than this in source form and still runs |
 | `sh_quote` overhead | 2 bytes for the outer quotes, plus 3 bytes for each embedded single quote (`'` becomes `'\''`) | lab: `levels` |
 | Length after n levels of quoting one `'` | 1, 6, 23, 76, 237 bytes for n = 0 to 4 | lab: `levels` |
 | Quote characters after n levels | 1, 5, 17, 53, 161, which is 2 x 3^n - 1 | lab: `levels`, checked against the formula in the test |
 | `eval` passes needed to recover the original | n for n levels, one level per pass | lab: `levels`, "peel to level" lines |
-| bash internal size of quoted text | 2 x length + 1 bytes (a `CTLESC` per byte) | `(bash-5.3 subst.c, quote_string)` |
-| Shell runs of the lab that pass all 30 tests | 30 (host 8, Debian image 9, Alpine image 13) | lab, run 2026-10-27 |
+| bash internal size of quoted text | 2 x length + 1 bytes allocated (a `CTLESC` per character, so per byte in a single-byte locale) | `(bash-5.3 subst.c, quote_string)` |
+| Shell runs of the lab that pass all 30 tests | 30 (host 8, Debian image 9, Alpine image 13) | lab, run 2026-10-28 |
 
 The growth by a factor of three in quote characters per level is why quoting by hand for a remote command that is itself quoted for another shell gets unreadable after two levels, and why the right fix is to avoid the second parse.
 
 ## Portability
 
 All shells in the matrix pass the same lab for the core rules: removal of original quote characters, no rescan of expansion results, literal quoted pattern characters in `case`, `${y##...}` and pathname expansion, the here-document delimiter rule, the quoted-null empty argument, and the one-pass-per-`eval` rule.
-These cells differ (every cell is asserted by the lab, per family or version).
+These cells differ (every shell's cell is asserted by the lab, per family or version; the POSIX.1-2024 row is cited).
 
 | Shell | `$'abc'` | `${u:=a\ b}` field count | `"${bar-\}}"` | `eval "set -- 'it's'"` | `"${y##'a'*}"` |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| POSIX.1-2024 | `abc` `(XCU 2.2.4, 2.6.7)` | 2 `(XCU C.2.6.2)` | `}` `(XCU C.2.2.3)` | n/a | pattern is quoted |
+| POSIX.1-2024 | `abc` `(XCU 2.2.4, 2.6.7)` | 2 `(XCU C.2.6.2)` | `}` `(XCU C.2.2.3)` | n/a | strips all: the double quotes "have no effect" on the pattern, so `'a'` is quoted and `*` is active `(XCU 2.2.3)` |
 | macOS `/bin/sh` and `/bin/bash` (bash 3.2.57) | `abc` | 1 | `\}` | syntax error | strips all |
 | bash 4.4 to 5.3 | `abc` | 2 | `}` | syntax error | strips all |
 | zsh (native) | `abc` | 1 (no field splitting of `$u`) | `}` | syntax error | strips all |
@@ -149,7 +156,7 @@ An unquoted parameter used as a `case` pattern is literal in native zsh: `a*` ta
 Native zsh does split an unquoted command substitution, and quote removal itself matches the other shells.
 For bash, the 3.2 behavior was measured in the Alpine image (`/opt/shells/bash-3.2`) and on the macOS host (`/bin/bash` and `/bin/sh`).
 bash 4.4, 5.1, 5.2 and 5.3 agree with each other, and `bash --posix` follows the same version split (macOS `/bin/bash --posix` matches 3.2, and bash 5.3 `--posix` matches 5.3).
-Releases between 3.2 and 4.4 were not run (UNVERIFIED: the exact release that changed `${u:=a\ b}` and `"${bar-\}}"`).
+Releases between 3.2 and 4.4 are not in the matrix, so the release that changed `${u:=a\ b}` and `"${bar-\}}"` was found by a hand run of the unpatched release tarballs built in the Alpine image: 4.0.0 and 4.1.0 still give 1 field and `\}`, and 4.2.0 and 4.3.0 give 2 fields and `}`, in both default and `--posix` mode; the bash CHANGES file lists a fix to the value `:=` returns under bash-4.2-alpha `(bash-5.3 CHANGES)`.
 
 Utilities have their own quote removal when they read quoted text, and these are not the shell's:
 
@@ -281,15 +288,16 @@ Run it with `bats labs/03-quote-removal/quote-removal.bats`, or `LAB_SHELL="dash
 > Fix: `find ... -print0 | xargs -0 ...`, or `find ... -exec cmd {} +`, which skip the text format altogether.
 
 > [!warning] `${u:=a\ b}` and `"${bar-\}}"` in bash 3.2
-> Trigger: scripts that run on macOS `/bin/bash` (3.2.57) or `/bin/sh` and rely on the 2008 text of the standard.
-> Symptom: `${u:=a\ b}` gives one field `a b` where the rationale says two, and `"${bar-\}}"` keeps the backslash (`\}`), while bash 4.4 and later give two fields and `}` (measured in the matrix).
+> Trigger: scripts that run on macOS `/bin/bash` (3.2.57) or `/bin/sh` and rely on what the current rationale documents: the two-field `:=` example arrived with Austin Group defect 221 in POSIX.1-2024 `(POSIX.1-2024 XCU C.2.6.2)`, and the `\}` escape was already in the POSIX.1-2017 rationale `(POSIX.1-2017 XRAT C.2.2.3)`.
+> Symptom: `${u:=a\ b}` gives one field `a b` where the rationale says two, and `"${bar-\}}"` keeps the backslash (`\}`), while bash 4.4 and later give two fields and `}` (measured in the matrix), as do 4.2.0 and 4.3.0 in a hand run.
 > Fix: do not rely on `:=` with a word that must split, and keep a `}` out of a default word inside `"${...}"` by putting the word in a variable first.
 
 > [!warning] `$'...'` is not portable to dash and posh
 > Trigger: `$'abc'` or `$'a\'b'` under dash or posh, including a `#!/bin/sh` script on Debian.
 > Symptom: dash and posh parse `$'abc'` as a literal dollar sign beside a single-quoted word, and quote removal leaves the literal text `$abc` (lab `dollar-single`).
 > `$'a\'b'` is a syntax error: dash exits 2 and the message ends with `eval: Syntax error: Unterminated quoted string`, and posh exits 1 and the message ends with `: no closing quote` (lab `dollar-single-escape`).
-> Fix: use `printf` with a format for control characters, or declare `#!/bin/bash`; note that `printf %q` and `${v@Q}` are bash features and `%q` may itself emit `$'...'` `(bash-5.3 doc/bashref.texi, printf)`.
+> Fix: use `printf` with a format for control characters, or declare `#!/bin/bash`; note that `printf %q` and `${v@Q}` are not portable: a hand run in the matrix shows `printf %q` failing in dash, BusyBox ash and yash and working in bash, zsh, ksh93, mksh and posh, and `${v@Q}` working only in mksh and bash from 4.4 (bash 3.2 rejects it).
+> `%q` may itself emit `$'...'` `(bash-5.3 doc/bashref.texi, printf)`, and ksh93 prints `$'it\'s'` for `it's` (hand run).
 
 > [!warning] Quoting only part of a glob
 > Trigger: `ls "$dir/*.c"` instead of `ls "$dir"/*.c`.
@@ -308,7 +316,7 @@ Treat every site where text is parsed a second time as an injection surface: `ev
 The invariant to preserve is "data never becomes syntax"; quote removal gives you that for one parse only, so each extra parse needs a quoting function that is correct for the language of that parse.
 In POSIX shells that function is `sh_quote`: wrap in single quotes and replace each single quote with `'\''`; single quotes are the only form with no special characters except the closing quote `(POSIX.1-2024 XCU 2.2.2)`, so the function has exactly one case to get right, unlike double quotes where `$`, the backquote and the backslash stay active `(POSIX.1-2024 XCU 2.2.3)`.
 The lab round-trips 18 hostile values (empty string, `'`, `''`, `$HOME`, a backquote command, a lone backslash, `*`, `-n`, a value with an embedded newline, and a value with a trailing newline) through `sh_quote` and one `eval` and compares byte for byte.
-Known limits: a NUL byte cannot appear in an argument at all, `sh_quote` output is meant for POSIX-style shells (csh and fish have other quoting rules and were not measured, UNVERIFIED), and when the second parse runs in a different program, such as a remote login shell, you must know which shell it is.
+Known limits: a NUL byte cannot appear in an argument at all, `sh_quote` output is meant for POSIX-style shells (fish treats `\\` and `\'` as escapes inside single quotes, so `'a\\b'` means `a\b` there `(fish documentation, Quotes, as of 2026-11)`, not run here; csh rejects a newline inside single quotes with `Unmatched '''.`, in a hand run of macOS `/bin/csh`, tcsh 6.21.00), and when the second parse runs in a different program, such as a remote login shell, you must know which shell it is.
 Prefer designs without a second parse: positional parameters (`set -- "$a" "$b"`), `"$@"`, `exec` with an argument list, `env` assignments, and `xargs -0`.
 If you must generate shell, test the generator with the same hostile values the lab uses and run the result under `sh -n` or ShellCheck in the pipeline.
 One robustness note: an unterminated quote at the end of an `eval` string is a syntax error in every shell measured except macOS ksh93u+ 2012, which accepts it and sets the argument to `its` (lab `eval`), so do not use that parse error as validation.
@@ -318,7 +326,7 @@ One robustness note: an unterminated quote at the end of an `eval` string is a s
 The decision is not "how to quote" but "where may a second parse exist at all".
 Each extra parse multiplies the quoting by a factor of three in the worst case (the lab's 1, 5, 17, 53, 161 quote characters), costs review attention, and creates an injection surface whose correctness depends on a function nobody tests; removing the parse is nearly always cheaper than perfecting the quoting.
 The trade-off is flexibility: `eval` and `sh -c` let a script build a program at run time, and sometimes that is the product (a task runner, a CI step definition, a remote deployment hook), in which case the correct design is a tested `sh_quote` in one place, a documented rule that data never enters a command string unquoted, and a test suite like this lab that runs the hostile values through every shell the code supports.
-Use a different language when the quoting depth is at least two or the data is untrusted: Python `subprocess` with an argument list, C `execve`, or `posix_spawn` never involve a shell parse, and `shlex.quote` or `printf %q` are the standard library answers when a string is unavoidable (their behavior was not measured in this lab, UNVERIFIED for `shlex.quote`).
+Use a different language when the quoting depth is at least two or the data is untrusted: Python `subprocess` with an argument list, C `execve`, or `posix_spawn` never involve a shell parse, and `shlex.quote` or `printf %q` are the standard library answers when a string is unavoidable (neither is part of this lab; in a hand run on Python 3.15.2 `shlex.quote` round-tripped the empty string, `'`, `it's`, `$HOME`, a backquote command, an embedded newline and `*` through dash, and its documentation warns that it is not guaranteed to be correct on non-POSIX shells, as of 2026-11).
 For portability decide the baseline once: if the script must run under dash or on macOS bash 3.2, ban `$'...'`, `${v@Q}` and reliance on `${u:=word}` splitting; if it runs only under a controlled bash 5, say so in the shebang and use `printf %q` or `${v@Q}`.
 Review checklist: every `eval` has a quoted-by-function argument; every `$var` that is meant as one argument is double-quoted; every pattern that must be literal has its metacharacters quoted; `xargs` is fed with `-0`.
 
@@ -378,7 +386,7 @@ Review checklist: every `eval` has a quoted-by-function argument; every `$var` t
 > [!question] L6: Name three places where a quote character in the source is not removed by quote removal.
 >
 > > [!success]- Answer
-> > Inside a here-document body, which is not subjected to quote removal (only its delimiter is) `(POSIX.1-2024 XCU 2.7.4)`.
+> > Inside a here-document body, which is not subjected to quote removal (only its delimiter is) `(POSIX.1-2024 XCU 2.7.4)`; `'` and `"` stay even with an unquoted delimiter, though a backslash there follows the double-quote rule.
 > > In any character that arrived through an expansion, such as the quotes in `x='"a"'` when `$x` is used.
 > > When the quote character is itself quoted, such as `\'` or `"'"` `(POSIX.1-2024 XCU C.2.6.7)`.
 > >
@@ -396,9 +404,10 @@ Review checklist: every `eval` has a quoted-by-function argument; every `$var` t
 > [!question] L7: Why does `find . | xargs cmd` break on a file called `it's.txt`, and what are the right alternatives?
 >
 > > [!success]- Answer
-> > `xargs` runs its own quote removal on its input: single quotes, double quotes and backslash, with rules that are not the shell's, and an unmatched quote is an error `(POSIX.1-2024 XCU xargs)`.
+> > `xargs` runs its own quote removal on its input: single quotes, double quotes and backslash, with rules that are not the shell's `(POSIX.1-2024 XCU xargs)`.
+> > POSIX only describes the well-formed quoted forms; an unmatched quote made GNU, macOS and BusyBox `xargs` all exit 1 (lab).
 > > The text format cannot represent every file name safely.
-> > Use `-print0` with `xargs -0`, or `find -exec cmd {} +`, or a `while IFS= read -r` loop over `find -print0` in a shell that supports it.
+> > Use `-print0` with `xargs -0`, or `find -exec cmd {} +`, or a `while IFS= read -r -d '' f` loop over `find -print0` where `read` has the `-d` option `(POSIX.1-2024 XCU read)`; without `-d` the loop sees no line at all, and dash 0.5.12 rejects `-d` (hand run in the Debian image).
 > >
 > > Follow-up: GNU, macOS and BusyBox `xargs` disagree about one input; which one, and does it matter for safety?
 
@@ -406,7 +415,7 @@ Review checklist: every `eval` has a quoted-by-function argument; every `$var` t
 >
 > > [!success]- Answer
 > > The knowledge is carried in-band as marker bytes; bash uses `CTLESC` (0x01) before a quoted byte and `CTLNUL` (0x7f) for a quoted empty string, dash uses `CTLESC` and `CTLQUOTEMARK`.
-> > `(bash-5.3 subst.c, quote_string)` allocates `2 x length + 1`, so quoted text is twice the size during expansion.
+> > `(bash-5.3 subst.c, quote_string)` allocates `2 x length + 1`, so quoted text is up to twice the size during expansion.
 > > Quote removal at the end (`dequote_string`, `_rmescapes`) deletes the markers; the pattern matcher sees them until then.
 > >
 > > Follow-up: what does the bash glob path do with a word that contains no unquoted pattern character?

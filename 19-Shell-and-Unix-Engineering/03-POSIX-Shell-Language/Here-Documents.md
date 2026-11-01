@@ -2,7 +2,7 @@
 type: concept
 track: [sde, distinguished]
 level:
-status: draft
+status: solid
 last_reviewed:
 sources:
   - "https://pubs.opengroup.org/onlinepubs/9799919799/utilities/V3_chap02.html"
@@ -13,6 +13,10 @@ sources:
   - "https://raw.githubusercontent.com/mirror/busybox/master/shell/ash.c"
   - "https://raw.githubusercontent.com/magicant/yash/master/redir.c"
   - "https://raw.githubusercontent.com/zsh-users/zsh/master/Src/exec.c"
+  - "https://raw.githubusercontent.com/zsh-users/zsh/master/Src/parse.c"
+  - "http://gondor.apana.org.au/~herbert/dash/files/dash-0.5.12.tar.gz"
+  - "http://gondor.apana.org.au/~herbert/dash/files/dash-0.5.13.tar.gz"
+  - "https://git.kernel.org/pub/scm/utils/dash/dash.git/plain/src/redir.c"
   - "https://man7.org/linux/man-pages/man7/pipe.7.html"
   - "https://nvd.nist.gov/vuln/detail/CVE-2026-44115"
   - "https://nvd.nist.gov/vuln/detail/CVE-2026-34152"
@@ -55,7 +59,7 @@ flowchart TD
 Reading the arrows: the tokenizer does not stop at the end of the line that carries `<<word`; it finishes that line, remembers the operator, and only then reads the body lines, which is why several operators on one line take their bodies in order (the top three boxes).
 Quoting in `word` is decided at parse time and fixes both the delimiter text and whether the body will ever be expanded (the first diamond).
 Expansion is not a parse-time act: it happens when the redirection is evaluated, so a redirection that never runs leaves its body unexpanded, and a redirection attached to a function or a loop is evaluated when that function is called or that loop is entered (the second diamond).
-Last, the shell must put the text somewhere a command can read it, and the standard does not say where: the lab measured a pipe in some shells, a deleted temporary file in others, and a pipe fed by a forked child in a third group.
+Last, the shell must put the text somewhere a command can read it, and the standard does not say where: the lab measured a pipe in some shells and a temporary file in others, and the dash and BusyBox ash sources show a third design, a pipe fed by a forked child for a large body.
 
 ## How it works
 
@@ -63,7 +67,7 @@ Last, the shell must put the text somewhere a command can read it, and the stand
 `[n]<<word` and `[n]<<-word` redirect the lines the shell reads next to the command's input; the body "shall be treated as a single word that begins after the next NEWLINE token and continues until there is a line containing only the delimiter and a newline, with no blank characters in between" (POSIX.1-2024 XCU 2.7.4).
 If any part of `word` is quoted, the delimiter is `word` after quote removal and "the here-document lines shall not be expanded"; otherwise the delimiter is the word itself, backslash-newline is removed while searching for the delimiter, and every line is expanded for parameters, command substitution and arithmetic "when the redirection operator is evaluated but after the trailing delimiter for the here-document has been located" (POSIX.1-2024 XCU 2.7.4).
 Backslash behaves as inside double quotes, but the double quote itself is not special in the body, except inside `$()`, backquotes and `${}` (POSIX.1-2024 XCU 2.7.4).
-The rationale adds that tilde expansion is not performed in a here-document because the data is treated as if enclosed in double quotes (POSIX.1-2024 XCU rationale, redirection).
+The rationale adds that tilde expansion is not performed in a here-document because the data is treated as if enclosed in double quotes (POSIX.1-2024 XCU rationale C.2.7 Redirection).
 For `<<-`, "all leading tab characters" are stripped after backslash-newline removal and from the delimiter line, and "stripping of leading tab characters shall occur as the here-document is read from the shell input", so tabs produced by an expansion survive (POSIX.1-2024 XCU 2.7.4).
 Two operators on one line take their bodies in order of appearance, and the second body starts on the line after the first delimiter (POSIX.1-2024 XCU 2.3).
 Whether the descriptor is a regular file or another type is unspecified, so portable code must not seek on it (POSIX.1-2024 XCU 2.7.4).
@@ -82,20 +86,22 @@ yash expands with `expand_single (contents, TT_NONE, Q_INDQ, ES_NONE)` before de
 The lab shows the consequences: a body on `false && cat <<EOF` is read and discarded without running its `$(touch skipped)`, a body on a function definition is re-expanded at every call, and a body on a `while` loop is expanded once for all iterations.
 
 **Delivery to a descriptor.**
-Every implementation reads the whole body into memory first, then picks a conduit; the differences are the part to know.
+Every implementation whose source was read here (bash, dash, BusyBox ash, yash, zsh) holds the whole expanded body in memory first, then picks a conduit; the differences are the part to know.
 - bash 5.1 and later: if the expanded body fits the pipe capacity measured at build time and `F_GETPIPE_SZ` agrees, bash writes it into a fresh `pipe(2)` and returns the read end; otherwise it creates a temporary file with `sh_mktmpfd`, writes the body, reopens it read-only, and `unlink`s it so it has no name (bash-5.3 redir.c, `here_document_to_fd`).
   An empty body is delivered as `/dev/null`, and `shell_compatibility_level <= 50` forces the temporary file (bash-5.3 redir.c, `here_document_to_fd`).
-  bash's CHANGES file lists the pipe path in the bash-5.1 series ("Here documents and here strings now use pipes for the expanded document if it's smaller than the pipe buffer size, reverting to temporary files if it's larger") and the compatibility rule in the bash-5.2 series (bash-5.3 CHANGES).
+  bash's CHANGES file lists the pipe path among the bash-5.1-alpha changes ("Here documents and here strings now use pipes for the expanded document if it's smaller than the pipe buffer size, reverting to temporary files if it's larger") and the compatibility rule among the bash-5.2-rc1 changes ("Here-documents and here-strings use tempfiles if the shell compatibility level is 50 or lower") (bash-5.3 CHANGES).
 - bash before 5.1 (the matrix ran 3.2 and 4.4; bash 5.0 was not run, and its place in this group comes from the CHANGES file, not from a measurement), zsh, ksh93 and mksh and posh: a temporary file in every case the lab measured.
-  zsh's source shows why: it turns a here-document into a here-string and calls `gettempfile`, writes, reopens read-only and `unlink`s (zsh Src/exec.c, `getherestr`).
+  zsh's source shows why: it turns a here-document into a here-string and calls `gettempfile`, writes, reopens read-only and `unlink`s (zsh Src/parse.c, `setheredoc`, which tags the redirection as coming from a here-document; zsh Src/exec.c, `getherestr`).
 - dash and BusyBox ash: a pipe.
-  Both write short bodies straight into the pipe; a body longer than `PIPE_BUF` is written by a forked child with `SIGPIPE` reset to default so the parent never blocks (BusyBox ash.c, `openhere`; dash git master src/redir.c, `openhere`).
-  dash's current source can instead use `memfd_create` for long bodies (dash git master src/redir.c, `sh_pipe`), but dash 0.5.12 on Debian and Alpine and the Apple dash-16 on the host each delivered a 300000-byte body through a pipe on every repeated run (as of October 2026).
+  Both write short bodies straight into the pipe; a body longer than `PIPE_BUF` is written by a forked child, so the parent never blocks, and the child resets `SIGPIPE` to default so it dies if the command stops reading (BusyBox ash.c, `openhere`; dash git master src/redir.c, `openhere`).
+  Since dash 0.5.13 (release tarball dated 2025-09-21) `openhere` asks `sh_pipe` for a `memfd_create` descriptor when the body exceeds `PIPE_BUF`, writes the body into it and rewinds it, falling back to the forked writer only when that call fails or the build lacks it; the 0.5.12 tarball has no `memfd_create` at all (dash 0.5.12 and 0.5.13 src/redir.c, `sh_pipe`; dash git master src/redir.c).
+  dash 0.5.12 on Debian and Alpine and the Apple dash-16 on the host each delivered a 300000-byte body through a pipe on every repeated run (as of 2026-10).
 - yash: a pipe when the body is at most `PIPE_BUF`, otherwise an unlinked temporary file (yash master redir.c, `open_herestring`).
 
 **Why the conduit matters.**
 A pipe has a capacity, so a shell that wrote a large body into it synchronously and then waited for the command would deadlock when the command never reads; that is the reason for the forked writer in dash and BusyBox and for the file path in bash, and the lab's never-read 400000-byte case proves none of the shells blocks.
-A temporary file needs a writable temporary directory: zsh with an unusable `TMPPREFIX` fails even for a one-line body, while dash, BusyBox ash and bash 5.1+ do not touch the disk for short bodies (lab, `zsh needs a writable temporary directory`).
+A temporary file needs a writable temporary directory: zsh with an unusable `TMPPREFIX` fails even for a one-line body, while every other shell measured succeeded with `TMPDIR` pointing at a missing directory (lab, `zsh needs a writable temporary directory`).
+dash, BusyBox ash, yash and bash 5.1+ do not touch the disk for short bodies at all (their sources, cited above).
 
 **Where the shell reads from.**
 When the shell's own script comes from standard input, POSIX says the shell "shall not read ahead in such a manner that any characters intended to be read by the invoked command are consumed by the shell" (POSIX.1-2024 XCU sh, STDIN).
@@ -108,7 +114,7 @@ dash and BusyBox ash read ahead; every other shell measured did not (lab, `a com
 | Length of a body | No limit stated; "input lines can be of unlimited length" | POSIX.1-2024 XCU 2.3 |
 | Largest body delivered intact in the lab | 300000 bytes (7500 lines of 40 bytes), every shell, quoted and unquoted | lab `heredoc-kind.sh` |
 | Body never read by the command, no hang | 400000 bytes | lab `a large here-document does not block` |
-| Linux pipe capacity | 16 pages, 65536 bytes with 4096-byte pages, since Linux 2.6.35 (as of 2026-10) | pipe(7) |
+| Linux pipe capacity | 16 pages, 65536 bytes with 4096-byte pages, since Linux 2.6.11; adjustable with `F_GETPIPE_SZ` and `F_SETPIPE_SZ` since Linux 2.6.35 (as of 2026-10) | pipe(7) |
 | `PIPE_BUF`, the atomic-write bound that dash, BusyBox ash and yash use as their switch point | 4096 on Linux with glibc and musl, 512 on macOS | measured in the shell matrix |
 | bash 5.3 switch point | build-time pipe capacity, and no larger than what `F_GETPIPE_SZ` reports | bash-5.3 redir.c, `here_document_to_fd` |
 | Descriptor type at 400 bytes | pipe: bash 5.1+, dash, BusyBox ash, yash; file: bash 3.2 and 4.4, zsh, ksh93, mksh, posh | lab `heredoc-kind.sh` |
@@ -118,14 +124,14 @@ dash and BusyBox ash read ahead; every other shell measured did not (lab, `a com
 
 ## Portability
 
-All rows below were run in the lab matrix on 2026-10-27: the macOS host (`/bin/sh` and `/bin/bash` are bash 3.2.57, `bash` is 5.3, `/bin/ksh` is ksh93u+ 2012, zsh 5.9, dash), Debian 13 (dash 0.5.12, bash 5.2, zsh, ksh93u+m 1.0.10, mksh, posh 0.14.1, BusyBox ash) and Alpine 3.22 (BusyBox ash 1.37.0, mksh R59, yash 2.58.1, bash 3.2, 4.4, 5.1, 5.2, 5.3).
+All rows below were run in the lab matrix on 2026-10-28: the macOS host (`/bin/sh` and `/bin/bash` are bash 3.2.57, `bash` is 5.3, `/bin/ksh` is ksh93u+ 2012, zsh 5.9, dash), Debian 13 (dash 0.5.12, bash 5.2, zsh, ksh93u+m 1.0.10, mksh, posh 0.14.1, BusyBox ash) and Alpine 3.22 (BusyBox ash 1.37.0, dash 0.5.12, zsh 5.9, mksh R59, yash 2.58.1, bash 3.2, 4.4, 5.1, 5.2, 5.3).
 Every cell is asserted by a test in the lab; every shell passed all 31 tests.
 The unquoted and quoted delimiter rules, the backslash rules, the `<<-` tab rules, the delimiter-must-be-alone rule, the ordering of two operators, the function and loop timing, and the loop-in-current-shell rule were identical in all of them, so they have no column.
 
 | Shell | Unterminated body at end of input | `<<<` here-string | `)` in a body inside `$(...)` | Descriptor at 400 B / 300000 B | Reads ahead of a script on stdin |
 |---|---|---|---|---|---|
 | POSIX sh (specification) | "should, but need not" report an error | not defined in chapter 2 | unspecified if `)` precedes the body's newline | unspecified | must not |
-| macOS bash 3.2 (`/bin/sh`, `/bin/bash`) | accepted, no warning | works | parse error | file / file | no |
+| bash 3.2 (macOS `/bin/sh` and `/bin/bash`, Alpine) | accepted, no warning | works | parse error | file / file | no |
 | bash 4.4 | accepted, warns on stderr | works | works | file / file | no |
 | bash 5.1 to 5.3 | accepted, warns on stderr | works | works | pipe / file | no |
 | zsh native | accepted, silent | works | works | file / file | no |
@@ -246,7 +252,7 @@ LAB_SHELL=dash bats labs/03-here-documents/here-documents.bats
 
 > [!warning] Space indentation under `<<-`
 > Trigger: indenting the body or the delimiter with spaces under `<<-EOF` because the editor expands tabs.
-> Symptom: the leading spaces survive in the body, and the delimiter line ` EOF` is not recognized, so the body runs to the end of the file; bash warns that the document was delimited by end-of-file, mksh, posh and yash stop with a syntax error, and dash, zsh, ksh93 and BusyBox ash accept it silently and swallow the rest of the script into the body.
+> Symptom: the leading spaces survive in the body, and the delimiter line ` EOF` is not recognized, so the body runs to the end of the file; bash 4.4 and later warn that the document was delimited by end-of-file, mksh, posh and yash stop with a syntax error, and bash 3.2, dash, zsh, ksh93 and BusyBox ash accept it silently and swallow the rest of the script into the body.
 > Fix: indent `<<-` bodies and delimiters with real tabs only (`.editorconfig` with `indent_style = tab` for those files), or avoid `<<-`.
 > The lab proves the delimiter-alone rule with a leading and a trailing space, and the end-of-input divergence per family.
 
@@ -287,9 +293,9 @@ Current bash creates the file with `sh_mktmpfd` using random names in the tempor
 Pipe delivery avoids the filesystem altogether for short bodies in bash 5.1 and later, dash, BusyBox ash and yash.
 
 **Robustness.**
-- Disk and directory: shells that use temporary files fail the redirection when the temporary directory is unusable; zsh prints `can't create temp file for here document` and does not run the command (lab).
+- Disk and directory: a shell that uses temporary files fails the redirection when it cannot create one; with `TMPDIR` and `TMPPREFIX` pointing at a missing directory, zsh prints `can't create temp file for here document` and does not run the command, while bash 3.2 and 4.4, ksh93, mksh and posh still succeeded (lab).
 - Blocking: no shell tested blocks when the command ignores a body that is much larger than any pipe (lab, 400000 bytes).
-- Truncation: every shell delivered every byte of 40 to 300000 bytes, so a here-document is safe for big text and unsafe only for performance, because the shell holds the expanded body in memory (lab).
+- Truncation: every shell delivered every byte of 40 to 300000 bytes, so a here-document is safe for big text and unsafe only for performance, because the shell holds the expanded body in memory (lab for the byte counts; the bash, dash, BusyBox ash, yash and zsh sources for the memory).
 - Reading ahead: shells that read ahead on a stdin script (dash, BusyBox ash) change what a stdin consumer sees (lab).
 - Portability debt: `<<<` is not in POSIX.1-2024 chapter 2 and is a syntax error in dash, posh and BusyBox ash, so `#!/bin/sh` scripts must use `printf '%s\n' "$x" |` or a here-document instead.
 
@@ -366,7 +372,7 @@ If a script must also run under macOS `/bin/sh` or dash, test it there, because 
 >
 > > [!success]- Answer
 > > POSIX leaves the type of the descriptor unspecified, so the shell chooses.
-> > bash 5.1 and later use a pipe when the body fits the pipe capacity and an unlinked temporary file otherwise; bash 4.4 and earlier, zsh, ksh93, mksh and posh use a temporary file; dash and BusyBox ash use a pipe, with a forked writer for bodies above `PIPE_BUF`; yash uses a pipe up to `PIPE_BUF` and a temporary file above.
+> > bash 5.1 and later use a pipe when the body fits the pipe capacity and an unlinked temporary file otherwise; bash before 5.1, zsh, ksh93, mksh and posh use a temporary file; dash and BusyBox ash use a pipe, with a forked writer for bodies above `PIPE_BUF` (dash 0.5.13 and later try a `memfd_create` descriptor there first); yash uses a pipe up to `PIPE_BUF` and a temporary file above.
 > > The consequence is that a portable program must not seek on the descriptor, and that a shell without a writable temporary directory can fail even for a small body.
 > >
 > > Follow-up: Why would a shell that wrote a 1 MiB body into a pipe synchronously hang?
@@ -393,7 +399,7 @@ If a script must also run under macOS `/bin/sh` or dash, test it there, because 
 >
 > > [!success]- Answer
 > > Debian's `sh` is dash and Alpine's is BusyBox ash, and both read ahead on a script supplied on standard input, but they differ in other places (for example whether `$'...'` is supported), so a script that depends on a stdin consumer must be tested in each.
-> > For here-documents specifically, both pass short bodies through a pipe and use a forked writer above `PIPE_BUF`, so they agree on delivery but both break the POSIX no-read-ahead rule that bash, zsh, ksh93, mksh, posh and yash follow.
+> > For here-documents specifically, both pass short bodies through a pipe and use a forked writer above `PIPE_BUF` (Debian 13 ships dash 0.5.12, before the `memfd_create` path of 0.5.13), so they agree on delivery but both break the POSIX no-read-ahead rule that bash, zsh, ksh93, mksh, posh and yash follow.
 > > The conclusion is to write `#!/bin/sh` scripts that do not rely on a stdin consumer and to run the lab matrix before claiming portability.
 > >
 > > Follow-up: How would you detect read-ahead without a controlling terminal?
@@ -419,9 +425,9 @@ See also: [[Pipelines-Subshells-Redirection-and-Process-Substitution]], [[Token-
 
 - POSIX.1-2024 XCU 2.7.4 Here-Document, 2.3 Token Recognition and 2.8.1 Consequences of Shell Errors - https://pubs.opengroup.org/onlinepubs/9799919799/utilities/V3_chap02.html - the normative text for delimiter, quoting, tab stripping, ordering and error consequences.
 - POSIX.1-2024 `sh`, STDIN - https://pubs.opengroup.org/onlinepubs/9799919799/utilities/sh.html - the no-read-ahead requirement that dash and BusyBox ash do not meet.
-- POSIX.1-2024 rationale, C.2.7.4 - https://pubs.opengroup.org/onlinepubs/9799919799/xrat/V4_xcu_chap01.html - why an unterminated document is a mistake, and why tilde is not expanded in a body.
+- POSIX.1-2024 rationale, C.2.7 and C.2.7.4 - https://pubs.opengroup.org/onlinepubs/9799919799/xrat/V4_xcu_chap01.html - why tilde is not expanded in a body (C.2.7), and why an unterminated document is a mistake (C.2.7.4).
 - bash-5.3 `redir.c` (`here_document_to_fd`, `heredoc_expand`) - https://ftpmirror.gnu.org/bash/bash-5.3.tar.gz - the pipe-or-temporary-file decision and the temporary-file hygiene.
-- dash `src/redir.c` (`openhere`, `sh_pipe`) - https://git.kernel.org/pub/scm/utils/dash/dash.git/tree/src/redir.c - the forked-writer design.
+- dash `src/redir.c` (`openhere`, `sh_pipe`) - https://git.kernel.org/pub/scm/utils/dash/dash.git/tree/src/redir.c - the forked-writer design, and the `memfd_create` path added in 0.5.13 (release tarballs at http://gondor.apana.org.au/~herbert/dash/files/).
 - BusyBox `shell/ash.c` (`openhere`) - https://raw.githubusercontent.com/mirror/busybox/master/shell/ash.c - the same design in the Alpine shell.
 - yash `redir.c` (`open_herestring`) and zsh `Src/exec.c` (`getherestr`) - https://raw.githubusercontent.com/magicant/yash/master/redir.c and https://raw.githubusercontent.com/zsh-users/zsh/master/Src/exec.c - the other two conduit choices.
 - pipe(7) - https://man7.org/linux/man-pages/man7/pipe.7.html - pipe capacity and `PIPE_BUF` on Linux.

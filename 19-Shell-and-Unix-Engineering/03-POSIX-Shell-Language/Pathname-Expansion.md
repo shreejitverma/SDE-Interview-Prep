@@ -2,7 +2,7 @@
 type: concept
 track: [sde, distinguished]
 level:
-status: draft
+status: solid
 last_reviewed:
 sources:
   - "https://pubs.opengroup.org/onlinepubs/9799919799/utilities/V3_chap02.html"
@@ -11,6 +11,15 @@ sources:
   - "https://raw.githubusercontent.com/mirror/busybox/master/shell/ash.c"
   - "https://man7.org/linux/man-pages/man2/execve.2.html"
   - "https://dwheeler.com/essays/filenames-in-shell.html"
+  - "http://gondor.apana.org.au/~herbert/dash/files/dash-0.5.12.tar.gz"
+  - "https://sources.debian.org/data/main/d/dash/0.5.12-12/debian/rules"
+  - "https://sources.debian.org/data/main/d/dash/0.5.12-12/debian/patches/series"
+  - "https://busybox.net/downloads/busybox-1.37.0.tar.bz2"
+  - "https://zsh.sourceforge.io/Doc/Release/Options.html"
+  - "https://zsh.sourceforge.io/Doc/Release/Expansion.html"
+  - "https://magicant.github.io/yash/doc/_set.html"
+  - "https://pubs.opengroup.org/onlinepubs/9799919799/utilities/rm.html"
+  - "https://pubs.opengroup.org/onlinepubs/9799919799/utilities/xargs.html"
 ---
 
 # Pathname Expansion
@@ -23,9 +32,9 @@ Part of [The POSIX Shell Language](README.md) in [Shell and Unix Engineering](..
 ## TL;DR
 
 - Mechanism: after field splitting, the shell splits each word at `/`, reads every directory that a pattern component needs with `opendir` and `readdir`, filters names with the pattern matcher, sorts the result with the locale collation, and replaces the word with it (POSIX.1-2024 XCU 2.6.6 and 2.14.3).
-- Rule: `*`, `?`, and `[` never match a `/`, and never match a leading `.` of a name; a pattern with no match is passed on unchanged, so the command sees the pattern text itself.
+- Rule: `*`, `?`, and bracket expressions never match a `/`; `*`, `?`, and non-matching, range, or class brackets never match a leading `.` of a name (an explicit `[.abc]` is unspecified); a pattern with no match is passed on unchanged, so the command sees the pattern text itself.
 - Trap: the unchanged pattern, a name that starts with `-`, a name that contains a space after `$(ls)`, and an expansion larger than the exec argument limit all turn an innocent `*` into a bug.
-- Portability: the specification leaves `[^a]`, `.*` matching `.` and `..`, `**`, and the no-match error to the implementation; dash, mksh, and posh read `^` literally, bash before 5.2 lists `.` and `..`, and native zsh aborts on no match (measured in the shell matrix).
+- Portability: the specification leaves `[^a]` and whether `.*` matches `.` and `..` to the implementation, requires an unmatched pattern to stay unchanged, and gives `**` no meaning beyond two stars; dash, mksh, and posh read `^` literally, bash before 5.2 lists `.` and `..`, and native zsh departs from the standard by aborting on no match (measured in the shell matrix).
 - When not to use it: for untrusted or unbounded sets of names, use `find` with `-exec ... {} +` or a loop that guards with `[ -e "$f" ]`, because a glob is a snapshot that can be empty, huge, or option-shaped.
 
 ## Mental model
@@ -37,7 +46,7 @@ flowchart TD
   F -- no --> S["split the pattern<br/>at each slash"]
   S --> D["for each component with a pattern:<br/>opendir, readdir, skip dot names,<br/>match, recurse into directories"]
   D --> M{"any match"}
-  M -- yes --> O["sort with strcoll<br/>replace the word<br/>by all matches"]
+  M -- yes --> O["sort by the collating<br/>sequence, replace the<br/>word by all matches"]
   M -- no --> U["leave the pattern<br/>string unchanged"]
   O --> Q["quote removal<br/>on the other words"]
   U --> Q
@@ -46,7 +55,7 @@ flowchart TD
 
 Each word that survives field splitting is tested for an unquoted `*`, `?`, or `[`; with `set -f` or without such a character it skips straight to quote removal (the yes branch).
 Otherwise the pattern is cut at slashes, and every component that holds a pattern character forces the shell to read one directory and test each name against that component, descending only into matching directories.
-Matches are sorted by the collating sequence of the current locale and replace the single word with zero-or-more words, which is why the argument count of a command can change here and nowhere else after field splitting.
+Matches are sorted by the collating sequence of the current locale and replace the single word with one or more words (zero only under an extension such as `nullglob`), which is why the argument count of a command can change here and nowhere else after field splitting.
 If the directory scan yields nothing, the original pattern text becomes the word, which downstream code cannot tell from a file that is really named that way.
 
 ## How it works
@@ -60,13 +69,13 @@ A name that a pattern produces is never split again, because splitting already r
 
 **The pattern language.**
 2.6.6 delegates everything to 2.14 and qualifies it with 2.14.3.
-2.14.1 defines `?` (any one character), `*` (any string, including the null string), and `[` which starts a bracket expression following the regular-expression rules of XBD 9.3.5 "except that the exclamation-mark character shall replace the circumflex character in its role in a non-matching list".
+2.14.1 defines `?` (any one character) and `[`, which starts a bracket expression following the regular-expression rules of XBD 9.3.5 except that `!` replaces `^` in its role in a non-matching list; 2.14.2 defines `*` (any string, including the null string).
 A bracket expression that starts with an unquoted `^` has unspecified results, which is the portability hole behind `[^a]*`.
 A `[` that does not open a valid bracket expression matches itself.
-A backslash escapes the next character, inside brackets too.
+A backslash escapes the next character, inside brackets too, wherever shell quoting can be used; in a pattern that results from an earlier expansion, the shell may or may not honor a backslash inside a bracket expression, because 2.14.1 leaves that unspecified.
 
 **The three filename rules (2.14.3).**
-First, a slash in a pathname is matched only by a slash in the pattern; "slash characters in the pattern shall be identified before bracket expressions", so `dir[/]x.c` is not a bracket expression and matches only a pathname literally spelled `dir[/]x.c`.
+First, a slash in a pathname is matched only by a slash in the pattern; slash characters in the pattern are identified before bracket expressions, so `dir[/]x.c` is not a bracket expression and matches only a pathname literally spelled `dir[/]x.c`.
 Second, a leading period of a filename, whether at the start or right after a slash, must be matched by an explicit period in the pattern; `*`, `?`, and non-matching or range or class brackets such as `[!a]` never match it, and whether an explicit `[.abc]` does is unspecified.
 Third, results are sorted by the current locale's collating sequence, with a byte-wise tie break for names that collate equally, and "if the pattern does not match any existing filenames or pathnames, the pattern string shall be left unchanged".
 Directory entries `.` and `..` "may be ignored", and the standard carries a note that a future version may require ignoring them, so today they are an implementation choice.
@@ -84,28 +93,31 @@ The directory walk is `glob_vector` in `lib/glob/glob.c`, which calls `opendir` 
 `skipname` encodes the period rule: when `noglob_dot_filenames` is set (the default) a name beginning with `.` is skipped unless the pattern begins with `.` or `\.`; and since 5.2 the flag `glob_always_skip_dot_and_dotdot` (the `globskipdots` option, on by default, initialised to 1 in the 5.3 source) drops `.` and `..` even for patterns that start with a period (bash-5.3 lib/glob/glob.c, skipname).
 The bash 5.3 manual states the same: with `globskipdots` "the filenames `.` and `..` never match, even if the pattern begins with a `.`" (bash-5.3 doc/bash.1).
 
-dash implements the walk itself in `expmeta` (dash git `src/expand.c`): it opens the directory with `opendir`, computes `matchdot` from whether the pattern component begins with a period (after an optional escape), loops over `readdir64`, skips names starting with `.` when `matchdot` is zero, and runs `pmatch` on the rest, recursing for the remaining components.
-The gate for trying at all is `strpbrk(str->text, "*?]")` in `expandmeta`, so a lone `[` without a `]` is not a pattern; the sort is a merge sort `msort` that compares with `strcoll` (dash expand.c, expandmeta, expmeta, msort).
-The same file also contains a second path, `expandmeta_glob`, that hands the pattern to `glob64` with `GLOB_NOMAGIC` when `GLOB_IS_ENABLED`; which path a given dash binary uses depends on a build-time macro defined outside the file read, so for the Debian dash 0.5.12 in the matrix the note relies on measured behavior, not on this source (UNVERIFIED: which path 0.5.12 compiles).
-BusyBox ash has the same `expmeta`, `matchdot`, and merge-sort structure, with `strcoll` when locale support is built in and `strcmp` otherwise (busybox master shell/ash.c, expmeta, expsort; UNVERIFIED that the 1.37.0 tag is identical to master).
+dash implements the walk itself in `expmeta` (dash git head `src/expand.c`, as of 2026-11): it opens the directory with `opendir`, computes `matchdot` from whether the pattern component begins with a period (after an optional escape), loops over `readdir64`, skips names starting with `.` when `matchdot` is zero, and runs `pmatch` on the rest, recursing for the remaining components.
+In that head the gate for trying at all is `strpbrk(str->text, "*?]")` in `expandmeta`, so a lone `[` without a `]` is not a pattern, and the sort is a merge sort `msort` that compares with `strcoll` (dash expand.c, expandmeta, expmeta, msort).
+The released 0.5.12 that the matrix runs differs in both details: its gate is `strpbrk` over the set `*?[`, and its `msort` compares with `strcmp`, so it sorts in byte order whatever the locale, against the standard's collating-sequence rule (dash-0.5.12 `src/expand.c`, expandmeta, msort).
+macOS `/bin/dash` also printed byte order under `en_US.UTF-8` (measured by hand on the host, as of 2026-11).
+The same file also contains a second path, `expandmeta_glob`, that hands the pattern to `glob64` with `GLOB_NOMAGIC` when `GLOB_IS_ENABLED` (in 0.5.12 the equivalent code sits under `HAVE_GLOB`, set only by `--enable-glob`).
+Debian builds 0.5.12-12 with `--disable-fnmatch --disable-lineno --disable-glob` (Debian `debian/rules`), and no patch in its series names expansion or globbing, so the Debian dash in the matrix runs the `expmeta` walk and the `strcmp` sort.
+BusyBox ash has the same `expmeta`, `matchdot`, and merge-sort structure, with `strcoll` when locale support is built in and `strcmp` otherwise (busybox 1.37.0 shell/ash.c, expmeta, expsort; this region of the file is identical in master as of 2026-11, compared with `diff`).
 
 **Down to the system call.**
 All of this is user space: `opendir` and `readdir` are libc calls that end in an `open` of the directory and `getdents`-style reads on Linux, and a pattern component without metacharacters needs only a path lookup (search permission), not a read.
-These calls were not traced on a live system (UNVERIFIED: no `strace` in the matrix images).
+A trace confirms it: `strace` on dash 0.5.12 over musl, in a throwaway Alpine container because the matrix images have no `strace`, shows `openat` with `O_DIRECTORY` and then `getdents64` for `ap*/*.conf`, and for `/etc/hostname/x*` a single `openat` of `/etc/hostname/` that fails with `ENOTDIR`, with no directory above it opened (as of 2026-11).
 The only kernel limit that matters appears later, at `execve`: the expanded words become one argument vector.
 On Linux 2.6.23 and later the total of `argv` and `envp` strings is capped at 1/4 of the soft stack limit (and at 3/4 of 8 MiB), each string at 32 pages, and an excess fails with `E2BIG` (execve(2), "Limits on size of arguments and environment").
 
 **Shell extensions.**
-Because the no-match and dot behavior is unspecified or fixed, each shell added a switch with its own spelling: bash has `shopt -s nullglob`, `failglob`, `dotglob`, `nocaseglob`, and the `GLOBIGNORE` variable (which also turns on `dotglob`), zsh has `setopt nullglob` and recursive `**/`, and ksh93 has the `~(N)` pattern prefix (measured in the shell matrix).
+Because the no-match and dot behavior is unspecified or fixed, each shell added a switch with its own spelling: bash has `shopt -s nullglob`, `failglob`, `dotglob`, `nocaseglob`, and the `GLOBIGNORE` variable (which also turns on `dotglob`), zsh has `setopt nullglob` and recursive `**/` (zsh manual, Options and Recursive Globbing), ksh93 has the `~(N)` pattern prefix (all measured in the shell matrix), and yash has `set -o null-glob` (yash manual, set built-in; measured by hand in the Alpine image, as of 2026-11).
 None of these exists in POSIX sh, so a script that must run under `/bin/sh` cannot use them.
 
 ## Numbers and limits
 
 | Quantity | Value | Source |
 |---|---|---|
-| `getconf ARG_MAX` on the macOS host | 1048576 | measured by hand on the host (as of October 2026) |
-| `getconf ARG_MAX` in the Debian image (glibc, 8192 KiB stack) | 2097152 | measured by hand in the matrix image (as of October 2026) |
-| `getconf ARG_MAX` in the Alpine image (musl) | 131072, although the kernel limit is the stack-derived one | measured by hand (as of October 2026); kernel rule from execve(2) |
+| `getconf ARG_MAX` on the macOS host | 1048576 | measured by hand on the host (as of 2026-11) |
+| `getconf ARG_MAX` in the Debian image (glibc, 8192 KiB stack) | 2097152 | measured by hand in the matrix image (as of 2026-11) |
+| `getconf ARG_MAX` in the Alpine image (musl) | 131072, although the kernel limit is the stack-derived one: `/bin/echo` accepted 1.5 MB of arguments there and refused 2.6 MB | measured by hand (as of 2026-11); kernel rule from execve(2) |
 | Linux limit on all `argv` and `envp` strings | 1/4 of the soft stack limit, capped at 3/4 of 8 MiB (6 MiB) | execve(2) |
 | Linux limit on one argument string | 32 pages (128 KiB with 4 KiB pages) | execve(2) |
 | Fixture for the overflow test | 13000 names, 200 bytes each, about 2.6 MB of strings | the lab, `many-files.sh` |
@@ -113,13 +125,14 @@ None of these exists in POSIX sh, so a script that must run under `/bin/sh` cann
 | `/bin/echo *` over the same names | fails in every shell, with a diagnostic that the argument list is too long; status 126 in bash, dash, ksh93, mksh, yash, and BusyBox ash, status 127 in native zsh and `zsh --emulate sh`, status 1 in posh | the lab, test 25 |
 | `xargs` hands the same 13000 names to `/bin/echo` in batches | 13000 words in total | the lab, test 25 |
 | Order of the lab fixture under `LC_ALL=C` | `-n B1 [x] ^c a.c a1 a[b b.c b.h dangling dir sp ace.c` | the lab, test 1 |
-| Order of the same names in bash 5.3 on the macOS host with `en_US.UTF-8` | `-n [x] ^c a.c a[b a1 b.c b.h B1 dangling dir sp ace.c` | measured by hand on the host |
+| Order of the same names in bash 5.3 on the macOS host with `en_US.UTF-8` | `-n [x] ^c a.c a[b a1 b.c b.h B1 dangling dir sp ace.c` | measured by hand on the host (as of 2026-11) |
 
 The last two rows show why a script must pin `LC_ALL=C` when the order matters: the collating sequence of the locale decides it, and one host locale put `B1` after `b.h`.
 
 ## Portability
 
 Rows are shells; every cell was measured in the shell matrix (the lab asserts it per family) unless a source is named.
+The exception is `none` in the Empty-result column: the lab only shows that `shopt` and `setopt` are absent, and the absence of another option rests on `set -o` listing no such option, measured by hand (as of 2026-11).
 
 | Shell | `.*` lists `.` and `..` | `[^a]` negates | `[[:lower:]]` | No match | `**/` recurses | Empty-result option | `set -f` disables |
 |---|---|---|---|---|---|---|---|
@@ -133,7 +146,7 @@ Rows are shells; every cell was measured in the shell matrix (the lab asserts it
 | ksh93u+m 1.0.10 | no | yes | yes | unchanged | no | `~(N)` prefix | yes |
 | ksh93u+ 2012 (macOS `/bin/ksh`) | yes | yes | yes | unchanged | no | `~(N)` prefix | yes |
 | mksh R59 | no | no, `^` is a literal member | yes | unchanged | no | none | yes |
-| yash 2.58.1 | yes | yes | yes | unchanged | no | none | yes |
+| yash 2.58.1 | yes | yes | yes | unchanged | no | `set -o null-glob` (yash manual) | yes |
 | posh 0.14.1 | no | no, `^` is a literal member | no, the class stays literal | unchanged | no | none | yes |
 | BusyBox ash 1.37.0 | yes | yes | yes | unchanged | no | none | yes |
 
@@ -164,7 +177,7 @@ show() {
 eval "$2"
 ```
 
-The fixture (`make-fixture.sh`) holds `.hidden`, `a.c`, `b.c`, `b.h`, `-n`, `sp ace.c`, `B1`, `a1`, `[x]`, `^c`, a dangling symlink `dangling`, and the directories `dir` (with `x.c`, `.dot`, and `sub/y.c`) and `a[b`.
+The fixture (`make-fixture.sh`) holds `.hidden`, `a.c`, `b.c`, `b.h`, `-n`, `sp ace.c`, `B1`, `a1`, `[x]`, `^c`, a dangling symlink `dangling`, and the directories `dir` (with `x.c`, `.dot`, and `sub/y.c`) and `a[b` (with `c]d`).
 A simplified excerpt of the test file shows the shape of the assertions; the real tests branch on `lab_shell_family` wherever shells differ.
 
 ```sh
@@ -211,13 +224,14 @@ The lab passed all 25 tests in the macOS host shells (`/bin/sh`, `/bin/bash`, ba
 > Fix: prefix the glob with `./` or put `--` before it; Wheeler's rule is "always prepend globs with something like `./`" and he does not treat `--` as a sufficient defense.
 
 > [!warning] `.*` is not "the hidden files"
-> Trigger: `rm -r .*` or `chown -R u .*` in bash before 5.2, dash, yash, BusyBox ash, and macOS ksh93.
-> Symptom: the expansion contains `.` and `..`, so the command reaches the parent directory (measured in the shell matrix).
+> Trigger: `chown -R u .*` in bash before 5.2, dash, yash, BusyBox ash, and macOS ksh93.
+> Symptom: the expansion contains `.` and `..` (measured in the shell matrix), so a recursive command reaches the parent directory: under Debian dash, `chmod -R u-w .*` changed a file in the parent (measured by hand, as of 2026-11).
+> `rm -r .*` is saved only by `rm` itself, which POSIX requires to write a diagnostic and do nothing more with a dot or dot-dot operand (POSIX.1-2024 rm); GNU `rm` printed "refusing to remove '.' or '..' directory" and removed the other names.
 > Fix: write `.[!.]* ..?*`, which never matches `.` or `..`, and remember that an unmatched `..?*` stays literal.
 
 > [!warning] `$(ls)` and unquoted variables re-split names
 > Trigger: `for f in $(ls *.c)` or `files=$(ls); cmd $files`.
-> Symptom: `sp ace.c` becomes `sp` and `ace.c` (the lab prints `4 args: <a.c> <b.c> <sp> <ace.c>`), and a name containing `*` is globbed a second time.
+> Symptom: `sp ace.c` becomes `sp` and `ace.c` (the lab's `$(printf "%s\n" *.c)` prints `4 args: <a.c> <b.c> <sp> <ace.c>`), and a name containing `*` is globbed a second time.
 > Fix: let the shell expand the pattern directly in the `for` word list, because names produced by pathname expansion are not split again; keep lists in positional parameters, not strings.
 
 > [!warning] The expansion is one argument vector
@@ -225,7 +239,8 @@ The lab passed all 25 tests in the macOS host shells (`/bin/sh`, `/bin/bash`, ba
 > Symptom: the external command's `execve` fails after the shell has already expanded the pattern, while a builtin is unaffected because it never calls `execve`.
 > bash, dash, ksh93, mksh, yash, and BusyBox ash return status 126; native zsh and `zsh --emulate sh` return 127; posh returns 1.
 > Each diagnostic says the argument list is too long (zsh spells that phrase in lower case, and ksh93 wraps it as "cannot execute").
-> Fix: `find dir -exec cmd {} +`, or `for f in *; do echo "$f"; done | xargs cmd`, which batches under the limit; the lab shows 13000 names that overflow `/bin/echo` yet pass through `xargs` intact.
+> Fix: `find dir -exec cmd {} +`, or `printf '%s\0' ./* | xargs -0 cmd` where `printf` is a builtin (`-0` is in POSIX.1-2024 xargs), which batches under the limit.
+> The lab's plainer `for f in *; do echo "$f"; done | xargs cmd` shows 13000 names that overflow `/bin/echo` yet pass through `xargs` intact, but only because those names hold no blanks or quotes: without `-0`, `xargs` split `a b` into two words and stopped at a stray `"` (measured in the Debian image, as of 2026-11).
 
 > [!warning] `[^a]` and `[[:class:]]` are not portable
 > Trigger: `[^0-9]*` in a script run by dash, mksh, or posh.
@@ -240,6 +255,7 @@ The lab passed all 25 tests in the macOS host shells (`/bin/sh`, `/bin/bash`, ba
 > [!warning] Collation changes the order
 > Trigger: a script that relies on `*` returning `B1` before `a1` or the reverse.
 > Symptom: the order differs between machines because it follows `LC_COLLATE` (measured: bash 5.3 on the macOS host with `en_US.UTF-8` put `B1` after `b.h`).
+> dash 0.5.12 ignores the locale and keeps byte order (its `msort` uses `strcmp`), so the order can also differ between shells on one machine.
 > Fix: set `LC_ALL=C` for the script when order matters, and do not parse the order of a glob as a contract.
 
 ## Security and robustness
@@ -249,7 +265,7 @@ The lab passed all 25 tests in the macOS host shells (`/bin/sh`, `/bin/bash`, ba
 - A pattern assembled from data is an injection: if `name` comes from outside, `rm $name` can delete far more than one file; quote it, and use `set -f` around code that must treat words as literal text.
 - The standard's rule that unreadable directories yield no match is a silent failure: a script that globs a directory it cannot read sees an unchanged pattern and status 0, so check readability explicitly when absence matters.
 - Native zsh reports status 1 and "no matches found" instead (measured in the shell matrix).
-- Bound the work: an unmatched `**`-style habit from zsh or bash `globstar` can walk a huge tree, and a plain `*` over a million-entry directory builds all the names in memory before any command runs.
+- Bound the work: a `**`-style habit from zsh or bash `globstar` can walk a huge tree, and a plain `*` over a million-entry directory builds all the names in memory before any command runs.
 - No CVE record for pathname expansion itself was verified for this note, and none is cited.
 - The practical hazards above are documented by Wheeler's essay and follow from the specification's text.
 
@@ -277,7 +293,7 @@ Pin `LC_ALL=C` in scripts whose output order is read by something else.
 >
 > > [!success]- Answer
 > > POSIX requires the pattern string to be left unchanged, so it prints `*.zzz`.
-> > Native zsh has `NOMATCH` set and aborts the command with "no matches found".
+> > Native zsh has `NOMATCH` set (zsh manual, Options) and aborts the command with "no matches found".
 > > `zsh --emulate sh` follows POSIX.
 > >
 > > Follow-up: How would you write a loop over `*.log` that is correct in both?
@@ -303,7 +319,7 @@ Pin `LC_ALL=C` in scripts whose output order is read by something else.
 > [!question] L6: Debug this script: `for f in $(ls /var/log/app/*.log); do gzip -9 $f; done` fails on `my app.log` and on an empty directory.
 >
 > > [!success]- Answer
-> > The `$(ls ...)` text is field split, so `my app.log` becomes two words, and an unquoted `$f` splits again; with no match, `ls` fails and the pattern text is passed on.
+> > The `$(ls ...)` text is field split, so `my app.log` becomes two words, and an unquoted `$f` splits again; with no match, `ls` receives the literal pattern and fails, the substitution is empty, and the loop body never runs, so the only trace is the error from `ls` (measured under Debian dash).
 > > Write `for f in /var/log/app/*.log; do [ -e "$f" ] || continue; gzip -9 -- "$f"; done`.
 > > The glob is expanded directly in the word list, so names are not re-split, the `-e` guard handles the unmatched pattern, and `--` plus quotes protect the command.
 > >
@@ -324,7 +340,7 @@ Pin `LC_ALL=C` in scripts whose output order is read by something else.
 > > The shell expands the pattern in user space, so building the list never fails; the failure happens at `execve` when the kernel checks the total size of the argument and environment strings.
 > > On Linux that limit is 1/4 of the soft stack limit, capped at 6 MiB, with at most 128 KiB per string (execve(2)); macOS reports `ARG_MAX` of 1048576 on the host used here.
 > > A builtin never calls `execve`, so the same list passes.
-> > Use `find dir -type f -exec rm {} +` or `... | xargs rm`, which batch the names under the limit.
+> > Use `find dir -type f -exec rm {} +` or `printf '%s\0' ./* | xargs -0 rm`, which batch the names under the limit.
 > >
 > > Follow-up: Alpine's `getconf ARG_MAX` prints 131072 although the kernel limit follows the stack size; which of the two does the lab's 2.6 MB of names exceed, and how would you tell?
 
@@ -332,7 +348,7 @@ Pin `LC_ALL=C` in scripts whose output order is read by something else.
 >
 > > [!success]- Answer
 > > Unquoted, `name` is field split on whitespace, so extra operands appear, and any `*`, `?`, or `[` makes it a pattern that can match many files in the directory.
-> > A name beginning with `-` after an empty `UPLOAD_DIR` becomes an option, and a name with `..` segments traverses upward.
+> > A word beginning with `-` after a space in `name` becomes an option (`name='x -rf /'` yields the fields `$UPLOAD_DIR/x`, `-rf`, and `/`, measured under Debian dash), an empty `UPLOAD_DIR` anchors the path at the root directory, and a name with `..` segments traverses upward.
 > > The fix is `rm -f -- "$UPLOAD_DIR/$name"` after validating that `name` has no slash, and running with `set -f` if patterns must never expand.
 > > Even then the check and the removal are not atomic, so a symlink race is possible.
 > >
@@ -342,7 +358,8 @@ Pin `LC_ALL=C` in scripts whose output order is read by something else.
 >
 > > [!success]- Answer
 > > POSIX sorts matches "according to the collating sequence in effect in the current locale", with a byte-wise tie break only for names that collate equally.
-> > dash and BusyBox merge-sort with `strcoll` (the sources read for this note), and bash and others follow the locale too; measured on the macOS host, `en_US.UTF-8` put `B1` after `b.h`, while `LC_ALL=C` puts it first.
+> > BusyBox merge-sorts with `strcoll` when locale support is built in and dash git head does too, but released dash 0.5.12 compares with `strcmp`, so it keeps byte order in every locale (the sources read for this note).
+> > bash, ksh93, and zsh follow the locale; measured on the macOS host, `en_US.UTF-8` put `B1` after `b.h` in all three, while `LC_ALL=C` puts it first and `/bin/dash` kept byte order.
 > > Export `LC_ALL=C` at the top of the script, or sort explicitly with a tool whose locale you pin.
 > >
 > > Follow-up: What does the specification say about names that are not valid characters in the locale?
@@ -361,7 +378,7 @@ Siblings: [[Expansion-Order]], [[Parameter-Expansion]], [[Command-Substitution]]
 
 - POSIX.1-2024 XCU 2.6.6 Pathname Expansion and 2.14 Pattern Matching Notation (https://pubs.opengroup.org/onlinepubs/9799919799/utilities/V3_chap02.html): the normative rules for slash, period, sorting, and the unchanged pattern.
 - GNU bash 5.3 source, `lib/glob/glob.c` and `subst.c` (https://mirrors.kernel.org/gnu/bash/bash-5.3.tar.gz): `glob_vector`, `skipname`, and `glob_expand_word_list` show the dot rule and the three no-match paths.
-- dash `src/expand.c` (https://git.kernel.org/pub/scm/utils/dash/dash.git/plain/src/expand.c): a compact `expmeta` with `matchdot`, `readdir64`, `pmatch`, and a `strcoll` merge sort.
+- dash `src/expand.c` (https://git.kernel.org/pub/scm/utils/dash/dash.git/plain/src/expand.c): a compact `expmeta` with `matchdot`, `readdir64`, `pmatch`, and a `strcoll` merge sort (git head; released 0.5.12 uses `strcmp`).
 - BusyBox `shell/ash.c` (https://raw.githubusercontent.com/mirror/busybox/master/shell/ash.c): the same structure with a build-time choice between `strcoll` and `strcmp`.
 - execve(2), "Limits on size of arguments and environment" (https://man7.org/linux/man-pages/man2/execve.2.html): where the 1/4-of-stack limit and `E2BIG` come from.
 - David A. Wheeler, "Filenames and Pathnames in Shell: How to do it Correctly" (https://dwheeler.com/essays/filenames-in-shell.html): the standard catalogue of dash-prefixed names, unmatched globs, and `./` prefixes.
