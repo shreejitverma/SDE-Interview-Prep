@@ -118,8 +118,9 @@ Conversely, when the shell is waiting for asynchronous background commands via t
 
 Section 2.13 governs subshell inheritance `(POSIX.1-2024 XCU 2.13)`:
 Upon entry to a subshell environment, traps that are not set to ignore are reset to their default actions.
-POSIX grants an explicit lexical exemption on the `trap` page of section 2.15: in a command substitution containing only a single `trap` command (`$(trap)` or `` `trap` ``), implementations need not alter the traps, allowing scripts to inspect parent trap states.
-Bash, ksh93, yash, and BusyBox ash implement this exemption and preserve parent traps for inspection from `$(trap)`, while dash 0.5.12, zsh, mksh, and posh reset traps on subshell entry and return an empty string (as of 2026-11).
+POSIX grants an explicit lexical exemption on the `trap` page of section 2.15: in a command substitution containing only a single `trap` command (`$(trap)` or `` `trap` ``), implementations need not alter the traps.
+The result is not optional: a `trap` listing in a subshell, with no `trap` command with operands run since entry, shall contain the commands associated with each condition immediately before the subshell was entered, so `$(trap)` must report the parent's traps either way.
+Bash and ksh93 report parent traps from `$(trap)`, as do yash and BusyBox ash, which clear the traps but print a remembered copy, while dash 0.5.12, zsh, mksh, and posh reset traps on subshell entry and return an empty string, which does not conform (as of 2026-11).
 Signals ignored upon entry to a non-interactive shell cannot be trapped or reset, ensuring process wrappers like `nohup` maintain signal immunity across descendant scripts.
 
 ### Kernel mechanisms and system calls
@@ -244,7 +245,7 @@ Ksh93 also diverges in interrupted wait behavior: when `wait` is interrupted by 
 | Numeric condition `0` for `EXIT` | Yes | Yes | Yes | Yes | Yes | Yes | Yes | Yes | Yes | Yes | Yes |
 | Reset via integer (`trap 0`) | Yes | Yes | Yes | Yes | Yes | Yes | Yes | Yes | Yes | No (no signals specified) | Yes |
 | Untrapped `SIGTERM` fires `EXIT` trap | Optional | Yes | Yes | No | No | No | Yes | Yes (action's last status) | No | No | No |
-| `$(trap)` preserves parent traps | Optional | Yes | Yes | No (empty) | No (empty) | No (empty, 0.5.12) | Yes | No (empty) | Yes | No (empty) | Yes |
+| `$(trap)` reports parent traps | Required | Yes | Yes | No (empty) | No (empty) | No (empty, 0.5.12) | Yes | No (empty) | Yes | No (empty) | Yes |
 | Forwarded signal exit status preserved | Yes | Yes | Yes | Yes | Yes | Yes | Yes | No (action's last status) | Yes | Yes | Yes |
 | Ignored-on-entry signal immutable | Yes | Yes | Yes | No (resets) | No (resets) | Yes | Yes | Yes | Yes | Yes | Yes |
 | `trap ... EXIT` in POSIX function | Global | Global | Global | Local (function) | Global | Global | Global | Global | Global | Global | Global |
@@ -257,7 +258,8 @@ The lab proves these rows with the bats tests `trap -p`, `lowercase signal names
 
 ## Worked example
 
-The test script below demonstrates production-grade trap and `EXIT` mechanics, implementing atomic temporary directory creation, guaranteed cleanup across all termination paths, exit status preservation, and subshell trap isolation.
+The test script below demonstrates trap and `EXIT` mechanics one mode at a time: atomic temporary directory creation with `EXIT` cleanup, exit status preservation, an `exit` override, subshell trap isolation, and one forwarded signal.
+It is a probe, not a cleanup template: `exit-clean` sets no signal traps, so an untrapped `SIGTERM` leaks its directory in dash, zsh, yash, posh, and BusyBox ash, `sig-forward` forwards only `TERM`, and no trap runs on `SIGKILL`; production scripts also trap `TERM`, `INT`, and `HUP`, as the pitfall below shows.
 The complete executable lab and bats test suite are located in the [lab](../labs/03-traps-and-exit/).
 
 ```sh
@@ -276,12 +278,6 @@ case $mode in
   exit-clean)
     base_dir=${2:?dir}
     scratch_dir=$(mktemp -d "$base_dir/probe.XXXXXX") || exit 1
-    marker="$scratch_dir/marker.txt"
-    printf 'active\n' >"$marker"
-    m_exists=1
-    if [ -f "$marker" ]; then
-      m_exists=0
-    fi
 
     # shellcheck disable=SC2317 # invoked by shell trap upon exit
     cleanup() {
@@ -289,6 +285,13 @@ case $mode in
       printf 'cleaned\n'
     }
     trap cleanup EXIT
+
+    marker="$scratch_dir/marker.txt"
+    printf 'active\n' >"$marker"
+    m_exists=1
+    if [ -f "$marker" ]; then
+      m_exists=0
+    fi
 
     printf 'created=%s marker=%d\n' "$scratch_dir" "$m_exists"
     ;;
@@ -515,7 +518,7 @@ This specification requirement preserves dispositions such as the ignored `SIGHU
 
 From an architectural perspective, the POSIX shell trap mechanism is a global, single-slot mutable callback system designed in an era preceding structured exceptions and lexical resource scopes.
 Because shells lack lexical destructors, object lifetimes, and composable error handlers, engineers rely on `trap ... EXIT` as an ad-hoc destructor pattern.
-In small, self-contained automation scripts, this pattern provides high leverage, enabling clean resource reclamation across normal completions and unexpected crashes with minimal code.
+In small, self-contained automation scripts, this pattern provides high leverage, enabling clean resource reclamation across normal completions and trapped signals with minimal code.
 
 However, the architecture breaks down as script size and operational complexity grow.
 Because traps occupy a flat global namespace, independent components, sourced libraries, and nested functions routinely overwrite each other's cleanup hooks without compiler warnings or runtime protections.

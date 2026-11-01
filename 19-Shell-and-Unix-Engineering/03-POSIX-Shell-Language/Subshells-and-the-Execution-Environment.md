@@ -166,7 +166,7 @@ When entering a subshell created for a command substitution containing only a si
 The same page closes the gap for shells that skip this check: a `trap` listing in a subshell, with no `trap` command with operands run since entry, shall contain the commands associated with each condition immediately before the subshell was entered.
 So POSIX.1-2024 leaves the mechanism open but not the result: `$(trap)` must report the parent's traps.
 GNU Bash, KornShell 93, BusyBox ash, and yash deliver that result, enabling constructs like `saved=$(trap)` to snapshot active signal handlers; BusyBox ash and yash clear the traps but print a remembered copy `(busybox shell/ash.c, forkchild; yash manual, trap)`.
-Conversely, dash, posh, mksh, and zsh reset all caught and exit traps upon subshell entry and print nothing, causing `$(trap)` to return an empty string, as asserted by the lab test "command substitution with single trap command exposes parent traps according to shell implementation", which does not meet that text.
+Conversely, dash 0.5.12, posh, mksh, and zsh reset all caught and exit traps upon subshell entry and print nothing, causing `$(trap)` to return an empty string, as asserted by the lab test "command substitution with single trap command exposes parent traps according to shell implementation", which does not meet that text; dash 0.5.13 and later keep the traps for `$(trap)` (`issimplecmd` in `clear_traps`, `src/trap.c`, not measured here).
 
 ### 6. Implementation Architectures: Bash, Dash, and ksh93
 
@@ -218,7 +218,7 @@ In MirBSD KornShell (mksh), subshells fork a child process, as measured in the s
 | macOS default pipe buffer capacity | 16,384 bytes (16 KiB), grows to 64 KiB | Confirmed in shell matrix `(as of 2026-11)` |
 | Atomic pipe write limit (`PIPE_BUF`) | 4,096 bytes (Linux), 512 bytes (macOS) | `getconf PIPE_BUF /` in the shell matrix `(as of 2026-11)` |
 | Per-user process limit (`RLIMIT_NPROC`) | 6,000 (macOS host, equal to `kern.maxprocperuid`), 64,279 (Linux containers); both vary by host | Measured via `ulimit -u` on Darwin arm64 and Linux `(as of 2026-11)` |
-| Single-command `$(trap)` trap retention | 4 of 8 families preserve (bash, ksh93, busybox, yash); 4 reset to empty (dash, posh, mksh, zsh) | Measured in shell matrix `(as of 2026-11)` |
+| Single-command `$(trap)` trap retention | 4 of 8 families preserve (bash, ksh93, busybox, yash); 4 reset to empty (dash 0.5.12, posh, mksh, zsh) | Measured in shell matrix `(as of 2026-11)` |
 | Subshell depth tracking variable support | 3 of 8 families provide integer tracking (`$BASH_SUBSHELL`, `${.sh.subshell}`, `$ZSH_SUBSHELL`); 5 families have none | Measured in shell matrix `(as of 2026-11)` |
 
 ## Portability
@@ -391,7 +391,9 @@ probe_fd_flags_sharing() {
 When executed in the lab test harness, every shell in the matrix prints the output below, except that `pipe_count` is 3 in ksh93 and native zsh, where the last pipeline stage runs in the current shell:
 
 ```
-$ ./probe.sh env_isolation /tmp
+$ scratch=$(mktemp -d)
+
+$ ./probe.sh env_isolation "$scratch"
 sub: var=subshell umask=0077 noglob=on
 caller_after_sub: var=initial in_orig=1 same_umask=1 noglob=off
 caller_after_brace: var=current
@@ -406,14 +408,14 @@ sub_exit
 after_sub
 main_exit
 
-$ ./probe.sh pipeline_isolation /tmp
+$ ./probe.sh pipeline_isolation "$scratch"
 redir_count: 3
 pipe_count: 0
 
-$ ./probe.sh fd_offset_sharing /tmp
+$ ./probe.sh fd_offset_sharing "$scratch"
 shared_offset: 5678
 
-$ ./probe.sh fd_flags_sharing /tmp
+$ ./probe.sh fd_flags_sharing "$scratch"
 fd 3 nonblock: no
 set_nonblock
 fd 3 nonblock: yes
@@ -428,7 +430,7 @@ fd 3 nonblock: yes
 
 > [!warning] Silent Trap Erasure via Subshell Inspection (`$(trap)`)
 > - Trigger: Attempting to save and restore signal traps using `saved=$(trap)` or `saved=$(trap -p)` in scripts running across multiple shell implementations.
-> - Symptom: In GNU Bash, ksh93, BusyBox ash, and yash, parent traps are preserved and captured in `$saved`; in dash, posh, mksh, and zsh, entering the subshell immediately wipes caught traps to default, assigning an empty string to `$saved`, so a later `eval "$saved"` is a no-op that silently restores nothing and leaves whatever traps were set since the snapshot in place.
+> - Symptom: In GNU Bash, ksh93, BusyBox ash, and yash, parent traps are preserved and captured in `$saved`; in dash 0.5.12, posh, mksh, and zsh, entering the subshell immediately wipes caught traps to default, assigning an empty string to `$saved`, so a later `eval "$saved"` is a no-op that silently restores nothing and leaves whatever traps were set since the snapshot in place.
 > - Fix: POSIX.1-2024 requires the snapshot to work, but four shell families do not deliver it, so never rely on command substitution trap snapshotting in portable scripts; manage trap states explicitly in variables or restrict trap snapshotting to environments verified to preserve traps `(POSIX.1-2024 XCU 2.15 trap)`.
 
 > [!warning] Hierarchical Variable Syntax Crash in Non-ksh93 Korn Shells
@@ -490,7 +492,7 @@ However, the architectural trade-off is latency and memory isolation.
 On modern multi-core operating systems, a forked subshell costs substantial latency (~570 us to ~820 us per fork, exit, and wait cycle, measured on one Apple Silicon host), due in part to page table duplication and Copy-on-Write tracking.
 More importantly, subshells enforce one-way data flow: child state cannot communicate back to the parent without out-of-band IPC (pipes, files, or FIFOs).
 When a workload requires shared mutable state, high-frequency synchronization, bidirectional stream multiplexing, or structured data transformations across thousands of records, shell execution environment semantics become a structural bottleneck.
-Distinguished engineers also account for subshell divergence across production images: trap snapshotting via `$(trap)` functions in GNU Bash, ksh93, BusyBox ash, and yash, but clears handlers in dash, posh, mksh, and zsh; subshell depth tracking lacks a POSIX interface; and pipeline stages isolate variables in most interpreters while executing in the current shell in ksh93 and native zsh.
+Distinguished engineers also account for subshell divergence across production images: trap snapshotting via `$(trap)` functions in GNU Bash, ksh93, BusyBox ash, and yash, but clears handlers in dash 0.5.12, posh, mksh, and zsh; subshell depth tracking lacks a POSIX interface; and pipeline stages isolate variables in most interpreters while executing in the current shell in ksh93 and native zsh.
 To build robust cross-platform infrastructure, senior practitioners avoid non-standard introspection variables, never depend on `$(trap)` handler restoration in portable scripts, and steer clear of pipeline loops when caller variables must be updated.
 At that threshold, distinguished engineers migrate the pipeline to Go, Rust, or Python, where shared memory concurrency, explicit goroutine/thread pools, and structured error handling eliminate process boundary overhead.
 
@@ -587,7 +589,7 @@ At that threshold, distinguished engineers migrate the pipeline to Go, Rust, or 
 > > However, POSIX XCU 2.15 establishes a dedicated permission for trap inspection: when a command substitution consists solely of a single `trap` command, the traps need not be altered.
 > > A shell that does not make that check must still list the commands in place immediately before the subshell was entered, if no `trap` command with operands has run since entry, so either way `$(trap)` must report the parent's traps.
 > > GNU Bash, KornShell 93, BusyBox ash, and yash report active parent traps inside `$(trap)`, allowing scripts to snapshot handlers.
-> > Conversely, dash, posh, mksh, and zsh reset caught traps to default immediately upon entering any subshell and print nothing, causing `$(trap)` to evaluate to an empty string, which does not meet the POSIX.1-2024 text.
+> > Conversely, dash 0.5.12, posh, mksh, and zsh reset caught traps to default immediately upon entering any subshell and print nothing, causing `$(trap)` to evaluate to an empty string, which does not meet the POSIX.1-2024 text.
 > >
 > > Follow-up: Which two mechanisms does POSIX.1-2024 allow a shell to use to make `$(trap)` report the parent's traps?
 

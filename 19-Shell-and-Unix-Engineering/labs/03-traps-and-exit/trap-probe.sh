@@ -13,12 +13,6 @@ case $mode in
   exit-clean)
     base_dir=${2:?dir}
     scratch_dir=$(mktemp -d "$base_dir/probe.XXXXXX") || exit 1
-    marker="$scratch_dir/marker.txt"
-    printf 'active\n' >"$marker"
-    m_exists=1
-    if [ -f "$marker" ]; then
-      m_exists=0
-    fi
 
     # shellcheck disable=SC2317 # invoked by shell trap upon exit
     cleanup() {
@@ -26,6 +20,13 @@ case $mode in
       printf 'cleaned\n'
     }
     trap cleanup EXIT
+
+    marker="$scratch_dir/marker.txt"
+    printf 'active\n' >"$marker"
+    m_exists=1
+    if [ -f "$marker" ]; then
+      m_exists=0
+    fi
 
     printf 'created=%s marker=%d\n' "$scratch_dir" "$m_exists"
     ;;

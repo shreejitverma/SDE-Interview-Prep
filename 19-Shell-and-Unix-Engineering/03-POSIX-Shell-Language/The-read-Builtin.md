@@ -51,7 +51,7 @@ Part of [The POSIX Shell Language](README.md) in [Shell and Unix Engineering](..
 - Mechanism: `read` consumes bytes from file descriptor 0 up to a delimiter (default newline), using 1-byte `read(2)` calls on pipes and, in dash 0.5.12, mksh, zsh, and BusyBox ash, on regular files too, while bash, ksh93, yash, and posh block-read seekable files and rewind with `lseek(2)` (traced on Linux, as of 2026-11), stripping line continuations unless `-r` is given, then partitions the payload across variable operands using a modified field splitting algorithm.
 - Rule: always invoke `IFS= read -r line || [ -n "$line" ]` to prevent backslash interpretation, protect leading and trailing IFS whitespace, and avoid silently dropping the final line of an input stream that lacks a terminating delimiter.
 - Trap: in pipelines (`cat file | while read -r line; do ...; done`), POSIX allows each command to execute in a separate subshell, causing all variable assignments and side effects inside the loop to vanish upon loop termination in bash, dash, ash, and mksh.
-- Portability: POSIX.1-2024 standardized `-d delim` (Issue 8), but dash (through 0.5.13.5), posh 0.14.1, and yash before 2.59 (as of 2026-11) reject `-d` with an invalid-option error; omitting variable names defaults to assigning `$REPLY` in bash, zsh, ksh93, mksh, and BusyBox ash, whereas dash, posh, and yash reject bare `read` with a missing-operand error.
+- Portability: POSIX.1-2024 standardized `-d delim` (Issue 8), but dash (through 0.5.13.5), posh 0.14.1, and yash before 2.59 (as of 2026-11) reject `-d` with an invalid-option error, and yash 2.59 and later accept `-d` but treat `-d ''` as no delimiter, reading to EOF with status 1 (measured at 2.61, lab test 11); omitting variable names defaults to assigning `$REPLY` in bash, zsh, ksh93, mksh, and BusyBox ash, whereas dash, posh, and yash reject bare `read` with a missing-operand error.
 - When not to use it: for high-throughput streams or structured records larger than a few megabytes, shell `while read` loops incur millions of system calls and interpreter evaluations; replace them with `awk`, `sed`, `jq`, or compiled tools.
 
 ## Mental model
@@ -160,7 +160,7 @@ In zsh (`Src/builtin.c`, `bin_read`), assigning to a readonly variable is treate
 | Syscall chunk size on regular files | 1 byte in dash 0.5.12, mksh, zsh, BusyBox; 128 in bash 3.2; 512 in posh; 1024 in yash 2.58.1; 4096 in bash 5.2 and 5.3; 65536 in ksh93u+m | Block-reading shells rewind with `lseek` | strace in the shell matrix, bash `lib/sh/zread.c` (`ZBUFSIZ`) |
 | Syscall count for 1 MiB stream on pipe | >= 1,048,576 (total `read` calls traced: 1,048,582 in bash 5.2.37, 1,048,578 in dash 0.5.12) | One `read(2)` call per byte, each a user/kernel mode switch | strace in the shell matrix |
 | Default record delimiter | ASCII 0x0A (`\n`) | Hardcoded default line terminator | POSIX.1-2024 XCU read |
-| Null record delimiter (`-d ''`) | ASCII 0x00 (`\0`) | NUL-delimited records for pathname ingestion | POSIX.1-2024 XCU read (Defect 243) |
+| Null record delimiter (`-d ''`) | ASCII 0x00 (`\0`) | NUL-delimited records for pathname ingestion; yash 2.61 instead reads to EOF with status 1 and stops the value at the first NUL | POSIX.1-2024 XCU read (Defect 243), lab test 11 |
 | Standard input NUL byte handling | Dropped, truncated, or kept, by shell | Input shall not contain NUL unless `-d ''` specified | POSIX.1-2024 XCU read STDIN, lab test 19 |
 | Default `IFS` whitespace set | Space, Tab, Newline | `0x20`, `0x09`, `0x0A` | POSIX.1-2024 XCU 2.5.3 |
 | Exit status on delimiter match | `0` | Successful line completion | POSIX.1-2024 XCU read |
@@ -184,7 +184,7 @@ In zsh (`Src/builtin.c`, `bin_read`), assigning to a readonly variable is treate
 | ksh93 (93u+ 2012) | Supported | NUL dropped (reads to newline or EOF) | Sets `REPLY` (status 0) | Status 1 (assigns later vars) | Current shell (`pipe=3`) | Error (`arithmetic syntax`) |
 | ksh93 (93u+m 1.0.10) | Supported | Supported | Sets `REPLY` (status 0) | Status 1 (assigns later vars) | Current shell (`pipe=3`) | Error (`arithmetic syntax`) |
 | mksh (R59) | Supported | Supported | Sets `REPLY` (status 0) | Status 2 (halts assign) | Subshell (`pipe=0`) | Vulnerable via `arr[...]` |
-| yash (2.58.1) | Error (status 2; supported from 2.59) | Error (status 2) | Error (status 2) | Status 1 (assigns later vars; status 2 from 2.59, measured at 2.61) | Subshell (`pipe=0`) | Immune (assigns a literal name such as `a[1]`, no evaluation) |
+| yash (2.58.1) | Error (status 2; supported from 2.59) | Error (status 2; from 2.59 no delimiter, reads to EOF with status 1, measured at 2.61) | Error (status 2) | Status 1 (assigns later vars; status 2 from 2.59, measured at 2.61) | Subshell (`pipe=0`) | Immune (assigns a literal name such as `a[1]`, no evaluation) |
 | posh (0.14.1) | Error (invalid opt, status 1) | Error (invalid opt, status 1) | Error (missing argument, status 1) | Status 1 (halts assign) | Subshell (`pipe=0`) | Vulnerable via `arr[...]` |
 | BusyBox ash (1.37) | Supported | Supported | Sets `REPLY` (status 0) | Status 2 (halts assign) | Subshell (`pipe=0`) | Immune (validates identifier) |
 
@@ -308,8 +308,9 @@ ok 19 read handles an embedded NUL byte in default newline mode per shell
 > Fix: validate that variable names match strict POSIX identifier regexes (`^[a-zA-Z_][a-zA-Z0-9_]*$`) before passing them as operands to `read`.
 
 > [!warning] Non-portable delimiter options across POSIX shells
-> Trigger: invoking `read -d delim` or `read -d ''` in scripts that run under `/bin/sh` or target lightweight shells such as dash, posh, or yash before 2.59 (as of 2026-11).
+> Trigger: invoking `read -d delim` or `read -d ''` in scripts that run under `/bin/sh` or target lightweight shells such as dash, posh, or yash (as of 2026-11).
 > Symptom: dash and yash before 2.59 reject `-d` as an invalid option with exit status 2, and posh with exit status 1; `read` assigns nothing, and the script continues unless `set -e` or a status check stops it.
+> Yash 2.59 and later accept `-d` but treat `-d ''` as no delimiter: `read` runs to EOF with status 1 and the value stops at the first NUL, so `while IFS= read -r -d '' file` over `find -print0` output runs its body zero times and reports no error (measured at 2.61, lab test 11).
 > Fix: restrict `read -d` to scripts with an explicit bash, ksh, or zsh shebang (ksh93u+ 2012 still drops NUL under `-d ''`), or use external stream filters like `find -exec` or `xargs -0` when targeting portable POSIX `/bin/sh`.
 
 > [!warning] Readonly variable assignment disguised as EOF
@@ -342,7 +343,7 @@ GNU bash 4.3 and later, dash (0.5.12 and 0.5.13.5), mksh, ksh93, posh, and BusyB
 In contrast, zsh preserves internal NUL bytes within parameter storage.
 If an application attempts to process filenames generated by `find . -print` using `read -r file`, any filename containing an embedded newline will be split into multiple partial filenames.
 If an attacker crafts a filename containing newlines, subsequent file operations (e.g. `rm "$file"`) may target unintended parent or sibling paths.
-Pathname processing must always pair `find . -print0` with `while IFS= read -r -d '' file; do ...; done` on shells that support `-d`, or delegate to `find -exec` or `xargs -0`.
+Pathname processing must always pair `find . -print0` with `while IFS= read -r -d '' file; do ...; done` on shells that split on NUL under `-d ''` (bash, zsh, mksh, BusyBox ash, and ksh93u+m in lab test 11, but not yash or ksh93u+ 2012), or delegate to `find -exec` or `xargs -0`.
 
 ## The principal's view
 
@@ -357,7 +358,7 @@ When shell scripting is strictly required for data streaming, distinguished engi
 1. Stream transformation belongs in dedicated streaming filters: use `awk` for tabular record manipulation, `sed` for pattern substitution, `cut` for fixed delimiters, and `jq` for JSON payloads.
 2. If `read` must be used, enforce the canonical defensive invocation: `IFS= read -r line || [ -n "$line" ]`.
 3. Never feed a `while read` loop through an upstream pipe when loop variables must survive into the surrounding script; use redirection from a file or process substitution.
-4. Never assume `-d` or bare `read` into `$REPLY` is universal across `/bin/sh` environments: dash, posh, and yash before 2.59 reject `-d` as an illegal option, and dash, posh, and yash reject bare `read` without operands.
+4. Never assume `-d` or bare `read` into `$REPLY` is universal across `/bin/sh` environments: dash, posh, and yash before 2.59 reject `-d` as an illegal option, yash 2.59 and later accept `-d` but treat `-d ''` as no delimiter, and dash, posh, and yash reject bare `read` without operands.
 
 ## Interview questions
 
@@ -430,7 +431,7 @@ When shell scripting is strictly required for data streaming, distinguished engi
 > > If `-r` is omitted, POSIX notes that implementations disagree on whether `\<NUL>` or `\<newline>` triggers line continuation.
 > > Furthermore, any backslashes in legitimate paths (such as Windows shares or escape sequences) are stripped unless `-r` is explicitly passed.
 > >
-> > Follow-up: Which common POSIX shells completely lack support for the `-d` option? (dash and posh as of 2026-11, and yash before 2.59).
+> > Follow-up: Which common POSIX shells completely lack support for the `-d` option? (dash and posh as of 2026-11, and yash before 2.59; yash 2.59 and later accept the option, but `-d ''` does not split on NUL there).
 
 > [!question] L7+: Design a resilient shell stream processor for untrusted network input that protects against denial of service, whitespace corruption, and unhandled EOF records.
 >

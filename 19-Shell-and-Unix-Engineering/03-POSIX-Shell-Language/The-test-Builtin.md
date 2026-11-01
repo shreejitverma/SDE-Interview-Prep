@@ -463,7 +463,7 @@ When designing infrastructure scripts and systems software:
 > > [!success]- Answer
 > > The script contains three major bugs: unquoted `$user`, use of the removed `-a` operator, and a TOCTOU race condition.
 > > If `$user` is unset or empty, the command collapses to `[ = "admin" ... ]`, throwing a syntax error.
-> > If `$user` is `-f` or `=`, the seven operands rely on unspecified parsing: most matrix shells read a string comparison and return status 1, while posh fails with status 2 on `-f`.
+> > If `$user` is `-f` or `=`, the six operands rely on unspecified parsing: most matrix shells read a string comparison and return status 1, while posh fails with status 2 on `-f`.
 > > The permission check creates a race condition because file permissions or symlink targets can change before `cat` executes.
 > >
 > > Follow-up: How should this check be rewritten using modern POSIX-compliant shell constructs?
