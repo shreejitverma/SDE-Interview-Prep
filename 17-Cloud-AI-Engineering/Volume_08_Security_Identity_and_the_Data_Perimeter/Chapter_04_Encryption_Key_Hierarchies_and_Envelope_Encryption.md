@@ -2,7 +2,7 @@
 type: concept
 track: [cloud-ai, ai-eng, sde, distinguished]
 level:
-status: draft
+status: solid
 last_reviewed:
 sources: 
   - "https://docs.aws.amazon.com/kms/latest/cryptographic-details/intro.html"
@@ -16,6 +16,34 @@ sources:
   - "https://docs.aws.amazon.com/encryption-sdk/latest/developer-guide/introduction.html"
   - "https://developers.google.com/tink"
   - "https://aws.amazon.com/builders-library/static-stability-using-availability-zones/"
+  - "https://aws.amazon.com/kms/pricing/"
+  - "https://docs.aws.amazon.com/kms/latest/APIReference/API_Encrypt.html"
+  - "https://docs.aws.amazon.com/kms/latest/APIReference/API_Decrypt.html"
+  - "https://docs.aws.amazon.com/kms/latest/APIReference/API_EnableKeyRotation.html"
+  - "https://docs.aws.amazon.com/kms/latest/developerguide/grant-manage.html"
+  - "https://docs.aws.amazon.com/kms/latest/developerguide/resource-limits.html"
+  - "https://docs.aws.amazon.com/kms/latest/developerguide/deleting-keys.html"
+  - "https://docs.aws.amazon.com/kms/latest/developerguide/rotate-keys.html"
+  - "https://docs.aws.amazon.com/kms/latest/developerguide/importing-keys-get-public-key-and-token.html"
+  - "https://docs.aws.amazon.com/kms/latest/developerguide/keystore-external.html"
+  - "https://docs.aws.amazon.com/kms/latest/developerguide/conditions-nitro-enclave.html"
+  - "https://docs.aws.amazon.com/kms/latest/developerguide/conditions-kms.html"
+  - "https://docs.aws.amazon.com/kms/latest/developerguide/cryptographic-attestation.html"
+  - "https://docs.aws.amazon.com/kms/latest/developerguide/logging-using-cloudtrail.html"
+  - "https://docs.aws.amazon.com/kms/latest/developerguide/data-protection.html"
+  - "https://docs.aws.amazon.com/AmazonS3/latest/userguide/bucket-key.html"
+  - "https://docs.aws.amazon.com/AmazonS3/latest/userguide/ServerSideEncryptionCustomerKeys.html"
+  - "https://docs.aws.amazon.com/encryption-sdk/latest/developer-guide/migration-guide.html"
+  - "https://docs.aws.amazon.com/ebs/latest/userguide/how-ebs-encryption-works.html"
+  - "https://aws.amazon.com/blogs/security/preventing-unintended-encryption-of-amazon-s3-objects/"
+  - "https://aws.amazon.com/message/101925/"
+  - "https://docs.cloud.google.com/kms/quotas"
+  - "https://cloud.google.com/kms/pricing"
+  - "https://docs.cloud.google.com/kms/docs/destroy-restore"
+  - "https://docs.cloud.google.com/kms/docs/delete-kms-resources"
+  - "https://docs.cloud.google.com/kms/docs/ekm"
+  - "https://docs.cloud.google.com/kms/docs/importing-a-key"
+  - "https://docs.cloud.google.com/kms/docs/hsm"
 ---
 
 # Encryption Key Hierarchies and Envelope Encryption
@@ -23,7 +51,7 @@ sources:
 ## TL;DR
 
 1. Envelope encryption moves bulk bytes through a locally held data encryption key (DEK) and sends only 32-byte keys to a key encryption key (KEK) held behind an HSM-backed KMS. Key-service request rate, not cipher throughput, is the scaling limit.
-2. The KMS call sits on the hot path of every cold read. AWS KMS quota is shared per account, per Region, and per key type, per one-second interval (AWS docs, as of 2026-10). Caching DEKs buys availability and throughput, and it costs you revocation latency.
+2. The KMS call sits on the hot path of every cold read. AWS KMS quota is shared per account, per Region, and per key type, per one-second interval (AWS docs, as of 2026-11). Caching DEKs buys availability and throughput, and it costs you revocation latency.
 3. AES-GCM sets the real design constraints: 96-bit nonces, about 2^32 random-nonce messages per key, about 64 GiB per invocation, and no key commitment. A DEK per object, framed streaming, and an explicit commitment tag are the standard fixes.
 4. Authorization lives in the key policy, grants, and the encryption context (AAD), not in the cipher. Deleting a key is irreversible crypto-shredding, and BYOK adds little security. HYOK converts your proxy's availability into your data's availability.
 5. The cryptographic boundary is the set of principals who can call Decrypt, PutKeyPolicy, or CreateGrant, plus the memory of every process holding a plaintext DEK. It is not the bucket or the disk.
@@ -80,7 +108,7 @@ Encrypt, Decrypt, GenerateDataKey, and the HMAC operations are data-plane operat
 They authenticate the caller, evaluate key policy, IAM, and grants, check the encryption context, and call into an HSM.
 The two planes have different quotas, and they are eventually consistent with each other.
 Policy and grant changes propagate asynchronously.
-AWS provides grant tokens so a caller can use a freshly created grant before it has propagated everywhere (AWS docs, recalled, UNVERIFIED this session).
+AWS provides grant tokens so a caller can use a freshly created grant before it has propagated everywhere, which typically takes seconds but can take several minutes ([AWS KMS grants](https://docs.aws.amazon.com/kms/latest/developerguide/grant-manage.html), as of 2026-11).
 Do not build revocation guarantees on "the policy edit is instant".
 See [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_04_Control_Plane_vs_Data_Plane_Separation|Control Plane vs Data Plane Separation]] for the general pattern.
 
@@ -92,7 +120,7 @@ The encryption context is bound into the wrap as additional authenticated data (
 A wrong context fails cryptographically inside the HSM path and is not merely rejected by policy.
 The context is not secret.
 It appears in CloudTrail, so use it for binding (tenant, purpose, object class) and never for confidential values.
-Google Cloud KMS exposes the same primitive as `additionalAuthenticatedData` on Encrypt and Decrypt (Google Cloud docs, recalled, UNVERIFIED this session).
+Google Cloud KMS exposes the same primitive as `additionalAuthenticatedData` on Encrypt and Decrypt ([Cloud KMS encrypt API](https://docs.cloud.google.com/kms/docs/reference/rest/v1/projects.locations.keyRings.cryptoKeys/encrypt), as of 2026-11).
 
 ### AES-GCM budgets: the mechanism your DEK design must respect
 
@@ -100,7 +128,7 @@ Every envelope scheme eventually reaches AES-GCM, and GCM has three hard budgets
 
 1. **Nonce uniqueness.** A repeated (key, nonce) pair leaks the XOR of the two plaintexts and the GHASH authentication subkey, which allows forgeries (Bock et al., "Nonce-Disrespecting Adversaries", WOOT 2016). With random 96-bit nonces, the collision probability for n messages is about n^2 / 2^97. At n = 2^32 that is 2^-33. At n = 2^40 it is about 2^-17 (computed here). NIST therefore caps random-nonce invocations at 2^32 per key.
 2. **Per-invocation length.** One GCM invocation can protect at most 2^39 - 256 bits, which is about 64 GiB. A single-call encryption of a 100 GiB checkpoint shard is not a valid use of GCM.
-3. **Non-committing.** AES-GCM, like most AEADs, lets an adversary craft one ciphertext that authenticates under two different keys. These are the "invisible salamanders" results (Dodis et al., CRYPTO 2018) and the partitioning-oracle attacks (Len et al., USENIX Security 2021). Albertini et al. (USENIX Security 2022) show how to abuse such ciphertexts and how to fix them. This matters wherever the attacker controls the ciphertext and the system tries more than one key, such as multi-recipient wraps, multi-key keyrings, or key-ID-free blobs. The AWS Encryption SDK made key-committing algorithm suites its default in v2.0 (AWS docs, recalled, UNVERIFIED this session).
+3. **Non-committing.** AES-GCM, like most AEADs, lets an adversary craft one ciphertext that authenticates under two different keys. These are the "invisible salamanders" results (Dodis et al., CRYPTO 2018) and the partitioning-oracle attacks (Len et al., USENIX Security 2021). Albertini et al. (USENIX Security 2022) show how to abuse such ciphertexts and how to fix them. This matters wherever the attacker controls the ciphertext and the system tries more than one key, such as multi-recipient wraps, multi-key keyrings, or key-ID-free blobs. The AWS Encryption SDK made key-committing algorithm suites its default in v2.0 ([AWS Encryption SDK migration guide](https://docs.aws.amazon.com/encryption-sdk/latest/developer-guide/migration-guide.html), as of 2026-11).
 
 Design consequences:
 
@@ -114,23 +142,25 @@ Design consequences:
 Disabling or scheduling deletion of a KEK does not touch DEKs already unwrapped in process memory.
 Revocation latency is therefore max(cache TTL, process lifetime, grant or policy propagation delay).
 S3 Bucket Keys and the Encryption SDK's caching cryptographic materials manager are both caches of this kind.
-AWS recommends SDK data key caching when you are hitting the GenerateDataKey quota (AWS docs, as of 2026-10).
-Bucket Keys cut requests against the shared quota (third-party analysis, as of 2026-09).
+AWS recommends SDK data key caching when you are hitting the GenerateDataKey quota (AWS docs, as of 2026-11).
+Bucket Keys cut request traffic against the shared quota and can reduce KMS request costs by up to 99 percent ([S3 Bucket Keys](https://docs.aws.amazon.com/AmazonS3/latest/userguide/bucket-key.html), as of 2026-11).
 The costs are subtler than the docs suggest.
 With a bucket-level key, per-object KMS audit events and per-object encryption-context granularity are lost.
-The context becomes the bucket ARN instead of the object ARN (AWS docs, recalled, UNVERIFIED this session).
+The context and the CloudTrail entry use the bucket ARN instead of the object ARN (S3 Bucket Keys docs, as of 2026-11).
+S3 fetches a bucket-level key at least once per requester so each requester still appears in CloudTrail, but later requests served by that key do not re-validate the KMS key policy (same source).
 A cache also widens the memory-disclosure surface.
 A plaintext DEK sitting in a long-lived process is what a crash dump or core file will contain.
-Microsoft's Storm-0558 signing-key compromise is the canonical example of key material probably leaking through a crash dump, although Microsoft's leading theory was not confirmed (CISA Cyber Safety Review Board, Review of the Summer 2023 Exchange Online Intrusion, 2024-03, recalled, UNVERIFIED this session).
+Microsoft's Storm-0558 signing-key compromise is the canonical cautionary example, because Microsoft's September 2023 report named a crash dump as the likely path for the key.
+Microsoft corrected that on 2024-03-12: it never found a crash dump containing the key, and the Cyber Safety Review Board found no evidence or logs showing the key in one, so the acquisition path remains undetermined ([Microsoft MSRC](https://www.microsoft.com/en-us/msrc/blog/2023/09/results-of-major-technical-investigations-for-storm-0558-key-acquisition); [CSRB report, 2024-03-20](https://www.cisa.gov/sites/default/files/2025-03/CSRBReviewOfTheSummer2023MEOIntrusion508.pdf)).
 See [[17-Cloud-AI-Engineering/Volume_02_AWS_Deep_Dive/Chapter_09_Elastic_Block_Store_and_Network_Storage|Elastic Block Store and Network Storage]] for the equivalent host-side behavior on EBS volumes.
-The point to carry from EBS is that an attached volume may keep working after key disablement until the volume is next attached, and that behavior is a cache effect (AWS docs, recalled, UNVERIFIED this session).
+The point to carry from EBS is that an attached volume keeps working after key disablement because the plaintext data key stays in the Nitro hardware until detach, and the next attach then fails, so that behavior is a cache effect ([How EBS encryption works](https://docs.aws.amazon.com/ebs/latest/userguide/how-ebs-encryption-works.html), as of 2026-11).
 
 ### Grants, services, and who actually calls KMS
 
 Many AWS services use your key through grants created on your behalf.
 This is why an unretired grant can outlive the workload it was made for.
 It is also why key policy conditions such as `kms:ViaService`, `kms:CallerAccount`, and `kms:GrantIsForAWSResource` are the right tools to scope service access to the key.
-On GCP, the service agent of the consuming service needs `cloudkms.cryptoKeyEncrypterDecrypter` on the key.
+On GCP, the service agent of the consuming service needs `roles/cloudkms.cryptoKeyEncrypterDecrypter` on the key.
 IAM is the only policy language there, plus IAM conditions, deny policies, and VPC Service Controls.
 
 ### Hardware roots and who holds the KEK
@@ -138,26 +168,27 @@ IAM is the only policy language there, plus IAM conditions, deny policies, and V
 | Tier | Where KEK material lives | Who operates the HSM | Notes |
 |---|---|---|---|
 | Provider-owned keys (S3 SSE-S3, Google default encryption) | Provider internal KMS | Provider | No customer policy surface, no per-key audit |
-| Customer managed key, software or standard HSM-backed | Provider multi-tenant HSM fleet | Provider | Customer controls policy, rotation, deletion |
-| Dedicated HSM-backed (CloudHSM key store, Cloud HSM) | Single-tenant or provider HSM cluster | Customer or provider | Customer-visible HSM cluster, higher cost, lower quota headroom |
+| Customer managed key, software or standard HSM-backed (including multi-tenant Cloud HSM) | Provider multi-tenant HSM fleet | Provider | Customer controls policy, rotation, deletion |
+| Dedicated HSM-backed (CloudHSM key store, Single-tenant Cloud HSM) | Single-tenant HSM cluster or instance | Customer (CloudHSM) or provider (Single-tenant Cloud HSM) | Higher cost (about $3,500 per Single-tenant Cloud HSM instance-month, Google pricing, as of 2026-11), lower quota headroom (1,800 req/s per CloudHSM key store, AWS docs, as of 2026-11) |
 | External key manager (AWS XKS, Cloud EKM) | Your HSM or key manager outside the cloud | You | Availability depends on your proxy and network path |
 
-AWS XKS and Cloud EKM both work by sending wrap and unwrap requests to a proxy you operate.
-AWS documents that XKS layers key material held in KMS HSMs with your external key, so the ciphertext needs both (AWS docs, recalled, UNVERIFIED this session).
-Cloud EKM supports internet and VPC-attached paths and pairs with Key Access Justifications (Google Cloud docs, recalled, UNVERIFIED this session).
+AWS XKS sends encrypt and decrypt requests to an XKS proxy you supply and operate, which fronts your external key manager.
+Cloud EKM instead communicates directly with your external key management partner, over the internet or over a VPC ([Cloud EKM](https://docs.cloud.google.com/kms/docs/ekm), as of 2026-11).
+AWS documents that XKS layers key material held in KMS HSMs with your external key (double encryption), so neither AWS KMS nor the external key owner can decrypt alone ([AWS KMS external key stores](https://docs.aws.amazon.com/kms/latest/developerguide/keystore-external.html), as of 2026-11).
+Cloud EKM similarly layers internal Cloud KMS key material with external key material for symmetric keys, and with Key Access Justifications enabled your key manager can enforce a policy on each request's reason code (Cloud EKM docs, as of 2026-11).
 The control you gain is a kill switch you own.
-The cost is that every cold decrypt now has your proxy and your network in its critical path.
+The cost is that every cold decrypt now has your proxy or key manager and your network in its critical path.
 
 ### BYOK mechanics
 
 BYOK means you generate key material outside the cloud and import it.
 On AWS, you call GetParametersForImport to receive a wrapping public key and an import token.
-Both expire after a short window, which I recall as 24 hours (AWS docs, recalled, UNVERIFIED this session).
+The set is valid for 24 hours ([AWS KMS import docs](https://docs.aws.amazon.com/kms/latest/developerguide/importing-keys-get-public-key-and-token.html), as of 2026-11).
 You wrap your key material under that public key and call ImportKeyMaterial, optionally with an expiry.
-Imported material has no automatic rotation.
+Imported material has no automatic rotation, although symmetric keys with imported material do support on-demand rotation ([AWS KMS key rotation](https://docs.aws.amazon.com/kms/latest/developerguide/rotate-keys.html), as of 2026-11).
 If it expires or is deleted, the KMS key stays but is unusable until you re-import the same material.
 That makes you the durability layer for the key, so escrow is mandatory.
-Google Cloud uses import jobs with RSA or hybrid RSA-AES wrapping keys, and I recall a short job expiry (Google Cloud docs, recalled, UNVERIFIED this session).
+Google Cloud uses import jobs with RSA or hybrid RSA-AES wrapping keys, and an import job expires after three days ([Cloud KMS import docs](https://docs.cloud.google.com/kms/docs/importing-a-key), as of 2026-11).
 
 The security value of BYOK is narrow.
 It supports regulatory provenance and cross-cloud portability, and it lets you delete and re-import material.
@@ -167,10 +198,11 @@ The weak link becomes your own generation environment.
 ### Attested key release
 
 For data-in-use protection, bind the Decrypt permission to a measured environment.
-AWS KMS supports condition keys on the recipient attestation of a Nitro Enclave, such as `kms:RecipientAttestation:ImageSha384` and PCR-based keys.
-When Decrypt or GenerateDataKey is called with a Recipient, KMS returns the result encrypted to the public key in the enclave's attestation document (`CiphertextForRecipient`), so the parent instance never sees plaintext (AWS docs, recalled, UNVERIFIED this session).
+AWS KMS supports condition keys on the recipient attestation of a Nitro Enclave, such as `kms:RecipientAttestation:ImageSha384` and PCR-based keys ([AWS KMS condition keys](https://docs.aws.amazon.com/kms/latest/developerguide/conditions-nitro-enclave.html), as of 2026-11).
+When Decrypt or GenerateDataKey is called with a Recipient, KMS returns the result encrypted to the public key in the enclave's attestation document (`CiphertextForRecipient`) and leaves `Plaintext` null or empty, so the parent instance never sees plaintext ([AWS KMS Decrypt API](https://docs.aws.amazon.com/kms/latest/APIReference/API_Decrypt.html), as of 2026-11).
+KMS accepts NitroTPM attestation documents the same way ([AWS KMS attestation support](https://docs.aws.amazon.com/kms/latest/developerguide/cryptographic-attestation.html), as of 2026-11).
 See [[17-Cloud-AI-Engineering/Volume_02_AWS_Deep_Dive/Chapter_15_Security_and_Cryptography_KMS_and_Nitro_Enclaves|Security and Cryptography: KMS and Nitro Enclaves]].
-Google's counterpart is Confidential Space with workload identity federation conditions on attestation claims (Google Cloud docs, recalled, UNVERIFIED this session).
+Google's counterpart is Confidential Space with workload identity federation conditions on attestation claims ([Confidential Space overview](https://docs.cloud.google.com/confidential-computing/confidential-space/docs/confidential-space-overview), as of 2026-11).
 See [[17-Cloud-AI-Engineering/Volume_03_GCP_Deep_Dive/Chapter_15_Security_and_Confidential_Computing_Cloud_KMS|Security and Confidential Computing: Cloud KMS]].
 
 ### Failure domains
@@ -183,51 +215,51 @@ Replicating ciphertext to a DR Region without the KEK is the most common silent 
 
 ## Numbers to Know
 
-Rows marked UNVERIFIED are recalled from official documentation and were not re-fetched on 2026-10-21.
+Provider facts in this table were re-checked against primary documentation on 2026-11-01.
 
 | Item | Value | Source and date | Status |
 |---|---|---|---|
-| Symmetric crypto quota scope | One shared quota per account, per Region, per key type, per one-second interval, across Decrypt, Encrypt, GenerateDataKey, GenerateDataKeyWithoutPlaintext, GenerateMac, GenerateRandom, ReEncrypt, VerifyMac | AWS docs, as of 2026-10 | Verified |
-| Symmetric default in large Regions | 100,000 req/s in us-east-1, us-west-2, eu-west-1 (raised from 50,000) | AWS What's New, 2024-07-22; AWS docs, as of 2026-10 | Verified at announcement and in current docs; check Service Quotas |
-| RSA and ECC default | 1,000 req/s in all Regions (raised from 500) | AWS What's New, 2024-07-22; AWS docs, as of 2026-10 | Verified at announcement and in current docs |
-| Symmetric default elsewhere | 10,000 req/s in most Regions, 20,000 in some | AWS docs, as of 2026-10 | Verified |
-| Quota adjustability | All KMS request quotas adjustable except the CloudHSM key store quota | AWS docs, as of 2026-10 | Verified |
-| Quota alarm | Request rates visible via Service Quotas and CloudWatch alarms | AWS docs, as of 2026-10 | Verified |
-| Direct Encrypt payload | 4,096 bytes | AWS docs, recalled | UNVERIFIED |
-| AWS KMS price | $1 per KMS key per month, $0.03 per 10,000 requests | AWS pricing, recalled | UNVERIFIED |
-| Cloud KMS price | Per key-version monthly fee that varies by protection level, plus per-operation fee | Google pricing, recalled | UNVERIFIED, no figures stated |
-| Cloud KMS quota model | Per-project, per-location, per-minute, separate per protection level | Google Cloud docs, recalled | UNVERIFIED, no figures stated |
-| AWS key deletion window | 7 to 30 days pending deletion | AWS docs, recalled | UNVERIFIED |
-| Cloud KMS version destruction | Scheduled destroy delay, default 24 hours; key rings and keys are never deleted | Google Cloud docs, recalled | UNVERIFIED |
-| Automatic rotation | AWS configurable period, 90 to 2,560 days; GCP schedule per key | Provider docs, recalled | UNVERIFIED |
+| Symmetric crypto quota scope | One shared quota per account, per Region, per key type, per one-second interval, across Decrypt, Encrypt, GenerateDataKey, GenerateDataKeyWithoutPlaintext, GenerateMac, GenerateRandom, ReEncrypt, VerifyMac | AWS docs, as of 2026-11 | Verified |
+| Symmetric default in large Regions | 100,000 req/s in us-east-1, us-west-2, eu-west-1 (raised from 50,000) | AWS What's New, 2024-07-22; AWS docs, as of 2026-11 | Verified at announcement and in current docs; check Service Quotas |
+| RSA and ECC default | 1,000 req/s in all Regions (raised from 500) | AWS What's New, 2024-07-22; AWS docs, as of 2026-11 | Verified at announcement and in current docs |
+| Symmetric default elsewhere | 10,000 req/s in most Regions, 20,000 in some | AWS docs, as of 2026-11 | Verified |
+| Quota adjustability | AWS states all KMS request quotas are adjustable except the CloudHSM key store quota; its custom key store table also lists the external key store quota as not adjustable (each 1,800 req/s per key store) | AWS docs, as of 2026-11 | Verified |
+| Quota alarm | Request rates visible via Service Quotas and CloudWatch alarms | AWS docs, as of 2026-11 | Verified |
+| Direct Encrypt payload | 4,096 bytes | [AWS KMS Encrypt API](https://docs.aws.amazon.com/kms/latest/APIReference/API_Encrypt.html), as of 2026-11 | Verified |
+| AWS KMS price | $1 per KMS key per month, plus $1 per month each for the first and second rotations (capped, so at most $3); $0.03 per 10,000 symmetric requests; 20,000 free requests per month | [AWS KMS pricing](https://aws.amazon.com/kms/pricing/), as of 2026-11 | Verified |
+| Cloud KMS price | Per active symmetric key version, about $0.06 per month software, $1 HSM, $3 external (hourly rate x 730); from $0.03 per 10,000 cryptographic operations; destroyed versions free, disabled and scheduled-for-destruction versions billed as active | [Cloud KMS pricing](https://cloud.google.com/kms/pricing), as of 2026-11 | Verified |
+| Cloud KMS quota model | Token-based since 2026-02-16, per project and per region: software 6,000,000 tokens per minute, HSM 3,000,000 tokens per minute, external 10,000 tokens per second and hard-enforced; symmetric operations cost 100 tokens, so about 1,000, 500, and 100 ops/s (computed); starting limits can reflect prior usage | [Cloud KMS quotas](https://docs.cloud.google.com/kms/quotas), as of 2026-11 | Verified |
+| AWS key deletion window | 7 to 30 days pending deletion, default 30; the actual wait can run up to 24 hours longer | [AWS KMS key deletion](https://docs.aws.amazon.com/kms/latest/developerguide/deleting-keys.html), as of 2026-11 | Verified |
+| Cloud KMS version destruction | Scheduled-for-destruction default 30 days; versions in `DESTROYED` state, then keys, then key rings can be deleted from listings; deleted key names cannot be reused, deleted key ring names can | [Destroy and restore](https://docs.cloud.google.com/kms/docs/destroy-restore), [Delete Cloud KMS resources](https://docs.cloud.google.com/kms/docs/delete-kms-resources), as of 2026-11 | Verified |
+| Automatic rotation | AWS configurable period, 90 to 2,560 days, default 365; GCP schedule per key | [AWS EnableKeyRotation API](https://docs.aws.amazon.com/kms/latest/APIReference/API_EnableKeyRotation.html), [Cloud KMS key creation](https://docs.cloud.google.com/kms/docs/creating-keys), as of 2026-11 | Verified |
 | AES-GCM IV and length limits | 96-bit IV recommended; max 2^39 - 256 bits per invocation (about 64 GiB); 2^32 random-IV invocations per key | NIST SP 800-38D (standard, 2007) | Verified (standard) |
 | Random-nonce collision bound | n^2 / 2^97: 2^-57 at 2^20 messages, 2^-33 at 2^32, 2^-17 at 2^40 | Computed in this chapter | Derived |
 | Throttle arithmetic | 100 GiB/s of 8 MiB objects is 12,800 GET/s, which is 1.28x a 10,000 req/s quota | Computed in this chapter | Derived |
-| KMS request cost of that load (no cache) | 46.08M requests per hour, about $138 per hour at the assumed $0.03 per 10,000 | Computed from the unverified price | Derived, price UNVERIFIED |
+| KMS request cost of that load (no cache) | 46.08M requests per hour, about $138 per hour at $0.03 per 10,000 | Computed from AWS pricing, as of 2026-11 | Derived |
 | Serial availability, cold decrypt via external key manager | 99.99% x 99.9% is 99.89%, about 47.5 minutes per month | Computed in this chapter, assumed inputs | Derived |
-| FIPS status of KMS and Cloud HSM | HSM validations at FIPS 140-2 or 140-3 Level 3 | Provider docs, recalled | UNVERIFIED, check current CMVP certificates |
+| FIPS status of KMS and Cloud HSM | AWS KMS HSMs FIPS 140-3 Level 3 (CMVP certificate 4884, China Regions excepted); AWS CloudHSM 140-2 or 140-3 Level 3; Cloud HSM described as 140-2 Level 3 | [AWS KMS data protection](https://docs.aws.amazon.com/kms/latest/developerguide/data-protection.html), [Cloud HSM](https://docs.cloud.google.com/kms/docs/hsm), as of 2026-11 | Verified against provider docs |
 
 ## AWS vs GCP Mechanism Parity
 
 | Dimension | AWS | Google Cloud |
 |---|---|---|
 | Customer key service | AWS KMS, regional KMS keys | Cloud KMS, key rings with keys and key versions in a location |
-| Protection levels | KMS (HSM fleet), CloudHSM key store, external key store (XKS) | SOFTWARE, HSM, EXTERNAL, EXTERNAL_VPC (Google Cloud docs, recalled, UNVERIFIED) |
-| DEK generation | GenerateDataKey creates the DEK inside the HSM path and returns plaintext plus wrapped copy | No GenerateDataKey equivalent; the client generates the DEK and calls Encrypt, typically through Tink KmsEnvelopeAead (recalled, UNVERIFIED) |
+| Protection levels | KMS (HSM fleet), CloudHSM key store, external key store (XKS) | SOFTWARE, HSM, HSM_SINGLE_TENANT, EXTERNAL, EXTERNAL_VPC ([ProtectionLevel API](https://docs.cloud.google.com/kms/docs/reference/rest/v1/ProtectionLevel), as of 2026-11) |
+| DEK generation | GenerateDataKey creates the DEK inside the HSM path and returns plaintext plus wrapped copy | No GenerateDataKey equivalent; the client generates the DEK and calls Encrypt, typically through Tink KmsEnvelopeAead ([Cloud KMS envelope encryption](https://docs.cloud.google.com/kms/docs/envelope-encryption), as of 2026-11) |
 | AAD | EncryptionContext key-value map, logged in CloudTrail | additionalAuthenticatedData bytes, handled by the caller |
 | Authorization | Key policy is required and root of trust, plus IAM, grants, and condition keys | IAM on key ring or key, conditions, deny policies, VPC Service Controls |
-| Quota model | Shared per account, per Region, per key type, per second (verified above) | Per project, per location, per minute, separate per protection level (UNVERIFIED) |
+| Quota model | Shared per account, per Region, per key type, per second (verified above) | Per project, per region, separate per protection level, in tokens per minute, except external in tokens per second (Google Cloud docs, as of 2026-11) |
 | Rotation | Key ID constant; new backing material, old versions retained for decrypt | New key versions; primary version used for encrypt, older versions decrypt |
-| Deletion | Pending deletion window, then permanent | Version destroy after delay; the key and ring stay as names forever (UNVERIFIED) |
+| Deletion | Pending deletion window, then permanent | Version destroy after a delay, default 30 days; keys and rings can then be deleted from listings, and deleted key names stay retired (Google Cloud docs, as of 2026-11) |
 | Multi-Region | Multi-Region keys with replicated material, local decrypt | Multi-region and global key locations |
 | Default at rest | Provider-owned keys; SSE-S3 for new S3 objects | Always on with Keystore hierarchy (verified from whitepaper) |
-| External control | XKS proxy, double-layer wrap (UNVERIFIED) | Cloud EKM and Key Access Justifications |
+| External control | XKS proxy, double encryption (AWS docs, as of 2026-11) | Cloud EKM with layered internal and external key material, and Key Access Justifications (Google Cloud docs, as of 2026-11) |
 | Attestation-bound release | Nitro Enclaves recipient attestation condition keys | Confidential Space with attestation claims |
-| Audit | CloudTrail management and data events for KMS | Cloud Audit Logs; data-access logging for crypto operations needs enabling (UNVERIFIED) |
+| Audit | CloudTrail logs all KMS calls, including cryptographic operations, as management events, and a trail can exclude them ([AWS KMS CloudTrail logging](https://docs.aws.amazon.com/kms/latest/developerguide/logging-using-cloudtrail.html), as of 2026-11) | Cloud Audit Logs; Encrypt and Decrypt are Data Access logs, which are disabled by default ([Cloud KMS audit logging](https://docs.cloud.google.com/kms/docs/audit-logging), [Data Access configuration](https://docs.cloud.google.com/logging/docs/audit/configure-data-access), as of 2026-11) |
 
 The key operational difference is the unit of throttling.
 AWS meters bursts per second against one shared quota.
-GCP meters per minute per location and protection level.
+GCP meters per minute per region and protection level, except Cloud EKM, which is metered per second (Google Cloud docs, as of 2026-11).
 A fan-out of 20,000 parallel cold starts can therefore throttle on one cloud and sail through on the other, depending on key type and region.
 Size from first principles in each cloud and check the quota page before launch.
 See also [[17-Cloud-AI-Engineering/Volume_04_AWS_vs_GCP_Translation/Chapter_03_Identity_Security_and_Governance_Translation|Identity, Security, and Governance Translation]].
@@ -241,12 +273,12 @@ Objects are 8 MiB in an SSE-KMS bucket without Bucket Keys.
 
 - GET rate is 100 x 1024 / 8 = 12,800 per second.
 - Each GET triggers one Decrypt, so that is 12,800 KMS req/s against a 10,000 req/s default quota, or 1.28x. In a 100,000 req/s Region it is 12.8% of quota, and it still starves every other workload sharing the account.
-- Cost is 12,800 x 3,600 = 46.08M requests per hour. At an assumed $0.03 per 10,000 that is about $138 per hour, or about $101k per 730-hour month.
+- Cost is 12,800 x 3,600 = 46.08M requests per hour. At $0.03 per 10,000 (AWS pricing, as of 2026-11) that is about $138 per hour, or about $101k per 730-hour month.
 - The shared quota means a dataset loader can throttle an unrelated service's login path.
 
 Mitigation order:
 
-1. Bucket Keys, so KMS calls scale with key refreshes and not with GETs.
+1. Bucket Keys, so KMS calls scale with key refreshes and not with GETs. Objects already in the bucket do not use the Bucket Key until rewritten with CopyObject (S3 Bucket Keys docs, as of 2026-11).
 2. Move the training dataset to a bucket and key separate from production, preferably in a separate account, so the quota blast radius is contained.
 3. Raise the quota only after (1) and (2).
 
@@ -256,7 +288,7 @@ At 1 GiB shards that is about 913 GenerateDataKey calls per save, which is trivi
 At 1 MiB frames there are about 934,600 frames, far below the 2^32 frame counter.
 See [[17-Cloud-AI-Engineering/Volume_10_AI_Infrastructure_on_Cloud/Chapter_06_High_Throughput_Checkpointing_to_Object_Storage|High-Throughput Checkpointing to Object Storage]].
 
-Multi-tenant key economics, at the assumed $1 per key per month:
+Multi-tenant key economics, at $1 per key per month before rotation charges, which can raise a rotated key to $3 per month (AWS pricing, as of 2026-11):
 
 | Design | Keys | Annual key fee |
 |---|---|---|
@@ -535,8 +567,8 @@ Create the budget with `gcloud billing budgets create --billing-account=<ID> --d
 
 ### Step 5: cost estimate
 
-The upper bound for the AWS lab is one KMS key-month at the assumed $1, plus a few hundred requests at about $0.03 per 10,000, so well under $1.10.
-Prices are UNVERIFIED this session.
+The upper bound for the AWS lab is one KMS key-month at $1, plus a few hundred requests at about $0.03 per 10,000, so well under $1.10.
+Prices are from AWS pricing, as of 2026-11, and the 20,000 free monthly requests and the absence of charges for a key scheduled for deletion only lower that bound.
 The budget at $5 monthly with an 80% actual-spend alert caps surprise exposure.
 
 ### Step 6: exact teardown
@@ -550,7 +582,8 @@ The expected state is `PendingDeletion`, with a 7-day window.
 To undo before the window ends, run `aws kms cancel-key-deletion --key-id <id>`.
 Run the `describe-key` check before the destroy output is removed, or save the key ID first.
 For the GCP lab, destroy the version with `gcloud kms keys versions destroy 1 --key=lab-key --keyring=lab-ring --location=us-central1`.
-The key and ring names remain reserved indefinitely.
+The version stays scheduled for destruction, and billable, for the default 30 days.
+After destruction you can delete the version, then the key once automatic rotation is unscheduled, then the ring; a deleted key name stays retired and cannot be reused (Google Cloud docs, as of 2026-11).
 
 ## Failure Modes and Pitfalls
 
@@ -559,16 +592,15 @@ The key and ring names remain reserved indefinitely.
 Because the quota is shared across every client in the account, one chatty workload can throttle an unrelated one.
 Typical offenders are a dataset loader, a cold-start fan-out, or a stream ingest tier encrypting small records (third-party analysis, as of 2026-09).
 SDK retries amplify the problem when many clients back off in lockstep, so use full jitter ([[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_03_Resilient_Communication_Retries_Jitter_and_Circuit_Breakers|Resilient Communication: Retries, Jitter, and Circuit Breakers]]).
-Alarm at a fraction of quota using Service Quotas metrics and CloudWatch (AWS docs, as of 2026-10).
+Alarm at a fraction of quota using Service Quotas metrics and CloudWatch (AWS docs, as of 2026-11).
 Isolate bulk workloads in separate accounts.
 
 ### Hot-path dependency cascades
 
 Two recent public postmortems show what happens when a shared control or metadata service sits in the request path of many products.
 I cite them as analogies, because neither was a KMS root cause.
-The Google Cloud incident of 2025-06-12 was triggered by Service Control, and policy data propagated globally and crashed binaries.
-The AWS us-east-1 incident of 2025-10-20 started with a DynamoDB DNS automation race and propagated into dependent services.
-Details of both are recalled, UNVERIFIED this session, so check the primary reports.
+In the Google Cloud incident of 2025-06-12, a policy with blank fields replicated globally within seconds and hit a null pointer in Service Control, which sent its binaries into a crash loop ([Google Cloud incident report](https://status.cloud.google.com/incidents/ow5i3PPK96RduMcb1SsW)).
+The AWS us-east-1 incident began at 11:48 PM PDT on 2025-10-19 (2025-10-20 UTC) with a race in DynamoDB DNS automation that left an empty record for the regional endpoint, and it propagated into EC2, Network Load Balancer, and other dependent services ([AWS post-event summary](https://aws.amazon.com/message/101925/)).
 The design lesson is the same one KMS imposes.
 Anything that must call a shared service on every cold read needs a bounded-staleness cache and a graceful degradation path.
 
@@ -577,7 +609,8 @@ Anything that must call a shared service on every cold read needs a bounded-stal
 Scheduling deletion or removing the policy grants that let you decrypt is a cryptographic erase.
 An attacker with `kms:ScheduleKeyDeletion` or `kms:PutKeyPolicy` can destroy the data without touching it.
 The same effect follows from re-encrypting objects under an attacker-held key.
-The reported "Codefinger" campaign used compromised credentials to rewrite S3 objects with attacker-held SSE-C keys, and AWS later changed SSE-C defaults for new buckets (recalled, UNVERIFIED this session).
+The "Codefinger" campaign reported in January 2025 used compromised credentials to rewrite S3 objects with attacker-held SSE-C keys ([Help Net Security](https://www.helpnetsecurity.com/2025/01/13/codefinger-encrypting-aws-s3-data-without-ransomware-sse-c/), 2025-01; [AWS Security Blog](https://aws.amazon.com/blogs/security/preventing-unintended-encryption-of-amazon-s3-objects/), 2025-01).
+Since April 2026, S3 disables SSE-C by default on new general purpose buckets and on existing buckets in accounts with no SSE-C objects ([S3 SSE-C docs](https://docs.aws.amazon.com/AmazonS3/latest/userguide/ServerSideEncryptionCustomerKeys.html), as of 2026-11).
 Controls: SCP and key-policy denies on destructive KMS actions except for a break-glass role, CloudTrail or EventBridge alarms on `ScheduleKeyDeletion` and `DisableKey`, Object Lock and backups in a separate account under separate keys, and a restriction on SSE-C where you do not use it.
 
 ### Nonce reuse after DEK caching
@@ -599,7 +632,7 @@ Use Multi-Region keys or an explicit KEK per Region, and test restore with the D
 
 ### HYOK outages
 
-If the XKS or EKM proxy fails, cold decrypts fail once caches expire.
+If the XKS proxy or the EKM endpoint fails, cold decrypts fail once caches expire.
 There is a cliff at the longest cache TTL, and you will see it at that time and not at the failure time.
 The serial availability of 99.89% in the numbers table is a ceiling for cold paths.
 Game-day the proxy ([[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_05_Chaos_Engineering_and_Game_Days|Chaos Engineering and Game Days]]).
@@ -613,11 +646,11 @@ Keep two independent, tested escrow copies.
 
 Grants created by services or by your code accumulate and are not removed by deleting the workload.
 Retire grants with RetireGrant or RevokeGrant, and audit with ListGrants.
-There is also a per-key grant cap (recalled, UNVERIFIED).
+There is also a default cap of 50,000 grants per customer managed key ([AWS KMS resource quotas](https://docs.aws.amazon.com/kms/latest/developerguide/resource-limits.html), as of 2026-11).
 
 ### Public-key-style failures in the signing analogy
 
-Storm-0558 combined a key that, on Microsoft's unconfirmed leading theory, left its protected environment through a crash dump with validation code that accepted a consumer-scope key for enterprise-scope tokens (CISA CSRB, 2024-03, recalled, UNVERIFIED this session).
+Storm-0558 combined a stolen consumer signing key, acquired by a path still undetermined after Microsoft withdrew its crash-dump claim, with validation code that accepted that consumer-scope key for enterprise-scope tokens (CSRB report, 2024-03-20; Microsoft MSRC, updated 2024-03-12).
 The generalization is to scope keys by purpose and tenant, validate scope on every use, and keep keys out of dumps.
 
 ## Security and Cost Angles
@@ -634,7 +667,7 @@ The generalization is to scope keys by purpose and tenant, validate scope on eve
 
 Create one KEK per data classification, environment, and owning service.
 Do not create one per object.
-Create per-tenant KEKs only when you must offer tenant-controlled revocation, because each key adds a policy to maintain per Region and the quota stays shared anyway (third-party analysis, as of 2026-09).
+Create per-tenant KEKs only when you must offer tenant-controlled revocation, because each key adds a policy to maintain per Region and the quota stays shared anyway (AWS docs, as of 2026-11).
 Use per-tenant DEKs wrapped by a shared KEK for crypto-shredding granularity, and delete the tenant's wrapped DEKs and any cached copies.
 Rotate KEKs on a schedule.
 Rotation changes what encrypts new wraps and does not re-encrypt old DEKs.
@@ -650,11 +683,11 @@ See [[17-Cloud-AI-Engineering/Volume_02_AWS_Deep_Dive/Chapter_08_S3_Deep_Dive_Co
 
 ### Unit economics levers
 
-1. **Request volume.** This dominates cost at scale ($138 per hour in the sizing example, price UNVERIFIED). Use Bucket Keys, SDK caching, and per-object DEKs with local caches sized to your revocation SLA.
-2. **Key count.** At the assumed $1 per month, 5,000 per-tenant keys cost $60k per year, versus $12 for one shared KEK.
-3. **Protection level.** HSM-backed and external keys cost more and have lower throughput. Use them for the root KEKs where policy requires it, not for every dataset.
+1. **Request volume.** This dominates cost at scale ($138 per hour in the sizing example, AWS pricing, as of 2026-11). Use Bucket Keys, SDK caching, and per-object DEKs with local caches sized to your revocation SLA.
+2. **Key count.** At $1 per month before rotation charges, 5,000 per-tenant keys cost $60k per year, versus $12 for one shared KEK.
+3. **Protection level.** On Cloud KMS, HSM and external key versions cost more (about $1 and $3 versus $0.06 per month, Google pricing, as of 2026-11). AWS prices XKS keys like standard KMS keys, but you pay for the external stack (AWS docs, as of 2026-11). Both have lower throughput. Use them for the root KEKs where policy requires it, not for every dataset.
 4. **Audit volume.** Caches cut CloudTrail volume and KMS log cost, at the price of audit granularity. Decide this on purpose.
-5. **Deletion discipline.** Keys in pending deletion should not be billed (UNVERIFIED), but a disabled key still incurs the monthly fee.
+5. **Deletion discipline.** AWS does not charge for customer managed keys scheduled for deletion, and because that is the only exemption its pricing page names, budget for a disabled key still incurring the monthly fee (AWS pricing, as of 2026-11). Cloud KMS explicitly bills disabled and scheduled-for-destruction versions until they are destroyed (Google pricing, as of 2026-11).
 
 Cross-chapter context: [[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter/Chapter_03_Secrets_Management_and_Dynamic_Credentials|Secrets Management and Dynamic Credentials]] covers how credentials to KMS are obtained.
 [[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter/Chapter_07_Compliance_Auditing_and_Non_Repudiation|Compliance, Auditing, and Non-Repudiation]] covers how key-usage logs become evidence.
@@ -667,7 +700,7 @@ Explain envelope encryption. Why not call KMS Encrypt on a 1 GB file, and what h
 
 #### Model Answer
 
-The KMS direct Encrypt API accepts only a small payload, 4,096 bytes on AWS (UNVERIFIED), so large data must be encrypted locally.
+The KMS direct Encrypt API accepts only a small payload, 4,096 bytes on AWS (AWS docs, as of 2026-11), so large data must be encrypted locally.
 Envelope encryption generates a DEK, encrypts the data locally with an AEAD such as AES-256-GCM, wraps the DEK under the KEK in KMS, and stores the wrapped DEK next to the ciphertext.
 Reads call Decrypt on the wrapped DEK (or hit a cache), then decrypt locally.
 The benefits are scale, because the HSM only sees 32-byte keys.
@@ -689,15 +722,16 @@ A training job reading from an SSE-KMS bucket starts failing with ThrottlingExce
 
 #### Model Answer
 
-The shared symmetric crypto quota is per account, per Region, and per key type, per second (AWS docs, as of 2026-10).
+The shared symmetric crypto quota is per account, per Region, and per key type, per second (AWS docs, as of 2026-11).
 Each S3 GET on an SSE-KMS object without Bucket Keys triggers a Decrypt.
 At 100 GiB/s and 8 MiB objects that is 12,800 requests per second, which exceeds a 10,000 per second default and threatens a 100,000 per second one when other workloads share it.
 First confirm using the Service Quotas usage metrics.
 Then enable S3 Bucket Keys so KMS calls scale with bucket-key refreshes.
+Objects already in the bucket keep per-object keys until rewritten with CopyObject, so an existing dataset must be copied to benefit (S3 Bucket Keys docs, as of 2026-11).
 Move the training dataset to a dedicated bucket, key, and account so it cannot starve production.
 Add full-jitter retries.
 Only then request a quota increase.
-Also note the cost: 46M requests per hour is about $138 per hour at $0.03 per 10,000 (price UNVERIFIED).
+Also note the cost: 46M requests per hour is about $138 per hour at $0.03 per 10,000 (AWS pricing, as of 2026-11).
 
 #### Follow-up Interviewer Question
 
@@ -710,7 +744,7 @@ Design the key hierarchy for a multi-tenant SaaS with 5,000 tenants. Some tenant
 #### Model Answer
 
 Per-tenant KEKs give the cleanest shred.
-You schedule deletion of one key, but you pay 5,000 key fees per Region, maintain 5,000 policies, and AWS imposes a 7-day minimum pending window (UNVERIFIED), which violates a 24-hour SLA unless you disable the key first.
+You schedule deletion of one key, but you pay 5,000 key fees per Region, maintain 5,000 policies, and AWS imposes a 7-day minimum pending window (AWS docs, as of 2026-11), which violates a 24-hour SLA unless you disable the key first.
 Disabling is reversible, so it is not a true erase.
 A better pattern is a shared KEK per Region with per-tenant DEKs.
 Each tenant has a tenant-key record, a DEK wrapped under the shared KEK with context `{tenant, purpose}`.
@@ -733,9 +767,9 @@ During an incident, a security engineer wants to disable the KMS key to "instant
 Disabling blocks new Decrypt and GenerateDataKey calls, but it does not reach plaintext DEKs already in memory.
 Revocation latency is max(cache TTL, process lifetime, policy or grant propagation).
 Services differ.
-S3 with Bucket Keys continues until the bucket key refreshes.
+S3 with Bucket Keys continues until the bucket key refreshes, and requests served by that key do not re-validate the key policy (S3 Bucket Keys docs, as of 2026-11).
 Encryption SDK caches continue until TTL or message or byte limits expire.
-EBS-attached volumes may keep working until the next attach (UNVERIFIED).
+EBS-attached volumes keep working until detach, and the next attach fails (AWS EBS docs, as of 2026-11).
 Policy and grant edits are eventually consistent.
 Therefore "disable" is containment, not an atomic cut.
 To make it deterministic: set cache TTLs equal to the revocation SLA (for example 5 minutes), cap bytes and messages per cached DEK, use short-lived workload identity so compromised callers lose the ability to unwrap new DEKs, and put an explicit kill-switch that also restarts or drains processes holding keys.
@@ -781,6 +815,7 @@ Design: two or more proxy and HSM sites in separate failure domains per cloud Re
 Add a DEK cache whose TTL equals the bank's accepted revocation window.
 Pre-warm the cache before maintenance.
 Keep the HSM cluster size ahead of burst: every cold-start fan-out becomes proxy QPS, so apply the same quota math as for KMS.
+AWS allows 1,800 req/s per external key store, and Cloud EKM allows 10,000 tokens per second, about 100 symmetric operations per second (provider docs, as of 2026-11), so these quotas can bind before the HSM does.
 Add a runbook for the cliff: when the proxy is down, caches hide the failure until TTL, so alert on proxy health independently of read errors.
 Add a second, independent control: attested key release (Nitro Enclaves or Confidential Space), so Decrypt succeeds only for measured workloads.
 What it protects: the bank can cut off new unwraps instantly, no provider-only path exists to unwrap new DEKs, and there is a clear audit boundary.
@@ -803,7 +838,8 @@ Model the attacker as holding a privileged role.
 Their cheapest moves are `ScheduleKeyDeletion`, `DisableKey`, `PutKeyPolicy`, `CreateGrant` to an external principal, re-encrypting objects under attacker-held keys, and deleting backups.
 Controls come in layers.
 Separation of duties: key administrators cannot use keys, key users cannot administer them, and neither can alter organization-level guardrails.
-Preventive guardrails at the organization layer: SCPs that deny destructive KMS actions except to a break-glass role that requires an out-of-band approval, and a deny on `kms:CreateGrant` to principals outside the organization via `aws:PrincipalOrgID`.
+Preventive guardrails at the organization layer: SCPs that deny destructive KMS actions except to a break-glass role that requires an out-of-band approval, and conditions on `kms:CreateGrant` using `kms:GranteePrincipal`, which matches the grantee in the request (AWS docs, as of 2026-11).
+Add a key-policy deny for callers outside the organization via `aws:PrincipalOrgID`, which tests the caller and not the grantee, so a grant issued to an outsider cannot be used.
 The same applies to SSE-C where unused.
 Detective controls: EventBridge rules on the destructive actions with paging, and anomaly detection on KMS request rates, since mass re-encryption looks like a spike (and shares the quota, so it may self-throttle).
 Recovery controls: backups in a separate account under separate KEKs and Object Lock in compliance mode, so the same credential cannot reach both.

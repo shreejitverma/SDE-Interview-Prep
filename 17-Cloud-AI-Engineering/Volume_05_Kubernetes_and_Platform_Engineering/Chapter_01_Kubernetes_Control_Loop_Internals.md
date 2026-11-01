@@ -2,7 +2,7 @@
 type: concept
 track: [cloud-ai, ai-eng, sde, distinguished]
 level:
-status: draft
+status: solid
 last_reviewed:
 sources: 
   - "https://github.com/kubernetes/website/blob/main/content/en/docs/reference/using-api/api-concepts.md"
@@ -14,6 +14,37 @@ sources:
   - "https://github.com/kubernetes/sample-controller"
   - "https://pkg.go.dev/k8s.io/client-go/util/workqueue"
   - "https://aws.amazon.com/builders-library/reliability-and-constant-work/"
+  - "https://github.com/kubernetes/client-go/blob/master/tools/cache/reflector.go"
+  - "https://github.com/kubernetes/client-go/blob/master/util/workqueue/default_rate_limiters.go"
+  - "https://github.com/kubernetes/client-go/blob/master/rest/config.go"
+  - "https://github.com/kubernetes/client-go/blob/master/tools/leaderelection/leaderelection.go"
+  - "https://github.com/kubernetes/client-go/blob/master/features/known_features.go"
+  - "https://github.com/kubernetes/kubernetes/blob/master/staging/src/k8s.io/apiserver/pkg/storage/etcd3/store.go"
+  - "https://github.com/kubernetes/kubernetes/blob/master/staging/src/k8s.io/apiserver/pkg/storage/cacher/cacher.go"
+  - "https://github.com/kubernetes/kubernetes/blob/master/staging/src/k8s.io/apiserver/pkg/storage/storagebackend/config.go"
+  - "https://github.com/kubernetes/kubernetes/blob/master/staging/src/k8s.io/apiserver/pkg/features/kube_features.go"
+  - "https://github.com/kubernetes/kubernetes/blob/master/pkg/controller/controller_utils.go"
+  - "https://github.com/kubernetes/enhancements/blob/master/keps/sig-api-machinery/3157-watch-list/kep.yaml"
+  - "https://github.com/kubernetes-sigs/controller-runtime/blob/main/pkg/client/config/config.go"
+  - "https://kubernetes.io/docs/concepts/cluster-administration/flow-control/"
+  - "https://kubernetes.io/docs/setup/best-practices/cluster-large/"
+  - "https://kubernetes.io/docs/tasks/administer-cluster/kms-provider/"
+  - "https://etcd.io/docs/v3.6/dev-guide/limit/"
+  - "https://etcd.io/docs/v3.5/op-guide/maintenance/"
+  - "https://aws.amazon.com/eks/pricing/"
+  - "https://cloud.google.com/kubernetes-engine/pricing"
+  - "https://docs.aws.amazon.com/eks/latest/best-practices/control-plane.html"
+  - "https://docs.aws.amazon.com/eks/latest/best-practices/scale-control-plane.html"
+  - "https://docs.aws.amazon.com/eks/latest/userguide/control-plane-configuration.html"
+  - "https://docs.aws.amazon.com/eks/latest/userguide/kubernetes-versions.html"
+  - "https://docs.aws.amazon.com/eks/latest/userguide/envelope-encryption.html"
+  - "https://docs.aws.amazon.com/eks/latest/userguide/view-raw-metrics.html"
+  - "https://aws.amazon.com/blogs/containers/under-the-hood-amazon-eks-ultra-scale-clusters/"
+  - "https://cloud.google.com/blog/products/containers-kubernetes/gke-65k-nodes-and-counting"
+  - "https://docs.cloud.google.com/kubernetes-engine/docs/how-to/control-plane-metrics"
+  - "https://docs.cloud.google.com/kubernetes-engine/docs/how-to/encrypting-secrets"
+  - "https://status.openai.com/incidents/ctrsv3lwd797"
+  - "https://labs.iximiuz.com/courses/kubelings-dbd840c8/module-09/incident-reddit-piday"
 ---
 
 # Kubernetes Control Loop Internals
@@ -77,7 +108,7 @@ Managed offerings and alternative storage backends are free to change the encodi
 Writes go through a compare-and-swap.
 The apiserver's etcd3 storage layer implements `GuaranteedUpdate` as a loop.
 It reads the current object, applies the update function (which includes the client's resourceVersion and UID preconditions), and encodes the result.
-If the encoded bytes are identical to what is stored, it returns without writing, so a no-op update does not bump the resourceVersion and does not wake any watcher (apiserver source behavior, UNVERIFIED against current tree).
+If the encoded bytes are identical to what is stored, it returns without writing, so a no-op update does not bump the resourceVersion and does not wake any watcher (apiserver etcd3 store.go, as of 2026-11).
 Otherwise it issues an etcd transaction guarded by `mod_revision == previous`, and on transaction failure re-reads from etcd and retries.
 For a client PUT that carries a stale `metadata.resourceVersion`, the precondition check fails inside the update function and the client receives 409 Conflict directly.
 For a PATCH with no resourceVersion, the apiserver itself re-applies the patch to the fresh object and retries, so the client never sees a conflict.
@@ -86,7 +117,7 @@ Server-side apply is different again: conflicts are per field against `managedFi
 ### The apiserver watch cache
 
 Controllers rarely talk to etcd.
-Each apiserver runs a per-resource-type `Cacher` that holds one etcd watch, a full in-memory snapshot of the type, and a bounded ring buffer of recent events (watch cache internals, UNVERIFIED against current tree).
+Each apiserver runs a per-resource-type `Cacher` that holds one etcd watch, a full in-memory snapshot of the type, and a bounded ring buffer of recent events (apiserver cacher.go and watch_cache.go, as of 2026-11).
 It serves LISTs with `resourceVersion=0` or `NotOlderThan`, and all WATCHes, from this memory.
 Three consequences matter at scale.
 
@@ -97,7 +128,7 @@ Three consequences matter at scale.
  With `allowWatchBookmarks=true` the server periodically sends a `BOOKMARK` event that carries only a resourceVersion and means "everything up to here has been sent to you".
  A client watching a quiet resource then reconnects from a recent revision instead of a stale one that has aged out of the window (Kubernetes API concepts docs, as of 2026-10).
 3. A slow watcher is killed, not waited for.
- The cacher dispatches each event into a per-watcher buffered channel, and a watcher whose buffer stays full past a time budget is terminated (watch cache internals, UNVERIFIED against current tree).
+ The cacher dispatches each event into a per-watcher buffered channel, and a watcher whose buffer stays full past a time budget is terminated; the shared dispatch budget refills at 50 ms per second and caps at 100 ms (apiserver cacher.go and time_budget.go, as of 2026-11).
  The client sees a closed stream, reconnects, and if its revision has fallen out of the window it relists.
  This is the mechanism by which one overloaded controller turns into repeated full LISTs against the control plane.
 
@@ -107,34 +138,38 @@ The `resourceVersion` parameter on LIST selects a consistency level (Kubernetes 
 
 | resourceVersion | resourceVersionMatch | Served from | Guarantee |
 | --- | --- | --- | --- |
-| unset | unset | etcd quorum read historically, watch cache since consistent reads from cache went stable | Most recent state, linearizable |
+| unset | unset | Watch cache after a freshness check with etcd v3.4.31+ or v3.5.13+ (on by default since 1.31), otherwise etcd quorum read | Most recent state, linearizable |
 | "0" | unset | apiserver watch cache | Any version, can be arbitrarily stale and can be older than what the client has already seen |
 | N | NotOlderThan | watch cache | At least as new as N |
-| N | Exact | etcd | Precisely revision N, or 410 if compacted |
+| N | Exact | Watch cache snapshot when one is available (`ListFromCacheSnapshot`, beta and on by default since 1.34), otherwise etcd | Precisely revision N, or 410 if compacted |
 
 The `"0"` mode is the dangerous one.
 client-go's Reflector uses it for the very first LIST for performance, because it avoids an etcd round trip.
+Since client-go 1.35 the `WatchListClient` gate (beta, on by default) makes the Reflector try a streaming list first and use this LIST only as the fallback (client-go reflector.go and known_features.go, as of 2026-11).
 If the controller reconnects to a different apiserver replica whose watch cache lags (for example a replica that just restarted or is partitioned from etcd), it can receive a snapshot older than the state it previously observed.
 The controller then reconciles against the past.
 This is the well-known stale-read or time-travel problem.
-After a 410 the Reflector deliberately relists with an unset resourceVersion to force a consistent read (client-go Reflector behavior, UNVERIFIED against current tree).
+After a watch 410 the Reflector first relists with its last observed resourceVersion, which already guarantees data at least that fresh.
+Only if that LIST itself fails as expired or too large does it relist with an unset resourceVersion to force a consistent read (client-go reflector.go, as of 2026-11).
 
 [KEP-2340](https://www.kubernetes.dev/resources/keps/2340/) removed the cost of that consistent read.
-It reached alpha in 1.28, beta in 1.31, and stable in 1.34 (KEP-2340, as of 2026-10).
+It reached alpha in 1.28, beta (on by default) in 1.31, and stable in 1.34 (KEP-2340 and API concepts docs, as of 2026-11).
 The mechanism is that an unset-resourceVersion LIST is served from the watch cache after the cache proves it is fresh.
 The apiserver fetches the current etcd revision with a cheap call, then waits until the cache has seen that revision.
 To make an idle cache advance, a background goroutine sends etcd `WatchProgressRequest` messages, repeating about every 100 ms while there are waiting reads (KEP-2340, as of 2026-10).
-It requires etcd v3.4.31+ or v3.5.13+, and with an older etcd the apiserver detects this and falls back to quorum reads (Kubernetes website docs commit for the beta, as of 2026-10).
-The KEP reports the cache becoming fresh within its 3 s wait timeout in 99.999% of observed cases (KEP-2340, UNVERIFIED).
+It requires etcd v3.4.31+ or v3.5.13+, and with an older etcd the apiserver falls back to quorum reads (Kubernetes 1.31 blog and API concepts docs, as of 2026-11).
+The KEP reports the cache becoming fresh within its 3 s wait timeout in 99.999% of observed cases (KEP-2340, as of 2026-11).
 The [Kubernetes 1.31 blog post](https://kubernetes.io/blog/2024/08/15/consistent-read-from-cache-beta/) covers the user-visible effect.
-A GitHub issue ([#129931](https://github.com/kubernetes/kubernetes/issues/129931), UNVERIFIED) tracks create and update latency increases that appeared in some clusters with consistent reads enabled, so treat the feature as a load shift, not free.
+GitHub issue [#129931](https://github.com/kubernetes/kubernetes/issues/129931) reported ResourceQuota validation latency rising to about 1000 ms on creates across many namespaces, because empty-list reads hit the feature's designed latency floor of about 100 ms.
+It was closed on 2025-05-22 after a fix (as of 2026-11), but the floor is by design, so treat the feature as a load shift, not free.
 
 ### Client side: Reflector, DeltaFIFO, Indexer
 
 **Reflector.**
-It performs a paginated or cached LIST, calls `Replace` on its store with the full result, records the list's resourceVersion, then opens a WATCH from it with bookmarks enabled and a randomized server-side timeout of roughly 5 to 10 minutes (client-go source, UNVERIFIED against current tree).
-On any watch error it backs off with a jittered exponential manager and rewatches from the last seen resourceVersion.
-Only on 410 or "too large resource version" style errors does it fall back to a relist.
+It performs a paginated or cached LIST (or a streaming list when `WatchListClient` is on), calls `Replace` on its store with the full result, records the list's resourceVersion, then opens a WATCH from it with bookmarks enabled and a randomized server-side timeout of 5 to 10 minutes (client-go reflector.go, as of 2026-11).
+On a clean close, on connection refused or 429, and on a retriable internal error, it rewatches from the last seen resourceVersion, backing off with a jittered exponential manager for the refused and 429 cases.
+Any other watch failure, including 410, ends the watch loop and leads to a relist (client-go reflector.go, as of 2026-11).
+A "too large resource version" error matters on the LIST path, where like an expired error it forces the unset-resourceVersion retry.
 
 **DeltaFIFO.**
 This queue holds, per key, an ordered list of deltas (Added, Updated, Deleted, Replaced, Sync).
@@ -172,7 +207,7 @@ Events for different keys have no ordering guarantee.
 The reconcile function cannot know how many events arrived or what they were, so it must recompute from state.
 
 Retries go through a rate-limiting layer on top of a delaying queue (a min-heap keyed by ready time).
-The default controller rate limiter is the max of two limiters (client-go workqueue defaults, UNVERIFIED against current tree).
+The default controller rate limiter is the max of two limiters (client-go default_rate_limiters.go, as of 2026-11).
 A per-item exponential limiter starts at 5 ms and doubles up to a 1000 s cap, and an overall token bucket allows 10 retries per second with a burst of 100.
 `AddRateLimited` consults the limiter, plain `Add` does not, and `Forget` resets the per-item failure count.
 Forgetting to call `Forget` after success is a classic bug that leaves an item permanently on a long delay.
@@ -182,13 +217,14 @@ Forgetting to call `Forget` after success is a classic bug that leaves an item p
 - **Spec versus status.** The `status` subresource has its own endpoint, so a status write does not bump `metadata.generation` and does not re-trigger controllers that filter on generation. Controllers publish `observedGeneration` so clients can tell whether status reflects the current spec.
 - **Ownership.** `ownerReferences` with `controller: true` (a ControllerRef) establish which controller owns a child. Controllers adopt matching orphans and release non-matching children, and the garbage collector deletes dependents when the owner is deleted.
 - **Finalizers.** A delete on an object with finalizers only sets `deletionTimestamp`. The object lingers until every controller that owns a finalizer does its cleanup and removes its entry. This is the only way a level-triggered controller can reliably run delete-time logic, and its failure mode is objects stuck in Terminating when the owning controller is gone.
-- **Expectations.** The built-in ReplicaSet controller records, in a process-local `ControllerExpectations` store, how many creates and deletes it has issued for a key that it has not yet seen reflected in its informer cache. Until the expectations are satisfied (or a 5 minute timeout elapses), it skips the diff for that key (controller manager source, UNVERIFIED against current tree). Without this, the cache lag between a successful POST and the corresponding ADDED event makes the next reconcile see "0 of 3 pods exist" again and create three more. Controllers written without an equivalent (deterministic child names so the second create fails with AlreadyExists, or a similar guard) over-create under load.
+- **Expectations.** The built-in ReplicaSet controller records, in a process-local `ControllerExpectations` store, how many creates and deletes it has issued for a key that it has not yet seen reflected in its informer cache. Until the expectations are satisfied (or a 5 minute timeout elapses), it skips the diff for that key (`ExpectationsTimeout` in pkg/controller/controller_utils.go, as of 2026-11). Without this, the cache lag between a successful POST and the corresponding ADDED event makes the next reconcile see "0 of 3 pods exist" again and create three more. Controllers written without an equivalent (deterministic child names so the second create fails with AlreadyExists, or a similar guard) over-create under load.
 
 ### Leader election
 
 Active-passive controllers elect a leader with a `Lease` object.
 The holder updates `renewTime` through a compare-and-swap PUT.
-Defaults in client-go and the control-plane components are a 15 s lease duration, 10 s renew deadline, and 2 s retry period (client-go leaderelection defaults, UNVERIFIED against current tree).
+Defaults in the component-base configuration used by control-plane components, and in the controller-runtime manager, are a 15 s lease duration, 10 s renew deadline, and 2 s retry period (component-base and controller-runtime source, as of 2026-11).
+client-go's own `leaderelection` package sets no defaults and rejects a config without explicit values (client-go leaderelection.go, as of 2026-11).
 Candidates do not compare the `renewTime` timestamp against their own wall clock.
 They measure, on their own local monotonic clock, how long it has been since they last observed the record change, so clock skew between nodes does not break the protocol.
 The lease is advisory.
@@ -198,51 +234,51 @@ Related coordination primitives are discussed in [[04-System-Design/05-Data-Stor
 
 ### Load protection: API Priority and Fairness
 
-API Priority and Fairness (APF) replaced the older global in-flight limits by classifying each request into a FlowSchema and a PriorityLevel and fair-queuing requests per flow using shuffle sharding of queues (Kubernetes docs, GA since 1.29, UNVERIFIED as of 2026-10).
-The flow identity is typically user plus namespace, so a runaway controller's LISTs queue behind its own flow and are rejected with 429 before they starve system components.
+API Priority and Fairness (APF) replaced the older global in-flight limits by classifying each request into a FlowSchema and a PriorityLevel and fair-queuing requests per flow using shuffle sharding of queues (Kubernetes flow control docs, GA since 1.29, as of 2026-11).
+Within a FlowSchema, `distinguisherMethod` separates flows by user or by namespace, or not at all, so with the usual `ByUser` schemas a runaway controller's LISTs queue behind its own flow and are rejected with 429 before they starve system components.
 This is the apiserver-side counterpart to the client-side rate limiter described later, and the two interact: a throttled client sees 429 with `Retry-After`, and well-behaved clients honor it.
 
 ## Numbers to Know
 
-Rows marked UNVERIFIED were not re-checked against primary sources in this authoring pass and must be confirmed before this note moves to `status: solid`.
+Rows were checked against primary sources; upstream code values were read from the main branches of the named repositories.
 
 | Item | Value | Source and date |
 | --- | --- | --- |
 | Consistent reads from cache (KEP-2340) | Alpha 1.28, beta 1.31, stable 1.34 | [KEP-2340](https://www.kubernetes.dev/resources/keps/2340/) (as of 2026-10) |
-| Minimum etcd for cache-consistent reads | v3.4.31+ or v3.5.13+, else automatic fallback to quorum reads | Kubernetes website beta docs commit (as of 2026-10) |
+| Minimum etcd for cache-consistent reads | v3.4.31+ or v3.5.13+, else automatic fallback to quorum reads | [Kubernetes 1.31 blog](https://kubernetes.io/blog/2024/08/15/consistent-read-from-cache-beta/) and API concepts (as of 2026-11) |
 | Progress request cadence while reads wait | Every 100 ms | KEP-2340 (as of 2026-10) |
-| Cache freshness within 3 s wait | 99.999% of observed cases | KEP-2340, UNVERIFIED |
+| Cache freshness within 3 s wait | 99.999% of observed cases | KEP-2340 README (as of 2026-11) |
 | Watch history gone | HTTP 410 or in-stream ERROR with code 410, client must relist | [API concepts](https://github.com/kubernetes/website/blob/main/content/en/docs/reference/using-api/api-concepts.md) (as of 2026-10) |
 | resourceVersion semantics | Opaque string, equality and pass-through only | API concepts (as of 2026-10) |
-| Default controller rate limiter | Per-item 5 ms doubling to 1000 s, plus bucket 10 qps burst 100 | client-go workqueue, UNVERIFIED |
-| Time for one key to reach the 1000 s cap | 19th consecutive failure, about 21.8 min cumulative | Derived: 5 ms x 2^18 > 1000 s, UNVERIFIED inputs |
-| client-go REST default client limiter | 5 QPS, burst 10 | client-go rest.Config, UNVERIFIED |
-| controller-runtime default client limiter | 20 QPS, burst 30 | controller-runtime, UNVERIFIED |
-| Leader election defaults | 15 s lease, 10 s renew deadline, 2 s retry | client-go leaderelection, UNVERIFIED |
-| Reflector watch timeout | Random 5 to 10 min | client-go reflector, UNVERIFIED |
-| etcd default storage quota | 2 GiB, recommended maximum 8 GiB | etcd docs, UNVERIFIED |
-| etcd default max request size | 1.5 MiB | etcd docs, UNVERIFIED |
-| apiserver etcd compaction interval | 5 min default | kube-apiserver flags, UNVERIFIED |
-| Upstream tested scale | 5,000 nodes, 150,000 pods, 110 pods per node | Kubernetes large-cluster docs, UNVERIFIED |
-| EKS control plane fee | 0.10 USD per cluster-hour standard support | AWS pricing page, UNVERIFIED |
-| GKE cluster management fee | 0.10 USD per cluster-hour, with a monthly free-tier credit | Google Cloud pricing page, UNVERIFIED |
+| Default controller rate limiter | Per-item 5 ms doubling to 1000 s, plus bucket 10 qps burst 100 | [client-go default_rate_limiters.go](https://github.com/kubernetes/client-go/blob/master/util/workqueue/default_rate_limiters.go) (as of 2026-11) |
+| Time for one key to reach the 1000 s cap | 19th consecutive failure, about 21.8 min cumulative | Derived: 5 ms x 2^18 > 1000 s, from the client-go defaults above |
+| client-go REST default client limiter | 5 QPS, burst 10 | [client-go rest/config.go](https://github.com/kubernetes/client-go/blob/master/rest/config.go) (as of 2026-11) |
+| controller-runtime default client limiter | Disabled: `GetConfig` sets QPS to -1 when unset and relies on APF (releases such as v0.15 set 20 QPS, burst 30) | [controller-runtime config.go](https://github.com/kubernetes-sigs/controller-runtime/blob/main/pkg/client/config/config.go) (as of 2026-11) |
+| Leader election defaults | 15 s lease, 10 s renew deadline, 2 s retry in component-base and controller-runtime; none in client-go itself | component-base, controller-runtime, and client-go source (as of 2026-11) |
+| Reflector watch timeout | Random 5 to 10 min | [client-go reflector.go](https://github.com/kubernetes/client-go/blob/master/tools/cache/reflector.go) (as of 2026-11) |
+| etcd default storage quota | 2 GiB, suggested maximum 8 GiB | [etcd system limits docs](https://etcd.io/docs/v3.6/dev-guide/limit/) (as of 2026-11) |
+| etcd default max request size | 1.5 MiB | [etcd system limits docs](https://etcd.io/docs/v3.6/dev-guide/limit/) (as of 2026-11) |
+| apiserver etcd compaction interval | 5 min default | `--etcd-compaction-interval`, `DefaultCompactInterval` in apiserver storagebackend config.go (as of 2026-11) |
+| Upstream tested scale | 5,000 nodes, 150,000 pods, 110 pods per node | [Kubernetes large-cluster docs](https://kubernetes.io/docs/setup/best-practices/cluster-large/) (as of 2026-11) |
+| EKS control plane fee | 0.10 USD per cluster-hour standard support, 0.60 USD extended support; Provisioned Control Plane tiers (1.65 to 13.90 USD per cluster-hour) bill in addition | [AWS pricing page](https://aws.amazon.com/eks/pricing/) (as of 2026-11) |
+| GKE cluster management fee | 0.10 USD per cluster-hour, with a 74.40 USD monthly credit per billing account for zonal and Autopilot clusters | [Google Cloud pricing page](https://cloud.google.com/kubernetes-engine/pricing) (as of 2026-11) |
 
 ## AWS vs GCP Mechanism Parity
 
 The control loop machinery is upstream Kubernetes on both clouds.
 What differs is who owns the control plane, what you can observe, and what you can tune.
-Statements below not otherwise marked are UNVERIFIED against current provider docs.
+Provider statements below were checked against AWS and Google Cloud docs and engineering blogs (as of 2026-11).
 
 | Concern | Amazon EKS | Google GKE | Operational difference |
 | --- | --- | --- | --- |
-| Control plane ownership | AWS-managed apiserver and etcd in an AWS account, spread across AZs, reached through ENIs placed in your VPC | Google-managed control plane; regional clusters run replicas across zones, zonal clusters have a single replica | Zonal GKE and any single-AZ assumption means a control plane maintenance window stops all reconciliation, but not running pods |
-| Storage backend | etcd family; AWS has described a re-architected consensus layer for its largest clusters (UNVERIFIED) | etcd family; Google has described a Spanner-backed store for its largest clusters (UNVERIFIED) | The resourceVersion contract is the same, so controllers are portable, but list and watch performance envelopes differ |
-| Flags for apiserver, controller manager, scheduler | Not exposed | Not exposed | You cannot raise `--concurrent-*-syncs` or APF settings for built-in controllers; only your own controllers are tunable |
+| Control plane ownership | AWS-managed apiserver and etcd in an EKS-managed VPC, at least two API server nodes in distinct AZs, reached through a public endpoint or EKS-managed ENIs in your VPC ([EKS best practices](https://docs.aws.amazon.com/eks/latest/best-practices/control-plane.html)) | Google-managed control plane; regional clusters run replicas across zones, zonal clusters have a single control plane in one zone ([GKE docs](https://docs.cloud.google.com/kubernetes-engine/docs/concepts/configuration-overview)) | Zonal GKE and any single-AZ assumption means a control plane maintenance window stops all reconciliation, but not running pods |
+| Storage backend | etcd API; AWS moved consensus off etcd's Raft onto its internal journal system, only for new clusters created with ultra scale capabilities ([AWS blog](https://aws.amazon.com/blogs/containers/under-the-hood-amazon-eks-ultra-scale-clusters/)) | etcd API; Google announced a transition to a Spanner-based key-value store alongside 65,000-node support ([Google Cloud blog](https://cloud.google.com/blog/products/containers-kubernetes/gke-65k-nodes-and-counting)) | The resourceVersion contract is the same, so controllers are portable, but list and watch performance envelopes differ |
+| Flags for apiserver, controller manager, scheduler | A narrow validated set on 1.31+ (scheduler scoring strategy, HPA sync period, terminated-pod GC threshold, `eventTtl`, node port range), with no concurrency parameter ([EKS docs](https://docs.aws.amazon.com/eks/latest/userguide/control-plane-configuration.html)) | Google manages the components; the [gcloud cluster reference](https://docs.cloud.google.com/sdk/gcloud/reference/container/clusters/create) lists no concurrent-sync or inflight flag | You cannot raise `--concurrent-*-syncs` for built-in controllers; FlowSchemas and PriorityLevelConfigurations are API objects you can add ([EKS scaling guide](https://docs.aws.amazon.com/eks/latest/best-practices/scale-control-plane.html)), but the total inflight limit stays with the provider |
 | Custom controller leader election | Lease in any namespace through the standard API | Same | Identical semantics; RBAC for `coordination.k8s.io/leases` is the only prerequisite |
-| Built-in controller visibility | Control plane logs (api, audit, authenticator, controllerManager, scheduler) can be sent to CloudWatch Logs; apiserver `/metrics` readable with RBAC | Control plane metrics and logs in Cloud Monitoring and Cloud Logging | Both let you see `workqueue_*` and `apiserver_*` series for the control plane, with different retention and cost |
-| Identity from controllers to cloud APIs | IRSA or EKS Pod Identity | Workload Identity Federation for GKE (Google Cloud docs, as of 2026-10) | Controllers that reconcile cloud resources are subject to cloud API rate limits as well as Kubernetes limits |
-| Upgrade behavior | Control plane upgraded by AWS on your trigger; version skew with node groups | Release channels with automatic control plane upgrades | An apiserver upgrade restarts watches cluster-wide and causes a relist wave from every informer |
-| Price of the loop | Per-cluster hourly fee plus nodes | Per-cluster hourly fee plus nodes | Control plane fee is flat; the cost of a bad controller shows up as API throttling and node-side cloud API spend |
+| Built-in controller visibility | Control plane logs (api, audit, authenticator, controllerManager, scheduler) can be sent to [CloudWatch Logs](https://docs.aws.amazon.com/eks/latest/userguide/control-plane-logs.html); apiserver `/metrics` and, on 1.28+, scheduler and controller manager metrics through [`metrics.eks.amazonaws.com`](https://docs.aws.amazon.com/eks/latest/userguide/view-raw-metrics.html) | [API server, scheduler, and controller manager metrics](https://docs.cloud.google.com/kubernetes-engine/docs/how-to/configure-metrics) in Cloud Monitoring and [logs](https://docs.cloud.google.com/kubernetes-engine/docs/how-to/view-logs) in Cloud Logging | EKS exposes controller manager `workqueue_*` series; GKE's [control plane metrics list](https://docs.cloud.google.com/kubernetes-engine/docs/how-to/control-plane-metrics) has `apiserver_*` but no `workqueue_*` series, so do not plan on built-in queue depth from GKE's managed metrics |
+| Identity from controllers to cloud APIs | IRSA or [EKS Pod Identity](https://docs.aws.amazon.com/eks/latest/userguide/pod-identities.html) | Workload Identity Federation for GKE (Google Cloud docs, as of 2026-10) | Controllers that reconcile cloud resources are subject to cloud API rate limits as well as Kubernetes limits |
+| Upgrade behavior | You trigger control plane upgrades, but AWS auto-upgrades clusters at the end of extended support, or of standard support if extended is disabled; node groups stay behind ([EKS docs](https://docs.aws.amazon.com/eks/latest/userguide/kubernetes-versions.html)) | [Release channels](https://docs.cloud.google.com/kubernetes-engine/docs/concepts/release-channels) (Rapid, Regular, Stable, Extended) with automatic control plane upgrades | An apiserver upgrade restarts watches cluster-wide and causes a relist wave from every informer |
+| Price of the loop | Per-cluster hourly fee, higher in extended support or with Provisioned Control Plane, plus nodes | Per-cluster hourly fee, higher for extended-support versions, plus nodes | The base control plane fee is flat; the cost of a bad controller shows up as API throttling and node-side cloud API spend |
 
 Related translation material is in [[17-Cloud-AI-Engineering/Volume_04_AWS_vs_GCP_Translation/Chapter_01_Compute_Translation|Compute Translation]], and deep dives on the managed services are in [[17-Cloud-AI-Engineering/Volume_02_AWS_Deep_Dive/Chapter_07_Amazon_EKS_Control_Plane_and_Networking|Amazon EKS: Control Plane and Networking]] and [[17-Cloud-AI-Engineering/Volume_03_GCP_Deep_Dive/Chapter_07_GKE_Deep_Dive_Standard_vs_Autopilot|GKE Deep Dive: Standard vs Autopilot]].
 
@@ -256,7 +292,7 @@ It has not been run against a real cluster in this authoring pass, so run it on 
 ### Cost and teardown
 
 The lab runs on a local `kind` cluster and provisions no cloud resources, so the cloud cost is 0 USD.
-If you instead run it on a managed sandbox cluster, budget at least the control plane fee: 730 h x 0.10 USD = 73 USD per month per cluster (UNVERIFIED pricing, see Numbers to Know) plus node costs.
+If you instead run it on a managed sandbox cluster, budget at least the control plane fee: 730 h x 0.10 USD = 73 USD per month per cluster (AWS and Google Cloud pricing, as of 2026-11, see Numbers to Know) plus node costs.
 For that case create a budget alarm before creating anything.
 
 ```bash
@@ -594,7 +630,7 @@ curl -s -N "http://127.0.0.1:8001/api/v1/namespaces/lab-a/configmaps?watch=true&
 # Expect an HTTP 410 or an in-stream ERROR event with code 410.
 
 # 5. Observe the apiserver side
-kubectl get --raw /metrics | grep -E '^(apiserver_registered_watchers|apiserver_current_inflight_requests)' | head
+kubectl get --raw /metrics | grep -E '^(apiserver_longrunning_requests|apiserver_current_inflight_requests)' | head
 ```
 
 Python is used here because the stdlib keeps the artifact self-contained.
@@ -607,10 +643,10 @@ Assume 3,000 nodes, 30 pods per node (90,000 pods), 8 KiB per serialized Pod, 15
 
 1. Relist blast radius. One full Pod LIST is 90,000 x 8 KiB = 720,000 KiB, about 703 MiB. If all 15 informers relist at once after an apiserver upgrade, that is about 10.3 GiB of response bodies to serialize, or about 3.4 GiB per replica. This is why list pagination, jittered backoff, streaming list, and APF exist, and it is the reason to stagger apiserver upgrades.
 2. Steady-state watch fan-out. 150 writes per second x 8 KiB = 1.17 MiB/s per full watcher. Across 15 watchers that is 17.6 MiB/s of egress from the watch caches. This is small, which is why steady state is rarely the problem and relists are.
-3. etcd history before compaction. With a 5 minute compaction interval (UNVERIFIED default), 150 writes/s x 300 s = 45,000 retained revisions x 8 KiB = about 352 MiB. Add the live set of 703 MiB and you are at about 1.03 GiB, roughly 51 percent of a 2 GiB quota, before Events, ConfigMaps, Leases, and CRDs. Compaction frees pages inside the bbolt file but the file does not shrink without defragmentation, and the quota is enforced on file size, so headroom shrinks over time. When the quota is exceeded etcd raises a NOSPACE alarm and the cluster becomes read-only to writes.
+3. etcd history before compaction. With the default 5 minute compaction interval (apiserver config.go, as of 2026-11), 150 writes/s x 300 s = 45,000 retained revisions x 8 KiB = about 352 MiB. Add the live set of 703 MiB and you are at about 1.03 GiB, roughly 51 percent of a 2 GiB quota, before Events, ConfigMaps, Leases, and CRDs. Compaction frees pages inside the bbolt file for reuse, so the file does not shrink without defragmentation and grows only once in-use data approaches its size (etcd maintenance docs, as of 2026-11). Upstream etcd checks the quota against backend size (etcd quota.go, as of 2026-11), while AWS documents in-use size as the trigger on EKS (EKS best practices, as of 2026-11). When the quota is exceeded etcd raises a NOSPACE alarm and the cluster becomes read-only.
 4. Worker count by Little's law. Suppose a controller sees 40 distinct dirty keys per second after coalescing and each reconcile takes 25 ms (cache reads plus one write). Required concurrency is 40 x 0.025 = 1.0, so 2 to 4 workers give headroom. More workers add nothing, because a single hot key is serialized by design.
-5. Client-side limiter, the usual real bottleneck. At 40 writes per second, a client limiter of 5 QPS (client-go default, UNVERIFIED) drains at 5 per second and the backlog grows by 35 per second. After 60 seconds there are 2,100 queued requests and a new write waits 2,100 / 5 = 420 seconds, which looks exactly like a hung controller with an idle apiserver. controller-runtime's 20 QPS default (UNVERIFIED) still backlogs by 20 per second. Size QPS to at least peak writes per second plus reads that miss the cache, with burst of roughly 2 x QPS.
-6. Backoff arithmetic. The per-item delay after the k-th consecutive failure is 5 ms x 2^(k-1). It crosses 1000 s at k = 19, after about 5 ms x (2^18 - 1) = 1,310 s cumulative, so a key that fails permanently is retried about every 17 minutes thereafter. The overall bucket allows 10 retries per second, so 10,000 simultaneously failing keys need at least 1,000 s to retry each once, regardless of per-item delay.
+5. Client-side limiter, the usual real bottleneck. At 40 writes per second, a client limiter of 5 QPS (client-go default, as of 2026-11) drains at 5 per second and the backlog grows by 35 per second. After 60 seconds there are 2,100 queued requests and a new write waits 2,100 / 5 = 420 seconds, which looks exactly like a hung controller with an idle apiserver. A controller on controller-runtime's `GetConfig` has no client limiter by default (as of 2026-11), so the same 40 writes per second reach the apiserver and APF does the throttling; older releases with a 20 QPS default, such as v0.15, still backlog by 20 per second. Where a client limiter is set, size QPS to at least peak writes per second plus reads that miss the cache, with burst of roughly 2 x QPS.
+6. Backoff arithmetic. The per-item delay after the k-th consecutive failure is 5 ms x 2^(k-1). It crosses 1000 s at k = 19, after about 5 ms x (2^18 - 1) = 1,310 s cumulative, so a key that fails permanently is retried about every 17 minutes thereafter. The overall bucket allows 10 retries per second, so 10,000 simultaneously failing keys need about 990 s to retry each once after the burst of 100 is spent, regardless of per-item delay.
 
 ## Failure Modes and Pitfalls
 
@@ -618,10 +654,10 @@ Assume 3,000 nodes, 30 pods per node (90,000 pods), 8 KiB per serialized Pod, 15
 
 An apiserver restart or upgrade closes every watch.
 Each informer reconnects from its last revision, and any whose revision has aged out of the watch window relists.
-The most expensive case is a LIST with an unset resourceVersion before KEP-2340 went stable, which forced a quorum read from etcd and, for large types, an etcd scan per client.
+The most expensive case is a LIST with an unset resourceVersion without KEP-2340 (before its 1.31 default, or on an older etcd), which forces a quorum read from etcd and, for large types, an etcd scan per client.
 A second trigger is the slow-consumer kill described in Internals: a controller that cannot drain its watch fast enough is cut off, relists, falls behind again while ingesting the list, and loops.
-Mitigations are bookmarks, streaming list so clients get the initial state as a watch stream rather than one giant response (KEP-3157, status UNVERIFIED), pagination, APF, per-client jitter, and upgrading with a rolling cadence.
-Public post-incident review: OpenAI's December 2024 outage began when a newly deployed telemetry service made expensive Kubernetes API calls across many large clusters, overwhelmed the control plane, and took down service discovery that depended on it (OpenAI status page post-incident report, 2024-12-11, details recalled and UNVERIFIED).
+Mitigations are bookmarks, streaming list so clients get the initial state as a watch stream rather than one giant response (KEP-3157: beta, with `WatchList` on by default since 1.34 and `WatchListClient` since 1.35, and stable targeted for the unreleased 1.38, as of 2026-11), pagination, APF, per-client jitter, and upgrading with a rolling cadence.
+Public post-incident review: OpenAI's December 2024 outage began when a newly deployed telemetry service made every node in each cluster run expensive Kubernetes API calls, overwhelmed the control plane in most large clusters, and took down the DNS-based service discovery that depended on it ([OpenAI status page post-incident report](https://status.openai.com/incidents/ctrsv3lwd797), 2024-12-11).
 The lesson that generalizes is static stability: the data plane must keep serving when the control plane is saturated, which means no request-path dependency on apiserver-backed DNS or discovery.
 
 ### Hot loops from non-idempotent writes
@@ -629,7 +665,7 @@ The lesson that generalizes is static stability: the data plane must keep servin
 A reconciler that writes a timestamp, a random value, or an unordered list into an object triggers a MODIFIED event for its own write, which re-enqueues the key, which writes again.
 The apiserver's no-op elision only helps if the encoded bytes are identical, so any nondeterminism defeats it.
 Fixes: compare desired and observed before writing, sort lists, never put wall-clock time in spec or in status fields that you also watch, and use event predicates such as "generation changed" so status-only updates do not enqueue.
-Detect it with `workqueue_adds_total` rate far above external event rate, and with `workqueue_depth` that never drains while CPU is high (metric names UNVERIFIED).
+Detect it with `workqueue_adds_total` rate far above external event rate, and with `workqueue_depth` that never drains while CPU is high (component-base workqueue metrics, as of 2026-11).
 
 ### Duplicate creation from stale cache
 
@@ -643,7 +679,7 @@ For external resources (cloud load balancers, disks) there is no AlreadyExists b
 A key that fails permanently consumes a worker slot at each retry and, at the 1000 s cap, hides for about 17 minutes between attempts, so a fix to the cause appears to take effect very late.
 An unbounded retry on a panic or a permanent validation error also floods logs.
 Classify errors: permanent errors set a status condition and are not retried until the object changes, transient errors use rate-limited requeue.
-A very slow reconcile (a call with no timeout) pins a worker forever; track `workqueue_longest_running_processor_seconds` and `workqueue_unfinished_work_seconds` (names UNVERIFIED) and put deadlines on every outbound call.
+A very slow reconcile (a call with no timeout) pins a worker forever; track `workqueue_longest_running_processor_seconds` and `workqueue_unfinished_work_seconds` (component-base workqueue metrics, as of 2026-11) and put deadlines on every outbound call.
 
 ### Slow handlers and memory growth
 
@@ -662,11 +698,11 @@ Kubernetes writes are safe because of resourceVersion CAS, but external side eff
 Deleting a controller before its CRs leaves objects stuck in Terminating with finalizers no one will clear.
 Two controllers that both claim to own a field fight forever, each update waking the other; server-side apply field managers make the conflict explicit instead of silent.
 A label selector change that suddenly matches or stops matching a population of objects makes a faithful level-triggered system converge a fleet to the new, possibly wrong, desired state.
-A public example of this class is the 2023 Reddit Pi-Day outage, where a Kubernetes upgrade changed node labels that cluster networking configuration selected on (Reddit engineering post-incident write-up, March 2023, details recalled and UNVERIFIED).
+A public example of this class is the 2023-03-14 Reddit Pi-Day outage, where the upgrade from Kubernetes 1.23 to 1.24 dropped the `node-role.kubernetes.io/master` node label that Calico's route reflector selection matched on, so pod networking collapsed for about 314 minutes ([Reddit post-mortem](https://www.reddit.com/r/RedditEng/comments/11xx5o0/you_broke_reddit_the_piday_outage/), checked through [iximiuz Labs' summary](https://labs.iximiuz.com/courses/kubelings-dbd840c8/module-09/incident-reddit-piday) because reddit.com blocks automated fetches, as of 2026-11).
 
 ### etcd limits
 
-Objects are capped by etcd's request size limit (1.5 MiB default, UNVERIFIED).
+Objects are capped by etcd's request size limit (1.5 MiB default, etcd docs, as of 2026-11).
 Large status blobs, big Secrets, and CRs that embed arrays that grow forever hit this, and a write that fails at that limit fails permanently, which in a controller becomes a poison key.
 Every update also writes a full new revision, so frequent writes of large objects amplify etcd history and defragmentation pressure.
 
@@ -689,17 +725,20 @@ Controllers that reconcile cloud resources should use per-controller workload id
 See [[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter/Chapter_02_Workload_Identity_Federation|Workload Identity Federation]].
 
 **Encryption at rest.**
-Kubernetes can encrypt Secrets in etcd with envelope encryption, where a data encryption key per object is wrapped by a key encryption key in a cloud KMS.
-On EKS and GKE this is enabled through the provider's KMS integration (AWS KMS, Cloud KMS).
-The control loop implication is that every Secret read that misses the watch cache and every write now involves a KMS decrypt or encrypt, so a KMS outage or throttle degrades Secret operations specifically.
+Kubernetes can encrypt API data in etcd with envelope encryption, where data encryption keys are wrapped by a key encryption key in a cloud KMS.
+EKS applies this to all Kubernetes API data by default on 1.28+ with an AWS-owned key or your own KMS key ([EKS docs](https://docs.aws.amazon.com/eks/latest/userguide/envelope-encryption.html), as of 2026-11).
+GKE encrypts at rest by default and adds [application-layer secrets encryption](https://docs.cloud.google.com/kubernetes-engine/docs/how-to/encrypting-secrets) with a Cloud KMS key you manage (as of 2026-11).
+The control loop implication is that remote KMS calls are not per object on the current path.
+With KMS v2 (stable in 1.29, with v1 deprecated in 1.28 and off by default in 1.29), the apiserver derives a single-use key per encryption from a cached seed, and it calls KMS at startup, on key rotation, and for the first decrypt ([Kubernetes KMS docs](https://kubernetes.io/docs/tasks/administer-cluster/kms-provider/) and EKS docs, as of 2026-11).
+So a disabled or lost key may show no immediate effect on a running apiserver and then fail at the next restart, which on EKS leaves the cluster degraded (EKS docs, as of 2026-11).
 See [[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter/Chapter_04_Encryption_Key_Hierarchies_and_Envelope_Encryption|Encryption Key Hierarchies and Envelope Encryption]].
 
 **Network boundaries.**
-Webhooks, aggregated APIs, and controllers that call the apiserver from outside the cluster should do so through private endpoints (EKS private endpoint access, GKE private clusters with authorized networks).
+Webhooks, aggregated APIs, and controllers that call the apiserver from outside the cluster should do so through private endpoints (EKS private endpoint access, and on GKE the [internal or DNS-based endpoint with authorized networks](https://docs.cloud.google.com/kubernetes-engine/docs/concepts/network-isolation), as of 2026-11).
 The apiserver is the single choke point of the whole platform, so expose it narrowly.
 
 **Unit economics levers.**
-The control plane fee is flat per cluster (UNVERIFIED), so the economic cost of control loops is indirect.
+The base control plane fee is flat per cluster on both clouds, before extended support or EKS Provisioned Control Plane charges (AWS and Google Cloud pricing, as of 2026-11), so the economic cost of control loops is indirect.
 Cluster consolidation versus multiple clusters trades a fixed 73 USD per month per cluster against blast radius.
 Controllers that create cloud resources can multiply spend if a hot loop or duplicate-create bug runs unchecked, for example one load balancer per reconcile.
 Guard with quotas, with tag-based budget alarms, and with a dry-run mode that logs the diff before enabling writes.
@@ -762,7 +801,7 @@ Under load the lag grows from milliseconds to seconds, which is why the bug show
 The workqueue's dedup does not help, because the second reconcile is legitimately a separate run after the first finished.
 The upstream controller uses `ControllerExpectations`.
 Before issuing creates it records "expect 3 adds for key K", and each informer Add handler for an owned pod decrements the count.
-While expectations are unsatisfied the reconcile skips the diff for that key, with a timeout (5 minutes in the built-in controllers, UNVERIFIED) so a lost event cannot block forever.
+While expectations are unsatisfied the reconcile skips the diff for that key, with a timeout (5 minutes in the built-in controllers, controller_utils.go, as of 2026-11) so a lost event cannot block forever.
 Deletes get the same treatment.
 For my controller I would use whichever of the following fits.
 If children can have deterministic names (owner UID plus ordinal), a duplicate create fails with AlreadyExists, and the loop treats that as success; this is the simplest and is crash-safe because it needs no in-memory state.
@@ -814,9 +853,9 @@ If the new replica's watch cache was just rebuilt, its ring buffer begins at the
 Fifteen or more cluster-wide Pod watchers relisting a 90,000 object type is about 10 GiB of serialization work, concentrated in the first minute on the replicas that are up.
 That explains the latency.
 The stale data comes from the read consistency modes.
-Informers and some clients issue LISTs with `resourceVersion=0`, which the apiserver serves from its watch cache with no freshness guarantee.
+Informers that use the LIST path and some other clients issue LISTs with `resourceVersion=0`, which the apiserver serves from its watch cache with no freshness guarantee.
 A replica that has just started or is still catching up to etcd can serve a snapshot older than what the client has already seen, and the controller reconciles against the past; it recovers when later watch events arrive, but in between it may make decisions on stale state.
-From Kubernetes 1.34 (KEP-2340 stable), LISTs with an unset resourceVersion are served from cache only after the cache proves it has caught up to etcd, using progress notifications, so these consistent reads do not suffer the problem, but an explicit `0` still can.
+Since Kubernetes 1.31 (KEP-2340 on by default, stable in 1.34), LISTs with an unset resourceVersion are served from cache only after the cache proves it has caught up to etcd, using progress notifications, so these consistent reads do not suffer the problem, but an explicit `0` still can.
 To make the next upgrade boring I would do the following.
 Roll replicas one at a time with a pause long enough for watch caches to warm and relists to complete.
 Ensure clients use bookmarks and a recent client-go so that reconnects land inside the window and list pagination or streaming list is in use.
@@ -836,7 +875,7 @@ Design a controller that reconciles 2 million objects with a convergence SLO of 
 #### Model Answer
 
 Start from the constraint that a single process holding all 2 million objects in an informer cache is a memory and relist risk.
-At roughly 4 to 8 KiB per object that is 8 to 16 GiB of cache per replica, and a relist of that size at startup can exceed the 60 second SLO by itself.
+At roughly 4 to 8 KiB per object that is about 7.6 to 15 GiB of cache per replica, and a relist of that size at startup can exceed the 60 second SLO by itself.
 So I would shard.
 Partition the key space by consistent hash of the owner key into N shards (see [[08-Distinguished-Engineering/02-Distributed-Systems-Internals/Consistent-Hash-Ring|Consistent Hash Ring]]), with each shard guarded by its own Lease, and run M replicas that each try to acquire leases for shards.
 Each replica's informers use a label selector carrying the shard ID, set by a lightweight mutating webhook or a separate assigner at creation, so the apiserver filters server-side and each replica caches only its shards.
@@ -874,7 +913,7 @@ At the architectural level, apply static stability.
 Nothing in the request path may need the apiserver: service discovery should not depend on apiserver-backed DNS with short TTLs and no stale serving, kube-proxy and CNI must keep their last known rules during control plane outages, and pods must not require the apiserver to serve traffic.
 I would test this with a game day that blocks apiserver access for 30 minutes and verifies that serving traffic does not drop, which is the lesson of public incidents where discovery tied to the control plane turned an overload into an outage.
 Cell-based design bounds blast radius: multiple clusters per region with a cell router in front, so an overloaded control plane takes out one cell.
-This costs a flat per-cluster fee (UNVERIFIED) and extra operations, but for a platform with this many controllers it is cheap relative to a regional outage.
+This costs a flat per-cluster fee (0.10 USD per cluster-hour on both clouds at standard support, as of 2026-11) and extra operations, but for a platform with this many controllers it is cheap relative to a regional outage.
 Operationally, ship every new controller or telemetry agent through progressive rollout with a canary cluster and a control plane SLO gate on apiserver p99 and APF rejects, with automatic rollback.
 Add a "kill switch" that can scale a misbehaving controller to zero without cluster admin escalation, since during an overload you may not be able to reach the apiserver to do it. That argues for an out-of-band path, such as the cloud provider's node or workload management plane.
 Finally, change management for the apiserver's clients is a first-class review: any new component that lists cluster-wide gets a load estimate in the same form as the capacity sizing above.

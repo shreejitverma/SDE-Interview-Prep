@@ -2,7 +2,7 @@
 type: concept
 track: [cloud-ai, ai-eng, sde, distinguished]
 level:
-status: draft
+status: solid
 last_reviewed:
 sources: 
   - "https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/"
@@ -17,6 +17,34 @@ sources:
   - "https://aws.amazon.com/builders-library/using-load-shedding-to-avoid-overload/"
   - "https://aws.amazon.com/message/11201/"
   - "https://sre.google/sre-book/addressing-cascading-failures/"
+  - "https://kubernetes.io/docs/concepts/workloads/autoscaling/horizontal-pod-autoscale/"
+  - "https://github.com/kubernetes/website/blob/main/content/en/docs/reference/command-line-tools-reference/feature-gates/HPAConfigurableTolerance.md"
+  - "https://github.com/kubernetes/website/blob/main/content/en/docs/reference/command-line-tools-reference/feature-gates/HPAContainerMetrics.md"
+  - "https://github.com/kubernetes/kubernetes/blob/master/pkg/controller/podautoscaler/horizontal.go"
+  - "https://github.com/kubernetes-sigs/metrics-server/blob/master/manifests/base/deployment.yaml"
+  - "https://keda.sh/docs/latest/reference/scaledobject-spec/"
+  - "https://keda.sh/docs/latest/concepts/scaling-deployments/"
+  - "https://keda.sh/docs/latest/scalers/aws-sqs/"
+  - "https://keda.sh/docs/latest/scalers/gcp-pub-sub/"
+  - "https://keda.sh/docs/latest/authentication-providers/aws/"
+  - "https://keda.sh/blog/2025-09-15-gcp-deprecations/"
+  - "https://keda.sh/docs/latest/scalers/aws-cloudwatch/"
+  - "https://www.cncf.io/announcements/2023/08/22/cloud-native-computing-foundation-announces-graduation-of-kubernetes-autoscaler-keda/"
+  - "https://karpenter.sh/docs/reference/settings/"
+  - "https://karpenter.sh/docs/concepts/disruption/"
+  - "https://karpenter.sh/docs/faq/"
+  - "https://github.com/kubernetes-sigs/karpenter/blob/main/pkg/controllers/disruption/consolidation.go"
+  - "https://github.com/aws/karpenter-provider-aws/blob/main/pkg/cache/cache.go"
+  - "https://aws.amazon.com/blogs/containers/announcing-karpenter-1-0/"
+  - "https://aws.amazon.com/eks/pricing/"
+  - "https://cloud.google.com/kubernetes-engine/pricing"
+  - "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/spot-instance-termination-notices.html"
+  - "https://docs.cloud.google.com/compute/docs/instances/spot"
+  - "https://docs.cloud.google.com/kubernetes-engine/docs/concepts/dws"
+  - "https://docs.cloud.google.com/kubernetes-engine/docs/concepts/cluster-autoscaler"
+  - "https://docs.cloud.google.com/sdk/gcloud/reference/container/clusters/create"
+  - "https://docs.aws.amazon.com/eks/latest/best-practices/automode.html"
+  - "https://aws.amazon.com/blogs/containers/introducing-seekable-oci-parallel-pull-mode-for-amazon-eks/"
 ---
 
 # Autoscaling at Scale: HPA, KEDA, and Karpenter
@@ -68,7 +96,7 @@ Pair this chapter with [[17-Cloud-AI-Engineering/Volume_05_Kubernetes_and_Platfo
 The HPA controller runs inside kube-controller-manager and reads metrics through the Kubernetes API aggregation layer.
 Three metric APIs exist, each registered as an `APIService` that proxies to a backing Service:
 
-- `metrics.k8s.io` serves per-pod and per-node CPU and memory. The reference backend is metrics-server, which scrapes each kubelet's `/metrics/resource` endpoint on an interval (default 15 seconds, UNVERIFIED) and keeps only the latest sample in memory.
+- `metrics.k8s.io` serves per-pod and per-node CPU and memory. The reference backend is metrics-server, which scrapes each kubelet's `/metrics/resource` endpoint on an interval (default 15 seconds, metrics-server manifest `--metric-resolution=15s`, as of 2026-11) and keeps only the latest sample in memory.
 - `custom.metrics.k8s.io` serves metrics attached to Kubernetes objects (a pod, an Ingress). Backends include prometheus-adapter and the Google Cloud custom metrics Stackdriver adapter.
 - `external.metrics.k8s.io` serves metrics unrelated to any object (queue depth, subscription backlog). KEDA's metrics adapter is the most common backend.
 
@@ -78,22 +106,23 @@ This is a cluster-wide singleton, so it is a platform decision, not a per-team o
 The standard resolution is to give KEDA the external API and keep any other adapter on the custom API only.
 
 The staleness of a decision is the sum of every stage between the physical event and the HPA's arithmetic.
-For CPU, the chain is: the kernel CFS counters, the kubelet's cAdvisor rate window, the metrics-server scrape (up to one resolution interval old), and the HPA sync (up to one sync period old, default 15 seconds, UNVERIFIED).
-For a KEDA queue trigger, the chain is: the source's own consistency (SQS queue attributes are approximate), the KEDA operator's polling interval (default 30 seconds, UNVERIFIED), the gRPC hop from the metrics adapter to the operator, and the HPA sync.
-A worst-case measurement age of roughly `pollingInterval + syncPeriod` is therefore 45 seconds with defaults, before any pod has even been requested.
-Using the CloudWatch scaler instead of the native SQS scaler adds CloudWatch's delivery delay on top, which is typically minutes (UNVERIFIED), so prefer scalers that call the source API directly.
+For CPU, the chain is: the kernel CFS counters, the kubelet's cAdvisor rate window, the metrics-server scrape (up to one resolution interval old), and the HPA sync (up to one sync period old, default 15 seconds, Kubernetes HPA docs, as of 2026-11).
+For a KEDA queue trigger, the chain is: the source's own consistency (SQS queue attributes are approximate), the HPA sync that requests the metric, the gRPC hop from the metrics adapter to the operator, and the scaler's query of the source.
+By default (`useCachedMetrics: false`) each HPA metric request reaches the scaler, so for 1-to-N scaling the worst-case measurement age is roughly one `syncPeriod`, 15 seconds with defaults, plus source lag (KEDA docs, as of 2026-11).
+With `useCachedMetrics: true` the value is refreshed only every `pollingInterval` (default 30 seconds), so the worst case is roughly `pollingInterval + syncPeriod`, 45 seconds with defaults, before any pod has even been requested.
+Using the CloudWatch scaler instead of the native SQS scaler adds CloudWatch's eventual consistency and aggregation on top (`metricStatPeriod` and `metricCollectionTime` both default to 300 seconds, KEDA docs, as of 2026-11), so prefer scalers that call the source API directly.
 
 ### The HPA algorithm, past the formula
 
-The documented core is `desiredReplicas = ceil[currentReplicas * (currentMetricValue / desiredMetricValue)]` (Kubernetes HPA docs as summarized in search results, as of 2026-10).
-The controller skips any change while the ratio is within a tolerance of 0.1, which is a deadband of plus or minus 10 percent (Kubernetes HPA docs as summarized in search results, as of 2026-10).
+The documented core is `desiredReplicas = ceil[currentReplicas * (currentMetricValue / desiredMetricValue)]` (Kubernetes HPA docs, as of 2026-11).
+The controller skips any change while the ratio is within a tolerance of 0.1, which is a deadband of plus or minus 10 percent (Kubernetes HPA docs, as of 2026-11).
 For resource metrics with a utilization target, the denominator is the pod's resource request, not its limit and not the node size.
 A pod with an inflated CPU request therefore under-scales, and a pod with no request cannot be scaled on utilization at all.
 When several metrics are configured, the controller computes a recommendation per metric and takes the maximum.
 
 **Unready-pod rebalancing.**
 Pods that are not yet ready, or that are missing metrics, distort the average, so the controller handles them explicitly.
-Per the docs, pods with missing metrics are treated as using 100 percent of the target on a scale-down evaluation and 0 percent on a scale-up evaluation, and unready pods are assumed to use 0 percent when scaling up (Kubernetes HPA docs as summarized in search results, as of 2026-10).
+Per the docs, pods with missing metrics are treated as using 100 percent of the target on a scale-down evaluation and 0 percent on a scale-up evaluation, and unready pods are assumed to use 0 percent when scaling up (Kubernetes HPA docs, as of 2026-11).
 After this adjustment, the controller recomputes the ratio, and if the recomputed ratio reverses the scaling direction or falls inside the tolerance, it does not scale.
 
 A worked case makes the consequence concrete.
@@ -104,19 +133,19 @@ The ready pods are at 167 percent of target, and the HPA correctly refuses to ad
 This is conservative by design: it prevents over-shoot while capacity is in flight.
 It also means that a saturating metric produces a wave pattern, because utilization can never exceed 100 percent, so the maximum ratio is 1/target = 1.67 and each wave can grow ready capacity by at most that factor before the next wave must wait for readiness.
 
-Two flags control which pods count as unready: `--horizontal-pod-autoscaler-initial-readiness-delay` (default 30 seconds, per a search-result summary of the docs, as of 2026-10) and `--horizontal-pod-autoscaler-cpu-initialization-period` (default 5 minutes, UNVERIFIED).
+Two flags control which pods count as unready: `--horizontal-pod-autoscaler-initial-readiness-delay` (default 30 seconds) and `--horizontal-pod-autoscaler-cpu-initialization-period` (default 5 minutes) (Kubernetes HPA docs, as of 2026-11).
 The practical effect is that CPU samples from a pod that has just become Ready can still be discarded for minutes, which matters for JVM and model-server workloads that burn CPU during warmup.
 Managed Kubernetes services generally do not let you change these controller flags, so on EKS and GKE the portable fix is a metric that does not depend on per-pod warmup noise (request rate or queue depth through an external or custom metric).
 
 **The stabilization window is a retrospective maximum, not a cooldown.**
-With defaults, scale-down uses a 300 second stabilization window and scale-up uses 0 (Kubernetes HPA docs as summarized in search results, as of 2026-10).
+With defaults, scale-down uses a 300 second stabilization window and scale-up uses 0 (Kubernetes HPA docs, as of 2026-11).
 Mechanically, every sync the controller stores its raw recommendation with a timestamp.
 On scale-down it acts on the highest recommendation stored within the window, and on scale-up it acts on the lowest.
 A single spike 299 seconds ago therefore holds the replica count up for another second, and a replica count that has been correct for 4 minutes can still be rejected.
-The recommendation history lives in controller memory (UNVERIFIED), so a kube-controller-manager restart discards it, and the first post-restart scale-down is judged on a short history.
+The recommendation history lives in controller memory (the `recommendations` map in upstream `horizontal.go`, as of 2026-11), so a kube-controller-manager restart discards it, and the first post-restart scale-down is judged on a short history.
 
 **Rate policies.**
-The default scale-up behavior permits the larger of 100 percent of current replicas or 4 pods per 15 seconds, and the default scale-down permits 100 percent per 15 seconds (Kubernetes HPA docs as summarized in search results, as of 2026-10).
+The default scale-up behavior permits the larger of 100 percent of current replicas or 4 pods per 15 seconds, and the default scale-down permits 100 percent per 15 seconds (Kubernetes HPA docs, as of 2026-11).
 From 34 replicas, the 100 percent arm gives 68, 136, 272, 544 in four 15-second periods, so the policy floor to reach 334 is about 60 seconds.
 The policy is rarely the binding constraint; dead time is.
 `selectPolicy: Min` or a `Pods` policy on scale-down is how you turn a cliff into a ramp for workloads with expensive warm-up.
@@ -126,17 +155,17 @@ HPA writes `spec.replicas` through the `/scale` subresource.
 If your GitOps tool also owns `spec.replicas`, every sync resets the count, and the HPA and the sync loop fight indefinitely.
 Remove the field from the manifest or configure the tool to ignore it (see [[17-Cloud-AI-Engineering/Volume_05_Kubernetes_and_Platform_Engineering/Chapter_07_GitOps_Delivery_Argo_CD_and_Flux|GitOps Delivery: Argo CD and Flux]]).
 HPA also should not target the same resource metric that a VPA is actively resizing, because a changing denominator makes the loop non-stationary.
-For multi-container pods with a mesh sidecar, use the `ContainerResource` metric type (GA in 1.30, UNVERIFIED) so the sidecar's idle CPU does not dilute the application's utilization.
+For multi-container pods with a mesh sidecar, use the `ContainerResource` metric type (stable in 1.30, Kubernetes feature-gate metadata, as of 2026-11) so the sidecar's idle CPU does not dilute the application's utilization.
 
-A feature that matters at scale and is changing: a configurable per-HPA tolerance (replacing the single cluster-wide 0.1) has been progressing through the alpha and beta stages in recent releases (UNVERIFIED stage as of 2026-10).
+A feature that matters at scale and is changing: a configurable per-HPA, per-direction tolerance (`behavior.scaleUp.tolerance` and `behavior.scaleDown.tolerance`, overriding the single cluster-wide 0.1 when set) sits behind the `HPAConfigurableTolerance` feature gate, which upstream metadata lists as alpha in 1.33, beta in 1.35, and stable in 1.37 (Kubernetes feature-gate metadata, as of 2026-11).
 At 1,000 replicas a 10 percent deadband is 100 pods of unresolved error, so a smaller tolerance on large fleets is a legitimate tuning goal once it is available on your managed control plane.
 
 ### KEDA: what it actually owns
 
-KEDA is a CNCF graduated project (graduated 2023-08, UNVERIFIED).
+KEDA is a CNCF graduated project (graduation announced 2023-08-22, CNCF announcement).
 It has three runtime pieces: the operator (reconciles `ScaledObject` and `ScaledJob`, holds scaler connections, and polls), the metrics adapter (serves `external.metrics.k8s.io`), and an admission webhook (rejects configurations such as two autoscalers targeting one workload).
 
-For a `ScaledObject` the operator creates a normal HPA, conventionally named `keda-hpa-<name>` (UNVERIFIED), whose metric is an `External` metric of type `AverageValue`.
+For a `ScaledObject` the operator creates a normal HPA, named `keda-hpa-<name>` unless `horizontalPodAutoscalerConfig.name` overrides it (KEDA docs, as of 2026-11), whose metric is an `External` metric of type `AverageValue`.
 For `AverageValue` external metrics, the HPA divides the metric total by the per-replica target to get a replica count, and applies the same 10 percent tolerance to the ratio of that average to the target.
 Concretely, with `queueLength: 50` and a queue of 5,000 messages the HPA asks for 100 replicas.
 At 100 replicas, a queue growing to 5,400 is a ratio of 1.08, which is inside the deadband, so no scale-up occurs until the queue passes roughly 5,500.
@@ -145,48 +174,48 @@ The division of labor:
 
 - 1-to-N and N-to-1 scaling is performed by the HPA controller, so the HPA `behavior` block and the stabilization semantics above apply. KEDA exposes them under `advanced.horizontalPodAutoscalerConfig.behavior`.
 - 0-to-1 and 1-to-0 scaling is performed by the KEDA operator, which patches the target's scale subresource directly after evaluating each scaler's activation condition (`activationThreshold` style settings). The HPA cannot act on a workload at zero replicas, which is why KEDA must own this edge.
-- `cooldownPeriod` (default 300 seconds, UNVERIFIED) applies only to the final step down to zero. It does not delay 10-to-3. A frequent production misconception is raising `cooldownPeriod` to stop N-to-M flapping, which has no effect. The correct knob is the HPA scale-down stabilization window and rate policies.
-- `pollingInterval` (default 30 seconds, UNVERIFIED) is the operator's polling cadence against the external source and thus a floor on measurement freshness.
+- `cooldownPeriod` (default 300 seconds, KEDA docs, as of 2026-11) applies only to the final step down to zero. It does not delay 10-to-3. A frequent production misconception is raising `cooldownPeriod` to stop N-to-M flapping, which has no effect. The correct knob is the HPA scale-down stabilization window and rate policies.
+- `pollingInterval` (default 30 seconds, KEDA docs, as of 2026-11) is the operator's polling cadence while the workload is at zero, and so bounds 0-to-1 reaction time. For 1-to-N the HPA's own sync drives metric requests, and `pollingInterval` limits freshness only if `useCachedMetrics` is enabled. When `minReplicaCount` is above 0 and neither `idleReplicaCount`, `useCachedMetrics`, nor `scalingModifiers` is used, KEDA reuses the HPA's query results and `pollingInterval` only refreshes status conditions and events.
 - `fallback` sets a replica count after a configured number of consecutive scaler failures. This turns a monitoring outage into a deliberate choice. A fallback value that is too low silently under-provisions during exactly the incident you cannot see, so set it to at least the recent p95 replica count.
 
-Scaler semantics worth knowing before you trust a number: the Kafka scaler normally caps useful replicas at the partition count of the topic, since extra consumers in a group sit idle; the SQS scaler counts visible plus in-flight messages by default (`scaleOnInFlight`, UNVERIFIED), so slow processing keeps the metric high even with an empty visible queue; the Pub/Sub scaler can scale on subscription backlog size or oldest unacked message age (UNVERIFIED).
+Scaler semantics worth knowing before you trust a number: the Kafka scaler normally caps useful replicas at the partition count of the topic, since extra consumers in a group sit idle; the SQS scaler counts visible plus in-flight messages by default (`scaleOnInFlight` defaults to `true`, KEDA docs, as of 2026-11), so slow processing keeps the metric high even with an empty visible queue; the Pub/Sub scaler can scale on subscription backlog size (`SubscriptionSize`, the default) or oldest unacked message age (`OldestUnackedMessageAge`), but KEDA has deprecated it in favor of the `prometheus` scaler because it relies on Google's deprecated MQL (KEDA docs and blog, as of 2026-11).
 Scaling on oldest-message age maps directly to a latency SLO, while backlog size maps to a throughput target, and choosing between them is a product decision (see [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_01_SLIs_SLOs_and_Error_Budget_Engineering|SLIs, SLOs, and Error Budget Engineering]]).
 For run-to-completion work, `ScaledJob` creates one Kubernetes Job per unit of backlog instead of resizing a Deployment, which sidesteps scale-down killing in-flight work.
 
 ### Node autoscaling: three designs
 
 **Cluster Autoscaler (CA), the node-group model.**
-CA is a loop (scan interval 10 seconds, UNVERIFIED) that finds unschedulable pods, and for each candidate node group it builds a template node (from the group's machine type, labels, and taints) and runs the scheduler's predicates against it to ask whether the pod would fit.
+CA is a loop (scan interval 10 seconds, CA FAQ, as of 2026-11) that finds unschedulable pods, and for each candidate node group it builds a template node (from the group's machine type, labels, and taints) and runs the scheduler's predicates against it to ask whether the pod would fit.
 Candidate groups are ranked by an expander (random, least-waste, priority, price), and the winner is resized through its cloud primitive (an Auto Scaling group on AWS, a managed instance group on Google Cloud).
-Scale-down is the mirror: a node whose requested-resource utilization is below a threshold (0.5 default, UNVERIFIED) for an unneeded period (10 minutes default, UNVERIFIED) is simulated for drainability and removed.
+Scale-down is the mirror: a node whose requested-resource utilization is below a threshold (0.5 default) for an unneeded period (10 minutes default) (CA FAQ, as of 2026-11) is simulated for drainability and removed.
 The structural limit is that the shape of every possible node must be pre-declared as a group, and the number of groups is bounded by control-plane cost and API limits.
 A workload with unusual requests either needs its own group or wastes a large node.
 
 **Karpenter, the pod-centric model.**
-Karpenter (v1 APIs GA since 2024-08, UNVERIFIED) replaces the group abstraction with `NodePool` (constraints and policy) and a cloud-specific node class (`EC2NodeClass` on AWS).
+Karpenter (v1 APIs stable since the 1.0 release announced 2024-08-14, AWS blog) replaces the group abstraction with `NodePool` (constraints and policy) and a cloud-specific node class (`EC2NodeClass` on AWS).
 Its provisioning pipeline, in order:
 
 1. A controller watches for pods that kube-scheduler has marked Unschedulable.
-2. It batches them with an idle window of 1 second and a maximum of 10 seconds (defaults, UNVERIFIED), so a deployment rollout of 500 pods yields one decision, not 500.
+2. It batches them with an idle window of 1 second and a maximum of 10 seconds (defaults, Karpenter settings docs, as of 2026-11), so a deployment rollout of 500 pods yields one decision, not 500.
 3. It simulates scheduling: pods are sorted largest first and placed on existing nodes and in-flight claims before any new node is considered. Daemonset overhead and `maxPods` (derived from ENI limits unless overridden) are included.
 4. For pods that do not fit, it creates a `NodeClaim` whose requirements are the intersection of the pods' constraints and the NodePool's, and it narrows the instance catalog accordingly.
-5. The AWS provider calls EC2 `CreateFleet` with many instance-type and zone overrides. The documented behavior is `price-capacity-optimized` for Spot and lowest price for On-Demand, with an upper bound on override count around 60 (UNVERIFIED). The flexibility is the mechanism that converts a single stockout into a successful launch in a different type or zone.
+5. The AWS provider calls EC2 `CreateFleet` with many instance-type and zone overrides. The documented behavior is the price-capacity-optimized allocation strategy, which is effectively lowest price for On-Demand and balances price against interruption risk for Spot, with the request capped at 60 instance types (Karpenter FAQ and `maxInstanceTypes` in the AWS provider, as of 2026-11). The flexibility is the mechanism that converts a single stockout into a successful launch in a different type or zone.
 6. After launch, the node registers, and kube-scheduler (not Karpenter) binds the pods. Karpenter records the intended placement through nomination so that it does not launch duplicate capacity in the next loop.
 
 Preferred affinities and preferred topology spread are treated as required on the first attempt and relaxed one at a time if the simulation fails, which is why a "soft" preference can still cause an extra node.
-A provider-side unavailable-offerings cache remembers recent `InsufficientInstanceCapacity` responses for a short TTL (about 3 minutes, UNVERIFIED), which stops it hammering a drained pool but also means a recovered pool can be avoided briefly.
+A provider-side unavailable-offerings cache remembers recent `InsufficientInstanceCapacity` responses for a short TTL (`UnavailableOfferingsTTL` is 3 minutes in the AWS provider source, as of 2026-11), which stops it hammering a drained pool but also means a recovered pool can be avoided briefly.
 
 Disruption in Karpenter is a proposal-validate-execute pipeline:
 
 - Candidates are filtered by `karpenter.sh/do-not-disrupt`, blocking PDBs, `consolidateAfter` (time since the last pod event on the node), and `NodePool` disruption budgets.
-- Empty nodes go first, in parallel. Multi-node consolidation then searches (by binary search over a cost-ordered candidate list) for the largest set removable with at most one cheaper replacement. Single-node consolidation is last. A node is only replaced if the replacement is cheaper.
-- Spot-to-spot consolidation is feature-gated and requires at least 15 cheaper instance-type options (UNVERIFIED) so that the replacement does not trade price for interruption risk.
-- Before acting, the command is revalidated after a short delay (about 15 seconds, UNVERIFIED), the node is tainted, the replacement is launched and awaited, and only then is the old node drained under PDBs and the pod `terminationGracePeriodSeconds`.
-- Drift (an AMI alias, subnet, or security group change in the node class) and `expireAfter` (default 720 hours in v1, UNVERIFIED) are disruption reasons that share the same budgets.
-- Budgets are per reason, accept a count or a percentage (default `10%`, UNVERIFIED), and may carry a cron `schedule` and `duration` to block disruption in business hours.
+- Empty nodes go first, in parallel. Multi-node consolidation then searches (by binary search over a disruption-priority-ordered candidate list) for the largest set removable with at most one cheaper replacement. Single-node consolidation is last. A node is only replaced if the replacement is cheaper.
+- Spot-to-spot consolidation sits behind the `SpotToSpotConsolidation` feature gate (Alpha, off by default), and single-node replacement requires at least 15 instance-type options, while multi-node replacement does not (Karpenter docs, as of 2026-11), so that the replacement does not trade price for interruption risk.
+- Before acting, the command is revalidated after a short delay (`commandValidationDelay` is 15 seconds in upstream source, as of 2026-11), the node is tainted, the replacement is launched and awaited, and only then is the old node drained under PDBs and the pod `terminationGracePeriodSeconds`.
+- Drift (an AMI alias, subnet, or security group change in the node class) is a graceful disruption method that budgets rate-limit, while expiration (`expireAfter`, default 720 hours) and interruption are forceful methods that budgets do not limit (Karpenter docs, as of 2026-11).
+- Budgets can be scoped to the reasons `Drifted`, `Underutilized`, `Empty`, and `Unhealthy`, accept a count or a percentage (default `10%`, Karpenter docs, as of 2026-11), and may carry a cron `schedule` and `duration` to block disruption in business hours.
 
-Spot interruption handling needs an SQS queue fed by EventBridge rules for Spot interruption warnings, rebalance recommendations, and scheduled events.
-The Spot two-minute notice (AWS docs, UNVERIFIED this session) is enough for Karpenter to cordon, launch a replacement, and drain, but not enough to move a multi-gigabyte in-memory state, so state-heavy pods belong on On-Demand NodePools.
+Spot interruption handling needs an SQS queue fed by EventBridge rules for Spot interruption warnings, rebalance recommendations, scheduled change health events, instance state changes, and capacity reservation interruption warnings (upstream Karpenter CloudFormation template, as of 2026-11).
+The Spot two-minute notice, which AWS emits on a best-effort basis (AWS docs, as of 2026-11), is enough for Karpenter to cordon, launch a replacement, and drain, but not enough to move a multi-gigabyte in-memory state, so state-heavy pods belong on On-Demand NodePools.
 
 New nodes become Ready before their DaemonSets finish, which opens a race where a pod lands on a node with no CNI or no GPU device plugin yet.
 Karpenter's `startupTaints` field declares taints that a DaemonSet is expected to remove, and the simulator ignores them for capacity planning.
@@ -194,11 +223,12 @@ Cilium's recommended taint for this purpose, `node.cilium.io/agent-not-ready`, i
 
 **GKE node auto-provisioning (NAP) and compute classes.**
 On GKE the node autoscaler is Google-operated and runs in the managed control plane, so there is no autoscaler Deployment to run, upgrade, or bootstrap.
-In Standard clusters, cluster autoscaler resizes existing node pools within per-pool bounds, and NAP additionally creates and deletes whole node pools to fit pending pods, subject to cluster-wide resource limits for CPU, memory, and accelerators (UNVERIFIED flag names `--enable-autoprovisioning`, `--max-cpu`, `--max-memory`).
-Two operator-visible knobs shape behavior: the autoscaling profile (`balanced` as the default, `optimize-utilization` for more aggressive scale-down, UNVERIFIED), and the location policy (`BALANCED` spreads across zones, `ANY` prefers capacity availability and is the usual choice for Spot and scarce accelerators, UNVERIFIED).
-Custom compute classes (a `ComputeClass` CRD, UNVERIFIED GA status and minimum version) express an ordered list of acceptable node shapes with a fallback rule, for example Spot on one machine family, then Spot on another, then On-Demand, and can migrate workloads back toward a higher-priority rule when capacity returns.
+In Standard clusters, cluster autoscaler resizes existing node pools within per-pool bounds, and NAP additionally creates and deletes whole node pools to fit pending pods, subject to cluster-wide resource limits for CPU, memory, and accelerators (flags `--enable-autoprovisioning`, `--max-cpu`, `--max-memory`, gcloud reference, as of 2026-11).
+Two operator-visible knobs shape behavior: the autoscaling profile (`balanced` as the default, `optimize-utilization` for more aggressive scale-down), and the location policy (`BALANCED` spreads across zones and is the default for reservation and On-Demand pools, `ANY` prefers capacity availability and is the default for Spot and flex-start pools) (GKE docs, as of 2026-11).
+Custom compute classes (a `ComputeClass` CRD, available in Autopilot and Standard from 1.30.3-gke.1451000, GKE docs, as of 2026-11) express an ordered list of acceptable node shapes with a fallback rule, for example Spot on one machine family, then Spot on another, then On-Demand, and can migrate workloads back toward a higher-priority rule when capacity returns.
 The design difference to remember: Karpenter ranks a large flexible set by price at launch time and relies on fleet APIs for capacity-aware selection, while a compute class gives an explicit priority order and relies on node-pool creation and managed-instance-group resize.
-A new node pool is more expensive to create than resizing an existing one (UNVERIFIED), so NAP is slower on the first pod of a new shape.
+GKE always prefers scaling up an existing compatible node pool over creating a new one and warns of increased autoscaling latency above 200 node pools (GKE docs, as of 2026-11).
+The docs publish no latency comparison between creating and resizing a pool, so measure the first pod of a new shape in your own cluster.
 
 **Autopilot lineage.**
 Google's internal vertical autoscaler is described in "Autopilot: Workload Autoscaling at Google" (EuroSys 2020), which shows that moving-window and ML-based recommenders cut slack in Borg jobs while keeping out-of-memory events rare.
@@ -211,7 +241,7 @@ Model the time from a demand step to ready capacity as a sum:
 
 `T_dead = T_metric + T_decide + T_node + T_pull + T_start`
 
-where `T_metric` is staleness (up to about 45 seconds for KEDA with defaults), `T_decide` is the sync-period and policy-limited ramp, `T_node` is node launch through Ready and daemonsets, `T_pull` is image fetch and decompress, and `T_start` is application warm-up to readiness.
+where `T_metric` is staleness (about 15 seconds for KEDA with defaults, up to about 45 seconds with `useCachedMetrics` enabled), `T_decide` is the sync-period and policy-limited ramp, `T_node` is node launch through Ready and daemonsets, `T_pull` is image fetch and decompress, and `T_start` is application warm-up to readiness.
 If demand grows by `dD` requests per second during `T_dead`, the pre-warmed capacity needed to absorb it without queueing is:
 
 `H = ceil( dD / (c * u) )`
@@ -225,37 +255,37 @@ The lab model below measures this.
 
 Karpenter and KEDA are workloads, so they must be scheduled on capacity that does not depend on them.
 A Karpenter controller pod running on a node that Karpenter itself consolidates can interrupt its own control loop, and a cold cluster with zero nodes cannot start the controller that would create the first node.
-The usual answer is a small fixed managed node group or Fargate profile for system components, or EKS Auto Mode, where the Karpenter-derived engine is operated by AWS and run outside your data plane (UNVERIFIED details).
+The usual answer is a small fixed managed node group or Fargate profile for system components, or EKS Auto Mode, where the Karpenter-based engine is operated by AWS and runs off-cluster (AWS EKS best practices guide, as of 2026-11).
 On GKE the equivalent risk is absent for CA and NAP because they live in the control plane, at the price of less visibility and fewer tunables.
 This is the control-plane and data-plane separation argument from [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_04_Control_Plane_vs_Data_Plane_Separation|Control Plane vs Data Plane Separation]] applied to your own platform.
 
 ## Numbers to Know
 
-Status column legend: "verified" means confirmed in this session against search results that summarize the cited docs; "UNVERIFIED" means recalled from primary docs but not re-checked in this session and must be re-verified before this chapter reaches `status: solid`.
+Status column legend: "verified" means confirmed against the cited primary docs or upstream source on the date shown; model rows are outputs of the script below, which was re-run to reproduce them.
 
 | Quantity | Value | Source and status |
 |---|---|---|
-| HPA core formula | `ceil[currentReplicas * (currentMetricValue / desiredMetricValue)]` | (Kubernetes HPA docs as summarized in search results, as of 2026-10) verified |
-| HPA tolerance (global) | 0.1 | (Kubernetes HPA docs as summarized in search results, as of 2026-10) verified |
-| HPA scale-down stabilization window | 300 s default | (Kubernetes HPA docs as summarized in search results, as of 2026-10) verified |
-| HPA scale-up stabilization window | 0 s default | (Kubernetes HPA docs as summarized in search results, as of 2026-10) verified |
-| HPA default scale-up rate | max(100 percent, 4 pods) per 15 s | (Kubernetes HPA docs as summarized in search results, as of 2026-10) verified |
-| HPA default scale-down rate | 100 percent per 15 s | (Kubernetes HPA docs as summarized in search results, as of 2026-10) verified |
-| HPA initial readiness delay | 30 s default | (Kubernetes HPA docs as summarized in a blog, as of 2026-10) verified, secondary source |
-| HPA missing-metric handling | 100 percent of target on scale-down, 0 percent on scale-up | (Kubernetes HPA docs as summarized in a blog, as of 2026-10) verified, secondary source |
-| HPA sync period | 15 s default | UNVERIFIED |
-| HPA CPU initialization period | 5 min default | UNVERIFIED |
-| metrics-server scrape resolution | 15 s default | UNVERIFIED |
-| KEDA pollingInterval, cooldownPeriod | 30 s, 300 s defaults | UNVERIFIED |
-| KEDA CNCF status | graduated 2023-08 | UNVERIFIED |
-| Karpenter v1 API GA | 2024-08 | UNVERIFIED |
-| Karpenter batch windows | idle 1 s, max 10 s | UNVERIFIED |
-| Karpenter default budget, expireAfter | 10 percent nodes, 720 h | UNVERIFIED |
-| Karpenter spot-to-spot minimum flexibility | 15 instance types | UNVERIFIED |
-| EC2 Spot interruption notice | 2 min | UNVERIFIED |
-| GCE Spot VM preemption notice | 30 s | UNVERIFIED |
-| Cluster Autoscaler defaults | scan 10 s, scale-down unneeded 10 min, utilization threshold 0.5, max node provision time 15 min | UNVERIFIED (upstream FAQ) |
-| Managed cluster fee | EKS and GKE Standard about 0.10 USD per cluster-hour | UNVERIFIED, check pricing pages |
+| HPA core formula | `ceil[currentReplicas * (currentMetricValue / desiredMetricValue)]` | (Kubernetes HPA docs, as of 2026-11) verified |
+| HPA tolerance (global) | 0.1 | (Kubernetes HPA docs, as of 2026-11) verified |
+| HPA scale-down stabilization window | 300 s default | (Kubernetes HPA docs, as of 2026-11) verified |
+| HPA scale-up stabilization window | 0 s default | (Kubernetes HPA docs, as of 2026-11) verified |
+| HPA default scale-up rate | max(100 percent, 4 pods) per 15 s | (Kubernetes HPA docs, as of 2026-11) verified |
+| HPA default scale-down rate | 100 percent per 15 s | (Kubernetes HPA docs, as of 2026-11) verified |
+| HPA initial readiness delay | 30 s default | (Kubernetes HPA docs, as of 2026-11) verified |
+| HPA missing-metric handling | 100 percent of target on scale-down, 0 percent on scale-up | (Kubernetes HPA docs, as of 2026-11) verified |
+| HPA sync period | 15 s default | (Kubernetes HPA docs, as of 2026-11) verified |
+| HPA CPU initialization period | 5 min default | (Kubernetes HPA docs, as of 2026-11) verified |
+| metrics-server scrape resolution | 15 s default | (metrics-server README and manifest, as of 2026-11) verified |
+| KEDA pollingInterval, cooldownPeriod | 30 s, 300 s defaults | (KEDA docs v2.21, as of 2026-11) verified |
+| KEDA CNCF status | graduation announced 2023-08-22 | (CNCF announcement) verified |
+| Karpenter v1 API stable | 1.0 announced 2024-08-14 | (AWS blog) verified |
+| Karpenter batch windows | idle 1 s, max 10 s | (Karpenter settings docs v1.15, as of 2026-11) verified |
+| Karpenter default budget, expireAfter | 10 percent nodes, 720 h; budgets do not limit expiration | (Karpenter disruption docs, as of 2026-11) verified |
+| Karpenter spot-to-spot minimum flexibility | 15 instance types, single-node only; feature gate Alpha, off by default | (Karpenter docs, as of 2026-11) verified |
+| EC2 Spot interruption notice | 2 min, best effort | (AWS docs, as of 2026-11) verified |
+| GCE Spot VM preemption | No dedicated notice delay by default, 120 s configurable; shutdown period best effort, up to 30 s | (Compute Engine docs, as of 2026-11) verified |
+| Cluster Autoscaler defaults | scan 10 s, scale-down unneeded 10 min, utilization threshold 0.5, max node provision time 15 min | (upstream CA FAQ, as of 2026-11) verified |
+| Managed cluster fee | EKS standard support and GKE both 0.10 USD per cluster-hour; GKE free tier 74.40 USD per month per billing account, for one zonal or Autopilot cluster | (AWS and Google Cloud pricing pages, as of 2026-11) verified |
 | Lab model: CPU-triggered HPA, 60 s nodes, no headroom | recovery 691 s, peak backlog 219,830 msgs | model output of the script below, not a benchmark |
 | Lab model: queue-triggered HPA, 60 s nodes, no headroom | recovery 285 s, peak backlog 104,480 msgs | model output, not a benchmark |
 | Lab model: CPU-triggered HPA, 180 s nodes, no headroom | no recovery within 1,500 s | model output, not a benchmark |
@@ -272,13 +302,13 @@ Status column legend: "verified" means confirmed in this session against search 
 | Where the autoscaler runs | In your data plane (Karpenter) so it needs bootstrap capacity; or AWS-operated (Auto Mode) | In Google's control plane; no pod to schedule |
 | Node shape selection | Pod-driven: any instance type matching requirements, ranked by price and capacity | Node-pool-driven: NAP creates pools; compute classes give an ordered fallback list |
 | Launch primitive | EC2 `CreateFleet` with many overrides, no ASG | Managed instance group resize or creation |
-| Capacity types | On-Demand, Spot, On-Demand Capacity Reservations, Capacity Blocks for ML (UNVERIFIED support per Karpenter version) | On-Demand, Spot VMs, reservations, Dynamic Workload Scheduler flex-start for scarce accelerators (UNVERIFIED GA status) |
-| Spot reclaim signal | 2-minute notice, rebalance recommendation, via EventBridge to SQS | 30-second preemption notice to the VM |
+| Capacity types | On-Demand, Spot, On-Demand Capacity Reservations (Karpenter v1.3+), Capacity Blocks for ML (v1.6+), behind the `ReservedCapacity` gate, Beta and on by default since v1.6 ([Karpenter docs](https://karpenter.sh/docs/tasks/odcrs/), as of 2026-11) | On-Demand, Spot VMs, reservations, Dynamic Workload Scheduler for scarce accelerators: flex-start with queued provisioning is GA, plain flex-start is Preview (GKE docs, as of 2026-11) |
+| Spot reclaim signal | 2-minute notice, rebalance recommendation, via EventBridge to SQS | Preemption notice via metadata with no dedicated delay by default (120 s configurable) and a best-effort shutdown period of up to 30 s (Compute Engine docs, as of 2026-11) |
 | Consolidation | Built in: empty, multi-node, and single-node with price comparison | CA scale-down by utilization; `optimize-utilization` profile; compute-class migration toward higher priority rules |
 | Voluntary disruption control | `NodePool` disruption budgets by reason with cron windows, `do-not-disrupt`, PDBs | Maintenance windows and exclusions, surge upgrade settings, PDBs |
 | Pod density limit | ENI and IP limits unless prefix delegation or custom networking | Per-node pod CIDR from a secondary range (default max pods per node set per pool) |
 | Quota ceilings that stall scale-out | vCPU quotas per instance-family group, EC2 API throttling, subnet IP exhaustion | Regional CPU and accelerator quotas, secondary range exhaustion, API rate limits |
-| Image pull acceleration | Lazy-loading and pre-pulled data volumes (UNVERIFIED GA status) | Image streaming and secondary boot disks (UNVERIFIED GA status) |
+| Image pull acceleration | SOCI snapshotter lazy loading and parallel pull in recent EKS-optimized AL2023 and Bottlerocket AMIs (AWS blog, 2025-08), and [prefetched Bottlerocket data volumes](https://aws.amazon.com/blogs/containers/reduce-container-startup-time-on-amazon-eks-with-bottlerocket-data-volume/) (AWS blog, 2023-10) | [Image streaming](https://docs.cloud.google.com/kubernetes-engine/docs/how-to/image-streaming) and [secondary boot disks](https://docs.cloud.google.com/kubernetes-engine/docs/how-to/data-container-image-preloading), both documented without a Preview label, COS minimum 1.30.1-gke.1329000 (GKE docs, as of 2026-11) |
 
 The decisive operating difference is ownership of the node-loop controller.
 Self-managed Karpenter gives you control of price ranking, disruption policy, and fast iteration, and in exchange you own its upgrades, its IAM, and its bootstrap circularity.
@@ -294,7 +324,7 @@ Pods needed at peak: 1,000 / 3 = 334, so 300 additional pods over the baseline o
 ### Step 1: Capacity and dead-time model
 
 The script below is stdlib-only Python.
-It models CPU-triggered and queue-triggered HPA with the unready-pod rebalancing described above, a 45 second metric lag, a 20 second pod start, and configurable node start time and headroom.
+It models CPU-triggered and queue-triggered HPA with the unready-pod rebalancing described above, a 45 second metric lag (the pessimistic cached-metrics case), a 20 second pod start, and configurable node start time and headroom.
 Save it as `autoscale_sim.py` and run `python3 autoscale_sim.py`.
 
 ```python
@@ -390,7 +420,7 @@ headroom 300 pods = 300 vCPU = $8,760 per month at $0.04/vCPU-h
 Reading the table:
 
 - CPU-triggered scaling with 60 second nodes needs 691 seconds to recover, versus 285 seconds for the queue-triggered metric, because each CPU wave must wait for readiness. With 180 second nodes the CPU-triggered fleet had not recovered after 1,500 seconds in this model.
-- Headroom of 300 pods reduces the 180 second node, queue-triggered case from 504 seconds to 199 seconds. It never reaches zero backlog before the first scale action because `T_metric` (45 seconds) is still on the critical path.
+- Headroom of 300 pods reduces the 180 second node, queue-triggered case from 504 seconds to 199 seconds. It never reaches zero backlog before the first scale action because the modeled `T_metric` (45 seconds) is still on the critical path.
 - The `peak_ready_pods` of 400 is the `max_pods` clamp; both metrics overshoot because backlog drain demand is added to the arrival rate. Do not read the pod-seconds as a cost comparison between metrics.
 - The headroom cost is `H * vCPU * price * 730`. At the assumed 0.04 USD per vCPU-hour, 300 headroom pods is 8,760 USD per month. That number is the insurance premium to compare against the business cost of a 5 minute backlog.
 
@@ -523,6 +553,7 @@ metadata:
 spec:
   podIdentity:
     provider: aws
+    identityOwner: keda
 ---
 apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
@@ -554,7 +585,6 @@ spec:
         queueURL: "https://sqs.us-east-1.amazonaws.com/${ACCOUNT_ID}/${QUEUE_NAME}"
         queueLength: "50"
         awsRegion: "us-east-1"
-        identityOwner: operator
 ```
 
 Sizing check for `queueLength: 50`: at a measured 3 to 5 msgs/s per worker, 50 messages per replica is 10 to 17 seconds of backlog per pod, so the HPA scales out when the backlog implies more than that.
@@ -602,14 +632,15 @@ spec:
 ```
 
 Select it in the pod spec with `nodeSelector: { cloud.google.com/compute-class: workers }`.
-Replace the SQS trigger with KEDA's `gcp-pubsub` trigger using workload identity.
-All flag names and `ComputeClass` fields in this block are UNVERIFIED this session and must be checked against current `gcloud container clusters create --help` and the compute class reference.
+Replace the SQS trigger with KEDA's `gcp-pubsub` trigger using workload identity, or preferably with the `prometheus` trigger against the Cloud Monitoring PromQL endpoint, because KEDA has deprecated `gcp-pubsub` (KEDA blog, 2025-09-15).
+The flag names and `ComputeClass` fields in this block were checked against the gcloud reference and the compute class docs (as of 2026-11).
+`whenUnsatisfiable` defaults to `DoNotScaleUp` from GKE 1.33, so the explicit `ScaleUpAnyway` here is deliberate, and from 1.33.3-gke.1136000 a `ComputeClass` can use node pool auto-creation without cluster-level NAP (GKE docs, as of 2026-11).
 
 ### Cost estimate, budget alarm, and teardown
 
-Estimate for a 4-hour lab (assumptions, not quotes): cluster fee about 0.10 USD per hour (UNVERIFIED) is 0.40 USD; two baseline vCPUs for 4 hours at the assumed 0.04 USD per vCPU-hour is 0.32 USD; a burst to roughly 100 vCPUs for 30 minutes is 2.00 USD; headroom of 10 vCPUs for 4 hours is 1.60 USD.
+Estimate for a 4-hour lab (assumptions, not quotes): cluster fee 0.10 USD per hour (AWS and Google Cloud pricing pages, as of 2026-11) is 0.40 USD; two baseline vCPUs for 4 hours at the assumed 0.04 USD per vCPU-hour is 0.32 USD; a burst to roughly 100 vCPUs for 30 minutes is 2.00 USD; headroom of 10 vCPUs for 4 hours is 1.60 USD.
 Total under 5 USD, plus negligible SQS and EBS charges.
-The dominant risk is forgetting the cluster, which is about 73 USD per month in management fees alone (UNVERIFIED) before any nodes.
+The dominant risk is forgetting the cluster, which is about 73 USD per month in management fees alone (0.10 USD x 730 hours) before any nodes.
 
 Budget alarm (AWS CLI):
 
@@ -709,14 +740,14 @@ If your design requires launching nodes to survive the loss of a zone, your reco
 The controller needs permissions to create and terminate instances and to read pricing and instance-type data.
 Scope `ec2:RunInstances`, `ec2:CreateFleet`, and `ec2:TerminateInstances` with conditions on request and resource tags for your cluster and NodePool, grant `iam:PassRole` only for the single node role, and give the controller its own role through IRSA or EKS Pod Identity (see [[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter/Chapter_02_Workload_Identity_Federation|Workload Identity Federation]]).
 Scope the interruption queue's resource policy to the EventBridge rules that feed it.
-Isolated VPCs without internet egress need endpoints for EC2, STS, SSM, and SQS, and the pricing API may lack a private endpoint, which requires an isolated-VPC mode (UNVERIFIED).
+Isolated VPCs without internet egress need endpoints for EC2, ECR, S3, STS, SSM, EKS, and SQS, and the Price List Query API has no private endpoint, so set the controller's `ISOLATED_VPC` option and accept a static price list that can go stale (Karpenter docs, as of 2026-11).
 
 **Node class hygiene.**
 Require IMDSv2 with hop limit 1 so pods cannot reach the node role, encrypt EBS volumes with a customer-managed KMS key through the block device mapping, and pin the AMI alias in production so that drift-driven node replacement is a reviewed change, not an `@latest` surprise.
 
 **KEDA confused deputy.**
-A tenant who can create a `ScaledObject` can point it at any queue the KEDA operator's identity can read when `identityOwner: operator` is used.
-Prefer per-workload identity (`identityOwner: pod`, the default for AWS scalers, UNVERIFIED) or namespaced `TriggerAuthentication` with a role that can only see that tenant's queue, and restrict who may create `ClusterTriggerAuthentication`.
+A tenant who can create a `ScaledObject` can point it at any queue the KEDA operator's identity can read when the `TriggerAuthentication` uses `identityOwner: keda`, which is the documented default for `provider: aws` (the trigger-level `identityOwner` parameter is deprecated since KEDA v2.13, KEDA docs, as of 2026-11).
+Prefer per-workload identity (`identityOwner: workload` or a scoped `roleArn`) or namespaced `TriggerAuthentication` with a role that can only see that tenant's queue, and restrict who may create `ClusterTriggerAuthentication`.
 Give the operator only the read action it needs (`sqs:GetQueueAttributes`), never `ReceiveMessage`.
 On Google Cloud, use workload identity for the Pub/Sub scaler and place Pub/Sub inside the same VPC Service Controls perimeter as the cluster (see [[17-Cloud-AI-Engineering/Volume_03_GCP_Deep_Dive/Chapter_03_VPC_Service_Controls_Security_Perimeters|VPC Service Controls: Security Perimeters]]).
 
@@ -735,7 +766,7 @@ The levers, in rough order of leverage:
 4. Price the headroom explicitly. At the assumed 0.04 USD per vCPU-hour, a headroom pod with 1 vCPU costs about 29 USD per month, so the question is how many minutes of breach that buys back.
 5. Predictive floors. A cron trigger for known peaks is cheaper than permanent headroom for the same coverage.
 6. Zone spread has a network price. Cross-zone chatter between spread replicas is billed, so spread for failure domains but keep chatty tiers co-located where the SLO allows (see [[17-Cloud-AI-Engineering/Volume_09_FinOps_and_Cloud_Economics/Chapter_04_Network_Egress_Economics_and_Optimization|Network Egress Economics and Optimization]]).
-7. Managed versus self-managed. EKS Auto Mode charges a management premium on managed instances (UNVERIFIED amount), and GKE Autopilot bills on pod requests. Both trade a fee for removing operational ownership.
+7. Managed versus self-managed. EKS Auto Mode charges a per-instance-type management fee on managed instances (12 percent of the EC2 price in the AWS pricing page's worked example, computed from that example, as of 2026-11), and GKE Autopilot bills on pod requests. Both trade a fee for removing operational ownership.
 
 ## Interview Questions and Model Answers
 

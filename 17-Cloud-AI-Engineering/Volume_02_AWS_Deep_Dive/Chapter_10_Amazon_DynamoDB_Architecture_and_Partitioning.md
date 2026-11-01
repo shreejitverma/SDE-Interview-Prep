@@ -2,7 +2,7 @@
 type: concept
 track: [cloud-ai, ai-eng, sde, distinguished]
 level:
-status: draft
+status: solid
 last_reviewed:
 sources: 
   - "https://www.usenix.org/conference/atc22/presentation/elhemali"
@@ -19,6 +19,32 @@ sources:
   - "https://research.google/pubs/bigtable-a-distributed-storage-system-for-structured-data/"
   - "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/ServiceQuotas.html"
   - "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/burst-adaptive-capacity.html"
+  - "https://www.usenix.org/system/files/atc22-elhemali.pdf"
+  - "https://www.usenix.org/system/files/atc23-idziorek.pdf"
+  - "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Constraints.html"
+  - "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/on-demand-capacity-mode.html"
+  - "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/read-write-operations.html"
+  - "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/warm-throughput.html"
+  - "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/GSI.html"
+  - "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/LSI.html"
+  - "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/TTL.html"
+  - "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Streams.html"
+  - "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/PointInTimeRecovery_Howitworks.html"
+  - "https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_ListBackups.html"
+  - "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/V2globaltables_HowItWorks.html"
+  - "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/global-tables-billing.html"
+  - "https://aws.amazon.com/about-aws/whats-new/2025/06/amazon-dynamo-db-global-tables-multi-region-strong-consistency-generally-available/"
+  - "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/encryption.howitworks.html"
+  - "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/encryption.usagenotes.html"
+  - "https://docs.aws.amazon.com/vpc/latest/privatelink/vpc-endpoints-ddb.html"
+  - "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/throttling-diagnosing-workflow.html"
+  - "https://aws.amazon.com/dynamodb/sla/"
+  - "https://aws.amazon.com/dynamodb/pricing/on-demand/"
+  - "https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonDynamoDB/current/us-east-1/index.json"
+  - "https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_rcps.html"
+  - "https://github.com/hashicorp/terraform-provider-aws/blob/v5.100.0/CHANGELOG.md"
+  - "https://aws.amazon.com/about-aws/whats-new/2024/03/amazon-dynamodb-resource-based-policies/"
+  - "https://aws.amazon.com/about-aws/whats-new/2026/02/aws-expands-resource-control-policies-amazon/"
 ---
 
 # Amazon DynamoDB: Architecture and Partitioning
@@ -80,7 +106,7 @@ Each partition of a table holds a disjoint, contiguous part of the table's key r
 The range is over the hash of the partition key, so neighboring customer IDs do not end up on neighboring partitions.
 Within one partition key value, items are sorted by the sort key.
 A table without local secondary indexes can split one item collection across partitions by sort-key range.
-A table with an LSI cannot, which is the physical reason for the 10 GB item-collection limit on LSI tables (AWS docs; UNVERIFIED as of 2026-10).
+A table with an LSI cannot, which is the physical reason for the 10 GB item-collection limit on LSI tables (AWS docs, as of 2026-11).
 The replicas of a partition form a replication group, and the group uses Multi-Paxos for leader election and consensus (Elhemali et al., ATC 2022).
 The three replicas sit in three different AZs, so losing one AZ costs each group one replica and leaves it with a quorum.
 
@@ -101,7 +127,7 @@ Adding a log replica takes seconds, because it only copies recent log entries, s
 ### Failure detection and gray failures
 
 A follower that cannot reach the leader does not start an election straight away.
-It first asks the other replicas whether they can still reach the leader, so a one-way link fault on one node does not cause a needless leader change (Elhemali et al., ATC 2022; UNVERIFIED this pass).
+It first asks the other replicas whether they can still reach the leader, so a one-way link fault on one node does not cause a needless leader change (Elhemali et al., ATC 2022).
 This matters because every election puts writes behind the lease wait.
 A detector that is too eager turns gray network failures into write outages, and the extra confirmation step trades a little detection delay for far fewer false elections.
 
@@ -124,18 +150,18 @@ That is why a single hot key still throttles at the partition ceiling even when 
 
 Partitions split for two reasons: size and heat.
 A split for size happens when a partition's data grows past an internal threshold.
-The 10 GB figure in older docs is not a documented contract today (UNVERIFIED as of 2026-10).
+The current Constraints page states that 10 GB is the maximum size of a partition (AWS docs, as of 2026-11).
 A split for consumption happens when a partition is consistently hot.
-The split point is chosen from the observed distribution of accessed keys, not from the midpoint of the key range, so each child gets roughly half the load (Elhemali et al., ATC 2022; UNVERIFIED this pass).
+The split point is chosen from the key distribution the partition has observed, as a proxy for the access pattern, not from the midpoint of the key range (Elhemali et al., ATC 2022).
 The paper also lists when splitting is pointless and is skipped.
 One case is a single hot item.
 The other is a key range being accessed sequentially, because after the split all traffic lands in the right-hand child again.
-The AWS docs describe the same behavior as adaptive capacity that "isolates frequently accessed items" (AWS docs; UNVERIFIED as of 2026-10).
+The AWS docs describe the same behavior under the heading "Isolate frequently accessed items", and they allow splitting an item collection by sort key only when its traffic is not tracked by a monotonic increase or decrease of the sort key (AWS docs, as of 2026-11).
 For you as a designer, the rule is direct.
 A write-heavy item collection keyed by a timestamp sort key under one partition key is limited to about 1,000 WCU per second however long you wait, because every split leaves the hot edge in one child.
 A split creates a new replication group and moves data between storage nodes, so it takes time and cannot absorb a sudden spike.
-This is an inference from the paper's minutes-scale replica repair times.
-It is also why the warm throughput feature exists: you can ask for the partitions to be created before the traffic arrives, as described in the AWS docs (UNVERIFIED as of 2026-10).
+The paper says partition splits usually complete in the order of minutes (Elhemali et al., ATC 2022).
+It is also why the warm throughput feature exists: you can pre-warm a table so it can handle the higher rate from the moment the traffic arrives (AWS docs, as of 2026-11).
 
 ### The mechanism most engineers miss: constant-work metadata refresh
 
@@ -143,10 +169,10 @@ Every request router needs the partition map, which says which replication group
 Originally, routers cached this map and went to the metadata service on a cache miss.
 Under steady state the hit rate was very high, which hid a bimodal risk.
 When caches went cold, for example after a router fleet deployment or a mass leader change, the load on the metadata service jumped from almost nothing to the full request rate within seconds.
-The redesign moved partition metadata into an in-memory distributed store called MemDS, built on a Patricia-tree and Merkle-tree hybrid the paper calls a Perkle (Elhemali et al., ATC 2022; UNVERIFIED this pass).
+The redesign moved partition metadata into an in-memory distributed store called MemDS, built on a Patricia-tree and Merkle-tree hybrid the paper calls a Perkle (Elhemali et al., ATC 2022).
 The key change is in the routers.
 A router serves from its local cache, but even on a cache hit it asynchronously asks MemDS to refresh that entry.
-So MemDS load equals the router request rate whether the cache is warm or cold (Elhemali et al., ATC 2022; UNVERIFIED this pass).
+So MemDS load equals the router request rate whether the cache is warm or cold (Elhemali et al., ATC 2022).
 This is the constant-work pattern from the [Builders' Library](https://aws.amazon.com/builders-library/reliability-and-constant-work/) applied to a cache.
 You spend extra metadata capacity during normal operation so that there is no cold-cache mode left to fail in.
 The trade-off is a metadata fleet sized for 100 percent of request rate instead of the miss rate, which only makes sense when the cost of a stampede is a regional outage.
@@ -155,35 +181,35 @@ See [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_05
 ### Durability and continuous verification
 
 WALs are kept on all three replicas and are also archived to Amazon S3 periodically.
-That archive is what point-in-time recovery and backups read from, so a restore does not use the live replicas' throughput (Elhemali et al., ATC 2022; UNVERIFIED this pass).
+Backups are built from that archive, and point-in-time restore combines it with periodic partition snapshots in S3, so neither affects the table's performance or availability (Elhemali et al., ATC 2022).
 Log entries and messages carry checksums.
-A background scrub checks that live replicas match each other and also match a replica rebuilt offline from the archived WAL (Elhemali et al., ATC 2022; UNVERIFIED this pass).
+A background scrub checks that live replicas match each other and also match a replica rebuilt offline from the archived WAL (Elhemali et al., ATC 2022).
 AWS has said publicly that it model-checked the DynamoDB replication protocol in TLA+ and found subtle bugs before they shipped ([Newcombe et al., CACM 2015](https://lamport.azurewebsites.net/tla/formal-methods-amazon.pdf)).
 
 ### Transactions
 
-`TransactWriteItems` and `TransactGetItems` are coordinated by transaction coordinators in the request routing layer.
-They use a timestamp-ordering protocol with a prepare phase and a commit phase across the participating partitions, not long-held two-phase locks ([Idziorek et al., USENIX ATC 2023](https://www.usenix.org/conference/atc23/presentation/idziorek); details UNVERIFIED this pass).
+`TransactWriteItems` and `TransactGetItems` pass through the request routers, which forward them to a separate fleet of transaction coordinators.
+They use a timestamp-ordering protocol with a prepare phase and a commit phase across the participating partitions, and they acquire no locks ([Idziorek et al., USENIX ATC 2023](https://www.usenix.org/conference/atc23/presentation/idziorek)).
 Non-transactional reads and writes are not blocked by in-flight transactions, which keeps single-item latency predictable.
 The costs are that every transactional item is billed twice (two WCU or RCU per unit), and that conflicts show up as `TransactionCanceledException`, which the client has to retry with jitter.
 
 ### Global tables: MREC and MRSC
 
 Under MREC, each Region's replica table accepts writes locally.
-Changes travel to the other Regions asynchronously through the table's change log, and concurrent updates to the same item are settled with last-writer-wins (AWS docs; UNVERIFIED as of 2026-10).
-Replication latency is usually under a second and is exposed as the `ReplicationLatency` CloudWatch metric (AWS docs; UNVERIFIED as of 2026-10).
+Changes travel to the other Regions asynchronously by being read from a DynamoDB Stream on the replica, and concurrent updates to the same item are settled with last-writer-wins (AWS docs, as of 2026-11).
+Replication typically takes a second or less and is exposed as the `ReplicationLatency` CloudWatch metric (AWS docs, as of 2026-11).
 Condition expressions are evaluated only against the local replica.
 So a `ConditionExpression` like `stock > 0` cannot stop two Regions from both decrementing the last unit.
 MRSC replicates writes synchronously to at least one other Region before acknowledging.
-It needs exactly three Regions, either three full replicas or two replicas plus a witness, and was announced GA in mid-2025 (AWS docs and AWS announcement, as of 2026-10).
+It needs exactly three Regions, either three full replicas or two replicas plus a witness, and was announced GA on June 30, 2025 (AWS docs and [AWS announcement](https://aws.amazon.com/about-aws/whats-new/2025/06/amazon-dynamo-db-global-tables-multi-region-strong-consistency-generally-available/), as of 2026-11).
 MRSC gives an RPO of zero and strongly consistent reads in any Region.
-In exchange, every write pays at least one inter-Region round trip, and some APIs are restricted, for example transactions (AWS docs, as of 2026-10).
+In exchange, every write pays at least one inter-Region round trip, and transactions, TTL, and LSIs are not supported (AWS docs, as of 2026-11).
 
 ### Control plane versus data plane
 
 CreateTable, UpdateTable, splits, moves, and replica repair run in the auto-admin control plane.
 GetItem, PutItem, Query, and the other item APIs run only through the request routers and storage nodes.
-The paper describes caching IAM and AWS KMS results in the routers so the data plane keeps serving through short impairments of those dependencies (Elhemali et al., ATC 2022; UNVERIFIED this pass).
+The paper describes caching IAM and AWS KMS results in the routers so the data plane keeps serving through short impairments of those dependencies (Elhemali et al., ATC 2022).
 That is static stability in the sense of [[17-Cloud-AI-Engineering/Volume_01_Cloud_Architecture_Principles/Chapter_02_Regions_Zones_and_Static_Stability|Regions, Zones, and Static Stability]].
 The October 2025 outage showed that the regional DNS record for the endpoint is part of the data plane too, and that it has its own automation control plane.
 
@@ -196,29 +222,29 @@ The October 2025 outage showed that the regional DNS record for the endpoint is 
 | GAC token refill interval | Order of a few seconds | Table-level limits converge over seconds, not milliseconds | Elhemali et al., ATC 2022 |
 | Storage replica heal time | Several minutes | Durability gap during heal is closed by log replicas | Elhemali et al., ATC 2022 |
 | Log replica add time | Seconds | Write quorum restored quickly after node loss | Elhemali et al., ATC 2022 |
-| MemDS router cache hit rate | 99.75 percent | Explains why miss-driven designs hide stampede risk | Elhemali et al., ATC 2022; UNVERIFIED this pass |
-| Per-partition read ceiling | 3,000 RCU/s | Hard limit per hashed key range regardless of table capacity | AWS docs; UNVERIFIED as of 2026-10 |
-| Per-partition write ceiling | 1,000 WCU/s | Single hot key ceiling, about 1,000 x 1 KB writes/s | AWS docs; UNVERIFIED as of 2026-10 |
-| Read unit size | 4 KB per RCU strong, 0.5 RCU eventual, 2 RCU transactional | Item size rounds up per 4 KB | AWS docs; UNVERIFIED as of 2026-10 |
-| Write unit size | 1 KB per WCU, 2 WCU transactional | A 1.1 KB item costs 2 WCU | AWS docs; UNVERIFIED as of 2026-10 |
-| Maximum item size | 400 KB | Attribute names count toward size | AWS docs; UNVERIFIED as of 2026-10 |
-| Partition key / sort key max length | 2,048 / 1,024 bytes | Bounds composite-key schemes | AWS docs; UNVERIFIED as of 2026-10 |
-| Burst capacity retention | Up to 300 s of unused capacity | Covers spikes, not sustained skew | AWS docs; UNVERIFIED as of 2026-10 |
-| New on-demand table initial capacity | 4,000 WRU/s and 12,000 RRU/s | Launch spikes above this need warm throughput | AWS docs; UNVERIFIED as of 2026-10 |
-| On-demand scaling rule | Up to 2x previous peak; faster growth within 30 min may throttle | Pre-warm before launches | AWS docs; UNVERIFIED as of 2026-10 |
-| Default per-table throughput quota | 40,000 RCU and 40,000 WCU (us-east-1) | Large tables need a quota increase in advance | AWS docs, as of 2026-10 |
-| Default per-account throughput quota | 80,000 RCU and 80,000 WCU (us-east-1) | Shared across provisioned tables in a Region | AWS docs, as of 2026-10 |
-| Tables per account per Region | 2,500 default | Caps table-per-tenant designs | AWS docs, as of 2026-10 |
-| GSIs / LSIs per table | 20 / 5 default | LSIs fix item collections to one partition, 10 GB limit | AWS docs; UNVERIFIED as of 2026-10 |
-| Transaction size | 100 actions, 4 MB aggregate | Cross-partition coordination limit | AWS docs; UNVERIFIED as of 2026-10 |
-| BatchWriteItem / BatchGetItem | 25 items / 100 items, 16 MB | Partial failures returned as UnprocessedItems/Keys | AWS docs; UNVERIFIED as of 2026-10 |
-| Query and Scan page size | 1 MB before filter | Filters do not reduce RCU consumed | AWS docs; UNVERIFIED as of 2026-10 |
-| Streams retention | 24 hours | Consumer lag beyond this loses change records | AWS docs; UNVERIFIED as of 2026-10 |
-| PITR window | Configurable up to 35 days | Restore creates a new table | AWS docs; UNVERIFIED as of 2026-10 |
-| SLA | 99.99% single-Region, 99.999% global tables | Multi-Region is the only path to five nines | AWS SLA page; UNVERIFIED as of 2026-10 |
-| On-demand price, Standard class, us-east-1 | $0.625 per million WRU, $0.125 per million RRU | Post-November-2024 price cut | AWS pricing, as of 2026-10 |
-| Provisioned price, Standard class, us-east-1 | $0.00065 per WCU-hour, $0.00013 per RCU-hour | Breakeven vs on-demand at about 29% utilization | AWS pricing, as of 2026-10 |
-| Storage price, Standard class, us-east-1 | $0.25 per GB-month | Standard-IA trades lower storage for higher throughput prices | AWS pricing, as of 2026-10 |
+| Router cache hit rate before MemDS | About 99.75 percent | Explains why miss-driven designs hide stampede risk | Elhemali et al., ATC 2022 |
+| Per-partition read ceiling | 3,000 RCU/s | Hard limit per hashed key range regardless of table capacity | AWS docs, as of 2026-11 |
+| Per-partition write ceiling | 1,000 WCU/s | Single hot key ceiling, about 1,000 x 1 KB writes/s | AWS docs, as of 2026-11 |
+| Read unit size | 4 KB per RCU strong, 0.5 RCU eventual, 2 RCU transactional | Item size rounds up per 4 KB | AWS docs, as of 2026-11 |
+| Write unit size | 1 KB per WCU, 2 WCU transactional | A 1.1 KB item costs 2 WCU | AWS docs, as of 2026-11 |
+| Maximum item size | 400 KB | Attribute names count toward size | AWS docs, as of 2026-11 |
+| Partition key / sort key max length | 2,048 / 1,024 bytes | Bounds composite-key schemes | AWS docs, as of 2026-11 |
+| Burst capacity retention | Up to 300 s of unused capacity | Covers spikes, not sustained skew | AWS docs, as of 2026-11 |
+| New on-demand table initial capacity | 4,000 WRU/s and 12,000 RRU/s | Launch spikes above this need warm throughput | AWS docs, as of 2026-11 |
+| On-demand scaling rule | Up to 2x previous peak; faster growth within 30 min may throttle | Pre-warm before launches | AWS docs, as of 2026-11 |
+| Default per-table throughput quota | 40,000 RCU and 40,000 WCU per Region (RRU and WRU on-demand) | Large tables need a quota increase in advance | AWS docs, as of 2026-11 |
+| Default per-account throughput quota | 80,000 RCU and 80,000 WCU per Region, provisioned only | Shared across provisioned tables in a Region | AWS docs, as of 2026-11 |
+| Tables per account per Region | 2,500 default | Caps table-per-tenant designs | AWS docs, as of 2026-11 |
+| GSIs / LSIs per table | 20 / 5 default | LSIs fix item collections to one partition, 10 GB limit | AWS docs, as of 2026-11 |
+| Transaction size | 100 actions, 4 MB aggregate | Cross-partition coordination limit | AWS docs, as of 2026-11 |
+| BatchWriteItem / BatchGetItem | 25 items / 100 items, 16 MB | Partial failures returned as UnprocessedItems/Keys | AWS docs, as of 2026-11 |
+| Query and Scan page size | 1 MB before filter | Filters do not reduce RCU consumed | AWS docs, as of 2026-11 |
+| Streams retention | 24 hours | Consumer lag beyond this loses change records | AWS docs, as of 2026-11 |
+| PITR window | Configurable from 1 to 35 days | Restore creates a new table | AWS docs, as of 2026-11 |
+| SLA | 99.99% Standard SLA, 99.999% Global Tables SLA | Multi-Region is the only path to five nines | AWS SLA page, as of 2026-11 |
+| On-demand price, Standard class, us-east-1 | $0.625 per million WRU, $0.125 per million RRU | Post-November-2024 price cut | AWS price list, as of 2026-11 |
+| Provisioned price, Standard class, us-east-1 | $0.00065 per WCU-hour, $0.00013 per RCU-hour | Breakeven vs on-demand at about 29% utilization | AWS price list, as of 2026-11 |
+| Storage price, Standard class, us-east-1 | $0.25 per GB-month | Standard-IA trades lower storage for higher throughput prices | AWS price list, as of 2026-11 |
 
 ## AWS vs GCP Mechanism Parity
 
@@ -236,7 +262,7 @@ The October 2025 outage showed that the regional DNS record for the endpoint is 
 | Change data capture | DynamoDB Streams, 24 h; Kinesis Data Streams integration | Change streams | Change streams | Retention windows differ; check current docs |
 | Secondary indexes | GSI (async, separate capacity), LSI (sync, same partition) | None native | Synchronous secondary indexes | An under-provisioned DynamoDB GSI throttles base-table writes |
 | Private access | Gateway VPC endpoint; interface endpoint via PrivateLink | Private Google Access, Private Service Connect | Private Google Access, Private Service Connect | Gateway endpoints are route-table based and free; PSC is IP-based |
-| Data perimeter | Endpoint policies, SCPs, RCPs (RCP support for DynamoDB UNVERIFIED as of 2026-10), `aws:SourceVpce` | VPC Service Controls perimeter | VPC Service Controls perimeter | VPC SC is one service-level perimeter; AWS composes several policy types |
+| Data perimeter | Endpoint policies, SCPs, RCPs (DynamoDB support announced February 2026; AWS docs, as of 2026-11), `aws:SourceVpce` | VPC Service Controls perimeter | VPC Service Controls perimeter | VPC SC is one service-level perimeter; AWS composes several policy types |
 | Encryption at rest | Always on; AWS owned, AWS managed, or customer managed KMS key | Google-managed or CMEK via Cloud KMS | Google-managed or CMEK via Cloud KMS | Revoking the key makes data unreadable on both; check recovery windows |
 | Pricing model | Per request unit or provisioned units plus GB-month | Per node-hour plus storage | Per compute (nodes or processing units) plus storage | DynamoDB on-demand scales to zero; Bigtable and Spanner have a minimum footprint |
 
@@ -256,10 +282,11 @@ The difference you observe is the gap between a table-level budget and a partiti
 ### Lab cost estimate
 
 Each run writes 200,000 items of under 1 KB, so each write costs 1 WRU.
-Two runs come to 400,000 WRU, or about $0.25 at $0.625 per million WRU (AWS pricing, as of 2026-10).
-Storage for 400,000 small items is well under 1 GB, and the first 25 GB per month are in the free tier (AWS pricing, as of 2026-10).
-Contributor Insights adds a small per-event charge, under $1 for this lab (UNVERIFIED as of 2026-10).
-Budget for under $2 in total, provided you tear everything down the same day.
+Two runs come to at most 400,000 WRU, or about $0.25 at $0.625 per million WRU (AWS price list, as of 2026-11).
+Storage for 400,000 small items is well under 1 GB, and the first 25 GB per month are in the free tier (AWS price list, as of 2026-11).
+Contributor Insights charges $0.50 per rule per month plus $0.03 per million events in us-east-1 (AWS price list, as of 2026-11).
+A table with a sort key gets up to four rules in the default mode, and each item counts as two events (AWS docs, as of 2026-11), so this lab costs at most about $2 in rules and about $0.02 in events.
+Budget for under $3 in total, provided you tear everything down the same day.
 
 ### Terraform / OpenTofu
 
@@ -269,7 +296,7 @@ terraform {
   required_providers {
     aws = {
       source  = "hashicorp/aws"
-      version = ">= 5.60"
+      version = ">= 5.73"
     }
   }
 }
@@ -373,7 +400,7 @@ output "table_name" {
 }
 ```
 
-The `on_demand_throughput` block needs a recent 5.x AWS provider release, and the exact minimum version is UNVERIFIED as of 2026-10.
+The `on_demand_throughput` block was added to `aws_dynamodb_table` in AWS provider 5.72.0, and 5.73.0 fixed a validation error when one of its attributes is omitted ([provider changelog](https://github.com/hashicorp/terraform-provider-aws/blob/v5.100.0/CHANGELOG.md), as of 2026-11).
 
 ```bash
 terraform init
@@ -455,10 +482,11 @@ That last prediction comes from the paper's split rules and is the experiment wo
 
 ```bash
 terraform destroy -var "alert_email=you@example.com" -auto-approve
-aws dynamodb list-backups --table-name ddb-partition-lab --region us-east-1
+aws dynamodb list-backups --table-name ddb-partition-lab --backup-type ALL --region us-east-1
 ```
 
-PITR history goes away with the table (UNVERIFIED as of 2026-10; DynamoDB may keep a system backup of a deleted table that had PITR enabled, so check the list-backups output).
+Deleting a table with PITR enabled creates a system backup that DynamoDB retains for 35 days at no additional cost (AWS docs, as of 2026-11).
+`ListBackups` returns only user backups by default, so the command passes `--backup-type ALL` to show the system backup too (AWS API reference, as of 2026-11).
 On-demand backups created by hand are kept and billed until you delete them, which is why the second command lists them.
 
 ### Capacity sizing: production order-events table
@@ -474,10 +502,10 @@ A 2.5 KB item rounds up to 3 WCU, so peak demand is 50,000 x 3 = 150,000 WCU/s.
 Step 2, read units.
 A 2.5 KB item fits in one 4 KB read unit, and an eventually consistent read costs 0.5 RCU, so peak demand is 120,000 x 0.5 = 60,000 RCU/s.
 Step 3, quotas.
-150,000 WCU is well above the default 40,000 per-table quota (AWS docs, as of 2026-10), so file the increase weeks before launch.
+150,000 WCU is well above the default 40,000 per-table quota (AWS docs, as of 2026-11), so file the increase weeks before launch.
 Step 4, partition floor.
 Writes need at least 150,000 / 1,000 = 150 partitions, and reads need at least 60,000 / 3,000 = 20.
-Storage drives about 300 partitions if partitions hold around 10 GB (UNVERIFIED as of 2026-10), so the aggregate partition ceiling is not the constraint.
+Storage drives at least about 300 partitions at the documented 10 GB partition maximum (AWS docs, as of 2026-11), so the aggregate partition ceiling is not the constraint.
 Step 5, per-key check.
 If the largest tenant produces 1 percent of writes, that is 500 writes/s x 3 WCU = 1,500 WCU on one partition key, which is above the 1,000 WCU ceiling.
 That throttles no matter how much table capacity you buy.
@@ -486,7 +514,7 @@ Step 6, on-demand cost.
 Average writes: 20,000 x 3 = 60,000 WRU/s, times 2,592,000 s in a 30-day month, is 155,520 million WRU, which at $0.625 per million is $97,200.
 Average reads: 25,000 RRU/s x 2,592,000 s is 64,800 million RRU, which at $0.125 per million is $8,100.
 Storage: 3,000 GB x $0.25 = $750.
-On-demand total: about $106,000 per month (AWS pricing, as of 2026-10).
+On-demand total: about $106,000 per month (AWS price list, as of 2026-11).
 Step 7, provisioned cost with auto scaling at a 70 percent target.
 Average provisioned writes are 60,000 / 0.7 = 85,714 WCU, and 85,714 x 730 h x $0.00065 is about $40,700.
 Average provisioned reads are 25,000 / 0.7 = 35,714 RCU, and 35,714 x 730 h x $0.00013 is about $3,400.
@@ -496,9 +524,9 @@ One provisioned WCU-second costs $0.00065 / 3600 = $1.81e-7, and one on-demand w
 Provisioned is cheaper whenever the provisioned capacity you pay for is used more than about 29 percent of the time on average.
 The read prices have the same ratio, so the same rule applies to reads.
 Step 9, global tables.
-A three-Region MREC table bills each write as a standard write in the origin Region and as a replicated write in each other Region, so write cost roughly triples (AWS pricing, as of 2026-10).
+A three-Region MREC table bills each write as replicated write units in every replica Region, and those units cost the same as single-Region write units in us-east-1, so write cost roughly triples (AWS docs and price list, as of 2026-11).
 Replication also moves about 20,000 x 2.5 KB x 2 destinations = 100 MB/s, which is about 259 TB per month.
-At $0.02 per GB for inter-Region transfer that adds about $5,200 per month (UNVERIFIED as of 2026-10).
+DynamoDB does not charge cross-Region data transfer fees for replicating between the Regions of a global table, so that volume adds no transfer line to the bill (AWS docs, as of 2026-11).
 
 ## Failure Modes and Pitfalls
 
@@ -513,7 +541,7 @@ To fix, write-shard with a computed suffix, put a cache in front of hot reads (D
 ### GSI back-pressure
 
 A GSI is updated asynchronously but has its own capacity.
-If a provisioned GSI runs out of write capacity, DynamoDB throttles writes to the base table so the index does not fall behind without bound (AWS docs; UNVERIFIED as of 2026-10).
+If a provisioned GSI runs out of write capacity, DynamoDB throttles writes to the base table so the index does not fall behind without bound (AWS docs, as of 2026-11).
 A low-cardinality GSI partition key concentrates all index writes on a few partitions, which in turn throttles the whole base table.
 
 ### Retry amplification and metastable failure
@@ -525,7 +553,7 @@ Use the SDK's adaptive retry mode or a client-side token bucket, cap the number 
 ### Launch spikes on on-demand tables
 
 On-demand is not unlimited burst.
-It absorbs up to double the previous peak straight away, and faster growth within about 30 minutes can throttle while partitions split (AWS docs; UNVERIFIED as of 2026-10).
+It absorbs up to double the previous peak straight away, and faster growth within about 30 minutes can throttle while partitions split (AWS docs, as of 2026-11).
 A new table that goes from zero to 100,000 writes/s at a product launch will throttle unless warm throughput was set ahead of time.
 
 ### Global tables conflicts
@@ -537,14 +565,14 @@ Write affinity per item (a home Region), MRSC, or a single-writer service per en
 
 ### Streams consumer lag
 
-Streams records expire after 24 hours (AWS docs; UNVERIFIED as of 2026-10).
+Streams records expire after 24 hours (AWS docs, as of 2026-11).
 A Lambda or KCL consumer stuck on a poison record for a day loses data downstream.
 Global tables replication, by contrast, is managed by the service and does not depend on your consumers.
 
 ### Encryption key revocation
 
 When the table uses a customer managed KMS key and that key is disabled or its grants are removed, the table becomes inaccessible.
-If the key stays inaccessible long enough, DynamoDB archives the table (AWS docs; seven-day threshold UNVERIFIED as of 2026-10).
+If the key stays inaccessible for longer than seven days, DynamoDB archives the table (AWS docs, as of 2026-11).
 A badly scoped key policy change in an automation pipeline is a real way to cause an outage.
 
 ### PIR: September 2015 us-east-1 metadata overload
@@ -562,19 +590,19 @@ In the [October 2025 event](https://aws.amazon.com/message/101925/), a latent ra
 The system has a planner that generates DNS plans and redundant enactors that apply them.
 One enactor was badly delayed and applied an old plan after a newer plan had been applied.
 A cleanup step then deleted the old plan as stale, which removed every IP address from the record and left the state unrepairable by automation.
-Operators fixed the record by hand after several hours (exact timestamps UNVERIFIED as of 2026-10).
+The event began at 11:48 PM PDT on October 19, operators restored all DNS information by hand by 2:25 AM PDT on October 20, and customers could resolve the endpoint by 2:40 AM as cached records expired (AWS PIR).
 The impact cascaded.
 EC2's instance-management subsystem depends on DynamoDB for leases on physical hosts, and after DynamoDB recovered it went into congestive collapse while re-establishing leases.
-That delayed instance launches and network configuration for many more hours, with knock-on Network Load Balancer health-check failures (AWS PIR; detailed sequencing UNVERIFIED as of 2026-10).
+That kept EC2 launches impaired until 1:50 PM PDT, and delayed network propagation caused Network Load Balancer connection errors between 5:30 AM and 2:09 PM PDT (AWS PIR).
 The lesson is that the storage engine was healthy the whole time, while the data path failed at name resolution.
-DNS for the endpoint was part of the data plane, and two writers racing with no ordering guard on plan generation is a classic lost-update bug.
+DNS for the endpoint was part of the data plane, and a writer whose one-time plan-freshness check had gone stale overwriting a newer plan is a classic lost-update bug.
 For the cross-service view, see [[17-Cloud-AI-Engineering/Volume_07_Reliability_and_SRE/Chapter_07_Anatomy_of_Major_Cloud_Outages|Anatomy of Major Cloud Outages]].
 
 ### Smaller pitfalls
 
 - Scan and Query charge for data read before filters are applied, so `FilterExpression` saves bandwidth, not RCU.
 - Long attribute names are billed in every item, so `customer_identifier_v2` repeated over a billion items is real money.
-- TTL deletes happen in the background, typically within days rather than at expiry (UNVERIFIED as of 2026-10), so queries must also filter out expired items.
+- TTL deletes happen in the background, typically within a few days after expiry (AWS docs, as of 2026-11), so queries must also filter out expired items.
 - Clients that cache DNS indefinitely, such as a JVM with infinite TTL, cannot follow endpoint changes during recovery.
 
 ## Security and Cost Angles
@@ -584,30 +612,30 @@ For the cross-service view, see [[17-Cloud-AI-Engineering/Volume_07_Reliability_
 Use the `dynamodb:LeadingKeys` condition key to limit a principal to items whose partition key equals its tenant ID or federated identity.
 This is item-level isolation inside a shared table.
 Use `dynamodb:Attributes` together with `dynamodb:Select` to restrict which attributes a principal can read or write.
-Resource-based policies on tables and streams allow cross-account access without assuming a role (AWS docs; GA status UNVERIFIED as of 2026-10).
+Resource-based policies on tables and streams allow cross-account access without assuming a role (launched March 2024; AWS announcement and docs, as of 2026-11).
 Deny `dynamodb:DeleteTable` and `dynamodb:UpdateTable` with an SCP outside break-glass roles, and turn on deletion protection for production tables.
 For how SCPs, RCPs, identity policies, and resource policies combine, see [[17-Cloud-AI-Engineering/Volume_02_AWS_Deep_Dive/Chapter_01_IAM_Policy_Evaluation_Engine|IAM Policy Evaluation Engine]].
 
 ### Encryption key hierarchy
 
 DynamoDB always encrypts at rest, with your choice of an AWS owned key, the AWS managed `aws/dynamodb` key, or a customer managed KMS key.
-The service uses envelope encryption with a per-table key wrapped by the KMS key and cached by the service, so KMS request volume does not grow with item traffic (AWS docs; caching details UNVERIFIED as of 2026-10).
+The service uses envelope encryption with a per-table key encrypted by the KMS key and cached per caller, refreshed every five minutes for callers with active traffic, so KMS request volume follows active callers and connection reuse, not item traffic (AWS docs, as of 2026-11).
 Customer managed keys give you a CloudTrail record of key use and the ability to revoke access cryptographically.
 The cost is the key-revocation failure mode described above.
 For the general pattern, see [[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter/Chapter_04_Encryption_Key_Hierarchies_and_Envelope_Encryption|Encryption Key Hierarchies and Envelope Encryption]].
 
 ### Private network boundary
 
-A gateway VPC endpoint for DynamoDB is added as a prefix-list route in your route tables and has no hourly or per-GB charge (AWS docs; UNVERIFIED as of 2026-10).
-Interface endpoints via PrivateLink are billed per hour and per GB, but they are reachable from on-premises networks and peered VPCs, which gateway endpoints are not.
+A gateway VPC endpoint for DynamoDB is added as a prefix-list route in your route tables and has no additional charge (AWS docs, as of 2026-11).
+Interface endpoints via PrivateLink are billed per hour and per GB, but they are reachable from on-premises networks, from peered VPCs in other Regions, and through a transit gateway, which gateway endpoints are not (AWS docs, as of 2026-11).
 Add `aws:SourceVpce` or `aws:SourceVpc` conditions in resource policies or SCPs so stolen credentials cannot be used from the internet.
 For the full design, see [[17-Cloud-AI-Engineering/Volume_08_Security_Identity_and_the_Data_Perimeter/Chapter_06_Constructing_an_Impenetrable_Data_Perimeter|Constructing an Impenetrable Data Perimeter]].
 
 ### Unit-economics levers
 
 - Choose the billing mode by measured utilization against the roughly 29 percent breakeven computed in the Worked Example, and revisit it each quarter.
-- Reserved capacity discounts provisioned throughput further in exchange for a term commitment (AWS pricing; discount levels UNVERIFIED as of 2026-10).
-- The Standard-IA table class cuts storage price and raises request price, so it pays off for tables dominated by storage and rarely read (AWS pricing, as of 2026-10).
+- Reserved capacity discounts single-Region provisioned throughput on the Standard class by up to 54 percent for a one-year term and up to 77 percent for a three-year term (AWS pricing, as of 2026-11).
+- The Standard-IA table class cuts storage price and raises request price, so it pays off for tables dominated by storage and rarely read (AWS price list, as of 2026-11).
 - Shrink items: short attribute names, compressed blobs, and large payloads moved to S3 behind a pointer, because WCU rounds up per 1 KB.
 - Use sparse GSIs with `KEYS_ONLY` or `INCLUDE` projections, because every projected attribute is written again into every index.
 - Prefer eventually consistent reads when staleness is acceptable: they cost half and are served by any replica.
@@ -668,18 +696,18 @@ A product launch will take a brand-new on-demand table from zero to 150,000 writ
 #### Model Answer
 
 A new on-demand table starts at about 4,000 WRU/s.
-On-demand absorbs up to double the previous peak straight away, but faster growth needs partition splits, and splits move data and take minutes (UNVERIFIED numbers as of 2026-10).
+On-demand absorbs up to double the previous peak straight away, but faster growth needs partition splits, and splits move data and take minutes (AWS docs as of 2026-11; Elhemali et al., ATC 2022).
 So without pre-provisioning, the launch will throttle hard during exactly the period that matters.
 First, set warm throughput on the table ahead of time to the target, so DynamoDB creates enough partitions in advance, and confirm via DescribeTable that warm throughput has reached its target.
-Second, file a quota increase, because 150,000 WRU is well above the default 40,000 per-table quota (AWS docs, as of 2026-10).
+Second, file a quota increase, because 150,000 WRU is well above the default 40,000 per-table quota (AWS docs, as of 2026-11).
 Third, verify key distribution by load-testing with production-shaped keys, because pre-split partitions still cannot rescue a key carrying more than 1,000 WCU.
 Fourth, protect the client side with an adaptive-mode SDK retry policy, a capped number of attempts, and a bounded local queue that sheds non-critical writes first.
 That way a throttling event degrades features instead of collapsing the service through retry amplification.
 Fifth, set `on_demand_throughput` maximums at roughly two times the expected peak, so a client bug cannot generate unbounded spend.
-Sixth, alarm on `WriteThrottleEvents` and on the `ThrottlingReasons`-style detail exposed in current SDK exceptions (UNVERIFIED as of 2026-10), plus a burn-rate alert on the launch SLO.
-Cost check: 150,000 WRU/s sustained for one hour is 540 million WRU, about $340 at $0.625 per million (AWS pricing, as of 2026-10).
+Sixth, alarm on `WriteThrottleEvents` and `WriteKeyRangeThroughputThrottleEvents`, log the `ThrottlingReasons` field that SDK exceptions now carry to separate partition limits from table limits (AWS docs, as of 2026-11), and add a burn-rate alert on the launch SLO.
+Cost check: 150,000 WRU/s sustained for one hour is 540 million WRU, about $340 at $0.625 per million (AWS price list, as of 2026-11).
 That is trivial next to the revenue at risk, so pre-warming is clearly justified.
-The trade-off: warm throughput is billed as a one-time charge (UNVERIFIED as of 2026-10), and leftover partitions remain after the launch, which slightly increases per-partition dilution risk for later skewed workloads under provisioned mode.
+The trade-off: raising warm throughput is billed as a one-time charge at one WCU or RCU rate per unit of increase (AWS pricing, as of 2026-11), and leftover partitions remain after the launch, which slightly increases per-partition dilution risk for later skewed workloads under provisioned mode.
 
 #### Follow-up Interviewer Question
 
@@ -698,7 +726,7 @@ I would offer three redesigns, with these trade-offs.
 Option one, home-Region write affinity: each SKU has a home Region stored in the item, all decrements for that SKU are routed there, and the other Regions forward to it.
 This keeps MREC's cheap local reads, but cross-Region decrements pay one inter-Region round trip, and if the home Region fails you need an explicit, fenced transfer of ownership.
 Option two, MRSC: writes synchronously reach at least one other Region before they are acknowledged, so conditional checks run against strongly consistent state.
-That gives an RPO of zero, but every write pays inter-Region latency, you are limited to three-Region configurations, and some API restrictions apply (AWS docs, as of 2026-10).
+That gives an RPO of zero, but every write pays inter-Region latency, you are limited to three-Region configurations, and some API restrictions apply (AWS docs, as of 2026-11).
 Option three, reservations: split stock into per-Region allocations that each Region decrements locally, and rebalance asynchronously.
 This keeps local latency and turns the consistency problem into a capacity-planning problem, at the cost of selling out in one Region while another still has stock.
 I would choose option three for flash sales where latency matters, and MRSC for low-volume, high-value items such as tickets with seat numbers.
@@ -741,7 +769,7 @@ The October 2025 us-east-1 incident started with an empty DNS record for the Dyn
 #### Model Answer
 
 First, the mechanism.
-Redundant DNS enactors applied plans with no ordering guard, a delayed enactor applied a stale plan, and cleanup deleted it, leaving an empty record that the automation could not repair.
+Redundant DNS enactors checked plan freshness only once before applying, a delayed enactor overwrote a newer plan with a stale one, and cleanup deleted it, leaving an empty record that the automation could not repair.
 The storage engine was healthy, but the data path failed at name resolution, and dependent control planes then failed during recovery because they re-established leases all at once.
 For my platform, I would treat the endpoint as a dependency with its own failure mode and design along three lines.
 Line one, Region independence for critical paths.
@@ -773,7 +801,7 @@ But every tenant shares GAC table tokens, and the big tenants become hot keys.
 A tenant at 1 percent of traffic can exceed a 1,000 WCU partition ceiling and throttle itself, and any table-level throttling hits everyone.
 Table-per-tenant gives each tenant its own GAC budget, its own on-demand scaling history, per-tenant CMKs, and per-tenant PITR restores.
 With on-demand billing, an idle table costs only storage, so the unit economics stay flat.
-The limits are the default 2,500 tables per Region per account (AWS docs, as of 2026-10), control-plane rate limits on CreateTable, and per-table alarms and Contributor Insights that grow linearly with tenants.
+The limits are the default 2,500 tables per Region per account (AWS docs, as of 2026-11), control-plane rate limits on CreateTable, and per-table alarms and Contributor Insights that grow linearly with tenants.
 Account-per-tenant gives the strongest blast-radius and quota isolation and clean cost allocation, but it brings account-vending, cross-account identity, and fleet-wide schema migration as permanent operational costs.
 My recommendation is a tiered cell model.
 - Put the long tail of small tenants in a set of shared tables, each acting as a cell of a few thousand tenants, using shuffle-sharding-style assignment so a noisy tenant affects one cell.
