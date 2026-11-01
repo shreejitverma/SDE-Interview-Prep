@@ -199,7 +199,7 @@ All runnable code, reproduction test cases, and benchmarks must reside inside th
   - `make record`: Runs labs and updates the golden output files.
   - `make verify LAB=<name>`: Runs verification only for labs whose path contains `<name>`.
 - **Environment Gating:** Every lab's `run.sh` must declare its environmental requirements in a `# requires:` comment within its first 10 lines:
-  - `# requires: linux`: Linux system call dependencies (e.g., ptrace, namespaces, epoll); the lab runs only on a Linux host and is skipped on macOS.
+  - `# requires: linux`: Linux system call dependencies (e.g., ptrace, namespaces, epoll); the lab runs natively on a Linux host and in a pinned container on any other host, and is skipped only when docker is unavailable or dispatch is turned off, as `code/README.md` describes.
   - `# requires: macos`: macOS-only tools (e.g., Instruments, xctrace, codesign); the lab runs only on a macOS host and is skipped on Linux.
   - `# requires: docker`: The lab itself drives Docker (building or running images) and needs a working daemon.
   - `# requires: pmu`: Hardware performance counters or PMU virtualization, opted in with `TOOLCHAIN_LABS_PMU=1`.
