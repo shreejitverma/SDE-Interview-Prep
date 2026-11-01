@@ -86,7 +86,7 @@ When a lab requires `linux`, the host is not Linux, and `docker info` succeeds, 
 | `linux, pmu` | `SKIP`, even with `TOOLCHAIN_LABS_PMU=1`: the VM has no hardware counters |
 | `linux, nightly` | `SKIP`: the image has no Rust toolchain |
 | `linux, docker` | `SKIP`: the container gets no docker socket, which would hand it root on the VM |
-| `linux, network` | `SKIP` without `TOOLCHAIN_LABS_NETWORK=1`; with it, the container gets the default network instead of `--network none` |
+| `linux, network` | `SKIP`, even with `TOOLCHAIN_LABS_NETWORK=1`: the container always runs with `--network none` |
 | `macos`, alone or with `linux` | Never dispatches |
 
 ## Harness Commands

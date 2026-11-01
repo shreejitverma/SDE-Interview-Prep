@@ -249,6 +249,7 @@ class ContainerDispatchTest(LabTreeTestCase):
         self.assertNotIn("--privileged", argv)
         self.assertNotIn("--cap-add", argv)
         self.assertEqual(argv[argv.index("--cap-drop") + 1], "ALL")
+        self.assertEqual(argv[argv.index("--security-opt") + 1], "no-new-privileges")
         self.assertEqual(argv[argv.index("--ulimit") + 1], "core=-1")
         self.assertEqual(argv[argv.index("--network") + 1], "none")
         self.assertIn("--rm", argv)
@@ -395,28 +396,16 @@ class ContainerDispatchTest(LabTreeTestCase):
         self.assertEqual(self.calls(), [])
 
     def test_requirements_a_container_cannot_meet_skip_even_when_opted_in(self):
-        for token in ("pmu", "nightly", "docker"):
+        tokens = ("pmu", "nightly", "docker", "network")
+        for token in tokens:
             self.linux_lab(token, requires=f"linux, {token}", linux_aarch64="x\n")
-        with mock.patch.dict(os.environ, {"TOOLCHAIN_LABS_PMU": "1"}):
+        with mock.patch.dict(os.environ, {"TOOLCHAIN_LABS_PMU": "1", "TOOLCHAIN_LABS_NETWORK": "1"}):
             rc, out = self.run_harness()
         self.assertEqual(rc, 0, out)
-        for token in ("pmu", "nightly", "docker"):
+        for token in tokens:
             self.assertIn(f"SKIP  pillar/{token} (requires {token} (", out)
-        self.assertIn("0 passed, 0 failed, 3 skipped", out)
+        self.assertIn("0 passed, 0 failed, 4 skipped", out)
         self.assertEqual(self.calls(), [])
-
-    def test_network_stays_opt_in_and_opening_it_drops_the_network_flag(self):
-        self.linux_lab(requires="linux, network", linux_aarch64="x\n")
-        self.configure(run_stdout="x\n")
-        rc, out = self.run_harness()
-        self.assertEqual(rc, 0, out)
-        self.assertIn("SKIP  pillar/probe (requires network)", out)
-        self.assertEqual(self.calls(), [])
-        with mock.patch.dict(os.environ, {"TOOLCHAIN_LABS_NETWORK": "1"}):
-            rc, out = self.run_harness()
-        self.assertEqual(rc, 0, out)
-        self.assertIn("PASS  pillar/probe", out)
-        self.assertNotIn("--network", self.lab_runs()[0])
 
     def test_linux_host_runs_natively_without_docker(self):
         lab = self.linux_lab()

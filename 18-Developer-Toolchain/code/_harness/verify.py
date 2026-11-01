@@ -61,11 +61,14 @@ CONTAINER_LACKS = {
     "pmu": "the container VM exposes no hardware counters",
     "nightly": "the lab image has no Rust toolchain",
     "docker": "the lab container gets no docker socket, which would hand it root on the VM",
+    "network": "the lab container always runs with --network none",
 }
 # Least privilege that reproduces the recordings: no capabilities, no privilege gain, and the image's
 # unprivileged user. Core dumps need only RLIMIT_CORE, since core_pattern belongs to the VM kernel and a
 # container cannot change it. gdb can still trace its own children: the default seccomp profile allows ptrace.
-CONTAINER_FLAGS = ("--init", "--cap-drop", "ALL", "--security-opt", "no-new-privileges", "--ulimit", "core=-1")
+CONTAINER_FLAGS = (
+    "--cap-drop", "ALL", "--security-opt", "no-new-privileges", "--network", "none", "--ulimit", "core=-1",
+)
 CONTAINER_SCRIPT = "cp -R /mnt/lab /tmp/lab && cd /tmp/lab && exec bash run.sh"
 # Run-to-run noise with no teaching value: heap and stack addresses, and temp paths.
 SCRUB = (
@@ -121,10 +124,7 @@ def dispatches(reqs: list[str]) -> bool:
 
 
 def unmet_in_container(reqs: list[str]) -> list[str]:
-    missing = [f"{r} ({CONTAINER_LACKS[r]})" for r in reqs if r in CONTAINER_LACKS]
-    if "network" in reqs and os.environ.get("TOOLCHAIN_LABS_NETWORK") != "1":
-        missing.append("network")
-    return missing
+    return [f"{r} ({CONTAINER_LACKS[r]})" for r in reqs if r in CONTAINER_LACKS]
 
 
 class ContainerError(Exception):
@@ -199,11 +199,10 @@ class LabContainer:
         except OSError as e:
             raise ContainerError(f"could not run docker: {e}") from e
 
-    def run(self, lab: Path, reqs: list[str]) -> subprocess.CompletedProcess:
+    def run(self, lab: Path) -> subprocess.CompletedProcess:
         name = f"toolchain-lab-{os.getpid()}-{next(self._names)}"
-        network = [] if "network" in reqs else ["--network", "none"]
         mount = f"type=bind,source={lab.resolve()},target=/mnt/lab,readonly"
-        cmd = ["docker", "run", "--rm", "--name", name, *CONTAINER_FLAGS, *network, "--mount", mount,
+        cmd = ["docker", "run", "--rm", "--name", name, *CONTAINER_FLAGS, "--mount", mount,
                self.image, "sh", "-c", CONTAINER_SCRIPT]
         try:
             return subprocess.run(cmd, capture_output=True, text=True, check=False, timeout=TIMEOUT_S)
@@ -269,7 +268,7 @@ def main(argv: list[str] | None = None) -> int:
             if in_container:
                 lab_key = container.prepare()
                 where = f" (in container {container.image}, {lab_key})"
-                proc = container.run(lab, reqs)
+                proc = container.run(lab)
             else:
                 proc = run_lab(lab)
         except subprocess.TimeoutExpired:
